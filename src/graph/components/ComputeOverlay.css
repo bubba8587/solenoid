@@ -1,0 +1,53 @@
+/* Busy curtain for a heavy recompute. A light scrim (the graph stays visible — it's
+   busy, not gone) that captures all pointer/wheel events, with a centered spinner
+   card. Sits below the load overlay (z 200) and above the canvas chrome. */
+.solenoid-compute-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 190;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: all;
+  cursor: progress;
+  background: color-mix(in srgb, var(--canvas-bg) 42%, transparent);
+  /* Fade in so the curtain doesn't pop — matches the deferred-reveal intent. */
+  animation: solenoid-compute-fade 140ms ease both;
+}
+
+@keyframes solenoid-compute-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.solenoid-compute-overlay__card {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px 18px;
+  box-sizing: border-box;
+  background: var(--overlay-bg);
+  border: var(--overlay-border-width) solid var(--overlay-border);
+  border-radius: 10px;
+  box-shadow: var(--overlay-shadow);
+}
+
+.solenoid-compute-overlay__label {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+
+.solenoid-compute-overlay__spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--text-muted) 30%, transparent);
+  border-top-color: var(--accent);
+  animation: solenoid-compute-spin 0.7s linear infinite;
+}
+
+@keyframes solenoid-compute-spin {
+  to { transform: rotate(360deg); }
+}

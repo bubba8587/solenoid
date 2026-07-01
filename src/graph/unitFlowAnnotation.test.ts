@@ -1,0 +1,161 @@
+import { describe, it, expect } from "vitest";
+import { NodeEditor, ClassicPreset } from "rete";
+import { makeAnnotationResolver, makeUnitResolver } from "./unitFlow";
+import type { FormatAnnotation } from "./formatAnnotationStore";
+
+type AnyEditor = NodeEditor<{ Node: ClassicPreset.Node; Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node> }>;
+const sock = new (class extends ClassicPreset.Socket {})("any");
+const usd: FormatAnnotation = {
+  format: "decimal", customPattern: "0.00", decimalDigits: 2, decimalMode: "places",
+  unit: "usd", customUnit: "", textCase: "none", bold: false, italic: false, textScale: 14,
+};
+const eur: FormatAnnotation = { ...usd, unit: "eur" };
+
+function node(label: string, extra: Record<string, unknown> = {}) {
+  const n = new ClassicPreset.Node(label) as ClassicPreset.Node & Record<string, unknown>;
+  n.addInput("in", new ClassicPreset.Input(sock, "In"));
+  n.addOutput("out", new ClassicPreset.Output(sock, "Out"));
+  Object.assign(n, extra);
+  return n;
+}
+/** An FC-like source publishing a fixed unit + annotation on its output. */
+function fcSource(label: string, unit: string, ann?: FormatAnnotation) {
+  const n = new ClassicPreset.Node(label) as ClassicPreset.Node & Record<string, unknown>;
+  n.addOutput("out", new ClassicPreset.Output(sock, "Out"));
+  n.unit = unit; n.format = "decimal";
+  if (ann) n.annotation = () => ann;
+  return n;
+}
+/** A selector (IF-like) with cond/then/else inputs; only then/else are value branches.
+ *  `selected` mimics the node's computed branch ("then"/"else"); null = indeterminate
+ *  (a list condition), so the resolver falls back to combining the branches. */
+function ifNode(label: string, selected: string | null = null) {
+  const n = new ClassicPreset.Node(label) as ClassicPreset.Node & Record<string, unknown>;
+  for (const k of ["cond", "then", "else"]) n.addInput(k, new ClassicPreset.Input(sock, k));
+  n.addOutput("out", new ClassicPreset.Output(sock, "Out"));
+  n.unitPassInputs = () => ["then", "else"];
+  n.selectedUnitInput = () => selected;
+  return n;
+}
+const connect = async (e: AnyEditor, s: ClassicPreset.Node, t: ClassicPreset.Node, tIn = "in") =>
+  e.addConnection(new ClassicPreset.Connection(s as never, "out", t as never, tIn) as never);
+
+describe("makeAnnotationResolver — FC locks a format that rides through passthroughs", () => {
+  it("a downstream Display resolves the upstream FC's annotation (no trailing FC)", async () => {
+    const editor = new NodeEditor() as unknown as AnyEditor;
+    const fc = node("FC", { annotation: () => usd });           // FC locks usd
+    const disp = node("Display", { passesUnitThrough: true });  // passthrough
+    for (const n of [fc, disp]) await editor.addNode(n as never);
+    await connect(editor, fc, disp);
+    const r = makeAnnotationResolver(editor);
+    expect(r.inAnnotation(disp.id, "in")?.unit).toBe("usd");
+  });
+
+  it("the lock survives a chain of passthroughs but BREAKS at a transform", async () => {
+    const editor = new NodeEditor() as unknown as AnyEditor;
+    const fc = node("FC", { annotation: () => usd });
+    const d1 = node("Display1", { passesUnitThrough: true });
+    const xform = node("Add");                 // not FC, not passthrough → transform
+    const d2 = node("Display2", { passesUnitThrough: true });
+    for (const n of [fc, d1, xform, d2]) await editor.addNode(n as never);
+    await connect(editor, fc, d1);     // fc → d1 (locked)
+    await connect(editor, d1, xform);  // d1 → transform
+    await connect(editor, xform, d2);  // transform → d2 (unlocked)
+    const r = makeAnnotationResolver(editor);
+    expect(r.inAnnotation(d1.id, "in")?.unit).toBe("usd"); // carried across the passthrough
+    expect(r.inAnnotation(d2.id, "in")).toBeUndefined();   // dropped at the transform
+  });
+});
+
+describe("downstreamAnnotation — an FC's lock reaches Displays AHEAD of it (upstream segment)", () => {
+  it("a Display two hops ABOVE the FC carries the lock (Number→Disp1→Disp2→FC)", async () => {
+    const editor = new NodeEditor() as unknown as AnyEditor;
+    const num = node("Number");                              // source (not passthrough)
+    const d1 = node("Disp1", { passesUnitThrough: true });
+    const d2 = node("Disp2", { passesUnitThrough: true });
+    const fc = node("FC", { annotation: () => usd });        // FC at the end of the chain
+    for (const n of [num, d1, d2, fc]) await editor.addNode(n as never);
+    await connect(editor, num, d1);
+    await connect(editor, d1, d2);
+    await connect(editor, d2, fc);
+    const r = makeAnnotationResolver(editor);
+    expect(r.downstreamAnnotation(d2.id, "out")?.unit).toBe("usd"); // immediate box behind
+    expect(r.downstreamAnnotation(d1.id, "out")?.unit).toBe("usd"); // TWO hops above — the fix
+  });
+
+  it("the lock STOPS at a transform between the Display and the FC", async () => {
+    const editor = new NodeEditor() as unknown as AnyEditor;
+    const d1 = node("Disp1", { passesUnitThrough: true });
+    const xform = node("Add");                               // transform — segment boundary
+    const fc = node("FC", { annotation: () => usd });
+    for (const n of [d1, xform, fc]) await editor.addNode(n as never);
+    await connect(editor, d1, xform);
+    await connect(editor, xform, fc);
+    const r = makeAnnotationResolver(editor);
+    expect(r.downstreamAnnotation(d1.id, "out")).toBeUndefined(); // value changes at the transform
+  });
+
+  it("no FC downstream → no annotation", async () => {
+    const editor = new NodeEditor() as unknown as AnyEditor;
+    const d1 = node("Disp1", { passesUnitThrough: true });
+    const d2 = node("Disp2", { passesUnitThrough: true });
+    for (const n of [d1, d2]) await editor.addNode(n as never);
+    await connect(editor, d1, d2);
+    expect(makeAnnotationResolver(editor).downstreamAnnotation(d1.id, "out")).toBeUndefined();
+  });
+});
+
+describe("input-aware passthrough — IF/CHOOSE/SWITCH/IFS pass the value branch's unit", () => {
+  it("IF passes the unit from then/else, ignoring the condition", async () => {
+    const editor = new NodeEditor() as unknown as AnyEditor;
+    const a = fcSource("A", "usd", usd);   // $ value
+    const b = fcSource("B", "usd", usd);   // $ value
+    const condFc = fcSource("CondFc", "km"); // a unit on the condition (shouldn't matter)
+    const iff = ifNode("IF", "then");
+    for (const n of [a, b, condFc, iff]) await editor.addNode(n as never);
+    await connect(editor, condFc, iff, "cond");
+    await connect(editor, a, iff, "then");
+    await connect(editor, b, iff, "else");
+    const u = makeUnitResolver(editor);
+    expect(u.outUnit(iff.id, "out")).toBe("usd");           // both branches $ → $
+    const ann = makeAnnotationResolver(editor);
+    expect(ann.outAnnotation(iff.id, "out")?.unit).toBe("usd");
+  });
+
+  it("DATA-AWARE: IF(c, km, mi) follows the actually-selected branch", async () => {
+    const editor = new NodeEditor() as unknown as AnyEditor;
+    const km = fcSource("KM", "km");
+    const mi = fcSource("MI", "mi");
+    const iffTrue = ifNode("IFtrue", "then");   // condition computed true → km
+    const iffFalse = ifNode("IFfalse", "else"); // condition computed false → mi
+    for (const n of [km, mi, iffTrue, iffFalse]) await editor.addNode(n as never);
+    await connect(editor, km, iffTrue, "then");
+    await connect(editor, mi, iffTrue, "else");
+    await connect(editor, km, iffFalse, "then");
+    await connect(editor, mi, iffFalse, "else");
+    const u = makeUnitResolver(editor);
+    expect(u.outUnit(iffTrue.id, "out")).toBe("km");        // selected then
+    expect(u.outUnit(iffFalse.id, "out")).toBe("mi");       // selected else
+  });
+
+  it("only ONE branch with a unit still passes it (the other is unitless)", async () => {
+    const editor = new NodeEditor() as unknown as AnyEditor;
+    const a = fcSource("A", "usd", usd);
+    const iff = ifNode("IF", null);                          // indeterminate → combine
+    for (const n of [a, iff]) await editor.addNode(n as never);
+    await connect(editor, a, iff, "then");                   // else left unwired (unitless)
+    expect(makeUnitResolver(editor).outUnit(iff.id, "out")).toBe("usd");
+  });
+
+  it("INDETERMINATE selection (e.g. a list condition) + conflicting branches → no unit", async () => {
+    const editor = new NodeEditor() as unknown as AnyEditor;
+    const a = fcSource("A", "usd", usd);
+    const b = fcSource("B", "eur", eur);
+    const iff = ifNode("IF", null);                          // null = picks per-element
+    for (const n of [a, b, iff]) await editor.addNode(n as never);
+    await connect(editor, a, iff, "then");
+    await connect(editor, b, iff, "else");
+    expect(makeUnitResolver(editor).outUnit(iff.id, "out")).toBe("none");
+    expect(makeAnnotationResolver(editor).outAnnotation(iff.id, "out")).toBeUndefined();
+  });
+});

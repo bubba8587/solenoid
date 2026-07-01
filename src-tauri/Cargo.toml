@@ -1,0 +1,52 @@
+[package]
+name = "solenoid"
+version = "1.0.0"
+description = "Solenoid — a local-first node graph for wiring live data into personal computation"
+authors = ["Solenoid"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "solenoid_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# `devtools` makes webview.open_devtools() available in RELEASE builds too (it's
+# always on in debug). The `open_devtools` command + the F12 / Ctrl+Shift+I hotkey
+# rely on it so the console is reachable in a locally-compiled `tauri build`.
+tauri = { version = "2", features = ["devtools"] }
+tauri-plugin-opener = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-dialog = "2"
+# Native HTTP so Web Source can fetch arbitrary URLs (no browser CORS wall).
+tauri-plugin-http = "2"
+# Custom window frame: a transparent overlay titlebar with native Snap support, so
+# the frame is HTML/CSS we control (themed to the accent) instead of the OS caption.
+tauri-plugin-decorum = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# WS2 — the native relational engine. Lazy frames behind opaque handles; only a
+# preview/column materializes. Lean feature set: lazy plans + string predicates.
+polars = { version = "0.46", default-features = false, features = ["lazy", "strings"] }
+
+# Windows 11 DWM: set the window's border color (DWMWA_BORDER_COLOR) to the app
+# accent so the focused-window frame matches the theme. Already in the dep tree via
+# tauri; the Dwm + Foundation features expose the one call we need.
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Graphics_Dwm"] }
+
+# NOTE — stripping build paths from the shipped binary: Rust bakes source paths into
+# panic locations, and for registry deps those look like
+# `C:\Users\<username>\.cargo\registry\src\...`, leaking the build machine's username.
+# `[profile.release] trim-paths` would be the clean fix but is NOT stable in this
+# toolchain's Cargo, so release builds must pass a remap instead (the `release:desktop`
+# npm script sets CARGO_ENCODED_RUSTFLAGS=--remap-path-prefix=$USERPROFILE=C:\build).
+# Verify a cut with: `grep -a -c "$USERNAME" target/release/solenoid.exe` → must be 0.
+

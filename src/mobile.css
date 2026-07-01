@@ -1,0 +1,334 @@
+/* ─── Mobile pass (second iteration) ───────────────────────────────────────
+   Mobile-mode overrides. The desktop layout is the source of truth; this file
+   enlarges tap targets to a finger-friendly size and keeps the floating chrome
+   from overflowing. Gated on `html.is-mobile` (set in main.tsx from IS_MOBILE:
+   coarse pointer AND mobile UA) so it applies to phones and tablets in any
+   orientation — including landscape, where a width breakpoint would miss them —
+   but not mouse-driven laptops, and NOT a phone that requested the desktop
+   site (desktop UA → desktop layout, as the user asked).
+   Canvas touch navigation (pan / pinch-zoom / double-tap) is handled by
+   `touch-action: none` in canvas.css. Imported last in App.tsx so these rules
+   win the cascade.
+
+   Second pass (2026-06) covers everything added after the first: the merged
+   apptools pill (+ Reference/Settings buttons), the Cables sheet section
+   (shape switch + flow-bead animation), the Conduit inspector toolbar,
+   Note/Group header chrome, segmented toggles, the table-editor popup, the
+   connection dialog, Settings/Shortcuts overlays, and the tabbed Reference
+   overlay. In-node targets only matter while the node is selected — touch
+   gates all node interaction on selection (see socket.css). */
+
+html.is-mobile {
+  /* ── The bottom action bar (Undo/Redo/Add/Select/Delete) becomes visible. ── */
+  .solenoid-mobile-bar { display: flex; }
+
+  /* The minimap lives bottom-right and is of little use on a phone-sized canvas
+     — hide it so the corner is free for the socket legend. */
+  .solenoid-minimap { display: none; }
+
+  /* ── App bar: the single top row on mobile. The menu bar collapses into the
+        hamburger that lives here, and the toolbar drops the controls the menus
+        already cover (save/open/tidy/function reference, find) plus the niche
+        cable-shape switch and decorative spacers — leaving the wordmark, example
+        picker, and theme/accent. The app bar also carries the notch inset now
+        that it's the topmost row. ── */
+  .solenoid-topbar {
+    padding: env(safe-area-inset-top) 8px 0;
+    gap: 8px;
+  }
+  .solenoid-topbar__group,
+  .solenoid-topbar__divider,
+  .solenoid-topbar__art,
+  .solenoid-topbar .solenoid-toolbar,
+  /* The wide wordmark is the bar's biggest space hog — swap it for the square
+     icon, which frees most of the row. The centered document title moves into
+     the hamburger sheet too (a phone bar is too narrow to center it cleanly). */
+  .solenoid-topbar__mark,
+  .solenoid-menubar__center {
+    display: none;
+  }
+  /* The square icon doubles as the app-menu button on a phone — a finger-sized
+     tap target at the left edge (the separate hamburger is gone). */
+  .solenoid-topbar__icon { display: flex; }
+
+  /* Document name + caret in the app bar: take the middle space next to the
+     logo. Normal ink on the panel surface (the doctitle's default accent-ink is
+     for the accent menu bar), and the dropdown anchors LEFT so it can't run off
+     the screen edge. */
+  .solenoid-topbar__doctitle {
+    display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
+    margin-left: 2px;
+  }
+  .solenoid-topbar__doctitle .solenoid-doctitle { max-width: 100%; }
+  .solenoid-topbar__doctitle .solenoid-doctitle__name,
+  .solenoid-topbar__doctitle .solenoid-doctitle__caret {
+    color: var(--text);
+    max-width: none;
+  }
+  .solenoid-topbar__doctitle .solenoid-doctitle__name:hover,
+  .solenoid-topbar__doctitle .solenoid-doctitle__caret:hover,
+  .solenoid-topbar__doctitle .solenoid-doctitle__caret--open {
+    background: var(--border-subtle);
+  }
+  /* The documents menu is portaled to <body>, so target it directly (it's no
+     longer under .solenoid-topbar__doctitle). Pin it to both screen edges so a
+     long document name truncates within the row instead of pushing the
+     duplicate / delete buttons off the right edge. `top` is set inline. */
+  .solenoid-doctitle__menu {
+    left: 8px;
+    right: 8px;
+    transform: none;
+    min-width: 0;
+    max-width: none;
+  }
+
+  /* The apptools cluster (accent, Reference, Settings) stays surfaced. Push it
+     to the right of the bar and give the buttons real finger room. The light/dark
+     toggle moves OUT of the bar into the accent-palette popup (to save app-bar
+     space), so its standalone button is hidden and the lone accent button rounds
+     into a full circle. */
+  .solenoid-apptools { gap: 6px; margin-left: auto; }
+  .solenoid-apptools__btn { width: 34px; height: 34px; }
+  .solenoid-apptools__palette { top: 40px; }
+  .solenoid-apptools__theme { display: none; }
+  .solenoid-apptools__palette-theme { display: flex; }
+  .solenoid-apptools__pill .solenoid-apptools__paint { border-radius: 999px; }
+
+  /* ── Menu bar: out of flow so it claims no row of its own — it exists only to
+        host the sheet the hamburger opens (a section per menu). ── */
+  .solenoid-menubar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 0;
+    min-height: 0;
+    padding: 0;
+    background: transparent;
+    border: none;
+    z-index: 8;
+  }
+  .solenoid-menubar__item { display: none; }
+  .solenoid-menubar__sheet {
+    position: absolute;
+    top: calc(44px + env(safe-area-inset-top));
+    left: 8px;
+    /* Size to the widest content (so trimming a section actually narrows the
+       sheet), capped so it never dominates the screen. */
+    width: max-content;
+    max-width: min(280px, 86vw);
+    /* Crop so the sheet never runs under the bottom-left undo/redo pill (its top
+       edge sits ~86px + safe-area above the viewport bottom) or off the screen.
+       dvh (not vh) tracks the *visible* viewport on mobile, where vh includes the
+       area behind the browser chrome and so over-measured the height. */
+    max-height: calc(100vh - 150px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    max-height: calc(100dvh - 150px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    overflow-y: auto;
+    background: var(--surface);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    box-shadow: var(--shadow-pop);
+    padding: 6px;
+  }
+  .solenoid-menubar__sheet-section + .solenoid-menubar__sheet-section {
+    border-top: 1px solid var(--panel-border);
+    margin-top: 4px;
+    padding-top: 6px;
+  }
+  .solenoid-menubar__sheet-heading {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 4px 10px 2px;
+  }
+  .solenoid-menubar__option { padding: 11px 10px; font-size: 14px; }
+  /* Keyboard-shortcut hints are dead weight on a phone (no keyboard) and they
+     stretch every menu row — hide them so the sheet stays narrow and compact. */
+  .solenoid-menubar__sheet .solenoid-menubar__shortcut { display: none; }
+
+  .solenoid-menubar__sheet-seed {
+    width: 100%;
+    max-width: none;
+    height: 40px;
+    margin: 2px 0 4px;
+    font-size: 14px;
+  }
+  /* Cables section: the same CableShapeSelector the desktop top bar hosts
+     (hidden up there on touch) re-rendered in the sheet, with finger-sized
+     segments. Its own "Cable" mini-label is redundant under the section
+     heading. Just the shape switcher + the animate toggle now (snap moved to the
+     layout tools), so it fits one centered row. */
+  .solenoid-menubar__sheet .solenoid-toolbar { padding: 2px 10px 6px; gap: 10px; justify-content: center; }
+  .solenoid-menubar__sheet .solenoid-toolbar__label { display: none; }
+  .solenoid-menubar__sheet .solenoid-toolbar__segment { padding: 8px 12px; }
+  .solenoid-menubar__sheet .solenoid-toolbar__icon { width: 20px; height: 18px; }
+  .solenoid-menubar__sheet .solenoid-toolbar__flow { padding: 8px 12px; }
+  .solenoid-menubar__sheet .solenoid-toolbar__flow-icon { width: 36px; height: 15px; }
+
+  /* ── Web-demo notice: keep it narrow and centered between the corner
+        controls, wrap its text, and drop the (currently disabled) desktop
+        download button so it doesn't overflow a phone. ── */
+  .solenoid-webdemo {
+    top: calc(48px + env(safe-area-inset-top));
+    max-width: calc(100vw - 120px);
+    padding: 6px 8px;
+    font-size: 12px;
+    text-align: center;
+  }
+  .solenoid-webdemo__download { display: none; }
+
+  /* ── Nav pill (upper-right): horizontal, just Zoom in / Zoom out / Lock. Fit
+        moved to the bottom bar; the cable-flourish easter-egg is desktop-only. ── */
+  .solenoid-nav {
+    top: calc(52px + env(safe-area-inset-top));
+    gap: 4px;
+    padding: 4px;
+  }
+  .solenoid-nav__btn--fit,
+  .solenoid-nav__btn--flourish { display: none; }
+  .solenoid-nav__btn {
+    width: 38px;
+    height: 38px;
+    font-size: 15px;
+  }
+  .solenoid-nav__btn svg { width: 16px; height: 16px; }
+
+  /* ── Add-node menu: compact enough that a standard 12-item (sub)menu renders
+        without scrolling, while staying tappable. Rows ~30px (12 ≈ 360px) + the
+        search field fit in the raised cap below; the panel is also capped to the
+        screen so a centered open from the + button never runs off the edge. ── */
+  .solenoid-add-menu { font-size: 13px; }
+  .solenoid-add-menu__item { padding: 7px 12px; }
+  .solenoid-add-menu__search { padding: 7px 10px; font-size: 13px; }
+  .solenoid-add-menu__panel { max-width: 92vw; max-height: min(86vh, 448px); }
+
+  /* ── Outline navigator (upper-left): bigger launcher; panel fits width and
+        clears the (notch-padded) header at the top and the status bar / home
+        indicator at the bottom, so its list isn't cut off behind them. ── */
+  /* The collapsed navigator pill is gone on mobile — Search lives in the bottom
+     bar (it opens the navigator focused on its search field). */
+  .solenoid-outline__open-pill { display: none; }
+  .solenoid-outline {
+    top: calc(52px + env(safe-area-inset-top));
+    bottom: calc(26px + env(safe-area-inset-bottom));
+    width: min(248px, 84vw);
+  }
+  .solenoid-outline__collapse { width: 32px; height: 32px; font-size: 20px; }
+  .solenoid-outline__chip { height: 32px; font-size: 13px; }
+  .solenoid-outline__row { padding: 9px 8px; font-size: 14px; }
+  .solenoid-outline__search { height: 34px; font-size: 14px; }
+
+  /* ── Node chrome: finger-sized versions of the small header buttons and
+        segmented controls added since the first pass. ── */
+  .solenoid-segbtn { height: 30px; font-size: 11px; }
+  .sol-switch__opt { width: 28px; height: 26px; font-size: 12px; }
+  .sol-switch__cycle { height: 30px; padding: 0 12px; }
+  .solenoid-group__header { padding-left: 30px; }
+  .solenoid-group__chevron { width: 22px; height: 22px; left: 4px; }
+  .solenoid-group__tidy,
+  .solenoid-group__swatch { width: 26px; height: 26px; }
+  .solenoid-note__bar { padding-left: 27px; }
+  .solenoid-note__chevron { width: 20px; height: 20px; left: 4px; }
+  .solenoid-note__swatch { width: 26px; height: 26px; }
+
+  /* ── Conduit inspector toolbar. The docked toolbar pins to the lower-left
+        corner — lift it clear of the bottom action bar (~74px tall). ── */
+  .solenoid-conduit-toolbar--docked {
+    left: 12px;
+    bottom: calc(96px + env(safe-area-inset-bottom));
+  }
+  .solenoid-conduit-toolbar__extend { padding: 8px 14px; font-size: 12px; }
+
+  /* ── Table editor popup (Table Input / Frame editing). Shorter scroll area
+        so the on-screen keyboard leaves the active row visible. ── */
+  .table-popup__coltype { width: 26px; height: 26px; font-size: 12px; }
+  .table-popup__view button { padding: 9px 14px; }
+  .table-popup__btn { padding: 9px 14px; }
+  .table-popup__grid-scroll,
+  .table-popup__csv { max-height: 48vh; }
+
+  /* ── Connection dialog (Insert ▸ Add connection) — the no-drag way to wire
+        sockets, extra useful on touch. ── */
+  .conn-dialog__input { height: 44px; font-size: 15px; }
+  .conn-dialog__opt { padding: 11px 9px; }
+  .conn-dialog__btn { height: 42px; padding: 0 18px; }
+
+  /* ── Settings + keyboard-shortcuts overlays. ── */
+  .solenoid-settings__close,
+  .solenoid-shortcuts__close { width: 34px; height: 34px; }
+  .solenoid-settings__row { padding: 10px 0; }
+  .solenoid-settings__switch { width: 46px; height: 26px; }
+  .solenoid-settings__knob { width: 20px; height: 20px; }
+  .solenoid-settings__switch--on .solenoid-settings__knob { transform: translateX(20px); }
+
+  /* ── Reference overlay (tabs + parity table). The table's fixed columns sum
+        to ~860px; on a phone the auto-width Notes column would collapse to
+        nothing and the rest clipped behind overflow-x: hidden — give Notes a
+        real width and let the table pan horizontally instead. ── */
+
+  /* Leave a tappable backdrop margin on every side so the panel can be dismissed
+     by tapping away (the old 96vw left only ~2vw of backdrop at the sides — too
+     thin to hit). */
+  .fr-panel { width: 92vw; height: 88vh; }
+
+  /* Tabs: let the labels scroll horizontally on a narrow phone instead of being
+     clipped, and reserve room on the right so the last tab can't hide under the
+     pinned close button. */
+  .fr-tab { padding: 10px 14px; }
+  .fr-tabs { padding-right: 52px; }
+  .fr-tabs__scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* Close: a finger-sized, clearly-outlined chip pinned top-right so it's always
+     findable. (The old rule still sized it as a faint 16px text-× glyph — a
+     leftover from before the SVG icon — which is exactly what the user couldn't
+     spot.) */
+  .fr-tabs .fr-close {
+    top: 4px;
+    bottom: auto;
+    margin-block: 0;
+    right: 8px;
+    width: 40px;
+    height: 40px;
+    background: var(--surface-raised);
+    border: 1px solid var(--border-strong);
+    color: var(--text);
+  }
+  .fr-close svg { width: 20px; height: 20px; }
+
+  /* Filters were eating half the screen and couldn't scroll. Two fixes:
+     (1) let row 1 wrap so the search field keeps a full line and the filter
+         pills + Excel-columns checkbox flow onto the next line instead of
+         squashing search to nothing;
+     (2) lay the category chips out as a single horizontally-scrolling row (one
+         line, swipe for the rest) and drop the stats legend — a desktop
+         affordance with little value on a phone — so the function table gets
+         the vertical room back. */
+  .fr-header-row1 { flex-wrap: wrap; }
+  .fr-search { flex: 1 1 100%; }
+  .fr-filters { margin-left: 0; }
+  .fr-filter-pill { padding: 7px 12px; flex-shrink: 0; }
+  .fr-colcheck { padding-top: 6px; padding-bottom: 6px; }
+  .fr-cats {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px;
+  }
+  .fr-cat { padding: 7px 12px; flex-shrink: 0; }
+  .fr-stats { display: none; }
+
+  .fr-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .fr-table col.col-note { width: 240px; }
+  /* The row's "+" add affordance is hover-revealed on desktop — no hover on
+     touch, so keep it always visible. */
+  .fr-sol-btn__add { opacity: 1; }
+}
+
+/* Narrow phones: the two-column shortcuts grid runs out of room. */
+@media (max-width: 540px) {
+  html.is-mobile .solenoid-shortcuts__grid { grid-template-columns: 1fr; }
+}

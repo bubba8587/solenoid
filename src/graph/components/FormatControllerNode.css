@@ -1,0 +1,169 @@
+/* Format Controller — ultra-compact docked annotation chip.
+   No header/title: just two side-by-side dropdowns (number format | unit),
+   sized to dock flush against a socket. Accent comes from the host socket's
+   data type via accentOverride (turns orange on unit mismatch). */
+
+.solenoid-fc {
+  width: auto;
+  min-width: 0;
+  /* The whole chip is the accent frame — no separate header band. */
+  border-color: var(--node-accent, var(--border));
+}
+
+/* A compact annotation chip has no label, no collapse — hide the chevron
+   NodeCard renders so it doesn't float over the dropdowns. */
+.solenoid-fc .solenoid-node__chevron {
+  display: none;
+}
+
+/* Row-leading direction arrows. Accent-tinted on the dark canvas where it reads
+   as a subtle colored cue; in light mode the darkened accent blends with the
+   near-black text into a muddy stroke, so fall back to a neutral gray. */
+.solenoid-fc__arrow {
+  color: color-mix(in srgb, var(--node-accent, var(--text-dim)) 50%, var(--text));
+}
+:root[data-theme="light"] .solenoid-fc__arrow {
+  color: var(--text-muted);
+}
+
+.solenoid-fc__row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  /* Extra right inset so the solid seg buttons / unit arrow don't crowd the
+     node's right border (dropdowns get away with less only because their
+     chevron is already inset). */
+  padding: 5px 10px 5px 5px;
+}
+
+.solenoid-fc__row--custom {
+  padding-top: 0;
+}
+
+.solenoid-fc__select {
+  flex: 1 1 0;
+  min-width: 64px;
+  max-width: 92px;
+  font-size: 11px;
+  padding: 3px 18px 3px 5px;
+}
+
+/* Stacked dropdowns (number format / unit, and the date dropdown) fill the row,
+   keeping the chip narrow — one dropdown wide instead of two side by side. */
+.solenoid-fc__select--wide {
+  flex: 1 1 auto;
+  min-width: 90px;
+  max-width: none;
+}
+
+/* Flexible-decimal middle row: digit count + places/sig-figs toggle. */
+.solenoid-fc__row--decimal {
+  padding-top: 0;
+}
+/* Aligns the digits input's left edge with the dropdowns: same width as the
+   FcArrow (9px) that leads the format/unit rows. */
+.solenoid-fc__arrow-spacer {
+  flex: 0 0 auto;
+  width: 9px;
+}
+.solenoid-fc__digits {
+  flex: 0 0 auto;
+  width: 28px;
+  font-size: 11px;
+  text-align: center;
+}
+/* Segmented places / sig-figs toggle: two buttons sharing the rest of the row. */
+.solenoid-fc__seg {
+  flex: 1 1 auto;
+  display: flex;
+}
+.solenoid-fc__segbtn {
+  flex: 1 1 auto;
+  height: 22px;
+  padding: 0 4px;
+  font-family: inherit;
+  font-size: 10px;
+  line-height: 1;
+  background: var(--border-subtle);
+  border: 1px solid var(--border-strong);
+  color: var(--text-dim);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.solenoid-fc__segbtn:first-child  { border-radius: 3px 0 0 3px; }
+.solenoid-fc__segbtn:last-child   { border-radius: 0 3px 3px 0; border-left: none; }
+.solenoid-fc__segbtn--on {
+  background: color-mix(in srgb, var(--node-accent, var(--accent)) 30%, var(--border-subtle));
+  border-color: var(--node-accent, var(--accent));
+  color: var(--text);
+}
+
+.solenoid-fc__pattern {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 11px;
+  text-align: left;
+}
+
+.solenoid-fc__note {
+  font-size: 10px;
+  color: var(--text-dim);
+  font-style: italic;
+  padding: 1px 2px;
+  white-space: nowrap;
+}
+
+/* Text B / I toggle buttons. */
+.solenoid-fc__toggle {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 22px;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1;
+  background: var(--border-subtle);
+  border: 1px solid var(--border-strong);
+  border-radius: 3px;
+  color: var(--text);
+  cursor: pointer;
+}
+.solenoid-fc__toggle--on {
+  background: color-mix(in srgb, var(--node-accent, var(--accent)) 30%, var(--border-subtle));
+  border-color: var(--node-accent, var(--accent));
+  color: var(--text);
+}
+
+.solenoid-fc__size {
+  flex: 0 0 auto;
+  width: 40px;
+  font-size: 11px;
+  padding: 3px 2px;
+}
+
+/* Lock icon beside a unit dropdown that's locked to the upstream FC's unit. */
+.solenoid-fc__lock {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-dim);
+}
+
+/* Mismatch badge — top-right corner, since there's no header to host it. */
+.solenoid-fc__mismatch {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #e06c2e;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 0 0 2px var(--surface);
+}

@@ -1,0 +1,133 @@
+/* All socket sizing flows from these two CSS variables. The defaults
+   apply everywhere; a node-scoped rule can shrink/grow sockets just
+   by setting `--socket-size` (and optionally `--socket-border-width`).
+
+   The wrapping <span class="input-socket"|"output-socket"> is sized
+   the same as the dot so rete-render-utils measures the right box
+   and cables land on the dot's centre. */
+
+/* All three layers — our outer span, rete's wrapper span, the SVG —
+   read the same size variable so width === height always. The dot
+   itself is a real SVG <circle>, not a CSS border-radius div, so it
+   stays a perfect circle even when the box lands on a subpixel
+   boundary. */
+.input-socket,
+.output-socket,
+.input-socket > span,
+.output-socket > span,
+.solenoid-socket-dot {
+  display: block;
+  width: var(--socket-size, 12px);
+  height: var(--socket-size, 12px);
+  box-sizing: border-box;
+  line-height: 0;
+}
+
+/* The cube glyph is oversized past the 12-box (so a hexagon reads the same size as
+   the other sockets), so let the dot SVG paint outside its box. The measured span
+   box stays 12x12, so cable endpoints are unaffected. */
+.solenoid-socket-dot {
+  overflow: visible;
+}
+
+.input-socket::before {
+  content: '';
+  position: absolute;
+  inset: -2px; /* extends hit area ~20% beyond the visual edge */
+  border-radius: 50%;
+}
+
+[data-socket-shape="square"] .input-socket::before {
+  border-radius: 0;
+}
+
+/* Touch: a 12px dot is far too small to grab with a fingertip when drawing or
+   dropping a cable, so on coarse pointers blow the invisible hit area out to
+   ~28px around the dot (both sides — outputs get one too). Mouse-precise
+   devices keep the tight 2px extension above. The ::before only extends the
+   pointer-catch region; it has no fill and doesn't move the measured socket
+   box, so cable endpoints stay centered on the dot. */
+@media (pointer: coarse) {
+  .input-socket::before,
+  .output-socket::before {
+    content: '';
+    position: absolute;
+    inset: -8px;
+    border-radius: 50%;
+  }
+  [data-socket-shape="square"] .input-socket::before,
+  [data-socket-shape="square"] .output-socket::before {
+    border-radius: 0;
+  }
+
+  /* The Conduit packs several lane sockets onto a small body, so the big ~28px
+     touch target swallows the body and you can't grab it to move. Give its
+     sockets a much smaller target. */
+  .solenoid-conduit .input-socket::before,
+  .solenoid-conduit .output-socket::before {
+    inset: -2px;
+  }
+}
+
+/* Selection gates ALL node interaction in mobile mode — one rule for sockets,
+   dropdowns, inputs, value boxes alike (consistency). An UNSELECTED node makes
+   every descendant inert, so any pointer passes straight through to the canvas
+   (pan/pinch win); the card itself stays live so a tap lands on it and selects
+   the node. A SELECTED node's chrome is fully interactive.
+   Gated on html.is-mobile (NOT pointer coarseness): it implements the same
+   interaction model as Canvas's IS_MOBILE drag guard / tap-to-select, and the
+   two must flip together — incl. for "Request desktop site". */
+html.is-mobile {
+  .solenoid-node:not(.solenoid-node--selected) *,
+  .solenoid-conduit:not(.solenoid-conduit--selected) *,
+  .solenoid-group:not(.solenoid-group--selected) *,
+  .solenoid-note:not(.solenoid-note--selected) * {
+    pointer-events: none;
+  }
+  .solenoid-node:not(.solenoid-node--selected),
+  .solenoid-conduit:not(.solenoid-conduit--selected),
+  .solenoid-group:not(.solenoid-group--selected),
+  .solenoid-note:not(.solenoid-note--selected) {
+    pointer-events: auto;
+  }
+  /* …except the resize grip stays grabbable on an unselected node, so the box
+     can be resized directly (a deliberate corner target, like a socket). */
+  .solenoid-node:not(.solenoid-node--selected) .solenoid-node__resize-handle {
+    pointer-events: auto;
+  }
+  /* During a cable drag every socket is a live drop target again, on any node. */
+  .solenoid-canvas--cabling .solenoid-node [data-socket-side],
+  .solenoid-canvas--cabling .solenoid-node [data-socket-side] *,
+  .solenoid-canvas--cabling .solenoid-conduit .input-socket,
+  .solenoid-canvas--cabling .solenoid-conduit .output-socket {
+    pointer-events: auto;
+  }
+}
+
+/* Socket wrappers sit above the selection ring overlay (z-index 6 in
+   nodeCard.css) so a selected node's sockets stay visible and draggable.
+   Each node is its own stacking context (the .rete-node view is transformed),
+   so this is local to the node. */
+[data-socket-side] {
+  z-index: 7;
+}
+
+.solenoid-socket-dot {
+  cursor: crosshair;
+  overflow: visible;
+  shape-rendering: geometricPrecision;
+}
+
+/* solenoid-socket--lit: highlight applied via an SVG overlay in NodeSocket.tsx,
+   not via ::after — the SVG circle shares exact geometry with the socket dot. */
+.solenoid-socket--lit {
+  isolation: isolate;
+}
+
+/* Conduit sockets scale with the connector — ConduitComponent sets --socket-size
+   inline (base × the collapse scale) so the dots track the body size. This is
+   just the fallback + the border width. */
+.solenoid-conduit {
+  --socket-size: 9px;
+  --socket-border-width: 1.5px;
+}

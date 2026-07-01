@@ -1,0 +1,283 @@
+import { ClassicPreset } from "rete";
+
+// ─── Socket data types ────────────────────────────────────────────────────────
+// Naming convention: single-word scalars (number, string, date, complex),
+// plain-concat arrays (list, strlist, datelist, complexlist), combos (numlist,
+// strcombo, datecombo, complexcombo — scalar OR its list), 2-D matrices (table,
+// strtable, datetable, complextable — one homogeneous matrix per element family;
+// `frame` is the heterogeneous named-column cross-type), the recursive container
+// (`cube` — a frame of any values, the lattice supremum), special (any). The
+// regular types form an (element × dimension) lattice — see FAMILIES below; the
+// accept-sets / areCompatible / canConnect are DERIVED from it, not hand-written.
+//   number  → number  / list        / numlist      / table
+//   string  → string  / strlist     / strcombo     / strtable
+//   date    → date    / datelist    / datecombo    / datetable
+//   complex → complex / complexlist / complexcombo / complextable
+// "percentage" and "weighted-list" were removed — no active socket instances.
+export type SocketDataType =
+  | "number"    // scalar number
+  | "list"      // number[]
+  | "numlist"   // number | number[] — flexible, used by element-wise math nodes
+  | "string"    // scalar string
+  | "strlist"   // string[]
+  | "strcombo"  // string | string[] — flexible, element-wise text nodes
+  | "date"      // date serial (numeric, like Excel)
+  | "datelist"  // date[]
+  | "datecombo" // date | date[] — flexible, element-wise date nodes
+  | "complex"   // [real, imag] — complex number (engineering / signal processing)
+  | "complexlist" // [real, imag][] — list of complex numbers
+  | "complexcombo"// complex | complex[] — flexible, element-wise complex nodes
+  | "complextable"// 2-D complex matrix
+  | "logical"     // scalar boolean (TRUE/FALSE) — see valueKinds.ts
+  | "logicallist" // boolean[]
+  | "logicalcombo"// boolean | boolean[] — flexible, element-wise logic nodes
+  | "logicaltable"// 2-D boolean matrix
+  | "table"     // 2-D numeric matrix (linear algebra)
+  | "strtable"  // 2-D string matrix (polyform MAP/MAKEARRAY over text)
+  | "datetable" // 2-D date-serial matrix (polyform MAP/MAKEARRAY over dates)
+  | "anytable"  // 2-D matrix of any element type — the reshapers' output (Any 2D)
+  | "frame"     // named-column data table (Matrix + headers) — see frame.ts
+  | "cube"      // recursive container: a frame whose cells hold ANY value (incl. a
+                // nested frame/cube) — the lattice SUPREMUM. See frame.ts CubeValue.
+  | "lambda"    // first-class function value — see nodes/lambda.ts
+  | "any";      // wildcard — accepts any type
+
+// SocketComponent renders: scalars/complex/any as circles, list types as
+// squares, combos as bicolor split squares, table/frame as 2×2-grid squares,
+// and `cube` as a 3-rhombus hexagon (a flat isometric cube — the recursive
+// container).
+// Values are CSS variables (defined in App.css) so the colors theme live —
+// light mode lightens the dark array variants. Used as fills/strokes/inline
+// colors everywhere (dots, cables, conduit, legend); never parsed as hex.
+export const SOCKET_COLORS: Record<SocketDataType, string> = {
+  number:   "var(--sock-number)",   // amber         — circle
+  list:     "var(--sock-list)",     // dark amber    — square (array of number)
+  numlist:  "var(--sock-number)",   // amber         — bicolor split square (number | list)
+  string:   "var(--sock-string)",   // yellow-green  — circle
+  strlist:  "var(--sock-strlist)",  // dark y-g      — square (array of string)
+  strcombo: "var(--sock-string)",   // yellow-green  — bicolor split square (string | strlist)
+  date:     "var(--sock-date)",     // pink          — circle
+  datelist: "var(--sock-datelist)", // dark pink     — square (array of date)
+  datecombo:"var(--sock-date)",     // pink          — bicolor split square (date | datelist)
+  complex:  "var(--sock-complex)",  // sky blue      — circle (complex number)
+  complexlist:  "var(--sock-complexlist)",  // dark sky blue — square (array of complex)
+  complexcombo: "var(--sock-complex)",      // sky blue      — split square (complex | list)
+  complextable: "var(--sock-complextable)", // saturated blue— grid (complex matrix; scalar-derived)
+  logical:      "var(--sock-logical)",      // purple        — circle (boolean TRUE/FALSE)
+  logicallist:  "var(--sock-logicallist)",  // dark purple   — square (array of boolean)
+  logicalcombo: "var(--sock-logical)",      // purple        — split square (boolean | list)
+  logicaltable: "var(--sock-logicaltable)", // saturated purple — grid (boolean matrix)
+  table:    "var(--sock-table)",    // vermilion     — grid (numeric matrix)
+  strtable: "var(--sock-strtable)", // saturated y-g — grid (string matrix; scalar-derived, like table↔number)
+  datetable:"var(--sock-datetable)",// saturated rose— grid (date matrix; scalar-derived)
+  anytable: "var(--sock-any)",      // gray          — grid (any-element 2-D matrix; reshaper output)
+  frame:    "var(--sock-frame)",    // violet        — grid (named-column data table)
+  cube:     "var(--sock-cube)",     // violet (frame) — hexagon (recursive any-value container)
+  lambda:   "var(--sock-lambda)",   // teal-green    — circle with λ (function value)
+  any:      "var(--sock-any)",      // gray          — circle (wildcard)
+};
+
+// ─── The (element × dimension) lattice ────────────────────────────────────────
+// Every "regular" socket is one cell of an (element family × dimensionality)
+// grid. Rather than hand-maintain the accept-sets, we DERIVE them from ONE rule:
+// a value widens UP in dimensionality (scalar → list → matrix) for free, and
+// narrowing back down is blocked at the socket. A `combo` is the scalar-or-list
+// union a polymorphic op emits (Add(2,3) → scalar, Add([…],[…]) → list).
+//
+//   element   scalar    list          combo           matrix
+//   number    number    list          numlist         table
+//   string    string    strlist       strcombo        strtable
+//   date      date      datelist      datecombo       datetable
+//   complex   complex   complexlist   complexcombo    complextable
+//
+// To add a 5th element family: add a row here, its colors (App.css + SOCKET_COLORS),
+// and a render branch (SocketComponent). The accept-sets, areCompatible, and
+// canConnect all fall out — no other edits.
+type Dim = "scalar" | "list" | "combo" | "matrix";
+
+const FAMILIES: Record<string, Record<Dim, SocketDataType>> = {
+  number:  { scalar: "number",  list: "list",        combo: "numlist",      matrix: "table" },
+  string:  { scalar: "string",  list: "strlist",     combo: "strcombo",     matrix: "strtable" },
+  date:    { scalar: "date",    list: "datelist",    combo: "datecombo",    matrix: "datetable" },
+  complex: { scalar: "complex", list: "complexlist", combo: "complexcombo", matrix: "complextable" },
+  logical: { scalar: "logical", list: "logicallist", combo: "logicalcombo", matrix: "logicaltable" },
+};
+
+// Highest concrete dimensionality a dim can carry: scalar 0-D, list/combo 1-D
+// (combo = scalar-or-list, so 0-or-1-D ⇒ rank 1), matrix 2-D. An INPUT of dim Di
+// accepts an OUTPUT of dim Do (SAME family) iff Do never exceeds Di's capacity —
+// i.e. DIM_RANK[Do] ≤ DIM_RANK[Di]. That single inequality encodes most of the
+// "widening flows up, narrowing is blocked" policy: a scalar feeds a list
+// (singleton broadcast); a list feeds a matrix; a matrix feeds nothing narrower.
+// ONE exception is added on top in SOCKET_ACCEPTS below: a COMBO may feed its
+// element SCALAR (a combo is scalar-or-list, so it can be a scalar) — a plain
+// `list` still cannot. The rank model can't express that (combo/list both rank 1).
+const DIM_RANK: Record<Dim, number> = { scalar: 0, list: 1, combo: 1, matrix: 2 };
+const DIMS: Dim[] = ["scalar", "list", "combo", "matrix"];
+
+// The homogeneous 2-D matrix types + the 2-D wildcard `anytable`, but NOT `frame`
+// (heterogeneous named columns — structurally distinct). `anytable` flows both
+// ways among these (a reshaper's element type is unknown statically), staying 2-D
+// so the narrowing block still keeps it out of 1-D/0-D inputs.
+const MATRIX_TYPES = new Set<SocketDataType>([
+  "table", "strtable", "datetable", "complextable", "logicaltable", "anytable",
+]);
+
+// Every concrete family value type (number/string/date/complex/logical ×
+// scalar/list/combo/matrix) — i.e. any value of rank ≤ 2. A 2-D `anytable` INPUT
+// accepts all of these (a lower-rank value widens in); excludes `frame` (named
+// heterogeneous columns) and `lambda` (a function), which are structurally distinct.
+const FAMILY_VALUE_TYPES = new Set<SocketDataType>(
+  Object.values(FAMILIES).flatMap((fam) => Object.values(fam)),
+);
+
+/** Derived directional accept-sets: for each lattice type, which OTHER types
+ *  (same family, lower-or-equal rank) widen INTO it. Built once at module load. */
+const SOCKET_ACCEPTS: Partial<Record<SocketDataType, SocketDataType[]>> = (() => {
+  const map: Partial<Record<SocketDataType, SocketDataType[]>> = {};
+  for (const fam of Object.values(FAMILIES)) {
+    for (const di of DIMS) {
+      map[fam[di]] = DIMS
+        .filter((dof) => dof !== di && DIM_RANK[dof] <= DIM_RANK[di])
+        .map((dof) => fam[dof]);
+    }
+    // A COMBO (scalar-or-list) may narrow into its element SCALAR input: the combo
+    // CAN be a scalar — that's its whole point — so e.g. an Expression's `numlist`
+    // output feeds a `number` rate/count input. A plain `list` (1-D only) still
+    // CANNOT (it's not added here). The rank inequality alone can't express this
+    // (combo and list share rank 1), so it's an explicit exception. Runtime shape-
+    // checks if the combo turns out to be a list, same accepted risk as `anytable`.
+    map[fam.scalar]!.push(fam.combo);
+  }
+  // Cross-family coercion: logical ↔ number. A logical coerces to 1/0 in any
+  // numeric context (Excel + Polars), and a 0/1 number feeds a logic input
+  // (the spreadsheet multiply-by-a-condition trick). coerceInputs does the
+  // runtime boolean↔number conversion; this just permits the connection. Mirror
+  // the same rank rule (a value widens up, never narrows): a logical of rank ≤ the
+  // numeric input's rank may feed it, and vice versa.
+  const NUM = FAMILIES.number, LOG = FAMILIES.logical;
+  for (const di of DIMS) {
+    for (const dof of DIMS) {
+      if (DIM_RANK[dof] <= DIM_RANK[di]) {
+        map[NUM[di]]!.push(LOG[dof]); // logical output → numeric input
+        map[LOG[di]]!.push(NUM[dof]); // numeric output → logical input
+      }
+    }
+  }
+  return map;
+})();
+
+/** The 2-D socket types — homogeneous matrices, the 2-D wildcard, the
+ *  heterogeneous frame, and the recursive cube (tabular at its top level).
+ *  Public predicate for "is this value 2-D?". */
+export function is2DType(dt: SocketDataType): boolean {
+  return MATRIX_TYPES.has(dt) || dt === "frame" || dt === "cube";
+}
+
+/** Does this socket type carry date serials (scalar, list, the scalar-or-list
+ * combo, OR the matrix)? A date serial is just a number, so the SOCKET TYPE is the
+ * only signal that a value should format as a date — every "is this a date?" check
+ * must agree, so they all route through here (was duplicated, and `datecombo` —
+ * Cast(date)'s output — kept getting forgotten, so the FC showed a raw serial). */
+export function isDateType(dt: SocketDataType): boolean {
+  return dt === "date" || dt === "datelist" || dt === "datecombo" || dt === "datetable";
+}
+
+/**
+ * DIRECTIONAL: can a value from an OUTPUT of type `out` flow into an INPUT of
+ * type `in`? The one primitive both areCompatible and canConnect build on.
+ *  - identity / `any` (wildcard either side) always connect;
+ *  - `anytable` is a 2-D wildcard among MATRIX_TYPES (both directions);
+ *  - otherwise the derived lattice accept-set decides (same-family widening).
+ * Narrowing (list → scalar, matrix → list, anytable → 1-D, …) is simply absent
+ * from every accept-set, so it's blocked here without a separate dimension rule.
+ */
+function accepts(inT: SocketDataType, outT: SocketDataType): boolean {
+  if (inT === outT) return true;
+  if (inT === "any" || outT === "any") return true;
+  // `anytable` as an INPUT is a 2-D, element-agnostic wildcard that any lower-rank
+  // value WIDENS into — a 1-D list or a scalar of any family (TRANSPOSE of a list →
+  // a column; MAP over a list), exactly as a `list` widens into a `table` input.
+  if (inT === "anytable" && FAMILY_VALUE_TYPES.has(outT)) return true;
+  // `anytable` as an OUTPUT stays strictly 2-D: it drops into a concrete matrix
+  // input but never narrows into a 1-D/0-D one.
+  if (outT === "anytable" && MATRIX_TYPES.has(inT)) return true;
+  // A `frame` INPUT accepts ANY lower-rank value by DIMENSIONAL widening — the type
+  // system enforces ELEMENT separation (date/number/complex/string never auto-cross;
+  // only the deliberate logical↔number bridge does) but allows DIMENSIONAL flow. So a
+  // 2-D matrix → rows×cols, a 1-D list → a single ROW (CSV-consistent — transpose for
+  // a column), a scalar → 1×1. coerceInputs builds the frame. (A frame OUTPUT does NOT
+  // flow into a matrix input — it'd lose its headers / assume homogeneity.)
+  if (inT === "frame" && (FAMILY_VALUE_TYPES.has(outT) || outT === "anytable")) return true;
+  // A `cube` INPUT is the lattice SUPREMUM — the universal recursive container (a
+  // frame whose cells may themselves hold any value). EVERY data value widens UP
+  // into it: a scalar/list/matrix (→ a 1×1 / row / body of flat cells), an
+  // `anytable`, or a `frame` (its flat cells). Another cube flows in as itself
+  // (identity, above). Like a frame it enforces no element separation — it holds
+  // whatever. A cube OUTPUT does NOT flow into any narrower container (frame /
+  // matrix / list / anytable) — the nesting would be silently dropped — so it
+  // reaches only another cube (identity) or `any` (both handled above). This is
+  // what "closes" the socket lattice: a single top type every value reaches.
+  if (inT === "cube" && (FAMILY_VALUE_TYPES.has(outT) || outT === "anytable" || outT === "frame")) return true;
+  return SOCKET_ACCEPTS[inT]?.includes(outT) ?? false;
+}
+
+/** Symmetric type-family compatibility (used for legend / highlight grouping). */
+export function areCompatible(a: SocketDataType, b: SocketDataType): boolean {
+  return accepts(a, b) || accepts(b, a);
+}
+
+/**
+ * DIRECTIONAL connection check used by the connection guard: can a value from an
+ * OUTPUT of type `out` flow into an INPUT of type `in`? Widening (scalar → list /
+ * table, list → table, scalar → numlist, an `anytable` into a concrete matrix) is
+ * allowed; narrowing a wider value into a smaller input is refused at the socket —
+ * the user reshapes explicitly (TOCOL / Get Column) when they really do have a
+ * lower-dim slice. `any` accepts/flows-to everything.
+ */
+export function canConnect(out: SocketDataType, inp: SocketDataType): boolean {
+  return accepts(inp, out);
+}
+
+export class SolenoidSocket extends ClassicPreset.Socket {
+  constructor(public readonly dataType: SocketDataType) {
+    super(dataType);
+  }
+  /** Symmetric — kept for any non-connection uses. Connections use canConnectTo. */
+  isCompatibleWith(socket: ClassicPreset.Socket): boolean {
+    return (
+      socket instanceof SolenoidSocket &&
+      areCompatible(this.dataType, socket.dataType)
+    );
+  }
+  /** Directional: can THIS socket (as an OUTPUT) connect into `input`? */
+  canConnectTo(input: ClassicPreset.Socket): boolean {
+    return input instanceof SolenoidSocket && canConnect(this.dataType, input.dataType);
+  }
+}
+
+export const numberSocket  = new SolenoidSocket("number");
+export const listSocket    = new SolenoidSocket("list");
+export const numListSocket = new SolenoidSocket("numlist");
+export const strComboSocket  = new SolenoidSocket("strcombo");
+export const dateComboSocket = new SolenoidSocket("datecombo");
+export const tableSocket   = new SolenoidSocket("table");
+export const strTableSocket  = new SolenoidSocket("strtable");
+export const dateTableSocket = new SolenoidSocket("datetable");
+export const anyTableSocket  = new SolenoidSocket("anytable");
+export const stringSocket  = new SolenoidSocket("string");
+export const strListSocket = new SolenoidSocket("strlist");
+export const dateSocket    = new SolenoidSocket("date");
+export const dateListSocket= new SolenoidSocket("datelist");
+export const complexSocket = new SolenoidSocket("complex");
+export const complexListSocket  = new SolenoidSocket("complexlist");
+export const complexComboSocket = new SolenoidSocket("complexcombo");
+export const complexTableSocket = new SolenoidSocket("complextable");
+export const logicalSocket      = new SolenoidSocket("logical");
+export const logicalListSocket  = new SolenoidSocket("logicallist");
+export const logicalComboSocket = new SolenoidSocket("logicalcombo");
+export const logicalTableSocket = new SolenoidSocket("logicaltable");
+export const frameSocket   = new SolenoidSocket("frame");
+export const cubeSocket    = new SolenoidSocket("cube");
+export const lambdaSocket  = new SolenoidSocket("lambda");
+export const anySocket     = new SolenoidSocket("any");

@@ -1,0 +1,23 @@
+.solenoid-array-chip {
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  color: var(--node-accent, var(--accent));
+  background: color-mix(in srgb, var(--node-accent, var(--accent)) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--node-accent, var(--accent)) 40%, transparent);
+  border-radius: 5px;
+  padding: 1px 7px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.solenoid-array-chip:hover {
+  background: color-mix(in srgb, var(--node-accent, var(--accent)) 22%, transparent);
+}
+
+/* Compact variant for node result boxes — the chip sits under a grid preview,
+   so it reads as a small "open full grid" affordance rather than the headline. */
+.solenoid-array-chip--sm {
+  font-size: 10px;
+  padding: 0 5px;
+  border-radius: 4px;
+}

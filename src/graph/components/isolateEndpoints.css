@@ -1,0 +1,64 @@
+/* Auto-endpoint terminals + cables for the Isolate overlay, rendered in the
+   area's transformed plane (canvas coords). The terminal boxes reuse the node
+   card chrome (.solenoid-node / __header / __io-row) so they're visually
+   identical to real nodes; only the canvas placement, the straddling socket
+   dots, and the dashed virtual cables are bespoke. Shares its look with the
+   future Portal nodes. */
+
+.solenoid-iso-ep-svg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+  pointer-events: none;
+  width: 1px;
+  height: 1px;
+}
+.solenoid-iso-ep-cable {
+  fill: none;
+  /* Neutral "Any" gray — NOT the app accent, which reads as a socket type color. */
+  stroke: var(--sock-any);
+  stroke-width: 2;
+  opacity: 0.85;
+  stroke-dasharray: 5 4; /* dashed: these are auto / virtual links, not real cables */
+}
+
+/* Canvas placement only — the border, radius, shadow, and surface come from
+   .solenoid-node. NO overflow:hidden, so the dots straddle the edge uncut. */
+.solenoid-iso-ep {
+  position: absolute;
+  box-sizing: border-box;
+}
+
+/* Fixed-height header, text vertically centered (the card header is content-
+   height; ours is a deterministic HEAD_H so the lane/dot maths line up). */
+.solenoid-iso-ep__head {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text);
+}
+
+/* Socket dots straddle the box edge, like real node sockets (left/right: -6px),
+   centered on the lane row (top set inline). */
+.solenoid-iso-ep__dot {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--sock-any); /* neutral "Any" wildcard gray */
+  border: 2px solid var(--socket-ring, var(--surface));
+  box-sizing: border-box;
+  z-index: 7;
+}
+.solenoid-iso-ep__dot--right { right: -6px; }
+.solenoid-iso-ep__dot--left { left: -6px; }
+
+/* Output (exit) terminals carry the socket on the LEFT, so nudge their labels
+   right to clear the dot. (Entry sockets sit on the right; labels are left-
+   aligned and already clear.) */
+.solenoid-iso-ep--exit .solenoid-node__io-label { padding-left: 10px; }

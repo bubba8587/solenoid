@@ -1,0 +1,334 @@
+/* Canvas Note — a free-floating sticky annotation. Mirrors the (calibrated) Group
+   node: 2px border, 11px radius, the same swatch + selection ring. No overflow:
+   hidden — that would clip the selection ::after and inset it from the edge. */
+.solenoid-note {
+  position: relative;
+  --node-accent: var(--note-color);  /* selection ring + shadow take the note color */
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  background: var(--note-bg);
+  border: 2px solid var(--note-color);
+  border-radius: 11px;
+  box-shadow: var(--shadow-card);
+  cursor: grab;
+}
+.solenoid-note * { box-sizing: border-box; }
+
+/* Header bar = drag handle. The chevron + name input + swatch stop pointerdown so
+   they don't start a drag; the leftover header (the strip the name input doesn't
+   claim) stays grabbable. Top corners follow the card's inner radius (11 − 2). */
+.solenoid-note__bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 8px 0 23px; /* room for the absolute chevron on the left */
+  /* Opaque accent-tinted header — same formula as every node + Group header, so
+     the Note reads as a real node, not a translucent sticky overlay. */
+  background: color-mix(in srgb, var(--note-color) var(--header-tint), var(--surface));
+  border-radius: 9px 9px 0 0;
+  box-shadow: inset 0 -1px 0 var(--note-color);
+}
+/* Collapsed with nothing below the bar → round all four corners. A frontmatter
+   note keeps its fields strip below the bar even when collapsed (the sockets must
+   survive), so it keeps the bottom-flat bar + separator. */
+.solenoid-note--collapsed:not(.solenoid-note--has-fields) .solenoid-note__bar {
+  border-radius: 9px;
+  box-shadow: none;
+}
+/* Collapsed fields strip is the last child — drop its separator line and round
+   its bottom corners to the note's inner radius. */
+.solenoid-note--collapsed .solenoid-note__fields {
+  box-shadow: none;
+  border-radius: 0 0 9px 9px;
+}
+
+/* Collapse chevron — pinned left, mirrors the Group node's. */
+.solenoid-note__chevron {
+  position: absolute;
+  top: 50%;
+  left: 6px;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: none;
+  color: color-mix(in srgb, var(--note-color) 55%, var(--text));
+  opacity: 0.8;
+  cursor: pointer;
+}
+.solenoid-note__chevron:hover { opacity: 1; }
+.solenoid-note__chevron svg { transition: transform 100ms ease; transform: rotate(90deg); }
+.solenoid-note--collapsed .solenoid-note__chevron svg { transform: rotate(0deg); }
+
+/* Editable header title — same look as a normal node's header label. Sized to
+   leave a right strip (for the swatch + drag surface), mirroring node headers. */
+.solenoid-note__name {
+  width: calc(100% - 60px); /* leave a strip before the swatch as drag surface */
+  margin-right: auto;
+  background: transparent;
+  border: none;
+  outline: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--note-color) 55%, var(--text));
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: text;
+}
+.solenoid-note__name:focus { color: var(--text); }
+.solenoid-note__name::placeholder { color: currentColor; opacity: 0.5; }
+
+/* Click-to-edit title (not editing): shrink to the text so the rest of the bar
+   stays draggable — mirrors a regular node's .solenoid-node__label-display. Capped
+   so a long title still leaves room for the swatch + a drag strip. */
+.solenoid-note__name-display {
+  width: fit-content;
+  max-width: calc(100% - 60px);
+  margin-right: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--note-color) 55%, var(--text));
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: text;
+}
+.solenoid-note__name-display--empty { opacity: 0.5; }
+
+/* Swatch — copied from the Group node's (.solenoid-group__swatch). */
+.solenoid-note__swatch {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+  border: none;
+  /* Share the header title's color (the icon strokes with currentColor). */
+  color: color-mix(in srgb, var(--note-color) 55%, var(--text));
+  cursor: pointer;
+  opacity: 0.85;
+}
+.solenoid-note__swatch:hover { opacity: 1; }
+
+.solenoid-note__palette {
+  position: absolute;
+  top: 26px;
+  right: 0;
+  z-index: 10;
+}
+
+/* ── Frontmatter fields strip ─────────────────────────────────────────────────
+   Typed OUTPUT sockets derived from the note body's YAML frontmatter. A full-width
+   strip between the header and the markdown body, OUTSIDE the overflow-clipped
+   content so each row's socket dot can straddle the note's right edge. No internal
+   scroll (scrolling would force overflow-x:auto and clip the dots) — the note is
+   resizable, so the user sizes it; many fields just push the body down (it scrolls). */
+.solenoid-note__fields {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  padding: 3px 0;
+  overflow: visible;
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--note-color) 35%, transparent);
+}
+/* Each row is the socket's positioning context. Horizontal padding is safe — the
+   socket's right:-5px resolves against the row's OUTER right edge (= the note's
+   content edge), which padding doesn't move; it lands straddling the border. */
+.solenoid-note__field-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  min-height: 18px;
+  font-size: 11px;
+}
+.solenoid-note__field-glyph {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  opacity: 0.9;
+}
+.solenoid-note__field-glyph:hover { opacity: 1; }
+.solenoid-note__field-key {
+  flex: 0 0 auto;
+  max-width: 50%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-weight: 600;
+  color: var(--text);
+}
+.solenoid-note__field-val {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+  padding-right: 4px;
+  color: var(--text-muted);
+}
+/* Type-override picker — the four element families at this field's dimensionality,
+   each shown with its Socket Legend glyph. Anchored under the glyph button. */
+.solenoid-note__field-picker {
+  position: absolute;
+  top: 20px;
+  left: 8px;
+  z-index: 11;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  box-shadow: var(--shadow-card);
+}
+.solenoid-note__field-opt {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 9px 4px 5px;
+  background: none;
+  border: none;
+  border-radius: 5px;
+  color: var(--text);
+  font-size: 11px;
+  white-space: nowrap;
+  text-align: left;
+  cursor: pointer;
+}
+.solenoid-note__field-opt:hover { background: color-mix(in srgb, var(--text) 8%, transparent); }
+.solenoid-note__field-opt--on { background: color-mix(in srgb, var(--note-color) 22%, transparent); }
+
+/* Holds the body. overflow:hidden clips the scrolling body (and its scrollbar)
+   to the card's rounded base; the bottom radius matches the note's inner corner
+   (11px frame − 2px border). The note can't clip this itself without also clipping
+   the selection ring that sits outside it. */
+.solenoid-note__content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;          /* fill the note's manual height; the body scrolls inside */
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 0 0 9px 9px;
+}
+
+.solenoid-note__body {
+  /* The note now carries a MANUAL height (drag the grip), so the body fills the
+     content area and scrolls. flex:1 is safe here because the column has a fixed
+     height — it only misbehaved back when the note auto-sized to content. */
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  padding: 8px 8px;
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1.45;
+  cursor: text;
+  overflow: auto;
+}
+.solenoid-note__body::placeholder { color: var(--text-muted); }
+
+/* Read view — body rendered as markdown. Click to switch back to the textarea.
+   Same padding + scroll cap as the editor so toggling doesn't shift layout. */
+.solenoid-note__rendered {
+  flex: 1;
+  min-height: 0;
+  padding: 8px 10px;
+  overflow: auto;
+  cursor: text;
+  font-size: 12px;
+  /* Wrap to the card width — long words / URLs break instead of widening the
+     note, and inline content can't push past the fixed card. */
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+/* Block children that have intrinsic width (code blocks, tables) must also stay
+   within the card and scroll internally rather than stretch it. */
+.solenoid-note__rendered.sol-md pre,
+.solenoid-note__rendered.sol-md table { max-width: 100%; }
+.solenoid-note__rendered.sol-md pre { white-space: pre-wrap; }
+.solenoid-note__rendered--empty { color: var(--text-muted); }
+
+/* Resize grip — bottom-right corner, mirrors the Group's (.solenoid-group__resize).
+   z-index above the selection ring (::after, z6) so it stays grabbable when selected. */
+.solenoid-note__resize {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--note-color);
+  opacity: 0.5;
+  cursor: nwse-resize;
+  z-index: 7;
+}
+.solenoid-note__resize:hover { opacity: 0.9; }
+/* Compact the shared .sol-md doc styles for the narrow note card. */
+.solenoid-note__rendered.sol-md { max-width: none; margin: 0; line-height: 1.45; }
+.solenoid-note__rendered.sol-md > :first-child { margin-top: 0; }
+.solenoid-note__rendered.sol-md > :last-child { margin-bottom: 0; }
+.solenoid-note__rendered.sol-md h1 { font-size: 15px; margin: 6px 0 6px; }
+.solenoid-note__rendered.sol-md h2 { font-size: 13.5px; margin: 10px 0 5px; }
+.solenoid-note__rendered.sol-md h3 { font-size: 12.5px; margin: 8px 0 4px; }
+.solenoid-note__rendered.sol-md p,
+.solenoid-note__rendered.sol-md ul,
+.solenoid-note__rendered.sol-md ol { margin: 5px 0; }
+.solenoid-note__rendered.sol-md pre { margin: 6px 0; }
+
+/* Selection ring — copied from the Group node's (its own ring at the 11px
+   radius so it hugs the frame; raised above the border via z-index). */
+.solenoid-note--selected {
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--node-accent) 22%, transparent);
+}
+.solenoid-note--selected::after {
+  content: "";
+  position: absolute;
+  /* The note carries its own 2px border, so an inset:0 absolute child positions
+     against the padding box (inside that border) and the ring reads several px
+     in from the edge. Pull out to -2px so the ring sits over the outer border. */
+  inset: -2px;
+  box-sizing: border-box;
+  border: 2px solid color-mix(in srgb, var(--node-accent) 70%, #fff);
+  border-radius: 11px;
+  pointer-events: none;
+  z-index: 6;
+}
+:root[data-theme="light"] .solenoid-note--selected::after {
+  border-color: color-mix(in srgb, var(--node-accent) 68%, #000);
+}

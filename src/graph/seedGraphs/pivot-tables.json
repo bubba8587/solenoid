@@ -1,0 +1,271 @@
+{
+  "v": 1,
+  "order": 10,
+  "label": "Pivot tables \u2014 one source, many views",
+  "nodes": [
+    {
+      "id": "title",
+      "type": "NoteNode",
+      "x": -40,
+      "y": -360,
+      "init": {
+        "label": "Multiple pivot tables, one source",
+        "body": "# One Orders table \u2192 many pivots\nThe **Orders** frame (36 rows \u00b7 9 columns \u2014 a **date**, text dims, numeric **Units / Price / Revenue**) feeds *every* pivot on its own branch. Each **Pivot** node is Excel `=PIVOTBY` with different Rows / Columns / Values / function / totals \u2014 click a chip for the full table. Edit a number in Orders and **every** pivot recomputes.",
+        "color": "violet",
+        "width": 460,
+        "height": 210
+      }
+    },
+    {
+      "id": "orders",
+      "type": "FrameInputNode",
+      "x": -40,
+      "y": -90,
+      "init": {
+        "label": "Orders (source \u00b7 36 rows)",
+        "frameText": "[{\"name\": \"Date\", \"type\": \"date\", \"values\": [\"2026-01-04\", \"2026-01-06\", \"2026-01-09\", \"2026-01-11\", \"2026-01-14\", \"2026-01-17\", \"2026-01-19\", \"2026-01-22\", \"2026-01-24\", \"2026-01-27\", \"2026-01-29\", \"2026-01-31\", \"2026-02-02\", \"2026-02-05\", \"2026-02-07\", \"2026-02-10\", \"2026-02-12\", \"2026-02-15\", \"2026-02-17\", \"2026-02-20\", \"2026-02-22\", \"2026-02-24\", \"2026-02-26\", \"2026-02-28\", \"2026-03-03\", \"2026-03-06\", \"2026-03-08\", \"2026-03-11\", \"2026-03-13\", \"2026-03-16\", \"2026-03-18\", \"2026-03-21\", \"2026-03-23\", \"2026-03-25\", \"2026-03-27\", \"2026-03-30\"]}, {\"name\": \"Month\", \"type\": \"string\", \"values\": [\"Jan\", \"Jan\", \"Jan\", \"Jan\", \"Jan\", \"Jan\", \"Jan\", \"Jan\", \"Jan\", \"Jan\", \"Jan\", \"Jan\", \"Feb\", \"Feb\", \"Feb\", \"Feb\", \"Feb\", \"Feb\", \"Feb\", \"Feb\", \"Feb\", \"Feb\", \"Feb\", \"Feb\", \"Mar\", \"Mar\", \"Mar\", \"Mar\", \"Mar\", \"Mar\", \"Mar\", \"Mar\", \"Mar\", \"Mar\", \"Mar\", \"Mar\"]}, {\"name\": \"Region\", \"type\": \"string\", \"values\": [\"North\", \"South\", \"East\", \"West\", \"North\", \"South\", \"East\", \"West\", \"North\", \"South\", \"East\", \"West\", \"North\", \"South\", \"East\", \"West\", \"North\", \"South\", \"East\", \"West\", \"North\", \"South\", \"East\", \"West\", \"North\", \"South\", \"East\", \"West\", \"North\", \"South\", \"East\", \"West\", \"North\", \"South\", \"East\", \"West\"]}, {\"name\": \"Category\", \"type\": \"string\", \"values\": [\"Electronics\", \"Furniture\", \"Office\", \"Electronics\", \"Furniture\", \"Office\", \"Electronics\", \"Furniture\", \"Office\", \"Electronics\", \"Furniture\", \"Office\", \"Electronics\", \"Furniture\", \"Office\", \"Electronics\", \"Furniture\", \"Office\", \"Electronics\", \"Furniture\", \"Office\", \"Electronics\", \"Furniture\", \"Office\", \"Electronics\", \"Furniture\", \"Office\", \"Electronics\", \"Furniture\", \"Office\", \"Electronics\", \"Furniture\", \"Office\", \"Electronics\", \"Furniture\", \"Office\"]}, {\"name\": \"Rep\", \"type\": \"string\", \"values\": [\"Ada\", \"Bo\", \"Cy\", \"Di\", \"Ada\", \"Bo\", \"Cy\", \"Di\", \"Cy\", \"Ada\", \"Bo\", \"Di\", \"Bo\", \"Cy\", \"Di\", \"Ada\", \"Bo\", \"Cy\", \"Di\", \"Ada\", \"Di\", \"Bo\", \"Cy\", \"Ada\", \"Cy\", \"Di\", \"Ada\", \"Bo\", \"Cy\", \"Di\", \"Ada\", \"Bo\", \"Ada\", \"Cy\", \"Di\", \"Bo\"]}, {\"name\": \"Channel\", \"type\": \"string\", \"values\": [\"Online\", \"Retail\", \"Online\", \"Retail\", \"Online\", \"Online\", \"Retail\", \"Online\", \"Retail\", \"Online\", \"Retail\", \"Online\", \"Retail\", \"Online\", \"Retail\", \"Online\", \"Retail\", \"Online\", \"Retail\", \"Online\", \"Online\", \"Retail\", \"Online\", \"Retail\", \"Online\", \"Retail\", \"Online\", \"Retail\", \"Online\", \"Online\", \"Retail\", \"Online\", \"Retail\", \"Online\", \"Retail\", \"Online\"]}, {\"name\": \"Units\", \"type\": \"number\", \"values\": [3, 5, 12, 2, 4, 9, 6, 3, 15, 4, 7, 11, 5, 6, 18, 3, 2, 14, 7, 5, 10, 8, 4, 13, 6, 7, 16, 4, 3, 12, 9, 6, 14, 5, 8, 10]}, {\"name\": \"Price\", \"type\": \"number\", \"values\": [500, 300, 25, 500, 300, 25, 500, 300, 25, 500, 300, 25, 500, 300, 25, 500, 300, 25, 500, 300, 25, 500, 300, 25, 500, 300, 25, 500, 300, 25, 500, 300, 25, 500, 300, 25]}, {\"name\": \"Revenue\", \"type\": \"number\", \"values\": [1500, 1500, 300, 1000, 1200, 225, 3000, 900, 375, 2000, 2100, 275, 2500, 1800, 450, 1500, 600, 350, 3500, 1500, 250, 4000, 1200, 325, 3000, 2100, 400, 2000, 900, 300, 4500, 1800, 350, 2500, 2400, 250]}, {\"name\": \"SKU\", \"type\": \"string\", \"values\": [\"EL-001\", \"FU-002\", \"OF-003\", \"EL-004\", \"FU-005\", \"OF-006\", \"EL-007\", \"FU-008\", \"OF-009\", \"EL-010\", \"FU-011\", \"OF-012\", \"EL-013\", \"FU-014\", \"OF-015\", \"EL-016\", \"FU-017\", \"OF-018\", \"EL-019\", \"FU-020\", \"OF-021\", \"EL-022\", \"FU-023\", \"OF-024\", \"EL-025\", \"FU-026\", \"OF-027\", \"EL-028\", \"FU-029\", \"OF-030\", \"EL-031\", \"FU-032\", \"OF-033\", \"EL-034\", \"FU-035\", \"OF-036\"]}]"
+      }
+    },
+    {
+      "id": "p1",
+      "type": "PivotNode",
+      "x": 540,
+      "y": -360,
+      "init": {
+        "label": "Revenue: Region \u00d7 Category (SUM + totals)",
+        "op": "sum",
+        "rowTotalDepth": 1,
+        "colTotalDepth": 1
+      },
+      "stringLiterals": {
+        "rowFields": "Region",
+        "colFields": "Category",
+        "values": "Revenue"
+      }
+    },
+    {
+      "id": "p2",
+      "type": "PivotNode",
+      "x": 960,
+      "y": -360,
+      "init": {
+        "label": "Revenue by Rep \u2014 sorted high\u2192low",
+        "op": "sum",
+        "rowTotalDepth": 1,
+        "rowSort": -2
+      },
+      "stringLiterals": {
+        "rowFields": "Rep",
+        "colFields": "",
+        "values": "Revenue"
+      }
+    },
+    {
+      "id": "p3",
+      "type": "PivotNode",
+      "x": 1380,
+      "y": -360,
+      "init": {
+        "label": "Units (SUM) & Price (AVG) by Category",
+        "op": "sum",
+        "funcs": {
+          "Units": "sum",
+          "Price": "avg"
+        }
+      },
+      "stringLiterals": {
+        "rowFields": "Category",
+        "colFields": "",
+        "values": "Units, Price"
+      }
+    },
+    {
+      "id": "p4",
+      "type": "PivotNode",
+      "x": 540,
+      "y": 100,
+      "init": {
+        "label": "Revenue: Region \u00d7 Month (col totals)",
+        "op": "sum",
+        "colTotalDepth": 1
+      },
+      "stringLiterals": {
+        "rowFields": "Region",
+        "colFields": "Month",
+        "values": "Revenue"
+      }
+    },
+    {
+      "id": "p5",
+      "type": "PivotNode",
+      "x": 960,
+      "y": 100,
+      "init": {
+        "label": "Revenue share by Region (% of grand)",
+        "op": "percentof",
+        "relativeTo": 2
+      },
+      "stringLiterals": {
+        "rowFields": "Region",
+        "colFields": "",
+        "values": "Revenue"
+      }
+    },
+    {
+      "id": "p6",
+      "type": "PivotNode",
+      "x": 1380,
+      "y": 100,
+      "init": {
+        "label": "Region \u2192 Category, with subtotals",
+        "op": "sum",
+        "rowTotalDepth": 2
+      },
+      "stringLiterals": {
+        "rowFields": "Region, Category",
+        "colFields": "",
+        "values": "Revenue"
+      }
+    },
+    {
+      "id": "p7",
+      "type": "PivotNode",
+      "x": 540,
+      "y": 560,
+      "init": {
+        "label": "Order count: Region \u00d7 Channel",
+        "op": "count",
+        "rowTotalDepth": 1,
+        "colTotalDepth": 1
+      },
+      "stringLiterals": {
+        "rowFields": "Region",
+        "colFields": "Channel",
+        "values": "Revenue"
+      }
+    },
+    {
+      "id": "p8",
+      "type": "PivotNode",
+      "x": 960,
+      "y": 560,
+      "init": {
+        "label": "Median Revenue & Max Units by Rep",
+        "op": "sum",
+        "funcs": {
+          "Revenue": "median",
+          "Units": "max"
+        }
+      },
+      "stringLiterals": {
+        "rowFields": "Rep",
+        "colFields": "",
+        "values": "Revenue, Units"
+      }
+    },
+    {
+      "id": "noteReshape",
+      "type": "NoteNode",
+      "x": -40,
+      "y": 940,
+      "init": {
+        "label": "Reshape the source",
+        "color": "violet",
+        "width": 380,
+        "height": 150,
+        "body": "The same **Orders** frame feeds two Power Query column ops. **Split Column** breaks the **SKU** (`EL-001`) on `-` into Dept / Code; **Add Index** prepends a row number."
+      }
+    },
+    {
+      "id": "splitDate",
+      "type": "SplitColumnNode",
+      "x": 480,
+      "y": 940,
+      "init": {
+        "label": "Split Column \u2192 SKU into Dept/Code"
+      },
+      "stringLiterals": {
+        "column": "SKU",
+        "delimiter": "-",
+        "into": "Dept, Code"
+      }
+    },
+    {
+      "id": "addIdx",
+      "type": "AddIndexNode",
+      "x": 480,
+      "y": 1180,
+      "init": {
+        "label": "Add Index \u2192 row numbers"
+      },
+      "stringLiterals": {
+        "name": "Row"
+      },
+      "literals": {
+        "start": 1
+      }
+    }
+  ],
+  "connections": [
+    {
+      "source": "orders",
+      "sourceOutput": "frame",
+      "target": "p1",
+      "targetInput": "frame"
+    },
+    {
+      "source": "orders",
+      "sourceOutput": "frame",
+      "target": "p2",
+      "targetInput": "frame"
+    },
+    {
+      "source": "orders",
+      "sourceOutput": "frame",
+      "target": "p3",
+      "targetInput": "frame"
+    },
+    {
+      "source": "orders",
+      "sourceOutput": "frame",
+      "target": "p4",
+      "targetInput": "frame"
+    },
+    {
+      "source": "orders",
+      "sourceOutput": "frame",
+      "target": "p5",
+      "targetInput": "frame"
+    },
+    {
+      "source": "orders",
+      "sourceOutput": "frame",
+      "target": "p6",
+      "targetInput": "frame"
+    },
+    {
+      "source": "orders",
+      "sourceOutput": "frame",
+      "target": "p7",
+      "targetInput": "frame"
+    },
+    {
+      "source": "orders",
+      "sourceOutput": "frame",
+      "target": "p8",
+      "targetInput": "frame"
+    },
+    {
+      "source": "orders",
+      "sourceOutput": "frame",
+      "target": "splitDate",
+      "targetInput": "frame"
+    },
+    {
+      "source": "orders",
+      "sourceOutput": "frame",
+      "target": "addIdx",
+      "targetInput": "frame"
+    }
+  ]
+}

@@ -1,0 +1,203 @@
+import { ClassicPreset } from "rete";
+import { numIn, numListIn, numListOut, numOut, tableIn, tableOut, strIn, strOut } from "./shared";
+import { parseChartOptions, serializeChartOptions, type ChartOptions } from "./chartOptions";
+
+// ─── Visual output nodes ────────────────────────────────────────────────────
+// Pass-through "sinks" that render a chart of the value flowing through them, so
+// they can sit inline in a chain (value in → same value out) the way Display
+// does. The chart itself is drawn by the React component (recharts); the class
+// only caches the value it received for the component to read.
+
+export type SparklineOp = "line" | "area" | "column";
+
+export const SPARKLINE_OP_META = {
+  line:   { label: "Line" },
+  area:   { label: "Area" },
+  column: { label: "Column" },
+} satisfies Record<SparklineOp, { label: string }>;
+
+// ─── Sparkline ────────────────────────────────────────────────────────────────
+// A tiny, axis-less inline chart of a list — Excel's SPARKLINE.
+
+export class SparklineNode extends ClassicPreset.Node {
+  label: string;
+  op: SparklineOp;
+  cachedResult: number | number[] | null = null;
+  width = 240;
+  height = 150;
+
+  constructor(init?: { label?: string; op?: SparklineOp }) {
+    super("Sparkline");
+    this.label = init?.label ?? "Sparkline";
+    // "bar" was the earlier name for the (always-vertical) column sparkline.
+    this.op = (init?.op as string) === "bar" ? "column" : (init?.op ?? "line");
+    this.addInput("values", numListIn("Values"));
+    this.addOutput("result", numListOut("Pass-through"));
+  }
+
+  data(inputs: { values?: (number | number[])[] }) {
+    const v = inputs.values?.[0] ?? null;
+    this.cachedResult = v;
+    return { result: v };
+  }
+}
+
+// ─── Chart ──────────────────────────────────────────────────────────────────
+// A larger chart with axes for a list — column / bar / line / area via an op
+// dropdown (the composable "one node, op selector" pattern).
+
+export type ChartOp = "column" | "bar" | "line" | "area";
+
+export const CHART_OP_META = {
+  column: { label: "Column" },
+  bar:    { label: "Bar" },
+  line:   { label: "Line" },
+  area:   { label: "Area" },
+} satisfies Record<ChartOp, { label: string }>;
+
+export class ChartNode extends ClassicPreset.Node {
+  label: string;
+  op: ChartOp;
+  cachedResult: number | number[] | null = null;
+  // Parsed matplotlib-style options from the `options` socket (Chart Builder, or
+  // a string typed into the inline field). The component reads this to apply
+  // title/axes/color/grid/etc.; what sets Chart apart from the minimal Sparkline.
+  chartOptions: ChartOptions = {};
+  // The inline options text (used when the Options socket isn't wired).
+  stringLiterals: Record<string, string> = {};
+  width = 240;
+  height = 240;
+
+  constructor(init?: { label?: string; op?: ChartOp }) {
+    super("Chart");
+    this.label = init?.label ?? "Chart";
+    this.op = init?.op ?? "column";
+    this.addInput("values", numListIn("Values"));
+    this.addInput("options", strIn("Options"));
+    this.addOutput("result", numListOut("Pass-through"));
+  }
+
+  data(inputs: { values?: (number | number[])[]; options?: string[] }) {
+    const v = inputs.values?.[0] ?? null;
+    this.cachedResult = v;
+    this.chartOptions = parseChartOptions(inputs.options?.[0] ?? this.stringLiterals.options ?? null);
+    return { result: v };
+  }
+}
+
+// ─── Gauge ────────────────────────────────────────────────────────────────────
+// A radial gauge of a scalar within [min, max]. Pass-through value out.
+
+export class GaugeNode extends ClassicPreset.Node {
+  label: string;
+  literals: Record<string, number> = { value: 0, min: 0, max: 100 };
+  cachedResult: number | null = null;
+  width = 180;
+  height = 200;
+
+  constructor(init?: { label?: string }) {
+    super("Gauge");
+    this.label = init?.label ?? "Gauge";
+    this.addInput("value", numIn("Value"));
+    this.addInput("min",   numIn("Min"));
+    this.addInput("max",   numIn("Max"));
+    this.addOutput("result", numOut("Pass-through"));
+  }
+
+  data(inputs: { value?: number[]; min?: number[]; max?: number[] }) {
+    const v = inputs.value?.[0] ?? this.literals.value ?? null;
+    // min/max read by the component for the dial scale; mirror live inputs so a
+    // wired bound is honoured there too.
+    this.literals.min = inputs.min?.[0] ?? this.literals.min ?? 0;
+    this.literals.max = inputs.max?.[0] ?? this.literals.max ?? 100;
+    this.cachedResult = v;
+    return { result: v };
+  }
+}
+
+// ─── Heatmap ──────────────────────────────────────────────────────────────────
+// Colours every cell of a Table on a cool→warm gradient spanning the data's own
+// min..max (conditional formatting). Pass-through: the Table flows on unchanged;
+// the colour grid is drawn in the component.
+
+export class HeatmapCellNode extends ClassicPreset.Node {
+  label: string;
+  cachedResult: number[][] | null = null;
+  width = 240;
+  height = 200;
+
+  constructor(init?: { label?: string }) {
+    super("HeatmapCell");
+    this.label = init?.label ?? "Heatmap";
+    this.addInput("table", tableIn("Table"));
+    this.addOutput("result", tableOut("Pass-through"));
+  }
+
+  data(inputs: { table?: number[][][] }) {
+    const t = inputs.table?.[0] ?? null;
+    this.cachedResult = t;
+    return { result: t };
+  }
+}
+
+// ─── Chart Builder ────────────────────────────────────────────────────────────
+// A labelled "Concat for chart options": many small fields (one per matplotlib
+// option) whose values are joined into the `key=value;…` string the Chart node's
+// Options socket consumes. Every field is also an input socket, so any value can
+// be wired from upstream (e.g. a computed title or a slider-driven Y max).
+
+// The string fields go through `stringLiterals`, the numeric ones through
+// `literals` — the same inline stores InlineInputs reads/writes, so they
+// round-trip through persistence with no extra plumbing.
+const CB_STR_FIELDS = ["title", "xlabel", "ylabel", "color", "grid", "marker"] as const;
+const CB_NUM_FIELDS = ["ymin", "ymax", "linewidth", "alpha"] as const;
+
+export class ChartBuilderNode extends ClassicPreset.Node {
+  label: string;
+  literals: Record<string, number> = {};
+  stringLiterals: Record<string, string> = {};
+  cachedString = "";
+  width = 200;
+  height = 200;
+
+  constructor(init?: { label?: string }) {
+    super("ChartBuilder");
+    this.label = init?.label ?? "Chart Builder";
+    this.addInput("title",     strIn("Title"));
+    this.addInput("xlabel",    strIn("X label"));
+    this.addInput("ylabel",    strIn("Y label"));
+    this.addInput("color",     strIn("Color"));
+    this.addInput("grid",      strIn("Grid (on/off)"));
+    this.addInput("marker",    strIn("Markers (on/off)"));
+    this.addInput("ymin",      numIn("Y min"));
+    this.addInput("ymax",      numIn("Y max"));
+    this.addInput("linewidth", numIn("Line width"));
+    this.addInput("alpha",     numIn("Fill alpha"));
+    this.addOutput("result", strOut("Options"));
+  }
+
+  data(inputs: Record<string, unknown[]>) {
+    const str = (k: string) => (inputs[k]?.[0] as string | undefined) ?? this.stringLiterals[k];
+    const num = (k: string) => {
+      const wired = inputs[k]?.[0] as number | undefined;
+      return wired ?? this.literals[k];
+    };
+    const out = serializeChartOptions({
+      title:     str("title"),
+      xlabel:    str("xlabel"),
+      ylabel:    str("ylabel"),
+      color:     str("color"),
+      grid:      str("grid"),
+      marker:    str("marker"),
+      ymin:      num("ymin"),
+      ymax:      num("ymax"),
+      linewidth: num("linewidth"),
+      alpha:     num("alpha"),
+    });
+    this.cachedString = out;
+    return { result: out };
+  }
+}
+
+// Exported so the component (and tests) share the field lists.
+export const CHART_BUILDER_FIELDS = { str: CB_STR_FIELDS, num: CB_NUM_FIELDS };

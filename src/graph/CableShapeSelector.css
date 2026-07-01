@@ -1,0 +1,109 @@
+/* Embedded inline in the TopBar — no panel chrome of its own. */
+.solenoid-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: inherit;
+  user-select: none;
+}
+
+.solenoid-toolbar__label {
+  padding-left: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+}
+
+.solenoid-toolbar__segmented {
+  display: flex;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 999px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.solenoid-toolbar__segment {
+  display: flex;
+  align-items: center;
+  padding: 4px 7px;
+  background: transparent;
+  border: none;
+  /* Match the icon buttons (.solenoid-nav__btn): full --text at rest. */
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 999px;
+  transition: background-color 80ms ease, color 80ms ease;
+  /* Fill color for the open input-socket ring — matches the segment bg so the
+     ring reads hollow against whatever is behind it. */
+  --icon-bg: var(--btn-bg);
+}
+
+.solenoid-toolbar__icon {
+  display: block;
+  width: 17px;
+  height: 15px;
+}
+
+.solenoid-toolbar__segment:hover {
+  /* Match the icon buttons: accent on hover. */
+  color: var(--accent);
+  background: var(--btn-hover);
+  --icon-bg: var(--btn-hover);
+}
+
+.solenoid-toolbar__segment--active,
+.solenoid-toolbar__segment--active:hover {
+  background: var(--accent);
+  color: var(--accent-ink);
+  --icon-bg: var(--accent);
+}
+
+/* Animated-mode toggle — a round pill matching the segmented control's chrome. */
+.solenoid-toolbar__flow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 999px;
+  color: var(--text);
+  cursor: pointer;
+  transition: background-color 80ms ease, color 80ms ease, border-color 80ms ease;
+}
+.solenoid-toolbar__flow:hover {
+  color: var(--accent);
+  background: var(--btn-hover);
+  border-color: var(--accent);
+}
+.solenoid-toolbar__flow--active,
+.solenoid-toolbar__flow--active:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.solenoid-toolbar__flow-icon {
+  display: block;
+  width: 32px;
+  height: 13px;
+}
+
+/* When the toggle is on, the dash overlay flows left → right. A negative
+   dashoffset moves the dashes toward the line's end (it's drawn x:2 → 26), and
+   the offset distance equals one dash period so the loop is seamless. */
+.solenoid-toolbar__flow--active .solenoid-toolbar__flow-beads {
+  animation: solenoid-flow-bead 1.1s linear infinite;
+}
+@keyframes solenoid-flow-bead {
+  to { stroke-dashoffset: -10.01; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .solenoid-toolbar__flow--active .solenoid-toolbar__flow-beads { animation: none; }
+}

@@ -1,0 +1,262 @@
+import { useEffect, useState, useSyncExternalStore } from "react";
+import type {
+  WebSourceNode as WebSourceNodeType,
+  CsvConnectionNode as CsvConnectionNodeType,
+  ImportHtmlNode as ImportHtmlNodeType,
+  ImportXmlNode as ImportXmlNodeType,
+} from "../rete-nodes";
+import { processGraph } from "../process";
+import { connectionStore, refreshConnection, type ConnectionState } from "../connectionStore";
+import { settingsStore } from "../settingsStore";
+import { isDesktop, listCsvFiles } from "../fileBridge";
+import { FrameDisplay } from "./FrameDisplay";
+import { NodeShell, type NodeProps } from "./nodeKit";
+import "./ConnectionNodes.css";
+
+// Status line shown under a connection node's reference field: a colored dot +
+// a short summary (or the error). Reads the shared connectionStore.
+function statusText(s: ConnectionState): string {
+  switch (s.status) {
+    case "loading": return "Loading…";
+    case "error":   return s.message || "Failed";
+    case "ok":      return `${s.rows ?? 0}×${s.cols ?? 0}${s.fetchedAt ? ` · ${new Date(s.fetchedAt).toLocaleTimeString()}` : ""}`;
+    default:        return "Not connected";
+  }
+}
+
+function ConnectionStatusRow({ nodeId, onRefresh }: { nodeId: string; onRefresh: () => void }) {
+  useSyncExternalStore(connectionStore.subscribe, connectionStore.version);
+  const s = connectionStore.getState(nodeId);
+  return (
+    <div className="sol-conn__status">
+      <span className={`sol-conn__dot sol-conn__dot--${s.status}`} />
+      <span className="sol-conn__status-text" title={s.status === "error" ? s.message : undefined}>
+        {statusText(s)}
+      </span>
+      <button
+        type="button"
+        className="sol-conn__refresh"
+        title="Refresh this connection"
+        disabled={s.status === "loading"}
+        onClick={(e) => { e.stopPropagation(); onRefresh(); }}
+        onPointerDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        {/* Lucide "refresh-cw" (ISC) — an icon, not a font glyph. */}
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+          <path d="M21 3v5h-5" />
+          <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+          <path d="M8 16H3v5" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
+// ─── WEB SOURCE ─────────────────────────────────────────────────────────────────
+// A URL → numeric Frame. The URL field commits on blur/Enter (not per keystroke)
+// so typing never fires a fetch; committing changes the cache key and the node's
+// async data() re-fetches on the next recompute.
+
+export function WebSourceComponent({ data, emit }: NodeProps<WebSourceNodeType>) {
+  const [url, setUrl] = useState(data.url);
+  // Mirror external changes to the field (e.g. load / paste).
+  useEffect(() => { setUrl(data.url); }, [data.url]);
+
+  function commit() {
+    const next = url.trim();
+    if (next !== data.url) { data.url = next; void processGraph(); }
+  }
+
+  return (
+    <NodeShell node={data} emit={emit} labelPlaceholder="Web Source">
+      <div className="sol-conn">
+        <input
+          className="sol-conn__url"
+          type="text"
+          value={url}
+          placeholder="https://…/data.csv"
+          spellCheck={false}
+          onChange={(e) => setUrl(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+        />
+        <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
+        <FrameDisplay frame={data.cachedResult} label={data.label} />
+      </div>
+    </NodeShell>
+  );
+}
+
+// ─── IMPORT HTML (Nth table on a page → Frame) ──────────────────────────────────
+
+export function ImportHtmlComponent({ data, emit }: NodeProps<ImportHtmlNodeType>) {
+  const [url, setUrl] = useState(data.url);
+  const [idx, setIdx] = useState(String(data.tableIndex));
+  useEffect(() => { setUrl(data.url); }, [data.url]);
+  useEffect(() => { setIdx(String(data.tableIndex)); }, [data.tableIndex]);
+
+  function commit() {
+    const nextUrl = url.trim();
+    const nextIdx = Math.max(1, Math.round(Number(idx) || 1));
+    setIdx(String(nextIdx));
+    if (nextUrl !== data.url || nextIdx !== data.tableIndex) {
+      data.url = nextUrl; data.tableIndex = nextIdx; void processGraph();
+    }
+  }
+
+  return (
+    <NodeShell node={data} emit={emit} labelPlaceholder="Import HTML">
+      <div className="sol-conn">
+        <input
+          className="sol-conn__url"
+          type="text"
+          value={url}
+          placeholder="https://…/page.html"
+          spellCheck={false}
+          onChange={(e) => setUrl(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+        />
+        <label className="sol-conn__field">
+          Table #
+          <input
+            className="sol-conn__num"
+            type="number"
+            min={1}
+            value={idx}
+            onChange={(e) => setIdx(e.target.value)}
+            onBlur={commit}
+            onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+          />
+        </label>
+        <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
+        <FrameDisplay frame={data.cachedResult} label={data.label} />
+      </div>
+    </NodeShell>
+  );
+}
+
+// ─── IMPORT XML (XPath on a page → text list) ───────────────────────────────────
+
+export function ImportXmlComponent({ data, emit }: NodeProps<ImportXmlNodeType>) {
+  const [url, setUrl] = useState(data.url);
+  const [query, setQuery] = useState(data.query);
+  useEffect(() => { setUrl(data.url); }, [data.url]);
+  useEffect(() => { setQuery(data.query); }, [data.query]);
+
+  function commit() {
+    const nextUrl = url.trim();
+    const nextQuery = query;
+    if (nextUrl !== data.url || nextQuery !== data.query) {
+      data.url = nextUrl; data.query = nextQuery; void processGraph();
+    }
+  }
+
+  const vals = data.cachedResult;
+  return (
+    <NodeShell node={data} emit={emit} labelPlaceholder="Import XML">
+      <div className="sol-conn">
+        <input
+          className="sol-conn__url"
+          type="text"
+          value={url}
+          placeholder="https://…/page.html"
+          spellCheck={false}
+          onChange={(e) => setUrl(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+        />
+        <input
+          className="sol-conn__url"
+          type="text"
+          value={query}
+          placeholder='XPath, e.g. //h2/a'
+          spellCheck={false}
+          onChange={(e) => setQuery(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+        />
+        <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
+        {vals && vals.length > 0 && (
+          <div className="sol-conn__preview" title={`${vals.length} matches`}>
+            {vals.slice(0, 4).map((v, i) => <div key={i} className="sol-conn__preview-row">{v}</div>)}
+            {vals.length > 4 && <div className="sol-conn__preview-more">+{vals.length - 4} more</div>}
+          </div>
+        )}
+      </div>
+    </NodeShell>
+  );
+}
+
+// ─── CSV CONNECTION (local folder) ──────────────────────────────────────────────
+// Pick a .csv from the Settings target folder. The dropdown is populated by
+// listing the folder; the node reads the chosen file on refresh. Desktop only —
+// the browser build shows a note instead (no filesystem). Native <select> needs
+// pointerdown/mousedown stopPropagation so the node-drag re-render doesn't close
+// the OS dropdown mid-pick (see CLAUDE.md).
+
+export function CsvConnectionComponent({ data, emit }: NodeProps<CsvConnectionNodeType>) {
+  const folder = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("csvFolder"));
+  const [files, setFiles] = useState<string[]>([]);
+  const [name, setName] = useState(data.fileName);
+  const desktop = isDesktop();
+
+  // (Re)list the folder's CSVs whenever the target folder changes.
+  useEffect(() => {
+    let alive = true;
+    listCsvFiles(folder).then((fs) => { if (alive) setFiles(fs); }).catch(() => { if (alive) setFiles([]); });
+    return () => { alive = false; };
+  }, [folder]);
+
+  useEffect(() => { setName(data.fileName); }, [data.fileName]);
+
+  function pick(next: string) {
+    setName(next);
+    data.fileName = next;
+    void processGraph();
+  }
+
+  function refresh() {
+    // Re-scan the folder (a new file may have appeared) and re-read.
+    listCsvFiles(folder).then(setFiles).catch(() => setFiles([]));
+    void refreshConnection(data.id);
+  }
+
+  return (
+    <NodeShell node={data} emit={emit} labelPlaceholder="CSV File">
+      <div className="sol-conn">
+        {!desktop ? (
+          <div className="sol-conn__note">Local files are available in the desktop app only.</div>
+        ) : !folder ? (
+          <div className="sol-conn__note">No target folder set — open Settings ▸ Data to choose one.</div>
+        ) : (
+          <select
+            className="sol-conn__select"
+            value={name}
+            onChange={(e) => pick(e.target.value)}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <option value="">Pick a file…</option>
+            {name !== "" && !files.includes(name) && <option value={name}>{name} (missing)</option>}
+            {files.map((f) => <option key={f} value={f}>{f}</option>)}
+          </select>
+        )}
+        <ConnectionStatusRow nodeId={data.id} onRefresh={refresh} />
+        <FrameDisplay frame={data.cachedResult} label={data.label} />
+      </div>
+    </NodeShell>
+  );
+}

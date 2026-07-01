@@ -1,0 +1,59 @@
+.solenoid-confirm__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(1px);
+}
+
+.solenoid-confirm__dialog {
+  min-width: 280px;
+  max-width: 420px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  padding: 18px 18px 14px;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.solenoid-confirm__message {
+  line-height: 1.45;
+  margin-bottom: 16px;
+}
+
+.solenoid-confirm__buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.solenoid-confirm__btn {
+  background: var(--border-subtle);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  padding: 6px 14px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 80ms ease, border-color 80ms ease;
+}
+.solenoid-confirm__btn:hover {
+  background: var(--border-strong);
+  border-color: var(--border-strong);
+}
+
+.solenoid-confirm__btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.solenoid-confirm__btn--primary:hover {
+  filter: brightness(1.1);
+}

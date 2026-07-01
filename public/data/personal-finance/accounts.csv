@@ -1,0 +1,8 @@
+Account,Type,Balance,APR
+Checking,Asset,4200,0.0000
+Savings,Asset,18500,0.0410
+Brokerage,Asset,32750,0.0000
+Retirement 401k,Asset,68200,0.0000
+Credit Card,Liability,-2840,0.2199
+Car Loan,Liability,-11200,0.0625
+Student Loan,Liability,-8600,0.0480

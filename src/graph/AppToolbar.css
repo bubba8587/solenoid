@@ -1,0 +1,85 @@
+/* Embedded inline in the TopBar — no panel chrome of its own. */
+.solenoid-apptools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+}
+
+/* Accent picker + theme toggle share one stadium pill (relative for the popover). */
+.solenoid-apptools__pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 999px;
+}
+.solenoid-apptools__pill .solenoid-apptools__btn {
+  background: transparent;
+  border: none;
+}
+.solenoid-apptools__pill .solenoid-apptools__btn:first-of-type { border-radius: 999px 0 0 999px; }
+.solenoid-apptools__pill .solenoid-apptools__btn:last-of-type  { border-radius: 0 999px 999px 0; }
+
+/* Paintbrush accent button: the current accent shows as a small dot, not a fill. */
+.solenoid-apptools__paint { position: relative; }
+.solenoid-apptools__paint-dot {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1px solid var(--surface);
+  pointer-events: none;
+}
+
+/* Position the palette popover (SwatchGrid + the mobile theme row) under the pill. */
+.solenoid-apptools__palette {
+  position: absolute;
+  top: 34px;
+  right: 0;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+/* The light/dark row inside the palette — mobile only (desktop has the standalone
+   toggle in the pill). Styled as a panel row matching the swatch popover. */
+.solenoid-apptools__palette-theme {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  box-shadow: var(--shadow-pop);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.solenoid-apptools__palette-theme:active { background: var(--btn-hover); }
+
+.solenoid-apptools__btn {
+  width: 28px;
+  height: 28px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  color: var(--text);
+  border-radius: 50%;
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.solenoid-apptools__btn:hover {
+  background: var(--btn-hover);
+  border-color: var(--accent);
+  color: var(--accent);
+}

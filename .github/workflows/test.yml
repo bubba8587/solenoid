@@ -1,0 +1,29 @@
+# Test + typecheck on every push and PR. The build workflow only proves the
+# Tauri binary compiles; this one keeps the 280+ unit tests and the strict
+# TypeScript pass green on the server, not just on dev machines.
+name: Test
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install JS dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Unit tests
+        run: npx vitest run

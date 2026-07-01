@@ -1,0 +1,222 @@
+---
+name: Solenoid
+description: A node-based computation graph tool, an Excel alternative for data tables.
+colors:
+  accent: "#56b4e9"
+  surface: "#1e1e1e"
+  surface-sunken: "#141414"
+  surface-raised: "#262626"
+  border: "#2d2d2d"
+  border-strong: "#3a3a3a"
+  text: "#e8e8e8"
+  text-bright: "#f3f4f5"
+  text-dim: "#9aa0a6"
+  text-muted: "#80868e"
+  canvas-bg: "#0e0e0e"
+  sock-number: "#f5b914"
+  sock-string: "#c8e040"
+  sock-date: "#d685b1"
+  sock-complex: "#56b4e9"
+  sock-table: "#e96b3c"
+  sock-frame: "#8e64ed"
+  sock-lambda: "#00b890"
+  sock-any: "#8a8f98"
+  danger: "#e0473a"
+  success: "#2fae7a"
+  warning: "#d9a93b"
+typography:
+  display:
+    fontFamily: "Atkinson Hyperlegible Next, system-ui, sans-serif"
+    fontSize: "20px"
+    fontWeight: 600
+    lineHeight: 1.2
+  title:
+    fontFamily: "Atkinson Hyperlegible Next, system-ui, sans-serif"
+    fontSize: "14px"
+    fontWeight: 600
+    lineHeight: 1.3
+  body:
+    fontFamily: "Atkinson Hyperlegible Next, system-ui, sans-serif"
+    fontSize: "12px"
+    fontWeight: 400
+    lineHeight: 1.4
+  label:
+    fontFamily: "Atkinson Hyperlegible Next, system-ui, sans-serif"
+    fontSize: "11px"
+    fontWeight: 400
+    lineHeight: 1.3
+  value:
+    fontFamily: "Atkinson Hyperlegible Mono, ui-monospace, SFMono-Regular, Menlo, monospace"
+    fontSize: "12px"
+    fontWeight: 400
+    lineHeight: 1.3
+rounded:
+  xs: "3px"
+  field: "4px"
+  chip: "5px"
+  card: "8px"
+  lg: "12px"
+  pill: "999px"
+spacing:
+  xs: "4px"
+  sm: "6px"
+  md: "10px"
+  lg: "14px"
+components:
+  node-card:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.text}"
+    rounded: "{colors.card}"
+    width: "180px"
+  value-input:
+    backgroundColor: "{colors.surface-sunken}"
+    textColor: "{colors.text}"
+    typography: "{typography.value}"
+    rounded: "{rounded.field}"
+  button-icon:
+    backgroundColor: "{colors.surface-sunken}"
+    textColor: "{colors.text}"
+    size: "28px"
+  button-pill:
+    backgroundColor: "{colors.surface-sunken}"
+    textColor: "{colors.text}"
+    rounded: "{rounded.pill}"
+---
+
+# Design System: Solenoid
+
+## 1. Overview
+
+**Creative North Star: "The Instrument Panel"**
+
+Solenoid looks and behaves like a precision instrument, not an app trying to sell itself. The interface is a dark, near-black workbench on which a computation graph is laid out in light, restrained chrome. Every node is a small uniform card; cables between them are typed and colored by the data they carry. The chrome recedes so the graph holds the eye. Nothing is decorative for its own sake; color, weight, and contrast are spent on conveying state and type, not on producing mood.
+
+The system is built around legibility before anything else. The typeface is the Braille Institute's Atkinson Hyperlegible family, chosen because it keeps similar glyphs distinct at small sizes, and the type runs small and dense because a working graph wants information per pixel, not whitespace theatre. The default canvas is dark so colored cables and typed sockets read with maximum separation, and a full light theme mirrors every token for users who prefer it. The accent color is user-swappable at runtime, so the system commits to a role for the accent rather than to a single hue.
+
+This system explicitly rejects three looks. It is not a generic SaaS or AI-startup dashboard: no purple gradients, no hero-metric cards, no glassmorphism, no rounded-everything template. It is not a childish or playful no-code toy: no bubbly cartoon blocks, no oversized friendly shapes. And it is not skeuomorphic or cluttered: no faux-3D bevels, no shadow overload, no chrome competing with the graph.
+
+**Key Characteristics:**
+- Dark-default workbench with a fully mirrored light theme.
+- Small, dense, hyperlegible type. Information per pixel over whitespace.
+- Color is reserved for type and state; the chrome stays neutral.
+- Flat at rest; elevation and glow appear only as a response to state.
+- Fast, short, functional motion. Nothing choreographed.
+
+## 2. Colors
+
+A neutral near-black workbench carrying a typed, saturated socket palette and a single swappable accent.
+
+### Primary
+- **Sky Accent** (`#56b4e9`): The single interactive accent. Marks focus (input field borders), the brand wordmark, and selection glows. Overwritten at runtime by the theme store, so treat it as a role, not a fixed hue. Used sparingly; it should never carry large fills.
+
+### Neutral
+- **Workbench** (`#1e1e1e`): The raised chrome surface. Node bodies, menus, popovers. In light theme this becomes a near-white off-white (`#fbfcfd`).
+- **Recess** (`#141414`): Sunken fields. Inputs, value and result boxes, button backgrounds. The brightest layer in light theme (`#ffffff`), so fields read as familiar input boxes.
+- **Raised Fill** (`#262626`): Hover and selected fills inside chrome.
+- **Canvas Void** (`#0e0e0e`): The graph canvas, a shade darker than every card so nodes lift off it. Light theme uses `#eef1f5`.
+- **Hairlines** (`#2d2d2d` border, `#3a3a3a` strong, `#2a2a2a` subtle): Borders and dividers. Thin and quiet.
+- **Ink** (`#e8e8e8` text, `#f3f4f5` bright, `#9aa0a6` dim, `#80868e` muted): The text ramp, brightest reserved for emphasis, muted for secondary labels. The muted tier clears WCAG AA 4.5:1 on the card/sunken surfaces. Light theme inverts to dark inks (`#1b1e23` down to `#6a717b`).
+
+### Tertiary (Typed Socket Palette)
+The socket colors are the system's real palette: each data type owns a hue so a cable's color tells you what flows through it. They are tuned to stay distinguishable across common color-vision deficiencies, and array and matrix variants are systematic siblings of their scalar (a darker, desaturated shade for lists; a punchier, deeper, hue-shifted shade for tables/matrices).
+- **Number Amber** (`#f5b914`): scalar numbers. List sibling `#c08512`.
+- **String Lime** (`#c8e040`): scalar text. List sibling `#7a9210`.
+- **Date Orchid** (`#d685b1`): scalar dates. List sibling `#c06a98`.
+- **Complex Sky** (`#56b4e9`): complex/scalar-or-list. Matrix sibling `#2a8fd9`.
+- **Table Coral** (`#e96b3c`): table/frame data.
+- **Frame Violet** (`#8e64ed`): named-column frames.
+- **Lambda Teal** (`#00b890`): lambda values.
+- **Any Gray** (`#8a8f98`): untyped sockets.
+
+### Status (semantic state)
+A small reserved set for failure and state feedback, kept apart from the typed socket palette so an error never reads as a data type.
+- **Danger Red** (`#e0473a`): error values (the `#CODE!` badge, the error explanation panel) and destructive-action hover. Lighter siblings `#e0524d` (alerts) / `#e06c75` (row-remove hover) are tints of the same red.
+- **Success Green** (`#2fae7a`): a true/ok state, e.g. a boolean input reading 1.
+- **Warning Amber** (`#d9a93b`): caution / out-of-range states.
+
+### Named Rules
+**The Quiet Accent Rule.** The accent and the saturated socket hues carry meaning, never decoration. Color appears on a socket, a cable, a focus ring, or a selection glow. It never fills a panel, a button background, or a section header for visual interest. If a surface is colored, it is colored because something about its state or type is being communicated.
+
+**The Sibling Rule.** Array and matrix socket colors are never free choices. A list is a darker, desaturated shade of its scalar; a table/matrix is a punchier, deeper, slightly hue-shifted shade. Introduce a new typed color only as a systematic sibling, never an arbitrary new hue.
+
+## 3. Typography
+
+**Display Font:** Atkinson Hyperlegible Next (with system-ui, sans-serif)
+**Body Font:** Atkinson Hyperlegible Next (with system-ui, sans-serif)
+**Value/Mono Font:** Atkinson Hyperlegible Mono (with ui-monospace, SFMono-Regular, Menlo, Monaco)
+
+**Character:** One legibility-first family in multiple weights, paired with its monospaced sibling for values and code. Atkinson Hyperlegible was designed by the Braille Institute to keep easily-confused glyphs (I/l/1, O/0, b/d) distinct at small sizes, which is exactly the constraint a dense node graph imposes. The pairing contrasts on a single axis (proportional vs monospaced), not on competing personalities.
+
+### Hierarchy
+- **Display** (600, 20px, 1.2): Overlay and panel titles, e.g. the Function Reference. Rare; the system runs small.
+- **Title** (600, 14px, 1.3): Node headers, menu and section headings.
+- **Body** (400, 12px, 1.4): The base size. Node body text, menu items, descriptions.
+- **Label** (400, 11px, 1.3): Field labels, the socket legend, secondary annotations.
+- **Value** (mono, 12px, 1.3): Computed results, numeric literals, formula text. Monospace so digits align and values read as data.
+
+### Named Rules
+**The Hyperlegible Rule.** The UI face is Atkinson Hyperlegible Next and the value face is Atkinson Hyperlegible Mono. This is a fixed accessibility constraint, not a style choice. Never substitute a generic geometric sans for "polish"; the glyph disambiguation is the point.
+
+**The Small-and-Dense Rule.** Body is 12px and labels are 11px. The graph wants information per pixel. Do not inflate type for breathing room; rhythm comes from spacing and grouping, not from large headings.
+
+## 4. Elevation
+
+The system is flat at rest and uses elevation only to communicate state. Cards sit on the canvas with a 1px-deep card shadow that is barely more than a seam; depth comes mostly from the tonal step between the dark canvas and the slightly lighter card, not from cast shadows. Real lift is reserved for two things: floating overlay chrome that must read above a busy graph, and state feedback (hover, selection).
+
+### Shadow Vocabulary
+- **Card seam** (`box-shadow: 0 1px 0 rgba(0,0,0,0.4)`): The resting node shadow. A single dark hairline under the card, not a glow. Light theme softens to `0 1px 2px rgba(20,30,50,0.08)`.
+- **Popover lift** (`box-shadow: 0 4px 14px rgba(0,0,0,0.3)`): Menus and small popovers.
+- **Overlay lift** (`box-shadow: 0 8px 26px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.45)`): Floating chrome that sits above the graph (socket legend, minimap, pins, alerts). Deep and layered so it reads clearly over busy content.
+- **Selection glow** (`box-shadow: 0 4px 14px <node-accent>/28%`): An accent-tinted glow drawn from the selected node's own type color, not a neutral shadow.
+
+### Named Rules
+**The Flat-By-Default Rule.** Surfaces are flat at rest. Shadow is a response to state (hover, selection) or a job (an overlay floating above the graph), never a default decoration. If a node casts a soft drop shadow while sitting still, the shadow is too strong.
+
+## 5. Components
+
+### Buttons
+- **Shape:** Two families. Round icon buttons (28px, `border-radius: 50%`) for canvas tools, and pills (`border-radius: 999px`) for grouped toolbar controls and segmented controls.
+- **Default:** Sunken background (`--surface-sunken`), 1px neutral border (`--border`), body-color icon/text. Quiet and recessive.
+- **Hover / Active:** Background lifts to `--btn-hover`, border steps to `--border-strong`. No color injection; the button stays neutral.
+
+### Inputs / Fields
+- **Style:** Sunken background (`--surface-sunken`), 1px border (`--border`), 4px radius. Value text in the mono face. Reads as a familiar input box, especially in light theme where the field is the brightest (white) layer.
+- **Focus:** Border shifts to the accent (`--accent`). No glow, no ring; a single colored border edge.
+
+### Cards / Containers (the Node Card, signature component)
+- **Corner Style:** 8px radius.
+- **Width:** Fixed at 180px (240px wide tier for nodes carrying 2D table/frame data) so every node reads as a uniform unit; heights stay content-driven.
+- **Background:** `--surface` body with a per-node accent-tinted header band. Each node type owns an accent; the header carries a tint of it (`--header-tint`, 22% dark / 52% light), so type is legible at a glance without coloring the whole card.
+- **Shadow Strategy:** The resting card seam (see Elevation). Flat otherwise.
+- **Border:** 1px neutral, stepping to `--border-strong` on hover. In light theme the border becomes a darker shade of the node's own accent rather than gray.
+- **Selected:** A 2px accent ring drawn as a pseudo-element overlay (so it sits above the header and group borders) plus the accent-tinted selection glow. Selection never changes the card's size.
+- **Grouped:** Members drop their shadow and take a 2px border in the group's color, with a small solid corner triangle marking membership.
+
+### Navigation / Toolbars
+- **Style:** Floating pill and icon clusters over the canvas, using the overlay chrome tokens (near-opaque fill, always-on `--overlay-border`, deep overlay shadow) so they read above the graph. Controls are neutral; only their icons and state feedback carry weight.
+
+### Signature: Typed Sockets & Cables
+- **Sockets:** A deterministic 12x12 dot straddling the card edge, filled with the socket's type color and an inset ring (`--socket-ring`). Shape encodes type alongside color (circle = scalar, square = list, split square = scalar-or-list, grid = table/frame).
+- **Cables:** Colored by the type they carry, drawn at full curved fidelity at all times. Cables are never straightened, hidden, or shape-swapped during drag, pan, or zoom as a performance shortcut; the curve fidelity is part of the instrument's trustworthiness.
+
+## 6. Do's and Don'ts
+
+### Do:
+- **Do** keep the chrome neutral and spend color on type and state only (the Quiet Accent Rule).
+- **Do** use Atkinson Hyperlegible Next for UI and Atkinson Hyperlegible Mono for values; this is a fixed accessibility constraint.
+- **Do** keep body type at 12px and labels at 11px; build rhythm from spacing and grouping, not large headings.
+- **Do** mirror every new color token across the dark and light themes, with array/matrix hues as systematic siblings of their scalar.
+- **Do** keep surfaces flat at rest; introduce shadow only for state (hover, selection) or for overlay chrome floating above the graph.
+- **Do** keep node cards a uniform fixed width and let height be content-driven.
+- **Do** keep cables at full curved fidelity during every interaction, including drag, pan, and zoom.
+- **Do** make every interactive element self-documenting (tooltips with Excel equivalents, the socket legend, node descriptions). The target is zero learning curve from Excel.
+
+### Don't:
+- **Don't** ship the generic SaaS / AI-startup look: no purple gradients, no hero-metric cards (big number + small label + gradient accent), no glassmorphism, no rounded-everything dashboard template.
+- **Don't** make it childish or playful no-code: no bubbly cartoon blocks, no oversized friendly shapes, no toy aesthetic. This is a serious computation tool.
+- **Don't** go skeuomorphic or cluttered: no faux-3D bevels, no drop-shadow overload, no chrome competing with the graph for attention.
+- **Don't** use `border-left` / `border-right` greater than 1px as a colored accent stripe on cards, alerts, or list items.
+- **Don't** use gradient text (`background-clip: text` over a gradient). Emphasis comes from weight and size, not gradients.
+- **Don't** fill a panel, button, or section header with the accent or a socket hue for visual interest; color must communicate type or state.
+- **Don't** inflate type sizes for "breathing room," and don't substitute a generic geometric sans for the hyperlegible face.
+- **Don't** degrade cables (straighten, hide, swap shape) during motion as a performance trick.

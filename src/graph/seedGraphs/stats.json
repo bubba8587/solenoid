@@ -1,0 +1,40 @@
+{
+  "v": 1,
+  "label": "Statistical Summary",
+  "nodes": [
+    {"id":"scores","type":"ListInputNode","x":0,"y":280,"init":{"label":"Scores","valueKeys":["v0","v1","v2","v3","v4","v5","v6"]},"literals":{"v0":82,"v1":91,"v2":76,"v3":88,"v4":95,"v5":69,"v6":84}},
+    {"id":"r_avg","type":"AggregateNode","x":360,"y":0,"init":{"label":"AVERAGE","op":"avg"}},
+    {"id":"r_min","type":"AggregateNode","x":360,"y":180,"init":{"label":"MIN","op":"min"}},
+    {"id":"r_max","type":"AggregateNode","x":360,"y":360,"init":{"label":"MAX","op":"max"}},
+    {"id":"r_median","type":"AggregateNode","x":360,"y":540,"init":{"label":"MEDIAN","op":"median"}},
+    {"id":"r_stdev","type":"AggregateNode","x":360,"y":720,"init":{"label":"STDEV.S","op":"stdev"}},
+    {"id":"disp_avg","type":"DisplayNode","x":660,"y":10,"init":{"label":"Average"}},
+    {"id":"disp_min","type":"DisplayNode","x":660,"y":190,"init":{"label":"Minimum"}},
+    {"id":"disp_max","type":"DisplayNode","x":660,"y":370,"init":{"label":"Maximum"}},
+    {"id":"disp_median","type":"DisplayNode","x":660,"y":550,"init":{"label":"Median"}},
+    {"id":"disp_stdev","type":"DisplayNode","x":660,"y":730,"init":{"label":"Std deviation"}},
+    {"id":"fc_avg","type":"FormatControllerNode","x":880,"y":25,"init":{"label":"Format","hostNodeId":"disp_avg","socketKey":"out","side":"output","format":"decimal","decimalDigits":1,"decimalMode":"places","unit":"none","socketDataType":"number"}},
+    {"id":"fc_min","type":"FormatControllerNode","x":880,"y":205,"init":{"label":"Format","hostNodeId":"disp_min","socketKey":"out","side":"output","format":"decimal","decimalDigits":0,"decimalMode":"places","unit":"none","socketDataType":"number"}},
+    {"id":"fc_max","type":"FormatControllerNode","x":880,"y":385,"init":{"label":"Format","hostNodeId":"disp_max","socketKey":"out","side":"output","format":"decimal","decimalDigits":0,"decimalMode":"places","unit":"none","socketDataType":"number"}},
+    {"id":"fc_median","type":"FormatControllerNode","x":880,"y":565,"init":{"label":"Format","hostNodeId":"disp_median","socketKey":"out","side":"output","format":"decimal","decimalDigits":1,"decimalMode":"places","unit":"none","socketDataType":"number"}},
+    {"id":"fc_stdev","type":"FormatControllerNode","x":880,"y":745,"init":{"label":"Format","hostNodeId":"disp_stdev","socketKey":"out","side":"output","format":"decimal","decimalDigits":2,"decimalMode":"places","unit":"none","socketDataType":"number"}},
+    {"id":"grp_stats","type":"GroupNode","x":-40,"y":-70,"init":{"label":"Score statistics","members":["scores","r_avg","r_min","r_max","r_median","r_stdev"],"color":"green","collapsed":false,"width":600,"height":990}}
+  ],
+  "connections": [
+    {"source":"scores","sourceOutput":"list","target":"r_avg","targetInput":"list"},
+    {"source":"scores","sourceOutput":"list","target":"r_min","targetInput":"list"},
+    {"source":"scores","sourceOutput":"list","target":"r_max","targetInput":"list"},
+    {"source":"scores","sourceOutput":"list","target":"r_median","targetInput":"list"},
+    {"source":"scores","sourceOutput":"list","target":"r_stdev","targetInput":"list"},
+    {"source":"r_avg","sourceOutput":"result","target":"disp_avg","targetInput":"in"},
+    {"source":"r_min","sourceOutput":"result","target":"disp_min","targetInput":"in"},
+    {"source":"r_max","sourceOutput":"result","target":"disp_max","targetInput":"in"},
+    {"source":"r_median","sourceOutput":"result","target":"disp_median","targetInput":"in"},
+    {"source":"r_stdev","sourceOutput":"result","target":"disp_stdev","targetInput":"in"},
+    {"source":"disp_avg","sourceOutput":"out","target":"fc_avg","targetInput":"in"},
+    {"source":"disp_min","sourceOutput":"out","target":"fc_min","targetInput":"in"},
+    {"source":"disp_max","sourceOutput":"out","target":"fc_max","targetInput":"in"},
+    {"source":"disp_median","sourceOutput":"out","target":"fc_median","targetInput":"in"},
+    {"source":"disp_stdev","sourceOutput":"out","target":"fc_stdev","targetInput":"in"}
+  ]
+}

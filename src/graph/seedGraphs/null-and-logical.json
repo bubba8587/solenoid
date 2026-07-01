@@ -1,0 +1,854 @@
+{
+  "v": 2,
+  "label": "Null & Logical",
+  "nodes": [
+    {
+      "id": "hdr",
+      "type": "NoteNode",
+      "x": -40,
+      "y": -200,
+      "init": {
+        "label": "Null & Logical \u2014 array-semantics tour",
+        "body": "A living checklist for the value model: a first-class **null** (missing, rendered `null`, skipped by aggregators), a real **logical** type (TRUE/FALSE, purple sockets, coerces to 1/0 in math), and **per-cell errors** that stay in a list. Each cluster shows one decision.",
+        "color": "blue",
+        "width": 760,
+        "height": 190
+      }
+    },
+    {
+      "id": "nA",
+      "type": "NoteNode",
+      "x": -40,
+      "y": 40,
+      "init": {
+        "label": "A \u00b7 Aggregators skip null",
+        "body": "The `vals` column has a **blank cell** (row 2) \u2192 imports as **null**. SUM = 8; AVERAGE = 8/3 (divides by the 3 PRESENT values, not 4). The list shows `1, null, 3, 4`.",
+        "color": "green",
+        "width": 230,
+        "height": 230
+      }
+    },
+    {
+      "id": "fiA",
+      "type": "FrameInputNode",
+      "x": 230,
+      "y": 60,
+      "init": {
+        "label": "CSV (blank cell in vals)",
+        "frameText": "vals, tag\n1, a\n, b\n3, c\n4, d"
+      }
+    },
+    {
+      "id": "gcA",
+      "type": "GetColumnNode",
+      "x": 470,
+      "y": 60,
+      "init": {
+        "label": "Get \"vals\"",
+        "readAs": "number"
+      },
+      "stringLiterals": {
+        "name": "vals"
+      }
+    },
+    {
+      "id": "dAlist",
+      "type": "DisplayNode",
+      "x": 720,
+      "y": 40,
+      "init": {
+        "label": "the list \u2192 1, null, 3, 4"
+      }
+    },
+    {
+      "id": "aggSum",
+      "type": "AggregateNode",
+      "x": 720,
+      "y": 170,
+      "init": {
+        "label": "SUM \u2192 8",
+        "op": "sum"
+      }
+    },
+    {
+      "id": "aggAvg",
+      "type": "AggregateNode",
+      "x": 960,
+      "y": 170,
+      "init": {
+        "label": "AVERAGE \u2192 8/3",
+        "op": "avg"
+      }
+    },
+    {
+      "id": "isnA",
+      "type": "IsTestNode",
+      "x": 720,
+      "y": 330,
+      "init": {
+        "label": "ISNULL \u2192 F,T,F,F",
+        "op": "isnull"
+      }
+    },
+    {
+      "id": "nB",
+      "type": "NoteNode",
+      "x": -40,
+      "y": 640,
+      "init": {
+        "label": "B \u00b7 Comparison \u2192 real TRUE/FALSE",
+        "body": "`5 > 3` emits a real **logical** (purple socket), shown **TRUE** \u2014 not 1. Into \u00d710 it coerces to 1/0 \u2192 **10** (the multiply-by-a-condition trick still works). **AND** also emits a logical; its `b=1` coerces the other way (number \u2192 TRUE).",
+        "color": "purple",
+        "width": 230,
+        "height": 300
+      }
+    },
+    {
+      "id": "s5",
+      "type": "NumberInputNode",
+      "x": 230,
+      "y": 660,
+      "init": {
+        "label": "5",
+        "value": 5
+      }
+    },
+    {
+      "id": "s3",
+      "type": "NumberInputNode",
+      "x": 230,
+      "y": 800,
+      "init": {
+        "label": "3",
+        "value": 3
+      }
+    },
+    {
+      "id": "cmpB",
+      "type": "ComparisonNode",
+      "x": 470,
+      "y": 720,
+      "init": {
+        "label": "A > B",
+        "op": "gt"
+      }
+    },
+    {
+      "id": "dCmp",
+      "type": "DisplayNode",
+      "x": 720,
+      "y": 660,
+      "init": {
+        "label": "TRUE (logical)"
+      }
+    },
+    {
+      "id": "mulB",
+      "type": "ArithmeticNode",
+      "x": 720,
+      "y": 800,
+      "init": {
+        "label": "\u00d7 10  (coerces TRUE\u21921)",
+        "op": "mul"
+      },
+      "literals": {
+        "a": 0,
+        "b": 10
+      }
+    },
+    {
+      "id": "dMul",
+      "type": "DisplayNode",
+      "x": 980,
+      "y": 800,
+      "init": {
+        "label": "\u2192 10"
+      }
+    },
+    {
+      "id": "andB",
+      "type": "BooleanOpNode",
+      "x": 720,
+      "y": 960,
+      "init": {
+        "label": "AND (b=1 coerces to TRUE)",
+        "op": "and"
+      },
+      "literals": {
+        "a0": 0,
+        "a1": 1
+      }
+    },
+    {
+      "id": "dAnd",
+      "type": "DisplayNode",
+      "x": 980,
+      "y": 960,
+      "init": {
+        "label": "AND \u2192 TRUE (logical)"
+      }
+    },
+    {
+      "id": "nC",
+      "type": "NoteNode",
+      "x": -40,
+      "y": 1120,
+      "init": {
+        "label": "C \u00b7 Per-cell errors stay in the list",
+        "body": "Lists now carry errors per element. `1 / [1,0,2]` \u2192 `1, #DIV/0!, 0.5`. Casting `[\"1\",\"abc\",\"3\"]` to number \u2192 `1, #VALUE!, 3`. The good cells compute around the bad one.",
+        "color": "amber",
+        "width": 230,
+        "height": 230
+      }
+    },
+    {
+      "id": "llC",
+      "type": "ListInputNode",
+      "x": 230,
+      "y": 1140,
+      "init": {
+        "label": "[1, 0, 2]",
+        "valueKeys": [
+          "v0",
+          "v1",
+          "v2"
+        ]
+      },
+      "literals": {
+        "v0": 1,
+        "v1": 0,
+        "v2": 2
+      }
+    },
+    {
+      "id": "exprC",
+      "type": "ExpressionNode",
+      "x": 470,
+      "y": 1140,
+      "init": {
+        "label": "1 / x",
+        "expr": "1 / x"
+      }
+    },
+    {
+      "id": "dExpr",
+      "type": "DisplayNode",
+      "x": 720,
+      "y": 1140,
+      "init": {
+        "label": "1, #DIV/0!, 0.5"
+      }
+    },
+    {
+      "id": "tspC",
+      "type": "TextSplitNode",
+      "x": 230,
+      "y": 1340,
+      "init": {
+        "label": "split \"1,abc,3\""
+      },
+      "stringLiterals": {
+        "text": "1,abc,3",
+        "delimiter": ","
+      }
+    },
+    {
+      "id": "castC",
+      "type": "CastNode",
+      "x": 470,
+      "y": 1340,
+      "init": {
+        "label": "Cast \u2192 Number",
+        "target": "number"
+      }
+    },
+    {
+      "id": "dCast",
+      "type": "DisplayNode",
+      "x": 720,
+      "y": 1340,
+      "init": {
+        "label": "1, #VALUE!, 3"
+      }
+    },
+    {
+      "id": "nD",
+      "type": "NoteNode",
+      "x": -40,
+      "y": 1620,
+      "init": {
+        "label": "D \u00b7 Test node \u2014 null vs unwired",
+        "body": "A 1\u00d71 Table into ISNULL \u2192 `[[FALSE]]` (this used to black out the app). An **unwired** ISNULL is NOT null \u2014 nothing to test, so it shows blank `\u2014`.",
+        "color": "pink",
+        "width": 230,
+        "height": 230
+      }
+    },
+    {
+      "id": "tiD",
+      "type": "TableInputNode",
+      "x": 230,
+      "y": 1640,
+      "init": {
+        "label": "1\u00d71 Table [1]",
+        "tableText": "1"
+      }
+    },
+    {
+      "id": "isnD",
+      "type": "IsTestNode",
+      "x": 470,
+      "y": 1640,
+      "init": {
+        "label": "ISNULL (click the chip!)",
+        "op": "isnull"
+      }
+    },
+    {
+      "id": "dIsnD",
+      "type": "DisplayNode",
+      "x": 720,
+      "y": 1640,
+      "init": {
+        "label": "[[FALSE]] \u2014 no crash"
+      }
+    },
+    {
+      "id": "isnU",
+      "type": "IsTestNode",
+      "x": 470,
+      "y": 1820,
+      "init": {
+        "label": "ISNULL (UNWIRED) \u2192 blank",
+        "op": "isnull"
+      }
+    },
+    {
+      "id": "nE",
+      "type": "NoteNode",
+      "x": -40,
+      "y": 2080,
+      "init": {
+        "label": "E \u00b7 Empty Table Input stays editable",
+        "body": "Its text is just a comma \u2192 no numeric cells, so the value is `null`. It keeps an **editable 1\u00d71 chip** + an \"empty\" hint instead of blanking to an uneditable `\u2014`.",
+        "color": "gray",
+        "width": 230,
+        "height": 230
+      }
+    },
+    {
+      "id": "tiE",
+      "type": "TableInputNode",
+      "x": 230,
+      "y": 2100,
+      "init": {
+        "label": "just a comma",
+        "tableText": ","
+      }
+    },
+    {
+      "id": "nF",
+      "type": "NoteNode",
+      "x": -40,
+      "y": 2300,
+      "init": {
+        "label": "F \u00b7 Kleene logic + Filter on missing data",
+        "body": "Reuses the null-bearing `vals` from A. **`> 2`** per element \u2192 `FALSE, null, FALSE, TRUE` \u2014 a comparison with a missing value is **unknown**, not FALSE (Kleene). **Filter `> 1`** drops the unknown row (SQL WHERE keeps only TRUE) \u2192 `3, 4`.",
+        "color": "teal",
+        "width": 230,
+        "height": 250
+      }
+    },
+    {
+      "id": "cmpF",
+      "type": "ComparisonNode",
+      "x": 720,
+      "y": 2320,
+      "init": {
+        "label": "vals > 2",
+        "op": "gt"
+      },
+      "literals": {
+        "a": 0,
+        "b": 2
+      }
+    },
+    {
+      "id": "dCmpF",
+      "type": "DisplayNode",
+      "x": 980,
+      "y": 2320,
+      "init": {
+        "label": "FALSE, null, FALSE, TRUE"
+      }
+    },
+    {
+      "id": "filF",
+      "type": "FilterNode",
+      "x": 720,
+      "y": 2500,
+      "init": {
+        "label": "Filter vals > 1",
+        "op": "gt"
+      },
+      "literals": {
+        "threshold": 1,
+        "threshold2": 0
+      }
+    },
+    {
+      "id": "dFilF",
+      "type": "DisplayNode",
+      "x": 980,
+      "y": 2500,
+      "init": {
+        "label": "keeps 3, 4 (null row dropped)"
+      }
+    },
+    {
+      "id": "noteG",
+      "type": "NoteNode",
+      "x": -40,
+      "y": 2700,
+      "init": {
+        "label": "G \u00b7 Coalesce / Fill \u2014 opt into treating a gap",
+        "body": "The `vals` column is `1, null, 3, null, 5`. Each **Fill** mode turns the gaps into something \u2014 the explicit opt-in. A per-cell error passes straight through (it fills *missing*, not errors).",
+        "color": "green",
+        "width": 520,
+        "height": 150
+      }
+    },
+    {
+      "id": "fiG",
+      "type": "FrameInputNode",
+      "x": 230,
+      "y": 2880,
+      "init": {
+        "label": "CSV (gaps in g)",
+        "frameText": "g, k\n1, a\n, b\n3, c\n, d\n5, e"
+      }
+    },
+    {
+      "id": "gcG",
+      "type": "GetColumnNode",
+      "x": 470,
+      "y": 2880,
+      "init": {
+        "label": "Get \"g\" \u2192 1,null,3,null,5",
+        "readAs": "number"
+      },
+      "stringLiterals": {
+        "name": "g"
+      }
+    },
+    {
+      "id": "llElseG",
+      "type": "ListInputNode",
+      "x": 230,
+      "y": 3160,
+      "init": {
+        "label": "Else [9,9,9,9,9]",
+        "valueKeys": [
+          "v0",
+          "v1",
+          "v2",
+          "v3",
+          "v4"
+        ]
+      },
+      "literals": {
+        "v0": 9,
+        "v1": 9,
+        "v2": 9,
+        "v3": 9,
+        "v4": 9
+      }
+    },
+    {
+      "id": "fillConstG",
+      "type": "FillNode",
+      "x": 720,
+      "y": 2740,
+      "init": {
+        "label": "Fill 0 \u2192 1,0,3,0,5",
+        "op": "constant"
+      }
+    },
+    {
+      "id": "dfillConstG",
+      "type": "DisplayNode",
+      "x": 980,
+      "y": 2740,
+      "init": {
+        "label": "\u2192 1, 0, 3, 0, 5"
+      }
+    },
+    {
+      "id": "fillFfillG",
+      "type": "FillNode",
+      "x": 720,
+      "y": 2880,
+      "init": {
+        "label": "Forward fill \u2192 1,1,3,3,5",
+        "op": "ffill"
+      }
+    },
+    {
+      "id": "dfillFfillG",
+      "type": "DisplayNode",
+      "x": 980,
+      "y": 2880,
+      "init": {
+        "label": "\u2192 1, 1, 3, 3, 5"
+      }
+    },
+    {
+      "id": "fillDropG",
+      "type": "FillNode",
+      "x": 720,
+      "y": 3020,
+      "init": {
+        "label": "Drop \u2192 1,3,5",
+        "op": "drop"
+      }
+    },
+    {
+      "id": "dfillDropG",
+      "type": "DisplayNode",
+      "x": 980,
+      "y": 3020,
+      "init": {
+        "label": "\u2192 1, 3, 5"
+      }
+    },
+    {
+      "id": "fillInterpG",
+      "type": "FillNode",
+      "x": 720,
+      "y": 3160,
+      "init": {
+        "label": "Interpolate \u2192 1,2,3,4,5",
+        "op": "interpolate"
+      }
+    },
+    {
+      "id": "dfillInterpG",
+      "type": "DisplayNode",
+      "x": 980,
+      "y": 3160,
+      "init": {
+        "label": "\u2192 1, 2, 3, 4, 5"
+      }
+    },
+    {
+      "id": "fillCoalG",
+      "type": "FillNode",
+      "x": 720,
+      "y": 3300,
+      "init": {
+        "label": "Coalesce(else 9) \u2192 1,9,3,9,5",
+        "op": "coalesce"
+      }
+    },
+    {
+      "id": "dfillCoalG",
+      "type": "DisplayNode",
+      "x": 980,
+      "y": 3300,
+      "init": {
+        "label": "\u2192 1, 9, 3, 9, 5"
+      }
+    },
+    {
+      "id": "noteH",
+      "type": "NoteNode",
+      "x": -40,
+      "y": 3520,
+      "init": {
+        "label": "H \u00b7 IS-checks are per-cell on a 2-D table",
+        "body": "The table is `[[1, null], [null, 4]]`. **ISNUMBER** and **ISNULL** test **each cell** (open the chip for the grid), not the rows \u2014 ISNUMBER says a `null` cell is *not* a number while ISNULL flags it.",
+        "color": "purple",
+        "width": 520,
+        "height": 150
+      }
+    },
+    {
+      "id": "tiH",
+      "type": "TableInputNode",
+      "x": 230,
+      "y": 3700,
+      "init": {
+        "label": "Table [[1,null],[null,4]]",
+        "tableText": "1,\n,4"
+      }
+    },
+    {
+      "id": "isnumH",
+      "type": "IsTestNode",
+      "x": 470,
+      "y": 3640,
+      "init": {
+        "label": "ISNUMBER \u2192 [[T,F],[F,T]]",
+        "op": "isnumber"
+      }
+    },
+    {
+      "id": "isnullH",
+      "type": "IsTestNode",
+      "x": 470,
+      "y": 3800,
+      "init": {
+        "label": "ISNULL \u2192 [[F,T],[T,F]]",
+        "op": "isnull"
+      }
+    },
+    {
+      "id": "dIsnumH",
+      "type": "DisplayNode",
+      "x": 740,
+      "y": 3640,
+      "init": {
+        "label": "[[T,F],[F,T]]"
+      }
+    },
+    {
+      "id": "dIsnullH",
+      "type": "DisplayNode",
+      "x": 740,
+      "y": 3800,
+      "init": {
+        "label": "[[F,T],[T,F]]"
+      }
+    }
+  ],
+  "connections": [
+    {
+      "source": "fiA",
+      "sourceOutput": "frame",
+      "target": "gcA",
+      "targetInput": "frame"
+    },
+    {
+      "source": "gcA",
+      "sourceOutput": "values",
+      "target": "dAlist",
+      "targetInput": "in"
+    },
+    {
+      "source": "gcA",
+      "sourceOutput": "values",
+      "target": "aggSum",
+      "targetInput": "list"
+    },
+    {
+      "source": "gcA",
+      "sourceOutput": "values",
+      "target": "aggAvg",
+      "targetInput": "list"
+    },
+    {
+      "source": "gcA",
+      "sourceOutput": "values",
+      "target": "isnA",
+      "targetInput": "value"
+    },
+    {
+      "source": "s5",
+      "sourceOutput": "value",
+      "target": "cmpB",
+      "targetInput": "a"
+    },
+    {
+      "source": "s3",
+      "sourceOutput": "value",
+      "target": "cmpB",
+      "targetInput": "b"
+    },
+    {
+      "source": "cmpB",
+      "sourceOutput": "result",
+      "target": "dCmp",
+      "targetInput": "in"
+    },
+    {
+      "source": "cmpB",
+      "sourceOutput": "result",
+      "target": "mulB",
+      "targetInput": "a"
+    },
+    {
+      "source": "mulB",
+      "sourceOutput": "result",
+      "target": "dMul",
+      "targetInput": "in"
+    },
+    {
+      "source": "cmpB",
+      "sourceOutput": "result",
+      "target": "andB",
+      "targetInput": "a0"
+    },
+    {
+      "source": "andB",
+      "sourceOutput": "result",
+      "target": "dAnd",
+      "targetInput": "in"
+    },
+    {
+      "source": "llC",
+      "sourceOutput": "list",
+      "target": "exprC",
+      "targetInput": "x"
+    },
+    {
+      "source": "exprC",
+      "sourceOutput": "result",
+      "target": "dExpr",
+      "targetInput": "in"
+    },
+    {
+      "source": "tspC",
+      "sourceOutput": "result",
+      "target": "castC",
+      "targetInput": "value"
+    },
+    {
+      "source": "castC",
+      "sourceOutput": "result",
+      "target": "dCast",
+      "targetInput": "in"
+    },
+    {
+      "source": "tiD",
+      "sourceOutput": "table",
+      "target": "isnD",
+      "targetInput": "value"
+    },
+    {
+      "source": "isnD",
+      "sourceOutput": "result",
+      "target": "dIsnD",
+      "targetInput": "in"
+    },
+    {
+      "source": "gcA",
+      "sourceOutput": "values",
+      "target": "cmpF",
+      "targetInput": "a"
+    },
+    {
+      "source": "cmpF",
+      "sourceOutput": "result",
+      "target": "dCmpF",
+      "targetInput": "in"
+    },
+    {
+      "source": "gcA",
+      "sourceOutput": "values",
+      "target": "filF",
+      "targetInput": "list"
+    },
+    {
+      "source": "filF",
+      "sourceOutput": "result",
+      "target": "dFilF",
+      "targetInput": "in"
+    },
+    {
+      "source": "gcG",
+      "sourceOutput": "values",
+      "target": "fillConstG",
+      "targetInput": "list"
+    },
+    {
+      "source": "fillConstG",
+      "sourceOutput": "result",
+      "target": "dfillConstG",
+      "targetInput": "in"
+    },
+    {
+      "source": "gcG",
+      "sourceOutput": "values",
+      "target": "fillFfillG",
+      "targetInput": "list"
+    },
+    {
+      "source": "fillFfillG",
+      "sourceOutput": "result",
+      "target": "dfillFfillG",
+      "targetInput": "in"
+    },
+    {
+      "source": "gcG",
+      "sourceOutput": "values",
+      "target": "fillDropG",
+      "targetInput": "list"
+    },
+    {
+      "source": "fillDropG",
+      "sourceOutput": "result",
+      "target": "dfillDropG",
+      "targetInput": "in"
+    },
+    {
+      "source": "gcG",
+      "sourceOutput": "values",
+      "target": "fillInterpG",
+      "targetInput": "list"
+    },
+    {
+      "source": "fillInterpG",
+      "sourceOutput": "result",
+      "target": "dfillInterpG",
+      "targetInput": "in"
+    },
+    {
+      "source": "gcG",
+      "sourceOutput": "values",
+      "target": "fillCoalG",
+      "targetInput": "list"
+    },
+    {
+      "source": "fillCoalG",
+      "sourceOutput": "result",
+      "target": "dfillCoalG",
+      "targetInput": "in"
+    },
+    {
+      "source": "fiG",
+      "sourceOutput": "frame",
+      "target": "gcG",
+      "targetInput": "frame"
+    },
+    {
+      "source": "llElseG",
+      "sourceOutput": "list",
+      "target": "fillCoalG",
+      "targetInput": "else"
+    },
+    {
+      "source": "tiH",
+      "sourceOutput": "table",
+      "target": "isnumH",
+      "targetInput": "value"
+    },
+    {
+      "source": "tiH",
+      "sourceOutput": "table",
+      "target": "isnullH",
+      "targetInput": "value"
+    },
+    {
+      "source": "isnumH",
+      "sourceOutput": "result",
+      "target": "dIsnumH",
+      "targetInput": "in"
+    },
+    {
+      "source": "isnullH",
+      "sourceOutput": "result",
+      "target": "dIsnullH",
+      "targetInput": "in"
+    }
+  ]
+}

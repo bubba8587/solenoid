@@ -1,0 +1,34 @@
+/* Custom desktop window frame (tauri-plugin-decorum). Decorum removes the native
+   caption and injects a fixed, transparent 32px bar at top:0 holding the
+   min/max/close buttons (right-aligned). We don't want a separate title strip —
+   the accent menu bar already sits at the window's top edge and IS the title bar.
+   So we:
+     • make decorum's bar click-through (only its buttons catch the pointer), so it
+       stops swallowing clicks meant for the menus beneath it,
+     • shrink it to the menu bar's height and tint the controls with the accent ink
+       so they read as part of the menu bar,
+     • let the menu bar itself be the drag region (data-tauri-drag-region, set in
+       MenuBar) and reserve room at its right so menus never slide under the buttons.
+   Scoped to html[data-shell="desktop"] (set in main.tsx, Tauri only) — the browser
+   build is untouched. decorum sets the bar/button sizes as inline styles, so the
+   overrides need !important. */
+
+html[data-shell="desktop"] div[data-tauri-decorum-tb] {
+  height: 22px !important;
+  align-items: center !important;
+  pointer-events: none;
+}
+
+html[data-shell="desktop"] div[data-tauri-decorum-tb] button.decorum-tb-btn {
+  pointer-events: auto;
+  width: 37px !important;     /* ~15% tighter than decorum's default cluster */
+  height: 22px !important;
+  font-size: 8.5px !important; /* ~15% smaller glyphs (decorum sets 10px inline) */
+  font-weight: 200 !important; /* thinner glyph strokes (decorum sets 300) */
+  color: var(--accent-ink) !important;
+}
+
+/* Keep the menu bar's items clear of the window controls (3 × 37px). */
+html[data-shell="desktop"] .solenoid-menubar {
+  padding-right: 120px;
+}

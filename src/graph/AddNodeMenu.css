@@ -1,0 +1,153 @@
+.solenoid-add-menu {
+  position: fixed;
+  z-index: 200;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.solenoid-add-menu__heading {
+  padding: 5px 10px 4px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  /* Shared overlay-chrome look (minimap / socket legend / cable inspector):
+     overlay bg + a thicker, more visible border, the modest overlay shadow. */
+  background: var(--overlay-bg);
+  border: var(--overlay-border-width) solid var(--overlay-border);
+  border-radius: 8px 8px 0 0;
+  border-bottom: none;
+}
+
+/* Shared panel chrome. A 2-column grid so paired rows share the same
+   column tracks (right-column items line up across every pair); columns
+   auto-size to their widest item — wasting a little width rather than
+   misaligning, and without hardcoding any label widths. Panels with no
+   pairs collapse to a single effective column. */
+.solenoid-add-menu__panel {
+  display: grid;
+  grid-template-columns: auto auto;
+  column-gap: 3px;
+  align-content: start;
+  background: var(--overlay-bg);
+  border: var(--overlay-border-width) solid var(--overlay-border);
+  border-radius: 0 0 8px 8px;
+  padding: 3px;
+  box-shadow: var(--overlay-shadow);
+  min-width: 170px;
+  /* Cap matches the default tree's height (~12 items + the search field)
+     so the search-results panel is about the same size as the tree, for
+     visual consistency. min(…) keeps it from overflowing short screens. */
+  max-height: min(384px, 85vh);
+  overflow-y: auto;
+}
+
+/* Fuzzy search field at the top of the menu. */
+.solenoid-add-menu__search {
+  margin-bottom: 3px;
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 5px 8px;
+  color: var(--text-bright);
+  font-family: inherit;
+  font-size: 12px;
+  outline: none;
+}
+.solenoid-add-menu__search:focus { border-color: var(--accent); }
+.solenoid-add-menu__search::placeholder { color: var(--text-muted); }
+
+.solenoid-add-menu__empty {
+  padding: 6px 10px;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+/* Singles, categories, search input span both columns; half items (pair
+   members, now rendered directly) auto-place into the two columns. */
+.solenoid-add-menu__panel > *:not(.solenoid-add-menu__item--half) {
+  grid-column: 1 / -1;
+}
+
+/* Submenu panel: JS positions it via inline `position: fixed` (so it
+   can clamp / flip against the viewport). CSS just handles the look. */
+.solenoid-add-menu__panel--submenu {
+  border-radius: 8px;
+  z-index: 201;
+}
+
+.solenoid-add-menu__item {
+  padding: 6px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  position: relative;
+  white-space: nowrap;
+}
+
+.solenoid-add-menu__item:hover,
+.solenoid-add-menu__item--active,
+.solenoid-add-menu__item--open {
+  background: var(--accent-soft);
+}
+
+/* Subtle marker that a node came from an add-on pack (not built-in). A small
+   dim dot at the row's trailing edge — present but easy to ignore. */
+.solenoid-add-menu__pack-dot {
+  flex: 0 0 auto;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  opacity: 0.55;
+}
+
+/* User-input nodes: a rounded-rect highlight in the node-kind accent
+   (--item-accent), drawn as an inset pseudo so it hugs the word rather
+   than filling the whole row. Text stays aligned with the other items. */
+.solenoid-add-menu__item--accent {
+  position: relative;
+  /* Own stacking context so the z-index:-1 highlight pseudo resolves
+     locally (above this item's area) instead of falling behind the panel
+     background — which hid it in the root menu. */
+  z-index: 0;
+  /* Same accent-tinted text the node header label uses. */
+  color: color-mix(in srgb, var(--item-accent) 55%, var(--text));
+}
+.solenoid-add-menu__item--accent::before {
+  content: "";
+  position: absolute;
+  inset: 2px 5px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--item-accent) 22%, transparent);
+  z-index: -1;
+}
+/* The pseudo owns the highlight; suppress the row-wide base hover/active fill. */
+.solenoid-add-menu__item--accent:hover,
+.solenoid-add-menu__item--accent.solenoid-add-menu__item--active {
+  background: transparent;
+}
+.solenoid-add-menu__item--accent:hover::before,
+.solenoid-add-menu__item--accent.solenoid-add-menu__item--active::before {
+  background: color-mix(in srgb, var(--item-accent) 38%, transparent);
+}
+
+/* Pair halves (rendered directly; auto-placed into the two grid columns).
+   Left-aligned like the unpaired items so columns line up. */
+.solenoid-add-menu__item--half {
+  justify-content: flex-start;
+}
+
+.solenoid-add-menu__arrow {
+  font-size: 9px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}

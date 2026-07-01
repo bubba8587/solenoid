@@ -1,0 +1,17 @@
+/* Single source of truth for the tagged-error (#CODE!) treatment. Every error
+   surface (result box, frame/table cell, cable inspector, pins/HUD, group readout,
+   IS-check panel) draws its red from --sol-error so the colour can't drift between
+   them. Semantic + theme-agnostic, like the other hardcoded status colours. */
+:root {
+  --sol-error: #e0473a;
+}
+
+/* The inline badge: a red monospace #CODE! that reads as a state, not a value. */
+.sol-error-chip {
+  color: var(--sol-error);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}

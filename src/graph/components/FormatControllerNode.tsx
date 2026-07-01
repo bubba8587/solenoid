@@ -1,0 +1,480 @@
+import { useState, useEffect, useMemo, useSyncExternalStore } from "react";
+import { FormatControllerNode } from "../rete-nodes";
+import type { FormatControllerNode as FormatControllerNodeType } from "../rete-nodes";
+import {
+  FORMAT_STYLE_LABELS, FORMAT_STYLE_GROUPS, DATE_FORMAT_STYLES, UNIT_ANNOTATIONS,
+  unitGroupLabel, formatMismatchStore,
+  type FormatStyleId, type TextCase, type DecimalMode,
+} from "../formatAnnotationStore";
+import { packsStore } from "../packs";
+import { activePackUnits, activePackFormats } from "../fcExtensions";
+import { SOCKET_COLORS, isDateType } from "../sockets";
+import { processGraph, getEditor, repositionDockedNodes } from "../process";
+import { NodeCard } from "./NodeCard";
+import { NodeSocket } from "./NodeSocket";
+import type { NodeProps } from "./nodeKit";
+import "./nodeCard.css";
+import "./FormatControllerNode.css";
+
+// Base unit-group display order. Active packs' groups are appended (before
+// "custom") at render time — see the component's useMemo.
+const BASE_UNIT_GROUP_ORDER: string[] = [
+  "none", "angle", "length", "mass", "temperature",
+  "time", "area", "volume", "speed", "data", "currency",
+];
+
+type UnitOption = { id: string; label: string };
+
+// A small rounded direction arrow shown beside the Format / Unit controls to
+// show how that property flows. "back" (←) = applies to the box behind this FC;
+// "fwd" (→) = travels with the value downstream / arrives from upstream.
+function FcArrow({ dir, title }: { dir: "back" | "fwd"; title?: string }) {
+  return (
+    <span
+      className="solenoid-fc__arrow"
+      aria-hidden="true"
+      title={title}
+      style={{ display: "inline-flex", opacity: 0.72, flex: "0 0 auto" }}
+    >
+      <svg width="9" height="9" viewBox="0 0 14 14" fill="none" stroke="currentColor"
+           strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+        {dir === "fwd"
+          ? (<><path d="M2.5 7h8.2" /><path d="M7 3.3 10.7 7 7 10.7" /></>)
+          : (<><path d="M11.5 7H3.3" /><path d="M7 3.3 3.3 7 7 10.7" /></>)}
+      </svg>
+    </span>
+  );
+}
+
+export function FormatControllerComponent({ data, emit }: NodeProps<FormatControllerNodeType>) {
+  const node = data;
+
+  const [format,        setFormatLocal]   = useState<FormatStyleId>(node.format);
+  const [customPattern, setPatternLocal]  = useState(node.customPattern);
+  const [unit,          setUnitLocal]     = useState(node.unit);
+  const [customUnit,    setCustomUnitLocal] = useState(node.customUnit);
+  const [textCase,      setTextCaseLocal] = useState<TextCase>(node.textCase);
+  const [bold,          setBoldLocal]     = useState(node.bold);
+  const [italic,        setItalicLocal]   = useState(node.italic);
+  const [textScale,     setScaleLocal]    = useState(node.textScale);
+  const [decimalDigits, setDigitsLocal]   = useState(node.decimalDigits);
+  const [decimalMode,   setModeLocal]     = useState<DecimalMode>(node.decimalMode);
+  // Raw text of the digits box, kept separate from the committed number so the
+  // field can be transiently empty while editing (backspace the last digit).
+  const [digitsText,    setDigitsText]    = useState(String(node.decimalDigits));
+
+  const mismatch = useSyncExternalStore(
+    formatMismatchStore.subscribe,
+    () => formatMismatchStore.has(node.id),
+  );
+
+  // Merge built-in units/formats with the ones active packs contribute, so the
+  // dropdowns grow when a pack is switched on. (Resolution of a value already
+  // works for any registered pack id; this is just what the dropdowns OFFER.)
+  const packsVersion = useSyncExternalStore(packsStore.subscribe, packsStore.version);
+  const { unitGroups, unitGroupOrder } = useMemo(() => {
+    const byGroup = new Map<string, UnitOption[]>();
+    const add = (g: string, u: UnitOption) => {
+      if (!byGroup.has(g)) byGroup.set(g, []);
+      byGroup.get(g)!.push({ id: u.id, label: u.label });
+    };
+    for (const u of UNIT_ANNOTATIONS) add(u.group, u);
+    const order = [...BASE_UNIT_GROUP_ORDER];
+    for (const u of activePackUnits()) {
+      add(u.group, u);
+      if (!order.includes(u.group)) order.push(u.group);
+    }
+    if (byGroup.has("custom")) order.push("custom");
+    return { unitGroups: byGroup, unitGroupOrder: order };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [packsVersion]);
+  const packFormatGroups = useMemo(() => {
+    const m = new Map<string, UnitOption[]>();
+    for (const f of activePackFormats()) {
+      const g = f.group ?? "Pack";
+      if (!m.has(g)) m.set(g, []);
+      m.get(g)!.push({ id: f.id, label: f.label });
+    }
+    return m;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [packsVersion]);
+
+  // Re-home onto a different-typed socket (drag-to-dock) can change node.format
+  // and socketDataType externally; resync local state so the controlled selects
+  // reflect it instead of showing a stale value.
+  useEffect(() => {
+    setFormatLocal(node.format);
+    setUnitLocal(node.unit);
+    setTextCaseLocal(node.textCase);
+    setBoldLocal(node.bold);
+    setItalicLocal(node.italic);
+    setScaleLocal(node.textScale);
+    // Resync when the wiring changes these externally — e.g. a forwarding FC's
+    // unit being mirrored/locked from its upstream — so the dropdowns reflect it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [node.socketDataType, node.unit, node.format, node.forwarding, node.lockedByConvert]);
+
+  function syncNode() {
+    const editor = getEditor();
+    if (editor) {
+      // Refresh every FC, not just this one: a unit change here must propagate
+      // to any downstream forwarding FC (whose unit is locked to its upstream).
+      for (const n of editor.getNodes()) {
+        if (n instanceof FormatControllerNode) n.refreshAnnotation(editor);
+      }
+    }
+    void processGraph();
+  }
+
+  function onFormatChange(f: FormatStyleId) {
+    node.format = f;
+    setFormatLocal(f);
+    syncNode();
+    // Decimal/Percent add a middle row, changing the chip height; a docked FC
+    // must re-center on its host socket once the new height has laid out.
+    if (node.hostNodeId) {
+      requestAnimationFrame(() => requestAnimationFrame(() => repositionDockedNodes(node.hostNodeId)));
+    }
+  }
+
+  function onPatternChange(p: string) {
+    node.customPattern = p;
+    setPatternLocal(p);
+    syncNode();
+  }
+
+  function onUnitChange(u: string) {
+    node.unit = u;
+    setUnitLocal(u);
+    syncNode();
+  }
+
+  function onCustomUnitChange(u: string) {
+    node.customUnit = u;
+    setCustomUnitLocal(u);
+    syncNode();
+  }
+
+  function onCaseChange(c: TextCase) {
+    node.textCase = c;
+    setTextCaseLocal(c);
+    syncNode();
+  }
+
+  function toggleBold() {
+    node.bold = !node.bold;
+    setBoldLocal(node.bold);
+    syncNode();
+  }
+
+  function toggleItalic() {
+    node.italic = !node.italic;
+    setItalicLocal(node.italic);
+    syncNode();
+  }
+
+  function onScaleChange(s: number) {
+    node.textScale = s;
+    setScaleLocal(s);
+    syncNode();
+  }
+
+  // Commit a final, clamped digit count (also normalizes the visible text).
+  function commitDigits(d: number) {
+    const lo = decimalMode === "sigfigs" ? 1 : 0;
+    const clamped = Math.max(lo, Math.min(20, Math.round(d)));
+    node.decimalDigits = clamped;
+    setDigitsLocal(clamped);
+    setDigitsText(String(clamped));
+    syncNode();
+  }
+
+  // While typing: reflect exactly what's in the box (including empty), and
+  // commit only when it parses — so backspacing the last digit isn't blocked.
+  function onDigitsInput(raw: string) {
+    setDigitsText(raw);
+    if (raw === "") return; // transient empty — wait for more input or blur
+    const d = parseInt(raw, 10);
+    if (!Number.isFinite(d)) return;
+    const lo = decimalMode === "sigfigs" ? 1 : 0;
+    const clamped = Math.max(lo, Math.min(20, Math.round(d)));
+    node.decimalDigits = clamped;
+    setDigitsLocal(clamped);
+    syncNode();
+  }
+
+  // On blur, an empty/invalid box falls back to 1 (0 sig figs is meaningless,
+  // and an empty value shouldn't stick).
+  function onDigitsBlur() {
+    const d = parseInt(digitsText, 10);
+    commitDigits(digitsText === "" || !Number.isFinite(d) ? 1 : d);
+  }
+
+  function onModeSet(mode: DecimalMode) {
+    if (mode === decimalMode) return;
+    node.decimalMode = mode;
+    setModeLocal(mode);
+    // sig figs needs ≥ 1; bump a 0 up so the value doesn't vanish.
+    if (mode === "sigfigs" && decimalDigits < 1) commitDigits(1);
+    syncNode();
+  }
+
+  const inputPort  = node.inputs["in"];
+  const outputPort = node.outputs["out"];
+
+  const socketAccent = SOCKET_COLORS[node.socketDataType];
+  const accent = mismatch ? "#e06c2e" : socketAccent;
+
+  // The FC adapts its options to the host socket's type: dates get date styles
+  // (no units), text gets nothing to format, numbers get number formats + units.
+  const dt = node.socketDataType;
+  const isDate = isDateType(dt);
+  const isText = dt === "string" || dt === "strlist";
+  const showFormatCustom = format === "custom" || format === "date_custom";
+
+  // Unit-flow arrows flanking the unit dropdown. Format always applies backward
+  // (←, to the box behind the FC); the unit's direction depends on where it's
+  // set: a defining FC sends it downstream (← own box, → forward); an FC that
+  // inherited it from upstream shows it arriving (→ inward); an FC feeding a
+  // Convert has its unit dictated back from the Convert (← in, ← to its box).
+  const hasUnit = unit !== "none";
+  let unitLeft: "back" | "fwd" | null = null;
+  let unitRight: "back" | "fwd" | null = null;
+  if (node.lockedByConvert)   { unitLeft = "back"; unitRight = "back"; }
+  else if (node.forwarding)   { unitLeft = "fwd"; }
+  else if (hasUnit)           { unitLeft = "back"; unitRight = "fwd"; }
+
+  return (
+    <NodeCard
+      selected={node.selected}
+      node={node}
+      className="solenoid-fc"
+      accentOverride={accent}
+    >
+      {/* Input socket (left) */}
+      {inputPort && (
+        <NodeSocket side="input" socketKey="in" nodeId={node.id} emit={emit} payload={inputPort.socket} />
+      )}
+      {/* Output socket (right) */}
+      {outputPort && (
+        <NodeSocket side="output" socketKey="out" nodeId={node.id} emit={emit} payload={outputPort.socket} />
+      )}
+
+      {/* Mismatch indicator — corner badge (no header to host it). */}
+      {mismatch && (
+        <span className="solenoid-fc__mismatch" title="Unit mismatch on connected cable">!</span>
+      )}
+      {isText ? (
+        /* Text: display-only case + bold / italic / size (non-destructive). */
+        <>
+        <div className="solenoid-fc__row">
+          <FcArrow dir="back" title="Formatting applies to the box behind this controller" />
+          <select
+            className="solenoid-node__op-select solenoid-fc__select solenoid-fc__select--wide"
+            value={textCase}
+            onChange={(e) => onCaseChange(e.target.value as TextCase)}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            title="Letter case (display only)"
+          >
+            <option value="none">Aa (as-is)</option>
+            <option value="upper">UPPER</option>
+            <option value="lower">lower</option>
+            <option value="proper">Proper</option>
+          </select>
+        </div>
+        <div className="solenoid-fc__row">
+          <button
+            type="button"
+            className={`solenoid-fc__toggle${bold ? " solenoid-fc__toggle--on" : ""}`}
+            style={{ fontWeight: 700 }}
+            onClick={toggleBold}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            title="Bold"
+          >B</button>
+          <button
+            type="button"
+            className={`solenoid-fc__toggle${italic ? " solenoid-fc__toggle--on" : ""}`}
+            style={{ fontStyle: "italic" }}
+            onClick={toggleItalic}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            title="Italic"
+          >I</button>
+          <select
+            className="solenoid-node__op-select solenoid-fc__size"
+            value={textScale}
+            onChange={(e) => onScaleChange(parseFloat(e.target.value))}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            title="Text size"
+          >
+            {[11, 12, 14, 16, 20, 24, 32].map((px) => (
+              <option key={px} value={px}>{px}</option>
+            ))}
+          </select>
+        </div>
+        </>
+      ) : isDate ? (
+        /* Date socket: one date-style dropdown, no units. */
+        <div className="solenoid-fc__row">
+          <FcArrow dir="back" title="Format applies to the box behind this controller" />
+          <select
+            className="solenoid-node__op-select solenoid-fc__select solenoid-fc__select--wide"
+            value={format}
+            onChange={(e) => onFormatChange(e.target.value as FormatStyleId)}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            title="Date format"
+          >
+            {DATE_FORMAT_STYLES.map((s) => (
+              <option key={s} value={s}>
+                {s === "date_custom" ? "Custom…" : FORMAT_STYLE_LABELS[s]}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : (
+        /* Number-ish socket: number format and unit, stacked for a narrow chip. */
+        <>
+        <div className="solenoid-fc__row">
+          <FcArrow dir="back" title="Format applies to the box behind this controller" />
+          <select
+            className="solenoid-node__op-select solenoid-fc__select solenoid-fc__select--wide"
+            value={format}
+            onChange={(e) => onFormatChange(e.target.value as FormatStyleId)}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            title="Number format"
+          >
+            {Object.entries(FORMAT_STYLE_GROUPS).map(([group, styles]) =>
+              styles.length === 1 && group === "General" ? (
+                <option key={styles[0]} value={styles[0]}>{FORMAT_STYLE_LABELS[styles[0]]}</option>
+              ) : (
+                <optgroup key={group} label={group}>
+                  {styles.map((s) => (
+                    <option key={s} value={s}>{FORMAT_STYLE_LABELS[s]}</option>
+                  ))}
+                </optgroup>
+              )
+            )}
+            {[...packFormatGroups].map(([group, items]) => (
+              <optgroup key={`pack:${group}`} label={group}>
+                {items.map((f) => (
+                  <option key={f.id} value={f.id}>{f.label}</option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        </div>
+        {(format === "decimal" || format === "percent") && (
+          <div className="solenoid-fc__row solenoid-fc__row--decimal">
+            {/* spacer matching the format/unit row arrow, so the input's left
+                edge lines up with the dropdowns above and below it */}
+            <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
+            <input
+              type="number"
+              className="solenoid-node__inline-input solenoid-fc__digits"
+              value={digitsText}
+              min={decimalMode === "sigfigs" ? 1 : 0}
+              max={20}
+              step={1}
+              onChange={(e) => onDigitsInput(e.target.value)}
+              onBlur={onDigitsBlur}
+              onPointerDown={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              title={decimalMode === "places" ? "Digits after the decimal point" : "Number of significant figures"}
+            />
+            <div className="solenoid-fc__seg">
+              <button
+                type="button"
+                className={`solenoid-fc__segbtn${decimalMode === "places" ? " solenoid-fc__segbtn--on" : ""}`}
+                onClick={() => onModeSet("places")}
+                onPointerDown={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+                title="Decimal places"
+              >places</button>
+              <button
+                type="button"
+                className={`solenoid-fc__segbtn${decimalMode === "sigfigs" ? " solenoid-fc__segbtn--on" : ""}`}
+                onClick={() => onModeSet("sigfigs")}
+                onPointerDown={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+                title="Significant figures"
+              >sig figs</button>
+            </div>
+          </div>
+        )}
+        <div className="solenoid-fc__row">
+          {unitLeft && <FcArrow dir={unitLeft} title={
+            node.lockedByConvert ? "Unit dictated by the Convert downstream"
+            : node.forwarding    ? "Unit inherited from upstream"
+            : "Unit labels this box and travels downstream"
+          } />}
+          <select
+            className="solenoid-node__op-select solenoid-fc__select solenoid-fc__select--wide"
+            value={unit}
+            disabled={node.unitLocked}
+            onChange={(e) => onUnitChange(e.target.value)}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            title={node.unitLocked ? "Unit locked (set elsewhere in the chain)" : "Unit label / cable constraint"}
+          >
+            {unitGroupOrder.map((group) => {
+              const items = unitGroups.get(group);
+              if (!items?.length) return null;
+              if (group === "none") {
+                return items.map((u) => (
+                  <option key={u.id} value={u.id}>No unit</option>
+                ));
+              }
+              return (
+                <optgroup key={group} label={unitGroupLabel(group)}>
+                  {items.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.id === "custom" ? "Custom…" : (u.label.trim() || u.id)}
+                    </option>
+                  ))}
+                </optgroup>
+              );
+            })}
+          </select>
+          {unitRight && <FcArrow dir={unitRight} title={
+            node.lockedByConvert ? "Unit dictated by the Convert downstream"
+            : "Unit travels downstream with the value"
+          } />}
+        </div>
+        </>
+      )}
+
+      {/* Custom pattern / unit fields appear only when "Custom…" is chosen. */}
+      {!isText && (showFormatCustom || unit === "custom") && (
+        <div className="solenoid-fc__row solenoid-fc__row--custom">
+          {showFormatCustom && (
+            <input
+              type="text"
+              className="solenoid-node__inline-input solenoid-fc__pattern"
+              value={customPattern}
+              placeholder={isDate ? "pattern, e.g. YYYY-MM-DD" : 'format, e.g. "0.00"'}
+              onChange={(e) => onPatternChange(e.target.value)}
+              onPointerDown={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+            />
+          )}
+          {!isDate && unit === "custom" && (
+            <input
+              type="text"
+              className="solenoid-node__inline-input solenoid-fc__pattern"
+              value={customUnit}
+              placeholder="unit, e.g. psi"
+              onChange={(e) => onCustomUnitChange(e.target.value)}
+              onPointerDown={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+            />
+          )}
+        </div>
+      )}
+    </NodeCard>
+  );
+}

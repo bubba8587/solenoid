@@ -1,0 +1,198 @@
+.solenoid-legend {
+  position: absolute;
+  /* Sits above the minimap (105px tall + 30px from bottom), same width + right
+     edge so the two stack as a tidy right-side column. */
+  bottom: 148px;
+  right: 16px;
+  width: 147px;
+  box-sizing: border-box;
+  background: var(--overlay-bg);
+  border: var(--overlay-border-width) solid var(--overlay-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  z-index: 100;
+  pointer-events: all;
+  box-shadow: var(--overlay-shadow);
+}
+
+/* Expanded panel renders 15% smaller, anchored to its bottom-right corner. */
+.solenoid-legend:not(.solenoid-legend--collapsed) {
+  transform: scale(0.85);
+  transform-origin: bottom right;
+}
+
+/* Collapsed: the panel chrome disappears so only the launcher button shows —
+   otherwise the panel border + the button border read as a double ring. */
+.solenoid-legend--collapsed {
+  width: auto;
+  min-width: 0;
+  padding: 0;
+  background: none;
+  border: none;
+  box-shadow: none;
+}
+
+.solenoid-legend__toggle {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 2px;
+}
+.solenoid-legend__toggle:hover { color: var(--text); }
+
+/* Collapsed launcher matches the other floating app buttons (apptools): a 28px
+   circle, single border, normal (text → accent on hover) highlight. */
+.solenoid-legend--collapsed .solenoid-legend__toggle {
+  position: static;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--btn-bg);
+  border: var(--overlay-border-width) solid var(--overlay-border);
+  border-radius: 50%;
+  color: var(--text);
+  box-shadow: var(--overlay-shadow);
+}
+.solenoid-legend--collapsed .solenoid-legend__toggle:hover {
+  background: var(--btn-hover);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.solenoid-legend__heading {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  padding-right: 16px;
+}
+
+.solenoid-legend__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.solenoid-legend__row:last-child {
+  margin-bottom: 0;
+}
+
+/* Label on the LEFT, swatches on the RIGHT: the label takes the free space and
+   the dots sit right-aligned in a fixed-width column, so the swatches form a
+   tidy right edge regardless of how many dots a group carries (up to 3:
+   scalar + list + matrix). */
+.solenoid-legend__dots {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  width: 50px;
+  flex-shrink: 0;
+}
+
+.solenoid-legend__type {
+  flex: 1;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.solenoid-legend__desc {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+/* ── Mobile pass ────────────────────────────────────────────────────────────
+   On a phone the floating legend is gone entirely — the socket-type reference
+   lives in the Reference overlay's "Socket Types" tab instead (no corner to
+   spare, and the full-width bottom bar covered its old spot). */
+html.is-mobile .solenoid-legend { display: none; }
+
+/* ── Dimensionality flow explainer (Reference overlay → Socket Types tab) ──── */
+.solenoid-dimflow {
+  max-width: 440px;
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+.solenoid-dimflow__heading {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 13px;
+}
+.solenoid-dimflow__ladder {
+  display: flex;
+  align-items: stretch;
+  gap: 7px;
+  margin-bottom: 16px;
+}
+.solenoid-dimflow__step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 8px 9px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface-sunken);
+}
+.solenoid-dimflow__step-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+  min-width: 0;
+}
+.solenoid-dimflow__dim {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+}
+.solenoid-dimflow__name { font-size: 12px; color: var(--text); }
+.solenoid-dimflow__sub { font-size: 10px; color: var(--text-dim); }
+.solenoid-dimflow__arrow {
+  align-self: center;
+  flex: 0 0 auto;
+  font-size: 15px;
+  color: var(--text-muted);
+}
+.solenoid-dimflow__rule {
+  margin: 0 0 11px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+.solenoid-dimflow__badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 999px;
+  margin-right: 6px;
+  white-space: nowrap;
+}
+.solenoid-dimflow__badge--ok { color: #2fae7a; background: color-mix(in srgb, #2fae7a 17%, transparent); }
+.solenoid-dimflow__badge--no { color: #e0705e; background: color-mix(in srgb, #e0705e 17%, transparent); }
+.solenoid-dimflow__note {
+  margin: 2px 0 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.solenoid-dimflow em { font-style: normal; color: var(--text); }

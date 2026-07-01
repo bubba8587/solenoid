@@ -1,0 +1,49 @@
+Date,Account,Category,Merchant,Amount
+2026-01-01,Checking,Income,Employer Payroll,5200.00
+2026-01-03,Checking,Housing,Skyline Apartments,-1800.00
+2026-01-04,Credit Card,Groceries,Whole Foods,-142.30
+2026-01-06,Credit Card,Transport,Shell,-54.10
+2026-01-08,Credit Card,Dining,Chipotle,-28.75
+2026-01-10,Checking,Utilities,City Power,-120.45
+2026-01-11,Credit Card,Groceries,Trader Joes,-88.20
+2026-01-14,Credit Card,Entertainment,Netflix,-15.99
+2026-01-16,Credit Card,Shopping,Amazon,-64.99
+2026-01-18,Credit Card,Dining,Olive Garden,-52.40
+2026-01-20,Checking,Health,CVS Pharmacy,-34.20
+2026-01-22,Credit Card,Groceries,Costco,-211.65
+2026-01-25,Credit Card,Transport,Uber,-22.80
+2026-01-29,Credit Card,Entertainment,Spotify,-10.99
+2026-01-31,Checking,Utilities,Comcast Internet,-79.99
+2026-02-01,Checking,Income,Employer Payroll,5200.00
+2026-02-03,Checking,Housing,Skyline Apartments,-1800.00
+2026-02-05,Credit Card,Groceries,Whole Foods,-156.80
+2026-02-07,Credit Card,Transport,Shell,-49.60
+2026-02-09,Credit Card,Dining,Sushi Place,-61.25
+2026-02-10,Checking,Utilities,City Power,-110.30
+2026-02-12,Credit Card,Shopping,Target,-98.45
+2026-02-14,Credit Card,Dining,The Steakhouse,-132.00
+2026-02-15,Checking,Income,Freelance Side Gig,420.00
+2026-02-17,Credit Card,Groceries,Trader Joes,-94.10
+2026-02-19,Credit Card,Entertainment,Netflix,-15.99
+2026-02-20,Credit Card,Health,Walgreens,-41.75
+2026-02-22,Credit Card,Groceries,Costco,-188.30
+2026-02-24,Credit Card,Transport,Uber,-31.20
+2026-02-26,Credit Card,Shopping,Amazon,-120.50
+2026-02-28,Checking,Utilities,Comcast Internet,-79.99
+2026-03-01,Checking,Income,Employer Payroll,5200.00
+2026-03-02,Checking,Housing,Skyline Apartments,-1800.00
+2026-03-04,Credit Card,Groceries,Whole Foods,-167.40
+2026-03-06,Credit Card,Transport,Shell,-58.75
+2026-03-08,Credit Card,Dining,Chipotle,-33.10
+2026-03-10,Checking,Utilities,City Power,-98.65
+2026-03-11,Credit Card,Entertainment,Concert Tickets,-210.00
+2026-03-13,Credit Card,Groceries,Trader Joes,-102.55
+2026-03-15,Checking,Income,Tax Refund,890.00
+2026-03-16,Credit Card,Shopping,Amazon,-76.30
+2026-03-18,Credit Card,Dining,Thai Garden,-44.90
+2026-03-20,Checking,Health,Dentist,-180.00
+2026-03-22,Credit Card,Groceries,Costco,-198.75
+2026-03-24,Credit Card,Transport,Uber,-27.60
+2026-03-26,Credit Card,Entertainment,Netflix,-15.99
+2026-03-28,Checking,Utilities,Comcast Internet,-79.99
+2026-03-30,Credit Card,Shopping,Best Buy,-349.99

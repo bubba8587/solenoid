@@ -1,0 +1,112 @@
+/* Fired-alerts HUD section — mirrors the pinned-values section (pinLayer.css):
+   a collapse button plus a stack of chips. A section within .solenoid-hud-stack,
+   which owns the fixed positioning. */
+.solenoid-alert-layer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: none;
+}
+
+/* Collapsed: chips hidden, only the trigger button shows. */
+.solenoid-alert-layer--collapsed .solenoid-alert {
+  display: none;
+}
+
+/* The always-visible collapse/expand toggle — stays right-aligned regardless of
+   how wide the expanded chips make the section (matches the pin trigger). */
+.solenoid-alert-layer__trigger {
+  pointer-events: auto;
+  position: relative;
+  width: 28px;
+  height: 28px;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--btn-bg);
+  border: var(--overlay-border-width) solid var(--overlay-border);
+  border-radius: 50%;
+  color: var(--text);
+  cursor: pointer;
+  box-shadow: var(--overlay-shadow);
+  flex-shrink: 0;
+}
+.solenoid-alert-layer__trigger:hover {
+  background: var(--btn-hover);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Count badge shown when collapsed — red, to read as "needs attention". */
+.solenoid-alert-layer__count {
+  position: absolute;
+  top: -4px;
+  right: -5px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  background: #e0524d;
+  /* Ink on the fixed red fill: a near-black shade of the badge's own hue, so it
+     reads at >4.5:1 and stays stable across themes (unlike --accent-ink, which
+     tracks the unrelated accent and can flip to white on a dark accent). */
+  color: color-mix(in srgb, #e0524d 20%, #000);
+  border-radius: 8px;
+  font-size: 9px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.solenoid-alert {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 6px 5px 9px;
+  background: var(--overlay-bg);
+  border: var(--overlay-border-width) solid var(--overlay-border);
+  border-radius: 8px;
+  box-shadow: var(--overlay-shadow);
+  cursor: pointer;
+  animation: solenoid-alert-in 130ms ease-out;
+}
+.solenoid-alert:hover { border-color: var(--alert-color, var(--accent)); }
+
+@keyframes solenoid-alert-in {
+  from { opacity: 0; transform: translateX(8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.solenoid-alert__msg {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.solenoid-alert__remove {
+  flex: none;
+  /* Flex-center the ✕ glyph rather than baseline (see .sol-popup__close). */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  background: none;
+  border: none;
+  color: var(--text-muted, var(--text));
+  opacity: 0.5;
+  font-size: 11px;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+}
+.solenoid-alert__remove:hover { opacity: 1; color: #e0524d; }

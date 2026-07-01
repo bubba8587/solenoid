@@ -1,0 +1,190 @@
+import { describe, it, expect } from "vitest";
+import { MapTableNode, ByAxisNode, ReduceLambdaNode } from "./tableLambda";
+import { LambdaNode, isLambdaValue, formatLambda, type LambdaValue } from "./lambda";
+import { isSolError, type SolError } from "../errorValue";
+
+/** Narrow a node result the test knows is a lambda value (the node now returns a
+ *  SolError on a broken lambda, so the union needs a guard before .params/.fn). */
+function asLambda(v: unknown): LambdaValue {
+  if (!isLambdaValue(v)) throw new Error(`expected a lambda value, got ${JSON.stringify(v)}`);
+  return v;
+}
+
+describe("Lambda (LAMBDA value)", () => {
+  it("emits a callable value binding params positionally", () => {
+    const n = new LambdaNode({ params: "a, b", expr: "a * b + 1" });
+    const v = asLambda(n.data({}).result);
+    expect(v.params).toEqual(["a", "b"]);
+    expect(v.fn(3, 4)).toBe(13);
+    expect(formatLambda(v)).toBe("λ(a, b)");
+  });
+
+  it("captures non-parameter variables from inputs and literals", () => {
+    const n = new LambdaNode({ params: "x", expr: "x * rate + base" });
+    expect(n.captured).toEqual(["rate", "base"]);
+    n.literals.base = 100;
+    const v = asLambda(n.data({ rate: [2] }).result);
+    expect(v.fn(5)).toBe(110);
+  });
+
+  it("re-derives captured sockets when params change", () => {
+    const n = new LambdaNode({ params: "x", expr: "x * k" });
+    expect(n.captured).toEqual(["k"]);
+    n.params = "x, k";
+    const { removed } = n._rebuild();
+    expect(removed).toEqual(["k"]);
+    expect(n.captured).toEqual([]);
+    expect(asLambda(n.data({}).result).fn(3, 4)).toBe(12);
+  });
+
+  it("flags bad parameter names and syntax errors as typed errors", () => {
+    // The inline cachedError keeps the rich message; the result is a tagged error
+    // so a broken lambda propagates down its cable instead of silently no-op'ing.
+    const bad = new LambdaNode({ params: "x, 2y", expr: "x" });
+    const badR = bad.data({}).result;
+    expect(isSolError(badR)).toBe(true);
+    expect((badR as SolError).code).toBe("#NAME?");
+    expect(bad.cachedError).toBe("Bad parameter name");
+    const syn = new LambdaNode({ params: "x", expr: "x +* 1" });
+    const synR = syn.data({}).result;
+    expect(isSolError(synR)).toBe(true);
+    expect((synR as SolError).code).toBe("#SYNTAX!");
+    expect(syn.cachedError).toBe("Syntax error");
+    // A blank body is still a legitimate no-value, not an error.
+    expect(new LambdaNode({ params: "x", expr: "" }).data({}).result).toBeNull();
+  });
+});
+
+describe("Lambda wired into consumers", () => {
+  const lambdaOf = (params: string, expr: string, inputs = {}) =>
+    new LambdaNode({ params, expr }).data(inputs).result!;
+
+  it("overrides MAP's inline formula, binding (x, y)", () => {
+    const map = new MapTableNode({ expr: "x + 1000" });
+    const lam = lambdaOf("v, w", "v * w");
+    expect(map.data({ table: [[[1, 2]]], table2: [[[10, 20]]], lambda: [lam] }).result)
+      .toEqual([[10, 40]]);
+  });
+
+  it("overrides REDUCE's inline formula, binding (acc, x)", () => {
+    const red = new ReduceLambdaNode();
+    const lam = lambdaOf("total, v", "total + v * v");
+    expect(red.data({ table: [[[1, 2, 3]]], lambda: [lam] }).result).toBe(14);
+  });
+
+  it("a captured value rides the closure into the consumer", () => {
+    const red = new ReduceLambdaNode();
+    const lam = lambdaOf("acc, v", "acc + v * scale", { scale: [10] });
+    expect(red.data({ table: [[[1, 2]]], lambda: [lam] }).result).toBe(30);
+  });
+
+  it("rejects a lambda with more params than the node provides", () => {
+    const by = new ByAxisNode();
+    const lam = lambdaOf("a, b", "a + b");
+    const r = by.data({ table: [[[1, 2]]], lambda: [lam] }).result;
+    expect(isSolError(r)).toBe(true);
+    expect((r as SolError).code).toBe("#VALUE!");
+    expect(by.cachedError).toMatch(/Lambda takes 2 values/);
+  });
+
+  it("BYROW accepts a 1-param lambda over the row vector", () => {
+    const by = new ByAxisNode();
+    const lam = lambdaOf("row", "MAX(row) - MIN(row)");
+    expect(by.data({ table: [[[1, 5], [10, 2]]], lambda: [lam] }).result).toEqual([4, 8]);
+  });
+});
+
+describe("MapTable (MAP)", () => {
+  it("maps a single table with the default x^2", () => {
+    const n = new MapTableNode();
+    expect(n.data({ table: [[[1, 2], [3, 4]]] }).result).toEqual([[1, 4], [9, 16]]);
+    expect(n.cachedError).toBeNull();
+  });
+
+  it("zips two same-shape tables through x and y", () => {
+    const n = new MapTableNode({ expr: "x * y" });
+    expect(n.data({ table: [[[1, 2], [3, 4]]], table2: [[[10, 20], [30, 40]]] }).result)
+      .toEqual([[10, 40], [90, 160]]);
+  });
+
+  it("zips three tables", () => {
+    const n = new MapTableNode({ expr: "x + y + z" });
+    expect(n.data({
+      table: [[[1, 2]]], table2: [[[10, 20]]], table3: [[[100, 200]]],
+    }).result).toEqual([[111, 222]]);
+  });
+
+  it("broadcasts a 1×1 second table over every cell", () => {
+    const n = new MapTableNode({ expr: "x * y" });
+    expect(n.data({ table: [[[1, 2], [3, 4]]], table2: [[[10]]] }).result)
+      .toEqual([[10, 20], [30, 40]]);
+  });
+
+  it("errors on a shape mismatch", () => {
+    const n = new MapTableNode({ expr: "x * y" });
+    const r = n.data({ table: [[[1, 2], [3, 4]]], table2: [[[1, 2, 3]]] }).result;
+    expect(isSolError(r)).toBe(true);
+    expect((r as SolError).code).toBe("#SHAPE!");
+    expect(n.cachedError).toMatch(/Shape mismatch/);
+  });
+
+  it("exposes the 1-based position as r and c", () => {
+    const n = new MapTableNode({ expr: "r * 10 + c" });
+    expect(n.data({ table: [[[0, 0], [0, 0]]] }).result).toEqual([[11, 12], [21, 22]]);
+  });
+});
+
+describe("ReduceLambda (REDUCE)", () => {
+  it("folds a list with the default acc + x from initial 0", () => {
+    const n = new ReduceLambdaNode();
+    expect(n.data({ table: [[[1, 2, 3, 4]]] }).result).toBe(10);
+    expect(n.cachedError).toBeNull();
+  });
+
+  it("starts from the wired initial value", () => {
+    const n = new ReduceLambdaNode();
+    expect(n.data({ initial: [5], table: [[[1, 2, 3]]] }).result).toBe(11);
+  });
+
+  it("starts from the inline initial literal when unwired", () => {
+    const n = new ReduceLambdaNode();
+    n.literals.initial = 100;
+    expect(n.data({ table: [[[1, 2]]] }).result).toBe(103);
+  });
+
+  it("folds a matrix row-major, matching Excel", () => {
+    // acc*10 + x encodes visit order in the digits: [[1,2],[3,4]] → 1234.
+    const n = new ReduceLambdaNode({ expr: "acc * 10 + x" });
+    expect(n.data({ table: [[[1, 2], [3, 4]]] }).result).toBe(1234);
+  });
+
+  it("exposes the 1-based position as i", () => {
+    const n = new ReduceLambdaNode({ expr: "acc + x * i" });
+    expect(n.data({ table: [[[1, 2, 3]]] }).result).toBe(1 + 4 + 9);
+  });
+
+  it("resolves Excel functions in the formula", () => {
+    const n = new ReduceLambdaNode({ expr: "MAX(acc, x)" });
+    expect(n.data({ initial: [-999], table: [[[3, 7, 2]]] }).result).toBe(7);
+  });
+
+  it("a wired formula string overrides the inline one", () => {
+    const n = new ReduceLambdaNode({ expr: "acc + x" });
+    expect(n.data({ table: [[[2, 3]]], formula: ["acc * x"] }).result).toBe(0);
+    expect(n.data({ initial: [1], table: [[[2, 3]]], formula: ["acc * x"] }).result).toBe(6);
+  });
+
+  it("returns null with no values wired", () => {
+    const n = new ReduceLambdaNode();
+    expect(n.data({}).result).toBeNull();
+    expect(n.cachedError).toBeNull();
+  });
+
+  it("flags a syntax error", () => {
+    const n = new ReduceLambdaNode({ expr: "acc +* x" });
+    const r = n.data({ table: [[[1]]] }).result;
+    expect(isSolError(r)).toBe(true);
+    expect((r as SolError).code).toBe("#SYNTAX!");
+    expect(n.cachedError).toBe("Syntax error");
+  });
+});

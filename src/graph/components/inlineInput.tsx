@@ -1,0 +1,368 @@
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent } from "react";
+import katex from "katex";
+import "katex/dist/katex.min.css";
+import type { ClassicPreset } from "rete";
+import type { ClassicScheme, RenderEmit } from "rete-react-plugin";
+import { SolenoidSocket } from "../sockets";
+import { connectionVersionStore, getEditor, processGraph, pushHistory } from "../process";
+import { nodeName } from "../catalogUtils";
+import { collapseStore } from "../collapseStore";
+import { NodeSocket, MeasuredSocketRow } from "./NodeSocket";
+import { CollapsedInputPill } from "./CollapsedInputPill";
+import { ResizeHandle } from "./ResizeHandle";
+
+// Vertical pitch between input rows. Socket *placement* no longer uses a fixed
+// top offset — each input dot centers on its own row via CSS (.solenoid-node__io-row
+// sets --out-socket-top: 50%), so it's immune to header height. PITCH is still
+// used to size nodes whose body grows by row count (e.g. Expression).
+export const INPUT_ROW_PITCH = 28;
+
+/**
+ * Set of input-socket keys on `nodeId` that currently have an incoming
+ * cable. Derived fresh on every render (cheap: one pass over connections);
+ * the version subscription only forces a render the instant a cable lands
+ * or leaves. Deriving at render time (not caching in state) means anything
+ * else that re-renders the node — e.g. processGraph after a source-node
+ * rename — also picks up current graph state, with no stale snapshot.
+ */
+export function useConnectedInputs(nodeId: string): Set<string> {
+  useSyncExternalStore(connectionVersionStore.subscribe, connectionVersionStore.get);
+  const conns = getEditor()?.getConnections() ?? [];
+  const set = new Set<string>();
+  for (const c of conns) {
+    if (c.target === nodeId && typeof c.targetInput === "string") set.add(c.targetInput);
+  }
+  return set;
+}
+
+export type IncomingSource = { sourceId: string; sourceOutput: string; label: string };
+
+/**
+ * Per-input-key info about the cable feeding it — who drives this input, not
+ * just THAT it's driven. The wired marker and the formula-override rows render
+ * the source node's label from this so the connection is legible in place.
+ * Derived at render time for the same reason as useConnectedInputs: the label
+ * lives on the source node and changes on rename (which re-renders every node
+ * via processGraph), not only on connection changes.
+ */
+export function useIncomingSources(nodeId: string): Map<string, IncomingSource> {
+  useSyncExternalStore(connectionVersionStore.subscribe, connectionVersionStore.get);
+  const editor = getEditor();
+  const map = new Map<string, IncomingSource>();
+  for (const c of editor?.getConnections() ?? []) {
+    if (c.target !== nodeId || typeof c.targetInput !== "string") continue;
+    const src = editor?.getNode(c.source);
+    // An unlabeled source shows its catalog name as its header PLACEHOLDER, so the
+    // wire marker mirrors that (e.g. "↩ Expression") instead of a bare "wired".
+    const srcLabel = (src as { label?: string } | undefined)?.label?.trim();
+    map.set(c.targetInput, {
+      sourceId: c.source,
+      sourceOutput: c.sourceOutput as string,
+      label: srcLabel || (src ? (nodeName(src) ?? "") : ""),
+    });
+  }
+  return map;
+}
+
+/** `parse` result for a draft that can't become a value (commit reverts). */
+export const INVALID_DRAFT = Symbol("invalid-draft");
+
+/**
+ * Commit-on-Enter/clickaway editing for a typed field — the project-wide rule:
+ * typing NEVER propagates into the graph; the draft lives locally until Enter
+ * or blur commits it (Escape reverts), like Excel's cell editing. One undo
+ * entry per committed change. Wire the returned props onto the input and call
+ * `apply` with the mirror-to-node + processGraph logic; don't call processGraph
+ * from onChange.
+ */
+export function useDraftCommit<T>(
+  committed: T,
+  toText: (v: T) => string,
+  parse: (text: string) => T | typeof INVALID_DRAFT,
+  apply: (v: T) => void,
+) {
+  const [draft, setDraft] = useState(() => toText(committed));
+  const cancelled = useRef(false);
+  // Resync when the committed value changes underneath us (undo, external edit).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setDraft(toText(committed)); }, [committed]);
+  const onBlur = () => {
+    if (cancelled.current) { cancelled.current = false; setDraft(toText(committed)); return; }
+    const next = parse(draft);
+    if (next === INVALID_DRAFT || Object.is(next, committed)) {
+      setDraft(toText(committed)); // revert / normalize ("5." → "5")
+      return;
+    }
+    apply(next);
+    pushHistory(() => apply(committed), () => apply(next));
+  };
+  const onKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
+    if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); }
+    else if (e.key === "Escape") { cancelled.current = true; e.currentTarget.blur(); }
+  };
+  return { draft, setDraft, onBlur, onKeyDown };
+}
+
+const numToText = (v: number | undefined) => (v == null ? "" : String(v));
+const parseNum = (t: string): number | undefined | typeof INVALID_DRAFT => {
+  if (t.trim() === "") return undefined;
+  const n = parseFloat(t);
+  return Number.isFinite(n) ? n : INVALID_DRAFT;
+};
+
+export function InlineNumberField({
+  value,
+  onChange,
+}: {
+  value: number | undefined;
+  onChange: (v: number | undefined) => void;
+}) {
+  const field = useDraftCommit(value, numToText, parseNum, onChange);
+
+  return (
+    <input
+      type="number"
+      className="solenoid-node__inline-input"
+      value={field.draft}
+      placeholder="0"
+      onChange={(e: ChangeEvent<HTMLInputElement>) => field.setDraft(e.target.value)}
+      onBlur={field.onBlur}
+      onKeyDown={field.onKeyDown}
+      onPointerDown={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+      spellCheck={false}
+    />
+  );
+}
+
+/**
+ * A string-literal input framed by static quote chrome. The `"` glyphs frame
+ * the editable field (they are decoration, never part of the value), and the
+ * input auto-sizes to its content so a lone or trailing space shows as the gap
+ * before the closing quote — the Excel `" "` look, in the one place Excel uses
+ * quotes (authoring a literal). Result/display boxes drop quotes entirely and
+ * mark whitespace with middots instead (see ValueDisplay).
+ */
+export function QuotedTextInput({
+  value,
+  onChange,
+  variant = "inline",
+  autoFocus,
+  nodeId,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  variant?: "inline" | "value";
+  autoFocus?: boolean;
+  // When set, the field shows a resize grip (the main input on a node — not the
+  // per-row inline literals, which don't pass this).
+  nodeId?: string;
+}) {
+  const field = useDraftCommit(value, (v) => v, (t) => t, onChange);
+  // Auto-size only the main field (value variant) to its content; inline row
+  // fields fill the remaining row width via CSS and scroll long text instead of
+  // growing past the card edge.
+  const autoSize = variant === "value";
+  return (
+    <span className={`solenoid-node__quoted${variant === "value" ? " solenoid-node__quoted--value" : " solenoid-node__quoted--inline"}`}>
+      <span className="solenoid-node__quote" aria-hidden="true">"</span>
+      {/* Wrapper hugs the input so the resize grip anchors to the field's own
+          corner (not the full row). */}
+      <span className="solenoid-node__quoted-field">
+        <input
+          type="text"
+          className="solenoid-node__quoted-input"
+          value={field.draft}
+          size={autoSize ? Math.max(field.draft.length, 1) : undefined}
+          onChange={(e) => field.setDraft(e.target.value)}
+          onBlur={field.onBlur}
+          onKeyDown={field.onKeyDown}
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          spellCheck={false}
+          autoFocus={autoFocus}
+        />
+        {nodeId && <ResizeHandle nodeId={nodeId} />}
+      </span>
+      <span className="solenoid-node__quote" aria-hidden="true">"</span>
+    </span>
+  );
+}
+
+export function InlineTextField({
+  value,
+  onChange,
+}: {
+  value: string | undefined;
+  onChange: (v: string) => void;
+}) {
+  return <QuotedTextInput value={value ?? ""} onChange={onChange} />;
+}
+
+/**
+ * Inline editor for a 1-D LIST input: a plain comma-separated field ("a, b, c").
+ * A 1-D list is just CSV, so a list socket is typeable in place exactly like a
+ * scalar — no quote chrome (that signals a single string). The raw text lives in
+ * the node's `stringLiterals[key]`; the engine boundary (coerceInputs) parses it
+ * per the socket's element type (strings / date serials / TRUE-FALSE) and injects
+ * it as the list when the input is unwired. A cable still overrides it.
+ */
+export function InlineCsvField({
+  value,
+  onChange,
+}: {
+  value: string | undefined;
+  onChange: (v: string) => void;
+}) {
+  const field = useDraftCommit(value ?? "", (v) => v, (t) => t, onChange);
+  return (
+    <input
+      type="text"
+      className="solenoid-node__inline-input"
+      value={field.draft}
+      placeholder="a, b, c"
+      onChange={(e: ChangeEvent<HTMLInputElement>) => field.setDraft(e.target.value)}
+      onBlur={field.onBlur}
+      onKeyDown={field.onKeyDown}
+      onPointerDown={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+      spellCheck={false}
+    />
+  );
+}
+
+
+type InputPort = { socket: ClassicPreset.Socket; label?: string };
+export type InlineNode = {
+  id: string;
+  inputs: Record<string, InputPort | undefined>;
+  literals?: Record<string, number>;
+  stringLiterals?: Record<string, string>;
+};
+
+type Props = {
+  node: InlineNode;
+  emit: RenderEmit<ClassicScheme>;
+  /** Restrict / reorder which input keys render. Defaults to all inputs. */
+  keys?: string[];
+  /** Override the row label for a key (e.g. Logical's per-op labels). */
+  labelFor?: (key: string, index: number) => string;
+  /** Input keys rendered socket+label only (no inline field) — the value comes
+   *  from a cable, or an editor elsewhere in the node (e.g. a LAMBDA formula). */
+  cableOnlyKeys?: ReadonlySet<string>;
+  /** Input keys whose label is a math expression (e.g. a LAMBDA's `f(r,c)`),
+   *  rendered with KaTeX so it reads as a proper function signature. */
+  mathLabelKeys?: ReadonlySet<string>;
+};
+
+/** A row label rendered as math (KaTeX) — falls back to plain text on error. */
+function MathLabel({ text }: { text: string }) {
+  const html = useMemo(() => {
+    try {
+      return katex.renderToString(text, { throwOnError: false, displayMode: false });
+    } catch {
+      return null;
+    }
+  }, [text]);
+  return html == null
+    ? <span className="solenoid-node__io-label">{text}</span>
+    : <span className="solenoid-node__io-label" dangerouslySetInnerHTML={{ __html: html }} />;
+}
+
+/**
+ * Default renderer for a node's input rows. For every input it draws a
+ * row containing the input's socket (on the card's left edge) plus a
+ * label, and — when the socket is a number type with no incoming cable
+ * — an editable literal field bound to `node.literals[key]`. A wired
+ * input shows a muted marker instead; non-number inputs (e.g. list)
+ * show just the socket + label.
+ *
+ * Each input dot centers on its own row (see .solenoid-node__io-row), so rows
+ * can sit anywhere in the body — no fixed-offset assumption about the header.
+ */
+export function InlineInputs({ node, emit, keys, labelFor, cableOnlyKeys, mathLabelKeys }: Props) {
+  const connected = useConnectedInputs(node.id);
+  const incoming = useIncomingSources(node.id);
+  const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(node.id));
+  const literals = (node.literals ??= {});
+
+  const entries: [string, InputPort][] = (keys ?? Object.keys(node.inputs))
+    .map((k) => [k, node.inputs[k]] as [string, InputPort | undefined])
+    .filter((e): e is [string, InputPort] => !!e[1]);
+
+  const strLiterals = (node.stringLiterals ??= {});
+
+  // Editing one node's literal is a pure value change (no topology) → targeted
+  // recompute: only this node + its downstream cone recompute and re-render.
+  async function set(key: string, v: number | undefined) {
+    if (v === undefined) delete literals[key];
+    else literals[key] = v;
+    await processGraph(node.id);
+  }
+
+  async function setStr(key: string, v: string) {
+    strLiterals[key] = v;
+    await processGraph(node.id);
+  }
+
+  // Collapsed: ≥2 inputs aggregate into a single pill (avoids dots
+  // spilling past the small node); a lone input centers on the display
+  // box (no explicit top → --out-socket-top), matching the output.
+  if (collapsed) {
+    if (entries.length >= 2) {
+      return <CollapsedInputPill node={node} emit={emit} keys={entries.map(([k]) => k)} />;
+    }
+    return (
+      <>
+        {entries.map(([key, input]) => (
+          <NodeSocket
+            key={key}
+            side="input"
+            socketKey={key}
+            nodeId={node.id}
+            emit={emit}
+            payload={input.socket}
+          />
+        ))}
+      </>
+    );
+  }
+
+  return (
+    <>
+      {entries.map(([key, input], i) => {
+        const socket = input.socket;
+        const dt = socket instanceof SolenoidSocket ? socket.dataType : undefined;
+        const isNumber = dt === "number" || dt === "numlist";
+        const isStr    = dt === "string";
+        // A 1-D non-numeric list is typeable as CSV in place (parsed at the engine
+        // boundary). Numeric lists keep their single-number field for now.
+        const isCsvList = dt === "strlist" || dt === "datelist" || dt === "logicallist";
+        const label = labelFor ? labelFor(key, i) : (input.label || key);
+        const isConn = connected.has(key);
+        return (
+          <MeasuredSocketRow key={key} side="input" socketKey={key} nodeId={node.id} emit={emit} payload={socket}>
+            {mathLabelKeys?.has(key)
+              ? <MathLabel text={label} />
+              : <span className="solenoid-node__io-label">{label}</span>}
+            {isConn ? (
+              // Name the driver, not just the fact: "↩ Rate" beats "↩ wired".
+              // The tooltip stays structural — dynamic data lives in the text.
+              <span
+                className="solenoid-node__io-wired"
+                title="Driven by an incoming cable (named here)"
+              >↩ {incoming.get(key)?.label || "wired"}</span>
+            ) : cableOnlyKeys?.has(key) ? null
+              : isNumber ? (
+              <InlineNumberField value={literals[key]} onChange={(v) => set(key, v)} />
+            ) : isStr ? (
+              <InlineTextField value={strLiterals[key]} onChange={(v) => setStr(key, v)} />
+            ) : isCsvList ? (
+              <InlineCsvField value={strLiterals[key]} onChange={(v) => setStr(key, v)} />
+            ) : null}
+          </MeasuredSocketRow>
+        );
+      })}
+    </>
+  );
+}

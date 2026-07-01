@@ -1,0 +1,47 @@
+/* Cable Switch (control multiplexer). */
+.sol-switch__opt {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 18px;
+  padding: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.sol-switch__opt:hover { border-color: var(--node-accent, var(--accent)); }
+.sol-switch__opt--on {
+  background: color-mix(in srgb, var(--node-accent, var(--accent)) 30%, var(--border-subtle));
+  border-color: var(--node-accent, var(--accent));
+  color: var(--text-bright);
+  font-weight: 700;
+}
+
+.sol-switch__state { color: var(--text-muted); font-size: 11px; }
+
+.sol-switch__controls {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin: 4px 0 2px;
+}
+.sol-switch__cycle {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px;
+  font-family: inherit;
+  font-size: 11px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+}
+.sol-switch__cycle:hover { border-color: var(--node-accent, var(--accent)); color: var(--accent); }

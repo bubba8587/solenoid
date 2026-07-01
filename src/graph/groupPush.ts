@@ -1,0 +1,529 @@
+import type { NodeEditor } from "rete";
+import type { AreaPlugin } from "rete-area-plugin";
+import type { Schemes, AreaExtra } from "./schemes";
+import { GroupNode } from "./rete-nodes";
+import { moveGroupMembers } from "./groupLogic";
+import { COLLAPSE_LAYOUT, groupCollapseStore, syncGroupCollapse, settleCollapse } from "./groupCollapse";
+import { computeExpandPush, separateOverlaps, PushBox, Satellite, Disp, Pt } from "./groupPushCore";
+import { standoffStore, standoffClusters, Box as StandoffBox } from "./standoffs";
+import { solveStandoffs } from "./standoffSolver";
+import { scheduleAutosave } from "./persistence";
+import { settingsStore } from "./settingsStore";
+import { dockedNodeStore } from "./dockedNodeStore";
+
+// ─── Expand-time neighbour displacement ────────────────────────────────────────
+// When a collapsed group expands, its footprint grows down/right and would land
+// on its neighbourhood. The displacement rules live in groupPushCore.ts (pure,
+// unit-tested): connected loose nodes land on their dataflow side (feeders
+// left, consumers right), everything else seam-stretches so the arrangement
+// keeps its shape, and moved boxes carry what they hit.
+//
+// Every displacement is recorded as an ABSOLUTE before/after position pair,
+// attributed to the set of expanded groups that caused it (a second group
+// shoving the same node further merges into one record). On collapse, a record
+// whose every contributing group is collapsed (or gone) slides its node back to
+// the original position — but only if the node is still exactly where our push
+// left it; a node moved by the user since is honoured-as-stale and the record
+// dropped, so we never yank a deliberately-repositioned node back. Records are
+// in-memory only: a reload just keeps everything in place.
+//
+// ELK note: we deliberately do NOT run ELK over the expansion neighbourhood.
+// Rails + seam stretch are deterministic, preserve the user's margins, and
+// invert exactly on collapse; ELK re-derives positions globally, which neither
+// preserves deliberate placement nor snaps back. If a "tidy the neighbourhood"
+// action is ever wanted, it should be an explicit user command (the existing
+// per-group Tidy button is that, scoped to members).
+
+type Editor = NodeEditor<Schemes>;
+type Area = AreaPlugin<Schemes, AreaExtra>;
+
+interface PushRecord {
+  pushed: string;        // the entity that was moved (group or loose node)
+  dueTo: Set<string>;    // expanded groups whose expansion displaced it
+  preX: number;          // where it was before the first push (restore target)
+  preY: number;
+  expX: number;          // where our latest push left it ("untouched?" check)
+  expY: number;
+}
+
+const _records = new Map<string, PushRecord>(); // keyed by pushed id
+
+const EPS = 2; // px tolerance for "still where we left it"
+
+export const groupPushStore = {
+  /** Forget any displacement involving this entity (it was manually moved). */
+  invalidateGroup(id: string): void {
+    _records.delete(id);
+    for (const [pid, r] of [..._records]) {
+      if (r.dueTo.has(id)) _records.delete(pid);
+    }
+  },
+};
+
+function position(area: Area, id: string) {
+  return area.nodeViews.get(id)?.position;
+}
+
+// Move a pushed (or restored) entity by (dx, dy): a group carries its members,
+// a loose node carries any FC docked to it. Also used by the standoff settle
+// pass in Canvas (exported as translateEntityBy).
+export function translateEntityBy(editor: Editor, area: Area, id: string, dx: number, dy: number): void {
+  translatePushed(editor, area, id, dx, dy);
+}
+
+function translatePushed(editor: Editor, area: Area, id: string, dx: number, dy: number): void {
+  if (dx === 0 && dy === 0) return;
+  const p = position(area, id);
+  if (!p) return;
+  void area.translate(id, { x: p.x + dx, y: p.y + dy });
+  const node = editor.getNode(id);
+  if (node instanceof GroupNode) {
+    moveGroupMembers(editor, area, node, dx, dy);
+  } else {
+    for (const d of dockedNodeStore.getDockedTo(id)) {
+      const dp = position(area, d.id);
+      if (dp) void area.translate(d.id, { x: dp.x + dx, y: dp.y + dy });
+    }
+  }
+}
+
+// ─── World snapshot ────────────────────────────────────────────────────────────
+// The movable boxes: every group + every loose node (not a member of any group
+// — those ride their group — and not docked — those follow their host). Groups
+// in `expandedIds` use their stored expanded size (the element may still be
+// mid-render); everything else its rendered element size.
+
+interface World {
+  boxes: Map<string, PushBox>;
+  looseIds: Set<string>;
+  origin: Map<string, { x: number; y: number }>;
+}
+
+function buildWorld(editor: Editor, area: Area, expandedIds: Set<string>): World {
+  const grouped = new Set<string>();
+  for (const n of editor.getNodes()) {
+    if (n instanceof GroupNode) for (const m of n.members) grouped.add(m);
+  }
+  const boxes = new Map<string, PushBox>();
+  const looseIds = new Set<string>();
+  const origin = new Map<string, { x: number; y: number }>();
+  for (const n of editor.getNodes()) {
+    const view = area.nodeViews.get(n.id);
+    if (!view) continue;
+    const p = view.position;
+    if (n instanceof GroupNode) {
+      const w = expandedIds.has(n.id) ? n.width : view.element.offsetWidth || n.width;
+      const h = expandedIds.has(n.id) ? n.height : view.element.offsetHeight || n.height;
+      boxes.set(n.id, { id: n.id, x: p.x, y: p.y, w, h });
+    } else {
+      if (grouped.has(n.id) || dockedNodeStore.get(n.id)) continue;
+      const w = view.element.offsetWidth || (n as { width?: number }).width || 100;
+      const h = view.element.offsetHeight || (n as { height?: number }).height || 50;
+      boxes.set(n.id, { id: n.id, x: p.x, y: p.y, w, h });
+      looseIds.add(n.id);
+    }
+  }
+  for (const [id, b] of boxes) origin.set(id, { x: b.x, y: b.y });
+  return { boxes, looseIds, origin };
+}
+
+// Loose nodes wired to this group's members, classified by dataflow direction.
+// alignCy is the mean center-y of the members it connects to — in WORLD coords,
+// i.e. corrected by however far this group has already been shifted within the
+// current batch (members only physically move when the batch applies).
+function satellitesFor(editor: Editor, area: Area, g: GroupNode, world: World): Map<string, Satellite> {
+  const members = new Set(g.members);
+  const gBox = world.boxes.get(g.id);
+  const gOrig = world.origin.get(g.id);
+  const gShift = gBox && gOrig ? { dx: gBox.x - gOrig.x, dy: gBox.y - gOrig.y } : { dx: 0, dy: 0 };
+
+  const memberCy = (id: string): number | null => {
+    const view = area.nodeViews.get(id);
+    if (!view) return null;
+    const node = editor.getNode(id);
+    const h = view.element.offsetHeight || (node as { height?: number } | undefined)?.height || 50;
+    return view.position.y + h / 2 + gShift.dy;
+  };
+
+  const agg = new Map<string, { up: number; down: number; ys: number[] }>();
+  const tally = (looseId: string, dir: "up" | "down", memberId: string) => {
+    if (!world.looseIds.has(looseId)) return;
+    const e = agg.get(looseId) ?? { up: 0, down: 0, ys: [] };
+    e[dir]++;
+    const cy = memberCy(memberId);
+    if (cy !== null) e.ys.push(cy);
+    agg.set(looseId, e);
+  };
+  for (const c of editor.getConnections()) {
+    if (members.has(c.target) && !members.has(c.source)) tally(c.source, "up", c.target);
+    if (members.has(c.source) && !members.has(c.target)) tally(c.target, "down", c.source);
+  }
+
+  const out = new Map<string, Satellite>();
+  for (const [id, e] of agg) {
+    if (e.up === e.down) continue; // wired both ways equally — no clear side
+    const fallbackCy = gBox ? gBox.y + gBox.h / 2 : 0;
+    out.set(id, {
+      side: e.up > e.down ? "upstream" : "downstream",
+      alignCy: e.ys.length ? e.ys.reduce((a, b) => a + b, 0) / e.ys.length : fallbackCy,
+    });
+  }
+  return out;
+}
+
+// Connection anchors: for every movable entity, the points its cables to
+// OTHER entities land on (the other end's box center, resolved to its push
+// entity — a member counts as its group, a docked FC as its host). A displaced
+// box clears toward its anchors so connections stay short: expanding group C
+// over a node wired to group A hops it out on A's side, not blindly
+// right/down. Satellites of the expanding group are excluded — the rails
+// already handle their pull.
+function buildAnchors(
+  editor: Editor,
+  world: World,
+  satellites: Map<string, Satellite>,
+): Map<string, Pt[]> {
+  const memberOf = new Map<string, string>();
+  const groupIds = new Set<string>();
+  for (const n of editor.getNodes()) {
+    if (n instanceof GroupNode) { groupIds.add(n.id); for (const m of n.members) memberOf.set(m, n.id); }
+  }
+  const entityOf = (id: string): string | null => {
+    const g = memberOf.get(id);
+    if (g) return g;
+    const dock = dockedNodeStore.get(id);
+    if (dock) return memberOf.get(dock.hostNodeId) ?? (world.boxes.has(dock.hostNodeId) ? dock.hostNodeId : null);
+    return world.boxes.has(id) ? id : null;
+  };
+  const out = new Map<string, Pt[]>();
+  const add = (from: string | null, to: string | null) => {
+    if (!from || !to || from === to) return;
+    const tb = world.boxes.get(to);
+    if (!tb) return;
+    const list = out.get(from) ?? [];
+    list.push({ x: tb.x + tb.w / 2, y: tb.y + tb.h / 2 });
+    out.set(from, list);
+  };
+  for (const c of editor.getConnections()) {
+    const s = entityOf(c.source);
+    const t = entityOf(c.target);
+    add(s, t);
+    add(t, s);
+  }
+  for (const id of satellites.keys()) out.delete(id);
+  // Groups clear GEOMETRICALLY (away from the expander), never toward their
+  // cables: a whole group chasing its connections piles interconnected groups
+  // onto each other — in a multi-expand they collapse to nearly one spot. Only
+  // loose nodes get the cable-aware hop. (See groupPushCore clearShift.)
+  for (const id of groupIds) out.delete(id);
+  return out;
+}
+
+// The collapsed card's rendered size — measured BEFORE the expand flips the
+// element, with the layout formula as fallback.
+function collapsedCardSize(area: Area, g: GroupNode): { w: number; h: number } {
+  const el = area.nodeViews.get(g.id)?.element;
+  if (el && el.offsetWidth > 0) return { w: el.offsetWidth, h: el.offsetHeight };
+  const rows = Math.max(
+    groupCollapseStore.retainedFor(g.id).length,
+    groupCollapseStore.inputPillsFor(g.id).length,
+  );
+  return {
+    w: COLLAPSE_LAYOUT.width,
+    h: COLLAPSE_LAYOUT.headerH + COLLAPSE_LAYOUT.padTop * 2 + rows * COLLAPSE_LAYOUT.rowH,
+  };
+}
+
+// ─── Expand: run the core per group over one shared box world ─────────────────
+// Groups expanded together are processed top-left → bottom-right over the SAME
+// in-memory boxes (translates are async; reading the DOM between passes would
+// see stale positions). Total displacements apply once at the end, each
+// attributed to every group whose pass contributed.
+
+function runExpandPushes(
+  editor: Editor,
+  area: Area,
+  changed: GroupNode[],
+  preSizes: Map<string, { w: number; h: number }>,
+  record = true,
+): void {
+  const expandedIds = new Set(changed.map((g) => g.id));
+  const world = buildWorld(editor, area, expandedIds);
+
+  const order = [...changed].sort((a, b) => {
+    const pa = world.boxes.get(a.id);
+    const pb = world.boxes.get(b.id);
+    return (pa ? pa.x + pa.y : 0) - (pb ? pb.x + pb.y : 0);
+  });
+
+  const totals = new Map<string, Disp>();
+  const attribution = new Map<string, Set<string>>();
+
+  for (const g of order) {
+    const gBox = world.boxes.get(g.id);
+    const pre = preSizes.get(g.id);
+    if (!gBox || !pre) continue;
+    const spec = { x: gBox.x, y: gBox.y, preW: pre.w, preH: pre.h, postW: gBox.w, postH: gBox.h };
+    const obstacles = [...world.boxes.values()].filter((b) => b.id !== g.id);
+    const sats = satellitesFor(editor, area, g, world);
+    const anchors = buildAnchors(editor, world, sats);
+    const disp = computeExpandPush(spec, obstacles, sats, anchors);
+    for (const [id, d] of disp) {
+      const b = world.boxes.get(id)!;
+      b.x += d.dx;
+      b.y += d.dy;
+      const t = totals.get(id) ?? { dx: 0, dy: 0 };
+      t.dx += d.dx;
+      t.dy += d.dy;
+      totals.set(id, t);
+      const due = attribution.get(id) ?? new Set<string>();
+      due.add(g.id);
+      attribution.set(id, due);
+    }
+  }
+
+  // Standoff cohesion: a standoff-connected cluster must move as ONE rigid
+  // block. If only one member is pushed by the growing group, the rest lag and
+  // the band solver below would just pull the pushed one partway back (the
+  // "partly pushes" bug). So first give every member of a touched cluster the
+  // cluster's LARGEST push — the displacement that clears the group — keeping
+  // their relative offsets intact before the constraint solve confirms.
+  if (!standoffStore.isEmpty()) {
+    for (const cluster of standoffClusters(standoffStore.all())) {
+      let lead: Disp = { dx: 0, dy: 0 };
+      let leadMag = 0;
+      for (const id of cluster) {
+        const t = totals.get(id);
+        if (!t) continue;
+        const mag = t.dx * t.dx + t.dy * t.dy;
+        if (mag > leadMag) { leadMag = mag; lead = t; }
+      }
+      if (leadMag === 0) continue; // this push didn't touch the cluster
+      // The block's attribution is the union of its members' — so a later
+      // collapse restores the whole cluster together.
+      const groups = new Set<string>();
+      for (const id of cluster) for (const g of attribution.get(id) ?? []) groups.add(g);
+      for (const id of cluster) {
+        const b = world.boxes.get(id);
+        if (!b) continue; // standoff end isn't a loose entity (e.g. grouped) — skip
+        const t = totals.get(id) ?? { dx: 0, dy: 0 };
+        const ddx = lead.dx - t.dx;
+        const ddy = lead.dy - t.dy;
+        if (ddx !== 0 || ddy !== 0) { b.x += ddx; b.y += ddy; }
+        totals.set(id, { dx: lead.dx, dy: lead.dy });
+        attribution.set(id, new Set(groups));
+      }
+    }
+  }
+
+  // Standoffs outrank the heuristics: settle the constraint network over the
+  // post-push virtual boxes (expanded groups pinned) and fold the corrections
+  // into the same totals/records, so collapse snaps everything back together.
+  if (!standoffStore.isEmpty()) {
+    const plain = new Map<string, StandoffBox>(
+      [...world.boxes].map(([id, b]) => [id, { x: b.x, y: b.y, w: b.w, h: b.h }]),
+    );
+    const settle = solveStandoffs(plain, standoffStore.all(), expandedIds, { forceLock: true });
+    for (const [id, d] of settle) {
+      const b = world.boxes.get(id);
+      if (!b) continue;
+      b.x += d.dx;
+      b.y += d.dy;
+      const t = totals.get(id) ?? { dx: 0, dy: 0 };
+      t.dx += d.dx;
+      t.dy += d.dy;
+      totals.set(id, t);
+      const due = attribution.get(id) ?? new Set<string>();
+      for (const g of changed) due.add(g.id);
+      attribution.set(id, due);
+    }
+  }
+
+  // Hard backstop, the FINAL word: overlap on expand is unacceptable, and the
+  // heuristics above can still leave boxes overlapping. Separate EVERY overlap.
+  // A standoff CLUSTER is treated as ONE RIGID unit (its combined bbox): the
+  // de-overlap moves the whole cluster together, never tearing it — so the
+  // standoff stays intact (no stretch/unlock) and a member group can't desync
+  // from the cluster. The forceLock settle above already keeps a cluster
+  // internally non-overlapping; this only separates whole units from each other.
+  // Monotonic (+x/+y) ⇒ always terminates overlap-free.
+  {
+    // Each world box belongs to a rigid unit: a standoff cluster, or itself.
+    const unitOf = new Map<string, string>();        // boxId → unit id
+    const unitMembers = new Map<string, string[]>(); // unit id → boxIds
+    if (!standoffStore.isEmpty()) {
+      let ci = 0;
+      for (const cl of standoffClusters(standoffStore.all())) {
+        const ids = [...cl].filter((id) => world.boxes.has(id));
+        if (ids.length < 2) continue;
+        const uid = `__cluster${ci++}`;
+        for (const id of ids) unitOf.set(id, uid);
+        unitMembers.set(uid, ids);
+      }
+    }
+    // Unit boxes: a cluster's combined bbox, or a standalone box.
+    const units: PushBox[] = [];
+    for (const [uid, ids] of unitMembers) {
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (const id of ids) {
+        const b = world.boxes.get(id)!;
+        minX = Math.min(minX, b.x); minY = Math.min(minY, b.y);
+        maxX = Math.max(maxX, b.x + b.w); maxY = Math.max(maxY, b.y + b.h);
+      }
+      units.push({ id: uid, x: minX, y: minY, w: maxX - minX, h: maxY - minY });
+    }
+    for (const b of world.boxes.values()) {
+      if (!unitOf.has(b.id)) units.push({ id: b.id, x: b.x, y: b.y, w: b.w, h: b.h });
+    }
+    // Separate units; apply each unit's delta to ALL its members (rigid move).
+    for (const [uid, d] of separateOverlaps(units)) {
+      for (const id of unitMembers.get(uid) ?? [uid]) {
+        const b = world.boxes.get(id);
+        if (!b) continue;
+        b.x += d.dx;
+        b.y += d.dy;
+        const t = totals.get(id) ?? { dx: 0, dy: 0 };
+        t.dx += d.dx;
+        t.dy += d.dy;
+        totals.set(id, t);
+        const due = attribution.get(id) ?? new Set<string>();
+        for (const g of changed) due.add(g.id);
+        attribution.set(id, due);
+      }
+    }
+  }
+
+  for (const [id, t] of totals) {
+    if (t.dx === 0 && t.dy === 0) continue;
+    const p = position(area, id);
+    if (!p) continue;
+    // `record` off (tidy-grow push): the displacement is PERMANENT — translate
+    // only, no restore record, so a later collapse leaves the neighbour where
+    // tidy parked it. Any pre-existing record for this node goes stale (it's no
+    // longer at the recorded expX/expY), so collapse treats it as manually moved
+    // and won't snap it back — which is the intended permanent feel.
+    if (record) {
+      const existing = _records.get(id);
+      if (existing) {
+        // Already displaced by a still-expanded group: keep the original
+        // restore target, extend the contributors, refresh the expected spot.
+        for (const gid of attribution.get(id)!) existing.dueTo.add(gid);
+        existing.expX = p.x + t.dx;
+        existing.expY = p.y + t.dy;
+      } else {
+        _records.set(id, {
+          pushed: id,
+          dueTo: attribution.get(id)!,
+          preX: p.x,
+          preY: p.y,
+          expX: p.x + t.dx,
+          expY: p.y + t.dy,
+        });
+      }
+    }
+    translatePushed(editor, area, id, t.dx, t.dy);
+  }
+}
+
+/**
+ * Run neighbour-push for groups whose already-EXPANDED box just GREW — e.g. a
+ * within-group Tidy autogrew the box around freshly laid-out members. Same
+ * engine as the expand-on-uncollapse push, gated by the same Push setting, but
+ * the displacement is PERMANENT (no restore record): a Tidy is a deliberate
+ * manual action, so the pushed neighbours stay put when the group later
+ * collapses, rather than rushing back in. `preSizes` is each group's box size
+ * BEFORE it grew; pass only groups whose box actually grew. Reads the grown size
+ * from `n.width/height` (the ids land in `expandedIds` inside runExpandPushes, so
+ * buildWorld uses the stored size).
+ */
+export function pushForGrownGroups(
+  editor: Editor,
+  area: Area,
+  grown: GroupNode[],
+  preSizes: Map<string, { w: number; h: number }>,
+): void {
+  if (grown.length === 0 || !settingsStore.get("groupPush")) return;
+  runExpandPushes(editor, area, grown, preSizes, false);
+}
+
+// ─── Restore ───────────────────────────────────────────────────────────────────
+
+/**
+ * Slide back every pushed entity whose contributing groups are ALL collapsed
+ * (or deleted) — unless it has been moved since (stale → record dropped, the
+ * node stays where the user put it). Absolute-position records make the
+ * restores order-independent. Also called when a group node is removed, so
+ * deleting an expanded group releases its neighbourhood.
+ */
+export function restoreSettledPushes(editor: Editor, area: Area): void {
+  let moved = false;
+  for (const [id, r] of [..._records]) {
+    const settled = [...r.dueTo].every((gid) => {
+      const g = editor.getNode(gid);
+      return !g || (g instanceof GroupNode && g.collapsed);
+    });
+    if (!settled) continue;
+    _records.delete(id);
+    const p = position(area, id);
+    if (!p) continue;
+    if (Math.abs(p.x - r.expX) <= EPS && Math.abs(p.y - r.expY) <= EPS) {
+      translatePushed(editor, area, id, r.preX - p.x, r.preY - p.y);
+      moved = true;
+    }
+    // else: moved since we pushed it — leave it where it is.
+  }
+  if (moved) scheduleAutosave();
+}
+
+// ─── The one toggle entry point ────────────────────────────────────────────────
+
+/**
+ * Collapse or expand a set of groups (singletons included — GroupNode's chevron
+ * and the outline panel route through here too), applying neighbour push on
+ * expand and the settled-record restore on collapse. Centralising the sequence
+ * keeps the flip → sync → re-render → settle → push/restore order identical
+ * everywhere.
+ */
+export async function setGroupsCollapsed(
+  editor: Editor,
+  area: Area,
+  targets: GroupNode[],
+  collapse: boolean,
+): Promise<void> {
+  const changed = targets.filter((g) => g.collapsed !== collapse);
+  if (changed.length === 0) return;
+
+  // The collapsed card sizes are the seam origins for the expansion — measure
+  // them BEFORE the flip re-renders the elements at full size.
+  const preSizes = new Map<string, { w: number; h: number }>();
+  if (!collapse) for (const g of changed) preSizes.set(g.id, collapsedCardSize(area, g));
+
+  for (const g of changed) g.collapsed = collapse;
+  syncGroupCollapse(editor, area);
+  // Wait for the size/render change so footprints measured below are current.
+  await Promise.all(changed.map((g) => area.update("node", g.id)));
+  for (const g of changed) settleCollapse(editor, area, g.id, g.members, !collapse);
+
+  if (collapse) {
+    restoreSettledPushes(editor, area);
+    // Collapsing moves the standoff anchors (the box shrank) — re-satisfy any
+    // band the shrink violated, with the just-toggled groups pinned. Records
+    // already restored above take priority; this pass is a no-op when they
+    // landed everything back in band.
+    settleStandoffsOverWorld(editor, area, new Set(changed.map((g) => g.id)));
+  } else if (settingsStore.get("groupPush")) {
+    runExpandPushes(editor, area, changed, preSizes);
+  }
+  scheduleAutosave();
+}
+
+// Solve the standoff network over live boxes and apply the corrections.
+function settleStandoffsOverWorld(editor: Editor, area: Area, pinned: Set<string>): void {
+  if (standoffStore.isEmpty()) return;
+  const world = buildWorld(editor, area, new Set());
+  const plain = new Map<string, StandoffBox>(
+    [...world.boxes].map(([id, b]) => [id, { x: b.x, y: b.y, w: b.w, h: b.h }]),
+  );
+  const disp = solveStandoffs(plain, standoffStore.all(), pinned, { forceLock: true });
+  for (const [id, d] of disp) translatePushed(editor, area, id, d.dx, d.dy);
+}

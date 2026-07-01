@@ -1,0 +1,252 @@
+.solenoid-settings {
+  position: absolute;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+.solenoid-settings__panel {
+  width: min(760px, 94vw);
+  max-height: 80vh;
+  overflow: auto;
+  background: var(--surface);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-pop);
+}
+
+.solenoid-settings__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.solenoid-settings__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-bright);
+}
+
+.solenoid-settings__close {
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 5px;
+}
+.solenoid-settings__close:hover {
+  background: var(--btn-hover);
+  color: var(--accent);
+}
+
+.solenoid-settings__body {
+  padding: 8px 16px 16px;
+}
+
+.solenoid-settings__section {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--panel-border);
+}
+.solenoid-settings__section:last-child { border-bottom: none; }
+
+.solenoid-settings__section-title {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.solenoid-settings__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 0;
+  cursor: pointer;
+}
+
+.solenoid-settings__row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.solenoid-settings__row-label {
+  font-size: 13px;
+  color: var(--text);
+}
+.solenoid-settings__row-help {
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+.solenoid-settings__subhead {
+  margin: 14px 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.solenoid-settings__note {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  padding: 4px 0;
+}
+.solenoid-settings__note code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 1px 5px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 4px;
+  color: var(--text);
+}
+.solenoid-settings__muted { color: var(--text-muted); opacity: 0.8; font-size: 11.5px; }
+
+/* Folder (path) setting row — not a toggle, so no pointer cursor. */
+.solenoid-settings__row--folder { cursor: default; align-items: center; }
+.solenoid-settings__path {
+  margin-top: 2px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 320px;
+}
+.solenoid-settings__folder-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 6px;
+}
+
+.solenoid-settings__store-btn {
+  margin-top: 12px;
+  height: 30px;
+  padding: 0 14px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 7px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.solenoid-settings__store-btn:disabled { opacity: 0.5; cursor: default; }
+
+/* Segmented (mutually-exclusive) control, e.g. Tidy alignment Center / Top. */
+.solenoid-settings__segment {
+  display: inline-flex;
+  flex-shrink: 0;
+  margin-top: 1px;
+  border: 1px solid var(--btn-border);
+  border-radius: 7px;
+  overflow: hidden;
+}
+.solenoid-settings__segbtn {
+  height: 28px;
+  padding: 0 13px;
+  background: var(--btn-bg);
+  border: none;
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.solenoid-settings__segbtn + .solenoid-settings__segbtn {
+  border-left: 1px solid var(--btn-border);
+}
+.solenoid-settings__segbtn--on {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+/* Palette control: dropdown + a swatch legend stacked under it, right-aligned. */
+.solenoid-settings__row--palette { align-items: flex-start; }
+.solenoid-settings__palette-control {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+/* Dropdown select (e.g. the palette switcher — list may grow). The native arrow is
+   hidden (appearance:none) and replaced with a Lucide chevron via the wrap. */
+.solenoid-settings__select-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.solenoid-settings__select {
+  appearance: none;
+  -webkit-appearance: none;
+  margin-top: 1px;
+  height: 28px;
+  padding: 0 30px 0 10px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.solenoid-settings__select-caret {
+  position: absolute;
+  right: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-top: 1px; /* match the select's margin-top so the glyph sits centred */
+  color: var(--text-dim);
+  pointer-events: none;
+}
+
+/* Switch */
+.solenoid-settings__switch {
+  flex: 0 0 auto;
+  position: relative;
+  width: 38px;
+  height: 22px;
+  margin-top: 1px;
+  padding: 0;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.solenoid-settings__switch--on {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.solenoid-settings__knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: var(--text-bright);
+  border-radius: 50%;
+  transition: transform 120ms ease;
+}
+.solenoid-settings__switch--on .solenoid-settings__knob {
+  transform: translateX(16px);
+  background: var(--accent-ink);
+}

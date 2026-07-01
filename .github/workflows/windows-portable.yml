@@ -1,0 +1,79 @@
+name: Build (Windows portable)
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - "claude/**"
+    # A version tag (e.g. v0.1.1-alpha) is the "this push is a release"
+    # signal — it triggers the same build, then publishes a GitHub Release
+    # (see the tag-gated steps at the end of the job). A normal commit push
+    # only builds the artifact; it does NOT release.
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+# Required so the release step can create a Release via GITHUB_TOKEN.
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "src-tauri -> target"
+
+      - name: Install JS dependencies
+        run: npm ci
+
+      - name: Build Tauri binary (no installer)
+        run: npm run tauri build -- --no-bundle
+
+      # Always: upload the raw build as an artifact, so any commit's binary
+      # can be grabbed from the Actions tab (kept 30 days).
+      - name: Upload portable exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: solenoid-windows-portable-${{ github.sha }}
+          path: src-tauri/target/release/solenoid.exe
+          if-no-files-found: error
+          retention-days: 30
+
+      # ── Release steps below run ONLY on a v* tag push ──────────────────
+
+      # Rename to a versioned, user-friendly asset name (tag v0.1.1-alpha
+      # → solenoid-0.1.1-alpha-windows-x64.exe).
+      - name: Prepare release asset
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          $v = "${{ github.ref_name }}".TrimStart('v')
+          Copy-Item src-tauri/target/release/solenoid.exe "solenoid-$v-windows-x64.exe"
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: solenoid-*-windows-x64.exe
+          # Tags containing a hyphen (v0.1.1-alpha, v0.2.0-beta.1) are marked
+          # pre-release; a clean tag (v0.2.0) publishes as a full release.
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          # Auto-generated changelog (commits since the last tag) appended
+          # below this install note.
+          generate_release_notes: true
+          body: |
+            **Windows (portable):** download `solenoid-*-windows-x64.exe` below and run it — no installer.
+
+            The binary is **unsigned**, so Windows SmartScreen will warn: click **More info → Run anyway**.

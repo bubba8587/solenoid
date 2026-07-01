@@ -1,0 +1,17 @@
+/* The right-side HUD column (pinned values + fired alerts). Owns the screen-fixed
+   positioning; each child section just lays out its trigger + chips inside.
+   align-items:flex-end keeps every section (and its collapse button) hugging the
+   right edge regardless of chip width. pointer-events:none lets clicks fall
+   through the empty gaps to the canvas; the chips/buttons re-enable themselves. */
+.solenoid-hud-stack {
+  position: fixed;
+  top: 124px; /* below the horizontal nav pill (top: 80px + 34px height + 10px gap) */
+  right: 12px;
+  z-index: 110;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  max-width: 260px;
+  pointer-events: none;
+}

@@ -1,0 +1,82 @@
+{
+  "v": 1,
+  "label": "Frames (named-column data tables)",
+  "nodes": [
+    {"id":"noteA","type":"NoteNode","x":-40,"y":-220,"init":{"label":"1 · Build & read a numeric frame","body":"# Frames = typed, named columns\nA **Frame** is a data table: each column has a name and a type (number or text). Build from a Matrix + headers, then reuse the ordinary list/math nodes on its columns.","color":"violet","width":320,"height":150}},
+
+    {"id":"tbl","type":"TableInputNode","x":0,"y":0,"init":{"label":"Quarterly numbers","tableText":"2021, 120, 30\n2022, 145, 42\n2023, 160, 51\n2024, 178, 60"}},
+    {"id":"hdr","type":"TextSplitNode","x":0,"y":300,"init":{"label":"Column names"},"stringLiterals":{"text":"Year,Revenue,Profit","delimiter":","}},
+    {"id":"build","type":"BuildFrameNode","x":360,"y":40,"init":{"label":"Build Frame = Matrix + headers"}},
+    {"id":"dispBuild","type":"DisplayNode","x":360,"y":320,"init":{"label":"The frame (click the chip)"}},
+
+    {"id":"getProfit","type":"GetColumnNode","x":760,"y":-60,"init":{"label":"Get Column → Profit (number)","readAs":"number"},"stringLiterals":{"name":"Profit"}},
+    {"id":"getRev","type":"GetColumnNode","x":760,"y":180,"init":{"label":"Get Column → Revenue (number)","readAs":"number"},"stringLiterals":{"name":"Revenue"}},
+    {"id":"sumProfit","type":"AggregateNode","x":1120,"y":-80,"init":{"label":"Total profit (a normal list node)","op":"sum"}},
+    {"id":"dispSum","type":"DisplayNode","x":1460,"y":-80,"init":{"label":"Total profit"}},
+    {"id":"margin","type":"ArithmeticNode","x":1120,"y":180,"init":{"label":"Margin = Profit ÷ Revenue","op":"div"}},
+    {"id":"addcol","type":"AddColumnNode","x":1460,"y":180,"init":{"label":"Add Column → Margin","addAs":"number"},"stringLiterals":{"name":"Margin"}},
+    {"id":"dispAdd","type":"DisplayNode","x":1820,"y":180,"init":{"label":"Frame + a computed Margin column"}},
+
+    {"id":"getRow","type":"GetRowNode","x":760,"y":440,"init":{"label":"Get Row → row 1"},"literals":{"index":1}},
+    {"id":"dispRow","type":"DisplayNode","x":1120,"y":440,"init":{"label":"One row is still a 1-row Frame"}},
+
+    {"id":"split","type":"SplitFrameNode","x":760,"y":680,"init":{"label":"Split Frame → Matrix + headers"}},
+    {"id":"dispMat","type":"DisplayNode","x":1120,"y":660,"init":{"label":"Back to a plain Matrix"}},
+    {"id":"dispHdr","type":"DisplayNode","x":1120,"y":880,"init":{"label":"…and the headers list"}},
+
+    {"id":"noteB","type":"NoteNode","x":-40,"y":1060,"init":{"label":"2 · Text columns","body":"# Numbers **and** text\nImported (or typed) frames keep text. A column is numeric only if every cell is a number — otherwise it stays text, and reading it as a number gives **N/A**.","color":"green","width":320,"height":150}},
+
+    {"id":"fin","type":"FrameInputNode","x":0,"y":1240,"init":{"label":"Mixed frame (text + numbers)","frameText":"[{\"name\":\"Region\",\"type\":\"string\",\"values\":[\"North\",\"South\",\"East\",\"West\"]},{\"name\":\"Units\",\"type\":\"number\",\"values\":[120,98,76,140]},{\"name\":\"Price\",\"type\":\"number\",\"values\":[9.5,9.5,12,8]}]"}},
+    {"id":"dispFin","type":"DisplayNode","x":360,"y":1240,"init":{"label":"A text column survives"}},
+    {"id":"getRegT","type":"GetColumnNode","x":760,"y":1160,"init":{"label":"Get Column → Region as TEXT ✓","readAs":"text"},"stringLiterals":{"name":"Region"}},
+    {"id":"dispRegT","type":"DisplayNode","x":1120,"y":1160,"init":{"label":"Region names (text)"}},
+    {"id":"getRegN","type":"GetColumnNode","x":760,"y":1400,"init":{"label":"Get Column → Region as NUMBER ✗","readAs":"number"},"stringLiterals":{"name":"Region"}},
+    {"id":"dispRegN","type":"DisplayNode","x":1120,"y":1400,"init":{"label":"Text read as number → all N/A"}},
+
+    {"id":"noteC","type":"NoteNode","x":-40,"y":1700,"init":{"label":"3 · What doesn't work","body":"# Two layers of safety\n**Sockets block most mismatches before you connect** — a 2-D Table/Frame output won't even drop into a 1-D list or single-value input (drag one and see). What's left are mistakes only detectable at **run time** — those show a red `#ERROR` badge that propagates downstream.","color":"vermilion","width":360,"height":190}},
+
+    {"id":"mmult","type":"TableMultNode","x":760,"y":1900,"init":{"label":"MMULT(matrix, matrix)"}},
+    {"id":"dispMM","type":"DisplayNode","x":1120,"y":1900,"init":{"label":"#SHAPE! — see note →"}},
+    {"id":"noteMM","type":"NoteNode","x":1460,"y":1880,"init":{"label":"Run-time shape error","body":"Both sockets are Tables, so this connects fine — but the matrix is **4×3** and MMULT needs the inner dims to match (cols of A = rows of B): 3 ≠ 4 → **#SHAPE!**. Conformability can't be known at the socket.","color":"vermilion","width":320,"height":150}},
+
+    {"id":"str","type":"TextInputNode","x":0,"y":2200,"init":{"label":"Some text","value":"hello"}},
+    {"id":"cast","type":"CastNode","x":360,"y":2200,"init":{"label":"Cast → number","target":"number"}},
+    {"id":"dispCast","type":"DisplayNode","x":720,"y":2200,"init":{"label":"#VALUE! — see note →"}},
+    {"id":"noteCast","type":"NoteNode","x":1080,"y":2180,"init":{"label":"Run-time value error","body":"Any value can flow into Cast, so it connects — but `\"hello\"` isn't a number, so casting it to a number fails → **#VALUE!**. (Casting `\"42\"` would give 42.)","color":"vermilion","width":320,"height":150}}
+  ],
+  "connections": [
+    {"source":"tbl","sourceOutput":"table","target":"build","targetInput":"matrix"},
+    {"source":"hdr","sourceOutput":"result","target":"build","targetInput":"headers"},
+    {"source":"build","sourceOutput":"frame","target":"dispBuild","targetInput":"in"},
+
+    {"source":"build","sourceOutput":"frame","target":"getProfit","targetInput":"frame"},
+    {"source":"build","sourceOutput":"frame","target":"getRev","targetInput":"frame"},
+    {"source":"getProfit","sourceOutput":"values","target":"sumProfit","targetInput":"list"},
+    {"source":"sumProfit","sourceOutput":"result","target":"dispSum","targetInput":"in"},
+    {"source":"getProfit","sourceOutput":"values","target":"margin","targetInput":"a"},
+    {"source":"getRev","sourceOutput":"values","target":"margin","targetInput":"b"},
+    {"source":"build","sourceOutput":"frame","target":"addcol","targetInput":"frame"},
+    {"source":"margin","sourceOutput":"result","target":"addcol","targetInput":"values"},
+    {"source":"addcol","sourceOutput":"frame","target":"dispAdd","targetInput":"in"},
+
+    {"source":"build","sourceOutput":"frame","target":"getRow","targetInput":"frame"},
+    {"source":"getRow","sourceOutput":"frame","target":"dispRow","targetInput":"in"},
+
+    {"source":"build","sourceOutput":"frame","target":"split","targetInput":"frame"},
+    {"source":"split","sourceOutput":"matrix","target":"dispMat","targetInput":"in"},
+    {"source":"split","sourceOutput":"headers","target":"dispHdr","targetInput":"in"},
+
+    {"source":"fin","sourceOutput":"frame","target":"dispFin","targetInput":"in"},
+    {"source":"fin","sourceOutput":"frame","target":"getRegT","targetInput":"frame"},
+    {"source":"getRegT","sourceOutput":"values","target":"dispRegT","targetInput":"in"},
+    {"source":"fin","sourceOutput":"frame","target":"getRegN","targetInput":"frame"},
+    {"source":"getRegN","sourceOutput":"values","target":"dispRegN","targetInput":"in"},
+
+    {"source":"split","sourceOutput":"matrix","target":"mmult","targetInput":"a"},
+    {"source":"split","sourceOutput":"matrix","target":"mmult","targetInput":"b"},
+    {"source":"mmult","sourceOutput":"result","target":"dispMM","targetInput":"in"},
+
+    {"source":"str","sourceOutput":"value","target":"cast","targetInput":"value"},
+    {"source":"cast","sourceOutput":"result","target":"dispCast","targetInput":"in"}
+  ]
+}

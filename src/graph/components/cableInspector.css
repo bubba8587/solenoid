@@ -1,0 +1,152 @@
+/* Lower-left panel, shown only while exactly one cable is selected. Mirrors the
+   overlay chrome tokens used by the pins/legend so it reads as part of the same
+   HUD family. Fixed-position, rendered in the main React root. */
+.solenoid-cable-inspector {
+  position: fixed;
+  left: 16px;
+  /* Clear the 19px status bar (StatusBar.css) + its safe-area inset, so the
+     panel never overlays the footer counts/zoom strip. */
+  bottom: calc(19px + 12px + env(safe-area-inset-bottom));
+  z-index: 110;
+  width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 8px 9px 9px;
+  background: var(--overlay-bg);
+  border: var(--overlay-border-width) solid var(--overlay-border);
+  border-radius: 8px;
+  box-shadow: var(--overlay-shadow);
+  color: var(--text);
+  font-family: inherit;
+  animation: solenoid-cable-inspector-in 130ms ease-out;
+  transition: left 120ms ease;
+}
+
+/* Slide past the Navigator when it's open — same as the docked conduit / standoff
+   toolbars (OutlinePanel sets body.solenoid-nav-open; panel is left:12px + 248px
+   wide). Desktop only: on mobile the navigator is a near-full-width overlay. */
+html:not(.is-mobile) body.solenoid-nav-open .solenoid-cable-inspector {
+  left: 272px; /* 12 (panel left) + 248 (panel width) + 12 (gap) */
+}
+
+@keyframes solenoid-cable-inspector-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.solenoid-cable-inspector__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 1px;
+}
+.solenoid-cable-inspector__title {
+  flex: 1;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted, var(--text));
+}
+.solenoid-cable-inspector__close {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  background: none;
+  border: none;
+  color: var(--text-muted, var(--text));
+  opacity: 0.5;
+  padding: 0;
+  cursor: pointer;
+}
+.solenoid-cable-inspector__close:hover { opacity: 1; color: var(--accent); }
+
+/* One end of the cable: role tag, node title, port, value — a single row that
+   wraps the value beneath if the line gets tight. */
+.solenoid-cable-inspector__end {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 7px;
+}
+.solenoid-cable-inspector__role {
+  flex: none;
+  width: 30px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted, var(--text));
+  opacity: 0.75;
+}
+.solenoid-cable-inspector__node {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.solenoid-cable-inspector__node:hover { color: var(--accent); text-decoration: underline; }
+.solenoid-cable-inspector__port {
+  flex: none;
+  color: var(--text-muted, var(--text));
+  font-size: 11px;
+  font-weight: 500;
+}
+.solenoid-cable-inspector__value {
+  flex: none;
+  margin-left: auto;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.solenoid-cable-inspector__value--empty { color: var(--text-muted, var(--text)); font-weight: 500; opacity: 0.7; }
+.solenoid-cable-inspector__value--error { color: var(--sol-error); font-weight: 700; font-size: 11.5px; }
+
+/* List/table/frame chips read better neutral here, same as in the pins HUD. */
+.solenoid-cable-inspector .solenoid-array-chip {
+  margin-left: auto;
+  color: var(--text);
+  background: var(--surface-raised);
+  border-color: var(--border-strong);
+}
+
+/* The value row sits under both ends, set off by a hairline so it reads as the
+   payload rather than a third endpoint. */
+.solenoid-cable-inspector__wire {
+  display: flex;
+  align-items: baseline;
+  gap: 4px 7px;
+  margin-top: 5px;
+  padding-top: 8px;
+  border-top: 1px solid var(--overlay-border);
+}
+
+/* The ↓ between the two ends — a quiet directional cue, not a heavy divider. */
+.solenoid-cable-inspector__arrow {
+  align-self: center;
+  margin: -2px 0;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--text-muted, var(--text));
+  opacity: 0.55;
+}

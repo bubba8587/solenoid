@@ -1,0 +1,105 @@
+.slicer-node {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Width tiers for the card — driven by widthClass() in the component based on how
+   many / how long the values are. Two classes beat the default frame .--wide
+   (single-class) tier via higher specificity; a manual resize (inline width)
+   still wins over both. */
+.solenoid-node.solenoid-node--slicer-w2 { width: 320px; }
+.solenoid-node.solenoid-node--slicer-w3 { width: 400px; }
+
+.slicer-node__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+}
+.slicer-node__toolbar .solenoid-node__op-select {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.slicer-node__subbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 10px 2px;
+}
+
+.slicer-node__count {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.slicer-node__multiselect {
+  flex: 0 0 auto;
+  background: none;
+  border: 1px solid var(--border-strong);
+  border-radius: 3px;
+  color: var(--text-muted);
+  font-size: 10px;
+  padding: 1px 5px;
+  cursor: pointer;
+  line-height: 1.4;
+  transition: border-color 0.1s, color 0.1s;
+}
+.slicer-node__multiselect:hover { border-color: var(--text-muted); color: var(--text-dim); }
+.slicer-node__multiselect--on {
+  border-color: var(--node-accent, var(--accent));
+  color: var(--node-accent, var(--accent));
+}
+
+/* The buttons wrap into a grid: short values pack many per row, long values fall
+   to fewer per row. Scrolls past a few rows so the node height stays sane. */
+.slicer-node__values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 8px;
+  border-top: 1px solid var(--border-subtle);
+  max-height: 220px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.slicer-node__empty {
+  color: var(--border-strong);
+  font-size: 11px;
+  font-style: italic;
+  padding: 4px 2px;
+}
+
+.slicer-node__pill {
+  flex: 0 1 auto;
+  max-width: 100%;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-dim);
+  font-size: 11.5px;
+  font-family: var(--font-mono);
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: background 0.08s, color 0.08s, border-color 0.08s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.slicer-node__pill:hover {
+  background: var(--surface-raised);
+  color: var(--text-dim);
+  border-color: var(--border-strong);
+}
+/* Selected button — background tint and border both from the node accent (not
+   the app accent), so the slicer reads as part of its (violet, frame-kind) node. */
+.slicer-node__pill--selected {
+  background: color-mix(in srgb, var(--node-accent, var(--accent)) 22%, var(--surface));
+  border-color: var(--node-accent, var(--accent));
+  color: color-mix(in srgb, var(--node-accent, var(--accent)) 70%, var(--text));
+}
+.slicer-node__pill--selected:hover {
+  background: color-mix(in srgb, var(--node-accent, var(--accent)) 30%, var(--surface));
+}

@@ -1,0 +1,35 @@
+.solenoid-swatchgrid {
+  display: grid;
+  /* Cells sized to the swatch itself (not wider) so a grid item can never be
+     stretched into an oval; the gap alone spaces them and absorbs the hover
+     scale + selected ring. */
+  grid-template-columns: repeat(6, 16px);
+  justify-items: center;
+  align-items: center;
+  gap: 6px;
+  padding: 7px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  box-shadow: var(--shadow-pop);
+}
+.solenoid-swatchgrid__opt {
+  /* Just the interaction box now — the disc, its border, and the selected ring
+     are drawn by the SVG inside (see SwatchGrid.tsx). appearance:none + reset
+     kills the native <button> chrome; the SVG sizes the box to 16px. */
+  appearance: none;
+  -webkit-appearance: none;
+  display: block;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+.solenoid-swatchgrid__opt:hover { transform: scale(1.12); }
+
+/* Read-only legend (Settings palette preview): just shows colors, no interaction. */
+.solenoid-swatchgrid--readonly .solenoid-swatchgrid__opt { cursor: default; }
+.solenoid-swatchgrid--readonly .solenoid-swatchgrid__opt:hover { transform: none; }

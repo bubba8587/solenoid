@@ -1,0 +1,56 @@
+.solenoid-notices {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  z-index: 1100; /* above the confirm overlay's content, below nothing critical */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: min(380px, calc(100vw - 32px));
+  pointer-events: none; /* the gap between toasts shouldn't eat canvas clicks */
+}
+
+.solenoid-notice {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 10px 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  color: var(--text);
+  font-size: 12.5px;
+  line-height: 1.4;
+  cursor: pointer;
+  animation: solenoid-notice-in 140ms ease-out;
+}
+
+@keyframes solenoid-notice-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Tone: warn and error get a full colored border; info is the default neutral. */
+.solenoid-notice--warn  { border-color: #c07820; }
+.solenoid-notice--error { border-color: #c04040; }
+
+.solenoid-notice__msg {
+  flex: 1;
+}
+
+.solenoid-notice__close {
+  flex: none;
+  background: none;
+  border: none;
+  color: var(--text-muted, var(--text));
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 2px;
+  cursor: pointer;
+  opacity: 0.6;
+}
+.solenoid-notice__close:hover {
+  opacity: 1;
+}

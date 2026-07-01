@@ -1,0 +1,228 @@
+/* Group: a translucent framing container drawn behind its member nodes. */
+.solenoid-group {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  border-radius: 11px;
+  user-select: none;
+}
+.solenoid-group * { box-sizing: border-box; }
+
+/* Solid colored header — thicker and larger type than a normal node header.
+   Most of its width is empty space, which is the group's drag handle. */
+.solenoid-group__header {
+  position: relative;
+  flex: 0 0 auto;
+  width: 100%;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  padding: 0 10px 0 26px; /* left room for the chevron */
+  border: 2px solid;
+  border-bottom: none;
+  border-radius: 11px 11px 0 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  cursor: grab;
+}
+.solenoid-group__header:active { cursor: grabbing; }
+
+.solenoid-group__chevron {
+  position: absolute;
+  top: 50%;
+  left: 7px;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: none;
+  color: inherit;
+  opacity: 0.85;
+  cursor: pointer;
+}
+.solenoid-group__chevron:hover { opacity: 1; }
+.solenoid-group__chevron svg { transition: transform 100ms ease; transform: rotate(90deg); }
+.solenoid-group--collapsed .solenoid-group__chevron svg { transform: rotate(0deg); }
+
+/* Title: kept narrow so the bulk of the header stays a drag surface. */
+.solenoid-group__label {
+  /* Fill the header between chevron and swatch — same box whether it's the
+     display div or the edit textarea, so the truncation point and edit box line
+     up. min-width:0 lets it shrink so text-overflow can ellipsize. */
+  /* Size the label box to its TEXT (don't grow to fill): the textless remainder
+     of the header is then real drag surface, so the draggable area tracks what
+     the user sees — a short title leaves most of the header grabbable, a long
+     one leaves less (truncating at max-width so a sliver always stays). */
+  flex: 0 1 auto;
+  width: auto;
+  min-width: 0;
+  /* Narrower cap now that the right side holds two controls (tidy + swatch);
+     the auto right margin pushes that cluster flush to the edge and leaves the
+     gap as drag surface. */
+  max-width: 68%;
+  margin-right: auto;
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  /* Single line in the fixed-height header — wrapping with a tall line-height
+     pushed the first line above the top and clipped it. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  cursor: text;
+}
+/* While editing, the textarea fills the header so there's room to type (the
+   shrink-to-text sizing above is only for the display title's drag surface). */
+textarea.solenoid-group__label { flex: 1 1 auto; }
+.solenoid-group__label::placeholder { color: currentColor; opacity: 0.6; }
+
+/* Tidy + color-swatch controls cluster on the header's right side. The label's
+   auto right margin does the pushing now, so neither needs margin-left:auto. */
+.solenoid-group__tidy,
+.solenoid-group__swatch {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  opacity: 0.85;
+}
+.solenoid-group__swatch { margin-left: 2px; } /* small gap from the tidy button */
+.solenoid-group__tidy:hover,
+.solenoid-group__swatch:hover { opacity: 1; }
+
+/* Positions the shared SwatchGrid popover under the header swatch. */
+.solenoid-group__palette {
+  position: absolute;
+  top: 36px;
+  right: 6px;
+  z-index: 5;
+}
+
+/* Translucent body with a dashed outline. */
+.solenoid-group__body {
+  position: relative;
+  flex: 1 1 auto;
+  width: 100%;
+  border: 2px dashed;
+  border-top: none;
+  border-radius: 0 0 11px 11px;
+}
+
+/* Bottom-right resize grip. */
+.solenoid-group__resize {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.5;
+  cursor: nwse-resize;
+}
+.solenoid-group__resize:hover { opacity: 0.9; }
+
+/* Collapsed: a compact readout list replacing the dashed frame. */
+.solenoid-group__summary {
+  flex: 0 0 auto;
+  width: 100%;
+  border: 2px solid;
+  border-top: none;
+  border-radius: 0 0 11px 11px;
+  padding: 6px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.solenoid-group__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.solenoid-group__row-label {
+  flex: 0 1 auto; /* the LABEL shrinks / ellipsizes — the value reads in full */
+  min-width: 0;
+  font-size: 12px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.solenoid-group__row-val {
+  flex: 0 0 auto; /* value takes precedence — shown in full */
+  font-size: 15px;
+  color: var(--text-bright);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+/* Edge pill sockets — where external cables reconnect while collapsed. */
+.solenoid-group__pill {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1.5px var(--surface);
+  z-index: 2;
+}
+.solenoid-group__pill--left  { left: -5px; }
+.solenoid-group__pill--right { right: -5px; }
+.solenoid-group__empty {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+/* Selection ring matches normal nodes (same blue), wrapping the whole frame. */
+.solenoid-group--selected {
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--node-accent) 22%, transparent);
+  border-radius: 11px;
+}
+/* Raised overlay ring (see nodeCard.css) so it sits above the group's own
+   dashed border instead of under it. */
+.solenoid-group--selected::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  border: 2px solid color-mix(in srgb, var(--node-accent) 70%, #fff);
+  border-radius: 11px;
+  pointer-events: none;
+  z-index: 6;
+}
+:root[data-theme="light"] .solenoid-group--selected::after {
+  border-color: color-mix(in srgb, var(--node-accent) 68%, #000);
+}
+
+/* Collapsed-group edge pills (socket wrappers + the stadium pill) paint ABOVE
+   the selection ring overlay (z-index 6) — selecting a group must not cover
+   its connection points. */
+.solenoid-group [data-socket-side],
+.solenoid-group .solenoid-node__input-pill,
+.solenoid-group .solenoid-node__output-pill {
+  z-index: 7;
+}
+
+/* Align the stadium pill EXACTLY with the plain socket pills (a collapsed group can
+   show both). The socket sits at left/right:-5 (NodeSocket.tsx); both are 12px wide,
+   so the stadium must use the same -5 to share a center. (Base class stays -6 for
+   collapsed nodes, which share it.) */
+.solenoid-group .solenoid-node__input-pill  { left: -5px; }
+.solenoid-group .solenoid-node__output-pill { right: -5px; }

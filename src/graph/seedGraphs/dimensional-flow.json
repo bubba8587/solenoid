@@ -1,0 +1,502 @@
+{
+  "v": 2,
+  "label": "Dimensional Flow",
+  "nodes": [
+    {
+      "id": "hdr",
+      "type": "NoteNode",
+      "x": -40,
+      "y": -200,
+      "init": {
+        "label": "Dimensional Flow & the Type Wall",
+        "body": "The lattice enforces **type separation** (date/number/complex/string never auto-cross \u2014 Cast required) but allows **dimensional flow**: a value widens freely scalar \u2192 list \u2192 matrix \u2192 **frame**. A\u2013D show widening; E shows the wall.",
+        "color": "green",
+        "width": 760,
+        "height": 180
+      }
+    },
+    {
+      "id": "nA",
+      "type": "NoteNode",
+      "x": -40,
+      "y": 40,
+      "init": {
+        "label": "A \u00b7 a list widens into a frame (\u2192 one ROW)",
+        "body": "A 1-D list `[10,20,30]` into a `frame` input lands as a **single row** \u2192 **1 \u00d7 3**.",
+        "color": "blue",
+        "width": 430,
+        "height": 150
+      }
+    },
+    {
+      "id": "llA",
+      "type": "ListInputNode",
+      "x": 230,
+      "y": 230,
+      "init": {
+        "label": "[10, 20, 30]",
+        "valueKeys": [
+          "v0",
+          "v1",
+          "v2"
+        ]
+      },
+      "literals": {
+        "v0": 10,
+        "v1": 20,
+        "v2": 30
+      }
+    },
+    {
+      "id": "tiA",
+      "type": "TableInfoNode",
+      "x": 470,
+      "y": 230,
+      "init": {
+        "label": "Table Info"
+      }
+    },
+    {
+      "id": "dArows",
+      "type": "DisplayNode",
+      "x": 710,
+      "y": 180,
+      "init": {
+        "label": "ROWS \u2192 1"
+      }
+    },
+    {
+      "id": "dAcols",
+      "type": "DisplayNode",
+      "x": 710,
+      "y": 320,
+      "init": {
+        "label": "COLS \u2192 3"
+      }
+    },
+    {
+      "id": "nB",
+      "type": "NoteNode",
+      "x": -40,
+      "y": 470,
+      "init": {
+        "label": "B \u00b7 a scalar widens into a frame (\u2192 1\u00d71)",
+        "body": "A bare number `42` \u2192 a **1\u00d71** frame.",
+        "color": "blue",
+        "width": 430,
+        "height": 130
+      }
+    },
+    {
+      "id": "scB",
+      "type": "NumberInputNode",
+      "x": 230,
+      "y": 640,
+      "init": {
+        "label": "42",
+        "value": 42
+      }
+    },
+    {
+      "id": "tiB",
+      "type": "TableInfoNode",
+      "x": 470,
+      "y": 640,
+      "init": {
+        "label": "Table Info"
+      }
+    },
+    {
+      "id": "dBrows",
+      "type": "DisplayNode",
+      "x": 710,
+      "y": 590,
+      "init": {
+        "label": "ROWS \u2192 1"
+      }
+    },
+    {
+      "id": "dBcols",
+      "type": "DisplayNode",
+      "x": 710,
+      "y": 730,
+      "init": {
+        "label": "COLS \u2192 1"
+      }
+    },
+    {
+      "id": "nC",
+      "type": "NoteNode",
+      "x": -40,
+      "y": 880,
+      "init": {
+        "label": "C \u00b7 a matrix widens into a frame (no Build Frame)",
+        "body": "The 3\u00d72 Table Input drops straight into Table Info **and** Get Column \u2014 read as a default-header frame, no Build Frame. Get \"Col1\" \u2192 `10, 30, 50`.",
+        "color": "blue",
+        "width": 430,
+        "height": 170
+      }
+    },
+    {
+      "id": "tC",
+      "type": "TableInputNode",
+      "x": 230,
+      "y": 1080,
+      "init": {
+        "label": "3\u00d72 Table",
+        "tableText": "10, 20\n30, 40\n50, 60"
+      }
+    },
+    {
+      "id": "tinfoC",
+      "type": "TableInfoNode",
+      "x": 490,
+      "y": 1040,
+      "init": {
+        "label": "Table Info"
+      }
+    },
+    {
+      "id": "dCrows",
+      "type": "DisplayNode",
+      "x": 730,
+      "y": 1000,
+      "init": {
+        "label": "ROWS \u2192 3"
+      }
+    },
+    {
+      "id": "dCcols",
+      "type": "DisplayNode",
+      "x": 730,
+      "y": 1140,
+      "init": {
+        "label": "COLS \u2192 2"
+      }
+    },
+    {
+      "id": "gcC",
+      "type": "GetColumnNode",
+      "x": 490,
+      "y": 1240,
+      "init": {
+        "label": "Get \"Col1\"",
+        "readAs": "number"
+      },
+      "stringLiterals": {
+        "name": "Col1"
+      }
+    },
+    {
+      "id": "dCcol",
+      "type": "DisplayNode",
+      "x": 730,
+      "y": 1240,
+      "init": {
+        "label": "\u2192 10, 30, 50"
+      }
+    },
+    {
+      "id": "nD",
+      "type": "NoteNode",
+      "x": -40,
+      "y": 1400,
+      "init": {
+        "label": "D \u00b7 TRANSPOSE of a list \u2192 a column",
+        "body": "A list widens into the 2-D `anytable` input; TRANSPOSE of the row `[1,2,3]` is the column `[[1],[2],[3]]`.",
+        "color": "blue",
+        "width": 430,
+        "height": 160
+      }
+    },
+    {
+      "id": "llD",
+      "type": "ListInputNode",
+      "x": 230,
+      "y": 1590,
+      "init": {
+        "label": "[1, 2, 3]",
+        "valueKeys": [
+          "v0",
+          "v1",
+          "v2"
+        ]
+      },
+      "literals": {
+        "v0": 1,
+        "v1": 2,
+        "v2": 3
+      }
+    },
+    {
+      "id": "trD",
+      "type": "TableTransposeNode",
+      "x": 470,
+      "y": 1590,
+      "init": {
+        "label": "TRANSPOSE"
+      }
+    },
+    {
+      "id": "dD",
+      "type": "DisplayNode",
+      "x": 710,
+      "y": 1590,
+      "init": {
+        "label": "\u2192 column 3\u00d71"
+      }
+    },
+    {
+      "id": "nE",
+      "type": "NoteNode",
+      "x": -40,
+      "y": 1820,
+      "init": {
+        "label": "E \u00b7 the TYPE wall \u2014 elements don't auto-cross",
+        "body": "A **text** or **date** won't wire straight into a number socket \u2014 drag one to the `\u00d7 10` input and the cable is **refused**. Cross explicitly with **Cast** (top two rows). The ONE auto-bridge is **logical \u2192 number** (bottom): a comparison feeds a math node directly, coercing TRUE\u21921.",
+        "color": "purple",
+        "width": 560,
+        "height": 190
+      }
+    },
+    {
+      "id": "siE",
+      "type": "TextInputNode",
+      "x": 230,
+      "y": 2040,
+      "init": {
+        "label": "Text \"42\"",
+        "value": "42"
+      }
+    },
+    {
+      "id": "castTxt",
+      "type": "CastNode",
+      "x": 470,
+      "y": 2040,
+      "init": {
+        "label": "Cast \u2192 Number",
+        "target": "number"
+      }
+    },
+    {
+      "id": "dTxt",
+      "type": "DisplayNode",
+      "x": 740,
+      "y": 2040,
+      "init": {
+        "label": "\u2192 42"
+      }
+    },
+    {
+      "id": "dpE",
+      "type": "DatePickerNode",
+      "x": 230,
+      "y": 2190,
+      "init": {
+        "label": "Date",
+        "value": 45658
+      }
+    },
+    {
+      "id": "castDt",
+      "type": "CastNode",
+      "x": 470,
+      "y": 2190,
+      "init": {
+        "label": "Cast \u2192 Number",
+        "target": "number"
+      }
+    },
+    {
+      "id": "dDt",
+      "type": "DisplayNode",
+      "x": 740,
+      "y": 2190,
+      "init": {
+        "label": "\u2192 serial 45658"
+      }
+    },
+    {
+      "id": "e5",
+      "type": "NumberInputNode",
+      "x": 230,
+      "y": 2360,
+      "init": {
+        "label": "5",
+        "value": 5
+      }
+    },
+    {
+      "id": "e3",
+      "type": "NumberInputNode",
+      "x": 230,
+      "y": 2480,
+      "init": {
+        "label": "3",
+        "value": 3
+      }
+    },
+    {
+      "id": "cmpE",
+      "type": "ComparisonNode",
+      "x": 460,
+      "y": 2410,
+      "init": {
+        "label": "5 > 3 \u2192 TRUE",
+        "op": "gt"
+      }
+    },
+    {
+      "id": "mulE",
+      "type": "ArithmeticNode",
+      "x": 680,
+      "y": 2410,
+      "init": {
+        "label": "\u00d7 10  (TRUE\u21921, auto-bridge)",
+        "op": "mul"
+      },
+      "literals": {
+        "a": 0,
+        "b": 10
+      }
+    },
+    {
+      "id": "dLog",
+      "type": "DisplayNode",
+      "x": 920,
+      "y": 2410,
+      "init": {
+        "label": "\u2192 10"
+      }
+    }
+  ],
+  "connections": [
+    {
+      "source": "llA",
+      "sourceOutput": "list",
+      "target": "tiA",
+      "targetInput": "matrix"
+    },
+    {
+      "source": "tiA",
+      "sourceOutput": "rows",
+      "target": "dArows",
+      "targetInput": "in"
+    },
+    {
+      "source": "tiA",
+      "sourceOutput": "cols",
+      "target": "dAcols",
+      "targetInput": "in"
+    },
+    {
+      "source": "scB",
+      "sourceOutput": "value",
+      "target": "tiB",
+      "targetInput": "matrix"
+    },
+    {
+      "source": "tiB",
+      "sourceOutput": "rows",
+      "target": "dBrows",
+      "targetInput": "in"
+    },
+    {
+      "source": "tiB",
+      "sourceOutput": "cols",
+      "target": "dBcols",
+      "targetInput": "in"
+    },
+    {
+      "source": "tC",
+      "sourceOutput": "table",
+      "target": "tinfoC",
+      "targetInput": "matrix"
+    },
+    {
+      "source": "tinfoC",
+      "sourceOutput": "rows",
+      "target": "dCrows",
+      "targetInput": "in"
+    },
+    {
+      "source": "tinfoC",
+      "sourceOutput": "cols",
+      "target": "dCcols",
+      "targetInput": "in"
+    },
+    {
+      "source": "tC",
+      "sourceOutput": "table",
+      "target": "gcC",
+      "targetInput": "frame"
+    },
+    {
+      "source": "gcC",
+      "sourceOutput": "values",
+      "target": "dCcol",
+      "targetInput": "in"
+    },
+    {
+      "source": "llD",
+      "sourceOutput": "list",
+      "target": "trD",
+      "targetInput": "matrix"
+    },
+    {
+      "source": "trD",
+      "sourceOutput": "result",
+      "target": "dD",
+      "targetInput": "in"
+    },
+    {
+      "source": "siE",
+      "sourceOutput": "value",
+      "target": "castTxt",
+      "targetInput": "value"
+    },
+    {
+      "source": "castTxt",
+      "sourceOutput": "result",
+      "target": "dTxt",
+      "targetInput": "in"
+    },
+    {
+      "source": "dpE",
+      "sourceOutput": "result",
+      "target": "castDt",
+      "targetInput": "value"
+    },
+    {
+      "source": "castDt",
+      "sourceOutput": "result",
+      "target": "dDt",
+      "targetInput": "in"
+    },
+    {
+      "source": "e5",
+      "sourceOutput": "value",
+      "target": "cmpE",
+      "targetInput": "a"
+    },
+    {
+      "source": "e3",
+      "sourceOutput": "value",
+      "target": "cmpE",
+      "targetInput": "b"
+    },
+    {
+      "source": "cmpE",
+      "sourceOutput": "result",
+      "target": "mulE",
+      "targetInput": "a"
+    },
+    {
+      "source": "mulE",
+      "sourceOutput": "result",
+      "target": "dLog",
+      "targetInput": "in"
+    }
+  ]
+}

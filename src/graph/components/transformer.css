@@ -1,0 +1,13 @@
+.solenoid-transformer__body {
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Docked: remove rounded corners on the side facing the host socket.
+   The JS that sets this class also knows which side, but for simplicity
+   we just reduce the border opacity to signal attachment. */
+.solenoid-transformer--docked {
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}

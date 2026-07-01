@@ -1,0 +1,196 @@
+/* Chrome (overlay, card, header, title, close, group framing) is shared — see
+   popupChrome.css (.sol-popup*). This file holds only formula-specific bits. */
+.formula-popup {
+  width: min(880px, 94vw);
+}
+
+/* Accent-tinted to sit in the colored header, not read as neutral chrome. */
+.formula-popup__lock-tag {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--node-accent, var(--text-dim)) 70%, var(--text));
+  background: color-mix(in srgb, var(--node-accent, transparent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--node-accent, var(--border-strong)) 45%, transparent);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.formula-popup__body {
+  padding: 14px;
+}
+
+/* The rendered equation — the whole point of the popup: roomy, centered, in
+   display mode so fractions and roots get their full vertical extent. */
+.formula-popup__render {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 76px;
+  padding: 16px 14px;
+  background: var(--border-subtle);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow-x: auto;
+}
+.formula-popup__render .katex { font-size: 1.35em; }
+
+.formula-popup__raw {
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 14px;
+}
+.formula-popup__empty {
+  color: var(--text-dim);
+  font-style: italic;
+  font-size: 13px;
+}
+
+.formula-popup__error {
+  margin-top: 8px;
+  font-size: 11px;
+  color: #e06c2e;
+}
+
+.formula-popup__edit-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.formula-popup__prefix {
+  font-size: 14px;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--node-accent, var(--accent)) 70%, var(--text));
+  line-height: 30px;
+  user-select: none;
+}
+
+.formula-popup__textarea {
+  flex: 1;
+  width: 0;
+  min-height: 30px;
+  max-height: 160px;
+  padding: 6px 8px;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  color: var(--text);
+  resize: vertical;
+  box-sizing: border-box;
+}
+.formula-popup__textarea:focus {
+  outline: none;
+  border-color: var(--node-accent, var(--accent));
+}
+.formula-popup__textarea[readonly] {
+  color: var(--text-dim);
+  cursor: default;
+}
+
+/* The highlighted formula editor fills the edit row in place of the bare textarea. */
+.formula-popup__edit-row .fx-editor { flex: 1; min-width: 0; max-height: 180px; }
+.formula-popup__edit-row .fx-editor__ta { min-height: 30px; }
+
+/* ── Step-by-step evaluation ─────────────────────────────────────────────── */
+.formula-popup__steps {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.formula-popup__steps-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+
+.formula-popup__inputs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.formula-popup__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--border-subtle);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.formula-popup__steplist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.formula-popup__step {
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  padding: 4px 10px;
+  background: var(--border-subtle);
+  border-radius: 6px;
+  overflow-x: auto;
+}
+/* Number each step quietly down the left. */
+.formula-popup__steplist {
+  counter-reset: step;
+}
+.formula-popup__step::before {
+  counter-increment: step;
+  content: counter(step);
+  flex-shrink: 0;
+  width: 16px;
+  margin-right: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-align: right;
+}
+
+.formula-popup__result {
+  margin-top: 10px;
+  font-size: 15px;
+  color: var(--text);
+}
+.formula-popup__result strong {
+  color: color-mix(in srgb, var(--node-accent, var(--accent)) 65%, var(--text));
+}
+
+.formula-popup__steps-note {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+/* Engine-disclosure note: the formula runs on Formula.js, not Solenoid's own nodes. */
+.formula-popup__engine-note {
+  margin-top: 10px;
+  padding: 6px 8px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+  border-radius: 6px;
+}
+.formula-popup__engine-note strong { color: var(--text); font-weight: 600; }

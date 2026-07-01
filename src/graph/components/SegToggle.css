@@ -1,0 +1,28 @@
+/* Segmented button toggle — the Format Controller's places/sig-figs button look,
+   reused as a standalone full-width control (Get Column / Add Column read-as).
+   The FC keeps its own inline-row variant (.solenoid-fc__seg); these share the
+   button styling but size full-width in a stacked node body. */
+.solenoid-seg {
+  display: flex;
+  width: 100%;
+}
+.solenoid-segbtn {
+  flex: 1 1 auto;
+  height: 22px;
+  padding: 0 4px;
+  font-family: inherit;
+  font-size: 10px;
+  line-height: 1;
+  background: var(--border-subtle);
+  border: 1px solid var(--border-strong);
+  color: var(--text-dim);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.solenoid-segbtn:first-child { border-radius: 3px 0 0 3px; }
+.solenoid-segbtn:last-child  { border-radius: 0 3px 3px 0; border-left: none; }
+.solenoid-segbtn--on {
+  background: color-mix(in srgb, var(--node-accent, var(--accent)) 30%, var(--border-subtle));
+  border-color: var(--node-accent, var(--accent));
+  color: var(--text);
+}

@@ -1,0 +1,45 @@
+/* The dial is only ~72px wide, so the uniform 180px node leaves a lot of dead
+   space either side. Shrink this node type to hug the dial. */
+.solenoid-node--angle-dial {
+  width: 116px;
+}
+
+.angle-dial-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0 6px;
+}
+
+.angle-dial-node__dial-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.angle-dial-node__input-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.angle-dial-node__input {
+  width: 54px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-bright);
+  font-size: 14px;
+  font-family: var(--font-mono);
+  padding: 4px 8px;
+  text-align: right;
+  outline: none;
+  box-sizing: border-box;
+}
+.angle-dial-node__input:focus { border-color: var(--accent); }
+
+.angle-dial-node__unit {
+  font-size: 11px;
+  color: var(--text-muted);
+}

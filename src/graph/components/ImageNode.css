@@ -1,0 +1,194 @@
+/* Canvas Image — a free-floating picture annotation. Mirrors the Note's chrome
+   (drag-handle bar, collapse chevron, selection ring) but neutral-accented (no
+   per-note colour) and with an image well instead of a markdown body. */
+.solenoid-image {
+  position: relative;
+  --node-accent: #6b8299; /* neutral slate — selection ring + shadow */
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-card);
+  cursor: grab;
+}
+.solenoid-image * { box-sizing: border-box; }
+.solenoid-image:active { cursor: grabbing; }
+
+/* Header bar = drag handle. The chevron / name / attach button stop pointerdown so
+   they don't start a drag; the leftover strip stays grabbable. */
+.solenoid-image__bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 6px 0 22px; /* room for the absolute chevron on the left */
+  background: color-mix(in srgb, var(--node-accent) var(--header-tint), var(--surface));
+  border-radius: 7px 7px 0 0;
+  box-shadow: inset 0 -1px 0 var(--border);
+}
+.solenoid-image--collapsed .solenoid-image__bar {
+  border-radius: 7px;
+  box-shadow: none;
+}
+
+.solenoid-image__chevron {
+  position: absolute;
+  top: 50%;
+  left: 6px;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: none;
+  color: color-mix(in srgb, var(--node-accent) 55%, var(--text));
+  opacity: 0.8;
+  cursor: pointer;
+}
+.solenoid-image__chevron:hover { opacity: 1; }
+.solenoid-image__chevron svg { transition: transform 100ms ease; transform: rotate(90deg); }
+.solenoid-image--collapsed .solenoid-image__chevron svg { transform: rotate(0deg); }
+
+.solenoid-image__name {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--node-accent) 55%, var(--text));
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: text;
+}
+.solenoid-image__name:focus { color: var(--text); }
+.solenoid-image__name::placeholder { color: currentColor; opacity: 0.5; }
+
+.solenoid-image__attach {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: color-mix(in srgb, var(--node-accent) 55%, var(--text));
+  cursor: pointer;
+  opacity: 0.85;
+}
+.solenoid-image__attach:hover { opacity: 1; }
+
+.solenoid-image__content {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 0 0 7px 7px;
+}
+
+/* The image well — object-fit:contain letterboxes any aspect ratio against a
+   sunken backdrop so it reads as an intentional frame; height is set inline. */
+.solenoid-image__img {
+  display: block;
+  width: 100%;
+  object-fit: contain;
+  background: var(--surface-sunken);
+  user-select: none;
+}
+
+.solenoid-image__placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 8px;
+  background: var(--surface-sunken);
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  text-align: center;
+  cursor: pointer;
+}
+.solenoid-image__placeholder:hover { color: var(--text); }
+
+.solenoid-image__controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+}
+.solenoid-image__url {
+  flex: 1;
+  min-width: 0;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 6px;
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  outline: none;
+}
+.solenoid-image__url:focus { border-color: var(--accent); }
+.solenoid-image__url::placeholder { color: var(--text-muted); }
+
+.solenoid-image__height {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 600;
+}
+.solenoid-image__height input {
+  width: 46px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 4px;
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  outline: none;
+}
+.solenoid-image__height input:focus { border-color: var(--accent); }
+
+.solenoid-image__hint {
+  padding: 0 6px 6px;
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+/* Selection ring — mirrors the Note's (its own ring at the card radius, raised
+   above the border). The card has a 1px border, so pull the ring out to -1px. */
+.solenoid-image--selected {
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--node-accent) 22%, transparent);
+}
+.solenoid-image--selected::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  box-sizing: border-box;
+  border: 2px solid color-mix(in srgb, var(--node-accent) 70%, #fff);
+  border-radius: 8px;
+  pointer-events: none;
+  z-index: 6;
+}
+:root[data-theme="light"] .solenoid-image--selected::after {
+  border-color: color-mix(in srgb, var(--node-accent) 68%, #000);
+}

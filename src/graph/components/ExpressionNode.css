@@ -1,0 +1,163 @@
+.solenoid-expr__formula {
+  position: relative; /* offsetParent for the resize grip */
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  /* Grows when the user drags the grip (shared --box-h, published by NodeCard). */
+  min-height: var(--box-h, auto);
+}
+
+/* The actual formula field (the box with a border the user sees). It's the
+   offsetParent for the resize grip, so the grip seats in its corner. */
+.solenoid-expr__field {
+  position: relative;
+  flex: 1 1 auto;
+  width: 0;
+  display: flex;
+}
+
+.solenoid-expr__prefix {
+  font-size: 12px;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--node-accent, var(--text-dim)) 80%, var(--text));
+  flex-shrink: 0;
+  line-height: 1;
+  user-select: none;
+}
+
+.solenoid-expr__textarea {
+  flex: 1;
+  /* width: 0 lets flex-grow fill the remaining space */
+  width: 0;
+  /* Roomy by default so a fraction/KaTeX has vertical headroom and doesn't have
+     to scale down to fit (it still auto-grows past this up to max-height). The
+     popup carries full legibility; this just makes the resting card comfortable. */
+  min-height: 54px;
+  max-height: 96px;
+  padding: 1px 5px;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 11px;
+  line-height: 18px;
+  background: var(--border-subtle);
+  border: 1px solid var(--border-strong);
+  border-radius: 3px;
+  color: var(--text);
+  resize: none;
+  overflow-y: hidden;
+  box-sizing: border-box;
+}
+
+.solenoid-expr__textarea:focus {
+  outline: none;
+  border-color: var(--node-accent, var(--accent));
+}
+
+.solenoid-expr__textarea::placeholder {
+  color: var(--border-strong);
+  font-style: italic;
+}
+
+/* Rendered (KaTeX) formula shown when not editing; click to edit. */
+.solenoid-expr__rendered {
+  flex: 1;
+  width: 0;
+  /* FIXED height (not content-driven) so the JS font-fit has a stable height to
+     scale against — a content-driven height would change as the font scales and
+     loop. Follows the resize grip via --box-h; defaults to the roomy box. */
+  height: var(--box-h, 54px);
+  display: flex;
+  align-items: center;
+  overflow-x: auto;
+  padding: 2px 6px;
+  background: var(--border-subtle);
+  border: 1px solid var(--border-strong);
+  border-radius: 3px;
+  color: var(--text);
+  cursor: text;
+}
+.solenoid-expr__rendered .katex { font-size: 1.05em; }
+.solenoid-expr__raw {
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 11px;
+}
+.solenoid-expr__placeholder {
+  color: var(--border-strong);
+  font-style: italic;
+  font-size: 11px;
+}
+
+/* Expand-to-popup button, top-right of the formula field (the grip sits bottom-
+   right). A FormulaField feature shared by Expression + LAMBDA. */
+.solenoid-expr__expand {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  display: flex;
+  padding: 1px;
+  border: none;
+  background: color-mix(in srgb, var(--border-subtle) 80%, transparent);
+  border-radius: 3px;
+  color: var(--text-dim);
+  opacity: 0.5;
+  cursor: pointer;
+  transition: opacity 80ms ease, color 80ms ease;
+}
+.solenoid-expr__expand:hover {
+  opacity: 1;
+  color: color-mix(in srgb, var(--node-accent, var(--accent)) 60%, var(--text));
+}
+
+.solenoid-expr__error {
+  padding: 1px 8px 3px;
+  font-size: 10px;
+  color: #e06c2e;
+}
+
+/* Variable hint under a LAMBDA-family formula. */
+.solenoid-lambda__hint {
+  padding: 0 8px 3px;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+/* Shown in place of the formula field when a wired Lambda supersedes it:
+   the live signature plus who sends it. Dashed border says "not editable
+   here — the content lives at the other end of the cable". */
+.solenoid-expr__override {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 4px 8px;
+  padding: 6px 8px;
+  background: var(--border-subtle);
+  border: 1px dashed var(--border-strong);
+  border-radius: 3px;
+}
+.solenoid-expr__override-sig {
+  flex: 0 0 auto;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 12px;
+  color: var(--text);
+}
+.solenoid-expr__override-src {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+/* Source line under a formula field whose text is piped from a cable. */
+.solenoid-expr__wired-note {
+  padding: 0 8px 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  font-style: italic;
+  color: var(--text-muted);
+}

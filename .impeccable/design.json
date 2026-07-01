@@ -1,0 +1,120 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-19T19:42:00Z",
+  "title": "Design System: Solenoid",
+  "extensions": {
+    "colorMeta": {
+      "accent": { "role": "primary", "displayName": "Sky Accent", "canonical": "#56b4e9", "note": "Swappable at runtime via the theme store; treat as a role, not a fixed hue.", "tonalRamp": ["#10243a", "#173752", "#1f4d70", "#2b6a96", "#3a8cc2", "#56b4e9", "#84cbf0", "#b6e1f7"] },
+      "surface": { "role": "neutral", "displayName": "Workbench", "canonical": "#1e1e1e", "note": "Light theme: #fbfcfd", "tonalRamp": ["#0e0e0e", "#141414", "#1a1a1a", "#1e1e1e", "#262626", "#333333", "#4a4a4a", "#6b6b6b"] },
+      "canvas-bg": { "role": "neutral", "displayName": "Canvas Void", "canonical": "#0e0e0e", "note": "Light theme: #eef1f5", "tonalRamp": ["#000000", "#0e0e0e", "#161616", "#1f1f1f", "#2a2a2a", "#3a3a3a", "#555555", "#777777"] },
+      "text": { "role": "neutral", "displayName": "Ink", "canonical": "#e8e8e8", "note": "Light theme: #1b1e23", "tonalRamp": ["#3a3d40", "#54585c", "#6b7177", "#9aa0a6", "#c2c6ca", "#e8e8e8", "#f3f4f5", "#ffffff"] },
+      "sock-number": { "role": "tertiary", "displayName": "Number Amber", "canonical": "#f5b914", "tonalRamp": ["#3a2c05", "#5c450a", "#8a6710", "#c08512", "#dca116", "#f5b914", "#f8cd55", "#fbe199"] },
+      "sock-string": { "role": "tertiary", "displayName": "String Lime", "canonical": "#c8e040", "tonalRamp": ["#2c3209", "#454e0e", "#647110", "#7a9210", "#a6bf1a", "#c8e040", "#d9eb76", "#e9f4ad"] },
+      "sock-date": { "role": "tertiary", "displayName": "Date Orchid", "canonical": "#d685b1", "tonalRamp": ["#3a1e2e", "#552c44", "#7a3f61", "#c06a98", "#cc80b0", "#d685b1", "#e3aac8", "#efcfdf"] },
+      "sock-table": { "role": "tertiary", "displayName": "Table Coral", "canonical": "#e96b3c", "tonalRamp": ["#3a1709", "#5c240e", "#8a3712", "#bd4d1c", "#e96b3c", "#ef8a64", "#f3a88c", "#f7c6b3"] },
+      "sock-frame": { "role": "tertiary", "displayName": "Frame Violet", "canonical": "#8e64ed", "tonalRamp": ["#1f1438", "#2e1d52", "#432a7a", "#5d3aab", "#7650d4", "#8e64ed", "#ad8df2", "#ccb6f7"] },
+      "sock-lambda": { "role": "tertiary", "displayName": "Lambda Teal", "canonical": "#00b890", "tonalRamp": ["#003328", "#00513f", "#00785c", "#009873", "#00b890", "#33c9a8", "#73dcc4", "#aceadd"] },
+      "danger": { "role": "status", "displayName": "Danger Red", "canonical": "#e0473a", "note": "Error badge, error explanation, destructive hover. Siblings #e0524d (alert), #e06c75 (row-remove hover).", "tonalRamp": ["#3a0f0a", "#5c1810", "#8a241a", "#bd3328", "#e0473a", "#e0524d", "#e06c75", "#e08a8a"] },
+      "success": { "role": "status", "displayName": "Success Green", "canonical": "#2fae7a", "note": "True/ok state, e.g. a boolean reading 1.", "tonalRamp": ["#0a3a28", "#10543a", "#188a5c", "#229873", "#2fae7a", "#5cc296", "#8fd6b6", "#bce8d5"] },
+      "warning": { "role": "status", "displayName": "Warning Amber", "canonical": "#d9a93b", "note": "Caution / out-of-range states.", "tonalRamp": ["#3a2c0a", "#5c4510", "#8a6718", "#bd8c22", "#d9a93b", "#e3bd66", "#edd092", "#f3e3bd"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Overlay and panel titles. Rare; the system runs small." },
+      "title": { "displayName": "Title", "purpose": "Node headers, menu and section headings." },
+      "body": { "displayName": "Body", "purpose": "The 12px base size. Node body, menu items." },
+      "label": { "displayName": "Label", "purpose": "Field labels, socket legend, secondary annotations." },
+      "value": { "displayName": "Value", "purpose": "Mono face for computed results, numeric literals, formula text." }
+    },
+    "shadows": [
+      { "name": "card-seam", "value": "0 1px 0 rgba(0,0,0,0.4)", "purpose": "Resting node shadow. A hairline seam, not a glow." },
+      { "name": "popover-lift", "value": "0 4px 14px rgba(0,0,0,0.3)", "purpose": "Menus and small popovers." },
+      { "name": "overlay-lift", "value": "0 8px 26px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.45)", "purpose": "Floating chrome above the graph (legend, minimap, pins, alerts)." },
+      { "name": "selection-glow", "value": "0 4px 14px color-mix(in srgb, var(--node-accent) 28%, transparent)", "purpose": "Accent-tinted glow on a selected node, drawn from its own type color." }
+    ],
+    "motion": [
+      { "name": "state-fast", "value": "80ms ease", "purpose": "Default for color, border, and box-shadow state changes." },
+      { "name": "transform-snap", "value": "90ms-120ms ease", "purpose": "Chevron rotation and small transform feedback." },
+      { "name": "fade", "value": "150ms ease", "purpose": "Opacity fades." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Node Card",
+      "kind": "card",
+      "refersTo": "node-card",
+      "description": "The signature unit: a uniform fixed-width card with an accent-tinted header band, one per graph operation.",
+      "html": "<div class=\"ds-node\"><div class=\"ds-node-header\">Multiply</div><div class=\"ds-node-body\"><input class=\"ds-node-input\" value=\"42\" readonly></div></div>",
+      "css": ".ds-node { width: 180px; background: var(--surface, #1e1e1e); border: 1px solid var(--border, #2d2d2d); border-radius: 8px; box-shadow: 0 1px 0 rgba(0,0,0,0.4); color: var(--text, #e8e8e8); font-family: 'Atkinson Hyperlegible Next', system-ui, sans-serif; font-size: 12px; overflow: hidden; transition: border-color 80ms ease, box-shadow 80ms ease; } .ds-node:hover { border-color: var(--border-strong, #3a3a3a); } .ds-node-header { padding: 6px 10px; font-size: 14px; font-weight: 600; background: color-mix(in srgb, #56b4e9 22%, var(--surface, #1e1e1e)); } .ds-node-body { padding: 8px 10px; } .ds-node-input { width: 100%; box-sizing: border-box; background: var(--surface-sunken, #141414); border: 1px solid var(--border, #2d2d2d); border-radius: 4px; color: var(--text, #e8e8e8); font-family: 'Atkinson Hyperlegible Mono', ui-monospace, monospace; font-size: 12px; padding: 3px 6px; } .ds-node-input:focus { outline: none; border-color: #56b4e9; }"
+    },
+    {
+      "name": "Value Input",
+      "kind": "input",
+      "refersTo": "value-input",
+      "description": "A sunken numeric/text field that reads as a familiar input box; mono value face, accent focus border.",
+      "html": "<input class=\"ds-input\" value=\"3.14159\">",
+      "css": ".ds-input { background: var(--surface-sunken, #141414); border: 1px solid var(--border, #2d2d2d); border-radius: 4px; color: var(--text, #e8e8e8); font-family: 'Atkinson Hyperlegible Mono', ui-monospace, monospace; font-size: 12px; padding: 4px 7px; transition: border-color 80ms ease; } .ds-input:focus { outline: none; border-color: #56b4e9; }"
+    },
+    {
+      "name": "Icon Button",
+      "kind": "button",
+      "refersTo": "button-icon",
+      "description": "28px round canvas-tool button. Neutral at rest, lifts on hover, never color-injected.",
+      "html": "<button class=\"ds-icon-btn\" aria-label=\"Add\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 14 14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\"><path d=\"M7 2v10M2 7h10\"/></svg></button>",
+      "css": ".ds-icon-btn { width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; padding: 0; background: var(--surface-sunken, #141414); border: 1px solid var(--border, #2d2d2d); border-radius: 50%; color: var(--text, #e8e8e8); cursor: pointer; transition: background-color 80ms ease, border-color 80ms ease; } .ds-icon-btn:hover { background: #1f1f1f; border-color: var(--border-strong, #3a3a3a); } .ds-icon-btn:focus-visible { outline: none; border-color: #56b4e9; }"
+    },
+    {
+      "name": "Toolbar Pill",
+      "kind": "button",
+      "refersTo": "button-pill",
+      "description": "Fully-rounded pill used for grouped/segmented toolbar controls over the canvas.",
+      "html": "<button class=\"ds-pill\">Tidy</button>",
+      "css": ".ds-pill { background: var(--surface-sunken, #141414); border: 1px solid var(--border, #2d2d2d); border-radius: 999px; color: var(--text, #e8e8e8); font-family: 'Atkinson Hyperlegible Next', system-ui, sans-serif; font-size: 12px; padding: 5px 14px; cursor: pointer; transition: background-color 80ms ease, border-color 80ms ease; } .ds-pill:hover { background: #1f1f1f; border-color: var(--border-strong, #3a3a3a); }"
+    },
+    {
+      "name": "Typed Socket",
+      "kind": "custom",
+      "refersTo": "socket",
+      "description": "A 12x12 type-colored dot straddling the card edge; shape plus color encodes the data type.",
+      "html": "<span class=\"ds-socket ds-socket--number\"></span>",
+      "css": ".ds-socket { display: inline-block; width: 12px; height: 12px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px rgba(0,0,0,0.3); } .ds-socket--number { background: #f5b914; } .ds-socket--list { width: 12px; height: 12px; border-radius: 2px; background: #c08512; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Instrument Panel",
+    "overview": "Solenoid looks and behaves like a precision instrument, not an app trying to sell itself. The interface is a dark, near-black workbench on which a computation graph is laid out in light, restrained chrome. Every node is a small uniform card; cables between them are typed and colored by the data they carry. The chrome recedes so the graph holds the eye. The system is built around legibility before anything else, using the Braille Institute's Atkinson Hyperlegible family at small, dense sizes because a working graph wants information per pixel, not whitespace theatre.",
+    "keyCharacteristics": [
+      "Dark-default workbench with a fully mirrored light theme.",
+      "Small, dense, hyperlegible type. Information per pixel over whitespace.",
+      "Color is reserved for type and state; the chrome stays neutral.",
+      "Flat at rest; elevation and glow appear only as a response to state.",
+      "Fast, short, functional motion. Nothing choreographed."
+    ],
+    "rules": [
+      { "name": "The Quiet Accent Rule", "body": "The accent and the saturated socket hues carry meaning, never decoration. Color appears on a socket, a cable, a focus ring, or a selection glow, never as a panel, button, or header fill for visual interest.", "section": "colors" },
+      { "name": "The Sibling Rule", "body": "Array and matrix socket colors are systematic siblings of their scalar: a list is a darker, desaturated shade; a table/matrix is a punchier, deeper, hue-shifted shade. Never an arbitrary new hue.", "section": "colors" },
+      { "name": "The Hyperlegible Rule", "body": "The UI face is Atkinson Hyperlegible Next and the value face is Atkinson Hyperlegible Mono. A fixed accessibility constraint, not a style choice.", "section": "typography" },
+      { "name": "The Small-and-Dense Rule", "body": "Body is 12px and labels are 11px. Rhythm comes from spacing and grouping, not large headings.", "section": "typography" },
+      { "name": "The Flat-By-Default Rule", "body": "Surfaces are flat at rest. Shadow is a response to state or a job (overlay above the graph), never default decoration.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep the chrome neutral and spend color on type and state only.",
+      "Do use Atkinson Hyperlegible Next for UI and Atkinson Hyperlegible Mono for values; a fixed accessibility constraint.",
+      "Do keep body type at 12px and labels at 11px; build rhythm from spacing and grouping.",
+      "Do mirror every new color token across dark and light themes, with array/matrix hues as systematic siblings.",
+      "Do keep surfaces flat at rest; shadow only for state or overlay chrome.",
+      "Do keep node cards a uniform fixed width and let height be content-driven.",
+      "Do keep cables at full curved fidelity during every interaction.",
+      "Do make every interactive element self-documenting for zero learning curve from Excel."
+    ],
+    "donts": [
+      "Don't ship the generic SaaS / AI-startup look: no purple gradients, hero-metric cards, glassmorphism, or rounded-everything template.",
+      "Don't make it childish or playful no-code: no bubbly cartoon blocks or toy aesthetic.",
+      "Don't go skeuomorphic or cluttered: no faux-3D bevels, drop-shadow overload, or chrome competing with the graph.",
+      "Don't use border-left/right greater than 1px as a colored accent stripe.",
+      "Don't use gradient text; emphasis comes from weight and size.",
+      "Don't fill a panel, button, or header with the accent or a socket hue for visual interest.",
+      "Don't inflate type sizes or substitute a generic geometric sans for the hyperlegible face.",
+      "Don't degrade cables (straighten, hide, swap shape) during motion as a performance trick."
+    ]
+  }
+}

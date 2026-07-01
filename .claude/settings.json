@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(npx tsc *)",
+      "PowerShell(npx vitest *)",
+      "Bash(npm test)",
+      "PowerShell(npm test)",
+      "PowerShell(Get-Content *)",
+      "PowerShell(Get-ChildItem *)",
+      "PowerShell(npm run build)",
+      "PowerShell(npx tsx scripts/parity.ts)",
+      "WebFetch(domain:raw.githubusercontent.com)"
+    ]
+  }
+}

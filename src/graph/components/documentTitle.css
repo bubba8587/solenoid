@@ -1,0 +1,202 @@
+/* Absolutely centered in the menu bar regardless of how wide the left-hand
+   menus are, so the title reads as the document identity (Sheets / Figma). */
+.solenoid-menubar__center {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  pointer-events: none; /* don't block the bar; the title itself re-enables */
+}
+.solenoid-menubar__center > .solenoid-doctitle { pointer-events: auto; }
+
+.solenoid-doctitle {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  max-width: 42vw;
+}
+
+/* The title sits on the accent menu bar, so name + caret use the ink (contrast)
+   color and an ink wash on hover, matching the menu tops. The dropdown below is
+   a normal surface popover. */
+.solenoid-doctitle__name {
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--accent-ink);
+  max-width: 38vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  padding: 2px 8px;
+  cursor: text;
+}
+.solenoid-doctitle__name:hover {
+  background: color-mix(in srgb, var(--accent-ink) 14%, transparent);
+}
+
+.solenoid-doctitle__input {
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: 5px;
+  padding: 2px 8px;
+  outline: none;
+  min-width: 160px;
+  max-width: 38vw;
+}
+
+.solenoid-doctitle__caret {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 22px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: var(--accent-ink);
+  cursor: pointer;
+}
+.solenoid-doctitle__caret:hover,
+.solenoid-doctitle__caret--open {
+  background: color-mix(in srgb, var(--accent-ink) 18%, transparent);
+}
+
+.solenoid-doctitle__menu {
+  /* Portaled to <body> (see DocumentTitle.tsx) so it escapes the app bar's
+     stacking context and clears the pin/alert HUD. Fixed; top/left come inline
+     from the trigger's measured rect. */
+  position: fixed;
+  z-index: 200;
+  min-width: 240px;
+  max-width: 320px;
+  max-height: 70vh;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+  padding: 6px;
+}
+
+.solenoid-doctitle__section-head {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted, var(--text));
+  opacity: 0.7;
+  padding: 6px 8px 4px;
+}
+
+.solenoid-doctitle__docs {
+  display: flex;
+  flex-direction: column;
+}
+
+.solenoid-doctitle__doc-open {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  border-radius: 5px;
+  padding: 6px 8px;
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+}
+.solenoid-doctitle__doc-open:hover,
+.solenoid-doctitle__action:hover {
+  background: var(--border-subtle);
+}
+.solenoid-doctitle__doc--current .solenoid-doctitle__doc-name { font-weight: 700; }
+.solenoid-doctitle__check { width: 12px; flex: none; color: var(--accent); }
+/* Accent in dark mode; dark-neutral in light mode like other light-mode chrome. */
+:root[data-theme="light"] .solenoid-doctitle__check { color: var(--text); }
+.solenoid-doctitle__doc-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Each document is a row: the open button flexes, with hover-revealed
+   duplicate / remove icon actions on the right. */
+.solenoid-doctitle__doc-row {
+  display: flex;
+  align-items: center;
+  border-radius: 5px;
+}
+.solenoid-doctitle__doc-row:hover { background: var(--border-subtle); }
+.solenoid-doctitle__doc-row .solenoid-doctitle__doc-open { flex: 1; min-width: 0; }
+.solenoid-doctitle__doc-row .solenoid-doctitle__doc-open:hover { background: none; }
+
+/* Inline rename input for a menu row (the pencil action) — fills the row like
+   the open button, accent-outlined like the title rename. */
+.solenoid-doctitle__doc-rename {
+  flex: 1;
+  min-width: 0;
+  font-family: inherit;
+  font-size: 12.5px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: 5px;
+  padding: 3px 8px;
+  margin: 1px 4px 1px 2px;
+  outline: none;
+}
+
+.solenoid-doctitle__doc-action {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-right: 2px;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0.4;
+  transition: opacity 0.12s ease;
+}
+.solenoid-doctitle__doc-row:hover .solenoid-doctitle__doc-action,
+.solenoid-doctitle__doc-action:focus-visible { opacity: 1; }
+.solenoid-doctitle__doc-action:hover { background: color-mix(in srgb, var(--text) 14%, transparent); color: var(--text); }
+.solenoid-doctitle__doc-action--danger:hover { color: #e0524d; }
+
+.solenoid-doctitle__action {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  border-radius: 5px;
+  padding: 6px 8px;
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+}
+.solenoid-doctitle__template { color: var(--text); }
+
+.solenoid-doctitle__sep {
+  height: 1px;
+  background: var(--border-strong);
+  margin: 5px 2px;
+}

@@ -1,0 +1,156 @@
+:root {
+  /* @fontsource-variable bundles these under a " Variable"-suffixed family name
+     (see node_modules/@fontsource-variable/.../index.css). List that first so the
+     bundled webfont is what actually renders; the unsuffixed name is a fallback
+     for systems that happen to have the static font installed, then system-ui.
+     Without the suffix the app silently fell back to system-ui everywhere the
+     static font wasn't installed — e.g. every phone. */
+  font-family: "Atkinson Hyperlegible Next Variable", "Atkinson Hyperlegible Next", system-ui, sans-serif;
+  --font-sans: "Atkinson Hyperlegible Next Variable", "Atkinson Hyperlegible Next", system-ui, sans-serif;
+  --font-mono: "Atkinson Hyperlegible Mono Variable", "Atkinson Hyperlegible Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* Accent — overwritten at runtime by appThemeStore (these are fallbacks). */
+  --accent: #56b4e9;
+  --accent-soft: rgba(86, 180, 233, 0.14);
+  --accent-mid: rgba(86, 180, 233, 0.4);
+  --accent-ink: #1a1a1a;
+
+  /* ── Neutral ramp (dark defaults; light overrides below) ──────────────
+     surface = raised chrome (node body, menus, popovers)
+     surface-sunken = recessed fields (inputs, value/result boxes)
+     surface-raised = hover/selected fills inside chrome                     */
+  --surface: #1e1e1e;
+  --surface-sunken: #141414;
+  --surface-raised: #262626;
+  --border: #2d2d2d;
+  --border-strong: #3a3a3a;
+  --border-subtle: #2a2a2a;
+  --text: #e8e8e8;
+  --text-bright: #f3f4f5;
+  --text-dim: #9aa0a6;
+  /* Lightened from #6b7177 to clear WCAG AA 4.5:1 on the card/sunken surfaces
+     while staying a clear step below --text-dim. */
+  --text-muted: #80868e;
+
+  --shadow-card: 0 1px 0 rgba(0, 0, 0, 0.4);
+  --shadow-pop: 0 4px 14px rgba(0, 0, 0, 0.3);
+
+  /* Node header accent-tint strength. (Selection draws from each item's own
+     --node-accent via an outline — see nodeCard.css / GroupNode.css.) */
+  --header-tint: 22%;
+
+  /* Socket type colors (--sock-*) are now written from the active palette by
+     appTheme.ts (see SOCKET_VARS in palette.ts): each scalar is a palette slot,
+     arrays are a darker sibling, matrices a punchier hue-shifted one. So a palette
+     switch retints every socket dot/cable/legend swatch. Only the ring stays here. */
+  --socket-ring: rgba(0, 0, 0, 0.3);
+
+  /* Selected-cable stroke. White pops on the dark canvas; light mode swaps to
+     a dark neutral so the cable doesn't wash out on the near-white ground. */
+  --cable-selected: #ffffff;
+
+  /* ── Semantic aliases used by the app chrome ───────────────────────── */
+  --app-bg: #141414;
+  --canvas-bg: #0e0e0e;
+  --canvas-dot: #2a2a2a;
+  --panel-bg: rgba(30, 30, 30, 0.9);
+  --panel-border: var(--border);
+  /* Floating overlay chrome (socket legend, minimap, pins, alerts) — needs to
+     read clearly ABOVE a busy graph, so: near-opaque fill, a stronger always-on
+     border (vs the subtle --border), and a deeper layered shadow. */
+  --overlay-bg: rgba(28, 28, 28, 0.97);
+  --overlay-border: #474c54;
+  /* Right-side overlay chrome reads better defined by its border than floated by a
+     big shadow — a wide soft shadow spreads heavier on the larger panels (the
+     socket legend looked far heavier than the minimap with the SAME shadow). So:
+     thicker always-on border + a lighter, tighter shadow. Width is theme-agnostic,
+     defined once here; the light ramp only re-softens the shadow tint. */
+  --overlay-border-width: 2px;
+  --overlay-shadow: 0 4px 14px rgba(0, 0, 0, 0.4), 0 1px 4px rgba(0, 0, 0, 0.3);
+  --btn-bg: var(--surface-sunken);
+  --btn-hover: #1f1f1f;
+  --btn-border: var(--border);
+  --btn-border-hover: var(--border-strong);
+
+  /* Brand wordmark fill. Dark mode tints it with the live accent; light mode
+     swaps to a dark neutral (set below) so it doesn't wash out on near-white. */
+  --wordmark-color: var(--accent);
+}
+
+:root[data-theme="light"] {
+  /* Card body sits a touch off-white; fields are the brightest layer (white)
+     so number boxes / dropdowns read as familiar input fields, not gray
+     recesses, and the canvas stays a shade grayer so cards lift off it. */
+  --surface: #fbfcfd;
+  --surface-sunken: #ffffff;
+  --surface-raised: #eef1f5;
+  --border: #ccd2da;
+  --border-strong: #b2bac4;
+  --border-subtle: #dfe3e9;
+  --text: #1b1e23;
+  --text-bright: #0d0f12;
+  --text-dim: #5b636b;
+  /* Darkened from #6e7682 to clear WCAG AA 4.5:1 on the near-white surfaces. */
+  --text-muted: #6a717b;
+
+  --shadow-card: 0 1px 2px rgba(20, 30, 50, 0.08);
+  --shadow-pop: 0 4px 14px rgba(20, 30, 50, 0.1);
+
+  /* Stronger header tint (pale-on-white needs more). */
+  --header-tint: 52%;
+
+  /* Socket --sock-* colors are written from the palette by appTheme (light mode
+     shifts each slot via themeAccent before deriving array/matrix siblings), so the
+     per-var light overrides that used to live here are gone. Ring + cable only. */
+  --socket-ring: rgba(0, 0, 0, 0.2);
+  --cable-selected: #2a2f37;
+
+  --app-bg: #f4f5f7;
+  --canvas-bg: #eef1f5;
+  --canvas-dot: #d3d9e1;
+  --panel-bg: rgba(252, 253, 255, 0.94);
+  --overlay-bg: rgba(255, 255, 255, 0.98);
+  --overlay-border: #aeb6c1;
+  --overlay-shadow: 0 4px 14px rgba(20, 30, 50, 0.14), 0 1px 4px rgba(20, 30, 50, 0.08);
+  --btn-hover: #e9ecf0;
+  --wordmark-color: #1b1e23;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  /* Stop mobile pull-to-refresh / rubber-band bounce so a drag that starts on
+     the canvas stays a canvas pan instead of scrolling the page. */
+  overscroll-behavior: none;
+  /* Drop the grey flash on tap; chrome buttons signal touch via their own
+     :active styles instead. */
+  -webkit-tap-highlight-color: transparent;
+  background: var(--app-bg);
+  color: var(--text);
+}
+
+.solenoid-app {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+}
+
+/* Form controls don't inherit font-family from the UA stylesheet — a bare
+   <button> / <select> / <input> falls back to the platform default. Force them
+   to the app font app-wide so every control matches Atkinson Hyperlegible
+   (each element still sets its own size/weight). */
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}

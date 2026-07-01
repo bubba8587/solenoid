@@ -1,0 +1,1514 @@
+import { ClassicPreset } from "rete";
+import { numberSocket } from "../sockets";
+import { getRecalcGen } from "../process";
+import { listIn, listOut, numIn, numOut, anyIn, anyOut, tableIn, tableOut } from "./shared";
+import { compareOp } from "./logic";
+import type { ComparisonOp } from "./logic";
+import { solError, isSolError, type SolError } from "../errorValue";
+import { forAggregate, isMissing } from "../valueKinds";
+import { iterMin, iterMax } from "./mathUtils";
+import { isFrameValue, isCubeValue, cubeRowCount, frameRowCount, type FrameValue, type CubeValue, type CubeCell } from "../frame";
+
+// ─── List Input ─────────────────────────────────────────────────────────────
+
+export class ListInputNode extends ClassicPreset.Node {
+  label: string;
+  cachedList: number[] = [];
+  // Sparse — only slots the user types into (or wires) contribute, so a
+  // fresh List is empty rather than full of zeros.
+  literals: Record<string, number> = {};
+  // Extensible inputs: rows are added/removed by the user (see
+  // ExtensibleInputs). `nextInputId` keeps keys unique across removals.
+  nextInputId = 0;
+  readonly valueSocket = numberSocket;
+  width = 180;
+  height = 200;
+
+  constructor(init?: { label?: string; valueKeys?: string[] }) {
+    super("ListInput");
+    this.label = init?.label ?? "List Input";
+    // Rebuild the exact input keys on load/paste (so saved literals + cables
+    // still line up); otherwise start with three blank rows.
+    if (init?.valueKeys?.length) {
+      for (const k of init.valueKeys) this.addInputWithKey(k);
+    } else {
+      for (let i = 0; i < 3; i++) this.addValueInput();
+    }
+    this.addOutput("list", listOut("List"));
+  }
+
+  private addInputWithKey(key: string): void {
+    this.addInput(key, new ClassicPreset.Input(this.valueSocket));
+    const n = parseInt(key.replace(/^v/, ""), 10);
+    if (Number.isFinite(n)) this.nextInputId = Math.max(this.nextInputId, n + 1);
+  }
+
+  addValueInput(): string {
+    const key = `v${this.nextInputId}`;
+    this.addInputWithKey(key);
+    return key;
+  }
+
+  removeValueInput(key: string): void {
+    this.removeInput(key);
+    delete this.literals[key];
+  }
+
+  data(inputs: Record<string, number[] | undefined>) {
+    const list: number[] = [];
+    for (const key of Object.keys(this.inputs)) {
+      const v = inputs[key]?.[0] ?? this.literals[key];
+      if (v !== undefined && v !== null) list.push(v);
+    }
+    this.cachedList = list;
+    return { list };
+  }
+}
+
+// ─── Range ────────────────────────────────────────────────────────────────────
+
+export class RangeNode extends ClassicPreset.Node {
+  label: string;
+  cachedList: number[] = [];
+  // No default for `stop` — an unset stop keeps the range empty until
+  // the user provides one (cable or literal).
+  literals: Record<string, number> = { start: 0, step: 1 };
+  width = 180;
+  height = 220;
+
+  constructor(init?: { label?: string }) {
+    super("Range");
+    this.label = init?.label ?? "Range";
+    this.addInput("start", numIn("Start"));
+    this.addInput("stop",  numIn("Stop"));
+    this.addInput("step",  numIn("Step"));
+    this.addOutput("list", listOut("List"));
+  }
+
+  data(inputs: { start?: number[]; stop?: number[]; step?: number[] }) {
+    const start = inputs.start?.[0] ?? this.literals.start ?? 0;
+    const stop  = inputs.stop?.[0]  ?? this.literals.stop  ?? null;
+    const step  = inputs.step?.[0]  ?? this.literals.step  ?? 1;
+    const list: number[] = [];
+    if (stop !== null && step !== 0) {
+      const goUp = step > 0;
+      let cur = start;
+      while (goUp ? cur < stop : cur > stop) {
+        list.push(cur);
+        cur += step;
+        if (list.length >= 1000) break;
+      }
+    }
+    this.cachedList = list;
+    return { list };
+  }
+}
+
+// ─── List ops: Length / Index / Sort / Reverse / Slice ─────────────────────────
+
+export class ListLengthNode extends ClassicPreset.Node {
+  label: string;
+  cachedResult: number | null = null;
+  width = 180;
+  height = 120;
+
+  constructor(init?: { label?: string }) {
+    super("ListLength");
+    this.label = init?.label ?? "LENGTH";
+    this.addInput("list", listIn("List"));
+    this.addOutput("result", numOut("Count"));
+  }
+
+  data(inputs: { list?: number[][] }) {
+    const arr = inputs.list?.[0] ?? null;
+    this.cachedResult = arr ? arr.length : null;
+    return { result: this.cachedResult };
+  }
+}
+
+// INDEX is cube/frame-aware: its input + output are `any` so it reads a cell out
+// of ANY container — the nth of a list, the (row, col) of a matrix, OR the cell of
+// a Frame / Cube. A frame/cube cell comes out as `any`, so a NESTED frame/cube
+// pulled from a cube cell flows on as a frame/cube you can keep working on. This
+// is how you read a relate-built cube back out (see docs/cube-node-scope.md). The
+// 1-D list path keeps Excel's INDEX(array, n); `column` is the 2-D second arg.
+export class ListIndexNode extends ClassicPreset.Node {
+  label: string;
+  cachedResult: number | SolError | null | CubeCell | FrameValue | CubeValue = null;
+  literals: Record<string, number> = { index: 1 }; // 1-based (Excel INDEX)
+  width = 180;
+  height = 190;
+
+  constructor(init?: { label?: string }) {
+    super("ListIndex");
+    this.label = init?.label ?? "INDEX";
+    this.addInput("list",  anyIn("Array"));     // list, matrix, frame, or cube
+    this.addInput("index", numIn("Row"));
+    this.addInput("column", numIn("Column"));   // 2-D / frame / cube only
+    this.addOutput("result", anyOut("Value"));
+  }
+
+  data(inputs: { list?: unknown[]; index?: number[]; column?: number[] }): { result: number | SolError | null | CubeCell | FrameValue | CubeValue } {
+    const v = inputs.list?.[0] ?? null;
+    const row = inputs.index?.[0] ?? this.literals.index ?? null;
+    const col = inputs.column?.[0] ?? this.literals.column ?? null;
+    if (v === null || v === undefined || row === null) {
+      this.cachedResult = null;
+      return { result: null };
+    }
+    const r = Math.round(row) - 1;
+    const refErr = (n: number, max: number, what: string) =>
+      solError("#REF!", `${what} ${n} is outside 1…${max}`);
+
+    // A Cube / Frame: pull the cell at (row, column). Column defaults to 1.
+    if (isCubeValue(v)) {
+      const c = (col === null ? 1 : Math.round(col)) - 1;
+      const rows = cubeRowCount(v);
+      if (r < 0 || r >= rows) { const e = refErr(r + 1, rows, "Row"); this.cachedResult = e; return { result: e }; }
+      if (c < 0 || c >= v.columns.length) { const e = refErr(c + 1, v.columns.length, "Column"); this.cachedResult = e; return { result: e }; }
+      const cell = v.columns[c].cells[r] ?? null;
+      this.cachedResult = cell;
+      return { result: cell };
+    }
+    if (isFrameValue(v)) {
+      const c = (col === null ? 1 : Math.round(col)) - 1;
+      const rows = frameRowCount(v);
+      if (r < 0 || r >= rows) { const e = refErr(r + 1, rows, "Row"); this.cachedResult = e; return { result: e }; }
+      if (c < 0 || c >= v.columns.length) { const e = refErr(c + 1, v.columns.length, "Column"); this.cachedResult = e; return { result: e }; }
+      const cell = v.columns[c].values[r] ?? null;
+      this.cachedResult = cell;
+      return { result: cell };
+    }
+
+    if (!Array.isArray(v)) {
+      // A scalar wired in is a 1×1 — row/col 1 returns it, anything else #REF!.
+      const ok = r === 0 && (col === null || Math.round(col) === 1);
+      const res = ok ? (v as number) : solError("#REF!", "Index is outside a single value (1)");
+      this.cachedResult = res;
+      return { result: res };
+    }
+
+    // A 2-D matrix when a column is given (or the rows are arrays); else a 1-D list.
+    const is2D = col !== null || Array.isArray((v as unknown[])[0]);
+    if (is2D) {
+      const grid = v as unknown[][];
+      if (r < 0 || r >= grid.length) { const e = refErr(r + 1, grid.length, "Row"); this.cachedResult = e; return { result: e }; }
+      const rowArr = Array.isArray(grid[r]) ? grid[r] : [grid[r] as unknown];
+      const c = (col === null ? 1 : Math.round(col)) - 1;
+      if (c < 0 || c >= rowArr.length) { const e = refErr(c + 1, rowArr.length, "Column"); this.cachedResult = e; return { result: e }; }
+      const cell = (rowArr[c] ?? null) as CubeCell;
+      this.cachedResult = cell;
+      return { result: cell };
+    }
+    const arr = v as (number | SolError | null)[];
+    if (r < 0 || r >= arr.length) {
+      const err = refErr(r + 1, arr.length, "list");
+      this.cachedResult = err;
+      return { result: err };
+    }
+    this.cachedResult = arr[r];
+    return { result: arr[r] };
+  }
+}
+
+export type SortDir = "asc" | "desc";
+
+export class SortNode extends ClassicPreset.Node {
+  label: string;
+  dir: SortDir;
+  cachedList: number[] = [];
+  width = 180;
+  height = 150;
+
+  constructor(init?: { label?: string; dir?: SortDir }) {
+    super("Sort");
+    this.label = init?.label ?? "SORT";
+    this.dir = init?.dir ?? "asc";
+    this.addInput("list", listIn("List"));
+    this.addOutput("result", listOut("Sorted"));
+  }
+
+  data(inputs: { list?: number[][] }) {
+    const arr = inputs.list?.[0] ?? [];
+    const sorted = [...arr].sort((a, b) => (this.dir === "asc" ? a - b : b - a));
+    this.cachedList = sorted;
+    return { result: sorted };
+  }
+}
+
+export class ReverseNode extends ClassicPreset.Node {
+  label: string;
+  cachedList: number[] = [];
+  width = 180;
+  height = 120;
+
+  constructor(init?: { label?: string }) {
+    super("Reverse");
+    this.label = init?.label ?? "REVERSE";
+    this.addInput("list", listIn("List"));
+    this.addOutput("result", listOut("Reversed"));
+  }
+
+  data(inputs: { list?: number[][] }) {
+    const arr = inputs.list?.[0] ?? [];
+    const reversed = [...arr].reverse();
+    this.cachedList = reversed;
+    return { result: reversed };
+  }
+}
+
+export class SliceNode extends ClassicPreset.Node {
+  label: string;
+  cachedList: number[] = [];
+  // 1-based, inclusive. `end` unset → through the end of the list.
+  literals: Record<string, number> = { start: 1 };
+  width = 180;
+  height = 200;
+
+  constructor(init?: { label?: string }) {
+    super("Slice");
+    this.label = init?.label ?? "SLICE";
+    this.addInput("list",  listIn("List"));
+    this.addInput("start", numIn("Start"));
+    this.addInput("end",   numIn("End"));
+    this.addOutput("result", listOut("Slice"));
+  }
+
+  data(inputs: { list?: number[][]; start?: number[]; end?: number[] }) {
+    const arr = inputs.list?.[0] ?? [];
+    const start = Math.round(inputs.start?.[0] ?? this.literals.start ?? 1);
+    const endRaw = inputs.end?.[0] ?? this.literals.end;
+    const end = endRaw === undefined ? undefined : Math.round(endRaw);
+    // 1-based inclusive → JS slice(start-1, end).
+    const sliced = arr.slice(Math.max(0, start - 1), end);
+    this.cachedList = sliced;
+    return { result: sliced };
+  }
+}
+
+// ─── Filter ────────────────────────────────────────────────────────────────────
+
+// Keep list elements that satisfy `element <op> threshold`. Excel FILTER.
+// Compose with a Reduce (SUM/COUNT/AVERAGE) to get SUMIF/COUNTIF/AVERAGEIF.
+export type FilterCombine = "none" | "and" | "or";
+
+export class FilterNode extends ClassicPreset.Node {
+  label: string;
+  op: ComparisonOp;
+  // Optional second predicate. `combine` = "none" keeps the classic single-
+  // condition behavior; "and"/"or" applies both predicates. Two conditions
+  // with OR is what Excel's SUMIFS/COUNTIFS can't do natively — chain this
+  // Filter into a Reduce for SUMIFS / OR-SUMIF.
+  op2: ComparisonOp;
+  combine: FilterCombine;
+  cachedResult: (number | null)[][] | SolError | null = null;
+  literals: Record<string, number> = { threshold: 0, threshold2: 0 };
+  width = 190;
+  height = 210;
+
+  constructor(init?: { label?: string; op?: ComparisonOp; op2?: ComparisonOp; combine?: FilterCombine }) {
+    super("Filter");
+    this.label = init?.label ?? "FILTER";
+    this.op = init?.op ?? "gt";
+    this.op2 = init?.op2 ?? "lt";
+    this.combine = init?.combine ?? "none";
+    // One polymorphic data input: `table` is the numeric supertype, so a scalar
+    // or list arrives as a 1×N row (central coercion handles it). `mask` is
+    // Excel's explicit `include`; without it the comparison predicate builds the
+    // mask from the data (1-D only). The filter axis follows the mask's length.
+    // The key stays "list" so graphs saved before Filter became table-shaped keep
+    // their data wire (the socket re-validates under the supertype lattice).
+    this.addInput("list",       tableIn("Data"));
+    this.addInput("mask",       listIn("Keep if"));
+    this.addInput("threshold",  numIn("Value"));
+    this.addInput("threshold2", numIn("Value 2"));
+    this.addOutput("result",    tableOut("Kept"));
+  }
+
+  private predicate(x: number, t1: number, t2: number): boolean {
+    const p1 = compareOp(this.op, x, t1);
+    if (this.combine === "none") return p1;
+    const p2 = compareOp(this.op2, x, t2);
+    return this.combine === "and" ? p1 && p2 : p1 || p2;
+  }
+
+  data(inputs: {
+    list?: (number | null)[][][]; mask?: number[][];
+    threshold?: number[]; threshold2?: number[];
+  }): { result: (number | null)[][] | SolError | null } {
+    const m = inputs.list?.[0] ?? null; // coerced to a matrix by the engine boundary
+    this.cachedResult = null;
+    // A mask that lines up with neither dimension, or a 2-D table with no explicit
+    // mask, is a dimension mismatch — emit #SHAPE! so it shows the red badge here
+    // and propagates downstream like every other error.
+    const shapeErr = (msg: string): { result: SolError } => {
+      const e = solError("#SHAPE!", msg);
+      this.cachedResult = e;
+      return { result: e };
+    };
+    if (!m || m.length === 0) return { result: null };
+    const rows = m.length, cols = m[0]?.length ?? 0;
+
+    const maskIn = inputs.mask?.[0];
+    let keep: boolean[];
+    let axis: "row" | "col";
+
+    if (maskIn && maskIn.length > 0) {
+      // Excel `include`: nonzero keeps (Number() folds booleans → 1/0).
+      keep = maskIn.map((v) => { const n = Number(v); return Number.isFinite(n) && n !== 0; });
+      // Axis follows the mask length — rows checked first, so a square table and
+      // a 1×N list both resolve cleanly. Matching neither dimension is a #SHAPE!.
+      if (keep.length === rows) axis = "row";
+      else if (keep.length === cols) axis = "col";
+      else return shapeErr(`A ${keep.length}-long mask matches neither the ${rows}×${cols} data's rows nor its columns`);
+    } else {
+      // Predicate builds the mask, but only makes sense on effectively-1-D data;
+      // a genuine 2-D table needs an explicit mask.
+      if (rows !== 1 && cols !== 1) return shapeErr(`Filtering a ${rows}×${cols} table needs an explicit Keep-if mask`);
+      axis = rows === 1 ? "col" : "row";
+      const vec = rows === 1 ? m[0] : m.map((r) => r[0]);
+      const t1 = inputs.threshold?.[0] ?? this.literals.threshold ?? 0;
+      const t2 = inputs.threshold2?.[0] ?? this.literals.threshold2 ?? 0;
+      // A null (missing) cell makes the predicate UNKNOWN → the row is excluded
+      // (SQL WHERE keeps only TRUE), rather than coercing null→0 and guessing.
+      keep = vec.map((x) => (isMissing(x) ? false : this.predicate(x as number, t1, t2)));
+    }
+
+    const result = axis === "row"
+      ? m.filter((_, i) => keep[i])
+      : m.map((row) => row.filter((_, j) => keep[j]));
+    this.cachedResult = result;
+    return { result };
+  }
+}
+
+// ─── Array operation nodes ────────────────────────────────────────────────────
+
+export class UniqueNode extends ClassicPreset.Node {
+  label: string;
+  cachedList: number[] = [];
+  width = 180;
+  height = 120;
+
+  constructor(init?: { label?: string }) {
+    super("Unique");
+    this.label = init?.label ?? "UNIQUE";
+    this.addInput("list",   listIn("List"));
+    this.addOutput("result", listOut("Unique"));
+  }
+
+  data(inputs: { list?: number[][] }) {
+    const arr = inputs.list?.[0] ?? [];
+    this.cachedList = arr.filter((v, i, a) => a.indexOf(v) === i);
+    return { result: this.cachedList };
+  }
+}
+
+export type TakeDir = "first" | "last";
+
+export class TakeNode extends ClassicPreset.Node {
+  label: string;
+  dir: TakeDir;
+  cachedList: number[] = [];
+  literals: Record<string, number> = { count: 1 };
+  width = 180;
+  height = 170;
+
+  constructor(init?: { label?: string; dir?: TakeDir }) {
+    super("Take");
+    this.label = init?.label ?? "TAKE";
+    this.dir = init?.dir ?? "first";
+    this.addInput("list",  listIn("List"));
+    this.addInput("count", numIn("Count"));
+    this.addOutput("result", listOut("Result"));
+  }
+
+  data(inputs: { list?: number[][]; count?: number[] }) {
+    const arr = inputs.list?.[0] ?? [];
+    const n = Math.round(inputs.count?.[0] ?? this.literals.count ?? 1);
+    if (n <= 0) { this.cachedList = []; return { result: [] }; }
+    this.cachedList = this.dir === "first" ? arr.slice(0, n) : arr.slice(-n);
+    return { result: this.cachedList };
+  }
+}
+
+export type DropDir = "first" | "last";
+
+export class DropNode extends ClassicPreset.Node {
+  label: string;
+  dir: DropDir;
+  cachedList: number[] = [];
+  literals: Record<string, number> = { count: 1 };
+  width = 180;
+  height = 170;
+
+  constructor(init?: { label?: string; dir?: DropDir }) {
+    super("Drop");
+    this.label = init?.label ?? "DROP";
+    this.dir = init?.dir ?? "first";
+    this.addInput("list",  listIn("List"));
+    this.addInput("count", numIn("Count"));
+    this.addOutput("result", listOut("Result"));
+  }
+
+  data(inputs: { list?: number[][]; count?: number[] }) {
+    const arr = inputs.list?.[0] ?? [];
+    const n = Math.round(inputs.count?.[0] ?? this.literals.count ?? 1);
+    if (n <= 0) { this.cachedList = [...arr]; return { result: this.cachedList }; }
+    if (n >= arr.length) { this.cachedList = []; return { result: [] }; }
+    this.cachedList = this.dir === "first" ? arr.slice(n) : arr.slice(0, -n);
+    return { result: this.cachedList };
+  }
+}
+
+export class VStackNode extends ClassicPreset.Node {
+  label: string;
+  cachedList: number[] = [];
+  width = 180;
+  height = 160;
+
+  constructor(init?: { label?: string }) {
+    super("VStack");
+    this.label = init?.label ?? "VStack";
+    this.addInput("a", listIn("Top"));
+    this.addInput("b", listIn("Bottom"));
+    this.addOutput("result", listOut("Combined"));
+  }
+
+  data(inputs: { a?: number[][]; b?: number[][] }) {
+    const a = inputs.a?.[0] ?? [];
+    const b = inputs.b?.[0] ?? [];
+    this.cachedList = [...a, ...b];
+    return { result: this.cachedList };
+  }
+}
+
+export type CumulativeOp = "cumsum" | "cummax" | "cummin" | "cumprod";
+
+export class CumulativeNode extends ClassicPreset.Node {
+  label: string;
+  op: CumulativeOp;
+  cachedList: number[] = [];
+  width = 180;
+  height = 160;
+
+  constructor(init?: { label?: string; op?: CumulativeOp }) {
+    super("Cumulative");
+    this.label = init?.label ?? "Cumulative";
+    this.op = init?.op ?? "cumsum";
+    this.addInput("list",   listIn("List"));
+    this.addOutput("result", listOut("Running"));
+  }
+
+  data(inputs: { list?: number[][] }) {
+    const arr = inputs.list?.[0] ?? [];
+    if (arr.length === 0) { this.cachedList = []; return { result: [] }; }
+    const out: number[] = [];
+    let acc = this.op === "cumprod" ? 1 : arr[0];
+    if (this.op === "cumsum")  acc = 0;
+    if (this.op === "cumprod") acc = 1;
+    for (const v of arr) {
+      switch (this.op) {
+        case "cumsum":  acc = (out.length === 0 ? 0 : acc) + v; break;
+        case "cummax":  acc = out.length === 0 ? v : Math.max(acc, v); break;
+        case "cummin":  acc = out.length === 0 ? v : Math.min(acc, v); break;
+        case "cumprod": acc = (out.length === 0 ? 1 : acc) * v; break;
+      }
+      out.push(acc);
+    }
+    this.cachedList = out;
+    return { result: out };
+  }
+}
+
+export class DiffNode extends ClassicPreset.Node {
+  label: string;
+  cachedList: number[] = [];
+  width = 180;
+  height = 120;
+
+  constructor(init?: { label?: string }) {
+    super("Diff");
+    this.label = init?.label ?? "DIFF";
+    this.addInput("list",   listIn("List"));
+    this.addOutput("result", listOut("Differences"));
+  }
+
+  data(inputs: { list?: number[][] }) {
+    const arr = inputs.list?.[0] ?? [];
+    this.cachedList = arr.slice(1).map((v, i) => v - arr[i]);
+    return { result: this.cachedList };
+  }
+}
+
+export type ArgMinMaxOp = "argmax" | "argmin";
+
+export const ARG_MIN_MAX_OP_META = {
+  argmax: { label: "ARGMAX", description: "1-based position of the maximum value" },
+  argmin: { label: "ARGMIN", description: "1-based position of the minimum value" },
+} satisfies Record<ArgMinMaxOp, { label: string; description: string }>;
+
+export class ArgMinMaxNode extends ClassicPreset.Node {
+  label: string;
+  op: ArgMinMaxOp;
+  cachedResult: number | null = null;
+  width = 180;
+  height = 160;
+
+  constructor(init?: { label?: string; op?: ArgMinMaxOp }) {
+    super("ArgMinMax");
+    this.label = init?.label ?? "ARGMAX";
+    this.op = init?.op ?? "argmax";
+    this.addInput("list",   listIn("List"));
+    this.addOutput("result", numOut("Position"));
+  }
+
+  data(inputs: { list?: number[][] }) {
+    const arr = inputs.list?.[0] ?? null;
+    let result: number | null = null;
+    if (arr && arr.length > 0) {
+      let idx = 0;
+      for (let i = 1; i < arr.length; i++) {
+        if (this.op === "argmax" ? arr[i] > arr[idx] : arr[i] < arr[idx]) idx = i;
+      }
+      result = idx + 1; // 1-based
+    }
+    this.cachedResult = result;
+    return { result };
+  }
+}
+
+export class ContainsNode extends ClassicPreset.Node {
+  label: string;
+  cachedResult: number | null = null;
+  literals: Record<string, number> = { value: 0 };
+  width = 180;
+  height = 160;
+
+  constructor(init?: { label?: string }) {
+    super("Contains");
+    this.label = init?.label ?? "CONTAINS";
+    this.addInput("list",  listIn("List"));
+    this.addInput("value", numIn("Value"));
+    this.addOutput("result", numOut("0 / 1"));
+  }
+
+  data(inputs: { list?: number[][]; value?: number[] }) {
+    const arr = inputs.list?.[0] ?? null;
+    const v = inputs.value?.[0] ?? this.literals.value ?? null;
+    let result: number | null = null;
+    if (arr !== null && v !== null) result = arr.includes(v) ? 1 : 0;
+    this.cachedResult = result;
+    return { result };
+  }
+}
+
+// ─── Normalize ────────────────────────────────────────────────────────────────
+export class NormalizeNode extends ClassicPreset.Node {
+  label: string;
+  cachedList: number[] = [];
+  width = 180; height = 120;
+
+  constructor(init?: { label?: string }) {
+    super("Normalize");
+    this.label = init?.label ?? "Normalize";
+    this.addInput("list",    listIn("List"));
+    this.addOutput("result", listOut("0–1"));
+  }
+
+  data(inputs: { list?: number[][] }) {
+    const arr = inputs.list?.[0] ?? [];
+    if (arr.length === 0) { this.cachedList = []; return { result: [] }; }
+    const mn = iterMin(arr), mx = iterMax(arr);
+    this.cachedList = mn === mx ? arr.map(() => 0) : arr.map(v => (v - mn) / (mx - mn));
+    return { result: this.cachedList };
+  }
+}
+
+// ─── LinSpace ─────────────────────────────────────────────────────────────────
+export class LinSpaceNode extends ClassicPreset.Node {
+  label: string;
+  cachedList: number[] = [];
+  literals: Record<string, number> = { start: 0, end: 1, count: 10 };
+  width = 180; height = 220;
+
+  constructor(init?: { label?: string }) {
+    super("LinSpace");
+    this.label = init?.label ?? "LinSpace";
+    this.addInput("start", numIn("Start"));
+    this.addInput("end",   numIn("End"));
+    this.addInput("count", numIn("Count"));
+    this.addOutput("result", listOut("List"));
+  }
+
+  data(inputs: { start?: number[]; end?: number[]; count?: number[] }) {
+    const start = inputs.start?.[0] ?? this.literals.start ?? 0;
+    const end   = inputs.end?.[0]   ?? this.literals.end   ?? 1;
+    const n     = Math.round(inputs.count?.[0] ?? this.literals.count ?? 10);
+    if (n <= 0)  { this.cachedList = []; return { result: [] }; }
+    if (n === 1) { this.cachedList = [start]; return { result: [start] }; }
+    this.cachedList = Array.from({ length: n }, (_, i) => start + i * (end - start) / (n - 1));
+    return { result: this.cachedList };
+  }
+}
+
+// ─── Repeat ───────────────────────────────────────────────────────────────────
+export class RepeatNode extends ClassicPreset.Node {
+  label: string;
+  cachedList: number[] = [];
+  literals: Record<string, number> = { value: 0, count: 5 };
+  width = 180; height = 160;
+
+  constructor(init?: { label?: string }) {
+    super("Repeat");
+    this.label = init?.label ?? "Repeat";
+    this.addInput("value", numIn("Value"));
+    this.addInput("count", numIn("Count"));
+    this.addOutput("result", listOut("List"));
+  }
+
+  data(inputs: { value?: number[]; count?: number[] }) {
+    const v = inputs.value?.[0] ?? this.literals.value ?? 0;
+    const n = Math.max(0, Math.round(inputs.count?.[0] ?? this.literals.count ?? 5));
+    this.cachedList = Array(n).fill(v);
+    return { result: this.cachedList };
+  }
+}
+
+// ─── Shuffle ──────────────────────────────────────────────────────────────────
+export class ShuffleNode extends ClassicPreset.Node {
+  label: string;
+  cachedList: number[] = [];
+  width = 180; height = 150;
+  // Volatile: the random order is fixed until a recalc (or the input length
+  // changes), so editing an unrelated node doesn't reshuffle. We keep per-slot
+  // sort keys rather than a fixed permutation so live input values flow through.
+  private keys: number[] = [];
+  private lastGen = -1;
+
+  constructor(init?: { label?: string }) {
+    super("Shuffle");
+    this.label = init?.label ?? "Shuffle";
+    this.addInput("list",    listIn("List"));
+    this.addOutput("result", listOut("Shuffled"));
+  }
+
+  data(inputs: { list?: number[][] }) {
+    const arr = [...(inputs.list?.[0] ?? [])];
+    const gen = getRecalcGen();
+    if (this.lastGen !== gen || this.keys.length !== arr.length) {
+      this.keys = arr.map(() => Math.random());
+      this.lastGen = gen;
+    }
+    const order = arr
+      .map((v, i) => ({ v, k: this.keys[i] }))
+      .sort((a, b) => a.k - b.k)
+      .map((p) => p.v);
+    this.cachedList = order;
+    return { result: order };
+  }
+}
+
+// ─── NthElement ───────────────────────────────────────────────────────────────
+export class NthElementNode extends ClassicPreset.Node {
+  label: string;
+  cachedList: number[] = [];
+  literals: Record<string, number> = { n: 2 };
+  width = 180; height = 160;
+
+  constructor(init?: { label?: string }) {
+    super("NthElement");
+    this.label = init?.label ?? "Nth Element";
+    this.addInput("list", listIn("List"));
+    this.addInput("n",    numIn("Step N"));
+    this.addOutput("result", listOut("Every Nth"));
+  }
+
+  data(inputs: { list?: number[][]; n?: number[] }) {
+    const arr = inputs.list?.[0] ?? [];
+    const n = Math.max(1, Math.round(inputs.n?.[0] ?? this.literals.n ?? 2));
+    this.cachedList = arr.filter((_, i) => i % n === 0);
+    return { result: this.cachedList };
+  }
+}
+
+// ─── Interleave ───────────────────────────────────────────────────────────────
+export class InterleaveNode extends ClassicPreset.Node {
+  label: string;
+  cachedList: number[] = [];
+  width = 180; height = 160;
+
+  constructor(init?: { label?: string }) {
+    super("Interleave");
+    this.label = init?.label ?? "Interleave";
+    this.addInput("a", listIn("A"));
+    this.addInput("b", listIn("B"));
+    this.addOutput("result", listOut("Interleaved"));
+  }
+
+  data(inputs: { a?: number[][]; b?: number[][] }) {
+    const a = inputs.a?.[0] ?? [], b = inputs.b?.[0] ?? [];
+    const n = Math.min(a.length, b.length);
+    const out: number[] = [];
+    for (let i = 0; i < n; i++) { out.push(a[i], b[i]); }
+    this.cachedList = out;
+    return { result: out };
+  }
+}
+
+// ─── Pad ──────────────────────────────────────────────────────────────────────
+export type PadDir = "right" | "left";
+
+export const PAD_OP_META = {
+  right: { label: "PADRIGHT", description: "Append Fill until list reaches N elements" },
+  left:  { label: "PADLEFT",  description: "Prepend Fill until list reaches N elements" },
+} satisfies Record<PadDir, { label: string; description: string }>;
+
+export class PadNode extends ClassicPreset.Node {
+  label: string;
+  dir: PadDir;
+  cachedList: number[] = [];
+  literals: Record<string, number> = { n: 5, fill: 0 };
+  width = 180; height = 230;
+
+  constructor(init?: { label?: string; dir?: PadDir }) {
+    super("Pad");
+    this.label = init?.label ?? "Pad";
+    this.dir = init?.dir ?? "right";
+    this.addInput("list", listIn("List"));
+    this.addInput("n",    numIn("Target length"));
+    this.addInput("fill", numIn("Fill value"));
+    this.addOutput("result", listOut("Padded"));
+  }
+
+  data(inputs: { list?: number[][]; n?: number[]; fill?: number[] }) {
+    const arr  = inputs.list?.[0] ?? [];
+    const n    = Math.round(inputs.n?.[0] ?? this.literals.n ?? 5);
+    const fill = inputs.fill?.[0] ?? this.literals.fill ?? 0;
+    if (arr.length >= n) { this.cachedList = arr; return { result: arr }; }
+    const pad = Array(n - arr.length).fill(fill);
+    this.cachedList = this.dir === "left" ? [...pad, ...arr] : [...arr, ...pad];
+    return { result: this.cachedList };
+  }
+}
+
+// ─── Geometric Sequence ───────────────────────────────────────────────────────
+export class GeometricNode extends ClassicPreset.Node {
+  label: string;
+  cachedList: number[] = [];
+  literals: Record<string, number> = { start: 1, ratio: 2, count: 8 };
+  width = 180; height = 220;
+
+  constructor(init?: { label?: string }) {
+    super("Geometric");
+    this.label = init?.label ?? "Geometric";
+    this.addInput("start", numIn("Start"));
+    this.addInput("ratio", numIn("Ratio"));
+    this.addInput("count", numIn("Count"));
+    this.addOutput("result", listOut("Series"));
+  }
+
+  data(inputs: { start?: number[]; ratio?: number[]; count?: number[] }) {
+    const start = inputs.start?.[0] ?? this.literals.start ?? 1;
+    const ratio = inputs.ratio?.[0] ?? this.literals.ratio ?? 2;
+    const n     = Math.max(0, Math.round(inputs.count?.[0] ?? this.literals.count ?? 8));
+    const out: number[] = [];
+    let v = start;
+    for (let i = 0; i < n; i++) { out.push(v); v *= ratio; }
+    this.cachedList = out;
+    return { result: out };
+  }
+}
+
+// ─── Fibonacci ────────────────────────────────────────────────────────────────
+export class FibonacciNode extends ClassicPreset.Node {
+  label: string;
+  cachedList: number[] = [];
+  literals: Record<string, number> = { n: 10 };
+  width = 180; height = 130;
+
+  constructor(init?: { label?: string }) {
+    super("Fibonacci");
+    this.label = init?.label ?? "Fibonacci";
+    this.addInput("n",       numIn("Count"));
+    this.addOutput("result", listOut("Sequence"));
+  }
+
+  data(inputs: { n?: number[] }) {
+    const count = Math.min(78, Math.max(0, Math.round(inputs.n?.[0] ?? this.literals.n ?? 10)));
+    if (count === 0) { this.cachedList = []; return { result: [] }; }
+    const out = [1];
+    if (count > 1) { out.push(1); }
+    for (let i = 2; i < count; i++) out.push(out[i - 1] + out[i - 2]);
+    this.cachedList = out;
+    return { result: out };
+  }
+}
+
+// ─── Rolling Window ───────────────────────────────────────────────────────────
+
+export type RollingOp = "sum" | "avg" | "min" | "max" | "stdev" | "median";
+
+export const ROLLING_OP_META = {
+  sum:    { label: "Rolling SUM",    description: "Sliding-window sum over the list" },
+  avg:    { label: "Rolling AVG",    description: "Sliding-window average" },
+  min:    { label: "Rolling MIN",    description: "Sliding-window minimum" },
+  max:    { label: "Rolling MAX",    description: "Sliding-window maximum" },
+  stdev:  { label: "Rolling STDEV", description: "Sliding-window sample standard deviation (n−1)" },
+  median: { label: "Rolling MEDIAN",description: "Sliding-window median" },
+} satisfies Record<RollingOp, { label: string; description: string }>;
+
+export class RollingNode extends ClassicPreset.Node {
+  label: string;
+  op: RollingOp;
+  cachedList: number[] = [];
+  literals: Record<string, number> = { window: 3 };
+  width = 180;
+  height = 210;
+
+  constructor(init?: { label?: string; op?: RollingOp }) {
+    super("Rolling");
+    this.label = init?.label ?? "Rolling";
+    this.op = init?.op ?? "sum";
+    this.addInput("list",   listIn("List"));
+    this.addInput("window", numIn("Window size"));
+    this.addOutput("result", listOut("Result"));
+  }
+
+  data(inputs: { list?: number[][]; window?: number[] }) {
+    const arr = inputs.list?.[0] ?? [];
+    const w   = Math.max(1, Math.round(inputs.window?.[0] ?? this.literals.window ?? 3));
+    const result: number[] = arr.map((_, i) => {
+      const slice = arr.slice(Math.max(0, i - w + 1), i + 1);
+      switch (this.op) {
+        case "sum": return slice.reduce((a, b) => a + b, 0);
+        case "avg": return slice.reduce((a, b) => a + b, 0) / slice.length;
+        case "min": return iterMin(slice);
+        case "max": return iterMax(slice);
+        case "stdev": {
+          if (slice.length < 2) return NaN;
+          const m = slice.reduce((a, b) => a + b, 0) / slice.length;
+          return Math.sqrt(slice.reduce((s, v) => s + (v - m) ** 2, 0) / (slice.length - 1));
+        }
+        case "median": {
+          const sorted = [...slice].sort((a, b) => a - b);
+          const mid = Math.floor(sorted.length / 2);
+          return sorted.length % 2 === 0
+            ? (sorted[mid - 1] + sorted[mid]) / 2
+            : sorted[mid];
+        }
+      }
+    });
+    this.cachedList = result;
+    return { result };
+  }
+}
+
+// ─── Weighted Statistics ──────────────────────────────────────────────────────
+
+export type WeightedOp = "wavg" | "wvar" | "wstdev";
+
+export const WEIGHTED_OP_META = {
+  wavg:   { label: "WAVG",   description: "Weighted average — Σ(x·w) / Σw   (Excel: =SUMPRODUCT(x,w)/SUM(w))" },
+  wvar:   { label: "WVAR",   description: "Weighted sample variance (reliability weights)" },
+  wstdev: { label: "WSTDEV", description: "Weighted sample standard deviation — √WVAR" },
+} satisfies Record<WeightedOp, { label: string; description: string }>;
+
+export class WeightedNode extends ClassicPreset.Node {
+  label: string;
+  op: WeightedOp;
+  cachedResult: number | SolError | null = null;
+  width = 180; height = 200;
+
+  constructor(init?: { label?: string; op?: WeightedOp }) {
+    super("Weighted");
+    this.label = init?.label ?? "WAVG";
+    this.op    = init?.op    ?? "wavg";
+    this.addInput("values",  listIn("Values"));
+    this.addInput("weights", listIn("Weights"));
+    this.addOutput("result", numOut("Result"));
+  }
+
+  data(inputs: { values?: (number | null | SolError)[][]; weights?: (number | null | SolError)[][] }) {
+    const values  = inputs.values?.[0]  ?? null;
+    const weights = inputs.weights?.[0] ?? null;
+    // A SolError in either list propagates.
+    for (const v of [...(values ?? []), ...(weights ?? [])]) if (isSolError(v)) { this.cachedResult = v; return { result: v }; }
+    let result: number | null = null;
+    if (values && weights && values.length > 0 && weights.length >= values.length) {
+      // Pair value↔weight by position; SKIP a pair if either side is null (missing).
+      const pairs: [number, number][] = [];
+      for (let i = 0; i < values.length; i++) {
+        const v = values[i], w = weights[i];
+        if (!isMissing(v) && !isMissing(w)) pairs.push([v as number, w as number]);
+      }
+      const wSum = pairs.reduce((a, [, w]) => a + w, 0);
+      if (pairs.length > 0 && wSum !== 0) {
+        const wavg = pairs.reduce((s, [v, w]) => s + v * w, 0) / wSum;
+        if (this.op === "wavg") {
+          result = wavg;
+        } else {
+          // Bessel-corrected reliability-weight variance: Σw·(x−μ)² / (Σw − Σw²/Σw)
+          const wSum2 = pairs.reduce((a, [, w]) => a + w * w, 0);
+          const denom = wSum - wSum2 / wSum;
+          if (denom > 0) {
+            const wvar = pairs.reduce((s, [v, w]) => s + w * (v - wavg) ** 2, 0) / denom;
+            result = this.op === "wvar" ? wvar : Math.sqrt(wvar);
+          }
+        }
+        if (result !== null && !Number.isFinite(result)) result = null;
+      }
+    }
+    this.cachedResult = result;
+    return { result };
+  }
+}
+
+// ─── Reduce ───────────────────────────────────────────────────────────────────
+
+export type ReduceOp =
+  | "sum" | "avg" | "min" | "max" | "count" | "median" | "product" | "stdev"
+  | "geomean" | "harmean" | "sumsq" | "var_s" | "var_p" | "stdev_p" | "devsq" | "avedev" | "skew" | "skew_p" | "kurt";
+
+export const REDUCE_OP_META = {
+  sum:     { label: "SUM",     description: "Sum all values   (Excel: =SUM)" },
+  avg:     { label: "AVERAGE", description: "Arithmetic mean   (Excel: =AVERAGE)" },
+  min:     { label: "MIN",     description: "Smallest value   (Excel: =MIN)" },
+  max:     { label: "MAX",     description: "Largest value   (Excel: =MAX)" },
+  count:   { label: "COUNT",   description: "Number of values   (Excel: =COUNT)" },
+  median:  { label: "MEDIAN",  description: "Middle value   (Excel: =MEDIAN)" },
+  product: { label: "PRODUCT", description: "Multiply all values   (Excel: =PRODUCT)" },
+  stdev:   { label: "STDEV.S", description: "Sample standard deviation (n−1)   (Excel: =STDEV.S)" },
+  stdev_p: { label: "STDEV.P", description: "Population standard deviation (n)   (Excel: =STDEV.P)" },
+  var_s:   { label: "VAR.S",   description: "Sample variance (n−1)   (Excel: =VAR.S)" },
+  var_p:   { label: "VAR.P",   description: "Population variance (n)   (Excel: =VAR.P)" },
+  geomean: { label: "GEOMEAN", description: "Geometric mean (all values must be > 0)   (Excel: =GEOMEAN)" },
+  harmean: { label: "HARMEAN", description: "Harmonic mean (all values must be > 0)   (Excel: =HARMEAN)" },
+  sumsq:   { label: "SUMSQ",   description: "Sum of squares Σ(xi²)   (Excel: =SUMSQ)" },
+  devsq:   { label: "DEVSQ",   description: "Sum of squared deviations from the mean   (Excel: =DEVSQ)" },
+  avedev:  { label: "AVEDEV",  description: "Mean absolute deviation from the mean   (Excel: =AVEDEV)" },
+  skew:    { label: "SKEW",    description: "Sample skewness of the distribution   (Excel: =SKEW)" },
+  skew_p:  { label: "SKEW.P",  description: "Population skewness — divides by n   (Excel: =SKEW.P)" },
+  kurt:    { label: "KURT",    description: "Excess kurtosis of the distribution   (Excel: =KURT)" },
+} satisfies Record<ReduceOp, { label: string; description: string }>;
+
+// NB: the user-facing identity is "Aggregate" (header title, hover type hint via
+// constructor.name, status bar). It is NOT the table-taking REDUCE lambda
+// (`ReduceLambdaNode`) — it's a fixed-op 1-D list aggregator (SUM/AVERAGE/MEDIAN/
+// STDEV/…), so its input is a `list`, not a `table`. The class was once named
+// ReduceNode (no save-compat alias — pre-alpha, old saves skip it). The internal
+// op tokens (`ReduceOp`, `REDUCE_OP_META`, the `reduce-${op}` catalog ids) keep
+// their names — never user-visible.
+export class AggregateNode extends ClassicPreset.Node {
+  label: string;
+  op: ReduceOp;
+  cachedResult: number | SolError | null = null;
+  width = 180;
+  height = 160;
+
+  constructor(init?: { label?: string; op?: ReduceOp }) {
+    super("Aggregate");
+    this.label = init?.label ?? "Aggregate";
+    this.op = init?.op ?? "sum";
+    this.addInput("list",    listIn("List"));
+    this.addOutput("result", numOut("Result"));
+  }
+
+  data(inputs: { list?: (number | null | SolError)[][] }) {
+    // Aggregator policy: a SolError in the list PROPAGATES; `null` (missing) is
+    // SKIPPED. No-op for today's all-number lists (forAggregate returns them
+    // unchanged, NaN included) — only bites once producers emit null/errors.
+    const prep = forAggregate(inputs.list?.[0] ?? []);
+    if (prep.error) { this.cachedResult = prep.error; return { result: prep.error }; }
+    const arr = prep.nums;
+    let result: number | null = null;
+    if (arr.length > 0) {
+      switch (this.op) {
+        case "sum":     result = arr.reduce((a, b) => a + b, 0); break;
+        case "avg":     result = arr.reduce((a, b) => a + b, 0) / arr.length; break;
+        case "min":     result = iterMin(arr); break;
+        case "max":     result = iterMax(arr); break;
+        case "count":   result = arr.length; break;
+        case "product": result = arr.reduce((a, b) => a * b, 1); break;
+        case "median": {
+          const s = [...arr].sort((a, b) => a - b);
+          const m = Math.floor(s.length / 2);
+          result = s.length % 2 === 0 ? (s[m - 1] + s[m]) / 2 : s[m];
+          break;
+        }
+        case "stdev": {
+          if (arr.length < 2) { result = 0; break; }
+          const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
+          const variance = arr.reduce((a, b) => a + (b - mean) ** 2, 0) / (arr.length - 1);
+          result = Math.sqrt(variance);
+          break;
+        }
+        case "geomean": {
+          if (arr.some((v) => v <= 0)) break;
+          result = Math.exp(arr.reduce((a, b) => a + Math.log(b), 0) / arr.length);
+          break;
+        }
+        case "harmean": {
+          if (arr.some((v) => v <= 0)) break;
+          result = arr.length / arr.reduce((a, b) => a + 1 / b, 0);
+          break;
+        }
+        case "sumsq":   result = arr.reduce((a, b) => a + b * b, 0); break;
+        case "var_s": {
+          if (arr.length < 2) break;
+          const meanVs = arr.reduce((a, b) => a + b, 0) / arr.length;
+          result = arr.reduce((a, b) => a + (b - meanVs) ** 2, 0) / (arr.length - 1);
+          break;
+        }
+        case "var_p": {
+          const meanVp = arr.reduce((a, b) => a + b, 0) / arr.length;
+          result = arr.reduce((a, b) => a + (b - meanVp) ** 2, 0) / arr.length;
+          break;
+        }
+        case "stdev_p": {
+          const meanSp = arr.reduce((a, b) => a + b, 0) / arr.length;
+          result = Math.sqrt(arr.reduce((a, b) => a + (b - meanSp) ** 2, 0) / arr.length);
+          break;
+        }
+        case "devsq": {
+          const meanDq = arr.reduce((a, b) => a + b, 0) / arr.length;
+          result = arr.reduce((a, b) => a + (b - meanDq) ** 2, 0);
+          break;
+        }
+        case "avedev": {
+          const meanAd = arr.reduce((a, b) => a + b, 0) / arr.length;
+          result = arr.reduce((a, b) => a + Math.abs(b - meanAd), 0) / arr.length;
+          break;
+        }
+        case "skew": {
+          const nSk = arr.length;
+          if (nSk < 3) break;
+          const meanSk = arr.reduce((a, b) => a + b, 0) / nSk;
+          const sSk = Math.sqrt(arr.reduce((a, b) => a + (b - meanSk) ** 2, 0) / (nSk - 1));
+          if (sSk === 0) break;
+          const sum3 = arr.reduce((a, b) => a + ((b - meanSk) / sSk) ** 3, 0);
+          result = (nSk / ((nSk - 1) * (nSk - 2))) * sum3;
+          break;
+        }
+        case "skew_p": {
+          const nSp = arr.length;
+          if (nSp < 2) break;
+          const meanSp = arr.reduce((a, b) => a + b, 0) / nSp;
+          const sSp = Math.sqrt(arr.reduce((a, b) => a + (b - meanSp) ** 2, 0) / nSp);
+          if (sSp === 0) break;
+          result = arr.reduce((a, b) => a + ((b - meanSp) / sSp) ** 3, 0) / nSp;
+          break;
+        }
+        case "kurt": {
+          const nKu = arr.length;
+          if (nKu < 4) break;
+          const meanKu = arr.reduce((a, b) => a + b, 0) / nKu;
+          const sKu = Math.sqrt(arr.reduce((a, b) => a + (b - meanKu) ** 2, 0) / (nKu - 1));
+          if (sKu === 0) break;
+          const sum4 = arr.reduce((a, b) => a + ((b - meanKu) / sKu) ** 4, 0);
+          result =
+            ((nKu * (nKu + 1)) / ((nKu - 1) * (nKu - 2) * (nKu - 3))) * sum4 -
+            (3 * (nKu - 1) ** 2) / ((nKu - 2) * (nKu - 3));
+          break;
+        }
+      }
+    } else if (this.op === "count") {
+      result = 0;
+    }
+    this.cachedResult = result;
+    return { result };
+  }
+}
+
+// ─── RANDARRAY ────────────────────────────────────────────────────────────────
+
+// Upper bound on a generated list's length. A generator asked for an absurd count
+// (a typo, or a wired value) would otherwise allocate an enormous array that
+// freezes the UI; cap it and return #RANGE! (count out of range) instead.
+const MAX_GENERATED = 1_000_000;
+
+export class RandArrayNode extends ClassicPreset.Node {
+  label: string;
+  cachedList: number[] | SolError = [];
+  literals: Record<string, number> = { count: 10, min: 0, max: 1 };
+  width = 180; height = 225;
+  // Volatile: raw [0,1) rolls are fixed until a recalc (or the count changes);
+  // min/max are applied live so wiring new bounds rescales the same draws.
+  private rolls: number[] = [];
+  private lastGen = -1;
+
+  constructor(init?: { label?: string }) {
+    super("RandArray");
+    this.label = init?.label ?? "RANDARRAY";
+    this.addInput("count", numIn("Count"));
+    this.addInput("min",   numIn("Min (default 0)"));
+    this.addInput("max",   numIn("Max (default 1)"));
+    this.addOutput("list", listOut("List"));
+  }
+
+  data(inputs: { count?: number[]; min?: number[]; max?: number[] }): { list: number[] | SolError } {
+    const count = Math.max(0, Math.floor(inputs.count?.[0] ?? this.literals.count ?? 10));
+    if (count > MAX_GENERATED) {
+      const e = solError("#RANGE!", `RANDARRAY count ${count} exceeds the ${MAX_GENERATED} element limit`);
+      this.cachedList = e; this.rolls = []; this.lastGen = -1;
+      return { list: e };
+    }
+    const lo    = inputs.min?.[0] ?? this.literals.min ?? 0;
+    const hi    = inputs.max?.[0] ?? this.literals.max ?? 1;
+    const range = hi - lo;
+    const gen = getRecalcGen();
+    if (this.lastGen !== gen || this.rolls.length !== count) {
+      this.rolls = Array.from({ length: count }, () => Math.random());
+      this.lastGen = gen;
+    }
+    const list = this.rolls.map((r) => lo + r * range);
+    this.cachedList = list;
+    return { list };
+  }
+}
+
+// ─── SEQUENCE ─────────────────────────────────────────────────────────────────
+
+export class SequenceNode extends ClassicPreset.Node {
+  label: string;
+  cachedList: number[] | SolError = [];
+  literals: Record<string, number> = { count: 10, start: 1, step: 1 };
+  width = 180; height = 195;
+
+  constructor(init?: { label?: string }) {
+    super("Sequence");
+    this.label = init?.label ?? "SEQUENCE";
+    this.addInput("count", numIn("Count"));
+    this.addInput("start", numIn("Start (default 1)"));
+    this.addInput("step",  numIn("Step (default 1)"));
+    this.addOutput("list", listOut("List"));
+  }
+
+  data(inputs: { count?: number[]; start?: number[]; step?: number[] }): { list: number[] | SolError } {
+    const count = Math.max(0, Math.floor(inputs.count?.[0] ?? this.literals.count ?? 10));
+    if (count > MAX_GENERATED) {
+      const e = solError("#RANGE!", `SEQUENCE count ${count} exceeds the ${MAX_GENERATED} element limit`);
+      this.cachedList = e;
+      return { list: e };
+    }
+    const start = inputs.start?.[0] ?? this.literals.start ?? 1;
+    const step  = inputs.step?.[0]  ?? this.literals.step  ?? 1;
+    const list  = Array.from({ length: count }, (_, i) => start + i * step);
+    this.cachedList = list;
+    return { list };
+  }
+}
+
+// ─── SORTBY ───────────────────────────────────────────────────────────────────
+
+export class SortByNode extends ClassicPreset.Node {
+  label: string;
+  cachedList: number[] = [];
+  width = 180; height = 175;
+
+  constructor(init?: { label?: string }) {
+    super("SortBy");
+    this.label = init?.label ?? "SORTBY";
+    this.addInput("array",    listIn("Array to sort"));
+    this.addInput("by_array", listIn("Sort by (parallel list)"));
+    this.addOutput("list", listOut("Sorted list"));
+  }
+
+  data(inputs: { array?: number[][]; by_array?: number[][] }): { list: number[] } {
+    const arr = inputs.array?.[0] ?? [];
+    const by  = inputs.by_array?.[0] ?? [];
+    const n   = Math.min(arr.length, by.length);
+    const pairs: [number, number][] = Array.from({ length: n }, (_, i) => [arr[i], by[i]]);
+    pairs.sort((a, b) => a[1] - b[1]);
+    const list = pairs.map(p => p[0]);
+    this.cachedList = list;
+    return { list };
+  }
+}
+
+// ─── XMATCH ───────────────────────────────────────────────────────────────────
+
+export type XMatchMatchMode = "exact" | "next_larger" | "next_smaller";
+
+export const XMATCH_MATCH_MODE_META: Record<XMatchMatchMode, string> = {
+  exact:        "Exact match (0)",
+  next_larger:  "Exact or next larger (1)",
+  next_smaller: "Exact or next smaller (-1)",
+};
+
+export class XMatchNode extends ClassicPreset.Node {
+  label: string;
+  matchMode: XMatchMatchMode;
+  cachedResult: number | SolError | null = null;
+  literals: Record<string, number> = { value: 0 };
+  width = 180; height = 200;
+
+  constructor(init?: { label?: string; matchMode?: XMatchMatchMode }) {
+    super("XMatch");
+    this.label     = init?.label     ?? "XMATCH";
+    this.matchMode = init?.matchMode ?? "exact";
+    this.addInput("value",  numIn("Lookup value"));
+    this.addInput("array",  listIn("Array"));
+    this.addOutput("result", numOut("1-based position (null=not found)"));
+  }
+
+  data(inputs: { value?: number[]; array?: number[][] }): { result: number | SolError | null } {
+    const val = inputs.value?.[0] ?? this.literals.value ?? 0;
+    const wired = inputs.array?.[0] ?? null;
+    const arr = wired ?? [];
+    let result: number | SolError | null = null;
+    if (this.matchMode === "exact") {
+      const idx = arr.findIndex(v => v === val);
+      result = idx === -1 ? null : idx + 1;
+    } else if (this.matchMode === "next_larger") {
+      let best: number | null = null; let bestIdx = -1;
+      for (let i = 0; i < arr.length; i++) {
+        if (arr[i] >= val && (best === null || arr[i] < best)) { best = arr[i]; bestIdx = i; }
+      }
+      result = bestIdx === -1 ? null : bestIdx + 1;
+    } else {
+      let best: number | null = null; let bestIdx = -1;
+      for (let i = 0; i < arr.length; i++) {
+        if (arr[i] <= val && (best === null || arr[i] > best)) { best = arr[i]; bestIdx = i; }
+      }
+      result = bestIdx === -1 ? null : bestIdx + 1;
+    }
+    // A wired array with no match is Excel #N/A; an unwired array stays blank.
+    if (wired !== null && result === null) {
+      result = solError("#N/A", "No match found in the array");
+    }
+    this.cachedResult = result;
+    return { result };
+  }
+}
+
+// ─── GROUPBY ─────────────────────────────────────────────────────────────────
+
+export type GroupByOp = "sum" | "avg" | "min" | "max" | "count";
+
+export const GROUP_BY_OP_META: Record<GroupByOp, { label: string; description: string }> = {
+  sum:   { label: "SUM",   description: "Sum values in each group" },
+  avg:   { label: "AVERAGE", description: "Average values in each group" },
+  min:   { label: "MIN",   description: "Minimum value in each group" },
+  max:   { label: "MAX",   description: "Maximum value in each group" },
+  count: { label: "COUNT", description: "Count of items in each group" },
+};
+
+function groupByAggregate(vals: number[], op: GroupByOp): number {
+  if (vals.length === 0) return 0;
+  switch (op) {
+    case "sum":   return vals.reduce((a, b) => a + b, 0);
+    case "avg":   return vals.reduce((a, b) => a + b, 0) / vals.length;
+    case "min":   return iterMin(vals);
+    case "max":   return iterMax(vals);
+    case "count": return vals.length;
+  }
+}
+
+export class GroupByNode extends ClassicPreset.Node {
+  label: string;
+  op: GroupByOp;
+  cachedKeys: (string | number)[] | null = null;
+  cachedValues: number[] | null = null;
+  width = 180; height = 220;
+
+  constructor(init?: { label?: string; op?: GroupByOp }) {
+    super("GroupBy");
+    this.label = init?.label ?? "Group Lists";
+    this.op    = init?.op    ?? "sum";
+    this.addInput("keys",   anyIn("Keys"));
+    this.addInput("values", listIn("Values"));
+    this.addOutput("keys",   anyOut("Unique keys"));
+    this.addOutput("values", listOut("Aggregated"));
+  }
+
+  data(inputs: {
+    keys?:   unknown[][];
+    values?: number[][];
+  }): { keys: (string | number)[]; values: number[] } {
+    const rawKeys = inputs.keys?.[0];
+    const rawVals = inputs.values?.[0] ?? [];
+
+    if (!Array.isArray(rawKeys) || rawKeys.length === 0) {
+      this.cachedKeys = null;
+      this.cachedValues = null;
+      return { keys: [], values: [] };
+    }
+
+    const len = Math.min(rawKeys.length, rawVals.length);
+    const order: (string | number)[] = [];
+    const buckets = new Map<string, number[]>();
+
+    for (let i = 0; i < len; i++) {
+      const k = rawKeys[i] as string | number;
+      const key = String(k);
+      if (!buckets.has(key)) {
+        buckets.set(key, []);
+        order.push(k);
+      }
+      const v = Number(rawVals[i]);
+      if (Number.isFinite(v)) buckets.get(key)!.push(v);
+    }
+
+    const aggValues = order.map((k) => groupByAggregate(buckets.get(String(k))!, this.op));
+    this.cachedKeys   = order;
+    this.cachedValues = aggValues;
+    return { keys: order, values: aggValues };
+  }
+}
+
+// ─── Coalesce / Fill ────────────────────────────────────────────────────────────
+// The explicit opt-in to "treat `null` as something" — the inverse of the skip-null
+// aggregators. One bundled node (op dropdown, like Aggregate) for missing-value
+// handling. A per-cell SolError is NOT missing, so every mode passes errors through
+// untouched (it FILLS gaps, it doesn't repair errors); statistics impute from the
+// PRESENT finite numbers only (skip null AND error). See dev-notes "Coalesce / Fill".
+
+export type FillOp =
+  | "constant" | "ffill" | "bfill"
+  | "mean" | "median" | "mode"
+  | "interpolate" | "drop" | "coalesce";
+
+export const FILL_OP_META = {
+  constant:    { label: "Fill with value",  description: "Replace each missing (null) cell with a constant (Excel-ish: =IF(ISBLANK,…))" },
+  ffill:       { label: "Forward fill",      description: "Carry the last present value forward over gaps (pandas ffill)" },
+  bfill:       { label: "Backward fill",     description: "Carry the next present value back over gaps (pandas bfill)" },
+  mean:        { label: "Fill with mean",    description: "Impute gaps with the mean of present values" },
+  median:      { label: "Fill with median",  description: "Impute gaps with the median of present values" },
+  mode:        { label: "Fill with mode",    description: "Impute gaps with the most common present value" },
+  interpolate: { label: "Interpolate",       description: "Linearly interpolate interior gaps between bracketing present values" },
+  drop:        { label: "Drop missing",      description: "Remove missing (null) cells — shortens the list (pandas dropna)" },
+  coalesce:    { label: "Coalesce (else)",   description: "First present of List then Else, per position (SQL COALESCE)" },
+} satisfies Record<FillOp, { label: string; description: string }>;
+
+type Cell = number | null | SolError;
+
+/** Present finite numbers only — gaps (null) and per-cell errors are excluded, so
+ *  an imputation statistic is computed from real data (per P3 skip-null). */
+function presentNumbers(arr: ReadonlyArray<Cell>): number[] {
+  return arr.filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+}
+
+function imputeStat(arr: ReadonlyArray<Cell>, op: "mean" | "median" | "mode"): number | null {
+  const nums = presentNumbers(arr);
+  if (nums.length === 0) return null; // nothing present → can't impute, leave gaps null
+  if (op === "mean") return nums.reduce((a, b) => a + b, 0) / nums.length;
+  if (op === "median") {
+    const s = [...nums].sort((a, b) => a - b);
+    const m = Math.floor(s.length / 2);
+    return s.length % 2 === 0 ? (s[m - 1] + s[m]) / 2 : s[m];
+  }
+  // mode: most frequent; ties broken by first occurrence (Excel MODE behavior).
+  const counts = new Map<number, number>();
+  let best = nums[0], bestCount = 0;
+  for (const v of nums) {
+    const c = (counts.get(v) ?? 0) + 1;
+    counts.set(v, c);
+    if (c > bestCount) { bestCount = c; best = v; }
+  }
+  return best;
+}
+
+/** Linear interpolation of interior gaps: each null between two present finite
+ *  numbers is filled along the straight line by index. Leading/trailing gaps (no
+ *  bracket on one side) stay null — no extrapolation. A non-finite/error cell is a
+ *  hard boundary (not a value to interpolate from), so gaps beside it stay null. */
+function interpolateList(arr: ReadonlyArray<Cell>): Cell[] {
+  const out: Cell[] = arr.slice();
+  let i = 0;
+  while (i < out.length) {
+    if (!isMissing(out[i])) { i++; continue; }
+    // run of nulls [start, end)
+    const start = i;
+    while (i < out.length && isMissing(out[i])) i++;
+    const end = i;
+    const left = start - 1;
+    const right = end;
+    const lv = left >= 0 ? out[left] : undefined;
+    const rv = right < out.length ? out[right] : undefined;
+    if (typeof lv === "number" && Number.isFinite(lv) && typeof rv === "number" && Number.isFinite(rv)) {
+      const span = right - left;
+      for (let k = start; k < end; k++) {
+        const t = (k - left) / span;
+        out[k] = lv + (rv - lv) * t;
+      }
+    } // else: an open-ended or error-bounded gap — leave the nulls in place
+  }
+  return out;
+}
+
+export class FillNode extends ClassicPreset.Node {
+  label: string;
+  op: FillOp;
+  cachedList: Cell[] = [];
+  literals: Record<string, number> = { value: 0 };
+  width = 200; height = 175;
+
+  constructor(init?: { label?: string; op?: FillOp }) {
+    super("Fill");
+    this.label = init?.label ?? "Fill";
+    this.op = init?.op ?? "constant";
+    this.addInput("list",  listIn("List"));
+    this.addInput("value", numIn("Fill with")); // shown for the constant mode
+    this.addInput("else",  listIn("Else"));      // shown for the coalesce mode
+    this.addOutput("result", listOut("Filled"));
+  }
+
+  data(inputs: { list?: Cell[][]; value?: number[]; else?: Cell[][] }) {
+    const arr = inputs.list?.[0] ?? null;
+    if (!arr) { this.cachedList = []; return { result: [] }; }
+    let out: Cell[];
+    switch (this.op) {
+      case "constant": {
+        const c = inputs.value?.[0] ?? this.literals.value ?? 0;
+        out = arr.map((v) => (isMissing(v) ? c : v));
+        break;
+      }
+      case "ffill": {
+        out = [];
+        let last: Cell = null;
+        let have = false;
+        for (const v of arr) {
+          if (isMissing(v)) out.push(have ? last : null);
+          else { last = v; have = true; out.push(v); }
+        }
+        break;
+      }
+      case "bfill": {
+        out = new Array<Cell>(arr.length).fill(null);
+        let next: Cell = null;
+        let have = false;
+        for (let i = arr.length - 1; i >= 0; i--) {
+          const v = arr[i];
+          if (isMissing(v)) out[i] = have ? next : null;
+          else { next = v; have = true; out[i] = v; }
+        }
+        break;
+      }
+      case "mean": case "median": case "mode": {
+        const stat = imputeStat(arr, this.op);
+        out = arr.map((v) => (isMissing(v) ? stat : v));
+        break;
+      }
+      case "interpolate": {
+        out = interpolateList(arr);
+        break;
+      }
+      case "drop": {
+        out = arr.filter((v) => !isMissing(v));
+        break;
+      }
+      case "coalesce": {
+        const b = inputs.else?.[0] ?? [];
+        const n = Math.max(arr.length, b.length);
+        out = Array.from({ length: n }, (_, i): Cell => {
+          const a: Cell = i < arr.length ? arr[i] : null;
+          return isMissing(a) ? (i < b.length ? b[i] : null) : a;
+        });
+        break;
+      }
+    }
+    this.cachedList = out;
+    return { result: out };
+  }
+}

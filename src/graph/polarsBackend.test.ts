@@ -1,0 +1,162 @@
+// PolarsBackend wiring: each method is one `invoke` with the right command name
+// and arg shape. We can't run the native engine in the node test env, so we mock
+// `@tauri-apps/api/core`'s `invoke` and assert the calls. `isDesktop()` is forced
+// on via the same global the desktop shell sets.
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import type { FrameValue } from "./frame";
+import type { FrameOp, JoinOpts } from "./frameVerbs";
+
+// The invoke spy — ipcBridge imports `@tauri-apps/api/core` lazily inside
+// ipcInvoke, so the mock must be registered before that dynamic import runs.
+const invokeMock = vi.fn();
+vi.mock("@tauri-apps/api/core", () => ({ invoke: invokeMock }));
+
+import { frameBackend, initFrameBackend, resetFrameBackendToJs } from "./frameBackend";
+
+// Force the desktop guard on (engineAvailable() === isDesktop(), which reads
+// window.__TAURI_INTERNALS__), and start each test from the default JS backend.
+beforeEach(() => {
+  (globalThis as Record<string, unknown>).window = globalThis;
+  (globalThis as unknown as Record<string, unknown>).__TAURI_INTERNALS__ = {};
+  invokeMock.mockReset();
+  resetFrameBackendToJs();
+});
+afterEach(() => {
+  delete (globalThis as unknown as Record<string, unknown>).__TAURI_INTERNALS__;
+  resetFrameBackendToJs();
+});
+
+const sample: FrameValue = {
+  __frame: true,
+  columns: [
+    { name: "n", type: "number", values: [1, 2, 3] },
+    { name: "s", type: "string", values: ["a", "b", "c"] },
+  ],
+};
+
+/** Ping resolves to `backend`, then install the backend via initFrameBackend. */
+async function initWith(backend: string): Promise<void> {
+  invokeMock.mockResolvedValueOnce({ name: "solenoid-engine", version: "0.1.0", backend });
+  await initFrameBackend();
+}
+
+describe("PolarsBackend — selection at startup", () => {
+  it("installs PolarsBackend when the engine reports 'polars'", async () => {
+    await initWith("polars");
+    invokeMock.mockResolvedValueOnce("plf:1");
+    const h = await frameBackend().source(sample);
+    expect(h).toBe("plf:1");
+    const sourceCall = invokeMock.mock.calls.find((c) => c[0] === "engine_source");
+    expect(sourceCall![1]).toEqual({
+      frame: {
+        columns: [
+          { name: "n", type: "number", values: [1, 2, 3] },
+          { name: "s", type: "string", values: ["a", "b", "c"] },
+        ],
+      },
+    });
+  });
+
+  it("does NOT swap when the engine reports a non-polars backend", async () => {
+    await initWith("none");
+    invokeMock.mockClear();
+    const h = await frameBackend().source(sample);
+    expect(String(h).startsWith("jsf:")).toBe(true);
+    expect(invokeMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("PolarsBackend — verb command shapes", () => {
+  beforeEach(async () => {
+    await initWith("polars");
+    invokeMock.mockClear();
+  });
+
+  it("apply → engine_apply { handle, op }", async () => {
+    const be = frameBackend();
+    invokeMock.mockResolvedValueOnce("plf:2");
+    const h = await be.source(sample);
+    invokeMock.mockResolvedValueOnce("plf:3");
+    const op: FrameOp = { kind: "select", columns: ["n"] };
+    await be.apply(h, op);
+    const call = invokeMock.mock.calls.find((c) => c[0] === "engine_apply");
+    expect(call![1]).toEqual({ handle: h, op });
+  });
+
+  it("join → engine_join { left, right, opts }", async () => {
+    const be = frameBackend();
+    invokeMock.mockResolvedValueOnce("plf:L");
+    const l = await be.source(sample);
+    invokeMock.mockResolvedValueOnce("plf:R");
+    const r = await be.source(sample);
+    invokeMock.mockResolvedValueOnce("plf:J");
+    const opts: JoinOpts = { leftKey: "n", rightKey: "n", how: "inner" };
+    await be.join(l, r, opts);
+    const call = invokeMock.mock.calls.find((c) => c[0] === "engine_join");
+    expect(call![1]).toEqual({ left: l, right: r, opts });
+  });
+
+  it("append → engine_append { handles }", async () => {
+    const be = frameBackend();
+    invokeMock.mockResolvedValueOnce("plf:A");
+    const a = await be.source(sample);
+    invokeMock.mockResolvedValueOnce("plf:B");
+    const b = await be.source(sample);
+    invokeMock.mockResolvedValueOnce("plf:AB");
+    await be.append([a, b]);
+    const call = invokeMock.mock.calls.find((c) => c[0] === "engine_append");
+    expect(call![1]).toEqual({ handles: [a, b] });
+  });
+
+  it("preview → engine_preview { handle, n } and returns the preview", async () => {
+    const be = frameBackend();
+    invokeMock.mockResolvedValueOnce("plf:P");
+    const h = await be.source(sample);
+    const preview = { schema: [{ name: "n", type: "number" }], rows: [[1]], rowCount: 3, truncated: true };
+    invokeMock.mockResolvedValueOnce(preview);
+    const got = await be.preview(h, 1);
+    expect(got).toEqual(preview);
+    const call = invokeMock.mock.calls.find((c) => c[0] === "engine_preview");
+    expect(call![1]).toEqual({ handle: h, n: 1 });
+  });
+
+  it("collect → engine_collect { handle }, wraps columns in a FrameValue", async () => {
+    const be = frameBackend();
+    invokeMock.mockResolvedValueOnce("plf:K");
+    const h = await be.source(sample);
+    invokeMock.mockResolvedValueOnce([
+      { name: "n", type: "number", values: [1, 2, 3] },
+      { name: "s", type: "string", values: ["a", "b", "c"] },
+    ]);
+    const got = await be.collect(h);
+    expect(got.__frame).toBe(true);
+    expect(got.columns).toHaveLength(2);
+    const call = invokeMock.mock.calls.find((c) => c[0] === "engine_collect");
+    expect(call![1]).toEqual({ handle: h });
+  });
+
+  it("column → engine_column { handle, name }", async () => {
+    const be = frameBackend();
+    invokeMock.mockResolvedValueOnce("plf:C");
+    const h = await be.source(sample);
+    invokeMock.mockResolvedValueOnce({ name: "s", type: "string", values: ["a", "b", "c"] });
+    const col = await be.column(h, "s");
+    expect(col?.values).toEqual(["a", "b", "c"]);
+    const call = invokeMock.mock.calls.find((c) => c[0] === "engine_column");
+    expect(call![1]).toEqual({ handle: h, name: "s" });
+  });
+
+  it("drop → engine_drop { handle }, fire-and-forget (swallows rejection)", async () => {
+    const be = frameBackend();
+    invokeMock.mockResolvedValueOnce("plf:D");
+    const h = await be.source(sample);
+    invokeMock.mockRejectedValueOnce(new Error("boom"));
+    expect(() => be.drop(h)).not.toThrow();
+    // drop is fire-and-forget: its invoke fires after the lazy `import()` resolves.
+    await vi.waitFor(() => {
+      expect(invokeMock.mock.calls.find((c) => c[0] === "engine_drop")).toBeTruthy();
+    });
+    const call = invokeMock.mock.calls.find((c) => c[0] === "engine_drop");
+    expect(call![1]).toEqual({ handle: h });
+  });
+});

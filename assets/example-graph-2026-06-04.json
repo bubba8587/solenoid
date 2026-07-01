@@ -1,0 +1,369 @@
+{
+  "v": 1,
+  "nodes": [
+    {
+      "id": "2bf2c29cf071406f",
+      "type": "NumberInputNode",
+      "x": -8,
+      "y": 4,
+      "init": {
+        "label": "Turns N",
+        "value": 500,
+        "width": 180,
+        "height": 76
+      }
+    },
+    {
+      "id": "9c386e25850282ae",
+      "type": "NumberInputNode",
+      "x": -8,
+      "y": 114,
+      "init": {
+        "label": "Length ℓ (m)",
+        "value": 0.2,
+        "width": 180,
+        "height": 76
+      }
+    },
+    {
+      "id": "ad3d4bc8a14a0bbf",
+      "type": "NumberInputNode",
+      "x": -8,
+      "y": 224,
+      "init": {
+        "label": "Current I (A)",
+        "value": 3,
+        "width": 180,
+        "height": 76
+      }
+    },
+    {
+      "id": "19858360558ae13e",
+      "type": "NumberInputNode",
+      "x": -8,
+      "y": 334,
+      "init": {
+        "label": "Radius r (m)",
+        "value": 0.02,
+        "width": 180,
+        "height": 76
+      }
+    },
+    {
+      "id": "8c1ce29d69bfcbec",
+      "type": "ExpressionNode",
+      "x": 874,
+      "y": 113,
+      "init": {
+        "label": "Turn density n (1/m)",
+        "expr": "N / L",
+        "width": 180,
+        "height": 198
+      },
+      "literals": {},
+      "stringLiterals": {}
+    },
+    {
+      "id": "6a5bfac0434c59d1",
+      "type": "ExpressionNode",
+      "x": 825,
+      "y": 525,
+      "init": {
+        "label": "Core area A (m²)",
+        "expr": "PI() * r^2",
+        "width": 180,
+        "height": 157
+      },
+      "literals": {},
+      "stringLiterals": {}
+    },
+    {
+      "id": "c299567a76ab7ff2",
+      "type": "ExpressionNode",
+      "x": 1125,
+      "y": 285,
+      "init": {
+        "label": "Field B = μ₀ n I (T)",
+        "expr": "(4 * PI() * 1e-7) * n * I",
+        "width": 180,
+        "height": 198
+      },
+      "literals": {},
+      "stringLiterals": {}
+    },
+    {
+      "id": "f07ac35e62e1f0ef",
+      "type": "ExpressionNode",
+      "x": 1125,
+      "y": 625,
+      "init": {
+        "label": "Inductance μ₀N²A/ℓ (H)",
+        "expr": "(4 * PI() * 1e-7) * N^2 * A / L",
+        "width": 180,
+        "height": 226
+      },
+      "literals": {},
+      "stringLiterals": {}
+    },
+    {
+      "id": "4c490667ff371c28",
+      "type": "ExpressionNode",
+      "x": 1425,
+      "y": 285,
+      "init": {
+        "label": "Flux Φ = B A (Wb)",
+        "expr": "B * A",
+        "width": 180,
+        "height": 185
+      },
+      "literals": {},
+      "stringLiterals": {}
+    },
+    {
+      "id": "c3d1d59c54533246",
+      "type": "ExpressionNode",
+      "x": 1425,
+      "y": 625,
+      "init": {
+        "label": "Energy ½L I² (J)",
+        "expr": "0.5 * Lind * I^2",
+        "width": 180,
+        "height": 185
+      },
+      "literals": {},
+      "stringLiterals": {}
+    },
+    {
+      "id": "f6f262a01ca37759",
+      "type": "ExpressionNode",
+      "x": 1687,
+      "y": -11,
+      "init": {
+        "label": "Flux linkage NΦ (Wb)",
+        "expr": "N * flux",
+        "width": 180,
+        "height": 198
+      },
+      "literals": {},
+      "stringLiterals": {}
+    },
+    {
+      "id": "0c819a9510fcdf89",
+      "type": "DisplayNode",
+      "x": 1520,
+      "y": -40,
+      "init": {
+        "label": "Magnetic field (T)",
+        "unitSuffix": "none",
+        "width": 180,
+        "height": 100
+      }
+    },
+    {
+      "id": "0d8485dce21abf6e",
+      "type": "DisplayNode",
+      "x": 1520,
+      "y": 120,
+      "init": {
+        "label": "Magnetic flux (Wb)",
+        "unitSuffix": "none",
+        "width": 180,
+        "height": 100
+      }
+    },
+    {
+      "id": "a0be957d115e54d8",
+      "type": "DisplayNode",
+      "x": 1520,
+      "y": 280,
+      "init": {
+        "label": "Inductance (H)",
+        "unitSuffix": "none",
+        "width": 180,
+        "height": 87
+      }
+    },
+    {
+      "id": "3ab47e354903f0a4",
+      "type": "DisplayNode",
+      "x": 1520,
+      "y": 440,
+      "init": {
+        "label": "Stored energy (J)",
+        "unitSuffix": "none",
+        "width": 180,
+        "height": 100
+      }
+    },
+    {
+      "id": "4817b3c79dc53657",
+      "type": "GroupNode",
+      "x": -40,
+      "y": -68,
+      "init": {
+        "label": "Coil parameters",
+        "members": [
+          "2bf2c29cf071406f",
+          "9c386e25850282ae",
+          "ad3d4bc8a14a0bbf",
+          "19858360558ae13e"
+        ],
+        "color": "#56b4e9",
+        "collapsed": true,
+        "width": 224,
+        "height": 482
+      }
+    },
+    {
+      "id": "4f39d308c4353e64",
+      "type": "GroupNode",
+      "x": 1488,
+      "y": -112,
+      "init": {
+        "label": "Results",
+        "members": [
+          "0c819a9510fcdf89",
+          "0d8485dce21abf6e",
+          "a0be957d115e54d8",
+          "3ab47e354903f0a4"
+        ],
+        "color": "#009e73",
+        "collapsed": true,
+        "width": 300,
+        "height": 700
+      }
+    },
+    {
+      "id": "071ec643407257d3",
+      "type": "GroupNode",
+      "x": 801,
+      "y": -67,
+      "init": {
+        "label": "Group",
+        "members": [
+          "8c1ce29d69bfcbec",
+          "6a5bfac0434c59d1",
+          "c299567a76ab7ff2",
+          "f07ac35e62e1f0ef",
+          "4c490667ff371c28",
+          "c3d1d59c54533246",
+          "f6f262a01ca37759"
+        ],
+        "color": "#6b7280",
+        "collapsed": true,
+        "width": 1091.7358646030043,
+        "height": 943.9828927897662
+      }
+    }
+  ],
+  "connections": [
+    {
+      "source": "2bf2c29cf071406f",
+      "sourceOutput": "value",
+      "target": "8c1ce29d69bfcbec",
+      "targetInput": "N"
+    },
+    {
+      "source": "9c386e25850282ae",
+      "sourceOutput": "value",
+      "target": "8c1ce29d69bfcbec",
+      "targetInput": "L"
+    },
+    {
+      "source": "19858360558ae13e",
+      "sourceOutput": "value",
+      "target": "6a5bfac0434c59d1",
+      "targetInput": "r"
+    },
+    {
+      "source": "8c1ce29d69bfcbec",
+      "sourceOutput": "result",
+      "target": "c299567a76ab7ff2",
+      "targetInput": "n"
+    },
+    {
+      "source": "ad3d4bc8a14a0bbf",
+      "sourceOutput": "value",
+      "target": "c299567a76ab7ff2",
+      "targetInput": "I"
+    },
+    {
+      "source": "c299567a76ab7ff2",
+      "sourceOutput": "result",
+      "target": "4c490667ff371c28",
+      "targetInput": "B"
+    },
+    {
+      "source": "6a5bfac0434c59d1",
+      "sourceOutput": "result",
+      "target": "4c490667ff371c28",
+      "targetInput": "A"
+    },
+    {
+      "source": "2bf2c29cf071406f",
+      "sourceOutput": "value",
+      "target": "f07ac35e62e1f0ef",
+      "targetInput": "N"
+    },
+    {
+      "source": "6a5bfac0434c59d1",
+      "sourceOutput": "result",
+      "target": "f07ac35e62e1f0ef",
+      "targetInput": "A"
+    },
+    {
+      "source": "9c386e25850282ae",
+      "sourceOutput": "value",
+      "target": "f07ac35e62e1f0ef",
+      "targetInput": "L"
+    },
+    {
+      "source": "f07ac35e62e1f0ef",
+      "sourceOutput": "result",
+      "target": "c3d1d59c54533246",
+      "targetInput": "Lind"
+    },
+    {
+      "source": "ad3d4bc8a14a0bbf",
+      "sourceOutput": "value",
+      "target": "c3d1d59c54533246",
+      "targetInput": "I"
+    },
+    {
+      "source": "2bf2c29cf071406f",
+      "sourceOutput": "value",
+      "target": "f6f262a01ca37759",
+      "targetInput": "N"
+    },
+    {
+      "source": "4c490667ff371c28",
+      "sourceOutput": "result",
+      "target": "f6f262a01ca37759",
+      "targetInput": "flux"
+    },
+    {
+      "source": "c299567a76ab7ff2",
+      "sourceOutput": "result",
+      "target": "0c819a9510fcdf89",
+      "targetInput": "in"
+    },
+    {
+      "source": "4c490667ff371c28",
+      "sourceOutput": "result",
+      "target": "0d8485dce21abf6e",
+      "targetInput": "in"
+    },
+    {
+      "source": "f07ac35e62e1f0ef",
+      "sourceOutput": "result",
+      "target": "a0be957d115e54d8",
+      "targetInput": "in"
+    },
+    {
+      "source": "c3d1d59c54533246",
+      "sourceOutput": "result",
+      "target": "3ab47e354903f0a4",
+      "targetInput": "in"
+    }
+  ]
+}

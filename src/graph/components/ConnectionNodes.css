@@ -1,0 +1,141 @@
+/* External-data connection nodes (Web Source; CSV-folder next). */
+.sol-conn {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 8px 4px;
+}
+
+.sol-conn__url {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 4px 7px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-bright);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  outline: none;
+}
+.sol-conn__url:focus {
+  border-color: var(--node-accent, var(--accent));
+  box-shadow: inset 0 0 0 1px var(--node-accent, var(--accent));
+}
+
+.sol-conn__select {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 4px 7px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-bright);
+  font-size: 11px;
+  outline: none;
+  cursor: pointer;
+}
+.sol-conn__select:focus {
+  border-color: var(--node-accent, var(--accent));
+  box-shadow: inset 0 0 0 1px var(--node-accent, var(--accent));
+}
+
+/* Inline labelled field (Import HTML's table index). */
+.sol-conn__field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.sol-conn__num {
+  width: 60px;
+  box-sizing: border-box;
+  padding: 4px 7px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-bright);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  outline: none;
+}
+.sol-conn__num:focus {
+  border-color: var(--node-accent, var(--accent));
+  box-shadow: inset 0 0 0 1px var(--node-accent, var(--accent));
+}
+
+/* Import XML result preview — a few matched strings. */
+.sol-conn__preview {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px 6px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text);
+}
+.sol-conn__preview-row {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sol-conn__preview-more { color: var(--text-muted); }
+
+.sol-conn__note {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-dim);
+}
+
+.sol-conn__status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.sol-conn__dot {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-dim);
+}
+.sol-conn__dot--ok      { background: #2fae7a; }
+.sol-conn__dot--error   { background: #e0566b; }
+.sol-conn__dot--loading { background: #d9a93b; animation: sol-conn-pulse 1s ease-in-out infinite; }
+
+@keyframes sol-conn-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+
+.sol-conn__status-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sol-conn__refresh {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+.sol-conn__refresh:hover:not(:disabled) { border-color: var(--node-accent, var(--accent)); }
+.sol-conn__refresh:disabled { opacity: 0.4; cursor: default; }

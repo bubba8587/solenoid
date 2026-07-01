@@ -1,0 +1,415 @@
+.fr-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fr-panel {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  width: 96vw;
+  height: 91vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+}
+
+/* ─── Tabs ───────────────────────────────────────────────────────────────────── */
+
+.fr-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  padding: 6px 10px 0;
+  background: var(--surface-sunken);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+/* Holds the tab buttons. A flex row on desktop (no overflow); on mobile it
+   becomes a horizontal scroller so a narrow phone can reach every tab while the
+   close button stays pinned (see mobile.css). */
+.fr-tabs__scroll {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.fr-tab {
+  padding: 7px 14px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.fr-tab:hover { color: var(--text); }
+.fr-tab--active {
+  color: var(--text-bright);
+  border-bottom-color: var(--accent);
+}
+/* The tabs row is bottom-flush (padding 6px top / 0 bottom + the active-tab
+   underline sits at the band's bottom edge), so flex-centering the close lands it
+   low in the visible band. Absolute-centre it in the band instead — exact, no
+   padding-fighting. (Few tabs on a wide panel, so taking it out of flow is safe.) */
+.fr-tabs { position: relative; }
+.fr-tabs .fr-close {
+  position: absolute;
+  right: 10px;
+  top: 0;
+  bottom: 0;
+  margin-block: auto;
+}
+
+/* Scroll container for the markdown tabs (Help / Notes). */
+.fr-doc-scroll {
+  flex: 1;
+  overflow: auto;
+  padding: 22px 26px 40px;
+}
+
+/* ─── Header ─────────────────────────────────────────────────────────────────── */
+
+.fr-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-sunken);
+  flex-shrink: 0;
+}
+
+.fr-header-row1 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.fr-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.fr-search {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  padding: 5px 10px;
+  outline: none;
+  min-width: 0;
+}
+.fr-search::placeholder { color: var(--text-muted); }
+.fr-search:focus { border-color: var(--text-muted); }
+
+.fr-cats {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.fr-cat {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 5px;
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 11px;
+  padding: 3px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.1s, color 0.1s;
+}
+.fr-cat:hover { background: var(--border); color: var(--text-dim); }
+.fr-cat--active {
+  background: var(--border-subtle);
+  border-color: var(--text-muted);
+  color: var(--text);
+}
+
+/* Content-filter pills (To-do only / Out of scope) — grouped, pushed right. */
+.fr-filters {
+  display: flex;
+  gap: 5px;
+  margin-left: auto;
+}
+
+.fr-filter-pill {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 5px;
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 11px;
+  padding: 3px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+.fr-filter-pill:hover { background: var(--border); color: var(--text-dim); }
+.fr-filter-pill--active {
+  background: #2a1a0a;
+  border-color: #c07830;
+  color: #c07830;
+}
+
+/* Column-visibility checkbox — a distinct control, set apart from the filter
+   pills by a thin inset divider (non-layout box-shadow, per the icon-button rule). */
+.fr-colcheck {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 12px;
+  box-shadow: inset 1px 0 0 var(--border);
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 11px;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+.fr-colcheck:hover { color: var(--text); }
+.fr-colcheck input { cursor: pointer; margin: 0; accent-color: var(--accent); }
+
+.fr-close {
+  /* Flex-center the × glyph (see .sol-popup__close note) rather than baseline. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.fr-close:hover { color: var(--text-dim); background: var(--border); }
+
+/* ─── Stats bar ──────────────────────────────────────────────────────────────── */
+
+.fr-stats {
+  display: flex;
+  gap: 16px;
+  padding: 6px 16px;
+  background: var(--surface-sunken);
+  border-bottom: 1px solid var(--surface-raised);
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.fr-stats span { display: flex; align-items: center; gap: 5px; }
+.fr-stats .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+.fr-stats .dot--yes  { background: #3d9e5a; }
+.fr-stats .dot--no   { background: #c07830; }
+.fr-stats .dot--miss { background: #5a7fb0; }  /* planned (to-do) — actionable */
+.fr-stats .dot--oos  { background: var(--border-strong); }  /* out of scope — muted */
+
+/* ─── Table ──────────────────────────────────────────────────────────────────── */
+
+.fr-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+.fr-table {
+  width: 100%;
+  /* min-width = the column-width sum for the CURRENT toggle state, so below it
+     the container scrolls horizontally instead of squashing columns, and above
+     it the columns stretch proportionally (Note never drops below its 360px). */
+  min-width: 717px;            /* Excel columns hidden: 357 fixed + 360 note */
+  border-collapse: collapse;
+  font-size: 12.5px;
+  table-layout: fixed;
+}
+.fr-table--excel { min-width: 1067px; } /* Excel shown: 707 fixed + 360 note */
+
+.fr-table col.col-excel   { width: 135px; }
+.fr-table col.col-syntax  { width: 215px; }
+.fr-table col.col-sol     { width: 165px; }
+.fr-table col.col-packs   { width: 110px; }
+.fr-table col.col-dep     { width: 42px; }
+.fr-table col.col-parity  { width: 40px; }
+/* Capped, wrapping Notes column (see .fr-td-note white-space: normal). */
+.fr-table col.col-note    { width: 360px; }
+
+.fr-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 11px;
+  text-align: left;
+  padding: 7px 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  z-index: 2;
+}
+.fr-table thead th.col-parity { text-align: center; }
+.fr-table thead th.col-dep { text-align: center; }
+
+/* Derived columns: pack, dependency flag. */
+.fr-td-packs { color: var(--text-muted); font-size: 11px; }
+.fr-td-dep   { text-align: center; color: var(--accent); }
+
+.fr-table tbody tr {
+  border-bottom: 1px solid var(--surface-raised);
+  transition: background 0.08s;
+}
+.fr-table tbody tr:hover { background: var(--surface-raised); }
+
+.fr-table td {
+  padding: 6px 10px;
+  vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Group header row */
+.fr-group-row td {
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* Excel function name */
+.fr-td-excel {
+  font-weight: 600;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.fr-td-excel--missing { color: var(--border-strong); }
+.fr-td-excel--sol-only { color: var(--text-muted); font-style: italic; font-weight: 400; }
+
+/* Syntax */
+.fr-td-syntax {
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+
+/* Solenoid node */
+.fr-td-sol {
+  color: #9ecbff;
+  font-size: 12px;
+}
+.fr-td-sol--missing { color: var(--border-strong); }
+
+/* Parity */
+.fr-td-parity {
+  text-align: center;
+}
+.fr-parity-yes {
+  color: #3d9e5a;
+  font-size: 14px;
+  font-weight: 700;
+}
+.fr-parity-warn {
+  color: #c07830;
+  font-size: 13px;
+}
+.fr-parity-miss {
+  color: var(--border-strong);
+  font-size: 13px;
+}
+
+/* Clickable node button in Solenoid column */
+.fr-sol-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: #9ecbff;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 1px 5px 1px 3px;
+  text-align: left;
+  transition: background 0.1s, border-color 0.1s;
+}
+.fr-sol-btn:hover {
+  background: #1a2a3a;
+  border-color: #3a5a8a;
+}
+.fr-sol-btn__add {
+  font-size: 13px;
+  font-weight: 700;
+  color: #5a9a6a;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+.fr-sol-btn:hover .fr-sol-btn__add { opacity: 1; }
+
+/* Composition label (no single node to add) */
+.fr-sol-composition {
+  color: #7a9abf;
+  font-style: italic;
+  font-size: 12px;
+}
+
+/* Note */
+.fr-td-note {
+  color: var(--text-muted);
+  font-size: 11.5px;
+  font-style: italic;
+  white-space: normal;
+  line-height: 1.4;
+}
+.fr-td-note--ok {
+  color: #3a6348;
+  font-style: normal;
+}
+
+/* Empty state */
+.fr-empty {
+  text-align: center;
+  color: var(--border-strong);
+  padding: 48px 0;
+  font-size: 13px;
+}
+
+/* Socket Types tab — the floating socket legend's rows, given room to breathe. */
+.fr-sockets {
+  padding: 6px 6px 16px;
+  max-width: 440px;
+}
+.fr-sockets__intro {
+  margin: 0 0 16px;
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.fr-sockets .solenoid-legend__row { margin-bottom: 13px; }
+.fr-sockets .solenoid-legend__type { font-size: 14px; }

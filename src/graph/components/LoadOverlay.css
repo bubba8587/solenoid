@@ -1,0 +1,73 @@
+/* Build-phase curtain over the canvas. Uses the shared overlay tokens so it
+   reads as solid above a busy graph, and fades out when the phase flips to
+   "revealing" (the card lifts slightly so it doesn't just vanish). */
+.solenoid-load-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Opaque during build so the node-by-node construction underneath is never
+     seen; the whole curtain fades to 0 for the reveal (the --leaving state). */
+  background: var(--canvas-bg);
+  pointer-events: all;
+  transition: opacity 260ms ease;
+  opacity: 1;
+}
+
+/* Build done → revealing: fade the curtain out and let clicks through to the
+   canvas immediately (the reveal is non-interactive but shouldn't block). */
+.solenoid-load-overlay--leaving {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.solenoid-load-overlay__card {
+  min-width: 220px;
+  padding: 18px 20px 16px;
+  box-sizing: border-box;
+  background: var(--overlay-bg);
+  border: var(--overlay-border-width) solid var(--overlay-border);
+  border-radius: 12px;
+  box-shadow: var(--overlay-shadow);
+  transition: transform 260ms ease;
+}
+.solenoid-load-overlay--leaving .solenoid-load-overlay__card {
+  transform: translateY(-8px);
+}
+
+.solenoid-load-overlay__label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--text);
+  margin-bottom: 11px;
+}
+
+.solenoid-load-overlay__track {
+  height: 6px;
+  width: 100%;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--text-muted) 26%, transparent);
+  overflow: hidden;
+}
+.solenoid-load-overlay__fill {
+  height: 100%;
+  width: 100%;
+  border-radius: 3px;
+  background: var(--accent);
+  transform-origin: left center;
+  /* Smooth the bar between the discrete per-node progress bumps. Animate
+     transform (GPU-composited) rather than width so there's no per-frame
+     layout work. */
+  transition: transform 120ms linear;
+}
+
+.solenoid-load-overlay__pct {
+  margin-top: 7px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+  text-align: right;
+}

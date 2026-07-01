@@ -1,0 +1,230 @@
+/* The Pivot field editor — an Excel-style 2×2 field pane shown as a modal popup.
+   Reuses .sol-popup chrome (popupChrome.css); this file owns the field list, the
+   2×2 zone grid, and the draggable field chips. */
+
+.pivot-editor {
+  width: 660px;
+  max-width: 92vw;
+  max-height: 84vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.pivot-editor__body {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: auto;
+}
+
+/* ── Field list ─────────────────────────────────────────────────────────────── */
+.pivot-fields {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-sunken);
+  padding: 8px 10px;
+}
+.pivot-fields__head {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.pivot-fields__hint { font-weight: 400; text-transform: none; letter-spacing: 0; }
+.pivot-fields__list { display: flex; flex-wrap: wrap; gap: 6px; min-height: 24px; }
+
+/* ── The 2×2 grid: Filters · Columns / Rows · Values ────────────────────────── */
+.pivot-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.pivot-zone-wrap { display: flex; flex-direction: column; gap: 6px; }
+
+.pivot-zone {
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  padding: 7px 8px;
+  min-height: 84px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color 0.12s, background 0.12s;
+}
+.pivot-zone--over {
+  border-color: var(--accent);
+  border-style: solid;
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+}
+.pivot-zone--filters { background: var(--surface-sunken); border-style: solid; }
+
+.pivot-zone__head { display: flex; align-items: center; gap: 8px; }
+.pivot-zone__title {
+  flex: 1 1 auto;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.pivot-zone__add {
+  font-size: 11px;
+  background: var(--surface-sunken);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 4px;
+  max-width: 110px;
+}
+.pivot-zone__chips { display: flex; flex-wrap: wrap; gap: 6px; min-height: 26px; align-content: flex-start; flex: 1 1 auto; }
+
+.pivot-zone__controls { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 2px; }
+.pivot-zone__controls label { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-dim); }
+.pivot-ctl {
+  font-size: 11px;
+  background: var(--surface-sunken);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 4px;
+}
+
+/* ── Field chips ────────────────────────────────────────────────────────────── */
+.pivot-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 5px 2px 4px;
+  background: var(--surface-raised, var(--surface));
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--text);
+  cursor: grab;
+  user-select: none;
+  max-width: 100%;
+}
+.pivot-chip:active { cursor: grabbing; }
+/* A source field already placed in a zone is dimmed as a "used" cue — but 0.55 made
+   the NAME hard to read, and a configured pivot has most fields used, so most of the
+   list looked washed out. Keep a clear cue at a legible strength. */
+.pivot-chip--used { opacity: 0.74; }
+.pivot-chip__glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  background: var(--surface-sunken);
+  color: var(--text);
+}
+.pivot-chip__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pivot-chip__func {
+  font-size: 10px;
+  background: var(--surface-sunken);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 3px;
+}
+.pivot-chip__x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 3px;
+}
+.pivot-chip__x:hover { color: var(--text); background: var(--surface-sunken); }
+
+/* ── Filters: a field chip that expands a value checklist ───────────────────── */
+.pivot-filter { display: flex; flex-direction: column; gap: 4px; width: 100%; }
+.pivot-filter__chip { width: 100%; box-sizing: border-box; }
+.pivot-filter__name {
+  flex: 1 1 auto;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pivot-filter__caret { color: var(--text-dim); font-size: 9px; }
+.pivot-filter__list {
+  max-height: 168px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface-sunken);
+  padding: 4px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.pivot-filter__actions { display: flex; gap: 6px; margin-bottom: 2px; }
+.pivot-filter__actions button {
+  font-size: 10px;
+  padding: 1px 7px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+.pivot-filter__opt { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text); cursor: pointer; }
+.pivot-filter__opt input { margin: 0; }
+.pivot-filter__opt span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── Footer ─────────────────────────────────────────────────────────────────── */
+.pivot-editor__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 8px 14px;
+  border-top: 1px solid var(--border);
+}
+.pivot-editor__done {
+  font-size: 12px;
+  padding: 5px 14px;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+.pivot-editor__done:hover { filter: brightness(1.06); }
+
+/* ── Mobile / touch ───────────────────────────────────────────────────────────
+   Phones: stack the 2×2 zone grid into one full-width column (side-by-side zones
+   are ~140px and unusable). Touch: enlarge the small chips, controls, and the
+   chip-remove ✕ so they're tappable. */
+@media (max-width: 640px) {
+  .pivot-editor { width: 96vw; }
+  .pivot-grid { grid-template-columns: 1fr; }
+}
+@media (pointer: coarse) {
+  .pivot-chip { font-size: 13px; padding: 3px 6px 3px 5px; }
+  .pivot-chip__x { width: 24px; height: 24px; font-size: 16px; }
+  .pivot-ctl,
+  .pivot-zone__add { font-size: 12px; padding: 5px 6px; }
+  .pivot-filter__actions button { font-size: 12px; padding: 4px 9px; }
+  .pivot-editor__done { font-size: 13px; padding: 9px 16px; }
+}

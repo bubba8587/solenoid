@@ -1,0 +1,149 @@
+import { useSyncExternalStore } from "react";
+import type { ClassicPreset } from "rete";
+import type { ClassicScheme, RenderEmit } from "rete-react-plugin";
+import { getEditor, getArea, processGraph, bumpConnectionVersion } from "../process";
+import { collapseStore } from "../collapseStore";
+import {
+  useConnectedInputs,
+  InlineInputs,
+  InlineNumberField,
+} from "./inlineInput";
+import { NodeSocket, MeasuredSocketRow } from "./NodeSocket";
+import { CollapsedInputPill } from "./CollapsedInputPill";
+import "./nodeCard.css";
+
+/**
+ * A node with a variable number of input PAIRS the user can add/remove — e.g.
+ * IFS (condition + value) and SWITCH (when + then). Each pair is two sockets
+ * sharing one remove button; one "+ Add" appends a pair. Optional fixed leading
+ * / trailing inputs (SWITCH's `expr` / `default`) render as plain rows around
+ * the pairs. Implemented by the node class.
+ */
+export interface PairedExtensibleNode {
+  id: string;
+  inputs: Record<string, { socket: ClassicPreset.Socket; label?: string } | undefined>;
+  literals?: Record<string, number>;
+  /** Ordered (aKey, bKey) pairs currently present, in row order. */
+  valuePairKeys: () => Array<[string, string]>;
+  addValuePair: () => void;
+  /** Remove the pair identified by its first (a) key. */
+  removeValuePair: (aKey: string) => void;
+  /** Row labels for the two halves of a pair, e.g. ["If", "Then"]. */
+  pairLabels: [string, string];
+}
+
+/**
+ * Renderer for paired extensible inputs. `leadingKeys` / `trailingKeys` are
+ * fixed inputs (rendered via InlineInputs, no remove) before/after the pairs.
+ *
+ * Each socket dot centers on its own row (see .solenoid-node__io-row), so the
+ * rows can sit anywhere in the body — no fixed header-offset assumption.
+ */
+export function PairedExtensibleInputs({
+  node, emit, leadingKeys, trailingKeys,
+}: {
+  node: PairedExtensibleNode;
+  emit: RenderEmit<ClassicScheme>;
+  leadingKeys?: string[];
+  trailingKeys?: string[];
+}) {
+  const connected = useConnectedInputs(node.id);
+  const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(node.id));
+  const literals = (node.literals ??= {});
+  const leading = leadingKeys ?? [];
+  const trailing = trailingKeys ?? [];
+  const pairs = node.valuePairKeys();
+  const allKeys = [...leading, ...pairs.flat(), ...trailing];
+
+  async function setLiteral(key: string, v: number | undefined) {
+    if (v === undefined) delete literals[key];
+    else literals[key] = v;
+    await processGraph();
+  }
+
+  async function addPair() {
+    node.addValuePair();
+    await getArea()?.update("node", node.id);
+    await processGraph();
+  }
+
+  async function removePair(aKey: string, bKey: string) {
+    const editor = getEditor();
+    if (editor) {
+      for (const c of editor.getConnections()) {
+        if (c.target === node.id && (c.targetInput === aKey || c.targetInput === bKey)) {
+          await editor.removeConnection(c.id);
+        }
+      }
+    }
+    node.removeValuePair(aKey);
+    await getArea()?.update("node", node.id);
+    bumpConnectionVersion(); // re-route cables on rows that shifted up
+    await processGraph();
+  }
+
+  // Collapsed: aggregate every input (leading + pairs + trailing) into one pill.
+  if (collapsed) {
+    if (allKeys.length >= 2) {
+      return <CollapsedInputPill node={node} emit={emit} keys={allKeys} />;
+    }
+    return (
+      <>
+        {allKeys.map((key) => {
+          const input = node.inputs[key];
+          return input ? (
+            <NodeSocket key={key} side="input" socketKey={key} nodeId={node.id} emit={emit} payload={input.socket} />
+          ) : null;
+        })}
+      </>
+    );
+  }
+
+  const field = (key: string, label: string, remove?: () => void) => {
+    const input = node.inputs[key];
+    if (!input) return null;
+    const isConn = connected.has(key);
+    return (
+      <MeasuredSocketRow key={key} side="input" socketKey={key} nodeId={node.id} emit={emit} payload={input.socket}>
+        <span className="solenoid-node__io-label">{label}</span>
+        {isConn ? (
+          <span className="solenoid-node__io-wired" title="Driven by an incoming cable">↩ wired</span>
+        ) : (
+          <InlineNumberField value={literals[key]} onChange={(v) => setLiteral(key, v)} />
+        )}
+        {remove && (
+          <button
+            type="button"
+            className="solenoid-node__row-remove"
+            title="Remove this pair"
+            onClick={(e) => { e.stopPropagation(); void remove(); }}
+          >
+            ×
+          </button>
+        )}
+      </MeasuredSocketRow>
+    );
+  };
+
+  return (
+    <>
+      {leading.length > 0 && <InlineInputs node={node} emit={emit} keys={leading} />}
+      {pairs.map(([a, b], i) => (
+        // The remove button rides the first row of the pair; only shown when
+        // more than one pair exists (keep the Excel minimum of one).
+        <div key={a} className="solenoid-node__pair-group">
+          {field(a, `${node.pairLabels[0]} ${i + 1}`, pairs.length > 1 ? () => removePair(a, b) : undefined)}
+          {field(b, `${node.pairLabels[1]} ${i + 1}`)}
+        </div>
+      ))}
+      <button
+        type="button"
+        className="solenoid-node__add-input"
+        onClick={(e) => { e.stopPropagation(); void addPair(); }}
+      >
+        + Add pair
+      </button>
+      {trailing.length > 0 && <InlineInputs node={node} emit={emit} keys={trailing} />}
+    </>
+  );
+}

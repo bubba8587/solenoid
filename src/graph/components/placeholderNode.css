@@ -1,0 +1,27 @@
+/* Missing-type node (PlaceholderNode): a muted card with a red type name, so a
+   node from an unavailable pack reads clearly as "kept but not loaded" rather
+   than a broken render. Ring is a non-layout box-shadow (no border reflow). */
+.solenoid-node--placeholder {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sol-error) 40%, transparent);
+}
+.solenoid-placeholder {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+}
+.solenoid-placeholder__type {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--sol-error);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.solenoid-placeholder__msg {
+  font-size: 10.5px;
+  line-height: 1.4;
+  color: var(--text-dim);
+  white-space: normal;
+}

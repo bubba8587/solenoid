@@ -1,0 +1,193 @@
+/* Renderer spike overlay — covers the whole app while open (a throwaway
+   proof-of-architecture; see docs/renderer-decision.md). */
+.renderer-spike {
+  position: fixed;
+  inset: 0;
+  z-index: 99999; /* above all chrome — this REPLACES the canvas view while open */
+  background: #0e1014;
+}
+
+.renderer-spike__host {
+  position: absolute;
+  inset: 0;
+  touch-action: none; /* we own pan/zoom gestures */
+}
+
+.renderer-spike__host canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none; /* we own pan/zoom/pinch — stop the browser's scroll/zoom */
+  /* The canvas's child node clones carry REAL DOM text; without this a pan drag
+     runs a native text selection across them (text flashes highlighted). Inherits
+     to the clones; doesn't reach the Pixi spike's rename input (not a canvas child). */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* HTML-in-Canvas spike — the canvas fills the host; its child node clones are
+   paint-contained (invisible) and only shown via drawElementImage. */
+.html-canvas-spike__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Hybrid chart overlay — real recharts SVG above the GPU canvas, so charts stay
+   crisp (the GPU bulk wins back the DOM-node budget these few widgets spend). */
+.renderer-spike__chart-overlay {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none; /* clicks fall through to the canvas (we own interaction) */
+}
+.renderer-spike__chart-world {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0; /* camera transform applied here — matches the Pixi world */
+  will-change: transform;
+}
+.renderer-spike__chart {
+  position: absolute;
+}
+.renderer-spike__chart svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.renderer-spike__hud {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  min-width: 168px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(18, 21, 27, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #cfd6e4;
+  font: 12px/1.5 system-ui, sans-serif;
+  user-select: none;
+}
+
+.renderer-spike__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+.renderer-spike__row span { opacity: 0.7; }
+.renderer-spike__row b { font-variant-numeric: tabular-nums; }
+.renderer-spike__row b.ok { color: #5fd28a; }
+.renderer-spike__row b.warn { color: #e6c14b; }
+.renderer-spike__row b.bad { color: #e0685f; }
+
+.renderer-spike__title {
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 6px;
+}
+
+.renderer-spike__close {
+  background: none;
+  border: none;
+  color: #9aa3b2;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 2px;
+  line-height: 1;
+}
+.renderer-spike__close:hover { color: #fff; }
+
+.renderer-spike__counts {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+}
+.renderer-spike__counts button {
+  flex: 1;
+  padding: 4px 0;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: #cfd6e4;
+  cursor: pointer;
+  font-size: 11px;
+}
+.renderer-spike__counts button:hover { background: rgba(255, 255, 255, 0.1); }
+.renderer-spike__counts button.active {
+  background: #3a6df0;
+  border-color: #3a6df0;
+  color: #fff;
+}
+
+.renderer-spike__hint {
+  margin-top: 10px;
+  font-size: 10.5px;
+  opacity: 0.55;
+}
+
+.renderer-spike__seg {
+  display: flex;
+  gap: 4px;
+  margin: 6px 0;
+  align-items: center;
+}
+.renderer-spike__seg--sub { margin-top: 8px; }
+.renderer-spike__seg-label {
+  font-size: 10.5px;
+  opacity: 0.6;
+  margin-right: 2px;
+}
+.renderer-spike__seg button {
+  flex: 1;
+  padding: 5px 0;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: #cfd6e4;
+  cursor: pointer;
+  font-size: 11px;
+}
+.renderer-spike__seg button:hover { background: rgba(255, 255, 255, 0.1); }
+.renderer-spike__seg button.active {
+  background: #3a6df0;
+  border-color: #3a6df0;
+  color: #fff;
+}
+
+.renderer-spike__edit {
+  position: absolute;
+  z-index: 100000;
+  height: 24px;
+  padding: 2px 6px;
+  border-radius: 5px;
+  border: 1.5px solid #4d8dff;
+  background: #14171d;
+  color: #fff;
+  font: 13px/1 system-ui, sans-serif;
+  outline: none;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+.renderer-spike__bench {
+  margin-top: 6px;
+  font-size: 11px;
+}
+.renderer-spike__bench b { font-variant-numeric: tabular-nums; }
+
+.renderer-spike__note {
+  margin-top: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(230, 193, 75, 0.12);
+  border: 1px solid rgba(230, 193, 75, 0.3);
+  color: #e6c14b;
+  font-size: 10.5px;
+  line-height: 1.4;
+}

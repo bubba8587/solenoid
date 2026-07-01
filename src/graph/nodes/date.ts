@@ -1,0 +1,628 @@
+import { ClassicPreset } from "rete";
+import { dateIn, dateOut, numIn, numOut, strIn } from "./shared";
+import { solError, type SolError } from "../errorValue";
+
+// ─── Serial ↔ JS Date ─────────────────────────────────────────────────────────
+// Excel serial 1 = Jan 1, 1900; JS epoch (Jan 1, 1970) = serial 25569.
+
+export function serialToJsDate(serial: number): Date {
+  return new Date((serial - 25569) * 86400000);
+}
+
+export function jsDateToSerial(d: Date): number {
+  return d.getTime() / 86400000 + 25569;
+}
+
+// Parse a date string ("2026-01-03", "Jan 3 2026", ISO datetime, …) to an Excel
+// serial. Returns NaN when it isn't a parseable date. The ONE canonical text→date
+// parser — shared by DateValue (DATEVALUE), Cast(date), and Get Column's read-as
+// Date — so all three agree on what a date string means. Does NOT floor the time
+// component; callers that want date-only (DATEVALUE) floor the result themselves.
+export function parseDateToSerial(s: string): number {
+  const t = s.trim();
+  if (!t) return NaN;
+  const d = new Date(t);
+  return Number.isNaN(d.getTime()) ? NaN : jsDateToSerial(d);
+}
+
+// Excel weekend code → set of JS day indices (0=Sun … 6=Sat).
+function weekendSet(code: number): Set<number> {
+  switch (Math.round(code)) {
+    case 1:  return new Set([6, 0]);
+    case 2:  return new Set([0, 1]);
+    case 3:  return new Set([1, 2]);
+    case 4:  return new Set([2, 3]);
+    case 5:  return new Set([3, 4]);
+    case 6:  return new Set([4, 5]);
+    case 7:  return new Set([5, 6]);
+    case 11: return new Set([0]);
+    case 12: return new Set([1]);
+    case 13: return new Set([2]);
+    case 14: return new Set([3]);
+    case 15: return new Set([4]);
+    case 16: return new Set([5]);
+    case 17: return new Set([6]);
+    default: return new Set([6, 0]);
+  }
+}
+
+function isoWeek(d: Date): number {
+  const jan4 = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
+  const weekStart = new Date(jan4);
+  weekStart.setUTCDate(jan4.getUTCDate() - ((jan4.getUTCDay() + 6) % 7));
+  const week = Math.floor((d.getTime() - weekStart.getTime()) / (7 * 86400000)) + 1;
+  if (week < 1) return isoWeek(new Date(Date.UTC(d.getUTCFullYear() - 1, 11, 28)));
+  if (week > 52) {
+    const nextJan4 = new Date(Date.UTC(d.getUTCFullYear() + 1, 0, 4));
+    const nextStart = new Date(nextJan4);
+    nextStart.setUTCDate(nextJan4.getUTCDate() - ((nextJan4.getUTCDay() + 6) % 7));
+    if (d.getTime() >= nextStart.getTime()) return 1;
+  }
+  return week;
+}
+
+// ─── TODAY / NOW ──────────────────────────────────────────────────────────────
+
+export type TodayNowOp = "today" | "now";
+
+export const TODAY_NOW_OP_META = {
+  today: { label: "TODAY", description: "Today's date as a serial number — wire to Date Part, EDATE, DAYS, etc.   (Excel: =TODAY())" },
+  now:   { label: "NOW",   description: "Current date + time as a serial — fractional part encodes time of day   (Excel: =NOW())" },
+} satisfies Record<TodayNowOp, { label: string; description: string }>;
+
+export class TodayNowNode extends ClassicPreset.Node {
+  label: string;
+  op: TodayNowOp;
+  cachedResult: number | null = null;
+  width = 160; height = 140;
+
+  constructor(init?: { label?: string; op?: TodayNowOp }) {
+    super("TodayNow");
+    this.op    = init?.op    ?? "today";
+    this.label = init?.label ?? TODAY_NOW_OP_META[this.op].label;
+    this.addOutput("result", dateOut("Date"));
+  }
+
+  data() {
+    const now = new Date();
+    const serial = this.op === "today"
+      ? jsDateToSerial(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())))
+      : jsDateToSerial(now);
+    this.cachedResult = serial;
+    return { result: serial };
+  }
+}
+
+// ─── DATE ─────────────────────────────────────────────────────────────────────
+
+export class DateConstructNode extends ClassicPreset.Node {
+  label: string;
+  literals: Record<string, number> = { year: 2024, month: 1, day: 1 };
+  cachedResult: number | null = null;
+  width = 180; height = 195;
+
+  constructor(init?: { label?: string }) {
+    super("DateConstruct");
+    this.label = init?.label ?? "DATE";
+    this.addInput("year",  numIn("Year"));
+    this.addInput("month", numIn("Month (1–12)"));
+    this.addInput("day",   numIn("Day (1–31)"));
+    this.addOutput("result", dateOut("Date"));
+  }
+
+  data(inputs: { year?: number[]; month?: number[]; day?: number[] }): { result: number } {
+    const year  = Math.floor(inputs.year?.[0]  ?? this.literals.year  ?? 2024);
+    const month = Math.floor(inputs.month?.[0] ?? this.literals.month ?? 1);
+    const day   = Math.floor(inputs.day?.[0]   ?? this.literals.day   ?? 1);
+    // Date.UTC handles overflow (month 13 → Jan of next year, etc.)
+    const serial = jsDateToSerial(new Date(Date.UTC(year, month - 1, day)));
+    this.cachedResult = serial;
+    return { result: serial };
+  }
+}
+
+// ─── TIME ─────────────────────────────────────────────────────────────────────
+
+export class TimeConstructNode extends ClassicPreset.Node {
+  label: string;
+  literals: Record<string, number> = { hour: 12, minute: 0, second: 0 };
+  cachedResult: number | null = null;
+  width = 180; height = 195;
+
+  constructor(init?: { label?: string }) {
+    super("TimeConstruct");
+    this.label = init?.label ?? "TIME";
+    this.addInput("hour",   numIn("Hour (0–23)"));
+    this.addInput("minute", numIn("Minute (0–59)"));
+    this.addInput("second", numIn("Second (0–59)"));
+    this.addOutput("result", numOut("Time fraction (0–1)"));
+  }
+
+  data(inputs: { hour?: number[]; minute?: number[]; second?: number[] }): { result: number } {
+    const h = inputs.hour?.[0]   ?? this.literals.hour   ?? 0;
+    const m = inputs.minute?.[0] ?? this.literals.minute ?? 0;
+    const s = inputs.second?.[0] ?? this.literals.second ?? 0;
+    const result = ((h * 3600 + m * 60 + s) % 86400) / 86400;
+    this.cachedResult = result;
+    return { result };
+  }
+}
+
+// ─── DATEVALUE ────────────────────────────────────────────────────────────────
+
+export class DateValueNode extends ClassicPreset.Node {
+  label: string;
+  cachedResult: number | SolError | null = null;
+  stringLiterals: Record<string, string> = { text: "" };
+  width = 180; height = 135;
+
+  constructor(init?: { label?: string }) {
+    super("DateValue");
+    this.label = init?.label ?? "DATEVALUE";
+    this.addInput("text", strIn("Date text (e.g. \"2026-06-15\")"));
+    this.addOutput("result", dateOut("Date serial"));
+  }
+
+  data(inputs: { text?: string[] }): { result: number | SolError | null } {
+    const text = (inputs.text?.[0] ?? this.stringLiterals.text ?? "").trim();
+    // Blank in → blank out; non-empty text that won't parse is a real
+    // #VALUE! error (Excel DATEVALUE behaves the same).
+    if (!text) { this.cachedResult = null; return { result: null }; }
+    const serial = parseDateToSerial(text);
+    if (Number.isNaN(serial)) {
+      const err = solError("#VALUE!", `Cannot parse "${text}" as a date`);
+      this.cachedResult = err;
+      return { result: err };
+    }
+    const result = Math.floor(serial); // DATEVALUE is date-only (Excel)
+    this.cachedResult = result;
+    return { result };
+  }
+}
+
+// ─── TIMEVALUE ────────────────────────────────────────────────────────────────
+
+export class TimeValueNode extends ClassicPreset.Node {
+  label: string;
+  cachedResult: number | SolError | null = null;
+  stringLiterals: Record<string, string> = { text: "" };
+  width = 180; height = 135;
+
+  constructor(init?: { label?: string }) {
+    super("TimeValue");
+    this.label = init?.label ?? "TIMEVALUE";
+    this.addInput("text", strIn("Time text (e.g. \"14:30:00\")"));
+    this.addOutput("result", numOut("Time fraction (0–1)"));
+  }
+
+  data(inputs: { text?: string[] }): { result: number | SolError | null } {
+    const text = (inputs.text?.[0] ?? this.stringLiterals.text ?? "").trim();
+    if (!text) { this.cachedResult = null; return { result: null }; }
+    const d = new Date(`1970-01-01T${text}`);
+    if (isNaN(d.getTime())) {
+      const err = solError("#VALUE!", `Cannot parse "${text}" as a time`);
+      this.cachedResult = err;
+      return { result: err };
+    }
+    const result = (d.getUTCHours() * 3600 + d.getUTCMinutes() * 60 + d.getUTCSeconds()) / 86400;
+    this.cachedResult = result;
+    return { result };
+  }
+}
+
+// ─── Date Part (YEAR / MONTH / DAY / HOUR / MINUTE / SECOND) ─────────────────
+
+export type DatePartOp = "year" | "month" | "day" | "hour" | "minute" | "second";
+
+export const DATE_PART_OP_META = {
+  year:   { label: "YEAR",   description: "Year component of a date   (Excel: =YEAR)" },
+  month:  { label: "MONTH",  description: "Month component 1–12   (Excel: =MONTH)" },
+  day:    { label: "DAY",    description: "Day of month 1–31   (Excel: =DAY)" },
+  hour:   { label: "HOUR",   description: "Hour 0–23 from a date+time serial   (Excel: =HOUR)" },
+  minute: { label: "MINUTE", description: "Minute 0–59 from a date+time serial   (Excel: =MINUTE)" },
+  second: { label: "SECOND", description: "Second 0–59 from a date+time serial   (Excel: =SECOND)" },
+} satisfies Record<DatePartOp, { label: string; description: string }>;
+
+export class DatePartNode extends ClassicPreset.Node {
+  label: string;
+  op: DatePartOp;
+  cachedResult: number | null = null;
+  width = 180; height = 170;
+
+  constructor(init?: { label?: string; op?: DatePartOp }) {
+    super("DatePart");
+    this.op    = init?.op    ?? "year";
+    this.label = init?.label ?? DATE_PART_OP_META[this.op].label;
+    this.addInput("date", dateIn("Date"));
+    this.addOutput("result", numOut("Number"));
+  }
+
+  data(inputs: { date?: number[] }): { result: number | null } {
+    const serial = inputs.date?.[0];
+    if (serial == null) { this.cachedResult = null; return { result: null }; }
+    const d = serialToJsDate(serial);
+    let result: number;
+    switch (this.op) {
+      case "year":   result = d.getUTCFullYear(); break;
+      case "month":  result = d.getUTCMonth() + 1; break;
+      case "day":    result = d.getUTCDate(); break;
+      case "hour":   result = d.getUTCHours(); break;
+      case "minute": result = d.getUTCMinutes(); break;
+      case "second": result = d.getUTCSeconds(); break;
+    }
+    this.cachedResult = result;
+    return { result };
+  }
+}
+
+// ─── Week info (WEEKDAY / WEEKNUM / ISOWEEKNUM) ──────────────────────────────
+
+export type WeekInfoOp = "weekday" | "weeknum" | "isoweeknum";
+
+export const WEEK_INFO_OP_META = {
+  weekday:    { label: "WEEKDAY",    description: "Day of week — return_type 1: 1=Sun…7=Sat | 2: 1=Mon…7=Sun | 3: 0=Mon…6=Sun   (Excel: =WEEKDAY)" },
+  weeknum:    { label: "WEEKNUM",    description: "Week of year — return_type 1: Sun start | 2: Mon start   (Excel: =WEEKNUM)" },
+  isoweeknum: { label: "ISOWEEKNUM", description: "ISO 8601 week number — week containing first Thursday; Mon start (return_type ignored)   (Excel: =ISOWEEKNUM)" },
+} satisfies Record<WeekInfoOp, { label: string; description: string }>;
+
+export class WeekInfoNode extends ClassicPreset.Node {
+  label: string;
+  op: WeekInfoOp;
+  literals: Record<string, number> = { return_type: 1 };
+  cachedResult: number | null = null;
+  width = 180; height = 200;
+
+  constructor(init?: { label?: string; op?: WeekInfoOp }) {
+    super("WeekInfo");
+    this.op    = init?.op    ?? "weekday";
+    this.label = init?.label ?? WEEK_INFO_OP_META[this.op].label;
+    this.addInput("date",        dateIn("Date"));
+    this.addInput("return_type", numIn("Return type"));
+    this.addOutput("result", numOut("Number"));
+  }
+
+  data(inputs: { date?: number[]; return_type?: number[] }): { result: number | null } {
+    const serial = inputs.date?.[0];
+    if (serial == null) { this.cachedResult = null; return { result: null }; }
+    const d  = serialToJsDate(serial);
+    const rt = Math.floor(inputs.return_type?.[0] ?? this.literals.return_type ?? 1);
+    let result: number;
+    switch (this.op) {
+      case "weekday": {
+        const dow = d.getUTCDay(); // 0=Sun
+        if (rt === 2)      result = ((dow + 6) % 7) + 1; // 1=Mon..7=Sun
+        else if (rt === 3) result = (dow + 6) % 7;        // 0=Mon..6=Sun
+        else               result = dow + 1;               // 1=Sun..7=Sat
+        break;
+      }
+      case "weeknum": {
+        const jan1      = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+        const startOff  = rt === 2 ? (jan1.getUTCDay() + 6) % 7 : jan1.getUTCDay();
+        const dayOfYear = Math.floor((d.getTime() - jan1.getTime()) / 86400000);
+        result = Math.floor((dayOfYear + startOff) / 7) + 1;
+        break;
+      }
+      case "isoweeknum":
+        result = isoWeek(d);
+        break;
+    }
+    this.cachedResult = result;
+    return { result };
+  }
+}
+
+// ─── Date diff (DAYS / DAYS360 / YEARFRAC) ───────────────────────────────────
+
+export type DateDiffOp = "days" | "days360" | "yearfrac";
+
+export const DATE_DIFF_OP_META = {
+  days:     { label: "DAYS",     description: "Days between dates: end − start (basis ignored)   (Excel: =DAYS(end, start))" },
+  days360:  { label: "DAYS360",  description: "Days on a 360-day year — basis 0: US/NASD, 1: European   (Excel: =DAYS360)" },
+  yearfrac: { label: "YEARFRAC", description: "Fraction of year — basis 0: 30/360US, 1: actual/actual (≈÷365.25), 2: actual/360, 3: actual/365, 4: 30/360EU   (Excel: =YEARFRAC)" },
+} satisfies Record<DateDiffOp, { label: string; description: string }>;
+
+export class DateDiffNode extends ClassicPreset.Node {
+  label: string;
+  op: DateDiffOp;
+  literals: Record<string, number> = { basis: 0 };
+  cachedResult: number | null = null;
+  width = 180; height = 225;
+
+  constructor(init?: { label?: string; op?: DateDiffOp }) {
+    super("DateDiff");
+    this.op    = init?.op    ?? "days";
+    this.label = init?.label ?? DATE_DIFF_OP_META[this.op].label;
+    this.addInput("start", dateIn("Start date"));
+    this.addInput("end",   dateIn("End date"));
+    this.addInput("basis", numIn("Basis (0=30/360)"));
+    this.addOutput("result", numOut("Result"));
+  }
+
+  data(inputs: { start?: number[]; end?: number[]; basis?: number[] }): { result: number | null } {
+    const s = inputs.start?.[0];
+    const e = inputs.end?.[0];
+    if (s == null || e == null) { this.cachedResult = null; return { result: null }; }
+    const sd    = serialToJsDate(s);
+    const ed    = serialToJsDate(e);
+    const basis = Math.floor(inputs.basis?.[0] ?? this.literals.basis ?? 0);
+    let result: number;
+    switch (this.op) {
+      case "days":
+        result = Math.round((ed.getTime() - sd.getTime()) / 86400000);
+        break;
+      case "days360": {
+        let y1 = sd.getUTCFullYear(), m1 = sd.getUTCMonth() + 1, d1 = sd.getUTCDate();
+        let y2 = ed.getUTCFullYear(), m2 = ed.getUTCMonth() + 1, d2 = ed.getUTCDate();
+        if (basis === 0) { if (d1 === 31) d1 = 30; if (d2 === 31 && d1 === 30) d2 = 30; }
+        else             { if (d1 === 31) d1 = 30; if (d2 === 31) d2 = 30; }
+        result = (y2 - y1) * 360 + (m2 - m1) * 30 + (d2 - d1);
+        break;
+      }
+      case "yearfrac": {
+        const days = (ed.getTime() - sd.getTime()) / 86400000;
+        if (basis === 0) {
+          let y1 = sd.getUTCFullYear(), m1 = sd.getUTCMonth() + 1, d1 = sd.getUTCDate();
+          let y2 = ed.getUTCFullYear(), m2 = ed.getUTCMonth() + 1, d2 = ed.getUTCDate();
+          if (d1 === 31) d1 = 30; if (d2 === 31 && d1 === 30) d2 = 30;
+          result = ((y2 - y1) * 360 + (m2 - m1) * 30 + (d2 - d1)) / 360;
+        } else if (basis === 2) result = days / 360;
+        else if (basis === 3)   result = days / 365;
+        else if (basis === 4) {
+          let y1 = sd.getUTCFullYear(), m1 = sd.getUTCMonth() + 1, d1 = sd.getUTCDate();
+          let y2 = ed.getUTCFullYear(), m2 = ed.getUTCMonth() + 1, d2 = ed.getUTCDate();
+          if (d1 === 31) d1 = 30; if (d2 === 31) d2 = 30;
+          result = ((y2 - y1) * 360 + (m2 - m1) * 30 + (d2 - d1)) / 360;
+        } else {
+          result = days / 365.25; // basis 1: actual/actual (approximation)
+        }
+        break;
+      }
+    }
+    this.cachedResult = result;
+    return { result };
+  }
+}
+
+// ─── Date add (EDATE / EOMONTH) ───────────────────────────────────────────────
+
+export type DateAddOp = "edate" | "eomonth";
+
+export const DATE_ADD_OP_META = {
+  edate:   { label: "EDATE",   description: "Date N months before/after start, preserving day of month   (Excel: =EDATE)" },
+  eomonth: { label: "EOMONTH", description: "Last day of month N months before/after start   (Excel: =EOMONTH)" },
+} satisfies Record<DateAddOp, { label: string; description: string }>;
+
+export class DateAddNode extends ClassicPreset.Node {
+  label: string;
+  op: DateAddOp;
+  literals: Record<string, number> = { months: 1 };
+  cachedResult: number | null = null;
+  width = 180; height = 200;
+
+  constructor(init?: { label?: string; op?: DateAddOp }) {
+    super("DateAdd");
+    this.op    = init?.op    ?? "edate";
+    this.label = init?.label ?? DATE_ADD_OP_META[this.op].label;
+    this.addInput("start",  dateIn("Start date"));
+    this.addInput("months", numIn("Months"));
+    this.addOutput("result", dateOut("Date"));
+  }
+
+  data(inputs: { start?: number[]; months?: number[] }): { result: number | null } {
+    const s = inputs.start?.[0];
+    if (s == null) { this.cachedResult = null; return { result: null }; }
+    const d = serialToJsDate(s);
+    const m = Math.floor(inputs.months?.[0] ?? this.literals.months ?? 0);
+    const y  = d.getUTCFullYear();
+    const mo = d.getUTCMonth() + m; // may overflow; Date.UTC handles it
+    const serial = this.op === "edate"
+      ? jsDateToSerial(new Date(Date.UTC(y, mo, d.getUTCDate())))
+      : jsDateToSerial(new Date(Date.UTC(y, mo + 1, 0))); // day 0 = last day of month
+    this.cachedResult = serial;
+    return { result: serial };
+  }
+}
+
+// ─── WORKDAY ─────────────────────────────────────────────────────────────────
+
+export class WorkdayNode extends ClassicPreset.Node {
+  label: string;
+  literals: Record<string, number> = { days: 5, weekend_code: 1 };
+  cachedResult: number | null = null;
+  width = 180; height = 195;
+
+  constructor(init?: { label?: string }) {
+    super("Workday");
+    this.label = init?.label ?? "WORKDAY";
+    this.addInput("start",        dateIn("Start date"));
+    this.addInput("days",         numIn("Days"));
+    this.addInput("weekend_code", numIn("Weekend code (1=Sat+Sun)"));
+    this.addOutput("result", dateOut("Date"));
+  }
+
+  data(inputs: { start?: number[]; days?: number[]; weekend_code?: number[] }): { result: number | null } {
+    const s = inputs.start?.[0];
+    if (s == null) { this.cachedResult = null; return { result: null }; }
+    const n    = Math.floor(inputs.days?.[0]         ?? this.literals.days         ?? 5);
+    const code = Math.floor(inputs.weekend_code?.[0] ?? this.literals.weekend_code ?? 1);
+    const off  = weekendSet(code);
+    let cur    = serialToJsDate(s);
+    const sign = n >= 0 ? 1 : -1;
+    let rem    = Math.abs(n);
+    while (rem > 0) {
+      cur = new Date(cur.getTime() + sign * 86400000);
+      if (!off.has(cur.getUTCDay())) rem--;
+    }
+    const result = jsDateToSerial(cur);
+    this.cachedResult = result;
+    return { result };
+  }
+}
+
+// ─── NETWORKDAYS ──────────────────────────────────────────────────────────────
+
+export class NetworkdaysNode extends ClassicPreset.Node {
+  label: string;
+  literals: Record<string, number> = { weekend_code: 1 };
+  cachedResult: number | null = null;
+  width = 180; height = 195;
+
+  constructor(init?: { label?: string }) {
+    super("Networkdays");
+    this.label = init?.label ?? "NETWORKDAYS";
+    this.addInput("start",        dateIn("Start date"));
+    this.addInput("end",          dateIn("End date"));
+    this.addInput("weekend_code", numIn("Weekend code (1=Sat+Sun)"));
+    this.addOutput("result", numOut("Working days"));
+  }
+
+  data(inputs: { start?: number[]; end?: number[]; weekend_code?: number[] }): { result: number | null } {
+    const s = inputs.start?.[0];
+    const e = inputs.end?.[0];
+    if (s == null || e == null) { this.cachedResult = null; return { result: null }; }
+    const code = Math.floor(inputs.weekend_code?.[0] ?? this.literals.weekend_code ?? 1);
+    const off  = weekendSet(code);
+    const sign = e >= s ? 1 : -1;
+    const lo   = serialToJsDate(Math.min(s, e));
+    const hi   = serialToJsDate(Math.max(s, e));
+    let count  = 0;
+    const cur  = new Date(lo);
+    while (cur <= hi) {
+      if (!off.has(cur.getUTCDay())) count++;
+      cur.setUTCDate(cur.getUTCDate() + 1);
+    }
+    const result = count * sign;
+    this.cachedResult = result;
+    return { result };
+  }
+}
+
+// ─── Date serial formatting (shared by Cast-to-text + Format Controller) ──────
+
+/** The default date / datetime display pattern, used everywhere a date is shown
+ *  without an explicit Format Controller (e.g. `01-Jan-2026`). Change here to
+ *  re-default the whole app. */
+export const DEFAULT_DATE_FORMAT = "DD-MMM-YYYY";
+export const DEFAULT_DATETIME_FORMAT = "DD-MMM-YYYY HH:mm";
+
+const FORMAT_MONTHS = ["January","February","March","April","May","June",
+                       "July","August","September","October","November","December"];
+const FORMAT_DAYS   = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+
+/**
+ * Format a date serial with a token pattern (YYYY, MM, DD, MMMM, HH, mm, A, …).
+ * Shared by Cast-to-text and the Format Controller's date styles.
+ */
+export function formatDateSerial(serial: number, pattern: string): string {
+  if (!Number.isFinite(serial)) return String(serial);
+  const d = serialToJsDate(serial);
+  const YYYY = String(d.getUTCFullYear()).padStart(4, "0");
+  const MM   = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const DD   = String(d.getUTCDate()).padStart(2, "0");
+  const HH   = String(d.getUTCHours()).padStart(2, "0");
+  const mi   = String(d.getUTCMinutes()).padStart(2, "0");
+  const ss   = String(d.getUTCSeconds()).padStart(2, "0");
+  return pattern.replace(
+    /MMMM|MMM|MM|M|DDDD|DDD|DD|D|YYYY|YY|HH|hh|h|mm|ss|A|a/g,
+    (token) => {
+      switch (token) {
+        case "MMMM": return FORMAT_MONTHS[d.getUTCMonth()];
+        case "MMM":  return FORMAT_MONTHS[d.getUTCMonth()].slice(0, 3);
+        case "MM":   return MM;
+        case "M":    return String(d.getUTCMonth() + 1);
+        case "DDDD": return FORMAT_DAYS[d.getUTCDay()];
+        case "DDD":  return FORMAT_DAYS[d.getUTCDay()].slice(0, 3);
+        case "DD":   return DD;
+        case "D":    return String(d.getUTCDate());
+        case "YYYY": return YYYY;
+        case "YY":   return YYYY.slice(-2);
+        case "HH":   return HH;
+        case "hh":   return String(d.getUTCHours() % 12 || 12).padStart(2, "0");
+        case "h":    return String(d.getUTCHours() % 12 || 12);
+        case "mm":   return mi;
+        case "ss":   return ss;
+        case "A":    return d.getUTCHours() < 12 ? "AM" : "PM";
+        case "a":    return d.getUTCHours() < 12 ? "am" : "pm";
+        default:     return token;
+      }
+    }
+  );
+}
+
+// ─── DATEDIF ─────────────────────────────────────────────────────────────────
+
+export type DateIfUnit = "Y" | "M" | "D" | "MD" | "YM" | "YD";
+
+export const DATEIF_UNIT_META = {
+  Y:  { label: "Y",  description: "Complete years between dates" },
+  M:  { label: "M",  description: "Complete months between dates" },
+  D:  { label: "D",  description: "Days between dates" },
+  MD: { label: "MD", description: "Days, ignoring months and years" },
+  YM: { label: "YM", description: "Months, ignoring years" },
+  YD: { label: "YD", description: "Days, ignoring years" },
+} satisfies Record<DateIfUnit, { label: string; description: string }>;
+
+export class DateIfNode extends ClassicPreset.Node {
+  label: string;
+  unit: DateIfUnit;
+  cachedResult: number | null = null;
+  width = 180; height = 220;
+
+  constructor(init?: { label?: string; unit?: DateIfUnit }) {
+    super("DateIf");
+    this.label = init?.label ?? "DATEDIF";
+    this.unit  = init?.unit  ?? "Y";
+    this.addInput("start", dateIn("Start date"));
+    this.addInput("end",   dateIn("End date"));
+    this.addOutput("result", numOut("Result"));
+  }
+
+  data(inputs: { start?: number[]; end?: number[] }): { result: number | null } {
+    const s = inputs.start?.[0];
+    const e = inputs.end?.[0];
+    if (s == null || e == null || s > e) { this.cachedResult = null; return { result: null }; }
+    const sd   = serialToJsDate(s);
+    const ed   = serialToJsDate(e);
+    const sy   = sd.getUTCFullYear(), sm = sd.getUTCMonth(), sday = sd.getUTCDate();
+    const ey   = ed.getUTCFullYear(), em = ed.getUTCMonth(), eday = ed.getUTCDate();
+    let result: number;
+    switch (this.unit) {
+      case "Y":
+        result = ey - sy - (em < sm || (em === sm && eday < sday) ? 1 : 0);
+        break;
+      case "M":
+        result = (ey - sy) * 12 + (em - sm) - (eday < sday ? 1 : 0);
+        break;
+      case "D":
+        result = Math.round((ed.getTime() - sd.getTime()) / 86400000);
+        break;
+      case "MD": {
+        // Day difference borrowing from the month BEFORE the end month when the
+        // end day is smaller. The old form built Date.UTC(ey, em, sday) without
+        // clamping; JS rolls Feb 31 → Mar 2, and the step-back-a-month fix then
+        // landed on the wrong day (Jan 31 → Feb 28 gave 26; Excel gives 28).
+        // Excel's MD is documented unreliable when the borrow goes negative
+        // (e.g. Jan 31 → Mar 1); we return the consistent borrow result there.
+        if (eday >= sday) {
+          result = eday - sday;
+        } else {
+          // Day 0 of (ey, em) = last day of the previous month.
+          const daysInPrevMonth = new Date(Date.UTC(ey, em, 0)).getUTCDate();
+          result = eday - sday + daysInPrevMonth;
+        }
+        break;
+      }
+      case "YM":
+        result = ((ey - sy) * 12 + (em - sm) - (eday < sday ? 1 : 0)) % 12;
+        break;
+      case "YD": {
+        const base = new Date(Date.UTC(ey, sm, sday));
+        if (base > ed) base.setUTCFullYear(ey - 1);
+        result = Math.round((ed.getTime() - base.getTime()) / 86400000);
+        break;
+      }
+    }
+    this.cachedResult = result;
+    return { result };
+  }
+}

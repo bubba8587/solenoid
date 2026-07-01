@@ -1,0 +1,96 @@
+/* Formula editor — a transparent <textarea> layered exactly over a highlighted
+   <pre>. The two MUST share identical text metrics (font, size, line-height,
+   padding, wrapping, tab-size) or the coloured layer drifts from the caret. The
+   container owns the border/background; both layers are borderless and share the
+   same padding so their text boxes coincide. */
+.fx-editor {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  font-family: var(--font-mono, ui-monospace, "SF Mono", Menlo, monospace);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.fx-editor__hl,
+.fx-editor__ta {
+  margin: 0;
+  padding: 7px 9px;
+  font: inherit;
+  letter-spacing: 0;
+  tab-size: 2;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  box-sizing: border-box;
+  border: 0;
+}
+.fx-editor__hl {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  color: var(--text);
+}
+.fx-editor__ta {
+  position: relative;
+  display: block;
+  width: 100%;
+  background: transparent;
+  color: transparent;       /* only the highlighted <pre> shows the text */
+  caret-color: var(--text); /* but keep a visible caret */
+  resize: none;
+  outline: none;
+  overflow: auto;
+}
+.fx-editor__ta::placeholder { color: var(--text-muted); opacity: 1; }
+
+/* Token colours — variables use the number-socket amber (they become input
+   sockets), an unknown call / stray char reads as an error. */
+.fx-editor .fx-fn      { color: #4aa3df; font-weight: 600; }
+.fx-editor .fx-unknown { color: #e0707a; }
+.fx-editor .fx-var     { color: #d9a521; }
+.fx-editor .fx-const   { color: #b48cff; }
+.fx-editor .fx-num     { color: #4cae8f; }
+.fx-editor .fx-str     { color: #8aab46; }
+.fx-editor .fx-op,
+.fx-editor .fx-paren,
+.fx-editor .fx-comma   { color: var(--text-muted); }
+.fx-editor .fx-err     { color: #e0707a; text-decoration: underline wavy; }
+
+/* Autocomplete menu — drops just below the field. */
+.fx-editor__menu {
+  position: absolute;
+  top: calc(100% + 3px);
+  left: 0;
+  z-index: 30;
+  margin: 0;
+  padding: 3px;
+  list-style: none;
+  min-width: 170px;
+  max-height: 210px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  box-shadow: var(--shadow-card);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+}
+.fx-editor__item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 7px;
+  border-radius: 5px;
+  cursor: pointer;
+  color: var(--text);
+  white-space: nowrap;
+}
+.fx-editor__item--on { background: color-mix(in srgb, var(--node-accent, #4aa3df) 24%, transparent); }
+.fx-editor__item:hover { background: color-mix(in srgb, var(--text) 8%, transparent); }
+.fx-editor__kind { width: 13px; text-align: center; font-size: 11px; opacity: 0.85; }
+.fx-editor__kind--fn { color: #4aa3df; }
+.fx-editor__kind--const { color: #b48cff; }
+.fx-editor__kind--var { color: #d9a521; }
+.fx-editor__name { letter-spacing: 0.01em; }

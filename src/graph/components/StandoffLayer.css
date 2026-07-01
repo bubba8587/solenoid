@@ -1,0 +1,93 @@
+/* Standoff bars — pale arrangement constraints living under everything. */
+
+.solenoid-standoff-svg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 9999px;
+  height: 9999px;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.solenoid-standoff__bar {
+  stroke: var(--standoff-bar, rgba(138, 150, 170, 0.26));
+  stroke-linecap: round;
+  transition: stroke 120ms ease;
+}
+
+.solenoid-standoff__cap {
+  fill: var(--standoff-cap, rgba(138, 150, 170, 0.45));
+}
+
+.solenoid-standoff-hit {
+  stroke: transparent;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+
+.solenoid-standoff:hover .solenoid-standoff__bar {
+  stroke: var(--standoff-bar-hover, rgba(138, 150, 170, 0.42));
+}
+
+.solenoid-standoff--selected .solenoid-standoff__bar {
+  stroke: var(--standoff-bar-selected, rgba(150, 168, 196, 0.6));
+}
+
+.solenoid-standoff--selected .solenoid-standoff__cap {
+  fill: var(--standoff-cap-selected, rgba(170, 188, 214, 0.85));
+}
+
+:root[data-theme="light"] .solenoid-standoff__bar {
+  stroke: rgba(98, 110, 130, 0.2);
+}
+
+:root[data-theme="light"] .solenoid-standoff:hover .solenoid-standoff__bar {
+  stroke: rgba(98, 110, 130, 0.34);
+}
+
+:root[data-theme="light"] .solenoid-standoff--selected .solenoid-standoff__bar {
+  stroke: rgba(80, 96, 122, 0.5);
+}
+
+/* Toolbar extras on top of the reused conduit-toolbar chrome. */
+
+.solenoid-standoff-toolbar__field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text-dim, #9aa1ad);
+  margin: 4px 0;
+}
+
+.solenoid-standoff-toolbar__field input {
+  width: 56px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  color: var(--text, #e6e9ee);
+  font: inherit;
+  font-size: 11px;
+  padding: 3px 5px;
+}
+
+.solenoid-standoff-toolbar__delete {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 5px 8px;
+  background: none;
+  border: 1px solid var(--border-strong, #3a3f49);
+  border-radius: 5px;
+  color: var(--text, #e6e9ee);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.solenoid-standoff-toolbar__delete:hover {
+  border-color: #c25b5b;
+  color: #e08a8a;
+}

@@ -1,0 +1,134 @@
+/* Hide the minimap — Settings ▸ View. Class on <html> set by syncPerfClasses(). */
+html.perf-no-minimap .solenoid-minimap { display: none; }
+
+.solenoid-canvas-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  /* No text selection by default: a click-drag on the background or node chrome
+     would otherwise start a selection that sweeps across every node's text.
+     Display value boxes opt back in (user-select: text) so values stay
+     copyable — a selection can only begin on those, not on a drag from chrome. */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.solenoid-canvas {
+  width: 100%;
+  height: 100%;
+  background-color: var(--canvas-bg);
+  /* Dot alpha scales with zoom via --dot-pct (set by Canvas.tsx's syncBackground)
+     so the grid fades out as you zoom far away instead of turning into noise. */
+  --dot-pct: 100%;
+  background-image: radial-gradient(circle, color-mix(in srgb, var(--canvas-dot) var(--dot-pct), transparent) 1px, transparent 1px);
+  background-size: 24px 24px; /* updated dynamically by Canvas.tsx to track zoom */
+  /* Hand all touch gestures to Rete's area handler: one finger pans, two
+     fingers pinch-zoom, double-tap zooms (all built into rete-area-plugin's
+     Zoom). Without this the mobile browser eats the gestures as page scroll /
+     zoom and the canvas can't be navigated by touch. Taps/focus on node inputs
+     still work. */
+  touch-action: none;
+  /* Suppress iOS's long-press callout (the copy/share bubble) so holding a node
+     doesn't pop a system menu mid-interaction. */
+  -webkit-touch-callout: none;
+  /* Own stacking context + offset parent so the decorative cable flourish can
+     sit at z-index:-1: above this element's grid background, below the rete
+     node/cable layer (see CableFlourish). */
+  position: relative;
+  isolation: isolate;
+}
+
+/* Lock canvas = view-only. A node's chrome (sockets, fields, value box) and the
+   cable hit-paths take no pointer input, so a press / wheel over them falls
+   through to the area — pan and zoom stay live — but nothing can be wired,
+   selected, or edited. The node BODY drag is blocked by the guard (see Canvas
+   patchDragGuard). !important beats the touch selection-gating in socket.css. */
+.solenoid-canvas--locked .solenoid-node,
+.solenoid-canvas--locked .solenoid-node *,
+.solenoid-canvas--locked .solenoid-group,
+.solenoid-canvas--locked .solenoid-group *,
+.solenoid-canvas--locked .solenoid-cable-hit {
+  pointer-events: none !important;
+}
+
+/* Animated mode (cableFlowStore): beads ride each live cable from output to
+   input. A tiny dash + round cap = a bead; the long gap spaces them out; the
+   negative dashoffset drives them along the path (which is drawn source→target),
+   so flow direction reads as data leaving an output and arriving at an input.
+   The animation distance equals one dash period, so beads move at a constant
+   speed in px regardless of cable length, and the loop is seamless. */
+.solenoid-cable-flow {
+  /* Near-zero dash + round cap = a perfectly circular bead (diameter = stroke
+     width); the long gap spaces them out. */
+  stroke-dasharray: 0.01 72;
+  animation: solenoid-cable-flow 2.25s linear infinite;
+}
+@keyframes solenoid-cable-flow {
+  to { stroke-dashoffset: -72.01; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .solenoid-cable-flow { animation: none; }
+}
+
+/* ─── Gesture-time paint cuts — UN-PROMOTED paths only (`--panning`) ──────────
+   `--panning` = pan (desktop + mobile) and mobile pinch — the paths where the holder
+   is NOT GPU-promoted, so its content is RE-RASTERIZED every frame and cutting paint
+   cost genuinely helps. Desktop WHEEL/trackpad ZOOM is deliberately NOT covered: it
+   promotes the holder (rasterize once → bitmap-scale), so the content isn't re-rastered
+   per frame — dropping quality there saves nothing AND toggling these properties forces
+   extra re-rasters + a box-shadow transition that made desktop zoom measurably WORSE.
+   So there is no `--zooming` class; quality cuts ride only the un-promoted gesture. */
+
+/* Pause flow beads (stroke-dashoffset animation = main-thread paint every move). */
+.solenoid-canvas--panning .solenoid-cable-flow {
+  animation-play-state: paused;
+}
+
+/* Drop the pricey always-on box-shadows (the most expensive always-on paint property).
+   The card's `transition: box-shadow 80ms` fades them back on release; selected nodes
+   keep their accent glow (higher-specificity rule). */
+.solenoid-canvas--panning .solenoid-node,
+.solenoid-canvas--panning .solenoid-group__header {
+  box-shadow: none;
+}
+
+/* The selected Conduit's `filter: drop-shadow()` — a GPU-expensive separate
+   compositing pass that repaints the conduit every frame. */
+.solenoid-canvas--panning .solenoid-conduit--selected .solenoid-conduit__svg {
+  filter: none;
+}
+
+/* Drop raster quality: text smoothing + AA on every moving SVG EXCEPT cables (jaggy
+   curves are the most visible loss, so cables keep AA via :not). Covers the socket
+   dots (normally geometricPrecision), node icons, and chart/gauge/sparkline interiors.
+   Restored crisp on settle. */
+.solenoid-canvas--panning {
+  text-rendering: optimizeSpeed;
+  /* macOS-only (no-op elsewhere); the most aesthetically aggressive knob — delete
+     this one line if labels read too thin WHILE MOVING. */
+  -webkit-font-smoothing: none;
+}
+.solenoid-canvas--panning svg:not(.solenoid-cable-svg) {
+  shape-rendering: optimizeSpeed;
+}
+
+/* backdrop-filter (the selected Conduit toolbar's blur) re-samples + blurs the
+   backdrop every frame — one of the priciest paint ops — and moves with the pan. */
+.solenoid-canvas--panning .solenoid-conduit-toolbar {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* The minimap is now a custom React component (SolenoidMinimap) and styles
+   itself in Minimap.css — colored per-node, dark-theme container. */
+
+/* ─── Isolate (local view) ──────────────────────────────────────────────────
+   Non-focus node views recede and stop receiving pointer events. View-only:
+   positions, groups, and push records are untouched (see isolateStore). The
+   transition fades nodes OUT when isolation starts; removing the class on exit
+   snaps them back instantly, which reads fine. */
+.solenoid-isolate-dim {
+  opacity: 0.08;
+  pointer-events: none;
+  transition: opacity 150ms ease;
+}

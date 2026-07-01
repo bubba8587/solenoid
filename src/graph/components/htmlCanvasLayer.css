@@ -1,0 +1,18 @@
+/* The HTML-in-Canvas render layer. A transparent overlay above the rete container that
+   fills the wrapper. pointer-events:none so ALL interaction passes through to the real DOM
+   beneath — the canvas only paints during a pan/zoom gesture (when the DOM holder is hidden
+   via visibility:hidden from JS); when idle it draws nothing and the DOM shows through. */
+.solenoid-html-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 2; /* above the graph + dot grid, below app chrome/overlays */
+  pointer-events: none;
+}
+
+/* During a canvas gesture the holder is hidden except the DOM-only passthrough elements
+   (conduits + their cables). The canvas cables are a static snapshot, so freeze the DOM-only
+   cables' flow beads to match — otherwise conduit cables keep animating while the rest sit
+   still. The class rides the holder; flow resumes when it's removed on settle. */
+.solenoid-html-frozen .solenoid-cable-flow {
+  animation-play-state: paused;
+}

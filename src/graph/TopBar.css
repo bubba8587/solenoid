@@ -1,0 +1,114 @@
+.solenoid-topbar {
+  /* Positioned by the Header (menu bar sits above it). Kept below the menu bar
+     in the stacking order so its dropdowns paint over the toolbar. */
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 12px;
+  background: var(--panel-bg);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  /* Hairline structural border plus a 2px accent highlight beneath it. */
+  border-bottom: 1px solid var(--panel-border);
+  box-shadow: 0 2px 0 0 var(--accent), var(--shadow-pop);
+  user-select: none;
+}
+
+.solenoid-topbar__mark {
+  display: block;
+  height: 28px;
+  /* Wordmark viewBox is 573×119; derive width from the fixed height. */
+  aspect-ratio: 573 / 119;
+  background-color: var(--wordmark-color);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+/* The app-menu trigger — desktop hides it (the wordmark shows); mobile.css
+   reveals it. A round button (the surface pill) with the Solenoid mark masked
+   inside, so it reads as a tappable menu button, not a bare logo silhouette. */
+.solenoid-topbar__icon {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  align-self: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--btn-border);
+  border-radius: 50%;
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--btn-bg);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.solenoid-topbar__icon:active { background: var(--btn-hover); }
+/* The mark itself — masked so it recolors per theme via --wordmark-color, sized
+   to sit inside the round button with a little inset (crops the logo's reach). */
+.solenoid-topbar__icon-glyph {
+  display: block;
+  width: 20px;
+  height: 20px;
+  background-color: var(--wordmark-color);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+.solenoid-topbar__divider {
+  align-self: stretch;
+  width: 1px;
+  margin: 8px 2px;
+  background: var(--panel-border);
+}
+
+/* Decorative art slot in the middle of the bar — fills the leftover space.
+   Drop an SVG/<img> in here later; min-width:0 lets it shrink on narrow bars. */
+.solenoid-topbar__art {
+  flex: 1 1 auto;
+  min-width: 0;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+/* Sizing for an SVG/image placed in the art slot. */
+.solenoid-topbar__art-svg {
+  display: block;
+  height: 100%;
+  width: 100%;
+  object-fit: contain;
+}
+
+/* Pill cluster: groups circular icon buttons into one rounded container. The
+   pill carries the border/fill; the buttons inside are borderless (see the
+   base .solenoid-nav__btn) and fill on hover. (Accent swatch + theme toggle
+   stay distinct buttons, not pilled — they're deliberately separate.) */
+.solenoid-topbar__group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 999px;
+}
+
+/* The document name + caret in the app bar — mobile only (on desktop it's
+   centered in the menu bar). mobile.css reveals + styles it for the app bar. */
+.solenoid-topbar__doctitle {
+  display: none;
+}

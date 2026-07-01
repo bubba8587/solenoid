@@ -1,0 +1,315 @@
+/* Chrome (overlay, card, header, title, close, group framing) is shared — see
+   popupChrome.css (.sol-popup*). This file holds only table-specific bits. */
+.table-popup {
+  width: min(1100px, 94vw);
+}
+
+.table-popup__dims {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: color-mix(in srgb, var(--node-accent, var(--text-dim)) 45%, var(--text-dim));
+}
+
+/* ── Grid ─────────────────────────────────────────────────────────────────── */
+.table-popup__grid-scroll {
+  margin: 12px 14px;
+  max-height: 56vh;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.table-popup__grid {
+  /* `separate` (not `collapse`) so sticky cells keep their OWN borders: with
+     border-collapse, a sticky cell's border is painted in the table's coordinate
+     space and scrolls away, leaving a 1px seam of moving content beside the pinned
+     row-number column. Each cell draws only right+bottom gridlines (single 1px
+     lines); the scroll container's border supplies the outer frame. */
+  border-collapse: separate;
+  border-spacing: 0;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+/* Sticky header row + index column so they stay put while scrolling. */
+.table-popup__grid thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.table-popup__corner,
+.table-popup__colhead,
+.table-popup__rowhead {
+  background: var(--surface-sunken);
+  color: var(--text-dim);
+  font-weight: 500;
+  font-size: 11px;
+  text-align: center;
+  /* right+bottom only — see .table-popup__grid (separate borders for sticky). */
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 2px 6px;
+  user-select: none;
+}
+.table-popup__rowhead {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 28px;
+}
+/* Frame column names — wider, left-aligned, accent-tinted to read as labels. The
+   min-width is the real fix for cramped headers: in edit mode the name is an
+   <input width:100%>, which contributes NO intrinsic width, so without this the
+   column collapses to the narrow numeric cell and the type toggle leaves room for
+   only a couple of characters. The min-width gives the name (and toggle) room. */
+.table-popup__colhead--name {
+  text-align: left;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--node-accent, var(--text)) 70%, var(--text));
+  white-space: nowrap;
+  min-width: 120px;
+  padding: 3px 6px;
+}
+/* Top-left corner: sticky on BOTH axes — it gets top:0 from the `thead th` rule and
+   left:0 here. The selector is qualified (thead th.corner) so it out-specifies that
+   rule and its z-index actually wins; otherwise the scrolling header cells (z-index
+   2) paint over the pinned corner and it looks like it isn't sticking horizontally. */
+.table-popup__grid thead th.table-popup__corner {
+  position: sticky;
+  left: 0;
+  z-index: 4;
+}
+
+.table-popup__cell {
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 0;
+}
+.table-popup__input {
+  width: 100%;
+  min-width: 72px; /* drives matrix column width; fills (no dead gap) when the header widens the column */
+  box-sizing: border-box;
+  background: transparent;
+  border: none;
+  padding: 4px 8px;
+  color: var(--text-bright);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  text-align: right;
+  outline: none;
+}
+.table-popup__input:focus {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.table-popup__input[readonly] {
+  color: var(--text);
+  cursor: default;
+}
+/* Text cells (string lists) read left-to-right and want room to breathe. */
+.table-popup__input--text {
+  text-align: left;
+  min-width: 120px;
+  font-family: var(--font-sans);
+}
+
+/* Editable column-name inputs in the header row (frame editor) — sized to the
+   header cell and accent-tinted/bold to match the static .colhead--name look. */
+.table-popup__colhead-input {
+  min-width: 0;
+  width: 100%;
+  padding: 2px 6px;
+  font-weight: 600;
+  font-size: 12px;
+  color: color-mix(in srgb, var(--node-accent, var(--text)) 70%, var(--text));
+}
+
+/* Header cell in frame-edit mode: the number/text toggle + the name input. */
+.table-popup__colhead-edit {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.table-popup__coltype {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--node-accent, var(--text));
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.table-popup__coltype:hover { border-color: var(--node-accent, var(--accent)); }
+
+/* CSV view — the same data as a raw, editable text block. */
+.table-popup__csv {
+  display: block;
+  box-sizing: border-box;
+  /* A textarea with width:auto uses its cols-based intrinsic width instead of
+     stretching, so set it explicitly to fill the body minus the side margins. */
+  width: calc(100% - 28px);
+  margin: 12px 14px;
+  min-height: 120px;
+  max-height: 56vh;
+  padding: 8px 10px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-bright);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre;
+  overflow: auto;
+  resize: vertical;
+  outline: none;
+}
+.table-popup__csv:focus { box-shadow: inset 0 0 0 1px var(--accent); }
+.table-popup__csv[readonly] { color: var(--text); }
+
+/* Grid / CSV segmented toggle. */
+.table-popup__view {
+  display: inline-flex;
+  flex-shrink: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.table-popup__view button {
+  font-size: 12px;
+  padding: 5px 11px;
+  background: var(--surface);
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.table-popup__view button + button { border-left: 1px solid var(--border-strong); }
+.table-popup__view button[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--node-accent, var(--accent)) 22%, var(--surface));
+  color: var(--text);
+}
+
+.table-popup__source-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--text-dim);
+  cursor: pointer;
+  user-select: none;
+}
+.table-popup__source-check input {
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--node-accent, var(--accent));
+}
+
+.table-popup__dim-controls {
+  display: flex;
+  gap: 6px;
+  margin-left: 10px;
+}
+
+.table-popup__footer {
+  display: flex;
+  flex-wrap: wrap; /* narrow screens (mobile): buttons wrap instead of overflowing off the right edge */
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px 14px;
+}
+
+/* Grows to push Cancel/Save to the right on one line; when the row wraps it just
+   takes the slack on its line, so the action buttons stay together and reachable. */
+.table-popup__spacer { flex: 1 1 0; min-width: 0; }
+
+.table-popup__btn {
+  font-size: 12px;
+  padding: 5px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+.table-popup__btn:hover { border-color: var(--accent); }
+
+.table-popup__btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink, #fff);
+  font-weight: 600;
+}
+.table-popup__btn--primary:hover { filter: brightness(1.08); }
+
+/* Touch devices: larger tap targets for the footer controls (the grid editor is
+   used on mobile too). Pairs with the wrapping footer above. */
+@media (pointer: coarse) {
+  .table-popup__btn,
+  .table-popup__view button {
+    padding: 9px 14px;
+    font-size: 13px;
+  }
+}
+
+/* ── Mobile scaling pass ──────────────────────────────────────────────────────
+   Narrow phones: bigger fonts + taller, finger-sized cells and toggle; a roomier
+   column header; and a shorter grid so the header + grid + (wrapping) footer all
+   fit without the card running off the screen. */
+@media (max-width: 640px) {
+  .table-popup { width: 96vw; }
+  .table-popup__grid-scroll { max-height: 42vh; margin: 10px; }
+  .table-popup__grid { font-size: 14px; }
+  .table-popup__input {
+    padding: 9px 8px; /* taller rows = easier to tap into */
+    font-size: 14px;
+  }
+  .table-popup__colhead,
+  .table-popup__rowhead { font-size: 12px; }
+  .table-popup__colhead--name { min-width: 132px; }
+  .table-popup__coltype {
+    width: 26px;
+    height: 26px;
+    font-size: 13px;
+  }
+  .table-popup__colhead-input { font-size: 13px; padding: 4px 6px; }
+  .table-popup__csv { font-size: 14px; margin: 10px; width: calc(100% - 20px); }
+}
+
+/* Cube popup breadcrumb — drill path through nested cubes (CubePopup). */
+.cube-popup__crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 10px;
+  font-size: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.cube-popup__crumb {
+  background: none;
+  border: none;
+  padding: 1px 4px;
+  border-radius: 4px;
+  color: var(--accent, var(--text-dim));
+  cursor: pointer;
+  font: inherit;
+}
+.cube-popup__crumb:hover { background: var(--hover-bg, rgba(127,127,127,0.15)); }
+.cube-popup__crumb--here { color: var(--text); font-weight: 600; cursor: default; }
+.cube-popup__crumb-sep { color: var(--text-muted); }
+
+/* Touch: the drill-path breadcrumb links need tappable room. */
+@media (pointer: coarse) {
+  .cube-popup__crumb { padding: 5px 8px; font-size: 13px; }
+}

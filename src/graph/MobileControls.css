@@ -1,0 +1,68 @@
+/* Touch-only bottom action bar (hidden on desktop; mobile.css flips it to flex).
+   One full-width row: Undo · Redo · ➕(raised accent FAB) · Select · Delete. */
+.solenoid-mobile-bar {
+  display: none;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2px;
+  padding: 5px 10px calc(5px + env(safe-area-inset-bottom));
+  background: var(--panel-bg);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-top: 1px solid var(--panel-border);
+  z-index: 100;
+  user-select: none;
+}
+
+.solenoid-mobile-bar__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  color: var(--text);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.solenoid-mobile-bar__btn:active {
+  background: var(--btn-hover);
+}
+/* Disabled (e.g. Delete with nothing selected): dim but keep its slot. */
+.solenoid-mobile-bar__btn:disabled {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+/* Select-mode toggle — lights to the accent while active. */
+.solenoid-mobile-bar__select.solenoid-mobile-bar__btn--on {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.solenoid-mobile-bar__delete:active {
+  color: #e26d6d;
+}
+
+/* Centre Add — the largest target, accent-filled and raised above the bar. */
+.solenoid-mobile-bar__add {
+  width: 46px;
+  height: 46px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: var(--shadow-pop);
+  /* Lift it proud of the bar (transform = visual only, so the bar height and
+     the other buttons' positions are unaffected). */
+  transform: translateY(-8px);
+}
+.solenoid-mobile-bar__add:active {
+  background: var(--accent);
+  filter: brightness(0.92);
+}

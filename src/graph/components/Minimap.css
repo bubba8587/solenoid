@@ -1,0 +1,40 @@
+/* Custom colored minimap (SolenoidMinimap). Container tracks the theme;
+   nodes are tinted per-kind inline. */
+.solenoid-minimap {
+  position: absolute;
+  /* Right edge aligned with the socket legend above it. */
+  right: 16px;
+  /* Clear of the bottom status bar. */
+  bottom: 30px;
+  padding: 8px;
+  overflow: hidden;
+  box-sizing: border-box;
+  background: var(--overlay-bg);
+  border: var(--overlay-border-width) solid var(--overlay-border);
+  border-radius: 8px;
+  box-shadow: var(--overlay-shadow);
+}
+
+/* box-sizing: border-box keeps the 1px outline from inflating the rect, so the
+   silhouette matches the node's true footprint. */
+.solenoid-minimap__node {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px solid;
+  border-radius: 1.5px;
+}
+
+.solenoid-minimap__viewport {
+  position: absolute;
+  box-sizing: border-box;
+  background: color-mix(in srgb, var(--text) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text) 55%, transparent);
+  cursor: grab;
+  /* Draw the highlight at 80% of the true view rect, centered. Purely visual (the
+     inline geometry is unchanged) — so when "Fit all" makes the view exactly match
+     the content bounds, the rectangle still sits visibly inside the minimap with a
+     margin instead of vanishing edge-to-edge. */
+  transform: scale(0.8);
+  transform-origin: center;
+}
+.solenoid-minimap__viewport:active { cursor: grabbing; }

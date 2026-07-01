@@ -1,0 +1,117 @@
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { getEditor, deleteSelected } from "./process";
+import { addMenuRequest } from "./addMenuStore";
+import { cableSelectionStore } from "./cableState";
+import { touchSelectStore } from "./touchSelectStore";
+import { IS_MOBILE } from "./coarse";
+import { outlineSearch } from "./outlineStore";
+import { fitAll } from "./NavMenu";
+import "./MobileControls.css";
+
+/**
+ * Touch-only bottom action bar (hidden ≥640px via CSS): one row of 6 buttons
+ * around the raised accent Add FAB — Search · Undo · Redo · ➕ · Select · Delete
+ * · Fit. Pulling Search + Fit in here lets the top-left search pill go away and
+ * the canvas nav pill shrink. Delete is disabled (dimmed) when nothing's
+ * selected, so the bar never reflows and the buttons keep fixed positions.
+ *
+ * Selection state is polled the same cheap way the StatusBar does it (there is
+ * no dedicated selection store), so Delete enables only when there's something
+ * to remove.
+ */
+export function MobileControls() {
+  const [hasSelection, setHasSelection] = useState(false);
+  const selectMode = useSyncExternalStore(touchSelectStore.subscribe, touchSelectStore.get);
+
+  // The bar only renders under html.is-mobile (== IS_MOBILE), so on desktop this poll would
+  // scan every node 5×/sec for an invisible control. Skip it entirely there.
+  useEffect(() => {
+    if (!IS_MOBILE) return;
+    const tick = () => {
+      const editor = getEditor();
+      const nodeSelected = !!editor?.getNodes().some((n) => (n as { selected?: boolean }).selected);
+      const cableSelected = cableSelectionStore.count() > 0;
+      setHasSelection(nodeSelected || cableSelected);
+    };
+    tick();
+    const id = window.setInterval(tick, 200);
+    return () => window.clearInterval(id);
+  }, []);
+
+  // Open the Add-node menu near the top so the on-screen keyboard (for its
+  // search field) doesn't cover it.
+  const openAddMenu = () => addMenuRequest.open(window.innerWidth / 2, 96);
+
+  return (
+    <div className="solenoid-mobile-bar" onPointerDown={(e) => e.stopPropagation()}>
+      <button className="solenoid-mobile-bar__btn" aria-label="Find node" onClick={() => outlineSearch.open()}>
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+          <circle cx="7" cy="7" r="4.5" />
+          <path d="M10.4 10.4 14 14" />
+        </svg>
+      </button>
+      <button className="solenoid-mobile-bar__btn" aria-label="Undo" onClick={() => fireUndo(false)}>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M6 10 H15 a4.5 4.5 0 0 1 0 9 H9" />
+          <path d="M6 10 L10 6 M6 10 L10 14" />
+        </svg>
+      </button>
+      <button className="solenoid-mobile-bar__btn" aria-label="Redo" onClick={() => fireUndo(true)}>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M18 10 H9 a4.5 4.5 0 0 0 0 9 H15" />
+          <path d="M18 10 L14 6 M18 10 L14 14" />
+        </svg>
+      </button>
+      <button
+        className="solenoid-mobile-bar__btn solenoid-mobile-bar__add"
+        aria-label="Add node"
+        onClick={openAddMenu}
+      >
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+      </button>
+      <button
+        className={
+          "solenoid-mobile-bar__btn solenoid-mobile-bar__select" +
+          (selectMode ? " solenoid-mobile-bar__btn--on" : "")
+        }
+        aria-label="Select mode"
+        aria-pressed={selectMode}
+        onClick={() => touchSelectStore.toggle()}
+      >
+        {/* Dashed marquee — drag to lasso-select; tap nodes to add/remove. */}
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeDasharray="3 3">
+          <rect x="3" y="3" width="18" height="18" rx="2" />
+        </svg>
+      </button>
+      <button
+        className="solenoid-mobile-bar__btn solenoid-mobile-bar__delete"
+        aria-label="Delete selection"
+        disabled={!hasSelection}
+        onClick={() => void deleteSelected()}
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V6" />
+          <path d="M10 11v6M14 11v6" />
+        </svg>
+      </button>
+      <button className="solenoid-mobile-bar__btn" aria-label="Fit all" onClick={() => fitAll()}>
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M2 5.5 V3 a1 1 0 0 1 1-1 H5.5" />
+          <path d="M10.5 2 H13 a1 1 0 0 1 1 1 V5.5" />
+          <path d="M14 10.5 V13 a1 1 0 0 1-1 1 H10.5" />
+          <path d="M5.5 14 H3 a1 1 0 0 1-1-1 V10.5" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
+// Dispatch the synthetic Ctrl+Z / Ctrl+Shift+Z that Canvas's window key handler
+// already listens for, keeping undo/redo single-sourced.
+function fireUndo(redo: boolean) {
+  window.dispatchEvent(
+    new KeyboardEvent("keydown", { code: "KeyZ", ctrlKey: true, shiftKey: redo, bubbles: true, cancelable: true }),
+  );
+}

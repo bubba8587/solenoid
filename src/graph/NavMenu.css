@@ -1,0 +1,76 @@
+.solenoid-nav {
+  position: absolute;
+  /* Vertical pill on the upper-right, clear of the full-width header. */
+  top: 80px;
+  right: 12px;
+  display: flex;
+  flex-direction: row;
+  gap: 3px;
+  padding: 3px;
+  background: var(--panel-bg);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  user-select: none;
+  box-shadow: var(--shadow-pop);
+  z-index: 5;
+}
+
+.solenoid-nav__btn {
+  width: 28px;
+  height: 28px;
+  /* Borderless inside the pill — the pill container is the boundary, so the
+     circles read as a tight cluster rather than double-ringed buttons. */
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text);
+  border-radius: 50%;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.solenoid-nav__btn:hover {
+  background: var(--btn-hover);
+  border-color: transparent;
+  color: var(--accent);
+}
+
+.solenoid-nav__btn--on {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.solenoid-nav__seed-select {
+  height: 28px;
+  /* Custom chevron (background-image) instead of the native arrow, which
+     ignores right-padding and crowds the pill's rounded end on Chrome/Win. */
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-color: var(--btn-bg);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238a8f98' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  border: 1px solid var(--btn-border);
+  color: var(--text);
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 12px;
+  padding: 0 30px 0 14px;
+  cursor: pointer;
+  outline: none;
+  max-width: 170px;
+}
+
+.solenoid-nav__seed-select:hover,
+.solenoid-nav__seed-select:focus {
+  border-color: var(--accent);
+}

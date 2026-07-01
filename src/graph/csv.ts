@@ -1,0 +1,41 @@
+// Shared CSV parsing. The app reads comma-separated text in several places
+// (Table Input, Frame Input, the CSV-view popup, and the Web Source / CSV File
+// connection). CSV is a deceptively deep format — quoted fields with embedded
+// commas, doubled-quote escaping, fields that span physical lines, BOMs, CRLF,
+// alternate delimiters — so rather than hand-maintain a parser we delegate to
+// Papa Parse (RFC 4180, no transitive deps, synchronous). These wrappers keep a
+// small `string[][]` interface so the call sites stay simple and the engine can
+// be swapped without touching them.
+
+import Papa from "papaparse";
+
+export interface CsvOptions {
+  /** Auto-detect the delimiter (comma / semicolon / tab / pipe) instead of
+   *  assuming comma. The in-app comma-separated editors leave this off so their
+   *  behavior is deterministic; real-world file ingestion (the CSV File / Web
+   *  Source connection) turns it on so a European semicolon export still loads. */
+  detectDelimiter?: boolean;
+}
+
+/** Parse CSV text into rows of string fields. Blank lines are dropped; quotes,
+ *  embedded commas, doubled-quote escapes, embedded newlines, CRLF, and a
+ *  leading BOM are all handled. Cells stay strings — callers do their own
+ *  numeric coercion. */
+export function parseCsvRows(text: string, opts: CsvOptions = {}): string[][] {
+  // Normalize line endings first so a file with MIXED endings (CRLF rows but a
+  // bare-LF final line, say) parses cleanly — Papa locks onto a single newline
+  // type, so a stray ending would otherwise bleed into the last field.
+  const normalized = text.replace(/\r\n?/g, "\n");
+  const result = Papa.parse<string[]>(normalized, {
+    delimiter: opts.detectDelimiter ? "" : ",", // "" → Papa auto-detects
+    newline: "\n",
+    skipEmptyLines: "greedy", // drop blank and whitespace-only lines
+    // header:false, dynamicTyping:false are the defaults — we want raw rows.
+  });
+  return result.data;
+}
+
+/** Parse a single CSV line into its fields (the first row of the text). */
+export function parseCsvLine(line: string, opts: CsvOptions = {}): string[] {
+  return parseCsvRows(line, opts)[0] ?? [""];
+}

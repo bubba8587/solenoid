@@ -1,0 +1,28 @@
+{
+  "v": 1,
+  "label": "Decision Matrix (weighted scoring)",
+  "order": 250,
+  "nodes": [
+    {"id":"noteIntro","type":"NoteNode","x":-60,"y":-300,"init":{"label":"Decision Matrix — pick the best option","body":"# Weighted scoring, ranked\nA **Decision Matrix** scores a table of options against weighted criteria, then ranks them. Port of the *Decision Matrix Bases View* Obsidian plugin.\n\n**Flow:** a Frame of scores (rows = options, first text column names them, number columns are criteria) → the Decision Matrix node → `Option · Score · Rank`, best first.\n\nEach criterion row on the node has a **weight** (default 1; negative = lower is better, like Price) and a **normalize** mode. Score = **Σ(score × weight) / Σ|weight|**. Tweak a weight and watch the ranking move.","color":"violet","width":400,"height":300}},
+
+    {"id":"scores","type":"FrameInputNode","x":-60,"y":40,"init":{"label":"Raw scores (your own Frame)","frameText":"[{\"name\":\"Laptop\",\"type\":\"string\",\"values\":[\"ProBook\",\"UltraSlim\",\"PowerLifter\",\"Budget\"]},{\"name\":\"Performance\",\"type\":\"number\",\"values\":[9,6,10,4]},{\"name\":\"Battery\",\"type\":\"number\",\"values\":[6,9,5,7]},{\"name\":\"Screen\",\"type\":\"number\",\"values\":[8,9,7,5]},{\"name\":\"Price\",\"type\":\"number\",\"values\":[1800,1400,2200,700]}]"}},
+
+    {"id":"dm","type":"DecisionMatrixNode","x":420,"y":40,"init":{"label":"Decision Matrix","normalize":"max","detail":"breakdown","weightMap":{"Performance":3,"Battery":2,"Screen":1,"Price":-2},"normMap":{"Price":"rank"}}},
+    {"id":"noteDM","type":"NoteNode","x":420,"y":600,"init":{"label":"Per-column normalize (Rank Raws)","body":"Price is in **dollars**, the others out of **10** — different scales. So every criterion is normalized to a common **0–1** range; now the **weights**, not the raw scale, decide influence.\n\nThe default mode here is **÷Max**, but **Price** overrides to **Rank** (its row dropdown) — the DMBV per-column *Rank Raws*. Rank keeps only the order, so one runaway price can't dominate.\n\n**Breakdown** is on, so the table shows each criterion's effective 0–1 value behind the score.","color":"green","width":370,"height":260}},
+
+    {"id":"getScore","type":"GetColumnNode","x":880,"y":-40,"init":{"label":"Get Column → Score","readAs":"number"},"stringLiterals":{"name":"Score"}},
+    {"id":"chart","type":"ChartNode","x":1240,"y":-60,"init":{"label":"Podium (Score per option)","op":"bar"},"stringLiterals":{"options":"title=Weighted score;xlabel=Score"}},
+    {"id":"noteChart","type":"NoteNode","x":1240,"y":260,"init":{"label":"The 'podium' is just a chart","body":"DMBV drew a podium + ranking cards. In Solenoid that's composable: **Get Column \"Score\" → Chart** (bar). The ranked frame on the Decision Matrix node is the table; the chart is the visual.","color":"vermilion","width":320,"height":160}},
+
+    {"id":"noteSens","type":"NoteNode","x":-60,"y":940,"init":{"label":"Sensitivity — how robust is the winner?","body":"# Stress-test the weights\nThe winner above depends on the weights you picked. The **Sensitivity** node scores the same options under several weight **scenarios** (each row below is one) and returns a **Cube**: one row per scenario with the **Winner**, the **Margin** (how decisive), and the full **Ranking** nested in the cell — **drill in** by clicking it.\n\nHere the winner *flips* — UltraSlim when balanced, PowerLifter when performance is king — and the Budget scenario is a near-tie (Margin ≈ 0), i.e. the choice is fragile.","color":"blue","width":380,"height":260}},
+    {"id":"scenarios","type":"FrameInputNode","x":-60,"y":1240,"init":{"label":"Weight scenarios (each row = one)","frameText":"[{\"name\":\"Scenario\",\"type\":\"string\",\"values\":[\"Balanced\",\"Performance-first\",\"Budget\"]},{\"name\":\"Performance\",\"type\":\"number\",\"values\":[3,5,1]},{\"name\":\"Battery\",\"type\":\"number\",\"values\":[2,1,1]},{\"name\":\"Screen\",\"type\":\"number\",\"values\":[1,1,1]},{\"name\":\"Price\",\"type\":\"number\",\"values\":[-2,-1,-5]}]"}},
+    {"id":"sens","type":"DecisionSensitivityNode","x":420,"y":1240,"init":{"label":"Sensitivity","normalize":"rank"}}
+  ],
+  "connections": [
+    {"source":"scores","sourceOutput":"frame","target":"dm","targetInput":"frame"},
+    {"source":"dm","sourceOutput":"frame","target":"getScore","targetInput":"frame"},
+    {"source":"getScore","sourceOutput":"values","target":"chart","targetInput":"values"},
+    {"source":"scores","sourceOutput":"frame","target":"sens","targetInput":"scores"},
+    {"source":"scenarios","sourceOutput":"frame","target":"sens","targetInput":"scenarios"}
+  ]
+}

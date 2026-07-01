@@ -1,0 +1,101 @@
+.solenoid-menubar {
+  /* Above the toolbar row so dropdowns paint over it (TopBar's backdrop-filter
+     makes it its own stacking context). */
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: stretch;
+  height: 22px;
+  /* Top inset pushes the menu below a phone's notch while the accent bar's
+     background fills the cutout area. env() is 0 without a safe area. */
+  padding: env(safe-area-inset-top) 6px 0;
+  /* Accent bar with ink (contrast) text. */
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.18);
+  user-select: none;
+  font-size: 12px;
+}
+
+.solenoid-menubar__item {
+  position: relative;
+  display: flex;
+}
+
+.solenoid-menubar__top {
+  height: 100%;
+  padding: 0 9px;
+  background: transparent;
+  border: none;
+  color: var(--accent-ink);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+/* Hover / open: a wash of the ink color, so it reads on light or dark accents. */
+.solenoid-menubar__top:hover {
+  background: color-mix(in srgb, var(--accent-ink) 14%, transparent);
+}
+.solenoid-menubar__top--open {
+  background: color-mix(in srgb, var(--accent-ink) 22%, transparent);
+}
+
+.solenoid-menubar__dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 20;
+  min-width: 220px;
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-pop);
+}
+
+.solenoid-menubar__option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 8px;
+  background: transparent;
+  border: none;
+  border-radius: 5px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.solenoid-menubar__option:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
+.solenoid-menubar__option:disabled {
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.solenoid-menubar__check {
+  flex: 0 0 12px;
+  width: 12px;
+  color: var(--accent);
+  text-align: center;
+}
+
+.solenoid-menubar__label {
+  flex: 1 1 auto;
+}
+
+.solenoid-menubar__shortcut {
+  flex: 0 0 auto;
+  color: var(--text-dim);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.solenoid-menubar__sep {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--panel-border);
+}

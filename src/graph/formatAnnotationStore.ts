@@ -1,0 +1,527 @@
+// Format Controller annotations: nodeId::socketKey → { format, unit }
+// Module-level singleton, readable from any React root.
+
+import { formatDateSerial, DEFAULT_DATE_FORMAT } from "./nodes/date";
+
+// ─── Format style (how the number renders) ───────────────────────────────────
+
+export type FormatStyle =
+  | "auto"
+  | "decimal"      // flexible: N places or N sig figs (decimalDigits/decimalMode)
+  | "integer"      // 1,235
+  | "percent"      // flexible: N places or N sig figs (decimalDigits/decimalMode)
+  | "fraction"     // 1/3
+  | "fraction_adv" // π/2, 3π/2, e/4 … (rational multiples of constants)
+  | "scientific"   // 1.23e+4
+  // NOTE: currency is NOT a format — it's a UNIT ($, €, … in UNIT_ANNOTATIONS).
+  // Pick a number format (decimal/integer/…) and set the unit to a currency.
+  | "custom"
+  // Date styles — applied to a date serial via formatDateSerial.
+  | "date_dmy"     // 03-Jun-2026 (the app default)
+  | "date_iso"     // 2026-06-03
+  | "date_us"      // 6/3/2026
+  | "date_long"    // June 3, 2026
+  | "date_med"     // Jun 3, 2026
+  | "date_dow"     // Wed, Jun 3, 2026
+  | "time_24"      // 14:30
+  | "time_12"      // 2:30 PM
+  | "datetime"     // 2026-06-03 14:30
+  | "date_custom";
+
+// A format id that may be a built-in FormatStyle OR a pack-contributed format id.
+// The `& {}` keeps the built-in union members in editor autocomplete while still
+// accepting any string (pack formats are registered at runtime, see below).
+export type FormatStyleId = FormatStyle | (string & {});
+
+export const FORMAT_STYLE_LABELS: Record<FormatStyle, string> = {
+  auto:         "Auto",
+  decimal:      "Decimal",
+  integer:      "Integer",
+  percent:      "Percent",
+  fraction:     "Fraction",
+  fraction_adv: "Fraction (π, e, √…)",
+  scientific:   "Scientific",
+  custom:       "Custom…",
+  date_dmy:     "03-Jun-2026",
+  date_iso:     "2026-06-03",
+  date_us:      "6/3/2026",
+  date_long:    "June 3, 2026",
+  date_med:     "Jun 3, 2026",
+  date_dow:     "Wed, Jun 3, 2026",
+  time_24:      "14:30",
+  time_12:      "2:30 PM",
+  datetime:     "2026-06-03 14:30",
+  date_custom:  "Custom…",
+};
+
+export const FORMAT_STYLE_GROUPS: Record<string, FormatStyle[]> = {
+  "General":   ["auto"],
+  "Number":    ["decimal", "integer", "fraction", "fraction_adv", "scientific"],
+  "Percent":   ["percent"],
+  // Currency is not a format — it's a unit (see the unit dropdown / UNIT_ANNOTATIONS).
+  "Custom":    ["custom"],
+};
+
+// Date styles shown by the FC when docked to a date socket (one flat list).
+export const DATE_FORMAT_STYLES: FormatStyle[] = [
+  "date_dmy", "date_iso", "date_us", "date_long", "date_med", "date_dow",
+  "time_24", "time_12", "datetime", "date_custom",
+];
+
+const DATE_STYLE_PATTERNS: Partial<Record<FormatStyle, string>> = {
+  date_dmy:  "DD-MMM-YYYY",
+  date_iso:  "YYYY-MM-DD",
+  date_us:   "M/D/YYYY",
+  date_long: "MMMM D, YYYY",
+  date_med:  "MMM D, YYYY",
+  date_dow:  "DDD, MMM D, YYYY",
+  time_24:   "HH:mm",
+  time_12:   "h:mm A",
+  datetime:  "YYYY-MM-DD HH:mm",
+};
+
+export function isDateStyle(style: FormatStyleId): boolean {
+  return style.startsWith("date_") || style.startsWith("time_") || style === "datetime";
+}
+
+export type DecimalMode = "places" | "sigfigs";
+
+/** Apply a FormatStyle to a number. Returns the formatted string. */
+export function applyFormatStyle(
+  n: number,
+  style: FormatStyleId,
+  customPattern?: string,
+  decimalDigits = 2,
+  decimalMode: DecimalMode = "places",
+): string {
+  if (!Number.isFinite(n)) return String(n);
+  switch (style) {
+    case "decimal": {
+      if (decimalMode === "sigfigs") {
+        const s = Math.max(1, Math.min(21, Math.round(decimalDigits) || 1));
+        return n.toLocaleString(undefined, { minimumSignificantDigits: s, maximumSignificantDigits: s });
+      }
+      const d = Math.max(0, Math.min(20, Math.round(decimalDigits)));
+      return n.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
+    }
+    case "percent": {
+      const v = n * 100;
+      if (decimalMode === "sigfigs") {
+        const s = Math.max(1, Math.min(21, Math.round(decimalDigits) || 1));
+        return `${v.toLocaleString(undefined, { minimumSignificantDigits: s, maximumSignificantDigits: s })}%`;
+      }
+      const d = Math.max(0, Math.min(20, Math.round(decimalDigits)));
+      return `${v.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d })}%`;
+    }
+    case "integer":      return Math.round(n).toLocaleString();
+    case "fraction":     return toFraction(n);
+    case "fraction_adv": return toFractionAdvanced(n);
+    case "scientific":   return n.toExponential(3);
+    case "custom":       return applyCustomPattern(n, customPattern ?? "0.00");
+    default: {
+      // Not a built-in style — maybe a pack-contributed format (registered for
+      // every known pack, so saved graphs render even with the pack off).
+      const pf = _packFormats.get(style);
+      return pf ? pf.apply(n) : autoFormat(n);
+    }
+  }
+}
+
+function autoFormat(n: number): string {
+  if (Number.isInteger(n)) return n.toString();
+  const s = parseFloat(n.toPrecision(6)).toString();
+  return s;
+}
+
+function toFraction(n: number, maxDen = 99): string {
+  if (!Number.isFinite(n)) return String(n);
+  if (Math.abs(n) < 1e-12) return "0";
+  const neg = n < 0;
+  const abs = Math.abs(n);
+  const whole = Math.floor(abs);
+  const frac = abs - whole;
+  if (frac < 1e-12) return `${neg ? "-" : ""}${whole}`;
+  // Best rational for the fractional part via continued-fraction convergents.
+  const { num, den } = cfConvergent(frac, maxDen);
+  // Non-aggressive: only render a fraction when it matches to high precision.
+  // Otherwise the value isn't a clean fraction — show it as a decimal instead
+  // of coercing it into an ugly approximation.
+  if (!den || Math.abs(frac - num / den) > 1e-9) return autoFormat(n);
+  const sign = neg ? "-" : "";
+  return whole > 0 ? `${sign}${whole} ${num}/${den}` : `${sign}${num}/${den}`;
+}
+
+// ─── Fraction (advanced): rational multiples of constants ──────────────────────
+// Established method (no home-grown heuristic): recognize x ≈ (p/q)·c by dividing
+// by each candidate constant c and finding the best low-denominator rational p/q
+// via the continued-fraction convergents algorithm — the standard way to get the
+// closest rational with a bounded denominator. (This is the lightweight cousin of
+// PSLQ / the Inverse Symbolic Calculator, restricted to a single-constant basis.)
+
+/** Best rational p/q ≈ x with q ≤ maxDen, via continued-fraction convergents. */
+function cfConvergent(x: number, maxDen: number): { num: number; den: number } {
+  let h0 = 0, h1 = 1, k0 = 1, k1 = 0; // numerator/denominator recurrences
+  let b = x;
+  for (let i = 0; i < 40; i++) {
+    const a = Math.floor(b);
+    const h2 = a * h1 + h0;
+    const k2 = a * k1 + k0;
+    if (k2 > maxDen) break;
+    h0 = h1; h1 = h2; k0 = k1; k1 = k2;
+    const frac = b - a;
+    if (frac < 1e-12) break;
+    b = 1 / frac;
+  }
+  return { num: h1, den: k1 };
+}
+
+const FRACTION_CONSTANTS: ReadonlyArray<readonly [string, number]> = [
+  ["π", Math.PI],
+  ["e", Math.E],
+  ["√2", Math.SQRT2],
+  ["√3", Math.sqrt(3)],
+  ["√5", Math.sqrt(5)],
+  ["φ", (1 + Math.sqrt(5)) / 2],
+  ["π²", Math.PI * Math.PI],
+];
+
+function formatConstFraction(num: number, den: number, sym: string): string {
+  const neg = num < 0;
+  const p = Math.abs(num);
+  const top = `${p === 1 ? "" : p}${sym}`;          // "π", "3π"
+  const body = den === 1 ? top : `${top}/${den}`;    // "π/2", "3π/2", "2π"
+  return (neg ? "-" : "") + body;
+}
+
+function toFractionAdvanced(n: number): string {
+  if (!Number.isFinite(n)) return String(n);
+  if (Math.abs(n) < 1e-12) return "0";
+  const maxDen = 36;
+  const relTol = 1e-6; // catches ~6-significant-figure inputs like 1.570796 → π/2
+  let best: { num: number; den: number; sym: string } | null = null;
+  for (const [sym, c] of FRACTION_CONSTANTS) {
+    const q = n / c;
+    const { num, den } = cfConvergent(Math.abs(q), maxDen);
+    if (!den || num === 0) continue;
+    const approx = Math.sign(q) * (num / den) * c;
+    const err = Math.abs(approx - n) / Math.abs(n);
+    // Genuine matches converge to a small-denominator rational within tolerance;
+    // arbitrary numbers don't. Prefer the simplest (smallest denominator) hit.
+    if (err < relTol && (!best || den < best.den)) {
+      best = { num: Math.sign(q) * num, den, sym };
+    }
+  }
+  // No constant fits → fall back to a plain fraction.
+  return best ? formatConstFraction(best.num, best.den, best.sym) : toFraction(n);
+}
+
+function applyCustomPattern(n: number, pattern: string): string {
+  // Minimal Excel-ish custom number format support.
+  // Supports: 0, #, ., comma grouping.
+  const dp = (pattern.match(/\.([0#]+)/) ?? [, ""])[1]?.length ?? 0;
+  const useGrouping = pattern.includes(",");
+  return n.toLocaleString(undefined, {
+    minimumFractionDigits: dp,
+    maximumFractionDigits: dp,
+    useGrouping,
+  });
+}
+
+// ─── Unit labels (physical/semantic annotation) ───────────────────────────────
+
+export type UnitGroup =
+  | "none"
+  | "angle"
+  | "length"
+  | "mass"
+  | "temperature"
+  | "time"
+  | "area"
+  | "volume"
+  | "speed"
+  | "data"
+  | "currency"
+  | "custom";
+
+export type UnitAnnotation = {
+  id: string;
+  label: string;     // display affix e.g. "°C", "$"
+  group: UnitGroup;
+  prefix?: boolean;  // render before the number (currencies: "$1,234")
+};
+
+export const UNIT_ANNOTATIONS: UnitAnnotation[] = [
+  { id: "none",  label: "",      group: "none" },
+  // Angle
+  { id: "deg",   label: "°",     group: "angle" },
+  { id: "rad",   label: " rad",  group: "angle" },
+  { id: "grad",  label: " grad", group: "angle" },
+  // Length
+  { id: "m",     label: " m",    group: "length" },
+  { id: "km",    label: " km",   group: "length" },
+  { id: "cm",    label: " cm",   group: "length" },
+  { id: "mm",    label: " mm",   group: "length" },
+  { id: "in",    label: "\"",    group: "length" },
+  { id: "ft",    label: "'",     group: "length" },
+  { id: "mi",    label: " mi",   group: "length" },
+  // Mass
+  { id: "kg",    label: " kg",   group: "mass" },
+  { id: "g",     label: " g",    group: "mass" },
+  { id: "mg",    label: " mg",   group: "mass" },
+  { id: "lb",    label: " lb",   group: "mass" },
+  { id: "oz",    label: " oz",   group: "mass" },
+  // Temperature
+  { id: "degC",  label: " °C",   group: "temperature" },
+  { id: "degF",  label: " °F",   group: "temperature" },
+  { id: "K",     label: " K",    group: "temperature" },
+  // Time
+  { id: "s",     label: " s",    group: "time" },
+  { id: "ms",    label: " ms",   group: "time" },
+  { id: "min",   label: " min",  group: "time" },
+  { id: "hr",    label: " hr",   group: "time" },
+  { id: "day",   label: " day",  group: "time" },
+  // Area
+  { id: "m2",    label: " m²",   group: "area" },
+  { id: "km2",   label: " km²",  group: "area" },
+  { id: "ha",    label: " ha",   group: "area" },
+  { id: "ft2",   label: " ft²",  group: "area" },
+  { id: "ac",    label: " ac",   group: "area" },
+  // Volume
+  { id: "m3",    label: " m³",   group: "volume" },
+  { id: "L",     label: " L",    group: "volume" },
+  { id: "mL",    label: " mL",   group: "volume" },
+  { id: "gal",   label: " gal",  group: "volume" },
+  // Speed
+  { id: "ms1",   label: " m/s",  group: "speed" },
+  { id: "kmh",   label: " km/h", group: "speed" },
+  { id: "mph",   label: " mph",  group: "speed" },
+  // Data
+  { id: "b",     label: " B",    group: "data" },
+  { id: "kb",    label: " KB",   group: "data" },
+  { id: "mb",    label: " MB",   group: "data" },
+  { id: "gb",    label: " GB",   group: "data" },
+  { id: "tb",    label: " TB",   group: "data" },
+  // Currency is a UNIT (a value's currency carries real meaning — $ ≠ € at the
+  // exchange rate), not a number format. Rendered as a leading symbol.
+  { id: "usd",   label: "$", group: "currency", prefix: true },
+  { id: "eur",   label: "€", group: "currency", prefix: true },
+  { id: "gbp",   label: "£", group: "currency", prefix: true },
+  { id: "jpy",   label: "¥", group: "currency", prefix: true },
+  // Custom
+  { id: "custom", label: "",     group: "custom" },
+];
+
+export const UNIT_GROUP_LABELS: Record<UnitGroup, string> = {
+  none:        "—",
+  angle:       "Angle",
+  length:      "Length",
+  mass:        "Mass",
+  temperature: "Temperature",
+  time:        "Time",
+  area:        "Area",
+  volume:      "Volume",
+  speed:       "Speed",
+  data:        "Data",
+  currency:    "Currency",
+  custom:      "Custom",
+};
+
+// ─── Pack extensions (units + number formats) ─────────────────────────────────
+// Packs can contribute extra FC units and number formats. Like pack node
+// constructors, these are registered for EVERY known pack (active or not) so a
+// saved graph that uses a pack's unit/format still renders when the pack is
+// deactivated. The FC dropdown offers only ACTIVE packs' entries — see
+// fcExtensions.ts, which owns the active filtering; this module stays
+// pack-agnostic and only holds the merged resolution maps.
+
+export interface PackUnit {
+  id: string;
+  label: string;             // display affix, e.g. " psi"
+  group: UnitGroup | string; // an existing group id, or a new one (+ groupLabel)
+  groupLabel?: string;       // label for a brand-new group
+  prefix?: boolean;          // render before the number (currencies)
+}
+
+export interface PackFormat {
+  id: string;
+  label: string;             // dropdown label
+  group?: string;            // dropdown optgroup label (default "Pack")
+  apply: (n: number) => string;
+}
+
+const _packUnits = new Map<string, UnitAnnotation>();
+const _packUnitGroupLabels = new Map<string, string>();
+const _packFormats = new Map<string, { label: string; group: string; apply: (n: number) => string }>();
+
+/** Register a pack's FC units for resolution (idempotent by id). */
+export function registerPackUnits(units: PackUnit[]): void {
+  for (const u of units) {
+    _packUnits.set(u.id, { id: u.id, label: u.label, group: u.group as UnitGroup, prefix: u.prefix });
+    if (u.groupLabel) _packUnitGroupLabels.set(u.group, u.groupLabel);
+  }
+}
+
+/** Register a pack's FC number formats for resolution (idempotent by id). */
+export function registerPackFormats(formats: PackFormat[]): void {
+  for (const f of formats) {
+    _packFormats.set(f.id, { label: f.label, group: f.group ?? "Pack", apply: f.apply });
+  }
+}
+
+/** Resolved label for a unit-group id (built-in or pack-contributed). */
+export function unitGroupLabel(group: string): string {
+  return UNIT_GROUP_LABELS[group as UnitGroup] ?? _packUnitGroupLabels.get(group) ?? group;
+}
+
+/** A pack-contributed format's dropdown label, if `id` is one. */
+export function packFormatLabel(id: string): string | undefined {
+  return _packFormats.get(id)?.label;
+}
+
+export function unitById(id: string): UnitAnnotation {
+  return UNIT_ANNOTATIONS.find((u) => u.id === id) ?? _packUnits.get(id) ?? UNIT_ANNOTATIONS[0];
+}
+
+/** Is `id` a known unit annotation? (Used to map Convert units onto FC units.) */
+export function isFcUnit(id: string): boolean {
+  return UNIT_ANNOTATIONS.some((u) => u.id === id) || _packUnits.has(id);
+}
+
+/** Two unit annotations are compatible if either is "none" or they share a group. */
+export function unitsCompatible(a: string, b: string): boolean {
+  if (a === "none" || b === "none") return true;
+  const ga = unitById(a).group;
+  const gb = unitById(b).group;
+  if (ga === "custom" || gb === "custom") return true;
+  return ga === gb;
+}
+
+// ─── Store ────────────────────────────────────────────────────────────────────
+
+export type TextCase = "none" | "upper" | "lower" | "proper";
+
+export type FormatAnnotation = {
+  format: FormatStyleId;
+  customPattern?: string;
+  unit: string;       // id from UNIT_ANNOTATIONS, or a custom string
+  customUnit?: string;
+  // Text-socket display options (non-destructive — display only).
+  textCase?: TextCase;
+  bold?: boolean;
+  italic?: boolean;
+  textScale?: number; // font-size multiplier (1 = normal)
+  // Flexible "decimal" format params (digit count + places-vs-sig-figs).
+  decimalDigits?: number;
+  decimalMode?: DecimalMode;
+};
+
+/** Display-only case transform for a string (UPPER / lower / Proper). */
+export function applyTextCase(s: string, c: TextCase | undefined): string {
+  switch (c) {
+    case "upper": return s.toUpperCase();
+    case "lower": return s.toLowerCase();
+    case "proper": return s.replace(/\b\w/g, (ch) => ch.toUpperCase()).replace(/\B\w/g, (ch) => ch.toLowerCase());
+    default: return s;
+  }
+}
+
+const _store = new Map<string, FormatAnnotation>();
+const _listeners = new Set<() => void>();
+// Bumped on every change so useSyncExternalStore consumers (every node's
+// value box) re-render when an annotation is added / edited / removed.
+let _version = 0;
+
+function notify() { _version++; for (const l of _listeners) l(); }
+
+function key(nodeId: string, socketKey: string): string {
+  return `${nodeId}::${socketKey}`;
+}
+
+export const formatAnnotationStore = {
+  set(nodeId: string, socketKey: string, ann: FormatAnnotation): void {
+    _store.set(key(nodeId, socketKey), ann);
+    notify();
+  },
+  get(nodeId: string, socketKey: string): FormatAnnotation | undefined {
+    return _store.get(key(nodeId, socketKey));
+  },
+  /** The annotation on any socket of a node (a node carries at most one FC). */
+  getForNode(nodeId: string): FormatAnnotation | undefined {
+    const prefix = `${nodeId}::`;
+    for (const [k, ann] of _store) if (k.startsWith(prefix)) return ann;
+    return undefined;
+  },
+  delete(nodeId: string, socketKey: string): void {
+    if (_store.delete(key(nodeId, socketKey))) notify();
+  },
+  subscribe(listener: () => void): () => void {
+    _listeners.add(listener);
+    return () => { _listeners.delete(listener); };
+  },
+  /** Monotonic version for useSyncExternalStore snapshots. */
+  version(): number {
+    return _version;
+  },
+  /** All annotations keyed by nodeId::socketKey. */
+  snapshot(): ReadonlyMap<string, FormatAnnotation> {
+    return _store;
+  },
+};
+
+// ─── Mismatch store ───────────────────────────────────────────────────────────
+// Tracks which Format Controller node IDs are in a "unit mismatch" state
+// (a cable connects them to a socket annotated with an incompatible unit group).
+// Written by the Canvas connection pipe; read by FormatControllerComponent.
+
+const _mismatch = new Set<string>();
+const _mismatchListeners = new Set<() => void>();
+
+function notifyMismatch() { for (const l of _mismatchListeners) l(); }
+
+export const formatMismatchStore = {
+  setMismatch(nodeId: string, has: boolean): void {
+    const changed = has ? !_mismatch.has(nodeId) : _mismatch.has(nodeId);
+    if (!changed) return;
+    if (has) _mismatch.add(nodeId); else _mismatch.delete(nodeId);
+    notifyMismatch();
+  },
+  has(nodeId: string): boolean {
+    return _mismatch.has(nodeId);
+  },
+  subscribe(listener: () => void): () => void {
+    _mismatchListeners.add(listener);
+    return () => { _mismatchListeners.delete(listener); };
+  },
+};
+
+/** Format a number with a resolved annotation (style + unit suffix). */
+export function formatNumberWithAnnotation(n: number, ann: FormatAnnotation): string {
+  if (!Number.isFinite(n)) return String(n);
+  // Date styles render the value as a date serial; units don't apply.
+  if (isDateStyle(ann.format)) {
+    const pattern = ann.format === "date_custom"
+      ? (ann.customPattern || DEFAULT_DATE_FORMAT)
+      // Guarded by isDateStyle, so format is a built-in date style here.
+      : (DATE_STYLE_PATTERNS[ann.format as FormatStyle] ?? DEFAULT_DATE_FORMAT);
+    return formatDateSerial(n, pattern);
+  }
+  const formatted = applyFormatStyle(n, ann.format, ann.customPattern, ann.decimalDigits, ann.decimalMode);
+  if (ann.unit === "custom") {
+    const u = ann.customUnit ?? "";
+    return u ? `${formatted}${u}` : formatted;
+  }
+  const u = unitById(ann.unit);
+  if (!u.label) return formatted;
+  return u.prefix ? `${u.label}${formatted}` : `${formatted}${u.label}`;
+}
+
+/** Format a number using the annotation for a given socket, falling back to auto. */
+export function formatWithAnnotation(
+  n: number,
+  nodeId: string,
+  socketKey: string,
+): string {
+  const ann = formatAnnotationStore.get(nodeId, socketKey);
+  if (!ann) return autoFormat(n);
+  return formatNumberWithAnnotation(n, ann);
+}

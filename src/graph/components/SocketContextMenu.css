@@ -1,0 +1,47 @@
+.solenoid-socket-ctx {
+  position: fixed;
+  z-index: 9999;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  padding: 4px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  min-width: 0;
+}
+
+.solenoid-socket-ctx__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.solenoid-socket-ctx__item:hover {
+  background: var(--border-subtle);
+  color: var(--text);
+}
+
+/* Fixed, centered icon slot so a text-glyph icon ("⊙" / "⛓" / "⊷") and an SVG
+   icon (Pin) occupy the same box — otherwise the SVG's intrinsic width pushes its
+   row's label out of the column. */
+.solenoid-socket-ctx__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  font-size: 13px;
+  line-height: 1;
+  opacity: 0.7;
+  flex-shrink: 0;
+}

@@ -1,0 +1,155 @@
+.solenoid-statusbar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 19px;
+  /* Bottom inset keeps the strip's content clear of a phone's home indicator;
+     the bar's background still fills down to the screen edge. env() is 0 on
+     devices without a safe area, so desktop is unaffected. */
+  padding: 0 10px env(safe-area-inset-bottom);
+  background: var(--panel-bg);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-top: 1px solid var(--panel-border);
+  user-select: none;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.solenoid-statusbar__counts {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-dim);
+}
+
+/* ─── Web-demo node budget (inline meter behind the node count) ───────────── */
+.solenoid-statusbar__budget {
+  display: inline-block;
+  width: 52px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--btn-hover);
+  overflow: hidden;
+}
+.solenoid-statusbar__budget-fill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--accent);
+  transition: width 0.18s ease;
+}
+/* Caution: approaching the budget. */
+.solenoid-statusbar__counts--warn .solenoid-statusbar__budget-fill { background: #e0a100; }
+.solenoid-statusbar__counts--warn { color: var(--text); }
+/* Over the soft budget. */
+.solenoid-statusbar__counts--over .solenoid-statusbar__budget-fill { background: #e5484d; }
+.solenoid-statusbar__counts--over { color: #e5484d; font-weight: 600; }
+
+.solenoid-statusbar__dot {
+  margin: 0 6px;
+  color: var(--text-muted);
+}
+
+.solenoid-statusbar__sel {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.solenoid-statusbar__zoom {
+  flex: 0 0 auto;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Calc-mode indicator: a muted "Manual" label, or an actionable "Calculate" pill
+   (accent) when a manual-mode change left the graph stale. */
+.solenoid-statusbar__calc {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  /* Explicit height < the 19px bar so the pill floats clear of the bottom edge
+     (symmetric ~2.5px gap) instead of hugging it. */
+  height: 14px;
+  margin-right: 10px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+button.solenoid-statusbar__calc--dirty {
+  background: var(--accent);
+  color: var(--accent-contrast, #fff);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ─── Web-demo over-budget warning modal (one-time, on the crossing) ──────── */
+.solenoid-nbmodal {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+.solenoid-nbmodal__panel {
+  width: min(420px, calc(100vw - 40px));
+  padding: 20px 22px 18px;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-pop);
+  color: var(--text);
+}
+
+.solenoid-nbmodal__title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.solenoid-nbmodal__body {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+.solenoid-nbmodal__body strong { color: var(--text); font-weight: 600; }
+
+.solenoid-nbmodal__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.solenoid-nbmodal__ok {
+  padding: 7px 16px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+.solenoid-nbmodal__ok:hover { filter: brightness(1.08); }
