@@ -215,7 +215,7 @@ The system is flat at rest and uses elevation only to communicate state. Cards s
 - **Don't** ship the generic SaaS / AI-startup look: no purple gradients, no hero-metric cards (big number + small label + gradient accent), no glassmorphism, no rounded-everything dashboard template.
 - **Don't** make it childish or playful no-code: no bubbly cartoon blocks, no oversized friendly shapes, no toy aesthetic. This is a serious computation tool.
 - **Don't** go skeuomorphic or cluttered: no faux-3D bevels, no drop-shadow overload, no chrome competing with the graph for attention.
-- **Don't** use `border-left` / `border-right` greater than 1px as a colored accent stripe on cards, alerts, or list items.
+- **Don't** use a colored left/right accent stripe on cards, alerts, list items, or navigator/outline rows — by ANY technique: not a `border-left`/`border-right` >1px, not an inset `box-shadow` (`inset 3px 0 0 0 <color>`), not a pseudo-element bar. To convey an element's color/type, tint the element ITSELF (a muted `hexToRgba(color, ~0.1)` fill of its own accent, like the group-body fill) or color its own content (dot, label, icon) — never an edge stripe.
 - **Don't** use gradient text (`background-clip: text` over a gradient). Emphasis comes from weight and size, not gradients.
 - **Don't** fill a panel, button, or section header with the accent or a socket hue for visual interest; color must communicate type or state.
 - **Don't** inflate type sizes for "breathing room," and don't substitute a generic geometric sans for the hyperlegible face.

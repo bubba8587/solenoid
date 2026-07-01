@@ -55,6 +55,7 @@ Visual computation graph tool — a node-based "Excel alternative" for data tabl
 
 ### Docs map
 Deep detail lives in `docs/` so this always-loaded file stays lean:
+- **`DESIGN.md` (repo root) — the design-system rulebook. READ IT BEFORE ANY UI / VISUAL CHANGE.** Colors, typography, elevation, components, and a Do/Don't list. Non-obvious hard rules you WILL violate blind: no colored left/right accent stripe by ANY technique (border, inset box-shadow, pseudo-bar) — tint the element itself; the Quiet Accent Rule (color only conveys type/state, never decorative fills); no faux-3D/gradient/glassmorphism SaaS look. When you touch anything visual, check it here first.
 - `docs/subsystem-invariants.md` — full mechanics + invariants for the tricky subsystems (cable routing, group push, standoffs, tidy, resizable nodes, error values, alerts). Indexed below.
 - `docs/node-coverage.md` — the node inventory by category (the Add menu / Function Reference are generated from `nodeCatalog.ts`, which is the real source of truth).
 - `docs/cube-node-scope.md` — the Cube (recursive nested-table container): model + depth, the Nest Join / Build Cube / INDEX node set and why, the drill-in popup, a survey of nested-table features in other tools, and the user frustrations that shaped the design.
