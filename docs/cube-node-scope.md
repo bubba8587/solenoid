@@ -242,6 +242,18 @@ this baseline — not a per-verb default, and not in v1.0.
 
 - **Unnest** + standalone **Nest** (above) — for now INDEX pulls a sub-frame out and
   the existing frame nodes flatten it manually.
+- **INDEX — marked for later (2026-07-01):**
+  - **Output socket should be Cube, not singular `any`.** `ListIndexNode` output is `anyOut`
+    (`nodes/list.ts:148`); when INDEX pulls a nested cell that is itself a frame/cube the value
+    rides `any` fine, but the socket TYPE doesn't express Cube. Same "output can be a cube" issue
+    as the unified XLOOKUP — decide whether to retype the output as cube when reading out of a
+    cube, or present it cube-capably.
+  - **Range inputs / range output — Excel parity to consider.** Excel `INDEX(array, row, [col])`
+    returns the ENTIRE column when `row=0` and the ENTIRE row when `col=0` (a spilled range), and
+    has a reference form `INDEX(reference, row, col, [area])` usable in range construction
+    (`INDEX(…):INDEX(…)`). Solenoid INDEX is cell-only. Consider: `row=0`/`col=0` → return a whole
+    row/column as a list (dimensional output); whether INDEX should accept/emit ranges. Pairs with
+    XLOOKUP's "return the whole row" question below.
 - **Unified XLOOKUP** (author decision 2026-07-01) — frame mode shipped (Frame Lookup);
   the plan is now to MERGE list XLOOKUP + Frame Lookup + a new cube lookup into ONE node
   still named XLOOKUP that handles every source. It returns the matched value WHOLE (no
