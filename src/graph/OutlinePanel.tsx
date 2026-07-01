@@ -55,18 +55,15 @@ function typeOf(n: unknown): string {
     .replace(/([a-z])([A-Z])/g, "$1 $2");
 }
 
-function catOf(n: unknown): Cat {
+function catOf(n: unknown, wiredIn: Set<string>, wiredOut: Set<string>): Cat {
   if (n instanceof GroupNode) return "group";
   if (n instanceof DisplayNode) return "display";
-  // An "input" is a SOURCE: any node with no input sockets of its own that still
-  // produces an output (so it feeds the graph without anything feeding it). Structural,
-  // not a hand-listed set — so every literal / constant / source counts (Text, Boolean,
-  // Date, Table, Frame, …), not just Number Input. Plus the curated `input` kind, which
-  // catches sources that carry only CONFIG inputs (Slider's min/max/step).
-  const io = n as { inputs?: Record<string, unknown>; outputs?: Record<string, unknown> };
-  const noInputs = Object.keys(io.inputs ?? {}).length === 0;
-  const hasOutputs = Object.keys(io.outputs ?? {}).length > 0;
-  if ((noInputs && hasOutputs) || nodeKindOf(n as never) === "input") return "input";
+  // An "input" is a node functioning as a SOURCE right now: nothing is WIRED into it,
+  // but its output IS wired onward. By CONNECTION, not sockets — so a node that CAN take
+  // inputs but doesn't (RANDBETWEEN with unwired min/max) still counts as an input, and
+  // stops the moment you wire something into it.
+  const id = (n as { id: string }).id;
+  if (!wiredIn.has(id) && wiredOut.has(id)) return "input";
   return "other";
 }
 
@@ -78,6 +75,12 @@ function buildState(mode: "dark" | "light", sortMode: SortMode): State {
   const area = getArea();
   const nodes = editor.getNodes();
   const byId = new Map(nodes.map((n) => [n.id, n]));
+
+  // Wiring, for the "input" category (see catOf): which nodes have a cable INTO them
+  // (targets) vs OUT of them (sources). A source = wired out, not wired in.
+  const conns = editor.getConnections();
+  const wiredIn = new Set(conns.map((c) => c.target));
+  const wiredOut = new Set(conns.map((c) => c.source));
 
   // Sort SIBLINGS (top-level nodes, and members within a group) by the chosen
   // mode. Alpha = label A→Z; Position = canvas reading order — top→bottom in loose
@@ -115,7 +118,7 @@ function buildState(mode: "dark" | "light", sortMode: SortMode): State {
       depth,
       isGroup,
       collapsed: isGroup ? (n as GroupNode).collapsed : false,
-      cat: catOf(n),
+      cat: catOf(n, wiredIn, wiredOut),
     };
   };
 
@@ -295,7 +298,7 @@ export function OutlinePanel() {
       // The sig is order-sensitive (join preserves array order), so a Position-mode
       // re-sort caused by a node moving changes it → the list re-renders within a
       // poll. No need to hash positions separately.
-      const sig = next.tree.map((r) => `${r.id}:${r.depth}:${r.collapsed ? 1 : 0}:${r.selected ? 1 : 0}:${r.label}:${r.color}`).join("|")
+      const sig = next.tree.map((r) => `${r.id}:${r.depth}:${r.collapsed ? 1 : 0}:${r.selected ? 1 : 0}:${r.label}:${r.color}:${r.cat}`).join("|")
         + "#" + next.flat.map((r) => r.id).join(",");
       if (sig !== prev) { prev = sig; setState(next); }
     };
