@@ -12,9 +12,21 @@ Running notes on direction, deferred work, and non-obvious technical gotchas.
   bug lane (the navigator-group-row + FC-mis-dock regressions). **Two hard gates called out:**
   (1) WS-A's units-by-dimensionality depends on the FC function model landing first; (2) no
   *code* pack ships before dormant-pack persistence (WS-B1). Suggested cut: bug lane → WS-A
-  (function model, then redesign) → WS-B gate + first pack → WS-C/D/E fill-in. **1.0 is
-  released, so v1.1 is now the active milestone** (work on `develop`). Open decisions flagged:
-  units representation, aliasing timing, finance connection, and which WS-C/D items make the cut.
+  (function model, then redesign) → first code pack → WS-C/D/E fill-in. **1.0 is released, so
+  v1.1 is now the active milestone** (work on `develop`).
+- **Grounded every plan item against the code** (5 parallel read-only sweeps) because the source
+  checklists had rotted. Six items were mis-marked and are now corrected in `v1.1-plan.md` with
+  file:line evidence: **already DONE** — Bug 1 (navigator group rows, translucent tint landed on
+  develop), **dormant-pack persistence** (placeholders unknown types + preserves cables +
+  `SavedGraph.packs` provenance, `persistence.ts:345-371`), **pinch-zoom** (`CappedZoom`,
+  `Canvas.tsx:123`), **multi-level Nest Join** (`NestJoinNode` cube parent), **formula re-audit**
+  (2026-06-25, deletion still pending). **PARTIAL, not net-new** — docked-FC movement (drag/group/
+  tidy covered; push/expand/collapse not), hideable chrome (per-panel hide + Tab done; no minimap-
+  corner/resize), Timesavers pack (shell re-tags core nodes; proposed idioms unbuilt). The FC
+  function model, SegToggle unification, units-by-dimensionality, grid system, cable avoidance,
+  new core nodes, Obsidian sync, image bundling, finance connection, cube-cell XLOOKUP, lazy-plan
+  fusion, and Bug 2 (FC mis-dock) are all genuinely not done, as written. The old "no code pack
+  before persistence" gate is dropped (persistence is built). Open decisions unchanged.
 
 ### v1.0 doc reconciliation + desktop seed-CSV fix (2026-07-01)
 - **`fetchText` relative-URL fix** (`httpBridge.ts`). On desktop, `fetchText` sent EVERY
