@@ -242,7 +242,13 @@ this baseline — not a per-verb default, and not in v1.0.
 
 - **Unnest** + standalone **Nest** (above) — for now INDEX pulls a sub-frame out and
   the existing frame nodes flatten it manually.
-- XLOOKUP frame/cube mode (by-key cell read returning `any`).
+- **Unified XLOOKUP** (author decision 2026-07-01) — frame mode shipped (Frame Lookup);
+  the plan is now to MERGE list XLOOKUP + Frame Lookup + a new cube lookup into ONE node
+  still named XLOOKUP that handles every source. It returns the matched value WHOLE (no
+  drill-down): scalar / list / 2-D frame, and if the returned 2-D value has nested cells,
+  **XLOOKUP itself outputs a Cube** (`any` socket, `isCubeValue` runtime check). Full design
+  note + open questions in `v1.1-plan.md` WS-D. (Was: "XLOOKUP frame/cube mode, by-key cell
+  read returning `any`.")
 - [done] Multi-column Build Cube — the **Cube Columns** node (2026-06-29): N extensible
   `any` column inputs (list → cells, single-col cube → its cells, frame/scalar → one
   cell) + a Names CSV, assembled side by side. Composes with the cell-wise Build Cube

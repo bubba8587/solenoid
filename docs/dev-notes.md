@@ -2,6 +2,21 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Unified XLOOKUP decided (2026-07-01, author) — design note, not built
+Merge the three lookups into ONE node, keep the name **XLOOKUP**, "just be able to handle
+everything." Folds in the v1.0-shipped **list** XLOOKUP (`XLookupNode`, match/search modes) and
+**frame** XLOOKUP (`FrameLookupNode`/`lookupFrameCell`), plus a net-new **cube** lookup — one
+class replaces both. Core rule (author): **return the matched value WHOLE, no drill-down** — the
+node finds the position and passes back whatever sits there (scalar / list / 2-D frame). Key new
+constraint: if the returned 2-D value has **nested cells, XLOOKUP itself outputs a CUBE** — so the
+output stays `any` (cube-capable in the lattice) and cube-vs-frame is a runtime `isCubeValue` check
+on the pulled value. Drilling into a returned cube is the downstream CubePopup / positional INDEX's
+job, not XLOOKUP's. Open questions (in `v1.1-plan.md` WS-D): the input surface (duck-type an `any`
+source into list-pair vs frame/cube-plus-column-names, vs a mode selector); what "return" means for
+a frame (one column vs whole row = the 2-D case); pre-alpha migration (break both old nodes, one
+`xlookup` catalog entry, drop `frame-lookup`); approximate-match + typed read-as fold in here. Full
+note in `v1.1-plan.md` WS-D + `cube-node-scope.md` follow-ups.
+
 ### v1.1 execution plan written (2026-07-01)
 - **`docs/v1.1-plan.md`** — expanded the archived `roadmap.md` "v1.1 — post-v1 deferred tail"
   bullet list into a sequenced, file-level plan mirroring `v1.0-plan.md`. Consolidates the
