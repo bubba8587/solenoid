@@ -2,6 +2,20 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### v1.1 execution plan written (2026-07-01)
+- **`docs/v1.1-plan.md`** — expanded the archived `roadmap.md` "v1.1 — post-v1 deferred tail"
+  bullet list into a sequenced, file-level plan mirroring `v1.0-plan.md`. Consolidates the
+  v1.1 scope that was scattered across `backlog.md`, the FC/units author notes (2026-06-25),
+  and the milestone split (2026-06-24). Structure: 5 independent workstreams (**WS-A Format
+  Controller & Units** = the flagship, **WS-B Packs & extensibility**, **WS-C Canvas &
+  interaction**, **WS-D Data & integration**, **WS-E engine scale niceties**) + an always-on
+  bug lane (the navigator-group-row + FC-mis-dock regressions). **Two hard gates called out:**
+  (1) WS-A's units-by-dimensionality depends on the FC function model landing first; (2) no
+  *code* pack ships before dormant-pack persistence (WS-B1). Suggested cut: bug lane → WS-A
+  (function model, then redesign) → WS-B gate + first pack → WS-C/D/E fill-in. **1.0 is
+  released, so v1.1 is now the active milestone** (work on `develop`). Open decisions flagged:
+  units representation, aliasing timing, finance connection, and which WS-C/D items make the cut.
+
 ### v1.0 doc reconciliation + desktop seed-CSV fix (2026-07-01)
 - **`fetchText` relative-URL fix** (`httpBridge.ts`). On desktop, `fetchText` sent EVERY
   url through the Tauri http plugin (Rust reqwest) to bypass CORS — but a RELATIVE url (a
