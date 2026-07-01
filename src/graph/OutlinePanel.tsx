@@ -58,12 +58,17 @@ function typeOf(n: unknown): string {
 function catOf(n: unknown, wiredIn: Set<string>, wiredOut: Set<string>): Cat {
   if (n instanceof GroupNode) return "group";
   if (n instanceof DisplayNode) return "display";
-  // An "input" is a node functioning as a SOURCE right now: nothing is WIRED into it,
-  // but its output IS wired onward. By CONNECTION, not sockets — so a node that CAN take
-  // inputs but doesn't (RANDBETWEEN with unwired min/max) still counts as an input, and
-  // stops the moment you wire something into it.
-  const id = (n as { id: string }).id;
-  if (!wiredIn.has(id) && wiredOut.has(id)) return "input";
+  // An "input" is a SOURCE by EITHER measure:
+  //  (1) structurally leaf — no input sockets at all, but produces an output (Number /
+  //      Text / Frame / Web Source, Constant …), so it shows even before it's wired; OR
+  //  (2) functioning as a source right now — nothing WIRED into it but its output is
+  //      wired onward — which catches nodes that CAN take control inputs but don't
+  //      (RANDBETWEEN's min/max, a Slider), and drops them the moment one is wired in.
+  const io = n as { id: string; inputs?: Record<string, unknown>; outputs?: Record<string, unknown> };
+  const noInputSockets = Object.keys(io.inputs ?? {}).length === 0;
+  const hasOutputSockets = Object.keys(io.outputs ?? {}).length > 0;
+  if (noInputSockets && hasOutputSockets) return "input";
+  if (!wiredIn.has(io.id) && wiredOut.has(io.id)) return "input";
   return "other";
 }
 
