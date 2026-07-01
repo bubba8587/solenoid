@@ -58,7 +58,15 @@ function typeOf(n: unknown): string {
 function catOf(n: unknown): Cat {
   if (n instanceof GroupNode) return "group";
   if (n instanceof DisplayNode) return "display";
-  if (nodeKindOf(n as never) === "input") return "input";
+  // An "input" is a SOURCE: any node with no input sockets of its own that still
+  // produces an output (so it feeds the graph without anything feeding it). Structural,
+  // not a hand-listed set — so every literal / constant / source counts (Text, Boolean,
+  // Date, Table, Frame, …), not just Number Input. Plus the curated `input` kind, which
+  // catches sources that carry only CONFIG inputs (Slider's min/max/step).
+  const io = n as { inputs?: Record<string, unknown>; outputs?: Record<string, unknown> };
+  const noInputs = Object.keys(io.inputs ?? {}).length === 0;
+  const hasOutputs = Object.keys(io.outputs ?? {}).length > 0;
+  if ((noInputs && hasOutputs) || nodeKindOf(n as never) === "input") return "input";
   return "other";
 }
 
