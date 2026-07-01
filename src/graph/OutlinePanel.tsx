@@ -466,7 +466,7 @@ export function OutlinePanel() {
                   // row (which is a borderless accent-soft fill), so nested selections don't
                   // read the same as their group header. Selection adds the accent ring on top.
                   ? {
-                      background: hexToRgba(r.color, 0.16),
+                      background: hexToRgba(r.color, 0.24),
                       border: `1px solid ${hexToRgba(r.color, 0.55)}`,
                       boxShadow: r.selected ? "inset 0 0 0 2px var(--accent)" : undefined,
                     }
