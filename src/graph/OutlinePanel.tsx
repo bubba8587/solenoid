@@ -12,7 +12,7 @@ import {
 } from "./rete-nodes";
 import { setGroupsCollapsed } from "./groupPush";
 import { appThemeStore } from "./appTheme";
-import { themeAccent, contrastInk } from "./palette";
+import { themeAccent, resolveColor, hexToRgba } from "./palette";
 import "./OutlinePanel.css";
 import { CloseIcon } from "./components/CloseIcon";
 
@@ -36,14 +36,13 @@ type Row = {
   depth: number;
   isGroup: boolean;
   collapsed: boolean;
-  ink: string; // contrast text color for group rows
   cat: Cat;
 };
 type State = { tree: Row[]; flat: Row[] };
 
 function colorOf(n: unknown, mode: "dark" | "light"): string {
   const base = n instanceof GroupNode
-    ? (n as GroupNode).color
+    ? resolveColor((n as GroupNode).color) // resolve the palette SLOT to a hex, exactly like GroupNode does
     : NODE_KIND_ACCENTS[nodeKindOf(n as never)] ?? "#8a8f98";
   return themeAccent(base, mode);
 }
@@ -108,7 +107,6 @@ function buildState(mode: "dark" | "light", sortMode: SortMode): State {
       depth,
       isGroup,
       collapsed: isGroup ? (n as GroupNode).collapsed : false,
-      ink: isGroup ? contrastInk(color) : "",
       cat: catOf(n),
     };
   };
@@ -462,7 +460,14 @@ export function OutlinePanel() {
               style={{
                 paddingLeft: 8 + r.depth * 14,
                 ...(r.isGroup
-                  ? { background: r.color, color: r.ink, boxShadow: r.selected ? "inset 0 0 0 2px var(--accent)" : undefined }
+                  // A muted TINT of the group's accent (matching the canvas group body's
+                  // hexToRgba fill), NOT the old full-strength solid bar that read as blown
+                  // out — and NO left-accent stripe (author's standing aesthetic rule). The
+                  // tint alone carries the group color; selection adds the ring.
+                  ? {
+                      background: hexToRgba(r.color, 0.14),
+                      boxShadow: r.selected ? "inset 0 0 0 2px var(--accent)" : undefined,
+                    }
                   : null),
               }}
               onClick={(e) => handleRowClick(e, r.id)}
