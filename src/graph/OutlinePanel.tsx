@@ -460,12 +460,14 @@ export function OutlinePanel() {
               style={{
                 paddingLeft: 8 + r.depth * 14,
                 ...(r.isGroup
-                  // A muted TINT of the group's accent (matching the canvas group body's
-                  // hexToRgba fill), NOT the old full-strength solid bar that read as blown
-                  // out — and NO left-accent stripe (author's standing aesthetic rule). The
-                  // tint alone carries the group color; selection adds the ring.
+                  // A group reads as a CONTAINER, like on canvas: a muted tint fill inside a
+                  // full 1px border in its own color (a FRAME, not a left/right accent stripe —
+                  // DESIGN.md). The border gives a group more presence than a selected member
+                  // row (which is a borderless accent-soft fill), so nested selections don't
+                  // read the same as their group header. Selection adds the accent ring on top.
                   ? {
-                      background: hexToRgba(r.color, 0.14),
+                      background: hexToRgba(r.color, 0.16),
+                      border: `1px solid ${hexToRgba(r.color, 0.55)}`,
                       boxShadow: r.selected ? "inset 0 0 0 2px var(--accent)" : undefined,
                     }
                   : null),
