@@ -524,21 +524,86 @@ registerInternal("CONVERT", (x, from, to) => {
   return r == null ? solError("#N/A", "CONVERT: unknown or incompatible units") : r;
 });
 
-// ── XLOOKUP / XMATCH — newer Excel functions Formula.js LACKS entirely (they threw in
-// a formula). Register an EXACT-match version (the node's default), so the common case
-// works. The node's advanced match modes (next-smaller/larger, binary search) are
-// node-only — a formula can't pick them. Range args so the lists pass whole.
+// ── Lookup family — registered against OUR 1-D list model. Formula.js implements
+// these against 2-D ranges (and XLOOKUP/XMATCH not at all), so unregistered they
+// either threw or — worse — broadcast element-wise and returned all-#N/A garbage.
+// Text matching is case-INSENSITIVE, Excel's default for every lookup function
+// (EXACT is the case-sensitive escape hatch).
+const lookupEq = (a: unknown, b: unknown): boolean =>
+  typeof a === "string" && typeof b === "string" ? a.toLowerCase() === b.toLowerCase() : a === b;
+// Ordering compare for approximate matches: numbers numerically, strings
+// case-insensitively; a cross-type or null pair is incomparable (skipped).
+const lookupLe = (a: unknown, b: unknown): boolean | null => {
+  if (typeof a === "number" && typeof b === "number") return a <= b;
+  if (typeof a === "string" && typeof b === "string") return a.toLowerCase() <= b.toLowerCase();
+  return null;
+};
+const exactIndex = (lookup: unknown, keys: unknown[]): number =>
+  keys.findIndex((k) => lookupEq(k, lookup));
+// Excel approximate match: LARGEST value ≤ lookup (assumes the list ascending).
+const approxIndex = (lookup: unknown, keys: unknown[]): number => {
+  let best = -1;
+  for (let i = 0; i < keys.length; i++) {
+    if (lookupLe(keys[i], lookup) === true) best = i;
+  }
+  return best;
+};
+const NA_NO_MATCH = () => solError("#N/A", "No match found in the lookup list");
+
 registerInternal("XLOOKUP", (lookup, keys, values, ifNotFound) => {
   const ks = Array.isArray(keys) ? keys : [keys];
   const vs = Array.isArray(values) ? values : [values];
-  const idx = ks.findIndex((k) => k === lookup);
+  const idx = exactIndex(lookup, ks);
   if (idx >= 0 && idx < vs.length) return vs[idx];
-  return ifNotFound !== undefined ? ifNotFound : solError("#N/A", "No match found in the lookup list");
+  return ifNotFound !== undefined ? ifNotFound : NA_NO_MATCH();
 });
 registerInternal("XMATCH", (lookup, keys) => {
   const ks = Array.isArray(keys) ? keys : [keys];
-  const idx = ks.findIndex((k) => k === lookup);
+  const idx = exactIndex(lookup, ks);
   return idx >= 0 ? idx + 1 : solError("#N/A", "No match found");
+});
+// VLOOKUP/HLOOKUP over a 1-D list: the "table" is one column/row, so the index
+// argument must be 1 (anything else is Excel's #REF!). Default match is
+// approximate (TRUE), exactly like Excel — pass FALSE for exact.
+const flatLookup = (fnName: string) => (lookup: unknown, table: unknown, index: unknown, approx: unknown) => {
+  const ks = Array.isArray(table) ? table : [table];
+  const idxArg = index === undefined ? 1 : toNum(index);
+  if (Number.isNaN(idxArg)) return VALUE(fnName);
+  if (idxArg !== 1) return solError("#REF!", `${fnName}: a 1-D list has only ${fnName === "VLOOKUP" ? "column" : "row"} 1`);
+  const useApprox = approx === undefined ? true : isTrue(approx);
+  const at = useApprox ? approxIndex(lookup, ks) : exactIndex(lookup, ks);
+  return at >= 0 ? ks[at] : NA_NO_MATCH();
+};
+registerInternal("VLOOKUP", flatLookup("VLOOKUP"));
+registerInternal("HLOOKUP", flatLookup("HLOOKUP"));
+registerInternal("LOOKUP", (lookup, vector, resultVector) => {
+  const ks = Array.isArray(vector) ? vector : [vector];
+  const vs = resultVector === undefined ? ks : Array.isArray(resultVector) ? resultVector : [resultVector];
+  const at = approxIndex(lookup, ks);
+  return at >= 0 && at < vs.length ? vs[at] : NA_NO_MATCH();
+});
+registerInternal("MATCH", (lookup, keys, matchType) => {
+  const ks = Array.isArray(keys) ? keys : [keys];
+  const mt = matchType === undefined ? 1 : toNum(matchType);
+  if (Number.isNaN(mt)) return VALUE("MATCH");
+  let at = -1;
+  if (mt === 0) at = exactIndex(lookup, ks);
+  else if (mt > 0) at = approxIndex(lookup, ks);
+  else {
+    // -1: SMALLEST value ≥ lookup (assumes the list descending) — the last such
+    // entry in a descending list is the smallest.
+    for (let i = 0; i < ks.length; i++) {
+      if (lookupLe(lookup, ks[i]) === true) at = i;
+    }
+  }
+  return at >= 0 ? at + 1 : solError("#N/A", "No match found");
+});
+registerInternal("INDEX", (list, row, col) => {
+  const ks = Array.isArray(list) ? list : [list];
+  const r = toNum(row);
+  if (Number.isNaN(r) || r < 1) return solError("#VALUE!", "INDEX position must be 1 or greater");
+  if (col !== undefined && toNum(col) !== 1) return solError("#REF!", "INDEX: a 1-D list has only column 1");
+  return r <= ks.length ? ks[Math.trunc(r) - 1] : solError("#REF!", "INDEX position is past the end of the list");
 });
 
 // ── datetime: date-RETURNING functions emit a Date OBJECT via Formula.js, not our
@@ -558,6 +623,15 @@ for (const fn of ["DATE", "EDATE", "DATEVALUE", "WORKDAY"]) {
   const f = (FX as unknown as Record<string, ((...a: unknown[]) => unknown) | undefined>)[fn];
   if (typeof f === "function") registerInternal(fn, (...a) => toSerialIfDate(f(...a)));
 }
+// NOW/TODAY: FX returns a raw JS `Date` object, which is garbage to the numeric
+// value model (`YEAR(TODAY())` was #VALUE!, `NOW()+1` a string). Register serial
+// versions matching the TodayNow node exactly — TODAY an integer (UTC midnight),
+// NOW keeping the time fraction (so it can't share toSerialIfDate's rounding).
+registerInternal("TODAY", () => {
+  const n = new Date();
+  return jsDateToSerial(new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate())));
+});
+registerInternal("NOW", () => jsDateToSerial(new Date()));
 
 // ── Solenoid-native (no Formula.js equivalent) — the registry ADDS these ──
 // Cover the string + logical output types and show the registry isn't limited to

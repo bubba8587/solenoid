@@ -12,8 +12,9 @@
 // compiled evaluator (JS codegen, kept compatible with the existing broadcast
 // machinery), and a LaTeX string for the KaTeX preview.
 
-import { solError, isSolError } from "./errorValue";
-import { resolveExcelFunction, EXCEL_IMPL_META, normalizeFxResult, FX_FUNCTION_NAMES } from "./excelFunctions";
+import { solError, isSolError, isNaError } from "./errorValue";
+import { resolveExcelFunction, EXCEL_IMPL_META, normalizeFxResult, fxErrorToSol, FX_FUNCTION_NAMES } from "./excelFunctions";
+import { isMissing } from "./valueKinds";
 
 // ─── AST ────────────────────────────────────────────────────────────────────
 export type Ast =
@@ -330,9 +331,104 @@ export const RANGE_FUNCTIONS = new Set<string>([
   // cashflow functions take a whole list of cash flows (Formula.js matches our nodes
   // exactly for these); without this they'd broadcast element-wise and compute garbage.
   "NPV", "IRR", "MIRR", "XIRR", "XNPV",
-  // XLOOKUP/XMATCH take whole lookup + return lists (registered impls; exact match).
-  "XLOOKUP", "XMATCH",
+  // Lookup functions take whole lookup + return lists (registered 1-D impls).
+  // Without this the classic five broadcast element-wise: VLOOKUP(2,[1,2,3],1)
+  // returned [#N/A,#N/A,#N/A].
+  "XLOOKUP", "XMATCH", "VLOOKUP", "HLOOKUP", "LOOKUP", "MATCH", "INDEX",
 ]);
+
+// ── Range-argument prep (the null/error aggregator policy) ────────────────────
+// A range function's array args must honor the app-wide value model BEFORE they
+// reach Formula.js, which has no null-skip / error-propagate contract (FX treated
+// null as 0 and stringified SolErrors): an error anywhere PROPAGATES, a null
+// (missing) is SKIPPED. Three carve-outs by function shape:
+
+// COUNT-family sees the raw array — COUNTBLANK counts the nulls, COUNT/COUNTA
+// classify errors themselves (Excel: COUNT skips them, COUNTA counts them).
+const RANGE_RAW = new Set(["COUNT", "COUNTA", "COUNTBLANK"]);
+// Index-ALIGNED multi-range functions: a null drops its whole row across all
+// ranges (pairwise), keeping them aligned — per-array dropping would shear the
+// pairing and silently mismatch values against criteria.
+const RANGE_PAIRED = new Set([
+  "SUMPRODUCT", "CORREL", "COVAR", "COVARIANCE.P", "COVARIANCE.S",
+  "SLOPE", "INTERCEPT", "RSQ", "FORECAST", "XIRR", "XNPV",
+  "SUMIF", "SUMIFS", "COUNTIF", "COUNTIFS", "AVERAGEIF", "AVERAGEIFS",
+  "MAXIFS", "MINIFS",
+]);
+// POSITIONAL lookups: dropping nulls would shift match positions (MATCH/INDEX
+// answer in indices), so nulls stay put; errors still propagate.
+const RANGE_POSITIONAL = new Set(["XLOOKUP", "XMATCH", "VLOOKUP", "HLOOKUP", "LOOKUP", "MATCH", "INDEX"]);
+
+function prepRangeArgs(name: string, argv: unknown[]): { error?: unknown; args: unknown[] } {
+  if (RANGE_RAW.has(name)) return { args: argv };
+  for (const a of argv) {
+    if (isArr(a)) {
+      for (const v of a) {
+        if (isSolError(v)) return { error: v, args: argv };
+        if (v instanceof Error) return { error: fxErrorToSol(v), args: argv };
+      }
+    }
+  }
+  if (RANGE_POSITIONAL.has(name)) return { args: argv };
+  if (RANGE_PAIRED.has(name)) {
+    const arrays = argv.filter(isArr);
+    if (arrays.length === 0) return { args: argv };
+    const n = arrays.reduce((m, a) => Math.min(m, a.length), Infinity);
+    const keep: number[] = [];
+    for (let i = 0; i < n; i++) {
+      if (!arrays.some((a) => isMissing(a[i]))) keep.push(i);
+    }
+    if (keep.length === n) return { args: argv };
+    return { args: argv.map((a) => (isArr(a) ? keep.map((i) => a[i]) : a)) };
+  }
+  // Pooled aggregators (SUM/MEDIAN/AND/TEXTJOIN/…): drop nulls per array.
+  return { args: argv.map((a) => (isArr(a) ? a.filter((v) => !isMissing(v)) : a)) };
+}
+
+// ── Error-handling functions (IFERROR family) ─────────────────────────────────
+// These exist to CATCH an error, so the call branch must hand them the error
+// instead of short-circuiting on it (the propagate-first check broke every one:
+// IFERROR(1/0, 99) returned #DIV/0!). Implemented here — element-wise over the
+// tested value, mirroring the IFError/IsTest NODES exactly (shared isSolError /
+// isNaError; a Formula.js Error object counts too, normalized first).
+const ERROR_HANDLER_FUNCTIONS = new Set(["IFERROR", "IFNA", "ISERROR", "ISERR", "ISNA", "ERROR.TYPE"]);
+
+// Excel ERROR.TYPE numbers; #DOMAIN! is our #NUM! analogue, Solenoid-specific
+// codes (#SHAPE!, #CIRC!, …) report as 3 (#VALUE!-equivalent).
+const ERROR_TYPE_NUM: Record<string, number> = {
+  "#DIV/0!": 2, "#VALUE!": 3, "#REF!": 4, "#NAME?": 5, "#DOMAIN!": 6, "#NUM!": 6, "#N/A": 7,
+};
+
+function applyErrorHandler(name: string, argv: unknown[]): unknown {
+  const asSol = (v: unknown) => (isSolError(v) ? v : v instanceof Error ? fxErrorToSol(v) : null);
+  const caught = (v: unknown): boolean => {
+    const e = asSol(v);
+    if (!e) return false;
+    if (name === "IFNA" || name === "ISNA") return isNaError(e);
+    if (name === "ISERR") return !isNaError(e);
+    return true;
+  };
+  const value = argv[0];
+  switch (name) {
+    case "IFERROR":
+    case "IFNA": {
+      const fallback = argv.length > 1 ? argv[1] : null;
+      const walk = (v: unknown, f: unknown): unknown =>
+        isArr(v) ? v.map((x, i) => walk(x, isArr(f) ? f[i] : f)) : caught(v) ? f : v;
+      return walk(value, fallback);
+    }
+    case "ERROR.TYPE":
+      return mapOne(value, (v) => {
+        const e = asSol(v);
+        return e ? ERROR_TYPE_NUM[e.code] ?? 3 : solError("#N/A", "ERROR.TYPE: the value is not an error");
+      });
+    default: {
+      // ISERROR / ISERR / ISNA
+      const walk = (v: unknown): unknown => (isArr(v) ? v.map(walk) : caught(v));
+      return walk(value);
+    }
+  }
+}
 
 const isArr = (v: unknown): v is unknown[] => Array.isArray(v);
 
@@ -429,13 +525,21 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
     case "call": {
       const name = n.name.toUpperCase();
       const argv = n.args.map((a) => evalAst(a, env));
+      // The IFERROR family must see the error to catch it — handled internally,
+      // BEFORE the propagate-first check below.
+      if (ERROR_HANDLER_FUNCTIONS.has(name)) return applyErrorHandler(name, argv);
       // Our own tagged error doesn't survive a trip through Formula.js (it isn't
       // an FX error object), so surface the first one rather than let it vanish.
-      // FX's own error objects DO propagate through its functions (incl. IFERROR),
-      // so those are left for Formula.js to handle.
       const sol = argv.find(isSolError);
       if (sol) return sol;
-      return RANGE_FUNCTIONS.has(name) ? dispatch(name, ...argv) : broadcastCall(name, argv);
+      if (RANGE_FUNCTIONS.has(name)) {
+        // Array args honor the aggregator policy (error propagates, null skips —
+        // see prepRangeArgs) instead of passing raw into Formula.js.
+        const prep = prepRangeArgs(name, argv);
+        if (prep.error !== undefined) return prep.error;
+        return dispatch(name, ...prep.args);
+      }
+      return broadcastCall(name, argv);
     }
   }
 }

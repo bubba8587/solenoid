@@ -7,7 +7,7 @@ import {
   formulaToLatex,
   evaluateSteps,
 } from "./excelFormula";
-import { isSolError } from "./errorValue";
+import { isSolError, solError } from "./errorValue";
 
 describe("extractVariables", () => {
   it("collects bare names in first-appearance order", () => {
@@ -458,5 +458,154 @@ describe("compileEvaluator — array-aware (broadcast vs aggregate per call site
     // The normalization is at the TOP-level boundary only — an FX Error inside the
     // formula still flows natively so Formula.js's own IFERROR catches it.
     expect(ev("IFERROR(NA(), 42)")).toBe(42);
+  });
+});
+
+// ── v1.0 audit fixes: the range-arg null/error policy, the IFERROR family, and
+// the classic lookup functions (findings 2, 8, 9, 10, 28-formula-half) ──────────
+
+describe("range functions honor the aggregator policy (audit P0-2)", () => {
+  const ev = (expr: string, env: Record<string, unknown> = {}) => {
+    const fn = compileEvaluator(expr);
+    if (!fn) throw new Error(`failed to compile: ${expr}`);
+    return fn(env);
+  };
+  const err = solError("#DIV/0!", "boom");
+
+  it("an error inside a list propagates out of SUM/MEDIAN/TEXTJOIN", () => {
+    for (const expr of ["SUM(x)", "MEDIAN(x)", 'TEXTJOIN(",", TRUE, x)']) {
+      const r = ev(expr, { x: [1, err, 3] });
+      expect(isSolError(r) && r.code).toBe("#DIV/0!");
+    }
+  });
+
+  it("null (missing) is skipped, not treated as 0", () => {
+    expect(ev("SUM(x)", { x: [1, null, 3] })).toBe(4);
+    expect(ev("MEDIAN(x)", { x: [1, null, 3] })).toBe(2); // was 1 (null→0)
+    expect(ev("AVERAGE(x)", { x: [2, null, 4] })).toBe(3);
+    expect(ev("MIN(x)", { x: [5, null, 7] })).toBe(5);
+  });
+
+  it("COUNT family stays raw (COUNTBLANK needs the nulls)", () => {
+    expect(ev("COUNT(x)", { x: [1, null, 3] })).toBe(2);
+    expect(ev("COUNTBLANK(x)", { x: [1, null, 3] })).toBe(1);
+  });
+
+  it("paired ranges drop null rows PAIRWISE (alignment preserved)", () => {
+    // null at index 1 removes the pair (null, 20) — not a shifted zip
+    expect(ev("SUMPRODUCT(a, b)", { a: [1, null, 3], b: [10, 20, 30] })).toBe(100);
+  });
+
+  it("positional lookups keep nulls in place (match positions stable)", () => {
+    expect(ev("MATCH(3, x, 0)", { x: [1, null, 3] })).toBe(3);
+  });
+});
+
+describe("IFERROR family catches Solenoid-minted errors (audit finding 8)", () => {
+  const ev = (expr: string, env: Record<string, unknown> = {}) => {
+    const fn = compileEvaluator(expr);
+    if (!fn) throw new Error(`failed to compile: ${expr}`);
+    return fn(env);
+  };
+  const na = solError("#N/A", "not found");
+  const div = solError("#DIV/0!", "boom");
+
+  it("IFERROR catches a minted #DIV/0!", () => {
+    expect(ev("IFERROR(a / b, 99)", { a: 1, b: 0 })).toBe(99);
+    expect(ev("IFERROR(a / b, 99)", { a: 6, b: 2 })).toBe(3);
+  });
+
+  it("ISERROR / ISNA / ISERR classify a wired-in SolError", () => {
+    expect(ev("ISERROR(x)", { x: div })).toBe(true);
+    expect(ev("ISERROR(x)", { x: 5 })).toBe(false);
+    expect(ev("ISNA(x)", { x: na })).toBe(true);
+    expect(ev("ISNA(x)", { x: div })).toBe(false);
+    expect(ev("ISERR(x)", { x: div })).toBe(true);
+    expect(ev("ISERR(x)", { x: na })).toBe(false);
+  });
+
+  it("IFNA catches only #N/A", () => {
+    expect(ev("IFNA(x, 0)", { x: na })).toBe(0);
+    const r = ev("IFNA(x, 0)", { x: div });
+    expect(isSolError(r) && r.code).toBe("#DIV/0!"); // passes through uncaught
+  });
+
+  it("works element-wise over a list with per-cell errors", () => {
+    expect(ev("IFERROR(x, 0)", { x: [1, div, 3] })).toEqual([1, 0, 3]);
+    expect(ev("ISERROR(x)", { x: [1, div, 3] })).toEqual([false, true, false]);
+  });
+
+  it("IFERROR(XLOOKUP(...), default) — the composed case", () => {
+    expect(ev('IFERROR(XLOOKUP(9, k, v), "none")', { k: [1, 2], v: ["a", "b"] })).toBe("none");
+  });
+
+  it("ERROR.TYPE returns the Excel code number, #N/A on a non-error", () => {
+    expect(ev("ERROR.TYPE(x)", { x: div })).toBe(2);
+    expect(ev("ERROR.TYPE(x)", { x: na })).toBe(7);
+    const r = ev("ERROR.TYPE(x)", { x: 5 });
+    expect(isSolError(r) && r.code).toBe("#N/A");
+  });
+});
+
+describe("NOW/TODAY return serials in formulas (audit finding 9)", () => {
+  const ev = (expr: string) => {
+    const fn = compileEvaluator(expr);
+    if (!fn) throw new Error(`failed to compile: ${expr}`);
+    return fn({});
+  };
+
+  it("TODAY() is an integer serial and YEAR(TODAY()) works", () => {
+    const t = ev("TODAY()");
+    expect(typeof t).toBe("number");
+    expect(Number.isInteger(t)).toBe(true);
+    expect(ev("YEAR(TODAY())")).toBe(new Date().getUTCFullYear());
+  });
+
+  it("NOW() is a number with a time fraction and NOW()+1 is numeric", () => {
+    const n = ev("NOW()");
+    expect(typeof n).toBe("number");
+    expect(ev("NOW() + 1")).toBeCloseTo((n as number) + 1, 4);
+  });
+});
+
+describe("classic lookups take the list whole (audit finding 10)", () => {
+  const ev = (expr: string, env: Record<string, unknown> = {}) => {
+    const fn = compileEvaluator(expr);
+    if (!fn) throw new Error(`failed to compile: ${expr}`);
+    return fn(env);
+  };
+
+  it("VLOOKUP exact + approximate over a 1-D list", () => {
+    expect(ev("VLOOKUP(2, x, 1, FALSE)", { x: [1, 2, 3] })).toBe(2);
+    expect(ev("VLOOKUP(2.5, x, 1)", { x: [1, 2, 3] })).toBe(2); // approx: largest ≤
+    const miss = ev("VLOOKUP(9, x, 1, FALSE)", { x: [1, 2, 3] });
+    expect(isSolError(miss) && miss.code).toBe("#N/A");
+    const ref = ev("VLOOKUP(2, x, 2)", { x: [1, 2, 3] });
+    expect(isSolError(ref) && ref.code).toBe("#REF!"); // 1-D list has only column 1
+  });
+
+  it("MATCH exact / ascending / descending", () => {
+    expect(ev("MATCH(30, x, 0)", { x: [10, 20, 30] })).toBe(3);
+    expect(ev("MATCH(25, x, 1)", { x: [10, 20, 30] })).toBe(2);
+    expect(ev("MATCH(25, x, -1)", { x: [30, 20, 10] })).toBe(1); // smallest ≥ 25 is 30
+    expect(ev("MATCH(20, x, -1)", { x: [30, 20, 10] })).toBe(2);
+  });
+
+  it("INDEX is 1-based with Excel error codes at the edges", () => {
+    expect(ev("INDEX(x, 2)", { x: ["a", "b", "c"] })).toBe("b");
+    const past = ev("INDEX(x, 9)", { x: [1, 2] });
+    expect(isSolError(past) && past.code).toBe("#REF!");
+    const zero = ev("INDEX(x, 0)", { x: [1, 2] });
+    expect(isSolError(zero) && zero.code).toBe("#VALUE!");
+  });
+
+  it("LOOKUP with a separate result vector", () => {
+    expect(ev("LOOKUP(2, k, v)", { k: [1, 2, 3], v: ["a", "b", "c"] })).toBe("b");
+  });
+
+  it("text matching is case-insensitive (Excel default; audit finding 28)", () => {
+    expect(ev('XLOOKUP("Apple", k, v)', { k: ["apple", "pear"], v: [1, 2] })).toBe(1);
+    expect(ev('MATCH("PEAR", k, 0)', { k: ["apple", "pear"] })).toBe(2);
+    expect(ev('VLOOKUP("b", k, 1, FALSE)', { k: ["A", "B", "C"] })).toBe("B");
   });
 });
