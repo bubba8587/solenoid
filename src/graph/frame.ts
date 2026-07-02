@@ -321,7 +321,12 @@ function cellToNumber(v: unknown): number | null {
   if (typeof v === "string") {
     const t = v.trim();
     if (t === "") return null;
-    const n = Number(t.replace(/,/g, ""));
+    // Strip commas ONLY when they sit in genuine thousands-group positions
+    // ("1,234,567.8"). A blanket strip read the European decimal comma "3,5"
+    // as 35 — silent corruption. An ambiguous comma string stays text (null
+    // here), preserved for an explicit Get Column conversion.
+    const grouped = /^[+-]?\d{1,3}(,\d{3})+(\.\d+)?$/.test(t);
+    const n = Number(grouped ? t.replace(/,/g, "") : t);
     return Number.isFinite(n) ? n : null; // null = not a number
   }
   return null;
