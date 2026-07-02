@@ -54,6 +54,18 @@ describe("inferColumn", () => {
     expect(col.values[2]).toBe(1234);
   });
 
+  it("keeps thousands-grouped numbers numeric but NOT the European decimal comma (audit P0-7)", () => {
+    const grouped = inferColumn("Big", ["1,234", "12,345.6", "1,234,567"]);
+    expect(grouped.type).toBe("number");
+    expect(grouped.values).toEqual([1234, 12345.6, 1234567]);
+    // "3,5" is ambiguous (3.5 to half the world) — it must stay TEXT, never 35.
+    const euro = inferColumn("Euro", ["3,5", "12,75"]);
+    expect(euro.type).toBe("string");
+    expect(euro.values).toEqual(["3,5", "12,75"]);
+    // malformed grouping is not a number either
+    expect(inferColumn("Bad", ["12,34"]).type).toBe("string");
+  });
+
   it("infers date for ISO date strings; stores as serials", () => {
     const dates = ["2026-01-03", "2026-06-15", "2025-12-31"];
     const col = inferColumn("Date", dates);
