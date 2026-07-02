@@ -426,6 +426,10 @@ export function applyTextCase(s: string, c: TextCase | undefined): string {
 }
 
 const _store = new Map<string, FormatAnnotation>();
+// Per-node index so getForNode is O(1) — every value box calls it every render,
+// and the startsWith scan over the whole map multiplied out on big graphs
+// (audit finding 41).
+const _byNode = new Map<string, Map<string, FormatAnnotation>>();
 const _listeners = new Set<() => void>();
 // Bumped on every change so useSyncExternalStore consumers (every node's
 // value box) re-render when an annotation is added / edited / removed.
@@ -440,6 +444,9 @@ function key(nodeId: string, socketKey: string): string {
 export const formatAnnotationStore = {
   set(nodeId: string, socketKey: string, ann: FormatAnnotation): void {
     _store.set(key(nodeId, socketKey), ann);
+    let inner = _byNode.get(nodeId);
+    if (!inner) { inner = new Map(); _byNode.set(nodeId, inner); }
+    inner.set(socketKey, ann);
     notify();
   },
   get(nodeId: string, socketKey: string): FormatAnnotation | undefined {
@@ -447,12 +454,20 @@ export const formatAnnotationStore = {
   },
   /** The annotation on any socket of a node (a node carries at most one FC). */
   getForNode(nodeId: string): FormatAnnotation | undefined {
-    const prefix = `${nodeId}::`;
-    for (const [k, ann] of _store) if (k.startsWith(prefix)) return ann;
+    const inner = _byNode.get(nodeId);
+    if (!inner) return undefined;
+    for (const ann of inner.values()) return ann;
     return undefined;
   },
   delete(nodeId: string, socketKey: string): void {
-    if (_store.delete(key(nodeId, socketKey))) notify();
+    if (_store.delete(key(nodeId, socketKey))) {
+      const inner = _byNode.get(nodeId);
+      if (inner) {
+        inner.delete(socketKey);
+        if (inner.size === 0) _byNode.delete(nodeId);
+      }
+      notify();
+    }
   },
   subscribe(listener: () => void): () => void {
     _listeners.add(listener);

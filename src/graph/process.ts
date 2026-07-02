@@ -7,6 +7,7 @@ import { solError } from "./errorValue";
 import { perfEnabled, beginPass, passTopNodes, ipcSnapshot } from "./perfProbe";
 import { beginCompute, endCompute } from "./computeOverlayStore";
 import { calcModeStore } from "./calcModeStore";
+import { clearCollectMemo } from "./frameBackend";
 import type { Schemes, AreaExtra } from "./schemes";
 
 let _editor: NodeEditor<Schemes> | null = null;
@@ -438,7 +439,7 @@ export function downstreamClosure(editor: NodeEditor<Schemes>, startId: string):
 // a self-contained set (no edges to pre-existing nodes), so DON'T reset the engine
 // (originals keep their cached outputs → no recompute; only the new, uncached nodes
 // fetch) and re-render only that set. Mutually exclusive with changedNodeId.
-export async function processGraph(changedNodeId?: string, renderOnly?: Set<string>, opts?: { force?: boolean }) {
+export async function processGraph(changedNodeId?: string, renderOnly?: Set<string>, opts?: { force?: boolean; topology?: boolean }) {
   // Manual calculation mode: a live value edit or topology change does NOT propagate.
   // Skip the pass and flag the graph dirty; the user recomputes on demand with Calculate
   // Now / F9 (which passes force). A load / seed / paste rebuild is exempt (it runs inside
@@ -454,7 +455,7 @@ export async function processGraph(changedNodeId?: string, renderOnly?: Set<stri
   // (the no-editor guard, the Cancelled early-return, a throw).
   beginCompute();
   try {
-    const result = await runGraphPass(changedNodeId, renderOnly);
+    const result = await runGraphPass(changedNodeId, renderOnly, opts?.topology === true);
     // A completed pass (forced recompute, or a load that computed) brings the graph up
     // to date — clear the manual-mode dirty flag (idempotent no-op in auto mode).
     calcModeStore.clearDirty();
@@ -464,8 +465,11 @@ export async function processGraph(changedNodeId?: string, renderOnly?: Set<stri
   }
 }
 
-async function runGraphPass(changedNodeId?: string, renderOnly?: Set<string>) {
+async function runGraphPass(changedNodeId?: string, renderOnly?: Set<string>, topologyChanged = false) {
   if (!_editor || !_engine || !_area) return;
+  // Fresh per-pass memo for lazy-frame collects: within one pass a ref fanned
+  // out to N consumers materializes once, not N times (audit finding 24).
+  clearCollectMemo();
   const perf = perfEnabled();
   if (perf) beginPass();
   const ipc0 = perf ? ipcSnapshot() : null;
@@ -484,7 +488,9 @@ async function runGraphPass(changedNodeId?: string, renderOnly?: Set<string>) {
   // documented public field; the seeded value mimics the engine's own Cancellable.)
   // Full path recomputes the loop set (topology may have changed) and caches it;
   // targeted/additive reuse the cache (fresh by construction — see _cachedLoop).
-  const loop = (changedNodeId || renderOnly)
+  // A TOPOLOGY-targeted pass (a single cable connect/disconnect, audit finding
+  // 40) must refresh it too — the one thing a cable change invalidates.
+  const loop = (changedNodeId || renderOnly) && !topologyChanged
     ? (_cachedLoop ?? (_cachedLoop = loopMembers(_editor)))
     : (_cachedLoop = loopMembers(_editor));
   const circErr = solError("#CIRC!", "This node is part of a circular dependency — the calculation feeds back into itself");

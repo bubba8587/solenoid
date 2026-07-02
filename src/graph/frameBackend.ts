@@ -38,13 +38,33 @@ function wrapRef(h: FrameHandle): FrameRef { return { __frameRef: h }; }
  *  node) or a lazy FrameRef (from a verb node). The runners + readFrame accept both. */
 export type FrameInput = FrameValue | FrameRef;
 
+// ── Per-pass collect memo (audit finding 24) ────────────────────────────────
+// A lazy ref fanned out to N consumers was fully collected N TIMES per pass —
+// a Filter feeding 3 Get Columns + Display + Chart on 500k rows meant 5
+// identical full-frame serializations. Memoize the collect by handle;
+// processGraph clears at each pass start (handles are never reused, so within
+// one pass the cached result is always the right one).
+let _collectMemo = new Map<FrameHandle, Promise<FrameValue | SolError | null>>();
+
+export function clearCollectMemo(): void {
+  _collectMemo = new Map();
+}
+
 /** Collect a cable's frame value back to an eager FrameValue — the materialization
  *  boundary. A FrameValue / SolError / null passes straight through; a FrameRef is
- *  collected through the backend (instant on web, an IPC `collect` on desktop). */
+ *  collected through the backend (instant on web, an IPC `collect` on desktop),
+ *  memoized per compute pass. */
 export async function readFrame(v: FrameInput | SolError | null | undefined): Promise<FrameValue | SolError | null> {
   if (v == null) return null;
   if (isSolError(v)) return v;
-  if (isFrameRef(v)) return materialize(frameBackend().collect(v.__frameRef));
+  if (isFrameRef(v)) {
+    let p = _collectMemo.get(v.__frameRef);
+    if (!p) {
+      p = materialize(frameBackend().collect(v.__frameRef));
+      _collectMemo.set(v.__frameRef, p);
+    }
+    return p;
+  }
   return v;
 }
 

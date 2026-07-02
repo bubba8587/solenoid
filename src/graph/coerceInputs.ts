@@ -17,6 +17,9 @@ const LAZY_FRAME_NODES: ReadonlySet<string> = new Set([
   "DistinctNode", "HeadNode", "SortFrameNode", "FilterFrameNode", "JoinNode",
   "SelectColumnsNode", "DropColumnsNode", "GroupByFrameNode", "UnpivotNode",
   "AppendNode", "RenameNode",
+  // Not a verb, but reads ONE column through the backend's column primitive —
+  // materializing here would force a full-frame collect (audit finding 24).
+  "GetColumnNode",
 ]);
 
 // 1-D non-numeric list sockets that are typeable in place as CSV (the inline

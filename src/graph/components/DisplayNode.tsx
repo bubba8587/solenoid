@@ -2,7 +2,7 @@ import { useSyncExternalStore } from "react";
 import type { DisplayNode as DisplayNodeType } from "../rete-nodes";
 import { formatWithUnit } from "../unitFormat";
 import { formatAnnotationStore, formatNumberWithAnnotation } from "../formatAnnotationStore";
-import { makeAnnotationResolver } from "../unitFlow";
+import { sharedAnnotationResolver } from "../unitFlow";
 import { getEditor } from "../process";
 import { collapseStore } from "../collapseStore";
 import { NodeShell, PortSockets, ValueDisplay, type NodeProps } from "./nodeKit";
@@ -30,7 +30,7 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
   //     the same segment shows the same lock (`…→Disp1→Disp2→FC` formats Disp1 too).
   // Both break at a transform. A direct (docked / trailing-FC) annotation wins.
   const editor = getEditor();
-  const resolver = editor ? makeAnnotationResolver(editor) : undefined;
+  const resolver = editor ? sharedAnnotationResolver(editor) : undefined;
   const ann =
     formatAnnotationStore.getForNode(data.id) ??
     resolver?.inAnnotation(data.id, "in") ??

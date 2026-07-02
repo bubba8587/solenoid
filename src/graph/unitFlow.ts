@@ -184,17 +184,28 @@ export function makeAnnotationResolver(editor: AnyEditor): AnnotationResolver {
   const memo = new Map<string, FormatAnnotation | null>();
   const visiting = new Set<string>();
 
+  // Index the connections ONCE per resolver — each hop was a full scan of
+  // editor.getConnections(), which multiplied out to O(boxes × cables) per
+  // render pass on a big graph (audit finding 41).
+  type AnyConn = ReturnType<AnyEditor["getConnections"]>[number];
+  const byTarget = new Map<string, AnyConn[]>();
+  const bySource = new Map<string, AnyConn[]>();
+  for (const c of editor.getConnections()) {
+    const t = byTarget.get(c.target);
+    if (t) t.push(c); else byTarget.set(c.target, [c]);
+    const s = bySource.get(c.source);
+    if (s) s.push(c); else bySource.set(c.source, [c]);
+  }
+
   function inAnnotation(nodeId: string, inKey: string): FormatAnnotation | undefined {
-    for (const c of editor.getConnections()) {
-      if (c.target === nodeId && c.targetInput === inKey) return outAnnotation(c.source, c.sourceOutput);
+    for (const c of byTarget.get(nodeId) ?? []) {
+      if (c.targetInput === inKey) return outAnnotation(c.source, c.sourceOutput);
     }
     return undefined;
   }
   function firstInputAnnotation(nodeId: string): FormatAnnotation | undefined {
-    for (const c of editor.getConnections()) {
-      if (c.target === nodeId) return outAnnotation(c.source, c.sourceOutput);
-    }
-    return undefined;
+    const c = byTarget.get(nodeId)?.[0];
+    return c ? outAnnotation(c.source, c.sourceOutput) : undefined;
   }
   function compute(nodeId: string): FormatAnnotation | undefined {
     const n = editor.getNode(nodeId);
@@ -234,8 +245,8 @@ export function makeAnnotationResolver(editor: AnyEditor): AnnotationResolver {
     if (dsVisiting.has(key)) return undefined; // cycle guard
     dsVisiting.add(key);
     let found: FormatAnnotation | undefined;
-    for (const c of editor.getConnections()) {
-      if (c.source !== nodeId || c.sourceOutput !== outKey) continue;
+    for (const c of bySource.get(nodeId) ?? []) {
+      if (c.sourceOutput !== outKey) continue;
       const consumer = editor.getNode(c.target);
       if (hasAnnotation(consumer)) { found = consumer.annotation(); break; } // an FC ahead
       if (isPurePassthrough(consumer)) {
@@ -254,4 +265,25 @@ export function makeAnnotationResolver(editor: AnyEditor): AnnotationResolver {
   }
 
   return { outAnnotation, inAnnotation, downstreamAnnotation };
+}
+
+// ── Per-commit resolver sharing (audit finding 41) ───────────────────────────
+// Every value box built its OWN resolver in its component body, every render —
+// so one React commit over a 300-node graph re-walked the connection list per
+// box per hop. Annotations can change on ANY pass (an FC edit, a selector
+// picking its other branch), so the resolver can't be cached on the connection
+// version — but within ONE commit the graph is fixed. Share a single resolver
+// (and its memos) for the current microtask; the next tick rebuilds fresh.
+let _sharedResolver: AnnotationResolver | null = null;
+let _sharedResolverEditor: AnyEditor | null = null;
+
+export function sharedAnnotationResolver(editor: AnyEditor): AnnotationResolver {
+  if (_sharedResolver && _sharedResolverEditor === editor) return _sharedResolver;
+  _sharedResolver = makeAnnotationResolver(editor);
+  _sharedResolverEditor = editor;
+  queueMicrotask(() => {
+    _sharedResolver = null;
+    _sharedResolverEditor = null;
+  });
+  return _sharedResolver;
 }

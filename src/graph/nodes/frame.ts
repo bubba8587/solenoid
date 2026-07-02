@@ -16,7 +16,7 @@ import {
   type FilterOp, type JoinHow, type AggOp, type DecisionNormalize,
 } from "../frameVerbs";
 import type { PivotSpec } from "../frameVerbs";
-import { runFrameUnary, runFrameJoin, runFrameAppend, readFrame, collectPreview, dropFrameRef, isFrameRef, type FrameInput, type FrameRef } from "../frameBackend";
+import { runFrameUnary, runFrameJoin, runFrameAppend, readFrame, collectPreview, dropFrameRef, isFrameRef, frameBackend, materialize, type FrameInput, type FrameRef } from "../frameBackend";
 import type { CubeValue } from "../frame";
 
 // A verb that may throw a tagged SolError (a #REF! for a bad column) must NOT let
@@ -773,11 +773,24 @@ export class BuildFrameNode extends ClassicPreset.Node {
     this.addOutput("frame", frameOut("Frame"));
   }
 
+  // Identity-stable memoization (same pattern as FrameInputNode): a fresh
+  // FrameValue every data() call defeats the backend's identity source-cache —
+  // each pass re-serialized the whole matrix over engine_source (and, on web,
+  // leaked the previous handle) (audit finding 42).
+  private _builtFromMatrix: unknown;
+  private _builtFromHeaders: unknown;
+
   data(inputs: { matrix?: unknown[]; headers?: string[][] }) {
-    const m = toMatrix(inputs.matrix?.[0] as number | number[] | number[][] | null | undefined);
-    if (!m || m.length === 0) { this.cachedResult = null; return { frame: null }; }
+    const rawMatrix = inputs.matrix?.[0];
     const headers = inputs.headers?.[0];
+    if (this.cachedResult && rawMatrix === this._builtFromMatrix && headers === this._builtFromHeaders) {
+      return { frame: this.cachedResult };
+    }
+    const m = toMatrix(rawMatrix as number | number[] | number[][] | null | undefined);
+    if (!m || m.length === 0) { this.cachedResult = null; return { frame: null }; }
     this.cachedResult = buildFrame(m, headers);
+    this._builtFromMatrix = rawMatrix;
+    this._builtFromHeaders = headers;
     return { frame: this.cachedResult };
   }
 }
@@ -869,6 +882,13 @@ export function getColumnOutput(readAs: GetColumnReadAs) {
     : listOut("Values");
 }
 
+type GetColumnValues =
+  | (number | null | SolError)[]
+  | string[]
+  | (boolean | null | SolError)[]
+  | SolError
+  | null;
+
 export class GetColumnNode extends ClassicPreset.Node {
   label: string;
   readAs: GetColumnReadAs;
@@ -885,12 +905,31 @@ export class GetColumnNode extends ClassicPreset.Node {
     this.addOutput("values", getColumnOutput(this.readAs));
   }
 
-  data(inputs: { frame?: (FrameValue | null)[]; name?: string[] }) {
+  data(inputs: { frame?: (FrameInput | null)[]; name?: string[] }): { values: GetColumnValues } {
     const f = inputs.frame?.[0] ?? null;
     const name = inputs.name?.[0] ?? this.stringLiterals.name ?? "";
     if (!f || name.trim() === "") { this.cachedResult = null; return { values: null }; }
+    // A LAZY upstream (verb chain): fetch the ONE column through the backend's
+    // column primitive instead of forcing a full-frame collect (audit finding
+    // 24 — Get Column wasn't in LAZY_FRAME_NODES, so a 500k-row chain hauled
+    // every column back to read one). The engine awaits a promise-returning
+    // data(); the cast keeps the sync signature the FrameValue path (and every
+    // existing test) uses.
+    if (isFrameRef(f)) {
+      return (async () => {
+        const col = await materialize(frameBackend().column(f.__frameRef, name));
+        if (isSolError(col)) { this.cachedResult = null; return { values: col }; }
+        if (!col) { this.cachedResult = null; return { values: null }; }
+        return { values: this.readColumn(col) };
+      })() as unknown as { values: GetColumnValues };
+    }
     const col = getColumn(f, name);
     if (!col) { this.cachedResult = null; return { values: null }; }
+    return { values: this.readColumn(col) };
+  }
+
+  /** Apply the read-as coercion to a fetched column; stashes cachedResult. */
+  private readColumn(col: FrameColumn): GetColumnValues {
     if (this.readAs === "text") {
       // Stringify each cell; a DATE column formats its serials as date strings
       // (not raw "46025"), a numeric column becomes its digits.
@@ -899,7 +938,7 @@ export class GetColumnNode extends ClassicPreset.Node {
         return c == null ? "" : String(c);
       });
       this.cachedResult = out;
-      return { values: out };
+      return out;
     }
     if (this.readAs === "logical") {
       // The way to get a logical column OUT as a real logical list (TRUE/FALSE),
@@ -913,7 +952,7 @@ export class GetColumnNode extends ClassicPreset.Node {
         v === null ? null : isSolError(v) ? v : coerceLogical(v),
       );
       this.cachedResult = out;
-      return { values: out };
+      return out;
     }
     // Number / Date are COERCIONS, not filters: a number passes through; a TEXT
     // cell is parsed (so a CSV-imported date column stored as text — "2026-01-03"
@@ -931,7 +970,7 @@ export class GetColumnNode extends ClassicPreset.Node {
       return NaN;
     });
     this.cachedResult = out;
-    return { values: out };
+    return out;
   }
 }
 
