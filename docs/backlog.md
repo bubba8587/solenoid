@@ -61,7 +61,10 @@ section is decision-recorded. The QUEUE when resuming, in order:
    (SUM of ∞ is ∞); result ±Inf from all-finite column → per-cell `#OVERFLOW!`; result
    NaN → `#DOMAIN!`. Input scan runs only when the result is non-finite (free on the
    happy path). Cargo parity tests pin the backends together.
-   (c) desktop source freeing is GC-timing dependent (accept + document?) — pending.
+   (c) **DECIDED 2026-07-02: ACCEPT.** Desktop source freeing stays GC-timing dependent
+   (WeakMap identity cache; stale Rust copies linger until a JS GC, self-healing,
+   never observed in practice). Document the behavior + the explicit-free lever in
+   subsystem-invariants during the build pass; build nothing now.
 5. **Persistence P3**: cable-shape setting doesn't persist (unlike its sibling stores).
 6. Then the **BUILD pass** over every recorded item, suggested order: compute semantics
    (broadcaster contract first — most shared machinery), filter case + Match case,
