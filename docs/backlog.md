@@ -44,10 +44,17 @@ section is decision-recorded. The QUEUE when resuming, in order:
 3. **cargo-audit in CI — APPROVED 2026-07-02.** Small workflow: `cargo audit` on
    `src-tauri/Cargo.lock` on pushes to develop; triage noise via `audit.toml` ignore
    list as it comes up.
-4. **Frame P3s**: `\u{1}` multi-key separator collision in Rust (encode like
-   `encodeCell`); Rust non-finite aggregate → null over the wire vs JS Infinity (now
-   interacts with the #OVERFLOW! decision — discuss); desktop source freeing is
-   GC-timing dependent (accept + document?).
+4. **Frame P3s**: (a) `\u{1}` multi-key separator collision in Rust — under discussion.
+   (b) **DECIDED 2026-07-02: Infinity is first-class in frames, same as scalars.** The
+   IPC wire gains a non-finite sentinel (e.g. `{"__nf":"inf"|"-inf"|"nan"}`) in BOTH
+   directions — JSON's Inf→null default was never a hard constraint, we own both ends;
+   the silent null-ing on upload disappears too. Frame cells hold ±Inf (and residual
+   NaN as dirty-data residue). Aggregates apply the SAME general guard as scalar ops in
+   both backends: result ±Inf with an ±Inf in the input column → passes through
+   (SUM of ∞ is ∞); result ±Inf from all-finite column → per-cell `#OVERFLOW!`; result
+   NaN → `#DOMAIN!`. Input scan runs only when the result is non-finite (free on the
+   happy path). Cargo parity tests pin the backends together.
+   (c) desktop source freeing is GC-timing dependent (accept + document?) — pending.
 5. **Persistence P3**: cable-shape setting doesn't persist (unlike its sibling stores).
 6. Then the **BUILD pass** over every recorded item, suggested order: compute semantics
    (broadcaster contract first — most shared machinery), filter case + Match case,
