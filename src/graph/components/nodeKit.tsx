@@ -2,7 +2,7 @@ import { useCallback, useState, useRef, type ReactNode, useLayoutEffect, useCont
 import type { ClassicPreset } from "rete";
 import type { ClassicScheme, RenderEmit } from "rete-react-plugin";
 import { processGraph, getEditor } from "../process";
-import { makeAnnotationResolver } from "../unitFlow";
+import { sharedAnnotationResolver } from "../unitFlow";
 import { NodeCard } from "./NodeCard";
 import { NodeSocket, MeasuredSocketRow } from "./NodeSocket";
 import { useDraftCommit } from "./inlineInput";
@@ -442,7 +442,7 @@ export function ValueDisplay({
       (Record<string, unknown> & { outputs?: Record<string, unknown> }) | undefined;
     const carries = !!node && (node.passesUnitThrough === true || typeof node.unitPassInputs === "function");
     if (editor && node && carries) {
-      const resolver = makeAnnotationResolver(editor);
+      const resolver = sharedAnnotationResolver(editor);
       for (const k of Object.keys(node.outputs ?? {})) {
         const a = resolver.outAnnotation(ctxNodeId, k);
         if (a) { ann = a; break; }

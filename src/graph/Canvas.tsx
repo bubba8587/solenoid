@@ -2349,7 +2349,22 @@ export function Canvas() {
             reconcileFcTypes(editor, area);
             bumpConnectionVersion();
             rescanMismatches();
-            processGraph();
+            // TARGETED recompute (audit finding 40): one cable only invalidates
+            // its TARGET's downstream closure — the bare processGraph() here
+            // reset every engine cache and re-rendered every node (each
+            // unrelated Polars chain re-collected) for wiring one scalar. The
+            // `topology` flag refreshes the loop cache, the one global a cable
+            // change touches. A vanished target (cables removed as part of a
+            // node delete) falls back to the full pass.
+            const cable = ctx.data as { source?: string; target?: string };
+            if (cable.target && editor.getNode(cable.target)) {
+              void processGraph(cable.target, undefined, { topology: true });
+              // The source keeps its value, but its socket/annotation chrome can
+              // change with the cable — re-render just that card.
+              if (cable.source && editor.getNode(cable.source)) void area.update("node", cable.source);
+            } else {
+              void processGraph(undefined, undefined, { topology: true });
+            }
             // Topology changed → recompute which members/cables a collapsed group hides.
             syncGroupCollapse(editor, area);
           } else {

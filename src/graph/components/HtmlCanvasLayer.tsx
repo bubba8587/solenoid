@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { useRenderMode } from "../renderMode";
 import { HtmlCanvasRenderer, type EngineNodeSpec } from "../htmlCanvasRenderer";
 import { getEditor, getArea, connectionVersionStore } from "../process";
-import { cableValueStore } from "../cableValueStore";
 import { snapshotGraph } from "../pixi/pixiGraphSnapshot";
 import { cableShapeStore } from "../cableShape";
 import { collapseStore } from "../collapseStore";
@@ -245,7 +244,8 @@ export function HtmlCanvasLayer() {
     //   2. a module store the card subscribes to via useSyncExternalStore → subscribe it here.
     //      The full set the captured roots (NodeCard / GroupNode / NoteNode / nodeKit value box /
     //      DisplayNode) react to:
-    //        • cableValueStore + connectionVersionStore — values / topology (recompute, rewire).
+    //        • connectionVersionStore — topology (rewire). (Values arrive per-id
+    //          through the render pipe — see the scheduleRebuild note below.)
     //        • collapseStore — chevron collapse/expand re-renders the body.
     //        • nodeSizeStore — single-node manual resize.
     //        • groupMembershipStore — group recolor + member "inside a group" dots (and the dot
@@ -259,28 +259,82 @@ export function HtmlCanvasLayer() {
     //      Deliberately NOT subscribed: socketHighlightStore (per-hover churn; a transient ring
     //      not worth a full re-capture) and the FC-only formatMismatchStore / packsStore (rare,
     //      sub-glyph). If a NEW store starts driving a card's painted appearance, add it here.
+    // Re-derive ONE node's spec from the live DOM (geometry may have changed since
+    // the last build). Returns null when the node is unknown/new — the caller
+    // falls back to a full build.
+    const refreshSpec = (id: string): EngineNodeSpec | null => {
+      if (!specById.has(id)) return null;
+      const view = area.nodeViews.get(id);
+      const src = view?.element;
+      if (!view || !src) return null;
+      const inner = src.querySelector<HTMLElement>(".solenoid-node, .solenoid-group, .solenoid-note, .solenoid-conduit") ?? src;
+      const w = inner.offsetWidth, h = inner.offsetHeight;
+      if (w <= 0 || h <= 0) return null;
+      const dx = inner.offsetLeft || 0, dy = inner.offsetTop || 0;
+      offsets.set(id, { dx, dy });
+      const spec: EngineNodeSpec = { id, el: inner, x: view.position.x + dx, y: view.position.y + dy, w, h, isGroup: inner.classList.contains("solenoid-group") };
+      specById.set(id, spec);
+      return spec;
+    };
+
     let rebuildTimer = 0;
-    const scheduleRebuild = () => {
+    // Accumulated ids whose card re-rendered since the last (re)build; null =
+    // something of unknown scope changed → full rebuild. A full setNodes releases
+    // every ImageBitmap, re-clones every DOM card and rebuilds every mip pyramid —
+    // editing one value on a 300-node graph paid all of that per commit (audit
+    // finding 43). The area render pipe carries the changed node's id, so value
+    // edits take the targeted engine.updateNodes path; topology/theme/collapse
+    // (below) stay full rebuilds.
+    let dirtyIds: Set<string> | null = new Set();
+    const scheduleRebuild = (id?: string) => {
       // Mid-lasso the only thing changing is selection; re-capturing on every node it touches
       // would thrash the very work the canvas is here to avoid. Hold all rebuilds until release.
       if (!built || lassoActiveStore.get()) return;
+      if (id === undefined) dirtyIds = null;
+      else if (dirtyIds) dirtyIds.add(id);
       clearTimeout(rebuildTimer);
-      rebuildTimer = window.setTimeout(() => { doBuild(); }, 150);
+      rebuildTimer = window.setTimeout(() => {
+        const ids = dirtyIds;
+        dirtyIds = new Set();
+        if (ids) {
+          const specs: EngineNodeSpec[] = [];
+          let fallback = false;
+          for (const i of ids) {
+            if (domOnlyIds.has(i)) continue; // DOM-rendered (conduit) — canvas doesn't draw it
+            const s = refreshSpec(i);
+            if (s) specs.push(s);
+            else { fallback = true; break; } // a new/vanished node → scope unknown
+          }
+          if (!fallback) {
+            if (specs.length) {
+              engine.updateNodes(specs);
+              // A grown value box moves the card's edges — cables re-anchor.
+              engine.relayoutCables(new Set(specs.map((s) => s.id)));
+            }
+            return;
+          }
+        }
+        doBuild();
+      }, 150);
     };
-    const unsubVal = cableValueStore.subscribe(scheduleRebuild);
-    const unsubConn = connectionVersionStore.subscribe(scheduleRebuild);
-    const unsubCollapse = collapseStore.subscribe(scheduleRebuild);
-    const unsubSize = nodeSizeStore.subscribe(scheduleRebuild);
-    const unsubMembership = groupMembershipStore.subscribe(scheduleRebuild); // recolor member dots on group color/membership change
-    const unsubTheme = appThemeStore.subscribe(scheduleRebuild); // retint on theme / accent / palette change
-    const unsubFmt = formatAnnotationStore.subscribe(scheduleRebuild); // re-capture reformatted value text
-    const unsubShape = cableShapeStore.subscribe(scheduleRebuild); // re-route on cable-shape change
+    const fullRebuild = () => scheduleRebuild();
+    // NOT subscribed: cableValueStore — every value change that repaints a card
+    // already arrives through the render pipe WITH its node id (processGraph
+    // calls area.update per affected node); the store bump carried no ids and
+    // forced the full-rebuild path every pass (finding 43).
+    const unsubConn = connectionVersionStore.subscribe(fullRebuild);
+    const unsubCollapse = collapseStore.subscribe(fullRebuild);
+    const unsubSize = nodeSizeStore.subscribe(fullRebuild);
+    const unsubMembership = groupMembershipStore.subscribe(fullRebuild); // recolor member dots on group color/membership change
+    const unsubTheme = appThemeStore.subscribe(fullRebuild); // retint on theme / accent / palette change
+    const unsubFmt = formatAnnotationStore.subscribe(fullRebuild); // re-capture reformatted value text
+    const unsubShape = cableShapeStore.subscribe(fullRebuild); // re-route on cable-shape change
     // area.addPipe has no unsubscribe, so guard with a flag the cleanup flips instead.
     let pipeLive = true;
     area.addPipe((ctx) => {
       if (pipeLive && ctx && typeof ctx === "object" && "type" in ctx) {
-        const c = ctx as { type: string; data?: { type?: string } };
-        if (c.type === "render" && c.data?.type === "node") scheduleRebuild();
+        const c = ctx as { type: string; data?: { type?: string; payload?: { id?: string } } };
+        if (c.type === "render" && c.data?.type === "node") scheduleRebuild(c.data.payload?.id);
       }
       return ctx;
     });
@@ -364,7 +418,6 @@ export function HtmlCanvasLayer() {
       clearInterval(retry);
       clearTimeout(rebuildTimer);
       clearTimeout(gestureTimer);
-      unsubVal();
       unsubConn();
       unsubCollapse();
       unsubSize();
