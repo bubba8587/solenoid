@@ -70,7 +70,9 @@ export async function collectPreview(out: FrameInput | SolError | null, n = CARD
   const p = await materialize(frameBackend().preview(out.__frameRef, n));
   if (isSolError(p)) return p;
   if (!p.truncated) return readFrame(out); // small enough to show whole — collect full
-  return previewToFrame(p);
+  const f = previewToFrame(p);
+  f.__ref = out; // let the grid popup fetch the FULL frame on demand (audit 22p)
+  return f;
 }
 
 /** One column's identity in a preview (no values — schema only). */

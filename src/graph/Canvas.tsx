@@ -20,7 +20,7 @@ import { requestConfirm } from "./confirmStore";
 import { collapseStore } from "./collapseStore";
 import {
   setEditorRefs, processGraph, bumpConnectionVersion, setCableDragging, cableDragStore, bumpConduitAngle,
-  setUnselectAllNodes, setAutoArrange, setSelectNode, setRepositionDocked, setPushHistory,
+  setUnselectAllNodes, setAutoArrange, setSelectNode, setRepositionDocked, setPushHistory, setClearHistory,
   setDeleteSelected, setCleanup, repositionDockedNodes,
   unselectAllNodes as unselectAllNodesFromProcess,
   selectNode as selectNodeFromProcess,
@@ -1177,8 +1177,13 @@ export function Canvas() {
       const engine = new DataflowEngine<Schemes>();
       const history = new HistoryPlugin<Schemes>();
       history.addPreset(HistoryPresets.classic.setup());
+      // Cap the stack (the plugin ctor doesn't expose the inner History limit) —
+      // a backstop against unbounded growth; the real hygiene is clearHistory()
+      // on every document load (persistence.loadGraph, audit P0-5).
+      (history as unknown as { history: { limit?: number } }).history.limit = 200;
       // Let non-graph changes (e.g. a group resize) push their own undo entries.
       setPushHistory((action) => history.add(action));
+      setClearHistory(() => history.clear());
       // Visual minimap size is set in the React preset below; the
       // plugin itself only takes ratio + boundViewport + minDistance.
       const minimap = new MinimapPlugin<Schemes>({ ratio: 1.4 });

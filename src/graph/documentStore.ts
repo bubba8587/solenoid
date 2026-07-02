@@ -11,6 +11,7 @@
 
 import { createNotifier } from "./storeKit";
 import { serializeGraph, loadGraph, type SavedGraph } from "./persistence";
+import { isGraphRebuilding } from "./process";
 import { loadRevealStore } from "./loadReveal";
 import { chooseWriteSlot, chooseReadSlot } from "./persistenceCore";
 import { pushNotice, dismissNotice } from "./noticeStore";
@@ -112,9 +113,31 @@ function makeDoc(name: string, graph: SavedGraph): SolDoc {
   return { id: newId(), name: uniqueName(_lib, name), graph, updatedAt: Date.now() };
 }
 
-async function showCurrent(animate = false): Promise<void> {
+async function showCurrent(animate = false): Promise<boolean> {
   const cur = getCurrent(_lib);
-  if (cur) await loadGraph(cur.graph, { animate });
+  if (!cur) return false;
+  return loadGraph(cur.graph, { animate });
+}
+
+/** Show the current doc, keeping the session SAFE when the load is refused or
+ *  rolled back (loadGraph → false): the canvas then still shows the previous
+ *  graph, so `currentId` must not stay pointing at the doc that never loaded —
+ *  one edit later, autosave would write doc A's graph into doc B (audit 20p).
+ *  Revert to `revertTo` when it still exists (the doc the canvas shows), else
+ *  park the session on a fresh blank document (startup restore / post-delete,
+ *  where there is nothing to revert to). */
+async function showCurrentSafe(animate = false, revertTo?: string | null): Promise<void> {
+  if (await showCurrent(animate)) return;
+  if (revertTo && _lib.documents.some((d) => d.id === revertTo)) {
+    _lib = setCurrent(_lib, revertTo);
+    persist();
+    notify();
+    return;
+  }
+  _lib = addDocument(_lib, makeDoc("Untitled", { ...EMPTY_GRAPH }));
+  persist();
+  notify();
+  await loadGraph({ ...EMPTY_GRAPH });
 }
 
 export interface DocMeta { id: string; name: string; updatedAt: number; current: boolean }
@@ -155,13 +178,21 @@ export const documentStore = {
     _lib = lib;
     persist(); // settle the restored library into the current write slot
     notify();
-    await showCurrent(true); // startup → play the cinematic reveal
+    // A refused current doc (e.g. saved by a newer version) parks the session
+    // on a fresh blank — otherwise the first edit autosaves an empty canvas
+    // over the doc that never loaded (audit 20p).
+    await showCurrentSafe(true); // startup → play the cinematic reveal
     return getCurrent(_lib) !== null;
   },
 
   /** Serialize the live graph into the current document (the autosave action). */
   captureCurrent(): void {
     if (!_lib.currentId) return;
+    // Never capture while a load/rebuild is mid-flight — it would serialize the
+    // half-built canvas into the current doc. The autosave timer already checks
+    // suspension at fire time; this closes the DIRECT call paths (open/newBlank/
+    // saveAs/duplicate/import all captureCurrent unconditionally) (audit 21p).
+    if (isGraphRebuilding()) return;
     const g = serializeGraph();
     if (!g) return;
     _lib = updateCurrentGraph(_lib, g, Date.now());
@@ -182,6 +213,7 @@ export const documentStore = {
 
   /** New empty document, made current and shown. */
   async newBlank(): Promise<void> {
+    if (isGraphRebuilding()) return; // a doc op during a load races the rebuild (21p)
     this.captureCurrent();
     _lib = addDocument(_lib, makeDoc("Untitled", { ...EMPTY_GRAPH }));
     persist();
@@ -195,6 +227,7 @@ export const documentStore = {
   async newFromTemplate(seedId: SeedId, animate = false): Promise<void> {
     const seed = SEEDS[seedId];
     if (!seed) return;
+    if (isGraphRebuilding()) return; // (21p)
     this.captureCurrent();
     _lib = addDocument(_lib, makeDoc(seed.label, seed.graph));
     persist();
@@ -205,15 +238,18 @@ export const documentStore = {
   /** Switch to an existing document. */
   async open(id: string): Promise<void> {
     if (id === _lib.currentId) return;
+    if (isGraphRebuilding()) return; // (21p)
     this.captureCurrent(); // keep the doc we're leaving up to date
+    const prevId = _lib.currentId;
     _lib = setCurrent(_lib, id);
     persist();
     notify();
-    await showCurrent();
+    await showCurrentSafe(false, prevId);
   },
 
   /** Fork the live graph into a new named document, made current. */
   saveAs(name: string): void {
+    if (isGraphRebuilding()) return; // would fork a half-built canvas (21p)
     this.captureCurrent(); // freeze the doc we're forking from
     const g = serializeGraph() ?? { ...EMPTY_GRAPH };
     _lib = addDocument(_lib, makeDoc(name.trim() || "Untitled", g));
@@ -235,16 +271,19 @@ export const documentStore = {
   async duplicate(id: string = _lib.currentId ?? ""): Promise<void> {
     const src = _lib.documents.find((d) => d.id === id);
     if (!src) return;
+    if (isGraphRebuilding()) return; // (21p)
     if (id === _lib.currentId) this.captureCurrent();
+    const prevId = _lib.currentId;
     _lib = duplicateDocument(_lib, id, newId(), uniqueName(_lib, `${src.name} copy`));
     persist();
     notify();
-    await showCurrent();
+    await showCurrentSafe(false, prevId);
   },
 
   /** Delete a document. If it was current, the next one is shown (or a fresh
    *  blank if none remain). */
   async remove(id: string): Promise<void> {
+    if (isGraphRebuilding()) return; // (21p)
     const wasCurrent = id === _lib.currentId;
     _lib = removeDocument(_lib, id);
     if (_lib.documents.length === 0) {
@@ -257,19 +296,30 @@ export const documentStore = {
     }
     persist();
     notify();
-    if (wasCurrent) await showCurrent();
+    // No revert target — the doc the canvas showed was just deleted, so a
+    // failed load parks on a blank doc rather than autosaving the deleted
+    // graph into the next doc.
+    if (wasCurrent) await showCurrentSafe();
   },
 
   /** Adopt an imported graph as a new document, made current and shown. A
    *  `filePath` binds the new doc to the file it came from (desktop Open). */
   async importAsDocument(graph: SavedGraph, name: string, filePath?: string): Promise<void> {
+    if (isGraphRebuilding()) return; // (21p)
     this.captureCurrent();
+    const prevId = _lib.currentId;
     const doc = makeDoc(name, graph);
     if (filePath) doc.filePath = filePath;
     _lib = addDocument(_lib, doc);
     persist();
     notify();
-    await loadGraph(graph, { animate: true }); // File → Open / import → reveal
+    // File → Open / import → reveal. A refused import (newer save version)
+    // reverts to the doc the canvas still shows (20p).
+    if (!(await loadGraph(graph, { animate: true })) && prevId) {
+      _lib = setCurrent(_lib, prevId);
+      persist();
+      notify();
+    }
   },
 };
 

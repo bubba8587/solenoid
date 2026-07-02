@@ -53,6 +53,11 @@ export interface FrameValue {
    *  collected from the backend): the TRUE total row count, so the chip shows
    *  "12,400×N" while only N rows are materialized. Absent on a full frame. */
   __totalRows?: number;
+  /** Set alongside __totalRows: the lazy handle this preview was collected from,
+   *  so the grid popup can fetch the FULL frame on demand — Copy CSV must never
+   *  silently export the head-N preview as if it were the table (audit 22p).
+   *  Structurally typed (not FrameRef) to avoid a frame ↔ frameBackend cycle. */
+  __ref?: { readonly __frameRef: string };
 }
 
 export function isFrameValue(v: unknown): v is FrameValue {
