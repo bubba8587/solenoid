@@ -306,3 +306,90 @@ fn make_headers_matches_oracle() {
     let got = make_headers(&["".to_string(), "a".to_string(), "a".to_string()], 3);
     assert_eq!(got, vec!["Col1".to_string(), "a".to_string(), "a2".to_string()]);
 }
+
+#[test]
+fn group_by_extended_ops_match_oracle() {
+    // product/median/mode/stdev/stdevp/var/varp were `_ => Cell::Null` — every
+    // one the node UI offers must produce the oracle's numbers (audit P0-3).
+    let f = frame(vec![
+        ("k", SolType::Str, strs(&["a", "a", "a", "a"])),
+        ("v", SolType::Number, num(&[2.0, 4.0, 4.0, 8.0])),
+    ]);
+    let ops = ["product", "median", "mode", "stdev", "stdevp", "var", "varp"];
+    let aggs: Vec<WireAgg> = ops
+        .iter()
+        .map(|op| WireAgg { column: "v".into(), op: (*op).into(), as_name: (*op).into() })
+        .collect();
+    let out = verb_group_by(&f, &["k".into()], &aggs).unwrap();
+    let d = dump(&out);
+    let got = |i: usize| -> f64 {
+        match &d[i + 1].2[0] {
+            Json::Number(n) => n.as_f64().unwrap(),
+            other => panic!("op {} returned {:?}, not a number", ops[i], other),
+        }
+    };
+    let var_s: f64 = 19.0 / 3.0; // mean 4.5, ss 19
+    assert_eq!(got(0), 256.0); // product
+    assert_eq!(got(1), 4.0); // median, even count: (4+4)/2
+    assert_eq!(got(2), 4.0); // mode
+    assert!((got(3) - var_s.sqrt()).abs() < 1e-12); // stdev (sample)
+    assert!((got(4) - 4.75f64.sqrt()).abs() < 1e-12); // stdevp
+    assert!((got(5) - var_s).abs() < 1e-12); // var (sample)
+    assert_eq!(got(6), 4.75); // varp
+}
+
+#[test]
+fn group_by_extended_op_edges_match_oracle() {
+    // Odd-count median; mode tie breaks to FIRST occurrence; a single-point
+    // group: sample stdev/var undefined (null), population variants 0.
+    let f = frame(vec![
+        ("k", SolType::Str, strs(&["a", "a", "a", "b"])),
+        ("v", SolType::Number, num(&[7.0, 3.0, 5.0, 9.0])),
+    ]);
+    let ops = ["median", "mode", "stdev", "var", "stdevp", "varp"];
+    let aggs: Vec<WireAgg> = ops
+        .iter()
+        .map(|op| WireAgg { column: "v".into(), op: (*op).into(), as_name: (*op).into() })
+        .collect();
+    let out = verb_group_by(&f, &["k".into()], &aggs).unwrap();
+    let d = dump(&out);
+    assert_eq!(d[1].2[0], num_to_json(5.0)); // median of [7,3,5]
+    assert_eq!(d[2].2[0], num_to_json(7.0)); // mode tie → first occurrence
+    assert_eq!(d[3].2[1], Json::Null); // stdev of one point
+    assert_eq!(d[4].2[1], Json::Null); // var of one point
+    assert_eq!(d[5].2[1], num_to_json(0.0)); // stdevp of one point
+    assert_eq!(d[6].2[1], num_to_json(0.0)); // varp of one point
+}
+
+#[test]
+fn group_by_empty_group_product_is_one() {
+    let f = frame(vec![
+        ("k", SolType::Str, strs(&["a"])),
+        ("v", SolType::Number, vec![Cell::Null]),
+    ]);
+    let aggs = vec![WireAgg { column: "v".into(), op: "product".into(), as_name: "p".into() }];
+    let out = verb_group_by(&f, &["k".into()], &aggs).unwrap();
+    assert_eq!(dump(&out)[1].2, vec![num_to_json(1.0)]);
+}
+
+#[test]
+fn group_by_logical_column_aggregates_as_zero_one() {
+    // Booleans coerce to 1/0 on both engines (audit finding 17): SUM over a
+    // logical column = count of TRUEs, AVG = share of TRUEs.
+    let f = frame(vec![
+        ("k", SolType::Str, strs(&["a", "a", "a"])),
+        (
+            "flag",
+            SolType::Logical,
+            vec![Cell::Bool(true), Cell::Bool(false), Cell::Bool(true)],
+        ),
+    ]);
+    let aggs = vec![
+        WireAgg { column: "flag".into(), op: "sum".into(), as_name: "s".into() },
+        WireAgg { column: "flag".into(), op: "avg".into(), as_name: "m".into() },
+    ];
+    let out = verb_group_by(&f, &["k".into()], &aggs).unwrap();
+    let d = dump(&out);
+    assert_eq!(d[1].2, vec![num_to_json(2.0)]);
+    assert_eq!(d[2].2, vec![num_to_json(2.0 / 3.0)]);
+}

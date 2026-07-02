@@ -670,6 +670,10 @@ fn verb_filter(frame: &SolFrame, column: &str, op: &str, value: &Json) -> Result
 }
 
 // ─── group-by (manual, first-seen order) ────────────────────────────────────────
+// Mirrors the oracle's `aggregateGroup` (frameVerbs.ts) op-for-op: every op the
+// node UI offers is implemented — an op falling through to Null here is silent
+// wrong data on desktop only (the shipped 1.0 bug for product/median/mode/
+// stdev/stdevp/var/varp). Booleans coerce to 1/0 in BOTH implementations.
 fn aggregate_group(values: &[Cell], op: &str) -> Cell {
     if op == "count" {
         return Cell::Num(values.iter().filter(|c| !matches!(c, Cell::Null)).count() as f64);
@@ -683,13 +687,52 @@ fn aggregate_group(values: &[Cell], op: &str) -> Cell {
         })
         .collect();
     if nums.is_empty() {
-        return if op == "sum" { Cell::Num(0.0) } else { Cell::Null };
+        return match op {
+            "sum" => Cell::Num(0.0),
+            "product" => Cell::Num(1.0),
+            _ => Cell::Null,
+        };
     }
     match op {
         "sum" => Cell::Num(nums.iter().sum()),
         "avg" => Cell::Num(nums.iter().sum::<f64>() / nums.len() as f64),
         "min" => Cell::Num(nums.iter().cloned().fold(f64::INFINITY, f64::min)),
         "max" => Cell::Num(nums.iter().cloned().fold(f64::NEG_INFINITY, f64::max)),
+        "product" => Cell::Num(nums.iter().product()),
+        "median" => {
+            let mut s = nums.clone();
+            s.sort_by(|a, b| a.partial_cmp(b).unwrap()); // finite-only, no NaN
+            let m = s.len() / 2;
+            Cell::Num(if s.len() % 2 == 1 { s[m] } else { (s[m - 1] + s[m]) / 2.0 })
+        }
+        // Most-frequent value; ties break by first occurrence (oracle `modeOf`).
+        "mode" => {
+            let mut counts: HashMap<u64, usize> = HashMap::new();
+            let mut best = nums[0];
+            let mut best_count = 0usize;
+            for &v in &nums {
+                let c = counts.entry(v.to_bits()).or_insert(0);
+                *c += 1;
+                if *c > best_count {
+                    best_count = *c;
+                    best = v;
+                }
+            }
+            Cell::Num(best)
+        }
+        // Sample (n−1) vs population (n) variance; sample undefined under 2
+        // points → Null (oracle `varianceOf`).
+        "stdev" | "stdevp" | "var" | "varp" => {
+            let sample = op == "stdev" || op == "var";
+            if sample && nums.len() < 2 {
+                return Cell::Null;
+            }
+            let n = nums.len() as f64;
+            let mean = nums.iter().sum::<f64>() / n;
+            let ss: f64 = nums.iter().map(|v| (v - mean) * (v - mean)).sum();
+            let var = ss / if sample { n - 1.0 } else { n };
+            Cell::Num(if op.starts_with("stdev") { var.sqrt() } else { var })
+        }
         _ => Cell::Null,
     }
 }
