@@ -112,6 +112,13 @@ first, and it's valuable on its own.
 
 ## 3 — Live data: from a document you open to a surface that watches
 
+**VERDICT (author, 2026-07-02): IN — tiers 1 and 2 only.** Tier 1: manual Refresh on
+source nodes (re-pull + recompute; near-free, file/API flavors need nothing new).
+Tier 2: interval refresh while the app is open. Tier 3 (always-on/background watching,
+the daemon question) NOT taken — the #9 sinks + #3 scheduling design session scopes to
+in-app interval scheduling, not background execution. The database-table source stays a
+separable later slice behind Bet 5's "desktop points at a real database" form.
+
 **Scope today:** data is imported — a CSV, a fetched URL, a pasted table. It's a
 snapshot. You re-import to refresh.
 
