@@ -75,6 +75,28 @@ describe("Rolling", () => {
   it("trailing-window average", () => {
     expect(new RollingNode({ op: "avg" }).data({ list: [[2, 4, 6, 8]], window: [2] }).result).toEqual([2, 3, 5, 7]);
   });
+
+  // v1.0 audit finding 14: each window runs through forAggregate.
+  it("a per-cell error lands in exactly the windows that contain it", () => {
+    const err = solError("#DIV/0!", "boom");
+    const r = new RollingNode({ op: "sum" }).data({ list: [[1, err, 3, 4]], window: [2] }).result as unknown[];
+    expect(r[0]).toBe(1);
+    expect(isSolError(r[1])).toBe(true); // window [1, err]
+    expect(isSolError(r[2])).toBe(true); // window [err, 3]
+    expect(r[3]).toBe(7);                // window [3, 4] — error slid out
+  });
+
+  it("nulls are skipped, not counted as 0 (average divides by present count)", () => {
+    const r = new RollingNode({ op: "avg" }).data({ list: [[2, null, 4]], window: [2] }).result;
+    expect(r).toEqual([2, 2, 4]); // [2], [2,·], [·,4]
+  });
+
+  it("an all-null window is 0 for sum, null otherwise", () => {
+    const r1 = new RollingNode({ op: "sum" }).data({ list: [[null, null, 5]], window: [1] }).result;
+    expect(r1).toEqual([0, 0, 5]);
+    const r2 = new RollingNode({ op: "max" }).data({ list: [[null, 5]], window: [1] }).result;
+    expect(r2).toEqual([null, 5]);
+  });
 });
 
 describe("Weighted", () => {
@@ -140,9 +162,10 @@ describe("Aggregate — null skipped, errors propagated (array-semantics policy)
     expect(agg("min", [[null, 5, 2, null]])).toBe(2);
   });
 
-  it("an all-null list reduces like an empty list (sum→null, count→0)", () => {
-    // Pre-existing empty-list convention: only count is 0, the rest are null.
-    expect(agg("sum", [[null, null]])).toBeNull();
+  it("an all-null list reduces like an empty list (sum→0, count→0, avg→null)", () => {
+    // Empty-list identities per audit finding 30: sum 0, product 1, count 0 —
+    // matching the formula path and aggregateGroup; the rest stay null.
+    expect(agg("sum", [[null, null]])).toBe(0);
     expect(agg("count", [[null, null]])).toBe(0);
     expect(agg("avg", [[null, null]])).toBeNull();
   });
@@ -246,5 +269,22 @@ describe("Fill / Coalesce — missing-value strategies (array-semantics policy)"
     expect(isSolError(out[1])).toBe(true);
     expect(out[2]).toBe(4);
     expect(out[3]).toBe(3); // the gap imputed from present numbers, ignoring the error
+  });
+});
+
+describe("Aggregate — n<2 stdev blanks; empty-list identities (audit finding 30)", () => {
+  it("sample stdev of a single value is blank, matching var_s", () => {
+    expect(new AggregateNode({ op: "stdev" }).data({ list: [[5]] }).result).toBeNull();
+    expect(new AggregateNode({ op: "var_s" }).data({ list: [[5]] }).result).toBeNull();
+  });
+  it("empty list: sum 0, product 1, count 0, avg blank", () => {
+    expect(new AggregateNode({ op: "sum" }).data({ list: [[]] }).result).toBe(0);
+    expect(new AggregateNode({ op: "product" }).data({ list: [[]] }).result).toBe(1);
+    expect(new AggregateNode({ op: "count" }).data({ list: [[]] }).result).toBe(0);
+    expect(new AggregateNode({ op: "avg" }).data({ list: [[]] }).result).toBeNull();
+  });
+  it("all-null list behaves like empty", () => {
+    expect(new AggregateNode({ op: "sum" }).data({ list: [[null, null]] }).result).toBe(0);
+    expect(new AggregateNode({ op: "product" }).data({ list: [[null]] }).result).toBe(1);
   });
 });

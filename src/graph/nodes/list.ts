@@ -861,7 +861,7 @@ export const ROLLING_OP_META = {
 export class RollingNode extends ClassicPreset.Node {
   label: string;
   op: RollingOp;
-  cachedList: number[] = [];
+  cachedList: (number | null | SolError)[] = [];
   literals: Record<string, number> = { window: 3 };
   width = 180;
   height = 210;
@@ -875,23 +875,31 @@ export class RollingNode extends ClassicPreset.Node {
     this.addOutput("result", listOut("Result"));
   }
 
-  data(inputs: { list?: number[][]; window?: number[] }) {
+  data(inputs: { list?: (number | null | SolError)[][]; window?: number[] }) {
     const arr = inputs.list?.[0] ?? [];
     const w   = Math.max(1, Math.round(inputs.window?.[0] ?? this.literals.window ?? 3));
-    const result: number[] = arr.map((_, i) => {
-      const slice = arr.slice(Math.max(0, i - w + 1), i + 1);
+    // Each window runs through forAggregate like every other reducer (audit
+    // finding 14): a per-cell error propagates into THAT output cell (a blind
+    // `a+b` reduce concatenated the error object into a string), a null is
+    // skipped (it counted as 0 and still divided the average by the full
+    // window). An all-null window: sum 0, everything else null.
+    const result: (number | null | SolError)[] = arr.map((_, i) => {
+      const prep = forAggregate(arr.slice(Math.max(0, i - w + 1), i + 1));
+      if (prep.error) return prep.error;
+      const nums = prep.nums.filter((n) => Number.isFinite(n));
+      if (nums.length === 0) return this.op === "sum" ? 0 : null;
       switch (this.op) {
-        case "sum": return slice.reduce((a, b) => a + b, 0);
-        case "avg": return slice.reduce((a, b) => a + b, 0) / slice.length;
-        case "min": return iterMin(slice);
-        case "max": return iterMax(slice);
+        case "sum": return nums.reduce((a, b) => a + b, 0);
+        case "avg": return nums.reduce((a, b) => a + b, 0) / nums.length;
+        case "min": return iterMin(nums);
+        case "max": return iterMax(nums);
         case "stdev": {
-          if (slice.length < 2) return NaN;
-          const m = slice.reduce((a, b) => a + b, 0) / slice.length;
-          return Math.sqrt(slice.reduce((s, v) => s + (v - m) ** 2, 0) / (slice.length - 1));
+          if (nums.length < 2) return null; // sample stdev undefined (matches var_s)
+          const m = nums.reduce((a, b) => a + b, 0) / nums.length;
+          return Math.sqrt(nums.reduce((s, v) => s + (v - m) ** 2, 0) / (nums.length - 1));
         }
         case "median": {
-          const sorted = [...slice].sort((a, b) => a - b);
+          const sorted = [...nums].sort((a, b) => a - b);
           const mid = Math.floor(sorted.length / 2);
           return sorted.length % 2 === 0
             ? (sorted[mid - 1] + sorted[mid]) / 2
@@ -1037,7 +1045,7 @@ export class AggregateNode extends ClassicPreset.Node {
           break;
         }
         case "stdev": {
-          if (arr.length < 2) { result = 0; break; }
+          if (arr.length < 2) break; // sample stdev undefined under 2 points — blank, like var_s (audit finding 30)
           const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
           const variance = arr.reduce((a, b) => a + (b - mean) ** 2, 0) / (arr.length - 1);
           result = Math.sqrt(variance);
@@ -1112,8 +1120,12 @@ export class AggregateNode extends ClassicPreset.Node {
           break;
         }
       }
-    } else if (this.op === "count") {
+    } else if (this.op === "count" || this.op === "sum") {
+      // Empty/all-null input: SUM is 0 and PRODUCT is 1 (the additive/multiplicative
+      // identities — matching the formula path and aggregateGroup; audit finding 30).
       result = 0;
+    } else if (this.op === "product") {
+      result = 1;
     }
     this.cachedResult = result;
     return { result };

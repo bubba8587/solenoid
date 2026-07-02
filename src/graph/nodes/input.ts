@@ -82,12 +82,15 @@ export class ColorPickerNode extends ClassicPreset.Node {
 
 // ─── Constant (predefined library) ───────────────────────────────────────────
 
+// "na" was removed 2026-07 (audit finding 13): a NaN "constant" was one of THREE
+// different not-really-#N/A producers; the NaNode (tagged SolError #N/A) is the
+// one true NA now. No persistence alias, per pre-alpha policy — an old Constant
+// saved as op:"na" loads as pi.
 export type ConstantOp =
   | "pi" | "tau" | "e" | "phi"
   | "inf" | "neg-inf"
   | "zero" | "one" | "neg-one"
-  | "true" | "false"
-  | "na";
+  | "true" | "false";
 
 export const CONSTANTS: Record<ConstantOp, { symbol: string; label: string; value: number }> = {
   pi:        { symbol: "π",     label: "Pi",            value: Math.PI },
@@ -101,7 +104,6 @@ export const CONSTANTS: Record<ConstantOp, { symbol: string; label: string; valu
   "neg-one": { symbol: "−1",    label: "Negative one",  value: -1 },
   "true":    { symbol: "true",  label: "True",          value: 1 },
   "false":   { symbol: "false", label: "False",         value: 0 },
-  na:        { symbol: "N/A",   label: "Not Available", value: NaN },
 };
 
 export class ConstantNode extends ClassicPreset.Node {
@@ -112,7 +114,9 @@ export class ConstantNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: ConstantOp }) {
     super("Constant");
-    this.op = init?.op ?? "pi";
+    // Guard a stale op from an old save (e.g. the removed "na") — fall back
+    // rather than crash data() on CONSTANTS[op].value.
+    this.op = init?.op && init.op in CONSTANTS ? init.op : "pi";
     this.label = init?.label ?? "Constant";
     this.addOutput("value", new ClassicPreset.Output(numberSocket));
   }
