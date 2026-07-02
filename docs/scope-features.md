@@ -1437,10 +1437,133 @@ actually *sells*, so it's the commercial spine even though it's furthest out; #5
 the sales-comp wound is the one worth demoing.
 
 ---
+---
+
+# Round 9 — the social layer (the speculative finale)
+
+The last seam, and the most speculative by design: **what happens when models are made,
+shared, and relied on by people who don't know each other.** Everything before this
+round works with zero community; everything in it assumes one exists (or is the reason
+one forms). The honest gate on all of it: Bet 2 (the addressable/text model) plus real
+users. Filed now anyway, because two of these turn out to be *near-term and standalone*
+(#60, and the mechanical half of #58) — and because the shape of the social layer should
+inform how the earlier pieces (seals, templates, badges) get built.
+
+The organizing observation: every sharing economy for *work products* (npm, app stores,
+template galleries) has the same disease — **you can't tell good from plausible from the
+listing.** Stars measure popularity; descriptions measure marketing. But a Solenoid
+model is the rare artifact whose quality is *mechanically checkable* — tested, linted,
+fuzzed, sealed, schema-typed. A sharing layer built on that is categorically different
+from one built on reviews.
+
+## 58 — Verified templates: quality gates instead of star ratings
+
+**The idea:** when a template (#55) or subgraph (#5) is shared, its listing carries
+**mechanical credentials, not vibes**: golden-test coverage (do pinned examples exist
+and pass?), lint-clean (#29), fuzz-survival (#44 — "10,000 generated inputs, zero
+uncaught errors"), expectation coverage (#12), a seal (#46) with author identity. The
+gallery *runs the checks* — they're headless (#10) and cheap (cached, #23) — so the
+badge row on a listing is computed, not claimed.
+
+**Why it could matter beyond the gallery:** it inverts the trust problem every
+marketplace has. "This mortgage calculator passed 10,000 fuzz cases and its examples
+match published IRS tables" is a different object from a 4.5-star spreadsheet template.
+If Solenoid ever has a commons, this is what makes it *worth* using over a random
+download — and the checking machinery is all pre-social (Rounds 5–7); the social layer
+just displays it. **The mechanical half is near-term:** the badge row is worth
+rendering on local/team templates long before any public gallery exists.
+
+## 59 — Fork lineage: models that remember where they came from
+
+**The idea:** copying/adapting a shared template records **lineage** — "derived from
+Amortization v3 by K" — and the schema contract (Bet 3) plays the role version numbers
+play in package managers: an upstream update that keeps the contract can be offered as
+a safe pull ("v3.1 fixes the leap-year bug — apply?"); one that breaks it is flagged as
+a major change. Attribution for authors; bug-fix flow for users; and the diff machinery
+(#6, Bet 2) shows exactly what changed before you accept.
+
+**Why it's plausible here when it's hard elsewhere:** "did the update break my usage?"
+is *undecidable* for arbitrary code but largely *checkable* for a typed graph — the
+contract + your own golden tests answer it mechanically. This is the package-manager
+update problem with the hardest part removed.
+
+## 60 — Citations: every formula carries its source ← pull this one forward
+
+**The idea (near-term, standalone, cheap):** a `source` field on any node or constant —
+"per IRS Pub 946 Table A-1", "ASHRAE Fundamentals 2021 §26.1", "company pricing policy
+v4, 2026-03" — rendered as a superscript on the card, footnotes in the report
+projection (#13), and a references section in auto-docs (#50). The linter (#29) can
+optionally demand sources on named constants.
+
+**Why it punches above its weight:** "where does this number come from?" is THE audit
+question, and today the answer lives in someone's memory. For the engineering vertical
+(#15) citations are professionally mandatory (calc packages must reference code
+editions); for finance/governance (#3) they're what a validator checks first; for the
+commons (#58) they're what makes a shared model *checkable against the authority it
+claims*. It's a metadata field + three render sites — buildable this quarter, valuable
+with zero community, and it quietly upgrades every trust feature around it.
+
+## 61 — Numbers with receipts: published figures that link to their model
+
+**The idea:** any figure in an exported artifact (report #13, static HTML #47) can carry
+a **verify link**: it opens the sealed (#46), synthetic-or-real-data (#26) model that
+produced it — inspectable, re-runnable, diff-able against the seal. A blog post's "$47B
+market by 2030" or a council report's traffic projection stops being a naked assertion
+and becomes a claim with its working attached.
+
+**Why it's the thesis at maximum altitude:** the whole product is "never trust a number
+you can't inspect"; this exports that norm beyond the tool. Speculative — it needs
+publishers to care — but note it's *pure composition*: seal + synthetic data + static
+export + (optionally) the web viewer. If those ship for their own reasons, "receipts"
+costs almost nothing and is the most culturally interesting demo Solenoid could run
+(publish an analysis where every number is clickable-to-verify, and dare the industry
+to match it).
+
+## 62 — The validator economy: third parties who sign models for a living
+
+**The idea:** model validation is *already a paid profession* (banks are required to
+buy it; engineering has stamped reviews; audits exist). Today validators receive an
+Excel file and produce… a Word document about it. Sealed models (#46) give them a
+**durable, machine-checkable artifact to sign**: "validated by [firm], against snapshot
+S, seal hash H" — and the seal-break mechanics mean their signature *provably* refers
+to exactly what they reviewed, which is more than the Word-document status quo can say.
+
+**Why it's strategically interesting:** it's a *business ecosystem* Solenoid enables
+without operating — no marketplace to run, no service to host (the signature is data in
+the file, consistent with local-first). Validators become a channel: firms that sell
+sign-offs have every incentive to prefer — and recommend — the format that makes their
+product verifiable. Gated on the governance vertical (#3) landing first.
+
+## 63 — Standards as software: institutions publishing executable packs
+
+**The idea (the far end):** standards bodies and authorities — building codes, actuarial
+tables, tax schedules, engineering societies — currently publish their tables and
+formulas as **PDFs**, which ten thousand practitioners each hand-transcribe into ten
+thousand slightly-wrong spreadsheets. The pack system (#strategy 2) + seals (#46) +
+citations (#60) describe something strictly better: the institution publishes the
+**executable, versioned, signed pack** — the IRS depreciation tables, the ASHRAE loads,
+the actuarial mortality tables — and practitioners *reference* rather than retype.
+Fork lineage (#59) handles editions; the schema contract handles "the 2027 revision
+renamed a column."
+
+**Honest odds:** institutions move glacially; this is a decade-scale thought. But it's
+the logical terminus of the whole series — the point where "the inspectable computation
+layer" stops being a product category and becomes infrastructure — and *one* motivated
+body (a single state's energy-code calculator, one professional society's toolkit) would
+be enough to prove the pattern. The demo version needs no institution at all: Solenoid
+ships an unofficial-but-cited (#60) pack of one such table set and shows the delta
+against the retype-it-yourself world.
+
+**Round 9 order:** #60 now (it's a Round-5-grade feature hiding in the social round);
+the mechanical badge row of #58 alongside the trust badge (strategy #6); everything else
+waits for Bet 2 + actual users — but build seals/templates/exports with these shapes in
+mind so the social layer composes instead of retrofitting.
+
+---
 
 ## Seam map — the whole territory in one place
 
-Eight rounds, one lens. Every item is one of two moves — *make meaning explicit* or *make
+Nine rounds, one lens. Every item is one of two moves — *make meaning explicit* or *make
 computation inspectable* — applied to a different face of the product:
 
 - **What a value is** — R4 (#20 dimensions, #21 uncertainty), R7 (#43 exact money)
@@ -1456,6 +1579,8 @@ computation inspectable* — applied to a different face of the product:
 - **How agents reach it** — R5 (#35 MCP), R2/R3 (#19 AI cage)
 - **How it scales across many** — R7 (#48 library), R8 (#53 definitions, #54 index, #55
   templates), strategy #4 (linked graphs)
+- **How strangers trust each other's work** — R9 (#58 verified templates, #59 lineage,
+  #60 citations, #61 receipts, #62 validators, #63 standards-as-software)
 
 The coherence check: if a proposed feature can't be phrased as one of those two moves, it's
 probably in the out-of-scope pile.
