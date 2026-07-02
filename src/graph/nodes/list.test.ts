@@ -11,9 +11,13 @@ import {
   AggregateNode,
   FilterNode,
   FillNode,
+  SortNode,
+  SortByNode,
+  InterleaveNode,
   type ReduceOp,
   type FillOp,
 } from "./list";
+import { broadcast, broadcastErr } from "./shared";
 import { solError, isSolError } from "../errorValue";
 
 describe("Range", () => {
@@ -286,5 +290,50 @@ describe("Aggregate — n<2 stdev blanks; empty-list identities (audit finding 3
   it("all-null list behaves like empty", () => {
     expect(new AggregateNode({ op: "sum" }).data({ list: [[null, null]] }).result).toBe(0);
     expect(new AggregateNode({ op: "product" }).data({ list: [[null]] }).result).toBe(1);
+  });
+});
+
+describe("Sort — nulls and per-cell errors last in both directions (frame blanks-last policy)", () => {
+  const err = solError("#DIV/0!", "test");
+  it("ascending: values sort, null/error tail keeps input order", () => {
+    expect(new SortNode({ dir: "asc" }).data({ list: [[3, null, 1, err, 2]] }).result)
+      .toEqual([1, 2, 3, null, err]);
+  });
+  it("descending: values flip, tail stays last", () => {
+    expect(new SortNode({ dir: "desc" }).data({ list: [[3, null, 1, err, 2]] }).result)
+      .toEqual([3, 2, 1, null, err]);
+  });
+});
+
+describe("SortBy — ragged pad-to-longest; null/error keys sort last (audit finding 25)", () => {
+  it("a value beyond the key list gets a null key and lands last", () => {
+    expect(new SortByNode().data({ array: [[10, 20, 30]], by_array: [[2, 1]] }).list)
+      .toEqual([20, 10, 30]);
+  });
+  it("a null key mid-list sends its row to the tail, stably", () => {
+    expect(new SortByNode().data({ array: [[10, 20, 30]], by_array: [[2, null, 1]] }).list)
+      .toEqual([30, 10, 20]);
+  });
+  it("keys beyond the value list emit null values in key order", () => {
+    expect(new SortByNode().data({ array: [[10]], by_array: [[3, 1]] }).list)
+      .toEqual([null, 10]);
+  });
+});
+
+describe("Interleave — ragged pad-to-longest keeps the A/B alternation aligned", () => {
+  it("pads the shorter list with null instead of dropping the tail", () => {
+    expect(new InterleaveNode().data({ a: [[1, 2, 3]], b: [[10]] }).result)
+      .toEqual([1, 10, 2, null, 3, null]);
+  });
+});
+
+describe("broadcast / broadcastErr — ragged lists pad to the longest with null", () => {
+  it("a padded position is missing outright (fn not called)", () => {
+    expect(broadcast((a, b) => a + b, [1, 2, 3], [10, 20])).toEqual([11, 22, null]);
+    expect(broadcast((a, b) => a + b, [1], [10, 20, 30])).toEqual([11, null, null]);
+  });
+  it("broadcastErr pads too, alongside genuine per-cell errors", () => {
+    const div = (a: number, b: number) => (b === 0 ? solError("#DIV/0!", "test") : a / b);
+    expect(broadcastErr(div, [10, 20], [2, 0, 5])).toEqual([5, solError("#DIV/0!", "test"), null]);
   });
 });

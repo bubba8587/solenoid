@@ -634,20 +634,18 @@ registerInternal("TODAY", () => {
 registerInternal("NOW", () => jsDateToSerial(new Date()));
 // TEXT: FX date-formats JS Date OBJECTS, not our serials — TEXT(46096,
 // "yyyy-mm-dd") returned "46096" (audit finding 29). When the format code is
-// date/time-shaped, convert the serial to a LOCAL-wall-clock Date first (FX
-// formats via local getters; a UTC-based Date would shift a day east of UTC).
-// Numeric codes ("0.00", "#,##0") pass straight through to FX.
+// date/time-shaped, hand FX the serial's UTC Date directly: FX formats via UTC
+// getters (probed 2026-07-02 — the earlier local-wall-clock rebuild double-
+// shifted the day on any non-UTC machine, "green in UTC CI, red locally").
+// Known FX limit: time tokens (hh:mm) render the date part only. Numeric codes
+// ("0.00", "#,##0") pass straight through to FX.
 registerInternal("TEXT", (value, fmt) => {
   const fxText = (FX as unknown as { TEXT: (...a: unknown[]) => unknown }).TEXT;
   const f = toStr(fmt);
   const bare = f.replace(/"[^"]*"/g, ""); // quoted literals aren't format tokens
   const dateish = /[ymdhs]/i.test(bare) && !/[#0?]/.test(bare);
   const n = toNum(value);
-  if (dateish && !Number.isNaN(n)) {
-    const d = serialToJsDate(n);
-    const local = new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), d.getUTCHours(), d.getUTCMinutes(), d.getUTCSeconds());
-    return fxText(local, f);
-  }
+  if (dateish && !Number.isNaN(n)) return fxText(serialToJsDate(n), f);
   return fxText(value, f);
 });
 

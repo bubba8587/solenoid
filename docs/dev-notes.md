@@ -2,6 +2,27 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Ragged-list pad BUILT (audit finding 25) + list SORT nulls-last + TEXT TZ fix (2026-07-02)
+The pad-to-longest-with-null policy (settled 2026-06-22 with the array-semantics build, unbuilt
+since) is now implemented — **behavior change:** `[1,2,3]+[10,20]` → `[11,22,null]`, no more
+silent tail-drop. Where and how, because the null rule differs per family:
+- **Numeric broadcasters** (`excelFormula.ts` `broadcast2`/`broadcastCall`, `nodes/shared.ts`
+  `broadcast`/`broadcastErr`): a padded position emits `null` DIRECTLY without calling the fn
+  (missing in → missing out, matching applyOp's operator null-propagation).
+- **Logic broadcaster** (`logic.ts` `broadcastEl`): the padded `null` goes INTO the fn — Kleene
+  decides the cell (`FALSE AND pad-null` = FALSE, not null). Don't "simplify" these to one rule.
+- **Paired family** (SUMPRODUCT/CORREL/…, formula `RANGE_PAIRED` + node-side stats/finance/
+  SumProduct zips): min-length zip KEPT deliberately — padding would create rows the pairwise
+  null-drop immediately removes, so truncation there IS the pad policy minus the detour.
+- **SortBy/Interleave** pad to longest; a null/error SORT/SortBy key sends its row to the TAIL,
+  stably, in both directions — list SORT now matches the frame sort's blanks-last policy
+  (`frameVerbs.sortByColumn` / `engine.rs` `with_nulls_last`; the old bare `a-b` compare coerced
+  null to 0, scattering blanks mid-list — the audit's "SORT nulls first" P3 is thereby fixed too).
+- **TEXT(serial, "yyyy-mm-dd") TZ bug in the fix-pass's own finding-29 code:** FX.TEXT formats
+  via UTC getters (probed), so the local-wall-clock rebuild double-shifted the day on any
+  non-UTC machine — green in the UTC cloud CI, red locally (UTC+2). Now hands FX the
+  `serialToJsDate` UTC Date directly. FX limit: time tokens render the date part only.
+
 ### v1.0 audit fix pass — every P0/P1, frame parity, perf, hygiene (2026-07-02)
 Implemented `docs/v1.0-audit.md` top to bottom in the §9 order (one commit per batch on
 `develop`; the audit doc now carries a ✅ status header). Highlights + non-obvious gotchas:

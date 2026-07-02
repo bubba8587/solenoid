@@ -17,16 +17,21 @@ function frameCells(f: FrameValue): unknown[][] {
 // is the logic family's null-aware broadcaster — a `null` operand flows through
 // to the fn (Kleene / comparison / IF-propagation) rather than being coerced to 0
 // (which would silently turn `null > 2` into FALSE). Unlike `broadcast`, it never
-// NaN-collapses a null the fn returns.
+// NaN-collapses a null the fn returns. Ragged lists zip to the LONGEST length,
+// the shorter padded with `null` INTO the fn — the fn's own null semantics
+// decide the cell (Kleene: null AND FALSE is FALSE, not null), unlike the
+// numeric broadcasters where a padded position is null outright.
 function broadcastEl<A, T>(
   fn: (...xs: A[]) => T,
   ...args: Array<A | A[]>
 ): T | T[] {
   const lists = args.filter((a): a is A[] => Array.isArray(a));
   if (lists.length === 0) return fn(...(args as A[]));
-  const len = lists.reduce((m, l) => Math.min(m, l.length), Infinity);
+  const len = lists.reduce((m, l) => Math.max(m, l.length), 0);
   const out: T[] = [];
-  for (let i = 0; i < len; i++) out.push(fn(...(args.map((a) => (Array.isArray(a) ? a[i] : a)) as A[])));
+  for (let i = 0; i < len; i++) {
+    out.push(fn(...(args.map((a) => (Array.isArray(a) ? (i < a.length ? a[i] : null) : a)) as A[])));
+  }
   return out;
 }
 const triBool = (x: number | null): Tri => (isMissing(x) ? null : x !== 0);

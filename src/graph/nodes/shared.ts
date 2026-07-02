@@ -101,20 +101,26 @@ export function resultOut(label: string, dim: ResultDim, t: ResultType): Classic
 // Apply `fn` element-wise when any argument is a list (broadcasting any
 // scalar args against it), else apply once. Powers the list-aware ("Map")
 // behaviour of element-wise nodes via the flexible `numlist` socket. An
-// invalid element (fn → null) becomes NaN within a result list.
+// invalid element (fn → null) becomes NaN within a result list. Ragged lists
+// zip to the LONGEST length: a position missing from a shorter list emits a
+// first-class `null` (missing) in the result, without calling `fn` — the
+// pad-to-longest policy settled with the array-semantics build. The result
+// list therefore carries nulls at runtime; the `number[]` return type follows
+// the node layer's loose-list convention (lists carry null/SolError cells).
 export function broadcast(
   fn: (...xs: number[]) => number | null,
   ...args: Array<number | number[]>
 ): number | number[] | null {
   const lists = args.filter((a): a is number[] => Array.isArray(a));
   if (lists.length === 0) return fn(...(args as number[]));
-  const len = lists.reduce((m, l) => Math.min(m, l.length), Infinity);
-  const out: number[] = [];
+  const len = lists.reduce((m, l) => Math.max(m, l.length), 0);
+  const out: (number | null)[] = [];
   for (let i = 0; i < len; i++) {
+    if (lists.some((l) => i >= l.length)) { out.push(null); continue; }
     const r = fn(...args.map((a) => (Array.isArray(a) ? a[i] : a)));
     out.push(r ?? NaN);
   }
-  return out;
+  return out as number[];
 }
 
 // Like `broadcast`, but the per-element fn may emit a tagged `SolError` for a bad
@@ -129,9 +135,10 @@ export function broadcastErr(
 ): number | (number | SolError | null)[] | SolError | null {
   const lists = args.filter((a): a is number[] => Array.isArray(a));
   if (lists.length === 0) return fn(...(args as number[]));
-  const len = lists.reduce((m, l) => Math.min(m, l.length), Infinity);
+  const len = lists.reduce((m, l) => Math.max(m, l.length), 0);
   const out: (number | SolError | null)[] = [];
   for (let i = 0; i < len; i++) {
+    if (lists.some((l) => i >= l.length)) { out.push(null); continue; } // ragged pad
     out.push(fn(...args.map((a) => (Array.isArray(a) ? a[i] : a))));
   }
   return out;

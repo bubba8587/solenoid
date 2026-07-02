@@ -366,8 +366,13 @@ describe("compileEvaluator — array-aware (broadcast vs aggregate per call site
     expect(ev("SQRT(x)", { x: [4, 9, 16] })).toEqual([2, 3, 4]);
   });
 
-  it("zips two lists element-wise, truncating to the shorter (P3 unchanged)", () => {
-    expect(ev("a + b", { a: [1, 2, 3], b: [10, 20] })).toEqual([11, 22]);
+  it("zips ragged lists to the longest, padding with null (the settled P3 policy)", () => {
+    expect(ev("a + b", { a: [1, 2, 3], b: [10, 20] })).toEqual([11, 22, null]);
+    expect(ev("a + b", { a: [1], b: [10, 20, 30] })).toEqual([11, null, null]);
+  });
+
+  it("pads ragged args to a broadcast function with null (missing in, missing out)", () => {
+    expect(ev("MOD(a, b)", { a: [10, 20, 30], b: [3, 7] })).toEqual([1, 6, null]);
   });
 
   // ── the headline: range functions aggregate a list (P1/P2) ──
