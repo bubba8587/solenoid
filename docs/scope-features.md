@@ -1211,6 +1211,257 @@ all along.
 
 ---
 
+# Round 6 — the feel: what the tool is like under your hands
+
+Six items about *ergonomics and perception* — none add computing power; all change how
+fast and how pleasant it is to build and read. This seam matters because the honest
+competition isn't a product, it's **Excel's muscle memory**: people stay where their
+hands are fast. Verified absent first (cable-drop-on-canvas currently just clears the
+drag flag; no palette; no scrubbing; no zoom LOD beyond image sharpness).
+
+## 37 — Quick-wire: drop a cable on empty canvas, get the next node
+Drag a cable off an output, release on empty canvas → the Add menu opens *right there*,
+**filtered to nodes that accept that type**, and the pick lands pre-wired. The single
+biggest speed habit in every mature node tool (Blender, Unreal do exactly this): building
+becomes "pull, type two letters, enter" instead of "add, position, aim at a socket." The
+connection plugin already reports the drop and the socket's type (`Canvas.tsx:2110`, today
+just resetting the drag flag); the menu and auto-wire are the work. **Highest
+ergonomics-per-effort item in the series.**
+
+## 38 — The command palette (Ctrl+K)
+One box for everything: add a node, run a command (tidy, calculate, snapshot), open a
+document, jump to a node by name, toggle a setting — each showing its shortcut inline so
+it *teaches* the keyboard as you use it. Modern-software table stakes; the Add menu's
+fuzzy scoring already powers the node half. Also the accessibility spine (everything
+keyboard-reachable) and the natural host for future actions (lint, queries, reconcile,
+and eventually "build by asking", #7) without new chrome.
+
+## 39 — Scrubbing: drag any number, watch the model move
+Click-drag horizontally on any numeric literal to sweep its value with the graph updating
+live — the targeted-recompute path (2026-07) makes it cheap; it's the machinery a slider
+drag already uses. The classic "explorable" gesture: it turns a model into an instrument
+you *play* to build intuition, and it's the lightweight interactive cousin of what-if (#4).
+Modifier keys for step size; Escape reverts (the draft-commit contract extended to a drag).
+
+## 40 — Semantic zoom: the graph reads at every altitude
+Today, zoomed out = the same cards, smaller. The information should *change* with altitude:
+far out, a node becomes a colored block with a big label (name + value), groups become
+titled regions, cables thicken into flows; closer in, detail returns. The HTML-canvas
+renderer's mip pyramid already handles *image* sharpness per zoom (`htmlCanvasRenderer.ts`
+reports LOD as a stat) — this swaps in a *simpler card* at low detail rather than a smaller
+picture of the full one. The payoff: a 300-node model reads as a map from orbit, which is
+how you present one to a human. The direct answer to the "spaghetti" objection.
+
+## 41 — Conditional formatting for tables
+Data bars, color scales, threshold icons in frame views (popup grid + column chips),
+driven by rules or by an expectation's pass/fail (#12). Straight Excel parity (one of its
+most-used features, currently absent) *and* the perception layer for big frames: a 50k-row
+table you can't read becomes a heat pattern you can. Respects the design system's
+quiet-accent rule (fills within the grid cells, not decorative chrome).
+
+## 42 — The history scrubber
+Undo exists; *seeing* is better. A timeline strip you drag to slide the document back and
+forth through this session's states, watching the canvas change, then release to land (or
+Escape back to now). Turns "wait, what did I just break?" into a five-second visual answer
+instead of blind Ctrl+Z roulette. Rides the existing history plugin; snapshots (#6) stay
+the *cross-session* value history — this is the *within-session* structural one.
+
+**Round 6 order:** #37 first (changes every minute of building), #38 second (a home for
+everything else), then #39/#41 (the two "the model becomes visible" gestures), #40 when
+the canvas renderer is next touched, #42 opportunistically.
+
+---
+---
+
+# Round 7 — exact numbers, and the file that travels alone
+
+Two seams. **Exactness:** a calculation tool's numbers should be *right*, and two classes
+of numeric wrongness remain — floating-point money, and models never probed beyond
+happy-path inputs. **The traveling file:** several features assume a *person* receives the
+model; these let the file travel without Solenoid installed, without the author present,
+and at library scale.
+
+## 43 — Money mode: exact decimal arithmetic
+`0.1 + 0.2 ≠ 0.3` in floating point, and every accountant has met the spreadsheet where
+the pennies don't foot. A per-document (or per-unit: anything tagged `$`) **decimal mode**,
+with an explicit **rounding policy** (half-up vs banker's — an accounting requirement,
+currently an accident of the CPU). Polars has a decimal dtype (not compiled in — the same
+one-flag story as Parquet); the JS side needs a decimal path for scalar money math, which
+is the real cost. Scope it honestly: money first, not general arbitrary precision. One
+sentence: **"the spreadsheet where the cents always foot."**
+
+## 44 — Model fuzzing: property-based testing for graphs
+Golden tests check inputs you thought of; fuzzing checks the ones you didn't. Because every
+input socket is *typed* (and ranged, once slots/expectations declare bounds), Solenoid can
+**generate hundreds of valid-shaped inputs automatically** and hunt for what breaks —
+errors, NaN/Infinity leaks, `#SHAPE!` explosions, outputs that violate an expectation.
+"Probe my model" as a button. This is property-based testing (QuickCheck), which
+transformed software correctness, applied to models — possible *only* because the graph is
+pure and typed, and unheard-of in the spreadsheet world. Findings land in the Problems
+panel (#30).
+
+## 45 — Tornado ranking: which inputs actually matter
+One click on an output: Solenoid perturbs each upstream input (±10% or its declared range),
+ranks them by impact, and draws the classic **tornado chart** — "your answer is 80% driven
+by these two assumptions; the other twelve are noise." The universal first question about
+any model, today answered by hand-built sensitivity tables. Rides the run-the-graph-N-times
+machinery of what-if (#4); the Sensitivity node is its seed, generalized to *automatic,
+all-inputs, ranked.*
+
+## 46 — Sealed models: tamper-evident sign-off
+Hash the canonical form of the document (Bet 2's stable text form is the right input) and
+let a reviewer **seal** it: "reviewed by K, 2026-07-02, hash `ab12…`." A later edit visibly
+breaks the seal — it doesn't *prevent* edits, it makes them *evident*, which is what
+governance actually requires. Cheap once the canonical form exists, and it completes the
+review story (#14) + trust badge (strategy #6): *tested, validated, reviewed — and sealed.*
+
+## 47 — Static HTML export: share without a server
+"Export as webpage" → **one self-contained `.html` file**: the report view (#13), key
+charts, pinned values, an image of the canvas — frozen at export time, viewable by anyone
+with a browser, hosted nowhere or anywhere (email it, drop it in Slack, put it on an
+intranet). The local-first answer to "just send me something I can open" — sharing as an
+*artifact*, not a service — and the zero-infrastructure cousin of publish (#2). (The
+interactive published form stays a separate, later thing; this is deliberately frozen.)
+
+## 48 — The library layer: your documents as a fleet
+Everything so far treats one document. At 30 documents, new questions appear that nothing
+answers: *which docs use this CSV / this node type / this unit? Which have errors right
+now? Which haven't recalculated since their source changed?* A library view: cross-document
+search (the #31 query engine pointed at all docs — they already live in one store) and a
+health dashboard (per doc: error count, last calculated, size, seal/badge state). Also the
+natural home for linked-graph management (strategy #4) when it lands, and for batch
+operations (run-all via headless #10, revalidate-all via #12/#29, made cheap by the
+persistent cache #23).
+
+## 49 — The session journal: the model's changelog writes itself
+The history plugin already knows everything that happened; distill it. At session end (or
+on demand), a dated, human-readable digest — "changed FX assumption 1.08→1.11; added a
+Reconcile branch; renamed 3 nodes" — attached to the document. The provenance story at
+*session* granularity: the memory-jogger for future-you, the raw material a review (#14) or
+a commit message wants. Pairs with NL narration (#7) for prose polish, but the mechanical
+version is valuable on its own.
+
+**Round 7 order:** #45 and #44 ride the what-if/typed-graph machinery (do with #4); #47 and
+#49 are small and immediately shareable; #43 (money) is a real numeric-substrate project;
+#46 waits on the canonical form (Bet 2); #48 is the org-scale hub the next round builds on.
+
+---
+---
+
+# Round 8 — telling the story, and the estate
+
+Last planned seam(s): **presentation** (a model is almost always shown to more people than
+built it — that audience is underserved by an editing canvas) and **the estate** (a person
+or team accumulates *dozens* of models, and today they're loose files with no shared
+definitions, no overview, no relationships). Plus the last two authoring conveniences and
+one salvaged idea. Verified absent first.
+
+## 50 — Auto-documentation: the graph explains itself in prose
+Generate a readable description of a graph (or selection): "Takes 3 inputs (loan amount,
+rate, term), computes a monthly payment via an amortization formula, outputs a schedule and
+total interest." The narrate-a-number idea (#7) lifted to *narrate-a-model* — a walk over
+structure + the catalog's node descriptions, rendered as prose (templated locally; no cloud
+for the basic version). Feeds the report projection (#13), guided seeds (#36), the
+governance docs (strategy #3), and MCP (#35 — an agent asking "what is this?"). The cheapest
+path to a model that documents itself.
+
+## 51 — Presenter mode: saved views you step through like slides
+Explaining a model live (to a client, a class, a board) today means awkwardly panning an
+editing canvas. Saved **views** — named camera position + zoom + highlighted region — that
+you step through: "inputs → core calc → result", each a smooth camera move with the rest
+dimmed. It's isolate + pins + the load-reveal's camera choreography, repurposed from
+*loading* to *presenting*. The report projection (#13) is the document face; this is the
+*canvas* face for a live walkthrough — and it makes the graph itself demo-able instead of
+something you apologize for on a call.
+
+## 52 — Branded output: the deliverable looks like theirs, not ours
+The moment outputs are shared (reports #13, forms #2, static HTML #47), they carry
+Solenoid's look, not the user's. Document-level theming for the *output* surfaces only —
+logo, color, font on reports and published artifacts (never the editing canvas, which keeps
+the tuned design system). Small, but it's the line between "a tool's output" and "my
+deliverable", and it directly serves the consultant/analyst audience the strategy docs
+flagged. The per-doc palette already persists; this scopes a brand override to the
+presentation projections.
+
+## 53 — Shared definitions: define once, use everywhere
+The same constants and mini-models get re-created in every document — the discount rate,
+the fiscal calendar, the region→territory map, the standard unit set — and they drift
+("which rate did *that* model use?"). A **shared library** a document references: canonical
+constants, named mappings, reusable subgraphs (#5), unit definitions. Update the rate once;
+every referencing model recomputes correctly (and, with snapshots #6, can pin "as of"). The
+DRY principle for an analytics estate — linked graphs (strategy #4) pointed at a designated
+"definitions" document, plus the schema contract (Bet 3) so a reference is typed and a break
+is loud.
+
+## 54 — Model index: an overview of everything you've built
+Past a dozen documents there's no map — no "what models do I have, what do they depend on,
+which touch this source, which are unreviewed." This is exactly the **model inventory**
+governance regimes require and firms build by hand in a tracking spreadsheet (irony noted).
+A home view: every document with metadata Solenoid already knows (inputs/outputs, sources
+touched, last edited), its health (trust badge #6) and review state (#14), and — with
+linked graphs (strategy #4) — a **dependency map across documents** ("if the FX-rates model
+changes, these 6 are affected"). The estate as a graph of graphs; the literal deliverable
+the governance vertical sells; the home for the fleet operations in #48.
+
+## 55 — Templates, structured: the whole-model sharing economy
+Seeds (strategy #1) are *our* examples; there's no path for a user to save "my
+project-costing model" as a reusable, parameterized template. Promote any document to a
+**template**: slots (#27) mark where data plugs in, synthetic data (#26) fills them for
+preview, an auto-drafted description (#50) and guided steps (#36) explain it. Personal →
+team → (someday) public gallery. The subgraph/marketplace idea (#5) is the *component*
+economy; this is the *whole-model* economy — both on the same seed+slot+schema machinery.
+
+## 56 — The commission engine (salvaged): "why is my number this?"
+*(Rescued from an earlier orphaned Round-3 draft — a concrete vertical worth keeping.)*
+Sales compensation runs through horrifying spreadsheets one analyst maintains and no rep
+trusts; every "why is my commission this?" is an argument nobody can resolve because the
+calc is opaque and unauditable. It's the Round-3 pattern (business-critical, too-fluid-for-
+code logic) with a twist: the payout is a **provenance** story per rep. A comp plan as a
+graph — tiers, accelerators, clawbacks as nodes — gives every rep a traceable "here's
+exactly how your number was built" (Bet 4), the plan owner what-if on next quarter's tiers
+(#4), and finance an auditable, snapshot-versioned plan of record (#6). Same enabling
+pieces as the rules engine (Round 3 #18) + provenance; a sharp, universally-hated wound.
+
+## 57 — Smart paste + multi-node operations
+Two authoring conveniences. (a) Paste clipboard tab/comma data *anywhere* on canvas → a
+Frame Input pre-filled (the "just paste the damn table" path Excel users reflexively
+expect; CSV parsing already exists to reuse). (b) **Operations over a selection** —
+align/distribute (visual tidiness short of full Tidy), extract-to-group, wrap-in-subgraph
+(#5's authoring gesture), collapse-these — the graph equivalent of a shape-editing toolbar,
+exposing operations the group/collapse/selection primitives already support.
+
+**Round 8 order:** #50 (auto-doc — feeds four other things), #57 (cheap daily convenience),
+#51/#52 (presentation, when the report/publish work is live); the estate arc #53→#54→#55
+is gated on linked graphs (strategy #4) + schema (Bet 3) and is what the governance vertical
+actually *sells*, so it's the commercial spine even though it's furthest out; #56 whenever
+the sales-comp wound is the one worth demoing.
+
+---
+
+## Seam map — the whole territory in one place
+
+Eight rounds, one lens. Every item is one of two moves — *make meaning explicit* or *make
+computation inspectable* — applied to a different face of the product:
+
+- **What a value is** — R4 (#20 dimensions, #21 uncertainty), R7 (#43 exact money)
+- **What the graph computes** — R1 (verbs, simulation, what-if), R4 (#22 temporal)
+- **How compute behaves** — R4 (#23 cache, #24 sketch), R5 substrate, R7 (#44 fuzzing,
+  #45 tornado)
+- **How you build it** — R6 (#37 quick-wire, #38 palette, #39 scrub), R8 (#57 paste/multi)
+- **How you read it** — R5 (#29 lint, #30 problems, #31 where-used), R6 (#40 semantic zoom,
+  #41 conditional format, #42 history scrub), R8 (#50 auto-doc)
+- **How data gets in/out** — R2 (#9 sinks), R5 (#33 PDF, #34 Parquet), R7 (#47 static HTML)
+- **How it reaches people** — R2 (#2 publish, #13 report), R3 (verticals), R7 (#46 sealed),
+  R8 (#51 presenter, #52 brand)
+- **How agents reach it** — R5 (#35 MCP), R2/R3 (#19 AI cage)
+- **How it scales across many** — R7 (#48 library), R8 (#53 definitions, #54 index, #55
+  templates), strategy #4 (linked graphs)
+
+The coherence check: if a proposed feature can't be phrased as one of those two moves, it's
+probably in the out-of-scope pile.
+
+---
+
 ## Appendix — the "recreate and undercut" demo target: Alteryx Designer
 
 Asked directly (2026-07-02): *which existing software could Solenoid recreate as a
@@ -1242,87 +1493,14 @@ five-figure price tag.
 
 ---
 
-The meta-pattern across all four rounds: **so much of software is secretly a typed,
+The meta-pattern across every round: **so much of software is secretly a typed,
 inspectable graph of computations that somebody had to build by hand, badly, because no
 tool *was* one.** Engineering calcs, cost roll-ups, decision models, rules engines,
-AI analysis — each is a market full of people re-implementing a worse version of what
-Solenoid is natively. The good-to-great arc isn't adding features until it's a better
-spreadsheet; it's realizing the graph is a general substrate and pointing it, one
-credible vertical at a time, at the people already suffering without it. Start where the
-architecture already leans (units → engineering, Cube → costing, Decision Matrix →
+commission plans, AI analysis — each is a market full of people re-implementing a worse
+version of what Solenoid is natively. The good-to-great arc isn't adding features until
+it's a better spreadsheet; it's realizing the graph is a general substrate and pointing it,
+one credible vertical at a time, at the people already suffering without it. Start where
+the architecture already leans (units → engineering, Cube → costing, Decision Matrix →
 decisions), earn the right to the harder ones (rules engine, AI cage) with the trust
 machinery, and let the identity grow from "spreadsheet, done right" into "**the
 inspectable computation layer**" underneath a dozen jobs people currently hate doing.
-
----
----
-
-# Round 3 — what people hand-roll today that Solenoid could scaffold better
-
-A different question this round. Not "what feature should the app grow" but: **out in
-the world, what do teams badly want, build themselves out of Excel + scripts + duct
-tape, and never get right — where Solenoid's architecture is already closer than what
-they're using?** These are less "features" than **jobs Solenoid could take**. Each one
-names the hand-rolled thing it replaces, why the current way fails, and which existing
-Solenoid pieces (verified in the code) do the heavy lifting.
-
-The pattern behind all seven: there is a huge class of business logic that is **too
-important for a spreadsheet but too fluid for software**. It lives in Excel because the
-person who owns it can't write code, and it breaks because Excel can't be trusted or
-run by machines. Solenoid — a *trustable, runnable* spreadsheet — sits exactly in that
-gap. Nobody else does.
-
----
-
-## 15 — The rules engine business people can actually edit
-
-**The hand-rolled thing:** every company has calculation rules that change often and
-matter a lot — discount policies, eligibility rules, risk scores, fee schedules. Today
-they live in one of two bad places: in *code* (so every change is a ticket to
-engineering, a translation meeting, and a two-week wait) or in *a spreadsheet someone
-emails around* (so nobody knows which version production is actually following).
-"Rules engine" software exists (Drools and friends) and business users can't touch it.
-
-**The Solenoid version:** the rules ARE a graph. The person who owns the policy edits
-nodes; engineering runs the *same file* in production through the headless runner
-(#10). No translation step, no drift between "the spreadsheet that describes the rule"
-and "the code that implements it" — they are the same artifact. The trust stack is what
-makes this safe rather than terrifying: typed inputs/outputs (a bad edit fails loudly
-before it ships), pinned example checks (the rule still gives the right answer for the
-known cases), review sign-off (#14), and snapshots (what did the rule say *last* March,
-when this customer signed up?).
-
-**Already in the codebase:** the pure engine, typed sockets, tagged errors. **Needs:**
-headless (#10), golden tests, review (#14).
-**First customer to imagine:** the pricing owner at any B2B company.
-
----
-
-## 16 — Engineering calculation sheets (the job Mathcad is dropping)
-
-**The hand-rolled thing:** structural, mechanical, process, and electrical engineers do
-design calculations — beam sizing, pressure drops, load ratings — in Excel or in
-Mathcad, a decades-old tool that is expensive, dying slowly, and still beloved for one
-reason: it understands **units**. Excel does not, and unit mistakes in engineering are
-the famous catastrophic ones. These calc sheets also have to be *shown to someone* — a
-reviewing engineer, a permit office — as a readable document.
-
-**The Solenoid version:** this is the eeriest fit in the whole list, because the rare
-ingredient **already exists**: Solenoid has a real unit system (`unitFlow.ts`, the
-Convert node, `$`/`kg`/`%` as first-class), which almost no modern tool bothered to
-build. Add the units-as-types upgrade from the directions doc (meters + seconds =
-error *before* it runs) and the report projection (#13 — the calc sheet as a clean,
-live, printable document with the assumptions and the math visible), and Solenoid is a
-credible Mathcad successor with a modern engine underneath.
-
-**Already in the codebase:** unit flow + Convert, the math/formula layer, KaTeX (real
-equation rendering!), Notes. **Needs:** units-as-types, report projection (#13).
-**First customer to imagine:** a structural engineer who has to hand a stamped calc
-package to a reviewer.
-
----
-
-## 17 — The commission engine: "why is my number this?"
-
-**The hand-rolled thing:** sales compensation. Every company with a sales team runs
-comp plans through horrifying spreadsheets maintained by one ter
