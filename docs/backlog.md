@@ -25,7 +25,29 @@ collision avoidance, chrome customization). This backlog is the fine-grained lis
 Each item below was discussed individually with the author and the DECISION is settled;
 the build happens after the whole list is walked. Context: v1.0-audit.md "Still open".
 
-**WALKTHROUGH BOOKMARK (paused 2026-07-02, author stepped away).** Everything below this
+**2.0 FEATURE-WALK BOOKMARK (paused 2026-07-02, author stepped away mid-walk).**
+Goal: walk EVERY feature/scope suggestion one-by-one (author rules in/out, agent owns
+ordering), then run the design deep-dives, then author the `docs/v2.0/` plan-doc set
+("nothing left to question") for massive parallel agent implementation. No version-cut
+ceremony — author explicitly doesn't care about 2.0 boundaries. Verdicts are recorded
+INLINE in the source docs (`future-directions.md`, `strategy-threads.md`,
+`scope-features.md`).
+Done so far: Bet 1 IN (previews are a hard invariant) · Bet 3 IN · Bet 2 IN (no
+export-first phase — text format lands whole; public positioning = Obsidian-style
+file-over-app, NEVER advertise AI) · Bet 4 IN (two tiers) · units-as-types IN and
+EXPANDED to full dimensional algebra (`#UNIT!`, AST dimensional interpretation for
+Expression/LAMBDA) · golden tests PARKED (revisit end of walk) · data-drafts-its-own-
+graph PARKED (author thinking).
+NEXT when resuming: smaller swap 4 (Cube identity — positioning, fold into strategy),
+then scope-features #1–63 in numeric order (folding in strategy threads #1–#7 and the
+unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
+design deep-dive sessions (order: Bet 2 text format → units/FC function model →
+#20 dimensions → engine execution contract (Bet 1 × #23 × #24 × calc mode) → #1
+simulation → #5 composites → #9 sinks + #3 scheduling → #43 money → #21 uncertain →
+#8 transpiler → linked graphs → #13 report layout), then plan-doc authoring.
+
+**1.0-TAIL WALKTHROUGH BOOKMARK (2026-07-02 — COMPLETE; build pass awaits explicit
+go, see item 6 below).** Everything below this
 section is decision-recorded. The QUEUE when resuming, in order:
 1. **Locale number input — DECIDED 2026-07-02: force US-style everywhere.** Author: "I
    don't respect comma decimals." All value display uses period decimals + comma
