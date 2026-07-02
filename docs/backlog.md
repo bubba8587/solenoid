@@ -176,6 +176,19 @@ the build happens after the whole list is walked. Context: v1.0-audit.md "Still 
   (IFERROR/Fill upstream). Frame Distinct stays by-code (relational identity, D12
   family). Add to D12: second instance of the line — list ops answer to the
   spreadsheet model, relational verbs to the relational model.
+- [ ] **Seed-writeback scaffolding: DELETE (author confirmed).** `devRebuildSeeds.ts` +
+  the `main.tsx` dynamic import + vite.config.ts `seedWritebackPlugin` — agent-era
+  one-time tool, self-flagged for removal, seeds are saved; the author regenerates
+  examples by building graphs in-app.
+- [ ] **Quality tail — PENDING per-item walkthrough (do NOT build unconfirmed):**
+  delete dead `SliderInput.tsx` **(CONFIRMED 2026-07-02 — the widget file, not the
+  Slider node)**; devDeps **(CONFIRMED 2026-07-02: drop `msdf-bmfont-xml` +
+  `@types/styled-components@5` (tsc-verify); KEEP `puppeteer-core` — author sometimes
+  overrides the no-puppeteer rule)**; break the latent
+  `persistence ↔ documentStore ↔ seeds` import cycle via `documentStoreCore.ts`; gate
+  `perfScaling.test.ts` behind an env var; vitest `include` → `*.test.{ts,tsx}`;
+  `noUncheckedIndexedAccess` considered-and-declined. Each needs an individual author
+  yes — being walked one at a time in the 2026-07-02 session.
 - [ ] **Minimap: z-order bug** — some nodes render OVER the minimap (author report
   2026-07-02). Investigate the stacking context (area-plane z vs the minimap plugin's
   layer).
