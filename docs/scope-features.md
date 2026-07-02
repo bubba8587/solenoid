@@ -197,6 +197,18 @@ a `#CONV!` convergence error for the finance nodes — reuse that vocabulary).
 
 ## 5 — Subgraphs as shareable, typed functions → a reuse ecosystem
 
+**VERDICT (author, 2026-07-02): OUT as an ecosystem — subgraphs are part of the main
+file; they're only addable via packs.** The scope jump this entry pitches (user-shared
+building blocks, export/import, registry — tool → platform) is ruled out. What
+survives is the CONTAINER: a document-local subgraph/composite (collapse a selection
+into a node, typed boundary) — required anyway as the shell for the five run-mode
+hooks (#1/#4 addendum) and the Expression cap's escape hatch. Distribution of
+reusable blocks happens ONLY through the pack mechanism (pack-architecture.md): a
+pack can ship subgraph-based nodes, a user's subgraph stays in their document. No
+user-facing sharing layer, no block-versioning problem (packs own their own story).
+The #5 design session scopes to: the local container + typed boundary + the five run
+modes.
+
 **Scope today:** every graph is built from scratch. There's groundwork for "packs" and a
 composite node in the design docs, but no reusable user-defined building block.
 
