@@ -632,6 +632,24 @@ registerInternal("TODAY", () => {
   return jsDateToSerial(new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate())));
 });
 registerInternal("NOW", () => jsDateToSerial(new Date()));
+// TEXT: FX date-formats JS Date OBJECTS, not our serials — TEXT(46096,
+// "yyyy-mm-dd") returned "46096" (audit finding 29). When the format code is
+// date/time-shaped, convert the serial to a LOCAL-wall-clock Date first (FX
+// formats via local getters; a UTC-based Date would shift a day east of UTC).
+// Numeric codes ("0.00", "#,##0") pass straight through to FX.
+registerInternal("TEXT", (value, fmt) => {
+  const fxText = (FX as unknown as { TEXT: (...a: unknown[]) => unknown }).TEXT;
+  const f = toStr(fmt);
+  const bare = f.replace(/"[^"]*"/g, ""); // quoted literals aren't format tokens
+  const dateish = /[ymdhs]/i.test(bare) && !/[#0?]/.test(bare);
+  const n = toNum(value);
+  if (dateish && !Number.isNaN(n)) {
+    const d = serialToJsDate(n);
+    const local = new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), d.getUTCHours(), d.getUTCMinutes(), d.getUTCSeconds());
+    return fxText(local, f);
+  }
+  return fxText(value, f);
+});
 
 // ── Solenoid-native (no Formula.js equivalent) — the registry ADDS these ──
 // Cover the string + logical output types and show the registry isn't limited to

@@ -82,9 +82,9 @@ describe("Expression — value-polymorphic results", () => {
     expect(r[2]).toBe(3);
   });
 
-  it("collapses per-element booleans to null in a LIST (logical type pending, P7)", () => {
+  it("passes per-element booleans through in a LIST (P7 logical — audit finding 27)", () => {
     const n = new ExpressionNode({ expr: "x > 2" });
-    expect(n.data({ x: [[1, 3, 5]] }).result).toEqual([null, null, null]);
+    expect(n.data({ x: [[1, 3, 5]] }).result).toEqual([false, true, true]);
   });
 
   it("does not tag a normal finite scalar (strict-superset)", () => {
@@ -92,10 +92,11 @@ describe("Expression — value-polymorphic results", () => {
     expect(n.data({ a: [6], b: [2] }).result).toBe(3);
   });
 
-  it("still collapses a boolean comparison to the empty sentinel", () => {
-    // Comparisons return a JS boolean; the numeric guard nulls it, as before.
+  it("passes a scalar boolean comparison through (audit finding 27)", () => {
+    // Comparisons return a real logical now — display renders TRUE/FALSE and
+    // the logical↔number bridge covers numeric consumers.
     const n = new ExpressionNode({ expr: "a > b" });
-    expect(n.data({ a: [5], b: [3] }).result).toBeNull();
+    expect(n.data({ a: [5], b: [3] }).result).toBe(true);
   });
 
   it("swaps the output socket to match the declared result type", () => {

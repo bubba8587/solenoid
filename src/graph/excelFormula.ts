@@ -456,27 +456,59 @@ function broadcast2(l: unknown, r: unknown, f: (a: unknown, b: unknown) => unkno
   return la ? l.map((x) => f(x, r)) : (r as unknown[]).map((x) => f(l, x));
 }
 
-// Scalar operator semantics — identical to the `js()` codegen (^ → pow, & →
-// string concat, = / <> → strict (in)equality returning a boolean, the rest the
-// raw JS operator). The `as number` casts are compile-time only; at runtime `+`
-// on strings concatenates exactly as the codegen does.
+// Scalar operator semantics — the SETTLED P6 operator-parity table (author call,
+// 2026-06-22, dev-notes; shipped unimplemented until the v1.0 audit, finding 26).
+// Type-honest; match Excel where sane, diverge where Excel is incoherent:
+//  • a per-cell error propagates UNMORPHED (broadcast elements reach here raw);
+//  • `null` (missing) propagates through arithmetic, comparison and `&`
+//    (the SQL/pandas/Polars model — null+5 is null, not 5);
+//  • logicals ride the number bridge in numeric contexts (TRUE = 1);
+//  • `=` / `<>` are type-strict with case-INSENSITIVE text (EXACT is the
+//    case-sensitive escape hatch), so "a" = "A" is TRUE and 5 = "5" is FALSE;
+//  • ordering (< > <= >=): numbers numerically, text by dictionary collation,
+//    CROSS-TYPE → #TYPE! (no invented number<text<logical order, no NaN-false);
+//  • `&` renders logicals TRUE/FALSE (not JS "true").
+// This intentionally DIVERGES from the dormant `js()` codegen (compileFormula),
+// which keeps raw-JS semantics; evalAst is the production path.
 function applyOp(op: string, a: unknown, b: unknown): unknown {
+  if (isErr(a)) return a;
+  if (isErr(b)) return b;
+  if (a === null || b === null) return null;
+  // The logical↔number bridge: booleans compute as 1/0 in numeric contexts.
+  const num = (v: unknown): unknown => (typeof v === "boolean" ? (v ? 1 : 0) : v);
   switch (op) {
-    case "+": return (a as number) + (b as number);
-    case "-": return (a as number) - (b as number);
-    case "*": return (a as number) * (b as number);
+    case "+": return (num(a) as number) + (num(b) as number);
+    case "-": return (num(a) as number) - (num(b) as number);
+    case "*": return (num(a) as number) * (num(b) as number);
     // Division by zero is a real error, not Infinity (which renders as a blank).
     // Mint #DIV/0! here; it propagates as a scalar and, inside a list, is cleaned
     // to NaN at the boundary — so the scalar-level error invariant holds.
-    case "/": return b === 0 && typeof a === "number" ? solError("#DIV/0!", "Division by zero") : (a as number) / (b as number);
-    case "^": return Math.pow(a as number, b as number);
-    case "&": return String(a) + String(b);
-    case "=": return a === b;
-    case "<>": return a !== b;
-    case "<": return (a as number) < (b as number);
-    case ">": return (a as number) > (b as number);
-    case "<=": return (a as number) <= (b as number);
-    case ">=": return (a as number) >= (b as number);
+    case "/": return num(b) === 0 && typeof num(a) === "number" ? solError("#DIV/0!", "Division by zero") : (num(a) as number) / (num(b) as number);
+    case "^": return Math.pow(num(a) as number, num(b) as number);
+    case "&": {
+      const s = (v: unknown): string => (typeof v === "boolean" ? (v ? "TRUE" : "FALSE") : String(v));
+      return s(a) + s(b);
+    }
+    case "=":
+    case "<>": {
+      const eq = typeof a === "string" && typeof b === "string"
+        ? a.toLowerCase() === b.toLowerCase()
+        : num(a) === num(b);
+      return op === "=" ? eq : !eq;
+    }
+    case "<": case ">": case "<=": case ">=": {
+      const x = num(a), y = num(b);
+      let cmp: number;
+      if (typeof x === "number" && typeof y === "number") cmp = x < y ? -1 : x > y ? 1 : 0;
+      else if (typeof x === "string" && typeof y === "string") cmp = x.localeCompare(y);
+      else return solError("#TYPE!", "Cannot order values of different types — Cast one side first");
+      switch (op) {
+        case "<": return cmp < 0;
+        case ">": return cmp > 0;
+        case "<=": return cmp <= 0;
+        default: return cmp >= 0;
+      }
+    }
     default: return NaN;
   }
 }
