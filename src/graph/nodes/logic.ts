@@ -1,7 +1,7 @@
 import { ClassicPreset } from "rete";
 import { numberSocket } from "../sockets";
 import { numListIn, logicalComboOut, logicalComboIn, logicalIn, numIn, anyIn, anyOut } from "./shared";
-import { isSolError, isNaError, type SolError } from "../errorValue";
+import { isSolError, isNaError, solError, type SolError } from "../errorValue";
 import { kleeneAnd, kleeneOr, kleeneNot, isMissing, type Tri } from "../valueKinds";
 import { isFrameValue, frameRowCount, type FrameValue } from "../frame";
 
@@ -426,17 +426,22 @@ export class IsTestNode extends ClassicPreset.Node {
 
 export class NaNode extends ClassicPreset.Node {
   label: string;
+  cachedResult: SolError;
   width = 140;
   height = 80;
 
   constructor(init?: { label?: string }) {
     super("Na");
     this.label = init?.label ?? "NA";
+    this.cachedResult = solError("#N/A", "Not available (NA)");
     this.addOutput("result", new ClassicPreset.Output(numberSocket, "N/A"));
   }
 
   data() {
-    return { result: null };
+    // The TAGGED #N/A (Excel =NA()): the catalog promises "catch it with
+    // IFERROR / IFNA", which only works for a SolError — a bare null/NaN reads
+    // FALSE to ISNA and passes through IFNA untouched (audit finding 13).
+    return { result: this.cachedResult };
   }
 }
 

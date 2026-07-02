@@ -10,7 +10,7 @@ import {
   ClampNode, BooleanOpNode, NotNode, IfNode, ConduitNode, CastNode, ConstantNode, MRoundNode,
   ListInputNode, AggregateNode, RangeNode, ListLengthNode, ListIndexNode,
   SortNode, ReverseNode, SliceNode, FilterNode, FillNode, XLookupNode,
-  GcdNode, IFErrorNode, RandBetweenNode, RoundNNode, ConvertNode,
+  GcdNode, IFErrorNode, NaNode, RandBetweenNode, RoundNNode, ConvertNode,
   UniqueNode, TakeNode, DropNode, VStackNode, CumulativeNode, DiffNode,
   ArgMinMaxNode, ContainsNode, NthValueNode, PercentileNode, QuartileNode,
   PercentrankNode, RankNode, CorrelNode, CombinatoricsNode, TwoInputMathNode,
@@ -181,7 +181,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
       { type: "lambda-make",   label: "LAMBDA",      description: "Define a reusable formula as a value   (Excel: =LAMBDA). Parameters go in the λ(…) row; other variables become captured inputs. Wire into MAP / BYROW / REDUCE / MAKEARRAY — parameters bind positionally. Like Expression, the formula evaluates via Formula.js (standard Excel functions), separate from the visual nodes.", accent: NODE_KIND_ACCENTS.lambda, create: () => new LambdaNode(), parity: false },
       { type: "constant",      label: "Constant",    description: "Predefined value: π, e, φ, ∞, 0, 1, true, false …", create: () => new ConstantNode() },
       { type: "randbetween",   label: "RAND",        description: "Random float in [Bottom, Top]. Defaults to 0–1 (like Excel RAND()). Wire Bottom/Top for a custom range.", create: () => new RandBetweenNode(), parity: false },
-      { type: "na",            label: "NA",          description: "Outputs #N/A — propagates through calculations like Excel. Catch it with IFERROR / IFNA.", create: () => new ConstantNode({ op: "na" }) },
+      { type: "na",            label: "NA",          description: "Outputs #N/A — propagates through calculations like Excel. Catch it with IFERROR / IFNA.", create: () => new NaNode() },
       {
         type: "category", label: "Connections", description: "Live external data — load from a URL, a local CSV, or a web page. Stores the source (not the data); refresh to re-pull.",
         children: [

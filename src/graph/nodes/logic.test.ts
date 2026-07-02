@@ -262,7 +262,8 @@ describe("SwitchNode — fixed expr/default + extensible when/then pairs", () =>
   });
 });
 
-import { IFErrorNode } from "./logic";
+import { IFErrorNode, NaNode } from "./logic";
+import { isSolError } from "../errorValue";
 
 describe("value-selectors carry ANY value through (logical conditions, text values)", () => {
   it("IFS: a REAL boolean condition picks its paired text value", () => {
@@ -285,5 +286,18 @@ describe("value-selectors carry ANY value through (logical conditions, text valu
     const n = new IFErrorNode({ mode: "iferror" });
     expect(n.data({ value: [solError("#DIV/0!", "")], fallback: ["safe"] }).result).toBe("safe");
     expect(n.data({ value: ["hello"], fallback: ["safe"] }).result).toBe("hello");
+  });
+});
+
+describe("NA node emits the tagged #N/A (audit finding 13)", () => {
+  it("outputs a SolError with code #N/A that ISNA/IFNA can catch", () => {
+    const out = new NaNode().data().result;
+    if (!isSolError(out)) throw new Error("expected SolError");
+    expect(out.code).toBe("#N/A");
+    // the advertised catch actually works
+    const isna = new IsTestNode({ op: "isna" }).data({ value: [out] }).result;
+    expect(isna).toBe(true);
+    const caught = new IFErrorNode({ mode: "ifna" }).data({ value: [out], fallback: [42] }).result;
+    expect(caught).toBe(42);
   });
 });
