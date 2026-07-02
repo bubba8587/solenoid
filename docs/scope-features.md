@@ -18,6 +18,13 @@ the DAG already is, and let people use it that way."
 
 ## 1 — Simulation mode: feedback loops + time (the boldest jump)
 
+**VERDICT (author, 2026-07-02): IN — as a hook onto subgraphs (#5), not a standalone
+container.** Comes after/alongside subgraphs: the Simulate affordance is a mode/capability
+of the ONE subgraph container, so subgraphs keep a single consistent UI/UX (no second
+container kind to learn). Sequencing: subgraphs (#5) first or together; the #1 design
+deep-dive folds into / follows the #5 composites session. UI affordances expected easy
+once the subgraph shell exists (play/step-count on the container).
+
 **Scope today:** a graph computes **one** state, once. A cycle in the graph is an
 error (`#CIRC!` — the engine detects loops with Tarjan's algorithm and refuses them).
 
