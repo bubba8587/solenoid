@@ -120,6 +120,61 @@ bug against this decision) — the decision is sound; the implementation needs t
 **What would reverse it:** nothing; ISO stays a selectable style. This entry exists mainly
 so a future agent doesn't "helpfully" reintroduce Excel-1900 compatibility.
 
+### D10 — Excel parity means CURRENT Excel; superseded functions are eliminated on EVERY surface
+**When:** 2026-07-02 (the VLOOKUP relapse). **Where:** `node-coverage.md:33`, formula-layer
+redirect errors, this entry.
+**Why:** parity targets what Excel is today. Anything Excel itself deprecated or superseded
+(legacy CEILING sign rules, VLOOKUP/HLOOKUP/LOOKUP → XLOOKUP, MATCH → XMATCH) is disregarded
+entirely — we neither match it nor document divergence from it. Crucially, an elimination
+covers ALL surfaces: no node AND no formula implementation. A typed formula naming an
+eliminated function gets a terse `#NAME?` redirect (**"Use XLOOKUP"** — no longer, per the
+no-Captain-Obvious rule). INDEX stays (current Excel, never superseded).
+**Cost accepted:** a pasted-from-Excel formula containing VLOOKUP errors (with the fix in
+the message) instead of silently working.
+**What would reverse it:** a real `.xlsx` IMPORT feature — at that point auto-rewriting
+classic lookups to their modern forms beats erroring. Nothing else.
+**The relapse that prompted this:** the 2026-07-02 audit fix pass, hunting parity gaps,
+re-implemented VLOOKUP/HLOOKUP/LOOKUP/MATCH in the formula layer because the elimination
+was recorded only as a node-coverage parenthetical. Cross-surface rulings live HERE now.
+
+### D11 — Surface harmony: one computation, one answer — with ONE sanctioned divergence line
+**When:** 2026-07-02 (formalizing 2026-06-22's model). **Where:** the shared broadcasters
+(`shared.ts`, `excelFormula.ts`, `logic.ts`), backlog "Post-audit tails".
+**Why:** the same computation must answer the same whether built from nodes or typed as a
+formula — semantics live in SHARED helpers (broadcasters, `forAggregate`, the one
+filter-coercion spec), never re-derived per surface. The ONLY sanctioned formula-vs-node
+divergence is the **reduction vs element-wise null line**: reduction contexts skip nulls
+(formula AND/OR, the Aggregate family — Excel range semantics, SQL BOOL_AND); element-wise/
+expression contexts are Kleene/null-propagating (BooleanOp, Comparison, IF, operators — SQL
+WHERE). Both sides match their reference model; unifying either way breaks one.
+**Cost accepted:** `AND(list-with-null)` answers TRUE in a formula and null through
+element-wise nodes — principled, documented (BooleanOp catalog note), and not drift.
+**What would reverse it:** nothing at the line itself; any OTHER node-vs-formula
+disagreement is a bug against this decision.
+
+### D12 — Case sensitivity: comparisons match like Excel's `=`; keys are identity
+**When:** 2026-07-02 (the filter revisit). **Where:** P6 operator table, `frameVerbs.ts`,
+`engine.rs`, backlog "Post-audit tails".
+**Why:** every COMPARISON (the `=` operator, Comparison node, XLOOKUP/Frame Lookup match,
+frame Filter eq/neq/contains/startsWith/endsWith) is case-INsensitive — Excel's semantics,
+and the app's one text-equality rule (EXACT / a "Match case" toggle = the escape hatch).
+Every IDENTITY op (Join keys, Group By keys, Distinct) is case-SENSITIVE — keys are
+identity (databases/Polars/PQ); Excel PivotTable's silent case-merging destroys
+distinctions irrecoverably and is the thing we refuse.
+**Cost accepted:** "us"/"US" group separately until the user normalizes case explicitly;
+parity:false notes on the identity verbs.
+**What would reverse it:** nothing foreseeable; a per-verb case-fold OPTION on Group By/
+Join would be an addition inside this rule, not a reversal.
+
+### D13 — Cross-engine consistency outranks Excel-quirk parity
+**When:** 2026-07-02 (the `0^0` ruling). **Where:** this entry; pow item in backlog.
+**Why:** half the app's arithmetic runs in JS, half in Polars. When importing an Excel
+quirk would make the two engines disagree (Excel says `0^0` = #NUM!; JS/Python/R/Polars
+all say 1), the quirk loses — a JS-vs-Rust split manufactured for parity's sake is a worse
+bug than a documented deviation.
+**Cost accepted:** occasional parity:false notes where Excel is the odd one out.
+**What would reverse it:** nothing; this is an ordering of loyalties, not a feature.
+
 ---
 
 ## Structural risks (the threats register — distinct from bugs)
