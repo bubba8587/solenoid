@@ -44,9 +44,10 @@ NEXT when resuming: scope-features #1–63 in numeric order (folding in strategy
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
 #20 dimensions → engine execution contract (Bet 1 × #23 × #24 × calc mode) → #5
-composites (its session owns the shared container shell + ALL THREE run-mode hooks:
-#1 simulation, solver/goal-seek, data tables — ruled 2026-07-02) → #9 sinks + #3
-scheduling → #43 money → #21 uncertain →
+composites (document-local container ONLY — no sharing/ecosystem, packs are the sole
+distribution channel; the session owns the container shell + typed boundary + FIVE
+run-mode hooks: simulation, data tables, solver, scenarios, Monte Carlo — ruled
+2026-07-02) → #9 sinks + #3 scheduling → #43 money → #21 uncertain →
 #8 transpiler → linked graphs → #13 report layout), then plan-doc authoring.
 
 **1.0-TAIL WALKTHROUGH BOOKMARK (2026-07-02 — COMPLETE; build pass awaits explicit
