@@ -22,7 +22,23 @@ export function parseDateToSerial(s: string): number {
   const t = s.trim();
   if (!t) return NaN;
   const d = new Date(t);
-  return Number.isNaN(d.getTime()) ? NaN : jsDateToSerial(d);
+  if (Number.isNaN(d.getTime())) return NaN;
+  // Zone-less text must mean the same calendar date on every machine. new Date()
+  // reads ISO date-only forms ("2026-01-03") as UTC midnight but everything else
+  // ("01-Jan-2026", "Jan 3 2026", "2026-01-03T10:00") as LOCAL wall-clock, so a
+  // raw getTime()-based serial shifts with the machine's timezone (off-by-one day
+  // east of UTC, fractional serials everywhere else). Rebuild the wall-clock via
+  // Date.UTC from whichever getters match the parse interpretation; an explicit
+  // zone designator means an absolute instant, which is already TZ-independent.
+  // A zone designator only counts after a time component — a bare trailing
+  // "[+-]dddd" is otherwise indistinguishable from a "-2026" year.
+  const hasTime = /\d\s*:\s*\d/.test(t);
+  const hasZone = hasTime && /(?:Z|GMT|UTC|[+-]\d{2}:?\d{2})\s*$/i.test(t);
+  const isoDateOnly = /^[+-]?\d{4,6}-\d{2}(?:-\d{2})?$/.test(t);
+  const ms = hasZone || isoDateOnly
+    ? d.getTime()
+    : Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds(), d.getMilliseconds());
+  return ms / 86400000 + 25569;
 }
 
 // Excel weekend code → set of JS day indices (0=Sun … 6=Sat).
@@ -198,13 +214,30 @@ export class TimeValueNode extends ClassicPreset.Node {
   data(inputs: { text?: string[] }): { result: number | SolError | null } {
     const text = (inputs.text?.[0] ?? this.stringLiterals.text ?? "").trim();
     if (!text) { this.cachedResult = null; return { result: null }; }
-    const d = new Date(`1970-01-01T${text}`);
-    if (isNaN(d.getTime())) {
-      const err = solError("#VALUE!", `Cannot parse "${text}" as a time`);
-      this.cachedResult = err;
-      return { result: err };
+    // Parse the time text directly — routing it through `new Date("1970-01-01T…")`
+    // read the zone-less text as LOCAL time and then the getters as UTC, so
+    // TIMEVALUE("14:30") returned a different fraction on every machine.
+    const m = /^(\d{1,2}):(\d{1,2})(?::(\d{1,2}(?:\.\d+)?))?(?:\s*([AP])\.?M?\.?)?$/i.exec(text);
+    let result: number | SolError;
+    if (m) {
+      let h = Number(m[1]);
+      const min = Number(m[2]);
+      const sec = m[3] ? Number(m[3]) : 0;
+      const meridiem = m[4]?.toUpperCase();
+      const hourOk = meridiem ? h >= 1 && h <= 12 : h <= 23;
+      if (!hourOk || min > 59 || sec >= 60) {
+        result = solError("#VALUE!", `Cannot parse "${text}" as a time`);
+      } else {
+        if (meridiem) h = (h % 12) + (meridiem === "P" ? 12 : 0);
+        result = (h * 3600 + min * 60 + sec) / 86400;
+      }
+    } else {
+      // Excel TIMEVALUE also accepts a full datetime text and keeps the fraction.
+      const serial = parseDateToSerial(text);
+      result = Number.isNaN(serial)
+        ? solError("#VALUE!", `Cannot parse "${text}" as a time`)
+        : serial - Math.floor(serial);
     }
-    const result = (d.getUTCHours() * 3600 + d.getUTCMinutes() * 60 + d.getUTCSeconds()) / 86400;
     this.cachedResult = result;
     return { result };
   }
@@ -415,8 +448,11 @@ export class DateAddNode extends ClassicPreset.Node {
     const m = Math.floor(inputs.months?.[0] ?? this.literals.months ?? 0);
     const y  = d.getUTCFullYear();
     const mo = d.getUTCMonth() + m; // may overflow; Date.UTC handles it
+    // EDATE clamps to the target month's last day (Excel: Jan 31 + 1mo = Feb 28/29,
+    // never Mar 3 — an unclamped day rolls the Date over into the next month).
+    const lastDay = new Date(Date.UTC(y, mo + 1, 0)).getUTCDate();
     const serial = this.op === "edate"
-      ? jsDateToSerial(new Date(Date.UTC(y, mo, d.getUTCDate())))
+      ? jsDateToSerial(new Date(Date.UTC(y, mo, Math.min(d.getUTCDate(), lastDay))))
       : jsDateToSerial(new Date(Date.UTC(y, mo + 1, 0))); // day 0 = last day of month
     this.cachedResult = serial;
     return { result: serial };

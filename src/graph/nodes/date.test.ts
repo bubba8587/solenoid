@@ -1,5 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { DateIfNode, serialToJsDate, jsDateToSerial, type DateIfUnit } from "./date";
+import { describe, it, expect, afterEach } from "vitest";
+import { DateIfNode, DateAddNode, TimeValueNode, parseDateToSerial, serialToJsDate, jsDateToSerial, type DateIfUnit } from "./date";
+import { isSolError } from "../errorValue";
 
 // Dates flow through the graph as Excel-style serials (1900 system, where the
 // JS epoch is serial 25569). Build them the same way the date nodes do.
@@ -68,5 +69,107 @@ describe("DATEDIF", () => {
 
   it("start after end returns null", () => {
     expect(diff("D", ser(2024, 2, 1), ser(2024, 1, 1))).toBeNull();
+  });
+});
+
+describe("parseDateToSerial is timezone-independent (v1.0 audit P0-1)", () => {
+  // process.env.TZ takes effect on subsequently-created Dates on Linux, which is
+  // where the suite runs; each case must yield the SAME serial in every zone.
+  const originalTz = process.env.TZ;
+  afterEach(() => {
+    if (originalTz === undefined) delete process.env.TZ;
+    else process.env.TZ = originalTz;
+  });
+
+  const zones = ["UTC", "Australia/Sydney", "America/New_York", "Pacific/Kiritimati"];
+  const inEveryZone = (text: string) =>
+    zones.map((tz) => {
+      process.env.TZ = tz;
+      return parseDateToSerial(text);
+    });
+
+  it("the app's own default display format round-trips to an integer serial everywhere", () => {
+    const expected = jsDateToSerial(new Date(Date.UTC(2026, 0, 1)));
+    for (const serial of inEveryZone("01-Jan-2026")) expect(serial).toBe(expected);
+  });
+
+  it("US-style text gives an integer serial everywhere", () => {
+    const expected = jsDateToSerial(new Date(Date.UTC(2026, 0, 3)));
+    for (const serial of inEveryZone("Jan 3 2026")) expect(serial).toBe(expected);
+  });
+
+  it("ISO date-only stays correct (spec already parses it as UTC)", () => {
+    const expected = jsDateToSerial(new Date(Date.UTC(2026, 0, 3)));
+    for (const serial of inEveryZone("2026-01-03")) expect(serial).toBe(expected);
+  });
+
+  it("a zone-less datetime keeps its wall-clock time everywhere", () => {
+    const expected = jsDateToSerial(new Date(Date.UTC(2026, 0, 3, 10, 30)));
+    for (const serial of inEveryZone("2026-01-03T10:30")) expect(serial).toBe(expected);
+  });
+
+  it("an explicit zone designator stays an absolute instant", () => {
+    const expected = jsDateToSerial(new Date(Date.UTC(2026, 0, 3, 15, 0)));
+    for (const serial of inEveryZone("2026-01-03T10:00-05:00")) expect(serial).toBe(expected);
+    for (const serial of inEveryZone("2026-01-03T15:00Z")) expect(serial).toBe(expected);
+  });
+
+  it("garbage still returns NaN", () => {
+    expect(parseDateToSerial("not a date")).toBeNaN();
+    expect(parseDateToSerial("")).toBeNaN();
+  });
+});
+
+describe("EDATE clamps to month end (v1.0 audit finding 11)", () => {
+  const edate = (y: number, m: number, d: number, months: number) =>
+    new DateAddNode({ op: "edate" }).data({ start: [ser(y, m, d)], months: [months] }).result;
+
+  it("Jan 31 + 1mo = Feb 28 (not Mar 3)", () => {
+    expect(edate(2023, 1, 31, 1)).toBe(ser(2023, 2, 28));
+  });
+  it("Jan 31 + 1mo = Feb 29 in a leap year", () => {
+    expect(edate(2024, 1, 31, 1)).toBe(ser(2024, 2, 29));
+  });
+  it("Mar 31 - 1mo = Feb 29 in a leap year", () => {
+    expect(edate(2024, 3, 31, -1)).toBe(ser(2024, 2, 29));
+  });
+  it("mid-month days are untouched", () => {
+    expect(edate(2024, 1, 15, 1)).toBe(ser(2024, 2, 15));
+    expect(edate(2024, 1, 15, 13)).toBe(ser(2025, 2, 15));
+  });
+});
+
+describe("TIMEVALUE is timezone-independent (v1.0 audit finding 12)", () => {
+  const originalTz = process.env.TZ;
+  afterEach(() => {
+    if (originalTz === undefined) delete process.env.TZ;
+    else process.env.TZ = originalTz;
+  });
+
+  const tv = (text: string) => {
+    const n = new TimeValueNode();
+    n.stringLiterals.text = text;
+    return n.data({}).result;
+  };
+
+  it("14:30:00 is 14.5h in every zone (Excel 0.604…)", () => {
+    for (const tz of ["UTC", "Europe/Berlin", "America/New_York"]) {
+      process.env.TZ = tz;
+      expect(tv("14:30:00")).toBeCloseTo(14.5 / 24, 12);
+    }
+  });
+  it("supports h:mm and AM/PM", () => {
+    expect(tv("2:30 PM")).toBeCloseTo(14.5 / 24, 12);
+    expect(tv("12:00 AM")).toBeCloseTo(0, 12);
+    expect(tv("12:00 PM")).toBeCloseTo(0.5, 12);
+    expect(tv("9:05")).toBeCloseTo((9 * 3600 + 5 * 60) / 86400, 12);
+  });
+  it("a full datetime text keeps only the fraction (Excel TIMEVALUE)", () => {
+    expect(tv("2026-01-03T06:00")).toBeCloseTo(0.25, 12);
+  });
+  it("garbage is #VALUE!", () => {
+    const r = tv("25:99");
+    if (!isSolError(r)) throw new Error("expected SolError");
+    expect(r.code).toBe("#VALUE!");
   });
 });
