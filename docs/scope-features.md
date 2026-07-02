@@ -25,6 +25,12 @@ container kind to learn). Sequencing: subgraphs (#5) first or together; the #1 d
 deep-dive folds into / follows the #5 composites session. UI affordances expected easy
 once the subgraph shell exists (play/step-count on the container).
 
+**ADDENDUM (author, 2026-07-02): this is a PATTERN, not a one-off.** Simulation, the
+SOLVER (goal-seek, #4), and DATA TABLES (input-sweep grids, #4) are ALL hooks onto the
+one subgraph container — "run this region N times under a driver" with different
+drivers (time steps / a root-finder / a parameter grid). One container UI/UX, three
+run modes. The #5 composites design session owns the shared shell + all three hooks.
+
 **Scope today:** a graph computes **one** state, once. A cycle in the graph is an
 error (`#CIRC!` — the engine detects loops with Tarjan's algorithm and refuses them).
 
@@ -61,6 +67,12 @@ normal "compute once" world is untouched and cycles still error *outside* it.
 ---
 
 ## 2 — Turn any graph into a shipped tool: form, API, or mini-app
+
+**VERDICT (author, 2026-07-02): DEFERRED — "there are cons I can't articulate."**
+Not ruled in or out; revisit at the end of the walk (with the parked pair). Presented
+as two tiers (local Run panel; publish as local-first artifacts only — static export /
+headless, no hosted infra, which would rub against the thread-#5 no-server identity).
+The hesitation applies to the direction as a whole, so nothing starts.
 
 **Scope today:** Solenoid is where you *build*. The graph is the artifact; to let
 someone else use your work, they need Solenoid and the file.
