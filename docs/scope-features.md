@@ -460,6 +460,15 @@ a new SolError with provenance), the Alert machinery (already shipped), schema
 inference (Bet 3 — expectations can be *suggested* from the inferred schema and
 profile: "this column looks unique; want to enforce that?").
 
+**The Excel-familiar framing (author's point, 2026-07-02):** this is **Excel's Data
+Validation, generalized.** Excel's version gates what a *human types into a cell*
+(list/range/length rules at entry time); an Expect node applies the same idea to
+*whatever flows through the graph* — imported files, computed columns, API pulls —
+where no human typed anything. Pitch it exactly that way in the UI/docs ("Data
+Validation for data you didn't type"): it makes the node instantly legible to the
+Excel audience, and it slots into the Excel-parity story (`excel-toolbar-supplementals.md`
+has a Data Validation verdict to reconcile with this).
+
 **First step:** one Expect node with 4 checks (not-null / unique / range / regex),
 pass-through output, red badge + alert on failure. It's a small node; the leverage is
 in the pattern.
@@ -759,6 +768,39 @@ uniquely is. The others are Solenoid entering someone else's market; this is Sol
 - **Fork in the road, not a feature:** #18 (embeddable rules engine) — technically
   downstream of the same bets, but a genuine identity fork; file it, don't chase it
   unless the app-shaped product plateaus.
+
+---
+
+## Appendix — the "recreate and undercut" demo target: Alteryx Designer
+
+Asked directly (2026-07-02): *which existing software could Solenoid recreate as a
+demo and undercut?* The answer, by a wide margin: **Alteryx Designer** —
+**$5,195/user/year list** (2026 pricing; certifications run another $800–2,500/head).
+
+Why it's the right target and not just an expensive one:
+- **It's the same paradigm.** Alteryx Designer IS a node canvas of data verbs —
+  input → filter → join → group → output. A demo isn't an analogy; it's node-for-node
+  the same picture.
+- **Solenoid can run ~90% of the classic demo TODAY.** The standard Alteryx showcase
+  (pull two CSVs, clean a column, join, filter, group-summarize, chart it) maps
+  directly onto the shipped verb set (Filter/Join/Group By/Split Column/Sort/Distinct/
+  Pivot) + CSV import + chart nodes — with native Polars underneath, which is a *faster
+  engine* than Alteryx's on typical workloads. The only missing piece for full parity
+  is a Write-CSV sink (Round 2 #9's first slice, deliberately its cheapest item).
+- **The undercut is absurd and honest.** The demo sentence writes itself: *"this is a
+  $5,195/year workflow, running free, in a tool that also does the rest of your math."*
+- **Build shape:** a seed document that mirrors one of Alteryx's own tutorial
+  workflows on bundled sample CSVs, plus a short side-by-side writeup. Ship the
+  Write-CSV node with it and the parity is total.
+
+Runner-up targets, keyed to when their enabling feature lands: **Oracle Crystal Ball /
+@RISK** (~$1,000–2,000/seat Monte-Carlo Excel add-ins) once what-if (#4) exists;
+**PTC Mathcad** (engineering calc, subscription) once units-as-types + the report view
+land (#15); **Stella/Vensim** (system dynamics, ~$2–3k/seat) once simulation mode (#1)
+exists. Same play each time: their whole product is one Solenoid feature with a
+five-figure price tag.
+
+---
 
 The meta-pattern across all four rounds: **so much of software is secretly a typed,
 inspectable graph of computations that somebody had to build by hand, badly, because no
