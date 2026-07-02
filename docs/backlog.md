@@ -38,8 +38,9 @@ file-over-app, NEVER advertise AI) · Bet 4 IN (two tiers) · units-as-types IN 
 EXPANDED to full dimensional algebra (`#UNIT!`, AST dimensional interpretation for
 Expression/LAMBDA) · golden tests PARKED (revisit end of walk) · data-drafts-its-own-
 graph PARKED (author thinking).
-NEXT when resuming: smaller swap 4 (Cube identity — positioning, fold into strategy),
-then scope-features #1–63 in numeric order (folding in strategy threads #1–#7 and the
+Smaller swap 4 (Cube identity) DECIDED 2026-07-02: OUT as identity, kept as headline
+capability/seed (verdict inline in future-directions.md).
+NEXT when resuming: scope-features #1–63 in numeric order (folding in strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
 #20 dimensions → engine execution contract (Bet 1 × #23 × #24 × calc mode) → #1

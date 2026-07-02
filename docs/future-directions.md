@@ -253,6 +253,16 @@ compound on each other; this one is a standalone maybe.
   seconds" would become an error you catch *before* running, not a surprise after. It's
   simpler *and* stronger — you'd delete the walker, not extend it.
 
+- **VERDICT (author, 2026-07-02): OUT as identity; keep as headline capability.**
+  The "nobody has it" claim doesn't survive the cube-node-scope.md survey — Power Query
+  drilldowns, tidyr list-columns, BigQuery STRUCT/ARRAY are all nested tables. The
+  narrow claim that IS true (a nested table as a first-class *document value* that
+  rides cables and recomputes — vs PQ's editor-only transient that must flatten to
+  land, and Excel's literal `#CALC!` nested-array error) needs explaining every time,
+  which disqualifies it as an identity the author can sell in one sentence. Keep it
+  as a capability story: the Cube seed + a gallery page under strategy thread #1
+  ("Excel errors if you even try to nest an array; here it's a value"), beneath the
+  thread-#5 file-over-app identity. No strategy-thread rewrite.
 - **Bet the identity on the Cube.** The nested-table container is your genuinely
   anti-Excel idea. Excel is a flat grid; shaped/nested data is strictly more powerful
   and nobody has made it *visual and approachable*. "The spreadsheet for shaped data"
