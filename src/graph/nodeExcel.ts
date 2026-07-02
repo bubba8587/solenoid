@@ -227,11 +227,14 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "list-unique": [{ excel: "UNIQUE", syntax: "=UNIQUE(array)", parity: true }],
   "list-vstack": [{ excel: "VSTACK", syntax: "=VSTACK(a, b)", parity: false, note: "Solenoid concatenates 1D lists only; Excel can stack 2D ranges" }],
   "logest": [{ excel: "LOGEST", syntax: "=LOGEST(ys, xs)", parity: false, note: "Returns [m, b] as a list; Excel returns a full coefficient array" }],
-  "logic-and": [{ excel: "AND", syntax: "=AND(a, b, ...)", parity: false, note: "Binary only (A, B); chain AND nodes for more conditions" }],
-  "logic-if": [{ excel: "IF", syntax: "=IF(cond, a, b)", parity: true }],
-  "logic-not": [{ excel: "NOT", syntax: "=NOT(a)", parity: true }],
-  "logic-or": [{ excel: "OR", syntax: "=OR(a, b, ...)", parity: false, note: "Binary only; chain OR nodes for more conditions" }],
-  "logic-xor": [{ excel: "XOR", syntax: "=XOR(a, b, ...)", parity: false, note: "Binary only; chain XOR nodes for more" }],
+  // Keys track the post-split catalog types (bool-*/if/not — the old multi-op
+  // LogicalNode's "logic-*" keys went stale unnoticed until the drift test);
+  // AND/OR/XOR are N-ary reducers now, so the "binary only" caveat is gone.
+  "bool-and": [{ excel: "AND", syntax: "=AND(a, b, ...)", parity: true }],
+  "if": [{ excel: "IF", syntax: "=IF(cond, a, b)", parity: true }],
+  "not": [{ excel: "NOT", syntax: "=NOT(a)", parity: true }],
+  "bool-or": [{ excel: "OR", syntax: "=OR(a, b, ...)", parity: true }],
+  "bool-xor": [{ excel: "XOR", syntax: "=XOR(a, b, ...)", parity: true }],
   "lognormdist": [{ excel: "LOGNORM.DIST", syntax: "=LOGNORM.DIST(x, μ, σ, cum)" }],
   "lognorminv": [{ excel: "LOGNORM.INV", syntax: "=LOGNORM.INV(p, μ, σ)" }],
   "lookup-xlookup": [{ excel: "XLOOKUP", syntax: "=XLOOKUP(x, lookup, return)", parity: true }],

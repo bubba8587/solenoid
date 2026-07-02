@@ -229,7 +229,7 @@ function scalarish(got: (number | number[])[] | undefined, lit: number | undefin
 
 // "No status seen yet" sentinel — distinct from any real status key (which are
 // digits/commas), so a node born alerting (or just switched modes) fires once.
-const NO_STATUS = " ";
+const NO_STATUS = "\u0000";
 
 // A stable key for a status, so equal statuses compare equal and a CHANGE between
 // alerting statuses (range's 1↔2) is detectable. List statuses key on contents.

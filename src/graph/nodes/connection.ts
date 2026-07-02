@@ -291,7 +291,7 @@ export class CsvConnectionNode extends ClassicPreset.Node {
   async data(): Promise<{ frame: FrameValue | null }> {
     const folder = settingsStore.get("csvFolder");
     const name = this.fileName.trim();
-    const key = connectionStore.key(this.id, `${folder} ${name}`);
+    const key = connectionStore.key(this.id, `${folder}\u0000${name}`);
     if (key === this.lastKey) return { frame: this.cachedResult };
     if (this.inflightKey !== key || !this.inflight) {
       this.inflightKey = key;

@@ -10,6 +10,7 @@ import { initPacks } from "./graph/packs";
 import { initPackFcExtensions } from "./graph/fcExtensions";
 import { initFrameBackend } from "./graph/frameBackend";
 import { initDevtoolsHotkey } from "./graph/devtoolsHotkey";
+import { pushNotice } from "./graph/noticeStore";
 import { isDesktop } from "./graph/fileBridge";
 import { IS_MOBILE } from "./graph/coarse";
 import "@fontsource-variable/atkinson-hyperlegible-next";
@@ -25,6 +26,26 @@ if (isDesktop()) document.documentElement.dataset.shell = "desktop";
 // phone's "Request desktop site" (desktop UA, still a coarse pointer) gets the
 // desktop layout. Single source of truth: coarse.ts.
 if (IS_MOBILE) document.documentElement.classList.add("is-mobile");
+
+// Last-resort error surfacing (v1.0 audit, quality). The codebase leans on
+// `void asyncFn()` fire-and-forget for graph mutations (group ops, Tauri invoke
+// chains, keyboard-driven processGraph); a rejection there previously vanished —
+// and on the desktop build the console is closed, so the sole bug reporter saw
+// "the button did nothing". Throttled so a rejection storm (one per node in a
+// broken pass) doesn't stack a wall of toasts.
+{
+  let lastNotice = 0;
+  const surface = (kind: string, detail: unknown) => {
+    console.error(`[solenoid] ${kind}:`, detail);
+    const now = Date.now();
+    if (now - lastNotice < 5000) return;
+    lastNotice = now;
+    const msg = detail instanceof Error ? detail.message : String(detail ?? "unknown error");
+    pushNotice(`Something went wrong internally (${msg.slice(0, 160)}). If the app misbehaves, save and reload.`, "error");
+  };
+  window.addEventListener("unhandledrejection", (e) => surface("unhandled rejection", e.reason));
+  window.addEventListener("error", (e) => surface("uncaught error", e.error ?? e.message));
+}
 
 initAppTheme();
 initCableFlow();
