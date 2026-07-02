@@ -26,10 +26,11 @@ deep-dive folds into / follows the #5 composites session. UI affordances expecte
 once the subgraph shell exists (play/step-count on the container).
 
 **ADDENDUM (author, 2026-07-02): this is a PATTERN, not a one-off.** Simulation, the
-SOLVER (goal-seek, #4), and DATA TABLES (input-sweep grids, #4) are ALL hooks onto the
-one subgraph container — "run this region N times under a driver" with different
-drivers (time steps / a root-finder / a parameter grid). One container UI/UX, three
-run modes. The #5 composites design session owns the shared shell + all three hooks.
+SOLVER (goal-seek, #4), DATA TABLES (input-sweep grids, #4), SCENARIOS (#4), and
+MONTE CARLO (#4) are ALL hooks onto the one subgraph container — "run this region N
+times under a driver" with different drivers (time steps / a root-finder / a parameter
+grid / named input sets / a distribution sampler). One container UI/UX, five run
+modes. The #5 composites design session owns the shared shell + all five hooks.
 
 **Scope today:** a graph computes **one** state, once. A cycle in the graph is an
 error (`#CIRC!` — the engine detects loops with Tarjan's algorithm and refuses them).
@@ -150,6 +151,15 @@ while "idle"). Manual refresh is the safe first slice and already useful.
 ---
 
 ## 4 — What-if: scenarios, goal-seek, and "any cell can be the unknown"
+
+**VERDICT (author, 2026-07-02): IN — all of it joins the subgraph run-mode family
+(see #1 addendum).** The container's driver set is now five: time steps (simulation),
+parameter grid (data tables), root-finder (goal-seek/solver), named input sets
+(scenarios), sampler over distributions (Monte Carlo). One container UI/UX. Scenarios
+land early (no solver math, proves the shell); goal-seek scopes to numeric with loud
+`#CONV!` failure; Monte Carlo's distribution-input design defers into the #21
+uncertain-values session, the shell just anticipates it. #5's design session owns all
+five modes.
 
 **Scope today:** you change an input, you see one new result. The Sensitivity node exists
 but works one variable at a time.
