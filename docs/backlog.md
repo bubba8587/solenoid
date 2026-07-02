@@ -43,8 +43,9 @@ capability/seed (verdict inline in future-directions.md).
 NEXT when resuming: scope-features #1–63 in numeric order (folding in strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
-#20 dimensions → engine execution contract (Bet 1 × #23 × #24 × calc mode) → #1
-simulation → #5 composites → #9 sinks + #3 scheduling → #43 money → #21 uncertain →
+#20 dimensions → engine execution contract (Bet 1 × #23 × #24 × calc mode) → #5
+composites → #1 simulation (a hook on the #5 container — ruled 2026-07-02, so #5's
+session leads) → #9 sinks + #3 scheduling → #43 money → #21 uncertain →
 #8 transpiler → linked graphs → #13 report layout), then plan-doc authoring.
 
 **1.0-TAIL WALKTHROUGH BOOKMARK (2026-07-02 — COMPLETE; build pass awaits explicit
