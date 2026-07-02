@@ -34,13 +34,13 @@ section is decision-recorded. The QUEUE when resuming, in order:
    `formatAnnotationStore.ts` (the value formatter, ~5 sites) + the cosmetic row-count
    strings in CubePopup/TablePopup/RendererSpike. Inputs stay dot-decimal-parse-only;
    display and input now agree by fiat. Closes the item — no separate design session.
-2. **UX/a11y mechanical list** (offer as delegation tier, itemize on request): text
-   `×`/`✕` → shared CloseIcon (~6 files); socket-dot hover `title` naming the type
+2. **UX/a11y mechanical list — APPROVED as one batch 2026-07-02** ("all seems good"):
+   text `×`/`✕` → shared CloseIcon (~6 files); socket-dot hover `title` naming the type
    (structural text; the only colorblind path); `prefers-reduced-motion` honored by the
    load reveal; `Ctrl+/` match `e.key` not `e.code` (non-US layouts); Group/Note title
    editors through draft-commit (Escape revert); the 33 `outline:none` → `:focus-visible`
    sweep; modal focus traps; Settings `Switch` accessible name; socket-legend
-   open/collapsed persistence.
+   open/collapsed persistence. All land in the build pass, UX tier.
 3. **cargo-audit in CI** (mechanical: a small workflow).
 4. **Frame P3s**: `\u{1}` multi-key separator collision in Rust (encode like
    `encodeCell`); Rust non-finite aggregate → null over the wire vs JS Infinity (now
