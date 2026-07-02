@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { marked } from "marked";
+import DOMPurify from "dompurify";
 import type { NoteNode as NoteNodeType } from "../rete-nodes";
 import { hexToRgba, themeAccent, resolveColor } from "../palette";
 import { appThemeStore } from "../appTheme";
@@ -210,10 +211,13 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   }
 
   // Render the markdown BELOW any frontmatter block (data.renderBody, refreshed on
-  // each commit). Local, single-author content, trusted like the Reference docs.
+  // each commit). NOT trusted content: a Note body arrives in shared .solenoid
+  // files, and marked does no sanitization — an <img onerror=…> in a note was a
+  // stored XSS with Tauri IPC in reach (audit P0-6). Sanitize every render; the
+  // CSP is the second, independent layer.
   // `breaks: true` so a lone newline becomes a line break (note-jotting expectation).
   const bodyHtml = useMemo(
-    () => marked.parse(data.renderBody || "", { async: false, gfm: true, breaks: true }) as string,
+    () => DOMPurify.sanitize(marked.parse(data.renderBody || "", { async: false, gfm: true, breaks: true }) as string),
     // `body` changes whenever the user edits (incl. the YAML); renderBody is fresh
     // by read-view time (commit runs on the editor's blur, before this re-renders).
     [body, data],

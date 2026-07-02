@@ -13,11 +13,24 @@
     },
     {
       "identifier": "fs:allow-read-text-file",
-      "allow": [{ "path": "$HOME/**" }]
+      "allow": [
+        { "path": "$HOME/**/*.json" },
+        { "path": "$HOME/**/*.csv" }
+      ]
     },
     {
       "identifier": "fs:allow-write-text-file",
-      "allow": [{ "path": "$HOME/**" }]
+      "allow": [
+        { "path": "$HOME/**/*.json" },
+        { "path": "$HOME/**/*.json.tmp" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-rename",
+      "allow": [
+        { "path": "$HOME/**/*.json" },
+        { "path": "$HOME/**/*.json.tmp" }
+      ]
     },
     {
       "identifier": "fs:allow-read-dir",

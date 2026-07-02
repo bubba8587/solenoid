@@ -10,17 +10,17 @@
     "frontendDist": "../dist"
   },
   "app": {
-    "withGlobalTauri": true,
+    "withGlobalTauri": false,
     "windows": [
       {
         "title": "Solenoid",
         "width": 1280,
         "height": 800,
-        "additionalBrowserArgs": "--enable-unsafe-webgpu --enable-blink-features=CanvasDrawElement --enable-features=CanvasDrawElement"
+        "additionalBrowserArgs": "--enable-blink-features=CanvasDrawElement --enable-features=CanvasDrawElement"
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: http:; font-src 'self' data:; connect-src ipc: http://ipc.localhost"
     }
   },
   "bundle": {

@@ -25,6 +25,7 @@
     "@types/katex": "^0.16.8",
     "@types/papaparse": "^5.5.2",
     "colord": "^2.9.3",
+    "dompurify": "^3.4.11",
     "elkjs": "^0.8.2",
     "katex": "^0.17.0",
     "marked": "^14.1.4",
