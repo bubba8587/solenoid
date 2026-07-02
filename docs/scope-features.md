@@ -510,6 +510,34 @@ nodes top-to-bottom in reading order. Ugly is fine; live is the point.
 **Risk:** layout scope-creep toward "a document editor." Hold the line: blocks are
 pins, notes, tables, charts — arrangement only, no rich-text ambitions.
 
+**Design sketch (settled in discussion, 2026-07-02): Note interpolation + the "object"
+socket category.** The route to the report runs through the Note node, in three steps:
+
+1. **Note INPUT sockets via inline refs.** A Note body already turns frontmatter keys
+   into typed OUTPUT sockets; the mirror image: an inline code span `` `=name` `` in
+   the body mints an input socket named `name` (the ExpressionNode bare-name pattern),
+   reconciled on blur like frontmatter. The span renders the connected value in place,
+   through the same annotation resolver ValueDisplay uses, so an FC-locked value shows
+   its unit/number format in the prose ($1,200.00, not 1200). A frame input renders as
+   a compact table capped at preview size, never a full materialization.
+2. **The "object" socket category (the Special family).** Category, NOT a single
+   dataType: teal-green glyph-in-circle sockets, of which `lambda` (λ glyph) is
+   already the first member. `chart` joins as the second (tiny chart glyph). Each
+   member is its own dataType connecting only to itself + `any` (MAP's fn input must
+   never accept a chart); the shared look says "special object, not data" in the
+   legend. Members are scalar-only and ref-on-the-wire (the lazy FrameRef precedent:
+   user-facing type + chip + popup preview, lightweight handle on the cable).
+   **Explicitly excluded:** membership in frame/cube CELLS (no Polars dtype → parity
+   break or eager-JS-only; lossy CSV round-trip; verbs/aggregators have no meaning
+   over objects). The lattice edge set stays pinned by the socketConnect full-sweep
+   test. Charts gain an object output; a lambda ref in a Note renders as KaTeX (the
+   compiler already emits LaTeX per parse). "Charts inside cubes" is small-multiples
+   in disguise; if wanted, build it as a chart mode.
+3. **The Report tab consumes both.** In a canvas Note an embedded chart renders as a
+   chip/placeholder (the live chart is on the canvas beside it; no second recharts
+   instance per note); the Report tab renders embeds full-size. Interpolating Notes
+   ARE the report block primitive, so step 1 makes the #13 first step nearly free.
+
 ---
 
 ## 14 — Node-anchored review: comments, questions, sign-off
