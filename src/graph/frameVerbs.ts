@@ -192,7 +192,9 @@ function varianceOf(nums: readonly number[], sample: boolean): number | null {
 function aggregateGroup(values: FrameCell[], op: AggOp): FrameCell {
   if (op === "count") return values.filter((v) => v !== null).length;
   if (op === "percentof") return null;
-  const prep = forAggregate(values);
+  // Logical cells aggregate as 1/0 (SUM over a logical column = count of TRUEs)
+  // — the Rust engine already coerced, the oracle silently skipped them.
+  const prep = forAggregate(values.map((v) => (typeof v === "boolean" ? (v ? 1 : 0) : v)));
   if (prep.error) return prep.error;
   const nums = prep.nums.filter((n) => Number.isFinite(n));
   if (nums.length === 0) return op === "sum" ? 0 : op === "product" ? 1 : null;
@@ -218,7 +220,7 @@ function aggregateGroup(values: FrameCell[], op: AggOp): FrameCell {
 /** SUM of a group's finite cells (the numerator/denominator of PERCENTOF). A
  *  per-cell error propagates; an empty/all-null set is 0. */
 function sumGroup(values: FrameCell[]): FrameCell {
-  const prep = forAggregate(values);
+  const prep = forAggregate(values.map((v) => (typeof v === "boolean" ? (v ? 1 : 0) : v)));
   if (prep.error) return prep.error;
   return prep.nums.filter((n) => Number.isFinite(n)).reduce((a, b) => a + b, 0);
 }
