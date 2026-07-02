@@ -20,7 +20,7 @@ function walk(dir: string, out: string[] = []): string[] {
 describe("source hygiene", () => {
   it("no source file contains a raw NUL byte", () => {
     const offenders: string[] = [];
-    for (const f of [...walk("src"), ...walk("src-tauri/src")]) {
+    for (const f of [...walk("src"), ...walk("src-tauri/src"), ...walk("docs")]) {
       if (readFileSync(f).includes(0)) offenders.push(f);
     }
     expect(offenders).toEqual([]);

@@ -241,7 +241,7 @@ correctness.
   etc.) are post-v1 polish — not needed before launch. Don't build new packs
   this cycle.
 - [ ] **New input/output/visual/control nodes — feature set + core-vs-pack split**
-  (proposal): `docs/io-visual-control-node-proposal.md`. Surveys the current I/O/
+  (proposal): `docs/archive/io-visual-control-node-proposal.md`. Surveys the current I/O/
   visual/control nodes against dashboard/BI tools + data-viz literature and
   recommends what's core vs a toggleable pack. Highest-value *core* gaps: KPI/stat
   card (w/ delta), Dropdown + Multi-select, a real Data Table grid view of the
@@ -250,7 +250,7 @@ correctness.
   single optional heavy renderer (ECharts/Plotly). First *code* pack (recharts-
   native: Funnel/Treemap/Sunburst/Sankey/Radar) proves the custom-widget pack path.
 - [ ] **Excel Timesavers pack — new-node feature set** (proposal):
-  `docs/timesavers-pack-proposal.md`. ~35 "no single Excel function" idioms to add to
+  `docs/archive/timesavers-pack-proposal.md`. ~35 "no single Excel function" idioms to add to
   the existing Timesavers pack, each tagged by build shape: ~25 are cheap **formula-data**
   pre-set Expression nodes (one JSON file — first real exercise of the formula-pack path
   beyond Geometry, enabled by the Expression engine dispatching to Formula.js), ~8 are
@@ -266,7 +266,8 @@ correctness.
   `1/0`→`#DIV/0!`, FX errors + non-finite scalars → `SolError`), and the lambda-family
   unification (MAP/BYROW/REDUCE/MAKEARRAY + LAMBDA all route through the one core via
   `compilePositional`) all landed. P4 = loud `#SHAPE!` placeholder. **RESOLVED 2026-06-22:**
-  P3 ragged → pad-to-longest with a new first-class `null`; `null` skipped by aggregators, errors
+  P3 ragged → pad-to-longest with a new first-class `null` (decision only — the pad is
+  UNBUILT, code still truncates to shortest; v1.0 audit finding 25); `null` skipped by aggregators, errors
   propagate per-cell (relaxing lists-never-carry-errors); P7 boolean → a first-class logical
   socket type (purple), renders TRUE/FALSE, coerces to 1/0; P4 matrix-into-Expression →
   shape-preserve element-wise + reduce-all aggregate (per-axis stays BYROW/BYCOL); P6 operator
@@ -343,7 +344,7 @@ correctness.
 - [ ] **(optional) delete redundant native math for the formulajs-backed families** — the only
   remaining piece of the consolidation: route arithmetic / scalar-math / text / closed-form-finance
   NODES to Formula.js via the seam and delete their hand-rolled math. No correctness impact (audit
-  found no divergence), so this is purely code-size / single-source hygiene. `docs/formulajs-vs-native-audit.md`.
+  found no divergence), so this is purely code-size / single-source hygiene. `docs/archive/formulajs-vs-native-audit.md`.
   The app runs two parallel function implementations (~150 native nodes + Formula.js via the
   formula engine) — so **a function typed in an Expression/LAMBDA evaluates via Formula.js, NOT
   the matching visual node's `data()`**, and the two can diverge (author re-flagged 2026-06-23).
@@ -372,14 +373,11 @@ correctness.
   WHERE the scalar/list impls live, not about widening Expression's reach. Anything beyond the cap
   is the **future subgraph / composite node** (`pack-architecture.md` "Composite pack node"), not a
   new Expression feature. (Closes the "Expression + complex / 2-D" questions — see dev-notes.)
-- [ ] **Dormant-pack persistence — placeholder + provenance** (gap found 2026-06-21):
-  `pack-architecture.md` "Current code vs this plan". Saves don't record which packs/versions
-  they need, and a missing node type is **dropped (cables lost), not placeholdered** —
-  `persistence.ts`. Formula-data packs survive load fine (they serialize as core
-  `ExpressionNode`), so this only bites **code packs** (the visual/input packs in
-  `io-visual-control-node-proposal.md`, and `[C]` Timesavers). Needs the placeholder-node +
-  pack-provenance work before the first code pack ships, else deactivating a pack silently
-  severs wiring in saved graphs.
+- [x] **Dormant-pack persistence — placeholder + provenance** — done (shipped in 1.0.0:
+  `nodes/placeholder.ts` + `persistence.ts` load an unknown type as an inert Placeholder
+  that keeps wiring + data and re-serializes as the original type; `SavedGraph.packs`
+  carries provenance. The v1.0 audit found this built-but-undocumented — the exact
+  checkbox-rot failure CLAUDE.md warns about).
 
 ## Frames / data tables
 
@@ -389,7 +387,7 @@ correctness.
   Append / Distinct / Rename / Select / Drop / Pivot (full PIVOTBY) / Unpivot / Nest /
   Unnest, plus **Frame Lookup** (table XLOOKUP/VLOOKUP) / Split Column / Add Index. The
   pure engine is `frameVerbs.ts` (the JS oracle); on **desktop** the relational verbs
-  run in **native Polars** (`src-tauri/src/engine.rs`, 19 cargo parity tests) via the
+  run in **native Polars** (`src-tauri/src/engine.rs`, 27 cargo parity tests) via the
   `FrameBackend` seam, on web the identical JS backend. The lazy-handle-on-cable finish
   shipped 2026-06-30 (refs chain in the backend; head-N card previews; big-frame render
   caps). Remaining are future scale niceties (lazy-plan fusion, CSV→Polars) + XLOOKUP cube mode.

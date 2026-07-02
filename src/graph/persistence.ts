@@ -580,5 +580,18 @@ export function scheduleAutosave(): void {
   }, AUTOSAVE_DELAY);
 }
 
+// Flush a pending (debounced) autosave when the window/tab goes away — without
+// this, closing within ~700 ms of the last edit silently dropped it (audit
+// finding 36). captureCurrent is synchronous (a localStorage write), so it's
+// safe in pagehide; it no-ops while suspended/rebuilding, same as the timer.
+if (typeof window !== "undefined") {
+  window.addEventListener("pagehide", () => {
+    if (_timer === null || _suspend > 0) return;
+    clearTimeout(_timer);
+    _timer = null;
+    documentStore.captureCurrent();
+  });
+}
+
 // Disk save/open moved to fileSession.ts (native dialogs on desktop, download/
 // upload in the browser). serializeGraph + loadGraph above are its building blocks.

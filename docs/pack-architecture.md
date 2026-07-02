@@ -222,11 +222,12 @@ A read of `persistence.ts` + `persistenceCore.ts` shows the dormant-pack handlin
   ceiling `v` (`persistenceCore.ts` `CURRENT_SAVE_VERSION`, forward-safety — refuse a
   newer-than-current file), no per-graph pack-provenance list. So bullets 1 and 4 above don't
   exist.
-- **A missing node type is DROPPED, not placeholdered.** On load, an unregistered `type` is
-  skipped with a notice (`persistence.ts` ~`:314` `if (!Ctor) { skip; continue }`, message
-  "N nodes couldn't be loaded… The rest of the graph opened normally"). Its **cables go with
-  it** — so the "harmless placeholders that keep your numbers and your wiring intact" promise
-  (bullet 3) is not met; the wiring is lost.
+- **A missing node type loads as a PLACEHOLDER (shipped in 1.0.0).** On load, an
+  unregistered `type` becomes a `PlaceholderNode` (`nodes/placeholder.ts` +
+  `persistence.ts`): inert, keeps its wiring AND its captured init data, and
+  re-serializes as the ORIGINAL type — lossless round-trip. `SavedGraph.packs`
+  carries the provenance breadcrumb. The "harmless placeholders that keep your
+  numbers and your wiring intact" promise (bullet 3) is met.
 - **Registration is eager** (`nodeRegistry.ts` is a static map of all ctors), and pack
   activation is a presentation filter only (`packs.ts` — "Activation is a PRESENTATION filter
   only"). So level-1 "code not loaded when off" isn't built; this is known/expected, not a bug.
@@ -235,8 +236,8 @@ A read of `persistence.ts` + `persistenceCore.ts` shows the dormant-pack handlin
 node serializes as a core `ExpressionNode` (always registered), so a dormant *formula* pack
 survives load fine — it reloads as a locked Expression and still computes. The drop-not-
 placeholder gap therefore only bites **custom-logic / code packs** — i.e. the visual & input
-**code packs** in `io-visual-control-node-proposal.md` (the first real code packs) and the
-`[C]` nodes in `timesavers-pack-proposal.md`. Net: the formula-pack thesis degrades gracefully
+**code packs** in `archive/io-visual-control-node-proposal.md` (the first real code packs) and the
+`[C]` nodes in `archive/timesavers-pack-proposal.md`. Net: the formula-pack thesis degrades gracefully
 *today*; the code-pack story needs the placeholder + pack-provenance work before the first code
 pack ships, or deactivating a pack silently severs wiring in saved graphs.
 

@@ -106,7 +106,9 @@ src/
 ### GPU render layer (WS4, feature-gated — DOM is the permanent default/fallback)
 | File | Responsibility |
 |---|---|
-| `renderMode.ts` | Persisted `dom`\|`canvas` store (default `dom`) + `gpuCapabilityStore` (set by the startup probe); `useRenderMode` hook |
+| `renderMode.ts` | Render-mode store `dom`\|`canvas`\|`html` (default `dom`; only `html` persists) + `gpuCapabilityStore` (set by the startup probe); `useRenderMode` hook |
+| `htmlCanvasRenderer.ts` | **The SHIPPED WS4 renderer** (Settings-gated, DOM stays default): captures the real node DOM via `drawElementImage` into mip pyramids; pan/zoom draws the canvas, idle shows the DOM |
+| `components/HtmlCanvasLayer.tsx` | Mounts the HTML-canvas renderer when mode is `html` ≥100 nodes: gesture swap (DOM hidden ↔ canvas), targeted re-capture per changed node id, DOM-only escape hatch (conduits) |
 | `gpuProbe.ts` (+`.test.ts`) | Capability probe: WebGPU non-fallback adapter → else non-software WebGL2 → else DOM. Pure `classifyCapability`/`isSoftwareRenderer` |
 | `overlayTransform.ts` (+`.test.ts`) | Pure world↔device/css transform math + `deviceMatrix` (setTransform baking) + the `overlayBus` singleton (Canvas feeds transform/viewport) |
 | `cableScene.ts` (+`.test.ts`) | Module store of published cable strokes (the canvas scene); `ConnectionComponent` is the sole producer |
@@ -127,6 +129,10 @@ src/
 | `groupPush.ts` + `groupPushCore.ts` (+`.test.ts`) | Expand-push displacement (rails/clear/cascade) + snap-back records; pure core is unit-tested |
 | `standoffs.ts`, `standoffSolver.ts` (+`.test.ts`), `components/StandoffLayer.tsx` | User-declared axis-band constraints; iterative-projection solver runs after every layout pass |
 | `lasso.ts`, `canvasLock.ts`, `nodeSizeStore.ts`, `collapseStore.ts`, `dockedNodeStore.ts` | Box-select, lock, per-node size/collapse, FC docking |
+| `calcModeStore.ts` | Manual/automatic calculation mode + the dirty flag (`processGraph` short-circuits in manual; F9/Calculate Now forces) — persisted like Excel's per-workbook flag |
+| `computeOverlayStore.ts` + `components/ComputeOverlay.tsx` | Deferred "Computing…" curtain over an irreducibly heavy pass (150 ms reveal / 350 ms min) |
+| `perfProbe.ts` | Runtime perf instrumentation: `window.__solenoidPerf` per-pass node `data()` + engine IPC timings; `window.__solenoidStats()` cumulative tables |
+| `nodes/placeholder.ts` | `PlaceholderNode` — what an unknown/renamed node type loads as: inert, keeps wiring + init data, re-serializes as the original type (lossless) |
 
 ### Catalog / menus / packs
 
@@ -195,7 +201,7 @@ src-tauri/
 ├── tauri.conf.json           # Window, identifier, build hooks
 ├── capabilities/default.json # Permissions: dialog:default, fs read scoped to $HOME/**
 ├── src/ipc.rs                # IPC command surface (WS1): `engine_ping` (reports backend "polars") + `IpcError` (serializes SolError-shaped).
-├── src/engine.rs (+engine/tests.rs) # WS2 native Polars engine: handle table (HashMap<String, SolFrame> = DataFrame + per-column SolType tags) + the relational verbs over polars 0.46; `engine_source/apply/join/append/collect/preview/column/drop` commands. 19 cargo parity tests vs the frameVerbs JS oracle.
+├── src/engine.rs (+engine/tests.rs) # WS2 native Polars engine: handle table (HashMap<String, SolFrame> = DataFrame + per-column SolType tags) + the relational verbs over polars 0.46; `engine_source/apply/join/append/collect/preview/column/drop` commands. 27 cargo parity tests vs the frameVerbs JS oracle.
 └── src/lib.rs                # Plugin registration + `invoke_handler` (engine_ping + the 8 engine_* commands)
 ```
 

@@ -213,7 +213,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
     type: "category", label: "Output", description: "Display, convert, and visualize values at the end of a chain.",
     children: [
       { type: "display",   label: "Display",  description: "Show a value — pass-through so you can keep wiring after it.", create: () => new DisplayNode(), accent: NODE_KIND_ACCENTS.util },
-      { type: "alert",     label: "Alert",    description: "Compare a value to Low and High thresholds — shows OK, LOW, or HIGH in color.", create: () => new AlertNode() },
+      { type: "alert",     label: "Alert",    description: "Watch a value and FIRE on a status change (toast + the Alerts HUD): range (Low/High thresholds), boolean (TRUE fires), change (any new value), or threshold-cross modes.", create: () => new AlertNode() },
       {
         type: "category", label: "Visuals", description: "Inline charts and readouts — plot or visualize a value at the end of a chain. All pass-through.",
         children: [
@@ -227,9 +227,9 @@ export const NODE_CATALOG: CatalogEntry[] = [
       { type: "conduit",    label: "Conduit",   description: "Bundle up to 8 cables into one block — they travel onward as a single ribbon that splits back into lanes at the destination. Rotate or extend it from the inspector.", create: () => new ConduitNode(), parity: false },
       { type: "format-controller", label: "Format", description: "Attach to a socket to set its number format (decimal, fraction, %, currency…) and unit label (°C, m, kg…). Units must match on connected cables.", create: () => new FormatControllerNode() },
       { type: "group", label: "Group", description: "A container — drop it around nodes (or select + Ctrl+G). Drag its header to move them together; collapse to a summary.", create: () => new GroupNode(), parity: false },
-      { type: "note", label: "Note", description: "A free-floating sticky note — title + body, drag it anywhere, tint it. Annotation only; carries no data.", create: () => new NoteNode(), parity: false },
+      { type: "note", label: "Note", description: "A free-floating markdown note — title + body, drag it anywhere, tint it. Open the body with a ----fenced YAML block to turn each key into a typed OUTPUT socket (a note as a constants source).", create: () => new NoteNode(), parity: false },
       { type: "convert", label: "Convert", description: "Convert between measurement units — including degrees ↔ radians, length, mass, temperature, time, area, volume, speed, energy, pressure.   (Excel: =CONVERT)", create: () => new ConvertNode() },
-      { type: "cast", label: "Cast", description: "Change a value's data type — number, text, date (serial), or complex. Works element-wise on lists.   (Excel: =TEXT, =VALUE)", create: () => new CastNode(), parity: false },
+      { type: "cast", label: "Cast", description: "Change a value's data type — number, text, date (serial), Boolean (TRUE/FALSE), or complex. Works element-wise on lists.   (Excel: =TEXT, =VALUE)", create: () => new CastNode(), parity: false },
     ],
   },
 
