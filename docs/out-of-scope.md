@@ -1,5 +1,10 @@
 # Out of scope — the standing NO list
 
+> **STATUS: DRAFT — not ratified.** The author has not reviewed/approved this list
+> (2026-07-02). Treat every entry as a *proposal*, not policy: do not cite it to
+> reject work until the author has been through it. The four tests and the
+> Alteryx-pattern distinction are the parts most likely to survive review intact.
+
 Fifth in the series ([audit](v1.0-audit.md) → [architecture](future-directions.md) →
 [features](scope-features.md) → [strategy](strategy-threads.md)). This one is the
 **anti-roadmap**: categories Solenoid should stay out of, especially where a competitor
