@@ -276,3 +276,286 @@ feature here turns it into something with a longer half-life — a **model** you
 interrogate (#1, #4), **ship** (#2, #5), **run continuously** (#3), **trust over time**
 (#6), and **talk to** (#7). That's the good-to-great gap: not more nodes, but more *verbs*
 for what a graph can be.
+
+---
+---
+
+# Round 2 — the adoption wedge, the write side, and the graph as software
+
+A second batch, same rules (scope jumps, architecture-enabled), different territory.
+Round 1 was mostly about what a *built* graph can become. Round 2 is about the three
+walls around the product: **getting people in** (from Excel), **getting effects out**
+(writes, actions, other machines), and **getting other people involved** (review,
+narrative). Verified against the code first: none of these exist in any form today —
+and the raw materials for several already do.
+
+---
+
+## 8 — The Excel transpiler: open an .xlsx, see it as a graph
+
+**Scope today:** Solenoid is greenfield-only. Everyone's real models are in Excel, and
+the only path in is rebuilding by hand. That's the adoption wall.
+
+**The jump:** **import an Excel workbook and *transpile* it** — formulas become nodes,
+cell references become cables, ranges become frames, sheets become groups. The user's
+own model, re-drawn as a graph they can finally *see*. This is the single
+highest-leverage adoption feature possible, and it doubles as the best demo of the
+whole thesis: open your workbook and Solenoid *shows you* the dependency spaghetti
+Excel was hiding. "Your spreadsheet is a graph. It always was — you just couldn't see it."
+
+**Why Solenoid is unusually positioned for it:** the hard parts already exist.
+`excelFormula.ts` contains a real **Excel formula parser** (tokenizer + AST) built for
+the Expression node, and the function catalog already maps a large Excel surface to
+nodes. A transpiler is: parse `.xlsx` (the format is documented XML; libraries exist) →
+run each formula through the parser you already have → emit nodes/cables → let the
+Tidy layout you already have arrange it. Nobody else in the node-tool space has parity
+machinery this deep to build on.
+
+**Honest scoping:** don't chase 100%. Transpile the tractable core (arithmetic, the
+supported function set, contiguous ranges → frames) and drop an **Expression node
+containing the original formula text** for anything that doesn't map — visible,
+inspectable, fixable by hand. Even a 70% transpile that flags the other 30% is
+transformative, because the alternative is 0%.
+
+**Enabled by:** the existing formula AST + function parity (already shipped), schema
+inference (Bet 3, for turning ranges into typed frames), and the placeholder machinery
+(already shipped) for the un-mappable remainder.
+
+**First step:** a CLI-grade spike: one sheet, values + arithmetic formulas only, emit a
+graph JSON, open it. The moment a real workbook renders as a graph — even a toy one —
+you'll know whether this is the flagship feature it smells like.
+
+**Risk:** Excel's semantic long tail (volatile functions, array spills, cross-sheet
+3-D refs). Contained by the fallback-to-Expression-node strategy: correctness by
+honesty, not by completeness.
+
+---
+
+## 9 — The write side: a graph that changes things, not just computes them
+
+**Scope today:** the graph is strictly read-and-compute. Data comes in; numbers are
+displayed; nothing ever leaves except copy/paste. (Verified: no write-back, no file
+emit, no outbound action of any kind in the node set.)
+
+**The jump:** **sink nodes** — the graph gets *effects*. Three tiers, each a scope jump
+on the last:
+- **Write files:** a "Write CSV/JSON" node — the graph becomes a repeatable
+  *transformation pipeline* (drop in messy exports, get clean files out), not just an
+  analysis you look at.
+- **Write back to sources:** edit a cell in a frame view, or compute a correction
+  column, and push it to the database/API the data came from. The jump from *analysis
+  surface* to **read-write data hub** — the thing that today requires a fragile
+  Python script.
+- **Act:** on an alert or on demand — send a webhook, write a file, notify. Combined
+  with Round 1's live data (#3), Solenoid becomes an **automation**: *watch this,
+  and when it crosses the line, do that.* IFTTT-with-a-real-compute-engine.
+
+**The crucial design move:** effects must not infect the pure graph. Sinks are
+**terminal nodes that only fire on explicit command** (a Run button, an alert edge, a
+scheduled trigger) — never during normal recompute. The purity of everything upstream
+is exactly what makes effects *safe*: you can see precisely what would be written
+before anything fires (it's just the value on the cable).
+
+**Enabled by:** the pure DAG (dry-run-able effects — a preview of a write is free), the
+Tauri fs/http plumbing (already shipped), the Alert edge-detection (already shipped —
+it's the natural trigger), and calc-mode's manual/auto machinery (already shipped —
+the same "don't run until told" discipline sinks need).
+
+**First step:** Write CSV node, manual-trigger only. It's a weekend of work on existing
+plumbing and instantly makes Solenoid a usable ETL tool.
+
+**Risk:** writes are the first genuinely dangerous thing in the app. Mitigations are
+cheap and structural: explicit-trigger-only, a preview-what-will-be-written pane, and
+sinks disabled by default in shared/imported graphs.
+
+---
+
+## 10 — Headless Solenoid: the graph as a software artifact
+
+**Scope today:** a graph runs only inside the app, with a human watching.
+
+**The jump:** **run a graph without the UI** — `solenoid run model.sol --set rate=0.05
+--out results.json`. Suddenly a Solenoid file is a *program*: schedule it (cron), gate
+a deploy on it, run it in CI, call it from a script. Pair it with golden tests
+(companion doc) and you get the sentence that should raise eyebrows: **"our financial
+model runs in CI, and the build fails if its assertions break."** No spreadsheet on
+earth can say that.
+
+This is the quiet enabler for half of everything else: publish-as-API (#2) is headless
++ an HTTP wrapper; scheduled monitoring (#3) is headless + a timer; the transpiler's
+value (#8) compounds when the migrated model becomes CI-testable.
+
+**Why it's cheaper than it sounds:** the compute core is already UI-independent — pure
+`data()` methods, a headless-tested engine (the perf suite literally runs graphs in
+vitest with no DOM today), and the Rust engine is a plain library. The work is a thin
+entry point: load graph → set inputs → run → print outputs. The web/desktop split
+already forced the discipline that makes this possible.
+
+**Enabled by:** the pure DAG (already shipped), the addressable model (Bet 2 — you need
+stable names to say `--set rate=0.05`), schema inference (Bet 3 — typed CLI args and
+outputs for free).
+
+**First step:** a `scripts/run-graph.ts` that loads a saved graph in Node, runs the
+engine, prints named outputs as JSON. The vitest seed-tests are 80% of this already —
+it's closer to *extracting* a feature than building one.
+
+**Risk:** low, genuinely. Desktop-only nodes (Polars-backed) need the JS fallback path
+in Node — which exists, because the web build needed it.
+
+---
+
+## 11 — Transform-by-example: Flash Fill that shows its work
+
+**Scope today:** cleaning a messy column means knowing which Split/Extract/Replace
+nodes to reach for and how to wire them. That knowledge is the barrier — the person
+with the messy data knows *what they want*, not *which verbs produce it*.
+
+**The jump:** **demonstrate, don't specify.** Type what the first two cells *should*
+be; Solenoid infers the transformation and — this is the part Excel's Flash Fill
+can't do — **emits real, visible, editable nodes** that implement it. Flash Fill is
+magic that works until it silently doesn't, with no way to inspect what it guessed.
+Here the guess *materializes as graph*: you can read it, correct it, and trust it,
+because it's ordinary Solenoid logic once it lands.
+
+That's the deeper pattern, bigger than cleaning: **example-driven synthesis with an
+auditable result.** The AI/synthesizer proposes; the graph *is* the explanation; the
+human owns it afterward. It's the same philosophy as the audit thesis — never trust
+what you can't inspect — applied to authoring.
+
+**Enabled by:** typed columns (schema, Bet 3) to constrain the search space; the text/
+addressable model (Bet 2) for the synthesizer to emit into; the existing text-verb node
+set as the target vocabulary. Works with classic program-synthesis techniques alone
+(Flash Fill's own lineage — no LLM required); an LLM raises the ceiling.
+
+**First step:** the narrow classic case — string transforms on one column from 1–2
+examples (split/substring/case/concat patterns), emitting a Split Column or Expression
+node. Even this covers an enormous share of real cleanup pain.
+
+**Risk:** wrong inferences. Contained by the whole point: the output is inspectable
+nodes plus a preview over the full column *before* accepting — the user reviews the
+logic, not just the result.
+
+---
+
+## 12 — Expectation nodes: the data-quality gate
+
+**Scope today:** tagged errors catch *computational* failures (`#DIV/0!`, `#SHAPE!`).
+Nothing catches **plausible-but-wrong data** — the silent killer: the CSV that arrived
+with duplicate IDs, the column that's suddenly 4% null, the amount that went negative.
+The audit found exactly this class shipping wrong numbers silently.
+
+**The jump:** **assertions as nodes.** An Expect node sits on a cable and declares:
+*this column is never null; IDs are unique; amounts are in [0, 1e9]; row count within
+20% of last snapshot.* Green badge flowing through when true; a loud tagged failure
+(and an Alert, and — with #9 — a refusal to fire downstream sinks) when not. This is
+what dbt tests and Great Expectations do for data pipelines, made visual, inline, and
+zero-config — a *gate in the flow* rather than a test file somewhere else.
+
+Together with golden tests (logic correctness) and snapshots (change over time), this
+completes the trust triad: **the logic is tested, the data is validated, the history is
+explained.** That's a sentence no spreadsheet — and honestly few data platforms — can say.
+
+**Enabled by:** the tagged-error system (already shipped — a failed expectation is just
+a new SolError with provenance), the Alert machinery (already shipped), schema
+inference (Bet 3 — expectations can be *suggested* from the inferred schema and
+profile: "this column looks unique; want to enforce that?").
+
+**First step:** one Expect node with 4 checks (not-null / unique / range / regex),
+pass-through output, red badge + alert on failure. It's a small node; the leverage is
+in the pattern.
+
+**Risk:** almost none technically. The design risk is nag-fatigue — keep expectations
+strictly opt-in (user-placed nodes, not automatic warnings), consistent with the
+no-Captain-Obvious rule.
+
+---
+
+## 13 — The report projection: one graph, a second face
+
+**Scope today:** the canvas is the only view. It's built for *authors*. Showing work to
+anyone else means screenshots — and the audience for a model is almost always larger
+than its authors.
+
+**The jump:** a **second projection of the same document**: a linear, readable,
+notebook-style page — prose blocks, pinned values, tables, charts — where every number
+is **live from the graph**. Not an export: a *face*. Edit the model, the report is
+already current. Flip to present it; print it to PDF for the board pack; hand the
+file to a reviewer who never opens the canvas. This is the literate-computing idea
+(notebooks) grafted onto a computation model that's actually sound underneath — a
+notebook where the cells can't be run out of order, because there is no order, only
+the DAG.
+
+**Why it's nearly free by the time you get here:** the ingredients exist — **pins**
+already lift values out of the graph (`PinLayer`), Notes already render markdown,
+charts are nodes, and Bet 2 says the document is one model with multiple views. The
+report is "pins + notes, arranged on a page instead of a canvas."
+
+**Enabled by:** the projection architecture (Bet 2 — this is its second consumer, after
+the text form, which is exactly what proves an abstraction), pins/Notes/visual nodes
+(already shipped), NL narration (Round 1, #7) slots in as auto-drafted prose between
+the numbers.
+
+**First step:** a read-only "Report" tab that renders the doc's pinned values and Note
+nodes top-to-bottom in reading order. Ugly is fine; live is the point.
+
+**Risk:** layout scope-creep toward "a document editor." Hold the line: blocks are
+pins, notes, tables, charts — arrangement only, no rich-text ambitions.
+
+---
+
+## 14 — Node-anchored review: comments, questions, sign-off
+
+**Scope today:** one author, one canvas, zero collaboration surface of any kind
+(verified — no comments, no annotations, nothing). Round 1 deliberately deferred
+*real-time* multiplayer. But the highest-value collaboration in modeling isn't
+simultaneous editing — it's **review**: "why is this rate 4%?", "who approved this
+change?", "checked, looks right."
+
+**The jump:** **comments and review state anchored to nodes** (and, with Bet 2's stable
+addresses, surviving edits and travel-with-the-file). A reviewer opens the graph, drops
+questions on specific nodes, marks sections checked; the author resolves them; a graph
+can carry "reviewed by X against snapshot Y." Combined with snapshots+diff (#6) this
+becomes the full governance story — *the model, its history, its review trail, in one
+file* — which is precisely the thing regulated/finance users are forced to fake today
+with email chains and a "FINAL_v7_reviewed" filename.
+
+And it's the right on-ramp to collaboration generally: async-first, no CRDT, no
+server — a comment is just data in the save. Real-time can come later, on the
+addressable model, if it's ever actually needed.
+
+**Enabled by:** stable node identity (Bet 2 — comments must anchor to something that
+survives edits), snapshots (#6 — "reviewed *as of* what"), and the existing
+placeholder/provenance discipline as the pattern for carrying non-graph data in saves.
+
+**First step:** a comment pin per node (author, text, resolved flag), stored in the
+save, rendered like the existing corner badges. Single-user it's already useful as
+**"notes to self with an address"** — TODO markers that live on the logic they're about.
+
+**Risk:** low. The trap is building identity/permissions infrastructure — don't;
+a name string in a local file is the 1.0 of this.
+
+---
+
+## Round 2, ranked
+
+- **The wedge:** #8 (Excel transpiler) is the round's headline — it attacks the
+  adoption wall directly, and an unusual amount of it already exists in the codebase.
+  If only one Round-2 item ever ships, it should be this.
+- **Cheapest scope-per-effort:** #10 (headless) and #12 (expectations) — both are
+  small extractions from machinery that already works, and both unlock sentences no
+  competitor can say.
+- **The pair that compounds:** #9 (write side) + Round 1's #3 (live data) = the
+  automation story; #10 (headless) quietly powers Round 1's #2/#3 as well. Build
+  these as one arc: *in → through → out → unattended.*
+- **Second wave (needs Bet 2 first):** #13 (report) and #14 (review) — both are
+  projections/annotations over the addressable model, and both aim at the same
+  audience: everyone who *reads* a model but will never wire a node.
+- **The sleeper:** #11 (by-example) — the hardest to build well, but it's the one that
+  changes who can use Solenoid at all, and its show-the-work framing is the product's
+  soul applied to authoring.
+
+Round 1 gave a graph more verbs. Round 2 gives it more **tenses and voices**: a past
+(what it was in Excel, #8), a future (what it will do unattended, #9/#10), a
+conditional (what it should be, #12), and other people's voices in it (#11, #13, #14).
+Together the two rounds describe the same product from two sides: Round 1 makes the
+graph *worth more*; Round 2 makes it *reach further*.
