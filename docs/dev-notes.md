@@ -2,6 +2,56 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### v1.0 audit fix pass — every P0/P1, frame parity, perf, hygiene (2026-07-02)
+Implemented `docs/v1.0-audit.md` top to bottom in the §9 order (one commit per batch on
+`develop`; the audit doc now carries a ✅ status header). Highlights + non-obvious gotchas:
+- **Date TZ (P0-1):** `parseDateToSerial` now rebuilds the wall-clock via `Date.UTC` from
+  whichever getters match the parse interpretation. Gotcha: a bare trailing `[+-]\d{4}` is
+  indistinguishable from a "-2026" year — a zone designator only counts AFTER a time component.
+  TIMEVALUE parses time text directly (+AM/PM); EDATE clamps month-end.
+- **Formula range policy (P0-2):** array args honor error-propagate/null-skip BEFORE Formula.js,
+  with three shape carve-outs — COUNT-family raw, index-ALIGNED ranges drop null rows pairwise
+  (per-array dropping would shear SUMIF/CORREL pairings), positional lookups keep nulls (MATCH
+  answers in indices). IFERROR family handled in the call branch (it must SEE the error).
+  VLOOKUP/HLOOKUP/LOOKUP/MATCH/INDEX got internal 1-D impls; lookups are case-insensitive.
+- **Desktop GroupBy (P0-3) + RIGHT JOIN (4):** the 7 missing agg ops mirrored from the oracle.
+  The join finding was pinned with a failing cargo test first — Polars right-join with coalesce
+  emits `[left-non-key…, key(named after the RIGHT key), right-non-key(_right-suffixed)…]`, so
+  the positional rename mislabeled columns. Fix selects BY NAME into the oracle layout;
+  `maintain_order` set per driving side. Cargo parity tests 19 → 27.
+- **Undo-clear-on-load (P0-5):** `loadGraph`'s finally calls a new `clearHistory()` hook
+  (plugin `.clear()` + a 200-entry limit poked into the plugin's private field — the ctor
+  doesn't expose it). Kills the corruption AND the biggest memory leak in one move.
+- **XSS (P0-6):** DOMPurify over Note markdown + a real CSP + `withGlobalTauri` off +
+  `--enable-unsafe-webgpu` dropped + fs scope narrowed to `$HOME/**/*.{json,csv}` (+`.json.tmp`
+  for the new atomic temp+rename saves — dialog-picked paths outside still work via runtime
+  grants, with a direct-write fallback for a `.tmp` outside a grant).
+- **emitFrame race (19):** `beginPass(this)` passed as an ARGUMENT (`emitFrame(this,
+  beginPass(this), await …)`) — JS argument order evaluates it before the verb await, so no
+  per-node data() restructuring was needed. A stale pass drops its orphan handle, never the ref.
+- **Filter coercion (16):** ONE value-coercion spec both engines implement; the Filter node
+  passes through on an EMPTY value (it used to compare numeric columns against `Number("")`=0
+  in JS and NaN in Rust). Unparseable → matches NO rows on both.
+- **Perf (24/40-43):** per-pass collect memo (`clearCollectMemo` at pass start); Get Column
+  is lazy via `backend.column()`; cable connect/disconnect runs a TARGETED pass (`topology`
+  flag refreshes the Tarjan loop cache — the one global a cable touches); annotation resolvers
+  shared per MICROTASK (can't cache across passes — selector branches change per pass) with
+  connections indexed per build; HTML-canvas re-captures per changed node id (the render pipe
+  carries it; the cableValueStore subscription was the thing forcing full rebuilds every pass).
+- **NUL bytes (quality):** the four files were cleaned (\u0000 escapes), `.gitattributes`
+  added, and a vitest guard now sweeps src+src-tauri+docs — it caught its OWN comment on the
+  first run, and the audit doc itself carried one of the NULs it described.
+- **Hard catalog↔registry test** immediately found 5 stale NODE_EXCEL keys (`logic-*`,
+  orphaned by the BooleanOp split) — exactly the drift the dev-only console warn missed.
+  NA node now emits the tagged `#N/A` (was one of THREE different not-really-N/A producers);
+  the NaN "Not Available" constant is gone.
+- **P6 operator table implemented** (settled 2026-06-22, had shipped unbuilt): case-insensitive
+  `=`, cross-type ordering `#TYPE!`, `&` renders TRUE/FALSE, null propagates, booleans bridge.
+  Formula hosts now pass booleans through (P7 for formulas). NOTE: P3 ragged-pad is still
+  decided-but-UNBUILT — docs corrected to say so (finding 25).
+- New coverage: calcModeStore matrix, httpBridge CORS classification, the catalog-wide
+  persistence fixed-point sweep (finding 38), pagehide autosave flush (36).
+
 ### Unified XLOOKUP decided (2026-07-01, author) — design note, not built
 Merge the three lookups into ONE node, keep the name **XLOOKUP**, "just be able to handle
 everything." Folds in the v1.0-shipped **list** XLOOKUP (`XLookupNode`, match/search modes) and
@@ -2436,9 +2486,12 @@ are committed decisions; the build is still the unified-core work, unscheduled.
   must survive in a list so it stays traceable and propagates. So lists may now carry two special
   kinds — `null` (skipped) and `SolError` (propagated) — which are distinct. (Old behavior
   collapsed both to `NaN`.) `CLAUDE.md` Error-values bullet flagged accordingly.
-- **P3 ragged lists → RESOLVED: pad shorter inputs to the longest with `null`** (not
-  truncate-to-shortest, not error, not `0`-fill). Length-1 still broadcasts. Falls out of the
-  null model: the missing tail is literally missing data.
+- **P3 ragged lists → DECIDED (pad shorter inputs to the longest with `null`), but NOT
+  BUILT** — the code (broadcast2 / shared.ts zips, SumProduct/SortBy/Interleave) still
+  truncates to the shortest, and `excelFormula.test.ts` pins truncate (v1.0 audit finding 25
+  caught the docs claiming this had landed). The decision stands (not truncate-to-shortest,
+  not error, not `0`-fill; length-1 still broadcasts; the missing tail is literally missing
+  data); implementing the pad is open backlog work.
 - Worked trace (the one that drove the call): `A=[10,20,30,null,50] / B=[2,0,5,4,null]` →
   `[5, #DIV/0!, 6, null, null]`; `SUM` skips the two `null`s and propagates the `#DIV/0!` → the
   total is `#DIV/0!` (the real failure surfaces, the missing cells are harmless).

@@ -526,11 +526,11 @@ function broadcastCall(name: string, argv: unknown[]): unknown {
   return out;
 }
 
-// Error handling here is SCALAR-ONLY: in an all-scalar operator chain an error
-// operand short-circuits (JS operators would coerce it to NaN/text and lose it),
-// so `1/0`, `SQRT(-1)+1` etc. surface a real error. The ARRAY paths are left
-// exactly as before — an error that lands in a list element is cleaned to NaN at
-// the host boundary, keeping the invariant that lists never carry errors.
+// Error handling: a scalar error operand short-circuits an operator chain (JS
+// operators would coerce it to NaN/text and lose it), so `1/0`, `SQRT(-1)+1`
+// etc. surface a real error; per-cell errors inside a broadcast list propagate
+// unmorphed through operators (applyOp's isErr guard — lists carry errors
+// first-class since the 2026-06-22 array-semantics build).
 function evalAst(n: Ast, env: Record<string, unknown>): unknown {
   switch (n.t) {
     case "num": return Number(n.v);

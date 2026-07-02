@@ -22,9 +22,11 @@
 //    formula eval failure, … Convert sites incrementally — null remains the
 //    legitimate "no value" (empty cell) signal.
 //
-// Invariant: errors are scalar-level. A node that would put an error INSIDE a
-// list short-circuits to a whole-output error first (the input guard runs
-// before its data()), so lists never contain error elements.
+// Value model (array-semantics build, 2026-06-22): a list/matrix/frame CARRIES
+// per-cell SolErrors (and first-class nulls) — the old "lists never contain
+// errors" invariant is RELAXED. Aggregators propagate the first per-cell error
+// (forAggregate); element-wise ops carry an error cell through unmorphed.
+// See valueKinds.ts + subsystem-invariants "Error values".
 
 // The code set is deliberately MORE specific than Excel's seven, while keeping
 // the #CODE! surface form Excel users recognize. Granularity follows two
