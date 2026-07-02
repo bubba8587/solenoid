@@ -92,7 +92,7 @@ impl Cell {
 }
 
 // ─── A handle's backing frame: a DataFrame + the Solenoid type tags ─────────────
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct SolFrame {
     df: DataFrame,
     types: Vec<SolType>, // aligned to df column order
@@ -140,20 +140,33 @@ fn store() -> &'static Mutex<Store> {
     })
 }
 
+/// Lock the store, RECOVERING from poisoning: a panic inside a verb (e.g. deep
+/// in Polars) would otherwise fail every later engine call until app restart,
+/// with the webview still running (audit finding 33). The store is only a
+/// handle→frame map, so the data is valid regardless of where a panic unwound.
+fn lock_store() -> std::sync::MutexGuard<'static, Store> {
+    store().lock().unwrap_or_else(|p| p.into_inner())
+}
+
 fn register(frame: SolFrame) -> String {
-    let mut s = store().lock().unwrap();
+    let mut s = lock_store();
     let id = format!("plf:{}", s.seq.fetch_add(1, Ordering::Relaxed) + 1);
     s.frames.insert(id.clone(), frame);
     id
 }
 
 fn with_frame<T>(handle: &str, f: impl FnOnce(&SolFrame) -> Result<T, IpcError>) -> Result<T, IpcError> {
-    let s = store().lock().unwrap();
-    let frame = s
-        .frames
-        .get(handle)
-        .ok_or_else(|| IpcError::new("#REF!", format!("frame handle {handle} not found (dropped or never created)")))?;
-    f(frame)
+    // Clone the frame OUT of the lock (DataFrame clones are Arc-cheap) and run
+    // the verb outside it: a Polars panic can't poison the store mid-verb, and
+    // one long verb no longer serializes every other engine call (finding 33).
+    let frame = {
+        let s = lock_store();
+        s.frames
+            .get(handle)
+            .cloned()
+            .ok_or_else(|| IpcError::new("#REF!", format!("frame handle {handle} not found (dropped or never created)")))?
+    };
+    f(&frame)
 }
 
 // ─── Cell ⇄ Polars / JSON conversions ───────────────────────────────────────────
@@ -402,14 +415,11 @@ pub enum WireOp {
         #[serde(rename = "valueName")]
         value_name: Option<String>,
     },
-    #[serde(rename = "pivot")]
-    Pivot {
-        index: String,
-        columns: String,
-        values: String,
-        agg: String,
-    },
 }
+// NOTE: no WireOp::Pivot — PivotNode is deliberately EAGER (a materialization
+// boundary; the full PIVOTBY spec is richer than the engine's op set). A stale
+// pre-PIVOTBY single-field Pivot variant lived here, incompatible with the JS
+// FrameOp shape — deleted rather than kept wrong (audit finding 34).
 
 #[derive(Deserialize)]
 pub struct WireJoinOpts {
@@ -470,7 +480,11 @@ fn collect_lazy(lf: LazyFrame) -> Result<DataFrame, IpcError> {
 
 // select / drop / rename
 fn verb_select(frame: &SolFrame, columns: &[String]) -> Result<SolFrame, IpcError> {
-    require_columns(frame, columns)?;
+    // Dedupe repeats, keeping the first — matches the oracle; a duplicate
+    // selection was a hard Polars error here (audit finding 32).
+    let mut seen: HashSet<&String> = HashSet::new();
+    let columns: Vec<String> = columns.iter().filter(|n| seen.insert(*n)).cloned().collect();
+    require_columns(frame, &columns)?;
     let exprs: Vec<Expr> = columns.iter().map(|c| col(c.as_str())).collect();
     let df = collect_lazy(frame.df.clone().lazy().select(exprs))?;
     let types = types_for_names(frame, &df);
@@ -650,8 +664,35 @@ fn verb_filter(frame: &SolFrame, column: &str, op: &str, value: &Json) -> Result
             _ => return Err(IpcError::new("#VALUE!", format!("unknown filter op \"{op}\""))),
         }
     } else {
+        // The ONE filter-value coercion spec, shared with the oracle's
+        // filterValueToNumber (audit finding 16): logical columns accept
+        // TRUE/FALSE/numbers via the logical↔number bridge; number/date parse
+        // after a trim with NO comma stripping. An unparseable value matches
+        // NO rows on both engines (json_num's NaN made neq keep everything).
+        let parsed: Option<f64> = match value {
+            Json::Number(n) => n.as_f64(),
+            Json::Bool(b) => Some(if *b { 1.0 } else { 0.0 }),
+            Json::String(s) => {
+                let t = s.trim();
+                if ty == SolType::Logical {
+                    match t.to_ascii_lowercase().as_str() {
+                        "true" => Some(1.0),
+                        "false" => Some(0.0),
+                        _ => t.parse::<f64>().ok().map(|n| if n == 0.0 { 0.0 } else { 1.0 }),
+                    }
+                } else if t.is_empty() {
+                    None
+                } else {
+                    t.parse::<f64>().ok()
+                }
+            }
+            _ => None,
+        };
+        let Some(v) = parsed else {
+            return reorder_rows(frame, &[]);
+        };
         let x = c.cast(DataType::Float64);
-        let y = lit(json_num(value));
+        let y = lit(v);
         match op {
             "eq" => x.eq(y),
             "neq" => x.neq(y),
@@ -792,6 +833,9 @@ fn verb_group_by(frame: &SolFrame, keys: &[String], aggs: &[WireAgg]) -> Result<
                 .collect(),
         );
     }
+    // De-dupe output names (an agg `as` can collide with a key) — matches the
+    // oracle's makeHeaders pass (audit finding 32).
+    let out_names = make_headers(&out_names, out_names.len());
     let df = build_df(&out_names, &out_types, &out_cols)?;
     Ok(SolFrame { df, types: out_types })
 }
@@ -842,77 +886,6 @@ fn verb_unpivot(
     Ok(SolFrame { df, types: out_types })
 }
 
-// ─── pivot (manual, first-seen index + column order) ────────────────────────────
-fn verb_pivot(
-    frame: &SolFrame,
-    index: &str,
-    columns: &str,
-    values: &str,
-    agg: &str,
-) -> Result<SolFrame, IpcError> {
-    require_columns(
-        frame,
-        &[index.to_string(), columns.to_string(), values.to_string()],
-    )?;
-    let (idx_ty, idx_cells) = frame.column_cells(index).unwrap();
-    let (_, piv_cells) = frame.column_cells(columns).unwrap();
-    let (_, val_cells) = frame.column_cells(values).unwrap();
-    let nrows = frame.df.height();
-
-    let mut index_order: Vec<Cell> = Vec::new();
-    let mut index_keys: HashMap<String, usize> = HashMap::new();
-    let mut col_order: Vec<String> = Vec::new();
-    let mut col_seen: HashSet<String> = HashSet::new();
-    // index_key → col_name → cells
-    let mut buckets: Vec<HashMap<String, Vec<Cell>>> = Vec::new();
-    for i in 0..nrows {
-        let ik = idx_cells[i].key();
-        let row = *index_keys.entry(ik.clone()).or_insert_with(|| {
-            index_order.push(idx_cells[i].clone());
-            buckets.push(HashMap::new());
-            index_order.len() - 1
-        });
-        let col_name = match &piv_cells[i] {
-            Cell::Null => "null".to_string(),
-            Cell::Str(s) => s.clone(),
-            Cell::Bool(b) => {
-                if *b {
-                    "true".to_string()
-                } else {
-                    "false".to_string()
-                }
-            }
-            Cell::Num(n) => num_to_json(*n).to_string(),
-        };
-        if !col_seen.contains(&col_name) {
-            col_seen.insert(col_name.clone());
-            col_order.push(col_name.clone());
-        }
-        buckets[row]
-            .entry(col_name)
-            .or_default()
-            .push(val_cells[i].clone());
-    }
-
-    let mut proposed: Vec<String> = vec![index.to_string()];
-    proposed.extend(col_order.iter().cloned());
-    let names = make_headers(&proposed, proposed.len());
-
-    let mut out_cols: Vec<Vec<Cell>> = vec![index_order.clone()];
-    let mut out_types: Vec<SolType> = vec![idx_ty];
-    for cn in &col_order {
-        let cells: Vec<Cell> = (0..index_order.len())
-            .map(|r| match buckets[r].get(cn) {
-                Some(group) => aggregate_group(group, agg),
-                None => Cell::Null,
-            })
-            .collect();
-        out_cols.push(cells);
-        out_types.push(SolType::Number);
-    }
-    let df = build_df(&names, &out_types, &out_cols)?;
-    Ok(SolFrame { df, types: out_types })
-}
 
 // ─── join (Polars, with key-coalesce; oracle column layout) ─────────────────────
 fn verb_join(left: &SolFrame, right: &SolFrame, opts: &WireJoinOpts) -> Result<SolFrame, IpcError> {
@@ -925,7 +898,15 @@ fn verb_join(left: &SolFrame, right: &SolFrame, opts: &WireJoinOpts) -> Result<S
         "outer" => JoinType::Full,
         other => return Err(IpcError::new("#VALUE!", format!("unknown join how \"{other}\""))),
     };
-    let args = JoinArgs::new(how).with_coalesce(JoinCoalesce::CoalesceColumns);
+    let is_right = matches!(how, JoinType::Right);
+    // Row order must match the oracle (strict driving-side order with grouped
+    // fan-out) — Polars docs say join order is unspecified unless maintain_order
+    // is set (audit finding 15). The driving side is the RIGHT frame for a right
+    // join, the left frame otherwise.
+    let maintain = if is_right { MaintainOrderJoin::RightLeft } else { MaintainOrderJoin::LeftRight };
+    let mut args = JoinArgs::new(how).with_coalesce(JoinCoalesce::CoalesceColumns);
+    args.maintain_order = maintain; // no builder method in polars 0.46
+
     let joined = collect_lazy(left.df.clone().lazy().join(
         right.df.clone().lazy(),
         vec![col(opts.left_key.as_str())],
@@ -934,8 +915,12 @@ fn verb_join(left: &SolFrame, right: &SolFrame, opts: &WireJoinOpts) -> Result<S
     ))?;
 
     // The oracle's output layout: LEFT columns (key coalesced, in place) + RIGHT
-    // non-key columns, names de-duped via makeHeaders. Polars (with coalesce) keeps
-    // exactly that column set in that order; rebuild the names/types by position.
+    // non-key columns, names de-duped via makeHeaders. Polars emits the joined
+    // columns in a how-DEPENDENT order and naming — a right join puts the
+    // coalesced key (named after the RIGHT key) after the left non-key columns,
+    // and a colliding right column gains a "_right" suffix — so a positional
+    // rename put values under the wrong headers (audit finding 4, right joins).
+    // Select each joined column BY NAME into the oracle's layout, then rename.
     let left_names = left.names();
     let mut right_nonkey_names: Vec<String> = Vec::new();
     let mut right_nonkey_types: Vec<SolType> = Vec::new();
@@ -951,16 +936,30 @@ fn verb_join(left: &SolFrame, right: &SolFrame, opts: &WireJoinOpts) -> Result<S
     let mut final_types = left.types.clone();
     final_types.extend(right_nonkey_types.iter().cloned());
 
+    // The joined frame's name for each output position.
+    let left_name_set: HashSet<&String> = left_names.iter().collect();
+    let mut joined_names: Vec<String> = Vec::with_capacity(final_names.len());
+    for n in &left_names {
+        // On a right join with coalesce the key column carries the RIGHT key's name.
+        joined_names.push(if is_right && n == &opts.left_key { opts.right_key.clone() } else { n.clone() });
+    }
+    for n in &right_nonkey_names {
+        joined_names.push(if left_name_set.contains(n) { format!("{n}_right") } else { n.clone() });
+    }
+
     let cols = joined.get_columns();
-    if cols.len() != final_names.len() {
+    if cols.len() != joined_names.len() {
         return Err(IpcError::internal(format!(
             "join produced {} columns, expected {}",
             cols.len(),
-            final_names.len()
+            joined_names.len()
         )));
     }
-    let mut out_cols: Vec<Column> = Vec::with_capacity(cols.len());
-    for (i, c) in cols.iter().enumerate() {
+    let mut out_cols: Vec<Column> = Vec::with_capacity(joined_names.len());
+    for (i, jn) in joined_names.iter().enumerate() {
+        let c = joined
+            .column(jn.as_str())
+            .map_err(|e| IpcError::internal(format!("join column \"{jn}\" missing: {e}")))?;
         let mut nc = c.clone();
         nc.rename(final_names[i].as_str().into());
         out_cols.push(nc);
@@ -971,15 +970,20 @@ fn verb_join(left: &SolFrame, right: &SolFrame, opts: &WireJoinOpts) -> Result<S
 
 // ─── append / union by name (manual) ────────────────────────────────────────────
 fn append_frames(handles: &[String]) -> Result<SolFrame, IpcError> {
-    let s = store().lock().unwrap();
-    let frames: Vec<&SolFrame> = handles
-        .iter()
-        .map(|h| {
-            s.frames
-                .get(h)
-                .ok_or_else(|| IpcError::new("#REF!", format!("frame handle {h} not found")))
-        })
-        .collect::<Result<_, _>>()?;
+    // Clone the inputs out of the lock (Arc-cheap) — see with_frame.
+    let frames: Vec<SolFrame> = {
+        let s = lock_store();
+        handles
+            .iter()
+            .map(|h| {
+                s.frames
+                    .get(h)
+                    .cloned()
+                    .ok_or_else(|| IpcError::new("#REF!", format!("frame handle {h} not found")))
+            })
+            .collect::<Result<_, _>>()?
+    };
+    let frames: Vec<&SolFrame> = frames.iter().collect();
 
     // First-seen union of column names; reject a type conflict.
     let mut names: Vec<String> = Vec::new();
@@ -1112,31 +1116,28 @@ pub fn engine_apply(handle: String, op: WireOp) -> Result<String, IpcError> {
             variable_name,
             value_name,
         } => verb_unpivot(f, id_columns, value_columns, variable_name, value_name),
-        WireOp::Pivot {
-            index,
-            columns,
-            values,
-            agg,
-        } => verb_pivot(f, index, columns, values, agg),
     })?;
     Ok(register(out))
 }
 
 #[tauri::command]
 pub fn engine_join(left: String, right: String, opts: WireJoinOpts) -> Result<String, IpcError> {
-    // Take a snapshot under the lock so both frames are validated together.
-    let out = {
-        let s = store().lock().unwrap();
+    // Snapshot both frames under the lock, join OUTSIDE it — see with_frame.
+    let (l, r) = {
+        let s = lock_store();
         let l = s
             .frames
             .get(&left)
+            .cloned()
             .ok_or_else(|| IpcError::new("#REF!", format!("frame handle {left} not found")))?;
         let r = s
             .frames
             .get(&right)
+            .cloned()
             .ok_or_else(|| IpcError::new("#REF!", format!("frame handle {right} not found")))?;
-        verb_join(l, r, &opts)?
+        (l, r)
     };
+    let out = verb_join(&l, &r, &opts)?;
     Ok(register(out))
 }
 
@@ -1162,8 +1163,17 @@ pub fn engine_collect(handle: String) -> Result<Vec<OutColumn>, IpcError> {
 
 #[tauri::command]
 pub fn engine_drop(handle: String) {
-    let mut s = store().lock().unwrap();
+    let mut s = lock_store();
     s.frames.remove(&handle);
+}
+
+/// Drop EVERY stored frame. Called by initFrameBackend on startup: the store is
+/// process-global, so a webview reload (Ctrl+R / HMR) discards all JS state and
+/// orphans every handle for the process lifetime otherwise (audit finding 35).
+#[tauri::command]
+pub fn engine_clear() {
+    let mut s = lock_store();
+    s.frames.clear();
 }
 
 #[cfg(test)]

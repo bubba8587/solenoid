@@ -143,11 +143,20 @@ export function framePreview(frame: FrameValue, n: number): FramePreview {
 // create a handle, materialize on demand, drop it — is identical across backends.
 // Here it's all cheap object refs; on desktop the same calls cross IPC.
 class JsFrameBackend implements FrameBackend {
-  private store = new Map<string, FrameValue>();
+  // A SOURCED frame is held weakly: the producing node's memoized value is its
+  // real owner, and the GC-driven drop that was supposed to free the handle
+  // (frameBackend's FinalizationRegistry) is keyed on that same FrameValue — a
+  // strong entry here pinned its own registry key, so the finalizer never fired
+  // and every Frame Input edit leaked the previous frame for the whole web
+  // session (audit finding 18). DERIVED frames (apply/join/append results) stay
+  // strong — their owning verb node drops them explicitly.
+  private store = new Map<string, FrameValue | WeakRef<FrameValue>>();
   private seq = 0;
 
   async source(frame: FrameValue): Promise<FrameHandle> {
-    return this.register(frame);
+    const id = `jsf:${++this.seq}` as FrameHandle;
+    this.store.set(id, typeof WeakRef !== "undefined" ? new WeakRef(frame) : frame);
+    return id;
   }
 
   async apply(handle: FrameHandle, op: FrameOp): Promise<FrameHandle> {
@@ -185,7 +194,8 @@ class JsFrameBackend implements FrameBackend {
   }
 
   private get(handle: FrameHandle): FrameValue {
-    const f = this.store.get(handle);
+    const e = this.store.get(handle);
+    const f = e instanceof WeakRef ? e.deref() : e;
     if (!f) throw solError("#REF!", `frame handle ${handle} not found (dropped or never created)`);
     return f;
   }
@@ -271,7 +281,13 @@ export async function initFrameBackend(): Promise<void> {
   if (!engineAvailable()) return;
   try {
     const info = await enginePing();
-    if (info?.backend === "polars") setFrameBackend(new PolarsBackend());
+    if (info?.backend === "polars") {
+      // The Rust store is process-global but every handle lives in JS state — a
+      // webview reload (Ctrl+R / HMR) discards that state and would orphan every
+      // stored frame for the process lifetime (audit finding 35). Fresh start.
+      await ipcInvoke("engine_clear", {}).catch(() => {});
+      setFrameBackend(new PolarsBackend());
+    }
   } catch {
     /* keep the JS backend if the engine can't be reached */
   }
@@ -324,8 +340,9 @@ async function inputHandle(input: FrameInput): Promise<{ h: FrameHandle; temp: b
   return { h: await p, temp: false };
 }
 
-/** Run a unary verb (select/drop/rename/sort/distinct/head/filter/groupBy/pivot/
- *  unpivot) through the active backend, returning a LAZY ref — the result stays in
+/** Run a unary verb (select/drop/rename/sort/distinct/head/filter/groupBy/
+ *  unpivot — NOT pivot, which is deliberately eager) through the active
+ *  backend, returning a LAZY ref — the result stays in
  *  the backend so a chain of verbs never round-trips the frame; it's collected only
  *  at a materialization boundary (readFrame). */
 export async function runFrameUnary(input: FrameInput, op: FrameOp): Promise<FrameRef | SolError> {

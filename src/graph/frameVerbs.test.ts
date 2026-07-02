@@ -530,3 +530,74 @@ describe("splitColumn / addIndexColumn (Power Query column ops)", () => {
     expect(out.columns.map((c) => c.name)).not.toEqual(["id", "id", "name"]); // de-duped
   });
 });
+
+// ── v1.0 audit parity fixes (findings 16, 17, 31, 32) ─────────────────────────
+
+describe("filter value coercion — the one spec (audit finding 16)", () => {
+  const t: FrameValue = {
+    __frame: true,
+    columns: [
+      { name: "v", type: "number", values: [1000, 1234] },
+      { name: "flag", type: "logical", values: [true, false] },
+    ],
+  };
+  const rows = (out: FrameValue) => out.columns[0].values.length;
+
+  it("an unparseable numeric value matches NO rows (even neq)", () => {
+    expect(rows(filterRows(t, "v", "eq", "1,234"))).toBe(0); // no comma stripping
+    expect(rows(filterRows(t, "v", "neq", "garbage"))).toBe(0);
+    expect(rows(filterRows(t, "v", "gt", ""))).toBe(0);
+  });
+  it("numeric strings parse after a trim", () => {
+    expect(rows(filterRows(t, "v", "gt", " 1100 "))).toBe(1);
+  });
+  it("a logical column accepts \"false\" (it was truthy → matched TRUE rows)", () => {
+    const out = filterRows(t, "flag", "eq", "false");
+    expect(out.columns[1].values).toEqual([false]);
+    expect(rows(filterRows(t, "flag", "eq", "TRUE"))).toBe(1);
+  });
+});
+
+describe("logical columns aggregate as 1/0 (audit finding 17)", () => {
+  it("GroupBy SUM over a logical column counts the TRUEs", () => {
+    const t: FrameValue = {
+      __frame: true,
+      columns: [
+        { name: "k", type: "string", values: ["a", "a", "a"] },
+        { name: "flag", type: "logical", values: [true, false, true] },
+      ],
+    };
+    const out = groupByFrame(t, ["k"], [{ column: "flag", op: "sum", as: "s" }, { column: "flag", op: "avg", as: "m" }]);
+    expect(out.columns[1].values).toEqual([2]);
+    expect(out.columns[2].values[0]).toBeCloseTo(2 / 3, 12);
+  });
+});
+
+describe("NaN cells read as missing, matching the IPC boundary (audit finding 31)", () => {
+  const t: FrameValue = {
+    __frame: true,
+    columns: [{ name: "v", type: "number", values: [1, NaN, 3] }],
+  };
+  it("distinct/sort/filter/groupBy classify NaN like null", () => {
+    // count treats it as absent
+    const g = groupByFrame(
+      { __frame: true, columns: [{ name: "k", type: "string", values: ["a", "a", "a"] }, ...t.columns] },
+      ["k"],
+      [{ column: "v", op: "count", as: "n" }],
+    );
+    expect(g.columns[1].values).toEqual([2]);
+    // filter drops it (a null cell passes no predicate)
+    expect(filterRows(t, "v", "gte", 0).columns[0].values).toEqual([1, 3]);
+  });
+});
+
+describe("duplicate output names dedupe (audit finding 32)", () => {
+  it("groupBy: an agg named after the key gets a makeHeaders suffix", () => {
+    const out = groupByFrame(f, ["name"], [{ column: "qty", op: "count", as: "name" }]);
+    expect(out.columns.map((c) => c.name)).toEqual(["name", "name2"]);
+  });
+  it("select: a repeated name keeps the first occurrence only", () => {
+    const out = selectColumns(f, ["id", "id", "qty"]);
+    expect(out.columns.map((c) => c.name)).toEqual(["id", "qty"]);
+  });
+});

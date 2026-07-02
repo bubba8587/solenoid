@@ -69,6 +69,7 @@ pub fn run() {
             engine::engine_column,
             engine::engine_collect,
             engine::engine_drop,
+            engine::engine_clear,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -63,7 +63,14 @@ function requireColumn(f: FrameValue, name: string): FrameColumn {
   return col;
 }
 
-const cellAt = (col: FrameColumn, i: number): FrameCell => (i < col.values.length ? col.values[i] : null);
+// A non-finite number reads as MISSING: the IPC boundary already turns NaN into
+// null (JSON has no NaN), so the desktop engine never sees it — the oracle must
+// classify it the same way or count/distinct/sort/filter diverge per backend
+// (audit finding 31).
+const cellAt = (col: FrameColumn, i: number): FrameCell => {
+  const v = i < col.values.length ? col.values[i] : null;
+  return typeof v === "number" && !Number.isFinite(v) ? null : v;
+};
 
 /** Re-materialize a frame from a row-index list (the basis for every row verb:
  *  sort = sorted indices, head = a prefix, distinct/filter = the kept indices).
@@ -137,6 +144,29 @@ export function headRows(f: FrameValue, n: number): FrameValue {
  *  WHERE keeps only TRUE — matches FilterNode). Comparisons reuse `compareOp`:
  *  numeric/date numerically, logical via 0/1, string via the localeCompare sign
  *  (eq/neq by string identity); text ops match on the stringified cell. */
+/** Coerce the (usually string) filter VALUE for a numeric comparison, by column
+ *  type — the ONE spec both engines implement (audit finding 16; the two sides
+ *  had drifted: JS `Number("")`=0 vs Rust NaN, JS truthy-"false"=1 vs Rust NaN).
+ *  Logical columns go through coerceLogical (TRUE/FALSE/0/1 and the number
+ *  bridge); number/date parse after a trim, with NO comma stripping. `null` =
+ *  not comparable → the predicate matches no rows (deterministic, and visibly
+ *  "misconfigured" rather than silently keeping or dropping everything). */
+function filterValueToNumber(value: FrameCell, type: FrameColType): number | null {
+  if (type === "logical") {
+    const b = coerceLogical(value);
+    return b === null ? null : b ? 1 : 0;
+  }
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value === "boolean") return value ? 1 : 0;
+  if (typeof value === "string") {
+    const t = value.trim();
+    if (t === "") return null;
+    const n = Number(t);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
 function passesFilter(cell: FrameCell, op: FilterOp, value: FrameCell, type: FrameColType): boolean {
   if (cell === null || isSolError(cell)) return false;
   if (op === "contains")   return String(cell).includes(String(value));
@@ -148,7 +178,8 @@ function passesFilter(cell: FrameCell, op: FilterOp, value: FrameCell, type: Fra
     return compareOp(op, String(cell).localeCompare(String(value)), 0);
   }
   const x = type === "logical" ? (cell ? 1 : 0) : Number(cell);
-  const y = type === "logical" ? (value ? 1 : 0) : Number(value);
+  const y = filterValueToNumber(value, type);
+  if (y === null) return false;
   return compareOp(op, x, y);
 }
 
@@ -250,12 +281,22 @@ export function groupByFrame(f: FrameValue, keys: readonly string[], aggs: reado
     type: spec.op === "min" || spec.op === "max" ? col.type : "number",
     values: keyOrder.map((k) => aggregateGroup(buckets.get(k)!.map((i) => cellAt(col, i)), spec.op)),
   }));
-  return frame([...keyOut, ...aggOut]);
+  // De-dupe output names ("count of Region grouped by Region" collides the agg
+  // `as` with the key) — two same-named columns here, a hard error in Rust
+  // before it grew the same makeHeaders pass (audit finding 32).
+  const out = [...keyOut, ...aggOut];
+  const unique = makeHeaders(out.map((c) => c.name), out.length);
+  out.forEach((c, i) => { c.name = unique[i]; });
+  return frame(out);
 }
 
 /** Keep exactly `names`, in the given order. A missing name is a #REF!. */
 export function selectColumns(f: FrameValue, names: readonly string[]): FrameValue {
-  return frame(names.map((n) => requireColumn(f, n)));
+  // Dedupe repeats, keeping the first: a duplicate selection made two
+  // same-named columns here but a hard Polars error on desktop (finding 32).
+  const seen = new Set<string>();
+  const wanted = names.filter((n) => !seen.has(n) && (seen.add(n), true));
+  return frame(wanted.map((n) => requireColumn(f, n)));
 }
 
 /** Remove `names` (a name not present is silently ignored — "drop if there"). */
