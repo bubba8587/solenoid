@@ -38,11 +38,32 @@ function runVerb<T>(fn: () => T): T | SolError {
 // PREVIOUS owned ref (the backend's frames are independent, so this is safe), and
 // returns the ref as the cable value. A passthrough (no-op verb) must pass a VALUE,
 // not the upstream ref it doesn't own — callers do `readFrame(f)` for that case.
-interface FrameVerbNode { _ref?: FrameRef | null; cachedResult: FrameValue | SolError | null }
-async function emitFrame(node: FrameVerbNode, out: FrameRef | FrameValue | SolError | null): Promise<{ frame: FrameRef | FrameValue | SolError | null }> {
+interface FrameVerbNode { _ref?: FrameRef | null; _gen?: number; cachedResult: FrameValue | SolError | null }
+
+/** Stamp a new compute pass on the node — the guard against OUT-OF-ORDER passes
+ *  (audit finding 19): a superseded pass's data() isn't aborted, only its result
+ *  discarded, so a stale pass resolving late would otherwise drop the LIVE ref
+ *  the fresh pass just published and install its own stale ref + preview.
+ *  MUST be evaluated before the verb's await — the `emitFrame(this,
+ *  beginPass(this), await …)` argument order guarantees exactly that. */
+function beginPass(node: FrameVerbNode): number {
+  node._gen = (node._gen ?? 0) + 1;
+  return node._gen;
+}
+
+async function emitFrame(node: FrameVerbNode, gen: number, out: FrameRef | FrameValue | SolError | null): Promise<{ frame: FrameRef | FrameValue | SolError | null }> {
+  // Stale pass: leave the node's live ref/preview alone; free the orphan result
+  // handle (nothing else owns it — rete discards the stale data() result).
+  const stale = () => {
+    if (isFrameRef(out) && out !== node._ref) dropFrameRef(out);
+    return { frame: null };
+  };
+  if (gen !== node._gen) return stale();
+  const preview = await collectPreview(out); // head-N for a large frame; full for a small one
+  if (gen !== node._gen) return stale(); // a newer pass finished during the collect
   if (node._ref && node._ref !== out) dropFrameRef(node._ref);
   node._ref = isFrameRef(out) ? out : null;
-  node.cachedResult = await collectPreview(out); // head-N for a large frame; full for a small one
+  node.cachedResult = preview;
   return { frame: out };
 }
 
@@ -106,7 +127,7 @@ export class DistinctNode extends ClassicPreset.Node {
 
   async data(inputs: { frame?: (FrameInput | null)[] }) {
     const f = inputs.frame?.[0] ?? null;
-    return emitFrame(this, f != null ? await runFrameUnary(f, { kind: "distinct" }) : null);
+    return emitFrame(this, beginPass(this), f != null ? await runFrameUnary(f, { kind: "distinct" }) : null);
   }
 }
 
@@ -130,7 +151,7 @@ export class HeadNode extends ClassicPreset.Node {
   async data(inputs: { frame?: (FrameInput | null)[]; rows?: number[] }) {
     const f = inputs.frame?.[0] ?? null;
     const n = inputs.rows?.[0] ?? this.literals.rows ?? 10;
-    return emitFrame(this, f != null ? await runFrameUnary(f, { kind: "head", n }) : null);
+    return emitFrame(this, beginPass(this), f != null ? await runFrameUnary(f, { kind: "head", n }) : null);
   }
 }
 
@@ -159,8 +180,8 @@ export class SortFrameNode extends ClassicPreset.Node {
   async data(inputs: { frame?: (FrameInput | null)[]; column?: string[] }) {
     const f = inputs.frame?.[0] ?? null;
     const col = (inputs.column?.[0] ?? this.stringLiterals.column ?? "").trim();
-    if (f == null) return emitFrame(this, null);
-    return emitFrame(this, col === "" ? await readFrame(f) : await runFrameUnary(f, { kind: "sort", by: col, dir: this.dir }));
+    if (f == null) return emitFrame(this, beginPass(this), null);
+    return emitFrame(this, beginPass(this), col === "" ? await readFrame(f) : await runFrameUnary(f, { kind: "sort", by: col, dir: this.dir }));
   }
 }
 
@@ -190,8 +211,12 @@ export class FilterFrameNode extends ClassicPreset.Node {
     const f = inputs.frame?.[0] ?? null;
     const col = (inputs.column?.[0] ?? this.stringLiterals.column ?? "").trim();
     const val = inputs.value?.[0] ?? this.stringLiterals.value ?? "";
-    if (f == null) return emitFrame(this, null);
-    return emitFrame(this, col === "" ? await readFrame(f) : await runFrameUnary(f, { kind: "filter", column: col, op: this.op, value: val }));
+    if (f == null) return emitFrame(this, beginPass(this), null);
+    // An empty value (the default!) is an incomplete predicate → pass through,
+    // same as an empty column. The engines used to see it and DIVERGE — JS
+    // compared numeric columns against Number("")=0, Rust against NaN (audit
+    // finding 16).
+    return emitFrame(this, beginPass(this), col === "" || val.trim() === "" ? await readFrame(f) : await runFrameUnary(f, { kind: "filter", column: col, op: this.op, value: val }));
   }
 }
 
@@ -223,8 +248,8 @@ export class JoinNode extends ClassicPreset.Node {
     const right = inputs.right?.[0] ?? null;
     const lk = (inputs.leftKey?.[0] ?? this.stringLiterals.leftKey ?? "").trim();
     const rk = (inputs.rightKey?.[0] ?? this.stringLiterals.rightKey ?? "").trim() || lk;
-    if (left == null || right == null || lk === "") return emitFrame(this, null);
-    return emitFrame(this, await runFrameJoin(left, right, { leftKey: lk, rightKey: rk, how: this.how }));
+    if (left == null || right == null || lk === "") return emitFrame(this, beginPass(this), null);
+    return emitFrame(this, beginPass(this), await runFrameJoin(left, right, { leftKey: lk, rightKey: rk, how: this.how }));
   }
 }
 
@@ -249,8 +274,8 @@ export class SelectColumnsNode extends ClassicPreset.Node {
   async data(inputs: { frame?: (FrameInput | null)[]; columns?: string[][] }) {
     const f = inputs.frame?.[0] ?? null;
     const cols = inputs.columns?.[0] ?? [];
-    if (f == null) return emitFrame(this, null);
-    return emitFrame(this, cols.length ? await runFrameUnary(f, { kind: "select", columns: cols }) : await readFrame(f));
+    if (f == null) return emitFrame(this, beginPass(this), null);
+    return emitFrame(this, beginPass(this), cols.length ? await runFrameUnary(f, { kind: "select", columns: cols }) : await readFrame(f));
   }
 }
 
@@ -270,7 +295,7 @@ export class DropColumnsNode extends ClassicPreset.Node {
   async data(inputs: { frame?: (FrameInput | null)[]; columns?: string[][] }) {
     const f = inputs.frame?.[0] ?? null;
     const cols = inputs.columns?.[0] ?? [];
-    return emitFrame(this, f != null ? await runFrameUnary(f, { kind: "drop", columns: cols }) : null);
+    return emitFrame(this, beginPass(this), f != null ? await runFrameUnary(f, { kind: "drop", columns: cols }) : null);
   }
 }
 
@@ -300,8 +325,8 @@ export class GroupByFrameNode extends ClassicPreset.Node {
     const f = inputs.frame?.[0] ?? null;
     const keys = inputs.keys?.[0] ?? [];
     const col = (inputs.column?.[0] ?? this.stringLiterals.column ?? "").trim();
-    if (f == null) return emitFrame(this, null);
-    return emitFrame(this, keys.length && col
+    if (f == null) return emitFrame(this, beginPass(this), null);
+    return emitFrame(this, beginPass(this), keys.length && col
       ? await runFrameUnary(f, { kind: "groupBy", keys, aggs: [{ column: col, op: this.op, as: col }] })
       : await readFrame(f));
   }
@@ -468,8 +493,8 @@ export class UnpivotNode extends ClassicPreset.Node {
     const f = inputs.frame?.[0] ?? null;
     const ids = inputs.idColumns?.[0] ?? [];
     const vals = inputs.valueColumns?.[0] ?? [];
-    if (f == null) return emitFrame(this, null);
-    return emitFrame(this, vals.length ? await runFrameUnary(f, { kind: "unpivot", idColumns: ids, valueColumns: vals }) : await readFrame(f));
+    if (f == null) return emitFrame(this, beginPass(this), null);
+    return emitFrame(this, beginPass(this), vals.length ? await runFrameUnary(f, { kind: "unpivot", idColumns: ids, valueColumns: vals }) : await readFrame(f));
   }
 }
 
@@ -546,8 +571,8 @@ export class AppendNode extends ClassicPreset.Node {
 
   async data(inputs: { top?: (FrameInput | null)[]; bottom?: (FrameInput | null)[] }) {
     const frames = [inputs.top?.[0] ?? null, inputs.bottom?.[0] ?? null].filter((f): f is FrameInput => f != null);
-    if (frames.length === 0) return emitFrame(this, null);
-    return emitFrame(this, frames.length === 1 ? await readFrame(frames[0]) : await runFrameAppend(frames));
+    if (frames.length === 0) return emitFrame(this, beginPass(this), null);
+    return emitFrame(this, beginPass(this), frames.length === 1 ? await readFrame(frames[0]) : await runFrameAppend(frames));
   }
 }
 
@@ -574,12 +599,12 @@ export class RenameNode extends ClassicPreset.Node {
     const f = inputs.frame?.[0] ?? null;
     const from = inputs.from?.[0] ?? [];
     const to = inputs.to?.[0] ?? [];
-    if (f == null) return emitFrame(this, null);
+    if (f == null) return emitFrame(this, beginPass(this), null);
     const map: Record<string, string> = {};
     for (let i = 0; i < Math.min(from.length, to.length); i++) {
       if (from[i] && to[i]) map[from[i]] = to[i];
     }
-    return emitFrame(this, Object.keys(map).length ? await runFrameUnary(f, { kind: "rename", map }) : await readFrame(f));
+    return emitFrame(this, beginPass(this), Object.keys(map).length ? await runFrameUnary(f, { kind: "rename", map }) : await readFrame(f));
   }
 }
 

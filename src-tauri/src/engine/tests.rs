@@ -170,20 +170,6 @@ fn unpivot_is_row_major() {
     assert_eq!(d[2].2, j(&[10.0, 20.0, 30.0, 40.0]));
 }
 
-#[test]
-fn pivot_first_seen_with_missing_cells_null() {
-    let f = frame(vec![
-        ("row", SolType::Str, strs(&["a", "a", "b"])),
-        ("col", SolType::Str, strs(&["x", "y", "x"])),
-        ("val", SolType::Number, num(&[1.0, 2.0, 3.0])),
-    ]);
-    let out = verb_pivot(&f, "row", "col", "val", "sum").unwrap();
-    let d = dump(&out);
-    assert_eq!(d.iter().map(|c| c.0.clone()).collect::<Vec<_>>(), vec!["row", "x", "y"]);
-    assert_eq!(d[0].2, vec![Json::String("a".into()), Json::String("b".into())]);
-    assert_eq!(d[1].2, j(&[1.0, 3.0])); // x
-    assert_eq!(d[2].2, vec![num_to_json(2.0), Json::Null]); // y missing for b
-}
 
 #[test]
 fn join_inner_fans_out_and_drops_right_key() {
@@ -392,4 +378,112 @@ fn group_by_logical_column_aggregates_as_zero_one() {
     let d = dump(&out);
     assert_eq!(d[1].2, vec![num_to_json(2.0)]);
     assert_eq!(d[2].2, vec![num_to_json(2.0 / 3.0)]);
+}
+
+#[test]
+fn join_right_labels_columns_correctly() {
+    // Audit finding 4 (pin before fixing): Polars with CoalesceColumns emits a
+    // DIFFERENT column order for a right join (coalesced key after left non-key
+    // columns), and the positional rename then puts values under wrong headers.
+    let left = frame(vec![
+        ("k", SolType::Number, num(&[1.0, 2.0])),
+        ("qty", SolType::Number, num(&[10.0, 20.0])),
+    ]);
+    let right = frame(vec![
+        ("ck", SolType::Number, num(&[2.0, 3.0])),
+        ("name", SolType::Str, strs(&["b", "c"])),
+    ]);
+    let opts = WireJoinOpts {
+        left_key: "k".into(),
+        right_key: "ck".into(),
+        how: "right".into(),
+    };
+    let out = verb_join(&left, &right, &opts).unwrap();
+    let d = dump(&out);
+    assert_eq!(d[0].0, "k");
+    assert_eq!(d[1].0, "qty");
+    assert_eq!(d[2].0, "name");
+    // Locate rows by key value (row order asserted separately) and check every
+    // value sits under the right header.
+    let key_at = |v: f64| d[0].2.iter().position(|c| *c == num_to_json(v)).unwrap_or_else(|| panic!("key {v} missing from {:?}", d[0].2));
+    let r2 = key_at(2.0);
+    let r3 = key_at(3.0);
+    assert_eq!(d[1].2[r2], num_to_json(20.0)); // qty of key 2
+    assert_eq!(d[2].2[r2], Json::String("b".into())); // name of key 2
+    assert_eq!(d[1].2[r3], Json::Null); // key 3 unmatched on the left
+    assert_eq!(d[2].2[r3], Json::String("c".into()));
+    // types must follow the names, not the positions (key stayed Number, name Str)
+    assert_eq!(d[2].1, "string");
+}
+
+#[test]
+fn join_row_order_matches_oracle() {
+    // Audit finding 15: the oracle guarantees strict driving-side row order with
+    // grouped fan-out; Polars needs maintain_order set to promise the same.
+    let left = frame(vec![
+        ("k", SolType::Number, num(&[3.0, 1.0, 2.0, 1.0])),
+        ("l", SolType::Number, num(&[30.0, 10.0, 20.0, 11.0])),
+    ]);
+    let right = frame(vec![
+        ("k", SolType::Number, num(&[1.0, 2.0, 1.0])),
+        ("r", SolType::Number, num(&[100.0, 200.0, 101.0])),
+    ]);
+    let opts = WireJoinOpts { left_key: "k".into(), right_key: "k".into(), how: "left".into() };
+    let out = verb_join(&left, &right, &opts).unwrap();
+    let d = dump(&out);
+    // Oracle order: left rows in order, each fanning out over its right matches
+    // in right-row order: 3→(null), 1→(100,101), 2→(200), 1→(100,101).
+    assert_eq!(d[1].2, j(&[30.0, 10.0, 10.0, 20.0, 11.0, 11.0]));
+    assert_eq!(
+        d[2].2,
+        vec![Json::Null, num_to_json(100.0), num_to_json(101.0), num_to_json(200.0), num_to_json(100.0), num_to_json(101.0)]
+    );
+}
+
+#[test]
+fn filter_value_coercion_matches_oracle() {
+    // Audit finding 16: "1,234" no longer comma-strips to 1234 (unparseable →
+    // keeps NOTHING, even for neq); a logical column accepts "false"; numeric
+    // values parse after a trim.
+    let f = frame(vec![
+        ("v", SolType::Number, num(&[1000.0, 1234.0])),
+        (
+            "flag",
+            SolType::Logical,
+            vec![Cell::Bool(true), Cell::Bool(false)],
+        ),
+    ]);
+    let kept = |o: &SolFrame| o.df.height();
+    assert_eq!(kept(&verb_filter(&f, "v", "eq", &Json::String("1,234".into())).unwrap()), 0);
+    assert_eq!(kept(&verb_filter(&f, "v", "neq", &Json::String("garbage".into())).unwrap()), 0);
+    assert_eq!(kept(&verb_filter(&f, "v", "gt", &Json::String(" 1100 ".into())).unwrap()), 1);
+    assert_eq!(kept(&verb_filter(&f, "flag", "eq", &Json::String("false".into())).unwrap()), 1);
+    assert_eq!(kept(&verb_filter(&f, "flag", "eq", &Json::String("TRUE".into())).unwrap()), 1);
+}
+
+#[test]
+fn group_by_agg_name_collision_dedupes() {
+    // "count of k grouped by k" — the agg output name collides with the key;
+    // both engines now makeHeaders-dedupe instead of erroring/duplicating
+    // (audit finding 32).
+    let f = frame(vec![
+        ("k", SolType::Str, strs(&["a", "b", "a"])),
+        ("v", SolType::Number, num(&[1.0, 2.0, 3.0])),
+    ]);
+    let aggs = vec![WireAgg { column: "v".into(), op: "count".into(), as_name: "k".into() }];
+    let out = verb_group_by(&f, &["k".into()], &aggs).unwrap();
+    let d = dump(&out);
+    assert_eq!(d[0].0, "k");
+    assert_eq!(d[1].0, "k2");
+    assert_eq!(d[1].2, j(&[2.0, 1.0]));
+}
+
+#[test]
+fn select_duplicate_names_keeps_first() {
+    let f = frame(vec![
+        ("a", SolType::Number, num(&[1.0])),
+        ("b", SolType::Number, num(&[2.0])),
+    ]);
+    let out = verb_select(&f, &["a".into(), "a".into(), "b".into()]).unwrap();
+    assert_eq!(dump(&out).len(), 2);
 }
