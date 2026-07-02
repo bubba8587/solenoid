@@ -65,11 +65,16 @@ section is decision-recorded. The QUEUE when resuming, in order:
    (WeakMap identity cache; stale Rust copies linger until a JS GC, self-healing,
    never observed in practice). Document the behavior + the explicit-free lever in
    subsystem-invariants during the build pass; build nothing now.
-5. **Persistence P3**: cable-shape setting doesn't persist (unlike its sibling stores).
-6. Then the **BUILD pass** over every recorded item, suggested order: compute semantics
-   (broadcaster contract first — most shared machinery), filter case + Match case,
-   rounding/MRound + lookup redirects + NUMBERVALUE + dates, quality deletions, perf,
-   UX. Keep `docs/value-semantics.md` tags flipped shipped as each lands.
+5. **Persistence P3 — DECIDED 2026-07-02: persist cable shape.** `cableShapeStore` gets
+   the same localStorage pattern as its siblings (`cableFlowStore`/`calcModeStore`):
+   one key, read at module init, try/catch private-mode guard.
+6. **QUEUE COMPLETE 2026-07-02 — every item is decision-recorded. Build pass NOT
+   started (author: "don't build yet"); awaiting the explicit go.** Suggested order
+   when it comes: compute semantics (broadcaster contract first — most shared
+   machinery, the #OVERFLOW!/#DOMAIN! guard + frame non-finite work hang off it),
+   filter case + Match case, rounding/MRound + lookup redirects + NUMBERVALUE + dates,
+   quality deletions, perf, UX. Keep `docs/value-semantics.md` tags flipped shipped as
+   each lands.
 
 - [ ] **Frame Filter text matching → case-INsensitive** (audit 28's held-back half —
   REVERSED on revisit). eq/neq/contains/startsWith/endsWith all match case-insensitively,
