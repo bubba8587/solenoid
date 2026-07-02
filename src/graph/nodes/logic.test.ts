@@ -103,6 +103,14 @@ describe("Kleene three-valued logic — a null operand propagates only when it c
     expect(new IfNode().data({ cond: [[1, null]], then: [[5, 5]], else: [[3, 3]] }).result)
       .toEqual([5, null]);
   });
+  it("ragged lists pad with null INTO the Kleene fn — absorbed where it can't change the answer", () => {
+    const n = new BooleanOpNode({ op: "and" });
+    const [a, b] = n.valueInputKeys();
+    // e0 has both operands; e1's B is padded null: TRUE&null stays unknown
+    expect(n.data({ [a]: [[1, 1]], [b]: [[1]] }).result).toEqual([true, null]);
+    // FALSE absorbs the padded null: FALSE&null = FALSE, not null
+    expect(n.data({ [a]: [[1, 0]], [b]: [[1]] }).result).toEqual([true, false]);
+  });
 });
 
 import { IsTestNode } from "./logic";

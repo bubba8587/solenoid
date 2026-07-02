@@ -348,7 +348,10 @@ export const RANGE_FUNCTIONS = new Set<string>([
 const RANGE_RAW = new Set(["COUNT", "COUNTA", "COUNTBLANK"]);
 // Index-ALIGNED multi-range functions: a null drops its whole row across all
 // ranges (pairwise), keeping them aligned — per-array dropping would shear the
-// pairing and silently mismatch values against criteria.
+// pairing and silently mismatch values against criteria. Ragged ranges keep the
+// min-length zip on purpose: padding the short range to longest with null would
+// create rows the pairwise null-drop immediately removes, so truncation here IS
+// the pad-with-null policy, minus the detour.
 const RANGE_PAIRED = new Set([
   "SUMPRODUCT", "CORREL", "COVAR", "COVARIANCE.P", "COVARIANCE.S",
   "SLOPE", "INTERCEPT", "RSQ", "FORECAST", "XIRR", "XNPV",
@@ -443,14 +446,18 @@ const mapOne = (v: unknown, f: (x: unknown) => unknown): unknown =>
   isArr(v) ? v.map(f) : f(v);
 
 /** Apply a binary op, broadcasting scalars against arrays. Two arrays zip to the
- *  shorter length (ragged-input policy P3 — unchanged from the old broadcaster). */
+ *  LONGER length, the shorter padded with `null` (the ragged-list policy settled
+ *  with the array-semantics build: pad-to-longest with first-class missing —
+ *  never silently drop the tail). A padded position has a missing operand, so
+ *  the result cell is `null` directly, exactly what applyOp's null propagation
+ *  would produce for every operator. */
 function broadcast2(l: unknown, r: unknown, f: (a: unknown, b: unknown) => unknown): unknown {
   const la = isArr(l), ra = isArr(r);
   if (!la && !ra) return f(l, r);
   if (la && ra) {
-    const n = Math.min(l.length, r.length);
+    const n = Math.max(l.length, r.length);
     const out: unknown[] = [];
-    for (let i = 0; i < n; i++) out.push(f(l[i], r[i]));
+    for (let i = 0; i < n; i++) out.push(i < l.length && i < r.length ? f(l[i], r[i]) : null);
     return out;
   }
   return la ? l.map((x) => f(x, r)) : (r as unknown[]).map((x) => f(l, x));
@@ -514,13 +521,16 @@ function applyOp(op: string, a: unknown, b: unknown): unknown {
 }
 
 /** Broadcast a non-range function element-wise over its array arguments (scalars
- *  repeat). Mirrors the old whole-formula broadcaster, but per call site. */
+ *  repeat). Ragged array args zip to the LONGEST length; a position missing from
+ *  a shorter array yields `null` in the result directly (missing in → missing
+ *  out), without calling the function on a padded argument. */
 function broadcastCall(name: string, argv: unknown[]): unknown {
   if (!argv.some(isArr)) return dispatch(name, ...argv);
-  const len = argv.reduce<number>((m, a) => (isArr(a) ? Math.min(m, a.length) : m), Infinity);
-  if (!Number.isFinite(len) || len === 0) return [];
+  const len = argv.reduce<number>((m, a) => (isArr(a) ? Math.max(m, a.length) : m), 0);
+  if (len === 0) return [];
   const out: unknown[] = [];
   for (let i = 0; i < len; i++) {
+    if (argv.some((a) => isArr(a) && i >= a.length)) { out.push(null); continue; }
     out.push(dispatch(name, ...argv.map((a) => (isArr(a) ? a[i] : a))));
   }
   return out;

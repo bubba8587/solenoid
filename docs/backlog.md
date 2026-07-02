@@ -266,8 +266,9 @@ correctness.
   `1/0`→`#DIV/0!`, FX errors + non-finite scalars → `SolError`), and the lambda-family
   unification (MAP/BYROW/REDUCE/MAKEARRAY + LAMBDA all route through the one core via
   `compilePositional`) all landed. P4 = loud `#SHAPE!` placeholder. **RESOLVED 2026-06-22:**
-  P3 ragged → pad-to-longest with a new first-class `null` (decision only — the pad is
-  UNBUILT, code still truncates to shortest; v1.0 audit finding 25); `null` skipped by aggregators, errors
+  P3 ragged → pad-to-longest with a new first-class `null` (**BUILT 2026-07-02** — broadcasters
+  pad with null, paired/index-aligned zips keep min-length deliberately, SortBy/Interleave pad,
+  list SORT nulls-last; closed v1.0 audit finding 25); `null` skipped by aggregators, errors
   propagate per-cell (relaxing lists-never-carry-errors); P7 boolean → a first-class logical
   socket type (purple), renders TRUE/FALSE, coerces to 1/0; P4 matrix-into-Expression →
   shape-preserve element-wise + reduce-all aggregate (per-axis stays BYROW/BYCOL); P6 operator

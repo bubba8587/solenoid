@@ -228,9 +228,21 @@ export class SortNode extends ClassicPreset.Node {
     this.addOutput("result", listOut("Sorted"));
   }
 
-  data(inputs: { list?: number[][] }) {
+  data(inputs: { list?: (number | null | SolError)[][] }) {
     const arr = inputs.list?.[0] ?? [];
-    const sorted = [...arr].sort((a, b) => (this.dir === "asc" ? a - b : b - a));
+    // Nulls and per-cell errors sort LAST in both directions, stably — the
+    // frame sort's blanks-last policy (frameVerbs.sortByColumn / engine.rs
+    // with_nulls_last, Excel's blanks-last). A bare numeric compare would
+    // coerce null to 0 and an error to NaN, scattering both mid-list.
+    const isTail = (v: unknown) => isMissing(v) || isSolError(v);
+    const idx = arr.map((_, i) => i);
+    idx.sort((i, j) => {
+      const ti = isTail(arr[i]), tj = isTail(arr[j]);
+      if (ti || tj) return ti && tj ? i - j : ti ? 1 : -1; // tail last, stable
+      const c = (arr[i] as number) - (arr[j] as number);
+      return c !== 0 ? (this.dir === "desc" ? -c : c) : i - j; // stable on ties
+    });
+    const sorted = idx.map((i) => arr[i]) as number[];
     this.cachedList = sorted;
     return { result: sorted };
   }
@@ -748,11 +760,15 @@ export class InterleaveNode extends ClassicPreset.Node {
 
   data(inputs: { a?: number[][]; b?: number[][] }) {
     const a = inputs.a?.[0] ?? [], b = inputs.b?.[0] ?? [];
-    const n = Math.min(a.length, b.length);
-    const out: number[] = [];
-    for (let i = 0; i < n; i++) { out.push(a[i], b[i]); }
-    this.cachedList = out;
-    return { result: out };
+    // Ragged inputs pad to the LONGEST with null so the A/B alternation stays
+    // aligned and no tail element is silently dropped.
+    const n = Math.max(a.length, b.length);
+    const out: (number | null)[] = [];
+    for (let i = 0; i < n; i++) {
+      out.push(i < a.length ? a[i] : null, i < b.length ? b[i] : null);
+    }
+    this.cachedList = out as number[];
+    return { result: out as number[] };
   }
 }
 
@@ -1226,13 +1242,24 @@ export class SortByNode extends ClassicPreset.Node {
     this.addOutput("list", listOut("Sorted list"));
   }
 
-  data(inputs: { array?: number[][]; by_array?: number[][] }): { list: number[] } {
+  data(inputs: { array?: (number | null)[][]; by_array?: (number | null | SolError)[][] }): { list: number[] } {
     const arr = inputs.array?.[0] ?? [];
     const by  = inputs.by_array?.[0] ?? [];
-    const n   = Math.min(arr.length, by.length);
-    const pairs: [number, number][] = Array.from({ length: n }, (_, i) => [arr[i], by[i]]);
-    pairs.sort((a, b) => a[1] - b[1]);
-    const list = pairs.map(p => p[0]);
+    // Ragged inputs pad to the LONGEST with null (never silently drop a value);
+    // a null/error KEY sends its row to the tail, stably, matching the frame
+    // sort's blanks-last policy — so a value whose key is missing still comes
+    // through, just last.
+    const n = Math.max(arr.length, by.length);
+    const isTail = (v: unknown) => isMissing(v) || isSolError(v);
+    const idx = Array.from({ length: n }, (_, i) => i);
+    idx.sort((i, j) => {
+      const ki = i < by.length ? by[i] : null, kj = j < by.length ? by[j] : null;
+      const ti = isTail(ki), tj = isTail(kj);
+      if (ti || tj) return ti && tj ? i - j : ti ? 1 : -1; // tail last, stable
+      const c = (ki as number) - (kj as number);
+      return c !== 0 ? c : i - j; // stable on ties
+    });
+    const list = idx.map((i) => (i < arr.length ? arr[i] : null)) as number[];
     this.cachedList = list;
     return { list };
   }
