@@ -25,6 +25,30 @@ collision avoidance, chrome customization). This backlog is the fine-grained lis
 Each item below was discussed individually with the author and the DECISION is settled;
 the build happens after the whole list is walked. Context: v1.0-audit.md "Still open".
 
+**WALKTHROUGH BOOKMARK (paused 2026-07-02, author stepped away).** Everything below this
+section is decision-recorded. The QUEUE when resuming, in order:
+1. **Locale number input** — question PRESENTED, awaiting answer: display uses OS-locale
+   `toLocaleString` but inputs parse dot-decimals only; recommendation was DEFER to its
+   own design session (interacts with CSV comma-decimals, maybe a display-locale
+   setting) rather than half-answer it in this pass.
+2. **UX/a11y mechanical list** (offer as delegation tier, itemize on request): text
+   `×`/`✕` → shared CloseIcon (~6 files); socket-dot hover `title` naming the type
+   (structural text; the only colorblind path); `prefers-reduced-motion` honored by the
+   load reveal; `Ctrl+/` match `e.key` not `e.code` (non-US layouts); Group/Note title
+   editors through draft-commit (Escape revert); the 33 `outline:none` → `:focus-visible`
+   sweep; modal focus traps; Settings `Switch` accessible name; socket-legend
+   open/collapsed persistence.
+3. **cargo-audit in CI** (mechanical: a small workflow).
+4. **Frame P3s**: `\u{1}` multi-key separator collision in Rust (encode like
+   `encodeCell`); Rust non-finite aggregate → null over the wire vs JS Infinity (now
+   interacts with the #OVERFLOW! decision — discuss); desktop source freeing is
+   GC-timing dependent (accept + document?).
+5. **Persistence P3**: cable-shape setting doesn't persist (unlike its sibling stores).
+6. Then the **BUILD pass** over every recorded item, suggested order: compute semantics
+   (broadcaster contract first — most shared machinery), filter case + Match case,
+   rounding/MRound + lookup redirects + NUMBERVALUE + dates, quality deletions, perf,
+   UX. Keep `docs/value-semantics.md` tags flipped shipped as each lands.
+
 - [ ] **Frame Filter text matching → case-INsensitive** (audit 28's held-back half —
   REVERSED on revisit). eq/neq/contains/startsWith/endsWith all match case-insensitively,
   aligning Filter with the app's one text-equality semantics (P6 `=` table, Comparison,
@@ -184,11 +208,20 @@ the build happens after the whole list is walked. Context: v1.0-audit.md "Still 
   delete dead `SliderInput.tsx` **(CONFIRMED 2026-07-02 — the widget file, not the
   Slider node)**; devDeps **(CONFIRMED 2026-07-02: drop `msdf-bmfont-xml` +
   `@types/styled-components@5` (tsc-verify); KEEP `puppeteer-core` — author sometimes
-  overrides the no-puppeteer rule)**; break the latent
-  `persistence ↔ documentStore ↔ seeds` import cycle via `documentStoreCore.ts`; gate
-  `perfScaling.test.ts` behind an env var; vitest `include` → `*.test.{ts,tsx}`;
-  `noUncheckedIndexedAccess` considered-and-declined. Each needs an individual author
-  yes — being walked one at a time in the 2026-07-02 session.
+  overrides the no-puppeteer rule)**; import cycle via `documentStoreCore.ts`
+  **(CONFIRMED 2026-07-02 — "do as you wish")**; gate `perfScaling.test.ts` behind an
+  env var; vitest `include` → `*.test.{ts,tsx}`; `noUncheckedIndexedAccess`
+  considered-and-declined. perfScaling gate + vitest include + the tsconfig decline:
+  **approved-by-delegation 2026-07-02** (author: same don't-care tier as the cycle).
+- [ ] **Bundle splitting (author confirmed).** Lazy-load recharts, KaTeX, and ELK (the
+  pixi pattern, already split correctly) — main chunk 4.0 MB / 1.2 MB gz shrinks
+  substantially; first use of chart/formula-preview/Tidy after a cold load pays a
+  one-time fetch (imperceptible on desktop, a beat on web).
+- [ ] **Per-doc autosave keys (author confirmed, no objection).** One localStorage key
+  per document + a light index, each with its own two-slot rotation — an edit
+  autosaves only that doc; a bloated doc exhausts only its own quota headroom. No
+  migration (pre-alpha): old whole-library autosaves abandoned at the format change;
+  disk saves untouched; the live session re-autosaves immediately under new keys.
 - [ ] **Minimap: z-order bug** — some nodes render OVER the minimap (author report
   2026-07-02). Investigate the stacking context (area-plane z vs the minimap plugin's
   layer).
