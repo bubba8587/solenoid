@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { tablePopup, type FramePopupColumn } from "../tablePopupStore";
 import { frameRowCount, frameToGrid, isFrameValue, type FrameValue, type FrameSourceColumn } from "../frame";
-import { collectPreview, type FrameRef } from "../frameBackend";
+import { collectPreview, readFrame, type FrameRef } from "../frameBackend";
 import { useHostNodeId } from "./nodeContext";
 import "./ArrayChip.css";
 
@@ -68,7 +68,7 @@ export function FrameChip({ value, label, size = "md", accent, onSave, source, o
       type="button"
       className={size === "sm" ? "solenoid-array-chip solenoid-array-chip--sm" : "solenoid-array-chip"}
       title={`${totalRows}×${cols} frame — click to ${onSave ? "edit" : "view"}`}
-      onClick={(e) => {
+      onClick={async (e) => {
         e.stopPropagation();
         const cs = getComputedStyle(e.currentTarget);
         const popupAccent = accent || cs.getPropertyValue("--node-accent").trim() || undefined;
@@ -78,21 +78,31 @@ export function FrameChip({ value, label, size = "md", accent, onSave, source, o
         // not the derived value, so editing never canonicalises "1" → "TRUE".
         const isSource = !!source && !!onSaveSource;
         const rowCount = isSource ? source!.reduce((m, c) => Math.max(m, c.cells.length), 0) : 0;
+        // A truncated verb preview must not masquerade as the table in the popup —
+        // Copy CSV would silently export 100 of 50,000 rows (audit 22p). Fetch the
+        // FULL frame through the carried handle; the popup DOM stays capped (it
+        // renders at most MAX_VISIBLE_ROWS) but Copy/CSV get every row. A dropped
+        // handle (stale preview after a recompute) falls back to the preview.
+        let full = value;
+        if (!isSource && value.__totalRows != null && value.__ref) {
+          const collected = await readFrame(value.__ref as FrameRef);
+          if (isFrameValue(collected)) full = collected;
+        }
         tablePopup.open({
           title: label || "Frame",
           data: isSource
             ? Array.from({ length: rowCount }, (_, r) => source!.map((c) => c.cells[r] ?? ""))
-            : frameToGrid(value),
-          headers: (isSource ? source! : value.columns).map((c) => c.name),
+            : frameToGrid(full),
+          headers: (isSource ? source! : full.columns).map((c) => c.name),
           // The popup's type switcher covers all four kinds (number/text/date/logical),
           // so pass each column's real type — a logical column edits as TRUE/FALSE text.
-          columnTypes: (isSource ? source! : value.columns).map((c) => c.type),
+          columnTypes: (isSource ? source! : full.columns).map((c) => c.type),
           // Read-only frame: pass the INPUTTED source text (row-major) so the Source
           // view shows what came in (a date string, "1"/"true") rather than the
           // underlying value. The literal-source editor seeds raw from `data` instead.
-          sourceCells: isSource || !value.columns.some((c) => c.raw)
+          sourceCells: isSource || !full.columns.some((c) => c.raw)
             ? undefined
-            : Array.from({ length: rows }, (_, r) => value.columns.map((c) => c.raw?.[r] ?? null)),
+            : Array.from({ length: frameRowCount(full) }, (_, r) => full.columns.map((c) => c.raw?.[r] ?? null)),
           cellType: "number",
           editableHeaders: isSource || !!onSave,
           literalSource: isSource,

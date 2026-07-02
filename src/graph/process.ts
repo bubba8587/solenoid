@@ -262,6 +262,22 @@ export function pushHistory(undo: () => void, redo: () => void) {
   _pushHistory({ undo, redo });
 }
 
+// Clear the whole undo history (registered by Canvas — HistoryPlugin.clear()).
+// Called after every document load/rebuild: the classic preset records each
+// add/remove `rebuildGraph` makes, so an un-cleared history let Ctrl+Z unwind
+// the LOAD itself — deleting freshly-loaded nodes and re-adding the PREVIOUS
+// document's node objects into the current canvas, which the next autosave
+// then persisted into the current slot (audit P0-5).
+let _clearHistory: () => void = () => {};
+
+export function setClearHistory(fn: () => void) {
+  _clearHistory = fn;
+}
+
+export function clearHistory() {
+  _clearHistory();
+}
+
 // Graph-changed callback (registered by Canvas → persistence.scheduleAutosave).
 // Kept as a registered hook so process.ts doesn't import persistence (cycle).
 let _graphChanged: () => void = () => {};

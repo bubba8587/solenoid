@@ -1,7 +1,7 @@
 import { ClassicPreset } from "rete";
 import { AreaExtensions } from "rete-area-plugin";
 import type { SolenoidNode, SolenoidConnection } from "./schemes";
-import { getEditor, getArea, processGraph, repositionDockedNodes, beginGraphRebuild, endGraphRebuild, getCurrentSeedId } from "./process";
+import { getEditor, getArea, processGraph, repositionDockedNodes, beginGraphRebuild, endGraphRebuild, getCurrentSeedId, clearHistory } from "./process";
 import type { SeedSelection } from "./process";
 import { extractInit } from "./copyPaste";
 import { FLAT_CATALOG } from "./catalogUtils";
@@ -247,6 +247,11 @@ export async function loadGraph(g: SavedGraph, opts?: { animate?: boolean }): Pr
         pushNotice("That graph couldn't be loaded, so your previous work was restored.", "error");
       } catch (err2) {
         console.error("[solenoid] rollback also failed", err2);
+        // The canvas is wrecked and the notice tells the user to reload to
+        // recover the last autosave — so autosave must NOT fire again and
+        // overwrite that good copy with the wreckage. Deliberately unbalanced
+        // suspend: it holds until the reload the notice asks for.
+        suspendAutosave();
         pushNotice(
           "That graph couldn't be loaded and the previous graph couldn't be restored. Reload the app to recover your last autosave.",
           "error",
@@ -263,6 +268,13 @@ export async function loadGraph(g: SavedGraph, opts?: { animate?: boolean }): Pr
     loadRevealStore.finish();
     endGraphRebuild();
     resumeAutosave();
+    // The rebuild (and any rollback) just recorded ~2(N+E) add/remove actions
+    // in the history plugin. Left in place, Ctrl+Z after a load would unwind
+    // the load itself — resurrecting the PREVIOUS document's node objects into
+    // this canvas, which autosave then persists (audit P0-5). It also pinned
+    // every removed node instance (frames, image dataUrls) in memory forever
+    // (audit finding 20). Undo history is per-document-session: drop it.
+    clearHistory();
   }
 }
 
