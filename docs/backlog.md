@@ -20,6 +20,76 @@ collision avoidance, chrome customization). This backlog is the fine-grained lis
 
 ---
 
+## Post-audit tails — settled plans (2026-07-02 step-by-step review, record-then-build)
+
+Each item below was discussed individually with the author and the DECISION is settled;
+the build happens after the whole list is walked. Context: v1.0-audit.md "Still open".
+
+- [ ] **Frame Filter text matching → case-INsensitive** (audit 28's held-back half —
+  REVERSED on revisit). eq/neq/contains/startsWith/endsWith all match case-insensitively,
+  aligning Filter with the app's one text-equality semantics (P6 `=` table, Comparison,
+  XLOOKUP, Frame Lookup) and with Excel FILTER/AutoFilter. A **"Match case" checkbox** on
+  the Filter node (default off, string columns) is the escape hatch, riding the wire as a
+  flag. Rust: string eq/neq join the in-engine row-scan path (like the text predicates),
+  lowercase compare; cargo parity tests incl. an accented char. **Join / Group By /
+  Distinct stay case-SENSITIVE** — keys are identity (databases/Polars/PQ), unlike Excel
+  PivotTable's silent case-merging; document as parity:false catalog notes. The rule:
+  *comparisons match like Excel's `=`; keys are identity.* String lt/gt byte-vs-locale
+  ordering stays a separate P3.
+- [ ] **Per-cell error/null contract factored INTO the broadcasters** (extends audit P3
+  "error code morphs"; node layer confirmed worse by probe: `[1,#DIV/0!,3]+10` →
+  `[11,"[object Object]10",13]`, `[1,null,3]+10` → `[11,10,13]`). ONE rule, per output
+  element, before the fn runs: SolError operand → that error UNMORPHED (first in arg
+  order); else missing operand → `null`; else compute. Applied in `shared.ts`
+  `broadcast`/`broadcastErr`, `excelFormula.ts` `broadcastCall` + the percent/`mapOne`
+  unary path. `broadcastEl` (logic family) keeps feeding nulls to Kleene (its correct
+  null rule) but gains the error guard. Node-layer `null+10` flips 10 → null — author
+  confirmed (follows the settled P6 SQL-null model; Fill/Coalesce is the recovery).
+  In-range cells thereby behave identically to ragged-padded positions. **Scope
+  addition (probe discovery):** the `inputs.a?.[0] ?? this.literals.a` read idiom
+  swallows a WIRED null into the literal fallback (`??` catches null — a blank cell
+  flowing in silently becomes whatever number sits in the box). Add a shared read
+  helper distinguishing `undefined` (unwired → literal) from `null` (wired missing →
+  propagate) and sweep the scalar nodes' data().
+- [x] **Formula AND/OR vs node Kleene — KEEP BOTH, document (decision (a), author
+  confirmed).** The line: *reduction contexts skip nulls* (formula AND/OR = Excel
+  blank-ignore = SQL BOOL_AND; the Aggregate family) while *element-wise/expression
+  contexts are Kleene* (BooleanOp/Comparison/IF = SQL WHERE). Each side matches its
+  reference model; unifying either way breaks one of them. Deliverable is docs only:
+  BooleanOp catalog note (parity:false — "null operands follow Kleene, unlike Excel's
+  blank-ignore; Fill/Coalesce first, or formula AND, for Excel behavior") + the rule
+  recorded in subsystem-invariants "Error values". (Checked = decision recorded; the
+  note ships with the build pass.)
+- [ ] **pow NaN leaks → `#DOMAIN!` (author confirmed).** Two stragglers predating the
+  non-finite normalization: formula `^` in `applyOp` and ArithmeticNode's `pow` case
+  return raw NaN for a negative base with fractional exponent ((-8)^(1/3)); MathFn
+  (sqrt/log/…) and formula POWER already mint `#DOMAIN!`. Fix both case-arms: NaN from
+  finite inputs → `#DOMAIN!` ("negative base with fractional exponent"). **`0^0` stays
+  1** (JS/Python/R/Polars convention; erroring in JS while Polars arithmetic says 1
+  would manufacture a parity split) — parity:false catalog note ("Excel gives #NUM!").
+- [ ] **Round-to-multiple: MRound gains ops nearest/up/down; MathFn ceil/floor DELETED
+  (author confirmed).** Direction is an op, shape is a node (the RoundN precedent —
+  round/roundup/rounddown are ops over (value, digits); nearest/up/down are ops over
+  (value, multiple)). Catalog gains separate searchable **CEILING** and **FLOOR**
+  entries creating the MRound node pre-configured (header label tracks the op, so the
+  card reads "CEILING"); `multiple` literal defaults to 1, so those entries behave
+  unary out of the box — Excel's own shape (CEILING.MATH's significance is optional,
+  default 1; Excel has NO unary ceiling). MathFn's unary ceil/floor ops go away (a
+  programmer's Math.ceil concept; INT/TRUNC stay for the integer idioms) — remove from
+  MathFnOp + meta + NODE_EXCEL (the catalog↔registry test catches stragglers), sweep
+  seeds for saved op:"ceil"/"floor", add `ceil floor` keywords to the MRound entries.
+  Formula-layer CEILING/FLOOR (FX, .MATH-like semantics) untouched, no parity note
+  (deprecated-Excel comparisons disregarded per author ruling 2026-07-02).
+- [ ] **Classic lookups OUT of the formula layer — redirect errors (author confirmed).**
+  The 2026-07-02 fix pass (audit finding 10) added working internal VLOOKUP/HLOOKUP/
+  LOOKUP/MATCH impls, contradicting the standing elimination (node-coverage.md:33,
+  the MATCH-node deletion). Replace them: typing one in a formula → `#NAME?` with the
+  message **"Use XLOOKUP"** (MATCH → **"Use XMATCH"**) — nothing longer, per the
+  no-Captain-Obvious rule. **INDEX stays** (current Excel, never superseded). Delete
+  the four impls + their tests; add redirect-message tests.
+
+---
+
 ## Renderer (v1.0) — adopt PixiJS, demote Rete to headless (decision 2026-06-26)
 
 See [`archive/renderer-decision.md`](archive/renderer-decision.md). Supersedes the WS4
