@@ -770,6 +770,238 @@ uniquely is. The others are Solenoid entering someone else's market; this is Sol
   unless the app-shaped product plateaus.
 
 ---
+---
+
+# Round 4 — the value-model frontier and the compute substrate
+
+A fourth pass, mining a different seam: Rounds 1–3 were about what a graph can become,
+reach, and sell to. Round 4 is about **what a *value* can be** (three upgrades to the
+value model itself) and **how compute behaves** (three substrate upgrades), plus three
+smaller sharp tools. Several kill entire *classes* of spreadsheet error rather than
+adding capability. Verified first: none of these exist in the code in any form.
+
+---
+
+## 20 — Named dimensions: values that know what their axes MEAN
+
+**The problem it kills:** the single biggest silent-error class in spreadsheets is
+**misalignment** — two ranges that are both "12 numbers" but one is Jan–Dec and the
+other is Dec–Jan, or one is per-region and the other per-product. Excel adds them
+happily. So does any positional list. The error is invisible because position carries
+no meaning.
+
+**The idea:** let a list/matrix carry **named, labeled axes** — this is `revenue` *by
+region × month*, that is `cost` *by month*. Then arithmetic **aligns by label, not
+position**: `revenue - cost` auto-broadcasts cost across regions and matches months *by
+name*, and adding a per-region list to a per-product list is a loud `#DIM!` error
+instead of a silent wrong answer. (For the technically inclined: this is xarray/pandas
+index-alignment; commercially it's the core primitive Anaplan/TM1 sell for six figures.)
+
+**Why Solenoid specifically:** this is the third leg of a stool the product already has
+two legs of. The socket lattice types the *element* (number vs date); units type the
+*meaning* ($ vs kg); dimensions would type the *shape's semantics* (by-month vs
+by-region). All three are "make the wire carry more meaning so wrong wiring becomes
+impossible" — the product's founding move, applied once more. The Cube handles *nested*
+data; dimensions handle *aligned* data — adjacent, not overlapping.
+
+**First step:** a labeled list (one dimension: labels riding the list, e.g. month
+names), with element-wise ops aligning by label and mismatch → error. That alone kills
+the offset-by-one-row bug. Matrices with two named axes come after.
+
+**Risk:** this is a deep value-model change (the biggest in this doc) — sequence it
+like the array-semantics build was done: policy decisions first, increments, a seed.
+
+## 21 — Uncertain values: numbers with error bars that propagate
+
+**The problem it kills:** every forecast, measurement, and estimate is a range
+pretending to be a point. "Revenue will be 1.2M" hides "±0.3M", and by the time ten
+such numbers multiply through a model, false precision has compounded invisibly.
+
+**The idea:** a value kind `10 ± 2` (or `between 8 and 12`) that **propagates through
+arithmetic** — sums add uncertainties correctly, products compound them — so the
+output honestly reads `redacted 1.4M ± 0.5M`. Display stays clean (the ± renders like a
+unit); any downstream consumer can ask for the interval. Monte Carlo (Round 1 #4) is
+the *heavy* way to get this; interval/moment propagation is the *always-on lightweight*
+way — and the two meet (an uncertain input is exactly what a Monte Carlo run samples).
+
+**Why Solenoid specifically:** the value-kind machinery (null / error / logical as
+distinct kinds riding one wire) is precisely the pattern — this is one more kind, with
+`forAggregate`-style rules. Engineers (scope #15) treat uncertainty as a professional
+requirement; finance folks know their forecasts lie. Nobody mainstream has this.
+
+**First step:** an `uncertain number` scalar kind + the four arithmetic ops + display;
+aggregators later. A "±" input on the Number node is the whole authoring UX.
+
+## 22 — Time-aware data: as-of joins and effective dating
+
+**The problem it kills:** "what was the price/FX-rate/headcount **on that date**" — the
+question behind half of finance data pain. The lookup everyone needs is not exact-match
+but **"the most recent value at or before this date"**, and doing it in Excel is a
+sorted-VLOOKUP hack that breaks silently.
+
+**The idea:** an **As-Of Lookup / As-Of Join** verb: join trades to the prices table by
+nearest-preceding date. Plus its authoring twin: effective-dated tables (a `valid_from`
+column treated meaningfully) so "the tax rate table" can hold history instead of being
+overwritten each year.
+
+**Why it's nearly free:** Polars ships `join_asof` natively — the desktop engine
+already contains this feature; it's just not compiled in (the `asof_join` cargo feature
+flag is one line) or exposed as a node. The JS oracle version is a sorted
+binary-search — an afternoon. This is the highest capability-per-effort item in Round 4,
+and it slots straight into the existing verb set + parity-test discipline.
+
+**First step:** the flag + an As-Of Lookup node + oracle + one parity test + a
+prices/trades seed.
+
+## 23 — The persistent compute cache: never recompute what hasn't changed
+
+**The problem:** close a heavy document, reopen it → everything recomputes. F9 on a big
+model re-runs branches whose inputs haven't changed in weeks. CI (scope #10) re-runs
+the whole graph every time.
+
+**The idea:** because every node is pure, a result is fully determined by (node config +
+input values). Hash that; **cache results on disk keyed by the hash** (the same trick
+build systems like Bazel/ccache use — "incremental builds" for a model). Reopening a
+document becomes instant (values load from cache; only genuinely-dirty cones compute).
+Headless/CI runs of an unchanged model cost nothing. A year of sessions never
+recomputes January's numbers again.
+
+**Why Solenoid specifically:** purity is *the* precondition and it's already policed
+(volatile nodes like RAND are already generation-gated — they'd simply opt out). The
+targeted-recompute machinery already computes dirty cones; this extends "cached in this
+pass" to "cached across sessions."
+
+**First step:** hash-keyed disk cache for frame-verb outputs only (the expensive tier),
+desktop-only, with a Settings toggle and a "computed vs cached" indicator.
+
+**Risk:** cache-invalidation correctness (the classic). Contained by starting with the
+verb tier, where inputs are already content-identified (the source-handle cache's
+identity discipline), and by making the cache advisory — delete it and everything
+still computes.
+
+## 24 — Approximate-first: preview on a sample, exact on demand
+
+**The problem:** on big tables, every edit pays full price even when you're just
+sketching. The current answer is manual calc mode (all or nothing).
+
+**The idea:** a third calc mode — **sketch mode**: while editing, verbs run on a
+deterministic sample (say 10k rows) and results render with an "≈ approximate" badge;
+F9 (already the "compute for real" gesture) runs exact. Instant feedback while
+building, honesty about what's shown, full rigor on demand. The BI world calls this
+approximate query processing; no spreadsheet-class tool has it.
+
+**Why nearly free:** Polars samples cheaply; the calc-mode store, the F9 ritual, the
+dirty-chip, and the `__totalRows` badge plumbing all exist. It's mostly a mode flag
+through the backend seam + honest labeling.
+
+**Risk:** approximate results being mistaken for real — the badge and the "exact on
+F9" contract are the feature, not decoration. Aggregates like COUNT/SUM must scale up
+from the sample *visibly* (`≈ 1.2M`), never silently.
+
+## 25 — The graph profiler: a heatmap of where the time goes
+
+**The problem:** "why is my model slow" currently requires the author opening a console
+and reading `window.__solenoidStats()` tables — which already collect per-node call
+counts and milliseconds (`perfProbe.ts`).
+
+**The idea:** paint it on the canvas — a toggle that tints each node by its share of
+last-pass compute time (the standard profiler-flamegraph move, but on the graph the
+user already understands). The slow join glows; the cheap arithmetic fades. One glance
+replaces a profiling session. Pairs naturally with #24 ("this is the node worth
+sampling") and #23 ("this is the node worth caching").
+
+**Why nearly free:** the data is *already collected per node id*. This is a render-mode
+toggle + a color ramp + a legend. Probably the cheapest genuinely-new feature in all
+four rounds.
+
+## 26 — Synthetic data mode: share the shape, not the numbers
+
+**The problem:** the moment models are shareable (seeds, review, the transpiler,
+marketplace subgraphs), a wall appears: the *logic* is shareable but the *data* is
+confidential. Today the answer is hand-scrubbing copies — tedious and error-prone
+(and famously leaky).
+
+**The idea:** **"Export with synthetic data"** — the graph ships with fake rows that
+preserve each column's *statistical shape* (type, range, distribution, null rate,
+cardinality) but none of its values. The model still runs, charts still look sensible,
+the review/demo/bug-report works — and nothing confidential leaves the machine. The
+schema-profiling needed (per-column type/range/distribution) is exactly what CSV import
+inference already half-does.
+
+**Who it unlocks:** consultants sharing deliverables, anyone filing a bug ("attach the
+graph" becomes safe), the seed/marketplace economy (publish a template with plausible
+demo data), and the governance story (share the model for validation without sharing
+the book).
+
+**First step:** per-type generators (numeric: min/max/mean-ish; strings: pattern-
+preserving; dates: range) behind an export menu item. Fidelity can grow later.
+
+## 27 — Data slots: one model, anyone's data
+
+**The problem:** a graph hard-binds its data (pasted, imported, fetched). Sharing a
+*model* — "here's my project-costing template, run it on YOUR numbers" — means the
+recipient surgery-swaps source nodes by hand.
+
+**The idea:** promote a source to a declared **slot**: a named, schema-typed opening
+("expects: a table with columns date, amount, category"). Opening a document with
+unfilled slots prompts: bind a file / paste / connect. The same model runs on anyone's
+data; the slot's schema contract (Bet 3) validates the binding *loudly* on the way in
+(with #12's expectations as the deeper check).
+
+**Why it matters more than it looks:** it's the missing piece that makes several other
+bets *distributable* — templates/seeds that are actually useful on your own data,
+marketplace subgraphs (#5), the transpiler output ("this workbook, as a reusable
+model"), the synthetic-data pairing (#26 fills slots with fake data by default). It's
+the difference between sharing a *document* and shipping a *product*.
+
+**First step:** a "Make this a slot" action on Frame Input / CSV nodes + a bind prompt
+on open + schema check. The placeholder machinery is the pattern for "unfilled but not
+broken."
+
+## 28 — The formula lens: see any selection as an Excel formula
+
+**The problem:** two audiences, one graph. Node-thinkers read the canvas; Excel-thinkers
+read `=SUM(FILTER(...))`. Today Solenoid only speaks canvas.
+
+**The idea:** select a run of scalar/list nodes → a panel shows **the equivalent Excel
+formula**, live (`=IF(SUM(A)>tolerance, base*rate, base)`). It's a *lens*, not a mode —
+read-only at first. It teaches Excel users the graph by translation, documents a
+subgraph in one line, and gives reviewers a familiar cross-check ("does the formula
+match the spec?"). Paste-a-formula-→-nodes already exists in spirit (the Expression
+node parses formulas; the transpiler #8 industrializes it) — this is the *other
+direction*, and together they make graph ↔ formula a two-way street.
+
+**Why cheap:** the graph *is* an expression tree for scalar/list chains; emitting
+formula text is a tree-walk using the same op↔function tables the parser and the
+catalog's Excel-equivalents already maintain. Frames/verbs are out of scope for the
+lens (they'd emit the Alteryx-style story instead — a verb pipeline description).
+
+---
+
+## Round 4, ranked
+
+- **Do soon, nearly free:** #25 (profiler heatmap — the data already exists), #22
+  (as-of join — one cargo flag + one node for a top-tier finance ask).
+- **The strategic value-model bet:** #20 (named dimensions) — the biggest single
+  error-class kill available, the third leg of the lattice+units stool, and the
+  gateway to the planning/Anaplan territory. Treat it with array-semantics-level
+  ceremony.
+- **Distribution multipliers (pair them):** #27 (slots) + #26 (synthetic data) — 
+  together they turn every shareable artifact from "my document" into "a model anyone
+  can run safely."
+- **Substrate when scale bites:** #23 (persistent cache) and #24 (sketch mode) — both
+  ride the purity + calc-mode machinery; build when heavy-table sessions demand them.
+- **The bilingual move:** #28 (formula lens) and #21 (uncertain values) — smaller, deep
+  character: one meets Excel users in their language, the other makes honesty about
+  precision a first-class value.
+
+Thread back to the earlier rounds: #20/#21 extend the *wire* (what a value can mean),
+#22 extends the *verbs*, #23/#24/#25 extend the *engine's manners*, #26/#27 extend the
+*shareability* that Rounds 2–3 assume, and #28 extends the *audience*. Same product
+thesis every time — make meaning explicit, make computation inspectable — pushed into
+four new corners.
+
+---
 
 ## Appendix — the "recreate and undercut" demo target: Alteryx Designer
 
