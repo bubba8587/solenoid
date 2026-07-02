@@ -1002,6 +1002,214 @@ thesis every time — make meaning explicit, make computation inspectable — pu
 four new corners.
 
 ---
+---
+
+# Round 5 — the analyst's workbench, and the open ports
+
+Fifth pass, two new seams. **Seam one: comprehension and hygiene** — Rounds 1–4 kept
+making the graph more powerful; almost nothing yet helps someone *understand, clean,
+and interrogate a graph that already exists* (the audit-your-own-model workflow —
+which is also what reviewers, auditors, and future-you need). Because the graph is
+pure and typed, it's *statically analyzable* in ways no spreadsheet is — mostly
+unexploited so far. **Seam two: the ports** — how data and *agents* get in and out of
+the file. Verified absent from the code first (Polars here is built with only
+`lazy`+`strings` features; no MCP, no PDF, no graph-wide search exists).
+
+---
+
+## 29 — The model linter: static analysis for graphs
+
+**The problem:** spreadsheets rot in known, nameable ways — and Excel can't name any
+of them. A pure typed graph can. The classic smells, every one detectable statically:
+- **Magic numbers** — an unlabeled constant buried inline (the hardcoded `1.07` that
+  should be a named Input node; the #1 thing model auditors hunt).
+- **Dead branches** — computed but feeding nothing (cost with no benefit, and a lie to
+  the reader about what matters).
+- **Duplicate logic** — two structurally-identical subtrees that will now drift apart
+  (the copy-paste-then-diverge disease).
+- **Unlabeled inputs / default titles** — the graph equivalent of `Sheet1!B14`.
+- **Suspicious patterns** — a Cast doing nothing, a Filter filtering nothing, a unit
+  conversion immediately undone.
+
+**The idea:** a lint pass with a findings panel — click a finding, jump to the node,
+one-click fix where mechanical ("promote to named Input"). Rules opt-in per document
+(the no-nagging rule). It's `eslint`/`clippy` for models — a category no spreadsheet
+tool can even attempt, because their "graph" is implicit.
+
+**Why cheap:** every rule is a pure walk over editor state — no engine involvement.
+The nontrivial one (duplicate subtrees) is standard tree-hashing.
+
+**Enabled by:** the pure DAG (already), stable names (Bet 2 improves the messages),
+and it *feeds* the trust badge (strategy #6) and governance story (a lint-clean model
+is an auditable model).
+
+## 30 — The Problems panel: every error in the doc, in one list
+
+**The problem:** errors are first-class tagged values (`#DIV/0!`, `#SHAPE!`…) — but
+finding them means *scrolling the canvas looking for red*. On a 200-node graph a
+buried `#CIRC!` is a scavenger hunt.
+
+**The idea:** the IDE move, verbatim: a panel listing every error value currently in
+the graph — code, message, node, (for frames: cell) — click to jump-and-flash. Filter
+by code. Badge count in the status bar. Combined with provenance (Bet 4), each entry
+gains "…caused by [origin node]", making it triage rather than a list.
+
+**Why nearly free:** every pass already touches every output value; collecting
+`isSolError` hits into a store during the pass is a few lines, and the
+jump-to-node/flash gesture exists (the navigator does it). Probably ships in a day,
+and it changes the *feel* of debugging a big model completely.
+
+## 31 — Where-used: query the graph like a codebase
+
+**The problem:** "what happens if I change this?" — the question before every edit —
+has no answer surface. Excel's trace-precedents is one-hop arrows on one cell.
+Refactoring-grade questions are unanswerable: *everything downstream of this input;
+every node that touches column `region`; everywhere this unit appears; every use of
+XLOOKUP.*
+
+**The idea:** a query box over the graph (the navigator is the natural home):
+`uses:XLOOKUP`, `col:region`, `downstream:FX Rate`, `unit:$`, `errors`, `unlabeled` —
+results as a clickable list *plus* canvas dim-and-highlight of the matching set. The
+same primitive powers "select the cone" (then group/isolate/tidy it) — query becomes
+selection becomes action.
+
+**Why Solenoid can and Excel can't:** the dependency structure is explicit and typed;
+`downstream:` is a BFS the engine already knows how to do (`downstreamClosure` exists
+in `process.ts` — this is a UI over it). Column-level queries get exact with schema
+inference (Bet 3) but a duck-typed version works today.
+
+## 32 — The Reconcile node: explain the difference between two tables
+
+**The problem:** the most universal analyst ritual that has no tool: two versions of
+"the same" numbers — last month vs this month, source system vs report, my total vs
+yours — and hours of manual VLOOKUP archaeology to answer *what changed and why*.
+This was flagged in the Round-3 research as a hand-rolled-everywhere workflow and
+never written up; here it is.
+
+**The idea:** a two-input verb node: match rows by key, then classify — **added /
+removed / changed** (with per-column deltas) — and, the analyst-gold layer, a
+**contribution breakdown**: "total moved +230k: +180k from rows added, −40k from rows
+removed, +90k from price changes on matched rows, offset −0k mix." (That
+price/volume/mix decomposition is a bounded, well-known bit of arithmetic, not magic.)
+Output is a frame (feeds charts, expectations, alerts) plus a readable summary.
+
+**Enabled by:** the join machinery (shipped), snapshots (#6 — "reconcile against Q2
+close" without keeping two files), provenance (Bet 4 — *within* one model, "explain
+this cell's change" is the graph-walk cousin of this node, which handles the
+*between-datasets* case the graph can't see).
+
+**Why it matters strategically:** it's the single most demo-able node for the finance
+audience (month-end close is a universal wound), and it upgrades the governance
+vertical from "controls" to "the tool that does the actual work."
+
+## 33 — Paste anything: the intake for trapped data
+
+**The problem:** an enormous share of real data is *trapped* — in PDFs (bank
+statements, supplier price lists, government tables), in screenshots, in HTML meant
+for eyes. The current answer everywhere is retyping, the highest-error-rate activity
+in the entire data lifecycle.
+
+**The idea:** make Solenoid's paste/drop the best in the industry, tiered by
+confidence: (1) HTML table paste → frame (parsing fidelity: merged cells, footnote
+junk, thousands separators); (2) **PDF table extraction** on the desktop build (mature
+Rust crates exist; ship it local, no cloud); (3) screenshot → table via OCR as the
+ambitious tier. Every import lands as a *frame plus a provenance stamp* ("extracted
+from page 3 of X.pdf") and — the honest part — **low-confidence cells flagged** for
+human review (expectations, #12, as the systematic check). Extraction that admits
+uncertainty instead of silently guessing: the trust thesis applied at the front door.
+
+**Why here:** the intake side has quietly become the bottleneck around everything else
+(slots #27, transpiler #8, live data #3 all assume the data *arrives*). Nobody in the
+spreadsheet class does PDF ingestion natively; analysts pay for standalone tools
+(Tabula, cloud OCR) that then export… a CSV they import by hand.
+
+## 34 — Parquet & Arrow: speak the data world's native tongue
+
+**The problem:** CSV is the only bulk format in or out. The modern data stack —
+warehouses, lakes, Python/R, DuckDB — speaks **Parquet** (columnar, typed, compressed,
+fast) and Arrow.
+
+**The idea:** read/write Parquet as a source and (with #9's sinks) an output. On
+desktop this is *almost free*: Polars reads Parquet natively — it's a cargo feature
+flag away (verified: current build compiles only `lazy` + `strings`), and it lands as
+a **direct file→engine path that never materializes in JS**, which is exactly the
+"direct CSV→Polars reader" scale step the backlog already wants, delivered for a
+better format first. Typed columns also mean no inference step: dtypes arrive intact.
+
+**Why it matters beyond convenience:** it's the handshake with every data engineer's
+world — Solenoid stops being an island that ingests exports and becomes a peer that
+reads the lake's files. Small feature, disproportionate legitimacy.
+
+## 35 — The MCP port: let any AI agent drive Solenoid properly
+
+**The problem/opportunity:** the AI-native thesis (#7, #19, and the meta-story) keeps
+assuming an AI can *work with* a Solenoid document. Today the only interface is "edit
+the JSON blob and hope." Meanwhile the industry converged on **MCP (Model Context
+Protocol)** as the standard socket for tools exposing capabilities to agents — and the
+author already drives this project with Claude daily.
+
+**The idea:** desktop Solenoid runs a local MCP server exposing the document as typed
+tools: *read the graph structure; get a node's value/schema; set an input; run and
+report (with errors); search (the #31 query engine); apply a validated edit
+(addressable model, Bet 2); run the linter (#29).* Suddenly *any* agent — Claude Code,
+a custom workflow, someone's internal bot — can inspect, run, and carefully edit a
+model with **typed, validated, undoable operations instead of blob surgery**. The AI
+cage (#19) stops being a vision and becomes a socket: the agent proposes through the
+same governed interface a human's edit goes through.
+
+**Why now and why credible:** the protocol is established; the substrate (typed
+sockets, pure engine, headless core) is precisely what makes the tool surface *safe*
+to expose; and the first user (the author + Claude) is already in the building. This
+is the single most direct way to operationalize "the first spreadsheet designed to be
+co-authored with an AI."
+
+**First step:** read-only MCP (structure, values, run, search) — genuinely useful
+alone ("ask Claude about my live model") and zero write-risk. Writes follow Bet 2.
+
+## 36 — Guided seeds: the tutorial that is a document
+
+**The problem:** the zero-learning-curve principle has tooltips, a legend, and a
+reference overlay — all *reactive*. Nothing *teaches*. A new user opens
+`getting-started` and reads a finished graph — dissection, not construction.
+
+**The idea:** let a seed carry an optional **step script**: each step highlights a
+region, says one sentence, and waits for the user's action ("wire the price into the
+multiplier — notice the socket shapes match") with the canvas dimmed except the
+relevant bits. Tutorials-as-documents: authored like seeds, tested like seeds
+(CI-checked, per strategy thread #1), shipped in the template gallery ("Learn:
+Frames in 5 minutes"). Later, the same mechanism is a *walkthrough recorder* for any
+model — "explain this document to the next person, step by step" — which quietly makes
+it a documentation feature, not just onboarding.
+
+**Why cheap-ish:** highlight/dim machinery exists (isolate, load-reveal, navigator
+flash); a step script is a small JSON list riding the seed format; the placeholder
+discipline handles versioning.
+
+---
+
+## Round 5, ranked
+
+- **Ships in days, changes the daily feel:** #30 (Problems panel — the errors are
+  already tagged; go get them), #34 (Parquet — one feature flag, big legitimacy).
+- **The workbench trio (build toward the governance/audit story):** #29 (linter) +
+  #31 (where-used) + #32 (Reconcile). Together they're "the model you can interrogate"
+  made concrete — and #32 is the sharpest finance demo in any round.
+- **The strategic port:** #35 (MCP) — small first slice, and it converts the AI-native
+  identity from narrative into an actual socket other agents can plug into. Do
+  read-only early; it compounds with everything Bet 2 unlocks.
+- **The wide funnel:** #33 (paste anything / PDF) — highest effort here, highest reach:
+  it feeds every other feature by getting trapped data into the graph at all.
+- **The welcome mat:** #36 (guided seeds) — matters the day strangers arrive; build
+  the step-script rider when the seed/marketing motion (strategy #1) spins up.
+
+Seam summary: Rounds 1–4 made the graph *capable*; Round 5 makes it **legible under
+interrogation** (lint, problems, where-used, reconcile) and **connected at the edges**
+(PDF in, Parquet out, agents through MCP, newcomers through guided seeds). The
+workbench items are also the first features whose primary audience is *someone
+examining a model they didn't build* — which is exactly who the trust thesis was for
+all along.
+
+---
 
 ## Appendix — the "recreate and undercut" demo target: Alteryx Designer
 
