@@ -122,6 +122,11 @@ list as an honorary #20; recorded here because it emerged from the composition t
 
 ## 5 — The one-file identity: local-first as a position, not an accident
 
+**RULING (author, 2026-07-02): this thread IS the public positioning — the Obsidian
+pathway (file-over-app, plain text, git, longevity). We do NOT advertise AI anywhere;
+AI fidelity flows naturally from the same properties and stays internal. Thread #7's
+meta-story is filed, not told.**
+
 **What exists:** a portable `.exe`, documents in local storage / plain JSON files,
 no accounts, no server, no telemetry. Today that's just… how it happens to be built.
 

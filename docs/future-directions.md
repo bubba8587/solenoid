@@ -35,6 +35,12 @@ shifts from *"Excel, but with nodes"* to **"the spreadsheet you can actually tru
 
 ## Bet 1 — Treat a chain of nodes as something to *compile*, not step through
 
+**VERDICT (author, 2026-07-02): IN — with one hard condition: per-node previews stay.**
+Every verb card keeps its head-N preview exactly as today; under fusion a preview is
+"collect head-N of the plan at this node's point." Losing previews would have been the
+one cause for rejection — treat them as a non-negotiable invariant of the fused engine,
+not a nice-to-have. JS oracle stays eager; parity tests pin semantics.
+
 **The highest-leverage, most self-contained bet. Do this first.**
 
 **Today:** each relational node (Filter, Join, Group By…) sends its single operation
@@ -76,6 +82,17 @@ opt-in "show me the result here" marker — you already have the concept of a
 
 ## Bet 2 — Make the saved document a clean, addressable structure with a *text* view
 
+**VERDICT (author, 2026-07-02): IN — but NOT the phased export/import-first route.**
+The author doesn't ship half-finished: the text projection, the stable-name scheme, and
+the promotion to real save format land TOGETHER as one build (pre-alpha, no migration
+baggage — old saves just load via the JSON reader while it exists). Design session
+required before build (name scheme, line grammar, visual-state carriage, round-trip
+guarantees) — first among the deep-dives.
+**Positioning ruling (applies project-wide):** we do NOT advertise AI. The public story
+is the Obsidian path — file-over-app, plain text, git control, longevity, no lock-in.
+AI fidelity falls out of that naturally and stays an internal design value, not a
+marketing line. (Reframes strategy threads #5/#7 and the #19/#35 pitch language.)
+
 **The biggest ceiling, the biggest lift. Prototype small before committing.**
 
 **Today:** a save is one JSON blob (`{nodes[], connections[]}`). As the audit found,
@@ -109,6 +126,11 @@ clean form, not hand-maintaining both.
 
 ## Bet 3 — Turn the socket types into a "the whole table type-checks before it runs" pass
 
+**VERDICT (author, 2026-07-02): IN.** Pure `shapeOf(verb, inputShapes)` per verb + a
+static walk; shapes shown at the cable; both engines satisfy the one declared shape
+(parity drift becomes a seam error). Gates slots, linked graphs, publish, composite
+contracts, column-level where-used, transpiler typing, MCP schema.
+
 **Today:** the type system checks one plug against one socket, at the moment you draw a
 cable. It does **not** carry a whole table's shape (its column names and types) down a
 chain. So you only discover that a Join produced two columns with the same name, or
@@ -137,6 +159,12 @@ already exists. Later, refuse to run a graph whose shapes don't line up.
 ---
 
 ## Bet 4 — Make "why is this value what it is?" a first-class, clickable thing
+
+**VERDICT (author, 2026-07-02): IN.** Two tiers: (1) errors carry origin (node/input/
+row) at mint, shown in popup — cheap, do with the build; (2) on-demand derivation walk
+for any value ("why am I this?") — frame cells reconstruct per-query by walking the
+verb chain backwards, never stored exhaustively. Feeds #30/#6/#7/#32/#56 + Cube
+comprehension.
 
 **Today:** errors are tagged and flow through the graph — but a `#DIV/0!` buried in a
 50,000-row table doesn't tell you *which row, which upstream node, which input* caused
@@ -205,6 +233,19 @@ compound on each other; this one is a standalone maybe.
 
 ## Smaller swaps to things you already built
 
+- **VERDICT (author, 2026-07-02): IN, and EXPANDED — full dimensional algebra.** Not
+  just carrying a unit through the type system: true unit *calculation* — 5 m ÷ 1 s =
+  5 m/s. Representation: exponent vector over base dimensions + scale factor; ops
+  compose dimensions algebraically (× adds exponents, ÷ subtracts, +/− requires match,
+  powers scale, cancellation free); derived-unit display (m/s, N, W) as formatting over
+  the vector. Expression/LAMBDA: run a SECOND, dimensional interpretation over the
+  formula AST — operators by the algebra, catalog functions by per-function dimensional
+  signatures (SUM preserves, SIN requires dimensionless, SQRT halves); unsigned
+  functions break the unit loudly. Dimensional mismatch mints a new tagged `#UNIT!`
+  error. The v0.9 FC lock/carry/break semantics must be re-expressed on the type layer
+  without regression (Unit Flow seed = acceptance test); design session merged with
+  v1.1 WS-A's function model + A4 units-by-dimensionality. The unitFlow walker is
+  DELETED, not extended.
 - **Units as part of the type, not a side-system.** The unit tracking (`$`, `kg`, `%`)
   currently walks the graph in both directions on every redraw to figure out what unit
   a value carries (the perf audit flagged the cost). If units were baked into the
@@ -217,11 +258,21 @@ compound on each other; this one is a standalone maybe.
   and nobody has made it *visual and approachable*. "The spreadsheet for shaped data"
   is a sharper story than "Excel, but nodes."
 
+- **VERDICT (author, 2026-07-02): PARKED — author wants to think on it; revisit at the
+  end of the walk** (alongside golden tests). Presented as: deterministic rules over the
+  existing import inference sketch a starter graph (offer, never forced, one-undo
+  deletable); warm-up for the transpiler's emit-nodes machinery.
 - **Let the data draft its own graph.** You already inspect a file's columns when it's
   imported. A great first-run experience: drop a CSV, and the tool *sketches* the
   cleanup/typing/likely-joins graph for you to refine — instead of a blank canvas. Pairs
   perfectly with the AI-friendly direction: "the graph writes its own first draft."
 
+- **VERDICT (author, 2026-07-02): PARKED — revisit at the end of the walk.** "Not sure
+  it's super intuitive, but there's potential." Concrete examples discussed (regression
+  pin on a model output capturing free-input values → expected output; edge-case pins
+  on Expression/LAMBDA; summary assertions on frame chains; external-truth pins vs
+  published tables). The UX gesture needs to feel obvious before it's in; note the
+  trust-triad/governance features and #58's badge row lean on it if it lands.
 - **Golden tests on any node.** Because every node is a pure function, let a user pin an
   example "with this input, expect this output" onto a node. The whole graph then
   re-checks itself on every change. Nobody can unit-test an Excel workbook; you'd get it
