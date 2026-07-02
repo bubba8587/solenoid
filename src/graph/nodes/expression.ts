@@ -13,13 +13,16 @@ import { isSolError, solError } from "../errorValue";
 
 /**
  * Coerce one formula result for output. A finite number (a date serial is one)
- * passes through; a string passes through (text formulas). Everything else — a
- * non-finite number, a boolean comparison, undefined — collapses to the empty
- * sentinel (`null` for a scalar, `NaN` inside a list), preserving the original
- * numeric/boolean behaviour exactly while letting text and dates flow.
+ * passes through; a string passes through (text formulas); a BOOLEAN passes
+ * through (P7 logical shipped for nodes but this guard still collapsed a
+ * formula's `a > b` to blank — audit finding 27; display already renders
+ * TRUE/FALSE, and the logical↔number bridge covers numeric consumers).
+ * Everything else — a non-finite number, undefined — collapses to the empty
+ * sentinel (`null` for a scalar, `NaN` inside a list).
  */
 function guard(v: unknown, scalar: boolean): unknown {
   if (typeof v === "string") return v;
+  if (typeof v === "boolean") return v;
   if (typeof v === "number" && Number.isFinite(v)) return v;
   return scalar ? null : NaN;
 }

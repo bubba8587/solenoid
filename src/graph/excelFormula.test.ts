@@ -609,3 +609,71 @@ describe("classic lookups take the list whole (audit finding 10)", () => {
     expect(ev('VLOOKUP("b", k, 1, FALSE)', { k: ["A", "B", "C"] })).toBe("B");
   });
 });
+
+describe("P6 operator parity — the settled table (audit finding 26)", () => {
+  const ev = (expr: string, env: Record<string, unknown> = {}) => {
+    const fn = compileEvaluator(expr);
+    if (!fn) throw new Error(`failed to compile: ${expr}`);
+    return fn(env);
+  };
+
+  it("= / <> are type-strict with case-insensitive text", () => {
+    expect(ev('a = "A"', { a: "a" })).toBe(true);
+    expect(ev('a <> "A"', { a: "a" })).toBe(false);
+    expect(ev('a = "5"', { a: 5 })).toBe(false); // no cross-type coercion
+  });
+
+  it("cross-type ordering is #TYPE!, text orders by collation", () => {
+    const r = ev('a < "b"', { a: 5 });
+    expect(isSolError(r) && r.code).toBe("#TYPE!");
+    expect(ev('a < b', { a: "apple", b: "banana" })).toBe(true);
+  });
+
+  it("& renders logicals TRUE/FALSE", () => {
+    expect(ev('a & "x"', { a: true })).toBe("TRUEx");
+  });
+
+  it("null propagates through arithmetic, comparison and &", () => {
+    expect(ev("a + 5", { a: null })).toBeNull();
+    expect(ev("a > 2", { a: null })).toBeNull();
+    expect(ev('a & "x"', { a: null })).toBeNull();
+  });
+
+  it("logicals ride the number bridge in arithmetic (TRUE = 1)", () => {
+    expect(ev("a + 1", { a: true })).toBe(2);
+  });
+
+  it("a per-cell error propagates unmorphed through an operator broadcast", () => {
+    const err = solError("#DIV/0!", "boom");
+    const r = ev("x + 1", { x: [1, err, 3] }) as unknown[];
+    expect(r[0]).toBe(2);
+    expect(isSolError(r[1]) && (r[1] as { code: string }).code).toBe("#DIV/0!");
+    expect(r[2]).toBe(4);
+  });
+});
+
+describe("formula hosts pass booleans through (audit finding 27)", () => {
+  const ev = (expr: string, env: Record<string, unknown> = {}) => {
+    const fn = compileEvaluator(expr);
+    if (!fn) throw new Error(`failed to compile: ${expr}`);
+    return fn(env);
+  };
+  it("a > b evaluates to a real boolean at the evaluator level", () => {
+    expect(ev("a > b", { a: 3, b: 2 })).toBe(true);
+  });
+});
+
+describe("TEXT formats date serials (audit finding 29)", () => {
+  const ev = (expr: string, env: Record<string, unknown> = {}) => {
+    const fn = compileEvaluator(expr);
+    if (!fn) throw new Error(`failed to compile: ${expr}`);
+    return fn(env);
+  };
+  it("a date-shaped format code converts the serial", () => {
+    // serial for 2026-03-15
+    expect(ev('TEXT(a, "yyyy-mm-dd")', { a: 46096 })).toBe("2026-03-15");
+  });
+  it("numeric codes pass through to Formula.js untouched", () => {
+    expect(ev('TEXT(a, "0.00")', { a: 1234.5 })).toBe("1234.50");
+  });
+});

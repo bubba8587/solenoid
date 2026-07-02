@@ -783,10 +783,12 @@ export function unnestCube(c: CubeValue, nestedColumn: string): FrameValue {
 
 // ─── Frame lookup (XLOOKUP / VLOOKUP over a table) ──────────────────────────────
 /** Does a key cell equal the typed-in `lookup` text, by the key column's type?
- *  string → text identity; logical → 0/1 identity (so "1"/"true" both match TRUE);
- *  date → the lookup parsed as a serial (digits) or an ISO date; number → numeric. */
+ *  string → case-INSENSITIVE text (Excel's default lookup match — "Apple" finds
+ *  "apple"; audit finding 28); logical → 0/1 identity (so "1"/"true" both match
+ *  TRUE); date → the lookup parsed as a serial (digits) or an ISO date;
+ *  number → numeric. */
 function keyMatches(cell: FrameCell, lookup: string, type: FrameColType): boolean {
-  if (type === "string") return String(cell) === lookup;
+  if (type === "string") return String(cell).toLowerCase() === lookup.toLowerCase();
   if (type === "logical") return (cell ? 1 : 0) === (coerceLogical(lookup) ? 1 : 0);
   if (type === "date") {
     const t = lookup.trim();

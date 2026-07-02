@@ -28,7 +28,7 @@ import { solError, isSolError, type SolError, type SolErrorCode } from "../error
 // value inputs are `any` so arrays of any element type connect. See
 // nodes/shared.ts (ResultType) and excelFormula.ts (compileFormula).
 
-type Cell = number | string | null | SolError; // a mapped value — number (date serial), text, null (missing), or a per-cell error
+type Cell = number | string | boolean | null | SolError; // a mapped value — number (date serial), text, logical, null (missing), or a per-cell error
 type Mat = Cell[][];
 type LambdaFn = (...args: unknown[]) => unknown;
 
@@ -85,12 +85,14 @@ function transpose<T>(m: T[][]): T[][] {
 }
 
 /** Guard one mapped result: a per-cell error PROPAGATES (`#DIV/0!` from `1/0`, …);
- *  text and a finite number (a date serial is one) pass through; anything else
- *  (non-finite, boolean, undefined, a wired-in null) → `null`, the MISSING
+ *  text, a BOOLEAN (P7 logical — `MAP(x, x>2)` was an all-null matrix before,
+ *  audit finding 27) and a finite number (a date serial is one) pass through;
+ *  anything else (non-finite, undefined, a wired-in null) → `null`, the MISSING
  *  sentinel (skipped by aggregators). Lists/matrices now carry both kinds. */
 function cell(v: unknown): Cell {
   if (isSolError(v)) return v;
   if (typeof v === "string") return v;
+  if (typeof v === "boolean") return v;
   return typeof v === "number" && Number.isFinite(v) ? v : null;
 }
 
