@@ -559,3 +559,288 @@ Round 1 gave a graph more verbs. Round 2 gives it more **tenses and voices**: a 
 conditional (what it should be, #12), and other people's voices in it (#11, #13, #14).
 Together the two rounds describe the same product from two sides: Round 1 makes the
 graph *worth more*; Round 2 makes it *reach further*.
+
+---
+---
+
+# Round 3 — the stretch: markets Solenoid could take that nobody built for
+
+Rounds 1–2 stayed close to "spreadsheet, done right." Round 3 asks a bigger question:
+**what do people genuinely struggle with today, hand-rolling brittle internal
+solutions, where Solenoid's architecture is a better starting point than what they've
+got — even though it's a stretch for the product as it stands?**
+
+The honest framing on each: these are further from today's Solenoid, so each says
+plainly *how big* the stretch is and *why the architecture is already closer than the
+alternatives people suffer with.* The pattern that keeps recurring: whole categories of
+software are, underneath, "a typed graph of computations you can inspect and re-run" —
+and everyone in those categories built that graph badly, by hand, in code or in Excel,
+because they had no tool that *was* one. Solenoid is one.
+
+The bar for Round 3: not "could Solenoid do this" (it's Turing-complete-ish, so yes
+trivially) but "would someone **switch** to it because the graph model is
+*structurally* better than their spreadsheet-plus-Python-plus-hope." Where I don't
+think it clears that bar, I say so.
+
+---
+
+## 15 — Engineering & scientific calculations (the MathCAD seat)
+
+**Who's underserved:** engineers and scientists doing real calculations — structural
+loads, heat transfer, tolerances, lab analysis. Their actual tools are a horror: Excel
+with unlabeled cells nobody dares touch, or MathCAD (aging, expensive), or a Jupyter
+notebook that's really a pile of undocumented globals. Their #1 recurring disaster is
+**units** — the mars-orbiter class of bug — mixing meters and feet, forgetting a
+conversion, and getting a plausible wrong answer that kills the design review.
+
+**Why Solenoid is unusually close:** it already has a **unit system that travels with
+values** (`unitFlow.ts`) and a **Convert node** — this is the single hardest thing to
+retrofit and it's *already built*. Add units-as-types (companion doc's smaller swap) and
+Solenoid becomes a calculation surface where **"newtons + seconds" is caught before you
+submit, not after the bridge is built** — the one guarantee this audience begs for and
+neither Excel nor Python gives them. Layer on the trust triad (tested logic, validated
+inputs, explained derivation), and you have a calc sheet that a professional engineer
+can *sign* — literally, since their work often requires a stamped, defensible
+calculation. That's a paid, sticky, underserved seat.
+
+**The stretch:** moderate. Needs units promoted to first-class, a library of
+domain constants/formulas, and a print-quality output (Round 2's #13). Not a new engine.
+
+**First step:** an engineering seed doc that leans hard on units + Convert, and a
+"unit mismatch is an error, not a coercion" mode. See if an actual engineer flinches
+at it or leans in.
+
+**Why not just tell them to use Python:** because the person who owns the calculation
+is the engineer, not a programmer, and the graph is reviewable by their colleague who
+also isn't a programmer. That's the whole point — the domain expert stays in control.
+
+---
+
+## 16 — Bills of materials, recipes, and "cost/impact of a nested thing"
+
+**Who's underserved:** anyone who costs out a **nested composed thing** — a
+manufacturer pricing a product built from sub-assemblies built from parts; a
+construction estimator; a cloud-cost modeler; a restaurant costing recipes made of
+sub-recipes; a carbon-footprint analyst rolling emissions up a supply chain. Today this
+lives in Excel with unspeakable nested VLOOKUPs, or a bespoke internal app that took
+six months and does one thing.
+
+The recurring pain is identical across all of them: **roll a number up a tree, then ask
+"what if a leaf changes?"** Change the price of one screw; what happens to the cost of
+every product that uses the assembly that uses it? Excel makes that a manual, error-prone
+nightmare; the answer is never trustworthy and never fast.
+
+**Why Solenoid is unusually close:** the **Cube** — the recursive nested-table container
+— is *exactly* this shape and already exists. It's the most novel, least-Excel-like
+thing in the product, and it's currently under-sold as a general feature when it's
+really the seed of a **vertical**: "the tool for costing and impact-analysis of anything
+made of other things." Combine the Cube (the nesting) with what-if/goal-seek (Round 1
+#4: "what does hitting a target cost roll down to?") and change-provenance (Bet 4: "this
+total moved because *that leaf* moved") and you've got the roll-up-and-trace loop that
+this entire audience does by hand.
+
+**The stretch:** small-to-moderate — this is more *positioning + a few Cube-aware
+nodes* than new architecture. The Cube is the hard part and it's done.
+
+**First step:** a bill-of-materials seed built on the Cube, with a leaf-change →
+watch-it-ripple demo. If it lands, it's a category, not a feature.
+
+---
+
+## 17 — Decision models & scoring, made honest
+
+**Who's underserved:** everyone who builds a **weighted scoring model** to make a
+call — vendor selection, hiring rubrics, grant scoring, risk registers, prioritization
+frameworks. It's always a spreadsheet, always fudged (weights nudged until the
+"right" answer wins), and never auditable. The complaint isn't "I can't compute a
+weighted sum" — it's "I can't *defend* the decision, and I can't show it wasn't rigged."
+
+**Why Solenoid is unusually close:** there's already a **Decision Matrix** node. The
+architecture adds the two things a defensible decision needs and a spreadsheet can't
+give: **sensitivity** ("does the ranking survive if I wiggle the weights? Round 1 #4 as
+Monte Carlo over the weights") and **provenance** ("here's exactly why vendor B won").
+A scoring model where you can *prove the outcome is robust to your own bias* is a
+genuinely different object from a spreadsheet — it's a decision you can put in front of
+a board or a procurement auditor.
+
+**The stretch:** small. Decision Matrix exists; this is sensitivity + provenance +
+a report view pointed at that node. Arguably the *lowest*-stretch item in Round 3.
+
+**First step:** wire the existing Decision Matrix to a "wiggle the weights, watch the
+ranking" panel. It's a compelling 5-minute demo on parts that mostly exist.
+
+---
+
+## 18 — The reactive backend for someone else's app (Solenoid as an embeddable engine)
+
+**Who's underserved:** developers who need **user-editable business logic** inside their
+own product — pricing rules, insurance quote calc, loan eligibility, tax logic, game
+economy tuning, feature-flag/entitlement rules. Today they either hard-code it (every
+rule change is a deploy) or build a half-baked in-house "rules engine" that's always
+under-powered. There's a reason "business rules engine" is a category people pay
+dearly for and still hate.
+
+**Why Solenoid is unusually close:** with headless execution (Round 2 #10) + publish-
+as-API (Round 1 #2) + schema (Bet 3), a Solenoid graph *is* a hot-swappable,
+non-technical-editable, **visually-auditable rules engine** with a typed contract.
+The product person edits the pricing graph; the app calls it; no deploy; and — unlike
+every rules engine on the market — **you can see the logic as a diagram and test it.**
+That's "Solenoid as the calculation core other software embeds," which is a platform
+play, not an app.
+
+**The stretch:** large, and partly *product-shape*, not just features — it means
+treating the engine as a shippable library with stability guarantees, versioning, and
+an embedding story. But the hard technical core (a pure, headless, typed graph engine)
+is exactly what the architecture bets produce anyway. The stretch is packaging and
+commitment, not capability.
+
+**First step:** don't build the platform. Prove the primitive: headless run + a stable
+input/output contract for one graph, called from a tiny external script. If that feels
+solid, the embedding story is a business decision, not a research one.
+
+**Honest caveat:** this is the furthest from "spreadsheet app" and the one most likely
+to be a distraction from a focused product. Filed because you asked for the stretch and
+because it's real — but it's a fork in identity, not a feature.
+
+---
+
+## 19 — The safe cage for AI-generated analysis (the one genuinely new category)
+
+**Who's underserved — and this one is *emerging*, not established:** everybody now has
+an AI that will happily do data analysis, and nobody can trust a word of it. The AI
+writes Python you don't read, computes a number in a sandbox you can't inspect, and
+hands you an answer with a confident sentence. For anything that *matters* — a financial
+figure, a medical dosage, a compliance number — "the AI said so" is unusable, because
+there's no audit trail and no way to check the arithmetic.
+
+**Why Solenoid is unusually close — arguably uniquely positioned:** the whole product is
+**an inspectable, typed, testable substrate for computation.** Instead of an AI writing
+opaque code, the AI **builds a Solenoid graph** — and now the computation is *visible*,
+every intermediate value is *on a cable*, the types are *checked*, the errors are
+*tagged*, and a human can *audit and correct* the reasoning instead of trusting a black
+box. This flips the AI-analysis trust problem: the AI proposes the graph, the graph *is*
+the explanation, and the human owns the result. It's the exact philosophy the audit
+thesis is built on — never trust what you can't inspect — turned into a product for the
+one workflow that most desperately lacks it.
+
+Nobody owns this yet. The AI-data-analysis tools are all "trust the sandbox"; the
+spreadsheet tools have no AI-native audit surface. Solenoid is the rare thing that is
+*already* the audit surface and *already* being co-authored with an AI (by you, right
+now). "**The place AI does the math where you can actually check it**" is a category
+with a real, urgent need and no incumbent.
+
+**The stretch:** medium on tech (it's Round 2's #11 by-example synthesis + Round 1's #7
+NL layer, aimed at *whole analyses* rather than one column), large on being early — the
+market is forming now. Depends hardest on Bet 2 (an AI-editable model) being real.
+
+**First step:** the narrow, honest version — "ask a question about this table, get a
+*graph* that answers it, not a number." Even a small version is a live demo of the
+whole thesis, and it's the feature most aligned with how the product is already built
+and used.
+
+**Why this is the one I'd actually chase:** it's the only Round-3 item that is both a
+genuinely new category *and* a straight-line extension of what Solenoid already
+uniquely is. The others are Solenoid entering someone else's market; this is Solenoid
+*defining* one that the whole industry is about to need.
+
+---
+
+## Round 3, honestly ranked
+
+- **Chase it:** #19 (safe cage for AI analysis) — new category, no incumbent, and the
+  purest expression of the product's soul. If Round 3 has a thesis, it's this.
+- **Low-stretch, high-return verticals:** #17 (honest decision models) and #16 (BOM /
+  nested costing) — both are *mostly positioning + a demo* on nodes that already exist
+  (Decision Matrix, Cube), and both target audiences drowning in exactly the pain
+  Solenoid removes. These are the safe bets of the batch.
+- **Real seat, real work:** #15 (engineering calcs) — a paying, sticky, underserved
+  audience, and Solenoid holds the one card (units-as-values) nobody else does; the
+  stretch is a domain library and print output, not architecture.
+- **Fork in the road, not a feature:** #18 (embeddable rules engine) — technically
+  downstream of the same bets, but a genuine identity fork; file it, don't chase it
+  unless the app-shaped product plateaus.
+
+The meta-pattern across all four rounds: **so much of software is secretly a typed,
+inspectable graph of computations that somebody had to build by hand, badly, because no
+tool *was* one.** Engineering calcs, cost roll-ups, decision models, rules engines,
+AI analysis — each is a market full of people re-implementing a worse version of what
+Solenoid is natively. The good-to-great arc isn't adding features until it's a better
+spreadsheet; it's realizing the graph is a general substrate and pointing it, one
+credible vertical at a time, at the people already suffering without it. Start where the
+architecture already leans (units → engineering, Cube → costing, Decision Matrix →
+decisions), earn the right to the harder ones (rules engine, AI cage) with the trust
+machinery, and let the identity grow from "spreadsheet, done right" into "**the
+inspectable computation layer**" underneath a dozen jobs people currently hate doing.
+
+---
+---
+
+# Round 3 — what people hand-roll today that Solenoid could scaffold better
+
+A different question this round. Not "what feature should the app grow" but: **out in
+the world, what do teams badly want, build themselves out of Excel + scripts + duct
+tape, and never get right — where Solenoid's architecture is already closer than what
+they're using?** These are less "features" than **jobs Solenoid could take**. Each one
+names the hand-rolled thing it replaces, why the current way fails, and which existing
+Solenoid pieces (verified in the code) do the heavy lifting.
+
+The pattern behind all seven: there is a huge class of business logic that is **too
+important for a spreadsheet but too fluid for software**. It lives in Excel because the
+person who owns it can't write code, and it breaks because Excel can't be trusted or
+run by machines. Solenoid — a *trustable, runnable* spreadsheet — sits exactly in that
+gap. Nobody else does.
+
+---
+
+## 15 — The rules engine business people can actually edit
+
+**The hand-rolled thing:** every company has calculation rules that change often and
+matter a lot — discount policies, eligibility rules, risk scores, fee schedules. Today
+they live in one of two bad places: in *code* (so every change is a ticket to
+engineering, a translation meeting, and a two-week wait) or in *a spreadsheet someone
+emails around* (so nobody knows which version production is actually following).
+"Rules engine" software exists (Drools and friends) and business users can't touch it.
+
+**The Solenoid version:** the rules ARE a graph. The person who owns the policy edits
+nodes; engineering runs the *same file* in production through the headless runner
+(#10). No translation step, no drift between "the spreadsheet that describes the rule"
+and "the code that implements it" — they are the same artifact. The trust stack is what
+makes this safe rather than terrifying: typed inputs/outputs (a bad edit fails loudly
+before it ships), pinned example checks (the rule still gives the right answer for the
+known cases), review sign-off (#14), and snapshots (what did the rule say *last* March,
+when this customer signed up?).
+
+**Already in the codebase:** the pure engine, typed sockets, tagged errors. **Needs:**
+headless (#10), golden tests, review (#14).
+**First customer to imagine:** the pricing owner at any B2B company.
+
+---
+
+## 16 — Engineering calculation sheets (the job Mathcad is dropping)
+
+**The hand-rolled thing:** structural, mechanical, process, and electrical engineers do
+design calculations — beam sizing, pressure drops, load ratings — in Excel or in
+Mathcad, a decades-old tool that is expensive, dying slowly, and still beloved for one
+reason: it understands **units**. Excel does not, and unit mistakes in engineering are
+the famous catastrophic ones. These calc sheets also have to be *shown to someone* — a
+reviewing engineer, a permit office — as a readable document.
+
+**The Solenoid version:** this is the eeriest fit in the whole list, because the rare
+ingredient **already exists**: Solenoid has a real unit system (`unitFlow.ts`, the
+Convert node, `$`/`kg`/`%` as first-class), which almost no modern tool bothered to
+build. Add the units-as-types upgrade from the directions doc (meters + seconds =
+error *before* it runs) and the report projection (#13 — the calc sheet as a clean,
+live, printable document with the assumptions and the math visible), and Solenoid is a
+credible Mathcad successor with a modern engine underneath.
+
+**Already in the codebase:** unit flow + Convert, the math/formula layer, KaTeX (real
+equation rendering!), Notes. **Needs:** units-as-types, report projection (#13).
+**First customer to imagine:** a structural engineer who has to hand a stamped calc
+package to a reviewer.
+
+---
+
+## 17 — The commission engine: "why is my number this?"
+
+**The hand-rolled thing:** sales compensation. Every company with a sales team runs
+comp plans through horrifying spreadsheets maintained by one ter
