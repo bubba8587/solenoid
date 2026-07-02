@@ -3,7 +3,7 @@
 // file connections only work in the desktop app; in the browser isDesktop() is
 // false and every call here is a safe no-op, so the CSV-folder node can render a
 // "desktop only" state rather than crash.
-import { readTextFile, readDir, writeTextFile } from "@tauri-apps/plugin-fs";
+import { readTextFile, readDir, writeTextFile, rename } from "@tauri-apps/plugin-fs";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { join } from "@tauri-apps/api/path";
 
@@ -43,9 +43,23 @@ export async function readFileText(folder: string, name: string): Promise<string
 // blob download / file-input upload (no persistent path). Each returns the chosen
 // absolute path on desktop (so the doc can be bound to it), or null in the browser.
 
+/** Temp + rename so a crash mid-write can't destroy the previous good file
+ *  (audit finding 37) — the disk mirror of the localStorage two-slot rotation.
+ *  Falls back to a direct write when the `.tmp` sibling is outside the granted
+ *  fs scope (a dialog-picked path grants exactly the picked file). */
+async function writeTextFileAtomic(path: string, content: string): Promise<void> {
+  const tmp = `${path}.tmp`;
+  try {
+    await writeTextFile(tmp, content);
+    await rename(tmp, path);
+  } catch {
+    await writeTextFile(path, content);
+  }
+}
+
 /** Write `content` to `path` (desktop only — call only when isDesktop()). */
 export async function writeTextFilePath(path: string, content: string): Promise<void> {
-  await writeTextFile(path, content);
+  await writeTextFileAtomic(path, content);
 }
 
 /** Show a Save dialog and write the file. Returns the chosen path, or null if the
@@ -54,7 +68,7 @@ export async function saveTextFileDialog(suggestedName: string, content: string)
   if (isDesktop()) {
     const path = await save({ defaultPath: suggestedName, filters: JSON_FILTER });
     if (!path) return null;
-    await writeTextFile(path, content);
+    await writeTextFileAtomic(path, content);
     return path;
   }
   downloadText(suggestedName, content);

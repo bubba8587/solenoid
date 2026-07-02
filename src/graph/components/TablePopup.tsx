@@ -63,13 +63,21 @@ function cell(c: string, cellType: CellType): string {
 }
 // CSV-quote a text cell only when it would otherwise be ambiguous (comma, quote,
 // or newline) — doubling embedded quotes, per RFC 4180. Numbers never need it.
-function csvField(c: string, cellType: CellType): string {
-  const out = cell(c, cellType);
+// With `escapeFormulas` (read-only popups — the export path), a text cell whose
+// first char is a formula trigger (= + - @, tab, CR) gets a leading apostrophe
+// so pasting into Excel/Sheets can't execute it (CSV/formula injection, audit
+// finding 39) — genuine numbers ("-5") are left alone. Editable grids skip it:
+// their CSV view must round-trip the user's own text exactly.
+function csvField(c: string, cellType: CellType, escapeFormulas = false): string {
+  let out = cell(c, cellType);
+  if (escapeFormulas && cellType === "string" && /^[=+\-@\t\r]/.test(out) && Number.isNaN(Number(out))) {
+    out = `'${out}`;
+  }
   if (cellType === "string" && /[",\n]/.test(out)) return `"${out.replace(/"/g, '""')}"`;
   return out;
 }
-function toCSV(grid: string[][], cellType: CellType, columnTypes?: CellType[]): string {
-  return grid.map((row) => row.map((c, j) => csvField(c, typeAt(j, cellType, columnTypes))).join(",")).join("\n");
+function toCSV(grid: string[][], cellType: CellType, columnTypes?: CellType[], escapeFormulas = false): string {
+  return grid.map((row) => row.map((c, j) => csvField(c, typeAt(j, cellType, columnTypes), escapeFormulas)).join(",")).join("\n");
 }
 // A 1D list is a single row here; copy it as one ", "-separated line so it matches
 // the node's list result box exactly (toCSV would use a bare "," without spaces).
@@ -273,13 +281,15 @@ export function TablePopup() {
   // is row-per-line CSV; a frame prepends a header line). Used for copy and the CSV view.
   // In formatted date mode, copy/CSV reflects the displayed strings, not raw serials.
   const headers = editableHeaders ? headerNames : state.headers;
-  const bodyCSV = toCSV(displayGrid, cellType, columnTypes);
+  // Read-only popups neutralize formula-injection prefixes on export (finding 39);
+  // editable ones must round-trip the typed text exactly.
+  const bodyCSV = toCSV(displayGrid, cellType, columnTypes, !editable);
   // A frame's CSV view prepends a header line (below); a plain table/list doesn't.
   const hasHeaderLine = !state.list && !!(headers && headers.length);
   const asText = state.list
     ? listToText(displayGrid, cellType)
     : hasHeaderLine
-      ? `${headers!.map((h) => csvField(h, "string")).join(",")}\n${bodyCSV}`
+      ? `${headers!.map((h) => csvField(h, "string", !editable)).join(",")}\n${bodyCSV}`
       : bodyCSV;
 
   function showCSV() {
