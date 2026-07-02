@@ -27,10 +27,13 @@ the build happens after the whole list is walked. Context: v1.0-audit.md "Still 
 
 **WALKTHROUGH BOOKMARK (paused 2026-07-02, author stepped away).** Everything below this
 section is decision-recorded. The QUEUE when resuming, in order:
-1. **Locale number input** — question PRESENTED, awaiting answer: display uses OS-locale
-   `toLocaleString` but inputs parse dot-decimals only; recommendation was DEFER to its
-   own design session (interacts with CSV comma-decimals, maybe a display-locale
-   setting) rather than half-answer it in this pass.
+1. **Locale number input — DECIDED 2026-07-02: force US-style everywhere.** Author: "I
+   don't respect comma decimals." All value display uses period decimals + comma
+   thousands separators regardless of OS locale — no locale sniffing, no setting. Build:
+   pass `"en-US"` (shared constant) instead of `undefined` to every `toLocaleString` —
+   `formatAnnotationStore.ts` (the value formatter, ~5 sites) + the cosmetic row-count
+   strings in CubePopup/TablePopup/RendererSpike. Inputs stay dot-decimal-parse-only;
+   display and input now agree by fiat. Closes the item — no separate design session.
 2. **UX/a11y mechanical list** (offer as delegation tier, itemize on request): text
    `×`/`✕` → shared CloseIcon (~6 files); socket-dot hover `title` naming the type
    (structural text; the only colorblind path); `prefers-reduced-motion` honored by the
