@@ -60,13 +60,37 @@ the build happens after the whole list is walked. Context: v1.0-audit.md "Still 
   blank-ignore; Fill/Coalesce first, or formula AND, for Excel behavior") + the rule
   recorded in subsystem-invariants "Error values". (Checked = decision recorded; the
   note ships with the build pass.)
-- [ ] **pow NaN leaks → `#DOMAIN!` (author confirmed).** Two stragglers predating the
-  non-finite normalization: formula `^` in `applyOp` and ArithmeticNode's `pow` case
-  return raw NaN for a negative base with fractional exponent ((-8)^(1/3)); MathFn
-  (sqrt/log/…) and formula POWER already mint `#DOMAIN!`. Fix both case-arms: NaN from
-  finite inputs → `#DOMAIN!` ("negative base with fractional exponent"). **`0^0` stays
-  1** (JS/Python/R/Polars convention; erroring in JS while Polars arithmetic says 1
-  would manufacture a parity split) — parity:false catalog note ("Excel gives #NUM!").
+- [ ] **Non-finite results: the general guard — `#OVERFLOW!` / `#DOMAIN!` / proper
+  Infinity (author confirmed; SUBSUMES the earlier pow-only item).** One shared helper
+  in the compute layer (composes with the per-element broadcaster rule), classifying by
+  RESULT with input awareness:
+  - **result NaN → `#DOMAIN!` always** (indeterminate/undefined: (-8)^(1/3), ∞−∞, ∞/∞,
+    0×∞, NaN input entering the op — no true value exists);
+  - **result ±Inf from all-FINITE inputs → `#OVERFLOW!`** (NEW tagged error code — the
+    true answer is a really big NUMBER, not infinity; Excel mints catch-all #NUM!, ours
+    is more specific; ERROR.TYPE → 6, IFERROR/ISERROR catch it like any SolError);
+  - **result ±Inf with an infinite INPUT → passes through** (definable infinity: the
+    Constant node's Infinity is a first-class value; ∞+5=∞, 2×∞=∞, 5/∞=0).
+  Consequence: computation can no longer PRODUCE a NaN — the residue is dirty data
+  only. Bookkeeping: errorValue.ts code inventory 13→14 (subsystem-invariants count +
+  error-showcase seed row); Infinity support is untested past Arithmetic — spot-check
+  comparisons/aggregators/sort/logical-bridge/formatScalar (∞ glyph? author eyeball).
+  **`0^0` stays 1** (JS/Python/R/Polars convention; erroring in JS while Polars says 1
+  would manufacture a parity split) — parity:false note ("Excel gives #NUM!"). Frame-
+  engine non-finite behavior (Polars silent inf; wire normalizes to null) is a separate
+  P3, deliberately NOT folded in.
+- [ ] **NaN display affordance (author confirmed).** Residual NaN (dirty data reaching a
+  value box / popup cell) renders as literal `NaN` with a QUIET affordance: muted
+  background tint — not the error badge red, not plain-number styling, shaped/toned to
+  not read as an ArrayChip — plus a structural fixed-text hover tooltip ("Not a number —
+  undefined value in the data"). formatScalar's current "N/A" rendering is a lie
+  (post-finding-13, #N/A is a real catchable error; NaN is not it). Styling per
+  DESIGN.md, author eyeballs at build.
+- [ ] **Stale description sweep (author confirmed).** Catalog text rendered verbatim in
+  Ctrl+/: div "null when B=0" (→ #DIV/0!), text-find "null if not found" (→ #VALUE!),
+  XMatch "(null=not found)" (→ #N/A), CHOOSE "Fixed 4 values" (extensible), Cast
+  (missing logical target), Alert (describes removed colored UI, 1 of 4 modes), Note
+  ("carries no data" — frontmatter sockets exist). Pure text, no decisions.
 - [ ] **Round-to-multiple: MRound gains ops nearest/up/down; MathFn ceil/floor DELETED
   (author confirmed).** Direction is an op, shape is a node (the RoundN precedent —
   round/roundup/rounddown are ops over (value, digits); nearest/up/down are ops over
@@ -87,6 +111,77 @@ the build happens after the whole list is walked. Context: v1.0-audit.md "Still 
   message **"Use XLOOKUP"** (MATCH → **"Use XMATCH"**) — nothing longer, per the
   no-Captain-Obvious rule. **INDEX stays** (current Excel, never superseded). Delete
   the four impls + their tests; add redirect-message tests.
+- [ ] **Number→text conversion at 15 significant digits (author confirmed).** One shared
+  `numberToText` helper (15 sig digits, trailing zeros stripped) used by `applyOp`'s `&`
+  and thin wrappers for FX-routed CONCAT/CONCATENATE/TEXTJOIN, so `(0.1+0.2) & " kg"` →
+  `"0.3 kg"`. **Rationale: IEEE, not Excel** — a double guarantees ~15 clean decimal
+  digits; digits 16–17 are representation noise, so printing them into user-built text
+  is publishing garbage (that Excel picked the same cutoff is coincidence, not the
+  motive). Scientific-notation thresholds deliberately NOT chased.
+- [ ] **Dates: numbers are LITERAL years; text year-tokens are EXACTLY 4 digits; nothing
+  guesses (author confirmed).** Every 2-digit-year disambiguation (Excel DATE's +1900,
+  Excel text-parse's 00–29 pivot, .NET, sliding windows) is a guess that goes stale
+  (it's 2026; pivot-30 breaks in four years) — and Excel's two rules contradict each
+  other (DATE(26)=1926 but typed "1/15/26"=2026). Precedent: the filter-value spec's
+  "unparseable → deterministic refusal, never a silent guess". The rule, two sentences:
+  - **Numeric year (DateConstruct, wired or typed): literal, range 1–9999**, else
+    `#DOMAIN!`. DATE(26) = 26 AD (renders 15-Jan-0026 — visibly odd beats silently
+    wrong-century); DATE(1850) works (pre-1900 negative serials probe-verified
+    end-to-end: construct/format/YEAR round-trip). No sub-100 carve-out — a number
+    carries no century ambiguity; that only ever lived in text formats. The range
+    guard kills the "15-Jan-0-50" formatter garbage.
+  - **Text parsing (`parseDateToSerial`: DATEVALUE/Cast/CSV/frontmatter): a year token
+    is exactly four digits** — "0026" = 26 AD, "0126" = 126 AD, "026"/"26" = not a date
+    (string stays string; DATEVALUE → #VALUE!). Verify current parser behavior at build
+    time and align.
+  - Storage stays the honest true type; 2-digit-year DISPLAY, if a user wants it
+    app-wide, is the Format Controller's job (presentation, not storage).
+  - parity:false note on DATE; drop the JS Date.UTC two-digit remap (the current
+    accidental 26→1926). Build checklist: spot-check EDATE/EOMONTH/YEARFRAC/WORKDAY
+    on negative serials.
+- [ ] **IFS/SWITCH no-match with no fallback → tagged `#N/A`, both surfaces (author
+  confirmed).** An uncovered case is a logic hole, not missing data — null renders a
+  quiet blank and aggregates skip it (invisible); `#N/A` is loud until acknowledged via
+  the sanctioned paths (the Otherwise/default row, or IFNA). Matches XLOOKUP's
+  not-found. Node UX: fresh IFS/SWITCH ships the Otherwise/default slot EMPTY but
+  renders a muted **`N/A` placeholder** in the box (state display, not a typed value —
+  no magic "N/A" string, nothing to accidentally delete); blank → #N/A, typed value →
+  that value, cleared → #N/A again. Formula IFS/SWITCH same. CHOOSE out-of-range index:
+  verify at build, align to the tagged-error model (Excel: #VALUE!). Tests pin all.
+- [ ] **NUMBERVALUE: strict full-string parse + current-Excel completeness (author
+  confirmed).** `parseFloat` parses greedy prefixes so "12x" → 12 and "12%" → 12 (wrong
+  NUMBER, worst cell of the item) instead of reaching the node's own #VALUE! branch.
+  Replace with strict `Number()` semantics on the normalized text, plus NUMBERVALUE's
+  two documented behaviors: trailing `%` signs each ÷100 ("12%"→0.12, "12%%"→0.0012);
+  ALL whitespace ignored incl. embedded ("1 234"→1234). Blank → null stays. Tests pin
+  "12x", "12%", "1 234", swapped-separator "1.234,56", blank.
+- [ ] **Input-field defaults render as muted PLACEHOLDERS, not label parentheses (author
+  confirmed).** NumberValue's `Decimal sep (default ".")` labels → label "Decimal sep",
+  muted `.` placeholder in the empty field; blank = default applies, typed = override
+  (literal ships empty; data() treats "" as use-default). Same pattern as the IFS
+  Otherwise `N/A` placeholder. Sweep all nodes for other `(default …)` label text.
+- [ ] **Logical bridge: NaN → null, not TRUE (author confirmed, on recommendation).**
+  `numsToBools` (`coerceInputs.ts`) uses `v !== 0`, so NaN reads as a confident TRUE at
+  every logical socket. Post-finding-13, NaN is just an undefined number → its truth
+  value is Kleene null (unknown), matching R/pandas logical coercion, `coerceLogical`'s
+  "not coercible → null" (verify + align at build, one spec per D11), and the existing
+  NaN→null IPC normalization. Non-zero finite → TRUE, 0 → FALSE, NaN → null. Tests pin
+  IF and Comparison fed NaN.
+- [ ] **List UNIQUE: errors NEVER dedupe; frame Distinct unchanged (author confirmed).**
+  Today's identity-dedup is a lottery: three independent failures survive as 3, but one
+  error fanned into three cells collapses to 1 (same-looking data, different answer).
+  New rule: list UNIQUE dedupes values normally (nulls collapse to one) but EVERY error
+  cell survives, deterministically — the Excel-user sanity check ("10 values + 3 errors
+  = 3 fixes to make"). No checkbox: set-clean output already has a sanctioned path
+  (IFERROR/Fill upstream). Frame Distinct stays by-code (relational identity, D12
+  family). Add to D12: second instance of the line — list ops answer to the
+  spreadsheet model, relational verbs to the relational model.
+- [ ] **Minimap: z-order bug** — some nodes render OVER the minimap (author report
+  2026-07-02). Investigate the stacking context (area-plane z vs the minimap plugin's
+  layer).
+- [ ] **Minimap: smoothing/update rate** — visibly jumpy under continuous mouse drag
+  (author report 2026-07-02). Consider rAF-throttled updates + interpolation, mindful
+  of the never-degrade-cables rule's spirit (smoothness over jump-to-latest).
 
 ---
 

@@ -165,6 +165,10 @@ distinctions irrecoverably and is the thing we refuse.
 parity:false notes on the identity verbs.
 **What would reverse it:** nothing foreseeable; a per-verb case-fold OPTION on Group By/
 Join would be an addition inside this rule, not a reversal.
+**Second instance of the same line (2026-07-02, UNIQUE ruling):** list ops answer to the
+spreadsheet model, relational verbs to the relational model — list UNIQUE never dedupes
+error cells (each is an independent problem, the sanity-check reading), while frame
+Distinct dedupes them by code (errors as values, SQL/Polars identity semantics).
 
 ### D13 — Cross-engine consistency outranks Excel-quirk parity
 **When:** 2026-07-02 (the `0^0` ruling). **Where:** this entry; pow item in backlog.
