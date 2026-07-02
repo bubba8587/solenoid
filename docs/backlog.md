@@ -44,7 +44,14 @@ section is decision-recorded. The QUEUE when resuming, in order:
 3. **cargo-audit in CI — APPROVED 2026-07-02.** Small workflow: `cargo audit` on
    `src-tauri/Cargo.lock` on pushes to develop; triage noise via `audit.toml` ignore
    list as it comes up.
-4. **Frame P3s**: (a) `\u{1}` multi-key separator collision in Rust — under discussion.
+4. **Frame P3s**: (a) **DECIDED 2026-07-02 (delegated — "do as you wish"): Rust builds
+   the byte-identical oracle key.** Replace `Cell::key()` + the raw `\u{1}` joins
+   (engine.rs distinct + group_by) with `serde_json::to_string` of the SAME tagged-tuple
+   encoding as JS `encodeCell` (`[["s","a"],["#",1]]`) — collision-proof by
+   construction, fixes the `-0` float-format divergence for free, and the error-cell
+   variant (`["e", code]`) lands with the (b) wire work (Rust `Cell` gains an error
+   case). Add a cargo parity test with a `\u{1}`-bearing fixture asserting literal key
+   equality.
    (b) **DECIDED 2026-07-02: Infinity is first-class in frames, same as scalars.** The
    IPC wire gains a non-finite sentinel (e.g. `{"__nf":"inf"|"-inf"|"nan"}`) in BOTH
    directions — JSON's Inf→null default was never a hard constraint, we own both ends;
