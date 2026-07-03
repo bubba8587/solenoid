@@ -192,7 +192,10 @@ export { GroupComponent } from "./GroupNode";
 
 // ─── Composite (computing subgraph container) ──────────────────────────────────
 export { CompositeComponent, CompositeInputMarkerComponent, CompositeOutputMarkerComponent } from "./CompositeNode";
-export { CompositeEditorOverlay } from "./CompositeEditorOverlay";
+// CompositeEditorOverlay is deliberately NOT re-exported here: it imports
+// nodeRegistry (for the drill-in's render preset), and nodeRegistry imports
+// this barrel — a barrel export would close a module-init cycle (TDZ on
+// whatever component the registry touches first). Import it from its file.
 
 // ─── Complex numbers ──────────────────────────────────────────────────────────
 export { ComplexFromComponent } from "./ComplexFromNode";
