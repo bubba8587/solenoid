@@ -141,10 +141,13 @@ export function firstInputError(
 //  - Display is a pass-through whose value box reads `cachedValue` (not the
 //    `cachedResult` the generic short-circuit mirrors to). Letting its data()
 //    run on the raw error lets it both SHOW the badge and forward the error.
+//  - NoteNode's inline refs are independent lanes too (one per `` `=name` `` span);
+//    a bad ref must show its own error badge in place, not blank every other ref
+//    in the same note.
 const SEES_ERRORS = new Set([
   "IFErrorNode", "IsTestNode",
   "ConduitNode", "CableSwitchNode",
-  "DisplayNode",
+  "DisplayNode", "NoteNode",
 ]);
 
 const WRAPPED = Symbol("solErrorGuard");
