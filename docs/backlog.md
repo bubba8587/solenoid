@@ -150,10 +150,23 @@ templates — nothing left to attach to since #55 templates are OUT) · #59 OUT 
 lineage — file-over-app + open text format means git already solves this) · #60 OUT
 ("hate it" — author's own words, overrides the doc's "pull this one forward" framing) ·
 #61 OUT (numbers with receipts / verify-links on published figures) · #62 OUT
-(validator economy — depended entirely on #46 seals, deferred).
-NEXT when resuming: scope-features #63 (the LAST item), then in order (folding in
-strategy threads #1–#7 and the
-unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
+(validator economy — depended entirely on #46 seals, deferred) · #63 OUT (standards-
+as-software executable packs — "a nice thought, but out"). **Broad standing note from
+#63: the whole "trust machinery" cluster (seals #46, citations #60, fork lineage #59,
+validator economy #62, numbers-with-receipts #61, verified templates #58) is only
+worth building if real demand for it shows up in the far future — not ahead of that
+demand.**
+
+**SCOPE-FEATURES.MD WALK COMPLETE (2026-07-03) — all 63 items walked, verdicts inline.**
+Final tally: 33 IN (several scoped down/conditional/sequenced late — see the per-round
+notes above for exact conditions), 24 OUT, 6 DEFERRED (#2, #6, #11, #23, #35, #46) +
+2 VERY DEFERRED (#48, #54, both "the OS-level chosen folder is the answer for now").
+Deferred pile for eventual end-of-walk revisit: #2, #6, #11, #23, #35, #46, golden
+tests, data-drafts. Standing principle adopted mid-walk (from #45): prefer a
+dedicated node over a new panel/lens/global-UI layer when a feature is node-shaped
+(also saved as memory `feedback_prefer_nodes_over_panels`).
+NEXT when resuming: strategy threads #1–#7 and the
+unfinished v1.1-plan workstreams where they belong, then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
 #41 conditional formatting → engine execution contract (Bet 1 × #23 × #24 × calc mode) → #5
 composites (document-local container ONLY — no sharing/ecosystem, packs are the sole

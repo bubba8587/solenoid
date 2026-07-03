@@ -1926,6 +1926,13 @@ product verifiable. Gated on the governance vertical (#3) landing first.
 
 ## 63 — Standards as software: institutions publishing executable packs
 
+**VERDICT (author, 2026-07-03): OUT.** A nice thought, but out — closes the walk.
+Broader standing note: the whole "trust machinery" cluster this item sits atop
+(seals #46, citations #60, fork lineage #59, validator economy #62, numbers-with-
+receipts #61, verified templates #58) is something that COULD be worth building, but
+only if real demand for it shows up in the far future — not worth building ahead of
+that demand. **This is item 63 of 63 — the scope-features.md walk is COMPLETE.**
+
 **The idea (the far end):** standards bodies and authorities — building codes, actuarial
 tables, tax schedules, engineering societies — currently publish their tables and
 formulas as **PDFs**, which ten thousand practitioners each hand-transcribe into ten
