@@ -1,5 +1,27 @@
 # Bundle 05 — Format Controller function model → units-by-dimensionality (the flagship)
 
+> **PROGRESS (2026-07-03).**
+> - **Phase C — DONE (already fixed before this bundle resumed).** `Canvas.tsx`'s
+>   `nodecreated` `dockSelf()` call IS guarded (`n instanceof FormatControllerNode &&
+>   !isGraphRebuilding()`, currently ~line 2369), matching its sibling branches;
+>   `groupPush.ts translatePushed` handles docked nodes on push/group-move. The doc
+>   below predates that fix — no work needed.
+> - **Phase D — FOUNDATION LANDED.** `src/graph/dimension.ts` (+ `dimension.test.ts`,
+>   19 tests) is the pure dimensional-algebra core: exponent-vector units + SI scale +
+>   affine offset, the ×/÷/^ algebra (5 m ÷ 1 s = m/s, mass·accel → N), commensurability,
+>   conversion (incl. C/F/K), a unit-expression parser, and derived-unit formatting.
+>   `#UNIT!` added to `errorValue.ts`. The **Convert node now sources its math from
+>   dimension.ts** (one source of truth; all 22 original convert tests still pass) — the
+>   core is proven load-bearing, not dead infra.
+> - **STILL GATED on Phase A (the FC function model / `docs/format-model.md` truth table,
+>   author sign-off pending):** Phase D steps 1(value-model)/5(delete unitFlow)/6/7 —
+>   units riding per-element through lists (author decided **tagged cells**, since a list
+>   is a row and must allow mixed units) / per-column through frames, re-expressing the
+>   FC lock/carry/break on the new layer, the Expression/LAMBDA dimensional pass, and the
+>   aggregator/socket-lattice work. These consume the core above; do them once the truth
+>   table is signed off. Phases A & B (FC model + visual redesign) also await it.
+
+
 **Source:** `future-directions.md` "smaller swaps" (units-as-dimensional-algebra,
 VERDICT: IN and EXPANDED), merged with `v1.1-plan.md` WS-A. **Depends on:** nothing
 structurally, but do this FIRST among UI-heavy work. **Feeds:** bundle 14's conditional-
