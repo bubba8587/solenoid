@@ -65,6 +65,7 @@ pub fn run() {
             engine::engine_read_csv,
             engine::engine_read_parquet,
             engine::engine_apply,
+            engine::engine_apply_many,
             engine::engine_join,
             engine::engine_append,
             engine::engine_preview,

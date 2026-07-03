@@ -13,10 +13,14 @@ Polars stack, AND the lazy-handle-on-cable finish (2026-06-30) all shipped. What
 left for 1.0 is essentially the **Windows packaging** (the portable `.exe` builds via
 `npm run tauri build -- --no-bundle`; a versioned/installer artifact is the open
 item) — see [`v1.0-plan.md`](v1.0-plan.md). The renderer is the HTML-in-canvas path
-(shipped), not the parked WGSL/Pixi one. Future scale niceties (not 1.0 blockers):
-lazy-plan fusion + a direct CSV→Polars reader (the eager engine + JS CSV parse are
-the current ceiling). **v1.1** = the deferred tail (FC redesign, node packs, grid,
-collision avoidance, chrome customization). This backlog is the fine-grained list.
+(shipped), not the parked WGSL/Pixi one. **Lazy-plan fusion shipped 2026-07-03**
+(`docs/v2.0/03-compile-fuse.md` Bet 1 — see dev-notes) — `verb_group_by` now runs on
+Polars' native lazy group-by, every verb builds onto one shared `LazyFrame`, and the
+JS seam batches a verb chain into ONE `engine_apply_many` round trip instead of one
+per verb. Remaining future scale nicety: a direct CSV→Polars reader (the JS CSV parse
+stays the ceiling for desktop imports). **v1.1** = the deferred tail (FC redesign, node
+packs, grid, collision avoidance, chrome customization). This backlog is the
+fine-grained list.
 
 ---
 
@@ -825,10 +829,12 @@ correctness.
   Append / Distinct / Rename / Select / Drop / Pivot (full PIVOTBY) / Unpivot / Nest /
   Unnest, plus **Frame Lookup** (table XLOOKUP/VLOOKUP) / Split Column / Add Index. The
   pure engine is `frameVerbs.ts` (the JS oracle); on **desktop** the relational verbs
-  run in **native Polars** (`src-tauri/src/engine.rs`, 27 cargo parity tests) via the
+  run in **native Polars** (`src-tauri/src/engine.rs`, 32 cargo parity tests) via the
   `FrameBackend` seam, on web the identical JS backend. The lazy-handle-on-cable finish
   shipped 2026-06-30 (refs chain in the backend; head-N card previews; big-frame render
-  caps). Remaining are future scale niceties (lazy-plan fusion, CSV→Polars) + XLOOKUP cube mode.
+  caps); **lazy-plan fusion shipped 2026-07-03** (native lazy group-by + a shared
+  `LazyFrame` plan + JS-side verb-chain batching — see dev-notes). Remaining are a direct
+  CSV→Polars reader + XLOOKUP cube mode.
   Original framing kept below for reference.
   - The set-based table-transform spine that makes Solenoid a visual query tool. "Basic"
   only (no subqueries/CTEs/window-fns). Get/Add Column + Slicer + 1-D Group By +
