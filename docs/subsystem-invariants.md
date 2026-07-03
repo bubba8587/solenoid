@@ -95,4 +95,35 @@ The **Alert** node watches a value and fires a notification when its condition i
 
 - **Edge detection is on the STATUS, not a boolean** (`statusKey`): it re-fires whenever the alerting status changes to a *different* alerting value — so range OK→LOW, OK→HIGH and LOW↔HIGH all fire, but LOW→LOW / HIGH→HIGH don't, and returning to calm is silent. `lastStatusKey` starts at the `NO_STATUS` sentinel so a node born alerting (or freshly switched into an already-met condition) fires once; a MODE CHANGE compares against `NO_STATUS` (the old mode's status is meaningless), so switching into a met condition surfaces it. `null` result = unknown (missing input) — neither fires nor disturbs the baseline. Firing is gated by `isGraphRebuilding()` so load/seed don't spam (the post-rebuild `processGraph` runs inside the rebuild scope).
 - **`fireAlert(...)` (alertStore.ts) is the single entry point:** it logs an event to `alertStore` (a capped, transient, NOT-persisted log) AND raises a toast via `pushNotice` (noticeStore). Messages are neutral observations ("150 above 100", "equals 7", "is true", `contains "error"`) — an Alert is a watch/notify, not a pass/fail, so the value box dropped ✓/⚠ for a neutral state dot.
-- **`HudStack.tsx`** is the right-side fixed HUD column (one portal, `top:124px right:12px`, below the nav pill): it owns positioning and stacks `PinLayer` (pinned values, top) above `AlertLayer` (fired alerts, below) — so the alerts button always lands below all pins regardless of pin count. Each section renders nothing when empty. `PinLayer` lost its own portal/fixed wrapper (moved up to the stack).
+- **`HudStack.tsx`** is the right-side fixed HUD column (one portal, `top:124px right:12px`, below the nav pill): it owns positioning and stacks `PinLayer` (pinned values, top) above `AlertLayer` (fired alerts, below) — so the alerts button always lands below all pins regardless of pin count. Each section renders nothing when empty. `PinLayer` lost its own portal/fixed wrapper (moved up to the stack). **Not a generic panel API** — each child (`PinLayer`, `AlertLayer`, and any future panel) is a fully bespoke component with its own `useState`, own trigger button, own `registerChrome` call; a new panel is a new component added as a sibling child, not a plug-in to a shared base.
+
+## Addressable model (Bet 2 — `docs/v2.0/01-addressable-model.md`, decided 2026-07-03)
+
+Every node gains a **stable, user-editable name**, separate from and in addition to the
+rete-internal `id` (which stays random/regenerated-on-load, per `rebuildGraph`'s
+`idMap` — names never assume id stability). Default: a type-scoped counter
+(`Filter_2`), editable, validated unique per document. This is wholly new — no existing
+field (`label` is a per-class constant today, not per-instance) gets repurposed.
+
+A **text projection** (graph ↔ one-node-per-line text, name-addressed rather than
+id-addressed) is a second view of the same document, alongside the canvas and the JSON
+save. Settled grammar rules:
+- **Line order is topological (dependency order), ties broken alphabetically by
+  name** — NOT canvas position and NOT plain alphabetical. Canvas-position order would
+  reshuffle the whole file on every drag (constant, logic-unrelated churn — the worst
+  option for the git-diffability this whole bet exists for); topological order only
+  perturbs the region actually touched by a real edit.
+- **Canonicalization on write:** numbers via JS's default shortest round-trippable
+  `String(n)` (no locale formatting, no fixed padding); each node line's fields in one
+  fixed schema order (type, name, literals in a stable declared order, then
+  connections) — never alphabetical-by-key or insertion-order. Two writes of an
+  unmodified graph must be byte-identical.
+- **Visual state (position, size, collapsed, etc.) lives in a separate trailing
+  block/sidecar, not inline in the per-node lines** — keeps the readable lines looking
+  like code (type, name, wiring), not a scene graph.
+- The JSON save is *generated* from the text form, not hand-maintained in parallel —
+  contain the two-formats-to-sync risk by making JSON strictly derived.
+- Round-trip losslessness (text → graph → text is idempotent) is machine-checked the
+  same way `seeds.test.ts` checks structural invariants today — load every seed, write
+  text, re-read, re-write, assert the second write is byte-identical. Keep it green
+  permanently, same discipline as `cablePaths.test.ts`'s continuity gate.

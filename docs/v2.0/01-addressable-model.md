@@ -60,30 +60,41 @@ across the repo (or check `file`/`.gitattributes` output) to name the actual aff
 files. If nothing turns up, this line item may already be stale — don't invent a fix for
 a bug that isn't reproducible; note that finding in the design-session writeup either way.
 
-## NEEDS AUTHOR INPUT before code — the design session
+## DECIDED (author, 2026-07-03) — the design session
 
-The VERDICT explicitly requires this FIRST (name scheme, line grammar, visual-state
-carriage, round-trip guarantees) — not optional groundwork, the first deliverable:
+The VERDICT required this before code; all four are now settled. Items 2-4 the author
+explicitly delegated ("I do not care" / "I don't know" ×2) — those are my calls, made
+so an implementing agent has a concrete spec, not an open question:
 
-1. **The stable-name scheme.** Recommend: user-editable name, defaulted to a
-   type-scoped counter (e.g. `Filter_2`), validated unique per document — closest to
-   how a node already shows a title (there isn't one today, see grounding above), least
-   new UI surface.
-2. **The text-form grammar.** One node per line, predictable order (topological? canvas
-   position? alphabetical-by-name?) for clean diffs. Must represent: node type, name,
-   literal inputs, cable connections (by name), and enough visual state (at minimum
-   position) to round-trip losslessly into the `SavedGraph` shape above.
-3. **Round-trip guarantee.** Text → graph → text must be idempotent — decide what's
-   canonicalized (number formatting, key ordering) up front.
-4. **What visual state travels in the text form vs. a JSON-only sidecar** — position/size
-   probably belongs in a trailing block or sidecar, not inline in the readable node lines.
+1. **The stable-name scheme — CONFIRMED.** User-editable name, defaulted to a
+   type-scoped counter (e.g. `Filter_2`), validated unique per document.
+2. **The text-form grammar — DECIDED: topological (dependency) order, ties broken
+   alphabetically by name.** Reasoning: the whole point of the text form is clean git
+   diffs for LOGIC changes. Canvas-position order would reshuffle the entire file every
+   time something gets dragged around (constant, unrelated to logic) — the worst choice
+   for diff-friendliness. Topological order only perturbs the region actually edited; a
+   new node appears near what it depends on. Alphabetical-by-name is a fallback for
+   deterministic tie-breaking within a topological layer, not the primary sort.
+3. **Round-trip guarantee — DECIDED.** Canonicalize on write: numbers via a fixed
+   canonical formatter (JS's default shortest round-trippable `String(n)` — no locale
+   formatting, no fixed decimal padding); each node line's fields serialized in one fixed
+   schema order (type, name, literals in a stable declared order, then connections) —
+   never alphabetical-by-key or insertion-order, so two writes of the same graph are
+   byte-identical regardless of edit history.
+4. **Visual-state carriage — DECIDED: a separate trailing block, not inline.** Position,
+   size, collapsed-state, etc. live in a distinct section after the readable node/cable
+   lines (or a JSON-only sidecar file) — keeps the per-node lines reading like code
+   (type, name, wiring), not a scene graph. The exact shape (trailing block vs. sidecar
+   file) is an implementation detail for the build to settle, not a design fork worth
+   re-litigating.
 
 ## Build order
 
 1. Investigate + (if reproducible) kill the zero-bytes issue — standalone, low risk,
    independent of everything else.
-2. Run the design session; write the settled scheme into a NEW `docs/subsystem-invariants.md`
-   section ("Addressable model") before touching code.
+2. The design session is DONE (see above) and the settled scheme is written into
+   `docs/subsystem-invariants.md`'s new "Addressable model" section — read it before
+   touching code, don't re-derive.
 3. Add the stable-name field to the node data model (new — see grounding above); default
    from type + counter, editable, validated unique, persisted through `SavedNode`/`init`.
 4. Text-form writer: graph → text, walking `editor.getNodes()`/`getConnections()`,
