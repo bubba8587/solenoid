@@ -836,6 +836,9 @@ ranking" panel. It's a compelling 5-minute demo on parts that mostly exist.
 
 ## 18 — The reactive backend for someone else's app (Solenoid as an embeddable engine)
 
+**VERDICT (author, 2026-07-03): OUT.** The identity fork the entry itself flagged as
+the risk — not pursued.
+
 **Who's underserved:** developers who need **user-editable business logic** inside their
 own product — pricing rules, insurance quote calc, loan eligibility, tax logic, game
 economy tuning, feature-flag/entitlement rules. Today they either hard-code it (every
