@@ -15,11 +15,11 @@ import { getArea } from "./process";
 // Geometry constants shared with ConduitComponent so trunk endpoints can be
 // computed without measuring DOM. The squares ARE the sockets; lane pitch is
 // SQ + ROW_GAP (scaled).
-export const CONDUIT_BODY_SIZE = 72;
+export const CONDUIT_BODY_SIZE = 92;
 export const CONDUIT_PIVOT = CONDUIT_BODY_SIZE / 2;
-export const CONDUIT_SQ = 8;
-export const CONDUIT_COL_GAP = 1;
-export const CONDUIT_ROW_GAP = 1;
+export const CONDUIT_SQ = 10;
+export const CONDUIT_COL_GAP = 1.5;
+export const CONDUIT_ROW_GAP = 1.5;
 
 // ─── Layout store ─────────────────────────────────────────────────────────────
 // ConduitComponent publishes its live angle + scale (the connector shrinks when

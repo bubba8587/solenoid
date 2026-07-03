@@ -1,8 +1,9 @@
 import type { NodeEditor } from "rete";
 import type { AreaPlugin } from "rete-area-plugin";
 import type { Schemes, AreaExtra } from "./schemes";
-import { FormatControllerNode, ConvertNode } from "./rete-nodes";
+import { FormatControllerNode, ConvertNode, ConduitNode } from "./rete-nodes";
 import { SolenoidSocket, canConnect } from "./sockets";
+import { reconcileConduitTypes } from "./conduitTrace";
 
 /**
  * Re-adapt every Format Controller's socket type to whatever it's now attached to
@@ -48,6 +49,20 @@ export function reconcileFcTypes(
   editor: NodeEditor<Schemes>,
   area: AreaPlugin<Schemes, AreaExtra>,
 ): void {
+  // Conduits FIRST: each lane's output socket adopts the type feeding its input,
+  // so a lane carries its real type downstream (an FC docked past a Conduit, or a
+  // Display, then sees the true type instead of `any`). Fixpoint over chained
+  // Conduits. On a change, re-render the Conduit cards + their cables so the new
+  // lane types/colours show and downstream FCs (below) resolve against them.
+  if (reconcileConduitTypes(editor)) {
+    for (const n of editor.getNodes()) {
+      if (!(n instanceof ConduitNode)) continue;
+      void area.update("node", n.id);
+      for (const c of editor.getConnections()) {
+        if (c.source === n.id || c.target === n.id) void area.update("connection", c.id);
+      }
+    }
+  }
   // Convert is a hybrid node+FC with unit primacy — refresh its arrows first so the
   // chain settles in one pass (mirrors the Canvas ordering).
   for (const n of editor.getNodes()) {

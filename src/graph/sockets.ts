@@ -259,6 +259,16 @@ export class SolenoidSocket extends ClassicPreset.Socket {
   }
 }
 
+/** A SolenoidSocket whose dataType can change after construction — for a node
+ *  that ADOPTS the type flowing into it (Format Controller, Conduit lanes). Each
+ *  such node owns its own instances so retyping never touches a shared singleton.
+ *  The base declares `dataType` readonly for callers; the owner mutates it here. */
+export class MutableSocket extends SolenoidSocket {
+  setType(type: SocketDataType): void {
+    (this as unknown as { dataType: SocketDataType }).dataType = type;
+  }
+}
+
 export const numberSocket  = new SolenoidSocket("number");
 export const listSocket    = new SolenoidSocket("list");
 export const numListSocket = new SolenoidSocket("numlist");
