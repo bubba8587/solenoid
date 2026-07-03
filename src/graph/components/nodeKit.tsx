@@ -1,4 +1,5 @@
 import { useCallback, useState, useRef, type ReactNode, useLayoutEffect, useContext, useSyncExternalStore } from "react";
+import { commentStore, commentsPanelUi } from "../commentStore";
 import type { ClassicPreset } from "rete";
 import type { ClassicScheme, RenderEmit } from "rete-react-plugin";
 import { processGraph, getEditor } from "../process";
@@ -210,6 +211,36 @@ function typeHint(node: ShellNode): string {
     .toUpperCase();
 }
 
+// Lucide "message-square" — matches NodeContextMenu's Add-comment icon.
+const CommentDot = () => (
+  <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}>
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+  </svg>
+);
+
+/** The small corner indicator every node gets automatically when it has a
+ *  comment thread (#14) — reuses the ErrorChip-style pill treatment (a quiet
+ *  round badge) and points back to the Comments panel on click. Mounted
+ *  unconditionally by NodeShell (so every node type gets it for free, no
+ *  per-component wiring) but renders nothing for the common case (no thread). */
+function CommentIndicator({ nodeId }: { nodeId: string }) {
+  const hasThread = useSyncExternalStore(commentStore.subscribe, () => commentStore.hasAny(nodeId));
+  if (!hasThread) return null;
+  const unresolved = commentStore.hasUnresolved(nodeId);
+  return (
+    <button
+      type="button"
+      className={`solenoid-node__comment-badge${unresolved ? "" : " solenoid-node__comment-badge--resolved"}`}
+      title={`${commentStore.forNode(nodeId).length} comment${commentStore.forNode(nodeId).length === 1 ? "" : "s"} — open`}
+      onClick={(e) => { e.stopPropagation(); commentsPanelUi.openFor(nodeId); }}
+      onPointerDown={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+    >
+      <CommentDot />
+    </button>
+  );
+}
+
 export function NodeShell({
   node,
   emit,
@@ -326,6 +357,7 @@ export function NodeShell({
         {cornerBadge && (
           <div className="solenoid-node__corner-badge">{cornerBadge}</div>
         )}
+        <CommentIndicator nodeId={node.id} />
         {/* Everything BELOW the header lives in this wrapper, which is the socket
             positioning context (position: relative). Sockets + the value box it
             aligns them to are both inside it, so every socket `top` is measured
