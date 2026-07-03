@@ -373,6 +373,12 @@ pub struct OutColumn {
     values: Vec<Json>,
 }
 
+#[derive(Serialize)]
+pub struct OutSample {
+    handle: String,
+    factor: f64,
+}
+
 #[derive(Deserialize)]
 pub struct WireAgg {
     column: String,
@@ -589,6 +595,25 @@ fn verb_head(frame: &SolFrame, n: f64) -> Result<SolFrame, IpcError> {
         df,
         types: frame.types.clone(),
     })
+}
+
+// ─── sample (sketch mode, #24) ──────────────────────────────────────────────────
+// Deterministic (never random) evenly-strided subset of up to `n` rows, mirroring
+// the JS oracle's `sampleFrame` (frameVerbs.ts) exactly — same stride formula, same
+// row order preserved. Returns the sampled frame + the scale FACTOR
+// (trueRows/sampleRows) so a groupBy's sum/count columns can be extrapolated back
+// toward the true total (frameBackend.ts `scaleSampledAggregate`).
+fn verb_sample(frame: &SolFrame, n: usize) -> Result<(SolFrame, f64), IpcError> {
+    let total = frame.df.height();
+    if total <= n || n == 0 {
+        return Ok((frame.clone(), 1.0));
+    }
+    let stride = total as f64 / n as f64;
+    let idxs: Vec<usize> = (0..n)
+        .map(|i| ((i as f64 * stride) as usize).min(total - 1))
+        .collect();
+    let sampled = reorder_rows(frame, &idxs)?;
+    Ok((sampled, total as f64 / n as f64))
 }
 
 // filter
@@ -1149,6 +1174,17 @@ pub fn engine_append(handles: Vec<String>) -> Result<String, IpcError> {
 #[tauri::command]
 pub fn engine_preview(handle: String, n: usize) -> Result<OutPreview, IpcError> {
     with_frame(&handle, |f| Ok(preview_of(f, n)))
+}
+
+#[tauri::command]
+pub fn engine_sample(handle: String, n: usize) -> Result<OutSample, IpcError> {
+    with_frame(&handle, |f| {
+        let (sampled, factor) = verb_sample(f, n)?;
+        if factor <= 1.0 {
+            return Ok(OutSample { handle: handle.clone(), factor: 1.0 });
+        }
+        Ok(OutSample { handle: register(sampled), factor })
+    })
 }
 
 #[tauri::command]

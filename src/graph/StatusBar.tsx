@@ -77,6 +77,7 @@ export function StatusBar() {
   useSyncExternalStore(calcModeStore.subscribe, calcModeStore.version);
   const manual = calcModeStore.isManual();
   const calcDirty = calcModeStore.dirty();
+  const sketch = calcModeStore.isSketch();
 
   return (
     <>
@@ -120,6 +121,14 @@ export function StatusBar() {
               Manual
             </span>
           )
+        )}
+        {sketch && (
+          <span
+            className="solenoid-statusbar__sketch"
+            title="Sketch mode — verbs run on a sample of the data; F9 forces an exact recompute"
+          >
+            ≈ approximate
+          </span>
         )}
         <span className="solenoid-statusbar__zoom">{snap.zoom}%</span>
       </div>

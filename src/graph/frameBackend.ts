@@ -15,9 +15,10 @@ import {
   getColumn, frameRowCount,
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
 } from "./frame";
-import { applyVerb, joinFrames, appendFrames, type FrameOp, type JoinOpts } from "./frameVerbs";
+import { applyVerb, joinFrames, appendFrames, sampleFrame, type FrameOp, type JoinOpts, type AggOp } from "./frameVerbs";
 import { solError, isSolError, type SolError } from "./errorValue";
 import { engineAvailable, enginePing, ipcInvoke } from "./ipcBridge";
+import { calcModeStore } from "./calcModeStore";
 
 /** Opaque handle to a frame living in a backend. Consumers pass it around and
  *  materialize via the backend; they never read it. (Branded so a bare string
@@ -60,8 +61,9 @@ export async function readFrame(v: FrameInput | SolError | null | undefined): Pr
   if (isFrameRef(v)) {
     let p = _collectMemo.get(v.__frameRef);
     if (!p) {
-      p = materialize(frameBackend().collect(v.__frameRef));
-      _collectMemo.set(v.__frameRef, p);
+      const handle = v.__frameRef;
+      p = materialize(frameBackend().collect(handle)).then((r) => (isSolError(r) ? r : applySketchScaling(handle, r)));
+      _collectMemo.set(handle, p);
     }
     return p;
   }
@@ -92,7 +94,7 @@ export async function collectPreview(out: FrameInput | SolError | null, n = CARD
   if (!p.truncated) return readFrame(out); // small enough to show whole — collect full
   const f = previewToFrame(p);
   f.__ref = out; // let the grid popup fetch the FULL frame on demand (audit 22p)
-  return f;
+  return applySketchScaling(out.__frameRef, f);
 }
 
 /** One column's identity in a preview (no values — schema only). */
@@ -139,6 +141,12 @@ export interface FrameBackend {
   /** Free a handle's backing data. Safe to call on an unknown/already-dropped
    *  handle (no-op). */
   drop(handle: FrameHandle): void;
+  /** Sketch mode (#24): a deterministic (never random) sample of up to `n` rows,
+   *  returning a NEW handle plus the scale FACTOR (trueRows/sampleRows so a
+   *  sum/count aggregated over the sample can be extrapolated back toward the
+   *  true total — factor is 1 when the frame was already at or under `n` rows
+   *  (no sampling needed, the "sample" is unchanged from the source). */
+  sample(handle: FrameHandle, n: number): Promise<{ handle: FrameHandle; factor: number }>;
 }
 
 /** Build a head-N preview from an in-memory frame (shared shaping logic; the
@@ -213,6 +221,15 @@ class JsFrameBackend implements FrameBackend {
     this.store.delete(handle);
   }
 
+  async sample(handle: FrameHandle, n: number): Promise<{ handle: FrameHandle; factor: number }> {
+    const f = this.get(handle);
+    const total = frameRowCount(f);
+    const sampled = sampleFrame(f, n);
+    const sampledRows = frameRowCount(sampled);
+    if (sampledRows >= total) return { handle, factor: 1 };
+    return { handle: this.register(sampled), factor: total / sampledRows };
+  }
+
   private get(handle: FrameHandle): FrameValue {
     const e = this.store.get(handle);
     const f = e instanceof WeakRef ? e.deref() : e;
@@ -263,6 +280,10 @@ class PolarsBackend implements FrameBackend {
     // handle is a Rust-side no-op. Swallow any rejection (e.g. off-desktop).
     void ipcInvoke("engine_drop", { handle }).catch(() => {});
   }
+
+  async sample(handle: FrameHandle, n: number): Promise<{ handle: FrameHandle; factor: number }> {
+    return ipcInvoke<{ handle: string; factor: number }>("engine_sample", { handle, n }) as Promise<{ handle: FrameHandle; factor: number }>;
+  }
 }
 
 // ─── Backend selection ─────────────────────────────────────────────────────────
@@ -276,19 +297,33 @@ export function frameBackend(): FrameBackend {
   return _backend;
 }
 
-/** Override the active backend (Polars wiring on desktop; tests). Clears the
- *  source-handle cache — its handles belong to the OUTGOING backend, so a frame
- *  cached under the old backend must not resolve to a handle the new one lacks. */
+/** Every handle-keyed cache/marker a backend swap invalidates: the OUTGOING
+ *  backend's handles belong to it alone, and a fresh backend's OWN handles start
+ *  renumbering from scratch (each `JsFrameBackend`/registration counter is
+ *  per-instance) — so a bare string like "jsf:2" is NOT globally unique across
+ *  backend instances. Without this, a stale `_collectMemo`/`_sampleFactor`/
+ *  `_sketchInfo` entry keyed by a re-used string can leak a PREVIOUS backend's
+ *  cached result onto an unrelated frame in the new one (hit in testing: a suite
+ *  calling `resetFrameBackendToJs()` between cases got another case's stale
+ *  `_collectMemo` entry back for a colliding handle string). */
+function clearHandleKeyedCaches(): void {
+  _sourceCache = new WeakMap();
+  clearCollectMemo();
+  _sampleFactor.clear();
+  _sketchInfo.clear();
+}
+
+/** Override the active backend (Polars wiring on desktop; tests). */
 export function setFrameBackend(backend: FrameBackend): void {
   _backend = backend;
-  _sourceCache = new WeakMap();
+  clearHandleKeyedCaches();
 }
 
 /** Reset the seam to a fresh in-process JS backend. For tests that swap to the
  *  Polars backend and need to restore the default between cases. */
 export function resetFrameBackendToJs(): void {
   _backend = new JsFrameBackend();
-  _sourceCache = new WeakMap();
+  clearHandleKeyedCaches();
 }
 
 /** Pick the frame backend once at startup. On desktop, ping the native engine; if
@@ -360,6 +395,63 @@ async function inputHandle(input: FrameInput): Promise<{ h: FrameHandle; temp: b
   return { h: await p, temp: false };
 }
 
+// ─── Sketch mode (#24): sample instead of the full frame while active ──────────
+// While `calcModeStore.sketchActive()` is true, a verb's WORKING SET is capped to
+// a deterministic sample (never random) so a chain on a huge frame stays fast — F9
+// / Calculate Now bracket `calcModeStore.beginForceExact()/endForceExact()` around
+// the ONE forced pass (process.ts `requestRecalc`), so sketchActive() reads false
+// there and that pass always runs on the full data.
+//
+// `_sampleFactor` records which handles are sample-derived + by how much
+// (trueRows/sampleRows), propagated down a verb chain so a filter/sort AFTER a
+// sampled source is still recognized as sample-derived (no re-sampling, and the
+// factor is available if a LATER groupBy in the chain needs it).
+//
+// `_sketchInfo` marks a handle whose STORED value needs scaling at every
+// materialization: set on a groupBy's output for its sum/count aggregate
+// columns (avg/min/max/median/mode/stdev/var/percentof are never scaled —
+// extrapolating those would be wrong, not just approximate), and propagated
+// unchanged through a later non-aggregating verb. Scaling is applied at
+// `readFrame`/`collectPreview` time (`applySketchScaling`), NOT baked into the
+// backend-stored data: re-sourcing a scaled frame back into the Polars backend
+// would round-trip through `engine_source`/`engine_collect`, which carry only
+// plain columns — `__approx` (a JS-side-only field) would silently vanish. This
+// way the raw sample sums stay in the backend and every read applies the SAME
+// scaling, on either backend, however many times it's read.
+export const SKETCH_SAMPLE_ROWS = 10_000;
+const _sampleFactor = new Map<FrameHandle, number>();
+interface SketchInfo { factor: number; scaleColumns: ReadonlySet<string> }
+const _sketchInfo = new Map<FrameHandle, SketchInfo>();
+const SKETCH_EXTRAPOLATABLE: ReadonlySet<AggOp> = new Set(["sum", "count"]);
+
+/** Sample `h` (if sketch mode is active and it isn't ALREADY a sample-derived
+ *  handle from earlier in this same chain) and record the factor for
+ *  propagation. Returns the handle to actually operate on + a handle to drop
+ *  afterward (the sample is a short-lived intermediate; `null` when nothing was
+ *  sampled). */
+async function maybeSketchSample(be: FrameBackend, h: FrameHandle): Promise<{ h: FrameHandle; sampledTemp: FrameHandle | null }> {
+  if (!calcModeStore.sketchActive() || _sampleFactor.has(h)) return { h, sampledTemp: null };
+  const { handle: sampled, factor } = await be.sample(h, SKETCH_SAMPLE_ROWS);
+  if (factor <= 1) return { h, sampledTemp: null };
+  _sampleFactor.set(sampled, factor);
+  return { h: sampled, sampledTemp: sampled };
+}
+
+/** Apply a handle's recorded sketch scaling (if any) to a freshly-materialized
+ *  FrameValue: scale the marked sum/count columns by the factor and stamp
+ *  `__approx` (frame.ts) so the UI never presents a sample number as exact.
+ *  A no-op (returns `f` unchanged) for a handle with no sketch marking. */
+function applySketchScaling(handle: FrameHandle, f: FrameValue): FrameValue {
+  const info = _sketchInfo.get(handle);
+  if (!info) return f;
+  const columns = f.columns.map((c) => (
+    info.scaleColumns.has(c.name)
+      ? { ...c, values: c.values.map((v) => (typeof v === "number" ? v * info.factor : v)) }
+      : c
+  ));
+  return { ...f, columns, __approx: { factor: info.factor } };
+}
+
 /** Run a unary verb (select/drop/rename/sort/distinct/head/filter/groupBy/
  *  unpivot — NOT pivot, which is deliberately eager) through the active
  *  backend, returning a LAZY ref — the result stays in
@@ -368,14 +460,30 @@ async function inputHandle(input: FrameInput): Promise<{ h: FrameHandle; temp: b
 export async function runFrameUnary(input: FrameInput, op: FrameOp): Promise<FrameRef | SolError> {
   const be = frameBackend();
   let temp: FrameHandle | null = null;
+  let sampledTemp: FrameHandle | null = null;
   try {
     const { h, temp: t } = await inputHandle(input);
     if (t) temp = h;
-    return wrapRef(await be.apply(h, op));
+    const sample = await maybeSketchSample(be, h);
+    sampledTemp = sample.sampledTemp;
+    const factor = _sampleFactor.get(sample.h) ?? 1;
+    const outHandle = await be.apply(sample.h, op);
+    if (factor > 1) {
+      _sampleFactor.set(outHandle, factor);
+      if (op.kind === "groupBy") {
+        const scaleColumns = new Set(op.aggs.filter((a) => SKETCH_EXTRAPOLATABLE.has(a.op)).map((a) => a.as));
+        if (scaleColumns.size > 0) _sketchInfo.set(outHandle, { factor, scaleColumns });
+      } else {
+        const inherited = _sketchInfo.get(sample.h); // carry an upstream groupBy's marking through select/sort/filter/…
+        if (inherited) _sketchInfo.set(outHandle, inherited);
+      }
+    }
+    return wrapRef(outHandle);
   } catch (e) {
     return asErrorValue(e);
   } finally {
     if (temp) be.drop(temp);
+    if (sampledTemp) { be.drop(sampledTemp); _sampleFactor.delete(sampledTemp); _sketchInfo.delete(sampledTemp); }
   }
 }
 
@@ -412,7 +520,12 @@ export async function runFrameAppend(frames: readonly FrameInput[]): Promise<Fra
 /** Drop a verb node's previous output ref when it recomputes (or is removed). The
  *  backend's frames are independent, so this is always safe. A no-op for non-refs. */
 export function dropFrameRef(v: unknown): void {
-  if (isFrameRef(v)) frameBackend().drop(v.__frameRef);
+  if (isFrameRef(v)) {
+    frameBackend().drop(v.__frameRef);
+    // else a sketch-mode entry outlives its handle forever
+    _sampleFactor.delete(v.__frameRef);
+    _sketchInfo.delete(v.__frameRef);
+  }
 }
 
 /** Await a materialization (`preview` / `column`) and return a tagged `SolError`

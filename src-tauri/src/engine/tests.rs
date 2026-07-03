@@ -487,3 +487,52 @@ fn select_duplicate_names_keeps_first() {
     let out = verb_select(&f, &["a".into(), "a".into(), "b".into()]).unwrap();
     assert_eq!(dump(&out).len(), 2);
 }
+
+// ─── sample (sketch mode, #24) ──────────────────────────────────────────────────
+
+#[test]
+fn sample_under_n_is_unchanged_factor_one() {
+    let f = frame(vec![("a", SolType::Number, num(&[1.0, 2.0, 3.0]))]);
+    let (sampled, factor) = verb_sample(&f, 10).unwrap();
+    assert_eq!(factor, 1.0);
+    assert_eq!(dump(&sampled)[0].2, j(&[1.0, 2.0, 3.0]));
+}
+
+#[test]
+fn sample_strides_evenly_and_reports_factor() {
+    // 10 rows sampled to 5 — every other row, in order; factor = 10/5 = 2.
+    let f = frame(vec![(
+        "a",
+        SolType::Number,
+        num(&[0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]),
+    )]);
+    let (sampled, factor) = verb_sample(&f, 5).unwrap();
+    assert_eq!(factor, 2.0);
+    assert_eq!(dump(&sampled)[0].2, j(&[0.0, 2.0, 4.0, 6.0, 8.0]));
+}
+
+#[test]
+fn sample_zero_n_is_unchanged() {
+    let f = frame(vec![("a", SolType::Number, num(&[1.0, 2.0]))]);
+    let (sampled, factor) = verb_sample(&f, 0).unwrap();
+    assert_eq!(factor, 1.0);
+    assert_eq!(dump(&sampled)[0].2, j(&[1.0, 2.0]));
+}
+
+#[test]
+fn engine_sample_command_registers_a_new_handle_and_leaves_the_source_intact() {
+    let f = frame(vec![(
+        "a",
+        SolType::Number,
+        num(&[0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]),
+    )]);
+    let h = register(f);
+    let out = engine_sample(h.clone(), 5).unwrap();
+    assert_eq!(out.factor, 2.0);
+    assert_ne!(out.handle, h); // a NEW handle, not a mutation of the source
+    let sampled = with_frame(&out.handle, |f| Ok(dump(f))).unwrap();
+    assert_eq!(sampled[0].2, j(&[0.0, 2.0, 4.0, 6.0, 8.0]));
+    // the original handle still resolves to the full, unsampled frame
+    let original = with_frame(&h, |f| Ok(dump(f))).unwrap();
+    assert_eq!(original[0].2.len(), 10);
+}

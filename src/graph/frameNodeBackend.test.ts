@@ -3,8 +3,9 @@
 // the pure verb produces — that's what guarantees the migrated frame nodes behave
 // identically to the old direct-verb path. A structural failure comes back as a
 // tagged SolError VALUE, never a throw.
-import { describe, it, expect } from "vitest";
-import { runFrameUnary, runFrameJoin, runFrameAppend, readFrame, frameBackend, resetFrameBackendToJs } from "./frameBackend";
+import { describe, it, expect, beforeEach } from "vitest";
+import { runFrameUnary, runFrameJoin, runFrameAppend, readFrame, frameBackend, resetFrameBackendToJs, SKETCH_SAMPLE_ROWS } from "./frameBackend";
+import { calcModeStore } from "./calcModeStore";
 import {
   selectColumns, dropColumns, renameColumns, sortByColumn, distinctRows, headRows,
   filterRows, groupByFrame, pivotFrame, unpivotFrame, joinFrames, appendFrames,
@@ -111,5 +112,89 @@ describe("runFrameJoin / runFrameAppend — parity", () => {
     const b: FrameValue = { __frame: true, columns: [{ name: "x", type: "string", values: ["a"] }] };
     const out = await runFrameAppend([a, b]);
     expect(isSolError(out) && out.code).toBe("#TYPE!");
+  });
+});
+
+describe("sketch mode (#24) — sampled verb execution + extrapolated aggregates", () => {
+  const big: FrameValue = {
+    __frame: true,
+    columns: [
+      { name: "region", type: "string", values: Array.from({ length: SKETCH_SAMPLE_ROWS * 2 }, (_, i) => (i % 2 === 0 ? "N" : "S")) },
+      { name: "qty", type: "number", values: Array.from({ length: SKETCH_SAMPLE_ROWS * 2 }, () => 1) },
+    ],
+  };
+
+  beforeEach(() => {
+    resetFrameBackendToJs();
+    calcModeStore.setMode("auto"); // also clears dirty; leaves sketch off
+  });
+
+  it("auto mode (sketch off) computes the exact sum over every row", async () => {
+    const aggs = [{ column: "qty", op: "sum" as const, as: "total" }];
+    const out = await readFrame(await runFrameUnary(big, { kind: "groupBy", keys: ["region"], aggs }));
+    if (isSolError(out) || out == null) throw new Error("expected a frame");
+    expect(out.__approx).toBeUndefined();
+    const total = out.columns.find((c) => c.name === "total")!.values.reduce((a, b) => (a as number) + (b as number), 0);
+    expect(total).toBe(SKETCH_SAMPLE_ROWS * 2); // one per row, exact
+  });
+
+  it("sketch mode caps to a sample and scales sum/count back toward the true total, marked __approx", async () => {
+    calcModeStore.setMode("sketch");
+    const aggs = [
+      { column: "qty", op: "sum" as const, as: "total" },
+      { column: "qty", op: "count" as const, as: "n" },
+      { column: "qty", op: "avg" as const, as: "avg" },
+    ];
+    const out = await readFrame(await runFrameUnary(big, { kind: "groupBy", keys: ["region"], aggs }));
+    if (isSolError(out) || out == null) throw new Error("expected a frame");
+    expect(out.__approx).toBeDefined();
+    expect(out.__approx!.factor).toBeCloseTo(2, 5); // 2×SKETCH_SAMPLE_ROWS rows sampled to SKETCH_SAMPLE_ROWS
+    // sum/count are EXTRAPOLATED (scaled by the factor) — never the sample's raw total
+    const total = out.columns.find((c) => c.name === "total")!.values.reduce((a, b) => (a as number) + (b as number), 0);
+    expect(total).toBeCloseTo(SKETCH_SAMPLE_ROWS * 2, 5);
+    // avg is NOT scaled — extrapolating an average would be wrong, not approximate
+    for (const v of out.columns.find((c) => c.name === "avg")!.values) expect(v).toBe(1);
+    calcModeStore.setMode("auto");
+  });
+
+  it("F9 (beginForceExact/endForceExact) forces an exact pass even while sketch mode is selected", async () => {
+    calcModeStore.setMode("sketch");
+    calcModeStore.beginForceExact();
+    try {
+      const aggs = [{ column: "qty", op: "sum" as const, as: "total" }];
+      const out = await readFrame(await runFrameUnary(big, { kind: "groupBy", keys: ["region"], aggs }));
+      if (isSolError(out) || out == null) throw new Error("expected a frame");
+      expect(out.__approx).toBeUndefined(); // exact — no sampling happened this pass
+    } finally {
+      calcModeStore.endForceExact();
+      calcModeStore.setMode("auto");
+    }
+  });
+
+  it("a frame at or under the sample size is never sampled (no __approx)", async () => {
+    calcModeStore.setMode("sketch");
+    const small: FrameValue = {
+      __frame: true,
+      columns: [
+        { name: "region", type: "string", values: ["N", "S"] },
+        { name: "qty", type: "number", values: [10, 20] },
+      ],
+    };
+    const aggs = [{ column: "qty", op: "sum" as const, as: "total" }];
+    const out = await readFrame(await runFrameUnary(small, { kind: "groupBy", keys: ["region"], aggs }));
+    if (isSolError(out) || out == null) throw new Error("expected a frame");
+    expect(out.__approx).toBeUndefined();
+    calcModeStore.setMode("auto");
+  });
+
+  it("the approx marking propagates through a non-aggregating verb chained after groupBy", async () => {
+    calcModeStore.setMode("sketch");
+    const aggs = [{ column: "qty", op: "sum" as const, as: "total" }];
+    const grouped = await runFrameUnary(big, { kind: "groupBy", keys: ["region"], aggs });
+    if (isSolError(grouped)) throw new Error("expected a ref");
+    const sorted = await readFrame(await runFrameUnary(grouped, { kind: "sort", by: "total", dir: "desc" }));
+    if (isSolError(sorted) || sorted == null) throw new Error("expected a frame");
+    expect(sorted.__approx).toBeDefined();
+    calcModeStore.setMode("auto");
   });
 });

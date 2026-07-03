@@ -246,8 +246,16 @@ export function getRecalcGen() {
 export async function requestRecalc() {
   _recalcGen++;
   // Calculate Now / F9: always compute, even in manual mode (that's the whole point),
-  // and reroll volatiles. `force` also clears the manual-mode dirty flag.
-  await processGraph(undefined, undefined, { force: true });
+  // and reroll volatiles. `force` also clears the manual-mode dirty flag. Bracketed
+  // with beginForceExact/endForceExact so sketch mode's sampling (frameBackend.ts)
+  // is suppressed for this ONE pass — F9 always forces an exact recompute regardless
+  // of the selected calc mode.
+  calcModeStore.beginForceExact();
+  try {
+    await processGraph(undefined, undefined, { force: true });
+  } finally {
+    calcModeStore.endForceExact();
+  }
 }
 
 // Push a custom undo/redo action onto the history stack (registered by Canvas,

@@ -66,6 +66,7 @@ pub fn run() {
             engine::engine_join,
             engine::engine_append,
             engine::engine_preview,
+            engine::engine_sample,
             engine::engine_column,
             engine::engine_collect,
             engine::engine_drop,
