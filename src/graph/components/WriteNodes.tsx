@@ -3,6 +3,7 @@ import type { WriteCsvNode as WriteCsvNodeType, WriteJsonNode as WriteJsonNodeTy
 import { isDesktop } from "../fileBridge";
 import { FrameDisplay } from "./FrameDisplay";
 import { NodeShell, type NodeProps } from "./nodeKit";
+import { InlineInputs } from "./inlineInput";
 import "./ConnectionNodes.css";
 import "./WriteNodes.css";
 
@@ -53,6 +54,7 @@ function WriteFileComponent({
 
   return (
     <NodeShell node={data} emit={emit} labelPlaceholder={kindLabel}>
+      <InlineInputs node={data} emit={emit} />
       <div className="sol-conn">
         {!desktop && <div className="sol-conn__note">Writing files is available in the desktop app only.</div>}
         <div style={{ display: "flex", gap: 4 }}>
