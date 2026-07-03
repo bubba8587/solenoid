@@ -247,10 +247,28 @@ describe("lattice invariants — TYPE separation + DIMENSIONAL flow (full sweep)
   });
 
   it("`any` bridges everything, both directions", () => {
-    for (const t of [...allTypes, "anytable", "frame", "cube", "lambda"] as SocketDataType[]) {
+    for (const t of [...allTypes, "anytable", "frame", "cube", "lambda", "chart"] as SocketDataType[]) {
       expect(canConnect(t, "any")).toBe(true);
       expect(canConnect("any", t)).toBe(true);
     }
+  });
+
+  // The OBJECT socket family (`lambda`, `chart`) sits OUTSIDE the element×dimension
+  // lattice entirely — neither is in FAMILIES/MATRIX_TYPES/FAMILY_VALUE_TYPES, so
+  // `accepts()` falls through to identity + `any` only (no entry in SOCKET_ACCEPTS).
+  // `chart` is genuinely new (sockets.ts, alongside the pre-existing `lambda`); this
+  // machine-checks it got the identical identity-only treatment.
+  it("chart (like lambda) is identity-only: self + any, never a regular lattice type", () => {
+    expect(canConnect("chart", "chart")).toBe(true);
+    for (const t of [...allTypes, "anytable", "frame", "cube"] as SocketDataType[]) {
+      expect(canConnect("chart", t)).toBe(false);
+      expect(canConnect(t, "chart")).toBe(false);
+    }
+  });
+
+  it("chart and lambda don't cross into each other — two distinct object-family members", () => {
+    expect(canConnect("chart", "lambda")).toBe(false);
+    expect(canConnect("lambda", "chart")).toBe(false);
   });
 });
 
