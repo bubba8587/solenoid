@@ -57,11 +57,12 @@ export const calcModeStore = {
   version: _notifier.version,
 
   /** Switch mode. Returns true when it actually changed (the caller runs the
-   *  catch-up recompute when switching to "auto"). Auto clears dirty. */
+   *  catch-up recompute when switching to "auto" or "sketch" — both recompute
+   *  live, so a stale dirty flag from Manual is moot going forward). */
   setMode(m: CalcMode): boolean {
     if (_mode === m) return false;
     _mode = m;
-    if (m === "auto") _dirty = false;
+    if (m === "auto" || m === "sketch") _dirty = false;
     persist();
     _notifier.notify();
     return true;

@@ -206,6 +206,13 @@ export function MenuBar() {
           checked: calcMode === "manual",
           onClick: () => { calcModeStore.setMode("manual"); },
         },
+        {
+          label: "Sketch (approximate on a sample)",
+          checked: calcMode === "sketch",
+          // Sketch recomputes live, same as Automatic — catch up on anything
+          // suppressed while Manual, same as switching to Automatic does.
+          onClick: () => { if (calcModeStore.setMode("sketch")) void requestRecalc(); },
+        },
       ],
     },
     {
