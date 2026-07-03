@@ -52,9 +52,21 @@ export function ReportOverlay() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodeId]);
 
+  // Commit (mint sockets) THEN close — the reliable trigger on every exit path.
+  // syncRefs runs synchronously at the top of commitBody, before any await, so
+  // the sockets are minted even though we don't await here.
+  function closeReport() {
+    void commitBody();
+    reportStore.close();
+  }
+  // Keep the latest closeReport reachable from the mount-time Esc listener
+  // (whose effect deps are [nodeId], so it would otherwise capture a stale one).
+  const closeRef = useRef(closeReport);
+  closeRef.current = closeReport;
+
   useEffect(() => {
     if (!nodeId) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") reportStore.close(); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") closeRef.current(); };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [nodeId]);
@@ -80,12 +92,18 @@ export function ReportOverlay() {
   // Commit on blur (edits never propagate per keystroke — see CLAUDE.md). Reconciles
   // the ref INPUT sockets on the small anchor card, drops cables into any vanished
   // ref, re-renders that card, and recomputes so the preview reflects the new refs.
+  // Reads node.body (kept live per keystroke by onBody), NOT the `body` React
+  // state — so it can be called from ANY close path (Esc / X / backdrop / tab)
+  // without a stale closure. This is what mints the `=name` ref sockets; on
+  // mobile there's no textarea blur when you tap X, so committing on close is
+  // the only reliable trigger.
   async function commitBody() {
-    if (body === lastSyncRef.current) return;
-    lastSyncRef.current = body;
+    const current = node!.body;
+    if (current === lastSyncRef.current) return;
+    lastSyncRef.current = current;
     // Keep node.embeds in step with the `![[Name]]` tokens actually in the body
     // (the export reads embeds), resolving each name to a live Note id.
-    const embedNames = extractEmbedNames(body);
+    const embedNames = extractEmbedNames(current);
     const ed0 = getEditor();
     const allNotes = (ed0?.getNodes() ?? []).filter((n): n is NoteNode => n instanceof NoteNode);
     const nm = nodeDisplayNames(ed0?.getNodes() ?? []);
@@ -157,7 +175,7 @@ export function ReportOverlay() {
   }
 
   return (
-    <div className="report-backdrop" onPointerDown={() => reportStore.close()}>
+    <div className="report-backdrop" onPointerDown={() => closeReport()}>
       <div className="report-panel" onPointerDown={(e) => e.stopPropagation()}>
         <div className="report-header">
           <span className="report-title">{node.label?.trim() || "Report"}</span>
@@ -190,7 +208,7 @@ export function ReportOverlay() {
             >
               {exporting ? "Exporting…" : "Export as webpage"}
             </button>
-            <button className="report-close" onClick={() => reportStore.close()} title="Close (Esc)" aria-label="Close">
+            <button className="report-close" onClick={() => closeReport()} title="Close (Esc)" aria-label="Close">
               <CloseIcon size={16} />
             </button>
           </div>
