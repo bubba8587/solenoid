@@ -9,6 +9,7 @@ import { nodeDisplayNames } from "../nodeNames";
 import { InlineRefBody } from "./inlineRefDisplay";
 import { CloseIcon } from "./CloseIcon";
 import { useDismissOnOutside } from "./useDismissOnOutside";
+import { exportReportAsWebpage } from "../reportExport";
 import "./Markdown.css";
 import "./ReportOverlay.css";
 
@@ -27,6 +28,7 @@ export function ReportOverlay() {
 
   const [body, setBody] = useState(node?.body ?? "");
   const [embedPickerOpen, setEmbedPickerOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const embedBtnRef = useRef<HTMLButtonElement>(null);
   const embedPopRef = useRef<HTMLDivElement>(null);
   useDismissOnOutside(embedPickerOpen, () => setEmbedPickerOpen(false), [embedBtnRef, embedPopRef]);
@@ -88,6 +90,16 @@ export function ReportOverlay() {
     void getArea()?.update("node", node!.id);
   }
 
+  async function doExport() {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      await exportReportAsWebpage(node!);
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <div className="report-backdrop" onPointerDown={() => reportStore.close()}>
       <div className="report-panel" onPointerDown={(e) => e.stopPropagation()}>
@@ -113,6 +125,15 @@ export function ReportOverlay() {
                 ))}
               </div>
             )}
+            <button
+              type="button"
+              className="report-embed-btn"
+              disabled={exporting}
+              onClick={() => void doExport()}
+              title="Export as a self-contained webpage — refs frozen to today's values, charts and a canvas snapshot inlined"
+            >
+              {exporting ? "Exporting…" : "Export as webpage"}
+            </button>
             <button className="report-close" onClick={() => reportStore.close()} title="Close (Esc)" aria-label="Close">
               <CloseIcon size={16} />
             </button>
