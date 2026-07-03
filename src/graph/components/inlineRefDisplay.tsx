@@ -6,8 +6,12 @@ import { getEditor } from "../process";
 import { formatAnnotationStore, formatNumberWithAnnotation, type FormatAnnotation } from "../formatAnnotationStore";
 import { sharedAnnotationResolver } from "../unitFlow";
 import { formatScalar } from "./format";
+import katex from "katex";
+import "katex/dist/katex.min.css";
 import { isFrameValue, isCubeValue } from "../frame";
 import { isChartValue } from "../chartValue";
+import { isLambdaValue, type LambdaValue } from "../nodes/lambda";
+import { formulaToLatex } from "../excelFormula";
 import { FrameDisplay } from "./FrameDisplay";
 import { CubeDisplay } from "./CubeDisplay";
 import { ChartView, toSeries } from "./chartView";
@@ -61,6 +65,7 @@ export function refPreview(value: unknown, ann: FormatAnnotation | undefined): s
   if (typeof value === "boolean") return value ? "TRUE" : "FALSE";
   if (typeof value === "number") return ann ? formatNumberWithAnnotation(value, ann) : formatScalar(value);
   if (typeof value === "string") return value;
+  if (isLambdaValue(value)) return lambdaText(value);
   if (isChartValue(value)) return value.title || "chart";
   if (isFrameValue(value)) return "frame";
   if (isCubeValue(value)) return "cube";
@@ -80,6 +85,31 @@ export function refPreview(value: unknown, ann: FormatAnnotation | undefined): s
  * Accent Rule: a decorative chip mid-sentence would read as a hero-metric, which
  * this system explicitly rejects).
  */
+/** Plain-text form of a lambda — the inline preview + the KaTeX fallback. */
+function lambdaText(v: LambdaValue): string {
+  const sig = `λ(${v.params.join(", ")})`;
+  const expr = (v.expr ?? "").trim();
+  return expr ? `${sig} = ${expr}` : sig;
+}
+
+/** Render a wired lambda as its formula: `f(params) = body` typeset with KaTeX
+ *  (reusing formulaToLatex — the same path the formula fields use). Falls back to
+ *  plain text if the body doesn't parse (a half-typed lambda). Block display, so
+ *  it reads as an equation in the report, not a mid-sentence chip. */
+function LambdaFormula({ value }: { value: LambdaValue }) {
+  const params = value.params.map((p) => p.replace(/[\\{}]/g, "")).join(",\\,");
+  const expr = (value.expr ?? "").trim();
+  const bodyTex = expr ? formulaToLatex(expr) : null;
+  const html = (() => {
+    if (!bodyTex) return null;
+    try {
+      return katex.renderToString(`f(${params}) = ${bodyTex}`, { throwOnError: false, displayMode: true });
+    } catch { return null; }
+  })();
+  if (!html) return <span className="solenoid-ref-inline">{lambdaText(value)}</span>;
+  return <span className="solenoid-ref-figure solenoid-ref-formula" dangerouslySetInnerHTML={{ __html: html }} />;
+}
+
 export function InlineRefValue({ nodeId, refKey }: { nodeId: string; refKey: string }) {
   const editor = getEditor();
   const node = editor?.getNode(nodeId) as unknown as RefValueHost | undefined;
@@ -97,6 +127,7 @@ export function InlineRefValue({ nodeId, refKey }: { nodeId: string; refKey: str
       </span>
     );
   }
+  if (isLambdaValue(value)) return <LambdaFormula value={value} />;
   if (isFrameValue(value)) return <FrameDisplay frame={value} label={refKey} full={false} />;
   if (isCubeValue(value)) return <CubeDisplay cube={value} label={refKey} full={false} />;
   if (isSolError(value)) {

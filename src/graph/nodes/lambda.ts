@@ -28,6 +28,9 @@ export interface LambdaValue {
   // Value-polymorphic, like the underlying compiled formula: a lambda body can
   // return text or a date serial, not just a number (polyform).
   fn: (...args: unknown[]) => unknown;
+  /** The source body expression — carried so a consumer can RENDER the formula
+   *  (e.g. the Report shows a wired lambda as KaTeX). Empty for a bare lambda. */
+  expr: string;
 }
 
 /** Duck-typed brand check — lambda values cross `any` sockets and React roots. */
@@ -125,7 +128,7 @@ export class LambdaNode extends ClassicPreset.Node {
     const capturedVals = this.captured.map((v) => inputs[v]?.[0] ?? this.literals[v] ?? 0);
     const fn: Compiled = (...args) =>
       compiled(...args.slice(0, params.length), ...capturedVals);
-    const value: LambdaValue = { __lambda: true, params, fn };
+    const value: LambdaValue = { __lambda: true, params, fn, expr: this.expr };
     this.cachedValue = value;
     this.cachedError = null;
     return { result: value };

@@ -75,3 +75,4 @@
   color: var(--text-muted);
   margin-bottom: 4px;
 }
+.solenoid-ref-formula { display: block; margin: 12px 0; overflow-x: auto; }
