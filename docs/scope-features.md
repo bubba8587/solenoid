@@ -570,6 +570,17 @@ no-Captain-Obvious rule.
 
 ## 13 — The report projection: one graph, a second face
 
+**VERDICT (author, 2026-07-03): IN — but NOT "canvas Notes rendered in reading order."**
+The Report is **one editable markdown file**, not a Note node and not built by stacking
+existing Notes — it lives independently of the graph. It's blank by default (no
+auto-population from pins/Notes/pinned values) and supports the same inline-ref span a
+Note body does, so an author types prose and drops in live values directly. It can also
+**embed** existing Note nodes (as a thing you place in it), but the file — not the Note —
+is the report's unit. This supersedes the "Interpolating Notes ARE the report block
+primitive" framing in step 3 of the design sketch below; steps 1–2 (the inline-ref
+mechanism, the object socket category) stand as the underlying primitives the report
+file reuses.
+
 **Scope today:** the canvas is the only view. It's built for *authors*. Showing work to
 anyone else means screenshots — and the audience for a model is almost always larger
 than its authors.
@@ -593,14 +604,19 @@ the text form, which is exactly what proves an abstraction), pins/Notes/visual n
 (already shipped), NL narration (Round 1, #7) slots in as auto-drafted prose between
 the numbers.
 
-**First step:** a read-only "Report" tab that renders the doc's pinned values and Note
-nodes top-to-bottom in reading order. Ugly is fine; live is the point.
+**First step (superseded 2026-07-03 — see VERDICT):** ~~a read-only "Report" tab that
+renders the doc's pinned values and Note nodes top-to-bottom in reading order~~. Actual
+first step: a blank, editable markdown document with the Note's inline-ref span working
+standalone (no Note node required), plus the ability to embed an existing Note node in
+it. Ugly is fine; live + editable is the point.
 
-**Risk:** layout scope-creep toward "a document editor." Hold the line: blocks are
-pins, notes, tables, charts — arrangement only, no rich-text ambitions.
+**Risk:** layout scope-creep toward "a document editor." The VERDICT already commits to
+an editable file, so the line moves to: plain markdown source + inline refs + embeds —
+no WYSIWYG toolbar, no block library beyond what markdown + embeds already give you.
 
-**Design sketch (settled in discussion, 2026-07-02): Note interpolation + the "object"
-socket category.** The route to the report runs through the Note node, in three steps:
+**Design sketch (settled in discussion, 2026-07-02; step 3 corrected 2026-07-03): Note
+interpolation + the "object" socket category.** The inline-ref mechanism started as a
+Note-body idea and is now the report file's own primitive, in three steps:
 
 1. **Note INPUT sockets via inline refs.** A Note body already turns frontmatter keys
    into typed OUTPUT sockets; the mirror image: an inline code span `` `=name` `` in
@@ -622,10 +638,15 @@ socket category.** The route to the report runs through the Note node, in three 
    test. Charts gain an object output; a lambda ref in a Note renders as KaTeX (the
    compiler already emits LaTeX per parse). "Charts inside cubes" is small-multiples
    in disguise; if wanted, build it as a chart mode.
-3. **The Report tab consumes both.** In a canvas Note an embedded chart renders as a
-   chip/placeholder (the live chart is on the canvas beside it; no second recharts
-   instance per note); the Report tab renders embeds full-size. Interpolating Notes
-   ARE the report block primitive, so step 1 makes the #13 first step nearly free.
+3. **The report file is its own markdown document, not Notes-in-reading-order.**
+   (Corrected 2026-07-03 — see VERDICT above; this step originally read "the Report
+   tab consumes both" / "Interpolating Notes ARE the report block primitive," which is
+   no longer the model.) It's a single editable file, separate from the graph's node
+   set, blank until the author writes in it. It gets the inline-ref span (step 1)
+   directly — no Note node needed to hold it — and can additionally embed a Note node
+   as a placed object; an embedded chart still renders as a chip/placeholder in canvas
+   Notes (the live chart is on the canvas beside it) but full-size in the report file.
+   Step 1 stays nearly-free groundwork either way, since the span mechanism is shared.
 
 ---
 
