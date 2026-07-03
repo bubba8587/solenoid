@@ -70,7 +70,8 @@ Lookup is FrameLookup's already-flagged approximate-match follow-up (frame.ts:10
 per-value badge). Round boundaries in the doc (verified against headers, corrects an
 earlier "#20–24" mislabel above): Round 4 = #20–28, Round 5 = #29–36, Round 6 = #37–42,
 Round 7 = #43–49, Round 8 = #50–57, Round 9 = #58–63 (end of doc).
-NEXT when resuming: scope-features #25, then #26–63 in order (folding in
+#25 OUT (graph profiler heatmap).
+NEXT when resuming: scope-features #26, then #27–63 in order (folding in
 strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →

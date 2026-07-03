@@ -1086,6 +1086,8 @@ from the sample *visibly* (`≈ 1.2M`), never silently.
 
 ## 25 — The graph profiler: a heatmap of where the time goes
 
+**VERDICT (author, 2026-07-03): OUT.**
+
 **The problem:** "why is my model slow" currently requires the author opening a console
 and reading `window.__solenoidStats()` tables — which already collect per-node call
 counts and milliseconds (`perfProbe.ts`).
