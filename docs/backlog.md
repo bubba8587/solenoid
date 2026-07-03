@@ -24,6 +24,53 @@ fine-grained list.
 
 ---
 
+## v2.0 feature-walk build — AUTHOR REVIEW PAUSED 2026-07-03, needs a stronger review pass
+
+The 13 bundles merged this session (`docs/v2.0/`, 01-07/09/11-15) were built by parallel
+Sonnet build agents and only spot-checked at the tsc/vitest/cargo-test level before
+merge — no adversarial code review, no UI walkthrough beyond the author's own live
+testing. **Author's verdict, mid-review: "you fucked up so much of this implementation
+overall."** Concrete bugs found in the first ~6 items of an author-led feature-by-
+feature walkthrough (all now fixed, commits `8ca55f4`/`fd8f6d9`/`1eac066`/`f988db8`):
+
+- Error click-to-jump: wired only through `<ErrorChip>`, but every node value box
+  (ValueDisplay, FrameDisplay, TableDisplay, CubeDisplay, GaugeNode, the multi-output
+  row) renders errors through its own separate path that never called `flyToNode`.
+- Same click handler, once added, didn't fire — needed `onPointerDown`/`onMouseDown`
+  `stopPropagation()` (rete's per-node drag handler swallows the click otherwise; a
+  documented gotcha in CLAUDE.md that got missed).
+- Problems panel logged one row per node an error passed through, not just the
+  origin — 1 error wired to 3 nodes produced 4 rows.
+- Sketch calc mode: the engine (sampling, `__approx` scaling, footer chip) was fully
+  built, but `calcModeStore.setMode("sketch")` was never called from anywhere — no UI
+  path could actually turn it on.
+- Write CSV / Write JSON nodes: `addInput("in", ...)` was declared correctly in the
+  node class, but the React component never rendered `<InlineInputs>` — no visible
+  socket to wire a frame into, making the node unusable as shipped.
+
+**The pattern across all of these:** the *backend/data-model* half of a feature was
+built correctly and passed its own tests, but the *UI wiring* half (the actual
+toggle/socket/click-handler connecting a user to that backend) was missing, broken, or
+untested — because these bundles were built and merged without anyone actually using
+them in the running app. tsc + vitest passing is necessary but was clearly NOT
+sufficient here.
+
+**Walkthrough got through:** #1 Cable Inspector shape row (author: "not sure that's
+needed"), #2/#3/#4/#5 above, #6 Composite container (not yet reviewed when paused).
+**NOT yet walked at all:** Expect node, Problems panel, where-used highlight,
+Reconcile node, model fuzzing, Tornado node, node comments, As-Of Join/Lookup, Note
+inline refs, the Report node + object sockets, Session History node, static HTML
+export, Presentation node, branded output colors, quick-wire, command palette,
+scrubbing, semantic zoom, align/distribute, Cube Rollup + BOM seed, Parquet source.
+
+**Next when resuming:** run a real adversarial review pass (stronger review
+agents — actually drive the UI, not just read the diff) over every bundle in
+`docs/v2.0/01-07,09,11-15` before resuming the author walkthrough where it left off
+(item #7 onward, list above). Don't trust "tsc/vitest/cargo-test green" as a
+completeness signal for this batch again.
+
+---
+
 ## Post-audit tails — settled plans (2026-07-02 step-by-step review, record-then-build)
 
 Each item below was discussed individually with the author and the DECISION is settled;
