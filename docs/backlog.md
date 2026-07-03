@@ -77,8 +77,10 @@ Round 5 (#29–36, analyst's workbench + open ports) begun 2026-07-03: #29 OUT (
 linter) · #30 IN (Problems panel — extend the Alerts/pins HudStack family, don't
 build a fourth standalone panel) · #31 IN, scoped down — right-click a node →
 highlight its connected stream (existing `downstreamClosure` BFS in process.ts), not
-the full query-box/search-syntax version for v1.
-NEXT when resuming: scope-features #32, then #33–63 in order (folding in
+the full query-box/search-syntax version for v1 · #32 IN (Reconcile node — added/
+removed/changed + price/volume/mix breakdown; doesn't need snapshots #6 first, two
+inputs are commonly just two Filter nodes off one shared live source).
+NEXT when resuming: scope-features #33, then #34–63 in order (folding in
 strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
