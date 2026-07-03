@@ -1363,6 +1363,14 @@ reads the lake's files. Small feature, disproportionate legitimacy.
 
 ## 35 — The MCP port: let any AI agent drive Solenoid properly
 
+**VERDICT (author, 2026-07-03): DEFERRED.** Industry momentum is shifting from MCP
+servers toward CLI-driven agent tooling, and this pitch overlaps heavily with #10
+(headless Solenoid, already IN) — a CLI covers "read structure, set inputs, run, get
+outputs" for most agent use cases already. The one gap a CLI can't close: driving the
+SAME live session a human has open in the GUI (a CLI run is a fresh one-shot process,
+MCP's server model is persistent). Revisit if the CLI proves insufficient for that
+specific live-shared-session case; joins the end-of-walk revisit pile otherwise.
+
 **The problem/opportunity:** the AI-native thesis (#7, #19, and the meta-story) keeps
 assuming an AI can *work with* a Solenoid document. Today the only interface is "edit
 the JSON blob and hope." Meanwhile the industry converged on **MCP (Model Context
