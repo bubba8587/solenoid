@@ -1,9 +1,12 @@
-// Cube (recursive container) node components: Build Cube, Nest Join, Cube Columns.
-import type { BuildCubeNode as BuildCubeNodeType, NestJoinNode as NestJoinNodeType, CubeColumnsNode as CubeColumnsNodeType } from "../rete-nodes";
+// Cube (recursive container) node components: Build Cube, Nest Join, Cube Columns,
+// Cube Rollup.
+import type { BuildCubeNode as BuildCubeNodeType, NestJoinNode as NestJoinNodeType, CubeColumnsNode as CubeColumnsNodeType, CubeRollupNode as CubeRollupNodeType } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
 import { ExtensibleInputs } from "./ExtensibleInputs";
 import { CubeDisplay } from "./CubeDisplay";
-import { NodeShell, type NodeProps } from "./nodeKit";
+import { FrameDisplay } from "./FrameDisplay";
+import { NodeShell, OpSelect, useNodeField, type NodeProps } from "./nodeKit";
+import { AGG_OP_OPTIONS } from "./FrameNodes";
 
 // ─── BUILD CUBE ────────────────────────────────────────────────────────────────
 // A leading `name` (the column header) + extensible `any` cell rows. Each row is
@@ -51,6 +54,21 @@ export function CubeColumnsComponent({ data, emit }: NodeProps<CubeColumnsNodeTy
         valueKeys={data.valueInputKeys()}
       />
       <CubeDisplay cube={data.cachedResult} label={data.label} />
+    </NodeShell>
+  );
+}
+
+// ─── CUBE ROLLUP ───────────────────────────────────────────────────────────────
+// Aggregate a column inside a cube's nested sub-frames back to a flat Frame — the
+// BOM/nested-costing shape ("cost of an assembly = SUM of its nested parts").
+
+export function CubeRollupComponent({ data, emit }: NodeProps<CubeRollupNodeType>) {
+  const [op, setOp] = useNodeField(data, "op");
+  return (
+    <NodeShell node={data} emit={emit}>
+      <InlineInputs node={data} emit={emit} />
+      <OpSelect value={op} options={AGG_OP_OPTIONS} onChange={setOp} />
+      <FrameDisplay frame={data.cachedResult} label={data.label} />
     </NodeShell>
   );
 }

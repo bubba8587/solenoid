@@ -329,6 +329,40 @@ note in `v1.1-plan.md` WS-D + `cube-node-scope.md` follow-ups.
   new core nodes, Obsidian sync, image bundling, finance connection, cube-cell XLOOKUP, lazy-plan
   fusion, and Bug 2 (FC mis-dock) are all genuinely not done, as written. The old "no code pack
   before persistence" gate is dropped (persistence is built). Open decisions unchanged.
+### Two v2.0 domain verticals: BOM/nested-costing + native Parquet source (2026-07-03)
+Built from `docs/v2.0/15-domain-verticals.md` (#16 BOM/costing, #34 Parquet). Skipped
+#15 (engineering-calc seat) on purpose — it depends on the units-by-dimensionality
+rework, an author design decision not made yet.
+
+- **Cube Rollup** (`CubeRollupNode`, `nodes/cube.ts`) — the one new bit of mechanics
+  the BOM vertical needed: aggregate a column INSIDE each row's nested sub-frame,
+  flattening a Cube back to a Frame with the roll-up appended ("cost of an assembly
+  = SUM of its nested parts"). Reuses `frameVerbs.aggregateGroup` (now exported)
+  rather than a bespoke aggregator, so a roll-up agrees with Group By on every op's
+  null-skip/error-propagate edge case. Everything else in the BOM pipeline is
+  existing machinery: Nest Join (parent/child → cube), Join + Get Column +
+  Arithmetic + Add Column (per-line `Quantity × UnitCost`).
+- **`bom-costing` seed** — two BOM levels (Parts → Subassemblies → Products), each
+  nested via Nest Join and rolled up via Cube Rollup. Bolt is used by both
+  subassemblies, so editing its `UnitCost` in the leaf **Parts** table ripples
+  through both levels, correctly reweighted by quantity at each level.
+  `bomCostingSeed.test.ts` runs the seed through a real editor + DataflowEngine
+  (same pattern as `cubesSeed.test.ts`) and asserts the totals AND the ripple —
+  no puppeteer, no live-app dependency, still an end-to-end check of the seed JSON.
+- **Native Parquet source** — `"parquet"` + `"dtype-date"`/`"dtype-datetime"` Cargo
+  features (the latter two needed for a Parquet file's own Date/Datetime columns to
+  even read as such — `AnyValue::Date`/`Datetime` don't exist in the build without
+  them, unlike `DataType::Date`/`Datetime` which aren't gated). `engine_read_parquet`
+  (engine.rs) reads a file straight into a Rust `DataFrame` and registers a handle —
+  no sibling direct-CSV-to-Polars reader existed to share a pattern with (checked
+  per the task; that item is still open in backlog.md), so this is the first
+  native file→engine path. `ParquetConnectionNode` (nodes/connection.ts) mirrors
+  CsvConnectionNode's folder+filename/status/refresh shape but wraps the fresh
+  handle directly as a lazy `FrameRef` — the file never crosses into JS. No file-
+  sink mechanism exists anywhere yet, so Parquet write is deferred until one lands
+  (per the task's own fallback instruction).
+- Both land as CATALOG_TO_EXCEL-free (Solenoid-native / non-Excel) nodes: no
+  `nodeExcel.ts` entry — Excel has no cube/rollup or Parquet-source concept.
 
 ### v1.0 doc reconciliation + desktop seed-CSV fix (2026-07-01)
 - **`fetchText` relative-URL fix** (`httpBridge.ts`). On desktop, `fetchText` sent EVERY
