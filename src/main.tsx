@@ -35,7 +35,20 @@ if (IS_MOBILE) document.documentElement.classList.add("is-mobile");
 // broken pass) doesn't stack a wall of toasts.
 {
   let lastNotice = 0;
+  // "ResizeObserver loop completed with undelivered notifications" / "loop limit
+  // exceeded" is a BENIGN browser notice, not an error — a ResizeObserver
+  // callback changed layout in a way that needs another pass (our node cards,
+  // overlays and formula-fit all observe their own size). Browsers fire it at
+  // window.onerror with no `error` object; surfacing it as a scary "something
+  // went wrong" toast on every mobile load is pure noise. Suppress it. (This is
+  // the standard, documented handling — the message is a signal to re-observe,
+  // not a fault.)
+  const isBenign = (detail: unknown): boolean => {
+    const msg = detail instanceof Error ? detail.message : String(detail ?? "");
+    return msg.includes("ResizeObserver loop");
+  };
   const surface = (kind: string, detail: unknown) => {
+    if (isBenign(detail)) return;
     console.error(`[solenoid] ${kind}:`, detail);
     const now = Date.now();
     if (now - lastNotice < 5000) return;
