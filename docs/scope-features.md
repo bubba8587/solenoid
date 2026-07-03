@@ -402,6 +402,13 @@ honesty, not by completeness.
 
 ## 9 — The write side: a graph that changes things, not just computes them
 
+**VERDICT (author, 2026-07-02): IN, but KEEP VERY LIMITED.** Tier 1 only: file
+writes (Write CSV/JSON), explicit manual trigger, preview-what-will-be-written,
+disabled by default in imported graphs. Write-back-to-source OUT (revisit only if a
+Bet-5 DB source ever lands). The "act" tier (webhooks/notify beyond the existing
+in-app Alert HUD) OUT. The #9+#3 design session scopes to: manual-trigger file sinks
++ in-app interval refresh — no automation surface.
+
 **Scope today:** the graph is strictly read-and-compute. Data comes in; numbers are
 displayed; nothing ever leaves except copy/paste. (Verified: no write-back, no file
 emit, no outbound action of any kind in the node set.)
