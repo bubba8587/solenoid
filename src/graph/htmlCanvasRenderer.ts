@@ -47,6 +47,19 @@ const MIP_MIN_PX = 6;
 // Default quality: target texture size ÷ on-screen size. 1 ≈ 1:1 (crisp). Validated free
 // at the author's scale; tunable via setQuality. <1 = cheaper/softer.
 const DEFAULT_QUALITY = 1.0;
+
+/**
+ * The mip-pyramid level `drawFrame` would pick for a given camera scale — the one
+ * canonical "how far zoomed out are we, in discrete steps" computation. Exported
+ * so anything gauging zoom "distance" (semantic zoom) keys off the SAME formula
+ * the renderer already uses, rather than inventing a second raw-scale threshold
+ * that would drift out of sync with it. Level i has scale REF/2^i; higher i = more
+ * zoomed out. Pure — no renderer instance required.
+ */
+export function computeIdealMipLevel(scale: number, quality: number = DEFAULT_QUALITY, dpr: number = 1): number {
+  const target = quality * scale * dpr;
+  return Math.max(0, Math.floor(Math.log2(REF / Math.max(target, 1e-4))));
+}
 // Capture padding (CSS px). Sockets straddle the card edge (left/right:-5) and other chrome
 // (focus rings, badges) overflow the body box, so we capture a PAD-inflated box and draw it
 // back inflated. The node's x/y/w/h stay the CARD's (hit-test, cables, selection ring).
@@ -621,10 +634,8 @@ export class HtmlCanvasRenderer {
     const { bsx, bsy } = this;
     const camCTM = () => ctx.setTransform(bsx * cam.scale, 0, 0, bsy * cam.scale, bsx * cam.tx, bsy * cam.ty);
 
-    // Pick the pyramid level once (scale + quality are global). target = q·scale·dpr;
-    // level i has scale REF/2^i, so i = floor(log2(REF/target)).
-    const target = this.quality * cam.scale * dpr;
-    const idealI = Math.max(0, Math.floor(Math.log2(REF / Math.max(target, 1e-4))));
+    // Pick the pyramid level once (scale + quality are global).
+    const idealI = computeIdealMipLevel(cam.scale, this.quality, dpr);
     this.curMip = useCached ? REF / Math.pow(2, idealI) : 0;
 
     const m = 40;

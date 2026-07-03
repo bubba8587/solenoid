@@ -378,6 +378,17 @@
   gap: 6px;
 }
 
+/* Semantic zoom (Settings toggle, very-far-out trigger — see semanticZoomStore.ts /
+   Canvas.tsx's syncSemanticZoomFor): body detail (labels, literal fields, values) is
+   a few sub-pixels tall at this scale anyway, so hide it — visibility, not display,
+   so socket geometry (the row measurements MeasuredSocketRow depends on) is
+   completely untouched and cables keep landing exactly where they already do. The
+   header title and the socket dots (siblings of __body, not inside it) stay the
+   simplified card's landmarks. */
+html.solenoid-semantic-zoom .solenoid-node__body {
+  visibility: hidden;
+}
+
 .solenoid-node__value-input {
   width: 100%;
   /* type=number has a large intrinsic min-content width (spinners +
