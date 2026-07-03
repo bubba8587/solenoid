@@ -6,14 +6,18 @@ walked individually with the author across `docs/future-directions.md` (4 archit
 bets) and `docs/scope-features.md` (63 scope items, 9 rounds), plus the already-approved
 `docs/v1.1-plan.md` workstreams. This doc set reorganizes everything the author said **IN**
 into build-ready bundles, sequenced by real dependency, sized to hand to one agent/session
-each. Items the author left **DEFERRED** are NOT planned here — seeVverdict pending" below.
+each. Items the author left **DEFERRED** are NOT planned here — see "verdict pending" below.
 
 **How to use this set:** each numbered doc is one bundle. Read its "Depends on" line before
 starting — bundles in Tier 0 gate almost everything else. Within a tier, bundles are
 independent and can run in parallel (different agents, different sessions). Each bundle
-states what exists today (grounded in code), the build steps in order, and its exit
-criteria. Where a bundle still needs a real author decision before code starts, that's
-flagged inline as **NEEDS AUTHOR INPUT** — don't guess past those.
+states what exists today (grounded in code — file paths, line numbers, exact function/type
+names verified against the current codebase, not paraphrased from memory), the build steps
+in order, and its exit criteria. Where a bundle still needs a real author decision before
+code starts, that's flagged inline as **NEEDS AUTHOR INPUT** — don't guess past those.
+Where a bundle's grounding pass found the original pitch's assumption was wrong (e.g. a
+gesture that was assumed to already exist, doesn't), it's called out explicitly as a
+correction inline — read those before building, they change the actual work required.
 
 Pre-alpha rules still apply throughout: break old saves/formats freely, no back-compat
 shims, no migration layers (see CLAUDE.md). `tsc` + `vitest` green after every step;
@@ -131,9 +135,13 @@ for the per-item reasoning if any of these get raised again.
 - **Read `DESIGN.md` before any pixel** — no accent stripes, Quiet Accent Rule, no
   faux-3D. Applies hardest to bundles 05, 13, 14.
 - **Prefer a node over a new panel/lens/global-UI layer** when the feature is
-  naturally node-shaped (standing principle from the walk). New HUD-style panels
-  extend the existing `HudStack` family (`src/graph/components/HudStack.tsx`,
-  `PinLayer.tsx`, `AlertLayer.tsx`) rather than becoming a fourth standalone panel.
+  naturally node-shaped (standing principle from the walk). New HUD-style panels join
+  the `HudStack` STACK (`src/graph/components/HudStack.tsx:14-22` — a hardcoded
+  `<PinLayer/><AlertLayer/>` list rendered via `createPortal`) as new sibling
+  components, each registered via `registerChrome()` (`chromeToggle.ts:12-15`) — there
+  is NO shared base-panel component to extend (each existing panel is fully bespoke),
+  so "extend HudStack" means "write a new component in the same shape and add it as a
+  child," not "plug into a generic API." See bundle 11 for the exact pattern.
 - **No Captain-Obvious UI strings** — a control's affordance carries its own meaning;
   don't caption it.
 - **Pre-alpha, break freely** — no migration shims for save-format or node-type changes.

@@ -1,80 +1,132 @@
 # Bundle 12 — Value-model extensions: As-Of time, uncertain values, money mode
 
 **Source:** scope-features #22 (IN, build now), #21 (IN, very late), #43 (IN, defer).
-Grouped because all three extend "what a value/lookup can be," but they have very
-different urgency — split accordingly.
 
 ---
 
 ## #22 — As-Of Join / As-Of Lookup (IN — build now, small, high value-per-effort)
 
-**No third node — this is the key finding from the walk-through investigation.**
+**No third node.**
 
-- **As-Of Join** = a new `how` value (plus a direction control: backward/forward/
-  nearest) on the EXISTING `JoinNode` (`src/graph/nodes/frame.ts:228`) — same frame+frame
-  → frame shape Polars' `join_asof` already matches.
-- **As-Of Lookup** (single date → single cell) = the approximate-match mode
-  `FrameLookupNode` (`frame.ts:1071`) already flags in its own code comment as the
-  planned follow-up. No new node there either.
-
-**Why nearly free:** Polars ships `join_asof` natively — it's a one-line cargo feature
-flag (`asof_join`), not a new engine capability. The JS oracle side is a sorted binary
-search — an afternoon of work.
+**Join side — exact current shape:** `JoinNode.how: JoinHow`
+(`src/graph/nodes/frame.ts:230`), `JoinHow = "inner" | "left" | "right" | "outer"`
+(`frameVerbs.ts:351`), `JoinOpts { leftKey; rightKey; how: JoinHow }`
+(`frameVerbs.ts:352`). JS oracle: `joinFrames(left, right, opts)`
+(`frameVerbs.ts:378-420`, hash-index join via `keyIndex`/`encodeCell`, pure equality, no
+ordering/tolerance concept). Dispatch: `JoinNode.data()` calls `runFrameJoin(left, right,
+{leftKey, rightKey, how})` (`frame.ts:252` → `frameBackend.ts:383-395`) → active
+backend's `.join()`. **Rust wire struct**, `src-tauri/src/engine.rs:425-431`:
+```rust
+pub struct WireJoinOpts {
+    #[serde(rename = "leftKey")] left_key: String,
+    #[serde(rename = "rightKey")] right_key: String,
+    how: String,
+}
+```
+**Rust match arm to extend** — `verb_join(left, right, opts: &WireJoinOpts)`
+(`engine.rs:891-935+`), `how` matched at lines 894-900 (`"inner"→JoinType::Inner`,
+`"left"→Left`, `"right"→Right`, `"outer"→Full`, else `#VALUE!`). Row-order/driving-side
+logic keyed off `is_right` (901-908).
 
 **Build:**
-1. Enable the `asof_join` cargo feature.
-2. Add the `how` value + direction control to `JoinNode`.
-3. Add the approximate-match mode to `FrameLookupNode` (its own flagged follow-up).
-4. JS oracle parity implementation (binary search) + a parity test.
-5. A prices/trades seed demonstrating both.
+1. Add `"asof"` to `JoinHow` (`frameVerbs.ts:351`) and a direction field to `JoinOpts`/
+   `WireJoinOpts` (e.g. `asofDirection: "backward"|"forward"|"nearest"`, optionally a
+   tolerance).
+2. Add the `"asof"` match arm in both `joinFrames` (JS, `frameVerbs.ts:378-420`) and
+   `verb_join`'s `how` match (`engine.rs:894-900`), using Polars'
+   `LazyFrame::join_asof`/`join_asof_by` on the Rust side.
+3. Enable the `asof_join` cargo feature — confirmed **not present at all** in
+   `src-tauri/Cargo.toml:37` (`polars = { version = "0.46", default-features = false,
+   features = ["lazy", "strings"] }`) — add `"asof_join"` to that features list.
+4. JS oracle: implement as a sorted binary search (an afternoon of work per the original
+   pitch) inside `joinFrames`'s new arm.
+5. Add a `how`/direction control to `JoinNode`'s UI (`nodes/frame.ts:228-254`).
+6. Parity test in `frameShape.test.ts`/`polarsBackend.test.ts`-style file + a
+   prices/trades seed.
+
+**Lookup side — exact current shape:** `FrameLookupNode`
+(`src/graph/nodes/frame.ts:1060-1109`). Doc comment verbatim (lines 1060-1069):
+> "Find the first row whose 'In column' cell equals the Lookup value, and return that
+> row's 'Return' cell... A miss falls back to If-not-found..., else #N/A. **Exact match
+> for v1; approximate match + a typed read-as output are the follow-ups.** (Verb:
+> lookupFrameCell. Materialization-boundary op, so it stays eager JS like Get Column.)"
+
+Verb: `lookupFrameCell` (`frameVerbs.ts:807-819`, own doc comment at 801-806 repeating
+"approximate/next-smaller-larger over a frame column is a follow-up"). Implementation is
+a linear scan (812-818) using `keyMatches(cell, lookup, key.type)` — **no
+sortedness/tolerance support exists today.**
+
+**Build:** add an approximate-match scan mode (nearest ≤/≥) to `lookupFrameCell`
+(`frameVerbs.ts:807-819`), following the same doc-comment-flagged follow-up already
+named — no new node class, extend `FrameLookupNode`'s options.
 
 ## #21 — Uncertain values: numbers with error bars that propagate (IN — VERY LATE)
 
-Sequence this dead last, alongside #43 below — it's a real design session, not a quick
-add. **This is also where bundle 09's Monte Carlo driver needs its distribution-input
-representation decided** — do this design session before or alongside finishing Monte
-Carlo, not after.
+**NEEDS AUTHOR INPUT before build:** pick `10 ± 2` (symmetric error bar) vs. `between 8
+and 12` (interval) as the v1 scalar kind.
 
-**NEEDS AUTHOR INPUT before build:** the value representation. Scope-features suggests
-`10 ± 2` (symmetric error bar) or `between 8 and 12` (interval) — pick one as the v1
-scalar kind; don't build both without a reason.
+**Value-kind pattern to mirror — `src/graph/valueKinds.ts`:** every existing extra kind
+(null/logical/error) is a plain runtime value acting as its own tag, not a wrapper
+object: `Missing = null` (21-25, predicate `isMissing`), logical = raw `boolean` (29-31,
+`isLogical`), error = `SolError` object (imported from `errorValue.ts`, tested via
+`isSolError`). Cross-kind coercion lives in dedicated functions
+(`logicalToNumber`/`numberToLogical`/`coerceLogical`, 37-65), Kleene 3-valued logic
+(67-90), and one central chokepoint `forAggregate(values): AggregatePrep` (99-109) every
+reducer routes through. **An "uncertain number" kind can't literally be `null`/`boolean`**
+— it needs a distinct tagged shape, e.g. `{value: number; error: number}`, with an
+`isUncertain(v): v is UncertainNumber` predicate, coercion helpers, and — critically —
+its own propagation rule added to `forAggregate` (99-109) and every element-wise
+arithmetic op, mirroring exactly how `SolError` propagates and `Missing` gets skipped.
 
-**Build (once representation is chosen):**
-1. An `uncertain number` scalar kind, following the same pattern as the existing
-   value-kind machinery (null/error/logical as distinct kinds riding one wire —
-   `valueKinds.ts`).
-2. The four arithmetic ops propagate correctly (sums add uncertainties, products
-   compound them — real error-propagation math, not a hack).
-3. Display renders it cleanly (the `±` reads like a unit suffix); any downstream
-   consumer can ask for the interval explicitly.
-4. Authoring UX: a "±" input on the Number node — that's the whole authoring surface,
-   no new node needed.
-5. Aggregators later (not required for exit criteria) — follow the `forAggregate`-style
-   rule pattern already established for null/error handling.
-6. Wire as bundle 09's Monte Carlo distribution-input: an uncertain input is exactly
-   what a Monte Carlo run samples — this is the connective tissue between the two
-   bundles, make sure the representation serves both.
+**Authoring surface — the Number node:** `NumberInputNode`
+(`src/graph/nodes/input.ts:8-24`) — fields `label: string`, `value: number`, fixed
+`width=180/height=100`, one output socket (`numberSocket`) named `"value"`, `data()`
+returns `{value: this.value}`. **This is where the `±` field gets added** (e.g. a new
+`errorValue: number` field alongside `value`, switching the output to emit an
+`UncertainNumber` when nonzero). Note: there's also a `NumberValueNode` at
+`src/graph/nodes/text.ts:610` — confirm it's not the intended target before assuming
+`NumberInputNode` is the only "Number" node.
+
+**Build (once representation chosen):**
+1. Add the `UncertainNumber` tagged shape + predicate to `valueKinds.ts`, following the
+   exact pattern above.
+2. Wire propagation into `forAggregate` (99-109) and the four arithmetic ops (sums add
+   uncertainties, products compound — real error-propagation math).
+3. Display: render the `±` like a unit suffix (reuse `ValueDisplay`'s formatting stack,
+   detailed in bundle 13).
+4. Add the `±` field to `NumberInputNode` (`input.ts:8-24`).
+5. Wire as bundle 09's Monte Carlo distribution-input — an uncertain input is exactly
+   what a Monte Carlo run samples; this is the connective tissue between the two bundles.
 
 ## #43 — Money mode: exact decimal arithmetic (IN — DEFER, sequence very late)
 
-**NEEDS AUTHOR INPUT / scope check before build:** confirm the trigger — per-document
-mode, or per-unit (anything tagged `$`)? Scope-features leans per-unit; get an explicit
-nod before building since it changes the representation significantly.
+**NEEDS AUTHOR INPUT / scope check:** per-document mode, or per-unit (anything tagged
+`$`)?
 
-**Build (once scope is confirmed):**
-1. Polars has a decimal dtype (not compiled in — same one-cargo-flag story as Parquet/
-   As-Of Join). Enable it for the frame side.
-2. The JS side needs an actual decimal arithmetic path for scalar money math — this is
-   the real cost of this item, not the Rust flag.
-3. An explicit rounding policy setting (half-up vs. banker's rounding) — this is an
-   accounting requirement, currently an accident of the CPU's float behavior.
-4. Scope honestly: money first, not general arbitrary-precision arithmetic. One target
-   sentence: "the spreadsheet where the cents always foot."
+**Rounding-mode precedent to reuse — `src/graph/nodes/scalar.ts`:** `MRoundNode`
+(425-450) rounds to nearest multiple via `Math.round(v/m)*m` (445, JS-default half-
+rounding, no direction control). `RoundNNode` (454-492) is the reusable **round-direction
+pattern**: `export type RoundNOp = "round" | "roundup" | "rounddown"` (454), an `op:
+RoundNOp` field (458), a `switch (this.op)` inside `broadcast()` (478-486) implementing
+Excel-style round-half-away-from-zero (482, explicitly not JS `Math.round`), ceil/floor-
+away-from-zero for up (483), floor/ceil-toward-zero for down (484). **Money mode's
+rounding-policy setting should reuse this literal-string-union + switch pattern**,
+adding a `"bankers"`/half-even variant to a similar union rather than inventing a
+separate mechanism.
+
+**Build (once scope confirmed):**
+1. Enable Polars' decimal dtype — same `Cargo.toml:37` features-list edit as
+   `asof_join`, add `"decimal"` (confirmed absent, not just disabled).
+2. Build a JS decimal arithmetic path for scalar money math (the real cost — no existing
+   decimal-math code found in the JS layer).
+3. Add a rounding-policy setting following `RoundNOp`'s pattern (`scalar.ts:454-486`).
+4. Scope honestly: money first, not general arbitrary-precision arithmetic.
 
 ## Exit criteria
 
-As-Of Join/Lookup ship as `how`/mode additions to existing nodes (no new node type), with
-a parity test and a seed. Uncertain values and money mode are NOT required for this
-bundle's exit — they're correctly sequenced last; this bundle's exit criterion for those
-two is only that their design-input questions (representation; per-doc vs per-unit scope)
-are answered before code starts on them.
+As-Of Join ships as a new `"asof"` `JoinHow` value + direction control on the existing
+`JoinNode`, with the `asof_join` cargo feature enabled and a parity test; As-Of Lookup
+ships as an approximate-match mode on `FrameLookupNode`/`lookupFrameCell` (no new node).
+Uncertain values and money mode are NOT required for this bundle's exit — only that
+their open design questions (representation; per-doc vs per-unit scope) are answered
+before code starts on them.
