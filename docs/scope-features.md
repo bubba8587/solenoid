@@ -1891,6 +1891,8 @@ with zero community, and it quietly upgrades every trust feature around it.
 
 ## 61 — Numbers with receipts: published figures that link to their model
 
+**VERDICT (author, 2026-07-03): OUT.**
+
 **The idea:** any figure in an exported artifact (report #13, static HTML #47) can carry
 a **verify link**: it opens the sealed (#46), synthetic-or-real-data (#26) model that
 produced it — inspectable, re-runnable, diff-able against the seal. A blog post's "$47B
