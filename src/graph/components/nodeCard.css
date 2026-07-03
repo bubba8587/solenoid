@@ -405,6 +405,17 @@
   gap: 6px;
 }
 
+/* Semantic zoom (Settings toggle, very-far-out trigger — see semanticZoomStore.ts /
+   Canvas.tsx's syncSemanticZoomFor): body detail (labels, literal fields, values) is
+   a few sub-pixels tall at this scale anyway, so hide it — visibility, not display,
+   so socket geometry (the row measurements MeasuredSocketRow depends on) is
+   completely untouched and cables keep landing exactly where they already do. The
+   header title and the socket dots (siblings of __body, not inside it) stay the
+   simplified card's landmarks. */
+html.solenoid-semantic-zoom .solenoid-node__body {
+  visibility: hidden;
+}
+
 .solenoid-node__value-input {
   width: 100%;
   /* type=number has a large intrinsic min-content width (spinners +
@@ -611,6 +622,16 @@
 }
 .solenoid-node__inline-input:focus {
   border-color: var(--accent);
+}
+
+/* Scrubbing (InlineNumberField's pointer-drag gesture): pins the cursor to a
+   vertical-resize glyph for the whole gesture, even as the pointer strays off
+   the field under pointer capture — an ordinary hover cursor would otherwise
+   flicker back to whatever's under the pointer mid-drag. Transient + drag-only,
+   not a resting affordance, so !important here is a drag-lock, not a style war. */
+body.solenoid-scrubbing,
+body.solenoid-scrubbing * {
+  cursor: ns-resize !important;
 }
 
 /* Text-string inputs read as prose, not code — sans, left-aligned. Numbers keep
