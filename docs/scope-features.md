@@ -1213,6 +1213,8 @@ the file. Verified absent from the code first (Polars here is built with only
 
 ## 29 — The model linter: static analysis for graphs
 
+**VERDICT (author, 2026-07-03): OUT.**
+
 **The problem:** spreadsheets rot in known, nameable ways — and Excel can't name any
 of them. A pure typed graph can. The classic smells, every one detectable statically:
 - **Magic numbers** — an unlabeled constant buried inline (the hardcoded `1.07` that
