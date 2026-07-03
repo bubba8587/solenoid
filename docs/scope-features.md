@@ -1715,6 +1715,11 @@ dimmed. It's isolate + pins + the load-reveal's camera choreography, repurposed 
 something you apologize for on a call.
 
 ## 52 — Branded output: the deliverable looks like theirs, not ours
+
+**VERDICT (author, 2026-07-03): IN — COLORS ONLY.** No logo, no custom fonts —
+managing header/font substitution across output surfaces is too much complexity for
+the payoff. A color override on report/published-artifact output surfaces, full stop.
+
 The moment outputs are shared (reports #13, forms #2, static HTML #47), they carry
 Solenoid's look, not the user's. Document-level theming for the *output* surfaces only —
 logo, color, font on reports and published artifacts (never the editing canvas, which keeps
