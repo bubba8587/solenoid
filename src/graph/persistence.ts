@@ -17,7 +17,7 @@ import { packsStore, allPacks } from "./packs";
 import { pushNotice } from "./noticeStore";
 import { documentStore } from "./documentStore";
 import { pinStore, type Pin } from "./pinStore";
-import { paletteStore } from "./palette";
+import { paletteStore, reportPaletteStore } from "./palette";
 import { loadRevealStore, revealWaves } from "./loadReveal";
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -77,6 +77,11 @@ export interface SavedGraph {
   // and/or per-slot hex overrides, layered over the app-wide palette choice when
   // this doc is open (see paletteStore). Absent on docs that follow the app palette.
   palette?: { base?: string; overrides?: Record<string, string> };
+  // Optional REPORT/EXPORT-only palette declaration (bundle 13 #52) — scoped to
+  // report/export rendering surfaces (the static HTML export), never the editing
+  // canvas. Same shape as `palette`, same "no editor UI yet — hand/seed-authored"
+  // precedent (see reportPaletteStore).
+  reportPalette?: { base?: string; overrides?: Record<string, string> };
   // Pack provenance: the pack ids active when this graph was saved. A breadcrumb
   // for the dormant-pack story — it lets a future load tell the user which packs a
   // graph expects (e.g. when a node loads as a placeholder because its pack is off).
@@ -181,6 +186,8 @@ export function serializeGraph(): SavedGraph | null {
   if (pins.length > 0) g.pins = pins;
   const palette = paletteStore.docPalette();
   if (palette) g.palette = palette;
+  const reportPalette = reportPaletteStore.reportPalette();
+  if (reportPalette) g.reportPalette = reportPalette;
   // Pack provenance breadcrumb: the packs active at save time (see SavedGraph.packs).
   const packs = allPacks().filter((p) => packsStore.isActive(p.id)).map((p) => p.id);
   if (packs.length > 0) g.packs = packs;
@@ -344,6 +351,7 @@ async function rebuildGraph(
   // Apply (or clear) the document's palette declaration BEFORE rebuilding, so every
   // node/group color resolves through the right palette as it's created.
   paletteStore.setDocPalette(g.palette ?? null);
+  reportPaletteStore.setReportPalette(g.reportPalette ?? null);
 
   const reg = ctorRegistry();
   const idMap = new Map<string, string>(); // saved id → fresh id
