@@ -294,11 +294,30 @@ let _docBase: PaletteName | null = null;
 let _docOverrides: Partial<Record<PaletteSlot, string>> = {};
 let _effective: Record<PaletteSlot, string> = { ...PALETTE };
 
+// REPORT/EXPORT-only override (bundle 13 #52) — a PARALLEL map, deliberately
+// separate from `_effective` above: `_effective` also drives the live editing
+// canvas (every node/group/cable color), and a brand override for an exported
+// report must NOT retint the canvas. Falls back to the SAME base resolution
+// (report/doc/app) when it declares no base of its own, but its per-slot
+// overrides are entirely independent of `_docOverrides`.
+let _reportBase: PaletteName | null = null;
+let _reportOverrides: Partial<Record<PaletteSlot, string>> = {};
+let _reportEffective: Record<PaletteSlot, string> = { ...PALETTE };
+
 const { notify: notifyPalette, subscribe: subscribePalette, version: paletteVersion } = createNotifier();
+// Separate notifier from the canvas one — a report-only palette change (or the
+// canvas base it falls back to changing) shouldn't spuriously wake canvas-only
+// subscribers (appTheme's CSS-var apply, NODE_KIND_ACCENTS), and vice versa.
+const { notify: notifyReportPalette, subscribe: subscribeReportPalette, version: reportPaletteVersion } = createNotifier();
 
 function recompute() {
   const base = BUILTIN_PALETTES[_docBase ?? _appBase] ?? BUILTIN_PALETTES.Default;
   _effective = { ...base, ..._docOverrides };
+}
+
+function recomputeReport() {
+  const base = BUILTIN_PALETTES[_reportBase ?? _docBase ?? _appBase] ?? BUILTIN_PALETTES.Default;
+  _reportEffective = { ...base, ..._reportOverrides };
 }
 
 function persist() {
@@ -318,8 +337,10 @@ export const paletteStore = {
     if (!(name in BUILTIN_PALETTES) || name === _appBase) return;
     _appBase = name;
     recompute();
+    recomputeReport(); // the report palette's base fallback chain includes appBase
     persist();
     notifyPalette();
+    notifyReportPalette();
   },
   /** Apply the open document's palette declaration (on graph load). Null clears it. */
   setDocPalette(p?: { base?: string; overrides?: Record<string, string> } | null) {
@@ -331,7 +352,9 @@ export const paletteStore = {
       }
     }
     recompute();
+    recomputeReport(); // ditto — falls back through docBase too
     notifyPalette();
+    notifyReportPalette();
   },
   /** The open doc's palette block for serialization (undefined when it declares none). */
   docPalette(): { base?: PaletteName; overrides?: Record<string, string> } | undefined {
@@ -340,6 +363,46 @@ export const paletteStore = {
     const out: { base?: PaletteName; overrides?: Record<string, string> } = {};
     if (_docBase) out.base = _docBase;
     if (hasOverrides) out.overrides = { ..._docOverrides };
+    return out;
+  },
+};
+
+/**
+ * The REPORT/EXPORT-only palette (bundle 13 #52) — a colors-only brand override
+ * scoped to report/export rendering surfaces (the static HTML export today; any
+ * future report-branded surface reads through the same `resolve`), never the
+ * editing canvas. Same shape + "no editor UI yet — hand/seed-authored" precedent
+ * as `paletteStore`'s doc palette (see persistence.ts SavedGraph.reportPalette).
+ * With no report-specific declaration, it just mirrors the canvas's effective
+ * palette — so a document with no branding declared exports looking the same
+ * as it always did.
+ */
+export const reportPaletteStore = {
+  subscribe: subscribeReportPalette,
+  version: reportPaletteVersion,
+  /** Resolve a stored slot id through the REPORT palette (not the canvas one). */
+  resolve(slot: string): string {
+    return (isPaletteSlot(slot) ? _reportEffective[slot] : undefined) ?? _reportEffective.gray;
+  },
+  /** Apply the open document's report-palette declaration (on graph load). Null clears it. */
+  setReportPalette(p?: { base?: string; overrides?: Record<string, string> } | null) {
+    _reportBase = p?.base && p.base in BUILTIN_PALETTES ? (p.base as PaletteName) : null;
+    _reportOverrides = {};
+    if (p?.overrides) {
+      for (const [k, v] of Object.entries(p.overrides)) {
+        if (isPaletteSlot(k) && typeof v === "string") _reportOverrides[k] = v;
+      }
+    }
+    recomputeReport();
+    notifyReportPalette();
+  },
+  /** The open doc's report-palette block for serialization (undefined when it declares none). */
+  reportPalette(): { base?: PaletteName; overrides?: Record<string, string> } | undefined {
+    const hasOverrides = Object.keys(_reportOverrides).length > 0;
+    if (!_reportBase && !hasOverrides) return undefined;
+    const out: { base?: PaletteName; overrides?: Record<string, string> } = {};
+    if (_reportBase) out.base = _reportBase;
+    if (hasOverrides) out.overrides = { ..._reportOverrides };
     return out;
   },
 };

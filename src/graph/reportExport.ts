@@ -7,6 +7,7 @@ import { resolveRefAnnotation, refPreview } from "./components/inlineRefDisplay"
 import { captureCanvasImage, captureChartSvgs } from "./canvasCapture";
 import { saveHtmlFileDialog } from "./fileBridge";
 import { pushNotice } from "./noticeStore";
+import { reportPaletteStore } from "./palette";
 
 // ─── Static HTML export (bundle 13 #47) ────────────────────────────────────────
 // "Export as webpage": freezes a Report into ONE self-contained .html file — the
@@ -50,11 +51,23 @@ function renderMarkdown(md: string): string {
   return DOMPurify.sanitize(marked.parse(md, { async: false, gfm: true, breaks: true }) as string);
 }
 
-const EXPORT_CSS = `
+/**
+ * The export's CSS. `accent` is the resolved BRAND color (reportPaletteStore's
+ * "sky" slot, the same slot the app's own accent defaults to — appTheme.ts
+ * DEFAULT_ACCENT) — used for the title + section-heading rule ONLY WHEN the
+ * document actually declares a report palette (`branded`). With no declaration
+ * this renders byte-identical to the original neutral scheme: colors-only
+ * branding must never change the default export's look for a doc that never
+ * asked for it.
+ */
+export function buildExportCss(branded: boolean, accent: string): string {
+  const titleColor = branded ? accent : "#f3f4f5";
+  const ruleColor = branded ? accent : "#2d2d2d";
+  return `
 :root { color-scheme: dark; }
 body { margin: 0; background: #0e0e0e; color: #e8e8e8; font: 14px/1.6 -apple-system, "Segoe UI", sans-serif; }
 .report-export { max-width: 860px; margin: 0 auto; padding: 40px 24px 80px; }
-.report-export__title { font-size: 26px; font-weight: 700; margin: 0 0 4px; color: #f3f4f5; }
+.report-export__title { font-size: 26px; font-weight: 700; margin: 0 0 4px; color: ${titleColor}; }
 .report-export__meta { font-size: 12px; color: #80868e; margin-bottom: 32px; }
 .report-export h1 { font-size: 22px; font-weight: 700; margin: 24px 0 12px; color: #f3f4f5; }
 .report-export h2 { font-size: 18px; font-weight: 600; margin: 22px 0 8px; color: #f3f4f5; }
@@ -65,13 +78,14 @@ body { margin: 0; background: #0e0e0e; color: #e8e8e8; font: 14px/1.6 -apple-sys
 .report-export table { border-collapse: collapse; margin: 10px 0; }
 .report-export th, .report-export td { border: 1px solid #2d2d2d; padding: 4px 9px; text-align: left; }
 .report-export section { margin-top: 40px; }
-.report-export section > h2 { border-bottom: 1px solid #2d2d2d; padding-bottom: 6px; }
+.report-export section > h2 { border-bottom: 1px solid ${ruleColor}; padding-bottom: 6px; }
 .report-export__chart { margin: 18px 0; padding: 12px; background: #1e1e1e; border: 1px solid #2d2d2d; border-radius: 8px; }
 .report-export__chart-label { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: #9aa0a6; margin-bottom: 8px; }
 .report-export__embed { margin: 14px 0; padding: 12px 16px; background: #1e1e1e; border: 1px solid #2d2d2d; border-radius: 8px; }
 .report-export__embed-name { font-size: 11.5px; font-weight: 600; color: #9aa0a6; margin-bottom: 6px; }
 .report-export__snapshot { max-width: 100%; border: 1px solid #2d2d2d; border-radius: 8px; }
 `;
+}
 
 /** Build the self-contained HTML document string. Exported for unit testing —
  *  the async canvas image is captured by the caller and passed in as a data URI
@@ -106,13 +120,15 @@ export function buildReportExportHtml(
 
   const title = report.label?.trim() || "Report";
   const exportedAt = new Date().toLocaleString();
+  const branded = reportPaletteStore.reportPalette() !== undefined;
+  const accent = reportPaletteStore.resolve("sky");
 
   return `<!doctype html>
 <html>
 <head>
 <meta charset="utf-8" />
 <title>${title}</title>
-<style>${EXPORT_CSS}</style>
+<style>${buildExportCss(branded, accent)}</style>
 </head>
 <body>
 <div class="report-export">
