@@ -65,6 +65,7 @@ function buildCommands(): PaletteItem[] {
     { label: "Cleanup (tidy + collapse + fit)", shortcut: "C", run: () => void cleanup() },
     { label: "Calculate now", shortcut: "F9", run: () => void requestRecalc() },
     { label: auto ? "Switch to manual calculation" : "Switch to automatic calculation", run: () => calcModeStore.setMode(auto ? "manual" : "auto") },
+    { label: "Switch to sketch calculation (approximate on a sample)", run: () => { if (calcModeStore.setMode("sketch")) void requestRecalc(); } },
     { label: "Group selection", shortcut: "G", run: () => fireCanvasKey("KeyG") },
     { label: "Isolate selection", shortcut: "I", run: () => fireCanvasKey("KeyI") },
     { label: "Expand/collapse groups", shortcut: "E", run: () => fireCanvasKey("KeyE") },
