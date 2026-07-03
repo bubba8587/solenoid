@@ -118,6 +118,21 @@
   font-size: 11px;
 }
 
+.solenoid-problem__fix {
+  flex: none;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border: var(--overlay-border-width) solid var(--accent);
+  border-radius: 5px;
+  color: var(--accent);
+  font-size: 9.5px;
+  font-weight: 600;
+  padding: 2px 5px;
+  cursor: pointer;
+}
+.solenoid-problem__fix:hover {
+  background: color-mix(in srgb, var(--accent) 24%, transparent);
+}
+
 .solenoid-problem__remove {
   flex: none;
   display: inline-flex;
