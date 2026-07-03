@@ -196,59 +196,53 @@
   font-size: 12.5px;
 }
 
-/* The mobile Draft/Preview tab bar — hidden on desktop (the split-pane shows
-   both). Only appears under html.is-mobile. */
+/* ── Narrow screens: Draft/Preview become TABS (one pane at a time), instead of
+      a side-by-side split that would push the preview into the right half.
+      Driven off VIEWPORT WIDTH, not html.is-mobile — UA detection is fragile
+      (desktop-site toggle, odd browsers), and the split-vs-tab choice is purely
+      about how much width there is. So any viewport ≤760px gets tabs, phone or
+      not; a real wide desktop/tablet keeps the split. ── */
 .report-tabs { display: none; }
 
-/* Keep the narrow-desktop stacked layout for a small WINDOW that isn't a phone
-   (a resized desktop pane), but NOT under html.is-mobile — that path uses tabs. */
 @media (max-width: 760px) {
-  html:not(.is-mobile) .report-body { flex-direction: column; }
-  html:not(.is-mobile) .report-source { border-right: none; border-bottom: 1px solid var(--border); }
-}
+  .report-tabs {
+    display: flex;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-sunken);
+  }
+  .report-tab {
+    flex: 1 1 50%;
+    padding: 11px 8px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .report-tab--active {
+    color: var(--text-bright);
+    border-bottom-color: var(--accent);
+  }
+  /* Stack, then show only the active pane at full width. */
+  .report-body { flex-direction: column; }
+  .report-source,
+  .report-preview { flex: 1 1 100%; }
+  .report-body[data-tab="draft"] .report-preview { display: none; }
+  .report-body[data-tab="preview"] .report-source { display: none; }
+  .report-source { border-right: none; }
 
-/* ── Mobile: tabs instead of a split pane; one pane at a time fills the width.
-      Wide content (a wired chart figure, an embed) is clamped to the viewport
-      so it can never force the page to scroll sideways. ── */
-html.is-mobile .report-tabs {
-  display: flex;
-  flex-shrink: 0;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface-sunken);
+  /* Clamp preview content to the viewport — an inline chart figure (~360px) or
+     a wide embed scrolls WITHIN its own box, never forcing a sideways page
+     scroll. */
+  .report-preview { padding: 14px 16px; }
+  .report-preview .solenoid-ref-figure,
+  .report-preview .report-embed { max-width: 100%; overflow-x: auto; }
+  .report-preview .report-embed__body { overflow-x: auto; }
 }
-html.is-mobile .report-tab {
-  flex: 1 1 50%;
-  padding: 11px 8px;
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  color: var(--text-muted);
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-html.is-mobile .report-tab--active {
-  color: var(--text-bright);
-  border-bottom-color: var(--accent);
-}
-/* Show only the active pane; each fills the width. */
-html.is-mobile .report-body { flex-direction: column; }
-html.is-mobile .report-source,
-html.is-mobile .report-preview { flex: 1 1 100%; }
-html.is-mobile .report-body[data-tab="draft"] .report-preview { display: none; }
-html.is-mobile .report-body[data-tab="preview"] .report-source { display: none; }
-
-/* Constrain everything in the preview to the viewport width — an inline chart
-   figure (fixed ~360px) or a wide embed scrolls WITHIN its own box rather than
-   breaking the page layout. */
-html.is-mobile .report-preview { padding: 14px 16px; }
-html.is-mobile .report-preview .solenoid-ref-figure,
-html.is-mobile .report-preview .report-embed {
-  max-width: 100%;
-  overflow-x: auto;
-}
-html.is-mobile .report-preview .report-embed__body { overflow-x: auto; }
 
 /* Full-screen panel + safe-area insets + a header that wraps (title row, then
    the actions), so the three text buttons don't crush the title on a phone. */
