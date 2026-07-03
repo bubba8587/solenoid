@@ -1128,6 +1128,8 @@ preserving; dates: range) behind an export menu item. Fidelity can grow later.
 
 ## 27 — Data slots: one model, anyone's data
 
+**VERDICT (author, 2026-07-03): OUT.**
+
 **The problem:** a graph hard-binds its data (pasted, imported, fetched). Sharing a
 *model* — "here's my project-costing template, run it on YOUR numbers" — means the
 recipient surgery-swaps source nodes by hand.
