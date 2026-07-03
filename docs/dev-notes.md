@@ -3994,6 +3994,53 @@ standoff throttle, gesture shadow-drop, transient drag-layer promotion.
 
 ---
 
+## Static shape-checking pass (2026-07-03, docs/v2.0/02-shape-checking.md Bet 3)
+
+Built the static sibling of the relational verbs: `shapeOf(op: FrameOp, input: Shape)`
+(`frameShape.ts`) computes column name+type ahead of running anything, one arm per
+`FrameOp` member (select/drop/rename/sort/distinct/head/filter/groupBy/unpivot/pivot),
+mirroring `frameVerbs.ts`'s real reshaping logic exactly — plus standalone siblings for
+the ops outside the `FrameOp` union: `shapeOfJoin`, `shapeOfAppend`, `shapeOfAddIndex`,
+`shapeOfSplitColumn`. A `Shape` is `{ columns: {name, type}[] }`, reusing
+`FrameSchemaColumn` (already `frameBackend.ts`'s runtime preview schema) rather than a
+new taxonomy. Row-only ops (sort/distinct/head/filter) return the input unchanged — the
+column set never moves. Two verbs are genuinely DATA-dependent (PIVOTBY's cross-tab
+width, Split Column's max part count) — those set `Shape.dynamic: true` and report only
+what's certain (pivot: the row-key columns; split: the untouched columns), rather than
+pretending to know a count that isn't knowable without running.
+
+`frameShapeResolver.ts` is the graph walk (`makeFrameShapeResolver(editor)`, same
+duck-typed/memoized/cycle-guarded shape as `unitFlow.ts`'s resolvers): it reads each verb
+node's OWN literal config — `stringLiterals` CSV/text (the same bag `InlineInputs`
+lazily creates and `coerceInputs.ts` injects when a list socket is unwired) plus public
+fields (`op`/`how`/`funcs`) — never a wired dynamic column name, since that can't be
+resolved without actually running the graph (same "no engine call, no IPC" constraint
+the doc specifies). `FrameInputNode` is the one literal SOURCE (its typed-in `frameText`
+gives an exact shape via `frameFromInputText`); a runtime-loaded source (CSV/Web Source)
+or Build Frame's data-dependent matrix width resolves to `null` (unknown) — same
+treatment as a misconfigured verb (a thrown `#REF!`/`#TYPE!`/`#VALUE!` is caught and
+also reads as unknown, mirroring how a bad config shows an error VALUE at runtime, not a
+crash).
+
+Scoped OUT on purpose: Nest/Unnest (cross into Cube — a different container, no Frame
+shape to report) and Frame Lookup (returns a scalar cell, not a table). `CableInspector.tsx`
+shows the computed shape as a new row (name · type pairs, "+ more" when `dynamic`) below
+the existing Value row, only for a `frame`-typed cable.
+
+`frameShape.test.ts` (new, `frameBackend.test.ts`'s describe/it convention) checks every
+covered verb's declared shape against the ACTUAL columns the JS oracle (`frameVerbs.ts`)
+produces for the same op+fixture, including the thrown-error cases (#REF!/#TYPE!/#VALUE!
+match code-for-code). `frameVerbs.ts` is also the reference oracle `engine.rs`'s Rust
+verbs are parity-tested against (see its own `src-tauri/src/engine/tests.rs`, ~28 tests
+asserting the same column name/type contract per verb) — so the two are transitively
+aligned, though a literal single-file cross-language check isn't possible (vitest can't
+invoke Rust). **Deferred**: explicit new Rust tests mirroring `frameShape.test.ts`'s exact
+fixtures 1:1 (skipped this session — a from-scratch Polars compile is a multi-minute cost
+not spent here); "refuse-to-run on a shape mismatch" mode (the doc's step 6, explicitly
+non-blocking).
+
+---
+
 ## Older entries archived
 
 Entries from 2026-06-18 and earlier (plus the old reference sections) moved to [`archive/dev-notes-history.md`](archive/dev-notes-history.md) on 2026-06-21 to keep this log lean.
