@@ -145,8 +145,9 @@ action (deferred to #5's design session), since a subgraph is less editable / ha
 different compute semantics than a Group. Round 8 (#50–57) fully walked: #50 IN
 scoped way down · #51 IN light · #52 IN colors-only · #53/#55/#56 OUT · #54 VERY
 DEFERRED · #57 split (mostly IN).
-NEXT when resuming: scope-features #58 (Round 9, the social layer, the speculative
-finale — begins, LAST round), then #59–63 in order (folding in
+Round 9 (#58–63, the social layer, LAST round) begun 2026-07-03: #58 OUT (verified
+templates — nothing left to attach to since #55 templates are OUT).
+NEXT when resuming: scope-features #59, then #60–63 in order (folding in
 strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
