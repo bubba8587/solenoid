@@ -1104,6 +1104,8 @@ four rounds.
 
 ## 26 — Synthetic data mode: share the shape, not the numbers
 
+**VERDICT (author, 2026-07-03): OUT.**
+
 **The problem:** the moment models are shareable (seeds, review, the transpiler,
 marketplace subgraphs), a wall appears: the *logic* is shareable but the *data* is
 confidential. Today the answer is hand-scrubbing copies — tedious and error-prone
