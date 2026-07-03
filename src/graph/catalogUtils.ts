@@ -4,6 +4,7 @@ import { CATALOG_TO_EXCEL } from "./excelToCatalog";
 import { NODE_EXCEL } from "./nodeExcel";
 import { getEditor, getArea, processGraph, unselectAllNodes, selectNode } from "./process";
 import type { NodeCatalogEntry, CatalogCategory, CatalogPair, CatalogEntry } from "./AddNodeMenu";
+import { nodeNameStore } from "./nodeNameStore";
 
 // ─── Catalog assembly ──────────────────────────────────────────────────────────
 // The Add-menu catalog is the hand-authored core tree (NODE_CATALOG) with each
@@ -243,9 +244,10 @@ export async function addNodeByCatalogType(catalogType: string): Promise<boolean
 
   // create() returns one of our node classes — cast through unknown to satisfy
   // the editor's generic constraint without importing every node type here.
-  const node = entry.create() as unknown as { id: string; width?: number; height?: number };
+  const node = entry.create() as unknown as { id: string; width?: number; height?: number; constructor: { name: string } };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await editor.addNode(node as any);
+  nodeNameStore.ensure(node.id, node.constructor.name);
 
   // Center on the current viewport.
   const { k, x, y } = area.area.transform;

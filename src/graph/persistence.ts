@@ -12,6 +12,8 @@ import { nodeSizeStore } from "./nodeSizeStore";
 import { forgetAllNodes } from "./nodeStoreRegistry";
 import { collapseStore } from "./collapseStore";
 import { standoffStore, type StandoffEnd } from "./standoffs";
+import { nodeNameStore } from "./nodeNameStore";
+import { writeTextForm, readTextForm } from "./textForm";
 import { validateSavedGraph, CURRENT_SAVE_VERSION, deriveMissingNodeSockets } from "./persistenceCore";
 import { packsStore, allPacks } from "./packs";
 import { pushNotice } from "./noticeStore";
@@ -32,6 +34,13 @@ const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 export interface SavedNode {
   id: string;
   type: string;                              // node class name
+  // Stable, user-editable, unique-per-document name (the addressable model —
+  // docs/subsystem-invariants.md "Addressable model"). Separate from `id`, which
+  // stays rete's random, regenerated-on-load key. Optional in the TYPE only for
+  // older saves that predate this field (rebuildGraph assigns a default via
+  // nodeNameStore.claim when absent) — every node written by serializeGraph has
+  // one.
+  name?: string;
   x: number;
   y: number;
   init: Record<string, unknown>;             // constructor args (extractInit)
@@ -112,8 +121,21 @@ function ctorRegistry(): Map<string, NodeCtor> {
 }
 
 // ─── Serialize ──────────────────────────────────────────────────────────────────
+// serializeGraph extracts the live editor into a SavedGraph, then round-trips it
+// through the text form (textForm.ts) before returning — so the JSON save is
+// GENERATED from the text form, not hand-maintained in parallel (the addressable
+// model's risk-containment move, docs/subsystem-invariants.md "Addressable
+// model"). This also normalizes ids to names (rebuildGraph already remaps every
+// saved id to a fresh live id regardless of its shape) and canonicalizes node/
+// field order — a save file's node order becomes topological, not draw order.
 
 export function serializeGraph(): SavedGraph | null {
+  const raw = buildRawSavedGraph();
+  if (!raw) return null;
+  return readTextForm(writeTextForm(raw));
+}
+
+function buildRawSavedGraph(): SavedGraph | null {
   const editor = getEditor();
   const area = getArea();
   if (!editor || !area) return null;
@@ -127,6 +149,7 @@ export function serializeGraph(): SavedGraph | null {
       const sn: SavedNode = {
         id: n.id,
         type: n.missingType,
+        name: nodeNameStore.ensure(n.id, n.missingType),
         x: Math.round(pos.x),
         y: Math.round(pos.y),
         init: { ...n.savedInit },
@@ -142,6 +165,7 @@ export function serializeGraph(): SavedGraph | null {
     const sn: SavedNode = {
       id: n.id,
       type: n.constructor.name,
+      name: nodeNameStore.ensure(n.id, n.constructor.name),
       // Layout coords are sub-pixel floats off the area transform; integer
       // pixels are plenty and keep the saved JSON small and readable.
       x: Math.round(pos.x),
@@ -341,6 +365,7 @@ async function rebuildGraph(
   standoffStore.clear(); // ditto for arrangement constraints
   collapseStore.clear(); // ditto for per-node collapse
   pinStore.clear();      // ditto for pinned value chips
+  nodeNameStore.clear(); // ditto for stable node names
   // Apply (or clear) the document's palette declaration BEFORE rebuilding, so every
   // node/group color resolves through the right palette as it's created.
   paletteStore.setDocPalette(g.palette ?? null);
@@ -389,6 +414,7 @@ async function rebuildGraph(
       if (sn.stringLiterals) anyNode.stringLiterals = { ...sn.stringLiterals };
     }
     idMap.set(sn.id, node.id);
+    nodeNameStore.claim(node.id, sn.name, sn.type);
     if (sn.size) nodeSizeStore.set(node.id, { ...sn.size });
     if (sn.collapsed) collapseStore.set(node.id, true);
     created.push(node); // synchronous push keeps `created` in saved order

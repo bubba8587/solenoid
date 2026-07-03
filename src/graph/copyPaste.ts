@@ -2,6 +2,7 @@ import { ClassicPreset } from "rete";
 import type { SolenoidNode, SolenoidConnection } from "./schemes";
 import { getEditor, getArea, selectNode, unselectAllNodes, beginGraphRebuild, endGraphRebuild, bulkSettle, markGraphCustom } from "./process";
 import { collapseStore } from "./collapseStore";
+import { nodeNameStore } from "./nodeNameStore";
 
 interface ClipboardEntry {
   node: SolenoidNode;
@@ -64,15 +65,32 @@ export function copySelected() {
   };
 }
 
+// The fixed field order for a node's construction-arg snapshot — shared with
+// textForm.ts's writer, which needs this SAME order (not alphabetical, not
+// object-insertion-order) so a node's text-form line is byte-identical across
+// writes regardless of edit history (docs/subsystem-invariants.md "Addressable
+// model"). Extending this list is safe for both consumers; reordering it changes
+// every existing save's/text-form's field order, which is fine pre-alpha but
+// worth doing deliberately.
+export const INIT_FIELD_ORDER = [
+  "label", "op", "value", "unitSuffix", "fromUnit", "toUnit", "lanes", "matchMode", "searchMode", "paymentTiming", "ignoreEmpty", "noCommas", "hostNodeId", "socketKey", "side", "format", "customPattern", "decimalDigits", "decimalMode", "unit", "customUnit", "socketDataType", "expr", "params", "locked", "axis", "op2", "combine", "textCase", "bold", "italic", "textScale",
+  "tableText", "frameText", "url", "fileName", "tableIndex", "query", "dir", "how", "mode", "inFormat", "outFormat",
+  "inputAngle", "outputAngle", "inputTightness", "outputTightness", "angle",
+  "selectedColumn", "selectedValues", "multiSelect", "readAs", "addAs", "activeIndex", "target", "resultAs", "colType",
+  "rowTotalDepth", "colTotalDepth", "rowSort", "colSort", "relativeTo", "normalize", "detail",
+  "members", "color", "collapsed", "width", "height", "title", "body", "seq",
+] as const;
+
+// Object-valued extras appended after INIT_FIELD_ORDER (below), in this fixed
+// order, when present — same reuse rationale as INIT_FIELD_ORDER.
+export const INIT_EXTRA_FIELD_ORDER = [
+  "funcs", "filterExclude", "fieldTypes", "weightMap", "normMap",
+] as const;
+
 export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
   const n = src as unknown as Record<string, unknown>;
   const init: Record<string, unknown> = {};
-  for (const key of ["label", "op", "value", "unitSuffix", "fromUnit", "toUnit", "lanes", "matchMode", "searchMode", "paymentTiming", "ignoreEmpty", "noCommas", "hostNodeId", "socketKey", "side", "format", "customPattern", "decimalDigits", "decimalMode", "unit", "customUnit", "socketDataType", "expr", "params", "locked", "axis", "op2", "combine", "textCase", "bold", "italic", "textScale",
-                    "tableText", "frameText", "url", "fileName", "tableIndex", "query", "dir", "how", "mode", "inFormat", "outFormat",
-                    "inputAngle", "outputAngle", "inputTightness", "outputTightness", "angle",
-                    "selectedColumn", "selectedValues", "multiSelect", "readAs", "addAs", "activeIndex", "target", "resultAs", "colType",
-                    "rowTotalDepth", "colTotalDepth", "rowSort", "colSort", "relativeTo", "normalize", "detail",
-                    "members", "color", "collapsed", "width", "height", "title", "body", "seq"]) {
+  for (const key of INIT_FIELD_ORDER) {
     if (key in n && n[key] !== undefined) init[key] = n[key];
   }
   // PivotNode per-value aggregation map: deep-copy so a paste doesn't share the
@@ -199,6 +217,10 @@ export async function pasteClipboard(canvasX: number, canvasY: number) {
   try {
     await Promise.all(toAdd.map(async ({ clone, x, y }) => {
       await editor.addNode(clone);
+      // A pasted copy always gets a FRESH default name — it never inherits the
+      // source's (uniqueness would collide immediately since the source is
+      // still on the canvas).
+      nodeNameStore.ensure(clone.id, clone.constructor.name);
       await area.translate(clone.id, { x, y });
     }));
     // Select the pasted nodes (deterministic order, after the concurrent adds).
