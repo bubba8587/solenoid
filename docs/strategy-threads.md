@@ -1,5 +1,12 @@
 # Strategy threads — the connective tissue
 
+**VERDICT (author, 2026-07-03): ENTIRE DOC DISCARDED.** Author's words: "it's not
+necessarily wrong, it's just barely right. we can discard it." This supersedes the
+earlier per-thread #5 ruling (2026-07-02, "this thread IS the public positioning") —
+that ruling no longer stands. None of the seven threads below are being adopted;
+kept in the repo as a point-in-time record, not an active plan. See `docs/backlog.md`
+for where the walk goes next.
+
 Third in the series: [`v1.0-audit.md`](v1.0-audit.md) (fix what's broken) →
 [`future-directions.md`](future-directions.md) (architecture bets) →
 [`scope-features.md`](scope-features.md) (features, 3 rounds + the Alteryx demo).

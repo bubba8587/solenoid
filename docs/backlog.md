@@ -165,7 +165,13 @@ Deferred pile for eventual end-of-walk revisit: #2, #6, #11, #23, #35, #46, gold
 tests, data-drafts. Standing principle adopted mid-walk (from #45): prefer a
 dedicated node over a new panel/lens/global-UI layer when a feature is node-shaped
 (also saved as memory `feedback_prefer_nodes_over_panels`).
-NEXT when resuming: strategy threads #1–#7 and the
+**STRATEGY-THREADS.MD DISCARDED IN FULL (2026-07-03).** Author: "it's not necessarily
+wrong, it's just barely right. we can discard it." All seven threads (seeds-as-
+marketing, packs-as-business-model, governance vertical, linked graphs, one-file
+identity, trust badge, meta-story) are OUT — including reversing the prior #5
+("one-file identity") ruling that had called it settled public positioning. Kept in
+the repo as a point-in-time record only, per the doc's own new header note.
+NEXT when resuming: the
 unfinished v1.1-plan workstreams where they belong, then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
 #41 conditional formatting → engine execution contract (Bet 1 × #23 × #24 × calc mode) → #5
