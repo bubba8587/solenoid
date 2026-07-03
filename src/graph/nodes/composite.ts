@@ -57,6 +57,26 @@ export interface CompositeInternalSnapshot {
   connections: CompositeSavedConnection[];
 }
 
+// ─── Run modes ──────────────────────────────────────────────────────────────
+// "single" (the default, item 1's behavior) computes the container once from
+// its wired/default inputs. Each further mode is a DRIVER around the exact
+// same per-pass machinery (inject → reset → fetch) — it runs that pass N
+// times with different injected values and collects the N results per output
+// port as a list, instead of a single scalar. Only list modes actually wired
+// up appear here; a mode gets added to this union in the same commit its
+// data() branch + UI land (see CompositeComponent's run-mode dropdown).
+export type CompositeRunMode = "single" | "scenarios";
+
+/** One named input set for Scenarios mode. `overrides` is keyed by
+ *  CompositeInputPort.id; a port with no entry falls back to its normal
+ *  wired/default value for that run — a scenario only needs to name the
+ *  inputs it actually changes. */
+export interface CompositeScenario {
+  id: string;
+  name: string;
+  overrides: Record<string, unknown>;
+}
+
 // ─── Internal boundary markers ─────────────────────────────────────────────────
 // Not user-addable — no catalog entry. They only ever live inside a
 // CompositeNode's internalEditor as the concrete wire-end for one promoted
@@ -109,8 +129,12 @@ export class CompositeNode extends ClassicPreset.Node {
   internalEditor: NodeEditor<Schemes>;
   internalEngine: DataflowEngine<Schemes>;
   /** Last computed output per port id, keyed by CompositeOutputPort.id — read
-   *  by the component to render each output row's value box. */
+   *  by the component to render each output row's value box. In "single" mode
+   *  each value is a scalar/list/etc as usual; in a multi-run mode (Scenarios,
+   *  Data Table…) each value is an ARRAY, one entry per run, in run order. */
   cachedOutputs: Record<string, unknown> = {};
+  runMode: CompositeRunMode;
+  scenarios: CompositeScenario[];
 
   // A freshly-loaded (not yet hydrated) composite holds its saved internal
   // graph here until `hydrate()` rebuilds it against a class registry — see
@@ -124,6 +148,8 @@ export class CompositeNode extends ClassicPreset.Node {
     inputPorts?: CompositeInputPort[];
     outputPorts?: CompositeOutputPort[];
     internal?: CompositeInternalSnapshot;
+    runMode?: CompositeRunMode;
+    scenarios?: CompositeScenario[];
   }) {
     super("Composite");
     this.label = init?.label ?? "Composite";
@@ -131,6 +157,8 @@ export class CompositeNode extends ClassicPreset.Node {
     this.height = init?.height ?? 140;
     this.inputPorts = (init?.inputPorts ?? []).map((p) => ({ ...p }));
     this.outputPorts = (init?.outputPorts ?? []).map((p) => ({ ...p }));
+    this.runMode = init?.runMode ?? "single";
+    this.scenarios = (init?.scenarios ?? []).map((s) => ({ ...s, overrides: { ...s.overrides } }));
     this.internalEditor = new NodeEditor<Schemes>();
     // Same two wrappers the outer Canvas installs on the real editor (see
     // errorIntegration.test.ts's makeEditor): coercion first (inner), so a
@@ -250,29 +278,79 @@ export class CompositeNode extends ClassicPreset.Node {
     return id;
   }
 
-  async data(inputs: Record<string, unknown[]>): Promise<Record<string, unknown>> {
+  // ─── Scenario mutators (called by the component's editor UI) ────────────────
+
+  addScenario(): string {
+    const id = `sc_${this.scenarios.length}_${Math.random().toString(36).slice(2, 7)}`;
+    this.scenarios.push({ id, name: `Scenario ${this.scenarios.length + 1}`, overrides: {} });
+    return id;
+  }
+
+  removeScenario(id: string): void {
+    this.scenarios = this.scenarios.filter((s) => s.id !== id);
+  }
+
+  renameScenario(id: string, name: string): void {
+    const s = this.scenarios.find((sc) => sc.id === id);
+    if (s) s.name = name;
+  }
+
+  setScenarioOverride(id: string, portId: string, value: unknown): void {
+    const s = this.scenarios.find((sc) => sc.id === id);
+    if (!s) return;
+    if (value === undefined) delete s.overrides[portId];
+    else s.overrides[portId] = value;
+  }
+
+  // ─── Compute ─────────────────────────────────────────────────────────────
+
+  /** One internal engine pass: inject each input port's value (an explicit
+   *  `overrides` entry wins, else the port's normal wired/default value),
+   *  reset, fetch every output marker. Shared by every run mode — a mode is
+   *  just "call this N times with different overrides and collect". */
+  private async runPass(
+    inputs: Record<string, unknown[]>,
+    overrides?: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
     for (const port of this.inputPorts) {
       const marker = this.internalEditor.getNode(port.internalNodeId) as CompositeInputNode | undefined;
       if (!marker) continue;
-      marker.value = port.exposure === "exposed"
-        ? (inputs[port.id]?.[0] ?? port.default ?? null)
-        : (port.default ?? null);
+      const override = overrides?.[port.id];
+      marker.value = override !== undefined
+        ? override
+        : port.exposure === "exposed"
+          ? (inputs[port.id]?.[0] ?? port.default ?? null)
+          : (port.default ?? null);
     }
     // Internal engine is scoped to this composite alone (small, private graph),
-    // so a full reset every call is cheap and simplest — every call may carry
-    // fresh injected input values.
+    // so a full reset every pass is cheap and simplest.
     this.internalEngine.reset();
-    const outputs: Record<string, unknown> = {};
+    const row: Record<string, unknown> = {};
     for (const port of this.outputPorts) {
       const marker = this.internalEditor.getNode(port.internalNodeId) as CompositeOutputNode | undefined;
-      if (!marker) { outputs[port.id] = null; continue; }
+      if (!marker) { row[port.id] = null; continue; }
       try {
         const res = await this.internalEngine.fetch(marker.id) as { value?: unknown };
-        outputs[port.id] = res.value ?? null;
+        row[port.id] = res.value ?? null;
       } catch {
-        outputs[port.id] = null;
+        row[port.id] = null;
       }
     }
+    return row;
+  }
+
+  async data(inputs: Record<string, unknown[]>): Promise<Record<string, unknown>> {
+    if (this.runMode === "scenarios" && this.scenarios.length > 0) {
+      const rows: Record<string, unknown>[] = [];
+      for (const scenario of this.scenarios) {
+        rows.push(await this.runPass(inputs, scenario.overrides));
+      }
+      const outputs: Record<string, unknown> = {};
+      for (const port of this.outputPorts) outputs[port.id] = rows.map((r) => r[port.id]);
+      this.cachedOutputs = outputs;
+      return outputs;
+    }
+    const outputs = await this.runPass(inputs);
     this.cachedOutputs = outputs;
     return outputs;
   }

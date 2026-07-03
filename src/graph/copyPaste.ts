@@ -72,7 +72,7 @@ export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
                     "inputAngle", "outputAngle", "inputTightness", "outputTightness", "angle",
                     "selectedColumn", "selectedValues", "multiSelect", "readAs", "addAs", "activeIndex", "target", "resultAs", "colType",
                     "rowTotalDepth", "colTotalDepth", "rowSort", "colSort", "relativeTo", "normalize", "detail",
-                    "members", "color", "collapsed", "width", "height", "title", "body", "seq"]) {
+                    "members", "color", "collapsed", "width", "height", "title", "body", "seq", "runMode"]) {
     if (key in n && n[key] !== undefined) init[key] = n[key];
   }
   // PivotNode per-value aggregation map: deep-copy so a paste doesn't share the
@@ -110,6 +110,12 @@ export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
   }
   if (Array.isArray(n.outputPorts)) {
     init.outputPorts = (n.outputPorts as object[]).map((p) => ({ ...p }));
+  }
+  // Scenarios run mode: named input-override sets. Deep-copy (each row's
+  // `overrides` map is mutated live as the scenario table is edited).
+  if (Array.isArray(n.scenarios)) {
+    init.scenarios = (n.scenarios as Array<{ id: string; name: string; overrides: Record<string, unknown> }>)
+      .map((s) => ({ id: s.id, name: s.name, overrides: { ...s.overrides } }));
   }
   if (typeof n.snapshotInternal === "function") {
     init.internal = (n.snapshotInternal as () => unknown)();

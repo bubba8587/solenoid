@@ -185,3 +185,79 @@ describe("CompositeNode shell", () => {
     expect(out[outId]).toBe(7); // 1 (exposed input) + 6 (add's baked "b")
   });
 });
+
+describe("CompositeNode Scenarios run mode", () => {
+  async function makeAdder() {
+    const c = new CompositeNode({ runMode: "scenarios" });
+    const add = new ArithmeticNode({ op: "add" });
+    add.literals = { a: 0, b: 0 };
+    const inA = new CompositeInputNode({ label: "A" });
+    const inB = new CompositeInputNode({ label: "B" });
+    const outMarker = new CompositeOutputNode({ label: "Sum" });
+    for (const n of [add, inA, inB, outMarker]) await c.internalEditor.addNode(n as unknown as Schemes["Node"]);
+    await connect(c.internalEditor, inA, "value", add, "a");
+    await connect(c.internalEditor, inB, "value", add, "b");
+    await connect(c.internalEditor, add, "result", outMarker, "value");
+    const inAId = c.addInputPort({ label: "A", exposure: "exposed", tier: "basic", internalNodeId: inA.id });
+    const inBId = c.addInputPort({ label: "B", exposure: "exposed", tier: "basic", internalNodeId: inB.id });
+    const outId = c.addOutputPort({ label: "Sum", tier: "basic", internalNodeId: outMarker.id });
+    return { c, inAId, inBId, outId };
+  }
+
+  it("with no scenarios, behaves exactly like a single run", async () => {
+    const { c, inAId, inBId, outId } = await makeAdder();
+    const out = await c.data({ [inAId]: [2], [inBId]: [3] });
+    expect(out[outId]).toBe(5); // a scalar, not a 1-element array
+  });
+
+  it("runs the container once per named scenario and collects outputs side by side", async () => {
+    const { c, inAId, inBId, outId } = await makeAdder();
+    const id1 = c.addScenario();
+    const id2 = c.addScenario();
+    c.setScenarioOverride(id1, inAId, 10);
+    c.setScenarioOverride(id1, inBId, 1);
+    c.setScenarioOverride(id2, inAId, 100);
+    c.setScenarioOverride(id2, inBId, 2);
+
+    // Outer wiring still feeds A=2,B=3 — irrelevant to a scenario that overrides
+    // both, but proves the "no override → fall back to the wired value" path
+    // isn't exercised here (both ports are overridden in every scenario).
+    const out = await c.data({ [inAId]: [2], [inBId]: [3] });
+    expect(out[outId]).toEqual([11, 102]); // 10+1, 100+2 — in scenario order
+  });
+
+  it("a scenario that only overrides ONE port falls back to the wired value for the other", async () => {
+    const { c, inAId, inBId, outId } = await makeAdder();
+    const id1 = c.addScenario();
+    c.setScenarioOverride(id1, inAId, 1000); // B is left alone → uses the wired 3
+
+    const out = await c.data({ [inAId]: [2], [inBId]: [3] });
+    expect(out[outId]).toEqual([1003]);
+  });
+
+  it("renaming and removing scenarios works", async () => {
+    const { c } = await makeAdder();
+    const id1 = c.addScenario();
+    c.addScenario();
+    c.renameScenario(id1, "Best case");
+    expect(c.scenarios.find((s) => s.id === id1)?.name).toBe("Best case");
+    c.removeScenario(id1);
+    expect(c.scenarios).toHaveLength(1);
+    expect(c.scenarios[0].name).not.toBe("Best case");
+  });
+
+  it("scenarios round-trip through extractInit (deep-copied, not aliased)", async () => {
+    const { c, inAId } = await makeAdder();
+    const id1 = c.addScenario();
+    c.setScenarioOverride(id1, inAId, 42);
+
+    const init = extractInit(c as unknown as ClassicPreset.Node);
+    const clone = new CompositeNode(init as ConstructorParameters<typeof CompositeNode>[0]);
+    expect(clone.scenarios).toHaveLength(1);
+    expect(clone.scenarios[0].overrides[inAId]).toBe(42);
+
+    // Mutating the clone must not touch the original (deep copy, not a shared ref).
+    clone.setScenarioOverride(clone.scenarios[0].id, inAId, 999);
+    expect(c.scenarios[0].overrides[inAId]).toBe(42);
+  });
+});
