@@ -6,12 +6,17 @@ import type { Schemes } from "./schemes";
 import { installInputCoercion } from "./coerceInputs";
 import { installErrorGuards } from "./errorValue";
 import { isChartValue } from "./chartValue";
+import { isMermaidValue } from "./mermaidValue";
+import { isLambdaValue } from "./nodes/lambda";
+import { isFrameValue } from "./frame";
 import { extractEmbedNames } from "./reportEmbeds";
 import seed from "./seedGraphs/report-showcase.json";
 
-// The Report Showcase seed exercises all three Report ref/embed paths end to
-// end: a scalar ref (=total), a chart ref (=fig -> a first-class chart value),
-// and an inline embed token (![[Methodology]]).
+// The Report Showcase seed exercises every distinct Report ref/embed render
+// path end to end: a scalar ref (=total), an inline frame table (=table), a
+// chart figure (=fig -> a first-class chart value), a lambda -> KaTeX equation
+// (=model), a Mermaid diagram (=flow -> a chart-family figure), and an inline
+// note embed token (![[Methodology]]).
 
 type SavedNode = { id: string; type: string; init?: Record<string, unknown>; literals?: Record<string, number>; stringLiterals?: Record<string, string> };
 
@@ -25,7 +30,7 @@ function build() {
 }
 
 describe("Report Showcase seed", () => {
-  it("resolves a scalar ref, a chart ref, and an embed token", async () => {
+  it("resolves a scalar, a frame, a chart, a lambda, a diagram, and an embed", async () => {
     const { editor, engine } = build();
     const byId = new Map<string, ClassicPreset.Node>();
     for (const sn of (seed.nodes as SavedNode[])) {
@@ -45,9 +50,25 @@ describe("Report Showcase seed", () => {
     for (const n of editor.getNodes()) await engine.fetch(n.id);
 
     expect(report.refValue("total")).toBe(113); // 12+19+14+23+18+27
+
+    // A frame renders inline as a compact table (FrameDisplay).
+    expect(isFrameValue(report.refValue("table"))).toBe(true);
+
+    // A chart value redraws inline where its =fig ref sits.
     const fig = report.refValue("fig");
     expect(isChartValue(fig)).toBe(true);
     expect((fig as { op: string }).op).toBe("column");
+
+    // A lambda renders as a KaTeX equation — the value carries its source body.
+    const model = report.refValue("model");
+    expect(isLambdaValue(model)).toBe(true);
+    expect((model as { expr: string }).expr).toContain("growth");
+
+    // A Mermaid diagram flows the chart socket and renders as a figure.
+    const flow = report.refValue("flow");
+    expect(isMermaidValue(flow)).toBe(true);
+    expect((flow as { source: string }).source).toContain("graph LR");
+
     expect(extractEmbedNames(report.body)).toContain("Methodology");
   });
 });

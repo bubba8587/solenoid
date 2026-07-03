@@ -2,19 +2,151 @@
   "v": 1,
   "label": "Report Showcase",
   "nodes": [
-    {"id":"sales","type":"ListInputNode","x":-40,"y":-80,"init":{"label":"Monthly sales","valueKeys":["m0","m1","m2","m3","m4","m5"]},"literals":{"m0":12,"m1":19,"m2":14,"m3":23,"m4":18,"m5":27}},
-    {"id":"chart","type":"ChartNode","x":320,"y":-120,"init":{"label":"Sales by month","op":"column"},"stringLiterals":{"options":"title=Sales by month;color=#e8a33d"}},
-
-    {"id":"total","type":"AggregateNode","x":320,"y":180,"init":{"label":"Total sales","op":"sum"}},
-
-    {"id":"method","type":"NoteNode","x":-40,"y":360,"init":{"label":"Methodology","body":"## Methodology\nFigures are **unaudited** monthly bookings, net of refunds. Q2 excludes the pilot region.","color":"slate","width":320,"height":150}},
-
-    {"id":"report","type":"ReportNode","x":760,"y":-40,"init":{"label":"Quarterly review","body":"# Quarterly review\n\nTotal sales came to **`=total`** units across the period. The month-by-month shape:\n\n`=fig`\n\nThe trend is up and to the right, with a dip in month 3.\n\n![[Methodology]]\n\n_Draft — figures subject to revision._"}}
+    {
+      "id": "data",
+      "type": "FrameInputNode",
+      "x": -80,
+      "y": -120,
+      "init": {
+        "label": "Bookings ledger",
+        "frameText": "[{\"name\":\"Month\",\"type\":\"string\",\"values\":[\"Jan\",\"Feb\",\"Mar\",\"Apr\",\"May\",\"Jun\"]},{\"name\":\"Bookings\",\"type\":\"number\",\"values\":[12,19,14,23,18,27]}]"
+      }
+    },
+    {
+      "id": "col",
+      "type": "GetColumnNode",
+      "x": 300,
+      "y": 20,
+      "init": {
+        "label": "Get Column → Bookings",
+        "readAs": "number"
+      },
+      "stringLiterals": {
+        "name": "Bookings"
+      }
+    },
+    {
+      "id": "chart",
+      "type": "ChartNode",
+      "x": 660,
+      "y": -220,
+      "init": {
+        "label": "Bookings by month",
+        "op": "column"
+      },
+      "stringLiterals": {
+        "options": "title=Bookings by month;color=#e8a33d"
+      }
+    },
+    {
+      "id": "total",
+      "type": "AggregateNode",
+      "x": 660,
+      "y": 120,
+      "init": {
+        "label": "Total bookings",
+        "op": "sum"
+      }
+    },
+    {
+      "id": "model",
+      "type": "LambdaNode",
+      "x": 300,
+      "y": 280,
+      "init": {
+        "label": "Forecast model",
+        "params": "t",
+        "expr": "base * (1 + growth) ^ t"
+      },
+      "literals": {
+        "base": 27,
+        "growth": 0.08
+      }
+    },
+    {
+      "id": "flow",
+      "type": "MermaidNode",
+      "x": 300,
+      "y": 520,
+      "init": {
+        "label": "Reporting pipeline"
+      },
+      "stringLiterals": {
+        "source": "graph LR\n  A[Bookings] --> B[Net of refunds]\n  B --> C[Monthly roll-up]\n  C --> D{Audited?}\n  D -->|Yes| E[Board deck]\n  D -->|No| F[Draft review]"
+      }
+    },
+    {
+      "id": "method",
+      "type": "NoteNode",
+      "x": -80,
+      "y": 380,
+      "init": {
+        "label": "Methodology",
+        "body": "## Methodology\nFigures are **unaudited** monthly bookings, net of refunds. Month 3 excludes the pilot region.",
+        "color": "slate",
+        "width": 320,
+        "height": 150
+      }
+    },
+    {
+      "id": "report",
+      "type": "ReportNode",
+      "x": 1060,
+      "y": -140,
+      "init": {
+        "label": "Quarterly review",
+        "body": "# Quarterly review\n\nTotal bookings came to **`=total`** units across the six-month period, drawn from the source ledger:\n\n`=table`\n\nPlotted month over month:\n\n`=fig`\n\nBookings climbed steadily, with a soft patch in month 3.\n\n## Forecast\n\nWe project month _t_ forward from the latest run-rate using compound growth:\n\n`=model`\n\n## How the numbers flow\n\n`=flow`\n\n![[Methodology]]\n\n_Draft — figures subject to revision._"
+      }
+    }
   ],
   "connections": [
-    {"source":"sales","sourceOutput":"list","target":"chart","targetInput":"values"},
-    {"source":"sales","sourceOutput":"list","target":"total","targetInput":"list"},
-    {"source":"chart","sourceOutput":"chart","target":"report","targetInput":"fig"},
-    {"source":"total","sourceOutput":"result","target":"report","targetInput":"total"}
+    {
+      "source": "data",
+      "sourceOutput": "frame",
+      "target": "col",
+      "targetInput": "frame"
+    },
+    {
+      "source": "data",
+      "sourceOutput": "frame",
+      "target": "report",
+      "targetInput": "table"
+    },
+    {
+      "source": "col",
+      "sourceOutput": "values",
+      "target": "chart",
+      "targetInput": "values"
+    },
+    {
+      "source": "col",
+      "sourceOutput": "values",
+      "target": "total",
+      "targetInput": "list"
+    },
+    {
+      "source": "chart",
+      "sourceOutput": "chart",
+      "target": "report",
+      "targetInput": "fig"
+    },
+    {
+      "source": "total",
+      "sourceOutput": "result",
+      "target": "report",
+      "targetInput": "total"
+    },
+    {
+      "source": "model",
+      "sourceOutput": "result",
+      "target": "report",
+      "targetInput": "model"
+    },
+    {
+      "source": "flow",
+      "sourceOutput": "diagram",
+      "target": "report",
+      "targetInput": "flow"
+    }
   ]
 }

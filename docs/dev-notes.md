@@ -26,6 +26,13 @@ type.* So neither of these widened the Report's markdown parser.
   free via `stringLiterals.source`. Static HTML export picks up the card SVG through the
   existing `captureChartSvgs` (visual-node SVG capture) — same path charts use. Verified live:
   the flowchart renders on the card AND inline in a Report, green cable = chart socket.
+- **`report-showcase.json` upgraded to a complete Report demo.** Now exercises EVERY distinct
+  inline render path in one narrative: a scalar (`=total`), an inline frame table (`=table`),
+  a chart figure (`=fig`), a lambda→KaTeX equation (`=model`, `f(t)=base·(1+growth)^t`), a
+  Mermaid diagram (`=flow`), and a note embed (`![[Methodology]]`). Rewired frame-first
+  (FrameInput → Get Column → Chart/Aggregate) so it also demos the real table→column pipeline,
+  not a bare ListInput. `reportShowcaseSeed.test.ts` asserts each path resolves to the right
+  value kind. Keep this seed's "one of every render path" property when the Report changes.
 
 ### Bundle 05 (units) — dimensional-algebra foundation landed (2026-07-03)
 Started the flagship units bundle. Only the parts NOT gated on the FC function-model truth
