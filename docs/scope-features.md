@@ -1680,6 +1680,16 @@ definitions, no overview, no relationships). Plus the last two authoring conveni
 one salvaged idea. Verified absent first.
 
 ## 50 — Auto-documentation: the graph explains itself in prose
+
+**VERDICT (author, 2026-07-03): IN — scoped WAY down, gated on confidence.** Attaches
+as a node onto **Groups only** — not arbitrary selections, not whole-document
+narration. Explicit caution: only build this if confident it'll actually work well,
+because the naive approach might require authoring an entire bespoke prose-description
+string per node type across the whole catalog (a large, ongoing maintenance cost, not
+a one-time build) rather than composing cleanly from the existing short catalog
+descriptions. Prove the composition approach works on a handful of node types before
+committing to catalog-wide authoring.
+
 Generate a readable description of a graph (or selection): "Takes 3 inputs (loan amount,
 rate, term), computes a monthly payment via an amortization formula, outputs a schedule and
 total interest." The narrate-a-number idea (#7) lifted to *narrate-a-model* — a walk over
