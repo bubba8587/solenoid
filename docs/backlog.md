@@ -79,8 +79,11 @@ build a fourth standalone panel) · #31 IN, scoped down — right-click a node �
 highlight its connected stream (existing `downstreamClosure` BFS in process.ts), not
 the full query-box/search-syntax version for v1 · #32 IN (Reconcile node — added/
 removed/changed + price/volume/mix breakdown; doesn't need snapshots #6 first, two
-inputs are commonly just two Filter nodes off one shared live source).
-NEXT when resuming: scope-features #33, then #34–63 in order (folding in
+inputs are commonly just two Filter nodes off one shared live source) · #33 OUT
+(PDF/OCR intake — not a scope fit at all; the graph adds nothing to document/image
+parsing, that's a separate tool's job to hand Solenoid a clean frame; plain HTML-paste
+is just ordinary import hygiene, no verdict needed for that part).
+NEXT when resuming: scope-features #34, then #35–63 in order (folding in
 strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
