@@ -62,6 +62,16 @@ export async function writeTextFilePath(path: string, content: string): Promise<
   await writeTextFileAtomic(path, content);
 }
 
+/** Show a Save dialog to CHOOSE a path WITHOUT writing anything (a sink node's
+ *  "Browse…" button uses this to populate its path field before the separate,
+ *  explicit write). Returns null on cancel, and in the browser (no filesystem
+ *  there — a sink node just shows "desktop only"). */
+export async function pickSaveFilePath(suggestedName: string, extensions: string[]): Promise<string | null> {
+  if (!isDesktop()) return null;
+  const path = await save({ defaultPath: suggestedName, filters: [{ name: extensions.join("/").toUpperCase(), extensions }] });
+  return typeof path === "string" ? path : null;
+}
+
 /** Show a Save dialog and write the file. Returns the chosen path, or null if the
  *  user cancelled. In the browser, downloads `suggestedName` and returns null. */
 export async function saveTextFileDialog(suggestedName: string, content: string): Promise<string | null> {
