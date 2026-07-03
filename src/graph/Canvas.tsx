@@ -88,6 +88,8 @@ import { forgetNode } from "./nodeStoreRegistry";
 import { AddNodeMenu } from "./AddNodeMenu";
 import { addMenuRequest } from "./addMenuStore";
 import { flattenLeaves, filterByCompatibleSocket, firstCompatibleSocketKey } from "./catalogSearch";
+import { computeIdealMipLevel } from "./htmlCanvasRenderer";
+import { semanticZoomStore } from "./semanticZoomStore";
 import { setGraphChanged } from "./process";
 import { installInputCoercion } from "./coerceInputs";
 import { scheduleAutosave } from "./persistence";
@@ -339,6 +341,16 @@ async function removeFcInline(editor: NodeEditor<Schemes>, fc: FormatControllerN
       if (c.source === fc.id && c.sourceOutput === "out") { try { await editor.removeConnection(c.id); } catch { /* ignore */ } }
     }
   }
+}
+
+// Semantic zoom: idealI steps roughly double the zoom distance each level (at
+// quality 1 / dpr 1, i≈-log2(scale)) — i≥4 is ~6% scale or further, i.e. the
+// whole-graph overview range, not just "moderately zoomed out". Conservative on
+// purpose (scope-features #40): only genuinely far zoom swaps to simplified cards.
+const SEMANTIC_ZOOM_MIP_THRESHOLD = 4;
+function syncSemanticZoomFor(scale: number): void {
+  const idealI = computeIdealMipLevel(scale, 1, window.devicePixelRatio || 1);
+  semanticZoomStore.set(settingsStore.get("semanticZoom") && idealI >= SEMANTIC_ZOOM_MIP_THRESHOLD);
 }
 
 // Quick-wire: a menu opened from a cable dropped on empty canvas carries the
@@ -823,6 +835,17 @@ export function Canvas() {
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  // Semantic zoom: re-derive the far-zoom flag whenever the setting itself
+  // toggles (a pan/zoom event re-derives it from the live scale — see
+  // syncSemanticZoomFor at the "zoomed" pipe branch and init() above; this
+  // covers the OTHER trigger, flipping the setting without moving the camera).
+  useEffect(() => {
+    return settingsStore.subscribe(() => {
+      const area = areaRef.current;
+      if (area) syncSemanticZoomFor(area.area.transform.k);
+    });
   }, []);
 
   // Track the Shift key for axis-constrained dragging (read live in the
@@ -2663,6 +2686,7 @@ export function Canvas() {
       area.addPipe((ctx) => {
         if (ctx.type === "translated" || ctx.type === "zoomed") {
           syncBackground();
+          if (ctx.type === "zoomed") syncSemanticZoomFor(area.area.transform.k);
           // A pinch gets a transient GPU layer on the holder for the gesture
           // (see onZoomActivity); a plain pan needs nothing.
           if (ctx.type === "zoomed" || zooming) onZoomActivity();
@@ -2977,12 +3001,14 @@ export function Canvas() {
       setGraphChanged(() => { scheduleAutosave(); });
       if (await documentStore.restore()) {
         syncBackground();
+        syncSemanticZoomFor(area.area.transform.k);
         return;
       }
 
       // Fresh user: no library and nothing to migrate — seed the first document.
       await ensureFirstDocument();
       syncBackground();
+      syncSemanticZoomFor(area.area.transform.k);
     }
 
     init();
