@@ -50,7 +50,7 @@ import {
   SelectColumnsNode, DropColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode,
   BuildCubeNode, NestJoinNode, CubeColumnsNode,
   WebSourceNode, CsvConnectionNode, ImportHtmlNode, ImportXmlNode,
-  GroupNode, NoteNode, ImageNode,
+  GroupNode, NoteNode, ImageNode, CompositeNode, CompositeInputNode, CompositeOutputNode,
   MAT_DET_OP_META, TABLE_RESHAPE_OP_META, TABLE_SELECT_OP_META,
   type MatDetOp, type TableReshapeOp, type TableSelectOp,
   IsEvenOddNode, FormatDollarNode,
@@ -227,6 +227,18 @@ export const NODE_CATALOG: CatalogEntry[] = [
       { type: "conduit",    label: "Conduit",   description: "Bundle up to 8 cables into one block — they travel onward as a single ribbon that splits back into lanes at the destination. Rotate or extend it from the inspector.", create: () => new ConduitNode(), parity: false },
       { type: "format-controller", label: "Format", description: "Attach to a socket to set its number format (decimal, fraction, %, currency…) and unit label (°C, m, kg…). Units must match on connected cables.", create: () => new FormatControllerNode() },
       { type: "group", label: "Group", description: "A container — drop it around nodes (or select + Ctrl+G). Drag its header to move them together; collapse to a summary.", create: () => new GroupNode(), parity: false },
+      // Not user-addable from the menu (no catalog UI entry point — select nodes
+      // and press Ctrl+Shift+G instead, see compositeLogic.ts). `hidden: true`
+      // keeps it in FLAT_CATALOG so nodeCtorRegistry can still reconstruct a
+      // saved/pasted Composite card — the same mechanism a since-removed node
+      // type uses to stay loadable without cluttering the Add menu.
+      { type: "composite", label: "Composite", description: "A computing subgraph — select nodes and press Ctrl+Shift+G to collapse them into one typed card with a declared input/output boundary.", create: () => new CompositeNode(), parity: false, hidden: true },
+      // The boundary marker nodes that live INSIDE a Composite's private
+      // internal graph (never on the main canvas) — hidden for the same
+      // reason as "composite" above: FLAT_CATALOG-only, so hydrate() can
+      // reconstruct them from a save/paste snapshot.
+      { type: "composite-input", label: "Composite Input", description: "Internal — a Composite's exposed-input boundary marker.", create: () => new CompositeInputNode(), parity: false, hidden: true },
+      { type: "composite-output", label: "Composite Output", description: "Internal — a Composite's output boundary marker.", create: () => new CompositeOutputNode(), parity: false, hidden: true },
       { type: "note", label: "Note", description: "A free-floating sticky note — title + body, drag it anywhere, tint it. Annotation only; carries no data.", create: () => new NoteNode(), parity: false },
       { type: "convert", label: "Convert", description: "Convert between measurement units — including degrees ↔ radians, length, mass, temperature, time, area, volume, speed, energy, pressure.   (Excel: =CONVERT)", create: () => new ConvertNode() },
       { type: "cast", label: "Cast", description: "Change a value's data type — number, text, date (serial), or complex. Works element-wise on lists.   (Excel: =TEXT, =VALUE)", create: () => new CastNode(), parity: false },

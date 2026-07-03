@@ -1,6 +1,6 @@
 import { ClassicPreset } from "rete";
 import type { SolenoidNode, SolenoidConnection } from "./schemes";
-import { getEditor, getArea, selectNode, unselectAllNodes, beginGraphRebuild, endGraphRebuild, bulkSettle, markGraphCustom } from "./process";
+import { getEditor, getArea, selectNode, unselectAllNodes, beginGraphRebuild, endGraphRebuild, bulkSettle, markGraphCustom, getCtorRegistry } from "./process";
 import { collapseStore } from "./collapseStore";
 
 interface ClipboardEntry {
@@ -100,6 +100,19 @@ export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
   }
   if (n.normMap && typeof n.normMap === "object") {
     init.normMap = { ...(n.normMap as object) };
+  }
+  // Composite node: its declared ports (deep-copied — mutated live as ports are
+  // added) plus its ENTIRE internal subgraph, captured via the node's own
+  // snapshotInternal() (see nodes/composite.ts) so persistence.ts and paste
+  // both round-trip a composite's contents without knowing anything about them.
+  if (Array.isArray(n.inputPorts)) {
+    init.inputPorts = (n.inputPorts as object[]).map((p) => ({ ...p }));
+  }
+  if (Array.isArray(n.outputPorts)) {
+    init.outputPorts = (n.outputPorts as object[]).map((p) => ({ ...p }));
+  }
+  if (typeof n.snapshotInternal === "function") {
+    init.internal = (n.snapshotInternal as () => unknown)();
   }
   // Spread literals so constructor fields like min/max/step are picked up.
   if (n.literals && typeof n.literals === "object") {
@@ -201,6 +214,14 @@ export async function pasteClipboard(canvasX: number, canvasY: number) {
       await editor.addNode(clone);
       await area.translate(clone.id, { x, y });
     }));
+    // A pasted Composite's internal subgraph was captured as a plain snapshot
+    // (extractInit's `internal`, see nodes/composite.ts) — hydrate it into
+    // live node instances now that the clone exists.
+    const reg = getCtorRegistry();
+    for (const { clone } of toAdd) {
+      const hydrate = (clone as unknown as { hydrate?: (r: typeof reg) => Promise<void> }).hydrate;
+      if (typeof hydrate === "function") await hydrate(reg);
+    }
     // Select the pasted nodes (deterministic order, after the concurrent adds).
     toAdd.forEach(({ clone }, idx) => selectNode(clone.id, idx > 0));
     // Each addConnection fires `connectioncreated`, whose settle (FC reconcile +

@@ -26,9 +26,11 @@ import {
   selectNode as selectNodeFromProcess,
   cleanup as cleanupGraph, autoArrange as tidyGraph, requestRecalc,
   isGraphRebuilding, setBulkSettle, withGraphRebuild, markBulkTopoDirty,
-  beginGraphRebuild, endGraphRebuild, bulkSettle,
+  beginGraphRebuild, endGraphRebuild, bulkSettle, setCtorRegistryProvider,
 } from "./process";
 import { copySelected, pasteClipboard } from "./copyPaste";
+import { ctorRegistry } from "./nodeCtorRegistry";
+import { createCompositeFromSelection } from "./compositeLogic";
 import { frStore } from "./frStore";
 import { settingsPanel, settingsStore } from "./settingsStore";
 import { cableSelectionStore, cableGhostStore, socketHighlightStore, socketHoverCableStore, dragSocketKey } from "./cableState";
@@ -752,6 +754,17 @@ export function Canvas() {
         // browser's own reload keys (Ctrl+R / Ctrl+Shift+R / F5).
         if (e.code === "KeyL" && e.shiftKey) { void documentStore.reloadCurrent(); e.preventDefault(); return; }
         if (editable) return;
+        // Ctrl+Shift+G: collapse the selected nodes into a Composite — the
+        // computing-subgraph counterpart to bare-G's Group (which just frames
+        // a selection). Mirrors createGroupFromSelection's own hotkey guard.
+        if (e.code === "KeyG" && e.shiftKey) {
+          const editor = editorRef.current;
+          const area = areaRef.current;
+          if (editor && area && editor.getNodes().some((n) => (n as { selected?: boolean }).selected)) {
+            void createCompositeFromSelection(editor, area);
+          }
+          e.preventDefault(); return;
+        }
         // Select all: capture Ctrl/Cmd+A so the browser doesn't select page
         // text — select every node instead (deleting/moving them takes their
         // cables along).
@@ -2188,6 +2201,7 @@ export function Canvas() {
       // useEffect above) so Ctrl+Shift+Z maps to Redo instead of Undo;
       // `HistoryExtensions.keyboard` matches KeyZ regardless of Shift.
       setEditorRefs(editor, engine, area);
+      setCtorRegistryProvider(ctorRegistry);
       editorRef.current = editor;
       areaRef.current = area;
       historyRef.current = history;

@@ -4,8 +4,8 @@ import type { SolenoidNode, SolenoidConnection } from "./schemes";
 import { getEditor, getArea, processGraph, repositionDockedNodes, beginGraphRebuild, endGraphRebuild, getCurrentSeedId } from "./process";
 import type { SeedSelection } from "./process";
 import { extractInit } from "./copyPaste";
-import { FLAT_CATALOG } from "./catalogUtils";
-import { FormatControllerNode, ConvertNode, PlaceholderNode } from "./rete-nodes";
+import { ctorRegistry } from "./nodeCtorRegistry";
+import { FormatControllerNode, ConvertNode, PlaceholderNode, CompositeNode } from "./rete-nodes";
 import { rebuildGroupMembership } from "./groupMembership";
 import { syncGroupCollapse } from "./groupCollapse";
 import { nodeSizeStore } from "./nodeSizeStore";
@@ -84,31 +84,6 @@ export interface SavedGraph {
   // node serializes as a core ExpressionNode, so its pack identity isn't on the node
   // yet). Recorded now; not consumed on load until dormant packs ship.
   packs?: string[];
-}
-
-// ─── Class-name → constructor registry, derived from the Add-menu catalog ───────
-// Every catalog leaf is a factory for one of our node classes; calling each once
-// and recording its constructor gives a complete name→Ctor map without hand-
-// listing ~150 classes. Built lazily and cached.
-
-type NodeCtor = new (init?: Record<string, unknown>) => ClassicPreset.Node;
-let _ctorByName: Map<string, NodeCtor> | null = null;
-
-function ctorRegistry(): Map<string, NodeCtor> {
-  if (_ctorByName) return _ctorByName;
-  const m = new Map<string, NodeCtor>();
-  for (const entry of FLAT_CATALOG.values()) {
-    try {
-      const inst = entry.create() as ClassicPreset.Node;
-      const ctor = inst.constructor as NodeCtor;
-      if (!m.has(ctor.name)) m.set(ctor.name, ctor);
-    } catch {
-      // A factory that can't construct standalone is skipped — it just won't
-      // round-trip (none currently do this).
-    }
-  }
-  _ctorByName = m;
-  return m;
 }
 
 // ─── Serialize ──────────────────────────────────────────────────────────────────
@@ -423,6 +398,12 @@ async function rebuildGraph(
   // Register each FC's positional dock now that its host + cables exist.
   for (const node of created) {
     if (node instanceof FormatControllerNode) node.dockSelf(editor);
+  }
+  // A Composite's internal subgraph is serialized independently of the outer
+  // graph (see nodes/composite.ts) — hydrate it now that this node exists,
+  // using the SAME class registry as the outer rebuild.
+  for (const node of created) {
+    if (node instanceof CompositeNode) await node.hydrate(reg);
   }
   // Final settle pass (wiring is the source of truth for both).
   for (const node of editor.getNodes()) {

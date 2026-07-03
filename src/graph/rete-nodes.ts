@@ -30,3 +30,4 @@ export * from "./nodes/date";
 export * from "./nodes/formatController";
 export * from "./nodes/expression";
 export * from "./nodes/placeholder";
+export * from "./nodes/composite";
