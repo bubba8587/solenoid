@@ -1634,6 +1634,12 @@ intranet). The local-first answer to "just send me something I can open" — sha
 interactive published form stays a separate, later thing; this is deliberately frozen.)
 
 ## 48 — The library layer: your documents as a fleet
+
+**VERDICT (author, 2026-07-03): VERY DEFERRED.** File-over-app posture: for now, doc
+management is the OS-level chosen folder (`FolderRow` in `Settings.tsx` already gives
+a picker for it), not a bespoke in-app cross-document library/dashboard. Revisit only
+if the chosen-folder approach genuinely stops being enough.
+
 Everything so far treats one document. At 30 documents, new questions appear that nothing
 answers: *which docs use this CSV / this node type / this unit? Which have errors right
 now? Which haven't recalculated since their source changed?* A library view: cross-document

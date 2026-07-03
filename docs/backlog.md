@@ -119,8 +119,10 @@ just formulas). Deferred pile now: #2, #6, #11, #23, #35, #46, golden tests,
 data-drafts.
 #47 IN (static HTML export — checked feasibility, confirmed easy given SVG charts +
 existing canvas-image capture + the #13 report's markdown renderer; a few days, not
-a redesign).
-NEXT when resuming: scope-features #48, then #49–63 in order (folding in
+a redesign) · #48 VERY DEFERRED (library layer / cross-doc view — file-over-app
+posture: the OS-level chosen folder, already a Settings picker, is the doc-management
+answer for now, not a bespoke in-app fleet dashboard).
+NEXT when resuming: scope-features #49, then #50–63 in order (folding in
 strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
