@@ -1909,6 +1909,8 @@ to match it).
 
 ## 62 — The validator economy: third parties who sign models for a living
 
+**VERDICT (author, 2026-07-03): OUT.**
+
 **The idea:** model validation is *already a paid profession* (banks are required to
 buy it; engineering has stamped reviews; audits exist). Today validators receive an
 Excel file and produce… a Word document about it. Sealed models (#46) give them a

@@ -149,8 +149,9 @@ Round 9 (#58–63, the social layer, LAST round) begun 2026-07-03: #58 OUT (veri
 templates — nothing left to attach to since #55 templates are OUT) · #59 OUT (fork
 lineage — file-over-app + open text format means git already solves this) · #60 OUT
 ("hate it" — author's own words, overrides the doc's "pull this one forward" framing) ·
-#61 OUT (numbers with receipts / verify-links on published figures).
-NEXT when resuming: scope-features #62, then #63 in order (folding in
+#61 OUT (numbers with receipts / verify-links on published figures) · #62 OUT
+(validator economy — depended entirely on #46 seals, deferred).
+NEXT when resuming: scope-features #63 (the LAST item), then in order (folding in
 strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
