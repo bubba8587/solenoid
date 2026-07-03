@@ -35,7 +35,8 @@ import { FDistNode, FInvNode, BetaDistNode, BetaInvNode, GammaDistNode, GammaInv
 import { BinomDistNode, BinomInvNode, PoissonDistNode, HypgeomDistNode, NegbinomDistNode } from "./dist-discrete";
 import { ConduitNode } from "./conduit";
 import { FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, GetRowNode, DistinctNode, HeadNode, SortFrameNode, FilterFrameNode, JoinNode, FrameLookupNode, SelectColumnsNode, DropColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode } from "./frame";
-import { WebSourceNode, CsvConnectionNode, ImportHtmlNode, ImportXmlNode } from "./connection";
+import { CubeRollupNode } from "./cube";
+import { WebSourceNode, CsvConnectionNode, ParquetConnectionNode, ImportHtmlNode, ImportXmlNode } from "./connection";
 import { WriteCsvNode, WriteJsonNode } from "./sink";
 import { ExpectNode } from "./quality";
 import { TornadoNode } from "./tornado";
@@ -71,7 +72,7 @@ import {
 // doesn't rely on constructor.name.
 
 export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
-  if (node instanceof NumberInputNode || node instanceof ConstantNode || node instanceof SliderInputNode || node instanceof RandBetweenNode || node instanceof WebSourceNode || node instanceof CsvConnectionNode || node instanceof ImportHtmlNode || node instanceof ImportXmlNode || node instanceof XYPadNode || node instanceof ColorPickerNode) return "input";
+  if (node instanceof NumberInputNode || node instanceof ConstantNode || node instanceof SliderInputNode || node instanceof RandBetweenNode || node instanceof WebSourceNode || node instanceof CsvConnectionNode || node instanceof ParquetConnectionNode || node instanceof ImportHtmlNode || node instanceof ImportXmlNode || node instanceof XYPadNode || node instanceof ColorPickerNode) return "input";
   if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof GaugeNode || node instanceof HeatmapCellNode || node instanceof ChartBuilderNode || node instanceof TornadoNode) return "display";
   if (node instanceof ConvertNode || node instanceof CastNode) return "convert";
   if (
@@ -187,6 +188,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof DecisionMatrixNode ||
     node instanceof DecisionSensitivityNode ||
     node instanceof ReconcileNode ||
+    node instanceof CubeRollupNode ||
     node instanceof SlicerNode
   ) return "frame";
   if (node instanceof FormatControllerNode) return "format";

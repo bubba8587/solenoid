@@ -63,6 +63,7 @@ pub fn run() {
             ipc::engine_ping,
             engine::engine_source,
             engine::engine_read_csv,
+            engine::engine_read_parquet,
             engine::engine_apply,
             engine::engine_join,
             engine::engine_append,

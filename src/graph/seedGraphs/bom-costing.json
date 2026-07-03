@@ -1,0 +1,68 @@
+{
+  "v": 2,
+  "label": "BOM — nested costing",
+  "order": 60,
+  "nodes": [
+    {"id":"noteIntro","type":"NoteNode","x":-40,"y":-620,"init":{"label":"Bill of materials, nested","body":"Two BOM levels, both built on **Nest Join**: Parts nest under each **Subassembly** (Door Panel, Drawer Slide); those subassemblies — now carrying a rolled-up **Cost** — nest under each **Product**. **Cube Rollup** sums each row's nested `Quantity × UnitCost` back into a flat total. Edit a UnitCost in **Parts** below and hit F9 — watch it ripple through both levels.","color":"violet","width":460,"height":210}},
+
+    {"id":"parts","type":"FrameInputNode","x":0,"y":-320,"init":{"label":"Parts (the leaf — edit UnitCost here)","frameText":"[{\"name\":\"PartID\",\"type\":\"string\",\"values\":[\"PT1\",\"PT2\",\"PT3\",\"PT4\"]},{\"name\":\"PartName\",\"type\":\"string\",\"values\":[\"Bolt\",\"Bracket\",\"Hinge\",\"Screw\"]},{\"name\":\"UnitCost\",\"type\":\"number\",\"values\":[0.5,3,2.25,0.1]}]"}},
+    {"id":"subassemblies","type":"FrameInputNode","x":0,"y":20,"init":{"label":"Subassemblies","frameText":"[{\"name\":\"SubassemblyID\",\"type\":\"string\",\"values\":[\"SA1\",\"SA2\"]},{\"name\":\"SubassemblyName\",\"type\":\"string\",\"values\":[\"Door Panel\",\"Drawer Slide\"]}]"}},
+    {"id":"subLines","type":"FrameInputNode","x":0,"y":300,"init":{"label":"Subassembly BOM lines","frameText":"[{\"name\":\"SubassemblyID\",\"type\":\"string\",\"values\":[\"SA1\",\"SA1\",\"SA2\",\"SA2\"]},{\"name\":\"PartID\",\"type\":\"string\",\"values\":[\"PT1\",\"PT3\",\"PT1\",\"PT4\"]},{\"name\":\"Quantity\",\"type\":\"number\",\"values\":[6,2,4,8]}]"}},
+
+    {"id":"joinSub","type":"JoinNode","x":440,"y":300,"init":{"label":"Join → each line gets its part's UnitCost","how":"inner"},"stringLiterals":{"leftKey":"PartID","rightKey":"PartID"}},
+    {"id":"getSubQty","type":"GetColumnNode","x":820,"y":180,"init":{"label":"Get Column → Quantity","readAs":"number"},"stringLiterals":{"name":"Quantity"}},
+    {"id":"getSubUnitCost","type":"GetColumnNode","x":820,"y":420,"init":{"label":"Get Column → UnitCost","readAs":"number"},"stringLiterals":{"name":"UnitCost"}},
+    {"id":"mulSubExt","type":"ArithmeticNode","x":1180,"y":300,"init":{"label":"ExtendedCost = Quantity × UnitCost","op":"mul"}},
+    {"id":"addSubExt","type":"AddColumnNode","x":1540,"y":300,"init":{"label":"Add Column → ExtendedCost","addAs":"number"},"stringLiterals":{"name":"ExtendedCost"}},
+
+    {"id":"nestSub","type":"NestJoinNode","x":1940,"y":100,"init":{"label":"Nest Join → lines under each Subassembly"},"stringLiterals":{"key":"SubassemblyID","name":"Parts"}},
+    {"id":"rollupSub","type":"CubeRollupNode","x":2340,"y":100,"init":{"label":"Cube Rollup → SUM(ExtendedCost)","op":"sum"},"stringLiterals":{"nested":"Parts","column":"ExtendedCost","as":"Cost"}},
+    {"id":"dispSubCost","type":"DisplayNode","x":2740,"y":100,"init":{"label":"Subassembly cost (rolled up from its parts)"}},
+
+    {"id":"products","type":"FrameInputNode","x":0,"y":900,"init":{"label":"Products","frameText":"[{\"name\":\"ProductID\",\"type\":\"string\",\"values\":[\"PR1\",\"PR2\"]},{\"name\":\"ProductName\",\"type\":\"string\",\"values\":[\"Cabinet\",\"Nightstand\"]}]"}},
+    {"id":"productLines","type":"FrameInputNode","x":0,"y":1180,"init":{"label":"Product BOM lines","frameText":"[{\"name\":\"ProductID\",\"type\":\"string\",\"values\":[\"PR1\",\"PR1\",\"PR2\"]},{\"name\":\"SubassemblyID\",\"type\":\"string\",\"values\":[\"SA1\",\"SA2\",\"SA2\"]},{\"name\":\"Quantity\",\"type\":\"number\",\"values\":[2,1,2]}]"}},
+
+    {"id":"joinProd","type":"JoinNode","x":2740,"y":1180,"init":{"label":"Join → each line gets its subassembly's Cost","how":"inner"},"stringLiterals":{"leftKey":"SubassemblyID","rightKey":"SubassemblyID"}},
+    {"id":"getProdQty","type":"GetColumnNode","x":3120,"y":1060,"init":{"label":"Get Column → Quantity","readAs":"number"},"stringLiterals":{"name":"Quantity"}},
+    {"id":"getProdCost","type":"GetColumnNode","x":3120,"y":1300,"init":{"label":"Get Column → Cost","readAs":"number"},"stringLiterals":{"name":"Cost"}},
+    {"id":"mulProdExt","type":"ArithmeticNode","x":3480,"y":1180,"init":{"label":"ExtendedCost = Quantity × Cost","op":"mul"}},
+    {"id":"addProdExt","type":"AddColumnNode","x":3840,"y":1180,"init":{"label":"Add Column → ExtendedCost","addAs":"number"},"stringLiterals":{"name":"ExtendedCost"}},
+
+    {"id":"nestProd","type":"NestJoinNode","x":4240,"y":980,"init":{"label":"Nest Join → lines under each Product"},"stringLiterals":{"key":"ProductID","name":"Subs"}},
+    {"id":"dispProdCube","type":"DisplayNode","x":4640,"y":800,"init":{"label":"Products cube — drill the Subs chip"}},
+    {"id":"rollupProd","type":"CubeRollupNode","x":4640,"y":1040,"init":{"label":"Cube Rollup → SUM(ExtendedCost)","op":"sum"},"stringLiterals":{"nested":"Subs","column":"ExtendedCost","as":"TotalCost"}},
+    {"id":"dispProdCost","type":"DisplayNode","x":5040,"y":1040,"init":{"label":"Product total cost — the ripple lands here"}},
+
+    {"id":"noteRipple","type":"NoteNode","x":4640,"y":1240,"init":{"label":"Try it","body":"Bolt (PT1) is used by BOTH subassemblies. Change its UnitCost in **Parts** (top-left) from 0.5 to something else, F9 (or Calculate Now) — both **Door Panel** and **Drawer Slide** costs move, and BOTH products' totals move with them, correctly weighted by quantity at every level.","color":"violet","width":360,"height":190}}
+  ],
+  "connections": [
+    {"source":"subLines","sourceOutput":"frame","target":"joinSub","targetInput":"left"},
+    {"source":"parts","sourceOutput":"frame","target":"joinSub","targetInput":"right"},
+    {"source":"joinSub","sourceOutput":"frame","target":"getSubQty","targetInput":"frame"},
+    {"source":"joinSub","sourceOutput":"frame","target":"getSubUnitCost","targetInput":"frame"},
+    {"source":"getSubQty","sourceOutput":"values","target":"mulSubExt","targetInput":"a"},
+    {"source":"getSubUnitCost","sourceOutput":"values","target":"mulSubExt","targetInput":"b"},
+    {"source":"joinSub","sourceOutput":"frame","target":"addSubExt","targetInput":"frame"},
+    {"source":"mulSubExt","sourceOutput":"result","target":"addSubExt","targetInput":"values"},
+
+    {"source":"subassemblies","sourceOutput":"frame","target":"nestSub","targetInput":"parent"},
+    {"source":"addSubExt","sourceOutput":"frame","target":"nestSub","targetInput":"child"},
+    {"source":"nestSub","sourceOutput":"cube","target":"rollupSub","targetInput":"cube"},
+    {"source":"rollupSub","sourceOutput":"frame","target":"dispSubCost","targetInput":"in"},
+
+    {"source":"productLines","sourceOutput":"frame","target":"joinProd","targetInput":"left"},
+    {"source":"rollupSub","sourceOutput":"frame","target":"joinProd","targetInput":"right"},
+    {"source":"joinProd","sourceOutput":"frame","target":"getProdQty","targetInput":"frame"},
+    {"source":"joinProd","sourceOutput":"frame","target":"getProdCost","targetInput":"frame"},
+    {"source":"getProdQty","sourceOutput":"values","target":"mulProdExt","targetInput":"a"},
+    {"source":"getProdCost","sourceOutput":"values","target":"mulProdExt","targetInput":"b"},
+    {"source":"joinProd","sourceOutput":"frame","target":"addProdExt","targetInput":"frame"},
+    {"source":"mulProdExt","sourceOutput":"result","target":"addProdExt","targetInput":"values"},
+
+    {"source":"products","sourceOutput":"frame","target":"nestProd","targetInput":"parent"},
+    {"source":"addProdExt","sourceOutput":"frame","target":"nestProd","targetInput":"child"},
+    {"source":"nestProd","sourceOutput":"cube","target":"dispProdCube","targetInput":"in"},
+    {"source":"nestProd","sourceOutput":"cube","target":"rollupProd","targetInput":"cube"},
+    {"source":"rollupProd","sourceOutput":"frame","target":"dispProdCost","targetInput":"in"}
+  ]
+}

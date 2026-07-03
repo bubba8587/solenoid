@@ -22,14 +22,27 @@ export async function pickFolderDialog(): Promise<string | null> {
   return typeof res === "string" ? res : null;
 }
 
-/** List the `.csv` file names directly inside `folder` (sorted, case-insensitive). */
-export async function listCsvFiles(folder: string): Promise<string[]> {
+/** List the file names directly inside `folder` matching `extension` (sorted,
+ *  case-insensitive) — the shared listing behind every folder-scoped file-source
+ *  node (CSV, Parquet, …). */
+async function listFilesByExt(folder: string, extension: string): Promise<string[]> {
   if (!isDesktop() || !folder) return [];
   const entries = await readDir(folder);
+  const re = new RegExp(`\\.${extension}$`, "i");
   return entries
-    .filter((e) => e.isFile && /\.csv$/i.test(e.name))
+    .filter((e) => e.isFile && re.test(e.name))
     .map((e) => e.name)
     .sort((a, b) => a.localeCompare(b));
+}
+
+/** List the `.csv` file names directly inside `folder`. */
+export function listCsvFiles(folder: string): Promise<string[]> {
+  return listFilesByExt(folder, "csv");
+}
+
+/** List the `.parquet` file names directly inside `folder`. */
+export function listParquetFiles(folder: string): Promise<string[]> {
+  return listFilesByExt(folder, "parquet");
 }
 
 /** Read one file (by name) from the target folder as text. */

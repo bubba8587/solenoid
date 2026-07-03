@@ -161,10 +161,10 @@ export { ExpectComponent } from "./ExpectNode";
 export { TornadoComponent } from "./TornadoNode";
 
 // ─── Cubes (recursive nested tables) ───────────────────────────────────────────
-export { BuildCubeComponent, NestJoinComponent, CubeColumnsComponent } from "./CubeNodes";
+export { BuildCubeComponent, NestJoinComponent, CubeColumnsComponent, CubeRollupComponent } from "./CubeNodes";
 
-// ─── External-data connections (Web Source, CSV folder) ─────────────────────────
-export { WebSourceComponent, CsvConnectionComponent, ImportHtmlComponent, ImportXmlComponent } from "./ConnectionNodes";
+// ─── External-data connections (Web Source, CSV folder, Parquet folder) ─────────
+export { WebSourceComponent, CsvConnectionComponent, ParquetConnectionComponent, ImportHtmlComponent, ImportXmlComponent } from "./ConnectionNodes";
 
 // ─── File sinks (Write CSV, Write JSON) ──────────────────────────────────────────
 export { WriteCsvComponent, WriteJsonComponent } from "./WriteNodes";
