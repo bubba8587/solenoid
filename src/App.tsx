@@ -6,6 +6,7 @@ import { StatusBar } from "./graph/StatusBar";
 import { MobileControls } from "./graph/MobileControls";
 import { FunctionReference } from "./graph/components/FunctionReference";
 import { ReportOverlay } from "./graph/components/ReportOverlay";
+import { CompositeEditorOverlay } from "./graph/components/CompositeEditorOverlay";
 import { ConnectionDialog } from "./graph/components/ConnectionDialog";
 import { FormulaPopup } from "./graph/components/FormulaPopup";
 import { TablePopup } from "./graph/components/TablePopup";
@@ -32,6 +33,7 @@ function App() {
       <StatusBar />
       <FunctionReference />
       <ReportOverlay />
+      <CompositeEditorOverlay />
       <ConnectionDialog />
       <FormulaPopup />
       {/* The cube popup is a self-contained nested-data viewer (every nested

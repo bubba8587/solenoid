@@ -5,7 +5,7 @@ import { DataflowEngine } from "rete-engine";
 import type { Schemes, AreaExtra } from "./schemes";
 import { installInputCoercion } from "./coerceInputs";
 import { installErrorGuards } from "./errorValue";
-import { createCompositeFromSelection } from "./compositeLogic";
+import { createCompositeFromSelection, unpackComposite } from "./compositeLogic";
 import { CompositeNode } from "./nodes/composite";
 import { NumberInputNode } from "./nodes/input";
 import { ArithmeticNode } from "./nodes/scalar";
@@ -40,6 +40,7 @@ function makeFakeArea(positions: Map<string, { x: number; y: number }>) {
     },
     translate: async (id: string, pos: { x: number; y: number }) => {
       translated.push({ id, x: pos.x, y: pos.y });
+      positions.set(id, pos); // keep the view in sync, like the real area
     },
   };
   return { area: area as unknown as AreaPlugin<Schemes, AreaExtra>, translated };
@@ -125,6 +126,30 @@ describe("createCompositeFromSelection", () => {
     expect(composite.internalEditor.getNodes()).toHaveLength(3); // all three, no markers needed
   });
 
+  it("captures each member's bbox-relative position for the drill-in editor", async () => {
+    const { editor } = makeEditor();
+    const numA = new NumberInputNode({ value: 3 });
+    const add = new ArithmeticNode({ op: "add" });
+    for (const n of [numA, add]) await editor.addNode(n);
+    await connect(editor, numA, "value", add, "a");
+    (numA as unknown as { selected: boolean }).selected = true;
+    (add as unknown as { selected: boolean }).selected = true;
+
+    const { area } = makeFakeArea(new Map([
+      [numA.id, { x: 100, y: 200 }],
+      [add.id, { x: 350, y: 260 }],
+    ]));
+    const compositeId = await createCompositeFromSelection(editor, area);
+    const composite = editor.getNode(compositeId!) as unknown as CompositeNode;
+    expect(composite.internalPositions[numA.id]).toEqual({ x: 0, y: 0 });
+    expect(composite.internalPositions[add.id]).toEqual({ x: 250, y: 60 });
+    // Positions ride the snapshot (drill-in layout survives save/load).
+    const snap = composite.snapshotInternal();
+    const savedAdd = snap.nodes.find((n) => n.id === add.id)!;
+    expect(savedAdd.x).toBe(250);
+    expect(savedAdd.y).toBe(60);
+  });
+
   it("excludes an already-selected Composite from a second collapse (no nesting yet)", async () => {
     const { editor } = makeEditor();
     const num = new NumberInputNode({ value: 5 });
@@ -138,5 +163,63 @@ describe("createCompositeFromSelection", () => {
     (composite as unknown as { selected: boolean }).selected = true;
     const secondId = await createCompositeFromSelection(editor, area);
     expect(secondId).toBeNull(); // the only selected node was a Composite itself
+  });
+});
+
+describe("unpackComposite", () => {
+  it("is a no-op (false) on a non-composite id", async () => {
+    const { editor } = makeEditor();
+    const num = new NumberInputNode({ value: 1 });
+    await editor.addNode(num);
+    const { area } = makeFakeArea(new Map());
+    expect(await unpackComposite(editor, area, num.id)).toBe(false);
+    expect(editor.getNode(num.id)).toBeDefined();
+  });
+
+  it("restores nodes, wiring and computation — the inverse of collapse", async () => {
+    const { editor, engine } = makeEditor();
+    const numA = new NumberInputNode({ value: 3 });
+    const numB = new NumberInputNode({ value: 4 });
+    const add = new ArithmeticNode({ op: "add" });
+    const disp = new DisplayNode();
+    for (const n of [numA, numB, add, disp]) await editor.addNode(n);
+    await connect(editor, numA, "value", add, "a");
+    await connect(editor, numB, "value", add, "b");
+    await connect(editor, add, "result", disp, "in");
+    (numA as unknown as { selected: boolean }).selected = true;
+    (add as unknown as { selected: boolean }).selected = true;
+
+    const positions = new Map([
+      [numA.id, { x: 100, y: 100 }],
+      [add.id, { x: 300, y: 160 }],
+    ]);
+    const { area, translated } = makeFakeArea(positions);
+    const compositeId = await createCompositeFromSelection(editor, area);
+    expect(compositeId).not.toBeNull();
+
+    const ok = await unpackComposite(editor, area, compositeId!);
+    expect(ok).toBe(true);
+
+    // Card gone, members back, boundary cables restored as direct wires.
+    expect(editor.getNode(compositeId!)).toBeUndefined();
+    expect(editor.getNode(numA.id)).toBeDefined();
+    expect(editor.getNode(add.id)).toBeDefined();
+    expect(editor.getNodes()).toHaveLength(4); // numA numB add disp
+    const conns = editor.getConnections();
+    expect(conns).toHaveLength(3);
+    expect(conns.some((c) => c.source === numA.id && c.target === add.id && c.targetInput === "a")).toBe(true);
+    expect(conns.some((c) => c.source === numB.id && c.target === add.id && c.targetInput === "b")).toBe(true);
+    expect(conns.some((c) => c.source === add.id && c.target === disp.id && c.targetInput === "in")).toBe(true);
+
+    // Relative layout restored around the card's position (the card sat at the
+    // old bbox origin, so absolute positions round-trip exactly here).
+    const back = (id: string) => { const hits = translated.filter((t) => t.id === id); return hits[hits.length - 1]; };
+    expect(back(numA.id)).toMatchObject({ x: 100, y: 100 });
+    expect(back(add.id)).toMatchObject({ x: 300, y: 160 });
+
+    // End-to-end computation still lands after the round trip.
+    engine.reset();
+    const dispOut = await engine.fetch(disp.id) as { out: unknown };
+    expect(dispOut.out).toBe(7);
   });
 });

@@ -61,7 +61,7 @@ import {
   WebSourceNode, CsvConnectionNode, ParquetConnectionNode, ImportHtmlNode, ImportXmlNode,
   WriteCsvNode, WriteJsonNode,
   GroupNode,
-  CompositeNode,
+  CompositeNode, CompositeInputNode, CompositeOutputNode,
   IsEvenOddNode, FormatDollarNode,
   FormatControllerNode,
   ExpressionNode,
@@ -136,7 +136,7 @@ import {
   WebSourceComponent, CsvConnectionComponent, ParquetConnectionComponent, ImportHtmlComponent, ImportXmlComponent,
   WriteCsvComponent, WriteJsonComponent,
   GroupComponent,
-  CompositeComponent,
+  CompositeComponent, CompositeInputMarkerComponent, CompositeOutputMarkerComponent,
   FormatDollarComponent, IsEvenOddComponent,
   FormatControllerComponent,
   ExpressionComponent,
@@ -404,6 +404,10 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [CubeRollupNode,        comp(CubeRollupComponent)],
   [GroupNode,             comp(GroupComponent)],
   [CompositeNode,         comp(CompositeComponent)],
+  // Boundary markers — rendered only inside the Composite drill-in editor's
+  // own rete root (they never live on the main canvas).
+  [CompositeInputNode,    comp(CompositeInputMarkerComponent)],
+  [CompositeOutputNode,   comp(CompositeOutputMarkerComponent)],
   [ComplexFromNode,       comp(ComplexFromComponent)],
   [ComplexUnpackNode,     comp(ComplexUnpackComponent)],
   [ComplexUnaryNode,      comp(ComplexUnaryComponent)],

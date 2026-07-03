@@ -8,6 +8,7 @@ import { solError } from "./errorValue";
 import { perfEnabled, beginPass, passTopNodes, ipcSnapshot } from "./perfProbe";
 import { beginCompute, endCompute } from "./computeOverlayStore";
 import { calcModeStore } from "./calcModeStore";
+import { compositePassStore } from "./compositeEditorStore";
 import { clearCollectMemo } from "./frameBackend";
 import type { Schemes, AreaExtra } from "./schemes";
 
@@ -505,8 +506,27 @@ export async function processGraph(changedNodeId?: string, renderOnly?: Set<stri
   }
 }
 
+// A composite's internal node isn't in the outer editor — find the OUTERMOST
+// composite card whose (possibly nested) internal editor holds it. Duck-typed
+// on `internalEditor` to avoid a module cycle (composite.ts imports from here).
+function findCompositeOwner(editor: NodeEditor<Schemes>, innerId: string): string | null {
+  for (const n of editor.getNodes()) {
+    const inner = (n as unknown as { internalEditor?: NodeEditor<Schemes> }).internalEditor;
+    if (!inner) continue;
+    if (inner.getNode(innerId) || findCompositeOwner(inner, innerId)) return n.id;
+  }
+  return null;
+}
+
 async function runGraphPass(changedNodeId?: string, renderOnly?: Set<string>, topologyChanged = false) {
   if (!_editor || !_engine || !_area) return;
+  // An edit made inside a composite's drill-in editor targets an internal node
+  // id. Retarget the pass at the owning card: its cache entry is what must be
+  // invalidated, and its data() re-runs the whole internal graph anyway.
+  if (changedNodeId && !_editor.getNode(changedNodeId)) {
+    const owner = findCompositeOwner(_editor, changedNodeId);
+    if (owner) changedNodeId = owner;
+  }
   // Fresh per-pass memo for lazy-frame collects: within one pass a ref fanned
   // out to N consumers materializes once, not N times (audit finding 24).
   clearCollectMemo();
@@ -625,5 +645,8 @@ async function runGraphPass(changedNodeId?: string, renderOnly?: Set<string>, to
       `ipc=${ipcCalls}call/${ipcMs.toFixed(1)}ms${top ? `  slowest: ${top}` : ""}`,
     );
   }
+  // An open drill-in editor re-renders its internal node views off this tick
+  // (the pass recomputed the composite, and with it the internal graph).
+  compositePassStore.notify();
   _graphChanged();
 }

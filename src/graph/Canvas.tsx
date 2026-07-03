@@ -30,7 +30,8 @@ import {
 } from "./process";
 import { copySelected, pasteClipboard } from "./copyPaste";
 import { ctorRegistry } from "./nodeCtorRegistry";
-import { createCompositeFromSelection } from "./compositeLogic";
+import { createCompositeFromSelection, unpackComposite } from "./compositeLogic";
+import { compositeEditorStore } from "./compositeEditorStore";
 import { frStore } from "./frStore";
 import { shortcutsStore } from "./shortcutsStore";
 import { CommandPalette } from "./CommandPalette";
@@ -45,7 +46,7 @@ import { installErrorGuards } from "./errorValue";
 import { pointInPolygon, polygonIntersectsBBox, signedArea, lassoActiveStore, type Pt } from "./lasso";
 import {
   ConduitNode, AngleDialNode,
-  FormatControllerNode, GroupNode,
+  FormatControllerNode, GroupNode, CompositeNode,
   CONDUIT_MAX_LANES, conduitInKey, conduitOutKey, conduitGhostSpecs,
 } from "./rete-nodes";
 import { reconcileFcTypes } from "./fcReconcile";
@@ -667,6 +668,11 @@ export function Canvas() {
       // must not mutate the graph mid-pass. This listener only drives canvas
       // shortcuts; a focused field's own handlers are untouched.
       if (computeOverlayStore.visible()) return;
+
+      // The Composite drill-in editor is open: the overlay owns the keyboard
+      // (its own Delete/Escape handling); canvas shortcuts must not reach the
+      // OUTER graph underneath it.
+      if (compositeEditorStore.isOpen()) return;
 
       // F9 — Calculate now (Excel). Recomputes + rerolls volatiles in ANY mode; in
       // manual mode it's the only thing that recomputes. Global, even while typing.
@@ -3169,7 +3175,8 @@ export function Canvas() {
           standoff = { aId: linkableSel[0].id, bId: linkableSel[1].id };
         }
 
-        setNodeCtx({ nodeId: clickedId, seedIds, screenX: e.clientX, screenY: e.clientY, canPin, standoff });
+        const isComposite = clickedNode instanceof CompositeNode;
+        setNodeCtx({ nodeId: clickedId, seedIds, screenX: e.clientX, screenY: e.clientY, canPin, isComposite, standoff });
         return;
         }
       }
@@ -3556,6 +3563,12 @@ export function Canvas() {
           onPin={handlePin}
           onLinkStandoff={handleLinkStandoff}
           onAddComment={(id) => commentsPanelUi.openFor(id)}
+          onEditComposite={(id) => compositeEditorStore.open(id)}
+          onUnpackComposite={(id) => {
+            const editor = editorRef.current;
+            const area = areaRef.current;
+            if (editor && area) void unpackComposite(editor, area, id);
+          }}
           onClose={closeNodeCtx}
         />
       )}
