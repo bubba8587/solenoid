@@ -41,6 +41,25 @@
   border-radius: 0;
 }
 
+/* Cabling mode (a cable is being dragged): every socket is a live drop target
+   (quick-wire's release-on-empty-canvas needs an accurate "did this land on a
+   socket" test, and a bigger catch zone reduces near-miss drops either way).
+   Mouse-precise, so more modest than the coarse-pointer blowout below. The
+   Conduit's tightly packed lanes stay tight — a 6px halo there would overlap
+   the next lane over. */
+.solenoid-canvas--cabling .input-socket::before,
+.solenoid-canvas--cabling .output-socket::before {
+  inset: -6px;
+}
+.solenoid-canvas--cabling [data-socket-shape="square"] .input-socket::before,
+.solenoid-canvas--cabling [data-socket-shape="square"] .output-socket::before {
+  border-radius: 0;
+}
+.solenoid-canvas--cabling .solenoid-conduit .input-socket::before,
+.solenoid-canvas--cabling .solenoid-conduit .output-socket::before {
+  inset: -2px;
+}
+
 /* Touch: a 12px dot is far too small to grab with a fingertip when drawing or
    dropping a cable, so on coarse pointers blow the invisible hit area out to
    ~28px around the dot (both sides — outputs get one too). Mouse-precise
@@ -116,6 +135,13 @@ html.is-mobile {
   cursor: crosshair;
   overflow: visible;
   shape-rendering: geometricPrecision;
+}
+
+/* While a cable is actively being dragged, a socket under the pointer reads as a
+   drop target rather than a drag origin — a distinct cursor from the idle
+   crosshair above. */
+.solenoid-canvas--cabling .solenoid-socket-dot {
+  cursor: cell;
 }
 
 /* solenoid-socket--lit: highlight applied via an SVG overlay in NodeSocket.tsx,

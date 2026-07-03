@@ -85,6 +85,7 @@ import { dockedNodeStore } from "./dockedNodeStore";
 import { forgetNode } from "./nodeStoreRegistry";
 import { AddNodeMenu } from "./AddNodeMenu";
 import { addMenuRequest } from "./addMenuStore";
+import { flattenLeaves, filterByCompatibleSocket, firstCompatibleSocketKey } from "./catalogSearch";
 import { setGraphChanged } from "./process";
 import { installInputCoercion } from "./coerceInputs";
 import { scheduleAutosave } from "./persistence";
@@ -338,7 +339,13 @@ async function removeFcInline(editor: NodeEditor<Schemes>, fc: FormatControllerN
   }
 }
 
-type MenuState = { screenX: number; screenY: number } | null;
+// Quick-wire: a menu opened from a cable dropped on empty canvas carries the
+// origin socket + a pre-filtered entry list (compatible nodes only), so picking
+// one both creates it AND wires the dragged cable into it.
+type QuickWireOrigin = { nodeId: string; key: string; side: "input" | "output" };
+type MenuState =
+  | { screenX: number; screenY: number; quickWire?: QuickWireOrigin; entries?: NodeCatalogEntry[] }
+  | null;
 
 export function Canvas() {
   const renderMode = useRenderMode();
@@ -2113,6 +2120,38 @@ export function Canvas() {
           }
         }
         if (ctx.type === "connectiondrop") {
+          // Quick-wire: a drop that lands on empty canvas (no target socket, no
+          // connection made) opens the Add menu filtered to nodes compatible with
+          // the dragged origin — picking one both creates it and splices the cable.
+          if (settingsStore.get("quickWire")) {
+            const d = (
+              ctx as {
+                data?: {
+                  initial?: { nodeId: string; key: string; side: "input" | "output" };
+                  socket?: unknown;
+                  created?: boolean;
+                };
+              }
+            ).data;
+            if (d?.initial && d.socket == null && !d.created) {
+              const { nodeId, key, side } = d.initial;
+              const originNode = editor.getNode(nodeId);
+              const originSocket =
+                side === "output" ? originNode?.outputs[key]?.socket : originNode?.inputs[key]?.socket;
+              if (originSocket instanceof SolenoidSocket) {
+                const leaves = flattenLeaves(buildCatalog(true));
+                const compatible = filterByCompatibleSocket(leaves, originSocket, side).map((lc) => lc.leaf);
+                if (compatible.length) {
+                  setMenu({
+                    screenX: screenMouseRef.current.x,
+                    screenY: screenMouseRef.current.y,
+                    quickWire: { nodeId, key, side },
+                    entries: compatible,
+                  });
+                }
+              }
+            }
+          }
           setCableDragging(false);
           container!.classList.remove("solenoid-canvas--cabling");
           dragOriginKeyRef.current = null;
@@ -3154,6 +3193,28 @@ export function Canvas() {
       const canvasY = (menu.screenY - rect.top - ty) / k;
       await area.translate(node.id, { x: canvasX, y: canvasY });
 
+      // Quick-wire: splice the dragged cable into the first compatible socket on
+      // the new node (the menu was already filtered to guarantee one exists).
+      if (menu.quickWire) {
+        const { nodeId: originId, key: originKey, side } = menu.quickWire;
+        const originNode = editor.getNode(originId);
+        const originSocket =
+          side === "output" ? originNode?.outputs[originKey]?.socket : originNode?.inputs[originKey]?.socket;
+        const newKey =
+          originSocket instanceof SolenoidSocket
+            ? firstCompatibleSocketKey(node, originSocket, side)
+            : null;
+        if (newKey) {
+          try {
+            const conn =
+              side === "output"
+                ? new ClassicPreset.Connection(originNode!, originKey, node, newKey)
+                : new ClassicPreset.Connection(node, newKey, originNode!, originKey);
+            await editor.addConnection(conn as SolenoidConnection);
+          } catch { /* incompatible after all — leave the node unwired */ }
+        }
+      }
+
       // A freshly-added node has no connections, so it can't affect any existing
       // node. Use the ADDITIVE path (no engine reset → existing caches survive →
       // nothing re-sources/re-materializes) and render only the new node. A full
@@ -3418,7 +3479,7 @@ export function Canvas() {
         <AddNodeMenu
           screenX={menu.screenX}
           screenY={menu.screenY}
-          entries={visibleCatalog}
+          entries={menu.entries ?? visibleCatalog}
           onSelect={handleMenuSelect}
           onClose={closeMenu}
         />

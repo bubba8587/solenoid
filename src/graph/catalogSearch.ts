@@ -8,6 +8,7 @@
 
 import { CATALOG_TO_EXCEL } from "./excelToCatalog";
 import { fuzzyScore, fieldScore } from "./fuzzy";
+import { SolenoidSocket } from "./sockets";
 import type { NodeCatalogEntry, CatalogEntry, CatalogCategory, CatalogPair } from "./AddNodeMenu";
 
 function isCategory(e: CatalogEntry): e is CatalogCategory {
@@ -73,4 +74,64 @@ export function searchLeaves(leaves: LeafWithContext[], query: string): NodeCata
   }
   scored.sort((a, b) => b.score - a.score);
   return scored.map((x) => x.leaf);
+}
+
+// ─── Quick-wire compatibility filter ───────────────────────────────────────────
+// Quick-wire drops a cable on empty canvas and needs the Add menu narrowed to
+// nodes that can actually receive the dragged value. There's no static
+// socket-type metadata on a catalog leaf, so this instantiates the leaf's node
+// (the same `create()` a real pick calls) and inspects its live sockets — thrown
+// away immediately, never added to the editor.
+
+type PortLike = { socket?: unknown };
+type NodeLike = {
+  inputs?: Record<string, PortLike | undefined>;
+  outputs?: Record<string, PortLike | undefined>;
+};
+
+/** `originSide` is which side the cable's ORIGIN socket is on: "output" means the
+ *  user dragged from an output, so a candidate needs a compatible INPUT (and vice
+ *  versa). Returns true if `leaf.create()` has at least one matching socket. */
+function hasCompatibleSocket(
+  leaf: NodeCatalogEntry,
+  origin: SolenoidSocket,
+  originSide: "input" | "output",
+): boolean {
+  const node = leaf.create() as NodeLike;
+  const candidates = originSide === "output" ? node.inputs : node.outputs;
+  if (!candidates) return false;
+  for (const port of Object.values(candidates)) {
+    const socket = port?.socket;
+    if (!(socket instanceof SolenoidSocket)) continue;
+    const ok = originSide === "output" ? origin.canConnectTo(socket) : socket.canConnectTo(origin);
+    if (ok) return true;
+  }
+  return false;
+}
+
+/** Narrow leaves to those quick-wire can actually splice onto the dragged cable. */
+export function filterByCompatibleSocket(
+  leaves: LeafWithContext[],
+  origin: SolenoidSocket,
+  originSide: "input" | "output",
+): LeafWithContext[] {
+  return leaves.filter((lc) => hasCompatibleSocket(lc.leaf, origin, originSide));
+}
+
+/** First socket key on `node`, on the given side, that's compatible with
+ *  `origin` — used to wire the freshly-created node once quick-wire's pick lands. */
+export function firstCompatibleSocketKey(
+  node: NodeLike,
+  origin: SolenoidSocket,
+  originSide: "input" | "output",
+): string | null {
+  const candidates = originSide === "output" ? node.inputs : node.outputs;
+  if (!candidates) return null;
+  for (const [key, port] of Object.entries(candidates)) {
+    const socket = port?.socket;
+    if (!(socket instanceof SolenoidSocket)) continue;
+    const ok = originSide === "output" ? origin.canConnectTo(socket) : socket.canConnectTo(origin);
+    if (ok) return key;
+  }
+  return null;
 }
