@@ -134,8 +134,9 @@ each step = title + an explicit node set picked like a navigator list; camera
 zoom/pan only, no isolate/highlight/dim) · #52 IN, COLORS ONLY (branded output — no
 logo, no custom fonts, just a color override on report/published-artifact surfaces) ·
 #53 OUT (shared definitions/linked-graph library — preferred path is a pack shipping
-a custom Constants node instead, consistent with #5's packs-only distribution story).
-NEXT when resuming: scope-features #54, then #55–63 in order (folding in
+a custom Constants node instead, consistent with #5's packs-only distribution story) ·
+#54 VERY DEFERRED, same call as #48 (model index / cross-doc dependency map).
+NEXT when resuming: scope-features #55, then #56–63 in order (folding in
 strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
