@@ -61,8 +61,9 @@ seat) · #16 IN (BOM/nested-costing on the Cube) · #17 IN minor, sequence late 
 #19 OUT (leans on the #7 NL surface, which stayed all-out).
 Round 4 (#20–24, the value-model frontier) begun 2026-07-03: #20 OUT (named
 dimensions — walked through a concrete example, didn't land; socket lattice stays a
-two-leg stool, no axis-semantics leg).
-NEXT when resuming: scope-features #21, then #22–63 in order (folding in strategy threads #1–#7 and the
+two-leg stool, no axis-semantics leg) · #21 IN, VERY LATE (uncertain values / error-bar
+propagation — possible, sequence dead last alongside #43 money).
+NEXT when resuming: scope-features #22, then #23–63 in order (folding in strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
 engine execution contract (Bet 1 × #23 × #24 × calc mode) → #5
