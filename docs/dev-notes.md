@@ -2,6 +2,46 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Report upgrade — charts inline, embeds as tokens, and the inline-ref rendering bug (2026-07-03)
+Author: "the Report needs a big upgrade — sockets don't work at all; it's the main
+destination for charts; embed-note is really bad (no placement control)."
+
+- **Inline refs never rendered their value** (the root of "sockets don't work"). Two
+  separate bugs stacked:
+  - The overlay's draft-reset effect listed `node.body` in its deps; `onBody` writes
+    `node.body` per keystroke for autosave, so every keystroke re-ran the effect and
+    reset `lastSyncRef`, making `commitBody`'s change-guard always short-circuit — so
+    `syncRefs()` never ran and the `=name` INPUT sockets were never minted. Fix: key
+    the reset effect on `nodeId` only.
+  - `InlineRefBody` set the rendered HTML via `dangerouslySetInnerHTML`, then the
+    code→value swap mutated that React-owned DOM; the `setSlots` re-render re-applied
+    the prop, restored the raw `<code>=name</code>`, and orphaned the value portals.
+    Net: NO ref (Note OR Report) ever showed its wired value. Fix: set `innerHTML`
+    IMPERATIVELY in the layout effect so React never owns/re-stomps those children.
+    **General rule: never portal-swap into DOM that a `dangerouslySetInnerHTML` prop
+    controls — set it imperatively, or React wipes the mutation on the next render.**
+- **Charts are a first-class value now.** The `chart` socket already existed as an
+  identity-only object socket alongside `lambda` (sockets.ts, machine-checked in
+  socketConnect.test.ts) — only the node wiring was missing. `ChartNode` emits a
+  `ChartValue` (`chartValue.ts`: `{__chart, op, values, options, title}`) on a real
+  `chart` output, REPLACING its unused numlist pass-through (a chart is terminal — no
+  seed consumed it). Wire Chart → a Report `` `=fig` `` ref and the actual styled chart
+  draws inline where the ref sits (reuses `ChartView`/`toSeries`). The chart socket got
+  its own 3-bar glyph on the node (SocketComponent) and in the Socket Legend, distinct
+  like lambda's λ.
+- **Embeds are inline markdown tokens.** `![[Note Name]]` (Obsidian-style) places the
+  named Note's block exactly where the token sits, replacing the fixed bottom strip
+  (`reportEmbeds.ts`: `preprocessEmbeds` → a `data-embed` marker span before markdown;
+  `InlineRefBody` portals the embed block into each marker via an opt-in `renderEmbed`).
+  The "Embed a Note" button inserts a token at the caret; `node.embeds` is re-synced
+  from the body's tokens on commit (the export reads it); the static export inlines each
+  embed where its token sits too (splits the frozen body at the token). A token naming
+  no live note shows a quiet inline hint.
+- **Report Showcase seed** (`report-showcase.json` + `reportShowcaseSeed.test.ts`): a
+  scalar ref (=total=113), a chart ref (=fig column chart), and an embed
+  (![[Methodology]]) — all three paths in one document, asserted headlessly. Verified
+  in-browser end to end.
+
 ### Follow-up UX pass — where-used pill, palette selection, mobile palette (2026-07-03)
 Author follow-ups off the live deploy:
 
