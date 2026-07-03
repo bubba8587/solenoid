@@ -2274,7 +2274,7 @@ export function Canvas() {
         }
         if (ctx.type === "nodecreated") {
           const n = ctx.data as object;
-          if (n instanceof FormatControllerNode) n.dockSelf(editor);
+          if (n instanceof FormatControllerNode && !isGraphRebuilding()) n.dockSelf(editor);
           if (n instanceof GroupNode) { sendGroupToBack(area, (n as GroupNode).id); rebuildGroupMembership(editor); }
           else if (!isGraphRebuilding()) {
             // A node created (LIVE) fully inside a group's box joins it — Add menu,
