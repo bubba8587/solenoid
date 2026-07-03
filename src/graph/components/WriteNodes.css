@@ -1,0 +1,33 @@
+/* File sink nodes (Write CSV / Write JSON) — extends the .sol-conn shell from
+   ConnectionNodes.css with an arm/run row. */
+.sol-write__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sol-write__armed {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.sol-write__armed input { width: 13px; height: 13px; }
+
+.sol-write__run {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.sol-write__run:hover:not(:disabled) { border-color: var(--node-accent, var(--accent)); }
+.sol-write__run:disabled { opacity: 0.4; cursor: default; }
+
+.sol-conn__status-text--error { color: #e0566b; }
