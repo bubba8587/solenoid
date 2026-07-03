@@ -5,6 +5,7 @@ import { OutlinePanel } from "./graph/OutlinePanel";
 import { StatusBar } from "./graph/StatusBar";
 import { MobileControls } from "./graph/MobileControls";
 import { FunctionReference } from "./graph/components/FunctionReference";
+import { ReportOverlay } from "./graph/components/ReportOverlay";
 import { ConnectionDialog } from "./graph/components/ConnectionDialog";
 import { FormulaPopup } from "./graph/components/FormulaPopup";
 import { TablePopup } from "./graph/components/TablePopup";
@@ -30,6 +31,7 @@ function App() {
       <OutlinePanel />
       <StatusBar />
       <FunctionReference />
+      <ReportOverlay />
       <ConnectionDialog />
       <FormulaPopup />
       {/* The cube popup is a self-contained nested-data viewer (every nested
