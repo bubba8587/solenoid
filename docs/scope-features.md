@@ -1152,6 +1152,8 @@ broken."
 
 ## 28 — The formula lens: see any selection as an Excel formula
 
+**VERDICT (author, 2026-07-03): OUT.** Round 4 closes; Round 5 next.
+
 **The problem:** two audiences, one graph. Node-thinkers read the canvas; Excel-thinkers
 read `=SUM(FILTER(...))`. Today Solenoid only speaks canvas.
 
