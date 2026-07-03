@@ -3,8 +3,9 @@ import { DataflowEngine } from "rete-engine";
 import type { Schemes, SolenoidNode, SolenoidConnection } from "../schemes";
 import { anySocket } from "../sockets";
 import { extractInit } from "../copyPaste";
-import { installErrorGuards } from "../errorValue";
+import { installErrorGuards, solError } from "../errorValue";
 import { installInputCoercion } from "../coerceInputs";
+import { loopMembers } from "../process";
 import type { NodeCtor } from "../nodeCtorRegistry";
 
 // ─── Composite node — a real, computing subgraph container ────────────────────
@@ -65,7 +66,7 @@ export interface CompositeInternalSnapshot {
 // port as a list, instead of a single scalar. Only list modes actually wired
 // up appear here; a mode gets added to this union in the same commit its
 // data() branch + UI land (see CompositeComponent's run-mode dropdown).
-export type CompositeRunMode = "single" | "scenarios" | "data-table";
+export type CompositeRunMode = "single" | "scenarios" | "data-table" | "simulation";
 
 /** One named input set for Scenarios mode. `overrides` is keyed by
  *  CompositeInputPort.id; a port with no entry falls back to its normal
@@ -85,6 +86,13 @@ export interface CompositeScenario {
  *  Data Table; 2 = the two-variable grid; N generalizes past what Excel
  *  can express (the Cartesian product over every varying port). */
 export type CompositeDataTableValues = Record<string, unknown[]>;
+
+// Simulation mode is genuinely different from the other two drivers: it
+// doesn't run N INDEPENDENT passes, it runs N DEPENDENT steps of an internal
+// FEEDBACK LOOP — a real cable cycle the user wires inside the container
+// (e.g. a "current population" node whose growth output feeds back into
+// itself). See CompositeNode.runSimulation for the algorithm and the
+// #CIRC! bypass (process.ts's loopMembers, scoped to internalEditor).
 
 // ─── Internal boundary markers ─────────────────────────────────────────────────
 // Not user-addable — no catalog entry. They only ever live inside a
@@ -145,6 +153,9 @@ export class CompositeNode extends ClassicPreset.Node {
   runMode: CompositeRunMode;
   scenarios: CompositeScenario[];
   dataTableValues: CompositeDataTableValues;
+  /** Simulation mode's step count — the container parameter the plan calls
+   *  for. Clamped to >= 1 at run time (see runSimulation). */
+  simulationSteps: number;
 
   // A freshly-loaded (not yet hydrated) composite holds its saved internal
   // graph here until `hydrate()` rebuilds it against a class registry — see
@@ -161,6 +172,7 @@ export class CompositeNode extends ClassicPreset.Node {
     runMode?: CompositeRunMode;
     scenarios?: CompositeScenario[];
     dataTableValues?: CompositeDataTableValues;
+    simulationSteps?: number;
   }) {
     super("Composite");
     this.label = init?.label ?? "Composite";
@@ -173,6 +185,7 @@ export class CompositeNode extends ClassicPreset.Node {
     this.dataTableValues = Object.fromEntries(
       Object.entries(init?.dataTableValues ?? {}).map(([k, v]) => [k, [...v]]),
     );
+    this.simulationSteps = init?.simulationSteps ?? 10;
     this.internalEditor = new NodeEditor<Schemes>();
     // Same two wrappers the outer Canvas installs on the real editor (see
     // errorIntegration.test.ts's makeEditor): coercion first (inner), so a
@@ -327,6 +340,24 @@ export class CompositeNode extends ClassicPreset.Node {
 
   // ─── Compute ─────────────────────────────────────────────────────────────
 
+  /** Pre-seed the internal engine's cache with #CIRC! for every TRUE loop
+   *  member (Tarjan SCC, self-loops included) so a subsequent `fetch` dead-
+   *  ends into the cached error instead of recursing forever — the exact
+   *  mechanism process.ts's outer pass uses, scoped to internalEditor. */
+  private seedInternalLoopErrors(): void {
+    const loop = loopMembers(this.internalEditor);
+    if (loop.size === 0) return;
+    const circErr = solError("#CIRC!", "This node is part of a circular dependency inside the composite — the calculation feeds back into itself. Switch the container to Simulation mode to run it as a feedback loop instead.");
+    for (const id of loop) {
+      const node = this.internalEditor.getNode(id);
+      if (!node) continue;
+      const outputs: Record<string, unknown> = {};
+      for (const k of Object.keys(node.outputs ?? {})) outputs[k] = circErr;
+      const seeded = Object.assign(Promise.resolve(outputs), { cancel() {} });
+      try { this.internalEngine.cache.add(id, seeded); } catch { this.internalEngine.cache.patch(id, seeded); }
+    }
+  }
+
   /** One internal engine pass: inject each input port's value (an explicit
    *  `overrides` entry wins, else the port's normal wired/default value),
    *  reset, fetch every output marker. Shared by every run mode — a mode is
@@ -348,6 +379,14 @@ export class CompositeNode extends ClassicPreset.Node {
     // Internal engine is scoped to this composite alone (small, private graph),
     // so a full reset every pass is cheap and simplest.
     this.internalEngine.reset();
+    // A real cable cycle among the RELOCATED internal nodes (not through a
+    // marker — CompositeInputNode has no input socket, so it can never sit on
+    // a cycle) would otherwise make `fetch` below recurse forever, exactly
+    // the deadlock process.ts's OUTER engine avoids by pre-seeding #CIRC!
+    // (process.ts:481-488). Mirror that here, scoped to internalEditor — a
+    // Simulate container bypasses this via runSimulation instead, which
+    // resolves the very same loop as bounded feedback rather than an error.
+    this.seedInternalLoopErrors();
     const row: Record<string, unknown> = {};
     for (const port of this.outputPorts) {
       const marker = this.internalEditor.getNode(port.internalNodeId) as CompositeOutputNode | undefined;
@@ -376,9 +415,130 @@ export class CompositeNode extends ClassicPreset.Node {
     return outputs;
   }
 
+  /**
+   * Simulation mode: resolve a REAL cable cycle among the relocated internal
+   * nodes as bounded feedback instead of an error. `loopMembers` finds the
+   * true SCC (process.ts:336-395, reused verbatim, scoped to internalEditor)
+   * — that's the container's "loop fully contained inside an opted-in
+   * Simulate container" bypass the plan calls for; every OTHER run mode still
+   * seeds #CIRC! for the exact same set (see seedInternalLoopErrors).
+   *
+   * Algorithm (Gauss-Seidel-style bounded relaxation, the same idea as
+   * Excel's iterative-calculation circular-reference resolution): each loop
+   * node's NON-cyclic inputs (parameters fed by a CompositeInputNode marker,
+   * or by a plain internal node outside the loop) are resolved ONCE via the
+   * normal pull engine — they can't change step to step. Then for
+   * `simulationSteps` rounds, every loop node's `data()` is called DIRECTLY
+   * (bypassing the pull engine, which would just recurse into the same cycle
+   * and hang) with its cyclic inputs drawn from the PREVIOUS round's outputs
+   * (round 1's "previous" is empty — a loop node with no wired literal for
+   * its cyclic input falls back to its own default, exactly like an unwired
+   * input anywhere else). Round 0 is never recorded; the returned series has
+   * exactly `simulationSteps` entries, one per round actually run.
+   */
+  private async runSimulation(inputs: Record<string, unknown[]>): Promise<Record<string, unknown>> {
+    for (const port of this.inputPorts) {
+      const marker = this.internalEditor.getNode(port.internalNodeId) as CompositeInputNode | undefined;
+      if (!marker) continue;
+      marker.value = port.exposure === "exposed"
+        ? (inputs[port.id]?.[0] ?? port.default ?? null)
+        : (port.default ?? null);
+    }
+    this.internalEngine.reset();
+
+    const loop = loopMembers(this.internalEditor);
+    if (loop.size === 0) return this.runPass(inputs); // nothing wired as feedback — nothing to simulate
+
+    const conns = this.internalEditor.getConnections();
+    const incomingByTarget = new Map<string, typeof conns>();
+    for (const c of conns) {
+      if (!loop.has(c.target)) continue;
+      (incomingByTarget.get(c.target) ?? incomingByTarget.set(c.target, []).get(c.target)!).push(c);
+    }
+
+    // Non-cyclic inputs are round-invariant — resolve them once via the
+    // normal engine (a plain fetch works fine; they aren't on the cycle).
+    const staticInputs = new Map<string, Record<string, unknown[]>>();
+    for (const id of loop) {
+      const nodeInputs: Record<string, unknown[]> = {};
+      for (const c of incomingByTarget.get(id) ?? []) {
+        if (loop.has(c.source)) continue;
+        const srcOut = await this.internalEngine.fetch(c.source) as Record<string, unknown>;
+        (nodeInputs[c.targetInput] ??= []).push(srcOut?.[c.sourceOutput] ?? null);
+      }
+      staticInputs.set(id, nodeInputs);
+    }
+
+    // Step the loop: Gauss-Seidel relaxation (the same idea Excel's iterative
+    // calc uses) — process the loop members in a FIXED, deterministic order
+    // (the order they were added to internalEditor — for a live-created
+    // composite that's the order the user built the model in) and update a
+    // single shared `state` map IN PLACE as each node resolves, so a node
+    // later in the order sees its predecessor's freshly-computed value from
+    // THIS round, while a node earlier in the order still sees the previous
+    // round's value (or, on the very first round, no value yet — a cyclic
+    // input with nothing computed for it yet stays unwired, so the node
+    // falls back to its own literal/default, exactly like any other unwired
+    // input). This converges immediately for the concrete case the plan
+    // calls out (a two-node accumulator → transform → feedback pair) without
+    // needing a general fixed-point solver. `fullSeries[step]` snapshots
+    // every loop node's full output object for that round — small and cheap
+    // for a hand-relocated container — so each output port below can pick
+    // out just the one key it's bound to.
+    const loopOrder = this.internalEditor.getNodes().map((n) => n.id).filter((id) => loop.has(id));
+    const steps = Math.max(1, Math.round(this.simulationSteps));
+    const fullSeries: Record<string, Record<string, unknown>>[] = [];
+    const state = new Map<string, Record<string, unknown>>();
+    for (let step = 0; step < steps; step++) {
+      for (const id of loopOrder) {
+        const node = this.internalEditor.getNode(id) as unknown as { data: (i: Record<string, unknown[]>) => unknown };
+        const nodeInputs: Record<string, unknown[]> = { ...staticInputs.get(id) };
+        for (const c of incomingByTarget.get(id) ?? []) {
+          if (!loop.has(c.source)) continue;
+          const srcOut = state.get(c.source);
+          if (srcOut === undefined) continue; // this source has never resolved yet — stays unwired
+          (nodeInputs[c.targetInput] ??= []).push(srcOut[c.sourceOutput] ?? null);
+        }
+        state.set(id, await Promise.resolve(node.data(nodeInputs)) as Record<string, unknown>);
+      }
+      const snapshot: Record<string, Record<string, unknown>> = {};
+      for (const id of loopOrder) snapshot[id] = state.get(id)!;
+      fullSeries.push(snapshot);
+    }
+
+    // Seed the FINAL state into the engine cache so an output port fed by a
+    // NON-loop node downstream of the cycle resolves normally through the
+    // pull engine instead of tripping the loop guard.
+    for (const id of loop) {
+      const finalOut = state.get(id) ?? {};
+      const seeded = Object.assign(Promise.resolve(finalOut), { cancel() {} });
+      try { this.internalEngine.cache.add(id, seeded); } catch { this.internalEngine.cache.patch(id, seeded); }
+    }
+
+    const outputs: Record<string, unknown> = {};
+    for (const port of this.outputPorts) {
+      const marker = this.internalEditor.getNode(port.internalNodeId);
+      if (!marker) { outputs[port.id] = null; continue; }
+      const feed = conns.find((c) => c.target === marker.id && c.targetInput === "value");
+      if (feed && loop.has(feed.source)) {
+        outputs[port.id] = fullSeries.map((snap) => snap[feed.source]?.[feed.sourceOutput] ?? null);
+      } else {
+        try {
+          const res = await this.internalEngine.fetch(marker.id) as { value?: unknown };
+          outputs[port.id] = res.value ?? null;
+        } catch {
+          outputs[port.id] = null;
+        }
+      }
+    }
+    return outputs;
+  }
+
   async data(inputs: Record<string, unknown[]>): Promise<Record<string, unknown>> {
     let outputs: Record<string, unknown>;
-    if (this.runMode === "scenarios" && this.scenarios.length > 0) {
+    if (this.runMode === "simulation") {
+      outputs = await this.runSimulation(inputs);
+    } else if (this.runMode === "scenarios" && this.scenarios.length > 0) {
       outputs = await this.collectMultiple(inputs, this.scenarios.map((s) => s.overrides));
     } else if (this.runMode === "data-table") {
       // Only exposed ports with a non-empty sweep list are axes of the grid;

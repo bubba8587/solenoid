@@ -3,6 +3,7 @@ import { ClassicPreset, NodeEditor } from "rete";
 import type { Schemes } from "../schemes";
 import { ctorRegistry } from "../nodeCtorRegistry";
 import { extractInit } from "../copyPaste";
+import { loopMembers } from "../process";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "./composite";
 import { NumberInputNode } from "./input";
 import { ArithmeticNode } from "./scalar";
@@ -320,5 +321,96 @@ describe("CompositeNode Data Table run mode", () => {
 
     clone.setDataTableValues(inAId, [0]);
     expect(c.dataTableValues[inAId]).toEqual([7, 8, 9]); // original untouched
+  });
+});
+
+describe("CompositeNode Simulation run mode", () => {
+  // The plan's own concrete test: a two-node population model. `pop` holds
+  // the running population (cyclic input "a" fed back from `grow`, its own
+  // "starting population" literal used the first time nothing has fed it
+  // yet); `grow` multiplies the current population by a fixed rate. pop and
+  // grow feed each other — a REAL cable cycle among two ordinary relocated
+  // nodes (this is exactly the shape createCompositeFromSelection produces
+  // when a user selects a feedback pair and presses Ctrl+Shift+G).
+  async function makePopulationModel(steps: number) {
+    const c = new CompositeNode({ runMode: "simulation", simulationSteps: steps });
+    const pop = new ArithmeticNode({ op: "add" });   // pop = feedback + 0
+    pop.literals = { a: 100, b: 0 };                  // starting population, when nothing has fed it yet
+    const grow = new ArithmeticNode({ op: "mul" });   // grow = pop * rate
+    grow.literals = { a: 0, b: 1.1 };                 // 10% growth per step
+    await c.internalEditor.addNode(pop as unknown as Schemes["Node"]);
+    await c.internalEditor.addNode(grow as unknown as Schemes["Node"]);
+    await connect(c.internalEditor, grow, "result", pop, "a");  // feedback: grow → pop
+    await connect(c.internalEditor, pop, "result", grow, "a");  // pop → grow (the other half of the cycle)
+
+    const popMarker = new CompositeOutputNode({ label: "Population" });
+    await c.internalEditor.addNode(popMarker as unknown as Schemes["Node"]);
+    await connect(c.internalEditor, pop, "result", popMarker, "value");
+    const popOutId = c.addOutputPort({ label: "Population", tier: "basic", internalNodeId: popMarker.id });
+    return { c, pop, grow, popOutId };
+  }
+
+  it("loopMembers sees the cycle as fully internal (the outer #CIRC! bypass this container gets for free)", async () => {
+    const { c } = await makePopulationModel(5);
+    const loop = loopMembers(c.internalEditor);
+    expect(loop.size).toBe(2); // pop ⇄ grow
+  });
+
+  it("runs a bounded number of steps and returns a growth time series, not a hang or #CIRC!", async () => {
+    const { c, popOutId } = await makePopulationModel(5);
+    const out = await c.data({});
+    const series = out[popOutId] as number[];
+    expect(series).toHaveLength(5);
+    expect(series.every((v) => typeof v === "number" && Number.isFinite(v))).toBe(true);
+    // Growth compounds at the fixed 1.1x rate every step, regardless of which
+    // of the two loop nodes the Gauss-Seidel sweep happens to visit first.
+    for (let i = 1; i < series.length; i++) {
+      expect(series[i] / series[i - 1]).toBeCloseTo(1.1, 5);
+    }
+    // `pop` is added to internalEditor before `grow`, so the Gauss-Seidel
+    // sweep visits it first each round: step 1 sees no feedback yet (nothing
+    // has fed `pop` this simulation) and falls back to its own starting
+    // literal (100) exactly like any other unwired input.
+    expect(series[0]).toBeCloseTo(100, 5);
+  });
+
+  it("a longer run compounds further — simulationSteps genuinely drives the loop", async () => {
+    const { c, popOutId } = await makePopulationModel(10);
+    const out = await c.data({});
+    const series = out[popOutId] as number[];
+    expect(series).toHaveLength(10);
+    expect(series[9]).toBeGreaterThan(series[0]);
+    expect(series[9]).toBeCloseTo(100 * Math.pow(1.1, 9), 5);
+  });
+
+  it("other run modes on the SAME cyclic composite get #CIRC!, not a hang", async () => {
+    const { c, popOutId } = await makePopulationModel(5);
+    c.runMode = "single";
+    const out = await c.data({});
+    const val = out[popOutId] as { code?: string } | null;
+    expect(val).not.toBeNull();
+    expect(val?.code).toBe("#CIRC!");
+  });
+
+  it("a composite with NO internal loop falls back to a plain single run", async () => {
+    const c = new CompositeNode({ runMode: "simulation", simulationSteps: 5 });
+    const add = new ArithmeticNode({ op: "add" });
+    add.literals = { a: 2, b: 3 };
+    const outMarker = new CompositeOutputNode({ label: "Sum" });
+    await c.internalEditor.addNode(add as unknown as Schemes["Node"]);
+    await c.internalEditor.addNode(outMarker as unknown as Schemes["Node"]);
+    await connect(c.internalEditor, add, "result", outMarker, "value");
+    const outId = c.addOutputPort({ label: "Sum", tier: "basic", internalNodeId: outMarker.id });
+
+    const out = await c.data({});
+    expect(out[outId]).toBe(5); // a scalar, not a 5-element array
+  });
+
+  it("simulationSteps round-trips through extractInit", async () => {
+    const { c } = await makePopulationModel(7);
+    const init = extractInit(c as unknown as ClassicPreset.Node);
+    expect(init.simulationSteps).toBe(7);
+    const clone = new CompositeNode(init as ConstructorParameters<typeof CompositeNode>[0]);
+    expect(clone.simulationSteps).toBe(7);
   });
 });

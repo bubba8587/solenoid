@@ -1,5 +1,5 @@
 import type { CompositeNode as CompositeNodeType, CompositeRunMode } from "../rete-nodes";
-import { InlineInputs } from "./inlineInput";
+import { InlineInputs, InlineNumberField } from "./inlineInput";
 import { NodeShell, ValueDisplay, OpSelect, useNodeField, type NodeProps, type OpOption } from "./nodeKit";
 import { MeasuredSocketRow } from "./NodeSocket";
 import type { DisplayValue } from "./valueDisplayFormat";
@@ -12,6 +12,7 @@ const RUN_MODE_OPTIONS: OpOption<CompositeRunMode>[] = [
   { value: "single", label: "Single run" },
   { value: "scenarios", label: "Scenarios" },
   { value: "data-table", label: "Data table" },
+  { value: "simulation", label: "Simulation" },
 ];
 
 /** "3.5" → 3.5; "" → undefined (clears the override, falls back to the port's
@@ -136,6 +137,21 @@ function DataTableEditor({ node }: { node: CompositeNodeType }) {
   );
 }
 
+// Simulation's only container-level parameter: how many feedback steps to
+// run. A loop-bound output collects one entry per step (the time series);
+// see nodes/composite.ts runSimulation for the algorithm.
+function SimulationEditor({ node }: { node: CompositeNodeType }) {
+  return (
+    <div style={{ marginTop: 6, display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 6, alignItems: "center" }}>
+      <span className="solenoid-node__io-label">Steps</span>
+      <InlineNumberField
+        value={node.simulationSteps}
+        onChange={(v) => { node.simulationSteps = v ?? 10; void processGraph(node.id); }}
+      />
+    </div>
+  );
+}
+
 // The Composite card: an editable title (NodeShell), one row per exposed
 // input (InlineInputs — reuses the generic input-row renderer off
 // node.inputs; every port socket is `any`, so a row is socket+label, or a
@@ -156,6 +172,7 @@ export function CompositeComponent({ data: node, emit }: NodeProps<CompositeNode
       )}
       {runMode === "scenarios" && <ScenarioTable node={node} />}
       {runMode === "data-table" && <DataTableEditor node={node} />}
+      {runMode === "simulation" && <SimulationEditor node={node} />}
       {node.outputPorts.map((p) => {
         const port = node.outputs[p.id];
         if (!port) return null;
