@@ -75,8 +75,10 @@ Round 7 = #43–49, Round 8 = #50–57, Round 9 = #58–63 (end of doc).
 #22 IN (no new node) · #23 DEFERRED · #24 IN (needs footer affordance) · #25–28 all OUT.
 Round 5 (#29–36, analyst's workbench + open ports) begun 2026-07-03: #29 OUT (model
 linter) · #30 IN (Problems panel — extend the Alerts/pins HudStack family, don't
-build a fourth standalone panel).
-NEXT when resuming: scope-features #31, then #32–63 in order (folding in
+build a fourth standalone panel) · #31 IN, scoped down — right-click a node →
+highlight its connected stream (existing `downstreamClosure` BFS in process.ts), not
+the full query-box/search-syntax version for v1.
+NEXT when resuming: scope-features #32, then #33–63 in order (folding in
 strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
