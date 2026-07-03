@@ -93,8 +93,10 @@ Round 5 (#29–36) fully walked: #29/#33/#36 OUT · #30/#31(scoped)/#32/#34 IN �
 #35 DEFERRED.
 Round 6 (#37–42, "the feel") begun 2026-07-03: #37 IN with conditions — Settings
 toggle (not forced-on), paired with a socket hit-target-size pass + a better
-drag/hover pointer icon.
-NEXT when resuming: scope-features #38, then #39–63 in order (folding in
+drag/hover pointer icon · #38 IN — triggers on Enter (not Ctrl+K), bottom-aligned
+non-persistent bar (AutoCAD-flavored), needs the same "ignored while typing"
+discipline as the single-key shortcuts.
+NEXT when resuming: scope-features #39, then #40–63 in order (folding in
 strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →

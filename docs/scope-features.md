@@ -1466,7 +1466,15 @@ connection plugin already reports the drop and the socket's type (`Canvas.tsx:21
 just resetting the drag flag); the menu and auto-wire are the work. **Highest
 ergonomics-per-effort item in the series.**
 
-## 38 — The command palette (Ctrl+K)
+## 38 — The command palette (Enter key, not Ctrl+K — see VERDICT)
+
+**VERDICT (author, 2026-07-03): IN.** UX: trigger is **Enter**, not Ctrl+K. Renders as
+a **bottom-aligned bar**, not a centered modal — and it's NOT persistent (appears on
+demand, closes after use), unlike AutoCAD's always-visible command line, though it
+takes visual/positional cues from that AutoCAD command-bar feel. (Implementation note:
+bare Enter needs the same "ignored while typing" discipline as the existing single-key
+graph shortcuts, so it doesn't hijack committing a text field via Enter.)
+
 One box for everything: add a node, run a command (tidy, calculate, snapshot), open a
 document, jump to a node by name, toggle a setting — each showing its shortcut inline so
 it *teaches* the keyboard as you use it. Modern-software table stakes; the Add menu's
