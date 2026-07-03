@@ -30,7 +30,7 @@ import type {
   DecisionDetail,
   SplitColType,
 } from "../rete-nodes";
-import type { FilterOp, JoinHow, AggOp, DecisionNormalize } from "../frameVerbs";
+import type { FilterOp, JoinHow, AsofDirection, AggOp, DecisionNormalize, LookupMatchMode } from "../frameVerbs";
 import { CubeDisplay } from "./CubeDisplay";
 import { parseFrameSource, frameSourceToText, type FrameSourceColumn } from "../frame";
 import { processGraph } from "../process";
@@ -149,14 +149,23 @@ const JOIN_HOW_OPTIONS: { value: JoinHow; label: string; title: string }[] = [
   { value: "left", label: "Left", title: "All left rows; unmatched right side is blank" },
   { value: "right", label: "Right", title: "All right rows; unmatched left side is blank" },
   { value: "outer", label: "Outer", title: "All rows from both sides" },
+  { value: "asof", label: "As-of", title: "Nearest match on a sorted number/date key (no exact match required)" },
+];
+
+const ASOF_DIRECTION_OPTIONS: { value: AsofDirection; label: string; title: string }[] = [
+  { value: "backward", label: "≤", title: "Latest right key at or before the left key" },
+  { value: "forward", label: "≥", title: "Earliest right key at or after the left key" },
+  { value: "nearest", label: "≈", title: "Whichever right key is closest" },
 ];
 
 export function JoinComponent({ data, emit }: NodeProps<JoinNodeType>) {
   const [how, setHow] = useNodeField(data, "how");
+  const [asofDirection, setAsofDirection] = useNodeField(data, "asofDirection");
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
       <SegToggle value={how} options={JOIN_HOW_OPTIONS} onChange={setHow} />
+      {how === "asof" && <SegToggle value={asofDirection} options={ASOF_DIRECTION_OPTIONS} onChange={setAsofDirection} />}
       <FrameDisplay frame={data.cachedResult} label={data.label} />
     </NodeShell>
   );
@@ -534,10 +543,18 @@ export function GetRowComponent({ data, emit }: NodeProps<GetRowNodeType>) {
 
 // ─── FRAME LOOKUP ────────────────────────────────────────────────────────────────
 
+const LOOKUP_MATCH_OPTIONS: { value: LookupMatchMode; label: string; title: string }[] = [
+  { value: "exact", label: "Exact", title: "Only an equal cell matches" },
+  { value: "nextSmaller", label: "≤", title: "Exact match, else the closest smaller number/date" },
+  { value: "nextLarger", label: "≥", title: "Exact match, else the closest larger number/date" },
+];
+
 export function FrameLookupComponent({ data, emit }: NodeProps<FrameLookupNodeType>) {
+  const [matchMode, setMatchMode] = useNodeField(data, "matchMode");
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
+      <SegToggle value={matchMode} options={LOOKUP_MATCH_OPTIONS} onChange={setMatchMode} />
       <ValueDisplay value={data.cachedResult} />
     </NodeShell>
   );

@@ -348,8 +348,15 @@ export function addIndexColumn(f: FrameValue, name: string, start: number): Fram
 }
 
 // ─── Join (binary) ─────────────────────────────────────────────────────────────
-export type JoinHow = "inner" | "left" | "right" | "outer";
-export interface JoinOpts { leftKey: string; rightKey: string; how: JoinHow; }
+export type JoinHow = "inner" | "left" | "right" | "outer" | "asof";
+// backward = latest right key ≤ left key (Polars' default strategy); forward =
+// earliest right key ≥ left key; nearest = whichever is closer (ties → backward).
+export type AsofDirection = "backward" | "forward" | "nearest";
+export interface JoinOpts {
+  leftKey: string; rightKey: string; how: JoinHow;
+  asofDirection?: AsofDirection; // only read when how === "asof"; default "backward"
+  asofTolerance?: number;        // max |left-right| key distance; unset = unlimited
+}
 
 const encKey = (v: FrameCell): string => JSON.stringify(encodeCell(v));
 
@@ -370,46 +377,23 @@ function keyIndex(col: FrameColumn, n: number): Map<string, number[]> {
   return idx;
 }
 
-/** Join two frames on a key. Output = LEFT columns (key coalesced from whichever
- *  side is present) + RIGHT non-key columns, colliding names de-duped. A left row
- *  matching several right rows FANS OUT to several output rows. inner = matches
- *  only; left/right keep all rows of that side (other side null); outer keeps all
- *  of both. The unmatched side's cells are `null`. */
-export function joinFrames(left: FrameValue, right: FrameValue, opts: JoinOpts): FrameValue {
-  const lk = requireColumn(left, opts.leftKey);
-  const rk = requireColumn(right, opts.rightKey);
-  const ln = frameRowCount(left), rn = frameRowCount(right);
-
-  // pairs of [leftRow | null, rightRow | null], in output order.
-  const pairs: [number | null, number | null][] = [];
-  if (opts.how === "right") {
-    const lIdx = keyIndex(lk, ln);
-    for (let j = 0; j < rn; j++) {
-      const ms = lIdx.get(encKey(cellAt(rk, j))) ?? [];
-      if (ms.length) for (const i of ms) pairs.push([i, j]);
-      else pairs.push([null, j]);
-    }
-  } else {
-    const rIdx = keyIndex(rk, rn);
-    const matchedRight = new Set<number>();
-    for (let i = 0; i < ln; i++) {
-      const ms = rIdx.get(encKey(cellAt(lk, i))) ?? [];
-      if (ms.length) for (const j of ms) { pairs.push([i, j]); matchedRight.add(j); }
-      else if (opts.how === "left" || opts.how === "outer") pairs.push([i, null]);
-    }
-    if (opts.how === "outer") {
-      for (let j = 0; j < rn; j++) if (!matchedRight.has(j)) pairs.push([null, j]);
-    }
-  }
-
-  const rightNonKey = right.columns.filter((c) => c.name !== opts.rightKey);
+/** Build the oracle's join OUTPUT layout from resolved `pairs` — LEFT columns
+ *  (key coalesced from whichever side is present) + RIGHT non-key columns,
+ *  colliding names de-duped. Shared by every `how` (asof included): each `how`
+ *  only differs in HOW `pairs` is resolved. */
+function assembleJoinOutput(
+  left: FrameValue, right: FrameValue, leftKey: string, rightKey: string,
+  pairs: readonly [number | null, number | null][],
+): FrameValue {
+  const rk = requireColumn(right, rightKey);
+  const rightNonKey = right.columns.filter((c) => c.name !== rightKey);
   const names = makeHeaders(
     [...left.columns.map((c) => c.name), ...rightNonKey.map((c) => c.name)],
     left.columns.length + rightNonKey.length,
   );
   const out: FrameColumn[] = [];
   left.columns.forEach((c, ci) => {
-    const isKey = c.name === opts.leftKey;
+    const isKey = c.name === leftKey;
     out.push({
       name: names[ci], type: c.type,
       values: pairs.map(([l, r]) =>
@@ -425,6 +409,114 @@ export function joinFrames(left: FrameValue, right: FrameValue, opts: JoinOpts):
     });
   });
   return frame(out);
+}
+
+function isOrderableKey(type: FrameColType): boolean {
+  return type === "number" || type === "date";
+}
+
+/** Binary-search `sortedRight` (ascending by key, ties in original-index order)
+ *  for the row that asof-matches `key` under `direction`; returns its original
+ *  row index, or `null` when there's no candidate or it's beyond `tolerance`. */
+function asofNearest(
+  sortedRight: readonly { key: number; idx: number }[], key: number,
+  direction: AsofDirection, tolerance: number | undefined,
+): number | null {
+  const n = sortedRight.length;
+  if (n === 0) return null;
+  // upperBound = first index with key > target; backward candidate = upperBound-1
+  // (the LAST entry with key ≤ target, correct even with duplicate keys).
+  let lo = 0, hi = n;
+  while (lo < hi) { const mid = (lo + hi) >> 1; if (sortedRight[mid].key <= key) lo = mid + 1; else hi = mid; }
+  const backward = lo - 1;
+  // lowerBound = first index with key >= target = the forward candidate.
+  let lo2 = 0, hi2 = n;
+  while (lo2 < hi2) { const mid = (lo2 + hi2) >> 1; if (sortedRight[mid].key < key) lo2 = mid + 1; else hi2 = mid; }
+  const forward = lo2 < n ? lo2 : -1;
+
+  let pick: number;
+  if (direction === "backward") pick = backward;
+  else if (direction === "forward") pick = forward;
+  else if (backward === -1) pick = forward; // nearest, only one side available
+  else if (forward === -1) pick = backward;
+  else {
+    const db = key - sortedRight[backward].key, df = sortedRight[forward].key - key;
+    pick = df < db ? forward : backward; // tie → backward
+  }
+  if (pick === -1) return null;
+  if (tolerance !== undefined && Math.abs(sortedRight[pick].key - key) > tolerance) return null;
+  return sortedRight[pick].idx;
+}
+
+/** As-of join: match each LEFT row (kept in ORIGINAL order — asof is always a
+ *  left-driving match, never fans out) to the nearest RIGHT row by key, per
+ *  `opts.asofDirection`/`asofTolerance`. Requires an orderable (number/date) key
+ *  on both sides; a `null`/error key row never matches — same rule as an
+ *  equality join. Mirrors Polars' `join_asof` (backward is its default). */
+function asofPairs(
+  left: FrameValue, lk: FrameColumn, right: FrameValue, rk: FrameColumn, opts: JoinOpts,
+): [number | null, number | null][] {
+  if (!isOrderableKey(lk.type) || !isOrderableKey(rk.type)) {
+    throw solError("#VALUE!", "As-of join requires a numeric or date key");
+  }
+  const rn = frameRowCount(right);
+  const sortedRight: { key: number; idx: number }[] = [];
+  for (let j = 0; j < rn; j++) {
+    const cell = cellAt(rk, j);
+    if (cell === null || isSolError(cell)) continue;
+    sortedRight.push({ key: Number(cell), idx: j });
+  }
+  sortedRight.sort((a, b) => a.key - b.key || a.idx - b.idx);
+  const direction = opts.asofDirection ?? "backward";
+
+  const ln = frameRowCount(left);
+  const pairs: [number | null, number | null][] = [];
+  for (let i = 0; i < ln; i++) {
+    const cell = cellAt(lk, i);
+    if (cell === null || isSolError(cell)) { pairs.push([i, null]); continue; }
+    pairs.push([i, asofNearest(sortedRight, Number(cell), direction, opts.asofTolerance)]);
+  }
+  return pairs;
+}
+
+/** Join two frames on a key. Output = LEFT columns (key coalesced from whichever
+ *  side is present) + RIGHT non-key columns, colliding names de-duped. A left row
+ *  matching several right rows FANS OUT to several output rows. inner = matches
+ *  only; left/right keep all rows of that side (other side null); outer keeps all
+ *  of both; asof = nearest-match (see `asofPairs`). The unmatched side's cells
+ *  are `null`. */
+export function joinFrames(left: FrameValue, right: FrameValue, opts: JoinOpts): FrameValue {
+  const lk = requireColumn(left, opts.leftKey);
+  const rk = requireColumn(right, opts.rightKey);
+  const ln = frameRowCount(left), rn = frameRowCount(right);
+
+  // pairs of [leftRow | null, rightRow | null], in output order.
+  let pairs: [number | null, number | null][];
+  if (opts.how === "asof") {
+    pairs = asofPairs(left, lk, right, rk, opts);
+  } else if (opts.how === "right") {
+    pairs = [];
+    const lIdx = keyIndex(lk, ln);
+    for (let j = 0; j < rn; j++) {
+      const ms = lIdx.get(encKey(cellAt(rk, j))) ?? [];
+      if (ms.length) for (const i of ms) pairs.push([i, j]);
+      else pairs.push([null, j]);
+    }
+  } else {
+    pairs = [];
+    const rIdx = keyIndex(rk, rn);
+    const matchedRight = new Set<number>();
+    for (let i = 0; i < ln; i++) {
+      const ms = rIdx.get(encKey(cellAt(lk, i))) ?? [];
+      if (ms.length) for (const j of ms) { pairs.push([i, j]); matchedRight.add(j); }
+      else if (opts.how === "left" || opts.how === "outer") pairs.push([i, null]);
+    }
+    if (opts.how === "outer") {
+      for (let j = 0; j < rn; j++) if (!matchedRight.has(j)) pairs.push([null, j]);
+    }
+  }
+
+  return assembleJoinOutput(left, right, opts.leftKey, opts.rightKey, pairs);
 }
 
 // ─── Reshape: pivot / unpivot ──────────────────────────────────────────────────
@@ -798,24 +890,51 @@ function keyMatches(cell: FrameCell, lookup: string, type: FrameColType): boolea
   return Number(cell) === Number(lookup); // number
 }
 
+/** XLOOKUP's `match_mode`: "exact" (default) requires an equal cell; "nextSmaller"/
+ *  "nextLarger" fall back to the closest ≤/≥ row ONLY when no exact match exists
+ *  (Excel's match_mode -1/1) — an exact hit always wins first. Approximate modes
+ *  require an orderable (number/date) key column. */
+export type LookupMatchMode = "exact" | "nextSmaller" | "nextLarger";
+
 /** XLOOKUP over a Frame: the FIRST row whose `lookupColumn` cell equals `lookup`
  *  (type-aware via keyMatches), returning that row's `returnColumn` cell.
  *  `undefined` when no row matches (the node turns that into If-not-found / #N/A);
  *  a missing column is a #REF! (thrown, surfaced by the caller's guard). A `null`
- *  or error key cell never matches — same rule as a join key. Exact match only for
- *  now (approximate / next-smaller-larger over a frame column is a follow-up). */
+ *  or error key cell never matches — same rule as a join key. `matchMode` (default
+ *  "exact") opts into an approximate fallback — see `LookupMatchMode`. */
 export function lookupFrameCell(
   f: FrameValue, lookupColumn: string, returnColumn: string, lookup: string,
+  matchMode: LookupMatchMode = "exact",
 ): FrameCell | undefined {
   const key = requireColumn(f, lookupColumn);
   const ret = requireColumn(f, returnColumn);
   const n = frameRowCount(f);
+  if (matchMode === "exact") {
+    for (let i = 0; i < n; i++) {
+      const cell = cellAt(key, i);
+      if (cell === null || isSolError(cell)) continue;
+      if (keyMatches(cell, lookup, key.type)) return cellAt(ret, i);
+    }
+    return undefined;
+  }
+  if (!isOrderableKey(key.type)) {
+    throw solError("#VALUE!", "Approximate lookup requires a numeric or date column");
+  }
+  const t = lookup.trim();
+  const target = key.type === "date"
+    ? (/^-?\d+(\.\d+)?$/.test(t) ? Number(t) : parseDateToSerial(t))
+    : Number(t);
+  if (!Number.isFinite(target)) return undefined;
+  let bestIdx = -1, bestKey = NaN;
   for (let i = 0; i < n; i++) {
     const cell = cellAt(key, i);
     if (cell === null || isSolError(cell)) continue;
-    if (keyMatches(cell, lookup, key.type)) return cellAt(ret, i);
+    const k = Number(cell);
+    if (k === target) return cellAt(ret, i); // exact match always wins, first-seen
+    if (matchMode === "nextSmaller" && k < target && (bestIdx === -1 || k > bestKey)) { bestIdx = i; bestKey = k; }
+    if (matchMode === "nextLarger" && k > target && (bestIdx === -1 || k < bestKey)) { bestIdx = i; bestKey = k; }
   }
-  return undefined;
+  return bestIdx === -1 ? undefined : cellAt(ret, bestIdx);
 }
 
 // ─── Append / Union (n-ary) ────────────────────────────────────────────────────

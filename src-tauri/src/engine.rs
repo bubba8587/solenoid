@@ -421,13 +421,18 @@ pub enum WireOp {
 // pre-PIVOTBY single-field Pivot variant lived here, incompatible with the JS
 // FrameOp shape — deleted rather than kept wrong (audit finding 34).
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
 pub struct WireJoinOpts {
     #[serde(rename = "leftKey")]
     left_key: String,
     #[serde(rename = "rightKey")]
     right_key: String,
     how: String,
+    // Only read when how == "asof" (mirrors the oracle's JoinOpts, frameVerbs.ts).
+    #[serde(rename = "asofDirection", default)]
+    asof_direction: Option<String>,
+    #[serde(rename = "asofTolerance", default)]
+    asof_tolerance: Option<f64>,
 }
 
 // ─── source ─────────────────────────────────────────────────────────────────────
@@ -888,9 +893,66 @@ fn verb_unpivot(
 
 
 // ─── join (Polars, with key-coalesce; oracle column layout) ─────────────────────
+
+/// Assemble the oracle's join OUTPUT layout — LEFT columns (key coalesced from
+/// the RIGHT side only when `coalesce_from_right`, i.e. a right join's unmatched
+/// left) + RIGHT non-key columns, names de-duped via `make_headers` — by looking
+/// each column up BY NAME in Polars' `joined` result. Shared by the equi-join and
+/// the as-of join: Polars emits the joined columns in a how/API-DEPENDENT order
+/// and naming (a right join puts the coalesced key, named after the RIGHT key,
+/// after the left non-key columns; a colliding right column gains a "_right"
+/// suffix) — a positional rename put values under the wrong headers (audit
+/// finding 4, right joins), so every column is selected by name, then renamed.
+fn assemble_join_layout(
+    left: &SolFrame,
+    right: &SolFrame,
+    opts: &WireJoinOpts,
+    joined: &DataFrame,
+    coalesce_from_right: bool,
+) -> Result<SolFrame, IpcError> {
+    let left_names = left.names();
+    let mut right_nonkey_names: Vec<String> = Vec::new();
+    let mut right_nonkey_types: Vec<SolType> = Vec::new();
+    for (i, n) in right.names().iter().enumerate() {
+        if n != &opts.right_key {
+            right_nonkey_names.push(n.clone());
+            right_nonkey_types.push(right.types[i]);
+        }
+    }
+    let mut proposed = left_names.clone();
+    proposed.extend(right_nonkey_names.iter().cloned());
+    let final_names = make_headers(&proposed, proposed.len());
+    let mut final_types = left.types.clone();
+    final_types.extend(right_nonkey_types.iter().cloned());
+
+    let left_name_set: HashSet<&String> = left_names.iter().collect();
+    let mut joined_names: Vec<String> = Vec::with_capacity(final_names.len());
+    for n in &left_names {
+        joined_names.push(if coalesce_from_right && n == &opts.left_key { opts.right_key.clone() } else { n.clone() });
+    }
+    for n in &right_nonkey_names {
+        joined_names.push(if left_name_set.contains(n) { format!("{n}_right") } else { n.clone() });
+    }
+
+    let mut out_cols: Vec<Column> = Vec::with_capacity(joined_names.len());
+    for (i, jn) in joined_names.iter().enumerate() {
+        let c = joined
+            .column(jn.as_str())
+            .map_err(|e| IpcError::internal(format!("join column \"{jn}\" missing: {e}")))?;
+        let mut nc = c.clone();
+        nc.rename(final_names[i].as_str().into());
+        out_cols.push(nc);
+    }
+    let df = DataFrame::new(out_cols).map_err(|e| IpcError::internal(format!("join rebuild failed: {e}")))?;
+    Ok(SolFrame { df, types: final_types })
+}
+
 fn verb_join(left: &SolFrame, right: &SolFrame, opts: &WireJoinOpts) -> Result<SolFrame, IpcError> {
     require_columns(left, std::slice::from_ref(&opts.left_key))?;
     require_columns(right, std::slice::from_ref(&opts.right_key))?;
+    if opts.how.as_str() == "asof" {
+        return verb_join_asof(left, right, opts);
+    }
     let how = match opts.how.as_str() {
         "inner" => JoinType::Inner,
         "left" => JoinType::Left,
@@ -914,58 +976,59 @@ fn verb_join(left: &SolFrame, right: &SolFrame, opts: &WireJoinOpts) -> Result<S
         args,
     ))?;
 
-    // The oracle's output layout: LEFT columns (key coalesced, in place) + RIGHT
-    // non-key columns, names de-duped via makeHeaders. Polars emits the joined
-    // columns in a how-DEPENDENT order and naming — a right join puts the
-    // coalesced key (named after the RIGHT key) after the left non-key columns,
-    // and a colliding right column gains a "_right" suffix — so a positional
-    // rename put values under the wrong headers (audit finding 4, right joins).
-    // Select each joined column BY NAME into the oracle's layout, then rename.
-    let left_names = left.names();
-    let mut right_nonkey_names: Vec<String> = Vec::new();
-    let mut right_nonkey_types: Vec<SolType> = Vec::new();
-    for (i, n) in right.names().iter().enumerate() {
-        if n != &opts.right_key {
-            right_nonkey_names.push(n.clone());
-            right_nonkey_types.push(right.types[i]);
-        }
-    }
-    let mut proposed = left_names.clone();
-    proposed.extend(right_nonkey_names.iter().cloned());
-    let final_names = make_headers(&proposed, proposed.len());
-    let mut final_types = left.types.clone();
-    final_types.extend(right_nonkey_types.iter().cloned());
+    assemble_join_layout(left, right, opts, &joined, is_right)
+}
 
-    // The joined frame's name for each output position.
-    let left_name_set: HashSet<&String> = left_names.iter().collect();
-    let mut joined_names: Vec<String> = Vec::with_capacity(final_names.len());
-    for n in &left_names {
-        // On a right join with coalesce the key column carries the RIGHT key's name.
-        joined_names.push(if is_right && n == &opts.left_key { opts.right_key.clone() } else { n.clone() });
+// ─── as-of join (Polars join_asof — nearest match on a sorted number/date key) ──
+/// Every LEFT row is kept, matched to the nearest RIGHT row by key (never fans
+/// out) — mirrors the oracle's `asofPairs` (frameVerbs.ts). `join_asof` requires
+/// BOTH sides sorted ascending by the key, and its result follows the SORTED left
+/// order, not the caller's — a row-index column restores the original order.
+fn verb_join_asof(left: &SolFrame, right: &SolFrame, opts: &WireJoinOpts) -> Result<SolFrame, IpcError> {
+    let lt = left.type_of(&opts.left_key).unwrap_or(SolType::Number);
+    let rt = right.type_of(&opts.right_key).unwrap_or(SolType::Number);
+    if !matches!(lt, SolType::Number | SolType::Date) || !matches!(rt, SolType::Number | SolType::Date) {
+        return Err(IpcError::new("#VALUE!", "as-of join requires a numeric or date key".to_string()));
     }
-    for n in &right_nonkey_names {
-        joined_names.push(if left_name_set.contains(n) { format!("{n}_right") } else { n.clone() });
-    }
+    let strategy = match opts.asof_direction.as_deref().unwrap_or("backward") {
+        "forward" => AsofStrategy::Forward,
+        "nearest" => AsofStrategy::Nearest,
+        _ => AsofStrategy::Backward,
+    };
+    let asof_opts = AsOfOptions {
+        strategy,
+        tolerance: opts.asof_tolerance.map(AnyValue::Float64),
+        ..Default::default()
+    };
 
-    let cols = joined.get_columns();
-    if cols.len() != joined_names.len() {
-        return Err(IpcError::internal(format!(
-            "join produced {} columns, expected {}",
-            cols.len(),
-            joined_names.len()
-        )));
-    }
-    let mut out_cols: Vec<Column> = Vec::with_capacity(joined_names.len());
-    for (i, jn) in joined_names.iter().enumerate() {
-        let c = joined
-            .column(jn.as_str())
-            .map_err(|e| IpcError::internal(format!("join column \"{jn}\" missing: {e}")))?;
-        let mut nc = c.clone();
-        nc.rename(final_names[i].as_str().into());
-        out_cols.push(nc);
-    }
-    let df = DataFrame::new(out_cols).map_err(|e| IpcError::internal(format!("join rebuild failed: {e}")))?;
-    Ok(SolFrame { df, types: final_types })
+    const IDX: &str = "__solenoid_asof_idx__";
+    let left_sorted = left
+        .df
+        .clone()
+        .lazy()
+        .with_row_index(IDX, None)
+        .sort_by_exprs(vec![col(opts.left_key.as_str())], SortMultipleOptions::default().with_nulls_last(true));
+    let right_sorted = right
+        .df
+        .clone()
+        .lazy()
+        .sort_by_exprs(vec![col(opts.right_key.as_str())], SortMultipleOptions::default().with_nulls_last(true));
+
+    let joined = collect_lazy(
+        left_sorted
+            .join_builder()
+            .with(right_sorted)
+            .left_on(vec![col(opts.left_key.as_str())])
+            .right_on(vec![col(opts.right_key.as_str())])
+            .how(JoinType::AsOf(asof_opts))
+            .finish()
+            .sort_by_exprs(vec![col(IDX)], SortMultipleOptions::default()),
+    )?;
+    let joined = joined
+        .drop(IDX)
+        .map_err(|e| IpcError::internal(format!("asof join index drop failed: {e}")))?;
+
+    assemble_join_layout(left, right, opts, &joined, false)
 }
 
 // ─── append / union by name (manual) ────────────────────────────────────────────

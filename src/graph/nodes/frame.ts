@@ -13,7 +13,7 @@ import {
   pivotFrame, nestFrame, unnestCube,
   splitColumn, addIndexColumn, decisionMatrix, decisionCriteria, decisionSensitivity,
   lookupFrameCell,
-  type FilterOp, type JoinHow, type AggOp, type DecisionNormalize,
+  type FilterOp, type JoinHow, type AsofDirection, type AggOp, type DecisionNormalize, type LookupMatchMode,
 } from "../frameVerbs";
 import type { PivotSpec } from "../frameVerbs";
 import { runFrameUnary, runFrameJoin, runFrameAppend, readFrame, collectPreview, dropFrameRef, isFrameRef, frameBackend, materialize, type FrameInput, type FrameRef } from "../frameBackend";
@@ -222,34 +222,48 @@ export class FilterFrameNode extends ClassicPreset.Node {
 
 // ─── JOIN ──────────────────────────────────────────────────────────────────────
 // Relational join of two Frames on a key (verb: joinFrames). inner/left/right/
-// outer via the `how` SegToggle; a left row matching several right rows fans out.
-// Right key defaults to the left key's name (the common same-name case).
+// outer/asof via the `how` SegToggle; a left row matching several right rows
+// fans out (asof never fans out — one match per left row). Right key defaults
+// to the left key's name (the common same-name case). `asofDirection`/
+// `asofTolerance` are read only when how === "asof" (an orderable number/date
+// key); Tolerance blank = unlimited.
 
 export class JoinNode extends ClassicPreset.Node {
   label: string;
   how: JoinHow;
+  asofDirection: AsofDirection;
   cachedResult: FrameValue | SolError | null = null;
   stringLiterals: Record<string, string> = { leftKey: "", rightKey: "" };
-  width = 210; height = 235;
+  literals: Record<string, number> = {};
+  width = 210; height = 290;
 
-  constructor(init?: { label?: string; how?: JoinHow }) {
+  constructor(init?: { label?: string; how?: JoinHow; asofDirection?: AsofDirection }) {
     super("Join");
     this.label = init?.label ?? "Join";
     this.how = init?.how ?? "inner";
+    this.asofDirection = init?.asofDirection ?? "backward";
     this.addInput("left", frameIn("Left"));
     this.addInput("right", frameIn("Right"));
     this.addInput("leftKey", strIn("Left key"));
     this.addInput("rightKey", strIn("Right key"));
+    this.addInput("tolerance", numIn("Tolerance"));
     this.addOutput("frame", frameOut("Joined"));
   }
 
-  async data(inputs: { left?: (FrameInput | null)[]; right?: (FrameInput | null)[]; leftKey?: string[]; rightKey?: string[] }) {
+  async data(inputs: {
+    left?: (FrameInput | null)[]; right?: (FrameInput | null)[];
+    leftKey?: string[]; rightKey?: string[]; tolerance?: number[];
+  }) {
     const left = inputs.left?.[0] ?? null;
     const right = inputs.right?.[0] ?? null;
     const lk = (inputs.leftKey?.[0] ?? this.stringLiterals.leftKey ?? "").trim();
     const rk = (inputs.rightKey?.[0] ?? this.stringLiterals.rightKey ?? "").trim() || lk;
+    const tolerance = inputs.tolerance?.[0] ?? this.literals.tolerance;
     if (left == null || right == null || lk === "") return emitFrame(this, beginPass(this), null);
-    return emitFrame(this, beginPass(this), await runFrameJoin(left, right, { leftKey: lk, rightKey: rk, how: this.how }));
+    return emitFrame(this, beginPass(this), await runFrameJoin(left, right, {
+      leftKey: lk, rightKey: rk, how: this.how,
+      asofDirection: this.asofDirection, asofTolerance: tolerance,
+    }));
   }
 }
 
@@ -1058,25 +1072,29 @@ export class GetRowNode extends ClassicPreset.Node {
 }
 
 // ─── FRAME LOOKUP (XLOOKUP / VLOOKUP over a table) ──────────────────────────────
-// Find the first row whose "In column" cell equals the Lookup value, and return
-// that row's "Return" cell — the single-cell relational lookup (where Join fans
-// out the whole matching rows). Output is `any` because the returned cell's type
+// Find the row whose "In column" cell equals the Lookup value, and return that
+// row's "Return" cell — the single-cell relational lookup (where Join fans out
+// the whole matching rows). Output is `any` because the returned cell's type
 // depends on the return column (number / text / date-serial / logical); the value
 // flows on the `any` socket and can be Cast or Displayed downstream. A miss falls
-// back to If-not-found (numeric-looking text → a number), else #N/A. Exact match
-// for v1; approximate match + a typed read-as output are the follow-ups. (Verb:
-// lookupFrameCell. Materialization-boundary op, so it stays eager JS like Get
-// Column — the frame input is already a materialized value on the cable.)
+// back to If-not-found (numeric-looking text → a number), else #N/A. `matchMode`
+// (SegToggle: Exact / ≤ next smaller / ≥ next larger — Excel's XLOOKUP match_mode
+// 0/-1/1) opts into an approximate fallback on a numeric/date column; an exact
+// hit always wins first. (Verb: lookupFrameCell. Materialization-boundary op, so
+// it stays eager JS like Get Column — the frame input is already a materialized
+// value on the cable.)
 
 export class FrameLookupNode extends ClassicPreset.Node {
   label: string;
+  matchMode: LookupMatchMode;
   cachedResult: FrameCell | null = null;
   stringLiterals: Record<string, string> = { lookup: "", inColumn: "", returnColumn: "", ifNotFound: "" };
-  width = 200; height = 285;
+  width = 200; height = 315;
 
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; matchMode?: LookupMatchMode }) {
     super("FrameLookup");
     this.label = init?.label ?? "Frame Lookup";
+    this.matchMode = init?.matchMode ?? "exact";
     this.addInput("frame", frameIn("Frame"));
     this.addInput("lookup", strIn("Lookup"));
     this.addInput("inColumn", strIn("In column"));
@@ -1096,7 +1114,7 @@ export class FrameLookupNode extends ClassicPreset.Node {
     const fallbackRaw = inputs.ifNotFound?.[0] ?? this.stringLiterals.ifNotFound ?? "";
     if (!f || inCol === "" || retCol === "" || lookup === "") { this.cachedResult = null; return { value: null }; }
     const result = runVerb<FrameCell>(() => {
-      const cell = lookupFrameCell(f, inCol, retCol, lookup);
+      const cell = lookupFrameCell(f, inCol, retCol, lookup, this.matchMode);
       if (cell !== undefined) return cell;
       const fb = fallbackRaw.trim();
       if (fb === "") return solError("#N/A", "No row matched the lookup value");
