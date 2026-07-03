@@ -7,6 +7,7 @@ import { getEditor } from "../process";
 import { nodeTypeName } from "../nodeNames";
 import { errorTip } from "./ErrorChip";
 import { solError } from "../errorValue";
+import { insertClampBefore } from "../modelFuzz";
 import "./problemsPanel.css";
 import { CloseIcon } from "./CloseIcon";
 
@@ -86,6 +87,16 @@ export function ProblemsPanel() {
       >
         <span className="solenoid-problem__code">{e.code}</span>
         <span className="solenoid-problem__label">{label}</span>
+        {e.suggestion && (
+          <button
+            type="button"
+            className="solenoid-problem__fix"
+            title={`Insert a Clamp node on "${e.suggestion.label}" to keep it in range`}
+            onClick={(ev) => { ev.stopPropagation(); void insertClampBefore(e.nodeId, e.suggestion!.socketKey); }}
+          >
+            + Clamp
+          </button>
+        )}
         <button
           type="button"
           className="solenoid-problem__remove"
