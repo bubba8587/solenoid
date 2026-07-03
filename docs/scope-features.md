@@ -1729,6 +1729,12 @@ flagged. The per-doc palette already persists; this scopes a brand override to t
 presentation projections.
 
 ## 53 — Shared definitions: define once, use everywhere
+
+**VERDICT (author, 2026-07-03): OUT.** No linked-definitions-document mechanism. The
+preferred path for shared constants is a **pack shipping a custom Constants node**
+(fits #5's already-decided distribution story: packs are the sole channel for
+reusable stuff, no cross-document linking/sharing layer in the app itself).
+
 The same constants and mini-models get re-created in every document — the discount rate,
 the fiscal calendar, the region→territory map, the standard unit set — and they drift
 ("which rate did *that* model use?"). A **shared library** a document references: canonical
