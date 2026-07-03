@@ -74,7 +74,15 @@ export function FrameChip({ value, label, size = "md", accent, onSave, source, o
       onClick={async (e) => {
         e.stopPropagation();
         const cs = getComputedStyle(e.currentTarget);
-        const popupAccent = accent || cs.getPropertyValue("--node-accent").trim() || undefined;
+        // Header accent: an explicit prop, else the host node's accent, else the
+        // frame TYPE colour (violet). The last fallback is what themes the popup
+        // when a chip is opened somewhere with no node context — e.g. inline in a
+        // Report — so it gets the standard coloured header instead of a bare one.
+        const popupAccent =
+          accent ||
+          cs.getPropertyValue("--node-accent").trim() ||
+          cs.getPropertyValue("--sock-frame").trim() ||
+          undefined;
         const groupColor = cs.getPropertyValue("--group-color").trim();
         const groupColorDark = cs.getPropertyValue("--group-color-dark").trim();
         // Literal-source editor (Frame Input): seed from the RAW cells the user typed,

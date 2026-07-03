@@ -9,7 +9,7 @@ import { formatScalar } from "./format";
 import katex from "katex";
 import "katex/dist/katex.min.css";
 import { isFrameValue, isCubeValue } from "../frame";
-import { isChartValue } from "../chartValue";
+import { isChartValue, type ChartValue } from "../chartValue";
 import { isMermaidValue } from "../mermaidValue";
 import { MermaidView } from "./MermaidView";
 import { isLambdaValue, type LambdaValue } from "../nodes/lambda";
@@ -113,23 +113,43 @@ function LambdaFormula({ value }: { value: LambdaValue }) {
   return <span className="solenoid-ref-figure solenoid-ref-formula" dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
+/** A wired chart rendered inline: sized to its CONTAINER (the report's content
+ *  width, inside its side padding), never a fixed pixel width — a fixed 360px
+ *  chart overflowed a narrow/mobile report by a few px and scrolled sideways for
+ *  no reason. Capped so it doesn't stretch comically wide on a big report. */
+function ChartFigure({ value }: { value: ChartValue }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [w, setW] = useState(0);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => setW(el.clientWidth);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const series = toSeries(value.values);
+  const width = Math.min(w, 640); // never exceed the container; cap so it stays legible
+  return (
+    <span className="solenoid-ref-figure" ref={ref}>
+      {value.title && <span className="solenoid-ref-figure__title">{value.title}</span>}
+      {series.length === 0
+        ? <span className="solenoid-ref-inline solenoid-ref-inline--empty">—</span>
+        : width > 0
+          ? <ChartView op={value.op} series={series} width={width} height={200} axes opts={value.options} />
+          : null}
+    </span>
+  );
+}
+
 export function InlineRefValue({ nodeId, refKey }: { nodeId: string; refKey: string }) {
   const editor = getEditor();
   const node = editor?.getNode(nodeId) as unknown as RefValueHost | undefined;
   const value = node?.refValue(refKey);
   const ann = useRefAnnotation(nodeId, refKey);
 
-  if (isChartValue(value)) {
-    const series = toSeries(value.values);
-    return (
-      <span className="solenoid-ref-figure">
-        {value.title && <span className="solenoid-ref-figure__title">{value.title}</span>}
-        {series.length === 0
-          ? <span className="solenoid-ref-inline solenoid-ref-inline--empty">—</span>
-          : <ChartView op={value.op} series={series} width={360} height={200} axes opts={value.options} />}
-      </span>
-    );
-  }
+  if (isChartValue(value)) return <ChartFigure value={value} />;
   if (isMermaidValue(value)) {
     return (
       <span className="solenoid-ref-figure">
