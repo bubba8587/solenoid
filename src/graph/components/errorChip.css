@@ -15,3 +15,8 @@
   letter-spacing: 0.04em;
   white-space: nowrap;
 }
+
+/* Set only when the error carries an origin — clicking flies to that node. */
+.sol-error-chip--clickable {
+  cursor: pointer;
+}
