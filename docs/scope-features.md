@@ -1286,6 +1286,11 @@ inference (Bet 3) but a duck-typed version works today.
 
 ## 32 — The Reconcile node: explain the difference between two tables
 
+**VERDICT (author, 2026-07-03): IN.** Doesn't actually need snapshots (#6) as a
+prerequisite the way the "enabled by" note below implies: the two inputs are commonly
+just two Filter nodes off ONE shared live source ("month = Jan" / "month = Feb"), not
+two separately-pasted/imported snapshots. Buildable now, independent of #6 landing.
+
 **The problem:** the most universal analyst ritual that has no tool: two versions of
 "the same" numbers — last month vs this month, source system vs report, my total vs
 yours — and hours of manual VLOOKUP archaeology to answer *what changed and why*.
