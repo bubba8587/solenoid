@@ -8,6 +8,7 @@ import { captureCanvasImage, captureChartSvgs } from "./canvasCapture";
 import { saveHtmlFileDialog, isDesktop } from "./fileBridge";
 import { pushNotice } from "./noticeStore";
 import { reportPaletteStore } from "./palette";
+import { EMBED_RE } from "./reportEmbeds";
 
 // ─── Static HTML export (bundle 13 #47) ────────────────────────────────────────
 // "Export as webpage": freezes a Report into ONE self-contained .html file — the
@@ -115,15 +116,32 @@ export function buildReportExportHtml(
   const names = nodeDisplayNames(allNodes);
 
   const bodyFrozen = freezeInlineRefs(report.id, report.body, report.refKeys(), (k) => report.refValue(k));
-  const bodyHtml = renderMarkdown(bodyFrozen);
 
-  const embedsHtml = report.embeds.map((id) => {
-    const note = allNodes.find((n) => n.id === id) as NoteNode | undefined;
-    const label = names.get(id) ?? "Note";
-    if (!note) return `<div class="report-export__embed"><div class="report-export__embed-name">${label} (removed)</div></div>`;
-    const noteFrozen = freezeInlineRefs(note.id, note.renderBody, note.refKeys(), (k) => note.refValue(k));
-    return `<div class="report-export__embed"><div class="report-export__embed-name">${label}</div>${renderMarkdown(noteFrozen)}</div>`;
-  }).join("\n");
+  // Render the body with each `![[Name]]` token substituted INLINE for the
+  // named Note's frozen block — the same placement the live overlay shows,
+  // instead of a separate bottom section. Splitting the frozen markdown at the
+  // token (always on its own paragraph) keeps each segment valid standalone.
+  const notes = allNodes.filter((n): n is NoteNode => n instanceof NoteNode);
+  const noteByName = (name: string) =>
+    notes.find((n) => (names.get(n.id) ?? n.label ?? "").trim().toLowerCase() === name.trim().toLowerCase());
+  const parts: string[] = [];
+  const re = new RegExp(EMBED_RE);
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(bodyFrozen))) {
+    parts.push(renderMarkdown(bodyFrozen.slice(last, m.index)));
+    const name = m[1].trim();
+    const note = noteByName(name);
+    if (note) {
+      const noteFrozen = freezeInlineRefs(note.id, note.renderBody, note.refKeys(), (k) => note.refValue(k));
+      parts.push(`<div class="report-export__embed"><div class="report-export__embed-name">${names.get(note.id) ?? name}</div>${renderMarkdown(noteFrozen)}</div>`);
+    } else {
+      parts.push(`<div class="report-export__embed"><div class="report-export__embed-name">${name} (missing)</div></div>`);
+    }
+    last = m.index + m[0].length;
+  }
+  parts.push(renderMarkdown(bodyFrozen.slice(last)));
+  const bodyHtml = parts.join("\n");
 
   const refIds = reportReferencedNodeIds(report, editor?.getConnections() ?? []);
   const charts = captureChartSvgs(names, refIds);
@@ -152,7 +170,6 @@ export function buildReportExportHtml(
   <div class="report-export__title">${title}</div>
   <div class="report-export__meta">Exported from Solenoid — ${exportedAt}</div>
   ${bodyHtml}
-  ${embedsHtml ? `<section><h2>Embedded notes</h2>${embedsHtml}</section>` : ""}
   ${chartsHtml ? `<section><h2>Charts</h2>${chartsHtml}</section>` : ""}
   ${snapshotHtml}
 </div>
