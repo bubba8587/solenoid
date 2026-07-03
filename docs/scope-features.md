@@ -1261,6 +1261,12 @@ and it changes the *feel* of debugging a big model completely.
 
 ## 31 — Where-used: query the graph like a codebase
 
+**VERDICT (author, 2026-07-03): IN — scoped down.** Not the full query-box/search
+syntax (`uses:`/`col:`/`unit:`/etc.) for v1. First cut: right-click a node → highlight
+its whole connected stream (the `downstreamClosure` BFS that already exists in
+`process.ts`, surfaced as canvas dim-and-highlight). The query-language layer stays a
+possible later extension of this same primitive, not the committed first step.
+
 **The problem:** "what happens if I change this?" — the question before every edit —
 has no answer surface. Excel's trace-precedents is one-hop arrows on one cell.
 Refactoring-grade questions are unanswerable: *everything downstream of this input;
