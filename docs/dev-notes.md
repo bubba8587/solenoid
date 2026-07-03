@@ -2,6 +2,27 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Bundle 05 (units) — dimensional-algebra foundation landed (2026-07-03)
+Started the flagship units bundle. Only the parts NOT gated on the FC function-model truth
+table (which the author will red-line later): Phase C was already fixed (the `dockSelf`
+rebuild guard is present), and Phase D's **core** is built. `dimension.ts` models a unit as
+an exponent vector over base dims (SI seven + angle/currency/information) plus a linear SI
+scale and an affine offset (temperature). Full algebra + commensurability + conversion +
+a unit-expression parser (`m/s`, `kg*m/s^2`, `m2`, prefix `km`/`ms`) + derived-unit
+formatting (N/J/W/Pa/Hz). `#UNIT!` error added (right type, wrong DIMENSION — distinct from
+`#TYPE!`). Made it load-bearing immediately: the **Convert node** now delegates its math to
+`dimension.ts` — each unit's SI scale = its factor × its category base's SI scale (mass base
+gram = 0.001 kg, volume base litre = 0.001 m³, etc.), temperatures carry an affine `dim`
+unit, and cross-family is now a real commensurability check (m² vs m). All 22 original
+convert assertions still pass — the regression net proving the core matches the node's
+long-tested factors.
+**Deliberately NOT built (gated on Phase A / the truth table):** units in the VALUE model
+(author's call: **tagged cells** for lists — a list is a row, mixed units must be
+representable — per-column for frames), deleting `unitFlow.ts` and re-expressing the FC
+lock/carry/break on the new layer, the Expression/LAMBDA dimensional interpretation, and the
+aggregator/socket-lattice pass. Those consume the core; do them after sign-off. See
+`docs/v2.0/05-units-format-controller.md`'s PROGRESS header.
+
 ### Report upgrade — charts inline, embeds as tokens, and the inline-ref rendering bug (2026-07-03)
 Author: "the Report needs a big upgrade — sockets don't work at all; it's the main
 destination for charts; embed-note is really bad (no placement control)."
