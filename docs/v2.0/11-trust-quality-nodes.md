@@ -1,112 +1,129 @@
 # Bundle 11 — Trust & data-quality: expectations, Problems panel, where-used, Reconcile, fuzzing, Tornado, comments
 
-**Source:** scope-features #12, #30, #31, #32, #44, #45, #14 — all IN. Grouped because
-they share machinery (the `HudStack` panel family) and a standing principle (prefer a
-node over a new panel). Each sub-item below is close to independently assignable to a
-different agent — call out the shared pieces (Problems panel, HudStack) so two agents
-touching it don't collide; otherwise these can run in parallel.
+**Source:** scope-features #12, #30, #31, #32, #44, #45, #14 — all IN.
 
-**Shared UI rule for this whole bundle:** new HUD-style panels extend the existing
-`HudStack` family (`src/graph/components/HudStack.tsx`, `PinLayer.tsx`, `AlertLayer.tsx`)
-— don't build a fourth/fifth standalone panel. Comments (#14) and the Problems panel
-(#30) both join that stack.
+**Correction to the original plan draft — read before building:** `HudStack` is NOT a
+generic list-panel API new panels can plug into. `src/graph/components/HudStack.tsx:14-22`
+is a hardcoded `<PinLayer/><AlertLayer/>` stack rendered via `createPortal`. Each panel
+(`PinLayer.tsx`, `AlertLayer.tsx`) is fully bespoke — its own `useState(collapsed)`, own
+trigger button, own mobile auto-collapse effect, own `registerChrome` call. **A new
+Problems/Comments panel must be written as its own new component file** (same shape as
+`PinLayer`/`AlertLayer`, not extending a shared base — there isn't one) and manually
+added as a third/fourth child in `HudStack.tsx`'s JSX. Registration:
+`registerChrome(key: string, toggle: {isOpen, setOpen}): () => void`
+(`src/graph/chromeToggle.ts:12-15`); existing keys are `"navigator"`
+(`OutlinePanel.tsx:274`), `"pins"` (`PinLayer.tsx:114`), `"alerts"`
+(`AlertLayer.tsx:97`) — pick new unique keys (`"problems"`, `"comments"`).
+`toggleAllChrome()` (`chromeToggle.ts:22-28`) flips the whole group on Tab.
+
+**Second correction: no "jump-and-flash" gesture exists anywhere in the codebase today**
+— it's aspirational doc language from earlier scope-features/backlog text, not a real
+function. Confirmed by repo-wide grep for `flash`/`jumpAndFlash` — no CSS keyframe, no
+timed-highlight implementation. What DOES exist: `flyToNode(nodeId): void`
+(`src/graph/flyToNode.ts:14`, pan/zoom only, reused by `PinLayer.tsx:143,166`/
+`AlertLayer.tsx:118`) and `OutlinePanel.tsx:150-166`'s `focusNode(id)` (pan/zoom via
+`area.area.translate`, then `selectNode(id,false)` for a select-ring highlight — no timed
+flash), triggered by `handleRowDoubleClick` (`OutlinePanel.tsx:331-334`). **Every item
+below that calls for "jump and flash" must actually BUILD the flash** (e.g. toggle a CSS
+class + `setTimeout` removal) alongside calling `flyToNode`/`focusNode` — don't write
+"reuse the existing flash," there isn't one.
 
 ---
 
 ## #12 — Expectation nodes: the data-quality gate (IN)
 
-**The pitch:** an Expect node sits on a cable and declares: this column is never null;
-IDs are unique; amounts are in [0, 1e9]; row count within 20% of last snapshot. Green
-badge when true; a tagged failure + Alert when not.
-
-**Build:**
-1. One Expect node, four checks: not-null, unique, range, regex. Pass-through output,
-   red badge + Alert on failure (reuse the existing tagged-`SolError`/Alert machinery —
-   a failed expectation is just a new `SolError` with provenance, per bundle 04).
-2. **Pitch it in the UI/docs as "Data Validation, generalized"** (author's explicit
-   framing) — Excel's Data Validation gates what a human types; this gates whatever
-   flows through the graph. Reconcile with the existing Data Validation verdict in
-   `excel-toolbar-supplementals.md` when writing the catalog entry.
-3. Keep strictly opt-in (user-placed nodes only, never automatic warnings) — nag-fatigue
-   is the whole design risk here, consistent with the no-Captain-Obvious rule.
+**Build:** one Expect node, four checks (not-null/unique/range/regex). Pass-through
+output, red badge + Alert on failure — reuse `fireAlert` (`alertStore.ts:70-73`) and the
+`SolError`/`ErrorChip` pattern (`errorValue.ts:70-75`, `components/ErrorChip.tsx:12-27`,
+both detailed in bundle 04) for a failed expectation. Pitch in the UI/docs as "Data
+Validation, generalized" (author's framing) — reconcile with the existing verdict in
+`excel-toolbar-supplementals.md`. Keep strictly opt-in.
 
 ## #30 — The Problems panel (IN)
 
-**Build:** a panel listing every error value currently in the graph (code, message,
-node, and for frames the cell) — click to jump-and-flash (reuse the navigator's
-jump/flash gesture). Filter by code, badge count in the StatusBar. Collect via
-`isSolError` hits during a normal compute pass into a store — cheap, every pass already
-touches every output value. Extend with bundle 04's provenance once available ("…caused
-by [origin node]"), and receives entries from #44 (fuzzing) below.
+**Build:** a new component file (`ProblemsPanel.tsx` or similar), same shape as
+`PinLayer.tsx`/`AlertLayer.tsx` (own state, own `registerChrome("problems", ...)` call),
+added as a new child in `HudStack.tsx`. Collect entries by hooking the same
+`isSolError`-detection point `installErrorGuards` already sees (`errorValue.ts:156-203`,
+detailed in bundle 04) into a store during a normal compute pass — cheap, every pass
+already touches every output value. Each entry needs a real jump-and-flash: call
+`flyToNode(nodeId)` (`flyToNode.ts:14`) then toggle a new CSS flash class on that node's
+element (build this — see correction above). Filter by code; badge count in
+`StatusBar.tsx`. Extend with bundle 04's `origin` field once available ("…caused by").
+Receives entries from #44 (fuzzing) below.
 
 ## #31 — Where-used: highlight the connected stream (IN, scoped down)
 
-**Explicit scope for v1 (author's condition):** NOT the full query-box/search-syntax
-version (`uses:`/`col:`/`unit:` etc.) — that's a possible later extension, not the
-committed first step.
+**Explicit scope for v1:** NOT the full query-box/search-syntax version.
 
-**Build:** right-click a node → highlight its whole connected stream, using the
-`downstreamClosure` BFS that already exists (`src/graph/process.ts:418`), surfaced as
-canvas dim-and-highlight (everything not in the closure dims, the closure itself stays
-full brightness).
+**Build:** right-click a node → `downstreamClosure(editor, startId)`
+(`src/graph/process.ts:418-430`, pure BFS, confirmed its only current caller is the
+targeted-recompute path at `process.ts:477` plus tests — no UI reuses it yet). **Reuse
+the existing isolate/dim mechanism for the visual, don't build new dim CSS:**
+`src/graph/isolateStore.ts` — `isolateStore.set(ids)/exit()/isVisible(id)/isActive()`
+(lines 13-35, module singleton, "everything else recedes, dimmed + non-interactive"),
+plus `chainClosure(edges, seed): Set<string>` (59-73, bidirectional BFS already used for
+chain-based isolation). Feed `downstreamClosure`'s result set straight into
+`isolateStore.set(...)` — check `IsolatePill.tsx`/`IsolateEndpoints.tsx`/`isolate.ts`
+first for how dimming is currently painted, since that rendering already exists and
+should be reused, not reinvented.
 
 ## #32 — The Reconcile node (IN)
 
-**Not gated on snapshots** (#6, deferred) — the two inputs are commonly just two Filter
-nodes off one shared live source ("month = Jan" / "month = Feb"), not two separately
-snapshotted datasets. Buildable now.
+**Not gated on snapshots** (#6, deferred) — buildable now.
 
-**Build:** a two-input verb node — match rows by key, classify added/removed/changed
-(with per-column deltas), and a contribution-breakdown layer: "total moved +230k: +180k
-added rows, −40k removed rows, +90k price changes on matched rows, offset −0k mix" (a
-bounded, well-known price/volume/mix decomposition, not novel math). Output is a frame
-(feeds charts/expectations/alerts) plus a readable summary. Reuses the existing join
-machinery.
+**Build:** a two-input verb node. Match rows by key using the existing join machinery —
+`joinFrames(left, right, opts)` (`src/graph/frameVerbs.ts:378`,
+`JoinOpts = {leftKey, rightKey, how}` at line 351-352, key-indexing via `keyIndex()`
+lines 361-371, skips null/error keys) — then classify added/removed/changed with
+per-column deltas, plus a contribution-breakdown layer (bounded price/volume/mix
+decomposition, not novel math). Output is a frame (feeds charts/expectations/alerts)
+plus a readable summary.
 
 ## #44 — Model fuzzing: property-based testing for graphs (IN, refined)
 
-**Refinement (author's explicit correction — don't ship the naive passive version):**
-a fuzzing finding should NOT be just a passive Problems-panel log entry. Where the finding
-is mechanical (an out-of-range value, an overflow), it should directly **suggest inserting
-a CLAMP or similar cleansing node** at the offending spot — a one-click fix, same spirit
-as the (ruled-out) linter's "promote to named Input" idea, applied here even though the
-linter itself stays OUT.
+**Refinement (don't ship the passive-only version):** a mechanical finding should
+directly suggest inserting a CLAMP/cleansing node at the offending spot.
 
-**Build:** because every input socket is typed (and ranged, once expectations declare
-bounds), generate hundreds of valid-shaped inputs and hunt for what breaks (errors,
-NaN/Infinity leaks, `#SHAPE!`, expectation violations). "Probe my model" button. Findings
-land in the Problems panel (#30) with the CLAMP-insertion suggestion attached where
-mechanical.
+**Build:** generate hundreds of valid-shaped inputs per typed socket, hunt for what
+breaks (errors, NaN/Infinity leaks, `#SHAPE!`, expectation violations from #12).
+Findings land in the Problems panel (#30 above) with the CLAMP-insertion suggestion
+attached where mechanical (a one-click "insert CLAMP here" action, reusing whatever node-
+insertion API the Add menu / quick-wire (bundle 14) already exposes for inserting a node
+mid-cable).
 
-## #45 — Tornado ranking (IN — AS A NODE, not a panel)
+## #45 — Tornado ranking (IN — AS A NODE)
 
-**Standing principle enforced here explicitly (this is the item that established it):**
-NOT an ambient "click any output, a floating panel appears" mechanic. A **Tornado node**:
-wire a value in, a button ON the node runs the analysis, the node renders its own chart
-inline.
+**Confirmed genuinely new** — `DecisionSensitivityNode` (`nodes/frame.ts:737-759`,
+detailed in bundle 09/10) is Decision-Matrix-specific scenario sensitivity, NOT a
+generic parameter sweep; there is no existing one-at-a-time-sweep primitive to extend.
 
-**Build:** perturb each upstream input (±10% or its declared range) via bundle 09's
-run-N-times machinery, rank by impact on the wired output, render the classic tornado
-chart inline on the node card. The existing Sensitivity node is this node's seed,
-generalized to automatic/all-inputs/ranked.
+**Build:** a Tornado node — wire a value in, a button on the node runs the analysis
+(perturb each upstream input ±10% or its declared range, using bundle 09's run-N-times
+machinery once available), ranks by impact on the wired output, renders the tornado
+chart inline on the node card (reuse the existing chart-rendering approach from
+`nodes/visual.ts`'s recharts nodes).
 
 ## #14 — Node-anchored comments (IN)
 
-**Build:** right-click a node → "Add comment" — goes into a dedicated comment pane,
-same `HudStack` pattern as Alerts and pins (a stacked list, not a per-node hover-only
-badge). A comment is: author, text, resolved flag, stored in the save. A small corner
-indicator on the node itself is fine as a pointer back, but the pane is where you
-read/manage them. Single-user, it's immediately useful as "notes to self with an
-address." Don't build identity/permissions infrastructure — a name string in a local
-file is the whole 1.0 of this.
+**Build:** right-click a node → "Add comment." Following the `HudStack` correction
+above, this is a NEW bespoke panel component (comment pane), added as another child in
+`HudStack.tsx`, registered via `registerChrome("comments", ...)`. A comment is
+`{author, text, resolved}` stored in the save (extend `SavedGraph`, `persistence.ts:60-87`,
+with a new optional field, following the same additive-optional-field pattern
+`standoffs?`/`pins?`/`palette?`/`packs?` already use at lines 60-87). A small corner
+indicator on the node itself (reuse `ErrorChip`-style chip styling) points back to the
+pane. Don't build identity/permissions — a plain author name string is the whole 1.0.
 
 ---
 
 ## Exit criteria (whole bundle)
 
-Expect node (4 checks) ships and is opt-in only; a Problems panel lists every tagged
-error in the doc with jump-to-node; right-click highlights a node's downstream closure;
-a Reconcile node produces added/removed/changed + price/volume/mix on two frame inputs;
-model fuzzing surfaces findings in the Problems panel with CLAMP-node suggestions where
-mechanical; a Tornado node runs sensitivity analysis and renders its own chart; node
-comments exist, stored in the save, surfaced in a comment pane alongside Alerts/pins.
+Expect node ships opt-in only; a Problems panel (new `HudStack` child) lists every
+tagged error with a real jump-and-flash (built fresh, using `flyToNode` + a new CSS flash
+class); where-used highlighting feeds `downstreamClosure`'s result into the existing
+`isolateStore` dim mechanism; a Reconcile node uses `joinFrames` for added/removed/
+changed + price/volume/mix; model fuzzing surfaces in the Problems panel with CLAMP-node
+suggestions; a Tornado node (genuinely new, not extending `DecisionSensitivityNode`) runs
+sensitivity analysis and renders its own chart; node comments are a new `HudStack` panel,
+persisted as a new optional `SavedGraph` field.
