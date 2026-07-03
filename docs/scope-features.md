@@ -1550,6 +1550,11 @@ model; these let the file travel without Solenoid installed, without the author 
 and at library scale.
 
 ## 43 — Money mode: exact decimal arithmetic
+
+**VERDICT (author, 2026-07-03): IN — DEFER.** Worth doing eventually, but explicitly
+punted (consistent with #21's earlier note pairing it with this exact item at the
+very-late end of the sequence).
+
 `0.1 + 0.2 ≠ 0.3` in floating point, and every accountant has met the spreadsheet where
 the pennies don't foot. A per-document (or per-unit: anything tagged `$`) **decimal mode**,
 with an explicit **rounding policy** (half-up vs banker's — an accounting requirement,

@@ -103,8 +103,9 @@ tables: must clear Excel's own bar by a lot per author's explicit dislike of Exc
 version, Display-node-only, must not step on FC's text-format/units territory) ·
 #42 OUT (history scrubber). Round 6 (#37–42) fully walked: #37/#38/#39/#40/#41 all
 IN (several with conditions/deferred-build notes above) · #42 OUT.
-NEXT when resuming: scope-features #43 (Round 7, "exact numbers, and the file that
-travels alone" — begins), then #44–63 in order (folding in
+Round 7 (#43–49, exact numbers + the traveling file) begun 2026-07-03: #43 IN, DEFER
+(money mode / exact decimal arithmetic — pairs with #21's very-late sequencing note).
+NEXT when resuming: scope-features #44, then #45–63 in order (folding in
 strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
