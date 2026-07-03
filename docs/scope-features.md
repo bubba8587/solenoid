@@ -1699,6 +1699,13 @@ governance docs (strategy #3), and MCP (#35 — an agent asking "what is this?")
 path to a model that documents itself.
 
 ## 51 — Presenter mode: saved views you step through like slides
+
+**VERDICT (author, 2026-07-03): IN — keep it very light.** A **Presentation node**
+stores an ordered list of steps; each step is a title text + an explicitly-defined set
+of nodes (picked like a navigator list, not an ad hoc canvas selection). Stepping
+through a step does ONLY camera zoom-and-pan to frame that step's node set — no
+isolate, no highlight, no dim. Simpler than the doc's pitch on purpose.
+
 Explaining a model live (to a client, a class, a board) today means awkwardly panning an
 editing canvas. Saved **views** — named camera position + zoom + highlighted region — that
 you step through: "inputs → core calc → result", each a smooth camera move with the rest
