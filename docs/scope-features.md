@@ -1483,6 +1483,9 @@ keyboard-reachable) and the natural host for future actions (lint, queries, reco
 and eventually "build by asking", #7) without new chrome.
 
 ## 39 — Scrubbing: drag any number, watch the model move
+
+**VERDICT (author, 2026-07-03): IN.**
+
 Click-drag horizontally on any numeric literal to sweep its value with the graph updating
 live — the targeted-recompute path (2026-07) makes it cheap; it's the machinery a slider
 drag already uses. The classic "explorable" gesture: it turns a model into an instrument
