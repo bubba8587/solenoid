@@ -1493,6 +1493,12 @@ you *play* to build intuition, and it's the lightweight interactive cousin of wh
 Modifier keys for step size; Escape reverts (the draft-commit contract extended to a drag).
 
 ## 40 — Semantic zoom: the graph reads at every altitude
+
+**VERDICT (author, 2026-07-03): IN — optional, and VERY conservative on the trigger
+threshold.** A Settings toggle, and the simplified-card swap should only kick in when
+genuinely far out (near the orbit end of the zoom range) — not an aggressive early
+switch that simplifies cards at any moderately-zoomed-out level.
+
 Today, zoomed out = the same cards, smaller. The information should *change* with altitude:
 far out, a node becomes a colored block with a big label (name + value), groups become
 titled regions, cables thicken into flows; closer in, detail returns. The HTML-canvas

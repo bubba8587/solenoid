@@ -96,8 +96,9 @@ toggle (not forced-on), paired with a socket hit-target-size pass + a better
 drag/hover pointer icon · #38 IN — triggers on Enter (not Ctrl+K), bottom-aligned
 non-persistent bar (AutoCAD-flavored), needs the same "ignored while typing"
 discipline as the single-key shortcuts · #39 IN (scrubbing — drag a number, model
-updates live).
-NEXT when resuming: scope-features #40, then #41–63 in order (folding in
+updates live) · #40 IN, optional + very conservative trigger threshold (semantic
+zoom — Settings toggle, simplified-card swap only near the far end of zoom range).
+NEXT when resuming: scope-features #41, then #42–63 in order (folding in
 strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
