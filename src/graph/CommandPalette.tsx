@@ -14,6 +14,7 @@ import { outlineSearch } from "./outlineStore";
 import { saveToDisk, openFromDisk } from "./fileSession";
 import { documentStore } from "./documentStore";
 import { isolateStore } from "./isolateStore";
+import { alignSelection, distributeSelection, collapseSelection } from "./selectionOps";
 import type { NodeCatalogEntry } from "./AddNodeMenu";
 import type { SolenoidNode } from "./schemes";
 import "./CommandPalette.css";
@@ -68,6 +69,16 @@ function buildCommands(): PaletteItem[] {
     { label: "Isolate selection", shortcut: "I", run: () => fireCanvasKey("KeyI") },
     { label: "Expand/collapse groups", shortcut: "E", run: () => fireCanvasKey("KeyE") },
     { label: "Autofit group box", shortcut: "F", run: () => fireCanvasKey("KeyF") },
+    { label: "Align left", run: () => void alignSelection("left") },
+    { label: "Align right", run: () => void alignSelection("right") },
+    { label: "Align top", run: () => void alignSelection("top") },
+    { label: "Align bottom", run: () => void alignSelection("bottom") },
+    { label: "Align center (horizontal)", run: () => void alignSelection("center-h") },
+    { label: "Align center (vertical)", run: () => void alignSelection("center-v") },
+    { label: "Distribute horizontally", run: () => void distributeSelection("h") },
+    { label: "Distribute vertically", run: () => void distributeSelection("v") },
+    { label: "Collapse selection", run: () => collapseSelection(true) },
+    { label: "Expand selection", run: () => collapseSelection(false) },
     { label: "Undo", shortcut: "Ctrl+Z", run: () => fireCanvasKey("KeyZ", { ctrl: true }) },
     { label: "Redo", shortcut: "Ctrl+Shift+Z", run: () => fireCanvasKey("KeyZ", { ctrl: true, shift: true }) },
     { label: locked ? "Unlock canvas" : "Lock canvas", run: () => canvasLockStore.toggle() },
