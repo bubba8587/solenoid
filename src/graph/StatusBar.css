@@ -99,6 +99,17 @@ button.solenoid-statusbar__calc--dirty {
   cursor: pointer;
 }
 
+/* Sketch-mode indicator: a quiet, non-actionable label (sibling to the calc
+   chip above) — color conveys the "not exact" state, per the Quiet Accent
+   Rule (DESIGN.md), the palette's "warning" token (#d9a93b). */
+.solenoid-statusbar__sketch {
+  flex: 0 0 auto;
+  margin-right: 10px;
+  color: #d9a93b;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ─── Web-demo over-budget warning modal (one-time, on the crossing) ──────── */
 .solenoid-nbmodal {
   position: fixed;
