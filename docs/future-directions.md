@@ -268,21 +268,26 @@ compound on each other; this one is a standalone maybe.
   and nobody has made it *visual and approachable*. "The spreadsheet for shaped data"
   is a sharper story than "Excel, but nodes."
 
-- **VERDICT (author, 2026-07-02): PARKED — author wants to think on it; revisit at the
-  end of the walk** (alongside golden tests). Presented as: deterministic rules over the
+- **VERDICT (author, 2026-07-03): OUT.** Author: "it's not a bad idea per se, but these
+  recommendations are often slowing people down and never as accurate as to what's in
+  people's heads." Supersedes the 2026-07-02 PARKED note below.
+- ~~VERDICT (author, 2026-07-02): PARKED — author wants to think on it; revisit at the
+  end of the walk (alongside golden tests). Presented as: deterministic rules over the
   existing import inference sketch a starter graph (offer, never forced, one-undo
-  deletable); warm-up for the transpiler's emit-nodes machinery.
+  deletable); warm-up for the transpiler's emit-nodes machinery.~~
 - **Let the data draft its own graph.** You already inspect a file's columns when it's
   imported. A great first-run experience: drop a CSV, and the tool *sketches* the
   cleanup/typing/likely-joins graph for you to refine — instead of a blank canvas. Pairs
   perfectly with the AI-friendly direction: "the graph writes its own first draft."
 
-- **VERDICT (author, 2026-07-02): PARKED — revisit at the end of the walk.** "Not sure
+- **VERDICT (author, 2026-07-03): OUT.** Author: "I think it's out tbh." Supersedes the
+  2026-07-02 PARKED note below.
+- ~~VERDICT (author, 2026-07-02): PARKED — revisit at the end of the walk. "Not sure
   it's super intuitive, but there's potential." Concrete examples discussed (regression
   pin on a model output capturing free-input values → expected output; edge-case pins
   on Expression/LAMBDA; summary assertions on frame chains; external-truth pins vs
   published tables). The UX gesture needs to feel obvious before it's in; note the
-  trust-triad/governance features and #58's badge row lean on it if it lands.
+  trust-triad/governance features and #58's badge row lean on it if it lands.~~
 - **Golden tests on any node.** Because every node is a pure function, let a user pin an
   example "with this input, expect this output" onto a node. The whole graph then
   re-checks itself on every change. Nobody can unit-test an Excel workbook; you'd get it
