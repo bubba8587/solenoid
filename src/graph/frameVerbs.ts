@@ -427,6 +427,145 @@ export function joinFrames(left: FrameValue, right: FrameValue, opts: JoinOpts):
   return frame(out);
 }
 
+// ─── Reconcile ─────────────────────────────────────────────────────────────────
+// Compare two frames by key: classify each key as added (right-only) / removed
+// (left-only) / changed (a shared column differs) / unchanged, with a before /
+// after / Δ per shared numeric column. When both a price and a quantity column
+// are named (and both are numeric on both sides), also decomposes the total
+// (price×qty) change into the textbook three-term PRICE / VOLUME / MIX variance —
+// not novel math, the standard FP&A decomposition:
+//   price  = (P1−P0)·Q0
+//   volume = (Q1−Q0)·P0
+//   mix    = (P1−P0)·(Q1−Q0)
+// which sums EXACTLY to P1·Q1 − P0·Q0 (the total delta).
+export type ReconcileStatus = "added" | "removed" | "changed" | "unchanged";
+export interface ReconcileOpts {
+  leftKey: string;
+  rightKey: string;
+  priceColumn?: string;
+  qtyColumn?: string;
+}
+export interface PvmBreakdown {
+  totalBefore: number;
+  totalAfter: number;
+  delta: number;
+  price: number;
+  volume: number;
+  mix: number;
+}
+export interface ReconcileSummary {
+  added: number;
+  removed: number;
+  changed: number;
+  unchanged: number;
+  pvm?: PvmBreakdown;
+}
+
+function cellsEqual(a: FrameCell, b: FrameCell): boolean {
+  if (a === null && b === null) return true;
+  if (isSolError(a) || isSolError(b)) return false; // an error cell is never "unchanged"
+  return a === b;
+}
+
+export function reconcileFrames(
+  left: FrameValue, right: FrameValue, opts: ReconcileOpts,
+): { frame: FrameValue; summary: ReconcileSummary } {
+  const lk = requireColumn(left, opts.leftKey);
+  const rk = requireColumn(right, opts.rightKey);
+  const ln = frameRowCount(left), rn = frameRowCount(right);
+
+  const lIdx = keyIndex(lk, ln);
+  const rIdx = keyIndex(rk, rn);
+  const allKeys: string[] = [];
+  const seenKeys = new Set<string>();
+  for (const k of lIdx.keys()) if (!seenKeys.has(k)) { seenKeys.add(k); allKeys.push(k); }
+  for (const k of rIdx.keys()) if (!seenKeys.has(k)) { seenKeys.add(k); allKeys.push(k); }
+
+  // Shared non-key columns, matched by name — the delta candidates.
+  const sharedCols = left.columns
+    .filter((c) => c.name !== opts.leftKey)
+    .map((c) => ({ name: c.name, left: c, right: right.columns.find((rc) => rc.name === c.name) ?? null }))
+    .filter((s): s is { name: string; left: FrameColumn; right: FrameColumn } => s.right !== null);
+
+  let priceIdx = -1, qtyIdx = -1;
+  sharedCols.forEach((s, i) => {
+    if (opts.priceColumn && s.name === opts.priceColumn && s.left.type === "number" && s.right.type === "number") priceIdx = i;
+    if (opts.qtyColumn && s.name === opts.qtyColumn && s.left.type === "number" && s.right.type === "number") qtyIdx = i;
+  });
+  const havePvm = priceIdx >= 0 && qtyIdx >= 0;
+
+  const keyValues: FrameCell[] = [];
+  const statuses: FrameCell[] = [];
+  const beforeCols: FrameCell[][] = sharedCols.map(() => []);
+  const afterCols: FrameCell[][] = sharedCols.map(() => []);
+  const deltaCols: (number | null)[][] = sharedCols.map(() => []);
+
+  let added = 0, removed = 0, changed = 0, unchanged = 0;
+  let totalBefore = 0, totalAfter = 0, pvmPrice = 0, pvmVolume = 0, pvmMix = 0;
+
+  for (const k of allKeys) {
+    const lRows = lIdx.get(k) ?? [];
+    const rRows = rIdx.get(k) ?? [];
+    // A duplicate key on either side pairs up positionally; extra rows on the
+    // longer side are their own added/removed rows — the row total stays exact.
+    const pairs = Math.max(lRows.length, rRows.length);
+    for (let p = 0; p < pairs; p++) {
+      const li = lRows[p] ?? null;
+      const ri = rRows[p] ?? null;
+      keyValues.push(li !== null ? cellAt(lk, li) : cellAt(rk, ri!));
+
+      let status: ReconcileStatus;
+      if (li === null) { status = "added"; added++; }
+      else if (ri === null) { status = "removed"; removed++; }
+      else {
+        const rowChanged = sharedCols.some((s) => !cellsEqual(cellAt(s.left, li), cellAt(s.right, ri)));
+        status = rowChanged ? "changed" : "unchanged";
+        if (rowChanged) changed++; else unchanged++;
+      }
+      statuses.push(status);
+
+      let p0 = 0, p1 = 0, q0 = 0, q1 = 0;
+      sharedCols.forEach((s, ci) => {
+        const bv = li !== null ? cellAt(s.left, li) : null;
+        const av = ri !== null ? cellAt(s.right, ri) : null;
+        beforeCols[ci].push(bv);
+        afterCols[ci].push(av);
+        const bn = typeof bv === "number" ? bv : null;
+        const an = typeof av === "number" ? av : null;
+        deltaCols[ci].push(s.left.type === "number" && bn !== null && an !== null ? an - bn : null);
+        if (ci === priceIdx) { p0 = bn ?? 0; p1 = an ?? 0; }
+        if (ci === qtyIdx) { q0 = bn ?? 0; q1 = an ?? 0; }
+      });
+
+      if (havePvm) {
+        totalBefore += p0 * q0;
+        totalAfter += p1 * q1;
+        pvmPrice += (p1 - p0) * q0;
+        pvmVolume += (q1 - q0) * p0;
+        pvmMix += (p1 - p0) * (q1 - q0);
+      }
+    }
+  }
+
+  const outCols: FrameColumn[] = [
+    { name: opts.leftKey, type: lk.type, values: keyValues },
+    { name: "Status", type: "string", values: statuses },
+  ];
+  sharedCols.forEach((s, ci) => {
+    outCols.push({ name: `${s.name} (before)`, type: s.left.type, values: beforeCols[ci] });
+    outCols.push({ name: `${s.name} (after)`, type: s.right.type, values: afterCols[ci] });
+    if (s.left.type === "number") outCols.push({ name: `${s.name} Δ`, type: "number", values: deltaCols[ci] });
+  });
+  const names = makeHeaders(outCols.map((c) => c.name), outCols.length);
+  const finalCols = outCols.map((c, i) => ({ ...c, name: names[i] }));
+
+  const summary: ReconcileSummary = { added, removed, changed, unchanged };
+  if (havePvm) {
+    summary.pvm = { totalBefore, totalAfter, delta: totalAfter - totalBefore, price: pvmPrice, volume: pvmVolume, mix: pvmMix };
+  }
+  return { frame: frame(finalCols), summary };
+}
+
 // ─── Reshape: pivot / unpivot ──────────────────────────────────────────────────
 /** UNPIVOT (melt): wide → long. Keeps `idColumns`; turns each of `valueColumns`
  *  into rows of (variable = that column's name, value = the cell). Output =
