@@ -5,6 +5,18 @@ Running notes on direction, deferred work, and non-obvious technical gotchas.
 ### Follow-up UX pass — where-used pill, palette selection, mobile palette (2026-07-03)
 Author follow-ups off the live deploy:
 
+- **Cable Inspector collapse**: the X now folds the panel to a 34px chip in the same
+  corner (drawn with the shared `CableShapeIcon`, extracted from CableShapeSelector's
+  segmented control) instead of deselecting — the selection is untouched; click to
+  unfold. Collapse state is sticky across cable picks.
+- **Footer clearance audit**: bottom-anchored overlays must clear the 19px StatusBar on
+  desktop AND the ~74px bottom action bar on mobile (`html.is-mobile` lift to
+  `calc(96px + env(safe-area-inset-bottom))`, the docked-conduit-toolbar precedent).
+  Fixed NoticeToasts (was 16px — under the desktop footer, behind the mobile bar) and
+  gave the Cable Inspector its mobile lift. Verified clear: command palette (desktop
+  40px; mobile is top-anchored), minimap (30px, hidden on mobile), socket legend,
+  docked conduit toolbar, HudStack/IsolatePill (top-anchored).
+
 - **Where used vs Isolate chain**: functionally distinct (downstream-only closure vs the
   bidirectional chain), but the shared isolate/dim visual made them read as duplicates —
   especially when right-clicking a source node, where the sets coincide. `isolateStore.set`

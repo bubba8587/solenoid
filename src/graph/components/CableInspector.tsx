@@ -1,5 +1,7 @@
-import { useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { cableSelectionStore } from "../cableState";
+import { useCableShape } from "../cableShape";
+import { CableShapeIcon } from "../CableShapeSelector";
 import { cableValueStore } from "../cableValueStore";
 import { ribbonForConnection } from "../ribbonCable";
 import { flyToNode } from "../flyToNode";
@@ -65,6 +67,11 @@ export function CableInspector() {
   useSyncExternalStore(connectionVersionStore.subscribe, connectionVersionStore.get);
   // Live restyle when a source node's Format Controller changes.
   useSyncExternalStore(formatAnnotationStore.subscribe, formatAnnotationStore.version);
+  // X folds the panel to a small cable chip (the selection stays — deselect is
+  // a canvas click, not the panel's job). Sticky across cable picks until
+  // expanded again; the component never unmounts, so plain state suffices.
+  const [collapsed, setCollapsed] = useState(false);
+  const { shape } = useCableShape();
 
   // One cable only — multi-select is ambiguous to inspect, so show nothing.
   if (cableSelectionStore.count() !== 1) return null;
@@ -100,7 +107,21 @@ export function CableInspector() {
   // source) — the row just doesn't render then.
   const srcSocket = srcNode.outputs[conn.sourceOutput]?.socket;
   const isFrameCable = srcSocket instanceof SolenoidSocket && srcSocket.dataType === "frame";
-  const shape = isFrameCable ? makeFrameShapeResolver(editor).outShape(conn.source, conn.sourceOutput) : null;
+  const frameShape = isFrameCable ? makeFrameShapeResolver(editor).outShape(conn.source, conn.sourceOutput) : null;
+
+  if (collapsed) {
+    return (
+      <button
+        type="button"
+        className="solenoid-cable-inspector solenoid-cable-inspector--chip"
+        title={`${srcTitle} → ${tgtTitle}`}
+        aria-label="Expand cable inspector"
+        onClick={() => setCollapsed(false)}
+      >
+        <CableShapeIcon shape={shape} className="solenoid-cable-inspector__chip-icon" />
+      </button>
+    );
+  }
 
   return (
     <div className="solenoid-cable-inspector" role="dialog" aria-label="Cable inspector">
@@ -109,9 +130,9 @@ export function CableInspector() {
         <button
           type="button"
           className="solenoid-cable-inspector__close"
-          aria-label="Deselect cable"
-          title="Deselect"
-          onClick={() => cableSelectionStore.clear()}
+          aria-label="Collapse to icon"
+          title="Collapse"
+          onClick={() => setCollapsed(true)}
         >
           <CloseIcon size={12} />
         </button>
@@ -154,17 +175,17 @@ export function CableInspector() {
       </div>
 
       {/* The statically-computed column shape — visible before anything runs. */}
-      {shape && (
+      {frameShape && (
         <div className="solenoid-cable-inspector__shape">
           <span className="solenoid-cable-inspector__role">Shape</span>
           <div className="solenoid-cable-inspector__shape-cols">
-            {shape.columns.map((c) => (
+            {frameShape.columns.map((c) => (
               <span key={c.name} className="solenoid-cable-inspector__shape-col">
                 {c.name}
                 <span className="solenoid-cable-inspector__shape-type"> · {c.type}</span>
               </span>
             ))}
-            {shape.dynamic && <span className="solenoid-cable-inspector__shape-dynamic">+ more</span>}
+            {frameShape.dynamic && <span className="solenoid-cable-inspector__shape-dynamic">+ more</span>}
           </div>
         </div>
       )}

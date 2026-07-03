@@ -1,6 +1,7 @@
 .solenoid-notices {
   position: fixed;
-  bottom: 16px;
+  /* Clear the 19px status bar (StatusBar.css), like the cable inspector. */
+  bottom: calc(19px + 12px + env(safe-area-inset-bottom));
   right: 16px;
   z-index: 1100; /* above the confirm overlay's content, below nothing critical */
   display: flex;
@@ -53,4 +54,10 @@
 }
 .solenoid-notice__close:hover {
   opacity: 1;
+}
+
+/* Mobile: clear the bottom action bar instead (same lift as the cable
+   inspector / docked conduit toolbar). */
+html.is-mobile .solenoid-notices {
+  bottom: calc(96px + env(safe-area-inset-bottom));
 }
