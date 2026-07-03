@@ -1315,6 +1315,14 @@ vertical from "controls" to "the tool that does the actual work."
 
 ## 33 — Paste anything: the intake for trapped data
 
+**VERDICT (author, 2026-07-03): OUT.** Not a scope fit, full stop (not "deferred
+pending a companion app"). Reasoning: the graph adds nothing to PDF/OCR extraction
+itself — a frame is a frame regardless of what parsed it. The differentiated value in
+Solenoid is the graph (typed, inspectable, unit-safe computation); document/image
+parsing is an unrelated skill better served by a separate tool that hands Solenoid a
+clean frame to import. Plain HTML-table paste isn't a scope question at all — it's
+ordinary paste-import hygiene, same job as CSV import, no verdict needed.
+
 **The problem:** an enormous share of real data is *trapped* — in PDFs (bank
 statements, supplier price lists, government tables), in screenshots, in HTML meant
 for eyes. The current answer everywhere is retyping, the highest-error-rate activity
