@@ -1,6 +1,7 @@
 import { ClassicPreset } from "rete";
-import { numIn, numListIn, numListOut, numOut, tableIn, tableOut, strIn, strOut } from "./shared";
+import { numIn, numListIn, numListOut, numOut, tableIn, tableOut, strIn, strOut, chartOut } from "./shared";
 import { parseChartOptions, serializeChartOptions, type ChartOptions } from "./chartOptions";
+import type { ChartValue } from "../chartValue";
 
 // ─── Visual output nodes ────────────────────────────────────────────────────
 // Pass-through "sinks" that render a chart of the value flowing through them, so
@@ -74,14 +75,26 @@ export class ChartNode extends ClassicPreset.Node {
     this.op = init?.op ?? "column";
     this.addInput("values", numListIn("Values"));
     this.addInput("options", strIn("Options"));
-    this.addOutput("result", numListOut("Pass-through"));
+    // A Chart is a terminal figure, not a data pass-through (nothing consumed the
+    // old numlist `result` — a chart is a sink). Its output is the first-class
+    // chart VALUE: the `chart` object socket (identity-only + `any`, like lambda)
+    // carries a self-describing figure a consumer redraws — the Report renders it
+    // inline where its `=name` ref sits (charts' main destination).
+    this.addOutput("chart", chartOut("Chart"));
   }
 
-  data(inputs: { values?: (number | number[])[]; options?: string[] }) {
+  data(inputs: { values?: (number | number[])[]; options?: string[] }): { chart: ChartValue } {
     const v = inputs.values?.[0] ?? null;
     this.cachedResult = v;
     this.chartOptions = parseChartOptions(inputs.options?.[0] ?? this.stringLiterals.options ?? null);
-    return { result: v };
+    const chart: ChartValue = {
+      __chart: true,
+      op: this.op,
+      values: this.cachedResult,
+      options: this.chartOptions,
+      title: this.chartOptions.title || this.label || "Chart",
+    };
+    return { chart };
   }
 }
 

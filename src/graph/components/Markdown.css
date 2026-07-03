@@ -57,3 +57,21 @@
 .solenoid-ref-inline--error {
   color: var(--sol-error);
 }
+.solenoid-ref-inline--empty {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* A wired chart ref renders as a block figure where its `=name` span sits — the
+   Report is charts' main destination. Title is a quiet caption above the plot. */
+.solenoid-ref-figure {
+  display: block;
+  margin: 12px 0;
+}
+.solenoid-ref-figure__title {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}

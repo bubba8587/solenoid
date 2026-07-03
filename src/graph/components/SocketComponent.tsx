@@ -50,6 +50,7 @@ export function SocketComponent({ data }: { data: ClassicPreset.Socket }) {
     dataType === "complextable" || dataType === "logicaltable" || dataType === "anytable";
   const isCube = dataType === "cube";
   const isLambda = dataType === "lambda";
+  const isChart = dataType === "chart";
 
   return (
     <svg className="solenoid-socket-dot" viewBox="0 0 12 12" preserveAspectRatio="xMidYMid meet">
@@ -96,6 +97,14 @@ export function SocketComponent({ data }: { data: ClassicPreset.Socket }) {
           <g transform="translate(6 6) scale(0.328) translate(-12.5 -12)">
             <path d="M6 20l6.5 -9 M19 20c-6 0 -6 -16 -12 -16" fill="none" stroke="var(--socket-ring)" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" />
           </g>
+          <circle cx="6" cy="6" r="5" fill="none" stroke="var(--socket-ring)" strokeWidth="2" />
+        </>
+      ) : isChart ? (
+        <>
+          {/* Chart/visual value: circle with a 3-bar mini bar chart in the same
+              embossed stroke as the λ / grid cross — the object-family sibling. */}
+          <circle cx="6" cy="6" r="6" fill={color} />
+          <path d="M3.6 8.6 V6.6 M6 8.6 V3.9 M8.4 8.6 V5.4" fill="none" stroke="var(--socket-ring)" strokeWidth="1.5" strokeLinecap="round" />
           <circle cx="6" cy="6" r="5" fill="none" stroke="var(--socket-ring)" strokeWidth="2" />
         </>
       ) : (
