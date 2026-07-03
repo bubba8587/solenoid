@@ -1,0 +1,20 @@
+{
+  "v": 1,
+  "label": "Report Showcase",
+  "nodes": [
+    {"id":"sales","type":"ListInputNode","x":-40,"y":-80,"init":{"label":"Monthly sales","valueKeys":["m0","m1","m2","m3","m4","m5"]},"literals":{"m0":12,"m1":19,"m2":14,"m3":23,"m4":18,"m5":27}},
+    {"id":"chart","type":"ChartNode","x":320,"y":-120,"init":{"label":"Sales by month","op":"column"},"stringLiterals":{"options":"title=Sales by month;color=#e8a33d"}},
+
+    {"id":"total","type":"AggregateNode","x":320,"y":180,"init":{"label":"Total sales","op":"sum"}},
+
+    {"id":"method","type":"NoteNode","x":-40,"y":360,"init":{"label":"Methodology","body":"## Methodology\nFigures are **unaudited** monthly bookings, net of refunds. Q2 excludes the pilot region.","color":"slate","width":320,"height":150}},
+
+    {"id":"report","type":"ReportNode","x":760,"y":-40,"init":{"label":"Quarterly review","body":"# Quarterly review\n\nTotal sales came to **`=total`** units across the period. The month-by-month shape:\n\n`=fig`\n\nThe trend is up and to the right, with a dip in month 3.\n\n![[Methodology]]\n\n_Draft — figures subject to revision._"}}
+  ],
+  "connections": [
+    {"source":"sales","sourceOutput":"list","target":"chart","targetInput":"values"},
+    {"source":"sales","sourceOutput":"list","target":"total","targetInput":"list"},
+    {"source":"chart","sourceOutput":"chart","target":"report","targetInput":"fig"},
+    {"source":"total","sourceOutput":"result","target":"report","targetInput":"total"}
+  ]
+}
