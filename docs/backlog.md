@@ -73,8 +73,9 @@ Round 7 = #43–49, Round 8 = #50–57, Round 9 = #58–63 (end of doc).
 #25 OUT (graph profiler heatmap) · #26 OUT (synthetic data mode) · #27 OUT (data slots) ·
 #28 OUT (formula lens). Round 4 (#20–28) fully walked: #20 OUT · #21 IN very late ·
 #22 IN (no new node) · #23 DEFERRED · #24 IN (needs footer affordance) · #25–28 all OUT.
-NEXT when resuming: scope-features #29 (Round 5, the analyst's workbench + open
-ports — begins), then #30–63 in order (folding in
+Round 5 (#29–36, analyst's workbench + open ports) begun 2026-07-03: #29 OUT (model
+linter).
+NEXT when resuming: scope-features #30, then #31–63 in order (folding in
 strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
