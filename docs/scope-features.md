@@ -775,6 +775,8 @@ also isn't a programmer. That's the whole point — the domain expert stays in c
 
 ## 16 — Bills of materials, recipes, and "cost/impact of a nested thing"
 
+**VERDICT (author, 2026-07-03): IN.**
+
 **Who's underserved:** anyone who costs out a **nested composed thing** — a
 manufacturer pricing a product built from sub-assemblies built from parts; a
 construction estimator; a cloud-cost modeler; a restaurant costing recipes made of
