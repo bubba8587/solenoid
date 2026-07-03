@@ -5,7 +5,7 @@ import { NoteNode, ReportNode } from "./rete-nodes";
 import { nodeDisplayNames } from "./nodeNames";
 import { resolveRefAnnotation, refPreview } from "./components/inlineRefDisplay";
 import { captureCanvasImage, captureChartSvgs } from "./canvasCapture";
-import { saveHtmlFileDialog } from "./fileBridge";
+import { saveHtmlFileDialog, isDesktop } from "./fileBridge";
 import { pushNotice } from "./noticeStore";
 import { reportPaletteStore } from "./palette";
 
@@ -151,7 +151,10 @@ export async function exportReportAsWebpage(report: ReportNode): Promise<void> {
     const html = buildReportExportHtml(report, { canvasImage });
     const name = `${(report.label?.trim() || "report").replace(/[^\w -]/g, "")}.html`;
     const chosen = await saveHtmlFileDialog(name, html);
-    if (chosen) pushNotice(`Exported ${name}`, "info", 2500);
+    // Desktop: null = the user cancelled the dialog, stay quiet. Web: the
+    // download always fires (the dialog helper returns null there too), so
+    // the success toast must not key off the path.
+    if (chosen || !isDesktop()) pushNotice(`Exported ${name}`, "info", 2500);
   } catch (e) {
     console.error("[solenoid] report export failed", e);
     pushNotice("Couldn't export the report as a webpage.", "error", 0);

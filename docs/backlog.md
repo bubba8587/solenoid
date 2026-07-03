@@ -57,17 +57,47 @@ sufficient here.
 
 **Walkthrough got through:** #1 Cable Inspector shape row (author: "not sure that's
 needed"), #2/#3/#4/#5 above, #6 Composite container (not yet reviewed when paused).
-**NOT yet walked at all:** Expect node, Problems panel, where-used highlight,
-Reconcile node, model fuzzing, Tornado node, node comments, As-Of Join/Lookup, Note
-inline refs, the Report node + object sockets, Session History node, static HTML
-export, Presentation node, branded output colors, quick-wire, command palette,
-scrubbing, semantic zoom, align/distribute, Cube Rollup + BOM seed, Parquet source.
 
-**Next when resuming:** run a real adversarial review pass (stronger review
-agents — actually drive the UI, not just read the diff) over every bundle in
-`docs/v2.0/01-07,09,11-15` before resuming the author walkthrough where it left off
-(item #7 onward, list above). Don't trust "tsc/vitest/cargo-test green" as a
-completeness signal for this batch again.
+**STRONGER REVIEW PASS RUN 2026-07-03 (the pass the paragraph below asked for).**
+Six parallel review agents swept every unwalked bundle (per-feature backend + full
+UI-wiring trace), plus targeted root-causing of the author-reported breakage. Found
+and FIXED (commits `bcbc00e`…, see dev-notes 2026-07-03 for detail):
+
+- [x] **Expect node had NO `in` socket** (component never rendered it) and its
+  min/max/pattern rows vanished — cable and all — when their check was toggled off.
+- [x] **Tornado node had NO `value` socket** (same class-declares/component-never-
+  renders pattern as Write CSV/JSON).
+- [x] **Cycle → "Maximum call stack size exceeded" instead of #CIRC!** — the
+  audit-40 targeted topology pass calls `_engine.reset(nodeId)`, and rete-engine's
+  per-node reset recurses over outgoing connections with NO visited set, so it chased
+  any cable cycle forever BEFORE the #CIRC! seeding ran. Fixed with an iterative
+  `cache.delete` over the (cycle-safe) downstream-closure cone; guarded by
+  `circularReset.test.ts`.
+- [x] **The Composite container had NO edit surface at all** — the internal graph
+  was created/computed/persisted but nothing could ever open it (Simulation mode was
+  unusable: no way to wire its feedback loop). Built the drill-in editor
+  (`CompositeEditorOverlay`), the Unpack operation, boundary-marker components,
+  position persistence, and port add/remove — see dev-notes 2026-07-03.
+- [x] Reference overlay was missing Enter (command palette) + Ctrl+Shift+G (composite).
+- [x] Web-path "Export as webpage" never showed its success toast (the browser
+  download path returns null, same as a cancelled desktop dialog).
+
+Verdict on everything else walked: quick-wire, command palette, scrubbing, semantic
+zoom, align/distribute, Problems panel, where-used, Reconcile, model fuzz, comments,
+As-Of Join/Lookup, Note inline refs, Session History, Report/overlay/static export,
+Presentation, branded colors, Cube Rollup + BOM seed, Parquet source (desktop-only by
+design) — **wired end-to-end and sound**. Remaining loose ends:
+
+- [ ] The `chart` **object socket is dead infrastructure** — defined, colored, and
+  compatibility-tested, but no node emits or accepts it (`chartIn`/`chartOut` have
+  zero call sites; ChartNode still passes through `numlist`). Wire it or delete it.
+- [ ] Static export fidelity nits: captured chart SVGs relying on class/CSS-var
+  coloring may recolor in the exported doc (only `buildExportCss` ships); the canvas
+  capture takes every on-canvas chart >40px, not just report-referenced ones.
+- [ ] Drill-in editor v2 niceties: no undo/redo inside the overlay; the outer
+  cables into a port DELETED inside the drill-in are dropped on close (by design,
+  but silently); output-marker value box inside a Simulation container shows "—"
+  (the series renders on the outer card only).
 
 ---
 
