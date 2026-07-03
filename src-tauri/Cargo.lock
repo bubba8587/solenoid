@@ -2585,6 +2585,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "now"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6d89e9874397a1f0a52fc1f197a8effd9735223cb2390e9dcc83ac6cd02923d0"
+dependencies = [
+ "chrono",
+]
+
+[[package]]
 name = "num-conv"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3173,6 +3182,7 @@ dependencies = [
  "ahash 0.8.12",
  "bitflags 2.11.1",
  "bytemuck",
+ "chrono",
  "either",
  "hashbrown 0.14.5",
  "hashbrown 0.15.5",
@@ -3285,6 +3295,7 @@ dependencies = [
  "polars-ops",
  "polars-plan",
  "polars-stream",
+ "polars-time",
  "polars-utils",
  "rayon",
  "version_check",
@@ -3304,6 +3315,7 @@ dependencies = [
  "polars-io",
  "polars-ops",
  "polars-plan",
+ "polars-time",
  "polars-utils",
  "rayon",
 ]
@@ -3390,6 +3402,7 @@ dependencies = [
  "polars-core",
  "polars-io",
  "polars-ops",
+ "polars-time",
  "polars-utils",
  "rayon",
  "recursive",
@@ -3451,6 +3464,29 @@ dependencies = [
  "slotmap",
  "tokio",
  "version_check",
+]
+
+[[package]]
+name = "polars-time"
+version = "0.46.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d192efbdab516d28b3fab1709a969e3385bd5cda050b7c9aa9e2502a01fda879"
+dependencies = [
+ "atoi_simd",
+ "bytemuck",
+ "chrono",
+ "now",
+ "num-traits",
+ "once_cell",
+ "polars-arrow",
+ "polars-compute",
+ "polars-core",
+ "polars-error",
+ "polars-ops",
+ "polars-utils",
+ "rayon",
+ "regex",
+ "strum_macros",
 ]
 
 [[package]]

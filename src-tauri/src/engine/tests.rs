@@ -181,7 +181,7 @@ fn join_inner_fans_out_and_drops_right_key() {
     let out = verb_join(
         &left,
         &right,
-        &WireJoinOpts { left_key: "id".into(), right_key: "fk".into(), how: "inner".into() },
+        &WireJoinOpts { left_key: "id".into(), right_key: "fk".into(), how: "inner".into(), ..Default::default() },
     )
     .unwrap();
     let d = dump(&out);
@@ -200,7 +200,7 @@ fn join_left_keeps_unmatched_with_null() {
     let out = verb_join(
         &left,
         &right,
-        &WireJoinOpts { left_key: "id".into(), right_key: "id".into(), how: "left".into() },
+        &WireJoinOpts { left_key: "id".into(), right_key: "id".into(), how: "left".into(), ..Default::default() },
     )
     .unwrap();
     let d = dump(&out);
@@ -397,6 +397,7 @@ fn join_right_labels_columns_correctly() {
         left_key: "k".into(),
         right_key: "ck".into(),
         how: "right".into(),
+        ..Default::default()
     };
     let out = verb_join(&left, &right, &opts).unwrap();
     let d = dump(&out);
@@ -428,7 +429,7 @@ fn join_row_order_matches_oracle() {
         ("k", SolType::Number, num(&[1.0, 2.0, 1.0])),
         ("r", SolType::Number, num(&[100.0, 200.0, 101.0])),
     ]);
-    let opts = WireJoinOpts { left_key: "k".into(), right_key: "k".into(), how: "left".into() };
+    let opts = WireJoinOpts { left_key: "k".into(), right_key: "k".into(), how: "left".into(), ..Default::default() };
     let out = verb_join(&left, &right, &opts).unwrap();
     let d = dump(&out);
     // Oracle order: left rows in order, each fanning out over its right matches
@@ -438,6 +439,78 @@ fn join_row_order_matches_oracle() {
         d[2].2,
         vec![Json::Null, num_to_json(100.0), num_to_json(101.0), num_to_json(200.0), num_to_json(100.0), num_to_json(101.0)]
     );
+}
+
+// ─── as-of join (prices/trades: every left row kept, nearest right by time) ─────
+fn asof_fixture() -> (SolFrame, SolFrame) {
+    // trades at t = -1 (before any quote), 1, 5, 10, 20 (after every quote)
+    let trades = frame(vec![("t", SolType::Number, num(&[-1.0, 1.0, 5.0, 10.0, 20.0]))]);
+    // quotes at t = 0, 2, 4, 8, 12 with a distinguishing value
+    let quotes = frame(vec![
+        ("t", SolType::Number, num(&[0.0, 2.0, 4.0, 8.0, 12.0])),
+        ("px", SolType::Number, num(&[100.0, 101.0, 102.0, 103.0, 104.0])),
+    ]);
+    (trades, quotes)
+}
+
+fn asof_opts(direction: &str) -> WireJoinOpts {
+    WireJoinOpts {
+        left_key: "t".into(),
+        right_key: "t".into(),
+        how: "asof".into(),
+        asof_direction: Some(direction.to_string()),
+        ..Default::default()
+    }
+}
+
+#[test]
+fn join_asof_backward_keeps_every_left_row_latest_leq() {
+    let (trades, quotes) = asof_fixture();
+    let out = verb_join(&trades, &quotes, &asof_opts("backward")).unwrap();
+    let d = dump(&out);
+    assert_eq!(d[0].0, "t");
+    assert_eq!(d[0].2, j(&[-1.0, 1.0, 5.0, 10.0, 20.0])); // original LEFT order preserved
+    assert_eq!(d[1].2, vec![Json::Null, num_to_json(100.0), num_to_json(102.0), num_to_json(103.0), num_to_json(104.0)]);
+}
+
+#[test]
+fn join_asof_forward_earliest_geq() {
+    let (trades, quotes) = asof_fixture();
+    let out = verb_join(&trades, &quotes, &asof_opts("forward")).unwrap();
+    let d = dump(&out);
+    assert_eq!(d[1].2, vec![num_to_json(100.0), num_to_json(101.0), num_to_json(103.0), num_to_json(104.0), Json::Null]);
+}
+
+#[test]
+fn join_asof_nearest_ties_favor_backward() {
+    let (trades, quotes) = asof_fixture();
+    let out = verb_join(&trades, &quotes, &asof_opts("nearest")).unwrap();
+    let d = dump(&out);
+    // t=-1: only forward (0) exists -> 100. t=1: |1-0|=|1-2|=1 tie -> backward (100).
+    // t=5: |5-4|=1 < |5-8|=3 -> backward (102). t=10: |10-8|=|10-12|=2 tie -> backward (103).
+    // t=20: only backward (12) exists -> 104.
+    assert_eq!(d[1].2, vec![num_to_json(100.0), num_to_json(100.0), num_to_json(102.0), num_to_json(103.0), num_to_json(104.0)]);
+}
+
+#[test]
+fn join_asof_tolerance_excludes_far_matches() {
+    let (trades, quotes) = asof_fixture();
+    let mut opts = asof_opts("backward");
+    opts.asof_tolerance = Some(1.0);
+    let out = verb_join(&trades, &quotes, &opts).unwrap();
+    let d = dump(&out);
+    // t=5's backward match (t=4) is within tolerance (diff 1); t=10's (t=8, diff 2) is not.
+    assert_eq!(d[1].2, vec![Json::Null, num_to_json(100.0), num_to_json(102.0), Json::Null, Json::Null]);
+}
+
+#[test]
+fn join_asof_rejects_non_orderable_key() {
+    let left = frame(vec![("k", SolType::Str, strs(&["a"]))]);
+    let right = frame(vec![("k", SolType::Str, strs(&["a"])), ("v", SolType::Number, num(&[1.0]))]);
+    let opts = WireJoinOpts { left_key: "k".into(), right_key: "k".into(), how: "asof".into(), ..Default::default() };
+    let err = verb_join(&left, &right, &opts).unwrap_err();
+    let v = serde_json::to_value(&err).unwrap();
+    assert_eq!(v["code"], "#VALUE!");
 }
 
 #[test]

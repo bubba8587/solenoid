@@ -65,7 +65,9 @@ dimensions — walked through a concrete example, didn't land; socket lattice st
 two-leg stool, no axis-semantics leg) · #21 IN, VERY LATE (uncertain values / error-bar
 propagation — possible, sequence dead last alongside #43 money) · #22 IN — no new
 node: As-Of Join is a `how` value on the existing Join node (frame.ts:228), As-Of
-Lookup is FrameLookup's already-flagged approximate-match follow-up (frame.ts:1071) ·
+Lookup is FrameLookup's already-flagged approximate-match follow-up (frame.ts:1071) —
+**done 2026-07-03, both halves, see dev-notes** — #21/#43 remain unbuilt (need an author
+representation call first) ·
 #23 DEFERRED (persistent compute cache — joins the end-of-walk revisit pile) · #24 IN
 (sketch-mode approximate calc — must get a footer/StatusBar affordance, not just a
 per-value badge). Round boundaries in the doc (verified against headers, corrects an
