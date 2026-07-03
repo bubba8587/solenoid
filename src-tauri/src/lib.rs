@@ -63,6 +63,7 @@ pub fn run() {
             ipc::engine_ping,
             engine::engine_source,
             engine::engine_apply,
+            engine::engine_apply_many,
             engine::engine_join,
             engine::engine_append,
             engine::engine_preview,

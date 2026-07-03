@@ -16,7 +16,7 @@ import {
   type FilterOp, type JoinHow, type AggOp, type DecisionNormalize,
 } from "../frameVerbs";
 import type { PivotSpec } from "../frameVerbs";
-import { runFrameUnary, runFrameJoin, runFrameAppend, readFrame, collectPreview, dropFrameRef, isFrameRef, frameBackend, materialize, type FrameInput, type FrameRef } from "../frameBackend";
+import { runFrameUnary, runFrameJoin, runFrameAppend, readFrame, collectPreview, dropFrameRef, isFrameRef, frameBackend, materialize, flushRef, type FrameInput, type FrameRef } from "../frameBackend";
 import type { CubeValue } from "../frame";
 
 // A verb that may throw a tagged SolError (a #REF! for a bad column) must NOT let
@@ -917,7 +917,7 @@ export class GetColumnNode extends ClassicPreset.Node {
     // existing test) uses.
     if (isFrameRef(f)) {
       return (async () => {
-        const col = await materialize(frameBackend().column(f.__frameRef, name));
+        const col = await materialize((async () => frameBackend().column(await flushRef(f), name))());
         if (isSolError(col)) { this.cachedResult = null; return { values: col }; }
         if (!col) { this.cachedResult = null; return { values: null }; }
         return { values: this.readColumn(col) };
