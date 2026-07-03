@@ -30,6 +30,11 @@ export function ReportOverlay() {
   const [body, setBody] = useState(node?.body ?? "");
   const [embedPickerOpen, setEmbedPickerOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
+  // Mobile only: the split-pane doesn't fit a phone, so Draft/Preview become
+  // tabs (one pane at a time). Ignored on desktop (the tab bar is CSS-hidden and
+  // both panes show). Committing the draft when switching to Preview keeps the
+  // rendered refs/embeds fresh.
+  const [mobileTab, setMobileTab] = useState<"draft" | "preview">("draft");
   const embedBtnRef = useRef<HTMLButtonElement>(null);
   const embedPopRef = useRef<HTMLDivElement>(null);
   useDismissOnOutside(embedPickerOpen, () => setEmbedPickerOpen(false), [embedBtnRef, embedPopRef]);
@@ -191,7 +196,30 @@ export function ReportOverlay() {
           </div>
         </div>
 
-        <div className="report-body">
+        {/* Mobile tab bar (CSS-hidden on desktop). Switching to Preview commits
+            the draft so the rendered refs/embeds reflect the latest edit. */}
+        <div className="report-tabs" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mobileTab === "draft"}
+            className={`report-tab${mobileTab === "draft" ? " report-tab--active" : ""}`}
+            onClick={() => setMobileTab("draft")}
+          >
+            Draft
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mobileTab === "preview"}
+            className={`report-tab${mobileTab === "preview" ? " report-tab--active" : ""}`}
+            onClick={() => { void commitBody(); setMobileTab("preview"); }}
+          >
+            Preview
+          </button>
+        </div>
+
+        <div className="report-body" data-tab={mobileTab}>
           <textarea
             ref={sourceRef}
             className="report-source"
