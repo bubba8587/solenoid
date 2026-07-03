@@ -132,8 +132,10 @@ on a handful of node types, since the naive version might need a bespoke prose s
 per catalog entry) · #51 IN, very light (Presentation node — ordered list of steps,
 each step = title + an explicit node set picked like a navigator list; camera
 zoom/pan only, no isolate/highlight/dim) · #52 IN, COLORS ONLY (branded output — no
-logo, no custom fonts, just a color override on report/published-artifact surfaces).
-NEXT when resuming: scope-features #53, then #54–63 in order (folding in
+logo, no custom fonts, just a color override on report/published-artifact surfaces) ·
+#53 OUT (shared definitions/linked-graph library — preferred path is a pack shipping
+a custom Constants node instead, consistent with #5's packs-only distribution story).
+NEXT when resuming: scope-features #54, then #55–63 in order (folding in
 strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
