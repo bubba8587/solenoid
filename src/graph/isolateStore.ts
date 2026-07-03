@@ -8,6 +8,10 @@
 import { createNotifier } from "./storeKit";
 
 let _focus: Set<string> | null = null;
+// Which gesture produced the focus set — the IsolatePill labels the mode so a
+// directional variant (Where used = downstream-only) reads differently from
+// plain Isolate / Isolate chain instead of looking like a duplicate of them.
+let _mode: string | null = null;
 const { notify, subscribe, version } = createNotifier();
 
 export const isolateStore = {
@@ -15,19 +19,23 @@ export const isolateStore = {
   get: (): ReadonlySet<string> | null => _focus,
   isActive: (): boolean => _focus !== null,
 
+  /** The pill's mode label ("Where used"), or null for plain isolate. */
+  mode: (): string | null => _mode,
+
   /** Is this node visible? True when not isolating, or when it's in the focus
    *  set. (Non-members are the ones that dim.) */
   isVisible: (id: string): boolean => _focus === null || _focus.has(id),
 
   /** Enter isolation with a focus set (empty/none clears it). */
-  set(ids: Iterable<string> | null): void {
+  set(ids: Iterable<string> | null, mode?: string): void {
     const next = ids ? new Set(ids) : null;
     _focus = next && next.size > 0 ? next : null;
+    _mode = _focus ? (mode ?? null) : null;
     notify();
   },
 
   exit(): void {
-    if (_focus !== null) { _focus = null; notify(); }
+    if (_focus !== null) { _focus = null; _mode = null; notify(); }
   },
 
   subscribe,

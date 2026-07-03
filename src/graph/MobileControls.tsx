@@ -4,16 +4,18 @@ import { addMenuRequest } from "./addMenuStore";
 import { cableSelectionStore } from "./cableState";
 import { touchSelectStore } from "./touchSelectStore";
 import { IS_MOBILE } from "./coarse";
-import { outlineSearch } from "./outlineStore";
+import { paletteStore } from "./paletteStore";
 import { fitAll } from "./NavMenu";
 import "./MobileControls.css";
 
 /**
  * Touch-only bottom action bar (hidden ≥640px via CSS): one row of 6 buttons
- * around the raised accent Add FAB — Search · Undo · Redo · ➕ · Select · Delete
- * · Fit. Pulling Search + Fit in here lets the top-left search pill go away and
- * the canvas nav pill shrink. Delete is disabled (dimmed) when nothing's
- * selected, so the bar never reflows and the buttons keep fixed positions.
+ * around the raised accent Add FAB — Commands · Undo · Redo · ➕ · Select ·
+ * Delete · Fit. The Commands button opens the command palette, which subsumes
+ * the old Search slot (typing a node's name in it jumps to the node, and it
+ * carries every other action, so one button covers both). Delete is disabled
+ * (dimmed) when nothing's selected, so the bar never reflows and the buttons
+ * keep fixed positions.
  *
  * Selection state is polled the same cheap way the StatusBar does it (there is
  * no dedicated selection store), so Delete enables only when there's something
@@ -44,10 +46,10 @@ export function MobileControls() {
 
   return (
     <div className="solenoid-mobile-bar" onPointerDown={(e) => e.stopPropagation()}>
-      <button className="solenoid-mobile-bar__btn" aria-label="Find node" onClick={() => outlineSearch.open()}>
-        <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-          <circle cx="7" cy="7" r="4.5" />
-          <path d="M10.4 10.4 14 14" />
+      {/* Lucide "command" — the palette. Its search covers find-node too. */}
+      <button className="solenoid-mobile-bar__btn" aria-label="Command palette" onClick={() => paletteStore.open()}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3" />
         </svg>
       </button>
       <button className="solenoid-mobile-bar__btn" aria-label="Undo" onClick={() => fireUndo(false)}>

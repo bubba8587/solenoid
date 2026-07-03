@@ -95,9 +95,10 @@ export function NodeContextMenu({ target, onIsolate, onIsolateChain, onWhereUsed
     };
   }, [onClose]);
 
-  const item = (icon: React.ReactNode, label: string, run: () => void) => (
+  const item = (icon: React.ReactNode, label: string, run: () => void, title?: string) => (
     <button
       className="solenoid-socket-ctx__item"
+      title={title}
       onMouseDown={(e) => e.stopPropagation()}
       onClick={() => { run(); onClose(); }}
     >
@@ -117,8 +118,10 @@ export function NodeContextMenu({ target, onIsolate, onIsolateChain, onWhereUsed
       {target.isComposite && onUnpackComposite &&
         item(<UnpackSvg />, "Unpack composite", () => onUnpackComposite!(target.nodeId))}
       {item("⊙", "Isolate", () => onIsolate(target.seedIds))}
-      {item("⛓", "Isolate chain", () => onIsolateChain(target.seedIds))}
-      {onWhereUsed && item(<WhereUsedSvg />, "Where used", () => onWhereUsed!(target.nodeId))}
+      {item("⛓", "Isolate chain", () => onIsolateChain(target.seedIds),
+        "Isolate everything connected to this, upstream and downstream")}
+      {onWhereUsed && item(<WhereUsedSvg />, "Where used", () => onWhereUsed!(target.nodeId),
+        "Isolate only what this node feeds — downstream, not its inputs")}
       {onPin && target.canPin && item(<PinSvg />, "Pin value", () => onPin!(target.nodeId))}
       {onAddComment && item(<CommentSvg />, "Add comment", () => onAddComment!(target.nodeId))}
       {target.standoff && onLinkStandoff &&

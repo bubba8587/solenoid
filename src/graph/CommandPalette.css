@@ -79,3 +79,20 @@
 }
 .solenoid-cmdpalette__input:focus { border-color: var(--accent); }
 .solenoid-cmdpalette__input::placeholder { color: var(--text-muted); }
+
+/* Mobile: the on-screen keyboard owns the bottom half of the viewport, so the
+   palette anchors to the TOP with the input first and results below it
+   (desktop keeps the Spotlight-style input-at-bottom). Rows get touch-sized
+   padding; keyboard-shortcut hints mean nothing without a keyboard. */
+html.is-mobile .solenoid-cmdpalette {
+  top: calc(env(safe-area-inset-top, 0px) + 64px);
+  bottom: auto;
+}
+html.is-mobile .solenoid-cmdpalette__results {
+  order: 1;
+  margin-bottom: 0;
+  margin-top: 4px;
+  max-height: 38vh;
+}
+html.is-mobile .solenoid-cmdpalette__item { padding: 11px 12px; }
+html.is-mobile .solenoid-cmdpalette__shortcut { display: none; }
