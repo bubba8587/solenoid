@@ -1650,6 +1650,13 @@ operations (run-all via headless #10, revalidate-all via #12/#29, made cheap by 
 persistent cache #23).
 
 ## 49 — The session journal: the model's changelog writes itself
+
+**VERDICT (author, 2026-07-03): IN — as a NODE** (consistent with the #45 standing
+principle). A Session History node: doesn't persist (reflects the current session's
+history-plugin state only, not saved document data), autogenerates its digest text
+whenever the node exists on canvas, and has a copy button. That's the whole UI — copy,
+done.
+
 The history plugin already knows everything that happened; distill it. At session end (or
 on demand), a dated, human-readable digest — "changed FX assumption 1.08→1.11; added a
 Reconcile branch; renamed 3 nodes" — attached to the document. The provenance story at

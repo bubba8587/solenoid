@@ -121,8 +121,12 @@ data-drafts.
 existing canvas-image capture + the #13 report's markdown renderer; a few days, not
 a redesign) · #48 VERY DEFERRED (library layer / cross-doc view — file-over-app
 posture: the OS-level chosen folder, already a Settings picker, is the doc-management
-answer for now, not a bespoke in-app fleet dashboard).
-NEXT when resuming: scope-features #49, then #50–63 in order (folding in
+answer for now, not a bespoke in-app fleet dashboard) · #49 IN, AS A NODE (Session
+History node — doesn't persist, autogenerates its digest when it exists on canvas,
+copy button, done). Round 7 (#43–49) fully walked: #43 IN/DEFER · #44 IN (refined) ·
+#45 IN as node · #46 DEFERRED · #47 IN · #48 VERY DEFERRED · #49 IN as node.
+NEXT when resuming: scope-features #50 (Round 8, "telling the story, and the estate"
+— begins), then #51–63 in order (folding in
 strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
