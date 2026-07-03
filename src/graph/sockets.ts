@@ -40,6 +40,8 @@ export type SocketDataType =
   | "cube"      // recursive container: a frame whose cells hold ANY value (incl. a
                 // nested frame/cube) — the lattice SUPREMUM. See frame.ts CubeValue.
   | "lambda"    // first-class function value — see nodes/lambda.ts
+  | "chart"     // first-class chart/visual-output value — the OBJECT socket family's
+                // other member alongside lambda; identity-only (self + any), like lambda
   | "any";      // wildcard — accepts any type
 
 // SocketComponent renders: scalars/complex/any as circles, list types as
@@ -74,6 +76,7 @@ export const SOCKET_COLORS: Record<SocketDataType, string> = {
   frame:    "var(--sock-frame)",    // violet        — grid (named-column data table)
   cube:     "var(--sock-cube)",     // violet (frame) — hexagon (recursive any-value container)
   lambda:   "var(--sock-lambda)",   // teal-green    — circle with λ (function value)
+  chart:    "var(--sock-chart)",    // blue           — circle (chart/visual-output value)
   any:      "var(--sock-any)",      // gray          — circle (wildcard)
 };
 
@@ -280,4 +283,5 @@ export const logicalTableSocket = new SolenoidSocket("logicaltable");
 export const frameSocket   = new SolenoidSocket("frame");
 export const cubeSocket    = new SolenoidSocket("cube");
 export const lambdaSocket  = new SolenoidSocket("lambda");
+export const chartSocket   = new SolenoidSocket("chart");
 export const anySocket     = new SolenoidSocket("any");
