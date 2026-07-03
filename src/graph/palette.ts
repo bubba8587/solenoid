@@ -175,7 +175,7 @@ export const SOCKET_VARS: { var: string; slot: PaletteSlot; kind: SocketVarKind 
   { var: "--sock-frame",       slot: "violet",    kind: "scalar" },
   { var: "--sock-cube",        slot: "violet",    kind: "scalar" }, // recursive container — shares the frame's violet (distinguished by its hexagon glyph, not colour)
   { var: "--sock-lambda",      slot: "green",     kind: "scalar" },
-  { var: "--sock-chart",       slot: "blue",      kind: "scalar" }, // the object family's other member — shares the math node-kind's blue (distinguished by context/glyph, not colour; no socket slot left unclaimed, same doubling-up precedent as cube/frame)
+  { var: "--sock-chart",       slot: "green",     kind: "scalar" }, // OBJECT/"Special" family with lambda — shares its green (distinguished by glyph: lambda is a circle+λ, chart is a square+bars), one legend row "Special"
   { var: "--sock-any",         slot: "gray",      kind: "scalar" },
 ];
 
