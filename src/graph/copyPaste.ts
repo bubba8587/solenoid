@@ -80,7 +80,7 @@ export const INIT_FIELD_ORDER = [
   "rowTotalDepth", "colTotalDepth", "rowSort", "colSort", "relativeTo", "normalize", "detail",
   "members", "color", "collapsed", "width", "height", "title", "body", "seq",
   "checkNotNull", "checkUnique", "checkRange", "checkRegex",
-  "runMode", "simulationSteps",
+  "runMode", "simulationSteps", "embeds", "steps",
 ] as const;
 
 // Object-valued extras appended after INIT_FIELD_ORDER (below), in this fixed

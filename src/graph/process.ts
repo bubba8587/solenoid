@@ -2,6 +2,7 @@ import type { NodeEditor } from "rete";
 import type { AreaPlugin } from "rete-area-plugin";
 import type { DataflowEngine } from "rete-engine";
 import { Cancelled } from "rete-engine";
+import type { HistoryPlugin } from "rete-history-plugin";
 import { cableValueStore } from "./cableValueStore";
 import { solError } from "./errorValue";
 import { perfEnabled, beginPass, passTopNodes, ipcSnapshot } from "./perfProbe";
@@ -13,6 +14,20 @@ import type { Schemes, AreaExtra } from "./schemes";
 let _editor: NodeEditor<Schemes> | null = null;
 let _engine: DataflowEngine<Schemes> | null = null;
 let _area: AreaPlugin<Schemes, AreaExtra> | null = null;
+// The rete-history-plugin instance Canvas owns — a reference for the Session
+// History node (no other current use reads it; undo/redo already go through
+// pushHistory/clearHistory below). Rete renders nodes in a separate React root
+// with no access to Canvas's closure, so this is the module-singleton pattern
+// every other Canvas-owned handle (editor/engine/area) already uses.
+let _history: HistoryPlugin<Schemes> | null = null;
+
+export function setHistoryPlugin(h: HistoryPlugin<Schemes>) {
+  _history = h;
+}
+
+export function getHistoryPlugin() {
+  return _history;
+}
 
 export function setEditorRefs(
   editor: NodeEditor<Schemes>,
