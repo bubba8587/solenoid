@@ -980,6 +980,10 @@ like the array-semantics build was done: policy decisions first, increments, a s
 
 ## 21 — Uncertain values: numbers with error bars that propagate
 
+**VERDICT (author, 2026-07-03): IN — VERY LATE.** Possible, worth having, but sequence
+it after everything else in the queue (already noted as one of the deep-dive session
+slots, near the end, alongside #43 money).
+
 **The problem it kills:** every forecast, measurement, and estimate is a range
 pretending to be a point. "Revenue will be 1.2M" hides "±0.3M", and by the time ten
 such numbers multiply through a model, false precision has compounded invisibly.
