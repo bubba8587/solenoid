@@ -100,8 +100,11 @@ updates live) · #40 IN, optional + very conservative trigger threshold (semanti
 zoom — Settings toggle, simplified-card swap only near the far end of zoom range) ·
 #41 IN, sequence LATE — needs its own design pass (conditional formatting for
 tables: must clear Excel's own bar by a lot per author's explicit dislike of Excel's
-version, Display-node-only, must not step on FC's text-format/units territory).
-NEXT when resuming: scope-features #42, then #43–63 in order (folding in
+version, Display-node-only, must not step on FC's text-format/units territory) ·
+#42 OUT (history scrubber). Round 6 (#37–42) fully walked: #37/#38/#39/#40/#41 all
+IN (several with conditions/deferred-build notes above) · #42 OUT.
+NEXT when resuming: scope-features #43 (Round 7, "exact numbers, and the file that
+travels alone" — begins), then #44–63 in order (folding in
 strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
