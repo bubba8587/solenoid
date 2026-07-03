@@ -11,6 +11,9 @@ export function IsolatePill() {
   useSyncExternalStore(isolateStore.subscribe, isolateStore.version);
   if (!isolateStore.isActive()) return null;
   const count = isolateStore.get()?.size ?? 0;
+  // A directional mode (Where used) labels itself and counts "downstream" —
+  // the dim visual is shared, so the pill is what distinguishes the gestures.
+  const mode = isolateStore.mode();
   return (
     <button
       type="button"
@@ -19,7 +22,7 @@ export function IsolatePill() {
       onClick={() => isolateStore.exit()}
     >
       <span className="solenoid-isolate-pill__dot" />
-      <span>Isolated · {count} node{count === 1 ? "" : "s"}</span>
+      <span>{mode ? `${mode} · ${count} downstream` : `Isolated · ${count} node${count === 1 ? "" : "s"}`}</span>
       <span className="solenoid-isolate-pill__exit">Esc to exit</span>
     </button>
   );

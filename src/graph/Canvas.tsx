@@ -32,6 +32,7 @@ import { copySelected, pasteClipboard } from "./copyPaste";
 import { ctorRegistry } from "./nodeCtorRegistry";
 import { createCompositeFromSelection, unpackComposite } from "./compositeLogic";
 import { compositeEditorStore } from "./compositeEditorStore";
+import { paletteStore } from "./paletteStore";
 import { frStore } from "./frStore";
 import { shortcutsStore } from "./shortcutsStore";
 import { CommandPalette } from "./CommandPalette";
@@ -399,7 +400,9 @@ export function Canvas() {
   const prevPickedRef = useRef<string | null>(null);
   const [menu, setMenu] = useState<MenuState>(null);
   const closeMenu = useCallback(() => setMenu(null), []);
-  const [paletteOpen, setPaletteOpen] = useState(false);
+  // Module store, not useState: the mobile bottom bar opens the palette from
+  // outside Canvas's tree, and the keydown handler reads it closure-free.
+  const paletteOpen = useSyncExternalStore(paletteStore.subscribe, paletteStore.get);
 
   // Remove the selected cables and/or the selected nodes (a lasso can select
   // both at once). Shared by the Delete/Backspace key path and the mobile
@@ -689,10 +692,10 @@ export function Canvas() {
         // which `editable` already covers, or — like Settings' switches — is
         // a non-input control that `editable` wouldn't catch on its own).
         if (
-          e.key === "Enter" && !paletteOpen && !menu &&
+          e.key === "Enter" && !paletteStore.get() && !menu &&
           !frStore.get() && !settingsPanel.get() && !shortcutsStore.get()
         ) {
-          setPaletteOpen(true); e.preventDefault(); return;
+          paletteStore.open(); e.preventDefault(); return;
         }
         if (e.key === "Escape" && isolateStore.isActive()) {
           isolateStore.exit(); e.preventDefault(); return;
@@ -3538,7 +3541,7 @@ export function Canvas() {
           onClose={closeMenu}
         />
       )}
-      {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} />}
+      {paletteOpen && <CommandPalette onClose={() => paletteStore.close()} />}
       {socketCtx && (
         <SocketContextMenu
           target={socketCtx}

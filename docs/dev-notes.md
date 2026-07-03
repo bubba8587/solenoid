@@ -2,6 +2,29 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Follow-up UX pass — where-used pill, palette selection, mobile palette (2026-07-03)
+Author follow-ups off the live deploy:
+
+- **Where used vs Isolate chain**: functionally distinct (downstream-only closure vs the
+  bidirectional chain), but the shared isolate/dim visual made them read as duplicates —
+  especially when right-clicking a source node, where the sets coincide. `isolateStore.set`
+  now takes a mode label; the IsolatePill shows "Where used · N downstream" vs
+  "Isolated · N nodes", and both context-menu items carry direction tooltips.
+- **Command palette selection model**: it opened with row 0 pre-highlighted AND
+  `onMouseEnter` let the browser's synthetic mouseover (fired when the list mounts under a
+  parked pointer) move that highlight — so blind Enter-Enter ran a pointer-position-dependent
+  action. Two fixes: the EMPTY-query palette now opens with NO active row (Enter is a no-op
+  until you type/arrow/really-move-the-mouse; typing still auto-selects the top result so
+  type→Enter stays one motion), and rows highlight on `onMouseMove` (real movement), never
+  `onMouseEnter`. **The mount-under-cursor mouseenter trap applies to any future
+  list-under-a-hotkey UI.**
+- **Command palette is first-class on mobile**: palette open/close moved from Canvas
+  useState to `paletteStore` (module toggle store) so the mobile bottom bar can drive it;
+  the bar's Search button became the ⌘ Commands button (the palette's typed search jumps to
+  nodes, subsuming it). `html.is-mobile` CSS anchors the palette to the TOP with the input
+  first — the on-screen keyboard owns the bottom half — with touch-sized rows and shortcut
+  hints hidden.
+
 ### v2.0 build regression sweep + the Composite drill-in editor (2026-07-03)
 The "stronger review pass" the backlog asked for — six parallel review agents over every
 unwalked v2.0 bundle plus root-cause work on the author-reported breakage. Fixes:

@@ -67,7 +67,10 @@ export function isolateWhereUsed(nodeId: string): boolean {
   const editor = getEditor();
   if (!editor) return false;
   const downstream = downstreamClosure(editor, nodeId);
-  isolateStore.set(expandEntities(editor, downstream));
+  // The mode label keeps the pill from reading as a plain Isolate — the SET
+  // differs from Isolate chain (downstream-only vs both directions), but the
+  // dim visual is identical, so the pill is what tells them apart.
+  isolateStore.set(expandEntities(editor, downstream), "Where used");
   return true;
 }
 

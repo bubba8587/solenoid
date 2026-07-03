@@ -120,14 +120,19 @@ function typeLabel(n: unknown): string {
 
 export function CommandPalette({ onClose }: { onClose: () => void }) {
   const [query, setQuery] = useState("");
-  const [activeIndex, setActiveIndex] = useState(0);
+  // -1 = nothing selected. The palette opens with NO active row — a blind
+  // Enter must never fire an action the user didn't pick (the browse list is
+  // a menu, not a ranked answer). Typing a query DOES auto-select the top
+  // result (that ranking is the answer to the query, so type→Enter works);
+  // arrows and real mouse movement select explicitly.
+  const [activeIndex, setActiveIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const commands = useMemo(buildCommands, []);
   const toggles = useMemo(buildSettingToggles, []);
   const leaves = useMemo(() => flattenLeaves(buildCatalog(true)), []);
 
   useEffect(() => { inputRef.current?.focus(); }, []);
-  useEffect(() => setActiveIndex(0), [query]);
+  useEffect(() => setActiveIndex(query.trim() ? 0 : -1), [query]);
 
   const results = useMemo<PaletteItem[]>(() => {
     const q = query.trim();
@@ -184,7 +189,8 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
   function onKeyDown(e: React.KeyboardEvent) {
     if (e.key === "ArrowDown") { e.preventDefault(); setActiveIndex((i) => Math.min(i + 1, results.length - 1)); }
     else if (e.key === "ArrowUp") { e.preventDefault(); setActiveIndex((i) => Math.max(i - 1, 0)); }
-    else if (e.key === "Enter") { e.preventDefault(); if (results[activeIndex]) run(results[activeIndex]); }
+    // activeIndex -1 (nothing selected) makes Enter a no-op — see its comment.
+    else if (e.key === "Enter") { e.preventDefault(); if (activeIndex >= 0 && results[activeIndex]) run(results[activeIndex]); }
     else if (e.key === "Escape") { e.preventDefault(); onClose(); }
   }
 
@@ -197,7 +203,13 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
               <div
                 key={r.id}
                 className={`solenoid-cmdpalette__item${i === activeIndex ? " solenoid-cmdpalette__item--active" : ""}`}
-                onMouseEnter={() => setActiveIndex(i)}
+                // onMouseMove, NOT onMouseEnter: the palette mounts under
+                // wherever the pointer happens to sit, and the browser fires a
+                // synthetic mouseenter on the row beneath it — which stole the
+                // highlight from the keyboard's row 0, so Enter-Enter ran a
+                // pointer-position-dependent action. mousemove only fires on
+                // real movement, so the mouse must be USED to take over.
+                onMouseMove={() => setActiveIndex(i)}
                 onClick={() => run(r)}
               >
                 <span className="solenoid-cmdpalette__label">{r.label}</span>
