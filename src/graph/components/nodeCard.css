@@ -977,3 +977,17 @@
   background-color: var(--border-subtle);
   color: var(--text);
 }
+
+/* Jump-and-flash (Problems / Comments panels): a timed ring pulse on whichever
+   node root the class lands on — applies uniformly regardless of root type
+   (.solenoid-node / .solenoid-note / .solenoid-group / .solenoid-conduit), since
+   there's no shared wrapper class to hook (see CLAUDE.md). A full-perimeter glow,
+   not a directional stripe — same "tint the element itself" spirit as the rest
+   of the design system, just transient instead of permanent. */
+@keyframes solenoid-flash-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--sol-error) 0%, transparent); }
+  15%, 55% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--sol-error) 55%, transparent); }
+}
+.solenoid-node-flash {
+  animation: solenoid-flash-pulse 1s ease-in-out;
+}
