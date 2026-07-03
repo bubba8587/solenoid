@@ -67,11 +67,28 @@ export type SolErrorCode =
 
 const TAG = "__solError";
 
+/** Where a SolError came from — set once, at mint or first relay, and never
+ *  overwritten downstream (see installErrorGuards) so a chain of passthroughs
+ *  still points at the original producer. */
+export interface SolErrorOrigin {
+  /** The minting node's id (stable name lands with bundle 01; id till then). */
+  nodeId: string;
+  /** The minting node's title, or its type name if untitled. */
+  nodeName: string;
+  /** Which input slot carried the error in, when tagged at a relay rather than
+   *  at the true mint site (defensive — normally the origin is already set). */
+  inputSlot?: string;
+  /** Row index within a list/frame column, for a per-cell error. */
+  rowIndex?: number;
+}
+
 export interface SolError {
   [TAG]: true;
   code: SolErrorCode;
   /** Structural explanation ("Division by zero") — safe for tooltips. */
   message: string;
+  /** Populated by installErrorGuards — see SolErrorOrigin. */
+  origin?: SolErrorOrigin;
 }
 
 /**
@@ -152,11 +169,80 @@ const WRAPPED = Symbol("solErrorGuard");
 type DataFn = (inputs: Record<string, unknown[] | undefined>) =>
   Record<string, unknown> | Promise<Record<string, unknown>>;
 
+// Duck-typed frame shape (columns of cell arrays) — NOT imported from frame.ts,
+// which itself imports isSolError from this module; a real import would cycle.
+interface FrameLikeColumn { values: unknown[] }
+interface FrameLike { __frame: true; columns: FrameLikeColumn[] }
+function isFrameLike(v: unknown): v is FrameLike {
+  return typeof v === "object" && v !== null &&
+    (v as { __frame?: unknown }).__frame === true &&
+    Array.isArray((v as { columns?: unknown }).columns);
+}
+
+// Same title-or-type-name derivation as nodeNames.ts's baseName — duplicated
+// (rather than imported) because nodeNames.ts pulls in process.ts/rete-nodes.ts,
+// which would cycle back into this foundational module.
+function nodeDisplayName(n: { label?: string; constructor: { name: string } }): string {
+  const label = n.label?.trim();
+  return label || n.constructor.name.replace(/Node$/, "").replace(/([a-z])([A-Z])/g, "$1 $2");
+}
+
+/** Tag every untagged SolError reachable at the top level of `v` (scalar, list,
+ *  or frame column) with `origin`, tracking row index for list/frame cells.
+ *  Already-tagged errors (an upstream mint, or a passthrough relay) are left
+ *  alone — origin always points at the FIRST place an error was seen, never
+ *  the last hop it passed through. No-op (returns `v` unchanged, no copy) when
+ *  there's nothing untagged, so this costs nothing on the (overwhelmingly
+ *  common) error-free path. */
+function withOrigin(v: unknown, nodeId: string, nodeName: string): unknown {
+  if (isSolError(v)) return v.origin ? v : { ...v, origin: { nodeId, nodeName } };
+  if (Array.isArray(v)) {
+    let out: unknown[] | null = null;
+    for (let i = 0; i < v.length; i++) {
+      const cell = v[i];
+      if (isSolError(cell) && !cell.origin) {
+        if (!out) out = v.slice();
+        out[i] = { ...cell, origin: { nodeId, nodeName, rowIndex: i } };
+      }
+    }
+    return out ?? v;
+  }
+  if (isFrameLike(v)) {
+    let out: FrameLike | null = null;
+    v.columns.forEach((col, ci) => {
+      let values: unknown[] | null = null;
+      for (let i = 0; i < col.values.length; i++) {
+        const cell = col.values[i];
+        if (isSolError(cell) && !cell.origin) {
+          if (!values) values = col.values.slice();
+          values[i] = { ...cell, origin: { nodeId, nodeName, rowIndex: i } };
+        }
+      }
+      if (values) {
+        if (!out) out = { ...v, columns: v.columns.slice() };
+        out.columns[ci] = { ...col, values };
+      }
+    });
+    return out ?? v;
+  }
+  return v;
+}
+
+/** Which input slot (top-level key of `inputs`) carries `err` — for tagging an
+ *  origin at a relay when the error somehow reached here untagged. */
+function findInputSlot(inputs: Record<string, unknown[] | undefined>, err: SolError): string | undefined {
+  for (const [key, arr] of Object.entries(inputs)) {
+    if (arr?.includes(err)) return key;
+  }
+  return undefined;
+}
+
 /** Idempotent. Call once per node (Canvas does, on `nodecreated`). */
 export function installErrorGuards(node: object): void {
   const n = node as {
     [WRAPPED]?: boolean;
     id?: string;
+    label?: string;
     data?: DataFn;
     outputs?: Record<string, unknown>;
     cachedResult?: unknown;
@@ -171,17 +257,39 @@ export function installErrorGuards(node: object): void {
   const typeName = n.constructor.name;
   const nodeId = n.id ?? "?";
 
-  const errorOut = (err: SolError): Record<string, unknown> => {
+  // errorOut() runs at BOTH the input-error short-circuit and the throw catch,
+  // so it's also the one place that tags an origin that arrived untagged
+  // (defensive — a fully-tagged graph never hits this): `inputs`, when passed,
+  // lets it name the input slot the error entered on.
+  const errorOut = (err: SolError, inputs?: Record<string, unknown[] | undefined>): Record<string, unknown> => {
+    const tagged: SolError = err.origin ? err : {
+      ...err,
+      origin: { nodeId, nodeName: nodeDisplayName(n), inputSlot: inputs && findInputSlot(inputs, err) },
+    };
     const out: Record<string, unknown> = {};
-    for (const key of Object.keys(n.outputs ?? {})) out[key] = err;
-    if ("cachedResult" in n) n.cachedResult = err;
+    for (const key of Object.keys(n.outputs ?? {})) out[key] = tagged;
+    if ("cachedResult" in n) n.cachedResult = tagged;
     return out;
+  };
+
+  // Tags a node's OWN result (the common mint site — a producer returning
+  // solError(...) directly, not via a thrown exception or an errored input).
+  const tagOutputs = (out: Record<string, unknown>): Record<string, unknown> => {
+    let changed = false;
+    const tagged: Record<string, unknown> = {};
+    const nodeName = nodeDisplayName(n);
+    for (const [k, v] of Object.entries(out)) {
+      const t = withOrigin(v, nodeId, nodeName);
+      tagged[k] = t;
+      if (t !== v) changed = true;
+    }
+    return changed ? tagged : out;
   };
 
   n.data = (inputs) => {
     if (!passRaw) {
       const err = firstInputError(inputs);
-      if (err) return errorOut(err);
+      if (err) return errorOut(err, inputs);
     }
     // Time the real data() when the probe is on — sync return or promise settle,
     // so an async frame node's IPC round-trip is included in its own row.
@@ -190,11 +298,12 @@ export function installErrorGuards(node: object): void {
     try {
       const out = orig(inputs);
       if (out instanceof Promise) {
-        const guarded = out.catch((e) => errorOut(fromThrown(e)));
+        const guarded = out.then(tagOutputs, (e) => errorOut(fromThrown(e)));
         return probe ? guarded.finally(() => recordNode(nodeId, typeName, performance.now() - t0)) : guarded;
       }
+      const tagged = tagOutputs(out);
       if (probe) recordNode(nodeId, typeName, performance.now() - t0);
-      return out;
+      return tagged;
     } catch (e) {
       if (probe) recordNode(nodeId, typeName, performance.now() - t0);
       return errorOut(fromThrown(e));

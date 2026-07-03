@@ -32,8 +32,13 @@ describe("installErrorGuards", () => {
     installErrorGuards(n);
     const e = solError("#DOMAIN!", "upstream");
     const out = n.data({ a: [e as unknown as number], b: [2] }) as { result: unknown };
-    expect(out.result).toBe(e);
-    expect(n.cachedResult).toBe(e); // the value box shows it too
+    // Origin tagging (Tier 1) mints a fresh object the first time an untagged
+    // error is seen, so this is no longer the SAME reference as `e` — check the
+    // code/message survived instead.
+    expect(isSolError(out.result)).toBe(true);
+    expect((out.result as SolError).code).toBe("#DOMAIN!");
+    expect((out.result as SolError).message).toBe("upstream");
+    expect(n.cachedResult).toBe(out.result); // the value box shows it too
   });
 
   it("converts a throwing data() into a local #ERROR!", () => {
@@ -73,6 +78,90 @@ describe("installErrorGuards", () => {
     const e = solError("#DIV/0!", "x");
     const out = n.data({ value: [e as unknown as number], fallback: [7] }) as { result: unknown };
     expect(out.result).toBe(7); // caught, not propagated
+  });
+});
+
+describe("SolError origin (provenance Tier 1)", () => {
+  it("tags a node's own minted error with nodeId/nodeName, no input slot", () => {
+    const n = new ArithmeticNode({ op: "div" });
+    installErrorGuards(n);
+    const out = n.data({ a: [1], b: [0] }) as { result: unknown };
+    const err = out.result as SolError;
+    expect(isSolError(err)).toBe(true);
+    expect(err.origin?.nodeId).toBe(n.id);
+    expect(err.origin?.nodeName).toBe("Arithmetic");
+    expect(err.origin?.inputSlot).toBeUndefined();
+  });
+
+  it("tags a thrown error the same way", () => {
+    const n = new ArithmeticNode({ op: "add" });
+    n.data = () => { throw new Error("boom"); };
+    installErrorGuards(n);
+    const out = n.data({}) as { result: unknown };
+    const err = out.result as SolError;
+    expect(err.origin?.nodeId).toBe(n.id);
+    expect(err.origin?.nodeName).toBe("Arithmetic");
+  });
+
+  it("tags an untagged input error with the input slot it arrived on", () => {
+    const n = new ArithmeticNode({ op: "add" });
+    installErrorGuards(n);
+    const e = solError("#DOMAIN!", "upstream");
+    const out = n.data({ a: [1], b: [e as unknown as number] }) as { result: unknown };
+    expect((out.result as SolError).origin?.inputSlot).toBe("b");
+  });
+
+  it("preserves the ORIGINAL origin through a downstream passthrough (never overwrites)", () => {
+    const producer = new ArithmeticNode({ op: "div" });
+    installErrorGuards(producer);
+    const minted = (producer.data({ a: [1], b: [0] }) as { result: SolError }).result;
+
+    const downstream = new ArithmeticNode({ op: "add" });
+    installErrorGuards(downstream);
+    const relayed = (downstream.data({ a: [minted as unknown as number], b: [2] }) as { result: SolError }).result;
+
+    expect(relayed.origin?.nodeId).toBe(producer.id); // still the original producer
+    expect(relayed.origin?.nodeName).toBe("Arithmetic");
+  });
+
+  it("tags a per-cell error inside a list result with its row index", () => {
+    const n = new ArithmeticNode({ op: "div" });
+    installErrorGuards(n);
+    const out = n.data({ a: [[4, 1, 6]], b: [[2, 0, 3]] }) as { result: unknown[] };
+    expect(out.result[0]).toBe(2);
+    expect(isSolError(out.result[1])).toBe(true);
+    expect((out.result[1] as SolError).origin?.rowIndex).toBe(1);
+    expect((out.result[1] as SolError).origin?.nodeId).toBe(n.id);
+    expect(out.result[2]).toBe(2);
+  });
+
+  it("tags a per-cell error inside a frame-shaped output with its row index", () => {
+    const e = solError("#VALUE!", "bad cell");
+    const n = { id: "n1", label: "Frame Thing", outputs: {}, constructor: { name: "SomeFrameNode" } } as unknown as {
+      id: string; data: (i: Record<string, unknown[] | undefined>) => Record<string, unknown>;
+    };
+    (n as unknown as { data?: unknown }).data = () => ({
+      out: { __frame: true, columns: [{ name: "c", type: "number", values: [1, e, 3] }] },
+    });
+    installErrorGuards(n);
+    const out = n.data({}) as { out: { columns: { values: unknown[] }[] } };
+    const cell = out.out.columns[0].values[1] as SolError;
+    expect(isSolError(cell)).toBe(true);
+    expect(cell.origin?.rowIndex).toBe(1);
+    expect(cell.origin?.nodeName).toBe("Frame Thing");
+  });
+
+  it("leaves an already-tagged frame cell's origin alone", () => {
+    const tagged: SolError = { ...solError("#VALUE!", "bad"), origin: { nodeId: "orig", nodeName: "Original" } };
+    const n = { id: "n2", outputs: {}, constructor: { name: "SomeFrameNode" } } as unknown as {
+      id: string; data: (i: Record<string, unknown[] | undefined>) => Record<string, unknown>;
+    };
+    (n as unknown as { data?: unknown }).data = () => ({
+      out: { __frame: true, columns: [{ name: "c", type: "number", values: [tagged] }] },
+    });
+    installErrorGuards(n);
+    const out = n.data({}) as { out: { columns: { values: unknown[] }[] } };
+    expect(out.out.columns[0].values[0]).toBe(tagged); // unchanged reference
   });
 });
 
