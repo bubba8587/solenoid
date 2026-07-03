@@ -148,8 +148,9 @@ DEFERRED · #57 split (mostly IN).
 Round 9 (#58–63, the social layer, LAST round) begun 2026-07-03: #58 OUT (verified
 templates — nothing left to attach to since #55 templates are OUT) · #59 OUT (fork
 lineage — file-over-app + open text format means git already solves this) · #60 OUT
-("hate it" — author's own words, overrides the doc's "pull this one forward" framing).
-NEXT when resuming: scope-features #61, then #62–63 in order (folding in
+("hate it" — author's own words, overrides the doc's "pull this one forward" framing) ·
+#61 OUT (numbers with receipts / verify-links on published figures).
+NEXT when resuming: scope-features #62, then #63 in order (folding in
 strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
