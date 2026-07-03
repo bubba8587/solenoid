@@ -373,6 +373,12 @@ pub struct OutColumn {
     values: Vec<Json>,
 }
 
+#[derive(Serialize)]
+pub struct OutSample {
+    handle: String,
+    factor: f64,
+}
+
 #[derive(Deserialize)]
 pub struct WireAgg {
     column: String,
@@ -456,6 +462,28 @@ fn wire_to_solframe(frame: WireFrame) -> Result<SolFrame, IpcError> {
     }
     let df = build_df(&names, &types, &columns)?;
     Ok(SolFrame { df, types })
+}
+
+// ─── Native CSV read (#24 WS-E) ─────────────────────────────────────────────────
+// Bypasses the JS Papa Parse + type-inference path (src/graph/csv.ts,
+// frame.ts's `frameFromCells`) entirely for desktop CSV import: Polars reads the
+// file straight off disk (multi-threaded, SIMD) and infers dtypes itself. A
+// Polars dtype maps onto a SolType by KIND: Boolean → Logical, String → Str,
+// everything numeric → Number. Known divergence from the JS oracle: no DATE
+// inference (frame.ts's conservative unambiguous-ISO check has no Rust
+// equivalent yet) — a date column arrives as Str here, same as any other text
+// column; an explicit Get Column "read as Date" still converts it downstream.
+fn df_to_solframe(df: DataFrame) -> SolFrame {
+    let types: Vec<SolType> = df
+        .get_columns()
+        .iter()
+        .map(|c| match c.dtype() {
+            DataType::Boolean => SolType::Logical,
+            DataType::String => SolType::Str,
+            _ => SolType::Number,
+        })
+        .collect();
+    SolFrame { df, types }
 }
 
 // ─── Verb helpers ───────────────────────────────────────────────────────────────
@@ -594,6 +622,25 @@ fn verb_head(frame: &SolFrame, n: f64) -> Result<SolFrame, IpcError> {
         df,
         types: frame.types.clone(),
     })
+}
+
+// ─── sample (sketch mode, #24) ──────────────────────────────────────────────────
+// Deterministic (never random) evenly-strided subset of up to `n` rows, mirroring
+// the JS oracle's `sampleFrame` (frameVerbs.ts) exactly — same stride formula, same
+// row order preserved. Returns the sampled frame + the scale FACTOR
+// (trueRows/sampleRows) so a groupBy's sum/count columns can be extrapolated back
+// toward the true total (frameBackend.ts `scaleSampledAggregate`).
+fn verb_sample(frame: &SolFrame, n: usize) -> Result<(SolFrame, f64), IpcError> {
+    let total = frame.df.height();
+    if total <= n || n == 0 {
+        return Ok((frame.clone(), 1.0));
+    }
+    let stride = total as f64 / n as f64;
+    let idxs: Vec<usize> = (0..n)
+        .map(|i| ((i as f64 * stride) as usize).min(total - 1))
+        .collect();
+    let sampled = reorder_rows(frame, &idxs)?;
+    Ok((sampled, total as f64 / n as f64))
 }
 
 // filter
@@ -1162,6 +1209,23 @@ pub fn engine_source(frame: WireFrame) -> Result<String, IpcError> {
     Ok(register(wire_to_solframe(frame)?))
 }
 
+/// Native CSV→Polars read (#24 WS-E) — desktop-only alternative to the JS
+/// `csvToFrame` path (src/graph/nodes/connection.ts): reads `folder/name` straight
+/// off disk through Polars' own CSV reader and returns it already collected to
+/// typed columns (mirrors `engine_collect`'s shape), so the file text never
+/// crosses IPC and JS never re-parses/re-infers it.
+#[tauri::command]
+pub fn engine_read_csv(folder: String, name: String) -> Result<Vec<OutColumn>, IpcError> {
+    let path = std::path::Path::new(&folder).join(&name);
+    let df = CsvReadOptions::default()
+        .with_has_header(true)
+        .try_into_reader_with_file_path(Some(path.clone()))
+        .map_err(|e| IpcError::new("#REF!", format!("couldn't open \"{}\": {e}", path.display())))?
+        .finish()
+        .map_err(|e| IpcError::internal(format!("CSV parse failed: {e}")))?;
+    Ok(collect_of(&df_to_solframe(df)))
+}
+
 #[tauri::command]
 pub fn engine_apply(handle: String, op: WireOp) -> Result<String, IpcError> {
     let out = with_frame(&handle, |f| match &op {
@@ -1212,6 +1276,17 @@ pub fn engine_append(handles: Vec<String>) -> Result<String, IpcError> {
 #[tauri::command]
 pub fn engine_preview(handle: String, n: usize) -> Result<OutPreview, IpcError> {
     with_frame(&handle, |f| Ok(preview_of(f, n)))
+}
+
+#[tauri::command]
+pub fn engine_sample(handle: String, n: usize) -> Result<OutSample, IpcError> {
+    with_frame(&handle, |f| {
+        let (sampled, factor) = verb_sample(f, n)?;
+        if factor <= 1.0 {
+            return Ok(OutSample { handle: handle.clone(), factor: 1.0 });
+        }
+        Ok(OutSample { handle: register(sampled), factor })
+    })
 }
 
 #[tauri::command]

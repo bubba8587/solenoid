@@ -62,12 +62,15 @@ export function FrameChip({ value, label, size = "md", accent, onSave, source, o
   // A large frame shows here as a head-N preview, but `__totalRows` carries the true
   // count so the chip reads the real size (the grid still iterates the rows it has).
   const totalRows = value.__totalRows ?? rows;
+  // Sketch mode (#24): an aggregate scaled up from a sample carries `__approx` —
+  // never show it as if it were an exact total.
+  const approx = value.__approx != null;
 
   return (
     <button
       type="button"
       className={size === "sm" ? "solenoid-array-chip solenoid-array-chip--sm" : "solenoid-array-chip"}
-      title={`${totalRows}×${cols} frame — click to ${onSave ? "edit" : "view"}`}
+      title={`${approx ? "≈ " : ""}${totalRows}×${cols} frame${approx ? " — extrapolated from a sketch-mode sample" : ""} — click to ${onSave ? "edit" : "view"}`}
       onClick={async (e) => {
         e.stopPropagation();
         const cs = getComputedStyle(e.currentTarget);
@@ -117,7 +120,7 @@ export function FrameChip({ value, label, size = "md", accent, onSave, source, o
       onPointerDown={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
     >
-      [{totalRows}×{cols} Frame]
+      [{approx ? "≈" : ""}{totalRows}×{cols} Frame]
     </button>
   );
 }

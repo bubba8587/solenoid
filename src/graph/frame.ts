@@ -58,6 +58,12 @@ export interface FrameValue {
    *  silently export the head-N preview as if it were the table (audit 22p).
    *  Structurally typed (not FrameRef) to avoid a frame ↔ frameBackend cycle. */
   __ref?: { readonly __frameRef: string };
+  /** Set ONLY on an aggregate computed over a sketch-mode SAMPLE rather than the
+   *  full data (#24, frameBackend.ts `applySketchScaling`): sum/count columns
+   *  were scaled by `factor` (trueRows/sampleRows) to extrapolate the true total —
+   *  never presented as if it were an exact count. The chip (FrameChip.tsx) shows
+   *  a "≈" prefix when this is set. Absent on an exact frame. */
+  __approx?: { readonly factor: number };
 }
 
 export function isFrameValue(v: unknown): v is FrameValue {

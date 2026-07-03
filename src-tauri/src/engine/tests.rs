@@ -560,3 +560,82 @@ fn select_duplicate_names_keeps_first() {
     let out = verb_select(&f, &["a".into(), "a".into(), "b".into()]).unwrap();
     assert_eq!(dump(&out).len(), 2);
 }
+
+// ─── sample (sketch mode, #24) ──────────────────────────────────────────────────
+
+#[test]
+fn sample_under_n_is_unchanged_factor_one() {
+    let f = frame(vec![("a", SolType::Number, num(&[1.0, 2.0, 3.0]))]);
+    let (sampled, factor) = verb_sample(&f, 10).unwrap();
+    assert_eq!(factor, 1.0);
+    assert_eq!(dump(&sampled)[0].2, j(&[1.0, 2.0, 3.0]));
+}
+
+#[test]
+fn sample_strides_evenly_and_reports_factor() {
+    // 10 rows sampled to 5 — every other row, in order; factor = 10/5 = 2.
+    let f = frame(vec![(
+        "a",
+        SolType::Number,
+        num(&[0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]),
+    )]);
+    let (sampled, factor) = verb_sample(&f, 5).unwrap();
+    assert_eq!(factor, 2.0);
+    assert_eq!(dump(&sampled)[0].2, j(&[0.0, 2.0, 4.0, 6.0, 8.0]));
+}
+
+#[test]
+fn sample_zero_n_is_unchanged() {
+    let f = frame(vec![("a", SolType::Number, num(&[1.0, 2.0]))]);
+    let (sampled, factor) = verb_sample(&f, 0).unwrap();
+    assert_eq!(factor, 1.0);
+    assert_eq!(dump(&sampled)[0].2, j(&[1.0, 2.0]));
+}
+
+#[test]
+fn engine_sample_command_registers_a_new_handle_and_leaves_the_source_intact() {
+    let f = frame(vec![(
+        "a",
+        SolType::Number,
+        num(&[0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]),
+    )]);
+    let h = register(f);
+    let out = engine_sample(h.clone(), 5).unwrap();
+    assert_eq!(out.factor, 2.0);
+    assert_ne!(out.handle, h); // a NEW handle, not a mutation of the source
+    let sampled = with_frame(&out.handle, |f| Ok(dump(f))).unwrap();
+    assert_eq!(sampled[0].2, j(&[0.0, 2.0, 4.0, 6.0, 8.0]));
+    // the original handle still resolves to the full, unsampled frame
+    let original = with_frame(&h, |f| Ok(dump(f))).unwrap();
+    assert_eq!(original[0].2.len(), 10);
+}
+
+// ─── native CSV read (#24 WS-E) ─────────────────────────────────────────────────
+
+#[test]
+fn read_csv_infers_number_string_and_boolean_columns() {
+    let dir = std::env::temp_dir();
+    let path = dir.join(format!("solenoid_engine_test_{}.csv", std::process::id()));
+    std::fs::write(&path, "n,s,flag\n1,apple,true\n2,banana,false\n").unwrap();
+
+    let df = CsvReadOptions::default()
+        .with_has_header(true)
+        .try_into_reader_with_file_path(Some(path.clone()))
+        .unwrap()
+        .finish()
+        .unwrap();
+    let frame = df_to_solframe(df);
+    let d = dump(&frame);
+
+    std::fs::remove_file(&path).ok();
+
+    assert_eq!(d[0].1, "number");
+    assert_eq!(d[0].2, j(&[1.0, 2.0]));
+    assert_eq!(d[1].1, "string");
+    assert_eq!(
+        d[1].2,
+        vec![Json::String("apple".into()), Json::String("banana".into())]
+    );
+    assert_eq!(d[2].1, "logical");
+    assert_eq!(d[2].2, vec![Json::Bool(true), Json::Bool(false)]);
+}
