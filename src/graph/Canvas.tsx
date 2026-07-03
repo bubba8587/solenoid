@@ -20,7 +20,7 @@ import { requestConfirm } from "./confirmStore";
 import { collapseStore } from "./collapseStore";
 import {
   setEditorRefs, processGraph, bumpConnectionVersion, setCableDragging, cableDragStore, bumpConduitAngle,
-  setUnselectAllNodes, setAutoArrange, setSelectNode, setRepositionDocked, setPushHistory, setClearHistory,
+  setUnselectAllNodes, setAutoArrange, setSelectNode, setRepositionDocked, setPushHistory, setClearHistory, setHistoryPlugin,
   setDeleteSelected, setCleanup, repositionDockedNodes,
   unselectAllNodes as unselectAllNodesFromProcess,
   selectNode as selectNodeFromProcess,
@@ -1195,6 +1195,8 @@ export function Canvas() {
       // a backstop against unbounded growth; the real hygiene is clearHistory()
       // on every document load (persistence.loadGraph, audit P0-5).
       (history as unknown as { history: { limit?: number } }).history.limit = 200;
+      // Expose the plugin instance for the Session History node (see process.ts).
+      setHistoryPlugin(history);
       // Let non-graph changes (e.g. a group resize) push their own undo entries.
       setPushHistory((action) => history.add(action));
       setClearHistory(() => history.clear());

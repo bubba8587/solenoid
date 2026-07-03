@@ -175,6 +175,15 @@ export { CableSwitchComponent } from "./CableSwitchNode";
 // ─── Note (canvas annotation) ───────────────────────────────────────────────────
 export { NoteComponent } from "./NoteNode";
 
+// ─── Report (standalone markdown document — canvas anchor card) ────────────────
+export { ReportComponent } from "./ReportNode";
+
+// ─── Session History (live undo/redo digest readout) ───────────────────────────
+export { SessionHistoryComponent } from "./SessionHistoryNode";
+
+// ─── Presentation (step list + camera-only presenter mode) ─────────────────────
+export { PresentationComponent } from "./PresentationNode";
+
 // ─── Image (canvas annotation) ──────────────────────────────────────────────────
 export { ImageComponent } from "./ImageNode";
 

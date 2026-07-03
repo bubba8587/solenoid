@@ -84,9 +84,53 @@ describe("NoteNode frontmatter outputs", () => {
   it("fieldValues() stays safe after installErrorGuards wraps data() (UI read path)", () => {
     const n = new NoteNode({ body: "---\nx: 1\n---" });
     installErrorGuards(n); // same wrap the engine applies on node creation
-    // The wrapped data() throws if called with no inputs (firstInputError runs
-    // outside its try/catch) — the UI must NOT call it; it uses fieldValues().
-    expect(() => (n.data as () => unknown)()).toThrow();
+    // NoteNode is in errorValue.ts's SEES_ERRORS (its inline-ref inputs are
+    // independent lanes, like Conduit/CableSwitch — one bad ref mustn't blank every
+    // other ref in the same note), so the wrapper skips firstInputError and calls
+    // NoteNode's own data() directly, which tolerates a bare call (inputs optional).
+    // fieldValues() is still the UI's accessor of choice — it needs no inputs object
+    // and matches every other node's cached-value read path.
+    expect(() => (n.data as () => unknown)()).not.toThrow();
     expect(n.fieldValues()).toEqual({ x: 1 });
+  });
+});
+
+describe("NoteNode inline-ref inputs", () => {
+  it("a plain note has no inputs", () => {
+    const n = new NoteNode({ body: "just a sticky note" });
+    expect(n.refKeys()).toEqual([]);
+    expect(Object.keys(n.inputs)).toEqual([]);
+  });
+
+  it("mints an `any` INPUT socket per distinct `=name` span, source order", () => {
+    const n = new NoteNode({ body: "Revenue was `=revenue` and cost was `=cost`." });
+    expect(n.refKeys()).toEqual(["revenue", "cost"]);
+    expect(typeOf(n, "revenue")).toBeUndefined(); // typeOf checks OUTPUTS
+    expect(n.inputs.revenue?.socket.name).toBe("any");
+    expect(n.inputs.cost?.socket.name).toBe("any");
+  });
+
+  it("de-duplicates a repeated ref and ignores frontmatter block content", () => {
+    const n = new NoteNode({ body: "---\nrevenue: 1\n---\n`=revenue` again `=revenue` again." });
+    // `revenue` is both a frontmatter OUTPUT key and an inline-ref name — separate
+    // namespaces (inputs vs outputs), so both are minted with no collision.
+    expect(n.fieldKeys()).toEqual(["revenue"]);
+    expect(n.refKeys()).toEqual(["revenue"]);
+  });
+
+  it("syncFields reports a vanished ref as removedInputs", () => {
+    const n = new NoteNode({ body: "`=a` and `=b`." });
+    expect(n.refKeys()).toEqual(["a", "b"]);
+    n.body = "just `=a` now.";
+    const { removedInputs } = n.syncFields();
+    expect(removedInputs).toEqual(["b"]);
+    expect(n.refKeys()).toEqual(["a"]);
+    expect(n.inputs.b).toBeUndefined();
+  });
+
+  it("data(inputs) caches the resolved ref value for the component to read", () => {
+    const n = new NoteNode({ body: "Total: `=total`." });
+    n.data({ total: [42] });
+    expect(n.refValue("total")).toBe(42);
   });
 });
