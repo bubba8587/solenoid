@@ -1508,6 +1508,16 @@ picture of the full one. The payoff: a 300-node model reads as a map from orbit,
 how you present one to a human. The direct answer to the "spaghetti" objection.
 
 ## 41 — Conditional formatting for tables
+
+**VERDICT (author, 2026-07-03): IN — but ours must be much better than Excel's; author
+explicitly dislikes Excel's own implementation.** Conditions: attach ONLY to Display
+nodes (not baked into every frame/popup-grid view directly), and must NOT overlap the
+Format Controller's territory (text format / units stay FC's job — this is visual
+highlighting only: data bars, color scales, threshold icons). Defer the actual build
+to a later build set — there are enough open design decisions here (what "much better
+than Excel" concretely means, the rule-authoring UX, how it composes with FC) to
+warrant its own design pass, not a quick implementation.
+
 Data bars, color scales, threshold icons in frame views (popup grid + column chips),
 driven by rules or by an expectation's pass/fail (#12). Straight Excel parity (one of its
 most-used features, currently absent) *and* the perception layer for big frames: a 50k-row
