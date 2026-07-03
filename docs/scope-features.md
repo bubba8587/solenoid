@@ -1872,6 +1872,9 @@ update problem with the hardest part removed.
 
 ## 60 — Citations: every formula carries its source ← pull this one forward
 
+**VERDICT (author, 2026-07-03): OUT.** Author's own words: "hate it." Overrides the
+doc's own "pull this one forward" framing despite being cheap/near-term.
+
 **The idea (near-term, standalone, cheap):** a `source` field on any node or constant —
 "per IRS Pub 946 Table A-1", "ASHRAE Fundamentals 2021 §26.1", "company pricing policy
 v4, 2026-03" — rendered as a superscript on the card, footnotes in the report
