@@ -23,6 +23,8 @@ export function CubeDisplay({ cube, label, full }: {
         className={`solenoid-node__display-value solenoid-node__display-value--error${cube.origin ? " sol-error-chip--clickable" : ""}`}
         title={errorTip(cube)}
         onClick={cube.origin ? () => flyToNode(cube.origin!.nodeId) : undefined}
+        onPointerDown={cube.origin ? (e) => e.stopPropagation() : undefined}
+        onMouseDown={cube.origin ? (e) => e.stopPropagation() : undefined}
       >
         {cube.code}
       </div>

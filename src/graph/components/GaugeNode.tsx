@@ -31,6 +31,8 @@ export function GaugeComponent({ data, emit }: NodeProps<GaugeNodeType>) {
           className={`solenoid-node__display-value solenoid-node__display-value--error${value.origin ? " sol-error-chip--clickable" : ""}`}
           title={errorTip(value)}
           onClick={value.origin ? () => flyToNode(value.origin!.nodeId) : undefined}
+          onPointerDown={value.origin ? (e) => e.stopPropagation() : undefined}
+          onMouseDown={value.origin ? (e) => e.stopPropagation() : undefined}
         >{value.code}</div>
       </NodeShell>
     );

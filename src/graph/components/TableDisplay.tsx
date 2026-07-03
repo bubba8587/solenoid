@@ -50,6 +50,8 @@ export function TableDisplay({ table, label, onSave, full, kind }: {
         className={`solenoid-node__display-value solenoid-node__display-value--error${table.origin ? " sol-error-chip--clickable" : ""}`}
         title={errorTip(table)}
         onClick={table.origin ? () => flyToNode(table.origin!.nodeId) : undefined}
+        onPointerDown={table.origin ? (e) => e.stopPropagation() : undefined}
+        onMouseDown={table.origin ? (e) => e.stopPropagation() : undefined}
       >
         {table.code}
       </div>
