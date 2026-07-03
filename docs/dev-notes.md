@@ -2,6 +2,70 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Composite subgraph container — shell + Scenarios + Data Table + Simulation (2026-07-03)
+
+Built the composite/subgraph container `pack-architecture.md` scoped out under "Composite
+pack node": a REAL computing subgraph node (`nodes/composite.ts`), explicitly not a `GroupNode`
+variant. Landed incrementally, 4 commits:
+
+1. **Shell.** `CompositeNode` holds a private `internalEditor` + `DataflowEngine` (its own
+   `NodeEditor<Schemes>`, no AreaPlugin). `createCompositeFromSelection` (`compositeLogic.ts`)
+   mirrors `createGroupFromSelection`'s selection-read + bounding-box pattern (`Ctrl+Shift+G`,
+   bare `G` stays Group) but PHYSICALLY RELOCATES the selected nodes into the internal editor
+   instead of framing them. Every cable crossing the selection boundary becomes a declared port:
+   a `CompositeInputNode`/`CompositeOutputNode` marker inside, a real `any`-typed socket on the
+   card outside. Persistence: `snapshotInternal()`/`hydrate()` round-trip the internal graph
+   independently of the outer save format — `copyPaste.ts`'s `extractInit` gained a
+   composite-specific branch, `persistence.ts` needed exactly one added line (`node.hydrate(reg)`
+   in `rebuildGraph`) since a Composite serializes through the SAME generic `{type, init}` path
+   every other node uses.
+   - **Gotcha — module cycle.** `nodeCtorRegistry.ts` (extracted from `persistence.ts`, now
+     shared) chains through `catalogUtils → nodeCatalog → rete-nodes → nodes/composite.ts` — so
+     `composite.ts` can only `import type` a ctor map, never call the registry itself.
+     `copyPaste.ts`'s `pasteClipboard` needed a registered-hook indirection
+     (`setCtorRegistryProvider` in `process.ts`, Canvas wires it) to hydrate a pasted composite
+     without closing that cycle at runtime.
+   - **Gotcha — marker sockets.** Markers originally carried the REAL crossed socket type; that
+     broke the generic `new Ctor({...sn.init})` reconstruction (a live `ClassicPreset.Socket`
+     isn't JSON-safe, and the marker constructor needs the same `(init?) => Node` shape as every
+     other node). Simplified to `anySocket` end-to-end — matches Expression's existing
+     "type-agnostic boundary" precedent, and both marker types needed hidden `nodeCatalog.ts`
+     entries (`hidden: true`) purely so `FLAT_CATALOG`/`ctorRegistry()` can reconstruct them.
+2. **Scenarios.** Named input-override sets; a shared `runPass`/`collectMultiple` pair (inject →
+   `engine.reset` → fetch every output marker) any multi-run mode calls N times and transposes
+   into one ARRAY per output port — "lay outputs side by side" needed zero new display code
+   since `ValueDisplay` already renders a list as a chip.
+3. **Data Table.** A full-factorial Cartesian-product driver over any exposed ports that carry a
+   CSV sweep list — reuses `collectMultiple` unchanged.
+4. **Simulation.** The hard one: a REAL cable cycle wired among the relocated internal nodes,
+   resolved as bounded feedback instead of `#CIRC!`. Key realization: because internals live in
+   a SEPARATE `internalEditor`, the OUTER engine's `loopMembers` never sees an internal loop at
+   all — the plan's "don't seed `#CIRC!` inside an opted-in Simulate container" bypass actually
+   has to apply to the INTERNAL engine, which would otherwise deadlock pulling through the cycle.
+   So `runPass` (every non-Simulation mode) now pre-seeds `#CIRC!` for `loopMembers(internalEditor)`
+   — closing a latent hang bug an accidental internal cycle would previously have caused — and
+   `runSimulation` bypasses that seeding, instead running Gauss-Seidel relaxation (same idea as
+   Excel's iterative-calc circular-reference resolution): non-cyclic inputs resolve once through
+   the normal pull engine, then `simulationSteps` rounds call every loop node's `data()` DIRECTLY
+   (never through `engine.fetch`, which would just recurse into the same cycle) with cyclic
+   inputs drawn from whichever loop member most recently resolved. Proved on the plan's own bar —
+   a two-node population model (`pop ⇄ grow`) — as a `composite.test.ts` test.
+
+**Left for a follow-up session (explicitly lower priority, not started):** Goal-seek (needs a
+real numeric solver — bisection/secant against a target output, `#CONV!` on non-convergence,
+reusing the existing finance-node error code) and Monte Carlo (driver slot only — distribution
+representation is bundle 12, not this one). `CompositeRunMode` only lists modes with a real
+`data()` branch; adding either is: extend the union, add the `data()` branch (probably reusing
+`collectMultiple` again for Monte Carlo — N random draws is structurally identical to Data
+Table's N combos), add the UI panel, add `nodeCatalog.ts`/persistence coverage is already free
+(both ride the same generic `extractInit`/ctor-registry path every field on `CompositeNode`
+already uses).
+
+46 new tests across `nodes/composite.test.ts` + `compositeLogic.test.ts`. No existing test/file
+needed changes beyond the cycle-avoidance plumbing above (`nodeCtorRegistry.ts` extraction,
+`process.ts`'s new hook) — persistence.ts, Canvas.tsx, MenuBar.tsx, kind.ts, nodeCatalog.ts,
+nodeRegistry.ts, copyPaste.ts all took small additive edits, no rewrites.
+
 ### v1.0 doc reconciliation + desktop seed-CSV fix (2026-07-01)
 - **`fetchText` relative-URL fix** (`httpBridge.ts`). On desktop, `fetchText` sent EVERY
   url through the Tauri http plugin (Rust reqwest) to bypass CORS — but a RELATIVE url (a

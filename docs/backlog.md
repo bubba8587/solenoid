@@ -920,6 +920,44 @@ Actionable follow-ups parked here:
   `error-codes` showcase seed.
 - [ ] **Error UX on restriction violation** — typed error out the
   socket vs. the node flagging the offending input locally. PENDING.
+- [x] **Composite pack node (the subgraph/macro shape)** — DONE for the
+  shell + 3 of 5 run-mode drivers, 2026-07-03. `nodes/composite.ts` +
+  `compositeLogic.ts` (`createCompositeFromSelection`, `Ctrl+Shift+G`):
+  a real computing subgraph (NOT a `GroupNode` variant — has a declared
+  input/output boundary via `CompositeInputPort`/`CompositeOutputPort`
+  bound to internal marker nodes, and genuinely computes through its own
+  private `internalEditor`/`DataflowEngine`). Every cable crossing a
+  selection at creation time becomes a declared port automatically. Ports
+  carry the pack-architecture exposure (`hidden`/`exposed`) + tier
+  (`basic`/`advanced`) axes in the data model; the UI currently only
+  drives `exposed`/`basic` (the promotion picker for hidden/advanced
+  ports is a follow-up, not yet built). Persistence + copy/paste both
+  round-trip a composite's full internal contents. Four run-mode drivers
+  shipped: Single, **Scenarios** (named input-override sets),
+  **Data Table** (full-factorial parameter grid — Excel's 1/2-variable
+  Data Table generalized to N), **Simulation** (a real internal cable
+  cycle resolved as bounded Gauss-Seidel feedback instead of `#CIRC!` —
+  proved on a two-node population model). See dev-notes 2026-07-03 for
+  the module-cycle gotcha (`nodeCtorRegistry.ts` extraction + a
+  registered-hook indirection in `process.ts`) and the internal-vs-outer
+  `loopMembers` scoping.
+  - [ ] **Goal-seek run mode** — needs a real numeric solver (bisection
+    or secant) driving one exposed numeric input to hit a target on one
+    exposed numeric output; fail loudly with `#CONV!` on non-convergence
+    (reuse the existing finance-node error code, don't mint a new one).
+    Not started.
+  - [ ] **Monte Carlo run mode** — driver slot only; blocked on bundle
+    12's distribution representation for the actual random-draw sampling.
+    Not started.
+  - [ ] **Aliasing / hidden-port promotion UI** — the data model already
+    supports `hidden` exposure + `advanced` tier per port; there's no UI
+    yet to flip a port between them or edit a hidden port's baked
+    default. Currently every port created by `createCompositeFromSelection`
+    is `exposed`/`basic`.
+  - [ ] **Frame/cube output display** — a composite output bound to a
+    frame or cube value falls back to `ValueDisplay`'s generic object
+    stringification (no frame/cube preview) — noted inline in
+    `CompositeNode.tsx`.
 
 ## External data / connections
 
