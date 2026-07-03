@@ -1774,6 +1774,9 @@ team → (someday) public gallery. The subgraph/marketplace idea (#5) is the *co
 economy; this is the *whole-model* economy — both on the same seed+slot+schema machinery.
 
 ## 56 — The commission engine (salvaged): "why is my number this?"
+
+**VERDICT (author, 2026-07-03): OUT.**
+
 *(Rescued from an earlier orphaned Round-3 draft — a concrete vertical worth keeping.)*
 Sales compensation runs through horrifying spreadsheets one analyst maintains and no rep
 trusts; every "why is my commission this?" is an argument nobody can resolve because the
