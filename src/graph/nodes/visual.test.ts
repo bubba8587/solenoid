@@ -5,7 +5,7 @@ import { extractInit } from "../copyPaste";
 import { jsDateToSerial } from "./date";
 
 describe("visual nodes", () => {
-  it("Sparkline / Chart pass the list through and keep their op", () => {
+  it("Sparkline passes the list through; Chart emits a first-class chart value", () => {
     const sp = new SparklineNode({ op: "column" });
     expect(sp.op).toBe("column");
     expect(sp.data({ values: [[1, 2, 3]] })).toEqual({ result: [1, 2, 3] });
@@ -13,8 +13,13 @@ describe("visual nodes", () => {
     // legacy "bar" migrates to "column"
     expect(new SparklineNode({ op: "bar" as "column" }).op).toBe("column");
 
+    // A Chart is a terminal figure — its output is the `chart` object value
+    // (op + values + options), the thing a Report renders inline, NOT a
+    // numlist pass-through (nothing consumed that; a chart is a sink).
     const ch = new ChartNode({ op: "line" });
-    expect(ch.data({ values: [[4, 5]] })).toEqual({ result: [4, 5] });
+    expect(ch.data({ values: [[4, 5]] })).toEqual({
+      chart: { __chart: true, op: "line", values: [4, 5], options: {}, title: "Chart" },
+    });
   });
 
   it("Chart parses its Options socket into chartOptions", () => {

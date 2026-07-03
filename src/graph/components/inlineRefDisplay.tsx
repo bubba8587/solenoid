@@ -7,8 +7,10 @@ import { formatAnnotationStore, formatNumberWithAnnotation, type FormatAnnotatio
 import { sharedAnnotationResolver } from "../unitFlow";
 import { formatScalar } from "./format";
 import { isFrameValue, isCubeValue } from "../frame";
+import { isChartValue } from "../chartValue";
 import { FrameDisplay } from "./FrameDisplay";
 import { CubeDisplay } from "./CubeDisplay";
+import { ChartView, toSeries } from "./chartView";
 import { isSolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import { NodeSocket } from "./NodeSocket";
@@ -59,6 +61,7 @@ export function refPreview(value: unknown, ann: FormatAnnotation | undefined): s
   if (typeof value === "boolean") return value ? "TRUE" : "FALSE";
   if (typeof value === "number") return ann ? formatNumberWithAnnotation(value, ann) : formatScalar(value);
   if (typeof value === "string") return value;
+  if (isChartValue(value)) return value.title || "chart";
   if (isFrameValue(value)) return "frame";
   if (isCubeValue(value)) return "cube";
   if (Array.isArray(value)) {
@@ -83,6 +86,17 @@ export function InlineRefValue({ nodeId, refKey }: { nodeId: string; refKey: str
   const value = node?.refValue(refKey);
   const ann = useRefAnnotation(nodeId, refKey);
 
+  if (isChartValue(value)) {
+    const series = toSeries(value.values);
+    return (
+      <span className="solenoid-ref-figure">
+        {value.title && <span className="solenoid-ref-figure__title">{value.title}</span>}
+        {series.length === 0
+          ? <span className="solenoid-ref-inline solenoid-ref-inline--empty">—</span>
+          : <ChartView op={value.op} series={series} width={360} height={200} axes opts={value.options} />}
+      </span>
+    );
+  }
   if (isFrameValue(value)) return <FrameDisplay frame={value} label={refKey} full={false} />;
   if (isCubeValue(value)) return <CubeDisplay cube={value} label={refKey} full={false} />;
   if (isSolError(value)) {
@@ -147,9 +161,17 @@ export function InlineRefBody({
   const htmlRef = useRef<HTMLDivElement>(null);
   const [slots, setSlots] = useState<{ el: HTMLElement; name: string }[]>([]);
 
+  // Set the rendered HTML IMPERATIVELY (not via dangerouslySetInnerHTML) so
+  // React never "owns" these children. The previous version passed the HTML as
+  // a prop, then the code→span swap below mutated React-owned DOM — and the
+  // setSlots re-render made React re-apply the prop, restoring the raw
+  // `<code>=name</code>` and orphaning the portals. Net effect: NO ref ever
+  // rendered its value in a Note or the Report. Imperative innerHTML keeps the
+  // swap stable across re-renders (the whole reason Report refs looked dead).
   useLayoutEffect(() => {
     const root = htmlRef.current;
     if (!root) return;
+    root.innerHTML = bodyHtml;
     const found: { el: HTMLElement; name: string }[] = [];
     root.querySelectorAll("code").forEach((codeEl) => {
       const m = INLINE_REF_TEXT_RE.exec(codeEl.textContent ?? "");
@@ -163,7 +185,7 @@ export function InlineRefBody({
 
   return (
     <div className={className} onClick={onClick} onPointerDown={onPointerDown} onMouseDown={onMouseDown}>
-      <div ref={htmlRef} dangerouslySetInnerHTML={{ __html: bodyHtml }} />
+      <div ref={htmlRef} />
       {slots.map((s) => createPortal(<InlineRefValue key={s.name} nodeId={nodeId} refKey={s.name} />, s.el))}
     </div>
   );

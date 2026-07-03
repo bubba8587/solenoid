@@ -12,7 +12,8 @@ type Dot =
   | { kind: "square"; color: string }
   | { kind: "grid";   color: string }
   | { kind: "cube";   color: string }
-  | { kind: "lambda"; color: string };
+  | { kind: "lambda"; color: string }
+  | { kind: "chart";  color: string };
 
 type LegendGroup = { dots: Dot[]; label: string };
 
@@ -48,6 +49,9 @@ const GROUPS: LegendGroup[] = [
   ] },
   { label: "Lambda", dots: [
     { kind: "lambda", color: SOCKET_COLORS.lambda },
+  ] },
+  { label: "Chart", dots: [
+    { kind: "chart", color: SOCKET_COLORS.chart },
   ] },
   { label: "Any", dots: [
     { kind: "circle", color: SOCKET_COLORS.any },
@@ -96,6 +100,16 @@ export function SocketDot({ entry }: { entry: Dot }) {
         <g transform="translate(6 6) scale(0.328) translate(-12.5 -12)">
           <path d="M6 20l6.5 -9 M19 20c-6 0 -6 -16 -12 -16" fill="none" stroke="var(--socket-ring)" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" />
         </g>
+        <circle cx="6" cy="6" r="5" fill="none" stroke="var(--socket-ring)" strokeWidth="2" />
+      </svg>
+    );
+  }
+  if (entry.kind === "chart") {
+    return (
+      <svg width={14} height={14} viewBox="-1 -1 14 14" style={{ flexShrink: 0 }}>
+        <circle cx="6" cy="6" r="6" fill={entry.color} />
+        {/* 3-bar mini chart — same glyph as SocketComponent's chart socket. */}
+        <path d="M3.6 8.6 V6.6 M6 8.6 V3.9 M8.4 8.6 V5.4" fill="none" stroke="var(--socket-ring)" strokeWidth="1.5" strokeLinecap="round" />
         <circle cx="6" cy="6" r="5" fill="none" stroke="var(--socket-ring)" strokeWidth="2" />
       </svg>
     );
