@@ -1760,6 +1760,12 @@ changes, these 6 are affected"). The estate as a graph of graphs; the literal de
 the governance vertical sells; the home for the fleet operations in #48.
 
 ## 55 — Templates, structured: the whole-model sharing economy
+
+**VERDICT (author, 2026-07-03): OUT.** Nothing worth templating here that isn't
+already achievable by clearing some inputs and saving a copy — no dedicated template
+mechanism needed. Consistent with #27/#26/#36 (its main enabling pieces) all being
+OUT already.
+
 Seeds (strategy #1) are *our* examples; there's no path for a user to save "my
 project-costing model" as a reusable, parameterized template. Promote any document to a
 **template**: slots (#27) mark where data plugs in, synthetic data (#26) fills them for

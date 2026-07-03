@@ -135,8 +135,10 @@ zoom/pan only, no isolate/highlight/dim) · #52 IN, COLORS ONLY (branded output 
 logo, no custom fonts, just a color override on report/published-artifact surfaces) ·
 #53 OUT (shared definitions/linked-graph library — preferred path is a pack shipping
 a custom Constants node instead, consistent with #5's packs-only distribution story) ·
-#54 VERY DEFERRED, same call as #48 (model index / cross-doc dependency map).
-NEXT when resuming: scope-features #55, then #56–63 in order (folding in
+#54 VERY DEFERRED, same call as #48 (model index / cross-doc dependency map) · #55 OUT
+(structured templates — nothing worth templating you can't already get by clearing
+inputs and saving a copy; consistent with its enabling pieces #27/#26/#36 all OUT).
+NEXT when resuming: scope-features #56, then #57–63 in order (folding in
 strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
