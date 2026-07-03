@@ -489,6 +489,10 @@ in Node — which exists, because the web build needed it.
 
 ## 11 — Transform-by-example: Flash Fill that shows its work
 
+**VERDICT (author, 2026-07-03): DEFERRED — "I'd need more time worked with the area to
+know what would feel good for this."** Revisit at the end of the walk with the other
+deferred/parked items (#2, #6, golden tests, data-drafts). Nothing builds now.
+
 **Scope today:** cleaning a messy column means knowing which Split/Extract/Replace
 nodes to reach for and how to wire them. That knowledge is the barrier — the person
 with the messy data knows *what they want*, not *which verbs produce it*.
