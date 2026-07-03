@@ -70,8 +70,11 @@ Lookup is FrameLookup's already-flagged approximate-match follow-up (frame.ts:10
 per-value badge). Round boundaries in the doc (verified against headers, corrects an
 earlier "#20–24" mislabel above): Round 4 = #20–28, Round 5 = #29–36, Round 6 = #37–42,
 Round 7 = #43–49, Round 8 = #50–57, Round 9 = #58–63 (end of doc).
-#25 OUT (graph profiler heatmap) · #26 OUT (synthetic data mode) · #27 OUT (data slots).
-NEXT when resuming: scope-features #28, then #29–63 in order (folding in
+#25 OUT (graph profiler heatmap) · #26 OUT (synthetic data mode) · #27 OUT (data slots) ·
+#28 OUT (formula lens). Round 4 (#20–28) fully walked: #20 OUT · #21 IN very late ·
+#22 IN (no new node) · #23 DEFERRED · #24 IN (needs footer affordance) · #25–28 all OUT.
+NEXT when resuming: scope-features #29 (Round 5, the analyst's workbench + open
+ports — begins), then #30–63 in order (folding in
 strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
