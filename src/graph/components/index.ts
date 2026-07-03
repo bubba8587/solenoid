@@ -295,6 +295,7 @@ export { DisplayComponent } from "./DisplayNode";
 export { AlertComponent } from "./AlertNode";
 export { SparklineComponent } from "./SparklineNode";
 export { ChartComponent } from "./ChartNode";
+export { MermaidComponent } from "./MermaidNode";
 export { GaugeComponent } from "./GaugeNode";
 export { HeatmapCellComponent } from "./HeatmapCellNode";
 export { ChartBuilderComponent } from "./ChartBuilderNode";

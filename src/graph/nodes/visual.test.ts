@@ -1,8 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { SparklineNode, ChartNode, GaugeNode, HeatmapCellNode, ChartBuilderNode } from "./visual";
+import { SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode } from "./visual";
 import { DatePickerNode, XYPadNode } from "./control";
 import { extractInit } from "../copyPaste";
 import { jsDateToSerial } from "./date";
+import { isMermaidValue } from "../mermaidValue";
 
 describe("visual nodes", () => {
   it("Sparkline passes the list through; Chart emits a first-class chart value", () => {
@@ -29,6 +30,19 @@ describe("visual nodes", () => {
     // no options wired → empty (Sparkline-equivalent look)
     ch.data({ values: [[1, 2]] });
     expect(ch.chartOptions).toEqual({});
+  });
+
+  it("Mermaid emits a first-class diagram value from its source", () => {
+    const m = new MermaidNode({ label: "Flow" });
+    // Inline source is stored in stringLiterals (round-trips like Chart's options).
+    m.stringLiterals.source = "graph TD; A-->B";
+    const out = m.data({});
+    expect(isMermaidValue(out.diagram)).toBe(true);
+    expect(out.diagram).toEqual({ __mermaid: true, source: "graph TD; A-->B", title: "Flow" });
+    // A wired source socket overrides the inline text.
+    const wired = m.data({ source: ["sequenceDiagram; A->>B: hi"] });
+    expect(wired.diagram.source).toBe("sequenceDiagram; A->>B: hi");
+    expect(m.cachedSource).toBe("sequenceDiagram; A->>B: hi");
   });
 
   it("Gauge passes the value through and mirrors live min/max", () => {

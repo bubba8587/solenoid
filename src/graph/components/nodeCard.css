@@ -1039,3 +1039,43 @@ body.solenoid-scrubbing * {
 .solenoid-node-flash {
   animation: solenoid-flash-pulse 1s ease-in-out;
 }
+
+/* Mermaid node — a source textarea over a live SVG preview. The SVG scales to
+   the card width (mermaid emits its own intrinsic size); the textarea is the
+   same quiet monospace field as the Chart Options / formula inputs. */
+.solenoid-mermaid-source {
+  width: 100%;
+  min-height: 64px;
+  resize: vertical;
+  box-sizing: border-box;
+  padding: 5px 7px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-bright);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  white-space: pre;
+  overflow: auto;
+}
+.solenoid-mermaid-source--wired {
+  min-height: 0;
+  height: auto;
+  color: var(--text-muted);
+  font-style: italic;
+  cursor: default;
+}
+.solenoid-mermaid {
+  display: flex;
+  justify-content: center;
+  overflow: auto;
+}
+.solenoid-mermaid svg { max-width: 100%; height: auto; }
+.solenoid-mermaid--card { margin-top: 2px; }
+.solenoid-mermaid--error {
+  color: var(--sol-error);
+  font-size: 11px;
+  font-weight: 500;
+  justify-content: flex-start;
+}
