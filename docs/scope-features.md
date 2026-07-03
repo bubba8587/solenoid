@@ -1788,6 +1788,17 @@ exactly how your number was built" (Bet 4), the plan owner what-if on next quart
 pieces as the rules engine (Round 3 #18) + provenance; a sharp, universally-hated wound.
 
 ## 57 — Smart paste + multi-node operations
+
+**VERDICT (author, 2026-07-03): SPLIT.** (a) Paste-anywhere-on-canvas → OUT. (b)
+Multi-node ops: align/distribute IN, batch expand/collapse-these IN. Wrap-in-subgraph
+is explicitly NOT part of this casual multi-select gesture — a subgraph needs a more
+deliberate, explicit creation action than a Group does, because a subgraph will have
+different compute semantics and be LESS editable than a Group (a Group today is just
+an organizational container around the same live, directly-editable nodes; the future
+subgraph container is a genuinely different, more constrained thing). Casual
+"select → wrap" undersells that distinction. Subgraph creation stays scoped to #5's
+own design session, not bundled in here as a quick gesture. Round 8 closes.
+
 Two authoring conveniences. (a) Paste clipboard tab/comma data *anywhere* on canvas → a
 Frame Input pre-filled (the "just paste the damn table" path Excel users reflexively
 expect; CSV parsing already exists to reuse). (b) **Operations over a selection** —
