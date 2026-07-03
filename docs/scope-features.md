@@ -273,6 +273,12 @@ explaining part depends on provenance but degrades gracefully without it.
 
 ## 7 — A natural-language layer: build by asking, and narrate any number
 
+**VERDICT (author, 2026-07-02): ALL OUT — both halves.** Build-by-asking and
+narrate-any-number (including the deterministic no-LLM narration variant) are out.
+No prompt box, no NL layer in the product. Consistent with the thread-#5 ruling
+(never advertise AI; AI stays an internal build-method). Round 1 closes: #1/#3/#4 IN,
+#5 container-only, #2/#6 deferred, #7 out.
+
 **Scope today:** you build by wiring nodes. Understanding a model means reading the graph.
 
 **The jump:** two directions of plain-English:
