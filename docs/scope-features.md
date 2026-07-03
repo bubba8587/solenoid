@@ -1451,6 +1451,13 @@ hands are fast. Verified absent first (cable-drop-on-canvas currently just clear
 drag flag; no palette; no scrubbing; no zoom LOD beyond image sharpness).
 
 ## 37 — Quick-wire: drop a cable on empty canvas, get the next node
+
+**VERDICT (author, 2026-07-03): IN — with conditions.** Must be a toggle in Settings
+(not forced on for everyone). Must be paired with a pass on **socket hit-target
+sizes** (the 12×12 socket box is small for a drag-release gesture to land cleanly) and
+a more appropriate **pointer/cursor icon** while hovering/dragging over a socket (the
+cursor should signal "release here to wire" distinctly from ordinary hover).
+
 Drag a cable off an output, release on empty canvas → the Add menu opens *right there*,
 **filtered to nodes that accept that type**, and the pick lands pre-wired. The single
 biggest speed habit in every mature node tool (Blender, Unreal do exactly this): building
