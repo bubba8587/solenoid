@@ -137,8 +137,9 @@ logo, no custom fonts, just a color override on report/published-artifact surfac
 a custom Constants node instead, consistent with #5's packs-only distribution story) ·
 #54 VERY DEFERRED, same call as #48 (model index / cross-doc dependency map) · #55 OUT
 (structured templates — nothing worth templating you can't already get by clearing
-inputs and saving a copy; consistent with its enabling pieces #27/#26/#36 all OUT).
-NEXT when resuming: scope-features #56, then #57–63 in order (folding in
+inputs and saving a copy; consistent with its enabling pieces #27/#26/#36 all OUT) ·
+#56 OUT (commission engine vertical — sales comp provenance demo).
+NEXT when resuming: scope-features #57, then #58–63 in order (folding in
 strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
