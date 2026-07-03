@@ -45,9 +45,12 @@ hook) · #2 DEFERRED · #3 IN tiers 1-2 · #4 IN (all five run modes on the one
 container) · #5 ecosystem OUT, document-local container only, packs distribute ·
 #6 DEFERRED · #7 ALL OUT · #8 IN for sure · #9 IN very limited (manual file sinks
 only) · #10 IN · #11 DEFERRED (transform-by-example — author wants hands-on time with
-the area first) · #12 IN (expectation nodes / data-quality gate). Deferred pile for
-end-of-walk revisit: #2, #6, #11, golden tests, data-drafts.
-NEXT when resuming: scope-features #13, then #14–63 in order (folding in strategy threads #1–#7 and the
+the area first) · #12 IN (expectation nodes / data-quality gate) · #13 IN — corrected:
+the report is one editable, blank-by-default markdown FILE independent of the graph
+(not canvas Notes rendered in order), reusing the Note's inline-ref span directly and
+able to embed Note nodes. Deferred pile for end-of-walk revisit: #2, #6, #11, golden
+tests, data-drafts.
+NEXT when resuming: scope-features #14, then #15–63 in order (folding in strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
 #20 dimensions → engine execution contract (Bet 1 × #23 × #24 × calc mode) → #5
