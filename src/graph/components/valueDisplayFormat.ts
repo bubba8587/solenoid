@@ -6,7 +6,7 @@
 // an ad-hoc `render` formatter.
 
 import { getEditor } from "../process";
-import { SolenoidSocket, isDateType } from "../sockets";
+import { SolenoidSocket, isDateType, type SocketDataType } from "../sockets";
 import { formatDateSerial, DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT } from "../nodes/date";
 import { isSolError, type SolError } from "../errorValue";
 
@@ -50,18 +50,54 @@ function fmtSerial(v: number): string {
 }
 
 /**
- * Does the node's primary result carry dates? Reads the live output socket
- * (conventionally `result`, else the first output) and tests isDateType. Read
- * at render time, so a socket SWAP (Cast target / polyform result type, which
- * call area.update) re-detects on the next render.
+ * The concrete data type of the value a node DISPLAYS — the type-default display
+ * principle: a value shows in its TYPE's default format wherever it appears (a
+ * date reads "20-Mar-2026", not its serial), even if physically carried as a
+ * number. Reads the node's primary output socket; when that's `any` AND the node
+ * is a pure pass-through (Display), it resolves the type from whatever FEEDS it —
+ * through a chain of pass-throughs and through a Conduit lane (whose output socket
+ * now carries the real type). A non-pass-through `any` producer is left as `any`
+ * (we don't guess a transform's output from its inputs). Cycle- and depth-guarded.
+ */
+function displayedType(
+  nodeId: string,
+  outKey: string | undefined,
+  seen: Set<string>,
+  depth: number,
+): SocketDataType | undefined {
+  if (depth > 32) return undefined;
+  const editor = getEditor();
+  const node = editor?.getNode(nodeId) as
+    (Record<string, unknown> & { outputs?: Record<string, { socket?: unknown } | undefined> }) | undefined;
+  if (!node) return undefined;
+  const out = outKey ? node.outputs?.[outKey] : (node.outputs?.result ?? Object.values(node.outputs ?? {})[0]);
+  const sock = out?.socket;
+  const dt = sock instanceof SolenoidSocket ? sock.dataType : undefined;
+  if (dt && dt !== "any") return dt; // concrete socket (a producer, or a typed Conduit lane)
+
+  const isPassthrough = node.passesUnitThrough === true || typeof node.unitPassInputs === "function";
+  if (!isPassthrough) return dt; // an `any` producer's output type is genuinely `any`
+  const key = `${nodeId}::${outKey ?? ""}`;
+  if (seen.has(key)) return dt;
+  seen.add(key);
+  for (const c of editor!.getConnections()) {
+    if (c.target !== nodeId) continue;
+    const t = displayedType(c.source, c.sourceOutput, seen, depth + 1);
+    if (t && t !== "any") return t;
+  }
+  return dt;
+}
+
+/**
+ * Does the value this node displays carry dates? Resolves the displayed TYPE
+ * (through pass-throughs / Conduit lanes — see displayedType), so a date reads as
+ * a date everywhere it flows, not just at the node that produced it. Read at
+ * render time, so a socket SWAP (Cast / Conduit lane retype) re-detects next render.
  */
 export function nodeOutputIsDate(nodeId: string | null): boolean {
   if (!nodeId) return false;
-  const node = getEditor()?.getNode(nodeId);
-  if (!node) return false;
-  const out = node.outputs?.result ?? Object.values(node.outputs ?? {})[0];
-  const sock = out?.socket;
-  return sock instanceof SolenoidSocket && isDateType(sock.dataType);
+  const t = displayedType(nodeId, undefined, new Set(), 0);
+  return t !== undefined && isDateType(t);
 }
 
 /**
