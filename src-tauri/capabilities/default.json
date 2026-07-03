@@ -22,14 +22,18 @@
       "identifier": "fs:allow-write-text-file",
       "allow": [
         { "path": "$HOME/**/*.json" },
-        { "path": "$HOME/**/*.json.tmp" }
+        { "path": "$HOME/**/*.json.tmp" },
+        { "path": "$HOME/**/*.csv" },
+        { "path": "$HOME/**/*.csv.tmp" }
       ]
     },
     {
       "identifier": "fs:allow-rename",
       "allow": [
         { "path": "$HOME/**/*.json" },
-        { "path": "$HOME/**/*.json.tmp" }
+        { "path": "$HOME/**/*.json.tmp" },
+        { "path": "$HOME/**/*.csv" },
+        { "path": "$HOME/**/*.csv.tmp" }
       ]
     },
     {

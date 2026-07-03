@@ -13,6 +13,7 @@ export * from "./nodes/matrix";
 export * from "./nodes/frame";
 export * from "./nodes/cube";
 export * from "./nodes/connection";
+export * from "./nodes/sink";
 export * from "./nodes/annotation";
 export * from "./nodes/tableLambda";
 export * from "./nodes/lambda";

@@ -36,6 +36,7 @@ import { BinomDistNode, BinomInvNode, PoissonDistNode, HypgeomDistNode, Negbinom
 import { ConduitNode } from "./conduit";
 import { FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, GetRowNode, DistinctNode, HeadNode, SortFrameNode, FilterFrameNode, JoinNode, FrameLookupNode, SelectColumnsNode, DropColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode } from "./frame";
 import { WebSourceNode, CsvConnectionNode, ImportHtmlNode, ImportXmlNode } from "./connection";
+import { WriteCsvNode, WriteJsonNode } from "./sink";
 import { SlicerNode, CableSwitchNode, DatePickerNode, XYPadNode } from "./control";
 import { SparklineNode, ChartNode, GaugeNode, HeatmapCellNode, ChartBuilderNode } from "./visual";
 import { NoteNode, ImageNode } from "./annotation";
@@ -128,7 +129,8 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof AlertNode || node instanceof IfNode ||
     node instanceof SwitchNode || node instanceof IfsNode ||
     node instanceof CableSwitchNode || node instanceof NoteNode ||
-    node instanceof ImageNode
+    node instanceof ImageNode ||
+    node instanceof WriteCsvNode || node instanceof WriteJsonNode
   ) return "util";
   if (node instanceof DisplayNode) return "util";
   if (

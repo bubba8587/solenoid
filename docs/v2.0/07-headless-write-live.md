@@ -1,5 +1,9 @@
 # Bundle 07 — Headless Solenoid, file sinks, live-data refresh
 
+**Status: v1 built 2026-07-03** — `scripts/run-graph.ts`, `WriteCsvNode`/`WriteJsonNode`
+(`nodes/sink.ts`), and Tier 1-2 refresh (interval timer) are in; see dev-notes 2026-07-03
+for what shipped vs. cut (the polished CLI's `--set`/typed args trail bundles 01/02).
+
 **Source:** scope-features #10 (IN), #9 (IN, very limited), #3 (IN, tiers 1-2) — one
 arc, author's own framing: "in → through → out → unattended." **Depends on:** the CLI
 spike needs nothing; the polished CLI rides bundles 01/02 but isn't blocking a v1.

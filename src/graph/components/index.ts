@@ -161,6 +161,9 @@ export { BuildCubeComponent, NestJoinComponent, CubeColumnsComponent } from "./C
 // ─── External-data connections (Web Source, CSV folder) ─────────────────────────
 export { WebSourceComponent, CsvConnectionComponent, ImportHtmlComponent, ImportXmlComponent } from "./ConnectionNodes";
 
+// ─── File sinks (Write CSV, Write JSON) ──────────────────────────────────────────
+export { WriteCsvComponent, WriteJsonComponent } from "./WriteNodes";
+
 // ─── Cable Switch (control multiplexer) ─────────────────────────────────────────
 export { CableSwitchComponent } from "./CableSwitchNode";
 
