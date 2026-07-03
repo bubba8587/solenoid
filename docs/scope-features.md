@@ -1565,7 +1565,11 @@ sentence: **"the spreadsheet where the cents always foot."**
 
 ## 44 — Model fuzzing: property-based testing for graphs
 
-**VERDICT (author, 2026-07-03): IN.**
+**VERDICT (author, 2026-07-03): IN.** Refinement: a fuzzing finding shouldn't just be a
+passive Problems-panel entry — where mechanical, it should directly suggest inserting a
+**CLAMP or similar cleansing node** into the graph at the offending spot (one-click fix,
+same spirit as the linter's "promote to named Input," #29, even though the linter
+itself was ruled out).
 
 Golden tests check inputs you thought of; fuzzing checks the ones you didn't. Because every
 input socket is *typed* (and ranged, once slots/expectations declare bounds), Solenoid can
@@ -1577,6 +1581,15 @@ pure and typed, and unheard-of in the spreadsheet world. Findings land in the Pr
 panel (#30).
 
 ## 45 — Tornado ranking: which inputs actually matter
+
+**VERDICT (author, 2026-07-03): IN — as a NODE, not an ambient output-panel feature.**
+A **Tornado node**: wire a value in, a button ON the node runs the analysis, the node
+renders its own chart inline — not a "click any output, a floating panel appears"
+mechanic. Standing principle from this point in the walk: prefer a dedicated node over
+adding another panel/lens/global-UI layer when the feature is naturally node-shaped —
+don't keep stacking chrome onto the app when a node does the same job with no new
+layer to learn.
+
 One click on an output: Solenoid perturbs each upstream input (±10% or its declared range),
 ranks them by impact, and draws the classic **tornado chart** — "your answer is 80% driven
 by these two assumptions; the other twelve are noise." The universal first question about
