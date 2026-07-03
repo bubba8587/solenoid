@@ -24,6 +24,45 @@ function statusText(s: ConnectionState): string {
   }
 }
 
+// Tier 2 live-data: an optional per-node "refresh every N minutes" timer that
+// calls the exact same refreshConnection(id) a manual click does — so a source
+// backed by an interval and one backed by a click are indistinguishable to the
+// rest of the graph (same token bump, same processGraph recompute, so anything
+// downstream — including an Alert's edge-detect — reacts identically).
+function useAutoRefresh(nodeId: string, minutes: number) {
+  useEffect(() => {
+    if (minutes <= 0) return;
+    const id = setInterval(() => { void refreshConnection(nodeId); }, minutes * 60_000);
+    return () => clearInterval(id);
+  }, [nodeId, minutes]);
+}
+
+function RefreshIntervalField({ minutes, onCommit }: { minutes: number; onCommit: (n: number) => void }) {
+  const [val, setVal] = useState(String(minutes));
+  useEffect(() => { setVal(String(minutes)); }, [minutes]);
+  function commit() {
+    const n = Math.max(0, Math.round(Number(val) || 0));
+    setVal(String(n));
+    if (n !== minutes) onCommit(n);
+  }
+  return (
+    <label className="sol-conn__field" title="Automatically refresh on this cadence (0 = off)">
+      Auto-refresh (min)
+      <input
+        className="sol-conn__num"
+        type="number"
+        min={0}
+        value={val}
+        onChange={(e) => setVal(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+        onPointerDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+      />
+    </label>
+  );
+}
+
 function ConnectionStatusRow({ nodeId, onRefresh }: { nodeId: string; onRefresh: () => void }) {
   useSyncExternalStore(connectionStore.subscribe, connectionStore.version);
   const s = connectionStore.getState(nodeId);
@@ -61,8 +100,10 @@ function ConnectionStatusRow({ nodeId, onRefresh }: { nodeId: string; onRefresh:
 
 export function WebSourceComponent({ data, emit }: NodeProps<WebSourceNodeType>) {
   const [url, setUrl] = useState(data.url);
+  const [minutes, setMinutes] = useState(data.refreshMinutes);
   // Mirror external changes to the field (e.g. load / paste).
   useEffect(() => { setUrl(data.url); }, [data.url]);
+  useAutoRefresh(data.id, minutes);
 
   function commit() {
     const next = url.trim();
@@ -85,6 +126,7 @@ export function WebSourceComponent({ data, emit }: NodeProps<WebSourceNodeType>)
           onMouseDown={(e) => e.stopPropagation()}
         />
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
+        <RefreshIntervalField minutes={minutes} onCommit={(n) => { data.refreshMinutes = n; setMinutes(n); }} />
         <FrameDisplay frame={data.cachedResult} label={data.label} />
       </div>
     </NodeShell>
@@ -211,7 +253,9 @@ export function CsvConnectionComponent({ data, emit }: NodeProps<CsvConnectionNo
   const folder = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("csvFolder"));
   const [files, setFiles] = useState<string[]>([]);
   const [name, setName] = useState(data.fileName);
+  const [minutes, setMinutes] = useState(data.refreshMinutes);
   const desktop = isDesktop();
+  useAutoRefresh(data.id, minutes);
 
   // (Re)list the folder's CSVs whenever the target folder changes.
   useEffect(() => {
@@ -255,6 +299,9 @@ export function CsvConnectionComponent({ data, emit }: NodeProps<CsvConnectionNo
           </select>
         )}
         <ConnectionStatusRow nodeId={data.id} onRefresh={refresh} />
+        {desktop && folder && (
+          <RefreshIntervalField minutes={minutes} onCommit={(n) => { data.refreshMinutes = n; setMinutes(n); }} />
+        )}
         <FrameDisplay frame={data.cachedResult} label={data.label} />
       </div>
     </NodeShell>
