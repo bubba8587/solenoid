@@ -36,6 +36,8 @@ export function FrameDisplay({ frame, label, onSave, source, onSaveSource, full 
         className={`solenoid-node__display-value solenoid-node__display-value--error${frame.origin ? " sol-error-chip--clickable" : ""}`}
         title={errorTip(frame)}
         onClick={frame.origin ? () => flyToNode(frame.origin!.nodeId) : undefined}
+        onPointerDown={frame.origin ? (e) => e.stopPropagation() : undefined}
+        onMouseDown={frame.origin ? (e) => e.stopPropagation() : undefined}
       >
         {frame.code}
       </div>
