@@ -105,8 +105,15 @@ version, Display-node-only, must not step on FC's text-format/units territory) �
 IN (several with conditions/deferred-build notes above) · #42 OUT.
 Round 7 (#43–49, exact numbers + the traveling file) begun 2026-07-03: #43 IN, DEFER
 (money mode / exact decimal arithmetic — pairs with #21's very-late sequencing note) ·
-#44 IN (model fuzzing / property-based testing — findings land in the Problems panel).
-NEXT when resuming: scope-features #45, then #46–63 in order (folding in
+#44 IN (model fuzzing / property-based testing — findings land in the Problems panel;
+refined: mechanical findings should directly offer to insert a CLAMP/cleansing node,
+not just log passively) · #45 IN, AS A NODE (Tornado node — wire a value, button on
+the node runs it, chart renders inline on the node; NOT a floating output-panel).
+**STANDING PRINCIPLE from here on in the walk:** prefer a dedicated node over a new
+panel/lens/global-UI layer when a feature is naturally node-shaped — don't keep
+stacking chrome the app has to teach; a node reuses the vocabulary the user already
+has.
+NEXT when resuming: scope-features #46, then #47–63 in order (folding in
 strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
