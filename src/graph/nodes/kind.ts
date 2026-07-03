@@ -44,6 +44,7 @@ import { ReconcileNode } from "./frame";
 import { SlicerNode, CableSwitchNode, DatePickerNode, XYPadNode } from "./control";
 import { SparklineNode, ChartNode, GaugeNode, HeatmapCellNode, ChartBuilderNode } from "./visual";
 import { NoteNode, ImageNode } from "./annotation";
+import { CompositeNode } from "./composite";
 import { XLookupNode } from "./lookup";
 import {
   TableInputNode, MatDetNode, TableMultNode, TableUnitNode, TableTransposeNode,
@@ -134,7 +135,8 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof SwitchNode || node instanceof IfsNode ||
     node instanceof CableSwitchNode || node instanceof NoteNode ||
     node instanceof ImageNode || node instanceof ExpectNode ||
-    node instanceof WriteCsvNode || node instanceof WriteJsonNode
+    node instanceof WriteCsvNode || node instanceof WriteJsonNode ||
+    node instanceof CompositeNode
   ) return "util";
   if (node instanceof DisplayNode) return "util";
   if (

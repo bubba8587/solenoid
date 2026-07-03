@@ -181,6 +181,9 @@ export { ImageComponent } from "./ImageNode";
 // ─── Group (framing container) ────────────────────────────────────────────────
 export { GroupComponent } from "./GroupNode";
 
+// ─── Composite (computing subgraph container) ──────────────────────────────────
+export { CompositeComponent } from "./CompositeNode";
+
 // ─── Complex numbers ──────────────────────────────────────────────────────────
 export { ComplexFromComponent } from "./ComplexFromNode";
 export { ComplexUnpackComponent } from "./ComplexUnpackNode";

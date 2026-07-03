@@ -135,6 +135,7 @@ export function MenuBar() {
         { sep: true },
         { label: "Select all", shortcut: "Ctrl+A", onClick: () => fireKey("KeyA", { ctrl: true }) },
         { label: "Group selection", shortcut: "G", onClick: () => fireKey("KeyG") },
+        { label: "Make composite", shortcut: "Ctrl+Shift+G", onClick: () => fireKey("KeyG", { ctrl: true, shift: true }) },
         { label: "Autofit group box", shortcut: "F", onClick: () => fireKey("KeyF") },
         { sep: true },
         { label: "Find node…", shortcut: "Ctrl+F", onClick: () => outlineSearch.open() },

@@ -169,6 +169,23 @@ export function selectNode(id: string, accumulate: boolean) {
   _selectNode(id, accumulate);
 }
 
+// Class-name → constructor registry, registered by Canvas (it wraps
+// nodeCtorRegistry.ts). copyPaste.ts needs this to hydrate a pasted
+// CompositeNode's internal subgraph (see nodes/composite.ts `hydrate`), but
+// can't import nodeCtorRegistry directly: that module chains through
+// catalogUtils → nodeCatalog → rete-nodes → nodes/composite.ts → copyPaste.ts,
+// a cycle. Indirection through this registered hook (the same pattern as
+// setLoadSeed / setAutoArrange above) breaks it.
+let _ctorRegistryProvider: () => Map<string, new (init?: Record<string, unknown>) => object> = () => new Map();
+
+export function setCtorRegistryProvider(fn: typeof _ctorRegistryProvider) {
+  _ctorRegistryProvider = fn;
+}
+
+export function getCtorRegistry() {
+  return _ctorRegistryProvider();
+}
+
 // Components (the Conduit) that need to re-render on any connection
 // change subscribe to this counter. Canvas bumps it from the editor
 // pipe on connectioncreated / connectionremoved.
