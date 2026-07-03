@@ -30,7 +30,14 @@ export function CubeChip({ value, label, size = "md", accent, pinNodeId }: {
       onClick={(e) => {
         e.stopPropagation();
         const cs = getComputedStyle(e.currentTarget);
-        const popupAccent = accent || cs.getPropertyValue("--node-accent").trim() || undefined;
+        // Explicit prop, else host accent, else the cube TYPE colour — so a chip
+        // opened with no node context (e.g. inline in a Report) still gets the
+        // standard coloured header (see FrameChip).
+        const popupAccent =
+          accent ||
+          cs.getPropertyValue("--node-accent").trim() ||
+          cs.getPropertyValue("--sock-cube").trim() ||
+          undefined;
         const groupColor = cs.getPropertyValue("--group-color").trim();
         const groupColorDark = cs.getPropertyValue("--group-color-dark").trim();
         cubePopup.open(

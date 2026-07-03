@@ -76,7 +76,14 @@ export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId
         // like the Formula popup. These vars are set on the card / group root and
         // cascade to this chip.
         const cs = getComputedStyle(e.currentTarget);
-        const popupAccent = accent || cs.getPropertyValue("--node-accent").trim() || undefined;
+        // Accent: explicit prop, else the host node's accent, else the list TYPE
+        // colour — so a chip opened with no node context (e.g. inline in a Report)
+        // still gets the standard coloured header instead of a bare one.
+        const popupAccent =
+          accent ||
+          cs.getPropertyValue("--node-accent").trim() ||
+          cs.getPropertyValue("--sock-list").trim() ||
+          undefined;
         const groupColor = cs.getPropertyValue("--group-color").trim();
         const groupColorDark = cs.getPropertyValue("--group-color-dark").trim();
         tablePopup.open({
