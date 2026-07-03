@@ -741,6 +741,8 @@ think it clears that bar, I say so.
 
 ## 15 — Engineering & scientific calculations (the MathCAD seat)
 
+**VERDICT (author, 2026-07-03): IN.**
+
 **Who's underserved:** engineers and scientists doing real calculations — structural
 loads, heat transfer, tolerances, lab analysis. Their actual tools are a horror: Excel
 with unlabeled cells nobody dares touch, or MathCAD (aging, expensive), or a Jupyter

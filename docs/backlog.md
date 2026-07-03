@@ -49,9 +49,10 @@ the area first) · #12 IN (expectation nodes / data-quality gate) · #13 IN — 
 the report is one editable, blank-by-default markdown FILE independent of the graph
 (not canvas Notes rendered in order), reusing the Note's inline-ref span directly and
 able to embed Note nodes · #14 IN (node-anchored comments — right-click "Add comment,"
-surfaced in a comment pane like Alerts/pins). Deferred pile for end-of-walk revisit:
-#2, #6, #11, golden tests, data-drafts.
-NEXT when resuming: scope-features #15, then #16–63 in order (folding in strategy threads #1–#7 and the
+surfaced in a comment pane like Alerts/pins) · #15 IN (engineering/scientific calc
+seat — the MathCAD replacement, units-as-values is the winning card). Deferred pile
+for end-of-walk revisit: #2, #6, #11, golden tests, data-drafts.
+NEXT when resuming: scope-features #16, then #17–63 in order (folding in strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
 #20 dimensions → engine execution contract (Bet 1 × #23 × #24 × calc mode) → #5
