@@ -74,8 +74,9 @@ Round 7 = #43–49, Round 8 = #50–57, Round 9 = #58–63 (end of doc).
 #28 OUT (formula lens). Round 4 (#20–28) fully walked: #20 OUT · #21 IN very late ·
 #22 IN (no new node) · #23 DEFERRED · #24 IN (needs footer affordance) · #25–28 all OUT.
 Round 5 (#29–36, analyst's workbench + open ports) begun 2026-07-03: #29 OUT (model
-linter).
-NEXT when resuming: scope-features #30, then #31–63 in order (folding in
+linter) · #30 IN (Problems panel — extend the Alerts/pins HudStack family, don't
+build a fourth standalone panel).
+NEXT when resuming: scope-features #31, then #32–63 in order (folding in
 strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →

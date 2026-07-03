@@ -1241,6 +1241,10 @@ is an auditable model).
 
 ## 30 — The Problems panel: every error in the doc, in one list
 
+**VERDICT (author, 2026-07-03): IN.** UX: extend the existing Alerts/pins panel family
+(`HudStack`) rather than build a fourth standalone panel — errors join comments (#14)
+and alerts as another stack in that same pattern.
+
 **The problem:** errors are first-class tagged values (`#DIV/0!`, `#SHAPE!`…) — but
 finding them means *scrolling the canvas looking for red*. On a 200-node graph a
 buried `#CIRC!` is a scavenger hunt.
