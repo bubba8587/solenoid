@@ -652,6 +652,11 @@ Note-body idea and is now the report file's own primitive, in three steps:
 
 ## 14 — Node-anchored review: comments, questions, sign-off
 
+**VERDICT (author, 2026-07-03): IN.** UX: right-click a node → "Add comment," and it
+goes into a dedicated **comment pane**, the same pattern as the existing Alerts HUD
+(`HudStack`) and pins (`PinLayer`) — a stacked list panel, not just a corner badge you
+have to hover per-node to read.
+
 **Scope today:** one author, one canvas, zero collaboration surface of any kind
 (verified — no comments, no annotations, nothing). Round 1 deliberately deferred
 *real-time* multiplayer. But the highest-value collaboration in modeling isn't
@@ -675,8 +680,11 @@ survives edits), snapshots (#6 — "reviewed *as of* what"), and the existing
 placeholder/provenance discipline as the pattern for carrying non-graph data in saves.
 
 **First step:** a comment pin per node (author, text, resolved flag), stored in the
-save, rendered like the existing corner badges. Single-user it's already useful as
-**"notes to self with an address"** — TODO markers that live on the logic they're about.
+save, added via a right-click "Add comment" and surfaced in a comment pane alongside
+the existing Alerts/pins panels (a small corner indicator on the node itself is fine as
+a pointer back, but the pane is where you read/manage them). Single-user it's already
+useful as **"notes to self with an address"** — TODO markers that live on the logic
+they're about.
 
 **Risk:** low. The trap is building identity/permissions infrastructure — don't;
 a name string in a local file is the 1.0 of this.
