@@ -2,6 +2,44 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Trust & data-quality bundle BUILT — all 7 items (docs/v2.0/11-trust-quality-nodes.md, 2026-07-03)
+Expect (opt-in not-null/unique/range/regex, pass-through, red badge + `fireAlert` on a NEW
+failure signature), Problems panel (new `HudStack` child; hooks a new `registerErrorSink` seam
+in `errorValue.ts`'s `installErrorGuards` — fires on a throw, the input-propagation short-
+circuit, AND a producer's own SolError return with no throw at all), where-used (right-click →
+`downstreamClosure` fed into the existing `isolateStore`), Reconcile (`reconcileFrames` in
+`frameVerbs.ts`, reuses `joinFrames`' key-index machinery; classifies added/removed/changed/
+unchanged with per-column before/after/Δ + an optional price/volume/mix variance breakdown),
+model fuzzing (`modelFuzz.ts` — ~120 valid-shaped samples per leaf Number/Slider/Text source,
+deterministic PRNG, drives the existing targeted-recompute path, scans the downstream cone for
+a SolError/NaN/Infinity/failing Expect; Data → "Run model check"), Tornado (genuinely new node,
+confirmed NOT an extension of `DecisionSensitivityNode`; `tornadoRun.ts` walks upstream leaves,
+perturbs ±10%/declared range one at a time, ranks by swing, floating-bar chart via recharts),
+node-anchored comments (`commentStore.ts`, new `CommentsPanel` HudStack child, `{author, text,
+resolved}` persisted as `SavedGraph.comments?`; every node gets a corner indicator for free —
+mounted once inside `NodeShell` in `nodeKit.tsx`, not touched per node component).
+
+Two corrections the plan doc flagged up front, both true: `HudStack` is a hardcoded
+`<PinLayer/><AlertLayer/>` stack, not a generic panel API — Problems and Comments are their own
+bespoke component files (own state, own `registerChrome` call), added as new JSX children. And
+no "jump and flash" gesture existed anywhere — built from scratch (`flyToNode.ts`'s new
+`flashNode`/`flyToNodeAndFlash` + a CSS keyframe on `nodeCard.css`, `.solenoid-node-flash`,
+applied via `area.nodeViews` containment so it works on every node root type).
+
+Also built (not in the original 7 but load-bearing for #44's "not just a passive log" ask):
+`insertClampBefore` (`modelFuzz.ts`) — a minimal mid-cable node-insertion primitive (add node →
+remove the old connection → rewire through it) since no such API exists yet (bundle 14
+"quick-wire" is still future work). The Problems panel's "+ Clamp" button on a mechanical fuzz
+finding is a real one-click fix, not a stub.
+
+Gotcha for later: `problemsStore`'s live entries are edge-detected per node (same `code` repeat
+across recomputes isn't re-logged), same idea as `AlertNode`'s `lastStatusKey` — but there's no
+"this node stopped erroring" clear yet, so a fixed node's last error row lingers until dismissed
+or the node is deleted. Matches the log-not-live-state model `alertStore` already uses; revisit
+if that reads as stale in practice. Model fuzzing only scans each node's own cache fields +
+one level into arrays — it does NOT walk into Frame/Cube cell values, so a fuzz-induced error
+buried inside a Frame column won't surface (scoped cut, noted in the commit).
+
 ### Ragged-list pad BUILT (audit finding 25) + list SORT nulls-last + TEXT TZ fix (2026-07-02)
 The pad-to-longest-with-null policy (settled 2026-06-22 with the array-semantics build, unbuilt
 since) is now implemented — **behavior change:** `[1,2,3]+[10,20]` → `[11,22,null]`, no more
