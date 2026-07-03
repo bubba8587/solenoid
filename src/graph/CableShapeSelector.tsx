@@ -18,6 +18,28 @@ const SHAPE_ICON: Record<CableShape, string> = {
   straight: `M ${S.x},${S.y} L ${MID_X},${S.y} L ${MID_X},${T.y} L ${T.x},${T.y}`,
 };
 
+/** One cable-shape glyph — shared by the toolbar's segmented control and the
+ *  collapsed Cable Inspector chip, so "a cable" is the same drawing everywhere.
+ *  The ring's hollow fills with `--icon-bg` (set it on the host element). */
+export function CableShapeIcon({ shape, className }: { shape: CableShape; className?: string }) {
+  return (
+    <svg className={className} viewBox="-7 -8 46 44" aria-hidden="true">
+      <path
+        d={SHAPE_ICON[shape]}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="3.5"
+        strokeLinecap="round"
+        strokeLinejoin="miter"
+      />
+      {/* Source = closed (output); target = open ring (input), its hollow
+          filled with the panel bg so the cable doesn't show through. */}
+      <circle cx={S.x} cy={S.y} r="5.5" fill="currentColor" />
+      <circle cx={T.x} cy={T.y} r="4.5" stroke="currentColor" strokeWidth="2.5" style={{ fill: "var(--icon-bg)" }} />
+    </svg>
+  );
+}
+
 /**
  * Floating segmented control to pick the active cable shape. Lives in
  * the top-left corner of the canvas. Moveable / resizable / hideable
@@ -44,20 +66,7 @@ export function CableShapeSelector() {
             }
             onClick={() => setShape(entry.value)}
           >
-            <svg className="solenoid-toolbar__icon" viewBox="-7 -8 46 44" aria-hidden="true">
-              <path
-                d={SHAPE_ICON[entry.value]}
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="3.5"
-                strokeLinecap="round"
-                strokeLinejoin="miter"
-              />
-              {/* Source = closed (output); target = open ring (input), its hollow
-                  filled with the panel bg so the cable doesn't show through. */}
-              <circle cx={S.x} cy={S.y} r="5.5" fill="currentColor" />
-              <circle cx={T.x} cy={T.y} r="4.5" stroke="currentColor" strokeWidth="2.5" style={{ fill: "var(--icon-bg)" }} />
-            </svg>
+            <CableShapeIcon shape={entry.value} className="solenoid-toolbar__icon" />
           </button>
         ))}
       </div>

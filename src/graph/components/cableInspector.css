@@ -35,6 +35,33 @@ html:not(.is-mobile) body.solenoid-nav-open .solenoid-cable-inspector {
   to   { opacity: 1; transform: translateY(0); }
 }
 
+/* Mobile: the bottom action bar replaces the status bar as the thing to clear
+   (same 96px lift the docked conduit toolbar uses). */
+html.is-mobile .solenoid-cable-inspector {
+  bottom: calc(96px + env(safe-area-inset-bottom));
+}
+
+/* Collapsed: the panel folds to one square chip in the same corner, showing
+   the active cable-shape glyph (the exact drawing the toolbar's shape selector
+   uses). Click to unfold; the cable selection is untouched either way. */
+.solenoid-cable-inspector--chip {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-muted, var(--text));
+  --icon-bg: var(--overlay-bg); /* fills the target ring's hollow */
+}
+.solenoid-cable-inspector--chip:hover { color: var(--accent); border-color: var(--accent); }
+.solenoid-cable-inspector__chip-icon {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
 .solenoid-cable-inspector__head {
   display: flex;
   align-items: center;
