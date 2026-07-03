@@ -1,7 +1,14 @@
-import { describe, it, expect } from "vitest";
-import { dateFormatDisplay, shouldRenderListInline, formatListCell } from "./valueDisplayFormat";
+import { describe, it, expect, afterEach } from "vitest";
+import { ClassicPreset, NodeEditor } from "rete";
+import { dateFormatDisplay, shouldRenderListInline, formatListCell, nodeOutputIsDate } from "./valueDisplayFormat";
 import { jsDateToSerial } from "../nodes/date";
 import { solError } from "../errorValue";
+import { setEditorRefs, getEditor } from "../process";
+import type { Schemes } from "../schemes";
+import { ConduitNode, conduitInKey, conduitOutKey } from "../nodes/conduit";
+import { reconcileConduitTypes } from "../conduitTrace";
+import { DisplayNode } from "../nodes/display";
+import { dateOut } from "../nodes/shared";
 
 const ser = (y: number, m: number, d: number) => jsDateToSerial(new Date(Date.UTC(y, m - 1, d)));
 
@@ -78,5 +85,46 @@ describe("formatListCell", () => {
   it("renders a logical as Excel-form TRUE/FALSE", () => {
     expect(formatListCell(true, fmt)).toBe("TRUE");
     expect(formatListCell(false, fmt)).toBe("FALSE");
+  });
+});
+
+// Layer 1 — the type-default display: a date reads as a date wherever it flows,
+// resolved through pass-throughs (Display) and Conduit lanes, not just at the
+// node that produced it.
+describe("nodeOutputIsDate — type resolves through pass-throughs / conduits", () => {
+  afterEach(() => setEditorRefs(null as never, null as never, null as never));
+
+  async function wire() {
+    const editor = new NodeEditor<Schemes>();
+    setEditorRefs(editor, null as never, null as never);
+    const dateSrc = new ClassicPreset.Node("Date") as unknown as Schemes["Node"];
+    dateSrc.addOutput("result", dateOut("Date"));
+    const cond = new ConduitNode({}) as unknown as Schemes["Node"];
+    const dispThroughConduit = new DisplayNode() as unknown as Schemes["Node"];
+    const dispDirect = new DisplayNode() as unknown as Schemes["Node"];
+    for (const n of [dateSrc, cond, dispThroughConduit, dispDirect]) await editor.addNode(n);
+    await editor.addConnection(new ClassicPreset.Connection(dateSrc, "result", cond, conduitInKey(0)) as Schemes["Connection"]);
+    await editor.addConnection(new ClassicPreset.Connection(cond, conduitOutKey(0), dispThroughConduit, "in") as Schemes["Connection"]);
+    await editor.addConnection(new ClassicPreset.Connection(dateSrc, "result", dispDirect, "in") as Schemes["Connection"]);
+    reconcileConduitTypes(getEditor()!); // the conduit lane adopts `date`
+    return { dateSrc, cond, dispThroughConduit, dispDirect };
+  }
+
+  it("a date reads as a date at the producer, through a Conduit, and at a direct Display", async () => {
+    const { dateSrc, dispThroughConduit, dispDirect } = await wire();
+    expect(nodeOutputIsDate(dateSrc.id)).toBe(true);          // the producer
+    expect(nodeOutputIsDate(dispDirect.id)).toBe(true);        // a pass-through Display fed directly
+    expect(nodeOutputIsDate(dispThroughConduit.id)).toBe(true); // a Display fed through a Conduit lane
+  });
+
+  it("a plain number does NOT read as a date", async () => {
+    const editor = new NodeEditor<Schemes>();
+    setEditorRefs(editor, null as never, null as never);
+    const numSrc = new ClassicPreset.Node("Num") as unknown as Schemes["Node"];
+    numSrc.addOutput("result", new ClassicPreset.Output(new (await import("../sockets")).SolenoidSocket("number")));
+    const disp = new DisplayNode() as unknown as Schemes["Node"];
+    for (const n of [numSrc, disp]) await editor.addNode(n);
+    await editor.addConnection(new ClassicPreset.Connection(numSrc, "result", disp, "in") as Schemes["Connection"]);
+    expect(nodeOutputIsDate(disp.id)).toBe(false);
   });
 });
