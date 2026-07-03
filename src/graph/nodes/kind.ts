@@ -42,7 +42,7 @@ import { ExpectNode } from "./quality";
 import { TornadoNode } from "./tornado";
 import { ReconcileNode } from "./frame";
 import { SlicerNode, CableSwitchNode, DatePickerNode, XYPadNode } from "./control";
-import { SparklineNode, ChartNode, GaugeNode, HeatmapCellNode, ChartBuilderNode } from "./visual";
+import { SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode } from "./visual";
 import { NoteNode, ImageNode } from "./annotation";
 import { CompositeNode } from "./composite";
 import { XLookupNode } from "./lookup";
@@ -74,7 +74,7 @@ import {
 
 export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
   if (node instanceof NumberInputNode || node instanceof ConstantNode || node instanceof SliderInputNode || node instanceof RandBetweenNode || node instanceof WebSourceNode || node instanceof CsvConnectionNode || node instanceof ParquetConnectionNode || node instanceof ImportHtmlNode || node instanceof ImportXmlNode || node instanceof XYPadNode || node instanceof ColorPickerNode) return "input";
-  if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof GaugeNode || node instanceof HeatmapCellNode || node instanceof ChartBuilderNode || node instanceof TornadoNode) return "display";
+  if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof MermaidNode || node instanceof GaugeNode || node instanceof HeatmapCellNode || node instanceof ChartBuilderNode || node instanceof TornadoNode) return "display";
   if (node instanceof ConvertNode || node instanceof CastNode) return "convert";
   if (
     node instanceof ComplexFromNode || node instanceof ComplexUnpackNode ||
@@ -225,7 +225,7 @@ export function nodeResizable(node: ClassicPreset.Node): boolean {
 export function nodeWide(node: ClassicPreset.Node): boolean {
   // The inline charts draw a fixed-width plot that needs the wide card to fit;
   // Heatmap qualifies on its table socket below.
-  if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof TornadoNode) return true;
+  if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof MermaidNode || node instanceof TornadoNode) return true;
   const ports = [...Object.values(node.inputs ?? {}), ...Object.values(node.outputs ?? {})];
   return ports.some((p) => {
     const s = (p as { socket?: ClassicPreset.Socket } | undefined)?.socket;

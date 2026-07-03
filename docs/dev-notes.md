@@ -2,6 +2,31 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Mermaid node + lambda→KaTeX in Reports; the "figures are node outputs" standing rule (2026-07-03)
+Two Report-adjacent additions, both built on the SAME principle the author set here as a
+**standing rule**: *rich visual/typeset content is produced by a NODE and flows as a
+chart-family value through the green `chart` "Special" socket, embedding into a Report like
+any chart. A Report stays plain text + embeds and is NEVER made first-class for a content
+type.* So neither of these widened the Report's markdown parser.
+
+- **Lambda → KaTeX.** A LAMBDA value wired into a Report/Note inline ref now typesets as a
+  centered equation `f(params) = body` via `katex` + `formulaToLatex` (the formula-field
+  path), falling back to plain `λ(x) = expr` when the body doesn't parse. Carried the source
+  body on the lambda VALUE (`LambdaValue.expr`) so the consumer renders it without reaching
+  back into the graph — the one `__lambda: true` construction site sets it. Rendered in
+  `inlineRefDisplay.tsx` (`LambdaFormula` + the `refPreview` text form).
+- **Mermaid node** (`mermaid` dep, v11; `nodes/visual.ts` `MermaidNode`). Source text in
+  (typed on the card or wired via the `source` socket) → a `MermaidValue`
+  (`mermaidValue.ts`, a sibling brand to `ChartValue`) out the `chart` socket. Renders via
+  `MermaidView.tsx`, which **dynamically imports** mermaid (heavy — d3/dagre) only when a
+  diagram is on screen, keeping it off the main bundle. Theme-aware (mermaid `dark`/`default`
+  re-init on `appThemeStore` flip); `mermaid.parse` first so a syntax error is our own quiet
+  "Diagram error", not mermaid's injected red graphic. Registered everywhere the Chart node
+  is (catalog "Visuals", `nodeRegistry`, `kind` display+wide, `components/index`). Persists
+  free via `stringLiterals.source`. Static HTML export picks up the card SVG through the
+  existing `captureChartSvgs` (visual-node SVG capture) — same path charts use. Verified live:
+  the flowchart renders on the card AND inline in a Report, green cable = chart socket.
+
 ### Bundle 05 (units) — dimensional-algebra foundation landed (2026-07-03)
 Started the flagship units bundle. Only the parts NOT gated on the FC function-model truth
 table (which the author will red-line later): Phase C was already fixed (the `dockSelf`

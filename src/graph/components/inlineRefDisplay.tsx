@@ -10,6 +10,8 @@ import katex from "katex";
 import "katex/dist/katex.min.css";
 import { isFrameValue, isCubeValue } from "../frame";
 import { isChartValue } from "../chartValue";
+import { isMermaidValue } from "../mermaidValue";
+import { MermaidView } from "./MermaidView";
 import { isLambdaValue, type LambdaValue } from "../nodes/lambda";
 import { formulaToLatex } from "../excelFormula";
 import { FrameDisplay } from "./FrameDisplay";
@@ -66,6 +68,7 @@ export function refPreview(value: unknown, ann: FormatAnnotation | undefined): s
   if (typeof value === "number") return ann ? formatNumberWithAnnotation(value, ann) : formatScalar(value);
   if (typeof value === "string") return value;
   if (isLambdaValue(value)) return lambdaText(value);
+  if (isMermaidValue(value)) return value.title || "diagram";
   if (isChartValue(value)) return value.title || "chart";
   if (isFrameValue(value)) return "frame";
   if (isCubeValue(value)) return "cube";
@@ -124,6 +127,14 @@ export function InlineRefValue({ nodeId, refKey }: { nodeId: string; refKey: str
         {series.length === 0
           ? <span className="solenoid-ref-inline solenoid-ref-inline--empty">—</span>
           : <ChartView op={value.op} series={series} width={360} height={200} axes opts={value.options} />}
+      </span>
+    );
+  }
+  if (isMermaidValue(value)) {
+    return (
+      <span className="solenoid-ref-figure">
+        {value.title && <span className="solenoid-ref-figure__title">{value.title}</span>}
+        <MermaidView source={value.source} />
       </span>
     );
   }

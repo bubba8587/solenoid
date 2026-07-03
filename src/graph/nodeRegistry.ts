@@ -7,7 +7,7 @@ import type { RenderEmit } from "rete-react-plugin";
 import type { Schemes } from "./schemes";
 import {
   AngleDialNode, SlicerNode, CableSwitchNode, NoteNode, ReportNode, SessionHistoryNode, PresentationNode, ImageNode,
-  SparklineNode, ChartNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, DatePickerNode, XYPadNode,
+  SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, DatePickerNode, XYPadNode,
   NumberInputNode, ArithmeticNode, DisplayNode, ComparisonNode, MathFnNode,
   ColorPickerNode,
   ClampNode, BooleanOpNode, NotNode, IfNode, ConduitNode, CastNode, ConstantNode, MRoundNode,
@@ -75,7 +75,7 @@ import {
 } from "./rete-nodes";
 import {
   AngleDialComponent, SlicerComponent, CableSwitchComponent, NoteComponent, ReportComponent, SessionHistoryComponent, PresentationComponent, ImageComponent,
-  SparklineComponent, ChartComponent, GaugeComponent, HeatmapCellComponent, ChartBuilderComponent, DatePickerComponent, XYPadComponent,
+  SparklineComponent, ChartComponent, MermaidComponent, GaugeComponent, HeatmapCellComponent, ChartBuilderComponent, DatePickerComponent, XYPadComponent,
   NumberInputComponent, ArithmeticComponent, DisplayComponent, ComparisonComponent,
   MathFnComponent, ClampComponent, BooleanComponent, NotComponent, IfComponent, ConduitComponent, CastComponent,
   ConstantComponent, MRoundComponent, ListInputComponent, AggregateComponent,
@@ -169,6 +169,7 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [ImageNode,       comp(ImageComponent)],
   [SparklineNode,   comp(SparklineComponent)],
   [ChartNode,       comp(ChartComponent)],
+  [MermaidNode,     comp(MermaidComponent)],
   [GaugeNode,       comp(GaugeComponent)],
   [HeatmapCellNode, comp(HeatmapCellComponent)],
   [ChartBuilderNode, comp(ChartBuilderComponent)],

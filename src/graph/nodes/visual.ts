@@ -2,6 +2,7 @@ import { ClassicPreset } from "rete";
 import { numIn, numListIn, numListOut, numOut, tableIn, tableOut, strIn, strOut, chartOut } from "./shared";
 import { parseChartOptions, serializeChartOptions, type ChartOptions } from "./chartOptions";
 import type { ChartValue } from "../chartValue";
+import type { MermaidValue } from "../mermaidValue";
 
 // ─── Visual output nodes ────────────────────────────────────────────────────
 // Pass-through "sinks" that render a chart of the value flowing through them, so
@@ -95,6 +96,46 @@ export class ChartNode extends ClassicPreset.Node {
       title: this.chartOptions.title || this.label || "Chart",
     };
     return { chart };
+  }
+}
+
+// ─── Mermaid ──────────────────────────────────────────────────────────────────
+// A diagram node: mermaid.js source in → a figure out. Emits the first-class
+// mermaid VALUE down the same `chart` object socket a Chart uses (the green
+// "Special" family), so a Report renders it inline where its `=name` ref sits,
+// exactly like a chart. The source is typed on the card (or wired from a Text /
+// Note via the `source` socket); the SVG is drawn lazily in the component. Per
+// the standing rule, rich visuals are node outputs, not Report markdown features.
+
+const DEFAULT_MERMAID = "graph TD\n  A[Start] --> B{Decision}\n  B -->|Yes| C[Do this]\n  B -->|No| D[Do that]";
+
+export class MermaidNode extends ClassicPreset.Node {
+  label: string;
+  // The inline diagram source (used when the `source` socket isn't wired). Stored
+  // in stringLiterals so it round-trips through persistence with no extra plumbing
+  // (persistence.ts restores stringLiterals for every node).
+  stringLiterals: Record<string, string> = {};
+  cachedSource = "";
+  width = 260;
+  height = 240;
+
+  constructor(init?: { label?: string }) {
+    super("Mermaid");
+    this.label = init?.label ?? "Mermaid";
+    this.stringLiterals.source = DEFAULT_MERMAID;
+    this.addInput("source", strIn("Source"));
+    this.addOutput("diagram", chartOut("Diagram"));
+  }
+
+  data(inputs: { source?: string[] }): { diagram: MermaidValue } {
+    const src = inputs.source?.[0] ?? this.stringLiterals.source ?? "";
+    this.cachedSource = src;
+    const diagram: MermaidValue = {
+      __mermaid: true,
+      source: src,
+      title: this.label || "Diagram",
+    };
+    return { diagram };
   }
 }
 
