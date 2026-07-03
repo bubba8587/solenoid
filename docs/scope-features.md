@@ -526,6 +526,8 @@ logic, not just the result.
 
 ## 12 — Expectation nodes: the data-quality gate
 
+**VERDICT (author, 2026-07-03): IN.**
+
 **Scope today:** tagged errors catch *computational* failures (`#DIV/0!`, `#SHAPE!`).
 Nothing catches **plausible-but-wrong data** — the silent killer: the CSV that arrived
 with duplicate IDs, the column that's suddenly 4% null, the amount that went negative.
