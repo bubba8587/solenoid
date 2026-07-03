@@ -47,10 +47,10 @@ const GROUPS: LegendGroup[] = [
     { kind: "grid", color: SOCKET_COLORS.frame },
     { kind: "cube", color: SOCKET_COLORS.cube },
   ] },
-  { label: "Lambda", dots: [
+  // The OBJECT family — non-lattice, identity-only values distinguished by
+  // glyph, not colour (both green). Lambda = a function, Chart = a figure.
+  { label: "Special", dots: [
     { kind: "lambda", color: SOCKET_COLORS.lambda },
-  ] },
-  { label: "Chart", dots: [
     { kind: "chart", color: SOCKET_COLORS.chart },
   ] },
   { label: "Any", dots: [
@@ -107,10 +107,14 @@ export function SocketDot({ entry }: { entry: Dot }) {
   if (entry.kind === "chart") {
     return (
       <svg width={14} height={14} viewBox="-1 -1 14 14" style={{ flexShrink: 0 }}>
-        <circle cx="6" cy="6" r="6" fill={entry.color} />
-        {/* 3-bar mini chart — same glyph as SocketComponent's chart socket. */}
-        <path d="M3.6 8.6 V6.6 M6 8.6 V3.9 M8.4 8.6 V5.4" fill="none" stroke="var(--socket-ring)" strokeWidth="1.5" strokeLinecap="round" />
-        <circle cx="6" cy="6" r="5" fill="none" stroke="var(--socket-ring)" strokeWidth="2" />
+        {/* Square + three sharp bars — same glyph as SocketComponent's chart socket. */}
+        <rect x="0" y="0" width="12" height="12" rx="1.5" fill={entry.color} />
+        <g fill="var(--socket-ring)">
+          <rect x="2.6" y="7" width="1.7" height="3" />
+          <rect x="5.15" y="4.4" width="1.7" height="5.6" />
+          <rect x="7.7" y="6" width="1.7" height="4" />
+        </g>
+        <rect x="1" y="1" width="10" height="10" rx="0.5" fill="none" stroke="var(--socket-ring)" strokeWidth="2" />
       </svg>
     );
   }

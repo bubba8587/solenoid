@@ -101,11 +101,18 @@ export function SocketComponent({ data }: { data: ClassicPreset.Socket }) {
         </>
       ) : isChart ? (
         <>
-          {/* Chart/visual value: circle with a 3-bar mini bar chart in the same
-              embossed stroke as the λ / grid cross — the object-family sibling. */}
-          <circle cx="6" cy="6" r="6" fill={color} />
-          <path d="M3.6 8.6 V6.6 M6 8.6 V3.9 M8.4 8.6 V5.4" fill="none" stroke="var(--socket-ring)" strokeWidth="1.5" strokeLinecap="round" />
-          <circle cx="6" cy="6" r="5" fill="none" stroke="var(--socket-ring)" strokeWidth="2" />
+          {/* Chart/visual value: a SQUARE (object/"Special" family, green like
+              lambda) with three sharp-cornered bars in the embossed ring color.
+              The bars sit inside the inset border ring — baseline at y=10 (the
+              ring's inner edge) so they TOUCH the bottom border without crossing
+              it, and stay within x 2.4–9.6 so they clear the side borders. */}
+          <rect x="0" y="0" width="12" height="12" rx="1.5" fill={color} />
+          <g fill="var(--socket-ring)">
+            <rect x="2.6" y="7"   width="1.7" height="3" />
+            <rect x="5.15" y="4.4" width="1.7" height="5.6" />
+            <rect x="7.7" y="6"   width="1.7" height="4" />
+          </g>
+          <rect x="1" y="1" width="10" height="10" rx="0.5" fill="none" stroke="var(--socket-ring)" strokeWidth="2" />
         </>
       ) : (
         <>
