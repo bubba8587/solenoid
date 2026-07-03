@@ -138,8 +138,15 @@ a custom Constants node instead, consistent with #5's packs-only distribution st
 #54 VERY DEFERRED, same call as #48 (model index / cross-doc dependency map) · #55 OUT
 (structured templates — nothing worth templating you can't already get by clearing
 inputs and saving a copy; consistent with its enabling pieces #27/#26/#36 all OUT) ·
-#56 OUT (commission engine vertical — sales comp provenance demo).
-NEXT when resuming: scope-features #57, then #58–63 in order (folding in
+#56 OUT (commission engine vertical — sales comp provenance demo) · #57 SPLIT: (a)
+paste-anywhere OUT, (b) align/distribute + batch collapse IN, wrap-in-subgraph
+explicitly NOT part of this gesture — subgraph creation needs its own deliberate
+action (deferred to #5's design session), since a subgraph is less editable / has
+different compute semantics than a Group. Round 8 (#50–57) fully walked: #50 IN
+scoped way down · #51 IN light · #52 IN colors-only · #53/#55/#56 OUT · #54 VERY
+DEFERRED · #57 split (mostly IN).
+NEXT when resuming: scope-features #58 (Round 9, the social layer, the speculative
+finale — begins, LAST round), then #59–63 in order (folding in
 strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
