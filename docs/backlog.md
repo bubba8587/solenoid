@@ -125,8 +125,12 @@ answer for now, not a bespoke in-app fleet dashboard) · #49 IN, AS A NODE (Sess
 History node — doesn't persist, autogenerates its digest when it exists on canvas,
 copy button, done). Round 7 (#43–49) fully walked: #43 IN/DEFER · #44 IN (refined) ·
 #45 IN as node · #46 DEFERRED · #47 IN · #48 VERY DEFERRED · #49 IN as node.
-NEXT when resuming: scope-features #50 (Round 8, "telling the story, and the estate"
-— begins), then #51–63 in order (folding in
+Round 8 (#50–57, "telling the story, and the estate") begun 2026-07-03: #50 IN,
+scoped way down + gated on confidence (auto-documentation — Group-attached node only,
+not whole-doc/selection narration; only build if the composition approach proves out
+on a handful of node types, since the naive version might need a bespoke prose string
+per catalog entry).
+NEXT when resuming: scope-features #51, then #52–63 in order (folding in
 strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
