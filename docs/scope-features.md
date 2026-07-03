@@ -239,6 +239,12 @@ risk and deliver most of the value.
 
 ## 6 — Snapshots + diff: "what changed, and why"
 
+**VERDICT (author, 2026-07-02): DEFERRED — "I don't know if I like it."** Revisit at
+the end of the walk with the other deferred/parked items (#2, golden tests,
+data-drafts). Noted dependents if it stays out: strategy thread #3 (governance —
+change control / sign-off) and thread #6 (trust badge) lose a leg; thread #4 linked
+graphs loses pin-to-snapshot. Nothing builds now.
+
 **Scope today:** a save is the current state. There's no "what did this model say last
 month," and no way to compare two versions of a model or its outputs.
 
