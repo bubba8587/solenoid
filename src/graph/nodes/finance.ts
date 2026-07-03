@@ -2,6 +2,7 @@
 import { numIn, numOut, listIn, dateIn } from "./shared";
 import { serialToJsDate, jsDateToSerial } from "./date";
 import { solError, isSolError, type SolError } from "../errorValue";
+import { resolveExcelFunction } from "../excelFunctions";
 
 // Cashflow-list prep for NPV/IRR/MIRR/FVSCHEDULE: propagate the first SolError in the
 // list (error-in → error-out, was silently swallowed to NaN), and coerce a null cell
@@ -164,41 +165,20 @@ export class DepreciationNode extends ClassicPreset.Node {
     const life    = inputs.life?.[0]    ?? this.literals.life    ?? null;
     const per     = inputs.per?.[0]     ?? this.literals.per     ?? null;
     const factor  = inputs.factor?.[0]  ?? this.literals.factor  ?? 2;
+    // SLN/SYD/DDB/DB are closed-form and verified byte-identical to Formula.js across
+    // the domain this node allows — the domain GUARDS above stay hand-rolled (they gate
+    // which op even runs), only the actual depreciation formula routes through the seam.
     let result: number | null = null;
     if (cost !== null && salvage !== null && life !== null && life > 0) {
       if (this.op === "sln") {
-        result = (cost - salvage) / life;
+        result = resolveExcelFunction("SLN")!(cost, salvage, life) as number;
       } else if (per !== null && per >= 1 && per <= life) {
         if (this.op === "syd") {
-          result = (cost - salvage) * (life - per + 1) * 2 / (life * (life + 1));
+          result = resolveExcelFunction("SYD")!(cost, salvage, life, per) as number;
         } else if (this.op === "ddb") {
-          let book = cost;
-          for (let p = 1; p < per; p++) {
-            const depr = Math.min(book * factor / life, Math.max(0, book - salvage));
-            book -= depr;
-          }
-          result = Math.min(book * factor / life, Math.max(0, book - salvage));
+          result = resolveExcelFunction("DDB")!(cost, salvage, life, per, factor) as number;
         } else if (this.op === "db") {
-          if (cost <= 0 || salvage <= 0) {
-            result = null;
-          } else {
-            const r = Math.round((1 - Math.pow(salvage / cost, 1 / life)) * 1000) / 1000;
-            let cumDepr = 0;
-            for (let p = 1; p <= per; p++) {
-              const book = cost - cumDepr;
-              let depr: number;
-              if (p === 1) {
-                depr = cost * r * (12 / 12); // month defaults to 12
-              } else {
-                depr = book * r;
-              }
-              if (p === per) {
-                result = depr;
-                break;
-              }
-              cumDepr += depr;
-            }
-          }
+          result = (cost <= 0 || salvage <= 0) ? null : (resolveExcelFunction("DB")!(cost, salvage, life, per) as number);
         }
       }
     }
@@ -248,13 +228,17 @@ export class TvmNode extends ClassicPreset.Node {
     const fv   = inputs.fv?.[0]   ?? this.literals.fv   ?? 0;
     const type = this.paymentTiming === "beg" ? 1 : 0;
 
+    // PMT/PV/FV/NPER are closed-form and verified byte-identical to Formula.js —
+    // including its own rate≈0 handling, so THAT branch doesn't need a hand-rolled
+    // formula either. The null-producing DEGENERACY guards (n===0, pmt===0, a bad
+    // log ratio) stay hand-rolled: they gate whether we call Formula.js at all, so
+    // we never have to know what it does on an input this node treats as "no result".
     let result: number | null = null;
     const r = rate;
     const n = nper;
     const t = type;
 
     if (Math.abs(r) < 1e-12) {
-      // rate â‰ˆ 0 edge cases
       switch (this.op) {
         case "pmt":  result = n !== 0 ? -(pv + fv) / n : null; break;
         case "pv":   result = -(pmt * n + fv); break;
@@ -262,12 +246,10 @@ export class TvmNode extends ClassicPreset.Node {
         case "nper": result = pmt !== 0 ? -(pv + fv) / pmt : null; break;
       }
     } else {
-      const rN = Math.pow(1 + r, n);
-      const factor = (1 + r * t) * (rN - 1) / r;
       switch (this.op) {
-        case "pmt":  result = -(pv * rN + fv) * r / ((1 + r * t) * (rN - 1)); break;
-        case "pv":   result = (-pmt * factor - fv) / rN; break;
-        case "fv":   result = -pv * rN - pmt * factor; break;
+        case "pmt":  result = resolveExcelFunction("PMT")!(r, n, pv, fv, t) as number; break;
+        case "pv":   result = resolveExcelFunction("PV")!(r, n, pmt, fv, t) as number; break;
+        case "fv":   result = resolveExcelFunction("FV")!(r, n, pmt, pv, t) as number; break;
         case "nper":
           if (pmt === 0) {
             result = null;
@@ -277,11 +259,7 @@ export class TvmNode extends ClassicPreset.Node {
             // The log needs num/den > 0, not num,den individually > 0: a normal
             // loan (pv > 0, pmt < 0) makes both negative but their ratio valid.
             const ratio = num / den;
-            if (!Number.isFinite(ratio) || ratio <= 0) {
-              result = null;
-            } else {
-              result = Math.log(ratio) / Math.log(1 + r);
-            }
+            result = (!Number.isFinite(ratio) || ratio <= 0) ? null : resolveExcelFunction("NPER")!(r, pmt, pv, fv, t) as number;
           }
           break;
       }
@@ -415,22 +393,15 @@ export class IpmtPpmtNode extends ClassicPreset.Node {
     }
 
     if (Number.isFinite(pmt)) {
+      // IPMT/PPMT are closed-form and verified byte-identical to Formula.js (incl. the
+      // type=1 "no interest in period 1" case) once rate is non-negligible — the
+      // rate≈0 case stays hand-rolled (trivially 0 interest either way, untested
+      // against Formula.js at that degenerate input).
       let ipmt: number;
       if (Math.abs(rate) < 1e-12) {
         ipmt = 0;
       } else {
-        // Excel's remaining balance going into period `per` is FV(rate, per-1,
-        // pmt, pv, type), which equals -B below; interest = balance × rate, so
-        // it shares PMT's sign (negative for a positive PV loan).
-        const rPer1 = Math.pow(1 + rate, per - 1);
-        const B = pv * rPer1 + pmt * (1 + rate * type) * (rPer1 - 1) / rate;
-        if (type === 1) {
-          // Annuity-due: no interest accrues in period 1 (payment is up front);
-          // later periods discount the accrued interest by one period.
-          ipmt = per <= 1 ? 0 : (-B * rate) / (1 + rate);
-        } else {
-          ipmt = -B * rate;
-        }
+        ipmt = resolveExcelFunction("IPMT")!(rate, per, nper, pv, fv, type) as number;
       }
       if (Number.isFinite(ipmt)) {
         result = this.op === "ipmt" ? ipmt : pmt - ipmt;
@@ -469,10 +440,7 @@ export class NpvNode extends ClassicPreset.Node {
     if (error) { this.cachedResult = error; return { result: error }; }
     let result: number | null = null;
     if (cashflows.length > 0) {
-      let npv = 0;
-      for (let i = 0; i < cashflows.length; i++) {
-        npv += cashflows[i] / Math.pow(1 + rate, i + 1);
-      }
+      const npv = resolveExcelFunction("NPV")!(rate, ...cashflows) as number;
       result = Number.isFinite(npv) ? npv : null;
     }
     this.cachedResult = result;
@@ -1655,13 +1623,12 @@ export class XnpvNode extends ClassicPreset.Node {
     const values = inputs.values?.[0] ?? [];
     const dates  = inputs.dates?.[0]  ?? [];
     if (values.length === 0 || dates.length === 0) { this.cachedResult = null; return { result: null }; }
+    // Truncate to equal length BEFORE handing off — verified Formula.js's XNPV takes
+    // our date serials directly (no Date-object conversion needed) and matches this
+    // year-fraction-from-365 formula exactly, but its own ragged-array behavior is
+    // untested, so keep that truncation hand-rolled.
     const n      = Math.min(values.length, dates.length);
-    const d0     = dates[0];
-    let result   = 0;
-    for (let i = 0; i < n; i++) {
-      const years = (dates[i] - d0) / 365;
-      result += values[i] / Math.pow(1 + rate, years);
-    }
+    const result = resolveExcelFunction("XNPV")!(rate, values.slice(0, n), dates.slice(0, n)) as number;
     this.cachedResult = result;
     return { result };
   }
