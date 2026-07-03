@@ -1598,6 +1598,18 @@ machinery of what-if (#4); the Sensitivity node is its seed, generalized to *aut
 all-inputs, ranked.*
 
 ## 46 — Sealed models: tamper-evident sign-off
+
+**VERDICT (author, 2026-07-03): DEFERRED.** Design note captured before deferring: if
+ever built, the hash must cover the FULL document — structure AND current literal
+input values, not just formulas/wiring — since the classic tampering scenario is
+someone quietly nudging an input (a rate 4%→5%) after sign-off, and a seal that
+survives that isn't tamper-evident at all. Reason for deferring: "tamper-evident"
+implies a security promise (who holds the signing key? what stops someone editing the
+JSON and recomputing the hash themselves?) that's a much bigger commitment than the
+doc's "cheap once the canonical form exists" framing suggests — real security-review
+scope, not a quick feature. Revisit later, possibly as a much lighter "integrity
+checksum, not cryptographic proof" version with an explicit disclaimer.
+
 Hash the canonical form of the document (Bet 2's stable text form is the right input) and
 let a reviewer **seal** it: "reviewed by K, 2026-07-02, hash `ab12…`." A later edit visibly
 breaks the seal — it doesn't *prevent* edits, it makes them *evident*, which is what
