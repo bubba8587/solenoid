@@ -59,16 +59,20 @@ Round 3 (#15–19, the stretch markets) closed 2026-07-03: #15 IN (engineering c
 seat) · #16 IN (BOM/nested-costing on the Cube) · #17 IN minor, sequence late (needs
 #4 Monte Carlo + #5 subgraph first) · #18 OUT (embeddable-engine identity fork) ·
 #19 OUT (leans on the #7 NL surface, which stayed all-out).
-NEXT when resuming: scope-features #20 (Round 4, the value-model frontier — first
-item is named dimensions), then #21–63 in order (folding in strategy threads #1–#7 and the
+Round 4 (#20–24, the value-model frontier) begun 2026-07-03: #20 OUT (named
+dimensions — walked through a concrete example, didn't land; socket lattice stays a
+two-leg stool, no axis-semantics leg).
+NEXT when resuming: scope-features #21, then #22–63 in order (folding in strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
-#20 dimensions → engine execution contract (Bet 1 × #23 × #24 × calc mode) → #5
+engine execution contract (Bet 1 × #23 × #24 × calc mode) → #5
 composites (document-local container ONLY — no sharing/ecosystem, packs are the sole
 distribution channel; the session owns the container shell + typed boundary + FIVE
 run-mode hooks: simulation, data tables, solver, scenarios, Monte Carlo — ruled
 2026-07-02) → #9 sinks + #3 scheduling → #43 money → #21 uncertain →
 #8 transpiler → linked graphs → #13 report layout), then plan-doc authoring.
+(#20 dimensions dropped from the deep-dive queue — decided OUT above, no session
+needed.)
 
 **1.0-TAIL WALKTHROUGH BOOKMARK (2026-07-02 — COMPLETE; build pass awaits explicit
 go, see item 6 below).** Everything below this

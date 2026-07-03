@@ -946,6 +946,11 @@ adding capability. Verified first: none of these exist in the code in any form.
 
 ## 20 — Named dimensions: values that know what their axes MEAN
 
+**VERDICT (author, 2026-07-03): OUT.** Walked through with a concrete example (label-
+based alignment on subtraction, region-vs-product axis mismatch as a caught error) and
+it still didn't land as a compelling direction. Not pursued — the socket lattice stays
+a two-leg stool (element type + unit), no third leg for axis semantics.
+
 **The problem it kills:** the single biggest silent-error class in spreadsheets is
 **misalignment** — two ranges that are both "12 numbers" but one is Jan–Dec and the
 other is Dec–Jan, or one is per-region and the other per-product. Excel adds them
