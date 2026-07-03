@@ -353,6 +353,15 @@ and the raw materials for several already do.
 
 ## 8 — The Excel transpiler: open an .xlsx, see it as a graph
 
+**VERDICT (author, 2026-07-02): IN — "in for sure."** Honest-70% strategy confirmed:
+transpile the tractable core, fallback Expression node carrying the original formula
+text for the rest (may be inert under the Expression cap — fine, Placeholder
+philosophy). D10 holds: the transpiler REDIRECTS eliminated functions (VLOOKUP →
+Frame Lookup etc.), never re-adds them. First step is the CLI-grade one-sheet spike.
+Design deep-dive stays late in the queue (consumes Bet 3 + redirect decisions);
+landing it also cheapens the parked data-drafts revisit (shared emit-nodes
+machinery).
+
 **Scope today:** Solenoid is greenfield-only. Everyone's real models are in Excel, and
 the only path in is rebuilding by hand. That's the adoption wall.
 
