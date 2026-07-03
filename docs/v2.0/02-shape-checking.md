@@ -4,6 +4,14 @@
 **Gates:** bundle 08 (transpiler needs range→typed-frame conversion), bundle 09
 (subgraph typed boundary), bundle 13's report-file typed refs.
 
+**STATUS (2026-07-03): core built.** `shapeOf` + the standalone binary/eager
+siblings (`frameShape.ts`), the graph walk (`frameShapeResolver.ts`), the
+`CableInspector` shape row, and `frameShape.test.ts` (JS-oracle parity) are done —
+see dev-notes "Static shape-checking pass". Deferred: explicit Rust-side tests
+mirroring the JS fixtures 1:1 (Rust's own `engine/tests.rs` already covers the same
+column name/type contract per verb, just not from this exact fixture set), and the
+refuse-to-run mode (step 6, was always marked non-blocking).
+
 ## What exists today
 
 The type system checks one plug against one socket at cable-draw time only. It does

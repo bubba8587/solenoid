@@ -15,6 +15,8 @@ import { isFrameRef } from "../frameBackend";
 import { CubeChip } from "./CubeChip";
 import { isFrameValue, isCubeValue } from "../frame";
 import { CloseIcon } from "./CloseIcon";
+import { SolenoidSocket } from "../sockets";
+import { makeFrameShapeResolver } from "../frameShapeResolver";
 import "./cableInspector.css";
 
 // Render a value on the wire compactly. Mirrors PinLayer.renderValue: errors as
@@ -92,6 +94,14 @@ export function CableInspector() {
   // that same value (no per-input transform is stored), so both ends read it.
   const value = cableValueStore.get(conn.source, conn.sourceOutput);
 
+  // Static shape (columns + types), computed ahead of running anything — only for
+  // a table cable (a `frame`-typed output). null on a cube/matrix/scalar cable,
+  // or when the walk can't resolve it (an unconfigured verb, a runtime-loaded
+  // source) — the row just doesn't render then.
+  const srcSocket = srcNode.outputs[conn.sourceOutput]?.socket;
+  const isFrameCable = srcSocket instanceof SolenoidSocket && srcSocket.dataType === "frame";
+  const shape = isFrameCable ? makeFrameShapeResolver(editor).outShape(conn.source, conn.sourceOutput) : null;
+
   return (
     <div className="solenoid-cable-inspector" role="dialog" aria-label="Cable inspector">
       <div className="solenoid-cable-inspector__head">
@@ -142,6 +152,22 @@ export function CableInspector() {
         <span className="solenoid-cable-inspector__role">Value</span>
         {renderWireValue(value, conn.source)}
       </div>
+
+      {/* The statically-computed column shape — visible before anything runs. */}
+      {shape && (
+        <div className="solenoid-cable-inspector__shape">
+          <span className="solenoid-cable-inspector__role">Shape</span>
+          <div className="solenoid-cable-inspector__shape-cols">
+            {shape.columns.map((c) => (
+              <span key={c.name} className="solenoid-cable-inspector__shape-col">
+                {c.name}
+                <span className="solenoid-cable-inspector__shape-type"> · {c.type}</span>
+              </span>
+            ))}
+            {shape.dynamic && <span className="solenoid-cable-inspector__shape-dynamic">+ more</span>}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

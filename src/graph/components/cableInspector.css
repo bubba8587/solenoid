@@ -141,6 +141,37 @@ html:not(.is-mobile) body.solenoid-nav-open .solenoid-cable-inspector {
   border-top: 1px solid var(--overlay-border);
 }
 
+/* The static shape row — column name · type pairs, wrapping as needed. Sits right
+   under the wire row (which already carries the divider above it), no border of
+   its own. */
+.solenoid-cable-inspector__shape {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px 7px;
+}
+.solenoid-cable-inspector__shape-cols {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 6px;
+  min-width: 0;
+}
+.solenoid-cable-inspector__shape-col {
+  font-size: 11px;
+  color: var(--text);
+  white-space: nowrap;
+}
+.solenoid-cable-inspector__shape-type {
+  color: var(--text-muted, var(--text));
+  opacity: 0.65;
+  font-weight: 500;
+}
+.solenoid-cable-inspector__shape-dynamic {
+  font-size: 10px;
+  color: var(--text-muted, var(--text));
+  opacity: 0.6;
+  font-style: italic;
+}
+
 /* The ↓ between the two ends — a quiet directional cue, not a heavy divider. */
 .solenoid-cable-inspector__arrow {
   align-self: center;
