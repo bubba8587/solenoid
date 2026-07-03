@@ -51,9 +51,11 @@ the report is one editable, blank-by-default markdown FILE independent of the gr
 able to embed Note nodes · #14 IN (node-anchored comments — right-click "Add comment,"
 surfaced in a comment pane like Alerts/pins) · #15 IN (engineering/scientific calc
 seat — the MathCAD replacement, units-as-values is the winning card) · #16 IN
-(BOM/nested-costing vertical on the Cube). Deferred pile for end-of-walk revisit:
-#2, #6, #11, golden tests, data-drafts.
-NEXT when resuming: scope-features #17, then #18–63 in order (folding in strategy threads #1–#7 and the
+(BOM/nested-costing vertical on the Cube) · #17 IN, minor, sequence LATE — needs
+#4's Monte Carlo hook + #5 subgraph container to land first (wiggle-the-weights
+depends on them). Deferred pile for end-of-walk revisit: #2, #6, #11, golden tests,
+data-drafts.
+NEXT when resuming: scope-features #18, then #19–63 in order (folding in strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
 #20 dimensions → engine execution contract (Bet 1 × #23 × #24 × calc mode) → #5

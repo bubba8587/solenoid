@@ -808,6 +808,10 @@ watch-it-ripple demo. If it lands, it's a category, not a feature.
 
 ## 17 — Decision models & scoring, made honest
 
+**VERDICT (author, 2026-07-03): IN — minor, sequence LATE.** Small build, but it's
+downstream of the Monte Carlo run-mode and the #5 subgraph container ("wiggle the
+weights" needs #4's Monte Carlo hook), so don't pull it forward of that work.
+
 **Who's underserved:** everyone who builds a **weighted scoring model** to make a
 call — vendor selection, hiring rubrics, grant scoring, risk registers, prioritization
 frameworks. It's always a spreadsheet, always fudged (weights nudged until the
