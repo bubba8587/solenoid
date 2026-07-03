@@ -191,7 +191,8 @@ export { ImageComponent } from "./ImageNode";
 export { GroupComponent } from "./GroupNode";
 
 // ─── Composite (computing subgraph container) ──────────────────────────────────
-export { CompositeComponent } from "./CompositeNode";
+export { CompositeComponent, CompositeInputMarkerComponent, CompositeOutputMarkerComponent } from "./CompositeNode";
+export { CompositeEditorOverlay } from "./CompositeEditorOverlay";
 
 // ─── Complex numbers ──────────────────────────────────────────────────────────
 export { ComplexFromComponent } from "./ComplexFromNode";

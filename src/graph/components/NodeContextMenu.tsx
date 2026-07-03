@@ -31,6 +31,24 @@ const CommentSvg = () => (
   </svg>
 );
 
+// Lucide "pencil" — Edit composite contents. https://lucide.dev/icons/pencil
+const EditSvg = () => (
+  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}>
+    <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+    <path d="m15 5 4 4" />
+  </svg>
+);
+
+// Lucide "package-open" — Unpack composite. https://lucide.dev/icons/package-open
+const UnpackSvg = () => (
+  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}>
+    <path d="M12 22v-9" />
+    <path d="M15.17 2.21a1.67 1.67 0 0 1 1.63 0L21 4.57a1.93 1.93 0 0 1 0 3.36L8.82 14.79a1.655 1.655 0 0 1-1.64 0L3 12.43a1.93 1.93 0 0 1 0-3.36z" />
+    <path d="M20 13v3.87a2.06 2.06 0 0 1-1.11 1.83l-6 3.08a1.93 1.93 0 0 1-1.78 0l-6-3.08A2.06 2.06 0 0 1 4 16.87V13" />
+    <path d="M21 12.43a1.93 1.93 0 0 0 0-3.36L8.83 2.2a1.64 1.64 0 0 0-1.63 0L3 4.57a1.93 1.93 0 0 0 0 3.36l12.18 6.86a1.636 1.636 0 0 0 1.63 0z" />
+  </svg>
+);
+
 export type NodeContextTarget = {
   nodeId: string;
   /** What Isolate acts on: the selection if the clicked node is part of it,
@@ -40,6 +58,8 @@ export type NodeContextTarget = {
   screenY: number;
   /** Whether this item carries a pinnable value (real value node, not a group). */
   canPin?: boolean;
+  /** The clicked node is a Composite — offers Edit contents / Unpack. */
+  isComposite?: boolean;
   /** Present only when a Standoff link is on offer (exactly two selected). */
   standoff?: { aId: string; bId: string };
 };
@@ -52,10 +72,12 @@ type Props = {
   onPin?: (nodeId: string) => void;
   onLinkStandoff?: (s: { aId: string; bId: string }) => void;
   onAddComment?: (nodeId: string) => void;
+  onEditComposite?: (nodeId: string) => void;
+  onUnpackComposite?: (nodeId: string) => void;
   onClose: () => void;
 };
 
-export function NodeContextMenu({ target, onIsolate, onIsolateChain, onWhereUsed, onPin, onLinkStandoff, onAddComment, onClose }: Props) {
+export function NodeContextMenu({ target, onIsolate, onIsolateChain, onWhereUsed, onPin, onLinkStandoff, onAddComment, onEditComposite, onUnpackComposite, onClose }: Props) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -90,6 +112,10 @@ export function NodeContextMenu({ target, onIsolate, onIsolateChain, onWhereUsed
       className="solenoid-socket-ctx"
       style={{ left: target.screenX + 6, top: target.screenY - 4 }}
     >
+      {target.isComposite && onEditComposite &&
+        item(<EditSvg />, "Edit contents", () => onEditComposite!(target.nodeId))}
+      {target.isComposite && onUnpackComposite &&
+        item(<UnpackSvg />, "Unpack composite", () => onUnpackComposite!(target.nodeId))}
       {item("⊙", "Isolate", () => onIsolate(target.seedIds))}
       {item("⛓", "Isolate chain", () => onIsolateChain(target.seedIds))}
       {onWhereUsed && item(<WhereUsedSvg />, "Where used", () => onWhereUsed!(target.nodeId))}

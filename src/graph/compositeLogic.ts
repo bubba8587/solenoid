@@ -6,6 +6,7 @@ import { GroupNode, CompositeNode, CompositeInputNode, CompositeOutputNode } fro
 import { installErrorGuards } from "./errorValue";
 import { cableSelectionStore } from "./cableState";
 import { beginGraphRebuild, endGraphRebuild, bulkSettle } from "./process";
+import { ctorRegistry } from "./nodeCtorRegistry";
 
 // ─── "Select N → make composite" — mirrors createGroupFromSelection ────────────
 // (groupLogic.ts:63-94) exactly for the selection-read + bounding-box pattern,
@@ -61,8 +62,12 @@ export async function createCompositeFromSelection(editor: Editor, area: Area): 
       await editor.removeConnection(c.id);
     }
     for (const n of sel) {
+      const b = nodeBox(area, n.id);
       await editor.removeNode(n.id);
       await composite.internalEditor.addNode(n as SolenoidNode);
+      // Layout survives the relocation (bbox-relative) so the drill-in editor
+      // and unpack both restore the arrangement the user built.
+      if (b) composite.internalPositions[n.id] = { x: b.x - minX, y: b.y - minY };
     }
     for (const c of internalConns) {
       const s = composite.internalEditor.getNode(c.source);
@@ -88,6 +93,8 @@ export async function createCompositeFromSelection(editor: Editor, area: Area): 
       await composite.internalEditor.addConnection(
         new ClassicPreset.Connection(marker, "value", target, c.targetInput) as SolenoidConnection,
       );
+      const tPos = composite.internalPositions[c.target];
+      if (tPos) composite.internalPositions[marker.id] = { x: tPos.x - 220, y: tPos.y };
       const portId = composite.addInputPort({
         label: portLabel, internalNodeId: marker.id, exposure: "exposed", tier: "basic",
       });
@@ -110,6 +117,9 @@ export async function createCompositeFromSelection(editor: Editor, area: Area): 
       await composite.internalEditor.addConnection(
         new ClassicPreset.Connection(source, c.sourceOutput, marker, "value") as SolenoidConnection,
       );
+      const sPos = composite.internalPositions[c.source];
+      const sBox = nodeBox(area, c.source); // node already relocated — box may be gone; width falls back
+      if (sPos) composite.internalPositions[marker.id] = { x: sPos.x + (sBox?.w ?? 220) + 80, y: sPos.y };
       const portId = composite.addOutputPort({ label: portLabel, internalNodeId: marker.id, tier: "basic" });
       await editor.addConnection(
         new ClassicPreset.Connection(composite, portId, outerTarget, c.targetInput) as SolenoidConnection,
@@ -126,4 +136,105 @@ export async function createCompositeFromSelection(editor: Editor, area: Area): 
   // equivalent once (FC reconcile, mismatch rescan, full recompute + render).
   await bulkSettle();
   return composite.id;
+}
+
+// ─── Unpack — the exact inverse of createCompositeFromSelection ────────────────
+// Dissolves the card: internal nodes return to the outer canvas at the
+// composite's position plus their bbox-relative layout (internalPositions),
+// internal wiring is rebuilt, and each boundary port collapses back into a
+// direct cable (outer source → the internal target its marker fed; internal
+// source → the outer target its port drove). Markers dissolve; run-mode
+// config (scenarios / data-table / steps) is tied to the card and goes with it.
+
+/** Returns true if the node was a composite and was unpacked. */
+export async function unpackComposite(editor: Editor, area: Area, compositeId: string): Promise<boolean> {
+  const composite = editor.getNode(compositeId);
+  if (!(composite instanceof CompositeNode)) return false;
+  // A loaded-but-never-computed composite still holds its snapshot — build the
+  // live internal graph first (same registry persistence uses).
+  await composite.hydrate(ctorRegistry());
+
+  const box = nodeBox(area, compositeId);
+  const baseX = box?.x ?? 0;
+  const baseY = box?.y ?? 0;
+
+  const internalNodes = composite.internalEditor.getNodes();
+  const internalConns = composite.internalEditor.getConnections();
+  const markerIds = new Set([
+    ...composite.inputPorts.map((p) => p.internalNodeId),
+    ...composite.outputPorts.map((p) => p.internalNodeId),
+  ]);
+  const outerConns = editor.getConnections().filter(
+    (c) => c.source === compositeId || c.target === compositeId,
+  );
+
+  cableSelectionStore.set(null);
+  beginGraphRebuild();
+  try {
+    for (const c of outerConns) await editor.removeConnection(c.id);
+    for (const c of internalConns) await composite.internalEditor.removeConnection(c.id);
+    for (const n of internalNodes) {
+      await composite.internalEditor.removeNode(n.id);
+      if (markerIds.has(n.id)) continue; // boundary markers dissolve with the card
+      await editor.addNode(n as SolenoidNode);
+      const rel = composite.internalPositions[n.id];
+      await area.translate(n.id, { x: baseX + (rel?.x ?? 0), y: baseY + (rel?.y ?? 0) });
+    }
+
+    // Internal (non-marker) wiring, rebuilt verbatim.
+    for (const c of internalConns) {
+      if (markerIds.has(c.source) || markerIds.has(c.target)) continue;
+      const s = editor.getNode(c.source);
+      const t = editor.getNode(c.target);
+      if (!s || !t) continue;
+      try {
+        await editor.addConnection(
+          new ClassicPreset.Connection(s, c.sourceOutput, t, c.targetInput) as SolenoidConnection,
+        );
+      } catch { /* incompatible after an internal edit — dropped */ }
+    }
+
+    // Input boundary: outer cable → composite socket → marker → internal target
+    // collapses to outer source → internal target.
+    for (const p of composite.inputPorts) {
+      const feeds = internalConns.filter((c) => c.source === p.internalNodeId);
+      const outers = outerConns.filter((c) => c.target === compositeId && c.targetInput === p.id);
+      for (const o of outers) {
+        for (const f of feeds) {
+          const s = editor.getNode(o.source);
+          const t = editor.getNode(f.target);
+          if (!s || !t) continue;
+          try {
+            await editor.addConnection(
+              new ClassicPreset.Connection(s, o.sourceOutput, t, f.targetInput) as SolenoidConnection,
+            );
+          } catch { /* dropped */ }
+        }
+      }
+    }
+
+    // Output boundary: internal source → marker → composite socket → outer target
+    // collapses to internal source → outer target.
+    for (const p of composite.outputPorts) {
+      const feed = internalConns.find((c) => c.target === p.internalNodeId);
+      if (!feed) continue;
+      const outers = outerConns.filter((c) => c.source === compositeId && c.sourceOutput === p.id);
+      for (const o of outers) {
+        const s = editor.getNode(feed.source);
+        const t = editor.getNode(o.target);
+        if (!s || !t) continue;
+        try {
+          await editor.addConnection(
+            new ClassicPreset.Connection(s, feed.sourceOutput, t, o.targetInput) as SolenoidConnection,
+          );
+        } catch { /* dropped */ }
+      }
+    }
+
+    await editor.removeNode(compositeId);
+  } finally {
+    endGraphRebuild();
+  }
+  await bulkSettle();
+  return true;
 }

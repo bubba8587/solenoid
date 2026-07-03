@@ -1,0 +1,81 @@
+{
+  "v": 1,
+  "label": "Composite Workbench",
+  "nodes": [
+    {"id":"note0","type":"NoteNode","x":-40,"y":-360,"init":{"label":"Subgraphs in one card","body":"# Composite workbench\nA **Composite** is a computing subgraph behind one typed card. Right-click a card (or its **Edit contents** button) to drill in: rewire, add nodes, add **+ Input / + Output** boundary ports, or **Unpack** it back onto the canvas. Select nodes and press **Ctrl+Shift+G** to make your own.","color":"violet","width":430,"height":190}},
+
+    {"id":"price","type":"NumberInputNode","x":-40,"y":-80,"init":{"label":"Unit price","value":250}},
+    {"id":"qty","type":"NumberInputNode","x":-40,"y":80,"init":{"label":"Quantity","value":4}},
+    {"id":"lineComp","type":"CompositeNode","x":300,"y":-40,"init":{
+      "label":"Line total (drill in!)",
+      "runMode":"single",
+      "inputPorts":[
+        {"id":"p_price","label":"Price","exposure":"exposed","tier":"basic","internalNodeId":"m_price"},
+        {"id":"p_qty","label":"Qty","exposure":"exposed","tier":"basic","internalNodeId":"m_qty"}
+      ],
+      "outputPorts":[
+        {"id":"p_total","label":"Total","tier":"basic","internalNodeId":"m_total"}
+      ],
+      "internal":{
+        "nodes":[
+          {"id":"m_price","type":"CompositeInputNode","init":{"label":"Price"},"x":0,"y":0},
+          {"id":"m_qty","type":"CompositeInputNode","init":{"label":"Qty"},"x":0,"y":160},
+          {"id":"mul","type":"ArithmeticNode","init":{"label":"Price × Qty","op":"mul"},"x":260,"y":60},
+          {"id":"m_total","type":"CompositeOutputNode","init":{"label":"Total"},"x":540,"y":60}
+        ],
+        "connections":[
+          {"source":"m_price","sourceOutput":"value","target":"mul","targetInput":"a"},
+          {"source":"m_qty","sourceOutput":"value","target":"mul","targetInput":"b"},
+          {"source":"mul","sourceOutput":"result","target":"m_total","targetInput":"value"}
+        ]
+      }
+    }},
+    {"id":"totalDisp","type":"DisplayNode","x":640,"y":-40,"init":{"label":"Order total"}},
+
+    {"id":"note1","type":"NoteNode","x":-40,"y":260,"init":{"label":"Simulation = a wired feedback loop","body":"# Simulation mode\nThis container holds a REAL cable cycle (add deposit → grow 5% → back into add). In **Simulation** mode the loop runs as bounded feedback — one entry per step. Every other mode dead-ends the same loop as **#CIRC!**. Drill in to see (and rewire) the loop.","color":"amber","width":430,"height":180}},
+    {"id":"deposit","type":"NumberInputNode","x":-40,"y":480,"init":{"label":"Deposit / step","value":100}},
+    {"id":"simComp","type":"CompositeNode","x":300,"y":440,"init":{
+      "label":"Savings simulator",
+      "runMode":"simulation",
+      "simulationSteps":10,
+      "inputPorts":[
+        {"id":"p_dep","label":"Deposit / step","exposure":"exposed","tier":"basic","internalNodeId":"m_dep"}
+      ],
+      "outputPorts":[
+        {"id":"p_series","label":"Balance series","tier":"basic","internalNodeId":"m_series"}
+      ],
+      "internal":{
+        "nodes":[
+          {"id":"m_dep","type":"CompositeInputNode","init":{"label":"Deposit / step"},"x":0,"y":120},
+          {"id":"acc","type":"ArithmeticNode","init":{"label":"Add deposit","op":"add"},"x":260,"y":40},
+          {"id":"grow","type":"ArithmeticNode","init":{"label":"Grow 5%","op":"mul"},"literals":{"b":1.05},"x":520,"y":40},
+          {"id":"m_series","type":"CompositeOutputNode","init":{"label":"Balance series"},"x":780,"y":40}
+        ],
+        "connections":[
+          {"source":"m_dep","sourceOutput":"value","target":"acc","targetInput":"b"},
+          {"source":"grow","sourceOutput":"result","target":"acc","targetInput":"a"},
+          {"source":"acc","sourceOutput":"result","target":"grow","targetInput":"a"},
+          {"source":"grow","sourceOutput":"result","target":"m_series","targetInput":"value"}
+        ]
+      }
+    }},
+    {"id":"seriesDisp","type":"DisplayNode","x":640,"y":440,"init":{"label":"Balance per step"}},
+
+    {"id":"note2","type":"NoteNode","x":-40,"y":760,"init":{"label":"#CIRC! on the open canvas","body":"# The same loop, unboxed\nThese two cards feed each other OUTSIDE a Simulate container, so the pass dead-ends them with **#CIRC!** instead of recursing — and everything downstream shows the propagated error. Collapse them into a composite (Ctrl+Shift+G) and switch it to Simulation to resolve the loop.","color":"red","width":430,"height":190}},
+    {"id":"loopA","type":"ArithmeticNode","x":-40,"y":980,"init":{"label":"Feeds B","op":"add"},"literals":{"b":1}},
+    {"id":"loopB","type":"ArithmeticNode","x":300,"y":980,"init":{"label":"Feeds A","op":"add"},"literals":{"b":1}},
+    {"id":"circDisp","type":"DisplayNode","x":640,"y":980,"init":{"label":"Propagates the error"}}
+  ],
+  "connections": [
+    {"source":"price","sourceOutput":"value","target":"lineComp","targetInput":"p_price"},
+    {"source":"qty","sourceOutput":"value","target":"lineComp","targetInput":"p_qty"},
+    {"source":"lineComp","sourceOutput":"p_total","target":"totalDisp","targetInput":"in"},
+
+    {"source":"deposit","sourceOutput":"value","target":"simComp","targetInput":"p_dep"},
+    {"source":"simComp","sourceOutput":"p_series","target":"seriesDisp","targetInput":"in"},
+
+    {"source":"loopA","sourceOutput":"result","target":"loopB","targetInput":"a"},
+    {"source":"loopB","sourceOutput":"result","target":"loopA","targetInput":"a"},
+    {"source":"loopB","sourceOutput":"result","target":"circDisp","targetInput":"in"}
+  ]
+}

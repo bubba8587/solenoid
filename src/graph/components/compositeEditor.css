@@ -1,0 +1,90 @@
+.solenoid-composite-editor__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  outline: none;
+}
+
+.solenoid-composite-editor__panel {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  width: 94vw;
+  height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+}
+
+.solenoid-composite-editor__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--surface-sunken);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.solenoid-composite-editor__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-bright);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.solenoid-composite-editor__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.solenoid-composite-editor__btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.solenoid-composite-editor__btn:hover {
+  border-color: var(--border-strong);
+  color: var(--text-bright);
+}
+.solenoid-composite-editor__btn--icon {
+  padding: 4px;
+  width: 26px;
+  height: 26px;
+  justify-content: center;
+}
+
+.solenoid-composite-editor__host {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* The cached rete container is re-parented in here on every open. */
+.solenoid-composite-editor__canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.solenoid-composite-editor__loading {
+  position: absolute;
+  inset: 0;
+  background: var(--canvas-bg);
+}

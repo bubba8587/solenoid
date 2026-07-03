@@ -1,9 +1,11 @@
-import type { CompositeNode as CompositeNodeType, CompositeRunMode } from "../rete-nodes";
+import type { CompositeNode as CompositeNodeType, CompositeInputNode as CompositeInputNodeType, CompositeOutputNode as CompositeOutputNodeType, CompositeRunMode } from "../rete-nodes";
 import { InlineInputs, InlineNumberField } from "./inlineInput";
-import { NodeShell, ValueDisplay, OpSelect, useNodeField, type NodeProps, type OpOption } from "./nodeKit";
+import { NodeShell, ValueDisplay, OpSelect, useNodeField, PortSockets, type NodeProps, type OpOption } from "./nodeKit";
 import { MeasuredSocketRow } from "./NodeSocket";
 import type { DisplayValue } from "./valueDisplayFormat";
 import { processGraph } from "../process";
+import { compositeEditorStore } from "../compositeEditorStore";
+import { stopDragStart } from "../coarse";
 
 // Only modes with a real data() branch appear here — see the CompositeRunMode
 // union's own comment (nodes/composite.ts) for why the list grows in lockstep
@@ -161,11 +163,30 @@ function SimulationEditor({ node }: { node: CompositeNodeType }) {
 // In Scenarios mode each output's cachedOutputs value is already an ARRAY
 // (one entry per scenario, in order) — ValueDisplay renders that as a list
 // chip with no changes needed here, which is the "lay outputs side by side".
+// Lucide "pencil" — the drill-in trigger. https://lucide.dev/icons/pencil
+const EditSvg = () => (
+  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}>
+    <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+    <path d="m15 5 4 4" />
+  </svg>
+);
+
 export function CompositeComponent({ data: node, emit }: NodeProps<CompositeNodeType>) {
   const [runMode, setRunMode] = useNodeField(node, "runMode");
 
   return (
     <NodeShell node={node} emit={emit} labelPlaceholder="Composite" hideOutputSockets>
+      <button
+        type="button"
+        className="solenoid-node__inline-input"
+        style={{ width: "100%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+        onClick={(e) => { e.stopPropagation(); compositeEditorStore.open(node.id); }}
+        onPointerDown={stopDragStart}
+        onMouseDown={stopDragStart}
+      >
+        <EditSvg />
+        Edit contents
+      </button>
       <InlineInputs node={node} emit={emit} />
       {(node.inputPorts.length > 0 || node.outputPorts.length > 0) && (
         <OpSelect value={runMode} options={RUN_MODE_OPTIONS} onChange={setRunMode} />
@@ -190,6 +211,43 @@ export function CompositeComponent({ data: node, emit }: NodeProps<CompositeNode
       {node.inputPorts.length === 0 && node.outputPorts.length === 0 && (
         <div className="solenoid-node__text-empty">no ports</div>
       )}
+    </NodeShell>
+  );
+}
+
+// ─── Boundary markers (drill-in editor only) ───────────────────────────────────
+// These render ONLY inside the Composite drill-in editor's own rete root — the
+// markers never live on the main canvas. A marker's value can be anything the
+// `any` boundary carries; only the shapes ValueDisplay actually understands are
+// shown (a frame/cube boundary value falls back to the empty dash).
+
+function displayable(v: unknown): DisplayValue {
+  if (v === null || typeof v === "number" || typeof v === "string" || typeof v === "boolean" || Array.isArray(v)) {
+    return v as DisplayValue;
+  }
+  if (v && typeof v === "object" && "code" in (v as Record<string, unknown>)) return v as DisplayValue; // SolError
+  return null;
+}
+
+export function CompositeInputMarkerComponent({ data, emit }: NodeProps<CompositeInputNodeType>) {
+  return (
+    <NodeShell node={data} emit={emit} collapsible={false} labelPlaceholder="Input" className="solenoid-node--composite-marker">
+      <ValueDisplay value={displayable(data.value)} />
+    </NodeShell>
+  );
+}
+
+export function CompositeOutputMarkerComponent({ data, emit }: NodeProps<CompositeOutputNodeType>) {
+  return (
+    <NodeShell
+      node={data}
+      emit={emit}
+      collapsible={false}
+      labelPlaceholder="Output"
+      className="solenoid-node--composite-marker"
+      leading={<PortSockets node={data} emit={emit} side="input" />}
+    >
+      <ValueDisplay value={displayable(data.cachedResult)} />
     </NodeShell>
   );
 }

@@ -44,6 +44,10 @@ export interface CompositeSavedNode {
   init: Record<string, unknown>;
   literals?: Record<string, number>;
   stringLiterals?: Record<string, string>;
+  /** Layout inside the drill-in editor, relative to the selection bbox origin
+   *  at collapse time. Optional so a pre-positions snapshot still hydrates. */
+  x?: number;
+  y?: number;
 }
 
 export interface CompositeSavedConnection {
@@ -125,6 +129,9 @@ export class CompositeInputNode extends ClassicPreset.Node {
 
 export class CompositeOutputNode extends ClassicPreset.Node {
   label: string;
+  /** Last value seen — the drill-in editor's value box. (Named cachedResult
+   *  so the error guard's short-circuit mirrors an error into it.) */
+  cachedResult: unknown = null;
   width = 140;
   height = 70;
   constructor(init?: { label?: string }) {
@@ -133,7 +140,9 @@ export class CompositeOutputNode extends ClassicPreset.Node {
     this.addInput("value", new ClassicPreset.Input(anySocket, this.label));
   }
   data(inputs: Record<string, unknown[]>): { value: unknown } {
-    return { value: inputs.value?.[0] ?? null };
+    const v = inputs.value?.[0] ?? null;
+    this.cachedResult = v;
+    return { value: v };
   }
 }
 
@@ -156,6 +165,10 @@ export class CompositeNode extends ClassicPreset.Node {
   /** Simulation mode's step count — the container parameter the plan calls
    *  for. Clamped to >= 1 at run time (see runSimulation). */
   simulationSteps: number;
+  /** Internal-graph layout, keyed by LIVE internal node id (remapped on
+   *  hydrate, like port internalNodeIds). Written at collapse time and by the
+   *  drill-in editor on close; read by the editor on open and by unpack. */
+  internalPositions: Record<string, { x: number; y: number }> = {};
 
   // A freshly-loaded (not yet hydrated) composite holds its saved internal
   // graph here until `hydrate()` rebuilds it against a class registry — see
@@ -235,6 +248,9 @@ export class CompositeNode extends ClassicPreset.Node {
       installErrorGuards(node);
       built.set(sn.id, node);
       await this.internalEditor.addNode(node as SolenoidNode);
+      if (typeof sn.x === "number" && typeof sn.y === "number") {
+        this.internalPositions[node.id] = { x: sn.x, y: sn.y };
+      }
     }
     for (const sc of pending.connections) {
       const s = built.get(sc.source);
@@ -277,6 +293,8 @@ export class CompositeNode extends ClassicPreset.Node {
       if (anyN.stringLiterals && typeof anyN.stringLiterals === "object") {
         sn.stringLiterals = { ...(anyN.stringLiterals as Record<string, string>) };
       }
+      const pos = this.internalPositions[n.id];
+      if (pos) { sn.x = pos.x; sn.y = pos.y; }
       return sn;
     });
     const connections: CompositeSavedConnection[] = this.internalEditor.getConnections().map((c) => ({
@@ -303,6 +321,25 @@ export class CompositeNode extends ClassicPreset.Node {
     this.outputPorts.push({ ...spec, id });
     this.addOutput(id, new ClassicPreset.Output(anySocket, spec.label));
     return id;
+  }
+
+  /** Drop an input port (and its outer socket + any run-mode state keyed to
+   *  it). The caller removes outer cables into the socket FIRST — rete
+   *  requires a socket's connections gone before the socket. */
+  removeInputPort(id: string): void {
+    if (!this.inputPorts.some((p) => p.id === id)) return;
+    this.inputPorts = this.inputPorts.filter((p) => p.id !== id);
+    if (this.inputs[id]) this.removeInput(id);
+    for (const s of this.scenarios) delete s.overrides[id];
+    delete this.dataTableValues[id];
+  }
+
+  /** Drop an output port + its outer socket. Same caller contract as above. */
+  removeOutputPort(id: string): void {
+    if (!this.outputPorts.some((p) => p.id === id)) return;
+    this.outputPorts = this.outputPorts.filter((p) => p.id !== id);
+    if (this.outputs[id]) this.removeOutput(id);
+    delete this.cachedOutputs[id];
   }
 
   // ─── Scenario mutators (called by the component's editor UI) ────────────────
