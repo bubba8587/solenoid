@@ -59,6 +59,9 @@ export function remoteTextToFrame(text: string, contentType: string, url: string
 export class WebSourceNode extends ClassicPreset.Node {
   label: string;
   url: string;
+  /** Auto-refresh interval in minutes (0 = off) — the component runs a timer
+   *  that calls refreshConnection(id) on this cadence (Tier 2 live-data). */
+  refreshMinutes: number;
   cachedResult: FrameValue | null = null;
   width = 260; height = 200;
 
@@ -67,10 +70,11 @@ export class WebSourceNode extends ClassicPreset.Node {
   private lastKey: string | undefined;
   private inflightKey: string | undefined;
 
-  constructor(init?: { label?: string; url?: string }) {
+  constructor(init?: { label?: string; url?: string; refreshMinutes?: number }) {
     super("WebSource");
     this.label = init?.label ?? "Web Source";
     this.url = init?.url ?? "";
+    this.refreshMinutes = init?.refreshMinutes ?? 0;
     this.addOutput("frame", frameOut("Frame"));
   }
 
@@ -274,6 +278,8 @@ export class CsvConnectionNode extends ClassicPreset.Node {
   label: string;
   /** File name relative to the Settings target folder (not a full path). */
   fileName: string;
+  /** Auto-refresh interval in minutes (0 = off) — see WebSourceNode. */
+  refreshMinutes: number;
   cachedResult: FrameValue | null = null;
   width = 260; height = 210;
 
@@ -281,10 +287,11 @@ export class CsvConnectionNode extends ClassicPreset.Node {
   private inflightKey: string | undefined;
   private inflight: Promise<{ frame: FrameValue | null }> | undefined;
 
-  constructor(init?: { label?: string; fileName?: string }) {
+  constructor(init?: { label?: string; fileName?: string; refreshMinutes?: number }) {
     super("CsvConnection");
     this.label = init?.label ?? "CSV File";
     this.fileName = init?.fileName ?? "";
+    this.refreshMinutes = init?.refreshMinutes ?? 0;
     this.addOutput("frame", frameOut("Frame"));
   }
 
