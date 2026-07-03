@@ -156,7 +156,7 @@ export {
 } from "./FrameNodes";
 
 // ─── Cubes (recursive nested tables) ───────────────────────────────────────────
-export { BuildCubeComponent, NestJoinComponent, CubeColumnsComponent } from "./CubeNodes";
+export { BuildCubeComponent, NestJoinComponent, CubeColumnsComponent, CubeRollupComponent } from "./CubeNodes";
 
 // ─── External-data connections (Web Source, CSV folder) ─────────────────────────
 export { WebSourceComponent, CsvConnectionComponent, ImportHtmlComponent, ImportXmlComponent } from "./ConnectionNodes";

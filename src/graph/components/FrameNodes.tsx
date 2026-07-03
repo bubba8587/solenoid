@@ -184,7 +184,7 @@ export function DropColumnsComponent({ data, emit }: NodeProps<DropColumnsNodeTy
 
 // ─── GROUP BY / PIVOT (shared aggregate-op selector) ─────────────────────────
 
-const AGG_OP_OPTIONS: { value: AggOp; label: string }[] = [
+export const AGG_OP_OPTIONS: { value: AggOp; label: string }[] = [
   { value: "sum", label: "SUM" },
   { value: "avg", label: "AVERAGE" },
   { value: "min", label: "MIN" },

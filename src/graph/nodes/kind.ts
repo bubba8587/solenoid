@@ -35,6 +35,7 @@ import { FDistNode, FInvNode, BetaDistNode, BetaInvNode, GammaDistNode, GammaInv
 import { BinomDistNode, BinomInvNode, PoissonDistNode, HypgeomDistNode, NegbinomDistNode } from "./dist-discrete";
 import { ConduitNode } from "./conduit";
 import { FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, GetRowNode, DistinctNode, HeadNode, SortFrameNode, FilterFrameNode, JoinNode, FrameLookupNode, SelectColumnsNode, DropColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode } from "./frame";
+import { CubeRollupNode } from "./cube";
 import { WebSourceNode, CsvConnectionNode, ImportHtmlNode, ImportXmlNode } from "./connection";
 import { SlicerNode, CableSwitchNode, DatePickerNode, XYPadNode } from "./control";
 import { SparklineNode, ChartNode, GaugeNode, HeatmapCellNode, ChartBuilderNode } from "./visual";
@@ -181,6 +182,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof AddIndexNode ||
     node instanceof DecisionMatrixNode ||
     node instanceof DecisionSensitivityNode ||
+    node instanceof CubeRollupNode ||
     node instanceof SlicerNode
   ) return "frame";
   if (node instanceof FormatControllerNode) return "format";

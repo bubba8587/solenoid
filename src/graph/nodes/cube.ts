@@ -1,6 +1,7 @@
 import { ClassicPreset } from "rete";
-import { anyIn, strIn, strListIn, frameIn, cubeOut } from "./shared";
-import { cubeFromColumns, relateFramesToCube, relateCubeToFrame, cubeColumnFromValue, isCubeValue, isFrameValue, type CubeValue, type CubeCell, type FrameValue } from "../frame";
+import { anyIn, strIn, strListIn, frameIn, cubeIn, cubeOut, frameOut } from "./shared";
+import { cubeFromColumns, relateFramesToCube, relateCubeToFrame, cubeColumnFromValue, cubeRowCount, inferColumn, makeHeaders, isCubeValue, isFrameValue, type CubeValue, type CubeCell, type FrameValue, type FrameCell } from "../frame";
+import { aggregateGroup, type AggOp } from "../frameVerbs";
 import { solError, type SolError } from "../errorValue";
 
 // ─── Cube nodes (the recursive container) ─────────────────────────────────────
@@ -185,5 +186,72 @@ export class CubeColumnsNode extends ClassicPreset.Node {
     const padded = cols.map((c) => ({ name: c.name, cells: Array.from({ length: maxLen }, (_, r) => (c.cells[r] ?? null) as CubeCell) }));
     this.cachedResult = cubeFromColumns(padded);
     return { cube: this.cachedResult };
+  }
+}
+
+// ─── CUBE ROLLUP ─────────────────────────────────────────────────────────────
+// Aggregate one column INSIDE each row's nested sub-frame, flattening the cube
+// back to a plain Frame with the roll-up appended as a new column — "cost of an
+// assembly = SUM of its nested parts". The BOM/nested-costing vertical's one bit
+// of new mechanics: everything else (parent/child → Cube, per-row extended-cost
+// columns) is Nest Join + Join + Add Column, already built. Reuses `aggregateGroup`
+// (the Group By aggregator) so a roll-up and a Group By agree on every op's edge
+// cases (null-skip, error-propagate, empty-group values) — no new aggregation math.
+
+export class CubeRollupNode extends ClassicPreset.Node {
+  label: string;
+  op: AggOp;
+  cachedResult: FrameValue | SolError | null = null;
+  stringLiterals: Record<string, string> = { nested: "", column: "", as: "Total" };
+  width = 220;
+  height = 260;
+
+  constructor(init?: { label?: string; op?: AggOp }) {
+    super("CubeRollup");
+    this.label = init?.label ?? "Cube Rollup";
+    this.op = init?.op ?? "sum";
+    this.addInput("cube", cubeIn("Cube"));
+    this.addInput("nested", strIn("Nested column"));
+    this.addInput("column", strIn("Column to roll up"));
+    this.addInput("as", strIn("Output name"));
+    this.addOutput("frame", frameOut("Frame"));
+  }
+
+  data(inputs: { cube?: (CubeValue | null)[]; nested?: string[]; column?: string[]; as?: string[] }) {
+    const cube = inputs.cube?.[0] ?? null;
+    if (!cube) { this.cachedResult = null; return { frame: null }; }
+    const nestedName = (inputs.nested?.[0] ?? this.stringLiterals.nested ?? "").trim();
+    const col = (inputs.column?.[0] ?? this.stringLiterals.column ?? "").trim();
+    const outName = (inputs.as?.[0] ?? this.stringLiterals.as ?? "Total").trim() || "Total";
+    const nestedIdx = cube.columns.findIndex((c) => c.name === nestedName);
+    if (nestedName === "" || col === "") { this.cachedResult = null; return { frame: null }; }
+    if (nestedIdx < 0) {
+      this.cachedResult = solError("#REF!", `nested column "${nestedName}" not found`);
+      return { frame: this.cachedResult };
+    }
+
+    const flatCols = cube.columns.filter((_, j) => j !== nestedIdx);
+    const nested = cube.columns[nestedIdx];
+    const rows = cubeRowCount(cube);
+    const flatVals: FrameCell[][] = flatCols.map(() => []);
+    const rolled: FrameCell[] = [];
+    for (let i = 0; i < rows; i++) {
+      flatCols.forEach((fc, k) => flatVals[k].push((fc.cells[i] ?? null) as FrameCell));
+      const cell = nested.cells[i];
+      const sub = isFrameValue(cell) ? cell : null;
+      if (!sub) { rolled.push(null); continue; }
+      const valueCol = sub.columns.find((c) => c.name === col);
+      rolled.push(valueCol ? aggregateGroup(valueCol.values, this.op) : solError("#REF!", `column "${col}" not found in nested frame`));
+    }
+    const names = makeHeaders([...flatCols.map((c) => c.name), outName], flatCols.length + 1);
+    const result: FrameValue = {
+      __frame: true,
+      columns: [
+        ...flatCols.map((_, k) => ({ ...inferColumn(names[k], flatVals[k]), name: names[k] })),
+        { name: names[flatCols.length], type: "number", values: rolled },
+      ],
+    };
+    this.cachedResult = result;
+    return { frame: result };
   }
 }

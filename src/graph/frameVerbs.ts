@@ -188,8 +188,10 @@ function varianceOf(nums: readonly number[], sample: boolean): number | null {
 /** Aggregate one group's cells. count = present (non-null) cells; the numeric ops
  *  run through forAggregate (a per-cell error PROPAGATES, null is SKIPPED). An
  *  empty group is 0 for sum, 1 for product, else `null` (missing). `percentof` is
- *  resolved by the pivot (needs a total set) — null here. */
-function aggregateGroup(values: FrameCell[], op: AggOp): FrameCell {
+ *  resolved by the pivot (needs a total set) — null here. Exported: Cube Rollup
+ *  (cube.ts) reuses this same aggregator over a nested sub-frame's column, so a
+ *  cube-costing roll-up and a Group By agree on every op's edge cases. */
+export function aggregateGroup(values: FrameCell[], op: AggOp): FrameCell {
   if (op === "count") return values.filter((v) => v !== null).length;
   if (op === "percentof") return null;
   const prep = forAggregate(values);
