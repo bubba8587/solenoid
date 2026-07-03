@@ -97,12 +97,15 @@ drag/hover pointer icon · #38 IN — triggers on Enter (not Ctrl+K), bottom-ali
 non-persistent bar (AutoCAD-flavored), needs the same "ignored while typing"
 discipline as the single-key shortcuts · #39 IN (scrubbing — drag a number, model
 updates live) · #40 IN, optional + very conservative trigger threshold (semantic
-zoom — Settings toggle, simplified-card swap only near the far end of zoom range).
-NEXT when resuming: scope-features #41, then #42–63 in order (folding in
+zoom — Settings toggle, simplified-card swap only near the far end of zoom range) ·
+#41 IN, sequence LATE — needs its own design pass (conditional formatting for
+tables: must clear Excel's own bar by a lot per author's explicit dislike of Excel's
+version, Display-node-only, must not step on FC's text-format/units territory).
+NEXT when resuming: scope-features #42, then #43–63 in order (folding in
 strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
-engine execution contract (Bet 1 × #23 × #24 × calc mode) → #5
+#41 conditional formatting → engine execution contract (Bet 1 × #23 × #24 × calc mode) → #5
 composites (document-local container ONLY — no sharing/ecosystem, packs are the sole
 distribution channel; the session owns the container shell + typed boundary + FIVE
 run-mode hooks: simulation, data tables, solver, scenarios, Monte Carlo — ruled
