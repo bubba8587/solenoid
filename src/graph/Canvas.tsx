@@ -90,6 +90,7 @@ import { addMenuRequest } from "./addMenuStore";
 import { flattenLeaves, filterByCompatibleSocket, firstCompatibleSocketKey } from "./catalogSearch";
 import { computeIdealMipLevel } from "./htmlCanvasRenderer";
 import { semanticZoomStore } from "./semanticZoomStore";
+import { expandMoveSet } from "./selectionOps";
 import { setGraphChanged } from "./process";
 import { installInputCoercion } from "./coerceInputs";
 import { scheduleAutosave } from "./persistence";
@@ -352,6 +353,7 @@ function syncSemanticZoomFor(scale: number): void {
   const idealI = computeIdealMipLevel(scale, 1, window.devicePixelRatio || 1);
   semanticZoomStore.set(settingsStore.get("semanticZoom") && idealI >= SEMANTIC_ZOOM_MIP_THRESHOLD);
 }
+
 
 // Quick-wire: a menu opened from a cable dropped on empty canvas carries the
 // origin socket + a pre-filtered entry list (compatible nodes only), so picking
@@ -631,28 +633,15 @@ export function Canvas() {
       const editor = editorRef.current;
       const area = areaRef.current;
       if (!editor || !area) return;
-      // Build the full move set as a closure over two expansions:
-      //  • a selected GROUP carries its members;
-      //  • touching any node in a STANDOFF cluster carries the whole cluster, so
-      //    a standoffed pair moves rigidly. Moving only one end and re-settling
-      //    pulls it half-way back (the bug: a standoffed note/group nudged half
-      //    as far as a free one). Both expansions feed the same queue so they
-      //    compose (a cluster member that's a group also carries its members).
-      const clusterOf = new Map<string, string[]>();
-      for (const c of standoffClusters()) for (const id of c) clusterOf.set(id, c);
-      const toMove = new Set<string>();
-      const queue: string[] = [];
-      const enqueue = (id: string) => { if (!toMove.has(id)) { toMove.add(id); queue.push(id); } };
-      for (const n of editor.getNodes()) {
-        if ((n as { selected?: boolean }).selected === true) enqueue(n.id);
-      }
-      while (queue.length) {
-        const id = queue.pop()!;
-        const node = editor.getNode(id);
-        if (node instanceof GroupNode) for (const m of node.members) enqueue(m);
-        const cl = clusterOf.get(id);
-        if (cl) for (const m of cl) enqueue(m);
-      }
+      // Build the full move set: a selected GROUP carries its members, and
+      // touching any node in a STANDOFF cluster carries the whole cluster, so a
+      // standoffed pair moves rigidly (moving only one end and re-settling pulls
+      // it half-way back — the bug: a standoffed note/group nudged half as far as
+      // a free one). See expandMoveSet.
+      const selectedIds = editor.getNodes()
+        .filter((n) => (n as { selected?: boolean }).selected === true)
+        .map((n) => n.id);
+      const toMove = expandMoveSet(editor, selectedIds);
       for (const id of toMove) {
         const v = area.nodeViews.get(id);
         if (!v) continue;
