@@ -133,6 +133,13 @@
   padding: 16px 24px;
 }
 .report-preview__md { max-width: none; margin: 0; }
+/* InlineRefBody wraps the rendered markdown in a bare <div>, so the real first/
+   last block is a grandchild — reach through it (the `> * >` hop) to zero the
+   outer margin, else the report's first heading floats below a phantom gap. */
+.report-preview__md > :first-child,
+.report-preview__md > * > :first-child { margin-top: 0; }
+.report-preview__md > :last-child,
+.report-preview__md > * > :last-child { margin-bottom: 0; }
 .report-preview__empty {
   color: var(--text-muted);
   font-size: 13px;

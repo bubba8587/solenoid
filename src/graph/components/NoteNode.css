@@ -347,8 +347,16 @@
 .solenoid-note__resize:hover { opacity: 0.9; }
 /* Compact the shared .sol-md doc styles for the narrow note card. */
 .solenoid-note__rendered.sol-md { max-width: none; margin: 0; line-height: 1.45; }
-.solenoid-note__rendered.sol-md > :first-child { margin-top: 0; }
-.solenoid-note__rendered.sol-md > :last-child { margin-bottom: 0; }
+/* Zero the first/last block's outer margin so the text hugs the card padding.
+   InlineRefBody wraps the rendered markdown in a bare <div>, so the real first/
+   last block is a GRANDCHILD — reach through the wrapper (the `> * >` hop), else
+   a note starting with a heading or paragraph shows a phantom blank line above
+   its text (the wrapper defeated the plain `> :first-child` reset). Both forms
+   kept so it holds whether or not the wrapper is present. */
+.solenoid-note__rendered.sol-md > :first-child,
+.solenoid-note__rendered.sol-md > * > :first-child { margin-top: 0; }
+.solenoid-note__rendered.sol-md > :last-child,
+.solenoid-note__rendered.sol-md > * > :last-child { margin-bottom: 0; }
 .solenoid-note__rendered.sol-md h1 { font-size: 15px; margin: 6px 0 6px; }
 .solenoid-note__rendered.sol-md h2 { font-size: 13.5px; margin: 10px 0 5px; }
 .solenoid-note__rendered.sol-md h3 { font-size: 12.5px; margin: 8px 0 4px; }
