@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { numIn, numListIn, tableIn, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, anyOut } from "./shared";
+import { numIn, numListIn, tableIn, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, anyOut } from "./shared";
 import { toMatrix } from "./coerce";
 import { parseDateToSerial } from "./date";
 import { isSolError, solError, type SolError } from "../errorValue";
@@ -12,8 +12,8 @@ import {
 import {
   pivotFrame, nestFrame, unnestCube,
   splitColumn, addIndexColumn, decisionMatrix, decisionCriteria, decisionSensitivity,
-  lookupFrameCell,
-  type FilterOp, type JoinHow, type AsofDirection, type AggOp, type DecisionNormalize, type LookupMatchMode,
+  lookupFrameCell, reconcileFrames,
+  type FilterOp, type JoinHow, type AsofDirection, type AggOp, type DecisionNormalize, type LookupMatchMode, type ReconcileSummary,
 } from "../frameVerbs";
 import type { PivotSpec } from "../frameVerbs";
 import { runFrameUnary, runFrameJoin, runFrameAppend, readFrame, collectPreview, dropFrameRef, isFrameRef, frameBackend, materialize, type FrameInput, type FrameRef } from "../frameBackend";
@@ -770,6 +770,70 @@ export class DecisionSensitivityNode extends ClassicPreset.Node {
     this.cachedResult = runVerb(() => decisionSensitivity(scores, scenarios, this.normalize));
     return { cube: this.cachedResult };
   }
+}
+
+// ─── RECONCILE ───────────────────────────────────────────────────────────────
+// Compare two versions of "the same" frame by a key column: classify each key as
+// added / removed / changed / unchanged with a before/after/Δ per shared numeric
+// column (verb: reconcileFrames, which reuses joinFrames' key-index machinery).
+// Naming a Price and a Quantity column (both numeric, present on both sides) also
+// runs the price/volume/mix variance breakdown, surfaced in the summary line.
+// Not a lazy verb — a materialization boundary like Decision Matrix, so its data()
+// takes plain FrameValue inputs (coerceInputs collects any upstream FrameRef).
+
+export class ReconcileNode extends ClassicPreset.Node {
+  label: string;
+  cachedResult: FrameValue | SolError | null = null;
+  cachedSummary = "";
+  stringLiterals: Record<string, string> = { key: "", priceColumn: "", qtyColumn: "" };
+  width = 240; height = 280;
+
+  constructor(init?: { label?: string }) {
+    super("Reconcile");
+    this.label = init?.label ?? "Reconcile";
+    this.addInput("left", frameIn("Before"));
+    this.addInput("right", frameIn("After"));
+    this.addInput("key", strIn("Key column"));
+    this.addInput("priceColumn", strIn("Price column"));
+    this.addInput("qtyColumn", strIn("Qty column"));
+    this.addOutput("frame", frameOut("Reconciliation"));
+    this.addOutput("summary", strOut("Summary"));
+  }
+
+  data(inputs: {
+    left?: (FrameValue | null)[]; right?: (FrameValue | null)[];
+    key?: string[]; priceColumn?: string[]; qtyColumn?: string[];
+  }) {
+    const left = inputs.left?.[0] ?? null;
+    const right = inputs.right?.[0] ?? null;
+    const key = (inputs.key?.[0] ?? this.stringLiterals.key ?? "").trim();
+    const priceColumn = (inputs.priceColumn?.[0] ?? this.stringLiterals.priceColumn ?? "").trim() || undefined;
+    const qtyColumn = (inputs.qtyColumn?.[0] ?? this.stringLiterals.qtyColumn ?? "").trim() || undefined;
+    if (!left || !right || !key) {
+      this.cachedResult = null; this.cachedSummary = "";
+      return { frame: null, summary: "" };
+    }
+    const outcome = runVerb(() => reconcileFrames(left, right, { leftKey: key, rightKey: key, priceColumn, qtyColumn }));
+    if (isSolError(outcome)) {
+      this.cachedResult = outcome; this.cachedSummary = "";
+      return { frame: outcome, summary: outcome };
+    }
+    this.cachedResult = outcome.frame;
+    this.cachedSummary = summarizeReconcile(outcome.summary);
+    return { frame: outcome.frame, summary: this.cachedSummary };
+  }
+}
+
+function summarizeReconcile(s: ReconcileSummary): string {
+  const fmt = (n: number) => (Number.isInteger(n) ? n.toLocaleString() : n.toLocaleString(undefined, { maximumFractionDigits: 2 }));
+  const parts = [`${s.added} added`, `${s.removed} removed`, `${s.changed} changed`, `${s.unchanged} unchanged`];
+  let out = parts.join(" · ");
+  if (s.pvm) {
+    const p = s.pvm;
+    const sign = (n: number) => (n >= 0 ? "+" : "");
+    out += ` — Δ ${sign(p.delta)}${fmt(p.delta)} (price ${sign(p.price)}${fmt(p.price)}, volume ${sign(p.volume)}${fmt(p.volume)}, mix ${sign(p.mix)}${fmt(p.mix)})`;
+  }
+  return out;
 }
 
 // ─── BUILD FRAME ───────────────────────────────────────────────────────────────

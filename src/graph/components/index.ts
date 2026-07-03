@@ -153,7 +153,12 @@ export {
   SelectColumnsComponent, DropColumnsComponent, GroupByFrameComponent, PivotComponent, UnpivotComponent,
   NestComponent, UnnestComponent, AppendComponent, RenameComponent,
   SplitColumnComponent, AddIndexComponent, DecisionMatrixComponent, DecisionSensitivityComponent,
+  ReconcileComponent,
 } from "./FrameNodes";
+
+// ─── Trust & data quality ───────────────────────────────────────────────────────
+export { ExpectComponent } from "./ExpectNode";
+export { TornadoComponent } from "./TornadoNode";
 
 // ─── Cubes (recursive nested tables) ───────────────────────────────────────────
 export { BuildCubeComponent, NestJoinComponent, CubeColumnsComponent } from "./CubeNodes";

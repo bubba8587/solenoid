@@ -48,6 +48,7 @@ import {
   FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, GetRowNode, DistinctNode,
   HeadNode, SortFrameNode, FilterFrameNode, JoinNode, FrameLookupNode,
   SelectColumnsNode, DropColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode,
+  ReconcileNode,
   BuildCubeNode, NestJoinNode, CubeColumnsNode,
   WebSourceNode, CsvConnectionNode, ImportHtmlNode, ImportXmlNode,
   WriteCsvNode, WriteJsonNode,
@@ -88,6 +89,7 @@ import {
   type RomanArabicOp,
   type BesselOp, type RegressionOp, type RollingOp, type TTestOp,
   type TodayNowOp, type DatePartOp, type WeekInfoOp, type DateDiffOp, type DateAddOp,
+  ExpectNode, TornadoNode,
 } from "./rete-nodes";
 import type { NodeCatalogEntry, CatalogEntry } from "./AddNodeMenu";
 
@@ -217,6 +219,13 @@ export const NODE_CATALOG: CatalogEntry[] = [
     children: [
       { type: "display",   label: "Display",  description: "Show a value — pass-through so you can keep wiring after it.", create: () => new DisplayNode(), accent: NODE_KIND_ACCENTS.util },
       { type: "alert",     label: "Alert",    description: "Watch a value and FIRE on a status change (toast + the Alerts HUD): range (Low/High thresholds), boolean (TRUE fires), change (any new value), or threshold-cross modes.", create: () => new AlertNode() },
+      {
+        type: "category", label: "Data Quality", description: "Trust the graph: validate values in place, and rank which upstream inputs matter most.",
+        children: [
+          { type: "expect", label: "Expect", description: "Data Validation, generalized: check a value against up to four opt-in rules — not-null, unique (for a list), in range, matches a regex. Always pass-through (a failure never blocks the value); a failing check shows a red badge and fires an Alert once per new failure.", create: () => new ExpectNode(), parity: false, keywords: "expect validate validation data quality check rule assert not null unique range regex trust" },
+          { type: "tornado", label: "Tornado", description: "One-at-a-time sensitivity ranking. Wire in any numeric value, then Run: it perturbs each upstream Number/Slider input ±10% (or its declared min/max) one at a time, reads how much THIS node's value swings, and ranks the inputs by impact in an inline tornado chart. Pass-through.", create: () => new TornadoNode(), parity: false, keywords: "tornado sensitivity analysis what-if one at a time impact ranking swing trust" },
+        ],
+      },
       {
         type: "category", label: "Visuals", description: "Inline charts and readouts — plot or visualize a value at the end of a chain. All pass-through.",
         children: [
@@ -886,6 +895,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "add-index",   label: "Add Index",   description: "Prepend a numeric row-number column counting from a start value (default 1). (Power Query: Add Index Column; Excel: =SEQUENCE(ROWS(...)).)", create: () => new AddIndexNode(), parity: false, keywords: "index row number sequence counter rownum power query" },
           { type: "decision-matrix", label: "Decision Matrix", description: "Score and rank a Frame of options: rows are options, number columns are criteria, an optional leading text column names them. Each option gets a weighted average Σ(score × weight) / Σ|weight| (a NEGATIVE weight penalises a lower-is-better criterion like cost or risk), then a competition rank. Set a weight per criterion in the labeled boxes on the node (default 1; or wire the Weights socket to drive them); pick Raw / ÷Max / Rank to compare criteria on incompatible scales. Output: Option · Score · Rank, best first — chart the podium with Get Column \"Score\" → Chart.", create: () => new DecisionMatrixNode(), parity: false, keywords: "decision matrix weighted score rank ranking criteria weight choose compare options podium dmbv multi-criteria mcda" },
           { type: "decision-sensitivity", label: "Sensitivity", description: "Stress-test a decision: score the same options (the Scores frame) under several weight Scenarios and see whether the winner holds. Scenarios is a Frame where each ROW is a scenario — its first text column names it, and a number column named after a criterion is that criterion's weight (missing → 1). Output is a Cube, one row per scenario: Scenario · Winner · Margin (top − runner-up; a thin margin flips easily) · Ranking (the full Option·Score·Rank table nested in the cell — drill in). Pairs with Decision Matrix.", create: () => new DecisionSensitivityNode(), parity: false, keywords: "decision sensitivity robustness scenario weight cube what-if stress test ranking stability mcda" },
+          { type: "reconcile",   label: "Reconcile",   description: "Compare two versions of a Frame by a key column: classify each row Added / Removed / Changed / Unchanged, with a before/after/Δ per shared numeric column. Name a Price and a Quantity column (both present on both sides) to also decompose the total change into Price / Volume / Mix variance. Outputs the classified Frame plus a readable Summary line.", create: () => new ReconcileNode(), parity: false, keywords: "reconcile compare diff variance price volume mix pvm audit changed added removed data quality trust" },
         ],
       },
       {

@@ -237,6 +237,35 @@ function findInputSlot(inputs: Record<string, unknown[] | undefined>, err: SolEr
   return undefined;
 }
 
+// ─── Error sinks (Problems panel hook) ────────────────────────────────────────
+// A decoupling seam, same shape as nodeStoreRegistry's registerNodeForget: this
+// foundational module stays store-free, but anything that wants to know "a
+// node's output just became an error" (the Problems panel) can subscribe here.
+// Fired at most once per node per data() call — the first error found on its
+// OWN output, whether it came from a throw, the input-propagation short-circuit,
+// or the node's own producer logic returning a SolError with no throw at all
+// (e.g. Divide's #DIV/0!) — every one of those funnels through this module.
+type ErrorSink = (nodeId: string, err: SolError) => void;
+const _errorSinks: ErrorSink[] = [];
+export function registerErrorSink(fn: ErrorSink): () => void {
+  _errorSinks.push(fn);
+  return () => {
+    const i = _errorSinks.indexOf(fn);
+    if (i >= 0) _errorSinks.splice(i, 1);
+  };
+}
+function reportError(nodeId: string, err: SolError): void {
+  for (const sink of _errorSinks) sink(nodeId, err);
+}
+function reportOut(nodeId: string, out: Record<string, unknown> | undefined): void {
+  if (!out || _errorSinks.length === 0) return;
+  for (const v of Object.values(out)) {
+    // Reports the (already origin-tagged, by the time this runs) error — first
+    // error wins, like the guard itself.
+    if (isSolError(v)) { reportError(nodeId, v); return; }
+  }
+}
+
 /** Idempotent. Call once per node (Canvas does, on `nodecreated`). */
 export function installErrorGuards(node: object): void {
   const n = node as {
@@ -269,6 +298,7 @@ export function installErrorGuards(node: object): void {
     const out: Record<string, unknown> = {};
     for (const key of Object.keys(n.outputs ?? {})) out[key] = tagged;
     if ("cachedResult" in n) n.cachedResult = tagged;
+    reportError(nodeId, tagged);
     return out;
   };
 
@@ -283,7 +313,9 @@ export function installErrorGuards(node: object): void {
       tagged[k] = t;
       if (t !== v) changed = true;
     }
-    return changed ? tagged : out;
+    const result = changed ? tagged : out;
+    reportOut(nodeId, result); // reports the origin-tagged value, not the raw one
+    return result;
   };
 
   n.data = (inputs) => {

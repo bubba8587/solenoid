@@ -37,6 +37,9 @@ import { ConduitNode } from "./conduit";
 import { FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, GetRowNode, DistinctNode, HeadNode, SortFrameNode, FilterFrameNode, JoinNode, FrameLookupNode, SelectColumnsNode, DropColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode } from "./frame";
 import { WebSourceNode, CsvConnectionNode, ImportHtmlNode, ImportXmlNode } from "./connection";
 import { WriteCsvNode, WriteJsonNode } from "./sink";
+import { ExpectNode } from "./quality";
+import { TornadoNode } from "./tornado";
+import { ReconcileNode } from "./frame";
 import { SlicerNode, CableSwitchNode, DatePickerNode, XYPadNode } from "./control";
 import { SparklineNode, ChartNode, GaugeNode, HeatmapCellNode, ChartBuilderNode } from "./visual";
 import { NoteNode, ImageNode } from "./annotation";
@@ -69,7 +72,7 @@ import {
 
 export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
   if (node instanceof NumberInputNode || node instanceof ConstantNode || node instanceof SliderInputNode || node instanceof RandBetweenNode || node instanceof WebSourceNode || node instanceof CsvConnectionNode || node instanceof ImportHtmlNode || node instanceof ImportXmlNode || node instanceof XYPadNode || node instanceof ColorPickerNode) return "input";
-  if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof GaugeNode || node instanceof HeatmapCellNode || node instanceof ChartBuilderNode) return "display";
+  if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof GaugeNode || node instanceof HeatmapCellNode || node instanceof ChartBuilderNode || node instanceof TornadoNode) return "display";
   if (node instanceof ConvertNode || node instanceof CastNode) return "convert";
   if (
     node instanceof ComplexFromNode || node instanceof ComplexUnpackNode ||
@@ -129,7 +132,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof AlertNode || node instanceof IfNode ||
     node instanceof SwitchNode || node instanceof IfsNode ||
     node instanceof CableSwitchNode || node instanceof NoteNode ||
-    node instanceof ImageNode ||
+    node instanceof ImageNode || node instanceof ExpectNode ||
     node instanceof WriteCsvNode || node instanceof WriteJsonNode
   ) return "util";
   if (node instanceof DisplayNode) return "util";
@@ -183,6 +186,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof AddIndexNode ||
     node instanceof DecisionMatrixNode ||
     node instanceof DecisionSensitivityNode ||
+    node instanceof ReconcileNode ||
     node instanceof SlicerNode
   ) return "frame";
   if (node instanceof FormatControllerNode) return "format";
@@ -217,7 +221,7 @@ export function nodeResizable(node: ClassicPreset.Node): boolean {
 export function nodeWide(node: ClassicPreset.Node): boolean {
   // The inline charts draw a fixed-width plot that needs the wide card to fit;
   // Heatmap qualifies on its table socket below.
-  if (node instanceof SparklineNode || node instanceof ChartNode) return true;
+  if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof TornadoNode) return true;
   const ports = [...Object.values(node.inputs ?? {}), ...Object.values(node.outputs ?? {})];
   return ports.some((p) => {
     const s = (p as { socket?: ClassicPreset.Socket } | undefined)?.socket;

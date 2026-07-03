@@ -25,6 +25,7 @@ import type {
   AddIndexNode as AddIndexNodeType,
   DecisionMatrixNode as DecisionMatrixNodeType,
   DecisionSensitivityNode as DecisionSensitivityNodeType,
+  ReconcileNode as ReconcileNodeType,
   FrameLookupNode as FrameLookupNodeType,
   FrameSortDir,
   DecisionDetail,
@@ -428,6 +429,39 @@ export function DecisionSensitivityComponent({ data, emit }: NodeProps<DecisionS
       <div className="solenoid-node__dm-caption">Normalize (every criterion):</div>
       <SegToggle value={normalize} options={DECISION_NORMALIZE_OPTIONS} onChange={setNormalize} />
       <CubeDisplay cube={data.cachedResult} label={data.label} />
+    </NodeShell>
+  );
+}
+
+// ─── RECONCILE ───────────────────────────────────────────────────────────────
+// Two frame outputs would be one too many dots to auto-place, so — like Split
+// Frame — this hand-places both rows: the reconciliation Frame, then the
+// readable Summary line (added/removed/changed/unchanged, + PVM if applicable).
+
+export function ReconcileComponent({ data, emit }: NodeProps<ReconcileNodeType>) {
+  const frameOut = data.outputs.frame;
+  const summaryOut = data.outputs.summary;
+  return (
+    <NodeShell node={data} emit={emit} hideOutputSockets>
+      <InlineInputs node={data} emit={emit} keys={["left", "right", "key", "priceColumn", "qtyColumn"]} />
+      {frameOut && (
+        <MeasuredSocketRow side="output" socketKey="frame" nodeId={data.id} emit={emit} payload={frameOut.socket}>
+          <div style={{ width: "100%" }}>
+            <FrameDisplay frame={data.cachedResult} label={data.label} />
+          </div>
+        </MeasuredSocketRow>
+      )}
+      {summaryOut && (
+        <MeasuredSocketRow side="output" socketKey="summary" nodeId={data.id} emit={emit} payload={summaryOut.socket}>
+          <span
+            className="solenoid-node__io-label"
+            style={{ fontSize: 10.5, color: "var(--text-dim)", whiteSpace: "normal", lineHeight: 1.4 }}
+            title={data.cachedSummary || undefined}
+          >
+            {data.cachedSummary || "—"}
+          </span>
+        </MeasuredSocketRow>
+      )}
     </NodeShell>
   );
 }

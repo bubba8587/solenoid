@@ -76,7 +76,8 @@ import { IsolateEndpoints } from "./components/IsolateEndpoints";
 import { solenoidMinimapPreset, collapsedAwareNodesRect } from "./components/Minimap";
 import type { SocketContextTarget, CableContextTarget, NodeContextTarget } from "./components";
 import { isolateStore, isoEndpointSelect } from "./isolateStore";
-import { isolateNodes, isolateChainOf, isolateSelection } from "./isolate";
+import { isolateNodes, isolateChainOf, isolateSelection, isolateWhereUsed } from "./isolate";
+import { commentsPanelUi } from "./commentStore";
 import { pinNodeValue } from "./pinStore";
 import { NODE_COMPONENTS } from "./nodeRegistry";
 import { buildCatalog } from "./catalogUtils";
@@ -3443,8 +3444,10 @@ export function Canvas() {
           target={nodeCtx}
           onIsolate={(ids) => isolateNodes(ids)}
           onIsolateChain={(ids) => isolateChainOf(ids)}
+          onWhereUsed={(id) => isolateWhereUsed(id)}
           onPin={handlePin}
           onLinkStandoff={handleLinkStandoff}
+          onAddComment={(id) => commentsPanelUi.openFor(id)}
           onClose={closeNodeCtx}
         />
       )}

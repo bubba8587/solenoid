@@ -1,0 +1,174 @@
+/* Comments HUD section — mirrors alertLayer.css/problemsPanel.css: a collapse
+   button plus a stack of threads. A section within .solenoid-hud-stack, which
+   owns the fixed positioning. */
+.solenoid-comments-layer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: none;
+  max-width: 260px;
+}
+
+.solenoid-comments-layer--collapsed .solenoid-comment,
+.solenoid-comments-layer--collapsed .solenoid-comments-layer__author {
+  display: none;
+}
+
+.solenoid-comments-layer__trigger {
+  pointer-events: auto;
+  position: relative;
+  width: 28px;
+  height: 28px;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--btn-bg);
+  border: var(--overlay-border-width) solid var(--overlay-border);
+  border-radius: 50%;
+  color: var(--text);
+  cursor: pointer;
+  box-shadow: var(--overlay-shadow);
+  flex-shrink: 0;
+}
+.solenoid-comments-layer__trigger:hover {
+  background: var(--btn-hover);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.solenoid-comments-layer__count {
+  position: absolute;
+  top: -4px;
+  right: -5px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  background: var(--accent);
+  color: var(--accent-contrast, #fff);
+  border-radius: 8px;
+  font-size: 9px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.solenoid-comments-layer__author {
+  pointer-events: auto;
+  display: flex;
+  justify-content: flex-end;
+}
+.solenoid-comments-layer__author input {
+  width: 120px;
+  background: var(--overlay-bg);
+  border: var(--overlay-border-width) solid var(--overlay-border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 10.5px;
+  padding: 3px 6px;
+}
+
+.solenoid-comment {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+  background: var(--overlay-bg);
+  border: var(--overlay-border-width) solid var(--overlay-border);
+  border-radius: 8px;
+  box-shadow: var(--overlay-shadow);
+}
+.solenoid-comment--resolved { opacity: 0.55; }
+.solenoid-comment--compose-target { border-color: var(--accent); }
+
+.solenoid-comment__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  cursor: pointer;
+}
+.solenoid-comment__node {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.solenoid-comment__author {
+  flex: none;
+  font-size: 9.5px;
+  color: var(--text-muted);
+}
+.solenoid-comment__text {
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.solenoid-comment__actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+}
+.solenoid-comment__resolve {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+.solenoid-comment__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  background: none;
+  border: none;
+  color: var(--text-muted, var(--text));
+  opacity: 0.5;
+  cursor: pointer;
+  padding: 0;
+}
+.solenoid-comment__remove:hover { opacity: 1; color: var(--sol-error); }
+
+.solenoid-comment-compose {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.solenoid-comment-compose__input {
+  resize: vertical;
+  min-height: 40px;
+  background: var(--surface-sunken, var(--overlay-bg));
+  border: var(--overlay-border-width) solid var(--overlay-border);
+  border-radius: 6px;
+  color: var(--text);
+  font: inherit;
+  font-size: 11px;
+  padding: 4px 6px;
+}
+.solenoid-comment-compose__btn {
+  align-self: flex-end;
+  background: var(--accent);
+  color: var(--accent-contrast, #fff);
+  border: none;
+  border-radius: 6px;
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+.solenoid-comment-compose__btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}

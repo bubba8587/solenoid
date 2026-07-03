@@ -56,6 +56,7 @@ import {
   HeadNode, SortFrameNode, FilterFrameNode, JoinNode, FrameLookupNode,
   SelectColumnsNode, DropColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, RenameNode,
   SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode,
+  ReconcileNode,
   BuildCubeNode, NestJoinNode, CubeColumnsNode,
   WebSourceNode, CsvConnectionNode, ImportHtmlNode, ImportXmlNode,
   WriteCsvNode, WriteJsonNode,
@@ -68,6 +69,8 @@ import {
   HypotenuseNode,
   PromoNode,
   PlaceholderNode,
+  ExpectNode,
+  TornadoNode,
 } from "./rete-nodes";
 import {
   AngleDialComponent, SlicerComponent, CableSwitchComponent, NoteComponent, ImageComponent,
@@ -127,6 +130,7 @@ import {
   SelectColumnsComponent, DropColumnsComponent, GroupByFrameComponent, PivotComponent, UnpivotComponent,
   NestComponent, UnnestComponent, AppendComponent, RenameComponent,
   SplitColumnComponent, AddIndexComponent, DecisionMatrixComponent, DecisionSensitivityComponent,
+  ReconcileComponent,
   BuildCubeComponent, NestJoinComponent, CubeColumnsComponent,
   WebSourceComponent, CsvConnectionComponent, ImportHtmlComponent, ImportXmlComponent,
   WriteCsvComponent, WriteJsonComponent,
@@ -139,6 +143,8 @@ import {
   HypotenuseComponent,
   PromoComponent,
   PlaceholderComponent,
+  ExpectComponent,
+  TornadoComponent,
 } from "./components";
 
 export type AnyNodeComponent = JSXElementConstructor<{
@@ -385,6 +391,7 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [AddIndexNode,          comp(AddIndexComponent)],
   [DecisionMatrixNode,    comp(DecisionMatrixComponent)],
   [DecisionSensitivityNode, comp(DecisionSensitivityComponent)],
+  [ReconcileNode,         comp(ReconcileComponent)],
   [BuildCubeNode,         comp(BuildCubeComponent)],
   [NestJoinNode,          comp(NestJoinComponent)],
   [CubeColumnsNode,       comp(CubeColumnsComponent)],
@@ -405,4 +412,6 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [PromoNode,             comp(PromoComponent)],
   // Load-time stand-in for an unregistered saved type (pack off / renamed).
   [PlaceholderNode,       comp(PlaceholderComponent)],
+  [ExpectNode,            comp(ExpectComponent)],
+  [TornadoNode,           comp(TornadoComponent)],
 ];

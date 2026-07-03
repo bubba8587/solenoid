@@ -110,6 +110,28 @@ button.solenoid-statusbar__calc--dirty {
   font-variant-numeric: tabular-nums;
 }
 
+/* Problems badge: same pill shape as the calc chip, tinted with the error token. */
+.solenoid-statusbar__problems {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  height: 14px;
+  margin-right: 10px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--sol-error) 16%, transparent);
+  color: var(--sol-error);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+.solenoid-statusbar__problems:hover {
+  background: color-mix(in srgb, var(--sol-error) 26%, transparent);
+}
+
 /* ─── Web-demo over-budget warning modal (one-time, on the crossing) ──────── */
 .solenoid-nbmodal {
   position: fixed;
