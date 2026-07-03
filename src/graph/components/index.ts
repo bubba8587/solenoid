@@ -170,6 +170,9 @@ export { NoteComponent } from "./NoteNode";
 // ─── Report (standalone markdown document — canvas anchor card) ────────────────
 export { ReportComponent } from "./ReportNode";
 
+// ─── Session History (live undo/redo digest readout) ───────────────────────────
+export { SessionHistoryComponent } from "./SessionHistoryNode";
+
 // ─── Image (canvas annotation) ──────────────────────────────────────────────────
 export { ImageComponent } from "./ImageNode";
 
