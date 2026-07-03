@@ -536,3 +536,33 @@ fn engine_sample_command_registers_a_new_handle_and_leaves_the_source_intact() {
     let original = with_frame(&h, |f| Ok(dump(f))).unwrap();
     assert_eq!(original[0].2.len(), 10);
 }
+
+// ─── native CSV read (#24 WS-E) ─────────────────────────────────────────────────
+
+#[test]
+fn read_csv_infers_number_string_and_boolean_columns() {
+    let dir = std::env::temp_dir();
+    let path = dir.join(format!("solenoid_engine_test_{}.csv", std::process::id()));
+    std::fs::write(&path, "n,s,flag\n1,apple,true\n2,banana,false\n").unwrap();
+
+    let df = CsvReadOptions::default()
+        .with_has_header(true)
+        .try_into_reader_with_file_path(Some(path.clone()))
+        .unwrap()
+        .finish()
+        .unwrap();
+    let frame = df_to_solframe(df);
+    let d = dump(&frame);
+
+    std::fs::remove_file(&path).ok();
+
+    assert_eq!(d[0].1, "number");
+    assert_eq!(d[0].2, j(&[1.0, 2.0]));
+    assert_eq!(d[1].1, "string");
+    assert_eq!(
+        d[1].2,
+        vec![Json::String("apple".into()), Json::String("banana".into())]
+    );
+    assert_eq!(d[2].1, "logical");
+    assert_eq!(d[2].2, vec![Json::Bool(true), Json::Bool(false)]);
+}

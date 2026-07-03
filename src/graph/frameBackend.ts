@@ -348,6 +348,27 @@ export async function initFrameBackend(): Promise<void> {
   }
 }
 
+// ─── Native CSV read (desktop-only — bypasses the JS Papa Parse + inference) ───
+// The JS path (csv.ts `parseCsvRows` + frame.ts `frameFromCells`'s type inference)
+// stays the only option on web. On desktop, `engine_read_csv` (engine.rs) reads
+// the file straight off disk through Polars' own CSV reader (multi-threaded,
+// SIMD-accelerated) and returns it already collected to typed columns — the whole
+// file never round-trips through JS as text, and JS never re-parses/re-infers it.
+// Known divergence from `frameFromCells`: the native reader infers number/string/
+// logical only (Polars dtypes) — NOT date (frame.ts's conservative unambiguous-ISO
+// check has no Rust-side equivalent yet), so a date column arrives as text on the
+// native path where the JS path would have detected it. Acceptable for now — an
+// explicit Get Column "read as Date" still converts it; full inference parity is a
+// follow-up, not a blocker for the perf win this exists for.
+export async function readCsvFrame(folder: string, name: string): Promise<FrameValue | SolError> {
+  try {
+    const columns = await ipcInvoke<FrameColumn[]>("engine_read_csv", { folder, name });
+    return { __frame: true, columns };
+  } catch (e) {
+    return asErrorValue(e);
+  }
+}
+
 // ─── Node-facing verb runners (the seam the frame verb nodes speak) ────────────
 // A frame verb node's data() calls one of these instead of the pure `frameVerbs`
 // function directly: source the eager input(s) to handle(s), compose the verb, and
