@@ -54,7 +54,8 @@ seat — the MathCAD replacement, units-as-values is the winning card) · #16 IN
 (BOM/nested-costing vertical on the Cube) · #17 IN, minor, sequence LATE — needs
 #4's Monte Carlo hook + #5 subgraph container to land first (wiggle-the-weights
 depends on them) · #18 OUT (embeddable-engine identity fork — not pursued). Deferred
-pile for end-of-walk revisit: #2, #6, #11, #23, golden tests, data-drafts.
+pile for end-of-walk revisit (kept current below, see the #35 line): #2, #6, #11, #23,
+#35, golden tests, data-drafts.
 Round 3 (#15–19, the stretch markets) closed 2026-07-03: #15 IN (engineering calc
 seat) · #16 IN (BOM/nested-costing on the Cube) · #17 IN minor, sequence late (needs
 #4 Monte Carlo + #5 subgraph first) · #18 OUT (embeddable-engine identity fork) ·
@@ -84,8 +85,11 @@ inputs are commonly just two Filter nodes off one shared live source) · #33 OUT
 parsing, that's a separate tool's job to hand Solenoid a clean frame; plain HTML-paste
 is just ordinary import hygiene, no verdict needed for that part) · #34 IN (Parquet/
 Arrow — cargo flag + direct file→engine path, doubles as the direct-CSV→Polars scale
-step for a better format first).
-NEXT when resuming: scope-features #35, then #36–63 in order (folding in
+step for a better format first) · #35 DEFERRED (MCP port — overlaps #10 headless/CLI,
+which is where agent-tooling momentum is anyway; revisit only if CLI can't cover the
+live-shared-GUI-session case). Deferred pile now: #2, #6, #11, #23, #35, golden tests,
+data-drafts.
+NEXT when resuming: scope-features #36, then #37–63 in order (folding in
 strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
