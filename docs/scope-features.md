@@ -1617,6 +1617,15 @@ governance actually requires. Cheap once the canonical form exists, and it compl
 review story (#14) + trust badge (strategy #6): *tested, validated, reviewed — and sealed.*
 
 ## 47 — Static HTML export: share without a server
+
+**VERDICT (author, 2026-07-03): IN — conditional on it being easy, confirmed easy.**
+Feasibility check: charts already render as SVG (no new export path), the HTML-canvas
+renderer already captures node DOM as images (`drawElementImage`) so a canvas
+screenshot is nearly free, and the report (#13) is markdown with live refs — freezing
+it means rendering the same markdown with today's values substituted as plain text,
+no new renderer. Self-contained-single-file inlining (CSS/images as data URIs) is
+mechanical, not architecturally hard. A few days of work, not a redesign.
+
 "Export as webpage" → **one self-contained `.html` file**: the report view (#13), key
 charts, pinned values, an image of the canvas — frozen at export time, viewable by anyone
 with a browser, hosted nowhere or anywhere (email it, drop it in Slack, put it on an
