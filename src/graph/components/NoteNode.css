@@ -226,6 +226,65 @@
 .solenoid-note__field-opt:hover { background: color-mix(in srgb, var(--text) 8%, transparent); }
 .solenoid-note__field-opt--on { background: color-mix(in srgb, var(--note-color) 22%, transparent); }
 
+/* ── Inline-ref inputs strip ──────────────────────────────────────────────────
+   Untyped (any) INPUT sockets minted from `` `=name` `` spans in the prose body.
+   Same full-width-strip mechanics as the fields strip, dots on the LEFT edge. Always
+   renders ABOVE the fields strip (in → through → out reading order); when collapsed
+   with no fields strip below it, it's the last visible child (see :last-child rule). */
+.solenoid-note__refs {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  padding: 3px 0;
+  overflow: visible;
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--note-color) 35%, transparent);
+}
+.solenoid-note--collapsed .solenoid-note__refs:last-child {
+  box-shadow: none;
+  border-radius: 0 0 9px 9px;
+}
+.solenoid-note__ref-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px 2px 16px; /* extra left room for the input dot at -5px */
+  min-height: 18px;
+  font-size: 11px;
+}
+.solenoid-note__ref-key {
+  flex: 0 0 auto;
+  max-width: 50%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-weight: 600;
+  color: var(--text);
+}
+.solenoid-note__ref-val {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+  color: var(--text-muted);
+}
+
+/* Inline live value swapped in for a `` `=name` `` span inside the rendered prose
+   (NoteBody's DOM-portal). Plain text in the Value face (DESIGN.md §3) — no pill,
+   no fill, no border: a decorative box mid-sentence would read as a hero-metric
+   chip, which the design system explicitly rejects. */
+.solenoid-note__ref-inline {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-weight: 600;
+  color: var(--text-bright);
+}
+.solenoid-note__ref-inline--error {
+  color: var(--sol-error);
+}
+
 /* Holds the body. overflow:hidden clips the scrolling body (and its scrollbar)
    to the card's rounded base; the bottom radius matches the note's inner corner
    (11px frame − 2px border). The note can't clip this itself without also clipping

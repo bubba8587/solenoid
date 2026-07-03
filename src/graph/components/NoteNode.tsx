@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 import type { NoteNode as NoteNodeType } from "../rete-nodes";
@@ -14,14 +15,27 @@ import { scheduleAutosave } from "../persistence";
 import { gridSnapStore, snapCoord } from "../gridSnapStore";
 import { standoffStore, settleStandoffs } from "../standoffs";
 import { SOCKET_COLORS, SolenoidSocket, canConnect } from "../sockets";
-import { formatAnnotationStore, formatNumberWithAnnotation } from "../formatAnnotationStore";
+import { formatAnnotationStore, formatNumberWithAnnotation, type FormatAnnotation } from "../formatAnnotationStore";
+import { sharedAnnotationResolver } from "../unitFlow";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
 import type { FrontmatterFieldType, FrontmatterValue } from "../noteFrontmatter";
 import type { NodeProps, Emit } from "./nodeKit";
+import { formatScalar } from "./format";
+import { isFrameValue, isCubeValue } from "../frame";
+import { FrameDisplay } from "./FrameDisplay";
+import { CubeDisplay } from "./CubeDisplay";
+import { isSolError } from "../errorValue";
+import { errorTip } from "./ErrorChip";
 import type { ClassicPreset } from "rete";
 import { stopDragStart } from "../coarse";
 import "./Markdown.css";
 import "./NoteNode.css";
+
+// Matches marked's rendering of a `` `=name` `` inline-ref span AFTER sanitization
+// (DOMPurify keeps a bare <code> tag untouched) — used to find + swap those spans
+// for a live value in the rendered DOM. Mirrors noteInlineRefs.ts's identifier
+// grammar; kept in sync by inspection (both are simple `[A-Za-z_][A-Za-z0-9_]*`).
+const INLINE_REF_TEXT_RE = /^=([A-Za-z_][A-Za-z0-9_]*)$/;
 
 // Field types grouped by dimensionality — the type-override picker offers the four
 // element families at the field's current dimension (scalar ↔ list). The glyph
@@ -121,7 +135,7 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   async function commitFields(force = false) {
     if (!force && data.body === lastSyncRef.current) return;
     lastSyncRef.current = data.body;
-    const { removed, retyped } = data.syncFields();
+    const { removed, retyped, removedInputs } = data.syncFields();
     const editor = getEditor();
     const area = getArea();
     if (editor && (removed.length || retyped.length)) {
@@ -138,6 +152,15 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
         const inSock = editor.getNode(c.target)?.inputs?.[c.targetInput]?.socket;
         const inType = inSock instanceof SolenoidSocket ? inSock.dataType : undefined;
         if (!inType || !canConnect(newType, inType)) await editor.removeConnection(c.id);
+      }
+    }
+    // A vanished inline-ref INPUT (the `` `=name` `` span was edited away) dropped
+    // its socket — the cable feeding it, if any, would otherwise dangle.
+    if (editor && removedInputs.length) {
+      for (const c of editor.getConnections()) {
+        if (c.target === data.id && removedInputs.includes(c.targetInput)) {
+          await editor.removeConnection(c.id);
+        }
       }
     }
     setFieldsVersion((v) => v + 1);
@@ -158,13 +181,14 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   }
 
   const fieldKeys = data.fieldKeys();
+  const refKeys = data.refKeys();
   // NOT data.data() — that's the installErrorGuards-wrapped version, which throws
   // when called with no inputs (firstInputError runs outside its try/catch).
   const fieldValues = data.fieldValues();
-  // Height floor grows with the output-socket count so resizing (and the rendered
-  // height) can never clip the fields strip — keeps the bar + every socket + a body
-  // sliver. Plain note (no fields) → the original 80.
-  const minNoteH = NOTE_MIN_H + fieldsStripHeight(fieldKeys.length);
+  // Height floor grows with BOTH strips (output fields + inline-ref inputs) so
+  // resizing (and the rendered height) can never clip a socket row. Plain note
+  // (no frontmatter, no refs) → the original 80.
+  const minNoteH = NOTE_MIN_H + fieldsStripHeight(fieldKeys.length) + fieldsStripHeight(refKeys.length);
 
   // Manual width + height (drag the corner grip — same model as a Group). The note
   // is a fixed box; the body fills it and scrolls. area.update re-renders on each
@@ -242,7 +266,7 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
 
   return (
     <div
-      className={`solenoid-note${data.selected ? " solenoid-note--selected" : ""}${collapsed ? " solenoid-note--collapsed" : ""}${fieldKeys.length ? " solenoid-note--has-fields" : ""}`}
+      className={`solenoid-note${data.selected ? " solenoid-note--selected" : ""}${collapsed ? " solenoid-note--collapsed" : ""}${(fieldKeys.length || refKeys.length) ? " solenoid-note--has-fields" : ""}`}
       style={{ width: data.width, height: collapsed ? undefined : Math.max(data.height, minNoteH), ...vars }}
     >
       <div className="solenoid-note__bar" title="Drag to move">
@@ -304,6 +328,28 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
           </div>
         )}
       </div>
+      {refKeys.length > 0 && (
+        // Inline-ref → untyped INPUT sockets, one per distinct `` `=name` `` span in
+        // the prose body. Same full-width-strip mechanics as the output fields strip
+        // below (dots straddle the LEFT edge here). Survives collapse for the same
+        // reason: a wired ref's cable must stay valid even with the prose hidden.
+        <div className="solenoid-note__refs">
+          {refKeys.map((key) => {
+            const input = data.inputs[key];
+            if (!input) return null;
+            return (
+              <RefRow
+                key={key}
+                nodeId={data.id}
+                emit={emit}
+                refKey={key}
+                value={data.refValue(key)}
+                socket={input.socket}
+              />
+            );
+          })}
+        </div>
+      )}
       {fieldKeys.length > 0 && (
         // Frontmatter → typed output sockets. A full-width strip OUTSIDE the
         // overflow-clipped content so the dots can straddle the right edge. Each
@@ -354,12 +400,12 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
               onMouseDown={stop}
             />
           ) : data.renderBody.trim() ? (
-            <div
-              className="solenoid-note__rendered sol-md"
+            <NoteBody
+              nodeId={data.id}
+              bodyHtml={bodyHtml}
               onClick={startEdit}
               onPointerDown={stopDragStart}
               onMouseDown={stopDragStart}
-              dangerouslySetInnerHTML={{ __html: bodyHtml }}
             />
           ) : (
             <div
@@ -455,6 +501,129 @@ function FieldRow({
         </div>
       )}
       <NodeSocket side="output" socketKey={fieldKey} nodeId={nodeId} emit={emit} payload={socket} />
+    </div>
+  );
+}
+
+// ─── Inline refs — INPUT sockets from `` `=name` `` spans ─────────────────────
+
+/** An FC docked directly to this ref input, else one reachable UPSTREAM through
+ *  passthroughs (the DisplayComponent resolution order, minus `downstreamAnnotation`
+ *  — a Note's ref is a terminal consumer, not a passthrough with an "out" side). */
+function useRefAnnotation(nodeId: string, refKey: string): FormatAnnotation | undefined {
+  useSyncExternalStore(formatAnnotationStore.subscribe, formatAnnotationStore.version);
+  const editor = getEditor();
+  const resolver = editor ? sharedAnnotationResolver(editor) : undefined;
+  return formatAnnotationStore.get(nodeId, refKey) ?? resolver?.inAnnotation(nodeId, refKey);
+}
+
+/** A short text preview of any ref value for the input strip's narrow row —
+ *  mirrors previewValue's scalar/list handling. Frame/cube collapse to a word here
+ *  (the inline prose span shows the real compact table — see InlineRefValue). */
+function refPreview(value: unknown, ann: FormatAnnotation | undefined): string {
+  if (value === null || value === undefined) return "—";
+  if (isSolError(value)) return value.code;
+  if (typeof value === "boolean") return value ? "TRUE" : "FALSE";
+  if (typeof value === "number") return ann ? formatNumberWithAnnotation(value, ann) : formatScalar(value);
+  if (typeof value === "string") return value;
+  if (isFrameValue(value)) return "frame";
+  if (isCubeValue(value)) return "cube";
+  if (Array.isArray(value)) {
+    const shown = value.slice(0, 4).map((v) => refPreview(v, ann));
+    return `[${shown.join(", ")}${value.length > 4 ? ", …" : ""}]`;
+  }
+  return String(value);
+}
+
+/**
+ * One inline-ref INPUT row: an `any`-typed socket dot (straddling the LEFT edge —
+ * mirrors FieldRow, just input-side), the ref name, and a short value preview.
+ * Always `any` — a bare name has no re-typeable field, unlike a frontmatter key.
+ */
+function RefRow({
+  nodeId, emit, refKey, value, socket,
+}: {
+  nodeId: string;
+  emit: Emit;
+  refKey: string;
+  value: unknown;
+  socket: ClassicPreset.Socket;
+}) {
+  const ann = useRefAnnotation(nodeId, refKey);
+  const preview = refPreview(value, ann);
+  return (
+    <div className="solenoid-note__ref-row">
+      <NodeSocket side="input" socketKey={refKey} nodeId={nodeId} emit={emit} payload={socket} />
+      <span className="solenoid-note__ref-key" title={refKey}>{refKey}</span>
+      <span className="solenoid-note__ref-val" title={preview}>{preview}</span>
+    </div>
+  );
+}
+
+/**
+ * The live value swapped in for a `` `=name` `` span in the rendered prose (see
+ * NoteBody). A frame/cube renders as the shared compact table preview (capped rows/
+ * cols, `full={false}`) — the one place this reuses the node-card display components,
+ * since a table is legitimately block-level. Everything else renders as PLAIN TEXT in
+ * the Value face (no box/pill/fill — DESIGN.md's Quiet Accent Rule: a decorative chip
+ * mid-sentence would read as a hero-metric, which this system explicitly rejects).
+ */
+function InlineRefValue({ nodeId, refKey }: { nodeId: string; refKey: string }) {
+  const editor = getEditor();
+  const node = editor?.getNode(nodeId) as NoteNodeType | undefined;
+  const value = node?.refValue(refKey);
+  const ann = useRefAnnotation(nodeId, refKey);
+
+  if (isFrameValue(value)) return <FrameDisplay frame={value} label={refKey} full={false} />;
+  if (isCubeValue(value)) return <CubeDisplay cube={value} label={refKey} full={false} />;
+  if (isSolError(value)) {
+    return (
+      <span className="solenoid-note__ref-inline solenoid-note__ref-inline--error" title={errorTip(value)}>
+        {value.code}
+      </span>
+    );
+  }
+  return <span className="solenoid-note__ref-inline">{refPreview(value, ann)}</span>;
+}
+
+/**
+ * Renders the note's markdown HTML, then swaps every `` `=name` `` code span (found
+ * by DOM query AFTER the sanitized HTML is parsed, not by string-splitting the HTML —
+ * keeps marked's paragraph/list nesting intact) for the matching inline-ref input's
+ * live value, via a React portal into the DOM node marked's `<code>` became. Re-scans
+ * whenever the rendered HTML changes (a body edit, or a ref's value/format changing
+ * doesn't re-run this — InlineRefValue itself subscribes to those).
+ */
+function NoteBody({
+  nodeId, bodyHtml, onClick, onPointerDown, onMouseDown,
+}: {
+  nodeId: string;
+  bodyHtml: string;
+  onClick: () => void;
+  onPointerDown: (e: React.PointerEvent) => void;
+  onMouseDown: (e: React.MouseEvent) => void;
+}) {
+  const htmlRef = useRef<HTMLDivElement>(null);
+  const [slots, setSlots] = useState<{ el: HTMLElement; name: string }[]>([]);
+
+  useLayoutEffect(() => {
+    const root = htmlRef.current;
+    if (!root) return;
+    const found: { el: HTMLElement; name: string }[] = [];
+    root.querySelectorAll("code").forEach((codeEl) => {
+      const m = INLINE_REF_TEXT_RE.exec(codeEl.textContent ?? "");
+      if (!m) return;
+      const span = document.createElement("span");
+      codeEl.replaceWith(span);
+      found.push({ el: span, name: m[1] });
+    });
+    setSlots(found);
+  }, [bodyHtml]);
+
+  return (
+    <div className="solenoid-note__rendered sol-md" onClick={onClick} onPointerDown={onPointerDown} onMouseDown={onMouseDown}>
+      <div ref={htmlRef} dangerouslySetInnerHTML={{ __html: bodyHtml }} />
+      {slots.map((s) => createPortal(<InlineRefValue key={s.name} nodeId={nodeId} refKey={s.name} />, s.el))}
     </div>
   );
 }
