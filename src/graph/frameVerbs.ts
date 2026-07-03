@@ -76,7 +76,7 @@ const cellAt = (col: FrameColumn, i: number): FrameCell => {
  *  sort = sorted indices, head = a prefix, distinct/filter = the kept indices).
  *  Drops `raw` (the per-column source text — a reordered/filtered frame is
  *  derived, so it has no source text). Short columns pad with `null`. */
-function reorderRows(f: FrameValue, indices: readonly number[]): FrameValue {
+export function reorderRows(f: FrameValue, indices: readonly number[]): FrameValue {
   return frame(f.columns.map((c) => {
     const { raw: _raw, ...rest } = c;
     return { ...rest, values: indices.map((i) => cellAt(c, i)) };
@@ -138,6 +138,20 @@ export function distinctRows(f: FrameValue, columns?: readonly string[]): FrameV
 export function headRows(f: FrameValue, n: number): FrameValue {
   const take = Math.max(0, Math.min(Math.trunc(n), frameRowCount(f)));
   return reorderRows(f, Array.from({ length: take }, (_, i) => i));
+}
+
+/** Deterministic SAMPLE for sketch mode (#24): up to `n` evenly-strided rows —
+ *  NEVER random, so the same input always yields the same sample within a pass.
+ *  A frame at or under `n` rows is returned unchanged (nothing to sample). Row
+ *  order is preserved (the stride walks forward). Mirrors `headRows`'s
+ *  index-list shape, but spread across the whole frame instead of a prefix, so
+ *  a sample is representative rather than just "the first N rows". */
+export function sampleFrame(f: FrameValue, n: number): FrameValue {
+  const total = frameRowCount(f);
+  if (total <= n || n <= 0) return f;
+  const stride = total / n;
+  const idx = Array.from({ length: n }, (_, i) => Math.min(total - 1, Math.floor(i * stride)));
+  return reorderRows(f, idx);
 }
 
 /** Does one cell pass the predicate? A `null` or error cell is EXCLUDED (SQL

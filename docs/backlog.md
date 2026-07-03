@@ -770,10 +770,19 @@ correctness.
   cashflow + XLOOKUP/XMATCH range-correct; EXACT → logical; FIND/SEARCH → #VALUE!. Limitations
   established in-app (scalar/1-D only — 2-D via LAMBDA hosts; XLOOKUP advanced modes / complex / matrix
   algebra are node-only). OPTIONAL remainder below (no behavioral effect).
-- [ ] **(optional) delete redundant native math for the formulajs-backed families** — the only
-  remaining piece of the consolidation: route arithmetic / scalar-math / text / closed-form-finance
-  NODES to Formula.js via the seam and delete their hand-rolled math. No correctness impact (audit
-  found no divergence), so this is purely code-size / single-source hygiene. `docs/archive/formulajs-vs-native-audit.md`.
+- [x] **(optional) delete redundant native math for the formulajs-backed families** — DONE (partial,
+  by design) 2026-07-03, commit `b154bd0`. `text.ts` and `finance.ts` node ops with a verified
+  byte-identical Formula.js equivalent now route through `resolveExcelFunction` and had their
+  hand-rolled math deleted (text: UPPER/LOWER/TRIM/LEN/LEFT/RIGHT/MID/FIND/SEARCH/SUBSTITUTE/
+  REPLACE/REPT/FIXED/CONCAT; finance: TVM PMT/PV/FV/NPER, IPMT/PPMT, NPV, XNPV, Depreciation
+  SLN/SYD/DDB/DB). **`scalar.ts` (arithmetic/scalar-math) deliberately SKIPPED, not just deferred**:
+  every `registerInternal` wrapper in `excelFunctions.ts` guards `toNum`+`NaN`→`#VALUE!`, while every
+  hand-rolled node op lets `NaN`/`Infinity` propagate as a raw number — a systematic divergence
+  (confirmed on `tanh(Infinity)`, `asinh(-Infinity)`, `POWER(0,0)`) reachable in practice, so a swap
+  there would be a real behavior change, not hygiene. Also left hand-rolled per-function where FX has
+  no equivalent or a confirmed edge-case divergence (text: PROPER, CLEAN/CHAR/CODE/TEXTJOIN/
+  TEXTSPLIT/TEXTBEFORE/TEXTAFTER/NUMBERVALUE/DOLLAR/REGEX*; finance: VDB, CUMIPMT/CUMPRINC,
+  RATE/IRR/MIRR/XIRR — the finance-iterative family, verdicted internal). `docs/archive/formulajs-vs-native-audit.md`.
   The app runs two parallel function implementations (~150 native nodes + Formula.js via the
   formula engine) — so **a function typed in an Expression/LAMBDA evaluates via Formula.js, NOT
   the matching visual node's `data()`**, and the two can diverge (author re-flagged 2026-06-23).
