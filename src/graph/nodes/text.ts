@@ -3,6 +3,7 @@ import { stringSocket } from "../sockets";
 import { strIn, strOut, strListIn, strListOut, numIn, numOut, logicalOut, anyIn, anyOut } from "./shared";
 import { getRecalcGen } from "../process";
 import { solError, type SolError } from "../errorValue";
+import { resolveExcelFunction } from "../excelFunctions";
 
 // Reads a string from either a wired input or the node's stringLiterals fallback.
 function strVal(
@@ -85,6 +86,21 @@ export const TEXT_TRANSFORM_OP_META = {
   clean:  { label: "CLEAN",  description: "Remove non-printable control characters (ASCII 0–31)   (Excel: =CLEAN)" },
 } satisfies Record<TextTransformOp, { label: string; description: string }>;
 
+// UPPER/LOWER/TRIM are verified byte-identical to Formula.js, so those three route
+// through the shared seam. PROPER stays hand-rolled: FX's PROPER only capitalizes
+// after certain separators, not Excel's "after any non-letter" rule (verified
+// divergence, e.g. "a-b_c.d" → ours "A-B_c.D", FX "A-b_c.d"). CLEAN has no Formula.js
+// equivalent. Shared by TextTransformNode (scalar) and TextMapNode (per-element).
+function applyTextTransform(op: TextTransformOp, text: string): string {
+  switch (op) {
+    case "upper": return resolveExcelFunction("UPPER")!(text) as string;
+    case "lower": return resolveExcelFunction("LOWER")!(text) as string;
+    case "trim":  return resolveExcelFunction("TRIM")!(text) as string;
+    case "proper": return text.toLowerCase().replace(/\b[a-z]/g, c => c.toUpperCase());
+    case "clean":  return text.replace(/[\x00-\x1F\x7F]/g, "");
+  }
+}
+
 export class TextTransformNode extends ClassicPreset.Node {
   label: string;
   op: TextTransformOp;
@@ -102,14 +118,7 @@ export class TextTransformNode extends ClassicPreset.Node {
 
   data(inputs: { text?: string[] }): { result: string | null } {
     const text = strVal(inputs.text, this, "text");
-    let result: string;
-    switch (this.op) {
-      case "upper":  result = text.toUpperCase(); break;
-      case "lower":  result = text.toLowerCase(); break;
-      case "trim":   result = text.trim().replace(/\s+/g, " "); break;
-      case "proper": result = text.toLowerCase().replace(/\b[a-z]/g, c => c.toUpperCase()); break;
-      case "clean":  result = text.replace(/[\x00-\x1F\x7F]/g, ""); break;
-    }
+    const result = applyTextTransform(this.op, text);
     this.cachedText = result;
     return { result };
   }
@@ -132,8 +141,9 @@ export class TextLenNode extends ClassicPreset.Node {
 
   data(inputs: { text?: string[] }): { result: number } {
     const text = strVal(inputs.text, this, "text");
-    this.cachedResult = text.length;
-    return { result: text.length };
+    const result = resolveExcelFunction("LEN")!(text) as number;
+    this.cachedResult = result;
+    return { result };
   }
 }
 
@@ -181,10 +191,8 @@ export class ConcatNode extends ClassicPreset.Node {
   }
 
   data(inputs: Record<string, string[] | undefined>): { result: string } {
-    let result = "";
-    for (const key of Object.keys(this.inputs)) {
-      result += inputs[key]?.[0] ?? this.stringLiterals[key] ?? "";
-    }
+    const values = Object.keys(this.inputs).map((key) => inputs[key]?.[0] ?? this.stringLiterals[key] ?? "");
+    const result = resolveExcelFunction("CONCAT")!(...values) as string;
     this.cachedText = result;
     return { result };
   }
@@ -226,9 +234,11 @@ export class TextSliceNode extends ClassicPreset.Node {
     const len   = Math.max(0, Math.floor(inputs.len?.[0]   ?? this.literals.len   ?? 1));
     let result: string;
     switch (this.op) {
-      case "left":  result = text.slice(0, n); break;
-      case "right": result = text.slice(Math.max(0, text.length - n)); break;
-      case "mid":   result = text.slice(start - 1, start - 1 + len); break;
+      case "left":  result = resolveExcelFunction("LEFT")!(text, n) as string; break;
+      case "right": result = resolveExcelFunction("RIGHT")!(text, n) as string; break;
+      // Formula.js MID errors on num_chars = 0 (a real Excel input that returns "") —
+      // guard that one edge, delegate the rest (verified byte-identical otherwise).
+      case "mid":   result = len === 0 ? "" : resolveExcelFunction("MID")!(text, start, len) as string; break;
     }
     this.cachedText = result;
     return { result };
@@ -266,21 +276,16 @@ export class TextFindNode extends ClassicPreset.Node {
     const needle   = strVal(inputs.needle,   this, "needle");
     const haystack = strVal(inputs.haystack, this, "haystack");
     const start    = Math.max(1, Math.floor(inputs.start?.[0] ?? this.literals.start ?? 1));
-    const from     = start - 1;
-    let idx: number;
-    if (this.op === "find") {
-      idx = haystack.indexOf(needle, from);
-    } else {
-      idx = haystack.toLowerCase().indexOf(needle.toLowerCase(), from);
-    }
-    // Excel FIND/SEARCH return #VALUE! when the substring is absent — match that (and
-    // the formula path's FIND via Formula.js → #VALUE!) so node == formula == Excel.
-    if (idx === -1) {
+    const raw = resolveExcelFunction(this.op === "find" ? "FIND" : "SEARCH")!(needle, haystack, start);
+    // Excel FIND/SEARCH return #VALUE! when the substring is absent — Formula.js
+    // signals the same case as an Error, so map it to our tagged SolError (and the
+    // formula path's FIND via Formula.js → #VALUE! too), keeping node == formula == Excel.
+    if (raw instanceof Error) {
       const err = solError("#VALUE!", "Find text not found within the text");
       this.cachedResult = err;
       return { result: err };
     }
-    const result = idx + 1;
+    const result = raw as number;
     this.cachedResult = result;
     return { result };
   }
@@ -307,7 +312,7 @@ export class SubstituteNode extends ClassicPreset.Node {
     const text     = strVal(inputs.text,     this, "text");
     const oldText  = strVal(inputs.old_text, this, "old_text");
     const newText  = strVal(inputs.new_text, this, "new_text");
-    const result   = oldText === "" ? text : text.split(oldText).join(newText);
+    const result   = resolveExcelFunction("SUBSTITUTE")!(text, oldText, newText) as string;
     this.cachedText = result;
     return { result };
   }
@@ -337,7 +342,7 @@ export class TextReplaceNode extends ClassicPreset.Node {
     const newText  = strVal(inputs.new_text, this, "new_text");
     const start    = Math.max(1, Math.floor(inputs.start?.[0]     ?? this.literals.start     ?? 1));
     const numChars = Math.max(0, Math.floor(inputs.num_chars?.[0] ?? this.literals.num_chars ?? 1));
-    const result   = text.slice(0, start - 1) + newText + text.slice(start - 1 + numChars);
+    const result   = resolveExcelFunction("REPLACE")!(text, start, numChars, newText) as string;
     this.cachedText = result;
     return { result };
   }
@@ -386,7 +391,7 @@ export class ReptNode extends ClassicPreset.Node {
   data(inputs: { text?: string[]; times?: number[] }): { result: string } {
     const text  = strVal(inputs.text, this, "text");
     const times = Math.max(0, Math.floor(inputs.times?.[0] ?? this.literals.times ?? 1));
-    const result = text.repeat(times);
+    const result = resolveExcelFunction("REPT")!(text, times) as string;
     this.cachedText = result;
     return { result };
   }
@@ -661,15 +666,7 @@ export class TextMapNode extends ClassicPreset.Node {
 
   data(inputs: { strings?: string[][] }): { result: string[] } {
     const strings = inputs.strings?.[0] ?? [];
-    const result  = strings.map(s => {
-      switch (this.op) {
-        case "upper":  return s.toUpperCase();
-        case "lower":  return s.toLowerCase();
-        case "trim":   return s.trim().replace(/\s+/g, " ");
-        case "proper": return s.toLowerCase().replace(/\b[a-z]/g, c => c.toUpperCase());
-        case "clean":  return s.replace(/[\x00-\x1F\x7F]/g, "");
-      }
-    });
+    const result  = strings.map(s => applyTextTransform(this.op, s));
     this.cachedResult = result;
     return { result };
   }
@@ -799,15 +796,7 @@ export class FixedNode extends ClassicPreset.Node {
   data(inputs: { number?: number[]; decimals?: number[] }): { result: string } {
     const n      = inputs.number?.[0]   ?? this.literals.number   ?? 0;
     const dec    = Math.max(0, Math.floor(inputs.decimals?.[0] ?? this.literals.decimals ?? 2));
-    const rounded = n.toFixed(dec);
-    let result: string;
-    if (this.noCommas === "no_commas") {
-      result = rounded;
-    } else {
-      const parts = rounded.split(".");
-      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-      result = parts.join(".");
-    }
+    const result = resolveExcelFunction("FIXED")!(n, dec, this.noCommas === "no_commas") as string;
     this.cachedText = result;
     return { result };
   }
