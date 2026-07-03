@@ -177,16 +177,32 @@ se, but these recommendations are often slowing people down and never as accurat
 to what's in people's heads"; golden tests on any node — author: "I think it's out
 tbh." Deferred pile for eventual revisit is now just: #2, #6, #11, #23, #35, #46
 (golden tests and data-drafts drop off the pile, resolved OUT).
-NEXT when resuming: the
-unfinished v1.1-plan workstreams where they belong, then the remaining deferred pile
-(#2, #6, #11, #23, #35, #46) if the author wants to close those out too, then the
-design deep-dive sessions (order: Bet 2 text format → units/FC function model →
-#41 conditional formatting → engine execution contract (Bet 1 × #23 × #24 × calc mode) → #5
-composites (document-local container ONLY — no sharing/ecosystem, packs are the sole
-distribution channel; the session owns the container shell + typed boundary + FIVE
-run-mode hooks: simulation, data tables, solver, scenarios, Monte Carlo — ruled
-2026-07-02) → #9 sinks + #3 scheduling → #43 money → #21 uncertain →
-#8 transpiler → linked graphs → #13 report layout), then plan-doc authoring.
+**PLAN-DOC SET AUTHORED (2026-07-03) — `docs/v2.0/`.** Per the author's request ("walk
+everything we've got as IN and devise a detailed impl plan for all of it and bundle
+things for agents"), every IN-verdicted item across `future-directions.md` (4 bets) and
+`scope-features.md` (63 items) plus the already-approved `v1.1-plan.md` workstreams was
+reorganized into 15 numbered, dependency-sequenced implementation bundles + a master
+index (`docs/v2.0/README.md`), sized one-bundle-per-agent/session. DEFERRED/VERY DEFERRED
+items (#2, #6, #11, #23, #35, #46, #48, #54) and Bet 5 were deliberately NOT planned —
+they're listed in the README's "verdict pending" section, needing a fresh author call
+before a bundle doc gets written for them. Several bundles carry their own internal
+**NEEDS AUTHOR INPUT** flags where a real design session must happen before code starts
+(the addressable-model name scheme, the FC function-model truth table, the units
+representation, uncertain-values' representation, money-mode's per-doc-vs-per-unit
+scope, conditional formatting's whole design pass) — these are the "split out things
+needing more input" the author asked for. See `docs/v2.0/README.md` for the full
+tier/dependency map. This supersedes the old prose sequencing note below.
+NEXT when resuming: staff bundles per `docs/v2.0/README.md`'s tier order (Tier 0 first:
+01 addressable model, 02 shape-checking, 03 compile/fuse, 04 provenance, 05 units/FC —
+independent of each other, parallelize across agents/sessions), or resolve one of the
+"verdict pending" items with the author first if that's higher priority.
+~~Old sequencing note (superseded by the docs/v2.0/ set above): the unfinished
+v1.1-plan workstreams where they belong, then the remaining deferred pile (#2, #6, #11,
+#23, #35, #46) if the author wants to close those out too, then the design deep-dive
+sessions (order: Bet 2 text format → units/FC function model → #41 conditional
+formatting → engine execution contract (Bet 1 × #23 × #24 × calc mode) → #5 composites
+→ #9 sinks + #3 scheduling → #43 money → #21 uncertain → #8 transpiler → linked graphs
+→ #13 report layout), then plan-doc authoring.~~
 (#20 dimensions dropped from the deep-dive queue — decided OUT above, no session
 needed.)
 
