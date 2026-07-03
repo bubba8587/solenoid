@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { anySocket } from "../sockets";
+import { anySocket, MutableSocket } from "../sockets";
 
 // ─── Conduit ──────────────────────────────────────────────────────────────────
 
@@ -82,10 +82,11 @@ export class ConduitNode extends ClassicPreset.Node {
   label: string;
   seq: number;
   angle: number;
-  // Fixed hit-area box (see BODY_SIZE in ConduitComponent). The visible block can
-  // extend beyond it when expanded; the minimap uses this footprint.
-  width = 72;
-  height = 72;
+  // Fixed hit-area box — keep in sync with CONDUIT_BODY_SIZE (ribbonCable.ts).
+  // The visible block can extend beyond it when expanded; the minimap uses this
+  // footprint.
+  width = 92;
+  height = 92;
   // Per-lane mirror of incoming values so the component can read latest values
   // (e.g. to color the internal cables) without re-running the engine.
   cachedLane: Array<unknown> = new Array(CONDUIT_MAX_LANES).fill(null);
@@ -99,8 +100,13 @@ export class ConduitNode extends ClassicPreset.Node {
     this.label = init?.label && init.label !== "Conduit" ? init.label : `Conduit ${this.seq}`;
     this.angle = init?.angle ?? 0;
     for (let i = 0; i < CONDUIT_MAX_LANES; i++) {
+      // Input stays a shared `any` singleton — a lane accepts ANY cable (the
+      // Conduit's whole point). The OUTPUT is a per-lane MUTABLE socket that
+      // ADOPTS the wired-in type (see reconcileConduitTypes in conduitTrace.ts),
+      // so a lane genuinely carries its type downstream — a date leaves as a
+      // date (FC can lock it, a Display formats it), not an opaque `any`.
       this.addInput(conduitInKey(i), new ClassicPreset.Input(anySocket));
-      this.addOutput(conduitOutKey(i), new ClassicPreset.Output(anySocket));
+      this.addOutput(conduitOutKey(i), new ClassicPreset.Output(new MutableSocket("any")));
     }
   }
 

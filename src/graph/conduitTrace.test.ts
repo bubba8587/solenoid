@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { ClassicPreset } from "rete";
-import { resolveTypedSource } from "./conduitTrace";
+import { ClassicPreset, NodeEditor } from "rete";
+import { resolveTypedSource, reconcileConduitTypes } from "./conduitTrace";
 import { ConduitNode, conduitInKey, conduitOutKey } from "./nodes/conduit";
+import type { Schemes } from "./schemes";
 import { dateSocket, numberSocket } from "./sockets";
 
 // A tiny fake editor: just getNode + getConnections, the surface resolveTypedSource
@@ -64,5 +65,43 @@ describe("resolveTypedSource — Conduit type tracing", () => {
     // No feed → falls back to the conduit's own output socket, source = conduit.
     expect(r.source).toBe(cond.id);
     expect(r.sourceOutput).toBe(conduitOutKey(0));
+  });
+});
+
+describe("reconcileConduitTypes — lanes adopt the wired-in type", () => {
+  async function build() {
+    const editor = new NodeEditor<Schemes>();
+    const dateSrc = new ClassicPreset.Node("Date") as unknown as Schemes["Node"];
+    dateSrc.addOutput("result", new ClassicPreset.Output(dateSocket));
+    const numSrc = new ClassicPreset.Node("Num") as unknown as Schemes["Node"];
+    numSrc.addOutput("value", new ClassicPreset.Output(numberSocket));
+    const cond = new ConduitNode({}) as unknown as Schemes["Node"];
+    for (const n of [dateSrc, numSrc, cond]) await editor.addNode(n);
+    return { editor, dateSrc, numSrc, cond };
+  }
+
+  it("out lane adopts date / number; an unwired lane stays any", async () => {
+    const { editor, dateSrc, numSrc, cond } = await build();
+    await editor.addConnection(new ClassicPreset.Connection(dateSrc, "result", cond, conduitInKey(2)) as Schemes["Connection"]);
+    await editor.addConnection(new ClassicPreset.Connection(numSrc, "value", cond, conduitInKey(0)) as Schemes["Connection"]);
+
+    const changed = reconcileConduitTypes(editor);
+    expect(changed).toBe(true);
+    const dt = (k: string) => (cond.outputs[k]?.socket as { dataType?: string })?.dataType;
+    expect(dt(conduitOutKey(2))).toBe("date");   // adopted from the date source
+    expect(dt(conduitOutKey(0))).toBe("number");  // adopted from the number source
+    expect(dt(conduitOutKey(1))).toBe("any");     // unwired lane stays any
+  });
+
+  it("reverts a lane to any when its feed is removed", async () => {
+    const { editor, dateSrc, cond } = await build();
+    const conn = new ClassicPreset.Connection(dateSrc, "result", cond, conduitInKey(0)) as Schemes["Connection"];
+    await editor.addConnection(conn);
+    reconcileConduitTypes(editor);
+    expect((cond.outputs[conduitOutKey(0)]?.socket as { dataType?: string })?.dataType).toBe("date");
+
+    await editor.removeConnection(conn.id);
+    reconcileConduitTypes(editor);
+    expect((cond.outputs[conduitOutKey(0)]?.socket as { dataType?: string })?.dataType).toBe("any");
   });
 });
