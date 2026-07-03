@@ -515,7 +515,14 @@ async function runGraphPass(changedNodeId?: string, renderOnly?: Set<string>, to
   const ipc0 = perf ? ipcSnapshot() : null;
   const t0 = perf ? performance.now() : 0;
   const affected = changedNodeId ? downstreamClosure(_editor, changedNodeId) : null;
-  if (changedNodeId) _engine.reset(changedNodeId);
+  // Targeted invalidation is done by hand over the BFS cone, NOT via the
+  // library's `_engine.reset(nodeId)`: rete-engine walks outgoing connections
+  // RECURSIVELY with no visited set, so on a graph with a cable cycle it
+  // chases the loop forever and throws "Maximum call stack size exceeded"
+  // before the #CIRC! seeding below ever runs. `downstreamClosure` is the
+  // exact same set (that equivalence is what processTargeted.test.ts guards),
+  // computed cycle-safely; cache.delete fires the same cancel hook reset uses.
+  if (affected) for (const id of affected) _engine.cache.delete(id);
   else if (!renderOnly) _engine.reset(); // additive bulk add keeps existing caches
 
   // A dependency loop must be handled BEFORE fetching: the pull-based engine

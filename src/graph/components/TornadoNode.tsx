@@ -2,12 +2,17 @@ import { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell } from "recharts";
 import type { TornadoNode as TornadoNodeType } from "../rete-nodes";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
+import { InlineInputs } from "./inlineInput";
 import { useChartColors } from "./chartView";
 import { runTornado } from "../tornadoRun";
 import { processGraph } from "../process";
 
 const RISING = "#e0524d";
 const FALLING = "#4c8bf5";
+
+// The watched value only makes sense wired (Tornado perturbs UPSTREAM of it) —
+// no literal field.
+const TORNADO_CABLE_ONLY = new Set(["value"]);
 
 export function TornadoComponent({ data, emit }: NodeProps<TornadoNodeType>) {
   const [busy, setBusy] = useState(false);
@@ -36,6 +41,7 @@ export function TornadoComponent({ data, emit }: NodeProps<TornadoNodeType>) {
 
   return (
     <NodeShell node={data} emit={emit}>
+      <InlineInputs node={data} emit={emit} keys={["value"]} cableOnlyKeys={TORNADO_CABLE_ONLY} />
       <button
         type="button"
         className="solenoid-node__inline-input"

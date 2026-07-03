@@ -17,6 +17,7 @@ const GROUPS: Group[] = [
     rows: [
       { keys: ["A"], label: "Add node (at the cursor)" },
       { keys: ["G"], label: "Group selection" },
+      { keys: ["Ctrl", "Shift", "G"], label: "Make composite from selection" },
       { keys: ["I"], label: "Isolate selection (toggle)" },
       { keys: ["T"], label: "Tidy (auto-arrange selection / all)" },
       { keys: ["E"], label: "Expand / collapse groups (selected / all)" },
@@ -44,6 +45,7 @@ const GROUPS: Group[] = [
   {
     title: "Canvas",
     rows: [
+      { keys: ["Enter"], label: "Command palette" },
       { keys: ["Right-click"], label: "Add node menu" },
       { keys: ["Shift", "drag"], label: "Box / lasso select" },
       { keys: ["Drag"], label: "Pan the canvas" },
