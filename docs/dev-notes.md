@@ -2,6 +2,60 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### v2.0 build regression sweep + the Composite drill-in editor (2026-07-03)
+The "stronger review pass" the backlog asked for — six parallel review agents over every
+unwalked v2.0 bundle plus root-cause work on the author-reported breakage. Fixes:
+
+- **Expect/Tornado missing input sockets.** Same failure class as Write CSV/JSON (f988db8):
+  the node CLASS declares `addInput(...)`, but the custom component never renders a socket for
+  it — and NodeShell only auto-renders OUTPUTS, so a forgotten input is simply invisible. Expect
+  additionally hid its min/max/pattern rows when their checkbox was off, which strands a wired
+  cable; the rows now stay while connected (`useConnectedInputs`). **When adding a node with a
+  custom component, every `addInput` needs a matching render** (`InlineInputs` keys / `leading`
+  socket / `MeasuredSocketRow`) — the full-registry audit found no other offenders.
+- **Cycle → RangeError instead of #CIRC!** (`process.ts`). rete-engine's `reset(nodeId)` walks
+  outgoing connections recursively with NO visited set; the audit-40 targeted topology pass
+  (`processGraph(cable.target, …, {topology:true})`) hits it the moment a cable closes a cycle —
+  stack overflow BEFORE the Tarjan #CIRC! seeding runs. Fix: iterative `cache.delete` over the
+  already-computed `downstreamClosure` cone (identical set, cycle-safe). `circularReset.test.ts`
+  guards it. Never call `_engine.reset(id)` with an argument.
+- **Composite drill-in editor** (`CompositeEditorOverlay.tsx` + `compositeEditorStore.ts`): the
+  container shipped with NO way to open its internal graph. The overlay mounts `internalEditor`
+  into a real rete area (same classic-preset customize + `getGuardedSocketPosition` identity
+  offset as Canvas). Non-obvious gotchas, learned the hard way:
+  - **Scope.use() can't be undone** → the plugin stack (area/connection/react) is created ONCE
+    per composite and cached on the node instance (`__drillMount`); the container div is
+    re-parented into the overlay per open.
+  - **The area only creates views from `nodecreated` events** — the internal nodes predate the
+    plugin, so back-fill with `area.addNodeView`/`addConnectionView` once at mount creation, or
+    the overlay opens onto an empty grid.
+  - **Do NOT re-export the overlay from `components/index.ts`** — it imports `nodeRegistry`
+    (for the render preset), which imports the barrel back: a module-init cycle that TDZ-crashed
+    the whole app at startup ("Cannot access X before initialization").
+  - Literal edits inside the drill-in call `processGraph(internalNodeId)` — an id the outer
+    editor doesn't know. `runGraphPass` now retargets an unknown id at the OWNING composite card
+    (duck-typed `internalEditor` walk, `findCompositeOwner`), whose `data()` re-runs the whole
+    internal graph. An open overlay refreshes its node views off `compositePassStore` (notified
+    at the end of every pass).
+  - Canvas's window keydown stands down entirely while the overlay is open (its guard list),
+    and the overlay's own keydown is window-level (focus lands on `<body>` after canvas clicks).
+  - Positions: the collapse gesture records each member's bbox-relative x/y into
+    `composite.internalPositions`; they ride the internal snapshot (per-node `x`/`y`) through
+    save/load/paste; the overlay writes them back on close.
+  - Ports are edited THROUGH markers: header "+ Input/+ Output" adds a marker + exposed port;
+    deleting a marker (only via port reconcile on close — Delete skips markers mid-session)
+    drops the port and its outer cables.
+- **Unpack composite** (`compositeLogic.ts unpackComposite`): exact inverse of collapse —
+  members restored at card position + relative layout, boundary ports flattened to direct
+  cables, markers dissolve, card removed. Context menu: Edit contents / Unpack composite.
+- **Composite Workbench seed** (`composite-workbench.json` + `compositeSeed.test.ts`): a
+  single-run container, a Simulation container with a real wired feedback loop, and a
+  deliberate open-canvas #CIRC! pair — the author's three repro cases, loadable from the
+  seed menu and asserted headlessly.
+- Smoke-tested in a real browser this time (Playwright against the dev server): seed load,
+  drill-in render, cable/port edits, unpack, #CIRC! badges. That's what caught the view
+  back-fill and barrel-cycle bugs — tsc + vitest were green through both.
+
 ### Addressable model + text projection BUILT (Bet 2, `docs/v2.0/01-addressable-model.md`) (2026-07-03)
 Every node now has a stable, user-editable `name` (`nodeNameStore.ts` — module store like
 collapseStore/nodeSizeStore, keyed by rete's ephemeral `id`; defaults via a type-scoped counter,
