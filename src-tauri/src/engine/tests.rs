@@ -306,3 +306,53 @@ fn make_headers_matches_oracle() {
     let got = make_headers(&["".to_string(), "a".to_string(), "a".to_string()], 3);
     assert_eq!(got, vec!["Col1".to_string(), "a".to_string(), "a2".to_string()]);
 }
+
+// ─── Parquet source (bundle 34) ─────────────────────────────────────────────────
+
+#[test]
+fn parquet_round_trip_preserves_types_and_dates() {
+    let n: PlSmallStr = "n".into();
+    let s: PlSmallStr = "s".into();
+    let b: PlSmallStr = "b".into();
+    let d: PlSmallStr = "d".into();
+    let date_col = Series::new(d, vec![19000i32, 19001, 19002])
+        .cast(&DataType::Date)
+        .unwrap();
+    let mut df = DataFrame::new(vec![
+        Series::new(n, vec![1i64, 2, 3]).into_column(),
+        Series::new(s, vec!["a", "b", "c"]).into_column(),
+        Series::new(b, vec![true, false, true]).into_column(),
+        date_col.into_column(),
+    ])
+    .unwrap();
+
+    let path = std::env::temp_dir().join(format!("solenoid_test_{}.parquet", std::process::id()));
+    let file = std::fs::File::create(&path).unwrap();
+    ParquetWriter::new(file).finish(&mut df).unwrap();
+    let out = read_parquet_solframe(&path);
+    std::fs::remove_file(&path).ok();
+    let out = out.unwrap();
+
+    let d = dump(&out);
+    assert_eq!(d[0].1, "number");
+    assert_eq!(d[0].2, j(&[1.0, 2.0, 3.0]));
+    assert_eq!(d[1].1, "string");
+    assert_eq!(
+        d[1].2,
+        vec![Json::String("a".into()), Json::String("b".into()), Json::String("c".into())]
+    );
+    assert_eq!(d[2].1, "logical");
+    assert_eq!(d[2].2, vec![Json::Bool(true), Json::Bool(false), Json::Bool(true)]);
+    // A Date column arrives as an Excel serial, not Polars' own Unix-epoch day count:
+    // 19000 Unix days + 25569 (Excel↔Unix epoch offset, mirrors jsDateToSerial).
+    assert_eq!(d[3].1, "date");
+    assert_eq!(d[3].2, j(&[44569.0, 44570.0, 44571.0]));
+}
+
+#[test]
+fn parquet_missing_file_is_a_ref_error() {
+    let path = std::path::Path::new("__solenoid_does_not_exist__.parquet");
+    let err = read_parquet_solframe(path).unwrap_err();
+    let v = serde_json::to_value(&err).unwrap();
+    assert_eq!(v["code"], "#REF!");
+}

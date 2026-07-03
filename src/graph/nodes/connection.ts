@@ -6,6 +6,9 @@ import { isDesktop, readFileText } from "../fileBridge";
 import { fetchText } from "../httpBridge";
 import { frameFromCells, frameFromRecords, frameFromRows, frameFromColumnar, frameRowCount, type FrameValue } from "../frame";
 import { parseCsvRows } from "../csv";
+import { engineAvailable, ipcInvoke } from "../ipcBridge";
+import { dropFrameRef, collectPreview, type FrameRef, type FrameHandle } from "../frameBackend";
+import { solError, isSolError, type SolError } from "../errorValue";
 
 // ─── External-data connection nodes ─────────────────────────────────────────────
 // A connection node references outside data (a URL now; a folder-relative CSV
@@ -322,6 +325,79 @@ export class CsvConnectionNode extends ClassicPreset.Node {
         fetchedAt: Date.now(),
       });
       return { frame };
+    } catch (e) {
+      return fail(e instanceof Error ? e.message : String(e));
+    }
+  }
+}
+
+// ─── PARQUET CONNECTION (local folder, native engine read) ──────────────────────
+// Like CSV Connection, but the file goes straight from disk into the Rust engine
+// (`engine_read_parquet`) — never parsed or type-inferred in JS (bundle 34's
+// "native file → engine" ask). Desktop + native-engine only: unlike CSV/JSON
+// there's no JS Parquet reader to fall back to. Emits a LAZY FrameRef off the
+// fresh handle, so a verb chain built on a Parquet source never re-uploads
+// through `engine_source` — the frame is already living in the backend the
+// moment the file is read.
+
+export class ParquetConnectionNode extends ClassicPreset.Node {
+  label: string;
+  /** File name relative to the Settings target folder (not a full path). */
+  fileName: string;
+  cachedResult: FrameValue | SolError | null = null;
+  width = 260; height = 210;
+
+  private lastKey: string | undefined;
+  private inflightKey: string | undefined;
+  private inflight: Promise<{ frame: FrameRef | SolError | null }> | undefined;
+  /** The handle backing `cachedResult`'s preview — owned by this node, dropped
+   *  when a refresh/re-point replaces it (mirrors the verb nodes' `_ref`). */
+  private ref: FrameRef | null = null;
+
+  constructor(init?: { label?: string; fileName?: string }) {
+    super("ParquetConnection");
+    this.label = init?.label ?? "Parquet File";
+    this.fileName = init?.fileName ?? "";
+    this.addOutput("frame", frameOut("Frame"));
+  }
+
+  async data(): Promise<{ frame: FrameRef | SolError | null }> {
+    const folder = settingsStore.get("csvFolder");
+    const name = this.fileName.trim();
+    const key = connectionStore.key(this.id, `${folder} ${name}`);
+    if (key === this.lastKey) return { frame: this.ref ?? (this.cachedResult as SolError | null) };
+    if (this.inflightKey !== key || !this.inflight) {
+      this.inflightKey = key;
+      this.inflight = this.load(folder, name, key);
+    }
+    return this.inflight;
+  }
+
+  private async load(folder: string, name: string, key: string): Promise<{ frame: FrameRef | SolError | null }> {
+    const fail = (message: string, status: "idle" | "error" = "error"): { frame: SolError | null } => {
+      if (this.ref) { dropFrameRef(this.ref); this.ref = null; }
+      const out = status === "idle" ? null : solError("#REF!", message);
+      this.cachedResult = out;
+      this.lastKey = key;
+      connectionStore.setState(this.id, { status, message });
+      return { frame: out };
+    };
+    if (!isDesktop() || !engineAvailable()) return fail("Desktop app (native engine) only");
+    if (folder === "") return fail("Set a target folder in Settings", "idle");
+    if (name === "") return fail("Pick a file", "idle");
+    connectionStore.setState(this.id, { status: "loading" });
+    try {
+      const handle = await ipcInvoke<string>("engine_read_parquet", { folder, name });
+      if (this.ref) dropFrameRef(this.ref);
+      const ref: FrameRef = { __frameRef: handle as FrameHandle };
+      this.ref = ref;
+      const preview = await collectPreview(ref);
+      this.cachedResult = preview;
+      this.lastKey = key;
+      const rows = !preview || isSolError(preview) ? 0 : (preview.__totalRows ?? frameRowCount(preview));
+      const cols = !preview || isSolError(preview) ? 0 : preview.columns.length;
+      connectionStore.setState(this.id, { status: "ok", rows, cols, fetchedAt: Date.now() });
+      return { frame: ref };
     } catch (e) {
       return fail(e instanceof Error ? e.message : String(e));
     }

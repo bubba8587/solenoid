@@ -158,8 +158,8 @@ export {
 // ─── Cubes (recursive nested tables) ───────────────────────────────────────────
 export { BuildCubeComponent, NestJoinComponent, CubeColumnsComponent, CubeRollupComponent } from "./CubeNodes";
 
-// ─── External-data connections (Web Source, CSV folder) ─────────────────────────
-export { WebSourceComponent, CsvConnectionComponent, ImportHtmlComponent, ImportXmlComponent } from "./ConnectionNodes";
+// ─── External-data connections (Web Source, CSV folder, Parquet folder) ─────────
+export { WebSourceComponent, CsvConnectionComponent, ParquetConnectionComponent, ImportHtmlComponent, ImportXmlComponent } from "./ConnectionNodes";
 
 // ─── Cable Switch (control multiplexer) ─────────────────────────────────────────
 export { CableSwitchComponent } from "./CableSwitchNode";

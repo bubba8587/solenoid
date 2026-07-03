@@ -49,7 +49,7 @@ import {
   HeadNode, SortFrameNode, FilterFrameNode, JoinNode, FrameLookupNode,
   SelectColumnsNode, DropColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode,
   BuildCubeNode, NestJoinNode, CubeColumnsNode, CubeRollupNode,
-  WebSourceNode, CsvConnectionNode, ImportHtmlNode, ImportXmlNode,
+  WebSourceNode, CsvConnectionNode, ParquetConnectionNode, ImportHtmlNode, ImportXmlNode,
   GroupNode, NoteNode, ImageNode,
   MAT_DET_OP_META, TABLE_RESHAPE_OP_META, TABLE_SELECT_OP_META,
   type MatDetOp, type TableReshapeOp, type TableSelectOp,
@@ -187,6 +187,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
         children: [
           { type: "web-source",    label: "Web Source",  description: "Load a Frame from a CSV or JSON URL — columns auto-typed. Stores the URL, not the data: refresh to re-pull. Desktop fetches any URL; the browser only CORS-enabled ones.", create: () => new WebSourceNode(), parity: false },
           { type: "csv-connection", label: "CSV File",    description: "Load a Frame from a .csv in your data folder (Settings ▸ Data) — columns auto-typed. Stores the file name; refresh to re-read. Desktop only.", create: () => new CsvConnectionNode(), parity: false },
+          { type: "parquet-connection", label: "Parquet File", description: "Load a Frame from a .parquet in your data folder (Settings ▸ Data) — read straight into the native engine, so typed columns arrive intact with no inference step (unlike CSV). Stores the file name; refresh to re-read. Desktop (native engine) only.", create: () => new ParquetConnectionNode(), parity: false, keywords: "parquet arrow column columnar native engine polars" },
           { type: "import-html",   label: "Import HTML", description: "Grab the Nth HTML table on a page as a Frame, columns auto-typed. Stores the URL; refresh to re-pull. Desktop any URL, browser CORS-only.   (Sheets: =IMPORTHTML)", create: () => new ImportHtmlNode(), parity: false },
           { type: "import-xml",    label: "Import XML",  description: "Extract a page's XPath matches (e.g. //h2/a) as a text list. Stores the URL; refresh to re-pull. Desktop any URL, browser CORS-only.   (Sheets: =IMPORTXML)", create: () => new ImportXmlNode(), parity: false },
         ],

@@ -34,7 +34,13 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # WS2 — the native relational engine. Lazy frames behind opaque handles; only a
 # preview/column materializes. Lean feature set: lazy plans + string predicates.
-polars = { version = "0.46", default-features = false, features = ["lazy", "strings"] }
+# `parquet` backs the native Parquet source (file -> engine, never materializes in
+# JS). `dtype-date` + `dtype-datetime` ride along with it: a Parquet file's own
+# Date/Datetime logical columns need those to read as such at all (without them
+# Polars can't even represent a Date-typed column, `AnyValue::Date` doesn't exist
+# in the build) — needed for bundle 34's "typed columns arrive intact, no
+# inference step" to actually hold for date columns, not just numeric/string ones.
+polars = { version = "0.46", default-features = false, features = ["lazy", "strings", "parquet", "dtype-date", "dtype-datetime"] }
 
 # Windows 11 DWM: set the window's border color (DWMWA_BORDER_COLOR) to the app
 # accent so the focused-window frame matches the theme. Already in the dep tree via

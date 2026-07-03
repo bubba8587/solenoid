@@ -36,7 +36,7 @@ import { BinomDistNode, BinomInvNode, PoissonDistNode, HypgeomDistNode, Negbinom
 import { ConduitNode } from "./conduit";
 import { FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, GetRowNode, DistinctNode, HeadNode, SortFrameNode, FilterFrameNode, JoinNode, FrameLookupNode, SelectColumnsNode, DropColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode } from "./frame";
 import { CubeRollupNode } from "./cube";
-import { WebSourceNode, CsvConnectionNode, ImportHtmlNode, ImportXmlNode } from "./connection";
+import { WebSourceNode, CsvConnectionNode, ParquetConnectionNode, ImportHtmlNode, ImportXmlNode } from "./connection";
 import { SlicerNode, CableSwitchNode, DatePickerNode, XYPadNode } from "./control";
 import { SparklineNode, ChartNode, GaugeNode, HeatmapCellNode, ChartBuilderNode } from "./visual";
 import { NoteNode, ImageNode } from "./annotation";
@@ -68,7 +68,7 @@ import {
 // doesn't rely on constructor.name.
 
 export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
-  if (node instanceof NumberInputNode || node instanceof ConstantNode || node instanceof SliderInputNode || node instanceof RandBetweenNode || node instanceof WebSourceNode || node instanceof CsvConnectionNode || node instanceof ImportHtmlNode || node instanceof ImportXmlNode || node instanceof XYPadNode || node instanceof ColorPickerNode) return "input";
+  if (node instanceof NumberInputNode || node instanceof ConstantNode || node instanceof SliderInputNode || node instanceof RandBetweenNode || node instanceof WebSourceNode || node instanceof CsvConnectionNode || node instanceof ParquetConnectionNode || node instanceof ImportHtmlNode || node instanceof ImportXmlNode || node instanceof XYPadNode || node instanceof ColorPickerNode) return "input";
   if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof GaugeNode || node instanceof HeatmapCellNode || node instanceof ChartBuilderNode) return "display";
   if (node instanceof ConvertNode || node instanceof CastNode) return "convert";
   if (

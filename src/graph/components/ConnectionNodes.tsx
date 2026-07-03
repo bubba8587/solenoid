@@ -2,13 +2,14 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import type {
   WebSourceNode as WebSourceNodeType,
   CsvConnectionNode as CsvConnectionNodeType,
+  ParquetConnectionNode as ParquetConnectionNodeType,
   ImportHtmlNode as ImportHtmlNodeType,
   ImportXmlNode as ImportXmlNodeType,
 } from "../rete-nodes";
 import { processGraph } from "../process";
 import { connectionStore, refreshConnection, type ConnectionState } from "../connectionStore";
 import { settingsStore } from "../settingsStore";
-import { isDesktop, listCsvFiles } from "../fileBridge";
+import { isDesktop, listCsvFiles, listParquetFiles } from "../fileBridge";
 import { FrameDisplay } from "./FrameDisplay";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import "./ConnectionNodes.css";
@@ -236,6 +237,63 @@ export function CsvConnectionComponent({ data, emit }: NodeProps<CsvConnectionNo
 
   return (
     <NodeShell node={data} emit={emit} labelPlaceholder="CSV File">
+      <div className="sol-conn">
+        {!desktop ? (
+          <div className="sol-conn__note">Local files are available in the desktop app only.</div>
+        ) : !folder ? (
+          <div className="sol-conn__note">No target folder set — open Settings ▸ Data to choose one.</div>
+        ) : (
+          <select
+            className="sol-conn__select"
+            value={name}
+            onChange={(e) => pick(e.target.value)}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <option value="">Pick a file…</option>
+            {name !== "" && !files.includes(name) && <option value={name}>{name} (missing)</option>}
+            {files.map((f) => <option key={f} value={f}>{f}</option>)}
+          </select>
+        )}
+        <ConnectionStatusRow nodeId={data.id} onRefresh={refresh} />
+        <FrameDisplay frame={data.cachedResult} label={data.label} />
+      </div>
+    </NodeShell>
+  );
+}
+
+// ─── PARQUET CONNECTION (local folder, native engine read) ──────────────────────
+// Same folder-picker shape as CSV Connection, but the read never touches JS — the
+// file goes straight from disk into the Rust engine, so typed columns arrive
+// intact (no CSV-style inference step).
+
+export function ParquetConnectionComponent({ data, emit }: NodeProps<ParquetConnectionNodeType>) {
+  const folder = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("csvFolder"));
+  const [files, setFiles] = useState<string[]>([]);
+  const [name, setName] = useState(data.fileName);
+  const desktop = isDesktop();
+
+  useEffect(() => {
+    let alive = true;
+    listParquetFiles(folder).then((fs) => { if (alive) setFiles(fs); }).catch(() => { if (alive) setFiles([]); });
+    return () => { alive = false; };
+  }, [folder]);
+
+  useEffect(() => { setName(data.fileName); }, [data.fileName]);
+
+  function pick(next: string) {
+    setName(next);
+    data.fileName = next;
+    void processGraph();
+  }
+
+  function refresh() {
+    listParquetFiles(folder).then(setFiles).catch(() => setFiles([]));
+    void refreshConnection(data.id);
+  }
+
+  return (
+    <NodeShell node={data} emit={emit} labelPlaceholder="Parquet File">
       <div className="sol-conn">
         {!desktop ? (
           <div className="sol-conn__note">Local files are available in the desktop app only.</div>

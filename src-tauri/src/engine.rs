@@ -31,6 +31,8 @@
 //    oracle's exact tail order (Polars full-join ordering); inner/left/right match.
 
 use std::collections::{HashMap, HashSet};
+use std::fs::File;
+use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, OnceLock};
 
@@ -441,6 +443,77 @@ fn wire_to_solframe(frame: WireFrame) -> Result<SolFrame, IpcError> {
     }
     let df = build_df(&names, &types, &columns)?;
     Ok(SolFrame { df, types })
+}
+
+// ─── Parquet source (native file → engine, never materializes in JS) ────────────
+// Bundle 34's "typed columns arrive intact — no inference step, unlike CSV": the
+// DataFrame comes straight from the file's own Arrow-typed columns, no JS-side
+// text parsing or type inference. Column dtypes narrow to the same three the rest
+// of the engine speaks (see `series_of`): a Date/Datetime column converts to an
+// Excel serial (frame.ts's "a serial is just a number; the type carries date-
+// ness" model) instead of carrying Polars' own logical Date type through — the
+// SolFrame currency is always Number/Str/Logical. Excel serial 1 = 1900-01-01;
+// the Unix epoch (Polars' Date/Datetime origin) is serial 25569 (mirrors
+// `jsDateToSerial` in nodes/date.ts).
+const EXCEL_EPOCH_OFFSET: f64 = 25569.0;
+
+fn parquet_column_to_cells(column: &Column) -> (SolType, Vec<Cell>) {
+    match column.dtype() {
+        DataType::Boolean => (SolType::Logical, cells_of(column)),
+        DataType::String => (SolType::Str, cells_of(column)),
+        DataType::Date => {
+            let s = column.as_materialized_series();
+            let cells = (0..s.len())
+                .map(|i| match s.get(i).unwrap_or(AnyValue::Null) {
+                    AnyValue::Date(days) => Cell::Num(days as f64 + EXCEL_EPOCH_OFFSET),
+                    _ => Cell::Null,
+                })
+                .collect();
+            (SolType::Date, cells)
+        }
+        DataType::Datetime(unit, _) => {
+            let per_day = match unit {
+                TimeUnit::Milliseconds => 86_400_000.0,
+                TimeUnit::Microseconds => 86_400_000_000.0,
+                TimeUnit::Nanoseconds => 86_400_000_000_000.0,
+            };
+            let s = column.as_materialized_series();
+            let cells = (0..s.len())
+                .map(|i| match s.get(i).unwrap_or(AnyValue::Null) {
+                    AnyValue::Datetime(v, _, _) | AnyValue::DatetimeOwned(v, _, _) => {
+                        Cell::Num(v as f64 / per_day + EXCEL_EPOCH_OFFSET)
+                    }
+                    _ => Cell::Null,
+                })
+                .collect();
+            (SolType::Date, cells)
+        }
+        // Every other physical type (Int*/UInt*/Float32/Float64…) — cast to the
+        // one numeric wire type, same as a CSV numeric column.
+        _ => {
+            let numeric = column.cast(&DataType::Float64).unwrap_or_else(|_| column.clone());
+            (SolType::Number, cells_of(&numeric))
+        }
+    }
+}
+
+fn read_parquet_solframe(path: &Path) -> Result<SolFrame, IpcError> {
+    let file = File::open(path)
+        .map_err(|e| IpcError::new("#REF!", format!("couldn't open \"{}\": {e}", path.display())))?;
+    let df = ParquetReader::new(file)
+        .finish()
+        .map_err(|e| IpcError::internal(format!("parquet read failed: {e}")))?;
+    let mut names = Vec::with_capacity(df.width());
+    let mut types = Vec::with_capacity(df.width());
+    let mut columns = Vec::with_capacity(df.width());
+    for c in df.get_columns() {
+        let (ty, cells) = parquet_column_to_cells(c);
+        names.push(c.name().to_string());
+        types.push(ty);
+        columns.push(cells);
+    }
+    let out_df = build_df(&names, &types, &columns)?;
+    Ok(SolFrame { df: out_df, types })
 }
 
 // ─── Verb helpers ───────────────────────────────────────────────────────────────
@@ -1050,6 +1123,16 @@ fn column_of(frame: &SolFrame, name: &str) -> Option<OutColumn> {
 #[tauri::command]
 pub fn engine_source(frame: WireFrame) -> Result<String, IpcError> {
     Ok(register(wire_to_solframe(frame)?))
+}
+
+/// Read a `.parquet` file straight into the engine — a source handle without ever
+/// crossing back through JS (the Parquet Connection node's whole point). `name`
+/// is joined onto `folder` the same way the CSV Connection node's `readFileText`
+/// does, so both file-source nodes share one "target folder" Settings concept.
+#[tauri::command]
+pub fn engine_read_parquet(folder: String, name: String) -> Result<String, IpcError> {
+    let path = Path::new(&folder).join(&name);
+    Ok(register(read_parquet_solframe(&path)?))
 }
 
 #[tauri::command]
