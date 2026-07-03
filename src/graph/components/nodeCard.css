@@ -257,6 +257,33 @@
   opacity: 0.4;
 }
 
+/* Comment indicator (#14): a quiet round badge peeking out of the top-left
+   corner — mirrors cornerBadge's top-right slot without colliding with it.
+   Fixed offset (not header-relative): it marks the CARD, not a header detail. */
+.solenoid-node__comment-badge {
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  z-index: 7;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent);
+  color: var(--accent-contrast, #fff);
+  border: 1.5px solid var(--surface);
+  border-radius: 50%;
+  padding: 0;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.solenoid-node__comment-badge--resolved {
+  background: var(--text-muted, #9aa0a6);
+  opacity: 0.7;
+}
+.solenoid-node__comment-badge:hover { opacity: 1; }
+
 /* Node type hint — appears in the right strip of the header on hover.
    Uses the same 44px gap that the label-input already reserves for drag. */
 .solenoid-node__type-hint {

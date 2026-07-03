@@ -24,6 +24,13 @@ const WhereUsedSvg = () => (
   </svg>
 );
 
+// Lucide "message-square" — the Add-comment icon. https://lucide.dev/icons/message-square
+const CommentSvg = () => (
+  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}>
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+  </svg>
+);
+
 export type NodeContextTarget = {
   nodeId: string;
   /** What Isolate acts on: the selection if the clicked node is part of it,
@@ -44,10 +51,11 @@ type Props = {
   onWhereUsed?: (nodeId: string) => void;
   onPin?: (nodeId: string) => void;
   onLinkStandoff?: (s: { aId: string; bId: string }) => void;
+  onAddComment?: (nodeId: string) => void;
   onClose: () => void;
 };
 
-export function NodeContextMenu({ target, onIsolate, onIsolateChain, onWhereUsed, onPin, onLinkStandoff, onClose }: Props) {
+export function NodeContextMenu({ target, onIsolate, onIsolateChain, onWhereUsed, onPin, onLinkStandoff, onAddComment, onClose }: Props) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -86,6 +94,7 @@ export function NodeContextMenu({ target, onIsolate, onIsolateChain, onWhereUsed
       {item("⛓", "Isolate chain", () => onIsolateChain(target.seedIds))}
       {onWhereUsed && item(<WhereUsedSvg />, "Where used", () => onWhereUsed!(target.nodeId))}
       {onPin && target.canPin && item(<PinSvg />, "Pin value", () => onPin!(target.nodeId))}
+      {onAddComment && item(<CommentSvg />, "Add comment", () => onAddComment!(target.nodeId))}
       {target.standoff && onLinkStandoff &&
         item("⊷", "Link with Standoff", () => onLinkStandoff!(target.standoff!))}
     </div>

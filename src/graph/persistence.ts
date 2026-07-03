@@ -17,6 +17,7 @@ import { packsStore, allPacks } from "./packs";
 import { pushNotice } from "./noticeStore";
 import { documentStore } from "./documentStore";
 import { pinStore, type Pin } from "./pinStore";
+import { commentStore, type SavedCommentData } from "./commentStore";
 import { paletteStore } from "./palette";
 import { loadRevealStore, revealWaves } from "./loadReveal";
 
@@ -69,6 +70,8 @@ export interface SavedGraph {
   standoffs?: SavedStandoff[];
   // Pinned value chips (optional — absent in older saves).
   pins?: Pin[];
+  // Node-anchored comment threads (optional — absent in older saves).
+  comments?: SavedCommentData[];
   // Which seed the dropdown should show after this graph is restored ("custom"
   // for an edited / non-seed working graph). Optional: hand-authored seed files
   // omit it, and seed loads set their selection from the filename instead.
@@ -179,6 +182,8 @@ export function serializeGraph(): SavedGraph | null {
   if (standoffs.length > 0) g.standoffs = standoffs;
   const pins = pinStore.serialize();
   if (pins.length > 0) g.pins = pins;
+  const comments = commentStore.serialize();
+  if (comments.length > 0) g.comments = comments;
   const palette = paletteStore.docPalette();
   if (palette) g.palette = palette;
   // Pack provenance breadcrumb: the packs active at save time (see SavedGraph.packs).
@@ -464,6 +469,13 @@ async function rebuildGraph(
     (g.pins ?? [])
       .map((p) => ({ nodeId: idMap.get(p.nodeId) ?? "", outputKey: p.outputKey }))
       .filter((p) => p.nodeId && editor.getNode(p.nodeId)),
+  );
+
+  // Re-link comment threads through the id remap, dropping any whose node vanished.
+  commentStore.load(
+    (g.comments ?? [])
+      .map((c) => ({ ...c, nodeId: idMap.get(c.nodeId) ?? "" }))
+      .filter((c) => c.nodeId && editor.getNode(c.nodeId)),
   );
 
   rebuildGroupMembership(editor);
