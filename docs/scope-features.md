@@ -1005,6 +1005,13 @@ aggregators later. A "±" input on the Number node is the whole authoring UX.
 
 ## 22 — Time-aware data: as-of joins and effective dating
 
+**VERDICT (author, 2026-07-03): IN.** No third node: As-Of Join is a new `how` value
+(plus a direction control: backward/forward/nearest) on the existing `JoinNode`
+(`src/graph/nodes/frame.ts:228`), same frame+frame→frame shape Polars' `join_asof`
+already matches. As-Of Lookup (single date → single cell) is the approximate-match
+mode `FrameLookupNode` (`frame.ts:1071`) already flags in its own code comment as the
+planned v2 follow-up — no new node there either.
+
 **The problem it kills:** "what was the price/FX-rate/headcount **on that date**" — the
 question behind half of finance data pain. The lookup everyone needs is not exact-match
 but **"the most recent value at or before this date"**, and doing it in Excel is a
