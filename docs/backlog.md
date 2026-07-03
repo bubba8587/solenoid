@@ -40,13 +40,14 @@ Expression/LAMBDA) · golden tests PARKED (revisit end of walk) · data-drafts-i
 graph PARKED (author thinking).
 Smaller swap 4 (Cube identity) DECIDED 2026-07-02: OUT as identity, kept as headline
 capability/seed (verdict inline in future-directions.md).
-Scope-features #1–10 walked 2026-07-03 (verdicts inline): #1 IN (subgraph run-mode
+Scope-features #1–11 walked 2026-07-03 (verdicts inline): #1 IN (subgraph run-mode
 hook) · #2 DEFERRED · #3 IN tiers 1-2 · #4 IN (all five run modes on the one
 container) · #5 ecosystem OUT, document-local container only, packs distribute ·
 #6 DEFERRED · #7 ALL OUT · #8 IN for sure · #9 IN very limited (manual file sinks
-only) · #10 IN. Deferred pile for end-of-walk revisit: #2, #6, golden tests,
+only) · #10 IN · #11 DEFERRED (transform-by-example — author wants hands-on time with
+the area first). Deferred pile for end-of-walk revisit: #2, #6, #11, golden tests,
 data-drafts.
-NEXT when resuming: scope-features #11 (transform-by-example), then #12–63 in order (folding in strategy threads #1–#7 and the
+NEXT when resuming: scope-features #12, then #13–63 in order (folding in strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
 #20 dimensions → engine execution contract (Bet 1 × #23 × #24 × calc mode) → #5
