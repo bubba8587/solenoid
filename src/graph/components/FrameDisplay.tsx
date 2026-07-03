@@ -5,6 +5,7 @@ import { frameRowCount, formatFrameCell, type FrameCell, type FrameColType, type
 import type { FramePopupColumn } from "../tablePopupStore";
 import { isSolError, type SolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
+import { flyToNode } from "../flyToNode";
 
 function fmtCell(v: FrameCell, type: FrameColType = "number"): string {
   const c = formatFrameCell(type, v); // date serials → date strings
@@ -31,7 +32,11 @@ export function FrameDisplay({ frame, label, onSave, source, onSaveSource, full 
 }) {
   if (isSolError(frame)) {
     return (
-      <div className="solenoid-node__display-value solenoid-node__display-value--error" title={errorTip(frame)}>
+      <div
+        className={`solenoid-node__display-value solenoid-node__display-value--error${frame.origin ? " sol-error-chip--clickable" : ""}`}
+        title={errorTip(frame)}
+        onClick={frame.origin ? () => flyToNode(frame.origin!.nodeId) : undefined}
+      >
         {frame.code}
       </div>
     );

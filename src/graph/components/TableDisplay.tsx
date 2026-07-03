@@ -2,6 +2,7 @@
 import { ArrayChip } from "./ArrayChip";
 import { isSolError, type SolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
+import { flyToNode } from "../flyToNode";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
 import type { ResultType } from "../nodes/shared";
 
@@ -45,7 +46,11 @@ export function TableDisplay({ table, label, onSave, full, kind }: {
   // #CODE! badge a scalar box shows, structural message in the tooltip.
   if (isSolError(table)) {
     return (
-      <div className="solenoid-node__display-value solenoid-node__display-value--error" title={errorTip(table)}>
+      <div
+        className={`solenoid-node__display-value solenoid-node__display-value--error${table.origin ? " sol-error-chip--clickable" : ""}`}
+        title={errorTip(table)}
+        onClick={table.origin ? () => flyToNode(table.origin!.nodeId) : undefined}
+      >
         {table.code}
       </div>
     );

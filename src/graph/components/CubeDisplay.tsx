@@ -6,6 +6,7 @@ import { cubeRowCount, isCubeValue, type CubeValue } from "../frame";
 import { cubeCellToken } from "./cubeCell";
 import { isSolError, type SolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
+import { flyToNode } from "../flyToNode";
 
 export function CubeDisplay({ cube, label, full }: {
   cube: CubeValue | SolError | null;
@@ -18,7 +19,11 @@ export function CubeDisplay({ cube, label, full }: {
 }) {
   if (isSolError(cube)) {
     return (
-      <div className="solenoid-node__display-value solenoid-node__display-value--error" title={errorTip(cube)}>
+      <div
+        className={`solenoid-node__display-value solenoid-node__display-value--error${cube.origin ? " sol-error-chip--clickable" : ""}`}
+        title={errorTip(cube)}
+        onClick={cube.origin ? () => flyToNode(cube.origin!.nodeId) : undefined}
+      >
         {cube.code}
       </div>
     );
