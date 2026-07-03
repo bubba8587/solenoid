@@ -234,6 +234,12 @@
   .report-body[data-tab="draft"] .report-preview { display: none; }
   .report-body[data-tab="preview"] .report-source { display: none; }
   .report-source { border-right: none; }
+  /* .report-preview carries .sol-md, whose `margin: 0 auto` (a centered reading
+     column) turns into "shrink to content + center" on the CROSS axis of this
+     column flexbox — collapsing the text to a narrow strip pushed to the middle.
+     Force it to fill the pane. (Desktop is unaffected: the row flex-grows, so
+     the auto margins collapse to 0.) */
+  .report-preview { margin: 0; max-width: none; align-self: stretch; }
 
   /* Clamp preview content to the viewport — an inline chart figure (~360px) or
      a wide embed scrolls WITHIN its own box, never forcing a sideways page
