@@ -5,6 +5,7 @@ import { nodeTypeName } from "./nodeNames";
 import { isWebDemo } from "../env";
 import { loadRevealStore } from "./loadReveal";
 import { WEB_DEMO_NODE_BUDGET, WEB_DEMO_NODE_WARN_RATIO } from "./nodeBudget";
+import { problemsStore, problemsPanelUi } from "./problemsStore";
 
 /**
  * Thin bottom status strip: graph counts, a light selection indicator, and the
@@ -78,6 +79,8 @@ export function StatusBar() {
   const manual = calcModeStore.isManual();
   const calcDirty = calcModeStore.dirty();
 
+  const problemCount = useSyncExternalStore(problemsStore.subscribe, () => problemsStore.list().length);
+
   return (
     <>
       <div className="solenoid-statusbar" onPointerDown={(e) => e.stopPropagation()}>
@@ -102,6 +105,16 @@ export function StatusBar() {
           {snap.cables} {snap.cables === 1 ? "cable" : "cables"}
         </span>
         <span className="solenoid-statusbar__sel">{snap.selection}</span>
+        {problemCount > 0 && (
+          <button
+            type="button"
+            className="solenoid-statusbar__problems"
+            title={`${problemCount} tagged error${problemCount !== 1 ? "s" : ""} — open the Problems panel`}
+            onClick={() => problemsPanelUi.setOpen(true)}
+          >
+            {problemCount} {problemCount === 1 ? "problem" : "problems"}
+          </button>
+        )}
         {manual && (
           calcDirty ? (
             <button

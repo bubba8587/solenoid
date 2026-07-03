@@ -152,6 +152,33 @@ const WRAPPED = Symbol("solErrorGuard");
 type DataFn = (inputs: Record<string, unknown[] | undefined>) =>
   Record<string, unknown> | Promise<Record<string, unknown>>;
 
+// ─── Error sinks (Problems panel hook) ────────────────────────────────────────
+// A decoupling seam, same shape as nodeStoreRegistry's registerNodeForget: this
+// foundational module stays store-free, but anything that wants to know "a
+// node's output just became an error" (the Problems panel) can subscribe here.
+// Fired at most once per node per data() call — the first error found on its
+// OWN output, whether it came from a throw, the input-propagation short-circuit,
+// or the node's own producer logic returning a SolError with no throw at all
+// (e.g. Divide's #DIV/0!) — every one of those funnels through this module.
+type ErrorSink = (nodeId: string, err: SolError) => void;
+const _errorSinks: ErrorSink[] = [];
+export function registerErrorSink(fn: ErrorSink): () => void {
+  _errorSinks.push(fn);
+  return () => {
+    const i = _errorSinks.indexOf(fn);
+    if (i >= 0) _errorSinks.splice(i, 1);
+  };
+}
+function reportError(nodeId: string, err: SolError): void {
+  for (const sink of _errorSinks) sink(nodeId, err);
+}
+function reportOut(nodeId: string, out: Record<string, unknown> | undefined): void {
+  if (!out || _errorSinks.length === 0) return;
+  for (const v of Object.values(out)) {
+    if (isSolError(v)) { reportError(nodeId, v); return; } // first error wins, like the guard itself
+  }
+}
+
 /** Idempotent. Call once per node (Canvas does, on `nodecreated`). */
 export function installErrorGuards(node: object): void {
   const n = node as {
@@ -175,6 +202,7 @@ export function installErrorGuards(node: object): void {
     const out: Record<string, unknown> = {};
     for (const key of Object.keys(n.outputs ?? {})) out[key] = err;
     if ("cachedResult" in n) n.cachedResult = err;
+    reportError(nodeId, err);
     return out;
   };
 
@@ -190,9 +218,12 @@ export function installErrorGuards(node: object): void {
     try {
       const out = orig(inputs);
       if (out instanceof Promise) {
-        const guarded = out.catch((e) => errorOut(fromThrown(e)));
+        const guarded = out
+          .then((o) => { reportOut(nodeId, o); return o; })
+          .catch((e) => errorOut(fromThrown(e)));
         return probe ? guarded.finally(() => recordNode(nodeId, typeName, performance.now() - t0)) : guarded;
       }
+      reportOut(nodeId, out);
       if (probe) recordNode(nodeId, typeName, performance.now() - t0);
       return out;
     } catch (e) {
