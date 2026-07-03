@@ -16,6 +16,7 @@ import { loadRevealStore } from "../loadReveal";
 import { groupCollapseStore, COLLAPSE_LAYOUT, pillY } from "../groupCollapse";
 import { ribbonForConnection, ribbonHoverStore, conduitFacePoint, conduitLayoutStore, pinRibbonSeparation } from "../ribbonCable";
 import { ConduitNode } from "../rete-nodes";
+import { resolveTypedSource } from "../conduitTrace";
 import { standoffStore } from "../standoffs";
 import { settingsStore } from "../settingsStore";
 import { useRenderMode } from "../renderMode";
@@ -297,16 +298,22 @@ export function ConnectionComponent({ data }: { data: ConnPayload }) {
   // an input socket the source side is null, so fall back to the target socket.
   // For combo socket types (numlist etc.) we resolve against the live output
   // value so the cable reflects what's actually flowing, not just the type.
-  const sourceSocket = editor?.getNode(data.source)?.outputs[data.sourceOutput]?.socket;
+  // Trace through a Conduit so the lane's real type colours the cable (see
+  // resolveTypedSource) — otherwise a date/logical/frame passing through a
+  // Conduit loses its colour (its `any` lane resolves by JS value type).
+  const typed = data.source ? resolveTypedSource(editor, data.source, data.sourceOutput) : null;
+  const sourceSocket = typed?.socket;
   const targetSocket = editor?.getNode(data.target)?.inputs[data.targetInput]?.socket;
   const activeSocket = sourceSocket ?? targetSocket;
+  const valSource = typed?.source ?? data.source;
+  const valOutput = typed?.sourceOutput ?? data.sourceOutput;
 
   let typeColor = DEFAULT_COLOR;
   if (activeSocket instanceof SolenoidSocket) {
     const dt = activeSocket.dataType;
     const isCombo = dt === "numlist" || dt === "strcombo" || dt === "datecombo" || dt === "any";
-    if (isCombo && data.source && data.sourceOutput) {
-      const val = cableValueStore.get(data.source, data.sourceOutput);
+    if (isCombo && valSource && valOutput) {
+      const val = cableValueStore.get(valSource, valOutput);
       if (val !== undefined && val !== null) {
         // Resolve the combo against the live value: arrays take the combo's
         // list color, scalars its scalar color (any falls back to value kind).
