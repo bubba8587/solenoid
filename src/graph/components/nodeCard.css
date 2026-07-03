@@ -1070,6 +1070,10 @@ body.solenoid-scrubbing * {
   display: flex;
   justify-content: center;
   overflow: auto;
+  /* A diagram is a figure, not prose — don't let a drag select its SVG text
+     (same reasoning as the recharts rule in chartView.css). */
+  user-select: none;
+  -webkit-user-select: none;
 }
 .solenoid-mermaid svg { max-width: 100%; height: auto; }
 .solenoid-mermaid--card { margin-top: 2px; }

@@ -1,5 +1,6 @@
 import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { useSyncExternalStore } from "react";
+import "./chartView.css";
 import { formatScalar } from "./format";
 import { appThemeStore } from "../appTheme";
 import type { ChartOptions } from "../nodes/chartOptions";

@@ -11,7 +11,12 @@
 .sol-popup-overlay {
   position: fixed;
   inset: 0;
-  z-index: 300;
+  /* Above the full-screen overlays (Report / Composite editor / Function
+     Reference, all z-index 9000) so a value popup opened FROM inside one — e.g.
+     clicking a frame chip in a Report — lands ON TOP of it, not behind. Still
+     below the transient SocketContextMenu (9999). A value popup is always a
+     focused modal, so topmost-among-content is correct everywhere it opens. */
+  z-index: 9500;
   display: flex;
   align-items: center;
   justify-content: center;
