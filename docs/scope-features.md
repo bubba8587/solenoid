@@ -1854,6 +1854,10 @@ rendering on local/team templates long before any public gallery exists.
 
 ## 59 — Fork lineage: models that remember where they came from
 
+**VERDICT (author, 2026-07-03): OUT.** File-over-app + an open text format means this
+is already solved by using git (or any VCS) yourself — no bespoke in-app lineage
+tracking needed.
+
 **The idea:** copying/adapting a shared template records **lineage** — "derived from
 Amortization v3 by K" — and the schema contract (Bet 3) plays the role version numbers
 play in package managers: an upstream update that keeps the contract can be offered as

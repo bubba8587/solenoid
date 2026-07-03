@@ -146,8 +146,9 @@ different compute semantics than a Group. Round 8 (#50–57) fully walked: #50 I
 scoped way down · #51 IN light · #52 IN colors-only · #53/#55/#56 OUT · #54 VERY
 DEFERRED · #57 split (mostly IN).
 Round 9 (#58–63, the social layer, LAST round) begun 2026-07-03: #58 OUT (verified
-templates — nothing left to attach to since #55 templates are OUT).
-NEXT when resuming: scope-features #59, then #60–63 in order (folding in
+templates — nothing left to attach to since #55 templates are OUT) · #59 OUT (fork
+lineage — file-over-app + open text format means git already solves this).
+NEXT when resuming: scope-features #60, then #61–63 in order (folding in
 strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
