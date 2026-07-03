@@ -33,11 +33,18 @@ export function ReportOverlay() {
   const embedPopRef = useRef<HTMLDivElement>(null);
   useDismissOnOutside(embedPickerOpen, () => setEmbedPickerOpen(false), [embedBtnRef, embedPopRef]);
 
+  // Reset the editor's local draft ONLY when a different report opens (keyed on
+  // nodeId, NOT node.body). onBody writes node.body live for autosave, so
+  // depending on node.body here would re-run this mid-typing and clobber
+  // lastSyncRef — which made commitBody's "did it change since last sync?" guard
+  // always short-circuit, so the ref sockets were NEVER minted. (The whole
+  // reason Report sockets appeared broken.)
   const lastSyncRef = useRef(node?.body ?? "");
   useEffect(() => {
     setBody(node?.body ?? "");
     lastSyncRef.current = node?.body ?? "";
-  }, [nodeId, node?.body]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nodeId]);
 
   useEffect(() => {
     if (!nodeId) return;
