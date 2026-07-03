@@ -20,6 +20,13 @@ export interface Settings {
 
   /** Hide the minimap (it repaints on every pan). */
   perfHideMinimap: boolean;
+
+  /** Drop a cable on empty canvas → the Add menu opens filtered to compatible
+   *  node types, pre-wired to whichever one gets picked. */
+  quickWire: boolean;
+  /** Swap node cards for simplified placeholders once zoomed out past the point
+   *  where the DOM/canvas renderer would be dropping mip levels anyway. */
+  semanticZoom: boolean;
 }
 
 const DEFAULTS: Settings = {
@@ -27,6 +34,8 @@ const DEFAULTS: Settings = {
   tidyAlign: "center",
   csvFolder: "",
   perfHideMinimap: false,
+  quickWire: false,
+  semanticZoom: false,
 };
 
 // Declarative schema the Settings page renders from. Grouped into sections.
@@ -61,6 +70,16 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
           { value: "center", label: "Center" },
           { value: "top", label: "Top" },
         ],
+      },
+      {
+        key: "quickWire",
+        label: "Quick-wire",
+        help: "Drop a cable on empty canvas to pick a compatible node and wire it in",
+      },
+      {
+        key: "semanticZoom",
+        label: "Semantic zoom",
+        help: "Simplify node cards when zoomed far out",
       },
     ],
   },

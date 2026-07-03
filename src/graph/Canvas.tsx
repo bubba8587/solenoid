@@ -32,6 +32,8 @@ import { copySelected, pasteClipboard } from "./copyPaste";
 import { ctorRegistry } from "./nodeCtorRegistry";
 import { createCompositeFromSelection } from "./compositeLogic";
 import { frStore } from "./frStore";
+import { shortcutsStore } from "./shortcutsStore";
+import { CommandPalette } from "./CommandPalette";
 import { settingsPanel, settingsStore } from "./settingsStore";
 import { cableSelectionStore, cableGhostStore, socketHighlightStore, socketHoverCableStore, dragSocketKey } from "./cableState";
 import { ribbonForConnection } from "./ribbonCable";
@@ -88,6 +90,10 @@ import { dockedNodeStore } from "./dockedNodeStore";
 import { forgetNode } from "./nodeStoreRegistry";
 import { AddNodeMenu } from "./AddNodeMenu";
 import { addMenuRequest } from "./addMenuStore";
+import { flattenLeaves, filterByCompatibleSocket, firstCompatibleSocketKey } from "./catalogSearch";
+import { computeIdealMipLevel } from "./htmlCanvasRenderer";
+import { semanticZoomStore } from "./semanticZoomStore";
+import { expandMoveSet } from "./selectionOps";
 import { setGraphChanged } from "./process";
 import { installInputCoercion } from "./coerceInputs";
 import { scheduleAutosave } from "./persistence";
@@ -341,7 +347,24 @@ async function removeFcInline(editor: NodeEditor<Schemes>, fc: FormatControllerN
   }
 }
 
-type MenuState = { screenX: number; screenY: number } | null;
+// Semantic zoom: idealI steps roughly double the zoom distance each level (at
+// quality 1 / dpr 1, i≈-log2(scale)) — i≥4 is ~6% scale or further, i.e. the
+// whole-graph overview range, not just "moderately zoomed out". Conservative on
+// purpose (scope-features #40): only genuinely far zoom swaps to simplified cards.
+const SEMANTIC_ZOOM_MIP_THRESHOLD = 4;
+function syncSemanticZoomFor(scale: number): void {
+  const idealI = computeIdealMipLevel(scale, 1, window.devicePixelRatio || 1);
+  semanticZoomStore.set(settingsStore.get("semanticZoom") && idealI >= SEMANTIC_ZOOM_MIP_THRESHOLD);
+}
+
+
+// Quick-wire: a menu opened from a cable dropped on empty canvas carries the
+// origin socket + a pre-filtered entry list (compatible nodes only), so picking
+// one both creates it AND wires the dragged cable into it.
+type QuickWireOrigin = { nodeId: string; key: string; side: "input" | "output" };
+type MenuState =
+  | { screenX: number; screenY: number; quickWire?: QuickWireOrigin; entries?: NodeCatalogEntry[] }
+  | null;
 
 export function Canvas() {
   const renderMode = useRenderMode();
@@ -375,6 +398,7 @@ export function Canvas() {
   const prevPickedRef = useRef<string | null>(null);
   const [menu, setMenu] = useState<MenuState>(null);
   const closeMenu = useCallback(() => setMenu(null), []);
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   // Remove the selected cables and/or the selected nodes (a lasso can select
   // both at once). Shared by the Delete/Backspace key path and the mobile
@@ -612,28 +636,15 @@ export function Canvas() {
       const editor = editorRef.current;
       const area = areaRef.current;
       if (!editor || !area) return;
-      // Build the full move set as a closure over two expansions:
-      //  • a selected GROUP carries its members;
-      //  • touching any node in a STANDOFF cluster carries the whole cluster, so
-      //    a standoffed pair moves rigidly. Moving only one end and re-settling
-      //    pulls it half-way back (the bug: a standoffed note/group nudged half
-      //    as far as a free one). Both expansions feed the same queue so they
-      //    compose (a cluster member that's a group also carries its members).
-      const clusterOf = new Map<string, string[]>();
-      for (const c of standoffClusters()) for (const id of c) clusterOf.set(id, c);
-      const toMove = new Set<string>();
-      const queue: string[] = [];
-      const enqueue = (id: string) => { if (!toMove.has(id)) { toMove.add(id); queue.push(id); } };
-      for (const n of editor.getNodes()) {
-        if ((n as { selected?: boolean }).selected === true) enqueue(n.id);
-      }
-      while (queue.length) {
-        const id = queue.pop()!;
-        const node = editor.getNode(id);
-        if (node instanceof GroupNode) for (const m of node.members) enqueue(m);
-        const cl = clusterOf.get(id);
-        if (cl) for (const m of cl) enqueue(m);
-      }
+      // Build the full move set: a selected GROUP carries its members, and
+      // touching any node in a STANDOFF cluster carries the whole cluster, so a
+      // standoffed pair moves rigidly (moving only one end and re-settling pulls
+      // it half-way back — the bug: a standoffed note/group nudged half as far as
+      // a free one). See expandMoveSet.
+      const selectedIds = editor.getNodes()
+        .filter((n) => (n as { selected?: boolean }).selected === true)
+        .map((n) => n.id);
+      const toMove = expandMoveSet(editor, selectedIds);
       for (const id of toMove) {
         const v = area.nodeViews.get(id);
         if (!v) continue;
@@ -665,6 +676,18 @@ export function Canvas() {
       // exits isolate. The bare letters drive the graph-domain actions so the
       // Ctrl+Shift chords aren't needed; modifier combos fall through below.
       if (!editable && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        // Command palette: bare Enter, guarded by the exact same `editable`
+        // check every other single-key shortcut uses, so committing a text
+        // field with Enter never opens it. Also stays out from under any
+        // other modal already open (each of those either focuses an input,
+        // which `editable` already covers, or — like Settings' switches — is
+        // a non-input control that `editable` wouldn't catch on its own).
+        if (
+          e.key === "Enter" && !paletteOpen && !menu &&
+          !frStore.get() && !settingsPanel.get() && !shortcutsStore.get()
+        ) {
+          setPaletteOpen(true); e.preventDefault(); return;
+        }
         if (e.key === "Escape" && isolateStore.isActive()) {
           isolateStore.exit(); e.preventDefault(); return;
         }
@@ -815,6 +838,17 @@ export function Canvas() {
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  // Semantic zoom: re-derive the far-zoom flag whenever the setting itself
+  // toggles (a pan/zoom event re-derives it from the live scale — see
+  // syncSemanticZoomFor at the "zoomed" pipe branch and init() above; this
+  // covers the OTHER trigger, flipping the setting without moving the camera).
+  useEffect(() => {
+    return settingsStore.subscribe(() => {
+      const area = areaRef.current;
+      if (area) syncSemanticZoomFor(area.area.transform.k);
+    });
   }, []);
 
   // Track the Shift key for axis-constrained dragging (read live in the
@@ -2129,6 +2163,38 @@ export function Canvas() {
           }
         }
         if (ctx.type === "connectiondrop") {
+          // Quick-wire: a drop that lands on empty canvas (no target socket, no
+          // connection made) opens the Add menu filtered to nodes compatible with
+          // the dragged origin — picking one both creates it and splices the cable.
+          if (settingsStore.get("quickWire")) {
+            const d = (
+              ctx as {
+                data?: {
+                  initial?: { nodeId: string; key: string; side: "input" | "output" };
+                  socket?: unknown;
+                  created?: boolean;
+                };
+              }
+            ).data;
+            if (d?.initial && d.socket == null && !d.created) {
+              const { nodeId, key, side } = d.initial;
+              const originNode = editor.getNode(nodeId);
+              const originSocket =
+                side === "output" ? originNode?.outputs[key]?.socket : originNode?.inputs[key]?.socket;
+              if (originSocket instanceof SolenoidSocket) {
+                const leaves = flattenLeaves(buildCatalog(true));
+                const compatible = filterByCompatibleSocket(leaves, originSocket, side).map((lc) => lc.leaf);
+                if (compatible.length) {
+                  setMenu({
+                    screenX: screenMouseRef.current.x,
+                    screenY: screenMouseRef.current.y,
+                    quickWire: { nodeId, key, side },
+                    entries: compatible,
+                  });
+                }
+              }
+            }
+          }
           setCableDragging(false);
           container!.classList.remove("solenoid-canvas--cabling");
           dragOriginKeyRef.current = null;
@@ -2626,6 +2692,7 @@ export function Canvas() {
       area.addPipe((ctx) => {
         if (ctx.type === "translated" || ctx.type === "zoomed") {
           syncBackground();
+          if (ctx.type === "zoomed") syncSemanticZoomFor(area.area.transform.k);
           // A pinch gets a transient GPU layer on the holder for the gesture
           // (see onZoomActivity); a plain pan needs nothing.
           if (ctx.type === "zoomed" || zooming) onZoomActivity();
@@ -2940,12 +3007,14 @@ export function Canvas() {
       setGraphChanged(() => { scheduleAutosave(); });
       if (await documentStore.restore()) {
         syncBackground();
+        syncSemanticZoomFor(area.area.transform.k);
         return;
       }
 
       // Fresh user: no library and nothing to migrate — seed the first document.
       await ensureFirstDocument();
       syncBackground();
+      syncSemanticZoomFor(area.area.transform.k);
     }
 
     init();
@@ -3170,6 +3239,28 @@ export function Canvas() {
       const canvasX = (menu.screenX - rect.left - tx) / k;
       const canvasY = (menu.screenY - rect.top - ty) / k;
       await area.translate(node.id, { x: canvasX, y: canvasY });
+
+      // Quick-wire: splice the dragged cable into the first compatible socket on
+      // the new node (the menu was already filtered to guarantee one exists).
+      if (menu.quickWire) {
+        const { nodeId: originId, key: originKey, side } = menu.quickWire;
+        const originNode = editor.getNode(originId);
+        const originSocket =
+          side === "output" ? originNode?.outputs[originKey]?.socket : originNode?.inputs[originKey]?.socket;
+        const newKey =
+          originSocket instanceof SolenoidSocket
+            ? firstCompatibleSocketKey(node, originSocket, side)
+            : null;
+        if (newKey) {
+          try {
+            const conn =
+              side === "output"
+                ? new ClassicPreset.Connection(originNode!, originKey, node, newKey)
+                : new ClassicPreset.Connection(node, newKey, originNode!, originKey);
+            await editor.addConnection(conn as SolenoidConnection);
+          } catch { /* incompatible after all — leave the node unwired */ }
+        }
+      }
 
       // A freshly-added node has no connections, so it can't affect any existing
       // node. Use the ADDITIVE path (no engine reset → existing caches survive →
@@ -3435,11 +3526,12 @@ export function Canvas() {
         <AddNodeMenu
           screenX={menu.screenX}
           screenY={menu.screenY}
-          entries={visibleCatalog}
+          entries={menu.entries ?? visibleCatalog}
           onSelect={handleMenuSelect}
           onClose={closeMenu}
         />
       )}
+      {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} />}
       {socketCtx && (
         <SocketContextMenu
           target={socketCtx}

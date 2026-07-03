@@ -274,6 +274,58 @@ run` (1614/1614) all green.
   `develop`) — had zero unique commits vs. `develop`, so fast-forwarded it rather than working from
   a stale tree. If a worktree session can't find a doc/file that should exist on `develop`, check
   `git log`/`git merge-base` before assuming it's missing.
+### Bundle 14 canvas/interaction polish — 4 of 5 items, #37-40 + #57(b) (2026-07-03)
+Built everything in `docs/v2.0/14-canvas-interaction-polish.md` except #41 (conditional
+formatting — needs its own author design session, untouched). One commit per item on
+`develop`.
+- **#37 Quick-wire** (Settings toggle, default off): `Canvas.tsx`'s `connectiondrop` pipe
+  now reads `ctx.data.{initial,socket,created}` directly (the plugin already hands you the
+  origin socket + whether the drop landed on empty canvas — no coordinate math needed) and
+  opens the Add menu pre-filtered via `catalogSearch.ts`'s new `filterByCompatibleSocket`/
+  `firstCompatibleSocketKey` (instantiate-and-discard each leaf via `create()` since no
+  static socket-type metadata exists on a catalog entry). Picking a leaf wires the dragged
+  cable into the first compatible socket. `socket.css` gets a `.solenoid-canvas--cabling`
+  hit-target bump (conduit lanes excluded, stay tight) + a `cell` cursor over sockets mid-drag.
+- **#38 Command palette**: bare Enter (not Ctrl+K), gated by the exact `editable` check
+  Canvas's single-key shortcuts use, plus a check that no other modal (Add menu, Function
+  Reference, Settings, Shortcuts) is already open. New `CommandPalette.tsx` — one box, four
+  merged/ranked result kinds (run a command via the same synthetic-keydown dispatch
+  MenuBar's Edit menu uses; add a node via `catalogSearch.ts`'s `scoreLeaf`, created
+  directly at the viewport center; jump to a node by name, reusing `OutlinePanel.tsx`'s
+  `focusNode` — now exported; toggle a setting from `SETTINGS_SCHEMA`'s boolean fields).
+- **#39 Scrubbing**: `InlineNumberField` (`inlineInput.tsx`) gets a parallel pointer-capture
+  drag path alongside `useDraftCommit` (not replacing it) — a 4px move threshold so a plain
+  click still focuses/carets normally, continuous **draft-only** updates during the drag
+  (no live graph writes — matches the project's commit-on-blur/Enter rule, just with
+  pointerup as the trigger instead), one `apply`+`pushHistory` commit on release. Shift =
+  10x step, Alt = 0.1x. Escape reverts via an imperative keydown listener (the field is
+  blurred the instant a drag engages, so it can't rely on its own onKeyDown).
+- **#40 Semantic zoom** (Settings toggle, default off, deliberately conservative trigger):
+  extracted `htmlCanvasRenderer.ts`'s inline mip-level formula into an exported pure
+  `computeIdealMipLevel(scale, quality, dpr)` (the renderer's own `drawFrame` now calls it
+  too — one formula, not two that could drift) so it works in DOM mode, where no renderer
+  instance exists. `semanticZoomStore` recomputes on every "zoomed" pipe event + on the
+  setting toggling, gated at `idealI >= 4` (~6% scale, whole-graph-overview range), and
+  self-toggles a root `html.solenoid-semantic-zoom` class. CSS hides `.solenoid-node__body`
+  via `visibility` (not `display`) so socket-row measurements / cable endpoints are
+  untouched — only the header + socket dots (siblings of `__body`) stay as the simplified
+  card.
+- **#57(b) Align/distribute + batch collapse**: new `selectionOps.ts`
+  (`alignSelection`/`distributeSelection`/`collapseSelection`), reading the selection via
+  `editor.getNodes().filter(n => n.selected)` like `nudgeSelection`/
+  `createGroupFromSelection` already do, exposed as ten command-palette entries (no new
+  toolbar chrome). Align is to the selection's own bounding box (Figma semantics) — a
+  deliberate manual gesture, so unlike an automated layout pass it is NOT guaranteed
+  overlap-free (two selected nodes sharing the other axis will land on top of each other,
+  same as every other design tool's align does — flagging since the project's usual
+  no-overlaps invariant is about automated layout ops, not a manual multi-select command).
+  Batch collapse skips non-collapsible nodes by checking the rendered `.solenoid-node--no-
+  chevron` class directly — there's no central collapsibility registry outside the render
+  tree. Factored `expandMoveSet` (group members + standoff cluster expansion) out of
+  Canvas's `nudgeSelection` into `selectionOps.ts` so the arrow-key nudge and align/
+  distribute share one "what actually has to move" answer.
+- **Not built**: #41 conditional formatting for tables — explicitly needs its own author
+  design session before any code (per the plan). Nothing toward it was written.
 
 ### Ragged-list pad BUILT (audit finding 25) + list SORT nulls-last + TEXT TZ fix (2026-07-02)
 The pad-to-longest-with-null policy (settled 2026-06-22 with the array-semantics build, unbuilt
