@@ -2,9 +2,18 @@ import { ClassicPreset, type NodeEditor } from "rete";
 import { broadcastErr, numListIn, numListOut } from "./shared";
 import { isFcUnit, type FormatStyle } from "../formatAnnotationStore";
 import { solError, type SolError } from "../errorValue";
+import { convert as dimConvert, commensurable, type Dim, type Unit } from "../dimension";
 
 // ─── Convert ─────────────────────────────────────────────────────────────────
 // Excel equivalent: =CONVERT(number, from_unit, to_unit)
+//
+// The conversion MATH is delegated to the dimensional-algebra core (dimension.ts,
+// Bundle 05) — the single source of truth for unit magnitudes. Each unit here
+// gets a `dim` Unit (dimension vector + SI scale); `convertValue` runs through
+// `dimConvert`, and the cross-family guard is a real commensurability check
+// (m² vs m is now caught by unequal dimension vectors, not just a category
+// label). The `category` stays for the dropdown's grouping + the legacy
+// toBase/fromBase pair for any direct caller.
 
 export type ConvertCategory =
   | "angle" | "length" | "mass" | "temperature"
@@ -16,10 +25,36 @@ export interface ConvertUnitDef {
   category: ConvertCategory;
   toBase: (x: number) => number;
   fromBase: (x: number) => number;
+  /** Dimensional-algebra unit (dimension.ts): the SI-scaled source of truth the
+   *  Convert math actually runs through. */
+  dim: Unit;
 }
 
-function mkUnit(label: string, excelCode: string, category: ConvertCategory, factor: number): ConvertUnitDef {
-  return { label, excelCode, category, toBase: (x) => x * factor, fromBase: (x) => x / factor };
+// Each category's dimension + the SI scale of its LOCAL base unit (the one every
+// factor here is relative to): angle base rad, length base m, mass base gram
+// (0.001 kg), time base s, area base m², volume base litre (0.001 m³), speed
+// base m/s, energy base J, pressure base Pa. So a unit's SI scale = its factor ×
+// the category base's SI scale.
+const CATEGORY_DIM: Record<Exclude<ConvertCategory, "temperature">, { dim: Dim; baseScale: number }> = {
+  angle:    { dim: { angle: 1 }, baseScale: 1 },
+  length:   { dim: { length: 1 }, baseScale: 1 },
+  mass:     { dim: { mass: 1 }, baseScale: 0.001 },      // base gram
+  time:     { dim: { time: 1 }, baseScale: 1 },
+  area:     { dim: { length: 2 }, baseScale: 1 },
+  volume:   { dim: { length: 3 }, baseScale: 0.001 },    // base litre
+  speed:    { dim: { length: 1, time: -1 }, baseScale: 1 },
+  energy:   { dim: { mass: 1, length: 2, time: -2 }, baseScale: 1 },
+  pressure: { dim: { mass: 1, length: -1, time: -2 }, baseScale: 1 },
+};
+
+function mkUnit(label: string, excelCode: string, category: Exclude<ConvertCategory, "temperature">, factor: number): ConvertUnitDef {
+  const c = CATEGORY_DIM[category];
+  return {
+    label, excelCode, category,
+    toBase: (x) => x * factor,
+    fromBase: (x) => x / factor,
+    dim: { dim: c.dim, scale: factor * c.baseScale },
+  };
 }
 
 export const CONVERT_CATEGORY_LABELS: Record<ConvertCategory, string> = {
@@ -60,10 +95,12 @@ export const CONVERT_UNIT_DEFS: Record<string, ConvertUnitDef> = {
   stone: mkUnit("Stone",        "stone", "mass",   6350.29318),
   tonne: mkUnit("Metric ton",   "t",     "mass",   1e6),
 
-  // Temperature (non-linear, base: Celsius)
-  C: { label: "Celsius",    excelCode: "C", category: "temperature", toBase: (x) => x,                 fromBase: (x) => x },
-  F: { label: "Fahrenheit", excelCode: "F", category: "temperature", toBase: (x) => (x - 32) * 5 / 9, fromBase: (x) => x * 9 / 5 + 32 },
-  K: { label: "Kelvin",     excelCode: "K", category: "temperature", toBase: (x) => x - 273.15,        fromBase: (x) => x + 273.15 },
+  // Temperature (affine — a factor alone can't express it). toBase/fromBase are
+  // to CELSIUS (the legacy local base); the `dim` units are to KELVIN (SI), which
+  // dimConvert uses. Both encode the same physics.
+  C: { label: "Celsius",    excelCode: "C", category: "temperature", toBase: (x) => x,                 fromBase: (x) => x,               dim: { dim: { temperature: 1 }, scale: 1,     offset: 273.15 } },
+  F: { label: "Fahrenheit", excelCode: "F", category: "temperature", toBase: (x) => (x - 32) * 5 / 9, fromBase: (x) => x * 9 / 5 + 32,  dim: { dim: { temperature: 1 }, scale: 5 / 9, offset: 273.15 - (32 * 5) / 9 } },
+  K: { label: "Kelvin",     excelCode: "K", category: "temperature", toBase: (x) => x - 273.15,        fromBase: (x) => x + 273.15,      dim: { dim: { temperature: 1 }, scale: 1,     offset: 0 } },
 
   // Time (base: second)
   s:   mkUnit("Seconds", "sec", "time", 1),
@@ -123,9 +160,10 @@ export const CONVERT_UNIT_DEFS: Record<string, ConvertUnitDef> = {
 export function convertValue(x: number, fromKey: string, toKey: string): number | null {
   const from = CONVERT_UNIT_DEFS[fromKey];
   const to   = CONVERT_UNIT_DEFS[toKey];
-  if (!from || !to || from.category !== to.category) return null;
-  const result = to.fromBase(from.toBase(x));
-  return Number.isFinite(result) ? result : null;
+  if (!from || !to) return null;
+  // Delegate to the dimensional-algebra core — commensurability (m² vs m) and
+  // the affine temperature case are handled there, one source of truth.
+  return dimConvert(x, from.dim, to.dim);
 }
 
 export class ConvertNode extends ClassicPreset.Node {
@@ -197,7 +235,11 @@ export class ConvertNode extends ClassicPreset.Node {
     // an entire list becomes #N/A — no point per-celling a node-level mistake).
     const from = CONVERT_UNIT_DEFS[this.fromUnit];
     const to   = CONVERT_UNIT_DEFS[this.toUnit];
-    if (from && to && from.category !== to.category) {
+    // Incommensurable units (metres → kilograms, m² → m) measure different
+    // things — a real dimension-vector check, not just a category label. Excel's
+    // CONVERT returns #N/A; kept as #N/A (not #UNIT!) so IFNA/ISNA still catch a
+    // bad Convert pick, matching the node's long-standing contract.
+    if (from && to && !commensurable(from.dim, to.dim)) {
       const err = solError("#N/A", `Can't convert ${from.category} to ${to.category} — the units measure different things`);
       this.cachedResult = err;
       return { out: err };
