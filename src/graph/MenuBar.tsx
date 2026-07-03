@@ -7,6 +7,9 @@ import { outlineSearch } from "./outlineStore";
 import { autoArrange, cleanup, requestRecalc } from "./process";
 import { calcModeStore } from "./calcModeStore";
 import { refreshAllConnections } from "./connectionStore";
+import { runModelFuzz } from "./modelFuzz";
+import { problemsPanelUi } from "./problemsStore";
+import { pushNotice } from "./noticeStore";
 import { saveToDisk, openFromDisk } from "./fileSession";
 import { documentStore } from "./documentStore";
 import { addMenuRequest } from "./addMenuStore";
@@ -170,6 +173,20 @@ export function MenuBar() {
       label: "Data",
       items: [
         { label: "Refresh all connections", onClick: () => void refreshAllConnections() },
+        { sep: true },
+        {
+          label: "Run model check (fuzz)",
+          onClick: () => void (async () => {
+            const r = await runModelFuzz();
+            problemsPanelUi.setOpen(true);
+            pushNotice(
+              r.findings > 0
+                ? `Model check: ${r.findings} finding${r.findings === 1 ? "" : "s"} across ${r.samples.toLocaleString()} samples — see Problems.`
+                : `Model check: no problems found across ${r.samples.toLocaleString()} samples.`,
+              r.findings > 0 ? "warn" : "info",
+            );
+          })(),
+        },
       ],
     },
     {

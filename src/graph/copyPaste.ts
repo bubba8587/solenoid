@@ -79,6 +79,7 @@ export const INIT_FIELD_ORDER = [
   "selectedColumn", "selectedValues", "multiSelect", "readAs", "addAs", "activeIndex", "target", "resultAs", "colType",
   "rowTotalDepth", "colTotalDepth", "rowSort", "colSort", "relativeTo", "normalize", "detail",
   "members", "color", "collapsed", "width", "height", "title", "body", "seq",
+  "checkNotNull", "checkUnique", "checkRange", "checkRegex",
 ] as const;
 
 // Object-valued extras appended after INIT_FIELD_ORDER (below), in this fixed

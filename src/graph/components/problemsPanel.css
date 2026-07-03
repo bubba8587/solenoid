@@ -1,0 +1,152 @@
+/* Problems HUD section — mirrors alertLayer.css/pinLayer.css: a collapse
+   button plus a stack of rows. A section within .solenoid-hud-stack, which
+   owns the fixed positioning. */
+.solenoid-problems-layer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: none;
+  max-width: 260px;
+}
+
+.solenoid-problems-layer--collapsed .solenoid-problem,
+.solenoid-problems-layer--collapsed .solenoid-problems-layer__filters {
+  display: none;
+}
+
+.solenoid-problems-layer__trigger {
+  pointer-events: auto;
+  position: relative;
+  width: 28px;
+  height: 28px;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--btn-bg);
+  border: var(--overlay-border-width) solid var(--overlay-border);
+  border-radius: 50%;
+  color: var(--text);
+  cursor: pointer;
+  box-shadow: var(--overlay-shadow);
+  flex-shrink: 0;
+}
+.solenoid-problems-layer__trigger:hover {
+  background: var(--btn-hover);
+  border-color: var(--sol-error);
+  color: var(--sol-error);
+}
+
+.solenoid-problems-layer__count {
+  position: absolute;
+  top: -4px;
+  right: -5px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  background: var(--sol-error);
+  color: color-mix(in srgb, var(--sol-error) 20%, #000);
+  border-radius: 8px;
+  font-size: 9px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.solenoid-problems-layer__filters {
+  pointer-events: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: flex-end;
+}
+.solenoid-problems-layer__filter {
+  background: var(--overlay-bg);
+  border: var(--overlay-border-width) solid var(--overlay-border);
+  border-radius: 6px;
+  color: var(--text-dim);
+  font-size: 9.5px;
+  font-weight: 600;
+  padding: 2px 6px;
+  cursor: pointer;
+}
+.solenoid-problems-layer__filter:hover { color: var(--text); }
+.solenoid-problems-layer__filter--active {
+  color: var(--sol-error);
+  border-color: var(--sol-error);
+}
+
+.solenoid-problem {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 6px 5px 9px;
+  background: var(--overlay-bg);
+  border: var(--overlay-border-width) solid var(--overlay-border);
+  border-radius: 8px;
+  box-shadow: var(--overlay-shadow);
+  cursor: pointer;
+  animation: solenoid-problem-in 130ms ease-out;
+}
+.solenoid-problem:hover { border-color: var(--sol-error); }
+.solenoid-problem--fuzz { border-style: dashed; }
+
+@keyframes solenoid-problem-in {
+  from { opacity: 0; transform: translateX(8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.solenoid-problem__code {
+  flex: none;
+  color: var(--sol-error);
+  font-size: 10.5px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+
+.solenoid-problem__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-size: 11px;
+}
+
+.solenoid-problem__fix {
+  flex: none;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border: var(--overlay-border-width) solid var(--accent);
+  border-radius: 5px;
+  color: var(--accent);
+  font-size: 9.5px;
+  font-weight: 600;
+  padding: 2px 5px;
+  cursor: pointer;
+}
+.solenoid-problem__fix:hover {
+  background: color-mix(in srgb, var(--accent) 24%, transparent);
+}
+
+.solenoid-problem__remove {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  background: none;
+  border: none;
+  color: var(--text-muted, var(--text));
+  opacity: 0.5;
+  font-size: 11px;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+}
+.solenoid-problem__remove:hover { opacity: 1; color: var(--sol-error); }

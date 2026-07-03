@@ -4,7 +4,7 @@
 //    and the docked FCs of focused nodes (so an isolated node keeps its badge).
 //  - isolateChain: the transitive up/downstream closure over the cables.
 
-import { getEditor } from "./process";
+import { getEditor, downstreamClosure } from "./process";
 import { GroupNode, FormatControllerNode } from "./rete-nodes";
 import type { SolenoidNode } from "./schemes";
 import { chainClosure, isolateStore } from "./isolateStore";
@@ -55,6 +55,19 @@ export function isolateChainOf(ids: Iterable<string>): boolean {
   const seed = expandEntities(editor, seed0);
   const edges = editor.getConnections().map((c) => ({ source: c.source, target: c.target }));
   isolateStore.set(expandEntities(editor, chainClosure(edges, seed)));
+  return true;
+}
+
+/** Where-used: isolate the DOWNSTREAM stream from one node — "everything this
+ *  value eventually feeds" (right-click → Where used). One-directional, unlike
+ *  Isolate chain (which walks both ways) — reuses the same downstreamClosure
+ *  the targeted-recompute path walks (process.ts), fed into the existing
+ *  isolate/dim visual (no new dim CSS — see isolateStore + IsolatePill). */
+export function isolateWhereUsed(nodeId: string): boolean {
+  const editor = getEditor();
+  if (!editor) return false;
+  const downstream = downstreamClosure(editor, nodeId);
+  isolateStore.set(expandEntities(editor, downstream));
   return true;
 }
 
