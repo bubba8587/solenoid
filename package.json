@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "tauri": "tauri",
-    "release:desktop": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/release-build.ps1"
+    "release:desktop": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/release-build.ps1",
+    "run-graph": "tsx scripts/run-graph.ts"
   },
   "dependencies": {
     "@fontsource-variable/atkinson-hyperlegible-mono": "^5.2.5",
