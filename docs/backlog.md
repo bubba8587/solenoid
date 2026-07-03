@@ -54,7 +54,7 @@ seat — the MathCAD replacement, units-as-values is the winning card) · #16 IN
 (BOM/nested-costing vertical on the Cube) · #17 IN, minor, sequence LATE — needs
 #4's Monte Carlo hook + #5 subgraph container to land first (wiggle-the-weights
 depends on them) · #18 OUT (embeddable-engine identity fork — not pursued). Deferred
-pile for end-of-walk revisit: #2, #6, #11, golden tests, data-drafts.
+pile for end-of-walk revisit: #2, #6, #11, #23, golden tests, data-drafts.
 Round 3 (#15–19, the stretch markets) closed 2026-07-03: #15 IN (engineering calc
 seat) · #16 IN (BOM/nested-costing on the Cube) · #17 IN minor, sequence late (needs
 #4 Monte Carlo + #5 subgraph first) · #18 OUT (embeddable-engine identity fork) ·
@@ -64,8 +64,9 @@ dimensions — walked through a concrete example, didn't land; socket lattice st
 two-leg stool, no axis-semantics leg) · #21 IN, VERY LATE (uncertain values / error-bar
 propagation — possible, sequence dead last alongside #43 money) · #22 IN — no new
 node: As-Of Join is a `how` value on the existing Join node (frame.ts:228), As-Of
-Lookup is FrameLookup's already-flagged approximate-match follow-up (frame.ts:1071).
-NEXT when resuming: scope-features #23, then #24–63 in order (folding in strategy threads #1–#7 and the
+Lookup is FrameLookup's already-flagged approximate-match follow-up (frame.ts:1071) ·
+#23 DEFERRED (persistent compute cache — joins the end-of-walk revisit pile).
+NEXT when resuming: scope-features #24, then #25–63 in order (folding in strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
 engine execution contract (Bet 1 × #23 × #24 × calc mode) → #5

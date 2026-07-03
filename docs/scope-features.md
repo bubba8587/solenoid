@@ -1033,6 +1033,9 @@ prices/trades seed.
 
 ## 23 — The persistent compute cache: never recompute what hasn't changed
 
+**VERDICT (author, 2026-07-03): DEFERRED.** Revisit at the end of the walk with the
+other deferred/parked items. Nothing builds now.
+
 **The problem:** close a heavy document, reopen it → everything recomputes. F9 on a big
 model re-runs branches whose inputs haven't changed in weeks. CI (scope #10) re-runs
 the whole graph every time.
