@@ -586,6 +586,16 @@
   border-color: var(--accent);
 }
 
+/* Scrubbing (InlineNumberField's pointer-drag gesture): pins the cursor to a
+   vertical-resize glyph for the whole gesture, even as the pointer strays off
+   the field under pointer capture — an ordinary hover cursor would otherwise
+   flicker back to whatever's under the pointer mid-drag. Transient + drag-only,
+   not a resting affordance, so !important here is a drag-lock, not a style war. */
+body.solenoid-scrubbing,
+body.solenoid-scrubbing * {
+  cursor: ns-resize !important;
+}
+
 /* Text-string inputs read as prose, not code — sans, left-aligned. Numbers keep
    the mono font (their default above). */
 .solenoid-node__inline-input--text,

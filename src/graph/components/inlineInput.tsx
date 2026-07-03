@@ -110,6 +110,15 @@ const parseNum = (t: string): number | undefined | typeof INVALID_DRAFT => {
   return Number.isFinite(n) ? n : INVALID_DRAFT;
 };
 
+// Scrubbing: drag the field to move the value, without derailing a plain click
+// (which must still focus + place a caret for typing). A gesture only becomes a
+// "drag" once the pointer clears this threshold; under it, pointerup is a no-op
+// and the native click/focus proceeds untouched.
+const SCRUB_MOVE_THRESHOLD = 4; // px
+const SCRUB_PX_PER_STEP = 6; // px of drag per unit step, at the unmodified rate
+
+type ScrubState = { startX: number; startY: number; startValue: number; currentValue: number; dragging: boolean };
+
 export function InlineNumberField({
   value,
   onChange,
@@ -118,6 +127,75 @@ export function InlineNumberField({
   onChange: (v: number | undefined) => void;
 }) {
   const field = useDraftCommit(value, numToText, parseNum, onChange);
+  const dragRef = useRef<ScrubState | null>(null);
+  // The Escape listener is added imperatively (keydown during a drag isn't
+  // guaranteed to land on the input — it's blurred the moment a drag engages),
+  // so it needs its own ref to unbind on unmount if a drag is interrupted by
+  // e.g. the node being deleted mid-scrub.
+  const escRef = useRef<((e: KeyboardEvent) => void) | null>(null);
+  useEffect(() => () => {
+    if (escRef.current) window.removeEventListener("keydown", escRef.current);
+  }, []);
+
+  function endDrag(e: React.PointerEvent<HTMLInputElement>, commit: boolean) {
+    const d = dragRef.current;
+    dragRef.current = null;
+    if (escRef.current) { window.removeEventListener("keydown", escRef.current); escRef.current = null; }
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
+    document.body.classList.remove("solenoid-scrubbing");
+    if (!d || !d.dragging) return; // was a plain click — nothing to revert or commit
+    if (commit) {
+      // Mirrors useDraftCommit's onBlur commit sequence (apply → one undo entry),
+      // just triggered by pointerup instead of blur/Enter.
+      if (!Object.is(d.currentValue, value)) {
+        onChange(d.currentValue);
+        pushHistory(() => onChange(value), () => onChange(d.currentValue));
+      }
+    } else {
+      field.setDraft(numToText(d.startValue));
+    }
+  }
+
+  function onPointerDown(e: React.PointerEvent<HTMLInputElement>) {
+    e.stopPropagation();
+    if (e.button !== 0) return;
+    dragRef.current = { startX: e.clientX, startY: e.clientY, startValue: value ?? 0, currentValue: value ?? 0, dragging: false };
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const target = e.currentTarget;
+    const pointerId = e.pointerId;
+    const onEsc = (ke: KeyboardEvent) => {
+      if (ke.key !== "Escape") return;
+      const d = dragRef.current;
+      dragRef.current = null;
+      window.removeEventListener("keydown", onEsc);
+      escRef.current = null;
+      if (target.hasPointerCapture(pointerId)) target.releasePointerCapture(pointerId);
+      document.body.classList.remove("solenoid-scrubbing");
+      if (d) field.setDraft(numToText(d.startValue));
+    };
+    escRef.current = onEsc;
+    window.addEventListener("keydown", onEsc);
+  }
+
+  function onPointerMove(e: React.PointerEvent<HTMLInputElement>) {
+    const d = dragRef.current;
+    if (!d) return;
+    const dx = e.clientX - d.startX;
+    const dy = d.startY - e.clientY; // up = increase
+    if (!d.dragging) {
+      if (Math.hypot(dx, dy) < SCRUB_MOVE_THRESHOLD) return;
+      d.dragging = true;
+      (document.activeElement as HTMLElement | null)?.blur();
+      document.body.classList.add("solenoid-scrubbing");
+    }
+    const delta = Math.abs(dx) >= Math.abs(dy) ? dx : dy;
+    // Shift = coarse (10x), Alt = fine (0.1x), unmodified = 1 unit per
+    // SCRUB_PX_PER_STEP px.
+    const mult = e.shiftKey ? 10 : e.altKey ? 0.1 : 1;
+    const next = d.startValue + Math.round((delta / SCRUB_PX_PER_STEP) * mult);
+    d.currentValue = next;
+    field.setDraft(numToText(next));
+  }
 
   return (
     <input
@@ -128,7 +206,10 @@ export function InlineNumberField({
       onChange={(e: ChangeEvent<HTMLInputElement>) => field.setDraft(e.target.value)}
       onBlur={field.onBlur}
       onKeyDown={field.onKeyDown}
-      onPointerDown={(e) => e.stopPropagation()}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={(e) => endDrag(e, true)}
+      onPointerCancel={(e) => endDrag(e, false)}
       onMouseDown={(e) => e.stopPropagation()}
       spellCheck={false}
     />
