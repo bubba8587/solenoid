@@ -110,6 +110,12 @@ async function getDrillMount(composite: CompositeNode): Promise<DrillMount> {
   area.use(reactPlugin);
   area.use(connection);
 
+  // The internal graph existed BEFORE the area was attached (nodes are
+  // relocated/hydrated at collapse/load time), so the plugin's nodecreated/
+  // connectioncreated listeners never saw them — backfill their views once.
+  for (const n of editor.getNodes()) area.addNodeView(n);
+  for (const c of editor.getConnections()) area.addConnectionView(c);
+
   // Structural edits made in the drill-in recompute the OWNING card and
   // autosave — the same settle a Canvas cable edit gets, minus the outer-only
   // concerns (FC reconcile etc. don't apply inside the `any` boundary).
