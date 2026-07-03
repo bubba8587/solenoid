@@ -558,7 +558,12 @@ export class CompositeNode extends ClassicPreset.Node {
       if (!marker) { outputs[port.id] = null; continue; }
       const feed = conns.find((c) => c.target === marker.id && c.targetInput === "value");
       if (feed && loop.has(feed.source)) {
-        outputs[port.id] = fullSeries.map((snap) => snap[feed.source]?.[feed.sourceOutput] ?? null);
+        const series = fullSeries.map((snap) => snap[feed.source]?.[feed.sourceOutput] ?? null);
+        // The series is read straight off the loop snapshots — the marker's
+        // own data() never runs on this path, so mirror the result into its
+        // cachedResult or the drill-in's value box stays "—".
+        if (marker instanceof CompositeOutputNode) marker.cachedResult = series;
+        outputs[port.id] = series;
       } else {
         try {
           const res = await this.internalEngine.fetch(marker.id) as { value?: unknown };

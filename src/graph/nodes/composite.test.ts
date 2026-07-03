@@ -383,6 +383,18 @@ describe("CompositeNode Simulation run mode", () => {
     expect(series[9]).toBeCloseTo(100 * Math.pow(1.1, 9), 5);
   });
 
+  it("the output marker's cachedResult mirrors the collected series (the drill-in value box)", async () => {
+    // The series is read straight off the loop snapshots — the marker's own
+    // data() never runs — so runSimulation must mirror the result into
+    // cachedResult itself, or the drill-in editor's value box shows "—".
+    const { c, popOutId } = await makePopulationModel(5);
+    const out = await c.data({});
+    const port = c.outputPorts.find((p) => p.id === popOutId)!;
+    const marker = c.internalEditor.getNode(port.internalNodeId) as CompositeOutputNode;
+    expect(marker.cachedResult).toEqual(out[popOutId]);
+    expect(marker.cachedResult).toHaveLength(5);
+  });
+
   it("other run modes on the SAME cyclic composite get #CIRC!, not a hang", async () => {
     const { c, popOutId } = await makePopulationModel(5);
     c.runMode = "single";

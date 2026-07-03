@@ -4,10 +4,11 @@ import { ClassicPreset } from "rete";
 import { AreaPlugin, AreaExtensions } from "rete-area-plugin";
 import { ConnectionPlugin, ClassicFlow, getSourceTarget } from "rete-connection-plugin";
 import { ReactPlugin, Presets as ReactPresets } from "rete-react-plugin";
+import { HistoryPlugin, Presets as HistoryPresets } from "rete-history-plugin";
 import type { Schemes, AreaExtra, SolenoidNode } from "../schemes";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "../rete-nodes";
 import { compositeEditorStore, compositePassStore } from "../compositeEditorStore";
-import { getEditor, getArea, processGraph, isGraphRebuilding } from "../process";
+import { getEditor, getArea, processGraph, isGraphRebuilding, withGraphRebuild } from "../process";
 import { scheduleAutosave } from "../persistence";
 import { installErrorGuards } from "../errorValue";
 import { ctorRegistry } from "../nodeCtorRegistry";
@@ -45,6 +46,7 @@ type DrillMount = {
   container: HTMLDivElement;
   area: AreaPlugin<Schemes, AreaExtra>;
   selector: ReturnType<typeof AreaExtensions.selector>;
+  history: HistoryPlugin<Schemes>;
 };
 
 type MountHolder = { __drillMount?: DrillMount };
@@ -60,6 +62,12 @@ async function getDrillMount(composite: CompositeNode): Promise<DrillMount> {
   const area = new AreaPlugin<Schemes, AreaExtra>(container);
   const connection = new ConnectionPlugin<Schemes, AreaExtra>();
   const reactPlugin = new ReactPlugin<Schemes, AreaExtra>({ createRoot });
+  // Undo/redo inside the drill-in — same classic preset + 200-cap as Canvas
+  // (the plugin ctor doesn't expose the inner History limit). Lives as long as
+  // the mount (per composite), so the stack survives close/reopen.
+  const history = new HistoryPlugin<Schemes>();
+  history.addPreset(HistoryPresets.classic.setup());
+  (history as unknown as { history: { limit?: number } }).history.limit = 200;
 
   const selector = AreaExtensions.selector();
   const accumulating = AreaExtensions.accumulateOnCtrl();
@@ -109,6 +117,7 @@ async function getDrillMount(composite: CompositeNode): Promise<DrillMount> {
   editor.use(area);
   area.use(reactPlugin);
   area.use(connection);
+  area.use(history);
 
   // The internal graph existed BEFORE the area was attached (nodes are
   // relocated/hydrated at collapse/load time), so the plugin's nodecreated/
@@ -138,7 +147,7 @@ async function getDrillMount(composite: CompositeNode): Promise<DrillMount> {
     return ctx;
   });
 
-  const mount: DrillMount = { container, area, selector };
+  const mount: DrillMount = { container, area, selector, history };
   holder.__drillMount = mount;
   return mount;
 }
@@ -155,6 +164,7 @@ function CompositeEditorInner({ compositeId }: { compositeId: string }) {
   const mountRef = useRef<DrillMount | null>(null);
   const [menu, setMenu] = useState<{ screenX: number; screenY: number } | null>(null);
   const [ready, setReady] = useState(false);
+  const [hasSelection, setHasSelection] = useState(false);
 
   const outerEditor = getEditor();
   const composite = outerEditor?.getNode(compositeId);
@@ -206,6 +216,26 @@ function CompositeEditorInner({ compositeId }: { compositeId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compositeId]);
 
+  // Enable the header Delete button only when something inside the drill-in
+  // is selected — polled the same cheap way MobileControls does (there is no
+  // dedicated selection store), and only while the overlay is open (this
+  // component unmounts on close). Cable ids are filtered to the INTERNAL
+  // editor: cableSelectionStore is app-global, and an outer cable selected
+  // before the overlay opened must not arm the button.
+  useEffect(() => {
+    if (!isComposite) return;
+    const editor = (composite as CompositeNode).internalEditor;
+    const tick = () => {
+      const nodeSelected = editor.getNodes().some((n) => (n as { selected?: boolean }).selected === true);
+      const cableSelected = cableSelectionStore.ids().some((id) => !!editor.getConnection(id));
+      setHasSelection(nodeSelected || cableSelected);
+    };
+    tick();
+    const id = window.setInterval(tick, 200);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compositeId]);
+
   // Window-level (focus lands on <body> after canvas clicks — a div listener
   // would go deaf). Canvas's own window keydown stands down while the overlay
   // is open (see its compositeEditorStore guard), so there's no double-handling.
@@ -219,6 +249,11 @@ function CompositeEditorInner({ compositeId }: { compositeId: string }) {
       const tag = target?.tagName;
       const editable = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || !!target?.isContentEditable;
       if (editable) return;
+      if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+        if (e.code === "KeyZ" && !e.shiftKey) { e.preventDefault(); void historyStep(false); }
+        if ((e.code === "KeyZ" && e.shiftKey) || e.code === "KeyY") { e.preventDefault(); void historyStep(true); }
+        return;
+      }
       if (e.key === "Delete" || e.key === "Backspace") {
         e.preventDefault();
         void deleteSelection();
@@ -321,6 +356,20 @@ function CompositeEditorInner({ compositeId }: { compositeId: string }) {
     }
   }
 
+  /** Undo/redo the drill-in's history. withGraphRebuild gates the editor
+   *  pipe's per-event recompute while the plugin replays (one action can
+   *  restore many cables — same reasoning as Canvas's Ctrl+Z), then ONE
+   *  retargeted pass settles the owning card. */
+  async function historyStep(redo: boolean) {
+    const history = mountRef.current?.history;
+    if (!history) return;
+    await withGraphRebuild(async () => {
+      await (redo ? history.redo() : history.undo());
+    });
+    void processGraph(comp.id);
+    scheduleAutosave();
+  }
+
   async function handleMenuSelect(entry: NodeCatalogEntry) {
     const mount = mountRef.current;
     if (!mount || !menu) return;
@@ -346,6 +395,53 @@ function CompositeEditorInner({ compositeId }: { compositeId: string }) {
             </button>
             <button type="button" className="solenoid-composite-editor__btn" onClick={() => void addPort("output")}>
               + Output
+            </button>
+            <button
+              type="button"
+              className="solenoid-composite-editor__btn"
+              // Centered near the top — the search field's on-screen keyboard
+              // can't cover the menu there (same reasoning as MobileControls'
+              // openAddMenu), and it's a sensible spot on desktop too.
+              onClick={() => setMenu({ screenX: window.innerWidth / 2, screenY: 120 })}
+            >
+              + Node
+            </button>
+            <button
+              type="button"
+              className="solenoid-composite-editor__btn solenoid-composite-editor__btn--icon"
+              title="Undo (Ctrl+Z)"
+              aria-label="Undo"
+              onClick={() => void historyStep(false)}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 10 H15 a4.5 4.5 0 0 1 0 9 H9" />
+                <path d="M6 10 L10 6 M6 10 L10 14" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className="solenoid-composite-editor__btn solenoid-composite-editor__btn--icon"
+              title="Redo (Ctrl+Y)"
+              aria-label="Redo"
+              onClick={() => void historyStep(true)}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 10 H9 a4.5 4.5 0 0 0 0 9 H15" />
+                <path d="M18 10 L14 6 M18 10 L14 14" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className="solenoid-composite-editor__btn solenoid-composite-editor__btn--icon"
+              title="Delete selection (Del)"
+              aria-label="Delete selection"
+              disabled={!hasSelection}
+              onClick={() => void deleteSelection()}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V6" />
+                <path d="M10 11v6M14 11v6" />
+              </svg>
             </button>
             <button
               type="button"
