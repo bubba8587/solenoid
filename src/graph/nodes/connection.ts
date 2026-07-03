@@ -405,7 +405,7 @@ export class ParquetConnectionNode extends ClassicPreset.Node {
     try {
       const handle = await ipcInvoke<string>("engine_read_parquet", { folder, name });
       if (this.ref) dropFrameRef(this.ref);
-      const ref: FrameRef = { __frameRef: handle as FrameHandle };
+      const ref: FrameRef = { __frameRef: handle as FrameHandle, __plan: [] };
       this.ref = ref;
       const preview = await collectPreview(ref);
       this.cachedResult = preview;
