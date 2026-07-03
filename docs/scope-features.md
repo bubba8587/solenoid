@@ -1745,6 +1745,11 @@ DRY principle for an analytics estate — linked graphs (strategy #4) pointed at
 is loud.
 
 ## 54 — Model index: an overview of everything you've built
+
+**VERDICT (author, 2026-07-03): VERY DEFERRED — same verdict as #48.** File-over-app
+posture: the OS-level chosen folder is the doc-management answer for now, not an
+in-app model-inventory/dependency-map view.
+
 Past a dozen documents there's no map — no "what models do I have, what do they depend on,
 which touch this source, which are unreviewed." This is exactly the **model inventory**
 governance regimes require and firms build by hand in a tracking spreadsheet (irony noted).
