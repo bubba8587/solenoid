@@ -1,0 +1,214 @@
+/* Presentation — an ordered step list + prev/next camera controls. Mirrors Note/
+   Report's 2px border + tinted header formula for card-family consistency. */
+.solenoid-pres {
+  position: relative;
+  --node-accent: var(--pres-color);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  background: var(--pres-bg);
+  border: 2px solid var(--pres-color);
+  border-radius: 11px;
+  box-shadow: var(--shadow-card);
+  cursor: grab;
+}
+.solenoid-pres * { box-sizing: border-box; }
+
+.solenoid-pres__bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 8px;
+  background: color-mix(in srgb, var(--pres-color) var(--header-tint), var(--surface));
+  border-radius: 9px 9px 0 0;
+  box-shadow: inset 0 -1px 0 var(--pres-color);
+}
+.solenoid-pres__name,
+.solenoid-pres__name-display {
+  width: calc(100% - 30px);
+  max-width: calc(100% - 30px);
+  margin-right: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--pres-color) 55%, var(--text));
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: text;
+  background: transparent;
+  border: none;
+  outline: none;
+}
+.solenoid-pres__name-display--empty { opacity: 0.5; }
+
+.solenoid-pres__swatch {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: color-mix(in srgb, var(--pres-color) 55%, var(--text));
+  cursor: pointer;
+  opacity: 0.85;
+}
+.solenoid-pres__swatch:hover { opacity: 1; }
+
+.solenoid-pres__palette {
+  position: absolute;
+  top: 26px;
+  right: 0;
+  z-index: 10;
+}
+
+.solenoid-pres__steps {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.solenoid-pres__empty {
+  padding: 10px 4px;
+  color: var(--text-muted);
+  font-size: 11px;
+  text-align: center;
+}
+
+.solenoid-pres__step {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 6px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+}
+.solenoid-pres__step--active {
+  border-color: color-mix(in srgb, var(--pres-color) 60%, var(--border));
+  background: color-mix(in srgb, var(--pres-color) 12%, var(--surface-sunken));
+}
+
+.solenoid-pres__step-go {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+.solenoid-pres__step-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  cursor: text;
+}
+.solenoid-pres__step-count {
+  flex: 0 0 auto;
+  min-width: 16px;
+  text-align: center;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--pres-color) 20%, transparent);
+  color: var(--text-dim);
+  font-size: 10px;
+  font-family: var(--font-mono);
+}
+
+.solenoid-pres__step-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  padding-right: 4px;
+}
+.solenoid-pres__step-actions button {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 11px;
+  cursor: pointer;
+  opacity: 0.7;
+}
+.solenoid-pres__step-actions button:hover:not(:disabled) { opacity: 1; color: var(--text); }
+.solenoid-pres__step-actions button:disabled { opacity: 0.25; cursor: default; }
+
+.solenoid-pres__add {
+  margin-top: 2px;
+  padding: 6px 8px;
+  background: none;
+  border: 1px dashed var(--border-strong);
+  border-radius: 6px;
+  color: var(--text-dim);
+  font-size: 11px;
+  cursor: pointer;
+}
+.solenoid-pres__add:hover { color: var(--text); border-color: var(--pres-color); }
+
+.solenoid-pres__footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 6px 10px 10px;
+}
+.solenoid-pres__footer button {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--text);
+  font-size: 14px;
+  cursor: pointer;
+}
+.solenoid-pres__footer button:hover:not(:disabled) { background: var(--btn-hover); border-color: var(--border-strong); }
+.solenoid-pres__footer button:disabled { opacity: 0.35; cursor: default; }
+.solenoid-pres__counter {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  min-width: 40px;
+  text-align: center;
+}
+
+.solenoid-pres--selected {
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--node-accent) 22%, transparent);
+}
+.solenoid-pres--selected::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  box-sizing: border-box;
+  border: 2px solid color-mix(in srgb, var(--node-accent) 70%, #fff);
+  border-radius: 11px;
+  pointer-events: none;
+  z-index: 6;
+}
+:root[data-theme="light"] .solenoid-pres--selected::after {
+  border-color: color-mix(in srgb, var(--node-accent) 68%, #000);
+}

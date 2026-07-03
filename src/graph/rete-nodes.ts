@@ -16,6 +16,7 @@ export * from "./nodes/connection";
 export * from "./nodes/annotation";
 export * from "./nodes/report";
 export * from "./nodes/history";
+export * from "./nodes/presentation";
 export * from "./nodes/tableLambda";
 export * from "./nodes/lambda";
 export * from "./nodes/group";
