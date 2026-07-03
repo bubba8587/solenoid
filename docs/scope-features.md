@@ -1397,6 +1397,8 @@ alone ("ask Claude about my live model") and zero write-risk. Writes follow Bet 
 
 ## 36 — Guided seeds: the tutorial that is a document
 
+**VERDICT (author, 2026-07-03): OUT.** Round 5 closes; Round 6 next.
+
 **The problem:** the zero-learning-curve principle has tooltips, a legend, and a
 reference overlay — all *reactive*. Nothing *teaches*. A new user opens
 `getting-started` and reads a finished graph — dissection, not construction.

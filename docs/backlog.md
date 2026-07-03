@@ -87,9 +87,12 @@ is just ordinary import hygiene, no verdict needed for that part) · #34 IN (Par
 Arrow — cargo flag + direct file→engine path, doubles as the direct-CSV→Polars scale
 step for a better format first) · #35 DEFERRED (MCP port — overlaps #10 headless/CLI,
 which is where agent-tooling momentum is anyway; revisit only if CLI can't cover the
-live-shared-GUI-session case). Deferred pile now: #2, #6, #11, #23, #35, golden tests,
-data-drafts.
-NEXT when resuming: scope-features #36, then #37–63 in order (folding in
+live-shared-GUI-session case) · #36 OUT (guided-seed tutorials). Deferred pile now:
+#2, #6, #11, #23, #35, golden tests, data-drafts.
+Round 5 (#29–36) fully walked: #29/#33/#36 OUT · #30/#31(scoped)/#32/#34 IN ·
+#35 DEFERRED.
+NEXT when resuming: scope-features #37 (Round 6, "the feel: what the tool is like
+under your hands" — begins), then #38–63 in order (folding in
 strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
