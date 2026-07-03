@@ -167,6 +167,9 @@ export { CableSwitchComponent } from "./CableSwitchNode";
 // ─── Note (canvas annotation) ───────────────────────────────────────────────────
 export { NoteComponent } from "./NoteNode";
 
+// ─── Report (standalone markdown document — canvas anchor card) ────────────────
+export { ReportComponent } from "./ReportNode";
+
 // ─── Image (canvas annotation) ──────────────────────────────────────────────────
 export { ImageComponent } from "./ImageNode";
 

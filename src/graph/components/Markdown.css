@@ -43,3 +43,17 @@
 .sol-md table { border-collapse: collapse; margin: 10px 0; }
 .sol-md th, .sol-md td { border: 1px solid var(--border); padding: 4px 9px; text-align: left; }
 .sol-md th { background: var(--surface-sunken); font-weight: 600; }
+
+/* Inline-ref live value (components/inlineRefDisplay.tsx) — swapped in for a
+   `` `=name` `` span. Plain text in the Value face (DESIGN.md §3) — no pill, no
+   fill, no border: a decorative box mid-sentence would read as a hero-metric
+   chip, which the design system explicitly rejects. Shared by the Note card and
+   the standalone Report document so a ref renders identically everywhere. */
+.solenoid-ref-inline {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-weight: 600;
+  color: var(--text-bright);
+}
+.solenoid-ref-inline--error {
+  color: var(--sol-error);
+}

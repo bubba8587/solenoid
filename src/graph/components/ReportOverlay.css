@@ -1,0 +1,193 @@
+.report-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.report-panel {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  width: 92vw;
+  height: 88vh;
+  max-width: 1200px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+}
+
+.report-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--surface-sunken);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.report-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-bright);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.report-header-actions {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.report-embed-btn {
+  padding: 5px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.report-embed-btn:hover:not(:disabled) { background: var(--btn-hover); border-color: var(--border-strong); }
+.report-embed-btn:disabled { opacity: 0.4; cursor: default; }
+
+.report-embed-picker {
+  position: absolute;
+  top: 34px;
+  right: 92px;
+  z-index: 11;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 4px;
+  min-width: 160px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  box-shadow: var(--shadow-pop);
+}
+.report-embed-opt {
+  padding: 6px 9px;
+  background: none;
+  border: none;
+  border-radius: 5px;
+  color: var(--text);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.report-embed-opt:hover { background: color-mix(in srgb, var(--text) 8%, transparent); }
+
+.report-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--text);
+  cursor: pointer;
+}
+.report-close:hover { background: var(--btn-hover); border-color: var(--border-strong); }
+
+.report-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.report-source {
+  flex: 1 1 50%;
+  min-width: 0;
+  padding: 16px 18px;
+  background: var(--surface-sunken);
+  border: none;
+  border-right: 1px solid var(--border);
+  outline: none;
+  resize: none;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.report-source::placeholder { color: var(--text-muted); }
+
+.report-preview {
+  flex: 1 1 50%;
+  min-width: 0;
+  overflow: auto;
+  padding: 16px 24px;
+}
+.report-preview__md { max-width: none; margin: 0; }
+.report-preview__empty {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.report-embeds {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 18px;
+}
+.report-embed {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.report-embed__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--surface-sunken);
+  border-bottom: 1px solid var(--border);
+}
+.report-embed__name {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.report-embed__remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: none;
+  border: none;
+  border-radius: 50%;
+  color: var(--text-dim);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.report-embed__remove:hover { background: color-mix(in srgb, var(--sol-error) 14%, transparent); color: var(--sol-error); }
+.report-embed__body {
+  max-height: 200px;
+  overflow: auto;
+  padding: 10px 14px;
+  font-size: 12.5px;
+}
+
+@media (max-width: 760px) {
+  .report-body { flex-direction: column; }
+  .report-source { border-right: none; border-bottom: 1px solid var(--border); }
+}

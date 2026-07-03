@@ -72,7 +72,7 @@ export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
                     "inputAngle", "outputAngle", "inputTightness", "outputTightness", "angle",
                     "selectedColumn", "selectedValues", "multiSelect", "readAs", "addAs", "activeIndex", "target", "resultAs", "colType",
                     "rowTotalDepth", "colTotalDepth", "rowSort", "colSort", "relativeTo", "normalize", "detail",
-                    "members", "color", "collapsed", "width", "height", "title", "body", "seq"]) {
+                    "members", "color", "collapsed", "width", "height", "title", "body", "seq", "embeds"]) {
     if (key in n && n[key] !== undefined) init[key] = n[key];
   }
   // PivotNode per-value aggregation map: deep-copy so a paste doesn't share the

@@ -14,6 +14,7 @@ export * from "./nodes/frame";
 export * from "./nodes/cube";
 export * from "./nodes/connection";
 export * from "./nodes/annotation";
+export * from "./nodes/report";
 export * from "./nodes/tableLambda";
 export * from "./nodes/lambda";
 export * from "./nodes/group";
