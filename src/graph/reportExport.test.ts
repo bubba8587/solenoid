@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { escapeMd, freezeInlineRefs, buildExportCss } from "./reportExport";
+import { escapeMd, freezeInlineRefs, buildExportCss, reportReferencedNodeIds } from "./reportExport";
 import { solError } from "./errorValue";
 
 describe("escapeMd", () => {
@@ -42,6 +42,42 @@ describe("freezeInlineRefs", () => {
   it("freezes null to the em-dash placeholder", () => {
     const out = freezeInlineRefs("n1", "`=x`", ["x"], () => null);
     expect(out).toBe("—");
+  });
+});
+
+// Backlog "static export fidelity nits" — the exported Charts section takes only
+// report-referenced charts, not every on-canvas chart. The reference set is the
+// sources wired directly into the report's ref inputs (plus embedded Notes'),
+// computed by this pure helper; captureChartSvgs filters on it.
+describe("reportReferencedNodeIds", () => {
+  const report = { id: "rep", embeds: ["note1"] };
+
+  it("collects sources wired into the report itself", () => {
+    const ids = reportReferencedNodeIds(report, [
+      { source: "chartA", target: "rep" },
+      { source: "num", target: "rep" },
+    ]);
+    expect(ids).toEqual(new Set(["chartA", "num"]));
+  });
+
+  it("includes sources wired into an embedded note's refs", () => {
+    const ids = reportReferencedNodeIds(report, [
+      { source: "chartB", target: "note1" },
+    ]);
+    expect(ids).toEqual(new Set(["chartB"]));
+  });
+
+  it("excludes connections elsewhere in the graph (no upstream closure)", () => {
+    const ids = reportReferencedNodeIds(report, [
+      { source: "chartA", target: "rep" },
+      { source: "upstream", target: "chartA" },   // feeds the chart, not the report
+      { source: "chartC", target: "otherNode" },  // unrelated
+    ]);
+    expect(ids).toEqual(new Set(["chartA"]));
+  });
+
+  it("is empty for a report with no refs or embeds", () => {
+    expect(reportReferencedNodeIds({ id: "rep", embeds: [] }, [])).toEqual(new Set());
   });
 });
 

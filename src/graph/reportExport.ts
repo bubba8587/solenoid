@@ -87,6 +87,22 @@ body { margin: 0; background: #0e0e0e; color: #e8e8e8; font: 14px/1.6 -apple-sys
 `;
 }
 
+/** Node ids the report actually references: sources wired into the report's own
+ *  `` `=ref` `` inputs, plus sources wired into any embedded Note's refs. Used to
+ *  scope the exported "Charts" section to report-referenced charts instead of
+ *  every chart on the canvas (deliberately DIRECT wiring only, not the upstream
+ *  closure — a chart belongs in the report when the user wired it in). Pure over
+ *  the connection list so it stays unit-testable in the node vitest env. */
+export function reportReferencedNodeIds(
+  report: { id: string; embeds: string[] },
+  connections: readonly { source: string; target: string }[],
+): Set<string> {
+  const targets = new Set([report.id, ...report.embeds]);
+  const out = new Set<string>();
+  for (const c of connections) if (targets.has(c.target)) out.add(c.source);
+  return out;
+}
+
 /** Build the self-contained HTML document string. Exported for unit testing —
  *  the async canvas image is captured by the caller and passed in as a data URI
  *  (or null), keeping this half of the logic synchronous and DOM-free. */
@@ -109,7 +125,8 @@ export function buildReportExportHtml(
     return `<div class="report-export__embed"><div class="report-export__embed-name">${label}</div>${renderMarkdown(noteFrozen)}</div>`;
   }).join("\n");
 
-  const charts = captureChartSvgs(names);
+  const refIds = reportReferencedNodeIds(report, editor?.getConnections() ?? []);
+  const charts = captureChartSvgs(names, refIds);
   const chartsHtml = charts.map((c) =>
     `<div class="report-export__chart"><div class="report-export__chart-label">${c.name}</div>${c.svg}</div>`,
   ).join("\n");
