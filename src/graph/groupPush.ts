@@ -119,7 +119,18 @@ function buildWorld(editor: Editor, area: Area, expandedIds: Set<string>): World
       if (grouped.has(n.id) || dockedNodeStore.get(n.id)) continue;
       const w = view.element.offsetWidth || (n as { width?: number }).width || 100;
       const h = view.element.offsetHeight || (n as { height?: number }).height || 50;
-      boxes.set(n.id, { id: n.id, x: p.x, y: p.y, w, h });
+      // Reserve room for an output-docked FC's footprint (mirrors Canvas.tsx's
+      // Tidy-path hostFootprint reservation): the FC has no box of its own here
+      // (it rides along via translatePushed's dockedNodeStore.getDockedTo loop),
+      // so without this the push/overlap math is blind to the space it visually
+      // occupies and can shove another box flush against — or under — it.
+      let fcW = 0;
+      for (const d of dockedNodeStore.getDockedTo(n.id)) {
+        if (d.side !== "output") continue;
+        const fc = editor.getNode(d.id) as { width?: number } | undefined;
+        if (fc?.width) fcW = Math.max(fcW, fc.width + 8);
+      }
+      boxes.set(n.id, { id: n.id, x: p.x, y: p.y, w: w + fcW, h });
       looseIds.add(n.id);
     }
   }
