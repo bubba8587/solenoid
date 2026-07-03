@@ -59,14 +59,19 @@ Round 3 (#15–19, the stretch markets) closed 2026-07-03: #15 IN (engineering c
 seat) · #16 IN (BOM/nested-costing on the Cube) · #17 IN minor, sequence late (needs
 #4 Monte Carlo + #5 subgraph first) · #18 OUT (embeddable-engine identity fork) ·
 #19 OUT (leans on the #7 NL surface, which stayed all-out).
-Round 4 (#20–24, the value-model frontier) begun 2026-07-03: #20 OUT (named
+Round 4 (#20–28, the value-model frontier + compute substrate) begun 2026-07-03: #20 OUT (named
 dimensions — walked through a concrete example, didn't land; socket lattice stays a
 two-leg stool, no axis-semantics leg) · #21 IN, VERY LATE (uncertain values / error-bar
 propagation — possible, sequence dead last alongside #43 money) · #22 IN — no new
 node: As-Of Join is a `how` value on the existing Join node (frame.ts:228), As-Of
 Lookup is FrameLookup's already-flagged approximate-match follow-up (frame.ts:1071) ·
-#23 DEFERRED (persistent compute cache — joins the end-of-walk revisit pile).
-NEXT when resuming: scope-features #24, then #25–63 in order (folding in strategy threads #1–#7 and the
+#23 DEFERRED (persistent compute cache — joins the end-of-walk revisit pile) · #24 IN
+(sketch-mode approximate calc — must get a footer/StatusBar affordance, not just a
+per-value badge). Round boundaries in the doc (verified against headers, corrects an
+earlier "#20–24" mislabel above): Round 4 = #20–28, Round 5 = #29–36, Round 6 = #37–42,
+Round 7 = #43–49, Round 8 = #50–57, Round 9 = #58–63 (end of doc).
+NEXT when resuming: scope-features #25, then #26–63 in order (folding in
+strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
 engine execution contract (Bet 1 × #23 × #24 × calc mode) → #5

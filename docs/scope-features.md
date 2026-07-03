@@ -1062,6 +1062,11 @@ still computes.
 
 ## 24 — Approximate-first: preview on a sample, exact on demand
 
+**VERDICT (author, 2026-07-03): IN.** Must have a UI affordance in the **footer** (the
+StatusBar, same home as the existing "Calculate" dirty chip) — sketch mode's on/off
+state and the "≈ approximate" signal need a persistent, always-visible home there, not
+just a per-value badge.
+
 **The problem:** on big tables, every edit pays full price even when you're just
 sketching. The current answer is manual calc mode (all or nothing).
 
