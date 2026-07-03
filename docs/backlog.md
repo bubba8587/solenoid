@@ -112,8 +112,12 @@ the node runs it, chart renders inline on the node; NOT a floating output-panel)
 **STANDING PRINCIPLE from here on in the walk:** prefer a dedicated node over a new
 panel/lens/global-UI layer when a feature is naturally node-shaped — don't keep
 stacking chrome the app has to teach; a node reuses the vocabulary the user already
-has.
-NEXT when resuming: scope-features #46, then #47–63 in order (folding in
+has · #46 DEFERRED (sealed models / tamper-evident sign-off — security-scope creep
+concern: a real "tamper-evident" claim needs signing/key management, not just a hash;
+design note if revisited: hash must cover full doc incl. current input values, not
+just formulas). Deferred pile now: #2, #6, #11, #23, #35, #46, golden tests,
+data-drafts.
+NEXT when resuming: scope-features #47, then #48–63 in order (folding in
 strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
