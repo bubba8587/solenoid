@@ -1564,6 +1564,9 @@ is the real cost. Scope it honestly: money first, not general arbitrary precisio
 sentence: **"the spreadsheet where the cents always foot."**
 
 ## 44 — Model fuzzing: property-based testing for graphs
+
+**VERDICT (author, 2026-07-03): IN.**
+
 Golden tests check inputs you thought of; fuzzing checks the ones you didn't. Because every
 input socket is *typed* (and ranged, once slots/expectations declare bounds), Solenoid can
 **generate hundreds of valid-shaped inputs automatically** and hunt for what breaks —
