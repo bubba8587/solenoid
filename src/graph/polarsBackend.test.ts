@@ -11,7 +11,7 @@ import type { FrameOp, JoinOpts } from "./frameVerbs";
 const invokeMock = vi.fn();
 vi.mock("@tauri-apps/api/core", () => ({ invoke: invokeMock }));
 
-import { frameBackend, initFrameBackend, resetFrameBackendToJs } from "./frameBackend";
+import { frameBackend, initFrameBackend, resetFrameBackendToJs, runFrameUnary, readFrame, collectPreview, clearCollectMemo, isFrameRef } from "./frameBackend";
 
 // Force the desktop guard on (engineAvailable() === isDesktop(), which reads
 // window.__TAURI_INTERNALS__), and start each test from the default JS backend.
@@ -158,5 +158,97 @@ describe("PolarsBackend — verb command shapes", () => {
     });
     const call = invokeMock.mock.calls.find((c) => c[0] === "engine_drop");
     expect(call![1]).toEqual({ handle: h });
+  });
+
+  it("applyMany → engine_apply_many { handle, ops }", async () => {
+    const be = frameBackend();
+    invokeMock.mockResolvedValueOnce("plf:E");
+    const h = await be.source(sample);
+    invokeMock.mockResolvedValueOnce("plf:F");
+    const ops: FrameOp[] = [{ kind: "select", columns: ["n"] }, { kind: "head", n: 2 }];
+    await be.applyMany(h, ops);
+    const call = invokeMock.mock.calls.find((c) => c[0] === "engine_apply_many");
+    expect(call![1]).toEqual({ handle: h, ops });
+  });
+});
+
+// ─── Verb-chain fusion: chaining runFrameUnary never round-trips per verb — the
+// plan accumulates on the FrameRef (frameBackend.ts's `extendRef`) and is sent
+// as ONE `engine_apply_many` only at a materialization boundary (`readFrame` /
+// `collectPreview`). This is the Bet-1 "compile/fuse" IPC-count claim, measured
+// directly (not eyeballed): a 3-verb chain costs ONE apply-family round trip,
+// not three, and the per-node preview invariant (the one non-negotiable) still
+// renders the correctly fused result at ANY point in the chain.
+describe("PolarsBackend — verb chain fusion (applyMany batching)", () => {
+  beforeEach(async () => {
+    await initWith("polars");
+    invokeMock.mockClear();
+    clearCollectMemo();
+  });
+
+  it("3 chained runFrameUnary calls make ZERO apply round trips until readFrame flushes once", async () => {
+    invokeMock.mockResolvedValueOnce("plf:src"); // engine_source
+    let ref = await runFrameUnary(sample, { kind: "select", columns: ["n", "s"] });
+    if (!isFrameRef(ref)) throw new Error("expected a FrameRef");
+    ref = await runFrameUnary(ref, { kind: "sort", by: "n", dir: "desc" });
+    if (!isFrameRef(ref)) throw new Error("expected a FrameRef");
+    ref = await runFrameUnary(ref, { kind: "head", n: 2 });
+    if (!isFrameRef(ref)) throw new Error("expected a FrameRef");
+    expect(ref.__plan).toHaveLength(3);
+
+    // Chaining alone: only the source upload happened — no apply/applyMany yet.
+    const applyCallsSoFar = invokeMock.mock.calls.filter((c) => c[0] === "engine_apply" || c[0] === "engine_apply_many");
+    expect(applyCallsSoFar).toHaveLength(0);
+
+    invokeMock.mockResolvedValueOnce("plf:fused"); // engine_apply_many (the ONE flush)
+    invokeMock.mockResolvedValueOnce([
+      { name: "n", type: "number", values: [3, 2] },
+      { name: "s", type: "string", values: ["c", "b"] },
+    ]); // engine_collect
+    const out = await readFrame(ref);
+    expect(out).toEqual({
+      __frame: true,
+      columns: [
+        { name: "n", type: "number", values: [3, 2] },
+        { name: "s", type: "string", values: ["c", "b"] },
+      ],
+    });
+
+    const applyManyCalls = invokeMock.mock.calls.filter((c) => c[0] === "engine_apply_many");
+    expect(applyManyCalls).toHaveLength(1); // ONE round trip for all 3 verbs, not 3
+    expect(applyManyCalls[0][1]).toEqual({
+      handle: "plf:src",
+      ops: [
+        { kind: "select", columns: ["n", "s"] },
+        { kind: "sort", by: "n", dir: "desc" },
+        { kind: "head", n: 2 },
+      ],
+    });
+    expect(invokeMock.mock.calls.filter((c) => c[0] === "engine_apply")).toHaveLength(0);
+  });
+
+  it("a card preview mid-chain still flushes and renders the fused result (the non-negotiable invariant)", async () => {
+    invokeMock.mockResolvedValueOnce("plf:src");
+    let ref = await runFrameUnary(sample, { kind: "select", columns: ["n"] });
+    if (!isFrameRef(ref)) throw new Error("expected a FrameRef");
+    ref = await runFrameUnary(ref, { kind: "sort", by: "n", dir: "asc" });
+    if (!isFrameRef(ref)) throw new Error("expected a FrameRef");
+
+    invokeMock.mockResolvedValueOnce("plf:fused2"); // engine_apply_many for THIS node's preview
+    invokeMock.mockResolvedValueOnce({
+      schema: [{ name: "n", type: "number" }],
+      rows: [[1], [2]],
+      rowCount: 5,
+      truncated: true, // big frame: preview shows a head-N, no extra full collect
+    });
+    const preview = await collectPreview(ref);
+    expect(preview).toMatchObject({
+      __frame: true,
+      columns: [{ name: "n", type: "number", values: [1, 2] }],
+      __totalRows: 5,
+    });
+    // ONE apply_many for the flush, no engine_collect (the preview didn't need it).
+    expect(invokeMock.mock.calls.filter((c) => c[0] === "engine_apply_many")).toHaveLength(1);
+    expect(invokeMock.mock.calls.filter((c) => c[0] === "engine_collect")).toHaveLength(0);
   });
 });

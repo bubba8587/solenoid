@@ -487,3 +487,106 @@ fn select_duplicate_names_keeps_first() {
     let out = verb_select(&f, &["a".into(), "a".into(), "b".into()]).unwrap();
     assert_eq!(dump(&out).len(), 2);
 }
+
+// ─── Fusion (apply_ops / engine_apply_many): a chain matches applying each verb
+// one at a time — the ONE thing that must never change is the RESULT, only how
+// many times Polars collects to get there.
+#[test]
+fn apply_ops_pure_lazy_chain_matches_sequential_single_ops() {
+    // select → filter(comparison) → sort — every step here is a pure Polars expr
+    // (no mid-chain collect), the exact fusion target.
+    let f = frame(vec![
+        ("region", SolType::Str, strs(&["N", "S", "N", "S"])),
+        ("qty", SolType::Number, num(&[30.0, 10.0, 20.0, 40.0])),
+    ]);
+    let ops = vec![
+        WireOp::Select { columns: vec!["qty".into(), "region".into()] },
+        WireOp::Filter { column: "qty".into(), op: "gt".into(), value: serde_json::json!(15) },
+        WireOp::Sort { by: "qty".into(), dir: "asc".into() },
+    ];
+    let fused = apply_ops(&f, &ops).unwrap();
+
+    let step1 = verb_select(&f, &["qty".into(), "region".into()]).unwrap();
+    let step2 = verb_filter(&step1, "qty", "gt", &serde_json::json!(15)).unwrap();
+    let sequential = verb_sort(&step2, "qty", "asc").unwrap();
+
+    assert_eq!(dump(&fused), dump(&sequential));
+    assert_eq!(dump(&fused)[0].2, j(&[20.0, 30.0, 40.0]));
+}
+
+#[test]
+fn apply_ops_crosses_eager_steps_and_still_fuses_around_them() {
+    // select → distinct (forces a mid-chain collect) → sort (resumes lazily) —
+    // verifies the plan correctly hands off through an eager op both ways.
+    let f = frame(vec![
+        ("a", SolType::Number, num(&[3.0, 1.0, 3.0, 2.0])),
+        ("b", SolType::Number, num(&[9.0, 9.0, 9.0, 9.0])),
+    ]);
+    let ops = vec![
+        WireOp::Select { columns: vec!["a".into()] },
+        WireOp::Distinct { columns: None },
+        WireOp::Sort { by: "a".into(), dir: "asc".into() },
+    ];
+    let fused = apply_ops(&f, &ops).unwrap();
+    assert_eq!(dump(&fused)[0].2, j(&[1.0, 2.0, 3.0]));
+}
+
+#[test]
+fn apply_ops_text_predicate_filter_mid_chain() {
+    // A text-predicate filter (contains/startsWith/endsWith) is hand-rolled —
+    // must collect just that step and resume the chain lazily afterward.
+    let f = frame(vec![
+        ("s", SolType::Str, strs(&["apple", "apricot", "berry", "cherry"])),
+        ("n", SolType::Number, num(&[4.0, 3.0, 1.0, 2.0])),
+    ]);
+    let ops = vec![
+        WireOp::Filter { column: "s".into(), op: "startsWith".into(), value: serde_json::json!("ap") },
+        WireOp::Sort { by: "n".into(), dir: "asc".into() },
+    ];
+    let fused = apply_ops(&f, &ops).unwrap();
+    assert_eq!(
+        dump(&fused)[0].2,
+        vec![Json::String("apricot".into()), Json::String("apple".into())]
+    );
+}
+
+#[test]
+fn apply_ops_group_by_mid_chain() {
+    let f = frame(vec![
+        ("k", SolType::Str, strs(&["b", "a", "b", "a"])),
+        ("v", SolType::Number, num(&[10.0, 1.0, 20.0, 2.0])),
+    ]);
+    let ops = vec![
+        WireOp::GroupBy {
+            keys: vec!["k".into()],
+            aggs: vec![WireAgg { column: "v".into(), op: "sum".into(), as_name: "total".into() }],
+        },
+        WireOp::Sort { by: "total".into(), dir: "desc".into() },
+    ];
+    let fused = apply_ops(&f, &ops).unwrap();
+    let d = dump(&fused);
+    assert_eq!(d[1].2, j(&[30.0, 3.0])); // b=10+20=30 sorts before a=1+2=3
+}
+
+#[test]
+fn engine_apply_many_ipc_matches_chained_engine_apply_calls() {
+    let f = frame(vec![
+        ("region", SolType::Str, strs(&["N", "S", "N"])),
+        ("qty", SolType::Number, num(&[10.0, 20.0, 30.0])),
+    ]);
+    let h_many = register(f.clone());
+    let ops = vec![
+        WireOp::Filter { column: "qty".into(), op: "gte".into(), value: serde_json::json!(20) },
+        WireOp::Sort { by: "qty".into(), dir: "desc".into() },
+    ];
+    let h_out_many = engine_apply_many(h_many, ops).unwrap();
+
+    let h_seq = register(f);
+    let h_step1 = engine_apply(h_seq, WireOp::Filter { column: "qty".into(), op: "gte".into(), value: serde_json::json!(20) }).unwrap();
+    let h_out_seq = engine_apply(h_step1, WireOp::Sort { by: "qty".into(), dir: "desc".into() }).unwrap();
+
+    let p_many = with_frame(&h_out_many, |f| Ok(preview_of(f, 10))).unwrap();
+    let p_seq = with_frame(&h_out_seq, |f| Ok(preview_of(f, 10))).unwrap();
+    assert_eq!(p_many.rows, p_seq.rows);
+    assert_eq!(p_many.rows, vec![vec![Json::String("N".into()), num_to_json(30.0)], vec![Json::String("S".into()), num_to_json(20.0)]]);
+}

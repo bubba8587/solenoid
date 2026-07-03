@@ -4465,6 +4465,7 @@ name = "solenoid"
 version = "1.0.0"
 dependencies = [
  "polars",
+ "polars-plan",
  "serde",
  "serde_json",
  "tauri",

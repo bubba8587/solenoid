@@ -35,6 +35,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, OnceLock};
 
 use polars::prelude::*;
+use polars_plan::prelude::{ApplyOptions, FunctionFlags, FunctionOptions};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as Json;
 
@@ -465,80 +466,125 @@ fn require_columns(frame: &SolFrame, names: &[String]) -> Result<(), IpcError> {
     Ok(())
 }
 
-/// Types for a result frame whose columns are a subset/reorder of the source
-/// (same names): look each up in the source.
-fn types_for_names(src: &SolFrame, df: &DataFrame) -> Vec<SolType> {
-    df.get_columns()
-        .iter()
-        .map(|c| src.type_of(c.name().as_str()).unwrap_or(SolType::Number))
-        .collect()
-}
-
 fn collect_lazy(lf: LazyFrame) -> Result<DataFrame, IpcError> {
     lf.collect().map_err(|e| IpcError::internal(format!("engine collect failed: {e}")))
 }
 
-// select / drop / rename
-fn verb_select(frame: &SolFrame, columns: &[String]) -> Result<SolFrame, IpcError> {
+// ─── The accumulating plan (the fusion target) ──────────────────────────────────
+// A handle used to point at an already-COLLECTED `SolFrame`; every verb call
+// re-collected immediately in the original design. `Plan` is the lazy
+// alternative: it threads a `LazyFrame` + the schema (names/types, tracked
+// alongside since a Solenoid type tag can't be recovered from a Polars dtype
+// alone) across MULTIPLE verbs, so a chain of pure-Polars ops (select / drop /
+// rename / sort / a comparison filter / group-by / head) never collects until
+// something actually needs the data: `engine_apply_many` collects once at the
+// end of a batch; `apply_step`'s eager ops (distinct / unpivot / a text-predicate
+// filter) collect only THEIR OWN step, then resume the plan lazily from the
+// result so the rest of the chain still fuses.
+struct Plan {
+    lf: LazyFrame,
+    names: Vec<String>,
+    types: Vec<SolType>,
+}
+
+impl Plan {
+    fn from_frame(frame: &SolFrame) -> Plan {
+        Plan { lf: frame.df.clone().lazy(), names: frame.names(), types: frame.types.clone() }
+    }
+    fn collect(self) -> Result<SolFrame, IpcError> {
+        let df = collect_lazy(self.lf)?;
+        Ok(SolFrame { df, types: self.types })
+    }
+}
+
+fn type_of_in(names: &[String], types: &[SolType], name: &str) -> Option<SolType> {
+    names.iter().position(|n| n == name).map(|i| types[i])
+}
+
+fn require_in(names: &[String], cols: &[String]) -> Result<(), IpcError> {
+    let have: HashSet<&str> = names.iter().map(|s| s.as_str()).collect();
+    for n in cols {
+        if !have.contains(n.as_str()) {
+            return Err(IpcError::new("#REF!", format!("column \"{n}\" not found")));
+        }
+    }
+    Ok(())
+}
+
+// select / drop / rename / sort / head — the lazy builders. Each takes the plan's
+// CURRENT (possibly uncollected) schema instead of a live `DataFrame`, so no
+// collect happens here; `verb_select` etc. below are thin single-op wrappers that
+// collect immediately (kept for the standalone call sites + the unit tests).
+fn lazy_select(plan: Plan, columns: &[String]) -> Result<Plan, IpcError> {
     // Dedupe repeats, keeping the first — matches the oracle; a duplicate
     // selection was a hard Polars error here (audit finding 32).
     let mut seen: HashSet<&String> = HashSet::new();
     let columns: Vec<String> = columns.iter().filter(|n| seen.insert(*n)).cloned().collect();
-    require_columns(frame, &columns)?;
+    require_in(&plan.names, &columns)?;
+    let types: Vec<SolType> = columns.iter().map(|c| type_of_in(&plan.names, &plan.types, c).unwrap()).collect();
     let exprs: Vec<Expr> = columns.iter().map(|c| col(c.as_str())).collect();
-    let df = collect_lazy(frame.df.clone().lazy().select(exprs))?;
-    let types = types_for_names(frame, &df);
-    Ok(SolFrame { df, types })
+    Ok(Plan { lf: plan.lf.select(exprs), names: columns, types })
 }
 
-fn verb_drop(frame: &SolFrame, columns: &[String]) -> Result<SolFrame, IpcError> {
+fn lazy_drop(plan: Plan, columns: &[String]) -> Result<Plan, IpcError> {
     let remove: HashSet<&str> = columns.iter().map(|s| s.as_str()).collect();
-    let keep: Vec<Expr> = frame
-        .df
-        .get_columns()
-        .iter()
-        .filter(|c| !remove.contains(c.name().as_str()))
-        .map(|c| col(c.name().as_str()))
-        .collect();
-    let df = collect_lazy(frame.df.clone().lazy().select(keep))?;
-    let types = types_for_names(frame, &df);
-    Ok(SolFrame { df, types })
+    let mut names: Vec<String> = Vec::new();
+    let mut types: Vec<SolType> = Vec::new();
+    let mut exprs: Vec<Expr> = Vec::new();
+    for (i, n) in plan.names.iter().enumerate() {
+        if !remove.contains(n.as_str()) {
+            exprs.push(col(n.as_str()));
+            names.push(n.clone());
+            types.push(plan.types[i]);
+        }
+    }
+    Ok(Plan { lf: plan.lf.select(exprs), names, types })
 }
 
-fn verb_rename(frame: &SolFrame, map: &HashMap<String, String>) -> Result<SolFrame, IpcError> {
-    let proposed: Vec<String> = frame
-        .names()
-        .iter()
-        .map(|n| map.get(n).cloned().unwrap_or_else(|| n.clone()))
-        .collect();
+fn lazy_rename(plan: Plan, map: &HashMap<String, String>) -> Result<Plan, IpcError> {
+    let proposed: Vec<String> = plan.names.iter().map(|n| map.get(n).cloned().unwrap_or_else(|| n.clone())).collect();
     let unique = make_headers(&proposed, proposed.len());
-    let exprs: Vec<Expr> = frame
-        .names()
+    let exprs: Vec<Expr> = plan
+        .names
         .iter()
         .zip(unique.iter())
         .map(|(old, new)| col(old.as_str()).alias(new.as_str()))
         .collect();
-    let df = collect_lazy(frame.df.clone().lazy().select(exprs))?;
     // order + count preserved by the positional select → keep the source types.
-    Ok(SolFrame {
-        df,
-        types: frame.types.clone(),
-    })
+    let types = plan.types.clone();
+    Ok(Plan { lf: plan.lf.select(exprs), names: unique, types })
 }
 
-// sort
-fn verb_sort(frame: &SolFrame, by: &str, dir: &str) -> Result<SolFrame, IpcError> {
-    require_columns(frame, std::slice::from_ref(&by.to_string()))?;
+fn lazy_sort(plan: Plan, by: &str, dir: &str) -> Result<Plan, IpcError> {
+    require_in(&plan.names, std::slice::from_ref(&by.to_string()))?;
     let desc = dir == "desc";
     let opts = SortMultipleOptions::default()
         .with_order_descending(desc)
         .with_nulls_last(true)
         .with_maintain_order(true);
-    let df = collect_lazy(frame.df.clone().lazy().sort_by_exprs(vec![col(by)], opts))?;
-    Ok(SolFrame {
-        df,
-        types: frame.types.clone(),
-    })
+    let lf = plan.lf.sort_by_exprs(vec![col(by)], opts);
+    Ok(Plan { lf, ..plan })
+}
+
+fn lazy_head(plan: Plan, n: f64) -> Result<Plan, IpcError> {
+    let take = n.trunc().max(0.0) as IdxSize;
+    Ok(Plan { lf: plan.lf.limit(take), ..plan })
+}
+
+fn verb_select(frame: &SolFrame, columns: &[String]) -> Result<SolFrame, IpcError> {
+    lazy_select(Plan::from_frame(frame), columns)?.collect()
+}
+
+fn verb_drop(frame: &SolFrame, columns: &[String]) -> Result<SolFrame, IpcError> {
+    lazy_drop(Plan::from_frame(frame), columns)?.collect()
+}
+
+fn verb_rename(frame: &SolFrame, map: &HashMap<String, String>) -> Result<SolFrame, IpcError> {
+    lazy_rename(Plan::from_frame(frame), map)?.collect()
+}
+
+fn verb_sort(frame: &SolFrame, by: &str, dir: &str) -> Result<SolFrame, IpcError> {
+    lazy_sort(Plan::from_frame(frame), by, dir)?.collect()
 }
 
 // Re-materialize a frame from a row-index list (the basis for distinct).
@@ -583,12 +629,7 @@ fn verb_distinct(frame: &SolFrame, columns: &Option<Vec<String>>) -> Result<SolF
 
 // head
 fn verb_head(frame: &SolFrame, n: f64) -> Result<SolFrame, IpcError> {
-    let take = n.trunc().max(0.0) as usize;
-    let df = frame.df.head(Some(take));
-    Ok(SolFrame {
-        df,
-        types: frame.types.clone(),
-    })
+    lazy_head(Plan::from_frame(frame), n)?.collect()
 }
 
 // filter
@@ -600,21 +641,6 @@ fn json_str(v: &Json) -> String {
         _ => String::new(),
     }
 }
-fn json_num(v: &Json) -> f64 {
-    match v {
-        Json::Number(n) => n.as_f64().unwrap_or(f64::NAN),
-        Json::Bool(b) => {
-            if *b {
-                1.0
-            } else {
-                0.0
-            }
-        }
-        Json::String(s) => s.trim().replace(',', "").parse::<f64>().unwrap_or(f64::NAN),
-        _ => f64::NAN,
-    }
-}
-
 /// A non-null cell as the string the oracle's `String(cell)` would produce (for
 /// the text predicates). `null` → None (excluded by the predicate, SQL WHERE).
 fn cell_display(c: &Cell) -> Option<String> {
@@ -627,6 +653,62 @@ fn cell_display(c: &Cell) -> Option<String> {
             _ => String::new(),
         }),
     }
+}
+
+/// The non-text-predicate filter expression (eq/neq/lt/lte/gt/gte over a numeric,
+/// date, logical or string column). `Ok(None)` means the value didn't parse —
+/// matches NO rows on both engines (the oracle's filterValueToNumber policy,
+/// audit finding 16). Shared by `verb_filter` (standalone/tests) and `apply_step`
+/// (the fusion path) — the ONE place this coercion is spelled out.
+fn comparison_filter_expr(column: &str, ty: SolType, op: &str, value: &Json) -> Result<Option<Expr>, IpcError> {
+    let c = col(column);
+    if ty == SolType::Str {
+        let s = json_str(value);
+        let e = match op {
+            "eq" => c.eq(lit(s)),
+            "neq" => c.neq(lit(s)),
+            "lt" => c.lt(lit(s)),
+            "lte" => c.lt_eq(lit(s)),
+            "gt" => c.gt(lit(s)),
+            "gte" => c.gt_eq(lit(s)),
+            _ => return Err(IpcError::new("#VALUE!", format!("unknown filter op \"{op}\""))),
+        };
+        return Ok(Some(e));
+    }
+    // logical columns accept TRUE/FALSE/numbers via the logical↔number bridge;
+    // number/date parse after a trim with NO comma stripping.
+    let parsed: Option<f64> = match value {
+        Json::Number(n) => n.as_f64(),
+        Json::Bool(b) => Some(if *b { 1.0 } else { 0.0 }),
+        Json::String(s) => {
+            let t = s.trim();
+            if ty == SolType::Logical {
+                match t.to_ascii_lowercase().as_str() {
+                    "true" => Some(1.0),
+                    "false" => Some(0.0),
+                    _ => t.parse::<f64>().ok().map(|n| if n == 0.0 { 0.0 } else { 1.0 }),
+                }
+            } else if t.is_empty() {
+                None
+            } else {
+                t.parse::<f64>().ok()
+            }
+        }
+        _ => None,
+    };
+    let Some(v) = parsed else { return Ok(None) };
+    let x = c.cast(DataType::Float64);
+    let y = lit(v);
+    let e = match op {
+        "eq" => x.eq(y),
+        "neq" => x.neq(y),
+        "lt" => x.lt(y),
+        "lte" => x.lt_eq(y),
+        "gt" => x.gt(y),
+        "gte" => x.gt_eq(y),
+        _ => return Err(IpcError::new("#VALUE!", format!("unknown filter op \"{op}\""))),
+    };
+    Ok(Some(e))
 }
 
 fn verb_filter(frame: &SolFrame, column: &str, op: &str, value: &Json) -> Result<SolFrame, IpcError> {
@@ -651,193 +733,154 @@ fn verb_filter(frame: &SolFrame, column: &str, op: &str, value: &Json) -> Result
         return reorder_rows(frame, &keep);
     }
 
-    let c = col(column);
-    let expr: Expr = if ty == SolType::Str {
-        let s = json_str(value);
-        match op {
-            "eq" => c.eq(lit(s)),
-            "neq" => c.neq(lit(s)),
-            "lt" => c.lt(lit(s)),
-            "lte" => c.lt_eq(lit(s)),
-            "gt" => c.gt(lit(s)),
-            "gte" => c.gt_eq(lit(s)),
-            _ => return Err(IpcError::new("#VALUE!", format!("unknown filter op \"{op}\""))),
+    match comparison_filter_expr(column, ty, op, value)? {
+        None => reorder_rows(frame, &[]),
+        Some(expr) => {
+            let df = collect_lazy(frame.df.clone().lazy().filter(expr))?;
+            Ok(SolFrame { df, types: frame.types.clone() })
         }
-    } else {
-        // The ONE filter-value coercion spec, shared with the oracle's
-        // filterValueToNumber (audit finding 16): logical columns accept
-        // TRUE/FALSE/numbers via the logical↔number bridge; number/date parse
-        // after a trim with NO comma stripping. An unparseable value matches
-        // NO rows on both engines (json_num's NaN made neq keep everything).
-        let parsed: Option<f64> = match value {
-            Json::Number(n) => n.as_f64(),
-            Json::Bool(b) => Some(if *b { 1.0 } else { 0.0 }),
-            Json::String(s) => {
-                let t = s.trim();
-                if ty == SolType::Logical {
-                    match t.to_ascii_lowercase().as_str() {
-                        "true" => Some(1.0),
-                        "false" => Some(0.0),
-                        _ => t.parse::<f64>().ok().map(|n| if n == 0.0 { 0.0 } else { 1.0 }),
-                    }
-                } else if t.is_empty() {
-                    None
-                } else {
-                    t.parse::<f64>().ok()
-                }
-            }
-            _ => None,
-        };
-        let Some(v) = parsed else {
-            return reorder_rows(frame, &[]);
-        };
-        let x = c.cast(DataType::Float64);
-        let y = lit(v);
-        match op {
-            "eq" => x.eq(y),
-            "neq" => x.neq(y),
-            "lt" => x.lt(y),
-            "lte" => x.lt_eq(y),
-            "gt" => x.gt(y),
-            "gte" => x.gt_eq(y),
-            _ => return Err(IpcError::new("#VALUE!", format!("unknown filter op \"{op}\""))),
-        }
-    };
-    let df = collect_lazy(frame.df.clone().lazy().filter(expr))?;
-    Ok(SolFrame {
-        df,
-        types: frame.types.clone(),
-    })
+    }
 }
 
-// ─── group-by (manual, first-seen order) ────────────────────────────────────────
-// Mirrors the oracle's `aggregateGroup` (frameVerbs.ts) op-for-op: every op the
-// node UI offers is implemented — an op falling through to Null here is silent
-// wrong data on desktop only (the shipped 1.0 bug for product/median/mode/
-// stdev/stdevp/var/varp). Booleans coerce to 1/0 in BOTH implementations.
-fn aggregate_group(values: &[Cell], op: &str) -> Cell {
+// ─── group-by (native Polars, lazy) ─────────────────────────────────────────────
+// Rewritten from a hand-rolled HashMap bucketing (which forced an eager collect
+// on every call, blocking group-by from ever joining a fused plan) onto Polars'
+// `.group_by_stable().agg()`: `group_by_stable` preserves first-seen key order —
+// the SAME ordering the old manual bucket scan produced, and what the oracle's
+// `groupByFrame` (frameVerbs.ts) guarantees. Mirrors the oracle op-for-op; every
+// op the node UI offers is implemented via `group_agg_expr`. Booleans coerce to
+// 1/0 in BOTH implementations.
+fn group_agg_expr(column: &str, src_ty: SolType, op: &str) -> Expr {
     if op == "count" {
-        return Cell::Num(values.iter().filter(|c| !matches!(c, Cell::Null)).count() as f64);
+        // count is on the RAW column regardless of type — a string cell counts
+        // (unlike every other op, which only sees Num/Bool as "numeric").
+        return col(column).count().cast(DataType::Float64);
     }
-    let nums: Vec<f64> = values
-        .iter()
-        .filter_map(|c| match c {
-            Cell::Num(n) if n.is_finite() => Some(*n),
-            Cell::Bool(b) => Some(if *b { 1.0 } else { 0.0 }),
-            _ => None,
-        })
-        .collect();
-    if nums.is_empty() {
+    if src_ty == SolType::Str {
+        // The oracle's `nums` extraction only ever takes Num/Bool cells — a
+        // string column contributes NOTHING numeric to any op, so the result is
+        // the SAME op-dependent constant for every group (mirrors
+        // `aggregate_group`'s old `nums.is_empty()` branch).
         return match op {
-            "sum" => Cell::Num(0.0),
-            "product" => Cell::Num(1.0),
-            _ => Cell::Null,
+            "sum" => lit(0.0),
+            "product" => lit(1.0),
+            _ => lit(NULL).cast(DataType::Float64),
         };
     }
+    let base: Expr = if src_ty == SolType::Logical { col(column).cast(DataType::Float64) } else { col(column) };
     match op {
-        "sum" => Cell::Num(nums.iter().sum()),
-        "avg" => Cell::Num(nums.iter().sum::<f64>() / nums.len() as f64),
-        "min" => Cell::Num(nums.iter().cloned().fold(f64::INFINITY, f64::min)),
-        "max" => Cell::Num(nums.iter().cloned().fold(f64::NEG_INFINITY, f64::max)),
-        "product" => Cell::Num(nums.iter().product()),
-        "median" => {
-            let mut s = nums.clone();
-            s.sort_by(|a, b| a.partial_cmp(b).unwrap()); // finite-only, no NaN
-            let m = s.len() / 2;
-            Cell::Num(if s.len() % 2 == 1 { s[m] } else { (s[m - 1] + s[m]) / 2.0 })
-        }
-        // Most-frequent value; ties break by first occurrence (oracle `modeOf`).
-        "mode" => {
+        "sum" => base.sum().fill_null(lit(0.0)),
+        "avg" => base.mean(),
+        "min" => base.min(),
+        "max" => base.max(),
+        "product" => base.product().fill_null(lit(1.0)),
+        "median" => base.median(),
+        "mode" => mode_expr(base),
+        // Sample (ddof 1) vs population (ddof 0) variance; Polars' own
+        // insufficient-sample-size result (null/NaN) already matches the
+        // oracle's "undefined under 2 points → Null" (num_to_json maps any
+        // non-finite float to JSON null at the wire boundary).
+        "stdev" => base.std(1),
+        "stdevp" => base.std(0),
+        "var" => base.var(1),
+        "varp" => base.var(0),
+        _ => lit(NULL).cast(DataType::Float64),
+    }
+}
+
+/// Most-frequent value in a group; ties break by FIRST OCCURRENCE (oracle
+/// `modeOf`) — not expressible as a built-in Polars reduction (its native
+/// `.mode()` doesn't tie-break this way), so this is a per-group UDF via
+/// `Expr::apply` (GroupWise: receives one group's own Series, in original row
+/// order, per call — exactly what "first occurrence" needs).
+/// Build the mode aggregation onto `e`. Uses `function_with_options` (not the
+/// simpler `Expr::apply`) with `RETURNS_SCALAR` set explicitly — WITHOUT that
+/// flag Polars doesn't know this per-group closure collapses to ONE value and
+/// the result comes back null (found via `.product()`'s own definition, which
+/// sets the same flag for the same reason).
+fn mode_expr(e: Expr) -> Expr {
+    let options = FunctionOptions {
+        collect_groups: ApplyOptions::GroupWise,
+        flags: FunctionFlags::default() | FunctionFlags::RETURNS_SCALAR,
+        fmt_str: "mode_first_occurrence",
+        ..Default::default()
+    };
+    e.function_with_options(
+        |c: Column| {
+            let s = c.as_materialized_series();
+            let mut vals: Vec<f64> = Vec::with_capacity(s.len());
+            for i in 0..s.len() {
+                if let AnyValue::Float64(v) = s.get(i).unwrap_or(AnyValue::Null) {
+                    if v.is_finite() {
+                        vals.push(v);
+                    }
+                }
+            }
+            let name = c.name().clone();
+            if vals.is_empty() {
+                return Ok(Some(Series::new(name, &[None::<f64>]).into_column()));
+            }
+            // Most-frequent value; ties break by FIRST OCCURRENCE (oracle `modeOf`).
             let mut counts: HashMap<u64, usize> = HashMap::new();
-            let mut best = nums[0];
+            let mut best = vals[0];
             let mut best_count = 0usize;
-            for &v in &nums {
-                let c = counts.entry(v.to_bits()).or_insert(0);
-                *c += 1;
-                if *c > best_count {
-                    best_count = *c;
+            for &v in &vals {
+                let cnt = counts.entry(v.to_bits()).or_insert(0);
+                *cnt += 1;
+                if *cnt > best_count {
+                    best_count = *cnt;
                     best = v;
                 }
             }
-            Cell::Num(best)
-        }
-        // Sample (n−1) vs population (n) variance; sample undefined under 2
-        // points → Null (oracle `varianceOf`).
-        "stdev" | "stdevp" | "var" | "varp" => {
-            let sample = op == "stdev" || op == "var";
-            if sample && nums.len() < 2 {
-                return Cell::Null;
-            }
-            let n = nums.len() as f64;
-            let mean = nums.iter().sum::<f64>() / n;
-            let ss: f64 = nums.iter().map(|v| (v - mean) * (v - mean)).sum();
-            let var = ss / if sample { n - 1.0 } else { n };
-            Cell::Num(if op.starts_with("stdev") { var.sqrt() } else { var })
-        }
-        _ => Cell::Null,
+            Ok(Some(Series::new(name, &[best]).into_column()))
+        },
+        GetOutput::from_type(DataType::Float64),
+        options,
+    )
+}
+
+/// Build the group-by's lazy plan against the given schema (not a live
+/// `DataFrame`) — shared by `verb_group_by` (collects immediately) and
+/// `apply_step`'s fusion path (keeps chaining).
+fn group_by_lazy_plan(
+    lf: LazyFrame,
+    names: &[String],
+    types: &[SolType],
+    keys: &[String],
+    aggs: &[WireAgg],
+) -> Result<(LazyFrame, Vec<String>, Vec<SolType>), IpcError> {
+    require_in(names, keys)?;
+    let agg_cols: Vec<String> = aggs.iter().map(|a| a.column.clone()).collect();
+    require_in(names, &agg_cols)?;
+
+    // De-dupe output names up front (a key name + an agg `as` may collide) so
+    // the Polars aliases are already unique — matches the oracle's makeHeaders
+    // pass (audit finding 32); the KEY keeps its name (first occurrence wins).
+    let mut proposed: Vec<String> = keys.to_vec();
+    proposed.extend(aggs.iter().map(|a| a.as_name.clone()));
+    let out_names = make_headers(&proposed, proposed.len());
+    let agg_names = &out_names[keys.len()..];
+
+    let key_exprs: Vec<Expr> = keys.iter().map(|k| col(k.as_str())).collect();
+    let mut out_types: Vec<SolType> = keys.iter().map(|k| type_of_in(names, types, k).unwrap()).collect();
+    let mut agg_exprs: Vec<Expr> = Vec::with_capacity(aggs.len());
+    for (i, a) in aggs.iter().enumerate() {
+        let src_ty = type_of_in(names, types, &a.column).unwrap();
+        agg_exprs.push(group_agg_expr(&a.column, src_ty, &a.op).alias(agg_names[i].as_str()));
+        // min/max preserve the source type; sum/avg/count/… are numeric
+        out_types.push(if a.op == "min" || a.op == "max" { src_ty } else { SolType::Number });
     }
+    // Polars' agg() output column order isn't contractually the input order —
+    // pin it explicitly (mirrors verb_join's by-name reselect).
+    let select_exprs: Vec<Expr> = out_names.iter().map(|n| col(n.as_str())).collect();
+    let out_lf = lf.group_by_stable(&key_exprs).agg(agg_exprs).select(select_exprs);
+    Ok((out_lf, out_names, out_types))
 }
 
 fn verb_group_by(frame: &SolFrame, keys: &[String], aggs: &[WireAgg]) -> Result<SolFrame, IpcError> {
-    require_columns(frame, keys)?;
-    let agg_cols: Vec<String> = aggs.iter().map(|a| a.column.clone()).collect();
-    require_columns(frame, &agg_cols)?;
-
-    let key_data: Vec<(SolType, Vec<Cell>)> =
-        keys.iter().map(|k| frame.column_cells(k).unwrap()).collect();
-    let agg_data: Vec<(SolType, Vec<Cell>)> =
-        aggs.iter().map(|a| frame.column_cells(&a.column).unwrap()).collect();
-    let nrows = frame.df.height();
-
-    let mut order: Vec<String> = Vec::new();
-    let mut buckets: HashMap<String, Vec<usize>> = HashMap::new();
-    for i in 0..nrows {
-        let key = key_data
-            .iter()
-            .map(|(_, cells)| cells[i].key())
-            .collect::<Vec<_>>()
-            .join("\u{1}");
-        buckets.entry(key.clone()).or_insert_with(|| {
-            order.push(key.clone());
-            Vec::new()
-        });
-        buckets.get_mut(&key).unwrap().push(i);
-    }
-
-    let mut out_names: Vec<String> = keys.to_vec();
-    let mut out_types: Vec<SolType> = key_data.iter().map(|(t, _)| *t).collect();
-    let mut out_cols: Vec<Vec<Cell>> = Vec::new();
-    // key columns: each bucket shares the key, take the first row's value
-    for (k, (_, cells)) in key_data.iter().enumerate() {
-        let _ = k;
-        out_cols.push(order.iter().map(|key| cells[buckets[key][0]].clone()).collect());
-    }
-    // aggregate columns
-    for (ai, agg) in aggs.iter().enumerate() {
-        let (src_ty, cells) = &agg_data[ai];
-        out_names.push(agg.as_name.clone());
-        // min/max preserve the source type; sum/avg/count are numeric
-        let out_ty = if agg.op == "min" || agg.op == "max" {
-            *src_ty
-        } else {
-            SolType::Number
-        };
-        out_types.push(out_ty);
-        out_cols.push(
-            order
-                .iter()
-                .map(|key| {
-                    let group: Vec<Cell> = buckets[key].iter().map(|&i| cells[i].clone()).collect();
-                    aggregate_group(&group, &agg.op)
-                })
-                .collect(),
-        );
-    }
-    // De-dupe output names (an agg `as` can collide with a key) — matches the
-    // oracle's makeHeaders pass (audit finding 32).
-    let out_names = make_headers(&out_names, out_names.len());
-    let df = build_df(&out_names, &out_types, &out_cols)?;
-    Ok(SolFrame { df, types: out_types })
+    let (lf, _names, types) = group_by_lazy_plan(frame.df.clone().lazy(), &frame.names(), &frame.types, keys, aggs)?;
+    let df = collect_lazy(lf)?;
+    Ok(SolFrame { df, types })
 }
 
 // ─── unpivot (manual, row-major) ────────────────────────────────────────────────
@@ -1092,6 +1135,59 @@ fn column_of(frame: &SolFrame, name: &str) -> Option<OutColumn> {
     })
 }
 
+// ─── Apply N ops onto one accumulating plan (the fusion entry point) ────────────
+// Select / drop / rename / sort / head / a comparison filter / group-by build
+// directly onto the plan's `LazyFrame` — no collect. Distinct / unpivot / a
+// text-predicate filter are hand-rolled (row-order / row-string ops a Polars
+// expr can't express): they collect THIS STEP only, run the existing manual
+// verb, and resume the plan lazily from the result, so a chain around them
+// still fuses on both sides.
+fn apply_step(plan: Plan, op: &WireOp) -> Result<Plan, IpcError> {
+    match op {
+        WireOp::Select { columns } => lazy_select(plan, columns),
+        WireOp::Drop { columns } => lazy_drop(plan, columns),
+        WireOp::Rename { map } => lazy_rename(plan, map),
+        WireOp::Sort { by, dir } => lazy_sort(plan, by, dir),
+        WireOp::Head { n } => lazy_head(plan, *n),
+        WireOp::GroupBy { keys, aggs } => {
+            let (lf, names, types) = group_by_lazy_plan(plan.lf, &plan.names, &plan.types, keys, aggs)?;
+            Ok(Plan { lf, names, types })
+        }
+        WireOp::Filter { column, op: fop, value } => {
+            require_in(&plan.names, std::slice::from_ref(column))?;
+            if matches!(fop.as_str(), "contains" | "startsWith" | "endsWith") {
+                let frame = plan.collect()?;
+                let out = verb_filter(&frame, column, fop, value)?;
+                Ok(Plan::from_frame(&out))
+            } else {
+                let ty = type_of_in(&plan.names, &plan.types, column).unwrap();
+                match comparison_filter_expr(column, ty, fop, value)? {
+                    Some(e) => Ok(Plan { lf: plan.lf.filter(e), ..plan }),
+                    None => Ok(Plan { lf: plan.lf.filter(lit(false)), ..plan }),
+                }
+            }
+        }
+        WireOp::Distinct { columns } => {
+            let frame = plan.collect()?;
+            let out = verb_distinct(&frame, columns)?;
+            Ok(Plan::from_frame(&out))
+        }
+        WireOp::Unpivot { id_columns, value_columns, variable_name, value_name } => {
+            let frame = plan.collect()?;
+            let out = verb_unpivot(&frame, id_columns, value_columns, variable_name, value_name)?;
+            Ok(Plan::from_frame(&out))
+        }
+    }
+}
+
+fn apply_ops(frame: &SolFrame, ops: &[WireOp]) -> Result<SolFrame, IpcError> {
+    let mut plan = Plan::from_frame(frame);
+    for op in ops {
+        plan = apply_step(plan, op)?;
+    }
+    plan.collect()
+}
+
 // ─── Tauri commands (the IPC surface the FrameBackend speaks) ────────────────────
 
 #[tauri::command]
@@ -1101,22 +1197,18 @@ pub fn engine_source(frame: WireFrame) -> Result<String, IpcError> {
 
 #[tauri::command]
 pub fn engine_apply(handle: String, op: WireOp) -> Result<String, IpcError> {
-    let out = with_frame(&handle, |f| match &op {
-        WireOp::Select { columns } => verb_select(f, columns),
-        WireOp::Drop { columns } => verb_drop(f, columns),
-        WireOp::Rename { map } => verb_rename(f, map),
-        WireOp::Sort { by, dir } => verb_sort(f, by, dir),
-        WireOp::Distinct { columns } => verb_distinct(f, columns),
-        WireOp::Head { n } => verb_head(f, *n),
-        WireOp::Filter { column, op, value } => verb_filter(f, column, op, value),
-        WireOp::GroupBy { keys, aggs } => verb_group_by(f, keys, aggs),
-        WireOp::Unpivot {
-            id_columns,
-            value_columns,
-            variable_name,
-            value_name,
-        } => verb_unpivot(f, id_columns, value_columns, variable_name, value_name),
-    })?;
+    engine_apply_many(handle, vec![op])
+}
+
+/// Apply MULTIPLE verbs in one round trip, fusing them into ONE Polars plan and
+/// collecting once — the compile/fuse win: a chain of N verb applications that
+/// used to mean N `engine_apply` round trips (and N intermediate full
+/// materializations) now costs one IPC call and, for the pure-lazy ops, one
+/// physical execution (Polars' own query optimizer fuses select/filter/sort/
+/// group-by into a single pass). `engine_apply` is the N=1 degenerate case.
+#[tauri::command]
+pub fn engine_apply_many(handle: String, ops: Vec<WireOp>) -> Result<String, IpcError> {
+    let out = with_frame(&handle, |f| apply_ops(f, &ops))?;
     Ok(register(out))
 }
 

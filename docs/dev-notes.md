@@ -2,6 +2,64 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### v2.0 Bet 1 — compile/fuse execution: group_by rewrite + verb-chain fusion (2026-07-03)
+Implemented `docs/v2.0/03-compile-fuse.md` build order items 1–4, 6 (item 5, scalar fusion via
+`compileFormula`, DEFERRED — see below). `cargo test` (32/32) + `npx tsc --noEmit` + `npx vitest
+run` (1614/1614) all green.
+
+- **`verb_group_by` rewritten onto native Polars lazy `.group_by_stable().agg()`** (`engine.rs`),
+  replacing the hand-rolled HashMap bucketing — the one verb that couldn't join a fused plan
+  before. `group_by_stable` preserves first-seen key order (matches the oracle exactly). Every op
+  (sum/avg/min/max/product/median/mode/stdev/stdevp/var/varp/count) is a Polars expr
+  (`group_agg_expr`) except MODE, which needs a custom per-group closure for first-occurrence
+  tie-break (`mode_expr`, `Expr::function_with_options` with `FunctionFlags::RETURNS_SCALAR` set
+  explicitly — **gotcha: `Expr::apply()`'s default options DON'T set that flag, and the result
+  silently comes back `null`** for a scalar-per-group UDF; had to reverse-engineer this by
+  comparing against `.product()`'s own definition, which sets it). `FunctionOptions`/
+  `ApplyOptions`/`FunctionFlags` aren't re-exported through `polars::prelude` — added `polars-plan`
+  as a direct dependency (Cargo unifies it to the same 0.46.x already pulled in via `polars-lazy`,
+  no second copy). Also needed the `"product"` Polars cargo feature — without it `.product()`
+  panics at runtime ("activate 'product' feature"), not a compile error.
+- **Every verb now builds onto a shared `LazyFrame` instead of collecting per call** — `engine.rs`'s
+  `Plan` struct (a `LazyFrame` + tracked names/types) and `apply_step`/`apply_ops`, exposed via a
+  new `engine_apply_many(handle, ops: Vec<WireOp>)` IPC command (`engine_apply` is now the N=1
+  degenerate case). Select/drop/rename/sort/head/a comparison filter/group-by chain purely lazily;
+  distinct/unpivot/a text-predicate filter are hand-rolled (row-order/row-string ops no Polars expr
+  can express) — they collect just THEIR OWN step and resume the plan lazily afterward, so a chain
+  around them still fuses on both sides.
+- **The JS seam accumulates the plan too** (`frameBackend.ts`) — this is what actually cuts IPC
+  round trips, not just Rust-internal laziness (Rust collecting lazily doesn't help if JS still
+  calls `engine_apply` once per verb node). `FrameRef` gained `__plan: readonly FrameOp[]`;
+  `runFrameUnary` chaining onto an existing ref just extends `__plan` (`extendRef`) — zero backend
+  calls. A materialization boundary (`readFrame`) or a card's own preview (`collectPreview`) FLUSHES
+  the whole queued plan in ONE `applyMany` round trip (`flushRef`, memoized per pass by the REF
+  OBJECT — not the handle string, since two refs can share a base handle with DIFFERENT pending
+  plans after a fan-out). Measured directly in `polarsBackend.test.ts`'s new fusion describe block:
+  a 3-verb chain now makes ONE `engine_apply_many` call, not three.
+- **Ownership/GC gotcha this forced:** before, every verb node's ref uniquely owned a freshly
+  `engine_apply`'d handle, so `dropFrameRef` dropping it on supersession was always correct. Now a
+  chained ref's `__frameRef` is a BORROWED base (the upstream ref's, ultimately a source-cache
+  handle) — `dropFrameRef` had to change to a no-op unless `__plan.length === 0` (a join/append
+  result, or an already-flushed handle), or it would sever a handle other consumers still need.
+  Flushed handles are owned by `_flushMemo` instead — `clearCollectMemo()` (called at the top of
+  every `processGraph` pass) now also drops every handle the JUST-FINISHED pass flushed, since by
+  then every consumer has already read the plain-JS-object `cachedResult`/preview values.
+  `GetColumnNode` read `f.__frameRef` directly (bypassing the flush) — fixed to `flushRef(f)` first;
+  grepped the whole `src/graph` tree for other direct `.__frameRef` reads and found none.
+- **Deferred: item 5 (scalar fusion via `compileFormula`).** Read `excelFormula.ts` before trying
+  this — the dormant `compileFormula`/`js()` codegen path (`excelFormula.ts:272`) is EXPLICITLY
+  documented (comments at :478,594,608) as DIVERGING from `evalAst`, the production formula
+  evaluator: no null propagation, no #DIV/0! (raw JS `Infinity`), no type-strict comparisons, no
+  logical↔number bridge the same way. Wiring graph nodes through it as-is would ship silently wrong
+  results. Doing this right needs either (a) reconciling `js()`'s semantics with `evalAst`'s first
+  (a sub-project on its own), or (b) building a graph-region-to-AST extractor that reuses `evalAst`
+  semantics directly instead of the codegen path — either way a separate, sizable follow-up, not a
+  quick wire-up. Left `compileFormula` dormant; did not touch `nodes/expression.ts` or `evalAst`.
+- **Also: this session's worktree was stale** (pinned at the pre-2.0-docs commit, 58 commits behind
+  `develop`) — had zero unique commits vs. `develop`, so fast-forwarded it rather than working from
+  a stale tree. If a worktree session can't find a doc/file that should exist on `develop`, check
+  `git log`/`git merge-base` before assuming it's missing.
+
 ### Ragged-list pad BUILT (audit finding 25) + list SORT nulls-last + TEXT TZ fix (2026-07-02)
 The pad-to-longest-with-null policy (settled 2026-06-22 with the array-semantics build, unbuilt
 since) is now implemented — **behavior change:** `[1,2,3]+[10,20]` → `[11,22,null]`, no more
