@@ -65,7 +65,7 @@ export interface CompositeInternalSnapshot {
 // port as a list, instead of a single scalar. Only list modes actually wired
 // up appear here; a mode gets added to this union in the same commit its
 // data() branch + UI land (see CompositeComponent's run-mode dropdown).
-export type CompositeRunMode = "single" | "scenarios";
+export type CompositeRunMode = "single" | "scenarios" | "data-table";
 
 /** One named input set for Scenarios mode. `overrides` is keyed by
  *  CompositeInputPort.id; a port with no entry falls back to its normal
@@ -76,6 +76,15 @@ export interface CompositeScenario {
   name: string;
   overrides: Record<string, unknown>;
 }
+
+/** Data Table mode: a full-factorial parameter grid instead of named sets.
+ *  Keyed by CompositeInputPort.id → the sweep values for that port. A port
+ *  with no entry (or an empty list) doesn't vary — it just keeps using its
+ *  normal wired/default value on every run, the same "only name what
+ *  changes" contract Scenarios uses. 1 varying port = Excel's one-variable
+ *  Data Table; 2 = the two-variable grid; N generalizes past what Excel
+ *  can express (the Cartesian product over every varying port). */
+export type CompositeDataTableValues = Record<string, unknown[]>;
 
 // ─── Internal boundary markers ─────────────────────────────────────────────────
 // Not user-addable — no catalog entry. They only ever live inside a
@@ -135,6 +144,7 @@ export class CompositeNode extends ClassicPreset.Node {
   cachedOutputs: Record<string, unknown> = {};
   runMode: CompositeRunMode;
   scenarios: CompositeScenario[];
+  dataTableValues: CompositeDataTableValues;
 
   // A freshly-loaded (not yet hydrated) composite holds its saved internal
   // graph here until `hydrate()` rebuilds it against a class registry — see
@@ -150,6 +160,7 @@ export class CompositeNode extends ClassicPreset.Node {
     internal?: CompositeInternalSnapshot;
     runMode?: CompositeRunMode;
     scenarios?: CompositeScenario[];
+    dataTableValues?: CompositeDataTableValues;
   }) {
     super("Composite");
     this.label = init?.label ?? "Composite";
@@ -159,6 +170,9 @@ export class CompositeNode extends ClassicPreset.Node {
     this.outputPorts = (init?.outputPorts ?? []).map((p) => ({ ...p }));
     this.runMode = init?.runMode ?? "single";
     this.scenarios = (init?.scenarios ?? []).map((s) => ({ ...s, overrides: { ...s.overrides } }));
+    this.dataTableValues = Object.fromEntries(
+      Object.entries(init?.dataTableValues ?? {}).map(([k, v]) => [k, [...v]]),
+    );
     this.internalEditor = new NodeEditor<Schemes>();
     // Same two wrappers the outer Canvas installs on the real editor (see
     // errorIntegration.test.ts's makeEditor): coercion first (inner), so a
@@ -302,6 +316,15 @@ export class CompositeNode extends ClassicPreset.Node {
     else s.overrides[portId] = value;
   }
 
+  // ─── Data Table mutator ──────────────────────────────────────────────────
+
+  /** Set (or clear, with an empty array) the sweep values for one input
+   *  port's axis of the parameter grid. */
+  setDataTableValues(portId: string, values: unknown[]): void {
+    if (values.length === 0) delete this.dataTableValues[portId];
+    else this.dataTableValues[portId] = values;
+  }
+
   // ─── Compute ─────────────────────────────────────────────────────────────
 
   /** One internal engine pass: inject each input port's value (an explicit
@@ -339,18 +362,47 @@ export class CompositeNode extends ClassicPreset.Node {
     return row;
   }
 
+  /** Run one pass per entry in `overridesList` and transpose the per-run
+   *  results into one ARRAY per output port (run order preserved) — the
+   *  "collect side by side" step every multi-run mode shares. */
+  private async collectMultiple(
+    inputs: Record<string, unknown[]>,
+    overridesList: Array<Record<string, unknown>>,
+  ): Promise<Record<string, unknown>> {
+    const rows: Record<string, unknown>[] = [];
+    for (const overrides of overridesList) rows.push(await this.runPass(inputs, overrides));
+    const outputs: Record<string, unknown> = {};
+    for (const port of this.outputPorts) outputs[port.id] = rows.map((r) => r[port.id]);
+    return outputs;
+  }
+
   async data(inputs: Record<string, unknown[]>): Promise<Record<string, unknown>> {
+    let outputs: Record<string, unknown>;
     if (this.runMode === "scenarios" && this.scenarios.length > 0) {
-      const rows: Record<string, unknown>[] = [];
-      for (const scenario of this.scenarios) {
-        rows.push(await this.runPass(inputs, scenario.overrides));
+      outputs = await this.collectMultiple(inputs, this.scenarios.map((s) => s.overrides));
+    } else if (this.runMode === "data-table") {
+      // Only exposed ports with a non-empty sweep list are axes of the grid;
+      // a port with no entry keeps its normal wired/default value on every run.
+      const axes = this.inputPorts
+        .filter((p) => p.exposure === "exposed" && (this.dataTableValues[p.id]?.length ?? 0) > 0)
+        .map((p) => ({ portId: p.id, values: this.dataTableValues[p.id] }));
+      if (axes.length > 0) {
+        const combos = axes.reduce<unknown[][]>(
+          (acc, axis) => acc.flatMap((combo) => axis.values.map((v) => [...combo, v])),
+          [[]],
+        );
+        const overridesList = combos.map((combo) => {
+          const o: Record<string, unknown> = {};
+          axes.forEach((axis, i) => { o[axis.portId] = combo[i]; });
+          return o;
+        });
+        outputs = await this.collectMultiple(inputs, overridesList);
+      } else {
+        outputs = await this.runPass(inputs);
       }
-      const outputs: Record<string, unknown> = {};
-      for (const port of this.outputPorts) outputs[port.id] = rows.map((r) => r[port.id]);
-      this.cachedOutputs = outputs;
-      return outputs;
+    } else {
+      outputs = await this.runPass(inputs);
     }
-    const outputs = await this.runPass(inputs);
     this.cachedOutputs = outputs;
     return outputs;
   }

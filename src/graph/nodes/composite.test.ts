@@ -261,3 +261,64 @@ describe("CompositeNode Scenarios run mode", () => {
     expect(c.scenarios[0].overrides[inAId]).toBe(42);
   });
 });
+
+describe("CompositeNode Data Table run mode", () => {
+  async function makeAdder() {
+    const c = new CompositeNode({ runMode: "data-table" });
+    const add = new ArithmeticNode({ op: "add" });
+    add.literals = { a: 0, b: 0 };
+    const inA = new CompositeInputNode({ label: "A" });
+    const inB = new CompositeInputNode({ label: "B" });
+    const outMarker = new CompositeOutputNode({ label: "Sum" });
+    for (const n of [add, inA, inB, outMarker]) await c.internalEditor.addNode(n as unknown as Schemes["Node"]);
+    await connect(c.internalEditor, inA, "value", add, "a");
+    await connect(c.internalEditor, inB, "value", add, "b");
+    await connect(c.internalEditor, add, "result", outMarker, "value");
+    const inAId = c.addInputPort({ label: "A", exposure: "exposed", tier: "basic", internalNodeId: inA.id });
+    const inBId = c.addInputPort({ label: "B", exposure: "exposed", tier: "basic", internalNodeId: inB.id });
+    const outId = c.addOutputPort({ label: "Sum", tier: "basic", internalNodeId: outMarker.id });
+    return { c, inAId, inBId, outId };
+  }
+
+  it("with no axes, behaves exactly like a single run", async () => {
+    const { c, inAId, inBId, outId } = await makeAdder();
+    const out = await c.data({ [inAId]: [2], [inBId]: [3] });
+    expect(out[outId]).toBe(5);
+  });
+
+  it("one varying port sweeps a simple list (Excel's one-variable Data Table)", async () => {
+    const { c, inAId, inBId, outId } = await makeAdder();
+    c.setDataTableValues(inAId, [1, 2, 3]);
+    const out = await c.data({ [inAId]: [999], [inBId]: [10] }); // B stays wired at 10
+    expect(out[outId]).toEqual([11, 12, 13]);
+  });
+
+  it("two varying ports form the full-factorial Cartesian grid, row-major", async () => {
+    const { c, inAId, inBId, outId } = await makeAdder();
+    c.setDataTableValues(inAId, [1, 2]);
+    c.setDataTableValues(inBId, [10, 20, 30]);
+    const out = await c.data({});
+    // 2 × 3 = 6 combinations, first axis slowest: (1,10)(1,20)(1,30)(2,10)(2,20)(2,30)
+    expect(out[outId]).toEqual([11, 21, 31, 12, 22, 32]);
+  });
+
+  it("clearing a port's values (empty array) drops it back out of the grid", async () => {
+    const { c, inAId, inBId, outId } = await makeAdder();
+    c.setDataTableValues(inAId, [1, 2]);
+    c.setDataTableValues(inAId, []); // clear
+    const out = await c.data({ [inAId]: [5], [inBId]: [5] });
+    expect(out[outId]).toBe(10); // back to a plain scalar single run
+  });
+
+  it("data table values round-trip through extractInit (deep-copied, not aliased)", async () => {
+    const { c, inAId } = await makeAdder();
+    c.setDataTableValues(inAId, [7, 8, 9]);
+
+    const init = extractInit(c as unknown as ClassicPreset.Node);
+    const clone = new CompositeNode(init as ConstructorParameters<typeof CompositeNode>[0]);
+    expect(clone.dataTableValues[inAId]).toEqual([7, 8, 9]);
+
+    clone.setDataTableValues(inAId, [0]);
+    expect(c.dataTableValues[inAId]).toEqual([7, 8, 9]); // original untouched
+  });
+});

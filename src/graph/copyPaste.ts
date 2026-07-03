@@ -117,6 +117,12 @@ export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
     init.scenarios = (n.scenarios as Array<{ id: string; name: string; overrides: Record<string, unknown> }>)
       .map((s) => ({ id: s.id, name: s.name, overrides: { ...s.overrides } }));
   }
+  // Data Table run mode: per-port sweep value lists. Deep-copy the arrays.
+  if (n.dataTableValues && typeof n.dataTableValues === "object") {
+    init.dataTableValues = Object.fromEntries(
+      Object.entries(n.dataTableValues as Record<string, unknown[]>).map(([k, v]) => [k, [...v]]),
+    );
+  }
   if (typeof n.snapshotInternal === "function") {
     init.internal = (n.snapshotInternal as () => unknown)();
   }

@@ -11,6 +11,7 @@ import { processGraph } from "../process";
 const RUN_MODE_OPTIONS: OpOption<CompositeRunMode>[] = [
   { value: "single", label: "Single run" },
   { value: "scenarios", label: "Scenarios" },
+  { value: "data-table", label: "Data table" },
 ];
 
 /** "3.5" → 3.5; "" → undefined (clears the override, falls back to the port's
@@ -90,6 +91,51 @@ function ScenarioTable({ node }: { node: CompositeNodeType }) {
   );
 }
 
+/** "2, 4, 6.5, hot" → [2, 4, 6.5, "hot"] — same number-or-string-per-cell
+ *  parsing as a scenario override, applied to a comma-separated sweep list. */
+function parseCsvValues(text: string): unknown[] {
+  return text.split(",").map((s) => s.trim()).filter((s) => s !== "").map((s) => {
+    const n = Number(s);
+    return Number.isFinite(n) ? n : s;
+  });
+}
+
+function valuesToCsv(values: unknown[] | undefined): string {
+  return (values ?? []).join(", ");
+}
+
+// One row per exposed input port: a CSV field of sweep values. Blank = this
+// port doesn't vary (a full-factorial grid over whichever ports DO have a
+// list — 1 varying port is Excel's one-variable Data Table, 2 is the
+// two-variable grid, N generalizes past that).
+function DataTableEditor({ node }: { node: CompositeNodeType }) {
+  const exposed = node.inputPorts.filter((p) => p.exposure === "exposed");
+  const recompute = () => { void processGraph(node.id); };
+
+  if (exposed.length === 0) {
+    return <div className="solenoid-node__text-empty">expose an input to sweep it</div>;
+  }
+  return (
+    <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 3 }}>
+      {exposed.map((p) => (
+        <div key={p.id} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1.6fr)", gap: 6, alignItems: "center" }}>
+          <span className="solenoid-node__io-label" title={p.label} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.label}</span>
+          <input
+            className="solenoid-node__inline-input"
+            defaultValue={valuesToCsv(node.dataTableValues[p.id])}
+            placeholder="e.g. 1, 2, 3"
+            onBlur={(e) => { node.setDataTableValues(p.id, parseCsvValues(e.target.value)); recompute(); }}
+            onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            spellCheck={false}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // The Composite card: an editable title (NodeShell), one row per exposed
 // input (InlineInputs — reuses the generic input-row renderer off
 // node.inputs; every port socket is `any`, so a row is socket+label, or a
@@ -109,6 +155,7 @@ export function CompositeComponent({ data: node, emit }: NodeProps<CompositeNode
         <OpSelect value={runMode} options={RUN_MODE_OPTIONS} onChange={setRunMode} />
       )}
       {runMode === "scenarios" && <ScenarioTable node={node} />}
+      {runMode === "data-table" && <DataTableEditor node={node} />}
       {node.outputPorts.map((p) => {
         const port = node.outputs[p.id];
         if (!port) return null;
