@@ -6,6 +6,7 @@ import { formatScalar } from "./format";
 import { useChartColors } from "./chartView";
 import { isSolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
+import { flyToNode } from "../flyToNode";
 
 const VIZ = "#e9b63a";
 // recharts sizes a polar chart's radius off min(width, height)/2, so to get a
@@ -26,7 +27,11 @@ export function GaugeComponent({ data, emit }: NodeProps<GaugeNodeType>) {
     return (
       <NodeShell node={data} emit={emit} collapsible={false}>
         <InlineInputs node={data} emit={emit} />
-        <div className="solenoid-node__display-value solenoid-node__display-value--error" title={errorTip(value)}>{value.code}</div>
+        <div
+          className={`solenoid-node__display-value solenoid-node__display-value--error${value.origin ? " sol-error-chip--clickable" : ""}`}
+          title={errorTip(value)}
+          onClick={value.origin ? () => flyToNode(value.origin!.nodeId) : undefined}
+        >{value.code}</div>
       </NodeShell>
     );
   }

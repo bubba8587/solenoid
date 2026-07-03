@@ -6,9 +6,12 @@
 // Live entries are fed by errorValue.ts's error-sink hook, which fires whenever a
 // node's OWN output becomes an error (a throw, an input-propagation short-circuit,
 // or a producer just returning a SolError with no throw at all — e.g. Divide's
-// #DIV/0!). Edge-detected per node (same-code repeats across recomputes are not
-// re-logged) so a continuously-failing node doesn't spam the log — a NEW failure
-// (or the same node failing a DIFFERENT way) gets its own row.
+// #DIV/0!) — including every downstream node the error merely passes through.
+// reportLive collapses that down to ONE row per failure, at the error's tagged
+// ORIGIN node (errorValue.ts's provenance), not every relay site. Edge-detected
+// per node (same-code repeats across recomputes are not re-logged) so a
+// continuously-failing node doesn't spam the log — a NEW failure (or the same
+// node failing a DIFFERENT way) gets its own row.
 
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
@@ -37,8 +40,14 @@ const { notify, subscribe, version } = createNotifier();
 export const problemsStore = {
   list: (): readonly ProblemEntry[] => _entries,
 
-  /** A live compute-pass hit (see errorValue.ts's error sink). */
+  /** A live compute-pass hit (see errorValue.ts's error sink). Logs only at the
+   *  error's TRUE ORIGIN — the sink fires for every node an error's output
+   *  passes through, so without this a single failure wired to N downstream
+   *  nodes would produce N rows for the same underlying cause. Falls back to
+   *  logging here if origin is somehow unset (defensive; installErrorGuards
+   *  should always tag it). */
   reportLive(nodeId: string, err: SolError): void {
+    if (err.origin && err.origin.nodeId !== nodeId) return;
     if (_lastLiveCode.get(nodeId) === err.code) return; // same failure, already logged
     _lastLiveCode.set(nodeId, err.code);
     const entry: ProblemEntry = { id: ++_seq, nodeId, code: err.code, message: err.message, origin: "compute", time: Date.now() };

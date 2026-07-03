@@ -10,6 +10,7 @@ import { useDraftCommit } from "./inlineInput";
 import { describeNode, nodeName } from "../catalogUtils";
 import { isSolError, type SolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
+import { flyToNode } from "../flyToNode";
 import { ResizeHandle } from "./ResizeHandle";
 import { formatScalar } from "./format";
 import { ArrayChip } from "./ArrayChip";
@@ -163,7 +164,11 @@ function MeasuredOutputRow({
     <MeasuredSocketRow side="output" socketKey={rowKey} nodeId={node.id} emit={emit} payload={port.socket}>
       <span className="solenoid-node__io-label">{label}</span>
       {isSolError(value) ? (
-        <span className="solenoid-node__output-value solenoid-node__display-value--error" title={value.message}>{value.code}</span>
+        <span
+          className={`solenoid-node__output-value solenoid-node__display-value--error${value.origin ? " sol-error-chip--clickable" : ""}`}
+          title={errorTip(value)}
+          onClick={value.origin ? () => flyToNode(value.origin!.nodeId) : undefined}
+        >{value.code}</span>
       ) : (
         <span className="solenoid-node__output-value">
           {value === null ? "—" : formatScalar(value)}
@@ -525,7 +530,11 @@ export function ValueDisplay({
     // Shared error treatment: red #CODE! badge, hover surfaces the producer
     // message + the general explanation/fix (errorTip) — same everywhere.
     return (
-      <div className="solenoid-node__display-value solenoid-node__display-value--error" title={errorTip(value)}>
+      <div
+        className={`solenoid-node__display-value solenoid-node__display-value--error${value.origin ? " sol-error-chip--clickable" : ""}`}
+        title={errorTip(value)}
+        onClick={value.origin ? () => flyToNode(value.origin!.nodeId) : undefined}
+      >
         {value.code}
       </div>
     );
