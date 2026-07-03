@@ -448,6 +448,13 @@ sinks disabled by default in shared/imported graphs.
 
 ## 10 — Headless Solenoid: the graph as a software artifact
 
+**VERDICT (author, 2026-07-02): IN.** The spike (`scripts/run-graph.ts`-style: load a
+saved graph in Node, run the engine, print named outputs as JSON) needs neither Bet 2
+nor Bet 3; the polished CLI (`--set` by stable name, typed args) rides them. Writes
+only where explicitly told (`--out`) — same explicit-command discipline as #9. The
+golden-tests revisit (end of walk) decides whether the CI-assertions half of the
+story exists; headless-run is in regardless.
+
 **Scope today:** a graph runs only inside the app, with a human watching.
 
 **The jump:** **run a graph without the UI** — `solenoid run model.sol --set rate=0.05
