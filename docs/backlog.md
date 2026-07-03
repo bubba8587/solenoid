@@ -196,6 +196,12 @@ NEXT when resuming: staff bundles per `docs/v2.0/README.md`'s tier order (Tier 0
 01 addressable model, 02 shape-checking, 03 compile/fuse, 04 provenance, 05 units/FC —
 independent of each other, parallelize across agents/sessions), or resolve one of the
 "verdict pending" items with the author first if that's higher priority.
+- [x] **Bundle 01 (addressable model + text projection) BUILT 2026-07-03** — stable
+  per-node names (`nodeNameStore.ts`), the pure text-form writer/reader (`textForm.ts`),
+  a round-trip test (`textForm.test.ts`), and `serializeGraph` generating its JSON from
+  the text form. See dev-notes "Addressable model + text projection BUILT". Left for a
+  follow-up: a UI rename affordance and a user-facing "view/edit as text" surface
+  (neither was in this bundle's build order — the store's `rename()` is ready for it).
 ~~Old sequencing note (superseded by the docs/v2.0/ set above): the unfinished
 v1.1-plan workstreams where they belong, then the remaining deferred pile (#2, #6, #11,
 #23, #35, #46) if the author wants to close those out too, then the design deep-dive

@@ -2,6 +2,48 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Addressable model + text projection BUILT (Bet 2, `docs/v2.0/01-addressable-model.md`) (2026-07-03)
+Every node now has a stable, user-editable `name` (`nodeNameStore.ts` — module store like
+collapseStore/nodeSizeStore, keyed by rete's ephemeral `id`; defaults via a type-scoped counter,
+`Filter_2`; validated identifier + unique-per-document on rename). `nodeNaming.ts` holds the pure
+prefix/counter algorithm shared by the live store and the text-form writer.
+
+`textForm.ts` is a pure `SavedGraph <-> text` conversion (no rete/DOM — the persistenceCore.ts/
+groupPushCore.ts "pure core" pattern): one node per line in topological (dependency) order, ties
+broken alphabetically by name; each line's fields in the canonical order — type, name, `init`
+fields in `INIT_FIELD_ORDER`/`INIT_EXTRA_FIELD_ORDER` (extracted out of copyPaste.ts's
+`extractInit` so both consumers share one list), then inline literal/string-literal fields and
+connections sorted alphabetically (no single "declared" order exists for a class's dynamic
+input-row keys); connections and `hostNodeId`/`members` are name-addressed, translated both
+directions. Values are JSON-encoded per field so a multi-line string (a Note body) stays on one
+line. Position/size/collapse + standoffs/pins/seedId/palette/packs live in a trailing JSON
+sidecar after a bare `---` line, not inline. A real dependency cycle (error-codes.json
+demonstrates `#CIRC!` on purpose) can't have a total topological order — Kahn's algorithm with
+cycle remnants appended alphabetically, so the writer never hangs or throws.
+
+`serializeGraph` (persistence.ts) now builds the raw SavedGraph from the live editor, then
+returns `readTextForm(writeTextForm(raw))` — the JSON save is GENERATED from the text form, not
+hand-maintained in parallel. Side effect: `SavedNode.id` becomes the name after this round-trip
+(rebuildGraph already remaps every saved id to a fresh live id regardless of its shape on load,
+so this loses nothing and makes the saved JSON itself more addressable/diffable).
+
+Round-trip losslessness is machine-checked in `textForm.test.ts`, mirroring `seeds.test.ts`'s
+load-every-seed structure: write text, re-read, re-write, assert the second write is
+byte-identical, for every seed. Full suite (113 files / 1728 tests) + `tsc` stay green.
+
+**Zero-bytes investigation (step zero):** `git grep -lP '\x00'` finds only genuine binary assets
+(pngs, icons, logo) — no source file. Already fixed in an earlier commit (`bf9bbce`, `.gitattributes`
+`* text=auto eol=lf` + a permanent `sourceHygiene.test.ts` regression guard). Not reproducible now;
+no new fix needed.
+
+**Left for later (not in this session's build order):** no dedicated UI control for renaming a
+node (the store's `rename()` is fully validated and ready — the affordance itself, e.g. a
+double-click-header or a Navigator field, is a follow-up UI task, not part of Bet 2's data-model
+build order). The text form itself is not yet exposed anywhere in the app UI (no "View as text" /
+paste-to-edit surface) — this session built the conversion + wired it as the JSON generator, per
+the build order; a user-facing text view/editor is future work (gates bundles 07/08/09/13 per the
+plan doc, which can now build on this).
+
 ### Ragged-list pad BUILT (audit finding 25) + list SORT nulls-last + TEXT TZ fix (2026-07-02)
 The pad-to-longest-with-null policy (settled 2026-06-22 with the array-semantics build, unbuilt
 since) is now implemented — **behavior change:** `[1,2,3]+[10,20]` → `[11,22,null]`, no more
