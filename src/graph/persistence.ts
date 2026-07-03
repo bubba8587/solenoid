@@ -13,6 +13,7 @@ import { forgetAllNodes } from "./nodeStoreRegistry";
 import { collapseStore } from "./collapseStore";
 import { standoffStore, type StandoffEnd } from "./standoffs";
 import { nodeNameStore } from "./nodeNameStore";
+import { writeTextForm, readTextForm } from "./textForm";
 import { validateSavedGraph, CURRENT_SAVE_VERSION, deriveMissingNodeSockets } from "./persistenceCore";
 import { packsStore, allPacks } from "./packs";
 import { pushNotice } from "./noticeStore";
@@ -120,8 +121,21 @@ function ctorRegistry(): Map<string, NodeCtor> {
 }
 
 // ─── Serialize ──────────────────────────────────────────────────────────────────
+// serializeGraph extracts the live editor into a SavedGraph, then round-trips it
+// through the text form (textForm.ts) before returning — so the JSON save is
+// GENERATED from the text form, not hand-maintained in parallel (the addressable
+// model's risk-containment move, docs/subsystem-invariants.md "Addressable
+// model"). This also normalizes ids to names (rebuildGraph already remaps every
+// saved id to a fresh live id regardless of its shape) and canonicalizes node/
+// field order — a save file's node order becomes topological, not draw order.
 
 export function serializeGraph(): SavedGraph | null {
+  const raw = buildRawSavedGraph();
+  if (!raw) return null;
+  return readTextForm(writeTextForm(raw));
+}
+
+function buildRawSavedGraph(): SavedGraph | null {
   const editor = getEditor();
   const area = getArea();
   if (!editor || !area) return null;
