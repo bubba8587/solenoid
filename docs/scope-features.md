@@ -1525,6 +1525,9 @@ table you can't read becomes a heat pattern you can. Respects the design system'
 quiet-accent rule (fills within the grid cells, not decorative chrome).
 
 ## 42 — The history scrubber
+
+**VERDICT (author, 2026-07-03): OUT.** Round 6 closes; Round 7 next.
+
 Undo exists; *seeing* is better. A timeline strip you drag to slide the document back and
 forth through this session's states, watching the canvas change, then release to land (or
 Escape back to now). Turns "wait, what did I just break?" into a five-second visual answer
