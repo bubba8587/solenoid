@@ -30,6 +30,8 @@ import {
 } from "./process";
 import { copySelected, pasteClipboard } from "./copyPaste";
 import { frStore } from "./frStore";
+import { shortcutsStore } from "./shortcutsStore";
+import { CommandPalette } from "./CommandPalette";
 import { settingsPanel, settingsStore } from "./settingsStore";
 import { cableSelectionStore, cableGhostStore, socketHighlightStore, socketHoverCableStore, dragSocketKey } from "./cableState";
 import { ribbonForConnection } from "./ribbonCable";
@@ -379,6 +381,7 @@ export function Canvas() {
   const prevPickedRef = useRef<string | null>(null);
   const [menu, setMenu] = useState<MenuState>(null);
   const closeMenu = useCallback(() => setMenu(null), []);
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   // Remove the selected cables and/or the selected nodes (a lasso can select
   // both at once). Shared by the Delete/Backspace key path and the mobile
@@ -669,6 +672,18 @@ export function Canvas() {
       // exits isolate. The bare letters drive the graph-domain actions so the
       // Ctrl+Shift chords aren't needed; modifier combos fall through below.
       if (!editable && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        // Command palette: bare Enter, guarded by the exact same `editable`
+        // check every other single-key shortcut uses, so committing a text
+        // field with Enter never opens it. Also stays out from under any
+        // other modal already open (each of those either focuses an input,
+        // which `editable` already covers, or — like Settings' switches — is
+        // a non-input control that `editable` wouldn't catch on its own).
+        if (
+          e.key === "Enter" && !paletteOpen && !menu &&
+          !frStore.get() && !settingsPanel.get() && !shortcutsStore.get()
+        ) {
+          setPaletteOpen(true); e.preventDefault(); return;
+        }
         if (e.key === "Escape" && isolateStore.isActive()) {
           isolateStore.exit(); e.preventDefault(); return;
         }
@@ -3484,6 +3499,7 @@ export function Canvas() {
           onClose={closeMenu}
         />
       )}
+      {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} />}
       {socketCtx && (
         <SocketContextMenu
           target={socketCtx}

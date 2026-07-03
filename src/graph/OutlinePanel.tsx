@@ -147,7 +147,9 @@ function buildState(mode: "dark" | "light", sortMode: SortMode): State {
   return { tree, flat };
 }
 
-async function focusNode(id: string) {
+/** Select + pan-to-center a node. Shared with the command palette's
+ *  jump-to-node (both need the exact same "center it" math). */
+export async function focusNode(id: string) {
   const editor = getEditor();
   const area = getArea();
   if (!editor || !area) return;
