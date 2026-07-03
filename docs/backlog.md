@@ -91,8 +91,10 @@ live-shared-GUI-session case) · #36 OUT (guided-seed tutorials). Deferred pile 
 #2, #6, #11, #23, #35, golden tests, data-drafts.
 Round 5 (#29–36) fully walked: #29/#33/#36 OUT · #30/#31(scoped)/#32/#34 IN ·
 #35 DEFERRED.
-NEXT when resuming: scope-features #37 (Round 6, "the feel: what the tool is like
-under your hands" — begins), then #38–63 in order (folding in
+Round 6 (#37–42, "the feel") begun 2026-07-03: #37 IN with conditions — Settings
+toggle (not forced-on), paired with a socket hit-target-size pass + a better
+drag/hover pointer icon.
+NEXT when resuming: scope-features #38, then #39–63 in order (folding in
 strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
