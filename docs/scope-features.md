@@ -872,6 +872,11 @@ because it's real — but it's a fork in identity, not a feature.
 
 ## 19 — The safe cage for AI-generated analysis (the one genuinely new category)
 
+**VERDICT (author, 2026-07-03): OUT.** Consistent with Round 1 #7 (the NL layer is
+ALL OUT — "never advertise AI, no NL layer in the product"): this entry leans on that
+same NL surface aimed at whole analyses, and the #7 ruling stands. Round 3 closes;
+Round 4 next.
+
 **Who's underserved — and this one is *emerging*, not established:** everybody now has
 an AI that will happily do data analysis, and nobody can trust a word of it. The AI
 writes Python you don't read, computes a number in a sandbox you can't inspect, and
