@@ -8,6 +8,7 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import { join } from "@tauri-apps/api/path";
 
 const JSON_FILTER = [{ name: "Solenoid graph", extensions: ["json"] }];
+const HTML_FILTER = [{ name: "Web page", extensions: ["html"] }];
 
 /** True only inside the Tauri desktop shell (the fs/dialog plugins are live). */
 export function isDesktop(): boolean {
@@ -73,6 +74,33 @@ export async function saveTextFileDialog(suggestedName: string, content: string)
   }
   downloadText(suggestedName, content);
   return null;
+}
+
+/** Show a Save dialog for a self-contained exported .html file (static export —
+ *  see reportExport.ts). Same shape as saveTextFileDialog, separate function
+ *  because the file-type filter and browser download mime type differ. */
+export async function saveHtmlFileDialog(suggestedName: string, content: string): Promise<string | null> {
+  if (isDesktop()) {
+    const path = await save({ defaultPath: suggestedName, filters: HTML_FILTER });
+    if (!path) return null;
+    await writeTextFileAtomic(path, content);
+    return path;
+  }
+  downloadHtml(suggestedName, content);
+  return null;
+}
+
+/** Trigger a browser download of an HTML string as `name`. */
+function downloadHtml(name: string, content: string): void {
+  const blob = new Blob([content], { type: "text/html" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 /** Show an Open dialog and read the file. Returns its path + text, or null if the

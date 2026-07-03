@@ -35,12 +35,19 @@ const INLINE_REF_TEXT_RE = /^=([A-Za-z_][A-Za-z0-9_]*)$/;
 
 /** An FC docked directly to this ref input, else one reachable UPSTREAM through
  *  passthroughs (the DisplayComponent resolution order, minus `downstreamAnnotation`
- *  — a ref is a terminal consumer, not a passthrough with an "out" side). */
-export function useRefAnnotation(nodeId: string, refKey: string): FormatAnnotation | undefined {
-  useSyncExternalStore(formatAnnotationStore.subscribe, formatAnnotationStore.version);
+ *  — a ref is a terminal consumer, not a passthrough with an "out" side). Plain
+ *  function (no hook) so non-React callers — the static HTML export — can freeze
+ *  the same formatting without a component tree. */
+export function resolveRefAnnotation(nodeId: string, refKey: string): FormatAnnotation | undefined {
   const editor = getEditor();
   const resolver = editor ? sharedAnnotationResolver(editor) : undefined;
   return formatAnnotationStore.get(nodeId, refKey) ?? resolver?.inAnnotation(nodeId, refKey);
+}
+
+/** React subscription wrapper around resolveRefAnnotation, for components. */
+export function useRefAnnotation(nodeId: string, refKey: string): FormatAnnotation | undefined {
+  useSyncExternalStore(formatAnnotationStore.subscribe, formatAnnotationStore.version);
+  return resolveRefAnnotation(nodeId, refKey);
 }
 
 /** A short text preview of any ref value — mirrors NoteNode's frontmatter
