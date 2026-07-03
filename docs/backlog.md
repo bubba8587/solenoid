@@ -171,8 +171,15 @@ marketing, packs-as-business-model, governance vertical, linked graphs, one-file
 identity, trust badge, meta-story) are OUT — including reversing the prior #5
 ("one-file identity") ruling that had called it settled public positioning. Kept in
 the repo as a point-in-time record only, per the doc's own new header note.
+**PARKED PAIR RESOLVED (2026-07-03), both OUT** (verdicts inline in
+`future-directions.md`): data-drafts-its-own-graph — author: "it's not a bad idea per
+se, but these recommendations are often slowing people down and never as accurate as
+to what's in people's heads"; golden tests on any node — author: "I think it's out
+tbh." Deferred pile for eventual revisit is now just: #2, #6, #11, #23, #35, #46
+(golden tests and data-drafts drop off the pile, resolved OUT).
 NEXT when resuming: the
-unfinished v1.1-plan workstreams where they belong, then the parked pair, then the
+unfinished v1.1-plan workstreams where they belong, then the remaining deferred pile
+(#2, #6, #11, #23, #35, #46) if the author wants to close those out too, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
 #41 conditional formatting → engine execution contract (Bet 1 × #23 × #24 × calc mode) → #5
 composites (document-local container ONLY — no sharing/ecosystem, packs are the sole
