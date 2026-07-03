@@ -125,7 +125,6 @@ function PaletteSection() {
       <div className="solenoid-settings__row solenoid-settings__row--palette">
         <span className="solenoid-settings__row-text">
           <span className="solenoid-settings__row-label">Color palette</span>
-          <span className="solenoid-settings__row-help">Recolors notes, groups, and node headers.</span>
         </span>
         {/* Dropdown + a read-only swatch legend stacked under it, on the right. */}
         <div className="solenoid-settings__palette-control">

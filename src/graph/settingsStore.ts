@@ -52,12 +52,10 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
       {
         key: "groupPush",
         label: "Auto-arrange groups on expand",
-        help: "Groups you moved yourself stay put.",
       },
       {
         key: "tidyAlign",
         label: "Tidy alignment",
-        help: "Center keeps node centres level; Top, their top edges.",
         type: "segment",
         options: [
           { value: "center", label: "Center" },
@@ -72,7 +70,6 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
       {
         key: "csvFolder",
         label: "Target data folder",
-        help: "Where CSV Connection nodes read .csv files from.",
         type: "folder",
       },
     ],
