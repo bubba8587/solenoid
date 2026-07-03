@@ -25,45 +25,124 @@ import { calcModeStore } from "./calcModeStore";
  *  can't be passed by mistake.) */
 export type FrameHandle = string & { readonly __frameHandle: unique symbol };
 
-/** The value a LAZY frame carries on a cable: an object wrapping a backend handle,
- *  so it's unambiguous against a real string (a String socket's value) and a
- *  FrameValue (`__frame`). Verb nodes emit these and chain them; `coerceInputs`
- *  materializes one to a FrameValue for every non-verb consumer (`readFrame`). */
-export interface FrameRef { readonly __frameRef: FrameHandle }
+/** The value a LAZY frame carries on a cable: a backend handle plus a queue of
+ *  pending unary ops NOT YET sent to the backend. Verb nodes chain by extending
+ *  `__plan` (`extendRef`, in `runFrameUnary`) — no backend call happens until a
+ *  materialization boundary (`readFrame`/`collectPreview`) or a binary op
+ *  (join/append, which need a real handle for both sides) FLUSHES it via
+ *  `applyMany` (`flushRef`) — the compile/fuse win: a chain of N verb
+ *  applications costs one round trip, not N. */
+export interface FrameRef {
+  readonly __frameRef: FrameHandle;
+  readonly __plan: readonly FrameOp[];
+}
 export function isFrameRef(v: unknown): v is FrameRef {
   return typeof v === "object" && v !== null && "__frameRef" in v;
 }
-function wrapRef(h: FrameHandle): FrameRef { return { __frameRef: h }; }
+function wrapRef(h: FrameHandle): FrameRef { return { __frameRef: h, __plan: [] }; }
+function extendRef(ref: FrameRef, op: FrameOp): FrameRef {
+  return { __frameRef: ref.__frameRef, __plan: [...ref.__plan, op] };
+}
 
 /** What a frame cable can carry: a materialized FrameValue (from a source / eager
  *  node) or a lazy FrameRef (from a verb node). The runners + readFrame accept both. */
 export type FrameInput = FrameValue | FrameRef;
 
-// ── Per-pass collect memo (audit finding 24) ────────────────────────────────
+// ── Per-pass flush + collect memos (audit finding 24, extended for plan batching) ──
 // A lazy ref fanned out to N consumers was fully collected N TIMES per pass —
 // a Filter feeding 3 Get Columns + Display + Chart on 500k rows meant 5
-// identical full-frame serializations. Memoize the collect by handle;
-// processGraph clears at each pass start (handles are never reused, so within
-// one pass the cached result is always the right one).
-let _collectMemo = new Map<FrameHandle, Promise<FrameValue | SolError | null>>();
+// identical full-frame serializations. Memoize by the REF OBJECT (not the base
+// handle string): two refs can share a base handle while carrying DIFFERENT
+// pending plans (a fan-out point followed by different downstream verbs), so
+// keying by handle would wrongly collapse them. processGraph clears both at
+// each pass start — refs are never reused across passes, so within one pass
+// the cached result is always the right one.
+let _flushMemo = new Map<FrameRef, Promise<FrameHandle>>();
+let _collectMemo = new Map<FrameRef, Promise<FrameValue | SolError | null>>();
 
+/** Resolve a ref's pending plan to a REAL backend handle, one combined
+ *  `applyMany` round trip for the whole queue — the fusion entry point. A ref
+ *  with an empty plan already IS its own handle (a join/append result, or one
+ *  already flushed this pass), so this is then a cheap no-op. Memoized per
+ *  pass so multiple consumers of the SAME ref (fan-out) flush once. */
+export async function flushRef(ref: FrameRef): Promise<FrameHandle> {
+  if (ref.__plan.length === 0) return ref.__frameRef;
+  let p = _flushMemo.get(ref);
+  if (!p) {
+    p = applyPlanWithSketchSampling(ref.__frameRef, ref.__plan);
+    _flushMemo.set(ref, p);
+  }
+  return p;
+}
+
+/** Run a ref's whole pending plan through `applyMany` in ONE round trip (the
+ *  fusion win), while still honoring sketch mode: the plan's BASE handle is
+ *  sampled once (if sketch mode is active and it isn't already sample-derived)
+ *  instead of per-op — fusion means the backend never sees the individual
+ *  verbs anymore, so sampling has to happen at this single flush point. Sketch
+ *  scaling is keyed off the LAST groupBy op in the plan (a later select/sort/
+ *  filter/… after it just inherits the marking, matching the un-fused
+ *  semantics: "propagates through a non-aggregating verb, resets at the next
+ *  groupBy") — falling back to inheriting the sampled input's own marking when
+ *  the plan has no groupBy at all (an earlier, already-flushed groupBy). */
+async function applyPlanWithSketchSampling(baseHandle: FrameHandle, plan: readonly FrameOp[]): Promise<FrameHandle> {
+  const be = frameBackend();
+  const sample = await maybeSketchSample(be, baseHandle);
+  const factor = _sampleFactor.get(sample.h) ?? 1;
+  try {
+    const outHandle = await be.applyMany(sample.h, plan);
+    if (factor > 1) {
+      _sampleFactor.set(outHandle, factor);
+      const lastGroupBy = [...plan].reverse().find((op): op is Extract<FrameOp, { kind: "groupBy" }> => op.kind === "groupBy");
+      if (lastGroupBy) {
+        const scaleColumns = new Set(lastGroupBy.aggs.filter((a) => SKETCH_EXTRAPOLATABLE.has(a.op)).map((a) => a.as));
+        if (scaleColumns.size > 0) _sketchInfo.set(outHandle, { factor, scaleColumns });
+      } else {
+        const inherited = _sketchInfo.get(sample.h);
+        if (inherited) _sketchInfo.set(outHandle, inherited);
+      }
+    }
+    return outHandle;
+  } finally {
+    if (sample.sampledTemp) {
+      be.drop(sample.sampledTemp);
+      _sampleFactor.delete(sample.sampledTemp);
+      _sketchInfo.delete(sample.sampledTemp);
+    }
+  }
+}
+
+/** Clear the per-pass memos, dropping every handle the LAST pass flushed (a
+ *  flush registers a genuinely NEW backend handle nobody else owns — unlike a
+ *  base/source handle, which the source-handle cache or an upstream node
+ *  already tracks for its own drop). Safe at the top of the NEXT pass: by then
+ *  every consumer of the finished pass's results (cachedResult/preview values)
+ *  has already read them — they're plain JS objects, not handle-dependent. */
 export function clearCollectMemo(): void {
+  const be = frameBackend();
+  for (const p of _flushMemo.values()) {
+    p.then((h) => be.drop(h)).catch(() => {});
+  }
+  _flushMemo = new Map();
   _collectMemo = new Map();
 }
 
 /** Collect a cable's frame value back to an eager FrameValue — the materialization
- *  boundary. A FrameValue / SolError / null passes straight through; a FrameRef is
- *  collected through the backend (instant on web, an IPC `collect` on desktop),
- *  memoized per compute pass. */
+ *  boundary. A FrameValue / SolError / null passes straight through; a FrameRef's
+ *  pending plan is flushed then collected through the backend (instant on web, an
+ *  IPC round trip on desktop), memoized per compute pass. */
 export async function readFrame(v: FrameInput | SolError | null | undefined): Promise<FrameValue | SolError | null> {
   if (v == null) return null;
   if (isSolError(v)) return v;
   if (isFrameRef(v)) {
-    let p = _collectMemo.get(v.__frameRef);
+    let p = _collectMemo.get(v);
     if (!p) {
-      const handle = v.__frameRef;
-      p = materialize(frameBackend().collect(handle)).then((r) => (isSolError(r) ? r : applySketchScaling(handle, r)));
-      _collectMemo.set(handle, p);
+      p = materialize((async () => {
+        const handle = await flushRef(v);
+        const r = await frameBackend().collect(handle);
+        return isSolError(r) ? r : applySketchScaling(handle, r);
+      })());
+      _collectMemo.set(v, p);
     }
     return p;
   }
@@ -89,7 +168,7 @@ export async function collectPreview(out: FrameInput | SolError | null, n = CARD
   if (out == null) return null;
   if (isSolError(out)) return out;
   if (!isFrameRef(out)) return out;
-  const p = await materialize(frameBackend().preview(out.__frameRef, n));
+  const p = await materialize((async () => frameBackend().preview(await flushRef(out), n))());
   if (isSolError(p)) return p;
   if (!p.truncated) return readFrame(out); // small enough to show whole — collect full
   const f = previewToFrame(p);
@@ -124,6 +203,12 @@ export interface FrameBackend {
    *  stays valid until dropped). Cheap — no materialization; the JS backend
    *  transforms in memory, the Polars backend extends a lazy plan. */
   apply(handle: FrameHandle, op: FrameOp): Promise<FrameHandle>;
+  /** Compose MULTIPLE unary verbs onto a handle in ONE round trip, returning a
+   *  new handle — the fusion primitive (`flushRef` in this module): the Polars
+   *  backend threads them onto a single lazy plan and collects once; the JS
+   *  backend just folds `apply` over the list (already in-process, no IPC to
+   *  save, kept for interface symmetry + test parity). */
+  applyMany(handle: FrameHandle, ops: readonly FrameOp[]): Promise<FrameHandle>;
   /** Join two handles on a key, returning a new handle. */
   join(left: FrameHandle, right: FrameHandle, opts: JoinOpts): Promise<FrameHandle>;
   /** Stack handles vertically (union by column name), returning a new handle. */
@@ -191,6 +276,12 @@ class JsFrameBackend implements FrameBackend {
     return this.register(applyVerb(this.get(handle), op));
   }
 
+  async applyMany(handle: FrameHandle, ops: readonly FrameOp[]): Promise<FrameHandle> {
+    let frame = this.get(handle);
+    for (const op of ops) frame = applyVerb(frame, op);
+    return this.register(frame);
+  }
+
   async join(left: FrameHandle, right: FrameHandle, opts: JoinOpts): Promise<FrameHandle> {
     return this.register(joinFrames(this.get(left), this.get(right), opts));
   }
@@ -252,6 +343,10 @@ class PolarsBackend implements FrameBackend {
 
   async apply(handle: FrameHandle, op: FrameOp): Promise<FrameHandle> {
     return ipcInvoke<string>("engine_apply", { handle, op }) as Promise<FrameHandle>;
+  }
+
+  async applyMany(handle: FrameHandle, ops: readonly FrameOp[]): Promise<FrameHandle> {
+    return ipcInvoke<string>("engine_apply_many", { handle, ops }) as Promise<FrameHandle>;
   }
 
   async join(left: FrameHandle, right: FrameHandle, opts: JoinOpts): Promise<FrameHandle> {
@@ -398,12 +493,15 @@ const _dropReg: FinalizationRegistry<{ be: FrameBackend; h: FrameHandle }> | nul
     ? new FinalizationRegistry(({ be, h }) => be.drop(h))
     : null;
 
-/** Resolve a runner input to a backend handle. A FrameRef yields its handle (owned by
- *  the upstream node). A FrameValue is sourced ONCE and cached by identity: repeat and
- *  concurrent consumers share the upload. `temp` is always false now — a cached source
- *  handle is owned by the cache (freed on GC), never dropped by the calling runner. */
+/** Resolve a runner input to a backend handle. A FrameRef's pending plan is
+ *  FLUSHED (memoized per pass — see `flushRef`), since a join/append needs a
+ *  real handle for both sides. A FrameValue is sourced ONCE and cached by
+ *  identity: repeat and concurrent consumers share the upload. `temp` is
+ *  always false now — a cached source handle is owned by the cache (freed on
+ *  GC), and a flushed handle is owned by the flush memo (freed at the next
+ *  pass's `clearCollectMemo`) — neither is dropped by the calling runner. */
 async function inputHandle(input: FrameInput): Promise<{ h: FrameHandle; temp: boolean }> {
-  if (isFrameRef(input)) return { h: input.__frameRef, temp: false };
+  if (isFrameRef(input)) return { h: await flushRef(input), temp: false };
   let p = _sourceCache.get(input);
   if (!p) {
     const be = frameBackend();
@@ -474,37 +572,18 @@ function applySketchScaling(handle: FrameHandle, f: FrameValue): FrameValue {
 }
 
 /** Run a unary verb (select/drop/rename/sort/distinct/head/filter/groupBy/
- *  unpivot — NOT pivot, which is deliberately eager) through the active
- *  backend, returning a LAZY ref — the result stays in
- *  the backend so a chain of verbs never round-trips the frame; it's collected only
- *  at a materialization boundary (readFrame). */
+ *  unpivot — NOT pivot, which is deliberately eager) — returning a LAZY ref.
+ *  Chaining onto an existing ref just EXTENDS its pending plan (`extendRef`) —
+ *  no backend call at all, the compile/fuse win: a chain of N verb nodes costs
+ *  nothing here, only a `flushRef` at a materialization boundary or a card
+ *  preview pays for it, and then only ONCE per boundary, not once per verb. */
 export async function runFrameUnary(input: FrameInput, op: FrameOp): Promise<FrameRef | SolError> {
-  const be = frameBackend();
-  let temp: FrameHandle | null = null;
-  let sampledTemp: FrameHandle | null = null;
   try {
-    const { h, temp: t } = await inputHandle(input);
-    if (t) temp = h;
-    const sample = await maybeSketchSample(be, h);
-    sampledTemp = sample.sampledTemp;
-    const factor = _sampleFactor.get(sample.h) ?? 1;
-    const outHandle = await be.apply(sample.h, op);
-    if (factor > 1) {
-      _sampleFactor.set(outHandle, factor);
-      if (op.kind === "groupBy") {
-        const scaleColumns = new Set(op.aggs.filter((a) => SKETCH_EXTRAPOLATABLE.has(a.op)).map((a) => a.as));
-        if (scaleColumns.size > 0) _sketchInfo.set(outHandle, { factor, scaleColumns });
-      } else {
-        const inherited = _sketchInfo.get(sample.h); // carry an upstream groupBy's marking through select/sort/filter/…
-        if (inherited) _sketchInfo.set(outHandle, inherited);
-      }
-    }
-    return wrapRef(outHandle);
+    if (isFrameRef(input)) return extendRef(input, op);
+    const { h } = await inputHandle(input);
+    return { __frameRef: h, __plan: [op] };
   } catch (e) {
     return asErrorValue(e);
-  } finally {
-    if (temp) be.drop(temp);
-    if (sampledTemp) { be.drop(sampledTemp); _sampleFactor.delete(sampledTemp); _sketchInfo.delete(sampledTemp); }
   }
 }
 
@@ -538,10 +617,14 @@ export async function runFrameAppend(frames: readonly FrameInput[]): Promise<Fra
   }
 }
 
-/** Drop a verb node's previous output ref when it recomputes (or is removed). The
- *  backend's frames are independent, so this is always safe. A no-op for non-refs. */
+/** Drop a verb node's previous output ref when it recomputes (or is removed).
+ *  Only a ref with an EMPTY plan owns its `__frameRef` outright (a join/append
+ *  result) — a unary-chain ref's `__frameRef` is a BORROWED base (the upstream
+ *  node's own ref, or a source-cache handle), never independently owned, so
+ *  dropping it here would sever a handle other consumers still need. A no-op
+ *  for non-refs and for a pending (non-empty-plan) ref. */
 export function dropFrameRef(v: unknown): void {
-  if (isFrameRef(v)) {
+  if (isFrameRef(v) && v.__plan.length === 0) {
     frameBackend().drop(v.__frameRef);
     // else a sketch-mode entry outlives its handle forever
     _sampleFactor.delete(v.__frameRef);

@@ -42,8 +42,15 @@ serde_json = "1"
 # logical columns need those to read as such at all (without them Polars can't
 # even represent a Date-typed column, `AnyValue::Date` doesn't exist in the
 # build) — needed for "typed columns arrive intact, no inference step" to hold
-# for date columns too, not just numeric/string ones.
-polars = { version = "0.46", default-features = false, features = ["lazy", "strings", "asof_join", "csv", "parquet", "dtype-date", "dtype-datetime"] }
+# for date columns too, not just numeric/string ones. `product` (the group-by
+# PRODUCT aggregate — gated off by default, panics at runtime without it:
+# "activate 'product' feature").
+polars = { version = "0.46", default-features = false, features = ["lazy", "strings", "asof_join", "csv", "parquet", "dtype-date", "dtype-datetime", "product"] }
+# `FunctionOptions`/`ApplyOptions`/`FunctionFlags` (the custom per-group-scalar
+# GROUP-BY UDF for MODE, `engine.rs`'s `mode_expr`) aren't re-exported through
+# `polars::prelude` — Cargo unifies this to the SAME 0.46.x already pulled in by
+# `polars`/`polars-lazy`, so this doesn't add a second copy of the dependency.
+polars-plan = { version = "0.46", default-features = false }
 
 # Windows 11 DWM: set the window's border color (DWMWA_BORDER_COLOR) to the app
 # accent so the focused-window frame matches the theme. Already in the dep tree via
