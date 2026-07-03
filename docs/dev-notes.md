@@ -2,6 +2,55 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Execution substrate: sketch calc mode + native CSV reader (2026-07-03, bundle 06 / #24)
+Built per `docs/v2.0/06-execution-substrate.md`. #23 (persistent compute cache) is
+explicitly OUT OF SCOPE — deferred, needs a fresh author decision.
+
+- **Sketch calc mode** — a third `CalcMode` (`calcModeStore.ts`): `"sketch"`. While
+  selected, `frameBackend.ts`'s verb runners cap a source frame's working set to a
+  deterministic (never random) stride sample (`sampleFrame` in `frameVerbs.ts`,
+  `SKETCH_SAMPLE_ROWS = 10_000`) before applying a unary verb — the sample factor
+  (`trueRows/sampleRows`) propagates down a verb chain via a `_sampleFactor` map
+  keyed by handle. F9 / Calculate Now (`requestRecalc`) brackets the pass with
+  `calcModeStore.beginForceExact()`/`endForceExact()` (depth-counted), so
+  `sketchActive()` reads false for that one pass — sketch mode NEVER intercepts a
+  forced recompute. A **required** footer affordance ships with it: a "≈
+  approximate" StatusBar chip, sibling to the existing manual-mode Calculate chip.
+- **Extrapolated aggregates, not silent sample numbers** — a groupBy's sum/count
+  aggregate columns are scaled by the sample factor and the result frame is marked
+  `FrameValue.__approx = { factor }` (frame.ts); `FrameChip` shows a "≈" prefix and
+  an "extrapolated from a sketch-mode sample" tooltip. avg/min/max/median/mode/
+  stdev/var/percentof are deliberately left UNSCALED — extrapolating those would be
+  wrong, not just approximate. The marking propagates through a non-aggregating
+  verb chained after a groupBy (select/sort/filter/…) but resets at the NEXT
+  groupBy. Scaling is applied at `readFrame`/`collectPreview` MATERIALIZATION time
+  (`applySketchScaling`), never baked into the backend-stored data — re-sourcing a
+  scaled frame back into Polars would round-trip through `engine_source`/
+  `engine_collect`, which carry only plain columns, silently dropping `__approx`.
+- **Latent bug fixed along the way**: `setFrameBackend`/`resetFrameBackendToJs`
+  only cleared `_sourceCache`. Each `JsFrameBackend` instance's handle counter
+  restarts at 0, so a bare string like `"jsf:2"` is NOT globally unique across
+  backend swaps — a stale `_collectMemo`/`_sampleFactor`/`_sketchInfo` entry from a
+  PREVIOUS backend instance could leak onto a colliding handle in a new one (hit
+  writing tests: a suite calling `resetFrameBackendToJs()` between cases got
+  another case's stale cached frame back). Fixed by clearing all four
+  handle-keyed caches together on every backend swap (`clearHandleKeyedCaches`).
+- **Native CSV→Polars reader** (WS-E) — `engine_read_csv` (`engine.rs`) reads a
+  CSV file straight off disk through Polars' own reader (multi-threaded, SIMD),
+  bypassing `csv.ts`'s Papa Parse + `frame.ts`'s `frameFromCells` type inference
+  entirely; wired into `CsvConnectionNode` as the desktop path (`readCsvFrame` in
+  `frameBackend.ts`), gated on `engineAvailable()` — web keeps the JS path. Known
+  gap: the native reader infers number/string/logical columns only (Polars
+  dtypes), not DATE — `frame.ts`'s conservative unambiguous-ISO check has no
+  Rust-side equivalent yet, so a date column arrives as text; an explicit Get
+  Column "read as Date" still converts it. Full inference parity is a follow-up,
+  not a blocker for the perf win.
+- **Cut from this bundle**: full FAMILY_BACKING formulajs-seam node hygiene
+  (item 5 of the build) was scoped conservatively — see the commit for exactly
+  which node ops were routed through `resolveExcelFunction` vs. left hand-rolled
+  (anything with array-broadcast or error-tagging complexity was left alone
+  rather than risk a behavior change).
+
 ### Ragged-list pad BUILT (audit finding 25) + list SORT nulls-last + TEXT TZ fix (2026-07-02)
 The pad-to-longest-with-null policy (settled 2026-06-22 with the array-semantics build, unbuilt
 since) is now implemented — **behavior change:** `[1,2,3]+[10,20]` → `[11,22,null]`, no more
