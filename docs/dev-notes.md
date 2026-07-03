@@ -2,6 +2,60 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Bundle 07 v1: headless CLI, Write CSV/JSON sinks, live-data refresh (2026-07-03)
+Built the "in → through → out → unattended" arc per `docs/v2.0/07-headless-write-live.md`.
+
+- **`scripts/run-graph.ts`** (`npx tsx scripts/run-graph.ts <graph.json>`, also `npm run
+  run-graph`) — loads a saved graph, builds a real editor + `DataflowEngine` exactly like
+  `framesSeed.test.ts`'s pattern, fetches every node keyed by label (dedup via `#n`), and
+  prints JSON. Deliberately never calls `initFrameBackend()` — `frameBackend()` stays on
+  `JsFrameBackend` since `engineAvailable()` is false under Node, so Polars-shaped verb
+  nodes (Join, Group By, …) route through the JS oracle transparently; confirmed via
+  `run-graph.test.ts` against the `table-verbs` seed (Group By + Join both resolve real
+  values). A verb chain's live output is a lazy `FrameRef` — the CLI walks the whole result
+  tree and resolves any ref through `frameBackend.ts`'s `readFrame` before printing, so
+  output is real data, not opaque `"jsf:9"` handles. **Windows gotcha:** the "am I the CLI
+  entry point" check must use `pathToFileURL(process.argv[1]).href === import.meta.url`,
+  not a hand-built `` `file://${process.argv[1]}` `` template — the latter silently never
+  matches on a backslashed Windows path (main() just never ran, no error).
+- **`WriteCsvNode` / `WriteJsonNode`** (new `nodes/sink.ts`) — the write-side mirror of
+  `CsvConnectionNode`. `data()` ONLY caches the incoming frame for the preview (never
+  touches disk); the write happens in `run()`, called only from the node's Run button.
+  CSV serializes via `formatFrameCell` (Excel-style TRUE/FALSE, `#CODE!` for an error
+  cell — no native types in CSV anyway); JSON keeps native number/boolean/null (a
+  dedicated `cellToJsonValue`, NOT `formatFrameCell` — collapsing a real `true` to the
+  string `"TRUE"` would be a JSON-interchange regression, discovered by the sink.test.ts
+  round-trip). **`enabled` (the arm/disarm flag) is deliberately absent from
+  `copyPaste.ts`'s `extractInit` whitelist — it can NEVER round-trip through save/load/
+  paste, so every construction starts disarmed.** There's no real "my file vs. a shared
+  one" signal anywhere in the codebase (the packs/placeholder breadcrumb in
+  `persistence.ts` is a compatibility signal, not a trust one), so rather than invent a
+  fake one, EVERY load counts as "elsewhere" — strictly safer than the letter of the ask.
+  Needed a capability change: `src-tauri/capabilities/default.json`'s `fs:allow-write-
+  text-file`/`fs:allow-rename` only granted `*.json` — added the `*.csv`/`*.csv.tmp`
+  entries or `WriteCsvNode` would hit a Tauri permission wall on every write.
+  `fileBridge.ts` gained `pickSaveFilePath` (Save-dialog picker with NO write — the
+  node's "…" Browse button; `saveTextFileDialog` couldn't be reused, it always writes).
+- **Tier 1 refresh was already fully wired** — `ConnectionStatusRow` (`ConnectionNodes.tsx`)
+  already had a per-node Refresh button calling `refreshConnection(id)`, and MenuBar
+  already had "Refresh all connections" → `refreshAllConnections()`. Nothing to add there;
+  the plan doc's uncertainty ("confirm one doesn't already exist... if not, add it") 
+  resolved to "already exists."
+  **Tier 2 (new):** `refreshMinutes` on `WebSourceNode`/`CsvConnectionNode` (persisted,
+  0 = off), a `useAutoRefresh` hook (`setInterval` → the exact same `refreshConnection(id)`
+  a manual click calls) and a `RefreshIntervalField` (commit-on-blur, both connection
+  components). Verified `AlertNode.detectAndFire` fires correctly off a refresh-triggered
+  recompute — added `connectionStore.test.ts`: a real `WebSourceNode → GetColumnNode →
+  AlertNode` graph, mocked `fetch`, `refreshConnection` changes the cache key and the
+  new value's rising edge fires the alert. The only thing that could have silently broken
+  this is `refreshConnection` running inside `isGraphRebuilding()` scope (the ONE gate
+  `detectAndFire` checks) the way `loadGraph` does — it doesn't; asserted directly.
+- Cut from the plan's "polish pass": the fuller CLI (`--set rate=0.05 --out results.json`)
+  — needs bundle 01's stable names to be worth building well; the plan itself flags this
+  as non-blocking. `scripts/run-graph.ts` is the load-bearing v1 half.
+- `vitest.config.ts`'s `include` widened to `["src/**/*.test.ts", "scripts/**/*.test.ts"]`
+  — the CLI's test lives next to it in `scripts/`, matching `parity.ts`'s sibling location.
+
 ### Ragged-list pad BUILT (audit finding 25) + list SORT nulls-last + TEXT TZ fix (2026-07-02)
 The pad-to-longest-with-null policy (settled 2026-06-22 with the array-semantics build, unbuilt
 since) is now implemented — **behavior change:** `[1,2,3]+[10,20]` → `[11,22,null]`, no more
