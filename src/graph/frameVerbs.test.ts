@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { selectColumns, dropColumns, renameColumns, sortByColumn, distinctRows, headRows, filterRows, groupByFrame, joinFrames, appendFrames, unpivotFrame, pivotFrame, nestFrame, unnestCube, applyVerb, splitColumn, addIndexColumn } from "./frameVerbs";
+import { selectColumns, dropColumns, renameColumns, sortByColumn, distinctRows, headRows, filterRows, groupByFrame, joinFrames, appendFrames, unpivotFrame, pivotFrame, nestFrame, unnestCube, applyVerb, splitColumn, addIndexColumn, lookupFrameCell } from "./frameVerbs";
 import { isSolError, solError } from "./errorValue";
 import { isCubeValue, isFrameValue, type FrameValue } from "./frame";
 
@@ -260,6 +260,95 @@ describe("join", () => {
     };
     const out = joinFrames(customers, r2, opts("inner"));
     expect(out.columns.map((c) => c.name)).toEqual(["id", "name", "name2"]);
+  });
+});
+
+describe("join — asof (prices/trades: every left row kept, nearest right by time)", () => {
+  // trades at t = -1 (before any quote), 1, 5, 10, 20 (after every quote)
+  const trades: FrameValue = {
+    __frame: true,
+    columns: [{ name: "t", type: "number", values: [-1, 1, 5, 10, 20] }],
+  };
+  // quotes at t = 0, 2, 4, 8, 12
+  const quotes: FrameValue = {
+    __frame: true,
+    columns: [
+      { name: "t", type: "number", values: [0, 2, 4, 8, 12] },
+      { name: "px", type: "number", values: [100, 101, 102, 103, 104] },
+    ],
+  };
+  const asofOpts = (asofDirection: "backward" | "forward" | "nearest", asofTolerance?: number) =>
+    ({ leftKey: "t", rightKey: "t", how: "asof" as const, asofDirection, asofTolerance });
+
+  it("backward: latest right key ≤ left key; every left row kept, original order", () => {
+    const out = joinFrames(trades, quotes, asofOpts("backward"));
+    expect(out.columns[0].values).toEqual([-1, 1, 5, 10, 20]); // LEFT order preserved
+    expect(out.columns[1].values).toEqual([null, 100, 102, 103, 104]);
+  });
+
+  it("forward: earliest right key ≥ left key", () => {
+    const out = joinFrames(trades, quotes, asofOpts("forward"));
+    expect(out.columns[1].values).toEqual([100, 101, 103, 104, null]);
+  });
+
+  it("nearest: whichever is closer; a tie favors backward", () => {
+    const out = joinFrames(trades, quotes, asofOpts("nearest"));
+    // t=-1: only forward (0) exists -> 100. t=1: |1-0|=|1-2|=1 tie -> backward (100).
+    // t=5: |5-4|=1 < |5-8|=3 -> backward (102). t=10: |10-8|=|10-12|=2 tie -> backward (103).
+    // t=20: only backward (12) exists -> 104.
+    expect(out.columns[1].values).toEqual([100, 100, 102, 103, 104]);
+  });
+
+  it("tolerance excludes a match beyond the max key distance", () => {
+    const out = joinFrames(trades, quotes, asofOpts("backward", 1));
+    // t=5's backward match (t=4, diff 1) is within tolerance; t=10's (t=8, diff 2) is not.
+    expect(out.columns[1].values).toEqual([null, 100, 102, null, null]);
+  });
+
+  it("never matches a null/error key row (same rule as an equality join)", () => {
+    const gappy: FrameValue = { __frame: true, columns: [{ name: "t", type: "number", values: [null, 5] }] };
+    const out = joinFrames(gappy, quotes, asofOpts("backward"));
+    expect(out.columns[1].values).toEqual([null, 102]);
+  });
+
+  it("rejects a non-orderable (string/logical) key with #VALUE!", () => {
+    const strKeyed: FrameValue = { __frame: true, columns: [{ name: "k", type: "string", values: ["a"] }] };
+    const strRight: FrameValue = { __frame: true, columns: [{ name: "k", type: "string", values: ["a"] }, { name: "v", type: "number", values: [1] }] };
+    const err = (() => { try { joinFrames(strKeyed, strRight, { leftKey: "k", rightKey: "k", how: "asof" }); } catch (e) { return e; } })();
+    expect(isSolError(err) && err.code).toBe("#VALUE!");
+  });
+});
+
+describe("lookupFrameCell — approximate match (XLOOKUP match_mode -1/1)", () => {
+  const prices: FrameValue = {
+    __frame: true,
+    columns: [
+      { name: "qty", type: "number", values: [1, 10, 50, 100] },
+      { name: "discount", type: "number", values: [0, 0.05, 0.1, 0.2] },
+    ],
+  };
+
+  it("exact mode (default) only matches an equal cell", () => {
+    expect(lookupFrameCell(prices, "qty", "discount", "10")).toBe(0.05);
+    expect(lookupFrameCell(prices, "qty", "discount", "20")).toBeUndefined();
+  });
+
+  it("nextSmaller: exact match wins, else the closest smaller key", () => {
+    expect(lookupFrameCell(prices, "qty", "discount", "10", "nextSmaller")).toBe(0.05); // exact
+    expect(lookupFrameCell(prices, "qty", "discount", "20", "nextSmaller")).toBe(0.05); // between 10 and 50
+    expect(lookupFrameCell(prices, "qty", "discount", "0", "nextSmaller")).toBeUndefined(); // below every key
+  });
+
+  it("nextLarger: exact match wins, else the closest larger key", () => {
+    expect(lookupFrameCell(prices, "qty", "discount", "10", "nextLarger")).toBe(0.05); // exact
+    expect(lookupFrameCell(prices, "qty", "discount", "20", "nextLarger")).toBe(0.1); // between 10 and 50
+    expect(lookupFrameCell(prices, "qty", "discount", "1000", "nextLarger")).toBeUndefined(); // above every key
+  });
+
+  it("approximate mode requires a numeric/date column", () => {
+    const named: FrameValue = { __frame: true, columns: [{ name: "n", type: "string", values: ["a", "b"] }, { name: "v", type: "number", values: [1, 2] }] };
+    const err = (() => { try { lookupFrameCell(named, "n", "v", "a", "nextSmaller"); } catch (e) { return e; } })();
+    expect(isSolError(err) && err.code).toBe("#VALUE!");
   });
 });
 

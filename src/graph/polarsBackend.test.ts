@@ -96,6 +96,19 @@ describe("PolarsBackend — verb command shapes", () => {
     expect(call![1]).toEqual({ left: l, right: r, opts });
   });
 
+  it("join → an asof `how` forwards asofDirection/asofTolerance through the same opts shape", async () => {
+    const be = frameBackend();
+    invokeMock.mockResolvedValueOnce("plf:L");
+    const l = await be.source(sample);
+    invokeMock.mockResolvedValueOnce("plf:R");
+    const r = await be.source(sample);
+    invokeMock.mockResolvedValueOnce("plf:J");
+    const opts: JoinOpts = { leftKey: "n", rightKey: "n", how: "asof", asofDirection: "nearest", asofTolerance: 2 };
+    await be.join(l, r, opts);
+    const call = invokeMock.mock.calls.find((c) => c[0] === "engine_join");
+    expect(call![1]).toEqual({ left: l, right: r, opts });
+  });
+
   it("append → engine_append { handles }", async () => {
     const be = frameBackend();
     invokeMock.mockResolvedValueOnce("plf:A");

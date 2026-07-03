@@ -6,6 +6,11 @@
 
 ## #22 — As-Of Join / As-Of Lookup (IN — build now, small, high value-per-effort)
 
+**BUILT 2026-07-03 — see `docs/dev-notes.md` for the implementation summary and
+`docs/backlog.md`'s #22 line.** Both halves shipped exactly as scoped below: no third node,
+`asof` as a fifth `JoinHow`, the Rust `asof_join` feature enabled, and `lookupFrameCell`'s
+approximate-match mode. #21 and #43 elsewhere in this bundle remain unbuilt.
+
 **No third node.**
 
 **Join side — exact current shape:** `JoinNode.how: JoinHow`

@@ -2,6 +2,42 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### As-Of Join/Lookup BUILT — scope-features #22 (2026-07-03)
+Bundle 12 §22 (`docs/v2.0/12-value-model-extensions.md`) implemented in full; the other two
+items in that bundle (#21 uncertain values, #43 money mode) are untouched — both still need
+an author representation call before code starts.
+- **Join gains `"asof"` as a fifth `JoinHow`** (`frameVerbs.ts`): every LEFT row is kept
+  (never fans out), matched to the nearest RIGHT row by an orderable (number/date) key —
+  `asofDirection` ("backward"/"forward"/"nearest", default backward) + an optional
+  `asofTolerance` cap the match. JS oracle (`asofPairs`/`asofNearest`) is a sorted binary
+  search; the join's output-layout assembly was extracted to `assembleJoinOutput` so every
+  `how` (asof included) shares it. `JoinNode` (`nodes/frame.ts`) gained an `asofDirection`
+  field + a `tolerance` numeric input; `JoinComponent` shows a second SegToggle only when
+  `how === "asof"`.
+- **Rust engine**: `polars` gained the `asof_join` Cargo feature (was entirely absent, not
+  just disabled). `verb_join` dispatches `"asof"` to `verb_join_asof`, which uses
+  `LazyFrame::join_builder().how(JoinType::AsOf(AsOfOptions{..}))` — Polars' `join_asof`
+  requires BOTH sides pre-sorted ascending by the key and returns rows in SORTED-left order,
+  so a row-index column is added before sorting and restored after (parity with the oracle,
+  which preserves the caller's original left-row order). `assemble_join_layout` is the Rust
+  twin of `assembleJoinOutput` (equi-join's column-by-name layout logic factored out, reused
+  by both paths).
+- **Frame Lookup gains an approximate-match `matchMode`** (`LookupMatchMode`:
+  `"exact"` | `"nextSmaller"` | `"nextLarger"`, mirroring Excel XLOOKUP's `match_mode`
+  0/-1/1 — an exact hit always wins first, the approximate fallback only engages on a miss).
+  Restricted to a number/date column (`#VALUE!` otherwise), same restriction as asof's key.
+  Stays eager JS-only (`lookupFrameCell` in `frameVerbs.ts`) — never touches the Rust engine,
+  per its existing "materialization-boundary op" doc comment.
+- Gotcha: `AsOfOptions` in polars 0.46 has MORE fields than the upstream docs snippet I
+  found implied (`allow_eq`, `check_sortedness` alongside `strategy`/`tolerance`/
+  `tolerance_str`/`left_by`/`right_by`) — construct it with `..Default::default()`, don't
+  enumerate every field.
+- Tests: 5 new cargo tests (`engine/tests.rs`, backward/forward/nearest-tie/tolerance/
+  rejects-non-orderable-key) + JS oracle tests (`frameVerbs.test.ts`) for both the asof join
+  and the approximate lookup, + a `polarsBackend.test.ts` wire-shape check. New seed
+  `seedGraphs/asof-join-lookup.json` ("As-Of Join & Lookup") demos both on a prices/trades +
+  volume-discount example.
+
 ### Ragged-list pad BUILT (audit finding 25) + list SORT nulls-last + TEXT TZ fix (2026-07-02)
 The pad-to-longest-with-null policy (settled 2026-06-22 with the array-semantics build, unbuilt
 since) is now implemented — **behavior change:** `[1,2,3]+[10,20]` → `[11,22,null]`, no more

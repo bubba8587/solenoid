@@ -33,8 +33,9 @@ tauri-plugin-decorum = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # WS2 — the native relational engine. Lazy frames behind opaque handles; only a
-# preview/column materializes. Lean feature set: lazy plans + string predicates.
-polars = { version = "0.46", default-features = false, features = ["lazy", "strings"] }
+# preview/column materializes. Lean feature set: lazy plans + string predicates +
+# asof_join (the Join node's "as-of" `how`, nearest-match on a sorted key).
+polars = { version = "0.46", default-features = false, features = ["lazy", "strings", "asof_join"] }
 
 # Windows 11 DWM: set the window's border color (DWMWA_BORDER_COLOR) to the app
 # accent so the focused-window frame matches the theme. Already in the dep tree via
