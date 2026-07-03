@@ -40,7 +40,7 @@ Expression/LAMBDA) · golden tests PARKED (revisit end of walk) · data-drafts-i
 graph PARKED (author thinking).
 Smaller swap 4 (Cube identity) DECIDED 2026-07-02: OUT as identity, kept as headline
 capability/seed (verdict inline in future-directions.md).
-Scope-features #1–12 walked 2026-07-03 (verdicts inline): #1 IN (subgraph run-mode
+Scope-features #1–19 walked 2026-07-03 (verdicts inline): #1 IN (subgraph run-mode
 hook) · #2 DEFERRED · #3 IN tiers 1-2 · #4 IN (all five run modes on the one
 container) · #5 ecosystem OUT, document-local container only, packs distribute ·
 #6 DEFERRED · #7 ALL OUT · #8 IN for sure · #9 IN very limited (manual file sinks
@@ -55,7 +55,12 @@ seat — the MathCAD replacement, units-as-values is the winning card) · #16 IN
 #4's Monte Carlo hook + #5 subgraph container to land first (wiggle-the-weights
 depends on them) · #18 OUT (embeddable-engine identity fork — not pursued). Deferred
 pile for end-of-walk revisit: #2, #6, #11, golden tests, data-drafts.
-NEXT when resuming: scope-features #19, then #20–63 in order (folding in strategy threads #1–#7 and the
+Round 3 (#15–19, the stretch markets) closed 2026-07-03: #15 IN (engineering calc
+seat) · #16 IN (BOM/nested-costing on the Cube) · #17 IN minor, sequence late (needs
+#4 Monte Carlo + #5 subgraph first) · #18 OUT (embeddable-engine identity fork) ·
+#19 OUT (leans on the #7 NL surface, which stayed all-out).
+NEXT when resuming: scope-features #20 (Round 4, the value-model frontier — first
+item is named dimensions), then #21–63 in order (folding in strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
 #20 dimensions → engine execution contract (Bet 1 × #23 × #24 × calc mode) → #5
