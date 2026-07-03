@@ -7,6 +7,7 @@ import { scheduleAutosave } from "../persistence";
 import { NoteNode, ReportNode } from "../rete-nodes";
 import { nodeDisplayNames } from "../nodeNames";
 import { InlineRefBody } from "./inlineRefDisplay";
+import { preprocessEmbeds, extractEmbedNames } from "../reportEmbeds";
 import { CloseIcon } from "./CloseIcon";
 import { useDismissOnOutside } from "./useDismissOnOutside";
 import { exportReportAsWebpage } from "../reportExport";
@@ -54,9 +55,18 @@ export function ReportOverlay() {
   }, [nodeId]);
 
   const bodyHtml = useMemo(
-    () => DOMPurify.sanitize(marked.parse(body || "", { async: false, gfm: true, breaks: true }) as string),
+    // preprocessEmbeds turns each `![[Name]]` token into a data-embed marker
+    // BEFORE markdown parse, so an embedded Note renders where the author put
+    // it (DOMPurify keeps class + data-* on the bare span). ADD_ATTR is belt-
+    // and-suspenders — data-* survive by default, but be explicit.
+    () => DOMPurify.sanitize(
+      marked.parse(preprocessEmbeds(body || ""), { async: false, gfm: true, breaks: true }) as string,
+      { ADD_ATTR: ["data-embed"] },
+    ),
     [body],
   );
+
+  const sourceRef = useRef<HTMLTextAreaElement>(null);
 
   if (!nodeId || !node) return null;
 
@@ -68,6 +78,15 @@ export function ReportOverlay() {
   async function commitBody() {
     if (body === lastSyncRef.current) return;
     lastSyncRef.current = body;
+    // Keep node.embeds in step with the `![[Name]]` tokens actually in the body
+    // (the export reads embeds), resolving each name to a live Note id.
+    const embedNames = extractEmbedNames(body);
+    const ed0 = getEditor();
+    const allNotes = (ed0?.getNodes() ?? []).filter((n): n is NoteNode => n instanceof NoteNode);
+    const nm = nodeDisplayNames(ed0?.getNodes() ?? []);
+    node!.embeds = embedNames
+      .map((name) => allNotes.find((n) => (nm.get(n.id) ?? n.label ?? "").trim().toLowerCase() === name.toLowerCase())?.id)
+      .filter((id): id is string => !!id);
     const { removedInputs } = node!.syncRefs();
     const ed = getEditor();
     if (ed && removedInputs.length) {
@@ -83,18 +102,43 @@ export function ReportOverlay() {
 
   const notes = (editor?.getNodes() ?? []).filter((n): n is NoteNode => n instanceof NoteNode);
   const names = nodeDisplayNames(editor?.getNodes() ?? []);
-  const embeddable = notes.filter((n) => !node!.embeds.includes(n.id));
+  // Every Note is insertable — a note can be placed more than once, and
+  // placement is a token, not a membership toggle.
+  const embeddable = notes;
+  // Resolve an `![[Name]]` token to a Note by display name (case-insensitive).
+  function noteByName(name: string): NoteNode | undefined {
+    const target = name.trim().toLowerCase();
+    return notes.find((n) => (names.get(n.id) ?? n.label ?? "").trim().toLowerCase() === target);
+  }
 
+  // Embedding now INSERTS an `![[Name]]` token at the cursor — placement lives
+  // in the markdown, the author controls it. `embeds` still tracks which notes
+  // are referenced (kept in sync from the tokens on commit) for the export.
   function addEmbed(id: string) {
-    node!.embeds.push(id);
+    const note = editor?.getNode(id) as NoteNode | undefined;
+    const label = names.get(id) ?? note?.label ?? "Note";
+    const ta = sourceRef.current;
+    const token = `![[${label}]]`;
+    if (ta) {
+      const start = ta.selectionStart ?? body.length;
+      const end = ta.selectionEnd ?? body.length;
+      // Own paragraph if we're mid-line, so the block sits clean.
+      const before = body.slice(0, start);
+      const needsNL = before.length > 0 && !before.endsWith("\n\n");
+      const insert = `${needsNL ? "\n\n" : ""}${token}\n\n`;
+      const next = before + insert + body.slice(end);
+      onBody(next);
+      requestAnimationFrame(() => {
+        const pos = (before + insert).length;
+        ta.focus();
+        ta.setSelectionRange(pos, pos);
+      });
+    } else {
+      onBody(`${body}${body.endsWith("\n") || body === "" ? "" : "\n\n"}${token}\n`);
+    }
+    if (!node!.embeds.includes(id)) node!.embeds.push(id);
     scheduleAutosave();
     setEmbedPickerOpen(false);
-    void getArea()?.update("node", node!.id);
-  }
-  function removeEmbed(id: string) {
-    node!.embeds = node!.embeds.filter((e) => e !== id);
-    scheduleAutosave();
-    void getArea()?.update("node", node!.id);
   }
 
   async function doExport() {
@@ -149,25 +193,29 @@ export function ReportOverlay() {
 
         <div className="report-body">
           <textarea
+            ref={sourceRef}
             className="report-source"
             value={body}
-            placeholder="Write the report… (markdown, `=name` refs a wired value)"
+            placeholder="Write the report… (markdown · `=name` shows a wired value · ![[Note]] embeds a note)"
             spellCheck={false}
             onChange={(e) => onBody(e.target.value)}
             onBlur={() => void commitBody()}
           />
           <div className="report-preview sol-md">
             {body.trim() ? (
-              <InlineRefBody nodeId={node.id} bodyHtml={bodyHtml} className="report-preview__md" />
+              <InlineRefBody
+                nodeId={node.id}
+                bodyHtml={bodyHtml}
+                className="report-preview__md"
+                renderEmbed={(name) => {
+                  const note = noteByName(name);
+                  return note
+                    ? <EmbeddedNote noteId={note.id} name={names.get(note.id) ?? name} />
+                    : <span className="report-embed-missing">![[{name}]] — no note by that name</span>;
+                }}
+              />
             ) : (
               <div className="report-preview__empty">Preview</div>
-            )}
-            {node.embeds.length > 0 && (
-              <div className="report-embeds">
-                {node.embeds.map((id) => (
-                  <EmbeddedNote key={id} noteId={id} name={names.get(id) ?? "Note"} onRemove={() => removeEmbed(id)} />
-                ))}
-              </div>
             )}
           </div>
         </div>
@@ -176,9 +224,10 @@ export function ReportOverlay() {
   );
 }
 
-/** A read-only mini preview of an embedded Note — its rendered markdown, capped
- *  height, with a remove control. Placed-object embedding, not inline text. */
-function EmbeddedNote({ noteId, name, onRemove }: { noteId: string; name: string; onRemove: () => void }) {
+/** A read-only mini preview of an embedded Note — its rendered markdown, placed
+ *  inline where its `![[Name]]` token sits. Removal is deleting the token (no
+ *  separate control — the markdown is the source of truth for placement). */
+function EmbeddedNote({ noteId, name }: { noteId: string; name: string }) {
   const editor = getEditor();
   const note = editor?.getNode(noteId) as NoteNode | undefined;
   const html = useMemo(
@@ -188,19 +237,13 @@ function EmbeddedNote({ noteId, name, onRemove }: { noteId: string; name: string
   if (!note) {
     return (
       <div className="report-embed">
-        <div className="report-embed__header">
-          <span className="report-embed__name">{name} (removed)</span>
-          <button className="report-embed__remove" onClick={onRemove} title="Remove embed" aria-label="Remove embed"><CloseIcon size={12} /></button>
-        </div>
+        <div className="report-embed__header"><span className="report-embed__name">{name} (removed)</span></div>
       </div>
     );
   }
   return (
     <div className="report-embed">
-      <div className="report-embed__header">
-        <span className="report-embed__name">{name}</span>
-        <button className="report-embed__remove" onClick={onRemove} title="Remove embed" aria-label="Remove embed"><CloseIcon size={12} /></button>
-      </div>
+      <div className="report-embed__header"><span className="report-embed__name">{name}</span></div>
       <div className="report-embed__body sol-md" dangerouslySetInnerHTML={{ __html: html }} />
     </div>
   );

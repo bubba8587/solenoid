@@ -145,9 +145,18 @@
   margin-top: 18px;
 }
 .report-embed {
+  display: block;
   border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
+  margin: 12px 0;
+}
+/* An `![[Name]]` token that doesn't resolve to a live Note — quiet inline hint,
+   not an error badge (the author is likely mid-typing the name). */
+.report-embed-missing {
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  color: var(--text-muted);
 }
 .report-embed__header {
   display: flex;

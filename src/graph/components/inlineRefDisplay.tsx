@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import type { ClassicPreset } from "rete";
 import type { RenderEmit, ClassicScheme } from "rete-react-plugin";
@@ -149,17 +149,21 @@ export function RefInputRow({
  * value/format changing doesn't re-run this — InlineRefValue itself subscribes).
  */
 export function InlineRefBody({
-  nodeId, bodyHtml, className, onClick, onPointerDown, onMouseDown,
+  nodeId, bodyHtml, className, renderEmbed, onClick, onPointerDown, onMouseDown,
 }: {
   nodeId: string;
   bodyHtml: string;
   className: string;
+  /** Report only: render an embedded block for an `![[Name]]` token found in
+   *  the body (Note cards pass nothing — they don't embed). */
+  renderEmbed?: (name: string) => ReactNode;
   onClick?: () => void;
   onPointerDown?: (e: React.PointerEvent) => void;
   onMouseDown?: (e: React.MouseEvent) => void;
 }) {
   const htmlRef = useRef<HTMLDivElement>(null);
   const [slots, setSlots] = useState<{ el: HTMLElement; name: string }[]>([]);
+  const [embedSlots, setEmbedSlots] = useState<{ el: HTMLElement; name: string; i: number }[]>([]);
 
   // Set the rendered HTML IMPERATIVELY (not via dangerouslySetInnerHTML) so
   // React never "owns" these children. The previous version passed the HTML as
@@ -181,12 +185,24 @@ export function InlineRefBody({
       found.push({ el: span, name: m[1] });
     });
     setSlots(found);
-  }, [bodyHtml]);
+    // Embed tokens (`![[Name]]`, pre-processed to a data-embed marker) — portal
+    // an embed block into each. Report-only; NoteNode passes no renderEmbed.
+    const embeds: { el: HTMLElement; name: string; i: number }[] = [];
+    if (renderEmbed) {
+      root.querySelectorAll<HTMLElement>("[data-embed]").forEach((el, i) => {
+        embeds.push({ el, name: el.dataset.embed ?? "", i });
+      });
+    }
+    setEmbedSlots(embeds);
+  }, [bodyHtml, renderEmbed]);
 
   return (
     <div className={className} onClick={onClick} onPointerDown={onPointerDown} onMouseDown={onMouseDown}>
       <div ref={htmlRef} />
       {slots.map((s) => createPortal(<InlineRefValue key={s.name} nodeId={nodeId} refKey={s.name} />, s.el))}
+      {renderEmbed && embedSlots.map((s) => createPortal(
+        <span key={`${s.name}:${s.i}`}>{renderEmbed(s.name)}</span>, s.el,
+      ))}
     </div>
   );
 }
