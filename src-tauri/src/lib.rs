@@ -62,6 +62,7 @@ pub fn run() {
             set_window_border,
             ipc::engine_ping,
             engine::engine_source,
+            engine::engine_read_csv,
             engine::engine_apply,
             engine::engine_join,
             engine::engine_append,

@@ -459,6 +459,28 @@ fn wire_to_solframe(frame: WireFrame) -> Result<SolFrame, IpcError> {
     Ok(SolFrame { df, types })
 }
 
+// ─── Native CSV read (#24 WS-E) ─────────────────────────────────────────────────
+// Bypasses the JS Papa Parse + type-inference path (src/graph/csv.ts,
+// frame.ts's `frameFromCells`) entirely for desktop CSV import: Polars reads the
+// file straight off disk (multi-threaded, SIMD) and infers dtypes itself. A
+// Polars dtype maps onto a SolType by KIND: Boolean → Logical, String → Str,
+// everything numeric → Number. Known divergence from the JS oracle: no DATE
+// inference (frame.ts's conservative unambiguous-ISO check has no Rust
+// equivalent yet) — a date column arrives as Str here, same as any other text
+// column; an explicit Get Column "read as Date" still converts it downstream.
+fn df_to_solframe(df: DataFrame) -> SolFrame {
+    let types: Vec<SolType> = df
+        .get_columns()
+        .iter()
+        .map(|c| match c.dtype() {
+            DataType::Boolean => SolType::Logical,
+            DataType::String => SolType::Str,
+            _ => SolType::Number,
+        })
+        .collect();
+    SolFrame { df, types }
+}
+
 // ─── Verb helpers ───────────────────────────────────────────────────────────────
 
 fn require_columns(frame: &SolFrame, names: &[String]) -> Result<(), IpcError> {
@@ -1122,6 +1144,23 @@ fn column_of(frame: &SolFrame, name: &str) -> Option<OutColumn> {
 #[tauri::command]
 pub fn engine_source(frame: WireFrame) -> Result<String, IpcError> {
     Ok(register(wire_to_solframe(frame)?))
+}
+
+/// Native CSV→Polars read (#24 WS-E) — desktop-only alternative to the JS
+/// `csvToFrame` path (src/graph/nodes/connection.ts): reads `folder/name` straight
+/// off disk through Polars' own CSV reader and returns it already collected to
+/// typed columns (mirrors `engine_collect`'s shape), so the file text never
+/// crosses IPC and JS never re-parses/re-infers it.
+#[tauri::command]
+pub fn engine_read_csv(folder: String, name: String) -> Result<Vec<OutColumn>, IpcError> {
+    let path = std::path::Path::new(&folder).join(&name);
+    let df = CsvReadOptions::default()
+        .with_has_header(true)
+        .try_into_reader_with_file_path(Some(path.clone()))
+        .map_err(|e| IpcError::new("#REF!", format!("couldn't open \"{}\": {e}", path.display())))?
+        .finish()
+        .map_err(|e| IpcError::internal(format!("CSV parse failed: {e}")))?;
+    Ok(collect_of(&df_to_solframe(df)))
 }
 
 #[tauri::command]

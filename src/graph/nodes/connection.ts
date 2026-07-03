@@ -6,6 +6,9 @@ import { isDesktop, readFileText } from "../fileBridge";
 import { fetchText } from "../httpBridge";
 import { frameFromCells, frameFromRecords, frameFromRows, frameFromColumnar, frameRowCount, type FrameValue } from "../frame";
 import { parseCsvRows } from "../csv";
+import { engineAvailable } from "../ipcBridge";
+import { readCsvFrame } from "../frameBackend";
+import { isSolError } from "../errorValue";
 
 // ─── External-data connection nodes ─────────────────────────────────────────────
 // A connection node references outside data (a URL now; a folder-relative CSV
@@ -312,7 +315,16 @@ export class CsvConnectionNode extends ClassicPreset.Node {
     if (name === "") return fail("Pick a file", "idle");
     connectionStore.setState(this.id, { status: "loading" });
     try {
-      const frame = csvToFrame(await readFileText(folder, name));
+      // Desktop: read + parse natively in Rust (Polars' own CSV reader) — the file
+      // text never crosses IPC and JS never re-parses/re-infers it (#24 WS-E). Web
+      // has no native engine, so it keeps the JS Papa Parse + inference path.
+      const frame = engineAvailable()
+        ? await (async () => {
+            const r = await readCsvFrame(folder, name);
+            if (isSolError(r)) throw new Error(r.message);
+            return r;
+          })()
+        : csvToFrame(await readFileText(folder, name));
       this.cachedResult = frame;
       this.lastKey = key;
       connectionStore.setState(this.id, {
