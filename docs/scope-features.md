@@ -1344,6 +1344,8 @@ spreadsheet class does PDF ingestion natively; analysts pay for standalone tools
 
 ## 34 — Parquet & Arrow: speak the data world's native tongue
 
+**VERDICT (author, 2026-07-03): IN.**
+
 **The problem:** CSV is the only bulk format in or out. The modern data stack —
 warehouses, lakes, Python/R, DuckDB — speaks **Parquet** (columnar, typed, compressed,
 fast) and Arrow.

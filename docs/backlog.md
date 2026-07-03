@@ -82,8 +82,10 @@ removed/changed + price/volume/mix breakdown; doesn't need snapshots #6 first, t
 inputs are commonly just two Filter nodes off one shared live source) · #33 OUT
 (PDF/OCR intake — not a scope fit at all; the graph adds nothing to document/image
 parsing, that's a separate tool's job to hand Solenoid a clean frame; plain HTML-paste
-is just ordinary import hygiene, no verdict needed for that part).
-NEXT when resuming: scope-features #34, then #35–63 in order (folding in
+is just ordinary import hygiene, no verdict needed for that part) · #34 IN (Parquet/
+Arrow — cargo flag + direct file→engine path, doubles as the direct-CSV→Polars scale
+step for a better format first).
+NEXT when resuming: scope-features #35, then #36–63 in order (folding in
 strategy threads #1–#7 and the
 unfinished v1.1-plan workstreams where they belong), then the parked pair, then the
 design deep-dive sessions (order: Bet 2 text format → units/FC function model →
