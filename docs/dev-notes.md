@@ -15,6 +15,12 @@ Running notes on direction, deferred work, and non-obvious technical gotchas.
   on iOS Safari (no element fullscreen) rather than being a dead key. `showFullscreen = IS_MOBILE &&
   fullscreenSupported()` — desktop never renders it (it has F11). NOTE: Rust half not compiled here
   (no cargo cache; Tauri+Polars build is heavy) — verify on the next desktop build.
+- **Icon state (follow-ups):** the mobile fullscreen button swaps glyph by state — Lucide maximize-2
+  windowed, minimize-2 fullscreen (tracked via a `fullscreenchange` listener). The expand/collapse-all
+  buttons (TopBar pill + Navigator) switched to Lucide **list-chevrons**, and the glyph shows the
+  ACTION: converging (down-up) when it will collapse, diverging (up-down) when it will expand —
+  replacing the old single-glyph-with-180°-rotation. All redrawn on each button's own 16-grid to match
+  sibling stroke weight.
 
 ### Canvas regression sweep — minimap, semantic zoom, quick-wire (2026-07-04)
 Four author-reported bugs, all root-caused rather than patched-over:

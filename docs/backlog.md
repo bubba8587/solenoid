@@ -543,6 +543,37 @@ section is decision-recorded. The QUEUE when resuming, in order:
   box). rAF-coalesced its `render` to at most one per frame in `Canvas.tsx` (guarded by
   the effect's `destroyed` flag so a pending frame can't fire into a torn-down area).
 
+### Canvas regression + polish sweep (2026-07-04) — done + follow-ups
+Author-reported bugs/requests this session (see dev-notes 2026-07-04). Done:
+- [x] **Semantic zoom did nothing** — was gated on `computeIdealMipLevel(scale·dpr) ≥ 4`
+  (only ~3–6% zoom, where the body is already sub-pixel). Re-gated on the raw CSS scale
+  (`SEMANTIC_ZOOM_SCALE = 0.3`, dpr-independent) AND added the legible stand-in it was
+  missing: a `.solenoid-node__semantic` overlay drawing the node name large + centered
+  (standard nodes only).
+- [x] **Quick-wire ignored the drop location** — `screenMouseRef` tracked mousemove only,
+  which the area's `Drag.move` `preventDefault()` suppresses mid-drag; now tracks
+  pointermove too. Plus side-aware placement (from-input → node's right edge at the drop).
+- [x] **Quick-wire menu grays incompatible nodes** in the full Add menu (compatibleTypes
+  set) instead of a flat filtered list.
+- [x] **Removed the entire `--panning` quality/paint-cut system** — DOM mode stays
+  full-quality while panning; HTML-in-canvas is the perf path. (Reconciled
+  `performance-hardening.md`.)
+- [x] **Fullscreen** — F11 (Tauri `toggle_fullscreen`) + mobile pill button (`fullscreen.ts`).
+- [x] **Icon polish** — expand/collapse-all → Lucide list-chevrons (glyph shows the action);
+  mobile fullscreen → maximize-2 / minimize-2 by state.
+
+Follow-ups surfaced:
+- [ ] **Verify the fullscreen Rust half on a real desktop build** — `toggle_fullscreen` +
+  F11 couldn't be `cargo`-compiled in the web session (no build cache; Tauri+Polars is
+  heavy). It's a two-line mirror of the existing window commands, but confirm on the next
+  `npm run tauri build`.
+- [ ] **Quick-wire stage-1 instantiates every catalog leaf per drop** (`filterByCompatibleSocket`
+  calls `leaf.create()` to read live sockets). Fine at the current catalog size; memoize a
+  per-type socket signature if the catalog grows a lot.
+- [ ] **Semantic-zoom stand-in is DOM-renderer only** — the HTML-in-canvas renderer draws
+  cached bitmaps, so it won't reflect the `.solenoid-semantic-zoom` class without a
+  recapture. Pre-existing property of the semantic-zoom CSS approach; note if it matters.
+
 ---
 
 ## Renderer (v1.0) — adopt PixiJS, demote Rete to headless (decision 2026-06-26)
