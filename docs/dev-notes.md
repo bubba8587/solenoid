@@ -17,12 +17,18 @@ Running notes on direction, deferred work, and non-obvious technical gotchas.
   (matches the desktop accent MenuBar). Covers the app-menu icon + the apptools cluster; the
   base `:hover` (which flips to the accent, invisible on an accent bar, and lingers on touch) is
   neutralized to the ghost state.
-- **Separator to the canvas is MODE-KEYED** (revised — an accent-ink hairline was too faint to
-  read as a separator). The edge must contrast the CANVAS, whose lightness tracks the THEME, not
-  the accent — so: light mode → `rgba(0,0,0,0.3)` line + soft shadow (reads on the light canvas);
-  dark mode (`&[data-theme="dark"] .solenoid-topbar`) → `rgba(255,255,255,0.16)` line + a deeper
-  shadow (reads on the dark canvas). The notch/safe-area inset is filled by the accent
-  (padding-top on the bar), matching the desktop accent MenuBar's notch behavior.
+- **Separator to the canvas is MODE-KEYED + 2px** (revised — an accent-ink hairline was too
+  faint, and 1px too thin vs the desktop bar's 2px accent underline). The edge must contrast the
+  CANVAS, whose lightness tracks the THEME, not the accent — so: light mode → `rgba(0,0,0,0.32)`
+  2px line + soft shadow; dark mode (`&[data-theme="dark"] .solenoid-topbar`) →
+  `rgba(255,255,255,0.2)` 2px line + a deeper shadow. The notch/safe-area inset is filled by the
+  accent (padding-top on the bar), matching the desktop accent MenuBar's notch behavior.
+- **Icon weight matched to the touch bar** (revised): the apptools glyphs are authored at 14px /
+  stroke 1.4 (~0.82px effective — fine for the small desktop bar) but read half as thick as the
+  bottom bar / overlay pills (20px / stroke 2 ≈ 1.67px). A mobile-only override
+  (`.solenoid-apptools__btn svg { width/height: 20px; stroke-width: 2 }` — CSS wins over the SVG
+  attribute) scales them up so the top and bottom bars are one icon set. The app-menu mark is a
+  masked logo, not a stroked icon, so it's left alone.
 
 ### Mobile select-mode: pinch/pan/lasso + the off-canvas-tap selection wipe (2026-07-04, root-caused with browser automation)
 - **Root causes (verified by driving a mobile-emulated Chromium via CDP, not by reading):**

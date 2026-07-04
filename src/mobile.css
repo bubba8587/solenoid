@@ -46,13 +46,13 @@ html.is-mobile {
        soft shadow on the light canvas (default here), a light line + deeper shadow on
        the dark canvas (the [data-theme="dark"] rule below). Replaces the base bar's
        2px accent underline + panel-border, both invisible on an accent bar. */
-    border-bottom: 1px solid rgba(0, 0, 0, 0.3);
+    border-bottom: 2px solid rgba(0, 0, 0, 0.32);
     box-shadow: 0 2px 9px rgba(0, 0, 0, 0.2);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
   }
   &[data-theme="dark"] .solenoid-topbar {
-    border-bottom-color: rgba(255, 255, 255, 0.16);
+    border-bottom-color: rgba(255, 255, 255, 0.2);
     box-shadow: 0 3px 12px rgba(0, 0, 0, 0.55);
   }
   .solenoid-topbar__group,
@@ -147,6 +147,17 @@ html.is-mobile {
   /* The accent-swatch dot: ink ring so the current-accent dot reads on the bar
      (its fill is the accent, i.e. the bar color). */
   .solenoid-apptools__paint-dot { border-color: var(--accent-ink); }
+  /* Match the icon weight to the bottom bar + overlay pills. The apptools glyphs
+     are authored at 14px / stroke 1.4 (fine for the small desktop bar → ~0.82px
+     effective); the touch bar's icons are 20px / stroke 2 (~1.67px). Scale these up
+     to match so the top and bottom bars read as one icon set (CSS stroke-width wins
+     over the SVG attribute). The app-menu mark is a masked logo, not a stroked icon,
+     so it's untouched. */
+  .solenoid-apptools__btn svg {
+    width: 20px;
+    height: 20px;
+    stroke-width: 2;
+  }
 
   /* ── Menu bar: out of flow so it claims no row of its own — it exists only to
         host the sheet the hamburger opens (a section per menu). ── */
