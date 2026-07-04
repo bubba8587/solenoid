@@ -2,6 +2,22 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Text node is multi-line; Mermaid template dropdown (2026-07-04)
+- **Text node scales + preserves newlines.** `QuotedTextInput`'s `value` variant was a
+  single-line `<input type="text">` — which strips newlines on paste and grows
+  horizontally off the card via `size={draft.length}`. Split into `QuotedInlineInput`
+  (unchanged single-line, for the per-row inline literals) and `QuotedValueTextarea`
+  (a `<textarea>` that auto-grows to content, caps at 200px then scrolls, wraps long
+  lines, commits on blur / reverts on Escape / Enter = newline). This ALSO fixes the
+  reported bug: pasting multi-line Mermaid into a Text node and wiring it as `source`
+  produced a diagram error because the `<input>` had flattened the newlines to one line
+  (Mermaid needs statement breaks). Dropped the field resize grip — auto-grow replaces it.
+- **Mermaid template dropdown.** `MermaidNode.tsx` `MERMAID_TEMPLATES` (Flowchart /
+  Sequence / Class / State / ER / Gantt / Pie / Mindmap / Journey / Git) — a
+  `<select>` above the source (hidden when the source socket is wired) drops a minimal
+  valid skeleton of that diagram type in, so you start from a working shape. Verified
+  live: pick → source set → renders.
+
 ### Report embeds: taller scrollable tables + collapsible (2026-07-04)
 Two Report-embed asks. (1) An inline frame ref (`=table`) was capped at the node
 hero box's 3 rows; a document can afford more. `FrameDisplay` gained `previewRows`/

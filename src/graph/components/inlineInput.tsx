@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent } from "react";
 import katex from "katex";
 import "katex/dist/katex.min.css";
 import type { ClassicPreset } from "rete";
@@ -9,7 +9,6 @@ import { nodeName } from "../catalogUtils";
 import { collapseStore } from "../collapseStore";
 import { NodeSocket, MeasuredSocketRow } from "./NodeSocket";
 import { CollapsedInputPill } from "./CollapsedInputPill";
-import { ResizeHandle } from "./ResizeHandle";
 
 // Vertical pitch between input rows. Socket *placement* no longer uses a fixed
 // top offset — each input dot centers on its own row via CSS (.solenoid-node__io-row
@@ -224,13 +223,7 @@ export function InlineNumberField({
  * quotes (authoring a literal). Result/display boxes drop quotes entirely and
  * mark whitespace with middots instead (see ValueDisplay).
  */
-export function QuotedTextInput({
-  value,
-  onChange,
-  variant = "inline",
-  autoFocus,
-  nodeId,
-}: {
+export function QuotedTextInput(props: {
   value: string;
   onChange: (v: string) => void;
   variant?: "inline" | "value";
@@ -239,22 +232,26 @@ export function QuotedTextInput({
   // per-row inline literals, which don't pass this).
   nodeId?: string;
 }) {
+  // The main text field (value variant) is a MULTI-LINE textarea: a single-line
+  // <input> silently strips newlines on paste, so a multi-line literal (a Mermaid
+  // diagram, an address block, wrapped prose) collapsed to one line — and it grew
+  // horizontally off the card instead of scaling. The per-row inline literals stay
+  // single-line (they fill a fixed 22px row).
+  return props.variant === "value"
+    ? <QuotedValueTextarea value={props.value} onChange={props.onChange} autoFocus={props.autoFocus} />
+    : <QuotedInlineInput value={props.value} onChange={props.onChange} autoFocus={props.autoFocus} />;
+}
+
+function QuotedInlineInput({ value, onChange, autoFocus }: { value: string; onChange: (v: string) => void; autoFocus?: boolean }) {
   const field = useDraftCommit(value, (v) => v, (t) => t, onChange);
-  // Auto-size only the main field (value variant) to its content; inline row
-  // fields fill the remaining row width via CSS and scroll long text instead of
-  // growing past the card edge.
-  const autoSize = variant === "value";
   return (
-    <span className={`solenoid-node__quoted${variant === "value" ? " solenoid-node__quoted--value" : " solenoid-node__quoted--inline"}`}>
+    <span className="solenoid-node__quoted solenoid-node__quoted--inline">
       <span className="solenoid-node__quote" aria-hidden="true">"</span>
-      {/* Wrapper hugs the input so the resize grip anchors to the field's own
-          corner (not the full row). */}
       <span className="solenoid-node__quoted-field">
         <input
           type="text"
           className="solenoid-node__quoted-input"
           value={field.draft}
-          size={autoSize ? Math.max(field.draft.length, 1) : undefined}
           onChange={(e) => field.setDraft(e.target.value)}
           onBlur={field.onBlur}
           onKeyDown={field.onKeyDown}
@@ -263,9 +260,56 @@ export function QuotedTextInput({
           spellCheck={false}
           autoFocus={autoFocus}
         />
-        {nodeId && <ResizeHandle nodeId={nodeId} />}
       </span>
       <span className="solenoid-node__quote" aria-hidden="true">"</span>
+    </span>
+  );
+}
+
+// Max textarea height before it scrolls — a big paste doesn't run the card off
+// the bottom of the screen.
+const VALUE_TEXTAREA_MAX = 200;
+
+function QuotedValueTextarea({ value, onChange, autoFocus }: { value: string; onChange: (v: string) => void; autoFocus?: boolean }) {
+  const [draft, setDraft] = useState(value);
+  const cancelled = useRef(false);
+  const ref = useRef<HTMLTextAreaElement>(null);
+  // Resync when the committed value changes underneath (undo, external edit).
+  useEffect(() => { setDraft(value); }, [value]);
+  // Grow to content, capped then scroll (before paint, so no flicker).
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, VALUE_TEXTAREA_MAX)}px`;
+  }, [draft]);
+  const commit = () => {
+    if (cancelled.current) { cancelled.current = false; setDraft(value); return; }
+    if (draft === value) return;
+    onChange(draft);
+    pushHistory(() => onChange(value), () => onChange(draft));
+  };
+  // Enter inserts a newline (this is multi-line); Escape reverts + blurs.
+  const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Escape") { cancelled.current = true; e.currentTarget.blur(); }
+  };
+  return (
+    <span className="solenoid-node__quoted solenoid-node__quoted--value solenoid-node__quoted--multiline">
+      <span className="solenoid-node__quoted-field">
+        <textarea
+          ref={ref}
+          className="solenoid-node__quoted-input solenoid-node__quoted-textarea"
+          value={draft}
+          rows={1}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={onKeyDown}
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          spellCheck={false}
+          autoFocus={autoFocus}
+        />
+      </span>
     </span>
   );
 }
