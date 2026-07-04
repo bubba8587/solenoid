@@ -386,8 +386,13 @@ section is decision-recorded. The QUEUE when resuming, in order:
 >    (even null/0) returned. CHOOSE out-of-range → #VALUE!. Fresh SWITCH ships Default
 >    EMPTY (expr=1 matches when0 so it still shows a result). `InlineNumberField` gained
 >    a `placeholder` prop; the fallback box shows a muted "N/A". Tests in logic.test.ts.
-> 4. **input defaults as muted placeholders** (not "(default …)" labels) —
->    text.ts/list.ts/finance.ts + their components.
+> 4. **input defaults as muted placeholders** — DONE (2026-07-05): `InlineInputs` now
+>    GENERICALLY parses the `(default X)` label convention (`splitDefaultLabel`) → bare
+>    label + `X` as a muted placeholder (self-maintains for future labels). `placeholder`
+>    threaded through InlineNumberField + InlineTextField/QuotedInlineInput. Pure-default
+>    configs (RANDARRAY min/max, SEQUENCE start/step, TEXT/FIXED decimals, NumberValue seps)
+>    ship their literals UNSET so the placeholder shows (data() defaults via `?? X` / `||`);
+>    finance redemption keeps its worked-example value (label still cleans up).
 > 5. **`numberToText` at 15 sig digits** for `&`/CONCAT/TEXTJOIN — DONE (2026-07-05):
 >    helper in excelFunctions.ts, routed through `toStr` (fixes LEN etc.) + the `&`
 >    operator; internal CONCAT/CONCATENATE/TEXTJOIN own the join. `(0.1+0.2)&" kg"` →
@@ -398,8 +403,9 @@ section is decision-recorded. The QUEUE when resuming, in order:
 >    Author eyeballs the styling.
 > The 8 done items are also summarized in dev-notes 2026-07-04.
 >
-> **STATUS 2026-07-05: 5 of the 6 remaining done (#1,#2,#3,#5,#6). Left: #4 input-default
-> placeholders (broad UI sweep — ~8 nodes) + the readInput data()-file sweep (item 1 tail).**
+> **STATUS 2026-07-05: ALL 6 remaining tail items done (#1,#2,#3,#4,#5,#6). The ONLY open
+> 1.0-tail work is the readInput data()-file sweep (item 1's tail — list/date/text/matrix/
+> complex/finance/dist/stats, DATA-vs-CONFIG per input).** Author eyeballs the #4/#6 styling.
 
 - [ ] **Frame Filter text matching → case-INsensitive** (audit 28's held-back half —
   REVERSED on revisit). eq/neq/contains/startsWith/endsWith all match case-insensitively,
@@ -564,11 +570,14 @@ section is decision-recorded. The QUEUE when resuming, in order:
   two documented behaviors: trailing `%` signs each ÷100 ("12%"→0.12, "12%%"→0.0012);
   ALL whitespace ignored incl. embedded ("1 234"→1234). Blank → null stays. Tests pin
   "12x", "12%", "1 234", swapped-separator "1.234,56", blank.
-- [ ] **Input-field defaults render as muted PLACEHOLDERS, not label parentheses (author
-  confirmed).** NumberValue's `Decimal sep (default ".")` labels → label "Decimal sep",
-  muted `.` placeholder in the empty field; blank = default applies, typed = override
-  (literal ships empty; data() treats "" as use-default). Same pattern as the IFS
-  Otherwise `N/A` placeholder. Sweep all nodes for other `(default …)` label text.
+- [x] **Input-field defaults render as muted PLACEHOLDERS — DONE 2026-07-05.** `InlineInputs`
+  GENERICALLY parses the `(default X)` label convention (`splitDefaultLabel`, quote-stripped)
+  → bare label + `X` as the muted field placeholder; no per-node display code, self-maintains.
+  `placeholder` threaded through InlineNumberField + InlineTextField → QuotedInlineInput.
+  Pure-default configs ship their literal UNSET so the placeholder shows (RANDARRAY min/max,
+  SEQUENCE start/step, TEXT/FIXED decimals, NumberValue seps — the last via data() `||` since
+  "" isn't nullish); data() keeps its `?? X` default. Finance redemption keeps its worked-
+  example value (its label still cleans up via the parse). Author eyeballs styling.
 - [x] **Logical bridge: NaN → null — DONE 2026-07-04** (`coerceInputs.ts` numsToBools: NaN→null, not `v!==0`'s TRUE). (author confirmed, on recommendation).**
   `numsToBools` (`coerceInputs.ts`) uses `v !== 0`, so NaN reads as a confident TRUE at
   every logical socket. Post-finding-13, NaN is just an undefined number → its truth
