@@ -615,7 +615,9 @@ export class TextFilterNode extends ClassicPreset.Node {
 export class NumberValueNode extends ClassicPreset.Node {
   label: string;
   cachedResult: number | SolError | null = null;
-  stringLiterals: Record<string, string> = { text: "", decimal_sep: ".", group_sep: "," };
+  // The separators ship EMPTY so the field shows a muted "."/"," placeholder (the
+  // default); data() treats empty/unset as the default via `||`.
+  stringLiterals: Record<string, string> = { text: "" };
   width = 180; height = 195;
 
   constructor(init?: { label?: string }) {
@@ -629,8 +631,10 @@ export class NumberValueNode extends ClassicPreset.Node {
 
   data(inputs: { text?: string[]; decimal_sep?: string[]; group_sep?: string[] }): { result: number | SolError | null } {
     const text    = (inputs.text?.[0]        ?? this.stringLiterals.text        ?? "").trim();
-    const decSep  =  inputs.decimal_sep?.[0] ?? this.stringLiterals.decimal_sep ?? ".";
-    const grpSep  =  inputs.group_sep?.[0]   ?? this.stringLiterals.group_sep   ?? ",";
+    // `||` (not `??`): an empty/unset separator field means "use the default", so a
+    // blank box (placeholder showing) still parses with "."/",".
+    const decSep  =  inputs.decimal_sep?.[0] || this.stringLiterals.decimal_sep || ".";
+    const grpSep  =  inputs.group_sep?.[0]   || this.stringLiterals.group_sep   || ",";
     // Empty input is blank (null); a non-empty string that won't parse is a
     // genuine #VALUE! error.
     if (!text) { this.cachedResult = null; return { result: null }; }
@@ -791,7 +795,7 @@ export class FixedNode extends ClassicPreset.Node {
   label: string;
   noCommas: FixedNoCommas;
   cachedText: string | null = null;
-  literals: Record<string, number> = { number: 0, decimals: 2 };
+  literals: Record<string, number> = { number: 0 }; // decimals ships unset → muted "2" placeholder (data() defaults)
   width = 180; height = 175;
 
   constructor(init?: { label?: string; noCommas?: FixedNoCommas }) {
@@ -898,7 +902,7 @@ export class RegexNode extends ClassicPreset.Node {
 export class FormatDollarNode extends ClassicPreset.Node {
   label: string;
   cachedText: string | null = null;
-  literals: Record<string, number> = { number: 0, decimals: 2 };
+  literals: Record<string, number> = { number: 0 }; // decimals ships unset → muted "2" placeholder (data() defaults)
   width = 180; height = 175;
 
   constructor(init?: { label?: string }) {

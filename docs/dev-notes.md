@@ -2,6 +2,22 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### 1.0-tail #4 — input defaults as muted placeholders (2026-07-05)
+`(default X)` in a socket label documented a default as parenthetical prose (Captain-Obvious). Now
+`InlineInputs` GENERICALLY parses it (`splitDefaultLabel`, exported from inlineInput.tsx): a label
+matching `/^(.*?)\s*\(default\s+(.+?)\)\s*$/` renders the bare label + `X` (surrounding quotes
+stripped) as the field's MUTED placeholder. No per-node display code — it self-maintains for any future
+`(default X)` label. `placeholder` was threaded through `InlineNumberField` (already had it) and
+`InlineTextField` → `QuotedTextInput` → `QuotedInlineInput`. For the placeholder to actually SHOW, the
+pure-default configs ship their literal UNSET: RANDARRAY min/max, SEQUENCE start/step, TEXT/FIXED
+decimals (removed from `literals`; data() still defaults via `?? X`), and NumberValue's decimal/group
+seps (ship empty, data() switched `??`→`||` since "" isn't nullish). Finance redemption KEEPS its
+worked-example value (it's part of a bond-pricing demo, not a bare default) — its label still cleans up
+via the parse, the value just stays visible. **This supersedes the "config inputs keep defaulting"
+half of #1's read-idiom rule for these fields — but they're CONFIG, so the default still applies; only
+the DISPLAY changed (value→placeholder), the semantics are identical.** No test (pure regex + UI —
+author eyeballs); tsc + 2015 tests green, no churn. STATUS: all 6 queued tail items done.
+
 ### 1.0-tail #6 — NaN display affordance (2026-07-05)
 `formatScalar`/`listPreview` rendered a residual NaN as "N/A" — a LIE post-finding-13, where `#N/A` is
 a real, catchable tagged error and NaN is merely dirty data (an undefined value in the source). Now

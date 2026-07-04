@@ -232,6 +232,7 @@ export function QuotedTextInput(props: {
   onChange: (v: string) => void;
   variant?: "inline" | "value";
   autoFocus?: boolean;
+  placeholder?: string;
   // When set, the field shows a resize grip (the main input on a node — not the
   // per-row inline literals, which don't pass this).
   nodeId?: string;
@@ -243,10 +244,10 @@ export function QuotedTextInput(props: {
   // single-line (they fill a fixed 22px row).
   return props.variant === "value"
     ? <QuotedValueTextarea value={props.value} onChange={props.onChange} autoFocus={props.autoFocus} />
-    : <QuotedInlineInput value={props.value} onChange={props.onChange} autoFocus={props.autoFocus} />;
+    : <QuotedInlineInput value={props.value} onChange={props.onChange} autoFocus={props.autoFocus} placeholder={props.placeholder} />;
 }
 
-function QuotedInlineInput({ value, onChange, autoFocus }: { value: string; onChange: (v: string) => void; autoFocus?: boolean }) {
+function QuotedInlineInput({ value, onChange, autoFocus, placeholder }: { value: string; onChange: (v: string) => void; autoFocus?: boolean; placeholder?: string }) {
   const field = useDraftCommit(value, (v) => v, (t) => t, onChange);
   return (
     <span className="solenoid-node__quoted solenoid-node__quoted--inline">
@@ -256,6 +257,7 @@ function QuotedInlineInput({ value, onChange, autoFocus }: { value: string; onCh
           type="text"
           className="solenoid-node__quoted-input"
           value={field.draft}
+          placeholder={placeholder}
           onChange={(e) => field.setDraft(e.target.value)}
           onBlur={field.onBlur}
           onKeyDown={field.onKeyDown}
@@ -321,11 +323,25 @@ function QuotedValueTextarea({ value, onChange, autoFocus }: { value: string; on
 export function InlineTextField({
   value,
   onChange,
+  placeholder,
 }: {
   value: string | undefined;
   onChange: (v: string) => void;
+  placeholder?: string;
 }) {
-  return <QuotedTextInput value={value ?? ""} onChange={onChange} />;
+  return <QuotedTextInput value={value ?? ""} onChange={onChange} placeholder={placeholder} />;
+}
+
+/** A `"Foo (default X)"` socket label documents its default. Split it into the
+ *  bare label + `X` (surrounding quotes stripped) so the row renders "Foo" and the
+ *  empty field shows `X` as a MUTED PLACEHOLDER — the default reads as a cue in the
+ *  box, not parenthetical prose (the no-Captain-Obvious rule). Non-matching labels
+ *  pass through unchanged (no placeholder). */
+const DEFAULT_LABEL_RE = /^(.*?)\s*\(default\s+(.+?)\)\s*$/;
+export function splitDefaultLabel(label: string): { label: string; placeholder?: string } {
+  const m = DEFAULT_LABEL_RE.exec(label);
+  if (!m) return { label };
+  return { label: m[1], placeholder: m[2].replace(/^["']|["']$/g, "") };
 }
 
 /**
@@ -467,7 +483,8 @@ export function InlineInputs({ node, emit, keys, labelFor, cableOnlyKeys, mathLa
         // A 1-D non-numeric list is typeable as CSV in place (parsed at the engine
         // boundary). Numeric lists keep their single-number field for now.
         const isCsvList = dt === "strlist" || dt === "datelist" || dt === "logicallist";
-        const label = labelFor ? labelFor(key, i) : (input.label || key);
+        // Split a "(default X)" convention label → bare label + muted placeholder.
+        const { label, placeholder } = splitDefaultLabel(labelFor ? labelFor(key, i) : (input.label || key));
         const isConn = connected.has(key);
         return (
           <MeasuredSocketRow key={key} side="input" socketKey={key} nodeId={node.id} emit={emit} payload={socket}>
@@ -483,9 +500,9 @@ export function InlineInputs({ node, emit, keys, labelFor, cableOnlyKeys, mathLa
               >↩ {incoming.get(key)?.label || "wired"}</span>
             ) : cableOnlyKeys?.has(key) ? null
               : isNumber ? (
-              <InlineNumberField value={literals[key]} onChange={(v) => set(key, v)} />
+              <InlineNumberField value={literals[key]} onChange={(v) => set(key, v)} placeholder={placeholder} />
             ) : isStr ? (
-              <InlineTextField value={strLiterals[key]} onChange={(v) => setStr(key, v)} />
+              <InlineTextField value={strLiterals[key]} onChange={(v) => setStr(key, v)} placeholder={placeholder} />
             ) : isCsvList ? (
               <InlineCsvField value={strLiterals[key]} onChange={(v) => setStr(key, v)} />
             ) : null}

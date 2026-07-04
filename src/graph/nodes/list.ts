@@ -1171,7 +1171,7 @@ const MAX_GENERATED = 1_000_000;
 export class RandArrayNode extends ClassicPreset.Node {
   label: string;
   cachedList: number[] | SolError = [];
-  literals: Record<string, number> = { count: 10, min: 0, max: 1 };
+  literals: Record<string, number> = { count: 10 }; // min/max ship unset → muted 0/1 placeholders
   width = 180; height = 225;
   // Volatile: raw [0,1) rolls are fixed until a recalc (or the count changes);
   // min/max are applied live so wiring new bounds rescales the same draws.
@@ -1213,7 +1213,7 @@ export class RandArrayNode extends ClassicPreset.Node {
 export class SequenceNode extends ClassicPreset.Node {
   label: string;
   cachedList: number[] | SolError = [];
-  literals: Record<string, number> = { count: 10, start: 1, step: 1 };
+  literals: Record<string, number> = { count: 10 }; // start/step ship unset → muted 1/1 placeholders
   width = 180; height = 195;
 
   constructor(init?: { label?: string }) {
