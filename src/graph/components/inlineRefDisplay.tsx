@@ -113,11 +113,12 @@ function LambdaFormula({ value }: { value: LambdaValue }) {
   return <span className="solenoid-ref-figure solenoid-ref-formula" dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
-/** A wired chart rendered inline: sized to its CONTAINER (the report's content
- *  width, inside its side padding), never a fixed pixel width — a fixed 360px
- *  chart overflowed a narrow/mobile report by a few px and scrolled sideways for
- *  no reason. Capped so it doesn't stretch comically wide on a big report. */
-function ChartFigure({ value }: { value: ChartValue }) {
+/** A wired chart's plot, sized to its CONTAINER (the report's content width,
+ *  inside its side padding), never a fixed pixel width — a fixed 360px chart
+ *  overflowed a narrow/mobile report by a few px and scrolled sideways for no
+ *  reason. Capped so it doesn't stretch comically wide on a big report. Renders
+ *  the plot ONLY (no caption); the caller supplies the title/collapse bar. */
+function ChartBody({ value }: { value: ChartValue }) {
   const ref = useRef<HTMLSpanElement>(null);
   const [w, setW] = useState(0);
   useLayoutEffect(() => {
@@ -130,10 +131,9 @@ function ChartFigure({ value }: { value: ChartValue }) {
     return () => ro.disconnect();
   }, []);
   const series = toSeries(value.values);
-  const width = Math.min(w, 640); // never exceed the container; cap so it stays legible
+  const width = Math.min(w, 640);
   return (
-    <span className="solenoid-ref-figure" ref={ref}>
-      {value.title && <span className="solenoid-ref-figure__title">{value.title}</span>}
+    <span className="solenoid-ref-chartbody" ref={ref}>
       {series.length === 0
         ? <span className="solenoid-ref-inline solenoid-ref-inline--empty">—</span>
         : width > 0
@@ -143,24 +143,82 @@ function ChartFigure({ value }: { value: ChartValue }) {
   );
 }
 
-export function InlineRefValue({ nodeId, refKey }: { nodeId: string; refKey: string }) {
+/** A collapsible block embed for the Report: a header bar (chevron + title) over
+ *  the figure, click to fold it away. Every Report embed — chart, table, diagram,
+ *  embedded note — gets one so a long report stays skimmable. Open by default. */
+export function CollapsibleFigure({ title, children, defaultOpen = true }: {
+  title: string;
+  children: ReactNode;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <span className="solenoid-ref-embed">
+      <button
+        type="button"
+        className="solenoid-ref-embed__bar"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span className={`solenoid-ref-embed__chev${open ? " solenoid-ref-embed__chev--open" : ""}`}>▸</span>
+        <span className="solenoid-ref-embed__title">{title}</span>
+      </button>
+      {open && <span className="solenoid-ref-embed__body">{children}</span>}
+    </span>
+  );
+}
+
+/** A figure-class ref value (chart / diagram / table / cube) → its title + body.
+ *  `rich` (the Report) shows a tall, scrollable frame with more rows/cols; the
+ *  compact form (a Note card) keeps the 3×3 preview. Non-figure values → null. */
+function figureFor(
+  value: unknown,
+  refKey: string,
+  rich: boolean,
+): { title: string; caption: ReactNode; body: ReactNode } | null {
+  if (isChartValue(value)) {
+    return {
+      title: value.title || refKey,
+      caption: value.title ? <span className="solenoid-ref-figure__title">{value.title}</span> : null,
+      body: <ChartBody value={value} />,
+    };
+  }
+  if (isMermaidValue(value)) {
+    return {
+      title: value.title || refKey,
+      caption: value.title ? <span className="solenoid-ref-figure__title">{value.title}</span> : null,
+      body: <MermaidView source={value.source} />,
+    };
+  }
+  if (isFrameValue(value)) {
+    return {
+      title: refKey,
+      caption: null,
+      // A document isn't a cramped node box: show many rows in a scrollable box.
+      body: <FrameDisplay frame={value} label={refKey} previewRows={rich ? 25 : 3} previewCols={rich ? 12 : 3} scroll={rich} />,
+    };
+  }
+  if (isCubeValue(value)) {
+    return { title: refKey, caption: null, body: <CubeDisplay cube={value} label={refKey} full={false} /> };
+  }
+  return null;
+}
+
+export function InlineRefValue({ nodeId, refKey, collapsible }: { nodeId: string; refKey: string; collapsible?: boolean }) {
   const editor = getEditor();
   const node = editor?.getNode(nodeId) as unknown as RefValueHost | undefined;
   const value = node?.refValue(refKey);
   const ann = useRefAnnotation(nodeId, refKey);
 
-  if (isChartValue(value)) return <ChartFigure value={value} />;
-  if (isMermaidValue(value)) {
-    return (
-      <span className="solenoid-ref-figure">
-        {value.title && <span className="solenoid-ref-figure__title">{value.title}</span>}
-        <MermaidView source={value.source} />
-      </span>
-    );
+  const fig = figureFor(value, refKey, !!collapsible);
+  if (fig) {
+    // In the Report (collapsible), each figure folds under a titled bar; in a Note
+    // card it renders as the plain captioned figure.
+    return collapsible
+      ? <CollapsibleFigure title={fig.title}>{fig.body}</CollapsibleFigure>
+      : <span className="solenoid-ref-figure">{fig.caption}{fig.body}</span>;
   }
   if (isLambdaValue(value)) return <LambdaFormula value={value} />;
-  if (isFrameValue(value)) return <FrameDisplay frame={value} label={refKey} full={false} />;
-  if (isCubeValue(value)) return <CubeDisplay cube={value} label={refKey} full={false} />;
   if (isSolError(value)) {
     return (
       <span className="solenoid-ref-inline solenoid-ref-inline--error" title={errorTip(value)}>
@@ -211,7 +269,7 @@ export function RefInputRow({
  * value/format changing doesn't re-run this — InlineRefValue itself subscribes).
  */
 export function InlineRefBody({
-  nodeId, bodyHtml, className, renderEmbed, onClick, onPointerDown, onMouseDown,
+  nodeId, bodyHtml, className, renderEmbed, collapsibleEmbeds, onClick, onPointerDown, onMouseDown,
 }: {
   nodeId: string;
   bodyHtml: string;
@@ -219,6 +277,10 @@ export function InlineRefBody({
   /** Report only: render an embedded block for an `![[Name]]` token found in
    *  the body (Note cards pass nothing — they don't embed). */
   renderEmbed?: (name: string) => ReactNode;
+  /** Report only: figure-class refs (chart/table/diagram) fold under a titled
+   *  bar, and frames show a taller scrollable preview. A Note card renders them
+   *  compact and inline. */
+  collapsibleEmbeds?: boolean;
   onClick?: () => void;
   onPointerDown?: (e: React.PointerEvent) => void;
   onMouseDown?: (e: React.MouseEvent) => void;
@@ -261,7 +323,7 @@ export function InlineRefBody({
   return (
     <div className={className} onClick={onClick} onPointerDown={onPointerDown} onMouseDown={onMouseDown}>
       <div ref={htmlRef} />
-      {slots.map((s) => createPortal(<InlineRefValue key={s.name} nodeId={nodeId} refKey={s.name} />, s.el))}
+      {slots.map((s) => createPortal(<InlineRefValue key={s.name} nodeId={nodeId} refKey={s.name} collapsible={collapsibleEmbeds} />, s.el))}
       {renderEmbed && embedSlots.map((s) => createPortal(
         <span key={`${s.name}:${s.i}`}>{renderEmbed(s.name)}</span>, s.el,
       ))}

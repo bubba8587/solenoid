@@ -253,7 +253,9 @@
      scroll. */
   .report-preview { padding: 14px 16px; }
   .report-preview .solenoid-ref-figure,
+  .report-preview .solenoid-ref-embed,
   .report-preview .report-embed { max-width: 100%; overflow-x: auto; }
+  .report-preview .solenoid-ref-embed__body,
   .report-preview .report-embed__body { overflow-x: auto; }
 }
 

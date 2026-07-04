@@ -6,7 +6,7 @@ import { getEditor, getArea, processGraph } from "../process";
 import { scheduleAutosave } from "../persistence";
 import { NoteNode, ReportNode } from "../rete-nodes";
 import { nodeDisplayNames } from "../nodeNames";
-import { InlineRefBody } from "./inlineRefDisplay";
+import { InlineRefBody, CollapsibleFigure } from "./inlineRefDisplay";
 import { preprocessEmbeds, extractEmbedNames } from "../reportEmbeds";
 import { CloseIcon } from "./CloseIcon";
 import { useDismissOnOutside } from "./useDismissOnOutside";
@@ -253,11 +253,18 @@ export function ReportOverlay() {
                 nodeId={node.id}
                 bodyHtml={bodyHtml}
                 className="report-preview__md"
+                collapsibleEmbeds
                 renderEmbed={(name) => {
                   const note = noteByName(name);
-                  return note
-                    ? <EmbeddedNote noteId={note.id} name={names.get(note.id) ?? name} />
-                    : <span className="report-embed-missing">![[{name}]] — no note by that name</span>;
+                  if (!note) return <span className="report-embed-missing">![[{name}]] — no note by that name</span>;
+                  // A note embed folds under the same titled bar as chart/table
+                  // embeds — the bar's title IS the note name, so the note renders
+                  // bare (no second header).
+                  return (
+                    <CollapsibleFigure title={names.get(note.id) ?? name}>
+                      <EmbeddedNote noteId={note.id} name={names.get(note.id) ?? name} />
+                    </CollapsibleFigure>
+                  );
                 }}
               />
             ) : (
@@ -271,8 +278,9 @@ export function ReportOverlay() {
 }
 
 /** A read-only mini preview of an embedded Note — its rendered markdown, placed
- *  inline where its `![[Name]]` token sits. Removal is deleting the token (no
- *  separate control — the markdown is the source of truth for placement). */
+ *  inline where its `![[Name]]` token sits. The title/collapse bar is the wrapping
+ *  CollapsibleFigure's job; this renders the note BODY only. Removal is deleting
+ *  the token (the markdown is the source of truth for placement). */
 function EmbeddedNote({ noteId, name }: { noteId: string; name: string }) {
   const editor = getEditor();
   const note = editor?.getNode(noteId) as NoteNode | undefined;
@@ -281,16 +289,7 @@ function EmbeddedNote({ noteId, name }: { noteId: string; name: string }) {
     [note?.renderBody],
   );
   if (!note) {
-    return (
-      <div className="report-embed">
-        <div className="report-embed__header"><span className="report-embed__name">{name} (removed)</span></div>
-      </div>
-    );
+    return <div className="report-embed__body report-embed-missing">{name} (removed)</div>;
   }
-  return (
-    <div className="report-embed">
-      <div className="report-embed__header"><span className="report-embed__name">{name}</span></div>
-      <div className="report-embed__body sol-md" dangerouslySetInnerHTML={{ __html: html }} />
-    </div>
-  );
+  return <div className="report-embed__body sol-md" dangerouslySetInnerHTML={{ __html: html }} />;
 }
