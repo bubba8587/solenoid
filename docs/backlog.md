@@ -608,15 +608,15 @@ section is decision-recorded. The QUEUE when resuming, in order:
   the `main.tsx` dynamic import + vite.config.ts `seedWritebackPlugin` — agent-era
   one-time tool, self-flagged for removal, seeds are saved; the author regenerates
   examples by building graphs in-app.
-- [ ] **Quality tail — PENDING per-item walkthrough (do NOT build unconfirmed):**
-  delete dead `SliderInput.tsx` **(CONFIRMED 2026-07-02 — the widget file, not the
-  Slider node)**; devDeps **(CONFIRMED 2026-07-02: drop `msdf-bmfont-xml` +
-  `@types/styled-components@5` (tsc-verify); KEEP `puppeteer-core` — author sometimes
-  overrides the no-puppeteer rule)**; import cycle via `documentStoreCore.ts`
-  **(CONFIRMED 2026-07-02 — "do as you wish")**; gate `perfScaling.test.ts` behind an
-  env var; vitest `include` → `*.test.{ts,tsx}`; `noUncheckedIndexedAccess`
-  considered-and-declined. perfScaling gate + vitest include + the tsconfig decline:
-  **approved-by-delegation 2026-07-02** (author: same don't-care tier as the cycle).
+- [x] **Quality tail — done 2026-07-05.** Deleted dead `SliderInput.tsx` + its
+  `sliderInput.css` (nothing imported the widget — the node is `SliderInputNode.tsx`);
+  dropped devDeps `msdf-bmfont-xml` + `@types/styled-components@5` (styled-components v6
+  ships its own types; `npm install` removed 137 transitive packages), KEPT
+  `puppeteer-core`; `perfScaling.test.ts` now gated behind `PERF` env var
+  (`describe.runIf(!!process.env.PERF)` — run with `PERF=1 npx vitest run …`); vitest
+  `include` widened to `*.test.{ts,tsx}`. The `documentStoreCore.ts` import-cycle split
+  was already done (2026-07-02) — core imports only a `SavedGraph` type + the pure
+  `validateSavedGraph`, no back-import. `noUncheckedIndexedAccess` declined, as agreed.
 - [ ] **Bundle splitting (author confirmed).** Lazy-load recharts, KaTeX, and ELK (the
   pixi pattern, already split correctly) — main chunk 4.0 MB / 1.2 MB gz shrinks
   substantially; first use of chart/formula-preview/Tidy after a cold load pays a
