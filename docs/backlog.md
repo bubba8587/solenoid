@@ -381,7 +381,11 @@ section is decision-recorded. The QUEUE when resuming, in order:
 >    ±Inf-from-finite→#OVERFLOW!, ∞-from-∞-input passes; wired at broadcasters + applyOp +
 >    broadcastCall. `#RANGE!` RENAMED → `#OVERFLOW!` (author call — descriptive, one code,
 >    inventory stays 14). 0^0=1 parity note. Tests in broadcastContract.test.ts.
-> 3. **IFS/SWITCH no-match → tagged `#N/A`** + muted N/A placeholder.
+> 3. **IFS/SWITCH no-match → tagged `#N/A`** + muted N/A placeholder — DONE (2026-07-05):
+>    an UNSET fallback (no cable AND no literal, via `isSet`) → #N/A; a SET fallback
+>    (even null/0) returned. CHOOSE out-of-range → #VALUE!. Fresh SWITCH ships Default
+>    EMPTY (expr=1 matches when0 so it still shows a result). `InlineNumberField` gained
+>    a `placeholder` prop; the fallback box shows a muted "N/A". Tests in logic.test.ts.
 > 4. **input defaults as muted placeholders** (not "(default …)" labels) —
 >    text.ts/list.ts/finance.ts + their components.
 > 5. **`numberToText` at 15 sig digits** for `&`/CONCAT/TEXTJOIN.
@@ -517,8 +521,14 @@ section is decision-recorded. The QUEUE when resuming, in order:
   - parity:false note on DATE; drop the JS Date.UTC two-digit remap (the current
     accidental 26→1926). Build checklist: spot-check EDATE/EOMONTH/YEARFRAC/WORKDAY
     on negative serials.
-- [ ] **IFS/SWITCH no-match with no fallback → tagged `#N/A`, both surfaces (author
-  confirmed).** An uncovered case is a logic hole, not missing data — null renders a
+- [x] **IFS/SWITCH no-match with no fallback → tagged `#N/A` — DONE 2026-07-05.** `isSet`
+  (logic.ts) distinguishes an UNSET fallback (no cable AND no literal) → `#N/A` from a SET
+  one (even null/0) → returned. CHOOSE out-of-range → `#VALUE!`. Fresh SWITCH ships Default
+  EMPTY (expr=1 → matches when0, still shows a result); IFS fresh cond0=1 → val0. Muted
+  "N/A" placeholder via a new `InlineNumberField` `placeholder` prop, rendered on the
+  trailing fallback box in `PairedExtensibleInputs`. Formula IFS/SWITCH inherit #N/A (Formula.js
+  no-match → Error → `tagResult` → SolError). Tests: logic.test.ts. (Original spec below.)
+  An uncovered case is a logic hole, not missing data — null renders a
   quiet blank and aggregates skip it (invisible); `#N/A` is loud until acknowledged via
   the sanctioned paths (the Otherwise/default row, or IFNA). Matches XLOOKUP's
   not-found. Node UX: fresh IFS/SWITCH ships the Otherwise/default slot EMPTY but

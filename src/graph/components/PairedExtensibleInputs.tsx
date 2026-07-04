@@ -99,7 +99,7 @@ export function PairedExtensibleInputs({
     );
   }
 
-  const field = (key: string, label: string, remove?: () => void) => {
+  const field = (key: string, label: string, remove?: () => void, placeholder?: string) => {
     const input = node.inputs[key];
     if (!input) return null;
     const isConn = connected.has(key);
@@ -109,7 +109,7 @@ export function PairedExtensibleInputs({
         {isConn ? (
           <span className="solenoid-node__io-wired" title="Driven by an incoming cable">↩ wired</span>
         ) : (
-          <InlineNumberField value={literals[key]} onChange={(v) => setLiteral(key, v)} />
+          <InlineNumberField value={literals[key]} onChange={(v) => setLiteral(key, v)} placeholder={placeholder} />
         )}
         {remove && (
           <button
@@ -143,7 +143,11 @@ export function PairedExtensibleInputs({
       >
         + Add pair
       </button>
-      {trailing.length > 0 && <InlineInputs node={node} emit={emit} keys={trailing} />}
+      {/* The fallback (IFS Otherwise / SWITCH Default) shows a muted "N/A"
+          placeholder while empty — a state cue, not a typed value: no match with an
+          unset fallback yields #N/A (see IfsNode/SwitchNode data()). A typed value
+          overrides; clearing it returns to #N/A. */}
+      {trailing.map((key) => field(key, node.inputs[key]?.label ?? key, undefined, "N/A"))}
     </>
   );
 }

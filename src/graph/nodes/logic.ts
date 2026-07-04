@@ -51,6 +51,14 @@ const triBool = (x: number | null): Tri => (isMissing(x) ? null : x !== 0);
 // (`false !== 0` is true). Accept the coerced boolean AND a raw 0/1 literal.
 const truthy = (x: unknown): boolean => x === true || (typeof x === "number" && x !== 0);
 
+/** A fallback/branch slot is SET when a cable feeds it OR the user typed a literal.
+ *  UNSET (no cable AND no literal) is distinct from a slot deliberately set to a
+ *  value (incl. null/0). An unmatched IFS/SWITCH with an UNSET fallback is a logic
+ *  hole → a loud #N/A, not a silent null. */
+function isSet(inputs: Record<string, unknown[] | undefined>, literals: Record<string, number>, key: string): boolean {
+  return inputs[key] !== undefined || literals[key] !== undefined;
+}
+
 // Pair-key helpers for the variadic paired nodes (IFS / SWITCH). A pair `i` owns
 // the two input keys `${prefixA}${i}` / `${prefixB}${i}`. On load/paste the node
 // rebuilds the exact pair ids present in the captured input keys (so literals +
@@ -521,8 +529,15 @@ export class ChooseNode extends ClassicPreset.Node {
     const keys = this.valueInputKeys();
     const key = idx >= 1 && idx <= keys.length ? keys[idx - 1] : undefined;
     this._selectedUnitKey = key ?? null; // the unit follows the chosen row
+    // An index outside 1..N is a real error, not a blank → #VALUE! (Excel's code for
+    // an out-of-range CHOOSE index), aligned with the tagged-error model.
+    if (!key) {
+      const err = solError("#VALUE!", `CHOOSE index ${idx} is out of range (1–${keys.length})`);
+      this.cachedResult = err;
+      return { result: err };
+    }
     // Pass the selected value through unchanged (wired wins; else its literal).
-    const result = key ? (inputs[key]?.length ? inputs[key]![0] : (this.literals[key] ?? null)) : null;
+    const result = inputs[key]?.length ? inputs[key]![0] : (this.literals[key] ?? null);
     this.cachedResult = result;
     return { result };
   }
@@ -553,7 +568,10 @@ export class SwitchNode extends ClassicPreset.Node {
       for (const id of ids) this.addPairWithId(id);
     } else {
       for (let i = 0; i < 3; i++) this.addValuePair();
-      this.literals = { expr: 0, when0: 1, then0: 10, when1: 2, then1: 20, when2: 3, then2: 30, default: 0 };
+      // Fresh node matches when0 (expr = 1 → then0 = 10) so it shows a real result;
+      // the Default ships EMPTY (a muted N/A placeholder cues it) — no match with an
+      // unset Default → #N/A.
+      this.literals = { expr: 1, when0: 1, then0: 10, when1: 2, then1: 20, when2: 3, then2: 30 };
     }
     this.addInput("default", anyIn("Default"));
     this.addOutput("result", anyOut("Result"));
@@ -607,8 +625,15 @@ export class SwitchNode extends ClassicPreset.Node {
         return { result: then };
       }
     }
-    const def = pick("default");
+    // No case matched. An UNSET Default (no cable AND no literal) is a logic hole →
+    // #N/A (catchable via IFNA); a SET default — even null/0 — is returned as-is.
     this._selectedUnitKey = "default";
+    if (!isSet(inputs, this.literals, "default")) {
+      const err = solError("#N/A", "No SWITCH case matched and no Default was set");
+      this.cachedResult = err;
+      return { result: err };
+    }
+    const def = pick("default");
     this.cachedResult = def;
     return { result: def };
   }
@@ -692,9 +717,16 @@ export class IfsNode extends ClassicPreset.Node {
         return { result: val };
       }
     }
-    // No condition matched → the Otherwise fallback (null if the user left it unset).
-    const els = pick("otherwise");
+    // No condition matched. An UNSET Otherwise (no cable AND no literal) is a logic
+    // hole → a loud, catchable #N/A (matches XLOOKUP's not-found), NOT a silent null
+    // that aggregators skip. A SET fallback — even a deliberate null/0 — is returned.
     this._selectedUnitKey = "otherwise";
+    if (!isSet(inputs, this.literals, "otherwise")) {
+      const err = solError("#N/A", "No IFS condition matched and no Otherwise was set");
+      this.cachedResult = err;
+      return { result: err };
+    }
+    const els = pick("otherwise");
     this.cachedResult = els;
     return { result: els };
   }
