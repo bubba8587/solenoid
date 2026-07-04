@@ -2160,6 +2160,13 @@ export function Canvas() {
       // origin socket for highlight purposes.
       connection.addPipe((ctx) => {
         if (ctx.type === "connectionpick") {
+          // Commit any in-progress text edit before the cable is made: a socket's
+          // pointerdown starts the drag and preventDefaults the focus change, so a
+          // focused field (e.g. the multi-line Text node — which commits on blur,
+          // since Enter now inserts a newline) never fired its blur. Wiring it while
+          // uncommitted delivered the STALE value (an empty Mermaid source → a blank
+          // diagram, no error). Blur first so the graph reads the value you see.
+          (document.activeElement as HTMLElement | null)?.blur?.();
           setCableDragging(true);
           // Touch: a cable drag is underway, so every socket becomes a live drop
           // target (see socket.css) regardless of node selection.
