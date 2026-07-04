@@ -2,6 +2,55 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### 1.0-tail compute-semantics build pass — STARTED (8/14) + interleaved features (2026-07-04)
+Author gave the go on the decision-recorded 1.0-tail queue (`backlog.md` "1.0-TAIL WALKTHROUGH
+BOOKMARK"). Regrounded the whole list against code FIRST (an Explore sweep confirmed NONE were
+pre-built — the "some are done" turned out to be false). **8 of 14 shipped to develop**, each its own
+commit + tests:
+- **#4 MRound direction ops** — direction is an op (nearest/up/down = round/ceil/floor of value/multiple,
+  toward ±∞ like the .MATH variants), shape is the node. CEILING/FLOOR are catalog entries creating
+  MRound pre-set to up/down (multiple defaults 1 → unary); header label tracks the op. MathFn ceil/floor
+  DELETED. `nodeExcel` math-floor-ceil → math-ceiling/math-floor. `MRoundOp`/`MROUND_OP_META` in scalar.ts.
+- **#5 classic-lookup redirects** — VLOOKUP/HLOOKUP/LOOKUP → #NAME? "Use XLOOKUP", MATCH → "Use XMATCH".
+  Registered as internals (`registerInternal`) so they win over Formula.js; the working impls + now-dead
+  helpers (flatLookup/approxIndex/lookupLe) deleted; INDEX stays.
+- **#6 dates** — DateConstruct numeric year is literal, range 1–9999 else #DOMAIN!; Date.UTC's 0–99→1900s
+  remap undone with setUTCFullYear (preserving overflow carry). parseDateToSerial rejects a numeric
+  slash/dash date with a 1–3 digit year token ("1/15/26"→NaN→#VALUE!). **Gotcha:** `Date.UTC(26,…)`
+  itself remaps to 1926 — build a year-26 reference with `setUTCFullYear`, which does NOT remap.
+- **#8 NUMBERVALUE** strict `Number()` full-string parse (not parseFloat greedy); trailing % each ÷100;
+  all whitespace incl. embedded stripped. **Gotcha:** `Number("")` is 0 — guard an emptied/all-% string.
+- **#10 logical bridge** numsToBools NaN→null (Kleene unknown), not `v!==0`'s TRUE.
+- **#11 list UNIQUE** dedupes values (nulls→one) but EVERY error cell survives.
+- **#12** deleted the seed-writeback dev scaffolding (devRebuildSeeds.ts + main.tsx import + vite plugin).
+- **#13** stale catalog descriptions (divide→#DIV/0!, XMatch→#N/A, FIND/SEARCH→#VALUE!, CHOOSE extensible).
+
+**6 REMAIN — RESUME HERE (order + risk in backlog's RESUME-HERE marker):** (1) broadcaster per-cell
+error/null contract [PARTIAL — only the `applyOp` operator path is done; the broadcasters in shared.ts /
+excelFormula.ts are NOT] + the unwired-vs-missing read helper; (2) non-finite `#OVERFLOW!`/`#DOMAIN!`
+guard; (3) IFS/SWITCH no-match → #N/A + placeholder; (4) input-default muted placeholders; (5)
+numberToText 15 sig-digits; (6) NaN display affordance. (1)+(2) are the risky foundation (every
+element-wise node) — do them last, as done here.
+
+**Interleaved feature requests (all shipped this session):**
+- **Report dock-to-right (desktop)** — a dock button pins the report to a fixed right column between the
+  top chrome and footer (both stay put); the canvas area squeezes left. Root class `html.sol-report-docked`
+  + `--report-dock-*` vars do the shift: canvas wrapper `width: calc(100% - dock)` carries the minimap /
+  socket legend / add-menu; the nav pill + HUD column (viewport-fixed) offset their `right`; the LEFT
+  navigator, header and StatusBar are untouched. Docked forces the 2-tab (Draft/Preview) layout; no
+  backdrop so the canvas stays live; opening another report replaces it; closing undocks. `reportStore`
+  gained `isDocked`/`toggleDock`. Dock geometry (top 66px / bottom 19px) is in vars — nudge if chrome
+  heights change.
+- **Image node → chart-family output** — `ImageNode` emits an `ImageValue` (`imageValue.ts`: src + height,
+  extensible for future transforms) on a `chart` socket, so an image wires into a Report and renders inline
+  where its `=name` ref sits (`inlineRefDisplay.tsx` figureFor). The socket lives on the always-visible,
+  non-overflow-clipped header bar so it straddles the right edge and survives collapse. **Note:** the
+  custom `.solenoid-image` card renders the socket itself via `<NodeSocket>` in a positioning-context row
+  (same pattern as NoteNode's FieldRow), with `--node-socket-x: -6.5px` on the card.
+- **Note + Image collapse chevron** unified to the standard 10×10 round-capped glyph (they used a 12×12
+  square-capped one; Group already matched).
+
+
 ### Fullscreen — F11 (desktop) + mobile pill button (2026-07-04)
 - **Rust**: new `toggle_fullscreen` window command (`src-tauri/src/lib.rs`, registered in
   `generate_handler`) — `set_fullscreen(!is_fullscreen())`. Mirrors `open_devtools`/`set_window_border`.

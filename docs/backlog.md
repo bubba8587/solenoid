@@ -360,6 +360,28 @@ section is decision-recorded. The QUEUE when resuming, in order:
    quality deletions, perf, UX. Keep `docs/value-semantics.md` tags flipped shipped as
    each lands.
 
+> **BUILD PASS STARTED 2026-07-04 (author gave the go). RESUME-HERE marker.**
+> Regrounded the whole tail against code first (nothing was pre-built). **8 of 14
+> done + committed to develop** (each with tests): #4 MRound ops/CEILING/FLOOR,
+> #5 classic-lookup redirects, #6 dates, #8 NUMBERVALUE, #10 logical NaN→null,
+> #11 UNIQUE errors, #12 seed-writeback deletion, #13 stale-description sweep — all
+> checked off in the per-item lines below. **6 REMAIN, do in THIS order** (the two
+> foundation items are risky — they change how every element-wise node handles
+> errors/nulls/overflow, so expect test churn):
+> 1. **broadcaster per-cell error/null contract** — PARTIAL: the rule is in
+>    `applyOp` (excelFormula.ts, operator path) but NOT in the broadcasters
+>    (`shared.ts` broadcast/broadcastErr, `excelFormula.ts` broadcastCall/mapOne);
+>    also the shared unwired(`undefined`)-vs-missing(`null`) read helper for scalar
+>    nodes' data(). (Full item below.)
+> 2. **non-finite guard** — `#OVERFLOW!` (NEW code, inventory 14→15) / `#DOMAIN!` /
+>    pass-through, composes with (1).
+> 3. **IFS/SWITCH no-match → tagged `#N/A`** + muted N/A placeholder.
+> 4. **input defaults as muted placeholders** (not "(default …)" labels) —
+>    text.ts/list.ts/finance.ts + their components.
+> 5. **`numberToText` at 15 sig digits** for `&`/CONCAT/TEXTJOIN.
+> 6. **NaN display affordance** (muted tint + tooltip; author eyeballs styling).
+> The 8 done items are also summarized in dev-notes 2026-07-04.
+
 - [ ] **Frame Filter text matching → case-INsensitive** (audit 28's held-back half —
   REVERSED on revisit). eq/neq/contains/startsWith/endsWith all match case-insensitively,
   aligning Filter with the app's one text-equality semantics (P6 `=` table, Comparison,
@@ -421,12 +443,12 @@ section is decision-recorded. The QUEUE when resuming, in order:
   undefined value in the data"). formatScalar's current "N/A" rendering is a lie
   (post-finding-13, #N/A is a real catchable error; NaN is not it). Styling per
   DESIGN.md, author eyeballs at build.
-- [ ] **Stale description sweep (author confirmed).** Catalog text rendered verbatim in
+- [x] **Stale description sweep (author confirmed) — DONE 2026-07-04** (divide/XMatch/FIND/SEARCH/CHOOSE; Image "carries no data" + TEXTAFTER/BEFORE "null if not found" left as accurate). Catalog text rendered verbatim in
   Ctrl+/: div "null when B=0" (→ #DIV/0!), text-find "null if not found" (→ #VALUE!),
   XMatch "(null=not found)" (→ #N/A), CHOOSE "Fixed 4 values" (extensible), Cast
   (missing logical target), Alert (describes removed colored UI, 1 of 4 modes), Note
   ("carries no data" — frontmatter sockets exist). Pure text, no decisions.
-- [ ] **Round-to-multiple: MRound gains ops nearest/up/down; MathFn ceil/floor DELETED
+- [x] **Round-to-multiple — DONE 2026-07-04** (MRound op nearest/up/down toward ±∞; CEILING/FLOOR catalog entries make MRound pre-set; MathFn ceil/floor removed; nodeExcel math-floor-ceil → math-ceiling/math-floor). MRound gains ops nearest/up/down; MathFn ceil/floor DELETED
   (author confirmed).** Direction is an op, shape is a node (the RoundN precedent —
   round/roundup/rounddown are ops over (value, digits); nearest/up/down are ops over
   (value, multiple)). Catalog gains separate searchable **CEILING** and **FLOOR**
@@ -439,7 +461,7 @@ section is decision-recorded. The QUEUE when resuming, in order:
   seeds for saved op:"ceil"/"floor", add `ceil floor` keywords to the MRound entries.
   Formula-layer CEILING/FLOOR (FX, .MATH-like semantics) untouched, no parity note
   (deprecated-Excel comparisons disregarded per author ruling 2026-07-02).
-- [ ] **Classic lookups OUT of the formula layer — redirect errors (author confirmed).**
+- [x] **Classic lookups OUT of the formula layer — DONE 2026-07-04** (VLOOKUP/HLOOKUP/LOOKUP → #NAME? "Use XLOOKUP", MATCH → "Use XMATCH", registered internals win over Formula.js; INDEX stays; impls + helpers deleted; tests rewritten). Redirect errors (author confirmed).**
   The 2026-07-02 fix pass (audit finding 10) added working internal VLOOKUP/HLOOKUP/
   LOOKUP/MATCH impls, contradicting the standing elimination (node-coverage.md:33,
   the MATCH-node deletion). Replace them: typing one in a formula → `#NAME?` with the
@@ -453,7 +475,7 @@ section is decision-recorded. The QUEUE when resuming, in order:
   digits; digits 16–17 are representation noise, so printing them into user-built text
   is publishing garbage (that Excel picked the same cutoff is coincidence, not the
   motive). Scientific-notation thresholds deliberately NOT chased.
-- [ ] **Dates: numbers are LITERAL years; text year-tokens are EXACTLY 4 digits; nothing
+- [x] **Dates — DONE 2026-07-04** (DateConstruct numeric year literal, range 1–9999 else #DOMAIN!, Date.UTC 0–99 remap undone via setUTCFullYear; parseDateToSerial rejects numeric slash/dash dates with a 1–3 digit year token). numbers are LITERAL years; text year-tokens are EXACTLY 4 digits; nothing
   guesses (author confirmed).** Every 2-digit-year disambiguation (Excel DATE's +1900,
   Excel text-parse's 00–29 pivot, .NET, sliding windows) is a guess that goes stale
   (it's 2026; pivot-30 breaks in four years) — and Excel's two rules contradict each
@@ -483,7 +505,7 @@ section is decision-recorded. The QUEUE when resuming, in order:
   no magic "N/A" string, nothing to accidentally delete); blank → #N/A, typed value →
   that value, cleared → #N/A again. Formula IFS/SWITCH same. CHOOSE out-of-range index:
   verify at build, align to the tagged-error model (Excel: #VALUE!). Tests pin all.
-- [ ] **NUMBERVALUE: strict full-string parse + current-Excel completeness (author
+- [x] **NUMBERVALUE — DONE 2026-07-04** (strict full-string Number() parse — "12x"→#VALUE!; trailing % each ÷100; all whitespace incl. embedded ignored). strict full-string parse + current-Excel completeness (author
   confirmed).** `parseFloat` parses greedy prefixes so "12x" → 12 and "12%" → 12 (wrong
   NUMBER, worst cell of the item) instead of reaching the node's own #VALUE! branch.
   Replace with strict `Number()` semantics on the normalized text, plus NUMBERVALUE's
@@ -495,14 +517,14 @@ section is decision-recorded. The QUEUE when resuming, in order:
   muted `.` placeholder in the empty field; blank = default applies, typed = override
   (literal ships empty; data() treats "" as use-default). Same pattern as the IFS
   Otherwise `N/A` placeholder. Sweep all nodes for other `(default …)` label text.
-- [ ] **Logical bridge: NaN → null, not TRUE (author confirmed, on recommendation).**
+- [x] **Logical bridge: NaN → null — DONE 2026-07-04** (`coerceInputs.ts` numsToBools: NaN→null, not `v!==0`'s TRUE). (author confirmed, on recommendation).**
   `numsToBools` (`coerceInputs.ts`) uses `v !== 0`, so NaN reads as a confident TRUE at
   every logical socket. Post-finding-13, NaN is just an undefined number → its truth
   value is Kleene null (unknown), matching R/pandas logical coercion, `coerceLogical`'s
   "not coercible → null" (verify + align at build, one spec per D11), and the existing
   NaN→null IPC normalization. Non-zero finite → TRUE, 0 → FALSE, NaN → null. Tests pin
   IF and Comparison fed NaN.
-- [ ] **List UNIQUE: errors NEVER dedupe; frame Distinct unchanged (author confirmed).**
+- [x] **List UNIQUE: errors NEVER dedupe — DONE 2026-07-04** (values dedupe, nulls collapse to one, every error cell survives; frame Distinct unchanged). (author confirmed).**
   Today's identity-dedup is a lottery: three independent failures survive as 3, but one
   error fanned into three cells collapses to 1 (same-looking data, different answer).
   New rule: list UNIQUE dedupes values normally (nulls collapse to one) but EVERY error
@@ -511,7 +533,7 @@ section is decision-recorded. The QUEUE when resuming, in order:
   (IFERROR/Fill upstream). Frame Distinct stays by-code (relational identity, D12
   family). Add to D12: second instance of the line — list ops answer to the
   spreadsheet model, relational verbs to the relational model.
-- [ ] **Seed-writeback scaffolding: DELETE (author confirmed).** `devRebuildSeeds.ts` +
+- [x] **Seed-writeback scaffolding: DELETE — DONE 2026-07-04** (removed all three: devRebuildSeeds.ts, the main.tsx import, the vite.config seedWritebackPlugin + helpers/imports). `devRebuildSeeds.ts` +
   the `main.tsx` dynamic import + vite.config.ts `seedWritebackPlugin` — agent-era
   one-time tool, self-flagged for removal, seeds are saved; the author regenerates
   examples by building graphs in-app.
