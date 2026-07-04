@@ -2,6 +2,31 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Mobile chrome redesign — two-row top, roles split by zone (2026-07-04, SUPERSEDES the accent-app-bar notes below)
+Reorganized mobile chrome to mirror desktop's separation of concerns, into three zones:
+- **Top = TWO rows.** Row A is the **menu bar** repurposed as a thin ACCENT strip carrying ONLY
+  the document name + caret (centered); it also carries the notch/safe-area inset. Row B is the
+  **app bar** as a NEUTRAL tools row: app-menu icon (☰ → the hamburger sheet) + Navigator toggle
+  on the left, accent/theme pill + Reference + Settings on the right. This kills the washed-out
+  accent-button problem entirely — the accent row has no buttons, and Row B uses normal chrome
+  styling. The separator is Row B's mode-keyed bottom border.
+- **Bottom bar = edit/select.** Command palette (icon swapped ⌘→ Obsidian-style `>_` terminal) ·
+  Undo · Redo · ⊕ Add · Select · Delete · **Group** (new — replaces Fit; fires the same `KeyG`
+  shortcut Canvas handles, like undo/redo dispatch it, so no editor plumbing in MobileControls).
+- **Floating pill = canvas view.** Zoom in/out dropped (pinch does it); now just **Fit + Lock**,
+  upper-right below the two-row top.
+- New: `toggleChrome(key)` in chromeToggle.ts (targeted single-panel toggle) drives the Navigator
+  button. NavMenu zoom buttons got `--zoomin`/`--zoomout` classes so mobile can hide them.
+- **Gotcha:** `.solenoid-menubar__center` (the doctitle slot) is `position: absolute` on desktop
+  (absolutely centered). Reusing it as Row A's in-flow content required overriding to
+  `position: static` — else it's out of flow and the menu bar collapses to height 0 (the accent
+  row vanished; caught via a computed-style probe under mobile emulation). The doctitle's default
+  name/caret color is already `--accent-ink`, so it reads on the accent row with no override.
+- Sheet/panel offsets updated for the taller top chrome: hamburger sheet `top: 74px + safe-area`
+  (below both rows), outline panel `top: 80px + safe-area`, floating pill `top: 84px + safe-area`.
+- Verified in mobile-emulated Chromium (both themes): two rows render, Navigator toggles the
+  outline, the sheet opens at y=74, Group creates a group (6→7), Fit/Lock present, `>_` bottom-left.
+
 ### Mobile app bar is accent-based (2026-07-04)
 - On mobile the single top bar (`.solenoid-topbar`) now uses the ACCENT as its base color
   (like the desktop menu-bar row), not `--panel-bg`. The whole treatment rides `--accent-ink`

@@ -32,146 +32,117 @@ html.is-mobile {
         cable-shape switch and decorative spacers — leaving the wordmark, example
         picker, and theme/accent. The app bar also carries the notch inset now
         that it's the topmost row. ── */
+  /* Row B — the app bar is a NEUTRAL tools row (the accent lives on Row A, the menu
+     bar). Its bottom edge is the separator to the canvas: mode-keyed (dark line on
+     the light canvas, light line on the dark) + a soft shadow, so it reads in both
+     themes. The notch/safe-area inset is on Row A above, so no top padding here. */
   .solenoid-topbar {
-    padding: env(safe-area-inset-top) 8px 0;
+    padding: 0 8px;
     gap: 8px;
-    /* Accent is the app bar's BASE color on mobile (like the desktop menu-bar row),
-       with auto-contrasting ink for text/icons. --accent-ink is derived from the
-       accent's luminance (white on a dark accent, near-black on a light one), so this
-       reads correctly for ANY accent in BOTH light and dark mode. */
-    background: var(--accent);
-    color: var(--accent-ink);
-    /* Separator to the canvas below. The edge has to read against the CANVAS, whose
-       lightness tracks the THEME (not the accent) — so it's mode-keyed: a dark line +
-       soft shadow on the light canvas (default here), a light line + deeper shadow on
-       the dark canvas (the [data-theme="dark"] rule below). Replaces the base bar's
-       2px accent underline + panel-border, both invisible on an accent bar. */
-    border-bottom: 2px solid rgba(0, 0, 0, 0.32);
-    box-shadow: 0 2px 9px rgba(0, 0, 0, 0.2);
+    background: var(--panel-bg);
+    border-bottom: 2px solid rgba(0, 0, 0, 0.22);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
   }
   &[data-theme="dark"] .solenoid-topbar {
-    border-bottom-color: rgba(255, 255, 255, 0.2);
-    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.55);
+    border-bottom-color: rgba(255, 255, 255, 0.11);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
   }
   .solenoid-topbar__group,
   .solenoid-topbar__divider,
   .solenoid-topbar__art,
   .solenoid-topbar .solenoid-toolbar,
-  /* The wide wordmark is the bar's biggest space hog — swap it for the square
-     icon, which frees most of the row. The centered document title moves into
-     the hamburger sheet too (a phone bar is too narrow to center it cleanly). */
   .solenoid-topbar__mark,
-  .solenoid-menubar__center {
+  /* The document name lives up on the accent row (menu bar) now, so hide the
+     in-app-bar copy on mobile too (it was the mobile home before the two-row split). */
+  .solenoid-topbar__doctitle {
     display: none;
   }
-  /* The square icon doubles as the app-menu button on a phone — a finger-sized
-     tap target at the left edge (the separate hamburger is gone). Ghost style on
-     the accent bar: no fill/border at rest, just the ink glyph; a soft ink wash on
-     press (matches the desktop accent menu-bar buttons). */
-  .solenoid-topbar__icon {
-    display: flex;
-    background: transparent;
-    border-color: transparent;
+  /* The square icon doubles as the app-menu button on a phone — a finger-sized tap
+     target at the left edge. Neutral chrome now (Row B isn't accent). */
+  .solenoid-topbar__icon { display: flex; }
+  .solenoid-topbar__icon-glyph { background-color: var(--wordmark-color); }
+  /* Navigator (outline) toggle — mobile only; sits next to the menu icon. Matches
+     the icon button's round-chrome look. */
+  .solenoid-topbar__nav {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    background: var(--btn-bg);
+    border: 1px solid var(--btn-border);
+    border-radius: 50%;
+    color: var(--text);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
   }
-  .solenoid-topbar__icon:active {
-    background: color-mix(in srgb, var(--accent-ink) 20%, transparent);
-  }
-  .solenoid-topbar__icon-glyph { background-color: var(--accent-ink); }
+  .solenoid-topbar__nav:active { background: var(--btn-hover); }
 
-  /* Document name + caret in the app bar: take the middle space next to the
-     logo. Accent-ink on the accent bar, with an ink-wash press/open state, and
-     the dropdown anchors LEFT so it can't run off the screen edge. */
-  .solenoid-topbar__doctitle {
-    display: flex;
-    flex: 1 1 auto;
-    min-width: 0;
-    margin-left: 2px;
-  }
-  .solenoid-topbar__doctitle .solenoid-doctitle { max-width: 100%; }
-  .solenoid-topbar__doctitle .solenoid-doctitle__name,
-  .solenoid-topbar__doctitle .solenoid-doctitle__caret {
-    color: var(--accent-ink);
-    max-width: none;
-  }
-  .solenoid-topbar__doctitle .solenoid-doctitle__name:hover,
-  .solenoid-topbar__doctitle .solenoid-doctitle__caret:hover,
-  .solenoid-topbar__doctitle .solenoid-doctitle__caret--open {
-    background: color-mix(in srgb, var(--accent-ink) 16%, transparent);
-  }
-  /* The documents menu is portaled to <body>, so target it directly (it's no
-     longer under .solenoid-topbar__doctitle). Pin it to both screen edges so a
-     long document name truncates within the row instead of pushing the
-     duplicate / delete buttons off the right edge. `top` is set inline. */
+  /* The documents menu is portaled to <body>; pin it to both screen edges so a long
+     name truncates within the row instead of pushing controls off the edge. `top`
+     comes inline from the trigger's measured rect. */
   .solenoid-doctitle__menu {
-    left: 8px;
-    right: 8px;
+    left: 10px;
+    right: 10px;
     transform: none;
     min-width: 0;
     max-width: none;
   }
 
-  /* The apptools cluster (accent, Reference, Settings) stays surfaced. Push it
-     to the right of the bar and give the buttons real finger room. The light/dark
-     toggle moves OUT of the bar into the accent-palette popup (to save app-bar
-     space), so its standalone button is hidden and the lone accent button rounds
-     into a full circle. */
+  /* Apptools cluster (accent, Reference, Settings) on the right of the neutral row.
+     Default chrome button styling applies (no accent-ink overrides needed now). The
+     light/dark toggle moves into the accent-palette popup; the lone accent button
+     rounds to a circle. */
   .solenoid-apptools { gap: 6px; margin-left: auto; }
   .solenoid-apptools__btn { width: 34px; height: 34px; }
   .solenoid-apptools__palette { top: 40px; }
   .solenoid-apptools__theme { display: none; }
   .solenoid-apptools__palette-theme { display: flex; }
   .solenoid-apptools__pill .solenoid-apptools__paint { border-radius: 999px; }
-
-  /* Apptools on the accent bar: GHOST buttons — no fill/border at rest, just
-     accent-ink icons (they stroke with currentColor), a soft ink wash only on
-     press. Neutralize the base :hover (it flips to the accent, which would be
-     invisible on an accent bar, and a touch hover can linger after a tap). */
-  .solenoid-apptools__pill,
-  .solenoid-apptools > .solenoid-apptools__btn {
-    background: transparent;
-    border-color: transparent;
-  }
-  .solenoid-apptools__btn,
-  .solenoid-apptools__btn:hover {
-    color: var(--accent-ink);
-    background: transparent;
-    border-color: transparent;
-  }
-  .solenoid-apptools__btn:active,
-  .solenoid-apptools > .solenoid-apptools__btn:active,
-  .solenoid-apptools__pill .solenoid-apptools__btn:active {
-    background: color-mix(in srgb, var(--accent-ink) 20%, transparent);
-  }
-  /* The accent-swatch dot: ink ring so the current-accent dot reads on the bar
-     (its fill is the accent, i.e. the bar color). */
-  .solenoid-apptools__paint-dot { border-color: var(--accent-ink); }
-  /* Thicken the icon stroke to match the bottom bar + overlay pills WITHOUT
-     enlarging the glyphs (they stay at their authored 14px). Authored stroke 1.4
-     in a 24 viewBox at 14px is only ~0.82px effective — about half the touch bar's
-     ~1.67px; 2.6 here lands ~1.5px, reading as the same icon set. CSS stroke-width
-     wins over the SVG attribute. The app-menu mark is a masked logo, not stroked. */
+  /* Thicken the icon stroke so the apptools + nav glyphs match the bottom bar /
+     overlay pills (authored 14px / stroke 1.4 ≈ 0.82px effective, ~half the touch
+     bar; 2.6 lands ~1.5px). CSS stroke-width wins over the SVG attribute. */
   .solenoid-apptools__btn svg { stroke-width: 2.6; }
 
-  /* ── Menu bar: out of flow so it claims no row of its own — it exists only to
-        host the sheet the hamburger opens (a section per menu). ── */
+  /* ── Row A — the MENU BAR becomes the thin ACCENT strip carrying just the document
+        name + caret (its desktop menu items live in the hamburger sheet). This top
+        row carries the notch/safe-area inset. The doctitle's default name/caret
+        colors are already --accent-ink, so no override is needed. ── */
   .solenoid-menubar {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 0;
+    position: relative;
+    height: auto;
     min-height: 0;
-    padding: 0;
-    background: transparent;
+    padding: env(safe-area-inset-top) 10px 0;
+    background: var(--accent);
+    color: var(--accent-ink);
     border: none;
     z-index: 8;
   }
   .solenoid-menubar__item { display: none; }
+  .solenoid-menubar__center {
+    /* Desktop centers it ABSOLUTELY (out of flow); on mobile it must be IN flow so
+       it gives the thin accent row its height (else the menu bar collapses to 0). */
+    position: static;
+    transform: none;
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    height: 30px;
+    pointer-events: auto;
+  }
+  .solenoid-menubar__center .solenoid-doctitle { max-width: 100%; }
+  .solenoid-menubar__center .solenoid-doctitle__name,
+  .solenoid-menubar__center .solenoid-doctitle__caret { max-width: none; }
   .solenoid-menubar__sheet {
     position: absolute;
-    top: calc(44px + env(safe-area-inset-top));
+    /* Below BOTH top rows now: accent Row A (~30px) + neutral Row B (44px). */
+    top: calc(74px + env(safe-area-inset-top));
     left: 8px;
     /* Size to the widest content (so trimming a section actually narrows the
        sheet), capped so it never dominates the screen. */
@@ -239,14 +210,16 @@ html.is-mobile {
   }
   .solenoid-webdemo__download { display: none; }
 
-  /* ── Nav pill (upper-right): horizontal, just Zoom in / Zoom out / Lock. Fit
-        moved to the bottom bar; the cable-flourish easter-egg is desktop-only. ── */
+  /* ── Floating canvas pill (upper-right, below the two-row top chrome): CANVAS
+        controls only — Fit + Lock, like desktop. Zoom in/out are dropped (pinch
+        does it); the cable-flourish easter-egg is desktop-only. ── */
   .solenoid-nav {
-    top: calc(52px + env(safe-area-inset-top));
+    top: calc(84px + env(safe-area-inset-top));
     gap: 4px;
     padding: 4px;
   }
-  .solenoid-nav__btn--fit,
+  .solenoid-nav__btn--zoomin,
+  .solenoid-nav__btn--zoomout,
   .solenoid-nav__btn--flourish { display: none; }
   .solenoid-nav__btn {
     width: 38px;
@@ -271,7 +244,7 @@ html.is-mobile {
      bar (it opens the navigator focused on its search field). */
   .solenoid-outline__open-pill { display: none; }
   .solenoid-outline {
-    top: calc(52px + env(safe-area-inset-top));
+    top: calc(80px + env(safe-area-inset-top));
     bottom: calc(26px + env(safe-area-inset-bottom));
     width: min(248px, 84vw);
   }

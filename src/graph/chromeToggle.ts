@@ -19,6 +19,12 @@ export function registerChrome(key: string, toggle: ChromeToggle): () => void {
  * them all; otherwise expand them all. Returns how many panels were toggled (0 when
  * nothing is registered, so the caller can leave the key alone).
  */
+/** Toggle a single registered panel by key (no-op if it isn't registered). */
+export function toggleChrome(key: string): void {
+  const t = registry.get(key);
+  if (t) t.setOpen(!t.isOpen());
+}
+
 export function toggleAllChrome(): number {
   const toggles = [...registry.values()];
   if (toggles.length === 0) return 0;
