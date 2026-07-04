@@ -185,6 +185,18 @@ export function writeTextForm(g: SavedGraph): string {
     const init: Record<string, unknown> = { ...sn.init };
     if (typeof init.hostNodeId === "string") init.hostNodeId = nameOf(init.hostNodeId);
     if (Array.isArray(init.members)) init.members = (init.members as unknown[]).map((m) => (typeof m === "string" ? nameOf(m) : m));
+    // Presentation steps each reference a node-id SET (the camera target). Like
+    // members, these are live ids on the instance — translate them to names so
+    // they stay addressable across a reload (rebuildGraph maps names back to fresh
+    // ids). Without this the steps survive but point at dead ids after reload.
+    if (Array.isArray(init.steps)) {
+      init.steps = (init.steps as Array<{ nodeIds?: unknown }>).map((s) => ({
+        ...s,
+        nodeIds: Array.isArray(s.nodeIds)
+          ? (s.nodeIds as unknown[]).map((m) => (typeof m === "string" ? nameOf(m) : m))
+          : s.nodeIds,
+      }));
+    }
     for (const [k, v] of canonicalEntries(init)) parts.push(`${k}=${JSON.stringify(v)}`);
 
     for (const k of Object.keys(sn.literals ?? {}).sort()) {

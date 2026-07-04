@@ -418,13 +418,23 @@ async function rebuildGraph(
   // Rewrite node-id references through the remap (the saved ids no longer
   // exist): FC host sockets, and Group member lists.
   for (const node of created) {
-    const anyNode = node as unknown as { hostNodeId?: string; members?: string[] };
+    const anyNode = node as unknown as { hostNodeId?: string; members?: string[]; steps?: Array<{ nodeIds?: string[] }> };
     if (typeof anyNode.hostNodeId === "string" && anyNode.hostNodeId) {
       const mapped = idMap.get(anyNode.hostNodeId);
       if (mapped) anyNode.hostNodeId = mapped;
     }
     if (Array.isArray(anyNode.members)) {
       anyNode.members = anyNode.members.map((m) => idMap.get(m) ?? m).filter((m) => editor.getNode(m));
+    }
+    // Presentation steps' node-id sets were written as names (textForm.ts) — remap
+    // them to fresh live ids, dropping any whose node vanished, so the slideshow
+    // still flies to the right nodes after reload.
+    if (Array.isArray(anyNode.steps)) {
+      for (const step of anyNode.steps) {
+        if (Array.isArray(step.nodeIds)) {
+          step.nodeIds = step.nodeIds.map((m) => idMap.get(m) ?? m).filter((m) => editor.getNode(m));
+        }
+      }
     }
   }
 

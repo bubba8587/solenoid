@@ -215,6 +215,17 @@ export async function pasteClipboard(canvasX: number, canvasY: number) {
     if (typeof ref.hostNodeId === "string" && ref.hostNodeId) {
       ref.hostNodeId = oldToNew.get(ref.hostNodeId) ?? "";
     }
+    // Presentation steps: remap each step's node-id set to the pasted copies,
+    // dropping references to nodes that weren't part of the copy (same rule as
+    // group members) — a duplicated deck flies to its OWN nodes, not the originals'.
+    const stepsRef = clone as unknown as { steps?: Array<{ nodeIds?: string[] }> };
+    if (Array.isArray(stepsRef.steps)) {
+      for (const step of stepsRef.steps) {
+        if (Array.isArray(step.nodeIds)) {
+          step.nodeIds = step.nodeIds.map((m) => oldToNew.get(m)).filter((m): m is string => !!m);
+        }
+      }
+    }
   }
 
   // Synchronous setup (carry per-node collapse, claim fresh sequence ids), then add +
