@@ -410,8 +410,21 @@ export class UniqueNode extends ClassicPreset.Node {
   }
 
   data(inputs: { list?: number[][] }) {
-    const arr = inputs.list?.[0] ?? [];
-    this.cachedList = arr.filter((v, i, a) => a.indexOf(v) === i);
+    const arr = (inputs.list?.[0] ?? []) as unknown[];
+    // Values dedupe normally (nulls collapse to one), but EVERY error cell
+    // survives — deterministically. Identity-dedup is a lottery for errors (three
+    // independent failures survive as 3, but one error fanned into three cells
+    // collapses to 1); the Excel-user sanity check is "10 values + 3 errors = 3
+    // fixes to make". Set-clean output has a sanctioned path (IFERROR/Fill upstream).
+    const seen = new Set<unknown>();
+    const out: unknown[] = [];
+    for (const v of arr) {
+      if (isSolError(v)) { out.push(v); continue; }
+      if (seen.has(v)) continue;
+      seen.add(v);
+      out.push(v);
+    }
+    this.cachedList = out as number[];
     return { result: this.cachedList };
   }
 }

@@ -65,7 +65,10 @@ function boolsToNums(v: unknown): unknown {
   return v;
 }
 function numsToBools(v: unknown): unknown {
-  if (typeof v === "number") return v !== 0; // non-zero is true (Excel/spreadsheet)
+  // NaN is an undefined number, not a confident TRUE — its truth value is Kleene
+  // null (unknown), matching R/pandas coercion, coerceLogical's "not coercible →
+  // null", and the NaN→null IPC normalization. 0 → FALSE, other finite → TRUE.
+  if (typeof v === "number") return Number.isNaN(v) ? null : v !== 0;
   if (Array.isArray(v)) return v.map(numsToBools);
   return v;
 }

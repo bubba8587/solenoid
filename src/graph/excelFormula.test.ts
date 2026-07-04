@@ -502,7 +502,7 @@ describe("range functions honor the aggregator policy (audit P0-2)", () => {
   });
 
   it("positional lookups keep nulls in place (match positions stable)", () => {
-    expect(ev("MATCH(3, x, 0)", { x: [1, null, 3] })).toBe(3);
+    expect(ev("XMATCH(3, x)", { x: [1, null, 3] })).toBe(3);
   });
 });
 
@@ -573,30 +573,28 @@ describe("NOW/TODAY return serials in formulas (audit finding 9)", () => {
   });
 });
 
-describe("classic lookups take the list whole (audit finding 10)", () => {
+describe("classic lookups redirect to their current-Excel replacements (D10)", () => {
   const ev = (expr: string, env: Record<string, unknown> = {}) => {
     const fn = compileEvaluator(expr);
     if (!fn) throw new Error(`failed to compile: ${expr}`);
     return fn(env);
   };
 
-  it("VLOOKUP exact + approximate over a 1-D list", () => {
-    expect(ev("VLOOKUP(2, x, 1, FALSE)", { x: [1, 2, 3] })).toBe(2);
-    expect(ev("VLOOKUP(2.5, x, 1)", { x: [1, 2, 3] })).toBe(2); // approx: largest ≤
-    const miss = ev("VLOOKUP(9, x, 1, FALSE)", { x: [1, 2, 3] });
-    expect(isSolError(miss) && miss.code).toBe("#N/A");
-    const ref = ev("VLOOKUP(2, x, 2)", { x: [1, 2, 3] });
-    expect(isSolError(ref) && ref.code).toBe("#REF!"); // 1-D list has only column 1
+  it("VLOOKUP / HLOOKUP / LOOKUP → #NAME? 'Use XLOOKUP'", () => {
+    for (const expr of ["VLOOKUP(2, x, 1)", "HLOOKUP(2, x, 1)", "LOOKUP(2, x)"]) {
+      const r = ev(expr, { x: [1, 2, 3] });
+      expect(isSolError(r) && r.code).toBe("#NAME?");
+      expect(isSolError(r) && r.message).toBe("Use XLOOKUP");
+    }
   });
 
-  it("MATCH exact / ascending / descending", () => {
-    expect(ev("MATCH(30, x, 0)", { x: [10, 20, 30] })).toBe(3);
-    expect(ev("MATCH(25, x, 1)", { x: [10, 20, 30] })).toBe(2);
-    expect(ev("MATCH(25, x, -1)", { x: [30, 20, 10] })).toBe(1); // smallest ≥ 25 is 30
-    expect(ev("MATCH(20, x, -1)", { x: [30, 20, 10] })).toBe(2);
+  it("MATCH → #NAME? 'Use XMATCH'", () => {
+    const r = ev("MATCH(30, x, 0)", { x: [10, 20, 30] });
+    expect(isSolError(r) && r.code).toBe("#NAME?");
+    expect(isSolError(r) && r.message).toBe("Use XMATCH");
   });
 
-  it("INDEX is 1-based with Excel error codes at the edges", () => {
+  it("INDEX stays (current Excel, never superseded)", () => {
     expect(ev("INDEX(x, 2)", { x: ["a", "b", "c"] })).toBe("b");
     const past = ev("INDEX(x, 9)", { x: [1, 2] });
     expect(isSolError(past) && past.code).toBe("#REF!");
@@ -604,14 +602,9 @@ describe("classic lookups take the list whole (audit finding 10)", () => {
     expect(isSolError(zero) && zero.code).toBe("#VALUE!");
   });
 
-  it("LOOKUP with a separate result vector", () => {
-    expect(ev("LOOKUP(2, k, v)", { k: [1, 2, 3], v: ["a", "b", "c"] })).toBe("b");
-  });
-
-  it("text matching is case-insensitive (Excel default; audit finding 28)", () => {
+  it("XLOOKUP / XMATCH text matching is case-insensitive (Excel default)", () => {
     expect(ev('XLOOKUP("Apple", k, v)', { k: ["apple", "pear"], v: [1, 2] })).toBe(1);
-    expect(ev('MATCH("PEAR", k, 0)', { k: ["apple", "pear"] })).toBe(2);
-    expect(ev('VLOOKUP("b", k, 1, FALSE)', { k: ["A", "B", "C"] })).toBe("B");
+    expect(ev('XMATCH("PEAR", k)', { k: ["apple", "pear"] })).toBe(2);
   });
 });
 
