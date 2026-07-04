@@ -52,6 +52,11 @@
   -webkit-tap-highlight-color: transparent;
 }
 .solenoid-topbar__icon:active { background: var(--btn-hover); }
+/* Navigator (outline) toggle — mobile only, like the app-menu icon above. Desktop
+   has its own floating open-pill, so hide this here; mobile.css reveals it. Without
+   this base hide it renders as a bare default button — a duplicate Navigator in the
+   desktop top bar. */
+.solenoid-topbar__nav { display: none; }
 /* The mark itself — masked so it recolors per theme via --wordmark-color, sized
    to sit inside the round button with a little inset (crops the logo's reach). */
 .solenoid-topbar__icon-glyph {
