@@ -392,8 +392,14 @@ section is decision-recorded. The QUEUE when resuming, in order:
 >    helper in excelFunctions.ts, routed through `toStr` (fixes LEN etc.) + the `&`
 >    operator; internal CONCAT/CONCATENATE/TEXTJOIN own the join. `(0.1+0.2)&" kg"` →
 >    "0.3 kg". Tests in excelFormula/excelFunctions.
-> 6. **NaN display affordance** (muted tint + tooltip; author eyeballs styling).
+> 6. **NaN display affordance** — DONE (2026-07-05): formatScalar/listPreview render a
+>    residual NaN as literal "NaN" (was the lie "N/A"); ValueDisplay wraps a scalar NaN in
+>    `.solenoid-node__nan` (neutral muted tint, mono+italic, tooltip) — not error-red.
+>    Author eyeballs the styling.
 > The 8 done items are also summarized in dev-notes 2026-07-04.
+>
+> **STATUS 2026-07-05: 5 of the 6 remaining done (#1,#2,#3,#5,#6). Left: #4 input-default
+> placeholders (broad UI sweep — ~8 nodes) + the readInput data()-file sweep (item 1 tail).**
 
 - [ ] **Frame Filter text matching → case-INsensitive** (audit 28's held-back half —
   REVERSED on revisit). eq/neq/contains/startsWith/endsWith all match case-insensitively,
@@ -464,7 +470,14 @@ section is decision-recorded. The QUEUE when resuming, in order:
   would manufacture a parity split) — parity:false note ("Excel gives #NUM!"). Frame-
   engine non-finite behavior (Polars silent inf; wire normalizes to null) is a separate
   P3, deliberately NOT folded in.
-- [ ] **NaN display affordance (author confirmed).** Residual NaN (dirty data reaching a
+- [x] **NaN display affordance — DONE 2026-07-05.** `formatScalar`/`listPreview` render a
+  residual NaN as literal "NaN" (was the lie "N/A"); `ValueDisplay` wraps a SCALAR NaN in
+  `.solenoid-node__nan` — neutral muted tint (`--text-dim` @ 10% on `--surface-sunken`),
+  mono + italic so it reads as a state not a number, NOT error-red — plus the structural
+  tooltip. Author eyeballs the styling (DESIGN.md). Follow-up: per-cell NaN tint inside a
+  list ArrayChip / popup grid (scalar box done; list cells show the literal "NaN" text).
+  (Original spec below.)
+  Residual NaN (dirty data reaching a
   value box / popup cell) renders as literal `NaN` with a QUIET affordance: muted
   background tint — not the error badge red, not plain-number styling, shaped/toned to
   not read as an ArrayChip — plus a structural fixed-text hover tooltip ("Not a number —
