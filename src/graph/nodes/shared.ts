@@ -2,7 +2,7 @@ import { ClassicPreset } from "rete";
 import { numberSocket, listSocket, numListSocket, tableSocket, strTableSocket, dateTableSocket, anyTableSocket, stringSocket, strListSocket, strComboSocket, dateSocket, dateListSocket, dateComboSocket, complexSocket, complexListSocket, complexComboSocket, complexTableSocket, logicalSocket, logicalListSocket, logicalComboSocket, logicalTableSocket, frameSocket, cubeSocket, lambdaSocket, chartSocket, anySocket } from "../sockets";
 import { resolveColor, paletteStore, type PaletteSlot } from "../palette";
 import { type SolError } from "../errorValue";
-import { cellShortCircuit, COMPUTE } from "../valueKinds";
+import { cellShortCircuit, guardFinite, COMPUTE } from "../valueKinds";
 
 // Socket-typed port factories. `new ClassicPreset.Input(numberSocket, "A")`
 // repeated across ~60 constructor lines is just noise; these name the
@@ -138,7 +138,9 @@ export function broadcast(
   const lists = args.filter((a): a is number[] => Array.isArray(a));
   if (lists.length === 0) {
     const sc = cellShortCircuit(args);
-    return sc === COMPUTE ? fn(...(args as number[])) : sc;
+    if (sc !== COMPUTE) return sc;
+    const r = fn(...(args as number[]));
+    return r === null ? null : guardFinite(r, ...args);
   }
   const len = lists.reduce((m, l) => Math.max(m, l.length), 0);
   const out: (number | SolError | null)[] = [];
@@ -148,7 +150,7 @@ export function broadcast(
     const sc = cellShortCircuit(ops);
     if (sc !== COMPUTE) { out.push(sc); continue; } // error / missing propagates
     const r = fn(...(ops as number[]));
-    out.push(r ?? NaN);
+    out.push(r === null ? null : guardFinite(r, ...ops)); // classify a non-finite result
   }
   return out;
 }
@@ -166,7 +168,9 @@ export function broadcastErr(
   const lists = args.filter((a): a is number[] => Array.isArray(a));
   if (lists.length === 0) {
     const sc = cellShortCircuit(args);
-    return sc === COMPUTE ? fn(...(args as number[])) : sc;
+    if (sc !== COMPUTE) return sc;
+    const r = fn(...(args as number[]));
+    return typeof r === "number" ? guardFinite(r, ...args) : r;
   }
   const len = lists.reduce((m, l) => Math.max(m, l.length), 0);
   const out: (number | SolError | null)[] = [];
@@ -174,7 +178,9 @@ export function broadcastErr(
     if (lists.some((l) => i >= l.length)) { out.push(null); continue; } // ragged pad
     const ops = args.map((a) => (Array.isArray(a) ? a[i] : a));
     const sc = cellShortCircuit(ops);
-    out.push(sc !== COMPUTE ? sc : fn(...(ops as number[]))); // error / missing propagates
+    if (sc !== COMPUTE) { out.push(sc); continue; } // error / missing propagates
+    const r = fn(...(ops as number[]));
+    out.push(typeof r === "number" ? guardFinite(r, ...ops) : r); // classify a non-finite result
   }
   return out;
 }

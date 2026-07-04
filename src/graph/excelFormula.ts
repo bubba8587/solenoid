@@ -14,7 +14,7 @@
 
 import { solError, isSolError, isNaError } from "./errorValue";
 import { resolveExcelFunction, EXCEL_IMPL_META, normalizeFxResult, fxErrorToSol, FX_FUNCTION_NAMES } from "./excelFunctions";
-import { isMissing } from "./valueKinds";
+import { isMissing, guardFinite } from "./valueKinds";
 
 // ─── AST ────────────────────────────────────────────────────────────────────
 export type Ast =
@@ -396,10 +396,13 @@ function prepRangeArgs(name: string, argv: unknown[]): { error?: unknown; args: 
 // isNaError; a Formula.js Error object counts too, normalized first).
 const ERROR_HANDLER_FUNCTIONS = new Set(["IFERROR", "IFNA", "ISERROR", "ISERR", "ISNA", "ERROR.TYPE"]);
 
-// Excel ERROR.TYPE numbers; #DOMAIN! is our #NUM! analogue, Solenoid-specific
-// codes (#SHAPE!, #CIRC!, …) report as 3 (#VALUE!-equivalent).
+// Excel ERROR.TYPE numbers. The three codes that SPLIT Excel #NUM! — #DOMAIN!
+// (domain), #OVERFLOW! (magnitude), #CONV! (non-convergence) — all report as 6,
+// Excel's #NUM! number. Other Solenoid-specific codes (#SHAPE!, #CIRC!, …) report
+// as 3 (#VALUE!-equivalent).
 const ERROR_TYPE_NUM: Record<string, number> = {
-  "#DIV/0!": 2, "#VALUE!": 3, "#REF!": 4, "#NAME?": 5, "#DOMAIN!": 6, "#NUM!": 6, "#N/A": 7,
+  "#DIV/0!": 2, "#VALUE!": 3, "#REF!": 4, "#NAME?": 5, "#N/A": 7,
+  "#DOMAIN!": 6, "#OVERFLOW!": 6, "#CONV!": 6, "#NUM!": 6,
 };
 
 function applyErrorHandler(name: string, argv: unknown[]): unknown {
@@ -483,15 +486,20 @@ function applyOp(op: string, a: unknown, b: unknown): unknown {
   if (a === null || b === null) return null;
   // The logical↔number bridge: booleans compute as 1/0 in numeric contexts.
   const num = (v: unknown): unknown => (typeof v === "boolean" ? (v ? 1 : 0) : v);
+  const na = num(a), nb = num(b);
+  // Classify a non-finite ARITHMETIC result (2^5000 → #OVERFLOW!, ∞−∞ → #DOMAIN!,
+  // ∞ from an ∞ input passes) — only when the result is genuinely a number, so
+  // string `+` concat (na/nb non-numeric) is untouched. Shared with the nodes.
+  const fin = (r: number | string): unknown => (typeof r === "number" ? guardFinite(r, na, nb) : r);
   switch (op) {
-    case "+": return (num(a) as number) + (num(b) as number);
-    case "-": return (num(a) as number) - (num(b) as number);
-    case "*": return (num(a) as number) * (num(b) as number);
+    case "+": return fin((na as number) + (nb as number));
+    case "-": return fin((na as number) - (nb as number));
+    case "*": return fin((na as number) * (nb as number));
     // Division by zero is a real error, not Infinity (which renders as a blank).
     // Mint #DIV/0! here; it propagates as a scalar and, inside a list, is cleaned
     // to NaN at the boundary — so the scalar-level error invariant holds.
-    case "/": return num(b) === 0 && typeof num(a) === "number" ? solError("#DIV/0!", "Division by zero") : (num(a) as number) / (num(b) as number);
-    case "^": return Math.pow(num(a) as number, num(b) as number);
+    case "/": return nb === 0 && typeof na === "number" ? solError("#DIV/0!", "Division by zero") : fin((na as number) / (nb as number));
+    case "^": return fin(Math.pow(na as number, nb as number));
     case "&": {
       const s = (v: unknown): string => (typeof v === "boolean" ? (v ? "TRUE" : "FALSE") : String(v));
       return s(a) + s(b);
@@ -536,7 +544,13 @@ const NULL_INSPECTING = new Set(["ISBLANK", "ISNUMBER", "ISTEXT", "ISNONTEXT", "
  *  else a missing operand propagates as `null` (except the NULL_INSPECTING
  *  predicates, which must SEE the blank), else the function runs. */
 function broadcastCall(name: string, argv: unknown[]): unknown {
-  if (!argv.some(isArr)) return dispatch(name, ...argv);
+  // A finite-in function whose result overflows to ±Inf → #OVERFLOW! (EXP(1000)),
+  // a NaN → #DOMAIN!; an ∞ that came from an ∞ INPUT passes (the shared guard).
+  const call = (...args: unknown[]): unknown => {
+    const r = dispatch(name, ...args);
+    return typeof r === "number" ? guardFinite(r, ...args) : r;
+  };
+  if (!argv.some(isArr)) return call(...argv);
   const len = argv.reduce<number>((m, a) => (isArr(a) ? Math.max(m, a.length) : m), 0);
   if (len === 0) return [];
   const inspectsNull = NULL_INSPECTING.has(name);
@@ -547,7 +561,7 @@ function broadcastCall(name: string, argv: unknown[]): unknown {
     const err = ops.find(isSolError);
     if (err) { out.push(err); continue; }
     if (!inspectsNull && ops.some(isMissing)) { out.push(null); continue; }
-    out.push(dispatch(name, ...ops));
+    out.push(call(...ops));
   }
   return out;
 }

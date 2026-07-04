@@ -557,7 +557,7 @@ export class MirrNode extends ClassicPreset.Node {
     }
     const mirr = Math.pow(-fvPos / pvNeg, 1 / (n - 1)) - 1;
     if (!Number.isFinite(mirr)) {
-      const err = solError("#RANGE!", "MIRR overflowed — the cash flows or rates are extreme");
+      const err = solError("#OVERFLOW!", "MIRR overflowed — the cash flows or rates are extreme");
       this.cachedResult = err;
       return { result: err };
     }

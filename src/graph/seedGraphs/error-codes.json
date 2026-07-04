@@ -12,7 +12,7 @@
     {"id":"d_dom","type":"DisplayNode","x":580,"y":230,"init":{"label":"Display"}},
     {"id":"c_dom","type":"IsTestNode","x":860,"y":230,"init":{"label":"ISERROR","op":"iserror"}},
 
-    {"id":"p_rng","type":"CombinatoricsNode","x":280,"y":460,"init":{"label":"#RANGE!  ·  200!","op":"fact"},"literals":{"n":200,"k":2}},
+    {"id":"p_rng","type":"CombinatoricsNode","x":280,"y":460,"init":{"label":"#OVERFLOW!  ·  200!","op":"fact"},"literals":{"n":200,"k":2}},
     {"id":"d_rng","type":"DisplayNode","x":580,"y":460,"init":{"label":"Display"}},
     {"id":"c_rng","type":"IsTestNode","x":860,"y":460,"init":{"label":"ISERROR","op":"iserror"}},
 

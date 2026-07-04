@@ -2,6 +2,28 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### 1.0-tail #2 — non-finite guard + #RANGE! → #OVERFLOW! rename (2026-07-05)
+The settled model: a COMPUTATION never yields a bare NaN/Infinity — they're classified into tagged
+errors, so a residual NaN can only be dirty DATA. `guardFinite(result, ...inputs)` in `valueKinds.ts`:
+NaN → `#DOMAIN!`; ±Inf from all-FINITE inputs → `#OVERFLOW!`; ±Inf when an INPUT was already infinite
+PASSES (the Constant node's ∞ is first-class). Wired at the producing op — `shared.ts`
+broadcast/broadcastErr, `excelFormula.ts` `applyOp` (operators) + `broadcastCall` (functions like
+EXP/POWER) — with input awareness, so Expression's `tagResult` no longer blanket-tags ∞; it trusts the
+op guard and passes a surviving (definable) ∞, netting only a stray NaN. `0^0 = 1` (JS/Polars; Excel
+#NUM! — parity:false note on the pow leaf).
+- **`#RANGE!` → `#OVERFLOW!` rename (author call).** `#RANGE!` only shadowed Excel #NUM!'s vague naming;
+  `#OVERFLOW!` says what happened, and Solenoid's taxonomy is deliberately more descriptive than Excel's.
+  It's a RENAME, not an addition — inventory stays 14. Both prior meanings (magnitude overflow AND the
+  RANDARRAY/SEQUENCE count-limit) fit "exceeded a ceiling." Pre-alpha, no alias (errors aren't
+  serialized). `ERROR_TYPE_NUM` gained `#OVERFLOW!`/`#CONV!` → 6 (they split #NUM! like `#DOMAIN!`; were
+  falling to the #VALUE!=3 default — a latent bug fixed here).
+- **Gotcha:** `guardFinite` must run at the OP (input-aware), not at a node's final output — a top-level
+  output guard can't tell a passed-through definable ∞ (∞ input) from an overflow ∞ (finite inputs), so
+  it would wrongly tag ∞+5 (∞ wired in) as #OVERFLOW!. That's why `tagResult` was demoted to a NaN
+  safety-net once the op-level guards landed.
+- Tests: `broadcastContract.test.ts` guardFinite unit + Arithmetic 10^400 / ∞+5 / 0^0 + formula 2^5000.
+  No test churn (existing tests didn't exercise ∞-producing computations). Commit: this session.
+
 ### 1.0-tail #1 — per-cell error/null broadcaster contract + readInput (2026-07-04)
 Item #1 of the tail. The rule was in `applyOp` (operator path) but not the broadcasters, so a per-cell
 error/null in a FUNCTION or a numeric NODE decayed (`ABS([1,#DIV/0!,3])` morphed the error; `[1,null,3]+10`

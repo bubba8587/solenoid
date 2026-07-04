@@ -39,8 +39,11 @@
 //             SQLSTATE 2201E/2201F; Err:503 invalid FP operation)
 //   #CONV!    iterative solver failed to converge, e.g. IRR (splits Excel #NUM!;
 //             Err:523)
-//   #RANGE!   result outside representable range / overflow (splits Excel #NUM!;
-//             SQLSTATE 22003; Err:512)
+//   #OVERFLOW! result magnitude exceeds a ceiling — a finite computation whose true
+//             answer is a really-big NUMBER the float type can't hold (2^5000), or a
+//             generator asked for more elements than the cap. More descriptive than
+//             #RANGE!, which only shadowed Excel #NUM!'s vague naming — Solenoid
+//             names the cause. (splits Excel #NUM!; SQLSTATE 22003; Err:512)
 //   #SYNTAX!  formula text didn't parse        (splits Excel #VALUE!; Err:516)
 //   #VALUE!   wrong type / operand misuse      (Excel; SQLSTATE 22018)
 //   #TYPE!    wrong ELEMENT TYPE for the op     (Solenoid-specific — no Excel
@@ -64,7 +67,7 @@ import { perfEnabled, recordNode } from "./perfProbe";
 
 export type SolErrorCode =
   | "#DIV/0!" | "#N/A"
-  | "#DOMAIN!" | "#CONV!" | "#RANGE!"
+  | "#DOMAIN!" | "#CONV!" | "#OVERFLOW!"
   | "#SYNTAX!" | "#VALUE!" | "#TYPE!" | "#SHAPE!" | "#UNIT!"
   | "#NAME?" | "#REF!" | "#CIRC!"
   | "#ERROR!";
@@ -105,7 +108,7 @@ export const ERROR_EXPLANATIONS: Record<SolErrorCode, string> = {
   "#N/A":    "A lookup or match found nothing. Check the search value, or wire an If-not-found fallback.",
   "#DOMAIN!": "An input was outside the function's domain — e.g. √ or log of a negative, or ASIN beyond ±1.",
   "#CONV!":  "An iterative solver didn't converge. Try a different starting guess, or check the inputs are solvable.",
-  "#RANGE!": "The result is too large or small to represent. Reduce the input magnitudes.",
+  "#OVERFLOW!": "The result is too large or small to represent. Reduce the input magnitudes.",
   "#SYNTAX!": "A formula couldn't be parsed. Check for unbalanced parentheses, doubled operators, or a missing argument.",
   "#VALUE!": "A value had the wrong type, or a formula failed while evaluating. Check each input is the kind of data the node expects.",
   "#TYPE!":  "The element type is wrong — e.g. a text matrix into a numeric op, or a number where a date is expected. Solenoid keeps element families (number / text / date / complex) separate, so this is more specific than #VALUE!. Cast or reshape the input.",

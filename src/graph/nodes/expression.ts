@@ -32,17 +32,17 @@ function guard(v: unknown, scalar: boolean): unknown {
  * it propagates + renders like Excel's #DIV/0! instead of collapsing to a blank:
  * our own SolError passes through, a Formula.js error maps to a code (via the shared
  * `fxErrorToSol` — the evaluator already normalizes top-level FX errors, this is the
- * belt-and-suspenders for any that reach here), and a bare non-finite number is
- * #DOMAIN! (NaN — a domain violation) / #RANGE! (overflow). Anything finite/text
- * falls through to `guard` (booleans still → null, P7).
+ * belt-and-suspenders for any that reach here). Overflow is now classified AT THE OP
+ * (applyOp / broadcastCall, via the shared `guardFinite`, with input awareness), so a
+ * ±Inf that survives to here is a DEFINABLE infinity (an ∞ input passed through — the
+ * Constant node's ∞ is first-class) and passes; only a stray NaN is caught as a
+ * #DOMAIN! safety net. Anything finite/text falls through to `guard` (booleans → null, P7).
  */
 function tagResult(v: unknown): unknown {
   if (isSolError(v)) return v;
   if (v instanceof Error) return fxErrorToSol(v);
-  if (typeof v === "number" && !Number.isFinite(v)) {
-    return Number.isNaN(v)
-      ? solError("#DOMAIN!", "The result is undefined (not a number)")
-      : solError("#RANGE!", "The result is too large to represent");
+  if (typeof v === "number" && Number.isNaN(v)) {
+    return solError("#DOMAIN!", "The result is undefined (not a number)");
   }
   return guard(v, true);
 }
@@ -148,9 +148,10 @@ export class ExpressionNode extends ClassicPreset.Node {
       // The evaluator decides broadcast-vs-aggregate per call site. Both a SCALAR
       // and each LIST element run through the SAME tagging (tagResult): an
       // in-formula error → tagged SolError (#DIV/0! / #DOMAIN! / mapped Formula.js
-      // error) that PROPAGATES per-cell; a non-finite → #DOMAIN!/#RANGE!; a missing
-      // / boolean → null (P7 logical type pending). Lists now carry per-cell errors
-      // and `null` as distinct kinds (relaxed invariant — array-semantics build).
+      // error) that PROPAGATES per-cell; overflow/NaN is already classified at the
+      // producing op (guardFinite), so tagResult just passes a definable ∞ and nets
+      // a stray NaN; a missing / boolean → null (P7 logical type pending). Lists now
+      // carry per-cell errors and `null` as distinct kinds (array-semantics build).
       const raw = this.evaluator(env);
       const result = Array.isArray(raw)
         ? raw.map((e) => tagResult(e))
