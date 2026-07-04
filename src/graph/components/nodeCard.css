@@ -704,6 +704,29 @@ body.solenoid-scrubbing * {
   border-color: var(--accent);
 }
 
+/* Multi-line text value (the Text node's main field): a textarea that grows to
+   its content (auto-sized in JS), wrapping long lines and scrolling past the cap
+   instead of a single line that strips newlines and runs off the card. */
+.solenoid-node__quoted--multiline {
+  display: block;
+  width: 100%;
+}
+.solenoid-node__quoted--multiline .solenoid-node__quoted-field {
+  display: block;
+  width: 100%;
+}
+.solenoid-node__quoted-textarea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  resize: none;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
+  padding: 4px 6px;
+}
+
 /* Inline string field (node input rows, e.g. TextSplit / Concat): fill the
    remaining row width and scroll long text internally, rather than auto-sizing to
    content (which left reserved space on the right and overflowed the card edge).
@@ -1074,6 +1097,10 @@ body.solenoid-scrubbing * {
   border-radius: 4px;
   white-space: pre;
   overflow: auto;
+}
+.solenoid-mermaid-template {
+  width: 100%;
+  margin-bottom: 6px;
 }
 .solenoid-mermaid-source--wired {
   min-height: 0;
