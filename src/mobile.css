@@ -251,8 +251,9 @@ html.is-mobile {
   .solenoid-outline__open-pill { display: none; }
   .solenoid-outline {
     top: calc(88px + env(safe-area-inset-top));
-    /* Clear the bottom action bar (~57px) so the list doesn't run underneath it. */
-    bottom: calc(68px + env(safe-area-inset-bottom));
+    /* Clear the bottom action bar AND its raised + FAB (which sticks ~8px proud of
+       the ~57px bar and casts a shadow). 84px keeps the list well above both. */
+    bottom: calc(84px + env(safe-area-inset-bottom));
     width: min(248px, 84vw);
   }
   .solenoid-outline__collapse { width: 32px; height: 32px; font-size: 20px; }
