@@ -133,8 +133,9 @@ export function buildReportExportHtml(
     const name = m[1].trim();
     const note = noteByName(name);
     if (note) {
-      const noteFrozen = freezeInlineRefs(note.id, note.renderBody, note.refKeys(), (k) => note.refValue(k));
-      parts.push(`<div class="report-export__embed"><div class="report-export__embed-name">${names.get(note.id) ?? name}</div>${renderMarkdown(noteFrozen)}</div>`);
+      // A Note is output-only — no inline refs to freeze; render its markdown as-is
+      // (a `` `=name` `` span stays literal code).
+      parts.push(`<div class="report-export__embed"><div class="report-export__embed-name">${names.get(note.id) ?? name}</div>${renderMarkdown(note.renderBody)}</div>`);
     } else {
       parts.push(`<div class="report-export__embed"><div class="report-export__embed-name">${name} (missing)</div></div>`);
     }

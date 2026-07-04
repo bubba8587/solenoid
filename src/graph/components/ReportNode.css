@@ -5,6 +5,10 @@
 .solenoid-report {
   position: relative;
   --node-accent: var(--report-color);
+  /* Input-socket dots anchor to their ref row, inside the card's 2px border. Match
+     Note: regular nodes use -6.5px for a 1px inset, so the extra border px needs one
+     more px of outward pull to straddle the OUTER edge (was -5, landing too inside). */
+  --node-socket-x: -7.5px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;

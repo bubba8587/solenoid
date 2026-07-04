@@ -2,6 +2,26 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Note = SOURCE, Report = SINK — made opposites, not convertible (2026-07-04)
+- The Note had grown two-sided: frontmatter YAML → typed OUTPUT sockets AND `` `=name` ``
+  inline refs → `any` INPUT sockets. That put an input strip right above the output strip
+  (with its type-switch glyphs) — confusing — and the Note's ref inputs didn't even accept
+  wires cleanly. Author's call: make the two nodes deliberate opposites. **Note is now
+  output-only** (frontmatter fields; it no longer parses `` `=name` `` or mints inputs — a
+  `` `=name` `` span is just literal inline code, body renders as plain markdown). **Report
+  stays input-only** (`` `=name` `` refs + `![[Note]]` embeds, no outputs). Not convertible
+  (they're opposite directions). Removed from `NoteNode`: `extractInlineRefs`, `_refKeys`/
+  `_refValues`, `refKeys()`/`refValue()`, the input half of `syncFields` (+ its `removedInputs`
+  return), and `data(inputs)` → `data()`. NoteNode.tsx drops the refs strip + `InlineRefBody`
+  (renders sanitized markdown via `dangerouslySetInnerHTML` — no portals now, so it's safe).
+  `reportExport.ts` renders an embedded Note's markdown as-is (no ref-freeze). `noteInlineRefs.ts`
+  + `inlineRefDisplay.tsx` stay — Report still uses them.
+- **Socket dots landed a couple px too far inside on both cards.** Their strip rows sit inside
+  the card's **2px** border, so the `-5` default (calibrated for a normal node's 1px inset,
+  which uses `-6.5px`) pulled the dot too little. Fix: `--node-socket-x: -7.5px` on
+  `.solenoid-note` and `.solenoid-report` (= `-6.5` − 1px for the extra border), so the dot
+  centers ~0.5px inside the OUTER edge, matching every other node.
+
 ### Presentation steps persist across reload (node-id remap) (2026-07-04)
 - **The Presentation node "stopped working after reload."** A step carries a node-id SET
   (the camera target), stored as live rete ids on the instance. The `steps` array itself

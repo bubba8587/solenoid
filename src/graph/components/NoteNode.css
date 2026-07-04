@@ -4,6 +4,11 @@
 .solenoid-note {
   position: relative;
   --node-accent: var(--note-color);  /* selection ring + shadow take the note color */
+  /* Output-socket dots anchor to their field row, which sits inside the note's 2px
+     border. Regular nodes use -6.5px for a 1px inset; the extra 1px of border here
+     needs one more px of outward pull so the dot straddles the OUTER edge (was -5,
+     which landed the dot a couple px too far inside). */
+  --node-socket-x: -7.5px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -225,52 +230,6 @@
 }
 .solenoid-note__field-opt:hover { background: color-mix(in srgb, var(--text) 8%, transparent); }
 .solenoid-note__field-opt--on { background: color-mix(in srgb, var(--note-color) 22%, transparent); }
-
-/* ── Inline-ref inputs strip ──────────────────────────────────────────────────
-   Untyped (any) INPUT sockets minted from `` `=name` `` spans in the prose body.
-   Same full-width-strip mechanics as the fields strip, dots on the LEFT edge. Always
-   renders ABOVE the fields strip (in → through → out reading order); when collapsed
-   with no fields strip below it, it's the last visible child (see :last-child rule). */
-.solenoid-note__refs {
-  display: flex;
-  flex-direction: column;
-  flex: 0 0 auto;
-  padding: 3px 0;
-  overflow: visible;
-  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--note-color) 35%, transparent);
-}
-.solenoid-note--collapsed .solenoid-note__refs:last-child {
-  box-shadow: none;
-  border-radius: 0 0 9px 9px;
-}
-.solenoid-note__ref-row {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 2px 10px 2px 16px; /* extra left room for the input dot at -5px */
-  min-height: 18px;
-  font-size: 11px;
-}
-.solenoid-note__ref-key {
-  flex: 0 0 auto;
-  max-width: 50%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-weight: 600;
-  color: var(--text);
-}
-.solenoid-note__ref-val {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: right;
-  color: var(--text-muted);
-}
 
 /* Holds the body. overflow:hidden clips the scrolling body (and its scrollbar)
    to the card's rounded base; the bottom radius matches the note's inner corner
