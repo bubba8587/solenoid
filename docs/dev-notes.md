@@ -32,7 +32,11 @@ Reorganized mobile chrome to mirror desktop's separation of concerns, into three
   `__group--layout`) is surfaced on Row B (file ops stay in the sheet via `__group--file`);
   gaps tightened (topbar 4px, apptools/pill 2px); apptools stroke 2.6→2.0 (2.6 was extra-thick at
   14px); Fit/Lock pill trimmed (30px buttons, scoped `.solenoid-nav .solenoid-nav__btn` so the
-  Row B layout buttons keep their own 32px). **Android status bar** now tints to the accent via a
+  Row B layout buttons keep their own 32px). Row B **height 52px** (up from the desktop 44px) so
+  the separator reads as a bar not a tint and the buttons center cleanly; the **separator is the
+  DESKTOP accent underline** again (hairline + `box-shadow: 0 2px 0 0 var(--accent)`, from the base
+  rule — no mobile override) now that Row B is neutral, which also brackets the tools row with
+  accent (Row A above, underline below). Sheet/outline/pill offsets rebumped to 82/88/92px. **Android status bar** now tints to the accent via a
   dynamic `<meta name="theme-color">` written in `appTheme.apply()` (bottom system nav bar isn't
   web-controllable in a normal tab — only an installed PWA follows the page). **Command palette
   input** got `autoComplete/autoCorrect/autoCapitalize=off` + `inputMode=search` + `data-1p-ignore`
