@@ -34,7 +34,9 @@
 
     {"id":"nE","type":"NoteNode","x":-40,"y":2200,"init":{"label":"Number → text at 15 digits","body":"Printing a number into text no longer leaks IEEE noise: `(0.1+0.2) & \" kg\"` is `\"0.3 kg\"`, not `\"0.30000000000000004 kg\"`.","color":"lime","width":230,"height":150}},
     {"id":"p_txt","type":"ExpressionNode","x":300,"y":2200,"init":{"label":"(0.1 + 0.2) & \" kg\"","expr":"(0.1 + 0.2) & \" kg\"","resultAs":"text"}},
-    {"id":"d_txt","type":"DisplayNode","x":620,"y":2200,"init":{"label":"Display"}}
+    {"id":"d_txt","type":"DisplayNode","x":620,"y":2200,"init":{"label":"Display"}},
+
+    {"id":"nF","type":"NoteNode","x":-40,"y":2430,"init":{"label":"NaN — nothing to show, by design","body":"There's no NaN row here on purpose. A COMPUTATION can no longer produce a bare NaN — √(−4) → #DOMAIN!, 10^400 → #OVERFLOW!, even casting the text \"NaN\" → #VALUE!. The muted **NaN** affordance is a safety-net for genuinely dirty imported numeric data (a CSV/Parquet column that literally holds NaN doubles), which a JSON seed can't express. If NaN ever reaches a value box, it shows quiet + muted, never the old lie \"N/A\".","color":"gray","width":460,"height":190}}
   ],
   "connections": [
     {"source":"p_ovf","sourceOutput":"result","target":"d_ovf","targetInput":"in"},
