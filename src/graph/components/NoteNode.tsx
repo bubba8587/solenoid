@@ -217,9 +217,14 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   // `breaks: true` so a lone newline becomes a line break (note-jotting expectation).
   const bodyHtml = useMemo(
     () => DOMPurify.sanitize(marked.parse(data.renderBody || "", { async: false, gfm: true, breaks: true }) as string),
-    // `body` changes whenever the user edits (incl. the YAML); renderBody is fresh
-    // by read-view time (commit runs on the editor's blur, before this re-renders).
-    [body, data],
+    // Depend on the value this actually READS — `data.renderBody` (the frontmatter-
+    // stripped body). It updates synchronously inside commitFields' syncFields() on
+    // blur, so it's fresh by the read-view re-render. The old `[body, data]` deps
+    // read renderBody but keyed off the RAW body, so after an edit that changed
+    // renderBody without re-triggering on `body` the memo never recomputed and the
+    // note kept showing a STALE render (leading `<hr>`/paragraphs from a prior
+    // state = the intermittent "blank lines before the first line").
+    [data.renderBody],
   );
 
   function onLabel(v: string) { setLabel(v); data.label = v; scheduleAutosave(); }
