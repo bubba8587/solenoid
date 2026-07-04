@@ -301,10 +301,13 @@ export const NODE_CATALOG: CatalogEntry[] = [
         type: "category", label: "Rounding", description: "Round and constrain numbers.",
         children: [
           { type: "pair", children: [mathLeaf("round"), mathLeaf("trunc")] },
-          { type: "math-floor-ceil", label: "FLOOR / CEILING", description: "Snap to nearest integer — down (FLOOR) or up (CEILING)   (Excel: =FLOOR / =CEILING)", create: () => new MathFnNode({ op: "floor" }), parity: false },
+          { type: "pair", children: [
+            { type: "math-ceiling", label: "CEILING", description: "Round UP to a multiple (toward +∞); the multiple defaults to 1 so it snaps up to the next integer   (Excel: =CEILING.MATH(x, sig))", create: () => new MRoundNode({ op: "up" }), keywords: "ceil ceiling round up multiple significance" },
+            { type: "math-floor", label: "FLOOR", description: "Round DOWN to a multiple (toward −∞); the multiple defaults to 1 so it snaps down to the next integer   (Excel: =FLOOR.MATH(x, sig))", create: () => new MRoundNode({ op: "down" }), keywords: "floor round down multiple significance" },
+          ]},
           { type: "pair", children: [
             mathLeaf("int"),
-            { type: "math-mround", label: "MROUND", description: "Round to nearest multiple   (Excel: =MROUND(x, multiple))", create: () => new MRoundNode() },
+            { type: "math-mround", label: "MROUND", description: "Round to nearest multiple   (Excel: =MROUND(x, multiple))", create: () => new MRoundNode(), keywords: "mround round nearest multiple ceil floor ceiling" },
           ]},
           { type: "pair", children: [mathLeaf("even"), mathLeaf("odd")] },
           { type: "roundn-round", label: "ROUND to N digits", description: "Round to N decimal places   (Excel: =ROUND(x,2))", create: () => new RoundNNode({ op: "round" }) },

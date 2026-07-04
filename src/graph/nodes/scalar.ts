@@ -157,7 +157,7 @@ export class ArithmeticNode extends ClassicPreset.Node {
 // ─── Math Function ────────────────────────────────────────────────────────────
 
 export type MathFnOp =
-  | "abs" | "round" | "floor" | "ceil" | "sqrt" | "log" | "sin" | "cos"
+  | "abs" | "round" | "sqrt" | "log" | "sin" | "cos"
   | "tan" | "tanh" | "sinh" | "cosh" | "asin" | "acos" | "atan"
   | "exp" | "log10" | "log2" | "sign" | "trunc"
   | "int" | "even" | "odd" | "sqrtpi"
@@ -175,8 +175,6 @@ export const MATH_FN_OP_META = {
   sqrtpi:  { label: "SQRTPI",  group: "Functions",    description: "√(x × π)   (Excel: =SQRTPI(x))" },
   exp:     { label: "EXP",     group: "Functions",    description: "e raised to the power x   (Excel: =EXP(x))" },
   round:   { label: "ROUND",   group: "Rounding",     description: "Round to nearest integer   (Excel: =ROUND(x,0))" },
-  floor:   { label: "FLOOR",   group: "Rounding",     description: "Snap to nearest integer down   (Excel: =FLOOR(x,1))" },
-  ceil:    { label: "CEILING", group: "Rounding",     description: "Snap to nearest integer up   (Excel: =CEILING(x,1))" },
   trunc:   { label: "TRUNC",   group: "Rounding",     description: "Truncate toward zero — TRUNC(−3.7) = −3   (Excel: =TRUNC(x))" },
   int:     { label: "INT",     group: "Rounding",     description: "Round DOWN toward −∞ — INT(−3.7) = −4   (Excel: =INT(x))" },
   even:    { label: "EVEN",    group: "Rounding",     description: "Round away from zero to nearest even integer   (Excel: =EVEN(x))" },
@@ -251,8 +249,6 @@ export class MathFnNode extends ClassicPreset.Node {
           // Excel ROUND rounds halves away from zero; JS Math.round rounds them
           // toward +inf (Math.round(-2.5) = -2), so round the magnitude.
           case "round": return Math.sign(x) * Math.round(Math.abs(x));
-          case "floor": return Math.floor(x);
-          case "ceil":  return Math.ceil(x);
           case "sqrt":  return x < 0 ? null : Math.sqrt(x);
           case "log":   return x <= 0 ? null : Math.log(x);
           case "sin":   return Math.sin(x);
@@ -422,16 +418,32 @@ export class ClampNode extends ClassicPreset.Node {
 
 // ─── MROUND ───────────────────────────────────────────────────────────────────
 
+// Round-to-a-multiple. Direction is an OP (nearest / up / down); the SHAPE is the
+// node — the RoundN precedent (round/roundup/rounddown over (value, digits); these
+// are over (value, multiple)). CEILING / FLOOR are this node pre-set to up / down
+// with `multiple` defaulting to 1, so they behave unary out of the box — Excel's
+// own shape (CEILING.MATH's significance is optional, default 1). Rounding is toward
+// ±∞ (like the .MATH variants), matching the old MathFn ceil/floor those replaced.
+export type MRoundOp = "nearest" | "up" | "down";
+
+export const MROUND_OP_META = {
+  nearest: { label: "MROUND",  description: "Round to the nearest multiple   (Excel: =MROUND(x, multiple))" },
+  up:      { label: "CEILING", description: "Round UP to a multiple (toward +∞)   (Excel: =CEILING.MATH(x, sig))" },
+  down:    { label: "FLOOR",   description: "Round DOWN to a multiple (toward −∞)   (Excel: =FLOOR.MATH(x, sig))" },
+} satisfies Record<MRoundOp, { label: string; description: string }>;
+
 export class MRoundNode extends ClassicPreset.Node {
   label: string;
+  op: MRoundOp;
   cachedResult: number | number[] | null = null;
   literals: Record<string, number> = { value: 0, multiple: 1 };
   width = 180;
   height = 200;
 
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; op?: MRoundOp }) {
     super("MRound");
-    this.label = init?.label ?? "MROUND";
+    this.op = init?.op ?? "nearest";
+    this.label = init?.label ?? MROUND_OP_META[this.op].label;
     this.addInput("value",    numListIn("Value"));
     this.addInput("multiple", numListIn("Multiple"));
     this.addOutput("result",  numListOut("Result"));
@@ -440,9 +452,10 @@ export class MRoundNode extends ClassicPreset.Node {
   data(inputs: { value?: (number | number[])[]; multiple?: (number | number[])[] }) {
     const value    = inputs.value?.[0]    ?? this.literals.value    ?? null;
     const multiple = inputs.multiple?.[0] ?? this.literals.multiple ?? null;
+    const snap = this.op === "up" ? Math.ceil : this.op === "down" ? Math.floor : Math.round;
     let result: number | number[] | null = null;
     if (value !== null && multiple !== null) {
-      result = broadcast((v, m) => (m === 0 ? 0 : Math.round(v / m) * m), value, multiple);
+      result = broadcast((v, m) => (m === 0 ? 0 : snap(v / m) * m), value, multiple);
     }
     this.cachedResult = result;
     return { result };

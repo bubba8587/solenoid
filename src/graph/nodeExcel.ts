@@ -268,11 +268,13 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   ],
   "math-even": [{ excel: "EVEN", syntax: "=EVEN(x)", parity: true }],
   "math-exp": [{ excel: "EXP", syntax: "=EXP(x)", parity: true }],
-  "math-floor-ceil": [
-    { excel: "CEILING", syntax: "=CEILING(x, significance)", parity: false, note: "Solenoid always rounds to integer (sig=1); use MROUND for other multiples" },
-    { excel: "CEILING.MATH", syntax: "=CEILING.MATH(x, sig)", parity: false, note: "Same — no significance argument" },
-    { excel: "FLOOR", syntax: "=FLOOR(x, significance)", parity: false, note: "Solenoid always rounds to integer (sig=1); use MROUND for other multiples" },
-    { excel: "FLOOR.MATH", syntax: "=FLOOR.MATH(x, sig)", parity: false, note: "Same — no significance argument" },
+  "math-ceiling": [
+    { excel: "CEILING.MATH", syntax: "=CEILING.MATH(x, sig)", parity: true, note: "Rounds toward +∞ to a multiple (the Multiple input); defaults to 1" },
+    { excel: "CEILING", syntax: "=CEILING(x, significance)", parity: false, note: "Rounds toward +∞ like CEILING.MATH; Excel's CEILING rounds away from zero for negatives" },
+  ],
+  "math-floor": [
+    { excel: "FLOOR.MATH", syntax: "=FLOOR.MATH(x, sig)", parity: true, note: "Rounds toward −∞ to a multiple (the Multiple input); defaults to 1" },
+    { excel: "FLOOR", syntax: "=FLOOR(x, significance)", parity: false, note: "Rounds toward −∞ like FLOOR.MATH; Excel's FLOOR rounds toward zero for negatives" },
   ],
   "math-gamma": [{ excel: "GAMMA", syntax: "=GAMMA(x)" }],
   "math-gammaln": [

@@ -634,17 +634,27 @@ export class NumberValueNode extends ClassicPreset.Node {
     // Empty input is blank (null); a non-empty string that won't parse is a
     // genuine #VALUE! error.
     if (!text) { this.cachedResult = null; return { result: null }; }
-    const normalized = text
+    // NUMBERVALUE semantics: strip group separators, normalize the decimal
+    // separator, ignore ALL whitespace (incl. embedded — "1 234" → 1234), then
+    // peel trailing `%` signs (each divides by 100 — "12%%" → 0.0012). The final
+    // parse is STRICT full-string via Number(), not parseFloat's greedy prefix, so
+    // "12x" is #VALUE! rather than 12.
+    let s = text
       .split(grpSep).join("")
-      .split(decSep).join(".");
-    const n = parseFloat(normalized);
+      .split(decSep).join(".")
+      .replace(/\s+/g, "");
+    let pct = 0;
+    while (s.endsWith("%")) { pct++; s = s.slice(0, -1); }
+    // Number("") is 0 — guard it so an all-% / emptied string is #VALUE!, not 0.
+    const n = s === "" ? NaN : Number(s);
     if (!Number.isFinite(n)) {
       const err = solError("#VALUE!", `Cannot parse "${text}" as a number`);
       this.cachedResult = err;
       return { result: err };
     }
-    this.cachedResult = n;
-    return { result: n };
+    const result = pct > 0 ? n / Math.pow(100, pct) : n;
+    this.cachedResult = result;
+    return { result };
   }
 }
 

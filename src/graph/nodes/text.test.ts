@@ -1,7 +1,35 @@
 import { describe, it, expect } from "vitest";
-import { ExactNode, TextFindNode } from "./text";
+import { ExactNode, TextFindNode, NumberValueNode } from "./text";
 import { isSolError } from "../errorValue";
 import { SolenoidSocket } from "../sockets";
+
+describe("NUMBERVALUE — strict full-string parse", () => {
+  const nv = (text: string, decimal_sep?: string, group_sep?: string) =>
+    new NumberValueNode().data({
+      text: [text],
+      ...(decimal_sep !== undefined ? { decimal_sep: [decimal_sep] } : {}),
+      ...(group_sep !== undefined ? { group_sep: [group_sep] } : {}),
+    }).result;
+
+  it("a trailing non-numeric char is #VALUE! (not parseFloat's greedy 12)", () => {
+    const r = nv("12x");
+    expect(isSolError(r) && r.code).toBe("#VALUE!");
+  });
+  it("trailing % signs each divide by 100", () => {
+    expect(nv("12%")).toBe(0.12);
+    expect(nv("12%%")).toBe(0.0012);
+  });
+  it("all whitespace is ignored, including embedded", () => {
+    expect(nv("1 234")).toBe(1234);
+  });
+  it("swapped separators parse", () => {
+    expect(nv("1.234,56", ",", ".")).toBe(1234.56);
+  });
+  it("blank is null; a plain number parses", () => {
+    expect(nv("")).toBe(null);
+    expect(nv("42")).toBe(42);
+  });
+});
 
 // EXACT emits the first-class logical type (TRUE/FALSE), like Comparison / IS checks —
 // not 1/0. FIND/SEARCH report a missing substring as #VALUE! (Excel + the formula path),
