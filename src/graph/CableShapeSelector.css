@@ -50,11 +50,16 @@
   height: 15px;
 }
 
-.solenoid-toolbar__segment:hover {
-  /* Match the icon buttons: accent on hover. */
-  color: var(--accent);
-  background: var(--btn-hover);
-  --icon-bg: var(--btn-hover);
+/* Guard pure hover so it can't stick after a tap on touch (see NavMenu.css). The
+   --active state below stays unconditional, so the selected segment is always shown
+   selected regardless of a lingering touch-hover. */
+@media (hover: hover) {
+  .solenoid-toolbar__segment:hover {
+    /* Match the icon buttons: accent on hover. */
+    color: var(--accent);
+    background: var(--btn-hover);
+    --icon-bg: var(--btn-hover);
+  }
 }
 
 .solenoid-toolbar__segment--active,
@@ -77,10 +82,12 @@
   cursor: pointer;
   transition: background-color 80ms ease, color 80ms ease, border-color 80ms ease;
 }
-.solenoid-toolbar__flow:hover {
-  color: var(--accent);
-  background: var(--btn-hover);
-  border-color: var(--accent);
+@media (hover: hover) {
+  .solenoid-toolbar__flow:hover {
+    color: var(--accent);
+    background: var(--btn-hover);
+    border-color: var(--accent);
+  }
 }
 .solenoid-toolbar__flow--active,
 .solenoid-toolbar__flow--active:hover {
