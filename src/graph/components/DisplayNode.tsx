@@ -9,7 +9,12 @@ import { NodeShell, PortSockets, ValueDisplay, type NodeProps } from "./nodeKit"
 import { TableDisplay } from "./TableDisplay";
 import { FrameDisplay } from "./FrameDisplay";
 import { CubeDisplay } from "./CubeDisplay";
+import { ChartView, toSeries } from "./chartView";
+import { MermaidView } from "./MermaidView";
 import { isFrameValue, isCubeValue } from "../frame";
+import { isChartValue } from "../chartValue";
+import { isMermaidValue } from "../mermaidValue";
+import { isLambdaValue, formatLambda } from "../nodes/lambda";
 import { isSolError } from "../errorValue";
 
 export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
@@ -37,6 +42,9 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
     resolver?.downstreamAnnotation(data.id, "out");
 
   function fmt(v: number): string {
+    // Backstop: the kind-branches below keep objects out of here, but never let a
+    // stray non-number reach formatWithUnit (.toFixed) and crash the node.
+    if (typeof v !== "number") return String(v);
     if (ann) return formatNumberWithAnnotation(v, ann);
     return formatWithUnit(v, data.unitSuffix);
   }
@@ -45,12 +53,18 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
   const isError = isSolError(v);
   const isFrame = isFrameValue(v);
   const isCube = isCubeValue(v);
+  // Object-valued figures/values that must NOT reach the number formatter (fmt
+  // calls .toFixed) — that crashed the whole Display node off the canvas when a
+  // Chart (or Mermaid / lambda) was wired in. Render each by kind instead.
+  const isChart = isChartValue(v);
+  const isMermaid = isMermaidValue(v);
+  const isLambda = isLambdaValue(v);
   const isTable = Array.isArray(v) && Array.isArray((v as unknown[])[0]);
-  // 2D data (frame/cube/table) grows the card to fit its columns; a SCALAR grows to
-  // fit a long number/string (capped, then ellipsizes) instead of clipping in the
-  // fixed card. Lists wrap as text.
-  const grow = full && (isFrame || isCube || isTable);
-  const growScalar = full && !grow && !isError && v != null && !Array.isArray(v);
+  // 2D data (frame/cube/table) and a figure (chart/diagram) grow the card to fit;
+  // a SCALAR grows to fit a long number/string (capped, then ellipsizes) instead of
+  // clipping in the fixed card. Lists wrap as text.
+  const grow = full && (isFrame || isCube || isTable || isChart || isMermaid);
+  const growScalar = full && !grow && !isError && !isLambda && v != null && !Array.isArray(v) && typeof v !== "object";
   const growClass = grow ? "solenoid-node--display-grow" : growScalar ? "solenoid-node--display-grow-scalar" : undefined;
 
   return (
@@ -61,6 +75,17 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
         <FrameDisplay frame={v} label={data.label} full={full} />
       ) : isCube ? (
         <CubeDisplay cube={v} label={data.label} full={full} />
+      ) : isChart ? (
+        (() => {
+          const series = toSeries(v.values);
+          return series.length === 0
+            ? <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>
+            : <ChartView op={v.op} series={series} width={210} height={130} axes opts={v.options} />;
+        })()
+      ) : isMermaid ? (
+        <MermaidView source={v.source} />
+      ) : isLambda ? (
+        <div className="solenoid-node__display-value">{formatLambda(v)}</div>
       ) : isTable ? (
         <TableDisplay table={v as number[][]} label={data.label} full={full} />
       ) : (
