@@ -36,7 +36,12 @@
     {"id":"p_txt","type":"ExpressionNode","x":300,"y":2200,"init":{"label":"(0.1 + 0.2) & \" kg\"","expr":"(0.1 + 0.2) & \" kg\"","resultAs":"text"}},
     {"id":"d_txt","type":"DisplayNode","x":620,"y":2200,"init":{"label":"Display"}},
 
-    {"id":"nF","type":"NoteNode","x":-40,"y":2430,"init":{"label":"NaN — nothing to show, by design","body":"There's no NaN row here on purpose. A COMPUTATION can no longer produce a bare NaN — √(−4) → #DOMAIN!, 10^400 → #OVERFLOW!, even casting the text \"NaN\" → #VALUE!. The muted **NaN** affordance is a safety-net for genuinely dirty imported numeric data (a CSV/Parquet column that literally holds NaN doubles), which a JSON seed can't express. If NaN ever reaches a value box, it shows quiet + muted, never the old lie \"N/A\".","color":"gray","width":460,"height":190}}
+    {"id":"nF","type":"NoteNode","x":-40,"y":2430,"init":{"label":"NaN is dirty DATA, not an error","body":"A COMPUTATION can't make a bare NaN anymore (those are #OVERFLOW! / #DOMAIN!). NaN only arrives as dirty imported data — here a **number** column whose middle cell is the junk value `oops` (what a broken CSV import leaves behind). It coerces to NaN, shows as a quiet muted **NaN** in the frame cell, and summing the column carries it to a muted scalar NaN — never the old lie \"N/A\", never a red error badge.","color":"gray","width":230,"height":220}},
+    {"id":"fi_nan","type":"FrameInputNode","x":300,"y":2430,"init":{"label":"reading — a bad cell","frameText":"[{\"name\":\"reading\",\"type\":\"number\",\"cells\":[\"1\",\"oops\",\"3\"]}]"}},
+    {"id":"d_fnan","type":"DisplayNode","x":560,"y":2430,"init":{"label":"Frame — NaN in the cell"}},
+    {"id":"gc_nan","type":"GetColumnNode","x":300,"y":2660,"init":{"label":"Get \"reading\"","readAs":"number"},"stringLiterals":{"name":"reading"}},
+    {"id":"ag_nan","type":"AggregateNode","x":560,"y":2660,"init":{"label":"SUM","op":"sum"}},
+    {"id":"d_snan","type":"DisplayNode","x":820,"y":2660,"init":{"label":"scalar → muted NaN"}}
   ],
   "connections": [
     {"source":"p_ovf","sourceOutput":"result","target":"d_ovf","targetInput":"in"},
@@ -52,6 +57,11 @@
 
     {"source":"nv","sourceOutput":"result","target":"d_nv","targetInput":"in"},
 
-    {"source":"p_txt","sourceOutput":"result","target":"d_txt","targetInput":"in"}
+    {"source":"p_txt","sourceOutput":"result","target":"d_txt","targetInput":"in"},
+
+    {"source":"fi_nan","sourceOutput":"frame","target":"d_fnan","targetInput":"in"},
+    {"source":"fi_nan","sourceOutput":"frame","target":"gc_nan","targetInput":"frame"},
+    {"source":"gc_nan","sourceOutput":"values","target":"ag_nan","targetInput":"list"},
+    {"source":"ag_nan","sourceOutput":"result","target":"d_snan","targetInput":"in"}
   ]
 }
