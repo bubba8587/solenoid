@@ -124,6 +124,18 @@ describe("MROUND", () => {
     expect(new MRoundNode().data({ value: [11], multiple: [3] }).result).toBe(12);
     expect(new MRoundNode().data({ value: [1.3], multiple: [0.2] }).result).toBeCloseTo(1.4, 9);
   });
+  it("op up = CEILING toward +∞ (multiple defaults to 1 → next integer)", () => {
+    expect(new MRoundNode({ op: "up" }).data({ value: [10], multiple: [3] }).result).toBe(12);
+    expect(new MRoundNode({ op: "up" }).data({ value: [2.1], multiple: [1] }).result).toBe(3);
+    expect(new MRoundNode({ op: "up" }).data({ value: [-2.1], multiple: [1] }).result).toBe(-2); // toward +∞
+    expect(new MRoundNode({ op: "up" }).label).toBe("CEILING");
+  });
+  it("op down = FLOOR toward −∞", () => {
+    expect(new MRoundNode({ op: "down" }).data({ value: [10], multiple: [3] }).result).toBe(9);
+    expect(new MRoundNode({ op: "down" }).data({ value: [2.9], multiple: [1] }).result).toBe(2);
+    expect(new MRoundNode({ op: "down" }).data({ value: [-2.1], multiple: [1] }).result).toBe(-3); // toward −∞
+    expect(new MRoundNode({ op: "down" }).label).toBe("FLOOR");
+  });
 });
 
 describe("ATAN2 (Excel argument order)", () => {
