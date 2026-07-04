@@ -21,6 +21,13 @@ export function jsDateToSerial(d: Date): number {
 export function parseDateToSerial(s: string): number {
   const t = s.trim();
   if (!t) return NaN;
+  // A year token must be EXACTLY four digits — no 2-digit-year century guessing
+  // (Excel's 00–29 pivot goes stale; it's 2026 now). So an all-numeric slash/dash
+  // date whose year component is 1–3 digits is NOT a date ("1/15/26" → #VALUE!,
+  // write 2026). Named-month forms and 4-digit years are unaffected; ISO date-only
+  // ("0026-01-15") already has a 4-digit token and parses as 26 AD.
+  if (/^\d{1,2}([/-])\d{1,2}\1\d{1,3}$/.test(t)) return NaN; // M/D/YY, M-D-YY
+  if (/^\d{1,3}([/-])\d{1,2}\1\d{1,2}$/.test(t)) return NaN; // YY-M-D (short leading year)
   const d = new Date(t);
   if (Number.isNaN(d.getTime())) return NaN;
   // Zone-less text must mean the same calendar date on every machine. new Date()
@@ -114,7 +121,7 @@ export class TodayNowNode extends ClassicPreset.Node {
 export class DateConstructNode extends ClassicPreset.Node {
   label: string;
   literals: Record<string, number> = { year: 2024, month: 1, day: 1 };
-  cachedResult: number | null = null;
+  cachedResult: number | SolError | null = null;
   width = 180; height = 195;
 
   constructor(init?: { label?: string }) {
@@ -126,12 +133,25 @@ export class DateConstructNode extends ClassicPreset.Node {
     this.addOutput("result", dateOut("Date"));
   }
 
-  data(inputs: { year?: number[]; month?: number[]; day?: number[] }): { result: number } {
+  data(inputs: { year?: number[]; month?: number[]; day?: number[] }): { result: number | SolError } {
     const year  = Math.floor(inputs.year?.[0]  ?? this.literals.year  ?? 2024);
     const month = Math.floor(inputs.month?.[0] ?? this.literals.month ?? 1);
     const day   = Math.floor(inputs.day?.[0]   ?? this.literals.day   ?? 1);
-    // Date.UTC handles overflow (month 13 → Jan of next year, etc.)
-    const serial = jsDateToSerial(new Date(Date.UTC(year, month - 1, day)));
+    // A numeric year is LITERAL — no century guessing (Excel's DATE(26)=1926 pivot
+    // goes stale). DATE(26) is 26 AD (renders 15-Jan-0026 — visibly odd beats
+    // silently wrong-century). Range 1–9999, else #DOMAIN! (kills formatter garbage
+    // for year ≤ 0). Pre-1900 works via negative serials.
+    if (year < 1 || year > 9999) {
+      const err = solError("#DOMAIN!", "Year must be between 1 and 9999");
+      this.cachedResult = err;
+      return { result: err };
+    }
+    // Date.UTC handles month/day overflow (month 13 → Jan of next year) BUT remaps a
+    // 0–99 year to 1900–1999; shift that back by 1900 years (setUTCFullYear doesn't
+    // remap), preserving any overflow carry, so a small literal year lands right.
+    const d = new Date(Date.UTC(year, month - 1, day));
+    if (year <= 99) d.setUTCFullYear(d.getUTCFullYear() - 1900);
+    const serial = jsDateToSerial(d);
     this.cachedResult = serial;
     return { result: serial };
   }

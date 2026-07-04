@@ -1,6 +1,40 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { DateIfNode, DateAddNode, TimeValueNode, parseDateToSerial, serialToJsDate, jsDateToSerial, type DateIfUnit } from "./date";
+import { DateIfNode, DateAddNode, TimeValueNode, DateConstructNode, parseDateToSerial, serialToJsDate, jsDateToSerial, type DateIfUnit } from "./date";
 import { isSolError } from "../errorValue";
+
+describe("DATE — numeric year is literal (no century guessing)", () => {
+  const yr = (serial: number) => serialToJsDate(serial).getUTCFullYear();
+  it("a small year is that literal year, not 1900+year", () => {
+    const r = new DateConstructNode().data({ year: [26], month: [1], day: [15] }).result;
+    expect(isSolError(r)).toBe(false);
+    expect(yr(r as number)).toBe(26); // 26 AD, NOT 1926
+  });
+  it("a full year round-trips", () => {
+    const r = new DateConstructNode().data({ year: [2026], month: [3], day: [15] }).result;
+    expect(r).toBe(jsDateToSerial(new Date(Date.UTC(2026, 2, 15))));
+  });
+  it("year outside 1–9999 is #DOMAIN!", () => {
+    const zero = new DateConstructNode().data({ year: [0], month: [1], day: [1] }).result;
+    expect(isSolError(zero) && zero.code).toBe("#DOMAIN!");
+    const huge = new DateConstructNode().data({ year: [10000], month: [1], day: [1] }).result;
+    expect(isSolError(huge) && huge.code).toBe("#DOMAIN!");
+  });
+});
+
+describe("parseDateToSerial — a year token must be exactly four digits", () => {
+  it("a 2-digit year in a numeric date is not a date", () => {
+    expect(parseDateToSerial("1/15/26")).toBeNaN();
+    expect(parseDateToSerial("1-15-26")).toBeNaN();
+    expect(parseDateToSerial("26-01-15")).toBeNaN();
+  });
+  it("a 4-digit year still parses", () => {
+    expect(parseDateToSerial("1/15/2026")).toBe(jsDateToSerial(new Date(Date.UTC(2026, 0, 15))));
+    // "0026" is a 4-digit token → 26 AD. (Date.UTC(26,…) would remap to 1926, so
+    // build the year-26 reference with setUTCFullYear, which does not remap.)
+    const y26 = new Date(Date.UTC(2026, 0, 15)); y26.setUTCFullYear(26);
+    expect(parseDateToSerial("0026-01-15")).toBe(jsDateToSerial(y26));
+  });
+});
 
 // Dates flow through the graph as Excel-style serials (1900 system, where the
 // JS epoch is serial 25569). Build them the same way the date nodes do.
