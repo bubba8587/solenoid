@@ -1,9 +1,9 @@
 // Whether the canvas is currently far enough zoomed out that node cards should
-// swap to a simplified representation (Settings toggle "semanticZoom", gated on
-// a mip level from computeIdealMipLevel — see htmlCanvasRenderer.ts — not a raw
-// zoom-scale threshold, so "far" means the same thing here as it does to the
-// HTML-in-Canvas renderer's own LOD). Canvas.tsx recomputes this on every pan/
-// zoom event and on the setting toggling; NodeShell reads it to add a CSS class.
+// swap to a simplified representation (Settings toggle "semanticZoom", gated on a
+// raw CSS-scale threshold — SEMANTIC_ZOOM_SCALE in Canvas.tsx's syncSemanticZoomFor
+// — so it fires at the same APPARENT zoom on every display, which is what body-text
+// legibility depends on). Canvas.tsx recomputes this on every pan/zoom event and on
+// the setting toggling; NodeShell reads it to add a CSS class.
 import { createNotifier } from "./storeKit";
 
 let _far = false;
