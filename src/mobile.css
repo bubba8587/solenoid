@@ -26,30 +26,23 @@ html.is-mobile {
      — hide it so the corner is free for the socket legend. */
   .solenoid-minimap { display: none; }
 
-  /* ── App bar: the single top row on mobile. The menu bar collapses into the
-        hamburger that lives here, and the toolbar drops the controls the menus
-        already cover (save/open/tidy/function reference, find) plus the niche
-        cable-shape switch and decorative spacers — leaving the wordmark, example
-        picker, and theme/accent. The app bar also carries the notch inset now
-        that it's the topmost row. ── */
-  /* Row B — the app bar is a NEUTRAL tools row (the accent lives on Row A, the menu
-     bar). Its bottom edge is the separator to the canvas: mode-keyed (dark line on
-     the light canvas, light line on the dark) + a soft shadow, so it reads in both
-     themes. The notch/safe-area inset is on Row A above, so no top padding here. */
+  /* ── Top chrome = TWO rows: a thin ACCENT strip (the menu bar, Row A, carrying
+        just the document name + caret) over a NEUTRAL tools row (the app bar, Row B:
+        menu · navigator · layout tools … accent · reference · settings). Row A holds
+        the notch inset; Row B's bottom edge is the accent-underline separator. ── */
   .solenoid-topbar {
+    /* A touch taller than the desktop 44px so the accent underline reads as a real
+       separator (not a tint of the canvas) and the buttons sit visibly centered. */
+    height: 52px;
     padding: 0 8px;
     gap: 4px;
     /* OPAQUE surface (not the translucent --panel-bg) so the canvas never shows
-       through the tools row. */
+       through. Separator = the DESKTOP one (hairline + 2px ACCENT underline, from
+       the base .solenoid-topbar rule) — it reads cleanly now that Row B is neutral,
+       so we no longer override border-bottom / box-shadow here. */
     background: var(--surface);
-    border-bottom: 2px solid rgba(0, 0, 0, 0.22);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
-  }
-  &[data-theme="dark"] .solenoid-topbar {
-    border-bottom-color: rgba(255, 255, 255, 0.11);
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
   }
   /* File ops (Save/Open) stay in the hamburger sheet; the layout GROUP (Tidy /
      Cleanup / collapse-all / snap) is surfaced on Row B now (there's room). */
@@ -151,8 +144,8 @@ html.is-mobile {
   .solenoid-menubar__center .solenoid-doctitle__caret { max-width: none; }
   .solenoid-menubar__sheet {
     position: absolute;
-    /* Below BOTH top rows now: accent Row A (~30px) + neutral Row B (44px). */
-    top: calc(74px + env(safe-area-inset-top));
+    /* Below BOTH top rows: accent Row A (~30px) + neutral Row B (52px). */
+    top: calc(82px + env(safe-area-inset-top));
     left: 8px;
     /* Size to the widest content (so trimming a section actually narrows the
        sheet), capped so it never dominates the screen. */
@@ -224,7 +217,7 @@ html.is-mobile {
         controls only — Fit + Lock, like desktop. Zoom in/out are dropped (pinch
         does it); the cable-flourish easter-egg is desktop-only. ── */
   .solenoid-nav {
-    top: calc(84px + env(safe-area-inset-top));
+    top: calc(92px + env(safe-area-inset-top));
     gap: 2px;
     padding: 3px;
   }
@@ -256,7 +249,7 @@ html.is-mobile {
      bar (it opens the navigator focused on its search field). */
   .solenoid-outline__open-pill { display: none; }
   .solenoid-outline {
-    top: calc(80px + env(safe-area-inset-top));
+    top: calc(88px + env(safe-area-inset-top));
     bottom: calc(26px + env(safe-area-inset-bottom));
     width: min(248px, 84vw);
   }
