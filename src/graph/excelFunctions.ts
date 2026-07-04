@@ -531,23 +531,8 @@ registerInternal("CONVERT", (x, from, to) => {
 // (EXACT is the case-sensitive escape hatch).
 const lookupEq = (a: unknown, b: unknown): boolean =>
   typeof a === "string" && typeof b === "string" ? a.toLowerCase() === b.toLowerCase() : a === b;
-// Ordering compare for approximate matches: numbers numerically, strings
-// case-insensitively; a cross-type or null pair is incomparable (skipped).
-const lookupLe = (a: unknown, b: unknown): boolean | null => {
-  if (typeof a === "number" && typeof b === "number") return a <= b;
-  if (typeof a === "string" && typeof b === "string") return a.toLowerCase() <= b.toLowerCase();
-  return null;
-};
 const exactIndex = (lookup: unknown, keys: unknown[]): number =>
   keys.findIndex((k) => lookupEq(k, lookup));
-// Excel approximate match: LARGEST value ≤ lookup (assumes the list ascending).
-const approxIndex = (lookup: unknown, keys: unknown[]): number => {
-  let best = -1;
-  for (let i = 0; i < keys.length; i++) {
-    if (lookupLe(keys[i], lookup) === true) best = i;
-  }
-  return best;
-};
 const NA_NO_MATCH = () => solError("#N/A", "No match found in the lookup list");
 
 registerInternal("XLOOKUP", (lookup, keys, values, ifNotFound) => {
@@ -562,42 +547,15 @@ registerInternal("XMATCH", (lookup, keys) => {
   const idx = exactIndex(lookup, ks);
   return idx >= 0 ? idx + 1 : solError("#N/A", "No match found");
 });
-// VLOOKUP/HLOOKUP over a 1-D list: the "table" is one column/row, so the index
-// argument must be 1 (anything else is Excel's #REF!). Default match is
-// approximate (TRUE), exactly like Excel — pass FALSE for exact.
-const flatLookup = (fnName: string) => (lookup: unknown, table: unknown, index: unknown, approx: unknown) => {
-  const ks = Array.isArray(table) ? table : [table];
-  const idxArg = index === undefined ? 1 : toNum(index);
-  if (Number.isNaN(idxArg)) return VALUE(fnName);
-  if (idxArg !== 1) return solError("#REF!", `${fnName}: a 1-D list has only ${fnName === "VLOOKUP" ? "column" : "row"} 1`);
-  const useApprox = approx === undefined ? true : isTrue(approx);
-  const at = useApprox ? approxIndex(lookup, ks) : exactIndex(lookup, ks);
-  return at >= 0 ? ks[at] : NA_NO_MATCH();
-};
-registerInternal("VLOOKUP", flatLookup("VLOOKUP"));
-registerInternal("HLOOKUP", flatLookup("HLOOKUP"));
-registerInternal("LOOKUP", (lookup, vector, resultVector) => {
-  const ks = Array.isArray(vector) ? vector : [vector];
-  const vs = resultVector === undefined ? ks : Array.isArray(resultVector) ? resultVector : [resultVector];
-  const at = approxIndex(lookup, ks);
-  return at >= 0 && at < vs.length ? vs[at] : NA_NO_MATCH();
-});
-registerInternal("MATCH", (lookup, keys, matchType) => {
-  const ks = Array.isArray(keys) ? keys : [keys];
-  const mt = matchType === undefined ? 1 : toNum(matchType);
-  if (Number.isNaN(mt)) return VALUE("MATCH");
-  let at = -1;
-  if (mt === 0) at = exactIndex(lookup, ks);
-  else if (mt > 0) at = approxIndex(lookup, ks);
-  else {
-    // -1: SMALLEST value ≥ lookup (assumes the list descending) — the last such
-    // entry in a descending list is the smallest.
-    for (let i = 0; i < ks.length; i++) {
-      if (lookupLe(lookup, ks[i]) === true) at = i;
-    }
-  }
-  return at >= 0 ? at + 1 : solError("#N/A", "No match found");
-});
+// Classic lookups are eliminated permanently (docs/decisions.md D10 — an
+// eliminated function stays eliminated on every surface). Typing one in a formula
+// doesn't silently work; it redirects to the current-Excel replacement. Registered
+// as internals so this wins over Formula.js's own VLOOKUP etc. INDEX stays (current
+// Excel, never superseded).
+registerInternal("VLOOKUP", () => solError("#NAME?", "Use XLOOKUP"));
+registerInternal("HLOOKUP", () => solError("#NAME?", "Use XLOOKUP"));
+registerInternal("LOOKUP", () => solError("#NAME?", "Use XLOOKUP"));
+registerInternal("MATCH", () => solError("#NAME?", "Use XMATCH"));
 registerInternal("INDEX", (list, row, col) => {
   const ks = Array.isArray(list) ? list : [list];
   const r = toNum(row);
