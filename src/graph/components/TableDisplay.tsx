@@ -12,9 +12,14 @@ type Cell = number | string | boolean | null | SolError;
 type Mat = Cell[][];
 
 function fmtNum(v: number): string {
-  if (Number.isNaN(v)) return "N/A";
+  if (Number.isNaN(v)) return "NaN"; // dirty data, not the #N/A error — tinted at the cell
   if (!Number.isFinite(v)) return v > 0 ? "∞" : "-∞";
   return Number.isInteger(v) ? String(v) : v.toFixed(3).replace(/\.?0+$/, "");
+}
+
+/** A NaN cell (dirty numeric data) — for the per-cell tint at the td. */
+function isNanCell(v: Cell): boolean {
+  return typeof v === "number" && Number.isNaN(v);
 }
 
 /** Render one cell. Text passes through; a logical shows TRUE/FALSE; a date matrix
@@ -89,11 +94,14 @@ export function TableDisplay({ table, label, onSave, full, kind }: {
         <tbody>
           {table.slice(0, maxR).map((row, i) => (
             <tr key={i}>
-              {row.slice(0, maxC).map((v, j) => (
-                <td key={j} style={{ padding: full ? "2px 7px" : "1px 3px", textAlign: typeof v === "string" ? "left" : "right", fontSize: full ? 13 : 12, fontFamily: "var(--font-mono)", color: "var(--text)", borderRight: "1px solid var(--border)", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {row.slice(0, maxC).map((v, j) => {
+                const nan = isNanCell(v);
+                return (
+                <td key={j} className={nan ? "solenoid-nan-cell" : undefined} title={nan ? "Not a number — an undefined value in the data" : undefined} style={{ padding: full ? "2px 7px" : "1px 3px", textAlign: typeof v === "string" ? "left" : "right", fontSize: full ? 13 : 12, fontFamily: "var(--font-mono)", color: "var(--text)", borderRight: "1px solid var(--border)", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {fmtCell(v, kind)}
                 </td>
-              ))}
+                );
+              })}
               {!full && cols > maxC && <td style={{ padding: "1px 3px", color: "var(--text-muted)", fontSize: 10, width: 14 }}>…</td>}
             </tr>
           ))}

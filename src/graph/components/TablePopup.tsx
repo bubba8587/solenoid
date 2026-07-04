@@ -396,8 +396,13 @@ export function TablePopup() {
                 {displayGrid.map((row, r) => (
                   <tr key={r}>
                     <th className="table-popup__rowhead">{r + 1}</th>
-                    {Array.from({ length: cols }, (_, c) => (
-                      <td key={c} className="table-popup__cell">
+                    {Array.from({ length: cols }, (_, c) => {
+                      // In a NUMERIC column the shown string "NaN" can only be a real
+                      // NaN (dirty data) — a text column is excluded, and the editable
+                      // raw view shows the source token ("oops"), never "NaN".
+                      const nan = !isTextType(colTypeAt(c)) && (row[c] ?? "") === "NaN";
+                      return (
+                      <td key={c} className={`table-popup__cell${nan ? " table-popup__cell--nan" : ""}`} title={nan ? "Not a number — an undefined value in the data" : undefined}>
                         <input
                           className={isTextType(colTypeAt(c)) ? "table-popup__input table-popup__input--text" : "table-popup__input"}
                           value={row[c] ?? ""}
@@ -407,7 +412,8 @@ export function TablePopup() {
                           onChange={(e) => setCell(r, c, e.target.value)}
                         />
                       </td>
-                    ))}
+                      );
+                    })}
                   </tr>
                 ))}
               </tbody>

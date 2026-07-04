@@ -502,6 +502,15 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   font-style: italic;
 }
 
+/* Same dirty-data NaN affordance at a TABLE/FRAME cell (FrameDisplay / TableDisplay
+   tds): a faint neutral tint on the cell + muted italic text, so a NaN cell reads
+   as dirty data in place — not error-red, not a normal value. */
+.solenoid-nan-cell {
+  background: color-mix(in srgb, var(--text-dim) 12%, transparent);
+  color: var(--text-dim) !important;
+  font-style: italic;
+}
+
 /* IS-check explanation panel: when an error value is wired in, the node shows
    the code + producer message + the long ERROR_EXPLANATIONS text, making
    ISERROR the place to read an error, not just test for one. */

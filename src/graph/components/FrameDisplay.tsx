@@ -7,11 +7,17 @@ import { isSolError, type SolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import { flyToNode } from "../flyToNode";
 
+// A NaN cell is dirty DATA (an undefined value from an import), not the #N/A
+// error — render the literal "NaN", tinted at the cell (see the td below).
+function isNanCell(v: FrameCell): boolean {
+  return typeof v === "number" && Number.isNaN(v);
+}
+
 function fmtCell(v: FrameCell, type: FrameColType = "number"): string {
   const c = formatFrameCell(type, v); // date serials → date strings
   if (c === null || c === undefined || c === "") return "";
   if (typeof c === "string") return c;
-  if (Number.isNaN(c)) return "N/A";
+  if (Number.isNaN(c)) return "NaN";
   if (!Number.isFinite(c)) return c > 0 ? "∞" : "-∞";
   return Number.isInteger(c) ? String(c) : c.toFixed(3).replace(/\.?0+$/, "");
 }
@@ -81,11 +87,15 @@ export function FrameDisplay({ frame, label, onSave, source, onSaveSource, full,
         <tbody>
           {Array.from({ length: maxR }, (_, i) => (
             <tr key={i}>
-              {frame.columns.slice(0, maxC).map((c, j) => (
-                <td key={j} style={{ padding: full ? "2px 8px" : "1px 4px", textAlign: c.type === "string" ? "left" : "right", fontSize: full ? 13 : 12, fontFamily: "var(--font-mono)", color: "var(--text)", borderRight: "1px solid var(--border)", whiteSpace: full ? "nowrap" : undefined, ...(full ? {} : { overflow: "hidden", textOverflow: "ellipsis" }) }}>
-                  {fmtCell(c.values[i] ?? null, c.type)}
+              {frame.columns.slice(0, maxC).map((c, j) => {
+                const cell = c.values[i] ?? null;
+                const nan = isNanCell(cell);
+                return (
+                <td key={j} className={nan ? "solenoid-nan-cell" : undefined} title={nan ? "Not a number — an undefined value in the data" : undefined} style={{ padding: full ? "2px 8px" : "1px 4px", textAlign: c.type === "string" ? "left" : "right", fontSize: full ? 13 : 12, fontFamily: "var(--font-mono)", color: "var(--text)", borderRight: "1px solid var(--border)", whiteSpace: full ? "nowrap" : undefined, ...(full ? {} : { overflow: "hidden", textOverflow: "ellipsis" }) }}>
+                  {fmtCell(cell, c.type)}
                 </td>
-              ))}
+                );
+              })}
               {extraCols && <td style={{ color: "var(--text-muted)", fontSize: 10 }}>…</td>}
             </tr>
           ))}
