@@ -98,19 +98,12 @@ html.perf-no-minimap .solenoid-minimap { display: none; }
   filter: none;
 }
 
-/* Drop raster quality: text smoothing + AA on every moving SVG EXCEPT cables (jaggy
-   curves are the most visible loss, so cables keep AA via :not). Covers the socket
-   dots (normally geometricPrecision), node icons, and chart/gauge/sparkline interiors.
-   Restored crisp on settle. */
-.solenoid-canvas--panning {
-  text-rendering: optimizeSpeed;
-  /* macOS-only (no-op elsewhere); the most aesthetically aggressive knob — delete
-     this one line if labels read too thin WHILE MOVING. */
-  -webkit-font-smoothing: none;
-}
-.solenoid-canvas--panning svg:not(.solenoid-cable-svg) {
-  shape-rendering: optimizeSpeed;
-}
+/* (Removed 2026-07-04) The pan-time raster-quality cut — text-rendering:
+   optimizeSpeed, -webkit-font-smoothing: none, and shape-rendering: optimizeSpeed
+   on moving SVG — used to drop AA while panning. It made labels/dots visibly
+   coarsen mid-pan for a paint saving that wasn't worth the flicker; per author,
+   dropped. The other --panning cuts (box-shadow, flow-bead pause, backdrop-filter,
+   conduit drop-shadow) stay — those are expensive paint ops, not quality knobs. */
 
 /* backdrop-filter (the selected Conduit toolbar's blur) re-samples + blurs the
    backdrop every frame — one of the priciest paint ops — and moves with the pan. */

@@ -43,6 +43,12 @@ Four author-reported bugs, all root-caused rather than patched-over:
   OUTPUT (right edge) at the drop → shift left by the card width. Width isn't known until the card
   renders, so measure `element.offsetWidth` if already laid out (no jump), else place naive and nudge
   left on the next rAF. (`handleMenuSelect` in `Canvas.tsx`.)
+- **Dropped the pan-time anti-aliasing cut** (`canvas.css`). The `.solenoid-canvas--panning` block
+  set `text-rendering: optimizeSpeed` + `-webkit-font-smoothing: none` + `shape-rendering:
+  optimizeSpeed` on moving SVG to save paint while panning; it made labels/dots visibly coarsen
+  mid-pan and the author judged the flicker not worth the saving. The other `--panning` cuts
+  (box-shadow, flow-bead pause, backdrop-filter, conduit drop-shadow) stay — real paint ops, not
+  quality knobs.
 
 ### Top-bar control-size consistency + navigator bottom clearance (2026-07-04)
 - **Desktop + mobile:** the `.solenoid-topbar__group` pill had `padding: 3px`, making it 36px tall
