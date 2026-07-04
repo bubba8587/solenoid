@@ -24,8 +24,9 @@ import "./TopBar.css";
  * NavMenu, since they act on the viewport rather than the document.
  */
 export function TopBar() {
-  // Re-render on group collapse/expand so the all-groups toggle's icon flips,
-  // matching the Navigator button (shared handler — see OutlinePanel).
+  // Re-render on group collapse/expand so the all-groups toggle's title flips
+  // (Expand ↔ Collapse), matching the Navigator button (shared handler — see
+  // OutlinePanel).
   useSyncExternalStore(groupCollapseStore.subscribe, groupCollapseStore.version);
   const { allCollapsed } = groupCollapseSummary();
   // Snap-to-grid lives with the layout tools (it's about node placement), not the
@@ -137,13 +138,17 @@ export function TopBar() {
           aria-label={allCollapsed ? "Expand all groups" : "Collapse all groups"}
           onClick={() => toggleAllGroups()}
         >
+          {/* Lucide list-chevrons-down-up — bidirectional, so it reads as an
+              expand/collapse toggle in both states (no rotation; the title flips). */}
           <svg
             viewBox="0 0 16 16" width="14" height="14" fill="none"
             stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"
-            style={{ transform: allCollapsed ? "rotate(180deg)" : undefined }}
           >
-            <path d="M4 9 L8 5 L12 9" />
-            <path d="M4 13 L8 9 L12 13" />
+            <path d="M2 4 H8" />
+            <path d="M2 8 H8" />
+            <path d="M2 12 H8" />
+            <path d="M10 4 L12 6 L14 4" />
+            <path d="M10 12 L12 10 L14 12" />
           </svg>
         </button>
         {/* Snap to grid — node placement, so it belongs with the layout tools. */}
