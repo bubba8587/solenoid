@@ -83,6 +83,11 @@ src/
 | `nodes/cube.ts` | Cube nodes: Build Cube (extensible any-cell constructor) + Nest Join (nest two frames on a key) |
 | `cubePopupStore.ts` + `components/CubePopup.tsx` / `CubeChip.tsx` / `CubeDisplay.tsx` / `cubeCell.tsx` | Cube drill-in popup (depth + breadcrumb), result-box chip + preview, per-cell rendering |
 | `components/ResultDisplay.tsx` | Dispatches a result box to CubeDisplay / FrameDisplay / ValueDisplay by container kind (used by `makeNodeComponent`) |
+| `chartValue.ts` / `mermaidValue.ts` | First-class FIGURE values (`__chart` / `__mermaid`) riding the green `chart` "Special" socket; a node output, embedded in Reports |
+| `nodes/visual.ts` + `components/{ChartNode,MermaidNode,MermaidView}.tsx` | Visual nodes (Sparkline/Chart/Gauge/Heatmap/**Mermaid**); `MermaidView` dynamically imports mermaid.js (heavy) only when a diagram is on screen |
+| `components/inlineRefDisplay.tsx` | The ONE render path for a Report/Note inline `` `=name` `` ref → live value by kind (scalar/frame/chart/mermaid/lambda-KaTeX); `CollapsibleFigure` (Report embeds fold); `InlineRefBody` swaps `=name` code spans + `![[note]]` embeds via imperative innerHTML + portals |
+| `compositeEditorStore.ts` + `components/CompositeEditorOverlay.tsx` | Composite drill-in: a breadcrumb STACK of composite instances (multi-layer, `Canvas ▸ A ▸ B`); full-bleed overlay; recompute retargets `stack[0]`; `compositeLogic.ts` = create/unpack |
+| `presentationStore.ts` + `components/PresentationOverlay.tsx` | Presenter mode: full-screen slideshow, hides chrome (`html.solenoid-presenting`), flies the camera per step (click/Space/→/←/Esc) |
 
 ### Relational engine (WS2/WS3 — the FrameBackend seam + verbs)
 | Module | Role |

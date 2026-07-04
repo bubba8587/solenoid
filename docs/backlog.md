@@ -94,10 +94,15 @@ design) — **wired end-to-end and sound**. Remaining loose ends:
 - [ ] Static export fidelity nits: captured chart SVGs relying on class/CSS-var
   coloring may recolor in the exported doc (only `buildExportCss` ships); the canvas
   capture takes every on-canvas chart >40px, not just report-referenced ones.
-- [ ] Drill-in editor v2 niceties: no undo/redo inside the overlay; the outer
-  cables into a port DELETED inside the drill-in are dropped on close (by design,
-  but silently); output-marker value box inside a Simulation container shows "—"
-  (the series renders on the outer card only).
+- [~] Drill-in editor v2 niceties — PARTLY DONE 2026-07-04. Now: undo/redo IS in the
+  overlay; **full-bleed + multi-layer drill-in with a `Canvas ▸ A ▸ B` breadcrumb**
+  (nested composites push, click/Esc drills up — `compositeEditorStore` stack); boundary
+  values render by kind (frame/cube tables, chart/mermaid figures — was `[object Object]`);
+  **unpack crash fixed** (it mutated the internal editor, throwing in rete-history once the
+  editor had been opened). Still open: outer cables into a port DELETED inside the drill-in
+  are dropped on close (by design, but silently); the Simulation-container output series
+  renders on the outer card only; and the author's ask to reroute the REAL app top toolbar /
+  mobile bottom bar to the active subgraph (the drill-in keeps its own header toolbar).
 
 ---
 
@@ -214,7 +219,12 @@ not whole-doc/selection narration; only build if the composition approach proves
 on a handful of node types, since the naive version might need a bespoke prose string
 per catalog entry) · #51 IN, very light (Presentation node — ordered list of steps,
 each step = title + an explicit node set picked like a navigator list; camera
-zoom/pan only, no isolate/highlight/dim) · #52 IN, COLORS ONLY (branded output — no
+zoom/pan only, no isolate/highlight/dim) — **PRESENTER MODE DONE 2026-07-04**: the
+steps flew the camera but the controls lived on the node card (which flew
+off-screen), so it was useless. Added a full-screen presenter overlay
+(`presentationStore` + `PresentationOverlay`): "▶ Present" hides the app chrome
+(restored on exit), flies each step, advances on click/Space/→, ←/Esc; see dev-notes.
+· #52 IN, COLORS ONLY (branded output — no
 logo, no custom fonts, just a color override on report/published-artifact surfaces) ·
 #53 OUT (shared definitions/linked-graph library — preferred path is a pack shipping
 a custom Constants node instead, consistent with #5's packs-only distribution story) ·
@@ -514,7 +524,8 @@ section is decision-recorded. The QUEUE when resuming, in order:
 - [ ] **Bundle splitting (author confirmed).** Lazy-load recharts, KaTeX, and ELK (the
   pixi pattern, already split correctly) — main chunk 4.0 MB / 1.2 MB gz shrinks
   substantially; first use of chart/formula-preview/Tidy after a cold load pays a
-  one-time fetch (imperceptible on desktop, a beat on web).
+  one-time fetch (imperceptible on desktop, a beat on web). (Mermaid, added 2026-07-04,
+  is ALREADY lazy-imported via `MermaidView` — the pattern to copy for recharts/KaTeX.)
 - [ ] **Per-doc autosave keys (author confirmed, no objection).** One localStorage key
   per document + a light index, each with its own two-slot rotation — an edit
   autosaves only that doc; a bloated doc exhausts only its own quota headroom. No
