@@ -147,17 +147,12 @@ html.is-mobile {
   /* The accent-swatch dot: ink ring so the current-accent dot reads on the bar
      (its fill is the accent, i.e. the bar color). */
   .solenoid-apptools__paint-dot { border-color: var(--accent-ink); }
-  /* Match the icon weight to the bottom bar + overlay pills. The apptools glyphs
-     are authored at 14px / stroke 1.4 (fine for the small desktop bar → ~0.82px
-     effective); the touch bar's icons are 20px / stroke 2 (~1.67px). Scale these up
-     to match so the top and bottom bars read as one icon set (CSS stroke-width wins
-     over the SVG attribute). The app-menu mark is a masked logo, not a stroked icon,
-     so it's untouched. */
-  .solenoid-apptools__btn svg {
-    width: 20px;
-    height: 20px;
-    stroke-width: 2;
-  }
+  /* Thicken the icon stroke to match the bottom bar + overlay pills WITHOUT
+     enlarging the glyphs (they stay at their authored 14px). Authored stroke 1.4
+     in a 24 viewBox at 14px is only ~0.82px effective — about half the touch bar's
+     ~1.67px; 2.6 here lands ~1.5px, reading as the same icon set. CSS stroke-width
+     wins over the SVG attribute. The app-menu mark is a masked logo, not stroked. */
+  .solenoid-apptools__btn svg { stroke-width: 2.6; }
 
   /* ── Menu bar: out of flow so it claims no row of its own — it exists only to
         host the sheet the hamburger opens (a section per menu). ── */
