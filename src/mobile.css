@@ -22,6 +22,14 @@ html.is-mobile {
   /* ── The bottom action bar (Undo/Redo/Add/Select/Delete) becomes visible. ── */
   .solenoid-mobile-bar { display: flex; }
 
+  /* The app container must track the VISUAL viewport (dvh), not the layout viewport
+     (vh includes the strip behind the mobile URL bar). The bottom action bar is
+     position:fixed → visual-viewport-anchored; the outline navigator is absolute
+     inside .solenoid-app, so if that's 100vh the navigator anchors to the LAYOUT
+     bottom — below the fixed bar by exactly the URL-bar height, which is why it
+     overflowed the bar on-device but never in a (URL-bar-less) emulator. */
+  .solenoid-app { height: 100dvh; }
+
   /* The minimap lives bottom-right and is of little use on a phone-sized canvas
      — hide it so the corner is free for the socket legend. */
   .solenoid-minimap { display: none; }

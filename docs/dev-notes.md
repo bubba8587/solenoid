@@ -9,8 +9,16 @@ Running notes on direction, deferred work, and non-obvious technical gotchas.
   mobile the surfaced layout-group buttons were 32px vs the apptools' 34px; bumped to 34 so all Row
   B controls are 34px buttons / 36px pills. (This is about total SIZE, not corner radius — both
   families already use 50% / 999px.)
-- **Navigator** panel `bottom` was `26px + safe-area`, so its list ran under the ~57px bottom
-  action bar; raised to `68px + safe-area` to clear it (verified: outline bottom 712 < bar top 723).
+- **Navigator overflowed the bottom bar on-device (vh vs dvh, THE real cause).** `.solenoid-app`
+  (the outline's absolute containing block) was `height: 100vh` — the LAYOUT viewport, which
+  includes the strip behind the mobile URL bar. The bottom action bar is `position: fixed;
+  bottom: 0` → anchored to the VISUAL viewport bottom. So the outline (anchored to the 100vh
+  bottom) sat *below* the fixed bar by exactly the URL-bar height, overflowing it on ANY doc.
+  A URL-bar-less emulator has vh == dvh, so it never reproduced (chased a red-herring FAB-margin
+  bump first). Fix: `html.is-mobile .solenoid-app { height: 100dvh }` so the container tracks the
+  visual viewport, matching the fixed bar. The outline's own `bottom` is 84px (clears the bar + the
+  raised + FAB, which sticks ~8px proud with a shadow). Lesson: any absolute overlay meant to sit
+  above a `position: fixed` mobile bar must anchor to a `dvh`-sized box, or it drifts by the URL bar.
 
 ### Mobile chrome redesign — two-row top, roles split by zone (2026-07-04, SUPERSEDES the accent-app-bar notes below)
 Reorganized mobile chrome to mirror desktop's separation of concerns, into three zones:
