@@ -198,14 +198,20 @@ export function CompositeComponent({ data: node, emit }: NodeProps<CompositeNode
         const port = node.outputs[p.id];
         if (!port) return null;
         const value = node.cachedOutputs[p.id] ?? null;
+        // Label ABOVE its value box, stacked — a hero ValueDisplay box is too tall
+        // to sit horizontally beside a label in a compact io-row (it pushed the box
+        // off the card). The MeasuredSocketRow wraps only the box (height:auto via
+        // --output modifier), so the output dot centers on the box, not the label.
         return (
-          <MeasuredSocketRow key={p.id} side="output" socketKey={p.id} nodeId={node.id} emit={emit} payload={port.socket}>
+          <div key={p.id} className="solenoid-composite__output">
             <span className="solenoid-node__io-label">{p.label}</span>
-            {/* Scalar/list/error/logical render correctly; a frame/cube output
-                falls back to a plain object stringification — a known gap for
-                the shell milestone (frame-holding composites are a follow-up). */}
-            <ValueDisplay value={value as unknown as DisplayValue} />
-          </MeasuredSocketRow>
+            <MeasuredSocketRow side="output" socketKey={p.id} nodeId={node.id} emit={emit} payload={port.socket}>
+              {/* Scalar/list/error/logical render correctly; a frame/cube output
+                  falls back to a plain object stringification — a known gap for
+                  the shell milestone (frame-holding composites are a follow-up). */}
+              <ValueDisplay value={value as unknown as DisplayValue} />
+            </MeasuredSocketRow>
+          </div>
         );
       })}
       {node.inputPorts.length === 0 && node.outputPorts.length === 0 && (

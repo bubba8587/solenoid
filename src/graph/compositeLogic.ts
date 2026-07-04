@@ -172,9 +172,14 @@ export async function unpackComposite(editor: Editor, area: Area, compositeId: s
   beginGraphRebuild();
   try {
     for (const c of outerConns) await editor.removeConnection(c.id);
-    for (const c of internalConns) await composite.internalEditor.removeConnection(c.id);
+    // Do NOT mutate the internal editor — it (and its area/history plugin from a
+    // prior drill-in open) is discarded whole with the composite. Removing nodes
+    // from it fired `noderemoved` at that history plugin, which throws Error("node")
+    // for any node it never saw *created* — and the internal nodes predate the
+    // plugin (they're hydrated at collapse/load), so EVERY internal removal threw
+    // once the editor had been opened. Moving the shared node INSTANCES onto the
+    // outer editor is all that's needed; the internal editor is dropped as garbage.
     for (const n of internalNodes) {
-      await composite.internalEditor.removeNode(n.id);
       if (markerIds.has(n.id)) continue; // boundary markers dissolve with the card
       await editor.addNode(n as SolenoidNode);
       const rel = composite.internalPositions[n.id];

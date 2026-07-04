@@ -594,6 +594,22 @@ html.solenoid-semantic-zoom .solenoid-node__body {
   flex: 0 0 auto;
 }
 
+/* Composite output: label stacked ABOVE its hero value box (not beside it — a
+   full-height ValueDisplay box doesn't fit a 22px io-row and got pushed off the
+   card). The measured row holds only the box and grows to it, so the output dot
+   still centers on the box. */
+.solenoid-composite__output {
+  margin-top: 8px;
+}
+.solenoid-composite__output > .solenoid-node__io-label {
+  display: block;
+  margin-bottom: 3px;
+}
+.solenoid-composite__output > .solenoid-node__io-row {
+  height: auto;
+  padding: 0;
+}
+
 
 /* Inline literal field — shown on an input row when no cable is wired.
    Compact so it fits the 22px row the absolute socket placement expects. */
