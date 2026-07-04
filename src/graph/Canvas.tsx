@@ -1310,6 +1310,27 @@ export function Canvas() {
       // Make the minimap collapse-aware: hide members folded into a collapsed
       // group and size the group to its compact rendered box (see Minimap.tsx).
       (minimap as unknown as { getNodesRect: () => unknown }).getNodesRect = collapsedAwareNodesRect;
+      // rAF-coalesce the plugin's render. It fires render() SYNCHRONOUSLY on every
+      // translated/zoomed/nodetranslated event, which during a continuous drag
+      // arrive in bursts not aligned to paint frames — each one re-reads layout
+      // (getNodesRect touches offsetWidth/Height for collapsed groups) and re-
+      // normalizes every node against a bounding box that shifts as the dragged
+      // node moves, so the map jittered. Collapsing to at most one render per frame
+      // gives a smooth, frame-aligned cadence (backlog: "smoothness over jump-to-
+      // latest") and drops the redundant mid-frame layout reads.
+      {
+        const mm = minimap as unknown as { render: () => void };
+        const rawRender = mm.render.bind(minimap);
+        let rafPending = 0;
+        mm.render = () => {
+          if (rafPending) return;
+          rafPending = requestAnimationFrame(() => {
+            rafPending = 0;
+            // A doc switch can destroy the area between schedule and fire.
+            if (!destroyed) rawRender();
+          });
+        };
+      }
       const arrange = new AutoArrangePlugin<Schemes>();
       // Port positions drive ELK's vertical node alignment (it lines up connected
       // ports). The stock `classic` preset puts OUTPUT ports at the node TOP and

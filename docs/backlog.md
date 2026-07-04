@@ -88,9 +88,12 @@ As-Of Join/Lookup, Note inline refs, Session History, Report/overlay/static expo
 Presentation, branded colors, Cube Rollup + BOM seed, Parquet source (desktop-only by
 design) — **wired end-to-end and sound**. Remaining loose ends:
 
-- [ ] The `chart` **object socket is dead infrastructure** — defined, colored, and
-  compatibility-tested, but no node emits or accepts it (`chartIn`/`chartOut` have
-  zero call sites; ChartNode still passes through `numlist`). Wire it or delete it.
+- [x] ~~The `chart` object socket is dead infrastructure.~~ **DONE — the socket is
+  wired end-to-end.** `chartOut` is emitted by ChartNode (`visual.ts:84`) and Mermaid
+  (`visual.ts:127`); it's an identity-only object type (self + `any`, like `lambda`),
+  so Report inline-refs and Display consume it through their `any` inputs. (The stray
+  `chartIn` helper in `shared.ts` has no call site because acceptance goes through `any`,
+  not a typed chart input — harmless, not dead infra.)
 - [ ] Static export fidelity nits: captured chart SVGs relying on class/CSS-var
   coloring may recolor in the exported doc (only `buildExportCss` ships); the canvas
   capture takes every on-canvas chart >40px, not just report-referenced ones.
@@ -531,12 +534,14 @@ section is decision-recorded. The QUEUE when resuming, in order:
   autosaves only that doc; a bloated doc exhausts only its own quota headroom. No
   migration (pre-alpha): old whole-library autosaves abandoned at the format change;
   disk saves untouched; the live session re-autosaves immediately under new keys.
-- [ ] **Minimap: z-order bug** — some nodes render OVER the minimap (author report
-  2026-07-02). Investigate the stacking context (area-plane z vs the minimap plugin's
-  layer).
-- [ ] **Minimap: smoothing/update rate** — visibly jumpy under continuous mouse drag
-  (author report 2026-07-02). Consider rAF-throttled updates + interpolation, mindful
-  of the never-degrade-cables rule's spirit (smoothness over jump-to-latest).
+- [x] **Minimap: z-order bug** — done. `.solenoid-minimap` had no `z-index` (auto/0),
+  so positioned node cards painted later in DOM order rendered over it; gave it
+  `z-index: 100` to match its sibling socket legend (`Minimap.css`).
+- [x] **Minimap: smoothing/update rate** — done. The plugin fired `render()`
+  synchronously on every translated/zoomed/nodetranslated event (bursts not aligned to
+  paint frames, each re-reading layout + re-normalizing against a shifting bounding
+  box). rAF-coalesced its `render` to at most one per frame in `Canvas.tsx` (guarded by
+  the effect's `destroyed` flag so a pending frame can't fire into a torn-down area).
 
 ---
 
