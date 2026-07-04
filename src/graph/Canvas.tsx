@@ -1070,6 +1070,16 @@ export function Canvas() {
       // Shift-drag (desktop) or touch select mode (mobile) starts a lasso; a
       // plain primary-button drag otherwise falls through to the area pan.
       if ((!e.shiftKey && !touchSelectStore.get()) || e.button !== 0) return;
+      // Multi-touch is a pinch / two-finger pan, NEVER a lasso. If a second finger
+      // lands (this pointer OR a lasso already in flight), abort the lasso and let
+      // this pointer reach the area WITHOUT stopPropagation, so rete can pan/zoom.
+      // (activePointersRef already counts this pointer — the window-capture tracker
+      // runs before this container-capture handler.) Checked before the node-target
+      // test so a second finger landing on a node still releases the lasso.
+      if (active || activePointersRef.current.size >= 2) {
+        cancelLasso();
+        return;
+      }
       // Don't start a lasso when the click landed on a node or a socket inside
       // one (so click-drag-on-socket cable creation isn't stolen, and tapping a
       // note/group in touch-select mode selects it rather than lassoing). Test
@@ -1096,6 +1106,9 @@ export function Canvas() {
     }
     function onMove(e: PointerEvent) {
       if (!active) return;
+      // A finger joined mid-drag (pinch/pan) — bail even if this pointer's own
+      // moves keep firing (the resting first finger's wouldn't).
+      if (activePointersRef.current.size >= 2) { cancelLasso(); return; }
       const p = relPoint(e);
       const last = points[points.length - 1];
       if (Math.hypot(p.x - last.x, p.y - last.y) < 3) return;
@@ -1116,6 +1129,18 @@ export function Canvas() {
       // may still be pending, or the last move may not have applied yet).
       if (lassoRaf) { cancelAnimationFrame(lassoRaf); lassoRaf = 0; }
       if (points.length >= 3) applyLasso(points, latestMode, true);
+      setLasso(null);
+    }
+    // Abort an in-flight lasso WITHOUT applying it — used when a gesture turns out
+    // to be a pinch / two-finger pan. Leaves the current selection untouched (a
+    // clean 2-finger gesture lands both fingers before the first builds a polygon).
+    function cancelLasso() {
+      if (!active) return;
+      active = false;
+      lassoActiveStore.set(false);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      if (lassoRaf) { cancelAnimationFrame(lassoRaf); lassoRaf = 0; }
       setLasso(null);
     }
 
@@ -1338,6 +1363,25 @@ export function Canvas() {
         } else if (c.type === "pointermove") {
           moveCount++;
         } else if (c.type === "pointerup") {
+          // In touch SELECT mode, a background tap must NOT clear the selection —
+          // only the lasso or a node tap changes it. Otherwise every stray tap
+          // wipes a hard-won multi-select, which is exactly why the mobile Delete
+          // felt finicky (the selection vanished as you reached for it) and why
+          // deactivating select mode behaved inconsistently. Swallow a clean
+          // background tap so selectableNodes' clear can't run; node/control taps
+          // (handled below) still work. moveCount<4 keeps a pan (drag) from being
+          // treated as a tap.
+          if (
+            IS_MOBILE &&
+            touchSelectStore.get() &&
+            !tapNodeIdRef.current &&
+            !tapControlNodeIdRef.current &&
+            !tapMovedRef.current &&
+            !gestureMultiRef.current &&
+            moveCount < 4
+          ) {
+            return;
+          }
           // Tapping a form control (e.g. a Boolean checkbox) of an already-
           // SELECTED node must not clear its selection — otherwise every toggle
           // deselects and you have to re-tap the node to toggle again. Swallow the

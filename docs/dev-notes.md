@@ -2,6 +2,25 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Mobile select-mode: pinch/pan cooperation + sticky selection (2026-07-04)
+- Select mode's lasso (Canvas `onDown`) started on ANY single-finger background press,
+  `stopPropagation`'d the down, and never cancelled — so a second finger extended the same
+  lasso instead of starting a pinch/two-finger pan (the "freak out"), and you couldn't scroll
+  in select mode at all. Fix: the lasso is now single-touch only. `onDown` bails (and cancels
+  an in-flight lasso via `cancelLasso()`) the moment `activePointersRef.size >= 2` OR a lasso
+  is already `active` — WITHOUT stopPropagation, so the second finger reaches rete and pans.
+  `onMove` also cancels if a finger joins (a resting first finger fires no moves). Ordering
+  relies on the window-capture pointer tracker (`add`) running before this container-capture
+  `onDown`, so the pointer count is already current. Net: 1 finger = lasso, 2 fingers = pan
+  (pinch-zoom mid-gesture stays limited — rete missed finger 1 — but pan, the ask, works).
+- In select mode a background tap no longer clears the selection (Canvas area pipe, `pointerup`
+  branch swallows a clean background tap when `touchSelectStore.get()`). This made the mobile
+  Delete feel finicky — the selection evaporated as you reached for the button — and made
+  deactivating select mode inconsistent (tap- vs lasso-built selections). Both now persist.
+- Mobile Delete button no longer hard-`disabled` on the 200ms selection poll (a quick tap
+  right after selecting read as dead). It's always tappable, dimmed via
+  `.solenoid-mobile-bar__btn--dim` when nothing's selected; `deleteSelected()` no-ops if empty.
+
 ### Mermaid diagrams use the app palette (2026-07-04)
 - Mermaid rendered in its stock blue/purple, ignoring our theme. Switched `MermaidView`
   from `theme: "dark"|"default"` to `theme: "base"` + a `themeVariables` object built at
