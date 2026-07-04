@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { NodeEditor, ClassicPreset } from "rete";
-import { AreaPlugin, AreaExtensions, Zoom } from "rete-area-plugin";
+import { AreaPlugin, AreaExtensions, Zoom, Drag } from "rete-area-plugin";
 import {
   ConnectionPlugin,
   ClassicFlow,
@@ -387,6 +387,13 @@ export function Canvas() {
   const tapControlNodeIdRef = useRef<string | null>(null);
   const tapMovedRef = useRef(false);
   const gestureMultiRef = useRef(false);
+  // Whether the current gesture's first finger landed inside the canvas container
+  // (a node or the empty background) vs OFF-canvas (a mobile-bar button, a panel).
+  // rete's selectableNodes clears the selection on a window-level pointerup when its
+  // twitch counter is still armed from an earlier canvas press — so an off-canvas
+  // tap (e.g. the Delete button) would wrongly wipe the selection. We swallow the
+  // area pipe's pointerup for off-canvas gestures to stop that.
+  const tapOnCanvasRef = useRef(false);
   const dragOriginKeyRef = useRef<string | null>(null);
   // Live modifier state for axis-constrained dragging (Shift) and edge-align
   // (Ctrl/Cmd). Tracked globally so a key pressed mid-drag takes effect without a
@@ -973,6 +980,9 @@ export function Canvas() {
         const { id, formControl } = IS_MOBILE ? nodeAndControl(e.target) : { id: null, formControl: false };
         tapNodeIdRef.current = formControl ? null : id;
         tapControlNodeIdRef.current = formControl ? id : null;
+        // Did this gesture start on the canvas at all? (container = the rete area).
+        const cont = containerRef.current;
+        tapOnCanvasRef.current = !!(cont && e.target instanceof Node && cont.contains(e.target));
       } else if (set.size >= 2) {
         gestureMultiRef.current = true;
       }
@@ -1004,6 +1014,25 @@ export function Canvas() {
       window.removeEventListener("pointercancel", drop, true);
       set.clear();
     };
+  }, []);
+
+  // Mobile SELECT mode disables rete's area Drag (1-finger pan) so a single finger
+  // draws the lasso instead of panning — while the Zoom handler stays live, so TWO
+  // fingers still pinch/pan (the lasso no longer stopPropagations finger 1, so the
+  // zoom handler sees both). Restore the Drag handler when select mode turns off.
+  // Mobile-only: desktop's shift-lasso blocks the pan per-gesture (stopPropagation)
+  // and must keep normal drag-to-pan otherwise.
+  useEffect(() => {
+    if (!IS_MOBILE) return;
+    const applyDragMode = () => {
+      const area = areaRef.current;
+      if (!area) return;
+      if (touchSelectStore.get()) area.area.setDragHandler(null);
+      else area.area.setDragHandler(new Drag());
+    };
+    const unsub = touchSelectStore.subscribe(applyDragMode);
+    applyDragMode(); // in case select mode is already on when this mounts
+    return unsub; // the area itself is torn down on unmount, so no drag restore needed
   }, []);
 
   // Shift-drag lasso selection. AutoCAD-style: CW winding (positive
@@ -1069,7 +1098,8 @@ export function Canvas() {
     function onDown(e: PointerEvent) {
       // Shift-drag (desktop) or touch select mode (mobile) starts a lasso; a
       // plain primary-button drag otherwise falls through to the area pan.
-      if ((!e.shiftKey && !touchSelectStore.get()) || e.button !== 0) return;
+      const selectMode = touchSelectStore.get();
+      if ((!e.shiftKey && !selectMode) || e.button !== 0) return;
       // Multi-touch is a pinch / two-finger pan, NEVER a lasso. If a second finger
       // lands (this pointer OR a lasso already in flight), abort the lasso and let
       // this pointer reach the area WITHOUT stopPropagation, so rete can pan/zoom.
@@ -1093,7 +1123,13 @@ export function Canvas() {
         for (const [, v] of area.nodeViews) if (v.element.contains(target)) return;
       }
       e.preventDefault();
-      e.stopPropagation();
+      // Desktop shift-lasso: stop the press reaching rete's area drag, or it pans
+      // while you lasso. Mobile select mode does NOT stopPropagation — rete's Drag
+      // (pan) handler is disabled for the duration instead (see the select-mode
+      // effect), and the ZOOM handler must still SEE this pointer so a second finger
+      // makes a 2-finger pinch/pan (stopPropagation here hid finger 1 from it, which
+      // is why zoom never worked in select mode).
+      if (!selectMode) e.stopPropagation();
       active = true;
       points.length = 0;
       points.push(relPoint(e));
@@ -1363,23 +1399,16 @@ export function Canvas() {
         } else if (c.type === "pointermove") {
           moveCount++;
         } else if (c.type === "pointerup") {
-          // In touch SELECT mode, a background tap must NOT clear the selection —
-          // only the lasso or a node tap changes it. Otherwise every stray tap
-          // wipes a hard-won multi-select, which is exactly why the mobile Delete
-          // felt finicky (the selection vanished as you reached for it) and why
-          // deactivating select mode behaved inconsistently. Swallow a clean
-          // background tap so selectableNodes' clear can't run; node/control taps
-          // (handled below) still work. moveCount<4 keeps a pan (drag) from being
-          // treated as a tap.
-          if (
-            IS_MOBILE &&
-            touchSelectStore.get() &&
-            !tapNodeIdRef.current &&
-            !tapControlNodeIdRef.current &&
-            !tapMovedRef.current &&
-            !gestureMultiRef.current &&
-            moveCount < 4
-          ) {
+          // OFF-CANVAS tap → swallow. rete's selectableNodes clears the whole
+          // selection on a window-level pointerup while its `twitch` counter is
+          // still < 4 (a "tap"), but that counter is only re-armed by a CONTAINER
+          // pointerdown. So an off-canvas tap (a mobile-bar button, a panel) fires a
+          // window pointerup with twitch still armed from an earlier canvas press
+          // and wipes the selection — this is why tapping Delete deselected instead
+          // of deleting, and why deactivating select mode dropped the selection.
+          // The gesture that started off-canvas has no business touching the canvas
+          // selection, so swallow its pointerup before selectableNodes sees it.
+          if (IS_MOBILE && !tapOnCanvasRef.current) {
             return;
           }
           // Tapping a form control (e.g. a Boolean checkbox) of an already-
