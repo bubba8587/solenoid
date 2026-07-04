@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ImageNode as ImageNodeType } from "../rete-nodes";
 import { scheduleAutosave } from "../persistence";
+import { processGraph } from "../process";
 import type { NodeProps } from "./nodeKit";
 import { NodeSocket } from "./NodeSocket";
 import { useDraftCommit, INVALID_DRAFT } from "./inlineInput";
@@ -15,8 +16,10 @@ const MAX_H = 800;
  * handle (inputs/buttons stop pointerdown so editing doesn't start a node drag).
  * The source is a web URL (persisted) or a locally-attached file (read to a data
  * URL, session-only — see ImageNode). The height field sizes the image well; the
- * image is letterboxed (object-fit: contain) so any aspect ratio looks tidy. Edits
- * persist via scheduleAutosave (no graph recompute — it carries no data).
+ * image is letterboxed (object-fit: contain) so any aspect ratio looks tidy. The
+ * node emits an ImageValue (src/height/title) on its `chart`-family output, so a
+ * value-affecting edit (label/URL/height/attachment) recomputes the downstream
+ * cone on commit; edits also persist via scheduleAutosave.
  */
 export function ImageComponent({ data, emit }: NodeProps<ImageNodeType>) {
   const [label, setLabel] = useState(data.label);
@@ -33,9 +36,19 @@ export function ImageComponent({ data, emit }: NodeProps<ImageNodeType>) {
 
   const src = dataUrl || url;
 
+  // Unlike an ordinary node, the Image bakes its label into the emitted value
+  // (ImageValue.title / alt), so the header label IS data. Keep the input live per
+  // keystroke, but the downstream propagation — a wired Report re-reading the new
+  // title — commits on blur/Enter (never per keystroke; see the commit-on-Enter
+  // principle + "never processGraph from onChange"). processGraph(id) resets this
+  // node + its downstream cone so data() re-runs with the new label.
   function onLabel(v: string) { setLabel(v); data.label = v; scheduleAutosave(); }
+  // Recompute this node + its downstream cone so consumers re-read the new value
+  // (title/alt/src). Shared by the label + URL commit paths.
+  function commitValue() { void processGraph(data.id); }
 
-  // Typing a URL takes over as the source and drops any local attachment.
+  // Typing a URL takes over as the source and drops any local attachment. The src
+  // rides the value too, so it commits (recomputes downstream) on blur.
   function onUrl(v: string) {
     setUrl(v); data.url = v;
     if (dataUrl) { setDataUrl(""); data.dataUrl = ""; }
@@ -53,7 +66,7 @@ export function ImageComponent({ data, emit }: NodeProps<ImageNodeType>) {
       if (!Number.isFinite(n)) return INVALID_DRAFT;
       return Math.max(MIN_H, Math.min(MAX_H, Math.round(n)));
     },
-    (h) => { setHeight(h); data.height = h; scheduleAutosave(); },
+    (h) => { setHeight(h); data.height = h; scheduleAutosave(); void processGraph(data.id); },
   );
 
   // Attaching a local file reads it to a data URL (session-only) and takes over as
@@ -68,6 +81,7 @@ export function ImageComponent({ data, emit }: NodeProps<ImageNodeType>) {
       setDataUrl(d); data.dataUrl = d;
       if (url) { setUrl(""); data.url = ""; }
       scheduleAutosave();
+      void processGraph(data.id); // the new src rides the value → refresh consumers
     };
     reader.readAsDataURL(file);
   }
@@ -98,6 +112,8 @@ export function ImageComponent({ data, emit }: NodeProps<ImageNodeType>) {
           placeholder="Image"
           spellCheck={false}
           onChange={(e) => onLabel(e.target.value)}
+          onBlur={commitValue}
+          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
           onPointerDown={stopDragStart}
           onMouseDown={stopDragStart}
         />
@@ -146,6 +162,8 @@ export function ImageComponent({ data, emit }: NodeProps<ImageNodeType>) {
               placeholder="https://image-url…"
               spellCheck={false}
               onChange={(e) => onUrl(e.target.value)}
+              onBlur={commitValue}
+              onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
             />
             <label className="solenoid-image__height" title="Image height (px)">
               H
