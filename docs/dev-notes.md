@@ -12,11 +12,17 @@ Running notes on direction, deferred work, and non-obvious technical gotchas.
   accent-ink icon/text, ink-wash press states. Covered: the app-menu icon button + its glyph,
   the doc title name/caret, and the apptools cluster (paint pill, Reference, Settings) + the
   accent-swatch dot's ring. The doc-rename input stays a surface pill (legible as-is on accent).
-- **Separator to the canvas:** the base bar's 2px accent underline is invisible on an accent
-  bar, so it's replaced by an ink-tinted hairline (`color-mix(var(--accent-ink) 22%,
-  transparent)` — the accent's own contrast color, so it delineates against the canvas in
-  either mode) plus `--shadow-pop` for elevation. The notch/safe-area inset is filled by the
-  accent (padding-top on the bar), matching the desktop accent MenuBar's notch behavior.
+- **Buttons are GHOST** (revised — the first pass used a low-opacity ink FILL that read as
+  washed-out): transparent at rest, just the accent-ink glyph, a soft ink wash only on `:active`
+  (matches the desktop accent MenuBar). Covers the app-menu icon + the apptools cluster; the
+  base `:hover` (which flips to the accent, invisible on an accent bar, and lingers on touch) is
+  neutralized to the ghost state.
+- **Separator to the canvas is MODE-KEYED** (revised — an accent-ink hairline was too faint to
+  read as a separator). The edge must contrast the CANVAS, whose lightness tracks the THEME, not
+  the accent — so: light mode → `rgba(0,0,0,0.3)` line + soft shadow (reads on the light canvas);
+  dark mode (`&[data-theme="dark"] .solenoid-topbar`) → `rgba(255,255,255,0.16)` line + a deeper
+  shadow (reads on the dark canvas). The notch/safe-area inset is filled by the accent
+  (padding-top on the bar), matching the desktop accent MenuBar's notch behavior.
 
 ### Mobile select-mode: pinch/pan/lasso + the off-canvas-tap selection wipe (2026-07-04, root-caused with browser automation)
 - **Root causes (verified by driving a mobile-emulated Chromium via CDP, not by reading):**

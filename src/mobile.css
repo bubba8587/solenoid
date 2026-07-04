@@ -41,14 +41,19 @@ html.is-mobile {
        reads correctly for ANY accent in BOTH light and dark mode. */
     background: var(--accent);
     color: var(--accent-ink);
-    /* Separator to the canvas below: an ink-tinted hairline (the accent's own
-       contrast color, so it delineates against the canvas in either mode) plus the
-       standard elevation shadow. Replaces the base bar's 2px accent underline +
-       panel-border, both of which vanish on an accent bar. */
-    border-bottom: 1px solid color-mix(in srgb, var(--accent-ink) 22%, transparent);
-    box-shadow: var(--shadow-pop);
+    /* Separator to the canvas below. The edge has to read against the CANVAS, whose
+       lightness tracks the THEME (not the accent) — so it's mode-keyed: a dark line +
+       soft shadow on the light canvas (default here), a light line + deeper shadow on
+       the dark canvas (the [data-theme="dark"] rule below). Replaces the base bar's
+       2px accent underline + panel-border, both invisible on an accent bar. */
+    border-bottom: 1px solid rgba(0, 0, 0, 0.3);
+    box-shadow: 0 2px 9px rgba(0, 0, 0, 0.2);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
+  }
+  &[data-theme="dark"] .solenoid-topbar {
+    border-bottom-color: rgba(255, 255, 255, 0.16);
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.55);
   }
   .solenoid-topbar__group,
   .solenoid-topbar__divider,
@@ -62,15 +67,16 @@ html.is-mobile {
     display: none;
   }
   /* The square icon doubles as the app-menu button on a phone — a finger-sized
-     tap target at the left edge (the separate hamburger is gone). On the accent
-     bar it's an ink-wash pill with an ink glyph. */
+     tap target at the left edge (the separate hamburger is gone). Ghost style on
+     the accent bar: no fill/border at rest, just the ink glyph; a soft ink wash on
+     press (matches the desktop accent menu-bar buttons). */
   .solenoid-topbar__icon {
     display: flex;
-    background: color-mix(in srgb, var(--accent-ink) 12%, transparent);
-    border-color: color-mix(in srgb, var(--accent-ink) 30%, transparent);
+    background: transparent;
+    border-color: transparent;
   }
   .solenoid-topbar__icon:active {
-    background: color-mix(in srgb, var(--accent-ink) 22%, transparent);
+    background: color-mix(in srgb, var(--accent-ink) 20%, transparent);
   }
   .solenoid-topbar__icon-glyph { background-color: var(--accent-ink); }
 
@@ -118,29 +124,27 @@ html.is-mobile {
   .solenoid-apptools__palette-theme { display: flex; }
   .solenoid-apptools__pill .solenoid-apptools__paint { border-radius: 999px; }
 
-  /* Apptools on the accent bar: ink-wash buttons with accent-ink icons. The pill
-     carries the wash for the paint button inside it (its inner button stays
-     transparent); the standalone Reference/Settings buttons (direct children) get
-     their own wash. Icons stroke with currentColor, so the accent-ink color paints
-     them. Override the base :hover too — it flips to the accent, which would be
-     invisible on an accent bar, and on touch a hover can linger after a tap. */
+  /* Apptools on the accent bar: GHOST buttons — no fill/border at rest, just
+     accent-ink icons (they stroke with currentColor), a soft ink wash only on
+     press. Neutralize the base :hover (it flips to the accent, which would be
+     invisible on an accent bar, and a touch hover can linger after a tap). */
   .solenoid-apptools__pill,
   .solenoid-apptools > .solenoid-apptools__btn {
-    background: color-mix(in srgb, var(--accent-ink) 12%, transparent);
-    border-color: color-mix(in srgb, var(--accent-ink) 30%, transparent);
+    background: transparent;
+    border-color: transparent;
   }
-  .solenoid-apptools__btn { color: var(--accent-ink); }
+  .solenoid-apptools__btn,
   .solenoid-apptools__btn:hover {
     color: var(--accent-ink);
-    background: color-mix(in srgb, var(--accent-ink) 18%, transparent);
-    border-color: color-mix(in srgb, var(--accent-ink) 40%, transparent);
+    background: transparent;
+    border-color: transparent;
   }
-  .solenoid-apptools__pill .solenoid-apptools__btn:hover { background: color-mix(in srgb, var(--accent-ink) 16%, transparent); }
+  .solenoid-apptools__btn:active,
   .solenoid-apptools > .solenoid-apptools__btn:active,
   .solenoid-apptools__pill .solenoid-apptools__btn:active {
-    background: color-mix(in srgb, var(--accent-ink) 24%, transparent);
+    background: color-mix(in srgb, var(--accent-ink) 20%, transparent);
   }
-  /* The accent-swatch dot: ink ring so the current-accent dot reads on the pill
+  /* The accent-swatch dot: ink ring so the current-accent dot reads on the bar
      (its fill is the accent, i.e. the bar color). */
   .solenoid-apptools__paint-dot { border-color: var(--accent-ink); }
 
