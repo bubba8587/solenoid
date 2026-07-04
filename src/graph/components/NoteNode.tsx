@@ -16,7 +16,7 @@ import { standoffStore, settleStandoffs } from "../standoffs";
 import { SOCKET_COLORS, SolenoidSocket, canConnect } from "../sockets";
 import { formatAnnotationStore, formatNumberWithAnnotation } from "../formatAnnotationStore";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
-import type { FrontmatterFieldType, FrontmatterValue } from "../noteFrontmatter";
+import { parseNoteFrontmatter, type FrontmatterFieldType, type FrontmatterValue } from "../noteFrontmatter";
 import type { NodeProps, Emit } from "./nodeKit";
 import type { ClassicPreset } from "rete";
 import { stopDragStart } from "../coarse";
@@ -209,22 +209,27 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
     window.addEventListener("pointerup", up);
   }
 
-  // Render the markdown BELOW any frontmatter block (data.renderBody, refreshed on
-  // each commit). NOT trusted content: a Note body arrives in shared .solenoid
-  // files, and marked does no sanitization — an <img onerror=…> in a note was a
-  // stored XSS with Tauri IPC in reach (audit P0-6). Sanitize every render; the
-  // CSP is the second, independent layer.
-  // `breaks: true` so a lone newline becomes a line break (note-jotting expectation).
+  // The markdown to render BELOW any frontmatter block — derived LIVE from the
+  // current `body` state, NOT from `data.renderBody`. `data.renderBody` only
+  // refreshes inside commitFields()→syncFields() on blur, and that path early-
+  // returns when `data.body === lastSyncRef.current`; if a mobile keystroke/blur
+  // races (the final delete didn't reach data.body before the commit, or blur fires
+  // in an unexpected order), the cached renderBody stays stale and the read view
+  // freezes — e.g. a leftover `<hr>` from a half-typed `---` keeps the first line
+  // shifted down until the next edit cycle. Parsing straight from `body` (a pure,
+  // cheap frontmatter strip) makes the visual a function of the live text alone, so
+  // it can never lag the socket-commit cycle. `body` is kept current everywhere:
+  // onBody on each keystroke, and the `[data.body]` effect on external changes
+  // (load / paste / undo). The socket lifecycle still commits on blur — only the
+  // RENDER is decoupled from it.
+  const renderBody = useMemo(() => parseNoteFrontmatter(body).body, [body]);
+  // NOT trusted content: a Note body arrives in shared .solenoid files, and marked
+  // does no sanitization — an <img onerror=…> in a note was a stored XSS with Tauri
+  // IPC in reach (audit P0-6). Sanitize every render; the CSP is the second,
+  // independent layer. `breaks: true` so a lone newline becomes a line break.
   const bodyHtml = useMemo(
-    () => DOMPurify.sanitize(marked.parse(data.renderBody || "", { async: false, gfm: true, breaks: true }) as string),
-    // Depend on the value this actually READS — `data.renderBody` (the frontmatter-
-    // stripped body). It updates synchronously inside commitFields' syncFields() on
-    // blur, so it's fresh by the read-view re-render. The old `[body, data]` deps
-    // read renderBody but keyed off the RAW body, so after an edit that changed
-    // renderBody without re-triggering on `body` the memo never recomputed and the
-    // note kept showing a STALE render (leading `<hr>`/paragraphs from a prior
-    // state = the intermittent "blank lines before the first line").
-    [data.renderBody],
+    () => DOMPurify.sanitize(marked.parse(renderBody || "", { async: false, gfm: true, breaks: true }) as string),
+    [renderBody],
   );
 
   function onLabel(v: string) { setLabel(v); data.label = v; scheduleAutosave(); }
@@ -357,7 +362,7 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
               onPointerDown={stop}
               onMouseDown={stop}
             />
-          ) : data.renderBody.trim() ? (
+          ) : renderBody.trim() ? (
             // Plain markdown — a Note is output-only, so a `` `=name` `` span stays
             // literal inline code (no ref swap). bodyHtml is already sanitized.
             <div
