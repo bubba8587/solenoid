@@ -417,8 +417,8 @@ export function OutlinePanel() {
             aria-label={allGroupsCollapsed ? "Expand all groups" : "Collapse all groups"}
             onClick={toggleAllGroups}
           >
-            {/* Lucide list-chevrons-down-up — bidirectional, so it reads as an
-                expand/collapse toggle in both states (no rotation; the title flips). */}
+            {/* Lucide list-chevrons — the glyph shows the ACTION: converging
+                (down-up) to collapse, diverging (up-down) to expand. */}
             <svg
               viewBox="0 0 16 16" width="14" height="14" fill="none"
               stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"
@@ -426,8 +426,17 @@ export function OutlinePanel() {
               <path d="M2 4 H8" />
               <path d="M2 8 H8" />
               <path d="M2 12 H8" />
-              <path d="M10 4 L12 6 L14 4" />
-              <path d="M10 12 L12 10 L14 12" />
+              {allGroupsCollapsed ? (
+                <>
+                  <path d="M10 6 L12 4 L14 6" />
+                  <path d="M10 10 L12 12 L14 10" />
+                </>
+              ) : (
+                <>
+                  <path d="M10 4 L12 6 L14 4" />
+                  <path d="M10 12 L12 10 L14 12" />
+                </>
+              )}
             </svg>
           </button>
         )}
