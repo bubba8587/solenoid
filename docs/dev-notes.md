@@ -2,6 +2,36 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Canvas regression sweep — minimap, semantic zoom, quick-wire (2026-07-04)
+Four author-reported bugs, all root-caused rather than patched-over:
+- **Minimap z-order** — `.solenoid-minimap` had no `z-index` (auto/0), so positioned node cards
+  painted later in DOM order rendered over it. Its sibling `.solenoid-legend` uses `z-index: 100`
+  and is never covered; matched it. (`Minimap.css`)
+- **Minimap jumpy under drag** — `rete-minimap-plugin` fires `render()` SYNCHRONOUSLY on every
+  translated/zoomed/nodetranslated event. During a continuous drag those arrive in bursts not
+  aligned to paint frames, each re-reading layout (our `collapsedAwareNodesRect` touches
+  `offsetWidth/Height` for collapsed groups) and re-normalizing every node against a bounding box
+  that shifts as the dragged node moves → per-event jitter. rAF-coalesced its `render` to ≤1 per
+  frame (guarded by the effect's `destroyed` flag so a pending frame can't fire into a torn-down
+  area). (`Canvas.tsx`, at the `getNodesRect` override.)
+- **Semantic zoom did nothing** — `syncSemanticZoomFor` gated on `computeIdealMipLevel(scale·dpr) ≥ 4`,
+  i.e. `scale·dpr ≤ 1/16`: only fired below ~6% zoom on dpr-1 and ~3% on a dpr-2 laptop — so far out
+  the node body is already sub-pixel and hiding it (`.solenoid-node__body { visibility: hidden }`) is
+  imperceptible. Also folded dpr in, so it triggered at a *different apparent zoom* per display.
+  Rewrote to gate on the RAW CSS scale (`SEMANTIC_ZOOM_SCALE = 0.3`, dpr-independent): a card drawn
+  at ≤~30% has unreadable body text but is still a clear block — conservative (far-overview only) but
+  actually reachable and visible. Dropped the now-unused `computeIdealMipLevel` import. **Gotcha for
+  next time:** semantic zoom is an APPARENT-size concept — never gate it on anything containing `dpr`
+  (that's a texture-resolution concern owned by the mip renderer).
+- **Quick-wire ignored the drop location** — the new node landed near the ORIGIN socket, not where
+  the cable was released. Cause: `screenMouseRef` tracked `mousemove` ONLY, but rete-area-plugin's
+  `Drag.move` calls `e.preventDefault()` on pointermove (area plugin, line ~193), which SUPPRESSES
+  the compatibility mousemove events for the duration of any drag — so the ref froze at the drag's
+  start point (near the origin), and both the quick-wire menu and the created node used that stale
+  point. Fix: also track `pointermove` (it keeps firing through the drag; `preventDefault` stops
+  default actions, not other listeners). **Gotcha:** any cursor-position ref used at the END of a
+  drag must be fed by pointermove, not mousemove.
+
 ### Top-bar control-size consistency + navigator bottom clearance (2026-07-04)
 - **Desktop + mobile:** the `.solenoid-topbar__group` pill had `padding: 3px`, making it 36px tall
   while the apptools pill (no padding) is 30px and buttons are 28px (DESIGN.md's standard) — so it

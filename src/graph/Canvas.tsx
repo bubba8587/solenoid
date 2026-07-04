@@ -93,7 +93,6 @@ import { forgetNode } from "./nodeStoreRegistry";
 import { AddNodeMenu } from "./AddNodeMenu";
 import { addMenuRequest } from "./addMenuStore";
 import { flattenLeaves, filterByCompatibleSocket, firstCompatibleSocketKey } from "./catalogSearch";
-import { computeIdealMipLevel } from "./htmlCanvasRenderer";
 import { semanticZoomStore } from "./semanticZoomStore";
 import { expandMoveSet } from "./selectionOps";
 import { setGraphChanged } from "./process";
@@ -349,14 +348,21 @@ async function removeFcInline(editor: NodeEditor<Schemes>, fc: FormatControllerN
   }
 }
 
-// Semantic zoom: idealI steps roughly double the zoom distance each level (at
-// quality 1 / dpr 1, i≈-log2(scale)) — i≥4 is ~6% scale or further, i.e. the
-// whole-graph overview range, not just "moderately zoomed out". Conservative on
-// purpose (scope-features #40): only genuinely far zoom swaps to simplified cards.
-const SEMANTIC_ZOOM_MIP_THRESHOLD = 4;
+// Semantic zoom: below this CSS scale a node body's detail (labels, literal
+// fields, values) is too small to read, so we hide it and keep the card frame +
+// title + socket dots as clean overview landmarks (scope-features #40). Gated on
+// the RAW CSS scale, NOT the mip level: the old code used
+// computeIdealMipLevel(scale·dpr) ≥ 4, which (a) only fired below ~6% zoom on a
+// dpr-1 display and ~3% on a dpr-2 laptop — so far out the body is already
+// sub-pixel and hiding it does nothing visible ("semantic zoom doesn't do
+// anything") — and (b) folded in dpr, so it triggered at a DIFFERENT apparent zoom
+// per display. Apparent size is what legibility depends on, and dpr is a texture-
+// resolution concern that belongs to the mip renderer, not here. 0.3 ≈ a card
+// drawn at ~30% (a ~200px card → ~60px): body text unreadable, card still a clear
+// block — conservative (far-overview only) but actually reachable and visible.
+const SEMANTIC_ZOOM_SCALE = 0.3;
 function syncSemanticZoomFor(scale: number): void {
-  const idealI = computeIdealMipLevel(scale, 1, window.devicePixelRatio || 1);
-  semanticZoomStore.set(settingsStore.get("semanticZoom") && idealI >= SEMANTIC_ZOOM_MIP_THRESHOLD);
+  semanticZoomStore.set(settingsStore.get("semanticZoom") && scale <= SEMANTIC_ZOOM_SCALE);
 }
 
 
@@ -886,11 +892,24 @@ export function Canvas() {
     };
   }, []);
 
-  // Track screen mouse position for paste placement.
+  // Track screen mouse position for paste + quick-wire placement. We listen to
+  // pointermove as well as mousemove because during a drag (a cable drag, a pan)
+  // rete-area-plugin's Drag.move calls e.preventDefault() on pointermove, which
+  // SUPPRESSES the compatibility mousemove events — so a mousemove-only tracker
+  // freezes at the drag's start point, and quick-wire dropped the new node near the
+  // ORIGIN socket instead of where the cable was released. pointermove keeps firing
+  // through the drag (preventDefault stops default actions, not other listeners), so
+  // the ref stays live and the node lands at the real drop location.
   useEffect(() => {
-    const track = (e: MouseEvent) => { screenMouseRef.current = { x: e.clientX, y: e.clientY }; };
+    const track = (e: MouseEvent | PointerEvent) => {
+      screenMouseRef.current = { x: e.clientX, y: e.clientY };
+    };
     window.addEventListener("mousemove", track);
-    return () => window.removeEventListener("mousemove", track);
+    window.addEventListener("pointermove", track);
+    return () => {
+      window.removeEventListener("mousemove", track);
+      window.removeEventListener("pointermove", track);
+    };
   }, []);
 
   // Let the menu bar's Insert command open the Add-node menu.
