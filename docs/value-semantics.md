@@ -72,7 +72,7 @@ two contexts, both correct. Any OTHER node-vs-formula disagreement is a bug.
 ## Boundaries and bridges
 
 - **Logical↔number bridge** (`coerceInputs.ts`): 0/1 ↔ FALSE/TRUE; **NaN → null**
-  (unknown truth value — R/pandas lineage) [decided 2026-07-02]; aligned with
+  (unknown truth value — R/pandas lineage) [shipped 2026-07-04]; aligned with
   `coerceLogical` (one spec).
 - **Wired null vs unwired input** [decided 2026-07-02]: `undefined` (unwired) falls
   back to the node's literal; a WIRED `null` propagates as missing. The `?? literal`
@@ -80,8 +80,9 @@ two contexts, both correct. Any OTHER node-vs-formula disagreement is a bug.
 - **IPC / frame boundary**: NaN normalizes to null crossing to Polars [shipped]. The
   frame engine's own non-finite behavior (silent `inf`) is a separate open P3.
 - **List ops vs relational verbs** (D12's line, second instance): list UNIQUE never
-  dedupes error cells (each is an independent problem — the sanity-check reading);
-  frame Distinct dedupes by error CODE (errors as values, SQL identity semantics).
+  dedupes error cells (each is an independent problem — the sanity-check reading)
+  [shipped 2026-07-04]; frame Distinct dedupes by error CODE (errors as values, SQL
+  identity semantics).
   List/frame Sort both put nulls AND errors LAST, both directions, stably [shipped
   2026-07-02].
 
