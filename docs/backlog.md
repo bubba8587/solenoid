@@ -1483,10 +1483,11 @@ Actionable follow-ups parked here:
     yet to flip a port between them or edit a hidden port's baked
     default. Currently every port created by `createCompositeFromSelection`
     is `exposed`/`basic`.
-  - [ ] **Frame/cube output display** — a composite output bound to a
-    frame or cube value falls back to `ValueDisplay`'s generic object
-    stringification (no frame/cube preview) — noted inline in
-    `CompositeNode.tsx`.
+  - [x] **Frame/cube output display** — done (2026-07-04). `CompositeBoundaryValue`
+    (`CompositeNode.tsx`) renders a composite port / boundary marker by KIND: a
+    frame/cube shows the compact table preview (FrameDisplay/CubeDisplay), a
+    chart/mermaid its figure, a lambda its signature, scalars/lists/errors the hero
+    box — replacing the old `[object Object]` fallback. Verified live.
 
 ## External data / connections
 

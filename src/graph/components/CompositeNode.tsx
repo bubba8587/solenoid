@@ -6,6 +6,35 @@ import type { DisplayValue } from "./valueDisplayFormat";
 import { processGraph } from "../process";
 import { compositeEditorStore } from "../compositeEditorStore";
 import { stopDragStart } from "../coarse";
+import { isFrameValue, isCubeValue } from "../frame";
+import { isChartValue } from "../chartValue";
+import { isMermaidValue } from "../mermaidValue";
+import { isLambdaValue, formatLambda } from "../nodes/lambda";
+import { FrameDisplay } from "./FrameDisplay";
+import { CubeDisplay } from "./CubeDisplay";
+import { ChartView, toSeries } from "./chartView";
+import { MermaidView } from "./MermaidView";
+
+/**
+ * The value a Composite boundary carries (a port output, or an input/output
+ * marker in the drill-in) — rendered by its KIND, not stringified. A frame/cube
+ * shows the same compact table preview as everywhere else (the old code fell back
+ * to `[object Object]`); a chart/mermaid renders its figure; a lambda its
+ * signature; scalars/lists/logicals/errors keep the hero ValueDisplay box.
+ */
+function CompositeBoundaryValue({ value, label }: { value: unknown; label: string }) {
+  if (isFrameValue(value)) return <FrameDisplay frame={value} label={label} full={false} />;
+  if (isCubeValue(value)) return <CubeDisplay cube={value} label={label} full={false} />;
+  if (isChartValue(value)) {
+    const series = toSeries(value.values);
+    return series.length === 0
+      ? <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>
+      : <ChartView op={value.op} series={series} width={200} height={110} axes opts={value.options} />;
+  }
+  if (isMermaidValue(value)) return <MermaidView source={value.source} />;
+  if (isLambdaValue(value)) return <div className="solenoid-node__display-value">{formatLambda(value)}</div>;
+  return <ValueDisplay value={value as DisplayValue} />;
+}
 
 // Only modes with a real data() branch appear here — see the CompositeRunMode
 // union's own comment (nodes/composite.ts) for why the list grows in lockstep
@@ -213,10 +242,7 @@ export function CompositeComponent({ data: node, emit }: NodeProps<CompositeNode
           <div key={p.id} className="solenoid-composite__output">
             <span className="solenoid-node__io-label">{p.label}</span>
             <MeasuredSocketRow side="output" socketKey={p.id} nodeId={node.id} emit={emit} payload={port.socket}>
-              {/* Scalar/list/error/logical render correctly; a frame/cube output
-                  falls back to a plain object stringification — a known gap for
-                  the shell milestone (frame-holding composites are a follow-up). */}
-              <ValueDisplay value={value as unknown as DisplayValue} />
+              <CompositeBoundaryValue value={value} label={p.label} />
             </MeasuredSocketRow>
           </div>
         );
@@ -231,21 +257,13 @@ export function CompositeComponent({ data: node, emit }: NodeProps<CompositeNode
 // ─── Boundary markers (drill-in editor only) ───────────────────────────────────
 // These render ONLY inside the Composite drill-in editor's own rete root — the
 // markers never live on the main canvas. A marker's value can be anything the
-// `any` boundary carries; only the shapes ValueDisplay actually understands are
-// shown (a frame/cube boundary value falls back to the empty dash).
-
-function displayable(v: unknown): DisplayValue {
-  if (v === null || typeof v === "number" || typeof v === "string" || typeof v === "boolean" || Array.isArray(v)) {
-    return v as DisplayValue;
-  }
-  if (v && typeof v === "object" && "code" in (v as Record<string, unknown>)) return v as DisplayValue; // SolError
-  return null;
-}
+// `any` boundary carries; CompositeBoundaryValue renders every kind (frame/cube
+// tables, chart/mermaid figures, lambda, scalars/lists/errors).
 
 export function CompositeInputMarkerComponent({ data, emit }: NodeProps<CompositeInputNodeType>) {
   return (
     <NodeShell node={data} emit={emit} collapsible={false} labelPlaceholder="Input" className="solenoid-node--composite-marker">
-      <ValueDisplay value={displayable(data.value)} />
+      <CompositeBoundaryValue value={data.value} label={data.label} />
     </NodeShell>
   );
 }
@@ -260,7 +278,7 @@ export function CompositeOutputMarkerComponent({ data, emit }: NodeProps<Composi
       className="solenoid-node--composite-marker"
       leading={<PortSockets node={data} emit={emit} side="input" />}
     >
-      <ValueDisplay value={displayable(data.cachedResult)} />
+      <CompositeBoundaryValue value={data.cachedResult} label={data.label} />
     </NodeShell>
   );
 }
