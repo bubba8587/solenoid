@@ -2,6 +2,39 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Two crash/data-integrity fixes: Display-on-object, and cable-drag committing text (2026-07-04)
+- **Display node crashed the canvas on a Chart/Mermaid/lambda input.** `DisplayComponent`
+  routed any value that wasn't error/frame/cube/table to `ValueDisplay`'s number formatter
+  (`fmt` → `formatWithUnit` → `.toFixed`). An OBJECT value (a `ChartValue` etc.) threw
+  "toFixed is not a function" DURING React render — which unmounted the Display node AND,
+  because it threw inside the shared rete React root, broke rendering for OTHER nodes on the
+  canvas (a sibling wired Text→Mermaid then showed nothing — two reported symptoms, one
+  cause). Fix: `DisplayComponent` now branches on chart/mermaid/lambda like frame/cube/table
+  (renders the figure / signature); `fmt` also guards non-numbers. Lesson: a throw in ANY
+  node component during render corrupts the whole rete React root — every value box must be
+  crash-proof against an unexpected kind.
+- **A cable drag now commits the focused text field first** (`Canvas` `connectionpick` →
+  `document.activeElement.blur()`). The multi-line Text field commits on blur (Enter inserts
+  a newline), but a socket's pointerdown starts the drag and `preventDefault`s the focus
+  change, so the field never blurred — wiring it delivered the STALE (empty) value (an empty
+  Mermaid source → a blank diagram, no error). General fix: any mid-edit field reflects what
+  you see when you wire it.
+
+### Session polish batch — report/chart/note/popup (2026-07-03/04)
+Small, verified fixes, grouped: charts + Mermaid figures are `user-select: none` (a drag no
+longer grabs recharts/mermaid SVG text as several partial highlights); the value popup
+overlay z-index went 300→9500 so a frame chip opened INSIDE a full-screen overlay (Report /
+Composite / Reference, all 9000) lands ON TOP, not behind — and Frame/Array/Cube chips fall
+back to their TYPE colour for the header when opened with no node context; a Report chart is
+sized to its container (ResizeObserver, cap 640) instead of a fixed 360 that scrolled a
+narrow report; a Note's first heading/para no longer floats below a phantom blank line
+(`InlineRefBody` wraps content in a bare `<div>`, so the `> :first-child` margin reset had to
+reach `> * > :first-child`); markdown emphasis with `*` now renders italic app-wide — the
+Atkinson variable font ships only an upright axis and `font-synthesis: none` (App.css,
+deliberate no-faux-bold) ALSO barred synthetic italic, so the real `wght-italic` face is now
+imported in `main.tsx` (this also repairs the FC italic-text option). Seeds use `*` for
+emphasis, not `_`.
+
 ### Presenter mode — the Presentation node actually presents now (2026-07-04)
 The Presentation node's steps only flew the camera to a node set, but the controls
 lived on the node card — which flew off-screen on the first step, making it useless.
