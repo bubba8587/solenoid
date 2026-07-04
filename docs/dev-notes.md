@@ -2,6 +2,16 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Top-bar control-size consistency + navigator bottom clearance (2026-07-04)
+- **Desktop + mobile:** the `.solenoid-topbar__group` pill had `padding: 3px`, making it 36px tall
+  while the apptools pill (no padding) is 30px and buttons are 28px (DESIGN.md's standard) — so it
+  read as a bigger control. Dropped the padding → 30px, so every top-bar pill is one size. On
+  mobile the surfaced layout-group buttons were 32px vs the apptools' 34px; bumped to 34 so all Row
+  B controls are 34px buttons / 36px pills. (This is about total SIZE, not corner radius — both
+  families already use 50% / 999px.)
+- **Navigator** panel `bottom` was `26px + safe-area`, so its list ran under the ~57px bottom
+  action bar; raised to `68px + safe-area` to clear it (verified: outline bottom 712 < bar top 723).
+
 ### Mobile chrome redesign — two-row top, roles split by zone (2026-07-04, SUPERSEDES the accent-app-bar notes below)
 Reorganized mobile chrome to mirror desktop's separation of concerns, into three zones:
 - **Top = TWO rows.** Row A is the **menu bar** repurposed as a thin ACCENT strip carrying ONLY
