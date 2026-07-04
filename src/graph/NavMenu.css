@@ -36,10 +36,26 @@
   justify-content: center;
 }
 
-.solenoid-nav__btn:hover {
-  background: var(--btn-hover);
-  border-color: transparent;
-  color: var(--accent);
+/* Hover styling only where a real pointer can hover. On TOUCH, :hover STICKS after
+   a tap until you tap elsewhere, so the just-pressed button kept showing its hover
+   look and masked the real toggled state — the --on accent ring stayed hidden, or a
+   hover fill lingered after toggling OFF, until you tapped away (reported: "Snap to
+   Grid — the fill appears but the border only shows after tapping outside"). Gating
+   hover behind (hover: hover) makes the tap's resolved on/off state authoritative on
+   touch; the desktop cursor case is handled by the combined --on:hover rule below. */
+@media (hover: hover) {
+  .solenoid-nav__btn:hover {
+    background: var(--btn-hover);
+    color: var(--accent);
+  }
+  /* A hovered ON button keeps its accent ring + fill. Plain :hover (a class + a
+     pseudo-class) outranks the single-class --on, so without this the ON border was
+     erased whenever the cursor sat on the button — the desktop half of the same bug.
+     Listing --on:hover makes the toggled state win regardless of hover. */
+  .solenoid-nav__btn--on:hover {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
 }
 
 .solenoid-nav__btn--on {
