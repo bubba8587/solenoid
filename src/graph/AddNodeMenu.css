@@ -99,6 +99,21 @@
   background: var(--accent-soft);
 }
 
+/* Quick-wire: a leaf that can't wire to the dragged socket — grayed + inert (the
+   pick gate ignores it, so a click/Enter does nothing). Suppress the hover/active
+   fill so it never reads as pickable; opacity dims the label + any pack dot / accent
+   highlight along with it. */
+.solenoid-add-menu__item--incompatible {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+.solenoid-add-menu__item--incompatible:hover,
+.solenoid-add-menu__item--incompatible.solenoid-add-menu__item--active,
+.solenoid-add-menu__item--incompatible:hover::before,
+.solenoid-add-menu__item--incompatible.solenoid-add-menu__item--active::before {
+  background: transparent;
+}
+
 /* Subtle marker that a node came from an add-on pack (not built-in). A small
    dim dot at the row's trailing edge — present but easy to ignore. */
 .solenoid-add-menu__pack-dot {

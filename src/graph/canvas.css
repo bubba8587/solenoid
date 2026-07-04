@@ -70,47 +70,13 @@ html.perf-no-minimap .solenoid-minimap { display: none; }
   .solenoid-cable-flow { animation: none; }
 }
 
-/* ─── Gesture-time paint cuts — UN-PROMOTED paths only (`--panning`) ──────────
-   `--panning` = pan (desktop + mobile) and mobile pinch — the paths where the holder
-   is NOT GPU-promoted, so its content is RE-RASTERIZED every frame and cutting paint
-   cost genuinely helps. Desktop WHEEL/trackpad ZOOM is deliberately NOT covered: it
-   promotes the holder (rasterize once → bitmap-scale), so the content isn't re-rastered
-   per frame — dropping quality there saves nothing AND toggling these properties forces
-   extra re-rasters + a box-shadow transition that made desktop zoom measurably WORSE.
-   So there is no `--zooming` class; quality cuts ride only the un-promoted gesture. */
-
-/* Pause flow beads (stroke-dashoffset animation = main-thread paint every move). */
-.solenoid-canvas--panning .solenoid-cable-flow {
-  animation-play-state: paused;
-}
-
-/* Drop the pricey always-on box-shadows (the most expensive always-on paint property).
-   The card's `transition: box-shadow 80ms` fades them back on release; selected nodes
-   keep their accent glow (higher-specificity rule). */
-.solenoid-canvas--panning .solenoid-node,
-.solenoid-canvas--panning .solenoid-group__header {
-  box-shadow: none;
-}
-
-/* The selected Conduit's `filter: drop-shadow()` — a GPU-expensive separate
-   compositing pass that repaints the conduit every frame. */
-.solenoid-canvas--panning .solenoid-conduit--selected .solenoid-conduit__svg {
-  filter: none;
-}
-
-/* (Removed 2026-07-04) The pan-time raster-quality cut — text-rendering:
-   optimizeSpeed, -webkit-font-smoothing: none, and shape-rendering: optimizeSpeed
-   on moving SVG — used to drop AA while panning. It made labels/dots visibly
-   coarsen mid-pan for a paint saving that wasn't worth the flicker; per author,
-   dropped. The other --panning cuts (box-shadow, flow-bead pause, backdrop-filter,
-   conduit drop-shadow) stay — those are expensive paint ops, not quality knobs. */
-
-/* backdrop-filter (the selected Conduit toolbar's blur) re-samples + blurs the
-   backdrop every frame — one of the priciest paint ops — and moves with the pan. */
-.solenoid-canvas--panning .solenoid-conduit-toolbar {
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
+/* (Removed 2026-07-04) The entire gesture-time paint/quality-cut system (the
+   `.solenoid-canvas--panning` rules — flow-bead pause, box-shadow drop, conduit
+   drop-shadow + toolbar backdrop-filter removal, and the earlier AA reduction).
+   DOM mode now stays full-quality while panning; the HTML-in-canvas renderer is the
+   performance path when a graph is heavy enough to need one, so DOM mode no longer
+   trades visual fidelity for pan smoothness. Flow beads keep animating through a
+   pan (they used to freeze). The `--panning` class is no longer applied. */
 
 /* The minimap is now a custom React component (SolenoidMinimap) and styles
    itself in Minimap.css — colored per-node, dark-theme container. */

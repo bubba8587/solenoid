@@ -178,9 +178,12 @@ type TreeMenuProps = {
   onOpenCategory: (p: number[]) => void;
   onSelect: (entry: NodeCatalogEntry) => void;
   onSubmenuSide: (s: "left" | "right") => void;
+  // Quick-wire: leaves that can't wire to the dragged socket render grayed +
+  // non-selectable. Always false in the normal Add menu.
+  isDim: (leaf: NodeCatalogEntry) => boolean;
 };
 
-function TreeMenu({ entries, depth, path, onHover, onOpenCategory, onSelect, onSubmenuSide }: TreeMenuProps) {
+function TreeMenu({ entries, depth, path, onHover, onOpenCategory, onSelect, onSubmenuSide, isDim }: TreeMenuProps) {
   const items = useMemo(() => toRenderItems(entries), [entries]);
   const anchorRefs = useRef<(HTMLElement | null)[]>([]);
   const prefix = path.slice(0, depth);
@@ -209,7 +212,7 @@ function TreeMenu({ entries, depth, path, onHover, onOpenCategory, onSelect, onS
               <span className="solenoid-add-menu__arrow">▶</span>
               {open && anchorRefs.current[i] && (
                 <Submenu anchor={anchorRefs.current[i]!} onSide={onSubmenuSide}>
-                  <TreeMenu entries={it.entry.children} depth={depth + 1} path={path} onHover={onHover} onOpenCategory={onOpenCategory} onSelect={onSelect} onSubmenuSide={onSubmenuSide} />
+                  <TreeMenu entries={it.entry.children} depth={depth + 1} path={path} onHover={onHover} onOpenCategory={onOpenCategory} onSelect={onSelect} onSubmenuSide={onSubmenuSide} isDim={isDim} />
                 </Submenu>
               )}
             </div>
@@ -217,11 +220,12 @@ function TreeMenu({ entries, depth, path, onHover, onOpenCategory, onSelect, onS
         }
         const leaf = it.entry;
         const active = onPath && deepest;
+        const dim = isDim(leaf);
         return (
           <div
             key={`leaf:${leaf.type}`}
             ref={active ? (el) => el?.scrollIntoView({ block: "nearest" }) : undefined}
-            className={`solenoid-add-menu__item${it.half ? " solenoid-add-menu__item--half" : ""}${leaf.accent ? " solenoid-add-menu__item--accent" : ""}${active ? " solenoid-add-menu__item--active" : ""}`}
+            className={`solenoid-add-menu__item${it.half ? " solenoid-add-menu__item--half" : ""}${leaf.accent ? " solenoid-add-menu__item--accent" : ""}${active ? " solenoid-add-menu__item--active" : ""}${dim ? " solenoid-add-menu__item--incompatible" : ""}`}
             title={leaf.description}
             style={leaf.accent ? ({ "--item-accent": leaf.accent } as CSSProperties) : undefined}
             onMouseEnter={() => onHover([...prefix, i])}
@@ -244,9 +248,13 @@ type AddNodeMenuProps = {
   entries: CatalogEntry[];
   onSelect: (entry: NodeCatalogEntry) => void;
   onClose: () => void;
+  // Quick-wire: the set of leaf `type`s that can wire to the dragged socket.
+  // When present, the menu shows the WHOLE catalog but grays out (and makes
+  // non-selectable) every leaf not in the set. Undefined = normal Add menu.
+  compatibleTypes?: Set<string>;
 };
 
-export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose }: AddNodeMenuProps) {
+export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, compatibleTypes }: AddNodeMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
@@ -268,6 +276,12 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose }: Ad
     [leaves, query],
   );
   const searching = !!query.trim();
+
+  // Quick-wire: a leaf that can't wire to the dragged socket is grayed + inert.
+  // `select` is the one gate every pick path goes through, so a dimmed leaf can't
+  // be chosen by click OR keyboard.
+  const isDim = (leaf: NodeCatalogEntry) => compatibleTypes != null && !compatibleTypes.has(leaf.type);
+  const select = (leaf: NodeCatalogEntry) => { if (!isDim(leaf)) onSelect(leaf); };
 
   // Hover gated by the pin: ignore moves that would leave the pinned subtree, so
   // a click-pinned submenu stays on screen no matter where the cursor wanders.
@@ -329,7 +343,7 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose }: Ad
     if (searching) {
       if (e.key === "ArrowDown") { e.preventDefault(); setActiveIndex((i) => Math.min(i + 1, results.length - 1)); }
       else if (e.key === "ArrowUp") { e.preventDefault(); setActiveIndex((i) => Math.max(i - 1, 0)); }
-      else if (e.key === "Enter" && results[activeIndex]) { onSelect(results[activeIndex]); }
+      else if (e.key === "Enter" && results[activeIndex]) { select(results[activeIndex]); }
       else if (e.key === "Escape") { e.stopPropagation(); setQuery(""); }
       return;
     }
@@ -369,7 +383,7 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose }: Ad
       else if (treePath.length > 1) setTreePath(treePath.slice(0, -1));
     } else if (e.key === "Enter") {
       if (active?.kind === "category") setTreePath([...treePath, 0]);
-      else if (active?.kind === "leaf") onSelect(active.entry);
+      else if (active?.kind === "leaf") select(active.entry);
     }
   }
 
@@ -398,11 +412,11 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose }: Ad
               <div
                 key={leaf.type}
                 ref={i === activeIndex ? activeRef : undefined}
-                className={`solenoid-add-menu__item${leaf.accent ? " solenoid-add-menu__item--accent" : ""}${i === activeIndex ? " solenoid-add-menu__item--active" : ""}`}
+                className={`solenoid-add-menu__item${leaf.accent ? " solenoid-add-menu__item--accent" : ""}${i === activeIndex ? " solenoid-add-menu__item--active" : ""}${isDim(leaf) ? " solenoid-add-menu__item--incompatible" : ""}`}
                 title={leaf.description}
                 style={leaf.accent ? ({ "--item-accent": leaf.accent } as CSSProperties) : undefined}
                 onMouseEnter={() => setActiveIndex(i)}
-                onClick={() => onSelect(leaf)}
+                onClick={() => select(leaf)}
               >
                 {leaf.label}
                 {leaf.packs?.length ? <PackDot packs={leaf.packs} /> : null}
@@ -412,7 +426,7 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose }: Ad
             <div className="solenoid-add-menu__empty">No matches</div>
           )
         ) : (
-          <TreeMenu entries={entries} depth={0} path={treePath} onHover={handleHover} onOpenCategory={handleOpenCategory} onSelect={onSelect} onSubmenuSide={setSubmenuSide} />
+          <TreeMenu entries={entries} depth={0} path={treePath} onHover={handleHover} onOpenCategory={handleOpenCategory} onSelect={select} onSubmenuSide={setSubmenuSide} isDim={isDim} />
         )}
       </div>
     </div>
