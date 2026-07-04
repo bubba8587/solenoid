@@ -56,10 +56,11 @@ html.is-mobile {
   .solenoid-topbar__doctitle {
     display: none;
   }
-  /* Surfaced layout tools — sit just left of the apptools cluster; their buttons
-     use .solenoid-nav__btn, sized for touch here (the pill scopes its own size). */
+  /* Surfaced layout tools — sit just left of the apptools cluster. Their buttons
+     match the apptools/icon/nav buttons (34px) so every top-bar control is one size
+     (the layout pill then equals the apptools pill at 36px). */
   .solenoid-topbar__group--layout { display: flex; gap: 2px; }
-  .solenoid-topbar .solenoid-nav__btn { width: 32px; height: 32px; }
+  .solenoid-topbar .solenoid-nav__btn { width: 34px; height: 34px; }
   .solenoid-topbar .solenoid-nav__btn svg { width: 17px; height: 17px; }
   /* The square icon doubles as the app-menu button on a phone — a finger-sized tap
      target at the left edge. Neutral chrome now (Row B isn't accent). */
@@ -250,7 +251,8 @@ html.is-mobile {
   .solenoid-outline__open-pill { display: none; }
   .solenoid-outline {
     top: calc(88px + env(safe-area-inset-top));
-    bottom: calc(26px + env(safe-area-inset-bottom));
+    /* Clear the bottom action bar (~57px) so the list doesn't run underneath it. */
+    bottom: calc(68px + env(safe-area-inset-bottom));
     width: min(248px, 84vw);
   }
   .solenoid-outline__collapse { width: 32px; height: 32px; font-size: 20px; }
