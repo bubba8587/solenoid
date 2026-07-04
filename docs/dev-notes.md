@@ -2,6 +2,53 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### 1.0-tail #1 — per-cell error/null broadcaster contract + readInput (2026-07-04)
+Item #1 of the tail. The rule was in `applyOp` (operator path) but not the broadcasters, so a per-cell
+error/null in a FUNCTION or a numeric NODE decayed (`ABS([1,#DIV/0!,3])` morphed the error; `[1,null,3]+10`
+→ `[11,10,13]`). Factored ONE rule — per output cell, before the op: SolError operand → that error
+UNMORPHED (first in arg order); else missing → `null`; else compute — into `shared.ts`
+broadcast/broadcastErr, `excelFormula.ts` broadcastCall + unary/percent, and `logic.ts` broadcastEl.
+- Shared helpers `cellShortCircuit` (full) / `cellError` (error-only) in `valueKinds.ts` + `COMPUTE` sentinel.
+- **broadcastEl gotcha:** the logic family keeps feeding `null` to its own fn (Kleene: `null AND FALSE =
+  FALSE`), so it uses `cellError` (error half only), NOT `cellShortCircuit`. The IS-test family (ISERROR/
+  ISNA) is unaffected — it has its own `deepTest`/`deepNull` maps, doesn't touch broadcastEl. IF's per-cell
+  now propagates an error in ANY branch (matches its scalar behavior, where the node guard already poisons
+  on any-branch error — not a regression, a unification).
+- **broadcastCall gotcha:** a `NULL_INSPECTING` set (ISBLANK/ISNUMBER/ISTEXT/ISNONTEXT/ISLOGICAL/ISREF/N/T/
+  TYPE) is EXCLUDED from the null short-circuit — those predicates must SEE the blank (ISBLANK(null)=TRUE).
+  Error still short-circuits for all (matches the scalar call-level `argv.find(isSolError)` guard).
+- **readInput** (`shared.ts`): `inputs.x?.[0] ?? this.literals.x` let `??` swallow a WIRED null into the
+  literal — a blank cell silently became the box number. `readInput(wired, literal)` returns the literal
+  ONLY when unwired (`undefined`); a wired value (incl. `null`) wins. Broadcaster arg types widened to
+  accept a scalar `null`. Applied to scalar.ts's broadcast-based DATA inputs (Arithmetic/MathFn/Clamp
+  value/MRound/RoundN value/GCD/ATAN2-LOG/Hypotenuse). **DATA vs CONFIG:** config inputs (RoundN digits,
+  Base from/to, combinatorics n/k, Bessel order) KEEP defaulting — a blank config means "use the default,"
+  not "propagate missing." So the remaining data() sweep is per-input judgment, NOT a blind swap; a few
+  direct-math scalar nodes (BaseConvert/Combinatorics/Bessel) also need an explicit null guard.
+- Tests: `broadcastContract.test.ts` (all four broadcasters + readInput + wired-null-through-Arithmetic),
+  `valueKinds.test.ts` (the two helpers). Commits `8b76754` (contract) + `3f9fb8d` (readInput).
+
+### Report + Image live-update fixes (2026-07-04)
+Author-reported while testing Reports:
+- **Preview jumped on every keystroke:** `InlineRefBody` rebuilds the whole preview DOM via
+  `root.innerHTML = bodyHtml` (loses scroll, re-mounts every chart/frame/diagram portal). It fired per
+  keystroke AND on every re-render (its `renderEmbed` dep had a fresh identity each render). Fix: the
+  preview derives from a 250ms-DEBOUNCED copy of the draft (textarea stays live), and the innerHTML rebuild
+  depends on `[bodyHtml]` ONLY (renderEmbed read from a ref). `ReportOverlay.tsx` + `inlineRefDisplay.tsx`.
+- **A newly-wired ref (Image) didn't refresh the preview:** `InlineRefValue` read `refValue()` but
+  subscribed only to the annotation store. Subscribed it to `cableValueStore` (bumped by every
+  `processGraph`), so a recompute refreshes it.
+- **Canvas ref row showed "[object Object]" for an image:** `refPreview` had no `isImageValue` case → fell
+  to `String(value)`. Added it.
+- **Changing an Image's title didn't propagate to a wired Report:** the Image node bakes `this.label` into
+  its emitted `ImageValue` (title/alt), and its URL/attachment/height ride the value too — but its edit
+  handlers only `scheduleAutosave()`d, never recomputed (the old docstring's "carries no data" was stale).
+  Now label/URL commit on blur/Enter, file-attach + height draft-commit immediately, each with
+  `processGraph(data.id)`. **The point re: NodeShell:** ordinary nodes get "commit label → processGraph"
+  FREE from NodeShell's label field (`nodeKit.tsx` labelField apply calls processGraph); Chart/Mermaid use
+  NodeShell so their title renames already propagate. The Image is fully custom (its own header, like
+  Note/Group/Report) so it never had that — hence the manual wiring. Doesn't need de-customizing.
+
 ### 1.0-tail compute-semantics build pass — STARTED (8/14) + interleaved features (2026-07-04)
 Author gave the go on the decision-recorded 1.0-tail queue (`backlog.md` "1.0-TAIL WALKTHROUGH
 BOOKMARK"). Regrounded the whole list against code FIRST (an Explore sweep confirmed NONE were
@@ -25,12 +72,12 @@ commit + tests:
 - **#12** deleted the seed-writeback dev scaffolding (devRebuildSeeds.ts + main.tsx import + vite plugin).
 - **#13** stale catalog descriptions (divide→#DIV/0!, XMatch→#N/A, FIND/SEARCH→#VALUE!, CHOOSE extensible).
 
-**6 REMAIN — RESUME HERE (order + risk in backlog's RESUME-HERE marker):** (1) broadcaster per-cell
-error/null contract [PARTIAL — only the `applyOp` operator path is done; the broadcasters in shared.ts /
-excelFormula.ts are NOT] + the unwired-vs-missing read helper; (2) non-finite `#OVERFLOW!`/`#DOMAIN!`
-guard; (3) IFS/SWITCH no-match → #N/A + placeholder; (4) input-default muted placeholders; (5)
-numberToText 15 sig-digits; (6) NaN display affordance. (1)+(2) are the risky foundation (every
-element-wise node) — do them last, as done here.
+**REMAINING — RESUME HERE (order + risk in backlog's RESUME-HERE marker):** (1) broadcaster per-cell
+error/null contract [broadcasters DONE — see the next entry; readInput helper built + applied to
+scalar.ts; the list/date/text/finance/dist/stats data() sweep is the open tail]; (2) non-finite
+`#OVERFLOW!`/`#DOMAIN!` guard; (3) IFS/SWITCH no-match → #N/A + placeholder; (4) input-default muted
+placeholders; (5) numberToText 15 sig-digits; (6) NaN display affordance. (1)+(2) are the risky
+foundation (every element-wise node) — do them first, as the RESUME order says.
 
 **Interleaved feature requests (all shipped this session):**
 - **Report dock-to-right (desktop)** — a dock button pins the report to a fixed right column between the
