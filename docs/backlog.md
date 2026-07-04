@@ -374,9 +374,11 @@ section is decision-recorded. The QUEUE when resuming, in order:
 >    and `logic.ts` broadcastEl (error guard; null still feeds Kleene) — shared helpers
 >    `cellShortCircuit`/`cellError` in valueKinds.ts, tests in broadcastContract.test.ts.
 >    The `readInput` unwired-vs-wired-null helper is BUILT (`shared.ts`, commit `3f9fb8d`)
->    and applied across scalar.ts's broadcast-based DATA inputs. STILL TODO: sweep the
->    remaining data() files (list/date/text/matrix/complex/finance/dist/stats), per-input
->    DATA-vs-CONFIG judgment (config inputs keep defaulting — NOT a blind swap).
+>    and applied across scalar.ts's DATA inputs. SWEEP RESOLVED 2026-07-05: the remaining
+>    `?? this.literals` sites (list/matrix/complex/date/stats/finance/dist) are ALL config/
+>    search params where a blank correctly DEFAULTS — the swallow-null bug only bit
+>    element-wise math data operands (= scalar.ts). stats data lists use `forAggregate`
+>    (null-safe). No blanket sweep — config must default (DATA-vs-CONFIG rule).
 > 2. **non-finite guard** — DONE (2026-07-05): `guardFinite` (valueKinds.ts) — NaN→#DOMAIN!,
 >    ±Inf-from-finite→#OVERFLOW!, ∞-from-∞-input passes; wired at broadcasters + applyOp +
 >    broadcastCall. `#RANGE!` RENAMED → `#OVERFLOW!` (author call — descriptive, one code,
@@ -403,9 +405,15 @@ section is decision-recorded. The QUEUE when resuming, in order:
 >    Author eyeballs the styling.
 > The 8 done items are also summarized in dev-notes 2026-07-04.
 >
-> **STATUS 2026-07-05: ALL 6 remaining tail items done (#1,#2,#3,#4,#5,#6). The ONLY open
-> 1.0-tail work is the readInput data()-file sweep (item 1's tail — list/date/text/matrix/
-> complex/finance/dist/stats, DATA-vs-CONFIG per input).** Author eyeballs the #4/#6 styling.
+> **STATUS 2026-07-05: ALL 6 remaining tail items done (#1,#2,#3,#4,#5,#6), AND the readInput
+> sweep is RESOLVED.** On per-file inspection the remaining `?? this.literals` sites across
+> list/matrix/complex/date/stats/finance/dist are ALL config/search params (count, start,
+> rate, size, window, min/max, order, lookup value, date parts) where a blank correctly
+> DEFAULTS — not flowing data operands. The swallow-a-wired-null bug (`[null]+10 → 10`) only
+> bit element-wise math DATA inputs = the scalar.ts nodes, already swept. stats.ts data lists
+> go through `forAggregate` (null-safe). Applying readInput to config would be WRONG (blank
+> config must default, per the DATA-vs-CONFIG rule). So no blanket sweep — the meaningful
+> scope is complete. Author eyeballs the #4/#6 styling.
 
 - [ ] **Frame Filter text matching → case-INsensitive** (audit 28's held-back half —
   REVERSED on revisit). eq/neq/contains/startsWith/endsWith all match case-insensitively,
@@ -418,9 +426,11 @@ section is decision-recorded. The QUEUE when resuming, in order:
   PivotTable's silent case-merging; document as parity:false catalog notes. The rule:
   *comparisons match like Excel's `=`; keys are identity.* String lt/gt byte-vs-locale
   ordering stays a separate P3.
-- [~] **Per-cell error/null contract factored INTO the broadcasters** — DONE for the
-  broadcasters (2026-07-04, commit `8b76754`); readInput helper built + applied to
-  scalar.ts (commit `3f9fb8d`); the remaining data()-file sweep is the open tail.
+- [x] **Per-cell error/null contract factored INTO the broadcasters — DONE.** Broadcasters
+  (2026-07-04, commit `8b76754`); readInput helper built + applied to scalar.ts (commit
+  `3f9fb8d`); readInput sweep RESOLVED 2026-07-05 — the remaining sites are all config/search
+  params that correctly default (the swallow-null bug only bit element-wise math data operands
+  = scalar.ts; stats lists use forAggregate). See the RESUME-marker item 1 for the full note.
   (extends audit P3 "error code morphs"; node layer confirmed worse by probe:
   `[1,#DIV/0!,3]+10` → `[11,"[object Object]10",13]`, `[1,null,3]+10` → `[11,10,13]`).
   ONE rule, per output element, before the fn runs: SolError operand → that error
