@@ -2,6 +2,19 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### 1.0-tail #3 — IFS/SWITCH no-match → #N/A, CHOOSE out-of-range → #VALUE! (2026-07-05)
+An uncovered IFS/SWITCH case with NO fallback is a logic hole, not missing data — so it's a loud,
+catchable `#N/A` (matches XLOOKUP not-found), not a silent `null` aggregators skip. `isSet(inputs,
+literals, key)` (logic.ts) distinguishes an UNSET fallback (no cable AND no literal) from one
+deliberately SET to a value (incl. null/0, which is returned as-is). CHOOSE out-of-range index →
+`#VALUE!` (Excel's code). Fresh SWITCH ships the Default EMPTY (changed `expr` literal 0→1 so it
+matches when0 and still shows a real result); IFS fresh already matches cond0. Muted **"N/A"
+placeholder**: `InlineNumberField` gained a `placeholder` prop (default "0"), and
+`PairedExtensibleInputs` renders the trailing fallback box via its `field()` helper with
+`placeholder="N/A"` — a state cue, not a typed value (blank→#N/A, type a value→that value, clear→#N/A).
+Formula IFS/SWITCH inherit #N/A for free (Formula.js no-match → Error → Expression `tagResult` →
+SolError). Tests: logic.test.ts (Choose #VALUE!, IFS/SWITCH unset→#N/A, set→value). No churn.
+
 ### 1.0-tail #2 — non-finite guard + #RANGE! → #OVERFLOW! rename (2026-07-05)
 The settled model: a COMPUTATION never yields a bare NaN/Infinity — they're classified into tagged
 errors, so a residual NaN can only be dirty DATA. `guardFinite(result, ...inputs)` in `valueKinds.ts`:

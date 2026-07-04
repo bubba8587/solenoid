@@ -121,9 +121,13 @@ type ScrubState = { startX: number; startY: number; startValue: number; currentV
 export function InlineNumberField({
   value,
   onChange,
+  placeholder = "0",
 }: {
   value: number | undefined;
   onChange: (v: number | undefined) => void;
+  /** Shown (muted) when the field is empty. IFS/SWITCH pass "N/A" on their
+   *  fallback box, so an unset Otherwise/Default reads as "no match → #N/A". */
+  placeholder?: string;
 }) {
   const field = useDraftCommit(value, numToText, parseNum, onChange);
   const dragRef = useRef<ScrubState | null>(null);
@@ -201,7 +205,7 @@ export function InlineNumberField({
       type="number"
       className="solenoid-node__inline-input"
       value={field.draft}
-      placeholder="0"
+      placeholder={placeholder}
       onChange={(e: ChangeEvent<HTMLInputElement>) => field.setDraft(e.target.value)}
       onBlur={field.onBlur}
       onKeyDown={field.onKeyDown}

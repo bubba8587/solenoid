@@ -175,10 +175,11 @@ describe("ChooseNode — extensible value rows, 1-based index", () => {
     n.literals = { index: 3, ...Object.fromEntries(n.valueInputKeys().map((k, i) => [k, (i + 1) * 10])) };
     expect(n.data({}).result).toBe(30); // 3rd value = 30
   });
-  it("out-of-range index → null", () => {
+  it("out-of-range index → #VALUE!", () => {
     const n = new ChooseNode();
     n.literals.index = 99;
-    expect(n.data({}).result).toBeNull();
+    const r = n.data({}).result;
+    expect(isSolError(r) && (r as { code: string }).code).toBe("#VALUE!");
   });
   it("added/removed rows shift which keys are selectable", () => {
     const n = new ChooseNode();
@@ -207,10 +208,11 @@ describe("IfsNode — extensible condition/value pairs", () => {
     n.literals = { cond0: 0, val0: 10, cond1: 1, val1: 20, cond2: 0, val2: 30 };
     expect(n.data({}).result).toBe(20);
   });
-  it("no condition true → null when Otherwise is unset", () => {
+  it("no condition true → #N/A when Otherwise is UNSET (a logic hole, not a blank)", () => {
     const n = new IfsNode();
     n.literals = { cond0: 0, val0: 10, cond1: 0, val1: 20, cond2: 0, val2: 30 };
-    expect(n.data({}).result).toBeNull();
+    const r = n.data({}).result;
+    expect(isSolError(r) && (r as { code: string }).code).toBe("#N/A");
   });
   it("no condition true → the Otherwise fallback when set", () => {
     const n = new IfsNode();
@@ -245,10 +247,15 @@ describe("SwitchNode — fixed expr/default + extensible when/then pairs", () =>
     const n = new SwitchNode();
     expect(n.data({ expr: [2] }).result).toBe(20);
   });
-  it("no match → default", () => {
+  it("no match → default when the Default is SET", () => {
     const n = new SwitchNode();
     n.literals.default = 7;
     expect(n.data({ expr: [99] }).result).toBe(7);
+  });
+  it("no match → #N/A when the Default is UNSET", () => {
+    const n = new SwitchNode(); // fresh: no default literal
+    const r = n.data({ expr: [99] }).result;
+    expect(isSolError(r) && (r as { code: string }).code).toBe("#N/A");
   });
   it("added pairs extend the cases", () => {
     const n = new SwitchNode();
