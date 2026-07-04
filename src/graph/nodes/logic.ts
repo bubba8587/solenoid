@@ -2,7 +2,7 @@ import { ClassicPreset } from "rete";
 import { numberSocket } from "../sockets";
 import { numListIn, logicalComboOut, logicalComboIn, logicalIn, numIn, anyIn, anyOut } from "./shared";
 import { isSolError, isNaError, solError, type SolError } from "../errorValue";
-import { kleeneAnd, kleeneOr, kleeneNot, isMissing, type Tri } from "../valueKinds";
+import { kleeneAnd, kleeneOr, kleeneNot, isMissing, cellError, type Tri } from "../valueKinds";
 import { isFrameValue, frameRowCount, type FrameValue } from "../frame";
 
 /** A Frame's cells in row-major order, raw (null preserved) — lets the IS-check
@@ -21,16 +21,26 @@ function frameCells(f: FrameValue): unknown[][] {
 // the shorter padded with `null` INTO the fn — the fn's own null semantics
 // decide the cell (Kleene: null AND FALSE is FALSE, not null), unlike the
 // numeric broadcasters where a padded position is null outright.
+// A per-cell SolError short-circuits UNMORPHED (first in arg order), matching the
+// numeric broadcasters and applyOp — an error operand in a comparison / boolean /
+// IF-branch propagates as that error rather than being coerced. `null` is NOT
+// short-circuited here: it flows into `fn`, whose own Kleene rule decides the cell
+// (null AND FALSE is FALSE, not null). See valueKinds `cellError`.
 function broadcastEl<A, T>(
   fn: (...xs: A[]) => T,
   ...args: Array<A | A[]>
 ): T | T[] {
   const lists = args.filter((a): a is A[] => Array.isArray(a));
-  if (lists.length === 0) return fn(...(args as A[]));
+  if (lists.length === 0) {
+    const err = cellError(args);
+    return (err !== undefined ? err : fn(...(args as A[]))) as T;
+  }
   const len = lists.reduce((m, l) => Math.max(m, l.length), 0);
   const out: T[] = [];
   for (let i = 0; i < len; i++) {
-    out.push(fn(...(args.map((a) => (Array.isArray(a) ? (i < a.length ? a[i] : null) : a)) as A[])));
+    const ops = args.map((a) => (Array.isArray(a) ? (i < a.length ? a[i] : null) : a));
+    const err = cellError(ops);
+    out.push((err !== undefined ? err : fn(...(ops as A[]))) as T);
   }
   return out;
 }
