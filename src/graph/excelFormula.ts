@@ -13,7 +13,7 @@
 // machinery), and a LaTeX string for the KaTeX preview.
 
 import { solError, isSolError, isNaError } from "./errorValue";
-import { resolveExcelFunction, EXCEL_IMPL_META, normalizeFxResult, fxErrorToSol, FX_FUNCTION_NAMES } from "./excelFunctions";
+import { resolveExcelFunction, EXCEL_IMPL_META, normalizeFxResult, fxErrorToSol, FX_FUNCTION_NAMES, numberToText } from "./excelFunctions";
 import { isMissing, guardFinite } from "./valueKinds";
 
 // ─── AST ────────────────────────────────────────────────────────────────────
@@ -501,7 +501,12 @@ function applyOp(op: string, a: unknown, b: unknown): unknown {
     case "/": return nb === 0 && typeof na === "number" ? solError("#DIV/0!", "Division by zero") : fin((na as number) / (nb as number));
     case "^": return fin(Math.pow(na as number, nb as number));
     case "&": {
-      const s = (v: unknown): string => (typeof v === "boolean" ? (v ? "TRUE" : "FALSE") : String(v));
+      // Numbers format at 15 sig digits (numberToText) so `(0.1+0.2) & " kg"` is
+      // "0.3 kg", not the 17-digit float-noise String() would print.
+      const s = (v: unknown): string =>
+        typeof v === "boolean" ? (v ? "TRUE" : "FALSE")
+        : typeof v === "number" ? numberToText(v)
+        : String(v);
       return s(a) + s(b);
     }
     case "=":

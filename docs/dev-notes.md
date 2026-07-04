@@ -2,6 +2,16 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### 1.0-tail #5 — numberToText at 15 sig digits for text contexts (2026-07-05)
+`numberToText(x)` (excelFunctions.ts) = `parseFloat(x.toPrecision(15)).toString()` — 15 clean decimal
+digits, trailing zeros stripped, so `(0.1+0.2) & " kg"` prints "0.3 kg" not the 17-digit float noise.
+Rationale is IEEE (a double carries ~15 clean digits; 16–17 are representation garbage), not
+Excel-mimicry. Routed through `toStr` (so LEN + every internal text fn get it) and the `&` operator
+(applyOp); internal CONCAT/CONCATENATE/TEXTJOIN now own the join via `toStr` (was Formula.js's raw
+String). CONCAT/TEXTJOIN are range functions (whole arrays, `flat`-tened); CONCATENATE is element-wise.
+Sci-notation thresholds deliberately not chased (`.toString()`'s own e-notation is fine). Non-finite
+falls back to String (guardFinite tags those first). Tests: excelFormula + excelFunctions. No churn.
+
 ### 1.0-tail #3 — IFS/SWITCH no-match → #N/A, CHOOSE out-of-range → #VALUE! (2026-07-05)
 An uncovered IFS/SWITCH case with NO fallback is a logic hole, not missing data — so it's a loud,
 catchable `#N/A` (matches XLOOKUP not-found), not a silent `null` aggregators skip. `isSet(inputs,

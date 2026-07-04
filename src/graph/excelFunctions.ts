@@ -304,10 +304,24 @@ function toNum(x: unknown): number {
   }
   return NaN;
 }
+/** Number → text for STRING contexts (`&`, CONCAT/CONCATENATE/TEXTJOIN, and any
+ *  text fn via `toStr`): 15 significant digits, trailing zeros stripped — so
+ *  `(0.1+0.2) & " kg"` is "0.3 kg", not "0.30000000000000004 kg". The rationale is
+ *  IEEE, not Excel: a double carries ~15 clean decimal digits; digits 16–17 are
+ *  representation noise, so printing them into user-built text publishes garbage.
+ *  Scientific-notation thresholds are deliberately NOT chased — `.toString()`'s
+ *  own e-notation for very large/small magnitudes is fine. Non-finite falls back
+ *  to `String` (guardFinite normally tags those before they reach here). */
+export function numberToText(x: number): string {
+  if (!Number.isFinite(x)) return String(x);
+  return parseFloat(x.toPrecision(15)).toString();
+}
+
 function toStr(x: unknown): string {
   if (typeof x === "string") return x;
   if (typeof x === "boolean") return x ? "TRUE" : "FALSE";
   if (x == null) return "";
+  if (typeof x === "number") return numberToText(x);
   return String(x);
 }
 const badNum = (...xs: number[]) => xs.some(Number.isNaN);
@@ -395,6 +409,21 @@ registerInternal("EOMONTH", (x, months) => {
   return Math.round(jsDateToSerial(eom));
 });
 registerInternal("LEN", (x) => toStr(x).length);
+
+// ── text join: own them so numbers format at 15 sig digits (numberToText via
+// toStr), not Formula.js's raw String (17-digit float noise). CONCAT/TEXTJOIN are
+// range functions (whole arrays, nulls already skipped / errors propagated by
+// prepRangeArgs); CONCATENATE is element-wise (scalar args). `flat` handles a
+// range arg that arrives as a (possibly nested) array. ──
+const flat = (xs: unknown[]): unknown[] => xs.flatMap((x) => (Array.isArray(x) ? flat(x) : [x]));
+registerInternal("CONCAT", (...xs) => flat(xs).map(toStr).join(""));
+registerInternal("CONCATENATE", (...xs) => flat(xs).map(toStr).join(""));
+registerInternal("TEXTJOIN", (delim, ignoreEmpty, ...xs) => {
+  const parts = flat(xs).map(toStr);
+  // ignore_empty defaults to TRUE (Excel); only an explicit FALSE/0 keeps empties.
+  const kept = ignoreEmpty === false || ignoreEmpty === 0 ? parts : parts.filter((s) => s !== "");
+  return kept.join(toStr(delim));
+});
 
 // ── datetime extractors (the rest of YEAR's family) ──
 // Each reads OUR date serial through `serialToJsDate`, identical to DatePartNode's

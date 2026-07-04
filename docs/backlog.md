@@ -388,7 +388,10 @@ section is decision-recorded. The QUEUE when resuming, in order:
 >    a `placeholder` prop; the fallback box shows a muted "N/A". Tests in logic.test.ts.
 > 4. **input defaults as muted placeholders** (not "(default …)" labels) —
 >    text.ts/list.ts/finance.ts + their components.
-> 5. **`numberToText` at 15 sig digits** for `&`/CONCAT/TEXTJOIN.
+> 5. **`numberToText` at 15 sig digits** for `&`/CONCAT/TEXTJOIN — DONE (2026-07-05):
+>    helper in excelFunctions.ts, routed through `toStr` (fixes LEN etc.) + the `&`
+>    operator; internal CONCAT/CONCATENATE/TEXTJOIN own the join. `(0.1+0.2)&" kg"` →
+>    "0.3 kg". Tests in excelFormula/excelFunctions.
 > 6. **NaN display affordance** (muted tint + tooltip; author eyeballs styling).
 > The 8 done items are also summarized in dev-notes 2026-07-04.
 
@@ -493,7 +496,12 @@ section is decision-recorded. The QUEUE when resuming, in order:
   message **"Use XLOOKUP"** (MATCH → **"Use XMATCH"**) — nothing longer, per the
   no-Captain-Obvious rule. **INDEX stays** (current Excel, never superseded). Delete
   the four impls + their tests; add redirect-message tests.
-- [ ] **Number→text conversion at 15 significant digits (author confirmed).** One shared
+- [x] **Number→text conversion at 15 significant digits — DONE 2026-07-05.** `numberToText`
+  (excelFunctions.ts) = `parseFloat(x.toPrecision(15)).toString()`; routed through `toStr`
+  (so LEN + every internal text fn benefit) and `applyOp`'s `&`; internal
+  CONCAT/CONCATENATE/TEXTJOIN own the join via `toStr`. `(0.1+0.2)&" kg"` → "0.3 kg". Tests
+  in excelFormula.test.ts + excelFunctions.test.ts. (Original spec below.)
+  One shared
   `numberToText` helper (15 sig digits, trailing zeros stripped) used by `applyOp`'s `&`
   and thin wrappers for FX-routed CONCAT/CONCATENATE/TEXTJOIN, so `(0.1+0.2) & " kg"` →
   `"0.3 kg"`. **Rationale: IEEE, not Excel** — a double guarantees ~15 clean decimal

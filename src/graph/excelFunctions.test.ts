@@ -7,11 +7,29 @@ import {
   resolveExcelFunction,
   registerInternal,
   EXCEL_IMPL_META,
+  numberToText,
   type FuncFamily,
 } from "./excelFunctions";
 import { compileEvaluator, FORMULA_FUNCTION_NAMES } from "./excelFormula";
 import { isSolError, type SolError } from "./errorValue";
 import { jsDateToSerial, serialToJsDate } from "./nodes/date";
+
+describe("numberToText — 15 significant digits, trailing zeros stripped", () => {
+  it("strips IEEE representation noise", () => {
+    expect(numberToText(0.1 + 0.2)).toBe("0.3");
+    expect(numberToText(1 / 3)).toBe("0.333333333333333"); // 15 sig digits
+  });
+  it("leaves clean values alone", () => {
+    expect(numberToText(42)).toBe("42");
+    expect(numberToText(-0)).toBe("0");
+    expect(numberToText(1234567.5)).toBe("1234567.5");
+    expect(numberToText(0)).toBe("0");
+  });
+  it("falls back to String for non-finite (guardFinite normally tags these first)", () => {
+    expect(numberToText(Infinity)).toBe("Infinity");
+    expect(numberToText(NaN)).toBe("NaN");
+  });
+});
 
 describe("FAMILY_BACKING (the audit's per-family verdict)", () => {
   it("keeps the families a difference-that-matters dictates internal", () => {
