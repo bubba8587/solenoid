@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { PresentationNode } from "./presentation";
 
 describe("PresentationNode", () => {
@@ -84,5 +84,20 @@ describe("PresentationNode", () => {
     clone.addStep("S2", ["b"]);
     expect(src.steps).toEqual([{ title: "S1", nodeIds: ["a"] }]);
     expect(clone.steps).toHaveLength(2);
+  });
+});
+
+import { presentationStore } from "../presentationStore";
+
+describe("presentationStore", () => {
+  afterEach(() => presentationStore.stop());
+  it("tracks the running presentation and clears on stop", () => {
+    expect(presentationStore.isActive()).toBe(false);
+    presentationStore.start("pres-1");
+    expect(presentationStore.isActive()).toBe(true);
+    expect(presentationStore.activeId()).toBe("pres-1");
+    presentationStore.stop();
+    expect(presentationStore.isActive()).toBe(false);
+    expect(presentationStore.activeId()).toBeNull();
   });
 });

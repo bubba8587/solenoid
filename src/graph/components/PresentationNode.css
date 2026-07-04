@@ -195,6 +195,19 @@
   min-width: 40px;
   text-align: center;
 }
+/* The Present button is a pill, not a round stepper — overrides the shared
+   footer-button circle sizing. */
+.solenoid-pres__footer button.solenoid-pres__present {
+  width: auto;
+  height: 24px;
+  border-radius: 12px;
+  padding: 0 12px;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--pres-color, var(--text-bright));
+  border-color: color-mix(in srgb, var(--pres-color, var(--border-strong)) 45%, var(--border));
+}
 
 .solenoid-pres--selected {
   box-shadow: 0 6px 16px color-mix(in srgb, var(--node-accent) 22%, transparent);
