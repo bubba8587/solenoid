@@ -167,12 +167,24 @@ export function NavMenu() {
           aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
           onClick={() => toggleFullscreen()}
         >
-          {/* Lucide maximize-2, redrawn on the pill's 16-grid / 1.5 stroke. */}
+          {/* Lucide maximize-2, or minimize-2 while fullscreen — redrawn on the
+              pill's 16-grid / 1.5 stroke. */}
           <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M10 2 H14 V6" />
-            <path d="M6 14 H2 V10" />
-            <path d="M14 2 L9 7" />
-            <path d="M2 14 L7 9" />
+            {isFullscreen ? (
+              <>
+                <path d="M13 7 H9 V3" />
+                <path d="M9 7 L14 2" />
+                <path d="M3 9 H7 V13" />
+                <path d="M7 9 L2 14" />
+              </>
+            ) : (
+              <>
+                <path d="M10 2 H14 V6" />
+                <path d="M6 14 H2 V10" />
+                <path d="M14 2 L9 7" />
+                <path d="M2 14 L7 9" />
+              </>
+            )}
           </svg>
         </button>
       )}
