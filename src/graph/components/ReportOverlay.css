@@ -275,3 +275,89 @@ html.is-mobile .report-header {
 }
 html.is-mobile .report-embed-btn { padding: 8px 12px; font-size: 12.5px; }
 html.is-mobile .report-source { padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+
+/* ── Dock toggle (desktop) ──────────────────────────────────────────────────
+   Pins the report to the right side of the page; the canvas area squeezes left
+   (see the html.sol-report-docked rules below). Round icon button matching the
+   close button. Hidden on mobile, where the report is already full-screen. */
+.report-dock-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--text);
+  cursor: pointer;
+}
+.report-dock-btn:hover { background: var(--btn-hover); border-color: var(--border-strong); }
+.report-dock-btn--on { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+html.is-mobile .report-dock-btn { display: none; }
+
+/* ── Docked layout ──────────────────────────────────────────────────────────
+   The panel becomes a fixed right-side column between the top chrome and the
+   footer (both stay put), and the whole canvas area shifts left by the dock
+   width. Dock geometry is in vars so it's tunable in one place. */
+html.sol-report-docked {
+  --report-dock-w: 440px;
+  --report-dock-top: 66px;    /* MenuBar (22) + TopBar (44) */
+  --report-dock-bottom: 19px; /* StatusBar footer */
+}
+
+.report-panel--docked {
+  position: fixed;
+  top: var(--report-dock-top);
+  right: 0;
+  bottom: var(--report-dock-bottom);
+  width: var(--report-dock-w);
+  height: auto;
+  max-width: none;
+  border: none;
+  border-left: 1px solid var(--border-strong);
+  border-radius: 0;
+  box-shadow: -10px 0 28px rgba(0, 0, 0, 0.35);
+  z-index: 90;
+}
+
+/* Docked always uses the 2-tab (Draft/Preview) layout — the column is too narrow
+   for the side-by-side split — regardless of viewport width. Mirrors the
+   @media(max-width:760px) rules above, scoped to the docked panel. */
+.report-panel--docked .report-tabs {
+  display: flex;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-sunken);
+}
+.report-panel--docked .report-tab {
+  flex: 1 1 50%;
+  padding: 11px 8px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.report-panel--docked .report-tab--active {
+  color: var(--text-bright);
+  border-bottom-color: var(--accent);
+}
+.report-panel--docked .report-body { flex-direction: column; }
+.report-panel--docked .report-source,
+.report-panel--docked .report-preview { flex: 1 1 100%; }
+.report-panel--docked .report-body[data-tab="draft"] .report-preview { display: none; }
+.report-panel--docked .report-body[data-tab="preview"] .report-source { display: none; }
+.report-panel--docked .report-source { border-right: none; }
+.report-panel--docked .report-preview { margin: 0; max-width: none; align-self: stretch; }
+
+/* Shift the canvas area left so nothing hides behind the docked panel. The wrapper
+   carries the canvas, minimap, socket legend and add-menu (all positioned inside
+   it); the nav pill and HUD column are app/viewport-fixed, so offset their right.
+   The top header, bottom StatusBar and the LEFT navigator are untouched. */
+html.sol-report-docked .solenoid-canvas-wrapper { width: calc(100% - var(--report-dock-w)); }
+html.sol-report-docked .solenoid-nav { right: calc(12px + var(--report-dock-w)); }
+html.sol-report-docked .solenoid-hud-stack { right: calc(12px + var(--report-dock-w)); }
