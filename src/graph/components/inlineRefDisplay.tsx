@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import type { ClassicPreset } from "rete";
 import type { RenderEmit, ClassicScheme } from "rete-react-plugin";
 import { getEditor } from "../process";
+import { cableValueStore } from "../cableValueStore";
 import { formatAnnotationStore, formatNumberWithAnnotation, type FormatAnnotation } from "../formatAnnotationStore";
 import { sharedAnnotationResolver } from "../unitFlow";
 import { formatScalar } from "./format";
@@ -70,6 +71,7 @@ export function refPreview(value: unknown, ann: FormatAnnotation | undefined): s
   if (typeof value === "string") return value;
   if (isLambdaValue(value)) return lambdaText(value);
   if (isMermaidValue(value)) return value.title || "diagram";
+  if (isImageValue(value)) return value.title || "image";
   if (isChartValue(value)) return value.title || "chart";
   if (isFrameValue(value)) return "frame";
   if (isCubeValue(value)) return "cube";
@@ -223,6 +225,10 @@ function figureFor(
 }
 
 export function InlineRefValue({ nodeId, refKey, collapsible }: { nodeId: string; refKey: string; collapsible?: boolean }) {
+  // Re-render after every recompute pass — refValue() is read fresh below, so a
+  // newly-wired (or changed) ref value refreshes immediately, not only when an
+  // unrelated edit happens to re-render this portal. (processGraph bumps this.)
+  useSyncExternalStore(cableValueStore.subscribe, cableValueStore.version);
   const editor = getEditor();
   const node = editor?.getNode(nodeId) as unknown as RefValueHost | undefined;
   const value = node?.refValue(refKey);
@@ -306,6 +312,13 @@ export function InlineRefBody({
   const htmlRef = useRef<HTMLDivElement>(null);
   const [slots, setSlots] = useState<{ el: HTMLElement; name: string }[]>([]);
   const [embedSlots, setEmbedSlots] = useState<{ el: HTMLElement; name: string; i: number }[]>([]);
+  // Whether to scan for embed slots is stable per host (Report yes, Note no), but
+  // `renderEmbed`'s IDENTITY changes on every parent re-render. Keep it in a ref so
+  // it can't drag the innerHTML rebuild into re-running — the rebuild tears down
+  // and recreates the whole preview DOM (losing scroll, re-mounting every chart /
+  // frame / diagram portal), so it must fire ONLY when the rendered HTML changes.
+  const renderEmbedRef = useRef(renderEmbed);
+  renderEmbedRef.current = renderEmbed;
 
   // Set the rendered HTML IMPERATIVELY (not via dangerouslySetInnerHTML) so
   // React never "owns" these children. The previous version passed the HTML as
@@ -330,13 +343,13 @@ export function InlineRefBody({
     // Embed tokens (`![[Name]]`, pre-processed to a data-embed marker) — portal
     // an embed block into each. Report-only; NoteNode passes no renderEmbed.
     const embeds: { el: HTMLElement; name: string; i: number }[] = [];
-    if (renderEmbed) {
+    if (renderEmbedRef.current) {
       root.querySelectorAll<HTMLElement>("[data-embed]").forEach((el, i) => {
         embeds.push({ el, name: el.dataset.embed ?? "", i });
       });
     }
     setEmbedSlots(embeds);
-  }, [bodyHtml, renderEmbed]);
+  }, [bodyHtml]);
 
   return (
     <div className={className} onClick={onClick} onPointerDown={onPointerDown} onMouseDown={onMouseDown}>

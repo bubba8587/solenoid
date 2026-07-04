@@ -89,7 +89,7 @@ describe("broadcastCall / unary / percent — formula-layer broadcasters", () =>
 
 describe("broadcastEl — the logic family gains the error guard, keeps Kleene null", () => {
   it("comparison over a list propagates an error cell unmorphed", () => {
-    const r = new ComparisonNode({ op: "gt" }).data({ a: [[1, e, 3]], b: [2] }).result as unknown[];
+    const r = new ComparisonNode({ op: "gt" }).data({ a: [[1, e, 3] as unknown as number[]], b: [2] }).result as unknown[];
     expect(r[0]).toBe(false);
     expect(r[1]).toBe(e);   // error, not a coerced comparison
     expect(r[2]).toBe(true);
@@ -102,7 +102,7 @@ describe("broadcastEl — the logic family gains the error guard, keeps Kleene n
 
   it("BooleanOp propagates a per-cell error, Kleene-handles null", () => {
     // AND over element-wise operands: error cell → error; null follows Kleene.
-    const r = new BooleanOpNode({ op: "and" }).data({ a0: [[1, 1, e]], a1: [[1, 0, 1]] }).result as unknown[];
+    const r = new BooleanOpNode({ op: "and" }).data({ a0: [[1, 1, e] as unknown as number[]], a1: [[1, 0, 1]] }).result as unknown[];
     expect(r[0]).toBe(true);
     expect(r[1]).toBe(false); // Kleene: F wins
     expect(r[2]).toBe(e);

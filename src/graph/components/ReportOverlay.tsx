@@ -47,11 +47,22 @@ export function ReportOverlay() {
   // always short-circuit, so the ref sockets were NEVER minted. (The whole
   // reason Report sockets appeared broken.)
   const lastSyncRef = useRef(node?.body ?? "");
+  // The preview renders from a DEBOUNCED copy of the draft, not `body` itself:
+  // re-parsing markdown + rebuilding the preview DOM on every keystroke tore the
+  // whole rendered pane down and back up each character (scroll jumped, every
+  // embedded chart/table/diagram re-mounted). The textarea stays fully live off
+  // `body`; only the rendered side settles a beat after you stop typing.
+  const [previewBody, setPreviewBody] = useState(node?.body ?? "");
   useEffect(() => {
     setBody(node?.body ?? "");
+    setPreviewBody(node?.body ?? "");
     lastSyncRef.current = node?.body ?? "";
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodeId]);
+  useEffect(() => {
+    const t = setTimeout(() => setPreviewBody(body), 250);
+    return () => clearTimeout(t);
+  }, [body]);
 
   // Commit (mint sockets) THEN close — the reliable trigger on every exit path.
   // syncRefs runs synchronously at the top of commitBody, before any await, so
@@ -78,10 +89,10 @@ export function ReportOverlay() {
     // it (DOMPurify keeps class + data-* on the bare span). ADD_ATTR is belt-
     // and-suspenders — data-* survive by default, but be explicit.
     () => DOMPurify.sanitize(
-      marked.parse(preprocessEmbeds(body || ""), { async: false, gfm: true, breaks: true }) as string,
+      marked.parse(preprocessEmbeds(previewBody || ""), { async: false, gfm: true, breaks: true }) as string,
       { ADD_ATTR: ["data-embed"] },
     ),
-    [body],
+    [previewBody],
   );
 
   const sourceRef = useRef<HTMLTextAreaElement>(null);
@@ -263,7 +274,7 @@ export function ReportOverlay() {
             onBlur={() => void commitBody()}
           />
           <div className="report-preview sol-md">
-            {body.trim() ? (
+            {previewBody.trim() ? (
               <InlineRefBody
                 nodeId={node.id}
                 bodyHtml={bodyHtml}
