@@ -110,6 +110,19 @@ export function resultOut(label: string, dim: ResultDim, t: ResultType): Classic
 // pad-to-longest policy settled with the array-semantics build. The result
 // list therefore carries nulls at runtime; the `number[]` return type follows
 // the node layer's loose-list convention (lists carry null/SolError cells).
+// Read a scalar/list input slot, distinguishing UNWIRED from a wired MISSING.
+// The `inputs.x?.[0] ?? this.literals.x` idiom is subtly wrong: `??` swallows a
+// WIRED `null` into the literal, so a blank/missing cell flowing in silently
+// becomes whatever number sits in the box (the settled P6 SQL-null model says it
+// should PROPAGATE — null in → null out; Fill/Coalesce is the opt-in recovery).
+// The rule: a CONNECTED cable's value wins even when it's `null`; only an unwired
+// slot (`undefined`) falls back to the literal. Returns `T | null` so a `!== null`
+// guard (or a broadcaster, which now short-circuits missing per cell) can act on
+// the propagated missing.
+export function readInput<T>(wired: readonly T[] | undefined, literal: T): T | null {
+  return wired === undefined || wired.length === 0 ? literal : (wired[0] ?? null);
+}
+
 // A numeric broadcaster's output: a scalar, or a list whose cells may each carry
 // a first-class `null` (missing) or `SolError` (per the per-cell contract), or a
 // whole-value short-circuit (scalar error/missing). The node layer's loose-list
@@ -118,7 +131,9 @@ export type BroadcastResult = number | (number | SolError | null)[] | SolError |
 
 export function broadcast(
   fn: (...xs: number[]) => number | null,
-  ...args: Array<number | number[]>
+  // Args may be a scalar `null` (a wired MISSING read via `readInput`); the per-cell
+  // contract short-circuits it, so callers pass it straight through.
+  ...args: Array<number | number[] | null>
 ): BroadcastResult {
   const lists = args.filter((a): a is number[] => Array.isArray(a));
   if (lists.length === 0) {
@@ -146,7 +161,7 @@ export function broadcast(
 // element op has a genuine error case (vs a domain-`null` blank).
 export function broadcastErr(
   fn: (...xs: number[]) => number | SolError | null,
-  ...args: Array<number | number[]>
+  ...args: Array<number | number[] | null>
 ): BroadcastResult {
   const lists = args.filter((a): a is number[] => Array.isArray(a));
   if (lists.length === 0) {
