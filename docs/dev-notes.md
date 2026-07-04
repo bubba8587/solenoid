@@ -2,6 +2,20 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Fullscreen — F11 (desktop) + mobile pill button (2026-07-04)
+- **Rust**: new `toggle_fullscreen` window command (`src-tauri/src/lib.rs`, registered in
+  `generate_handler`) — `set_fullscreen(!is_fullscreen())`. Mirrors `open_devtools`/`set_window_border`.
+- **F11**: `initFullscreenHotkey` (`src/graph/fullscreen.ts`, called from `main.tsx`) binds F11 →
+  invoke the command, **Tauri desktop only** — web desktop keeps Chrome's own native F11, so binding
+  there (with preventDefault) would break it.
+- **Mobile button**: added to the NavMenu pill (the fit/lock cluster; on mobile the pill hides
+  zoom/flourish so it's exactly fit·lock — now fit·lock·fullscreen). Uses the browser Fullscreen API
+  (`toggleFullscreen`), Lucide maximize-2 redrawn on the pill's 16-grid / 1.5 stroke. Gated by
+  `fullscreenSupported()` (Tauri OR `document.documentElement.requestFullscreen` present) so it hides
+  on iOS Safari (no element fullscreen) rather than being a dead key. `showFullscreen = IS_MOBILE &&
+  fullscreenSupported()` — desktop never renders it (it has F11). NOTE: Rust half not compiled here
+  (no cargo cache; Tauri+Polars build is heavy) — verify on the next desktop build.
+
 ### Canvas regression sweep — minimap, semantic zoom, quick-wire (2026-07-04)
 Four author-reported bugs, all root-caused rather than patched-over:
 - **Minimap z-order** — `.solenoid-minimap` had no `z-index` (auto/0), so positioned node cards

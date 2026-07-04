@@ -10,6 +10,7 @@ import { initPacks } from "./graph/packs";
 import { initPackFcExtensions } from "./graph/fcExtensions";
 import { initFrameBackend } from "./graph/frameBackend";
 import { initDevtoolsHotkey } from "./graph/devtoolsHotkey";
+import { initFullscreenHotkey } from "./graph/fullscreen";
 import { pushNotice } from "./graph/noticeStore";
 import { isDesktop } from "./graph/fileBridge";
 import { IS_MOBILE } from "./graph/coarse";
@@ -96,6 +97,9 @@ void initFrameBackend();
 
 // F12 / Ctrl+Shift+I → open the webview devtools (desktop only).
 initDevtoolsHotkey();
+
+// F11 → toggle fullscreen (Tauri desktop only; web desktop uses Chrome's native F11).
+initFullscreenHotkey();
 
 if (import.meta.env.DEV) {
   import("./graph/catalogValidator").then(m => m.validateCatalog());

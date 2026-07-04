@@ -1,9 +1,10 @@
-import { useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { getArea, getEditor } from "./process";
 import { collapsedAwareNodesRect } from "./components/Minimap";
 import { canvasLockStore } from "./canvasLock";
 import { cableFlourishBridge } from "./cableFlourishStore";
 import { IS_MOBILE } from "./coarse";
+import { fullscreenSupported, toggleFullscreen } from "./fullscreen";
 import "./NavMenu.css";
 
 const ZOOM_STEP = 1.08;
@@ -111,6 +112,18 @@ export async function fitAll() {
  */
 export function NavMenu() {
   const locked = useSyncExternalStore(canvasLockStore.subscribe, canvasLockStore.get);
+  // Fullscreen button is mobile-only (desktop has F11 / Chrome's own). Track the
+  // state so the title reflects enter vs exit. Hidden where the browser can't do it
+  // (iOS Safari), so it's never a dead button.
+  const showFullscreen = IS_MOBILE && fullscreenSupported();
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  useEffect(() => {
+    if (!showFullscreen) return;
+    const onChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onChange);
+    onChange();
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, [showFullscreen]);
   return (
     <div className="solenoid-nav" onPointerDown={(e) => e.stopPropagation()}>
       <button className="solenoid-nav__btn solenoid-nav__btn--zoomin" title="Zoom in" onClick={() => zoomBy(ZOOM_STEP)}>
@@ -147,6 +160,22 @@ export function NavMenu() {
             : <path d="M5 7.5 V5.2 a3 3 0 0 1 6 0" />}
         </svg>
       </button>
+      {showFullscreen && (
+        <button
+          className="solenoid-nav__btn solenoid-nav__btn--fullscreen"
+          title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+          aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+          onClick={() => toggleFullscreen()}
+        >
+          {/* Lucide maximize-2, redrawn on the pill's 16-grid / 1.5 stroke. */}
+          <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10 2 H14 V6" />
+            <path d="M6 14 H2 V10" />
+            <path d="M14 2 L9 7" />
+            <path d="M2 14 L7 9" />
+          </svg>
+        </button>
+      )}
       <button
         className="solenoid-nav__btn solenoid-nav__btn--flourish"
         title="Cable flourish"
