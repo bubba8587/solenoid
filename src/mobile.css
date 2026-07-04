@@ -35,6 +35,20 @@ html.is-mobile {
   .solenoid-topbar {
     padding: env(safe-area-inset-top) 8px 0;
     gap: 8px;
+    /* Accent is the app bar's BASE color on mobile (like the desktop menu-bar row),
+       with auto-contrasting ink for text/icons. --accent-ink is derived from the
+       accent's luminance (white on a dark accent, near-black on a light one), so this
+       reads correctly for ANY accent in BOTH light and dark mode. */
+    background: var(--accent);
+    color: var(--accent-ink);
+    /* Separator to the canvas below: an ink-tinted hairline (the accent's own
+       contrast color, so it delineates against the canvas in either mode) plus the
+       standard elevation shadow. Replaces the base bar's 2px accent underline +
+       panel-border, both of which vanish on an accent bar. */
+    border-bottom: 1px solid color-mix(in srgb, var(--accent-ink) 22%, transparent);
+    box-shadow: var(--shadow-pop);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
   .solenoid-topbar__group,
   .solenoid-topbar__divider,
@@ -48,13 +62,21 @@ html.is-mobile {
     display: none;
   }
   /* The square icon doubles as the app-menu button on a phone — a finger-sized
-     tap target at the left edge (the separate hamburger is gone). */
-  .solenoid-topbar__icon { display: flex; }
+     tap target at the left edge (the separate hamburger is gone). On the accent
+     bar it's an ink-wash pill with an ink glyph. */
+  .solenoid-topbar__icon {
+    display: flex;
+    background: color-mix(in srgb, var(--accent-ink) 12%, transparent);
+    border-color: color-mix(in srgb, var(--accent-ink) 30%, transparent);
+  }
+  .solenoid-topbar__icon:active {
+    background: color-mix(in srgb, var(--accent-ink) 22%, transparent);
+  }
+  .solenoid-topbar__icon-glyph { background-color: var(--accent-ink); }
 
   /* Document name + caret in the app bar: take the middle space next to the
-     logo. Normal ink on the panel surface (the doctitle's default accent-ink is
-     for the accent menu bar), and the dropdown anchors LEFT so it can't run off
-     the screen edge. */
+     logo. Accent-ink on the accent bar, with an ink-wash press/open state, and
+     the dropdown anchors LEFT so it can't run off the screen edge. */
   .solenoid-topbar__doctitle {
     display: flex;
     flex: 1 1 auto;
@@ -64,13 +86,13 @@ html.is-mobile {
   .solenoid-topbar__doctitle .solenoid-doctitle { max-width: 100%; }
   .solenoid-topbar__doctitle .solenoid-doctitle__name,
   .solenoid-topbar__doctitle .solenoid-doctitle__caret {
-    color: var(--text);
+    color: var(--accent-ink);
     max-width: none;
   }
   .solenoid-topbar__doctitle .solenoid-doctitle__name:hover,
   .solenoid-topbar__doctitle .solenoid-doctitle__caret:hover,
   .solenoid-topbar__doctitle .solenoid-doctitle__caret--open {
-    background: var(--border-subtle);
+    background: color-mix(in srgb, var(--accent-ink) 16%, transparent);
   }
   /* The documents menu is portaled to <body>, so target it directly (it's no
      longer under .solenoid-topbar__doctitle). Pin it to both screen edges so a
@@ -95,6 +117,32 @@ html.is-mobile {
   .solenoid-apptools__theme { display: none; }
   .solenoid-apptools__palette-theme { display: flex; }
   .solenoid-apptools__pill .solenoid-apptools__paint { border-radius: 999px; }
+
+  /* Apptools on the accent bar: ink-wash buttons with accent-ink icons. The pill
+     carries the wash for the paint button inside it (its inner button stays
+     transparent); the standalone Reference/Settings buttons (direct children) get
+     their own wash. Icons stroke with currentColor, so the accent-ink color paints
+     them. Override the base :hover too — it flips to the accent, which would be
+     invisible on an accent bar, and on touch a hover can linger after a tap. */
+  .solenoid-apptools__pill,
+  .solenoid-apptools > .solenoid-apptools__btn {
+    background: color-mix(in srgb, var(--accent-ink) 12%, transparent);
+    border-color: color-mix(in srgb, var(--accent-ink) 30%, transparent);
+  }
+  .solenoid-apptools__btn { color: var(--accent-ink); }
+  .solenoid-apptools__btn:hover {
+    color: var(--accent-ink);
+    background: color-mix(in srgb, var(--accent-ink) 18%, transparent);
+    border-color: color-mix(in srgb, var(--accent-ink) 40%, transparent);
+  }
+  .solenoid-apptools__pill .solenoid-apptools__btn:hover { background: color-mix(in srgb, var(--accent-ink) 16%, transparent); }
+  .solenoid-apptools > .solenoid-apptools__btn:active,
+  .solenoid-apptools__pill .solenoid-apptools__btn:active {
+    background: color-mix(in srgb, var(--accent-ink) 24%, transparent);
+  }
+  /* The accent-swatch dot: ink ring so the current-accent dot reads on the pill
+     (its fill is the accent, i.e. the bar color). */
+  .solenoid-apptools__paint-dot { border-color: var(--accent-ink); }
 
   /* ── Menu bar: out of flow so it claims no row of its own — it exists only to
         host the sheet the hamburger opens (a section per menu). ── */

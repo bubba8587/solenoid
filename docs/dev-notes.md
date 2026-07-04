@@ -2,6 +2,22 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Mobile app bar is accent-based (2026-07-04)
+- On mobile the single top bar (`.solenoid-topbar`) now uses the ACCENT as its base color
+  (like the desktop menu-bar row), not `--panel-bg`. The whole treatment rides `--accent-ink`
+  — the accent's auto-computed contrast color (`contrastInk`, white on a dark accent, near-
+  black on a light one) — so it reads correctly for ANY accent in BOTH light and dark with a
+  single rule set (no mode-specific branches). Chrome vocabulary mirrors the accent MenuBar:
+  ink-wash button fills (`color-mix(var(--accent-ink) 12–24%, transparent)`), ink borders,
+  accent-ink icon/text, ink-wash press states. Covered: the app-menu icon button + its glyph,
+  the doc title name/caret, and the apptools cluster (paint pill, Reference, Settings) + the
+  accent-swatch dot's ring. The doc-rename input stays a surface pill (legible as-is on accent).
+- **Separator to the canvas:** the base bar's 2px accent underline is invisible on an accent
+  bar, so it's replaced by an ink-tinted hairline (`color-mix(var(--accent-ink) 22%,
+  transparent)` — the accent's own contrast color, so it delineates against the canvas in
+  either mode) plus `--shadow-pop` for elevation. The notch/safe-area inset is filled by the
+  accent (padding-top on the bar), matching the desktop accent MenuBar's notch behavior.
+
 ### Mobile select-mode: pinch/pan cooperation + sticky selection (2026-07-04)
 - Select mode's lasso (Canvas `onDown`) started on ANY single-finger background press,
   `stopPropagation`'d the down, and never cancelled — so a second finger extended the same
