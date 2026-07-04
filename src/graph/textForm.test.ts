@@ -208,6 +208,32 @@ describe("text form: unit cases", () => {
     expect(grp.init.members).toEqual(["Sort_1", "Member_1"]);
   });
 
+  it("translates Presentation step node-id sets to names", () => {
+    const g: SavedGraph = {
+      v: 2,
+      nodes: [
+        { id: "a", type: "NumberNode", name: "Number_1", x: 0, y: 0, init: {} },
+        { id: "b", type: "NumberNode", name: "Number_2", x: 0, y: 20, init: {} },
+        {
+          id: "p", type: "PresentationNode", name: "Presentation_1", x: 10, y: 0,
+          init: { label: "Deck", steps: [{ title: "Intro", nodeIds: ["a"] }, { title: "End", nodeIds: ["a", "b"] }], activeIndex: 1 },
+        },
+      ],
+      connections: [],
+    };
+    const text = writeTextForm(g);
+    expect(text).toContain('steps=[{"title":"Intro","nodeIds":["Number_1"]},{"title":"End","nodeIds":["Number_1","Number_2"]}]');
+    const reloaded = readTextForm(text);
+    const pres = reloaded.nodes.find((n) => n.name === "Presentation_1")!;
+    // Step node-ids are now names (which ARE the reconstructed ids) — so rebuildGraph's
+    // idMap can remap them to fresh live ids, unlike the raw rete ids they'd otherwise be.
+    expect(pres.init.steps).toEqual([
+      { title: "Intro", nodeIds: ["Number_1"] },
+      { title: "End", nodeIds: ["Number_1", "Number_2"] },
+    ]);
+    expect(pres.init.activeIndex).toBe(1);
+  });
+
   it("breaks a cycle deterministically instead of hanging or throwing", () => {
     const g: SavedGraph = {
       v: 2,
