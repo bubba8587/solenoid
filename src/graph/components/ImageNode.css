@@ -4,6 +4,9 @@
 .solenoid-image {
   position: relative;
   --node-accent: #6b8299; /* neutral slate — selection ring + shadow */
+  /* The output socket dot straddles the card's 1px right edge (matches a normal
+     node); the header bar is its positioning context (see ImageComponent). */
+  --node-socket-x: -6.5px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;

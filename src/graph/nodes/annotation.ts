@@ -5,6 +5,8 @@ import {
   SolenoidSocket,
 } from "../sockets";
 import { parseDateToSerial } from "./date";
+import { chartOut } from "./shared";
+import type { ImageValue } from "../imageValue";
 import {
   parseNoteFrontmatter,
   type FrontmatterFieldType,
@@ -223,6 +225,10 @@ export class ImageNode extends ClassicPreset.Node {
     this.height = init?.height ?? 160;
     this.width = init?.width ?? 240;
     this.collapsed = init?.collapsed ?? false;
+    // Emit the picture as a chart-family figure value so it can be wired into a
+    // Report (or any `chart`/`any` consumer) — carrying the node's `height` and,
+    // as the node grows transforms, whatever else shapes the rendered image.
+    this.addOutput("image", chartOut("Image"));
   }
 
   /** The image to show: a freshly-attached local file wins, else the saved URL. */
@@ -230,7 +236,9 @@ export class ImageNode extends ClassicPreset.Node {
     return this.dataUrl || this.url;
   }
 
-  data(): Record<string, never> {
-    return {};
+  data(): { image: ImageValue | null } {
+    const src = this.src;
+    if (!src) return { image: null };
+    return { image: { __image: true, src, height: this.height, alt: this.label, title: this.label } };
   }
 }
