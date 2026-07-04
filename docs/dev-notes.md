@@ -2,6 +2,22 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Mermaid diagrams use the app palette (2026-07-04)
+- Mermaid rendered in its stock blue/purple, ignoring our theme. Switched `MermaidView`
+  from `theme: "dark"|"default"` to `theme: "base"` + a `themeVariables` object built at
+  render time from the live CSS vars the rest of the chrome reads (`--surface`, `--surface-sunken`,
+  `--text`, `--text-muted`, `--border`, `--accent`) plus the palette's 12-way categorical set
+  (`resolveColor(slot)` → `themeAccent`) mapped onto `pie1..pie12` for pie/series diagrams.
+  Nodes get a surface fill + accent border, edges a muted line — unmistakably our palette.
+  Over-specifying `themeVariables` is safe (mermaid ignores ones a diagram type doesn't use).
+- Two gotchas fixed along the way: (1) the re-init on a theme change was **fire-and-forget**
+  (`void promise.then(mm => mm.initialize(...))`) — not awaited before `render()`, so a theme
+  switch could render with the old config; now `loadMermaid(config)` returns a promise that
+  resolves AFTER `initialize` (synchronous). (2) The render effect keyed on `mode` alone, so a
+  palette switch (mode unchanged) wouldn't re-run it — now it keys on the `appThemeStore`
+  version tick, which bumps on mode/accent/palette alike (palette changes notify appTheme,
+  appTheme.ts:65). No chart-options socket for Mermaid — author's call, keep it simple.
+
 ### Note = SOURCE, Report = SINK — made opposites, not convertible (2026-07-04)
 - The Note had grown two-sided: frontmatter YAML → typed OUTPUT sockets AND `` `=name` ``
   inline refs → `any` INPUT sockets. That put an input strip right above the output strip
