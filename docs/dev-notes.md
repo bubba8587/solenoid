@@ -2,6 +2,21 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### 1.0-tail readInput sweep — RESOLVED (not a blanket sweep) (2026-07-05)
+The item's "sweep the scalar nodes' data()" was applied to scalar.ts (element-wise math). Task #7
+tracked "the remaining data() files" — but a per-file scan (list/matrix/complex/date/stats/finance/dist)
+showed every remaining `inputs.x?.[0] ?? this.literals.x` site is a CONFIG or SEARCH parameter, not a
+flowing data operand: generator params (count/start/step/ratio/window/fill/min/max), sizes/orders (n,
+wrapCount), date parts (month/minute/basis/weekend_code), option codes, lookup values. The swallow-a-
+wired-null bug (`[null]+10 → 10`) only ever bit element-wise ARITHMETIC over data — those are the
+scalar.ts nodes, already done. stats.ts routes its data LISTS through `forAggregate` (null-safe), and
+its scalars are config (k/p/q/sig-figs). Applying readInput to a config input would be WRONG — a blank
+config should DEFAULT (the DATA-vs-CONFIG rule, same one #4 uses), not propagate null. So there's no
+blanket sweep to do; the meaningful scope is complete. Also fixed this session (NaN follow-ups): the
+FrameDisplay/TableDisplay/TablePopup cell formatters still said "N/A" for a NaN cell (a lie) — now
+"NaN" + a per-cell tint (`.solenoid-nan-cell` / `.table-popup__cell--nan`); and formulaToLatex's string
+literal used the unsupported `\textquotedbl` → garbled KaTeX, now literal quotes + escaped specials.
+
 ### 1.0-tail #4 — input defaults as muted placeholders (2026-07-05)
 `(default X)` in a socket label documented a default as parenthetical prose (Captain-Obvious). Now
 `InlineInputs` GENERICALLY parses it (`splitDefaultLabel`, exported from inlineInput.tsx): a label
