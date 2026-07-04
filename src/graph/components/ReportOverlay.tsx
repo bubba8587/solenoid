@@ -24,6 +24,7 @@ import "./ReportOverlay.css";
  */
 export function ReportOverlay() {
   const nodeId = useSyncExternalStore(reportStore.subscribe, reportStore.openNodeId);
+  const docked = useSyncExternalStore(reportStore.subscribe, reportStore.isDocked);
   const editor = getEditor();
   const node = nodeId ? (editor?.getNode(nodeId) as ReportNode | undefined) : undefined;
 
@@ -174,9 +175,8 @@ export function ReportOverlay() {
     }
   }
 
-  return (
-    <div className="report-backdrop" onPointerDown={() => closeReport()}>
-      <div className="report-panel" onPointerDown={(e) => e.stopPropagation()}>
+  const panel = (
+    <div className={`report-panel${docked ? " report-panel--docked" : ""}`} onPointerDown={(e) => e.stopPropagation()}>
         <div className="report-header">
           <span className="report-title">{node.label?.trim() || "Report"}</span>
           <div className="report-header-actions">
@@ -207,6 +207,21 @@ export function ReportOverlay() {
               title="Export as a self-contained webpage — refs frozen to today's values, charts and a canvas snapshot inlined"
             >
               {exporting ? "Exporting…" : "Export as webpage"}
+            </button>
+            {/* Dock to / undock from the right side of the page (desktop only —
+                CSS-hidden on mobile, where the report is already full-screen). */}
+            <button
+              className={`report-dock-btn${docked ? " report-dock-btn--on" : ""}`}
+              onClick={() => reportStore.toggleDock()}
+              title={docked ? "Undock (float)" : "Dock to the right side"}
+              aria-label={docked ? "Undock report" : "Dock report to the right"}
+              aria-pressed={docked}
+            >
+              {/* Lucide panel-right — a box with a right-hand panel. */}
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect width="18" height="18" x="3" y="3" rx="2" />
+                <path d="M15 3v18" />
+              </svg>
             </button>
             <button className="report-close" onClick={() => closeReport()} title="Close (Esc)" aria-label="Close">
               <CloseIcon size={16} />
@@ -273,7 +288,12 @@ export function ReportOverlay() {
           </div>
         </div>
       </div>
-    </div>
+  );
+
+  // Docked: the panel is CSS-positioned on the right (no modal backdrop, so the
+  // canvas stays interactive). Floating: the usual centered modal over a backdrop.
+  return docked ? panel : (
+    <div className="report-backdrop" onPointerDown={() => closeReport()}>{panel}</div>
   );
 }
 
