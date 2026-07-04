@@ -371,7 +371,7 @@ function syncSemanticZoomFor(scale: number): void {
 // one both creates it AND wires the dragged cable into it.
 type QuickWireOrigin = { nodeId: string; key: string; side: "input" | "output" };
 type MenuState =
-  | { screenX: number; screenY: number; quickWire?: QuickWireOrigin; entries?: NodeCatalogEntry[] }
+  | { screenX: number; screenY: number; quickWire?: QuickWireOrigin; compatibleTypes?: Set<string> }
   | null;
 
 export function Canvas() {
@@ -2311,14 +2311,18 @@ export function Canvas() {
               const originSocket =
                 side === "output" ? originNode?.outputs[key]?.socket : originNode?.inputs[key]?.socket;
               if (originSocket instanceof SolenoidSocket) {
+                // Quick-wire opens the FULL Add menu (same tree/categories as a
+                // normal add) but grays out leaves that can't wire to the dragged
+                // socket. Compute just the compatible-type SET here; the menu dims
+                // the rest. Only open if at least one node can actually receive it.
                 const leaves = flattenLeaves(buildCatalog(true));
-                const compatible = filterByCompatibleSocket(leaves, originSocket, side).map((lc) => lc.leaf);
+                const compatible = filterByCompatibleSocket(leaves, originSocket, side);
                 if (compatible.length) {
                   setMenu({
                     screenX: screenMouseRef.current.x,
                     screenY: screenMouseRef.current.y,
                     quickWire: { nodeId, key, side },
-                    entries: compatible,
+                    compatibleTypes: new Set(compatible.map((lc) => lc.leaf.type)),
                   });
                 }
               }
@@ -2806,14 +2810,12 @@ export function Canvas() {
         dragPromotedEls = [];
       }
 
-      // Pause flow-bead animation during any pointer interaction (pan, drag,
-      // cable). stroke-dashoffset animation forces main-thread paints that
-      // compete with canvas repaints and add visible lag while moving.
-      // In "html" mode the canvas owns pan/zoom and the DOM holder is hidden during the
-      // gesture, so the --panning paint cuts do nothing AND cause a second settle (the DOM
-      // reappears AA-reduced, then restores). Skip them there; keep them for DOM mode.
-      const onPanStart = () => { if (renderModeStore.get() !== "html") container!.classList.add("solenoid-canvas--panning"); fpsProbe.start("pan"); };
-      const onPanEnd = () => { container!.classList.remove("solenoid-canvas--panning"); fpsProbe.stop(); };
+      // Pan telemetry only. The former gesture-time quality/paint cuts (the
+      // `--panning` class) were removed 2026-07-04 — DOM mode stays full-quality
+      // while panning; the HTML-in-canvas renderer is the performance path. fpsProbe
+      // still brackets the gesture for the perf overlay.
+      const onPanStart = () => { fpsProbe.start("pan"); };
+      const onPanEnd = () => { fpsProbe.stop(); };
       container!.addEventListener("pointerdown", onPanStart, true);
       window.addEventListener("pointerup", onPanEnd);
       window.addEventListener("pointercancel", onPanEnd);
@@ -3672,7 +3674,8 @@ export function Canvas() {
         <AddNodeMenu
           screenX={menu.screenX}
           screenY={menu.screenY}
-          entries={menu.entries ?? visibleCatalog}
+          entries={visibleCatalog}
+          compatibleTypes={menu.compatibleTypes}
           onSelect={handleMenuSelect}
           onClose={closeMenu}
         />

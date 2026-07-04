@@ -43,12 +43,21 @@ Four author-reported bugs, all root-caused rather than patched-over:
   OUTPUT (right edge) at the drop → shift left by the card width. Width isn't known until the card
   renders, so measure `element.offsetWidth` if already laid out (no jump), else place naive and nudge
   left on the next rAF. (`handleMenuSelect` in `Canvas.tsx`.)
-- **Dropped the pan-time anti-aliasing cut** (`canvas.css`). The `.solenoid-canvas--panning` block
-  set `text-rendering: optimizeSpeed` + `-webkit-font-smoothing: none` + `shape-rendering:
-  optimizeSpeed` on moving SVG to save paint while panning; it made labels/dots visibly coarsen
-  mid-pan and the author judged the flicker not worth the saving. The other `--panning` cuts
-  (box-shadow, flow-bead pause, backdrop-filter, conduit drop-shadow) stay — real paint ops, not
-  quality knobs.
+- **Dropped the ENTIRE pan-time quality/paint-cut system** (`canvas.css` + `Canvas.tsx`). First just
+  the AA reduction, then (author) all of it: the `.solenoid-canvas--panning` rules (flow-bead pause,
+  box-shadow drop, conduit drop-shadow + toolbar backdrop-filter removal, AA) are gone and the class
+  is no longer applied — `onPanStart/onPanEnd` keep only the `fpsProbe` bracket. Rationale: the
+  HTML-in-canvas renderer is the performance path when a graph is heavy; DOM mode no longer trades
+  fidelity for pan smoothness. Flow beads now keep animating through a pan (they used to freeze —
+  that's the intended behavior now, not a regression).
+- **Quick-wire menu: gray out incompatible nodes in the FULL Add menu instead of a flat filtered
+  list.** Before, dropping a cable opened the menu narrowed to a flat list of compatible leaves (no
+  categories) — lost the familiar layout. Now it opens the SAME catalog tree as a normal add and
+  passes a `compatibleTypes: Set<string>`; `AddNodeMenu` grays + disables (`--incompatible`) every
+  leaf not in the set, in both the tree and search views. One `select()` gate ignores dimmed leaves
+  so neither click nor keyboard can pick them. `filterByCompatibleSocket` still does the live-socket
+  compatibility test (instantiate each leaf, check `canConnectTo`); it just feeds a type-set now
+  rather than replacing the entries. Menu still only opens if ≥1 node is compatible.
 
 ### Top-bar control-size consistency + navigator bottom clearance (2026-07-04)
 - **Desktop + mobile:** the `.solenoid-topbar__group` pill had `padding: 3px`, making it 36px tall
