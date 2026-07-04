@@ -692,12 +692,28 @@ function numLatex(v: string): string {
 const TRIG = new Set(["SIN", "COS", "TAN", "SINH", "COSH", "TANH", "ASIN", "ACOS", "ATAN"]);
 const CMP_TEX: Record<string, string> = { "=": "=", "<>": "\\ne", "<": "<", ">": ">", "<=": "\\le", ">=": "\\ge" };
 
+/** A string literal → KaTeX text mode. `\textquotedbl` is NOT a KaTeX command (it
+ *  rendered garbled — `\textquotedblkg…`), so use literal quote chars inside
+ *  `\text{}` (KaTeX preserves spaces there) and escape the LaTeX specials so an
+ *  arbitrary literal can't break the render. */
+function texString(s: string): string {
+  const esc = s.replace(/[\\{}$&#%_^~]/g, (c) => {
+    switch (c) {
+      case "\\": return "\\textbackslash{}";
+      case "^":  return "\\textasciicircum{}";
+      case "~":  return "\\textasciitilde{}";
+      default:   return `\\${c}`; // { } $ & # % _
+    }
+  });
+  return `\\text{"${esc}"}`;
+}
+
 // prec: cmp=1, concat=2, add=3, mul=4, exp=5, unary=6, atom=7.
 function tex(n: Ast, parent: number): string {
   const wrap = (s: string, prec: number) => (parent > prec ? `\\left(${s}\\right)` : s);
   switch (n.t) {
     case "num": return numLatex(n.v);
-    case "str": return `\\text{\\textquotedbl${n.v}\\textquotedbl}`;
+    case "str": return texString(n.v);
     case "bool": return `\\mathrm{${n.v ? "TRUE" : "FALSE"}}`;
     case "name": return symbolLatex(n.name);
     case "unary": return wrap(`${n.op === "-" ? "-" : ""}${tex(n.arg, 6)}`, 6);

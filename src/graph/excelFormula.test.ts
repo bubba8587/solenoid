@@ -146,6 +146,22 @@ describe("formulaToLatex", () => {
     expect(formulaToLatex("a +")).toBeNull();
   });
 
+  it("renders a string literal as KaTeX-safe text (no \\textquotedbl)", async () => {
+    const tex = formulaToLatex('(0.1 + 0.2) & " kg"');
+    expect(tex).toContain('\\text{" kg"}'); // literal quotes, space preserved
+    expect(tex).not.toContain("textquotedbl");
+    // And KaTeX must actually accept it — the old \textquotedbl form threw/garbled.
+    const katex = (await import("katex")).default;
+    expect(() => katex.renderToString(tex!, { throwOnError: true })).not.toThrow();
+  });
+
+  it("escapes LaTeX specials inside a string literal", async () => {
+    const tex = formulaToLatex('"a_b {c} 50%"');
+    expect(tex).toBe('\\text{"a\\_b \\{c\\} 50\\%"}');
+    const katex = (await import("katex")).default;
+    expect(() => katex.renderToString(tex!, { throwOnError: true })).not.toThrow();
+  });
+
   it("renders trig functions with backslash prefix", () => {
     expect(formulaToLatex("SIN(x)")).toBe("\\sin\\!\\left(x\\right)");
     expect(formulaToLatex("COS(x)")).toBe("\\cos\\!\\left(x\\right)");
