@@ -25,8 +25,15 @@ import "./compositeEditor.css";
 
 // ─── The Composite drill-in editor ──────────────────────────────────────────────
 // Mounts a composite's PRIVATE internal graph (nodes/composite.ts
-// `internalEditor`) into a real rete area inside a full-screen overlay — the
-// authoring surface pack-architecture.md promises ("open to the author").
+// `internalEditor`) into a real rete area, LAYERED FULL-BLEED over the main
+// canvas (not a floating window) — so drilling in reads as "the app is now
+// showing this subgraph". A top-left breadcrumb (Canvas ▸ A ▸ B, compositeEditor-
+// Store's stack) is the "you're in a subgraph" affordance and the quick drill-up:
+// a composite card INSIDE the editor drills one level deeper (multi-layer), and
+// any crumb jumps straight back up. Edits at any depth retarget the MAIN-editor
+// ancestor (stack[0]) to recompute, and a level reconciles its ports against its
+// PARENT graph (the crumb above) on leave. The authoring surface
+// pack-architecture.md promises ("open to the author").
 // The rete plugin stack (area / connection / react render) is created ONCE per
 // composite and cached on the node instance: rete's Scope.use() can't be
 // undone, so re-running it on every open would stack duplicate pipes. The
@@ -140,7 +147,9 @@ async function getDrillMount(composite: CompositeNode): Promise<DrillMount> {
         !isGraphRebuilding() &&
         (t === "connectioncreated" || t === "connectionremoved" || t === "noderemoved")
       ) {
-        void processGraph(composite.id);
+        // Retarget the MAIN-editor ancestor (breadcrumb root) so a nested edit
+        // still ripples out to the canvas; falls back to this composite's own id.
+        void processGraph(compositeEditorStore.stack()[0]?.id ?? composite.id);
         scheduleAutosave();
       }
     }
@@ -159,16 +168,26 @@ function toAreaCoords(area: AreaPlugin<Schemes, AreaExtra>, container: HTMLEleme
   return { x: (screenX - rect.left - tx) / k, y: (screenY - rect.top - ty) / k };
 }
 
-function CompositeEditorInner({ compositeId }: { compositeId: string }) {
+function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const mountRef = useRef<DrillMount | null>(null);
   const [menu, setMenu] = useState<{ screenX: number; screenY: number } | null>(null);
   const [ready, setReady] = useState(false);
   const [hasSelection, setHasSelection] = useState(false);
 
-  const outerEditor = getEditor();
-  const composite = outerEditor?.getNode(compositeId);
-  const isComposite = composite instanceof CompositeNode;
+  const compositeId = composite.id;
+  const isComposite = true;
+  // The PARENT graph this level lives in: the main editor at level 0, else the
+  // composite one breadcrumb up (a nested composite lives in its parent's
+  // internal editor, not the main one). Used for port reconcile on leave.
+  const parentEditor = (() => {
+    const st = compositeEditorStore.stack();
+    const i = st.indexOf(composite);
+    return i > 0 ? st[i - 1].internalEditor : getEditor();
+  })();
+  // Recompute always retargets the MAIN-editor ancestor (breadcrumb root), so an
+  // edit any levels deep still ripples out to the canvas.
+  const recomputeTarget = () => compositeEditorStore.stack()[0]?.id ?? compositeId;
 
   // Mount the (cached) rete stack into the overlay and lay the nodes out.
   useEffect(() => {
@@ -259,22 +278,23 @@ function CompositeEditorInner({ compositeId }: { compositeId: string }) {
         void deleteSelection();
       }
       if (e.key === "Escape") {
+        // Esc pops ONE breadcrumb level (drill up); at the root it closes.
         if (menu) setMenu(null);
-        else void handleClose();
+        else void drillTo(compositeEditorStore.stack().length - 2);
       }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   });
 
-  if (!isComposite) return null;
-  const comp = composite as CompositeNode;
+  const comp = composite;
 
-  /** Positions back onto the node, ports reconciled, outer card refreshed. */
-  async function handleClose() {
+  /** Save positions + reconcile this level's ports against its PARENT graph (a
+   *  deleted marker drops its port and the parent cables into it). Shared by
+   *  full close and breadcrumb drill-up — leaving a level at any depth reconciles
+   *  it. Does NOT touch the breadcrumb; the caller decides where to go next. */
+  async function leaveLevel() {
     const mount = mountRef.current;
-    const outer = getEditor();
-    const outerArea = getArea();
     if (mount) {
       const positions: Record<string, { x: number; y: number }> = {};
       for (const [id, view] of mount.area.nodeViews) {
@@ -282,27 +302,49 @@ function CompositeEditorInner({ compositeId }: { compositeId: string }) {
       }
       comp.internalPositions = positions;
     }
-    // A deleted marker takes its port (and the port's outer cables) with it.
-    if (outer) {
+    if (parentEditor) {
       for (const p of [...comp.inputPorts]) {
         if (comp.internalEditor.getNode(p.internalNodeId)) continue;
-        for (const c of outer.getConnections().filter((c) => c.target === comp.id && c.targetInput === p.id)) {
-          await outer.removeConnection(c.id);
+        for (const c of parentEditor.getConnections().filter((c) => c.target === comp.id && c.targetInput === p.id)) {
+          await parentEditor.removeConnection(c.id);
         }
         comp.removeInputPort(p.id);
       }
       for (const p of [...comp.outputPorts]) {
         if (comp.internalEditor.getNode(p.internalNodeId)) continue;
-        for (const c of outer.getConnections().filter((c) => c.source === comp.id && c.sourceOutput === p.id)) {
-          await outer.removeConnection(c.id);
+        for (const c of parentEditor.getConnections().filter((c) => c.source === comp.id && c.sourceOutput === p.id)) {
+          await parentEditor.removeConnection(c.id);
         }
         comp.removeOutputPort(p.id);
       }
     }
-    compositeEditorStore.close();
-    if (outerArea) await outerArea.update("node", comp.id);
-    void processGraph(comp.id);
+  }
+
+  /** Refresh the card + recompute + save, after a leave. Only the MAIN-canvas
+   *  card can be area-updated here (a nested composite's card lives in a parent
+   *  mount that re-renders on remount); recompute always retargets the root. */
+  async function settleAfterLeave() {
+    if (parentEditor === getEditor()) {
+      const outerArea = getArea();
+      if (outerArea) await outerArea.update("node", comp.id);
+    }
+    void processGraph(recomputeTarget());
     scheduleAutosave();
+  }
+
+  /** Positions back onto the node, ports reconciled, editor closed. */
+  async function handleClose() {
+    await leaveLevel();
+    compositeEditorStore.close();
+    await settleAfterLeave();
+  }
+
+  /** Breadcrumb click: reconcile the current level, then jump to level `i`
+   *  (drill up). At i < 0 this closes. */
+  async function drillTo(i: number) {
+    await leaveLevel();
+    compositeEditorStore.backTo(i);
+    await settleAfterLeave();
   }
 
   /** The promotion gesture: a fresh boundary marker + its exposed port. */
@@ -327,9 +369,11 @@ function CompositeEditorInner({ compositeId }: { compositeId: string }) {
     } else {
       comp.addOutputPort({ label, internalNodeId: marker.id, tier: "basic" });
     }
-    const outerArea = getArea();
-    if (outerArea) await outerArea.update("node", comp.id);
-    void processGraph(comp.id);
+    if (parentEditor === getEditor()) {
+      const outerArea = getArea();
+      if (outerArea) await outerArea.update("node", comp.id);
+    }
+    void processGraph(recomputeTarget());
     scheduleAutosave();
   }
 
@@ -366,7 +410,7 @@ function CompositeEditorInner({ compositeId }: { compositeId: string }) {
     await withGraphRebuild(async () => {
       await (redo ? history.redo() : history.undo());
     });
-    void processGraph(comp.id);
+    void processGraph(recomputeTarget());
     scheduleAutosave();
   }
 
@@ -378,7 +422,7 @@ function CompositeEditorInner({ compositeId }: { compositeId: string }) {
     const pos = toAreaCoords(mount.area, mount.container, menu.screenX, menu.screenY);
     await mount.area.translate(node.id, pos);
     setMenu(null);
-    void processGraph(comp.id);
+    void processGraph(recomputeTarget());
     scheduleAutosave();
   }
 
@@ -386,9 +430,38 @@ function CompositeEditorInner({ compositeId }: { compositeId: string }) {
     <div className="solenoid-composite-editor__backdrop">
       <div className="solenoid-composite-editor__panel">
         <div className="solenoid-composite-editor__header">
-          <span className="solenoid-composite-editor__title" title={comp.label || "Composite"}>
-            {comp.label?.trim() || "Composite"}
-          </span>
+          {/* Breadcrumb — top-left "you're in a subgraph" affordance + quick
+              drill-up (Cube-popup drilldown pattern). Each crumb is clickable to
+              jump straight to that level; "Canvas" returns to the main graph. */}
+          <div className="solenoid-composite-editor__crumbs">
+            <button
+              type="button"
+              className="solenoid-composite-editor__crumb solenoid-composite-editor__crumb--root"
+              title="Back to the canvas"
+              onClick={() => void drillTo(-1)}
+            >
+              Canvas
+            </button>
+            {compositeEditorStore.stack().map((c, i, arr) => (
+              <span key={c.id} className="solenoid-composite-editor__crumb-wrap">
+                <span className="solenoid-composite-editor__crumb-sep">▸</span>
+                {i === arr.length - 1 ? (
+                  <span className="solenoid-composite-editor__crumb solenoid-composite-editor__crumb--current" title="Editing this subgraph">
+                    {c.label?.trim() || "Composite"}
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    className="solenoid-composite-editor__crumb"
+                    title={`Drill up to ${c.label?.trim() || "Composite"}`}
+                    onClick={() => void drillTo(i)}
+                  >
+                    {c.label?.trim() || "Composite"}
+                  </button>
+                )}
+              </span>
+            ))}
+          </div>
           <div className="solenoid-composite-editor__actions">
             <button type="button" className="solenoid-composite-editor__btn" onClick={() => void addPort("input")}>
               + Input
@@ -480,7 +553,9 @@ function CompositeEditorInner({ compositeId }: { compositeId: string }) {
 
 export function CompositeEditorOverlay() {
   useSyncExternalStore(compositeEditorStore.subscribe, compositeEditorStore.version);
-  const openId = compositeEditorStore.openId();
-  if (!openId) return null;
-  return <CompositeEditorInner key={openId} compositeId={openId} />;
+  const current = compositeEditorStore.current();
+  if (!current) return null;
+  // Keyed by the current level's id: drilling in / up changes `current`, so the
+  // inner remounts onto the new composite's own editor + area mount.
+  return <CompositeEditorInner key={current.id} composite={current} />;
 }

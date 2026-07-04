@@ -3566,7 +3566,10 @@ export function Canvas() {
           onPin={handlePin}
           onLinkStandoff={handleLinkStandoff}
           onAddComment={(id) => commentsPanelUi.openFor(id)}
-          onEditComposite={(id) => compositeEditorStore.open(id)}
+          onEditComposite={(id) => {
+            const n = editorRef.current?.getNode(id);
+            if (n instanceof CompositeNode) compositeEditorStore.open(n);
+          }}
           onUnpackComposite={(id) => {
             const editor = editorRef.current;
             const area = areaRef.current;

@@ -180,7 +180,14 @@ export function CompositeComponent({ data: node, emit }: NodeProps<CompositeNode
         type="button"
         className="solenoid-node__inline-input"
         style={{ width: "100%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
-        onClick={(e) => { e.stopPropagation(); compositeEditorStore.open(node.id); }}
+        // Same button on the main canvas AND on a composite card shown INSIDE the
+        // drill-in: open a fresh level from the canvas, drill one deeper when
+        // already editing (multi-layer). The breadcrumb tracks the chain.
+        onClick={(e) => {
+          e.stopPropagation();
+          if (compositeEditorStore.isOpen()) compositeEditorStore.drillInto(node);
+          else compositeEditorStore.open(node);
+        }}
         onPointerDown={stopDragStart}
         onMouseDown={stopDragStart}
       >
