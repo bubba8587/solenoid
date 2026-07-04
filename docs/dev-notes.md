@@ -23,12 +23,12 @@ Running notes on direction, deferred work, and non-obvious technical gotchas.
   2px line + soft shadow; dark mode (`&[data-theme="dark"] .solenoid-topbar`) →
   `rgba(255,255,255,0.2)` 2px line + a deeper shadow. The notch/safe-area inset is filled by the
   accent (padding-top on the bar), matching the desktop accent MenuBar's notch behavior.
-- **Icon weight matched to the touch bar** (revised): the apptools glyphs are authored at 14px /
-  stroke 1.4 (~0.82px effective — fine for the small desktop bar) but read half as thick as the
-  bottom bar / overlay pills (20px / stroke 2 ≈ 1.67px). A mobile-only override
-  (`.solenoid-apptools__btn svg { width/height: 20px; stroke-width: 2 }` — CSS wins over the SVG
-  attribute) scales them up so the top and bottom bars are one icon set. The app-menu mark is a
-  masked logo, not a stroked icon, so it's left alone.
+- **Icon stroke thickened to match the touch bar** (revised): the apptools glyphs are authored at
+  14px / stroke 1.4 (~0.82px effective — fine for the small desktop bar) but read half as thick as
+  the bottom bar / overlay pills. Mobile-only override `.solenoid-apptools__btn svg { stroke-width:
+  2.6 }` (CSS wins over the SVG attribute) lands ~1.5px WITHOUT enlarging the glyphs — they stay at
+  14px (an earlier pass scaled them to 20px too, which was too big). The app-menu mark is a masked
+  logo, not a stroked icon, so it's left alone.
 
 ### Mobile select-mode: pinch/pan/lasso + the off-canvas-tap selection wipe (2026-07-04, root-caused with browser automation)
 - **Root causes (verified by driving a mobile-emulated Chromium via CDP, not by reading):**
