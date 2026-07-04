@@ -4,7 +4,6 @@ import {
   listSocket, strListSocket, logicalListSocket, dateListSocket,
   SolenoidSocket,
 } from "../sockets";
-import { anyIn } from "./shared";
 import { parseDateToSerial } from "./date";
 import {
   parseNoteFrontmatter,
@@ -12,7 +11,6 @@ import {
   type FrontmatterScalar,
   type FrontmatterValue,
 } from "../noteFrontmatter";
-import { extractInlineRefs } from "../noteInlineRefs";
 
 // ─── Note ─────────────────────────────────────────────────────────────────────
 // A free-floating canvas annotation — a sticky note with a title + body. Like the
@@ -22,12 +20,11 @@ import { extractInlineRefs } from "../noteInlineRefs";
 // lightweight typed-record / constants source (see noteFrontmatter.ts). A plain
 // note (no frontmatter) keeps zero output sockets, exactly as before.
 //
-// Separately, an inline `` `=name` `` code span anywhere in the prose body mints
-// an untyped (`any`) INPUT socket named `name` (see noteInlineRefs.ts) — a bare-
-// name reference to a graph value, mirroring ExpressionNode's variable pattern.
-// The rendered markdown swaps that span for the connected value's live, formatted
-// display (NoteNode.tsx), so a Note can read like "Revenue was `=revenue` this
-// quarter" with `revenue` a wired number.
+// A Note is a pure SOURCE: it emits (frontmatter outputs) and never consumes. It
+// deliberately does NOT parse `` `=name` `` inline refs or mint input sockets — a
+// `` `=name` `` span in a note body is just literal inline code. Reading live graph
+// values into a document is the REPORT node's job (nodes/report.ts): Note = source,
+// Report = sink, and the two are intentionally opposites (not convertible).
 
 // A field type → its socket singleton. Names align with FrontmatterFieldType.
 const FIELD_SOCKETS: Record<FrontmatterFieldType, SolenoidSocket> = {
@@ -94,10 +91,6 @@ export class NoteNode extends ClassicPreset.Node {
   private _renderBody = "";                              // markdown below the block
   private _fieldKeys: string[] = [];                     // output keys in source order
   private _fieldValues = new Map<string, FrontmatterValue>();
-  private _refKeys: string[] = [];                       // inline-ref INPUT keys, source order
-  // Latest resolved input values, refreshed on every data() call (i.e. every
-  // processGraph pass) — mirrors how DisplayNode caches `cachedValue` for its box.
-  private _refValues = new Map<string, unknown>();
 
   // `label` (from ClassicPreset.Node) is the editable header name, mirroring how
   // every other node titles its header.
@@ -127,10 +120,6 @@ export class NoteNode extends ClassicPreset.Node {
     const sock = this.outputs[key]?.socket;
     return sock instanceof SolenoidSocket ? (sock.dataType as FrontmatterFieldType) : undefined;
   }
-  /** Inline-ref INPUT keys (source order) — one per distinct `` `=name` `` span. */
-  refKeys(): string[] { return this._refKeys; }
-  /** The last value resolved for a ref input (undefined until the first compute). */
-  refValue(key: string): unknown { return this._refValues.get(key); }
 
   /**
    * Reconcile the output sockets to the body's frontmatter. Adds new keys, drops
@@ -144,17 +133,12 @@ export class NoteNode extends ClassicPreset.Node {
    * Connection cleanup is the CALLER's job (the node has no editor handle); at
    * construction there are none.
    *
-   * Also reconciles the inline-ref INPUT sockets (from `` `=name` `` spans in the
-   * rendered body, never the frontmatter block) — added/removed the same way, but
-   * always `any`-typed (a bare name, not a re-typeable field), so there's no retype
-   * case. `removedInputs` is the input-side twin of `removed`: keys the caller must
-   * drop cables INTO before calling this (a vanished ref's cable would otherwise
-   * dangle on a socket that no longer exists).
+   * A Note is output-only — no inline-ref inputs to reconcile (that's the Report's
+   * job, nodes/report.ts).
    */
   syncFields(): {
     removed: string[];
     retyped: { key: string; type: FrontmatterFieldType }[];
-    removedInputs: string[];
   } {
     const parsed = parseNoteFrontmatter(this.body);
     this._renderBody = parsed.body;
@@ -188,30 +172,13 @@ export class NoteNode extends ClassicPreset.Node {
     this._fieldKeys = [...wanted.keys()];
     this._fieldValues = new Map([...wanted].map(([k, w]) => [k, w.value]));
 
-    const wantedRefs = extractInlineRefs(this._renderBody);
-    const removedInputs: string[] = [];
-    for (const key of Object.keys(this.inputs)) {
-      if (!wantedRefs.includes(key)) {
-        this.removeInput(key);
-        removedInputs.push(key);
-      }
-    }
-    for (const key of wantedRefs) {
-      if (!this.inputs[key]) this.addInput(key, anyIn(key));
-    }
-    this._refKeys = wantedRefs;
-
-    return { removed, retyped, removedInputs };
+    return { removed, retyped };
   }
 
   // Each frontmatter key emits its value on the matching OUTPUT. A plain note
-  // (no frontmatter) returns {} — no output sockets, exactly as before. `inputs`
-  // carries the inline-ref values (keyed by ref name); cached for the component to
-  // render inline (NoteNode.tsx) — mirrors DisplayNode's `cachedValue`. Optional
-  // (rather than required, like most nodes' data()) because existing tests + the UI
-  // construct a NoteNode and call `data()` bare, with no engine to supply inputs.
-  data(inputs?: Record<string, unknown[]>): Record<string, FrontmatterValue> {
-    this._refValues = new Map(this._refKeys.map((k) => [k, inputs?.[k]?.[0] ?? null]));
+  // (no frontmatter) returns {} — no output sockets, exactly as before. A Note has
+  // no inputs (output-only source), so data() takes none.
+  data(): Record<string, FrontmatterValue> {
     return this.fieldValues();
   }
 

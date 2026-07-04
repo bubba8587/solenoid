@@ -18,7 +18,6 @@ import { formatAnnotationStore, formatNumberWithAnnotation } from "../formatAnno
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
 import type { FrontmatterFieldType, FrontmatterValue } from "../noteFrontmatter";
 import type { NodeProps, Emit } from "./nodeKit";
-import { InlineRefBody, RefInputRow } from "./inlineRefDisplay";
 import type { ClassicPreset } from "rete";
 import { stopDragStart } from "../coarse";
 import "./Markdown.css";
@@ -122,7 +121,7 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   async function commitFields(force = false) {
     if (!force && data.body === lastSyncRef.current) return;
     lastSyncRef.current = data.body;
-    const { removed, retyped, removedInputs } = data.syncFields();
+    const { removed, retyped } = data.syncFields();
     const editor = getEditor();
     const area = getArea();
     if (editor && (removed.length || retyped.length)) {
@@ -139,15 +138,6 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
         const inSock = editor.getNode(c.target)?.inputs?.[c.targetInput]?.socket;
         const inType = inSock instanceof SolenoidSocket ? inSock.dataType : undefined;
         if (!inType || !canConnect(newType, inType)) await editor.removeConnection(c.id);
-      }
-    }
-    // A vanished inline-ref INPUT (the `` `=name` `` span was edited away) dropped
-    // its socket — the cable feeding it, if any, would otherwise dangle.
-    if (editor && removedInputs.length) {
-      for (const c of editor.getConnections()) {
-        if (c.target === data.id && removedInputs.includes(c.targetInput)) {
-          await editor.removeConnection(c.id);
-        }
       }
     }
     setFieldsVersion((v) => v + 1);
@@ -168,14 +158,12 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   }
 
   const fieldKeys = data.fieldKeys();
-  const refKeys = data.refKeys();
   // NOT data.data() — that's the installErrorGuards-wrapped version, which throws
   // when called with no inputs (firstInputError runs outside its try/catch).
   const fieldValues = data.fieldValues();
-  // Height floor grows with BOTH strips (output fields + inline-ref inputs) so
-  // resizing (and the rendered height) can never clip a socket row. Plain note
-  // (no frontmatter, no refs) → the original 80.
-  const minNoteH = NOTE_MIN_H + fieldsStripHeight(fieldKeys.length) + fieldsStripHeight(refKeys.length);
+  // Height floor grows with the output-fields strip so resizing (and the rendered
+  // height) can never clip a socket row. Plain note (no frontmatter) → the original 80.
+  const minNoteH = NOTE_MIN_H + fieldsStripHeight(fieldKeys.length);
 
   // Manual width + height (drag the corner grip — same model as a Group). The note
   // is a fixed box; the body fills it and scrolls. area.update re-renders on each
@@ -253,7 +241,7 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
 
   return (
     <div
-      className={`solenoid-note${data.selected ? " solenoid-note--selected" : ""}${collapsed ? " solenoid-note--collapsed" : ""}${(fieldKeys.length || refKeys.length) ? " solenoid-note--has-fields" : ""}`}
+      className={`solenoid-note${data.selected ? " solenoid-note--selected" : ""}${collapsed ? " solenoid-note--collapsed" : ""}${fieldKeys.length ? " solenoid-note--has-fields" : ""}`}
       style={{ width: data.width, height: collapsed ? undefined : Math.max(data.height, minNoteH), ...vars }}
     >
       <div className="solenoid-note__bar" title="Drag to move">
@@ -315,31 +303,6 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
           </div>
         )}
       </div>
-      {refKeys.length > 0 && (
-        // Inline-ref → untyped INPUT sockets, one per distinct `` `=name` `` span in
-        // the prose body. Same full-width-strip mechanics as the output fields strip
-        // below (dots straddle the LEFT edge here). Survives collapse for the same
-        // reason: a wired ref's cable must stay valid even with the prose hidden.
-        <div className="solenoid-note__refs">
-          {refKeys.map((key) => {
-            const input = data.inputs[key];
-            if (!input) return null;
-            return (
-              <RefInputRow
-                key={key}
-                nodeId={data.id}
-                emit={emit}
-                refKey={key}
-                value={data.refValue(key)}
-                socket={input.socket}
-                rowClassName="solenoid-note__ref-row"
-                keyClassName="solenoid-note__ref-key"
-                valClassName="solenoid-note__ref-val"
-              />
-            );
-          })}
-        </div>
-      )}
       {fieldKeys.length > 0 && (
         // Frontmatter → typed output sockets. A full-width strip OUTSIDE the
         // overflow-clipped content so the dots can straddle the right edge. Each
@@ -390,13 +353,14 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
               onMouseDown={stop}
             />
           ) : data.renderBody.trim() ? (
-            <InlineRefBody
-              nodeId={data.id}
-              bodyHtml={bodyHtml}
+            // Plain markdown — a Note is output-only, so a `` `=name` `` span stays
+            // literal inline code (no ref swap). bodyHtml is already sanitized.
+            <div
               className="solenoid-note__rendered sol-md"
               onClick={startEdit}
               onPointerDown={stopDragStart}
               onMouseDown={stopDragStart}
+              dangerouslySetInnerHTML={{ __html: bodyHtml }}
             />
           ) : (
             <div
@@ -496,6 +460,6 @@ function FieldRow({
   );
 }
 
-// Inline-ref rendering (InlineRefBody/InlineRefValue/RefInputRow/useRefAnnotation/
-// refPreview) lives in components/inlineRefDisplay.tsx, shared with the standalone
-// Report document — a Note's ref strip above just supplies its own row classes.
+// Inline-ref rendering (InlineRefBody/InlineRefValue/RefInputRow/…) lives in
+// components/inlineRefDisplay.tsx and is used by the REPORT node only — a Note is
+// output-only (no `=name` inputs), so it renders its body as plain markdown above.
