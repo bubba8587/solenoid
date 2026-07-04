@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { broadcast, broadcastErr, numListIn, numListOut, numIn, numOut, listIn } from "./shared";
+import { broadcast, broadcastErr, numListIn, numListOut, numIn, numOut, listIn, type BroadcastResult } from "./shared";
 import { lnGamma } from "./mathUtils";
 import { solError, type SolError } from "../errorValue";
 
@@ -435,7 +435,7 @@ export const MROUND_OP_META = {
 export class MRoundNode extends ClassicPreset.Node {
   label: string;
   op: MRoundOp;
-  cachedResult: number | number[] | null = null;
+  cachedResult: BroadcastResult = null;
   literals: Record<string, number> = { value: 0, multiple: 1 };
   width = 180;
   height = 200;
@@ -453,7 +453,7 @@ export class MRoundNode extends ClassicPreset.Node {
     const value    = inputs.value?.[0]    ?? this.literals.value    ?? null;
     const multiple = inputs.multiple?.[0] ?? this.literals.multiple ?? null;
     const snap = this.op === "up" ? Math.ceil : this.op === "down" ? Math.floor : Math.round;
-    let result: number | number[] | null = null;
+    let result: BroadcastResult = null;
     if (value !== null && multiple !== null) {
       result = broadcast((v, m) => (m === 0 ? 0 : snap(v / m) * m), value, multiple);
     }
@@ -469,7 +469,7 @@ export type RoundNOp = "round" | "roundup" | "rounddown";
 export class RoundNNode extends ClassicPreset.Node {
   label: string;
   op: RoundNOp;
-  cachedResult: number | number[] | null = null;
+  cachedResult: BroadcastResult = null;
   literals: Record<string, number> = { value: 0, digits: 0 };
   width = 180;
   height = 210;
@@ -486,7 +486,7 @@ export class RoundNNode extends ClassicPreset.Node {
   data(inputs: { value?: (number | number[])[]; digits?: (number | number[])[] }) {
     const value  = inputs.value?.[0]  ?? this.literals.value  ?? null;
     const digits = inputs.digits?.[0] ?? this.literals.digits ?? 0;
-    let result: number | number[] | null = null;
+    let result: BroadcastResult = null;
     if (value !== null) {
       result = broadcast((v, d) => {
         const factor = Math.pow(10, Math.round(d));
@@ -514,7 +514,7 @@ export type GcdOp = "gcd" | "lcm";
 export class GcdNode extends ClassicPreset.Node {
   label: string;
   op: GcdOp;
-  cachedResult: number | number[] | null = null;
+  cachedResult: BroadcastResult = null;
   literals: Record<string, number> = { a: 0, b: 0 };
   width = 180;
   height = 200;
@@ -855,7 +855,7 @@ export class BesselNode extends ClassicPreset.Node {
 // element-wise like the other math nodes, so it lives here.
 export class HypotenuseNode extends ClassicPreset.Node {
   label: string;
-  cachedResult: number | number[] | null = null;
+  cachedResult: BroadcastResult = null;
   literals: Record<string, number> = {};
   width = 180;
   height = 168;

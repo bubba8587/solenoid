@@ -133,13 +133,16 @@ export class AlertNode extends ClassicPreset.Node {
         const lo = scalarish(inputs.low, this.literals.low);
         const hi = scalarish(inputs.high, this.literals.high);
         if (v === null || lo === null || hi === null) return null;
-        return broadcast((x, l, h) => (x < l ? 1 : x > h ? 2 : 0), v, lo, hi);
+        // A per-cell error/missing rides through the broadcaster as a non-alerting
+        // cell (status logic below only matches 1/2); the loose-list cast keeps the
+        // Alert's status typed as numbers, matching broadcast's own convention.
+        return broadcast((x, l, h) => (x < l ? 1 : x > h ? 2 : 0), v, lo, hi) as number | number[] | null;
       }
       case "equals": {
         const v = scalarish(inputs.value, this.literals.value);
         const t = scalarish(inputs.target, this.literals.target);
         if (v === null || t === null) return null;
-        return broadcast((x, y) => (x === y ? 1 : 0), v, t);
+        return broadcast((x, y) => (x === y ? 1 : 0), v, t) as number | number[] | null;
       }
       case "boolean": {
         const v = scalarish(inputs.value, this.literals.value);
@@ -147,7 +150,7 @@ export class AlertNode extends ClassicPreset.Node {
         // TRUE only — comparisons / logic ops now emit a real logical, which the
         // numeric `value` socket coerces to 1/0; accept a raw `true` too for
         // robustness. A stray 5 is NOT a boolean true (so not any-nonzero).
-        return broadcast((x) => (((x as unknown) === true || x === 1) ? 1 : 0), v);
+        return broadcast((x) => (((x as unknown) === true || x === 1) ? 1 : 0), v) as number | number[] | null;
       }
       case "text": {
         const text = inputs.text?.[0] ?? this.stringLiterals.text ?? "";

@@ -64,6 +64,39 @@ export function coerceLogical(v: unknown): boolean | null {
   return null;
 }
 
+// ── Per-element broadcast contract ────────────────────────────────────────────
+// ONE rule, shared by every element-wise broadcaster (the numeric ones in
+// nodes/shared.ts, the formula-layer broadcastCall/unary in excelFormula.ts, and
+// the logic family's broadcastEl), decided PER OUTPUT CELL before the op runs:
+//
+//   1. a SolError operand → that error, UNMORPHED (first in argument order) —
+//      the op never sees it, so an error cell can't decay to NaN/"[object Object]";
+//   2. else a missing (`null`) operand → `null` — missing propagates (the settled
+//      P6 SQL/pandas/Polars model: null+5 is null, not 5);
+//   3. else COMPUTE — every operand is present, run the op.
+//
+// This makes an in-range list cell behave identically to a scalar and to a
+// ragged-padded position. The logic (Kleene) family is the one exception on rule
+// 2: it feeds `null` INTO its fn (Kleene decides `null AND FALSE = FALSE`), so it
+// uses `cellError` (the error half only) rather than `cellShortCircuit`.
+export const COMPUTE = Symbol("compute");
+export type CellShort = SolError | Missing | typeof COMPUTE;
+
+/** The full contract (error → missing → compute). Returns the short-circuit value
+ *  for a determined cell, or the COMPUTE sentinel when the op should run. */
+export function cellShortCircuit(args: ReadonlyArray<unknown>): CellShort {
+  for (const a of args) if (isSolError(a)) return a; // first error wins, unmorphed
+  for (const a of args) if (isMissing(a)) return null; // else missing → missing
+  return COMPUTE;
+}
+
+/** The error half only — for broadcasters (the Kleene logic family) that handle
+ *  `null` inside their own fn but must still short-circuit an error cell. */
+export function cellError(args: ReadonlyArray<unknown>): SolError | undefined {
+  for (const a of args) if (isSolError(a)) return a;
+  return undefined;
+}
+
 // ── Kleene (three-valued) boolean logic ──────────────────────────────────────
 // T / F / N(=null). Polars implements this natively; pandas (pd.NA) and ANSI SQL
 // use identical tables. Rule of thumb: `null` only propagates when it could

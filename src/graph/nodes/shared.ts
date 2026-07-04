@@ -2,6 +2,7 @@ import { ClassicPreset } from "rete";
 import { numberSocket, listSocket, numListSocket, tableSocket, strTableSocket, dateTableSocket, anyTableSocket, stringSocket, strListSocket, strComboSocket, dateSocket, dateListSocket, dateComboSocket, complexSocket, complexListSocket, complexComboSocket, complexTableSocket, logicalSocket, logicalListSocket, logicalComboSocket, logicalTableSocket, frameSocket, cubeSocket, lambdaSocket, chartSocket, anySocket } from "../sockets";
 import { resolveColor, paletteStore, type PaletteSlot } from "../palette";
 import { type SolError } from "../errorValue";
+import { cellShortCircuit, COMPUTE } from "../valueKinds";
 
 // Socket-typed port factories. `new ClassicPreset.Input(numberSocket, "A")`
 // repeated across ~60 constructor lines is just noise; these name the
@@ -109,20 +110,32 @@ export function resultOut(label: string, dim: ResultDim, t: ResultType): Classic
 // pad-to-longest policy settled with the array-semantics build. The result
 // list therefore carries nulls at runtime; the `number[]` return type follows
 // the node layer's loose-list convention (lists carry null/SolError cells).
+// A numeric broadcaster's output: a scalar, or a list whose cells may each carry
+// a first-class `null` (missing) or `SolError` (per the per-cell contract), or a
+// whole-value short-circuit (scalar error/missing). The node layer's loose-list
+// convention — lists carry null/SolError cells at runtime.
+export type BroadcastResult = number | (number | SolError | null)[] | SolError | null;
+
 export function broadcast(
   fn: (...xs: number[]) => number | null,
   ...args: Array<number | number[]>
-): number | number[] | null {
+): BroadcastResult {
   const lists = args.filter((a): a is number[] => Array.isArray(a));
-  if (lists.length === 0) return fn(...(args as number[]));
+  if (lists.length === 0) {
+    const sc = cellShortCircuit(args);
+    return sc === COMPUTE ? fn(...(args as number[])) : sc;
+  }
   const len = lists.reduce((m, l) => Math.max(m, l.length), 0);
-  const out: (number | null)[] = [];
+  const out: (number | SolError | null)[] = [];
   for (let i = 0; i < len; i++) {
     if (lists.some((l) => i >= l.length)) { out.push(null); continue; }
-    const r = fn(...args.map((a) => (Array.isArray(a) ? a[i] : a)));
+    const ops = args.map((a) => (Array.isArray(a) ? a[i] : a));
+    const sc = cellShortCircuit(ops);
+    if (sc !== COMPUTE) { out.push(sc); continue; } // error / missing propagates
+    const r = fn(...(ops as number[]));
     out.push(r ?? NaN);
   }
-  return out as number[];
+  return out;
 }
 
 // Like `broadcast`, but the per-element fn may emit a tagged `SolError` for a bad
@@ -134,14 +147,19 @@ export function broadcast(
 export function broadcastErr(
   fn: (...xs: number[]) => number | SolError | null,
   ...args: Array<number | number[]>
-): number | (number | SolError | null)[] | SolError | null {
+): BroadcastResult {
   const lists = args.filter((a): a is number[] => Array.isArray(a));
-  if (lists.length === 0) return fn(...(args as number[]));
+  if (lists.length === 0) {
+    const sc = cellShortCircuit(args);
+    return sc === COMPUTE ? fn(...(args as number[])) : sc;
+  }
   const len = lists.reduce((m, l) => Math.max(m, l.length), 0);
   const out: (number | SolError | null)[] = [];
   for (let i = 0; i < len; i++) {
     if (lists.some((l) => i >= l.length)) { out.push(null); continue; } // ragged pad
-    out.push(fn(...args.map((a) => (Array.isArray(a) ? a[i] : a))));
+    const ops = args.map((a) => (Array.isArray(a) ? a[i] : a));
+    const sc = cellShortCircuit(ops);
+    out.push(sc !== COMPUTE ? sc : fn(...(ops as number[]))); // error / missing propagates
   }
   return out;
 }

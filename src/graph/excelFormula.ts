@@ -520,18 +520,34 @@ function applyOp(op: string, a: unknown, b: unknown): unknown {
   }
 }
 
+// Functions whose result DEPENDS ON a missing/blank operand rather than being
+// erased by it — the type/blank predicates. For these, `null` flows INTO the fn
+// (ISBLANK(null) is TRUE, not blank); every other function follows the missing-
+// propagates half of the per-cell contract. (Error operands still short-circuit
+// for ALL of them — matching the scalar call-level `argv.find(isSolError)` guard;
+// the error CONSUMERS ISERROR/ISNA/IFERROR are routed away before broadcastCall.)
+const NULL_INSPECTING = new Set(["ISBLANK", "ISNUMBER", "ISTEXT", "ISNONTEXT", "ISLOGICAL", "ISREF", "N", "T", "TYPE"]);
+
 /** Broadcast a non-range function element-wise over its array arguments (scalars
  *  repeat). Ragged array args zip to the LONGEST length; a position missing from
  *  a shorter array yields `null` in the result directly (missing in → missing
- *  out), without calling the function on a padded argument. */
+ *  out), without calling the function on a padded argument. Per cell, follows the
+ *  shared contract: an error operand propagates unmorphed (first in arg order),
+ *  else a missing operand propagates as `null` (except the NULL_INSPECTING
+ *  predicates, which must SEE the blank), else the function runs. */
 function broadcastCall(name: string, argv: unknown[]): unknown {
   if (!argv.some(isArr)) return dispatch(name, ...argv);
   const len = argv.reduce<number>((m, a) => (isArr(a) ? Math.max(m, a.length) : m), 0);
   if (len === 0) return [];
+  const inspectsNull = NULL_INSPECTING.has(name);
   const out: unknown[] = [];
   for (let i = 0; i < len; i++) {
     if (argv.some((a) => isArr(a) && i >= a.length)) { out.push(null); continue; }
-    out.push(dispatch(name, ...argv.map((a) => (isArr(a) ? a[i] : a))));
+    const ops = argv.map((a) => (isArr(a) ? a[i] : a));
+    const err = ops.find(isSolError);
+    if (err) { out.push(err); continue; }
+    if (!inspectsNull && ops.some(isMissing)) { out.push(null); continue; }
+    out.push(dispatch(name, ...ops));
   }
   return out;
 }
@@ -549,13 +565,15 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
     case "name": { const c = constantValue(n.name); return c !== undefined ? c : env[n.name]; }
     case "unary": {
       const a = evalAst(n.arg, env);
-      if (isArr(a)) return mapOne(a, (x) => (n.op === "-" ? -(x as number) : +(x as number)));
-      return isErr(a) ? a : (n.op === "-" ? -(a as number) : +(a as number));
+      // Per-cell contract: an error propagates unmorphed, a missing stays missing,
+      // else negate/plus. (Bare `-null` in JS is -0 — hence the explicit guard.)
+      const f = (x: unknown) => (isSolError(x) ? x : isMissing(x) ? null : (n.op === "-" ? -(x as number) : +(x as number)));
+      return isArr(a) ? a.map(f) : isErr(a) ? a : f(a);
     }
     case "percent": {
       const a = evalAst(n.arg, env);
-      if (isArr(a)) return mapOne(a, (x) => (x as number) / 100);
-      return isErr(a) ? a : (a as number) / 100;
+      const f = (x: unknown) => (isSolError(x) ? x : isMissing(x) ? null : (x as number) / 100);
+      return isArr(a) ? a.map(f) : isErr(a) ? a : f(a);
     }
     case "bin": {
       const l = evalAst(n.l, env), r = evalAst(n.r, env);
