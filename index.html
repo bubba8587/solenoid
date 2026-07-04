@@ -10,6 +10,11 @@
     <!-- Mobile browser chrome (Android status bar) tint. Updated to the live accent
          at runtime by appTheme.apply(); this is the pre-JS default. -->
     <meta name="theme-color" content="#56b4e9" />
+    <!-- Declare light/dark support so the browser themes its own UI (system bars in
+         a standalone PWA, status-bar icon contrast, form controls, scrollbars) to the
+         app's mode. appTheme.apply() sets the authoritative `color-scheme` on <html>
+         at runtime; this is the pre-JS default. -->
+    <meta name="color-scheme" content="light dark" />
     <title>Solenoid</title>
   </head>
 
