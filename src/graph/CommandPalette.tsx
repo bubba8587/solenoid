@@ -223,7 +223,19 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
           ref={inputRef}
           className="solenoid-cmdpalette__input"
           value={query}
+          type="text"
+          // Suppress Android/iOS autofill (password / card / address prompts) — this
+          // is a search box, not a credential field. name="search" + inputMode search
+          // + the off flags tell the OS it's plain text, same as our other fields.
+          name="search"
+          inputMode="search"
+          enterKeyHint="go"
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
           spellCheck={false}
+          data-1p-ignore
+          data-lpignore="true"
           placeholder="Add a node, run a command, jump to a node…"
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={onKeyDown}
