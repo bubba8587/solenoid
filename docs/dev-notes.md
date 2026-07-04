@@ -2,6 +2,31 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Composite editor — unpack crash, vertical output stack, full-bleed multi-layer drill-in (2026-07-04)
+- **Unpack crash fixed.** After the drill-in editor had been OPENED, unpack threw
+  `Error("node")` from rete-history-plugin. Opening the drill-in attaches a History
+  plugin to the composite's internal editor, but the internal nodes predate it
+  (hydrated at collapse/load), so it never `nodecreated`-tracked them — and
+  `trackNodes` throws on `noderemoved` for any node it didn't see created. Unpack was
+  calling `internalEditor.removeNode` per node → crash. Fix: unpack no longer mutates
+  the internal editor at all — it moves the shared node INSTANCES onto the outer
+  editor and lets the whole internal editor (plugin included) be discarded with the
+  composite (`compositeLogic.ts`).
+- **Composite output rows stack vertically** (label above its hero ValueDisplay box).
+  A full-height box beside a label in the 22px io-row got pushed off the card; now the
+  measured row wraps only the box (`.solenoid-composite__output`, `nodeCard.css`).
+- **Drill-in is now full-bleed + multi-layer with a breadcrumb.** `compositeEditorStore`
+  is a BREADCRUMB STACK of `CompositeNode` instances (not one id): entry 0 is a
+  main-canvas composite, each deeper entry a composite nested in the previous one's
+  internal graph. The overlay layers full-bleed over the canvas (opaque, no
+  bleed-through) with a top-left `Canvas ▸ A ▸ B` trail (Cube-popup pattern) — a
+  composite card inside drills deeper (`drillInto`), a crumb/Esc drills up (`backTo`).
+  The stack gives recompute + reconcile for free: edits at any depth retarget
+  `stack[0]` (the main-editor ancestor) via `processGraph`; a level reconciles its
+  ports against `stack[i-1].internalEditor` (its parent) on leave. NOT yet done: the
+  user's ask to reroute the REAL app top toolbar / mobile bottom bar to the active
+  subgraph — the drill-in keeps its own header toolbar for now (a follow-up).
+
 ### Mermaid node + lambda→KaTeX in Reports; the "figures are node outputs" standing rule (2026-07-03)
 Two Report-adjacent additions, both built on the SAME principle the author set here as a
 **standing rule**: *rich visual/typeset content is produced by a NODE and flows as a

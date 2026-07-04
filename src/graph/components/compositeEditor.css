@@ -1,24 +1,71 @@
+/* Full-bleed: the subgraph canvas LAYERS over the main one (not a floating
+   window), so drilling in reads as "the app is now showing this subgraph" rather
+   than a modal. Opaque so the main canvas + its chrome don't bleed through. */
 .solenoid-composite-editor__backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.65);
+  background: var(--canvas-bg);
   z-index: 9000;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
   outline: none;
 }
 
 .solenoid-composite-editor__panel {
   background: var(--surface);
-  border: 1px solid var(--border-strong);
-  border-radius: 10px;
-  width: 94vw;
-  height: 90vh;
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+}
+
+/* Breadcrumb — the top-left drilldown trail (Canvas ▸ A ▸ B). Each crumb is a
+   quiet text button; the deepest (current) crumb is emphasized and inert. */
+.solenoid-composite-editor__crumbs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+  flex: 1;
+}
+.solenoid-composite-editor__crumb {
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-dim);
+  cursor: pointer;
+  border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+.solenoid-composite-editor__crumb:hover:not(.solenoid-composite-editor__crumb--current) {
+  color: var(--text-bright);
+  background: var(--surface);
+}
+.solenoid-composite-editor__crumb--current {
+  color: var(--text-bright);
+  font-weight: 600;
+  cursor: default;
+}
+.solenoid-composite-editor__crumb--root {
+  color: var(--text-muted);
+}
+.solenoid-composite-editor__crumb-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.solenoid-composite-editor__crumb-sep {
+  color: var(--text-muted);
+  font-size: 11px;
+  flex-shrink: 0;
 }
 
 .solenoid-composite-editor__header {
