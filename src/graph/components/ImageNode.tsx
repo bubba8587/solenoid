@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ImageNode as ImageNodeType } from "../rete-nodes";
 import { scheduleAutosave } from "../persistence";
 import type { NodeProps } from "./nodeKit";
+import { NodeSocket } from "./NodeSocket";
 import { useDraftCommit, INVALID_DRAFT } from "./inlineInput";
 import { stopDragStart } from "../coarse";
 import "./ImageNode.css";
@@ -17,7 +18,7 @@ const MAX_H = 800;
  * image is letterboxed (object-fit: contain) so any aspect ratio looks tidy. Edits
  * persist via scheduleAutosave (no graph recompute — it carries no data).
  */
-export function ImageComponent({ data }: NodeProps<ImageNodeType>) {
+export function ImageComponent({ data, emit }: NodeProps<ImageNodeType>) {
   const [label, setLabel] = useState(data.label);
   const [url, setUrl] = useState(data.url);
   const [dataUrl, setDataUrl] = useState(data.dataUrl);
@@ -113,6 +114,12 @@ export function ImageComponent({ data }: NodeProps<ImageNodeType>) {
           </svg>
         </button>
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={onFile} />
+        {/* Chart-family output — wire the image into a Report. The bar is a
+            positioning context and isn't overflow-clipped, so the dot straddles the
+            card's right edge and stays reachable even when collapsed. */}
+        {data.outputs.image && (
+          <NodeSocket side="output" socketKey="image" nodeId={data.id} emit={emit} payload={data.outputs.image.socket} />
+        )}
       </div>
 
       {!collapsed && (

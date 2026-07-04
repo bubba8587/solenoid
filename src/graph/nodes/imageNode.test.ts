@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { ImageNode } from "./annotation";
 import { extractInit } from "../copyPaste";
+import { isImageValue } from "../imageValue";
+import { chartSocket } from "../sockets";
 
 // The Image node's persistence contract: a web URL round-trips through the save
 // (and copy/paste), but a locally-attached file's data URL is deliberately NOT
@@ -38,5 +40,18 @@ describe("ImageNode", () => {
     expect(n.src).toBe("https://x/y.png");
     n.dataUrl = "data:image/png;base64,BBBB";
     expect(n.src).toBe("data:image/png;base64,BBBB");
+  });
+
+  it("emits an ImageValue on a chart-family output, carrying src + height", () => {
+    const out = new ImageNode({ url: "https://x/y.png", height: 220 }).outputs.image;
+    expect(out?.socket).toBe(chartSocket);
+    const n = new ImageNode({ url: "https://x/y.png", height: 220 });
+    const v = n.data().image;
+    expect(isImageValue(v) && v.src).toBe("https://x/y.png");
+    expect(isImageValue(v) && v.height).toBe(220);
+  });
+
+  it("emits null when no image is attached", () => {
+    expect(new ImageNode().data().image).toBe(null);
   });
 });

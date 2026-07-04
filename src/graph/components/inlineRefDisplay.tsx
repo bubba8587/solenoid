@@ -11,6 +11,7 @@ import "katex/dist/katex.min.css";
 import { isFrameValue, isCubeValue } from "../frame";
 import { isChartValue, type ChartValue } from "../chartValue";
 import { isMermaidValue } from "../mermaidValue";
+import { isImageValue } from "../imageValue";
 import { MermaidView } from "./MermaidView";
 import { isLambdaValue, type LambdaValue } from "../nodes/lambda";
 import { formulaToLatex } from "../excelFormula";
@@ -188,6 +189,23 @@ function figureFor(
       title: value.title || refKey,
       caption: value.title ? <span className="solenoid-ref-figure__title">{value.title}</span> : null,
       body: <MermaidView source={value.source} />,
+    };
+  }
+  if (isImageValue(value)) {
+    return {
+      title: value.title || refKey,
+      caption: value.title ? <span className="solenoid-ref-figure__title">{value.title}</span> : null,
+      body: value.src
+        ? (
+          <img
+            className="solenoid-ref-image"
+            src={value.src}
+            alt={value.alt || refKey}
+            style={{ height: value.height, maxWidth: "100%", objectFit: "contain" }}
+            draggable={false}
+          />
+        )
+        : <span className="report-embed-missing">no image attached</span>,
     };
   }
   if (isFrameValue(value)) {
