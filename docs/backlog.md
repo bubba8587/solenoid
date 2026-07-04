@@ -365,14 +365,18 @@ section is decision-recorded. The QUEUE when resuming, in order:
 > done + committed to develop** (each with tests): #4 MRound ops/CEILING/FLOOR,
 > #5 classic-lookup redirects, #6 dates, #8 NUMBERVALUE, #10 logical NaN→null,
 > #11 UNIQUE errors, #12 seed-writeback deletion, #13 stale-description sweep — all
-> checked off in the per-item lines below. **6 REMAIN, do in THIS order** (the two
+> checked off in the per-item lines below. **REMAINING, do in THIS order** (the two
 > foundation items are risky — they change how every element-wise node handles
 > errors/nulls/overflow, so expect test churn):
-> 1. **broadcaster per-cell error/null contract** — PARTIAL: the rule is in
->    `applyOp` (excelFormula.ts, operator path) but NOT in the broadcasters
->    (`shared.ts` broadcast/broadcastErr, `excelFormula.ts` broadcastCall/mapOne);
->    also the shared unwired(`undefined`)-vs-missing(`null`) read helper for scalar
->    nodes' data(). (Full item below.)
+> 1. **broadcaster per-cell error/null contract** — DONE for the broadcasters
+>    (2026-07-04, commit `8b76754`): the ONE rule (error→missing→compute) now lives in
+>    `shared.ts` broadcast/broadcastErr, `excelFormula.ts` broadcastCall + unary/percent,
+>    and `logic.ts` broadcastEl (error guard; null still feeds Kleene) — shared helpers
+>    `cellShortCircuit`/`cellError` in valueKinds.ts, tests in broadcastContract.test.ts.
+>    The `readInput` unwired-vs-wired-null helper is BUILT (`shared.ts`, commit `3f9fb8d`)
+>    and applied across scalar.ts's broadcast-based DATA inputs. STILL TODO: sweep the
+>    remaining data() files (list/date/text/matrix/complex/finance/dist/stats), per-input
+>    DATA-vs-CONFIG judgment (config inputs keep defaulting — NOT a blind swap).
 > 2. **non-finite guard** — `#OVERFLOW!` (NEW code, inventory 14→15) / `#DOMAIN!` /
 >    pass-through, composes with (1).
 > 3. **IFS/SWITCH no-match → tagged `#N/A`** + muted N/A placeholder.
@@ -393,21 +397,30 @@ section is decision-recorded. The QUEUE when resuming, in order:
   PivotTable's silent case-merging; document as parity:false catalog notes. The rule:
   *comparisons match like Excel's `=`; keys are identity.* String lt/gt byte-vs-locale
   ordering stays a separate P3.
-- [ ] **Per-cell error/null contract factored INTO the broadcasters** (extends audit P3
-  "error code morphs"; node layer confirmed worse by probe: `[1,#DIV/0!,3]+10` →
-  `[11,"[object Object]10",13]`, `[1,null,3]+10` → `[11,10,13]`). ONE rule, per output
-  element, before the fn runs: SolError operand → that error UNMORPHED (first in arg
-  order); else missing operand → `null`; else compute. Applied in `shared.ts`
-  `broadcast`/`broadcastErr`, `excelFormula.ts` `broadcastCall` + the percent/`mapOne`
-  unary path. `broadcastEl` (logic family) keeps feeding nulls to Kleene (its correct
-  null rule) but gains the error guard. Node-layer `null+10` flips 10 → null — author
-  confirmed (follows the settled P6 SQL-null model; Fill/Coalesce is the recovery).
-  In-range cells thereby behave identically to ragged-padded positions. **Scope
-  addition (probe discovery):** the `inputs.a?.[0] ?? this.literals.a` read idiom
-  swallows a WIRED null into the literal fallback (`??` catches null — a blank cell
-  flowing in silently becomes whatever number sits in the box). Add a shared read
-  helper distinguishing `undefined` (unwired → literal) from `null` (wired missing →
-  propagate) and sweep the scalar nodes' data().
+- [~] **Per-cell error/null contract factored INTO the broadcasters** — DONE for the
+  broadcasters (2026-07-04, commit `8b76754`); readInput helper built + applied to
+  scalar.ts (commit `3f9fb8d`); the remaining data()-file sweep is the open tail.
+  (extends audit P3 "error code morphs"; node layer confirmed worse by probe:
+  `[1,#DIV/0!,3]+10` → `[11,"[object Object]10",13]`, `[1,null,3]+10` → `[11,10,13]`).
+  ONE rule, per output element, before the fn runs: SolError operand → that error
+  UNMORPHED (first in arg order); else missing operand → `null`; else compute. DONE in
+  `shared.ts` `broadcast`/`broadcastErr`, `excelFormula.ts` `broadcastCall` + the
+  percent/unary path (with a `NULL_INSPECTING` predicate exclusion so ISBLANK/ISNUMBER/…
+  still see the blank). `broadcastEl` (logic family) keeps feeding nulls to Kleene (its
+  correct null rule) but gained the error guard. Shared `cellShortCircuit`/`cellError`
+  live in valueKinds.ts. Node-layer `null+10` flips 10 → null — author confirmed
+  (follows the settled P6 SQL-null model; Fill/Coalesce is the recovery). In-range cells
+  thereby behave identically to ragged-padded positions. **Scope addition (probe
+  discovery), PARTIALLY DONE:** the `inputs.a?.[0] ?? this.literals.a` read idiom
+  swallows a WIRED null into the literal fallback. `readInput(wired, literal)`
+  (`shared.ts`) distinguishes `undefined` (unwired → literal) from `null` (wired missing
+  → propagate); broadcaster arg types widened to accept a scalar null. Applied to
+  scalar.ts's broadcast-based DATA inputs. **REMAINING:** sweep list/date/text/matrix/
+  complex/finance/dist/stats data(), applying `readInput` to DATA inputs but leaving
+  CONFIG inputs (base, digits, order, counts) defaulting — a blank config means "use
+  the default," not "propagate missing"; per-input judgment, not a blind swap. Several
+  direct-math scalar nodes (BaseConvert, Combinatorics, Bessel) need an explicit
+  `if (x === null) return null` guard added alongside their readInput swap.
 - [x] **Formula AND/OR vs node Kleene — KEEP BOTH, document (decision (a), author
   confirmed).** The line: *reduction contexts skip nulls* (formula AND/OR = Excel
   blank-ignore = SQL BOOL_AND; the Aggregate family) while *element-wise/expression
