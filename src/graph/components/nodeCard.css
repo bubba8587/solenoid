@@ -488,6 +488,20 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   font-weight: 400;
 }
 
+/* Residual NaN: dirty DATA (an undefined value in the source), NOT an error — an
+   error is a tagged SolError with the red #CODE! badge. A quiet NEUTRAL affordance:
+   muted text on a faint neutral tint, mono + italic so it reads as a state, not a
+   number, and deliberately not the error red nor an ArrayChip. Tooltip explains. */
+.solenoid-node__nan {
+  color: var(--text-dim);
+  background: color-mix(in srgb, var(--text-dim) 10%, var(--surface-sunken));
+  border-radius: 3px;
+  padding: 0 5px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-style: italic;
+}
+
 /* IS-check explanation panel: when an error value is wired in, the node shows
    the code + producer message + the long ERROR_EXPLANATIONS text, making
    ISERROR the place to read an error, not just test for one. */

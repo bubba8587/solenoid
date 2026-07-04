@@ -2,6 +2,17 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### 1.0-tail #6 — NaN display affordance (2026-07-05)
+`formatScalar`/`listPreview` rendered a residual NaN as "N/A" — a LIE post-finding-13, where `#N/A` is
+a real, catchable tagged error and NaN is merely dirty data (an undefined value in the source). Now
+they render the literal "NaN", and `ValueDisplay` gives a SCALAR NaN a quiet affordance:
+`.solenoid-node__nan` — neutral muted tint (`--text-dim` @ 10% over `--surface-sunken`), mono + italic
+so it reads as a state not a number, deliberately NOT the error red badge nor an ArrayChip — plus the
+structural tooltip "Not a number — an undefined value in the data". The NaN branch sits before the
+FC-annotation/`render`/`fmtScalar` fallback so it wins even with a Format Controller docked. Follow-up:
+per-cell NaN tint inside a list ArrayChip / popup grid (the scalar box is done; list cells show the
+plain "NaN" text). Author eyeballs the styling. Tests: format.test.ts updated. No churn.
+
 ### 1.0-tail #5 — numberToText at 15 sig digits for text contexts (2026-07-05)
 `numberToText(x)` (excelFunctions.ts) = `parseFloat(x.toPrecision(15)).toString()` — 15 clean decimal
 digits, trailing zeros stripped, so `(0.1+0.2) & " kg"` prints "0.3 kg" not the 17-digit float noise.

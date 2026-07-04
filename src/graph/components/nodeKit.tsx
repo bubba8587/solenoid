@@ -606,6 +606,12 @@ export function ValueDisplay({
         : isLogical ? (value ? "TRUE" : "FALSE")
         : listIsString ? (listInline ? (value as (string | null)[]).map((v) => (v === null ? "null" : cased(v))).join(", ") : <ArrayChip value={value as string[]} />)
         : isList ? (listInline ? (value as (number | null | SolError)[]).map((v) => formatListCell(v, fmtScalar)).join(", ") : <ArrayChip value={value as number[] | number[][]} />)
+        : typeof value === "number" && Number.isNaN(value) ? (
+            // A residual NaN is dirty DATA, not an error (an error is a tagged
+            // SolError, rendered red above). Quiet muted affordance + a structural
+            // tooltip — not error-red, not plain-number, not an ArrayChip.
+            <span className="solenoid-node__nan" title="Not a number — an undefined value in the data">NaN</span>
+          )
         : render && !ann ? render(value as number)
         : fmtScalar(value as number)}
       {!isEmpty && (

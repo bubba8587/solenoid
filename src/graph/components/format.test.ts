@@ -4,8 +4,8 @@ import { formatScalar, listPreview } from "./format";
 // ─── formatScalar ────────────────────────────────────────────────────────────
 
 describe("formatScalar", () => {
-  it("NaN → 'N/A'", () => {
-    expect(formatScalar(NaN)).toBe("N/A");
+  it("NaN → 'NaN' (dirty data, not the #N/A error)", () => {
+    expect(formatScalar(NaN)).toBe("NaN");
   });
 
   it("integers are rendered without a decimal point", () => {
@@ -53,8 +53,8 @@ describe("listPreview", () => {
     expect(listPreview([1.5, 2.75])).toBe("[1.50, 2.75]  (2)");
   });
 
-  it("NaN entries render as 'N/A'", () => {
-    expect(listPreview([NaN, 1])).toBe("[N/A, 1]  (2)");
+  it("NaN entries render as 'NaN'", () => {
+    expect(listPreview([NaN, 1])).toBe("[NaN, 1]  (2)");
   });
 
   it("exactly 4 elements — no ellipsis", () => {
