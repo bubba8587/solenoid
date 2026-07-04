@@ -7,6 +7,7 @@ import { autoArrange, cleanup } from "./process";
 import { saveToDisk, openFromDisk } from "./fileSession";
 import { frStore } from "./frStore";
 import { mobileMenuStore } from "./mobileMenuStore";
+import { toggleChrome } from "./chromeToggle";
 import { DocumentTitle } from "./components/DocumentTitle";
 import { useGridSnap } from "./gridSnapStore";
 import { toggleAllGroups, groupCollapseSummary } from "./OutlinePanel";
@@ -59,9 +60,23 @@ export function TopBar() {
         />
       </button>
 
-      {/* Mobile-only: the current document name + caret lives in the app bar
-          itself (on desktop it's centered in the menu bar). Hidden on desktop
-          via CSS. */}
+      {/* Mobile-only: Navigator (outline) toggle. On desktop the outline has its
+          own floating open-pill, so this is CSS-hidden there. */}
+      <button
+        type="button"
+        className="solenoid-topbar__nav"
+        aria-label="Navigator"
+        title="Navigator"
+        onClick={() => toggleChrome("navigator")}
+      >
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+        </svg>
+      </button>
+
+      {/* Mobile-only: the current document name + caret. On desktop it's centered
+          in the menu bar; on mobile it moves UP to the thin accent row (the menu
+          bar), so this in-app-bar copy is CSS-hidden on mobile now too. */}
       <div className="solenoid-topbar__doctitle">
         <DocumentTitle />
       </div>

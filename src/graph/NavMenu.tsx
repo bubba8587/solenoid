@@ -113,14 +113,14 @@ export function NavMenu() {
   const locked = useSyncExternalStore(canvasLockStore.subscribe, canvasLockStore.get);
   return (
     <div className="solenoid-nav" onPointerDown={(e) => e.stopPropagation()}>
-      <button className="solenoid-nav__btn" title="Zoom in" onClick={() => zoomBy(ZOOM_STEP)}>
+      <button className="solenoid-nav__btn solenoid-nav__btn--zoomin" title="Zoom in" onClick={() => zoomBy(ZOOM_STEP)}>
         <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="7" cy="7" r="4.5" />
           <path d="M10.4 10.4 14 14" />
           <path d="M7 5 V9 M5 7 H9" />
         </svg>
       </button>
-      <button className="solenoid-nav__btn" title="Zoom out" onClick={() => zoomBy(1 / ZOOM_STEP)}>
+      <button className="solenoid-nav__btn solenoid-nav__btn--zoomout" title="Zoom out" onClick={() => zoomBy(1 / ZOOM_STEP)}>
         <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="7" cy="7" r="4.5" />
           <path d="M10.4 10.4 14 14" />

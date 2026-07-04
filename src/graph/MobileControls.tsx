@@ -5,7 +5,6 @@ import { cableSelectionStore } from "./cableState";
 import { touchSelectStore } from "./touchSelectStore";
 import { IS_MOBILE } from "./coarse";
 import { paletteStore } from "./paletteStore";
-import { fitAll } from "./NavMenu";
 import "./MobileControls.css";
 
 /**
@@ -46,10 +45,12 @@ export function MobileControls() {
 
   return (
     <div className="solenoid-mobile-bar" onPointerDown={(e) => e.stopPropagation()}>
-      {/* Lucide "command" — the palette. Its search covers find-node too. */}
+      {/* Lucide "terminal" (>_) — the command palette, Obsidian-style. Its search
+          covers find-node too. */}
       <button className="solenoid-mobile-bar__btn" aria-label="Command palette" onClick={() => paletteStore.open()}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3" />
+          <path d="m5 8 4 4-4 4" />
+          <path d="M13 16h6" />
         </svg>
       </button>
       <button className="solenoid-mobile-bar__btn" aria-label="Undo" onClick={() => fireUndo(false)}>
@@ -101,12 +102,24 @@ export function MobileControls() {
           <path d="M10 11v6M14 11v6" />
         </svg>
       </button>
-      <button className="solenoid-mobile-bar__btn" aria-label="Fit all" onClick={() => fitAll()}>
-        <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M2 5.5 V3 a1 1 0 0 1 1-1 H5.5" />
-          <path d="M10.5 2 H13 a1 1 0 0 1 1 1 V5.5" />
-          <path d="M14 10.5 V13 a1 1 0 0 1-1 1 H10.5" />
-          <path d="M5.5 14 H3 a1 1 0 0 1-1-1 V10.5" />
+      {/* Group the current selection (G) — the highest-value keyboard-less edit op.
+          Fires the same shortcut Canvas listens for. Dimmed when nothing's selected
+          (it needs a selection), but still tappable so a fresh select isn't blocked
+          by the poll. Fit/autofit moved to the floating canvas pill. */}
+      <button
+        className={
+          "solenoid-mobile-bar__btn" + (hasSelection ? "" : " solenoid-mobile-bar__btn--dim")
+        }
+        aria-label="Group selection"
+        aria-disabled={!hasSelection}
+        onClick={fireGroup}
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 8V5a1 1 0 0 1 1-1h3" />
+          <path d="M16 4h3a1 1 0 0 1 1 1v3" />
+          <path d="M20 16v3a1 1 0 0 1-1 1h-3" />
+          <path d="M8 20H5a1 1 0 0 1-1-1v-3" />
+          <rect x="9" y="9" width="6" height="6" rx="1" />
         </svg>
       </button>
     </div>
@@ -118,5 +131,13 @@ export function MobileControls() {
 function fireUndo(redo: boolean) {
   window.dispatchEvent(
     new KeyboardEvent("keydown", { code: "KeyZ", ctrlKey: true, shiftKey: redo, bubbles: true, cancelable: true }),
+  );
+}
+
+// Group the selection via the same "G" shortcut Canvas already handles (single-
+// sourced, like undo/redo) — no separate editor/area plumbing for the mobile bar.
+function fireGroup() {
+  window.dispatchEvent(
+    new KeyboardEvent("keydown", { code: "KeyG", key: "g", bubbles: true, cancelable: true }),
   );
 }
