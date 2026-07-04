@@ -352,6 +352,17 @@ describe("compileEvaluator — array-aware (broadcast vs aggregate per call site
     expect(ev('a & "x"', { a: 5 })).toBe("5x");
   });
 
+  it("& / CONCAT / TEXTJOIN format numbers at 15 sig digits (no float noise)", () => {
+    // The headline: 0.1+0.2 = 0.30000000000000004, but printed into text → "0.3".
+    expect(ev('(0.1 + 0.2) & " kg"')).toBe("0.3 kg");
+    expect(ev('CONCAT(0.1 + 0.2, " kg")')).toBe("0.3 kg");
+    expect(ev('CONCATENATE(0.1 + 0.2, " kg")')).toBe("0.3 kg");
+    expect(ev('TEXTJOIN("-", TRUE, 0.1 + 0.2, 3)')).toBe("0.3-3");
+    // A clean value is untouched; a boolean still renders TRUE/FALSE.
+    expect(ev('42 & ""')).toBe("42");
+    expect(ev('(1 = 1) & "!"')).toBe("TRUE!");
+  });
+
   it("dispatches scalar functions through Formula.js", () => {
     expect(ev("SQRT(a)", { a: 16 })).toBe(4);
     expect(ev("MAX(a, b, c)", { a: 1, b: 9, c: 4 })).toBe(9);
