@@ -76,3 +76,36 @@
   margin-bottom: 4px;
 }
 .solenoid-ref-formula { display: block; margin: 12px 0; overflow-x: auto; }
+
+/* Collapsible Report embed (components/inlineRefDisplay.tsx CollapsibleFigure):
+   every chart / table / diagram / embedded note folds under a titled bar so a
+   long report stays skimmable. Span-based (it's portaled into an inline `=name`
+   slot) but laid out as a block. */
+.solenoid-ref-embed { display: block; margin: 12px 0; }
+.solenoid-ref-embed__bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 3px 6px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-dim);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+.solenoid-ref-embed__bar:hover { color: var(--text-bright); border-color: var(--border-strong); }
+.solenoid-ref-embed__chev {
+  display: inline-block;
+  font-size: 10px;
+  color: var(--text-muted);
+  transition: transform 0.12s ease;
+  flex-shrink: 0;
+}
+.solenoid-ref-embed__chev--open { transform: rotate(90deg); }
+.solenoid-ref-embed__title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.solenoid-ref-embed__body { display: block; margin-top: 6px; }
+.solenoid-ref-chartbody { display: block; }

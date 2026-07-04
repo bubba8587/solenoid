@@ -2,6 +2,22 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Report embeds: taller scrollable tables + collapsible (2026-07-04)
+Two Report-embed asks. (1) An inline frame ref (`=table`) was capped at the node
+hero box's 3 rows; a document can afford more. `FrameDisplay` gained `previewRows`/
+`previewCols`/`scroll` props — the Report renders up to 25 rows / 12 cols in a
+`max-height:260 overflow:auto` box (keeps the chip → full popup). A Note card still
+gets the compact 3×3. (2) Every Report embed folds under a titled bar: new
+`CollapsibleFigure` (`inlineRefDisplay.tsx`) wraps chart/table/diagram/cube refs AND
+`![[note]]` embeds. Threaded via `InlineRefBody`'s `collapsibleEmbeds` flag →
+`InlineRefValue`'s `collapsible` (Report passes it, Note doesn't). Figure branches were
+refactored into a `figureFor()` descriptor (`{title, caption, body}`) so the same body
+renders either captioned-inline (Note) or under a collapse bar (Report); `ChartBody`
+is the caption-less measured plot. The embedded note renders BARE (no own header —
+the bar's title is the note name). Portaled into inline `=name` slots so it's all
+span-based but `display:block`. Verified live: 10-row scrollable table + note both
+fold/unfold.
+
 ### Composite boundary values render by kind (frame/cube/chart/lambda) (2026-07-04)
 Closed the documented gap: a Composite output port (and the drill-in's input/output
 boundary markers) bound to a FRAME or CUBE stringified as `[object Object]` through
