@@ -2,6 +2,19 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Presentation steps persist across reload (node-id remap) (2026-07-04)
+- **The Presentation node "stopped working after reload."** A step carries a node-id SET
+  (the camera target), stored as live rete ids on the instance. The `steps` array itself
+  round-tripped fine (it's in `INIT_FIELD_ORDER`, JSON-serializable), but its `nodeIds` were
+  never translated at the two addressable boundaries the way group `members` / FC
+  `hostNodeId` are — so after a reload every id inside a step was a stale rete id matching no
+  live node, and `flyToNodes` flew nowhere. Fix mirrors `members` exactly: `writeTextForm`
+  translates step `nodeIds` id→name (so they become addressable and match saved node ids),
+  `rebuildGraph` remaps them name→fresh-id (dropping vanished nodes), and `pasteClipboard`
+  remaps them through `oldToNew`. Lesson: ANY node field that references OTHER nodes' ids
+  needs handling at BOTH the text-form boundary (id↔name) AND the rebuild/paste boundary
+  (id→id) — capturing the field in `extractInit` alone isn't enough, the ids inside it rot.
+
 ### Two crash/data-integrity fixes: Display-on-object, and cable-drag committing text (2026-07-04)
 - **Display node crashed the canvas on a Chart/Mermaid/lambda input.** `DisplayComponent`
   routed any value that wasn't error/frame/cube/table to `ValueDisplay`'s number formatter
