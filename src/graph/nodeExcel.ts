@@ -65,7 +65,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
     { excel: "CHISQ.INV", syntax: "=CHISQ.INV(p, df)", parity: true },
     { excel: "CHISQ.INV.RT", syntax: "=CHISQ.INV.RT(p, df)", parity: true },
   ],
-  "choose": [{ excel: "CHOOSE", syntax: "=CHOOSE(idx, v1, v2, ...)", parity: false, note: "Fixed 4 values; Excel supports up to 254" }],
+  "choose": [{ excel: "CHOOSE", syntax: "=CHOOSE(idx, v1, v2, ...)", parity: true }],
   "comb-combin": [{ excel: "COMBIN", syntax: "=COMBIN(n, k)", parity: true }],
   "comb-combina": [{ excel: "COMBINA", syntax: "=COMBINA(n, k)", parity: true }],
   "comb-fact": [{ excel: "FACT", syntax: "=FACT(n)", parity: true }],
