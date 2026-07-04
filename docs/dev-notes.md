@@ -2,6 +2,18 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Composite boundary values render by kind (frame/cube/chart/lambda) (2026-07-04)
+Closed the documented gap: a Composite output port (and the drill-in's input/output
+boundary markers) bound to a FRAME or CUBE stringified as `[object Object]` through
+`ValueDisplay`. New `CompositeBoundaryValue` (`CompositeNode.tsx`) branches on kind —
+frame/cube → the compact `FrameDisplay`/`CubeDisplay` table preview, chart/mermaid →
+its figure, lambda → `formatLambda`, everything else → the hero `ValueDisplay` box.
+Output markers materialize through `coerceInputs` (internal editor has it installed),
+so `cachedOutputs` holds a real `FrameValue`, not a lazy ref — `FrameDisplay` renders
+it directly. Verified live: a FrameInput→output-marker composite shows the City/Pop
+table on its card. This makes frame-transforming composites (Join/Group By → frame
+out) actually usable, which is the relational north-star's reuse story.
+
 ### Composite editor — unpack crash, vertical output stack, full-bleed multi-layer drill-in (2026-07-04)
 - **Unpack crash fixed.** After the drill-in editor had been OPENED, unpack threw
   `Error("node")` from rete-history-plugin. Opening the drill-in attaches a History
