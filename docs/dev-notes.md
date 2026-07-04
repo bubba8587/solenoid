@@ -22,7 +22,14 @@ Four author-reported bugs, all root-caused rather than patched-over:
   at ≤~30% has unreadable body text but is still a clear block — conservative (far-overview only) but
   actually reachable and visible. Dropped the now-unused `computeIdealMipLevel` import. **Gotcha for
   next time:** semantic zoom is an APPARENT-size concept — never gate it on anything containing `dpr`
-  (that's a texture-resolution concern owned by the mip renderer).
+  (that's a texture-resolution concern owned by the mip renderer). **Second half of the feature (the
+  original intent — Sonnet had only built the hide):** the hidden body is now REPLACED by a legible
+  stand-in. `NodeShell` renders a `.solenoid-node__semantic` overlay (the node name, large + centered,
+  transparent so socket dots show, `pointer-events:none`, `-webkit-line-clamp:3`), shown only under
+  the `html.solenoid-semantic-zoom` class. So a far-zoom card reads as an identifiable named block
+  instead of a blank rectangle. Group/Note cards keep their own content (they're already labeled
+  blocks); this is standard-node-only. Note: it's a DOM-renderer feature — the HTML-in-canvas renderer
+  draws cached bitmaps, so it wouldn't reflect the class toggle without a recapture (pre-existing).
 - **Quick-wire ignored the drop location** — the new node landed near the ORIGIN socket, not where
   the cable was released. Cause: `screenMouseRef` tracked `mousemove` ONLY, but rete-area-plugin's
   `Drag.move` calls `e.preventDefault()` on pointermove (area plugin, line ~193), which SUPPRESSES
@@ -30,7 +37,12 @@ Four author-reported bugs, all root-caused rather than patched-over:
   start point (near the origin), and both the quick-wire menu and the created node used that stale
   point. Fix: also track `pointermove` (it keeps firing through the drag; `preventDefault` stops
   default actions, not other listeners). **Gotcha:** any cursor-position ref used at the END of a
-  drag must be fed by pointermove, not mousemove.
+  drag must be fed by pointermove, not mousemove. **Side-aware placement (follow-up):** the drop
+  point should meet the new node's WIRED socket. Dragging from an output → downstream node, its INPUT
+  (left edge) at the drop (top-left placement, unchanged). Dragging from an input → upstream node, its
+  OUTPUT (right edge) at the drop → shift left by the card width. Width isn't known until the card
+  renders, so measure `element.offsetWidth` if already laid out (no jump), else place naive and nudge
+  left on the next rAF. (`handleMenuSelect` in `Canvas.tsx`.)
 
 ### Top-bar control-size consistency + navigator bottom clearance (2026-07-04)
 - **Desktop + mobile:** the `.solenoid-topbar__group` pill had `padding: 3px`, making it 36px tall

@@ -416,6 +416,38 @@ html.solenoid-semantic-zoom .solenoid-node__body {
   visibility: hidden;
 }
 
+/* The simplified stand-in drawn in the hidden body's place: the node NAME, large
+   and centered, so at far zoom a card reads as an identifiable block instead of a
+   blank rectangle. Transparent (dots + card bg show through), non-interactive, and
+   only laid out under the semantic-zoom root class. Anchored to the card via inset:0
+   (same as the selection ring). Overlays the tiny header too — that's fine, the
+   header text is sub-pixel at this zoom and the big name is the readable version. */
+.solenoid-node__semantic { display: none; }
+html.solenoid-semantic-zoom .solenoid-node__semantic {
+  display: flex;
+  position: absolute;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  pointer-events: none;
+  z-index: 3; /* above body/content, below the socket dots (z 7) and selection ring (z 6) */
+}
+html.solenoid-semantic-zoom .solenoid-node__semantic span {
+  display: -webkit-box;
+  -webkit-line-clamp: 3; /* clamp a long name to 3 lines rather than overflow */
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-align: center;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
 .solenoid-node__value-input {
   width: 100%;
   /* type=number has a large intrinsic min-content width (spinners +

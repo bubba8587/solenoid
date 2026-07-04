@@ -3366,9 +3366,25 @@ export function Canvas() {
       const { x: tx, y: ty, k } = area.area.transform;
       const container = containerRef.current!;
       const rect = container.getBoundingClientRect();
-      const canvasX = (menu.screenX - rect.left - tx) / k;
-      const canvasY = (menu.screenY - rect.top - ty) / k;
-      await area.translate(node.id, { x: canvasX, y: canvasY });
+      const dropX = (menu.screenX - rect.left - tx) / k;
+      const dropY = (menu.screenY - rect.top - ty) / k;
+      // Where the cable was dropped is the point that should meet the new node's
+      // wired socket. Dragging from an OUTPUT creates a DOWNSTREAM node whose INPUT
+      // (left edge) meets the drop → top-left at the drop. Dragging from an INPUT
+      // creates an UPSTREAM node whose OUTPUT (right edge) meets the drop → shift it
+      // left by its width. Width isn't known until the card renders; measure the
+      // element if it's already laid out (no jump), else place naive and nudge on
+      // the next frame. (offsetWidth is natural CSS px — the canvas scale is on the
+      // holder, not the card — so it's already in the canvas units dropX uses.)
+      const fromInput = menu.quickWire?.side === "input";
+      const measuredW = fromInput ? area.nodeViews.get(node.id)?.element.offsetWidth ?? 0 : 0;
+      await area.translate(node.id, { x: fromInput ? dropX - measuredW : dropX, y: dropY });
+      if (fromInput && measuredW === 0) {
+        requestAnimationFrame(() => {
+          const w = area.nodeViews.get(node.id)?.element.offsetWidth ?? 0;
+          if (w > 0) void area.translate(node.id, { x: dropX - w, y: dropY });
+        });
+      }
 
       // Quick-wire: splice the dragged cable into the first compatible socket on
       // the new node (the menu was already filtered to guarantee one exists).

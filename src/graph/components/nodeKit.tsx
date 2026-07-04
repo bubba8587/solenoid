@@ -378,6 +378,14 @@ export function NodeShell({
           {!hideOutputSockets && <PortSockets node={node} emit={emit} side="output" />}
           <div className="solenoid-node__body">{children}</div>
         </div>
+        {/* Semantic-zoom simplified view: at far-overview zoom the body detail is
+            hidden (nodeCard.css) and this draws the node's NAME large + centered so a
+            card still reads as an identifiable block, not a blank rectangle. Only
+            visible under html.solenoid-semantic-zoom; transparent so the socket dots
+            still show; aria-hidden + pointer-events:none so it's purely decorative. */}
+        <div className="solenoid-node__semantic" aria-hidden="true">
+          <span>{node.label || effectivePlaceholder || ""}</span>
+        </div>
       </NodeCard>
     </NodeFormatContext.Provider>
   );
