@@ -41,6 +41,14 @@ fn set_window_border(window: tauri::WebviewWindow, r: u8, g: u8, b: u8) {
     let _ = (window, r, g, b);
 }
 
+/// Toggle the window between fullscreen and windowed. Bound to F11 in the web layer
+/// (the Tauri WebView2 shell doesn't give us Chrome's native F11). No-op on error.
+#[tauri::command]
+fn toggle_fullscreen(window: tauri::WebviewWindow) {
+    let is = window.is_fullscreen().unwrap_or(false);
+    let _ = window.set_fullscreen(!is);
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -60,6 +68,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             open_devtools,
             set_window_border,
+            toggle_fullscreen,
             ipc::engine_ping,
             engine::engine_source,
             engine::engine_read_csv,
