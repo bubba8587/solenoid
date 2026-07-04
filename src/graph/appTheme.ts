@@ -28,6 +28,19 @@ function apply() {
   root.setAttribute("data-theme", _mode);
   root.style.colorScheme = _mode;
 
+  // Tint the mobile browser chrome (Android Chrome status bar; iOS PWA) to the
+  // accent, matching the accent doc-title row directly beneath it. `theme-color`
+  // only drives the TOP status bar in a normal browser tab — the bottom system nav
+  // bar isn't web-controllable there (it follows the page only in an installed
+  // standalone PWA), so this is a best-effort top-edge match.
+  let themeMeta = document.querySelector('meta[name="theme-color"]');
+  if (!themeMeta) {
+    themeMeta = document.createElement("meta");
+    themeMeta.setAttribute("name", "theme-color");
+    document.head.appendChild(themeMeta);
+  }
+  themeMeta.setAttribute("content", hex);
+
   // Match the native Windows 11 window border to the accent (desktop only).
   syncNativeAccent(hex);
 

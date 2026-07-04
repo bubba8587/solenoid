@@ -26,6 +26,17 @@ Reorganized mobile chrome to mirror desktop's separation of concerns, into three
   (below both rows), outline panel `top: 80px + safe-area`, floating pill `top: 84px + safe-area`.
 - Verified in mobile-emulated Chromium (both themes): two rows render, Navigator toggles the
   outline, the sheet opens at y=74, Group creates a group (6→7), Fit/Lock present, `>_` bottom-left.
+- **Follow-up polish (2026-07-04):** Row B is OPAQUE (`--surface`, not the translucent
+  `--panel-bg`) so the canvas never bleeds through; doc title LEFT-aligned; Navigator reuses the
+  desktop panel-left glyph; the layout GROUP (Tidy/Cleanup/collapse-all/snap — tagged
+  `__group--layout`) is surfaced on Row B (file ops stay in the sheet via `__group--file`);
+  gaps tightened (topbar 4px, apptools/pill 2px); apptools stroke 2.6→2.0 (2.6 was extra-thick at
+  14px); Fit/Lock pill trimmed (30px buttons, scoped `.solenoid-nav .solenoid-nav__btn` so the
+  Row B layout buttons keep their own 32px). **Android status bar** now tints to the accent via a
+  dynamic `<meta name="theme-color">` written in `appTheme.apply()` (bottom system nav bar isn't
+  web-controllable in a normal tab — only an installed PWA follows the page). **Command palette
+  input** got `autoComplete/autoCorrect/autoCapitalize=off` + `inputMode=search` + `data-1p-ignore`
+  so Android/iOS stop offering password/card/address autofill on a plain search box.
 
 ### Mobile app bar is accent-based (2026-07-04)
 - On mobile the single top bar (`.solenoid-topbar`) now uses the ACCENT as its base color

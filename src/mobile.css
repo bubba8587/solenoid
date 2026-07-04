@@ -38,8 +38,10 @@ html.is-mobile {
      themes. The notch/safe-area inset is on Row A above, so no top padding here. */
   .solenoid-topbar {
     padding: 0 8px;
-    gap: 8px;
-    background: var(--panel-bg);
+    gap: 4px;
+    /* OPAQUE surface (not the translucent --panel-bg) so the canvas never shows
+       through the tools row. */
+    background: var(--surface);
     border-bottom: 2px solid rgba(0, 0, 0, 0.22);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
     backdrop-filter: none;
@@ -49,7 +51,9 @@ html.is-mobile {
     border-bottom-color: rgba(255, 255, 255, 0.11);
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
   }
-  .solenoid-topbar__group,
+  /* File ops (Save/Open) stay in the hamburger sheet; the layout GROUP (Tidy /
+     Cleanup / collapse-all / snap) is surfaced on Row B now (there's room). */
+  .solenoid-topbar__group--file,
   .solenoid-topbar__divider,
   .solenoid-topbar__art,
   .solenoid-topbar .solenoid-toolbar,
@@ -59,6 +63,11 @@ html.is-mobile {
   .solenoid-topbar__doctitle {
     display: none;
   }
+  /* Surfaced layout tools — sit just left of the apptools cluster; their buttons
+     use .solenoid-nav__btn, sized for touch here (the pill scopes its own size). */
+  .solenoid-topbar__group--layout { display: flex; gap: 2px; }
+  .solenoid-topbar .solenoid-nav__btn { width: 32px; height: 32px; }
+  .solenoid-topbar .solenoid-nav__btn svg { width: 17px; height: 17px; }
   /* The square icon doubles as the app-menu button on a phone — a finger-sized tap
      target at the left edge. Neutral chrome now (Row B isn't accent). */
   .solenoid-topbar__icon { display: flex; }
@@ -97,16 +106,16 @@ html.is-mobile {
      Default chrome button styling applies (no accent-ink overrides needed now). The
      light/dark toggle moves into the accent-palette popup; the lone accent button
      rounds to a circle. */
-  .solenoid-apptools { gap: 6px; margin-left: auto; }
+  .solenoid-apptools { gap: 2px; margin-left: auto; }
   .solenoid-apptools__btn { width: 34px; height: 34px; }
   .solenoid-apptools__palette { top: 40px; }
   .solenoid-apptools__theme { display: none; }
   .solenoid-apptools__palette-theme { display: flex; }
   .solenoid-apptools__pill .solenoid-apptools__paint { border-radius: 999px; }
-  /* Thicken the icon stroke so the apptools + nav glyphs match the bottom bar /
-     overlay pills (authored 14px / stroke 1.4 ≈ 0.82px effective, ~half the touch
-     bar; 2.6 lands ~1.5px). CSS stroke-width wins over the SVG attribute. */
-  .solenoid-apptools__btn svg { stroke-width: 2.6; }
+  /* A touch nudge over the authored 1.4 stroke so the 14px glyphs don't read as
+     hairlines next to the heavier bottom-bar icons — but NOT the earlier 2.6, which
+     was extra-thick at this small size. 2.0 (≈1.17px effective) reads balanced. */
+  .solenoid-apptools__btn svg { stroke-width: 2; }
 
   /* ── Row A — the MENU BAR becomes the thin ACCENT strip carrying just the document
         name + caret (its desktop menu items live in the hamburger sheet). This top
@@ -125,13 +134,14 @@ html.is-mobile {
   .solenoid-menubar__item { display: none; }
   .solenoid-menubar__center {
     /* Desktop centers it ABSOLUTELY (out of flow); on mobile it must be IN flow so
-       it gives the thin accent row its height (else the menu bar collapses to 0). */
+       it gives the thin accent row its height (else the menu bar collapses to 0).
+       Left-aligned (not centered) per the two-row design. */
     position: static;
     transform: none;
     display: flex;
     flex: 1 1 auto;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     min-width: 0;
     height: 30px;
     pointer-events: auto;
@@ -215,18 +225,20 @@ html.is-mobile {
         does it); the cable-flourish easter-egg is desktop-only. ── */
   .solenoid-nav {
     top: calc(84px + env(safe-area-inset-top));
-    gap: 4px;
-    padding: 4px;
+    gap: 2px;
+    padding: 3px;
   }
   .solenoid-nav__btn--zoomin,
   .solenoid-nav__btn--zoomout,
   .solenoid-nav__btn--flourish { display: none; }
-  .solenoid-nav__btn {
-    width: 38px;
-    height: 38px;
-    font-size: 15px;
+  /* Scoped to the pill so the surfaced Row B layout buttons (which also use
+     .solenoid-nav__btn) keep their own smaller size. Pill trimmed down overall. */
+  .solenoid-nav .solenoid-nav__btn {
+    width: 30px;
+    height: 30px;
+    font-size: 13px;
   }
-  .solenoid-nav__btn svg { width: 16px; height: 16px; }
+  .solenoid-nav .solenoid-nav__btn svg { width: 15px; height: 15px; }
 
   /* ── Add-node menu: compact enough that a standard 12-item (sub)menu renders
         without scrolling, while staying tappable. Rows ~30px (12 ≈ 360px) + the

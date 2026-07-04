@@ -69,8 +69,10 @@ export function TopBar() {
         title="Navigator"
         onClick={() => toggleChrome("navigator")}
       >
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+        {/* Same panel-left glyph the desktop navigator open-pill uses. */}
+        <svg viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="3" width="12" height="10" rx="1.6" />
+          <path d="M6 3 V13" />
         </svg>
       </button>
 
@@ -83,7 +85,7 @@ export function TopBar() {
 
       <span className="solenoid-topbar__divider" />
 
-      <div className="solenoid-topbar__group">
+      <div className="solenoid-topbar__group solenoid-topbar__group--file">
         {/* Save: writes the current graph to its .json file (prompting the first
             time). Your work also autosaves to the in-app document continuously. */}
         <button className="solenoid-nav__btn" title="Save (Ctrl+S)" aria-label="Save" onClick={() => void saveToDisk()}>
@@ -106,7 +108,7 @@ export function TopBar() {
       </div>
 
       {/* Layout pill: Tidy + Cleanup + collapse/expand-all together. */}
-      <div className="solenoid-topbar__group">
+      <div className="solenoid-topbar__group solenoid-topbar__group--layout">
         <button className="solenoid-nav__btn" title="Tidy — auto-arrange (T)" aria-label="Tidy" onClick={() => autoArrange()}>
           <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
             {/* One source node branching into two — a tidy graph layout. */}
