@@ -115,7 +115,10 @@ function stats(samples: number[]) {
   return { min: s[0], median: q(0.5), mean: sum / s.length, p95: q(0.95), max: s[s.length - 1] };
 }
 
-describe("personal-finance compute scaling", () => {
+// Benchmark, not a pass/fail test — 30 iters at 1x/2x/4x is slow and prints a table
+// nobody reads in a normal `npm test`. Gate it behind PERF so the default suite stays
+// fast; run with `PERF=1 npx vitest run src/graph/perfScaling.test.ts` when profiling.
+describe.runIf(!!process.env.PERF)("personal-finance compute scaling", () => {
   it("times engine.reset + fetch-all at 1x / 2x / 4x node count", async () => {
     const WARMUP = 3;
     const ITERS = 30;
