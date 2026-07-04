@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { broadcast, broadcastErr } from "./nodes/shared";
+import { broadcast, broadcastErr, readInput } from "./nodes/shared";
 import { compileEvaluator } from "./excelFormula";
 import { ComparisonNode, IfNode, BooleanOpNode } from "./nodes/logic";
+import { ArithmeticNode } from "./nodes/scalar";
 import { solError, isSolError } from "./errorValue";
 
 // The per-cell error/null contract, factored into every element-wise broadcaster
@@ -45,6 +46,29 @@ describe("broadcast / broadcastErr — numeric node broadcasters", () => {
     expect(r[0]).toBe(5);
     expect(isSolError(r[1])).toBe(true); // fn-minted #DIV/0!
     expect(r[2]).toBe(e);                // operand error propagates unmorphed
+  });
+});
+
+describe("readInput — unwired (undefined) vs wired-missing (null)", () => {
+  it("unwired slot falls back to the literal", () => {
+    expect(readInput(undefined, 7)).toBe(7);
+    expect(readInput([], 7)).toBe(7);
+  });
+  it("a wired value wins, even 0", () => {
+    expect(readInput([3], 7)).toBe(3);
+    expect(readInput([0], 7)).toBe(0);
+  });
+  it("a WIRED null propagates — NOT swallowed into the literal", () => {
+    expect(readInput([null], 7)).toBe(null);
+  });
+
+  it("Arithmetic: a wired null propagates (null + 5 → null), not the literal", () => {
+    // b unwired → literal 5; a wired to a missing null.
+    const add = new ArithmeticNode({ op: "add" });
+    add.literals.a = 99; // the box value that the OLD `??` idiom would have used
+    expect(add.data({ a: [null as unknown as number], b: [5] }).result).toBe(null);
+    // Sanity: an unwired a still uses its literal box.
+    expect(new ArithmeticNode({ op: "add" }).data({ b: [5] }).result).toBe(5); // 0 (literal) + 5
   });
 });
 

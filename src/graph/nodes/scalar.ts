@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { broadcast, broadcastErr, numListIn, numListOut, numIn, numOut, listIn, type BroadcastResult } from "./shared";
+import { broadcast, broadcastErr, readInput, numListIn, numListOut, numIn, numOut, listIn, type BroadcastResult } from "./shared";
 import { lnGamma } from "./mathUtils";
 import { solError, type SolError } from "../errorValue";
 
@@ -123,8 +123,8 @@ export class ArithmeticNode extends ClassicPreset.Node {
   }
 
   data(inputs: { a?: (number | number[])[]; b?: (number | number[])[] }) {
-    const a = inputs.a?.[0] ?? this.literals.a ?? null;
-    const b = inputs.b?.[0] ?? this.literals.b ?? null;
+    const a = readInput(inputs.a, this.literals.a);
+    const b = readInput(inputs.b, this.literals.b);
     // ÷ 0 is a real error, not a blank — Excel #DIV/0! — at EVERY dimensionality:
     // a scalar result is a tagged SolError, and an element divided by zero inside
     // a list carries a per-cell #DIV/0! (array-semantics: lists hold per-cell
@@ -235,7 +235,7 @@ export class MathFnNode extends ClassicPreset.Node {
   }
 
   data(inputs: { in?: (number | number[])[] }) {
-    const input = inputs.in?.[0] ?? this.literals.in ?? null;
+    const input = readInput(inputs.in, this.literals.in);
     // A valid input element with no defined result (√ of a negative, log of 0, an
     // arc-fn outside [−1,1], …) is OUT OF DOMAIN — #DOMAIN!, the specific half of
     // Excel's #NUM!. It tags identically at every dimensionality: a scalar → a
@@ -403,7 +403,7 @@ export class ClampNode extends ClassicPreset.Node {
   }
 
   data(inputs: { value?: (number | number[])[]; min?: (number | number[])[]; max?: (number | number[])[] }) {
-    const value = inputs.value?.[0] ?? this.literals.value ?? null;
+    const value = readInput(inputs.value, this.literals.value);
     const min   = inputs.min?.[0]   ?? this.literals.min   ?? null;
     const max   = inputs.max?.[0]   ?? this.literals.max   ?? null;
     if (value === null) { this.cachedResult = null; return { result: null }; }
@@ -450,8 +450,8 @@ export class MRoundNode extends ClassicPreset.Node {
   }
 
   data(inputs: { value?: (number | number[])[]; multiple?: (number | number[])[] }) {
-    const value    = inputs.value?.[0]    ?? this.literals.value    ?? null;
-    const multiple = inputs.multiple?.[0] ?? this.literals.multiple ?? null;
+    const value    = readInput(inputs.value,    this.literals.value);
+    const multiple = readInput(inputs.multiple, this.literals.multiple);
     const snap = this.op === "up" ? Math.ceil : this.op === "down" ? Math.floor : Math.round;
     let result: BroadcastResult = null;
     if (value !== null && multiple !== null) {
@@ -484,8 +484,8 @@ export class RoundNNode extends ClassicPreset.Node {
   }
 
   data(inputs: { value?: (number | number[])[]; digits?: (number | number[])[] }) {
-    const value  = inputs.value?.[0]  ?? this.literals.value  ?? null;
-    const digits = inputs.digits?.[0] ?? this.literals.digits ?? 0;
+    const value  = readInput(inputs.value, this.literals.value);
+    const digits = inputs.digits?.[0] ?? this.literals.digits ?? 0; // config: unwired/blank → 0 places
     let result: BroadcastResult = null;
     if (value !== null) {
       result = broadcast((v, d) => {
@@ -529,8 +529,8 @@ export class GcdNode extends ClassicPreset.Node {
   }
 
   data(inputs: { a?: (number | number[])[]; b?: (number | number[])[] }) {
-    const a = inputs.a?.[0] ?? this.literals.a ?? 0;
-    const b = inputs.b?.[0] ?? this.literals.b ?? 0;
+    const a = readInput(inputs.a, this.literals.a);
+    const b = readInput(inputs.b, this.literals.b);
     const result = broadcast((x, y) => {
       let p = Math.abs(Math.round(x));
       let q = Math.abs(Math.round(y));
@@ -667,8 +667,8 @@ export class TwoInputMathNode extends ClassicPreset.Node {
   }
 
   data(inputs: { a?: (number | number[])[]; b?: (number | number[])[] }) {
-    const a = inputs.a?.[0] ?? this.literals.a ?? null;
-    const b = inputs.b?.[0] ?? this.literals.b ?? null;
+    const a = readInput(inputs.a, this.literals.a);
+    const b = readInput(inputs.b, this.literals.b);
     // LOG(x, base) is out of domain for x ≤ 0 or a degenerate base — #DOMAIN!,
     // tagged per-cell in a list exactly as the scalar tags (matches LN/LOG10 in
     // the Math node; was a silent null before).
@@ -869,8 +869,8 @@ export class HypotenuseNode extends ClassicPreset.Node {
   }
 
   data(inputs: { x?: (number | number[])[]; y?: (number | number[])[] }) {
-    const x = inputs.x?.[0] ?? this.literals.x ?? 0;
-    const y = inputs.y?.[0] ?? this.literals.y ?? 0;
+    const x = readInput(inputs.x, this.literals.x);
+    const y = readInput(inputs.y, this.literals.y);
     const result = broadcast((a, b) => Math.hypot(a, b), x, y);
     this.cachedResult = result;
     return { result };
