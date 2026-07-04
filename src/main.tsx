@@ -14,7 +14,13 @@ import { pushNotice } from "./graph/noticeStore";
 import { isDesktop } from "./graph/fileBridge";
 import { IS_MOBILE } from "./graph/coarse";
 import "@fontsource-variable/atkinson-hyperlegible-next";
+// The italic FACE — without it, `*em*` / FC-italic render upright: the base
+// import loads only the upright axis, and `font-synthesis: none` (App.css,
+// deliberate to bar faux-bold) also bars synthetic italic. Loading the real
+// italic file restores italics while keeping bold a true weight axis.
+import "@fontsource-variable/atkinson-hyperlegible-next/wght-italic.css";
 import "@fontsource-variable/atkinson-hyperlegible-mono";
+import "@fontsource-variable/atkinson-hyperlegible-mono/wght-italic.css";
 import "./desktopFrame.css";
 
 // Mark the desktop shell so the custom (decorum) title bar's CSS applies and the
