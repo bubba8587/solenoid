@@ -88,9 +88,12 @@ export function MobileControls() {
         </svg>
       </button>
       <button
-        className="solenoid-mobile-bar__btn solenoid-mobile-bar__delete"
+        className={
+          "solenoid-mobile-bar__btn solenoid-mobile-bar__delete" +
+          (hasSelection ? "" : " solenoid-mobile-bar__btn--dim")
+        }
         aria-label="Delete selection"
-        disabled={!hasSelection}
+        aria-disabled={!hasSelection}
         onClick={() => void deleteSelected()}
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

@@ -41,6 +41,12 @@
   opacity: 0.3;
   pointer-events: none;
 }
+/* Dimmed-but-still-tappable (Delete with nothing selected): looks disabled, but a
+   tap still fires (a no-op) so it never feels dead when the selection poll lags a
+   frame behind a fresh select. */
+.solenoid-mobile-bar__btn--dim {
+  opacity: 0.3;
+}
 
 /* Select-mode toggle — lights to the accent while active. */
 .solenoid-mobile-bar__select.solenoid-mobile-bar__btn--on {
