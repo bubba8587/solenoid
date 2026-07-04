@@ -2,6 +2,19 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Presenter mode — the Presentation node actually presents now (2026-07-04)
+The Presentation node's steps only flew the camera to a node set, but the controls
+lived on the node card — which flew off-screen on the first step, making it useless.
+Added a real full-screen presenter: a "▶ Present" button starts it (`presentationStore`,
+a singleton like reportStore), and `PresentationOverlay` (mounted in App) runs the
+slideshow. It **hides the app chrome** (toggles `html.solenoid-presenting`, which CSS
+`display:none`s header / nav / statusbar / outline / legend / minimap / mobile bar /
+HUD — restored on exit/unmount), flies the camera to each step's nodes, and drives
+navigation: click anywhere or Space/→/↓/PageDown/Enter advance, ←/↑/PageUp step back,
+Home/End jump to ends, Esc exits. The canvas IS the slide; the overlay is a transparent
+click-catcher with a bottom-center control bar (‹ · title/counter · › · ✕) that
+stopPropagations so its buttons don't also advance. Verified live end to end.
+
 ### Text node is multi-line; Mermaid template dropdown (2026-07-04)
 - **Text node scales + preserves newlines.** `QuotedTextInput`'s `value` variant was a
   single-line `<input type="text">` — which strips newlines on paste and grows

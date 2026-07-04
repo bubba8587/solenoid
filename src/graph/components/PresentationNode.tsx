@@ -6,6 +6,7 @@ import { SwatchGrid } from "./SwatchGrid";
 import { useDismissOnOutside } from "./useDismissOnOutside";
 import { getEditor } from "../process";
 import { flyToNodes } from "../flyToNode";
+import { presentationStore } from "../presentationStore";
 import { scheduleAutosave } from "../persistence";
 import { nodeDisplayNames } from "../nodeNames";
 import type { NodeProps } from "./nodeKit";
@@ -152,6 +153,15 @@ export function PresentationComponent({ data }: NodeProps<PresentationNodeType>)
           {data.steps.length === 0 ? "0 / 0" : `${data.activeIndex + 1} / ${data.steps.length}`}
         </span>
         <button type="button" onClick={next} disabled={data.steps.length === 0} title="Next step">›</button>
+        <button
+          type="button"
+          className="solenoid-pres__present"
+          onClick={() => presentationStore.start(data.id)}
+          disabled={data.steps.length === 0}
+          title="Present full screen — click/Space/→ to advance, Esc to exit"
+        >
+          ▶ Present
+        </button>
       </div>
     </div>
   );
