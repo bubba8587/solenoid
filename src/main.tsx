@@ -103,7 +103,6 @@ initFullscreenHotkey();
 
 if (import.meta.env.DEV) {
   import("./graph/catalogValidator").then(m => m.validateCatalog());
-  import("./graph/devRebuildSeeds"); // TEMP: exposes window.__rebuildSeeds()
   import("./graph/devHarness"); // DEV: window.__spike for the DOM-vs-Pixi screenshot harness
 }
 

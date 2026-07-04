@@ -1288,7 +1288,7 @@ export class XMatchNode extends ClassicPreset.Node {
     this.matchMode = init?.matchMode ?? "exact";
     this.addInput("value",  numIn("Lookup value"));
     this.addInput("array",  listIn("Array"));
-    this.addOutput("result", numOut("1-based position (null=not found)"));
+    this.addOutput("result", numOut("1-based position (#N/A when not found)"));
   }
 
   data(inputs: { value?: number[]; array?: number[][] }): { result: number | SolError | null } {

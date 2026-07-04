@@ -250,8 +250,8 @@ export class TextSliceNode extends ClassicPreset.Node {
 export type TextFindOp = "find" | "search";
 
 export const TEXT_FIND_OP_META = {
-  find:   { label: "FIND",   description: "1-based position of find_text in within_text (case-sensitive); null if not found   (Excel: =FIND)" },
-  search: { label: "SEARCH", description: "1-based position of find_text in within_text (case-insensitive); null if not found   (Excel: =SEARCH)" },
+  find:   { label: "FIND",   description: "1-based position of find_text in within_text (case-sensitive); #VALUE! if not found   (Excel: =FIND)" },
+  search: { label: "SEARCH", description: "1-based position of find_text in within_text (case-insensitive); #VALUE! if not found   (Excel: =SEARCH)" },
 } satisfies Record<TextFindOp, { label: string; description: string }>;
 
 export class TextFindNode extends ClassicPreset.Node {

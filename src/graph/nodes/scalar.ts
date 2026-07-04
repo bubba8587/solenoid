@@ -97,7 +97,7 @@ export const ARITHMETIC_OP_META = {
   add:      { label: "+ Add",      description: "A + B" },
   sub:      { label: "− Subtract", description: "A − B" },
   mul:      { label: "× Multiply", description: "A × B" },
-  div:      { label: "÷ Divide",   description: "A ÷ B — null when B = 0." },
+  div:      { label: "÷ Divide",   description: "A ÷ B — #DIV/0! when B = 0." },
   mod:      { label: "MOD",        description: "Remainder of A ÷ B   (Excel: =MOD)" },
   quotient: { label: "QUOTIENT",   description: "Integer part of A ÷ B, truncated toward zero   (Excel: =QUOTIENT)" },
   pow:      { label: "xⁿ Power",   description: "A raised to the power B   (Excel: =POWER / =A^B)" },
