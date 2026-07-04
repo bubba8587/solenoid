@@ -377,8 +377,10 @@ section is decision-recorded. The QUEUE when resuming, in order:
 >    and applied across scalar.ts's broadcast-based DATA inputs. STILL TODO: sweep the
 >    remaining data() files (list/date/text/matrix/complex/finance/dist/stats), per-input
 >    DATA-vs-CONFIG judgment (config inputs keep defaulting — NOT a blind swap).
-> 2. **non-finite guard** — `#OVERFLOW!` (NEW code, inventory 14→15) / `#DOMAIN!` /
->    pass-through, composes with (1).
+> 2. **non-finite guard** — DONE (2026-07-05): `guardFinite` (valueKinds.ts) — NaN→#DOMAIN!,
+>    ±Inf-from-finite→#OVERFLOW!, ∞-from-∞-input passes; wired at broadcasters + applyOp +
+>    broadcastCall. `#RANGE!` RENAMED → `#OVERFLOW!` (author call — descriptive, one code,
+>    inventory stays 14). 0^0=1 parity note. Tests in broadcastContract.test.ts.
 > 3. **IFS/SWITCH no-match → tagged `#N/A`** + muted N/A placeholder.
 > 4. **input defaults as muted placeholders** (not "(default …)" labels) —
 >    text.ts/list.ts/finance.ts + their components.
@@ -430,8 +432,14 @@ section is decision-recorded. The QUEUE when resuming, in order:
   blank-ignore; Fill/Coalesce first, or formula AND, for Excel behavior") + the rule
   recorded in subsystem-invariants "Error values". (Checked = decision recorded; the
   note ships with the build pass.)
-- [ ] **Non-finite results: the general guard — `#OVERFLOW!` / `#DOMAIN!` / proper
-  Infinity (author confirmed; SUBSUMES the earlier pow-only item).** One shared helper
+- [x] **Non-finite results: the general guard — `#OVERFLOW!` / `#DOMAIN!` / proper
+  Infinity — DONE 2026-07-05.** `guardFinite` (valueKinds.ts) wired at the broadcasters
+  + applyOp + broadcastCall; `#RANGE!` RENAMED → `#OVERFLOW!` (author call 2026-07-05 —
+  descriptive over Excel-#NUM!-mimicry, ONE code so inventory stays 14, not the "NEW code
+  14→15" originally written; `#OVERFLOW!`/`#CONV!` added to ERROR_TYPE_NUM → 6). Expression
+  `tagResult` demoted to a NaN safety-net (op guards are input-aware). 0^0=1 parity note on
+  the pow leaf. Tests: broadcastContract.test.ts. (Original spec kept below for the record.)
+  One shared helper
   in the compute layer (composes with the per-element broadcaster rule), classifying by
   RESULT with input awareness:
   - **result NaN → `#DOMAIN!` always** (indeterminate/undefined: (-8)^(1/3), ∞−∞, ∞/∞,

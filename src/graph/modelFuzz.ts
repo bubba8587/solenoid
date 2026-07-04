@@ -84,7 +84,7 @@ function badValue(v: unknown, depth = 0): Badness | null {
   if (isSolError(v)) return { code: v.code, message: v.message };
   if (typeof v === "number") {
     if (Number.isNaN(v)) return { code: "#VALUE!", message: "A NaN leaked into this node's result." };
-    if (!Number.isFinite(v)) return { code: "#RANGE!", message: "An infinite value leaked into this node's result." };
+    if (!Number.isFinite(v)) return { code: "#OVERFLOW!", message: "An infinite value leaked into this node's result." };
   }
   if (Array.isArray(v)) {
     for (const el of v) {
@@ -114,7 +114,7 @@ function inspectNode(node: unknown): Badness | null {
 // Codes worth offering a Clamp for — a numeric-domain problem a min/max bound
 // can plausibly fix. Structural failures (#REF!/#SHAPE!/#NAME?/#SYNTAX!) aren't
 // mechanical in this sense — clamping a range doesn't fix a missing column.
-const CLAMPABLE_CODES: ReadonlySet<SolErrorCode> = new Set(["#VALUE!", "#RANGE!", "#DOMAIN!", "#DIV/0!", "#CONV!"]);
+const CLAMPABLE_CODES: ReadonlySet<SolErrorCode> = new Set(["#VALUE!", "#OVERFLOW!", "#DOMAIN!", "#DIV/0!", "#CONV!"]);
 
 /** The first numeric (number/numlist) WIRED input on a node — the plausible
  *  splice point for a Clamp. Undefined when there's nothing numeric to clamp. */

@@ -1165,7 +1165,7 @@ export class AggregateNode extends ClassicPreset.Node {
 
 // Upper bound on a generated list's length. A generator asked for an absurd count
 // (a typo, or a wired value) would otherwise allocate an enormous array that
-// freezes the UI; cap it and return #RANGE! (count out of range) instead.
+// freezes the UI; cap it and return #OVERFLOW! (count out of range) instead.
 const MAX_GENERATED = 1_000_000;
 
 export class RandArrayNode extends ClassicPreset.Node {
@@ -1190,7 +1190,7 @@ export class RandArrayNode extends ClassicPreset.Node {
   data(inputs: { count?: number[]; min?: number[]; max?: number[] }): { list: number[] | SolError } {
     const count = Math.max(0, Math.floor(inputs.count?.[0] ?? this.literals.count ?? 10));
     if (count > MAX_GENERATED) {
-      const e = solError("#RANGE!", `RANDARRAY count ${count} exceeds the ${MAX_GENERATED} element limit`);
+      const e = solError("#OVERFLOW!", `RANDARRAY count ${count} exceeds the ${MAX_GENERATED} element limit`);
       this.cachedList = e; this.rolls = []; this.lastGen = -1;
       return { list: e };
     }
@@ -1228,7 +1228,7 @@ export class SequenceNode extends ClassicPreset.Node {
   data(inputs: { count?: number[]; start?: number[]; step?: number[] }): { list: number[] | SolError } {
     const count = Math.max(0, Math.floor(inputs.count?.[0] ?? this.literals.count ?? 10));
     if (count > MAX_GENERATED) {
-      const e = solError("#RANGE!", `SEQUENCE count ${count} exceeds the ${MAX_GENERATED} element limit`);
+      const e = solError("#OVERFLOW!", `SEQUENCE count ${count} exceeds the ${MAX_GENERATED} element limit`);
       this.cachedList = e;
       return { list: e };
     }

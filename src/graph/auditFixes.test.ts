@@ -6,16 +6,16 @@ import type { FrameValue } from "./frame";
 // Regressions from the data-pathway audit (empty / null / error / large-list).
 
 describe("generator element caps (#5)", () => {
-  it("SEQUENCE over the cap returns #RANGE! instead of a giant array", () => {
+  it("SEQUENCE over the cap returns #OVERFLOW! instead of a giant array", () => {
     const out = new SequenceNode().data({ count: [5_000_000] });
     if (!isSolError(out.list)) throw new Error("expected SolError");
-    expect(out.list.code).toBe("#RANGE!");
+    expect(out.list.code).toBe("#OVERFLOW!");
   });
 
-  it("RANDARRAY over the cap returns #RANGE!", () => {
+  it("RANDARRAY over the cap returns #OVERFLOW!", () => {
     const out = new RandArrayNode().data({ count: [5_000_000] });
     if (!isSolError(out.list)) throw new Error("expected SolError");
-    expect(out.list.code).toBe("#RANGE!");
+    expect(out.list.code).toBe("#OVERFLOW!");
   });
 
   it("a normal SEQUENCE still produces the list", () => {

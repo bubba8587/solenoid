@@ -13,7 +13,7 @@
 // boolean logic, logical↔number coercion, and the aggregator-prep helper. It is
 // engine-agnostic and has no React/Rete deps so it can be unit-tested in
 // isolation and reused by every host node.
-import { isSolError, type SolError } from "./errorValue";
+import { isSolError, solError, type SolError } from "./errorValue";
 
 // The missing sentinel is JS `null` (the value frames already store). Use the
 // predicate rather than `=== null` at call sites so intent reads clearly and a
@@ -95,6 +95,29 @@ export function cellShortCircuit(args: ReadonlyArray<unknown>): CellShort {
 export function cellError(args: ReadonlyArray<unknown>): SolError | undefined {
   for (const a of args) if (isSolError(a)) return a;
   return undefined;
+}
+
+// ── Non-finite result guard ────────────────────────────────────────────────────
+// Settled model (author 2026-07-02): a COMPUTATION never yields a bare NaN/Infinity
+// — those are classified into tagged errors, so a residual NaN can only be dirty
+// DATA, never a computed value. Given a numeric result and the operands that made
+// it:
+//   • NaN  → #DOMAIN! — indeterminate/undefined (∞−∞, ∞/∞, 0×∞, a root/log outside
+//     its domain, or a NaN that entered the op).
+//   • ±Inf from all-FINITE inputs → #OVERFLOW! — the true answer is a really-big
+//     NUMBER the float can't hold (2^5000, EXP(1000)), not a genuine infinity.
+//   • ±Inf when an INPUT was already infinite → PASSES THROUGH — a definable
+//     infinity (the Constant node's ∞ is first-class: ∞+5=∞, 2×∞=∞, 5/∞=0).
+// Runs per output cell AFTER the op, so it composes with the per-cell error/null
+// contract (cellShortCircuit gates on the inputs first; a present, finite cell
+// computes, then this classifies the RESULT).
+export function guardFinite(result: number, ...inputs: unknown[]): number | SolError {
+  if (Number.isFinite(result)) return result;
+  if (Number.isNaN(result)) {
+    return solError("#DOMAIN!", "The result is undefined — an indeterminate operation (e.g. ∞ − ∞, 0 × ∞, or a value outside the function's domain).");
+  }
+  const fromInfiniteInput = inputs.some((v) => v === Infinity || v === -Infinity);
+  return fromInfiniteInput ? result : solError("#OVERFLOW!", "The result is too large to represent — the true value exceeds the numeric range.");
 }
 
 // ── Kleene (three-valued) boolean logic ──────────────────────────────────────

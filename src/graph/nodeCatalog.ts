@@ -98,7 +98,7 @@ import type { NodeCatalogEntry, CatalogEntry } from "./AddNodeMenu";
 // Label + description come from OP_META (single source of truth).
 // Tree structure, pairs, and ordering are hand-authored in NODE_CATALOG below.
 
-const arithLeaf    = (op: ArithmeticOp):   NodeCatalogEntry => ({ type: `arith-${op}`,     label: ARITHMETIC_OP_META[op].label,     description: ARITHMETIC_OP_META[op].description,     create: () => new ArithmeticNode({ op })    });
+const arithLeaf    = (op: ArithmeticOp):   NodeCatalogEntry => ({ type: `arith-${op}`,     label: ARITHMETIC_OP_META[op].label,     description: ARITHMETIC_OP_META[op].description,     create: () => new ArithmeticNode({ op }), ...(op === "pow" ? { parity: false as const } : {}) });
 const mathLeaf     = (op: MathFnOp, overrides?: Partial<NodeCatalogEntry>): NodeCatalogEntry => ({ type: `math-${op}`, label: MATH_FN_OP_META[op].label, description: MATH_FN_OP_META[op].description, create: () => new MathFnNode({ op }), ...overrides });
 const booleanLeaf  = (op: BooleanOp):      NodeCatalogEntry => ({ type: `bool-${op}`,      label: BOOLEAN_OP_META[op].label,        description: BOOLEAN_OP_META[op].description,        create: () => new BooleanOpNode({ op })     });
 const reduceLeaf   = (op: ReduceOp):       NodeCatalogEntry => ({ type: `reduce-${op}`,    label: REDUCE_OP_META[op].label,         description: REDUCE_OP_META[op].description,         create: () => new AggregateNode({ op })     });

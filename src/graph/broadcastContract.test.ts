@@ -3,6 +3,7 @@ import { broadcast, broadcastErr, readInput } from "./nodes/shared";
 import { compileEvaluator } from "./excelFormula";
 import { ComparisonNode, IfNode, BooleanOpNode } from "./nodes/logic";
 import { ArithmeticNode } from "./nodes/scalar";
+import { guardFinite } from "./valueKinds";
 import { solError, isSolError } from "./errorValue";
 
 // The per-cell error/null contract, factored into every element-wise broadcaster
@@ -108,6 +109,46 @@ describe("broadcastCall / unary / percent — formula-layer broadcasters", () =>
     expect(r[0]).toBe(0.5);
     expect(r[1]).toBe(null);
     expect(r[2]).toBe(e);
+  });
+});
+
+describe("guardFinite — a computation never yields a bare NaN/Infinity", () => {
+  it("NaN → #DOMAIN!", () => {
+    const r = guardFinite(NaN, 0, Infinity);
+    expect(isSolError(r) && (r as { code: string }).code).toBe("#DOMAIN!");
+  });
+  it("±Inf from all-finite inputs → #OVERFLOW!", () => {
+    const r = guardFinite(Infinity, 1e308, 10);
+    expect(isSolError(r) && (r as { code: string }).code).toBe("#OVERFLOW!");
+    const r2 = guardFinite(-Infinity, 5, 3);
+    expect(isSolError(r2) && (r2 as { code: string }).code).toBe("#OVERFLOW!");
+  });
+  it("±Inf when an INPUT was already infinite → passes through", () => {
+    expect(guardFinite(Infinity, Infinity, 5)).toBe(Infinity);
+    expect(guardFinite(-Infinity, 2, -Infinity)).toBe(-Infinity);
+  });
+  it("a finite result passes through unchanged", () => {
+    expect(guardFinite(42, 6, 7)).toBe(42);
+    expect(guardFinite(0, 0, 0)).toBe(0);
+  });
+
+  it("Arithmetic node: 10^400 overflows to #OVERFLOW!", () => {
+    const r = new ArithmeticNode({ op: "pow" }).data({ a: [10], b: [400] }).result;
+    expect(isSolError(r) && (r as { code: string }).code).toBe("#OVERFLOW!");
+  });
+  it("Arithmetic node: a wired ∞ input passes through (∞ + 5 = ∞)", () => {
+    const r = new ArithmeticNode({ op: "add" }).data({ a: [Infinity], b: [5] }).result;
+    expect(r).toBe(Infinity);
+  });
+  it("Arithmetic node: 0^0 stays 1 (JS/Python/Polars convention, parity:false)", () => {
+    expect(new ArithmeticNode({ op: "pow" }).data({ a: [0], b: [0] }).result).toBe(1);
+  });
+
+  it("formula: 2^5000 → #OVERFLOW!, EXP(1000) → #OVERFLOW!, 0^0 → 1", () => {
+    const ev = (expr: string) => compileEvaluator(expr)!({});
+    expect(isSolError(ev("2 ^ 5000")) && (ev("2 ^ 5000") as { code: string }).code).toBe("#OVERFLOW!");
+    expect(isSolError(ev("EXP(1000)"))).toBe(true);
+    expect(ev("0 ^ 0")).toBe(1);
   });
 });
 

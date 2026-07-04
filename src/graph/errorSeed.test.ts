@@ -27,7 +27,7 @@ type AnyNode = ClassicPreset.Node & {
 };
 
 const EXPECTED: Record<string, string> = {
-  c_div: "#DIV/0!", c_dom: "#DOMAIN!", c_rng: "#RANGE!", c_syn: "#SYNTAX!",
+  c_div: "#DIV/0!", c_dom: "#DOMAIN!", c_rng: "#OVERFLOW!", c_syn: "#SYNTAX!",
   c_val: "#VALUE!", c_na: "#N/A", c_conv: "#CONV!", c_ref: "#REF!",
   c_shp: "#SHAPE!", c_nam: "#NAME?", c_circ: "#CIRC!",
 };

@@ -297,7 +297,7 @@ export class MakeArrayNode extends ClassicPreset.Node {
       const msg = `Too large (${rows}×${cols})`;
       this.cachedResult = null;
       this.cachedError = msg;
-      return fnError(msg, "#RANGE!");
+      return fnError(msg, "#OVERFLOW!");
     }
     try {
       const out: Mat = [];

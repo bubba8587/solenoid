@@ -100,7 +100,7 @@ export const ARITHMETIC_OP_META = {
   div:      { label: "÷ Divide",   description: "A ÷ B — #DIV/0! when B = 0." },
   mod:      { label: "MOD",        description: "Remainder of A ÷ B   (Excel: =MOD)" },
   quotient: { label: "QUOTIENT",   description: "Integer part of A ÷ B, truncated toward zero   (Excel: =QUOTIENT)" },
-  pow:      { label: "xⁿ Power",   description: "A raised to the power B   (Excel: =POWER / =A^B)" },
+  pow:      { label: "xⁿ Power",   description: "A raised to the power B. 0^0 = 1 (JS/Python/Polars convention; Excel gives #NUM!). A finite result too large to represent → #OVERFLOW!.   (Excel: =POWER / =A^B)" },
 } satisfies Record<ArithmeticOp, { label: string; description: string }>;
 
 export class ArithmeticNode extends ClassicPreset.Node {
@@ -628,7 +628,7 @@ export class CombinatoricsNode extends ClassicPreset.Node {
       return { result: err };
     }
     if (result !== null && !Number.isFinite(result)) {
-      const err = solError("#RANGE!", "The result is too large to represent — reduce N");
+      const err = solError("#OVERFLOW!", "The result is too large to represent — reduce N");
       this.cachedResult = err;
       return { result: err };
     }

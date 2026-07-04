@@ -244,10 +244,10 @@ export class ConvertNode extends ClassicPreset.Node {
       this.cachedResult = err;
       return { out: err };
     }
-    // A same-family conversion whose result overflows is #RANGE!, tagged per-cell
+    // A same-family conversion whose result overflows is #OVERFLOW!, tagged per-cell
     // in a list exactly as the scalar tags (array-semantics: lists carry per-cell
     // errors — was a silent per-element null before).
-    const rangeErr = () => solError("#RANGE!", "The converted value is too large to represent");
+    const rangeErr = () => solError("#OVERFLOW!", "The converted value is too large to represent");
     const result = broadcastErr((v) => convertValue(v, this.fromUnit, this.toUnit) ?? rangeErr(), x);
     this.cachedResult = result;
     return { out: result };

@@ -320,13 +320,13 @@ describe("error producers", () => {
       .toBeCloseTo(0.09816, 4);
   });
 
-  it("Combinatorics: out-of-domain is #DOMAIN!, overflow is #RANGE!", () => {
+  it("Combinatorics: out-of-domain is #DOMAIN!, overflow is #OVERFLOW!", () => {
     const domain = new CombinatoricsNode({ op: "combin" }).data({ n: [3], k: [5] }).result; // k > n
     expect(isSolError(domain)).toBe(true);
     expect((domain as SolError).code).toBe("#DOMAIN!");
     const overflow = new CombinatoricsNode({ op: "fact" }).data({ n: [200] }).result; // 200! = ∞
     expect(isSolError(overflow)).toBe(true);
-    expect((overflow as SolError).code).toBe("#RANGE!");
+    expect((overflow as SolError).code).toBe("#OVERFLOW!");
     expect(new CombinatoricsNode({ op: "fact" }).data({ n: [5] }).result).toBe(120);
   });
 
