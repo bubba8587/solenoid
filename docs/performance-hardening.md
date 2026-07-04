@@ -10,6 +10,15 @@ Combines a codebase diagnosis (load path, pan/zoom path, paste crash) with
 external research on how Rete v2 / React Flow / tldraw / Excalidraw / HyperFormula
 harden at scale. Sources are inline as URLs.
 
+> **UPDATE 2026-07-04 — the `--panning` gesture-time quality/paint-cut system was
+> REMOVED.** Everything below that describes the `.solenoid-canvas--panning` cuts
+> (box-shadow drop, flow-bead pause, conduit drop-shadow + toolbar backdrop-filter
+> removal, and the AA/`optimizeSpeed`/`font-smoothing` drop) is now **historical**.
+> The class is no longer applied — DOM mode stays full-quality while panning; the
+> HTML-in-canvas renderer is the performance path when a graph is heavy enough to
+> need one. The rest of this investigation (recompute-all, batching, cable O(N²),
+> paste crash) still stands. See dev-notes 2026-07-04.
+
 ---
 
 ## The one-sentence diagnosis
