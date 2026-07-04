@@ -86,6 +86,16 @@
   border-bottom: 1px solid var(--border);
   padding: 0;
 }
+/* A NaN cell (dirty numeric data) — faint neutral tint + muted italic text, so it
+   reads as dirty data in place, not error-red and not a normal value. */
+.table-popup__cell--nan {
+  background: color-mix(in srgb, var(--text-dim) 12%, transparent);
+}
+.table-popup__cell--nan .table-popup__input,
+.table-popup__cell--nan .table-popup__input[readonly] {
+  color: var(--text-dim);
+  font-style: italic;
+}
 .table-popup__input {
   width: 100%;
   min-width: 72px; /* drives matrix column width; fills (no dead gap) when the header widens the column */
