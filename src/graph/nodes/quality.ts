@@ -3,6 +3,7 @@ import { anyIn, anyOut, numIn, strIn } from "./shared";
 import { isSolError } from "../errorValue";
 import { fireAlert } from "../alertStore";
 import { isGraphRebuilding } from "../process";
+import { isFrameValue, frameRowCount, type FrameValue } from "../frame";
 
 // ─── Expect — the data-quality gate ────────────────────────────────────────────
 // "Data Validation, generalized": four checks (not-null / unique / range / regex)
@@ -70,14 +71,30 @@ export class ExpectNode extends ClassicPreset.Node {
     const min = inputs.min?.[0] ?? this.literals.min ?? 0;
     const max = inputs.max?.[0] ?? this.literals.max ?? 100;
     const pattern = inputs.pattern?.[0] ?? this.stringLiterals.pattern ?? "";
-    const values: unknown[] = raw === null ? [null] : Array.isArray(raw) ? raw.flat(1) : [raw];
+    // A Frame checks its CELLS (a lazy FrameRef was already materialized by
+    // coerceInputs — Expect isn't a lazy verb node, so `raw` is a FrameValue
+    // here). Without this branch a frame fell into the `[raw]` arm and every
+    // check silently no-opped on the app's core data shape.
+    const frame: FrameValue | null = isFrameValue(raw) ? raw : null;
+    const values: unknown[] = frame
+      ? frame.columns.flatMap((c) => c.values as unknown[])
+      : raw === null ? [null] : Array.isArray(raw) ? raw.flat(1) : [raw];
 
     const violations: ExpectCheck[] = [];
 
     if (this.checkNotNull && values.some((v) => v === null || v === undefined)) {
       violations.push("notNull");
     }
-    if (this.checkUnique && Array.isArray(raw)) {
+    if (this.checkUnique && frame) {
+      // Unique for a table means unique ROWS (the Distinct notion) — per-cell
+      // uniqueness across columns of different types is meaningless.
+      const seen = new Set<string>();
+      for (let i = 0; i < frameRowCount(frame); i++) {
+        const k = JSON.stringify(frame.columns.map((c) => c.values[i] ?? null));
+        if (seen.has(k)) { violations.push("unique"); break; }
+        seen.add(k);
+      }
+    } else if (this.checkUnique && Array.isArray(raw)) {
       const seen = new Set<string>();
       for (const v of values) {
         if (v === null || v === undefined) continue;

@@ -55,6 +55,14 @@ export const problemsStore = {
     notify();
   },
 
+  /** The node computed CLEAN this pass — reset its edge-detect so a RELAPSE of
+   *  the same code later logs as the genuinely new occurrence it is (the
+   *  last-code map otherwise suppressed it forever once the error cleared).
+   *  Logged entries stay — this clears detection state, not history. */
+  clearLive(nodeId: string): void {
+    _lastLiveCode.delete(nodeId);
+  },
+
   /** Replace the fuzz-origin findings wholesale — a fresh fuzz run supersedes
    *  the last one rather than accumulating across runs. */
   setFuzzFindings(findings: ReadonlyArray<Omit<ProblemEntry, "id" | "time" | "origin">>): void {
@@ -88,7 +96,10 @@ export const problemsStore = {
   version,
 };
 
-registerErrorSink((nodeId, err) => problemsStore.reportLive(nodeId, err));
+registerErrorSink((nodeId, err) => {
+  if (err) problemsStore.reportLive(nodeId, err);
+  else problemsStore.clearLive(nodeId);
+});
 registerNodeForget((nodeId) => problemsStore.removeForNode(nodeId));
 registerNodeForgetAll(() => problemsStore.clear());
 

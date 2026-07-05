@@ -151,6 +151,55 @@ describe("text form: unit cases", () => {
     expect(new Set(names).size).toBe(2);
   });
 
+  it("round-trips a connection whose source-output key contains spaces (frontmatter socket)", () => {
+    // noteFrontmatter allows `unit price: 5` → an output socket keyed
+    // "unit price". Bare, that key sheared the connection token in two at the
+    // tokenizer — and serializeGraph routes JSON saves through this writer, so
+    // saving such a doc THREW. The writer now JSON-quotes a non-bare key.
+    const g: SavedGraph = {
+      v: 2,
+      nodes: [
+        { id: "n1", type: "NoteNode", name: "Note_1", x: 0, y: 0, init: { title: "T", body: "---\nunit price: 5\n---\n" } },
+        { id: "n2", type: "DisplayNode", name: "Display_1", x: 100, y: 0, init: {} },
+      ],
+      connections: [{ source: "n1", sourceOutput: "unit price", target: "n2", targetInput: "in" }],
+    };
+    const text1 = writeTextForm(g);
+    const reloaded = readTextForm(text1);
+    expect(reloaded.connections).toEqual([
+      { source: "Note_1", sourceOutput: "unit price", target: "Display_1", targetInput: "in" },
+    ]);
+    expect(writeTextForm(reloaded)).toBe(text1); // byte-identical second write
+  });
+
+  it("keeps a dotted output key bare (first-dot split; names never contain dots)", () => {
+    const g: SavedGraph = {
+      v: 2,
+      nodes: [
+        { id: "n1", type: "NoteNode", name: "Note_1", x: 0, y: 0, init: {} },
+        { id: "n2", type: "DisplayNode", name: "Display_1", x: 100, y: 0, init: {} },
+      ],
+      connections: [{ source: "n1", sourceOutput: "price.usd", target: "n2", targetInput: "in" }],
+    };
+    const text = writeTextForm(g);
+    expect(text).toContain("in<-Note_1.price.usd"); // unquoted — grammar unchanged for the common shapes
+    expect(readTextForm(text).connections[0].sourceOutput).toBe("price.usd");
+  });
+
+  it("round-trips an output key containing quotes and backslashes", () => {
+    const hostile = 'we"ird\\key';
+    const g: SavedGraph = {
+      v: 2,
+      nodes: [
+        { id: "n1", type: "NoteNode", name: "Note_1", x: 0, y: 0, init: {} },
+        { id: "n2", type: "DisplayNode", name: "Display_1", x: 100, y: 0, init: {} },
+      ],
+      connections: [{ source: "n1", sourceOutput: hostile, target: "n2", targetInput: "in" }],
+    };
+    const reloaded = readTextForm(writeTextForm(g));
+    expect(reloaded.connections[0].sourceOutput).toBe(hostile);
+  });
+
   it("encodes a value with embedded newlines and quotes on one line", () => {
     const g: SavedGraph = {
       v: 2,

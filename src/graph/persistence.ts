@@ -20,6 +20,8 @@ import { packsStore, allPacks } from "./packs";
 import { pushNotice } from "./noticeStore";
 import { documentStore } from "./documentStore";
 import { pinStore, type Pin } from "./pinStore";
+import { reportStore } from "./reportStore";
+import { presentationStore } from "./presentationStore";
 import { commentStore, type SavedCommentData } from "./commentStore";
 import { paletteStore, reportPaletteStore } from "./palette";
 import { loadRevealStore, revealWaves } from "./loadReveal";
@@ -354,6 +356,13 @@ async function rebuildGraph(
   collapseStore.clear(); // ditto for per-node collapse
   pinStore.clear();      // ditto for pinned value chips
   nodeNameStore.clear(); // ditto for stable node names
+  // Overlay singletons keyed to a node id from the OUTGOING graph: a docked
+  // report would otherwise keep the `sol-report-docked` canvas squeeze (and a
+  // running presentation its chrome-hide) across a document switch. The
+  // per-node `noderemoved` cleanup in Canvas covers interactive deletes; this
+  // covers any bulk path explicitly (same belt-and-braces as the store list).
+  reportStore.close();
+  presentationStore.stop();
   // Apply (or clear) the document's palette declaration BEFORE rebuilding, so every
   // node/group color resolves through the right palette as it's created.
   paletteStore.setDocPalette(g.palette ?? null);

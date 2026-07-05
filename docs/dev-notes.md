@@ -28,6 +28,48 @@ quietly making data disappear.
   is genuinely unknowable) and the summary says so. Tests: new `reconcile.test.ts` (8 cases).
   tsc clean, full vitest 2083 green. Pure engine + summary string — no UI, no eyeball needed.
 
+### Audit fixes round 2 — overlay state, Expect frames, fuzz side effects, Problems relapse, textForm quoting (2026-07-05, overnight)
+Two parallel review agents swept the newest overlay/state subsystems + the trust/quality
+bundle; every confirmed finding fixed the same night (tsc clean, vitest 2076 green):
+- **Presenter mode left ALL canvas shortcuts live** (`Canvas.tsx`): the keydown handler
+  gated on `compositeEditorStore.isOpen()` but not `presentationStore.isActive()` — the
+  overlay's own → advance ALSO nudged the still-selected Presentation node 24px per
+  slide on the hidden canvas, and every bare-letter/Ctrl shortcut mutated the graph
+  mid-show. Added the mirror gate.
+- **A docked Report's canvas squeeze was orphaned forever** if its node was deleted or
+  the document switched while docked (`html.sol-report-docked` stayed on the root; the
+  only undock button lived inside the unrenderable panel). Fixed twice over: Canvas's
+  `noderemoved` pipe closes `reportStore`/stops `presentationStore` when their node id
+  is removed (also covers doc switches — rebuilds remove nodes one at a time), and
+  `rebuildGraph`'s bulk-reset now closes both stores explicitly (belt-and-braces, the
+  store-list convention).
+- **Expect was blind to frames** (`nodes/quality.ts`): a FrameValue fell into the scalar
+  arm, so all four checks silently no-opped on the app's core data shape (a total false
+  negative for the data-quality gate). Now checks CELLS (not-null/range/regex flatten
+  all columns) and unique means unique ROWS. A lazy ref is already materialized by
+  coerceInputs (Expect isn't a lazy verb node). Tests in `quality.test.ts`.
+- **Model fuzzing was a silent no-op in manual calc mode** (processGraph short-circuited
+  every sampled recompute → the sweep inspected stale values and reported "no problems
+  found") **and fired real Alert toasts** off synthetic samples. One fix for both: the
+  sweep now runs inside `beginGraphRebuild`/`endGraphRebuild` (the manual gate exempts
+  rebuilds; AlertNode/Expect suppress fires during them — violations still record, so
+  `inspectNode` sees everything). Also try/finally around the per-leaf loop so a throw
+  can't leave a synthetic sample in the user's graph.
+- **Problems panel suppressed a relapse forever** (`problemsStore`): `_lastLiveCode` was
+  never reset when a node computed clean, so fix-then-recur of the same code was
+  swallowed. The error-sink seam now reports `null` on a clean pass (`errorValue.ts`
+  `reportOut`) and the store clears its edge-detect (history stays). Tests in
+  `problemsStore.test.ts`.
+- **textForm: a frontmatter output key with a SPACE broke saving** (probe-confirmed:
+  `unit price: 5` wired → `in<-Note_1.unit price` → reader threw 'malformed field
+  "price"', and serializeGraph routes every JSON save through the writer). The writer
+  now JSON-quotes a non-bare source-output key (space/quote/backslash; a DOT stays bare
+  — first-dot split is safe since names are NAME_RE-clean), the reader decodes it, the
+  tokenizer already carried quoted spans whole. Existing seeds byte-identical (bare
+  stays bare). Adversarial round-trip tests added.
+- Still open from the review pass (queued to Agent 2, their files): `reconcileFrames`
+  drops null/error-keyed rows silently; PVM zeroes errored price/qty cells.
+
 ### Frame Lookup gains a Cube half — by-key read into a cube (2026-07-05)
 The cube half of the future unified XLOOKUP (v1.1-plan WS-D). Frame Lookup now looks a key
 up in a **Cube**'s top-level column and returns the matched cell WHOLE — a nested frame/cube
