@@ -1078,3 +1078,74 @@ fn filter_multi_text_condition_takes_the_scan_path_in_a_fused_chain() {
     // contains "O" folds to Oslo/Tromso rows (0,2,3,4); qty≥10 keeps row 3 only.
     assert_eq!(dump(&out)[1].2, vec![Json::String("Tromso".into())]);
 }
+
+// ─── Native CSV date inference (B-3; JS twin: frame.ts inferColumn/isDateCell) ──
+
+#[test]
+fn iso_date_serial_pins_match_the_js_epoch() {
+    // DATE(2026,3,15) = 46096 (the audit-29 pin in excelFunctions.ts).
+    assert_eq!(parse_iso_date_serial("2026-03-15"), Some(46096.0));
+    assert_eq!(parse_iso_date_serial("2026-03-15 12:00"), Some(46096.5));
+    assert_eq!(parse_iso_date_serial("2026-03-15T06:00:00"), Some(46096.25));
+    // An explicit zone is an absolute instant: 02:00+02:00 = midnight UTC.
+    assert_eq!(parse_iso_date_serial("2026-03-15T02:00+02:00"), Some(46096.0));
+    assert_eq!(parse_iso_date_serial("2026-03-15T00:00Z"), Some(46096.0));
+    let frac = parse_iso_date_serial("2026-03-15T00:00:30.5").unwrap();
+    assert!((frac - (46096.0 + 30.5 / 86400.0)).abs() < 1e-9);
+    assert_eq!(parse_iso_date_serial("2024-02-29"), Some(46081.0 - 730.0)); // leap day parses
+}
+
+#[test]
+fn iso_date_gate_rejects_what_js_rejects() {
+    for bad in [
+        "2026-02-31",     // not a real day
+        "2026-13-01",     // not a real month
+        "46096",          // a bare number is never a date
+        "1/2/26",         // locale-ambiguous
+        "15-Mar-2026",    // named month is the TYPED-input path, not import inference
+        "2026-03-15X",    // trailing garbage
+        "2026-03-15T25:00", // no such hour
+    ] {
+        assert_eq!(parse_iso_date_serial(bad), None, "should reject {bad:?}");
+    }
+}
+
+#[test]
+fn date_inference_flips_an_all_iso_text_column_only() {
+    let f = frame(vec![
+        ("when", SolType::Str, vec![
+            Cell::Str("2026-03-15".into()), Cell::Null, Cell::Str("2026-03-16".into()),
+        ]),
+        ("notes", SolType::Str, strs(&["2026-03-15", "not a date", "2026-03-16"])),
+        ("qty", SolType::Number, num(&[1.0, 2.0, 3.0])),
+    ]);
+    let out = infer_iso_date_columns(f).unwrap();
+    assert_eq!(out.types, vec![SolType::Date, SolType::Str, SolType::Number]);
+    let d = dump(&out);
+    assert_eq!(d[0].2, vec![num_to_json(46096.0), Json::Null, num_to_json(46097.0)]);
+    assert_eq!(d[1].2[1], Json::String("not a date".into())); // mixed column untouched
+}
+
+#[test]
+fn date_inference_leaves_an_all_blank_column_text() {
+    let f = frame(vec![("empty", SolType::Str, vec![Cell::Null, Cell::Null])]);
+    let out = infer_iso_date_columns(f).unwrap();
+    assert_eq!(out.types, vec![SolType::Str]);
+}
+
+#[test]
+fn engine_read_csv_infers_dates_end_to_end() {
+    let dir = std::env::temp_dir();
+    let name = "solenoid_b3_date_inference_test.csv";
+    std::fs::write(
+        dir.join(name),
+        "When,Label,Amount\n2026-03-15,alpha,10\n2026-03-16,2026-03-16,20\n,beta,30\n",
+    )
+    .unwrap();
+    let cols = engine_read_csv(dir.to_string_lossy().to_string(), name.to_string()).unwrap();
+    std::fs::remove_file(dir.join(name)).ok();
+    assert_eq!(cols[0].ty, "date"); // all-ISO (with a blank hole) → date serials
+    assert_eq!(cols[0].values, vec![num_to_json(46096.0), num_to_json(46097.0), Json::Null]);
+    assert_eq!(cols[1].ty, "string"); // mixed text stays text
+    assert_eq!(cols[2].ty, "number"); // Polars-native numeric untouched
+}
