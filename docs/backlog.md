@@ -71,10 +71,10 @@ is archived).
 - [ ] **Popup `⋯` overflow menu** (decided 2026-07-01): Export CSV + Copy as
   Markdown on Table/Frame/List popups; move the existing Copy-CSV into it.
   (The "Go to node" half shipped 2026-07-05 as the Go-to-source crosshair.)
-- [ ] **Collapsed mini-previews, per-node** (decided per-node 2026-07-01):
-  Slicer → a summary string ("X of N"); Sparkline → a minimal small square
-  (reuse the collapsed-Group minified-square rendering); Gauge → investigate
-  (3 input sockets must stay anchored); standard Chart + Heatmap → NOT in scope.
+- [ ] **Collapsed Gauge mini-preview** (the last of the per-node set — Slicer
+  summary + Sparkline square shipped; Chart/Treemap/Sankey/Histogram now collapse
+  to a `[Chart]` chip): Gauge → investigate a small-square collapse, but its 3
+  input sockets must stay anchored/reachable when collapsed. Heatmap → NOT in scope.
 - [ ] **App-wide "Custom…" palette editor** (decided + spec'd 2026-07-01): palette
   dropdown gains "Custom…" → editor with per-slot color circles, a "Load template"
   seed-from-preset, and a live sample (sample node in a Group + a Lorem Note);
@@ -107,14 +107,6 @@ is archived).
   overrides (incl. the 2026-07-05 TEXT-family sweep); NOT yet swept: node `data()`
   paths that don't share the registered impl; distributions validated only at
   representative points — widen if accuracy is ever in doubt.
-- [ ] **BUG (FIXED, awaiting author eyeball) — Treemap/Sankey blank box.**
-  Root cause found (`d824373`): recharts 3.x's `content`/`node` prop needs the
-  FUNCTION form to receive each cell/node's real geometry — a static element
-  renders once with no geometry, so every rect/node collapsed to 0×0. Fixed in
-  both `TreemapView`/`SankeyView` (`chartRender.tsx`). Verified against
-  recharts 3.8.1's types + tsc/vitest; not yet eyeballed live (no-puppeteer
-  rule). Repro/verify via the `chart-showcase` seed. **Delete this line once
-  the author confirms it renders.**
 
 ## Notes / documents
 
@@ -130,18 +122,10 @@ is archived).
 
 - [ ] **More domain packs** — post-v1 polish (framework + Geometry worked example
   done). Don't build unprompted.
-- [ ] **COMPLETE RECHARTS** (author 2026-07-05: "grab everything from Recharts —
-  simple goal: complete Recharts"; supersedes the 2026-07-01 scoped list): the
-  Chart family covers every recharts chart type — existing column/bar/line/area
-  PLUS **Pie**, **Scatter**, **Bubble** (scatter+size), **Radar**, **RadialBar**,
-  **Funnel**, **Treemap**, **Sankey**, **Composed** — in the existing Chart node's
-  op surface where the input shape fits, new nodes where it differs
-  (Sankey/Treemap take structured data). Plus the still-standing 07-01 adds:
-  **KPI/Stat card** (big number + delta), **Histogram** (binning + bar),
-  **Bullet graph**, **date-range picker**. Mermaid stays the diagram escape
-  hatch. All lazy via the existing `chartRender.tsx` split. Ships a showcase SEED.
 - [ ] **Input Switcher upgrade** (author 2026-07-01): editable slot titles (reads
   as named choices) + a multi-select mode collecting selected values into a Cube.
+  (Its rich-value rendering + collapsed pill were fixed 2026-07-06; the titles +
+  multi-select-to-Cube upgrade is the open part.)
 - [ ] **Pack variant-switch reconciles the socket set** — a simple pack's variant
   dropdown must add/remove sockets like Cast/read-as do (retype + reconcile), not
   leave stale ones.
