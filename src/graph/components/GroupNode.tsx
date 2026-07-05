@@ -106,10 +106,29 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
     if (el) el.style.zIndex = pickerOpen ? "20" : node.collapsed ? "1" : "-2";
   });
 
+  // Draft-only while typing (project-wide rule: commit on Enter/blur, never per
+  // keystroke). Escape reverts to the last committed label without writing.
+  const labelCancelled = useRef(false);
   function onLabelChange(v: string) {
-    setLabel(v);
-    node.label = v;
-    void getArea()?.update("node", node.id);
+    setLabel(v); // draft only — node.label unchanged until commit
+  }
+  function commitLabel() {
+    if (labelCancelled.current) { labelCancelled.current = false; setLabel(node.label); return; }
+    const prev = node.label;
+    const next = label;
+    if (next !== prev) {
+      node.label = next;
+      void getArea()?.update("node", node.id);
+      pushHistory(
+        () => { node.label = prev; void getArea()?.update("node", node.id); },
+        () => { node.label = next; void getArea()?.update("node", node.id); },
+      );
+    }
+    setEditingLabel(false);
+  }
+  function onLabelKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); }
+    else if (e.key === "Escape") { labelCancelled.current = true; e.currentTarget.blur(); }
   }
 
   function onResizeDown(e: React.PointerEvent) {
@@ -286,8 +305,9 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
             placeholder="Group"
             autoFocus
             style={{ color: ink }}
-            onBlur={() => setEditingLabel(false)}
+            onBlur={commitLabel}
             onChange={(e) => onLabelChange(e.target.value)}
+            onKeyDown={onLabelKeyDown}
             onPointerDown={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
           />
