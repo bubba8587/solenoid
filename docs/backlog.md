@@ -104,10 +104,23 @@ design) — **wired end-to-end and sound**. Remaining loose ends:
   (nested composites push, click/Esc drills up — `compositeEditorStore` stack); boundary
   values render by kind (frame/cube tables, chart/mermaid figures — was `[object Object]`);
   **unpack crash fixed** (it mutated the internal editor, throwing in rete-history once the
-  editor had been opened). Still open: outer cables into a port DELETED inside the drill-in
-  are dropped on close (by design, but silently); the Simulation-container output series
+  editor had been opened). Still open: the Simulation-container output series
   renders on the outer card only; and the author's ask to reroute the REAL app top toolbar /
   mobile bottom bar to the active subgraph (the drill-in keeps its own header toolbar).
+  - [x] **Outer cables dropped on close are now surfaced (2026-07-05).** `leaveLevel`
+    (`CompositeEditorOverlay.tsx`) tallies the parent cables it severs when a boundary
+    marker was deleted inside, and fires a `warn` `pushNotice` ("Removed N cables connected
+    to <name> — a port was deleted inside"). The drop itself stays (by design). Covers both
+    full close and breadcrumb drill-up (both route through `leaveLevel`).
+  - [ ] **Reroute real toolbar / mobile bar to the ACTIVE subgraph (author's ask) — deferred,
+    NOT a blind overnight build.** It's a genuine cross-cutting refactor, scoped in dev-notes
+    2026-07-05 ("Composite drill-in — toolbar reroute is its own session"): the app-global op
+    singletons (`autoArrange`/`cleanup`/`deleteSelected`/add-node/undo-redo in `process.ts`)
+    are bound to the MAIN editor/area, Canvas's keydown fully stands down while a drill-in is
+    open (`Canvas.tsx:691`), and there is no drill-in Tidy (arrangeFn is entirely main-bound).
+    Needs an "active toolbar-action context" indirection + a subgraph arrange + keyboard
+    rerouting, and wants live eyeballing. Proposed architecture in the dev-note; awaiting a
+    scoped session (ideally author-present).
 
 ---
 
