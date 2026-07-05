@@ -545,10 +545,9 @@ fn wire_to_solframe(frame: WireFrame) -> Result<SolFrame, IpcError> {
 // frame.ts's `frameFromCells`) entirely for desktop CSV import: Polars reads the
 // file straight off disk (multi-threaded, SIMD) and infers dtypes itself. A
 // Polars dtype maps onto a SolType by KIND: Boolean → Logical, String → Str,
-// everything numeric → Number. Known divergence from the JS oracle: no DATE
-// inference (frame.ts's conservative unambiguous-ISO check has no Rust
-// equivalent yet) — a date column arrives as Str here, same as any other text
-// column; an explicit Get Column "read as Date" still converts it downstream.
+// everything numeric → Number. DATE inference parity (B-3): after the read,
+// `infer_iso_date_columns` (below) applies frame.ts's conservative
+// unambiguous-ISO gate to the remaining String columns.
 fn df_to_solframe(df: DataFrame) -> SolFrame {
     let types: Vec<SolType> = df
         .get_columns()
@@ -560,6 +559,158 @@ fn df_to_solframe(df: DataFrame) -> SolFrame {
         })
         .collect();
     SolFrame { df, types }
+}
+
+// ─── Native CSV date inference (B-3) ────────────────────────────────────────────
+// The JS import path's twin (frame.ts inferColumn/isDateCell): a TEXT column where
+// EVERY non-blank cell is an unambiguous ISO-ish date (YYYY-MM-DD, optional
+// " "/"T" hh:mm[:ss[.f]] time, optional Z/±hh:mm zone) becomes a DATE column of
+// Excel serials — years / bare numbers / locale-ambiguous "1/2/26" never get
+// mistaken for dates, and one non-conforming cell keeps the whole column text
+// (conservative: no inference is always safe, a wrong serial never is).
+// Zone-less text is wall-clock read as UTC (parseDateToSerial's rule — the same
+// calendar date on every machine); an explicit zone is an absolute instant.
+// Polars already typed numerics/booleans natively, so only String columns are
+// candidates.
+
+/// Days from 1970-01-01 for a civil date (Howard Hinnant's algorithm).
+fn days_from_civil(y: i64, m: u32, d: u32) -> i64 {
+    let y = y - if m <= 2 { 1 } else { 0 };
+    let era = if y >= 0 { y } else { y - 399 } / 400;
+    let yoe = y - era * 400;
+    let doy = (153 * (if m > 2 { m - 3 } else { m + 9 }) as i64 + 2) / 5 + d as i64 - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    era * 146097 + doe - 719468
+}
+
+/// Parse one ISO-gate date string to an Excel serial; `None` = not a date (which
+/// keeps the column text). Stricter than JS `new Date` where they differ (24:00,
+/// a fraction without seconds) — the conservative side of parity.
+fn parse_iso_date_serial(s: &str) -> Option<f64> {
+    let t = s.trim();
+    let b = t.as_bytes();
+    if b.len() < 10 {
+        return None;
+    }
+    if b[4] != b'-' || b[7] != b'-' {
+        return None;
+    }
+    for i in [0usize, 1, 2, 3, 5, 6, 8, 9] {
+        if !b[i].is_ascii_digit() {
+            return None;
+        }
+    }
+    let y = t[0..4].parse::<i64>().ok()?;
+    let m = t[5..7].parse::<u32>().ok()?;
+    let d = t[8..10].parse::<u32>().ok()?;
+    if !(1..=12).contains(&m) {
+        return None;
+    }
+    let leap = (y % 4 == 0 && y % 100 != 0) || y % 400 == 0;
+    let dim = [31, if leap { 29 } else { 28 }, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][(m - 1) as usize];
+    if d < 1 || d > dim {
+        return None;
+    }
+    let mut frac = 0.0f64;
+    let mut off = 0.0f64;
+    if b.len() > 10 {
+        if b[10] != b' ' && b[10] != b'T' {
+            return None;
+        }
+        let rest = &t[11..];
+        // Split a trailing zone designator off the time: "Z", or "±hh:mm"/"±hhmm".
+        let (time_part, tz_part) = if let Some(p) = rest.find(['Z', '+']) {
+            (&rest[..p], Some(&rest[p..]))
+        } else if let Some(p) = rest.rfind('-') {
+            (&rest[..p], Some(&rest[p..]))
+        } else {
+            (rest, None)
+        };
+        let tb = time_part.as_bytes();
+        if tb.len() < 5 || tb[2] != b':' {
+            return None;
+        }
+        let hh = time_part[0..2].parse::<u32>().ok()?;
+        let mi = time_part[3..5].parse::<u32>().ok()?;
+        if hh > 23 || mi > 59 {
+            return None;
+        }
+        let mut ss = 0.0f64;
+        if tb.len() > 5 {
+            if tb[5] != b':' || tb.len() < 8 {
+                return None;
+            }
+            ss = time_part[6..].parse::<f64>().ok()?;
+            if !(0.0..60.0).contains(&ss) {
+                return None;
+            }
+        }
+        frac = (hh as f64 * 3600.0 + mi as f64 * 60.0 + ss) / 86400.0;
+        if let Some(tz) = tz_part {
+            if tz != "Z" {
+                let sign = match tz.as_bytes()[0] {
+                    b'+' => 1.0,
+                    b'-' => -1.0,
+                    _ => return None,
+                };
+                let body: String = tz[1..].chars().filter(|c| *c != ':').collect();
+                if body.len() != 4 || !body.bytes().all(|c| c.is_ascii_digit()) {
+                    return None;
+                }
+                let oh = body[0..2].parse::<f64>().ok()?;
+                let om = body[2..4].parse::<f64>().ok()?;
+                off = sign * (oh * 60.0 + om) / 1440.0;
+            }
+        }
+    }
+    Some(days_from_civil(y, m, d) as f64 + EXCEL_EPOCH_OFFSET + frac - off)
+}
+
+fn infer_iso_date_columns(frame: SolFrame) -> Result<SolFrame, IpcError> {
+    let names = frame.names();
+    let mut types = frame.types.clone();
+    let mut data: Vec<Vec<Cell>> = frame.df.get_columns().iter().map(cells_of).collect();
+    let mut changed = false;
+    for i in 0..types.len() {
+        if types[i] != SolType::Str {
+            continue;
+        }
+        let mut serials: Vec<Cell> = Vec::with_capacity(data[i].len());
+        let mut non_blank = 0usize;
+        let mut ok = true;
+        for c in &data[i] {
+            match c {
+                Cell::Null => serials.push(Cell::Null),
+                Cell::Str(s) if s.trim().is_empty() => serials.push(Cell::Null),
+                Cell::Str(s) => match parse_iso_date_serial(s) {
+                    Some(v) => {
+                        non_blank += 1;
+                        serials.push(Cell::Num(v));
+                    }
+                    None => {
+                        ok = false;
+                        break;
+                    }
+                },
+                _ => {
+                    ok = false;
+                    break;
+                }
+            }
+        }
+        // At least one real date required (an all-blank column stays text) —
+        // mirrors inferColumn's `nonBlank.length > 0` gate.
+        if ok && non_blank > 0 {
+            data[i] = serials;
+            types[i] = SolType::Date;
+            changed = true;
+        }
+    }
+    if !changed {
+        return Ok(frame);
+    }
+    let df = build_df(&names, &types, &data)?;
+    Ok(SolFrame { df, types })
 }
 
 // ─── Parquet source (native file → engine, never materializes in JS) ────────────
@@ -1568,7 +1719,7 @@ pub fn engine_read_csv(folder: String, name: String) -> Result<Vec<OutColumn>, I
         .map_err(|e| IpcError::new("#REF!", format!("couldn't open \"{}\": {e}", path.display())))?
         .finish()
         .map_err(|e| IpcError::internal(format!("CSV parse failed: {e}")))?;
-    Ok(collect_of(&df_to_solframe(df)))
+    Ok(collect_of(&infer_iso_date_columns(df_to_solframe(df))?))
 }
 
 /// Read a `.parquet` file straight into the engine — a source handle without ever
