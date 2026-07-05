@@ -27,6 +27,15 @@ describe("parseDateToSerial — a year token must be exactly four digits", () =>
     expect(parseDateToSerial("1-15-26")).toBeNaN();
     expect(parseDateToSerial("26-01-15")).toBeNaN();
   });
+  it("a 2-digit year in a NAMED-MONTH date is not a date either (Frame Input bug)", () => {
+    expect(parseDateToSerial("20-Mar-26")).toBeNaN();  // JS would guess 2026
+    expect(parseDateToSerial("Mar 20, 26")).toBeNaN();
+    expect(parseDateToSerial("Mar 20")).toBeNaN();      // no year at all — JS guesses 2001
+  });
+  it("named-month forms with a 4-digit year still parse", () => {
+    expect(parseDateToSerial("20-Mar-2026")).toBe(jsDateToSerial(new Date(Date.UTC(2026, 2, 20))));
+    expect(parseDateToSerial("Mar 20, 2026")).toBe(jsDateToSerial(new Date(Date.UTC(2026, 2, 20))));
+  });
   it("a 4-digit year still parses", () => {
     expect(parseDateToSerial("1/15/2026")).toBe(jsDateToSerial(new Date(Date.UTC(2026, 0, 15))));
     // "0026" is a 4-digit token → 26 AD. (Date.UTC(26,…) would remap to 1926, so

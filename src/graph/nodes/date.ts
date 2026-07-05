@@ -22,12 +22,12 @@ export function parseDateToSerial(s: string): number {
   const t = s.trim();
   if (!t) return NaN;
   // A year token must be EXACTLY four digits — no 2-digit-year century guessing
-  // (Excel's 00–29 pivot goes stale; it's 2026 now). So an all-numeric slash/dash
-  // date whose year component is 1–3 digits is NOT a date ("1/15/26" → #VALUE!,
-  // write 2026). Named-month forms and 4-digit years are unaffected; ISO date-only
-  // ("0026-01-15") already has a 4-digit token and parses as 26 AD.
-  if (/^\d{1,2}([/-])\d{1,2}\1\d{1,3}$/.test(t)) return NaN; // M/D/YY, M-D-YY
-  if (/^\d{1,3}([/-])\d{1,2}\1\d{1,2}$/.test(t)) return NaN; // YY-M-D (short leading year)
+  // (Excel's 00–29 pivot goes stale; it's 2026 now), in ANY form. A date string
+  // with no 4-digit run anywhere can only parse by guessing the century (or the
+  // whole year), so it is NOT a date: "1/15/26", "20-Mar-26" (JS would guess
+  // 2026), bare "Mar 20" (JS guesses 2001!) → NaN; write the 4-digit year.
+  // ISO date-only ("0026-01-15") has a 4-digit token and parses as 26 AD.
+  if (!/\d{4}/.test(t)) return NaN;
   const d = new Date(t);
   if (Number.isNaN(d.getTime())) return NaN;
   // Zone-less text must mean the same calendar date on every machine. new Date()
