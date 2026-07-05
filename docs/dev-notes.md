@@ -2,6 +2,29 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### ELK Tidy integration guard — elkjs under node + the post-layout passes (2026-07-05)
+Queue #2. The layout property tests (`layoutInvariants.test.ts`) cover the PURE cores in
+isolation; this covers the INTEGRATION they scoped out — `layoutTidyIntegration.test.ts`.
+- **What it can't do headless:** the real `arrangeFn` (Canvas.tsx) is DOM-coupled — node sizes
+  come off `area.nodeViews` (`offsetWidth`), it stamps inline heights and moves nodes via async
+  `area.translate`. None runs in vitest's node env. So the test drives **elkjs directly** with the
+  app's real ELK options (`layered` / `direction RIGHT` / `nodeNodeBetweenLayers 55` / `nodeNode
+  38`) — a faithful data-level reproduction of the layout engine, minus the DOM plumbing.
+- **elkjs runs fine under vitest** (`import ELK from "elkjs"`, `new ELK().layout(...)`, ~80ms for
+  a handful of nodes) — NOT heavy/flaky, so it stays in the default suite (no `describe.runIf`
+  gate needed; run command noted in the file header if that ever changes).
+- **Two cases:** (1) a diamond+tail layered graph lays out with no node overlap (elkjs-under-node
+  smoke + the app's spacing → overlap-free base of Tidy). (2) The standoff-cluster path: Tidy lays
+  a standoff pair out as ONE super-node sized to the cluster bbox (so ELK keeps it clear of other
+  nodes, incl. a group container node); the test then EXPANDS the super-node into its two members
+  with a deliberate skew, runs the app's final `solveStandoffs` (forceLock) → asserts the locked
+  band holds (perpendicular ≈ 0, gap in [min,max]), then runs `separateOverlaps` (the overlap
+  backstop) over the settled members + neighbours → asserts fully overlap-free. That chains ELK
+  output → standoff settle → separate, the exact hand-off the pure tests couldn't reach.
+- **Gotcha:** `elkjs` default-imports cleanly for both tsc and vitest at 0.8.2; the ELK graph is
+  built by hand (not via the rete `AutoArrangePlugin`, which needs the area/DOM). If the app's ELK
+  options change (Canvas arrangeFn), mirror them in `APP_OPTS` here or the guard drifts from reality.
+
 ### Nest Join accepts a CUBE child — nest a pre-built cube whole (2026-07-05)
 Queue #1 this block. **Important scope clarification found while verifying:** the task framed
 this as "so nesting chains (Customer→Order→LineItem)", but that chaining was ALREADY done via
