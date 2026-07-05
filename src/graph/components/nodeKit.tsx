@@ -1,4 +1,5 @@
 import { useCallback, useState, useRef, type ReactNode, useLayoutEffect, useContext, useSyncExternalStore } from "react";
+import { copyText } from "../clipboard";
 import { commentStore, commentsPanelUi } from "../commentStore";
 import type { ClassicPreset } from "rete";
 import type { ClassicScheme, RenderEmit } from "rete-react-plugin";
@@ -569,7 +570,8 @@ export function ValueDisplay({
     e.stopPropagation();
     const text = getClipboardText();
     if (!text) return;
-    navigator.clipboard.writeText(text).then(() => {
+    void copyText(text).then((ok) => {
+      if (!ok) return;
       setCopied(true);
       if (copyTimeout.current) clearTimeout(copyTimeout.current);
       copyTimeout.current = setTimeout(() => setCopied(false), 1200);
