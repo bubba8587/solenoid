@@ -16,10 +16,12 @@
 }
 
 /* Minimap moved off the bottom-right corner (Top or Hide) — the legend drops
-   down to fill the freed space instead of floating with a gap underneath. */
+   down to fill the freed space instead of floating with a gap underneath. It
+   lands where the minimap's bottom edge sat (30px), which clears the 19px-tall
+   StatusBar; a smaller offset (e.g. 16px) tucks under the footer. */
 html.minimap-top .solenoid-legend,
 html.minimap-hidden .solenoid-legend {
-  bottom: 16px;
+  bottom: 30px;
 }
 
 /* Expanded panel renders 15% smaller, anchored to its bottom-right corner. */
