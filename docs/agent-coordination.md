@@ -19,21 +19,22 @@ border seam, grid system, collision avoidance, transpiler, seed-cleanup.
 
 ## Claims
 
-- **A1 (Lead): TIER B COMPLETE.** B-1(a) `1efa87d`, B-1(b) `aa2a623`, B-4a
-  `aa5ab34`, B-4b `a2c6fdd`, B-2 engine `2eb65a4`, B-2 UI + B-3 queued READY
-  below. **CLAIMED: C-4 unified XLOOKUP** (build starts next beat — its
-  footprint `nodes/frame.ts` / `FrameNodes.tsx` / `nodeCatalog.ts` is in my
-  READY stage lists, so hands off until A3 flushes). Design forks settled per
-  the no-stall rule (notes: `archive/v1.1-plan.md` WS-D):
-  (1) input surface = DUCK-TYPE the wired `any` source — list wired → key/value
-  list sockets; frame/cube wired → In column / Return inputs (the polyform-node
-  convention, no mode selector); (2) Return = ONE column name, `*` for the
-  whole row (the 2-D case; a names-list adds surface with no driving need —
-  noted, not built); (3) migration = pre-alpha clean break: one XLOOKUP class +
-  one `xlookup` catalog entry replace XLookupNode + FrameLookupNode, seeds/
-  tests updated, no shim. Output stays `any`; cube-vs-frame is the runtime
-  `isCubeValue` check; match/search modes carry over (exact-only for
-  text/logical keys). (`engine.rs` stays MINE — nobody else touches it.)
+- **A1 (Lead): SESSION ENDED by the author (out of usage) — my loop is STOPPED.**
+  TIER B COMPLETE, all committed: B-1(a) `1efa87d`, B-1(b) `aa2a623`, B-4a
+  `aa5ab34`, B-4b `a2c6fdd`, B-2 `2eb65a4`+`6e5bef6`, B-3 `117d7b2`.
+  **C-4 unified XLOOKUP: UNCLAIMED — returned to the pool. Scouted only, ZERO
+  code written.** The design forks are SETTLED — keep these with the pickup:
+  (1) input surface = DUCK-TYPE the wired `any` source — bare list wired →
+  key/value list sockets; frame/cube wired → In column / Return inputs (the
+  polyform convention, no mode selector); (2) Return = ONE column name, `*`
+  for the whole row; (3) migration = pre-alpha clean break — ONE XLookupNode
+  class + one `xlookup` catalog entry replace XLookupNode + FrameLookupNode
+  (update seed `asof-join-lookup.json`, frameLookup.test.ts,
+  errorValue.test.ts's XLOOKUP block; no shim). Output `any`; cube-vs-frame =
+  runtime `isCubeValue`; match/search modes carry to frame/cube (exact-only
+  for text/logical keys; suggested verb refactor: index-returning
+  `lookupFrameRowIndex`/`lookupCubeRowIndex` shared by cell/whole-row variants
+  — zero drift). Full notes: `archive/v1.1-plan.md` WS-D.
 - **A2:** **C-1 fully committed** (`09bc120`/`7315441`/`5bd7105`/`6841167`/`1e71d66` +
   finale). Now: **C-3 (popup ⋯ + collapsed previews)** — part 1 (⋯ menu) committed
   `6841167`; **part 2 (Slicer/Sparkline collapsed previews) DONE + READY**; Gauge left
@@ -81,7 +82,22 @@ F-2 Document Properties, ONE agent, serial).
 
 ## Ready to commit
 
-_(empty)_
+- **✅ READY — A2 · E-2 slice 3b-core — `DataFeedNode` class + gating test.** The
+  Finance/data connection node's LOGIC (not yet registered — see note). WebSourceNode
+  pattern: synchronous `data()` serves the cached frame + fires ONE background fetch per
+  cache key; a keyed provider (FRED/Alpha Vantage) with no stored key short-circuits to
+  a "needs key" error state (no network); reads the provider preset + key from slice-3a's
+  `dataProviders` + `apiKeyStore`. New file `nodes/dataFeed.ts` (linear dep dataFeed →
+  dataProviders → connection, so no import cycle). Unit-tested (`dataFeed.test.ts`, 4
+  tests — non-network branches only: default provider, empty-input idle, needs-key error,
+  keyless Stooq). tsc clean; **full vitest 2241 (0 red)**. Stage ONLY (both NEW):
+  `src/graph/nodes/dataFeed.ts`, `src/graph/nodes/dataFeed.test.ts`. Msg:
+  `feat: DataFeedNode — provider-preset finance connection node logic (E-2 slice 3b-core)`.
+  **DEFERRED to slice 3b-reg** (blocked on A1's C-4 owning `nodeCatalog.ts`): the rete-nodes
+  barrel export, the React component, and the nodeCatalog/nodeRegistry/index registration —
+  I'll add those once A1's C-4 lands. The class is an isolated new file until then (imported
+  only by its test), so it commits clean without touching any contended file. Slice 4 =
+  FRED demo seed (also needs the node registered → after 3b-reg).
 
 ## Recently done
 
