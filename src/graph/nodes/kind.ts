@@ -6,7 +6,7 @@ import { ConvertNode } from "./convert";
 import { CastNode } from "./cast";
 import { FormatControllerNode } from "./formatController";
 import { ExpressionNode } from "./expression";
-import { GroupByNode, XMatchNode } from "./list";
+import { GroupByNode } from "./list";
 import { RegexNode } from "./text";
 import { ComparisonNode, BooleanOpNode, NotNode, IfNode, IFErrorNode, IsTestNode, IsEvenOddNode, NaNode, ChooseNode, SwitchNode, IfsNode } from "./logic";
 import { ComplexFromNode, ComplexUnpackNode, ComplexUnaryNode, ComplexBinaryNode, ComplexPowerNode } from "./complex";
@@ -45,7 +45,6 @@ import { SlicerNode, CableSwitchNode, DatePickerNode, XYPadNode } from "./contro
 import { SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, TreemapNode, SankeyNode, HistogramNode } from "./visual";
 import { NoteNode, ImageNode } from "./annotation";
 import { CompositeNode } from "./composite";
-import { XLookupNode } from "./lookup";
 import {
   TableInputNode, MatDetNode, TableMultNode, TableUnitNode, TableTransposeNode,
   HStackTableNode, TableReshapeNode, TableSelectNode, TableInfoNode,
@@ -207,13 +206,10 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
 // pure numeric compute results don't get a handle and truncate instead. Kept
 // here next to nodeKindOf so the resizable set has one source of truth.
 export function nodeResizable(node: ClassicPreset.Node): boolean {
-  const k = nodeKindOf(node);
-  if (k === "input" || k === "string" || k === "convert") return true;
-  if (node instanceof DisplayNode) return true;
-  if (node instanceof XLookupNode || node instanceof XMatchNode) return true;
-  // Expression: widening gives long Excel formulas + the KaTeX preview room.
-  if (node instanceof ExpressionNode) return true;
-  return false;
+  // Resize is a DISPLAY-only affordance (author 2026-07-06): the body-level grip
+  // grows the Display's box — a frame scrolls to show more rows, a chart scales to
+  // fill. Other nodes wrap/truncate at their content-driven size.
+  return node instanceof DisplayNode;
 }
 
 // ─── Width tier ────────────────────────────────────────────────────────────────

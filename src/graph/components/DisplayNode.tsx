@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from "react";
+import { useSyncExternalStore, useLayoutEffect, useRef, useState } from "react";
 import type { DisplayNode as DisplayNodeType } from "../rete-nodes";
 import { formatWithUnit } from "../unitFormat";
 import { formatAnnotationStore, formatNumberWithAnnotation } from "../formatAnnotationStore";
@@ -13,10 +13,38 @@ import { ChartFigure } from "./chartView";
 import { ChartChip } from "./ChartChip";
 import { MermaidView } from "./MermaidView";
 import { isFrameValue, isCubeValue } from "../frame";
-import { isChartValue } from "../chartValue";
+import { isChartValue, type ChartValue } from "../chartValue";
+import { nodeSizeStore } from "../nodeSizeStore";
 import { isMermaidValue } from "../mermaidValue";
 import { isLambdaValue, formatLambda } from "../nodes/lambda";
 import { isSolError } from "../errorValue";
+
+// A chart in a RESIZED Display fills its box and scales live. Only used when the
+// Display has a definite size — measuring a content-driven (max-content) card
+// would feed back (chart size → card size → chart size…) and oscillate. overflow
+// is hidden so the figure can't spawn a scrollbar that re-triggers the measure.
+function MeasuredChart({ value }: { value: ChartValue }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState({ w: 210, h: 130 });
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => {
+      const w = Math.max(120, Math.round(el.clientWidth));
+      const h = Math.max(90, Math.round(el.clientHeight));
+      setSize((prev) => (prev.w === w && prev.h === h ? prev : { w, h }));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return (
+    <div ref={ref} style={{ width: "100%", height: "100%", overflow: "hidden" }}>
+      <ChartFigure value={value} width={size.w} height={size.h} />
+    </div>
+  );
+}
 
 export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
   // Re-render when any Format Controller annotation changes.
@@ -25,6 +53,10 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
   // which is the form that collapses cleanly to just a chip (list/table/frame).
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   const full = !collapsed;
+  // A chart scales to fill only once the Display has a manual size (a definite
+  // box); before that it renders at its fixed default — measuring the
+  // content-driven card would feed back and oscillate.
+  const sized = !collapsed && !!useSyncExternalStore(nodeSizeStore.subscribe, () => nodeSizeStore.get(data.id));
 
   // Honor an FC docked to EITHER of the Display's sockets (in or out), not
   // just "in" — the FC keys the annotation to whichever socket it snapped to.
@@ -79,8 +111,9 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
       ) : isChart ? (
         // Collapsed → the [Chart] chip in the hero box (matching how a frame/table
         // collapses to its chip); expanded → the full figure.
-        full ? <ChartFigure value={v} width={210} height={130} />
-             : <div className="solenoid-node__display-value" style={{ display: "flex", justifyContent: "flex-end" }}><ChartChip value={v} /></div>
+        !full ? <div className="solenoid-node__display-value" style={{ display: "flex", justifyContent: "flex-end" }}><ChartChip value={v} /></div>
+              : sized ? <MeasuredChart value={v} />
+              : <ChartFigure value={v} width={210} height={130} />
       ) : isMermaid ? (
         <MermaidView source={v.source} />
       ) : isLambda ? (

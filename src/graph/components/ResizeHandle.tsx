@@ -85,8 +85,9 @@ export function ResizeHandle({ nodeId }: { nodeId: string }) {
       title="Drag to resize"
       onPointerDown={onPointerDown}
     >
-      <svg width="7" height="7" viewBox="0 0 7 7" aria-hidden="true">
-        <path d="M7 0 L0 7 M7 3.5 L3.5 7" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+      {/* Same corner icon as the Group resize grip. */}
+      <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
+        <path d="M11 5 5 11M11 9l-2 2" />
       </svg>
     </div>
   );
