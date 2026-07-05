@@ -2,6 +2,27 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Quick-wire: memoize the per-type socket signature (2026-07-05)
+`filterByCompatibleSocket` (`catalogSearch.ts`) was calling `leaf.create()` for EVERY catalog
+leaf on EVERY quick-wire cable drop — instantiating a full throwaway node just to read its
+socket types. A node type's INITIAL sockets are deterministic per catalog `type`, so the
+input/output socket-type sets are now memoized in a module-level `_sigCache` keyed by
+`leaf.type`: the first drop instantiates each leaf once, later drops reuse the cached set and
+only re-run the cheap per-origin `canConnect` check (the origin varies per drop; the signature
+doesn't). Behaviour is identical — verified by a test that the 2nd filter pass triggers zero
+new `create()` calls, plus a real-catalog narrowing check. The cache is never invalidated (a
+type's socket shape is constant for the app's life). `firstCompatibleSocketKey` stays as-is —
+it runs once on the actually-picked node and needs the concrete socket KEY, not a type set.
+
+### cargo-audit runs in CI (2026-07-05)
+Approved 2026-07-02, built overnight. `.github/workflows/cargo-audit.yml` runs `cargo
+audit` against `src-tauri/Cargo.lock` on every push to `develop` that touches the
+lockfile, the workflow itself, or `src-tauri/audit.toml` (plus a manual
+`workflow_dispatch`), separate from `test.yml` (JS-only) and `windows-portable.yml`
+(full Tauri build) since it needs neither. `audit.toml`'s ignore list starts empty —
+add an advisory ID with a one-line reason when triage noise comes up, never a
+blanket crate ignore.
+
 ### Reconcile: blank-key rows + errored PVM cells no longer silently swallowed (2026-07-05)
 Two confirmed audit findings in `reconcileFrames` (`frameVerbs.ts`), both about the node
 quietly making data disappear.

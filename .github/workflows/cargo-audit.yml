@@ -1,0 +1,29 @@
+# Scans src-tauri/Cargo.lock for known security advisories on every push to
+# develop. Separate from test.yml (JS-only) and windows-portable.yml (full
+# Tauri build) since this only needs the lockfile, not a compile.
+name: Cargo audit
+
+on:
+  push:
+    branches:
+      - develop
+    paths:
+      - "src-tauri/Cargo.lock"
+      - ".github/workflows/cargo-audit.yml"
+      - "src-tauri/audit.toml"
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+
+      - name: Run cargo audit
+        working-directory: src-tauri
+        run: cargo audit
