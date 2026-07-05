@@ -40,6 +40,27 @@ export function precisionApplies(style: FormatStyleId): boolean {
   return style === "decimal" || style === "percent" || style === "scientific";
 }
 
+// ── The advanced tier (number family only; the FC chip expands to show it) ──
+// Same never-disabled-but-visible rule: each advanced control exists only for
+// the styles where it means something.
+
+/** Thousands-separator toggle: grouped locale styles only (scientific has no
+ *  grouping; fraction/custom/auto own their own text). */
+export function groupingApplies(style: FormatStyleId): boolean {
+  return style === "decimal" || style === "integer" || style === "percent";
+}
+
+/** Scale (show in thousands/millions/billions): plain magnitude styles only —
+ *  scaling a percent or a mantissa is nonsense. */
+export function scaleApplies(style: FormatStyleId): boolean {
+  return style === "decimal" || style === "integer";
+}
+
+/** Negative-number style (minus / parentheses / red): any numeric style. */
+export function negativeApplies(style: FormatStyleId): boolean {
+  return style !== "custom"; // a custom pattern owns its own negative form
+}
+
 /** Which popup controls exist for a family (+ the current style, for the
  *  precision row). A control that is false is HIDDEN and INERT — never
  *  disabled-but-visible, never silently applied. */
@@ -51,6 +72,7 @@ export type FcControls = {
   dateStyle: boolean;    // the date-style dropdown
   text: boolean;         // case + bold/italic/size
   logical: boolean;      // the show-as dropdown (TRUE/FALSE · 1/0 · Yes/No · ✓/✗)
+  advanced: boolean;     // the expandable advanced tier exists (number family)
 };
 
 export function controlsFor(family: FormatFamily, style: FormatStyleId): FcControls {
@@ -63,5 +85,7 @@ export function controlsFor(family: FormatFamily, style: FormatStyleId): FcContr
     dateStyle:    family === "date",
     text:         family === "text",
     logical:      family === "logical",
+    advanced:     family === "number" &&
+      (groupingApplies(style) || scaleApplies(style) || negativeApplies(style)),
   };
 }

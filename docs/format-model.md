@@ -12,7 +12,7 @@ A displayed value is produced by four stages, in this order, each driven by one 
 of `FormatAnnotation`:
 
 ```
-value ──▶ 1 TYPE GATE ──▶ 2 STYLE (precision resolved) ──▶ 3 UNIT AFFIX ──▶ 4 TEXT ATTRS
+value ──▶ 1 TYPE GATE ──▶ 2 STYLE (scale-divide, then precision+grouping) ──▶ 3 UNIT AFFIX ──▶ 3b NEGATIVE WRAP ──▶ 4 TEXT ATTRS
 ```
 
 1. **Type gate.** The FC's adopted socket type maps to a **format family**
@@ -65,6 +65,10 @@ Which controls exist per family (popup rows AND resolution axes):
 | case (Aa) | — | — | ✔ | — | — |
 | bold / italic / size | — | — | ✔ | — | — |
 | show-as (logical) | — | — | — | ✔ | — |
+| **advanced tier** (behind the chip's expander): | | | | | |
+| · 1,000 separator toggle | `decimal` / `integer` / `percent` | — | — | — | — |
+| · negative style (−1,234 · (1,234) · red · red parens) | every style but `custom` (the pattern owns its own form) | — | — | — | — |
+| · scale (K / M / B) | `decimal` / `integer` only — scaling a percent or a mantissa is nonsense | — | — | — | — |
 
 Notes:
 - **Percent takes a unit** like any other number style. Rendering order is fixed:
@@ -77,6 +81,13 @@ Notes:
   2 places). Percent/fraction/integer are meaningless on a complex value → not
   offered. (Implementation may lag the spec here; the popup must still gate to the
   reduced style list from day one.)
+- **Advanced-tier composition order** (2026-07-05): scale divides the magnitude
+  and appends its suffix inside the number (`1.2M`); the unit wraps that
+  (`$1.2M`); a paren negative wraps OUTSIDE the unit, Excel accounting style
+  (`($1.2M)`). "Red" negative styles keep the minus/parens string form — the red
+  is a render-layer color (`annotationRendersNegativeRed`), applied where a
+  surface is annotation-aware (the value box); plain-text surfaces (clipboard,
+  text form) just carry the string.
 
 ## The precision × style resolution rule
 

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   applyTextCase,
+  annotationRendersNegativeRed,
   formatAnnotationStore,
   formatMismatchStore,
   formatNumberWithAnnotation,
@@ -223,6 +224,40 @@ describe("formatNumberWithAnnotation — scientific format", () => {
   it("sig-figs mode = mantissa significant digits (toExponential(s − 1))", () => {
     expect(fwn(12345, { format: "scientific", decimalDigits: 3, decimalMode: "sigfigs" })).toBe("1.23e+4");
     expect(fwn(12345, { format: "scientific", decimalDigits: 1, decimalMode: "sigfigs" })).toBe("1e+4");
+  });
+});
+
+describe("formatNumberWithAnnotation — advanced tier (grouping / negative / scale)", () => {
+  it("grouping off drops the thousands separator (decimal, integer, percent)", () => {
+    expect(fwn(1234.5, { format: "decimal", grouping: false })).toBe("1234.50");
+    expect(fwn(1234.5, { format: "integer", grouping: false })).toBe("1235");
+    expect(fwn(12.34, { format: "percent", grouping: false, decimalDigits: 0 })).toBe("1234%");
+  });
+  it("grouping is inert where it doesn't apply (scientific)", () => {
+    expect(fwn(12300, { format: "scientific", grouping: false })).toBe("1.23e+4");
+  });
+  it("paren negatives wrap OUTSIDE the unit (accounting style)", () => {
+    expect(fwn(-1234.5, { format: "decimal", negativeStyle: "paren" })).toBe("(1,234.50)");
+    expect(fwn(-1234.5, { format: "decimal", negativeStyle: "paren", unit: "usd" })).toBe("($1,234.50)");
+    expect(fwn(1234.5, { format: "decimal", negativeStyle: "paren" })).toBe("1,234.50"); // positive unchanged
+  });
+  it("red is a render hint — the string form stays minus / parens", () => {
+    expect(fwn(-12.5, { format: "decimal", negativeStyle: "red" })).toBe("-12.50");
+    expect(fwn(-12.5, { format: "decimal", negativeStyle: "redparen" })).toBe("(12.50)");
+    expect(annotationRendersNegativeRed(ann({ negativeStyle: "red" }), -1)).toBe(true);
+    expect(annotationRendersNegativeRed(ann({ negativeStyle: "red" }), 1)).toBe(false);
+    expect(annotationRendersNegativeRed(ann({ negativeStyle: "paren" }), -1)).toBe(false);
+  });
+  it("scale divides and suffixes; the unit wraps the scaled form", () => {
+    expect(fwn(1200000, { format: "decimal", scaleMode: "m", decimalDigits: 1 })).toBe("1.2M");
+    expect(fwn(4500, { format: "integer", scaleMode: "k" })).toBe("5K");
+    expect(fwn(1200000, { format: "decimal", scaleMode: "m", decimalDigits: 1, unit: "usd" })).toBe("$1.2M");
+  });
+  it("scale is inert where it doesn't apply (percent)", () => {
+    expect(fwn(0.5, { format: "percent", scaleMode: "m", decimalDigits: 0 })).toBe("50%");
+  });
+  it("paren + scale + unit compose: ($1.2M)", () => {
+    expect(fwn(-1200000, { format: "decimal", scaleMode: "m", decimalDigits: 1, unit: "usd", negativeStyle: "redparen" })).toBe("($1.2M)");
   });
 });
 

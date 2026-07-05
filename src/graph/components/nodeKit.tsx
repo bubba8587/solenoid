@@ -15,7 +15,7 @@ import { flyToNode } from "../flyToNode";
 import { ResizeHandle } from "./ResizeHandle";
 import { formatScalar } from "./format";
 import { ArrayChip } from "./ArrayChip";
-import { formatAnnotationStore, formatNumberWithAnnotation, applyTextCase, applyLogicalStyle } from "../formatAnnotationStore";
+import { formatAnnotationStore, formatNumberWithAnnotation, applyTextCase, applyLogicalStyle, annotationRendersNegativeRed } from "../formatAnnotationStore";
 import { nodeOutputIsDate, dateFormatDisplay, shouldRenderListInline, formatListCell, type DisplayValue } from "./valueDisplayFormat";
 import { IS_COARSE } from "../coarse";
 import { NodeFormatContext } from "./nodeContext";
@@ -613,6 +613,11 @@ export function ValueDisplay({
             // SolError, rendered red above). Quiet muted affordance + a structural
             // tooltip — not error-red, not plain-number, not an ArrayChip.
             <span className="solenoid-node__nan" title="Not a number — an undefined value in the data">NaN</span>
+          )
+        : annotationRendersNegativeRed(ann, value) ? (
+            // The FC's red negative style — the string already carries the
+            // minus/parens; the color rides on top (format-model advanced tier).
+            <span style={{ color: "var(--danger)" }}>{fmtScalar(value as number)}</span>
           )
         : render && !ann ? render(value as number)
         : fmtScalar(value as number)}

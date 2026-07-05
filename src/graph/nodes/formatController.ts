@@ -1,5 +1,5 @@
 import { ClassicPreset, type NodeEditor } from "rete";
-import { formatAnnotationStore, isDateStyle, isFcUnit, type FormatStyleId, type FormatAnnotation, type TextCase, type DecimalMode, type LogicalStyle } from "../formatAnnotationStore";
+import { formatAnnotationStore, isDateStyle, isFcUnit, type FormatStyleId, type FormatAnnotation, type TextCase, type DecimalMode, type LogicalStyle, type NegativeStyle, type ScaleMode } from "../formatAnnotationStore";
 import { makeUnitResolver } from "../unitFlow";
 import { dockedNodeStore } from "../dockedNodeStore";
 import { SolenoidSocket, isDateType, type SocketDataType } from "../sockets";
@@ -62,6 +62,11 @@ export class FormatControllerNode extends ClassicPreset.Node {
   textScale: number;
   // Logical-socket show-as (display only).
   logicalStyle: LogicalStyle;
+  // Advanced tier (number family; behind the chip's expander).
+  grouping: boolean;          // thousands separator
+  negativeStyle: NegativeStyle;
+  scaleMode: ScaleMode;       // show in K / M / B
+  advancedOpen: boolean;      // the expander's persisted open/closed state
   // The resolved socket dataType of the host socket (drives accent color).
   socketDataType: SocketDataType = "any";
   // Sockets this FC currently writes annotations to. A normal FC (fed by a
@@ -105,6 +110,10 @@ export class FormatControllerNode extends ClassicPreset.Node {
     italic?: boolean;
     textScale?: number;
     logicalStyle?: LogicalStyle;
+    grouping?: boolean;
+    negativeStyle?: NegativeStyle;
+    scaleMode?: ScaleMode;
+    advancedOpen?: boolean;
     socketDataType?: SocketDataType;
   }) {
     super("FormatController");
@@ -123,6 +132,10 @@ export class FormatControllerNode extends ClassicPreset.Node {
     this.italic     = init?.italic     ?? false;
     this.textScale  = init?.textScale  ?? 14; // px font size for text display
     this.logicalStyle = init?.logicalStyle ?? "truefalse";
+    this.grouping      = init?.grouping      ?? true;
+    this.negativeStyle = init?.negativeStyle ?? "minus";
+    this.scaleMode     = init?.scaleMode     ?? "none";
+    this.advancedOpen  = init?.advancedOpen  ?? false;
     if (init?.socketDataType) {
       this.socketDataType = init.socketDataType;
       this._inSock.setType(init.socketDataType);
@@ -308,6 +321,9 @@ export class FormatControllerNode extends ClassicPreset.Node {
       italic:        this.italic,
       textScale:     this.textScale,
       logicalStyle:  this.logicalStyle,
+      grouping:      this.grouping,
+      negativeStyle: this.negativeStyle,
+      scaleMode:     this.scaleMode,
     };
   }
 

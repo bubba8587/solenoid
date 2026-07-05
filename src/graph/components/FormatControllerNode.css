@@ -6,8 +6,14 @@
 .solenoid-fc {
   width: auto;
   min-width: 0;
-  /* The whole chip is the accent frame — no separate header band. */
-  border-color: var(--node-accent, var(--border));
+  /* The chip is an all-header mini card: the type accent tints the chip
+     ITSELF (there's no header band to carry it — same tint recipe as a node
+     header), while border / hover / selection stay the STANDARD node
+     treatments from nodeCard.css. The old always-accent border fought the
+     generic hover rule (accent flicked to gray on hover) and read nothing
+     like a node at rest. Mismatch still reads: accentOverride turns the
+     tint (and corner badge) orange. */
+  background: color-mix(in srgb, var(--node-accent, var(--surface)) var(--header-tint), var(--surface));
 }
 
 /* A compact annotation chip has no label, no collapse — hide the chevron
@@ -122,6 +128,40 @@
   width: 40px;
   font-size: 11px;
   padding: 3px 2px;
+}
+
+/* Advanced-tier grouping checkbox row. */
+.solenoid-fc__check {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.solenoid-fc__check input {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+/* The advanced-tier expander — a thin full-width ghost row at the chip's foot. */
+.solenoid-fc__more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 14px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.solenoid-fc__more:hover {
+  color: var(--text);
 }
 
 /* Lock icon beside a unit dropdown that's locked to the upstream FC's unit. */
