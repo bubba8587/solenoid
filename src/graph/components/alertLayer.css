@@ -38,7 +38,8 @@
   color: var(--accent);
 }
 
-/* Count badge shown when collapsed — red, to read as "needs attention". */
+/* Count badge shown when collapsed — amber, matching the alert bell's warning tone
+   (an alert isn't necessarily bad, so not red). */
 .solenoid-alert-layer__count {
   position: absolute;
   top: -4px;
@@ -46,11 +47,11 @@
   min-width: 14px;
   height: 14px;
   padding: 0 3px;
-  background: #e0524d;
-  /* Ink on the fixed red fill: a near-black shade of the badge's own hue, so it
+  background: #d9822b;
+  /* Ink on the fixed amber fill: a near-black shade of the badge's own hue, so it
      reads at >4.5:1 and stays stable across themes (unlike --accent-ink, which
      tracks the unrelated accent and can flip to white on a dark accent). */
-  color: color-mix(in srgb, #e0524d 20%, #000);
+  color: color-mix(in srgb, #d9822b 20%, #000);
   border-radius: 8px;
   font-size: 9px;
   font-weight: 700;
@@ -87,11 +88,14 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  /* Kind conveyed by the label colour now (no per-chip icon) — info blue, warning
-     orange, critical red. Falls back to --text if a kind ever omits a colour. */
-  color: var(--alert-color, var(--text));
+  color: var(--text);
   font-size: 11px;
   font-weight: 600;
+}
+/* Kind conveyed by the leading label's colour now (no per-chip icon) — info blue,
+   warning orange, critical red; the detail after it stays --text. */
+.solenoid-alert__title {
+  color: var(--alert-color, var(--text));
 }
 
 .solenoid-alert__remove {

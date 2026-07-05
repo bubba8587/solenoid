@@ -69,7 +69,14 @@ export function AlertLayer() {
     </button>
   );
 
-  const chips = events.map((ev) => (
+  const chips = events.map((ev) => {
+    // Message is "<label>: <detail>" (see Alert.buildMessage). Colour ONLY the
+    // leading label by kind; the detail stays in the normal text colour. Match the
+    // exact label when the message starts with it (a label may contain a colon),
+    // else fall back to the first colon.
+    const title = ev.message.startsWith(ev.label) ? ev.label : (ev.message.split(":")[0] ?? ev.message);
+    const rest = ev.message.slice(title.length);
+    return (
     <div
       key={ev.id}
       className="solenoid-alert"
@@ -77,7 +84,7 @@ export function AlertLayer() {
       onClick={() => flyToNode(ev.nodeId)}
       title="Click to go to this alert"
     >
-      <span className="solenoid-alert__msg">{ev.message}</span>
+      <span className="solenoid-alert__msg"><span className="solenoid-alert__title">{title}</span>{rest}</span>
       <button
         type="button"
         className="solenoid-alert__remove"
@@ -88,7 +95,8 @@ export function AlertLayer() {
         <CloseIcon size={12} />
       </button>
     </div>
-  ));
+    );
+  });
 
   return (
     <div ref={rootRef} className={`solenoid-alert-layer${collapsed ? " solenoid-alert-layer--collapsed" : ""}`}>
