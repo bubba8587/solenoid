@@ -3,7 +3,8 @@ import { NodeShell, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { SankeyView } from "./chartView";
 
-const W = 238;
+// Fills the wide card (240) minus body padding — same figure width as Chart.
+const W = 218;
 const H = 170;
 
 export function SankeyComponent({ data, emit }: NodeProps<SankeyNodeType>) {

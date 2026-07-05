@@ -292,7 +292,10 @@ export function SankeyView({ sources, targets, values, width, height }: {
       link={{ stroke: grid, strokeOpacity: 0.5 }}
       // Function form (not a static element) so each node receives its geometry —
       // same recharts 3.x requirement as Treemap's content (else nodes are 0-size).
-      node={(props) => <SankeyNodeShape {...props} colors={colors} />}
+      // recharts' node props DON'T carry containerWidth, so pass the figure width
+      // through — SankeyNodeShape uses it to flip labels to the outer side (else
+      // every node reads as "right half" and the left column's labels fly off-canvas).
+      node={(props) => <SankeyNodeShape {...props} colors={colors} containerWidth={width} />}
       margin={{ top: 6, right: 70, bottom: 6, left: 6 }}
     >
       {SLICE_TIP}
