@@ -717,14 +717,14 @@ Follow-ups surfaced:
   `semanticZoomStore` joined `HtmlCanvasLayer`'s rebuild-trigger subscriptions, so the
   class flip now schedules a re-capture and the canvas renderer reflects the simplified
   view. (Original note: cached bitmaps didn't reflect the class.)
-- [ ] **Note frontmatter socket removal isn't undo-coherent** (flagged 2026-07-05, same
-  class as the extensible-row fix but on the OUTPUT side + driven by body text): a blur
-  that removes a YAML key drops the socket + cable; Ctrl+Z pops the cable-restore entry
-  FIRST (the body-text commit entry is pushed before the reconcile's removeConnection
-  entries), so the cable transiently re-attaches to a missing output socket until a
-  second undo restores the body — and only heals if the body `apply()` path re-runs the
-  socket reconcile (verify). Fix wants the same entry-ordering treatment as
-  `pushRowRemovalUndo` inside NoteNode's reconcile; intricate enough to do awake.
+- [x] **Note frontmatter socket removal isn't undo-coherent** — FIXED 2026-07-05. Verified
+  the bug (the flag's mental model was slightly off — body edits push NO history entry at all,
+  so the zombie cable did NOT self-heal on a second undo; it persisted until the next re-sync).
+  Fix: `pushNoteFieldRemovalUndo` (`NoteNode.tsx`) records a socket-stranding body edit as its
+  own undo entry, pushed AFTER the removeConnection entries so undo restores body+socket first
+  (the `pushRowRemovalUndo` ordering, adapted to the note's body-derived sockets). +1 test
+  (`noteFieldUndo.test.ts`); author-eyeball note in dev-notes for the live ordering. Scope: a
+  type-override drop (`force`) + a pruned per-key override on undo are separate/rare edges (noted).
 
 ---
 
