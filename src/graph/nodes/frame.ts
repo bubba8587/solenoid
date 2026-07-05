@@ -189,18 +189,22 @@ export class SortFrameNode extends ClassicPreset.Node {
 // Keep rows whose named column passes a predicate (verb: filterRows). Chain for
 // AND. `op` is an OpSelect (9 comparisons + text predicates); the value is typed
 // (coerced per the column's type by the predicate). Blanks/errors are dropped.
+// Text matching (string eq/neq + contains/startsWith/endsWith) ignores case by
+// default — Excel's `=` — with `matchCase` as the exact-match escape hatch.
 
 export class FilterFrameNode extends ClassicPreset.Node {
   label: string;
   op: FilterOp;
+  matchCase: boolean;
   cachedResult: FrameValue | SolError | null = null;
   stringLiterals: Record<string, string> = { column: "", value: "" };
   width = 200; height = 205;
 
-  constructor(init?: { label?: string; op?: FilterOp }) {
+  constructor(init?: { label?: string; op?: FilterOp; matchCase?: boolean }) {
     super("FilterFrame");
     this.label = init?.label ?? "Filter Rows";
     this.op = init?.op ?? "gt";
+    this.matchCase = init?.matchCase ?? false;
     this.addInput("frame", frameIn("Frame"));
     this.addInput("column", strIn("Column"));
     this.addInput("value", strIn("Value"));
@@ -216,7 +220,7 @@ export class FilterFrameNode extends ClassicPreset.Node {
     // same as an empty column. The engines used to see it and DIVERGE — JS
     // compared numeric columns against Number("")=0, Rust against NaN (audit
     // finding 16).
-    return emitFrame(this, beginPass(this), col === "" || val.trim() === "" ? await readFrame(f) : await runFrameUnary(f, { kind: "filter", column: col, op: this.op, value: val }));
+    return emitFrame(this, beginPass(this), col === "" || val.trim() === "" ? await readFrame(f) : await runFrameUnary(f, { kind: "filter", column: col, op: this.op, value: val, matchCase: this.matchCase }));
   }
 }
 

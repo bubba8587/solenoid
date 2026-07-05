@@ -26,7 +26,9 @@
 //    a non-issue.
 //  • string inequality (`<`/`>` in filter, and sort) is byte/lexicographic in
 //    Polars vs `localeCompare` in JS — identical for ASCII, may differ for accented
-//    text. eq/neq and the text predicates (contains/startsWith/endsWith) match.
+//    text. eq/neq and the text predicates (contains/startsWith/endsWith) match —
+//    both engines fold with a plain Unicode lowercase (Rust `to_lowercase` = JS
+//    `toLowerCase`) for the default case-insensitive text matching.
 //  • the OUTER join's appended-unmatched-right rows are not guaranteed to be in the
 //    oracle's exact tail order (Polars full-join ordering); inner/left/right match.
 
@@ -410,6 +412,10 @@ pub enum WireOp {
         column: String,
         op: String,
         value: Json,
+        // Text matching (string eq/neq + the text predicates) is case-INsensitive
+        // unless set — absent on old saves/callers, so serde defaults it.
+        #[serde(rename = "matchCase", default)]
+        match_case: bool,
     },
     #[serde(rename = "groupBy")]
     GroupBy { keys: Vec<String>, aggs: Vec<WireAgg> },
@@ -836,23 +842,40 @@ fn comparison_filter_expr(column: &str, ty: SolType, op: &str, value: &Json) -> 
     Ok(Some(e))
 }
 
-fn verb_filter(frame: &SolFrame, column: &str, op: &str, value: &Json) -> Result<SolFrame, IpcError> {
+/// Does this op+type+flag combination need the in-engine row scan instead of a
+/// Polars expression? The three text predicates always do; string eq/neq join
+/// them when matching case-insensitively (the default — the oracle's
+/// `passesFilter` fold). ONE predicate shared by `verb_filter` and `apply_step`
+/// so the standalone and fused paths can't drift.
+fn filter_needs_text_scan(ty: SolType, op: &str, match_case: bool) -> bool {
+    matches!(op, "contains" | "startsWith" | "endsWith")
+        || (ty == SolType::Str && !match_case && matches!(op, "eq" | "neq"))
+}
+
+fn verb_filter(frame: &SolFrame, column: &str, op: &str, value: &Json, match_case: bool) -> Result<SolFrame, IpcError> {
     require_columns(frame, std::slice::from_ref(&column.to_string()))?;
     let ty = frame.type_of(column).unwrap_or(SolType::Number);
 
-    // The three text predicates match on the STRINGIFIED cell; computed in-engine
-    // so the semantics match the oracle exactly (and no regex feature is needed).
-    if matches!(op, "contains" | "startsWith" | "endsWith") {
-        let needle = json_str(value);
+    // Text matching runs on the STRINGIFIED cell, in-engine, so the semantics
+    // match the oracle exactly (and no regex/strings feature is needed). Both
+    // sides fold with a plain Unicode lowercase unless `match_case`.
+    if filter_needs_text_scan(ty, op, match_case) {
+        let fold = |s: String| if match_case { s } else { s.to_lowercase() };
+        let needle = fold(json_str(value));
         let (_, cells) = frame.column_cells(column).unwrap();
         let keep: Vec<usize> = (0..frame.df.height())
             .filter(|&i| match cell_display(&cells[i]) {
                 None => false,
-                Some(s) => match op {
-                    "contains" => s.contains(&needle),
-                    "startsWith" => s.starts_with(&needle),
-                    _ => s.ends_with(&needle),
-                },
+                Some(s) => {
+                    let s = fold(s);
+                    match op {
+                        "contains" => s.contains(&needle),
+                        "startsWith" => s.starts_with(&needle),
+                        "endsWith" => s.ends_with(&needle),
+                        "eq" => s == needle,
+                        _ => s != needle, // neq (the only other op routed here)
+                    }
+                }
             })
             .collect();
         return reorder_rows(frame, &keep);
@@ -1336,14 +1359,14 @@ fn apply_step(plan: Plan, op: &WireOp) -> Result<Plan, IpcError> {
             let (lf, names, types) = group_by_lazy_plan(plan.lf, &plan.names, &plan.types, keys, aggs)?;
             Ok(Plan { lf, names, types })
         }
-        WireOp::Filter { column, op: fop, value } => {
+        WireOp::Filter { column, op: fop, value, match_case } => {
             require_in(&plan.names, std::slice::from_ref(column))?;
-            if matches!(fop.as_str(), "contains" | "startsWith" | "endsWith") {
+            let ty = type_of_in(&plan.names, &plan.types, column).unwrap();
+            if filter_needs_text_scan(ty, fop, *match_case) {
                 let frame = plan.collect()?;
-                let out = verb_filter(&frame, column, fop, value)?;
+                let out = verb_filter(&frame, column, fop, value, *match_case)?;
                 Ok(Plan::from_frame(&out))
             } else {
-                let ty = type_of_in(&plan.names, &plan.types, column).unwrap();
                 match comparison_filter_expr(column, ty, fop, value)? {
                     Some(e) => Ok(Plan { lf: plan.lf.filter(e), ..plan }),
                     None => Ok(Plan { lf: plan.lf.filter(lit(false)), ..plan }),

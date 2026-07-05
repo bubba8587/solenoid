@@ -132,12 +132,33 @@ const FILTER_OP_OPTIONS: { value: FilterOp; label: string }[] = [
   { value: "endsWith", label: "ends with" },
 ];
 
+// The ops where case can matter — string eq/neq + the three text predicates.
+// Numeric/date/logical comparisons ignore the flag, so the checkbox hides.
+const TEXT_MATCH_OPS: ReadonlySet<FilterOp> = new Set(["eq", "neq", "contains", "startsWith", "endsWith"]);
+
 export function FilterFrameComponent({ data, emit }: NodeProps<FilterFrameNodeType>) {
   const [op, setOp] = useNodeField(data, "op");
+  const [matchCase, setMatchCase] = useNodeField(data, "matchCase");
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
       <OpSelect value={op} options={FILTER_OP_OPTIONS} onChange={setOp} />
+      {TEXT_MATCH_OPS.has(op) && (
+        <label
+          title="Exact-case matching — off matches text like Excel's ="
+          style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, padding: "1px 0", cursor: "pointer" }}
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <input
+            type="checkbox"
+            checked={matchCase}
+            onChange={(e) => setMatchCase(e.target.checked)}
+            style={{ width: 13, height: 13, flexShrink: 0 }}
+          />
+          Match case
+        </label>
+      )}
       <FrameDisplay frame={data.cachedResult} label={data.label} />
     </NodeShell>
   );
