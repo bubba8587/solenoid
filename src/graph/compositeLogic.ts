@@ -5,8 +5,9 @@ import type { Schemes, AreaExtra, SolenoidNode, SolenoidConnection } from "./sch
 import { GroupNode, CompositeNode, CompositeInputNode, CompositeOutputNode } from "./rete-nodes";
 import { installErrorGuards } from "./errorValue";
 import { cableSelectionStore } from "./cableState";
-import { beginGraphRebuild, endGraphRebuild, bulkSettle } from "./process";
+import { beginGraphRebuild, endGraphRebuild, bulkSettle, getEditor } from "./process";
 import { ctorRegistry } from "./nodeCtorRegistry";
+import { measuredBox } from "./nodeSize";
 
 // ─── "Select N → make composite" — mirrors createGroupFromSelection ────────────
 // (groupLogic.ts:63-94) exactly for the selection-read + bounding-box pattern,
@@ -19,10 +20,8 @@ type Editor = NodeEditor<Schemes>;
 type Area = AreaPlugin<Schemes, AreaExtra>;
 
 function nodeBox(area: Area, id: string): { x: number; y: number; w: number; h: number } | null {
-  const v = area.nodeViews.get(id);
-  if (!v) return null;
-  const el = v.element;
-  return { x: v.position.x, y: v.position.y, w: el.offsetWidth, h: el.offsetHeight };
+  // Non-zero guaranteed — an unpainted member used to read offsetWidth/Height = 0.
+  return measuredBox(area, id, getEditor() ?? undefined);
 }
 
 /** Create a composite wrapping the current selection. Returns the new

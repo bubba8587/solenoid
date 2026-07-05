@@ -8,8 +8,9 @@ import { cableSelectionStore } from "./cableState";
 import { rebuildGroupMembership } from "./groupMembership";
 import { syncGroupCollapse } from "./groupCollapse";
 import { scheduleAutosave } from "./persistence";
-import { pushHistory } from "./process";
+import { pushHistory, getEditor } from "./process";
 import { settleStandoffs } from "./standoffs";
+import { measuredBox } from "./nodeSize";
 
 export const GROUP_DEFAULT_COLOR = "gray"; // palette slot — neutral gray when there's no clear majority
 
@@ -45,10 +46,9 @@ export const GROUP_PAD = 24;     // gap between the box edge and the nodes it wr
 export const GROUP_HEADER = 34;  // header height (matches GroupNode.css)
 
 function nodeBox(area: Area, id: string): { x: number; y: number; w: number; h: number } | null {
-  const v = area.nodeViews.get(id);
-  if (!v) return null;
-  const el = v.element;
-  return { x: v.position.x, y: v.position.y, w: el.offsetWidth, h: el.offsetHeight };
+  // measuredBox guarantees a non-zero size: an unpainted member used to read
+  // offsetWidth/Height = 0, collapsing the wrapped bbox to that member's corner.
+  return measuredBox(area, id, getEditor() ?? undefined);
 }
 
 /** Pin a group's view element behind its members (simpleNodesOrder stacks by DOM order). */
