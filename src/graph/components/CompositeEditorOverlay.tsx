@@ -16,6 +16,7 @@ import { SolenoidSocket } from "../sockets";
 import { NODE_COMPONENTS } from "../nodeRegistry";
 import { getGuardedSocketPosition } from "../guardedSocketPosition";
 import { cableSelectionStore } from "../cableState";
+import { pushNotice } from "../noticeStore";
 import { buildCatalog } from "../catalogUtils";
 import { AddNodeMenu, type NodeCatalogEntry } from "../AddNodeMenu";
 import { SocketComponent } from "./SocketComponent";
@@ -303,19 +304,33 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
       comp.internalPositions = positions;
     }
     if (parentEditor) {
+      // A boundary marker deleted inside the subgraph drops its exposed port — and
+      // any OUTER cables that were wired into that port go with it. Keeping the drop
+      // is by design (the port no longer exists), but severing outer wiring on close
+      // is exactly the kind of thing the user must not silently miss, so tally it and
+      // surface a notice below.
+      let droppedCables = 0;
+      let droppedPorts = 0;
       for (const p of [...comp.inputPorts]) {
         if (comp.internalEditor.getNode(p.internalNodeId)) continue;
-        for (const c of parentEditor.getConnections().filter((c) => c.target === comp.id && c.targetInput === p.id)) {
-          await parentEditor.removeConnection(c.id);
-        }
+        const cables = parentEditor.getConnections().filter((c) => c.target === comp.id && c.targetInput === p.id);
+        for (const c of cables) await parentEditor.removeConnection(c.id);
+        if (cables.length > 0) { droppedCables += cables.length; droppedPorts++; }
         comp.removeInputPort(p.id);
       }
       for (const p of [...comp.outputPorts]) {
         if (comp.internalEditor.getNode(p.internalNodeId)) continue;
-        for (const c of parentEditor.getConnections().filter((c) => c.source === comp.id && c.sourceOutput === p.id)) {
-          await parentEditor.removeConnection(c.id);
-        }
+        const cables = parentEditor.getConnections().filter((c) => c.source === comp.id && c.sourceOutput === p.id);
+        for (const c of cables) await parentEditor.removeConnection(c.id);
+        if (cables.length > 0) { droppedCables += cables.length; droppedPorts++; }
         comp.removeOutputPort(p.id);
+      }
+      if (droppedCables > 0) {
+        const name = comp.label?.trim() || "Composite";
+        pushNotice(
+          `Removed ${droppedCables} cable${droppedCables === 1 ? "" : "s"} connected to ${name} — ${droppedPorts === 1 ? "a port was" : `${droppedPorts} ports were`} deleted inside.`,
+          "warn",
+        );
       }
     }
   }

@@ -2,6 +2,47 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Composite drill-in follow-ups: dropped-cable notice DONE; toolbar reroute is its own session (2026-07-05)
+Two flagged drill-in follow-ups (backlog "Drill-in editor v2 niceties").
+
+**(b) DONE — surface the outer-cable drop on close.** When a boundary marker (CompositeInput/
+OutputNode) is deleted INSIDE the subgraph, closing/drilling-up drops its exposed port and any
+OUTER cables wired into it. That's correct (the port is gone) but was silent. `leaveLevel`
+(`CompositeEditorOverlay.tsx`) now tallies the parent connections it severs and fires a `warn`
+`pushNotice` ("Removed N cable(s) connected to <name> — a port was deleted inside."). Both close
+paths (full close + breadcrumb drill-up) go through `leaveLevel`, so both are covered. Counts only
+ports that actually had outer cables (a deleted-but-unwired port is invisible, no notice). Not
+unit-tested — the reconcile is component-internal and vitest's env is node (no jsdom); **author
+eyeball:** delete a wired boundary input inside a composite, close, confirm the toast reads right
+and fires once.
+
+**(a) DEFERRED — reroute the real toolbar / mobile bar to the active subgraph.** This is the
+author's ask but it is a genuine cross-cutting refactor, NOT something to land blind overnight, so
+I scoped it instead of half-wiring it. Why it's big:
+- Every main-chrome op is bound to the MAIN editor/area: `autoArrange`/`cleanup`/`deleteSelected`
+  are `process.ts` singletons Canvas registers against its own editor; add-node is
+  `addMenuRequest`; undo/redo is Canvas's `HistoryPlugin`. TopBar/MobileControls/MenuBar all call
+  those.
+- Canvas's window keydown **fully stands down** while a drill-in is open (`Canvas.tsx:691`
+  `if (compositeEditorStore.isOpen()) return;`), so the single-key shortcuts (A/T/G/…) already do
+  nothing inside a drill-in — they'd need rerouting too.
+- There is **no drill-in Tidy** — `arrangeFn` is ~500 lines of Canvas-specific ELK/group/standoff
+  logic reading the main `getArea()/getEditor()` throughout; a subgraph arrange is its own build.
+- `getEditor()/getArea()` are assumed == MAIN in hundreds of call sites (persistence,
+  serialization, recompute-retargeting to `stack[0]`), so a global swap is out — the reroute must
+  be surgical to the ACTION layer only.
+
+**Proposed architecture (for the scoped session):** add an "active graph context" to `process.ts`
+— `{ editor, area, history, arrange, cleanup, deleteSelected, addNodeAt, fit }`, default = main.
+The drill-in overlay registers ITS context on open and restores main on close (like the existing
+`setAutoArrange`/`setDeleteSelected` hooks, but as one swappable bundle). The toolbar action
+wrappers (`autoArrange()`, `deleteSelected()`, add-node, undo/redo) resolve through the active
+context; **data/persistence keeps calling the main `getEditor()` directly** (unchanged). Canvas's
+keydown, instead of `return`-ing when a drill-in is open, dispatches the same actions against the
+active context (or the drill-in installs its own keydown — it already handles Del/undo/redo/Esc).
+Then the drill-in's private header toolbar collapses to just the breadcrumb + "+ Input/Output"
+(the two subgraph-only actions), and the app chrome drives the rest. Wants live eyeballing; best
+done author-present. Backlog item updated to reflect the split.
 ### Frame Filter text matching is case-insensitive; "Match case" opt-out (2026-07-05)
 The D12 build (backlog "Frame Filter text matching", audit 28's reversed half): string
 eq/neq + contains/startsWith/endsWith on the Filter node now match case-INsensitively —
