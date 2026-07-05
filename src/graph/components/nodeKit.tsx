@@ -259,6 +259,7 @@ export function NodeShell({
   labelPlaceholder,
   hideOutputSockets = false,
   collapsible = true,
+  squareCollapse = false,
   className,
 }: {
   node: ShellNode;
@@ -272,6 +273,8 @@ export function NodeShell({
   hideOutputSockets?: boolean;
   /** Forwarded to NodeCard — false hides the collapse chevron (see NodeCard). */
   collapsible?: boolean;
+  /** Forwarded to NodeCard — collapse to a headerless square (Sparkline). */
+  squareCollapse?: boolean;
   /** Extra class on the card (e.g. a node-specific width override). */
   className?: string;
 }) {
@@ -326,7 +329,7 @@ export function NodeShell({
 
   return (
     <NodeFormatContext.Provider value={node.id}>
-      <NodeCard selected={node.selected} node={node} collapsible={collapsible} className={className}>
+      <NodeCard selected={node.selected} node={node} collapsible={collapsible} squareCollapse={squareCollapse} className={className}>
         {/* Header hover = the node's catalog one-liner (incl. Excel equivalent)
             — the self-documentation rule. The label display's own title (the
             untruncated label) wins inside its bounds. */}

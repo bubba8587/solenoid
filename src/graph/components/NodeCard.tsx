@@ -22,6 +22,10 @@ type Props = {
   /** When false, the node can't collapse and no chevron is shown (e.g. Number
    *  input, Display, Angle Dial — there's no meaningful collapsed form). */
   collapsible?: boolean;
+  /** Collapse to a headerless SQUARE (no header, no chevron — just the mini
+   *  figure), expandable by double-click. For pure inline-viz nodes (Sparkline)
+   *  where a labelled collapsed card reads as clutter. */
+  squareCollapse?: boolean;
   children: ReactNode;
 };
 
@@ -43,7 +47,7 @@ type Props = {
  *     fires during the capture descent from root → target, before
  *     anything in bubble.
  */
-export function NodeCard({ selected, node, className, accentOverride, collapsible = true, children }: Props) {
+export function NodeCard({ selected, node, className, accentOverride, collapsible = true, squareCollapse = false, children }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const collapsed = useSyncExternalStore(
     collapseStore.subscribe,
@@ -213,10 +217,12 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
         `solenoid-node${selected ? " solenoid-node--selected" : ""}` +
         `${collapsed ? " solenoid-node--collapsed" : ""}${groupColor ? " solenoid-node--grouped" : ""}` +
         `${resizable ? " solenoid-node--resizable" : ""}${size ? " solenoid-node--sized" : ""}` +
-        `${wide ? " solenoid-node--wide" : ""}` +
+        `${wide ? " solenoid-node--wide" : ""}${squareCollapse ? " solenoid-node--square-collapse" : ""}` +
         `${!collapsible ? " solenoid-node--no-chevron" : ""}${className ? " " + className : ""}`
       }
       style={styleProp}
+      // Square-collapsed nodes hide the chevron, so double-click expands them.
+      onDoubleClick={squareCollapse && collapsed ? toggleCollapse : undefined}
     >
       {node && collapsible && (
         <button
