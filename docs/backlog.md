@@ -692,10 +692,12 @@ Author-reported bugs/requests this session (see dev-notes 2026-07-04). Done:
   mobile fullscreen → maximize-2 / minimize-2 by state.
 
 Follow-ups surfaced:
-- [ ] **Verify the fullscreen Rust half on a real desktop build** — `toggle_fullscreen` +
-  F11 couldn't be `cargo`-compiled in the web session (no build cache; Tauri+Polars is
-  heavy). It's a two-line mirror of the existing window commands, but confirm on the next
-  `npm run tauri build`.
+- [x] **Verify the fullscreen Rust half — COMPILE half done 2026-07-05**: a full
+  `cargo test` (46/46 green, overnight session) built the whole crate incl.
+  `toggle_fullscreen`/`open_devtools` in lib.rs's invoke handler, so the "does it
+  compile" question is closed. The runtime half (press F11 in a real `solenoid.exe`)
+  is a 5-second author check on the next desktop build. (Original note: couldn't
+  cargo-compile in the web session.)
 - [ ] **Quick-wire stage-1 instantiates every catalog leaf per drop** (`filterByCompatibleSocket`
   calls `leaf.create()` to read live sockets). Fine at the current catalog size; memoize a
   per-type socket signature if the catalog grows a lot.
