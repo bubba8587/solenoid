@@ -15,7 +15,8 @@ import { documentStore } from "./documentStore";
 import { addMenuRequest } from "./addMenuStore";
 import { connectionDialog } from "./connectionDialogStore";
 import { mobileMenuStore } from "./mobileMenuStore";
-import { settingsPanel } from "./settingsStore";
+import { settingsPanel, settingsStore } from "./settingsStore";
+import { pickFolderDialog, openInFileManager, isDesktop } from "./fileBridge";
 import { rendererSpikeStore } from "./rendererSpikeStore";
 import { htmlCanvasSpikeStore } from "./htmlCanvasSpikeStore";
 import { APP_LOCALE } from "./locale";
@@ -122,6 +123,19 @@ export function MenuBar() {
         // graph), which replays the cinematic load reveal — a browser refresh
         // doesn't. A deliberate combo, not a stray single key.
         { label: "Reload document", shortcut: "Ctrl+Shift+L", onClick: () => void documentStore.reloadCurrent() },
+        ...(isDesktop() ? ([{ sep: true }, {
+          label: "Open documents folder",
+          onClick: () => void (async () => {
+            let folder = settingsStore.get("docsFolder");
+            if (!folder) {
+              const picked = await pickFolderDialog();
+              if (!picked) return;
+              settingsStore.set("docsFolder", picked);
+              folder = picked;
+            }
+            void openInFileManager(folder);
+          })(),
+        }] as MenuItem[]) : []),
       ],
     },
     {

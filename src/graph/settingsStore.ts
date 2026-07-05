@@ -17,6 +17,10 @@ export interface Settings {
   /** Absolute path to the folder local CSV connections read from. Empty until
    *  the user picks one. Desktop only (the browser build can't read files). */
   csvFolder: string;
+  /** Absolute path to the user's chosen documents/library folder — where they
+   *  keep saved .json graphs. Purely a bookmark for the "open in file manager"
+   *  action (File menu + Settings row); Solenoid doesn't index or scan it. */
+  docsFolder: string;
 
   /** Hide the minimap (it repaints on every pan). */
   perfHideMinimap: boolean;
@@ -35,6 +39,7 @@ const DEFAULTS: Settings = {
   groupPush: true,
   tidyAlign: "center",
   csvFolder: "",
+  docsFolder: "",
   perfHideMinimap: false,
   hideGridDots: false,
   quickWire: false,
@@ -92,6 +97,12 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
       {
         key: "csvFolder",
         label: "Target data folder",
+        type: "folder",
+      },
+      {
+        key: "docsFolder",
+        label: "Documents folder",
+        help: "Where you keep saved graphs — File ▸ Open documents folder reveals it",
         type: "folder",
       },
     ],
