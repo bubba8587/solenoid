@@ -7,7 +7,7 @@
     {"id":"spark_wave","type":"SparklineNode","x":520,"y":-40,"init":{"label":"Wave (line)","op":"line"}},
     {"id":"chart_wave","type":"ChartNode","x":520,"y":150,"init":{"label":"Wave (area)","op":"area"}},
 
-    {"id":"data","type":"ListInputNode","x":0,"y":470,"init":{"label":"Weekly sales","valueKeys":["v0","v1","v2","v3","v4","v5","v6"]},"literals":{"v0":12,"v1":19,"v2":7,"v3":23,"v4":15,"v5":28,"v6":9}},
+    {"id":"data","type":"ListInputNode","x":0,"y":470,"init":{"label":"Weekly sales","valueKeys":["v0","v1","v2","v3","v4","v5","v6"]},"stringLiterals":{"v0":"12","v1":"19","v2":"7","v3":"23","v4":"15","v5":"28","v6":"9"}},
     {"id":"spark_data","type":"SparklineNode","x":320,"y":430,"init":{"label":"Sales (column)","op":"column"}},
     {"id":"chart_data","type":"ChartNode","x":320,"y":620,"init":{"label":"Sales (column)","op":"column"}},
 

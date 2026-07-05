@@ -3,13 +3,13 @@
   "label": "Chart Showcase",
   "order": 40,
   "nodes": [
-    {"id":"cats","type":"ListInputNode","x":0,"y":40,"init":{"label":"Categories","valueKeys":["v0","v1","v2","v3","v4"]},"literals":{"v0":30,"v1":25,"v2":20,"v3":15,"v4":10}},
+    {"id":"cats","type":"ListInputNode","x":0,"y":40,"init":{"label":"Categories","valueKeys":["v0","v1","v2","v3","v4"]},"stringLiterals":{"v0":"30","v1":"25","v2":"20","v3":"15","v4":"10"}},
     {"id":"pie","type":"ChartNode","x":300,"y":-40,"init":{"label":"Share (pie)","op":"pie"}},
     {"id":"radar","type":"ChartNode","x":600,"y":-40,"init":{"label":"Profile (radar)","op":"radar"}},
     {"id":"radial","type":"ChartNode","x":900,"y":-40,"init":{"label":"Levels (radial)","op":"radialbar"}},
     {"id":"funnel","type":"ChartNode","x":1200,"y":-40,"init":{"label":"Stages (funnel)","op":"funnel"}},
 
-    {"id":"scores","type":"ListInputNode","x":0,"y":470,"init":{"label":"Samples","valueKeys":["v0","v1","v2","v3","v4","v5","v6","v7","v8","v9"]},"literals":{"v0":4,"v1":8,"v2":15,"v3":16,"v4":23,"v5":42,"v6":20,"v7":11,"v8":6,"v9":3}},
+    {"id":"scores","type":"ListInputNode","x":0,"y":470,"init":{"label":"Samples","valueKeys":["v0","v1","v2","v3","v4","v5","v6","v7","v8","v9"]},"stringLiterals":{"v0":"4","v1":"8","v2":"15","v3":"16","v4":"23","v5":"42","v6":"20","v7":"11","v8":"6","v9":"3"}},
     {"id":"hist","type":"HistogramNode","x":300,"y":400,"init":{"label":"Distribution"},"literals":{"bins":6}},
     {"id":"kpi","type":"KpiNode","x":640,"y":440,"init":{"label":"Revenue"},"literals":{"value":128,"prev":100,"goodUp":1}},
     {"id":"bullet","type":"BulletNode","x":880,"y":460,"init":{"label":"To target"},"literals":{"value":72,"target":80,"max":100}},

@@ -30,12 +30,12 @@
     {"id":"d_na","type":"DisplayNode","x":580,"y":1150,"init":{"label":"Display"}},
     {"id":"c_na","type":"IsTestNode","x":860,"y":1150,"init":{"label":"ISERROR","op":"iserror"}},
 
-    {"id":"s_conv","type":"ListInputNode","x":0,"y":1390,"init":{"label":"All-positive cash flows","valueKeys":["v0","v1","v2"]},"literals":{"v0":100,"v1":200,"v2":300}},
+    {"id":"s_conv","type":"ListInputNode","x":0,"y":1390,"init":{"label":"All-positive cash flows","valueKeys":["v0","v1","v2"]},"stringLiterals":{"v0":"100","v1":"200","v2":"300"}},
     {"id":"p_conv","type":"IrrNode","x":280,"y":1390,"init":{"label":"#CONV!  ·  IRR"}},
     {"id":"d_conv","type":"DisplayNode","x":580,"y":1390,"init":{"label":"Display"}},
     {"id":"c_conv","type":"IsTestNode","x":860,"y":1390,"init":{"label":"ISERROR","op":"iserror"}},
 
-    {"id":"s_ref","type":"ListInputNode","x":0,"y":1630,"init":{"label":"A 3-item list","valueKeys":["v0","v1","v2"]},"literals":{"v0":10,"v1":20,"v2":30}},
+    {"id":"s_ref","type":"ListInputNode","x":0,"y":1630,"init":{"label":"A 3-item list","valueKeys":["v0","v1","v2"]},"stringLiterals":{"v0":"10","v1":"20","v2":"30"}},
     {"id":"p_ref","type":"ListIndexNode","x":280,"y":1630,"init":{"label":"#REF!  ·  INDEX #99"},"literals":{"index":99}},
     {"id":"d_ref","type":"DisplayNode","x":580,"y":1630,"init":{"label":"Display"}},
     {"id":"c_ref","type":"IsTestNode","x":860,"y":1630,"init":{"label":"ISERROR","op":"iserror"}},

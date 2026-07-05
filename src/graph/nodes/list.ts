@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { numberSocket } from "../sockets";
+import { numListSocket } from "../sockets";
 import { getRecalcGen } from "../process";
 import { listIn, listOut, numIn, numOut, anyIn, anyOut, tableIn, tableOut } from "./shared";
 import { compareOp } from "./logic";
@@ -11,16 +11,32 @@ import { isFrameValue, isCubeValue, cubeRowCount, frameRowCount, type FrameValue
 
 // ─── List Input ─────────────────────────────────────────────────────────────
 
+/** Parse a CSV-of-numbers string ("1, 2.5, 3") into a number array, dropping
+ *  blanks and non-numeric parts. Empty / undefined → []. */
+function parseCsvNumbers(s: string | undefined): number[] {
+  if (!s) return [];
+  const out: number[] = [];
+  for (const part of s.split(",")) {
+    const t = part.trim();
+    if (t === "") continue;
+    const n = Number(t);
+    if (Number.isFinite(n)) out.push(n);
+  }
+  return out;
+}
+
 export class ListInputNode extends ClassicPreset.Node {
   label: string;
   cachedList: number[] = [];
-  // Sparse — only slots the user types into (or wires) contribute, so a
-  // fresh List is empty rather than full of zeros.
-  literals: Record<string, number> = {};
+  // Each row holds a CSV numeric LIST typed in place ("1, 2, 3"); a wired numlist
+  // on the row overrides its text. All rows are concatenated into the output — so
+  // the node both builds a list from typed values AND joins several wired lists.
+  // Sparse: only rows with text (or a cable) contribute.
+  stringLiterals: Record<string, string> = {};
   // Extensible inputs: rows are added/removed by the user (see
   // ExtensibleInputs). `nextInputId` keeps keys unique across removals.
   nextInputId = 0;
-  readonly valueSocket = numberSocket;
+  readonly valueSocket = numListSocket;
   width = 180;
   height = 200;
 
@@ -51,14 +67,21 @@ export class ListInputNode extends ClassicPreset.Node {
 
   removeValueInput(key: string): void {
     this.removeInput(key);
-    delete this.literals[key];
+    delete this.stringLiterals[key];
   }
 
-  data(inputs: Record<string, number[] | undefined>) {
+  data(inputs: Record<string, (number | number[])[] | undefined>) {
     const list: number[] = [];
     for (const key of Object.keys(this.inputs)) {
-      const v = inputs[key]?.[0] ?? this.literals[key];
-      if (v !== undefined && v !== null) list.push(v);
+      const wired = inputs[key]?.[0];
+      if (wired != null) {
+        // A wired numlist (or scalar) — take its numbers.
+        const arr = Array.isArray(wired) ? wired : [wired];
+        for (const v of arr) if (typeof v === "number") list.push(v);
+      } else {
+        // Otherwise the row's typed CSV list.
+        for (const n of parseCsvNumbers(this.stringLiterals[key])) list.push(n);
+      }
     }
     this.cachedList = list;
     return { list };
