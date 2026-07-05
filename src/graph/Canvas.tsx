@@ -707,16 +707,20 @@ export function Canvas() {
       // The Composite drill-in editor is open: the overlay owns the keyboard
       // (its own Delete/Escape handling); canvas shortcuts must not reach the
       // OUTER graph underneath it.
-      if (compositeEditorStore.isOpen()) return;
+      if (compositeEditorStore.isOpen() && e.key !== "F9") return;
 
       // Presenter mode: the overlay owns the keyboard (advance/back/Esc on its
       // own window listener). Without this gate the arrow keys ALSO nudge the
       // still-selected Presentation node 24px per slide on the hidden canvas,
       // and every bare-letter/Ctrl shortcut mutates the graph mid-show.
-      if (presentationStore.isActive()) return;
+      if (presentationStore.isActive() && e.key !== "F9") return;
 
       // F9 — Calculate now (Excel). Recomputes + rerolls volatiles in ANY mode; in
-      // manual mode it's the only thing that recomputes. Global, even while typing.
+      // manual mode it's the only thing that recomputes. Global, even while typing —
+      // and even while PRESENTING or DRILLED INTO a composite (the gates above
+      // exempt it): both overlays hide/cover the StatusBar chip + MenuBar item, so
+      // in manual/sketch mode F9 is the ONLY remaining recompute path there. Only
+      // the compute-overlay gate outranks it (never queue a recompute mid-pass).
       if (e.key === "F9") { e.preventDefault(); void requestRecalc(); return; }
 
       // Single-key canvas shortcuts (no modifier; ignored while typing). Esc

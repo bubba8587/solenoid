@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { CableSwitchNode as CableSwitchNodeType } from "../rete-nodes";
-import { getEditor, getArea, processGraph, bumpConnectionVersion } from "../process";
+import { getEditor, getArea, processGraph, bumpConnectionVersion, pushHistory } from "../process";
 import { pushRowRemovalUndo, pushRowAddUndo } from "./ExtensibleInputs";
 import { isFrameValue } from "../frame";
 import { useConnectedInputs } from "./inlineInput";
@@ -52,7 +52,20 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
     pushRowRemovalUndo(data, [key], () => data.removeValueInput(key));
     data.removeValueInput(key);
     const n = Object.keys(data.inputs).length;
-    if (data.activeIndex >= n) { data.activeIndex = Math.max(0, n - 1); setSelected(data.activeIndex); }
+    if (data.activeIndex >= n) {
+      const prevActive = data.activeIndex;
+      const clamped = Math.max(0, n - 1);
+      data.activeIndex = clamped;
+      setSelected(clamped);
+      // The clamp is its own history entry, pushed AFTER the row entry so undo
+      // restores the index LAST (row back first; data() clamps the transient
+      // out-of-range render). The component re-syncs off data.activeIndex on
+      // the area update the entry triggers.
+      pushHistory(
+        () => { data.activeIndex = prevActive; void getArea()?.update("node", data.id); void processGraph(); },
+        () => { data.activeIndex = clamped; void getArea()?.update("node", data.id); void processGraph(); },
+      );
+    }
     await getArea()?.update("node", data.id);
     bumpConnectionVersion(); // re-route cables on rows that shifted up
     await processGraph();

@@ -2,6 +2,24 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Final full-diff review of the overnight range + 2 fixes (2026-07-05, extended session)
+A closing adversarial review swept everything since `f926fa6` (the last author-reviewed
+state, ~30 commits). Verdict: the row-undo helpers check out against rete-history's
+actual internals (node undo reuses the SAME instance, so the captured closures never go
+stale), the cube-child Nest Join, reconcile accounting, and lazy-ref materialization
+through `any` sockets are all sound. Two findings, both fixed same-pass:
+- **F9 was unreachable while presenting or drilled into a composite** — the keydown
+  gates (composite `2026-07-04`, presenter added in audit round 2) early-returned
+  BEFORE the F9 branch, and both overlays hide/cover the StatusBar "Calculate" chip +
+  MenuBar item. In manual/sketch calc mode that left NO recompute path at all inside
+  either overlay (a dirty graph stayed dirty until exit). Both gates now exempt F9;
+  only the compute-overlay gate still outranks it (never queue a recompute mid-pass).
+- **CableSwitch undo didn't restore a clamped `activeIndex`** — removing the selected
+  last input clamps the index outside the undo system; Ctrl+Z brought the input back
+  but left the switch on the wrong lane. The clamp is now its own history entry,
+  pushed after the row entry so undo restores index last (`data()` clamps the
+  transient out-of-range render).
+
 ### ELK Tidy integration guard — elkjs under node + the post-layout passes (2026-07-05)
 Queue #2. The layout property tests (`layoutInvariants.test.ts`) cover the PURE cores in
 isolation; this covers the INTEGRATION they scoped out — `layoutTidyIntegration.test.ts`.
