@@ -88,7 +88,7 @@ export function ChartComponent({ data, emit }: NodeProps<ChartNodeType>) {
         : null}
     >
       <OpSelect value={op} onChange={setOp} options={OPTIONS} />
-      <div ref={chartRef} style={{ position: "relative", marginTop: 4, height: H }}>
+      <div ref={chartRef} className="solenoid-node__figure" style={{ position: "relative", marginTop: 4, height: H }}>
         {!hasData ? (
           <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>
         ) : (
