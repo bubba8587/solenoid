@@ -6,13 +6,17 @@ import { jsDateToSerial } from "./date";
 import { isMermaidValue } from "../mermaidValue";
 
 describe("visual nodes", () => {
-  it("Sparkline passes the list through; Chart emits a first-class chart value", () => {
+  it("Sparkline emits a chart value; Chart emits a first-class chart value", () => {
     const sp = new SparklineNode({ op: "column" });
     expect(sp.op).toBe("column");
-    expect(sp.data({ values: [[1, 2, 3]] })).toEqual({ result: [1, 2, 3] });
-    expect(sp.data({})).toEqual({ result: null });
-    // legacy "bar" migrates to "column"
+    expect(sp.data({ values: [[1, 2, 3]] }).chart).toMatchObject({ __chart: true, op: "column", values: [1, 2, 3] });
+    expect(sp.data({}).chart).toMatchObject({ __chart: true, values: [] });
+    // legacy "bar" migrates to "column"; retired "area" → "line"
     expect(new SparklineNode({ op: "bar" as "column" }).op).toBe("column");
+    expect(new SparklineNode({ op: "area" as "line" }).op).toBe("line");
+    // win/loss renders as a column chart of the signs (+1 / −1 / 0)
+    expect(new SparklineNode({ op: "winloss" }).data({ values: [[3, -2, 0, 5]] }).chart)
+      .toMatchObject({ op: "column", values: [1, -1, 0, 1] });
 
     // A Chart is a terminal figure — its output is the `chart` object value
     // (op + values + options), the thing a Report renders inline, NOT a
@@ -62,9 +66,9 @@ describe("visual nodes", () => {
   });
 
   it("op + literals round-trip through extractInit", () => {
-    const sp = new SparklineNode({ op: "area" });
+    const sp = new SparklineNode({ op: "column" });
     const sp2 = new SparklineNode(extractInit(sp));
-    expect(sp2.op).toBe("area");
+    expect(sp2.op).toBe("column");
 
     const g = new GaugeNode();
     g.literals.min = 10;

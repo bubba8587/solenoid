@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { numIn, numListIn, numListOut, numOut, tableIn, tableOut, strIn, strOut, chartOut, anyTableIn, frameIn } from "./shared";
+import { numIn, numListIn, numOut, tableIn, tableOut, strIn, strOut, chartOut, anyTableIn, frameIn } from "./shared";
 import { parseChartOptions, serializeChartOptions, type ChartOptions } from "./chartOptions";
 import type { ChartValue, KpiPayload, BulletPayload, TreemapPayload, SankeyPayload } from "../chartValue";
 import type { MermaidValue } from "../mermaidValue";
@@ -7,25 +7,29 @@ import { readFrame, type FrameInput } from "../frameBackend";
 import { formatFrameCell, isFrameValue, type FrameColumn } from "../frame";
 
 // ─── Visual output nodes ────────────────────────────────────────────────────
-// Pass-through "sinks" that render a chart of the value flowing through them, so
-// they can sit inline in a chain (value in → same value out) the way Display
-// does. The chart itself is drawn by the React component (recharts); the class
+// Terminal figures: a node reads a value and emits a chart VALUE (the `chart`
+// object socket a Report renders inline) — NOT a pass-through (this app only
+// passes values through Display + the Format Controller). The chart itself is
+// drawn by the React component (recharts); the class
 // only caches the value it received for the component to read.
 
-export type SparklineOp = "line" | "area" | "column";
+export type SparklineOp = "line" | "column" | "winloss";
 
 export const SPARKLINE_OP_META = {
-  line:   { label: "Line" },
-  area:   { label: "Area" },
-  column: { label: "Column" },
+  line:    { label: "Line" },
+  column:  { label: "Column" },
+  winloss: { label: "Win/Loss" },
 } satisfies Record<SparklineOp, { label: string }>;
 
 // ─── Sparkline ────────────────────────────────────────────────────────────────
-// A tiny, axis-less inline chart of a list — Excel's SPARKLINE.
+// A tiny, axis-less inline chart of a list — Excel's SPARKLINE (line / column /
+// win-loss). Emits a chart VALUE (not a pass-through) — a Report can embed it,
+// and it collapses to a headerless square.
 
 export class SparklineNode extends ClassicPreset.Node {
   label: string;
   op: SparklineOp;
+  chartOptions: ChartOptions = {};
   cachedResult: number | number[] | null = null;
   width = 240;
   height = 150;
@@ -33,16 +37,26 @@ export class SparklineNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: SparklineOp }) {
     super("Sparkline");
     this.label = init?.label ?? "Sparkline";
-    // "bar" was the earlier name for the (always-vertical) column sparkline.
-    this.op = (init?.op as string) === "bar" ? "column" : (init?.op ?? "line");
+    // Normalize retired ops: "bar" was the old column name; "area" is dropped → line.
+    const raw = init?.op as string | undefined;
+    this.op = raw === "bar" ? "column" : raw === "area" ? "line" : ((raw as SparklineOp) ?? "line");
     this.addInput("values", numListIn("Values"));
-    this.addOutput("result", numListOut("Pass-through"));
+    this.addOutput("chart", chartOut("Chart"));
   }
 
-  data(inputs: { values?: (number | number[])[] }) {
-    const v = inputs.values?.[0] ?? null;
-    this.cachedResult = v;
-    return { result: v };
+  data(inputs: { values?: (number | number[])[] }): { chart: ChartValue } {
+    const raw = inputs.values?.[0] ?? null;
+    this.cachedResult = raw;
+    const nums = (Array.isArray(raw) ? raw : raw == null ? [] : [raw]).map((x) => (typeof x === "number" ? x : 0));
+    // Win/Loss renders as a column chart of the signs (+1 up / −1 down / 0 flat).
+    const chart: ChartValue = {
+      __chart: true,
+      op: this.op === "winloss" ? "column" : this.op,
+      values: this.op === "winloss" ? nums.map((n) => Math.sign(n)) : nums,
+      options: this.chartOptions,
+      title: this.label || "Sparkline",
+    };
+    return { chart };
   }
 }
 
