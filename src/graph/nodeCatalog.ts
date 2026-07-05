@@ -3,7 +3,7 @@
 // Imported by Canvas.tsx; kept separate so agents edit this, not the full canvas.
 
 import {
-  AngleDialNode, SlicerNode, CableSwitchNode, DatePickerNode, XYPadNode,
+  AngleDialNode, SlicerNode, CableSwitchNode, DatePickerNode, DateRangeNode, XYPadNode,
   SparklineNode, ChartNode, HistogramNode, KpiNode, BulletNode, TreemapNode, SankeyNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode,
   NumberInputNode, ArithmeticNode, DisplayNode, ComparisonNode, MathFnNode,
   FormatControllerNode, ExpressionNode, RegexNode, GroupByNode,
@@ -208,6 +208,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
       { type: "slider",      label: "Slider",      description: "Drag a slider to set a value — configure min, max, step on the node.", accent: NODE_KIND_ACCENTS.input, create: () => new SliderInputNode() },
       { type: "angle-dial",  label: "Angle Dial",  description: "Rotary dial — spin or type to set an angle in degrees (0–359).", create: () => new AngleDialNode() },
       { type: "date-picker", label: "Date Picker", description: "Pick a day from a calendar field — outputs the matching date serial. Wire it into any date function.", create: () => new DatePickerNode(), parity: false },
+      { type: "date-range",  label: "Date Range",  description: "Pick a start and end date — outputs both serials. Subtract them for a duration, or feed a filter's bounds.", create: () => new DateRangeNode(), parity: false, keywords: "date range period start end duration between from to picker" },
       { type: "xy-pad",      label: "XY Pad",      description: "Drag a handle in a square to set two values at once. Outputs X and Y, each 0–1; scale them with arithmetic for any range.", create: () => new XYPadNode(), parity: false },
       { type: "color-picker", label: "Color", description: "Pick a colour (RGB or HSV); choose output format (hex / rgb() / hsl()). Outputs a CSS colour string.", create: () => new ColorPickerNode(), parity: false },
       { type: "slicer",      label: "Slicer",      description: "Filter a Frame like an Excel slicer — pick a column, click its values to keep matching rows.", create: () => new SlicerNode() },

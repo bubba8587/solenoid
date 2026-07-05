@@ -105,6 +105,35 @@ export class DatePickerNode extends ClassicPreset.Node {
   }
 }
 
+// ─── Date Range ───────────────────────────────────────────────────────────────
+// A dual-date control: pick a start and end date. Outputs both as Excel serials —
+// duration is composable downstream (subtract with arithmetic), matching the XY
+// Pad's "emit the raw values, scale downstream" philosophy. The two serials live
+// in `literals` so they round-trip via the generic literals spread (no
+// INIT_FIELD_ORDER edit).
+
+export class DateRangeNode extends ClassicPreset.Node {
+  label: string;
+  literals: Record<string, number>;
+  width  = 190;
+  height = 150;
+
+  constructor(init?: { label?: string }) {
+    super("DateRange");
+    this.label = init?.label ?? "Date Range";
+    const today = Math.floor(jsDateToSerial(new Date()));
+    this.literals = { start: today, end: today + 7 };
+    this.addOutput("start", dateOut("Start"));
+    this.addOutput("end",   dateOut("End"));
+  }
+
+  data(): { start: number | null; end: number | null } {
+    const start = this.literals.start ?? 0;
+    const end = this.literals.end ?? 0;
+    return { start: start > 0 ? start : null, end: end > 0 ? end : null };
+  }
+}
+
 // ─── XY Pad ─────────────────────────────────────────────────────────────────
 // A source control: drag a handle inside a square to set two values at once.
 // Outputs X and Y each in [0, 1] (fractions of the pad), the composable form —

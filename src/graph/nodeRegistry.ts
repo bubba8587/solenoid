@@ -7,7 +7,7 @@ import type { RenderEmit } from "rete-react-plugin";
 import type { Schemes } from "./schemes";
 import {
   AngleDialNode, SlicerNode, CableSwitchNode, NoteNode, ReportNode, SessionHistoryNode, PresentationNode, ImageNode,
-  SparklineNode, ChartNode, HistogramNode, KpiNode, BulletNode, TreemapNode, SankeyNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, DatePickerNode, XYPadNode,
+  SparklineNode, ChartNode, HistogramNode, KpiNode, BulletNode, TreemapNode, SankeyNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, DatePickerNode, DateRangeNode, XYPadNode,
   NumberInputNode, ArithmeticNode, DisplayNode, ComparisonNode, MathFnNode,
   ColorPickerNode,
   ClampNode, BooleanOpNode, NotNode, IfNode, ConduitNode, CastNode, ConstantNode, MRoundNode,
@@ -75,7 +75,7 @@ import {
 } from "./rete-nodes";
 import {
   AngleDialComponent, SlicerComponent, CableSwitchComponent, NoteComponent, ReportComponent, SessionHistoryComponent, PresentationComponent, ImageComponent,
-  SparklineComponent, ChartComponent, HistogramComponent, KpiComponent, BulletComponent, TreemapComponent, SankeyComponent, MermaidComponent, GaugeComponent, HeatmapCellComponent, ChartBuilderComponent, DatePickerComponent, XYPadComponent,
+  SparklineComponent, ChartComponent, HistogramComponent, KpiComponent, BulletComponent, TreemapComponent, SankeyComponent, MermaidComponent, GaugeComponent, HeatmapCellComponent, ChartBuilderComponent, DatePickerComponent, DateRangeComponent, XYPadComponent,
   NumberInputComponent, ArithmeticComponent, DisplayComponent, ComparisonComponent,
   MathFnComponent, ClampComponent, BooleanComponent, NotComponent, IfComponent, ConduitComponent, CastComponent,
   ConstantComponent, MRoundComponent, ListInputComponent, AggregateComponent,
@@ -179,6 +179,7 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [HeatmapCellNode, comp(HeatmapCellComponent)],
   [ChartBuilderNode, comp(ChartBuilderComponent)],
   [DatePickerNode,  comp(DatePickerComponent)],
+  [DateRangeNode,   comp(DateRangeComponent)],
   [XYPadNode,       comp(XYPadComponent)],
   [NumberInputNode, comp(NumberInputComponent)],
   [ArithmeticNode,  comp(ArithmeticComponent)],
