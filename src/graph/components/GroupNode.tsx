@@ -74,12 +74,11 @@ function renderReadout(t: RetainedTerminal) {
   const v = readoutValue(t);
   if (isSolError(v)) return <ErrorChip err={v} className="solenoid-group__row-val" />;
   // A chart member shows the [Chart] chip (opens the popup), not a text label.
+  // Rendered as a DIRECT flex child (like the Frame/Cube/Array chips) so the row's
+  // align-items:center centres it — wrapping it in the 15px row-val span made the
+  // small chip baseline-align low.
   if (isChartValue(v)) {
-    return (
-      <span className="solenoid-group__row-val">
-        <ChartChip value={v} pinNodeId={t.kind === "display" ? t.displayId : t.effNodeId} />
-      </span>
-    );
+    return <ChartChip value={v} pinNodeId={t.kind === "display" ? t.displayId : t.effNodeId} />;
   }
   return <span className="solenoid-group__row-val">{readoutText(t)}</span>;
 }
