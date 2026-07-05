@@ -19,19 +19,26 @@ border seam, grid system, collision avoidance, transpiler, seed-cleanup.
 
 ## Claims
 
-- **A1 (Lead):** orchestration + **Tier B** — B-1 (Rust oracle key + Infinity
-  sentinel) first, then B-2 AND/OR Filter, B-3 CSV date inference, B-4 hygiene.
-  (`engine.rs` is MINE this run — nobody else touches it.)
+- **A1 (Lead):** orchestration + **Tier B**. DONE: B-1(a) oracle key (`1efa87d`),
+  B-1(b) __nf sentinel + aggregate guard (queued #2), B-4a codegen retirement
+  (queued #3). NEXT: B-4b TEXT-family divergence sweep + GroupBy total_depth,
+  then B-2 AND/OR Filter + B-3 CSV dates AFTER the queue flushes (they re-enter
+  the queued files). (`engine.rs` stays MINE — nobody else touches it.)
 - **A2:** **C-1 COMPLETE RECHARTS** — IN PROGRESS. Owns `nodes/visual.ts`, chart
-  components (`chartRender.tsx`/`chartCore.ts`/`ChartNode.tsx`), `nodeCatalog.ts`
-  chart entries, showcase seed. Slices 1+2 committed (`09bc120`). Slice 3 (KPI +
-  Bullet) DONE + queued. Pausing this turn so A3 commits Slice 3 before I re-touch
-  the shared registry files. Remaining: Treemap/Sankey (Slice 4), Bubble/Composed
-  multi-series (Slice 5), date-range picker (NB: DatePickerNode exists — check range
-  coverage), showcase seed last.
-- **A3:** A-1 DONE (`d630a43`), A-3 DONE (`fa6080b`), A-4 DONE (`c5fc842`).
-  Saw the Slice 3 HOLD — waiting for A2's flip-back before staging it. Starting
-  A-2 a11y batch meanwhile (verify-first, per file).
+  components, `nodeCatalog.ts` chart entries, showcase seed. Committed: Slices 1+2
+  (`09bc120`, 5 ops + Histogram), Slices 3+4 (`7315441`, KPI/Bullet/Treemap/Sankey).
+  Date-range picker DONE + READY (queued). **Remaining: Bubble/Composed multi-series
+  (needs a matrix input on Chart — the one invasive piece, own commit), then the
+  showcase seed wiring every new type.** Pausing for A3 to commit date-range before
+  the seed re-touches shared files.
+- **A3:** A-1/A-3/A-4 DONE. A-2 a11y batch DONE + committed (`c556b84`). FIFO
+  queue fully flushed: A2's Slices 3+4 (`7315441`), A1's B-1b (`aa2a623`, cargo
+  54/54), A1's B-4a (`aa5ab34`), A2's date-range picker (`5bd7105`). Pushed
+  `develop` to origin per direct author confirmation in my session (relayed
+  second-hand notes alone don't trigger a push — confirmed live this time):
+  `f926fa6..aa5ab34` (a stale ref at push time; `5bd7105` landed after and is
+  NOT yet pushed — will push again once more READY items land, or on request).
+  Idle on the commit queue now.
 
 ## Queue
 
@@ -45,8 +52,10 @@ border seam, grid system, collision avoidance, transpiler, seed-cleanup.
 3. E-2 Finance/FRED connection (API-key store + FRED + Stooq).
 
 **A3 (commit duty FIRST — flush "Ready to commit" FIFO — then):**
-1. ~~A-1~~ DONE. ~~A-3~~ DONE. ~~A-4~~ DONE.
-2. A-2 a11y verify-and-finish batch (claim per-file here as you go). ← current
+1. ~~A-1~~ DONE. ~~A-3~~ DONE. ~~A-4~~ DONE. ~~A-2 a11y~~ DONE (`c556b84`).
+2. ~~Push develop~~ DONE (`f926fa6..aa5ab34`, confirmed live with the author).
+   NOTE: `5bd7105` (date-range picker) landed after that push — still
+   unpushed. Push again once the queue empties, or if the author asks.
 
 **Unstaffed pool (claim freely when a lane empties):** C-2 Input Switcher
 upgrade · C-4 unified XLOOKUP merge · Tier D composite (D-1..D-4, ONE agent,
@@ -55,26 +64,17 @@ F-2 Document Properties, ONE agent, serial).
 
 ## Ready to commit
 
-- **⏸ HOLD (A2 actively extending with Slice 4 Treemap/Sankey — do NOT stage until
-  I flip this back to READY with the final file list).**
-- **A2 · C-1 Slice 3 — KPI card + Bullet graph nodes.** Two new payload-figure
-  chart types (value+prior delta; value-vs-target bar); factored a shared
-  `ChartFigure` (renders any ChartValue by kind) now used by Display + Composite +
-  the Report embed. tsc clean for these files; my-area vitest green (112:
-  chartValue/seeds/catalogRegistry/persistenceSweep). Stage ONLY:
-  `src/graph/chartValue.ts`, `src/graph/nodes/visual.ts`,
-  `src/graph/components/chartCards.tsx` (NEW), `src/graph/components/chartCards.css` (NEW),
-  `src/graph/components/KpiNode.tsx` (NEW), `src/graph/components/BulletNode.tsx` (NEW),
-  `src/graph/components/chartView.tsx`, `src/graph/components/DisplayNode.tsx`,
-  `src/graph/components/CompositeNode.tsx`, `src/graph/components/inlineRefDisplay.tsx`,
-  `src/graph/components/index.ts`, `src/graph/nodeRegistry.ts`, `src/graph/nodeCatalog.ts`.
-  (NOT frameBackend/frameVerbs/engine.rs/polarsBackend.test — A1's Tier B.)
-  Msg: `feat: KPI card + Bullet graph nodes (ChartValue payload figures)` +
-  body: structured non-series figures via ChartValue.payload; eager cards (no
-  recharts); shared ChartFigure dedups the by-kind chart render across 3 surfaces.
+_(empty)_
 
 ## Recently done
 
+- Agent 3 — A2's date-range picker (DateRangeNode). `5bd7105`.
+- **Pushed `develop` to origin** — direct author confirmation in-session.
+  `f926fa6..aa5ab34`.
+- Agent 3 — A1's B-4a, compileFormula codegen retired. `aa5ab34`.
+- Agent 3 — A1's B-1(b), Infinity wire sentinel + aggregate guard (cargo 54/54). `aa2a623`.
+- Agent 3 — A2's C-1 Slices 3+4 (KPI/Bullet/Treemap/Sankey). `7315441`.
+- Agent 3 — A-2 a11y batch (7 items). `c556b84`.
 - Agent 3 — committed A2's C-1 Slices 1+2 (chart op surface + Histogram). `09bc120`.
 - Agent 3 — committed A1's B-1(a) Rust oracle key (serde_json tagged-tuple
   parity). `1efa87d`.
