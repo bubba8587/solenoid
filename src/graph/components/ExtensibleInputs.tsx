@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
 import type { ClassicPreset } from "rete";
 import type { ClassicScheme, RenderEmit } from "rete-react-plugin";
-import { getEditor, getArea, processGraph, bumpConnectionVersion } from "../process";
+import { getEditor, getArea, processGraph, bumpConnectionVersion, pushHistory } from "../process";
 import { collapseStore } from "../collapseStore";
 import { SolenoidSocket } from "../sockets";
 import {
@@ -28,6 +28,69 @@ export interface ExtensibleNode {
   stringLiterals?: Record<string, string>;
   addValueInput: () => string;
   removeValueInput: (key: string) => void;
+}
+
+// The rows an add/remove gesture touches must be UNDOABLE alongside the
+// connection add/removes the classic history preset already records — without
+// this, Ctrl+Z after removing a WIRED row re-added the cable into an input key
+// that no longer existed (a ghost cable until reload, then a silent drop).
+// Generic over every extensible node: undo re-adds the very same
+// `ClassicPreset.Input` OBJECTS (socket type + label survive by identity) and
+// restores the node's original input-key ORDER (positional nodes — CHOOSE —
+// change meaning if rows reorder). Call BEFORE the rows are actually removed,
+// and AFTER the connection removals, so undo pops row-restore first and the
+// cable re-add that follows lands on a live socket.
+type RowHost = {
+  id: string;
+  inputs: Record<string, { socket: ClassicPreset.Socket; label?: string } | undefined>;
+};
+function refreshAfterRowChange(node: RowHost): void {
+  void getArea()?.update("node", node.id);
+  bumpConnectionVersion();
+  void processGraph();
+}
+export function pushRowRemovalUndo(node: RowHost, keys: string[], removeAgain: () => void): void {
+  const saved = keys
+    .map((k) => [k, node.inputs[k]] as const)
+    .filter((e): e is [string, NonNullable<RowHost["inputs"][string]>] => !!e[1]);
+  if (saved.length === 0) return;
+  const order = Object.keys(node.inputs);
+  pushHistory(
+    () => {
+      const n = node as unknown as { addInput: (key: string, input: unknown) => void };
+      for (const [k, input] of saved) if (!node.inputs[k]) n.addInput(k, input);
+      // Restore insertion order by re-slotting every key (the Input objects
+      // themselves are untouched, so live cables keep their endpoints).
+      const rec = node.inputs as Record<string, unknown>;
+      for (const k of order) {
+        if (k in rec) { const v = rec[k]; delete rec[k]; rec[k] = v; }
+      }
+      refreshAfterRowChange(node);
+    },
+    () => {
+      removeAgain();
+      refreshAfterRowChange(node);
+    },
+  );
+}
+/** The inverse for "+ Add": call AFTER adding, with the fresh key(s) — a
+ *  paired node passes both halves so the whole pair is ONE undo entry. */
+export function pushRowAddUndo(node: RowHost, keys: string[], removeIt: () => void): void {
+  const saved = keys
+    .map((k) => [k, node.inputs[k]] as const)
+    .filter((e): e is [string, NonNullable<RowHost["inputs"][string]>] => !!e[1]);
+  if (saved.length === 0) return;
+  pushHistory(
+    () => {
+      removeIt();
+      refreshAfterRowChange(node);
+    },
+    () => {
+      const n = node as unknown as { addInput: (k: string, i: unknown) => void };
+      for (const [k, input] of saved) if (!node.inputs[k]) n.addInput(k, input);
+      refreshAfterRowChange(node);
+    },
+  );
 }
 
 /**
@@ -74,7 +137,8 @@ export function ExtensibleInputs({
   }
 
   async function addRow() {
-    node.addValueInput();
+    const key = node.addValueInput();
+    pushRowAddUndo(node, [key], () => node.removeValueInput(key));
     await getArea()?.update("node", node.id);
     await processGraph();
   }
@@ -86,6 +150,9 @@ export function ExtensibleInputs({
         if (c.target === node.id && c.targetInput === key) await editor.removeConnection(c.id);
       }
     }
+    // AFTER the connection removals (undo restores the row before the cable),
+    // BEFORE the removal itself (captures the live Input object + key order).
+    pushRowRemovalUndo(node, [key], () => node.removeValueInput(key));
     node.removeValueInput(key);
     await getArea()?.update("node", node.id);
     bumpConnectionVersion(); // re-route cables on rows that shifted up

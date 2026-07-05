@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { CableSwitchNode as CableSwitchNodeType } from "../rete-nodes";
 import { getEditor, getArea, processGraph, bumpConnectionVersion } from "../process";
+import { pushRowRemovalUndo, pushRowAddUndo } from "./ExtensibleInputs";
 import { isFrameValue } from "../frame";
 import { useConnectedInputs } from "./inlineInput";
 import { MeasuredSocketRow } from "./NodeSocket";
@@ -35,7 +36,8 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
     if (keys.length) select((data.activeIndex + 1) % keys.length);
   }
   async function addRow() {
-    data.addValueInput();
+    const key = data.addValueInput();
+    pushRowAddUndo(data, [key], () => data.removeValueInput(key));
     await getArea()?.update("node", data.id);
     await processGraph();
   }
@@ -46,6 +48,8 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
         if (c.target === data.id && c.targetInput === key) await editor.removeConnection(c.id);
       }
     }
+    // AFTER the connection removals, BEFORE the removal (see ExtensibleInputs).
+    pushRowRemovalUndo(data, [key], () => data.removeValueInput(key));
     data.removeValueInput(key);
     const n = Object.keys(data.inputs).length;
     if (data.activeIndex >= n) { data.activeIndex = Math.max(0, n - 1); setSelected(data.activeIndex); }

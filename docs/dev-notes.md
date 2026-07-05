@@ -29,6 +29,24 @@ DISTINCT, complementary capability — nesting an already-assembled cube:
   nests a sub-cube / no-match → empty sub-cube / flat child still a sub-frame at depth 1 / node
   path / cube-parent+cube-child deepens a leaf). JS-only (Nest is eager, no Rust half).
 
+### Extensible-row add/remove is now undoable (2026-07-05, extended session)
+Audit find in the undo system, pre-existing since the variadic-rows work
+(2026-06-23): removing a WIRED row (CHOOSE/IFS/SWITCH/List/Concat/BooleanOp/
+CableSwitch/Fill) recorded only the CABLE removal in history — Ctrl+Z re-added a
+connection into an input key that no longer existed (ghost cable until reload,
+then a silent drop; for CHOOSE, row loss also shifts positional meaning).
+- Fix is GENERIC, zero per-class code: `pushRowRemovalUndo`/`pushRowAddUndo`
+  (ExtensibleInputs.tsx) capture the removed `ClassicPreset.Input` OBJECTS and
+  re-add the same instances on undo (socket type + label survive by identity),
+  then re-slot the node's original input-key ORDER (positional nodes change
+  meaning if rows reorder). Wired into ExtensibleInputs, PairedExtensibleInputs
+  (a pair = ONE entry), and CableSwitch's own add/remove.
+- **Entry ordering is load-bearing**: the row entry is pushed AFTER the
+  connection removals and BEFORE the removal itself, so undo pops row-restore
+  first and the cable re-add that follows lands on a live socket.
+- "+ Add" is now also undoable (it previously left an orphan row on Ctrl+Z).
+- Tests: `components/extensibleRowUndo.test.ts` (identity + order + pair cases).
+
 ### OVERNIGHT SESSION SUMMARY (2026-07-05, ~03:30–08:30 — 3-agent autonomous crew)
 22 commits on develop (NOT pushed — local session). Every commit: tsc clean + full
 vitest green (2044 → 2110 tests, +67); cargo 46/46; production build healthy (main
