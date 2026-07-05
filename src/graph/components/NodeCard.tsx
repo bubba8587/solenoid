@@ -133,11 +133,9 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
       if (w === node.width && h === node.height) return;
       node.width = w;
       node.height = h;
-      // During a manual resize drag, skip the re-render + repositioning: that
-      // update recreates this node's DOM and would drop the grip's pointer
-      // capture (drag stops after one move). ResizeHandle does a single sync on
-      // drag end instead.
-      if (nodeSizeStore.isDragging()) return;
+      // Update LIVE during a resize drag so cables re-route as the box grows —
+      // the grip drags off window listeners + module state (not the element's
+      // pointer capture), so recreating this node's DOM here doesn't drop it.
       void getArea()?.update("node", node.id);
       // A resize can shift this node's sockets (e.g. a list display box grew a
       // row, moving the output socket down). Keep any docked FC aligned.

@@ -625,36 +625,35 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
 
 /* Manual resize grip — lives in the bottom-right corner INSIDE a node's value
    box (display box or the main text input), not the card body. */
+/* Matches the Group resize grip (GroupNode.css .solenoid-group__resize): a 16px
+   box in the bottom-right corner, opacity 0.5 → 0.9 on hover. */
 .solenoid-node__resize-handle {
   position: absolute;
   right: 2px;
-  bottom: 1px;
+  bottom: 2px;
+  width: 16px;
+  height: 16px;
   display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: center;
   color: var(--text-dim);
-  opacity: 0.45;
+  opacity: 0.5;
   cursor: nwse-resize;
   z-index: 4;
 }
 .solenoid-node__resize-handle:hover {
-  opacity: 0.95;
+  opacity: 0.9;
   color: var(--accent);
 }
 
-/* Touch: the 7px grip is far too small for a fingertip. Pad out its hit area
-   and show it more clearly. (It only responds on a SELECTED node — manipulation
-   is gated on selection, same as dragging/wiring.) */
+/* Touch: pad the hit area out for a fingertip. (It only responds on a SELECTED
+   node — manipulation is gated on selection, same as dragging/wiring.) */
 @media (pointer: coarse) {
   .solenoid-node__resize-handle {
     right: 0;
     bottom: 0;
-    padding: 9px;
+    padding: 7px;
     opacity: 0.7;
-  }
-  .solenoid-node__resize-handle svg {
-    width: 11px;
-    height: 11px;
   }
 }
 
