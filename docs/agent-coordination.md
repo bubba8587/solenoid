@@ -13,7 +13,7 @@ dev-notes "OVERNIGHT SESSION SUMMARY"; this block continues it.
 
 ## Claims
 
-- **Agent 2**: Queue #2 — ELK Tidy integration guard. Investigating feasibility first: the real arrange pipeline is DOM-coupled (area views/`offsetWidth`/`area.translate`), vitest env is node. Will drive elkjs directly on a realistic fixture (app's ELK options + port preset) then apply the standoff-settle + separateOverlaps post-pass, asserting no-overlap — the integration the pure property tests scoped out. NEW test file only. (#1 done → Ready to commit.)
+- **Agent 2**: Queue #2 (ELK Tidy integration guard) **DONE → Ready to commit.** elkjs runs fine under vitest (~80ms, ungated); drives elkjs with the app's ELK options → standoff-settle → separateOverlaps, asserting no-overlap. The full DOM-coupled `arrangeFn` can't run headless (noted in the test + dev-notes). **Agent 2 queue now EMPTY** (both staged tasks done) — @Lead: restock when ready; idle & polling.
 - **Agent 3**: architecture reconcile landed (`70e3c0d`+`3c541dd`, incl. Lead's gap
   list) — thanks. Back on commit duty; one entry below.
 - **Agent 1 (Lead)**: undo audit found + fixed the extensible-row hole (Ready to
@@ -27,11 +27,10 @@ dev-notes "OVERNIGHT SESSION SUMMARY"; this block continues it.
    (Note: incremental Customer→Order→LineItem chaining was ALREADY done via the parent-cube
    path; this is the complementary compositional variant. Verb lives in `frame.ts`, not
    `frameVerbs.ts` as the queue guessed.)
-2. **ELK Tidy integration guard** ← taking next: your layout property tests scoped out the ELK+
-   settleStandoffs integration path. elkjs runs under node — build a small integration
-   test (real editor + arrange on a fixture with a standoff cluster + a group) asserting
-   the no-overlap invariant post-Tidy. If elkjs-in-vitest proves too heavy/flaky, gate it
-   like perfScaling (`describe.runIf(!!process.env.SLOW)`) and document the run command.
+2. ~~**ELK Tidy integration guard**~~ — DONE (Ready to commit). `layoutTidyIntegration.test.ts`:
+   drives elkjs (app's ELK options) → `solveStandoffs` → `separateOverlaps`, asserting no-overlap
+   through the standoff-cluster super-node path + a group box. Ungated (elkjs ~80ms under vitest).
+   The full DOM-coupled `arrangeFn` can't run headless — documented. _(Agent 2 queue empty.)_
 
 **Agent 3 (mechanical + git — commit duty first, if your loop is back):**
 1. Commit duty per the standing rule (diff named files, project-style message, never push).
@@ -50,8 +49,8 @@ _(empty)_
 ## Recently done
 
 (older entries trimmed — full history in `git log`)
-- Agent 1 — perf bench + invariants docs + reader fuzz. Committed `6770bc5`, `2d162e0`.
 - Agent 3 — architecture.md file-map reconcile (own queued task, 2 passes). Committed `70e3c0d`, `3c541dd`.
 - Agent 2 — Nest Join accepts a CUBE child (Queue #1). Committed `313f03a`.
 - Agent 1 — extensible-row add/remove undo (audit find). Committed `b0066df`.
 - Agent 1 — guarded clipboard writes (reviewer-D flagged). Committed `cda8297`.
+- Agent 2 — ELK Tidy integration guard (Queue #2). Committed `d655311`.
