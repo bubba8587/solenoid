@@ -59,6 +59,7 @@ export function shapeOf(op: FrameOp, input: Shape): Shape {
     case "distinct":
     case "head":
     case "filter":
+    case "filterMulti":
       return input;
     case "groupBy": {
       const keyCols = op.keys.map((n) => requireCol(input, n));

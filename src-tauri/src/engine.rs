@@ -467,6 +467,13 @@ pub enum WireOp {
         #[serde(rename = "matchCase", default)]
         match_case: bool,
     },
+    #[serde(rename = "filterMulti")]
+    FilterMulti {
+        // "and" keeps rows passing ALL conditions, "or" ANY (B-2; mirrors the
+        // oracle's filterRowsMulti — matchCase rides per-condition).
+        combine: String,
+        conditions: Vec<WireFilterCond>,
+    },
     #[serde(rename = "groupBy")]
     GroupBy { keys: Vec<String>, aggs: Vec<WireAgg> },
     #[serde(rename = "unpivot")]
@@ -485,6 +492,16 @@ pub enum WireOp {
 // boundary; the full PIVOTBY spec is richer than the engine's op set). A stale
 // pre-PIVOTBY single-field Pivot variant lived here, incompatible with the JS
 // FrameOp shape — deleted rather than kept wrong (audit finding 34).
+
+/// One predicate of a `filterMulti` (the oracle's `FilterCond`, frameVerbs.ts).
+#[derive(Deserialize)]
+pub struct WireFilterCond {
+    column: String,
+    op: String,
+    value: Json,
+    #[serde(rename = "matchCase", default)]
+    match_case: bool,
+}
 
 #[derive(Deserialize, Default)]
 pub struct WireJoinOpts {
@@ -902,32 +919,38 @@ fn filter_needs_text_scan(ty: SolType, op: &str, match_case: bool) -> bool {
         || (ty == SolType::Str && !match_case && matches!(op, "eq" | "neq"))
 }
 
+/// Per-row match mask for a text predicate. Runs on the STRINGIFIED cell,
+/// in-engine, so the semantics match the oracle exactly (and no regex/strings
+/// feature is needed). Both sides fold with a plain Unicode lowercase unless
+/// `match_case`. Shared by `verb_filter` and the multi-condition masks.
+fn text_scan_mask(frame: &SolFrame, column: &str, op: &str, value: &Json, match_case: bool) -> Vec<bool> {
+    let fold = |s: String| if match_case { s } else { s.to_lowercase() };
+    let needle = fold(json_str(value));
+    let (_, cells) = frame.column_cells(column).unwrap();
+    (0..frame.df.height())
+        .map(|i| match cell_display(&cells[i]) {
+            None => false,
+            Some(s) => {
+                let s = fold(s);
+                match op {
+                    "contains" => s.contains(&needle),
+                    "startsWith" => s.starts_with(&needle),
+                    "endsWith" => s.ends_with(&needle),
+                    "eq" => s == needle,
+                    _ => s != needle, // neq (the only other op routed here)
+                }
+            }
+        })
+        .collect()
+}
+
 fn verb_filter(frame: &SolFrame, column: &str, op: &str, value: &Json, match_case: bool) -> Result<SolFrame, IpcError> {
     require_columns(frame, std::slice::from_ref(&column.to_string()))?;
     let ty = frame.type_of(column).unwrap_or(SolType::Number);
 
-    // Text matching runs on the STRINGIFIED cell, in-engine, so the semantics
-    // match the oracle exactly (and no regex/strings feature is needed). Both
-    // sides fold with a plain Unicode lowercase unless `match_case`.
     if filter_needs_text_scan(ty, op, match_case) {
-        let fold = |s: String| if match_case { s } else { s.to_lowercase() };
-        let needle = fold(json_str(value));
-        let (_, cells) = frame.column_cells(column).unwrap();
-        let keep: Vec<usize> = (0..frame.df.height())
-            .filter(|&i| match cell_display(&cells[i]) {
-                None => false,
-                Some(s) => {
-                    let s = fold(s);
-                    match op {
-                        "contains" => s.contains(&needle),
-                        "startsWith" => s.starts_with(&needle),
-                        "endsWith" => s.ends_with(&needle),
-                        "eq" => s == needle,
-                        _ => s != needle, // neq (the only other op routed here)
-                    }
-                }
-            })
-            .collect();
+        let mask = text_scan_mask(frame, column, op, value, match_case);
+        let keep: Vec<usize> = (0..frame.df.height()).filter(|&i| mask[i]).collect();
         return reorder_rows(frame, &keep);
     }
 
@@ -938,6 +961,50 @@ fn verb_filter(frame: &SolFrame, column: &str, op: &str, value: &Json, match_cas
             Ok(SolFrame { df, types: frame.types.clone() })
         }
     }
+}
+
+/// Evaluate a boolean expression against the frame as a per-row mask.
+/// A null result (comparison over a null cell) reads as FALSE — the oracle's
+/// `passesFilter` null/error policy.
+fn expr_mask(frame: &SolFrame, expr: Expr) -> Result<Vec<bool>, IpcError> {
+    let df = collect_lazy(frame.df.clone().lazy().select([expr.alias("__mask")]))?;
+    let s = df.get_columns()[0].as_materialized_series();
+    Ok((0..s.len())
+        .map(|i| matches!(s.get(i).unwrap_or(AnyValue::Null), AnyValue::Boolean(true)))
+        .collect())
+}
+
+/// Per-row keep mask for ONE multi-filter condition: the text scan when the
+/// op+type+flag needs it, else the shared comparison expr (an unparseable
+/// value matches NO rows for that condition — under OR the others still can).
+fn condition_mask(frame: &SolFrame, c: &WireFilterCond) -> Result<Vec<bool>, IpcError> {
+    require_columns(frame, std::slice::from_ref(&c.column))?;
+    let ty = frame.type_of(&c.column).unwrap_or(SolType::Number);
+    if filter_needs_text_scan(ty, &c.op, c.match_case) {
+        return Ok(text_scan_mask(frame, &c.column, &c.op, &c.value, c.match_case));
+    }
+    match comparison_filter_expr(&c.column, ty, &c.op, &c.value)? {
+        None => Ok(vec![false; frame.df.height()]),
+        Some(e) => expr_mask(frame, e),
+    }
+}
+
+/// Keep rows passing ALL ("and") / ANY ("or") conditions — the oracle's
+/// `filterRowsMulti` (frameVerbs.ts). No conditions = identity on both engines.
+fn verb_filter_multi(frame: &SolFrame, combine: &str, conditions: &[WireFilterCond]) -> Result<SolFrame, IpcError> {
+    if conditions.is_empty() {
+        let all: Vec<usize> = (0..frame.df.height()).collect();
+        return reorder_rows(frame, &all);
+    }
+    let masks = conditions
+        .iter()
+        .map(|c| condition_mask(frame, c))
+        .collect::<Result<Vec<_>, _>>()?;
+    let is_and = combine != "or";
+    let keep: Vec<usize> = (0..frame.df.height())
+        .filter(|&i| if is_and { masks.iter().all(|m| m[i]) } else { masks.iter().any(|m| m[i]) })
+        .collect();
+    reorder_rows(frame, &keep)
 }
 
 // ─── group-by (native Polars, lazy) ─────────────────────────────────────────────
@@ -1422,6 +1489,41 @@ fn apply_step(plan: Plan, op: &WireOp) -> Result<Plan, IpcError> {
                     Some(e) => Ok(Plan { lf: plan.lf.filter(e), ..plan }),
                     None => Ok(Plan { lf: plan.lf.filter(lit(false)), ..plan }),
                 }
+            }
+        }
+        WireOp::FilterMulti { combine, conditions } => {
+            if conditions.is_empty() {
+                return Ok(plan); // identity — matches the oracle (not OR's vacuous false)
+            }
+            for c in conditions {
+                require_in(&plan.names, std::slice::from_ref(&c.column))?;
+            }
+            let any_scan = conditions.iter().any(|c| {
+                let ty = type_of_in(&plan.names, &plan.types, &c.column).unwrap();
+                filter_needs_text_scan(ty, &c.op, c.match_case)
+            });
+            if any_scan {
+                // One text-predicate condition forces the row scan — collect this
+                // step and hand-roll, exactly like the single-condition filter.
+                let frame = plan.collect()?;
+                let out = verb_filter_multi(&frame, combine, conditions)?;
+                Ok(Plan::from_frame(&out))
+            } else {
+                // All comparisons — fold ONE combined expr onto the lazy plan.
+                // Kleene nulls collapse to the oracle's keep-set: a null
+                // comparison is never TRUE, and filter drops null rows.
+                let is_and = combine != "or";
+                let mut acc: Option<Expr> = None;
+                for c in conditions {
+                    let ty = type_of_in(&plan.names, &plan.types, &c.column).unwrap();
+                    let e = comparison_filter_expr(&c.column, ty, &c.op, &c.value)?
+                        .unwrap_or_else(|| lit(false)); // unparseable → matches no rows
+                    acc = Some(match acc {
+                        None => e,
+                        Some(a) => if is_and { a.and(e) } else { a.or(e) },
+                    });
+                }
+                Ok(Plan { lf: plan.lf.filter(acc.unwrap()), ..plan })
             }
         }
         WireOp::Distinct { columns } => {

@@ -954,3 +954,127 @@ fn all_non_finite_share_one_distinct_key_bucket() {
     let out = verb_distinct(&f, &None).unwrap();
     assert_eq!(out.df.height(), 2); // one non-finite bucket + the 1
 }
+
+// ─── filterMulti — AND/OR condition rows (B-2; vitest twins in frameVerbs.test.ts) ──
+
+fn multi_fixture() -> SolFrame {
+    frame(vec![
+        // The JS twin's error cell arrives engine-side as Null (the {"__err"}
+        // upload contract degrades it) — same keep-sets either way, since both
+        // null and error fail a condition.
+        ("qty", SolType::Number, vec![Cell::Num(5.0), Cell::Num(12.0), Cell::Null, Cell::Num(20.0), Cell::Null]),
+        ("city", SolType::Str, strs(&["Oslo", "Bergen", "Oslo", "Tromso", "Oslo"])),
+    ])
+}
+
+fn cond(column: &str, op: &str, value: Json, match_case: bool) -> WireFilterCond {
+    WireFilterCond { column: column.into(), op: op.into(), value, match_case }
+}
+
+#[test]
+fn filter_multi_and_matches_chained_filters() {
+    let f = multi_fixture();
+    let out = verb_filter_multi(&f, "and", &[
+        cond("qty", "gte", serde_json::json!(10), false),
+        cond("city", "eq", serde_json::json!("oslo"), false),
+    ]).unwrap();
+    assert_eq!(out.df.height(), 0); // no qty≥10 Oslo row (the JS twin's is the error row)
+    let chained = verb_filter(
+        &verb_filter(&f, "qty", "gte", &serde_json::json!(10), false).unwrap(),
+        "city", "eq", &Json::String("oslo".into()), false,
+    ).unwrap();
+    assert_eq!(out.df.height(), chained.df.height());
+}
+
+#[test]
+fn filter_multi_or_unions_conditions() {
+    let f = multi_fixture();
+    let out = verb_filter_multi(&f, "or", &[
+        cond("qty", "gte", serde_json::json!(15), false),
+        cond("city", "eq", serde_json::json!("bergen"), false),
+    ]).unwrap();
+    let d = dump(&out);
+    assert_eq!(d[1].2, vec![Json::String("Bergen".into()), Json::String("Tromso".into())]);
+    assert_eq!(d[0].2, j(&[12.0, 20.0]));
+}
+
+#[test]
+fn filter_multi_matchcase_rides_per_condition() {
+    let f = multi_fixture();
+    let out = verb_filter_multi(&f, "or", &[
+        cond("city", "eq", serde_json::json!("bergen"), true), // exact: no match
+        cond("city", "startsWith", serde_json::json!("tr"), false), // folded: Tromso
+    ]).unwrap();
+    assert_eq!(dump(&out)[1].2, vec![Json::String("Tromso".into())]);
+}
+
+#[test]
+fn filter_multi_or_saves_a_row_whose_other_condition_nulled() {
+    let f = multi_fixture();
+    let out = verb_filter_multi(&f, "or", &[
+        cond("qty", "gte", serde_json::json!(0), false),  // null rows fail here…
+        cond("city", "eq", serde_json::json!("oslo"), false), // …but two are Oslo
+    ]).unwrap();
+    assert_eq!(out.df.height(), 5);
+}
+
+#[test]
+fn filter_multi_unparseable_value_matches_no_rows_for_that_condition() {
+    let f = multi_fixture();
+    let or = verb_filter_multi(&f, "or", &[
+        cond("qty", "gt", serde_json::json!("garbage"), false),
+        cond("city", "eq", serde_json::json!("bergen"), false),
+    ]).unwrap();
+    assert_eq!(dump(&or)[1].2, vec![Json::String("Bergen".into())]);
+    let and = verb_filter_multi(&f, "and", &[
+        cond("qty", "gt", serde_json::json!("garbage"), false),
+        cond("city", "eq", serde_json::json!("bergen"), false),
+    ]).unwrap();
+    assert_eq!(and.df.height(), 0);
+}
+
+#[test]
+fn filter_multi_no_conditions_is_identity() {
+    let f = multi_fixture();
+    assert_eq!(verb_filter_multi(&f, "or", &[]).unwrap().df.height(), 5);
+    assert_eq!(verb_filter_multi(&f, "and", &[]).unwrap().df.height(), 5);
+}
+
+#[test]
+fn filter_multi_unknown_column_errors() {
+    let f = multi_fixture();
+    assert!(verb_filter_multi(&f, "and", &[
+        cond("qty", "gte", serde_json::json!(1), false),
+        cond("nope", "eq", serde_json::json!(1), false),
+    ]).is_err());
+}
+
+#[test]
+fn filter_multi_fuses_all_comparison_conditions_lazily() {
+    // Wire-shaped op through apply_ops — the lazy fold path (no text scan).
+    let f = multi_fixture();
+    let op: WireOp = serde_json::from_value(serde_json::json!({
+        "kind": "filterMulti", "combine": "or",
+        "conditions": [
+            {"column": "qty", "op": "gte", "value": 15},
+            {"column": "qty", "op": "lt", "value": 6},
+        ]
+    })).unwrap();
+    let out = apply_ops(&f, &[op]).unwrap();
+    assert_eq!(dump(&out)[0].2, j(&[5.0, 20.0]));
+}
+
+#[test]
+fn filter_multi_text_condition_takes_the_scan_path_in_a_fused_chain() {
+    let f = multi_fixture();
+    let op: WireOp = serde_json::from_value(serde_json::json!({
+        "kind": "filterMulti", "combine": "and",
+        "conditions": [
+            {"column": "city", "op": "contains", "value": "O"},
+            {"column": "qty", "op": "gte", "value": 10, "matchCase": false}
+        ]
+    })).unwrap();
+    let out = apply_ops(&f, &[op]).unwrap();
+    // contains "O" folds to Oslo/Tromso rows (0,2,3,4); qty≥10 keeps row 3 only.
+    assert_eq!(dump(&out)[1].2, vec![Json::String("Tromso".into())]);
+}
