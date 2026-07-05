@@ -63,6 +63,11 @@
   min-width: 180px;
   max-width: 360px;
 }
+/* A manually-sized Display isn't width-capped — the user chose the width, so the
+   360px auto-grow ceiling (inline width can't beat a max-width) must lift. */
+.solenoid-node--sized.solenoid-node--display-grow-scalar {
+  max-width: none;
+}
 .solenoid-node--display-grow-scalar .solenoid-node__display-value {
   white-space: nowrap;
   overflow: hidden;
