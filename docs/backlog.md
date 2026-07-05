@@ -968,7 +968,7 @@ correctness.
   2-D-aware; `table`/list/scalar → `frame` widening; the "type separation, dimensional flow"
   governing principle + the full-sweep `socketConnect.test.ts` + "Dimensional Flow" seed (see
   subsystem-invariants "Socket lattice"). Remaining polish only: ~~popup-GRID red-badge~~ (SCRAPPED
-  2026-06-24 — author fine with the code-as-text look); full N-ary coalesce (currently 2-source List + Else).
+  2026-06-24 — author fine with the code-as-text look); ~~full N-ary coalesce~~ (DONE 2026-07-05 — extensible Else rows on FillNode, e0/e1/…).
   Remaining non-policy item: retiring the now-unused `compileFormula`. See dev-notes 2026-06-21
   "one array-aware evaluation core".
   **SUPERSEDED (2026-06-23): the P4 "matrix-into-Expression" policy is OFF.** Raw `ExpressionNode`
@@ -1013,7 +1013,7 @@ correctness.
   null/error nodes aligned to ONE notion of error (a tagged `SolError`; `ISERROR`⟺`IFERROR`,
   `NaN` is not an error) with the `#N/A` test centralized as `isNaError`. See
   subsystem-invariants "Error values" (the 2×2). Remaining: ~~popup-grid error red-badge~~ (SCRAPPED
-  2026-06-24), full N-ary coalesce.
+  2026-06-24), ~~full N-ary coalesce~~ (DONE 2026-07-05).
 - [ ] **Formula engine — periodic re-audit (FOLLOW-UP, author flagged 2026-06-25).** The
   consolidation is done, but re-sweep node-vs-Formula.js periodically (the `_sweep`-style harness in
   the git history) when nodes change or Formula.js is upgraded — new divergences (like the MOD/ATAN2

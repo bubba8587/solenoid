@@ -1,6 +1,7 @@
 import type { FillNode as FillNodeType, FillOp } from "../rete-nodes";
 import { FILL_OP_META } from "../rete-nodes";
-import { InlineInputs } from "./inlineInput";
+import { InlineInputs, useConnectedInputs } from "./inlineInput";
+import { ExtensibleInputs } from "./ExtensibleInputs";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 
 // Op order mirrors the spec: the common fill-with-value first, then the carry
@@ -10,12 +11,29 @@ const OPS: { value: FillOp; label: string }[] =
 
 export function FillComponent({ data, emit }: NodeProps<FillNodeType>) {
   const [op, setOp] = useNodeField(data, "op");
+  const connected = useConnectedInputs(data.id);
+  const elseKeys = Object.keys(data.inputs).filter((k) => /^e\d+$/.test(k));
 
-  // The constant mode shows a "Fill with" input; coalesce shows the "Else" list.
-  // Every other mode is single-list — same socket-gating idea as FilterNode.
+  // Coalesce: N-ary — List plus extensible Else rows (add/remove, a typed
+  // number in an unwired row is a broadcast last-resort constant).
+  if (op === "coalesce") {
+    const leading = ["list", ...(connected.has("value") ? ["value"] : [])];
+    return (
+      <NodeShell node={data} emit={emit}>
+        <ExtensibleInputs node={data} emit={emit} leadingKeys={leading} valueKeys={elseKeys} />
+        <OpSelect value={op} onChange={setOp} options={OPS} />
+        <ValueDisplay value={data.cachedList} />
+      </NodeShell>
+    );
+  }
+
+  // Every other mode is single-list; constant adds the "Fill with" input.
+  // A WIRED socket must never disappear (its cable endpoint would dangle —
+  // the Expect-node rule), so a connected value/Else row stays visible in
+  // modes that don't use it.
   const keys = ["list"];
-  if (op === "constant") keys.push("value");
-  if (op === "coalesce") keys.push("else");
+  if (op === "constant" || connected.has("value")) keys.push("value");
+  for (const k of elseKeys) if (connected.has(k)) keys.push(k);
 
   return (
     <NodeShell node={data} emit={emit}>

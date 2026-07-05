@@ -43,6 +43,26 @@ active context (or the drill-in installs its own keydown — it already handles 
 Then the drill-in's private header toolbar collapses to just the breadcrumb + "+ Input/Output"
 (the two subgraph-only actions), and the app chrome drives the rest. Wants live eyeballing; best
 done author-present. Backlog item updated to reflect the split.
+
+### Coalesce is full N-ary — FillNode extensible Else rows (2026-07-05)
+Closed the last array-semantics polish item (subsystem-invariants "Error values" listed
+it since 2026-06-22). The Fill node's coalesce mode now takes ANY number of fallback
+lists in priority order: the fixed `else` input became extensible rows keyed `e0, e1, …`
+(CableSwitch's `addValueInput`/`nextInputId` machinery, CHOOSE's valueKeys-filter
+convention on reload — `extractInit` snapshots ALL input keys, the constructor keeps only
+`/^e\d+$/`). Semantics per position: first present of List, then each Else in row order;
+errors are PRESENT (pass through at their priority slot); a wired longer Else still
+EXTENDS the output (the old 2-source behavior, kept). New: a typed number literal on an
+UNWIRED Else row acts as a broadcast last-resort constant (`COALESCE(x, 0)` in one node)
+and does NOT extend the output.
+- Component: coalesce mode renders through the shared `ExtensibleInputs` (add/remove,
+  collapse pill); other modes keep plain `InlineInputs` BUT now hold a **wired**
+  value/Else row visible (the Expect-node "a wired socket must never disappear" rule —
+  previously switching op away from constant/coalesce dangled the cable endpoint).
+- Old saves wiring `else` drop that cable on load (pre-alpha, no alias — D3); the
+  null-and-logical seed retargeted to `e0`.
+- Author eyeball: the Else rows + "+ Add" under the op dropdown on a coalesce Fill card.
+
 ### Frame Filter text matching is case-insensitive; "Match case" opt-out (2026-07-05)
 The D12 build (backlog "Frame Filter text matching", audit 28's reversed half): string
 eq/neq + contains/startsWith/endsWith on the Filter node now match case-INsensitively —

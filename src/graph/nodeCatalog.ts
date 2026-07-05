@@ -434,7 +434,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
         type: "category", label: "Shape", description: "Reorder, trim, and filter lists.",
         children: [
           { type: "list-filter",  label: "FILTER", description: "Keep list values or table rows that pass a condition   (Excel: =FILTER). One or two comparisons (AND/OR), or wire a Keep-if mask (nonzero keeps). Chain with SUM / COUNT / AVERAGE for SUMIF(S) / COUNTIF(S).", accent: NODE_KIND_ACCENTS.list, create: () => new FilterNode() },
-          { type: "list-fill",  label: "Coalesce / Fill", description: "Handle missing (null) cells: fill with a constant, forward/back-fill, impute mean/median/mode, interpolate, drop them, or coalesce two lists (first present wins, SQL COALESCE). Errors pass through; stats use the present values only. Pairs with ISNULL.", accent: NODE_KIND_ACCENTS.list, create: () => new FillNode() },
+          { type: "list-fill",  label: "Coalesce / Fill", description: "Handle missing (null) cells: fill with a constant, forward/back-fill, impute mean/median/mode, interpolate, drop them, or coalesce any number of lists in priority order (first present wins, SQL COALESCE). Errors pass through; stats use the present values only. Pairs with ISNULL.", accent: NODE_KIND_ACCENTS.list, create: () => new FillNode() },
           { type: "pair", children: [
             { type: "list-sort",    label: "SORT",    description: "Sort ascending or descending   (Excel: =SORT(range))", create: () => new SortNode() },
             { type: "list-reverse", label: "REVERSE", description: "Reverse the order of the list", create: () => new ReverseNode() },
