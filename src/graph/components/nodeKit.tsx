@@ -617,7 +617,7 @@ export function ValueDisplay({
         : annotationRendersNegativeRed(ann, value) ? (
             // The FC's red negative style — the string already carries the
             // minus/parens; the color rides on top (format-model advanced tier).
-            <span style={{ color: "var(--danger)" }}>{fmtScalar(value as number)}</span>
+            <span style={{ color: "var(--sol-error)" }}>{fmtScalar(value as number)}</span>
           )
         : render && !ann ? render(value as number)
         : fmtScalar(value as number)}

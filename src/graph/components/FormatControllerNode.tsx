@@ -284,7 +284,6 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
   // reduced style list, structural types (frame/cube/chart/…) nothing.
   const family = familyOf(node.socketDataType);
   const c = controlsFor(family, format);
-  const showFormatCustom = format === "custom" || format === "date_custom";
 
   // Flow arrows flanking the controls — a three-state visual language matching
   // the v0.9 annotation semantics (the WHOLE annotation rides the value forward
@@ -380,6 +379,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
         </>
       ) : c.dateStyle ? (
         /* Date socket: one date-style dropdown, no units. */
+        <>
         <div className="solenoid-fc__row">
           <FcArrow dir="back" title={backTitle} />
           <select
@@ -398,6 +398,22 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
           </select>
           <FcArrow dir="fwd" title={fwdTitle} />
         </div>
+        {format === "date_custom" && (
+          <div className="solenoid-fc__row solenoid-fc__row--custom">
+            <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
+            <input
+              type="text"
+              className="solenoid-node__inline-input solenoid-fc__pattern"
+              value={customPattern}
+              placeholder="pattern, e.g. YYYY-MM-DD"
+              onChange={(e) => onPatternChange(e.target.value)}
+              onPointerDown={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+            />
+            <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
+          </div>
+        )}
+        </>
       ) : c.logical ? (
         /* Logical socket: show-as (TRUE/FALSE · 1/0 · Yes/No · ✓/✗), display only. */
         <div className="solenoid-fc__row">
@@ -496,6 +512,102 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
             <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
           </div>
         )}
+        {/* Custom pattern directly under the style rows — it IS a format. */}
+        {format === "custom" && (
+          <div className="solenoid-fc__row solenoid-fc__row--custom">
+            <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
+            <input
+              type="text"
+              className="solenoid-node__inline-input solenoid-fc__pattern"
+              value={customPattern}
+              placeholder='format, e.g. "0.00"'
+              onChange={(e) => onPatternChange(e.target.value)}
+              onPointerDown={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+            />
+            <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
+          </div>
+        )}
+        {/* Advanced tier — MORE FORMATS, so it lives with the format cluster
+            (above the unit row: formats re-format freely downstream, units
+            lock — the two must not visually interleave). Rows are per-style
+            gated by formatModel (never disabled-but-visible). */}
+        {c.advanced && advancedOpen && (
+          <>
+            {groupingApplies(format) && (
+              <div className="solenoid-fc__row">
+                <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
+                <label
+                  className="solenoid-fc__check"
+                  title="Thousands separator"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                >
+                  <input type="checkbox" checked={grouping} onChange={toggleGrouping} />
+                  1,000 separator
+                </label>
+                <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
+              </div>
+            )}
+            {negativeApplies(format) && (
+              <div className="solenoid-fc__row">
+                <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
+                <select
+                  className="solenoid-node__op-select solenoid-fc__select solenoid-fc__select--wide"
+                  value={negativeStyle}
+                  onChange={(e) => onNegativeChange(e.target.value as NegativeStyle)}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  title="Negative numbers"
+                >
+                  {Object.entries(NEGATIVE_STYLE_LABELS).map(([id, label]) => (
+                    <option key={id} value={id}>{label}</option>
+                  ))}
+                </select>
+                <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
+              </div>
+            )}
+            {scaleApplies(format) && (
+              <div className="solenoid-fc__row">
+                <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
+                <select
+                  className="solenoid-node__op-select solenoid-fc__select solenoid-fc__select--wide"
+                  value={scaleMode}
+                  onChange={(e) => onScaleChangeMode(e.target.value as ScaleMode)}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  title="Show scaled down — 1,200,000 in millions reads 1.2M"
+                >
+                  {Object.entries(SCALE_MODE_LABELS).map(([id, label]) => (
+                    <option key={id} value={id}>{label}</option>
+                  ))}
+                </select>
+                <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
+              </div>
+            )}
+          </>
+        )}
+        {/* The expander closes the FORMAT cluster; the unit row sits below it.
+            The row itself is plain card (draggable) — only the small chevron
+            button captures the click. */}
+        {c.advanced && (
+          <div className="solenoid-fc__more-row">
+            <button
+              type="button"
+              className="solenoid-fc__more"
+              onClick={toggleAdvanced}
+              onPointerDown={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              title="Advanced formatting"
+              aria-expanded={advancedOpen}
+            >
+              <svg width="8" height="8" viewBox="0 0 10 10" aria-hidden="true"
+                   style={{ display: "block", transform: advancedOpen ? "rotate(180deg)" : undefined }}>
+                <path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          </div>
+        )}
         <div className="solenoid-fc__row">
           {unitLeft ? <FcArrow dir={unitLeft} title={
             node.lockedByConvert ? "Unit dictated by the Convert downstream"
@@ -535,25 +647,9 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
             : "Unit travels downstream with the value"
           } /> : <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />}
         </div>
-        </>
-      )}
-
-      {/* Custom pattern / unit fields appear only when "Custom…" is chosen. */}
-      {(c.numberStyle || c.complexStyle || c.dateStyle) && (showFormatCustom || (c.unit && unit === "custom")) && (
-        <div className="solenoid-fc__row solenoid-fc__row--custom">
-          <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
-          {showFormatCustom && (
-            <input
-              type="text"
-              className="solenoid-node__inline-input solenoid-fc__pattern"
-              value={customPattern}
-              placeholder={c.dateStyle ? "pattern, e.g. YYYY-MM-DD" : 'format, e.g. "0.00"'}
-              onChange={(e) => onPatternChange(e.target.value)}
-              onPointerDown={(e) => e.stopPropagation()}
-              onMouseDown={(e) => e.stopPropagation()}
-            />
-          )}
-          {c.unit && unit === "custom" && (
+        {unit === "custom" && (
+          <div className="solenoid-fc__row solenoid-fc__row--custom">
+            <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
             <input
               type="text"
               className="solenoid-node__inline-input solenoid-fc__pattern"
@@ -563,84 +659,10 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
               onPointerDown={(e) => e.stopPropagation()}
               onMouseDown={(e) => e.stopPropagation()}
             />
-          )}
-          <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
-        </div>
-      )}
-
-      {/* Advanced tier (number family) — grouping / negative style / scale,
-          behind the chip's expander. Each row exists only for the styles where
-          it means something (formatModel gates). */}
-      {c.advanced && advancedOpen && (
-        <>
-          {groupingApplies(format) && (
-            <div className="solenoid-fc__row">
-              <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
-              <label
-                className="solenoid-fc__check"
-                title="Thousands separator"
-                onPointerDown={(e) => e.stopPropagation()}
-                onMouseDown={(e) => e.stopPropagation()}
-              >
-                <input type="checkbox" checked={grouping} onChange={toggleGrouping} />
-                1,000 separator
-              </label>
-              <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
-            </div>
-          )}
-          {negativeApplies(format) && (
-            <div className="solenoid-fc__row">
-              <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
-              <select
-                className="solenoid-node__op-select solenoid-fc__select solenoid-fc__select--wide"
-                value={negativeStyle}
-                onChange={(e) => onNegativeChange(e.target.value as NegativeStyle)}
-                onPointerDown={(e) => e.stopPropagation()}
-                onMouseDown={(e) => e.stopPropagation()}
-                title="Negative numbers"
-              >
-                {Object.entries(NEGATIVE_STYLE_LABELS).map(([id, label]) => (
-                  <option key={id} value={id}>{label}</option>
-                ))}
-              </select>
-              <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
-            </div>
-          )}
-          {scaleApplies(format) && (
-            <div className="solenoid-fc__row">
-              <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
-              <select
-                className="solenoid-node__op-select solenoid-fc__select solenoid-fc__select--wide"
-                value={scaleMode}
-                onChange={(e) => onScaleChangeMode(e.target.value as ScaleMode)}
-                onPointerDown={(e) => e.stopPropagation()}
-                onMouseDown={(e) => e.stopPropagation()}
-                title="Show scaled down — 1,200,000 in millions reads 1.2M"
-              >
-                {Object.entries(SCALE_MODE_LABELS).map(([id, label]) => (
-                  <option key={id} value={id}>{label}</option>
-                ))}
-              </select>
-              <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
-            </div>
-          )}
+            <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
+          </div>
+        )}
         </>
-      )}
-      {c.advanced && (
-        <button
-          type="button"
-          className="solenoid-fc__more"
-          onClick={toggleAdvanced}
-          onPointerDown={(e) => e.stopPropagation()}
-          onMouseDown={(e) => e.stopPropagation()}
-          title="Advanced formatting"
-          aria-expanded={advancedOpen}
-        >
-          <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"
-               style={{ transform: advancedOpen ? "rotate(180deg)" : undefined }}>
-            <path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
       )}
     </NodeCard>
   );
