@@ -22,6 +22,7 @@ import { documentStore } from "./documentStore";
 import { pinStore, type Pin } from "./pinStore";
 import { reportStore } from "./reportStore";
 import { presentationStore } from "./presentationStore";
+import { compositeEditorStore } from "./compositeEditorStore";
 import { commentStore, type SavedCommentData } from "./commentStore";
 import { paletteStore, reportPaletteStore } from "./palette";
 import { loadRevealStore, revealWaves } from "./loadReveal";
@@ -363,6 +364,10 @@ async function rebuildGraph(
   // covers any bulk path explicitly (same belt-and-braces as the store list).
   reportStore.close();
   presentationStore.stop();
+  // A drill-in open across a load would keep rendering a CompositeNode that no
+  // longer belongs to any live graph (closing also unmounts its internal views
+  // — see CompositeEditorOverlay's cleanup — so their timers die with it).
+  compositeEditorStore.close();
   // Apply (or clear) the document's palette declaration BEFORE rebuilding, so every
   // node/group color resolves through the right palette as it's created.
   paletteStore.setDocPalette(g.palette ?? null);

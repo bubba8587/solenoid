@@ -415,6 +415,13 @@ export function Canvas() {
   const prevPickedRef = useRef<string | null>(null);
   const [menu, setMenu] = useState<MenuState>(null);
   const closeMenu = useCallback(() => setMenu(null), []);
+  // The Add/quick-wire menu must not survive a document switch or reload —
+  // node ids regenerate on load, so a pick from a stale menu would add an
+  // orphan, unwired node into the NEW document at stale coordinates (Ctrl+O
+  // fires even while the menu's search field is focused). Any documentStore
+  // change (open/new/import/delete/reload all notify) closes it; over-closing
+  // is harmless for a transient menu.
+  useEffect(() => documentStore.subscribe(() => setMenu(null)), []);
   // Module store, not useState: the mobile bottom bar opens the palette from
   // outside Canvas's tree, and the keydown handler reads it closure-free.
   const paletteOpen = useSyncExternalStore(paletteStore.subscribe, paletteStore.get);

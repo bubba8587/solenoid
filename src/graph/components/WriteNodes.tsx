@@ -47,6 +47,9 @@ function WriteFileComponent({
   }
 
   async function run() {
+    // Reflect "writing" synchronously so the button disables NOW — waiting for
+    // the await leaves it clickable for the whole write (double-click race).
+    setStatus("writing");
     await data.run();
     setStatus(data.status);
     setMessage(data.statusMessage);

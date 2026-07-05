@@ -13,6 +13,7 @@
 //   • refreshAllConnections()→ bumps the global gen (every connection re-fetches)
 import { createNotifier } from "./storeKit";
 import { processGraph } from "./process";
+import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 
 export type ConnectionStatus = "idle" | "loading" | "ok" | "error";
 
@@ -57,6 +58,18 @@ export const connectionStore = {
   subscribe,
   version,
 };
+
+// Self-register on the node-forget seam like every other node-keyed store
+// (collapseStore, pinStore, …) — `forget` existed but nothing ever called it,
+// so a deleted connection node's status/token sat in the Maps for the tab's
+// lifetime (and across every document switch).
+registerNodeForget((id) => connectionStore.forget(id));
+registerNodeForgetAll(() => {
+  const had = _states.size > 0 || _tokens.size > 0;
+  _states.clear();
+  _tokens.clear();
+  if (had) notify();
+});
 
 // A source node that fetches in the BACKGROUND (so its data() can stay
 // synchronous and off the engine's async critical path) calls this once its data

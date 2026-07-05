@@ -94,8 +94,12 @@ abstract class WriteFileNodeBase extends ClassicPreset.Node {
   protected abstract defaultExt(): string;
 
   /** Explicit write — call ONLY from the node's Run button. Desktop only (no
-   *  filesystem in the browser build). */
+   *  filesystem in the browser build). Re-entrancy-guarded: a second Run while
+   *  a write is in flight is a no-op (the component's disabled state is React
+   *  state that only updates after the await, so it can't be the only gate —
+   *  two rapid clicks would race concurrent writes to the same file). */
   async run(): Promise<void> {
+    if (this.status === "writing") return;
     if (!this.enabled) { this.status = "error"; this.statusMessage = "Disabled — arm it first"; return; }
     if (!isDesktop()) { this.status = "error"; this.statusMessage = "Desktop app only"; return; }
     const path = this.path.trim();
