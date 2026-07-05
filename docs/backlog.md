@@ -15,8 +15,9 @@ is archived).
 
 ## Needs an author decision / author-present session
 
-- [ ] **D2 — reroute the real toolbar / mobile bar to the ACTIVE subgraph** (author's
-  ask, deferred again 2026-07-05). Cross-cutting: the op singletons in `process.ts`
+- [ ] **D2 — reroute the real toolbar / mobile bar to the ACTIVE subgraph** —
+  APPROVED 2026-07-05, as its own AUTHOR-PRESENT session (not the autonomous
+  plan). Cross-cutting: the op singletons in `process.ts`
   bind to the MAIN editor/area; Canvas keydown stands down during drill-in; no
   drill-in Tidy. Proposed architecture (an "active graph context" bundle the overlay
   swaps on open/close) is written up in the archived dev-note "Composite drill-in —
@@ -24,25 +25,19 @@ is archived).
 - [ ] **D4 — conditional formatting for tables** (#41; deferred again 2026-07-05).
   Needs its own design pass: must clear Excel's version by a lot (author's explicit
   dislike), Display-node-only, must not step on FC format/units territory.
-- [ ] **FC A4 — units by dimensionality (v1.1-β, the flagship vision).** The model,
-  keyed to the dimensional ladder: **matrix = unit-agnostic always** (pure numbers);
-  **list = units PER ELEMENT** (a row — `[3 km, 5 mi]`; a per-cell tag like the
-  array-semantics `null`/`SolError`); **frame = units PER COLUMN** (a frame row IS a
-  list); FCs can tag STRING-LIST header keys so Build Frame / Add Column LOCK each
-  column to its header's unit (`[id, Item, Revenue ($0.00)]` + `[5,6,7]` →
-  `[$5.00, …]`, per-column FC locked). Touches the value model (DESIGN THE
-  REPRESENTATION FIRST — parallel unit array vs tagged cell), `unitFlow`
-  (per-cell/per-column propagation), FC + display (mixed suffixes, header targeting),
-  aggregators (SUM over mixed units → convert or `#TYPE!`), socket lattice. Big —
-  its own milestone. Representation DECIDED: tagged cells; `dimension.ts` algebra
-  core already landed. THE live plan: `v2.0/05-units-format-controller.md`.
+- [ ] **FC A4 — units by dimensionality (the flagship).** Author 2026-07-05: IN,
+  "big boy — we should go through it together when building" — DEFERRED to a
+  dedicated AUTHOR-PRESENT arc (not the autonomous plan). Representation decided
+  (tagged cells), `dimension.ts` algebra core landed. THE plan:
+  `v2.0/05-units-format-controller.md`.
 - [ ] **Header/body border seam under zoom — UNSOLVED, parked for a human/later
   model.** See dev-notes "UNSOLVED" for constraints + the two eliminated approaches.
-- [ ] **Deferred pile (end-of-walk revisit, author call each):** #2 snapshots ·
-  #6 diffing · #11 transform-by-example · #23 persistent compute cache · #35 MCP
-  port · #46 sealed models · #48/#54 library layer / model index (VERY deferred —
-  "the OS-level chosen folder is the answer for now") · Bet 5. Context per item:
-  `docs/v2.0/README.md` "verdict pending".
+- [ ] **Deferred pile — RESOLVED 2026-07-05 (author ruled each):** still deferred =
+  **#23 persistent compute cache** and **#35 MCP port** only. OUT for good:
+  #2 publish-as-form, #6 snapshots/diff, #11 transform-by-example, #46 sealed
+  models, Bet 5, list-of-frames ("this is Cube"), Go-To-Special chrome ("we
+  already have multiple go-to affordances"). #48/#54 resolved as the ultra-minimal
+  library-folder opener (build item below).
 
 ## Decided, unbuilt (mechanical — no design session needed)
 
@@ -118,40 +113,37 @@ is archived).
   overrides; NOT yet swept: the TEXT/format family (`numberToText` vs FX TEXT) and
   node `data()` paths that don't share the registered impl; distributions validated
   only at representative points — widen if accuracy is ever in doubt.
-- [ ] **(MAYBE) list-of-frames for MAP arity** — the container half is served by the
-  Cube; only the pass-N-tables-to-one-MAP niche remains. Weigh against chaining MAPs;
-  revisit with per-group split-apply-combine if that direction is ever owned.
-- [ ] **(rule in/out) Multi-predicate frame Filter — AND/OR condition rows** (mined
-  from `archive/excel-pain-points.md` §1/§14, 2026-07-05): Excel's SUMIFS is AND-only
-  and OR explodes combinatorially; our Filter has ONE predicate (OR = two Filters →
-  Append → Distinct today). Extensible condition rows with an AND/OR mode = SQL
-  `WHERE … IN (…)` made visual; the `PairedExtensibleInputs` pattern fits.
-- [ ] **(rule in/out) Pie in the Chart node** (mined from toolbar-supplementals —
-  "pie/scatter are coverage gaps INSIDE the existing Chart node"; scatter was ruled
-  IN via the core-viz list, pie never got a ruling).
-- [ ] **(rule in/out) "Go To Special" chrome — select all error nodes / select by
-  type** (toolbar-supplementals, Find & Select): a selection action riffing on the
-  navigator; pairs with the Problems panel's per-error jump.
+- [ ] **Multi-predicate frame Filter — AND/OR condition rows** (IN, author
+  2026-07-05 "go for it"): extensible condition rows with an AND/OR mode on the
+  frame Filter — SQL WHERE-IN made visual (`PairedExtensibleInputs` pattern; JS
+  oracle + Polars parity; the Match-case flag rides per-condition).
 
 ## Notes / documents
 
-- [ ] **Obsidian markdown import/export — bidirectional sync** (author 2026-06-23).
-  Import a `.md` (frontmatter + body) as a Note with typed sockets, ideally
-  file-watched; a markdown EXPORT node writes a Note/record back with frontmatter.
-  Parse/serialize halves exist (`noteFrontmatter.ts`); needs path/vault binding +
-  `fileBridge`. North-star tie-in: a vault of notes ↔ a frame of records.
+- [ ] **Obsidian vault trio** (IN, author-specced 2026-07-05): (1) a **vault
+  folder selector** Setting (the `csvFolder` pattern); (2) **Import Note** node —
+  picks a `.md` from the vault, renders like an existing Note but READ-ONLY,
+  frontmatter → typed output sockets, refreshable; (3) **Write Note** node — a
+  sink writing a Note/record back to the vault as `.md` with frontmatter
+  (arm/disarm Run-button pattern, like Write CSV). Parse/serialize halves exist
+  (`noteFrontmatter.ts`); desktop-only via `fileBridge`.
 
 ## Packs
 
 - [ ] **More domain packs** — post-v1 polish (framework + Geometry worked example
   done). Don't build unprompted.
-- [ ] **Core viz/control nodes — the scoped-down IN list** (author 2026-07-01;
-  recharts-native/plain DOM, no new deps): **KPI/Stat card** (big number + delta) ·
-  **Scatter** · **Bubble** · **Histogram** · **Bullet graph** · **date-range picker**;
-  plus the **Input Switcher upgrade** — editable slot titles (reads as named choices)
-  and a multi-select mode collecting selected values into a Cube. CUT: Data Table
-  viewer, standalone Dropdown, range slider. Specialist viz packs → 1.2. (Survey:
-  `archive/io-visual-control-node-proposal.md`.)
+- [ ] **COMPLETE RECHARTS** (author 2026-07-05: "grab everything from Recharts —
+  simple goal: complete Recharts"; supersedes the 2026-07-01 scoped list): the
+  Chart family covers every recharts chart type — existing column/bar/line/area
+  PLUS **Pie**, **Scatter**, **Bubble** (scatter+size), **Radar**, **RadialBar**,
+  **Funnel**, **Treemap**, **Sankey**, **Composed** — in the existing Chart node's
+  op surface where the input shape fits, new nodes where it differs
+  (Sankey/Treemap take structured data). Plus the still-standing 07-01 adds:
+  **KPI/Stat card** (big number + delta), **Histogram** (binning + bar),
+  **Bullet graph**, **date-range picker**. Mermaid stays the diagram escape
+  hatch. All lazy via the existing `chartRender.tsx` split. Ships a showcase SEED.
+- [ ] **Input Switcher upgrade** (author 2026-07-01): editable slot titles (reads
+  as named choices) + a multi-select mode collecting selected values into a Cube.
 - [ ] **Pack variant-switch reconciles the socket set** — a simple pack's variant
   dropdown must add/remove sockets like Cast/read-as do (retype + reconcile), not
   leave stale ones.
@@ -162,16 +154,15 @@ is archived).
 
 ## Cables / canvas / chrome
 
-- [ ] **Cable collision avoidance** (`archive/cable-routing.md` §2): avoid nodes; avoid
-  cables (parallel runs + bridge hops); per-cable shape/avoidance overrides.
-- [ ] **Grid system** — implement `grid-system.md` (soft alignment, helpers,
-  primary+sub grid, modifier bypass). Gridding CABLES is a separate design question
-  (see the doc's banner).
-- [ ] **Moveable / resizable / hideable UI chrome** (author principle): minimap
-  corner choice, panel resize, hide any chrome element; honor for every new panel.
-- [ ] **Collapsed mini-preview for pure-visual nodes** — Chart/Gauge/Slicer/
-  Sparkline/Heatmap are non-collapsible today; a thumbnail collapsed form would
-  make collapse meaningful.
+- [ ] **Cable collision avoidance** — DEFERRED for later (author 2026-07-05).
+  Spec: `archive/cable-routing.md` §2 (avoid nodes; parallel runs + bridge hops;
+  per-cable overrides).
+- [ ] **Grid system** — DEFERRED for later (author 2026-07-05). Spec: `grid-system.md`.
+- [ ] **Moveable / hideable UI chrome** (standing author principle): honor for
+  every new panel; the decided piece (minimap 3-way) is queued above.
+- [ ] **Library-folder opener — ultra-minimal** (author 2026-07-05, resolves
+  #48/#54): a File-menu action (+ a Settings row button) that opens the OS file
+  manager at the chosen documents folder via the opener plugin. Nothing more.
 - [ ] **Optically center the last asymmetric icons** — canvas-lock toggle (reads
   low) + the cable-flourish sparkle (author's eye needed). Ink-centroid method in
   the archived dev-notes (2026-06-20).
@@ -180,8 +171,12 @@ is archived).
 
 ## External data
 
-- [ ] **Finance connection** (GOOGLEFINANCE-ish Web Source preset) — API-key +
-  rate-limit baggage; build only if wanted.
+- [ ] **Finance / economic-data connection** (IN, author-reshaped 2026-07-05):
+  a connection-node family with **user-supplied API keys** (a Settings key store;
+  never bundled keys): **FRED** (series id → date/value frame; free user key),
+  **stocks** via a keyless/free source where possible (Stooq CSV needs no key;
+  Alpha Vantage as the keyed option). Rides the same `connectionStore` refresh
+  layer as Web Source; desktop CORS reach via `httpBridge`.
 
 ## Parked (superseded levers / far-future — revisit only if their trigger returns)
 
