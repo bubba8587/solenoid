@@ -15,7 +15,7 @@ import { flyToNode } from "../flyToNode";
 import { ResizeHandle } from "./ResizeHandle";
 import { formatScalar } from "./format";
 import { ArrayChip } from "./ArrayChip";
-import { formatAnnotationStore, formatNumberWithAnnotation, applyTextCase } from "../formatAnnotationStore";
+import { formatAnnotationStore, formatNumberWithAnnotation, applyTextCase, applyLogicalStyle } from "../formatAnnotationStore";
 import { nodeOutputIsDate, dateFormatDisplay, shouldRenderListInline, formatListCell, type DisplayValue } from "./valueDisplayFormat";
 import { IS_COARSE } from "../coarse";
 import { NodeFormatContext } from "./nodeContext";
@@ -556,7 +556,7 @@ export function ValueDisplay({
   function getClipboardText(): string {
     if (isEmpty) return "";
     if (isString) return cased(value as string);
-    if (isLogical) return value ? "TRUE" : "FALSE";
+    if (isLogical) return applyLogicalStyle(value as boolean, ann?.logicalStyle);
     if (listIsString) return (value as (string | null)[]).map((v) => (v === null ? "null" : cased(v))).join(", ");
     // A Format Controller annotation overrides a node's own custom render.
     // null/error cells aren't FC-formattable, so they take the literal cell form.
@@ -605,7 +605,7 @@ export function ValueDisplay({
               {renderTextValue(cased(value as string))}
             </span>
           )
-        : isLogical ? (value ? "TRUE" : "FALSE")
+        : isLogical ? applyLogicalStyle(value as boolean, ann?.logicalStyle)
         : listIsString ? (listInline ? (value as (string | null)[]).map((v) => (v === null ? "null" : cased(v))).join(", ") : <ArrayChip value={value as string[]} />)
         : isList ? (listInline ? (value as (number | null | SolError)[]).map((v) => formatListCell(v, fmtScalar)).join(", ") : <ArrayChip value={value as number[] | number[][]} />)
         : typeof value === "number" && Number.isNaN(value) ? (

@@ -86,6 +86,18 @@ export function isDateStyle(style: FormatStyleId): boolean {
 
 export type DecimalMode = "places" | "sigfigs";
 
+// The ONE precision resolver (format-model.md "precision × style resolution
+// rule") — every style that supports precision delegates here; no style case
+// carries private digit logic. Clamps: places 0–20, sig figs 1–21.
+function formatPrecise(n: number, decimalDigits: number, decimalMode: DecimalMode): string {
+  if (decimalMode === "sigfigs") {
+    const s = Math.max(1, Math.min(21, Math.round(decimalDigits) || 1));
+    return n.toLocaleString(undefined, { minimumSignificantDigits: s, maximumSignificantDigits: s });
+  }
+  const d = Math.max(0, Math.min(20, Math.round(decimalDigits)));
+  return n.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
+}
+
 /** Apply a FormatStyle to a number. Returns the formatted string. */
 export function applyFormatStyle(
   n: number,
@@ -96,27 +108,19 @@ export function applyFormatStyle(
 ): string {
   if (!Number.isFinite(n)) return String(n);
   switch (style) {
-    case "decimal": {
-      if (decimalMode === "sigfigs") {
-        const s = Math.max(1, Math.min(21, Math.round(decimalDigits) || 1));
-        return n.toLocaleString(undefined, { minimumSignificantDigits: s, maximumSignificantDigits: s });
-      }
-      const d = Math.max(0, Math.min(20, Math.round(decimalDigits)));
-      return n.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
-    }
-    case "percent": {
-      const v = n * 100;
-      if (decimalMode === "sigfigs") {
-        const s = Math.max(1, Math.min(21, Math.round(decimalDigits) || 1));
-        return `${v.toLocaleString(undefined, { minimumSignificantDigits: s, maximumSignificantDigits: s })}%`;
-      }
-      const d = Math.max(0, Math.min(20, Math.round(decimalDigits)));
-      return `${v.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d })}%`;
-    }
+    case "decimal":      return formatPrecise(n, decimalDigits, decimalMode);
+    case "percent":      return `${formatPrecise(n * 100, decimalDigits, decimalMode)}%`;
     case "integer":      return Math.round(n).toLocaleString();
     case "fraction":     return toFraction(n);
     case "fraction_adv": return toFractionAdvanced(n);
-    case "scientific":   return n.toExponential(3);
+    case "scientific": {
+      // Honors the precision row (format model): places d → d mantissa fraction
+      // digits; s sig figs → s mantissa digits (toExponential(s − 1)).
+      const d = decimalMode === "sigfigs"
+        ? Math.max(0, Math.min(20, Math.round(decimalDigits) - 1))
+        : Math.max(0, Math.min(20, Math.round(decimalDigits)));
+      return n.toExponential(d);
+    }
     case "custom":       return applyCustomPattern(n, customPattern ?? "0.00");
     default: {
       // Not a built-in style — maybe a pack-contributed format (registered for
@@ -400,6 +404,26 @@ export function unitsCompatible(a: string, b: string): boolean {
 
 export type TextCase = "none" | "upper" | "lower" | "proper";
 
+// Logical "show-as" (format-model.md): how a boolean renders through an FC.
+export type LogicalStyle = "truefalse" | "binary" | "yesno" | "check";
+
+export const LOGICAL_STYLE_LABELS: Record<LogicalStyle, string> = {
+  truefalse: "TRUE / FALSE",
+  binary:    "1 / 0",
+  yesno:     "Yes / No",
+  check:     "✓ / ✗",
+};
+
+/** Display-only boolean rendering (default = the Excel TRUE/FALSE form). */
+export function applyLogicalStyle(b: boolean, style?: LogicalStyle): string {
+  switch (style) {
+    case "binary": return b ? "1" : "0";
+    case "yesno":  return b ? "Yes" : "No";
+    case "check":  return b ? "✓" : "✗";
+    default:       return b ? "TRUE" : "FALSE";
+  }
+}
+
 export type FormatAnnotation = {
   format: FormatStyleId;
   customPattern?: string;
@@ -413,6 +437,8 @@ export type FormatAnnotation = {
   // Flexible "decimal" format params (digit count + places-vs-sig-figs).
   decimalDigits?: number;
   decimalMode?: DecimalMode;
+  // Logical-socket show-as (display only).
+  logicalStyle?: LogicalStyle;
 };
 
 /** Display-only case transform for a string (UPPER / lower / Proper). */

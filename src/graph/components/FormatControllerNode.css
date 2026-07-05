@@ -40,6 +40,13 @@
   padding-top: 0;
 }
 
+/* Structural socket (frame/cube/chart/…): nothing formattable — a quiet dash. */
+.solenoid-fc__row--none {
+  justify-content: center;
+  min-width: 48px;
+  color: var(--text-dim);
+}
+
 .solenoid-fc__select {
   flex: 1 1 0;
   min-width: 64px;

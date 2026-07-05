@@ -4,7 +4,7 @@ import type { ClassicPreset } from "rete";
 import type { RenderEmit, ClassicScheme } from "rete-react-plugin";
 import { getEditor } from "../process";
 import { cableValueStore } from "../cableValueStore";
-import { formatAnnotationStore, formatNumberWithAnnotation, type FormatAnnotation } from "../formatAnnotationStore";
+import { formatAnnotationStore, formatNumberWithAnnotation, applyLogicalStyle, type FormatAnnotation } from "../formatAnnotationStore";
 import { sharedAnnotationResolver } from "../unitFlow";
 import { formatScalar } from "./format";
 import { useKatexRender } from "./katexLoader";
@@ -65,7 +65,7 @@ export function useRefAnnotation(nodeId: string, refKey: string): FormatAnnotati
 export function refPreview(value: unknown, ann: FormatAnnotation | undefined): string {
   if (value === null || value === undefined) return "—";
   if (isSolError(value)) return value.code;
-  if (typeof value === "boolean") return value ? "TRUE" : "FALSE";
+  if (typeof value === "boolean") return applyLogicalStyle(value, ann?.logicalStyle);
   if (typeof value === "number") return ann ? formatNumberWithAnnotation(value, ann) : formatScalar(value);
   if (typeof value === "string") return value;
   if (isLambdaValue(value)) return lambdaText(value);

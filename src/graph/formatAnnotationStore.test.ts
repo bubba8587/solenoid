@@ -214,9 +214,15 @@ describe("formatNumberWithAnnotation — integer format", () => {
 });
 
 describe("formatNumberWithAnnotation — scientific format", () => {
-  it("uses toExponential(3)", () => {
-    expect(fwn(12300, { format: "scientific" })).toBe("1.230e+4");
-    expect(fwn(0.00123, { format: "scientific" })).toBe("1.230e-3");
+  it("honors the precision row in places mode (format model — was hardcoded 3)", () => {
+    expect(fwn(12300, { format: "scientific" })).toBe("1.23e+4"); // default 2 places
+    expect(fwn(0.00123, { format: "scientific" })).toBe("1.23e-3");
+    expect(fwn(12300, { format: "scientific", decimalDigits: 3 })).toBe("1.230e+4");
+    expect(fwn(12300, { format: "scientific", decimalDigits: 0 })).toBe("1e+4");
+  });
+  it("sig-figs mode = mantissa significant digits (toExponential(s − 1))", () => {
+    expect(fwn(12345, { format: "scientific", decimalDigits: 3, decimalMode: "sigfigs" })).toBe("1.23e+4");
+    expect(fwn(12345, { format: "scientific", decimalDigits: 1, decimalMode: "sigfigs" })).toBe("1e+4");
   });
 });
 

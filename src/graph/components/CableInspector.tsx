@@ -8,7 +8,7 @@ import { flyToNode } from "../flyToNode";
 import { connectionVersionStore, getEditor } from "../process";
 import { nodeTypeName } from "../nodeNames";
 import { formatScalar } from "./format";
-import { formatAnnotationStore, formatNumberWithAnnotation } from "../formatAnnotationStore";
+import { formatAnnotationStore, formatNumberWithAnnotation, applyLogicalStyle } from "../formatAnnotationStore";
 import { isSolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import { ArrayChip, isArrayValue } from "./ArrayChip";
@@ -45,6 +45,10 @@ function renderWireValue(v: unknown, annNodeId: string) {
     return <ArrayChip value={arr} size="sm" accent={accent} />;
   }
   if (typeof v === "string") return <span className="solenoid-cable-inspector__value">{v || "—"}</span>;
+  if (typeof v === "boolean") {
+    const ann = formatAnnotationStore.getForNode(annNodeId);
+    return <span className="solenoid-cable-inspector__value">{applyLogicalStyle(v, ann?.logicalStyle)}</span>;
+  }
   if (typeof v === "number") {
     const ann = formatAnnotationStore.getForNode(annNodeId);
     return <span className="solenoid-cable-inspector__value">{ann ? formatNumberWithAnnotation(v, ann) : formatScalar(v)}</span>;

@@ -186,6 +186,18 @@ export function isDateType(dt: SocketDataType): boolean {
   return dt === "date" || dt === "datelist" || dt === "datecombo" || dt === "datetable";
 }
 
+export type ElementFamily = keyof typeof FAMILIES; // number | string | date | complex | logical
+
+/** The ELEMENT family of a lattice type (any rank), or null for the structural
+ *  types outside the 5-family lattice (frame, cube, anytable, chart, lambda,
+ *  any). Derived from FAMILIES so a new family/dim needs no edit here. */
+export function elementFamilyOf(dt: SocketDataType): ElementFamily | null {
+  for (const [fam, dims] of Object.entries(FAMILIES)) {
+    if (Object.values(dims).includes(dt)) return fam as ElementFamily;
+  }
+  return null;
+}
+
 /**
  * DIRECTIONAL: can a value from an OUTPUT of type `out` flow into an INPUT of
  * type `in`? The one primitive both areCompatible and canConnect build on.

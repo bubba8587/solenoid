@@ -3,12 +3,13 @@ import { FormatControllerNode } from "../rete-nodes";
 import type { FormatControllerNode as FormatControllerNodeType } from "../rete-nodes";
 import {
   FORMAT_STYLE_LABELS, FORMAT_STYLE_GROUPS, DATE_FORMAT_STYLES, UNIT_ANNOTATIONS,
-  unitGroupLabel, formatMismatchStore,
-  type FormatStyleId, type TextCase, type DecimalMode,
+  LOGICAL_STYLE_LABELS, unitGroupLabel, formatMismatchStore,
+  type FormatStyleId, type TextCase, type DecimalMode, type LogicalStyle,
 } from "../formatAnnotationStore";
+import { familyOf, controlsFor, COMPLEX_FORMAT_STYLES } from "../formatModel";
 import { packsStore } from "../packs";
 import { activePackUnits, activePackFormats } from "../fcExtensions";
-import { SOCKET_COLORS, isDateType } from "../sockets";
+import { SOCKET_COLORS } from "../sockets";
 import { processGraph, getEditor, repositionDockedNodes } from "../process";
 import { NodeCard } from "./NodeCard";
 import { NodeSocket } from "./NodeSocket";
@@ -54,6 +55,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
   const [unit,          setUnitLocal]     = useState(node.unit);
   const [customUnit,    setCustomUnitLocal] = useState(node.customUnit);
   const [textCase,      setTextCaseLocal] = useState<TextCase>(node.textCase);
+  const [logicalStyle,  setLogicalLocal]  = useState<LogicalStyle>(node.logicalStyle);
   const [bold,          setBoldLocal]     = useState(node.bold);
   const [italic,        setItalicLocal]   = useState(node.italic);
   const [textScale,     setScaleLocal]    = useState(node.textScale);
@@ -106,6 +108,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
     setFormatLocal(node.format);
     setUnitLocal(node.unit);
     setTextCaseLocal(node.textCase);
+    setLogicalLocal(node.logicalStyle);
     setBoldLocal(node.bold);
     setItalicLocal(node.italic);
     setScaleLocal(node.textScale);
@@ -158,6 +161,12 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
   function onCaseChange(c: TextCase) {
     node.textCase = c;
     setTextCaseLocal(c);
+    syncNode();
+  }
+
+  function onLogicalChange(s: LogicalStyle) {
+    node.logicalStyle = s;
+    setLogicalLocal(s);
     syncNode();
   }
 
@@ -225,11 +234,14 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
   const socketAccent = SOCKET_COLORS[node.socketDataType];
   const accent = mismatch ? "#e06c2e" : socketAccent;
 
-  // The FC adapts its options to the host socket's type: dates get date styles
-  // (no units), text gets nothing to format, numbers get number formats + units.
-  const dt = node.socketDataType;
-  const isDate = isDateType(dt);
-  const isText = dt === "string" || dt === "strlist";
+  // The FC adapts its controls to the host socket's type via the format model
+  // (formatModel.ts / docs/format-model.md) — the ONE truth table for which
+  // rows exist per family. A control outside the family is hidden, not
+  // disabled: dates get date styles (no units), text gets case/B/I/size,
+  // logical gets show-as, numbers get styles + precision + units, complex a
+  // reduced style list, structural types (frame/cube/chart/…) nothing.
+  const family = familyOf(node.socketDataType);
+  const c = controlsFor(family, format);
   const showFormatCustom = format === "custom" || format === "date_custom";
 
   // Unit-flow arrows flanking the unit dropdown. Format always applies backward
@@ -264,7 +276,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
       {mismatch && (
         <span className="solenoid-fc__mismatch" title="Unit mismatch on connected cable">!</span>
       )}
-      {isText ? (
+      {c.text ? (
         /* Text: display-only case + bold / italic / size (non-destructive). */
         <>
         <div className="solenoid-fc__row">
@@ -316,7 +328,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
           </select>
         </div>
         </>
-      ) : isDate ? (
+      ) : c.dateStyle ? (
         /* Date socket: one date-style dropdown, no units. */
         <div className="solenoid-fc__row">
           <FcArrow dir="back" title="Format applies to the box behind this controller" />
@@ -335,8 +347,33 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
             ))}
           </select>
         </div>
+      ) : c.logical ? (
+        /* Logical socket: show-as (TRUE/FALSE · 1/0 · Yes/No · ✓/✗), display only. */
+        <div className="solenoid-fc__row">
+          <FcArrow dir="back" title="Show-as applies to the box behind this controller" />
+          <select
+            className="solenoid-node__op-select solenoid-fc__select solenoid-fc__select--wide"
+            value={logicalStyle}
+            onChange={(e) => onLogicalChange(e.target.value as LogicalStyle)}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            title="How TRUE/FALSE renders"
+          >
+            {Object.entries(LOGICAL_STYLE_LABELS).map(([id, label]) => (
+              <option key={id} value={id}>{label}</option>
+            ))}
+          </select>
+        </div>
+      ) : !c.numberStyle && !c.complexStyle ? (
+        /* Structural socket (frame/cube/chart/lambda): nothing formattable here —
+           per-column frame formats are the v1.1 units milestone. */
+        <div
+          className="solenoid-fc__row solenoid-fc__row--none"
+          title="No formattable value on this socket — table columns get formats with the units milestone"
+        >—</div>
       ) : (
-        /* Number-ish socket: number format and unit, stacked for a narrow chip. */
+        /* Number-ish socket: number format and unit, stacked for a narrow chip.
+           Complex gets the reduced style list (auto/decimal/scientific). */
         <>
         <div className="solenoid-fc__row">
           <FcArrow dir="back" title="Format applies to the box behind this controller" />
@@ -348,27 +385,35 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
             onMouseDown={(e) => e.stopPropagation()}
             title="Number format"
           >
-            {Object.entries(FORMAT_STYLE_GROUPS).map(([group, styles]) =>
-              styles.length === 1 && group === "General" ? (
-                <option key={styles[0]} value={styles[0]}>{FORMAT_STYLE_LABELS[styles[0]]}</option>
-              ) : (
-                <optgroup key={group} label={group}>
-                  {styles.map((s) => (
-                    <option key={s} value={s}>{FORMAT_STYLE_LABELS[s]}</option>
+            {c.complexStyle ? (
+              COMPLEX_FORMAT_STYLES.map((s) => (
+                <option key={s} value={s}>{FORMAT_STYLE_LABELS[s]}</option>
+              ))
+            ) : (
+              <>
+              {Object.entries(FORMAT_STYLE_GROUPS).map(([group, styles]) =>
+                styles.length === 1 && group === "General" ? (
+                  <option key={styles[0]} value={styles[0]}>{FORMAT_STYLE_LABELS[styles[0]]}</option>
+                ) : (
+                  <optgroup key={group} label={group}>
+                    {styles.map((s) => (
+                      <option key={s} value={s}>{FORMAT_STYLE_LABELS[s]}</option>
+                    ))}
+                  </optgroup>
+                )
+              )}
+              {[...packFormatGroups].map(([group, items]) => (
+                <optgroup key={`pack:${group}`} label={group}>
+                  {items.map((f) => (
+                    <option key={f.id} value={f.id}>{f.label}</option>
                   ))}
                 </optgroup>
-              )
+              ))}
+              </>
             )}
-            {[...packFormatGroups].map(([group, items]) => (
-              <optgroup key={`pack:${group}`} label={group}>
-                {items.map((f) => (
-                  <option key={f.id} value={f.id}>{f.label}</option>
-                ))}
-              </optgroup>
-            ))}
           </select>
         </div>
-        {(format === "decimal" || format === "percent") && (
+        {c.precision && (
           <div className="solenoid-fc__row solenoid-fc__row--decimal">
             {/* spacer matching the format/unit row arrow, so the input's left
                 edge lines up with the dropdowns above and below it */}
@@ -449,20 +494,20 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
       )}
 
       {/* Custom pattern / unit fields appear only when "Custom…" is chosen. */}
-      {!isText && (showFormatCustom || unit === "custom") && (
+      {(c.numberStyle || c.complexStyle || c.dateStyle) && (showFormatCustom || (c.unit && unit === "custom")) && (
         <div className="solenoid-fc__row solenoid-fc__row--custom">
           {showFormatCustom && (
             <input
               type="text"
               className="solenoid-node__inline-input solenoid-fc__pattern"
               value={customPattern}
-              placeholder={isDate ? "pattern, e.g. YYYY-MM-DD" : 'format, e.g. "0.00"'}
+              placeholder={c.dateStyle ? "pattern, e.g. YYYY-MM-DD" : 'format, e.g. "0.00"'}
               onChange={(e) => onPatternChange(e.target.value)}
               onPointerDown={(e) => e.stopPropagation()}
               onMouseDown={(e) => e.stopPropagation()}
             />
           )}
-          {!isDate && unit === "custom" && (
+          {c.unit && unit === "custom" && (
             <input
               type="text"
               className="solenoid-node__inline-input solenoid-fc__pattern"
