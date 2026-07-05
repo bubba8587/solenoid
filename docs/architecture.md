@@ -251,17 +251,17 @@ browser-demo vs desktop split. Solver/sweep stays scoped, not built.
 | `subsystem-invariants.md` | living | the "don't break this" deep-dives — cable routing, group push, standoffs, tidy, resizable nodes, error values, unit flow, alerts |
 | `dev-notes.md` | living log | direction, deferred work, technical gotchas — the primary running record |
 | `backlog.md` | living | open features, polish, verification tasks |
-| `v1.0-plan.md` | planning | what's left for 1.0 (lazy-handle-on-cable; Windows packaging) |
+| `archive/v1.0-plan.md` | archived | the shipped 1.0 execution plan |
 | `node-coverage.md` | living | node inventory by category (`nodeCatalog.ts` is the real source) |
-| `node-arity-audit.md` | rationale | labeled-slots vs single-list-socket decision for variadic nodes |
+| `archive/node-arity-audit.md` | archived rationale | labeled-slots vs single-list-socket decision for variadic nodes |
 | `cube-node-scope.md` | rationale | the Cube (recursive nested-table) model + its node set |
 | `excel-pain-points.md` / `excel-toolbar-supplementals.md` | research | Excel function gaps + the non-function toolbar parity verdicts |
 | `compute-architecture.md` | scoping | browser-demo vs desktop native-compute (Polars) split |
 | `pack-architecture.md` | scoping | core-vs-pack line, isolation levels |
-| `performance-hardening.md` | reference | perf invariants for the hot paths (recompute, render) |
+| `archive/performance-hardening.md` | archived | the perf investigation + final renderer verdict |
 | `cable-routing.md` | historical | original cable/conduit spec — superseded by the built system (see banner) |
 | `grid-system.md` | future spec | soft-snap grid; unimplemented |
-| `isolate-pin-multiview-scoping.md` | reference | isolate / pin multiview scoping rules |
+| `archive/isolate-pin-multiview-scoping.md` | archived | isolate / pin multiview scoping (built; portals scoping parked) |
 | `agent-coordination.md` | parallel-session board | claim/coordinate when several agents work in parallel |
 | `archive/` | archived | finalized/inactive docs (research, reviews, shipped specs, parked proposals, decided-renderer journey). See `archive/README.md`. |
 
