@@ -27,8 +27,10 @@ const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 // flatter kinds (frame grid, table, scalar) render inline as before.
 function SwitchValue({ value, label }: { value: unknown; label?: string }) {
   if (isFrameValue(value)) return <FrameDisplay frame={value} label={label} />;
-  if (isCubeValue(value)) return <div style={{ display: "flex", marginTop: 2 }}><CubeChip value={value} label={label} accent="var(--sock-cube)" /></div>;
-  if (isChartValue(value)) return <div style={{ display: "flex", marginTop: 2 }}><ChartChip value={value} label={label} /></div>;
+  // A display-value box so NodeCard measures it (--out-socket-top → the collapsed
+  // input pill + output socket center on it); right-aligned like every value chip.
+  if (isCubeValue(value)) return <div className="solenoid-node__display-value" style={{ display: "flex", justifyContent: "flex-end" }}><CubeChip value={value} label={label} accent="var(--sock-cube)" /></div>;
+  if (isChartValue(value)) return <div className="solenoid-node__display-value" style={{ display: "flex", justifyContent: "flex-end" }}><ChartChip value={value} label={label} /></div>;
   if (isMermaidValue(value)) return <MermaidView source={value.source} />;
   if (isLambdaValue(value)) return <div className="solenoid-node__display-value">{formatLambda(value)}</div>;
   if (Array.isArray(value) && Array.isArray((value as unknown[])[0])) {
