@@ -100,6 +100,26 @@ describe("distinct", () => {
     };
     expect(distinctRows(mixed).columns[0].values).toEqual(["1"]); // one row, not collapsed away
   });
+
+  // ── The cross-backend key contract (B-1a, 2026-07-05) ──────────────────────
+  // Rust keys rows with serde_json of the SAME tagged tuples this oracle builds,
+  // asserted byte-identical in engine/tests.rs `row_key_is_byte_identical_to_js_
+  // json_stringify` against this exact literal. If encodeCell's encoding ever
+  // changes, update BOTH pins together.
+  it("the tagged-tuple key literal both backends pin (incl. \\u0001 + -0)", () => {
+    const literal = JSON.stringify([["s", "a\u0001b"], ["#", 1], ["#", -0], ["b", true], ["n"]]);
+    expect(literal).toBe('[["s","a\\u0001b"],["#",1],["#",0],["b",true],["n"]]');
+  });
+  it("crafted separator strings never collide (the old Rust \\u{1}-join bug class)", () => {
+    const crafted: FrameValue = {
+      __frame: true,
+      columns: [
+        { name: "a", type: "string", values: ["x\u0001s:y", "x"] },
+        { name: "b", type: "string", values: ["z", "y\u0001s:z"] },
+      ],
+    };
+    expect(distinctRows(crafted).columns[0].values).toEqual(["x\u0001s:y", "x"]); // both rows survive
+  });
 });
 
 describe("head", () => {

@@ -848,3 +848,56 @@ fn engine_apply_many_ipc_matches_chained_engine_apply_calls() {
     assert_eq!(p_many.rows, p_seq.rows);
     assert_eq!(p_many.rows, vec![vec![Json::String("N".into()), num_to_json(30.0)], vec![Json::String("S".into()), num_to_json(20.0)]]);
 }
+
+
+// ─── Oracle-key parity (B-1a): serde_json tagged tuples, byte-identical to JS ───
+
+#[test]
+fn row_key_is_byte_identical_to_js_json_stringify() {
+    // The exact literal produced by node:
+    //   JSON.stringify([["s","a<U+0001>b"],["#",1],["#",-0],["b",true],["n"]])
+    // (a \u{1}-bearing string, integral float as integer, -0 keyed as 0).
+    let cells: Vec<Vec<Cell>> = vec![
+        vec![Cell::Str("a\u{1}b".into())],
+        vec![Cell::Num(1.0)],
+        vec![Cell::Num(-0.0)],
+        vec![Cell::Bool(true)],
+        vec![Cell::Null],
+    ];
+    assert_eq!(
+        row_key_json(&cells, 0),
+        "[[\"s\",\"a\\u0001b\"],[\"#\",1],[\"#\",0],[\"b\",true],[\"n\"]]"
+    );
+}
+
+#[test]
+fn row_key_float_formatting_matches_js() {
+    // Non-integral floats via shortest-round-trip; integral via the i64 branch.
+    let cells: Vec<Vec<Cell>> = vec![vec![Cell::Num(1.5)], vec![Cell::Num(0.1)], vec![Cell::Num(-2.0)]];
+    assert_eq!(row_key_json(&cells, 0), "[[\"#\",1.5],[\"#\",0.1],[\"#\",-2]]");
+}
+
+#[test]
+fn distinct_no_longer_collides_on_crafted_separator_strings() {
+    // Under the old `format!("s:{s}")` + `\u{1}` join, these two DIFFERENT rows
+    // produced the same key ("s:x" SEP "s:y" SEP "s:z") and distinct dropped one.
+    // JSON tuple quoting is collision-proof: both rows survive.
+    let f = frame(vec![
+        ("a", SolType::Str, strs(&["x\u{1}s:y", "x"])),
+        ("b", SolType::Str, strs(&["z", "y\u{1}s:z"])),
+    ]);
+    let out = verb_distinct(&f, &None).unwrap();
+    assert_eq!(out.df.height(), 2);
+}
+
+#[test]
+fn distinct_still_type_distinguishes_and_buckets_null() {
+    // Values dedupe normally; two nulls collapse to one bucket.
+    let f = frame(vec![(
+        "v",
+        SolType::Str,
+        vec![Cell::Str("1".into()), Cell::Str("1".into()), Cell::Null, Cell::Null],
+    )]);
+    let out = verb_distinct(&f, &None).unwrap();
+    assert_eq!(out.df.height(), 2); // "1" + null
+}
