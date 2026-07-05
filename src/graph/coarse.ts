@@ -6,6 +6,16 @@ export const IS_COARSE =
   typeof window.matchMedia === "function" &&
   window.matchMedia("(pointer: coarse)").matches;
 
+/** True when the user has asked the OS to minimize motion. Checked on CALL (not
+ *  cached) so a mid-session OS toggle takes effect on the next load. */
+export function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+}
+
 /** True when the browser identifies itself as a mobile device. A mobile
  *  browser's "Request desktop site" swaps to a desktop UA, flipping this
  *  false — the lever users pull to opt OUT of the mobile experience. */
