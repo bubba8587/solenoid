@@ -156,7 +156,7 @@
 .solenoid-fc__more-row {
   display: flex;
   justify-content: center;
-  padding: 0 0 4px;
+  padding: 0 0 1px;
 }
 .solenoid-fc__more {
   display: flex;
