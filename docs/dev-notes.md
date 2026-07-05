@@ -2,6 +2,39 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Frame Lookup gains a Cube half — by-key read into a cube (2026-07-05)
+The cube half of the future unified XLOOKUP (v1.1-plan WS-D). Frame Lookup now looks a key
+up in a **Cube**'s top-level column and returns the matched cell WHOLE — a nested frame/cube
+comes out intact (drill in with INDEX). Scope stayed narrow: just the net-new cube case, NOT
+the full list+frame+cube node merge (that has open input-surface/migration questions needing
+the author).
+- **Engine (`frameVerbs.ts`):** `lookupCubeCell(cube, inCol, retCol, lookup, matchMode)` mirrors
+  `lookupFrameCell` — first-match-wins, null/error key never matches, `#REF!` on a missing
+  column, approximate `nextSmaller`/`nextLarger` on a numeric key. Operates on the cube's OWN
+  flat top-level columns only; it never descends into nested cells (the "a verb works on the
+  level it's handed" rule). **Gotcha:** a cube column has NO per-column type (heterogeneous
+  cells), so the key type is INFERRED from the flat scalar cells (`inferCubeKeyType`:
+  all-number → number, all-boolean → logical, else string). Consequence — a cube stores a date
+  as its serial NUMBER, so a cube date key matches by SERIAL, not by an ISO string the way a
+  typed frame date column does (documented in the catalog entry; Unnest to a frame for ISO
+  date lookups). A nested frame/cube/list cell can never be a lookup key.
+- **Node (`nodes/frame.ts` FrameLookupNode):** the source input changed `frameIn` → `anyIn`
+  ("Frame / Cube"), because a cube can't narrow into a frame socket (sockets.ts). This is the
+  INDEX precedent (`anyIn`/`anyOut`, branch on `isCubeValue`) and the sanctioned unified-XLOOKUP
+  direction. **Why `any` and not `cubeIn`:** a `cube` socket auto-widens a frame to a typeless
+  cube via `coerceValue`'s cube case (dropping the frame's column types → date-column regressions);
+  an `any` socket passes a frame through UNTOUCHED (full type-aware `lookupFrameCell` preserved) and
+  a cube through as a cube. Lazy `FrameRef` materialization is not socket-typed (`wrapNodeData`
+  collects any ref for a non-lazy node), so refs still resolve at an `any` socket. `asLookupSource`
+  keeps the old frame-widening for a bare list/matrix/scalar so nothing regresses. Existing
+  frame→lookup cables stay valid (`any` accepts a frame). Result box now uses the cube-aware
+  `ResultDisplay` (Frame→FrameDisplay, Cube→CubeDisplay, else ValueDisplay) instead of ValueDisplay,
+  so a returned nested table renders as a drillable chip.
+- **Author eyeball:** wire a Nest Join cube into Frame Lookup, look a parent key up, confirm the
+  returned nested sub-frame renders as a drillable chip and the source socket reads sensibly as
+  `any`. Tests: `frameLookup.test.ts` +12 cube cases (scalar/nested-whole/null/logical/no-match/
+  non-key-column/#REF!/approximate/#VALUE!). tsc clean, full vitest 2062 green.
+
 ### Audit: calc-mode / sketch / lazy-flush surfaces (2026-07-05, overnight)
 Walked the manual/auto/sketch + fusion machinery end-to-end. One real defect,
 fixed; the rest verified sound.

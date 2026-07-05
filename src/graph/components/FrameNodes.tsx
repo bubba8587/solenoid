@@ -38,6 +38,7 @@ import { processGraph } from "../process";
 import { pivotEditor } from "../pivotEditorStore";
 import { InlineInputs, InlineNumberField, useConnectedInputs } from "./inlineInput";
 import { FrameDisplay } from "./FrameDisplay";
+import { ResultDisplay } from "./ResultDisplay";
 import { ArrayChip } from "./ArrayChip";
 import { NodeShell, ValueDisplay, OpSelect, useNodeField, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
@@ -610,7 +611,9 @@ export function FrameLookupComponent({ data, emit }: NodeProps<FrameLookupNodeTy
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
       <SegToggle value={matchMode} options={LOOKUP_MATCH_OPTIONS} onChange={setMatchMode} />
-      <ValueDisplay value={data.cachedResult} />
+      {/* Cube lookup can return a nested frame/cube cell — ResultDisplay routes a
+          Frame → FrameDisplay, a Cube → CubeDisplay, else ValueDisplay (scalar). */}
+      <ResultDisplay value={data.cachedResult} label={data.label} />
     </NodeShell>
   );
 }

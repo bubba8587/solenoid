@@ -102,8 +102,12 @@ already have words for), the existing **INDEX** is upgraded to be cube/frame-awa
   cable valid (an `any` output flows into any input).
 
 By-key reading (find the row where key = X, return another column's cell) is
-XLOOKUP's job; upgrading XLOOKUP to a frame/cube mode returning `any` is the natural
-follow-up, deferred because its current list-shaped sockets are a bigger change.
+XLOOKUP's job. **Frame Lookup now does this for a Cube too (2026-07-05):** its source
+is an `any` socket, so a Cube flows in and it matches the key in the Cube's TOP-LEVEL
+column, returning the matched cell WHOLE (a nested frame/cube comes out intact —
+drill in with INDEX). Verb: `lookupCubeCell` (`frameVerbs.ts`). This is the cube half
+of the future unified XLOOKUP (below); the full three-way merge of list + frame + cube
+into one node is still the follow-up.
 
 ## Display (the drill-in popup)
 
@@ -255,12 +259,14 @@ this baseline — not a per-verb default, and not in v1.0.
     row/column as a list (dimensional output); whether INDEX should accept/emit ranges. Pairs with
     XLOOKUP's "return the whole row" question below.
 - **Unified XLOOKUP** (author decision 2026-07-01) — frame mode shipped (Frame Lookup);
-  the plan is now to MERGE list XLOOKUP + Frame Lookup + a new cube lookup into ONE node
-  still named XLOOKUP that handles every source. It returns the matched value WHOLE (no
-  drill-down): scalar / list / 2-D frame, and if the returned 2-D value has nested cells,
-  **XLOOKUP itself outputs a Cube** (`any` socket, `isCubeValue` runtime check). Full design
-  note + open questions in `v1.1-plan.md` WS-D. (Was: "XLOOKUP frame/cube mode, by-key cell
-  read returning `any`.")
+  **the cube half also shipped 2026-07-05** (Frame Lookup's source is now `any`, so it takes
+  a Cube and returns the matched top-level cell whole via `lookupCubeCell`). The remaining
+  plan is to MERGE list XLOOKUP + Frame Lookup (now frame+cube) into ONE node still named
+  XLOOKUP that handles every source and returns the matched value WHOLE (no drill-down):
+  scalar / list / 2-D frame, and if the returned 2-D value has nested cells, **XLOOKUP itself
+  outputs a Cube** (`any` socket, `isCubeValue` runtime check). Full design note + open
+  questions in `v1.1-plan.md` WS-D — the OPEN part now is the list↔frame↔cube input-surface
+  merge + migration, not the cube lookup itself.
 - [done] Multi-column Build Cube — the **Cube Columns** node (2026-06-29): N extensible
   `any` column inputs (list → cells, single-col cube → its cells, frame/scalar → one
   cell) + a Names CSV, assembled side by side. Composes with the cell-wise Build Cube

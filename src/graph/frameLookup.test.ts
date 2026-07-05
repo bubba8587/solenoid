@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { lookupFrameCell } from "./frameVerbs";
+import { lookupFrameCell, lookupCubeCell } from "./frameVerbs";
 import { isSolError } from "./errorValue";
-import type { FrameValue } from "./frame";
+import { cubeFromColumns, isFrameValue } from "./frame";
+import type { FrameValue, CubeValue } from "./frame";
 
 const people: FrameValue = {
   __frame: true,
@@ -64,5 +65,75 @@ describe("lookupFrameCell — frame XLOOKUP/VLOOKUP", () => {
   it("throws a #REF! for a missing column", () => {
     const err = (() => { try { lookupFrameCell(people, "nope", "id", "1"); } catch (e) { return e; } })();
     expect(isSolError(err) && err.code).toBe("#REF!");
+  });
+});
+
+// The cube half: look a key up in a Cube's TOP-LEVEL column, return the matched
+// row's cell WHOLE (a nested frame/cube comes out intact). See docs/cube-node-scope.md.
+const orders1: FrameValue = { __frame: true, columns: [{ name: "sku", type: "string", values: ["a", "b"] }] };
+const orders3: FrameValue = { __frame: true, columns: [{ name: "sku", type: "string", values: ["z"] }] };
+const customers: CubeValue = cubeFromColumns([
+  { name: "id", cells: [1, 2, 3] },
+  { name: "name", cells: ["Ann", "Bob", "Cy"] },
+  { name: "vip", cells: [true, false, true] },
+  { name: "orders", cells: [orders1, null, orders3] }, // a nested sub-frame per row
+]);
+
+describe("lookupCubeCell — cube XLOOKUP (top-level key, whole-cell return)", () => {
+  it("looks up a scalar key, returns another top-level column's scalar", () => {
+    expect(lookupCubeCell(customers, "name", "id", "Bob")).toBe(2);
+    expect(lookupCubeCell(customers, "id", "name", "3")).toBe("Cy");
+  });
+
+  it("returns a NESTED frame cell WHOLE (the cube half's whole point)", () => {
+    const cell = lookupCubeCell(customers, "id", "orders", "1");
+    expect(isFrameValue(cell)).toBe(true);
+    expect(cell).toBe(orders1); // the exact sub-frame, intact — not drilled into
+  });
+
+  it("a null nested cell comes back as null", () => {
+    expect(lookupCubeCell(customers, "id", "orders", "2")).toBeNull();
+  });
+
+  it("matches a logical key (true/false or 1/0), first match wins", () => {
+    expect(lookupCubeCell(customers, "vip", "name", "false")).toBe("Bob");
+    expect(lookupCubeCell(customers, "vip", "name", "0")).toBe("Bob");
+    expect(lookupCubeCell(customers, "vip", "name", "true")).toBe("Ann");
+  });
+
+  it("returns undefined when no row matches", () => {
+    expect(lookupCubeCell(customers, "name", "id", "Zed")).toBeUndefined();
+  });
+
+  it("never matches a nested-container or null key cell", () => {
+    // keying ON the nested 'orders' column: a frame/null cell can't be a lookup key.
+    expect(lookupCubeCell(customers, "orders", "name", "anything")).toBeUndefined();
+  });
+
+  it("throws a #REF! for a missing column", () => {
+    const err = (() => { try { lookupCubeCell(customers, "nope", "id", "1"); } catch (e) { return e; } })();
+    expect(isSolError(err) && err.code).toBe("#REF!");
+  });
+
+  describe("approximate match on a numeric key column (a cube has no typed date column)", () => {
+    const prices: CubeValue = cubeFromColumns([
+      { name: "qty", cells: [10, 50, 100] },
+      { name: "discount", cells: [0.05, 0.1, 0.15] },
+    ]);
+    it("exact still wins under an approximate mode", () => {
+      expect(lookupCubeCell(prices, "qty", "discount", "10", "nextSmaller")).toBe(0.05);
+    });
+    it("nextSmaller falls back to the closest smaller key", () => {
+      expect(lookupCubeCell(prices, "qty", "discount", "20", "nextSmaller")).toBe(0.05);
+      expect(lookupCubeCell(prices, "qty", "discount", "0", "nextSmaller")).toBeUndefined();
+    });
+    it("nextLarger falls back to the closest larger key", () => {
+      expect(lookupCubeCell(prices, "qty", "discount", "20", "nextLarger")).toBe(0.1);
+      expect(lookupCubeCell(prices, "qty", "discount", "1000", "nextLarger")).toBeUndefined();
+    });
+    it("throws #VALUE! for an approximate lookup on a non-numeric key column", () => {
+      const err = (() => { try { lookupCubeCell(customers, "name", "id", "Bob", "nextSmaller"); } catch (e) { return e; } })();
+      expect(isSolError(err) && err.code).toBe("#VALUE!");
+    });
   });
 });

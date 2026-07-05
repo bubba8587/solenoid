@@ -1119,9 +1119,11 @@ correctness.
 
 - [x] **Cube — v0.9 (author 2026-06-24; "finishes all socket types").** DONE — model + cached
   depth, lattice, producers (Nest Join + Build Cube), cube-aware INDEX, drill-in CubePopup, seed +
-  tests. Scope + cross-tool survey: `docs/cube-node-scope.md`. Follow-up (v1.1, not 1.0): the
-  **cube-cell** XLOOKUP half (frame XLOOKUP shipped as Frame Lookup); a cube-aware Nest Join for
-  multi-level (Customer->Order->LineItem). DECIDED: flat verbs do NOT map over nested cells (Unnest
+  tests. Scope + cross-tool survey: `docs/cube-node-scope.md`. Follow-up (v1.1, not 1.0): ~~the
+  **cube-cell** XLOOKUP half~~ **DONE 2026-07-05** — Frame Lookup's source is now `any`, takes a
+  Cube, and returns the matched top-level cell whole (`lookupCubeCell`; +12 tests). The full
+  list+frame+cube XLOOKUP node MERGE (input-surface + migration) is still open (v1.1-plan WS-D).
+  A cube-aware Nest Join for multi-level (Customer->Order->LineItem) already shipped. DECIDED: flat verbs do NOT map over nested cells (Unnest
   → verb → Nest explicitly). A frame's CELLS hold
   ANY value (scalar / list / matrix / another frame/cube) → the universal RECURSIVE container,
   so the socket lattice CLOSES (nothing new is ever needed because anything nests). **Name =

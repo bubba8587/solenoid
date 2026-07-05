@@ -1099,6 +1099,84 @@ export function lookupFrameCell(
   return bestIdx === -1 ? undefined : cellAt(ret, bestIdx);
 }
 
+/** A cube's top-level column by name, or a #REF! (thrown; the caller's guard
+ *  renders it). Mirrors `requireColumn` for frames. */
+function requireCubeColumn(c: CubeValue, name: string): CubeColumn {
+  const col = c.columns.find((k) => k.name === name);
+  if (!col) throw solError("#REF!", `column "${name}" not found`);
+  return col;
+}
+
+/** A cube column carries NO per-column type (its cells are heterogeneous), so infer
+ *  a key type from its flat SCALAR cells for `keyMatches`: all-number → number,
+ *  all-boolean → logical, otherwise string. Never "date" — a cube stores a date as
+ *  its serial NUMBER, so it matches numerically (look a cube date up by serial, or
+ *  Unnest to a typed frame first). null / error / nested-container cells are ignored
+ *  for the inference (a container can't be a lookup key). */
+function inferCubeKeyType(col: CubeColumn): FrameColType {
+  let sawNumber = false, sawBool = false, sawOther = false;
+  for (const cell of col.cells) {
+    if (cell === null || isSolError(cell)) continue;
+    if (typeof cell === "number") sawNumber = true;
+    else if (typeof cell === "boolean") sawBool = true;
+    else sawOther = true; // string, or a nested frame/cube/list (won't match anyway)
+  }
+  if (sawOther || (sawNumber && sawBool)) return "string";
+  if (sawNumber) return "number";
+  if (sawBool) return "logical";
+  return "string"; // empty / all-null column
+}
+
+/** XLOOKUP over a Cube — the cube half of Frame Lookup (see docs/cube-node-scope.md).
+ *  Matches `lookup` against one TOP-LEVEL column and returns the matched row's cell
+ *  from another top-level column, WHOLE: a nested frame/cube cell comes out intact,
+ *  so you look a key up in a cube and keep working on the sub-table (drilling into
+ *  it is INDEX / the CubePopup's job, not the lookup's). Operates on the cube's own
+ *  flat columns only — it never descends into nested cells (the "a verb works on the
+ *  level it's handed" rule). `undefined` when no row matches (the node turns that
+ *  into If-not-found / #N/A); a missing column is #REF!. A null / error / nested-
+ *  container key cell never matches — same first-match-wins + join-key rules as
+ *  `lookupFrameCell`. `matchMode` approximate fallback needs a numeric key column. */
+export function lookupCubeCell(
+  c: CubeValue, lookupColumn: string, returnColumn: string, lookup: string,
+  matchMode: LookupMatchMode = "exact",
+): CubeCell | undefined {
+  const key = requireCubeColumn(c, lookupColumn);
+  const ret = requireCubeColumn(c, returnColumn);
+  const n = cubeRowCount(c);
+  const keyType = inferCubeKeyType(key);
+  // A key cell usable for matching: a flat scalar only (a nested frame/cube/list is
+  // never a key). null / error already excluded. Returns undefined for a non-key cell.
+  const scalarAt = (i: number): FrameCell | undefined => {
+    const cell = i < key.cells.length ? key.cells[i] : null;
+    if (typeof cell === "number" || typeof cell === "string" || typeof cell === "boolean") return cell;
+    return undefined;
+  };
+  const retAt = (i: number): CubeCell => (i < ret.cells.length ? ret.cells[i] ?? null : null);
+  if (matchMode === "exact") {
+    for (let i = 0; i < n; i++) {
+      const cell = scalarAt(i);
+      if (cell === undefined) continue;
+      if (keyMatches(cell, lookup, keyType)) return retAt(i);
+    }
+    return undefined;
+  }
+  if (keyType !== "number") {
+    throw solError("#VALUE!", "Approximate lookup requires a numeric key column");
+  }
+  const target = Number(lookup.trim());
+  if (!Number.isFinite(target)) return undefined;
+  let bestIdx = -1, bestKey = NaN;
+  for (let i = 0; i < n; i++) {
+    const cell = scalarAt(i);
+    if (typeof cell !== "number") continue;
+    if (cell === target) return retAt(i); // an exact match always wins first
+    if (matchMode === "nextSmaller" && cell < target && (bestIdx === -1 || cell > bestKey)) { bestIdx = i; bestKey = cell; }
+    if (matchMode === "nextLarger" && cell > target && (bestIdx === -1 || cell < bestKey)) { bestIdx = i; bestKey = cell; }
+  }
+  return bestIdx === -1 ? undefined : retAt(bestIdx);
+}
+
 // ─── Append / Union (n-ary) ────────────────────────────────────────────────────
 /** Stack frames vertically, UNION BY NAME: the output has the union of all column
  *  names (first-seen order); a frame missing a column contributes `null` for its
