@@ -226,13 +226,20 @@
   margin-top: 0;
 }
 
-/* Square-collapse (Sparkline): minify to a headerless square. Hide the header and
-   chevron, shrink the card to a small square that holds just the mini figure.
-   The chevron is gone, so NodeCard's onDoubleClick expands it. Two classes beat
-   the base .solenoid-node width. */
-.solenoid-node--square-collapse.solenoid-node--collapsed .solenoid-node__header,
-.solenoid-node--square-collapse.solenoid-node--collapsed .solenoid-node__chevron {
+/* Square-collapse (Sparkline): minify to a headerless square. Hide the header,
+   shrink the card to a small square that holds just the mini figure. Two classes
+   beat the base .solenoid-node width. */
+.solenoid-node--square-collapse.solenoid-node--collapsed .solenoid-node__header {
   display: none;
+}
+/* The chevron is hidden until hover (so the square stays clean) — it reappears
+   top-left on hover as the visible re-expand affordance; double-click works too. */
+.solenoid-node--square-collapse.solenoid-node--collapsed .solenoid-node__chevron {
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.solenoid-node--square-collapse.solenoid-node--collapsed:hover .solenoid-node__chevron {
+  opacity: 1;
 }
 .solenoid-node--square-collapse.solenoid-node--collapsed {
   width: 58px;
@@ -243,6 +250,11 @@
   min-height: 44px;
   align-items: center;
   justify-content: center;
+}
+/* The mini spark is inert — no recharts tooltip / point highlights on hover, and
+   clicks pass through to the card so the double-click-to-expand still fires. */
+.solenoid-node--square-collapse.solenoid-node--collapsed .solenoid-node__collapsed-only {
+  pointer-events: none;
 }
 
 .solenoid-node__header {
