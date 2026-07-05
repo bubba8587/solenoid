@@ -226,6 +226,25 @@
   margin-top: 0;
 }
 
+/* Square-collapse (Sparkline): minify to a headerless square. Hide the header and
+   chevron, shrink the card to a small square that holds just the mini figure.
+   The chevron is gone, so NodeCard's onDoubleClick expands it. Two classes beat
+   the base .solenoid-node width. */
+.solenoid-node--square-collapse.solenoid-node--collapsed .solenoid-node__header,
+.solenoid-node--square-collapse.solenoid-node--collapsed .solenoid-node__chevron {
+  display: none;
+}
+.solenoid-node--square-collapse.solenoid-node--collapsed {
+  width: 58px;
+  min-width: 0;
+}
+.solenoid-node--square-collapse.solenoid-node--collapsed .solenoid-node__body {
+  padding: 7px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+}
+
 .solenoid-node__header {
   position: relative;
   padding: 6px 10px 6px 22px; /* extra left room for the collapse chevron */
