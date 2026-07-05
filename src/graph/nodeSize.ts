@@ -1,0 +1,41 @@
+// The ONE way to ask "how big is this node?". Every layout feature (align,
+// distribute, Tidy, group autofit, standoffs, minimap, new-node placement) needs a
+// node's box, and each used to re-derive it with its own `element.offsetWidth ||
+// node.width || <some constant>` — with the constant inconsistent across sites
+// (100×50 here, 180×160 there, 0/no-fallback elsewhere). That mismatch is the shared
+// root cause behind align/distribute misplacing nodes, Tidy needing rAF band-aids,
+// group autofit collapsing, and hand-authored seeds overlapping: a node reads size 0
+// (or a stale design-time guess) whenever its card hasn't painted yet.
+//
+// measuredBox() collapses that to one rule with a GUARANTEED non-zero result:
+//   1. live rendered size (element.offsetWidth/Height) — the truth once painted,
+//   2. else the size the ResizeObserver last wrote to the node (node.width/height),
+//   3. else a single documented default (an unpainted, never-measured node).
+// Prefer this over reading offsetWidth directly anywhere layout math depends on it.
+
+import type { Schemes, AreaExtra } from "./schemes";
+import type { NodeEditor } from "rete";
+import type { AreaPlugin } from "rete-area-plugin";
+
+type Editor = NodeEditor<Schemes>;
+type Area = AreaPlugin<Schemes, AreaExtra>;
+
+export type NodeBox = { x: number; y: number; w: number; h: number };
+
+// A node that has never painted AND never been measured. Sized to a typical small
+// card so it reserves plausible space rather than 0 (which collapses bounding boxes)
+// or a wild over-estimate. Kept as the single fallback so every feature agrees.
+export const FALLBACK_NODE_W = 180;
+export const FALLBACK_NODE_H = 100;
+
+/** The node's position + a guaranteed non-zero size. Returns null only if the node
+ *  has no area view at all (not on the canvas). `editor` supplies the stored-size
+ *  fallback; pass it when available (some call sites only have the area). */
+export function measuredBox(area: Area, id: string, editor?: Editor): NodeBox | null {
+  const v = area.nodeViews.get(id);
+  if (!v) return null;
+  const node = editor?.getNode(id) as { width?: number; height?: number } | undefined;
+  const w = v.element?.offsetWidth || node?.width || FALLBACK_NODE_W;
+  const h = v.element?.offsetHeight || node?.height || FALLBACK_NODE_H;
+  return { x: v.position.x, y: v.position.y, w, h };
+}
