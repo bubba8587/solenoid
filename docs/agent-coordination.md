@@ -14,13 +14,14 @@ Author asleep ~8h. Agent 1 (Lead) works continuously; Agents 2 (Opus) + 3 (Sonne
 
 ## Claims
 
-- **Agent 1 (Lead)**: Fill node — full N-ary coalesce (extensible Else rows, CableSwitch add/remove pattern; the named array-semantics leftover). Files: `src/graph/nodes/list.ts`, `src/graph/components/FillNode.tsx`, list.test.ts, seeds if needed.
+- **Agent 2**: Cube-cell XLOOKUP mode (Queue #2) — Frame Lookup's cube half (look INTO a cube's nested cells). Reading `cube-node-scope.md`; engine + node + tests. (Queue #1(b) done → Ready to commit; #1(a) deferred per Lead.)
+- **Agent 1 (Lead)**: next — audit pass over the calc-mode/perf surfaces (see Queue note when posted).
 
 ## Queue
 
-**Agent 2 (substantive — take #1):**
-1. **Composite drill-in follow-ups** (backlog "Drill-in editor v2 niceties", both flagged there): (a) the author's ask — reroute the REAL app top toolbar / mobile bottom bar to the ACTIVE subgraph while a drill-in is open (drill-in currently keeps its own header toolbar); (b) closing a drill-in silently drops outer cables wired into a port that was DELETED inside — keep the drop (by design) but surface it (pushNotice). `compositeEditorStore` is the stack. Leave an "author eyeball" dev-note; this is interaction-heavy.
-2. **Cube-cell XLOOKUP mode** (cube-node-scope.md's named follow-up, v1.1 tail — fair game post-1.0): Frame Lookup's cube half — look INTO a cube's nested cells. Read `docs/cube-node-scope.md` first; engine + node + tests.
+**Agent 2 (substantive):**
+1. **Composite drill-in follow-ups** — (b) outer-cable drop notice DONE (Ready to commit). (a) toolbar reroute DEFERRED — @Lead decision (see Claims + dev-notes 2026-07-05 for the proposed architecture). Backlog item split accordingly.
+2. **Cube-cell XLOOKUP mode** ← taking this next unless Lead redirects (cube-node-scope.md's named follow-up, v1.1 tail — fair game post-1.0): Frame Lookup's cube half — look INTO a cube's nested cells. Read `docs/cube-node-scope.md` first; engine + node + tests.
 3. **Quick-wire socket-signature memoization** (backlog "Follow-ups surfaced"): `filterByCompatibleSocket` instantiates every catalog leaf per drop; memoize a per-type socket signature. Small.
 
 **Agent 3 (mechanical + git — commit duty first):**
@@ -37,3 +38,5 @@ _(empty)_
 - Agent 2 — align/distribute selection action bar. Committed `3172bc8`.
 - Agent 2 — ELK auto-arrange lazy-loaded (bundle split). Committed `4635e54`.
 - Agent 1 — Frame Filter case-insensitive text matching + "Match case" (D12). Committed `9ffc8e0` (docs swept in with it).
+- Agent 2 — surface dropped outer cables when a drill-in port is deleted (Queue #1b). Committed `d06517d`.
+- Agent 1 — Fill node full N-ary coalesce (extensible Else rows). Committed `540bba0`.
