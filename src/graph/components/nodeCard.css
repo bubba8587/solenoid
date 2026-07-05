@@ -216,28 +216,17 @@
 }
 
 .solenoid-node__header {
-  --header-divider: var(--border);
   position: relative;
-  padding: 7px 11px 6px 23px; /* extra left room for the collapse chevron; +1px vs a 2px border so the band + title positions are unchanged */
+  padding: 6px 10px 6px 22px; /* extra left room for the collapse chevron */
   /* Category accent wraps the top + both sides of the header. Negative
      margins pull it over the card's own 1px border so the accent is the
-     outermost edge.
-     SEAM CHEAT (author 2026-07-05): the accent still READS 2px thick, but only
-     its OUTER pixel is a real border — 1px, the SAME width as the card border
-     below, so the two strokes snap to device pixels with the same width-phase
-     at any zoom (a 2px border next to a 1px one rounds differently → the old
-     subpixel crack / 1px jog at the junction). The accent's second pixel is
-     the INSET ring below — interior paint that can't touch the silhouette. */
+     outermost edge. */
   margin: -1px -1px 0;
-  border: 1px solid var(--node-accent, transparent);
-  /* No bottom border — an accent side meeting a dark bottom border mitres
-     into a diagonal wedge. The divider is an inset shadow instead. */
+  border: 2px solid var(--node-accent, transparent);
+  /* No bottom border — a 2px accent side meeting a 1px dark bottom border
+     mitres into a diagonal wedge. The divider is an inset shadow instead. */
   border-bottom: none;
-  box-shadow:
-    inset 0 1px 0 var(--node-accent, transparent),
-    inset 1px 0 0 var(--node-accent, transparent),
-    inset -1px 0 0 var(--node-accent, transparent),
-    inset 0 -1px 0 var(--header-divider);
+  box-shadow: inset 0 -1px 0 var(--border);
   border-top-left-radius: 8px;
   border-top-right-radius: 8px;
   /* Opaque accent-tinted header. Tint strength is themed (--header-tint) so the
@@ -246,27 +235,14 @@
 }
 /* No chevron → reclaim the reserved left room so the title sits flush left. */
 .solenoid-node--no-chevron .solenoid-node__header {
-  padding-left: 11px;
-}
-
-/* Grouped members carry a 2px body border, so there the header's real border
-   goes 2px too (2px meets 2px — same width-phase, same no-seam guarantee) and
-   the inset accent ring isn't needed. Padding drops back to compensate. */
-.solenoid-node--grouped .solenoid-node__header {
-  border-width: 2px;
-  padding: 6px 10px 6px 22px;
-  box-shadow: inset 0 -1px 0 var(--header-divider);
-}
-.solenoid-node--grouped.solenoid-node--no-chevron .solenoid-node__header {
   padding-left: 10px;
 }
 
 /* Light mode frames the card in its accent-dark — the gray header/body divider
-   read as an artifact against those accent edges. Match it to the frame color.
-   (A var, not a box-shadow override — the shadow list also carries the inset
-   accent ring above.) */
+   (the inset shadow above) read as an artifact against those accent edges.
+   Match it to the frame color. */
 :root[data-theme="light"] .solenoid-node__header {
-  --header-divider: var(--node-accent-dark, var(--border));
+  box-shadow: inset 0 -1px 0 var(--node-accent-dark, var(--border));
 }
 
 /* A small badge pinned to the card body's top-right corner — currently the lock
