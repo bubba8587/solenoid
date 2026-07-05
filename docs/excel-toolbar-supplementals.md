@@ -7,10 +7,10 @@ verdict: do we need it, and if so, what shape does it take in a node graph?
 
 Functions (the `=FUNC(...)` library) are covered elsewhere: `node-coverage.md`
 is the inventory, the in-app Function Reference (Ctrl+/) is the parity list, and
-`excel-pain-points.md` is the gap analysis. This doc is the **non-function**
+`archive/excel-pain-points.md` is the gap analysis. This doc is the **non-function**
 half of "Excel parity": the toolbar and the features behind it.
 
-Companion to `excel-pain-points.md` (why Excel hurts) and `roadmap.md` (the
+Companion to `archive/excel-pain-points.md` (why Excel hurts) and `archive/roadmap.md` (the
 relational-engine arc several of these nodes belong to).
 
 ---

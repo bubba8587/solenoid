@@ -1,8 +1,17 @@
 # Solenoid — Pack Architecture
 
-Scoping notes. No build commitment yet. The plan is a small, lean core app plus a large
-library of optional add-ons (Packs) that are turned off by default. Almost everything in
-the reference-packs doc and the big node brainstorm is a Pack, not a core feature.
+> **Status (2026-07-05): the framework described here is BUILT** — `packsStore` +
+> pack registration, FC unit/format extensions (`fcExtensions.ts`), dormant-pack
+> persistence (an unknown type loads as a Placeholder, wiring kept), the
+> **Geometry** pack as the worked example, and the **Composite** subgraph
+> container (`nodes/composite.ts`, drill-in editor, 4 of 5 run modes). This doc
+> remains the design rationale + the guide for authoring NEW packs; the open pack
+> work (more packs, Timesavers idioms, distribution/deps, variant-switch
+> reconcile, port aliasing) lives in `backlog.md`.
+
+The principle: a small, lean core app plus a large library of optional add-ons
+(Packs) that are turned off by default. Almost everything in the reference-packs
+doc and the big node brainstorm is a Pack, not a core feature.
 
 ## The idea in one line
 
@@ -68,7 +77,7 @@ These are fine, but they are the exception and they carry real weight: they ship
 code that runs during calculation, they are the nodes that make level-2 isolation and
 eventually level-3 safety hard, and they are usually desktop-only because of the library
 binding (see [reference-packs.md](archive/reference-packs.md) and
-[compute-architecture.md](compute-architecture.md)). So a pack states, per node, whether the
+[archive/compute-architecture.md](archive/compute-architecture.md)). So a pack states, per node, whether the
 node is a pre-set formula or custom logic, and the custom-logic ones are the short list that
 gets the scrutiny.
 
@@ -258,5 +267,5 @@ the menus already build themselves from node information, they mostly need a fil
 4. Carve the existing node families into packs, and ship most of them switched off.
 
 The reference packs and the big brainstorm all come after this. See
-[compute-architecture.md](compute-architecture.md) for how this ties into the planned split
+[archive/compute-architecture.md](archive/compute-architecture.md) for how this ties into the (since-shipped) split
 between the browser version and the desktop version.

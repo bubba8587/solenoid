@@ -238,8 +238,8 @@ src-tauri/
 The web layer reaches `ipc.rs` via `src/graph/ipcBridge.ts` (`engineAvailable`/
 `ipcInvoke`/`enginePing`, guarded by `isDesktop()` like `fileBridge.ts`); a Rust
 `Err` arrives as a tagged `SolError`. The Polars engine (WS2) is built — see
-`src/engine.rs` above and [compute-architecture.md](compute-architecture.md) for the
-browser-demo vs desktop split. Solver/sweep stays scoped, not built.
+`src/engine.rs` above (the original browser-vs-desktop scoping is archived as
+`archive/compute-architecture.md`). Solver/sweep stays scoped, not built.
 
 ---
 
@@ -249,17 +249,18 @@ browser-demo vs desktop split. Solver/sweep stays scoped, not built.
 |---|---|---|
 | `architecture.md` | living | (this file) module map |
 | `subsystem-invariants.md` | living | the "don't break this" deep-dives — cable routing, group push, standoffs, tidy, resizable nodes, error values, unit flow, alerts |
-| `dev-notes.md` | living log | direction, deferred work, technical gotchas — the primary running record |
-| `backlog.md` | living | open features, polish, verification tasks |
+| `dev-notes.md` | living log | session DIGESTS + open problems only (per-item history in `archive/dev-notes-history.md`) |
+| `backlog.md` | living | OPEN items only — the task queue (landed items are deleted) |
+| `format-model.md` | living | the FC function model — control truth table + precision rule (mirrored in `formatModel.ts`) |
+| `value-semantics.md` | living | null/NaN/Infinity/SolError semantics per computation context (all shipped) |
+| `v2.0/` | living plans | the remaining build bundles — 05 units (A4), 08 transpiler, 10 sensitivity, 12 uncertain/money; built bundles archived |
 | `archive/v1.0-plan.md` | archived | the shipped 1.0 execution plan |
 | `node-coverage.md` | living | node inventory by category (`nodeCatalog.ts` is the real source) |
 | `archive/node-arity-audit.md` | archived rationale | labeled-slots vs single-list-socket decision for variadic nodes |
 | `cube-node-scope.md` | rationale | the Cube (recursive nested-table) model + its node set |
-| `excel-pain-points.md` / `excel-toolbar-supplementals.md` | research | Excel function gaps + the non-function toolbar parity verdicts |
-| `compute-architecture.md` | scoping | browser-demo vs desktop native-compute (Polars) split |
-| `pack-architecture.md` | scoping | core-vs-pack line, isolation levels |
+| `excel-toolbar-supplementals.md` | research | the non-function toolbar parity verdicts (function-gap research archived) |
+| `pack-architecture.md` | design + authoring guide | core-vs-pack line, isolation levels (framework BUILT) |
 | `archive/performance-hardening.md` | archived | the perf investigation + final renderer verdict |
-| `cable-routing.md` | historical | original cable/conduit spec — superseded by the built system (see banner) |
 | `grid-system.md` | future spec | soft-snap grid; unimplemented |
 | `archive/isolate-pin-multiview-scoping.md` | archived | isolate / pin multiview scoping (built; portals scoping parked) |
 | `agent-coordination.md` | parallel-session board | claim/coordinate when several agents work in parallel |

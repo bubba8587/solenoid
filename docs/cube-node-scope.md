@@ -272,7 +272,7 @@ this baseline — not a per-verb default, and not in v1.0.
   XLOOKUP that handles every source and returns the matched value WHOLE (no drill-down):
   scalar / list / 2-D frame, and if the returned 2-D value has nested cells, **XLOOKUP itself
   outputs a Cube** (`any` socket, `isCubeValue` runtime check). Full design note + open
-  questions in `v1.1-plan.md` WS-D — the OPEN part now is the list↔frame↔cube input-surface
+  questions in `archive/v1.1-plan.md` WS-D — the OPEN part now is the list↔frame↔cube input-surface
   merge + migration, not the cube lookup itself.
 - [done] Multi-column Build Cube — the **Cube Columns** node (2026-06-29): N extensible
   `any` column inputs (list → cells, single-col cube → its cells, frame/scalar → one
