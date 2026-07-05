@@ -13,6 +13,12 @@ half of "Excel parity": the toolbar and the features behind it.
 Companion to `archive/excel-pain-points.md` (why Excel hurts) and `archive/roadmap.md` (the
 relational-engine arc several of these nodes belong to).
 
+> **How current is this?** The per-ribbon tables below are the durable MAPPING
+> (which bucket each Excel feature lands in) — those verdicts don't age. Build
+> STATUS lives in the "Consolidated verdicts" section at the end, reconciled
+> 2026-07-05; inline "not yet built / roadmap Phase N" asides in the tables may
+> lag it. `backlog.md` is the task truth.
+
 ---
 
 ## How to read the verdicts
@@ -282,22 +288,22 @@ F9 / Manual calculation.
 
 ## Consolidated verdicts
 
-### New **nodes** to build (priority order)
-1. **Pivot / Unpivot** + the rest of the **relational verbs** (Join, Distinct, Rename, Append) — roadmap Phase 3; the spine.
-2. **Validate / Assert node** — constraint that fails loud; the most on-brand new node here.
-3. **Goal Seek / Solver node** — inverse solve for a target.
-4. **Data Table / parametric sweep node** — vary inputs → tabulated frame.
-5. **Export / Write sink node** — frame → CSV/clipboard (mirror of the source nodes).
-6. **Conditional cell-highlight** — a Heatmap extension (rule-based colour).
-7. *(Speculative)* Flash-Fill-by-example; Scenario set; pie/scatter chart-type coverage.
+### New **nodes** to build (priority order) — reconciled 2026-07-05
+1. ~~Pivot / Unpivot + the relational verbs~~ — **SHIPPED** (the full verb spine + native Polars).
+2. ~~Validate / Assert node~~ — **SHIPPED as the Expect node** (2026-07-03; not-null/unique/range/regex, fails loud, Problems panel).
+3. **Goal Seek / Solver** — OPEN, as a Composite run mode (backlog).
+4. ~~Data Table / parametric sweep~~ — **SHIPPED** as the Composite Data Table run mode (N-variable full-factorial).
+5. ~~Export / Write sink node~~ — **SHIPPED** (Write CSV / Write JSON, arm/disarm Run button).
+6. **Conditional cell-highlight** — DEFERRED by the author (D4, needs its own design pass; backlog).
+7. Speculative tail: Flash-Fill-by-example → the #11 deferred pile; ~~Scenario set~~ → **SHIPPED** (Scenarios run mode); scatter → ruled IN (core-viz backlog item); **pie → still unruled (backlog "rule in/out")**.
 
-### New **settings** to add
-- **Calc mode** — Live / Paused (manual recompute) for large graphs.
-- **Show grid dots** — view toggle alongside the existing snap toggle.
-- **CSV import locale** — delimiter + decimal mark (guards the decimal/CSV catastrophe), as a setting or per-node option.
-- **Default number format / places / date format** — document-level FC defaults (date default partly done).
-- *(Advanced, post-1.0)* **Iterative calculation** — enable + max-iter + tolerance for intentional cycles.
-- *(Minor)* Document properties (title/author/tags); autosave interval.
+### New **settings** to add — reconciled 2026-07-05
+- ~~Calc mode~~ — **SHIPPED** (automatic / manual / sketch, F9, StatusBar chips).
+- **Show grid dots** — OPEN (backlog; snap toggle exists, visibility doesn't).
+- ~~CSV import locale~~ — **RESOLVED**: delimiter auto-detection shipped (Papa); decimal-comma DECIDED AGAINST (en-US by fiat).
+- **Default number format / places** — OPEN, folded into the future Document Properties window (backlog; the date default shipped).
+- ~~Iterative calculation~~ — **COVERED** by the Composite Simulation run mode (bounded Gauss-Seidel feedback instead of a global toggle).
+- Document properties (title/author/tags) — folded into the same Document Properties window item.
 
 ### Already handled — **don't rebuild**
 - Names/references → titles + wires. Formula auditing / trace precedents → the graph itself. Watch Window → pins. Show Formulas / Evaluate → always-visible node faces + Cable Inspector.
@@ -316,10 +322,11 @@ F9 / Manual calculation.
 
 ---
 
-## Open questions for the author
-- **Calc mode**: is a Paused/Manual recompute mode actually wanted pre-1.0, or does push-reactive cover every graph you'll realistically build first?
-- **Validate/Assert node**: one general node with a mode selector (range/membership/pattern/non-null/type), or fold validation into existing nodes' error surfaces?
-- **Goal Seek**: worth the inverse-solve machinery before the relational engine lands, or sequence it after?
-- **Conditional formatting**: extend Heatmap with rules, or is Alert + Heatmap enough and rule-based cell colour is YAGNI?
+## Open questions — ALL ANSWERED (2026-07-05)
+- ~~Calc mode~~ → built (manual + sketch shipped 2026-07-01/03).
+- ~~Validate/Assert~~ → built as the Expect node (general node, per-check toggles).
+- ~~Goal Seek~~ → sequenced after (a Composite run mode; backlog).
+- ~~Conditional formatting~~ → deferred by the author (D4, own design pass; must
+  clear Excel's version by a lot, Display-node-only, off FC territory).
 </content>
 </invoke>

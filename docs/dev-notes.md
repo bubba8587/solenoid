@@ -65,6 +65,14 @@ live. Every commit verified tsc + full vitest (now 2184 green); tree clean, noth
 - **Decisions:** D2 (composite toolbar reroute) and D4 (conditional formatting) DEFERRED
   by the author. Next in WS-A when picked up: A4 units-by-dimensionality (v1.1-β,
   design-the-representation-first).
+- **Parity-doc mining (follow-up ask):** swept toolbar-supplementals + the archived
+  pain-points for verdicts that never became queue items. New backlog entries: a
+  multi-predicate AND/OR Filter (pain-points §1/§14), pie in the Chart node, "Go To
+  Special" select-all-errors chrome, grid-dots visibility toggle, doc-level FC
+  defaults (into the Document Properties window item) — the first three flagged
+  "rule in/out". Everything else in both docs verified shipped/queued/ruled;
+  toolbar-supplementals' closing sections reconciled (its 4 open questions are all
+  answered now), pain-points stays archived research.
 - **Doc consolidation (author-mandated, aggressive):** dev-notes → digests-only (75
   per-item entries swept to archive); **backlog rewritten to OPEN ITEMS ONLY** (1823 →
   ~170 lines; new standing policy: a landed item's line is DELETED, git + digests are

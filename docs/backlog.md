@@ -81,7 +81,13 @@ is archived).
   dropdown gains "Custom…" → editor with per-slot color circles, a "Load template"
   seed-from-preset, and a live sample (sample node in a Group + a Lorem Note);
   writes the app-wide custom base (`paletteStore`). Per-DOC palette editing goes
-  to a future Document Properties window (raw JSON text box) — later, bigger.
+  to a future Document Properties window (raw JSON text box) — later, bigger; that
+  window is also the home for doc metadata (title/author/tags) and **document-level
+  FC defaults** (default places / number format — the date default `DD-MMM-YYYY`
+  already shipped; toolbar-supplementals [SETTING] verdict).
+- [ ] **Show/hide grid dots toggle** — a [SETTING] beside the existing snap toggle
+  (toolbar-supplementals verdict; snap exists in `gridSnapStore`, dot visibility
+  has no switch).
 
 ## Composite / drill-in
 
@@ -115,6 +121,17 @@ is archived).
 - [ ] **(MAYBE) list-of-frames for MAP arity** — the container half is served by the
   Cube; only the pass-N-tables-to-one-MAP niche remains. Weigh against chaining MAPs;
   revisit with per-group split-apply-combine if that direction is ever owned.
+- [ ] **(rule in/out) Multi-predicate frame Filter — AND/OR condition rows** (mined
+  from `archive/excel-pain-points.md` §1/§14, 2026-07-05): Excel's SUMIFS is AND-only
+  and OR explodes combinatorially; our Filter has ONE predicate (OR = two Filters →
+  Append → Distinct today). Extensible condition rows with an AND/OR mode = SQL
+  `WHERE … IN (…)` made visual; the `PairedExtensibleInputs` pattern fits.
+- [ ] **(rule in/out) Pie in the Chart node** (mined from toolbar-supplementals —
+  "pie/scatter are coverage gaps INSIDE the existing Chart node"; scatter was ruled
+  IN via the core-viz list, pie never got a ruling).
+- [ ] **(rule in/out) "Go To Special" chrome — select all error nodes / select by
+  type** (toolbar-supplementals, Find & Select): a selection action riffing on the
+  navigator; pairs with the Problems panel's per-error jump.
 
 ## Notes / documents
 
