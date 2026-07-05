@@ -8,9 +8,9 @@
 // node turns each into an input socket), which is just Excel's idea of a
 // defined name.
 //
-// One module, three outputs from the same parse: variable extraction, a
-// compiled evaluator (JS codegen, kept compatible with the existing broadcast
-// machinery), and a LaTeX string for the KaTeX preview.
+// One module, three outputs from the same parse: variable extraction, the
+// array-aware evaluator (compileEvaluator/compilePositional — the ONE
+// evaluation core), and a LaTeX string for the KaTeX preview.
 
 import { solError, isSolError, isNaError } from "./errorValue";
 import { resolveExcelFunction, EXCEL_IMPL_META, normalizeFxResult, fxErrorToSol, FX_FUNCTION_NAMES, numberToText } from "./excelFunctions";
@@ -223,29 +223,6 @@ export function extractVariables(expr: string): string[] {
   return out;
 }
 
-// ─── Codegen (AST → JS) ───────────────────────────────────────────────────────
-function js(n: Ast): string {
-  switch (n.t) {
-    case "num": return `(${n.v})`;
-    case "str": return JSON.stringify(n.v);
-    case "bool": return n.v ? "true" : "false";
-    case "name": { const c = constantValue(n.name); return c !== undefined ? `(${c})` : n.name; }
-    case "call": return `$(${JSON.stringify(n.name.toUpperCase())}${n.args.map((a) => `, ${js(a)}`).join("")})`;
-    case "unary": return `(${n.op}${js(n.arg)})`;
-    case "percent": return `((${js(n.arg)}) / 100)`;
-    case "bin": {
-      const l = js(n.l), r = js(n.r);
-      switch (n.op) {
-        case "^": return `Math.pow(${l}, ${r})`;
-        case "&": return `(String(${l}) + String(${r}))`;
-        case "=": return `(${l} === ${r})`;
-        case "<>": return `(${l} !== ${r})`;
-        default: return `(${l} ${n.op} ${r})`; // + - * / < > <= >=
-      }
-    }
-  }
-}
-
 // Resolve Excel functions through the EXCEL_FUNCTIONS registry seam: a registered
 // native impl wins (the first wave — ROUND/SQRT/STANDARDIZE/YEAR/EOMONTH/LEN), and
 // every other name still falls through to Formula.js (behaviour-identical). Throws
@@ -256,46 +233,17 @@ function dispatch(name: string, ...args: unknown[]): unknown {
   return f(...args);
 }
 
-// Value-polymorphic: the codegen handles strings (`&` concat, string literals),
-// booleans (comparisons), and dates-as-serials uniformly, and Formula.js returns
-// any Excel type — so a compiled formula is `unknown`-in/`unknown`-out. The
-// numeric producers (Add, etc.) still constrain it to numbers at their own
-// sockets; the polyform producers (Expression / MAP / … with a result-type
-// selector) let any type flow. See nodes/shared.ts (ResultType) + broadcastN.
-export type CompiledFn = (...args: unknown[]) => unknown;
-
-/**
- * Compile a formula into a function of `paramNames`. Returns null on a parse or
- * codegen error. The returned function is scalar-in/scalar-out, so the
- * broadcast wrappers can map it element-wise over list/matrix inputs.
- */
-export function compileFormula(expr: string, paramNames: string[]): CompiledFn | null {
-  const ast = parseExpr(expr);
-  if (!ast) return null;
-  try {
-    const raw = new Function(...paramNames, "$", `"use strict"; return (${js(ast)});`) as
-      (...a: unknown[]) => unknown;
-    // Map a top-level Formula.js Error → SolError (the shared P5 boundary): in-formula
-    // errors already propagated/were caught (IFERROR) inside `raw`; only the final
-    // result is normalized, and only when it's a scalar Error (arrays untouched).
-    return (...args: unknown[]) => normalizeFxResult(raw(...args, dispatch));
-  } catch {
-    return null;
-  }
-}
-
 // ─── Array-aware evaluator (Expression's compute core) ───────────────────────
-// compileFormula above is scalar-in/scalar-out: an outer broadcaster (in the
-// host node) destructures every array to scalars BEFORE the formula runs, so it
-// can map but never AGGREGATE — `SUM(x)` over a list sums one element at a time.
-// This evaluator instead walks the AST and decides broadcast-vs-aggregate PER
-// CALL SITE (Excel's grammar of arrays): a range-signature function receives its
-// array argument WHOLE (so it can aggregate or array-return), while every other
-// function and every operator BROADCASTS element-wise over array arguments. That
-// is what lets one Expression compute `x / SUM(x)` — `x` flows whole into SUM and
-// element-wise into the divide. Scalar semantics mirror the `js()` codegen above
-// exactly, so a formula with no range functions evaluates identically to the
-// compiled path (the strict-superset guarantee).
+// THE one evaluation core (the old `compileFormula` scalar `new Function`
+// codegen was RETIRED 2026-07-05, B-4 — every runtime caller had long moved
+// here via compileEvaluator/compilePositional; this core is its strict
+// superset, with the SETTLED P6 operator semantics). The evaluator walks the
+// AST and decides broadcast-vs-aggregate PER CALL SITE (Excel's grammar of
+// arrays): a range-signature function receives its array argument WHOLE (so it
+// can aggregate or array-return), while every other function and every
+// operator BROADCASTS element-wise over array arguments. That is what lets one
+// Expression compute `x / SUM(x)` — `x` flows whole into SUM and element-wise
+// into the divide.
 
 /**
  * Functions whose signature TAKES A RANGE: they receive array arguments whole
@@ -628,8 +576,8 @@ export type ExprEvaluator = (env: Record<string, unknown>) => unknown;
 /**
  * Compile a formula into an array-aware evaluator of a name→value environment
  * (scalar or 1-D array per variable). Returns null on a parse error. Throws at
- * eval time on an unknown function (same as compileFormula), so the host node
- * surfaces an error rather than computing silently wrong.
+ * eval time on an unknown function, so the host node surfaces an error rather
+ * than computing silently wrong.
  */
 export function compileEvaluator(expr: string): ExprEvaluator | null {
   const ast = parseExpr(expr);
@@ -642,9 +590,9 @@ export function compileEvaluator(expr: string): ExprEvaluator | null {
 
 /**
  * Same array-aware core as `compileEvaluator`, but with a POSITIONAL call
- * signature — a drop-in for `compileFormula` so the LAMBDA family (MAP / BYROW /
+ * signature — positional params, so the LAMBDA family (MAP / BYROW /
  * BYCOL / REDUCE / MAKEARRAY, and wired LAMBDA values) routes through the one
- * evaluator instead of the scalar codegen. Each host keeps its own iteration +
+ * evaluator. Each host keeps its own iteration +
  * argument order (the "mode"); only the evaluation core is shared. Positional
  * args bind to `paramNames` in order to build the eval environment.
  */

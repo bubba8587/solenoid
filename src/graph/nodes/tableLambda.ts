@@ -26,7 +26,7 @@ import { solError, isSolError, type SolError, type SolErrorCode } from "../error
 // the matching type AT THE NODE'S DIMENSIONALITY (MAP/MAKEARRAY → matrix:
 // table/strtable/datetable; BYROW/BYCOL → combo; REDUCE → scalar). The mapped
 // value inputs are `any` so arrays of any element type connect. See
-// nodes/shared.ts (ResultType) and excelFormula.ts (compileFormula).
+// nodes/shared.ts (ResultType) and excelFormula.ts (compilePositional).
 
 type Cell = number | string | boolean | null | SolError; // a mapped value — number (date serial), text, logical, null (missing), or a per-cell error
 type Mat = Cell[][];
