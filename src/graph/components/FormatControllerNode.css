@@ -6,14 +6,16 @@
 .solenoid-fc {
   width: auto;
   min-width: 0;
-  /* The chip is an all-header mini card: the type accent tints the chip
-     ITSELF (there's no header band to carry it — same tint recipe as a node
-     header), while border / hover / selection stay the STANDARD node
-     treatments from nodeCard.css. The old always-accent border fought the
-     generic hover rule (accent flicked to gray on hover) and read nothing
-     like a node at rest. Mismatch still reads: accentOverride turns the
-     tint (and corner badge) orange. */
-  background: color-mix(in srgb, var(--node-accent, var(--surface)) var(--header-tint), var(--surface));
+  /* The chip wears the NODE HEADER's accent ring (2px solid accent — the
+     header band treatment, author 2026-07-05; a body tint was tried and
+     rejected). Selection still overlays the standard node ring/glow, and the
+     hover override below keeps the accent from flicking to gray under the
+     generic node hover rule. Mismatch reads via accentOverride → orange ring
+     + corner badge. */
+  border: 2px solid var(--node-accent, var(--border));
+}
+.solenoid-fc:not(.solenoid-node--selected):hover {
+  border-color: var(--node-accent, var(--border-strong));
 }
 
 /* A compact annotation chip has no label, no collapse — hide the chevron
@@ -147,13 +149,21 @@
   margin: 0;
 }
 
-/* The advanced-tier expander — a thin full-width ghost row at the chip's foot. */
+/* The advanced-tier expander closes the FORMAT cluster (unit row sits below).
+   The ROW is plain card — draggable like any card area — and only the small
+   centered button captures the click. Bottom padding keeps the chevron off
+   the row edge. */
+.solenoid-fc__more-row {
+  display: flex;
+  justify-content: center;
+  padding: 0 0 4px;
+}
 .solenoid-fc__more {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  height: 14px;
+  width: 26px;
+  height: 10px;
   padding: 0;
   background: none;
   border: none;
