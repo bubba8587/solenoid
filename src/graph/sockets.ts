@@ -94,8 +94,9 @@ export const SOCKET_COLORS: Record<SocketDataType, string> = {
 //   complex   complex   complexlist   complexcombo    complextable
 //
 // To add a 5th element family: add a row here, its colors (App.css + SOCKET_COLORS),
-// and a render branch (SocketComponent). The accept-sets, areCompatible, and
-// canConnect all fall out — no other edits.
+// a render branch (SocketComponent), and a case in formatModel.ts `familyOf`
+// (else the FC shows no controls for it — fail-safe but blank). The accept-sets,
+// areCompatible, and canConnect all fall out — no other edits.
 type Dim = "scalar" | "list" | "combo" | "matrix";
 
 const FAMILIES: Record<string, Record<Dim, SocketDataType>> = {
