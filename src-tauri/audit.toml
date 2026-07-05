@@ -1,0 +1,4 @@
+# cargo-audit config. Add advisory IDs here as triage noise comes up, with a
+# one-line reason each — don't blanket-ignore a whole crate.
+[advisories]
+ignore = []

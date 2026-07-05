@@ -350,9 +350,10 @@ section is decision-recorded. The QUEUE when resuming, in order:
    editors through draft-commit (Escape revert); the 33 `outline:none` → `:focus-visible`
    sweep; modal focus traps; Settings `Switch` accessible name; socket-legend
    open/collapsed persistence. All land in the build pass, UX tier.
-3. **cargo-audit in CI — APPROVED 2026-07-02.** Small workflow: `cargo audit` on
-   `src-tauri/Cargo.lock` on pushes to develop; triage noise via `audit.toml` ignore
-   list as it comes up.
+3. ~~**cargo-audit in CI**~~ — DONE 2026-07-05. `.github/workflows/cargo-audit.yml`
+   (push to develop, path-filtered on `Cargo.lock`/the workflow/`audit.toml`, plus
+   `workflow_dispatch`) runs `cargo audit` against `src-tauri/Cargo.lock`; empty
+   `src-tauri/audit.toml` ignore list ready for triage noise as it comes up.
 4. **Frame P3s**: (a) **DECIDED 2026-07-02 (delegated — "do as you wish"): Rust builds
    the byte-identical oracle key.** Replace `Cell::key()` + the raw `\u{1}` joins
    (engine.rs distinct + group_by) with `serde_json::to_string` of the SAME tagged-tuple
