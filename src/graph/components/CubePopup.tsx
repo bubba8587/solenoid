@@ -5,6 +5,7 @@ import { cubeRowCount, cubeDepth, frameRowCount } from "../frame";
 import { CubeCellChip, frameCellNode } from "./cubeCell";
 import { CloseIcon } from "./CloseIcon";
 import { PopupPinButton, PopupGoToButton } from "./PopupPinButton";
+import { APP_LOCALE } from "../locale";
 import "./popupChrome.css";
 import "./TablePopup.css";
 
@@ -96,7 +97,7 @@ export function CubePopup() {
       >
         <div className="sol-popup__header">
           <div className="sol-popup__title">{view.label}</div>
-          <span className="table-popup__dims">{rows}×{cols}{rowsTruncated ? ` · first ${MAX_VISIBLE_ROWS.toLocaleString()}` : ""}</span>
+          <span className="table-popup__dims">{rows}×{cols}{rowsTruncated ? ` · first ${MAX_VISIBLE_ROWS.toLocaleString(APP_LOCALE)}` : ""}</span>
           {depth !== null && (
             <span
               className="table-popup__dims"

@@ -10,6 +10,7 @@ import { coerceFrameCell, formatFrameCell, type FrameSourceColumn } from "../fra
 import "./popupChrome.css";
 import { CloseIcon } from "./CloseIcon";
 import { PopupPinButton, PopupGoToButton } from "./PopupPinButton";
+import { APP_LOCALE } from "../locale";
 import "./TablePopup.css";
 
 type CellType = "number" | "string" | "date" | "logical"; // "date" edits as its serial (number-ish); "logical" as TRUE/FALSE
@@ -352,7 +353,7 @@ export function TablePopup() {
       >
         <div className="sol-popup__header">
           <div className="sol-popup__title">{state.title}</div>
-          <span className="table-popup__dims">{rows}×{cols}{rowsTruncated ? ` · first ${MAX_VISIBLE_ROWS.toLocaleString()}` : ""}</span>
+          <span className="table-popup__dims">{rows}×{cols}{rowsTruncated ? ` · first ${MAX_VISIBLE_ROWS.toLocaleString(APP_LOCALE)}` : ""}</span>
           {state.pinNodeId && <PopupGoToButton nodeId={state.pinNodeId} onClose={() => tablePopup.close()} />}
           {state.pinNodeId && <PopupPinButton nodeId={state.pinNodeId} />}
           <button className="sol-popup__close" onClick={() => tablePopup.close()} aria-label="Close"><CloseIcon size={16} /></button>

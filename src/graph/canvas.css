@@ -1,5 +1,7 @@
 /* Hide the minimap — Settings ▸ View. Class on <html> set by syncPerfClasses(). */
 html.perf-no-minimap .solenoid-minimap { display: none; }
+/* Hide the canvas background dot grid — Settings ▸ View. */
+html.perf-no-grid-dots .solenoid-canvas { background-image: none; }
 
 .solenoid-canvas-wrapper {
   position: relative;

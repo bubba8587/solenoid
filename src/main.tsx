@@ -3,6 +3,7 @@ import App from "./App";
 import { initAppTheme } from "./graph/appTheme";
 import { initCableFlow } from "./graph/cableFlowStore";
 import { initGridSnap } from "./graph/gridSnapStore";
+import { initCableShape } from "./graph/cableShape";
 import { initRenderMode, renderModeStore, gpuCapabilityStore } from "./graph/renderMode";
 import { probeGpu } from "./graph/gpuProbe";
 import { initSettings } from "./graph/settingsStore";
@@ -70,6 +71,7 @@ if (IS_MOBILE) document.documentElement.classList.add("is-mobile");
 initAppTheme();
 initCableFlow();
 initGridSnap();
+initCableShape();
 initRenderMode();
 initSettings();
 

@@ -18,6 +18,7 @@ import { mobileMenuStore } from "./mobileMenuStore";
 import { settingsPanel } from "./settingsStore";
 import { rendererSpikeStore } from "./rendererSpikeStore";
 import { htmlCanvasSpikeStore } from "./htmlCanvasSpikeStore";
+import { APP_LOCALE } from "./locale";
 import { DocumentTitle } from "./components/DocumentTitle";
 import { CableShapeSelector } from "./CableShapeSelector";
 import { useGridSnap } from "./gridSnapStore";
@@ -182,8 +183,8 @@ export function MenuBar() {
             problemsPanelUi.setOpen(true);
             pushNotice(
               r.findings > 0
-                ? `Model check: ${r.findings} finding${r.findings === 1 ? "" : "s"} across ${r.samples.toLocaleString()} samples — see Problems.`
-                : `Model check: no problems found across ${r.samples.toLocaleString()} samples.`,
+                ? `Model check: ${r.findings} finding${r.findings === 1 ? "" : "s"} across ${r.samples.toLocaleString(APP_LOCALE)} samples — see Problems.`
+                : `Model check: no problems found across ${r.samples.toLocaleString(APP_LOCALE)} samples.`,
               r.findings > 0 ? "warn" : "info",
             );
           })(),

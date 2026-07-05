@@ -20,6 +20,8 @@ export interface Settings {
 
   /** Hide the minimap (it repaints on every pan). */
   perfHideMinimap: boolean;
+  /** Hide the canvas background dot grid. */
+  hideGridDots: boolean;
 
   /** Drop a cable on empty canvas → the Add menu opens filtered to compatible
    *  node types, pre-wired to whichever one gets picked. */
@@ -34,6 +36,7 @@ const DEFAULTS: Settings = {
   tidyAlign: "center",
   csvFolder: "",
   perfHideMinimap: false,
+  hideGridDots: false,
   quickWire: false,
   semanticZoom: false,
 };
@@ -100,6 +103,10 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
         key: "perfHideMinimap",
         label: "Hide minimap",
       },
+      {
+        key: "hideGridDots",
+        label: "Hide grid dots",
+      },
     ],
   },
 ];
@@ -131,6 +138,7 @@ export const settingsStore = {
 // any React root. Kept in lockstep with the values.
 const PERF_CLASS_MAP: Array<[keyof Settings, string]> = [
   ["perfHideMinimap", "perf-no-minimap"],
+  ["hideGridDots", "perf-no-grid-dots"],
 ];
 function syncPerfClasses(): void {
   if (typeof document === "undefined") return; // node/test env

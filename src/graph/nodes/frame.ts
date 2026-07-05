@@ -4,6 +4,7 @@ import { toMatrix } from "./coerce";
 import { parseDateToSerial } from "./date";
 import { isSolError, solError, type SolError } from "../errorValue";
 import { coerceLogical } from "../valueKinds";
+import { APP_LOCALE } from "../locale";
 import {
   buildFrame, splitFrame, getColumn, addColumn, frameRowCount, frameHasTextColumns,
   frameFromInputText, formatFrameCell, frameFromRows, isFrameValue, isCubeValue,
@@ -829,7 +830,7 @@ export class ReconcileNode extends ClassicPreset.Node {
 }
 
 function summarizeReconcile(s: ReconcileSummary): string {
-  const fmt = (n: number) => (Number.isInteger(n) ? n.toLocaleString() : n.toLocaleString(undefined, { maximumFractionDigits: 2 }));
+  const fmt = (n: number) => (Number.isInteger(n) ? n.toLocaleString(APP_LOCALE) : n.toLocaleString(APP_LOCALE, { maximumFractionDigits: 2 }));
   const parts = [`${s.added} added`, `${s.removed} removed`, `${s.changed} changed`, `${s.unchanged} unchanged`];
   // Blank/invalid-key rows couldn't be matched — surface the count so a shrunk output
   // isn't mistaken for a clean reconciliation.
