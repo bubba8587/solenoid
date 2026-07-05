@@ -2,7 +2,7 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { useSyncExternalStore } from "react";
 import { chartPopup } from "../chartPopupStore";
 import { appThemeStore } from "../appTheme";
-import { ChartView } from "./chartView";
+import { ChartView, ChartFigure } from "./chartView";
 import "./popupChrome.css";
 import { CloseIcon } from "./CloseIcon";
 import { PopupPinButton, PopupGoToButton } from "./PopupPinButton";
@@ -58,21 +58,25 @@ export function ChartPopup() {
       <div className="sol-popup" style={cardStyle} onPointerDown={(e) => e.stopPropagation()}>
         <div className="sol-popup__header">
           <div className="sol-popup__title">{state.title}</div>
-          <span className="table-popup__dims">{state.series.length} pts</span>
+          {state.series && <span className="table-popup__dims">{state.series.length} pts</span>}
           {state.pinNodeId && <PopupGoToButton nodeId={state.pinNodeId} onClose={() => chartPopup.close()} />}
           {state.pinNodeId && <PopupPinButton nodeId={state.pinNodeId} />}
           <button className="sol-popup__close" onClick={() => chartPopup.close()} aria-label="Close"><CloseIcon size={16} /></button>
         </div>
         <div style={{ padding: 16, display: "flex", justifyContent: "center", alignItems: "center" }}>
-          {state.series.length === 0 ? (
+          {state.value ? (
+            // General path: render any ChartValue (covers treemap / sankey /
+            // composed / bubble / kpi / bullet), title stripped (header shows it).
+            <ChartFigure value={{ ...state.value, title: undefined }} width={w} height={h} />
+          ) : !state.series || state.series.length === 0 ? (
             <div style={{ color: "var(--text-dim, #888)", padding: 40 }}>No data</div>
           ) : (
             <ChartView
-              op={state.op}
+              op={state.op ?? "column"}
               series={state.series}
               width={w}
               height={h}
-              axes={state.axes}
+              axes={state.axes ?? true}
               // The header already shows the title — strip it so ChartView
               // doesn't draw a second one above the plot.
               opts={state.opts ? { ...state.opts, title: undefined } : undefined}

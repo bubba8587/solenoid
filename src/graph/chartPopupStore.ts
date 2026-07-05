@@ -4,13 +4,19 @@
 import { createNotifier } from "./storeKit";
 import type { ChartShape } from "./components/chartView";
 import type { ChartOptions } from "./nodes/chartOptions";
+import type { ChartValue } from "./chartValue";
 
 export interface ChartPopupState {
   title: string;
-  op: ChartShape;
+  /** A full chart VALUE — the general path (renders via ChartFigure, so it covers
+   *  every op incl. treemap / sankey / composed / bubble). When set, the series
+   *  fields below are ignored. Used by the collapsed [Chart] chip. */
+  value?: ChartValue;
+  /** The series path (Sparkline / Chart expand button): op + points. */
+  op?: ChartShape;
   /** Whether to draw gridlines + axes (Chart) or a clean sparkline. */
-  axes: boolean;
-  series: { i: number; v: number }[];
+  axes?: boolean;
+  series?: { i: number; v: number }[];
   /** matplotlib-style overrides (Chart only); undefined for a Sparkline. */
   opts?: ChartOptions;
   /** Host node accent so the popup header matches the node it opened from. */
