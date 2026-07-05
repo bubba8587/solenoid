@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useFocusTrap } from "./components/useFocusTrap";
 import { settingsStore, settingsPanel, SETTINGS_SCHEMA, type SettingField } from "./settingsStore";
+import { apiKeyStore } from "./apiKeyStore";
 import { packsStore, allPacks, loadCustomPacks, customPacksFolder } from "./packs";
 import { isDesktop, pickFolderDialog, openInFileManager } from "./fileBridge";
 import { paletteStore, type PaletteName } from "./palette";
@@ -220,6 +221,59 @@ function PacksSection() {
   );
 }
 
+// API keys for the data-connection providers (FRED, Alpha Vantage). Stored per
+// provider in localStorage on this device only (apiKeyStore) — the "never bundled"
+// key store. Stooq stocks need no key, so they're not listed here.
+const API_PROVIDERS = [
+  { id: "fred", label: "FRED (St. Louis Fed)", help: "Free key at fredaccount.stlouisfed.org — for economic data series." },
+  { id: "alphavantage", label: "Alpha Vantage", help: "Free key at alphavantage.co — stock quotes (Stooq needs no key)." },
+] as const;
+
+function ApiKeyRow({ id, label, help }: { id: string; label: string; help: string }) {
+  const [draft, setDraft] = useState("");
+  const stored = apiKeyStore.has(id);
+  // Commit on blur / Enter (typed-field convention), not per keystroke.
+  const commit = () => {
+    if (draft.trim()) { apiKeyStore.set(id, draft); setDraft(""); }
+  };
+  return (
+    <div className="solenoid-settings__row solenoid-settings__row--folder">
+      <span className="solenoid-settings__row-text">
+        <span className="solenoid-settings__row-label">{label}</span>
+        <span className="solenoid-settings__row-help">{help}</span>
+        <span className="solenoid-settings__path">{stored ? "Key saved" : "No key"}</span>
+      </span>
+      <span className="solenoid-settings__folder-actions">
+        <input
+          type="password"
+          className="solenoid-settings__key-input"
+          placeholder={stored ? "Replace key…" : "Paste key…"}
+          value={draft}
+          spellCheck={false}
+          autoComplete="off"
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); commit(); } }}
+          onBlur={commit}
+        />
+        {stored && (
+          <button type="button" className="solenoid-settings__store-btn" onClick={() => apiKeyStore.remove(id)}>Clear</button>
+        )}
+      </span>
+    </div>
+  );
+}
+
+function ApiKeysSection() {
+  useSyncExternalStore(apiKeyStore.subscribe, apiKeyStore.version);
+  return (
+    <div className="solenoid-settings__section">
+      <div className="solenoid-settings__section-title">Data connections — API keys</div>
+      {API_PROVIDERS.map((p) => <ApiKeyRow key={p.id} id={p.id} label={p.label} help={p.help} />)}
+      <div className="solenoid-settings__note">Stored only on this device; sent only to each provider's own API.</div>
+    </div>
+  );
+}
+
 export function Settings() {
   const open = useSyncExternalStore(settingsPanel.subscribe, settingsPanel.get);
   useSyncExternalStore(settingsStore.subscribe, settingsStore.version);
@@ -254,6 +308,7 @@ export function Settings() {
           ))}
           <PaletteSection />
           <RendererSection />
+          <ApiKeysSection />
           <PacksSection />
         </div>
       </div>
