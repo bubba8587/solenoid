@@ -11,7 +11,7 @@ import { getGuardedSocketPosition } from "./guardedSocketPosition";
 import { DataflowEngine } from "rete-engine";
 import { HistoryPlugin, Presets as HistoryPresets } from "rete-history-plugin";
 import { MinimapPlugin } from "rete-minimap-plugin";
-import { AutoArrangePlugin } from "rete-auto-arrange-plugin";
+import type { AutoArrangePlugin } from "rete-auto-arrange-plugin";
 import { createRoot } from "react-dom/client";
 
 import type { Schemes, AreaExtra, SolenoidNode } from "./schemes";
@@ -1350,23 +1350,44 @@ export function Canvas() {
           });
         };
       }
-      const arrange = new AutoArrangePlugin<Schemes>();
-      // Port positions drive ELK's vertical node alignment (it lines up connected
-      // ports). The stock `classic` preset puts OUTPUT ports at the node TOP and
-      // INPUT ports at the BOTTOM, which staircases every chain upward — wrong for
-      // our nodes. We place ports SYMMETRICALLY (same offset for in/out) so two
-      // connected nodes line up, and read the Tidy-alignment setting per layout:
-      //   "center" → ports at the node's vertical centre → node CENTRES align;
-      //   "top"    → ports near the node's top → node TOP edges align.
-      arrange.addPreset(() => ({
-        port(data: { side: "input" | "output"; index: number; ports: number; width: number; height: number }) {
-          const spacing = 16;
-          const y = settingsStore.get("tidyAlign") === "top"
-            ? 20 + data.index * spacing
-            : data.height / 2 + (data.index - (data.ports - 1) / 2) * spacing;
-          return { x: 0, y, width: 15, height: 15, side: data.side === "output" ? "EAST" : "WEST" } as const;
-        },
-      }));
+      // ELK (rete-auto-arrange-plugin + its elkjs dependency) is a heavy chunk that
+      // only Tidy needs, so it's LAZY: imported and wired on the first arrange, not
+      // at Canvas init (recharts/KaTeX are lazy the same way). `ensureArrange`
+      // dynamically imports the plugin, builds it once, registers it on the area, and
+      // memoizes; every later Tidy reuses the same instance. Until then ELK stays out
+      // of the main bundle.
+      let arrange: AutoArrangePlugin<Schemes> | null = null;
+      let arrangeLoading: Promise<AutoArrangePlugin<Schemes> | null> | null = null;
+      const ensureArrange = (): Promise<AutoArrangePlugin<Schemes> | null> => {
+        if (arrange) return Promise.resolve(arrange);
+        if (arrangeLoading) return arrangeLoading;
+        arrangeLoading = (async () => {
+          const { AutoArrangePlugin } = await import("rete-auto-arrange-plugin");
+          // A doc switch / unmount can destroy the area during the dynamic import.
+          if (destroyed) return null;
+          const plugin = new AutoArrangePlugin<Schemes>();
+          // Port positions drive ELK's vertical node alignment (it lines up connected
+          // ports). The stock `classic` preset puts OUTPUT ports at the node TOP and
+          // INPUT ports at the BOTTOM, which staircases every chain upward — wrong for
+          // our nodes. We place ports SYMMETRICALLY (same offset for in/out) so two
+          // connected nodes line up, and read the Tidy-alignment setting per layout:
+          //   "center" → ports at the node's vertical centre → node CENTRES align;
+          //   "top"    → ports near the node's top → node TOP edges align.
+          plugin.addPreset(() => ({
+            port(data: { side: "input" | "output"; index: number; ports: number; width: number; height: number }) {
+              const spacing = 16;
+              const y = settingsStore.get("tidyAlign") === "top"
+                ? 20 + data.index * spacing
+                : data.height / 2 + (data.index - (data.ports - 1) / 2) * spacing;
+              return { x: 0, y, width: 15, height: 15, side: data.side === "output" ? "EAST" : "WEST" } as const;
+            },
+          }));
+          area.use(plugin);
+          arrange = plugin;
+          return plugin;
+        })();
+        return arrangeLoading;
+      };
 
       const nodeSelector = AreaExtensions.selector();
       const ctrlAccum = AreaExtensions.accumulateOnCtrl(); // tracks Ctrl/Meta held
@@ -1978,7 +1999,11 @@ export function Canvas() {
           }
         }
 
-        await arrange.layout({
+        // First Tidy pays the one-time ELK import here; later ones resolve instantly.
+        // Null only if the area was destroyed mid-import — nothing left to lay out.
+        const arrangePlugin = await ensureArrange();
+        if (!arrangePlugin) return;
+        await arrangePlugin.layout({
           nodes: proxyNodes as Schemes["Node"][],
           connections: subsetConns,
           // ELK spacing (the preset's `spacing` is only port placement). Widen
@@ -2341,7 +2366,7 @@ export function Canvas() {
       area.use(connection);
       area.use(history);
       area.use(minimap);
-      area.use(arrange);
+      // ELK's AutoArrangePlugin is registered lazily on first Tidy (see ensureArrange).
       editor.use(engine);
 
       // Disable double-click-to-zoom. rete-area-plugin's Zoom class

@@ -2,6 +2,24 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### ELK auto-arrange split out of the main bundle (2026-07-05)
+recharts + KaTeX were already lazy; ELK (`rete-auto-arrange-plugin` + its elkjs dependency,
+~1.49 MB uncompressed) was the last eager heavy chunk — `AutoArrangePlugin` was statically
+imported and `area.use`d at Canvas init even though only Tidy needs it. Now lazy:
+- `Canvas.tsx` imports `AutoArrangePlugin` as `import type` (fully erased at build — no
+  runtime pull). An `ensureArrange()` closure `await import("rete-auto-arrange-plugin")`s the
+  plugin on the FIRST Tidy, builds it, adds the symmetric-port preset, `area.use`s it, and
+  memoizes (`arrange` / `arrangeLoading`); later Tidies resolve instantly. `arrangeFn`
+  resolves it right before `arrange.layout(...)` and bails if null.
+- **Gotcha:** the dynamic import is async, so a doc-switch/unmount can destroy the area
+  mid-load — `ensureArrange` re-checks the existing `destroyed` flag after the import and
+  returns null (arrangeFn then returns without laying out). The eager `area.use(arrange)` at
+  init was removed; registration now happens inside `ensureArrange` (registering a plugin on
+  the area after init is fine — auto-arrange only acts on explicit `.layout()` calls).
+- Verified: `rete-auto-arrange-plugin.esm-*.js` is now its own ~1.49 MB chunk in the build
+  output (was folded into `index`); tsc + full vitest green (2047 passed). No behaviour
+  change to Tidy itself.
+
 ### Align/distribute UI affordance — the selection action bar (2026-07-05)
 The six aligns + two distributes existed only in the Command Palette; author's standing
 rule is nothing reachable solely via the palette. Added `components/SelectionActionsBar.tsx`
