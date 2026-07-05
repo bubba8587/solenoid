@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { selectColumns, dropColumns, renameColumns, sortByColumn, distinctRows, headRows, filterRows, groupByFrame, joinFrames, appendFrames, unpivotFrame, pivotFrame, nestFrame, unnestCube, applyVerb, splitColumn, addIndexColumn, lookupFrameCell } from "./frameVerbs";
+import { selectColumns, dropColumns, renameColumns, sortByColumn, distinctRows, headRows, filterRows, filterRowsMulti, groupByFrame, joinFrames, appendFrames, unpivotFrame, pivotFrame, nestFrame, unnestCube, applyVerb, splitColumn, addIndexColumn, lookupFrameCell } from "./frameVerbs";
 import { isSolError, solError } from "./errorValue";
 import { isCubeValue, isFrameValue, type FrameValue } from "./frame";
 
@@ -191,6 +191,76 @@ describe("filter", () => {
   it("applyVerb forwards the matchCase flag", () => {
     expect(applyVerb(t, { kind: "filter", column: "city", op: "eq", value: "OSLO" }).columns[1].values).toEqual(["Oslo", "Oslo", "Oslo"]);
     expect(applyVerb(t, { kind: "filter", column: "city", op: "eq", value: "OSLO", matchCase: true }).columns[1].values).toEqual([]);
+  });
+});
+
+describe("filterMulti — AND/OR condition rows (B-2)", () => {
+  const t: FrameValue = {
+    __frame: true,
+    columns: [
+      { name: "qty", type: "number", values: [5, 12, null, 20, solError("#DIV/0!", "x")] },
+      { name: "city", type: "string", values: ["Oslo", "Bergen", "Oslo", "Tromso", "Oslo"] },
+    ],
+  };
+  it("AND keeps rows passing every condition (single-pass ≡ chained filters)", () => {
+    const out = filterRowsMulti(t, "and", [
+      { column: "qty", op: "gte", value: 10 },
+      { column: "city", op: "eq", value: "oslo" },
+    ]);
+    expect(out.columns[0].values).toEqual([]); // the only qty≥10 Oslo row is the error row
+    const chained = filterRows(filterRows(t, "qty", "gte", 10), "city", "eq", "oslo");
+    expect(out.columns[1].values).toEqual(chained.columns[1].values);
+  });
+  it("OR keeps rows passing ANY condition — the thing a filter chain can't say", () => {
+    const out = filterRowsMulti(t, "or", [
+      { column: "qty", op: "gte", value: 15 },
+      { column: "city", op: "eq", value: "bergen" },
+    ]);
+    expect(out.columns[1].values).toEqual(["Bergen", "Tromso"]);
+    expect(out.columns[0].values).toEqual([12, 20]);
+  });
+  it("matchCase rides per-condition", () => {
+    const out = filterRowsMulti(t, "or", [
+      { column: "city", op: "eq", value: "bergen", matchCase: true },  // exact: no match
+      { column: "city", op: "startsWith", value: "tr" },               // folded: Tromso
+    ]);
+    expect(out.columns[1].values).toEqual(["Tromso"]);
+  });
+  it("a null/error cell fails ITS condition only — OR can still keep the row", () => {
+    const out = filterRowsMulti(t, "or", [
+      { column: "qty", op: "gte", value: 0 },       // null + error rows fail here
+      { column: "city", op: "eq", value: "oslo" },  // …but two of them are Oslo
+    ]);
+    expect(out.columns[1].values).toEqual(["Oslo", "Bergen", "Oslo", "Tromso", "Oslo"]);
+  });
+  it("an unparseable value matches no rows for that condition; OR survives, AND empties", () => {
+    expect(filterRowsMulti(t, "or", [
+      { column: "qty", op: "gt", value: "garbage" },
+      { column: "city", op: "eq", value: "bergen" },
+    ]).columns[1].values).toEqual(["Bergen"]);
+    expect(filterRowsMulti(t, "and", [
+      { column: "qty", op: "gt", value: "garbage" },
+      { column: "city", op: "eq", value: "bergen" },
+    ]).columns[1].values).toEqual([]);
+  });
+  it("no conditions = identity (NOT OR's vacuous false)", () => {
+    expect(filterRowsMulti(t, "or", []).columns[1].values).toEqual(t.columns[1].values);
+    expect(filterRowsMulti(t, "and", []).columns[1].values).toEqual(t.columns[1].values);
+  });
+  it("#REF!s on an unknown column in any condition", () => {
+    let err: unknown;
+    try {
+      filterRowsMulti(t, "and", [{ column: "qty", op: "gte", value: 1 }, { column: "nope", op: "eq", value: 1 }]);
+    } catch (e) { err = e; }
+    if (!isSolError(err)) throw new Error("expected SolError");
+    expect(err.code).toBe("#REF!");
+  });
+  it("applyVerb routes the op", () => {
+    const out = applyVerb(t, {
+      kind: "filterMulti", combine: "or",
+      conditions: [{ column: "qty", op: "gte", value: 15 }, { column: "city", op: "eq", value: "bergen" }],
+    });
+    expect(out.columns[1].values).toEqual(["Bergen", "Tromso"]);
   });
 });
 

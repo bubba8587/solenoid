@@ -38,6 +38,11 @@ export type AggOp =
  *  semantics never drift) plus three text predicates. */
 export type FilterOp = ComparisonOp | "contains" | "startsWith" | "endsWith";
 
+/** One predicate of a multi-condition filter (B-2). `matchCase` rides
+ *  PER-CONDITION — "Region eq west (any case) AND Code contains X (exact)". */
+export interface FilterCond { column: string; op: FilterOp; value: FrameCell; matchCase?: boolean }
+export type FilterCombine = "and" | "or";
+
 /** The verb set. Unary ops compose via `applyVerb`; binary ops (join, append)
  *  have their own entry points since they take two frames. Grows per increment. */
 export type FrameOp =
@@ -48,6 +53,7 @@ export type FrameOp =
   | { kind: "distinct"; columns?: string[] }         // unique rows (on these cols, or all)
   | { kind: "head"; n: number }                      // first n rows
   | { kind: "filter"; column: string; op: FilterOp; value: FrameCell; matchCase?: boolean } // keep rows passing a predicate
+  | { kind: "filterMulti"; combine: FilterCombine; conditions: FilterCond[] } // keep rows passing ALL ("and") / ANY ("or") predicates
   | { kind: "groupBy"; keys: string[]; aggs: AggSpec[] } // one row per key combo + aggregates
   | { kind: "unpivot"; idColumns: string[]; valueColumns: string[]; variableName?: string; valueName?: string } // wide → long
   | ({ kind: "pivot" } & PivotSpec); // long → wide cross-tab (Excel PIVOTBY)
@@ -218,6 +224,23 @@ export function filterRows(f: FrameValue, column: string, op: FilterOp, value: F
   const keep: number[] = [];
   for (let i = 0; i < frameRowCount(f); i++) {
     if (passesFilter(cellAt(col, i), op, value, col.type, matchCase)) keep.push(i);
+  }
+  return reorderRows(f, keep);
+}
+
+/** Keep rows passing ALL ("and") or ANY ("or") of the conditions — SQL WHERE
+ *  made visual (B-2). Each condition applies `passesFilter` independently
+ *  (blanks/errors fail THAT condition; an unparseable value matches no rows for
+ *  that condition — under OR the others still can). No conditions = identity
+ *  on BOTH engines (not OR's vacuous-false), so a blank node passes data through. */
+export function filterRowsMulti(f: FrameValue, combine: FilterCombine, conditions: readonly FilterCond[]): FrameValue {
+  if (conditions.length === 0) return f;
+  const cols = conditions.map((c) => requireColumn(f, c.column));
+  const keep: number[] = [];
+  for (let i = 0; i < frameRowCount(f); i++) {
+    const pass = (c: FilterCond, j: number) =>
+      passesFilter(cellAt(cols[j], i), c.op, c.value, cols[j].type, c.matchCase ?? false);
+    if (combine === "and" ? conditions.every(pass) : conditions.some(pass)) keep.push(i);
   }
   return reorderRows(f, keep);
 }
@@ -1278,6 +1301,7 @@ export function applyVerb(f: FrameValue, op: FrameOp): FrameValue {
     case "distinct": return distinctRows(f, op.columns);
     case "head":     return headRows(f, op.n);
     case "filter":   return filterRows(f, op.column, op.op, op.value, op.matchCase ?? false);
+    case "filterMulti": return filterRowsMulti(f, op.combine, op.conditions);
     case "groupBy":  return groupByFrame(f, op.keys, op.aggs);
     case "unpivot":  return unpivotFrame(f, op.idColumns, op.valueColumns, { variableName: op.variableName, valueName: op.valueName });
     case "pivot":    return pivotFrame(f, op);
