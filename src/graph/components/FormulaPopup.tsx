@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
-import katex from "katex";
-import "katex/dist/katex.min.css";
+import { useKatexRender, getKatexRenderer } from "./katexLoader";
 import { ClassicPreset } from "rete";
 import { formulaPopup } from "../formulaPopupStore";
 import { getEditor, processGraph } from "../process";
@@ -72,9 +71,13 @@ function formulaHostOf(node: ClassicPreset.Node | undefined): FormulaHost | null
   return null;
 }
 
-// Render a KaTeX string to HTML, falling back to the raw string on error.
+// Render a KaTeX string to HTML, falling back to the raw string on error or while
+// katex is still loading (the popup subscribes via useKatexRender, so it re-renders
+// — re-running these calls — once the chunk arrives).
 function renderTex(latex: string): string {
-  try { return katex.renderToString(latex, { throwOnError: false }); }
+  const render = getKatexRenderer();
+  if (!render) return latex;
+  try { return render(latex, { throwOnError: false }); }
   catch { return latex; }
 }
 
@@ -170,15 +173,17 @@ export function FormulaPopup() {
   // The formula's own variables, offered in autocomplete alongside functions.
   const varSuggestions = useMemo(() => extractVariables(text), [text]);
 
+  const render = useKatexRender();
   const katexHtml = useMemo(() => {
+    if (!render) return null;
     const latex = formulaToLatex(text);
     if (latex == null) return null;
     try {
-      return katex.renderToString(latex, { throwOnError: false, displayMode: true });
+      return render(latex, { throwOnError: false, displayMode: true });
     } catch {
       return null;
     }
-  }, [text]);
+  }, [text, render]);
 
   // Scale the rendered equation to fit the popup's width (no upscaling — the popup
   // is roomy). A genuinely huge formula still floors and h-scrolls.

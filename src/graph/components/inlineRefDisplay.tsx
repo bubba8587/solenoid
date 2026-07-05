@@ -7,8 +7,7 @@ import { cableValueStore } from "../cableValueStore";
 import { formatAnnotationStore, formatNumberWithAnnotation, type FormatAnnotation } from "../formatAnnotationStore";
 import { sharedAnnotationResolver } from "../unitFlow";
 import { formatScalar } from "./format";
-import katex from "katex";
-import "katex/dist/katex.min.css";
+import { useKatexRender } from "./katexLoader";
 import { isFrameValue, isCubeValue } from "../frame";
 import { isChartValue, type ChartValue } from "../chartValue";
 import { isMermaidValue } from "../mermaidValue";
@@ -103,13 +102,14 @@ function lambdaText(v: LambdaValue): string {
  *  plain text if the body doesn't parse (a half-typed lambda). Block display, so
  *  it reads as an equation in the report, not a mid-sentence chip. */
 function LambdaFormula({ value }: { value: LambdaValue }) {
+  const render = useKatexRender();
   const params = value.params.map((p) => p.replace(/[\\{}]/g, "")).join(",\\,");
   const expr = (value.expr ?? "").trim();
   const bodyTex = expr ? formulaToLatex(expr) : null;
   const html = (() => {
-    if (!bodyTex) return null;
+    if (!render || !bodyTex) return null;
     try {
-      return katex.renderToString(`f(${params}) = ${bodyTex}`, { throwOnError: false, displayMode: true });
+      return render(`f(${params}) = ${bodyTex}`, { throwOnError: false, displayMode: true });
     } catch { return null; }
   })();
   if (!html) return <span className="solenoid-ref-inline">{lambdaText(value)}</span>;
