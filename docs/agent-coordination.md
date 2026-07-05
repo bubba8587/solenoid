@@ -19,13 +19,21 @@ border seam, grid system, collision avoidance, transpiler, seed-cleanup.
 
 ## Claims
 
-- **A1 (Lead):** orchestration + **Tier B**. DONE: B-1(a) `1efa87d`, B-1(b)
-  `aa2a623`, B-4a `aa5ab34`, B-4b (queued READY below). NOW: **B-2 AND/OR
-  multi-predicate Filter** — starting with the engine/oracle half
-  (`frameVerbs.ts` + `engine.rs` + parity tests, files now free); the node-UI
-  half (`nodes/frame.ts` + `FrameNodes.tsx`) WAITS until my B-4b commit lands
-  (those files are in its stage list). Then B-3 CSV dates.
-  (`engine.rs` stays MINE — nobody else touches it.)
+- **A1 (Lead): TIER B COMPLETE.** B-1(a) `1efa87d`, B-1(b) `aa2a623`, B-4a
+  `aa5ab34`, B-4b `a2c6fdd`, B-2 engine `2eb65a4`, B-2 UI + B-3 queued READY
+  below. **CLAIMED: C-4 unified XLOOKUP** (build starts next beat — its
+  footprint `nodes/frame.ts` / `FrameNodes.tsx` / `nodeCatalog.ts` is in my
+  READY stage lists, so hands off until A3 flushes). Design forks settled per
+  the no-stall rule (notes: `archive/v1.1-plan.md` WS-D):
+  (1) input surface = DUCK-TYPE the wired `any` source — list wired → key/value
+  list sockets; frame/cube wired → In column / Return inputs (the polyform-node
+  convention, no mode selector); (2) Return = ONE column name, `*` for the
+  whole row (the 2-D case; a names-list adds surface with no driving need —
+  noted, not built); (3) migration = pre-alpha clean break: one XLOOKUP class +
+  one `xlookup` catalog entry replace XLookupNode + FrameLookupNode, seeds/
+  tests updated, no shim. Output stays `any`; cube-vs-frame is the runtime
+  `isCubeValue` check; match/search modes carry over (exact-only for
+  text/logical keys). (`engine.rs` stays MINE — nobody else touches it.)
 - **A2:** **C-1 fully committed** (`09bc120`/`7315441`/`5bd7105`/`6841167`/`1e71d66` +
   finale). Now: **C-3 (popup ⋯ + collapsed previews)** — part 1 (⋯ menu) committed
   `6841167`; **part 2 (Slicer/Sparkline collapsed previews) DONE + READY**; Gauge left
@@ -35,17 +43,13 @@ border seam, grid system, collision avoidance, transpiler, seed-cleanup.
   re-eyeball (no-puppeteer). **Now on E-2 (Finance/FRED)** — slice 1 (apiKeyStore, tested)
   DONE + READY. Remaining E-2: Settings keys section, provider-preset connection node
   (FRED + Stooq/Alpha Vantage), FRED demo seed. Discipline: always full `vitest` pre-READY.
-- **A3:** All FIFO items flushed through this check-in: A2's C-1 FINALE
-  (`1e71d66`), C-3 part 1 (`6841167`), A1's B-4b (`a2c6fdd`), A1's B-2 engine
-  half (`2eb65a4`), **A2's Treemap/Sankey blank-box BUGFIX** (`d824373` — A2
-  root-caused it: recharts 3.x needs the function-form `content`/`node` prop
-  for per-node geometry; static element = 0×0 everywhere. Confirms my earlier
-  investigation was on the right track but hadn't found the exact API gap —
-  backlog line kept open pending the author's live eyeball, not deleted), C-3
-  part 2 (`bde3e12`, Slicer/Sparkline collapsed previews), E-2 slice 1
-  (`7cdcea0`, apiKeyStore foundation). `develop` unpushed past `5bd7105`
-  (10 commits since) — will push once the queue empties again or on request.
-  Idle on the commit queue now.
+- **A3:** All FIFO items flushed through this check-in, including the last 4:
+  A2's E-2 slice 2 (`c03d44c`, Settings API-keys section), E-2 slice 3a
+  (`8d3bac4`, dataProviders), A1's B-2 UI half (`6e5bef6`, Filter Rows AND/OR
+  condition rows — **B-2 complete**), A1's B-3 (`117d7b2`, native CSV date
+  inference, cargo 68/68 — **Tier B fully complete**). `develop` unpushed past
+  `5bd7105` (14 commits since) — will push once the queue empties again or on
+  request. Idle on the commit queue now.
 
 ## Queue
 
@@ -81,6 +85,12 @@ _(empty)_
 
 ## Recently done
 
+- Agent 3 — A1's B-3, native CSV date-inference parity (cargo 68/68). `117d7b2`.
+  **TIER B COMPLETE.**
+- Agent 3 — A1's B-2 UI half, Filter Rows AND/OR condition rows. `6e5bef6`.
+  **B-2 complete.**
+- Agent 3 — A2's E-2 slice 3a, dataProviders (FRED/Stooq/Alpha Vantage). `8d3bac4`.
+- Agent 3 — A2's E-2 slice 2, Settings API-keys section. `c03d44c`.
 - Agent 3 — A2's E-2 slice 1, apiKeyStore foundation. `7cdcea0`.
 - Agent 3 — A2's C-3 part 2, Slicer/Sparkline collapsed previews. `bde3e12`.
 - Agent 3 — A2's Treemap/Sankey blank-box bugfix (recharts function-form
