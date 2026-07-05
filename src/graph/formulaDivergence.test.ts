@@ -96,6 +96,125 @@ describe("PERCENTRANK — linear interpolation + TRUNCATE to sig digits (Excel);
   });
 });
 
+// ─── TEXT-family sweep (B-4b, 2026-07-05) — same contract as above: "Excel-correct"
+// blocks pin OUR result; "FX still …" tripwires pin FX's wrong answer so an FX
+// upgrade that fixes one surfaces the override for re-evaluation. ───────────────
+
+const str = (v: unknown): string => {
+  expect(typeof v === "string", `expected a string, got ${JSON.stringify(v)}`).toBe(true);
+  return v as string;
+};
+const fx = FX as unknown as Record<string, (...a: unknown[]) => unknown>;
+
+describe("TEXT — format-code holes patched over FX", () => {
+  it("a non-numeric text value passes through unchanged (FX throws)", () => {
+    expect(str(call("TEXT", "abc", "0.00"))).toBe("abc");
+    expect(str(call("TEXT", "", "0.00"))).toBe("");
+  });
+  it('"@" and "General" render via numberToText (FX rounds "@", zeroes "General")', () => {
+    expect(str(call("TEXT", 1234.567, "@"))).toBe("1234.567");
+    expect(str(call("TEXT", 0.1 + 0.2, "General"))).toBe("0.3");
+  });
+  it('pure zero-pad codes actually pad ("00000"; FX drops the pad)', () => {
+    expect(str(call("TEXT", 12, "00000"))).toBe("00012");
+    expect(str(call("TEXT", -12, "00000"))).toBe("-00012");
+    expect(str(call("TEXT", 12.6, "000"))).toBe("013"); // rounds, then pads
+  });
+  it("scientific codes format as mantissa E+exp (FX emits a plain decimal)", () => {
+    expect(str(call("TEXT", 1234567, "0.00E+00"))).toBe("1.23E+06");
+    expect(str(call("TEXT", 0.00001234, "0.0E+00"))).toBe("1.2E-05");
+  });
+  it("plain numeric codes still route to FX (already Excel-correct — drift guards)", () => {
+    expect(str(call("TEXT", 1234.567, "#,##0.00"))).toBe("1,234.57");
+    expect(str(call("TEXT", 1234.567, "0.00"))).toBe("1234.57");
+    expect(str(call("TEXT", 0.285, "0.0%"))).toBe("28.5%");
+    expect(str(call("TEXT", 1234.567, "$#,##0.00"))).toBe("$1,234.57");
+  });
+  it("date codes format OUR serial (the audit-29 fix, pinned)", () => {
+    expect(str(call("TEXT", 46096, "yyyy-mm-dd"))).toBe("2026-03-15");
+  });
+  it("FX still throws on text / drops the zero pad / mangles @ (tripwires)", () => {
+    expect(() => fx.TEXT("abc", "0.00")).toThrow();
+    expect(fx.TEXT(12, "00000")).not.toBe("00012");
+    expect(fx.TEXT(1234.567, "@")).not.toBe("1234.567");
+    expect(fx.TEXT(1234567, "0.00E+00")).not.toBe("1.23E+06");
+  });
+});
+
+describe("number → text in string contexts — numberToText's 15-sig-digit contract, not FX's raw String()", () => {
+  it("text functions format a numeric arg cleanly", () => {
+    expect(str(call("UPPER", 0.1 + 0.2))).toBe("0.3");
+    expect(str(call("LEFT", 0.1 + 0.2, 5))).toBe("0.3");
+    expect(str(call("SUBSTITUTE", 0.1 + 0.2, ".", ","))).toBe("0,3");
+    expect(str(call("REPT", 1 / 3, 2))).toBe("0.333333333333333".repeat(2));
+    expect(str(call("PROPER", true))).toBe("True");
+    expect(num(call("FIND", ".", 0.1 + 0.2))).toBe(2);
+    expect(num(call("LEN", 0.1 + 0.2))).toBe(3);
+    expect(call("EXACT", 0.1 + 0.2, "0.3")).toBe(true);
+  });
+  it("FX still stringifies raw — 17-digit noise, SUBSTITUTE throws (tripwires)", () => {
+    expect(fx.UPPER(0.1 + 0.2)).toBe("0.30000000000000004");
+    expect(() => fx.SUBSTITUTE(0.1 + 0.2, ".", ",")).toThrow();
+    expect(fx.EXACT(0.1 + 0.2, "0.3")).toBe(false);
+  });
+});
+
+describe("VALUE — strict like Excel: unparseable text is #VALUE!, not FX's silent 0", () => {
+  it("parses numbers, $, thousands commas, %, (parens) negative", () => {
+    expect(num(call("VALUE", "1,234.57"))).toBeCloseTo(1234.57, 9);
+    expect(num(call("VALUE", "$1,000"))).toBe(1000);
+    expect(num(call("VALUE", "50%"))).toBeCloseTo(0.5, 9);
+    expect(num(call("VALUE", "(5)"))).toBe(-5);
+    expect(num(call("VALUE", " 12 "))).toBe(12);
+  });
+  it("rejects what Excel rejects", () => {
+    expect(isSolError(call("VALUE", "abc"))).toBe(true);
+    expect(isSolError(call("VALUE", ""))).toBe(true);
+    expect(isSolError(call("VALUE", true))).toBe(true); // Excel: VALUE(TRUE) is #VALUE!
+  });
+  it("FX still returns 0 for garbage (tripwire)", () => {
+    expect(fx.VALUE("abc")).toBe(0);
+  });
+});
+
+describe("NUMBERVALUE — custom separators (FX nulls out on a bare decimal-sep arg)", () => {
+  it("Excel's documented cases", () => {
+    expect(num(call("NUMBERVALUE", "2.500,27", ",", "."))).toBeCloseTo(2500.27, 9);
+    expect(num(call("NUMBERVALUE", "3,5%", ","))).toBeCloseTo(0.035, 9);  // group default yields
+    expect(num(call("NUMBERVALUE", "3%%"))).toBeCloseTo(0.0003, 9);       // each % divides by 100
+    expect(num(call("NUMBERVALUE", ""))).toBe(0);
+    expect(num(call("NUMBERVALUE", " 1 000 ", ".", " ") as number)).toBe(1000);
+  });
+  it("rejects explicit identical separators and a group sep after the decimal", () => {
+    expect(isSolError(call("NUMBERVALUE", "1,5", ",", ","))).toBe(true);
+    expect(isSolError(call("NUMBERVALUE", "3.1,2", ".", ","))).toBe(true);
+  });
+  it("FX still NaNs out (tripwire)", () => {
+    expect(fx.NUMBERVALUE("3,5%", ",")).toBeNaN();
+  });
+});
+
+describe("DOLLAR — Excel's negative accounting form is ($…), FX prints $(…)", () => {
+  it("negative parens hold the $ inside; positive/rounding unchanged", () => {
+    expect(str(call("DOLLAR", -1234.567, 2))).toBe("($1,234.57)");
+    expect(str(call("DOLLAR", 1234.567, 2))).toBe("$1,234.57");
+    expect(str(call("DOLLAR", 1234.567, -2))).toBe("$1,200");
+  });
+  it("FX still leads with $( (tripwire)", () => {
+    expect(str(fx.DOLLAR(-1234.567, 2)).startsWith("$(")).toBe(true);
+  });
+});
+
+describe("FIXED — FX pass-through already Excel-correct (drift guards, incl. half-away rounding)", () => {
+  it("decimals, negative decimals, no_commas, signed halves", () => {
+    expect(str(call("FIXED", 1234.567, 1))).toBe("1,234.6");
+    expect(str(call("FIXED", 1234.567, -1))).toBe("1,230");
+    expect(str(call("FIXED", 1234.567, 1, true))).toBe("1234.6");
+    expect(str(call("FIXED", 2.5, 0))).toBe("3");
+    expect(str(call("FIXED", -2.5, 0))).toBe("-3");
+  });
+});
+
 describe("Pass-through stats family holds the Excel value (catches FX drift on upgrade)", () => {
   // These have NO internal override — resolveExcelFunction returns FX directly — so
   // pinning HARDCODED Excel references (not comparing FX to itself) is what actually

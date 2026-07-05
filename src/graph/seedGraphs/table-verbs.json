@@ -16,7 +16,7 @@
     {"id":"drop","type":"DropColumnsNode","x":480,"y":720,"init":{"label":"Drop → Region"},"stringLiterals":{"columns":"Region"}},
     {"id":"rename","type":"RenameNode","x":480,"y":940,"init":{"label":"Rename → Amount to \"Sales $\""},"stringLiterals":{"from":"Amount","to":"Sales $"}},
 
-    {"id":"groupby","type":"GroupByFrameNode","x":900,"y":-440,"init":{"label":"Group By Rep → SUM(Amount)","op":"sum"},"stringLiterals":{"keys":"Rep","column":"Amount"}},
+    {"id":"groupby","type":"GroupByFrameNode","x":900,"y":-440,"init":{"label":"Group By Rep → SUM(Amount)","op":"sum","totalDepth":1},"stringLiterals":{"keys":"Rep","column":"Amount"}},
     {"id":"join","type":"JoinNode","x":900,"y":-180,"init":{"label":"Join Sales × Reps (left, on Rep)","how":"left"},"stringLiterals":{"leftKey":"Rep","rightKey":"Rep"}},
     {"id":"append","type":"AppendNode","x":900,"y":80,"init":{"label":"Append Sales + More Sales"}},
     {"id":"pivot","type":"PivotNode","x":900,"y":340,"init":{"label":"Pivot → Rep × Region (SUM)","op":"sum"},"stringLiterals":{"rowFields":"Rep","colFields":"Region","values":"Amount"}},

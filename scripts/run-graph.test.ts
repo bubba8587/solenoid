@@ -35,7 +35,9 @@ describe("run-graph (headless CLI)", () => {
     const rep = grouped.columns.find((c) => c.name === "Rep")!;
     const amount = grouped.columns.find((c) => c.name === "Amount")!;
     const byRep = Object.fromEntries(rep.values.map((r, i) => [r, amount.values[i]]));
-    expect(byRep).toEqual({ Ada: 230, Bo: 125, Cy: 200 });
+    // The seed's Group By carries totalDepth 1 (B-4b) — the grand total row
+    // RE-AGGREGATES the source through the no-colFields pivot path.
+    expect(byRep).toEqual({ Ada: 230, Bo: 125, Cy: 200, "Grand Total": 555 });
 
     const joined = (out["Join Sales × Reps (left, on Rep)"] as { frame: FrameValue }).frame;
     expect(isFrameValue(joined)).toBe(true);

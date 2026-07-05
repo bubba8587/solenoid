@@ -231,12 +231,21 @@ export const AGG_OP_OPTIONS: { value: AggOp; label: string }[] = [
   { value: "varp", label: "VAR.P" },
 ];
 
+// Same depth encoding as the Pivot editor's totals selector (PivotSpec's
+// rowTotalDepth): 0/1/2, negative ⇒ totals placed at the top.
+const GROUP_TOTAL_OPTIONS = [
+  { value: "0", label: "No totals" }, { value: "1", label: "Grand total" }, { value: "2", label: "Grand + subtotals" },
+  { value: "-1", label: "Grand (at start)" }, { value: "-2", label: "Grand + sub (at start)" },
+];
+
 export function GroupByFrameComponent({ data, emit }: NodeProps<GroupByFrameNodeType>) {
   const [op, setOp] = useNodeField(data, "op");
+  const [totalDepth, setTotalDepth] = useNodeField(data, "totalDepth");
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
       <OpSelect value={op} options={AGG_OP_OPTIONS} onChange={setOp} />
+      <OpSelect value={String(totalDepth)} options={GROUP_TOTAL_OPTIONS} onChange={(v) => setTotalDepth(Number(v))} />
       <FrameDisplay frame={data.cachedResult} label={data.label} />
     </NodeShell>
   );

@@ -322,18 +322,24 @@ export class DropColumnsNode extends ClassicPreset.Node {
 // Group rows by one or more key columns and aggregate one column (verb:
 // groupByFrame). Single aggregation for v1 (the aggregated column keeps its name);
 // the op is sum/avg/min/max/count. Distinct from the 1-D GroupByNode (list→list).
+// `totalDepth` (Excel GROUPBY's total_depth: 0 none · 1 grand · 2 grand+subtotals ·
+// negative ⇒ placed at top) adds total rows by routing a no-colFields pivotFrame —
+// the pivot engine RE-AGGREGATES the source for totals (a grand AVERAGE averages
+// all source rows, not the group averages), which the lazy groupBy verb can't do.
 
 export class GroupByFrameNode extends ClassicPreset.Node {
   label: string;
   op: AggOp;
+  totalDepth = 0;
   cachedResult: FrameValue | SolError | null = null;
   stringLiterals: Record<string, string> = { column: "" };
   width = 200; height = 205;
 
-  constructor(init?: { label?: string; op?: AggOp }) {
+  constructor(init?: { label?: string; op?: AggOp; totalDepth?: number }) {
     super("GroupByFrame");
     this.label = init?.label ?? "Group By";
     this.op = init?.op ?? "sum";
+    this.totalDepth = init?.totalDepth ?? 0;
     this.addInput("frame", frameIn("Frame"));
     this.addInput("keys", strListIn("Group by"));
     this.addInput("column", strIn("Aggregate"));
@@ -345,9 +351,20 @@ export class GroupByFrameNode extends ClassicPreset.Node {
     const keys = inputs.keys?.[0] ?? [];
     const col = (inputs.column?.[0] ?? this.stringLiterals.column ?? "").trim();
     if (f == null) return emitFrame(this, beginPass(this), null);
-    return emitFrame(this, beginPass(this), keys.length && col
-      ? await runFrameUnary(f, { kind: "groupBy", keys, aggs: [{ column: col, op: this.op, as: col }] })
-      : await readFrame(f));
+    if (!(keys.length && col)) return emitFrame(this, beginPass(this), await readFrame(f));
+    // Totals need the source (not the grouped output) to re-aggregate, so this
+    // path is EAGER — materialize here and pivot, instead of extending the lazy
+    // plan. Acceptable: total rows are a presentation boundary anyway.
+    if (this.totalDepth !== 0) {
+      const mat = await readFrame(f);
+      if (mat == null || isSolError(mat)) return emitFrame(this, beginPass(this), mat);
+      return emitFrame(this, beginPass(this), runVerb(() => pivotFrame(mat, {
+        rowFields: keys, colFields: [], values: [col], funcs: [this.op],
+        rowTotalDepth: this.totalDepth,
+      })));
+    }
+    return emitFrame(this, beginPass(this),
+      await runFrameUnary(f, { kind: "groupBy", keys, aggs: [{ column: col, op: this.op, as: col }] }));
   }
 }
 
