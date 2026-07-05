@@ -4,6 +4,14 @@
   gap: 0;
 }
 
+/* Collapsed summary — "X of N" in muted type (shown only while collapsed). */
+.slicer-node__summary {
+  font-size: 12px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  padding: 2px 0;
+}
+
 /* Width tiers for the card — driven by widthClass() in the component based on how
    many / how long the values are. Two classes beat the default frame .--wide
    (single-class) tier via higher specificity; a manual resize (inline width)
