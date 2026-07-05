@@ -2,6 +2,29 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### FC v1.1 A3 — docked-FC movement audit + the mis-dock bug (2026-07-05)
+Audited every movement op against docked FCs. MOST were already correct (the plan's
+"push/expand/collapse ride the generic translate" was stale): drag, group move,
+tidy/autofit, expand push, tidy-grow push, restore-on-collapse, de-overlap, standoff
+settle and cleanup all carry docked FCs (`translatePushed`), and the push world reserves
+an output-FC footprint. Two REAL gaps, both fixed:
+- **Collapse-hide hole** (`groupCollapse.ts`): hidden nodes were group MEMBERS only, so
+  an FC docked to a member but never absorbed (docked from outside the box, host on the
+  group's edge, old saves) stayed visible, floating over the collapsed box. Docked
+  satellites are now VIRTUAL members (`extendedMembers`): they hide with the host, the
+  Display→FC hop resolves through them, crossings/pills/readouts treat them as members,
+  and `settleCollapse` re-renders them on expand (their out socket can carry a pill).
+  Tests: `groupCollapse.test.ts`.
+- **FC mis-dock to a Note (bug lane, random-repro since 2026-06-25):** `findDockTarget`
+  compared SCREEN-px distances against a fixed 34px radius — zoomed out that's a huge
+  CANVAS area, so an FC snapped to a far-away Note's tall socket stack during editing and
+  the wrong dock persisted. Now canvas-unit (`dist ÷ zoom`, `DOCK_SNAP_CANVAS_PX`); zoom-1
+  behavior unchanged. (The other suspected mechanism — unguarded `nodecreated` dockSelf —
+  was already guarded on develop.)
+- Author eyeball: zoom well out, drag an FC around a busy canvas — it should only dock
+  when genuinely near a socket; collapse a group whose member has an FC hanging off the
+  group edge — the chip hides with it, expand brings both back.
+
 ### UNSOLVED: header/body border seam under zoom (2026-07-05 — parked for a human/later pass)
 The node header's 2px accent frame abuts the card's 1px border on the same outer edge;
 under the canvas zoom transform the two strokes rasterize with different width-phases →

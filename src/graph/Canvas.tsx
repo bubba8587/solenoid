@@ -218,8 +218,13 @@ function dockedRenderedDims(
   return { w: el?.offsetWidth || fallbackW, h: el?.offsetHeight || fallbackH };
 }
 
-// How close (screen px) the FC's edge socket must be to a host socket to snap-dock.
-const DOCK_SNAP_PX = 34;
+// How close the FC's edge socket must be to a host socket to snap-dock — in
+// CANVAS units (screen distance ÷ zoom). Comparing raw SCREEN px let a
+// zoomed-out canvas snap an FC to hosts a huge canvas distance away (e.g. a
+// far-off Note's tall stack of frontmatter sockets — the random-repro
+// "FC mis-docks to a Note" bug, v1.1 bug lane). At zoom 1 the behavior is
+// exactly the old 34px.
+const DOCK_SNAP_CANVAS_PX = 34;
 
 // On drop, find the host socket the FC should dock to: the nearest one whose
 // pairing edge (host output ↔ FC input, host input ↔ FC output) is within snap
@@ -232,6 +237,7 @@ function findDockTarget(
   const fcIn  = getSocketScreenCenter(area, fc.id, "in",  "input");
   const fcOut = getSocketScreenCenter(area, fc.id, "out", "output");
   if (!fcIn && !fcOut) return null;
+  const zoom = area.area.transform.k || 1;
 
   let best: { hostNodeId: string; socketKey: string; side: "input" | "output"; dist: number } | null = null;
   for (const host of editor.getNodes()) {
@@ -245,8 +251,8 @@ function findDockTarget(
         if (!fcPt) continue;
         const hostPt = getSocketScreenCenter(area, host.id, socketKey, side);
         if (!hostPt) continue;
-        const dist = Math.hypot(hostPt.x - fcPt.x, hostPt.y - fcPt.y);
-        if (dist <= DOCK_SNAP_PX && (!best || dist < best.dist)) {
+        const dist = Math.hypot(hostPt.x - fcPt.x, hostPt.y - fcPt.y) / zoom;
+        if (dist <= DOCK_SNAP_CANVAS_PX && (!best || dist < best.dist)) {
           best = { hostNodeId: host.id, socketKey, side, dist };
         }
       }

@@ -2,6 +2,7 @@ import type { NodeEditor } from "rete";
 import type { AreaPlugin } from "rete-area-plugin";
 import type { Schemes, AreaExtra } from "./schemes";
 import { GroupNode, DisplayNode, FormatControllerNode, ConduitNode } from "./rete-nodes";
+import { dockedNodeStore } from "./dockedNodeStore";
 
 // ─── Group collapse engine ──────────────────────────────────────────────────────
 // Collapse is visual-only: members stay wired and computing. When a group is
@@ -39,6 +40,24 @@ export interface RetainedTerminal {
   // (the mirror of the combined input pill), and the row shows the lane count
   // instead of a single lane's value.
   lanes?: number;
+}
+
+// Virtual membership: a node DOCKED to a member (an FC that was never absorbed
+// as a member itself — docked from outside the group box, host sitting on the
+// group's edge, or an old save) collapses WITH its host. Without this the FC
+// chip stayed VISIBLE, floating over the collapsed box while its host hid
+// (v1.1 A3 audit). Treating it as a member here makes every downstream
+// computation — hiding, the Display→FC hop, crossing detection, pills —
+// consistent with the absorbed-member case.
+function extendedMembers(editor: Editor, group: GroupNode): string[] {
+  const base = new Set(group.members);
+  const ext = [...group.members];
+  for (const n of editor.getNodes()) {
+    if (base.has(n.id)) continue;
+    const dock = dockedNodeStore.get(n.id);
+    if (dock && base.has(dock.hostNodeId)) ext.push(n.id);
+  }
+  return ext;
 }
 
 // Generic readout label for a non-Display member: its user label, else a name
@@ -128,7 +147,7 @@ function bundleDest(
  * crossing output socket; Pin shows each lane's value).
  */
 export function groupReadouts(editor: Editor, group: GroupNode): RetainedTerminal[] {
-  const members = new Set(group.members);
+  const members = new Set(extendedMembers(editor, group));
   const conns = editor.getConnections();
   const terminals: RetainedTerminal[] = [];
   const exposed = new Set<string>();
@@ -194,12 +213,18 @@ export function recomputeGroupCollapse(editor: Editor): void {
 
   // Pass 0: hidden-node membership for ALL collapsed groups, complete before any
   // per-group processing — output bundling needs to know whether a target is
-  // hidden in a DIFFERENT collapsed group.
+  // hidden in a DIFFERENT collapsed group. Membership is EXTENDED: a node docked
+  // to a member hides (and bundles) with its host even if never absorbed.
   const nodeGroup = new Map<string, string>(); // hidden member id → its group id
-  for (const g of groups) for (const id of g.members) { _hiddenNodes.add(id); nodeGroup.set(id, g.id); }
+  const membersOf = new Map<string, string[]>();
+  for (const g of groups) {
+    const ext = extendedMembers(editor, g);
+    membersOf.set(g.id, ext);
+    for (const id of ext) { _hiddenNodes.add(id); nodeGroup.set(id, g.id); }
+  }
 
   for (const g of groups) {
-    const members = new Set(g.members);
+    const members = new Set(membersOf.get(g.id)!);
 
     const terminals: RetainedTerminal[] = [];
     const exposed = new Set<string>(); // node ids already surfaced (Display + its FC hop)
@@ -376,10 +401,15 @@ export function settleCollapse(
   members: string[],
   expanding: boolean,
 ): void {
+  // Include docked satellites (virtual members — see extendedMembers): a
+  // retained Display→FC hop registers a PILL on the FC's out socket, so an
+  // unabsorbed docked FC needs the same expand re-render to re-register its
+  // real socket, and its cables the same re-measure.
   const set = new Set(members);
+  for (const m of members) for (const d of dockedNodeStore.getDockedTo(m)) set.add(d.id);
   requestAnimationFrame(() => {
     void area.update("node", groupId);
-    if (expanding) for (const m of members) void area.update("node", m);
+    if (expanding) for (const m of set) void area.update("node", m);
     requestAnimationFrame(() => {
       for (const c of editor.getConnections()) {
         if (set.has(c.source) || set.has(c.target)) void area.update("connection", c.id);
