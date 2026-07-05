@@ -1,6 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent } from "react";
-import katex from "katex";
-import "katex/dist/katex.min.css";
+import { useKatexRender } from "./katexLoader";
 import type { ClassicPreset } from "rete";
 import type { ClassicScheme, RenderEmit } from "rete-react-plugin";
 import { SolenoidSocket } from "../sockets";
@@ -400,15 +399,18 @@ type Props = {
   mathLabelKeys?: ReadonlySet<string>;
 };
 
-/** A row label rendered as math (KaTeX) — falls back to plain text on error. */
+/** A row label rendered as math (KaTeX) — falls back to plain text on error or
+ *  while katex is still loading. */
 function MathLabel({ text }: { text: string }) {
+  const render = useKatexRender();
   const html = useMemo(() => {
+    if (!render) return null;
     try {
-      return katex.renderToString(text, { throwOnError: false, displayMode: false });
+      return render(text, { throwOnError: false, displayMode: false });
     } catch {
       return null;
     }
-  }, [text]);
+  }, [text, render]);
   return html == null
     ? <span className="solenoid-node__io-label">{text}</span>
     : <span className="solenoid-node__io-label" dangerouslySetInnerHTML={{ __html: html }} />;

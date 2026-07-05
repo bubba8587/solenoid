@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import katex from "katex";
-import "katex/dist/katex.min.css";
+import { useKatexRender } from "./katexLoader";
 import { formulaToLatex } from "../excelFormula";
 import { useFormulaFit } from "./formulaFit";
 import "./ExpressionNode.css";
@@ -46,17 +45,19 @@ export function FormulaField({
   const taRef = useRef<HTMLTextAreaElement>(null);
   const renderRef = useRef<HTMLDivElement>(null);
 
-  // Rendered LaTeX (KaTeX → HTML), or null when the formula is empty or can't
-  // be parsed; in that case we fall back to showing the raw text.
+  // Rendered LaTeX (KaTeX → HTML), or null when the formula is empty, can't be
+  // parsed, or katex hasn't loaded yet; in that case we fall back to the raw text.
+  const render = useKatexRender();
   const katexHtml = useMemo(() => {
+    if (!render) return null;
     const latex = formulaToLatex(value);
     if (latex == null) return null;
     try {
-      return katex.renderToString(latex, { throwOnError: false, displayMode: false });
+      return render(latex, { throwOnError: false, displayMode: false });
     } catch {
       return null;
     }
-  }, [value]);
+  }, [value, render]);
 
   // Auto-grow the textarea to its content, capped at ~3 lines (only while editing).
   useEffect(() => {
