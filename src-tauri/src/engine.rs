@@ -84,16 +84,32 @@ enum Cell {
 }
 
 impl Cell {
-    /// A type-distinguishing key string for distinct/group/join (so `1` ≠ `"1"`,
-    /// `null` is its own bucket). Mirrors the oracle's `encodeCell`.
-    fn key(&self) -> String {
+    /// The BYTE-IDENTICAL twin of the JS oracle's `encodeCell` (frameVerbs.ts):
+    /// a JSON tagged tuple — `["n"]` / `["b",true]` / `["#",1]` / `["s","x"]` —
+    /// so a row key is `serde_json::to_string` of the tuple array, exactly what
+    /// `JSON.stringify(cols.map(encodeCell))` produces. Collision-proof by
+    /// construction (the old `format!("s:{s}")` + `\u{1}` join could collide on
+    /// crafted strings), and `-0.0` keys as `0` for free via the integral branch
+    /// (JS `JSON.stringify(-0)` is `"0"` too). The oracle's `["e", code]` error
+    /// arm is unreachable here BY CONSTRUCTION: Polars-typed columns cannot hold
+    /// a SolError cell (errors → Null at the boundary), so no Err variant exists.
+    fn key_json(&self) -> Json {
         match self {
-            Cell::Null => "n".to_string(),
-            Cell::Bool(b) => format!("b:{}", b),
-            Cell::Num(n) => format!("#:{}", n),
-            Cell::Str(s) => format!("s:{}", s),
+            Cell::Null => serde_json::json!(["n"]),
+            Cell::Bool(b) => serde_json::json!(["b", b]),
+            // num_to_json already speaks JSON.stringify: integral-in-safe-range
+            // prints as an integer (ryu would say "1.0"; JS says "1"), -0 → 0.
+            Cell::Num(n) => serde_json::json!(["#", num_to_json(*n)]),
+            Cell::Str(s) => serde_json::json!(["s", s]),
         }
     }
+}
+
+/// One row's distinct/group key over the chosen columns — the literal string the
+/// JS oracle builds at frameVerbs.ts `distinctRows` (`JSON.stringify(...)`).
+fn row_key_json(chosen_cells: &[Vec<Cell>], i: usize) -> String {
+    let tuple: Vec<Json> = chosen_cells.iter().map(|c| c[i].key_json()).collect();
+    serde_json::to_string(&tuple).unwrap_or_default()
 }
 
 // ─── A handle's backing frame: a DataFrame + the Solenoid type tags ─────────────
@@ -731,12 +747,7 @@ fn verb_distinct(frame: &SolFrame, columns: &Option<Vec<String>>) -> Result<SolF
     let mut seen: HashSet<String> = HashSet::new();
     let mut keep: Vec<usize> = Vec::new();
     for i in 0..frame.df.height() {
-        let key = chosen_cells
-            .iter()
-            .map(|c| c[i].key())
-            .collect::<Vec<_>>()
-            .join("\u{1}");
-        if seen.insert(key) {
+        if seen.insert(row_key_json(&chosen_cells, i)) {
             keep.push(i);
         }
     }
