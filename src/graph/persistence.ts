@@ -26,6 +26,7 @@ import { compositeEditorStore } from "./compositeEditorStore";
 import { commentStore, type SavedCommentData } from "./commentStore";
 import { paletteStore, reportPaletteStore } from "./palette";
 import { loadRevealStore, revealWaves } from "./loadReveal";
+import { prefersReducedMotion } from "./coarse";
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
@@ -211,8 +212,9 @@ export async function loadGraph(g: SavedGraph, opts?: { animate?: boolean }): Pr
   const editor = getEditor();
   const area = getArea();
   if (!editor || !area) return false;
-  // Only animate when there's something worth watching build in.
-  const animate = Boolean(opts?.animate) && (g.nodes?.length ?? 0) > 0;
+  // Only animate when there's something worth watching build in — and honor
+  // prefers-reduced-motion by snapping (the same instant path doc switches use).
+  const animate = Boolean(opts?.animate) && (g.nodes?.length ?? 0) > 0 && !prefersReducedMotion();
 
   // Structural gate BEFORE the destructive clear: a malformed file (a node with
   // no type, a connection with a numeric endpoint) would otherwise throw partway
