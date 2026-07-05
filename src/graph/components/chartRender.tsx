@@ -296,7 +296,10 @@ export function SankeyView({ sources, targets, values, width, height }: {
       // through — SankeyNodeShape uses it to flip labels to the outer side (else
       // every node reads as "right half" and the left column's labels fly off-canvas).
       node={(props) => <SankeyNodeShape {...props} colors={colors} containerWidth={width} />}
-      margin={{ top: 6, right: 70, bottom: 6, left: 6 }}
+      // Labels sit INWARD (left column → right, right column → left; see
+      // SankeyNodeShape), so no wide outer gutter is needed — small even margins
+      // let the flow diagram fill the figure width.
+      margin={{ top: 6, right: 10, bottom: 6, left: 10 }}
     >
       {SLICE_TIP}
     </Sankey>
