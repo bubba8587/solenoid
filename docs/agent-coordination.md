@@ -6,14 +6,13 @@ Shared scratchpad for when several agents work this repo in parallel. Dormant in
 
 ## This session
 
-**SESSION CLOSED by the author (2026-07-05 ~09:40) — A2/A3: STAND DOWN.** If your
-loop still fires, do nothing: claim no tasks, make no edits, no commits. The
-overnight + extended session is fully landed and verified (tsc clean, vitest 2124,
-cargo 46/46 zero warnings, prod + desktop builds, all 26 seeds crash-free headless);
-the tree is clean and NOTHING was pushed. Digests: dev-notes "EXTENDED SESSION
-DIGEST" + "OVERNIGHT SESSION SUMMARY" (SHAs inline). Waiting on the author: the
-eyeball checklist + the queued decisions (image-bundling memo in the backlog,
-composite toolbar reroute, FC v1.1, conditional-formatting design).
+**Solo author-present session (2026-07-05 daytime, Agent 1 only) — board dormant.**
+The overnight/extended work passed author review; the queued decisions were resolved
+(image bundling BUILT, FC v1.1-α BUILT, toolbar reroute + conditional formatting
+DEFERRED). See dev-notes "DAYTIME SESSION DIGEST" (SHAs inline). Tree clean, vitest
+2184 green, nothing pushed. Open threads for the next session: FC A4
+units-by-dimensionality (design-first), the parked border-seam problem (dev-notes
+"UNSOLVED"), and the two author-deferred decisions.
 
 ## Claims
 

@@ -112,9 +112,10 @@ design) — **wired end-to-end and sound**. Remaining loose ends:
     marker was deleted inside, and fires a `warn` `pushNotice` ("Removed N cables connected
     to <name> — a port was deleted inside"). The drop itself stays (by design). Covers both
     full close and breadcrumb drill-up (both route through `leaveLevel`).
-  - [ ] **Reroute real toolbar / mobile bar to the ACTIVE subgraph (author's ask) — deferred,
-    NOT a blind overnight build.** It's a genuine cross-cutting refactor, scoped in dev-notes
-    2026-07-05 ("Composite drill-in — toolbar reroute is its own session"): the app-global op
+  - [ ] **Reroute real toolbar / mobile bar to the ACTIVE subgraph (author's ask) — DEFERRED
+    AGAIN by the author 2026-07-05 ("defer D2"); NOT a blind overnight build.** It's a genuine
+    cross-cutting refactor, scoped in the archived dev-note
+    ("Composite drill-in — toolbar reroute is its own session"): the app-global op
     singletons (`autoArrange`/`cleanup`/`deleteSelected`/add-node/undo-redo in `process.ts`)
     are bound to the MAIN editor/area, Canvas's keydown fully stands down while a drill-in is
     open (`Canvas.tsx:691`), and there is no drill-in Tidy (arrangeFn is entirely main-bound).
@@ -206,7 +207,8 @@ updates live) · #40 IN, optional + very conservative trigger threshold (semanti
 zoom — Settings toggle, simplified-card swap only near the far end of zoom range) ·
 #41 IN, sequence LATE — needs its own design pass (conditional formatting for
 tables: must clear Excel's own bar by a lot per author's explicit dislike of Excel's
-version, Display-node-only, must not step on FC's text-format/units territory) ·
+version, Display-node-only, must not step on FC's text-format/units territory;
+deferral re-confirmed by the author 2026-07-05, "defer D4") ·
 #42 OUT (history scrubber). Round 6 (#37–42) fully walked: #37/#38/#39/#40/#41 all
 IN (several with conditions/deferred-build notes above) · #42 OUT.
 Round 7 (#43–49, exact numbers + the traveling file) begun 2026-07-03: #43 IN, DEFER
@@ -1302,10 +1304,12 @@ correctness.
   pinned) render without a Pin button. The
   "+ more" actions noted originally (copy-as / export / "go to node") are NOT done;
   Copy already exists in TablePopup. Follow-up below.
-  - [~] **Pop-up actions — the rest of "+ more".** "Go to node" DONE 2026-07-05
-    (`PopupGoToButton` beside Pin in Table/Frame, Chart, Cube, Formula popups —
-    closes the popup, `flyToNodeAndFlash`; Formula commits first). Export /
-    copy-as variants remain "do if wanted" (Copy exists in TablePopup already).
+  - [~] **Pop-up actions — the rest of "+ more".** "Go to node" DONE 2026-07-05 and
+    same-day RETARGETED to **"Go to source"** (author review, `2457396`): the
+    crosshair flies to the value's ORIGIN — `resolveValueOrigin` walks upstream
+    through FCs/passthroughs/data-aware selectors, stopping at transforms — since
+    the host is where you just clicked. Export / copy-as variants remain "do if
+    wanted" (Copy exists in TablePopup already).
 
 - [x] **Cinematic load reveal — DONE 2026-06-19.** Load no longer pops nodes in
   one-by-one. Startup + File→Open build behind an accurate progress-bar overlay
@@ -1498,11 +1502,11 @@ CLAUDE.md "Cable rendering knobs"). Still future, from
 
 ## Format Controller
 
-**Milestone split (2026-06-24, updated 2026-06-25, see `roadmap.md`):** the FC
-*architectural* items below — passthrough-INPUTS (IF/CHOOSE carry units; DONE), the
-movement-functions docked-FC pass, upstream multi-hop annotation, the popup
-formatted/source toggle (DONE) — are **v0.9**. The FC *visual/layout* redesign, `SegToggle`
-unification, **and the function model** (author moved it to 1.1, 2026-06-25) are **v1.1**.
+**Milestone split (2026-06-24, updated 2026-06-25; superseded 2026-07-05):** v0.9
+architectural items all shipped, and **v1.1-α (function model + visual redesign +
+SegToggle + movement audit + mis-dock bug) SHIPPED 2026-07-05** — see
+`docs/format-model.md` + `docs/v1.1-plan.md` WS-A. The one FC item still open is
+**A4 units-by-dimensionality** (v1.1-β, below).
 
 - [x] **BUG (1.1): navigator group rows are blown out** — FIXED (verified 2026-07-05, backlog
   sweep). `OutlinePanel.tsx` now tints the group row `background: hexToRgba(r.color, 0.24)` with a
@@ -1510,8 +1514,13 @@ unification, **and the function model** (author moved it to 1.1, 2026-06-25) are
   asked for, not a solid `background: r.color` fill. And `colorOf` (`:43-45`) resolves the palette
   SLOT via `resolveColor((n as GroupNode).color)` "exactly like GroupNode does" (the second half of
   the fix). Both parts landed; box was just never checked.
-- [ ] **BUG: FCs randomly mis-dock to a Note with frontmatter outputs, on load/switch
-  (author 2026-06-25; hard to reproduce — random).** Symptom: opening / switching to a graph,
+- [x] **BUG: FCs randomly mis-dock to a Note with frontmatter outputs** — FIXED
+  2026-07-05 (`6f53e6a`, with the A3 audit): `findDockTarget` now compares in CANVAS
+  units (`screen distance ÷ zoom`, `DOCK_SNAP_CANVAS_PX = 34`) so a zoomed-out drag
+  can't snap to a far-away Note's socket stack; the `nodecreated` dockSelf was already
+  guarded with `!isGraphRebuilding()` on develop. Original investigation kept below
+  for the record.
+  (author 2026-06-25; hard to reproduce — random.) Symptom: opening / switching to a graph,
   FCs "from other chains" drift to / attach to a Note node that exports frontmatter inputs.
   Investigation done 2026-06-25 (ruled OUT, don't re-chase these): (a) ID collision — rete IDs are
   64-bit `crypto` random, so a stale/unremapped `hostNodeId` can't match the Note's; (b) cross-graph
@@ -1593,37 +1602,28 @@ unification, **and the function model** (author moved it to 1.1, 2026-06-25) are
   dimensionality math (mph) — carrying mixed units through selection/filter/reshape/frame-build is
   valuable on its own. Big — its own milestone; design the per-cell/per-column unit representation first.
 
-- [ ] **FC handling needs another pass across ALL movement functions** (noted
-  2026-06-19, author) — **docked FCs especially.** Push / expand / collapse /
-  autofit / tidy / drag each reposition nodes, and a docked FC has to ride along
-  with its host and re-snap; the coverage is uneven (e.g. tidy already reserves
-  the docked footprint + re-snaps in a deferred rAF, but other ops are less
-  careful). Audit each movement op for docked-FC correctness the way the
-  standoff-cluster pass just did for standoffs. See `repositionDockedTo`,
-  `dockedNodeStore`, `realHostSize`/footprint logic in `Canvas.tsx`.
+- [x] **FC handling needs another pass across ALL movement functions** — done
+  2026-07-05 (the A3 audit, `6f53e6a`). Verdict: drag/group-move/tidy/autofit/
+  expand-push/tidy-grow/restore/de-overlap/standoff-settle/cleanup were ALREADY
+  correct (`translatePushed` carries docked FCs; the push world reserves an
+  output-FC footprint). One real gap fixed: group COLLAPSE hid members only, so an
+  FC docked to a member but never absorbed floated over the collapsed box — docked
+  satellites are now virtual members (`groupCollapse.ts` `extendedMembers`,
+  unit-tested).
 
-- [ ] **The function model (v1.1, author 2026-06-25).** Pin down ONE coherent definition of
-  how an FC decides what to render, across every axis it controls at once — replacing today's
-  per-style ad-hoc logic on `FormatAnnotation`. The axes that must compose:
-  - **precision** — `decimalDigits` × `decimalMode` (`"places"` fixed decimals vs `"sig"` significant
-    figures): one resolution rule for how it interacts with each format style (sig-figs on `percent`,
-    `scientific`, `fraction`).
-  - **format style** — `FormatStyle` (`auto | decimal | integer | percent | fraction | fraction_adv |
-    scientific`) + `customPattern`.
-  - **unit** — `unit`/`customUnit`, a SEPARATE axis applied after the numeric format (currency is a
-    unit, not a format); must coexist with every style.
-  - **value type** — the same FC can sit on number / date / text / logical; the model defines which
-    controls light up vs no-op per incoming type (sig-figs meaningless on a date; `textCase` meaningless
-    on a number).
-  Deliverable is the spec FIRST (a truth table: which controls apply per value-type + the
-  precision×style resolution rule), THEN the FC-redesign code. `formatAnnotationStore.ts` (`FormatAnnotation`,
-  `FormatStyle`), the FC popup, the value renderers. Pairs with the SegToggle/visual redesign below.
-- [ ] **FC expansion + SegToggle unification.** The FC is slated for a redesign /
-  expansion (function + layout). When that happens, route its places/sig-figs
-  toggle (and any new toggles) through the shared `SegToggle` component so there's
-  one segmented-button definition. For now the FC keeps its own inline-row variant
-  (`.solenoid-fc__seg` / `__segbtn`); `SegToggle` (Get Column / Add Column read-as)
-  is the standalone full-width form with the same look.
+- [x] **The function model (v1.1, author 2026-06-25)** — done 2026-07-05 (spec first,
+  then code, per the author's order): `docs/format-model.md` (4-stage pipeline, family
+  truth table, ONE precision×style rule) + `formatModel.ts` machine-checked against it
+  over the whole SocketDataType union. Scientific honors the precision row; logical
+  sockets gained show-as (TRUE/FALSE · 1/0 · Yes/No · ✓/✗); complex = reduced style
+  list; frames/cubes explicitly `none` until A4. `c9ffd1f` `f59761c`.
+- [x] **FC expansion + SegToggle unification** — done 2026-07-05: places/sig-figs
+  routes through the shared `SegToggle` (`--inline` variant; the FC's private
+  `.solenoid-fc__seg`/`__segbtn` deleted), flow arrows re-audited to the v0.9
+  semantics (`← →` authored · `→ →` inherited · `← ←` Convert-dictated), and the FC
+  EXPANDS: an advanced format tier behind a chip-foot expander (1,000-separator,
+  negative styles incl. accounting parens + red, K/M/B scale), formats clustered
+  above the unit row. `6fa5874` `82eb80b` `9f24060`.
 
 - [x] **Popup "view formatted / view source" toggle** — DONE (in `TablePopup.tsx`:
   `displayMode` "formatted"/"source" + `showFmtToggle`). The list/table/frame popup offers a
