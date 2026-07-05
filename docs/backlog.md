@@ -41,11 +41,6 @@ is archived).
 
 ## Decided, unbuilt (mechanical — no design session needed)
 
-- [ ] **Force en-US number formatting everywhere** (decided 2026-07-02: "I don't
-  respect comma decimals"). Pass `"en-US"` (one shared constant) instead of
-  `undefined` to every `toLocaleString` — `formatAnnotationStore.ts` (~5 sites,
-  incl. `formatPrecise`/integer) + the cosmetic row-count strings in
-  CubePopup/TablePopup. Inputs stay dot-decimal; display and input agree by fiat.
 - [ ] **UX/a11y mechanical batch** (approved as one batch 2026-07-02; PARTIALLY
   landed — CloseIcon + focus-visible bits shipped; VERIFY each against code before
   building the rest): socket-dot hover `title` naming the type (the only colorblind
@@ -59,8 +54,6 @@ is archived).
   (`{"__nf":"inf"|…}`) BOTH directions; aggregates apply the scalar `guardFinite`
   rule in both backends; parity tests. Also: document the desktop source-freeing
   GC-timing behavior in subsystem-invariants (decided ACCEPT, docs-only).
-- [ ] **Persist cable shape** — `cableShapeStore` gets the localStorage pattern of
-  its siblings (one key, read at init, try/catch private-mode guard).
 - [ ] **String lt/gt ordering** (byte vs locale) — small P3, decide + pin when touched.
 - [ ] **Minimap position 3-way** (decided 2026-07-01, NOT four corners): one
   Bottom · Top · Hide setting absorbing `perfHideMinimap`; the Socket Reference
@@ -80,9 +73,6 @@ is archived).
   window is also the home for doc metadata (title/author/tags) and **document-level
   FC defaults** (default places / number format — the date default `DD-MMM-YYYY`
   already shipped; toolbar-supplementals [SETTING] verdict).
-- [ ] **Show/hide grid dots toggle** — a [SETTING] beside the existing snap toggle
-  (toolbar-supplementals verdict; snap exists in `gridSnapStore`, dot visibility
-  has no switch).
 
 ## Composite / drill-in
 
@@ -160,9 +150,6 @@ is archived).
 - [ ] **Grid system** — DEFERRED for later (author 2026-07-05). Spec: `grid-system.md`.
 - [ ] **Moveable / hideable UI chrome** (standing author principle): honor for
   every new panel; the decided piece (minimap 3-way) is queued above.
-- [ ] **Library-folder opener — ultra-minimal** (author 2026-07-05, resolves
-  #48/#54): a File-menu action (+ a Settings row button) that opens the OS file
-  manager at the chosen documents folder via the opener plugin. Nothing more.
 - [ ] **Optically center the last asymmetric icons** — canvas-lock toggle (reads
   low) + the cable-flourish sparkle (author's eye needed). Ink-centroid method in
   the archived dev-notes (2026-06-20).
