@@ -128,3 +128,56 @@ save. Settled grammar rules:
   same way `seeds.test.ts` checks structural invariants today — load every seed, write
   text, re-read, re-write, assert the second write is byte-identical. Keep it green
   permanently, same discipline as `cablePaths.test.ts`'s continuity gate.
+
+## Per-doc autosave persistence (`documentStore.ts`, 2026-07-05)
+
+Each document persists to its OWN two-slot localStorage pair
+(`solenoid.docs.doc.<id>.a/.b`) plus one light two-slot INDEX pair
+(`solenoid.docs.index.a/.b` — currentId + `[{id, name, updatedAt, filePath}]`, no
+graphs). `persist()` writes the index always (tiny) and only the documents whose
+object CHANGED. The invariants that make this correct:
+
+- **Change detection is OBJECT IDENTITY, so `documentStoreCore.ts`'s transforms must
+  stay immutable.** A changed doc must be a NEW object (`{...d, …}`); mutating a
+  `SolDoc` in place means `persist()` sees the same reference and silently NEVER
+  writes it. (Mutating a doc you just created, before its first persist, is fine —
+  `importAsDocument` does this.) If a future transform needs to touch a doc, copy it.
+- **Slot seq is a strictly-monotonic in-session counter** (seeded from `Date.now()`),
+  not raw `Date.now()` — two same-millisecond writes tie, making the "newer slot"
+  read ambiguous (the read could resurrect the older write). Seq is read via a
+  `^\{"seq":(\d+)` prefix regex so choosing the write slot never re-parses a large
+  graph blob.
+- **The index is metadata only; a doc's own slot is the truth** on any field
+  disagreement (the index is rewritten wholesale from memory on every persist). A
+  missing/corrupt doc slot is SKIPPED on restore — the rest of the library loads.
+- **Deleting a doc must remove its slots** (`removeDocSlots`) — that's the quota-frees
+  half of the feature; `persist()` does it by diffing `_lastPersisted`'s keys against
+  the live library.
+- No migration path exists (D3): the pre-2026-07-05 whole-library keys
+  (`solenoid.docs.lib.a/b`) are deleted on startup. Guard tests:
+  `documentStorePersist.test.ts`.
+
+## Composite drill-in mount lifecycle (`CompositeEditorOverlay.tsx`, 2026-07-05)
+
+A composite's drill-in rete stack (AreaPlugin + ReactPlugin + ConnectionPlugin +
+HistoryPlugin) is created ONCE per composite instance and cached on the node
+(`__drillMount`) — rete has no `unuse`, so a fresh AreaPlugin per open would
+accumulate dead pipes on the long-lived `internalEditor`. The lifecycle invariants:
+
+- **Close must REMOVE every internal node/connection VIEW** (`area.removeNodeView` /
+  `removeConnectionView`), not just detach the container. A detached container keeps
+  the per-view React roots MOUNTED — their effects keep running, which is how a
+  Connection node's auto-refresh interval inside a closed (or deleted) composite kept
+  firing full `processGraph()`s forever (audit 2026-07-05). Unmounting the views runs
+  the component effect cleanups; `removeNodeView` on an id with no view is a safe
+  no-op (rete guards it), so the sweep is idempotent and race-proof against a
+  close-during-hydrate.
+- **Open must BACKFILL views idempotently** (skip ids already in
+  `area.nodeViews`/`connectionViews`): first open because the internal graph predates
+  the area (nodes hydrate at collapse/load, before any `nodecreated` the plugins could
+  see), every reopen because close removed them.
+- **The undo/redo HistoryPlugin lives on the mount**, so its stack survives
+  close/reopen by design — don't move it into the per-open effect.
+- **`compositeEditorStore.close()` is part of `rebuildGraph`'s bulk-reset** (with
+  reportStore/presentationStore): a drill-in open across a document switch would
+  render a CompositeNode belonging to the dead graph.
