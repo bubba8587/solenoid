@@ -278,7 +278,8 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
   const retained = collapsed ? groupCollapseStore.retainedFor(node.id) : [];
   const inputPills = collapsed ? groupCollapseStore.inputPillsFor(node.id) : [];
   const rowCount = Math.max(retained.length, inputPills.length);
-  const summaryMinH = rowCount * COLLAPSE_LAYOUT.rowH + COLLAPSE_LAYOUT.padTop * 2;
+  const summaryMinH = rowCount * COLLAPSE_LAYOUT.rowH
+    + Math.max(0, rowCount - 1) * COLLAPSE_LAYOUT.rowGap + COLLAPSE_LAYOUT.padTop * 2;
 
   // Publish the group color the same way a member NodeCard does (--group-color /
   // --group-color-dark), so a Table/Array chip opened from the collapsed summary
