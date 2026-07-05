@@ -663,15 +663,25 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
    the card height stays content-driven. That way the box grows/shrinks to the
    chosen size and the card border follows it, but the header and any input rows
    keep their natural height and are never hidden. */
-.solenoid-node--sized .solenoid-node__display-value {
+/* Universal resize: the BODY takes the chosen height (--box-h) and its main
+   content (the LAST child — the value box / grid / chart / text field) fills and
+   scrolls. Any leading rows keep their natural height; the header is above the
+   body so it's never covered. One rule for every content type — no per-type box. */
+.solenoid-node--sized .solenoid-node__body {
   height: var(--box-h);
+}
+.solenoid-node--sized .solenoid-node__body > :last-child {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: auto;
+}
+.solenoid-node--sized .solenoid-node__display-value {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-/* The main text field (--value) spans the card width and takes the chosen
-   height. Scoped to --value so a Concat's inline literal rows — which share the
-   .quoted markup but aren't the resized box — are left alone. */
+/* The main text field (--value) fills the sized body. Scoped to --value so a
+   Concat's inline literal rows — which share the .quoted markup but aren't the
+   resized box — are left alone. */
 .solenoid-node--sized .solenoid-node__quoted--value {
   display: flex;
   width: 100%;
@@ -681,7 +691,13 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
 }
 .solenoid-node--sized .solenoid-node__quoted--value .solenoid-node__quoted-input {
   width: 100%;
-  height: var(--box-h);
+  height: 100%;
+}
+
+/* The universal grip is meaningless on a collapsed card (collapse owns the size
+   then — see NodeCard). */
+.solenoid-node--collapsed .solenoid-node__resize-handle {
+  display: none;
 }
 
 .solenoid-node__io-row {
