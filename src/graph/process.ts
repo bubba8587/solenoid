@@ -567,10 +567,13 @@ async function runGraphPass(changedNodeId?: string, renderOnly?: Set<string>, to
     const outputs: Record<string, unknown> = {};
     for (const k of Object.keys(node.outputs ?? {})) outputs[k] = circErr;
     // The member never runs, so set its value box directly (most render
-    // `cachedResult`; a Display reads `cachedValue`).
-    const n = node as unknown as { cachedResult?: unknown; cachedValue?: unknown };
+    // `cachedResult`; a Display reads `cachedValue`; list nodes — Range, List
+    // Input, Sort… — render `cachedList`, so seed that too or a loop member of
+    // that family shows a stale list instead of the #CIRC! badge).
+    const n = node as unknown as { cachedResult?: unknown; cachedValue?: unknown; cachedList?: unknown };
     if ("cachedResult" in n) n.cachedResult = circErr;
     if ("cachedValue" in n) n.cachedValue = circErr;
+    if ("cachedList" in n) n.cachedList = circErr;
     const seeded = Object.assign(Promise.resolve(outputs), { cancel() {} });
     try { _engine.cache.add(id, seeded); } catch { _engine.cache.patch(id, seeded); }
   }
