@@ -4,7 +4,7 @@
 
 import {
   AngleDialNode, SlicerNode, CableSwitchNode, DatePickerNode, XYPadNode,
-  SparklineNode, ChartNode, HistogramNode, KpiNode, BulletNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode,
+  SparklineNode, ChartNode, HistogramNode, KpiNode, BulletNode, TreemapNode, SankeyNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode,
   NumberInputNode, ArithmeticNode, DisplayNode, ComparisonNode, MathFnNode,
   FormatControllerNode, ExpressionNode, RegexNode, GroupByNode,
   ClampNode, BooleanOpNode, NotNode, IfNode, ConduitNode, CastNode, ConstantNode, MRoundNode,
@@ -239,6 +239,8 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "gauge",     label: "Gauge",     description: "Show a value on a radial dial between Min and Max — a speedometer-style readout. Pass-through.", create: () => new GaugeNode(), parity: false },
           { type: "kpi",       label: "KPI card",  description: "A big-number stat card with a ↑/↓ delta vs a prior value, coloured green/red. Emits a chart value a Report can embed.", create: () => new KpiNode(), parity: false, keywords: "kpi stat card metric scorecard delta variance big number" },
           { type: "bullet",    label: "Bullet",    description: "A bullet graph — a value bar on a min-to-max track with a target tick. A compact gauge alternative. Emits a chart value a Report can embed.", create: () => new BulletNode(), parity: false, keywords: "bullet graph target progress goal gauge kpi" },
+          { type: "treemap",   label: "Treemap",   description: "Show labelled values as nested rectangles sized by value — a space-filling alternative to a pie. Wire a list of labels and a list of values. Emits a chart value a Report can embed.", create: () => new TreemapNode(), parity: false, keywords: "treemap tree map rectangles proportion hierarchy area" },
+          { type: "sankey",    label: "Sankey",    description: "A flow diagram — wire parallel From / To / Value lists; each row is an edge, and the band width shows the flow. Emits a chart value a Report can embed.", create: () => new SankeyNode(), parity: false, keywords: "sankey flow diagram alluvial edges links network flows" },
           { type: "heatmap-cell", label: "Heatmap", description: "Colour every cell of a Table on a cool-to-warm scale across its data range, like conditional formatting. Pass-through.", create: () => new HeatmapCellNode(), parity: false },
         ],
       },

@@ -1,7 +1,7 @@
 import { ClassicPreset } from "rete";
-import { numIn, numListIn, numListOut, numOut, tableIn, tableOut, strIn, strOut, chartOut } from "./shared";
+import { numIn, numListIn, numListOut, numOut, tableIn, tableOut, strIn, strListIn, strOut, chartOut } from "./shared";
 import { parseChartOptions, serializeChartOptions, type ChartOptions } from "./chartOptions";
-import type { ChartValue, KpiPayload, BulletPayload } from "../chartValue";
+import type { ChartValue, KpiPayload, BulletPayload, TreemapPayload, SankeyPayload } from "../chartValue";
 import type { MermaidValue } from "../mermaidValue";
 
 // ─── Visual output nodes ────────────────────────────────────────────────────
@@ -311,6 +311,70 @@ export class BulletNode extends ClassicPreset.Node {
     this.cachedPayload = payload;
     return {
       chart: { __chart: true, op: "bullet", values: value, payload, options: this.chartOptions, title: this.label || "Bullet" },
+    };
+  }
+}
+
+// ─── Treemap ──────────────────────────────────────────────────────────────────
+// A flat labelled treemap: each (label, value) pair is a rectangle sized by value.
+// Wire a text list of labels + a number list of values. Emits a chart VALUE.
+
+export class TreemapNode extends ClassicPreset.Node {
+  label: string;
+  chartOptions: ChartOptions = {};
+  cachedPayload: TreemapPayload | null = null;
+  width = 240;
+  height = 220;
+
+  constructor(init?: { label?: string }) {
+    super("Treemap");
+    this.label = init?.label ?? "Treemap";
+    this.addInput("labels", strListIn("Labels"));
+    this.addInput("values", numListIn("Values"));
+    this.addOutput("chart", chartOut("Chart"));
+  }
+
+  data(inputs: { labels?: string[][]; values?: (number | number[])[] }): { chart: ChartValue } {
+    const rawVals = inputs.values?.[0] ?? [];
+    const values = (Array.isArray(rawVals) ? rawVals : [rawVals]).map((v) => (typeof v === "number" ? v : 0));
+    const names = (inputs.labels?.[0] ?? []).map((n) => String(n ?? ""));
+    const payload: TreemapPayload = { kind: "treemap", names, values };
+    this.cachedPayload = payload;
+    return {
+      chart: { __chart: true, op: "treemap", values, payload, options: this.chartOptions, title: this.label || "Treemap" },
+    };
+  }
+}
+
+// ─── Sankey ───────────────────────────────────────────────────────────────────
+// A flow diagram from parallel edge lists: source[i] → target[i] carries value[i].
+// Nodes are the unique names across both ends. Emits a chart VALUE.
+
+export class SankeyNode extends ClassicPreset.Node {
+  label: string;
+  chartOptions: ChartOptions = {};
+  cachedPayload: SankeyPayload | null = null;
+  width = 260;
+  height = 220;
+
+  constructor(init?: { label?: string }) {
+    super("Sankey");
+    this.label = init?.label ?? "Sankey";
+    this.addInput("source", strListIn("From"));
+    this.addInput("target", strListIn("To"));
+    this.addInput("value", numListIn("Value"));
+    this.addOutput("chart", chartOut("Chart"));
+  }
+
+  data(inputs: { source?: string[][]; target?: string[][]; value?: (number | number[])[] }): { chart: ChartValue } {
+    const rawVals = inputs.value?.[0] ?? [];
+    const values = (Array.isArray(rawVals) ? rawVals : [rawVals]).map((v) => (typeof v === "number" ? v : 0));
+    const sources = (inputs.source?.[0] ?? []).map((n) => String(n ?? ""));
+    const targets = (inputs.target?.[0] ?? []).map((n) => String(n ?? ""));
+    const payload: SankeyPayload = { kind: "sankey", sources, targets, values };
+    this.cachedPayload = payload;
+    return {
+      chart: { __chart: true, op: "sankey", values, payload, options: this.chartOptions, title: this.label || "Sankey" },
     };
   }
 }

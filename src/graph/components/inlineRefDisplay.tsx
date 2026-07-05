@@ -17,7 +17,7 @@ import { isLambdaValue, type LambdaValue } from "../nodes/lambda";
 import { formulaToLatex } from "../excelFormula";
 import { FrameDisplay } from "./FrameDisplay";
 import { CubeDisplay } from "./CubeDisplay";
-import { ChartView, toSeries } from "./chartView";
+import { ChartFigure } from "./chartView";
 import { isSolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import { NodeSocket } from "./NodeSocket";
@@ -133,15 +133,15 @@ function ChartBody({ value }: { value: ChartValue }) {
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  const series = toSeries(value.values);
   const width = Math.min(w, 640);
+  // Cards (kpi/bullet) don't need a measured width; the recharts figures render
+  // once the container width is known. ChartFigure maps every op → its figure.
+  const cardOp = value.op === "kpi" || value.op === "bullet";
   return (
     <span className="solenoid-ref-chartbody" ref={ref}>
-      {series.length === 0
-        ? <span className="solenoid-ref-inline solenoid-ref-inline--empty">—</span>
-        : width > 0
-          ? <ChartView op={value.op} series={series} width={width} height={200} axes opts={value.options} />
-          : null}
+      {cardOp || width > 0
+        ? <ChartFigure value={value} width={width || 320} height={200} />
+        : null}
     </span>
   );
 }

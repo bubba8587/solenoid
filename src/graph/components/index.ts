@@ -298,6 +298,8 @@ export { ChartComponent } from "./ChartNode";
 export { HistogramComponent } from "./HistogramNode";
 export { KpiComponent } from "./KpiNode";
 export { BulletComponent } from "./BulletNode";
+export { TreemapComponent } from "./TreemapNode";
+export { SankeyComponent } from "./SankeyNode";
 export { MermaidComponent } from "./MermaidNode";
 export { GaugeComponent } from "./GaugeNode";
 export { HeatmapCellComponent } from "./HeatmapCellNode";

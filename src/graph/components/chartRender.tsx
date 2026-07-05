@@ -1,7 +1,7 @@
 // Every recharts-using renderer, in ONE module — so recharts lands in a single
 // lazily-loaded chunk. Nothing here is imported statically by the app; chartView.tsx
 // wraps these in React.lazy + Suspense. recharts-free helpers live in chartCore.ts.
-import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, RadialBarChart, RadialBar, PolarAngleAxis, PolarGrid, PolarRadiusAxis, RadarChart, Radar, PieChart, Pie, ScatterChart, Scatter, FunnelChart, Funnel, LabelList, Cell } from "recharts";
+import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, RadialBarChart, RadialBar, PolarAngleAxis, PolarGrid, PolarRadiusAxis, RadarChart, Radar, PieChart, Pie, ScatterChart, Scatter, FunnelChart, Funnel, LabelList, Cell, Treemap, Sankey } from "recharts";
 import "./chartView.css";
 import { formatScalar } from "./format";
 import { VIZ, useChartColors, useSeriesColors, type ChartShape } from "./chartCore";
@@ -194,6 +194,104 @@ export function ChartView({
       </div>
       {chart}
     </div>
+  );
+}
+
+// ─── Treemap ──────────────────────────────────────────────────────────────────
+// A flat labelled treemap — each name/value is a rectangle sized by value, coloured
+// from the categorical set. recharts hands the cell renderer geometry + index.
+type TreemapCellProps = {
+  x?: number; y?: number; width?: number; height?: number;
+  index?: number; name?: string; colors?: string[];
+};
+function TreemapCell({ x = 0, y = 0, width = 0, height = 0, index = 0, name = "", colors = [] }: TreemapCellProps) {
+  const fill = colors[index % (colors.length || 1)] || VIZ;
+  return (
+    <g>
+      <rect x={x} y={y} width={width} height={height} fill={fill} stroke="var(--surface)" strokeWidth={1} />
+      {width > 46 && height > 20 ? (
+        <text x={x + 5} y={y + 15} fontSize={10} fill="#fff" style={{ pointerEvents: "none" }}>{name}</text>
+      ) : null}
+    </g>
+  );
+}
+
+export function TreemapView({ names, values, width, height }: {
+  names: string[]; values: number[]; width: number; height: number;
+}) {
+  const colors = useSeriesColors();
+  const data = names
+    .map((n, i) => ({ name: n || `#${i + 1}`, size: Math.max(0, values[i] ?? 0) }))
+    .filter((d) => d.size > 0);
+  if (data.length === 0) return <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;
+  return (
+    <Treemap width={width} height={height} data={data} dataKey="size" isAnimationActive={false} content={<TreemapCell colors={colors} />}>
+      {SLICE_TIP}
+    </Treemap>
+  );
+}
+
+// ─── Sankey ───────────────────────────────────────────────────────────────────
+// Flow edges: source[i] → target[i] carries value[i]. Nodes are the unique names.
+// recharts needs numeric source/target indices into the nodes array; cycles/self-
+// loops are dropped (recharts' layout assumes a DAG).
+type SankeyNodeProps = {
+  x?: number; y?: number; width?: number; height?: number;
+  index?: number; payload?: { name?: string }; colors?: string[]; containerWidth?: number;
+};
+function SankeyNodeShape({ x = 0, y = 0, width = 0, height = 0, index = 0, payload, colors = [], containerWidth = 0 }: SankeyNodeProps) {
+  const fill = colors[index % (colors.length || 1)] || VIZ;
+  const rightHalf = x > containerWidth / 2;
+  return (
+    <g>
+      <rect x={x} y={y} width={width} height={height} fill={fill} rx={1} />
+      <text
+        x={rightHalf ? x - 6 : x + width + 6}
+        y={y + height / 2}
+        textAnchor={rightHalf ? "end" : "start"}
+        dominantBaseline="middle"
+        fontSize={10}
+        fill="var(--text)"
+        style={{ pointerEvents: "none" }}
+      >{payload?.name}</text>
+    </g>
+  );
+}
+
+export function SankeyView({ sources, targets, values, width, height }: {
+  sources: string[]; targets: string[]; values: number[]; width: number; height: number;
+}) {
+  const colors = useSeriesColors();
+  const { grid } = useChartColors();
+  const nameToIdx = new Map<string, number>();
+  const nodes: { name: string }[] = [];
+  const idx = (n: string) => {
+    let i = nameToIdx.get(n);
+    if (i === undefined) { i = nodes.length; nameToIdx.set(n, i); nodes.push({ name: n }); }
+    return i;
+  };
+  const links: { source: number; target: number; value: number }[] = [];
+  for (let i = 0; i < sources.length; i++) {
+    const s = sources[i] ?? "";
+    const t = targets[i] ?? "";
+    const v = values[i] ?? 0;
+    if (!s || !t || s === t || !(v > 0)) continue; // skip blanks / self-loops / non-positive
+    links.push({ source: idx(s), target: idx(t), value: v });
+  }
+  if (links.length === 0) return <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;
+  return (
+    <Sankey
+      width={width}
+      height={height}
+      data={{ nodes, links }}
+      nodePadding={16}
+      nodeWidth={10}
+      link={{ stroke: grid, strokeOpacity: 0.5 }}
+      node={<SankeyNodeShape colors={colors} />}
+      margin={{ top: 6, right: 70, bottom: 6, left: 6 }}
+    >
+      {SLICE_TIP}
+    </Sankey>
   );
 }
 

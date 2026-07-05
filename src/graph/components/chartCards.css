@@ -1,0 +1,86 @@
+/* KPI stat card + bullet graph — quiet, no decorative fills (DESIGN.md). */
+
+.sol-kpi {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 8px 4px;
+  min-height: 60px;
+}
+.sol-kpi__value {
+  font-size: 30px;
+  font-weight: 650;
+  line-height: 1.05;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.sol-kpi__unit {
+  font-size: 15px;
+  font-weight: 550;
+  color: var(--text-dim);
+  margin-left: 2px;
+}
+.sol-kpi__delta {
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+}
+.sol-kpi__arrow { font-size: 10px; }
+
+.sol-bullet {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 2px 4px;
+}
+.sol-bullet__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sol-bullet__track {
+  position: relative;
+  flex: 1;
+  height: 14px;
+  border-radius: 3px;
+  background: var(--surface-sunken);
+  box-shadow: inset 0 0 0 1px var(--border);
+  overflow: hidden;
+}
+.sol-bullet__value {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  border-radius: 3px 0 0 3px;
+}
+.sol-bullet__target {
+  position: absolute;
+  top: -2px;
+  height: 18px;
+  width: 2px;
+  background: var(--text);
+  transform: translateX(-1px);
+}
+.sol-bullet__num {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  min-width: 34px;
+  text-align: right;
+}
+.sol-bullet__scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9.5px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+.sol-bullet__tgt-label { color: var(--text-muted, var(--text-dim)); }
