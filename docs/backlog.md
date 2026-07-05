@@ -624,11 +624,14 @@ section is decision-recorded. The QUEUE when resuming, in order:
   `include` widened to `*.test.{ts,tsx}`. The `documentStoreCore.ts` import-cycle split
   was already done (2026-07-02) — core imports only a `SavedGraph` type + the pure
   `validateSavedGraph`, no back-import. `noUncheckedIndexedAccess` declined, as agreed.
-- [ ] **Bundle splitting (author confirmed).** Lazy-load recharts, KaTeX, and ELK (the
-  pixi pattern, already split correctly) — main chunk 4.0 MB / 1.2 MB gz shrinks
-  substantially; first use of chart/formula-preview/Tidy after a cold load pays a
-  one-time fetch (imperceptible on desktop, a beat on web). (Mermaid, added 2026-07-04,
-  is ALREADY lazy-imported via `MermaidView` — the pattern to copy for recharts/KaTeX.)
+- [~] **Bundle splitting (author confirmed) — recharts + KaTeX DONE 2026-07-05, ELK
+  remaining.** recharts (~377 kB) split into a lazy `chartRender.tsx` chunk behind
+  `chartView.tsx` (React.lazy wrappers + `chartCore.ts` for the recharts-free helpers);
+  KaTeX (~265 kB) behind `katexLoader.ts` (`useKatexRender`/`getKatexRenderer` — call
+  sites fall back to raw formula text until the chunk arrives). Main chunk 4.0 → 3.53 MB.
+  **ELK still eager** (pulled in by `AutoArrangePlugin`, statically imported + wired at
+  Canvas init) — deferring it means lazy-creating the plugin on first Tidy; not done yet.
+  (Mermaid was already lazy via `MermaidView` — the pattern copied for recharts/KaTeX.)
 - [ ] **Per-doc autosave keys (author confirmed, no objection).** One localStorage key
   per document + a light index, each with its own two-slot rotation — an edit
   autosaves only that doc; a bloated doc exhausts only its own quota headroom. No
