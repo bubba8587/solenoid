@@ -661,7 +661,14 @@ section is decision-recorded. The QUEUE when resuming, in order:
   chunk, loaded only when the user first arranges. Behaviour identical (memoized after
   first load; guards a mid-import doc-switch via the existing `destroyed` flag).
   (Mermaid was already lazy via `MermaidView` — the pattern copied for recharts/KaTeX.)
-- [ ] **Per-doc autosave keys (author confirmed, no objection).** One localStorage key
+- [x] **Per-doc autosave keys — DONE 2026-07-05** (overnight session): each doc in its
+  own two-slot pair (`solenoid.docs.doc.<id>.a/.b`) + a light two-slot index
+  (`solenoid.docs.index.a/.b`, metadata only). `persist()` diffs by OBJECT identity
+  (the core transforms are immutable) so an edit writes ONLY the changed doc; deleting
+  a doc removes its keys (frees the quota); old whole-library keys deleted on startup,
+  no migration. Slot seq is a monotonic counter (same-ms Date.now() writes made the
+  newer-slot choice ambiguous). Tests: `documentStorePersist.test.ts`. (Original spec:)
+  One localStorage key
   per document + a light index, each with its own two-slot rotation — an edit
   autosaves only that doc; a bloated doc exhausts only its own quota headroom. No
   migration (pre-alpha): old whole-library autosaves abandoned at the format change;

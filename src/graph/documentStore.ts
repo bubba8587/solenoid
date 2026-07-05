@@ -5,9 +5,20 @@
 // working document, which closes the old seed↔autosave conflation.
 //
 // Pure library transforms live in documentStoreCore.ts (unit-tested). This file
-// adds: the in-memory library + notifier, two-slot localStorage persistence
-// (reusing the crash-safety from persistenceCore), one-time migration of the
-// pre-documents single autosave, and the editor wiring (loadGraph / serializeGraph).
+// adds: the in-memory library + notifier, per-document two-slot localStorage
+// persistence (crash-safety slots from persistenceCore), and the editor wiring
+// (loadGraph / serializeGraph).
+//
+// PER-DOC AUTOSAVE KEYS (2026-07-05): each document persists under its OWN pair
+// of rotating slots (`solenoid.docs.doc.<id>.a/.b`) plus one light INDEX pair
+// (`solenoid.docs.index.a/.b` — currentId + [{id, name, updatedAt, filePath}],
+// no graphs). An edit autosaves ONLY the changed doc (persist() diffs by object
+// identity — documentStoreCore's transforms are immutable, so an untouched doc
+// keeps its object and costs zero stringify), and a bloated doc exhausts only
+// its own quota headroom. Deleting a doc removes its keys (frees the quota).
+// NO migration (pre-alpha): the old whole-library keys (`solenoid.docs.lib.a/b`)
+// are abandoned + deleted on startup; disk saves untouched; the live session
+// re-autosaves immediately under the new keys.
 
 import { createNotifier } from "./storeKit";
 import { serializeGraph, loadGraph, type SavedGraph } from "./persistence";
@@ -28,20 +39,42 @@ import {
   removeDocument,
   duplicateDocument,
   validateLibrary,
+  validateDoc,
   type DocLibrary,
   type SolDoc,
 } from "./documentStoreCore";
 
-const LIB_SLOT_A = "solenoid.docs.lib.a";
-const LIB_SLOT_B = "solenoid.docs.lib.b";
+// The pre-2026-07-05 whole-library keys — abandoned (no migration, pre-alpha)
+// and deleted on startup so their quota frees up.
+const OLD_LIB_SLOT_A = "solenoid.docs.lib.a";
+const OLD_LIB_SLOT_B = "solenoid.docs.lib.b";
+
+const INDEX_SLOT_A = "solenoid.docs.index.a";
+const INDEX_SLOT_B = "solenoid.docs.index.b";
+const docSlotKey = (id: string, slot: "a" | "b") => `solenoid.docs.doc.${id}.${slot}`;
 
 const EMPTY_GRAPH: SavedGraph = { v: 2, nodes: [], connections: [] };
 
-interface LibSlot { seq: number; lib: DocLibrary }
+// The light index: membership + order + currentId + the list()/menu metadata —
+// NO graphs. A doc's slot is the truth for its own fields on any disagreement
+// (the index is rewritten from the in-memory library on every persist anyway).
+interface IndexMeta { id: string; name: string; updatedAt: number; filePath?: string }
+interface IndexSlot { seq: number; currentId: string | null; docs: IndexMeta[] }
+interface DocSlot { seq: number; doc: SolDoc }
 
 const { notify, subscribe, version } = createNotifier();
 let _lib: DocLibrary = emptyLibrary();
 let _saveFailNoticeId: number | null = null;
+// What's on disk, by OBJECT IDENTITY — documentStoreCore's transforms are
+// immutable (a changed doc is a new object), so `_lastPersisted.get(id) !==
+// doc` is an exact, zero-stringify "this doc needs writing" test.
+const _lastPersisted = new Map<string, SolDoc>();
+// Slot seq: STRICTLY monotonic within a session (two same-millisecond writes
+// would tie Date.now() and make the newer-slot choice ambiguous — the read
+// could resurrect the older write), seeded from the clock so it stays newest
+// across sessions too.
+let _seq = Date.now();
+const nextSeq = () => ++_seq;
 
 function newId(): string {
   return (typeof crypto !== "undefined" && crypto.randomUUID)
@@ -49,42 +82,101 @@ function newId(): string {
     : `d${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 }
 
-// ─── localStorage (two rotating slots, like the old autosave) ─────────────────
+// ─── localStorage (two rotating slots per doc + per index) ────────────────────
 
+/** A slot's seq WITHOUT parsing the whole value — `JSON.stringify({seq, …})`
+ *  puts `seq` first, so a cheap prefix regex avoids re-parsing a large graph
+ *  blob just to pick the write slot. */
 function readSlotSeq(key: string): number | null {
   try {
     const raw = localStorage.getItem(key);
     if (!raw) return null;
-    const o = JSON.parse(raw) as Partial<LibSlot>;
-    return typeof o?.seq === "number" ? o.seq : null;
+    const m = /^\{"seq":(\d+)/.exec(raw);
+    return m ? Number(m[1]) : null;
   } catch {
     return null;
   }
 }
 
-function readSlotLib(key: string): DocLibrary | null {
+function readParsed<T>(key: string): Partial<T> | null {
   try {
     const raw = localStorage.getItem(key);
-    if (!raw) return null;
-    const o = JSON.parse(raw) as Partial<LibSlot>;
-    return o?.lib ? validateLibrary(o.lib) : null;
+    return raw ? (JSON.parse(raw) as Partial<T>) : null;
   } catch {
     return null;
   }
 }
 
-/** Persist the in-memory library to the older slot; surface a sticky notice if
- *  storage rejects it (and clear that notice once a write next succeeds). */
-function persist(): void {
-  const slot = chooseWriteSlot(readSlotSeq(LIB_SLOT_A), readSlotSeq(LIB_SLOT_B));
-  const key = slot === "a" ? LIB_SLOT_A : LIB_SLOT_B;
-  let ok = false;
+/** Write `value` to the OLDER of the two slots (persistenceCore's crash-safety
+ *  rotation). Returns false when storage rejects it. */
+function writeToOlderSlot(keyA: string, keyB: string, value: unknown): boolean {
+  const slot = chooseWriteSlot(readSlotSeq(keyA), readSlotSeq(keyB));
   try {
-    localStorage.setItem(key, JSON.stringify({ seq: Date.now(), lib: _lib } satisfies LibSlot));
-    ok = true;
+    localStorage.setItem(slot === "a" ? keyA : keyB, JSON.stringify(value));
+    return true;
   } catch {
-    ok = false;
+    return false;
   }
+}
+
+/** Read the newest structurally-valid value from a slot pair. `validate` maps
+ *  the raw parsed slot to the value we actually want (or null = try the other
+ *  slot) — for docs that's the unwrapped SolDoc, not the slot envelope. */
+function readNewestSlot<T, R>(keyA: string, keyB: string, validate: (o: Partial<T>) => R | null): R | null {
+  const order = chooseReadSlot(readSlotSeq(keyA), readSlotSeq(keyB)) === "b" ? [keyB, keyA] : [keyA, keyB];
+  for (const key of order) {
+    const o = readParsed<T>(key);
+    if (!o) continue;
+    const v = validate(o);
+    if (v) return v;
+  }
+  return null;
+}
+
+function removeDocSlots(id: string): void {
+  try {
+    localStorage.removeItem(docSlotKey(id, "a"));
+    localStorage.removeItem(docSlotKey(id, "b"));
+  } catch { /* storage disabled — nothing to remove */ }
+}
+
+/** Persist the library: the index always (it's tiny), plus ONLY the documents
+ *  whose object changed since the last persist, plus key removal for documents
+ *  that left the library. Surfaces a sticky notice if storage rejects any
+ *  write (cleared once a persist next fully succeeds). */
+function persist(): void {
+  let ok = true;
+
+  const index: IndexSlot = {
+    seq: nextSeq(),
+    currentId: _lib.currentId,
+    docs: _lib.documents.map((d) => ({
+      id: d.id,
+      name: d.name,
+      updatedAt: d.updatedAt,
+      ...(d.filePath ? { filePath: d.filePath } : {}),
+    })),
+  };
+  if (!writeToOlderSlot(INDEX_SLOT_A, INDEX_SLOT_B, index)) ok = false;
+
+  const liveIds = new Set<string>();
+  for (const d of _lib.documents) {
+    liveIds.add(d.id);
+    if (_lastPersisted.get(d.id) === d) continue; // unchanged since last write
+    const slot: DocSlot = { seq: nextSeq(), doc: d };
+    if (writeToOlderSlot(docSlotKey(d.id, "a"), docSlotKey(d.id, "b"), slot)) {
+      _lastPersisted.set(d.id, d);
+    } else {
+      ok = false;
+    }
+  }
+  for (const id of [..._lastPersisted.keys()]) {
+    if (!liveIds.has(id)) {
+      removeDocSlots(id); // deleted doc — free its quota
+      _lastPersisted.delete(id);
+    }
+  }
+
   if (ok) {
     if (_saveFailNoticeId !== null) { dismissNotice(_saveFailNoticeId); _saveFailNoticeId = null; }
   } else if (_saveFailNoticeId === null) {
@@ -97,14 +189,26 @@ function persist(): void {
 }
 
 function readLibraryFromStorage(): DocLibrary | null {
-  const seqA = readSlotSeq(LIB_SLOT_A);
-  const seqB = readSlotSeq(LIB_SLOT_B);
-  const order = chooseReadSlot(seqA, seqB) === "b" ? [LIB_SLOT_B, LIB_SLOT_A] : [LIB_SLOT_A, LIB_SLOT_B];
-  for (const key of order) {
-    const lib = readSlotLib(key);
-    if (lib) return lib;
+  const index = readNewestSlot<IndexSlot, IndexSlot>(INDEX_SLOT_A, INDEX_SLOT_B, (o) => {
+    if (!Array.isArray(o.docs)) return null;
+    return { seq: typeof o.seq === "number" ? o.seq : 0, currentId: typeof o.currentId === "string" ? o.currentId : null, docs: o.docs as IndexMeta[] };
+  });
+  if (!index) return null;
+
+  const documents: SolDoc[] = [];
+  for (const meta of index.docs) {
+    if (typeof meta?.id !== "string") continue;
+    const doc = readNewestSlot<DocSlot, SolDoc>(docSlotKey(meta.id, "a"), docSlotKey(meta.id, "b"), (o) => (o.doc ? validateDoc(o.doc) : null));
+    if (doc) documents.push(doc); // a missing/corrupt doc is skipped, not fatal
   }
-  return null;
+  if (documents.length === 0) return null;
+  const currentId = documents.some((d) => d.id === index.currentId) ? index.currentId : documents[0].id;
+  const lib = validateLibrary({ documents, currentId });
+  if (lib) {
+    _lastPersisted.clear();
+    for (const d of lib.documents) _lastPersisted.set(d.id, d); // what's on disk IS these objects
+  }
+  return lib;
 }
 
 // ─── Public store ─────────────────────────────────────────────────────────────
@@ -173,6 +277,12 @@ export const documentStore = {
   /** Load the library on startup. Returns true if a document was shown; false
    *  means there was nothing to restore (caller should create a first doc). */
   async restore(): Promise<boolean> {
+    // Abandon the pre-per-doc-keys whole-library slots (no migration, D3) —
+    // deleting them frees their quota for the new keys.
+    try {
+      localStorage.removeItem(OLD_LIB_SLOT_A);
+      localStorage.removeItem(OLD_LIB_SLOT_B);
+    } catch { /* storage disabled */ }
     const lib = readLibraryFromStorage();
     if (!lib || lib.documents.length === 0) return false;
     _lib = lib;
