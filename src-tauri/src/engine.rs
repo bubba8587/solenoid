@@ -683,18 +683,22 @@ fn lazy_head(plan: Plan, n: f64) -> Result<Plan, IpcError> {
     Ok(Plan { lf: plan.lf.limit(take), ..plan })
 }
 
+#[cfg(test)] // parity-oracle only — production traffic runs the fused lazy path (apply_step)
 fn verb_select(frame: &SolFrame, columns: &[String]) -> Result<SolFrame, IpcError> {
     lazy_select(Plan::from_frame(frame), columns)?.collect()
 }
 
+#[cfg(test)] // parity-oracle only — production traffic runs the fused lazy path (apply_step)
 fn verb_drop(frame: &SolFrame, columns: &[String]) -> Result<SolFrame, IpcError> {
     lazy_drop(Plan::from_frame(frame), columns)?.collect()
 }
 
+#[cfg(test)] // parity-oracle only — production traffic runs the fused lazy path (apply_step)
 fn verb_rename(frame: &SolFrame, map: &HashMap<String, String>) -> Result<SolFrame, IpcError> {
     lazy_rename(Plan::from_frame(frame), map)?.collect()
 }
 
+#[cfg(test)] // parity-oracle only — production traffic runs the fused lazy path (apply_step)
 fn verb_sort(frame: &SolFrame, by: &str, dir: &str) -> Result<SolFrame, IpcError> {
     lazy_sort(Plan::from_frame(frame), by, dir)?.collect()
 }
@@ -740,6 +744,7 @@ fn verb_distinct(frame: &SolFrame, columns: &Option<Vec<String>>) -> Result<SolF
 }
 
 // head
+#[cfg(test)] // parity-oracle only — production traffic runs the fused lazy path (apply_step)
 fn verb_head(frame: &SolFrame, n: f64) -> Result<SolFrame, IpcError> {
     lazy_head(Plan::from_frame(frame), n)?.collect()
 }
@@ -1025,6 +1030,7 @@ fn group_by_lazy_plan(
     Ok((out_lf, out_names, out_types))
 }
 
+#[cfg(test)] // parity-oracle only — production traffic runs the fused lazy path (apply_step)
 fn verb_group_by(frame: &SolFrame, keys: &[String], aggs: &[WireAgg]) -> Result<SolFrame, IpcError> {
     let (lf, _names, types) = group_by_lazy_plan(frame.df.clone().lazy(), &frame.names(), &frame.types, keys, aggs)?;
     let df = collect_lazy(lf)?;
