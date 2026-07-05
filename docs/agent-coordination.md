@@ -47,9 +47,9 @@ border seam, grid system, collision avoidance, transpiler, seed-cleanup.
   A2's E-2 slice 2 (`c03d44c`, Settings API-keys section), E-2 slice 3a
   (`8d3bac4`, dataProviders), A1's B-2 UI half (`6e5bef6`, Filter Rows AND/OR
   condition rows — **B-2 complete**), A1's B-3 (`117d7b2`, native CSV date
-  inference, cargo 68/68 — **Tier B fully complete**). `develop` unpushed past
-  `5bd7105` (14 commits since) — will push once the queue empties again or on
-  request. Idle on the commit queue now.
+  inference, cargo 68/68 — **Tier B fully complete**). **Pushed `develop` to
+  origin** on the author's direct request this session: `aa5ab34..6ab2e01`
+  (17 commits). Idle on the commit queue now.
 
 ## Queue
 
@@ -85,6 +85,7 @@ _(empty)_
 
 ## Recently done
 
+- **Pushed `develop` to origin** — author's direct request. `aa5ab34..6ab2e01`.
 - Agent 3 — A1's B-3, native CSV date-inference parity (cargo 68/68). `117d7b2`.
   **TIER B COMPLETE.**
 - Agent 3 — A1's B-2 UI half, Filter Rows AND/OR condition rows. `6e5bef6`.
