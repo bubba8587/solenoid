@@ -1,5 +1,5 @@
 import { ClassicPreset, type NodeEditor } from "rete";
-import { formatAnnotationStore, isDateStyle, isFcUnit, type FormatStyleId, type FormatAnnotation, type TextCase, type DecimalMode } from "../formatAnnotationStore";
+import { formatAnnotationStore, isDateStyle, isFcUnit, type FormatStyleId, type FormatAnnotation, type TextCase, type DecimalMode, type LogicalStyle } from "../formatAnnotationStore";
 import { makeUnitResolver } from "../unitFlow";
 import { dockedNodeStore } from "../dockedNodeStore";
 import { SolenoidSocket, isDateType, type SocketDataType } from "../sockets";
@@ -60,6 +60,8 @@ export class FormatControllerNode extends ClassicPreset.Node {
   bold: boolean;
   italic: boolean;
   textScale: number;
+  // Logical-socket show-as (display only).
+  logicalStyle: LogicalStyle;
   // The resolved socket dataType of the host socket (drives accent color).
   socketDataType: SocketDataType = "any";
   // Sockets this FC currently writes annotations to. A normal FC (fed by a
@@ -102,6 +104,7 @@ export class FormatControllerNode extends ClassicPreset.Node {
     bold?: boolean;
     italic?: boolean;
     textScale?: number;
+    logicalStyle?: LogicalStyle;
     socketDataType?: SocketDataType;
   }) {
     super("FormatController");
@@ -119,6 +122,7 @@ export class FormatControllerNode extends ClassicPreset.Node {
     this.bold       = init?.bold       ?? false;
     this.italic     = init?.italic     ?? false;
     this.textScale  = init?.textScale  ?? 14; // px font size for text display
+    this.logicalStyle = init?.logicalStyle ?? "truefalse";
     if (init?.socketDataType) {
       this.socketDataType = init.socketDataType;
       this._inSock.setType(init.socketDataType);
@@ -303,6 +307,7 @@ export class FormatControllerNode extends ClassicPreset.Node {
       bold:          this.bold,
       italic:        this.italic,
       textScale:     this.textScale,
+      logicalStyle:  this.logicalStyle,
     };
   }
 

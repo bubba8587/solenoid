@@ -2,6 +2,33 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### FC v1.1 A1 — the function model: spec + code (2026-07-05)
+Author greenlit FC v1.1; A1 lands per the plan's spec-first order.
+- **Spec:** `docs/format-model.md` — the 4-stage pipeline (type gate → style w/
+  resolved precision → unit affix → text attrs), the family table
+  (number/date/text/logical/complex/none; `any` = provisional number; frames are
+  `none` until A4's per-column representation), the control truth table, and the ONE
+  precision×style rule (precision row = decimal/percent/scientific only).
+- **Code:** `formatModel.ts` (`familyOf`/`controlsFor`/`precisionApplies` — the truth
+  table as code, machine-checked in `formatModel.test.ts`); `sockets.ts` gained the
+  derived `elementFamilyOf`. `applyFormatStyle`: one `formatPrecise` resolver replaces
+  the decimal/percent duplicates; **scientific now honors the precision row**
+  (places d → `toExponential(d)`, s sig figs → `toExponential(s−1)`; was hardcoded
+  `toExponential(3)` — deliberate behavior change, tests re-pinned). The FC popup
+  renders rows strictly off `controlsFor` — the scattered `isDate`/`isText`/inline
+  style checks are gone.
+- **New capability:** logical sockets get **show-as** (`logicalStyle`: TRUE/FALSE ·
+  1/0 · Yes/No · ✓/✗) — annotation field + FC row + honored by ValueDisplay (box +
+  clipboard), CableInspector (which also gained a boolean branch — booleans rendered
+  "—" there before), and Report inline refs. Complex sockets now offer only
+  auto/decimal/scientific (percent/fraction were meaningless). A structural socket
+  (frame/cube/chart/lambda) shows a quiet "—" with an explanatory tooltip instead of
+  lying with number controls.
+- Author eyeball: dock an FC to a logical output → show-as dropdown; to a Display fed
+  by numbers → unchanged number rows; scientific style → precision row appears.
+- Next in WS-A: A2 visual redesign + SegToggle unification (wants author live), A3
+  movement-op audit + the bug-lane mis-dock fix.
+
 ### Image bundling — plain images/ folder beside the doc (2026-07-05, author decision)
 Author picked option (b) from the overnight memo, amended: NOT a per-doc `.assets/<hash>`
 sidecar — a normal shared `images/` folder beside the saved doc, with the attachment's
