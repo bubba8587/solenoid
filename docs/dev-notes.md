@@ -2,6 +2,27 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Per-doc autosave keys (2026-07-05, overnight)
+The library no longer persists as one whole-library blob: each document gets its own
+two-slot pair (`solenoid.docs.doc.<id>.a/.b`) plus a light two-slot INDEX
+(`solenoid.docs.index.a/.b` — currentId + [{id, name, updatedAt, filePath}], no
+graphs). An edit autosaves only the changed doc; a bloated doc exhausts only its own
+quota headroom; deleting a doc removes its keys (its quota actually frees now).
+- **The change-detection is OBJECT IDENTITY**, not stringify-compare:
+  documentStoreCore's transforms are immutable (a changed doc is a new object), so
+  `persist()` keeps a `_lastPersisted` map and writes only docs whose object differs —
+  an unchanged doc costs ZERO serialization per autosave.
+- **Slot seq is a strictly-monotonic counter** seeded from the clock — two
+  same-millisecond `Date.now()` writes tied, making the newer-slot read ambiguous
+  (surfaced instantly under test pacing; latent in the old whole-library code too).
+- Slot seq is read via a `^\{"seq":(\d+)` prefix regex so picking the write slot never
+  re-parses a large graph blob.
+- No migration (D3): the old `solenoid.docs.lib.a/b` keys are deleted on startup. A
+  corrupt/missing doc slot is skipped on restore (the rest of the library loads).
+- `validateDoc` extracted in documentStoreCore (validateLibrary now uses it). Tests:
+  `documentStorePersist.test.ts` (localStorage stub — writes-only-changed, key removal
+  on delete, restore round-trip, old-key cleanup, corrupt-slot skip).
+
 ### Quick-wire: memoize the per-type socket signature (2026-07-05)
 `filterByCompatibleSocket` (`catalogSearch.ts`) was calling `leaf.create()` for EVERY catalog
 leaf on EVERY quick-wire cable drop — instantiating a full throwaway node just to read its
