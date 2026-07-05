@@ -2,6 +2,25 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### UNSOLVED: header/body border seam under zoom (2026-07-05 — parked for a human/later pass)
+The node header's 2px accent frame abuts the card's 1px border on the same outer edge;
+under the canvas zoom transform the two strokes rasterize with different width-phases →
+a subpixel crack at the vertical junction and, at some zooms, a whole-pixel jog in the
+bottom edge. **Tried and ELIMINATED — don't retread:**
+1. Unify both at 1px (`d713900`, reverted `3be29b2`) — fixes the seam but thins the
+   accent band; author rejected the look change.
+2. Split the 2px accent into a 1px real border + 1px inset box-shadow ring (`ff3a896`,
+   reverted `25ff69a`) — WORSE: Blink rasterizes borders (width-snapped) and inset
+   shadows (not snapped) differently, so the two accent layers themselves drift apart
+   under zoom.
+Constraints: keep the exact current look (2px accent header, 1px body border). Leads
+NOT yet tried: one SVG overlay child spanning the full card that draws BOTH strokes in
+a single paint (one rasterization pass; needs --header-h published unconditionally —
+today it's only measured when a corner badge exists, nodeKit.tsx:314); `border-image`
+on the card; drawing frames in the HTML-in-canvas renderer only; quantizing the
+area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
+app-wide, but touches feel of zoom).
+
 ### FC v1.1 A2 (second pass) — node-matching states, chip tint, advanced tier (2026-07-05)
 Author's two directions after the first pass:
 - **State parity with nodes.** The FC renders through NodeCard so it always HAD the
