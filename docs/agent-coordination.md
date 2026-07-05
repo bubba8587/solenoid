@@ -24,12 +24,14 @@ border seam, grid system, collision avoidance, transpiler, seed-cleanup.
   (`engine.rs` is MINE this run — nobody else touches it.)
 - **A2:** **C-1 COMPLETE RECHARTS** — IN PROGRESS. Owns `nodes/visual.ts`, chart
   components (`chartRender.tsx`/`chartCore.ts`/`ChartNode.tsx`), `nodeCatalog.ts`
-  chart entries, showcase seed. Slices 1+2 DONE + queued (5 new Chart ops
-  pie/radar/radialbar/funnel/scatter; Histogram node). Next: KPI + Bullet (via
-  ChartValue payload), then Treemap/Sankey, Bubble/Composed multi-series,
-  date-range picker (NB: DatePickerNode already exists — check if it covers ranges),
-  showcase seed last.
-- **A3:** A-1 DONE (`d630a43`), A-3 DONE (`fa6080b`). Now on A-4 minimap 3-way.
+  chart entries, showcase seed. Slices 1+2 committed (`09bc120`). Slice 3 (KPI +
+  Bullet) DONE + queued. Pausing this turn so A3 commits Slice 3 before I re-touch
+  the shared registry files. Remaining: Treemap/Sankey (Slice 4), Bubble/Composed
+  multi-series (Slice 5), date-range picker (NB: DatePickerNode exists — check range
+  coverage), showcase seed last.
+- **A3:** A-1 DONE (`d630a43`), A-3 DONE (`fa6080b`), A-4 DONE (`c5fc842`).
+  Saw the Slice 3 HOLD — waiting for A2's flip-back before staging it. Starting
+  A-2 a11y batch meanwhile (verify-first, per file).
 
 ## Queue
 
@@ -43,9 +45,8 @@ border seam, grid system, collision avoidance, transpiler, seed-cleanup.
 3. E-2 Finance/FRED connection (API-key store + FRED + Stooq).
 
 **A3 (commit duty FIRST — flush "Ready to commit" FIFO — then):**
-1. ~~A-1~~ DONE. ~~A-3~~ DONE.
-2. A-4 minimap 3-way position. ← current
-3. A-2 a11y verify-and-finish batch (claim per-file here as you go).
+1. ~~A-1~~ DONE. ~~A-3~~ DONE. ~~A-4~~ DONE.
+2. A-2 a11y verify-and-finish batch (claim per-file here as you go). ← current
 
 **Unstaffed pool (claim freely when a lane empties):** C-2 Input Switcher
 upgrade · C-4 unified XLOOKUP merge · Tier D composite (D-1..D-4, ONE agent,
@@ -54,7 +55,23 @@ F-2 Document Properties, ONE agent, serial).
 
 ## Ready to commit
 
-_(empty)_
+- **⏸ HOLD (A2 actively extending with Slice 4 Treemap/Sankey — do NOT stage until
+  I flip this back to READY with the final file list).**
+- **A2 · C-1 Slice 3 — KPI card + Bullet graph nodes.** Two new payload-figure
+  chart types (value+prior delta; value-vs-target bar); factored a shared
+  `ChartFigure` (renders any ChartValue by kind) now used by Display + Composite +
+  the Report embed. tsc clean for these files; my-area vitest green (112:
+  chartValue/seeds/catalogRegistry/persistenceSweep). Stage ONLY:
+  `src/graph/chartValue.ts`, `src/graph/nodes/visual.ts`,
+  `src/graph/components/chartCards.tsx` (NEW), `src/graph/components/chartCards.css` (NEW),
+  `src/graph/components/KpiNode.tsx` (NEW), `src/graph/components/BulletNode.tsx` (NEW),
+  `src/graph/components/chartView.tsx`, `src/graph/components/DisplayNode.tsx`,
+  `src/graph/components/CompositeNode.tsx`, `src/graph/components/inlineRefDisplay.tsx`,
+  `src/graph/components/index.ts`, `src/graph/nodeRegistry.ts`, `src/graph/nodeCatalog.ts`.
+  (NOT frameBackend/frameVerbs/engine.rs/polarsBackend.test — A1's Tier B.)
+  Msg: `feat: KPI card + Bullet graph nodes (ChartValue payload figures)` +
+  body: structured non-series figures via ChartValue.payload; eager cards (no
+  recharts); shared ChartFigure dedups the by-kind chart render across 3 surfaces.
 
 ## Recently done
 
