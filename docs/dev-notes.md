@@ -113,8 +113,13 @@ direct author order (`f926fa6..aa5ab34`).
   (`aa5ab34`); B-4b TEXT-family divergence sweep (text fns coerce numbers via
   numberToText; TEXT "@"/General/zero-pad/scientific patched; VALUE strict; NUMBERVALUE
   owned; DOLLAR accounting parens) + Group By totals (totalDepth → no-colFields pivot)
-  — queued; B-2 filterMulti verb (AND/OR condition rows, both engines, fused lazy
-  where all-comparison) — engine half queued, node UI half pending.
+  — queued; B-2 AND/OR multi-predicate Filter COMPLETE — the filterMulti verb in
+  both engines (fused lazy when all-comparison; text predicates collect + mask
+  with zero-drift shared exprs), then the Filter Rows node rebuilt as extensible
+  condition rows (per-row op + Aa match-case, AND/OR SegToggle at 2+ rows,
+  pair-row undo, valueKeys/condConfig persistence); B-3 native CSV date
+  inference (engine_read_csv applies the JS unambiguous-ISO gate post-read;
+  zone-less = wall-clock as UTC; cargo 68/68). **TIER B COMPLETE.**
 - **Tier C (A2):** C-1 COMPLETE RECHARTS — op surface (pie/scatter/radar/radial/
   funnel) + Histogram (`09bc120`); KPI/Bullet/Treemap/Sankey payload figures + shared
   ChartFigure (`7315441`); DateRange dual-date control (`5bd7105`); finale (composed +
@@ -126,7 +131,12 @@ direct author order (`f926fa6..aa5ab34`).
   - Minimap position setting (Bottom / Top / Hide) in Settings.
   - Desktop only: a frame holding Infinity shows `∞`-ish cells (not blanks) — the
     B-1b sentinel; `formatScalar`'s ∞ glyph itself is still the open [decided] detail.
-  - Filter Frame AND/OR condition rows — AFTER the B-2 UI half lands (not yet).
+  - Desktop only: importing a CSV with an ISO date column (`2026-03-15`) now
+    yields a real DATE column (renders `15-Mar-2026`), not text — B-3.
+  - `table-verbs` seed: Filter Rows is now CONDITION ROWS — the original filter
+    (one condition, no toggle visible) plus a new "Region = N OR Amount > 150"
+    node (4 rows kept; AND/OR SegToggle appears at 2+ conditions; per-condition
+    Aa match-case toggle on text ops; + Add condition).
 
 ### UNSOLVED: header/body border seam under zoom (2026-07-05 — parked for a human/later pass)
 The node header's 2px accent frame abuts the card's 1px border on the same outer edge;

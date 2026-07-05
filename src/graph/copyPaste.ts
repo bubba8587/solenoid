@@ -86,7 +86,7 @@ export const INIT_FIELD_ORDER = [
 // Object-valued extras appended after INIT_FIELD_ORDER (below), in this fixed
 // order, when present — same reuse rationale as INIT_FIELD_ORDER.
 export const INIT_EXTRA_FIELD_ORDER = [
-  "funcs", "filterExclude", "fieldTypes", "weightMap", "normMap",
+  "funcs", "filterExclude", "condConfig", "fieldTypes", "weightMap", "normMap",
 ] as const;
 
 export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
@@ -105,6 +105,19 @@ export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
   if (n.filterExclude && typeof n.filterExclude === "object") {
     init.filterExclude = Object.fromEntries(
       Object.entries(n.filterExclude as Record<string, string[]>).map(([k, v]) => [k, [...v]]),
+    );
+  }
+  // FilterFrame per-condition {op, matchCase}, keyed by pair id. Deep-copy (each
+  // row's config object is mutated live as the op select / Aa toggle changes) and
+  // keep only LIVE rows' entries — removal leaves an orphan behind for undo's
+  // row-restore, which must not leak into a save (it would break the text form's
+  // byte-identical second write).
+  if (n.condConfig && typeof n.condConfig === "object") {
+    const liveInputs = (n.inputs ?? {}) as Record<string, unknown>;
+    init.condConfig = Object.fromEntries(
+      Object.entries(n.condConfig as Record<string, object>)
+        .filter(([k]) => `column${k}` in liveInputs)
+        .map(([k, v]) => [k, { ...v }]),
     );
   }
   // Note frontmatter type-overrides: a per-key map the constructor clones. Deep-copy
