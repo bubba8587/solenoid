@@ -8,7 +8,7 @@
 
 import { CATALOG_TO_EXCEL } from "./excelToCatalog";
 import { fuzzyScore, fieldScore } from "./fuzzy";
-import { SolenoidSocket } from "./sockets";
+import { SolenoidSocket, canConnect, type SocketDataType } from "./sockets";
 import type { NodeCatalogEntry, CatalogEntry, CatalogCategory, CatalogPair } from "./AddNodeMenu";
 
 function isCategory(e: CatalogEntry): e is CatalogCategory {
@@ -79,9 +79,12 @@ export function searchLeaves(leaves: LeafWithContext[], query: string): NodeCata
 // ─── Quick-wire compatibility filter ───────────────────────────────────────────
 // Quick-wire drops a cable on empty canvas and needs the Add menu narrowed to
 // nodes that can actually receive the dragged value. There's no static
-// socket-type metadata on a catalog leaf, so this instantiates the leaf's node
-// (the same `create()` a real pick calls) and inspects its live sockets — thrown
-// away immediately, never added to the editor.
+// socket-type metadata on a catalog leaf, so the SET of socket types is read off a
+// throwaway `leaf.create()` (the same constructor a real pick calls) — but a node
+// type's INITIAL sockets are deterministic per catalog `type`, so that signature is
+// memoized: the first drop instantiates each leaf once, every later drop reuses the
+// cached type set and only re-runs the (cheap) per-origin compatibility check. Was
+// O(all leaves × create()) on EVERY drop.
 
 type PortLike = { socket?: unknown };
 type NodeLike = {
@@ -89,21 +92,45 @@ type NodeLike = {
   outputs?: Record<string, PortLike | undefined>;
 };
 
+/** The set of input / output socket dataTypes a node type exposes when freshly
+ *  created — stable per catalog `type`, so it's cached for the app's lifetime. */
+type SocketSignature = { inputs: SocketDataType[]; outputs: SocketDataType[] };
+const _sigCache = new Map<string, SocketSignature>();
+
+function socketTypesOf(ports: Record<string, PortLike | undefined> | undefined): SocketDataType[] {
+  const out: SocketDataType[] = [];
+  if (ports) {
+    for (const port of Object.values(ports)) {
+      const socket = port?.socket;
+      if (socket instanceof SolenoidSocket) out.push(socket.dataType);
+    }
+  }
+  return out;
+}
+
+function socketSignature(leaf: NodeCatalogEntry): SocketSignature {
+  const cached = _sigCache.get(leaf.type);
+  if (cached) return cached;
+  const node = leaf.create() as NodeLike;
+  const sig: SocketSignature = { inputs: socketTypesOf(node.inputs), outputs: socketTypesOf(node.outputs) };
+  _sigCache.set(leaf.type, sig);
+  return sig;
+}
+
 /** `originSide` is which side the cable's ORIGIN socket is on: "output" means the
  *  user dragged from an output, so a candidate needs a compatible INPUT (and vice
- *  versa). Returns true if `leaf.create()` has at least one matching socket. */
+ *  versa). True if the leaf's memoized socket signature has one matching socket. */
 function hasCompatibleSocket(
   leaf: NodeCatalogEntry,
   origin: SolenoidSocket,
   originSide: "input" | "output",
 ): boolean {
-  const node = leaf.create() as NodeLike;
-  const candidates = originSide === "output" ? node.inputs : node.outputs;
-  if (!candidates) return false;
-  for (const port of Object.values(candidates)) {
-    const socket = port?.socket;
-    if (!(socket instanceof SolenoidSocket)) continue;
-    const ok = originSide === "output" ? origin.canConnectTo(socket) : socket.canConnectTo(origin);
+  const sig = socketSignature(leaf);
+  // Origin is an OUTPUT → each candidate INPUT type must accept it: canConnect(origin, in).
+  // Origin is an INPUT → each candidate OUTPUT type must flow into it: canConnect(out, origin).
+  const candidates = originSide === "output" ? sig.inputs : sig.outputs;
+  for (const dt of candidates) {
+    const ok = originSide === "output" ? canConnect(origin.dataType, dt) : canConnect(dt, origin.dataType);
     if (ok) return true;
   }
   return false;
