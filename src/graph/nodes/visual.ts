@@ -1,8 +1,10 @@
 import { ClassicPreset } from "rete";
-import { numIn, numListIn, numListOut, numOut, tableIn, tableOut, strIn, strListIn, strOut, chartOut, anyTableIn } from "./shared";
+import { numIn, numListIn, numListOut, numOut, tableIn, tableOut, strIn, strOut, chartOut, anyTableIn, frameIn } from "./shared";
 import { parseChartOptions, serializeChartOptions, type ChartOptions } from "./chartOptions";
 import type { ChartValue, KpiPayload, BulletPayload, TreemapPayload, SankeyPayload } from "../chartValue";
 import type { MermaidValue } from "../mermaidValue";
+import { readFrame, type FrameInput } from "../frameBackend";
+import { formatFrameCell, isFrameValue, type FrameColumn } from "../frame";
 
 // ─── Visual output nodes ────────────────────────────────────────────────────
 // Pass-through "sinks" that render a chart of the value flowing through them, so
@@ -334,9 +336,38 @@ export class BulletNode extends ClassicPreset.Node {
   }
 }
 
+// ─── Frame-column readers (Treemap / Sankey) ────────────────────────────────────
+// Treemap and Sankey take ONE frame (a table of rows), not parallel lists — a
+// treemap is a Label|Value table, a sankey is a From|To|Value edge table, so the
+// frame IS the natural shape (author it in a Frame Input, or pipe any verb chain
+// in). Columns are read POSITIONALLY (first N), so header names don't matter.
+async function readFrameColumns(f: FrameInput | null): Promise<FrameColumn[]> {
+  if (f == null) return [];
+  const fv = await readFrame(f);
+  return isFrameValue(fv) ? fv.columns : [];
+}
+/** A column as display strings (a string column passes through; a date formats). */
+function colAsStrings(col: FrameColumn | undefined): string[] {
+  if (!col) return [];
+  return col.values.map((v) => {
+    const c = formatFrameCell(col.type, v);
+    return c == null ? "" : String(c);
+  });
+}
+/** A column coerced to numbers (numeric text parses; anything else → 0). */
+function colAsNumbers(col: FrameColumn | undefined): number[] {
+  if (!col) return [];
+  return col.values.map((v) => {
+    const c = formatFrameCell(col.type, v);
+    if (typeof c === "number" && Number.isFinite(c)) return c;
+    if (typeof c === "string" && c.trim() !== "") { const n = Number(c); if (Number.isFinite(n)) return n; }
+    return 0;
+  });
+}
+
 // ─── Treemap ──────────────────────────────────────────────────────────────────
 // A flat labelled treemap: each (label, value) pair is a rectangle sized by value.
-// Wire a text list of labels + a number list of values. Emits a chart VALUE.
+// Wire a 2-column frame (Label, Value) — read positionally. Emits a chart VALUE.
 
 export class TreemapNode extends ClassicPreset.Node {
   label: string;
@@ -348,15 +379,14 @@ export class TreemapNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("Treemap");
     this.label = init?.label ?? "Treemap";
-    this.addInput("labels", strListIn("Labels"));
-    this.addInput("values", numListIn("Values"));
+    this.addInput("frame", frameIn("Label + Value"));
     this.addOutput("chart", chartOut("Chart"));
   }
 
-  data(inputs: { labels?: string[][]; values?: (number | number[])[] }): { chart: ChartValue } {
-    const rawVals = inputs.values?.[0] ?? [];
-    const values = (Array.isArray(rawVals) ? rawVals : [rawVals]).map((v) => (typeof v === "number" ? v : 0));
-    const names = (inputs.labels?.[0] ?? []).map((n) => String(n ?? ""));
+  async data(inputs: { frame?: (FrameInput | null)[] }): Promise<{ chart: ChartValue }> {
+    const cols = await readFrameColumns(inputs.frame?.[0] ?? null);
+    const names = colAsStrings(cols[0]);
+    const values = colAsNumbers(cols[1]);
     const payload: TreemapPayload = { kind: "treemap", names, values };
     this.cachedPayload = payload;
     return {
@@ -366,8 +396,9 @@ export class TreemapNode extends ClassicPreset.Node {
 }
 
 // ─── Sankey ───────────────────────────────────────────────────────────────────
-// A flow diagram from parallel edge lists: source[i] → target[i] carries value[i].
-// Nodes are the unique names across both ends. Emits a chart VALUE.
+// A flow diagram from an edge table: each row is source → target carrying value.
+// Nodes are the unique names across both ends. Wire a 3-column frame (From, To,
+// Value) — read positionally. Emits a chart VALUE.
 
 export class SankeyNode extends ClassicPreset.Node {
   label: string;
@@ -379,17 +410,15 @@ export class SankeyNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("Sankey");
     this.label = init?.label ?? "Sankey";
-    this.addInput("source", strListIn("From"));
-    this.addInput("target", strListIn("To"));
-    this.addInput("value", numListIn("Value"));
+    this.addInput("frame", frameIn("From + To + Value"));
     this.addOutput("chart", chartOut("Chart"));
   }
 
-  data(inputs: { source?: string[][]; target?: string[][]; value?: (number | number[])[] }): { chart: ChartValue } {
-    const rawVals = inputs.value?.[0] ?? [];
-    const values = (Array.isArray(rawVals) ? rawVals : [rawVals]).map((v) => (typeof v === "number" ? v : 0));
-    const sources = (inputs.source?.[0] ?? []).map((n) => String(n ?? ""));
-    const targets = (inputs.target?.[0] ?? []).map((n) => String(n ?? ""));
+  async data(inputs: { frame?: (FrameInput | null)[] }): Promise<{ chart: ChartValue }> {
+    const cols = await readFrameColumns(inputs.frame?.[0] ?? null);
+    const sources = colAsStrings(cols[0]);
+    const targets = colAsStrings(cols[1]);
+    const values = colAsNumbers(cols[2]);
     const payload: SankeyPayload = { kind: "sankey", sources, targets, values };
     this.cachedPayload = payload;
     return {
