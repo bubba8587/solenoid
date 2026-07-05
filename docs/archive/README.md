@@ -42,4 +42,4 @@ by topic:
 - [`roadmap.md`](roadmap.md) — the phase-level strategy view; superseded at 1.0 by `v1.0-plan.md` (what's left) + `backlog.md`.
 
 ### Dev-notes history
-- [`dev-notes-history.md`](dev-notes-history.md) — dev-notes entries from 2026-06-18 and earlier, plus the old reference sections (node-authoring kit, socket types, roadmap stance, technical gotchas, old TODOs). Current notes are in `docs/dev-notes.md`.
+- [`dev-notes-history.md`](dev-notes-history.md) — dev-notes entries from 2026-06-30 and earlier, plus the old reference sections (node-authoring kit, socket types, roadmap stance, technical gotchas, old TODOs). Current notes (2026-07-01 onward) are in `docs/dev-notes.md`.
