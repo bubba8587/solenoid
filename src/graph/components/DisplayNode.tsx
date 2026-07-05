@@ -100,6 +100,18 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
   const growScalar = full && !grow && !isError && !isLambda && v != null && !Array.isArray(v) && typeof v !== "object";
   const growClass = grow ? "solenoid-node--display-grow" : growScalar ? "solenoid-node--display-grow-scalar" : undefined;
 
+  // Publish the resize floor for THIS content type (card width, box height): a
+  // chart/diagram needs room for the figure, a frame/table for a header + a couple
+  // rows; scalars/lists fall to the global minimum. The grip reads this to clamp.
+  const minSize = isChart ? { w: 230, h: 150 }
+    : isMermaid ? { w: 200, h: 120 }
+    : (isFrame || isCube || isTable) ? { w: 200, h: 90 }
+    : { w: 140, h: 40 };
+  useLayoutEffect(() => {
+    nodeSizeStore.setMin(data.id, minSize);
+    return () => nodeSizeStore.setMin(data.id, undefined);
+  }, [data.id, minSize.w, minSize.h]);
+
   return (
     <NodeShell node={data} emit={emit} labelPlaceholder="Display" className={growClass} leading={<PortSockets node={data} emit={emit} side="input" />}>
       {isError ? (

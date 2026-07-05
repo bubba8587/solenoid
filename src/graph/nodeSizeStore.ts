@@ -11,6 +11,10 @@ import { registerNodeForget } from "./nodeStoreRegistry";
 export type NodeSize = { w: number; h: number };
 
 const _sizes = new Map<string, NodeSize>();
+// Per-node minimum size (card width, box height), published by the node from its
+// CURRENT content type — a chart needs more room than a scalar. The resize grip
+// clamps to it so a Display can't shrink its content into uselessness.
+const _mins = new Map<string, NodeSize>();
 const { notify, subscribe } = createNotifier();
 // True while a ResizeHandle drag is in flight. NodeCard's ResizeObserver checks
 // it and skips its area.update() during the drag — that update re-renders the
@@ -27,9 +31,16 @@ export const nodeSizeStore = {
   },
   setDragging(v: boolean): void { _dragging = v; },
   isDragging: (): boolean => _dragging,
+  /** Publish a node's content-driven minimum size (no notify — read on drag). */
+  setMin(id: string, size: NodeSize | undefined): void {
+    if (!size) _mins.delete(id);
+    else _mins.set(id, size);
+  },
+  getMin: (id: string): NodeSize | undefined => _mins.get(id),
   entries: (): Array<[string, NodeSize]> => [..._sizes.entries()],
   /** Forget a deleted node (noderemoved → forgetNode). */
   forget(id: string): void {
+    _mins.delete(id);
     if (_sizes.delete(id)) notify();
   },
   clear(): void {
