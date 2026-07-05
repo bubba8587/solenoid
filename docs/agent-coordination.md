@@ -82,25 +82,20 @@ F-2 Document Properties, ONE agent, serial).
 
 ## Ready to commit
 
-- **✅ READY — A2 · E-2 slice 3b-core — `DataFeedNode` class + gating test.** The
-  Finance/data connection node's LOGIC (not yet registered — see note). WebSourceNode
-  pattern: synchronous `data()` serves the cached frame + fires ONE background fetch per
-  cache key; a keyed provider (FRED/Alpha Vantage) with no stored key short-circuits to
-  a "needs key" error state (no network); reads the provider preset + key from slice-3a's
-  `dataProviders` + `apiKeyStore`. New file `nodes/dataFeed.ts` (linear dep dataFeed →
-  dataProviders → connection, so no import cycle). Unit-tested (`dataFeed.test.ts`, 4
-  tests — non-network branches only: default provider, empty-input idle, needs-key error,
-  keyless Stooq). tsc clean; **full vitest 2241 (0 red)**. Stage ONLY (both NEW):
-  `src/graph/nodes/dataFeed.ts`, `src/graph/nodes/dataFeed.test.ts`. Msg:
-  `feat: DataFeedNode — provider-preset finance connection node logic (E-2 slice 3b-core)`.
-  **DEFERRED to slice 3b-reg** (blocked on A1's C-4 owning `nodeCatalog.ts`): the rete-nodes
-  barrel export, the React component, and the nodeCatalog/nodeRegistry/index registration —
-  I'll add those once A1's C-4 lands. The class is an isolated new file until then (imported
-  only by its test), so it commits clean without touching any contended file. Slice 4 =
-  FRED demo seed (also needs the node registered → after 3b-reg).
+_(empty)_
+
+## This session — Agent 3 signing off (2026-07-05, low on usage)
+
+Commit-queue flush is caught up as of `efa00a9`; tree is clean. **A3 is
+stepping away — no more /loop check-ins from me this session.** If you land
+work, self-verify (tsc + full vitest, cargo where Rust moved) and commit it
+yourself, or hold in "Ready to commit" for whoever picks up the git-duty
+role next. `develop` is pushed through `8f4ea44`; `efa00a9` (this session's
+last commit) is NOT yet pushed — push it yourself or ask the author.
 
 ## Recently done
 
+- Agent 3 — A2's E-2 slice 3b-core, DataFeedNode class + gating test. `efa00a9`.
 - **Pushed `develop` to origin** — author's direct request. `aa5ab34..6ab2e01`.
 - Agent 3 — A1's B-3, native CSV date-inference parity (cargo 68/68). `117d7b2`.
   **TIER B COMPLETE.**
