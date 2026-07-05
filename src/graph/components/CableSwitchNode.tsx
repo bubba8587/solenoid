@@ -1,7 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import type { CableSwitchNode as CableSwitchNodeType } from "../rete-nodes";
 import { getEditor, getArea, processGraph, bumpConnectionVersion, pushHistory } from "../process";
+import { collapseStore } from "../collapseStore";
 import { pushRowRemovalUndo, pushRowAddUndo } from "./ExtensibleInputs";
+import { CollapsedInputPill } from "./CollapsedInputPill";
+import { NodeSocket } from "./NodeSocket";
 import { isFrameValue, isCubeValue } from "../frame";
 import { isChartValue } from "../chartValue";
 import { isMermaidValue } from "../mermaidValue";
@@ -10,20 +13,22 @@ import { useConnectedInputs } from "./inlineInput";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 import { FrameDisplay } from "./FrameDisplay";
-import { CubeDisplay } from "./CubeDisplay";
+import { CubeChip } from "./CubeChip";
 import { TableDisplay } from "./TableDisplay";
-import { ChartFigure } from "./chartView";
+import { ChartChip } from "./ChartChip";
 import { MermaidView } from "./MermaidView";
 import "./CableSwitchNode.css";
 
 const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
 // The selected value is `any`, so render it by kind the way the Display node
-// does — a chart/frame/cube/diagram is drawn, not stringified to [object Object].
+// does — never stringified to [object Object]. A figure/cube that would overflow
+// the narrow control card shows as a compact chip (opens the full view); the
+// flatter kinds (frame grid, table, scalar) render inline as before.
 function SwitchValue({ value, label }: { value: unknown; label?: string }) {
   if (isFrameValue(value)) return <FrameDisplay frame={value} label={label} />;
-  if (isCubeValue(value)) return <CubeDisplay cube={value} label={label} />;
-  if (isChartValue(value)) return <ChartFigure value={value} width={200} height={110} />;
+  if (isCubeValue(value)) return <div style={{ display: "flex", marginTop: 2 }}><CubeChip value={value} label={label} accent="var(--sock-cube)" /></div>;
+  if (isChartValue(value)) return <div style={{ display: "flex", marginTop: 2 }}><ChartChip value={value} label={label} /></div>;
   if (isMermaidValue(value)) return <MermaidView source={value.source} />;
   if (isLambdaValue(value)) return <div className="solenoid-node__display-value">{formatLambda(value)}</div>;
   if (Array.isArray(value) && Array.isArray((value as unknown[])[0])) {
@@ -36,6 +41,7 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
   const [selected, setSelected] = useState(data.activeIndex);
   useEffect(() => { setSelected(data.activeIndex); }, [data.activeIndex]);
   const connected = useConnectedInputs(data.id);
+  const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   const keys = Object.keys(data.inputs);
 
   function select(i: number) {
@@ -80,6 +86,27 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
     await getArea()?.update("node", data.id);
     bumpConnectionVersion(); // re-route cables on rows that shifted up
     await processGraph();
+  }
+
+  // Collapsed: the numbered option rows fold into the shared stadium input pill
+  // (≥2 inputs) or a lone centred socket, matching every other extensible node;
+  // the selected value still shows below.
+  if (collapsed) {
+    return (
+      <NodeShell node={data} emit={emit}>
+        {keys.length >= 2 ? (
+          <CollapsedInputPill node={data} emit={emit} keys={keys} />
+        ) : (
+          keys.map((key) => {
+            const input = data.inputs[key];
+            return input ? (
+              <NodeSocket key={key} side="input" socketKey={key} nodeId={data.id} emit={emit} payload={input.socket} />
+            ) : null;
+          })
+        )}
+        <SwitchValue value={data.cachedValue} label={data.label} />
+      </NodeShell>
+    );
   }
 
   return (

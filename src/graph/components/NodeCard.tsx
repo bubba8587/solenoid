@@ -88,9 +88,14 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
   function syncOutputSocketTop() {
     const el = ref.current;
     if (!el) return;
-    const box = el.querySelector(
+    // First VISIBLE box in document order: a collapsed node hides its figure
+    // (display:none → offsetParent null), so skip it and land on the visible
+    // collapsed hero box / chip instead of centering the output socket at 0.
+    const boxes = el.querySelectorAll<HTMLElement>(
       ".solenoid-node__figure, .solenoid-node__display-value, .solenoid-node__value-input",
-    ) as HTMLElement | null;
+    );
+    let box: HTMLElement | null = null;
+    for (const b of boxes) { if (b.offsetParent !== null) { box = b; break; } }
     if (box) el.style.setProperty("--out-socket-top", `${box.offsetTop + box.offsetHeight / 2}px`);
     else el.style.removeProperty("--out-socket-top");
   }

@@ -1,18 +1,26 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { HistogramNode as HistogramNodeType } from "../rete-nodes";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { NodeSocket } from "./NodeSocket";
 import { InlineInputs } from "./inlineInput";
 import { ChartView, toSeries } from "./chartView";
 import { ChartExpandButton } from "./ChartExpandButton";
+import { ChartChip } from "./ChartChip";
+import { collapseStore } from "../collapseStore";
+import type { ChartValue } from "../chartValue";
 
 // Fills the wide card (240) minus body padding.
 const W = 218;
 const H = 150;
 
 export function HistogramComponent({ data, emit }: NodeProps<HistogramNodeType>) {
+  const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   const series = toSeries(data.cachedResult);
   const opts = data.chartOptions;
+  const chartValue: ChartValue = {
+    __chart: true, op: "column", values: data.cachedResult ?? [],
+    options: opts, title: opts.title || data.label || "Histogram",
+  };
 
   // The Values feed socket is centred on the plot (its main input), measured
   // against the card — separate from the Bins / Options rows below it.
@@ -30,8 +38,9 @@ export function HistogramComponent({ data, emit }: NodeProps<HistogramNodeType>)
     <NodeShell
       node={data}
       emit={emit}
-      collapsible={false}
-      leading={valuesPort && valuesTop !== undefined
+      // Collapsed: the leading Values socket folds into the pill with bins/options
+      // (the plot it centres on is hidden), so render it only while expanded.
+      leading={!collapsed && valuesPort && valuesTop !== undefined
         ? <NodeSocket side="input" socketKey="values" nodeId={data.id} emit={emit} payload={valuesPort.socket} top={valuesTop} />
         : null}
     >
@@ -46,7 +55,10 @@ export function HistogramComponent({ data, emit }: NodeProps<HistogramNodeType>)
         )}
       </div>
       <div className="solenoid-node__section-divider" />
-      <InlineInputs node={data} emit={emit} keys={["bins", "options"]} />
+      <InlineInputs node={data} emit={emit} keys={collapsed ? ["values", "bins", "options"] : ["bins", "options"]} />
+      {/* Collapsed → the hero box shows just the [Chart] chip (opens the popup),
+          right-aligned like every other value chip. */}
+      <div className="solenoid-node__collapsed-only solenoid-node__display-value" style={{ justifyContent: "flex-end" }}><ChartChip value={chartValue} /></div>
     </NodeShell>
   );
 }

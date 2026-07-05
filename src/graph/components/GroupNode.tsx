@@ -7,6 +7,8 @@ import { useDismissOnOutside } from "./useDismissOnOutside";
 import { getArea, getEditor, pushHistory, autoArrange } from "../process";
 import { cableValueStore } from "../cableValueStore";
 import { describeValueKind } from "../valueKindLabel";
+import { isChartValue } from "../chartValue";
+import { ChartChip } from "./ChartChip";
 import { groupCollapseStore, syncGroupCollapse, COLLAPSE_LAYOUT, pillY, type RetainedTerminal } from "../groupCollapse";
 import { SolenoidSocket, SOCKET_COLORS } from "../sockets";
 import { socketHighlightStore, dragSocketKey } from "../cableState";
@@ -71,6 +73,14 @@ function readoutText(t: RetainedTerminal): string {
 function renderReadout(t: RetainedTerminal) {
   const v = readoutValue(t);
   if (isSolError(v)) return <ErrorChip err={v} className="solenoid-group__row-val" />;
+  // A chart member shows the [Chart] chip (opens the popup), not a text label.
+  if (isChartValue(v)) {
+    return (
+      <span className="solenoid-group__row-val">
+        <ChartChip value={v} pinNodeId={t.kind === "display" ? t.displayId : t.effNodeId} />
+      </span>
+    );
+  }
   return <span className="solenoid-group__row-val">{readoutText(t)}</span>;
 }
 
