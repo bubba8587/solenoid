@@ -8,6 +8,7 @@ import { cablePolyline } from "../pixi/pixiCableGeom";
 import { ClassicPreset } from "rete";
 import { cableShapeStore } from "../cableShape";
 import { getArea, getEditor, processGraph } from "../process";
+import { APP_LOCALE } from "../locale";
 import "./rendererSpike.css";
 
 /**
@@ -582,8 +583,8 @@ export function RendererSpike() {
         <div className="renderer-spike__row"><span>backend</span><b className={backend === "WebGPU" ? "ok" : ""}>{backend}</b></div>
         <div className="renderer-spike__row"><span>text atlas</span><b className={msdf ? "ok" : msdf === false ? "warn" : ""}>{msdf == null ? "…" : msdf ? "MSDF" : "fallback"}</b></div>
         <div className="renderer-spike__row"><span>fps</span><b className={fps >= 55 ? "ok" : fps >= 30 ? "warn" : "bad"}>{building ? "building…" : fps}</b></div>
-        <div className="renderer-spike__row"><span>nodes</span><b>{stats.nodes.toLocaleString()}</b></div>
-        <div className="renderer-spike__row"><span>cables</span><b>{stats.cables.toLocaleString()}</b></div>
+        <div className="renderer-spike__row"><span>nodes</span><b>{stats.nodes.toLocaleString(APP_LOCALE)}</b></div>
+        <div className="renderer-spike__row"><span>cables</span><b>{stats.cables.toLocaleString(APP_LOCALE)}</b></div>
 
         {mode === "synthetic" && (
           <div className="renderer-spike__counts">

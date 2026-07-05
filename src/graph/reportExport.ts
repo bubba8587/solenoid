@@ -9,6 +9,7 @@ import { saveHtmlFileDialog, isDesktop } from "./fileBridge";
 import { pushNotice } from "./noticeStore";
 import { reportPaletteStore } from "./palette";
 import { EMBED_RE } from "./reportEmbeds";
+import { APP_LOCALE } from "./locale";
 
 // ─── Static HTML export (bundle 13 #47) ────────────────────────────────────────
 // "Export as webpage": freezes a Report into ONE self-contained .html file — the
@@ -155,7 +156,7 @@ export function buildReportExportHtml(
     : "";
 
   const title = report.label?.trim() || "Report";
-  const exportedAt = new Date().toLocaleString();
+  const exportedAt = new Date().toLocaleString(APP_LOCALE);
   const branded = reportPaletteStore.reportPalette() !== undefined;
   const accent = reportPaletteStore.resolve("sky");
 

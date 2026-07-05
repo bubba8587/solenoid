@@ -3,6 +3,7 @@
 
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "./nodes/date";
 import { groupingApplies, scaleApplies, negativeApplies } from "./formatModel";
+import { APP_LOCALE } from "./locale";
 
 // ─── Format style (how the number renders) ───────────────────────────────────
 
@@ -93,10 +94,10 @@ export type DecimalMode = "places" | "sigfigs";
 function formatPrecise(n: number, decimalDigits: number, decimalMode: DecimalMode, useGrouping = true): string {
   if (decimalMode === "sigfigs") {
     const s = Math.max(1, Math.min(21, Math.round(decimalDigits) || 1));
-    return n.toLocaleString(undefined, { minimumSignificantDigits: s, maximumSignificantDigits: s, useGrouping });
+    return n.toLocaleString(APP_LOCALE, { minimumSignificantDigits: s, maximumSignificantDigits: s, useGrouping });
   }
   const d = Math.max(0, Math.min(20, Math.round(decimalDigits)));
-  return n.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d, useGrouping });
+  return n.toLocaleString(APP_LOCALE, { minimumFractionDigits: d, maximumFractionDigits: d, useGrouping });
 }
 
 /** Apply a FormatStyle to a number. Returns the formatted string. */
@@ -112,7 +113,7 @@ export function applyFormatStyle(
   switch (style) {
     case "decimal":      return formatPrecise(n, decimalDigits, decimalMode, useGrouping);
     case "percent":      return `${formatPrecise(n * 100, decimalDigits, decimalMode, useGrouping)}%`;
-    case "integer":      return Math.round(n).toLocaleString(undefined, { useGrouping });
+    case "integer":      return Math.round(n).toLocaleString(APP_LOCALE, { useGrouping });
     case "fraction":     return toFraction(n);
     case "fraction_adv": return toFractionAdvanced(n);
     case "scientific": {
@@ -226,7 +227,7 @@ function applyCustomPattern(n: number, pattern: string): string {
   // Supports: 0, #, ., comma grouping.
   const dp = (pattern.match(/\.([0#]+)/) ?? [, ""])[1]?.length ?? 0;
   const useGrouping = pattern.includes(",");
-  return n.toLocaleString(undefined, {
+  return n.toLocaleString(APP_LOCALE, {
     minimumFractionDigits: dp,
     maximumFractionDigits: dp,
     useGrouping,
