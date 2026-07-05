@@ -20,9 +20,14 @@ let active: Drag | null = null;
 
 function onMove(e: PointerEvent) {
   if (!active) return;
+  // Clamp to the node's content-type minimum (a chart needs more than a scalar),
+  // floored by the global minimums.
+  const min = nodeSizeStore.getMin(active.nodeId);
+  const minW = Math.max(MIN_CARD_W, min?.w ?? 0);
+  const minH = Math.max(MIN_BOX_H, min?.h ?? 0);
   nodeSizeStore.set(active.nodeId, {
-    w: Math.max(MIN_CARD_W, active.startW + (e.clientX - active.sx) / active.k),
-    h: Math.max(MIN_BOX_H, active.startH + (e.clientY - active.sy) / active.k),
+    w: Math.max(minW, active.startW + (e.clientX - active.sx) / active.k),
+    h: Math.max(minH, active.startH + (e.clientY - active.sy) / active.k),
   });
 }
 
