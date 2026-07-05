@@ -220,8 +220,9 @@ const DECO_SELECTORS = [
   ".solenoid-node__recalc-btn", ".solenoid-node__input-pill", ".solenoid-node__output-pill",
   ".solenoid-node__corner-badge", ".solenoid-node__corner-lock", ".solenoid-node__quoted",
   ".solenoid-node__section-divider", ".solenoid-swatchgrid__opt", ".solenoid-note__swatch",
-  // Segmented toggles + Format-Controller chrome (Cast / FC nodes).
-  ".solenoid-seg button", ".solenoid-fc__segbtn", ".solenoid-fc__toggle",
+  // Segmented toggles + Format-Controller chrome (Cast / FC nodes). The FC's
+  // places/sig-figs toggle is the shared SegToggle now (".solenoid-seg button").
+  ".solenoid-seg button", ".solenoid-fc__toggle",
   ".solenoid-fc__arrow", ".solenoid-fc__digits", ".solenoid-fc__pattern",
   // Catch any remaining buttons generically (dedup'd against the above).
   "button",

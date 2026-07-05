@@ -6,13 +6,15 @@ import "./SegToggle.css";
  * button doesn't start a node drag, like the FC controls). One button per option;
  * the active one gets `--on`.
  */
-export function SegToggle<T extends string>({ value, onChange, options }: {
+export function SegToggle<T extends string>({ value, onChange, options, className }: {
   value: T;
   onChange: (next: T) => void;
   options: ReadonlyArray<{ value: T; label: string; title?: string }>;
+  /** Extra class on the group — e.g. the FC's inline-row sizing variant. */
+  className?: string;
 }) {
   return (
-    <div className="solenoid-seg" role="group">
+    <div className={`solenoid-seg${className ? ` ${className}` : ""}`} role="group">
       {options.map((o) => (
         <button
           key={o.value}

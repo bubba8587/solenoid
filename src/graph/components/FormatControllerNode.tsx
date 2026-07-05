@@ -13,6 +13,7 @@ import { SOCKET_COLORS } from "../sockets";
 import { processGraph, getEditor, repositionDockedNodes } from "../process";
 import { NodeCard } from "./NodeCard";
 import { NodeSocket } from "./NodeSocket";
+import { SegToggle } from "./SegToggle";
 import type { NodeProps } from "./nodeKit";
 import "./nodeCard.css";
 import "./FormatControllerNode.css";
@@ -244,17 +245,22 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
   const c = controlsFor(family, format);
   const showFormatCustom = format === "custom" || format === "date_custom";
 
-  // Unit-flow arrows flanking the unit dropdown. Format always applies backward
-  // (←, to the box behind the FC); the unit's direction depends on where it's
-  // set: a defining FC sends it downstream (← own box, → forward); an FC that
-  // inherited it from upstream shows it arriving (→ inward); an FC feeding a
-  // Convert has its unit dictated back from the Convert (← in, ← to its box).
+  // Flow arrows flanking the controls — a three-state visual language matching
+  // the v0.9 annotation semantics (the WHOLE annotation rides the value forward
+  // through passthroughs; only the unit can be inherited or Convert-dictated):
+  //   ← →  authored HERE: applies to the box behind, travels ahead with the value
+  //   → →  inherited: the upstream value's unit passes through (forwarding FC)
+  //   ← ←  dictated from ahead (Convert primacy)
+  // The format/style row is always "authored here" (a downstream FC can
+  // re-format — format never inherits), so it gets the fixed ← → pair.
   const hasUnit = unit !== "none";
   let unitLeft: "back" | "fwd" | null = null;
   let unitRight: "back" | "fwd" | null = null;
   if (node.lockedByConvert)   { unitLeft = "back"; unitRight = "back"; }
-  else if (node.forwarding)   { unitLeft = "fwd"; }
+  else if (node.forwarding)   { unitLeft = "fwd"; unitRight = "fwd"; }
   else if (hasUnit)           { unitLeft = "back"; unitRight = "fwd"; }
+  const backTitle = "Applies to the box behind this controller";
+  const fwdTitle  = "Travels with the value through passthroughs";
 
   return (
     <NodeCard
@@ -280,7 +286,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
         /* Text: display-only case + bold / italic / size (non-destructive). */
         <>
         <div className="solenoid-fc__row">
-          <FcArrow dir="back" title="Formatting applies to the box behind this controller" />
+          <FcArrow dir="back" title={backTitle} />
           <select
             className="solenoid-node__op-select solenoid-fc__select solenoid-fc__select--wide"
             value={textCase}
@@ -294,8 +300,10 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
             <option value="lower">lower</option>
             <option value="proper">Proper</option>
           </select>
+          <FcArrow dir="fwd" title={fwdTitle} />
         </div>
         <div className="solenoid-fc__row">
+          <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
           <button
             type="button"
             className={`solenoid-fc__toggle${bold ? " solenoid-fc__toggle--on" : ""}`}
@@ -326,12 +334,13 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
               <option key={px} value={px}>{px}</option>
             ))}
           </select>
+          <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
         </div>
         </>
       ) : c.dateStyle ? (
         /* Date socket: one date-style dropdown, no units. */
         <div className="solenoid-fc__row">
-          <FcArrow dir="back" title="Format applies to the box behind this controller" />
+          <FcArrow dir="back" title={backTitle} />
           <select
             className="solenoid-node__op-select solenoid-fc__select solenoid-fc__select--wide"
             value={format}
@@ -346,11 +355,12 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
               </option>
             ))}
           </select>
+          <FcArrow dir="fwd" title={fwdTitle} />
         </div>
       ) : c.logical ? (
         /* Logical socket: show-as (TRUE/FALSE · 1/0 · Yes/No · ✓/✗), display only. */
         <div className="solenoid-fc__row">
-          <FcArrow dir="back" title="Show-as applies to the box behind this controller" />
+          <FcArrow dir="back" title={backTitle} />
           <select
             className="solenoid-node__op-select solenoid-fc__select solenoid-fc__select--wide"
             value={logicalStyle}
@@ -363,6 +373,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
               <option key={id} value={id}>{label}</option>
             ))}
           </select>
+          <FcArrow dir="fwd" title={fwdTitle} />
         </div>
       ) : !c.numberStyle && !c.complexStyle ? (
         /* Structural socket (frame/cube/chart/lambda): nothing formattable here —
@@ -376,7 +387,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
            Complex gets the reduced style list (auto/decimal/scientific). */
         <>
         <div className="solenoid-fc__row">
-          <FcArrow dir="back" title="Format applies to the box behind this controller" />
+          <FcArrow dir="back" title={backTitle} />
           <select
             className="solenoid-node__op-select solenoid-fc__select solenoid-fc__select--wide"
             value={format}
@@ -412,11 +423,12 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
               </>
             )}
           </select>
+          <FcArrow dir="fwd" title={fwdTitle} />
         </div>
         {c.precision && (
           <div className="solenoid-fc__row solenoid-fc__row--decimal">
-            {/* spacer matching the format/unit row arrow, so the input's left
-                edge lines up with the dropdowns above and below it */}
+            {/* spacers matching the arrow gutters, so the controls line up with
+                the dropdowns above and below */}
             <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
             <input
               type="number"
@@ -431,32 +443,24 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
               onMouseDown={(e) => e.stopPropagation()}
               title={decimalMode === "places" ? "Digits after the decimal point" : "Number of significant figures"}
             />
-            <div className="solenoid-fc__seg">
-              <button
-                type="button"
-                className={`solenoid-fc__segbtn${decimalMode === "places" ? " solenoid-fc__segbtn--on" : ""}`}
-                onClick={() => onModeSet("places")}
-                onPointerDown={(e) => e.stopPropagation()}
-                onMouseDown={(e) => e.stopPropagation()}
-                title="Decimal places"
-              >places</button>
-              <button
-                type="button"
-                className={`solenoid-fc__segbtn${decimalMode === "sigfigs" ? " solenoid-fc__segbtn--on" : ""}`}
-                onClick={() => onModeSet("sigfigs")}
-                onPointerDown={(e) => e.stopPropagation()}
-                onMouseDown={(e) => e.stopPropagation()}
-                title="Significant figures"
-              >sig figs</button>
-            </div>
+            <SegToggle
+              className="solenoid-seg--inline"
+              value={decimalMode}
+              onChange={onModeSet}
+              options={[
+                { value: "places",  label: "places",   title: "Decimal places" },
+                { value: "sigfigs", label: "sig figs", title: "Significant figures" },
+              ]}
+            />
+            <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
           </div>
         )}
         <div className="solenoid-fc__row">
-          {unitLeft && <FcArrow dir={unitLeft} title={
+          {unitLeft ? <FcArrow dir={unitLeft} title={
             node.lockedByConvert ? "Unit dictated by the Convert downstream"
-            : node.forwarding    ? "Unit inherited from upstream"
+            : node.forwarding    ? "Unit arrives with the value from upstream"
             : "Unit labels this box and travels downstream"
-          } />}
+          } /> : <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />}
           <select
             className="solenoid-node__op-select solenoid-fc__select solenoid-fc__select--wide"
             value={unit}
@@ -485,10 +489,10 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
               );
             })}
           </select>
-          {unitRight && <FcArrow dir={unitRight} title={
+          {unitRight ? <FcArrow dir={unitRight} title={
             node.lockedByConvert ? "Unit dictated by the Convert downstream"
             : "Unit travels downstream with the value"
-          } />}
+          } /> : <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />}
         </div>
         </>
       )}
@@ -496,6 +500,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
       {/* Custom pattern / unit fields appear only when "Custom…" is chosen. */}
       {(c.numberStyle || c.complexStyle || c.dateStyle) && (showFormatCustom || (c.unit && unit === "custom")) && (
         <div className="solenoid-fc__row solenoid-fc__row--custom">
+          <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
           {showFormatCustom && (
             <input
               type="text"
@@ -518,6 +523,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
               onMouseDown={(e) => e.stopPropagation()}
             />
           )}
+          <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
         </div>
       )}
     </NodeCard>

@@ -1,10 +1,14 @@
-/* Segmented button toggle — the Format Controller's places/sig-figs button look,
-   reused as a standalone full-width control (Get Column / Add Column read-as).
-   The FC keeps its own inline-row variant (.solenoid-fc__seg); these share the
-   button styling but size full-width in a stacked node body. */
+/* Segmented button toggle — ONE segmented-button definition (v1.1 A2 unification):
+   full-width in a stacked node body (Get Column / Add Column read-as), or the
+   inline-row variant (`--inline`) that fills the remaining row space (the FC's
+   places/sig-figs toggle — formerly its own .solenoid-fc__seg copy). */
 .solenoid-seg {
   display: flex;
   width: 100%;
+}
+.solenoid-seg--inline {
+  width: auto;
+  flex: 1 1 auto;
 }
 .solenoid-segbtn {
   flex: 1 1 auto;

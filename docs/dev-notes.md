@@ -2,6 +2,23 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### FC v1.1 A2 (first pass) — flow arrows re-audited, SegToggle unified, row grid (2026-07-05)
+Author asked, as part of A2, whether the FC's arrow logic still comports with how
+formats/units pass. It didn't, on two counts: (1) the format row claimed backward-only
+("applies to the box behind") — since the v0.9 arc the WHOLE annotation rides the value
+forward through passthroughs, format included (format just never INHERITS, unlike unit);
+(2) a forwarding FC's unit showed a lone left → ("arriving") with nothing continuing out.
+Now a consistent three-state arrow language on every row: `← →` authored here (applies
+behind + travels ahead) · `→ →` inherited/passing through (forwarding FC) · `← ←`
+dictated from ahead (Convert primacy). Also: the FC's places/sig-figs seg toggle routes
+through the shared `SegToggle` (new `--inline` variant; private `__seg`/`__segbtn` CSS
+deleted; pixiGraphSnapshot selector updated), and every row now carries symmetric
+9px arrow-or-spacer gutters so all controls sit on one aligned grid (row padding is
+symmetric 5px now). The layout-redesign half of A2 beyond this stays open for the
+author's live direction. Eyeball: number FC (arrows both sides of format+unit rows),
+a unit-forwarding FC (`→ →`), Convert-locked (`← ←`), text FC (B/I row aligns), and
+the precision row under scientific.
+
 ### FC v1.1 A1 — the function model: spec + code (2026-07-05)
 Author greenlit FC v1.1; A1 lands per the plan's spec-first order.
 - **Spec:** `docs/format-model.md` — the 4-stage pipeline (type gate → style w/
