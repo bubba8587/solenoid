@@ -3,7 +3,6 @@ import type { ExpressionNode as ExpressionNodeType } from "../rete-nodes";
 import type { SolError } from "../errorValue";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
-import { ResizeHandle } from "./ResizeHandle";
 import { FormulaField } from "./FormulaField";
 import { applyExprChange } from "./expressionEdit";
 import { ResultTypeToggle } from "./ResultTypeToggle";
@@ -53,7 +52,6 @@ export function ExpressionComponent({ data: node, emit }: NodeProps<ExpressionNo
         placeholder="a * b + c …"
         locked={node.locked}
         onOpen={() => formulaPopup.open(node.id)}
-        grip={<ResizeHandle nodeId={node.id} />}
       />
       {node.cachedError && (
         <div className="solenoid-expr__error">{node.cachedError}</div>

@@ -13,6 +13,7 @@ import { isSolError, type SolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import { flyToNode } from "../flyToNode";
 import { ResizeHandle } from "./ResizeHandle";
+import { nodeResizable } from "../rete-nodes";
 import { formatScalar } from "./format";
 import { ArrayChip } from "./ArrayChip";
 import { formatAnnotationStore, formatNumberWithAnnotation, applyTextCase, applyLogicalStyle, annotationRendersNegativeRed } from "../formatAnnotationStore";
@@ -382,6 +383,10 @@ export function NodeShell({
           {leading}
           {!hideOutputSockets && <PortSockets node={node} emit={emit} side="output" />}
           <div className="solenoid-node__body">{children}</div>
+          {/* One universal resizer per resizable node, at the body's bottom-right —
+              not per value-box type. Drags the card width + the body height
+              (--box-h); the body's content fills/scrolls. Hidden when collapsed. */}
+          {nodeResizable(node as unknown as ClassicPreset.Node) && <ResizeHandle nodeId={node.id} />}
         </div>
         {/* Semantic-zoom simplified view: at far-overview zoom the body detail is
             hidden (nodeCard.css) and this draws the node's NAME large + centered so a
@@ -658,7 +663,6 @@ export function ValueDisplay({
           <ClipboardIcon />
         </button>
       )}
-      {ctxNodeId && <ResizeHandle nodeId={ctxNodeId} />}
     </div>
   );
 }
