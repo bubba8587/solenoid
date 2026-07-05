@@ -74,8 +74,10 @@ function buildCommands(): PaletteItem[] {
     { label: "Align right", run: () => void alignSelection("right") },
     { label: "Align top", run: () => void alignSelection("top") },
     { label: "Align bottom", run: () => void alignSelection("bottom") },
-    { label: "Align center (horizontal)", run: () => void alignSelection("center-h") },
-    { label: "Align center (vertical)", run: () => void alignSelection("center-v") },
+    // Labels name the END EFFECT, not the axis being centered: center-h aligns the
+    // horizontal centres, which stacks the nodes VERTICALLY (and vice versa).
+    { label: "Align center (vertical)", run: () => void alignSelection("center-h") },
+    { label: "Align center (horizontal)", run: () => void alignSelection("center-v") },
     { label: "Distribute horizontally", run: () => void distributeSelection("h") },
     { label: "Distribute vertically", run: () => void distributeSelection("v") },
     { label: "Collapse selection", run: () => collapseSelection(true) },
