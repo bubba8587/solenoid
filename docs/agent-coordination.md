@@ -19,25 +19,39 @@ border seam, grid system, collision avoidance, transpiler, seed-cleanup.
 
 ## Claims
 
-- **A1 (Lead):** orchestration + **Tier B**. DONE: B-1(a) oracle key (`1efa87d`),
-  B-1(b) __nf sentinel + aggregate guard (queued #2), B-4a codegen retirement
-  (queued #3). NEXT: B-4b TEXT-family divergence sweep + GroupBy total_depth,
-  then B-2 AND/OR Filter + B-3 CSV dates AFTER the queue flushes (they re-enter
-  the queued files). (`engine.rs` stays MINE — nobody else touches it.)
-- **A2:** **C-1 COMPLETE RECHARTS** — IN PROGRESS. Owns `nodes/visual.ts`, chart
-  components, `nodeCatalog.ts` chart entries, showcase seed. Committed: Slices 1+2
-  (`09bc120`, 5 ops + Histogram), Slices 3+4 (`7315441`, KPI/Bullet/Treemap/Sankey).
-  Date-range picker DONE + READY (queued). **Remaining: Bubble/Composed multi-series
-  (needs a matrix input on Chart — the one invasive piece, own commit), then the
-  showcase seed wiring every new type.** Pausing for A3 to commit date-range before
-  the seed re-touches shared files.
-- **A3:** A-1/A-3/A-4 DONE. A-2 a11y batch DONE + committed (`c556b84`). FIFO
-  queue fully flushed: A2's Slices 3+4 (`7315441`), A1's B-1b (`aa2a623`, cargo
-  54/54), A1's B-4a (`aa5ab34`), A2's date-range picker (`5bd7105`). Pushed
-  `develop` to origin per direct author confirmation in my session (relayed
-  second-hand notes alone don't trigger a push — confirmed live this time):
-  `f926fa6..aa5ab34` (a stale ref at push time; `5bd7105` landed after and is
-  NOT yet pushed — will push again once more READY items land, or on request).
+- **A1 (Lead):** orchestration + **Tier B**. DONE: B-1(a) `1efa87d`, B-1(b)
+  `aa2a623`, B-4a `aa5ab34`, B-4b (queued READY below). NOW: **B-2 AND/OR
+  multi-predicate Filter** — starting with the engine/oracle half
+  (`frameVerbs.ts` + `engine.rs` + parity tests, files now free); the node-UI
+  half (`nodes/frame.ts` + `FrameNodes.tsx`) WAITS until my B-4b commit lands
+  (those files are in its stage list). Then B-3 CSV dates.
+  (`engine.rs` stays MINE — nobody else touches it.)
+- **A2:** **C-1 COMPLETE RECHARTS — functionally DONE** (final slice queued). Committed:
+  Slices 1+2 (`09bc120`), 3+4 (`7315441`), date-range (`5bd7105`). READY: Composed +
+  Bubble multi-series ops + `chart-showcase.json` seed. Full C-1 delivered — every
+  planned type: column/bar/line/area/scatter/pie/radar/radial/funnel + histogram, KPI,
+  bullet, treemap, sankey, composed, bubble, + the dual-date DateRange control. Once
+  A3 commits the finale, my C-1 queue item is done → next A2 item is C-3. **Finale
+  gate RESOLVED** (visual.test.ts updated for the `matrix` key + full vitest re-run =
+  2222 green; A1 caught it — I'd only run my-area subsets, now always full vitest
+  pre-READY). **C-3 SCOPED** (⋯ menu on TablePopup header: move Copy→menu, add Copy-as-
+  Markdown + Export CSV via `saveTextFileDialog`; then Slicer/Sparkline collapsed
+  previews, Gauge investigate. Popup files only — no chart overlap).
+  **C-3 part 1 DONE + READY** (⋯ menu: Copy CSV / Copy-as-Markdown / Export CSV;
+  shared PopupOverflowMenu; full vitest 2230 green). Part 2 (collapsed previews) next.
+- **A3:** All prior FIFO items flushed + the newest 4: A2's C-1 FINALE
+  (`1e71d66`, Composed/Bubble + chart-showcase seed), A2's C-3 part 1 (`6841167`,
+  popup overflow menu), A1's B-4b (`a2c6fdd`, TEXT sweep + GroupBy totals — also
+  fixed the `frameShape.ts` tsc gap), A1's B-2 engine half (`2eb65a4`,
+  `filterMulti`, cargo 63/63 verified). **Author bug report investigated:
+  Treemap/Sankey render blank even with data wired** — traced node classes,
+  coercion, the lazy chunk, recharts prop usage against 3.8.1's types, all
+  clean; an SSR smoke test hit an unrelated harness wall (this repo's vitest
+  is `node`-only, no jsdom, so client components can't render in-test); needs
+  a browser devtools console check to pin the real error — logged in
+  `backlog.md` "Nodes / engine" with the `chart-showcase` seed as the repro,
+  author will check later. `develop` still unpushed past `5bd7105`
+  (6 more commits since) — will push once the queue empties again or on request.
   Idle on the commit queue now.
 
 ## Queue
@@ -52,10 +66,16 @@ border seam, grid system, collision avoidance, transpiler, seed-cleanup.
 3. E-2 Finance/FRED connection (API-key store + FRED + Stooq).
 
 **A3 (commit duty FIRST — flush "Ready to commit" FIFO — then):**
-1. ~~A-1~~ DONE. ~~A-3~~ DONE. ~~A-4~~ DONE. ~~A-2 a11y~~ DONE (`c556b84`).
-2. ~~Push develop~~ DONE (`f926fa6..aa5ab34`, confirmed live with the author).
-   NOTE: `5bd7105` (date-range picker) landed after that push — still
-   unpushed. Push again once the queue empties, or if the author asks.
+1. ~~Push develop~~ DONE (`f926fa6..aa5ab34`). NOTE: commits after that push are
+   unpushed; push again once the queue empties (standing author OK from the same
+   order), or if the author asks.
+2. **C-2 Input Switcher upgrade** (staged by A1): editable per-slot titles
+   (draft-commit via `useDraftCommit` — never per-keystroke) + a multi-select
+   mode collecting the selected inputs into a Cube (reuse the existing Cube
+   builders — see `nodes/cube.ts`). Seed row in the chart-showcase (or a small
+   dedicated seed if cleaner). See `build-plan.md` C-2. Footprint: the switcher
+   node + component, catalog, seed — no overlap with A1 (frame/engine) or A2
+   (popup files).
 
 **Unstaffed pool (claim freely when a lane empties):** C-2 Input Switcher
 upgrade · C-4 unified XLOOKUP merge · Tier D composite (D-1..D-4, ONE agent,
@@ -68,6 +88,12 @@ _(empty)_
 
 ## Recently done
 
+- Agent 3 — A1's B-2 engine half, filterMulti verb (cargo 63/63). `2eb65a4`.
+- Agent 3 — A1's B-4b, TEXT-family sweep + Group By totals. `a2c6fdd`.
+- Agent 3 — A2's C-3 part 1, popup overflow menu. `6841167`.
+- Agent 3 — A2's C-1 FINALE, Composed/Bubble + chart-showcase seed. `1e71d66`.
+- Agent 3 — logged the Treemap/Sankey blank-box bug in `backlog.md` (author-reported,
+  needs a browser console check to pin down — see backlog "Nodes / engine").
 - Agent 3 — A2's date-range picker (DateRangeNode). `5bd7105`.
 - **Pushed `develop` to origin** — direct author confirmation in-session.
   `f926fa6..aa5ab34`.
