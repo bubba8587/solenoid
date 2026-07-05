@@ -1248,6 +1248,17 @@ body.solenoid-scrubbing * {
   -webkit-user-select: none;
 }
 .solenoid-mermaid svg { max-width: 100%; height: auto; }
+/* In a RESIZED Display the diagram scales to fill the box — override mermaid's
+   own inline max-width (its natural size, which otherwise caps it). The viewBox +
+   default preserveAspectRatio keeps it proportional (letterboxed). overflow
+   hidden on the container blocks a scrollbar re-trigger. */
+.solenoid-node--sized .solenoid-mermaid { overflow: hidden; }
+.solenoid-node--sized .solenoid-mermaid svg {
+  max-width: none !important;
+  max-height: none !important;
+  width: 100%;
+  height: 100%;
+}
 .solenoid-mermaid--card { margin-top: 2px; }
 .solenoid-mermaid--error {
   color: var(--sol-error);
