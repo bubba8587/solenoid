@@ -267,6 +267,55 @@ export function makeAnnotationResolver(editor: AnyEditor): AnnotationResolver {
   return { outAnnotation, inAnnotation, downstreamAnnotation };
 }
 
+// ── Value origin (popup "Go to source") ──────────────────────────────────────
+
+/**
+ * Walk UPSTREAM from a node to the node that actually PRODUCED the value it
+ * shows — through FCs (format lock, value unchanged), pure passthroughs
+ * (Display), and data-aware selectors following their actually-chosen branch.
+ * Stops at any transform (Convert included — the converted number is a NEW
+ * value), at an indeterminate selector (a list condition picks per-element, so
+ * no single branch is "the" origin), and at an ambiguous multi-branch selector.
+ * Used by the popup "Go to source" action: from a Display's popup the camera
+ * should fly to the producer, not the Display you just clicked. A node that is
+ * itself a producer (Aggregate, Join, Number…) resolves to itself.
+ */
+export function resolveValueOrigin(editor: AnyEditor, nodeId: string): string {
+  const seen = new Set<string>();
+  let id = nodeId;
+  while (!seen.has(id)) {
+    seen.add(id);
+    const n = editor.getNode(id);
+    if (!n) break;
+    let inKey: string | null = null; // null = "first connected input" (Display)
+    if (isConvert(n)) break;
+    if (isFc(n)) {
+      inKey = "in";
+    } else if (isPassthrough(n)) {
+      const sel = selectedKey(n);
+      if (sel === null) break; // selector, branch indeterminate
+      if (typeof sel === "string") {
+        inKey = sel;
+      } else {
+        const keys = valuePassKeys(n); // selector without branch tracking
+        if (keys) {
+          const connected = keys.filter((k) =>
+            editor.getConnections().some((c) => c.target === id && c.targetInput === k));
+          if (connected.length !== 1) break; // ambiguous → the selector is the stop
+          inKey = connected[0];
+        }
+      }
+    } else {
+      break; // transform / source — this IS the origin
+    }
+    const conn = editor.getConnections().find((c) =>
+      c.target === id && (inKey === null || c.targetInput === inKey));
+    if (!conn) break; // chosen branch not wired → stop here
+    id = conn.source;
+  }
+  return id;
+}
+
 // ── Per-commit resolver sharing (audit finding 41) ───────────────────────────
 // Every value box built its OWN resolver in its component body, every render —
 // so one React commit over a 300-node graph re-walked the connection list per

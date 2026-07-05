@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { NodeEditor, ClassicPreset } from "rete";
-import { makeAnnotationResolver, makeUnitResolver } from "./unitFlow";
+import { makeAnnotationResolver, makeUnitResolver, resolveValueOrigin } from "./unitFlow";
 import type { FormatAnnotation } from "./formatAnnotationStore";
 
 type AnyEditor = NodeEditor<{ Node: ClassicPreset.Node; Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node> }>;
@@ -157,5 +157,87 @@ describe("input-aware passthrough — IF/CHOOSE/SWITCH/IFS pass the value branch
     await connect(editor, b, iff, "else");
     expect(makeUnitResolver(editor).outUnit(iff.id, "out")).toBe("none");
     expect(makeAnnotationResolver(editor).outAnnotation(iff.id, "out")).toBeUndefined();
+  });
+});
+
+describe("resolveValueOrigin — the popup 'Go to source' upstream walk", () => {
+  it("a Display chain resolves to the producer at the top", async () => {
+    const editor = new NodeEditor() as unknown as AnyEditor;
+    const num = node("Number");                              // producer
+    const d1 = node("Disp1", { passesUnitThrough: true });
+    const d2 = node("Disp2", { passesUnitThrough: true });
+    for (const n of [num, d1, d2]) await editor.addNode(n as never);
+    await connect(editor, num, d1);
+    await connect(editor, d1, d2);
+    expect(resolveValueOrigin(editor, d2.id)).toBe(num.id);
+    expect(resolveValueOrigin(editor, d1.id)).toBe(num.id);
+  });
+
+  it("walks through an FC (format lock, value unchanged)", async () => {
+    const editor = new NodeEditor() as unknown as AnyEditor;
+    const num = node("Number");
+    const fc = node("FC", { unit: "usd", format: "decimal" });
+    const disp = node("Display", { passesUnitThrough: true });
+    for (const n of [num, fc, disp]) await editor.addNode(n as never);
+    await connect(editor, num, fc);
+    await connect(editor, fc, disp);
+    expect(resolveValueOrigin(editor, disp.id)).toBe(num.id);
+  });
+
+  it("a selector follows its actually-chosen branch", async () => {
+    const editor = new NodeEditor() as unknown as AnyEditor;
+    const a = node("A");
+    const b = node("B");
+    const iff = ifNode("IF", "else");                        // condition computed false
+    for (const n of [a, b, iff]) await editor.addNode(n as never);
+    await connect(editor, a, iff, "then");
+    await connect(editor, b, iff, "else");
+    expect(resolveValueOrigin(editor, iff.id)).toBe(b.id);
+  });
+
+  it("stops AT an indeterminate selector (list condition — no single branch)", async () => {
+    const editor = new NodeEditor() as unknown as AnyEditor;
+    const a = node("A");
+    const b = node("B");
+    const iff = ifNode("IF", null);
+    for (const n of [a, b, iff]) await editor.addNode(n as never);
+    await connect(editor, a, iff, "then");
+    await connect(editor, b, iff, "else");
+    expect(resolveValueOrigin(editor, iff.id)).toBe(iff.id);
+  });
+
+  it("a selector without branch tracking still walks its ONE wired branch", async () => {
+    const editor = new NodeEditor() as unknown as AnyEditor;
+    const a = node("A");
+    const iff = ifNode("IF", null);
+    delete (iff as Record<string, unknown>).selectedUnitInput; // no data-awareness at all
+    for (const n of [a, iff]) await editor.addNode(n as never);
+    await connect(editor, a, iff, "then");                   // else left unwired
+    expect(resolveValueOrigin(editor, iff.id)).toBe(a.id);
+  });
+
+  it("a transform and an unwired Display are their own origin", async () => {
+    const editor = new NodeEditor() as unknown as AnyEditor;
+    const num = node("Number");
+    const add = node("Add");                                 // transform — origin of a NEW value
+    const disp = node("Display", { passesUnitThrough: true });
+    const lone = node("Lonely", { passesUnitThrough: true });
+    for (const n of [num, add, disp, lone]) await editor.addNode(n as never);
+    await connect(editor, num, add);
+    await connect(editor, add, disp);
+    expect(resolveValueOrigin(editor, disp.id)).toBe(add.id);
+    expect(resolveValueOrigin(editor, add.id)).toBe(add.id);
+    expect(resolveValueOrigin(editor, lone.id)).toBe(lone.id);
+  });
+
+  it("Convert is a transform — the walk stops there", async () => {
+    const editor = new NodeEditor() as unknown as AnyEditor;
+    const num = node("Number");
+    const conv = node("Convert", { fromUnit: "km", toUnit: "mi" });
+    const disp = node("Display", { passesUnitThrough: true });
+    for (const n of [num, conv, disp]) await editor.addNode(n as never);
+    await connect(editor, num, conv);
+    await connect(editor, conv, disp);
+    expect(resolveValueOrigin(editor, disp.id)).toBe(conv.id);
   });
 });

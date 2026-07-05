@@ -1,6 +1,8 @@
 import { useSyncExternalStore } from "react";
 import { pinStore, pinNodeValue } from "../pinStore";
 import { flyToNodeAndFlash } from "../flyToNode";
+import { getEditor } from "../process";
+import { resolveValueOrigin } from "../unitFlow";
 
 // Lucide "pin" — https://lucide.dev/icons/pin. Even size in an even (24px) button
 // so it centers on a whole pixel (see CLAUDE.md icon-parity rule).
@@ -47,18 +49,26 @@ const LocateGlyph = () => (
 );
 
 /**
- * "Go to node" — closes the popup and flies the camera to the host node with
- * the same flash ring as the error click-to-jump. Sits beside the Pin action
- * in every value popup (the backlog's "+ more" follow-up on Pin).
+ * "Go to source" — closes the popup and flies the camera (with the error
+ * click-to-jump's flash ring) to the node that PRODUCED the shown value:
+ * the host's origin resolved upstream through passthroughs/FCs/selectors
+ * (`resolveValueOrigin`). On a Display that's the producer feeding it — the
+ * host itself is where you just clicked, so jumping there is a no-op. A
+ * producer node (Aggregate, Join…) resolves to itself. Sits beside the Pin
+ * action in every value popup (the backlog's "+ more" follow-up on Pin).
  */
 export function PopupGoToButton({ nodeId, onClose }: { nodeId: string; onClose: () => void }) {
   return (
     <button
       type="button"
       className="sol-popup__pin"
-      onClick={() => { onClose(); flyToNodeAndFlash(nodeId); }}
-      title="Go to node on the canvas"
-      aria-label="Go to node"
+      onClick={() => {
+        onClose();
+        const editor = getEditor();
+        flyToNodeAndFlash(editor ? resolveValueOrigin(editor, nodeId) : nodeId);
+      }}
+      title="Go to the value's source node"
+      aria-label="Go to source node"
     >
       <LocateGlyph />
     </button>
