@@ -6,6 +6,7 @@ import { SwatchGrid } from "./SwatchGrid";
 import { useDismissOnOutside } from "./useDismissOnOutside";
 import { getArea, getEditor, pushHistory, autoArrange } from "../process";
 import { cableValueStore } from "../cableValueStore";
+import { describeValueKind } from "../valueKindLabel";
 import { groupCollapseStore, syncGroupCollapse, COLLAPSE_LAYOUT, pillY, type RetainedTerminal } from "../groupCollapse";
 import { SolenoidSocket, SOCKET_COLORS } from "../sockets";
 import { socketHighlightStore, dragSocketKey } from "../cableState";
@@ -37,6 +38,10 @@ function formatReadout(v: unknown, annNodeId: string): string {
   const one = (x: number) => (ann ? formatNumberWithAnnotation(x, ann) : formatScalar(x));
   if (typeof v === "number") return one(v);
   if (Array.isArray(v)) return v.map((x) => (typeof x === "number" ? one(x) : String(x))).join(", ");
+  // Object-valued kinds (chart / frame / cube / diagram / image / lambda) get a
+  // compact label instead of "[object Object]".
+  const kind = describeValueKind(v);
+  if (kind != null) return kind;
   return String(v);
 }
 
