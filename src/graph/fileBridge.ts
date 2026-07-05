@@ -9,6 +9,7 @@ import { join, dirname } from "@tauri-apps/api/path";
 
 const JSON_FILTER = [{ name: "Solenoid graph", extensions: ["json"] }];
 const HTML_FILTER = [{ name: "Web page", extensions: ["html"] }];
+const CSV_FILTER = [{ name: "CSV", extensions: ["csv"] }];
 
 /** True only inside the Tauri desktop shell (the fs/dialog plugins are live). */
 export function isDesktop(): boolean {
@@ -129,6 +130,19 @@ export async function pickSaveGraphPath(suggestedName: string): Promise<string |
 export async function saveTextFileDialog(suggestedName: string, content: string): Promise<string | null> {
   if (isDesktop()) {
     const path = await save({ defaultPath: suggestedName, filters: JSON_FILTER });
+    if (!path) return null;
+    await writeTextFileAtomic(path, content);
+    return path;
+  }
+  downloadText(suggestedName, content);
+  return null;
+}
+
+/** Save a .csv (a popup's Export CSV). Same shape as saveTextFileDialog, separate
+ *  for the CSV file-type filter in the desktop dialog. */
+export async function saveCsvFileDialog(suggestedName: string, content: string): Promise<string | null> {
+  if (isDesktop()) {
+    const path = await save({ defaultPath: suggestedName, filters: CSV_FILTER });
     if (!path) return null;
     await writeTextFileAtomic(path, content);
     return path;

@@ -127,6 +127,64 @@
   opacity: 1;
   color: color-mix(in srgb, var(--node-accent, var(--text)) 80%, var(--text));
 }
+
+/* Header ⋯ overflow menu (PopupOverflowMenu) — the trigger matches the pin/close
+   icon buttons; the dropdown floats below-right, tucked inside the popup card. */
+.sol-popup-menu {
+  position: relative;
+  flex-shrink: 0;
+  display: inline-flex;
+}
+.sol-popup-menu__trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  color: color-mix(in srgb, var(--node-accent, var(--text-dim)) 55%, var(--text));
+  cursor: pointer;
+  padding: 0;
+  opacity: 0.7;
+}
+.sol-popup-menu__trigger:hover {
+  opacity: 1;
+  color: color-mix(in srgb, var(--node-accent, var(--text)) 80%, var(--text));
+}
+.sol-popup-menu__list {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 20;
+  min-width: 168px;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  background: var(--surface-raised, var(--surface));
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: var(--shadow-pop);
+}
+.sol-popup-menu__item {
+  text-align: left;
+  padding: 6px 10px;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.sol-popup-menu__item:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--node-accent, var(--text)) 12%, transparent);
+}
+.sol-popup-menu__item:disabled {
+  color: var(--text-dim);
+  cursor: default;
+}
 .sol-popup__pin--on {
   opacity: 1;
   color: var(--node-accent, var(--accent));
