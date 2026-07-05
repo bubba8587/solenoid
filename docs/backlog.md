@@ -51,12 +51,11 @@ is archived).
   expander; must respect the format-model truth table (`formatModel.ts` — text
   family currently exposes only `textCase`).
 
-- [ ] **UX/a11y mechanical batch** (approved as one batch 2026-07-02; PARTIALLY
-  landed — CloseIcon + focus-visible bits shipped; VERIFY each against code before
-  building the rest): socket-dot hover `title` naming the type (the only colorblind
-  path); `prefers-reduced-motion` honored by the load reveal; `Ctrl+/` matching
-  `e.key` not `e.code`; Group/Note title editors through draft-commit; modal focus
-  traps; Settings `Switch` accessible name; socket-legend open-state persistence.
+- [ ] **UX/a11y mechanical batch** (approved 2026-07-02) — MOSTLY DONE; verified &
+  shipped: socket-dot hover `title`, `Ctrl+/` on `e.key`, Group/Note draft-commit,
+  socket-legend open-state persistence, and `prefers-reduced-motion` snapping the
+  load reveal (2026-07-06). **Remaining: modal focus traps + the Settings `Switch`
+  accessible name.**
 - [ ] **Frame P3 pair** (decided 2026-07-02): (a) Rust builds the byte-identical
   oracle key — replace `Cell::key()` + `\u{1}` joins with `serde_json` of the SAME
   tagged-tuple encoding as JS `encodeCell`; cargo parity test with a `\u{1}` fixture.
