@@ -305,6 +305,7 @@ export { GaugeComponent } from "./GaugeNode";
 export { HeatmapCellComponent } from "./HeatmapCellNode";
 export { ChartBuilderComponent } from "./ChartBuilderNode";
 export { DatePickerComponent } from "./DatePickerNode";
+export { DateRangeComponent } from "./DateRangeNode";
 export { XYPadComponent } from "./XYPadNode";
 
 // ─── Format Controller ────────────────────────────────────────────────────────
