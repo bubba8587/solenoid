@@ -121,7 +121,14 @@ async function applyPlanWithSketchSampling(baseHandle: FrameHandle, plan: readon
 export function clearCollectMemo(): void {
   const be = frameBackend();
   for (const p of _flushMemo.values()) {
-    p.then((h) => be.drop(h)).catch(() => {});
+    // Drop the handle AND its sketch bookkeeping — same rule as dropFrameRef
+    // ("else a sketch-mode entry outlives its handle forever"); handles are
+    // monotonic (never recycled), so a missed delete is a per-pass leak.
+    p.then((h) => {
+      be.drop(h);
+      _sampleFactor.delete(h);
+      _sketchInfo.delete(h);
+    }).catch(() => {});
   }
   _flushMemo = new Map();
   _collectMemo = new Map();
