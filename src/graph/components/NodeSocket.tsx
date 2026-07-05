@@ -3,7 +3,7 @@ import { Presets } from "rete-react-plugin";
 import type { ClassicScheme, RenderEmit } from "rete-react-plugin";
 import type { ClassicPreset } from "rete";
 import { socketHighlightStore, dragSocketKey } from "../cableState";
-import { SolenoidSocket } from "../sockets";
+import { SolenoidSocket, SOCKET_TYPE_LABELS } from "../sockets";
 import { cubeTransform, CUBE_FILL_PATH } from "./cubeGlyph";
 
 const SQUARE_TYPES = new Set(["list", "strlist", "datelist", "numlist", "table", "frame"]);
@@ -105,11 +105,13 @@ export function NodeSocket({ side, socketKey, nodeId, emit, payload, top, classN
   const lit = socketHighlightStore.isHighlighted(myKey);
   const isSquare = payload instanceof SolenoidSocket && SQUARE_TYPES.has(payload.dataType);
   const isCube = payload instanceof SolenoidSocket && payload.dataType === "cube";
+  const typeLabel = payload instanceof SolenoidSocket ? SOCKET_TYPE_LABELS[payload.dataType] : undefined;
 
   return (
     <div
       className={(className ?? "") + (lit ? " solenoid-socket--lit" : "")}
       style={{ position: "absolute", ...horizontal, ...vertical }}
+      title={typeLabel}
       data-socket-key={socketKey}
       data-socket-side={side}
       data-node-id={nodeId}

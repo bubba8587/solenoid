@@ -80,6 +80,38 @@ export const SOCKET_COLORS: Record<SocketDataType, string> = {
   any:      "var(--sock-any)",      // gray          — circle (wildcard)
 };
 
+// Human-readable type name for a socket dot's hover title — the only
+// colorblind-accessible path to "what type is this" (color alone isn't
+// enough). Kept terse; the Socket Legend panel carries the fuller picture.
+export const SOCKET_TYPE_LABELS: Record<SocketDataType, string> = {
+  number:       "Number",
+  list:         "List (number)",
+  numlist:      "Number or list",
+  string:       "Text",
+  strlist:      "List (text)",
+  strcombo:     "Text or list",
+  date:         "Date",
+  datelist:     "List (date)",
+  datecombo:    "Date or list",
+  complex:      "Complex number",
+  complexlist:  "List (complex)",
+  complexcombo: "Complex or list",
+  complextable: "Matrix (complex)",
+  logical:      "Boolean",
+  logicallist:  "List (boolean)",
+  logicalcombo: "Boolean or list",
+  logicaltable: "Matrix (boolean)",
+  table:        "Matrix (number)",
+  strtable:     "Matrix (text)",
+  datetable:    "Matrix (date)",
+  anytable:     "Matrix (any)",
+  frame:        "Frame (table)",
+  cube:         "Cube (nested table)",
+  lambda:       "Function",
+  chart:        "Chart / visual",
+  any:          "Any",
+};
+
 // ─── The (element × dimension) lattice ────────────────────────────────────────
 // Every "regular" socket is one cell of an (element family × dimensionality)
 // grid. Rather than hand-maintain the accept-sets, we DERIVE them from ONE rule:

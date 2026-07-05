@@ -1,4 +1,5 @@
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useFocusTrap } from "./components/useFocusTrap";
 import { settingsStore, settingsPanel, SETTINGS_SCHEMA, type SettingField } from "./settingsStore";
 import { packsStore, allPacks, loadCustomPacks, customPacksFolder } from "./packs";
 import { isDesktop, pickFolderDialog, openInFileManager } from "./fileBridge";
@@ -16,12 +17,13 @@ import "./Settings.css";
  * section here in a later pass.)
  */
 
-function Switch({ on, onClick }: { on: boolean; onClick: () => void }) {
+function Switch({ on, onClick, label }: { on: boolean; onClick: () => void; label: string }) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={on}
+      aria-label={label}
       className={`solenoid-settings__switch${on ? " solenoid-settings__switch--on" : ""}`}
       onClick={onClick}
     >
@@ -32,12 +34,16 @@ function Switch({ on, onClick }: { on: boolean; onClick: () => void }) {
 
 function Row({ label, help, on, onToggle }: { label: string; help?: string; on: boolean; onToggle: () => void }) {
   return (
+    // Stays a <label> so clicking anywhere on the row toggles the switch (the
+    // browser forwards the click to the first labelable descendant). Switch's
+    // own explicit aria-label wins over that implicit association, so the
+    // announced name is just the label — the help text doesn't fold in.
     <label className="solenoid-settings__row">
       <span className="solenoid-settings__row-text">
         <span className="solenoid-settings__row-label">{label}</span>
         {help && <span className="solenoid-settings__row-help">{help}</span>}
       </span>
-      <Switch on={on} onClick={onToggle} />
+      <Switch on={on} onClick={onToggle} label={label} />
     </label>
   );
 }
@@ -217,6 +223,8 @@ function PacksSection() {
 export function Settings() {
   const open = useSyncExternalStore(settingsPanel.subscribe, settingsPanel.get);
   useSyncExternalStore(settingsStore.subscribe, settingsStore.version);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(open, panelRef);
 
   useEffect(() => {
     if (!open) return;
@@ -229,7 +237,7 @@ export function Settings() {
 
   return (
     <div className="solenoid-settings" onPointerDown={() => settingsPanel.close()}>
-      <div className="solenoid-settings__panel" onPointerDown={(e) => e.stopPropagation()}>
+      <div ref={panelRef} className="solenoid-settings__panel" role="dialog" aria-modal="true" aria-label="Settings" onPointerDown={(e) => e.stopPropagation()}>
         <div className="solenoid-settings__header">
           <span className="solenoid-settings__title">Settings</span>
           <button className="solenoid-settings__close" onClick={() => settingsPanel.close()} aria-label="Close">×</button>

@@ -271,7 +271,24 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
     [renderBody],
   );
 
-  function onLabel(v: string) { setLabel(v); data.label = v; scheduleAutosave(); }
+  // Draft-only while typing (project-wide rule: commit on Enter/blur, never per
+  // keystroke). Escape reverts to the last committed label without writing.
+  const labelCancelled = useRef(false);
+  function onLabel(v: string) { setLabel(v); } // draft only — data.label unchanged until commit
+  function commitLabel() {
+    if (labelCancelled.current) { labelCancelled.current = false; setLabel(data.label); setEditingLabel(false); return; }
+    const prev = data.label;
+    const next = label;
+    if (next !== prev) {
+      data.label = next;
+      scheduleAutosave();
+      pushHistory(
+        () => { data.label = prev; void getArea()?.update("node", data.id); scheduleAutosave(); },
+        () => { data.label = next; void getArea()?.update("node", data.id); scheduleAutosave(); },
+      );
+    }
+    setEditingLabel(false);
+  }
   // Store the raw text live (autosave), but DON'T reconcile sockets per keystroke —
   // that happens on blur (commitFields), so editing the YAML doesn't churn cables.
   function onBody(v: string) { setBody(v); data.body = v; scheduleAutosave(); }
@@ -314,8 +331,11 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
             spellCheck={false}
             autoFocus
             onChange={(e) => onLabel(e.target.value)}
-            onBlur={() => setEditingLabel(false)}
-            onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Escape") e.currentTarget.blur(); }}
+            onBlur={commitLabel}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") { e.currentTarget.blur(); }
+              else if (e.key === "Escape") { labelCancelled.current = true; e.currentTarget.blur(); }
+            }}
             onPointerDown={stop}
             onMouseDown={stop}
           />

@@ -1,5 +1,6 @@
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import { confirmStore, answerConfirm } from "../confirmStore";
+import { useFocusTrap } from "./useFocusTrap";
 import "./confirmDialog.css";
 
 /**
@@ -9,6 +10,8 @@ import "./confirmDialog.css";
  */
 export function ConfirmDialog() {
   const pending = useSyncExternalStore(confirmStore.subscribe, confirmStore.get);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(!!pending, dialogRef);
 
   useEffect(() => {
     if (!pending) return;
@@ -25,7 +28,7 @@ export function ConfirmDialog() {
 
   return (
     <div className="solenoid-confirm__overlay" onPointerDown={() => answerConfirm(false)}>
-      <div className="solenoid-confirm__dialog" onPointerDown={(e) => e.stopPropagation()}>
+      <div ref={dialogRef} className="solenoid-confirm__dialog" role="dialog" aria-modal="true" onPointerDown={(e) => e.stopPropagation()}>
         <div className="solenoid-confirm__message">{pending.message}</div>
         <div className="solenoid-confirm__buttons">
           <button

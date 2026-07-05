@@ -566,6 +566,15 @@ async function runReveal(
 ): Promise<void> {
   const nodeIds = editor.getNodes().map((n) => n.id);
   const elOf = (id: string) => area.nodeViews.get(id)?.element;
+  // Respect prefers-reduced-motion: skip the staged wave-by-wave fade/draw and
+  // just reveal everything at once (the overlay itself still fades — that's a
+  // one-shot opacity transition, not the repeating motion this setting targets).
+  if (typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    loadRevealStore.startReveal();
+    for (const c of editor.getConnections()) loadRevealStore.revealConn(c.id);
+    for (const id of nodeIds) { const el = elOf(id); if (el) el.style.opacity = "1"; }
+    return;
+  }
   try {
     // Hide every node instantly (no transition), then arm the fade transition.
     for (const id of nodeIds) {

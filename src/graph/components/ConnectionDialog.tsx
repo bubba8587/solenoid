@@ -7,6 +7,7 @@ import { canConnect, type SocketDataType } from "../sockets";
 import { getEditor, processGraph } from "../process";
 import { IS_COARSE } from "../coarse";
 import type { SolenoidConnection } from "../schemes";
+import { useFocusTrap } from "./useFocusTrap";
 import "./connectionDialog.css";
 
 const TYPE_LABEL: Record<SocketDataType, string> = {
@@ -131,6 +132,8 @@ export function ConnectionDialog() {
   // Conduit lanes are noise for most wiring tasks — hidden by default.
   const [showConduits, setShowConduits] = useState(false);
   const initedFor = useRef<ConnDialogReqRef>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(!!req, dialogRef);
 
   // Initialise from the request (edit prefill, or socket prefill, or blank).
   useEffect(() => {
@@ -198,7 +201,7 @@ export function ConnectionDialog() {
 
   return (
     <div className="conn-dialog__overlay" onPointerDown={() => connectionDialog.close()}>
-      <div className="conn-dialog" onPointerDown={(e) => e.stopPropagation()}>
+      <div ref={dialogRef} className="conn-dialog" role="dialog" aria-modal="true" aria-label={req.editId ? "Edit connection" : "Add connection"} onPointerDown={(e) => e.stopPropagation()}>
         <div className="conn-dialog__header">
           <div className="conn-dialog__title">{req.editId ? "Edit connection" : "Add connection"}</div>
           <label className="conn-dialog__check">

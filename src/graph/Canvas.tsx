@@ -823,8 +823,11 @@ export function Canvas() {
       // Ctrl/Cmd shortcuts
       if (e.ctrlKey || e.metaKey) {
         // Ctrl+/ opens function reference, Ctrl+, opens settings (both allowed
-        // even when an input is focused).
-        if (e.code === "Slash") { frStore.toggle(); e.preventDefault(); return; }
+        // even when an input is focused). e.key (not e.code) for the slash: it's
+        // a punctuation mark that moves around on non-US layouts, unlike the
+        // letter-mnemonic shortcuts below which are meant to stay at the same
+        // physical position regardless of layout.
+        if (e.key === "/") { frStore.toggle(); e.preventDefault(); return; }
         if (e.code === "Comma") { settingsPanel.toggle(); e.preventDefault(); return; }
         // Save / Save As / Open work even while a node field is focused (and must
         // preventDefault to block the browser's own save/open dialogs).

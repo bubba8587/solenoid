@@ -126,10 +126,24 @@ export function SocketDot({ entry }: { entry: Dot }) {
   );
 }
 
+const LEGEND_LS_KEY = "solenoid.legendCollapsed";
+
+function readPersistedCollapsed(): boolean | null {
+  try {
+    const raw = localStorage.getItem(LEGEND_LS_KEY);
+    return raw === null ? null : raw === "1";
+  } catch { return null; }
+}
+
 export function SocketLegend() {
   // Start collapsed in mobile mode — the full panel is a lot of screen on a
-  // phone, so show just the launcher there and let the user open it.
-  const [collapsed, setCollapsed] = useState(IS_MOBILE);
+  // phone, so show just the launcher there and let the user open it. A desktop
+  // user's open/collapsed choice persists across reloads (localStorage).
+  const [collapsed, setCollapsed] = useState(() => readPersistedCollapsed() ?? IS_MOBILE);
+  useEffect(() => {
+    try { localStorage.setItem(LEGEND_LS_KEY, collapsed ? "1" : "0"); }
+    catch { /* private mode / quota — non-fatal */ }
+  }, [collapsed]);
   // Join the chrome-toggle group so Tab folds/unfolds the legend with the other
   // panels (navigator + pin / alert HUDs).
   useEffect(() => registerChrome("legend", { isOpen: () => !collapsed, setOpen: (o) => setCollapsed(!o) }), [collapsed]);
