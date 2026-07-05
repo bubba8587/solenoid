@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   extractVariables,
-  compileFormula,
+  compilePositional,
   compileEvaluator,
   RANGE_FUNCTIONS,
   formulaToLatex,
@@ -47,9 +47,9 @@ describe("extractVariables", () => {
   });
 });
 
-describe("compileFormula", () => {
+describe("compilePositional (the one evaluation core — scalar semantics pinned here since the codegen retirement)", () => {
   const evalF = (expr: string, params: string[], ...args: number[]) => {
-    const fn = compileFormula(expr, params);
+    const fn = compilePositional(expr, params);
     if (!fn) throw new Error(`failed to compile: ${expr}`);
     return fn(...args);
   };
@@ -90,29 +90,29 @@ describe("compileFormula", () => {
   });
 
   it("evaluates comparisons to booleans", () => {
-    const fn = compileFormula("a > b", ["a", "b"]);
+    const fn = compilePositional("a > b", ["a", "b"]);
     expect(fn!(3, 2)).toBe(true as unknown as number);
     expect(fn!(1, 2)).toBe(false as unknown as number);
   });
 
   it("uses = for equality and <> for inequality", () => {
-    expect(compileFormula("a = b", ["a", "b"])!(2, 2)).toBe(true as unknown as number);
-    expect(compileFormula("a <> b", ["a", "b"])!(2, 3)).toBe(true as unknown as number);
+    expect(compilePositional("a = b", ["a", "b"])!(2, 2)).toBe(true as unknown as number);
+    expect(compilePositional("a <> b", ["a", "b"])!(2, 3)).toBe(true as unknown as number);
   });
 
   it("returns null on parse error", () => {
-    expect(compileFormula("a +", ["a"])).toBeNull();
-    expect(compileFormula("", [])).toBeNull();
+    expect(compilePositional("a +", ["a"])).toBeNull();
+    expect(compilePositional("", [])).toBeNull();
   });
 
   it("throws at call time on unknown function", () => {
-    const fn = compileFormula("NOTAREALFN(a)", ["a"]);
+    const fn = compilePositional("NOTAREALFN(a)", ["a"]);
     expect(fn).not.toBeNull();
     expect(() => fn!(1)).toThrow(/Unknown function/);
   });
 
   it("supports string concatenation with &", () => {
-    const fn = compileFormula('a & "x"', ["a"]);
+    const fn = compilePositional('a & "x"', ["a"]);
     expect(fn!(5)).toBe("5x" as unknown as number);
   });
 });
@@ -344,7 +344,7 @@ describe("compileEvaluator — array-aware (broadcast vs aggregate per call site
     return fn(env);
   };
 
-  it("returns null on a parse error (mirrors compileFormula)", () => {
+  it("returns null on a parse error (mirrors compilePositional)", () => {
     expect(compileEvaluator("a +")).toBeNull();
     expect(compileEvaluator("")).toBeNull();
   });
