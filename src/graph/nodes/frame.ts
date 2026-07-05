@@ -1,23 +1,23 @@
 import { ClassicPreset } from "rete";
-import { numIn, numListIn, tableIn, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, anyOut } from "./shared";
+import { numIn, numListIn, tableIn, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, anyIn, anyOut } from "./shared";
 import { toMatrix } from "./coerce";
 import { parseDateToSerial } from "./date";
 import { isSolError, solError, type SolError } from "../errorValue";
 import { coerceLogical } from "../valueKinds";
 import {
   buildFrame, splitFrame, getColumn, addColumn, frameRowCount, frameHasTextColumns,
-  frameFromInputText, formatFrameCell,
+  frameFromInputText, formatFrameCell, frameFromRows, isFrameValue, isCubeValue,
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
 } from "../frame";
 import {
   pivotFrame, nestFrame, unnestCube,
   splitColumn, addIndexColumn, decisionMatrix, decisionCriteria, decisionSensitivity,
-  lookupFrameCell, reconcileFrames,
+  lookupFrameCell, lookupCubeCell, reconcileFrames,
   type FilterOp, type JoinHow, type AsofDirection, type AggOp, type DecisionNormalize, type LookupMatchMode, type ReconcileSummary,
 } from "../frameVerbs";
 import type { PivotSpec } from "../frameVerbs";
 import { runFrameUnary, runFrameJoin, runFrameAppend, readFrame, collectPreview, dropFrameRef, isFrameRef, frameBackend, materialize, flushRef, type FrameInput, type FrameRef } from "../frameBackend";
-import type { CubeValue } from "../frame";
+import type { CubeValue, CubeCell } from "../frame";
 
 // A verb that may throw a tagged SolError (a #REF! for a bad column) must NOT let
 // it escape data(): installErrorGuards' fromThrown flattens a thrown SolError to a
@@ -1152,10 +1152,23 @@ export class GetRowNode extends ClassicPreset.Node {
 // it stays eager JS like Get Column — the frame input is already a materialized
 // value on the cable.)
 
+// The source is an `any` socket so Frame Lookup takes a Frame OR a Cube (a cube
+// can't narrow into a frame socket — sockets.ts): a cube flows to the cube path
+// (lookupCubeCell), a frame to the frame path. A bare list/matrix/scalar still
+// widens into a frame exactly as the old `frame` socket did (coerceValue's frame
+// case mirrored here), so a list-of-rows reads as a 1-row table. null → no source.
+function asLookupSource(v: unknown): FrameValue | CubeValue | null {
+  if (v == null) return null;
+  if (isCubeValue(v)) return v;
+  if (isFrameValue(v)) return v;
+  if (Array.isArray(v)) return Array.isArray(v[0]) ? frameFromRows(v as unknown[][]) : frameFromRows([v as unknown[]]);
+  return frameFromRows([[v]]);
+}
+
 export class FrameLookupNode extends ClassicPreset.Node {
   label: string;
   matchMode: LookupMatchMode;
-  cachedResult: FrameCell | null = null;
+  cachedResult: CubeCell | null = null;
   stringLiterals: Record<string, string> = { lookup: "", inColumn: "", returnColumn: "", ifNotFound: "" };
   width = 200; height = 315;
 
@@ -1163,7 +1176,9 @@ export class FrameLookupNode extends ClassicPreset.Node {
     super("FrameLookup");
     this.label = init?.label ?? "Frame Lookup";
     this.matchMode = init?.matchMode ?? "exact";
-    this.addInput("frame", frameIn("Frame"));
+    // `any` source: a Frame OR a Cube. A cube looks a key up in its TOP-LEVEL column
+    // and returns the matched cell WHOLE — a nested frame/cube comes out intact.
+    this.addInput("frame", anyIn("Frame / Cube"));
     this.addInput("lookup", strIn("Lookup"));
     this.addInput("inColumn", strIn("In column"));
     this.addInput("returnColumn", strIn("Return"));
@@ -1172,17 +1187,19 @@ export class FrameLookupNode extends ClassicPreset.Node {
   }
 
   data(inputs: {
-    frame?: (FrameValue | null)[]; lookup?: string[];
+    frame?: unknown[]; lookup?: string[];
     inColumn?: string[]; returnColumn?: string[]; ifNotFound?: string[];
   }) {
-    const f = inputs.frame?.[0] ?? null;
+    const src = asLookupSource(inputs.frame?.[0] ?? null);
     const lookup = (inputs.lookup?.[0] ?? this.stringLiterals.lookup ?? "").trim();
     const inCol = (inputs.inColumn?.[0] ?? this.stringLiterals.inColumn ?? "").trim();
     const retCol = (inputs.returnColumn?.[0] ?? this.stringLiterals.returnColumn ?? "").trim();
     const fallbackRaw = inputs.ifNotFound?.[0] ?? this.stringLiterals.ifNotFound ?? "";
-    if (!f || inCol === "" || retCol === "" || lookup === "") { this.cachedResult = null; return { value: null }; }
-    const result = runVerb<FrameCell>(() => {
-      const cell = lookupFrameCell(f, inCol, retCol, lookup, this.matchMode);
+    if (!src || inCol === "" || retCol === "" || lookup === "") { this.cachedResult = null; return { value: null }; }
+    const result = runVerb<CubeCell>(() => {
+      const cell = isCubeValue(src)
+        ? lookupCubeCell(src, inCol, retCol, lookup, this.matchMode)
+        : lookupFrameCell(src, inCol, retCol, lookup, this.matchMode);
       if (cell !== undefined) return cell;
       const fb = fallbackRaw.trim();
       if (fb === "") return solError("#N/A", "No row matched the lookup value");
