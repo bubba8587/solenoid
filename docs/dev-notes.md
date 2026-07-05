@@ -2,6 +2,40 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Layout: node-size unification + align/distribute root-cause (2026-07-05)
+Author flagged buggy align/distribute + fragile Tidy + overlapping authored seeds as
+likely one root cause. Investigation (Explore agent) confirmed: **no canonical node-size
+accessor** — every layout feature re-derived a box with its own
+`offsetWidth || node.width || <const>`, fallbacks inconsistent (100×50 / 180×160 / 0 /
+none). `offsetWidth` is 0 until a card paints, so unpainted nodes read zero-size or a
+stale design-time estimate.
+- **`nodeSize.ts` `measuredBox(area, id, editor?)`** — the ONE accessor: live DOM →
+  stored size → single default (`FALLBACK_NODE_W/H` 180×100). Fallback is **collapse-aware**
+  (`COLLAPSED_NODE_H` 52 for a collapsed-but-unpainted node); a painted node's
+  `offsetHeight` already reflects collapse, so that's the truth for anything on screen.
+  Routed `selectionOps`, `groupLogic.nodeBox`, `compositeLogic.nodeBox` through it (the
+  last two read raw offsetWidth with NO fallback → collapsed the wrapped bbox to a corner).
+- **align/distribute were NOT primarily a measurement bug** — two real defects: (1) the
+  selector's group-follow (rete `selectableNodes` moves the whole selection when one
+  selected node is translated) corrupted every per-node move → "2 of 3 align, random;
+  distribute does nothing". Fixed by clearing the selection during `applyMoves` then
+  restoring it (same guard Tidy's arrangeFn uses). (2) distribute spaced CENTERS
+  (overlaps mixed-height nodes) → rewrote to equal **edge gaps** with a guaranteed
+  `DISTRIBUTE_GAP` (40, ~Tidy's ELK nodeNode 38): fits → ends fixed, interior evened;
+  stacked → anchor leftmost, push out at min gap (rightmost moves). Also deduped the move
+  set so a node under two seeds (group+member, cluster) isn't translated twice. Pure
+  `alignDeltas`/`distributeDeltas` extracted + unit-tested (`selectionOps.test.ts`).
+- **Still TODO (the reshuffling piece):** a top-level `separateOverlaps` backstop after
+  global Tidy / on load, so authored seeds + tidy output can't overlap (author's "no
+  overlaps ever"). The pure de-overlap (`groupPushCore.separateOverlaps`) exists and is
+  wired only into group-push; a top-level pass needs the same unit-boxing groupPush.ts
+  does (group/standoff-cluster as one box, members moved rigidly, docked FCs excluded) —
+  real correctness surface, reshuffles the canvas, so gated on author eyeball.
+- **Flagged:** align/distribute live only in the Command Palette; author wants a visible
+  UI affordance (backlog, tied to #57). Bundle-split recharts + KaTeX out of the main
+  chunk this session too (main 4.0→3.53MB); alert chips lost their per-kind icon (label
+  coloured by kind instead), Problems/Alerts icons swapped (triangle vs bell).
+
 ### 1.0-tail readInput sweep — RESOLVED (not a blanket sweep) (2026-07-05)
 The item's "sweep the scalar nodes' data()" was applied to scalar.ts (element-wise math). Task #7
 tracked "the remaining data() files" — but a per-file scan (list/matrix/complex/date/stats/finance/dist)
