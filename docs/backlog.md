@@ -241,13 +241,16 @@ action (deferred to #5's design session), since a subgraph is less editable / ha
 different compute semantics than a Group. Round 8 (#50–57) fully walked: #50 IN
 scoped way down · #51 IN light · #52 IN colors-only · #53/#55/#56 OUT · #54 VERY
 DEFERRED · #57 split (mostly IN).
-- [ ] **Align / distribute need a UI affordance (flagged 2026-07-05).** They live
+- [x] **Align / distribute need a UI affordance (flagged 2026-07-05).** They live
   ONLY in the Command Palette right now, and the author's standing rule is that
   nothing should be reachable solely via the palette — every action wants a visible
   surface (toolbar / context menu / selection HUD). Add one for the six aligns +
   two distributes (a small align/distribute cluster that appears when ≥2 nodes are
   selected is the natural fit). Logic is done + fixed (`selectionOps.ts`, 2026-07-05:
   selector group-follow guard, equal-gap distribute with a guaranteed min gap).
+  **Done (2026-07-05) — `components/SelectionActionsBar.tsx` + `selectionActions.css`,
+  a bottom-centre overlay pill shown when ≥2 nodes are selected; distribute disables
+  at 2, whole bar hides when the canvas is locked. See dev-notes; author eyeball noted.**
 Round 9 (#58–63, the social layer, LAST round) begun 2026-07-03: #58 OUT (verified
 templates — nothing left to attach to since #55 templates are OUT) · #59 OUT (fork
 lineage — file-over-app + open text format means git already solves this) · #60 OUT
