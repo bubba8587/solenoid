@@ -89,7 +89,7 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
     const el = ref.current;
     if (!el) return;
     const box = el.querySelector(
-      ".solenoid-node__display-value, .solenoid-node__value-input",
+      ".solenoid-node__figure, .solenoid-node__display-value, .solenoid-node__value-input",
     ) as HTMLElement | null;
     if (box) el.style.setProperty("--out-socket-top", `${box.offsetTop + box.offsetHeight / 2}px`);
     else el.style.removeProperty("--out-socket-top");
