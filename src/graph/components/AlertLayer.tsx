@@ -23,47 +23,6 @@ const AlertSvg = ({ size = 14 }: { size?: number }) => (
   </svg>
 );
 
-// Lucide icons keyed by kind, drawn in the kind's color on each chip.
-// info → "info", warning → "triangle-alert", critical → "octagon-alert".
-function KindIcon({ kind, size = 14 }: { kind: AlertKind; size?: number }) {
-  const common = {
-    viewBox: "0 0 24 24",
-    width: size,
-    height: size,
-    fill: "none",
-    stroke: KIND_COLOR[kind],
-    strokeWidth: 2,
-    strokeLinecap: "round" as const,
-    strokeLinejoin: "round" as const,
-    style: { display: "block", flexShrink: 0 },
-  };
-  if (kind === "info") {
-    return (
-      <svg {...common}>
-        <circle cx="12" cy="12" r="10" />
-        <path d="M12 16v-4" />
-        <path d="M12 8h.01" />
-      </svg>
-    );
-  }
-  if (kind === "critical") {
-    return (
-      <svg {...common}>
-        <path d="M12 16h.01" />
-        <path d="M12 8v4" />
-        <path d="M15.312 2a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586l-4.688-4.688A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2z" />
-      </svg>
-    );
-  }
-  return (
-    <svg {...common}>
-      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
-      <path d="M12 9v4" />
-      <path d="M12 17h.01" />
-    </svg>
-  );
-}
-
 /**
  * The fired-alerts HUD section: a stack of chips, one per recent alert event
  * (see alertStore). An Alert node logs an event here on the rising edge of its
@@ -118,7 +77,6 @@ export function AlertLayer() {
       onClick={() => flyToNode(ev.nodeId)}
       title="Click to go to this alert"
     >
-      <KindIcon kind={ev.kind} />
       <span className="solenoid-alert__msg">{ev.message}</span>
       <button
         type="button"
