@@ -91,18 +91,12 @@ is archived).
 
 - [ ] **Full XLOOKUP merge (list+frame+cube one node)** — cube-cell half shipped;
   the input-surface merge + migration is open (design notes: `archive/v1.1-plan.md` WS-D).
-- [ ] **Native CSV reader date inference** — desktop `engine_read_csv` brings dates
-  in as text (Get Column read-as-Date converts); full inference parity is the follow-up.
 - [ ] **Error UX on restriction violation** — typed error out the socket vs the node
   flagging the offending input locally. Pending a call.
 - [ ] **Formula re-audit remainder** — `formulaDivergence.test.ts` guards the known
   overrides (incl. the 2026-07-05 TEXT-family sweep); NOT yet swept: node `data()`
   paths that don't share the registered impl; distributions validated only at
   representative points — widen if accuracy is ever in doubt.
-- [ ] **Multi-predicate frame Filter — AND/OR condition rows** (IN, author
-  2026-07-05 "go for it"): extensible condition rows with an AND/OR mode on the
-  frame Filter — SQL WHERE-IN made visual (`PairedExtensibleInputs` pattern; JS
-  oracle + Polars parity; the Match-case flag rides per-condition).
 - [ ] **BUG (FIXED, awaiting author eyeball) — Treemap/Sankey blank box.**
   Root cause found (`d824373`): recharts 3.x's `content`/`node` prop needs the
   FUNCTION form to receive each cell/node's real geometry — a static element

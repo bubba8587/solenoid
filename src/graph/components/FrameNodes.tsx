@@ -1,5 +1,5 @@
 // Frame (data-table) node components: Frame Input, Build, Split, Get Column, Add Column.
-import { useCallback, useEffect, useMemo, useState, type MouseEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, type MouseEvent } from "react";
 import type {
   FrameInputNode as FrameInputNodeType,
   BuildFrameNode as BuildFrameNodeType,
@@ -31,12 +31,16 @@ import type {
   DecisionDetail,
   SplitColType,
 } from "../rete-nodes";
-import type { FilterOp, JoinHow, AsofDirection, AggOp, DecisionNormalize, LookupMatchMode } from "../frameVerbs";
+import type { FilterOp, FilterCombine, JoinHow, AsofDirection, AggOp, DecisionNormalize, LookupMatchMode } from "../frameVerbs";
+import type { FilterCondConfig } from "../nodes/frame";
 import { CubeDisplay } from "./CubeDisplay";
 import { parseFrameSource, frameSourceToText, type FrameSourceColumn } from "../frame";
-import { processGraph } from "../process";
+import { processGraph, getEditor, getArea, bumpConnectionVersion } from "../process";
+import { collapseStore } from "../collapseStore";
 import { pivotEditor } from "../pivotEditorStore";
-import { InlineInputs, InlineNumberField, useConnectedInputs } from "./inlineInput";
+import { InlineInputs, InlineNumberField, InlineTextField, useConnectedInputs } from "./inlineInput";
+import { CollapsedInputPill } from "./CollapsedInputPill";
+import { pushRowAddUndo, pushRowRemovalUndo } from "./ExtensibleInputs";
 import { FrameDisplay } from "./FrameDisplay";
 import { ResultDisplay } from "./ResultDisplay";
 import { ArrayChip } from "./ArrayChip";
@@ -137,28 +141,133 @@ const FILTER_OP_OPTIONS: { value: FilterOp; label: string }[] = [
 // Numeric/date/logical comparisons ignore the flag, so the checkbox hides.
 const TEXT_MATCH_OPS: ReadonlySet<FilterOp> = new Set(["eq", "neq", "contains", "startsWith", "endsWith"]);
 
+const FILTER_COMBINE_OPTIONS: { value: FilterCombine; label: string; title: string }[] = [
+  { value: "and", label: "AND", title: "Keep rows matching every condition" },
+  { value: "or", label: "OR", title: "Keep rows matching any condition" },
+];
+
+// Extensible AND/OR condition rows (B-2). Each pair: a wireable Column row
+// (with the remove ×) and a wireable Value row whose op select + Match-case
+// toggle live in the row when unwired. Per-row {op, matchCase} mirrors onto
+// data.condConfig (local useState drives the controlled selects — the
+// useNodeField rule, per-key). The AND/OR SegToggle appears from 2 rows up.
 export function FilterFrameComponent({ data, emit }: NodeProps<FilterFrameNodeType>) {
-  const [op, setOp] = useNodeField(data, "op");
-  const [matchCase, setMatchCase] = useNodeField(data, "matchCase");
+  const connected = useConnectedInputs(data.id);
+  const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
+  const [combine, setCombine] = useNodeField(data, "combine");
+  const [cfg, setCfg] = useState<Record<string, FilterCondConfig>>(() => ({ ...data.condConfig }));
+  const strLiterals = (data.stringLiterals ??= {});
+  const pairs = data.valuePairKeys();
+
+  const rowCfg = (id: string): FilterCondConfig => cfg[id] ?? data.condConfig[id] ?? { op: "gt" };
+  const updateCfg = (id: string, patch: Partial<FilterCondConfig>) => {
+    const next = { ...rowCfg(id), ...patch };
+    setCfg((c) => ({ ...c, [id]: next }));
+    data.condConfig[id] = next;
+    void processGraph();
+  };
+  const setStr = (key: string, v: string) => {
+    strLiterals[key] = v;
+    void processGraph();
+  };
+
+  async function addPair() {
+    const before = new Set(Object.keys(data.inputs));
+    data.addValuePair();
+    const added = Object.keys(data.inputs).filter((k) => !before.has(k));
+    const aKey = added[0];
+    if (aKey) pushRowAddUndo(data, added, () => data.removeValuePair(aKey));
+    await getArea()?.update("node", data.id);
+    await processGraph();
+  }
+
+  async function removePair(aKey: string, bKey: string) {
+    const editor = getEditor();
+    if (editor) {
+      for (const c of editor.getConnections()) {
+        if (c.target === data.id && (c.targetInput === aKey || c.targetInput === bKey)) {
+          await editor.removeConnection(c.id);
+        }
+      }
+    }
+    pushRowRemovalUndo(data, [aKey, bKey], () => data.removeValuePair(aKey));
+    data.removeValuePair(aKey);
+    await getArea()?.update("node", data.id);
+    bumpConnectionVersion();
+    await processGraph();
+  }
+
   return (
     <NodeShell node={data} emit={emit}>
-      <InlineInputs node={data} emit={emit} />
-      <OpSelect value={op} options={FILTER_OP_OPTIONS} onChange={setOp} />
-      {TEXT_MATCH_OPS.has(op) && (
-        <label
-          title="Exact-case matching — off matches text like Excel's ="
-          style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, padding: "1px 0", cursor: "pointer" }}
-          onPointerDown={(e) => e.stopPropagation()}
-          onMouseDown={(e) => e.stopPropagation()}
-        >
-          <input
-            type="checkbox"
-            checked={matchCase}
-            onChange={(e) => setMatchCase(e.target.checked)}
-            style={{ width: 13, height: 13, flexShrink: 0 }}
-          />
-          Match case
-        </label>
+      {collapsed ? (
+        <CollapsedInputPill node={data} emit={emit} keys={["frame", ...pairs.flat()]} />
+      ) : (
+        <>
+          <InlineInputs node={data} emit={emit} keys={["frame"]} />
+          {pairs.length > 1 && (
+            <SegToggle value={combine} options={FILTER_COMBINE_OPTIONS} onChange={setCombine} />
+          )}
+          {pairs.map(([colKey, valKey], i) => {
+            const id = colKey.slice(6);
+            const c = rowCfg(id);
+            return (
+              <div key={colKey} className="solenoid-node__pair-group">
+                <MeasuredSocketRow side="input" socketKey={colKey} nodeId={data.id} emit={emit} payload={data.inputs[colKey]!.socket}>
+                  <span className="solenoid-node__io-label">Column{pairs.length > 1 ? ` ${i + 1}` : ""}</span>
+                  {connected.has(colKey) ? (
+                    <span className="solenoid-node__io-wired" title="Driven by an incoming cable">↩ wired</span>
+                  ) : (
+                    <InlineTextField value={strLiterals[colKey]} onChange={(v) => setStr(colKey, v)} />
+                  )}
+                  {pairs.length > 1 && (
+                    <button
+                      type="button"
+                      className="solenoid-node__row-remove"
+                      title="Remove this condition"
+                      onClick={(e) => { e.stopPropagation(); void removePair(colKey, valKey); }}
+                    >
+                      ×
+                    </button>
+                  )}
+                </MeasuredSocketRow>
+                <OpSelect value={c.op} options={FILTER_OP_OPTIONS} onChange={(op) => updateCfg(id, { op })} />
+                <MeasuredSocketRow side="input" socketKey={valKey} nodeId={data.id} emit={emit} payload={data.inputs[valKey]!.socket}>
+                  <span className="solenoid-node__io-label">Value</span>
+                  {connected.has(valKey) ? (
+                    <span className="solenoid-node__io-wired" title="Driven by an incoming cable">↩ wired</span>
+                  ) : (
+                    <InlineTextField value={strLiterals[valKey]} onChange={(v) => setStr(valKey, v)} />
+                  )}
+                  {TEXT_MATCH_OPS.has(c.op) && (
+                    <button
+                      type="button"
+                      title="Match case — off matches text like Excel's ="
+                      aria-pressed={c.matchCase ?? false}
+                      onClick={(e) => { e.stopPropagation(); updateCfg(id, { matchCase: !c.matchCase }); }}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      style={{
+                        flexShrink: 0, fontSize: 11, lineHeight: 1, padding: "3px 5px",
+                        border: "1px solid var(--border)", borderRadius: 4, cursor: "pointer",
+                        background: c.matchCase ? "var(--accent)" : "transparent",
+                        color: c.matchCase ? "var(--surface)" : "var(--text-muted)",
+                      }}
+                    >
+                      Aa
+                    </button>
+                  )}
+                </MeasuredSocketRow>
+              </div>
+            );
+          })}
+          <button
+            type="button"
+            className="solenoid-node__add-input"
+            onClick={(e) => { e.stopPropagation(); void addPair(); }}
+          >
+            + Add condition
+          </button>
+        </>
       )}
       <FrameDisplay frame={data.cachedResult} label={data.label} />
     </NodeShell>

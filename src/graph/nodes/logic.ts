@@ -63,7 +63,7 @@ function isSet(inputs: Record<string, unknown[] | undefined>, literals: Record<s
 // the two input keys `${prefixA}${i}` / `${prefixB}${i}`. On load/paste the node
 // rebuilds the exact pair ids present in the captured input keys (so literals +
 // cables line up); `default`/`expr` and the like are ignored by the prefix match.
-function pairIdsFromKeys(valueKeys: string[] | undefined, prefixA: string): number[] {
+export function pairIdsFromKeys(valueKeys: string[] | undefined, prefixA: string): number[] {
   if (!valueKeys) return [];
   const ids: number[] = [];
   for (const k of valueKeys) {

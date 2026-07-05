@@ -14,8 +14,9 @@ import {
   pivotFrame, nestFrame, unnestCube,
   splitColumn, addIndexColumn, decisionMatrix, decisionCriteria, decisionSensitivity,
   lookupFrameCell, lookupCubeCell, reconcileFrames,
-  type FilterOp, type JoinHow, type AsofDirection, type AggOp, type DecisionNormalize, type LookupMatchMode, type ReconcileSummary,
+  type FilterOp, type FilterCond, type FilterCombine, type JoinHow, type AsofDirection, type AggOp, type DecisionNormalize, type LookupMatchMode, type ReconcileSummary,
 } from "../frameVerbs";
+import { pairIdsFromKeys } from "./logic";
 import type { PivotSpec } from "../frameVerbs";
 import { runFrameUnary, runFrameJoin, runFrameAppend, readFrame, collectPreview, dropFrameRef, isFrameRef, frameBackend, materialize, flushRef, type FrameInput, type FrameRef } from "../frameBackend";
 import type { CubeValue, CubeCell } from "../frame";
@@ -187,41 +188,95 @@ export class SortFrameNode extends ClassicPreset.Node {
 }
 
 // ─── FILTER FRAME ──────────────────────────────────────────────────────────────
-// Keep rows whose named column passes a predicate (verb: filterRows). Chain for
-// AND. `op` is an OpSelect (9 comparisons + text predicates); the value is typed
-// (coerced per the column's type by the predicate). Blanks/errors are dropped.
-// Text matching (string eq/neq + contains/startsWith/endsWith) ignores case by
-// default — Excel's `=` — with `matchCase` as the exact-match escape hatch.
+// Keep rows passing extensible CONDITION rows combined with AND/OR (verb:
+// filterMulti, B-2 — SQL WHERE made visual). Each row: a column, an op (9
+// comparisons + text predicates), a value, and its OWN Match-case flag (text
+// matching ignores case by default — Excel's `=`). Pair `id` owns the wireable
+// `column${id}` / `value${id}` inputs plus a `condConfig[id]` {op, matchCase}.
+// A row missing its column or value is "not written yet" → EXCLUDED from the
+// predicate (the audit-16 policy, now per-row); no complete rows = pass-through.
+// Blanks/errors in the data fail that row's condition (under OR another
+// condition can still keep the row).
+
+export interface FilterCondConfig { op: FilterOp; matchCase?: boolean }
 
 export class FilterFrameNode extends ClassicPreset.Node {
   label: string;
-  op: FilterOp;
-  matchCase: boolean;
+  combine: FilterCombine;
+  /** Per-pair {op, matchCase}, keyed by the pair id (the `column${id}` suffix). */
+  condConfig: Record<string, FilterCondConfig> = {};
+  nextPairId = 0;
+  readonly pairLabels: [string, string] = ["Column", "Value"];
   cachedResult: FrameValue | SolError | null = null;
-  stringLiterals: Record<string, string> = { column: "", value: "" };
-  width = 200; height = 205;
+  stringLiterals: Record<string, string> = {};
+  width = 210; height = 240;
 
-  constructor(init?: { label?: string; op?: FilterOp; matchCase?: boolean }) {
+  constructor(init?: {
+    label?: string; combine?: FilterCombine;
+    condConfig?: Record<string, FilterCondConfig>; valueKeys?: string[];
+  }) {
     super("FilterFrame");
     this.label = init?.label ?? "Filter Rows";
-    this.op = init?.op ?? "gt";
-    this.matchCase = init?.matchCase ?? false;
+    this.combine = init?.combine ?? "and";
     this.addInput("frame", frameIn("Frame"));
-    this.addInput("column", strIn("Column"));
-    this.addInput("value", strIn("Value"));
+    const ids = pairIdsFromKeys(init?.valueKeys, "column");
+    if (ids.length) {
+      // Restore saved rows; copy only LIVE ids' config (prunes entries orphaned
+      // by a removed row — removal keeps them for undo, reload drops them).
+      for (const id of ids) this.addPairWithId(id);
+      for (const id of ids) {
+        const cfg = init?.condConfig?.[String(id)];
+        if (cfg) this.condConfig[String(id)] = { ...cfg };
+      }
+    } else {
+      this.addValuePair();
+    }
     this.addOutput("frame", frameOut("Kept"));
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[]; column?: string[]; value?: string[] }) {
+  private addPairWithId(id: number): void {
+    this.addInput(`column${id}`, strIn(`Column ${id + 1}`));
+    this.addInput(`value${id}`, strIn(`Value ${id + 1}`));
+    if (!this.condConfig[String(id)]) this.condConfig[String(id)] = { op: "gt" };
+    this.nextPairId = Math.max(this.nextPairId, id + 1);
+  }
+
+  /** Ordered (columnKey, valueKey) pairs currently present, in insertion order. */
+  valuePairKeys(): Array<[string, string]> {
+    return Object.keys(this.inputs)
+      .filter((k) => k.startsWith("column"))
+      .map((k) => { const id = k.slice(6); return [`column${id}`, `value${id}`] as [string, string]; });
+  }
+
+  addValuePair(): void {
+    this.addPairWithId(this.nextPairId);
+  }
+
+  removeValuePair(aKey: string): void {
+    const id = aKey.slice(6);
+    this.removeInput(`column${id}`);
+    this.removeInput(`value${id}`);
+    delete this.stringLiterals[`column${id}`];
+    delete this.stringLiterals[`value${id}`];
+    // condConfig[id] is kept: row-removal undo re-adds the same input keys, and
+    // the surviving entry restores its op/matchCase; reload prunes orphans.
+  }
+
+  async data(inputs: { frame?: (FrameInput | null)[]; [k: string]: unknown[] | undefined }) {
     const f = inputs.frame?.[0] ?? null;
-    const col = (inputs.column?.[0] ?? this.stringLiterals.column ?? "").trim();
-    const val = inputs.value?.[0] ?? this.stringLiterals.value ?? "";
     if (f == null) return emitFrame(this, beginPass(this), null);
-    // An empty value (the default!) is an incomplete predicate → pass through,
-    // same as an empty column. The engines used to see it and DIVERGE — JS
-    // compared numeric columns against Number("")=0, Rust against NaN (audit
-    // finding 16).
-    return emitFrame(this, beginPass(this), col === "" || val.trim() === "" ? await readFrame(f) : await runFrameUnary(f, { kind: "filter", column: col, op: this.op, value: val, matchCase: this.matchCase }));
+    const conditions: FilterCond[] = [];
+    for (const [colKey, valKey] of this.valuePairKeys()) {
+      const id = colKey.slice(6);
+      const col = String((inputs[colKey] as string[] | undefined)?.[0] ?? this.stringLiterals[colKey] ?? "").trim();
+      const val = (inputs[valKey] as string[] | undefined)?.[0] ?? this.stringLiterals[valKey] ?? "";
+      if (col === "" || String(val).trim() === "") continue;
+      const cfg = this.condConfig[id];
+      conditions.push({ column: col, op: cfg?.op ?? "gt", value: val as FrameCell, matchCase: cfg?.matchCase ?? false });
+    }
+    return emitFrame(this, beginPass(this), conditions.length === 0
+      ? await readFrame(f)
+      : await runFrameUnary(f, { kind: "filterMulti", combine: this.combine, conditions }));
   }
 }
 
