@@ -27,20 +27,33 @@ dev-notes "OVERNIGHT SESSION SUMMARY"; this block continues it.
    (Note: incremental Customer→Order→LineItem chaining was ALREADY done via the parent-cube
    path; this is the complementary compositional variant. Verb lives in `frame.ts`, not
    `frameVerbs.ts` as the queue guessed.)
-2. ~~**ELK Tidy integration guard**~~ — DONE (Ready to commit). `layoutTidyIntegration.test.ts`:
-   drives elkjs (app's ELK options) → `solveStandoffs` → `separateOverlaps`, asserting no-overlap
-   through the standoff-cluster super-node path + a group box. Ungated (elkjs ~80ms under vitest).
-   The full DOM-coupled `arrangeFn` can't run headless — documented. _(Agent 2 queue empty.)_
+2. ~~**ELK Tidy integration guard**~~ — DONE (committed `d655311`).
+3. **Note frontmatter socket removal undo-coherence** (Lead's audit flag, backlog ~line
+   720 — the OUTPUT-side sibling of the row-undo fix you can crib from `b0066df`):
+   a blur that removes a YAML key drops the socket + cable; Ctrl+Z pops the cable-restore
+   entry FIRST (body-commit entry predates the reconcile's removeConnection entries) →
+   transient cable-to-missing-socket; heals only IF undoing the body re-runs the socket
+   reconcile. FIRST verify the exact behavior by reading `NoteNode.tsx`'s reconcile +
+   the body editor's draft-commit path, THEN apply the `pushRowRemovalUndo`-style
+   entry-ordering treatment (helpers are exported from `ExtensibleInputs.tsx`; outputs
+   need the output-side analog). If it turns out NOT reproducible (e.g. apply() already
+   re-reconciles before the cable entry pops), just document that in dev-notes + flip the
+   backlog flag — don't force a fix.
+4. **Backlog verification sweep** (audit, docs-only): walk `docs/backlog.md`'s remaining
+   UNCHECKED `[ ]` items and verify each claim against the code — flip anything already
+   done (cite where), annotate anything stale/superseded. The doc-rot rule says verify
+   against CODE, not memory. Report a one-line tally on the board.
 
 **Agent 3 (mechanical + git — commit duty first, if your loop is back):**
 1. Commit duty per the standing rule (diff named files, project-style message, never push).
 2. ~~architecture.md file-map reconcile~~ — DONE (`70e3c0d` + `3c541dd`, the latter folding in
    Agent 1's diffed-vs-tree gap list).
-3. **dev-notes archival sweep** (the standing lean-log policy, see the file's own tail
-   note + docs/archive/README.md): move entries dated 2026-06-30 and EARLIER from
-   `docs/dev-notes.md` into `docs/archive/dev-notes-history.md` (append, keep order),
-   leaving the live window = 2026-07-01 onward. Pure move, no rewording; update the
-   archive README's date range line.
+3. ~~dev-notes archival sweep~~ — DONE (`d6914fa`). Moved 2026-06-19 through 2026-06-30
+   (92 sections) into `archive/dev-notes-history.md`, verified byte-for-byte against the
+   source range; heading levels left untouched (the first sweep already mixed `##`/`###`,
+   so demoting would've been the inconsistent move, not the pure one — caught before
+   committing). Updated the archive README + CLAUDE.md date-range lines. Queue empty —
+   idle & polling for commit duty.
 
 ## Ready to commit
 
@@ -49,8 +62,8 @@ _(empty)_
 ## Recently done
 
 (older entries trimmed — full history in `git log`)
-- Agent 3 — architecture.md file-map reconcile (own queued task, 2 passes). Committed `70e3c0d`, `3c541dd`.
 - Agent 2 — Nest Join accepts a CUBE child (Queue #1). Committed `313f03a`.
 - Agent 1 — extensible-row add/remove undo (audit find). Committed `b0066df`.
 - Agent 1 — guarded clipboard writes (reviewer-D flagged). Committed `cda8297`.
 - Agent 2 — ELK Tidy integration guard (Queue #2). Committed `d655311`.
+- Agent 3 — dev-notes archival sweep (own queued task). Committed `d6914fa`.
