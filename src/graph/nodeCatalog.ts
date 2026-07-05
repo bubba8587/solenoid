@@ -4,7 +4,7 @@
 
 import {
   AngleDialNode, SlicerNode, CableSwitchNode, DatePickerNode, XYPadNode,
-  SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode,
+  SparklineNode, ChartNode, HistogramNode, KpiNode, BulletNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode,
   NumberInputNode, ArithmeticNode, DisplayNode, ComparisonNode, MathFnNode,
   FormatControllerNode, ExpressionNode, RegexNode, GroupByNode,
   ClampNode, BooleanOpNode, NotNode, IfNode, ConduitNode, CastNode, ConstantNode, MRoundNode,
@@ -232,10 +232,13 @@ export const NODE_CATALOG: CatalogEntry[] = [
         type: "category", label: "Visuals", description: "Inline charts and readouts — plot or visualize a value at the end of a chain. All pass-through.",
         children: [
           { type: "sparkline", label: "Sparkline", description: "A small inline chart of a list — line, area, or column. Pass-through, so you can keep wiring after it.   (Excel: SPARKLINE)", create: () => new SparklineNode(), parity: false },
-          { type: "chart",     label: "Chart",     description: "Plot a list — column, bar, line, or area. Wire a Chart Builder into Options to style it. Pass-through.", create: () => new ChartNode(), parity: false },
+          { type: "chart",     label: "Chart",     description: "Plot a list — column, bar, line, area, scatter, pie, radar, radial, or funnel. Wire a Chart Builder into Options to style it. Emits a chart value a Report can embed.", create: () => new ChartNode(), parity: false, keywords: "chart plot graph column bar line area scatter pie radar radial funnel" },
+          { type: "histogram", label: "Histogram", description: "Bin a list of numbers into equal-width buckets and plot the counts as columns. Set the bin count on the node. Emits a chart value a Report can embed.", create: () => new HistogramNode(), parity: false, keywords: "histogram bins distribution frequency FREQUENCY buckets" },
           { type: "chart-builder", label: "Chart Builder", description: "Style a Chart — title, axes, colour, grid, range, line, markers — and output an options string for its Options socket. Fields follow matplotlib.", create: () => new ChartBuilderNode(), parity: false },
           { type: "mermaid",   label: "Mermaid",   description: "Draw a diagram from Mermaid.js text — flowchart, sequence, class, state, gantt, pie, and more. Type the source on the node (or wire a Text node into it) and its figure flows out a chart socket, so a Report renders it inline where its =name ref sits.", create: () => new MermaidNode(), parity: false, keywords: "mermaid diagram flowchart flow chart graph sequence class state gantt pie mindmap uml erd tree" },
           { type: "gauge",     label: "Gauge",     description: "Show a value on a radial dial between Min and Max — a speedometer-style readout. Pass-through.", create: () => new GaugeNode(), parity: false },
+          { type: "kpi",       label: "KPI card",  description: "A big-number stat card with a ↑/↓ delta vs a prior value, coloured green/red. Emits a chart value a Report can embed.", create: () => new KpiNode(), parity: false, keywords: "kpi stat card metric scorecard delta variance big number" },
+          { type: "bullet",    label: "Bullet",    description: "A bullet graph — a value bar on a min-to-max track with a target tick. A compact gauge alternative. Emits a chart value a Report can embed.", create: () => new BulletNode(), parity: false, keywords: "bullet graph target progress goal gauge kpi" },
           { type: "heatmap-cell", label: "Heatmap", description: "Colour every cell of a Table on a cool-to-warm scale across its data range, like conditional formatting. Pass-through.", create: () => new HeatmapCellNode(), parity: false },
         ],
       },

@@ -1,7 +1,7 @@
 import { ClassicPreset } from "rete";
 import { numIn, numListIn, numListOut, numOut, tableIn, tableOut, strIn, strOut, chartOut } from "./shared";
 import { parseChartOptions, serializeChartOptions, type ChartOptions } from "./chartOptions";
-import type { ChartValue } from "../chartValue";
+import type { ChartValue, KpiPayload, BulletPayload } from "../chartValue";
 import type { MermaidValue } from "../mermaidValue";
 
 // ─── Visual output nodes ────────────────────────────────────────────────────
@@ -48,13 +48,20 @@ export class SparklineNode extends ClassicPreset.Node {
 // A larger chart with axes for a list — column / bar / line / area via an op
 // dropdown (the composable "one node, op selector" pattern).
 
-export type ChartOp = "column" | "bar" | "line" | "area";
+export type ChartOp =
+  | "column" | "bar" | "line" | "area"
+  | "pie" | "radar" | "radialbar" | "funnel" | "scatter";
 
 export const CHART_OP_META = {
-  column: { label: "Column" },
-  bar:    { label: "Bar" },
-  line:   { label: "Line" },
-  area:   { label: "Area" },
+  column:    { label: "Column" },
+  bar:       { label: "Bar" },
+  line:      { label: "Line" },
+  area:      { label: "Area" },
+  pie:       { label: "Pie" },
+  radar:     { label: "Radar" },
+  radialbar: { label: "Radial" },
+  funnel:    { label: "Funnel" },
+  scatter:   { label: "Scatter" },
 } satisfies Record<ChartOp, { label: string }>;
 
 export class ChartNode extends ClassicPreset.Node {
@@ -94,6 +101,68 @@ export class ChartNode extends ClassicPreset.Node {
       values: this.cachedResult,
       options: this.chartOptions,
       title: this.chartOptions.title || this.label || "Chart",
+    };
+    return { chart };
+  }
+}
+
+// ─── Histogram ────────────────────────────────────────────────────────────────
+// Bins a numeric list into `bins` equal-width buckets and plots the counts as a
+// column chart. A terminal figure like Chart (emits the chart VALUE), so a Report
+// embeds it. Bin ranges are equal-width over the data's own [min, max]; the last
+// bin is closed so the maximum lands in it.
+
+/** Count how many values fall in each of `k` equal-width bins over [min,max]. */
+export function histogramBins(vals: (number | null)[], k: number): number[] {
+  const nums = vals.filter((x): x is number => typeof x === "number" && Number.isFinite(x));
+  const bins = Math.max(1, Math.min(100, Math.floor(k) || 1));
+  if (nums.length === 0) return [];
+  const min = Math.min(...nums);
+  const max = Math.max(...nums);
+  const counts = new Array<number>(bins).fill(0);
+  if (min === max) { counts[0] = nums.length; return counts; } // one spike
+  const w = (max - min) / bins;
+  for (const x of nums) {
+    let idx = Math.floor((x - min) / w);
+    if (idx >= bins) idx = bins - 1; // closed last bin
+    if (idx < 0) idx = 0;
+    counts[idx]++;
+  }
+  return counts;
+}
+
+export class HistogramNode extends ClassicPreset.Node {
+  label: string;
+  literals: Record<string, number> = { bins: 10 };
+  chartOptions: ChartOptions = {};
+  stringLiterals: Record<string, string> = {};
+  cachedResult: number[] | null = null;
+  width = 240;
+  height = 240;
+
+  constructor(init?: { label?: string }) {
+    super("Histogram");
+    this.label = init?.label ?? "Histogram";
+    this.addInput("values", numListIn("Values"));
+    this.addInput("bins", numIn("Bins"));
+    this.addInput("options", strIn("Options"));
+    this.addOutput("chart", chartOut("Chart"));
+  }
+
+  data(inputs: { values?: (number | number[])[]; bins?: number[]; options?: string[] }): { chart: ChartValue } {
+    const raw = inputs.values?.[0] ?? null;
+    const list = Array.isArray(raw) ? raw : raw === null ? [] : [raw];
+    const bins = inputs.bins?.[0] ?? this.literals.bins ?? 10;
+    this.literals.bins = bins;
+    const counts = histogramBins(list as (number | null)[], bins);
+    this.cachedResult = counts;
+    this.chartOptions = parseChartOptions(inputs.options?.[0] ?? this.stringLiterals.options ?? null);
+    const chart: ChartValue = {
+      __chart: true,
+      op: "column",
+      values: counts,
+      options: this.chartOptions,
+      title: this.chartOptions.title || this.label || "Histogram",
     };
     return { chart };
   }
@@ -166,6 +235,83 @@ export class GaugeNode extends ClassicPreset.Node {
     this.literals.max = inputs.max?.[0] ?? this.literals.max ?? 100;
     this.cachedResult = v;
     return { result: v };
+  }
+}
+
+// ─── KPI / Stat card ──────────────────────────────────────────────────────────
+// A big-number readout with a ↑/↓ delta vs a prior value. Emits a chart VALUE so a
+// Report embeds it. `goodUp` (1/0) picks whether a rise is green (revenue) or red
+// (cost); `unit` is a short suffix typed on the card.
+
+export class KpiNode extends ClassicPreset.Node {
+  label: string;
+  literals: Record<string, number> = { value: 0, prev: 0, goodUp: 1 };
+  stringLiterals: Record<string, string> = { unit: "" };
+  chartOptions: ChartOptions = {};
+  cachedPayload: KpiPayload | null = null;
+  width = 180;
+  height = 170;
+
+  constructor(init?: { label?: string }) {
+    super("KPI");
+    this.label = init?.label ?? "KPI";
+    this.addInput("value", numIn("Value"));
+    this.addInput("prev", numIn("Prior"));
+    this.addOutput("chart", chartOut("Chart"));
+  }
+
+  data(inputs: { value?: number[]; prev?: number[] }): { chart: ChartValue } {
+    const value = inputs.value?.[0] ?? this.literals.value ?? null;
+    const prev = inputs.prev?.[0] ?? this.literals.prev ?? null;
+    if (inputs.value?.[0] === undefined) this.literals.value = value ?? 0;
+    if (inputs.prev?.[0] === undefined) this.literals.prev = prev ?? 0;
+    const payload: KpiPayload = {
+      kind: "kpi",
+      value,
+      prev,
+      unit: this.stringLiterals.unit ?? "",
+      goodUp: (this.literals.goodUp ?? 1) !== 0,
+    };
+    this.cachedPayload = payload;
+    return {
+      chart: { __chart: true, op: "kpi", values: value, payload, options: this.chartOptions, title: this.label || "KPI" },
+    };
+  }
+}
+
+// ─── Bullet graph ─────────────────────────────────────────────────────────────
+// A value bar on a min..max track with a target tick (Stephen Few's bullet graph —
+// a compact gauge alternative). Emits a chart VALUE so a Report embeds it.
+
+export class BulletNode extends ClassicPreset.Node {
+  label: string;
+  literals: Record<string, number> = { value: 0, target: 80, max: 100 };
+  chartOptions: ChartOptions = {};
+  cachedPayload: BulletPayload | null = null;
+  width = 240;
+  height = 130;
+
+  constructor(init?: { label?: string }) {
+    super("Bullet");
+    this.label = init?.label ?? "Bullet";
+    this.addInput("value", numIn("Value"));
+    this.addInput("target", numIn("Target"));
+    this.addInput("max", numIn("Max"));
+    this.addOutput("chart", chartOut("Chart"));
+  }
+
+  data(inputs: { value?: number[]; target?: number[]; max?: number[] }): { chart: ChartValue } {
+    const value = inputs.value?.[0] ?? this.literals.value ?? null;
+    const target = inputs.target?.[0] ?? this.literals.target ?? null;
+    const max = inputs.max?.[0] ?? this.literals.max ?? 100;
+    if (inputs.value?.[0] === undefined) this.literals.value = value ?? 0;
+    if (inputs.target?.[0] === undefined) this.literals.target = target ?? 0;
+    if (inputs.max?.[0] === undefined) this.literals.max = max;
+    const payload: BulletPayload = { kind: "bullet", value, target, min: 0, max };
+    this.cachedPayload = payload;
+    return {
+      chart: { __chart: true, op: "bullet", values: value, payload, options: this.chartOptions, title: this.label || "Bullet" },
+    };
   }
 }
 

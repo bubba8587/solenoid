@@ -1,10 +1,10 @@
 // Every recharts-using renderer, in ONE module — so recharts lands in a single
 // lazily-loaded chunk. Nothing here is imported statically by the app; chartView.tsx
 // wraps these in React.lazy + Suspense. recharts-free helpers live in chartCore.ts.
-import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, RadialBarChart, RadialBar, PolarAngleAxis, Cell } from "recharts";
+import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, RadialBarChart, RadialBar, PolarAngleAxis, PolarGrid, PolarRadiusAxis, RadarChart, Radar, PieChart, Pie, ScatterChart, Scatter, FunnelChart, Funnel, LabelList, Cell } from "recharts";
 import "./chartView.css";
 import { formatScalar } from "./format";
-import { VIZ, useChartColors, type ChartShape } from "./chartCore";
+import { VIZ, useChartColors, useSeriesColors, type ChartShape } from "./chartCore";
 import type { ChartOptions } from "../nodes/chartOptions";
 
 // A hover readout that shows the value at a sensible precision (formatScalar),
@@ -27,6 +27,19 @@ function ChartTooltip({ active, payload, label }: {
 
 const TIP = <Tooltip isAnimationActive={false} cursor={{ stroke: "rgba(128,128,128,0.5)", fill: "rgba(128,128,128,0.12)" }} content={<ChartTooltip />} />;
 
+// A slice/segment readout for the polar + categorical charts (pie / radial / funnel),
+// where an x-axis index is meaningless — show only the formatted value.
+function SliceTooltip({ active, payload }: { active?: boolean; payload?: { value?: number }[] }) {
+  if (!active || !payload || !payload.length) return null;
+  const v = payload[0]?.value;
+  return (
+    <div style={{ fontSize: 11, padding: "2px 6px", background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: 4, color: "var(--text)" }}>
+      {typeof v === "number" ? formatScalar(v) : v}
+    </div>
+  );
+}
+const SLICE_TIP = <Tooltip isAnimationActive={false} content={<SliceTooltip />} />;
+
 /**
  * One recharts renderer for both the inline node charts and the expand popup.
  * `axes` adds gridlines + numbered axes (the big "Chart" look); without it you
@@ -45,6 +58,8 @@ export function ChartView({
   opts?: ChartOptions;
 }) {
   const { grid, axis } = useChartColors();
+  const seriesColors = useSeriesColors();
+  const paint = (i: number) => seriesColors[i % seriesColors.length];
   const AXIS = { fontSize: 9, fill: axis } as const;
   const tickFmt = (i: number | string) => String(Number(i) + 1);
 
@@ -103,6 +118,60 @@ export function ChartView({
         {TIP}
         <Bar dataKey="v" fill={color} fillOpacity={fillAlpha < 1 && opts?.alpha !== undefined ? fillAlpha : 1} isAnimationActive={false} />
       </BarChart>
+    );
+  } else if (op === "pie") {
+    // Each value is a slice, coloured from the categorical set.
+    const r = Math.max(20, Math.min(width, chartH) / 2 - 6);
+    chart = (
+      <PieChart width={width} height={chartH}>
+        <Pie data={series} dataKey="v" nameKey="i" cx="50%" cy="50%" outerRadius={r} stroke="var(--surface)" isAnimationActive={false}>
+          {series.map((_, i) => <Cell key={i} fill={paint(i)} />)}
+        </Pie>
+        {SLICE_TIP}
+      </PieChart>
+    );
+  } else if (op === "radar") {
+    // A polygon over the values on a shared radial scale.
+    chart = (
+      <RadarChart width={width} height={chartH} data={series} cx="50%" cy="50%" outerRadius="72%">
+        <PolarGrid stroke={grid} />
+        <PolarAngleAxis dataKey="i" tick={AXIS} tickFormatter={tickFmt} />
+        <PolarRadiusAxis tick={AXIS} axisLine={false} tickCount={4} domain={yDomain} />
+        {TIP}
+        <Radar dataKey="v" stroke={color} fill={color} fillOpacity={fillAlpha} strokeWidth={lw} isAnimationActive={false} dot={showMarkers ? { r: 2 } : false} />
+      </RadarChart>
+    );
+  } else if (op === "radialbar") {
+    // Concentric bars, one per value, coloured categorically.
+    chart = (
+      <RadialBarChart width={width} height={chartH} cx="50%" cy="50%" innerRadius="18%" outerRadius="92%" data={series} startAngle={90} endAngle={-270}>
+        <RadialBar dataKey="v" background={{ fill: grid }} cornerRadius={3} isAnimationActive={false}>
+          {series.map((_, i) => <Cell key={i} fill={paint(i)} />)}
+        </RadialBar>
+        {SLICE_TIP}
+      </RadialBarChart>
+    );
+  } else if (op === "funnel") {
+    // Descending stages — top value widest.
+    chart = (
+      <FunnelChart width={width} height={chartH}>
+        {SLICE_TIP}
+        <Funnel dataKey="v" data={series} isAnimationActive={false}>
+          <LabelList position="right" dataKey="v" fill={axis} stroke="none" fontSize={10} />
+          {series.map((_, i) => <Cell key={i} fill={paint(i)} />)}
+        </Funnel>
+      </FunnelChart>
+    );
+  } else if (op === "scatter") {
+    // Index (x) vs value (y) — a dot plot for a single series.
+    chart = (
+      <ScatterChart width={width} height={chartH} margin={margin}>
+        {showGrid && <CartesianGrid stroke={grid} />}
+        {axes && <XAxis type="number" dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} label={xLabel} height={xLabel ? 28 : undefined} />}
+        {axes && <YAxis type="number" dataKey="v" tick={AXIS} tickLine={false} width={yAxisW} domain={yDomain} label={yLabel} />}
+        {TIP}
+        <Scatter data={series} fill={color} isAnimationActive={false} />
+      </ScatterChart>
     );
   } else {
     // "column" — vertical bars.

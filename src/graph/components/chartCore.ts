@@ -3,10 +3,26 @@
 // bundle — recharts lives only in the lazily-loaded chartRender.tsx chunk.
 import { useSyncExternalStore } from "react";
 import { appThemeStore } from "../appTheme";
+import { resolveColor, type PaletteSlot } from "../palette";
 
 export const VIZ = "#e9b63a"; // the "display" kind accent
 
-export type ChartShape = "line" | "area" | "bar" | "column";
+// The chart types the shared ChartView renders. The single-series ones
+// (line/area/bar/column + the categorical/polar set below) all read the flat
+// `{i,v}[]` series `toSeries` produces; they differ only in the recharts shape.
+export type ChartShape =
+  | "line" | "area" | "bar" | "column"       // cartesian (axes-aware)
+  | "pie" | "radar" | "radialbar" | "funnel" // categorical / polar
+  | "scatter";                                // index-vs-value dot plot
+
+// The categorical set for pie slices / multi-series — the SAME palette-slot order
+// MermaidView uses (leads with the vivid families, gray last), so a chart and a
+// wired-alongside diagram colour their series identically, and a palette switch
+// re-colours both. Resolved through the ACTIVE palette at render time.
+const SERIES_SLOTS: PaletteSlot[] = [
+  "blue", "gold", "teal", "pink", "green", "purple",
+  "sky", "vermilion", "lime", "violet", "amber", "gray",
+];
 
 // recharts sets colours as SVG attributes, where CSS var() doesn't resolve — so
 // read the theme's resolved values and re-read when the theme flips. (Tooltip is
@@ -20,6 +36,13 @@ export function useChartColors() {
     axis: get("--text-dim", "#888"),
     track: get("--border-subtle", "#2a2a2a"),
   };
+}
+
+/** The resolved categorical palette (12 hues), re-read when the theme/palette
+ *  flips (appThemeStore also bumps on a palette switch). Index with `i % 12`. */
+export function useSeriesColors(): string[] {
+  useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
+  return SERIES_SLOTS.map((slot) => resolveColor(slot));
 }
 
 /** Coerce a pass-through value to a clean numeric series for plotting. */
