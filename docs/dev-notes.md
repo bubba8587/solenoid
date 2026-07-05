@@ -25,6 +25,10 @@ stale design-time estimate.
   stacked → anchor leftmost, push out at min gap (rightmost moves). Also deduped the move
   set so a node under two seeds (group+member, cluster) isn't translated twice. Pure
   `alignDeltas`/`distributeDeltas` extracted + unit-tested (`selectionOps.test.ts`).
+  Align-center palette labels name the END EFFECT (author): `center-h` aligns the
+  horizontal centres → nodes stack VERTICALLY, so it's labelled "Align center
+  (vertical)", and vice versa. `separateOverlaps` backstop declined (author 2026-07-05):
+  align/distribute/Tidy own overlap, no standalone command/load-hook.
 - **Still TODO (the reshuffling piece):** a top-level `separateOverlaps` backstop after
   global Tidy / on load, so authored seeds + tidy output can't overlap (author's "no
   overlaps ever"). The pure de-overlap (`groupPushCore.separateOverlaps`) exists and is
