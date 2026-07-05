@@ -2,6 +2,46 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### OVERNIGHT SESSION SUMMARY (2026-07-05, ~03:30–08:30 — 3-agent autonomous crew)
+22 commits on develop (NOT pushed — local session). Every commit: tsc clean + full
+vitest green (2044 → 2110 tests, +67); cargo 46/46; production build healthy (main
+chunk ~2.0 MB after the ELK split); desktop release exe builds. All 26 seeds swept
+crash-free through the headless runner. Detailed entries for each item are below this
+one; per-item "author eyeball" notes are inline there.
+
+**Features built (all previously author-approved):**
+- Frame Filter case-insensitive text matching + "Match case" (the D12 build) — `9ffc8e0`
+- Coalesce/Fill full N-ary (extensible Else rows) — `540bba0`
+- Per-doc autosave keys (per-doc two-slot pairs + light index) — `ce94761`
+- Align/distribute selection action bar (A2) — `3172bc8` · ELK lazy-loaded, ~1.5 MB out
+  of the main chunk (A2) — `4635e54`
+- Cube-cell XLOOKUP on Frame Lookup (A2) — `5d4eac6` · drill-in dropped-cable notice
+  (A2) — `d06517d` · quick-wire memoization (A2) — `1a10863`
+- Popup "Go to node" — `4e75b68` · cargo-audit CI workflow (A3) — `7c069a7`
+
+**Audit program (4 review agents + Lead's own passes; every confirmed finding fixed
+same-night):** sketch bookkeeping leak `75c62c9`; round 2 `3141e10` (presenter left all
+canvas shortcuts live; docked-Report squeeze orphaned on delete/doc-switch; Expect
+blind to frames; model fuzz no-op in manual mode + fired real alerts; Problems relapse
+suppressed forever; textForm broke SAVING on a frontmatter key with a space); round 3
+`ce22c73` (composite drill-in leaked LIVE React roots — auto-refresh intervals ran
+forever after close/delete; scrub-unmount cursor lock; stale add-menu on doc switch;
+semantic zoom invisible in the canvas renderer; Write double-click race;
+connectionStore.forget never wired) + the add-menu refinement `c22a6a3` (close on doc-ID
+change only — autosave's notify was yanking open menus); Reconcile honesty fixes (A2)
+`94bcbd9` (skipped-key rows surfaced; PVM excludes errored cells).
+
+**New standing guards (A2):** `layoutInvariants.test.ts` (~1650 seeded fixtures — the
+no-overlaps rule is now machine-checked; NO violation found) `11397dd`;
+`formulaDivergence.test.ts` (the node-vs-Formula.js sweep is now a durable CI tripwire;
+no new drift) `253727a`.
+
+**Needs an author decision (queued, not built):** the composite toolbar-reroute
+(architecture written up in the drill-in entry below — cross-cutting refactor, wants
+you live); Image bundling (decision memo with a recommended option in the backlog item).
+**Author eyeball list:** Filter's Match-case checkbox · coalesce Else rows + "+ Add" ·
+the selection action bar · popup crosshair button · NaN/approx chips unchanged.
+
 ### Formula-engine divergence re-sweep — no new drift (2026-07-05)
 Re-ran the node-vs-Formula.js divergence audit the backlog flags as periodic. The original
 `_sweep` script was never committed (only referenced in docs), so instead of resurrecting a
