@@ -9,7 +9,7 @@ import { NodeShell, PortSockets, ValueDisplay, type NodeProps } from "./nodeKit"
 import { TableDisplay } from "./TableDisplay";
 import { FrameDisplay } from "./FrameDisplay";
 import { CubeDisplay } from "./CubeDisplay";
-import { ChartView, toSeries } from "./chartView";
+import { ChartFigure } from "./chartView";
 import { MermaidView } from "./MermaidView";
 import { isFrameValue, isCubeValue } from "../frame";
 import { isChartValue } from "../chartValue";
@@ -76,12 +76,7 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
       ) : isCube ? (
         <CubeDisplay cube={v} label={data.label} full={full} />
       ) : isChart ? (
-        (() => {
-          const series = toSeries(v.values);
-          return series.length === 0
-            ? <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>
-            : <ChartView op={v.op} series={series} width={210} height={130} axes opts={v.options} />;
-        })()
+        <ChartFigure value={v} width={210} height={130} />
       ) : isMermaid ? (
         <MermaidView source={v.source} />
       ) : isLambda ? (

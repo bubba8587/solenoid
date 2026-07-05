@@ -12,7 +12,7 @@ import { isMermaidValue } from "../mermaidValue";
 import { isLambdaValue, formatLambda } from "../nodes/lambda";
 import { FrameDisplay } from "./FrameDisplay";
 import { CubeDisplay } from "./CubeDisplay";
-import { ChartView, toSeries } from "./chartView";
+import { ChartFigure } from "./chartView";
 import { MermaidView } from "./MermaidView";
 
 /**
@@ -25,12 +25,7 @@ import { MermaidView } from "./MermaidView";
 function CompositeBoundaryValue({ value, label }: { value: unknown; label: string }) {
   if (isFrameValue(value)) return <FrameDisplay frame={value} label={label} full={false} />;
   if (isCubeValue(value)) return <CubeDisplay cube={value} label={label} full={false} />;
-  if (isChartValue(value)) {
-    const series = toSeries(value.values);
-    return series.length === 0
-      ? <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>
-      : <ChartView op={value.op} series={series} width={200} height={110} axes opts={value.options} />;
-  }
+  if (isChartValue(value)) return <ChartFigure value={value} width={200} height={110} />;
   if (isMermaidValue(value)) return <MermaidView source={value.source} />;
   if (isLambdaValue(value)) return <div className="solenoid-node__display-value">{formatLambda(value)}</div>;
   return <ValueDisplay value={value as DisplayValue} />;
