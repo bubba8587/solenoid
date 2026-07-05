@@ -1,0 +1,48 @@
+{
+  "v": 2,
+  "label": "Chart Showcase",
+  "order": 40,
+  "nodes": [
+    {"id":"cats","type":"ListInputNode","x":0,"y":40,"init":{"label":"Categories","valueKeys":["v0","v1","v2","v3","v4"]},"literals":{"v0":30,"v1":25,"v2":20,"v3":15,"v4":10}},
+    {"id":"pie","type":"ChartNode","x":300,"y":-40,"init":{"label":"Share (pie)","op":"pie"}},
+    {"id":"radar","type":"ChartNode","x":600,"y":-40,"init":{"label":"Profile (radar)","op":"radar"}},
+    {"id":"radial","type":"ChartNode","x":900,"y":-40,"init":{"label":"Levels (radial)","op":"radialbar"}},
+    {"id":"funnel","type":"ChartNode","x":1200,"y":-40,"init":{"label":"Stages (funnel)","op":"funnel"}},
+
+    {"id":"scores","type":"ListInputNode","x":0,"y":470,"init":{"label":"Samples","valueKeys":["v0","v1","v2","v3","v4","v5","v6","v7","v8","v9"]},"literals":{"v0":4,"v1":8,"v2":15,"v3":16,"v4":23,"v5":42,"v6":20,"v7":11,"v8":6,"v9":3}},
+    {"id":"hist","type":"HistogramNode","x":300,"y":400,"init":{"label":"Distribution"},"literals":{"bins":6}},
+    {"id":"kpi","type":"KpiNode","x":640,"y":440,"init":{"label":"Revenue"},"literals":{"value":128,"prev":100,"goodUp":1}},
+    {"id":"bullet","type":"BulletNode","x":880,"y":460,"init":{"label":"To target"},"literals":{"value":72,"target":80,"max":100}},
+
+    {"id":"tm_labels","type":"TextSplitNode","x":0,"y":820,"init":{"label":"Cost labels"},"stringLiterals":{"text":"Rent,Food,Travel,Fun","delimiter":","}},
+    {"id":"tm_vals","type":"ListInputNode","x":0,"y":1050,"init":{"label":"Cost amounts","valueKeys":["v0","v1","v2","v3"]},"literals":{"v0":1200,"v1":650,"v2":400,"v3":300}},
+    {"id":"treemap","type":"TreemapNode","x":300,"y":840,"init":{"label":"Spending (treemap)"}},
+
+    {"id":"sk_from","type":"TextSplitNode","x":640,"y":790,"init":{"label":"From"},"stringLiterals":{"text":"Salary,Salary,Budget,Budget","delimiter":","}},
+    {"id":"sk_to","type":"TextSplitNode","x":640,"y":1000,"init":{"label":"To"},"stringLiterals":{"text":"Rent,Food,Rent,Fun","delimiter":","}},
+    {"id":"sk_val","type":"ListInputNode","x":640,"y":1230,"init":{"label":"Flow","valueKeys":["v0","v1","v2","v3"]},"literals":{"v0":800,"v1":400,"v2":300,"v3":200}},
+    {"id":"sankey","type":"SankeyNode","x":960,"y":900,"init":{"label":"Budget flow (sankey)"}},
+
+    {"id":"matrix","type":"TableInputNode","x":0,"y":1520,"init":{"label":"Series matrix","tableText":"12, 8\n19, 11\n7, 5\n23, 14\n15, 9"}},
+    {"id":"composed","type":"ChartNode","x":320,"y":1460,"init":{"label":"Bars + line (composed)","op":"composed"}},
+    {"id":"bubble","type":"ChartNode","x":640,"y":1460,"init":{"label":"Points (bubble)","op":"bubble"}}
+  ],
+  "connections": [
+    {"source":"cats","sourceOutput":"list","target":"pie","targetInput":"values"},
+    {"source":"cats","sourceOutput":"list","target":"radar","targetInput":"values"},
+    {"source":"cats","sourceOutput":"list","target":"radial","targetInput":"values"},
+    {"source":"cats","sourceOutput":"list","target":"funnel","targetInput":"values"},
+
+    {"source":"scores","sourceOutput":"list","target":"hist","targetInput":"values"},
+
+    {"source":"tm_labels","sourceOutput":"result","target":"treemap","targetInput":"labels"},
+    {"source":"tm_vals","sourceOutput":"list","target":"treemap","targetInput":"values"},
+
+    {"source":"sk_from","sourceOutput":"result","target":"sankey","targetInput":"source"},
+    {"source":"sk_to","sourceOutput":"result","target":"sankey","targetInput":"target"},
+    {"source":"sk_val","sourceOutput":"list","target":"sankey","targetInput":"value"},
+
+    {"source":"matrix","sourceOutput":"table","target":"composed","targetInput":"series"},
+    {"source":"matrix","sourceOutput":"table","target":"bubble","targetInput":"series"}
+  ]
+}

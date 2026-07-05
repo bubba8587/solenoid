@@ -58,6 +58,9 @@ export interface ChartValue {
   /** The raw values the figure plots — a consumer runs them through toSeries.
    *  Unused by payload figures (kpi/bullet), which read `payload`. */
   values: number | number[] | null;
+  /** Multi-series / point data for the 2-D chart ops (composed = each COLUMN a
+   *  series; bubble = each ROW an [x, y, size] point). Undefined for 1-D ops. */
+  matrix?: (number | null)[][] | null;
   /** Structured data for the non-series figures (kpi/bullet). */
   payload?: ChartPayload;
   /** Parsed matplotlib-style style overrides (title/axes/color/grid/…). */
