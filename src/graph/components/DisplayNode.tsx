@@ -10,6 +10,7 @@ import { TableDisplay } from "./TableDisplay";
 import { FrameDisplay } from "./FrameDisplay";
 import { CubeDisplay } from "./CubeDisplay";
 import { ChartFigure } from "./chartView";
+import { ChartChip } from "./ChartChip";
 import { MermaidView } from "./MermaidView";
 import { isFrameValue, isCubeValue } from "../frame";
 import { isChartValue } from "../chartValue";
@@ -76,7 +77,10 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
       ) : isCube ? (
         <CubeDisplay cube={v} label={data.label} full={full} />
       ) : isChart ? (
-        <ChartFigure value={v} width={210} height={130} />
+        // Collapsed → the [Chart] chip in the hero box (matching how a frame/table
+        // collapses to its chip); expanded → the full figure.
+        full ? <ChartFigure value={v} width={210} height={130} />
+             : <div className="solenoid-node__display-value" style={{ display: "flex", justifyContent: "flex-end" }}><ChartChip value={v} /></div>
       ) : isMermaid ? (
         <MermaidView source={v.source} />
       ) : isLambda ? (

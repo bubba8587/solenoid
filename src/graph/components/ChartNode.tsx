@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { ChartNode as ChartNodeType, ChartOp } from "../rete-nodes";
 import { CHART_MATRIX_OPS } from "../rete-nodes";
 import { NodeShell, OpSelect, type NodeProps, type OpOption } from "./nodeKit";
@@ -6,6 +6,8 @@ import { NodeSocket } from "./NodeSocket";
 import { InlineInputs } from "./inlineInput";
 import { ChartFigure, toSeries, type ChartShape } from "./chartView";
 import { ChartExpandButton } from "./ChartExpandButton";
+import { ChartChip } from "./ChartChip";
+import { collapseStore } from "../collapseStore";
 import { getEditor, getArea, processGraph } from "../process";
 import type { ChartValue } from "../chartValue";
 
@@ -53,6 +55,7 @@ const H = 150;
 export function ChartComponent({ data, emit }: NodeProps<ChartNodeType>) {
   const [op, setOpState] = useState<ChartOp>(data.op);
   const setOp = useCallback((v: ChartOp) => { setOpState(v); void applyChartOp(data, v); }, [data]);
+  const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   const opts = data.chartOptions;
   const isMatrix = CHART_MATRIX_OPS.has(op);
   // Has anything to draw? Matrix ops read cachedMatrix (with a values fallback);
@@ -82,8 +85,7 @@ export function ChartComponent({ data, emit }: NodeProps<ChartNodeType>) {
     <NodeShell
       node={data}
       emit={emit}
-      collapsible={false}
-      leading={!isMatrix && valuesPort && valuesTop !== undefined
+      leading={!collapsed && !isMatrix && valuesPort && valuesTop !== undefined
         ? <NodeSocket side="input" socketKey="values" nodeId={data.id} emit={emit} payload={valuesPort.socket} top={valuesTop} />
         : null}
     >
@@ -105,9 +107,17 @@ export function ChartComponent({ data, emit }: NodeProps<ChartNodeType>) {
       <div className="solenoid-node__section-divider" />
       {/* The op's data socket + Options. `series` (2-D matrix) shows only for the
           composed/bubble ops; the 1-D ops feed the leading `values` socket instead.
+          Collapsed, the leading socket is gone, so fold `values` into this row's pill.
           Options: a matplotlib-style string, or wire a Chart Builder (field hides
           when wired). */}
-      <InlineInputs node={data} emit={emit} keys={isMatrix ? ["series", "options"] : ["options"]} />
+      <InlineInputs
+        node={data}
+        emit={emit}
+        keys={collapsed ? (isMatrix ? ["series", "options"] : ["values", "options"]) : (isMatrix ? ["series", "options"] : ["options"])}
+      />
+      {/* Collapsed → the hero box shows just the [Chart] chip (opens the popup),
+          right-aligned like every other value chip. */}
+      <div className="solenoid-node__collapsed-only solenoid-node__display-value" style={{ justifyContent: "flex-end" }}><ChartChip value={cv} /></div>
     </NodeShell>
   );
 }
