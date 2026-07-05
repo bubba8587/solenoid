@@ -8,7 +8,7 @@
 // Canvas-local refs so this is callable from anywhere (the command palette).
 
 import { GroupNode } from "./rete-nodes";
-import { getEditor, getArea, repositionDockedNodes } from "./process";
+import { getEditor, getArea, repositionDockedNodes, unselectAllNodes, selectNode } from "./process";
 import { standoffStore, standoffClusters, settleStandoffs } from "./standoffs";
 import { collapseStore } from "./collapseStore";
 import { scheduleAutosave } from "./persistence";
@@ -69,11 +69,26 @@ async function applyMoves(editor: Editor, area: Area, moves: Move[]): Promise<vo
       if (!delta.has(id)) delta.set(id, { dx, dy });
     }
   }
-  for (const [id, { dx, dy }] of delta) {
-    const v = area.nodeViews.get(id);
-    if (!v) continue;
-    await area.translate(id, { x: v.position.x + dx, y: v.position.y + dy });
-    repositionDockedNodes(id);
+  // Clear the selection for the duration of the moves, then restore it. A SELECTED
+  // node's translate triggers the selector's group-follow (rete moves every other
+  // selected node by the same delta — the multi-drag mechanism), which compounds
+  // across our per-node placement and corrupts the result: nodes shift instead of
+  // aligning, only some land, and distribute nets to nothing. Same guard Tidy uses
+  // (Canvas arrangeFn). expandMoveSet's group/cluster carries are NOT selected, so
+  // they don't trigger it — only the selected seeds do.
+  const restore = editor.getNodes()
+    .filter((n) => (n as { selected?: boolean }).selected === true)
+    .map((n) => n.id);
+  if (restore.length > 0) unselectAllNodes();
+  try {
+    for (const [id, { dx, dy }] of delta) {
+      const v = area.nodeViews.get(id);
+      if (!v) continue;
+      await area.translate(id, { x: v.position.x + dx, y: v.position.y + dy });
+      repositionDockedNodes(id);
+    }
+  } finally {
+    for (const id of restore) selectNode(id, true);
   }
 }
 
