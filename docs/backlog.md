@@ -94,9 +94,11 @@ design) — **wired end-to-end and sound**. Remaining loose ends:
   so Report inline-refs and Display consume it through their `any` inputs. (The stray
   `chartIn` helper in `shared.ts` has no call site because acceptance goes through `any`,
   not a typed chart input — harmless, not dead infra.)
-- [ ] Static export fidelity nits: captured chart SVGs relying on class/CSS-var
-  coloring may recolor in the exported doc (only `buildExportCss` ships); the canvas
-  capture takes every on-canvas chart >40px, not just report-referenced ones.
+- [x] Static export fidelity nits — verified ALREADY FIXED in code (reconciled
+  2026-07-05): `serializeSvgWithComputedStyles` (canvasCapture.ts) bakes computed
+  fill/stroke/font values inline so class/CSS-var coloring survives without the app
+  stylesheet, and `captureChartSvgs` takes `reportReferencedNodeIds`' set so only
+  report-wired charts export, not every on-canvas chart >40px.
 - [~] Drill-in editor v2 niceties — PARTLY DONE 2026-07-04. Now: undo/redo IS in the
   overlay; **full-bleed + multi-layer drill-in with a `Canvas ▸ A ▸ B` breadcrumb**
   (nested composites push, click/Esc drills up — `compositeEditorStore` stack); boundary
@@ -425,8 +427,13 @@ section is decision-recorded. The QUEUE when resuming, in order:
 > config must default, per the DATA-vs-CONFIG rule). So no blanket sweep — the meaningful
 > scope is complete. Author eyeballs the #4/#6 styling.
 
-- [ ] **Frame Filter text matching → case-INsensitive** (audit 28's held-back half —
-  REVERSED on revisit). eq/neq/contains/startsWith/endsWith all match case-insensitively,
+- [x] **Frame Filter text matching → case-INsensitive — DONE 2026-07-05** (overnight
+  session): `passesFilter`/`filterRows` fold via plain lowercase (`matchCase` param, wire
+  flag on the filter op), FilterFrameNode `matchCase` + a "Match case" checkbox shown for
+  the five text ops, Rust `filter_needs_text_scan` routes CI string eq/neq through the
+  row-scan in BOTH `verb_filter` and the fused `apply_step`, cargo + vitest parity tests
+  incl. José/JOSÉ, catalog notes on Filter/Join/Group By/Distinct. Per D12. Original spec:
+  eq/neq/contains/startsWith/endsWith all match case-insensitively,
   aligning Filter with the app's one text-equality semantics (P6 `=` table, Comparison,
   XLOOKUP, Frame Lookup) and with Excel FILTER/AutoFilter. A **"Match case" checkbox** on
   the Filter node (default off, string columns) is the escape hatch, riding the wire as a

@@ -2,6 +2,28 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Frame Filter text matching is case-insensitive; "Match case" opt-out (2026-07-05)
+The D12 build (backlog "Frame Filter text matching", audit 28's reversed half): string
+eq/neq + contains/startsWith/endsWith on the Filter node now match case-INsensitively —
+Excel's `=` / FILTER / AutoFilter semantics, and the app's one text-equality rule. A
+**Match case** checkbox (shown only while the op is one of the five text ops) restores
+exact matching; it persists via `matchCase` in `INIT_FIELD_ORDER` and rides the wire as
+an optional flag on the filter op (serde `default`, so old saves/plans deserialize fine).
+Join / Group By / Distinct stay case-SENSITIVE (keys are identity — D12); their catalog
+descriptions now say so.
+- **The fold is a plain Unicode lowercase** (JS `toLowerCase` = Rust `to_lowercase`),
+  deliberately NOT locale-aware — the one spec both engines implement identically
+  (José/JOSÉ parity-tested on both). String `<`/`>` ordering untouched (separate P3).
+- **Rust routing:** a case-insensitive string eq/neq can't stay a pure Polars expr
+  (no `strings` feature), so it joins the text predicates' in-engine row-scan.
+  `filter_needs_text_scan` is the ONE predicate shared by `verb_filter` and the fused
+  `apply_step` so the standalone and lazy paths can't drift — mid-chain it collects that
+  step and resumes lazily, same as contains (guarded by
+  `apply_ops_case_insensitive_string_eq_mid_chain`).
+- Tests: frameVerbs.test.ts (CI default, matchCase, accents, applyVerb flag) + 2 new /
+  updated cargo tests. Author eyeball: the checkbox row on the Filter card (13px box,
+  ExpectNode's CheckRow styling).
+
 ### ELK auto-arrange split out of the main bundle (2026-07-05)
 recharts + KaTeX were already lazy; ELK (`rete-auto-arrange-plugin` + its elkjs dependency,
 ~1.49 MB uncompressed) was the last eager heavy chunk — `AutoArrangePlugin` was statically

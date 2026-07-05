@@ -105,10 +105,43 @@ fn filter_numeric_and_text() {
         ("n", SolType::Number, vec![Cell::Num(1.0), Cell::Num(5.0), Cell::Null, Cell::Num(9.0)]),
         ("s", SolType::Str, vec![Cell::Str("apple".into()), Cell::Str("apricot".into()), Cell::Str("berry".into()), Cell::Str("cherry".into())]),
     ]);
-    let gt = verb_filter(&f, "n", "gt", &serde_json::json!(4)).unwrap();
+    let gt = verb_filter(&f, "n", "gt", &serde_json::json!(4), false).unwrap();
     assert_eq!(dump(&gt)[0].2, j(&[5.0, 9.0])); // null excluded
-    let starts = verb_filter(&f, "s", "startsWith", &serde_json::json!("ap")).unwrap();
+    let starts = verb_filter(&f, "s", "startsWith", &serde_json::json!("ap"), false).unwrap();
     assert_eq!(dump(&starts)[1].2, vec![Json::String("apple".into()), Json::String("apricot".into())]);
+}
+
+#[test]
+fn filter_text_matching_is_case_insensitive_by_default() {
+    // Mirrors the oracle's frameVerbs.test.ts cases: string eq/neq + the text
+    // predicates fold with a plain Unicode lowercase; match_case restores exact
+    // matching; accented characters fold too (José = JOSÉ).
+    let f = frame(vec![(
+        "city",
+        SolType::Str,
+        strs(&["Oslo", "Bergen", "OSLO", "Tromso"]),
+    )]);
+    let kept = |o: &SolFrame| -> Vec<Json> { dump(o)[0].2.clone() };
+    let s = |v: &[&str]| -> Vec<Json> { v.iter().map(|x| Json::String((*x).into())).collect() };
+
+    let eq = verb_filter(&f, "city", "eq", &Json::String("oslo".into()), false).unwrap();
+    assert_eq!(kept(&eq), s(&["Oslo", "OSLO"]));
+    let eq_exact = verb_filter(&f, "city", "eq", &Json::String("oslo".into()), true).unwrap();
+    assert_eq!(kept(&eq_exact), s(&[]));
+    let neq = verb_filter(&f, "city", "neq", &Json::String("oslo".into()), false).unwrap();
+    assert_eq!(kept(&neq), s(&["Bergen", "Tromso"]));
+    let contains = verb_filter(&f, "city", "contains", &Json::String("OS".into()), false).unwrap();
+    assert_eq!(kept(&contains), s(&["Oslo", "OSLO"]));
+    let contains_exact = verb_filter(&f, "city", "contains", &Json::String("OS".into()), true).unwrap();
+    assert_eq!(kept(&contains_exact), s(&["OSLO"]));
+
+    let names = frame(vec![("n", SolType::Str, strs(&["José", "JOSÉ", "Jose"]))]);
+    let acc = verb_filter(&names, "n", "eq", &Json::String("josé".into()), false).unwrap();
+    assert_eq!(kept(&acc), s(&["José", "JOSÉ"]));
+    let acc_exact = verb_filter(&names, "n", "eq", &Json::String("josé".into()), true).unwrap();
+    assert_eq!(kept(&acc_exact), s(&[]));
+    let ends = verb_filter(&names, "n", "endsWith", &Json::String("SÉ".into()), false).unwrap();
+    assert_eq!(kept(&ends), s(&["José", "JOSÉ"]));
 }
 
 #[test]
@@ -527,11 +560,11 @@ fn filter_value_coercion_matches_oracle() {
         ),
     ]);
     let kept = |o: &SolFrame| o.df.height();
-    assert_eq!(kept(&verb_filter(&f, "v", "eq", &Json::String("1,234".into())).unwrap()), 0);
-    assert_eq!(kept(&verb_filter(&f, "v", "neq", &Json::String("garbage".into())).unwrap()), 0);
-    assert_eq!(kept(&verb_filter(&f, "v", "gt", &Json::String(" 1100 ".into())).unwrap()), 1);
-    assert_eq!(kept(&verb_filter(&f, "flag", "eq", &Json::String("false".into())).unwrap()), 1);
-    assert_eq!(kept(&verb_filter(&f, "flag", "eq", &Json::String("TRUE".into())).unwrap()), 1);
+    assert_eq!(kept(&verb_filter(&f, "v", "eq", &Json::String("1,234".into()), false).unwrap()), 0);
+    assert_eq!(kept(&verb_filter(&f, "v", "neq", &Json::String("garbage".into()), false).unwrap()), 0);
+    assert_eq!(kept(&verb_filter(&f, "v", "gt", &Json::String(" 1100 ".into()), false).unwrap()), 1);
+    assert_eq!(kept(&verb_filter(&f, "flag", "eq", &Json::String("false".into()), false).unwrap()), 1);
+    assert_eq!(kept(&verb_filter(&f, "flag", "eq", &Json::String("TRUE".into()), false).unwrap()), 1);
 }
 
 #[test]
@@ -703,13 +736,13 @@ fn apply_ops_pure_lazy_chain_matches_sequential_single_ops() {
     ]);
     let ops = vec![
         WireOp::Select { columns: vec!["qty".into(), "region".into()] },
-        WireOp::Filter { column: "qty".into(), op: "gt".into(), value: serde_json::json!(15) },
+        WireOp::Filter { column: "qty".into(), op: "gt".into(), value: serde_json::json!(15), match_case: false },
         WireOp::Sort { by: "qty".into(), dir: "asc".into() },
     ];
     let fused = apply_ops(&f, &ops).unwrap();
 
     let step1 = verb_select(&f, &["qty".into(), "region".into()]).unwrap();
-    let step2 = verb_filter(&step1, "qty", "gt", &serde_json::json!(15)).unwrap();
+    let step2 = verb_filter(&step1, "qty", "gt", &serde_json::json!(15), false).unwrap();
     let sequential = verb_sort(&step2, "qty", "asc").unwrap();
 
     assert_eq!(dump(&fused), dump(&sequential));
@@ -742,7 +775,7 @@ fn apply_ops_text_predicate_filter_mid_chain() {
         ("n", SolType::Number, num(&[4.0, 3.0, 1.0, 2.0])),
     ]);
     let ops = vec![
-        WireOp::Filter { column: "s".into(), op: "startsWith".into(), value: serde_json::json!("ap") },
+        WireOp::Filter { column: "s".into(), op: "startsWith".into(), value: serde_json::json!("ap"), match_case: false },
         WireOp::Sort { by: "n".into(), dir: "asc".into() },
     ];
     let fused = apply_ops(&f, &ops).unwrap();
@@ -750,6 +783,29 @@ fn apply_ops_text_predicate_filter_mid_chain() {
         dump(&fused)[0].2,
         vec![Json::String("apricot".into()), Json::String("apple".into())]
     );
+}
+
+#[test]
+fn apply_ops_case_insensitive_string_eq_mid_chain() {
+    // A case-insensitive string eq (the default) is hand-rolled like the text
+    // predicates — the fused path must collect that step and resume lazily; a
+    // match_case eq stays a pure Polars expr and matches exact.
+    let f = frame(vec![
+        ("city", SolType::Str, strs(&["Oslo", "OSLO", "Bergen"])),
+        ("n", SolType::Number, num(&[2.0, 1.0, 3.0])),
+    ]);
+    let ops = vec![
+        WireOp::Filter { column: "city".into(), op: "eq".into(), value: serde_json::json!("oslo"), match_case: false },
+        WireOp::Sort { by: "n".into(), dir: "asc".into() },
+    ];
+    let fused = apply_ops(&f, &ops).unwrap();
+    assert_eq!(
+        dump(&fused)[0].2,
+        vec![Json::String("OSLO".into()), Json::String("Oslo".into())]
+    );
+
+    let exact = apply_ops(&f, &[WireOp::Filter { column: "city".into(), op: "eq".into(), value: serde_json::json!("OSLO"), match_case: true }]).unwrap();
+    assert_eq!(dump(&exact)[0].2, vec![Json::String("OSLO".into())]);
 }
 
 #[test]
@@ -778,13 +834,13 @@ fn engine_apply_many_ipc_matches_chained_engine_apply_calls() {
     ]);
     let h_many = register(f.clone());
     let ops = vec![
-        WireOp::Filter { column: "qty".into(), op: "gte".into(), value: serde_json::json!(20) },
+        WireOp::Filter { column: "qty".into(), op: "gte".into(), value: serde_json::json!(20), match_case: false },
         WireOp::Sort { by: "qty".into(), dir: "desc".into() },
     ];
     let h_out_many = engine_apply_many(h_many, ops).unwrap();
 
     let h_seq = register(f);
-    let h_step1 = engine_apply(h_seq, WireOp::Filter { column: "qty".into(), op: "gte".into(), value: serde_json::json!(20) }).unwrap();
+    let h_step1 = engine_apply(h_seq, WireOp::Filter { column: "qty".into(), op: "gte".into(), value: serde_json::json!(20), match_case: false }).unwrap();
     let h_out_seq = engine_apply(h_step1, WireOp::Sort { by: "qty".into(), dir: "desc".into() }).unwrap();
 
     let p_many = with_frame(&h_out_many, |f| Ok(preview_of(f, 10))).unwrap();

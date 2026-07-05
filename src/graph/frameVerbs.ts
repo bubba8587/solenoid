@@ -47,7 +47,7 @@ export type FrameOp =
   | { kind: "sort"; by: string; dir: "asc" | "desc" } // order rows by one column
   | { kind: "distinct"; columns?: string[] }         // unique rows (on these cols, or all)
   | { kind: "head"; n: number }                      // first n rows
-  | { kind: "filter"; column: string; op: FilterOp; value: FrameCell } // keep rows passing a predicate
+  | { kind: "filter"; column: string; op: FilterOp; value: FrameCell; matchCase?: boolean } // keep rows passing a predicate
   | { kind: "groupBy"; keys: string[]; aggs: AggSpec[] } // one row per key combo + aggregates
   | { kind: "unpivot"; idColumns: string[]; valueColumns: string[]; variableName?: string; valueName?: string } // wide → long
   | ({ kind: "pivot" } & PivotSpec); // long → wide cross-tab (Excel PIVOTBY)
@@ -156,8 +156,11 @@ export function sampleFrame(f: FrameValue, n: number): FrameValue {
 
 /** Does one cell pass the predicate? A `null` or error cell is EXCLUDED (SQL
  *  WHERE keeps only TRUE — matches FilterNode). Comparisons reuse `compareOp`:
- *  numeric/date numerically, logical via 0/1, string via the localeCompare sign
- *  (eq/neq by string identity); text ops match on the stringified cell. */
+ *  numeric/date numerically, logical via 0/1, string via the localeCompare sign;
+ *  text ops match on the stringified cell. TEXT MATCHING (string eq/neq + the
+ *  three text predicates) is case-INsensitive unless `matchCase` — Filter
+ *  matches like Excel's `=` (FILTER/AutoFilter); keys (Join/Group By/Distinct)
+ *  stay identity, case-sensitive. String lt/gt ordering is untouched. */
 /** Coerce the (usually string) filter VALUE for a numeric comparison, by column
  *  type — the ONE spec both engines implement (audit finding 16; the two sides
  *  had drifted: JS `Number("")`=0 vs Rust NaN, JS truthy-"false"=1 vs Rust NaN).
@@ -181,14 +184,17 @@ function filterValueToNumber(value: FrameCell, type: FrameColType): number | nul
   return null;
 }
 
-function passesFilter(cell: FrameCell, op: FilterOp, value: FrameCell, type: FrameColType): boolean {
+function passesFilter(cell: FrameCell, op: FilterOp, value: FrameCell, type: FrameColType, matchCase: boolean): boolean {
   if (cell === null || isSolError(cell)) return false;
-  if (op === "contains")   return String(cell).includes(String(value));
-  if (op === "startsWith") return String(cell).startsWith(String(value));
-  if (op === "endsWith")   return String(cell).endsWith(String(value));
+  // Simple lowercase fold, NOT locale-aware — the one spec both engines
+  // implement identically (Rust `to_lowercase()` agrees with JS `toLowerCase()`).
+  const fold = (s: string) => (matchCase ? s : s.toLowerCase());
+  if (op === "contains")   return fold(String(cell)).includes(fold(String(value)));
+  if (op === "startsWith") return fold(String(cell)).startsWith(fold(String(value)));
+  if (op === "endsWith")   return fold(String(cell)).endsWith(fold(String(value)));
   if (type === "string") {
-    if (op === "eq")  return String(cell) === String(value);
-    if (op === "neq") return String(cell) !== String(value);
+    if (op === "eq")  return fold(String(cell)) === fold(String(value));
+    if (op === "neq") return fold(String(cell)) !== fold(String(value));
     return compareOp(op, String(cell).localeCompare(String(value)), 0);
   }
   const x = type === "logical" ? (cell ? 1 : 0) : Number(cell);
@@ -199,11 +205,11 @@ function passesFilter(cell: FrameCell, op: FilterOp, value: FrameCell, type: Fra
 
 /** Keep rows whose `column` passes the predicate. Chain filters for AND (the
  *  SUMIFS pattern); blanks/errors are dropped. */
-export function filterRows(f: FrameValue, column: string, op: FilterOp, value: FrameCell): FrameValue {
+export function filterRows(f: FrameValue, column: string, op: FilterOp, value: FrameCell, matchCase = false): FrameValue {
   const col = requireColumn(f, column);
   const keep: number[] = [];
   for (let i = 0; i < frameRowCount(f); i++) {
-    if (passesFilter(cellAt(col, i), op, value, col.type)) keep.push(i);
+    if (passesFilter(cellAt(col, i), op, value, col.type, matchCase)) keep.push(i);
   }
   return reorderRows(f, keep);
 }
@@ -1131,7 +1137,7 @@ export function applyVerb(f: FrameValue, op: FrameOp): FrameValue {
     case "sort":     return sortByColumn(f, op.by, op.dir);
     case "distinct": return distinctRows(f, op.columns);
     case "head":     return headRows(f, op.n);
-    case "filter":   return filterRows(f, op.column, op.op, op.value);
+    case "filter":   return filterRows(f, op.column, op.op, op.value, op.matchCase ?? false);
     case "groupBy":  return groupByFrame(f, op.keys, op.aggs);
     case "unpivot":  return unpivotFrame(f, op.idColumns, op.valueColumns, { variableName: op.variableName, valueName: op.valueName });
     case "pivot":    return pivotFrame(f, op);

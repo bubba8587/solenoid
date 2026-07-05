@@ -140,6 +140,28 @@ describe("filter", () => {
     if (!isSolError(err)) throw new Error("expected SolError");
     expect(err.code).toBe("#REF!");
   });
+  it("matches text case-insensitively by default; matchCase restores exact", () => {
+    expect(filterRows(t, "city", "eq", "oslo").columns[1].values).toEqual(["Oslo", "Oslo", "Oslo"]);
+    expect(filterRows(t, "city", "eq", "oslo", true).columns[1].values).toEqual([]);
+    expect(filterRows(t, "city", "contains", "OS").columns[1].values).toEqual(["Oslo", "Oslo", "Oslo"]);
+    expect(filterRows(t, "city", "contains", "OS", true).columns[1].values).toEqual([]);
+    expect(filterRows(t, "city", "startsWith", "tr").columns[1].values).toEqual(["Tromso"]);
+    expect(filterRows(t, "city", "neq", "oslo").columns[1].values).toEqual(["Bergen", "Tromso"]);
+    expect(filterRows(t, "city", "neq", "oslo", true).columns[1].values).toEqual(["Oslo", "Bergen", "Oslo", "Tromso", "Oslo"]);
+  });
+  it("folds accented characters (José = JOSÉ), matchCase separates them", () => {
+    const names: FrameValue = {
+      __frame: true,
+      columns: [{ name: "n", type: "string", values: ["José", "JOSÉ", "Jose"] }],
+    };
+    expect(filterRows(names, "n", "eq", "josé").columns[0].values).toEqual(["José", "JOSÉ"]);
+    expect(filterRows(names, "n", "eq", "josé", true).columns[0].values).toEqual([]);
+    expect(filterRows(names, "n", "endsWith", "SÉ").columns[0].values).toEqual(["José", "JOSÉ"]);
+  });
+  it("applyVerb forwards the matchCase flag", () => {
+    expect(applyVerb(t, { kind: "filter", column: "city", op: "eq", value: "OSLO" }).columns[1].values).toEqual(["Oslo", "Oslo", "Oslo"]);
+    expect(applyVerb(t, { kind: "filter", column: "city", op: "eq", value: "OSLO", matchCase: true }).columns[1].values).toEqual([]);
+  });
 });
 
 describe("groupBy", () => {
