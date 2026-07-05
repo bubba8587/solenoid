@@ -121,21 +121,39 @@ export function alignDeltas(items: Placed[], kind: AlignKind): Move[] {
   });
 }
 
-/** Pure geometry: per-node deltas to space boxes with EQUAL GAPS between edges
- *  along one axis, first/last fixed. Overlap-free by construction (unlike center
- *  spacing). Returns [] for fewer than 3 boxes. Exported for tests. */
+// Minimum gap distribute guarantees between adjacent edges. Matches Tidy's ELK node
+// spacing (`elk.spacing.nodeNode` ~38) so distribute and auto-arrange feel alike.
+export const DISTRIBUTE_GAP = 40;
+
+/** Pure geometry: per-node deltas to space boxes EVENLY (equal edge gaps) along one
+ *  axis, guaranteeing no overlap plus at least DISTRIBUTE_GAP between neighbours.
+ *  - If the leftmost→rightmost span already fits every box + a DISTRIBUTE_GAP gap,
+ *    keep BOTH ends fixed and even out the interior (gap ≥ DISTRIBUTE_GAP).
+ *  - Otherwise the boxes are too close/stacked to fit: anchor the leftmost and push
+ *    each subsequent box out at exactly DISTRIBUTE_GAP, EXPANDING the run (the
+ *    rightmost moves right) so nothing overlaps.
+ *  Returns [] for fewer than 3 boxes. Exported for tests. */
 export function distributeDeltas(items: Placed[], axis: "h" | "v"): Move[] {
   if (items.length < 3) return [];
+  const n = items.length;
   const start = (b: Box) => (axis === "h" ? b.x : b.y);
   const size = (b: Box) => (axis === "h" ? b.w : b.h);
   const sorted = [...items].sort((a, b) => start(a.box) - start(b.box));
   const firstStart = start(sorted[0].box);
-  const lastEnd = start(sorted[sorted.length - 1].box) + size(sorted[sorted.length - 1].box);
+  const lastEnd = start(sorted[n - 1].box) + size(sorted[n - 1].box);
   const totalSize = sorted.reduce((s, it) => s + size(it.box), 0);
-  const gap = (lastEnd - firstStart - totalSize) / (sorted.length - 1);
+
+  const span = lastEnd - firstStart;
+  const required = totalSize + DISTRIBUTE_GAP * (n - 1);
+  const fits = span >= required;
+  // Fit: even gap (≥ DISTRIBUTE_GAP) and the last box lands back on lastEnd, so
+  // leave it fixed. Expand: uniform DISTRIBUTE_GAP and the last box must move too.
+  const gap = fits ? (span - totalSize) / (n - 1) : DISTRIBUTE_GAP;
+  const stop = fits ? n - 1 : n;
+
   const moves: Move[] = [];
   let cursor = firstStart + size(sorted[0].box) + gap; // leading edge of sorted[1]
-  for (let i = 1; i < sorted.length - 1; i++) {
+  for (let i = 1; i < stop; i++) {
     const { id, box } = sorted[i];
     const d = cursor - start(box);
     moves.push({ seedId: id, dx: axis === "h" ? d : 0, dy: axis === "v" ? d : 0 });

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { alignDeltas, distributeDeltas, type Placed } from "./selectionOps";
+import { alignDeltas, distributeDeltas, DISTRIBUTE_GAP, type Placed } from "./selectionOps";
 
 const box = (id: string, x: number, y: number, w: number, h: number): Placed =>
   ({ id, box: { x, y, w, h } });
@@ -72,5 +72,30 @@ describe("distributeDeltas (equal gaps, first/last fixed)", () => {
     expect(moves[0].dx).toBe(0);
     // total h 90, span 0..330 => gap (330-90)/2 = 120; b start = 0+30+120 = 150
     expect(moves[0].dy).toBe(150 - 50);
+  });
+
+  it("EXPANDS a stacked run so every node clears with DISTRIBUTE_GAP (rightmost moves)", () => {
+    // 4 overlapping 20-wide boxes near x=0: span 35, way under required.
+    const items = [box("a", 0, 0, 20, 20), box("b", 5, 0, 20, 20), box("c", 10, 0, 20, 20), box("d", 15, 0, 20, 20)];
+    const g = DISTRIBUTE_GAP;
+    const moves = distributeDeltas(items, "h");
+    // a fixed; b/c/d pushed to uniform gaps → the LAST node moves (unlike the fit case)
+    const at = (id: string) => moves.find((m) => m.seedId === id);
+    expect(at("a")).toBeUndefined(); // leftmost anchored, no move emitted
+    expect(at("b")!.dx).toBe(0 + 20 + g - 5);      // start 60 - 5
+    expect(at("c")!.dx).toBe(0 + 20 + g + 20 + g - 10); // start 120 - 10
+    expect(at("d")!.dx).toBe(3 * (20 + g) - 15);   // start 180 - 15
+    // resulting edges never overlap
+    const startsAt = (id: string, orig: number) => orig + (at(id)?.dx ?? 0);
+    expect(startsAt("a", 0) + 20).toBeLessThanOrEqual(startsAt("b", 5));
+    expect(startsAt("b", 5) + 20).toBeLessThanOrEqual(startsAt("c", 10));
+    expect(startsAt("c", 10) + 20).toBeLessThanOrEqual(startsAt("d", 15));
+  });
+
+  it("leaves both ends fixed when the span already fits (gap >= DISTRIBUTE_GAP)", () => {
+    // wide span, 3 small boxes → fits comfortably, only the middle moves
+    const items = [box("a", 0, 0, 20, 20), box("b", 90, 0, 20, 20), box("c", 300, 0, 20, 20)];
+    const moves = distributeDeltas(items, "h");
+    expect(moves.map((m) => m.seedId)).toEqual(["b"]); // ends untouched
   });
 });
