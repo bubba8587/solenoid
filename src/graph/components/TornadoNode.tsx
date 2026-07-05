@@ -1,14 +1,10 @@
 import { useState } from "react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell } from "recharts";
 import type { TornadoNode as TornadoNodeType } from "../rete-nodes";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
-import { useChartColors } from "./chartView";
+import { useChartColors, TornadoBars } from "./chartView";
 import { runTornado } from "../tornadoRun";
 import { processGraph } from "../process";
-
-const RISING = "#e0524d";
-const FALLING = "#4c8bf5";
 
 // The watched value only makes sense wired (Tornado perturbs UPSTREAM of it) —
 // no literal field.
@@ -58,22 +54,7 @@ export function TornadoComponent({ data, emit }: NodeProps<TornadoNodeType>) {
           {busy ? "perturbing upstream inputs…" : "no upstream Number/Slider inputs found yet"}
         </div>
       ) : (
-        <BarChart
-          width={260}
-          height={Math.max(70, results.length * 22 + 16)}
-          data={normalized}
-          layout="vertical"
-          margin={{ top: 2, right: 10, bottom: 2, left: 2 }}
-        >
-          <CartesianGrid stroke={grid} horizontal={false} />
-          <XAxis type="number" tick={{ fontSize: 9, fill: axis }} tickLine={false} />
-          <YAxis type="category" dataKey="label" width={72} tick={{ fontSize: 9, fill: axis }} tickLine={false} />
-          <Tooltip isAnimationActive={false} />
-          <Bar dataKey="offset" stackId="tornado" fill="transparent" isAnimationActive={false} />
-          <Bar dataKey="range" stackId="tornado" isAnimationActive={false}>
-            {normalized.map((d, i) => <Cell key={i} fill={d.rising ? RISING : FALLING} />)}
-          </Bar>
-        </BarChart>
+        <TornadoBars data={normalized} grid={grid} axis={axis} />
       )}
       <ValueDisplay value={data.cachedResult} />
     </NodeShell>

@@ -1,14 +1,12 @@
-import { RadialBarChart, RadialBar, PolarAngleAxis } from "recharts";
 import type { GaugeNode as GaugeNodeType } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { formatScalar } from "./format";
-import { useChartColors } from "./chartView";
+import { useChartColors, GaugeArc } from "./chartView";
 import { isSolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import { flyToNode } from "../flyToNode";
 
-const VIZ = "#e9b63a";
 // recharts sizes a polar chart's radius off min(width, height)/2, so to get a
 // wide arc (not a small one floating in deadspace) the chart must be SQUARE —
 // then the radius is width-limited. We draw the full square and crop to the top
@@ -47,22 +45,7 @@ export function GaugeComponent({ data, emit }: NodeProps<GaugeNodeType>) {
     <NodeShell node={data} emit={emit} collapsible={false}>
       <InlineInputs node={data} emit={emit} />
       <div style={{ position: "relative", width: SIZE, height: SHOW, margin: "2px auto 0", overflow: "hidden" }}>
-        <RadialBarChart
-          width={SIZE}
-          height={SIZE}
-          cx="50%"
-          cy="50%"
-          innerRadius="72%"
-          outerRadius="94%"
-          barSize={14}
-          data={[{ value: pct }]}
-          startAngle={180}
-          endAngle={0}
-          style={{ position: "absolute", top: 0, left: 0 }}
-        >
-          <PolarAngleAxis type="number" domain={[0, 100]} tick={false} angleAxisId={0} />
-          <RadialBar background={{ fill: track }} dataKey="value" cornerRadius={7} fill={VIZ} angleAxisId={0} isAnimationActive={false} />
-        </RadialBarChart>
+        <GaugeArc pct={pct} track={track} size={SIZE} />
         <div style={{ position: "absolute", left: 0, right: 0, top: 50, textAlign: "center", fontSize: 16, fontWeight: 600, color: "var(--text)" }}>
           {value === null ? "—" : formatScalar(value)}
         </div>
