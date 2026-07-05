@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ImageNode as ImageNodeType } from "../rete-nodes";
 import { scheduleAutosave } from "../persistence";
 import { processGraph } from "../process";
+import { hydrateImageAsset } from "../imageAssets";
 import type { NodeProps } from "./nodeKit";
 import { NodeSocket } from "./NodeSocket";
 import { useDraftCommit, INVALID_DRAFT } from "./inlineInput";
@@ -31,6 +32,11 @@ export function ImageComponent({ data, emit }: NodeProps<ImageNodeType>) {
 
   useEffect(() => { setLabel(data.label); }, [data.label]);
   useEffect(() => { setUrl(data.url); }, [data.url]);
+  // Asset hydration (imageAssets.ts) sets data.dataUrl AFTER mount — sync it in.
+  useEffect(() => { setDataUrl(data.dataUrl); }, [data.dataUrl]);
+  // Desktop: a bundled image (assetPath, no session dataUrl yet) loads itself
+  // from the doc's images/ folder on mount — covers doc load, paste, restore.
+  useEffect(() => { void hydrateImageAsset(data); }, [data]);
   useEffect(() => { setHeight(data.height); }, [data.height]);
   useEffect(() => { setCollapsed(data.collapsed); }, [data.collapsed]);
 
@@ -47,11 +53,13 @@ export function ImageComponent({ data, emit }: NodeProps<ImageNodeType>) {
   // (title/alt/src). Shared by the label + URL commit paths.
   function commitValue() { void processGraph(data.id); }
 
-  // Typing a URL takes over as the source and drops any local attachment. The src
-  // rides the value too, so it commits (recomputes downstream) on blur.
+  // Typing a URL takes over as the source and drops any local attachment (its
+  // bundled-file binding included — the asset stays on disk, the node just no
+  // longer points at it). The src rides the value too, so it commits on blur.
   function onUrl(v: string) {
     setUrl(v); data.url = v;
     if (dataUrl) { setDataUrl(""); data.dataUrl = ""; }
+    if (data.assetPath) { data.assetPath = ""; data.fileName = ""; }
     scheduleAutosave();
   }
 
@@ -69,8 +77,11 @@ export function ImageComponent({ data, emit }: NodeProps<ImageNodeType>) {
     (h) => { setHeight(h); data.height = h; scheduleAutosave(); void processGraph(data.id); },
   );
 
-  // Attaching a local file reads it to a data URL (session-only) and takes over as
-  // the source, dropping any URL. This data URL is never written to the save file.
+  // Attaching a local file reads it to a data URL (session) and takes over as the
+  // source, dropping any URL. The data URL is never written into the save JSON;
+  // on desktop the next save-to-disk bundles it as a plain file under images/
+  // beside the doc (imageAssets.ts) — fileName names that copy, and assetPath
+  // resets so the new attachment gets its own bundle slot.
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = ""; // allow re-attaching the same file
@@ -79,6 +90,8 @@ export function ImageComponent({ data, emit }: NodeProps<ImageNodeType>) {
     reader.onload = () => {
       const d = String(reader.result);
       setDataUrl(d); data.dataUrl = d;
+      data.fileName = file.name;
+      data.assetPath = "";
       if (url) { setUrl(""); data.url = ""; }
       scheduleAutosave();
       void processGraph(data.id); // the new src rides the value → refresh consumers
@@ -179,7 +192,7 @@ export function ImageComponent({ data, emit }: NodeProps<ImageNodeType>) {
             </label>
           </div>
 
-          {dataUrl && (
+          {dataUrl && !data.assetPath && (
             <div className="solenoid-image__hint">Local file — not saved</div>
           )}
         </div>
