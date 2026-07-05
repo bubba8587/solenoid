@@ -116,6 +116,30 @@ then a silent drop; for CHOOSE, row loss also shifts positional meaning).
 - "+ Add" is now also undoable (it previously left an orphan row on Ctrl+Z).
 - Tests: `components/extensibleRowUndo.test.ts` (identity + order + pair cases).
 
+### EXTENDED SESSION DIGEST (2026-07-05, ~08:40 onward — "keep going" + a 20-min loop)
+Continuation of the block below; per-item entries above this one. Everything verified
+per commit (tsc + full vitest, now 2124; cargo 46/46 where Rust moved).
+- **Built:** cube-child Nest Join (A2 — nest a pre-built hierarchy whole); popup
+  "Go to node"; per-doc autosave keys landed just before this block.
+- **Undo-correctness arc (audit-driven):** extensible-row add/remove is undoable
+  (`b0066df` — the generic same-Input-object/key-order helpers); Note frontmatter key
+  removal undo-coherent (A2 — confirmed WORSE than flagged: body edits pushed no
+  history at all, the zombie cable never self-healed); CableSwitch lane restored on
+  undo; F9 exempted from the presenter/drill-in keyboard gates (was a manual-mode
+  dead end with all fallback chrome hidden).
+- **New standing guards:** textForm reader fuzz (800 mutants — clean rejection or
+  round-trip closure); ELK Tidy integration test (A2 — elkjs under vitest, the
+  no-overlap invariant through the real arrange→standoff→separate chain).
+- **Hygiene/docs:** guarded clipboard writes (non-secure contexts); 6 Rust dead-code
+  warnings → 0 (parity-only verbs `#[cfg(test)]`-gated); architecture.md file-map
+  fully reconciled (A3, incl. errorValue/textForm/documentStore gaps); dev-notes
+  archival sweep (A3 — live window = 2026-07-01+); subsystem-invariants gained the
+  per-doc-autosave + drill-in-mount sections; backlog verification sweep (A2 — ~35
+  open items checked against code, 1 rot catch flipped).
+- **Standby state:** the autonomously-actionable backlog is EXHAUSTED — what remains
+  needs author decisions (image bundling memo, toolbar reroute, FC v1.1, conditional
+  formatting) or is deliberately sequenced late (bundles 08/10, money/uncertain).
+
 ### OVERNIGHT SESSION SUMMARY (2026-07-05, ~03:30–08:30 — 3-agent autonomous crew)
 22 commits on develop (NOT pushed — local session). Every commit: tsc clean + full
 vitest green (2044 → 2110 tests, +67); cargo 46/46; production build healthy (main
