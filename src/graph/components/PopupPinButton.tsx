@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { pinStore, pinNodeValue } from "../pinStore";
+import { flyToNodeAndFlash } from "../flyToNode";
 
 // Lucide "pin" — https://lucide.dev/icons/pin. Even size in an even (24px) button
 // so it centers on a whole pixel (see CLAUDE.md icon-parity rule).
@@ -30,6 +31,36 @@ export function PopupPinButton({ nodeId }: { nodeId: string }) {
       aria-pressed={pinned}
     >
       <PinGlyph />
+    </button>
+  );
+}
+
+// Lucide "crosshair" — even 16px in the same even button, per the icon-parity rule.
+const LocateGlyph = () => (
+  <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }} aria-hidden="true">
+    <circle cx="12" cy="12" r="10" />
+    <line x1="22" x2="18" y1="12" y2="12" />
+    <line x1="6" x2="2" y1="12" y2="12" />
+    <line x1="12" x2="12" y1="6" y2="2" />
+    <line x1="12" x2="12" y1="22" y2="18" />
+  </svg>
+);
+
+/**
+ * "Go to node" — closes the popup and flies the camera to the host node with
+ * the same flash ring as the error click-to-jump. Sits beside the Pin action
+ * in every value popup (the backlog's "+ more" follow-up on Pin).
+ */
+export function PopupGoToButton({ nodeId, onClose }: { nodeId: string; onClose: () => void }) {
+  return (
+    <button
+      type="button"
+      className="sol-popup__pin"
+      onClick={() => { onClose(); flyToNodeAndFlash(nodeId); }}
+      title="Go to node on the canvas"
+      aria-label="Go to node"
+    >
+      <LocateGlyph />
     </button>
   );
 }
