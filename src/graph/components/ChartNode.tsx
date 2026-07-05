@@ -1,12 +1,35 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import type { ChartNode as ChartNodeType, ChartOp } from "../rete-nodes";
 import { CHART_MATRIX_OPS } from "../rete-nodes";
-import { NodeShell, OpSelect, useNodeField, type NodeProps, type OpOption } from "./nodeKit";
+import { NodeShell, OpSelect, type NodeProps, type OpOption } from "./nodeKit";
 import { NodeSocket } from "./NodeSocket";
 import { InlineInputs } from "./inlineInput";
 import { ChartFigure, toSeries, type ChartShape } from "./chartView";
 import { ChartExpandButton } from "./ChartExpandButton";
+import { getEditor, getArea, processGraph } from "../process";
 import type { ChartValue } from "../chartValue";
+
+// A Chart reads ONE data input per op: the 2-D `series` matrix for composed/bubble,
+// the 1-D `values` list for everything else. Both ports stay defined on the node,
+// but only the op's active one is rendered — so the card never shows the dead
+// socket. Switching op FAMILIES (1-D ↔ matrix) drops the cable on the now-inactive
+// socket so there's no invisible live wire.
+async function applyChartOp(node: ChartNodeType, newOp: ChartOp): Promise<void> {
+  const wasMatrix = CHART_MATRIX_OPS.has(node.op);
+  const nowMatrix = CHART_MATRIX_OPS.has(newOp);
+  node.op = newOp;
+  if (wasMatrix !== nowMatrix) {
+    const inactive = nowMatrix ? "values" : "series";
+    const editor = getEditor();
+    if (editor) {
+      const conns = editor.getConnections().filter((c) => c.target === node.id && c.targetInput === inactive);
+      for (const c of conns) await editor.removeConnection(c.id);
+    }
+    const area = getArea();
+    if (area) await area.update("node", node.id);
+  }
+  await processGraph();
+}
 
 // Grouped so the dropdown reads by family — too many types now for a seg toggle.
 const OPTIONS: ReadonlyArray<OpOption<ChartOp>> = [
@@ -28,7 +51,8 @@ const W = 218;
 const H = 150;
 
 export function ChartComponent({ data, emit }: NodeProps<ChartNodeType>) {
-  const [op, setOp] = useNodeField(data, "op");
+  const [op, setOpState] = useState<ChartOp>(data.op);
+  const setOp = useCallback((v: ChartOp) => { setOpState(v); void applyChartOp(data, v); }, [data]);
   const opts = data.chartOptions;
   const isMatrix = CHART_MATRIX_OPS.has(op);
   // Has anything to draw? Matrix ops read cachedMatrix (with a values fallback);
@@ -59,7 +83,7 @@ export function ChartComponent({ data, emit }: NodeProps<ChartNodeType>) {
       node={data}
       emit={emit}
       collapsible={false}
-      leading={valuesPort && valuesTop !== undefined
+      leading={!isMatrix && valuesPort && valuesTop !== undefined
         ? <NodeSocket side="input" socketKey="values" nodeId={data.id} emit={emit} payload={valuesPort.socket} top={valuesTop} />
         : null}
     >
@@ -79,9 +103,11 @@ export function ChartComponent({ data, emit }: NodeProps<ChartNodeType>) {
         )}
       </div>
       <div className="solenoid-node__section-divider" />
-      {/* Series: wire a matrix for the composed/bubble ops. Options: a
-          matplotlib-style string, or wire a Chart Builder (field hides when wired). */}
-      <InlineInputs node={data} emit={emit} keys={["series", "options"]} />
+      {/* The op's data socket + Options. `series` (2-D matrix) shows only for the
+          composed/bubble ops; the 1-D ops feed the leading `values` socket instead.
+          Options: a matplotlib-style string, or wire a Chart Builder (field hides
+          when wired). */}
+      <InlineInputs node={data} emit={emit} keys={isMatrix ? ["series", "options"] : ["options"]} />
     </NodeShell>
   );
 }
