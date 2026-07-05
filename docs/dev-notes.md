@@ -65,6 +65,13 @@ live. Every commit verified tsc + full vitest (now 2184 green); tree clean, noth
 - **Decisions:** D2 (composite toolbar reroute) and D4 (conditional formatting) DEFERRED
   by the author. Next in WS-A when picked up: A4 units-by-dimensionality (v1.1-β,
   design-the-representation-first).
+- **Doc consolidation (author-mandated, aggressive):** dev-notes → digests-only (75
+  per-item entries swept to archive); **backlog rewritten to OPEN ITEMS ONLY** (1823 →
+  ~170 lines; new standing policy: a landed item's line is DELETED, git + digests are
+  the record); 8 finished docs moved to `docs/archive/` (scope-features, v1.0-plan,
+  v1.0-audit, performance-hardening, future-directions, strategy-threads,
+  isolate-pin-multiview-scoping, node-arity-audit) with all live references repointed;
+  CLAUDE.md's doc-maintenance section rewritten to the new policy.
 
 
 ### UNSOLVED: header/body border seam under zoom (2026-07-05 — parked for a human/later pass)

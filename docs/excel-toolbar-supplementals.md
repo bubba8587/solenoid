@@ -213,7 +213,7 @@ North Star (roadmap). Most of this tab is nodes.
 | **Show** → Gridlines / Formula Bar / Headings | [SETTING]/[STRUCTURAL] | Gridlines → grid-dots toggle [SETTING]. Formula Bar → [STRUCTURAL] (the node *is* the formula). Headings → N/A. |
 | **Zoom** / Zoom to Selection / 100% | [CHROME] | Zoom controls + autofit (F) exist. |
 | **Freeze Panes** / Split | [SKIP]/[CHROME] | No scrolling grid to freeze. The *intent* (keep context visible while exploring) → pan/zoom + minimap + pins. |
-| **New Window / Arrange All / View Side by Side** | [CHROME] | The **isolate / pin multiview** scoping system is our take on multiple views of one model (`isolate-pin-multiview-scoping.md`). |
+| **New Window / Arrange All / View Side by Side** | [CHROME] | The **isolate / pin multiview** scoping system is our take on multiple views of one model (`archive/isolate-pin-multiview-scoping.md`). |
 | Hide / Unhide | [CHROME] | Collapse (per-node chevron), Isolate. |
 | **Macros** | [SKIP] *(see Developer)* | — |
 

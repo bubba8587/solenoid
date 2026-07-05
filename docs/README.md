@@ -18,10 +18,10 @@ this index is the map to everything else. (Archived/point-in-time docs live in
 
 - **`subsystem-invariants.md`** — the "don't break this" mechanics for the tricky
   subsystems (cable routing, group push, standoffs, tidy, error values, unit flow, alerts).
-- **`node-coverage.md`** / **`node-arity-audit.md`** — the node inventory and the
+- **`node-coverage.md`** / **`archive/node-arity-audit.md`** — the node inventory and the
   labeled-slots-vs-list-socket arity decisions. `nodeCatalog.ts` is the real source of truth.
 - **`compute-architecture.md`**, **`cable-routing.md`**, **`grid-system.md`**,
-  **`isolate-pin-multiview-scoping.md`**, **`cube-node-scope.md`** — per-subsystem depth.
+  **`cube-node-scope.md`** — per-subsystem depth.
 - **`excel-pain-points.md`** / **`excel-toolbar-supplementals.md`** — the Excel-parity
   reference (function gaps + the non-function ribbon verdicts).
 - **`performance-hardening.md`** — the perf floor and known remaining costs.
