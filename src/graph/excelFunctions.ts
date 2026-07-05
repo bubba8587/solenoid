@@ -425,6 +425,22 @@ registerInternal("TEXTJOIN", (delim, ignoreEmpty, ...xs) => {
   return kept.join(toStr(delim));
 });
 
+// ── text-family pass-throughs, wrapped for OUR number→text coercion (B-4b sweep,
+// 2026-07-05): FX stringifies a numeric arg with raw String() — 17-digit float
+// noise (UPPER(0.1+0.2) → "0.30000000000000004") — and SUBSTITUTE outright THROWS
+// on a number. Route each function's text-position args through toStr (the same
+// numberToText 15-sig-digit contract CONCAT/TEXTJOIN enforce above), then delegate
+// to FX for the actual semantics (FIND case-sensitivity, SEARCH wildcards, …). ──
+const TEXT_ARG_POSITIONS: Record<string, number[]> = {
+  LEFT: [0], RIGHT: [0], MID: [0], UPPER: [0], LOWER: [0], PROPER: [0],
+  TRIM: [0], REPT: [0], SUBSTITUTE: [0, 1, 2], REPLACE: [0, 3],
+  EXACT: [0, 1], FIND: [0, 1], SEARCH: [0, 1],
+};
+for (const [name, idxs] of Object.entries(TEXT_ARG_POSITIONS)) {
+  const f = (FX as unknown as Record<string, (...a: unknown[]) => unknown>)[name];
+  registerInternal(name, (...a) => f(...a.map((x, i) => (idxs.includes(i) ? toStr(x) : x))));
+}
+
 // ── datetime extractors (the rest of YEAR's family) ──
 // Each reads OUR date serial through `serialToJsDate`, identical to DatePartNode's
 // data() (getUTC* on the same Date), so the typed-formula path and the visual node
@@ -624,16 +640,77 @@ registerInternal("NOW", () => jsDateToSerial(new Date()));
 // date/time-shaped, hand FX the serial's UTC Date directly: FX formats via UTC
 // getters (probed 2026-07-02 — the earlier local-wall-clock rebuild double-
 // shifted the day on any non-UTC machine, "green in UTC CI, red locally").
-// Known FX limit: time tokens (hh:mm) render the date part only. Numeric codes
-// ("0.00", "#,##0") pass straight through to FX.
+// The 2026-07-05 TEXT-family sweep (B-4b) patched four more FX holes up front:
+// a non-numeric text value passes through unchanged (Excel) instead of THROWING;
+// "@" / "General" use our numberToText (FX rounds "@" and zeroes "General");
+// pure zero-pad codes ("00000") actually pad (FX drops the pad); scientific
+// ("0.00E+00") formats as 1.23E+06 (FX emitted a plain decimal). Still FX,
+// still known-broken (documented, not chased): section codes ("pos;neg"),
+// fractions ("# ?/?"), and time tokens (hh:mm renders the date part only).
+// Plain numeric codes ("0.00", "#,##0", "%", "$") pass straight through to FX.
 registerInternal("TEXT", (value, fmt) => {
   const fxText = (FX as unknown as { TEXT: (...a: unknown[]) => unknown }).TEXT;
   const f = toStr(fmt);
+  const n = toNum(value);
+  if (Number.isNaN(n)) return toStr(value); // non-numeric text passes through (Excel)
+  if (f === "@" || /^general$/i.test(f)) return numberToText(n);
+  if (/^0+$/.test(f)) return (n < 0 ? "-" : "") + String(Math.round(Math.abs(n))).padStart(f.length, "0");
+  const sci = /^0(?:\.(0+))?E([+-])(0+)$/i.exec(f);
+  if (sci) {
+    const [mant, e] = n.toExponential(sci[1]?.length ?? 0).split("e");
+    const exp = parseInt(e, 10);
+    return `${mant}E${exp < 0 ? "-" : "+"}${String(Math.abs(exp)).padStart(sci[3].length, "0")}`;
+  }
   const bare = f.replace(/"[^"]*"/g, ""); // quoted literals aren't format tokens
   const dateish = /[ymdhs]/i.test(bare) && !/[#0?]/.test(bare);
-  const n = toNum(value);
-  if (dateish && !Number.isNaN(n)) return fxText(serialToJsDate(n), f);
-  return fxText(value, f);
+  if (dateish) return fxText(serialToJsDate(n), f);
+  return fxText(n, f);
+});
+// DOLLAR: FX prints a negative as "$(1,234.57)"; Excel's accounting form is
+// "($1,234.57)" — the $ sits INSIDE the parens. Positive/rounding behavior is
+// already Excel-correct, so just relocate the paren.
+registerInternal("DOLLAR", (value, decimals) => {
+  const out = (FX as unknown as { DOLLAR: (...a: unknown[]) => unknown }).DOLLAR(value, decimals);
+  return typeof out === "string" && out.startsWith("$(") ? `($${out.slice(2)}` : out;
+});
+// VALUE: FX returns 0 for ANY unparseable text — VALUE("abc") = 0 silently
+// corrupts downstream math. Excel is strict: #VALUE!. Own it: plain numbers,
+// $ prefix, thousands commas, trailing % (each ÷100), (parens) as negative.
+// Date/time text is NOT parsed (Excel's VALUE does; ours routes through
+// DATEVALUE — documented deviation, keeps VALUE's contract number-only).
+registerInternal("VALUE", (x) => {
+  if (typeof x === "number") return x;
+  const s = toStr(typeof x === "boolean" ? "" : x).trim(); // Excel: VALUE(TRUE) is #VALUE!
+  let t = s, pct = 0, neg = false;
+  while (t.endsWith("%")) { pct++; t = t.slice(0, -1).trim(); }
+  if (/^\(.*\)$/.test(t)) { neg = true; t = t.slice(1, -1).trim(); }
+  t = t.replace(/^([+-]?)\$/, "$1").replace(/,/g, "");
+  const n = t === "" ? NaN : Number(t);
+  if (Number.isNaN(n)) return VALUE("VALUE");
+  return (neg ? -n : n) / Math.pow(100, pct);
+});
+// NUMBERVALUE: FX returns null when only a decimal separator is given —
+// NUMBERVALUE("3,5%", ",") must be 0.035 (Excel). Own it: first char of each
+// separator arg counts (Excel), whitespace stripped anywhere, trailing %s each
+// ÷100, group separator legal only BEFORE the decimal point, "" → 0. The ","
+// group DEFAULT yields when the decimal sep claims it; only two EXPLICITLY
+// identical separators are #VALUE!.
+registerInternal("NUMBERVALUE", (text, dec, grp) => {
+  const d = (toStr(dec ?? "") || ".")[0];
+  const gRaw = toStr(grp ?? "");
+  const g: string | null = gRaw !== "" ? gRaw[0] : d === "," ? null : ",";
+  if (g === d) return VALUE("NUMBERVALUE");
+  let s = toStr(text).replace(/\s/g, "");
+  if (s === "") return 0;
+  let pct = 0;
+  while (s.endsWith("%")) { pct++; s = s.slice(0, -1); }
+  const di = s.indexOf(d);
+  const intPart = di === -1 ? s : s.slice(0, di);
+  const frac = di === -1 ? null : s.slice(di + 1);
+  if (frac != null && ((g != null && frac.includes(g)) || frac.includes(d))) return VALUE("NUMBERVALUE");
+  const n = Number((g != null ? intPart.split(g).join("") : intPart) + (frac != null ? `.${frac}` : ""));
+  if (Number.isNaN(n)) return VALUE("NUMBERVALUE");
+  return n / Math.pow(100, pct);
 });
 
 // ── Solenoid-native (no Formula.js equivalent) — the registry ADDS these ──

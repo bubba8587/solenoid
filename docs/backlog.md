@@ -93,20 +93,28 @@ is archived).
   the input-surface merge + migration is open (design notes: `archive/v1.1-plan.md` WS-D).
 - [ ] **Native CSV reader date inference** — desktop `engine_read_csv` brings dates
   in as text (Get Column read-as-Date converts); full inference parity is the follow-up.
-- [ ] **Group By `total_depth` exposure** — the pivot engine already supports it via
-  a no-colFields pivot; the GROUPBY node doesn't surface it.
 - [ ] **Error UX on restriction violation** — typed error out the socket vs the node
   flagging the offending input locally. Pending a call.
-- [ ] **Retire the now-unused `compileFormula`** (leftover from the one-core
-  unification).
 - [ ] **Formula re-audit remainder** — `formulaDivergence.test.ts` guards the known
-  overrides; NOT yet swept: the TEXT/format family (`numberToText` vs FX TEXT) and
-  node `data()` paths that don't share the registered impl; distributions validated
-  only at representative points — widen if accuracy is ever in doubt.
+  overrides (incl. the 2026-07-05 TEXT-family sweep); NOT yet swept: node `data()`
+  paths that don't share the registered impl; distributions validated only at
+  representative points — widen if accuracy is ever in doubt.
 - [ ] **Multi-predicate frame Filter — AND/OR condition rows** (IN, author
   2026-07-05 "go for it"): extensible condition rows with an AND/OR mode on the
   frame Filter — SQL WHERE-IN made visual (`PairedExtensibleInputs` pattern; JS
   oracle + Polars parity; the Match-case flag rides per-condition).
+- [ ] **BUG — Treemap/Sankey render as a blank box even with data wired**
+  (author-reported 2026-07-05). Node classes, socket coercion (labels via
+  strlist-CSV auto-injection, values via a wired numlist — both traced clean),
+  the lazy chunk indirection, and the recharts `Treemap`/`Sankey` prop usage all
+  checked out against recharts 3.8.1's types with no obvious break; an SSR smoke
+  test (`renderToStaticMarkup`) hit an unrelated harness wall
+  (`useSyncExternalStore` needs a browser — this repo's vitest env is `node`,
+  no jsdom, so client components can't fully render in-test). Needs an actual
+  browser devtools console check to find the real error (author deferred this
+  check for now). The `chart-showcase` seed wires both with realistic data
+  (`tm_labels`/`tm_vals` → Treemap, `sk_from`/`sk_to`/`sk_val` → Sankey) — that's
+  the reproduction case for whoever picks this up.
 
 ## Notes / documents
 

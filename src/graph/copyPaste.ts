@@ -77,7 +77,7 @@ export const INIT_FIELD_ORDER = [
   "tableText", "frameText", "url", "fileName", "assetPath", "path", "refreshMinutes", "tableIndex", "query", "dir", "how", "mode", "inFormat", "outFormat",
   "inputAngle", "outputAngle", "inputTightness", "outputTightness", "angle",
   "selectedColumn", "selectedValues", "multiSelect", "readAs", "addAs", "activeIndex", "target", "resultAs", "colType",
-  "rowTotalDepth", "colTotalDepth", "rowSort", "colSort", "relativeTo", "normalize", "detail",
+  "totalDepth", "rowTotalDepth", "colTotalDepth", "rowSort", "colSort", "relativeTo", "normalize", "detail",
   "members", "color", "collapsed", "width", "height", "title", "body", "seq",
   "checkNotNull", "checkUnique", "checkRange", "checkRegex",
   "runMode", "simulationSteps", "embeds", "steps",
