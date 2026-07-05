@@ -217,12 +217,16 @@
 
 .solenoid-node__header {
   position: relative;
-  padding: 6px 10px 6px 22px; /* extra left room for the collapse chevron */
+  padding: 7px 11px 7px 23px; /* extra left room for the collapse chevron; +1px vs the old 2px border so the header box doesn't shrink */
   /* Category accent wraps the top + both sides of the header. Negative
      margins pull it over the card's own 1px border so the accent is the
-     outermost edge. */
+     outermost edge. SAME 1px width as the card border below it — the old 2px
+     made the two frames different widths on the same edge, and two elements
+     with different border widths can't rasterize identically under canvas
+     zoom (subpixel crack at the side seam, a whole-pixel jog at some zooms —
+     author 2026-07-05). One shared 1px track unifies them. */
   margin: -1px -1px 0;
-  border: 2px solid var(--node-accent, transparent);
+  border: 1px solid var(--node-accent, transparent);
   /* No bottom border — a 2px accent side meeting a 1px dark bottom border
      mitres into a diagonal wedge. The divider is an inset shadow instead. */
   border-bottom: none;
@@ -235,7 +239,7 @@
 }
 /* No chevron → reclaim the reserved left room so the title sits flush left. */
 .solenoid-node--no-chevron .solenoid-node__header {
-  padding-left: 10px;
+  padding-left: 11px;
 }
 
 /* Light mode frames the card in its accent-dark — the gray header/body divider
