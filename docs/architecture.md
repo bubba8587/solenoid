@@ -77,6 +77,9 @@ src/
 |---|---|
 | `sockets.ts` | `SocketDataType` + `SOCKET_COLORS` (CSS vars, incl. purple = logical); `FAMILIES` (element × dim lattice) DERIVES `SOCKET_ACCEPTS`; `accepts`/`areCompatible`/`canConnect`. Governing rule: enforce TYPE separation (Cast to cross families; only logical↔number bridges), allow DIMENSIONAL flow (scalar→list→matrix→frame); `anytable`/`frame` widen from lower rank |
 | `valueKinds.ts` | First-class value-model kinds: `null` (missing), logical (boolean), Kleene 3-valued logic helpers; aggregators skip null / propagate `SolError` |
+| `errorValue.ts` | Tagged `SolError` values (Excel-style `#CODE!`); `installErrorGuards(node)` wraps every `data()` at `nodecreated` (error in → error out); `tagOrigin`/`SolErrorOrigin` stamp the FIRST mint site (nodeId/name, row index for list/frame cells) so a chain of passthroughs still points at the true source; `registerErrorSink` is the seam the Problems panel taps (reports `null` on a clean pass so a relapse re-fires) |
+| `nodeStoreRegistry.ts` | The forget seam: any node-keyed module store (collapse, manual size, cable values, socket angles…) calls `registerNodeForget(fn)` once; the single `noderemoved` pipe calls `forgetNode(id)` so a deleted node's entries don't leak — a new store never has to thread its own cleanup into Canvas.tsx |
+| `flyToNode.ts` | Pan/zoom the viewport to centre one or more nodes (expanding a collapsed host group first) — the shared "go to this node" action behind the pins HUD, alerts HUD, popup "Go to node" buttons, and Presentation's per-step camera fly |
 | `nodes/kind.ts` | `NodeKind` → header accent color mapping |
 | `unitFlow.ts` | Unit/format-of-the-value resolver. `makeUnitResolver`/`makeAnnotationResolver` walk the graph: an FC locks, Convert imposes its `toUnit`, a passthrough/selector carries (data-aware), a transform breaks. BIDIRECTIONAL — `inAnnotation` (upstream FC) + `downstreamAnnotation` (an FC ahead through pure passthroughs, for boxes in front of a trailing FC) |
 | `unitFormat.ts` | Unit + number-format rendering helpers |
@@ -99,6 +102,7 @@ src/
 | `frameBackend.ts` (+`.test.ts`) | The engine seam: a `FrameBackend` interface (`source`/`apply`/`join`/`append`/`collect`/`preview`/`column`/`drop`) over opaque `FrameHandle`s, so the frame layer runs on either the in-process `JsFrameBackend` (web/dev) or the **`PolarsBackend`** (desktop, over `ipcBridge`; selected by `initFrameBackend()` when `engine_ping` says `"polars"`). Also holds the node-facing **runners** `runFrameUnary`/`runFrameJoin`/`runFrameAppend` (which now return a **lazy `FrameRef`** that chains in the backend), `readFrame`/`collectPreview` (the materialization boundary — full / head-N), `dropFrameRef` (lifecycle), and `materialize()` (error-as-value bridge). Data crosses back at `collect`/`preview`/`column`; verb cards use `collectPreview` (head-N for a large frame). `coerceInputs` collects a ref to a `FrameValue` for every non-lazy consumer centrally. Module-singleton; `setFrameBackend` swaps it |
 | `frameVerbs.ts` (+`.test.ts`) | The pure relational verb engine — ONE definition of each verb (FrameValue→FrameValue), shared by the JS backend's `apply`, the Polars parity oracle, and (later) the verb nodes. Unary (`applyVerb`): select/drop/rename/sort/distinct/head/filter/groupBy/pivot/unpivot; binary: join (inner/left/right/outer, fan-out, key-coalesce, null≠null), append (union-by-name); cube bridge: nest/unnest; `reconcileFrames` (two-frame key diff, surfaces blank/invalid-key rows + a PVM price/volume/mix breakdown that excludes errored cells — `reconcile.test.ts`). Reuses `compareOp` + `forAggregate` so semantics can't drift from the nodes |
 | `ipcBridge.ts` (+`.test.ts`) | Web→Rust door: `engineAvailable`/`ipcInvoke`/`enginePing` (guarded by `isDesktop()`), `toSolError` maps a rejected `invoke` to a tagged `SolError`. Lazy `@tauri-apps/api/core` import → node/web-safe |
+| `frameShape.ts` (+`.test.ts`), `frameShapeResolver.ts` | Static frame shape: column names/types computed AHEAD of running anything, mirroring each verb's column-reshaping logic without touching row data (a mismatch with the real JS/Rust output is a caught test failure, not a silent divergence). The resolver walks the graph forward from literal frame sources so a downstream node can show its shape before data flows. Nest/Unnest and Frame Lookup fall outside this on purpose (their outputs aren't a Frame shape) |
 
 ### Cables
 
@@ -154,7 +158,8 @@ src/
 | `nodeExcel.ts`, `excelToCatalog.ts` | Excel equivalence metadata (single source of truth) + derived maps; `EXCEL_GAP` parity list |
 | `functionReference.ts`, `frStore.ts` | Function Reference overlay data (generated from the catalog) |
 | `packs.ts`, `fcExtensions.ts` | Pack framework (placements, `NODE_PACK_TAGS`, FC unit/format contributions) |
-| `AddNodeMenu.tsx`, `addMenuStore.ts`, `fuzzy.ts` | Right-click add menu + search |
+| `AddNodeMenu.tsx`, `addMenuStore.ts`, `fuzzy.ts`, `catalogSearch.ts` (+`.test.ts`) | Right-click add menu + search; `catalogSearch.ts` extracts the scoring (label/description/Excel names/category path/keywords) plus the quick-wire drop filter, which memoizes each catalog type's socket signature so a drop doesn't re-`create()` every leaf |
+| `excelFunctions.ts` | The single declared home for "which of the two parallel Excel implementations is authoritative for this function" (the ~150 native nodes vs Formula.js via `excelFormula.ts` `dispatch`) — per the per-family verdicts in `docs/formulajs-vs-native-audit.md` |
 | `excelFormula.ts` (+`.test.ts`) | The Expression/LAMBDA formula compiler (Formula.js scope) |
 | `formulaDivergence.test.ts` | Durable CI guard for the node-vs-Formula.js divergence audit: pins every Excel-correct override (`resolveExcelFunction`) the 2026-06-25 consolidation made because FX is wrong (MOD/QUOTIENT/ATAN2/ROUND/RANK/TRIMMEAN/PERCENTRANK), plus FX-still-buggy tripwires — an FX upgrade that fixes those trips the test instead of silently re-introducing drift |
 
@@ -166,6 +171,12 @@ src/
 `MobileControls` (+`mobileMenuStore`, `touchSelectStore`), `SeedSelect`,
 `WebDemoBanner`, plus dialog/popup stores (`confirmStore`,
 `connectionDialogStore`, `formulaPopupStore`, `tablePopupStore`).
+The HUD family stacks in `components/HudStack.tsx`: `pinStore` (pinned
+values), `alertStore` (threshold fires, edge-detected on status not a
+boolean), `problemsStore` (error-sink relapse tracking), `commentStore`
+(node-anchored comments), `noticeStore` (the toast/warn channel — e.g. the
+drill-in dropped-cable notice). Other cross-cutting toggles:
+`semanticZoomStore`, `gridSnapStore`, `isolateStore`.
 
 ### External data
 
