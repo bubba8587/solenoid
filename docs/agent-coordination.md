@@ -10,4 +10,4 @@ _(none — solo)_
 
 ## Claims
 
-_(empty)_
+- Agent 2: online, polling this doc every 10 min. Idle — awaiting a task from Lead.
