@@ -1128,9 +1128,13 @@ body.solenoid-scrubbing * {
    of the design system, just transient instead of permanent. */
 @keyframes solenoid-flash-pulse {
   0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--sol-error) 0%, transparent); }
-  15%, 55% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--sol-error) 55%, transparent); }
+  15%, 55% { box-shadow: 0 0 8px 2px color-mix(in srgb, var(--sol-error) 55%, transparent); }
 }
+/* The class lands on rete's node wrapper (no radius of its own), so match the 8px
+   card corner — box-shadow follows border-radius — and blur the ring into a halo so
+   it hugs the rounded card instead of drawing a hard rectangle around it. */
 .solenoid-node-flash {
+  border-radius: 8px;
   animation: solenoid-flash-pulse 1s ease-in-out;
 }
 

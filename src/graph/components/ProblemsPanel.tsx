@@ -11,14 +11,14 @@ import { insertClampBefore } from "../modelFuzz";
 import "./problemsPanel.css";
 import { CloseIcon } from "./CloseIcon";
 
-// Lucide "list-checks" — the Problems trigger icon. https://lucide.dev/icons/list-checks
+// Lucide "triangle-alert" — the Problems trigger icon (Problems ARE errors, so the
+// warning triangle belongs here; Alerts, which aren't necessarily bad, use a bell).
+// https://lucide.dev/icons/triangle-alert
 const ProblemsSvg = ({ size = 14 }: { size?: number }) => (
   <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", flexShrink: 0 }}>
-    <path d="m3 17 2 2 4-4" />
-    <path d="m3 7 2 2 4-4" />
-    <path d="M13 6h8" />
-    <path d="M13 12h8" />
-    <path d="M13 18h8" />
+    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+    <path d="M12 9v4" />
+    <path d="M12 17h.01" />
   </svg>
 );
 
