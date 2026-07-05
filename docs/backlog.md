@@ -103,18 +103,14 @@ is archived).
   2026-07-05 "go for it"): extensible condition rows with an AND/OR mode on the
   frame Filter — SQL WHERE-IN made visual (`PairedExtensibleInputs` pattern; JS
   oracle + Polars parity; the Match-case flag rides per-condition).
-- [ ] **BUG — Treemap/Sankey render as a blank box even with data wired**
-  (author-reported 2026-07-05). Node classes, socket coercion (labels via
-  strlist-CSV auto-injection, values via a wired numlist — both traced clean),
-  the lazy chunk indirection, and the recharts `Treemap`/`Sankey` prop usage all
-  checked out against recharts 3.8.1's types with no obvious break; an SSR smoke
-  test (`renderToStaticMarkup`) hit an unrelated harness wall
-  (`useSyncExternalStore` needs a browser — this repo's vitest env is `node`,
-  no jsdom, so client components can't fully render in-test). Needs an actual
-  browser devtools console check to find the real error (author deferred this
-  check for now). The `chart-showcase` seed wires both with realistic data
-  (`tm_labels`/`tm_vals` → Treemap, `sk_from`/`sk_to`/`sk_val` → Sankey) — that's
-  the reproduction case for whoever picks this up.
+- [ ] **BUG (FIXED, awaiting author eyeball) — Treemap/Sankey blank box.**
+  Root cause found (`d824373`): recharts 3.x's `content`/`node` prop needs the
+  FUNCTION form to receive each cell/node's real geometry — a static element
+  renders once with no geometry, so every rect/node collapsed to 0×0. Fixed in
+  both `TreemapView`/`SankeyView` (`chartRender.tsx`). Verified against
+  recharts 3.8.1's types + tsc/vitest; not yet eyeballed live (no-puppeteer
+  rule). Repro/verify via the `chart-showcase` seed. **Delete this line once
+  the author confirms it renders.**
 
 ## Notes / documents
 

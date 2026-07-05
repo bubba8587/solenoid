@@ -26,32 +26,25 @@ border seam, grid system, collision avoidance, transpiler, seed-cleanup.
   half (`nodes/frame.ts` + `FrameNodes.tsx`) WAITS until my B-4b commit lands
   (those files are in its stage list). Then B-3 CSV dates.
   (`engine.rs` stays MINE — nobody else touches it.)
-- **A2:** **C-1 COMPLETE RECHARTS — functionally DONE** (final slice queued). Committed:
-  Slices 1+2 (`09bc120`), 3+4 (`7315441`), date-range (`5bd7105`). READY: Composed +
-  Bubble multi-series ops + `chart-showcase.json` seed. Full C-1 delivered — every
-  planned type: column/bar/line/area/scatter/pie/radar/radial/funnel + histogram, KPI,
-  bullet, treemap, sankey, composed, bubble, + the dual-date DateRange control. Once
-  A3 commits the finale, my C-1 queue item is done → next A2 item is C-3. **Finale
-  gate RESOLVED** (visual.test.ts updated for the `matrix` key + full vitest re-run =
-  2222 green; A1 caught it — I'd only run my-area subsets, now always full vitest
-  pre-READY). **C-3 SCOPED** (⋯ menu on TablePopup header: move Copy→menu, add Copy-as-
-  Markdown + Export CSV via `saveTextFileDialog`; then Slicer/Sparkline collapsed
-  previews, Gauge investigate. Popup files only — no chart overlap).
-  **C-3 part 1 DONE + READY** (⋯ menu: Copy CSV / Copy-as-Markdown / Export CSV;
-  shared PopupOverflowMenu; full vitest 2230 green). Part 2 (collapsed previews) next.
-- **A3:** All prior FIFO items flushed + the newest 4: A2's C-1 FINALE
-  (`1e71d66`, Composed/Bubble + chart-showcase seed), A2's C-3 part 1 (`6841167`,
-  popup overflow menu), A1's B-4b (`a2c6fdd`, TEXT sweep + GroupBy totals — also
-  fixed the `frameShape.ts` tsc gap), A1's B-2 engine half (`2eb65a4`,
-  `filterMulti`, cargo 63/63 verified). **Author bug report investigated:
-  Treemap/Sankey render blank even with data wired** — traced node classes,
-  coercion, the lazy chunk, recharts prop usage against 3.8.1's types, all
-  clean; an SSR smoke test hit an unrelated harness wall (this repo's vitest
-  is `node`-only, no jsdom, so client components can't render in-test); needs
-  a browser devtools console check to pin the real error — logged in
-  `backlog.md` "Nodes / engine" with the `chart-showcase` seed as the repro,
-  author will check later. `develop` still unpushed past `5bd7105`
-  (6 more commits since) — will push once the queue empties again or on request.
+- **A2:** **C-1 fully committed** (`09bc120`/`7315441`/`5bd7105`/`6841167`/`1e71d66` +
+  finale). Now: **C-3 (popup ⋯ + collapsed previews)** — part 1 (⋯ menu) committed
+  `6841167`; **part 2 (Slicer/Sparkline collapsed previews) DONE + READY**; Gauge left
+  non-collapsible (build-only-if-clean — needs a live socket check). **Also fixed the
+  author-reported Treemap/Sankey BLANK-BOX bug** (recharts 3.x needs the function-form
+  content/node prop — root-caused against the installed types) → READY, needs author
+  re-eyeball (no-puppeteer). **Now on E-2 (Finance/FRED)** — slice 1 (apiKeyStore, tested)
+  DONE + READY. Remaining E-2: Settings keys section, provider-preset connection node
+  (FRED + Stooq/Alpha Vantage), FRED demo seed. Discipline: always full `vitest` pre-READY.
+- **A3:** All FIFO items flushed through this check-in: A2's C-1 FINALE
+  (`1e71d66`), C-3 part 1 (`6841167`), A1's B-4b (`a2c6fdd`), A1's B-2 engine
+  half (`2eb65a4`), **A2's Treemap/Sankey blank-box BUGFIX** (`d824373` — A2
+  root-caused it: recharts 3.x needs the function-form `content`/`node` prop
+  for per-node geometry; static element = 0×0 everywhere. Confirms my earlier
+  investigation was on the right track but hadn't found the exact API gap —
+  backlog line kept open pending the author's live eyeball, not deleted), C-3
+  part 2 (`bde3e12`, Slicer/Sparkline collapsed previews), E-2 slice 1
+  (`7cdcea0`, apiKeyStore foundation). `develop` unpushed past `5bd7105`
+  (10 commits since) — will push once the queue empties again or on request.
   Idle on the commit queue now.
 
 ## Queue
@@ -88,6 +81,10 @@ _(empty)_
 
 ## Recently done
 
+- Agent 3 — A2's E-2 slice 1, apiKeyStore foundation. `7cdcea0`.
+- Agent 3 — A2's C-3 part 2, Slicer/Sparkline collapsed previews. `bde3e12`.
+- Agent 3 — A2's Treemap/Sankey blank-box bugfix (recharts function-form
+  content/node prop). `d824373`. Backlog line kept open pending author eyeball.
 - Agent 3 — A1's B-2 engine half, filterMulti verb (cargo 63/63). `2eb65a4`.
 - Agent 3 — A1's B-4b, TEXT-family sweep + Group By totals. `a2c6fdd`.
 - Agent 3 — A2's C-3 part 1, popup overflow menu. `6841167`.
