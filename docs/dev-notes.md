@@ -2,6 +2,17 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Popup "Go to node" retargeted to "Go to source" (2026-07-05, author review)
+Author's eyeball catch: since a popup only ever opens from its host node's chip, flying to
+the HOST is a no-op on a Display — you're already looking at it. The crosshair now flies to
+the value's ORIGIN: new `resolveValueOrigin(editor, nodeId)` in `unitFlow.ts` (it owns the
+passthrough duck-typing) walks upstream through FCs (`in`), pure passthroughs (first wired
+input), and data-aware selectors (the actually-chosen branch; single wired branch when
+untracked), stopping at any transform (Convert included — a converted number is a new value),
+at an indeterminate selector, and at an ambiguous multi-branch selector. A producer node
+resolves to itself, so the button is unchanged on non-passthrough hosts. Tooltip/aria now say
+"source". Tests: 7-case describe block in `unitFlowAnnotation.test.ts` (vitest 2131).
+
 ### Note frontmatter socket-removal undo-coherence — fixed (2026-07-05)
 Queue #3, the OUTPUT-side sibling of the extensible-row undo hole (b0066df). **Verified the
 bug first (per Lead):** a Note's output sockets are DERIVED from `data.body` (`syncFields` in
