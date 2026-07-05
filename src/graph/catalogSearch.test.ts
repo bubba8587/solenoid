@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { flattenLeaves, searchLeaves } from "./catalogSearch";
+import { flattenLeaves, searchLeaves, filterByCompatibleSocket } from "./catalogSearch";
 import { buildCatalog } from "./catalogUtils";
+import { SolenoidSocket, type SocketDataType } from "./sockets";
+import type { NodeCatalogEntry } from "./AddNodeMenu";
 
 // Search against the REAL catalog tree (active entries only, as the menu does).
 const leaves = flattenLeaves(buildCatalog(true));
@@ -35,5 +37,40 @@ describe("Add-menu search — category + type + keywords are searchable", () => 
   it("Excel function names still match", () => {
     // SUMPRODUCT is an Excel name carried via the catalog→excel map.
     expect(search("sumproduct").length).toBeGreaterThan(0);
+  });
+});
+
+describe("filterByCompatibleSocket — memoized socket signatures", () => {
+  // A minimal fake leaf: quick-wire only reads `type` (the memo key) + `create()`.
+  const mkLeaf = (type: string, inType: SocketDataType, onCreate: () => void) => ({
+    leaf: {
+      type,
+      create: () => { onCreate(); return { inputs: { in: { socket: new SolenoidSocket(inType) } }, outputs: {} }; },
+    } as unknown as NodeCatalogEntry,
+    categoryPath: [] as string[],
+  });
+
+  it("instantiates each leaf ONCE across repeated drops (memo hit on the 2nd)", () => {
+    let calls = 0;
+    // Unique type ids so this test never collides with the session-lifetime cache.
+    const leaves = [
+      mkLeaf("memo-test-num-in", "number", () => { calls++; }),
+      mkLeaf("memo-test-str-in", "string", () => { calls++; }),
+    ];
+    const origin = new SolenoidSocket("number"); // dragged from a number OUTPUT
+    const r1 = filterByCompatibleSocket(leaves, origin, "output");
+    const r2 = filterByCompatibleSocket(leaves, origin, "output");
+    // number output → only the number INPUT accepts it (element separation blocks string).
+    expect(r1.map((l) => l.leaf.type)).toEqual(["memo-test-num-in"]);
+    expect(r2.map((l) => l.leaf.type)).toEqual(["memo-test-num-in"]); // identical result
+    expect(calls).toBe(2); // 2 leaves × 1 create() each, NOT 4 — the 2nd pass hit the cache
+  });
+
+  it("genuinely narrows the real catalog for a dragged frame output", () => {
+    const all = flattenLeaves(buildCatalog(true));
+    const origin = new SolenoidSocket("frame");
+    const compat = filterByCompatibleSocket(all, origin, "output");
+    expect(compat.length).toBeGreaterThan(0);
+    expect(compat.length).toBeLessThan(all.length); // it filters, not passes-through
   });
 });

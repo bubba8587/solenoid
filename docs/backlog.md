@@ -701,9 +701,11 @@ Follow-ups surfaced:
   compile" question is closed. The runtime half (press F11 in a real `solenoid.exe`)
   is a 5-second author check on the next desktop build. (Original note: couldn't
   cargo-compile in the web session.)
-- [ ] **Quick-wire stage-1 instantiates every catalog leaf per drop** (`filterByCompatibleSocket`
-  calls `leaf.create()` to read live sockets). Fine at the current catalog size; memoize a
-  per-type socket signature if the catalog grows a lot.
+- [x] **Quick-wire stage-1 instantiates every catalog leaf per drop** — DONE 2026-07-05.
+  `filterByCompatibleSocket` (`catalogSearch.ts`) now memoizes each node type's input/output
+  socket-type signature (`_sigCache`, keyed by catalog `type`), so the first drop instantiates
+  each leaf once and every later drop reuses the cached set + only re-runs the per-origin
+  `canConnect` check. Behaviour-identical (a type's initial sockets are deterministic); +2 tests.
 - [ ] **Semantic-zoom stand-in is DOM-renderer only** — the HTML-in-canvas renderer draws
   cached bitmaps, so it won't reflect the `.solenoid-semantic-zoom` class without a
   recapture. Pre-existing property of the semantic-zoom CSS approach; note if it matters.
