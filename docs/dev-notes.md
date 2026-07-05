@@ -2,6 +2,32 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Reconcile: blank-key rows + errored PVM cells no longer silently swallowed (2026-07-05)
+Two confirmed audit findings in `reconcileFrames` (`frameVerbs.ts`), both about the node
+quietly making data disappear.
+- **(a) Blank/invalid-key rows were dropped from BOTH the output frame and the counts.**
+  `keyIndex` skips a row whose key is null/error (correct — it can't join), and `allKeys`
+  was built only from those indexes, so such a row never appeared anywhere. Now: after the
+  match loop, left/right rows with a null/error key are appended as their own `"skipped"`-
+  status rows (a new `ReconcileStatus` value — left rows carry before-values, right rows
+  after-values) and counted in `summary.skipped`. Refactored the row emission into a
+  `pushRow` closure so matched and skipped rows build identically. A keyless row is NOT
+  miscounted as added/removed (it has no key to match on — "skipped" is the honest label).
+- **(b) PVM read an errored/missing price or qty as 0** (`bn ?? 0`), fabricating a bogus
+  swing (an errored after-price → a huge negative price variance) with no flag. Fixed by
+  distinguishing a **structural** absence from an **unknown** cell: `pvmFactor(present, raw)`
+  returns `0` only when the row is ABSENT on that side (a new/removed row genuinely had 0
+  before/after) but `null` when a PRESENT cell is errored/non-numeric. Any row with a null
+  factor is excluded from the decomposition and tallied in `pvm.excluded`; the surviving
+  rows keep the exact identity price+volume+mix = delta (now the delta of the decomposable
+  rows only). `summarizeReconcile` (`nodes/frame.ts`) surfaces both counts ("N skipped
+  (blank/invalid key)", "PVM excludes N rows (blank/errored price or qty)") only when > 0,
+  so clean reconciliations read unchanged.
+- **Gotcha for future work:** the PVM `delta` is now the decomposable-rows delta, NOT the
+  whole-population change when `excluded > 0` — that's deliberate (the excluded rows' change
+  is genuinely unknowable) and the summary says so. Tests: new `reconcile.test.ts` (8 cases).
+  tsc clean, full vitest 2083 green. Pure engine + summary string — no UI, no eyeball needed.
+
 ### Frame Lookup gains a Cube half — by-key read into a cube (2026-07-05)
 The cube half of the future unified XLOOKUP (v1.1-plan WS-D). Frame Lookup now looks a key
 up in a **Cube**'s top-level column and returns the matched cell WHOLE — a nested frame/cube

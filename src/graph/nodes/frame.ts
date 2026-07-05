@@ -831,11 +831,17 @@ export class ReconcileNode extends ClassicPreset.Node {
 function summarizeReconcile(s: ReconcileSummary): string {
   const fmt = (n: number) => (Number.isInteger(n) ? n.toLocaleString() : n.toLocaleString(undefined, { maximumFractionDigits: 2 }));
   const parts = [`${s.added} added`, `${s.removed} removed`, `${s.changed} changed`, `${s.unchanged} unchanged`];
+  // Blank/invalid-key rows couldn't be matched — surface the count so a shrunk output
+  // isn't mistaken for a clean reconciliation.
+  if (s.skipped > 0) parts.push(`${s.skipped} skipped (blank/invalid key)`);
   let out = parts.join(" · ");
   if (s.pvm) {
     const p = s.pvm;
     const sign = (n: number) => (n >= 0 ? "+" : "");
     out += ` — Δ ${sign(p.delta)}${fmt(p.delta)} (price ${sign(p.price)}${fmt(p.price)}, volume ${sign(p.volume)}${fmt(p.volume)}, mix ${sign(p.mix)}${fmt(p.mix)})`;
+    // The decomposition covers only rows with clean price+qty on both present sides;
+    // say so when some were dropped, so Δ isn't read as the whole-population change.
+    if (p.excluded > 0) out += ` — PVM excludes ${p.excluded} row${p.excluded === 1 ? "" : "s"} (blank/errored price or qty)`;
   }
   return out;
 }

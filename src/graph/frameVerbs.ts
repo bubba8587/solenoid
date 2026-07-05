@@ -553,7 +553,7 @@ export function joinFrames(left: FrameValue, right: FrameValue, opts: JoinOpts):
 //   volume = (Q1−Q0)·P0
 //   mix    = (P1−P0)·(Q1−Q0)
 // which sums EXACTLY to P1·Q1 − P0·Q0 (the total delta).
-export type ReconcileStatus = "added" | "removed" | "changed" | "unchanged";
+export type ReconcileStatus = "added" | "removed" | "changed" | "unchanged" | "skipped";
 export interface ReconcileOpts {
   leftKey: string;
   rightKey: string;
@@ -567,12 +567,19 @@ export interface PvmBreakdown {
   price: number;
   volume: number;
   mix: number;
+  /** Matched/present rows dropped from the decomposition because a present price or
+   *  qty cell was errored or non-numeric (can't attribute a swing to price vs volume
+   *  when a factor is unknown). `delta` = price+volume+mix over the INCLUDED rows only. */
+  excluded: number;
 }
 export interface ReconcileSummary {
   added: number;
   removed: number;
   changed: number;
   unchanged: number;
+  /** Rows with a blank (null) or errored KEY — they can't be matched, so they're
+   *  emitted as their own "skipped" rows rather than silently dropped. */
+  skipped: number;
   pvm?: PvmBreakdown;
 }
 
@@ -615,8 +622,33 @@ export function reconcileFrames(
   const afterCols: FrameCell[][] = sharedCols.map(() => []);
   const deltaCols: (number | null)[][] = sharedCols.map(() => []);
 
-  let added = 0, removed = 0, changed = 0, unchanged = 0;
-  let totalBefore = 0, totalAfter = 0, pvmPrice = 0, pvmVolume = 0, pvmMix = 0;
+  // Emit one output row (key + status + per-shared-column before/after/Δ). Shared by
+  // the matched/added/removed rows AND the "skipped" keyless rows appended below, so
+  // nothing silently vanishes from the output. PVM is NOT computed here — it's row-
+  // shape-specific and handled inline in the match loop.
+  const pushRow = (keyCell: FrameCell, status: ReconcileStatus, li: number | null, ri: number | null) => {
+    keyValues.push(keyCell);
+    statuses.push(status);
+    sharedCols.forEach((s, ci) => {
+      const bv = li !== null ? cellAt(s.left, li) : null;
+      const av = ri !== null ? cellAt(s.right, ri) : null;
+      beforeCols[ci].push(bv);
+      afterCols[ci].push(av);
+      const bn = typeof bv === "number" ? bv : null;
+      const an = typeof av === "number" ? av : null;
+      deltaCols[ci].push(s.left.type === "number" && bn !== null && an !== null ? an - bn : null);
+    });
+  };
+
+  // A PVM factor is genuinely 0 when the row is ABSENT on that side (a new/removed row
+  // truly had 0 before/after), but UNKNOWN (→ null) when the cell is PRESENT yet errored
+  // or non-numeric. The old code read the latter as 0 too, fabricating a bogus price/
+  // volume swing with no flag — those rows are now excluded from the decomposition.
+  const pvmFactor = (present: boolean, raw: FrameCell): number | null =>
+    !present ? 0 : (typeof raw === "number" ? raw : null);
+
+  let added = 0, removed = 0, changed = 0, unchanged = 0, skipped = 0;
+  let totalBefore = 0, totalAfter = 0, pvmPrice = 0, pvmVolume = 0, pvmMix = 0, pvmExcluded = 0;
 
   for (const k of allKeys) {
     const lRows = lIdx.get(k) ?? [];
@@ -627,7 +659,6 @@ export function reconcileFrames(
     for (let p = 0; p < pairs; p++) {
       const li = lRows[p] ?? null;
       const ri = rRows[p] ?? null;
-      keyValues.push(li !== null ? cellAt(lk, li) : cellAt(rk, ri!));
 
       let status: ReconcileStatus;
       if (li === null) { status = "added"; added++; }
@@ -637,29 +668,37 @@ export function reconcileFrames(
         status = rowChanged ? "changed" : "unchanged";
         if (rowChanged) changed++; else unchanged++;
       }
-      statuses.push(status);
-
-      let p0 = 0, p1 = 0, q0 = 0, q1 = 0;
-      sharedCols.forEach((s, ci) => {
-        const bv = li !== null ? cellAt(s.left, li) : null;
-        const av = ri !== null ? cellAt(s.right, ri) : null;
-        beforeCols[ci].push(bv);
-        afterCols[ci].push(av);
-        const bn = typeof bv === "number" ? bv : null;
-        const an = typeof av === "number" ? av : null;
-        deltaCols[ci].push(s.left.type === "number" && bn !== null && an !== null ? an - bn : null);
-        if (ci === priceIdx) { p0 = bn ?? 0; p1 = an ?? 0; }
-        if (ci === qtyIdx) { q0 = bn ?? 0; q1 = an ?? 0; }
-      });
+      pushRow(li !== null ? cellAt(lk, li) : cellAt(rk, ri!), status, li, ri);
 
       if (havePvm) {
-        totalBefore += p0 * q0;
-        totalAfter += p1 * q1;
-        pvmPrice += (p1 - p0) * q0;
-        pvmVolume += (q1 - q0) * p0;
-        pvmMix += (p1 - p0) * (q1 - q0);
+        const p0 = pvmFactor(li !== null, li !== null ? cellAt(sharedCols[priceIdx].left, li) : null);
+        const p1 = pvmFactor(ri !== null, ri !== null ? cellAt(sharedCols[priceIdx].right, ri) : null);
+        const q0 = pvmFactor(li !== null, li !== null ? cellAt(sharedCols[qtyIdx].left, li) : null);
+        const q1 = pvmFactor(ri !== null, ri !== null ? cellAt(sharedCols[qtyIdx].right, ri) : null);
+        if (p0 === null || p1 === null || q0 === null || q1 === null) {
+          pvmExcluded++; // a present price/qty cell was errored or missing — undecomposable
+        } else {
+          totalBefore += p0 * q0;
+          totalAfter += p1 * q1;
+          pvmPrice += (p1 - p0) * q0;
+          pvmVolume += (q1 - q0) * p0;
+          pvmMix += (p1 - p0) * (q1 - q0);
+        }
       }
     }
+  }
+
+  // Finding (a): a row whose KEY is blank (null) or an error can't be matched — keyIndex
+  // drops it, so it never entered `allKeys`. Rather than let it vanish from both the
+  // output AND the counts, append it as its own "skipped" row (a left row shows its
+  // before-values, a right row its after-values) and tally it, so the row total is honest.
+  for (let i = 0; i < ln; i++) {
+    const kc = cellAt(lk, i);
+    if (kc === null || isSolError(kc)) { pushRow(kc, "skipped", i, null); skipped++; }
+  }
+  for (let i = 0; i < rn; i++) {
+    const kc = cellAt(rk, i);
+    if (kc === null || isSolError(kc)) { pushRow(kc, "skipped", null, i); skipped++; }
   }
 
   const outCols: FrameColumn[] = [
@@ -674,9 +713,9 @@ export function reconcileFrames(
   const names = makeHeaders(outCols.map((c) => c.name), outCols.length);
   const finalCols = outCols.map((c, i) => ({ ...c, name: names[i] }));
 
-  const summary: ReconcileSummary = { added, removed, changed, unchanged };
+  const summary: ReconcileSummary = { added, removed, changed, unchanged, skipped };
   if (havePvm) {
-    summary.pvm = { totalBefore, totalAfter, delta: totalAfter - totalBefore, price: pvmPrice, volume: pvmVolume, mix: pvmMix };
+    summary.pvm = { totalBefore, totalAfter, delta: totalAfter - totalBefore, price: pvmPrice, volume: pvmVolume, mix: pvmMix, excluded: pvmExcluded };
   }
   return { frame: frame(finalCols), summary };
 }
