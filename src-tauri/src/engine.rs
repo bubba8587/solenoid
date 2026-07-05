@@ -97,12 +97,25 @@ impl Cell {
         match self {
             Cell::Null => serde_json::json!(["n"]),
             Cell::Bool(b) => serde_json::json!(["b", b]),
-            // num_to_json already speaks JSON.stringify: integral-in-safe-range
-            // prints as an integer (ryu would say "1.0"; JS says "1"), -0 → 0.
-            Cell::Num(n) => serde_json::json!(["#", num_to_json(*n)]),
+            Cell::Num(n) => serde_json::json!(["#", key_num(*n)]),
             Cell::Str(s) => serde_json::json!(["s", s]),
         }
     }
+}
+
+/// Key-side number JSON, matching `JSON.stringify` exactly: non-finite → null
+/// (JS stringifies Infinity/NaN as null, so the oracle keys ALL non-finite into
+/// one `["#",null]` bucket — parity requires the same here, NOT the `__nf` wire
+/// sentinel); integral-in-safe-range prints as an integer (ryu would say "1.0",
+/// JS says "1"; also keys `-0` as `0`); else shortest-round-trip float.
+fn key_num(n: f64) -> Json {
+    if !n.is_finite() {
+        return Json::Null;
+    }
+    if n.fract() == 0.0 && n.abs() < 9.007_199_254_740_992e15 {
+        return Json::Number((n as i64).into());
+    }
+    serde_json::Number::from_f64(n).map(Json::Number).unwrap_or(Json::Null)
 }
 
 /// One row's distinct/group key over the chosen columns — the literal string the
@@ -248,6 +261,19 @@ fn json_to_cell(v: &Json, ty: SolType) -> Cell {
                     t.parse::<f64>().map(Cell::Num).unwrap_or(Cell::Null)
                 }
             }
+            // The non-finite wire sentinel (upload direction): Infinity is a
+            // first-class frame value; NaN is dirty-data residue but real.
+            Json::Object(o) => match o.get("__nf").and_then(Json::as_str) {
+                Some("inf") => Cell::Num(f64::INFINITY),
+                Some("-inf") => Cell::Num(f64::NEG_INFINITY),
+                Some("nan") => Cell::Num(f64::NAN),
+                // A per-cell SolError arrives as {"__err": code} (or, from older
+                // callers, the raw SolError object) — Polars-typed columns can't
+                // hold it, so it degrades to Null at this boundary, DELIBERATELY
+                // (the JS side keeps errors out of the native path where they
+                // matter; see frameBackend).
+                _ => Cell::Null,
+            },
             _ => Cell::Null,
         },
     }
@@ -265,8 +291,16 @@ fn cell_to_json(c: &Cell) -> Json {
 }
 
 fn num_to_json(n: f64) -> Json {
-    if !n.is_finite() {
-        return Json::Null;
+    // Non-finite crosses the wire as the tagged sentinel (decided 2026-07-02:
+    // "Infinity is first-class in frames" — JSON's Inf→null default was never a
+    // hard constraint, we own both ends). The JS seam decodes it back to
+    // Infinity/-Infinity/NaN (frameBackend `decodeWireCell`). Keys still use
+    // `key_num` (null-for-non-finite, JSON.stringify parity) — don't merge them.
+    if n.is_nan() {
+        return serde_json::json!({"__nf": "nan"});
+    }
+    if n.is_infinite() {
+        return serde_json::json!({"__nf": if n > 0.0 { "inf" } else { "-inf" }});
     }
     if n.fract() == 0.0 && n.abs() < 9.007_199_254_740_992e15 {
         return Json::Number((n as i64).into());

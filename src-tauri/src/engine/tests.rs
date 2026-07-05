@@ -901,3 +901,56 @@ fn distinct_still_type_distinguishes_and_buckets_null() {
     let out = verb_distinct(&f, &None).unwrap();
     assert_eq!(out.df.height(), 2); // "1" + null
 }
+
+
+// ─── Non-finite wire sentinel (B-1b): {"__nf":...} both directions ─────────────
+
+#[test]
+fn non_finite_crosses_the_wire_as_the_nf_sentinel() {
+    // Download direction: a cell holding Infinity/NaN serializes as the tagged
+    // sentinel, never a silent null (decided 2026-07-02 — Infinity is first-class).
+    assert_eq!(num_to_json(f64::INFINITY), serde_json::json!({"__nf": "inf"}));
+    assert_eq!(num_to_json(f64::NEG_INFINITY), serde_json::json!({"__nf": "-inf"}));
+    assert_eq!(num_to_json(f64::NAN), serde_json::json!({"__nf": "nan"}));
+    // Finite formatting unchanged: integral → integer, else shortest float.
+    assert_eq!(num_to_json(1.0), serde_json::json!(1));
+    assert_eq!(num_to_json(1.5), serde_json::json!(1.5));
+}
+
+#[test]
+fn nf_sentinel_uploads_into_real_infinity_cells() {
+    // Upload direction: {"__nf":"inf"} → a real ±Inf f64 cell; {"__err":..} →
+    // Null (Polars-typed columns can't hold a per-cell error — deliberate).
+    let inf = json_to_cell(&serde_json::json!({"__nf": "inf"}), SolType::Number);
+    let ninf = json_to_cell(&serde_json::json!({"__nf": "-inf"}), SolType::Number);
+    let nan = json_to_cell(&serde_json::json!({"__nf": "nan"}), SolType::Number);
+    let err = json_to_cell(&serde_json::json!({"__err": "#DIV/0!"}), SolType::Number);
+    assert!(matches!(inf, Cell::Num(n) if n == f64::INFINITY));
+    assert!(matches!(ninf, Cell::Num(n) if n == f64::NEG_INFINITY));
+    assert!(matches!(nan, Cell::Num(n) if n.is_nan()));
+    assert!(matches!(err, Cell::Null));
+}
+
+#[test]
+fn infinity_round_trips_through_a_frame() {
+    let f = frame(vec![("v", SolType::Number, vec![
+        Cell::Num(1.0), Cell::Num(f64::INFINITY), Cell::Num(f64::NEG_INFINITY),
+    ])]);
+    let d = dump(&f);
+    assert_eq!(d[0].2, vec![
+        serde_json::json!(1),
+        serde_json::json!({"__nf": "inf"}),
+        serde_json::json!({"__nf": "-inf"}),
+    ]);
+}
+
+#[test]
+fn all_non_finite_share_one_distinct_key_bucket() {
+    // JS parity: JSON.stringify(Infinity/NaN) is null, so the oracle keys every
+    // non-finite into ["#",null] — pinned by the vitest twin in frameVerbs.test.ts.
+    let f = frame(vec![("v", SolType::Number, vec![
+        Cell::Num(f64::INFINITY), Cell::Num(f64::NEG_INFINITY), Cell::Num(f64::NAN), Cell::Num(1.0),
+    ])]);
+    let out = verb_distinct(&f, &None).unwrap();
+    assert_eq!(out.df.height(), 2); // one non-finite bucket + the 1
+}

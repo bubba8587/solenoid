@@ -110,6 +110,16 @@ describe("distinct", () => {
     const literal = JSON.stringify([["s", "a\u0001b"], ["#", 1], ["#", -0], ["b", true], ["n"]]);
     expect(literal).toBe('[["s","a\\u0001b"],["#",1],["#",0],["b",true],["n"]]');
   });
+  it("ALL non-finite numbers share one key bucket (JSON.stringify(Infinity) is null)", () => {
+    // Pinned as the cross-backend contract: Rust's key_num mirrors this null
+    // bucket exactly (engine/tests.rs). ∞, −∞ and NaN dedupe together.
+    const nf: FrameValue = {
+      __frame: true,
+      columns: [{ name: "v", type: "number", values: [Infinity, -Infinity, NaN, 1] }],
+    };
+    const out = distinctRows(nf);
+    expect(out.columns[0].values.length).toBe(2); // one non-finite bucket + 1
+  });
   it("crafted separator strings never collide (the old Rust \\u{1}-join bug class)", () => {
     const crafted: FrameValue = {
       __frame: true,
@@ -207,6 +217,42 @@ describe("groupBy", () => {
     const out = groupByFrame(g, ["city"], [{ column: "amt", op: "avg", as: "mean" }]);
     expect(out.columns[1].values[0]).toBe(15);              // (10+20)/2
     expect(isSolError(out.columns[1].values[1])).toBe(true);
+  });
+  // ── The aggregate non-finite guard (B-1b, decided 2026-07-02) ───────────────
+  it("sum overflowing from ALL-FINITE inputs → #OVERFLOW!, never a silent Infinity", () => {
+    const big: FrameValue = {
+      __frame: true,
+      columns: [
+        { name: "g", type: "string", values: ["a", "a"] },
+        { name: "v", type: "number", values: [1e308, 1e308] },
+      ],
+    };
+    const out = groupByFrame(big, ["g"], [{ column: "v", op: "sum", as: "t" }]);
+    const cell = out.columns[1].values[0];
+    expect(isSolError(cell) && cell.code).toBe("#OVERFLOW!");
+  });
+  it("SUM of ∞ IS ∞ — an infinite input passes through", () => {
+    const inf: FrameValue = {
+      __frame: true,
+      columns: [
+        { name: "g", type: "string", values: ["a", "a"] },
+        { name: "v", type: "number", values: [Infinity, 5] },
+      ],
+    };
+    const out = groupByFrame(inf, ["g"], [{ column: "v", op: "sum", as: "t" }]);
+    expect(out.columns[1].values[0]).toBe(Infinity);
+  });
+  it("∞ + −∞ → NaN result → #DOMAIN! (indeterminate, even with infinite inputs)", () => {
+    const mixed: FrameValue = {
+      __frame: true,
+      columns: [
+        { name: "g", type: "string", values: ["a", "a"] },
+        { name: "v", type: "number", values: [Infinity, -Infinity] },
+      ],
+    };
+    const out = groupByFrame(mixed, ["g"], [{ column: "v", op: "sum", as: "t" }]);
+    const cell = out.columns[1].values[0];
+    expect(isSolError(cell) && cell.code).toBe("#DOMAIN!");
   });
   it("min/max preserve the source column type (date stays date, not a bare serial)", () => {
     const d: FrameValue = {
@@ -704,21 +750,28 @@ describe("logical columns aggregate as 1/0 (audit finding 17)", () => {
   });
 });
 
-describe("NaN cells read as missing, matching the IPC boundary (audit finding 31)", () => {
+describe("NaN cells are REAL, present dirty data (B-1b — supersedes audit finding 31)", () => {
+  // Finding 31 classified NaN as missing because the IPC nulled it; the __nf
+  // wire sentinel removed that premise. NaN is now PRESENT-but-dirty: counted,
+  // poisoning aggregates loudly (#DOMAIN!), tail-sorted, failing predicates.
   const t: FrameValue = {
     __frame: true,
     columns: [{ name: "v", type: "number", values: [1, NaN, 3] }],
   };
-  it("distinct/sort/filter/groupBy classify NaN like null", () => {
-    // count treats it as absent
+  it("count counts it, sum poisons to #DOMAIN!, filter still drops it, sort tails it", () => {
     const g = groupByFrame(
       { __frame: true, columns: [{ name: "k", type: "string", values: ["a", "a", "a"] }, ...t.columns] },
       ["k"],
-      [{ column: "v", op: "count", as: "n" }],
+      [{ column: "v", op: "count", as: "n" }, { column: "v", op: "sum", as: "s" }],
     );
-    expect(g.columns[1].values).toEqual([2]);
-    // filter drops it (a null cell passes no predicate)
-    expect(filterRows(t, "v", "gte", 0).columns[0].values).toEqual([1, 3]);
+    expect(g.columns[1].values).toEqual([3]);               // present, not missing
+    const sum = g.columns[2].values[0];
+    expect(isSolError(sum) && sum.code).toBe("#DOMAIN!");   // dirty data poisons loudly
+    expect(filterRows(t, "v", "gte", 0).columns[0].values).toEqual([1, 3]); // NaN passes no predicate
+    const sorted = sortByColumn(t, "v", "asc").columns[0].values;
+    expect(sorted[0]).toBe(1);
+    expect(sorted[1]).toBe(3);
+    expect(Number.isNaN(sorted[2])).toBe(true);             // deterministic tail
   });
 });
 

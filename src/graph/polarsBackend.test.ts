@@ -12,6 +12,7 @@ const invokeMock = vi.fn();
 vi.mock("@tauri-apps/api/core", () => ({ invoke: invokeMock }));
 
 import { frameBackend, initFrameBackend, resetFrameBackendToJs, runFrameUnary, readFrame, collectPreview, clearCollectMemo, isFrameRef } from "./frameBackend";
+import { solError } from "./errorValue";
 
 // Force the desktop guard on (engineAvailable() === isDesktop(), which reads
 // window.__TAURI_INTERNALS__), and start each test from the default JS backend.
@@ -265,3 +266,91 @@ describe("PolarsBackend — verb chain fusion (applyMany batching)", () => {
     expect(invokeMock.mock.calls.filter((c) => c[0] === "engine_collect")).toHaveLength(0);
   });
 });
+
+describe("PolarsBackend — the non-finite wire sentinel + aggregate guard (B-1b)", () => {
+  beforeEach(async () => {
+    await initWith("polars");
+    invokeMock.mockClear();
+    clearCollectMemo();
+  });
+
+  it("source ENCODES non-finite numbers and SolError cells as tagged sentinels", async () => {
+    const withNf: FrameValue = {
+      __frame: true,
+      columns: [{ name: "v", type: "number", values: [1, Infinity, -Infinity, NaN, solError("#DIV/0!", "x")] }],
+    };
+    invokeMock.mockResolvedValueOnce("plf:nf");
+    await frameBackend().source(withNf);
+    const call = invokeMock.mock.calls.find((c) => c[0] === "engine_source");
+    expect(call?.[1]).toEqual({
+      frame: { columns: [{ name: "v", type: "number", values: [1, { __nf: "inf" }, { __nf: "-inf" }, { __nf: "nan" }, { __err: "#DIV/0!" }] }] },
+    });
+  });
+
+  it("collect DECODES the sentinel back to Infinity/NaN (no more silent null)", async () => {
+    invokeMock.mockResolvedValueOnce("plf:src"); // engine_source
+    const ref = await runFrameUnary(sample, { kind: "select", columns: ["n"] });
+    if (!isFrameRef(ref)) throw new Error("expected a FrameRef");
+    invokeMock.mockResolvedValueOnce("plf:f"); // apply_many
+    invokeMock.mockResolvedValueOnce([{ name: "n", type: "number", values: [{ __nf: "inf" }, { __nf: "nan" }, 2] }]); // collect
+    const out = await readFrame(ref);
+    expect(out).toMatchObject({ columns: [{ name: "n", values: [Infinity, NaN, 2] }] });
+  });
+
+  it("a groupBy ±Inf result from an ALL-FINITE base column classifies as #OVERFLOW! (one extra column fetch)", async () => {
+    invokeMock.mockResolvedValueOnce("plf:src");
+    const ref = await runFrameUnary(sample, {
+      kind: "groupBy", keys: ["s"], aggs: [{ column: "n", op: "sum", as: "total" }],
+    } as FrameOp);
+    if (!isFrameRef(ref)) throw new Error("expected a FrameRef");
+    invokeMock.mockResolvedValueOnce("plf:agg");                                    // apply_many
+    invokeMock.mockResolvedValueOnce([                                              // collect
+      { name: "s", type: "string", values: ["a"] },
+      { name: "total", type: "number", values: [{ __nf: "inf" }] },
+    ]);
+    invokeMock.mockResolvedValueOnce({ name: "n", type: "number", values: [1e308, 1e308] }); // engine_column base scan
+    const out = await readFrame(ref);
+    if (out == null || isSolErrorLike(out)) throw new Error("expected a frame");
+    const cell = (out as FrameValue).columns[1].values[0];
+    expect(isSolErrorLike(cell) && (cell as { code: string }).code).toBe("#OVERFLOW!");
+    expect(invokeMock.mock.calls.filter((c) => c[0] === "engine_column")).toHaveLength(1);
+  });
+
+  it("a groupBy ∞ result PASSES when the base column itself carried ∞ (SUM of ∞ is ∞)", async () => {
+    invokeMock.mockResolvedValueOnce("plf:src");
+    const ref = await runFrameUnary(sample, {
+      kind: "groupBy", keys: ["s"], aggs: [{ column: "n", op: "sum", as: "total" }],
+    } as FrameOp);
+    if (!isFrameRef(ref)) throw new Error("expected a FrameRef");
+    invokeMock.mockResolvedValueOnce("plf:agg2");
+    invokeMock.mockResolvedValueOnce([
+      { name: "s", type: "string", values: ["a"] },
+      { name: "total", type: "number", values: [{ __nf: "inf" }] },
+    ]);
+    invokeMock.mockResolvedValueOnce({ name: "n", type: "number", values: [{ __nf: "inf" }, 5] }); // base scan (decoded → ∞)
+    const out = await readFrame(ref);
+    expect((out as FrameValue).columns[1].values[0]).toBe(Infinity);
+  });
+
+  it("a finite groupBy result costs NO extra column fetch (the guard is lazy)", async () => {
+    invokeMock.mockResolvedValueOnce("plf:src");
+    const ref = await runFrameUnary(sample, {
+      kind: "groupBy", keys: ["s"], aggs: [{ column: "n", op: "sum", as: "total" }],
+    } as FrameOp);
+    if (!isFrameRef(ref)) throw new Error("expected a FrameRef");
+    invokeMock.mockResolvedValueOnce("plf:agg3");
+    invokeMock.mockResolvedValueOnce([
+      { name: "s", type: "string", values: ["a"] },
+      { name: "total", type: "number", values: [6] },
+    ]);
+    const out = await readFrame(ref);
+    expect((out as FrameValue).columns[1].values[0]).toBe(6);
+    expect(invokeMock.mock.calls.filter((c) => c[0] === "engine_column")).toHaveLength(0);
+  });
+});
+
+// Local structural check (this file avoids importing errorValue's guards
+// directly to keep the mock surface minimal).
+function isSolErrorLike(v: unknown): boolean {
+  return !!v && typeof v === "object" && "__solError" in (v as object);
+}

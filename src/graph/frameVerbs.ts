@@ -18,7 +18,7 @@ import {
   frameRowCount, makeHeaders, cubeFromColumns, cubeRowCount, inferColumn, isFrameValue,
 } from "./frame";
 import { isSolError, solError } from "./errorValue";
-import { forAggregate, coerceLogical } from "./valueKinds";
+import { forAggregate, coerceLogical, guardFinite } from "./valueKinds";
 import { compareOp, type ComparisonOp } from "./nodes/logic";
 import { parseDateToSerial } from "./nodes/date";
 
@@ -63,14 +63,16 @@ function requireColumn(f: FrameValue, name: string): FrameColumn {
   return col;
 }
 
-// A non-finite number reads as MISSING: the IPC boundary already turns NaN into
-// null (JSON has no NaN), so the desktop engine never sees it — the oracle must
-// classify it the same way or count/distinct/sort/filter diverge per backend
-// (audit finding 31).
-const cellAt = (col: FrameColumn, i: number): FrameCell => {
-  const v = i < col.values.length ? col.values[i] : null;
-  return typeof v === "number" && !Number.isFinite(v) ? null : v;
-};
+// Non-finite numbers are REAL cells (B-1b, decided 2026-07-02 — supersedes
+// audit finding 31, whose premise was "the IPC turns NaN into null"; the wire
+// now carries ±Inf/NaN via the __nf sentinel, so the engine sees them too).
+// Cross-backend behavior: distinct keys every non-finite into the shared
+// ["#",null] bucket (JSON.stringify parity, pinned both sides); count counts
+// them (they're present, not missing); sort puts NaN in the blanks-last tail
+// (deterministic — see sortByColumn); aggregates classify non-finite results
+// via guardFinite inside aggregateGroup.
+const cellAt = (col: FrameColumn, i: number): FrameCell =>
+  i < col.values.length ? col.values[i] : null;
 
 /** Re-materialize a frame from a row-index list (the basis for every row verb:
  *  sort = sorted indices, head = a prefix, distinct/filter = the kept indices).
@@ -110,7 +112,13 @@ function encodeCell(v: FrameCell): unknown {
 export function sortByColumn(f: FrameValue, by: string, dir: "asc" | "desc"): FrameValue {
   const col = requireColumn(f, by);
   const cmp = comparatorFor(col.type);
-  const isTail = (i: number) => { const v = cellAt(col, i); return v === null || isSolError(v); };
+  // NaN joins the tail: a `(a-b)` comparator makes NaN ordering depend on input
+  // order (every comparison is false) — tail-last is the one deterministic spot,
+  // matching the blanks/errors rule. ±Inf sorts normally (a real magnitude).
+  const isTail = (i: number) => {
+    const v = cellAt(col, i);
+    return v === null || isSolError(v) || (typeof v === "number" && Number.isNaN(v));
+  };
   const idx = Array.from({ length: frameRowCount(f) }, (_, i) => i);
   idx.sort((i, j) => {
     const ti = isTail(i), tj = isTail(j);
@@ -249,8 +257,21 @@ export function aggregateGroup(values: FrameCell[], op: AggOp): FrameCell {
   // — the Rust engine already coerced, the oracle silently skipped them.
   const prep = forAggregate(values.map((v) => (typeof v === "boolean" ? (v ? 1 : 0) : v)));
   if (prep.error) return prep.error;
-  const nums = prep.nums.filter((n) => Number.isFinite(n));
+  // B-1b (decided 2026-07-02): ±Inf/NaN are REAL inputs, not filtered — Infinity
+  // is first-class (SUM of ∞ is ∞) and dirty-data NaN must poison LOUDLY, never
+  // vanish. Results are classified by guardFinite below; a NaN input poisons
+  // deterministically up front (reduce-order NaN comparisons aren't).
+  const nums = prep.nums;
   if (nums.length === 0) return op === "sum" ? 0 : op === "product" ? 1 : null;
+  if (nums.some((n) => Number.isNaN(n))) return guardFinite(NaN, ...nums);
+  return guardAgg(rawAggregate(nums, op), nums);
+}
+
+function guardAgg(r: number | null, inputs: readonly number[]): FrameCell {
+  return typeof r === "number" ? guardFinite(r, ...inputs) : r;
+}
+
+function rawAggregate(nums: readonly number[], op: Exclude<AggOp, "count" | "percentof">): number | null {
   switch (op) {
     case "sum": return nums.reduce((a, b) => a + b, 0);
     case "avg": return nums.reduce((a, b) => a + b, 0) / nums.length;
@@ -301,6 +322,8 @@ export function groupByFrame(f: FrameValue, keys: readonly string[], aggs: reado
     // min/max preserve the SOURCE type (a min over a date column IS a date, not a
     // bare serial); sum/avg/count are always numeric.
     type: spec.op === "min" || spec.op === "max" ? col.type : "number",
+    // The non-finite guard lives INSIDE aggregateGroup (B-1b) so pivot's
+    // re-aggregating totals get it too — not just this verb.
     values: keyOrder.map((k) => aggregateGroup(buckets.get(k)!.map((i) => cellAt(col, i)), spec.op)),
   }));
   // De-dupe output names ("count of Region grouped by Region" collides the agg
