@@ -716,6 +716,14 @@ Follow-ups surfaced:
 - [ ] **Semantic-zoom stand-in is DOM-renderer only** — the HTML-in-canvas renderer draws
   cached bitmaps, so it won't reflect the `.solenoid-semantic-zoom` class without a
   recapture. Pre-existing property of the semantic-zoom CSS approach; note if it matters.
+- [ ] **Note frontmatter socket removal isn't undo-coherent** (flagged 2026-07-05, same
+  class as the extensible-row fix but on the OUTPUT side + driven by body text): a blur
+  that removes a YAML key drops the socket + cable; Ctrl+Z pops the cable-restore entry
+  FIRST (the body-text commit entry is pushed before the reconcile's removeConnection
+  entries), so the cable transiently re-attaches to a missing output socket until a
+  second undo restores the body — and only heals if the body `apply()` path re-runs the
+  socket reconcile (verify). Fix wants the same entry-ordering treatment as
+  `pushRowRemovalUndo` inside NoteNode's reconcile; intricate enough to do awake.
 
 ---
 
