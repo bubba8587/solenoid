@@ -5,18 +5,23 @@ import type { SocketDataType } from "./sockets";
 
 // The spec's truth table (docs/format-model.md), machine-checked.
 
-describe("familyOf — socket type → format family", () => {
-  const cases: Array<[SocketDataType, string]> = [
-    ["number", "number"], ["list", "number"], ["numlist", "number"], ["table", "number"],
-    ["anytable", "number"], ["any", "number"], // any = provisional number
-    ["date", "date"], ["datelist", "date"], ["datecombo", "date"], ["datetable", "date"],
-    ["string", "text"], ["strlist", "text"], ["strcombo", "text"], ["strtable", "text"],
-    ["logical", "logical"], ["logicallist", "logical"], ["logicalcombo", "logical"], ["logicaltable", "logical"],
-    ["complex", "complex"], ["complexlist", "complex"],
-    ["frame", "none"], ["cube", "none"], ["chart", "none"], ["lambda", "none"],
-  ];
-  for (const [dt, fam] of cases) {
-    it(`${dt} → ${fam}`, () => expect(familyOf(dt)).toBe(fam));
+describe("familyOf — the ENTIRE SocketDataType union is covered or explicitly none", () => {
+  // Every member of the union, exhaustively — a new socket type must be added
+  // here (Record<SocketDataType, …> makes tsc flag the omission), so it can't
+  // silently fall into the FC's "none" family without a decision.
+  const EXPECTED: Record<SocketDataType, string> = {
+    number: "number", list: "number", numlist: "number", table: "number",
+    anytable: "number",           // formats its numeric cells
+    any: "number",                // provisional until the concrete type flows in
+    date: "date", datelist: "date", datecombo: "date", datetable: "date",
+    string: "text", strlist: "text", strcombo: "text", strtable: "text",
+    logical: "logical", logicallist: "logical", logicalcombo: "logical", logicaltable: "logical",
+    complex: "complex", complexlist: "complex", complexcombo: "complex", complextable: "complex",
+    frame: "none", cube: "none",  // per-column formats are the A4 units milestone
+    chart: "none", lambda: "none",
+  };
+  for (const [dt, fam] of Object.entries(EXPECTED)) {
+    it(`${dt} → ${fam}`, () => expect(familyOf(dt as SocketDataType)).toBe(fam));
   }
 });
 
