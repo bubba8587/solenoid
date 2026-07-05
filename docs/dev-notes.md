@@ -65,6 +65,22 @@ live. Every commit verified tsc + full vitest (now 2184 green); tree clean, noth
 - **Decisions:** D2 (composite toolbar reroute) and D4 (conditional formatting) DEFERRED
   by the author. Next in WS-A when picked up: A4 units-by-dimensionality (v1.1-β,
   design-the-representation-first).
+- **Decision walk + the autonomous plan (~17:00):** the author ruled EVERY open
+  input item (see backlog for per-item stamps). Headlines: A4 units IN but
+  author-present later ("big boy, together"); D2 reroute approved, author-present
+  later; D4/seam stay parked; deferred pile collapsed to #23+#35 (rest OUT);
+  #48/#54 became an ultra-minimal library-folder opener; COMPLETE RECHARTS is the
+  new viz goal ("grab everything recharts has"); AND/OR Filter IN; Go-To-Special
+  OUT; Obsidian vault trio IN (folder setting + read-only Import Note + Write
+  Note sink); Finance connection IN reshaped (user-supplied keys, FRED, keyless
+  Stooq); grid + collision avoidance deferred again. **`docs/build-plan.md`** is
+  the ratified autonomous plan (Tiers A–F, per-bundle footprints/seeds/sequencing);
+  the coordination board is live with staged queues (A2 → C-1 Recharts, A3 →
+  commit duty + Tier A; Lead → Tier B Rust). STANDING ORDER: anything visual
+  ships/extends a SEED (cleanup pass last-minute pre-release). Author note taken:
+  the overnight "backlog exhausted" call missed the decided-unbuilt queue buried
+  in the old ledger — the open-only backlog + this plan exist to kill that
+  failure mode.
 - **Parity-doc mining (follow-up ask):** swept toolbar-supplementals + the archived
   pain-points for verdicts that never became queue items. New backlog entries: a
   multi-predicate AND/OR Filter (pain-points §1/§14), pie in the Chart node, "Go To

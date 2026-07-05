@@ -6,36 +6,50 @@ Shared scratchpad for when several agents work this repo in parallel. Dormant in
 
 ## This session
 
-**Multi-agent /loop session resuming 2026-07-05 evening.** Agent 2 and Agent 3
-both online on 10-min /loop check-ins. Prior daytime solo session (Agent 1) closed
-clean: image bundling BUILT, FC v1.1-α BUILT, toolbar reroute + conditional
-formatting DEFERRED (see dev-notes "DAYTIME SESSION DIGEST"). Open threads for
-whenever Lead/author picks work: FC A4 units-by-dimensionality (design-first,
-author wants it live), the parked border-seam problem (dev-notes "UNSOLVED"), and
-the backlog items marked IN this walk session (Multi-predicate Filter, Obsidian
-vault trio, COMPLETE RECHARTS, Finance connection, library-folder opener).
+**AUTONOMOUS BUILD RUN (opened 2026-07-05 evening) — work `docs/build-plan.md`.**
+Every bundle is author-ratified this session; NO design forks remain — pick the
+spec-consistent option and note it, don't stall. Rules: tsc + full vitest green
+per commit (cargo where Rust moves); NEVER push; **anything visual ships/extends
+a demo SEED** (author order — the eyeball vehicle; seed polish comes in a
+last-minute cleanup pass, just make them load clean); eyeball notes accumulate in
+the daytime digest; DELETE a backlog line when its bundle lands; one editor per
+code file; commits FIFO through A3's queue.
+NOT in scope (author-present, later): A4 units, D2 reroute, D4 cond-fmt, the
+border seam, grid system, collision avoidance, transpiler, seed-cleanup.
 
 ## Claims
 
-- **Agent 2 — ONLINE (2026-07-05, /loop 10m).** No queued in-lane task yet; awaiting a
-  vetted item from Lead or author direction. Idle until fed.
-- **Agent 3 — ONLINE (2026-07-05, /loop 10m).** Git/low-level lane. Found two
-  uncommitted doc files on check-in (backlog.md + v2.0/README.md, author
-  walk-session verdicts) and committed them (`714f51b`). Tree clean. Watching for
-  work to commit; not pushing.
+- **A1 (Lead):** orchestration + **Tier B** — B-1 (Rust oracle key + Infinity
+  sentinel) first, then B-2 AND/OR Filter, B-3 CSV date inference, B-4 hygiene.
+  (`engine.rs` is MINE this run — nobody else touches it.)
 
 ## Queue
 
-_(empty — author direction next)_
+**A2 (staged — take the top one now):**
+1. **C-1 COMPLETE RECHARTS** — the plan's big bundle: every recharts type into
+   the Chart family (Pie/Scatter/Bubble/Radar/RadialBar/Funnel/Composed in the op
+   surface; Treemap + Sankey as new nodes), Histogram (binned), KPI/Stat card,
+   Bullet, date-range picker; lazy chunk; **ships the showcase seed**. See
+   `build-plan.md` C-1. Footprint: `visual.ts`, chart components, catalog, seed.
+2. C-3 popup `⋯` overflow + per-node collapsed previews (popup files only).
+3. E-2 Finance/FRED connection (API-key store + FRED + Stooq).
+
+**A3 (commit duty FIRST — flush "Ready to commit" FIFO — then):**
+1. **A-1 locale (`en-US` constant everywhere) + cable-shape persist + grid-dots
+   toggle** (see plan A-1; format tests re-pin).
+2. A-3 library-folder opener (ultra-minimal by decree).
+3. A-4 minimap 3-way position.
+4. A-2 a11y verify-and-finish batch (claim per-file here as you go).
+
+**Unstaffed pool (claim freely when a lane empties):** C-2 Input Switcher
+upgrade · C-4 unified XLOOKUP merge · Tier D composite (D-1..D-4, ONE agent,
+serial — shared files) · E-1 Obsidian vault trio · Tier F (F-1 palette editor +
+F-2 Document Properties, ONE agent, serial).
 
 ## Ready to commit
 
-_(empty — tree clean)_
+_(empty)_
 
 ## Recently done
 
-(full history in `git log` — recent commits:)
-- Agent 3 — committed pending backlog/v2.0-README doc updates. `714f51b`.
-- Agent 2 — Note frontmatter undo-coherence + backlog sweep. Committed by A3 (`b642274` and prior).
-- Agent 1 — final-review fixes (F9 reachability + CableSwitch undo lane). Committed `814a307`.
-- Agent 1 — Rust parity-only verbs cfg(test)-gated (6 warnings → 0). Committed `c5aa755`.
+- Agent 3 — committed the author walk-session backlog/v2.0-README verdicts. `714f51b`.
