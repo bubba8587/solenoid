@@ -16,11 +16,6 @@ const _sizes = new Map<string, NodeSize>();
 // clamps to it so a Display can't shrink its content into uselessness.
 const _mins = new Map<string, NodeSize>();
 const { notify, subscribe } = createNotifier();
-// True while a ResizeHandle drag is in flight. NodeCard's ResizeObserver checks
-// it and skips its area.update() during the drag — that update re-renders the
-// node, which would recreate the grip element and drop its pointer capture (the
-// drag would stop after one move). The final sync runs on drag end.
-let _dragging = false;
 
 export const nodeSizeStore = {
   get: (id: string): NodeSize | undefined => _sizes.get(id),
@@ -29,8 +24,6 @@ export const nodeSizeStore = {
     else _sizes.set(id, size);
     notify();
   },
-  setDragging(v: boolean): void { _dragging = v; },
-  isDragging: (): boolean => _dragging,
   /** Publish a node's content-driven minimum size (no notify — read on drag). */
   setMin(id: string, size: NodeSize | undefined): void {
     if (!size) _mins.delete(id);

@@ -35,7 +35,6 @@ function onUp() {
   if (!active) return;
   const id = active.nodeId;
   active = null;
-  nodeSizeStore.setDragging(false);
   window.removeEventListener("pointermove", onMove);
   window.removeEventListener("pointerup", onUp);
   window.removeEventListener("pointercancel", onUp);
@@ -75,8 +74,6 @@ export function ResizeHandle({ nodeId }: { nodeId: string }) {
       k,
       nodeId,
     };
-    // Suppress the node's mid-drag re-render so the box keeps following cleanly.
-    nodeSizeStore.setDragging(true);
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
     window.addEventListener("pointercancel", onUp);

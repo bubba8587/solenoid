@@ -5,7 +5,6 @@ import { forgetAllNodes } from "./nodeStoreRegistry";
 beforeEach(() => {
   forgetAllNodes();
   nodeSizeStore.clear();
-  nodeSizeStore.setDragging(false);
 });
 
 describe("nodeSizeStore — get", () => {
@@ -147,22 +146,5 @@ describe("nodeSizeStore — entries", () => {
     const e = nodeSizeStore.entries();
     e.push(["n99", { w: 999, h: 999 }]);
     expect(nodeSizeStore.entries()).toHaveLength(1);
-  });
-});
-
-describe("nodeSizeStore — dragging flag", () => {
-  it("isDragging is false by default", () => {
-    expect(nodeSizeStore.isDragging()).toBe(false);
-  });
-
-  it("setDragging(true) is reflected by isDragging", () => {
-    nodeSizeStore.setDragging(true);
-    expect(nodeSizeStore.isDragging()).toBe(true);
-  });
-
-  it("setDragging(false) clears the flag", () => {
-    nodeSizeStore.setDragging(true);
-    nodeSizeStore.setDragging(false);
-    expect(nodeSizeStore.isDragging()).toBe(false);
   });
 });
