@@ -2,6 +2,32 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Audit: calc-mode / sketch / lazy-flush surfaces (2026-07-05, overnight)
+Walked the manual/auto/sketch + fusion machinery end-to-end. One real defect,
+fixed; the rest verified sound.
+- **FIXED — sketch bookkeeping leak in `clearCollectMemo` (frameBackend.ts):** the
+  per-pass memo sweep dropped every flushed handle via `be.drop(h)` but left the
+  handle's `_sampleFactor`/`_sketchInfo` entries in their strong Maps — the exact
+  leak the sibling path `dropFrameRef` guards with its "else a sketch-mode entry
+  outlives its handle forever" comment. In sketch mode every live-edit pass leaked
+  up to one entry per flushed chain, unbounded over a long session (sketch's whole
+  use case). Handles are monotonic on both backends (`jsf:${++seq}` / Rust
+  AtomicU64), so it was a pure leak, never wrong scaling. Now the sweep deletes
+  both entries alongside the drop.
+- **Verified sound:** `requestRecalc`'s force-exact bracket is depth-counted and
+  `finally`-guarded; the manual-mode short-circuit exempts graph rebuilds and marks
+  dirty on every suppressed path; flush/collect memos are per-pass and fan-out
+  flushes once; `maybeSketchSample` samples once per chain (sample-derived handles
+  skip re-sampling); scaling touches ONLY sum/count aggregate columns; sketch is
+  fully surfaced (File→Calculate menu + StatusBar "≈ approximate" chip + palette —
+  not palette-only).
+- **Deliberate-looking behavior, recorded not changed:** `runFrameJoin`/
+  `runFrameAppend` never sample their inputs in sketch mode — the join itself runs
+  full-cost and only the downstream unary chain samples the join's OUTPUT. That's
+  the statistically safer choice (independently sampling both key sets would
+  destroy the match rate), at the cost of sketch not accelerating the join step
+  itself. If join cost ever needs sketching, sample the LEFT side only.
+
 ### Composite drill-in follow-ups: dropped-cable notice DONE; toolbar reroute is its own session (2026-07-05)
 Two flagged drill-in follow-ups (backlog "Drill-in editor v2 niceties").
 
