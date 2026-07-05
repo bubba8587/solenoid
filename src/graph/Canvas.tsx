@@ -32,6 +32,8 @@ import { copySelected, pasteClipboard } from "./copyPaste";
 import { ctorRegistry } from "./nodeCtorRegistry";
 import { createCompositeFromSelection, unpackComposite } from "./compositeLogic";
 import { compositeEditorStore } from "./compositeEditorStore";
+import { presentationStore } from "./presentationStore";
+import { reportStore } from "./reportStore";
 import { paletteStore } from "./paletteStore";
 import { frStore } from "./frStore";
 import { shortcutsStore } from "./shortcutsStore";
@@ -689,6 +691,12 @@ export function Canvas() {
       // (its own Delete/Escape handling); canvas shortcuts must not reach the
       // OUTER graph underneath it.
       if (compositeEditorStore.isOpen()) return;
+
+      // Presenter mode: the overlay owns the keyboard (advance/back/Esc on its
+      // own window listener). Without this gate the arrow keys ALSO nudge the
+      // still-selected Presentation node 24px per slide on the hidden canvas,
+      // and every bare-letter/Ctrl shortcut mutates the graph mid-show.
+      if (presentationStore.isActive()) return;
 
       // F9 — Calculate now (Excel). Recomputes + rerolls volatiles in ANY mode; in
       // manual mode it's the only thing that recomputes. Global, even while typing.
@@ -2538,6 +2546,15 @@ export function Canvas() {
           // A verb node holds a backend frame ref; free it so the handle store
           // doesn't keep the deleted node's frame (independent frames → safe).
           dropFrameRef((n as { _ref?: unknown })._ref);
+          // Deleting the node behind an open report/presentation must tear the
+          // overlay state down with it — a DOCKED report otherwise leaves
+          // `html.sol-report-docked` (the canvas squeeze) on the root forever,
+          // with the only undock button inside the now-unrenderable panel. Also
+          // runs per-node during a wholesale rebuild, so a document switch
+          // clears both stores too.
+          const removedId = (n as { id: string }).id;
+          if (reportStore.openNodeId() === removedId) reportStore.close();
+          if (presentationStore.activeId() === removedId) presentationStore.stop();
           if (n instanceof FormatControllerNode) n.undock();
           // Release any FCs docked to the removed node: their host is gone, so
           // leave them as free WIRED FCs. Otherwise they keep a stale hostNodeId

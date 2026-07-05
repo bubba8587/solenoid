@@ -257,7 +257,10 @@ function findInputSlot(inputs: Record<string, unknown[] | undefined>, err: SolEr
 // OWN output, whether it came from a throw, the input-propagation short-circuit,
 // or the node's own producer logic returning a SolError with no throw at all
 // (e.g. Divide's #DIV/0!) — every one of those funnels through this module.
-type ErrorSink = (nodeId: string, err: SolError) => void;
+// `err === null` means the node's output is CLEAN this pass — a sink uses it to
+// reset its per-node edge-detect, so a failure that clears and later RECURS is
+// logged as new instead of suppressed forever by last-code equality.
+type ErrorSink = (nodeId: string, err: SolError | null) => void;
 const _errorSinks: ErrorSink[] = [];
 export function registerErrorSink(fn: ErrorSink): () => void {
   _errorSinks.push(fn);
@@ -266,7 +269,7 @@ export function registerErrorSink(fn: ErrorSink): () => void {
     if (i >= 0) _errorSinks.splice(i, 1);
   };
 }
-function reportError(nodeId: string, err: SolError): void {
+function reportError(nodeId: string, err: SolError | null): void {
   for (const sink of _errorSinks) sink(nodeId, err);
 }
 function reportOut(nodeId: string, out: Record<string, unknown> | undefined): void {
@@ -276,6 +279,7 @@ function reportOut(nodeId: string, out: Record<string, unknown> | undefined): vo
     // error wins, like the guard itself.
     if (isSolError(v)) { reportError(nodeId, v); return; }
   }
+  reportError(nodeId, null); // clean pass — reset the sinks' edge-detect
 }
 
 /** Idempotent. Call once per node (Canvas does, on `nodecreated`). */

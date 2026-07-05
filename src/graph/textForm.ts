@@ -158,6 +158,22 @@ function splitField(token: string): { key: string; op: "=" | "<-"; rest: string 
   return { key: m[1], op: m[2] as "=" | "<-", rest: token.slice(m[0].length) };
 }
 
+// A connection's source-output key is USER-CONTROLLED text when it comes from a
+// Note's frontmatter (`unit price: 5` → an output socket keyed "unit price" —
+// noteFrontmatter.ts allows spaces/dots/hyphens in keys). A bare key with a
+// space shears the token in two at the tokenizer (found by probe: `in<-
+// Note_1.unit price` → 'malformed field "price"' — and serializeGraph routes
+// every JSON save through this writer, so it broke SAVING such a doc). Emit
+// bare only when the tokenizer carries it intact (no space/quote/backslash — a
+// DOT is fine, the reader splits at the FIRST dot, node names are NAME_RE-safe
+// and never contain one); otherwise JSON-quote it, which tokenizeFields already
+// keeps whole. (targetInput keys are class-defined identifiers by construction,
+// FIELD_KEY_RE-safe — only the output side is user-controlled today.)
+const BARE_OUTPUT_RE = /^[^"\\ ]+$/;
+function outputToken(key: string): string {
+  return BARE_OUTPUT_RE.test(key) ? key : JSON.stringify(key);
+}
+
 // ─── Writer ──────────────────────────────────────────────────────────────────────
 
 export function writeTextForm(g: SavedGraph): string {
@@ -208,7 +224,7 @@ export function writeTextForm(g: SavedGraph): string {
 
     const conns = [...(incoming.get(id) ?? [])].sort((a, b) => (a.targetInput < b.targetInput ? -1 : a.targetInput > b.targetInput ? 1 : 0));
     for (const c of conns) {
-      parts.push(`${c.targetInput}<-${nameOf(c.source)}.${c.sourceOutput}`);
+      parts.push(`${c.targetInput}<-${nameOf(c.source)}.${outputToken(c.sourceOutput)}`);
     }
 
     lines.push(parts.join(" "));
@@ -342,7 +358,10 @@ function parseNodeLine(line: string): {
     if (op === "<-") {
       const dotIdx = valueStr.indexOf(".");
       if (dotIdx === -1) throw new Error(`textForm: malformed connection "${token}"`);
-      conns.push({ targetInput: key, sourceName: valueStr.slice(0, dotIdx), sourceOutput: valueStr.slice(dotIdx + 1) });
+      const outRaw = valueStr.slice(dotIdx + 1);
+      // A JSON-quoted output key (see outputToken) decodes; bare passes through.
+      const sourceOutput = outRaw.startsWith('"') ? (JSON.parse(outRaw) as string) : outRaw;
+      conns.push({ targetInput: key, sourceName: valueStr.slice(0, dotIdx), sourceOutput });
     } else if (key.startsWith("lit:")) {
       literals[key.slice(4)] = JSON.parse(valueStr) as number;
     } else if (key.startsWith("str:")) {

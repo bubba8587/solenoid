@@ -9,7 +9,7 @@
 // (bundle 14 "quick-wire" is future work) — this builds the minimal splice
 // itself: remove the cable, drop a Clamp between source and target.
 import { ClassicPreset } from "rete";
-import { getEditor, getArea, processGraph, downstreamClosure } from "./process";
+import { getEditor, getArea, processGraph, downstreamClosure, beginGraphRebuild, endGraphRebuild } from "./process";
 import { NumberInputNode, SliderInputNode } from "./nodes/input";
 import { TextInputNode } from "./nodes/text";
 import { ClampNode } from "./nodes/scalar";
@@ -144,27 +144,43 @@ export async function runModelFuzz(): Promise<FuzzRunSummary> {
   const found = new Map<string, { nodeId: string; code: SolErrorCode; message: string; suggestion?: { socketKey: string; label: string } }>();
   let samples = 0;
 
-  for (const leaf of leaves) {
-    const original = leaf.node.value;
-    const downstream = downstreamClosure(editor, leaf.node.id);
-    const values = leaf.kind === "number" ? sampleNumbers(rng, SAMPLES_PER_LEAF) : sampleStrings(rng, SAMPLES_PER_LEAF);
-    for (const v of values) {
-      samples++;
-      (leaf.node as { value: number | string }).value = v;
-      await processGraph(leaf.node.id);
-      for (const id of downstream) {
-        const node = editor.getNode(id);
-        if (!node) continue;
-        const hit = inspectNode(node);
-        if (!hit) continue;
-        const key = `${id}:${hit.code}`;
-        if (found.has(key)) continue;
-        const suggestion = CLAMPABLE_CODES.has(hit.code) ? firstNumericInput(node) : undefined;
-        found.set(key, { nodeId: id, code: hit.code, message: hit.message, suggestion });
+  // The whole sweep runs inside the graph-rebuild gate, which does two jobs at
+  // once: (1) the manual-calc short-circuit exempts rebuilds, so every sampled
+  // recompute actually RUNS in manual mode (it otherwise just marked dirty and
+  // the sweep inspected stale pre-fuzz values — a silent no-op reported as "no
+  // problems found"); (2) AlertNode/Expect suppress their edge-detect fire
+  // while rebuilding, so a synthetic sample can't raise a real toast/HUD alert.
+  beginGraphRebuild();
+  try {
+    for (const leaf of leaves) {
+      const original = leaf.node.value;
+      const downstream = downstreamClosure(editor, leaf.node.id);
+      const values = leaf.kind === "number" ? sampleNumbers(rng, SAMPLES_PER_LEAF) : sampleStrings(rng, SAMPLES_PER_LEAF);
+      try {
+        for (const v of values) {
+          samples++;
+          (leaf.node as { value: number | string }).value = v;
+          await processGraph(leaf.node.id);
+          for (const id of downstream) {
+            const node = editor.getNode(id);
+            if (!node) continue;
+            const hit = inspectNode(node);
+            if (!hit) continue;
+            const key = `${id}:${hit.code}`;
+            if (found.has(key)) continue;
+            const suggestion = CLAMPABLE_CODES.has(hit.code) ? firstNumericInput(node) : undefined;
+            found.set(key, { nodeId: id, code: hit.code, message: hit.message, suggestion });
+          }
+        }
+      } finally {
+        // Restore on EVERY exit path — a throw mid-sweep must not leave the
+        // user's real graph mutated with a synthetic sample.
+        (leaf.node as { value: number | string }).value = original;
+        await processGraph(leaf.node.id);
       }
     }
-    (leaf.node as { value: number | string }).value = original;
-    await processGraph(leaf.node.id);
+  } finally {
+    endGraphRebuild();
   }
 
   const findings = [...found.values()];
