@@ -13,7 +13,9 @@ import {
   writeTextFilePath,
   openTextFileDialog,
   fileNameFromPath,
+  pickSaveGraphPath,
 } from "./fileBridge";
+import { bundleLocalImages } from "./imageAssets";
 import { pushNotice } from "./noticeStore";
 
 function suggestedName(): string {
@@ -29,23 +31,35 @@ function suggestedName(): string {
  */
 export async function saveToDisk(opts: { forceDialog?: boolean } = {}): Promise<void> {
   documentStore.captureCurrent(); // freshen the localStorage copy first
-  const g = serializeGraph();
-  if (!g) return;
-  const json = JSON.stringify(g, null, 2);
-  const path = documentStore.currentFilePath();
   try {
-    if (isDesktop() && path && !opts.forceDialog) {
-      await writeTextFilePath(path, json);
+    if (isDesktop()) {
+      // Resolve the destination FIRST: locally-attached images bundle into an
+      // images/ folder beside it (stamping each node's assetPath), and the JSON
+      // serialized after that carries those paths.
+      let path = documentStore.currentFilePath();
+      let fresh = false;
+      if (!path || opts.forceDialog) {
+        path = await pickSaveGraphPath(suggestedName());
+        if (!path) return; // cancelled
+        fresh = true;
+      }
+      const { failed } = await bundleLocalImages(path);
+      const g = serializeGraph();
+      if (!g) return;
+      await writeTextFilePath(path, JSON.stringify(g, null, 2));
+      if (fresh) documentStore.bindCurrentToPath(path, fileNameFromPath(path));
+      documentStore.captureCurrent(); // the localStorage copy carries assetPaths too
       pushNotice(`Saved ${fileNameFromPath(path)}`, "info", 2500);
+      if (failed > 0) {
+        pushNotice(`${failed} image${failed === 1 ? "" : "s"} couldn't be written to the images folder.`, "warn");
+      }
       return;
     }
-    const chosen = await saveTextFileDialog(suggestedName(), json);
-    if (chosen) {
-      documentStore.bindCurrentToPath(chosen, fileNameFromPath(chosen));
-      pushNotice(`Saved ${fileNameFromPath(chosen)}`, "info", 2500);
-    }
-    // browser: chosen is null (the file downloaded) — the browser's own download
-    // UI is the confirmation, so no toast.
+    // Browser: no filesystem to bundle into — plain JSON download, and the
+    // browser's own download UI is the confirmation (no toast).
+    const g = serializeGraph();
+    if (!g) return;
+    await saveTextFileDialog(suggestedName(), JSON.stringify(g, null, 2));
   } catch (e) {
     console.error("[solenoid] save failed", e);
     pushNotice("Couldn't save the file.", "error", 0);

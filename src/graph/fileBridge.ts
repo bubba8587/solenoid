@@ -3,9 +3,9 @@
 // file connections only work in the desktop app; in the browser isDesktop() is
 // false and every call here is a safe no-op, so the CSV-folder node can render a
 // "desktop only" state rather than crash.
-import { readTextFile, readDir, writeTextFile, rename } from "@tauri-apps/plugin-fs";
+import { readTextFile, readDir, writeTextFile, rename, readFile, writeFile, mkdir, exists } from "@tauri-apps/plugin-fs";
 import { open, save } from "@tauri-apps/plugin-dialog";
-import { join } from "@tauri-apps/api/path";
+import { join, dirname } from "@tauri-apps/api/path";
 
 const JSON_FILTER = [{ name: "Solenoid graph", extensions: ["json"] }];
 const HTML_FILTER = [{ name: "Web page", extensions: ["html"] }];
@@ -76,6 +76,35 @@ export async function writeTextFilePath(path: string, content: string): Promise<
   await writeTextFileAtomic(path, content);
 }
 
+// ── Binary files + folders (the image-asset bundle needs these) ──────────────
+
+/** The directory containing an absolute file path. */
+export function dirOfPath(path: string): Promise<string> {
+  return dirname(path);
+}
+
+/** Join path segments (Tauri-side, OS-correct separator). */
+export function joinPath(...parts: string[]): Promise<string> {
+  return join(...parts);
+}
+
+export async function pathExists(path: string): Promise<boolean> {
+  return exists(path);
+}
+
+/** Create a directory (no-op if it already exists). */
+export async function ensureDir(path: string): Promise<void> {
+  if (!(await exists(path))) await mkdir(path, { recursive: true });
+}
+
+export function readBinaryFilePath(path: string): Promise<Uint8Array> {
+  return readFile(path);
+}
+
+export function writeBinaryFilePath(path: string, bytes: Uint8Array): Promise<void> {
+  return writeFile(path, bytes);
+}
+
 /** Show a Save dialog to CHOOSE a path WITHOUT writing anything (a sink node's
  *  "Browse…" button uses this to populate its path field before the separate,
  *  explicit write). Returns null on cancel, and in the browser (no filesystem
@@ -83,6 +112,15 @@ export async function writeTextFilePath(path: string, content: string): Promise<
 export async function pickSaveFilePath(suggestedName: string, extensions: string[]): Promise<string | null> {
   if (!isDesktop()) return null;
   const path = await save({ defaultPath: suggestedName, filters: [{ name: extensions.join("/").toUpperCase(), extensions }] });
+  return typeof path === "string" ? path : null;
+}
+
+/** Desktop: pick a graph save path (Solenoid .json filter) WITHOUT writing —
+ *  saveToDisk needs the destination first so image assets can bundle into the
+ *  right folder before the JSON (which references them) is written. */
+export async function pickSaveGraphPath(suggestedName: string): Promise<string | null> {
+  if (!isDesktop()) return null;
+  const path = await save({ defaultPath: suggestedName, filters: JSON_FILTER });
   return typeof path === "string" ? path : null;
 }
 

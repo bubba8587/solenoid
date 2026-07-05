@@ -203,23 +203,28 @@ export class NoteNode extends ClassicPreset.Node {
 // delete, copy/paste, undo, persistence for free) and produces no data.
 //
 // Persistence: a web `url` round-trips through the JSON save. A LOCAL file is read
-// into `dataUrl` (a base64 data: URL) for the session only — it is deliberately
-// NOT persisted (the save format is plain JSON and we don't want to bloat it with
-// embedded image bytes yet; bundling comes later). So a URL-backed image survives
-// reload; a locally-attached one must be re-attached. `dataUrl` is intentionally
-// absent from copyPaste's extractInit whitelist so neither save nor copy carries it.
+// into `dataUrl` (a base64 data: URL) for the session — the bytes are never written
+// into the save JSON (no base64 bloat; `dataUrl` stays off copyPaste's extractInit
+// whitelist). On DESKTOP, saving the doc to disk bundles the attachment as a plain
+// image file in an `images/` folder beside the doc (imageAssets.ts) and persists the
+// relative `assetPath`; loading hydrates `dataUrl` back from that file. On web there
+// is no filesystem, so a local attach stays session-only ("not saved").
 
 export class ImageNode extends ClassicPreset.Node {
   url: string;        // web URL — persisted
   dataUrl: string;    // local file as a base64 data: URL — session-only, NOT persisted
+  fileName: string;   // the attached file's original name — names the bundled copy
+  assetPath: string;  // doc-relative bundled file ("images/photo.png") — persisted
   height: number;     // rendered image height in px (the inline height field)
   width: number;      // node card width
   collapsed: boolean; // when true, only the header bar shows
 
-  constructor(init?: { label?: string; url?: string; height?: number; width?: number; collapsed?: boolean }) {
+  constructor(init?: { label?: string; url?: string; fileName?: string; assetPath?: string; height?: number; width?: number; collapsed?: boolean }) {
     super(init?.label ?? "Image");
     this.url = init?.url ?? "";
     this.dataUrl = "";
+    this.fileName = init?.fileName ?? "";
+    this.assetPath = init?.assetPath ?? "";
     // Default sizes that fit a reasonable card: a 240px-wide node with a 160px-tall
     // image well (letterboxed via object-fit, so any aspect ratio looks intentional).
     this.height = init?.height ?? 160;

@@ -40,6 +40,25 @@
       "identifier": "fs:allow-read-dir",
       "allow": [{ "path": "$HOME/**" }]
     },
+    {
+      "identifier": "fs:allow-read-file",
+      "allow": [{ "path": "$HOME/**/images/*" }]
+    },
+    {
+      "identifier": "fs:allow-write-file",
+      "allow": [{ "path": "$HOME/**/images/*" }]
+    },
+    {
+      "identifier": "fs:allow-mkdir",
+      "allow": [{ "path": "$HOME/**/images" }]
+    },
+    {
+      "identifier": "fs:allow-exists",
+      "allow": [
+        { "path": "$HOME/**/images" },
+        { "path": "$HOME/**/images/*" }
+      ]
+    },
     "core:window:allow-close",
     "core:window:allow-center",
     "core:window:allow-minimize",

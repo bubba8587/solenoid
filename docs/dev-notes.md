@@ -2,6 +2,36 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Image bundling — plain images/ folder beside the doc (2026-07-05, author decision)
+Author picked option (b) from the overnight memo, amended: NOT a per-doc `.assets/<hash>`
+sidecar — a normal shared `images/` folder beside the saved doc, with the attachment's
+ORIGINAL filename. `imageAssets.ts`:
+- **Save (`bundleLocalImages`, called by `saveToDisk` BEFORE serializeGraph):** each Image
+  node with a session `dataUrl` (and no URL) writes to `<docdir>/images/<name>.<ext>`;
+  collision rule = same bytes → reuse the file, different bytes → "name (2).ext" …
+  content-hash suffix as last resort. Stamps the node's persisted, doc-relative
+  `assetPath`. saveToDisk was restructured to resolve the destination path FIRST
+  (`pickSaveGraphPath` — dialog without write) so a fresh Save As bundles into the right
+  folder and the JSON written after carries the assetPaths; binding happens after a
+  successful write.
+- **Load:** the Image COMPONENT self-hydrates on mount (`hydrateImageAsset(data)`) —
+  resolves `assetPath` against `documentStore.currentFilePath()`, reads bytes → `dataUrl`.
+  Mount-based, so doc load, paste, and placeholder restore are all covered with no
+  documentStore hook; missing file = placeholder, silent (the folder is the user's).
+- **Model:** ImageNode gained `fileName` (names the bundled copy) + `assetPath` (persisted;
+  both in INIT_FIELD_ORDER — `fileName` was already listed for other nodes). Typing a URL
+  or re-attaching clears the binding. The "Local file — not saved" hint shows only while
+  `dataUrl && !assetPath`.
+- **Tauri:** new fs capability grants scoped to `$HOME/**/images{,/*}` (read/write-file,
+  mkdir, exists) — the images folder is NOT dialog-picked, so static grants are required.
+  fileBridge gained binary read/write + mkdir/exists/dirname wrappers.
+- **Gotcha:** the Write tool materialized `\x00-\x1f` in a regex literal as RAW control
+  bytes (invisible in reads, breaks exact-match edits) — fixed via a byte-level script.
+- Web build: no filesystem — attach stays session-only, both hooks no-op. Tests:
+  `imageAssets.test.ts` (chunked base64 round-trip past the 32k seam, sanitizeName).
+  Author eyeball (desktop build): attach → Ctrl+S → images/ appears with the file, hint
+  clears; reopen doc → picture back; Save As elsewhere re-bundles.
+
 ### Popup "Go to node" retargeted to "Go to source" (2026-07-05, author review)
 Author's eyeball catch: since a popup only ever opens from its host node's chip, flying to
 the HOST is a no-op on a Display — you're already looking at it. The crosshair now flies to

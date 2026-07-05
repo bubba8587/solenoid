@@ -923,29 +923,15 @@ correctness.
 - [x] **Image node** — done (2026-06-16, `nodes/annotation.ts` ImageNode): a
   free-floating picture (local file attach or web URL, height field). Add menu →
   Other. Web URLs persist; local files are session-only.
-  - [ ] **Image bundling** — embed locally-attached images so they survive save /
-    reload. Pure-JSON saves can't carry image bytes without bloat, so this needs a
-    bundle format (e.g. a `.zip`/folder of graph JSON + assets, or a sidecar) and
-    the local `dataUrl` plumbed into it. Until then a local attach shows "not
-    saved"; use a URL to persist.
-    **DECISION MEMO (2026-07-05 overnight — needs an author call, then it's a
-    small build):** three options, one recommended.
-    (a) **Zip bundle (`.solz`)** — graph.json + `assets/<hash>.<ext>` in one zip.
-        Truly one-file, but it forks the save format (every open/save path,
-        the text-form story, git-friendliness all split on "is this doc zipped?").
-        A heavy cost for one node type.
-    (b) **Desktop-only sidecar folder (RECOMMENDED)** — on save-to-disk, write each
-        attached image to `<docname>.assets/<contenthash>.<ext>` beside the file
-        and persist `assetPath` in the node's init; loading resolves relative to
-        the doc (the `fileBridge` + relative-fetch plumbing already exists).
-        Matches the file-over-app posture (Obsidian does exactly this), keeps the
-        save plain JSON/text, keeps git diffs clean. Web build keeps today's
-        session-only behavior (no filesystem to sidecar into).
-    (c) **Inline base64 with a size cap** (~200 kB/image) — zero format change,
-        works on web; but bloats autosave quota (mitigated by tonight's per-doc
-        keys) and makes the text form unreadable around image nodes.
-    If (b): ~a day — save hook (hash + write-if-missing), load hook (path →
-    dataUrl via fileBridge), a "not saved (web)" vs "bundled" chip on the node.
+  - [x] **Image bundling** — done (2026-07-05, `imageAssets.ts`; author chose
+    option (b) with a twist: a plain shared `images/` folder beside the doc,
+    ORIGINAL filenames kept, instead of a per-doc `.assets/<hash>` sidecar).
+    Save-to-disk (desktop) writes each attachment to `images/<name>.<ext>`
+    ("name (2).ext" only when a different file owns the name, content-hash
+    suffix as last resort; identical bytes reuse the existing file) and
+    persists the doc-relative `assetPath`; the Image component self-hydrates
+    `dataUrl` from it on mount. Web stays session-only ("not saved" hint shows
+    only while unbundled).
 - [x] **Animated cable state** — done (2026-06-09), CSS flow-bead version with a
   toolbar toggle. Scaling ceiling + the WebGL/canvas upgrade ladder are
   documented in dev-notes TODOs ("Animated cable flow mode").
