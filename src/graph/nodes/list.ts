@@ -1430,7 +1430,7 @@ export const FILL_OP_META = {
   mode:        { label: "Fill with mode",    description: "Impute gaps with the most common present value" },
   interpolate: { label: "Interpolate",       description: "Linearly interpolate interior gaps between bracketing present values" },
   drop:        { label: "Drop missing",      description: "Remove missing (null) cells — shortens the list (pandas dropna)" },
-  coalesce:    { label: "Coalesce (else)",   description: "First present of List then Else, per position (SQL COALESCE)" },
+  coalesce:    { label: "Coalesce (else)",   description: "First present of List then each Else in order, per position (SQL COALESCE)" },
 } satisfies Record<FillOp, { label: string; description: string }>;
 
 type Cell = number | null | SolError;
@@ -1494,19 +1494,47 @@ export class FillNode extends ClassicPreset.Node {
   op: FillOp;
   cachedList: Cell[] = [];
   literals: Record<string, number> = { value: 0 };
+  nextInputId = 0;
   width = 200; height = 175;
 
-  constructor(init?: { label?: string; op?: FillOp }) {
+  constructor(init?: { label?: string; op?: FillOp; valueKeys?: string[] }) {
     super("Fill");
     this.label = init?.label ?? "Fill";
     this.op = init?.op ?? "constant";
     this.addInput("list",  listIn("List"));
     this.addInput("value", numIn("Fill with")); // shown for the constant mode
-    this.addInput("else",  listIn("Else"));      // shown for the coalesce mode
+    // Coalesce fallbacks: extensible "Else" rows (e0, e1, …) — full N-ary
+    // COALESCE, shown for the coalesce mode. extractInit's valueKeys snapshot
+    // includes the fixed inputs; filter to the keys this node owns (the CHOOSE
+    // convention).
+    const elseInit = init?.valueKeys?.filter((k) => /^e\d+$/.test(k)) ?? [];
+    if (elseInit.length) for (const k of elseInit) this.addElseInput(k);
+    else this.addValueInput();
     this.addOutput("result", listOut("Filled"));
   }
 
-  data(inputs: { list?: Cell[][]; value?: number[]; else?: Cell[][] }) {
+  private addElseInput(key: string): void {
+    this.addInput(key, listIn("Else"));
+    const n = parseInt(key.slice(1), 10);
+    if (Number.isFinite(n)) this.nextInputId = Math.max(this.nextInputId, n + 1);
+  }
+
+  addValueInput(): string {
+    const key = `e${this.nextInputId}`;
+    this.addElseInput(key);
+    return key;
+  }
+
+  removeValueInput(key: string): void {
+    if (/^e\d+$/.test(key)) this.removeInput(key);
+  }
+
+  /** The coalesce fallback keys, in row order. */
+  elseKeys(): string[] {
+    return Object.keys(this.inputs).filter((k) => /^e\d+$/.test(k));
+  }
+
+  data(inputs: { list?: Cell[][]; value?: number[] } & Record<string, Cell[][] | number[] | undefined>) {
     const arr = inputs.list?.[0] ?? null;
     if (!arr) { this.cachedList = []; return { result: [] }; }
     let out: Cell[];
@@ -1551,11 +1579,29 @@ export class FillNode extends ClassicPreset.Node {
         break;
       }
       case "coalesce": {
-        const b = inputs.else?.[0] ?? [];
-        const n = Math.max(arr.length, b.length);
+        // N-ary: List first, then each Else row in order. A wired row
+        // contributes its list (a longer one EXTENDS the output, matching the
+        // old 2-source behavior); an unwired row with a typed literal is a
+        // broadcast constant (the last-resort-default idiom, doesn't extend);
+        // an untouched row contributes nothing.
+        const fallbacks: (Cell[] | number | null)[] = this.elseKeys().map((k) => {
+          const wired = (inputs[k] as Cell[][] | undefined)?.[0];
+          if (Array.isArray(wired)) return wired;
+          if (k in inputs) return null; // wired but empty — contributes nothing
+          const lit = this.literals[k];
+          return typeof lit === "number" ? lit : null;
+        });
+        const lists = fallbacks.filter((f): f is Cell[] => Array.isArray(f));
+        const n = Math.max(arr.length, ...lists.map((s) => s.length));
         out = Array.from({ length: n }, (_, i): Cell => {
-          const a: Cell = i < arr.length ? arr[i] : null;
-          return isMissing(a) ? (i < b.length ? b[i] : null) : a;
+          const first: Cell = i < arr.length ? arr[i] : null;
+          if (!isMissing(first)) return first;
+          for (const f of fallbacks) {
+            if (f === null) continue;
+            const v: Cell = typeof f === "number" ? f : i < f.length ? f[i] : null;
+            if (!isMissing(v)) return v;
+          }
+          return null;
         });
         break;
       }

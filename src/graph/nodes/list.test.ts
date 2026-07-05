@@ -251,11 +251,43 @@ describe("Fill / Coalesce — missing-value strategies (array-semantics policy)"
   });
 
   it("coalesce takes the first present of List then Else, per position", () => {
-    expect(new FillNode({ op: "coalesce" }).data({ list: [[1, null, 3]], else: [[9, 8, 7]] }).result)
+    expect(new FillNode({ op: "coalesce" }).data({ list: [[1, null, 3]], e0: [[9, 8, 7]] }).result)
       .toEqual([1, 8, 3]);
     // missing in both stays null; Else can be longer
-    expect(new FillNode({ op: "coalesce" }).data({ list: [[null, null]], else: [[5, null, 6]] }).result)
+    expect(new FillNode({ op: "coalesce" }).data({ list: [[null, null]], e0: [[5, null, 6]] }).result)
       .toEqual([5, null, 6]);
+  });
+
+  it("coalesce is N-ary: each Else row in order, first present wins", () => {
+    const n = new FillNode({ op: "coalesce" }); // ships with e0
+    n.addValueInput(); // e1
+    expect(n.elseKeys()).toEqual(["e0", "e1"]);
+    expect(n.data({ list: [[null, null, 3]], e0: [[9, null, null]], e1: [[5, 6, 7]] }).result)
+      .toEqual([9, 6, 3]);
+  });
+
+  it("coalesce: a typed literal on an unwired Else row is a broadcast constant (doesn't extend)", () => {
+    const n = new FillNode({ op: "coalesce" });
+    n.literals.e0 = 42;
+    expect(n.data({ list: [[null, 1, null]] }).result).toEqual([42, 1, 42]);
+    // an untouched row contributes nothing
+    const bare = new FillNode({ op: "coalesce" });
+    expect(bare.data({ list: [[null, 1]] }).result).toEqual([null, 1]);
+  });
+
+  it("coalesce: valueKeys round-trip rebuilds the Else rows (fixed inputs filtered out)", () => {
+    const n = new FillNode({ op: "coalesce", valueKeys: ["list", "value", "e0", "e1", "e2"] });
+    expect(n.elseKeys()).toEqual(["e0", "e1", "e2"]);
+    // a fresh add after reload never collides with a rebuilt key
+    expect(n.addValueInput()).toBe("e3");
+  });
+
+  it("coalesce: an error cell is present (passes through at its priority slot)", () => {
+    const err = solError("#DIV/0!", "boom");
+    const n = new FillNode({ op: "coalesce" });
+    const out = n.data({ list: [[err, null]], e0: [[1, 2]] }).result as unknown[];
+    expect(isSolError(out[0])).toBe(true);
+    expect(out[1]).toBe(2);
   });
 
   it("a per-cell error is NOT a gap — every mode passes it through untouched", () => {
