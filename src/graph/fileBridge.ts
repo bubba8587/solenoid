@@ -233,3 +233,17 @@ export async function openExternal(url: string): Promise<void> {
   }
   window.open(url, "_blank", "noopener,noreferrer");
 }
+
+/** Open the OS file manager at `path` (desktop only, no-op in the browser).
+ *  Uses the opener plugin's revealItemInDir, which is covered by the
+ *  `opener:default` capability already granted (unlike openPath, no extra
+ *  fs scope needed). */
+export async function openInFileManager(path: string): Promise<void> {
+  if (!isDesktop() || !path) return;
+  try {
+    const { revealItemInDir } = await import("@tauri-apps/plugin-opener");
+    await revealItemInDir(path);
+  } catch {
+    // best-effort — nothing to fall back to on desktop
+  }
+}

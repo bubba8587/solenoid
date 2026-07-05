@@ -1,7 +1,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { settingsStore, settingsPanel, SETTINGS_SCHEMA, type SettingField } from "./settingsStore";
 import { packsStore, allPacks, loadCustomPacks, customPacksFolder } from "./packs";
-import { isDesktop, pickFolderDialog } from "./fileBridge";
+import { isDesktop, pickFolderDialog, openInFileManager } from "./fileBridge";
 import { paletteStore, type PaletteName } from "./palette";
 import { useRenderMode, renderModeStore } from "./renderMode";
 import { supportsHtmlInCanvas } from "./htmlCanvasSupport";
@@ -99,6 +99,7 @@ function FolderRow({ field }: { field: SettingField }) {
       </span>
       <span className="solenoid-settings__folder-actions">
         <button type="button" className="solenoid-settings__store-btn" disabled={!desktop} onClick={choose}>Choose…</button>
+        {value && desktop && <button type="button" className="solenoid-settings__store-btn" onClick={() => void openInFileManager(value)}>Open</button>}
         {value && <button type="button" className="solenoid-settings__store-btn" onClick={() => settingsStore.set(field.key, "")}>Clear</button>}
       </span>
     </div>
