@@ -62,6 +62,72 @@ describe("NestJoinNode.data", () => {
     const n = new NestJoinNode();
     expect(n.data({ parent: [buildFrame([[1]], ["id"])] }).cube).toBeNull();
   });
+
+  it("accepts a CUBE child — nests a pre-built cube whole under each parent", () => {
+    // ordersCube: orders (with a customer key) each carrying nested line items.
+    const orders = buildFrame([[10, 1], [20, 1], [30, 2]], ["ord", "cust"]);
+    const lineItems = buildFrame([[10, 1], [10, 2], [20, 3]], ["ord", "sku"]);
+    const ordersCube = relateFramesToCube(orders, lineItems, "ord", "lines")!;
+    const customers = buildFrame([[1], [2]], ["cust"]);
+    const n = new NestJoinNode();
+    n.stringLiterals.key = "cust";
+    n.stringLiterals.name = "orders";
+    const { cube } = n.data({ parent: [customers], child: [ordersCube] });
+    expect(isCubeValue(cube)).toBe(true);
+    // each customer's nested cell is a sub-CUBE (not a flat sub-frame)
+    expect(isCubeValue((cube as CubeValue).columns[1].cells[0])).toBe(true);
+  });
+});
+
+describe("relateFramesToCube — CUBE child (nest a pre-built cube whole)", () => {
+  // A pre-built Orders cube: orders keyed by customer, each carrying nested line items.
+  const orders = buildFrame([[10, 1], [20, 1], [30, 2]], ["ord", "cust"]);
+  const lineItems = buildFrame([[10, 1], [10, 2], [20, 3]], ["ord", "sku"]);
+  const ordersCube = relateFramesToCube(orders, lineItems, "ord", "lines")!; // cube [ord, cust, lines(frame)]
+  const customers = buildFrame([[1], [2], [3]], ["cust"]);
+
+  it("nests a sub-CUBE under each parent, preserving the child's own nesting (Customer→Order→LineItem in one step)", () => {
+    const cube = relateFramesToCube(customers, ordersCube, "cust", "orders")!;
+    expect(cube.columns.map((c) => c.name)).toEqual(["cust", "orders"]);
+    const c1 = cube.columns[1].cells[0]; // cust=1 → a sub-cube of orders 10 & 20
+    expect(isCubeValue(c1)).toBe(true);
+    expect(cubeRowCount(c1 as CubeValue)).toBe(2);
+    // depth 2: a nested FRAME (lines) is a leaf (adds no depth); only the cube-in-cube
+    // (customers holding order-cubes) counts — so customers(1) over orders-cube(1) = 2.
+    expect(cubeDepth(cube)).toBe(2);
+  });
+
+  it("a no-match parent gets an EMPTY sub-cube (0 rows), structure preserved", () => {
+    const cube = relateFramesToCube(customers, ordersCube, "cust", "orders")!;
+    const c3 = cube.columns[1].cells[2]; // cust=3, no orders
+    expect(isCubeValue(c3)).toBe(true);
+    expect(cubeRowCount(c3 as CubeValue)).toBe(0);
+  });
+
+  it("a flat FRAME child still nests a sub-FRAME (unchanged) — depth 1", () => {
+    const flat = relateFramesToCube(customers, orders, "cust", "orders")!;
+    expect(isFrameValue(flat.columns[1].cells[0])).toBe(true);
+    expect(cubeDepth(flat)).toBe(1);
+  });
+});
+
+describe("relateCubeToFrame — a CUBE child deepens a cube parent's leaves", () => {
+  it("nest-joins a cube child into each leaf frame → the leaf gains a nested sub-cube", () => {
+    // Parent cube: customers → flat order sub-frames.
+    const customers = buildFrame([[1], [2]], ["cust"]);
+    const orders = buildFrame([[10, 1], [20, 2]], ["ord", "cust"]);
+    const parentCube = relateFramesToCube(customers, orders, "cust", "orders")!;
+    // Cube child keyed on "ord" (a line-items cube).
+    const lineItems = buildFrame([[10, 1], [20, 2]], ["ord", "sku"]);
+    const childCube = relateFramesToCube(lineItems, buildFrame([[10, 99]], ["ord", "note"]), "ord", "notes")!;
+    const deepened = relateCubeToFrame(parentCube, childCube, "ord", "lines");
+    // Each customer's order sub-frame became a sub-cube whose orders carry a nested "lines" cube.
+    const ordersCell = deepened.columns[1].cells[0];
+    expect(isCubeValue(ordersCell)).toBe(true);
+    const linesCol = (ordersCell as CubeValue).columns.find((c) => c.name === "lines");
+    expect(linesCol).toBeDefined();
+    expect(isCubeValue(linesCol!.cells[0])).toBe(true); // the child was a cube → nested as a sub-cube
+  });
 });
 
 describe("BuildCubeNode.data — any value into a cell", () => {

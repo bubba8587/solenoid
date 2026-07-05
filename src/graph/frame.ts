@@ -552,6 +552,16 @@ function keyId(v: FrameCell): string {
   return String(v);
 }
 
+/** Key id for a CUBE cell (a cube child's key column): scalars/null/error use the
+ *  same `keyId` as a frame key, so a cube child joins on the same value equality; a
+ *  nested frame/cube/list cell can't be a join key (→ null, unmatched). */
+function cellKeyId(cell: CubeCell): string | null {
+  if (cell === null) return keyId(null);
+  if (typeof cell === "number" || typeof cell === "string" || typeof cell === "boolean") return keyId(cell);
+  if (isSolError(cell)) return keyId(cell);
+  return null; // a nested frame/cube/list is not a scalar join key
+}
+
 /** A frame of just the given row indices (columns + types + units preserved). */
 function subFrame(child: FrameValue, rowIdxs: number[]): FrameValue {
   return {
@@ -566,25 +576,43 @@ function subFrame(child: FrameValue, rowIdxs: number[]): FrameValue {
   };
 }
 
+/** A cube of just the given row indices (every column's cells, aligned) — the
+ *  cube-child analogue of `subFrame`, so nesting a pre-built cube keeps its own
+ *  nesting intact in each parent cell. */
+function subCube(child: CubeValue, rowIdxs: number[]): CubeValue {
+  return makeCube(child.columns.map((c) => ({
+    name: c.name,
+    cells: rowIdxs.map((i) => c.cells[i] ?? null),
+  })));
+}
+
 /** Relate a parent + child frame on a shared key column into a Cube: the parent's
  *  columns flow through as flat cells, plus one NESTED column whose every cell is
  *  the sub-frame of child rows matching that parent row's key. `null` if either
  *  frame is missing the key column. */
 export function relateFramesToCube(
   parent: FrameValue,
-  child: FrameValue,
+  child: FrameValue | CubeValue,
   key: string,
   nestedName: string,
 ): CubeValue | null {
   const pKey = getColumn(parent, key);
-  const cKey = getColumn(child, key);
-  if (!pKey || !cKey) return null;
+  if (!pKey) return null;
+  // The child may be a Frame (each parent cell nests a flat sub-FRAME — depth 1) OR a
+  // Cube (nesting a PRE-BUILT cube: each parent cell nests a sub-CUBE, preserving the
+  // child's own nesting). Read its key column + row count generically — a cube's key
+  // column is its top-level column of the same name.
+  const cKeyCells: readonly CubeCell[] | null = isCubeValue(child)
+    ? (child.columns.find((c) => c.name === key)?.cells ?? null)
+    : (getColumn(child, key)?.values ?? null);
+  if (!cKeyCells) return null;
+  const cRows = isCubeValue(child) ? cubeRowCount(child) : frameRowCount(child);
 
-  // Index child rows by key value.
+  // Index child rows by key value (a non-scalar key cell can't be a join key → skipped).
   const childByKey = new Map<string, number[]>();
-  const cRows = frameRowCount(child);
   for (let i = 0; i < cRows; i++) {
-    const id = keyId(cKey.values[i] ?? null);
+    const id = cellKeyId(cKeyCells[i] ?? null);
+    if (id === null) continue;
     const arr = childByKey.get(id);
     if (arr) arr.push(i);
     else childByKey.set(id, [i]);
@@ -600,22 +628,23 @@ export function relateFramesToCube(
     name: names[j],
     cells: Array.from({ length: pRows }, (_, i) => c.values[i] ?? null),
   }));
-  const nestedCells: CubeCell[] = Array.from({ length: pRows }, (_, i) =>
-    subFrame(child, childByKey.get(keyId(pKey.values[i] ?? null)) ?? []),
-  );
+  const nestedCells: CubeCell[] = Array.from({ length: pRows }, (_, i) => {
+    const idxs = childByKey.get(keyId(pKey.values[i] ?? null)) ?? [];
+    return isCubeValue(child) ? subCube(child, idxs) : subFrame(child, idxs);
+  });
   columns.push({ name: names[parent.columns.length], cells: nestedCells });
   return makeCube(columns);
 }
 
 /** Cube-aware nest join: descend into a cube parent's nested sub-table column and
- *  nest-join `child` into each leaf FRAME (a leaf frame → a cube), recursing through
- *  already-nested cubes so a chain (Customer → Order → LineItem) deepens by ONE level
- *  per call. The nested column is auto-detected as the FIRST column whose cells hold a
- *  frame/cube (a nest-join cube has exactly one; a hand-built Build-Cube could have
- *  several — we deepen the first deterministically rather than silently the last). A
- *  leaf frame missing the key stays a frame; a parent with no nested column is
- *  returned unchanged. */
-export function relateCubeToFrame(parent: CubeValue, child: FrameValue, key: string, nestedName: string): CubeValue {
+ *  nest-join `child` (a Frame OR a pre-built Cube) into each leaf FRAME (a leaf frame →
+ *  a cube), recursing through already-nested cubes so a chain (Customer → Order →
+ *  LineItem) deepens by ONE level per call. The nested column is auto-detected as the
+ *  FIRST column whose cells hold a frame/cube (a nest-join cube has exactly one; a
+ *  hand-built Build-Cube could have several — we deepen the first deterministically
+ *  rather than silently the last). A leaf frame missing the key stays a frame; a parent
+ *  with no nested column is returned unchanged. */
+export function relateCubeToFrame(parent: CubeValue, child: FrameValue | CubeValue, key: string, nestedName: string): CubeValue {
   let nestedIdx = -1;
   for (let j = 0; j < parent.columns.length; j++) {
     if (parent.columns[j].cells.some((c) => isFrameValue(c) || isCubeValue(c))) { nestedIdx = j; break; }
