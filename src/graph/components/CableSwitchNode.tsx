@@ -2,19 +2,30 @@ import { useEffect, useState } from "react";
 import type { CableSwitchNode as CableSwitchNodeType } from "../rete-nodes";
 import { getEditor, getArea, processGraph, bumpConnectionVersion, pushHistory } from "../process";
 import { pushRowRemovalUndo, pushRowAddUndo } from "./ExtensibleInputs";
-import { isFrameValue } from "../frame";
+import { isFrameValue, isCubeValue } from "../frame";
+import { isChartValue } from "../chartValue";
+import { isMermaidValue } from "../mermaidValue";
+import { isLambdaValue, formatLambda } from "../nodes/lambda";
 import { useConnectedInputs } from "./inlineInput";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 import { FrameDisplay } from "./FrameDisplay";
+import { CubeDisplay } from "./CubeDisplay";
 import { TableDisplay } from "./TableDisplay";
+import { ChartFigure } from "./chartView";
+import { MermaidView } from "./MermaidView";
 import "./CableSwitchNode.css";
 
 const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
-// The selected value is `any`, so render it the way the Display node does.
+// The selected value is `any`, so render it by kind the way the Display node
+// does — a chart/frame/cube/diagram is drawn, not stringified to [object Object].
 function SwitchValue({ value, label }: { value: unknown; label?: string }) {
   if (isFrameValue(value)) return <FrameDisplay frame={value} label={label} />;
+  if (isCubeValue(value)) return <CubeDisplay cube={value} label={label} />;
+  if (isChartValue(value)) return <ChartFigure value={value} width={200} height={110} />;
+  if (isMermaidValue(value)) return <MermaidView source={value.source} />;
+  if (isLambdaValue(value)) return <div className="solenoid-node__display-value">{formatLambda(value)}</div>;
   if (Array.isArray(value) && Array.isArray((value as unknown[])[0])) {
     return <TableDisplay table={value as number[][]} label={label} />;
   }

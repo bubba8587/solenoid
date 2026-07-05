@@ -19,6 +19,7 @@ import { formatAnnotationStore, formatNumberWithAnnotation, applyTextCase, apply
 import { nodeOutputIsDate, dateFormatDisplay, shouldRenderListInline, formatListCell, type DisplayValue } from "./valueDisplayFormat";
 import { IS_COARSE } from "../coarse";
 import { NodeFormatContext } from "./nodeContext";
+import { describeValueKind } from "../valueKindLabel";
 import "./nodeCard.css";
 
 /**
@@ -472,6 +473,16 @@ export function ValueDisplay({
   const [hovered, setHovered] = useState(false);
   const [copied, setCopied] = useState(false);
   const copyTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Safety net: an object-valued kind (chart/frame/cube/diagram/image/lambda) can
+  // slip in through an `any`/casted value. It must NOT reach the number/string
+  // path below (→ "[object Object]" or a .toFixed crash). Surfaces that want the
+  // RICH form (Display, Input Switch) branch on the kind before calling this; here
+  // we show a compact label so nothing ever reads as "[object Object]".
+  const kindLabel = describeValueKind(rawValue);
+  if (kindLabel != null) {
+    return <div className="solenoid-node__display-value">{kindLabel}</div>;
+  }
 
   // Local-display formatting: if a Format Controller is docked to this node,
   // render the value through its annotation. Only kicks in when the component
