@@ -15,6 +15,13 @@
   box-shadow: var(--overlay-shadow);
 }
 
+/* Minimap moved off the bottom-right corner (Top or Hide) — the legend drops
+   down to fill the freed space instead of floating with a gap underneath. */
+html.minimap-top .solenoid-legend,
+html.minimap-hidden .solenoid-legend {
+  bottom: 16px;
+}
+
 /* Expanded panel renders 15% smaller, anchored to its bottom-right corner. */
 .solenoid-legend:not(.solenoid-legend--collapsed) {
   transform: scale(0.85);
