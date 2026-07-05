@@ -2,6 +2,29 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### FC v1.1 A2 (second pass) — node-matching states, chip tint, advanced tier (2026-07-05)
+Author's two directions after the first pass:
+- **State parity with nodes.** The FC renders through NodeCard so it always HAD the
+  selection ring/glow + grouped treatment — the one deviation was `.solenoid-fc`'s
+  always-accent border, which also fought the generic hover rule (accent flicked to
+  gray on hover). Removed: border/hover/selection are now the standard node treatments.
+  The type accent moved into a tint of the chip itself (same `--header-tint` recipe as
+  a node header — the chip is an all-header mini card; DESIGN.md's "tint the element
+  itself"). Mismatch still reads (accentOverride turns the tint + badge orange).
+- **Advanced tier (the "more format options / expandable FC" half of the redesign).**
+  Number-family chips grow a thin chevron expander at the foot (persisted
+  `advancedOpen`); expanded rows, each gated per-style by formatModel
+  (never disabled-but-visible): **1,000-separator** toggle (decimal/integer/percent),
+  **negative style** (−1,234 · (1,234) · red · red parens; paren wraps OUTSIDE the
+  unit, Excel accounting style `($1.2M)`; red = render-layer color via
+  `annotationRendersNegativeRed`, applied in ValueDisplay), **scale** K/M/B
+  (decimal/integer; divides + suffixes inside the unit: `$1.2M`). New annotation
+  fields `grouping`/`negativeStyle`/`scaleMode` ride the same forward/backward lock
+  as everything else. `applyFormatStyle` gained a `useGrouping` arg. Spec + truth
+  table updated in format-model.md; INIT_FIELD_ORDER carries the four new FC fields.
+- Author eyeball: FC rest/hover/select next to a normal node; the tinted chip; expander
+  chevron; grouping off; (1,234) with $; red negatives; 1.2M scale; paren+scale+$ compose.
+
 ### FC v1.1 A2 (first pass) — flow arrows re-audited, SegToggle unified, row grid (2026-07-05)
 Author asked, as part of A2, whether the FC's arrow logic still comports with how
 formats/units pass. It didn't, on two counts: (1) the format row claimed backward-only

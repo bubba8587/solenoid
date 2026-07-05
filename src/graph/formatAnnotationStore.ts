@@ -2,6 +2,7 @@
 // Module-level singleton, readable from any React root.
 
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "./nodes/date";
+import { groupingApplies, scaleApplies, negativeApplies } from "./formatModel";
 
 // ─── Format style (how the number renders) ───────────────────────────────────
 
@@ -89,13 +90,13 @@ export type DecimalMode = "places" | "sigfigs";
 // The ONE precision resolver (format-model.md "precision × style resolution
 // rule") — every style that supports precision delegates here; no style case
 // carries private digit logic. Clamps: places 0–20, sig figs 1–21.
-function formatPrecise(n: number, decimalDigits: number, decimalMode: DecimalMode): string {
+function formatPrecise(n: number, decimalDigits: number, decimalMode: DecimalMode, useGrouping = true): string {
   if (decimalMode === "sigfigs") {
     const s = Math.max(1, Math.min(21, Math.round(decimalDigits) || 1));
-    return n.toLocaleString(undefined, { minimumSignificantDigits: s, maximumSignificantDigits: s });
+    return n.toLocaleString(undefined, { minimumSignificantDigits: s, maximumSignificantDigits: s, useGrouping });
   }
   const d = Math.max(0, Math.min(20, Math.round(decimalDigits)));
-  return n.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
+  return n.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d, useGrouping });
 }
 
 /** Apply a FormatStyle to a number. Returns the formatted string. */
@@ -105,12 +106,13 @@ export function applyFormatStyle(
   customPattern?: string,
   decimalDigits = 2,
   decimalMode: DecimalMode = "places",
+  useGrouping = true,
 ): string {
   if (!Number.isFinite(n)) return String(n);
   switch (style) {
-    case "decimal":      return formatPrecise(n, decimalDigits, decimalMode);
-    case "percent":      return `${formatPrecise(n * 100, decimalDigits, decimalMode)}%`;
-    case "integer":      return Math.round(n).toLocaleString();
+    case "decimal":      return formatPrecise(n, decimalDigits, decimalMode, useGrouping);
+    case "percent":      return `${formatPrecise(n * 100, decimalDigits, decimalMode, useGrouping)}%`;
+    case "integer":      return Math.round(n).toLocaleString(undefined, { useGrouping });
     case "fraction":     return toFraction(n);
     case "fraction_adv": return toFractionAdvanced(n);
     case "scientific": {
@@ -424,6 +426,28 @@ export function applyLogicalStyle(b: boolean, style?: LogicalStyle): string {
   }
 }
 
+// The advanced tier (format-model.md): number-family extras behind the chip's
+// expander. Scale divides the value and appends K/M/B; negative style is a
+// string transform (parens) plus a render hint (red — surfaces apply the color
+// via annotationRendersNegativeRed, the string form stays minus/parens).
+export type NegativeStyle = "minus" | "paren" | "red" | "redparen";
+export type ScaleMode = "none" | "k" | "m" | "b";
+
+export const NEGATIVE_STYLE_LABELS: Record<NegativeStyle, string> = {
+  minus:    "-1,234",
+  paren:    "(1,234)",
+  red:      "-1,234 in red",
+  redparen: "(1,234) in red",
+};
+export const SCALE_MODE_LABELS: Record<ScaleMode, string> = {
+  none: "As-is",
+  k:    "Thousands (K)",
+  m:    "Millions (M)",
+  b:    "Billions (B)",
+};
+const SCALE_DIVISOR: Record<ScaleMode, number> = { none: 1, k: 1e3, m: 1e6, b: 1e9 };
+const SCALE_SUFFIX: Record<ScaleMode, string> = { none: "", k: "K", m: "M", b: "B" };
+
 export type FormatAnnotation = {
   format: FormatStyleId;
   customPattern?: string;
@@ -439,7 +463,19 @@ export type FormatAnnotation = {
   decimalMode?: DecimalMode;
   // Logical-socket show-as (display only).
   logicalStyle?: LogicalStyle;
+  // Advanced tier (number family).
+  grouping?: boolean;           // thousands separator (default true)
+  negativeStyle?: NegativeStyle;
+  scaleMode?: ScaleMode;
 };
+
+/** Should a surface paint this (negative) value in the danger red? The string
+ *  form from formatNumberWithAnnotation already carries the minus/parens; red
+ *  is a color the render layer applies on top. */
+export function annotationRendersNegativeRed(ann: FormatAnnotation | undefined, n: unknown): boolean {
+  return !!ann && typeof n === "number" && n < 0 &&
+    (ann.negativeStyle === "red" || ann.negativeStyle === "redparen");
+}
 
 /** Display-only case transform for a string (UPPER / lower / Proper). */
 export function applyTextCase(s: string, c: TextCase | undefined): string {
@@ -535,7 +571,11 @@ export const formatMismatchStore = {
   },
 };
 
-/** Format a number with a resolved annotation (style + unit suffix). */
+/** Format a number with a resolved annotation — the format-model pipeline:
+ *  scale-divide → style (precision + grouping) → scale suffix → unit affix →
+ *  negative wrap. Red negatives are a render-layer color on top of this string
+ *  (annotationRendersNegativeRed); parens wrap OUTSIDE the unit, Excel
+ *  accounting style: ($1.2K). */
 export function formatNumberWithAnnotation(n: number, ann: FormatAnnotation): string {
   if (!Number.isFinite(n)) return String(n);
   // Date styles render the value as a date serial; units don't apply.
@@ -546,14 +586,23 @@ export function formatNumberWithAnnotation(n: number, ann: FormatAnnotation): st
       : (DATE_STYLE_PATTERNS[ann.format as FormatStyle] ?? DEFAULT_DATE_FORMAT);
     return formatDateSerial(n, pattern);
   }
-  const formatted = applyFormatStyle(n, ann.format, ann.customPattern, ann.decimalDigits, ann.decimalMode);
+  const scale: ScaleMode = ann.scaleMode && scaleApplies(ann.format) ? ann.scaleMode : "none";
+  const paren = (ann.negativeStyle === "paren" || ann.negativeStyle === "redparen") &&
+    negativeApplies(ann.format) && n < 0;
+  const magnitude = (paren ? -n : n) / SCALE_DIVISOR[scale];
+  const grouping = groupingApplies(ann.format) ? ann.grouping !== false : true;
+  const formatted =
+    applyFormatStyle(magnitude, ann.format, ann.customPattern, ann.decimalDigits, ann.decimalMode, grouping) +
+    SCALE_SUFFIX[scale];
+  let out: string;
   if (ann.unit === "custom") {
     const u = ann.customUnit ?? "";
-    return u ? `${formatted}${u}` : formatted;
+    out = u ? `${formatted}${u}` : formatted;
+  } else {
+    const u = unitById(ann.unit);
+    out = !u.label ? formatted : u.prefix ? `${u.label}${formatted}` : `${formatted}${u.label}`;
   }
-  const u = unitById(ann.unit);
-  if (!u.label) return formatted;
-  return u.prefix ? `${u.label}${formatted}` : `${formatted}${u.label}`;
+  return paren ? `(${out})` : out;
 }
 
 /** Format a number using the annotation for a given socket, falling back to auto. */

@@ -39,7 +39,7 @@ describe("precisionApplies — ONE list: decimal, percent, scientific", () => {
 describe("controlsFor — the truth table rows", () => {
   it("number family: styles + unit; precision follows the style", () => {
     const dec = controlsFor("number", "decimal");
-    expect(dec).toEqual({ numberStyle: true, complexStyle: false, precision: true, unit: true, dateStyle: false, text: false, logical: false });
+    expect(dec).toEqual({ numberStyle: true, complexStyle: false, precision: true, unit: true, dateStyle: false, text: false, logical: false, advanced: true });
     expect(controlsFor("number", "scientific").precision).toBe(true); // the model's new grant
     expect(controlsFor("number", "integer").precision).toBe(false);
     expect(controlsFor("number", "fraction").precision).toBe(false);

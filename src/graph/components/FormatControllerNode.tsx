@@ -3,10 +3,15 @@ import { FormatControllerNode } from "../rete-nodes";
 import type { FormatControllerNode as FormatControllerNodeType } from "../rete-nodes";
 import {
   FORMAT_STYLE_LABELS, FORMAT_STYLE_GROUPS, DATE_FORMAT_STYLES, UNIT_ANNOTATIONS,
-  LOGICAL_STYLE_LABELS, unitGroupLabel, formatMismatchStore,
+  LOGICAL_STYLE_LABELS, NEGATIVE_STYLE_LABELS, SCALE_MODE_LABELS,
+  unitGroupLabel, formatMismatchStore,
   type FormatStyleId, type TextCase, type DecimalMode, type LogicalStyle,
+  type NegativeStyle, type ScaleMode,
 } from "../formatAnnotationStore";
-import { familyOf, controlsFor, COMPLEX_FORMAT_STYLES } from "../formatModel";
+import {
+  familyOf, controlsFor, COMPLEX_FORMAT_STYLES,
+  groupingApplies, scaleApplies, negativeApplies,
+} from "../formatModel";
 import { packsStore } from "../packs";
 import { activePackUnits, activePackFormats } from "../fcExtensions";
 import { SOCKET_COLORS } from "../sockets";
@@ -57,6 +62,10 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
   const [customUnit,    setCustomUnitLocal] = useState(node.customUnit);
   const [textCase,      setTextCaseLocal] = useState<TextCase>(node.textCase);
   const [logicalStyle,  setLogicalLocal]  = useState<LogicalStyle>(node.logicalStyle);
+  const [grouping,      setGroupingLocal] = useState(node.grouping);
+  const [negativeStyle, setNegativeLocal] = useState<NegativeStyle>(node.negativeStyle);
+  const [scaleMode,     setScaleModeLocal] = useState<ScaleMode>(node.scaleMode);
+  const [advancedOpen,  setAdvancedLocal] = useState(node.advancedOpen);
   const [bold,          setBoldLocal]     = useState(node.bold);
   const [italic,        setItalicLocal]   = useState(node.italic);
   const [textScale,     setScaleLocal]    = useState(node.textScale);
@@ -110,6 +119,9 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
     setUnitLocal(node.unit);
     setTextCaseLocal(node.textCase);
     setLogicalLocal(node.logicalStyle);
+    setGroupingLocal(node.grouping);
+    setNegativeLocal(node.negativeStyle);
+    setScaleModeLocal(node.scaleMode);
     setBoldLocal(node.bold);
     setItalicLocal(node.italic);
     setScaleLocal(node.textScale);
@@ -169,6 +181,35 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
     node.logicalStyle = s;
     setLogicalLocal(s);
     syncNode();
+  }
+
+  function toggleGrouping() {
+    node.grouping = !node.grouping;
+    setGroupingLocal(node.grouping);
+    syncNode();
+  }
+
+  function onNegativeChange(s: NegativeStyle) {
+    node.negativeStyle = s;
+    setNegativeLocal(s);
+    syncNode();
+  }
+
+  function onScaleChangeMode(s: ScaleMode) {
+    node.scaleMode = s;
+    setScaleModeLocal(s);
+    syncNode();
+  }
+
+  // Expanding/collapsing the advanced tier changes the chip height; a docked
+  // FC must re-center on its host socket once the new height has laid out
+  // (same double-RAF as a format change).
+  function toggleAdvanced() {
+    node.advancedOpen = !node.advancedOpen;
+    setAdvancedLocal(node.advancedOpen);
+    if (node.hostNodeId) {
+      requestAnimationFrame(() => requestAnimationFrame(() => repositionDockedNodes(node.hostNodeId)));
+    }
   }
 
   function toggleBold() {
@@ -525,6 +566,81 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
           )}
           <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
         </div>
+      )}
+
+      {/* Advanced tier (number family) — grouping / negative style / scale,
+          behind the chip's expander. Each row exists only for the styles where
+          it means something (formatModel gates). */}
+      {c.advanced && advancedOpen && (
+        <>
+          {groupingApplies(format) && (
+            <div className="solenoid-fc__row">
+              <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
+              <label
+                className="solenoid-fc__check"
+                title="Thousands separator"
+                onPointerDown={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                <input type="checkbox" checked={grouping} onChange={toggleGrouping} />
+                1,000 separator
+              </label>
+              <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
+            </div>
+          )}
+          {negativeApplies(format) && (
+            <div className="solenoid-fc__row">
+              <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
+              <select
+                className="solenoid-node__op-select solenoid-fc__select solenoid-fc__select--wide"
+                value={negativeStyle}
+                onChange={(e) => onNegativeChange(e.target.value as NegativeStyle)}
+                onPointerDown={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+                title="Negative numbers"
+              >
+                {Object.entries(NEGATIVE_STYLE_LABELS).map(([id, label]) => (
+                  <option key={id} value={id}>{label}</option>
+                ))}
+              </select>
+              <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
+            </div>
+          )}
+          {scaleApplies(format) && (
+            <div className="solenoid-fc__row">
+              <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
+              <select
+                className="solenoid-node__op-select solenoid-fc__select solenoid-fc__select--wide"
+                value={scaleMode}
+                onChange={(e) => onScaleChangeMode(e.target.value as ScaleMode)}
+                onPointerDown={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+                title="Show scaled down — 1,200,000 in millions reads 1.2M"
+              >
+                {Object.entries(SCALE_MODE_LABELS).map(([id, label]) => (
+                  <option key={id} value={id}>{label}</option>
+                ))}
+              </select>
+              <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
+            </div>
+          )}
+        </>
+      )}
+      {c.advanced && (
+        <button
+          type="button"
+          className="solenoid-fc__more"
+          onClick={toggleAdvanced}
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          title="Advanced formatting"
+          aria-expanded={advancedOpen}
+        >
+          <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"
+               style={{ transform: advancedOpen ? "rotate(180deg)" : undefined }}>
+            <path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
       )}
     </NodeCard>
   );
