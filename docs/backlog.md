@@ -1269,7 +1269,11 @@ correctness.
   Options (b) soft connect-time warning and (c) full input→output element mirroring
   were NOT done — (a) captures most of the value for least machinery, as planned.
 
-- [ ] **(MAYBE — decide if worth it) A "list of Tables/Frames" value type.** Idea
+- [ ] **(MAYBE — decide if worth it) A "list of Tables/Frames" value type.** **Sweep note
+  2026-07-05: the CONTAINER half is now served by the Cube** — a cube column of frame cells IS a
+  list-of-frames (Build Cube / Cube Columns / Nest Join produce it), so no new socket type is
+  needed for "hold several tables." What remains is only the narrow MAP-variadic-arity niche below
+  (pass N tables to one MAP), still deferred with the value-polymorphic formula work. Idea
   (note from the author, 2026-06-19; "Hyperframe/Hypertable" are placeholder bad
   names): a value that's an arbitrary *list of Tables/Frames*, which you'd pass to
   MAP so instead of the hardcoded 3 operands (x/y/z) it could take a variable
@@ -1514,16 +1518,12 @@ movement-functions docked-FC pass, upstream multi-hop annotation, the popup
 formatted/source toggle (DONE) — are **v0.9**. The FC *visual/layout* redesign, `SegToggle`
 unification, **and the function model** (author moved it to 1.1, 2026-06-25) are **v1.1**.
 
-- [ ] **BUG (1.1): navigator group rows are blown out — solid full-strength accent, not
-  matching the canvas (author 2026-07-01).** `OutlinePanel.tsx` paints a group row
-  `background: r.color` (`:465`) — the raw accent at FULL opacity as a solid bar. On canvas a
-  group's large area is a translucent tint (`GroupNode.tsx:352,445` `background: hexToRgba(color,
-  fillAlpha)`); only the thin header is full-strength. So the row reads oversaturated/overbright
-  vs the muted group the user sees. Fix: tint the group row like the canvas body (a low-alpha
-  `hexToRgba(color, fillAlpha)` over the panel bg, accent as a border/label, not a solid fill).
-  Also verify `colorOf` (`:44`) resolves the palette SLOT (`resolveColor`) the same way GroupNode
-  does (`resolveColor(node.color)`, `:238`) — it currently passes `node.color` straight to
-  `themeAccent`; if group colors are stored as slot ids, that path is also wrong.
+- [x] **BUG (1.1): navigator group rows are blown out** — FIXED (verified 2026-07-05, backlog
+  sweep). `OutlinePanel.tsx` now tints the group row `background: hexToRgba(r.color, 0.24)` with a
+  `hexToRgba(r.color, 0.55)` border (`:500-501`) — the low-alpha tint + accent-border the item
+  asked for, not a solid `background: r.color` fill. And `colorOf` (`:43-45`) resolves the palette
+  SLOT via `resolveColor((n as GroupNode).color)` "exactly like GroupNode does" (the second half of
+  the fix). Both parts landed; box was just never checked.
 - [ ] **BUG: FCs randomly mis-dock to a Note with frontmatter outputs, on load/switch
   (author 2026-06-25; hard to reproduce — random).** Symptom: opening / switching to a graph,
   FCs "from other chains" drift to / attach to a Note node that exports frontmatter inputs.
