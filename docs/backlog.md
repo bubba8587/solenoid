@@ -520,9 +520,11 @@ section is decision-recorded. The QUEUE when resuming, in order:
   residual NaN as literal "NaN" (was the lie "N/A"); `ValueDisplay` wraps a SCALAR NaN in
   `.solenoid-node__nan` — neutral muted tint (`--text-dim` @ 10% on `--surface-sunken`),
   mono + italic so it reads as a state not a number, NOT error-red — plus the structural
-  tooltip. Author eyeballs the styling (DESIGN.md). Follow-up: per-cell NaN tint inside a
-  list ArrayChip / popup grid (scalar box done; list cells show the literal "NaN" text).
-  (Original spec below.)
+  tooltip. Author eyeballs the styling (DESIGN.md). ~~Follow-up: per-cell NaN tint inside a
+  list ArrayChip / popup grid~~ — verified DONE (commit `7d3a387`): FrameDisplay/TableDisplay
+  mini-grids (`.solenoid-nan-cell`) + TablePopup (`.table-popup__cell--nan`) all tint; the
+  only remaining literal "NaN" is inside the comma-joined list-preview STRING, accepted
+  as-is (a plain string can't carry a per-cell element). (Original spec below.)
   Residual NaN (dirty data reaching a
   value box / popup cell) renders as literal `NaN` with a QUIET affordance: muted
   background tint — not the error badge red, not plain-number styling, shaped/toned to
