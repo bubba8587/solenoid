@@ -98,6 +98,36 @@ live. Every commit verified tsc + full vitest (now 2184 green); tree clean, noth
   CLAUDE.md's doc-maintenance section rewritten to the new policy.
 
 
+### EVENING AUTONOMOUS RUN DIGEST (2026-07-05, ~18:00 onward — 3-agent crew on `docs/build-plan.md`)
+Running digest — agents EXTEND this as bundles land. Every commit tsc + full vitest
+green (cargo where Rust moved); commits FIFO through A3. Pushed once mid-run on a
+direct author order (`f926fa6..aa5ab34`).
+- **Tier A (A3):** locale + cable-shape persist + grid-dots toggle (`d630a43`);
+  library-folder opener (`fa6080b`); minimap 3-way position (`c5fc842`); the a11y
+  verify-and-finish batch — socket titles, reduced motion, focus traps on the 3 real
+  modals, Switch aria-label, legend persistence (`c556b84`).
+- **Tier B (A1):** B-1(a) Rust row-key = serde_json tagged tuples, byte-identical to
+  the JS oracle (`1efa87d`); B-1(b) Infinity first-class in frames — `__nf` wire
+  sentinel both directions, `{"__err":code}` upload contract, NaN present-but-dirty,
+  aggregate guard in both backends (`aa2a623`); B-4a compileFormula codegen retired
+  (`aa5ab34`); B-4b TEXT-family divergence sweep (text fns coerce numbers via
+  numberToText; TEXT "@"/General/zero-pad/scientific patched; VALUE strict; NUMBERVALUE
+  owned; DOLLAR accounting parens) + Group By totals (totalDepth → no-colFields pivot)
+  — queued; B-2 filterMulti verb (AND/OR condition rows, both engines, fused lazy
+  where all-comparison) — engine half queued, node UI half pending.
+- **Tier C (A2):** C-1 COMPLETE RECHARTS — op surface (pie/scatter/radar/radial/
+  funnel) + Histogram (`09bc120`); KPI/Bullet/Treemap/Sankey payload figures + shared
+  ChartFigure (`7315441`); DateRange dual-date control (`5bd7105`); finale (composed +
+  bubble multi-series + `chart-showcase.json`) queued. C-3 popup ⋯ overflow scoped.
+- **Author EYEBALL list (accumulating — check on the live app):**
+  - `table-verbs` seed: the Group By card has a second select (totals); the
+    "Group By Rep → SUM(Amount)" node now shows a **Grand Total** row (555).
+  - `chart-showcase` seed (once the finale commits): every new chart type renders.
+  - Minimap position setting (Bottom / Top / Hide) in Settings.
+  - Desktop only: a frame holding Infinity shows `∞`-ish cells (not blanks) — the
+    B-1b sentinel; `formatScalar`'s ∞ glyph itself is still the open [decided] detail.
+  - Filter Frame AND/OR condition rows — AFTER the B-2 UI half lands (not yet).
+
 ### UNSOLVED: header/body border seam under zoom (2026-07-05 — parked for a human/later pass)
 The node header's 2px accent frame abuts the card's 1px border on the same outer edge;
 under the canvas zoom transform the two strokes rasterize with different width-phases →
