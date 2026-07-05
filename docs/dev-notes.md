@@ -2,6 +2,37 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Align/distribute UI affordance — the selection action bar (2026-07-05)
+The six aligns + two distributes existed only in the Command Palette; author's standing
+rule is nothing reachable solely via the palette. Added `components/SelectionActionsBar.tsx`
+(+ `selectionActions.css`, mounted in `App.tsx`): a floating overlay pill at the
+**bottom-centre** of the canvas that appears whenever **≥2 top-level nodes are selected**,
+carrying the six align buttons + a divider + the two distribute buttons. Pure surface —
+every click calls the existing `alignSelection`/`distributeSelection` in `selectionOps.ts`,
+no logic added there.
+- **Why fixed position, not anchored to the selection bbox:** a bbox-anchored bar would
+  have to track the area transform and would lag/jitter behind a live multi-drag. The
+  selection is already highlighted on the canvas, so a stable contextual bar is enough and
+  never fights `area.translate`. Reuses the overlay-pill tokens (`--panel-bg`,
+  `--panel-border`, `--shadow-pop`, `--btn-hover`) so it reads as the same family as the
+  nav/zoom pills.
+- **Visibility gate:** polls the graph every 150ms (selection has no push store — same
+  approach `OutlinePanel` uses) counting selected nodes that have a rendered `nodeView`
+  (the "measurable" set the ops actually act on). Hidden entirely when the canvas is
+  **locked** (nodes can't move) and when <2 selected. Distribute buttons **disable** at
+  exactly 2 (needs ≥3 to have anything between the extremes; matches `distributeDeltas`
+  returning `[]`).
+- **Gotchas honoured:** `onPointerDown` stopPropagation on the pill so clicking a button
+  doesn't reach the canvas selection-clear (same guard the mobile bar uses); 16px (even)
+  icon glyphs in 26px (even) buttons per the even-icon centring rule; the group divider is
+  its own 1px element, NOT a button border (a border would shrink the adjacent button's
+  content-box to an odd width and blur its icon). Align-center titles name the END EFFECT,
+  matching the palette ("Align center (vertical)" = `center-h`). On touch the bar lifts to
+  `bottom: 84px` to clear the mobile action bar.
+- **Author eyeball:** confirm the pill's placement/opacity reads right, the icons are
+  legible at 16px, and it doesn't collide with the StatusBar or (on a narrow window) the
+  mobile bar. tsc + full vitest green (2044 passed); no render test (vitest env is node).
+
 ### Layout: node-size unification + align/distribute root-cause (2026-07-05)
 Author flagged buggy align/distribute + fragile Tidy + overlapping authored seeds as
 likely one root cause. Investigation (Explore agent) confirmed: **no canonical node-size

@@ -1,0 +1,67 @@
+/* Floating align/distribute cluster — a contextual pill at the bottom-centre of
+   the canvas, shown only while ≥2 nodes are selected. Reuses the overlay-pill
+   tokens the nav/zoom pills use so it reads as the same family of floating chrome. */
+.solenoid-selbar {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 7; /* above the StatusBar (6), below the HUD stack + modals */
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px;
+  background: var(--panel-bg);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  box-shadow: var(--shadow-pop);
+  user-select: none;
+}
+
+.solenoid-selbar__btn {
+  width: 26px;
+  height: 26px;
+  /* Borderless inside the pill — the container is the boundary, so the buttons
+     read as a tight cluster rather than double-ringed. */
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text);
+  border-radius: 50%;
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Hover only where a real pointer can hover — on touch :hover sticks after a tap
+   (same reasoning as the nav pill). */
+@media (hover: hover) {
+  .solenoid-selbar__btn:hover:not(:disabled) {
+    background: var(--btn-hover);
+    color: var(--accent);
+  }
+}
+
+.solenoid-selbar__btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Group divider drawn as its own element (not a border on a button — that would
+   shrink a button's content-box to an odd width and blur its icon). */
+.solenoid-selbar__divider {
+  width: 1px;
+  height: 18px;
+  margin: 0 2px;
+  background: var(--panel-border);
+}
+
+/* On touch the mobile action bar owns the bottom edge — lift clear of it. */
+@media (max-width: 639px) {
+  .solenoid-selbar {
+    bottom: 84px;
+  }
+}
