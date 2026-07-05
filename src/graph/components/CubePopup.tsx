@@ -4,7 +4,7 @@ import { appThemeStore } from "../appTheme";
 import { cubeRowCount, cubeDepth, frameRowCount } from "../frame";
 import { CubeCellChip, frameCellNode } from "./cubeCell";
 import { CloseIcon } from "./CloseIcon";
-import { PopupPinButton } from "./PopupPinButton";
+import { PopupPinButton, PopupGoToButton } from "./PopupPinButton";
 import "./popupChrome.css";
 import "./TablePopup.css";
 
@@ -107,6 +107,7 @@ export function CubePopup() {
               Depth {depth}
             </span>
           )}
+          {state.stack.length === 1 && state.pinNodeId && <PopupGoToButton nodeId={state.pinNodeId} onClose={() => cubePopup.close()} />}
           {state.stack.length === 1 && state.pinNodeId && <PopupPinButton nodeId={state.pinNodeId} />}
           <button className="sol-popup__close" onClick={() => cubePopup.close()} aria-label="Close"><CloseIcon size={16} /></button>
         </div>

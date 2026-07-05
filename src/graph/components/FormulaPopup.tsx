@@ -16,7 +16,7 @@ import { useFormulaFit } from "./formulaFit";
 import { formatScalar } from "./format";
 import "./popupChrome.css";
 import { CloseIcon } from "./CloseIcon";
-import { PopupPinButton } from "./PopupPinButton";
+import { PopupPinButton, PopupGoToButton } from "./PopupPinButton";
 import "./FormulaPopup.css";
 
 // Step-by-step evaluator: built, then shelved. Flip to re-enable — all the wiring
@@ -230,6 +230,7 @@ export function FormulaPopup() {
         <div className="sol-popup__header">
           <div className="sol-popup__title">{host.label}</div>
           {locked && <span className="formula-popup__lock-tag" title="This formula can't be edited here.">Locked</span>}
+          <PopupGoToButton nodeId={node.id} onClose={() => commitAndClose()} />
           <PopupPinButton nodeId={node.id} />
           <button className="sol-popup__close" onClick={() => commitAndClose()} aria-label="Close"><CloseIcon size={16} /></button>
         </div>

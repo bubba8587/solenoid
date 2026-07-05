@@ -5,7 +5,7 @@ import { appThemeStore } from "../appTheme";
 import { ChartView } from "./chartView";
 import "./popupChrome.css";
 import { CloseIcon } from "./CloseIcon";
-import { PopupPinButton } from "./PopupPinButton";
+import { PopupPinButton, PopupGoToButton } from "./PopupPinButton";
 
 // Desktop max; the chart shrinks to fit smaller viewports (phones) so the popup
 // never overflows the screen. ChartView needs explicit pixel dims (no
@@ -59,6 +59,7 @@ export function ChartPopup() {
         <div className="sol-popup__header">
           <div className="sol-popup__title">{state.title}</div>
           <span className="table-popup__dims">{state.series.length} pts</span>
+          {state.pinNodeId && <PopupGoToButton nodeId={state.pinNodeId} onClose={() => chartPopup.close()} />}
           {state.pinNodeId && <PopupPinButton nodeId={state.pinNodeId} />}
           <button className="sol-popup__close" onClick={() => chartPopup.close()} aria-label="Close"><CloseIcon size={16} /></button>
         </div>
