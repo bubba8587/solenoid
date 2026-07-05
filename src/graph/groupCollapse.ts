@@ -89,9 +89,13 @@ export interface InputPill {
 
 // Compact-collapse layout — shared by the group component (pill dots, box size)
 // and ConnectionComponent (redirected cable endpoints) so they line up.
-export const COLLAPSE_LAYOUT = { width: 264, headerH: 34, padTop: 6, rowH: 24 };
+// rowGap MUST match the `.solenoid-group__summary` flex `gap` in GroupNode.css —
+// the readout rows are laid out with that gap between them, so a socket/cable
+// endpoint that ignores it drifts index*gap further off with every row down.
+export const COLLAPSE_LAYOUT = { width: 264, headerH: 34, padTop: 6, rowH: 24, rowGap: 3 };
 export function pillY(index: number): number {
-  return COLLAPSE_LAYOUT.headerH + COLLAPSE_LAYOUT.padTop + index * COLLAPSE_LAYOUT.rowH + COLLAPSE_LAYOUT.rowH / 2;
+  return COLLAPSE_LAYOUT.headerH + COLLAPSE_LAYOUT.padTop
+    + index * (COLLAPSE_LAYOUT.rowH + COLLAPSE_LAYOUT.rowGap) + COLLAPSE_LAYOUT.rowH / 2;
 }
 
 const _hiddenNodes = new Set<string>();
