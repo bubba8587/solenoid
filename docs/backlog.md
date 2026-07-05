@@ -919,6 +919,24 @@ correctness.
     bundle format (e.g. a `.zip`/folder of graph JSON + assets, or a sidecar) and
     the local `dataUrl` plumbed into it. Until then a local attach shows "not
     saved"; use a URL to persist.
+    **DECISION MEMO (2026-07-05 overnight — needs an author call, then it's a
+    small build):** three options, one recommended.
+    (a) **Zip bundle (`.solz`)** — graph.json + `assets/<hash>.<ext>` in one zip.
+        Truly one-file, but it forks the save format (every open/save path,
+        the text-form story, git-friendliness all split on "is this doc zipped?").
+        A heavy cost for one node type.
+    (b) **Desktop-only sidecar folder (RECOMMENDED)** — on save-to-disk, write each
+        attached image to `<docname>.assets/<contenthash>.<ext>` beside the file
+        and persist `assetPath` in the node's init; loading resolves relative to
+        the doc (the `fileBridge` + relative-fetch plumbing already exists).
+        Matches the file-over-app posture (Obsidian does exactly this), keeps the
+        save plain JSON/text, keeps git diffs clean. Web build keeps today's
+        session-only behavior (no filesystem to sidecar into).
+    (c) **Inline base64 with a size cap** (~200 kB/image) — zero format change,
+        works on web; but bloats autosave quota (mitigated by tonight's per-doc
+        keys) and makes the text form unreadable around image nodes.
+    If (b): ~a day — save hook (hash + write-if-missing), load hook (path →
+    dataUrl via fileBridge), a "not saved (web)" vs "bundled" chip on the node.
 - [x] **Animated cable state** — done (2026-06-09), CSS flow-bead version with a
   toolbar toggle. Scaling ceiling + the WebGL/canvas upgrade ladder are
   documented in dev-notes TODOs ("Animated cable flow mode").
@@ -1028,11 +1046,15 @@ correctness.
   `NaN` is not an error) with the `#N/A` test centralized as `isNaError`. See
   subsystem-invariants "Error values" (the 2×2). Remaining: ~~popup-grid error red-badge~~ (SCRAPPED
   2026-06-24), ~~full N-ary coalesce~~ (DONE 2026-07-05).
-- [ ] **Formula engine — periodic re-audit (FOLLOW-UP, author flagged 2026-06-25).** The
-  consolidation is done, but re-sweep node-vs-Formula.js periodically (the `_sweep`-style harness in
-  the git history) when nodes change or Formula.js is upgraded — new divergences (like the MOD/ATAN2
-  FX bugs) can appear. Also: distributions are validated only at representative points
-  (`distributionFormula.test.ts`); widen the input ranges if accuracy is ever in question.
+- [~] **Formula engine — periodic re-audit (FOLLOW-UP, author flagged 2026-06-25).** The
+  consolidation is done, but re-sweep node-vs-Formula.js periodically when nodes change or
+  Formula.js is upgraded — new divergences (like the MOD/ATAN2 FX bugs) can appear.
+  **Re-swept 2026-07-05 — NO new drift** (see dev-notes). The one-off `_sweep` was never committed,
+  so the sweep is now a DURABLE CI guard: `formulaDivergence.test.ts` pins every Excel-correct
+  override (MOD/QUOTIENT/ATAN2/ROUND/RANK/TRIMMEAN/PERCENTRANK) + FX-still-buggy tripwires + a
+  pass-through stats check. Remaining (open): TEXT/format-family (`numberToText`) not swept, and
+  node `data()` paths that don't share the registered impl; distributions still validated only at
+  representative points (`distributionFormula.test.ts`) — widen ranges if accuracy is ever in doubt.
 - [x] **Formula.js vs native nodes — consolidation / one-engine project** — DONE 2026-06-25
   (commits through `baf43ef`; see roadmap v0.9 + dev-notes 2026-06-25 "round 3"). Full sweep of EVERY
   formula-reachable family (not a subset): P5 error mapping shared; dotted names (STDEV.S/NORM.DIST);
@@ -1281,8 +1303,10 @@ correctness.
   pinned) render without a Pin button. The
   "+ more" actions noted originally (copy-as / export / "go to node") are NOT done;
   Copy already exists in TablePopup. Follow-up below.
-  - [ ] **Pop-up actions — the rest of "+ more".** Export, "go to node" (pan/select
-    the host on the canvas), copy-as variants. Lower value than Pin; do if wanted.
+  - [~] **Pop-up actions — the rest of "+ more".** "Go to node" DONE 2026-07-05
+    (`PopupGoToButton` beside Pin in Table/Frame, Chart, Cube, Formula popups —
+    closes the popup, `flyToNodeAndFlash`; Formula commits first). Export /
+    copy-as variants remain "do if wanted" (Copy exists in TablePopup already).
 
 - [x] **Cinematic load reveal — DONE 2026-06-19.** Load no longer pops nodes in
   one-by-one. Startup + File→Open build behind an accurate progress-bar overlay

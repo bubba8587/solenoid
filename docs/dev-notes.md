@@ -2,6 +2,68 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Formula-engine divergence re-sweep — no new drift (2026-07-05)
+Re-ran the node-vs-Formula.js divergence audit the backlog flags as periodic. The original
+`_sweep` script was never committed (only referenced in docs), so instead of resurrecting a
+one-off I built a DURABLE regression guard: `formulaDivergence.test.ts` pins, through
+`resolveExcelFunction`, every override the 2026-06-25 consolidation put in because FX is wrong —
+**MOD** (result takes the divisor's sign), **QUOTIENT** (÷0 → #DIV/0!, trunc-toward-zero),
+**ATAN2** (Excel's x-first arg order), **ROUND** (half-away-from-zero), **RANK** (#N/A for an
+absent value; FX returns 0), **RANK.AVG**, **TRIMMEAN** (floor-to-even trim count), **PERCENTRANK**
+(interpolate + truncate) — each asserted against a hardcoded Excel reference. Plus "FX still
+diverges" tripwires (MOD/ATAN2) so an FX upgrade that changes those bugs trips the test → the
+override gets re-evaluated (a judgment call, surfaced not silently absorbed). Plus hardcoded-Excel
+pins for the pass-through stats family (MEDIAN/GEOMEAN/HARMEAN/AVEDEV/DEVSQ/SUMSQ) that the audit
+found already agree.
+- **Finding: NO new divergence.** Every override still returns the Excel-correct value; FX still
+  carries its known MOD/ATAN2 bugs (so the overrides are still warranted, not redundant); the
+  pass-through stats still match Excel. The engine is consistent with the 2026-06-25 audit — text
+  matching / numberToText / guardFinite changes since did not introduce drift in the swept set.
+- **Why a test, not a script:** this converts a "run the sweep periodically" chore into a CI guard
+  that reproduces any future divergence automatically. **Not swept (scope):** text/format-family
+  output (TEXT/numberToText) beyond the numeric stat/math set, and node `data()` paths that DON'T
+  share the registered impl — those are a wider follow-up if a specific concern arises.
+
+### Layout no-overlap property tests — the "no overlaps ever" rule now machine-checked (2026-07-05)
+The author's standing rule (nodes/groups never overlap after a layout op) had no automated
+guard. New `layoutInvariants.test.ts`: seeded-PRNG (mulberry32) randomized-fixture sweeps over
+the PURE layout cores, ~1650 fixtures total, **all green — no violations found**. What each op
+guarantees (and, importantly, what it does NOT — so the suite asserts the right thing):
+- **`separateOverlaps` (groupPushCore)** — the HARD backstop: after it, no non-baseline pair
+  overlaps. 300 dense fixtures + 200 with a computed baseline of pre-existing overlaps (asserts
+  it leaves user overlaps alone but clears the rest) + monotonic (only down/right shifts). This
+  is THE no-overlap guarantee the group-expand pipeline leans on.
+- **`computeExpandPush` → `separateOverlaps` (the app pipeline, groupPush.ts order)** — 200
+  fixtures: push output is finite (no NaN), and the composed result has no non-baseline overlap.
+  NOTE `computeExpandPush` ALONE is heuristic and CAN leave overlaps by design (its own header
+  says so) — separateOverlaps is what makes it safe, so the suite only asserts no-overlap on the
+  COMPOSED result, never on the raw push.
+- **`distributeDeltas` (selectionOps)** — ≥ `DISTRIBUTE_GAP` between neighbours ALONG the
+  distributed axis (overlap-free on that axis; the cross axis is intentionally untouched). 400
+  fixtures (both axes).
+- **`alignDeltas` (selectionOps)** — asserts the ALIGNMENT contract (align-left → shared min-x,
+  etc.), NOT no-overlap: align is a manual gesture and is DELIBERATELY allowed to overlap (like
+  every design tool), per its own doc + the 2026-07-05 decision to decline a separateOverlaps
+  backstop for it. Testing no-overlap here would be wrong.
+- **`solveStandoffs` (standoffSolver)** — the band holds: 400 single-standoff fixtures (pinned
+  end + free end, random anchors/bands/lock) assert the axis projection lands in [min,max] and a
+  locked/forced standoff zeroes the perpendicular; plus 150 east-anchored CHAIN clusters asserting
+  every link's band holds. Uses satisfiable fixtures (a free end always converges) so a bounded
+  best-effort solver isn't asserted past what it promises.
+- **Outcome:** the pure cores hold the invariant under fuzzing — no bug to report. The suite is
+  the deliverable (a regression guard that reproduces any future violation from its fixed seeds).
+  Not covered (out of scope — not a pure core): ELK Tidy (async), and the standoff+separate
+  integration in `settleStandoffs`.
+
+### Popup "Go to node" action (2026-07-05, overnight)
+The Pin follow-up from the backlog's "+ more" list: every value popup header
+(Table/Frame/List, Chart, Cube root level, Formula) gains a crosshair button beside
+Pin — closes the popup and `flyToNodeAndFlash`es the host node (the same camera fly +
+flash ring as the error click-to-jump). `PopupGoToButton` lives with `PopupPinButton`;
+the Formula popup routes through `commitAndClose` so a mid-edit formula commits before
+the fly. Export/copy-as variants stay un-built ("do if wanted"). Author eyeball: the
+crosshair glyph next to Pin (16px in the same even button).
+
 ### Per-doc autosave keys (2026-07-05, overnight)
 The library no longer persists as one whole-library blob: each document gets its own
 two-slot pair (`solenoid.docs.doc.<id>.a/.b`) plus a light two-slot INDEX
