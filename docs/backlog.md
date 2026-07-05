@@ -41,6 +41,16 @@ is archived).
 
 ## Decided, unbuilt (mechanical — no design session needed)
 
+- [ ] **FC advanced options for TEXT values** (author idea 2026-07-06): put these
+  in the Format Controller's advanced tier for a string-typed value —
+  **text alignment** (left / center / right; the display-value default stays
+  right-aligned, which reads fine for short text and clears the left-side Copy
+  button, so this is an override not a default change), **render as source vs
+  markdown**, and a **monospace toggle** (the value box is already mono; a text FC
+  could opt a prose value OUT of mono). Design-first: fits the A2 advanced-tier
+  expander; must respect the format-model truth table (`formatModel.ts` — text
+  family currently exposes only `textCase`).
+
 - [ ] **UX/a11y mechanical batch** (approved as one batch 2026-07-02; PARTIALLY
   landed — CloseIcon + focus-visible bits shipped; VERIFY each against code before
   building the rest): socket-dot hover `title` naming the type (the only colorblind
