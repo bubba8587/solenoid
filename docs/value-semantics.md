@@ -78,8 +78,16 @@ two contexts, both correct. Any OTHER node-vs-formula disagreement is a bug.
 - **Wired null vs unwired input** (`readInput`, shared.ts) [shipped]: `undefined` (unwired) falls
   back to the node's literal; a WIRED `null` propagates as missing. The `?? literal`
   read idiom must not swallow wired nulls.
-- **IPC / frame boundary**: NaN normalizes to null crossing to Polars [shipped]. The
-  frame engine's own non-finite behavior (silent `inf`) is a separate open P3.
+- **IPC / frame boundary** [shipped 2026-07-05, B-1b — supersedes the old
+  NaN→null normalization]: non-finite crosses BOTH directions as the tagged
+  `{"__nf":"inf"|"-inf"|"nan"}` sentinel; a per-cell SolError uploads as
+  `{"__err":code}` (engine degrades it to null — Polars-typed columns can't hold
+  errors — but the contract is explicit). Frame cells hold real ±Inf; NaN is
+  present-but-dirty: counted, tail-sorted, failing predicates, poisoning
+  aggregates to `#DOMAIN!`. Aggregates apply the scalar guard in both backends
+  (SUM of ∞ is ∞; ±Inf from all-finite → `#OVERFLOW!` — engine-side classified
+  at the materialization boundary via a base-column scan; JS oracle inside
+  `aggregateGroup`, covering pivot totals too).
 - **List ops vs relational verbs** (D12's line, second instance): list UNIQUE never
   dedupes error cells (each is an independent problem — the sanity-check reading)
   [shipped 2026-07-04]; frame Distinct dedupes by error CODE (errors as values, SQL

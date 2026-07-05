@@ -17,6 +17,7 @@ import {
 } from "./frame";
 import { applyVerb, joinFrames, appendFrames, sampleFrame, type FrameOp, type JoinOpts, type AggOp } from "./frameVerbs";
 import { solError, isSolError, type SolError } from "./errorValue";
+import { guardFinite } from "./valueKinds";
 import { engineAvailable, enginePing, ipcInvoke } from "./ipcBridge";
 import { calcModeStore } from "./calcModeStore";
 
@@ -91,9 +92,18 @@ async function applyPlanWithSketchSampling(baseHandle: FrameHandle, plan: readon
   const factor = _sampleFactor.get(sample.h) ?? 1;
   try {
     const outHandle = await be.applyMany(sample.h, plan);
+    const lastGroupBy = [...plan].reverse().find((op): op is Extract<FrameOp, { kind: "groupBy" }> => op.kind === "groupBy");
+    // Record the plan's aggregate provenance for the non-finite guard (B-1b):
+    // which output columns are aggregates of which BASE column. Keyed off the
+    // UNSAMPLED base so the guard's input scan survives the sampledTemp drop.
+    if (lastGroupBy) {
+      _aggGuardInfo.set(outHandle, {
+        baseHandle,
+        aggCols: new Map(lastGroupBy.aggs.map((a) => [a.as, a.column])),
+      });
+    }
     if (factor > 1) {
       _sampleFactor.set(outHandle, factor);
-      const lastGroupBy = [...plan].reverse().find((op): op is Extract<FrameOp, { kind: "groupBy" }> => op.kind === "groupBy");
       if (lastGroupBy) {
         const scaleColumns = new Set(lastGroupBy.aggs.filter((a) => SKETCH_EXTRAPOLATABLE.has(a.op)).map((a) => a.as));
         if (scaleColumns.size > 0) _sketchInfo.set(outHandle, { factor, scaleColumns });
@@ -108,6 +118,7 @@ async function applyPlanWithSketchSampling(baseHandle: FrameHandle, plan: readon
       be.drop(sample.sampledTemp);
       _sampleFactor.delete(sample.sampledTemp);
       _sketchInfo.delete(sample.sampledTemp);
+      _aggGuardInfo.delete(sample.sampledTemp);
     }
   }
 }
@@ -128,6 +139,7 @@ export function clearCollectMemo(): void {
       be.drop(h);
       _sampleFactor.delete(h);
       _sketchInfo.delete(h);
+      _aggGuardInfo.delete(h);
     }).catch(() => {});
   }
   _flushMemo = new Map();
@@ -147,7 +159,7 @@ export async function readFrame(v: FrameInput | SolError | null | undefined): Pr
       p = materialize((async () => {
         const handle = await flushRef(v);
         const r = await frameBackend().collect(handle);
-        return isSolError(r) ? r : applySketchScaling(handle, r);
+        return isSolError(r) ? r : applyAggGuard(handle, applySketchScaling(handle, r));
       })());
       _collectMemo.set(v, p);
     }
@@ -175,12 +187,13 @@ export async function collectPreview(out: FrameInput | SolError | null, n = CARD
   if (out == null) return null;
   if (isSolError(out)) return out;
   if (!isFrameRef(out)) return out;
-  const p = await materialize((async () => frameBackend().preview(await flushRef(out), n))());
+  const handle = await flushRef(out);
+  const p = await materialize((async () => frameBackend().preview(handle, n))());
   if (isSolError(p)) return p;
   if (!p.truncated) return readFrame(out); // small enough to show whole — collect full
   const f = previewToFrame(p);
   f.__ref = out; // let the grid popup fetch the FULL frame on demand (audit 22p)
-  return applySketchScaling(out.__frameRef, f);
+  return applyAggGuard(handle, applySketchScaling(out.__frameRef, f));
 }
 
 /** One column's identity in a preview (no values — schema only). */
@@ -342,9 +355,44 @@ class JsFrameBackend implements FrameBackend {
 // at `preview`/`column`. The arg names match the Rust command parameters exactly.
 // Wire shape: a frame is sent as its typed columns ({name,type,values}); the Rust
 // side coerces (a per-cell SolError → null) and tags each column with its SolType.
+// ── The non-finite wire sentinel (B-1b, decided 2026-07-02) ───────────────────
+// JSON can't carry Infinity/NaN (JSON.stringify → null), so both directions use
+// a tagged object: {"__nf":"inf"|"-inf"|"nan"}. A per-cell SolError uploads as
+// {"__err": code} — the engine deliberately degrades it to Null (Polars-typed
+// columns can't hold errors); the explicit tag makes that a contract, not an
+// accident. Downloads decode the sentinel back to real numbers; an {"__err"}
+// coming BACK (the aggregate guard, below) decodes to a tagged SolError.
+type WireCell = unknown;
+
+function encodeWireCell(v: unknown): WireCell {
+  if (typeof v === "number" && !Number.isFinite(v)) {
+    return { __nf: Number.isNaN(v) ? "nan" : v > 0 ? "inf" : "-inf" };
+  }
+  if (isSolError(v)) return { __err: v.code };
+  return v;
+}
+
+function decodeWireCell(v: WireCell): unknown {
+  if (v && typeof v === "object") {
+    const o = v as { __nf?: string; __err?: string };
+    if (o.__nf === "inf") return Infinity;
+    if (o.__nf === "-inf") return -Infinity;
+    if (o.__nf === "nan") return NaN;
+    // The code came from OUR encoder (or the engine's guard), so it's one of the
+    // app's tagged codes; the cast keeps solError's closed union honest without
+    // widening it for the wire.
+    if (typeof o.__err === "string") return solError(o.__err as Parameters<typeof solError>[0], "from the native engine");
+  }
+  return v;
+}
+
+function decodeWireColumns(columns: FrameColumn[]): FrameColumn[] {
+  return columns.map((c) => ({ ...c, values: c.values.map(decodeWireCell) as FrameColumn["values"] }));
+}
+
 class PolarsBackend implements FrameBackend {
   async source(frame: FrameValue): Promise<FrameHandle> {
-    const wire = { columns: frame.columns.map((c) => ({ name: c.name, type: c.type, values: c.values })) };
+    const wire = { columns: frame.columns.map((c) => ({ name: c.name, type: c.type, values: c.values.map(encodeWireCell) })) };
     return ipcInvoke<string>("engine_source", { frame: wire }) as Promise<FrameHandle>;
   }
 
@@ -365,16 +413,18 @@ class PolarsBackend implements FrameBackend {
   }
 
   async preview(handle: FrameHandle, n: number): Promise<FramePreview> {
-    return ipcInvoke<FramePreview>("engine_preview", { handle, n });
+    const p = await ipcInvoke<FramePreview>("engine_preview", { handle, n });
+    return { ...p, rows: p.rows.map((r) => r.map(decodeWireCell)) as FramePreview["rows"] };
   }
 
   async collect(handle: FrameHandle): Promise<FrameValue> {
     const columns = await ipcInvoke<FrameColumn[]>("engine_collect", { handle });
-    return { __frame: true, columns };
+    return { __frame: true, columns: decodeWireColumns(columns) };
   }
 
   async column(handle: FrameHandle, name: string): Promise<FrameColumn | null> {
-    return ipcInvoke<FrameColumn | null>("engine_column", { handle, name });
+    const c = await ipcInvoke<FrameColumn | null>("engine_column", { handle, name });
+    return c ? { ...c, values: c.values.map(decodeWireCell) as FrameColumn["values"] } : null;
   }
 
   drop(handle: FrameHandle): void {
@@ -413,6 +463,7 @@ function clearHandleKeyedCaches(): void {
   clearCollectMemo();
   _sampleFactor.clear();
   _sketchInfo.clear();
+  _aggGuardInfo.clear();
 }
 
 /** Override the active backend (Polars wiring on desktop; tests). */
@@ -550,6 +601,51 @@ interface SketchInfo { factor: number; scaleColumns: ReadonlySet<string> }
 const _sketchInfo = new Map<FrameHandle, SketchInfo>();
 const SKETCH_EXTRAPOLATABLE: ReadonlySet<AggOp> = new Set(["sum", "count"]);
 
+// ── Aggregate non-finite guard (B-1b, decided 2026-07-02) — the engine half ──
+// The JS oracle guards INSIDE groupByFrame (guardFinite per output cell). The
+// engine can't: Polars-typed columns can't hold a per-cell error, so a ±Inf/NaN
+// aggregate result rides the wire (as the __nf sentinel) and is CLASSIFIED here
+// at the materialization boundary, per the decided column-level rule: a
+// non-finite result PASSES when the input column contained ±Inf (SUM of ∞ is
+// ∞); otherwise ±Inf → #OVERFLOW! and NaN → #DOMAIN! (guardFinite's exact
+// semantics, fed a synthetic ∞ input when the scan found one). The input scan
+// reads the plan's BASE column — one extra IPC, only when a non-finite result
+// actually appears. Accepted corners (documented in polarsBackend.test.ts): a
+// mid-plan filter that removed the only ∞ still counts as "input had ∞" (the
+// scan is on the base), and a later rename/select of the agg column skips the
+// guard (the cell then displays as ∞/NaN rather than an error — honest, just
+// unclassified). On the JS backend the oracle already errored the cells, so
+// this guard sees no non-finite numbers and no-ops.
+interface AggGuardInfo { baseHandle: FrameHandle; aggCols: ReadonlyMap<string, string> } // out name → source column
+const _aggGuardInfo = new Map<FrameHandle, AggGuardInfo>();
+
+async function applyAggGuard(handle: FrameHandle, f: FrameValue): Promise<FrameValue> {
+  const info = _aggGuardInfo.get(handle);
+  if (!info) return f;
+  const needsGuard = (c: FrameColumn) =>
+    info.aggCols.has(c.name) && c.values.some((v) => typeof v === "number" && !Number.isFinite(v));
+  const needy = f.columns.filter(needsGuard);
+  if (needy.length === 0) return f;
+  const srcHadInf = new Map<string, boolean>();
+  for (const c of needy) {
+    const srcName = info.aggCols.get(c.name)!;
+    if (!srcHadInf.has(srcName)) {
+      const src = await frameBackend().column(info.baseHandle, srcName).catch(() => null);
+      srcHadInf.set(srcName, !!src && src.values.some((v) => v === Infinity || v === -Infinity));
+    }
+  }
+  const columns = f.columns.map((c) => {
+    if (!needy.includes(c)) return c;
+    const inputs = srcHadInf.get(info.aggCols.get(c.name)!) ? [Infinity] : [];
+    return {
+      ...c,
+      values: c.values.map((v) =>
+        typeof v === "number" && !Number.isFinite(v) ? guardFinite(v, ...inputs) : v),
+    };
+  });
+  return { ...f, columns };
+}
+
 /** Sample `h` (if sketch mode is active and it isn't ALREADY a sample-derived
  *  handle from earlier in this same chain) and record the factor for
  *  propagation. Returns the handle to actually operate on + a handle to drop
@@ -636,6 +732,7 @@ export function dropFrameRef(v: unknown): void {
     // else a sketch-mode entry outlives its handle forever
     _sampleFactor.delete(v.__frameRef);
     _sketchInfo.delete(v.__frameRef);
+    _aggGuardInfo.delete(v.__frameRef);
   }
 }
 
