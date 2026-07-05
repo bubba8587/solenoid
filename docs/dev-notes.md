@@ -5,6 +5,31 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-06 — author-present, chart-node polish + standing rules)
+Local dev server (HMR); commit freely, no pushes. Every commit tsc + full vitest (2241) green.
+- **STANDING DESIGN RULE (author 2026-07-06): a node that needs several lists/columns
+  ALIGNED for its purpose takes a 2-D input (frame/table), NOT parallel list sockets the
+  user has to line up by hand.** Don't make the user build a frame, split it into columns,
+  and re-wire each column in — take the frame. Generalizes the Sankey/Treemap change below.
+  Apply to any new/edited node with position-aligned inputs.
+- **Sankey/Treemap take one frame** (edge table From/To/Value; label/value table), read
+  positionally, replacing the old parallel list sockets. Chart-showcase seed rewired to a
+  Frame Input per figure. Also: Treemap/Sankey/Histogram get the wide (240) card (they draw
+  a fixed ~218px plot but their list sockets don't trip the frame/table width heuristic);
+  Sankey label side + full-width (dropped a dead 70px right gutter).
+- **Chart shows only the op's data socket** — Values (1-D) vs Series (2-D matrix), never
+  both; switching op FAMILIES drops the now-dead cable. Output socket now centers on the
+  chart figure (a `.solenoid-node__figure` measurement hook, matched first in NodeCard's
+  out-socket-top query) so input+output align on pie/radar/etc.
+- **No more `[object Object]`:** `describeValueKind` (`valueKindLabel.ts`) labels any
+  object-valued kind (chart/frame/cube/diagram/image/lambda); wired as the safety net in
+  `ValueDisplay` (the universal fallback → protects every surface), the collapsed-group
+  readout, and the Input Switch (which now renders by kind like Display). Chart popup can
+  now render a full ChartValue via ChartFigure (chip foundation).
+- OPEN this session (tasks): chart nodes collapse to a hero box + [Chart] chip; Sparkline
+  minifies to a headerless square; Display node resizable (author flagged FRAGILE); List
+  Input inputs accept CSV numeric lists and concatenate for the output.
+
 ### DAYTIME SESSION DIGEST (2026-07-05, ~13:00 onward — author review, decisions, FC v1.1-α)
 The author reviewed the overnight/extended work (eyeball list passed) and drove decisions
 live. Every commit verified tsc + full vitest (now 2184 green); tree clean, nothing pushed.
