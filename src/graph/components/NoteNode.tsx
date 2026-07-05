@@ -8,7 +8,7 @@ import { SwatchGrid } from "./SwatchGrid";
 import { SocketDot, type SocketGlyph } from "./SocketLegend";
 import { NodeSocket } from "./NodeSocket";
 import { useDismissOnOutside } from "./useDismissOnOutside";
-import { getArea, getEditor, processGraph, bumpConnectionVersion } from "../process";
+import { getArea, getEditor, processGraph, bumpConnectionVersion, pushHistory } from "../process";
 import { reconcileFcTypes } from "../fcReconcile";
 import { scheduleAutosave } from "../persistence";
 import { gridSnapStore, snapCoord } from "../gridSnapStore";
@@ -51,6 +51,26 @@ function previewValue(value: FrontmatterValue, t: FrontmatterFieldType): string 
     return `[${shown.join(", ")}${value.length > 4 ? ", …" : ""}]`;
   }
   return one(value);
+}
+
+// A body EDIT that removes a wired frontmatter key strands its cable: `syncFields`
+// drops the output socket (a body-derived change history doesn't track), while the
+// caller's `removeConnection` IS tracked — so a plain Ctrl+Z re-adds the cable onto a
+// socket that no longer exists (a zombie cable to a missing output). Record the body
+// edit as its OWN undo entry, pushed AFTER the cable removals so undo restores the body
+// + re-derives the socket FIRST and the cable re-add then lands on a live socket — the
+// same ordering `ExtensibleInputs.pushRowRemovalUndo` uses, adapted to the note's
+// body-derived sockets. `refresh` re-renders the note + re-routes cables + recomputes.
+// Exported for the unit test. (A per-key type override pruned on removal isn't restored
+// — the re-derived socket takes the guessed type; the rare override+remove+undo edge.)
+type NoteSyncHost = { body: string; syncFields: () => unknown };
+export function pushNoteFieldRemovalUndo(
+  node: NoteSyncHost, prevBody: string, newBody: string, refresh: () => void,
+): void {
+  pushHistory(
+    () => { node.body = prevBody; node.syncFields(); refresh(); }, // undo → body + socket back
+    () => { node.body = newBody; node.syncFields(); refresh(); },  // redo → re-apply the edit
+  );
 }
 
 // Resize floor — width keeps the header (chevron + name + swatch) legible; height
@@ -120,10 +140,13 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   // the body); otherwise an unchanged body is a no-op so a no-edit blur stays cheap.
   async function commitFields(force = false) {
     if (!force && data.body === lastSyncRef.current) return;
+    const prevBody = lastSyncRef.current; // body BEFORE this commit (still has the removed key)
+    const newBody = data.body;
     lastSyncRef.current = data.body;
     const { removed, retyped } = data.syncFields();
     const editor = getEditor();
     const area = getArea();
+    let strandedByRemoval = false; // did we drop a cable because its output key was REMOVED?
     if (editor && (removed.length || retyped.length)) {
       // A retyped output (same key, new socket type) keeps its cable when the
       // downstream input still accepts the new type — an `any` input always does;
@@ -132,13 +155,29 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
       const retypedMap = new Map(retyped.map((r) => [r.key, r.type]));
       for (const c of editor.getConnections()) {
         if (c.source !== data.id) continue;
-        if (removed.includes(c.sourceOutput)) { await editor.removeConnection(c.id); continue; }
+        if (removed.includes(c.sourceOutput)) { await editor.removeConnection(c.id); strandedByRemoval = true; continue; }
         const newType = retypedMap.get(c.sourceOutput);
         if (newType === undefined) continue; // unchanged output — leave it
         const inSock = editor.getNode(c.target)?.inputs?.[c.targetInput]?.socket;
         const inType = inSock instanceof SolenoidSocket ? inSock.dataType : undefined;
         if (!inType || !canConnect(newType, inType)) await editor.removeConnection(c.id);
       }
+    }
+    // If a body EDIT stranded a cable by removing its key, make that body change undoable
+    // AS ONE with the cable removal (pushed AFTER the removeConnection entries so undo
+    // restores the body + socket before the cable re-add lands — else Ctrl+Z leaves a
+    // zombie cable to a missing output). Body-path only (`!force`); a type-override drop
+    // mutates fieldTypes, not the body, so it's a separate case.
+    if (!force && strandedByRemoval && prevBody !== newBody) {
+      pushNoteFieldRemovalUndo(data, prevBody, newBody, () => {
+        setBody(data.body);
+        setFieldsVersion((v) => v + 1);
+        const ed = getEditor(); const ar = getArea();
+        void ar?.update("node", data.id);
+        if (ed && ar) reconcileFcTypes(ed, ar);
+        bumpConnectionVersion();
+        void processGraph();
+      });
     }
     setFieldsVersion((v) => v + 1);
     await area?.update("node", data.id);

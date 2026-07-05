@@ -2,6 +2,34 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Note frontmatter socket-removal undo-coherence — fixed (2026-07-05)
+Queue #3, the OUTPUT-side sibling of the extensible-row undo hole (b0066df). **Verified the
+bug first (per Lead):** a Note's output sockets are DERIVED from `data.body` (`syncFields` in
+`nodes/annotation.ts` parses the YAML each blur). A body edit that deletes a wired frontmatter
+key does two things: `syncFields` drops the output socket (a body-derived change history does
+NOT track — body edits set `data.body` live with no history entry), and `commitFields`'s
+`removeConnection` drops the cable (which rete-history DOES track). So a plain Ctrl+Z re-added
+the cable onto a socket that no longer existed → a zombie cable to a missing output that did
+NOT self-heal (nothing re-runs `syncFields` on undo). Reproducible.
+- **Fix (`NoteNode.tsx`):** new exported `pushNoteFieldRemovalUndo(node, prevBody, newBody,
+  refresh)` — records the body edit as its OWN undo entry (undo sets `body = prevBody` +
+  `syncFields()` → socket re-derived; redo re-applies). `commitFields` pushes it AFTER the
+  `removeConnection` calls (and only when a REMOVAL stranded a cable, body-path only), so on
+  undo the socket is restored FIRST and the cable re-add lands on a live socket — the exact
+  ordering `ExtensibleInputs.pushRowRemovalUndo` uses, adapted to the note's body-derived
+  sockets. Same 2-pop shape as the row fix (socket entry, then cable entry).
+- **Gotchas / scope:** (1) a per-key TYPE OVERRIDE pruned during removal isn't restored on
+  undo — the re-derived socket takes the guessed type (rare override+remove+undo edge; noted
+  in the helper). (2) A type-override drop (`force=true`, mutates `fieldTypes` not `body`) is a
+  SEPARATE case, deliberately not covered here. (3) The helper restores `data.body` too, so a
+  socket-affecting note edit is now undoable — that's the coherent behavior (it changed graph
+  topology); plain note typing still records no history.
+- **Author eyeball:** the unit test (`noteFieldUndo.test.ts`) proves the helper's node-level
+  effect (undo → body+socket back, redo → gone), but the full editor+history *ordering* (does
+  one Ctrl+Z vs two fully restore, does the cable visibly reconnect) wants a live check — wire a
+  frontmatter key's output to a node, delete the key, Ctrl+Z, confirm no zombie cable. tsc clean,
+  full vitest 2124 green.
+
 ### Final full-diff review of the overnight range + 2 fixes (2026-07-05, extended session)
 A closing adversarial review swept everything since `f926fa6` (the last author-reviewed
 state, ~30 commits). Verdict: the row-undo helpers check out against rete-history's
