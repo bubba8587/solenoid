@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { copyText } from "../clipboard";
 import type { SessionHistoryNode as SessionHistoryNodeType } from "../rete-nodes";
 import { getEditor, getHistoryPlugin } from "../process";
 import { nodeDisplayNames } from "../nodeNames";
@@ -43,7 +44,8 @@ export function SessionHistoryComponent({ data }: NodeProps<SessionHistoryNodeTy
 
   function handleCopy(e: React.MouseEvent) {
     e.stopPropagation();
-    navigator.clipboard.writeText(digest).then(() => {
+    void copyText(digest).then((ok) => {
+      if (!ok) return;
       setCopied(true);
       if (copyTimeout.current) clearTimeout(copyTimeout.current);
       copyTimeout.current = setTimeout(() => setCopied(false), 1200);
