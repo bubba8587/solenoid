@@ -1,17 +1,22 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import type { ChartNode as ChartNodeType, ChartOp } from "../rete-nodes";
-import { NodeShell, useNodeField, type NodeProps } from "./nodeKit";
+import { NodeShell, OpSelect, useNodeField, type NodeProps, type OpOption } from "./nodeKit";
 import { NodeSocket } from "./NodeSocket";
 import { InlineInputs } from "./inlineInput";
-import { SegToggle } from "./SegToggle";
 import { ChartView, toSeries } from "./chartView";
 import { ChartExpandButton } from "./ChartExpandButton";
 
-const OPTIONS: ReadonlyArray<{ value: ChartOp; label: string; title?: string }> = [
-  { value: "column", label: "Col",  title: "Column (vertical bars)" },
-  { value: "bar",    label: "Bar",  title: "Bar (horizontal)" },
-  { value: "line",   label: "Line" },
-  { value: "area",   label: "Area" },
+// Grouped so the dropdown reads by family — too many types now for a seg toggle.
+const OPTIONS: ReadonlyArray<OpOption<ChartOp>> = [
+  { value: "column", label: "Column",  group: "Cartesian" },
+  { value: "bar",    label: "Bar",     group: "Cartesian" },
+  { value: "line",   label: "Line",    group: "Cartesian" },
+  { value: "area",   label: "Area",    group: "Cartesian" },
+  { value: "scatter", label: "Scatter", group: "Cartesian" },
+  { value: "pie",       label: "Pie",    group: "Categorical" },
+  { value: "radar",     label: "Radar",  group: "Categorical" },
+  { value: "radialbar", label: "Radial", group: "Categorical" },
+  { value: "funnel",    label: "Funnel", group: "Categorical" },
 ];
 
 // Fills the wide card (240) minus body padding.
@@ -45,7 +50,7 @@ export function ChartComponent({ data, emit }: NodeProps<ChartNodeType>) {
         ? <NodeSocket side="input" socketKey="values" nodeId={data.id} emit={emit} payload={valuesPort.socket} top={valuesTop} />
         : null}
     >
-      <SegToggle value={op} onChange={setOp} options={OPTIONS} />
+      <OpSelect value={op} onChange={setOp} options={OPTIONS} />
       <div ref={chartRef} style={{ position: "relative", marginTop: 4, height: H }}>
         {series.length === 0 ? (
           <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>
