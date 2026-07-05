@@ -26,9 +26,40 @@ Local dev server (HMR); commit freely, no pushes. Every commit tsc + full vitest
   `ValueDisplay` (the universal fallback → protects every surface), the collapsed-group
   readout, and the Input Switch (which now renders by kind like Display). Chart popup can
   now render a full ChartValue via ChartFigure (chip foundation).
-- OPEN this session (tasks): chart nodes collapse to a hero box + [Chart] chip; Sparkline
-  minifies to a headerless square; Display node resizable (author flagged FRAGILE); List
-  Input inputs accept CSV numeric lists and concatenate for the output.
+- **Collapse + `[Chart]` chip:** Chart/Treemap/Sankey/Histogram are collapsible — collapsed
+  they show a hero box with a right-aligned `[Chart]` chip (`ChartChip`, opens the popup);
+  the Display does the same for a wired chart, and the collapsed-group readout shows the chip.
+  NodeCard centers the output socket on the first VISIBLE box (so a hidden collapsed figure is
+  skipped). **Sparkline minifies to a HEADERLESS SQUARE** (`squareCollapse` prop → NodeShell/
+  NodeCard; chevron fades in on hover, spark is `pointer-events:none` so it's inert + the
+  double-click-to-expand reaches the card).
+- **Input Switch:** renders rich values by kind (chart/cube as compact chips so they don't
+  overflow the narrow card, in a display-value box so the collapsed stadium pill centers on
+  them); collapsed, its option rows fold into the shared input pill.
+- **List Input** rows now take CSV numeric lists (numlist sockets, CSV text via `stringLiterals`)
+  and concatenate for the output; 8 seeds migrated `literals`→`stringLiterals`. Surfaced a latent
+  bug: a list-node `#CIRC!` loop member showed a stale list — the seeding now sets `cachedList`
+  too (was `cachedResult`/`cachedValue` only).
+- **Display resize (author flagged FRAGILE — done carefully, incrementally):** ONE universal
+  grip on the node BODY (Group's icon/style), **Display-only** (`nodeResizable` narrowed).
+  `--box-h` drives the body height; the last body child fills+scrolls, so ANY content type
+  resizes without per-type wiring. Cables update LIVE (dropped the drag-time `area.update`
+  suppression — the grip drags off window listeners, not pointer capture). **Charts scale to
+  fill** (`MeasuredChart`, gated on the Display being sized so measuring a content-driven card
+  can't oscillate; the Sankey oscillation was exactly that); **Mermaid fills** (override its
+  inline max-width when sized); clamps to a **per-content-type min** (chart 230×150, diagram
+  200×120, frame 200×90, else global floor — published to `nodeSizeStore`); the text/scalar
+  360px auto-grow cap lifts when sized.
+- **Sparkline reworked (not a pass-through anymore):** ops are line/column/**win-loss** (area
+  dropped; win-loss = a column chart of the signs); output swaps the numlist pass-through for
+  the `chart` value socket (this app passes through only Display + the FC). Retired ops
+  normalize on load (area→line, bar→column).
+- Small: socket legend clears the footer when the minimap hides; collapsed-group edge sockets
+  align with their readout rows (the summary's flex `gap` wasn't in `pillY`).
+- OPEN (parked): **#7 Conduits sometimes unselectable/unmovable except via the Navigator** —
+  intermittent, no repro yet; author suspects it's tied to getting group membership (likely a
+  z-order / hit-area or membership-sync issue). **FC advanced text options** (alignment /
+  markdown-vs-source / mono) logged to backlog for a design-first FC pass.
 
 ### DAYTIME SESSION DIGEST (2026-07-05, ~13:00 onward — author review, decisions, FC v1.1-α)
 The author reviewed the overnight/extended work (eyeball list passed) and drove decisions
