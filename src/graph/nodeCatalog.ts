@@ -176,7 +176,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
     type: "category", label: "Input", description: "Source nodes — where values enter your graph.",
     children: [
       { type: "number-input",        label: "Number Input",  description: "Editable number — type a value into the field.", accent: NODE_KIND_ACCENTS.input, keywords: "scalar value literal", create: () => new NumberInputNode() },
-      { type: "list-input",  label: "List Input",    description: "Collect numbers into a list — add rows with +   (Excel: selecting a range like A1:A8)", accent: NODE_KIND_ACCENTS.list, keywords: "literal array", create: () => new ListInputNode() },
+      { type: "list-input",  label: "List Input",    description: "Build a list from typed CSV values (e.g. 1, 2, 3) in each row, or wire a list into a row — every row concatenates into one output list.   (Excel: selecting a range like A1:A8)", accent: NODE_KIND_ACCENTS.list, keywords: "literal array csv combine concat", create: () => new ListInputNode() },
       { type: "text-input",    label: "Text Input",    description: "A literal string value — type your text directly in the node.", accent: STR, keywords: "string literal", create: () => new TextInputNode() },
       { type: "boolean-input", label: "Boolean Input", description: "A TRUE / FALSE toggle — outputs a logical (coerces to 1 / 0 where a number is needed).", accent: NODE_KIND_ACCENTS.logic, create: () => new BooleanInputNode() },
       { type: "table-input",   label: "Table Input",   description: "Enter a 2D table — one row per line, comma-separated values per row. Outputs a table socket plus row and column counts.", accent: NODE_KIND_ACCENTS.table, create: () => new TableInputNode() },

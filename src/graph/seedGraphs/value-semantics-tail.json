@@ -12,8 +12,8 @@
     {"id":"d_dom","type":"DisplayNode","x":620,"y":150,"init":{"label":"Display"}},
 
     {"id":"nB","type":"NoteNode","x":-40,"y":360,"init":{"label":"Per-cell errors in a list","body":"An element that fails carries its OWN error, in place — 20 ÷ 0 → #DIV/0! at that cell only, the rest compute. `[10,20,30] ÷ [2,0,5]` → `[5, #DIV/0!, 6]`.","color":"gold","width":230,"height":160}},
-    {"id":"la","type":"ListInputNode","x":300,"y":330,"init":{"label":"[10, 20, 30]","valueKeys":["v0","v1","v2"]},"literals":{"v0":10,"v1":20,"v2":30}},
-    {"id":"lb","type":"ListInputNode","x":300,"y":470,"init":{"label":"[2, 0, 5]","valueKeys":["v0","v1","v2"]},"literals":{"v0":2,"v1":0,"v2":5}},
+    {"id":"la","type":"ListInputNode","x":300,"y":330,"init":{"label":"[10, 20, 30]","valueKeys":["v0","v1","v2"]},"stringLiterals":{"v0":"10","v1":"20","v2":"30"}},
+    {"id":"lb","type":"ListInputNode","x":300,"y":470,"init":{"label":"[2, 0, 5]","valueKeys":["v0","v1","v2"]},"stringLiterals":{"v0":"2","v1":"0","v2":"5"}},
     {"id":"p_cell","type":"ArithmeticNode","x":620,"y":400,"init":{"label":"list ÷ list","op":"div"}},
     {"id":"d_cell","type":"DisplayNode","x":900,"y":400,"init":{"label":"Display"}},
 

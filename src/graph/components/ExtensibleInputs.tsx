@@ -193,12 +193,15 @@ export function ExtensibleInputs({
         const input = node.inputs[key];
         if (!input) return null;
         const isConn = connected.has(key);
-        const isStr = input.socket instanceof SolenoidSocket && input.socket.dataType === "string";
+        const dt = input.socket instanceof SolenoidSocket ? input.socket.dataType : undefined;
+        // A list-typed row (List Input's numlist) is typed as a CSV of numbers in
+        // the same text field a string row uses; the node parses it.
+        const isTextField = dt === "string" || dt === "numlist";
         return (
           <MeasuredSocketRow key={key} side="input" socketKey={key} nodeId={node.id} emit={emit} payload={input.socket}>
             {isConn ? (
               <span className="solenoid-node__io-wired" style={{ flex: 1 }} title="Driven by an incoming cable">↩ wired</span>
-            ) : isStr ? (
+            ) : isTextField ? (
               <InlineTextField value={strLiterals[key]} onChange={(v) => setStr(key, v)} />
             ) : (
               <InlineNumberField value={literals[key]} onChange={(v) => setLiteral(key, v)} />

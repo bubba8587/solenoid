@@ -2,7 +2,7 @@
   "v": 1,
   "label": "Statistical Summary",
   "nodes": [
-    {"id":"scores","type":"ListInputNode","x":0,"y":280,"init":{"label":"Scores","valueKeys":["v0","v1","v2","v3","v4","v5","v6"]},"literals":{"v0":82,"v1":91,"v2":76,"v3":88,"v4":95,"v5":69,"v6":84}},
+    {"id":"scores","type":"ListInputNode","x":0,"y":280,"init":{"label":"Scores","valueKeys":["v0","v1","v2","v3","v4","v5","v6"]},"stringLiterals":{"v0":"82","v1":"91","v2":"76","v3":"88","v4":"95","v5":"69","v6":"84"}},
     {"id":"r_avg","type":"AggregateNode","x":360,"y":0,"init":{"label":"AVERAGE","op":"avg"}},
     {"id":"r_min","type":"AggregateNode","x":360,"y":180,"init":{"label":"MIN","op":"min"}},
     {"id":"r_max","type":"AggregateNode","x":360,"y":360,"init":{"label":"MAX","op":"max"}},
