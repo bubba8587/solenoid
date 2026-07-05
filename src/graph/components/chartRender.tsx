@@ -225,7 +225,10 @@ export function TreemapView({ names, values, width, height }: {
     .filter((d) => d.size > 0);
   if (data.length === 0) return <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;
   return (
-    <Treemap width={width} height={height} data={data} dataKey="size" isAnimationActive={false} content={<TreemapCell colors={colors} />}>
+    // recharts 3.x: `content` must be a FUNCTION to receive each node's geometry
+    // (x/y/width/height/index). A static element is rendered once with no geometry —
+    // every rect collapses to 0×0 and the treemap reads as a blank box.
+    <Treemap width={width} height={height} data={data} dataKey="size" isAnimationActive={false} content={(props) => <TreemapCell {...props} colors={colors} />}>
       {SLICE_TIP}
     </Treemap>
   );
@@ -287,7 +290,9 @@ export function SankeyView({ sources, targets, values, width, height }: {
       nodePadding={16}
       nodeWidth={10}
       link={{ stroke: grid, strokeOpacity: 0.5 }}
-      node={<SankeyNodeShape colors={colors} />}
+      // Function form (not a static element) so each node receives its geometry —
+      // same recharts 3.x requirement as Treemap's content (else nodes are 0-size).
+      node={(props) => <SankeyNodeShape {...props} colors={colors} />}
       margin={{ top: 6, right: 70, bottom: 6, left: 6 }}
     >
       {SLICE_TIP}
