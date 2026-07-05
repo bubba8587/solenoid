@@ -8,8 +8,8 @@ docs are the record; this file is the working queue, not a ledger. (Policy chang
 Where things stand: v1.0 shipped (desktop + Polars + verbs + HTML-in-canvas);
 v1.1-α (the FC function model/redesign/movement audit) shipped 2026-07-05. The
 v2.0 bundle set lives in `docs/v2.0/` (built: 01-07, 09, 11-15 — reviewed; open
-bundles + "verdict pending" items are listed in its README). `docs/v1.1-plan.md`
-carries the remaining WS-A4/B/C/D/E detail.
+bundles + "verdict pending" items are listed in its README; the shipped v1.1 plan
+is archived).
 
 ---
 
@@ -34,7 +34,8 @@ carries the remaining WS-A4/B/C/D/E detail.
   REPRESENTATION FIRST — parallel unit array vs tagged cell), `unitFlow`
   (per-cell/per-column propagation), FC + display (mixed suffixes, header targeting),
   aggregators (SUM over mixed units → convert or `#TYPE!`), socket lattice. Big —
-  its own milestone. Full sub-item breakdown: `v1.1-plan.md` A4.
+  its own milestone. Representation DECIDED: tagged cells; `dimension.ts` algebra
+  core already landed. THE live plan: `v2.0/05-units-format-controller.md`.
 - [ ] **Header/body border seam under zoom — UNSOLVED, parked for a human/later
   model.** See dev-notes "UNSOLVED" for constraints + the two eliminated approaches.
 - [ ] **Deferred pile (end-of-walk revisit, author call each):** #2 snapshots ·
@@ -66,6 +67,21 @@ carries the remaining WS-A4/B/C/D/E detail.
 - [ ] **Persist cable shape** — `cableShapeStore` gets the localStorage pattern of
   its siblings (one key, read at init, try/catch private-mode guard).
 - [ ] **String lt/gt ordering** (byte vs locale) — small P3, decide + pin when touched.
+- [ ] **Minimap position 3-way** (decided 2026-07-01, NOT four corners): one
+  Bottom · Top · Hide setting absorbing `perfHideMinimap`; the Socket Reference
+  legend slides to fill freed space; Top sits below the Zoom pill.
+- [ ] **Popup `⋯` overflow menu** (decided 2026-07-01): Export CSV + Copy as
+  Markdown on Table/Frame/List popups; move the existing Copy-CSV into it.
+  (The "Go to node" half shipped 2026-07-05 as the Go-to-source crosshair.)
+- [ ] **Collapsed mini-previews, per-node** (decided per-node 2026-07-01):
+  Slicer → a summary string ("X of N"); Sparkline → a minimal small square
+  (reuse the collapsed-Group minified-square rendering); Gauge → investigate
+  (3 input sockets must stay anchored); standard Chart + Heatmap → NOT in scope.
+- [ ] **App-wide "Custom…" palette editor** (decided + spec'd 2026-07-01): palette
+  dropdown gains "Custom…" → editor with per-slot color circles, a "Load template"
+  seed-from-preset, and a live sample (sample node in a Group + a Lorem Note);
+  writes the app-wide custom base (`paletteStore`). Per-DOC palette editing goes
+  to a future Document Properties window (raw JSON text box) — later, bigger.
 
 ## Composite / drill-in
 
@@ -76,12 +92,14 @@ carries the remaining WS-A4/B/C/D/E detail.
 - [ ] **Monte Carlo run mode** — driver slot exists; blocked on bundle 12's
   distribution representation for the sampling.
 - [ ] **Aliasing / hidden-port promotion UI** — the data model has `hidden`/`advanced`
-  per port; no UI to flip exposure or edit a hidden port's baked default.
+  per port; no UI to flip exposure or edit a hidden port's baked default. Includes the
+  pack-shell "many internal ports → one shell parameter" aliasing (the stats
+  confidence-level example).
 
 ## Nodes / engine
 
 - [ ] **Full XLOOKUP merge (list+frame+cube one node)** — cube-cell half shipped;
-  the input-surface merge + migration is open (`v1.1-plan.md` WS-D).
+  the input-surface merge + migration is open (design notes: `archive/v1.1-plan.md` WS-D).
 - [ ] **Native CSV reader date inference** — desktop `engine_read_csv` brings dates
   in as text (Get Column read-as-Date converts); full inference parity is the follow-up.
 - [ ] **Group By `total_depth` exposure** — the pivot engine already supports it via
@@ -110,25 +128,30 @@ carries the remaining WS-A4/B/C/D/E detail.
 
 - [ ] **More domain packs** — post-v1 polish (framework + Geometry worked example
   done). Don't build unprompted.
-- [ ] **I/O–visual–control node set** (proposal: `archive/io-visual-control-node-proposal.md`)
-  — core gaps: KPI/stat card, Dropdown/Multi-select, real Data Table grid,
-  Scatter/Bubble/Histogram, Bullet, range slider, date-range; specialist charts →
-  packs behind one heavy renderer.
+- [ ] **Core viz/control nodes — the scoped-down IN list** (author 2026-07-01;
+  recharts-native/plain DOM, no new deps): **KPI/Stat card** (big number + delta) ·
+  **Scatter** · **Bubble** · **Histogram** · **Bullet graph** · **date-range picker**;
+  plus the **Input Switcher upgrade** — editable slot titles (reads as named choices)
+  and a multi-select mode collecting selected values into a Cube. CUT: Data Table
+  viewer, standalone Dropdown, range slider. Specialist viz packs → 1.2. (Survey:
+  `archive/io-visual-control-node-proposal.md`.)
+- [ ] **Pack variant-switch reconciles the socket set** — a simple pack's variant
+  dropdown must add/remove sockets like Cast/read-as do (retype + reconcile), not
+  leave stale ones.
 - [ ] **Excel Timesavers pack additions** (proposal: `archive/timesavers-pack-proposal.md`)
   — ~25 formula-data presets + ~8 custom-logic + ~3 composites.
 - [ ] **Pack distribution + dependency system** — LAST for 1.1 and a "maybe"; must
-  land in tandem with subgraphs (`v1.1-plan.md` B1 remainder).
+  land in tandem with subgraphs (`archive/v1.1-plan.md` B1 remainder).
 
 ## Cables / canvas / chrome
 
-- [ ] **Cable collision avoidance** (`cable-routing.md` §2): avoid nodes; avoid
+- [ ] **Cable collision avoidance** (`archive/cable-routing.md` §2): avoid nodes; avoid
   cables (parallel runs + bridge hops); per-cable shape/avoidance overrides.
 - [ ] **Grid system** — implement `grid-system.md` (soft alignment, helpers,
   primary+sub grid, modifier bypass). Gridding CABLES is a separate design question
   (see the doc's banner).
 - [ ] **Moveable / resizable / hideable UI chrome** (author principle): minimap
   corner choice, panel resize, hide any chrome element; honor for every new panel.
-- [ ] **Palette override editor UI** — store + persistence exist; JSON-only today.
 - [ ] **Collapsed mini-preview for pure-visual nodes** — Chart/Gauge/Slicer/
   Sparkline/Heatmap are non-collapsible today; a thumbnail collapsed form would
   make collapse meaningful.
@@ -143,7 +166,13 @@ carries the remaining WS-A4/B/C/D/E detail.
 - [ ] **Finance connection** (GOOGLEFINANCE-ish Web Source preset) — API-key +
   rate-limit baggage; build only if wanted.
 
-## Parked (superseded levers — revisit only if their trigger returns)
+## Parked (superseded levers / far-future — revisit only if their trigger returns)
+
+- [ ] **UI-scale toggle (Default / Larger)** — deferred to 1.2 (2026-07-01); subsumes
+  all per-panel resize asks. Don't build per-panel resize.
+- [ ] **Uncertain values (#21) + money mode (#43)** — IN but VERY LATE, sequenced dead
+  last; each needs an author representation call first. Design context:
+  `v2.0/12-value-model-extensions.md`.
 
 - [ ] **WebGPU/wgpu renderer + the LOD swap** — superseded by HTML-in-Canvas as the
   zoom-at-scale lever. The WGSL/Pixi spikes are BUILT and parked (console-only

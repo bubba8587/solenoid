@@ -44,6 +44,11 @@ by topic:
 - [`strategy-threads.md`](strategy-threads.md) — DISCARDED IN FULL by the author 2026-07-03 ("barely right"); point-in-time record. (The standing rejections live on in `docs/out-of-scope.md`, which stays in the working set.)
 
 ### Shipped plans & audits (moved 2026-07-05)
+- [`v1.1-plan.md`](v1.1-plan.md) — the v1.1 workstream plan; WS-A shipped in full 2026-07-05 (A4's live plan moved to `../v2.0/05-units-format-controller.md`), open B/C/D/E remnants folded into `../backlog.md`.
+- [`v2.0/`](v2.0/) — the BUILT v2.0 bundle docs (01 addressable model, 02 shape-checking, 03 compile/fuse, 04 provenance, 06 execution substrate, 07 headless/write/live, 09 composite, 11 trust & quality, 13 report/presentation, 14 canvas polish, 15 verticals). Live remainder stays in `../v2.0/`.
+- [`compute-architecture.md`](compute-architecture.md) — the browser-vs-desktop compute scoping; shipped as designed (JS oracle + native Polars behind the FrameBackend seam).
+- [`cable-routing.md`](cable-routing.md) — the React-Flow-era cable spec (historical banner inside); the built system's invariants live in subsystem-invariants. Collision avoidance (§2) is still the open backlog item.
+- [`excel-pain-points.md`](excel-pain-points.md) — the Excel pain-point/function-gap research that seeded the parity work.
 - [`v1.0-plan.md`](v1.0-plan.md) — the 1.0 execution plan; shipped.
 - [`v1.0-audit.md`](v1.0-audit.md) — the adversarial 1.0 audit; fix pass landed 2026-07-02, remainder triaged into the backlog.
 - [`performance-hardening.md`](performance-hardening.md) — the perf investigation + the final renderer verdict (HTML-in-canvas won; WGSL/Pixi parked).

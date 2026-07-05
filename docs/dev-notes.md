@@ -28,7 +28,7 @@ live. Every commit verified tsc + full vitest (now 2184 green); tree clean, noth
   coerced to 2026 in a Frame Input): `parseDateToSerial` requires a 4-digit year run in
   ANY form — bare `Mar 20` (JS guessed 2001!) also rejected; one general guard replaced
   the two numeric-form regexes. `736382c`.
-- **FC v1.1-α COMPLETE** (WS-A minus A4; see `docs/v1.1-plan.md` + `docs/format-model.md`):
+- **FC v1.1-α COMPLETE** (WS-A minus A4; see `docs/format-model.md` + the archived v1.1 plan):
   - **A1 — function model.** Spec `docs/format-model.md` (4-stage pipeline, family table,
     ONE precision×style rule) + `formatModel.ts` as the truth table in code, exhaustively
     machine-checked over the whole SocketDataType union (a new socket type won't compile

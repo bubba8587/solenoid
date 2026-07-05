@@ -99,7 +99,7 @@ The **Alert** node watches a value and fires a notification when its condition i
 - **`fireAlert(...)` (alertStore.ts) is the single entry point:** it logs an event to `alertStore` (a capped, transient, NOT-persisted log) AND raises a toast via `pushNotice` (noticeStore). Messages are neutral observations ("150 above 100", "equals 7", "is true", `contains "error"`) — an Alert is a watch/notify, not a pass/fail, so the value box dropped ✓/⚠ for a neutral state dot.
 - **`HudStack.tsx`** is the right-side fixed HUD column (one portal, `top:124px right:12px`, below the nav pill): it owns positioning and stacks `PinLayer` (pinned values, top) above `AlertLayer` (fired alerts, below) — so the alerts button always lands below all pins regardless of pin count. Each section renders nothing when empty. `PinLayer` lost its own portal/fixed wrapper (moved up to the stack). **Not a generic panel API** — each child (`PinLayer`, `AlertLayer`, and any future panel) is a fully bespoke component with its own `useState`, own trigger button, own `registerChrome` call; a new panel is a new component added as a sibling child, not a plug-in to a shared base.
 
-## Addressable model (Bet 2 — `docs/v2.0/01-addressable-model.md`, decided 2026-07-03)
+## Addressable model (Bet 2 — plan archived at `docs/archive/v2.0/01-addressable-model.md`, decided 2026-07-03)
 
 Every node gains a **stable, user-editable name**, separate from and in addition to the
 rete-internal `id` (which stays random/regenerated-on-load, per `rebuildGraph`'s

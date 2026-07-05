@@ -29,7 +29,7 @@ they wanted.
   double-click cable) spawn at the nearest grid intersection. Free-drag
   is not snapped by default; hold a modifier to snap while dragging.
 - **Straight-cable mode** — when the cable shape is "straight"
-  (see `cable-routing.md`), cable segments run along grid lines and
+  (see `archive/cable-routing.md`), cable segments run along grid lines and
   turns happen at grid intersections.
 - **Diagonal-cable mode** — diagonals at 45° connect grid intersections
   to grid intersections.
