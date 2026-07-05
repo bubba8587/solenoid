@@ -1,5 +1,9 @@
-/* Hide the minimap — Settings ▸ View. Class on <html> set by syncPerfClasses(). */
-html.perf-no-minimap .solenoid-minimap { display: none; }
+/* Minimap position — Settings ▸ View. Classes on <html> set by syncPerfClasses().
+   Default (neither class) is the bottom-right corner styled in Minimap.css. */
+html.minimap-hidden .solenoid-minimap { display: none; }
+/* Top: below the Zoom pill (NavMenu — top: 80px, ~34px tall) instead of the
+   bottom-right corner. */
+html.minimap-top .solenoid-minimap { top: 126px; bottom: auto; }
 /* Hide the canvas background dot grid — Settings ▸ View. */
 html.perf-no-grid-dots .solenoid-canvas { background-image: none; }
 

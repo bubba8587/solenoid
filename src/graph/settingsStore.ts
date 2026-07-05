@@ -22,8 +22,11 @@ export interface Settings {
    *  action (File menu + Settings row); Solenoid doesn't index or scan it. */
   docsFolder: string;
 
-  /** Hide the minimap (it repaints on every pan). */
-  perfHideMinimap: boolean;
+  /** Minimap corner behavior: "bottom" (default, above the socket legend),
+   *  "top" (below the Zoom pill), or "hide" (it repaints on every pan). The
+   *  socket legend slides down to fill the freed bottom-right corner whenever
+   *  this isn't "bottom". */
+  minimapPosition: "bottom" | "top" | "hide";
   /** Hide the canvas background dot grid. */
   hideGridDots: boolean;
 
@@ -40,7 +43,7 @@ const DEFAULTS: Settings = {
   tidyAlign: "center",
   csvFolder: "",
   docsFolder: "",
-  perfHideMinimap: false,
+  minimapPosition: "bottom",
   hideGridDots: false,
   quickWire: false,
   semanticZoom: false,
@@ -111,8 +114,14 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
     title: "View",
     fields: [
       {
-        key: "perfHideMinimap",
-        label: "Hide minimap",
+        key: "minimapPosition",
+        label: "Minimap position",
+        type: "segment",
+        options: [
+          { value: "bottom", label: "Bottom" },
+          { value: "top", label: "Top" },
+          { value: "hide", label: "Hide" },
+        ],
       },
       {
         key: "hideGridDots",
@@ -148,13 +157,14 @@ export const settingsStore = {
 // CSS-driven toggles → a class on <html>, so canvas/overlay CSS can respond from
 // any React root. Kept in lockstep with the values.
 const PERF_CLASS_MAP: Array<[keyof Settings, string]> = [
-  ["perfHideMinimap", "perf-no-minimap"],
   ["hideGridDots", "perf-no-grid-dots"],
 ];
 function syncPerfClasses(): void {
   if (typeof document === "undefined") return; // node/test env
   const html = document.documentElement;
   for (const [key, cls] of PERF_CLASS_MAP) html.classList.toggle(cls, Boolean(_settings[key]));
+  html.classList.toggle("minimap-top", _settings.minimapPosition === "top");
+  html.classList.toggle("minimap-hidden", _settings.minimapPosition === "hide");
 }
 // Re-apply on every settings change (cheap: classList.toggle is idempotent).
 subscribe(syncPerfClasses);
