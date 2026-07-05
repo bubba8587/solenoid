@@ -2,6 +2,33 @@
 
 Running notes on direction, deferred work, and non-obvious technical gotchas.
 
+### Nest Join accepts a CUBE child — nest a pre-built cube whole (2026-07-05)
+Queue #1 this block. **Important scope clarification found while verifying:** the task framed
+this as "so nesting chains (Customer→Order→LineItem)", but that chaining was ALREADY done via
+the PARENT-cube path (`relateCubeToFrame`, 2026-06-29 — each call adds a FLAT child one level
+deeper). The genuine gap was the CHILD side: it was `frameIn` (flat only). So this adds a
+DISTINCT, complementary capability — nesting an already-assembled cube:
+- **Engine (`frame.ts`):** `relateFramesToCube`'s `child` widened to `FrameValue | CubeValue`.
+  A cube child reads its key column as its top-level column of that name (`cubeRowCount` rows),
+  groups rows by key, and nests a sub-CUBE per parent cell via a new `subCube` helper (the
+  cube analogue of `subFrame`), preserving the child's own nesting. `relateCubeToFrame`'s child
+  param widened too (it passes through to `relateFramesToCube` at the leaves). Key equality for
+  a cube child uses `cellKeyId` (same value-equality as `keyId`; a non-scalar key cell — a
+  nested frame/cube — can't join, so it's dropped).
+- **Node (`nodes/cube.ts`):** Child socket `frameIn` → `anyIn` (+ `asNestChild` coercion that
+  keeps the old list/matrix/scalar→frame widening while accepting a cube). **Gotcha — same as
+  the XLOOKUP cube-source fix:** a `cube` socket would WRONGLY auto-widen a frame child TO a
+  cube (`coerceValue`'s cube case → `toCube`), turning depth-1 sub-frames into sub-cubes and
+  silently changing existing frame-child output. `any` passes a frame through as a frame, a
+  cube as a cube. Lazy `FrameRef` children still materialize (not socket-typed; Nest is eager).
+- **Two ways, on purpose:** parent-cube = incremental (add a flat level at a time); cube-child =
+  compositional (nest a pre-built hierarchy). Both reach Customer→Order→LineItem; neither maps
+  INTO nested cells (consistent with the scope doc's DECIDED rule — a cube child joins on its
+  TOP level, its own nested cells riding along opaquely).
+- Verified: tsc clean, full vitest 2121 green; `cubeNodes.test.ts` +11 (frame-parent+cube-child
+  nests a sub-cube / no-match → empty sub-cube / flat child still a sub-frame at depth 1 / node
+  path / cube-parent+cube-child deepens a leaf). JS-only (Nest is eager, no Rust half).
+
 ### OVERNIGHT SESSION SUMMARY (2026-07-05, ~03:30–08:30 — 3-agent autonomous crew)
 22 commits on develop (NOT pushed — local session). Every commit: tsc clean + full
 vitest green (2044 → 2110 tests, +67); cargo 46/46; production build healthy (main

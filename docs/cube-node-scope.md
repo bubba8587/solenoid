@@ -76,9 +76,16 @@ be a cube. The two honest producers route around that:
   (depth 1). **Cube-aware mode (2026-06-29): the Parent socket is now `any`, so feeding a
   previous Nest Join's CUBE descends into its nested sub-frames and nest-joins the child
   into each leaf — deepening one level per call (Customer -> Order -> LineItem).
-  Recursive (`relateCubeToFrame`), auto-detecting the nested column.** The inverse (a
-  cube-aware Unnest that PEELS one level) is still a follow-up — it needs an `any`/cube
-  output, since peeling a depth-2 cube yields a depth-1 cube, not a flat frame.
+  Recursive (`relateCubeToFrame`), auto-detecting the nested column.** **Cube CHILD
+  (2026-07-05): the Child socket is now `any` too, so the right side can be a pre-built
+  CUBE — each parent cell nests a sub-CUBE, keeping the child's own nesting (an
+  Orders-with-LineItems cube nests whole under Customers in ONE step). This COMPLEMENTS
+  the parent-cube path: both build Customer→Order→LineItem, but parent-cube adds a FLAT
+  child one level at a time (incremental), while cube-child nests an ALREADY-assembled
+  hierarchy (compositional). `relateFramesToCube` groups the cube child's top-level rows
+  by key into sub-cubes (`subCube`); a non-scalar child key cell can't join (dropped).**
+  The inverse (a cube-aware Unnest that PEELS one level) is still a follow-up — it needs
+  an `any`/cube output, since peeling a depth-2 cube yields a depth-1 cube, not a flat frame.
 - **Build Cube** (`BuildCubeNode`): a leading column-name input plus extensible
   `any` cell rows. Each row is one cell of a single column; wire a frame/list/cube,
   or type a scalar into an unwired row. This is the manual general constructor and
@@ -275,5 +282,6 @@ this baseline — not a per-verb default, and not in v1.0.
 - **Cube-aware Unnest** (peel ONE cube level): the inverse of the new cube-aware Nest
   Join. Needs an `any`/cube output (a peeled depth-2 cube is a depth-1 cube, not a flat
   frame), so it's a socket-shape change, not just an engine tweak.
-- [done] Cube-aware Nest Join (Customer → Order → LineItem) — `relateCubeToFrame`, 2026-06-29.
+- [done] Cube-aware Nest Join (Customer → Order → LineItem) — `relateCubeToFrame`, 2026-06-29;
+  cube-CHILD variant (nest a pre-built cube whole) 2026-07-05 (`relateFramesToCube` + `subCube`).
 - [done] Seed demoing Nest Join -> INDEX (Customers/Orders) — `seedGraphs/cubes.json`.

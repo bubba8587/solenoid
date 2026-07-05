@@ -1,6 +1,6 @@
 import { ClassicPreset } from "rete";
-import { anyIn, strIn, strListIn, frameIn, cubeIn, cubeOut, frameOut } from "./shared";
-import { cubeFromColumns, relateFramesToCube, relateCubeToFrame, cubeColumnFromValue, cubeRowCount, inferColumn, makeHeaders, isCubeValue, isFrameValue, type CubeValue, type CubeCell, type FrameValue, type FrameCell } from "../frame";
+import { anyIn, strIn, strListIn, cubeIn, cubeOut, frameOut } from "./shared";
+import { cubeFromColumns, relateFramesToCube, relateCubeToFrame, cubeColumnFromValue, cubeRowCount, inferColumn, makeHeaders, frameFromRows, isCubeValue, isFrameValue, type CubeValue, type CubeCell, type FrameValue, type FrameCell } from "../frame";
 import { aggregateGroup, type AggOp } from "../frameVerbs";
 import { solError, type SolError } from "../errorValue";
 
@@ -79,12 +79,28 @@ export class BuildCubeNode extends ClassicPreset.Node {
 }
 
 // ─── NEST JOIN ───────────────────────────────────────────────────────────────────
-// Parent + child frame + the key column they share → a Cube: the parent's columns
-// flow through flat, plus one nested column whose every cell is the sub-frame of
-// child rows matching that parent row's key (tidyr's nest_join — the dual of a flat
-// Join, which fans out instead of nesting). The Parent socket is `any`, so it also
-// takes a CUBE: feeding a previous Nest Join's output deepens the hierarchy by one
-// level (Customer → Order → LineItem), nest-joining the child into each leaf frame.
+// Parent + child + the key column they share → a Cube: the parent's columns flow
+// through flat, plus one nested column whose every cell is the child rows matching
+// that parent row's key (tidyr's nest_join — the dual of a flat Join, which fans out
+// instead of nesting). BOTH sockets are `any`:
+//   • Parent — a Frame (depth-1 nest) OR a Cube (feeding a previous Nest Join's output
+//     deepens the hierarchy one level, nest-joining the child into each leaf frame).
+//   • Child — a Frame (each cell nests a flat sub-frame) OR a pre-built Cube (each cell
+//     nests a sub-CUBE, keeping the child's own nesting — so an Orders-with-LineItems
+//     cube nests whole under Customers in one step, vs. the incremental parent-cube path
+//     which adds a flat child one level at a time). Both build Customer→Order→LineItem.
+
+// The child socket is `any` so it takes a Frame OR a Cube (a cube can't narrow into a
+// frame socket; and a `cube` socket would wrongly widen a frame child TO a cube, turning
+// depth-1 sub-frames into sub-cubes). A bare list/matrix/scalar still widens to a frame,
+// exactly as the old `frame` socket did (coerceValue's frame case mirrored here).
+function asNestChild(v: unknown): FrameValue | CubeValue | null {
+  if (v == null) return null;
+  if (isCubeValue(v)) return v;
+  if (isFrameValue(v)) return v;
+  if (Array.isArray(v)) return Array.isArray(v[0]) ? frameFromRows(v as unknown[][]) : frameFromRows([v as unknown[]]);
+  return frameFromRows([[v]]);
+}
 
 export class NestJoinNode extends ClassicPreset.Node {
   label: string;
@@ -96,24 +112,24 @@ export class NestJoinNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("NestJoin");
     this.label = init?.label ?? "Nest Join";
-    // `any` so the parent can be a Frame (depth-1 nest) OR a Cube (deepen one level).
+    // `any` on both sides so parent/child can each be a Frame OR a Cube (see above).
     this.addInput("parent", anyIn("Parent"));
-    this.addInput("child", frameIn("Child"));
+    this.addInput("child", anyIn("Child"));
     this.addInput("key", strIn("Key column"));
     this.addInput("name", strIn("Nested name"));
     this.addOutput("cube", cubeOut("Cube"));
   }
 
-  data(inputs: { parent?: unknown[]; child?: (FrameValue | null)[]; key?: string[]; name?: string[] }) {
+  data(inputs: { parent?: unknown[]; child?: unknown[]; key?: string[]; name?: string[] }) {
     const parent = inputs.parent?.[0] ?? null;
-    const child = inputs.child?.[0] ?? null;
+    const child = asNestChild(inputs.child?.[0] ?? null);
     const key = (inputs.key?.[0] ?? this.stringLiterals.key ?? "").trim();
     const name = (inputs.name?.[0] ?? this.stringLiterals.name ?? "").trim();
     if (!child || key === "") { this.cachedResult = null; return { cube: null }; }
     // Cube parent → deepen one level into the nested sub-frames; Frame parent →
-    // the original depth-1 nest join. A WIRED parent that's neither (a bare list /
-    // scalar) is a type mistake → #TYPE!, not a silent blank (error-value rule);
-    // an UNWIRED parent (null) stays blank, like any incomplete input.
+    // the original nest join. A WIRED parent that's neither (a bare list / scalar) is
+    // a type mistake → #TYPE!, not a silent blank (error-value rule); an UNWIRED
+    // parent (null) stays blank, like any incomplete input.
     this.cachedResult = isCubeValue(parent)
       ? relateCubeToFrame(parent, child, key, name)
       : isFrameValue(parent)
