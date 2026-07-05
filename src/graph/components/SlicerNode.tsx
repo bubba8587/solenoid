@@ -85,8 +85,12 @@ export function SlicerComponent({ data, emit }: NodeProps<SlicerNode>) {
   const selCount = allSelected ? uniqueVals.length : selected.length;
 
   return (
-    <NodeShell node={data} emit={emit} collapsible={false} labelPlaceholder="Slicer" className={widthClass(uniqueVals)}>
+    <NodeShell node={data} emit={emit} labelPlaceholder="Slicer" className={widthClass(uniqueVals)}>
       <InlineInputs node={data} emit={emit} />
+      {/* Collapsed readout: how many of the column's values are active. */}
+      <div className="solenoid-node__collapsed-only slicer-node__summary">
+        {!hasFrame ? "No frame" : uniqueVals.length === 0 ? "No values" : `${selCount} of ${uniqueVals.length}`}
+      </div>
       <div className="slicer-node">
         <div className="slicer-node__toolbar">
           {hasFrame ? (

@@ -200,8 +200,19 @@
    data-socket-side), the display/value boxes, and OUTPUT rows are exempt — a
    multi-output node (TableInfo, SplitFrame, ComplexUnpack, …) collapses to its
    output values rather than a blank box. Input rows still fold away. */
-.solenoid-node--collapsed .solenoid-node__body > *:not(.solenoid-node__display-value):not(.solenoid-node__value-input):not(.solenoid-node__quoted):not([data-socket-side]):not(.solenoid-node__input-pill):not(.solenoid-node__io-row--output) {
+.solenoid-node--collapsed .solenoid-node__body > *:not(.solenoid-node__display-value):not(.solenoid-node__value-input):not(.solenoid-node__quoted):not([data-socket-side]):not(.solenoid-node__input-pill):not(.solenoid-node__io-row--output):not(.solenoid-node__collapsed-only) {
   display: none;
+}
+
+/* A collapsed-only preview: a node renders it ALWAYS but it shows ONLY while
+   collapsed (the inverse of the fold rule above — the exemption keeps it from being
+   force-hidden, then this pair toggles it). Used by nodes with a bespoke collapsed
+   readout: Slicer's "X of N" summary, Sparkline's mini square. */
+.solenoid-node__collapsed-only { display: none; }
+.solenoid-node--collapsed .solenoid-node__collapsed-only {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* A collapsed table node drops its grid preview and shows just the chip — the
