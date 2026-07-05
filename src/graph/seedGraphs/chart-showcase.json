@@ -14,13 +14,10 @@
     {"id":"kpi","type":"KpiNode","x":640,"y":440,"init":{"label":"Revenue"},"literals":{"value":128,"prev":100,"goodUp":1}},
     {"id":"bullet","type":"BulletNode","x":880,"y":460,"init":{"label":"To target"},"literals":{"value":72,"target":80,"max":100}},
 
-    {"id":"tm_labels","type":"TextSplitNode","x":0,"y":820,"init":{"label":"Cost labels"},"stringLiterals":{"text":"Rent,Food,Travel,Fun","delimiter":","}},
-    {"id":"tm_vals","type":"ListInputNode","x":0,"y":1050,"init":{"label":"Cost amounts","valueKeys":["v0","v1","v2","v3"]},"literals":{"v0":1200,"v1":650,"v2":400,"v3":300}},
-    {"id":"treemap","type":"TreemapNode","x":300,"y":840,"init":{"label":"Spending (treemap)"}},
+    {"id":"tm_frame","type":"FrameInputNode","x":0,"y":840,"init":{"label":"Spending table","frameText":"[{\"name\":\"Category\",\"type\":\"string\",\"values\":[\"Rent\",\"Food\",\"Travel\",\"Fun\"]},{\"name\":\"Amount\",\"type\":\"number\",\"values\":[1200,650,400,300]}]"}},
+    {"id":"treemap","type":"TreemapNode","x":320,"y":840,"init":{"label":"Spending (treemap)"}},
 
-    {"id":"sk_from","type":"TextSplitNode","x":640,"y":790,"init":{"label":"From"},"stringLiterals":{"text":"Salary,Salary,Budget,Budget","delimiter":","}},
-    {"id":"sk_to","type":"TextSplitNode","x":640,"y":1000,"init":{"label":"To"},"stringLiterals":{"text":"Rent,Food,Rent,Fun","delimiter":","}},
-    {"id":"sk_val","type":"ListInputNode","x":640,"y":1230,"init":{"label":"Flow","valueKeys":["v0","v1","v2","v3"]},"literals":{"v0":800,"v1":400,"v2":300,"v3":200}},
+    {"id":"sk_frame","type":"FrameInputNode","x":640,"y":900,"init":{"label":"Budget flows","frameText":"[{\"name\":\"From\",\"type\":\"string\",\"values\":[\"Salary\",\"Salary\",\"Salary\",\"Bonus\"]},{\"name\":\"To\",\"type\":\"string\",\"values\":[\"Housing\",\"Food\",\"Savings\",\"Savings\"]},{\"name\":\"Value\",\"type\":\"number\",\"values\":[2000,800,700,500]}]"}},
     {"id":"sankey","type":"SankeyNode","x":960,"y":900,"init":{"label":"Budget flow (sankey)"}},
 
     {"id":"matrix","type":"TableInputNode","x":0,"y":1520,"init":{"label":"Series matrix","tableText":"12, 8\n19, 11\n7, 5\n23, 14\n15, 9"}},
@@ -35,12 +32,9 @@
 
     {"source":"scores","sourceOutput":"list","target":"hist","targetInput":"values"},
 
-    {"source":"tm_labels","sourceOutput":"result","target":"treemap","targetInput":"labels"},
-    {"source":"tm_vals","sourceOutput":"list","target":"treemap","targetInput":"values"},
+    {"source":"tm_frame","sourceOutput":"frame","target":"treemap","targetInput":"frame"},
 
-    {"source":"sk_from","sourceOutput":"result","target":"sankey","targetInput":"source"},
-    {"source":"sk_to","sourceOutput":"result","target":"sankey","targetInput":"target"},
-    {"source":"sk_val","sourceOutput":"list","target":"sankey","targetInput":"value"},
+    {"source":"sk_frame","sourceOutput":"frame","target":"sankey","targetInput":"frame"},
 
     {"source":"matrix","sourceOutput":"table","target":"composed","targetInput":"series"},
     {"source":"matrix","sourceOutput":"table","target":"bubble","targetInput":"series"}
