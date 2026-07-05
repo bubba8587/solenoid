@@ -20,6 +20,8 @@ const GaugeArcInner = lazy(() => import("./chartRender").then((m) => ({ default:
 const TornadoBarsInner = lazy(() => import("./chartRender").then((m) => ({ default: m.TornadoBars })));
 const TreemapViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.TreemapView })));
 const SankeyViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.SankeyView })));
+const ComposedViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.ComposedView })));
+const BubbleViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.BubbleView })));
 
 // A blank box the size of the chart so the card doesn't reflow (and sockets don't
 // re-measure) in the instant before recharts arrives. No text/spinner — it flashes
@@ -61,6 +63,22 @@ export function SankeyView(props: { sources: string[]; targets: string[]; values
   );
 }
 
+export function ComposedView(props: { matrix: (number | null)[][]; width: number; height: number }) {
+  return (
+    <Suspense fallback={box(props.width, props.height)}>
+      <ComposedViewInner {...props} />
+    </Suspense>
+  );
+}
+
+export function BubbleView(props: { matrix: (number | null)[][]; width: number; height: number }) {
+  return (
+    <Suspense fallback={box(props.width, props.height)}>
+      <BubbleViewInner {...props} />
+    </Suspense>
+  );
+}
+
 /** Render ANY ChartValue by its op: series ops → the recharts ChartView, the
  *  eager payload cards (kpi/bullet), or the structured recharts figures
  *  (treemap/sankey). The ONE place that maps a chart value to a figure — shared by
@@ -75,9 +93,26 @@ export function ChartFigure({ value, width, height, axes = true }: {
     return <TreemapView names={value.payload.names} values={value.payload.values} width={width} height={height} />;
   if (value.op === "sankey" && value.payload?.kind === "sankey")
     return <SankeyView sources={value.payload.sources} targets={value.payload.targets} values={value.payload.values} width={width} height={height} />;
+  // The 2-D ops read the matrix; with no matrix wired they fall back to the
+  // single `values` series (composed → columns, bubble → a scatter).
+  const hasMatrix = Array.isArray(value.matrix) && value.matrix.length > 0;
+  if (value.op === "composed") {
+    if (hasMatrix) return <ComposedView matrix={value.matrix!} width={width} height={height} />;
+    return renderSeries(value, "column", width, height, axes);
+  }
+  if (value.op === "bubble") {
+    if (hasMatrix) return <BubbleView matrix={value.matrix!} width={width} height={height} />;
+    return renderSeries(value, "scatter", width, height, axes);
+  }
+  return renderSeries(value, value.op as ChartShape, width, height, axes);
+}
+
+/** The single-series ChartView path with the em-dash empty state — shared by the
+ *  series ops and the matrix ops' no-matrix fallback. */
+function renderSeries(value: ChartValue, op: ChartShape, width: number, height: number, axes: boolean) {
   const series = toSeries(value.values);
   if (series.length === 0) return <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;
-  return <ChartView op={value.op as ChartShape} series={series} width={width} height={height} axes={axes} opts={value.options} />;
+  return <ChartView op={op} series={series} width={width} height={height} axes={axes} opts={value.options} />;
 }
 
 export function GaugeArc(props: { pct: number; track: string; size: number }) {

@@ -1,7 +1,7 @@
 // Every recharts-using renderer, in ONE module — so recharts lands in a single
 // lazily-loaded chunk. Nothing here is imported statically by the app; chartView.tsx
 // wraps these in React.lazy + Suspense. recharts-free helpers live in chartCore.ts.
-import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, RadialBarChart, RadialBar, PolarAngleAxis, PolarGrid, PolarRadiusAxis, RadarChart, Radar, PieChart, Pie, ScatterChart, Scatter, FunnelChart, Funnel, LabelList, Cell, Treemap, Sankey } from "recharts";
+import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, RadialBarChart, RadialBar, PolarAngleAxis, PolarGrid, PolarRadiusAxis, RadarChart, Radar, PieChart, Pie, ScatterChart, Scatter, ZAxis, FunnelChart, Funnel, LabelList, Cell, Treemap, Sankey, ComposedChart } from "recharts";
 import "./chartView.css";
 import { formatScalar } from "./format";
 import { VIZ, useChartColors, useSeriesColors, type ChartShape } from "./chartCore";
@@ -292,6 +292,64 @@ export function SankeyView({ sources, targets, values, width, height }: {
     >
       {SLICE_TIP}
     </Sankey>
+  );
+}
+
+// ─── Composed (multi-series) ──────────────────────────────────────────────────
+// Each COLUMN of the matrix is a series over the row index: column 0 draws as bars,
+// the rest as lines (the classic "bars + trend line" combo), coloured categorically.
+export function ComposedView({ matrix, width, height }: {
+  matrix: (number | null)[][]; width: number; height: number;
+}) {
+  const { grid, axis } = useChartColors();
+  const colors = useSeriesColors();
+  const AXIS = { fontSize: 9, fill: axis } as const;
+  const ncols = matrix.reduce((m, r) => Math.max(m, r.length), 0);
+  const data = matrix.map((row, i) => {
+    const o: Record<string, number | null> = { i };
+    for (let j = 0; j < ncols; j++) o[`c${j}`] = typeof row[j] === "number" ? row[j] : null;
+    return o;
+  });
+  return (
+    <ComposedChart width={width} height={height} data={data} margin={{ top: 6, right: 8, bottom: 4, left: 0 }}>
+      <CartesianGrid stroke={grid} vertical={false} />
+      <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={(i) => String(Number(i) + 1)} />
+      <YAxis tick={AXIS} tickLine={false} width={26} />
+      <Tooltip isAnimationActive={false} cursor={{ fill: "rgba(128,128,128,0.12)" }} />
+      {Array.from({ length: ncols }, (_, j) => (
+        j === 0
+          ? <Bar key={j} dataKey={`c${j}`} fill={colors[j % colors.length]} isAnimationActive={false} />
+          : <Line key={j} dataKey={`c${j}`} stroke={colors[j % colors.length]} strokeWidth={1.5} dot={false} isAnimationActive={false} />
+      ))}
+    </ComposedChart>
+  );
+}
+
+// ─── Bubble ───────────────────────────────────────────────────────────────────
+// Each ROW is a point: column 0 = x, 1 = y, 2 = bubble size (defaults if absent).
+export function BubbleView({ matrix, width, height }: {
+  matrix: (number | null)[][]; width: number; height: number;
+}) {
+  const { grid, axis } = useChartColors();
+  const colors = useSeriesColors();
+  const AXIS = { fontSize: 9, fill: axis } as const;
+  const data = matrix
+    .map((row, i) => ({
+      x: typeof row[0] === "number" ? row[0] : i,
+      y: typeof row[1] === "number" ? row[1] : (typeof row[0] === "number" ? row[0] : null),
+      z: typeof row[2] === "number" ? row[2] : 1,
+    }))
+    .filter((d) => d.y !== null);
+  if (data.length === 0) return <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;
+  return (
+    <ScatterChart width={width} height={height} margin={{ top: 8, right: 12, bottom: 4, left: 0 }}>
+      <CartesianGrid stroke={grid} />
+      <XAxis type="number" dataKey="x" tick={AXIS} tickLine={false} />
+      <YAxis type="number" dataKey="y" tick={AXIS} tickLine={false} width={26} />
+      <ZAxis type="number" dataKey="z" range={[40, 420]} />
+      <Tooltip isAnimationActive={false} cursor={{ strokeDasharray: "3 3", stroke: "rgba(128,128,128,0.5)" }} />
+      <Scatter data={data} fill={colors[0]} fillOpacity={0.55} isAnimationActive={false} />
+    </ScatterChart>
   );
 }
 

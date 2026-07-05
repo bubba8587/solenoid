@@ -19,7 +19,8 @@ describe("visual nodes", () => {
     // numlist pass-through (nothing consumed that; a chart is a sink).
     const ch = new ChartNode({ op: "line" });
     expect(ch.data({ values: [[4, 5]] })).toEqual({
-      chart: { __chart: true, op: "line", values: [4, 5], options: {}, title: "Chart" },
+      // `matrix` is null for the 1-D ops (it carries the composed/bubble 2-D feed).
+      chart: { __chart: true, op: "line", values: [4, 5], matrix: null, options: {}, title: "Chart" },
     });
   });
 

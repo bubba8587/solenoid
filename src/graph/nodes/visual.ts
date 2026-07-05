@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { numIn, numListIn, numListOut, numOut, tableIn, tableOut, strIn, strListIn, strOut, chartOut } from "./shared";
+import { numIn, numListIn, numListOut, numOut, tableIn, tableOut, strIn, strListIn, strOut, chartOut, anyTableIn } from "./shared";
 import { parseChartOptions, serializeChartOptions, type ChartOptions } from "./chartOptions";
 import type { ChartValue, KpiPayload, BulletPayload, TreemapPayload, SankeyPayload } from "../chartValue";
 import type { MermaidValue } from "../mermaidValue";
@@ -50,7 +50,8 @@ export class SparklineNode extends ClassicPreset.Node {
 
 export type ChartOp =
   | "column" | "bar" | "line" | "area"
-  | "pie" | "radar" | "radialbar" | "funnel" | "scatter";
+  | "pie" | "radar" | "radialbar" | "funnel" | "scatter"
+  | "composed" | "bubble";
 
 export const CHART_OP_META = {
   column:    { label: "Column" },
@@ -62,12 +63,20 @@ export const CHART_OP_META = {
   radialbar: { label: "Radial" },
   funnel:    { label: "Funnel" },
   scatter:   { label: "Scatter" },
+  composed:  { label: "Composed" },
+  bubble:    { label: "Bubble" },
 } satisfies Record<ChartOp, { label: string }>;
+
+// The 2-D ops read the `series` matrix input (composed = columns are series;
+// bubble = rows are [x, y, size]); the 1-D ops read `values`.
+export const CHART_MATRIX_OPS = new Set<ChartOp>(["composed", "bubble"]);
 
 export class ChartNode extends ClassicPreset.Node {
   label: string;
   op: ChartOp;
   cachedResult: number | number[] | null = null;
+  // The 2-D feed for the composed/bubble ops (a matrix on the `series` socket).
+  cachedMatrix: (number | null)[][] | null = null;
   // Parsed matplotlib-style options from the `options` socket (Chart Builder, or
   // a string typed into the inline field). The component reads this to apply
   // title/axes/color/grid/etc.; what sets Chart apart from the minimal Sparkline.
@@ -82,6 +91,9 @@ export class ChartNode extends ClassicPreset.Node {
     this.label = init?.label ?? "Chart";
     this.op = init?.op ?? "column";
     this.addInput("values", numListIn("Values"));
+    // The 2-D feed: composed reads each column as a series, bubble each row as an
+    // [x, y, size] point. Unwired for the 1-D ops (they read `values`).
+    this.addInput("series", anyTableIn("Series (2-D)"));
     this.addInput("options", strIn("Options"));
     // A Chart is a terminal figure, not a data pass-through (nothing consumed the
     // old numlist `result` — a chart is a sink). Its output is the first-class
@@ -91,14 +103,21 @@ export class ChartNode extends ClassicPreset.Node {
     this.addOutput("chart", chartOut("Chart"));
   }
 
-  data(inputs: { values?: (number | number[])[]; options?: string[] }): { chart: ChartValue } {
+  data(inputs: { values?: (number | number[])[]; series?: unknown[][][]; options?: string[] }): { chart: ChartValue } {
     const v = inputs.values?.[0] ?? null;
     this.cachedResult = v;
+    // A wired matrix → coerce every cell to number|null (anyTable is element-
+    // agnostic; a non-number becomes null so the charts skip it).
+    const rawMatrix = inputs.series?.[0] ?? null;
+    this.cachedMatrix = Array.isArray(rawMatrix)
+      ? rawMatrix.map((row) => (Array.isArray(row) ? row : [row]).map((c) => (typeof c === "number" && Number.isFinite(c) ? c : null)))
+      : null;
     this.chartOptions = parseChartOptions(inputs.options?.[0] ?? this.stringLiterals.options ?? null);
     const chart: ChartValue = {
       __chart: true,
       op: this.op,
       values: this.cachedResult,
+      matrix: this.cachedMatrix,
       options: this.chartOptions,
       title: this.chartOptions.title || this.label || "Chart",
     };
