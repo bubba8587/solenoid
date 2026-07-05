@@ -4,6 +4,7 @@ import { HtmlCanvasRenderer, type EngineNodeSpec } from "../htmlCanvasRenderer";
 import { getEditor, getArea, connectionVersionStore } from "../process";
 import { snapshotGraph } from "../pixi/pixiGraphSnapshot";
 import { cableShapeStore } from "../cableShape";
+import { semanticZoomStore } from "../semanticZoomStore";
 import { collapseStore } from "../collapseStore";
 import { nodeSizeStore } from "../nodeSizeStore";
 import { groupMembershipStore } from "../groupMembership";
@@ -329,6 +330,11 @@ export function HtmlCanvasLayer() {
     const unsubTheme = appThemeStore.subscribe(fullRebuild); // retint on theme / accent / palette change
     const unsubFmt = formatAnnotationStore.subscribe(fullRebuild); // re-capture reformatted value text
     const unsubShape = cableShapeStore.subscribe(fullRebuild); // re-route on cable-shape change
+    // Semantic zoom flips a root CSS class the captured bitmaps don't know
+    // about — without a re-capture, zooming out past the threshold on a big
+    // graph (exactly where this renderer is active) kept drawing the stale
+    // full-detail cards for the whole gesture instead of the simplified view.
+    const unsubSemantic = semanticZoomStore.subscribe(fullRebuild);
     // area.addPipe has no unsubscribe, so guard with a flag the cleanup flips instead.
     let pipeLive = true;
     area.addPipe((ctx) => {
@@ -425,6 +431,7 @@ export function HtmlCanvasLayer() {
       unsubTheme();
       unsubFmt();
       unsubShape();
+      unsubSemantic();
       pipeLive = false; // area.addPipe can't be removed; the flag makes it a no-op
       window.removeEventListener("pointerdown", onPointerDown, true);
       window.removeEventListener("pointerup", onPointerUp, true);

@@ -23,6 +23,43 @@ quota headroom; deleting a doc removes its keys (its quota actually frees now).
   `documentStorePersist.test.ts` (localStorage stub — writes-only-changed, key removal
   on delete, restore round-trip, old-key cleanup, corrupt-slot skip).
 
+### Audit fixes round 3 — reviewers C/D (interaction-feel + timers/sinks) (2026-07-05, overnight)
+Second review fan-out; every confirmed finding fixed (tsc clean, vitest 2090 green):
+- **Composite drill-in leaked live React roots** (`CompositeEditorOverlay.tsx`): close
+  only detached the cached mount's container — the fibers stayed mounted, so a
+  Connection node's auto-refresh interval inside a closed (or DELETED) composite kept
+  firing full `processGraph()`s forever. The close cleanup now REMOVES every internal
+  node/connection view (unmounting each view's React root runs its effect cleanups →
+  timers die); views re-backfill idempotently on each open. The mount itself stays
+  cached — the internal editor has no `unuse`, so a fresh AreaPlugin per open would
+  accumulate dead pipes. Plus `compositeEditorStore.close()` joined `rebuildGraph`'s
+  reset list (a drill-in open across a doc switch rendered a node from the dead graph).
+- **Scrub unmount mid-drag locked the app cursor** (`inlineInput.tsx`): dragging blurs
+  focus, so Delete reaches the canvas and can delete the node UNDER the scrub; the
+  unmount cleanup only unbound the Esc listener, leaving `solenoid-scrubbing`
+  (ns-resize `!important`) on `<body>` until the next completed scrub anywhere. The
+  cleanup now clears the drag state + class, gated on this field owning the live drag.
+- **Quick-wire/Add menu survived a document switch** (`Canvas.tsx`): Ctrl+O fires even
+  with the menu's search focused; ids regenerate on load, so a pick from the stale menu
+  silently added an orphan unwired node into the NEW doc. Any documentStore change now
+  closes the menu.
+- **Semantic zoom was invisible in the HTML-in-canvas renderer** (`HtmlCanvasLayer.tsx`):
+  the store wasn't in the rebuild-trigger list, so big graphs (exactly where that
+  renderer activates) kept drawing stale full-detail bitmaps through the whole zoom
+  gesture. Subscribed like the other seven trigger stores.
+- **Write CSV/JSON double-click raced concurrent writes** (`sink.ts` + `WriteNodes.tsx`):
+  the button's disabled state only updated AFTER the awaited write. `run()` now has a
+  re-entrancy guard and the component reflects "writing" synchronously.
+- **connectionStore.forget was dead code** — defined "call when the node is removed" but
+  never registered; deleted connection nodes' status/token entries lived for the tab's
+  lifetime. Now self-registers on the nodeStoreRegistry forget seams like every sibling
+  store.
+- Verified sound by the reviewers (recorded, no change): scrub undo granularity (one
+  entry per gesture) + commit-on-release; palette gating incl. the new presenter gate;
+  quick-wire leaves no temp node on cancel; manual-mode auto-refresh correctly only
+  marks dirty; headless runner spins no timers; sink `enabled` stays unpersisted;
+  Session History is bounded + polls at 1s.
+
 ### Quick-wire: memoize the per-type socket signature (2026-07-05)
 `filterByCompatibleSocket` (`catalogSearch.ts`) was calling `leaf.create()` for EVERY catalog
 leaf on EVERY quick-wire cable drop — instantiating a full throwaway node just to read its

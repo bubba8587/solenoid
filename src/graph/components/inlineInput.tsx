@@ -137,6 +137,15 @@ export function InlineNumberField({
   const escRef = useRef<((e: KeyboardEvent) => void) | null>(null);
   useEffect(() => () => {
     if (escRef.current) window.removeEventListener("keydown", escRef.current);
+    // Unmount MID-DRAG (node deleted while scrubbing — dragging blurs focus, so
+    // Delete reaches the canvas; also Undo/doc-switch): endDrag never runs, so
+    // clear the drag state and the app-wide ns-resize cursor class here too.
+    // Gated on THIS field owning a live drag, so an unrelated field unmounting
+    // can't strip the class out from under another field's active scrub.
+    if (dragRef.current) {
+      dragRef.current = null;
+      document.body.classList.remove("solenoid-scrubbing");
+    }
   }, []);
 
   function endDrag(e: React.PointerEvent<HTMLInputElement>, commit: boolean) {

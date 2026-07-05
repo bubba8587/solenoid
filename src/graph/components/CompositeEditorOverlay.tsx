@@ -127,11 +127,12 @@ async function getDrillMount(composite: CompositeNode): Promise<DrillMount> {
   area.use(connection);
   area.use(history);
 
-  // The internal graph existed BEFORE the area was attached (nodes are
-  // relocated/hydrated at collapse/load time), so the plugin's nodecreated/
-  // connectioncreated listeners never saw them — backfill their views once.
-  for (const n of editor.getNodes()) area.addNodeView(n);
-  for (const c of editor.getConnections()) area.addConnectionView(c);
+  // Views are backfilled per OPEN (CompositeEditorInner's mount effect), not
+  // here — the close cleanup REMOVES every view (unmounting the React roots so
+  // component effect cleanups actually run; see the leak note there), so a
+  // reopened cached mount starts view-less. The mount itself stays cached: the
+  // internal editor has no `unuse`, so creating a fresh AreaPlugin per open
+  // would accumulate dead pipes on it.
 
   // Structural edits made in the drill-in recompute the OWNING card and
   // autosave — the same settle a Canvas cable edit gets, minus the outer-only
@@ -201,6 +202,17 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
       if (cancelled) return;
       mountRef.current = mount;
       hostRef.current?.appendChild(mount.container);
+      // Backfill the internal graph's views — on the FIRST open because the
+      // graph predates the area (nodes hydrate at collapse/load time, before
+      // any nodecreated the plugins could see), and on every REOPEN because
+      // the close cleanup removed them (see below). Idempotent via the view maps.
+      for (const n of comp.internalEditor.getNodes()) {
+        if (!mount.area.nodeViews.has(n.id)) await mount.area.addNodeView(n);
+      }
+      for (const c of comp.internalEditor.getConnections()) {
+        if (!mount.area.connectionViews.has(c.id)) await mount.area.addConnectionView(c);
+      }
+      if (cancelled) return;
       // Restore the saved layout, stagger anything unplaced (a pre-positions
       // save), then fit.
       let fallback = 0;
@@ -216,8 +228,18 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
     return () => {
       cancelled = true;
       const mount = mountRef.current;
-      if (mount && hostRef.current?.contains(mount.container)) {
-        hostRef.current.removeChild(mount.container);
+      if (mount) {
+        // Remove every internal view — unmounting each view's React ROOT so
+        // component effect cleanups actually run (a Connection node's
+        // auto-refresh interval dies with its component). Merely detaching the
+        // container kept the fibers alive: a refreshMinutes interval inside a
+        // closed (or even DELETED) composite kept firing full processGraph()s
+        // forever. Views re-backfill on the next open; the mount stays cached.
+        for (const n of comp.internalEditor.getNodes()) mount.area.removeNodeView(n.id);
+        for (const c of comp.internalEditor.getConnections()) mount.area.removeConnectionView(c.id);
+        if (hostRef.current?.contains(mount.container)) {
+          hostRef.current.removeChild(mount.container);
+        }
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
