@@ -6,7 +6,10 @@
   display: flex;
   flex-direction: row;
   gap: 3px;
-  padding: 3px;
+  /* 2px (not 3px) so the pill's outer height is 28 + 2·2 + 2·1 = 34px, matching the
+     navigator/search open-pill (32px buttons + 1px border) at the same top:80px — the
+     two floating pills then align on both edges instead of the zoom pill hanging 2px low. */
+  padding: 2px;
   background: var(--panel-bg);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
