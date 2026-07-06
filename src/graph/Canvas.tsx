@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { NodeEditor, ClassicPreset } from "rete";
-import { AreaPlugin, AreaExtensions, Zoom, Drag } from "rete-area-plugin";
+import { AreaPlugin, AreaExtensions, Drag } from "rete-area-plugin";
 import { ConnectionPlugin } from "rete-connection-plugin";
 import { ReactPlugin } from "rete-react-plugin";
-import { solenoidClassicRenderSetup, makeSolenoidConnectionFlow } from "./areaPresets";
+import { solenoidClassicRenderSetup, makeSolenoidConnectionFlow, CappedZoom } from "./areaPresets";
 import { DataflowEngine } from "rete-engine";
 import { HistoryPlugin, Presets as HistoryPresets } from "rete-history-plugin";
 import { MinimapPlugin } from "rete-minimap-plugin";
@@ -115,36 +115,8 @@ import "./canvas.css";
 // than this many nodes — it's a large, hard-to-undo visual change.
 const TIDY_CONFIRM_THRESHOLD = 12;
 
-// Zoom feel. rete's stock Zoom ignores wheel magnitude — it applies a fixed
-// ±intensity per wheel event, so a trackpad pinch (a burst of dozens of events)
-// races the zoom while a mouse notch crawls. We instead make the step
-// proportional to the (deltaMode-normalised) wheel delta and clamp it, which
-// caps zoom speed uniformly across mouse wheel, trackpad pinch, and two-finger
-// scroll. ZOOM_SCALE sets sensitivity; ZOOM_STEP_CAP bounds any single event.
-const ZOOM_SCALE = 0.0028;
-const ZOOM_STEP_CAP = 0.24;
-const WHEEL_LINE_PX = 16; // deltaMode 1 (lines) → px
-const WHEEL_PAGE_PX = 400; // deltaMode 2 (pages) → px
-
-// Custom zoom handler: proportional + clamped wheel, stock pinch/dblclick.
-class CappedZoom extends Zoom {
-  protected wheel = (e: WheelEvent) => {
-    e.preventDefault();
-    const px =
-      e.deltaMode === 1 ? e.deltaY * WHEEL_LINE_PX
-      : e.deltaMode === 2 ? e.deltaY * WHEEL_PAGE_PX
-      : e.deltaY;
-    let delta = -px * ZOOM_SCALE; // scroll up / pinch out → zoom in
-    if (delta > ZOOM_STEP_CAP) delta = ZOOM_STEP_CAP;
-    else if (delta < -ZOOM_STEP_CAP) delta = -ZOOM_STEP_CAP;
-    const el = (this as unknown as { element: HTMLElement }).element;
-    const { left, top } = el.getBoundingClientRect();
-    const ox = (left - e.clientX) * delta;
-    const oy = (top - e.clientY) * delta;
-    (this as unknown as { onzoom: (d: number, ox: number, oy: number, s: string) => void })
-      .onzoom(delta, ox, oy, "wheel");
-  };
-}
+// Zoom feel + double-click suppression are shared with every canvas-substituting
+// surface (the composite drill-in) via areaPresets.ts CappedZoom — so they can't drift.
 
 // Mobile mode drives the touch interaction model (tap selects, drag moves only
 // selected, unselected nodes are transparent to pan/pinch). Keyed on IS_MOBILE
