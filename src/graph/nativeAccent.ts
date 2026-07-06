@@ -14,7 +14,15 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
   return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
 }
 
+// DISABLED 2026-07-06: setting DWMWA_BORDER_COLOR re-asserts a native window frame,
+// which clobbers tauri-plugin-decorum's overlay titlebar → the min/max/close controls
+// vanish. The accent border is minor polish; working window controls are not. Flip this
+// back on only once the border can be set WITHOUT disturbing decorum's custom frame
+// (needs live iteration on the desktop build).
+const NATIVE_ACCENT_BORDER_ENABLED = false;
+
 export function syncNativeAccent(hex: string): void {
+  if (!NATIVE_ACCENT_BORDER_ENABLED) return;
   if (!isDesktop()) return;
   const rgb = hexToRgb(hex);
   if (!rgb) return;
