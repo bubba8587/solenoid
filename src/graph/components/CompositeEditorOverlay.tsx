@@ -372,6 +372,9 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
         );
       }
     }
+    // Renaming a boundary marker inside the subgraph renames its exposed port on the
+    // outer card — pull each surviving port's label from its marker's current label.
+    comp.syncPortLabels();
   }
 
   /** Refresh the card + recompute + save, after a leave. Only the MAIN-canvas

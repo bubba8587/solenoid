@@ -248,12 +248,10 @@ export const NODE_CATALOG: CatalogEntry[] = [
       { type: "conduit",    label: "Conduit",   description: "Bundle up to 8 cables into one block — they travel onward as a single ribbon that splits back into lanes at the destination. Rotate or extend it from the inspector.", create: () => new ConduitNode(), parity: false },
       { type: "format-controller", label: "Format", description: "Attach to a socket to set its number format (decimal, fraction, %, currency…) and unit label (°C, m, kg…). Units must match on connected cables.", create: () => new FormatControllerNode() },
       { type: "group", label: "Group", description: "A container — drop it around nodes (or select + Ctrl+G). Drag its header to move them together; collapse to a summary.", create: () => new GroupNode(), parity: false },
-      // Not user-addable from the menu (no catalog UI entry point — select nodes
-      // and press Ctrl+Shift+G instead, see compositeLogic.ts). `hidden: true`
-      // keeps it in FLAT_CATALOG so nodeCtorRegistry can still reconstruct a
-      // saved/pasted Composite card — the same mechanism a since-removed node
-      // type uses to stay loadable without cluttering the Add menu.
-      { type: "composite", label: "Composite", description: "A computing subgraph — select nodes and press Ctrl+Shift+G to collapse them into one typed card with a declared input/output boundary.", create: () => new CompositeNode(), parity: false, hidden: true },
+      // Addable like any node: drop an empty Composite and Edit contents to build
+      // its subgraph (the drill-in is a first-class canvas), or collapse a selection
+      // with Ctrl+Shift+G (compositeLogic.ts) to make one from existing nodes.
+      { type: "composite", label: "Composite", description: "A reusable computing subgraph — one card with a typed input/output boundary. Add one and Edit contents to build it inside, or select nodes and press Ctrl+Shift+G to collapse them into one.", create: () => new CompositeNode(), parity: false },
       // The boundary marker nodes that live INSIDE a Composite's private
       // internal graph (never on the main canvas) — hidden for the same
       // reason as "composite" above: FLAT_CATALOG-only, so hydrate() can

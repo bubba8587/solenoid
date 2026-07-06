@@ -348,6 +348,28 @@ export class CompositeNode extends ClassicPreset.Node {
     return id;
   }
 
+  /** Sync each surviving port's label from its boundary marker's CURRENT label, so
+   *  renaming a Composite Input/Output marker inside the drill-in propagates to the
+   *  outer card's socket labels (updates both the port record and the rete socket
+   *  the card renders). Called on leave; markers with no node are reconciled away
+   *  separately (leaveLevel). */
+  syncPortLabels(): void {
+    const labelOf = (nodeId: string, fallback: string): string => {
+      const n = this.internalEditor.getNode(nodeId) as { label?: string } | undefined;
+      return n?.label?.trim() ? n.label : fallback;
+    };
+    for (const p of this.inputPorts) {
+      p.label = labelOf(p.internalNodeId, p.label);
+      const inp = this.inputs[p.id];
+      if (inp) inp.label = p.label;
+    }
+    for (const p of this.outputPorts) {
+      p.label = labelOf(p.internalNodeId, p.label);
+      const out = this.outputs[p.id];
+      if (out) out.label = p.label;
+    }
+  }
+
   /** Register a new output port + its outer socket. Returns the port id. */
   addOutputPort(spec: Omit<CompositeOutputPort, "id"> & { id?: string }): string {
     const id = spec.id ?? `out_${this.outputPorts.length}_${Math.random().toString(36).slice(2, 7)}`;
