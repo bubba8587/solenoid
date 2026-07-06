@@ -441,6 +441,9 @@ export function Canvas() {
   // Module store, not useState: the mobile bottom bar opens the palette from
   // outside Canvas's tree, and the keydown handler reads it closure-free.
   const paletteOpen = useSyncExternalStore(paletteStore.subscribe, paletteStore.get);
+  // Always-on (docked) command palette: rendered persistently regardless of the
+  // open toggle, and non-modal (see CommandPalette `persistent`).
+  const paletteAlwaysOn = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("commandPaletteAlwaysOn"));
 
   // Remove the selected cables and/or the selected nodes (a lasso can select
   // both at once). Shared by the Delete/Backspace key path and the mobile
@@ -3752,7 +3755,7 @@ export function Canvas() {
           onClose={closeMenu}
         />
       )}
-      {paletteOpen && <CommandPalette onClose={() => paletteStore.close()} />}
+      {(paletteOpen || paletteAlwaysOn) && <CommandPalette persistent={paletteAlwaysOn} onClose={() => paletteStore.close()} />}
       {socketCtx && (
         <SocketContextMenu
           target={socketCtx}

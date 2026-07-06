@@ -6,9 +6,10 @@ import "./selectionActions.css";
 
 // Contextual align/distribute cluster: the six aligns + two distributes live only
 // in the Command Palette otherwise, and the standing rule is that nothing is
-// reachable solely via the palette. This floating pill appears at the bottom of
-// the canvas whenever ≥2 top-level nodes are selected — the visible surface for
-// the align/distribute ops. Logic is entirely in selectionOps.ts; this is surface.
+// reachable solely via the palette. This floating pill appears at the TOP-centre of
+// the canvas whenever ≥2 top-level nodes are selected — the visible surface for the
+// align/distribute ops (up top so it never collides with the always-on command
+// palette docked at the bottom). Logic is entirely in selectionOps.ts; this is surface.
 //
 // Selection has no push-based store (OutlinePanel polls the graph the same way),
 // so a light interval reads how many selected nodes have a rendered view — the

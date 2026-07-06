@@ -36,6 +36,9 @@ export interface Settings {
   /** Swap node cards for simplified placeholders once zoomed out past the point
    *  where the DOM/canvas renderer would be dropping mip levels anyway. */
   semanticZoom: boolean;
+  /** Keep the command palette docked and always visible (a persistent command bar)
+   *  instead of opening on Enter and closing on Escape. */
+  commandPaletteAlwaysOn: boolean;
 }
 
 const DEFAULTS: Settings = {
@@ -47,6 +50,7 @@ const DEFAULTS: Settings = {
   hideGridDots: false,
   quickWire: false,
   semanticZoom: false,
+  commandPaletteAlwaysOn: false,
 };
 
 // Declarative schema the Settings page renders from. Grouped into sections.
@@ -126,6 +130,11 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
       {
         key: "hideGridDots",
         label: "Hide grid dots",
+      },
+      {
+        key: "commandPaletteAlwaysOn",
+        label: "Always show command palette",
+        help: "Keep it docked at the bottom instead of opening on Enter",
       },
     ],
   },
