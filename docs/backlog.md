@@ -21,6 +21,19 @@ is archived).
   catalogued/given a component — unreachable. Wire it up, then widen: more providers,
   series/symbol picker, date-range/frequency, chart-ready output, a finance demo seed.
   Scope in `release-plan.md` §3a (a couple of provider/UI-depth questions for the author).
+- [ ] **iFrame / embed node** (author 2026-07-06) — a general web-embed node: FRED graph
+  direct embeds, YouTube, social (Twitter/X), dashboards. Emits an embed value out the green
+  `chart` socket (like Image/Mermaid) so it also embeds in a Report. **SECURITY (author-gated
+  decision — this is the can of worms):** the Tauri CSP currently has NO `frame-src`, so it
+  falls back to `default-src 'self'` and external iframes are BLOCKED. Enabling this REQUIRES
+  loosening `frame-src` — the call is `https:` (any HTTPS embed, broad) vs. a domain allowlist
+  (FRED/YouTube/Twitter…, safer but caps "other stuff"). Mitigations regardless: `sandbox`
+  (allow-scripts allow-same-origin allow-popups, NO allow-top-navigation), `referrerpolicy=
+  no-referrer`, https-only, and **click-to-load** (don't auto-load an embed on file open — a
+  saved URL is untrusted; also the main perf lever). **PERF:** each iframe is a full browser
+  context — click-to-load + don't render off-screen + cap concurrent. Reality check: most sites
+  send `X-Frame-Options: DENY`, so this works for EMBED-friendly content (FRED/video/social),
+  not arbitrary pages. Needs the author's CSP-posture call before build.
 - [ ] **Massive seed overhaul** — pass on all 27 seeds: loads clean, tells a real 1.1
   story, no deprecated shapes; `seeds.test.ts` stays green. `release-plan.md` §3b. Near the cut.
 - [ ] **"What's New" overlay** — short slide series (reuse overlay chrome, not a node),
