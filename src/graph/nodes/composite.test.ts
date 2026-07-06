@@ -499,6 +499,19 @@ describe("CompositeNode Goal Seek run mode", () => {
     expect(c.stale).toBe(false);
   });
 
+  it("syncPortLabels pulls each port's label from its renamed marker", async () => {
+    const { c, inAId, outId } = await makeAdder();
+    const inMarker = c.internalEditor.getNode(c.inputPorts.find((p) => p.id === inAId)!.internalNodeId)!;
+    const outMarker = c.internalEditor.getNode(c.outputPorts.find((p) => p.id === outId)!.internalNodeId)!;
+    (inMarker as unknown as { label: string }).label = "Renamed In";
+    (outMarker as unknown as { label: string }).label = "Renamed Out";
+    c.syncPortLabels();
+    expect(c.inputPorts.find((p) => p.id === inAId)!.label).toBe("Renamed In");
+    expect(c.inputs[inAId]!.label).toBe("Renamed In"); // the rete socket the card renders
+    expect(c.outputPorts.find((p) => p.id === outId)!.label).toBe("Renamed Out");
+    expect(c.outputs[outId]!.label).toBe("Renamed Out");
+  });
+
   it("goalSeek round-trips through extractInit (deep-copied, not aliased)", async () => {
     const { c, inAId, outId } = await makeAdder();
     c.setGoalSeek({ inputPortId: inAId, outputPortId: outId, target: 42 });
