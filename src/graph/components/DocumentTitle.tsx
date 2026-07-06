@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { documentStore } from "../documentStore";
+import { docPropertiesPanel } from "../docMetaStore";
 import { requestConfirm } from "../confirmStore";
 import { IS_MOBILE } from "../coarse";
 import { SEEDS } from "../seeds";
@@ -189,6 +190,9 @@ export function DocumentTitle() {
           </div>
 
           <div className="solenoid-doctitle__sep" />
+          <button type="button" className="solenoid-doctitle__action" onClick={() => { setMenuOpen(false); docPropertiesPanel.open(); }}>
+            Document properties…
+          </button>
           <button type="button" className="solenoid-doctitle__action" onClick={() => { setMenuOpen(false); void documentStore.newBlank(); }}>
             New blank document
           </button>

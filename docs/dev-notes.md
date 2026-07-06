@@ -5,6 +5,26 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-06 pm — C-4 XLOOKUP + C-2 Switcher + F-1 palette + F-2 doc props)
+
+**F-2 Document Properties window (v1) — `docMetaStore.ts` + `components/DocumentProperties.tsx`.**
+Opened from the DocumentTitle menu ("Document properties…"). Reuses the Settings modal
+chrome. Fields: **Title** (the documentStore name, via renameCurrent), **Author** + **Tags**
+(new `docMetaStore` → `SavedGraph.meta {author?, tags?}`, carried in the text-form sidecar,
+applied on load in `loadGraph`, captured on edit via `documentStore.captureCurrent()`), and
+**Color palette (this document)** — a base dropdown ("Follow app" | built-in names) over
+`paletteStore.setDocPalette` (preserves any hand-authored overrides; retints live + rebuilds
+group dots + captures). Commit-on-Enter/blur text rows; CloseIcon (not a text ×). Tests:
+`docMeta.test.ts` (store trim/serialize + sidecar round-trip). DEFERRED (backlog): per-slot
+doc palette OVERRIDES editor + document-level FC defaults (a format-pipeline integration).
+**Persistence bug FIXED (surfaced by F-2).** `serializeGraph` round-trips through the text
+form, which carried `palette`/`meta`/etc. but NOT `comments`/`reportPalette` — both are set
+in `buildRawSavedGraph` yet silently dropped by the round-trip. Since the per-doc autosave
+uses `serializeGraph` (via `captureCurrent`), node-anchored **comments** (shipped 2026-07-03)
+and the report/export palette were being LOST across a save / doc-switch. Added both to the
+text-form sidecar (comments name-address their `nodeId` like pins); `docMeta.test.ts` locks
+the round-trip.
+
 ### SESSION DIGEST (2026-07-06 pm — C-4 XLOOKUP + C-2 Input Switcher + F-1 custom palette)
 
 **F-1 custom palette editor (`palette.ts` + `components/PaletteEditor.tsx`).** The app

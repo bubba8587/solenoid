@@ -25,6 +25,7 @@ import { presentationStore } from "./presentationStore";
 import { compositeEditorStore } from "./compositeEditorStore";
 import { commentStore, type SavedCommentData } from "./commentStore";
 import { paletteStore, reportPaletteStore } from "./palette";
+import { docMetaStore } from "./docMetaStore";
 import { loadRevealStore, revealWaves } from "./loadReveal";
 import { prefersReducedMotion } from "./coarse";
 
@@ -99,6 +100,9 @@ export interface SavedGraph {
   // canvas. Same shape as `palette`, same "no editor UI yet — hand/seed-authored"
   // precedent (see reportPaletteStore).
   reportPalette?: { base?: string; overrides?: Record<string, string> };
+  // Optional per-document metadata (F-2): author + tags, edited in Document
+  // Properties. The document TITLE is the documentStore name, not carried here.
+  meta?: { author?: string; tags?: string[] };
   // Pack provenance: the pack ids active when this graph was saved. A breadcrumb
   // for the dormant-pack story — it lets a future load tell the user which packs a
   // graph expects (e.g. when a node loads as a placeholder because its pack is off).
@@ -197,6 +201,8 @@ function buildRawSavedGraph(): SavedGraph | null {
   if (palette) g.palette = palette;
   const reportPalette = reportPaletteStore.reportPalette();
   if (reportPalette) g.reportPalette = reportPalette;
+  const meta = docMetaStore.docMeta();
+  if (meta) g.meta = meta;
   // Pack provenance breadcrumb: the packs active at save time (see SavedGraph.packs).
   const packs = allPacks().filter((p) => packsStore.isActive(p.id)).map((p) => p.id);
   if (packs.length > 0) g.packs = packs;
@@ -374,6 +380,7 @@ async function rebuildGraph(
   // node/group color resolves through the right palette as it's created.
   paletteStore.setDocPalette(g.palette ?? null);
   reportPaletteStore.setReportPalette(g.reportPalette ?? null);
+  docMetaStore.setDocMeta(g.meta ?? null);
 
   const reg = ctorRegistry();
   const idMap = new Map<string, string>(); // saved id → fresh id

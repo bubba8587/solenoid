@@ -1,0 +1,14 @@
+/* Document Properties window (F-2) — reuses the Settings modal chrome; only the
+   text fields need their own style. */
+.sol-docprops__input {
+  width: 190px;
+  height: 26px;
+  padding: 0 8px;
+  font-size: 12px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  color: var(--text);
+}
+.sol-docprops__input::placeholder { color: var(--text-muted); }
+.sol-docprops__input:focus { outline: none; border-color: var(--accent); }

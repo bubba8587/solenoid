@@ -16,6 +16,7 @@ import { ChartPopup } from "./graph/components/ChartPopup";
 import { PivotEditorPopup } from "./graph/components/PivotEditorPopup";
 import { ShortcutsOverlay } from "./graph/ShortcutsOverlay";
 import { Settings } from "./graph/Settings";
+import { DocumentProperties } from "./graph/components/DocumentProperties";
 import { HudStack } from "./graph/components/HudStack";
 import { SelectionActionsBar } from "./graph/components/SelectionActionsBar";
 import { RendererSpike } from "./graph/components/RendererSpike";
@@ -48,6 +49,7 @@ function App() {
       <PivotEditorPopup />
       <ShortcutsOverlay />
       <Settings />
+      <DocumentProperties />
       <HudStack />
       <SelectionActionsBar />
       <RendererSpike />

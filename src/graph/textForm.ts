@@ -253,8 +253,15 @@ export function writeTextForm(g: SavedGraph): string {
   if (g.pins && g.pins.length > 0) {
     sidecar.pins = g.pins.map((p) => ({ nodeId: nameOf(p.nodeId), outputKey: p.outputKey }));
   }
+  if (g.comments && g.comments.length > 0) {
+    // Node-anchored, so name-address the nodeId like pins/standoffs (names ARE ids
+    // on read). The comment's own `id` is not a node reference — kept as-is.
+    sidecar.comments = g.comments.map((c) => ({ ...c, nodeId: nameOf(c.nodeId) }));
+  }
   if (g.seedId !== undefined) sidecar.seedId = g.seedId;
   if (g.palette !== undefined) sidecar.palette = g.palette;
+  if (g.reportPalette !== undefined) sidecar.reportPalette = g.reportPalette;
+  if (g.meta !== undefined) sidecar.meta = g.meta;
   if (g.packs && g.packs.length > 0) sidecar.packs = g.packs;
 
   const header = lines.length > 0 ? lines.join("\n") + "\n" : "";
@@ -325,8 +332,13 @@ export function readTextForm(text: string): SavedGraph {
   if (Array.isArray(sidecar.pins) && sidecar.pins.length > 0) {
     g.pins = sidecar.pins as Pin[];
   }
+  if (Array.isArray(sidecar.comments) && sidecar.comments.length > 0) {
+    g.comments = sidecar.comments as SavedGraph["comments"];
+  }
   if (sidecar.seedId !== undefined) g.seedId = sidecar.seedId;
   if (sidecar.palette !== undefined) g.palette = sidecar.palette;
+  if (sidecar.reportPalette !== undefined) g.reportPalette = sidecar.reportPalette;
+  if (sidecar.meta !== undefined) g.meta = sidecar.meta as SavedGraph["meta"];
   if (Array.isArray(sidecar.packs) && sidecar.packs.length > 0) g.packs = sidecar.packs;
 
   return g;
