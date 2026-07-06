@@ -4,6 +4,14 @@
 // normal window.fetch (still CORS-limited — the error path explains that).
 import { isDesktop } from "./fileBridge";
 
+/** The User-Agent for desktop data fetches. It has to be a RECOGNIZED tool UA: some
+ *  endpoints sit behind a WAF that allowlists known clients (FRED's fredgraph.csv
+ *  serves the CSV to `curl`/`python-requests`/`wget` but DROPS the connection for a
+ *  browser string OR an unknown custom UA — that was the "error sending req"). The
+ *  reqwest default UA is also on the reject side, so we send a plain curl identifier —
+ *  the standard, widely-accepted choice for a headless data connector. */
+const DATA_FETCH_UA = "curl/8.4.0";
+
 export interface FetchedText {
   text: string;
   contentType: string;
@@ -29,7 +37,11 @@ export async function fetchText(url: string): Promise<FetchedText> {
   if (isDesktop() && absolute) {
     // Dynamic import so the browser bundle never pulls the Tauri plugin.
     const { fetch: tauriFetch } = await import("@tauri-apps/plugin-http");
-    const res = await tauriFetch(url);
+    // A plain, honest tool User-Agent — NOT a browser string. Some data endpoints
+    // (notably FRED's fredgraph.csv) return an EMPTY body to browser-like UAs but the
+    // real CSV to tools; others just want *a* UA. Setting one also avoids the reqwest
+    // default that some hosts drop the connection on.
+    const res = await tauriFetch(url, { headers: { "User-Agent": DATA_FETCH_UA } });
     if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`.trim());
     return { text: await res.text(), contentType: res.headers.get("content-type") ?? "" };
   }

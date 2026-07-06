@@ -35,13 +35,12 @@ describe("DataFeedNode gating", () => {
     expect(st.message).toMatch(/Settings/);
   });
 
-  it("storing the key clears needs-key; keyless providers (FRED, Stooq) never need one", () => {
+  it("storing the key clears needs-key; keyless FRED never needs one", () => {
     const av = new DataFeedNode({ provider: "alphavantage" });
     expect(av.needsKey()).toBe(true);
     apiKeyStore.set("alphavantage", "abc");
     expect(av.needsKey()).toBe(false);
 
     expect(new DataFeedNode({ provider: "fred" }).needsKey()).toBe(false);
-    expect(new DataFeedNode({ provider: "stooq" }).needsKey()).toBe(false);
   });
 });
