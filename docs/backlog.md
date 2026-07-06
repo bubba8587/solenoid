@@ -60,18 +60,6 @@ is archived).
   expander; must respect the format-model truth table (`formatModel.ts` — text
   family currently exposes only `textCase`).
 
-- [ ] **UX/a11y mechanical batch** (approved 2026-07-02) — MOSTLY DONE; verified &
-  shipped: socket-dot hover `title`, `Ctrl+/` on `e.key`, Group/Note draft-commit,
-  socket-legend open-state persistence, and `prefers-reduced-motion` snapping the
-  load reveal (2026-07-06). **Remaining: modal focus traps + the Settings `Switch`
-  accessible name.**
-- [ ] **Frame P3 pair** (decided 2026-07-02): (a) Rust builds the byte-identical
-  oracle key — replace `Cell::key()` + `\u{1}` joins with `serde_json` of the SAME
-  tagged-tuple encoding as JS `encodeCell`; cargo parity test with a `\u{1}` fixture.
-  (b) Infinity first-class in frames — IPC gains a non-finite sentinel
-  (`{"__nf":"inf"|…}`) BOTH directions; aggregates apply the scalar `guardFinite`
-  rule in both backends; parity tests. Also: document the desktop source-freeing
-  GC-timing behavior in subsystem-invariants (decided ACCEPT, docs-only).
 - [ ] **String lt/gt ordering** (byte vs locale) — small P3, decide + pin when touched.
 - [ ] **Collapsed Gauge mini-preview** (the last of the per-node set — Slicer
   summary + Sparkline square shipped; Chart/Treemap/Sankey/Histogram now collapse
@@ -168,15 +156,6 @@ is archived).
   the archived dev-notes (2026-06-20).
 - [ ] **Pinch-zoom on a real Mac trackpad** — should work via `e.ctrlKey` pinch
   wheel events; verify on hardware, intercept manually if not.
-
-## External data
-
-- [ ] **Finance / economic-data connection** (IN, author-reshaped 2026-07-05):
-  a connection-node family with **user-supplied API keys** (a Settings key store;
-  never bundled keys): **FRED** (series id → date/value frame; free user key),
-  **stocks** via a keyless/free source where possible (Stooq CSV needs no key;
-  Alpha Vantage as the keyed option). Rides the same `connectionStore` refresh
-  layer as Web Source; desktop CORS reach via `httpBridge`.
 
 ## Parked (superseded levers / far-future — revisit only if their trigger returns)
 

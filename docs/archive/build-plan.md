@@ -1,4 +1,14 @@
-# Autonomous build plan — 2026-07-05 (author-ratified)
+# Autonomous build plan — 2026-07-05 (author-ratified) — ARCHIVED (shipped)
+
+> **STATUS (2026-07-06): DONE except a handful of items now tracked in `../backlog.md`.**
+> Verified against code: Tiers A (A-1…A-4), B (B-1…B-4), C-1/C-3 (bar the Gauge-collapse
+> sub-item), C-2, C-4, D-1, E-2, F-1, and the F-2 window all SHIPPED. Still OPEN and moved
+> to the backlog: **D-2** (simulation inner display), **D-3** (aliasing/hidden-port UI),
+> **D-4** (pack variant-switch reconcile), **E-1** (Obsidian vault trio), the **F-2 remainder**
+> (per-slot doc palette overrides + document-level FC defaults), and the **Gauge collapse
+> preview**. This file is kept for the footprint/sequencing detail on those; the forward-looking
+> queue is `../backlog.md` and `../release-plan.md`.
+
 
 Every item here was individually decided by the author this session (see the
 daytime digest). **No design forks remain** — where a judgment call surfaces

@@ -57,7 +57,9 @@ src/
 
 | Module | Role |
 |---|---|
-| `process.ts` | Module singleton `_editor/_engine/_area`; `processGraph()` recompute + re-render; recalc generation (volatile nodes); graph-rebuild guard; history hook |
+| `process.ts` | Module singleton `_editor/_engine/_area`; `processGraph()` recompute + re-render; recalc generation (volatile nodes); graph-rebuild guard; history hook. **STAYS MAIN-ONLY** (persistence/serialize read it) |
+| `activeGraph.ts` (+`.test.ts`) | The canvas-substitution SEAM: `setActiveGraph(ctx\|null)` registers a substituting surface (composite drill-in), `getActive*`/`getOwningEditor` resolve override-else-main. Chrome/actions read these so a drill-in is first-class; `getEditor()`/persistence stay MAIN (locked by the test). Register on mount / clear on unmount; nested surfaces REPLACE (breadcrumb stack lives in compositeEditorStore) |
+| `areaPresets.ts` | Shared rete config for EVERY editing surface (main canvas + drill-in), so they can't drift: `solenoidClassicRenderSetup` (node/socket/connection components + socket-position watcher), `makeSolenoidConnectionFlow` (compat + self-loop + lock veto), `CappedZoom` + `installSurfacePointer` (proportional wheel + double-click-zoom suppression) |
 | `schemes.ts` | Rete scheme types (`SolenoidConnection` must use `ClassicPreset.Node` — variance) |
 | `rete-nodes.ts` | Node class re-exports for the editor |
 | `nodeRegistry.ts` | `NODE_COMPONENTS`: `[Ctor, Component]` rows — the one place a node binds its React component |
@@ -94,7 +96,8 @@ src/
 | `chartValue.ts` / `mermaidValue.ts` | First-class FIGURE values (`__chart` / `__mermaid`) riding the green `chart` "Special" socket; a node output, embedded in Reports |
 | `nodes/visual.ts` + `components/{ChartNode,MermaidNode,MermaidView}.tsx` | Visual nodes (Sparkline/Chart/Gauge/Heatmap/**Mermaid**); `MermaidView` dynamically imports mermaid.js (heavy) only when a diagram is on screen |
 | `components/inlineRefDisplay.tsx` | The ONE render path for a Report/Note inline `` `=name` `` ref → live value by kind (scalar/frame/chart/mermaid/lambda-KaTeX); `CollapsibleFigure` (Report embeds fold); `InlineRefBody` swaps `=name` code spans + `![[note]]` embeds via imperative innerHTML + portals |
-| `compositeEditorStore.ts` + `components/CompositeEditorOverlay.tsx` | Composite drill-in: a breadcrumb STACK of composite instances (multi-layer, `Canvas ▸ A ▸ B`); full-bleed overlay; recompute retargets `stack[0]`; `compositeLogic.ts` = create/unpack |
+| `compositeEditorStore.ts` + `components/CompositeEditorOverlay.tsx` | Composite drill-in, now a FIRST-CLASS canvas: a breadcrumb STACK of composite instances (multi-layer, `Canvas ▸ A ▸ B`); the subgraph canvas sits IN the canvas region (`z-index:4`, `html.sol-drilled-in`) so the app chrome stays and drives it via `activeGraph.ts`; own minimap + `installSurfacePointer` + `CompositeRunControls` panel; recompute retargets `stack[0]`; `compositeLogic.ts` = create/unpack |
+| `compositeStaleStore.ts` | Which composites are STALE (a heavy run mode — goal-seek/scenarios/data-table/simulation — whose inputs/config changed since the last Solve). Drives the arm-and-run status dot; a module store because a HELD composite's output doesn't change, so processGraph's re-render pruning would skip the card |
 | `presentationStore.ts` + `components/PresentationOverlay.tsx` | Presenter mode: full-screen slideshow, hides chrome (`html.solenoid-presenting`), flies the camera per step (click/Space/→/←/Esc) |
 
 ### Relational engine (WS2/WS3 — the FrameBackend seam + verbs)
@@ -242,7 +245,9 @@ The web layer reaches `ipc.rs` via `src/graph/ipcBridge.ts` (`engineAvailable`/
 `ipcInvoke`/`enginePing`, guarded by `isDesktop()` like `fileBridge.ts`); a Rust
 `Err` arrives as a tagged `SolError`. The Polars engine (WS2) is built — see
 `src/engine.rs` above (the original browser-vs-desktop scoping is archived as
-`archive/compute-architecture.md`). Solver/sweep stays scoped, not built.
+`archive/compute-architecture.md`). Solve/sweep now ship as COMPOSITE run modes
+(goal-seek bisection/secant, scenarios, data-table, simulation — JS, arm-and-run);
+there is no solver in the Rust engine itself.
 
 ---
 
@@ -254,6 +259,8 @@ The web layer reaches `ipc.rs` via `src/graph/ipcBridge.ts` (`engineAvailable`/
 | `subsystem-invariants.md` | living | the "don't break this" deep-dives — cable routing, group push, standoffs, tidy, resizable nodes, error values, unit flow, alerts |
 | `dev-notes.md` | living log | session DIGESTS + open problems only (per-item history in `archive/dev-notes-history.md`) |
 | `backlog.md` | living | OPEN items only — the task queue (landed items are deleted) |
+| `release-plan.md` | living | the sequenced path to the next tagged release — readiness, cut line, checklist, author decisions |
+| `archive/build-plan.md` | archived | the 2026-07-05 autonomous build plan (Tiers A–F, shipped bar a few backlog items) |
 | `format-model.md` | living | the FC function model — control truth table + precision rule (mirrored in `formatModel.ts`) |
 | `value-semantics.md` | living | null/NaN/Infinity/SolError semantics per computation context (all shipped) |
 | `v2.0/` | living plans | the remaining build bundles — 05 units (A4), 08 transpiler, 10 sensitivity, 12 uncertain/money; built bundles archived |
