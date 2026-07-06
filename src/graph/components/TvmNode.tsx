@@ -2,7 +2,8 @@ import { TVM_OP_META, PAYMENT_TIMING_META } from "../rete-nodes";
 import type { TvmNode as TvmNodeType, TvmOp, PaymentTiming } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
-import { getEditor, processGraph } from "../process";
+import { processGraph } from "../process";
+import { getActiveEditor } from "../activeGraph";
 
 const OPS = (Object.keys(TVM_OP_META) as TvmOp[]).map((op) => ({
   value: op,
@@ -28,7 +29,7 @@ export function TvmComponent({ data, emit }: NodeProps<TvmNodeType>) {
   async function handleOpChange(next: TvmOp) {
     // The input matching `next` is about to be hidden (we solve for it).
     // Drop any cable wired to it so it doesn't dangle to a hidden socket.
-    const editor = getEditor();
+    const editor = getActiveEditor(); // active graph: TVM solve-for change inside a drill-in
     if (editor) {
       const stale = editor.getConnections().filter(
         (c) => c.target === data.id && c.targetInput === next,

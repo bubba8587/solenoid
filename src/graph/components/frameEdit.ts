@@ -1,6 +1,7 @@
 import type { GetColumnNode, AddColumnNode, SplitFrameNode } from "../rete-nodes";
 import { getColumnOutput, addColumnInput, splitMatrixOutput, type GetColumnReadAs, type AddColumnAddAs, type SplitColType } from "../rete-nodes";
-import { getEditor, getArea, processGraph } from "../process";
+import { processGraph } from "../process";
+import { getActiveEditor, getActiveArea } from "../activeGraph";
 import { retypeOutputCables, reconcileFcTypes } from "../fcReconcile";
 
 /**
@@ -16,8 +17,8 @@ export async function applyGetColumnReadAs(node: GetColumnNode, readAs: GetColum
   if (node.readAs === readAs) return;
   node.readAs = readAs;
 
-  const editor = getEditor();
-  const area = getArea();
+  const editor = getActiveEditor(); // active graph: frame-node retype inside a drill-in
+  const area = getActiveArea();
   const out = node.outputs.values;
   if (out) out.socket = getColumnOutput(readAs).socket;
   if (editor && area) await retypeOutputCables(editor, area, node.id, "values");
@@ -35,8 +36,8 @@ export async function applyAddColumnAddAs(node: AddColumnNode, addAs: AddColumnA
   if (node.addAs === addAs) return;
   node.addAs = addAs;
 
-  const editor = getEditor();
-  const area = getArea();
+  const editor = getActiveEditor(); // active graph: frame-node retype inside a drill-in
+  const area = getActiveArea();
   if (editor) {
     const conns = editor.getConnections().filter(
       (c) => c.target === node.id && c.targetInput === "values",
@@ -63,8 +64,8 @@ export async function applySplitColType(node: SplitFrameNode, colType: SplitColT
   if (node.colType === colType) return;
   node.colType = colType;
 
-  const editor = getEditor();
-  const area = getArea();
+  const editor = getActiveEditor(); // active graph: frame-node retype inside a drill-in
+  const area = getActiveArea();
   const out = node.outputs.matrix;
   if (out) out.socket = splitMatrixOutput(colType).socket;
   if (editor && area) await retypeOutputCables(editor, area, node.id, "matrix");

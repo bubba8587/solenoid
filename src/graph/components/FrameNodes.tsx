@@ -35,7 +35,8 @@ import type { FilterOp, FilterCombine, JoinHow, AsofDirection, AggOp, DecisionNo
 import type { FilterCondConfig } from "../nodes/frame";
 import { CubeDisplay } from "./CubeDisplay";
 import { parseFrameSource, frameSourceToText, type FrameSourceColumn } from "../frame";
-import { processGraph, getEditor, getArea, bumpConnectionVersion } from "../process";
+import { processGraph, bumpConnectionVersion } from "../process";
+import { getActiveEditor, getActiveArea } from "../activeGraph";
 import { collapseStore } from "../collapseStore";
 import { pivotEditor } from "../pivotEditorStore";
 import { InlineInputs, InlineNumberField, InlineTextField, useConnectedInputs } from "./inlineInput";
@@ -177,12 +178,12 @@ export function FilterFrameComponent({ data, emit }: NodeProps<FilterFrameNodeTy
     const added = Object.keys(data.inputs).filter((k) => !before.has(k));
     const aKey = added[0];
     if (aKey) pushRowAddUndo(data, added, () => data.removeValuePair(aKey));
-    await getArea()?.update("node", data.id);
+    await getActiveArea()?.update("node", data.id);
     await processGraph();
   }
 
   async function removePair(aKey: string, bKey: string) {
-    const editor = getEditor();
+    const editor = getActiveEditor(); // active graph: Build Frame rows edited inside a drill-in
     if (editor) {
       for (const c of editor.getConnections()) {
         if (c.target === data.id && (c.targetInput === aKey || c.targetInput === bKey)) {
@@ -192,7 +193,7 @@ export function FilterFrameComponent({ data, emit }: NodeProps<FilterFrameNodeTy
     }
     pushRowRemovalUndo(data, [aKey, bKey], () => data.removeValuePair(aKey));
     data.removeValuePair(aKey);
-    await getArea()?.update("node", data.id);
+    await getActiveArea()?.update("node", data.id);
     bumpConnectionVersion();
     await processGraph();
   }

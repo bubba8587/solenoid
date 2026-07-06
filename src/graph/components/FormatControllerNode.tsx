@@ -15,7 +15,8 @@ import {
 import { packsStore } from "../packs";
 import { activePackUnits, activePackFormats } from "../fcExtensions";
 import { SOCKET_COLORS } from "../sockets";
-import { processGraph, getEditor, repositionDockedNodes } from "../process";
+import { processGraph, repositionDockedNodes } from "../process";
+import { getOwningEditor } from "../activeGraph";
 import { NodeCard } from "./NodeCard";
 import { NodeSocket } from "./NodeSocket";
 import { SegToggle } from "./SegToggle";
@@ -131,7 +132,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
   }, [node.socketDataType, node.unit, node.format, node.forwarding, node.lockedByConvert]);
 
   function syncNode() {
-    const editor = getEditor();
+    const editor = getOwningEditor(node.id); // refresh FCs in this node's own graph (drill-in too)
     if (editor) {
       // Refresh every FC, not just this one: a unit change here must propagate
       // to any downstream forwarding FC (whose unit is locked to its upstream).

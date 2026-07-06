@@ -3,7 +3,8 @@ import { copyText } from "../clipboard";
 import { commentStore, commentsPanelUi } from "../commentStore";
 import type { ClassicPreset } from "rete";
 import type { ClassicScheme, RenderEmit } from "rete-react-plugin";
-import { processGraph, getEditor } from "../process";
+import { processGraph } from "../process";
+import { getOwningEditor } from "../activeGraph";
 import { sharedAnnotationResolver } from "../unitFlow";
 import { NodeCard } from "./NodeCard";
 import { NodeSocket, MeasuredSocketRow } from "./NodeSocket";
@@ -504,7 +505,9 @@ export function ValueDisplay({
   // Guarded to those nodes so sources/transforms (which carry nothing) stay raw and
   // never pay the graph walk; the resolver returns undefined for them anyway.
   if (!ann && ctxNodeId) {
-    const editor = getEditor();
+    // Owning editor, not main: a node rendered inside a Composite drill-in lives in
+    // the internal editor, so resolve its docked/carried FC there (see getOwningEditor).
+    const editor = getOwningEditor(ctxNodeId);
     const node = editor?.getNode(ctxNodeId) as
       (Record<string, unknown> & { outputs?: Record<string, unknown> }) | undefined;
     const carries = !!node && (node.passesUnitThrough === true || typeof node.unitPassInputs === "function");

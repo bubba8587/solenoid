@@ -1,5 +1,6 @@
 import type { ExpressionNode, LambdaNode } from "../rete-nodes";
-import { getEditor, getArea, processGraph } from "../process";
+import { processGraph } from "../process";
+import { getActiveEditor, getActiveArea } from "../activeGraph";
 import { INPUT_ROW_PITCH } from "./inlineInput";
 
 // Default card height for an Expression node: header + the (now taller) formula
@@ -21,8 +22,8 @@ export async function applyExprChange(node: ExpressionNode, newExpr: string): Pr
   node.expr = newExpr;
   const { removed } = node._rebuild();
 
-  const editor = getEditor();
-  const area = getArea();
+  const editor = getActiveEditor(); // active graph: Expression/LAMBDA edited inside a drill-in
+  const area = getActiveArea();
 
   if (editor && removed.length > 0) {
     const conns = editor.getConnections().filter(
@@ -59,8 +60,8 @@ export async function applyLambdaChange(
   if (change.params !== undefined) node.params = change.params;
   const { removed } = node._rebuild();
 
-  const editor = getEditor();
-  const area = getArea();
+  const editor = getActiveEditor(); // active graph: Expression/LAMBDA edited inside a drill-in
+  const area = getActiveArea();
 
   if (editor && removed.length > 0) {
     const conns = editor.getConnections().filter(
@@ -85,7 +86,7 @@ export async function applyLambdaChange(
  * `resize()` writes to (the node view's first non-span child = the `.solenoid-node`
  * card). Width is left alone — only the vertical pin causes the overflow.
  */
-function clearPinnedHeight(area: NonNullable<ReturnType<typeof getArea>>, nodeId: string): void {
+function clearPinnedHeight(area: NonNullable<ReturnType<typeof getActiveArea>>, nodeId: string): void {
   const card = area.nodeViews
     .get(nodeId)
     ?.element.querySelector<HTMLElement>("*:not(span):not([fragment])");

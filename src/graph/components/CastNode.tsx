@@ -2,7 +2,8 @@
 import { useEffect, useState } from "react";
 import type { CastNode as CastNodeType } from "../rete-nodes";
 import { CAST_TARGET_META, castOutput, type CastTarget } from "../rete-nodes";
-import { getEditor, getArea, processGraph } from "../process";
+import { processGraph } from "../process";
+import { getActiveEditor, getActiveArea } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
@@ -25,8 +26,9 @@ export async function applyCastTarget(node: CastNodeType, target: CastTarget): P
   if (node.target === target) return;
   node.target = target;
 
-  const editor = getEditor();
-  const area = getArea();
+  // Active graph: a Cast inside a Composite drill-in retypes its OWN graph's cables.
+  const editor = getActiveEditor();
+  const area = getActiveArea();
   const out = node.outputs.result;
   if (out) out.socket = castOutput(target).socket;
   if (editor && area) await retypeOutputCables(editor, area, node.id, "result");

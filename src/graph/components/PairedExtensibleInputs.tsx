@@ -1,7 +1,8 @@
 import { useSyncExternalStore } from "react";
 import type { ClassicPreset } from "rete";
 import type { ClassicScheme, RenderEmit } from "rete-react-plugin";
-import { getEditor, getArea, processGraph, bumpConnectionVersion } from "../process";
+import { processGraph, bumpConnectionVersion } from "../process";
+import { getActiveEditor, getActiveArea } from "../activeGraph";
 import { collapseStore } from "../collapseStore";
 import {
   useConnectedInputs,
@@ -70,12 +71,12 @@ export function PairedExtensibleInputs({
     const added = Object.keys(node.inputs).filter((k) => !before.has(k));
     const aKey = added[0];
     if (aKey) pushRowAddUndo(node, added, () => node.removeValuePair(aKey));
-    await getArea()?.update("node", node.id);
+    await getActiveArea()?.update("node", node.id);
     await processGraph();
   }
 
   async function removePair(aKey: string, bKey: string) {
-    const editor = getEditor();
+    const editor = getActiveEditor(); // active graph: pairs edited inside a drill-in
     if (editor) {
       for (const c of editor.getConnections()) {
         if (c.target === node.id && (c.targetInput === aKey || c.targetInput === bKey)) {
@@ -86,7 +87,7 @@ export function PairedExtensibleInputs({
     // AFTER the connection removals, BEFORE the removal (see ExtensibleInputs).
     pushRowRemovalUndo(node, [aKey, bKey], () => node.removeValuePair(aKey));
     node.removeValuePair(aKey);
-    await getArea()?.update("node", node.id);
+    await getActiveArea()?.update("node", node.id);
     bumpConnectionVersion(); // re-route cables on rows that shifted up
     await processGraph();
   }

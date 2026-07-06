@@ -1,7 +1,8 @@
 import { useSyncExternalStore } from "react";
 import type { ClassicPreset } from "rete";
 import type { ClassicScheme, RenderEmit } from "rete-react-plugin";
-import { getEditor, getArea, processGraph, bumpConnectionVersion, pushHistory } from "../process";
+import { processGraph, bumpConnectionVersion, pushHistory } from "../process";
+import { getActiveEditor, getActiveArea } from "../activeGraph";
 import { collapseStore } from "../collapseStore";
 import { SolenoidSocket } from "../sockets";
 import {
@@ -45,7 +46,7 @@ type RowHost = {
   inputs: Record<string, { socket: ClassicPreset.Socket; label?: string } | undefined>;
 };
 function refreshAfterRowChange(node: RowHost): void {
-  void getArea()?.update("node", node.id);
+  void getActiveArea()?.update("node", node.id);
   bumpConnectionVersion();
   void processGraph();
 }
@@ -139,12 +140,12 @@ export function ExtensibleInputs({
   async function addRow() {
     const key = node.addValueInput();
     pushRowAddUndo(node, [key], () => node.removeValueInput(key));
-    await getArea()?.update("node", node.id);
+    await getActiveArea()?.update("node", node.id);
     await processGraph();
   }
 
   async function removeRow(key: string) {
-    const editor = getEditor();
+    const editor = getActiveEditor(); // active graph: rows edited inside a drill-in
     if (editor) {
       for (const c of editor.getConnections()) {
         if (c.target === node.id && c.targetInput === key) await editor.removeConnection(c.id);
@@ -154,7 +155,7 @@ export function ExtensibleInputs({
     // BEFORE the removal itself (captures the live Input object + key order).
     pushRowRemovalUndo(node, [key], () => node.removeValueInput(key));
     node.removeValueInput(key);
-    await getArea()?.update("node", node.id);
+    await getActiveArea()?.update("node", node.id);
     bumpConnectionVersion(); // re-route cables on rows that shifted up
     await processGraph();
   }

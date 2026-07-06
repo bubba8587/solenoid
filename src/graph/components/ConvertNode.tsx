@@ -4,7 +4,8 @@ import { CONVERT_UNIT_DEFS, CONVERT_CATEGORY_LABELS, FormatControllerNode } from
 import {
   applyFormatStyle, FORMAT_STYLE_GROUPS, FORMAT_STYLE_LABELS, type FormatStyle,
 } from "../formatAnnotationStore";
-import { processGraph, getEditor } from "../process";
+import { processGraph } from "../process";
+import { getOwningEditor } from "../activeGraph";
 import { collapseStore } from "../collapseStore";
 import { NodeSocket } from "./NodeSocket";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
@@ -89,7 +90,7 @@ export function ConvertComponent({ data, emit }: NodeProps<ConvertNodeType>) {
   // Convert has unit primacy: when its from/to changes, any adjacent FC must
   // relock to the new unit. Re-project every FC's annotation, like FC's syncNode.
   function refreshFcs() {
-    const editor = getEditor();
+    const editor = getOwningEditor(node.id); // relock FCs in this node's own graph (drill-in too)
     if (!editor) return;
     for (const n of editor.getNodes()) {
       if (n instanceof FormatControllerNode) n.refreshAnnotation(editor);

@@ -2,7 +2,7 @@ import type { AlertNode as AlertNodeType, AlertMode } from "../rete-nodes";
 import { ALERT_MODE_KEYS } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
-import { getEditor } from "../process";
+import { getActiveEditor } from "../activeGraph";
 
 // The trigger condition. Picking one swaps which input rows show (ALERT_MODE_KEYS)
 // and what makes the alert fire.
@@ -34,7 +34,7 @@ export function AlertComponent({ data, emit }: NodeProps<AlertNodeType>) {
     // Inputs that leave the active set are about to be hidden — drop any cable
     // wired to them so it doesn't dangle to an unrendered socket (same as TVM).
     const keep = new Set(ALERT_MODE_KEYS[next]);
-    const editor = getEditor();
+    const editor = getActiveEditor(); // active graph: an Alert inside a drill-in edits its own graph
     if (editor) {
       const stale = editor.getConnections().filter(
         (c) => c.target === data.id && typeof c.targetInput === "string" && !keep.has(c.targetInput),
