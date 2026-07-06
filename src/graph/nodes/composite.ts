@@ -3,7 +3,7 @@ import { DataflowEngine } from "rete-engine";
 import type { Schemes, SolenoidNode, SolenoidConnection } from "../schemes";
 import { anySocket } from "../sockets";
 import { extractInit } from "../copyPaste";
-import { installErrorGuards, solError } from "../errorValue";
+import { installErrorGuards, solError, type SolError } from "../errorValue";
 import { installInputCoercion } from "../coerceInputs";
 import { loopMembers } from "../process";
 import type { NodeCtor } from "../nodeCtorRegistry";
@@ -70,7 +70,17 @@ export interface CompositeInternalSnapshot {
 // port as a list, instead of a single scalar. Only list modes actually wired
 // up appear here; a mode gets added to this union in the same commit its
 // data() branch + UI land (see CompositeComponent's run-mode dropdown).
-export type CompositeRunMode = "single" | "scenarios" | "data-table" | "simulation";
+export type CompositeRunMode = "single" | "scenarios" | "data-table" | "simulation" | "goal-seek";
+
+/** Goal-seek mode: drive ONE exposed input port until a chosen output port reaches
+ *  `target`. Excel's Goal Seek. Both ports are `any`-typed (no static numeric type),
+ *  so numeric-ness is enforced at solve time — a non-numeric objective or a failure
+ *  to converge yields a `#CONV!` on the target output. */
+export interface CompositeGoalSeek {
+  inputPortId: string;
+  outputPortId: string;
+  target: number;
+}
 
 /** One named input set for Scenarios mode. `overrides` is keyed by
  *  CompositeInputPort.id; a port with no entry falls back to its normal
@@ -165,6 +175,11 @@ export class CompositeNode extends ClassicPreset.Node {
   /** Simulation mode's step count — the container parameter the plan calls
    *  for. Clamped to >= 1 at run time (see runSimulation). */
   simulationSteps: number;
+  /** Goal-seek config (null until the mode is configured). */
+  goalSeek: CompositeGoalSeek | null;
+  /** The solved driver value (or a `#CONV!` SolError), surfaced in the editor.
+   *  Component-read only; not persisted (re-solved on every pass). */
+  goalSeekResult: number | SolError | null = null;
   /** Internal-graph layout, keyed by LIVE internal node id (remapped on
    *  hydrate, like port internalNodeIds). Written at collapse time and by the
    *  drill-in editor on close; read by the editor on open and by unpack. */
@@ -186,6 +201,7 @@ export class CompositeNode extends ClassicPreset.Node {
     scenarios?: CompositeScenario[];
     dataTableValues?: CompositeDataTableValues;
     simulationSteps?: number;
+    goalSeek?: CompositeGoalSeek;
   }) {
     super("Composite");
     this.label = init?.label ?? "Composite";
@@ -199,6 +215,7 @@ export class CompositeNode extends ClassicPreset.Node {
       Object.entries(init?.dataTableValues ?? {}).map(([k, v]) => [k, [...v]]),
     );
     this.simulationSteps = init?.simulationSteps ?? 10;
+    this.goalSeek = init?.goalSeek ? { ...init.goalSeek } : null;
     this.internalEditor = new NodeEditor<Schemes>();
     // Same two wrappers the outer Canvas installs on the real editor (see
     // errorIntegration.test.ts's makeEditor): coercion first (inner), so a
@@ -332,6 +349,7 @@ export class CompositeNode extends ClassicPreset.Node {
     if (this.inputs[id]) this.removeInput(id);
     for (const s of this.scenarios) delete s.overrides[id];
     delete this.dataTableValues[id];
+    if (this.goalSeek?.inputPortId === id) this.goalSeek = null;
   }
 
   /** Drop an output port + its outer socket. Same caller contract as above. */
@@ -340,6 +358,7 @@ export class CompositeNode extends ClassicPreset.Node {
     this.outputPorts = this.outputPorts.filter((p) => p.id !== id);
     if (this.outputs[id]) this.removeOutput(id);
     delete this.cachedOutputs[id];
+    if (this.goalSeek?.outputPortId === id) this.goalSeek = null;
   }
 
   // ─── Scenario mutators (called by the component's editor UI) ────────────────
@@ -373,6 +392,19 @@ export class CompositeNode extends ClassicPreset.Node {
   setDataTableValues(portId: string, values: unknown[]): void {
     if (values.length === 0) delete this.dataTableValues[portId];
     else this.dataTableValues[portId] = values;
+  }
+
+  // ─── Goal-seek mutator ───────────────────────────────────────────────────
+
+  /** Merge a patch into the goal-seek config (creating it, defaulting the ports
+   *  to the first exposed input / first output, if not set yet). */
+  setGoalSeek(patch: Partial<CompositeGoalSeek>): void {
+    const base: CompositeGoalSeek = this.goalSeek ?? {
+      inputPortId: this.inputPorts.find((p) => p.exposure === "exposed")?.id ?? "",
+      outputPortId: this.outputPorts[0]?.id ?? "",
+      target: 0,
+    };
+    this.goalSeek = { ...base, ...patch };
   }
 
   // ─── Compute ─────────────────────────────────────────────────────────────
@@ -602,10 +634,102 @@ export class CompositeNode extends ClassicPreset.Node {
       } else {
         outputs = await this.runPass(inputs);
       }
+    } else if (this.runMode === "goal-seek" && this.goalSeek) {
+      outputs = await this.runGoalSeek(inputs, this.goalSeek);
     } else {
       outputs = await this.runPass(inputs);
     }
     this.cachedOutputs = outputs;
     return outputs;
   }
+
+  // ─── Goal-seek solver ────────────────────────────────────────────────────
+  /** Drive `gs.inputPortId` until `gs.outputPortId` reaches `gs.target`, then run
+   *  one final pass at the solution so every output box reflects it. On failure the
+   *  target output carries a `#CONV!` (and `goalSeekResult` too). The objective is a
+   *  full internal pass per evaluation, so the solver keeps evaluation counts low. */
+  private async runGoalSeek(inputs: Record<string, unknown[]>, gs: CompositeGoalSeek): Promise<Record<string, unknown>> {
+    const objective = async (x: number): Promise<number> => {
+      const row = await this.runPass(inputs, { [gs.inputPortId]: x });
+      return toNumber(row[gs.outputPortId]) - gs.target;
+    };
+    // Seed from the input's current wired/default value (else 0).
+    const seedRaw = inputs[gs.inputPortId]?.[0] ?? this.inputPorts.find((p) => p.id === gs.inputPortId)?.default ?? 0;
+    const seed = Number.isFinite(toNumber(seedRaw)) ? toNumber(seedRaw) : 0;
+    const solved = await solveGoalSeek(objective, seed);
+    if (solved === null) {
+      const err = solError("#CONV!", `Goal seek couldn't drive "${gs.inputPortId}" to make "${gs.outputPortId}" reach ${gs.target}`);
+      this.goalSeekResult = err;
+      const row = await this.runPass(inputs); // show the un-solved state
+      row[gs.outputPortId] = err;
+      return row;
+    }
+    this.goalSeekResult = solved;
+    return this.runPass(inputs, { [gs.inputPortId]: solved });
+  }
+}
+
+/** number / boolean / numeric-string → number, else NaN. Local (no excelFunctions
+ *  dependency) — goal-seek only needs to read one scalar output as a number. */
+function toNumber(v: unknown): number {
+  if (typeof v === "number") return v;
+  if (typeof v === "boolean") return v ? 1 : 0;
+  if (typeof v === "string" && v.trim() !== "") return Number(v);
+  return NaN;
+}
+
+/** Solve f(x) = 0 for x (f = observed output − target). Secant first (few
+ *  evaluations for smooth objectives), then a bracket-expand + bisection fallback
+ *  for robustness. Returns null when it can't converge (non-numeric objective, no
+ *  sign change found, or a diverging step). */
+async function solveGoalSeek(f: (x: number) => Promise<number>, x0: number): Promise<number | null> {
+  const FTOL = 1e-7;   // |output − target|
+  const XTOL = 1e-9;   // step size
+  const MAX = 80;
+
+  let a = x0;
+  let fa = await f(a);
+  if (!Number.isFinite(fa)) return null; // non-numeric objective — can't solve
+  if (Math.abs(fa) <= FTOL) return a;
+  // Second seed: a small perturbation (scaled to x0 so it works at any magnitude).
+  let b = a + (a === 0 ? 1 : Math.abs(a) * 1e-3);
+  let fb = await f(b);
+
+  // ── Secant ──
+  for (let i = 0; i < MAX && Number.isFinite(fb); i++) {
+    if (Math.abs(fb) <= FTOL) return b;
+    const denom = fb - fa;
+    if (denom === 0) break;
+    const c = b - (fb * (b - a)) / denom;
+    if (!Number.isFinite(c)) break;
+    const step = Math.abs(c - b);
+    a = b; fa = fb;
+    b = c; fb = await f(c);
+    // A tiny step with a small residual is a solution; a tiny step with a LARGE
+    // residual means secant stalled — fall through to the bracketing fallback.
+    if (step < XTOL) { if (Number.isFinite(fb) && Math.abs(fb) <= 1e-4) return c; break; }
+  }
+
+  // ── Bracket-expand + bisection fallback ──
+  let lo = x0;
+  let flo = await f(lo);
+  if (!Number.isFinite(flo)) return null;
+  let hi = x0 + (x0 === 0 ? 1 : Math.abs(x0));
+  let fhi = await f(hi);
+  let span = Math.abs(hi - lo) || 1;
+  for (let i = 0; i < 60 && (!Number.isFinite(fhi) || Math.sign(flo) === Math.sign(fhi)); i++) {
+    span *= 2;
+    // Expand outward on both sides alternately so we bracket a root either direction.
+    hi = x0 + (i % 2 === 0 ? span : -span);
+    fhi = await f(hi);
+  }
+  if (!Number.isFinite(fhi) || Math.sign(flo) === Math.sign(fhi)) return null; // never bracketed
+  for (let i = 0; i < 200; i++) {
+    const mid = (lo + hi) / 2;
+    const fm = await f(mid);
+    if (!Number.isFinite(fm)) return null;
+    if (Math.abs(fm) <= FTOL || Math.abs(hi - lo) < XTOL) return mid;
+    if (Math.sign(fm) === Math.sign(flo)) { lo = mid; flo = fm; } else { hi = mid; }
+  }
+  return (lo + hi) / 2;
 }

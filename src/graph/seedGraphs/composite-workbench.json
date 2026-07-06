@@ -64,7 +64,34 @@
     {"id":"note2","type":"NoteNode","x":-40,"y":760,"init":{"label":"#CIRC! on the open canvas","body":"# The same loop, unboxed\nThese two cards feed each other OUTSIDE a Simulate container, so the pass dead-ends them with **#CIRC!** instead of recursing — and everything downstream shows the propagated error. Collapse them into a composite (Ctrl+Shift+G) and switch it to Simulation to resolve the loop.","color":"red","width":430,"height":190}},
     {"id":"loopA","type":"ArithmeticNode","x":-40,"y":980,"init":{"label":"Feeds B","op":"add"},"literals":{"b":1}},
     {"id":"loopB","type":"ArithmeticNode","x":300,"y":980,"init":{"label":"Feeds A","op":"add"},"literals":{"b":1}},
-    {"id":"circDisp","type":"DisplayNode","x":640,"y":980,"init":{"label":"Propagates the error"}}
+    {"id":"circDisp","type":"DisplayNode","x":640,"y":980,"init":{"label":"Propagates the error"}},
+
+    {"id":"note-gs","type":"NoteNode","x":-40,"y":1260,"init":{"label":"Goal seek — solve backwards","body":"# Goal-seek mode\nThis composite computes **profit = units × $25 margin − $500 fixed**. The container is in **Goal seek** mode: it drives the **Units** input until **Profit** hits the target (0 = break-even) and shows the solved value (20). Excel's Goal Seek, as a run mode.","color":"teal","width":430,"height":180}},
+    {"id":"gsComp","type":"CompositeNode","x":300,"y":1440,"init":{
+      "label":"Break-even finder",
+      "runMode":"goal-seek",
+      "goalSeek":{"inputPortId":"p_units","outputPortId":"p_profit","target":0},
+      "inputPorts":[
+        {"id":"p_units","label":"Units","exposure":"exposed","tier":"basic","internalNodeId":"m_units","default":10}
+      ],
+      "outputPorts":[
+        {"id":"p_profit","label":"Profit","tier":"basic","internalNodeId":"m_profit"}
+      ],
+      "internal":{
+        "nodes":[
+          {"id":"m_units","type":"CompositeInputNode","init":{"label":"Units"},"x":0,"y":60},
+          {"id":"rev","type":"ArithmeticNode","init":{"label":"× $25 margin","op":"mul"},"literals":{"b":25},"x":260,"y":40},
+          {"id":"profit","type":"ArithmeticNode","init":{"label":"− $500 fixed","op":"sub"},"literals":{"b":500},"x":520,"y":40},
+          {"id":"m_profit","type":"CompositeOutputNode","init":{"label":"Profit"},"x":780,"y":40}
+        ],
+        "connections":[
+          {"source":"m_units","sourceOutput":"value","target":"rev","targetInput":"a"},
+          {"source":"rev","sourceOutput":"result","target":"profit","targetInput":"a"},
+          {"source":"profit","sourceOutput":"result","target":"m_profit","targetInput":"value"}
+        ]
+      }
+    }},
+    {"id":"gsDisp","type":"DisplayNode","x":640,"y":1440,"init":{"label":"Profit at solution"}}
   ],
   "connections": [
     {"source":"price","sourceOutput":"value","target":"lineComp","targetInput":"p_price"},
@@ -76,6 +103,8 @@
 
     {"source":"loopA","sourceOutput":"result","target":"loopB","targetInput":"a"},
     {"source":"loopB","sourceOutput":"result","target":"loopA","targetInput":"a"},
-    {"source":"loopB","sourceOutput":"result","target":"circDisp","targetInput":"in"}
+    {"source":"loopB","sourceOutput":"result","target":"circDisp","targetInput":"in"},
+
+    {"source":"gsComp","sourceOutput":"p_profit","target":"gsDisp","targetInput":"in"}
   ]
 }

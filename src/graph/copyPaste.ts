@@ -173,6 +173,11 @@ export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
       Object.entries(n.dataTableValues as Record<string, unknown[]>).map(([k, v]) => [k, [...v]]),
     );
   }
+  // Composite goal-seek config (input/output port ids + target). Deep-copy; null
+  // means unconfigured, so drop it rather than persisting a null.
+  if (n.goalSeek && typeof n.goalSeek === "object") {
+    init.goalSeek = { ...(n.goalSeek as object) };
+  }
   if (typeof n.snapshotInternal === "function") {
     init.internal = (n.snapshotInternal as () => unknown)();
   }

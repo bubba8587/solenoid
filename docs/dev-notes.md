@@ -5,6 +5,31 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-06 evening — command palette overhaul + D-1 goal-seek)
+Local dev server; commit freely, no pushes. tsc + full vitest (2271) green.
+- **Command palette overhaul:** extracted a shared `menuModel.ts` (one source for the
+  menu bar AND the palette — every menu action is a palette command, incl. Document
+  properties, which also moved to the File menu); dropped the per-node catalog entries
+  (Add node… + the `A` hotkey cover browsing); added an **always-on docked palette**
+  setting (click-through scrim, focus→suggestions, Enter/Esc keep it docked); moved the
+  align/distribute pill to the top-centre (clears the header at 76px); a persisted
+  `commandRecents` MRU feeds the **3 most-recent actions** to the head of the no-query
+  suggestions (recorded from palette OR menu bar). Chips now carry their TYPE colour
+  (lists/tables gold, frames/cubes violet, charts green) via a `--chip-accent` modifier,
+  everywhere incl. Reports. Equinox palette added (all-gray monochrome). Cube glyph seams
+  derive from the fill (color-mix) not a hardcoded violet.
+- **D-1 Goal-seek run mode (`composite.ts`):** a new `CompositeRunMode` "goal-seek" —
+  drives one exposed input until a chosen output hits a target. `runGoalSeek` uses `runPass`
+  as the objective (`{[inputPortId]: x}` → read `outputPortId`), solved by a secant-then-
+  bracketed-bisection solver (`solveGoalSeek`); `#CONV!` on non-convergence goes to the
+  target output + `goalSeekResult`. Config `{inputPortId, outputPortId, target}` persists via
+  the `extractInit` deep-copy branch (rides the node line's "rest" catch-all — no textForm
+  change). UI: a `GoalSeekEditor` on the card ("Set X To v By changing Y" + solution line),
+  auto-inits on mode select. `composite.test.ts` covers convergence/negative/#CONV!/round-
+  trip/port-removal. Seed: `composite-workbench` gains a **break-even finder** (profit =
+  units×$25 − $500 → solves Units = 20). NOTE: Monte Carlo run mode still blocked on bundle
+  12's distribution rep; simulation-inner-display + aliasing UI (D-2/D-3) still open.
+
 ### SESSION DIGEST (2026-07-06 pm — autonomous: C-4 XLOOKUP · C-2 Input Switcher · F-1 custom palette · F-2 doc properties)
 Local dev server (HMR); commit freely, no pushes. Every commit tsc + full vitest green (→2263).
 Five bundles + one incidental persistence bugfix; NOT pushed. Sections newest-first.

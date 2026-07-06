@@ -3,6 +3,7 @@ import { ClassicPreset, NodeEditor } from "rete";
 import type { Schemes } from "../schemes";
 import { ctorRegistry } from "../nodeCtorRegistry";
 import { extractInit } from "../copyPaste";
+import { isSolError } from "../errorValue";
 import { loopMembers } from "../process";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "./composite";
 import { NumberInputNode } from "./input";
@@ -424,5 +425,75 @@ describe("CompositeNode Simulation run mode", () => {
     expect(init.simulationSteps).toBe(7);
     const clone = new CompositeNode(init as ConstructorParameters<typeof CompositeNode>[0]);
     expect(clone.simulationSteps).toBe(7);
+  });
+});
+
+describe("CompositeNode Goal Seek run mode", () => {
+  // A + B → Sum: drive A so Sum hits a target with B wired.
+  async function makeAdder() {
+    const c = new CompositeNode({ runMode: "goal-seek" });
+    const add = new ArithmeticNode({ op: "add" });
+    add.literals = { a: 0, b: 0 };
+    const inA = new CompositeInputNode({ label: "A" });
+    const inB = new CompositeInputNode({ label: "B" });
+    const outMarker = new CompositeOutputNode({ label: "Sum" });
+    for (const n of [add, inA, inB, outMarker]) await c.internalEditor.addNode(n as unknown as Schemes["Node"]);
+    await connect(c.internalEditor, inA, "value", add, "a");
+    await connect(c.internalEditor, inB, "value", add, "b");
+    await connect(c.internalEditor, add, "result", outMarker, "value");
+    const inAId = c.addInputPort({ label: "A", exposure: "exposed", tier: "basic", internalNodeId: inA.id });
+    const inBId = c.addInputPort({ label: "B", exposure: "exposed", tier: "basic", internalNodeId: inB.id });
+    const outId = c.addOutputPort({ label: "Sum", tier: "basic", internalNodeId: outMarker.id });
+    return { c, inAId, inBId, outId };
+  }
+
+  it("drives the input until the output reaches the target", async () => {
+    const { c, inAId, inBId, outId } = await makeAdder();
+    c.setGoalSeek({ inputPortId: inAId, outputPortId: outId, target: 15 });
+    const out = await c.data({ [inBId]: [10] }); // Sum = A + 10, want 15 → A = 5
+    expect(out[outId] as number).toBeCloseTo(15, 4);
+    expect(c.goalSeekResult as number).toBeCloseTo(5, 4);
+  });
+
+  it("solves a negative driver too", async () => {
+    const { c, inAId, inBId, outId } = await makeAdder();
+    c.setGoalSeek({ inputPortId: inAId, outputPortId: outId, target: 4 });
+    const out = await c.data({ [inBId]: [10] }); // want 4 → A = -6
+    expect(c.goalSeekResult as number).toBeCloseTo(-6, 4);
+    expect(out[outId] as number).toBeCloseTo(4, 4);
+  });
+
+  // Out = B, ignoring the driven A: no value of A can move the output → #CONV!.
+  it("returns #CONV! when the output can't reach the target", async () => {
+    const c = new CompositeNode({ runMode: "goal-seek" });
+    const inA = new CompositeInputNode({ label: "A" });
+    const inB = new CompositeInputNode({ label: "B" });
+    const outMarker = new CompositeOutputNode({ label: "Out" });
+    for (const n of [inA, inB, outMarker]) await c.internalEditor.addNode(n as unknown as Schemes["Node"]);
+    await connect(c.internalEditor, inB, "value", outMarker, "value"); // Out = B (A unused)
+    const inAId = c.addInputPort({ label: "A", exposure: "exposed", tier: "basic", internalNodeId: inA.id });
+    const inBId = c.addInputPort({ label: "B", exposure: "exposed", tier: "basic", internalNodeId: inB.id });
+    const outId = c.addOutputPort({ label: "Out", tier: "basic", internalNodeId: outMarker.id });
+    c.setGoalSeek({ inputPortId: inAId, outputPortId: outId, target: 99 });
+    const out = await c.data({ [inBId]: [10] }); // Out is 10 for any A, target 99 unreachable
+    expect(isSolError(out[outId])).toBe(true);
+    expect((out[outId] as { code: string }).code).toBe("#CONV!");
+  });
+
+  it("goalSeek round-trips through extractInit (deep-copied, not aliased)", async () => {
+    const { c, inAId, outId } = await makeAdder();
+    c.setGoalSeek({ inputPortId: inAId, outputPortId: outId, target: 42 });
+    const init = extractInit(c as unknown as ClassicPreset.Node);
+    const clone = new CompositeNode(init as ConstructorParameters<typeof CompositeNode>[0]);
+    expect(clone.goalSeek).toEqual({ inputPortId: inAId, outputPortId: outId, target: 42 });
+    clone.setGoalSeek({ target: 0 });
+    expect(c.goalSeek!.target).toBe(42); // original untouched
+  });
+
+  it("removing the driven input clears the goal-seek config", async () => {
+    const { c, inAId, outId } = await makeAdder();
+    c.setGoalSeek({ inputPortId: inAId, outputPortId: outId, target: 15 });
+    c.removeInputPort(inAId);
+    expect(c.goalSeek).toBeNull();
   });
 });
