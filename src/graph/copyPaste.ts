@@ -1,6 +1,7 @@
 import { ClassicPreset } from "rete";
 import type { SolenoidNode, SolenoidConnection } from "./schemes";
-import { getEditor, getArea, selectNode, unselectAllNodes, beginGraphRebuild, endGraphRebuild, bulkSettle, markGraphCustom, getCtorRegistry } from "./process";
+import { selectNode, unselectAllNodes, beginGraphRebuild, endGraphRebuild, bulkSettle, markGraphCustom, getCtorRegistry, processGraph } from "./process";
+import { getActiveEditor, getActiveArea, isSubgraphActive } from "./activeGraph";
 import { collapseStore } from "./collapseStore";
 import { nodeNameStore } from "./nodeNameStore";
 
@@ -23,8 +24,9 @@ interface ClipboardData {
 let _clipboard: ClipboardData | null = null;
 
 export function copySelected() {
-  const editor = getEditor();
-  const area = getArea();
+  // Active graph, not main: copy/paste works inside a Composite drill-in too.
+  const editor = getActiveEditor();
+  const area = getActiveArea();
   if (!editor || !area) return;
 
   const directly = editor.getNodes().filter((n) => n.selected) as SolenoidNode[];
@@ -222,9 +224,13 @@ const PASTE_OFFSET = 30; // canvas units
 
 export async function pasteClipboard(canvasX: number, canvasY: number) {
   if (!_clipboard || _clipboard.entries.length === 0) return;
-  const editor = getEditor();
-  const area = getArea();
+  const editor = getActiveEditor();
+  const area = getActiveArea();
   if (!editor || !area) return;
+  // Inside a Composite drill-in the selection + settle singletons (main-bound) don't
+  // apply — rete auto-creates the pasted nodes' views on addNode, and one retargeted
+  // recompute below refreshes the subgraph. (No groups/pins/autosave-doc concerns.)
+  const subgraph = isSubgraphActive();
 
   const originX = canvasX + PASTE_OFFSET;
   const originY = canvasY + PASTE_OFFSET;
@@ -285,7 +291,7 @@ export async function pasteClipboard(canvasX: number, canvasY: number) {
     toAdd.push({ clone: clone as SolenoidNode, x: originX + _clipboard.entries[i].x, y: originY + _clipboard.entries[i].y });
   }
 
-  unselectAllNodes();
+  if (!subgraph) unselectAllNodes();
   beginGraphRebuild();
   try {
     await Promise.all(toAdd.map(async ({ clone, x, y }) => {
@@ -305,7 +311,8 @@ export async function pasteClipboard(canvasX: number, canvasY: number) {
       if (typeof hydrate === "function") await hydrate(reg);
     }
     // Select the pasted nodes (deterministic order, after the concurrent adds).
-    toAdd.forEach(({ clone }, idx) => selectNode(clone.id, idx > 0));
+    // (Main-graph selection only; a drill-in paste leaves them unselected for now.)
+    if (!subgraph) toAdd.forEach(({ clone }, idx) => selectNode(clone.id, idx > 0));
     // Each addConnection fires `connectioncreated`, whose settle (FC reconcile +
     // mismatch rescan + a FULL processGraph + collapse re-sync) is O(cables × nodes);
     // the gate skips it per-cable and bulkSettle() runs the equivalent ONCE below.
@@ -330,6 +337,12 @@ export async function pasteClipboard(canvasX: number, canvasY: number) {
     endGraphRebuild();
   }
 
+  if (subgraph) {
+    // rete already created the pasted nodes' views on addNode; recompute through the
+    // owning composite (a full pass — findCompositeOwner retargets to its card).
+    await processGraph();
+    return;
+  }
   // Render only the pasted nodes: they're a self-contained copy that doesn't touch
   // existing nodes, so the originals need no recompute/re-render (bulkSettle skips the
   // engine reset for the additive set).
