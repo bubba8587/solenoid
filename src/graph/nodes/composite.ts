@@ -7,6 +7,7 @@ import { installErrorGuards, solError, type SolError } from "../errorValue";
 import { installInputCoercion } from "../coerceInputs";
 import { loopMembers } from "../process";
 import { compositeStaleStore } from "../compositeStaleStore";
+import { formatScalar } from "../components/format";
 import type { NodeCtor } from "../nodeCtorRegistry";
 
 // ─── Composite node — a real, computing subgraph container ────────────────────
@@ -126,11 +127,17 @@ export type CompositeDataTableValues = Record<string, unknown[]>;
 export class CompositeInputNode extends ClassicPreset.Node {
   label: string;
   value: unknown = null;
+  /** An editable DEFAULT/seed, set on the marker INSIDE the drill-in — used as the
+   *  input value when the exposed port isn't externally wired (and as the goal-seek
+   *  seed). A wired value or a solve overrides it, so it's editable "even if it gets
+   *  overridden". Persisted (INIT_FIELD_ORDER "defaultValue"). */
+  defaultValue: number | null = null;
   width = 140;
   height = 70;
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; defaultValue?: number | null }) {
     super("Composite Input");
     this.label = init?.label ?? "Input";
+    this.defaultValue = init?.defaultValue ?? null;
     this.addOutput("value", new ClassicPreset.Output(anySocket, this.label));
   }
   data(): { value: unknown } {
@@ -190,6 +197,10 @@ export class CompositeNode extends ClassicPreset.Node {
   // solves once, matching the load-reveal's compute pass.
   /** Set by the Solve button; consumed by the next data() to force one solve. */
   solveRequested = false;
+  /** When the solve was triggered from INSIDE the drill-in: ignore the outside wired
+   *  inputs and run on the markers' own seeds (defaultValue) — you're testing the
+   *  subgraph in isolation. An outside Solve (drilled up) uses the wired values. */
+  solveInsideOnly = false;
   /** Signature of the inputs+config at the last solve; null = never solved. */
   lastSolveKey: string | null = null;
   /** True when inputs/config changed since the last solve — drives the stale dot. */
@@ -354,17 +365,21 @@ export class CompositeNode extends ClassicPreset.Node {
    *  the card renders). Called on leave; markers with no node are reconciled away
    *  separately (leaveLevel). */
   syncPortLabels(): void {
-    const labelOf = (nodeId: string, fallback: string): string => {
+    // When a marker's label is CLEARED, it falls back to its placeholder ("Input" /
+    // "Output") on the card — so the port must show the same placeholder, not the
+    // stale old label. If the marker isn't hydrated yet, keep the saved port label.
+    const labelOf = (nodeId: string, placeholder: string, current: string): string => {
       const n = this.internalEditor.getNode(nodeId) as { label?: string } | undefined;
-      return n?.label?.trim() ? n.label : fallback;
+      if (!n) return current;
+      return n.label?.trim() ? n.label : placeholder;
     };
     for (const p of this.inputPorts) {
-      p.label = labelOf(p.internalNodeId, p.label);
+      p.label = labelOf(p.internalNodeId, "Input", p.label);
       const inp = this.inputs[p.id];
       if (inp) inp.label = p.label;
     }
     for (const p of this.outputPorts) {
-      p.label = labelOf(p.internalNodeId, p.label);
+      p.label = labelOf(p.internalNodeId, "Output", p.label);
       const out = this.outputs[p.id];
       if (out) out.label = p.label;
     }
@@ -477,11 +492,13 @@ export class CompositeNode extends ClassicPreset.Node {
       const marker = this.internalEditor.getNode(port.internalNodeId) as CompositeInputNode | undefined;
       if (!marker) continue;
       const override = overrides?.[port.id];
+      // Fallback order: a solve/scenario override, else the externally wired value,
+      // else the marker's inside-editable defaultValue (seed), else the port default.
       marker.value = override !== undefined
         ? override
         : port.exposure === "exposed"
-          ? (inputs[port.id]?.[0] ?? port.default ?? null)
-          : (port.default ?? null);
+          ? (inputs[port.id]?.[0] ?? marker.defaultValue ?? port.default ?? null)
+          : (marker.defaultValue ?? port.default ?? null);
     }
     // Internal engine is scoped to this composite alone (small, private graph),
     // so a full reset every pass is cheap and simplest.
@@ -658,10 +675,18 @@ export class CompositeNode extends ClassicPreset.Node {
     if (this.isHeavyMode()) {
       const key = this.solveKey(inputs);
       if (this.solveRequested || this.lastSolveKey === null) {
-        const outputs = await this.runActiveMode(inputs);
+        // An inside-the-drill-in Solve ignores the outside wired inputs and runs on
+        // the markers' seeds (empty inputs → runPass falls back to defaultValue).
+        const solveInputs = this.solveInsideOnly ? {} : inputs;
+        const outputs = await this.runActiveMode(solveInputs);
         this.cachedOutputs = outputs;
-        this.lastSolveKey = key;
+        // Recompute the key AFTER the solve — a goal-seek writes the solved value back
+        // onto the driver marker's seed, so the key computed before the solve would
+        // read stale on the very next pass. Keyed on `inputs` (not solveInputs) to
+        // match the hold branch below.
+        this.lastSolveKey = this.solveKey(inputs);
         this.solveRequested = false;
+        this.solveInsideOnly = false;
         this.stale = false;
         compositeStaleStore.set(this.id, false);
         return outputs;
@@ -692,8 +717,10 @@ export class CompositeNode extends ClassicPreset.Node {
     return false;
   }
 
-  /** Request the next data() to solve (the Solve button). Caller triggers a recompute. */
-  requestSolve(): void { this.solveRequested = true; }
+  /** Request the next data() to solve (the Solve button). `insideOnly` runs on the
+   *  markers' seeds, ignoring outside wiring (an inside-the-drill-in Solve). Caller
+   *  triggers a recompute. */
+  requestSolve(insideOnly = false): void { this.solveRequested = true; this.solveInsideOnly = insideOnly; }
 
   /** A cheap signature of the inputs + the active mode's config: a change to either
    *  makes the last solve stale. Objects (frames/cubes) contribute a stable reference
@@ -712,6 +739,8 @@ export class CompositeNode extends ClassicPreset.Node {
     }
     return JSON.stringify({
       inputs: inputTokens,
+      // Inside-editable seeds affect the solve, so a seed edit marks it stale too.
+      seeds: this.inputPorts.map((p) => (this.internalEditor.getNode(p.internalNodeId) as CompositeInputNode | undefined)?.defaultValue ?? null),
       mode: this.runMode,
       goalSeek: this.goalSeek,
       scenarios: this.scenarios,
@@ -761,18 +790,28 @@ export class CompositeNode extends ClassicPreset.Node {
       const row = await this.runPass(inputs, { [gs.inputPortId]: x });
       return toNumber(row[gs.outputPortId]) - gs.target;
     };
-    // Seed from the input's current wired/default value (else 0).
-    const seedRaw = inputs[gs.inputPortId]?.[0] ?? this.inputPorts.find((p) => p.id === gs.inputPortId)?.default ?? 0;
+    // Seed from the input's current wired value, else the marker's inside seed, else
+    // the port default (else 0).
+    const driverPort = this.inputPorts.find((p) => p.id === gs.inputPortId);
+    const driverMarker = driverPort ? this.internalEditor.getNode(driverPort.internalNodeId) as CompositeInputNode | undefined : undefined;
+    const seedRaw = inputs[gs.inputPortId]?.[0] ?? driverMarker?.defaultValue ?? driverPort?.default ?? 0;
     const seed = Number.isFinite(toNumber(seedRaw)) ? toNumber(seedRaw) : 0;
-    const solved = await solveGoalSeek(objective, seed);
-    if (solved === null) {
+    const solvedRaw = await solveGoalSeek(objective, seed);
+    if (solvedRaw === null) {
       const err = solError("#CONV!", `Goal seek couldn't drive "${gs.inputPortId}" to make "${gs.outputPortId}" reach ${gs.target}`);
       this.goalSeekResult = err;
       const row = await this.runPass(inputs); // show the un-solved state
       row[gs.outputPortId] = err;
       return row;
     }
+    // Clean the raw solver float to the precision the app actually exposes
+    // (formatScalar = integer or 4 decimals) — so the driver input doesn't show a
+    // 19.999999998 tail nothing else in the app would.
+    const solved = Number(formatScalar(solvedRaw));
     this.goalSeekResult = solved;
+    // The solution CHANGES the driver input — write it back onto the driver marker so
+    // its inside value box shows the solved value (not the stale seed).
+    if (driverMarker) driverMarker.defaultValue = solved;
     // The composite's OUTPUT is its solution: emit the solved DRIVER value on the
     // target port (not the achieved output, which just equals the target). So the
     // Solution hero's socket carries the answer downstream — wire the break-even

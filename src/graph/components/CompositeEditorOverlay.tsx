@@ -649,7 +649,7 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
             opposite the breadcrumb strip. Only when the composite has a boundary. */}
         {(comp.inputPorts.length > 0 || comp.outputPorts.length > 0) && (
           <div className="solenoid-composite-editor__controls" onPointerDown={(e) => e.stopPropagation()}>
-            <CompositeRunControls node={comp} />
+            <CompositeRunControls node={comp} insideOnly />
           </div>
         )}
       {menu && (
