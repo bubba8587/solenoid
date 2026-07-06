@@ -5,11 +5,47 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
-### SESSION DIGEST (2026-07-06 late — first-class composite drill-in, phase 1)
+### SESSION DIGEST (2026-07-06 late — first-class composite drill-in)
 Local dev server; commit freely, no pushes. tsc + full vitest (2276) green.
 Author asked to upgrade the Composite drill-in from a second-class overlay to a
 first-class canvas ("copy paste, titles not propagating, right click… make it open
-in the main app like its own graph"), and to trust my method. Approach = **B1-surgical**:
+in the main app like its own graph"), and to trust my method. Two phases below.
+
+**Phase 2 — the app frame STAYS and follows you in (the real ask).** Phase-1 kept a
+separate full-bleed overlay + rebuilt weak chrome inside it; author clarified they
+meant the MAIN app frame should stay, only the canvas surface swaps. So:
+- **De-fullscreen:** the subgraph canvas now sits at `z-index:4` (above the main
+  graph z0, below the chrome z5-6) instead of a fixed inset:0 z9000 panel. Header,
+  toolbar, status bar, minimap all stay visible around it. The overlay's bespoke
+  header (undo/redo/delete/close/+Node) is RETIRED — keyboard + real chrome cover it.
+  What's left is one floating **strip**: breadcrumb (drill-up) + `+Input/+Output`
+  (port promotion), accent-tinted as a "you're in a subgraph" cue. `html.sol-drilled-in`
+  root class marks the state.
+- **Chrome pointed at the active graph:** NavMenu zoom/fit + the minimap/fit geometry
+  (`minimapNodes`) read `getActive*`; the drill-in got its OWN `MinimapPlugin` (colored
+  preset, collapse-aware, subgraph viewport); canvas **lock** mirrored onto the host so
+  subgraph nodes go view-only. Fit bug fixed (a hidden panel's zero-rect made the right
+  inset the whole viewport → zoomed way out; null out zero-area rects in `visibleInsets`).
+- **Drill-in keyboard extended:** Ctrl+A select-all (via a captured `selectable` handle
+  on the mount) and **Tidy (T)** — a self-contained `AutoArrangePlugin` on the drill-in
+  area (lazy-imported, cached on the mount, same symmetric ELK port preset). Canvas
+  keydown already stood down while a composite is open, so the drill-in owns shortcuts.
+- **Extensibility (author asked):** `activeGraph.ts` documented as THE canvas-substitution
+  seam (register on mount / clear on unmount / read via getActive*; nested surfaces work
+  by REPLACE-not-stack since the breadcrumb stack lives in compositeEditorStore; single
+  slot is correct until two live surfaces ever coexist). Extracted the render preset +
+  connection veto both surfaces hand-copied into **`areaPresets.ts`** (`solenoidClassicRenderSetup`
+  / `makeSolenoidConnectionFlow`) — they had ALREADY drifted (drill-in flow missed the
+  lock veto); now one source, used by Canvas + getDrillMount + any future surface.
+- **NOT done (main-bound subsystems, would be broken not just unwired):** Group/Cleanup/
+  Autofit/Expand (membership + push + collapse + standoffs live in Canvas's main pipes — a
+  group made in the drill-in would be a static frame that doesn't push/absorb), Isolate
+  (`isolateStore` hides MAIN nodes by z-order, no subgraph scope), navigator + lasso (sizeable:
+  navigator list/select/jump/rename all target main; lasso is a custom Canvas rebuild). These
+  are folded/hidden while drilled in, not half-shipped. Also still: drill-in **history routing**
+  (row/socket/label edits push to MAIN history) + Edit-menu undo/redo on the active graph.
+
+**Phase 1 — the resolver + propagation.** Approach = **B1-surgical**:
 keep `process.ts` `getEditor()/getArea()` MAIN-only forever (228 call sites incl.
 persistence/serialize — routing them through an override would autosave the subgraph
 over the document), and add a NEW resolver the ACTION layer uses.
