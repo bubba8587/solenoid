@@ -222,11 +222,15 @@ function GoalSeekEditor({ node }: { node: CompositeNodeType }) {
         </select>
       </div>
       {result != null && (
-        <div style={row}>
-          <span className="solenoid-node__io-label">Solution</span>
-          <span className="solenoid-node__io-label" style={{ color: isSolError(result) ? "var(--sol-error)" : "var(--text-bright)", fontWeight: 600 }}>
-            {isSolError(result) ? result.code : +result.toFixed(6)}
+        // The solved driver value is the HERO of a goal-seek composite (the whole
+        // point — the achieved output just equals the target you set).
+        <div style={{ marginTop: 4 }}>
+          <span className="solenoid-node__io-label" style={{ display: "block", marginBottom: 3 }}>
+            Solution — {exposed.find((p) => p.id === inputId)?.label ?? "input"}
           </span>
+          {isSolError(result)
+            ? <div className="solenoid-node__display-value" style={{ color: "var(--sol-error)" }}>{result.code}</div>
+            : <ValueDisplay value={result} />}
         </div>
       )}
     </div>

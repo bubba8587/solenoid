@@ -44,7 +44,7 @@ import { ReconcileNode } from "./frame";
 import { SlicerNode, CableSwitchNode, DatePickerNode, XYPadNode } from "./control";
 import { SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, TreemapNode, SankeyNode, HistogramNode } from "./visual";
 import { NoteNode, ImageNode } from "./annotation";
-import { CompositeNode } from "./composite";
+import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "./composite";
 import {
   TableInputNode, MatDetNode, TableMultNode, TableUnitNode, TableTransposeNode,
   HStackTableNode, TableReshapeNode, TableSelectNode, TableInfoNode,
@@ -72,6 +72,11 @@ import {
 // doesn't rely on constructor.name.
 
 export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
+  // Composite boundary markers (drill-in only): input marker reads as a SOURCE
+  // (amber), output marker as a SINK/display (gold) — so the two ends of the
+  // subgraph are told apart at a glance, and from the compute nodes between them.
+  if (node instanceof CompositeInputNode) return "input";
+  if (node instanceof CompositeOutputNode) return "display";
   if (node instanceof NumberInputNode || node instanceof ConstantNode || node instanceof SliderInputNode || node instanceof RandBetweenNode || node instanceof WebSourceNode || node instanceof CsvConnectionNode || node instanceof ParquetConnectionNode || node instanceof ImportHtmlNode || node instanceof ImportXmlNode || node instanceof XYPadNode || node instanceof ColorPickerNode) return "input";
   if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof MermaidNode || node instanceof GaugeNode || node instanceof HeatmapCellNode || node instanceof ChartBuilderNode || node instanceof TornadoNode) return "display";
   if (node instanceof ConvertNode || node instanceof CastNode) return "convert";
