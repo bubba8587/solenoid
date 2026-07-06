@@ -28,6 +28,11 @@ is archived).
   from `release-notes-features.md`. `release-plan.md` §3c.
 - [ ] **Keep `release-notes-features.md` current** — the curated selling list + What's-New
   slide source (author writes the final release notes).
+- [ ] **Rigorous Trust-node audit** (author 2026-07-06 — flagged, NOT now): the trust &
+  data-quality set (**Expect** not-null/unique/range/regex, **Problems** panel, **Reconcile**
+  two-frame compare, **Tornado** sensitivity, **model fuzz**, node-anchored comments; built
+  2026-07-03) was never reviewed rigorously. Audit each for correctness + edge cases before
+  1.1 ships — "Trust your model" is a headline selling point, so it must actually hold up.
 
 ## Needs an author decision / author-present session
 
