@@ -88,6 +88,13 @@ is archived).
 
 ## Composite / drill-in
 
+- [ ] **Solver parameters (advanced tier per heavy mode)** (author 2026-07-06, after
+  arm-and-run shipped): goal-seek **max iterations / tolerance / driver bounds**
+  (bounds both aid convergence and cap a runaway search — the honest analog of Excel
+  Solver constraints); Monte Carlo **sample count + seed** (seed = reproducible draws);
+  simulation step count is `simulationSteps` already, just surface it consistently.
+  Fits the FC-style advanced-tier chip-foot expander. Arm-and-run + the Solve button /
+  amber-ring-vs-green stale dot already shipped (`compositeStaleStore`).
 - [ ] **Simulation-container output series renders on the outer card only** — the
   drill-in should show it too.
 - [ ] **Monte Carlo run mode** — driver slot exists; blocked on bundle 12's
