@@ -17,6 +17,8 @@ export interface ChartPopupState {
   /** Whether to draw gridlines + axes (Chart) or a clean sparkline. */
   axes?: boolean;
   series?: { i: number; v: number }[];
+  /** X-axis category labels (Frame col 0) — mirrors the inline chart. */
+  labels?: (string | number)[];
   /** matplotlib-style overrides (Chart only); undefined for a Sparkline. */
   opts?: ChartOptions;
   /** Colour bars/columns by value sign (Sparkline win/loss). */

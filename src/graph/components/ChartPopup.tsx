@@ -74,6 +74,7 @@ export function ChartPopup() {
             <ChartView
               op={state.op ?? "column"}
               series={state.series}
+              labels={state.labels}
               width={w}
               height={h}
               axes={state.axes ?? true}

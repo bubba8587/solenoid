@@ -39,6 +39,8 @@ type ChartViewProps = {
   opts?: ChartOptions;
   /** Colour bars/columns by value sign (win/loss). */
   signColors?: { pos: string; neg: string };
+  /** X-axis category labels (Frame col 0) — shown instead of the 1,2,3… index. */
+  labels?: (string | number)[];
 };
 
 export function ChartView(props: ChartViewProps) {
@@ -114,7 +116,7 @@ export function ChartFigure({ value, width, height, axes = true }: {
 function renderSeries(value: ChartValue, op: ChartShape, width: number, height: number, axes: boolean) {
   const series = toSeries(value.values);
   if (series.length === 0) return <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;
-  return <ChartView op={op} series={series} width={width} height={height} axes={axes} opts={value.options} />;
+  return <ChartView op={op} series={series} width={width} height={height} axes={axes} opts={value.options} labels={value.labels} />;
 }
 
 export function GaugeArc(props: { pct: number; track: string; size: number }) {

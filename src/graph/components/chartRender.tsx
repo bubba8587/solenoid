@@ -48,7 +48,7 @@ const SLICE_TIP = <Tooltip isAnimationActive={false} content={<SliceTooltip />} 
  * formatted via formatScalar (not recharts' raw full-float).
  */
 export function ChartView({
-  op, series, width, height, axes, opts, signColors,
+  op, series, width, height, axes, opts, signColors, labels,
 }: {
   op: ChartShape;
   series: { i: number; v: number }[];
@@ -59,12 +59,17 @@ export function ChartView({
   /** Colour each bar/column by the sign of its value (win/loss): positive → pos,
    *  negative → neg, zero → the grid colour. Ignored by the non-bar ops. */
   signColors?: { pos: string; neg: string };
+  /** X-axis category labels (Frame col 0) — the axis shows these instead of 1,2,3… */
+  labels?: (string | number)[];
 }) {
   const { grid, axis } = useChartColors();
   const seriesColors = useSeriesColors();
   const paint = (i: number) => seriesColors[i % seriesColors.length];
   const AXIS = { fontSize: 9, fill: axis } as const;
-  const tickFmt = (i: number | string) => String(Number(i) + 1);
+  // With Frame labels, the axis/category tick shows the label for that index; else
+  // the 1-based ordinal (the historical behaviour).
+  const tickFmt = (i: number | string) =>
+    labels ? String(labels[Number(i)] ?? "") : String(Number(i) + 1);
 
   // Resolved style from the options (fall back to the defaults that shipped).
   const color = opts?.color || VIZ;
