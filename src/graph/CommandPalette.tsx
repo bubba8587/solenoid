@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { fieldScore } from "./fuzzy";
+import { commandRecents } from "./commandRecents";
 import { getEditor } from "./process";
 import { focusNode } from "./OutlinePanel";
 import { settingsStore, SETTINGS_SCHEMA } from "./settingsStore";
@@ -90,6 +91,7 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
   // Docked mode is a bare bar until focused; focusing it surfaces the same no-query
   // suggestion list the modal shows on open.
   const [focused, setFocused] = useState(false);
+  const recentsVersion = useSyncExternalStore(commandRecents.subscribe, commandRecents.version);
   const inputRef = useRef<HTMLInputElement>(null);
   const commands = useMemo(buildCommands, []);
   const toggles = useMemo(buildSettingToggles, []);
@@ -101,9 +103,22 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
 
   const results = useMemo<PaletteItem[]>(() => {
     const q = query.trim();
-    // No query → the first few commands as a preview. The docked bar shows them
-    // only while focused (a bare bar otherwise); the modal always does.
-    if (!q) return persistent && !focused ? [] : commands.slice(0, 8);
+    // No query → 8 command previews, LED by the 3 most-recently-run commands (from
+    // the palette or the menu bar), then the default order filling the rest. The
+    // docked bar shows this only while focused (a bare bar otherwise); the modal always.
+    if (!q) {
+      if (persistent && !focused) return [];
+      const byLabel = new Map(commands.map((c) => [c.label, c]));
+      const recent: PaletteItem[] = [];
+      for (const label of commandRecents.list()) {
+        const item = byLabel.get(label);
+        if (item) recent.push({ ...item, id: `recent:${item.id}`, sub: "recent" });
+        if (recent.length >= 3) break;
+      }
+      const seen = new Set(recent.map((r) => r.label));
+      const rest = commands.filter((c) => !seen.has(c.label));
+      return [...recent, ...rest].slice(0, 8);
+    }
     const scored: { item: PaletteItem; score: number }[] = [];
     for (const c of [...commands, ...toggles]) {
       const s = fieldScore(q, c.label);
@@ -129,9 +144,13 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
     }
     scored.sort((a, b) => b.score - a.score);
     return scored.slice(0, 20).map((s) => s.item);
-  }, [query, commands, toggles, persistent, focused]);
+  }, [query, commands, toggles, persistent, focused, recentsVersion]);
 
   function run(item: PaletteItem) {
+    // Record repeatable actions (not a one-off jump to a specific node) so they can
+    // lead the suggestions next time. A recent-preview item carries a `recent:` id
+    // prefix, so strip that to record the real label.
+    if (item.kind === "command" || item.kind === "setting") commandRecents.record(item.label);
     item.run();
     // Docked: stay open, ready for the next command; modal: dismiss.
     if (persistent) { setQuery(""); setActiveIndex(-1); inputRef.current?.focus(); }

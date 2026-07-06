@@ -7,6 +7,7 @@ import { DocumentTitle } from "./components/DocumentTitle";
 import { CableShapeSelector } from "./CableShapeSelector";
 import { useGridSnap } from "./gridSnapStore";
 import { buildMenus, type MenuItem } from "./menuModel";
+import { commandRecents } from "./commandRecents";
 import "./MenuBar.css";
 
 /**
@@ -53,7 +54,13 @@ export function MenuBar() {
     };
   }, [open, mobileOpen]);
 
-  const run = (fn?: () => void) => { fn?.(); setOpen(null); mobileMenuStore.set(false); };
+  const run = (it: MenuItem) => {
+    if ("sep" in it || it.disabled) return;
+    commandRecents.record(it.label); // feed the palette's recent-actions suggestions
+    it.onClick?.();
+    setOpen(null);
+    mobileMenuStore.set(false);
+  };
 
   const renderOption = (it: MenuItem, j: number) =>
     "sep" in it ? (
@@ -64,7 +71,7 @@ export function MenuBar() {
         type="button"
         className="solenoid-menubar__option"
         disabled={it.disabled}
-        onClick={() => run(it.onClick)}
+        onClick={() => run(it)}
       >
         <span className="solenoid-menubar__check">{it.checked ? "✓" : ""}</span>
         <span className="solenoid-menubar__label">{it.label}</span>
