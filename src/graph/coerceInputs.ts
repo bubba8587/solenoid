@@ -27,6 +27,16 @@ const LAZY_FRAME_NODES: ReadonlySet<string> = new Set([
 // element type and inject it as the list when the input is unwired).
 const TYPEABLE_LIST: ReadonlySet<string> = new Set(["strlist", "datelist", "logicallist"]);
 
+// A polymorphic container input declared with a `cube` socket ONLY to communicate
+// "a table goes here" (+ accept frame|cube via the lattice), where the NODE branches
+// on the runtime value itself and must see it UNCOERCED — the normal `cube` coercion
+// (toCube) would re-brand a wired Frame into a Cube and strip its typed columns.
+// Keyed by class name → the input keys to pass through raw. (XLOOKUP: the frame path
+// keeps typed date/logical columns the cube path can't represent.)
+const RAW_CONTAINER_INPUTS: ReadonlyMap<string, ReadonlySet<string>> = new Map([
+  ["XLookupNode", new Set(["frame"])],
+]);
+
 export function parseListLiteral(csv: string, dt: SocketDataType): unknown[] {
   // Real CSV parsing (RFC 4180 via parseCsvLine), so a value containing a comma
   // works when quoted — `"First, Last", qty` → ["First, Last", "qty"] — and a
@@ -146,7 +156,9 @@ export function wrapNodeData(node: NodeLike) {
   if (node.__coerced || typeof node.data !== "function") return;
   node.__coerced = true;
   const orig = node.data.bind(node);
-  const lazy = LAZY_FRAME_NODES.has((node as { constructor: { name: string } }).constructor.name);
+  const className = (node as { constructor: { name: string } }).constructor.name;
+  const lazy = LAZY_FRAME_NODES.has(className);
+  const rawInputs = RAW_CONTAINER_INPUTS.get(className);
 
   // The synchronous coercion + literal-injection (the original body), run once
   // inputs are ref-free (either none arrived, or they were materialized first).
@@ -157,6 +169,10 @@ export function wrapNodeData(node: NodeLike) {
       const socket = node.inputs?.[key]?.socket;
       const dt = socket instanceof SolenoidSocket ? socket.dataType : undefined;
       if (!dt || !Array.isArray(arr)) { coerced[key] = arr; continue; }
+      // A raw container input (see RAW_CONTAINER_INPUTS) bypasses coercion so the
+      // node sees the frame/cube exactly as it flowed in (a ref was already
+      // materialized above for non-lazy nodes).
+      if (rawInputs?.has(key)) { coerced[key] = arr; continue; }
       // A narrowing failure throws ShapeError here; it propagates to the
       // error-value guard, which renders it as #SHAPE! (see the module header).
       coerced[key] = arr.map((v) => coerceValue(dt, v));
