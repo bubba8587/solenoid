@@ -53,7 +53,9 @@ export function CubeCellChip({ cell, crumb, size = "md" }: {
   if (cell === null || cell === undefined) {
     return <span className="solenoid-node__text-empty" style={{ color: "var(--text-muted)" }}>—</span>;
   }
-  const chipClass = size === "sm" ? "solenoid-array-chip solenoid-array-chip--sm" : "solenoid-array-chip";
+  // Per-kind chip colour (see ArrayChip.css): cube/frame violet, list/grid gold.
+  const chip = (mod: "cube" | "frame" | "array") =>
+    `solenoid-array-chip solenoid-array-chip--${mod}${size === "sm" ? " solenoid-array-chip--sm" : ""}`;
   const stop = (e: React.MouseEvent | React.PointerEvent) => e.stopPropagation();
 
   if (isCubeValue(cell)) {
@@ -61,7 +63,7 @@ export function CubeCellChip({ cell, crumb, size = "md" }: {
     return (
       <button
         type="button"
-        className={chipClass}
+        className={chip("cube")}
         title={`Cube ${cubeRowCount(c)}×${c.columns.length}×${cubeDepth(c)} (rows × cols × depth) — click to drill in`}
         onPointerDown={stop}
         onMouseDown={stop}
@@ -76,7 +78,7 @@ export function CubeCellChip({ cell, crumb, size = "md" }: {
     return (
       <button
         type="button"
-        className={chipClass}
+        className={chip("frame")}
         title={`Frame ${frameRowCount(f)}×${f.columns.length} — click to drill in`}
         onPointerDown={stop}
         onMouseDown={stop}
@@ -91,7 +93,7 @@ export function CubeCellChip({ cell, crumb, size = "md" }: {
     return (
       <button
         type="button"
-        className={chipClass}
+        className={chip("array")}
         title="Click to drill in"
         onPointerDown={stop}
         onMouseDown={stop}
