@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { numIn, numListIn, tableIn, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, anyIn, anyOut } from "./shared";
+import { numIn, numListIn, tableIn, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, anyOut } from "./shared";
 import { toMatrix } from "./coerce";
 import { parseDateToSerial } from "./date";
 import { isSolError, solError, type SolError } from "../errorValue";
@@ -1248,10 +1248,13 @@ export class XLookupNode extends ClassicPreset.Node {
     this.label = init?.label ?? "XLOOKUP";
     this.matchMode = init?.matchMode ?? "exact";
     this.searchMode = init?.searchMode ?? "first";
-    // `any` source: a Frame OR a Cube (or a widened list). A cube looks the key up in
-    // its TOP-LEVEL column and returns the matched cell WHOLE — a nested frame/cube
-    // comes out intact. Return = * returns the whole matched row.
-    this.addInput("frame", anyIn("Table / Cube"));
+    // `cube` source socket — the lattice supremum, so it accepts a Frame OR a Cube
+    // (and rejects lambdas/charts that a bare `any` would let through). Its coercion
+    // is bypassed (RAW_CONTAINER_INPUTS in coerceInputs) so a wired Frame reaches
+    // data() UNCOERCED — the frame path keeps its typed date/logical columns that the
+    // cube path can't represent. A cube looks the key up in its TOP-LEVEL column and
+    // returns the matched cell WHOLE; Return = * returns the whole matched row.
+    this.addInput("frame", cubeIn("Table / Cube"));
     this.addInput("lookup", strIn("Lookup"));
     this.addInput("inColumn", strIn("In column"));
     this.addInput("returnColumn", strIn("Return"));

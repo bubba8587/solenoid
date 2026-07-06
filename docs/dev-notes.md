@@ -14,7 +14,7 @@ Local dev server (HMR); commit freely, no pushes. tsc + full vitest (2243) green
   two loose sockets. So the frame/cube lookup IS the universal XLOOKUP; the two-loose-lists
   `XLookupNode` (list.ts) was DELETED — aligned lists reach XLOOKUP via Build Frame.
 - **What shipped:** `FrameLookupNode` (frame.ts) renamed → `XLookupNode`, fixed sockets
-  (source `any`, Lookup, In column, Return, If not found). Added: **`searchMode`** (first /
+  (source, Lookup, In column, Return, If not found). Added: **`searchMode`** (first /
   last — Excel search_mode 1/-1, which duplicate wins; binary 2/-2 omitted — on a
   materialized column it finds the same row linearly) and **Return = `*`** → the whole
   matched row (single-row Frame, or single-row Cube with nested cells intact).
@@ -33,6 +33,16 @@ Local dev server (HMR); commit freely, no pushes. tsc + full vitest (2243) green
   35-qty row to discount **0.05** (≤ next-smaller tier). Try typing `*` in its Return field →
   the whole matched tier row comes out (a 1-row frame). Add-menu: "XLOOKUP" under Find (violet
   frame accent); the old "Frame Lookup" entry is gone.
+- **Source socket = `cube`, not `any` (author call, follow-up).** The source uses the `cube`
+  socket (lattice supremum → accepts Frame + Cube, rejects lambda/chart a bare `any` allowed,
+  shows the cube glyph). Its coercion is BYPASSED via a new `RAW_CONTAINER_INPUTS`
+  (`coerceInputs.ts`) so a wired Frame reaches `data()` UNCOERCED — a plain `cube` socket would
+  `toCube()` it and strip typed date/logical columns (ISO-date approximate lookups would break).
+  Runtime guard rejects a non-tabular source (scalar / bare 1-D list) with `#VALUE!` — cube (like
+  any) accepts lower-rank widening at connect-time, so the value-layer guard is where "needs a
+  table" is enforced. `anytable` ("Any 2-D") was NOT viable — it rejects both Frame and Cube.
+  Inputs left as `string`: Lookup + If-not-found keep the inline text box (type-aware matching
+  covers every column type); wiring a computed key = Cast-to-text (author OK).
 - **Backlog line deleted** (delete-on-done). NOT pushed (local session).
 
 ### SESSION DIGEST (2026-07-06 — author-present, chart-node polish + standing rules)
