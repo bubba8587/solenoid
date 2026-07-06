@@ -37,6 +37,8 @@ type ChartViewProps = {
   height: number;
   axes: boolean;
   opts?: ChartOptions;
+  /** Colour bars/columns by value sign (win/loss). */
+  signColors?: { pos: string; neg: string };
 };
 
 export function ChartView(props: ChartViewProps) {
