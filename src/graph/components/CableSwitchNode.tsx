@@ -225,17 +225,17 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
           canRemove={keys.length > 2}
         />
       ))}
+      <SegToggle
+        value={multi ? "many" : "one"}
+        options={[
+          { value: "one", label: "One", title: "Route one input to the output" },
+          { value: "many", label: "Many", title: "Collect the checked inputs into a Cube" },
+        ]}
+        onChange={(v) => setMode(v === "many")}
+        className="sol-switch__mode"
+      />
       <div className="sol-switch__controls">
         <button type="button" className="solenoid-node__add-input" onClick={(e) => { e.stopPropagation(); void addRow(); }}>+ Add</button>
-        <SegToggle
-          value={multi ? "many" : "one"}
-          options={[
-            { value: "one", label: "One", title: "Route one input to the output" },
-            { value: "many", label: "Many", title: "Collect the checked inputs into a Cube" },
-          ]}
-          onChange={(v) => setMode(v === "many")}
-          className="sol-switch__mode"
-        />
         {!multi && (
           <button type="button" className="sol-switch__cycle" title="Cycle to the next input" onClick={(e) => { e.stopPropagation(); cycle(); }} onPointerDown={stop} onMouseDown={stop}>
             {/* Lucide "rotate-cw" (ISC) — an icon, not a font glyph. */}

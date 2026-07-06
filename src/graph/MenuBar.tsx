@@ -17,6 +17,7 @@ import { connectionDialog } from "./connectionDialogStore";
 import { mobileMenuStore } from "./mobileMenuStore";
 import { settingsPanel, settingsStore } from "./settingsStore";
 import { pickFolderDialog, openInFileManager, isDesktop } from "./fileBridge";
+import { docPropertiesPanel } from "./docMetaStore";
 import { rendererSpikeStore } from "./rendererSpikeStore";
 import { htmlCanvasSpikeStore } from "./htmlCanvasSpikeStore";
 import { APP_LOCALE } from "./locale";
@@ -118,6 +119,8 @@ export function MenuBar() {
         // graph out to its .json file (prompting for one the first time).
         { label: "Save", shortcut: "Ctrl+S", onClick: () => void saveToDisk() },
         { label: "Save As…", shortcut: "Ctrl+Shift+S", onClick: () => void saveToDisk({ forceDialog: true }) },
+        { sep: true },
+        { label: "Document properties…", onClick: () => docPropertiesPanel.open() },
         { sep: true },
         // A genuine reload of the current document (full rebuild from the saved
         // graph), which replays the cinematic load reveal — a browser refresh
