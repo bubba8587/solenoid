@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { fieldScore } from "./fuzzy";
 import { commandRecents } from "./commandRecents";
-import { getEditor } from "./process";
-import { focusNode } from "./OutlinePanel";
 import { settingsStore, SETTINGS_SCHEMA } from "./settingsStore";
 import { alignSelection, distributeSelection, collapseSelection } from "./selectionOps";
 import { buildMenus, type MenuItem } from "./menuModel";
@@ -21,7 +19,7 @@ function fireCanvasKey(code: string, opts: { ctrl?: boolean; shift?: boolean } =
 
 type PaletteItem = {
   id: string;
-  kind: "command" | "node" | "jump" | "setting";
+  kind: "command" | "setting";
   label: string;
   sub?: string;
   shortcut?: string;
@@ -74,12 +72,6 @@ function buildSettingToggles(): PaletteItem[] {
   return out;
 }
 
-function typeLabel(n: unknown): string {
-  return (n as { constructor: { name: string } }).constructor.name
-    .replace(/Node$/, "")
-    .replace(/([a-z])([A-Z])/g, "$1 $2");
-}
-
 export function CommandPalette({ onClose, persistent = false }: { onClose: () => void; persistent?: boolean }) {
   const [query, setQuery] = useState("");
   // -1 = nothing selected. The palette opens with NO active row — a blind
@@ -123,24 +115,6 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
     for (const c of [...commands, ...toggles]) {
       const s = fieldScore(q, c.label);
       if (s !== null) scored.push({ item: c, score: s });
-    }
-    const editor = getEditor();
-    if (editor) {
-      for (const n of editor.getNodes()) {
-        const label = (n as { label?: string }).label || "Node";
-        const s = fieldScore(q, label);
-        if (s === null) continue;
-        scored.push({
-          score: s,
-          item: {
-            id: `jump:${n.id}`,
-            kind: "jump",
-            label,
-            sub: typeLabel(n),
-            run: () => void focusNode(n.id),
-          },
-        });
-      }
     }
     scored.sort((a, b) => b.score - a.score);
     return scored.slice(0, 20).map((s) => s.item);
@@ -214,7 +188,7 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
           spellCheck={false}
           data-1p-ignore
           data-lpignore="true"
-          placeholder="Add a node, run a command, jump to a node…"
+          placeholder="Run a command…"
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={onKeyDown}
           onFocus={() => setFocused(true)}
