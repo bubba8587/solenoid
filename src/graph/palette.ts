@@ -144,7 +144,7 @@ export const COLOR_PALETTE: PaletteSlot[] = [
 //   - array (a list of the scalar): a darker sibling — RGB-multiply ×0.8. Reproduces
 //     the old hand-tuned arrays closely for most families (string's was a deliberate
 //     extra-dark olive; it comes out a touch brighter now — accepted).
-//   - matrix (a 2-D grid): a punchier, slightly hue-shifted sibling — +6° hue, L ×0.86.
+//   - matrix (a 2-D grid): a punchier, hue-shifted sibling — −15° hue, L ×0.86.
 // number's MATRIX is the Table socket — a matrix-shade of number (gold), like
 // every other 2-D socket derives from its scalar; the grid glyph (not colour)
 // tells it apart from numlist.
@@ -158,7 +158,7 @@ export function socketMatrixShade(hex: string): string {
   const t = parseHex(hex);
   if (!t) return hex;
   const [h, s, l] = rgbToHsl(...t);
-  return hslToHex(h + 6, Math.min(1, s * 0.99), l * 0.86);
+  return hslToHex(h - 15, Math.min(1, s * 0.99), l * 0.86);
 }
 
 export type SocketVarKind = "scalar" | "array" | "matrix";
