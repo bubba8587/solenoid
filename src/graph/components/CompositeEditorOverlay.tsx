@@ -5,6 +5,8 @@ import { AreaPlugin, AreaExtensions } from "rete-area-plugin";
 import { ConnectionPlugin, ClassicFlow, getSourceTarget } from "rete-connection-plugin";
 import { ReactPlugin, Presets as ReactPresets } from "rete-react-plugin";
 import { HistoryPlugin, Presets as HistoryPresets } from "rete-history-plugin";
+import { MinimapPlugin } from "rete-minimap-plugin";
+import { solenoidMinimapPreset, collapsedAwareNodesRect } from "./Minimap";
 import type { Schemes, AreaExtra, SolenoidNode } from "../schemes";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "../rete-nodes";
 import { compositeEditorStore, compositePassStore } from "../compositeEditorStore";
@@ -125,10 +127,19 @@ async function getDrillMount(composite: CompositeNode): Promise<DrillMount> {
       }),
   );
 
+  // A minimap for the subgraph — the same custom colored preset + collapse-aware
+  // geometry as the main canvas. collapsedAwareNodesRect reads the ACTIVE graph
+  // (this drill-in while it's open), so the map reflects the subgraph. CSS shows
+  // this one and hides the main one while drilled in (both are .solenoid-minimap).
+  const minimap = new MinimapPlugin<Schemes>({ ratio: 1.4 });
+  (minimap as unknown as { getNodesRect: () => unknown }).getNodesRect = collapsedAwareNodesRect;
+  reactPlugin.addPreset(solenoidMinimapPreset(105));
+
   editor.use(area);
   area.use(reactPlugin);
   area.use(connection);
   area.use(history);
+  area.use(minimap);
 
   // Views are backfilled per OPEN (CompositeEditorInner's mount effect), not
   // here — the close cleanup REMOVES every view (unmounting the React roots so

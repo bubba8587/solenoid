@@ -148,12 +148,15 @@
   flex-shrink: 0;
 }
 
-/* While drilled into a composite, fold the two chrome panels that still read the
-   MAIN graph — the minimap (its geometry now follows the subgraph but its viewport
-   box tracks the main area) and the navigator list — until they're rerouted to the
-   active graph. Better hidden than showing the outer graph's data. The rest of the
-   frame (header, toolbar, status bar, zoom/fit) stays and drives the subgraph. */
-html.sol-drilled-in .solenoid-minimap,
+/* While drilled in: hide the MAIN minimap (it floats at z-index 100 over the
+   backdrop and its viewport box tracks the main area) and show the DRILL-IN's own
+   minimap instead — both carry .solenoid-minimap, so scope the re-show to the one
+   rendered inside the drill-in host. */
+html.sol-drilled-in .solenoid-minimap { display: none; }
+html.sol-drilled-in .solenoid-composite-editor__host .solenoid-minimap { display: block; }
+
+/* The navigator list still reads (and its clicks act on) the MAIN graph, so keep
+   it folded until it's rerouted — better hidden than showing the outer graph. */
 html.sol-drilled-in .solenoid-outline,
 html.sol-drilled-in .solenoid-outline__open-pill { display: none; }
 
