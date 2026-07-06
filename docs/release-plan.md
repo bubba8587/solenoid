@@ -76,20 +76,33 @@ that file is the source material + the What's-New slide content.)
 No open regressions on `main`'s path; the drill-in's main-only subsystems are *folded/hidden*,
 not broken. A regression from the eyeball pass (§5) would become one.
 
-## 3a. Finance flesh-out — proposed "big way" (confirm scope)
-Starting point: `DataFeedNode` + `dataProviders.ts` (FRED / Stooq / Alpha Vantage) + the
-`apiKeyStore` Settings UI all exist and are tested; only the node wiring is missing. The build:
-1. **Make it real** — component (`DataFeedComponent`), `nodeRegistry` row, `rete-nodes` export,
-   catalog leaf; provider dropdown + series/ticker field + status + "add key" link + the
-   `refreshMinutes` timer (reuse the WebSource/connection pattern).
-2. **Widen the provider set** — beyond the 3: more FRED-style economic series presets, a
-   crypto source, an FX source, maybe a keyless quote source; each a `ProviderPreset`.
-3. **Usability** — a series/symbol hint or small picker; graceful no-key state; date-range +
-   frequency where the provider supports it; chart-ready frame output (date/value typed).
-4. **Demo seed** — a finance dashboard seed (FRED series → Chart; loads gracefully with no key,
-   showing the "add key" state) — doubles as a 1.1 showcase.
-   *(Open scope questions for the author: which extra providers matter most; how far to take the
-   symbol picker vs. a plain field.)*
+## 3a. Finance flesh-out — scope (research-backed 2026-07-06)
+CONSTRAINED to Excel scope (tabular series / stock history) — NOT a Bloomberg terminal
+(no real-time quotes, intraday, options, fundamentals). Author's ask: "properly embed a
+FRED graph AND get its data series." The insight from the research: those are the SAME
+object in Solenoid — fetch the series as a typed date/value frame and wire it into our
+**Chart node** (native, themed). No opaque iframe; you get the data + the graph + the
+ability to compute on it. Two KEYLESS routes exist, so the feature works out of the box:
+- **FRED keyless** — `fred.stlouisfed.org/graph/fredgraph.csv?id=SERIES` returns the series
+  CSV with NO key. Make this the DEFAULT FRED path (the current `dataProviders.ts` uses the
+  keyed `api.stlouisfed.org` API — keep it as the "advanced" option for frequency/units/range).
+- **Stocks keyless** — Stooq `stooq.com/q/d/l/?s=SYMBOL&i=d` → daily OHLCV CSV, no key
+  (Excel `STOCKHISTORY` scope). Alpha Vantage stays the keyed backup.
+
+The build:
+1. **Make it real** — `DataFeedComponent`, `nodeRegistry` row, `rete-nodes` export, catalog
+   leaf; provider dropdown + series/ticker field + status + "add key" link (only when a keyed
+   provider is chosen) + the `refreshMinutes` timer (reuse the WebSource/connection pattern).
+2. **FRED keyless default** + a small set of **common-series quick-picks** (series ids are
+   cryptic — UNRATE, CPIAUCSL, GDP, FEDFUNDS, DGS10, MORTGAGE30US, SP500…) alongside the free field.
+3. **Chart-ready typed output** — date column typed as date, value(s) numeric — so it drops
+   straight into a Chart. Stooq path outputs date + OHLCV.
+4. **Demo seed** — a FRED series (e.g. unemployment or CPI) → Chart, loads keyless; a Stooq
+   ticker → Chart. Doubles as a 1.1 showcase.
+
+Scope kept small deliberately: 3 providers (FRED, Stooq, Alpha Vantage), plain ticker field +
+FRED quick-picks (no full symbol-search picker), no crypto/FX unless asked. Sources:
+FRED download docs + API; Stooq CSV.
 
 ## 3b. Seed overhaul — approach
 Inventory the 27 seeds; for each: loads clean? tells a real 1.1 story? uses current nodes (no
