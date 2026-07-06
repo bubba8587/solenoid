@@ -24,6 +24,7 @@ import { canvasLockStore } from "../canvasLock";
 import { pushNotice } from "../noticeStore";
 import { buildCatalog } from "../catalogUtils";
 import { AddNodeMenu, type NodeCatalogEntry } from "../AddNodeMenu";
+import { CompositeRunControls } from "./CompositeNode";
 import "./compositeEditor.css";
 import "./SocketContextMenu.css";
 
@@ -634,6 +635,14 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
             </button>
           </div>
         </div>
+        {/* Run-mode / Solve / mode-config panel — the same controls as the outer card,
+            so you configure and solve from INSIDE the subgraph. Floated top-right,
+            opposite the breadcrumb strip. Only when the composite has a boundary. */}
+        {(comp.inputPorts.length > 0 || comp.outputPorts.length > 0) && (
+          <div className="solenoid-composite-editor__controls" onPointerDown={(e) => e.stopPropagation()}>
+            <CompositeRunControls node={comp} />
+          </div>
+        )}
       {menu && (
         <AddNodeMenu
           screenX={menu.screenX}

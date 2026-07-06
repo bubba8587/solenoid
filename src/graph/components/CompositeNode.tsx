@@ -185,7 +185,7 @@ function SimulationEditor({ node }: { node: CompositeNodeType }) {
 // Goal-seek: drive one exposed input until a chosen output hits a target (Excel's
 // Goal Seek). Reads "Set <output> To <value> By changing <input>"; the solved driver
 // value (or #CONV!) shows below. The solve runs in composite.ts runGoalSeek.
-function GoalSeekEditor({ node, emit }: { node: CompositeNodeType; emit: NodeProps<CompositeNodeType>["emit"] }) {
+function GoalSeekEditor({ node, emit }: { node: CompositeNodeType; emit?: NodeProps<CompositeNodeType>["emit"] }) {
   const exposed = node.inputPorts.filter((p) => p.exposure === "exposed");
   const outputs = node.outputPorts;
   const recompute = () => { void processGraph(node.id); };
@@ -232,11 +232,17 @@ function GoalSeekEditor({ node, emit }: { node: CompositeNodeType; emit: NodePro
           <span className="solenoid-node__io-label">
             Solution — {exposed.find((p) => p.id === inputId)?.label ?? "input"}
           </span>
-          <MeasuredSocketRow side="output" socketKey={outputId} nodeId={node.id} emit={emit} payload={node.outputs[outputId]!.socket}>
-            {/* ValueDisplay renders a SolError (#CONV!) the SAME as everywhere — the
-                red #CODE! badge + errorTip hover — so the hero matches other errors. */}
+          {/* ValueDisplay renders a SolError (#CONV!) the SAME as everywhere — the red
+              #CODE! badge + errorTip. On the OUTER card (emit) the Solution carries the
+              target port's output socket (wireable); inside the drill-in (no emit) it's
+              a plain display — the socket belongs to the outer node, not this editor. */}
+          {emit ? (
+            <MeasuredSocketRow side="output" socketKey={outputId} nodeId={node.id} emit={emit} payload={node.outputs[outputId]!.socket}>
+              <ValueDisplay value={result} />
+            </MeasuredSocketRow>
+          ) : (
             <ValueDisplay value={result} />
-          </MeasuredSocketRow>
+          )}
         </div>
       )}
     </div>
@@ -252,6 +258,19 @@ function GoalSeekEditor({ node, emit }: { node: CompositeNodeType; emit: NodePro
 // In Scenarios mode each output's cachedOutputs value is already an ARRAY
 // (one entry per scenario, in order) — ValueDisplay renders that as a list
 // chip with no changes needed here, which is the "lay outputs side by side".
+// Solve status — an SVG circle so it's perfectly round regardless of the flex row
+// (a small CSS box read as an oval). Ring while stale, filled otherwise.
+function StatusDot({ state }: { state: "stale" | "failed" | "ok" }) {
+  const color = state === "stale" ? "#d9822b" : state === "failed" ? "var(--sol-error)" : "var(--sock-lambda)";
+  const title = state === "stale" ? "Stale" : state === "failed" ? "No solution" : "Up to date";
+  return (
+    <svg width="11" height="11" viewBox="0 0 11 11" style={{ flexShrink: 0, display: "block" }}>
+      <title>{title}</title>
+      <circle cx="5.5" cy="5.5" r="4" fill={state === "stale" ? "none" : color} stroke={color} strokeWidth="1.5" />
+    </svg>
+  );
+}
+
 // Lucide "play" — the Solve trigger for arm-and-run heavy modes.
 const SolveSvg = () => (
   <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" stroke="none" style={{ display: "block" }}>
@@ -267,17 +286,50 @@ const EditSvg = () => (
   </svg>
 );
 
-export function CompositeComponent({ data: node, emit }: NodeProps<CompositeNodeType>) {
+/** The run-mode selector + Solve/status + the active mode's config editor. Shared by
+ *  the outer Composite card AND the drill-in overlay, so you can switch modes and
+ *  solve from INSIDE the subgraph too. `emit` is present only on the outer card (the
+ *  goal-seek Solution's output socket anchors to the outer node); omitted inside the
+ *  drill-in, where the Solution shows as a plain display. */
+export function CompositeRunControls({ node, emit }: { node: CompositeNodeType; emit?: NodeProps<CompositeNodeType>["emit"] }) {
   const [runMode, setRunMode] = useNodeField(node, "runMode");
-  // Heavy modes are arm-and-run: an explicit Solve, with an orange "stale" dot when
-  // inputs/config drifted since the last solve (compositeStaleStore drives the dot —
-  // a held composite's output doesn't change, so processGraph won't re-render it).
+  // A held composite's output doesn't change, so processGraph won't re-render it —
+  // subscribe to the store so the stale dot updates the moment data() flags it.
   useSyncExternalStore(compositeStaleStore.subscribe, compositeStaleStore.getVersion);
   const heavy = node.isHeavyMode();
   const stale = compositeStaleStore.isStale(node.id);
-  // Goal-seek failure IS detectable (#CONV! → a SolError on goalSeekResult), so the
-  // status circle gets a red "no solution" state on top of stale/solved.
   const failed = heavy && runMode === "goal-seek" && isSolError(node.goalSeekResult);
+  return (
+    <>
+      {(node.inputPorts.length > 0 || node.outputPorts.length > 0) && (
+        <OpSelect value={runMode} options={RUN_MODE_OPTIONS} onChange={setRunMode} />
+      )}
+      {heavy && (
+        <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 4 }}>
+          <button
+            type="button"
+            className="solenoid-node__inline-input"
+            style={{ flex: 1, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
+            onClick={(e) => { e.stopPropagation(); node.requestSolve(); void processGraph(node.id); }}
+            onPointerDown={stopDragStart}
+            onMouseDown={stopDragStart}
+          >
+            <SolveSvg />
+            Solve
+          </button>
+          <StatusDot state={stale ? "stale" : failed ? "failed" : "ok"} />
+        </div>
+      )}
+      {runMode === "scenarios" && <ScenarioTable node={node} />}
+      {runMode === "data-table" && <DataTableEditor node={node} />}
+      {runMode === "simulation" && <SimulationEditor node={node} />}
+      {runMode === "goal-seek" && <GoalSeekEditor node={node} emit={emit} />}
+    </>
+  );
+}
+
+export function CompositeComponent({ data: node, emit }: NodeProps<CompositeNodeType>) {
+  const [runMode] = useNodeField(node, "runMode");
 
   return (
     <NodeShell node={node} emit={emit} labelPlaceholder="Composite" hideOutputSockets>
@@ -303,47 +355,7 @@ export function CompositeComponent({ data: node, emit }: NodeProps<CompositeNode
           wired cable is how you feed the solver's SEED (there's no seed editor inside
           the subgraph; the marker is just a boundary). */}
       <InlineInputs node={node} emit={emit} />
-      {(node.inputPorts.length > 0 || node.outputPorts.length > 0) && (
-        <OpSelect value={runMode} options={RUN_MODE_OPTIONS} onChange={setRunMode} />
-      )}
-      {heavy && (
-        <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 4 }}>
-          <button
-            type="button"
-            className="solenoid-node__inline-input"
-            style={{ flex: 1, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
-            onClick={(e) => { e.stopPropagation(); node.requestSolve(); void processGraph(node.id); }}
-            onPointerDown={stopDragStart}
-            onMouseDown={stopDragStart}
-          >
-            <SolveSvg />
-            Solve
-          </button>
-          {/* Status circle — ALWAYS present (so it never resizes the Solve button):
-              an amber RING while stale (alert-badge amber #d9822b), a filled RED
-              (--sol-error) when the solve found no solution, else filled GREEN
-              (--sock-lambda, the semantic positive) once solved / up to date. */}
-          {(() => {
-            const color = stale ? "#d9822b" : failed ? "var(--sol-error)" : "var(--sock-lambda)";
-            const title = stale ? "Stale" : failed ? "No solution" : "Up to date";
-            return (
-              <span
-                title={title}
-                style={{
-                  display: "block", // an inline span ignores width/height → not a circle
-                  width: 10, height: 10, borderRadius: "50%", flexShrink: 0, boxSizing: "border-box",
-                  border: `1.5px solid ${color}`,
-                  background: stale ? "transparent" : color,
-                }}
-              />
-            );
-          })()}
-        </div>
-      )}
-      {runMode === "scenarios" && <ScenarioTable node={node} />}
-      {runMode === "data-table" && <DataTableEditor node={node} />}
-      {runMode === "simulation" && <SimulationEditor node={node} />}
-      {runMode === "goal-seek" && <GoalSeekEditor node={node} emit={emit} />}
+      <CompositeRunControls node={node} emit={emit} />
       {/* Goal-seek's Solution is the sole hero — the achieved output just equals
           the target you set, so its value box is redundant and suppressed here
           (the GoalSeekEditor above owns the one hero box). */}
