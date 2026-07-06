@@ -1,7 +1,7 @@
 import { useEffect, useSyncExternalStore } from "react";
 import type { CompositeNode as CompositeNodeType, CompositeInputNode as CompositeInputNodeType, CompositeOutputNode as CompositeOutputNodeType, CompositeRunMode } from "../rete-nodes";
 import { isSolError } from "../errorValue";
-import { InlineInputs, InlineNumberField } from "./inlineInput";
+import { InlineInputs, InlineNumberField, useDraftCommit, INVALID_DRAFT } from "./inlineInput";
 import { NodeShell, ValueDisplay, OpSelect, useNodeField, PortSockets, type NodeProps, type OpOption } from "./nodeKit";
 import { MeasuredSocketRow } from "./NodeSocket";
 import type { DisplayValue } from "./valueDisplayFormat";
@@ -291,7 +291,7 @@ const EditSvg = () => (
  *  solve from INSIDE the subgraph too. `emit` is present only on the outer card (the
  *  goal-seek Solution's output socket anchors to the outer node); omitted inside the
  *  drill-in, where the Solution shows as a plain display. */
-export function CompositeRunControls({ node, emit }: { node: CompositeNodeType; emit?: NodeProps<CompositeNodeType>["emit"] }) {
+export function CompositeRunControls({ node, emit, insideOnly = false }: { node: CompositeNodeType; emit?: NodeProps<CompositeNodeType>["emit"]; insideOnly?: boolean }) {
   const [runMode, setRunMode] = useNodeField(node, "runMode");
   // A held composite's output doesn't change, so processGraph won't re-render it —
   // subscribe to the store so the stale dot updates the moment data() flags it.
@@ -310,7 +310,7 @@ export function CompositeRunControls({ node, emit }: { node: CompositeNodeType; 
             type="button"
             className="solenoid-node__inline-input"
             style={{ flex: 1, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
-            onClick={(e) => { e.stopPropagation(); node.requestSolve(); void processGraph(node.id); }}
+            onClick={(e) => { e.stopPropagation(); node.requestSolve(insideOnly); void processGraph(node.id); }}
             onPointerDown={stopDragStart}
             onMouseDown={stopDragStart}
           >
@@ -390,9 +390,31 @@ export function CompositeComponent({ data: node, emit }: NodeProps<CompositeNode
 // tables, chart/mermaid figures, lambda, scalars/lists/errors).
 
 export function CompositeInputMarkerComponent({ data, emit }: NodeProps<CompositeInputNodeType>) {
+  // Editable seed/default — the value this input carries when the port isn't externally
+  // wired (and the goal-seek seed). A wired value or a solve overrides it (a solve
+  // writes the solved value back here), but it stays editable from inside. Same field
+  // as the Number Input node (the larger `value-input`, commit on Enter/blur).
+  const field = useDraftCommit<number>(
+    data.defaultValue ?? 0,
+    String,
+    (t) => {
+      if (t.trim() === "") return 0;
+      const n = Number(t);
+      return Number.isFinite(n) ? n : INVALID_DRAFT;
+    },
+    (v) => { data.defaultValue = v; void processGraph(); },
+  );
   return (
     <NodeShell node={data} emit={emit} collapsible={false} labelPlaceholder="Input" className="solenoid-node--composite-marker">
-      <CompositeBoundaryValue value={data.value} label={data.label} />
+      <input
+        className="solenoid-node__value-input"
+        type="number"
+        value={field.draft}
+        onChange={(e) => field.setDraft(e.target.value)}
+        onBlur={field.onBlur}
+        onKeyDown={field.onKeyDown}
+        step="any"
+      />
     </NodeShell>
   );
 }

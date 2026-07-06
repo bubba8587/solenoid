@@ -499,6 +499,19 @@ describe("CompositeNode Goal Seek run mode", () => {
     expect(c.stale).toBe(false);
   });
 
+  it("inside-only Solve runs on marker seeds (ignores wiring) and writes the solution back", async () => {
+    const { c, inAId, inBId, outId } = await makeAdder();
+    const inAMarker = c.internalEditor.getNode(c.inputPorts.find((p) => p.id === inAId)!.internalNodeId) as unknown as { defaultValue: number | null };
+    const inBMarker = c.internalEditor.getNode(c.inputPorts.find((p) => p.id === inBId)!.internalNodeId) as unknown as { defaultValue: number | null };
+    inBMarker.defaultValue = 3; // seed B = 3 from inside
+    c.setGoalSeek({ inputPortId: inAId, outputPortId: outId, target: 15 });
+    // Inside solve ignores the wired B=99 and uses the seed 3 → Sum = A + 3 = 15 → A = 12.
+    c.requestSolve(true);
+    const out = await c.data({ [inBId]: [99] });
+    expect(out[outId] as number).toBeCloseTo(12, 4); // used seed 3, not wired 99
+    expect(inAMarker.defaultValue as number).toBeCloseTo(12, 4); // solution written back to the driver marker
+  });
+
   it("syncPortLabels pulls each port's label from its renamed marker", async () => {
     const { c, inAId, outId } = await makeAdder();
     const inMarker = c.internalEditor.getNode(c.inputPorts.find((p) => p.id === inAId)!.internalNodeId)!;
