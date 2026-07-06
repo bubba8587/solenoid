@@ -112,7 +112,7 @@ export class ChartNode extends ClassicPreset.Node {
     // A Frame drives a LABELED chart (our convention: columns, not parallel sockets):
     // the FIRST column is the x-axis labels (dates/categories), the SECOND its values.
     // Takes precedence over `values` when wired.
-    this.addInput("frame", frameIn("Frame (labels + values)"));
+    this.addInput("frame", frameIn("Frame"));
     // The 2-D feed: composed reads each column as a series, bubble each row as an
     // [x, y, size] point. Unwired for the 1-D ops (they read `values`).
     this.addInput("series", anyTableIn("Series (2-D)"));
