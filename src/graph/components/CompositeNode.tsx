@@ -1,4 +1,6 @@
+import { useEffect } from "react";
 import type { CompositeNode as CompositeNodeType, CompositeInputNode as CompositeInputNodeType, CompositeOutputNode as CompositeOutputNodeType, CompositeRunMode } from "../rete-nodes";
+import { isSolError } from "../errorValue";
 import { InlineInputs, InlineNumberField } from "./inlineInput";
 import { NodeShell, ValueDisplay, OpSelect, useNodeField, PortSockets, type NodeProps, type OpOption } from "./nodeKit";
 import { MeasuredSocketRow } from "./NodeSocket";
@@ -39,6 +41,7 @@ const RUN_MODE_OPTIONS: OpOption<CompositeRunMode>[] = [
   { value: "scenarios", label: "Scenarios" },
   { value: "data-table", label: "Data table" },
   { value: "simulation", label: "Simulation" },
+  { value: "goal-seek", label: "Goal seek" },
 ];
 
 /** "3.5" → 3.5; "" → undefined (clears the override, falls back to the port's
@@ -178,6 +181,58 @@ function SimulationEditor({ node }: { node: CompositeNodeType }) {
   );
 }
 
+// Goal-seek: drive one exposed input until a chosen output hits a target (Excel's
+// Goal Seek). Reads "Set <output> To <value> By changing <input>"; the solved driver
+// value (or #CONV!) shows below. The solve runs in composite.ts runGoalSeek.
+function GoalSeekEditor({ node }: { node: CompositeNodeType }) {
+  const exposed = node.inputPorts.filter((p) => p.exposure === "exposed");
+  const outputs = node.outputPorts;
+  const recompute = () => { void processGraph(node.id); };
+  // Initialize the config the first time the mode is entered so it solves immediately.
+  useEffect(() => {
+    if (!node.goalSeek && exposed.length > 0 && outputs.length > 0) { node.setGoalSeek({}); recompute(); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (exposed.length === 0 || outputs.length === 0) {
+    return <div className="solenoid-node__text-empty">expose a numeric input and output to goal-seek</div>;
+  }
+  const gs = node.goalSeek;
+  const inputId = gs?.inputPortId || exposed[0].id;
+  const outputId = gs?.outputPortId || outputs[0].id;
+  const result = node.goalSeekResult;
+  const row = { display: "grid", gridTemplateColumns: "minmax(0,0.8fr) minmax(0,1.4fr)", gap: 6, alignItems: "center" } as const;
+  const stop = { onPointerDown: (e: React.PointerEvent) => e.stopPropagation(), onMouseDown: (e: React.MouseEvent) => e.stopPropagation() };
+  return (
+    <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 4 }}>
+      <div style={row}>
+        <span className="solenoid-node__io-label">Set</span>
+        <select className="solenoid-node__inline-input" value={outputId} onChange={(e) => { node.setGoalSeek({ outputPortId: e.target.value }); recompute(); }} {...stop}>
+          {outputs.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+        </select>
+      </div>
+      <div style={row}>
+        <span className="solenoid-node__io-label">To value</span>
+        <InlineNumberField value={gs?.target ?? 0} onChange={(v) => { node.setGoalSeek({ target: v ?? 0 }); recompute(); }} />
+      </div>
+      <div style={row}>
+        <span className="solenoid-node__io-label">By changing</span>
+        <select className="solenoid-node__inline-input" value={inputId} onChange={(e) => { node.setGoalSeek({ inputPortId: e.target.value }); recompute(); }} {...stop}>
+          {exposed.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+        </select>
+      </div>
+      {result != null && (
+        <div style={row}>
+          <span className="solenoid-node__io-label">Solution</span>
+          <span className="solenoid-node__io-label" style={{ color: isSolError(result) ? "var(--sol-error)" : "var(--text-bright)", fontWeight: 600 }}>
+            {isSolError(result) ? result.code : +result.toFixed(6)}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // The Composite card: an editable title (NodeShell), one row per exposed
 // input (InlineInputs — reuses the generic input-row renderer off
 // node.inputs; every port socket is `any`, so a row is socket+label, or a
@@ -225,6 +280,7 @@ export function CompositeComponent({ data: node, emit }: NodeProps<CompositeNode
       {runMode === "scenarios" && <ScenarioTable node={node} />}
       {runMode === "data-table" && <DataTableEditor node={node} />}
       {runMode === "simulation" && <SimulationEditor node={node} />}
+      {runMode === "goal-seek" && <GoalSeekEditor node={node} />}
       {node.outputPorts.map((p) => {
         const port = node.outputs[p.id];
         if (!port) return null;

@@ -84,8 +84,6 @@ is archived).
 
 - [ ] **Simulation-container output series renders on the outer card only** — the
   drill-in should show it too.
-- [ ] **Goal-seek run mode** — real numeric solver (bisection/secant) driving one
-  exposed numeric input to a target output; `#CONV!` on non-convergence.
 - [ ] **Monte Carlo run mode** — driver slot exists; blocked on bundle 12's
   distribution representation for the sampling.
 - [ ] **Aliasing / hidden-port promotion UI** — the data model has `hidden`/`advanced`
