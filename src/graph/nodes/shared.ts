@@ -190,7 +190,7 @@ export function broadcastErr(
 // type (what flows through it). Drives the colored header bar, and is
 // reusable for future grouping / search / legend work.
 
-export type NodeKind = "input" | "math" | "convert" | "logic" | "list" | "lambda" | "util" | "display" | "string" | "date" | "complex" | "table" | "frame" | "format";
+export type NodeKind = "input" | "math" | "convert" | "logic" | "list" | "lambda" | "util" | "display" | "string" | "date" | "complex" | "table" | "frame" | "format" | "boundary";
 
 // A node kind picks a palette SLOT, not a raw hex — so a kind's accent and a
 // note/group painted the same color always resolve to the identical value, and
@@ -214,6 +214,7 @@ export const NODE_KIND_SLOTS: Record<NodeKind, PaletteSlot> = {
   table:   "gold",      // 2D matrix / table nodes — numeric family (the table socket is a gold matrix-shade)
   frame:   "violet",    // frame / data-table nodes (matches frame socket)
   format:  "gold",      // format controller (amber family)
+  boundary: "green",    // Composite Input/Output boundary markers — green = "special"
 };
 
 // Resolved-hex view of the kind accents, kept LIVE: it's an object consumers index
@@ -247,4 +248,5 @@ export const NODE_KIND_LABELS: Record<NodeKind, string> = {
   table:   "Table",
   frame:   "Frame",
   format:  "Format",
+  boundary: "Boundary",
 };
