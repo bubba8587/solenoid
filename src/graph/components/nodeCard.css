@@ -247,12 +247,12 @@
   opacity: 1;
 }
 .solenoid-node--square-collapse.solenoid-node--collapsed {
-  width: 58px;
+  width: 68px;
   min-width: 0;
 }
 .solenoid-node--square-collapse.solenoid-node--collapsed .solenoid-node__body {
   padding: 7px;
-  min-height: 44px;
+  min-height: 38px;
   align-items: center;
   justify-content: center;
 }
