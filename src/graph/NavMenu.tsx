@@ -1,5 +1,5 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { getArea, getEditor } from "./process";
+import { getActiveArea, getActiveEditor } from "./activeGraph";
 import { collapsedAwareNodesRect } from "./components/Minimap";
 import { canvasLockStore } from "./canvasLock";
 import { cableFlourishBridge } from "./cableFlourishStore";
@@ -10,7 +10,7 @@ import "./NavMenu.css";
 const ZOOM_STEP = 1.08;
 
 async function zoomBy(delta: number) {
-  const area = getArea();
+  const area = getActiveArea(); // zoom the graph you're looking at (drill-in too)
   if (!area) return;
   const { k, x, y } = area.area.transform;
   const next = Math.max(0.1, Math.min(4, k * delta));
@@ -68,8 +68,8 @@ function visibleInsets(c: DOMRect) {
 // panels. Exported so Cleanup (C) frames the view identically to
 // the navmenu Fit button instead of a raw, chrome-unaware zoomAt.
 export async function fitAll() {
-  const area = getArea();
-  const editor = getEditor();
+  const area = getActiveArea(); // fit the graph you're looking at (drill-in too)
+  const editor = getActiveEditor();
   if (!area || !editor) return;
 
   // Bounding box in canvas coords from the SAME geometry the minimap uses:
