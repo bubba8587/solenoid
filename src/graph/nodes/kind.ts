@@ -37,6 +37,7 @@ import { ConduitNode } from "./conduit";
 import { FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, GetRowNode, DistinctNode, HeadNode, SortFrameNode, FilterFrameNode, JoinNode, XLookupNode, SelectColumnsNode, DropColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode } from "./frame";
 import { CubeRollupNode } from "./cube";
 import { WebSourceNode, CsvConnectionNode, ParquetConnectionNode, ImportHtmlNode, ImportXmlNode } from "./connection";
+import { DataFeedNode } from "./dataFeed";
 import { WriteCsvNode, WriteJsonNode } from "./sink";
 import { ExpectNode } from "./quality";
 import { TornadoNode } from "./tornado";
@@ -78,7 +79,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
   // Composite boundary markers read green ("special"); the Composite node itself
   // stays neutral gray (util, below).
   if (node instanceof CompositeInputNode || node instanceof CompositeOutputNode) return "boundary";
-  if (node instanceof NumberInputNode || node instanceof ConstantNode || node instanceof SliderInputNode || node instanceof RandBetweenNode || node instanceof WebSourceNode || node instanceof CsvConnectionNode || node instanceof ParquetConnectionNode || node instanceof ImportHtmlNode || node instanceof ImportXmlNode || node instanceof XYPadNode || node instanceof ColorPickerNode) return "input";
+  if (node instanceof NumberInputNode || node instanceof ConstantNode || node instanceof SliderInputNode || node instanceof RandBetweenNode || node instanceof WebSourceNode || node instanceof CsvConnectionNode || node instanceof ParquetConnectionNode || node instanceof ImportHtmlNode || node instanceof ImportXmlNode || node instanceof DataFeedNode || node instanceof XYPadNode || node instanceof ColorPickerNode) return "input";
   if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof MermaidNode || node instanceof GaugeNode || node instanceof HeatmapCellNode || node instanceof ChartBuilderNode || node instanceof TornadoNode) return "display";
   if (node instanceof ConvertNode || node instanceof CastNode) return "convert";
   if (

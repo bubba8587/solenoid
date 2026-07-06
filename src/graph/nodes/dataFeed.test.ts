@@ -11,11 +11,11 @@ describe("DataFeedNode gating", () => {
     apiKeyStore.remove("alphavantage");
   });
 
-  it("defaults to FRED and reports needs-key when no key is stored", () => {
+  it("defaults to FRED, which is KEYLESS (no key needed)", () => {
     const n = new DataFeedNode();
     expect(n.provider).toBe("fred");
     expect(n.preset().id).toBe("fred");
-    expect(n.needsKey()).toBe(true);
+    expect(n.needsKey()).toBe(false);
   });
 
   it("empty input → idle, no frame (no fetch)", () => {
@@ -25,9 +25,9 @@ describe("DataFeedNode gating", () => {
     expect(connectionStore.getState(n.id).status).toBe("idle");
   });
 
-  it("keyed provider with input but no key → error state pointing at Settings, no fetch", () => {
-    const n = new DataFeedNode();
-    n.stringLiterals.input = "GDP";
+  it("KEYED provider with input but no key → error state pointing at Settings, no fetch", () => {
+    const n = new DataFeedNode({ provider: "alphavantage" });
+    n.stringLiterals.input = "AAPL";
     const out = n.data();
     expect(out.frame).toBeNull();
     const st = connectionStore.getState(n.id);
@@ -35,12 +35,13 @@ describe("DataFeedNode gating", () => {
     expect(st.message).toMatch(/Settings/);
   });
 
-  it("storing the key clears needs-key; a keyless provider (Stooq) never needs one", () => {
-    const n = new DataFeedNode();
-    apiKeyStore.set("fred", "abc");
-    expect(n.needsKey()).toBe(false);
+  it("storing the key clears needs-key; keyless providers (FRED, Stooq) never need one", () => {
+    const av = new DataFeedNode({ provider: "alphavantage" });
+    expect(av.needsKey()).toBe(true);
+    apiKeyStore.set("alphavantage", "abc");
+    expect(av.needsKey()).toBe(false);
 
-    const stooq = new DataFeedNode({ provider: "stooq" });
-    expect(stooq.needsKey()).toBe(false);
+    expect(new DataFeedNode({ provider: "fred" }).needsKey()).toBe(false);
+    expect(new DataFeedNode({ provider: "stooq" }).needsKey()).toBe(false);
   });
 });

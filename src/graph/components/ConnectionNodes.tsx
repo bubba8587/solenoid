@@ -1,3 +1,4 @@
+import type React from "react";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type {
   WebSourceNode as WebSourceNodeType,
@@ -5,11 +6,14 @@ import type {
   ParquetConnectionNode as ParquetConnectionNodeType,
   ImportHtmlNode as ImportHtmlNodeType,
   ImportXmlNode as ImportXmlNodeType,
+  DataFeedNode as DataFeedNodeType,
 } from "../rete-nodes";
 import { processGraph } from "../process";
 import { connectionStore, refreshConnection, type ConnectionState } from "../connectionStore";
 import { settingsStore } from "../settingsStore";
 import { isDesktop, listCsvFiles, listParquetFiles } from "../fileBridge";
+import { apiKeyStore } from "../apiKeyStore";
+import { PROVIDER_LIST, FRED_QUICK_PICKS, getProvider, type ProviderId } from "../dataProviders";
 import { FrameDisplay } from "./FrameDisplay";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import "./ConnectionNodes.css";
@@ -303,6 +307,76 @@ export function CsvConnectionComponent({ data, emit }: NodeProps<CsvConnectionNo
         {desktop && folder && (
           <RefreshIntervalField minutes={minutes} onCommit={(n) => { data.refreshMinutes = n; setMinutes(n); }} />
         )}
+        <FrameDisplay frame={data.cachedResult} label={data.label} />
+      </div>
+    </NodeShell>
+  );
+}
+
+// ─── DATA FEED (Finance / economic data) ────────────────────────────────────────
+// A provider dropdown (FRED / Stooq / Alpha Vantage) + a series/ticker field → a
+// Frame. FRED is KEYLESS (public fredgraph.csv) and offers common-series quick-picks;
+// stocks are keyless via Stooq (Alpha Vantage is the keyed backup). Wire the frame
+// into a Chart node to "embed a FRED graph" natively. Same fetch/cache/refresh shape
+// as the other connection nodes (data() stays sync; one background fetch per key).
+
+const stopDrag = {
+  onPointerDown: (e: React.PointerEvent) => e.stopPropagation(),
+  onMouseDown: (e: React.MouseEvent) => e.stopPropagation(),
+};
+
+export function DataFeedComponent({ data, emit }: NodeProps<DataFeedNodeType>) {
+  // Re-render when a key is added/removed so the "add key" note + fetch-ability update.
+  useSyncExternalStore(apiKeyStore.subscribe, apiKeyStore.version);
+  const [provider, setProvider] = useState<ProviderId>(data.provider);
+  const [input, setInput] = useState(data.stringLiterals.input ?? "");
+  const [minutes, setMinutes] = useState(data.refreshMinutes);
+  useEffect(() => { setProvider(data.provider); }, [data.provider]);
+  useEffect(() => { setInput(data.stringLiterals.input ?? ""); }, [data.stringLiterals.input]);
+  useAutoRefresh(data.id, minutes);
+
+  const preset = getProvider(provider);
+
+  function pickProvider(next: ProviderId) {
+    setProvider(next);
+    data.provider = next;
+    void processGraph();
+  }
+  function commitInput(next: string) {
+    const v = next.trim();
+    setInput(v);
+    if (v !== (data.stringLiterals.input ?? "")) { data.stringLiterals.input = v; void processGraph(); }
+  }
+
+  return (
+    <NodeShell node={data} emit={emit} labelPlaceholder="Data Feed">
+      <div className="sol-conn">
+        <select className="sol-conn__select" value={provider} onChange={(e) => pickProvider(e.target.value as ProviderId)} {...stopDrag}>
+          {PROVIDER_LIST.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+        </select>
+        {provider === "fred" && (
+          // Quick-picks fill the field (FRED ids are cryptic); reset to "" so it's re-pickable.
+          <select className="sol-conn__select" value="" onChange={(e) => { if (e.target.value) commitInput(e.target.value); }} {...stopDrag}>
+            <option value="">Common series…</option>
+            {FRED_QUICK_PICKS.map((q) => <option key={q.id} value={q.id}>{q.label} ({q.id})</option>)}
+          </select>
+        )}
+        <input
+          className="sol-conn__url"
+          type="text"
+          value={input}
+          placeholder={preset.placeholder}
+          spellCheck={false}
+          onChange={(e) => setInput(e.target.value)}
+          onBlur={(e) => commitInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+          {...stopDrag}
+        />
+        {data.needsKey() && (
+          <div className="sol-conn__note">Add a {preset.label} API key in Settings ▸ Data.</div>
+        )}
+        <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
+        <RefreshIntervalField minutes={minutes} onCommit={(n) => { data.refreshMinutes = n; setMinutes(n); }} />
         <FrameDisplay frame={data.cachedResult} label={data.label} />
       </div>
     </NodeShell>

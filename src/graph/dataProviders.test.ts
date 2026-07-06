@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { PROVIDERS, getProvider, parseFredObservations } from "./dataProviders";
+import { PROVIDERS, getProvider, parseFredObservations, parseFredCsv } from "./dataProviders";
 import { getColumn, frameRowCount } from "./frame";
 
 describe("dataProviders", () => {
@@ -24,11 +24,19 @@ describe("dataProviders", () => {
     expect(frameRowCount(parseFredObservations("{}"))).toBe(0);
   });
 
-  it("builds provider URLs — encoded input + key; stooq lower-cases and needs no key", () => {
-    const fredUrl = PROVIDERS.fred.buildUrl("UNRATE", "KEY 123");
-    expect(fredUrl).toContain("series_id=UNRATE");
-    expect(fredUrl).toContain("api_key=KEY%20123"); // key is URL-encoded
-    expect(PROVIDERS.fred.needsKey).toBe(true);
+  it("FRED keyless CSV → date/value frame with the series-named value column; '.' gaps missing", () => {
+    const csv = "observation_date,UNRATE\n2020-01-01,3.5\n2020-02-01,.\n2020-03-01,4.4\n";
+    const f = parseFredCsv(csv);
+    expect(f.columns.map((c) => c.name)).toEqual(["observation_date", "UNRATE"]);
+    expect(getColumn(f, "UNRATE")?.values).toEqual([3.5, null, 4.4]);
+  });
+
+  it("builds provider URLs — FRED keyless CSV; stooq lower-cases; Alpha Vantage keyed", () => {
+    // FRED is keyless now — the public fredgraph.csv download, no api_key.
+    const fredUrl = PROVIDERS.fred.buildUrl("UNRATE", "");
+    expect(fredUrl).toContain("fredgraph.csv?id=UNRATE");
+    expect(fredUrl).not.toContain("api_key");
+    expect(PROVIDERS.fred.needsKey).toBe(false);
 
     expect(PROVIDERS.stooq.needsKey).toBe(false);
     expect(PROVIDERS.stooq.buildUrl("AAPL.US", "")).toContain("s=aapl.us");
