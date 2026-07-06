@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { ClassicPreset } from "rete";
 import { AreaPlugin, AreaExtensions } from "rete-area-plugin";
@@ -25,6 +25,7 @@ import { SocketComponent } from "./SocketComponent";
 import { ConnectionComponent } from "./ConnectionComponent";
 import { CloseIcon } from "./CloseIcon";
 import "./compositeEditor.css";
+import "./SocketContextMenu.css";
 
 // ─── The Composite drill-in editor ──────────────────────────────────────────────
 // Mounts a composite's PRIVATE internal graph (nodes/composite.ts
@@ -177,6 +178,9 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
   const mountRef = useRef<DrillMount | null>(null);
   const cursorRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const [menu, setMenu] = useState<{ screenX: number; screenY: number } | null>(null);
+  const [nodeMenu, setNodeMenu] = useState<
+    { nodeId: string; screenX: number; screenY: number; isComposite: boolean } | null
+  >(null);
   const [ready, setReady] = useState(false);
   const [hasSelection, setHasSelection] = useState(false);
 
@@ -500,6 +504,40 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
     }
   }
 
+  /** Duplicate one internal node (right-click → Duplicate). Reuses the tested
+   *  copy/paste path — which routes through getActive* (the drill-in) — by
+   *  transiently isolating the target on the `.selected` flag copySelected reads,
+   *  then restoring the real selection so the user's ring is untouched. */
+  async function duplicateNode(nodeId: string) {
+    const mount = mountRef.current;
+    if (!mount) return;
+    const editor = comp.internalEditor;
+    if (!editor.getNode(nodeId)) return;
+    const snap = editor.getNodes().map(
+      (n) => [n, (n as { selected?: boolean }).selected] as const,
+    );
+    for (const [n] of snap) (n as { selected?: boolean }).selected = n.id === nodeId;
+    copySelected();
+    for (const [n, sel] of snap) (n as { selected?: boolean }).selected = sel;
+    const base = mount.area.nodeViews.get(nodeId)?.position ?? { x: 0, y: 0 };
+    await pasteClipboard(base.x, base.y); // adds PASTE_OFFSET + recomputes the owner
+    scheduleAutosave();
+  }
+
+  /** Delete one internal node (right-click → Delete). Boundary markers keep to the
+   *  add/remove-port gesture, so they're excluded from this menu. */
+  async function deleteNode(nodeId: string) {
+    const editor = comp.internalEditor;
+    const node = editor.getNode(nodeId);
+    if (!node || node instanceof CompositeInputNode || node instanceof CompositeOutputNode) return;
+    for (const c of editor.getConnections().filter((c) => c.source === nodeId || c.target === nodeId)) {
+      await editor.removeConnection(c.id);
+    }
+    await editor.removeNode(nodeId);
+    void processGraph(recomputeTarget());
+    scheduleAutosave();
+  }
+
   async function handleMenuSelect(entry: NodeCatalogEntry) {
     const mount = mountRef.current;
     if (!mount || !menu) return;
@@ -618,7 +656,29 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
           onContextMenu={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            setMenu({ screenX: e.clientX, screenY: e.clientY });
+            // On a node body → node menu (Duplicate / Delete); blank → Add menu.
+            // Detect via nodeViews containment (rete adds no shared wrapper class).
+            const mount = mountRef.current;
+            const target = e.target as Node;
+            let hitId: string | null = null;
+            if (mount) {
+              for (const [id, view] of mount.area.nodeViews) {
+                if (view.element.contains(target)) { hitId = id; break; }
+              }
+            }
+            const hit = hitId ? comp.internalEditor.getNode(hitId) : null;
+            if (hit && !(hit instanceof CompositeInputNode) && !(hit instanceof CompositeOutputNode)) {
+              setMenu(null);
+              setNodeMenu({
+                nodeId: hit.id,
+                screenX: e.clientX,
+                screenY: e.clientY,
+                isComposite: hit instanceof CompositeNode,
+              });
+            } else {
+              setNodeMenu(null);
+              setMenu({ screenX: e.clientX, screenY: e.clientY });
+            }
           }}
         >
           {!ready && <div className="solenoid-composite-editor__loading" />}
@@ -633,6 +693,63 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
           onClose={() => setMenu(null)}
         />
       )}
+      {nodeMenu && (
+        <DrillNodeMenu
+          menu={nodeMenu}
+          onEdit={() => { const n = comp.internalEditor.getNode(nodeMenu.nodeId); if (n instanceof CompositeNode) compositeEditorStore.drillInto(n); }}
+          onDuplicate={() => void duplicateNode(nodeMenu.nodeId)}
+          onDelete={() => void deleteNode(nodeMenu.nodeId)}
+          onClose={() => setNodeMenu(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// Right-click menu for a node inside the drill-in. The main canvas's node menu is
+// isolate/pin/standoff (main-graph concepts that don't apply in a subgraph), so the
+// drill-in gets its own focused set: Edit contents (composites) / Duplicate / Delete.
+function DrillNodeMenu({
+  menu, onEdit, onDuplicate, onDelete, onClose,
+}: {
+  menu: { nodeId: string; screenX: number; screenY: number; isComposite: boolean };
+  onEdit: () => void;
+  onDuplicate: () => void;
+  onDelete: () => void;
+  onClose: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    function onDown(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); }
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("mousedown", onDown); document.removeEventListener("keydown", onKey); };
+  }, [onClose]);
+  const item = (icon: ReactNode, label: string, run: () => void) => (
+    <button
+      className="solenoid-socket-ctx__item"
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={() => { run(); onClose(); }}
+    >
+      <span className="solenoid-socket-ctx__icon">{icon}</span>
+      {label}
+    </button>
+  );
+  return (
+    <div ref={ref} className="solenoid-socket-ctx" style={{ left: menu.screenX + 6, top: menu.screenY - 4 }}>
+      {menu.isComposite && item(
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}>
+          <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" /><path d="m15 5 4 4" />
+        </svg>, "Edit contents", onEdit)}
+      {item(
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}>
+          <rect x="8" y="8" width="12" height="12" rx="2" /><path d="M4 16V6a2 2 0 0 1 2-2h10" />
+        </svg>, "Duplicate", onDuplicate)}
+      {item(
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}>
+          <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V6" /><path d="M10 11v6M14 11v6" />
+        </svg>, "Delete", onDelete)}
     </div>
   );
 }
