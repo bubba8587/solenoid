@@ -73,9 +73,6 @@ is archived).
   rule in both backends; parity tests. Also: document the desktop source-freeing
   GC-timing behavior in subsystem-invariants (decided ACCEPT, docs-only).
 - [ ] **String lt/gt ordering** (byte vs locale) — small P3, decide + pin when touched.
-- [ ] **Minimap position 3-way** (decided 2026-07-01, NOT four corners): one
-  Bottom · Top · Hide setting absorbing `perfHideMinimap`; the Socket Reference
-  legend slides to fill freed space; Top sits below the Zoom pill.
 - [ ] **Collapsed Gauge mini-preview** (the last of the per-node set — Slicer
   summary + Sparkline square shipped; Chart/Treemap/Sankey/Histogram now collapse
   to a `[Chart]` chip): Gauge → investigate a small-square collapse, but its 3
