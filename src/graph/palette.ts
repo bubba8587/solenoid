@@ -110,7 +110,7 @@ export function darkenAccent(hex: string): string {
 // pull date-pink redward so it no longer reads like boolean-purple.
 export const PALETTE = {
   gray:      "#8a8f98", // --sock-any
-  amber:     "#d9742b", // (input kind only — no socket family) — nudged more orange
+  amber:     "#d9742b", // --sock-table (numeric matrix) + input kind — nudged more orange
   blue:      "#3173e0", // (math kind) — nudged deeper (darker / more saturated)
   teal:      "#4fc89a", // (convert kind) — pushed into green (jade), away from sky blue
   purple:    "#c05dd1", // (logic kind) — nudged slightly redder, stays violet-purple
@@ -119,16 +119,21 @@ export const PALETTE = {
   lime:      "#c8e040", // --sock-string
   pink:      "#de7cb0", // --sock-date
   sky:       "#56b4e9", // --sock-complex
-  vermilion: "#e95c3c", // --sock-table — nudged redder
+  vermilion: "#e95c3c", // the semantic ERROR red (freed from --sock-table → amber); a red-orange
   violet:    "#7b64ed", // --sock-frame — nudged a little bluer
 } as const;
 
 export type PaletteSlot = keyof typeof PALETTE;
 
-// Order the swatch picker shows the slots in (hue families grouped loosely).
+// Order the swatch picker shows the slots in — ALSO the categorical series order
+// (chartCore useSeriesColors), so it doubles as chart-series priority. The picker
+// grid is 6 cols × 2 rows, so column pairs read top/bottom: gold/gray (accent +
+// neutral) and green/vermilion (the semantic positive/error pair) lead, then the
+// remaining hues alternate for contrast. gold is Solenoid's default accent → slot 1;
+// gray drops to slot 7 so the first six SERIES colours stay vivid.
 export const COLOR_PALETTE: PaletteSlot[] = [
-  "gray", "amber", "blue", "teal", "purple", "green",
-  "gold", "lime", "pink", "sky", "vermilion", "violet",
+  "gold", "green", "amber", "blue", "lime", "purple",
+  "gray", "vermilion", "violet", "pink", "sky", "teal",
 ];
 
 // EVERY socket color is derived from a palette slot — so sockets are built entirely
@@ -140,7 +145,7 @@ export const COLOR_PALETTE: PaletteSlot[] = [
 //     the old hand-tuned arrays closely for most families (string's was a deliberate
 //     extra-dark olive; it comes out a touch brighter now — accepted).
 //   - matrix (a 2-D grid): a punchier, slightly hue-shifted sibling — +6° hue, L ×0.86.
-// number's MATRIX is the Table socket, which is its own scalar (vermilion), not a
+// number's MATRIX is the Table socket, which is its own scalar (amber), not a
 // derived shade of number — hence --sock-table is a scalar mapping.
 const ARRAY_DARKEN = 0.8;
 export function socketArrayShade(hex: string): string {
@@ -171,7 +176,7 @@ export const SOCKET_VARS: { var: string; slot: PaletteSlot; kind: SocketVarKind 
   { var: "--sock-logical",     slot: "purple",    kind: "scalar" }, // boolean — matches the logic node-kind
   { var: "--sock-logicallist", slot: "purple",    kind: "array" },
   { var: "--sock-logicaltable",slot: "purple",    kind: "matrix" },
-  { var: "--sock-table",       slot: "vermilion", kind: "scalar" }, // numeric matrix (own color)
+  { var: "--sock-table",       slot: "amber",     kind: "scalar" }, // numeric matrix — moved off vermilion (freeing it for the semantic error red)
   { var: "--sock-frame",       slot: "violet",    kind: "scalar" },
   { var: "--sock-cube",        slot: "violet",    kind: "scalar" }, // recursive container — shares the frame's violet (distinguished by its hexagon glyph, not colour)
   { var: "--sock-lambda",      slot: "green",     kind: "scalar" },
@@ -237,7 +242,9 @@ const COLORBLIND: Record<PaletteSlot, string> = {
   violet:    OI.blue,        // frame
   green:     OI.green,       // lambda      (bluish green)
   // 4 node-kind-only slots — reuse the matching OI colour (distinct among themselves)
-  amber:     OI.orange,      // input  ↔ number-socket orange
+  amber:     OI.orange,      // input + TABLE socket — reuses number's orange (CVD only:
+                            //   table≈number here; OI has no free hue, so they coincide
+                            //   in colourblind mode. Distinct in the default/solarized sets.)
   blue:      OI.blue,        // math   ↔ frame-socket blue
   teal:      OI.sky,         // convert ↔ complex-socket sky
   purple:    OI.purple,      // logic  ↔ date-socket reddish-purple
