@@ -179,11 +179,12 @@ is archived).
 
 ## Desktop shell
 
-- [ ] **Re-enable the native accent window border** (disabled 2026-07-06 — `NATIVE_ACCENT_BORDER_ENABLED`
-  in `nativeAccent.ts`): `set_window_border` (DWMWA_BORDER_COLOR) re-asserts a native frame that
-  clobbers `tauri-plugin-decorum`'s overlay titlebar → the min/max/close controls vanish (both dev +
-  release). Find a way to color the border WITHOUT disturbing decorum's custom frame (re-assert the
-  overlay after? a decorum-native border API?) — needs live iteration on the desktop build.
+- [ ] **Window min/max/close controls missing** (2026-07-06, dev + release): the app replaces the
+  native titlebar with `tauri-plugin-decorum`'s `create_overlay_titlebar()` (`lib.rs` setup), and
+  the controls aren't rendering. RULED OUT: the accent border (`set_window_border`/DWMWA_BORDER_COLOR)
+  — disabling it did NOT restore them. Needs a live devtools look (F12 console — CSP/decorum errors?)
+  or a decorum/tauri version check. Fallback if unfixable: drop the overlay for native OS decorations
+  (guaranteed controls, loses the themed titlebar). Worked before; regression cause unknown.
 
 ## Cables / canvas / chrome
 
