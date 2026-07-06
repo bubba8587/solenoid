@@ -16,19 +16,21 @@ is archived).
 ## Needs an author decision / author-present session
 
 - [ ] **First-class composite drill-in — remaining gaps** (the "active graph context"
-  arc; author 2026-07-06 said proceed on this method). BUILT so far: `activeGraph.ts`
-  resolver (`getActive*` / `getOwningEditor`, `getEditor()` stays MAIN for autosave
-  safety — locked by `activeGraph.test.ts`); drill-in copy/paste, A-to-add, arrow
-  nudge, right-click node menu (Duplicate/Delete/Edit-contents); every render-time
-  cross-node resolver + in-node socket/row action reroutes to the owning/active graph
-  (labels, FC units/formats, type-default, Cast/Chart/Alert/TVM/Extensible/Frame
-  retype). STILL OPEN: (a) drill-in **render parity** — minimap, grid-snap, and Tidy/
-  auto-arrange don't run on the drill-in stack; (b) factor Canvas's ~900-line keydown
-  (G group, T tidy, I isolate, etc.) onto the active graph — only A/copy/paste/delete/
-  nudge are wired; (c) **history routing** — row/socket edits + label rename push to
-  the MAIN history, so the drill-in's Ctrl+Z doesn't undo them; (d) lasso/box-select
-  parity. (e) **D2 proper** — reroute the real top toolbar / mobile bar to the active
-  subgraph (author-present, wants live eyeballing).
+  arc; author 2026-07-06 said proceed). BUILT: `activeGraph.ts` seam (`getActive*` /
+  `getOwningEditor`, `getEditor()` stays MAIN — locked by `activeGraph.test.ts`);
+  de-fullscreen so the app frame stays around the subgraph (`z-index:4`, `html.sol-drilled-in`,
+  floating breadcrumb strip); chrome on the active graph (NavMenu zoom/fit, a real drill-in
+  minimap, lock); keyboard: copy/paste/delete/duplicate/add(A)/nudge/undo-redo/select-all(Ctrl+A)/
+  Tidy(T); right-click node menu; propagation fixes (labels/FC/type-default); `areaPresets.ts`
+  shared so surfaces can't drift. STILL OPEN: (a) **Group/Cleanup/Autofit/Expand + Isolate**
+  in the drill-in — main-pipe subsystems (membership/push/collapse/standoffs, isolate z-order);
+  a group there would be a static frame, so folded not half-shipped; needs those subsystems
+  taught the active area. (b) **Navigator + lasso** in the drill-in — navigator list/select/jump/
+  rename target main (route via a new active-selection hook); lasso is a custom Canvas rebuild.
+  Both folded/hidden while drilled in for now. (c) **History routing** — row/socket/label edits +
+  Edit-menu undo/redo push to MAIN history, so drill-in Ctrl+Z (buttons) don't undo them.
+  (d) **D2 proper** — reroute the real top toolbar / mobile bar to the active subgraph
+  (author-present, wants live eyeballing).
 - [ ] **D4 — conditional formatting for tables** (#41; deferred again 2026-07-05).
   Needs its own design pass: must clear Excel's version by a lot (author's explicit
   dislike), Display-node-only, must not step on FC format/units territory.
