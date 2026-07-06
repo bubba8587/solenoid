@@ -17,6 +17,7 @@ import { PivotEditorPopup } from "./graph/components/PivotEditorPopup";
 import { ShortcutsOverlay } from "./graph/ShortcutsOverlay";
 import { Settings } from "./graph/Settings";
 import { DocumentProperties } from "./graph/components/DocumentProperties";
+import { PaletteEditorModal } from "./graph/components/PaletteEditor";
 import { HudStack } from "./graph/components/HudStack";
 import { SelectionActionsBar } from "./graph/components/SelectionActionsBar";
 import { RendererSpike } from "./graph/components/RendererSpike";
@@ -50,6 +51,7 @@ function App() {
       <ShortcutsOverlay />
       <Settings />
       <DocumentProperties />
+      <PaletteEditorModal />
       <HudStack />
       <SelectionActionsBar />
       <RendererSpike />

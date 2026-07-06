@@ -1,4 +1,4 @@
-import { createNotifier } from "./storeKit";
+import { createNotifier, createToggleStore } from "./storeKit";
 
 // ── Color helpers ────────────────────────────────────────────────────────────
 function parseHex(hex: string): [number, number, number] | null {
@@ -392,6 +392,17 @@ export const paletteStore = {
     _customMap = { ...BUILTIN_PALETTES[name] };
     afterCustomEdit();
   },
+  /** Commit a whole custom map at once (the editor's Save — draft edits apply here
+   *  in one go, so the app retints once instead of live on every drag tick). */
+  setCustomMap(map: Record<PaletteSlot, string>) {
+    const next: Record<PaletteSlot, string> = { ..._customMap };
+    for (const slot of COLOR_PALETTE) {
+      const v = map[slot];
+      if (typeof v === "string" && /^#[0-9a-fA-F]{6}$/.test(v)) next[slot] = v;
+    }
+    _customMap = next;
+    afterCustomEdit();
+  },
   /** Apply the open document's palette declaration (on graph load). Null clears it. */
   setDocPalette(p?: { base?: string; overrides?: Record<string, string> } | null) {
     _docBase = p?.base && p.base in BUILTIN_PALETTES ? (p.base as PaletteName) : null;
@@ -456,6 +467,9 @@ export const reportPaletteStore = {
     return out;
   },
 };
+
+/** The custom-palette editor modal open flag (F-1). */
+export const paletteEditorPanel = createToggleStore();
 
 /** Read the persisted app palette choice and apply it. Call once at startup. */
 export function initPalette() {

@@ -1,16 +1,13 @@
-/* Custom palette editor (F-1) — lives in Settings, shown when Custom is active. */
-.sol-pal-editor {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-top: 8px;
-}
+/* Custom palette editor (F-1) — a modal opened from Settings; draft edits preview
+   in the sample and apply to the app only on Save. */
+.sol-pal-panel { width: min(560px, 94vw); }
+.sol-pal-panel__body { display: flex; flex-direction: column; gap: 16px; }
 
 /* Slot wells — two columns of role-labelled color inputs. */
 .sol-pal-editor__slots {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 6px 14px;
+  gap: 7px 18px;
 }
 .sol-pal-editor__slot {
   display: flex;
@@ -20,8 +17,8 @@
 }
 .sol-pal-editor__well {
   flex: 0 0 auto;
-  width: 24px;
-  height: 20px;
+  width: 26px;
+  height: 22px;
   padding: 0;
   border: 1px solid var(--border-strong);
   border-radius: 4px;
@@ -34,12 +31,7 @@
 .sol-pal-editor__slot-label { font-size: 12px; color: var(--text); }
 
 /* Load-template row. */
-.sol-pal-editor__templates {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
+.sol-pal-editor__templates { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .sol-pal-editor__templates-label { font-size: 12px; color: var(--text-dim); }
 .sol-pal-editor__template-btns { display: flex; gap: 6px; flex-wrap: wrap; }
 .sol-pal-editor__template-btn {
@@ -54,67 +46,44 @@
 }
 .sol-pal-editor__template-btn:hover { border-color: var(--accent); color: var(--accent); }
 
-/* ── Live sample ─────────────────────────────────────────────────────────── */
-.sol-pal-sample { display: flex; flex-direction: column; gap: 8px; }
-
-/* The Group stage — a 2px accent border + faint self-tint (never an edge stripe). */
-.sol-pal-sample__stage {
-  position: relative;
-  border: 2px solid;
-  border-radius: 10px;
-  padding: 22px 14px 14px;
+/* Live sample — the REAL node/group/note chrome side by side. */
+.sol-pal-sample {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  padding: 4px 0 2px;
 }
-.sol-pal-sample__grouptag {
-  position: absolute;
-  top: 5px;
-  left: 10px;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
+/* The node sits inside the group body (like a real member) with a little breathing room. */
+.sol-pal-sample__nodeslot { padding: 10px; }
+/* The sample is a static preview — no drag cursors / hover affordances firing. */
+.sol-pal-sample .solenoid-group,
+.sol-pal-sample .solenoid-node,
+.sol-pal-sample .solenoid-note { cursor: default; }
+.sol-pal-sample .solenoid-group__header { cursor: default; box-shadow: none; }
 
-/* The sample node card. */
-.sol-pal-sample__node {
-  flex: 0 0 auto;
-  width: 96px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  overflow: hidden;
+/* Footer with Cancel / Save. */
+.sol-pal-panel__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--border-subtle);
 }
-.sol-pal-sample__nodehead {
-  padding: 4px 8px;
-  font-size: 11px;
+.sol-pal-panel__btn {
+  height: 28px;
+  padding: 0 14px;
+  font-size: 12px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 7px;
   color: var(--text);
+  cursor: pointer;
 }
-.sol-pal-sample__nodebody {
-  display: flex;
-  gap: 7px;
-  padding: 8px;
+.sol-pal-panel__btn:hover { border-color: var(--border-strong); }
+.sol-pal-panel__btn--primary {
+  background: color-mix(in srgb, var(--accent) 22%, var(--btn-bg));
+  border-color: var(--accent);
+  color: var(--text-bright);
 }
-.sol-pal-sample__dot {
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  display: inline-block;
-}
-
-/* The sample note. */
-.sol-pal-sample__note {
-  flex: 1 1 auto;
-  border: 1px solid;
-  border-radius: 7px;
-  padding: 8px 10px;
-  font-size: 11px;
-  line-height: 1.4;
-  color: var(--text-dim);
-}
-
-/* Group / Note slot pickers under the stage. */
-.sol-pal-sample__pickers { display: flex; gap: 18px; flex-wrap: wrap; }
-.sol-pal-sample__picker { display: flex; align-items: center; gap: 8px; }
-.sol-pal-sample__picker-label { font-size: 11px; color: var(--text-dim); }
-.sol-pal-sample__swatches { gap: 3px; }
+.sol-pal-panel__btn--primary:hover { background: color-mix(in srgb, var(--accent) 32%, var(--btn-bg)); }

@@ -68,6 +68,20 @@ describe("custom palette (F-1)", () => {
     m.gold = "#000000";
     expect(paletteStore.customMap().gold).not.toBe("#000000");
   });
+
+  it("setCustomMap commits a whole map at once (the editor's Save)", () => {
+    paletteStore.setActiveBase("Custom");
+    paletteStore.setCustomMap({ ...BUILTIN_PALETTES.Muted, gold: "#abcdef" });
+    expect(resolveColor("gold")).toBe("#abcdef");
+    expect(resolveColor("blue")).toBe(BUILTIN_PALETTES.Muted.blue);
+  });
+
+  it("setCustomMap ignores invalid hexes, keeping the prior slot", () => {
+    paletteStore.setActiveBase("Custom");
+    paletteStore.loadCustomTemplate("Default");
+    paletteStore.setCustomMap({ ...paletteStore.customMap(), gold: "nope" });
+    expect(resolveColor("gold")).toBe(BUILTIN_PALETTES.Default.gold);
+  });
 });
 
 // Bundle 13 #52 — a colors-only brand override PARALLEL to the canvas palette.

@@ -4,8 +4,7 @@ import { settingsStore, settingsPanel, SETTINGS_SCHEMA, type SettingField } from
 import { apiKeyStore } from "./apiKeyStore";
 import { packsStore, allPacks, loadCustomPacks, customPacksFolder } from "./packs";
 import { isDesktop, pickFolderDialog, openInFileManager } from "./fileBridge";
-import { paletteStore, type PaletteChoice } from "./palette";
-import { PaletteEditor } from "./components/PaletteEditor";
+import { paletteStore, paletteEditorPanel, type PaletteChoice } from "./palette";
 import { useRenderMode, renderModeStore } from "./renderMode";
 import { supportsHtmlInCanvas } from "./htmlCanvasSupport";
 import { getEditor } from "./process";
@@ -128,7 +127,6 @@ function PaletteSection() {
     const ed = getEditor();
     if (ed) rebuildGroupMembership(ed);
   }
-  const isCustom = active === "Custom";
   return (
     <div className="solenoid-settings__section">
       <div className="solenoid-settings__section-title">Appearance</div>
@@ -136,29 +134,33 @@ function PaletteSection() {
         <span className="solenoid-settings__row-text">
           <span className="solenoid-settings__row-label">Color palette</span>
         </span>
-        {/* Dropdown + a read-only swatch legend stacked under it, on the right.
-            Custom swaps the legend for the editor (below the row). */}
+        {/* Dropdown + an "Edit…" that opens the custom-palette editor, with a
+            read-only swatch legend of the active palette stacked under them. */}
         <div className="solenoid-settings__palette-control">
-          <span className="solenoid-settings__select-wrap">
-            <select
-              className="solenoid-settings__select"
-              value={active}
-              onChange={(e) => pick(e.target.value as PaletteChoice)}
-            >
-              {paletteStore.names().map((name) => (
-                <option key={name} value={name}>{name}</option>
-              ))}
-              <option value="Custom">Custom…</option>
-            </select>
-            {/* Lucide "chevron-down" (ISC). */}
-            <svg className="solenoid-settings__select-caret" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="m6 9 6 6 6-6" />
-            </svg>
-          </span>
-          {!isCustom && <SwatchGrid readOnly />}
+          <div className="solenoid-settings__palette-row">
+            <span className="solenoid-settings__select-wrap">
+              <select
+                className="solenoid-settings__select"
+                value={active}
+                onChange={(e) => pick(e.target.value as PaletteChoice)}
+              >
+                {paletteStore.names().map((name) => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+                <option value="Custom">Custom</option>
+              </select>
+              {/* Lucide "chevron-down" (ISC). */}
+              <svg className="solenoid-settings__select-caret" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </span>
+            <button type="button" className="solenoid-settings__palette-edit" onClick={() => paletteEditorPanel.open()}>
+              Edit custom…
+            </button>
+          </div>
+          <SwatchGrid readOnly />
         </div>
       </div>
-      {isCustom && <PaletteEditor />}
     </div>
   );
 }
