@@ -39,7 +39,7 @@ export function SparklineComponent({ data, emit }: NodeProps<SparklineNodeType>)
       <div className="solenoid-node__collapsed-only">
         {series.length === 0
           ? <span className="solenoid-node__display-value solenoid-node__display-value--empty">—</span>
-          : <ChartView op={chartOp} series={series} width={44} height={28} axes={false} />}
+          : <ChartView op={chartOp} series={series} width={46} height={22} axes={false} />}
       </div>
     </NodeShell>
   );
