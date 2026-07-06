@@ -59,6 +59,7 @@ type DrillMount = {
   container: HTMLDivElement;
   area: AreaPlugin<Schemes, AreaExtra>;
   selector: ReturnType<typeof AreaExtensions.selector>;
+  selectable: ReturnType<typeof AreaExtensions.selectableNodes>;
   history: HistoryPlugin<Schemes>;
 };
 
@@ -84,7 +85,9 @@ async function getDrillMount(composite: CompositeNode): Promise<DrillMount> {
 
   const selector = AreaExtensions.selector();
   const accumulating = AreaExtensions.accumulateOnCtrl();
-  AreaExtensions.selectableNodes(area, selector, { accumulating });
+  // Capture the selectable handle (`.select(id, accumulate)`) — the drill-in's
+  // Ctrl+A and any programmatic selection go through it, mirroring Canvas.
+  const selectable = AreaExtensions.selectableNodes(area, selector, { accumulating });
   AreaExtensions.simpleNodesOrder(area);
 
   reactPlugin.addPreset(
@@ -172,7 +175,7 @@ async function getDrillMount(composite: CompositeNode): Promise<DrillMount> {
     return ctx;
   });
 
-  const mount: DrillMount = { container, area, selector, history };
+  const mount: DrillMount = { container, area, selector, selectable, history };
   holder.__drillMount = mount;
   return mount;
 }
@@ -301,6 +304,16 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
       if ((e.ctrlKey || e.metaKey) && !e.altKey) {
         if (e.code === "KeyZ" && !e.shiftKey) { e.preventDefault(); void historyStep(false); }
         if ((e.code === "KeyZ" && e.shiftKey) || e.code === "KeyY") { e.preventDefault(); void historyStep(true); }
+        // Select all nodes in the subgraph (Ctrl+A), mirroring the canvas.
+        if (e.code === "KeyA") {
+          e.preventDefault();
+          const mount = mountRef.current;
+          if (mount) {
+            mount.selector.unselectAll();
+            cableSelectionStore.set(null);
+            for (const n of comp.internalEditor.getNodes()) void mount.selectable.select(n.id, true);
+          }
+        }
         // Copy / paste inside the subgraph (the active graph is this level — see
         // activeGraph.ts), pasting at the cursor.
         if (e.code === "KeyC" && !e.shiftKey) { e.preventDefault(); copySelected(); }
