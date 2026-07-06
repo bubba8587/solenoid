@@ -285,7 +285,10 @@ export function CompositeComponent({ data: node, emit }: NodeProps<CompositeNode
       {runMode === "data-table" && <DataTableEditor node={node} />}
       {runMode === "simulation" && <SimulationEditor node={node} />}
       {runMode === "goal-seek" && <GoalSeekEditor node={node} />}
-      {node.outputPorts.map((p) => {
+      {/* Goal-seek's Solution is the sole hero — the achieved output just equals
+          the target you set, so its value box is redundant and suppressed here
+          (the GoalSeekEditor above owns the one hero box). */}
+      {runMode !== "goal-seek" && node.outputPorts.map((p) => {
         const port = node.outputs[p.id];
         if (!port) return null;
         const value = node.cachedOutputs[p.id] ?? null;
