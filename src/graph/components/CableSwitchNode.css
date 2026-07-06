@@ -49,7 +49,10 @@
   cursor: pointer;
 }
 
-.sol-switch__mode { flex: 0 0 auto; }
+/* Full-width One | Many toggle on its own row (so +Add / Cycle below never get
+   pushed off the narrow card). */
+.sol-switch__mode { display: flex; margin: 6px 0 0; }
+.sol-switch__mode .solenoid-segbtn { flex: 1; }
 
 .sol-switch__controls {
   display: flex;
