@@ -5,6 +5,36 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-06 pm — author-present, C-4 unified XLOOKUP merge)
+Local dev server (HMR); commit freely, no pushes. tsc + full vitest (2243) green.
+- **C-4 XLOOKUP merge — REAL merge, not a wire-driven socket swap.** The author vetoed
+  inventing a node whose sockets change based on what's wired in (the Explore-scoped
+  duck-typing plan). The legitimate merge came from the author's OWN 2026-07-06 standing
+  rule: XLOOKUP's two arrays must be ALIGNED, and aligned columns belong in a FRAME, not
+  two loose sockets. So the frame/cube lookup IS the universal XLOOKUP; the two-loose-lists
+  `XLookupNode` (list.ts) was DELETED — aligned lists reach XLOOKUP via Build Frame.
+- **What shipped:** `FrameLookupNode` (frame.ts) renamed → `XLookupNode`, fixed sockets
+  (source `any`, Lookup, In column, Return, If not found). Added: **`searchMode`** (first /
+  last — Excel search_mode 1/-1, which duplicate wins; binary 2/-2 omitted — on a
+  materialized column it finds the same row linearly) and **Return = `*`** → the whole
+  matched row (single-row Frame, or single-row Cube with nested cells intact).
+- **Verb refactor (`frameVerbs.ts`):** extracted `lookupFrameRowIndex` / `lookupCubeRowIndex`
+  (shared by cell- and whole-row-return so both agree on the row); `lookupFrameCell` /
+  `lookupCubeCell` are now thin wrappers (existing signatures + default first → frameLookup.test
+  stays green); added `frameRowAt` (via `reorderRows`) / `cubeRowAt` (via `cubeFromColumns`);
+  moved `asLookupSource` here.
+- **Footprint:** deleted `nodes/lookup.ts` + `components/XLookupNode.tsx`; component merged into
+  FrameNodes' `XLookupComponent` (match + search SegToggles); one catalog entry (the "Find"
+  XLOOKUP, retyped, accent frame, `new XLookupNode()`; frame-table `frame-lookup` entry removed);
+  registry/kind/barrels repointed; seed `asof-join-lookup.json` type → XLookupNode; errorValue.test
+  XLOOKUP block rewritten to the frame form; frameLookup.test gained search-last + whole-row cases.
+- **Author EYEBALL:** open the **As-Of Join & Lookup** seed — the lookup card is now titled
+  XLOOKUP with BOTH a match (Exact/≤/≥) and a search (First/Last) toggle; it still resolves the
+  35-qty row to discount **0.05** (≤ next-smaller tier). Try typing `*` in its Return field →
+  the whole matched tier row comes out (a 1-row frame). Add-menu: "XLOOKUP" under Find (violet
+  frame accent); the old "Frame Lookup" entry is gone.
+- **Backlog line deleted** (delete-on-done). NOT pushed (local session).
+
 ### SESSION DIGEST (2026-07-06 — author-present, chart-node polish + standing rules)
 Local dev server (HMR); commit freely, no pushes. Every commit tsc + full vitest (2241) green.
 - **STANDING DESIGN RULE (author 2026-07-06): a node that needs several lists/columns

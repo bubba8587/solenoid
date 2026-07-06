@@ -98,8 +98,13 @@ is archived).
 
 ## Nodes / engine
 
-- [ ] **Full XLOOKUP merge (list+frame+cube one node)** — cube-cell half shipped;
-  the input-surface merge + migration is open (design notes: `archive/v1.1-plan.md` WS-D).
+- [ ] **Rigorous multi-column input-socket label syntax** (author 2026-07-06) — a
+  frame/2-D input socket should state which columns it expects in ONE consistent
+  grammar. Today it's ad hoc: Sankey reads "From+To+Value", standard charts read
+  "series (2-D)" — unhelpful, inconsistent. Design a rigorous convention (named,
+  ordered, positional columns) that every node feeding a frame reuses, so the label
+  itself documents the expected shape. Ties to the 2026-07-06 standing rule (aligned
+  columns → one frame input, not parallel sockets).
 - [ ] **Error UX on restriction violation** — typed error out the socket vs the node
   flagging the offending input locally. Pending a call.
 - [ ] **Formula re-audit remainder** — `formulaDivergence.test.ts` guards the known

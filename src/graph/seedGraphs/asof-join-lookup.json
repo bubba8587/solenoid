@@ -9,7 +9,7 @@
     {"id":"breaks","type":"FrameInputNode","x":0,"y":420,"init":{"label":"Volume tiers","frameText":"[{\"name\":\"qty\",\"type\":\"number\",\"values\":[1,10,50,100]},{\"name\":\"discount\",\"type\":\"number\",\"values\":[0,0.05,0.1,0.2]}]"}},
 
     {"id":"asofjoin","type":"JoinNode","x":460,"y":-60,"init":{"label":"As-of Join — trade price at execution time (≤)","how":"asof","asofDirection":"backward"},"stringLiterals":{"leftKey":"time","rightKey":"time"}},
-    {"id":"lookup","type":"FrameLookupNode","x":460,"y":420,"init":{"label":"Frame Lookup — next-smaller volume tier (≤)","matchMode":"nextSmaller"},"stringLiterals":{"lookup":"35","inColumn":"qty","returnColumn":"discount","ifNotFound":"0"}}
+    {"id":"lookup","type":"XLookupNode","x":460,"y":420,"init":{"label":"XLOOKUP — next-smaller volume tier (≤)","matchMode":"nextSmaller"},"stringLiterals":{"lookup":"35","inColumn":"qty","returnColumn":"discount","ifNotFound":"0"}}
   ],
   "connections": [
     {"source":"trades","sourceOutput":"frame","target":"asofjoin","targetInput":"left"},

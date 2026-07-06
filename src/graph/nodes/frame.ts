@@ -7,14 +7,15 @@ import { coerceLogical } from "../valueKinds";
 import { APP_LOCALE } from "../locale";
 import {
   buildFrame, splitFrame, getColumn, addColumn, frameRowCount, frameHasTextColumns,
-  frameFromInputText, formatFrameCell, frameFromRows, isFrameValue, isCubeValue,
+  frameFromInputText, formatFrameCell, isCubeValue,
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
 } from "../frame";
 import {
   pivotFrame, nestFrame, unnestCube,
   splitColumn, addIndexColumn, decisionMatrix, decisionCriteria, decisionSensitivity,
-  lookupFrameCell, lookupCubeCell, reconcileFrames,
-  type FilterOp, type FilterCond, type FilterCombine, type JoinHow, type AsofDirection, type AggOp, type DecisionNormalize, type LookupMatchMode, type ReconcileSummary,
+  lookupFrameCell, lookupCubeCell, lookupFrameRowIndex, lookupCubeRowIndex,
+  frameRowAt, cubeRowAt, asLookupSource, reconcileFrames,
+  type FilterOp, type FilterCond, type FilterCombine, type JoinHow, type AsofDirection, type AggOp, type DecisionNormalize, type LookupMatchMode, type LookupSearchMode, type ReconcileSummary,
 } from "../frameVerbs";
 import { pairIdsFromKeys } from "./logic";
 import type { PivotSpec } from "../frameVerbs";
@@ -1218,46 +1219,39 @@ export class GetRowNode extends ClassicPreset.Node {
   }
 }
 
-// ─── FRAME LOOKUP (XLOOKUP / VLOOKUP over a table) ──────────────────────────────
-// Find the row whose "In column" cell equals the Lookup value, and return that
-// row's "Return" cell — the single-cell relational lookup (where Join fans out
-// the whole matching rows). Output is `any` because the returned cell's type
-// depends on the return column (number / text / date-serial / logical); the value
-// flows on the `any` socket and can be Cast or Displayed downstream. A miss falls
-// back to If-not-found (numeric-looking text → a number), else #N/A. `matchMode`
-// (SegToggle: Exact / ≤ next smaller / ≥ next larger — Excel's XLOOKUP match_mode
-// 0/-1/1) opts into an approximate fallback on a numeric/date column; an exact
-// hit always wins first. (Verb: lookupFrameCell. Materialization-boundary op, so
-// it stays eager JS like Get Column — the frame input is already a materialized
-// value on the cable.)
+// ─── XLOOKUP (VLOOKUP / XLOOKUP over a table, cube, or widened list) ─────────────
+// The universal lookup: find the row whose "In column" cell equals the Lookup
+// value and return that row's "Return" cell (or the WHOLE row when Return is `*`).
+// This ONE node subsumes the old list, frame, and cube lookups — XLOOKUP's two
+// arrays must be aligned, and by the standing rule aligned columns belong in a
+// Frame (Build Frame two lists together, or read a table), not two loose sockets.
+//
+// Output is `any` because the returned value's type is only known at compute — a
+// scalar cell, or (Return = *) a single-row Frame/Cube; it flows on the `any`
+// socket and can be Cast or Displayed downstream. A miss falls back to If-not-found
+// (numeric-looking text → a number), else #N/A. `matchMode` (Exact / ≤ next smaller
+// / ≥ next larger — Excel's match_mode 0/-1/1) opts into an approximate fallback on
+// a numeric/date key; `searchMode` (first / last — Excel's search_mode 1/-1) picks
+// which duplicate wins. (Verbs: lookupFrameCell / lookupCubeCell + the *RowIndex /
+// *RowAt whole-row helpers. Materialization-boundary op — eager JS like Get Column.)
 
-// The source is an `any` socket so Frame Lookup takes a Frame OR a Cube (a cube
-// can't narrow into a frame socket — sockets.ts): a cube flows to the cube path
-// (lookupCubeCell), a frame to the frame path. A bare list/matrix/scalar still
-// widens into a frame exactly as the old `frame` socket did (coerceValue's frame
-// case mirrored here), so a list-of-rows reads as a 1-row table. null → no source.
-function asLookupSource(v: unknown): FrameValue | CubeValue | null {
-  if (v == null) return null;
-  if (isCubeValue(v)) return v;
-  if (isFrameValue(v)) return v;
-  if (Array.isArray(v)) return Array.isArray(v[0]) ? frameFromRows(v as unknown[][]) : frameFromRows([v as unknown[]]);
-  return frameFromRows([[v]]);
-}
-
-export class FrameLookupNode extends ClassicPreset.Node {
+export class XLookupNode extends ClassicPreset.Node {
   label: string;
   matchMode: LookupMatchMode;
+  searchMode: LookupSearchMode;
   cachedResult: CubeCell | null = null;
   stringLiterals: Record<string, string> = { lookup: "", inColumn: "", returnColumn: "", ifNotFound: "" };
-  width = 200; height = 315;
+  width = 200; height = 350;
 
-  constructor(init?: { label?: string; matchMode?: LookupMatchMode }) {
-    super("FrameLookup");
-    this.label = init?.label ?? "Frame Lookup";
+  constructor(init?: { label?: string; matchMode?: LookupMatchMode; searchMode?: LookupSearchMode }) {
+    super("XLookup");
+    this.label = init?.label ?? "XLOOKUP";
     this.matchMode = init?.matchMode ?? "exact";
-    // `any` source: a Frame OR a Cube. A cube looks a key up in its TOP-LEVEL column
-    // and returns the matched cell WHOLE — a nested frame/cube comes out intact.
-    this.addInput("frame", anyIn("Frame / Cube"));
+    this.searchMode = init?.searchMode ?? "first";
+    // `any` source: a Frame OR a Cube (or a widened list). A cube looks the key up in
+    // its TOP-LEVEL column and returns the matched cell WHOLE — a nested frame/cube
+    // comes out intact. Return = * returns the whole matched row.
+    this.addInput("frame", anyIn("Table / Cube"));
     this.addInput("lookup", strIn("Lookup"));
     this.addInput("inColumn", strIn("In column"));
     this.addInput("returnColumn", strIn("Return"));
@@ -1275,10 +1269,22 @@ export class FrameLookupNode extends ClassicPreset.Node {
     const retCol = (inputs.returnColumn?.[0] ?? this.stringLiterals.returnColumn ?? "").trim();
     const fallbackRaw = inputs.ifNotFound?.[0] ?? this.stringLiterals.ifNotFound ?? "";
     if (!src || inCol === "" || retCol === "" || lookup === "") { this.cachedResult = null; return { value: null }; }
+    const wholeRow = retCol === "*"; // return the matched row intact, not one cell
     const result = runVerb<CubeCell>(() => {
-      const cell = isCubeValue(src)
-        ? lookupCubeCell(src, inCol, retCol, lookup, this.matchMode)
-        : lookupFrameCell(src, inCol, retCol, lookup, this.matchMode);
+      let cell: CubeCell | undefined;
+      if (isCubeValue(src)) {
+        if (wholeRow) {
+          const idx = lookupCubeRowIndex(src, inCol, lookup, this.matchMode, this.searchMode);
+          cell = idx < 0 ? undefined : cubeRowAt(src, idx);
+        } else {
+          cell = lookupCubeCell(src, inCol, retCol, lookup, this.matchMode, this.searchMode);
+        }
+      } else if (wholeRow) {
+        const idx = lookupFrameRowIndex(src, inCol, lookup, this.matchMode, this.searchMode);
+        cell = idx < 0 ? undefined : frameRowAt(src, idx);
+      } else {
+        cell = lookupFrameCell(src, inCol, retCol, lookup, this.matchMode, this.searchMode);
+      }
       if (cell !== undefined) return cell;
       const fb = fallbackRaw.trim();
       if (fb === "") return solError("#N/A", "No row matched the lookup value");

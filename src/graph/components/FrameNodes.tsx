@@ -26,12 +26,12 @@ import type {
   DecisionMatrixNode as DecisionMatrixNodeType,
   DecisionSensitivityNode as DecisionSensitivityNodeType,
   ReconcileNode as ReconcileNodeType,
-  FrameLookupNode as FrameLookupNodeType,
+  XLookupNode as XLookupNodeType,
   FrameSortDir,
   DecisionDetail,
   SplitColType,
 } from "../rete-nodes";
-import type { FilterOp, FilterCombine, JoinHow, AsofDirection, AggOp, DecisionNormalize, LookupMatchMode } from "../frameVerbs";
+import type { FilterOp, FilterCombine, JoinHow, AsofDirection, AggOp, DecisionNormalize, LookupMatchMode, LookupSearchMode } from "../frameVerbs";
 import type { FilterCondConfig } from "../nodes/frame";
 import { CubeDisplay } from "./CubeDisplay";
 import { parseFrameSource, frameSourceToText, type FrameSourceColumn } from "../frame";
@@ -715,7 +715,7 @@ export function GetRowComponent({ data, emit }: NodeProps<GetRowNodeType>) {
   );
 }
 
-// ─── FRAME LOOKUP ────────────────────────────────────────────────────────────────
+// ─── XLOOKUP (table / cube / widened list) ──────────────────────────────────────
 
 const LOOKUP_MATCH_OPTIONS: { value: LookupMatchMode; label: string; title: string }[] = [
   { value: "exact", label: "Exact", title: "Only an equal cell matches" },
@@ -723,14 +723,22 @@ const LOOKUP_MATCH_OPTIONS: { value: LookupMatchMode; label: string; title: stri
   { value: "nextLarger", label: "≥", title: "Exact match, else the closest larger number/date" },
 ];
 
-export function FrameLookupComponent({ data, emit }: NodeProps<FrameLookupNodeType>) {
+const LOOKUP_SEARCH_OPTIONS: { value: LookupSearchMode; label: string; title: string }[] = [
+  { value: "first", label: "First", title: "On duplicate keys, return the first match (top-to-bottom)" },
+  { value: "last", label: "Last", title: "On duplicate keys, return the last match (bottom-to-top)" },
+];
+
+export function XLookupComponent({ data, emit }: NodeProps<XLookupNodeType>) {
   const [matchMode, setMatchMode] = useNodeField(data, "matchMode");
+  const [searchMode, setSearchMode] = useNodeField(data, "searchMode");
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
       <SegToggle value={matchMode} options={LOOKUP_MATCH_OPTIONS} onChange={setMatchMode} />
-      {/* Cube lookup can return a nested frame/cube cell — ResultDisplay routes a
-          Frame → FrameDisplay, a Cube → CubeDisplay, else ValueDisplay (scalar). */}
+      <SegToggle value={searchMode} options={LOOKUP_SEARCH_OPTIONS} onChange={setSearchMode} />
+      {/* Return = * gives a whole row; a cube lookup can return a nested frame/cube
+          cell — ResultDisplay routes Frame → FrameDisplay, Cube → CubeDisplay, else
+          ValueDisplay (scalar). */}
       <ResultDisplay value={data.cachedResult} label={data.label} />
     </NodeShell>
   );

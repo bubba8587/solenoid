@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { lookupFrameCell, lookupCubeCell } from "./frameVerbs";
+import { lookupFrameCell, lookupCubeCell, lookupFrameRowIndex, lookupCubeRowIndex, frameRowAt, cubeRowAt } from "./frameVerbs";
+import { isCubeValue } from "./frame";
 import { isSolError } from "./errorValue";
 import { cubeFromColumns, isFrameValue } from "./frame";
 import type { FrameValue, CubeValue } from "./frame";
@@ -65,6 +66,50 @@ describe("lookupFrameCell — frame XLOOKUP/VLOOKUP", () => {
   it("throws a #REF! for a missing column", () => {
     const err = (() => { try { lookupFrameCell(people, "nope", "id", "1"); } catch (e) { return e; } })();
     expect(isSolError(err) && err.code).toBe("#REF!");
+  });
+
+  it("search mode 'last' returns the last duplicate; 'first' the first", () => {
+    const dup: FrameValue = {
+      __frame: true,
+      columns: [
+        { name: "k", type: "string", values: ["x", "y", "x"] },
+        { name: "v", type: "number", values: [10, 20, 30] },
+      ],
+    };
+    expect(lookupFrameCell(dup, "k", "v", "x")).toBe(10);                    // first (default)
+    expect(lookupFrameCell(dup, "k", "v", "x", "exact", "last")).toBe(30);   // last
+  });
+});
+
+describe("lookupFrameRowIndex + frameRowAt — the whole-row (*) path", () => {
+  it("returns the matched 0-based row index, or -1 for a miss", () => {
+    expect(lookupFrameRowIndex(people, "name", "Cy")).toBe(2);
+    expect(lookupFrameRowIndex(people, "name", "Zed")).toBe(-1);
+  });
+
+  it("frameRowAt materializes the matched row as a single-row Frame (all columns)", () => {
+    const idx = lookupFrameRowIndex(people, "name", "Bob");
+    const row = frameRowAt(people, idx);
+    expect(row.columns.map((c) => c.name)).toEqual(["id", "name", "joined", "active"]);
+    expect(row.columns.every((c) => c.values.length === 1)).toBe(true);
+    expect(row.columns.find((c) => c.name === "id")!.values[0]).toBe(2);
+    expect(row.columns.find((c) => c.name === "active")!.values[0]).toBe(false);
+  });
+});
+
+describe("lookupCubeRowIndex + cubeRowAt — the whole-row (*) path", () => {
+  it("returns the matched cube row index", () => {
+    expect(lookupCubeRowIndex(customers, "name", "Bob")).toBe(1);
+    expect(lookupCubeRowIndex(customers, "name", "Zed")).toBe(-1);
+  });
+
+  it("cubeRowAt keeps a nested sub-frame cell WHOLE", () => {
+    const idx = lookupCubeRowIndex(customers, "id", "1");
+    const row = cubeRowAt(customers, idx);
+    expect(isCubeValue(row)).toBe(true);
+    expect(row.columns.map((c) => c.name)).toEqual(["id", "name", "vip", "orders"]);
+    expect(row.columns.every((c) => c.cells.length === 1)).toBe(true);
+    expect(row.columns.find((c) => c.name === "orders")!.cells[0]).toBe(orders1); // intact
   });
 });
 
