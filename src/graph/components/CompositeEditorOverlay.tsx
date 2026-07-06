@@ -23,7 +23,6 @@ import { buildCatalog } from "../catalogUtils";
 import { AddNodeMenu, type NodeCatalogEntry } from "../AddNodeMenu";
 import { SocketComponent } from "./SocketComponent";
 import { ConnectionComponent } from "./ConnectionComponent";
-import { CloseIcon } from "./CloseIcon";
 import "./compositeEditor.css";
 import "./SocketContextMenu.css";
 
@@ -182,7 +181,6 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
     { nodeId: string; screenX: number; screenY: number; isComposite: boolean } | null
   >(null);
   const [ready, setReady] = useState(false);
-  const [hasSelection, setHasSelection] = useState(false);
 
   const compositeId = composite.id;
   const isComposite = true;
@@ -267,26 +265,6 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
       if (!mount) return;
       for (const n of comp.internalEditor.getNodes()) void mount.area.update("node", n.id);
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [compositeId]);
-
-  // Enable the header Delete button only when something inside the drill-in
-  // is selected — polled the same cheap way MobileControls does (there is no
-  // dedicated selection store), and only while the overlay is open (this
-  // component unmounts on close). Cable ids are filtered to the INTERNAL
-  // editor: cableSelectionStore is app-global, and an outer cable selected
-  // before the overlay opened must not arm the button.
-  useEffect(() => {
-    if (!isComposite) return;
-    const editor = (composite as CompositeNode).internalEditor;
-    const tick = () => {
-      const nodeSelected = editor.getNodes().some((n) => (n as { selected?: boolean }).selected === true);
-      const cableSelected = cableSelectionStore.ids().some((id) => !!editor.getConnection(id));
-      setHasSelection(nodeSelected || cableSelected);
-    };
-    tick();
-    const id = window.setInterval(tick, 200);
-    return () => window.clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compositeId]);
 
@@ -405,13 +383,6 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
     }
     void processGraph(recomputeTarget());
     scheduleAutosave();
-  }
-
-  /** Positions back onto the node, ports reconciled, editor closed. */
-  async function handleClose() {
-    await leaveLevel();
-    compositeEditorStore.close();
-    await settleAfterLeave();
   }
 
   /** Breadcrumb click: reconcile the current level, then jump to level `i`
@@ -552,104 +523,6 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
 
   return (
     <div className="solenoid-composite-editor__backdrop">
-      <div className="solenoid-composite-editor__panel">
-        <div className="solenoid-composite-editor__header">
-          {/* Breadcrumb — top-left "you're in a subgraph" affordance + quick
-              drill-up (Cube-popup drilldown pattern). Each crumb is clickable to
-              jump straight to that level; "Canvas" returns to the main graph. */}
-          <div className="solenoid-composite-editor__crumbs">
-            <button
-              type="button"
-              className="solenoid-composite-editor__crumb solenoid-composite-editor__crumb--root"
-              title="Back to the canvas"
-              onClick={() => void drillTo(-1)}
-            >
-              Canvas
-            </button>
-            {compositeEditorStore.stack().map((c, i, arr) => (
-              <span key={c.id} className="solenoid-composite-editor__crumb-wrap">
-                <span className="solenoid-composite-editor__crumb-sep">▸</span>
-                {i === arr.length - 1 ? (
-                  <span className="solenoid-composite-editor__crumb solenoid-composite-editor__crumb--current" title="Editing this subgraph">
-                    {c.label?.trim() || "Composite"}
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    className="solenoid-composite-editor__crumb"
-                    title={`Drill up to ${c.label?.trim() || "Composite"}`}
-                    onClick={() => void drillTo(i)}
-                  >
-                    {c.label?.trim() || "Composite"}
-                  </button>
-                )}
-              </span>
-            ))}
-          </div>
-          <div className="solenoid-composite-editor__actions">
-            <button type="button" className="solenoid-composite-editor__btn" onClick={() => void addPort("input")}>
-              + Input
-            </button>
-            <button type="button" className="solenoid-composite-editor__btn" onClick={() => void addPort("output")}>
-              + Output
-            </button>
-            <button
-              type="button"
-              className="solenoid-composite-editor__btn"
-              // Centered near the top — the search field's on-screen keyboard
-              // can't cover the menu there (same reasoning as MobileControls'
-              // openAddMenu), and it's a sensible spot on desktop too.
-              onClick={() => setMenu({ screenX: window.innerWidth / 2, screenY: 120 })}
-            >
-              + Node
-            </button>
-            <button
-              type="button"
-              className="solenoid-composite-editor__btn solenoid-composite-editor__btn--icon"
-              title="Undo (Ctrl+Z)"
-              aria-label="Undo"
-              onClick={() => void historyStep(false)}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M6 10 H15 a4.5 4.5 0 0 1 0 9 H9" />
-                <path d="M6 10 L10 6 M6 10 L10 14" />
-              </svg>
-            </button>
-            <button
-              type="button"
-              className="solenoid-composite-editor__btn solenoid-composite-editor__btn--icon"
-              title="Redo (Ctrl+Y)"
-              aria-label="Redo"
-              onClick={() => void historyStep(true)}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M18 10 H9 a4.5 4.5 0 0 0 0 9 H15" />
-                <path d="M18 10 L14 6 M18 10 L14 14" />
-              </svg>
-            </button>
-            <button
-              type="button"
-              className="solenoid-composite-editor__btn solenoid-composite-editor__btn--icon"
-              title="Delete selection (Del)"
-              aria-label="Delete selection"
-              disabled={!hasSelection}
-              onClick={() => void deleteSelection()}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V6" />
-                <path d="M10 11v6M14 11v6" />
-              </svg>
-            </button>
-            <button
-              type="button"
-              className="solenoid-composite-editor__btn solenoid-composite-editor__btn--icon"
-              title="Close (Esc)"
-              onClick={() => void handleClose()}
-            >
-              <CloseIcon />
-            </button>
-          </div>
-        </div>
         <div
           ref={hostRef}
           className="solenoid-composite-editor__host"
@@ -683,7 +556,50 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
         >
           {!ready && <div className="solenoid-composite-editor__loading" />}
         </div>
-      </div>
+        {/* Subgraph strip — the "you're in a subgraph" affordance (breadcrumb +
+            drill-up) and the port-promotion actions. Floats below the real app
+            header, which stays visible now the drill-in no longer covers the
+            chrome; the whole app frame (toolbar, minimap, status bar) is the
+            drill-in's chrome, pointed at the active graph. */}
+        <div className="solenoid-composite-editor__strip" onPointerDown={(e) => e.stopPropagation()}>
+          <div className="solenoid-composite-editor__crumbs">
+            <button
+              type="button"
+              className="solenoid-composite-editor__crumb solenoid-composite-editor__crumb--root"
+              title="Back to the canvas"
+              onClick={() => void drillTo(-1)}
+            >
+              Canvas
+            </button>
+            {compositeEditorStore.stack().map((c, i, arr) => (
+              <span key={c.id} className="solenoid-composite-editor__crumb-wrap">
+                <span className="solenoid-composite-editor__crumb-sep">▸</span>
+                {i === arr.length - 1 ? (
+                  <span className="solenoid-composite-editor__crumb solenoid-composite-editor__crumb--current" title="Editing this subgraph">
+                    {c.label?.trim() || "Composite"}
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    className="solenoid-composite-editor__crumb"
+                    title={`Drill up to ${c.label?.trim() || "Composite"}`}
+                    onClick={() => void drillTo(i)}
+                  >
+                    {c.label?.trim() || "Composite"}
+                  </button>
+                )}
+              </span>
+            ))}
+          </div>
+          <div className="solenoid-composite-editor__strip-actions">
+            <button type="button" className="solenoid-composite-editor__btn" onClick={() => void addPort("input")}>
+              + Input
+            </button>
+            <button type="button" className="solenoid-composite-editor__btn" onClick={() => void addPort("output")}>
+              + Output
+            </button>
+          </div>
+        </div>
       {menu && (
         <AddNodeMenu
           screenX={menu.screenX}
@@ -757,6 +673,15 @@ function DrillNodeMenu({
 export function CompositeEditorOverlay() {
   useSyncExternalStore(compositeEditorStore.subscribe, compositeEditorStore.version);
   const current = compositeEditorStore.current();
+  // Flag the root while ANY composite is open (drilling deeper remounts the inner,
+  // so this lives on the always-mounted outer). The app chrome reads it to fold
+  // itself around the drill-in — same convention as html.solenoid-presenting.
+  const open = !!current;
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle("sol-drilled-in", open);
+    return () => root.classList.remove("sol-drilled-in");
+  }, [open]);
   if (!current) return null;
   // Keyed by the current level's id: drilling in / up changes `current`, so the
   // inner remounts onto the new composite's own editor + area mount.

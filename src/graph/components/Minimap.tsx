@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { getArea, getEditor } from "../process";
+import { getActiveArea, getActiveEditor } from "../activeGraph";
 import { GroupNode, NoteNode, nodeKindOf, NODE_KIND_ACCENTS } from "../rete-nodes";
 import { groupCollapseStore } from "../groupCollapse";
 import { appThemeStore } from "../appTheme";
@@ -44,8 +44,10 @@ interface Fill { background: string; borderColor: string }
 // inside a collapsed group are dropped — they aren't visible on the canvas, so
 // they shouldn't crowd the map either.
 function minimapNodes() {
-  const editor = getEditor();
-  const area = getArea();
+  // Active graph: while drilled into a Composite the fit/minimap geometry follows
+  // the subgraph (getActive* = the drill-in editor/area, else main).
+  const editor = getActiveEditor();
+  const area = getActiveArea();
   if (!editor || !area) return { area: null, nodes: [] as ReturnType<NonNullable<typeof editor>["getNodes"]> };
   const nodes = editor.getNodes().filter(
     (n) => area.nodeViews.get(n.id) && !groupCollapseStore.isNodeHidden(n.id),
