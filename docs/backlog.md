@@ -177,6 +177,14 @@ is archived).
 - [ ] **Pack distribution + dependency system** — LAST for 1.1 and a "maybe"; must
   land in tandem with subgraphs (`archive/v1.1-plan.md` B1 remainder).
 
+## Desktop shell
+
+- [ ] **Re-enable the native accent window border** (disabled 2026-07-06 — `NATIVE_ACCENT_BORDER_ENABLED`
+  in `nativeAccent.ts`): `set_window_border` (DWMWA_BORDER_COLOR) re-asserts a native frame that
+  clobbers `tauri-plugin-decorum`'s overlay titlebar → the min/max/close controls vanish (both dev +
+  release). Find a way to color the border WITHOUT disturbing decorum's custom frame (re-assert the
+  overlay after? a decorum-native border API?) — needs live iteration on the desktop build.
+
 ## Cables / canvas / chrome
 
 - [ ] **Cable collision avoidance** — DEFERRED for later (author 2026-07-05).
