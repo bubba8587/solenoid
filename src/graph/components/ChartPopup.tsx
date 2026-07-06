@@ -77,6 +77,7 @@ export function ChartPopup() {
               width={w}
               height={h}
               axes={state.axes ?? true}
+              signColors={state.signColors}
               // The header already shows the title — strip it so ChartView
               // doesn't draw a second one above the plot.
               opts={state.opts ? { ...state.opts, title: undefined } : undefined}

@@ -38,7 +38,7 @@ export function SparklineComponent({ data, emit }: NodeProps<SparklineNodeType>)
         ) : (
           <>
             <ChartView op={chartOp} series={series} width={W} height={H} axes={false} signColors={signColors} />
-            <ChartExpandButton title={data.label || "Sparkline"} op={chartOp} axes={false} series={series} />
+            <ChartExpandButton title={data.label || "Sparkline"} op={chartOp} axes={false} series={series} signColors={signColors} />
           </>
         )}
       </div>
