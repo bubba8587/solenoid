@@ -48,7 +48,7 @@ const SLICE_TIP = <Tooltip isAnimationActive={false} content={<SliceTooltip />} 
  * formatted via formatScalar (not recharts' raw full-float).
  */
 export function ChartView({
-  op, series, width, height, axes, opts,
+  op, series, width, height, axes, opts, signColors,
 }: {
   op: ChartShape;
   series: { i: number; v: number }[];
@@ -56,6 +56,9 @@ export function ChartView({
   height: number;
   axes: boolean;
   opts?: ChartOptions;
+  /** Colour each bar/column by the sign of its value (win/loss): positive → pos,
+   *  negative → neg, zero → the grid colour. Ignored by the non-bar ops. */
+  signColors?: { pos: string; neg: string };
 }) {
   const { grid, axis } = useChartColors();
   const seriesColors = useSeriesColors();
@@ -181,7 +184,12 @@ export function ChartView({
         {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} label={xLabel} height={xLabel ? 28 : undefined} />}
         {axes && <YAxis tick={AXIS} tickLine={false} width={yAxisW} domain={yDomain} label={yLabel} />}
         {TIP}
-        <Bar dataKey="v" fill={color} fillOpacity={opts?.alpha !== undefined ? fillAlpha : 1} isAnimationActive={false} />
+        <Bar dataKey="v" fill={color} fillOpacity={opts?.alpha !== undefined ? fillAlpha : 1} isAnimationActive={false}>
+          {/* Win/loss: colour each column by sign (up = green, down = error red). */}
+          {signColors && series.map((d, i) => (
+            <Cell key={i} fill={d.v > 0 ? signColors.pos : d.v < 0 ? signColors.neg : grid} />
+          ))}
+        </Bar>
       </BarChart>
     );
   }
