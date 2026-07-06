@@ -319,6 +319,16 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
         e.preventDefault();
         void deleteSelection();
       }
+      // A — open the Add-node menu at the cursor (matches the canvas A shortcut).
+      if (e.code === "KeyA") {
+        e.preventDefault();
+        setMenu({ screenX: cursorRef.current.x, screenY: cursorRef.current.y });
+      }
+      // Arrow keys nudge the selected nodes (Shift = larger step), like the canvas.
+      if (e.key === "ArrowLeft" || e.key === "ArrowRight" || e.key === "ArrowUp" || e.key === "ArrowDown") {
+        e.preventDefault();
+        void nudgeSelection(e.key, e.shiftKey);
+      }
       if (e.key === "Escape") {
         // Esc pops ONE breadcrumb level (drill up); at the root it closes.
         if (menu) setMenu(null);
@@ -473,6 +483,21 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
     });
     void processGraph(recomputeTarget());
     scheduleAutosave();
+  }
+
+  /** Nudge the selected internal nodes (positions persist via internalPositions on
+   *  leave). Reads node.selected — the drill-in selector sets it on click. */
+  async function nudgeSelection(key: string, big: boolean) {
+    const mount = mountRef.current;
+    if (!mount) return;
+    const step = big ? 40 : 8;
+    const dx = key === "ArrowLeft" ? -step : key === "ArrowRight" ? step : 0;
+    const dy = key === "ArrowUp" ? -step : key === "ArrowDown" ? step : 0;
+    for (const n of comp.internalEditor.getNodes()) {
+      if (!(n as { selected?: boolean }).selected) continue;
+      const pos = mount.area.nodeViews.get(n.id)?.position ?? { x: 0, y: 0 };
+      await mount.area.translate(n.id, { x: pos.x + dx, y: pos.y + dy });
+    }
   }
 
   async function handleMenuSelect(entry: NodeCatalogEntry) {
