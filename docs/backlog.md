@@ -74,11 +74,14 @@ is archived).
   summary + Sparkline square shipped; Chart/Treemap/Sankey/Histogram now collapse
   to a `[Chart]` chip): Gauge → investigate a small-square collapse, but its 3
   input sockets must stay anchored/reachable when collapsed. Heatmap → NOT in scope.
-- [ ] **Document Properties window** (F-2; the app-wide Custom palette editor shipped
-  2026-07-06). Per-DOC palette editing (a raw JSON text box over `paletteStore`'s
-  docPalette), doc metadata (title/author/tags), and **document-level FC defaults**
+- [ ] **Document Properties — remaining parts** (the window itself shipped 2026-07-06:
+  title / author / tags / per-doc palette BASE, via `docMetaStore` + `SavedGraph.meta` +
+  sidecar). Still open: (a) **per-slot doc palette overrides** (the window only sets the
+  base; overrides stay hand/seed-authored on `SavedGraph.palette.overrides`) — a small
+  per-slot editor like F-1's, scoped to the doc; (b) **document-level FC defaults**
   (default places / number format — the date default `DD-MMM-YYYY` already shipped;
-  toolbar-supplementals [SETTING] verdict). Persisted on SavedGraph; text-form sidecar.
+  toolbar-supplementals [SETTING] verdict) — a format-pipeline integration (FC reads a
+  doc default), best done deliberately / author-present.
 
 ## Composite / drill-in
 
