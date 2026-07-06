@@ -9,6 +9,8 @@ import type { Schemes, AreaExtra, SolenoidNode } from "../schemes";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "../rete-nodes";
 import { compositeEditorStore, compositePassStore } from "../compositeEditorStore";
 import { getEditor, getArea, processGraph, isGraphRebuilding, withGraphRebuild } from "../process";
+import { setActiveGraph } from "../activeGraph";
+import { copySelected, pasteClipboard } from "../copyPaste";
 import { scheduleAutosave } from "../persistence";
 import { installErrorGuards } from "../errorValue";
 import { ctorRegistry } from "../nodeCtorRegistry";
@@ -173,6 +175,7 @@ function toAreaCoords(area: AreaPlugin<Schemes, AreaExtra>, container: HTMLEleme
 function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const mountRef = useRef<DrillMount | null>(null);
+  const cursorRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const [menu, setMenu] = useState<{ screenX: number; screenY: number } | null>(null);
   const [ready, setReady] = useState(false);
   const [hasSelection, setHasSelection] = useState(false);
@@ -223,10 +226,15 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
       }
       const nodes = comp.internalEditor.getNodes();
       if (nodes.length > 0) await AreaExtensions.zoomAt(mount.area, nodes);
+      // Make THIS level the active graph so the app chrome (keyboard, copy/paste,
+      // context menus, palette, tidy) acts on the subgraph — first-class editing.
+      // getEditor()/getArea() stay main-only (autosave safety); see activeGraph.ts.
+      setActiveGraph({ editor: comp.internalEditor, area: mount.area, history: mount.history });
       setReady(true);
     })();
     return () => {
       cancelled = true;
+      setActiveGraph(null); // back to the main graph (a deeper level re-registers)
       const mount = mountRef.current;
       if (mount) {
         // Remove every internal view — unmounting each view's React ROOT so
@@ -294,6 +302,17 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
       if ((e.ctrlKey || e.metaKey) && !e.altKey) {
         if (e.code === "KeyZ" && !e.shiftKey) { e.preventDefault(); void historyStep(false); }
         if ((e.code === "KeyZ" && e.shiftKey) || e.code === "KeyY") { e.preventDefault(); void historyStep(true); }
+        // Copy / paste inside the subgraph (the active graph is this level — see
+        // activeGraph.ts), pasting at the cursor.
+        if (e.code === "KeyC" && !e.shiftKey) { e.preventDefault(); copySelected(); }
+        if (e.code === "KeyV" && !e.shiftKey) {
+          e.preventDefault();
+          const mount = mountRef.current;
+          if (mount) {
+            const pos = toAreaCoords(mount.area, mount.container, cursorRef.current.x, cursorRef.current.y);
+            void pasteClipboard(pos.x, pos.y);
+          }
+        }
         return;
       }
       if (e.key === "Delete" || e.key === "Backspace") {
@@ -306,8 +325,13 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
         else void drillTo(compositeEditorStore.stack().length - 2);
       }
     }
+    const onMouseMove = (e: MouseEvent) => { cursorRef.current = { x: e.clientX, y: e.clientY }; };
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener("mousemove", onMouseMove);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("mousemove", onMouseMove);
+    };
   });
 
   const comp = composite;
