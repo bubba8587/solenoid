@@ -105,6 +105,14 @@ is archived).
   ordered, positional columns) that every node feeding a frame reuses, so the label
   itself documents the expected shape. Ties to the 2026-07-06 standing rule (aligned
   columns → one frame input, not parallel sockets).
+- [ ] **Lossless frame→cube (typed `CubeColumn`)** (author-flagged 2026-07-06, bigger
+  project) — the ladder is "a Frame IS a Cube with all-flat cells," but `toCube(frame)`
+  (`frameToCube`) drops column types because `CubeColumn` is `{name, cells}` with NO
+  per-column `type`. Give it an optional `type` so frame→cube preserves it: cubes could
+  render dates as dates, XLOOKUP's cube path could match ISO dates, and the whole class of
+  "cube socket eats frame types" bugs disappears (the XLOOKUP `rawInputs` bypass could then
+  retire). Touches cube representation + `CubeDisplay`/`CubePopup` + the cube verbs + unit
+  flow. Do it only if typed cube columns pull weight beyond this one node.
 - [ ] **Error UX on restriction violation** — typed error out the socket vs the node
   flagging the offending input locally. Pending a call.
 - [ ] **Formula re-audit remainder** — `formulaDivergence.test.ts` guards the known
