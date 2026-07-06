@@ -69,7 +69,7 @@ export const SOCKET_COLORS: Record<SocketDataType, string> = {
   logicallist:  "var(--sock-logicallist)",  // dark purple   — square (array of boolean)
   logicalcombo: "var(--sock-logical)",      // purple        — split square (boolean | list)
   logicaltable: "var(--sock-logicaltable)", // saturated purple — grid (boolean matrix)
-  table:    "var(--sock-table)",    // vermilion     — grid (numeric matrix)
+  table:    "var(--sock-table)",    // gold-shade    — grid (numeric matrix)
   strtable: "var(--sock-strtable)", // saturated y-g — grid (string matrix; scalar-derived, like table↔number)
   datetable:"var(--sock-datetable)",// saturated rose— grid (date matrix; scalar-derived)
   anytable: "var(--sock-any)",      // gray          — grid (any-element 2-D matrix; reshaper output)

@@ -42,7 +42,7 @@ export function SocketComponent({ data }: { data: ClassicPreset.Socket }) {
   const combo  = dataType !== undefined ? COMBO_COLORS[dataType] : undefined;
   const isList = dataType !== undefined && LIST_TYPES.has(dataType);
   // All 2-D types reuse the matrix glyph (a 2×2 grid), distinguished only by
-  // color (frame violet, numeric vermilion, text/date the list shade) — the
+  // color (frame violet, numeric gold-shade, text/date the list shade) — the
   // header-row glyph was too busy at socket size.
   const isTable =
     dataType === "table" || dataType === "frame" ||
