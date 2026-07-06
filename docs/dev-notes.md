@@ -5,6 +5,25 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-06 pm — C-4 XLOOKUP + C-2 Input Switcher + F-1 custom palette)
+
+**F-1 custom palette editor (`palette.ts` + `components/PaletteEditor.tsx`).** The app
+palette dropdown gains **"Custom…"** → a user-authored full 12-slot map.
+- Model: `_appBase` is now `PaletteChoice = PaletteName | "Custom"`; `_customMap` persists
+  separately (`solenoid.palette.custom`), seeds from Default. `recompute`/`recomputeReport`
+  route through `baseMapFor` (Custom → the user map). New store API: `activeBase()`/`setActiveBase`
+  accept "Custom"; `customMap()`, `setCustomSlot(slot,hex)` (live retint when Custom active + no
+  doc pin), `loadCustomTemplate(name)` (seed from a built-in). Doc/report palettes stay
+  built-in-name-only (a doc pin still wins over app Custom). `initPalette` loads both keys.
+- UI: `PaletteEditor` shows when Custom is active — 12 role-labelled native color wells
+  (Number/Text/Date/… not the opaque slot ids), Load-template buttons (Default/Muted/CVD/
+  Solarized), and a **live sample** (a node in a Group + a Lorem Note, retinting live; the
+  Group/Note slot are pickable via SwatchGrid). Only the 12 base slots edit — array/matrix
+  stay derived siblings (DESIGN.md Sibling Rule). Slot edit retints via CSS vars (onChange)
+  + rebuilds the group-dot cache on blur (not per drag-tick). `palette.test.ts` covers it.
+  EYEBALL: Settings → Appearance → Color palette → "Custom…"; edit a well, watch the canvas
+  retint; Load a template to start from one; the sample previews in-context.
+
 ### SESSION DIGEST (2026-07-06 pm — C-4 XLOOKUP merge + C-2 Input Switcher upgrade)
 
 **C-2 Input Switcher upgrade (`CableSwitchNode`).** Two features:

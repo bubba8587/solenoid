@@ -296,11 +296,24 @@ export const PALETTE_NAMES = Object.keys(BUILTIN_PALETTES) as PaletteName[];
 //     They affect only that document and never touch the persisted app choice.
 // Stored colors are slot ids; this is the map they resolve through. A module
 // singleton (like appThemeStore) so it's readable from Rete's separate React root.
+// The app-wide choice is a built-in name OR "Custom" — a user-authored full slot→hex
+// map (F-1), persisted separately so it survives a switch away and back. The doc/report
+// palettes stay built-in-name-only (hand/seed-authored), so only the APP base can be
+// Custom; a doc-pinned base still wins over it (doc pin > app choice, unchanged).
+export type PaletteChoice = PaletteName | "Custom";
+
 const LS_KEY = "solenoid.palette";
-let _appBase: PaletteName = "Default";
+const LS_CUSTOM_KEY = "solenoid.palette.custom";
+let _appBase: PaletteChoice = "Default";
+let _customMap: Record<PaletteSlot, string> = { ...PALETTE };
 let _docBase: PaletteName | null = null;
 let _docOverrides: Partial<Record<PaletteSlot, string>> = {};
 let _effective: Record<PaletteSlot, string> = { ...PALETTE };
+
+/** The slot→hex map for a base choice (Custom resolves to the user map). */
+function baseMapFor(choice: PaletteChoice): Record<PaletteSlot, string> {
+  return choice === "Custom" ? _customMap : (BUILTIN_PALETTES[choice] ?? BUILTIN_PALETTES.Default);
+}
 
 // REPORT/EXPORT-only override (bundle 13 #52) — a PARALLEL map, deliberately
 // separate from `_effective` above: `_effective` also drives the live editing
@@ -319,36 +332,65 @@ const { notify: notifyPalette, subscribe: subscribePalette, version: paletteVers
 const { notify: notifyReportPalette, subscribe: subscribeReportPalette, version: reportPaletteVersion } = createNotifier();
 
 function recompute() {
-  const base = BUILTIN_PALETTES[_docBase ?? _appBase] ?? BUILTIN_PALETTES.Default;
+  const base = _docBase ? (BUILTIN_PALETTES[_docBase] ?? BUILTIN_PALETTES.Default) : baseMapFor(_appBase);
   _effective = { ...base, ..._docOverrides };
 }
 
 function recomputeReport() {
-  const base = BUILTIN_PALETTES[_reportBase ?? _docBase ?? _appBase] ?? BUILTIN_PALETTES.Default;
-  _reportEffective = { ...base, ..._reportOverrides };
+  _reportEffective = { ...baseMapFor(_reportBase ?? _docBase ?? _appBase), ..._reportOverrides };
 }
 
 function persist() {
   try { localStorage.setItem(LS_KEY, _appBase); } catch { /* private mode / quota */ }
 }
 
+function persistCustom() {
+  try { localStorage.setItem(LS_CUSTOM_KEY, JSON.stringify(_customMap)); } catch { /* private mode / quota */ }
+}
+
+// Recompute + notify both palettes after a custom-map edit, but only when it's
+// actually on screen (Custom active AND no doc pin overriding it).
+function afterCustomEdit() {
+  persistCustom();
+  if (_appBase === "Custom" && !_docBase) {
+    recompute();
+    recomputeReport();
+    notifyPalette();
+    notifyReportPalette();
+  }
+}
+
 export const paletteStore = {
   subscribe: subscribePalette,
   version: paletteVersion,
   names: () => PALETTE_NAMES,
-  /** The app-wide switcher choice (what the picker shows selected). */
-  activeBase: () => _appBase,
+  /** The app-wide switcher choice (what the picker shows selected) — a built-in or "Custom". */
+  activeBase: (): PaletteChoice => _appBase,
   /** The base actually in effect for the open doc (doc pin wins over app choice). */
-  effectiveBase: () => _docBase ?? _appBase,
+  effectiveBase: (): PaletteChoice => _docBase ?? _appBase,
   /** App-wide palette switcher — persisted, retints every open doc not pinned. */
-  setActiveBase(name: PaletteName) {
-    if (!(name in BUILTIN_PALETTES) || name === _appBase) return;
+  setActiveBase(name: PaletteChoice) {
+    if ((name !== "Custom" && !(name in BUILTIN_PALETTES)) || name === _appBase) return;
     _appBase = name;
     recompute();
     recomputeReport(); // the report palette's base fallback chain includes appBase
     persist();
     notifyPalette();
     notifyReportPalette();
+  },
+  /** The user's editable custom palette (F-1) — a full slot→hex map. */
+  customMap: (): Record<PaletteSlot, string> => ({ ..._customMap }),
+  /** Edit one slot of the custom palette; retints live when Custom is the active base. */
+  setCustomSlot(slot: PaletteSlot, hex: string) {
+    if (!isPaletteSlot(slot) || !/^#[0-9a-fA-F]{6}$/.test(hex) || _customMap[slot] === hex) return;
+    _customMap = { ..._customMap, [slot]: hex };
+    afterCustomEdit();
+  },
+  /** Seed the custom palette from a built-in template (the editor's "Load template"). */
+  loadCustomTemplate(name: PaletteName) {
+    if (!(name in BUILTIN_PALETTES)) return;
+    _customMap = { ...BUILTIN_PALETTES[name] };
+    afterCustomEdit();
   },
   /** Apply the open document's palette declaration (on graph load). Null clears it. */
   setDocPalette(p?: { base?: string; overrides?: Record<string, string> } | null) {
@@ -418,8 +460,20 @@ export const reportPaletteStore = {
 /** Read the persisted app palette choice and apply it. Call once at startup. */
 export function initPalette() {
   try {
+    const raw = localStorage.getItem(LS_CUSTOM_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      const m: Record<PaletteSlot, string> = { ...PALETTE };
+      for (const slot of COLOR_PALETTE) {
+        const v = parsed?.[slot];
+        if (typeof v === "string" && /^#[0-9a-fA-F]{6}$/.test(v)) m[slot] = v;
+      }
+      _customMap = m;
+    }
+  } catch { /* ignore malformed custom map */ }
+  try {
     const v = localStorage.getItem(LS_KEY);
-    if (v && v in BUILTIN_PALETTES) _appBase = v as PaletteName;
+    if (v === "Custom" || (v && v in BUILTIN_PALETTES)) _appBase = v as PaletteChoice;
   } catch { /* ignore */ }
   recompute();
   // Notify so subscribers (NODE_KIND_ACCENTS refresh, appTheme re-apply) sync to a
