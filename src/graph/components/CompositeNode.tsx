@@ -233,9 +233,9 @@ function GoalSeekEditor({ node, emit }: { node: CompositeNodeType; emit: NodePro
             Solution — {exposed.find((p) => p.id === inputId)?.label ?? "input"}
           </span>
           <MeasuredSocketRow side="output" socketKey={outputId} nodeId={node.id} emit={emit} payload={node.outputs[outputId]!.socket}>
-            {isSolError(result)
-              ? <div className="solenoid-node__display-value" style={{ color: "var(--sol-error)" }}>{result.code}</div>
-              : <ValueDisplay value={result} />}
+            {/* ValueDisplay renders a SolError (#CONV!) the SAME as everywhere — the
+                red #CODE! badge + errorTip hover — so the hero matches other errors. */}
+            <ValueDisplay value={result} />
           </MeasuredSocketRow>
         </div>
       )}
@@ -278,11 +278,6 @@ export function CompositeComponent({ data: node, emit }: NodeProps<CompositeNode
   // Goal-seek failure IS detectable (#CONV! → a SolError on goalSeekResult), so the
   // status circle gets a red "no solution" state on top of stale/solved.
   const failed = heavy && runMode === "goal-seek" && isSolError(node.goalSeekResult);
-  // In goal-seek the DRIVER input is solved-for, not fed — its value is overridden by
-  // the solve — so hide its socket. The other exposed inputs are real held parameters.
-  const inputKeys = runMode === "goal-seek" && node.goalSeek
-    ? Object.keys(node.inputs).filter((k) => k !== node.goalSeek!.inputPortId)
-    : undefined;
 
   return (
     <NodeShell node={node} emit={emit} labelPlaceholder="Composite" hideOutputSockets>
@@ -304,7 +299,10 @@ export function CompositeComponent({ data: node, emit }: NodeProps<CompositeNode
         <EditSvg />
         Edit contents
       </button>
-      <InlineInputs node={node} emit={emit} keys={inputKeys} />
+      {/* All exposed inputs show — incl. the goal-seek DRIVER: its unwired field / a
+          wired cable is how you feed the solver's SEED (there's no seed editor inside
+          the subgraph; the marker is just a boundary). */}
+      <InlineInputs node={node} emit={emit} />
       {(node.inputPorts.length > 0 || node.outputPorts.length > 0) && (
         <OpSelect value={runMode} options={RUN_MODE_OPTIONS} onChange={setRunMode} />
       )}
@@ -332,6 +330,7 @@ export function CompositeComponent({ data: node, emit }: NodeProps<CompositeNode
               <span
                 title={title}
                 style={{
+                  display: "block", // an inline span ignores width/height → not a circle
                   width: 10, height: 10, borderRadius: "50%", flexShrink: 0, boxSizing: "border-box",
                   border: `1.5px solid ${color}`,
                   background: stale ? "transparent" : color,
