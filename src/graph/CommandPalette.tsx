@@ -1,44 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { flattenLeaves, scoreLeaf } from "./catalogSearch";
-import { buildCatalog } from "./catalogUtils";
 import { fieldScore } from "./fuzzy";
-import { getEditor, getArea, autoArrange, cleanup, requestRecalc, processGraph } from "./process";
+import { getEditor } from "./process";
 import { focusNode } from "./OutlinePanel";
-import { frStore } from "./frStore";
-import { shortcutsStore } from "./shortcutsStore";
-import { settingsPanel, settingsStore, SETTINGS_SCHEMA } from "./settingsStore";
-import { canvasLockStore } from "./canvasLock";
-import { calcModeStore } from "./calcModeStore";
-import { addMenuRequest } from "./addMenuStore";
-import { outlineSearch } from "./outlineStore";
-import { saveToDisk, openFromDisk } from "./fileSession";
-import { documentStore } from "./documentStore";
-import { isolateStore } from "./isolateStore";
+import { settingsStore, SETTINGS_SCHEMA } from "./settingsStore";
 import { alignSelection, distributeSelection, collapseSelection } from "./selectionOps";
-import type { NodeCatalogEntry } from "./AddNodeMenu";
-import type { SolenoidNode } from "./schemes";
+import { buildMenus, type MenuItem } from "./menuModel";
 import "./CommandPalette.css";
 
-// Creates + places a picked catalog leaf at the viewport center and renders it —
-// the same additive (no-full-recompute) path Canvas's Add-menu pick uses, just
-// without a click point to place it at.
-async function addNodeAtCenter(entry: NodeCatalogEntry) {
-  const editor = getEditor();
-  const area = getArea();
-  if (!editor || !area || isolateStore.isActive()) return;
-  const node = entry.create() as SolenoidNode;
-  await editor.addNode(node);
-  const { x: tx, y: ty, k } = area.area.transform;
-  const rect = area.container.getBoundingClientRect();
-  const canvasX = (rect.width / 2 - tx) / k;
-  const canvasY = (rect.height / 2 - ty) / k;
-  await area.translate(node.id, { x: canvasX, y: canvasY });
-  await processGraph(undefined, new Set([node.id]));
-}
-
-// Reuses the exact "dispatch a synthetic keydown" trick MenuBar's Edit menu
-// uses to run graph-domain shortcuts (group/isolate/tidy/…) without a second
-// copy of Canvas's keydown logic.
+// Reuses the exact "dispatch a synthetic keydown" trick the menu model uses to run
+// graph-domain shortcuts (group/isolate/tidy/…) without a second copy of Canvas's
+// keydown logic.
 function fireCanvasKey(code: string, opts: { ctrl?: boolean; shift?: boolean } = {}) {
   window.dispatchEvent(
     new KeyboardEvent("keydown", {
@@ -57,19 +28,18 @@ type PaletteItem = {
 };
 
 function buildCommands(): PaletteItem[] {
-  const locked = canvasLockStore.get();
-  const auto = calcModeStore.mode() === "auto";
-  return [
-    { label: "Add node…", shortcut: "A", run: () => addMenuRequest.open(window.innerWidth / 2, window.innerHeight / 2) },
-    { label: "Tidy (auto-arrange)", shortcut: "T", run: () => void autoArrange() },
-    { label: "Cleanup (tidy + collapse + fit)", shortcut: "C", run: () => void cleanup() },
-    { label: "Calculate now", shortcut: "F9", run: () => void requestRecalc() },
-    { label: auto ? "Switch to manual calculation" : "Switch to automatic calculation", run: () => calcModeStore.setMode(auto ? "manual" : "auto") },
-    { label: "Switch to sketch calculation (approximate on a sample)", run: () => { if (calcModeStore.setMode("sketch")) void requestRecalc(); } },
-    { label: "Group selection", shortcut: "G", run: () => fireCanvasKey("KeyG") },
+  // EVERY menubar action (single-sourced in menuModel) is a command — so the palette
+  // stays in sync with the menu bar. The individual node types are deliberately NOT
+  // here: "Add node…" opens the Add menu (auto-focused search, the `A` hotkey), which
+  // is the one place to browse the catalog.
+  const fromMenus = buildMenus()
+    .flatMap((m) => m.items)
+    .filter((it): it is Extract<MenuItem, { label: string }> => !("sep" in it) && !it.disabled && !!it.onClick)
+    .map((it) => ({ label: it.label, shortcut: it.shortcut, run: it.onClick! }));
+  // Canvas / selection ops that don't live in the menu bar.
+  const extra: { label: string; shortcut?: string; run: () => void }[] = [
     { label: "Isolate selection", shortcut: "I", run: () => fireCanvasKey("KeyI") },
     { label: "Expand/collapse groups", shortcut: "E", run: () => fireCanvasKey("KeyE") },
-    { label: "Autofit group box", shortcut: "F", run: () => fireCanvasKey("KeyF") },
     { label: "Align left", run: () => void alignSelection("left") },
     { label: "Align right", run: () => void alignSelection("right") },
     { label: "Align top", run: () => void alignSelection("top") },
@@ -82,19 +52,8 @@ function buildCommands(): PaletteItem[] {
     { label: "Distribute vertically", run: () => void distributeSelection("v") },
     { label: "Collapse selection", run: () => collapseSelection(true) },
     { label: "Expand selection", run: () => collapseSelection(false) },
-    { label: "Undo", shortcut: "Ctrl+Z", run: () => fireCanvasKey("KeyZ", { ctrl: true }) },
-    { label: "Redo", shortcut: "Ctrl+Shift+Z", run: () => fireCanvasKey("KeyZ", { ctrl: true, shift: true }) },
-    { label: locked ? "Unlock canvas" : "Lock canvas", run: () => canvasLockStore.toggle() },
-    { label: "Find node…", shortcut: "Ctrl+F", run: () => outlineSearch.open() },
-    { label: "Function reference", shortcut: "Ctrl+/", run: () => frStore.open("reference") },
-    { label: "Keyboard shortcuts", run: () => shortcutsStore.toggle() },
-    { label: "Settings…", shortcut: "Ctrl+,", run: () => settingsPanel.open() },
-    { label: "Save", shortcut: "Ctrl+S", run: () => void saveToDisk() },
-    { label: "Save As…", shortcut: "Ctrl+Shift+S", run: () => void saveToDisk({ forceDialog: true }) },
-    { label: "Open…", shortcut: "Ctrl+O", run: () => void openFromDisk() },
-    { label: "New blank document", run: () => void documentStore.newBlank() },
-    { label: "Reload document", shortcut: "Ctrl+Shift+L", run: () => void documentStore.reloadCurrent() },
-  ].map((c, i) => ({ id: `cmd:${i}:${c.label}`, kind: "command" as const, ...c }));
+  ];
+  return [...fromMenus, ...extra].map((c, i) => ({ id: `cmd:${i}:${c.label}`, kind: "command" as const, ...c }));
 }
 
 function buildSettingToggles(): PaletteItem[] {
@@ -131,7 +90,6 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const commands = useMemo(buildCommands, []);
   const toggles = useMemo(buildSettingToggles, []);
-  const leaves = useMemo(() => flattenLeaves(buildCatalog(true)), []);
 
   useEffect(() => { inputRef.current?.focus(); }, []);
   useEffect(() => setActiveIndex(query.trim() ? 0 : -1), [query]);
@@ -162,26 +120,9 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
         });
       }
     }
-    for (const lc of leaves) {
-      const s = scoreLeaf(q, lc);
-      if (s === null) continue;
-      const leaf: NodeCatalogEntry = lc.leaf;
-      scored.push({
-        // Node-add results rank a shade under equally-scored commands/jumps —
-        // adding a node is the highest-commitment action of the four.
-        score: s - 5,
-        item: {
-          id: `node:${leaf.type}`,
-          kind: "node",
-          label: leaf.label,
-          sub: "Add node",
-          run: () => void addNodeAtCenter(leaf),
-        },
-      });
-    }
     scored.sort((a, b) => b.score - a.score);
     return scored.slice(0, 20).map((s) => s.item);
-  }, [query, commands, toggles, leaves]);
+  }, [query, commands, toggles]);
 
   function run(item: PaletteItem) {
     item.run();
