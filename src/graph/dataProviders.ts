@@ -6,7 +6,10 @@
 import { frameFromColumnar, type FrameValue } from "./frame";
 import { csvToFrame } from "./nodes/connection";
 
-export type ProviderId = "fred" | "stooq" | "alphavantage";
+// Stooq was dropped 2026-07-06: its keyless CSV endpoint is now behind a JavaScript
+// proof-of-work bot-check, so a plain HTTP GET returns a challenge page, not data —
+// unfixable without a real browser. Stock history now goes through Alpha Vantage (key).
+export type ProviderId = "fred" | "alphavantage";
 
 export interface ProviderPreset {
   id: ProviderId;
@@ -75,16 +78,6 @@ export const PROVIDERS: Record<ProviderId, ProviderPreset> = {
     buildUrl: (id) =>
       `https://fred.stlouisfed.org/graph/fredgraph.csv?id=${encodeURIComponent(id.trim())}`,
     parse: parseFredCsv,
-  },
-  stooq: {
-    id: "stooq",
-    label: "Stooq — stocks (no key)",
-    needsKey: false,
-    inputLabel: "Ticker",
-    placeholder: "e.g. aapl.us, ^spx, eurusd",
-    // Daily OHLC CSV: Date,Open,High,Low,Close,Volume. Tickers are lower-case.
-    buildUrl: (t) => `https://stooq.com/q/d/l/?s=${encodeURIComponent(t.trim().toLowerCase())}&i=d`,
-    parse: csvToFrame,
   },
   alphavantage: {
     id: "alphavantage",

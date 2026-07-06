@@ -31,15 +31,12 @@ describe("dataProviders", () => {
     expect(getColumn(f, "UNRATE")?.values).toEqual([3.5, null, 4.4]);
   });
 
-  it("builds provider URLs — FRED keyless CSV; stooq lower-cases; Alpha Vantage keyed", () => {
+  it("builds provider URLs — FRED keyless CSV; Alpha Vantage keyed CSV", () => {
     // FRED is keyless now — the public fredgraph.csv download, no api_key.
     const fredUrl = PROVIDERS.fred.buildUrl("UNRATE", "");
     expect(fredUrl).toContain("fredgraph.csv?id=UNRATE");
     expect(fredUrl).not.toContain("api_key");
     expect(PROVIDERS.fred.needsKey).toBe(false);
-
-    expect(PROVIDERS.stooq.needsKey).toBe(false);
-    expect(PROVIDERS.stooq.buildUrl("AAPL.US", "")).toContain("s=aapl.us");
 
     expect(PROVIDERS.alphavantage.buildUrl("MSFT", "K")).toContain("datatype=csv");
     expect(PROVIDERS.alphavantage.needsKey).toBe(true);
@@ -47,6 +44,6 @@ describe("dataProviders", () => {
 
   it("getProvider falls back to fred for an unknown id", () => {
     expect(getProvider("nope").id).toBe("fred");
-    expect(getProvider("stooq").id).toBe("stooq");
+    expect(getProvider("alphavantage").id).toBe("alphavantage");
   });
 });
