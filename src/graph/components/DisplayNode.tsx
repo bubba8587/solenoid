@@ -3,7 +3,7 @@ import type { DisplayNode as DisplayNodeType } from "../rete-nodes";
 import { formatWithUnit } from "../unitFormat";
 import { formatAnnotationStore, formatNumberWithAnnotation } from "../formatAnnotationStore";
 import { sharedAnnotationResolver } from "../unitFlow";
-import { getEditor } from "../process";
+import { getOwningEditor } from "../activeGraph";
 import { collapseStore } from "../collapseStore";
 import { NodeShell, PortSockets, ValueDisplay, type NodeProps } from "./nodeKit";
 import { TableDisplay } from "./TableDisplay";
@@ -67,7 +67,7 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
   //     passthroughs; the value reaches it unchanged, so this earlier Display in
   //     the same segment shows the same lock (`…→Disp1→Disp2→FC` formats Disp1 too).
   // Both break at a transform. A direct (docked / trailing-FC) annotation wins.
-  const editor = getEditor();
+  const editor = getOwningEditor(data.id); // internal drill-in nodes resolve their FC in the internal editor
   const resolver = editor ? sharedAnnotationResolver(editor) : undefined;
   const ann =
     formatAnnotationStore.getForNode(data.id) ??

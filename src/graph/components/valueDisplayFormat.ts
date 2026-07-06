@@ -5,7 +5,7 @@
 // dates in its own value box, for scalars AND lists, without each node wiring up
 // an ad-hoc `render` formatter.
 
-import { getEditor } from "../process";
+import { getOwningEditor } from "../activeGraph";
 import { SolenoidSocket, isDateType, type SocketDataType } from "../sockets";
 import { formatDateSerial, DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT } from "../nodes/date";
 import { isSolError, type SolError } from "../errorValue";
@@ -66,7 +66,10 @@ function displayedType(
   depth: number,
 ): SocketDataType | undefined {
   if (depth > 32) return undefined;
-  const editor = getEditor();
+  // Owning editor: an internal drill-in node's source chain lives in the internal
+  // editor, not main (see getOwningEditor). The recursion re-resolves per source,
+  // but a source is in the same graph so it stays consistent.
+  const editor = getOwningEditor(nodeId);
   const node = editor?.getNode(nodeId) as
     (Record<string, unknown> & { outputs?: Record<string, { socket?: unknown } | undefined> }) | undefined;
   if (!node) return undefined;

@@ -48,6 +48,22 @@ export function getActiveEditor(): NodeEditor<Schemes> | null {
   return _override?.editor ?? getEditor();
 }
 
+/**
+ * The editor that OWNS `nodeId` — the drill-in's internal editor when it holds the
+ * node, else main. Render-time cross-node resolvers (value-box FC annotation,
+ * type-default display, unit flow) walk the graph keyed by the rendered node's own
+ * id; keyed on `getEditor()` (main) they silently return nothing for a node living
+ * inside a Composite drill-in, so labels/units/formats/types don't propagate there.
+ * Routing those reads through the OWNING editor makes the drill-in first-class
+ * WITHOUT touching persistence (which never resolves by a specific node's owner —
+ * it serializes `getEditor()` wholesale, and this never returns the override for a
+ * main node). Cheap: one `getNode` probe, only when a subgraph is open.
+ */
+export function getOwningEditor(nodeId: string): NodeEditor<Schemes> | null {
+  if (_override && _override.editor.getNode(nodeId)) return _override.editor;
+  return getEditor();
+}
+
 export function getActiveArea(): AreaPlugin<Schemes, AreaExtra> | null {
   return _override?.area ?? getArea();
 }
