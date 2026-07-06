@@ -56,6 +56,17 @@ describe("Input Switch (CableSwitchNode)", () => {
     expect(n.titleFor("v1")).toBe("Input 2");
   });
 
+  it("output socket is a Cube in Many mode, `any` in One", () => {
+    const dt = (n: CableSwitchNode) => (n.outputs.out!.socket as unknown as { dataType: string }).dataType;
+    expect(dt(new CableSwitchNode())).toBe("any");
+    expect(dt(new CableSwitchNode({ multiSelect: true }))).toBe("cube");
+    const n = new CableSwitchNode({ multiSelect: true });
+    n.multiSelect = false;
+    expect(n.syncOutputType()).toBe(true);
+    expect(dt(n)).toBe("any");
+    expect(n.syncOutputType()).toBe(false); // idempotent
+  });
+
   it("removeValueInput drops the slot's title and selection", () => {
     const n = new CableSwitchNode();
     n.titles = { v0: "A", v1: "B" };
