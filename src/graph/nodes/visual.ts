@@ -93,6 +93,8 @@ export class ChartNode extends ClassicPreset.Node {
   cachedResult: number | number[] | null = null;
   // The 2-D feed for the composed/bubble ops (a matrix on the `series` socket).
   cachedMatrix: (number | null)[][] | null = null;
+  // X-axis category labels from a wired Frame's FIRST column (dates as dates, etc.).
+  cachedLabels: (string | number)[] | null = null;
   // Parsed matplotlib-style options from the `options` socket (Chart Builder, or
   // a string typed into the inline field). The component reads this to apply
   // title/axes/color/grid/etc.; what sets Chart apart from the minimal Sparkline.
@@ -107,6 +109,10 @@ export class ChartNode extends ClassicPreset.Node {
     this.label = init?.label ?? "Chart";
     this.op = init?.op ?? "column";
     this.addInput("values", numListIn("Values"));
+    // A Frame drives a LABELED chart (our convention: columns, not parallel sockets):
+    // the FIRST column is the x-axis labels (dates/categories), the SECOND its values.
+    // Takes precedence over `values` when wired.
+    this.addInput("frame", frameIn("Frame (labels + values)"));
     // The 2-D feed: composed reads each column as a series, bubble each row as an
     // [x, y, size] point. Unwired for the 1-D ops (they read `values`).
     this.addInput("series", anyTableIn("Series (2-D)"));
@@ -119,8 +125,24 @@ export class ChartNode extends ClassicPreset.Node {
     this.addOutput("chart", chartOut("Chart"));
   }
 
-  data(inputs: { values?: (number | number[])[]; series?: unknown[][][]; options?: string[] }): { chart: ChartValue } {
-    const v = inputs.values?.[0] ?? null;
+  data(inputs: { values?: (number | number[])[]; frame?: FrameInput[]; series?: unknown[][][]; options?: string[] }): { chart: ChartValue } {
+    // A wired Frame drives a LABELED chart and takes precedence: col 0 → x-axis
+    // labels (formatted per its type, so dates read as dates), col 1 → the values.
+    // A single-column frame is just values (no labels). coerceInputs materializes
+    // the frame for this non-verb consumer, so it arrives as a plain FrameValue.
+    const frame = inputs.frame?.[0];
+    this.cachedLabels = null;
+    let v = inputs.values?.[0] ?? null;
+    if (isFrameValue(frame) && frame.columns.length > 0) {
+      const cols = frame.columns;
+      const asNums = (col: FrameColumn) => col.values.map((c) => (typeof c === "number" && Number.isFinite(c) ? c : null));
+      if (cols.length >= 2) {
+        this.cachedLabels = cols[0].values.map((c) => formatFrameCell(cols[0].type, c) ?? "");
+        v = asNums(cols[1]) as unknown as number[];
+      } else {
+        v = asNums(cols[0]) as unknown as number[];
+      }
+    }
     this.cachedResult = v;
     // A wired matrix → coerce every cell to number|null (anyTable is element-
     // agnostic; a non-number becomes null so the charts skip it).
@@ -134,6 +156,7 @@ export class ChartNode extends ClassicPreset.Node {
       op: this.op,
       values: this.cachedResult,
       matrix: this.cachedMatrix,
+      labels: this.cachedLabels ?? undefined,
       options: this.chartOptions,
       title: this.chartOptions.title || this.label || "Chart",
     };

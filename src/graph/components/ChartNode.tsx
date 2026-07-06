@@ -66,6 +66,7 @@ export function ChartComponent({ data, emit }: NodeProps<ChartNodeType>) {
   const hasData = isMatrix ? hasMatrix || series.length > 0 : series.length > 0;
   const cv: ChartValue = {
     __chart: true, op, values: data.cachedResult, matrix: data.cachedMatrix,
+    labels: data.cachedLabels ?? undefined,
     options: opts, title: opts.title || data.label || "Chart",
   };
 
@@ -100,7 +101,7 @@ export function ChartComponent({ data, emit }: NodeProps<ChartNodeType>) {
             {/* The expand popup renders a single series — offer it only for the
                 1-D ops (the matrix ops have no popup path). */}
             {!isMatrix && (
-              <ChartExpandButton title={opts.title || data.label || "Chart"} op={op as ChartShape} axes series={series} opts={opts} />
+              <ChartExpandButton title={opts.title || data.label || "Chart"} op={op as ChartShape} axes series={series} opts={opts} labels={data.cachedLabels ?? undefined} />
             )}
           </>
         )}

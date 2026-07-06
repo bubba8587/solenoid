@@ -10,7 +10,7 @@ import "./ExpressionNode.css"; // for .solenoid-expr__expand (shared expand butt
  * consistent control across the app. Opens the big read-only ChartPopup.
  */
 export function ChartExpandButton({
-  title, op, axes, series, opts, signColors,
+  title, op, axes, series, opts, signColors, labels,
 }: {
   title: string;
   op: ChartShape;
@@ -18,6 +18,7 @@ export function ChartExpandButton({
   series: { i: number; v: number }[];
   opts?: ChartOptions;
   signColors?: { pos: string; neg: string };
+  labels?: (string | number)[];
 }) {
   const hostId = useHostNodeId();
   return (
@@ -31,7 +32,7 @@ export function ChartExpandButton({
         e.stopPropagation();
         const accent = (e.currentTarget.closest(".solenoid-node") as HTMLElement | null)
           ?.style.getPropertyValue("--node-accent")?.trim() || undefined;
-        chartPopup.open({ title, op, axes, series, opts, signColors, accent, pinNodeId: hostId ?? undefined });
+        chartPopup.open({ title, op, axes, series, opts, signColors, labels, accent, pinNodeId: hostId ?? undefined });
       }}
     >
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"

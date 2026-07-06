@@ -61,6 +61,10 @@ export interface ChartValue {
   /** Multi-series / point data for the 2-D chart ops (composed = each COLUMN a
    *  series; bubble = each ROW an [x, y, size] point). Undefined for 1-D ops. */
   matrix?: (number | null)[][] | null;
+  /** X-axis category labels — the FIRST column of a wired Frame (formatted per its
+   *  type, so dates read as dates). One per data point; the axis/tooltip show these
+   *  instead of the 1,2,3… index. Undefined when a plain `values` list drives it. */
+  labels?: (string | number)[];
   /** Structured data for the non-series figures (kpi/bullet). */
   payload?: ChartPayload;
   /** Parsed matplotlib-style style overrides (title/axes/color/grid/…). */
