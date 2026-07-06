@@ -148,16 +148,16 @@
   flex-shrink: 0;
 }
 
-/* Run-mode / Solve / config panel inside the drill-in — top-right, below the real
-   header, clear of the top-left breadcrumb strip. Mirrors the outer card's controls
-   so the subgraph is configurable/solvable without leaving. Reuses the node value-box
-   font sizing so OpSelect / Solve / the mode editors look identical to the card. */
+/* Run-mode / Solve / config panel inside the drill-in — top-LEFT, tucked directly
+   UNDER the breadcrumb strip. The top-right corner is taken by the Zoom pill / Problems
+   / Alerts HUDs, so it can't live there. Mirrors the outer card's controls so the
+   subgraph is configurable/solvable without leaving. */
 .solenoid-composite-editor__controls {
   position: absolute;
-  top: 74px;
-  right: 12px;
+  top: 120px;
+  left: 12px;
   width: 240px;
-  max-height: calc(100vh - 74px - 40px);
+  max-height: calc(100vh - 120px - 40px);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
