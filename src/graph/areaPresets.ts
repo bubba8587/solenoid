@@ -1,7 +1,8 @@
 import { Presets as ReactPresets } from "rete-react-plugin";
 import { ClassicFlow, getSourceTarget } from "rete-connection-plugin";
+import { Zoom, type AreaPlugin } from "rete-area-plugin";
 import type { NodeEditor } from "rete";
-import type { Schemes } from "./schemes";
+import type { Schemes, AreaExtra } from "./schemes";
 import { getGuardedSocketPosition } from "./guardedSocketPosition";
 import { NODE_COMPONENTS } from "./nodeRegistry";
 import { SocketComponent } from "./components/SocketComponent";
@@ -18,6 +19,48 @@ import { canvasLockStore } from "./canvasLock";
 // veto). One source so a socket-render or connection-rule change can't silently
 // apply to the main canvas but not the subgraph. See activeGraph.ts for the
 // behavioral half of the canvas-substitution seam.
+
+// Zoom feel — proportional + clamped wheel (rete's stock Zoom applies a fixed
+// ±intensity per wheel event, so a trackpad pinch races while a mouse notch crawls).
+const ZOOM_SCALE = 0.0028;
+const ZOOM_STEP_CAP = 0.24;
+const WHEEL_LINE_PX = 16; // deltaMode 1 (lines) → px
+const WHEEL_PAGE_PX = 400; // deltaMode 2 (pages) → px
+
+/** Custom zoom handler: proportional + clamped wheel, stock pinch/dblclick. Shared by
+ *  the main canvas and every canvas-substituting surface (the composite drill-in). */
+export class CappedZoom extends Zoom {
+  protected wheel = (e: WheelEvent) => {
+    e.preventDefault();
+    const px =
+      e.deltaMode === 1 ? e.deltaY * WHEEL_LINE_PX
+      : e.deltaMode === 2 ? e.deltaY * WHEEL_PAGE_PX
+      : e.deltaY;
+    let delta = -px * ZOOM_SCALE; // scroll up / pinch out → zoom in
+    if (delta > ZOOM_STEP_CAP) delta = ZOOM_STEP_CAP;
+    else if (delta < -ZOOM_STEP_CAP) delta = -ZOOM_STEP_CAP;
+    const el = (this as unknown as { element: HTMLElement }).element;
+    const { left, top } = el.getBoundingClientRect();
+    const ox = (left - e.clientX) * delta;
+    const oy = (top - e.clientY) * delta;
+    (this as unknown as { onzoom: (d: number, ox: number, oy: number, s: string) => void })
+      .onzoom(delta, ox, oy, "wheel");
+  };
+}
+
+/** Install the pointer/zoom behaviour every editing surface needs, so a substituting
+ *  surface (the drill-in) matches the main canvas: the capped proportional zoom + the
+ *  double-click-to-zoom SUPPRESSION (rete's Zoom attaches its dblclick handler to the
+ *  container in bubble phase; a capture-phase swallow stops it). Returns a cleanup fn. */
+export function installSurfacePointer(
+  area: AreaPlugin<Schemes, AreaExtra>,
+  container: HTMLElement,
+): () => void {
+  area.area.setZoomHandler(new CappedZoom(0.1));
+  const swallowDblClick = (e: Event) => { e.stopImmediatePropagation(); };
+  container.addEventListener("dblclick", swallowDblClick, true);
+  return () => container.removeEventListener("dblclick", swallowDblClick, true);
+}
 
 /** The classic React render preset: our node/socket/connection components + the
  *  identity socket-position offset (our sockets sit centered ON the node border,

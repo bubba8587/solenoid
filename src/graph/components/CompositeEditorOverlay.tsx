@@ -8,7 +8,7 @@ import { HistoryPlugin, Presets as HistoryPresets } from "rete-history-plugin";
 import { MinimapPlugin } from "rete-minimap-plugin";
 import type { AutoArrangePlugin } from "rete-auto-arrange-plugin";
 import { solenoidMinimapPreset, collapsedAwareNodesRect } from "./Minimap";
-import { solenoidClassicRenderSetup, makeSolenoidConnectionFlow } from "../areaPresets";
+import { solenoidClassicRenderSetup, makeSolenoidConnectionFlow, installSurfacePointer } from "../areaPresets";
 import { settingsStore } from "../settingsStore";
 import type { Schemes, AreaExtra, SolenoidNode } from "../schemes";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "../rete-nodes";
@@ -110,6 +110,11 @@ async function getDrillMount(composite: CompositeNode): Promise<DrillMount> {
   area.use(connection);
   area.use(history);
   area.use(minimap);
+  // Match the main canvas's pointer feel: capped proportional wheel zoom +
+  // double-click-to-zoom suppression (the drill-in used rete's stock defaults). The
+  // container is cached with the mount, so the listener lives as long as it — no
+  // cleanup needed (same lifetime as the mount itself).
+  installSurfacePointer(area, container);
 
   // Views are backfilled per OPEN (CompositeEditorInner's mount effect), not
   // here — the close cleanup REMOVES every view (unmounting the React roots so
