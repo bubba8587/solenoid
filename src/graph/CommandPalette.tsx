@@ -87,6 +87,9 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
   // result (that ranking is the answer to the query, so type→Enter works);
   // arrows and real mouse movement select explicitly.
   const [activeIndex, setActiveIndex] = useState(-1);
+  // Docked mode is a bare bar until focused; focusing it surfaces the same no-query
+  // suggestion list the modal shows on open.
+  const [focused, setFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const commands = useMemo(buildCommands, []);
   const toggles = useMemo(buildSettingToggles, []);
@@ -98,9 +101,9 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
 
   const results = useMemo<PaletteItem[]>(() => {
     const q = query.trim();
-    // Docked with no query → just the input bar (a compact command line); the
-    // modal previews the first few commands so an empty palette isn't blank.
-    if (!q) return persistent ? [] : commands.slice(0, 8);
+    // No query → the first few commands as a preview. The docked bar shows them
+    // only while focused (a bare bar otherwise); the modal always does.
+    if (!q) return persistent && !focused ? [] : commands.slice(0, 8);
     const scored: { item: PaletteItem; score: number }[] = [];
     for (const c of [...commands, ...toggles]) {
       const s = fieldScore(q, c.label);
@@ -126,7 +129,7 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
     }
     scored.sort((a, b) => b.score - a.score);
     return scored.slice(0, 20).map((s) => s.item);
-  }, [query, commands, toggles, persistent]);
+  }, [query, commands, toggles, persistent, focused]);
 
   function run(item: PaletteItem) {
     item.run();
@@ -152,7 +155,9 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
     >
       <div className={`solenoid-cmdpalette${persistent ? " solenoid-cmdpalette--persistent" : ""}`} onMouseDown={(e) => e.stopPropagation()}>
         {results.length > 0 && (
-          <div className="solenoid-cmdpalette__results">
+          // preventDefault on mousedown so clicking a row doesn't blur the input —
+          // in docked mode a blur would hide the suggestion list before the click fires.
+          <div className="solenoid-cmdpalette__results" onMouseDown={(e) => e.preventDefault()}>
             {results.map((r, i) => (
               <div
                 key={r.id}
@@ -193,6 +198,8 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
           placeholder="Add a node, run a command, jump to a node…"
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={onKeyDown}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
         />
       </div>
     </div>
