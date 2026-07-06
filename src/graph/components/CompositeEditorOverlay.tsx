@@ -173,6 +173,10 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
   // class onto the host — the `.solenoid-canvas--locked` descendant rules make the
   // subgraph nodes view-only (pointer-events:none), background pan/zoom still live.
   const locked = useSyncExternalStore(canvasLockStore.subscribe, canvasLockStore.get);
+  // Re-render the overlay (incl. the run-mode / goal-seek controls panel) on every
+  // pass, so renaming an internal marker updates the port-label-driven dropdowns
+  // immediately on blur (data() syncs the labels; this reflects them).
+  useSyncExternalStore(compositePassStore.subscribe, compositePassStore.version);
 
   const compositeId = composite.id;
   const isComposite = true;
