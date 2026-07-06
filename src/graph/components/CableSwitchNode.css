@@ -23,6 +23,34 @@
 
 .sol-switch__state { color: var(--text-muted); font-size: 11px; }
 
+/* Per-slot title — reads as a named choice; commits on Enter/blur. */
+.sol-switch__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 18px;
+  padding: 0 5px;
+  font-family: inherit;
+  font-size: 11px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  color: var(--text);
+}
+.sol-switch__title::placeholder { color: var(--text-muted); }
+.sol-switch__title:focus { outline: none; border-color: var(--node-accent, var(--accent)); }
+
+/* Multi-select include checkbox — same 20px footprint as the route button. */
+.sol-switch__check {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--node-accent, var(--accent));
+  cursor: pointer;
+}
+
+.sol-switch__mode { flex: 0 0 auto; }
+
 .sol-switch__controls {
   display: flex;
   gap: 6px;

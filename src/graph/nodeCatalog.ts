@@ -212,7 +212,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
       { type: "xy-pad",      label: "XY Pad",      description: "Drag a handle in a square to set two values at once. Outputs X and Y, each 0–1; scale them with arithmetic for any range.", create: () => new XYPadNode(), parity: false },
       { type: "color-picker", label: "Color", description: "Pick a colour (RGB or HSV); choose output format (hex / rgb() / hsl()). Outputs a CSS colour string.", create: () => new ColorPickerNode(), parity: false },
       { type: "slicer",      label: "Slicer",      description: "Filter a Frame like an Excel slicer — pick a column, click its values to keep matching rows.", create: () => new SlicerNode() },
-      { type: "cable-switch", label: "Input Switch", description: "A multiplexer (not the logical SWITCH): wire several cables in, pick which one passes through. Any type.", create: () => new CableSwitchNode(), parity: false },
+      { type: "cable-switch", label: "Input Switch", description: "A multiplexer (not the logical SWITCH): wire several cables in, name each slot, and pick which one passes through. Any type. Switch to Many to check several slots instead — the output becomes a Cube collecting the chosen values (name + value), one row each.", create: () => new CableSwitchNode(), parity: false, keywords: "switch multiplexer select choose route mux named cube collect multi" },
     ],
   },
 

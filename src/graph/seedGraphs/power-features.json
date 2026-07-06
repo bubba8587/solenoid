@@ -30,12 +30,15 @@
     {"id":"disp-km","type":"DisplayNode","x":260,"y":820,"init":{"label":"Distance","unitSuffix":"none"}},
     {"id":"fc-km","type":"FormatControllerNode","x":480,"y":840,"init":{"label":"Format","hostNodeId":"disp-km","socketKey":"out","side":"output","format":"decimal","customPattern":"0.00","decimalDigits":1,"decimalMode":"places","unit":"km","customUnit":"","socketDataType":"numlist","textCase":"none","bold":false,"italic":false,"textScale":14,"width":152,"height":91}},
 
-    {"id":"note-switch","type":"NoteNode","x":860,"y":620,"init":{"label":"Live controls","body":"# Switch + Expression\nThe **Input Switch** picks which cable is live — cycle it to flip scenarios, no rewiring. The **Expression** node grew an input socket for every variable in its formula (`monthly` here); click the formula for the big typeset editor.","color":"lime","width":360,"height":220,"collapsed":false}},
+    {"id":"note-switch","type":"NoteNode","x":860,"y":620,"init":{"label":"Live controls","body":"# Switch + Expression\nName each slot on the **Input Switch** so it reads as a labelled choice, then pick which cable is live — cycle to flip scenarios, no rewiring. Flip it to **Many** (see the switch below) and it collects the checked inputs into a **Cube** instead. The **Expression** node grew an input socket for every variable in its formula (`monthly` here); click the formula for the big typeset editor.","color":"lime","width":360,"height":240,"collapsed":false}},
     {"id":"in-a","type":"NumberInputNode","x":860,"y":900,"init":{"label":"Plan A (monthly)","value":1200}},
     {"id":"in-b2","type":"NumberInputNode","x":860,"y":1020,"init":{"label":"Plan B (monthly)","value":2000}},
-    {"id":"switch-1","type":"CableSwitchNode","x":1140,"y":920,"init":{"label":"Scenario","activeIndex":0,"valueKeys":["v0","v1"]}},
+    {"id":"switch-1","type":"CableSwitchNode","x":1140,"y":920,"init":{"label":"Scenario","activeIndex":0,"valueKeys":["v0","v1"],"titles":{"v0":"Plan A","v1":"Plan B"}}},
     {"id":"expr-1","type":"ExpressionNode","x":1410,"y":880,"init":{"label":"Yearly cost","expr":"12 * monthly"},"literals":{"monthly":0}},
-    {"id":"disp-year","type":"DisplayNode","x":1700,"y":920,"init":{"label":"Per year","unitSuffix":"none"}}
+    {"id":"disp-year","type":"DisplayNode","x":1700,"y":920,"init":{"label":"Per year","unitSuffix":"none"}},
+
+    {"id":"in-c","type":"NumberInputNode","x":860,"y":1140,"init":{"label":"Plan C (monthly)","value":1500}},
+    {"id":"switch-many","type":"CableSwitchNode","x":1140,"y":1180,"init":{"label":"All plans","activeIndex":0,"valueKeys":["v0","v1","v2"],"titles":{"v0":"Plan A","v1":"Plan B","v2":"Plan C"},"multiSelect":true,"selectedKeys":["v0","v1","v2"]}}
   ],
   "connections": [
     {"source":"slider-rate","sourceOutput":"value","target":"lambda-1","targetInput":"rate"},
@@ -56,7 +59,10 @@
     {"source":"in-a","sourceOutput":"value","target":"switch-1","targetInput":"v0"},
     {"source":"in-b2","sourceOutput":"value","target":"switch-1","targetInput":"v1"},
     {"source":"switch-1","sourceOutput":"out","target":"expr-1","targetInput":"monthly"},
-    {"source":"expr-1","sourceOutput":"result","target":"disp-year","targetInput":"in"}
+    {"source":"expr-1","sourceOutput":"result","target":"disp-year","targetInput":"in"},
+    {"source":"in-a","sourceOutput":"value","target":"switch-many","targetInput":"v0"},
+    {"source":"in-b2","sourceOutput":"value","target":"switch-many","targetInput":"v1"},
+    {"source":"in-c","sourceOutput":"value","target":"switch-many","targetInput":"v2"}
   ],
   "standoffs": [
     {"a":{"nodeId":"in-sb","anchor":"e"},"b":{"nodeId":"grp-mon","anchor":"w"},"min":140,"max":900}

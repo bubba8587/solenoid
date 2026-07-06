@@ -5,6 +5,23 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-06 pm — C-4 XLOOKUP merge + C-2 Input Switcher upgrade)
+
+**C-2 Input Switcher upgrade (`CableSwitchNode`).** Two features:
+- **Editable per-slot titles** — each input row has a title field (draft-commit via
+  `useDraftCommit`), so slots read as named choices; `titleFor(key)` falls back to
+  "Input N". Rendered by a new `SwitchOptionRow` sub-component so the per-row title hook
+  count stays stable as rows add/remove.
+- **Many mode** — a One/Many `SegToggle`. In Many the numbered route buttons become
+  checkboxes (`selectedKeys`); the output is a **Cube** collecting the checked inputs — a
+  `name` column (titles) + a `value` column (each wired value WHOLE), one row per slot, in
+  slot order. Nothing checked → null. `SwitchValue` already renders a cube (CubeChip).
+- Persistence: `titles` (object) + `selectedKeys` (array) added to `copyPaste.ts` (deep-copy,
+  live-keys-only to keep the text form byte-identical); `multiSelect` was already whitelisted.
+  `removeValueInput` drops the slot's title + selection. Seed: `power-features` — `switch-1`
+  gained Plan A/Plan B titles, and a new **Many-mode `switch-many`** collects Plan A/B/C into
+  a cube (eyeball: the card shows the collected cube chip). `cableSwitch.test.ts` covers it.
+
 ### SESSION DIGEST (2026-07-06 pm — author-present, C-4 unified XLOOKUP merge)
 Local dev server (HMR); commit freely, no pushes. tsc + full vitest (2243) green.
 - **C-4 XLOOKUP merge — REAL merge, not a wire-driven socket swap.** The author vetoed

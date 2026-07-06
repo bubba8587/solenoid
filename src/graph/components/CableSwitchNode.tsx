@@ -9,9 +9,10 @@ import { isFrameValue, isCubeValue } from "../frame";
 import { isChartValue } from "../chartValue";
 import { isMermaidValue } from "../mermaidValue";
 import { isLambdaValue, formatLambda } from "../nodes/lambda";
-import { useConnectedInputs } from "./inlineInput";
+import { useDraftCommit } from "./inlineInput";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
+import { SegToggle } from "./SegToggle";
 import { FrameDisplay } from "./FrameDisplay";
 import { CubeChip } from "./CubeChip";
 import { TableDisplay } from "./TableDisplay";
@@ -39,12 +40,94 @@ function SwitchValue({ value, label }: { value: unknown; label?: string }) {
   return <ValueDisplay value={value as number | number[] | string | string[] | null} />;
 }
 
+// One input slot: a selector (route radio in single mode / include checkbox in
+// multi mode) + an editable title so it reads as a named choice. A separate
+// component so its title's useDraftCommit hook count stays stable as rows add/remove.
+function SwitchOptionRow({ data, emit, keyName, index, multiSelect, active, checked, onSelect, onToggle, onRemove, canRemove }: {
+  data: CableSwitchNodeType;
+  emit: NodeProps<CableSwitchNodeType>["emit"];
+  keyName: string;
+  index: number;
+  multiSelect: boolean;
+  active: boolean;
+  checked: boolean;
+  onSelect: () => void;
+  onToggle: () => void;
+  onRemove: () => void;
+  canRemove: boolean;
+}) {
+  const title = useDraftCommit<string>(
+    data.titles[keyName] ?? "",
+    (v) => v,
+    (t) => t,
+    (v) => {
+      if (v.trim()) data.titles[keyName] = v;
+      else delete data.titles[keyName];
+      // A title relabels the multi-select cube's `name` column → recompute in multi
+      // mode; single mode only needs a re-render.
+      if (data.multiSelect) void processGraph();
+      else void getArea()?.update("node", data.id);
+    },
+  );
+  const input = data.inputs[keyName];
+  if (!input) return null;
+  return (
+    <MeasuredSocketRow side="input" socketKey={keyName} nodeId={data.id} emit={emit} payload={input.socket}>
+      {multiSelect ? (
+        <input
+          type="checkbox"
+          className="sol-switch__check"
+          checked={checked}
+          title="Include this input in the collected cube"
+          onChange={(e) => { e.stopPropagation(); onToggle(); }}
+          onPointerDown={stop}
+          onMouseDown={stop}
+        />
+      ) : (
+        <button
+          type="button"
+          className={`sol-switch__opt${active ? " sol-switch__opt--on" : ""}`}
+          title="Route this input to the output"
+          onClick={(e) => { e.stopPropagation(); onSelect(); }}
+          onPointerDown={stop}
+          onMouseDown={stop}
+        >
+          {index + 1}
+        </button>
+      )}
+      <input
+        type="text"
+        className="sol-switch__title"
+        value={title.draft}
+        placeholder={`Input ${index + 1}`}
+        onChange={(e) => title.setDraft(e.target.value)}
+        onBlur={title.onBlur}
+        onKeyDown={title.onKeyDown}
+        onPointerDown={stop}
+        onMouseDown={stop}
+      />
+      {canRemove && (
+        <button
+          type="button"
+          className="solenoid-node__row-remove"
+          title="Remove input"
+          onClick={(e) => { e.stopPropagation(); onRemove(); }}
+        >×</button>
+      )}
+    </MeasuredSocketRow>
+  );
+}
+
 export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeType>) {
   const [selected, setSelected] = useState(data.activeIndex);
   useEffect(() => { setSelected(data.activeIndex); }, [data.activeIndex]);
-  const connected = useConnectedInputs(data.id);
+  const [multi, setMulti] = useState(data.multiSelect);
+  useEffect(() => { setMulti(data.multiSelect); }, [data.multiSelect]);
+  const [selKeys, setSelKeys] = useState<string[]>(data.selectedKeys);
+  useEffect(() => { setSelKeys(data.selectedKeys); }, [data.selectedKeys]);
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   const keys = Object.keys(data.inputs);
+  const selSet = new Set(selKeys);
 
   function select(i: number) {
     data.activeIndex = i;
@@ -53,6 +136,18 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
   }
   function cycle() {
     if (keys.length) select((data.activeIndex + 1) % keys.length);
+  }
+  function setMode(many: boolean) {
+    data.multiSelect = many;
+    setMulti(many);
+    void processGraph();
+  }
+  function toggleMulti(key: string) {
+    const set = new Set(data.selectedKeys);
+    if (set.has(key)) set.delete(key); else set.add(key);
+    data.selectedKeys = [...set];
+    setSelKeys(data.selectedKeys);
+    void processGraph();
   }
   async function addRow() {
     const key = data.addValueInput();
@@ -70,6 +165,7 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
     // AFTER the connection removals, BEFORE the removal (see ExtensibleInputs).
     pushRowRemovalUndo(data, [key], () => data.removeValueInput(key));
     data.removeValueInput(key);
+    setSelKeys(data.selectedKeys); // removeValueInput drops the key from the selection
     const n = Object.keys(data.inputs).length;
     if (data.activeIndex >= n) {
       const prevActive = data.activeIndex;
@@ -90,9 +186,9 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
     await processGraph();
   }
 
-  // Collapsed: the numbered option rows fold into the shared stadium input pill
-  // (≥2 inputs) or a lone centred socket, matching every other extensible node;
-  // the selected value still shows below.
+  // Collapsed: the option rows fold into the shared stadium input pill (≥2 inputs)
+  // or a lone centred socket, matching every other extensible node; the selected
+  // value (or collected cube) still shows below.
   if (collapsed) {
     return (
       <NodeShell node={data} emit={emit}>
@@ -113,46 +209,43 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
 
   return (
     <NodeShell node={data} emit={emit}>
-      {keys.map((key, i) => {
-        const input = data.inputs[key];
-        if (!input) return null;
-        const active = i === selected;
-        return (
-          <MeasuredSocketRow key={key} side="input" socketKey={key} nodeId={data.id} emit={emit} payload={input.socket}>
-            <button
-              type="button"
-              className={`sol-switch__opt${active ? " sol-switch__opt--on" : ""}`}
-              title={`Route input ${i + 1} to the output`}
-              onClick={(e) => { e.stopPropagation(); select(i); }}
-              onPointerDown={stop}
-              onMouseDown={stop}
-            >
-              {i + 1}
-            </button>
-            <span className="solenoid-node__io-label sol-switch__state" style={{ flex: 1 }}>
-              {connected.has(key) ? "wired" : "—"}
-            </span>
-            {keys.length > 2 && (
-              <button
-                type="button"
-                className="solenoid-node__row-remove"
-                title="Remove input"
-                onClick={(e) => { e.stopPropagation(); void removeRow(key); }}
-              >×</button>
-            )}
-          </MeasuredSocketRow>
-        );
-      })}
+      {keys.map((key, i) => (
+        <SwitchOptionRow
+          key={key}
+          data={data}
+          emit={emit}
+          keyName={key}
+          index={i}
+          multiSelect={multi}
+          active={i === selected}
+          checked={selSet.has(key)}
+          onSelect={() => select(i)}
+          onToggle={() => toggleMulti(key)}
+          onRemove={() => void removeRow(key)}
+          canRemove={keys.length > 2}
+        />
+      ))}
       <div className="sol-switch__controls">
         <button type="button" className="solenoid-node__add-input" onClick={(e) => { e.stopPropagation(); void addRow(); }}>+ Add</button>
-        <button type="button" className="sol-switch__cycle" title="Cycle to the next input" onClick={(e) => { e.stopPropagation(); cycle(); }} onPointerDown={stop} onMouseDown={stop}>
-          {/* Lucide "rotate-cw" (ISC) — an icon, not a font glyph. */}
-          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M21 12a9 9 0 1 1-3-6.7L21 8" />
-            <path d="M21 3v5h-5" />
-          </svg>
-          Cycle
-        </button>
+        <SegToggle
+          value={multi ? "many" : "one"}
+          options={[
+            { value: "one", label: "One", title: "Route one input to the output" },
+            { value: "many", label: "Many", title: "Collect the checked inputs into a Cube" },
+          ]}
+          onChange={(v) => setMode(v === "many")}
+          className="sol-switch__mode"
+        />
+        {!multi && (
+          <button type="button" className="sol-switch__cycle" title="Cycle to the next input" onClick={(e) => { e.stopPropagation(); cycle(); }} onPointerDown={stop} onMouseDown={stop}>
+            {/* Lucide "rotate-cw" (ISC) — an icon, not a font glyph. */}
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M21 12a9 9 0 1 1-3-6.7L21 8" />
+              <path d="M21 3v5h-5" />
+            </svg>
+            Cycle
+          </button>
+        )}
       </div>
       <SwitchValue value={data.cachedValue} label={data.label} />
     </NodeShell>

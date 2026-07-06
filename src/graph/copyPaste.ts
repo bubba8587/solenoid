@@ -86,7 +86,7 @@ export const INIT_FIELD_ORDER = [
 // Object-valued extras appended after INIT_FIELD_ORDER (below), in this fixed
 // order, when present — same reuse rationale as INIT_FIELD_ORDER.
 export const INIT_EXTRA_FIELD_ORDER = [
-  "funcs", "filterExclude", "condConfig", "fieldTypes", "weightMap", "normMap",
+  "funcs", "filterExclude", "condConfig", "fieldTypes", "weightMap", "normMap", "titles", "selectedKeys",
 ] as const;
 
 export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
@@ -133,6 +133,23 @@ export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
   }
   if (n.normMap && typeof n.normMap === "object") {
     init.normMap = { ...(n.normMap as object) };
+  }
+  // Input Switch per-slot titles (input key → name). Deep-copy so a paste doesn't
+  // alias the source node's live map (mutated as titles are edited). Keep only LIVE
+  // input keys so an orphan title (undo row-restore) can't leak into a save and
+  // break the text form's byte-identical second write.
+  if (n.titles && typeof n.titles === "object") {
+    const liveInputs = (n.inputs ?? {}) as Record<string, unknown>;
+    const entries = Object.entries(n.titles as Record<string, string>).filter(([k]) => k in liveInputs);
+    if (entries.length) init.titles = Object.fromEntries(entries);
+    else delete init.titles;
+  }
+  // Input Switch multi-select membership (live input keys only, same rationale).
+  if (Array.isArray(n.selectedKeys)) {
+    const liveInputs = (n.inputs ?? {}) as Record<string, unknown>;
+    const kept = (n.selectedKeys as string[]).filter((k) => k in liveInputs);
+    if (kept.length) init.selectedKeys = kept;
+    else delete init.selectedKeys;
   }
   // Composite node: its declared ports (deep-copied — mutated live as ports are
   // added) plus its ENTIRE internal subgraph, captured via the node's own
