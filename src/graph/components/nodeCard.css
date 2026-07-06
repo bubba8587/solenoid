@@ -251,8 +251,10 @@
   min-width: 0;
 }
 .solenoid-node--square-collapse.solenoid-node--collapsed .solenoid-node__body {
-  padding: 7px;
-  min-height: 38px;
+  /* Tight vertical padding (the mini spark fills the height); keep horizontal
+     room so it clears the edge sockets. */
+  padding: 3px 8px;
+  min-height: 26px;
   align-items: center;
   justify-content: center;
 }
