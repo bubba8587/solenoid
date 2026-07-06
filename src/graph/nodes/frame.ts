@@ -1241,6 +1241,11 @@ export class XLookupNode extends ClassicPreset.Node {
   searchMode: LookupSearchMode;
   cachedResult: CubeCell | null = null;
   stringLiterals: Record<string, string> = { lookup: "", inColumn: "", returnColumn: "", ifNotFound: "" };
+  // The `cube` source is a POLYMORPHIC input: XLOOKUP branches on the runtime frame-
+  // vs-cube shape, so it must arrive UNCOERCED (a plain cube socket would toCube a
+  // wired Frame and strip its typed date/logical columns). See the per-input coercion
+  // policy in coerceInputs.ts.
+  rawInputs: ReadonlySet<string> = new Set(["frame"]);
   width = 200; height = 350;
 
   constructor(init?: { label?: string; matchMode?: LookupMatchMode; searchMode?: LookupSearchMode }) {
@@ -1250,10 +1255,8 @@ export class XLookupNode extends ClassicPreset.Node {
     this.searchMode = init?.searchMode ?? "first";
     // `cube` source socket — the lattice supremum, so it accepts a Frame OR a Cube
     // (and rejects lambdas/charts that a bare `any` would let through). Its coercion
-    // is bypassed (RAW_CONTAINER_INPUTS in coerceInputs) so a wired Frame reaches
-    // data() UNCOERCED — the frame path keeps its typed date/logical columns that the
-    // cube path can't represent. A cube looks the key up in its TOP-LEVEL column and
-    // returns the matched cell WHOLE; Return = * returns the whole matched row.
+    // is bypassed via `rawInputs` (above). A cube looks the key up in its TOP-LEVEL
+    // column and returns the matched cell WHOLE; Return = * returns the whole row.
     this.addInput("frame", cubeIn("Table / Cube"));
     this.addInput("lookup", strIn("Lookup"));
     this.addInput("inColumn", strIn("In column"));

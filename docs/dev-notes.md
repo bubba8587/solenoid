@@ -43,6 +43,14 @@ Local dev server (HMR); commit freely, no pushes. tsc + full vitest (2243) green
   table" is enforced. `anytable` ("Any 2-D") was NOT viable — it rejects both Frame and Cube.
   Inputs left as `string`: Lookup + If-not-found keep the inline text box (type-aware matching
   covers every column type); wiring a computed key = Cast-to-text (author OK).
+- **Per-input coercion policy generalized (`node.rawInputs`).** The ad-hoc
+  `RAW_CONTAINER_INPUTS` class-name map is retired: a node now declares
+  `rawInputs: ReadonlySet<string>` and `coerceInputs` passes those inputs through
+  UNCOERCED. The principle (author-aligned): ACCEPTANCE is socket/lattice-driven, but
+  COERCION is a NODE decision — default "widen to the declared shape" (95% of nodes),
+  `rawInputs` opt-out for a polymorphic node that branches on the runtime shape (XLOOKUP's
+  `frame`; any future multi-dimensional INDEX/reshaper). Backlogged the deeper fix: a typed
+  `CubeColumn` making frame→cube lossless (would let the bypass retire entirely).
 - **Backlog line deleted** (delete-on-done). NOT pushed (local session).
 
 ### SESSION DIGEST (2026-07-06 — author-present, chart-node polish + standing rules)
