@@ -67,7 +67,7 @@ export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId
   return (
     <button
       type="button"
-      className={size === "sm" ? "solenoid-array-chip solenoid-array-chip--sm" : "solenoid-array-chip"}
+      className={`solenoid-array-chip solenoid-array-chip--array${size === "sm" ? " solenoid-array-chip--sm" : ""}`}
       title={titleText}
       onClick={(e) => {
         e.stopPropagation();

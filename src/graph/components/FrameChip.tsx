@@ -69,7 +69,7 @@ export function FrameChip({ value, label, size = "md", accent, onSave, source, o
   return (
     <button
       type="button"
-      className={size === "sm" ? "solenoid-array-chip solenoid-array-chip--sm" : "solenoid-array-chip"}
+      className={`solenoid-array-chip solenoid-array-chip--frame${size === "sm" ? " solenoid-array-chip--sm" : ""}`}
       title={`${approx ? "≈ " : ""}${totalRows}×${cols} frame${approx ? " — extrapolated from a sketch-mode sample" : ""} — click to ${onSave ? "edit" : "view"}`}
       onClick={async (e) => {
         e.stopPropagation();

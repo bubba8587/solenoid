@@ -25,7 +25,7 @@ export function CubeChip({ value, label, size = "md", accent, pinNodeId }: {
   return (
     <button
       type="button"
-      className={size === "sm" ? "solenoid-array-chip solenoid-array-chip--sm" : "solenoid-array-chip"}
+      className={`solenoid-array-chip solenoid-array-chip--cube${size === "sm" ? " solenoid-array-chip--sm" : ""}`}
       title={`${rows}×${cols}×${depth} cube (rows × cols × depth)${depth > 1 ? ` — ${depth} levels deep` : ""} — click to view`}
       onClick={(e) => {
         e.stopPropagation();
