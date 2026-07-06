@@ -1,13 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { NodeEditor, ClassicPreset } from "rete";
 import { AreaPlugin, AreaExtensions, Zoom, Drag } from "rete-area-plugin";
-import {
-  ConnectionPlugin,
-  ClassicFlow,
-  getSourceTarget,
-} from "rete-connection-plugin";
-import { ReactPlugin, Presets as ReactPresets } from "rete-react-plugin";
-import { getGuardedSocketPosition } from "./guardedSocketPosition";
+import { ConnectionPlugin } from "rete-connection-plugin";
+import { ReactPlugin } from "rete-react-plugin";
+import { solenoidClassicRenderSetup, makeSolenoidConnectionFlow } from "./areaPresets";
 import { DataflowEngine } from "rete-engine";
 import { HistoryPlugin, Presets as HistoryPresets } from "rete-history-plugin";
 import { MinimapPlugin } from "rete-minimap-plugin";
@@ -73,7 +69,7 @@ import { dropFrameRef } from "./frameBackend";
 import { syncGroupCollapse, settleCollapse, groupCollapseStore, COLLAPSE_LAYOUT, pillY } from "./groupCollapse";
 import { fitAll } from "./NavMenu";
 import { formatAnnotationStore, formatMismatchStore, unitsCompatible } from "./formatAnnotationStore";
-import { SocketComponent, ConnectionComponent, SocketLegend, ConfirmDialog, NoticeToasts, SocketContextMenu, CableContextMenu, NodeContextMenu, StandoffLayer } from "./components";
+import { SocketLegend, ConfirmDialog, NoticeToasts, SocketContextMenu, CableContextMenu, NodeContextMenu, StandoffLayer } from "./components";
 import { CableFlourish } from "./components/CableFlourish";
 import { LoadOverlay } from "./components/LoadOverlay";
 import { ComputeOverlay } from "./components/ComputeOverlay";
@@ -87,7 +83,6 @@ import { isolateStore, isoEndpointSelect } from "./isolateStore";
 import { isolateNodes, isolateChainOf, isolateSelection, isolateWhereUsed } from "./isolate";
 import { commentsPanelUi } from "./commentStore";
 import { pinNodeValue } from "./pinStore";
-import { NODE_COMPONENTS } from "./nodeRegistry";
 import { buildCatalog } from "./catalogUtils";
 import { packsStore } from "./packs";
 import { dockedNodeStore } from "./dockedNodeStore";
@@ -2284,56 +2279,14 @@ export function Canvas() {
 
       // size 105 × ratio 1.4 → 147px wide, matching the socket legend.
       reactPlugin.addPreset(solenoidMinimapPreset(105));
-      reactPlugin.addPreset(
-        ReactPresets.classic.setup({
-          // Rete's default DOMSocketPosition pushes the cable endpoint 12px
-          // outward from the measured socket center — meant for sockets that
-          // extend outside the node body. Ours sit centered on the node
-          // border, so override the offset with identity to land cleanly.
-          socketPositionWatcher: getGuardedSocketPosition({ offset: (p) => p }),
-          customize: {
-            node({ payload }) {
-              const hit = NODE_COMPONENTS.find(([Ctor]) => payload instanceof Ctor);
-              return hit ? hit[1] : null;
-            },
-            socket() {
-              return SocketComponent;
-            },
-            connection() {
-              return ConnectionComponent;
-            },
-          },
-        }),
-      );
-
-      // Custom classic flow with a compatibility gate. The stock
-      // `ConnectionPresets.classic.setup()` builds a ClassicFlow with no
-      // params, giving no way to veto a drop. We need the veto BEFORE
-      // makeConnection runs: dropping on a single-connection input
-      // removes the existing cable first, so rejecting only afterwards
-      // (in the editor's connectioncreate pipe) would delete a valid
-      // cable when an incompatible one is dropped. Returning false from
-      // canMakeConnection here stops the whole operation — the existing
-      // cable stays put.
-      connection.addPreset(
-        () =>
-          new ClassicFlow({
-            canMakeConnection(initial, socket) {
-              if (canvasLockStore.get()) return false; // view-only when locked
-              const st = getSourceTarget(initial, socket);
-              if (!st) return false;
-              const [source, target] = st;
-              // Never let a node wire into itself (output → own input).
-              if (source.nodeId === target.nodeId) return false;
-              const srcSocket = editor.getNode(source.nodeId)?.outputs[source.key]?.socket;
-              const tgtSocket = editor.getNode(target.nodeId)?.inputs[target.key]?.socket;
-              if (srcSocket instanceof SolenoidSocket && tgtSocket instanceof SolenoidSocket) {
-                return srcSocket.canConnectTo(tgtSocket);
-              }
-              return true;
-            },
-          }),
-      );
+      // Render components + connection veto are shared with every canvas-
+      // substituting surface (the composite drill-in, future ones) via
+      // areaPresets.ts, so they can't drift. The veto rejects a drop BEFORE
+      // makeConnection runs (dropping on a single-connection input removes the
+      // existing cable first, so rejecting only afterwards would delete a valid
+      // cable), plus self-loops and all wiring while the canvas is locked.
+      reactPlugin.addPreset(solenoidClassicRenderSetup());
+      connection.addPreset(() => makeSolenoidConnectionFlow(editor));
 
       // connectionpick / connectiondrop fire on the connection plugin's
       // own scope — Scope.use forwards events DOWN, so an area pipe

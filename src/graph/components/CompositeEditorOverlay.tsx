@@ -2,12 +2,13 @@ import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } fro
 import { createRoot } from "react-dom/client";
 import { ClassicPreset } from "rete";
 import { AreaPlugin, AreaExtensions } from "rete-area-plugin";
-import { ConnectionPlugin, ClassicFlow, getSourceTarget } from "rete-connection-plugin";
-import { ReactPlugin, Presets as ReactPresets } from "rete-react-plugin";
+import { ConnectionPlugin } from "rete-connection-plugin";
+import { ReactPlugin } from "rete-react-plugin";
 import { HistoryPlugin, Presets as HistoryPresets } from "rete-history-plugin";
 import { MinimapPlugin } from "rete-minimap-plugin";
 import type { AutoArrangePlugin } from "rete-auto-arrange-plugin";
 import { solenoidMinimapPreset, collapsedAwareNodesRect } from "./Minimap";
+import { solenoidClassicRenderSetup, makeSolenoidConnectionFlow } from "../areaPresets";
 import { settingsStore } from "../settingsStore";
 import type { Schemes, AreaExtra, SolenoidNode } from "../schemes";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "../rete-nodes";
@@ -18,16 +19,11 @@ import { copySelected, pasteClipboard } from "../copyPaste";
 import { scheduleAutosave } from "../persistence";
 import { installErrorGuards } from "../errorValue";
 import { ctorRegistry } from "../nodeCtorRegistry";
-import { SolenoidSocket } from "../sockets";
-import { NODE_COMPONENTS } from "../nodeRegistry";
-import { getGuardedSocketPosition } from "../guardedSocketPosition";
 import { cableSelectionStore } from "../cableState";
 import { canvasLockStore } from "../canvasLock";
 import { pushNotice } from "../noticeStore";
 import { buildCatalog } from "../catalogUtils";
 import { AddNodeMenu, type NodeCatalogEntry } from "../AddNodeMenu";
-import { SocketComponent } from "./SocketComponent";
-import { ConnectionComponent } from "./ConnectionComponent";
 import "./compositeEditor.css";
 import "./SocketContextMenu.css";
 
@@ -95,45 +91,10 @@ async function getDrillMount(composite: CompositeNode): Promise<DrillMount> {
   const selectable = AreaExtensions.selectableNodes(area, selector, { accumulating });
   AreaExtensions.simpleNodesOrder(area);
 
-  reactPlugin.addPreset(
-    ReactPresets.classic.setup({
-      // Same identity offset as Canvas: our sockets sit centered on the node
-      // border, not outside it.
-      socketPositionWatcher: getGuardedSocketPosition({ offset: (p) => p }),
-      customize: {
-        node({ payload }) {
-          const hit = NODE_COMPONENTS.find(([Ctor]) => payload instanceof Ctor);
-          return hit ? hit[1] : null;
-        },
-        socket() {
-          return SocketComponent;
-        },
-        connection() {
-          return ConnectionComponent;
-        },
-      },
-    }),
-  );
-
-  // Same compatibility veto as the outer canvas (see Canvas.tsx): reject
-  // BEFORE makeConnection so an incompatible drop can't evict a valid cable.
-  connection.addPreset(
-    () =>
-      new ClassicFlow({
-        canMakeConnection(initial, socket) {
-          const st = getSourceTarget(initial, socket);
-          if (!st) return false;
-          const [source, target] = st;
-          if (source.nodeId === target.nodeId) return false;
-          const srcSocket = editor.getNode(source.nodeId)?.outputs[source.key]?.socket;
-          const tgtSocket = editor.getNode(target.nodeId)?.inputs[target.key]?.socket;
-          if (srcSocket instanceof SolenoidSocket && tgtSocket instanceof SolenoidSocket) {
-            return srcSocket.canConnectTo(tgtSocket);
-          }
-          return true;
-        },
-      }),
-  );
+  // Shared with the main canvas (areaPresets.ts) so the drill-in can't drift from
+  // it — the render components + the compatibility/self-loop/lock connection veto.
+  reactPlugin.addPreset(solenoidClassicRenderSetup());
+  connection.addPreset(() => makeSolenoidConnectionFlow(editor));
 
   // A minimap for the subgraph — the same custom colored preset + collapse-aware
   // geometry as the main canvas. collapsedAwareNodesRect reads the ACTIVE graph
