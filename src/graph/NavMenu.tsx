@@ -31,7 +31,16 @@ async function zoomBy(delta: number) {
 // fit into the free rectangle between them instead.
 function visibleInsets(c: DOMRect) {
   const q = (s: string) => document.querySelector(s) as HTMLElement | null;
-  const rect = (el: HTMLElement | null) => el?.getBoundingClientRect() ?? null;
+  // A hidden panel (display:none — e.g. the minimap/navigator while drilled into a
+  // composite) still answers getBoundingClientRect with an all-zero rect at (0,0).
+  // Treating that as a real edge made the right inset the whole viewport width and
+  // collapsed the fit region (Fit zoomed way out). Null out zero-area rects so a
+  // folded panel reserves nothing.
+  const rect = (el: HTMLElement | null) => {
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return r.width === 0 && r.height === 0 ? null : r;
+  };
   const M = 14; // breathing margin off each panel
   // Mobile chrome is just two full-width edges — the top app bar and the bottom
   // action bar. The side controls are small floating buttons, NOT full-height

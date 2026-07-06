@@ -18,6 +18,7 @@ import { SolenoidSocket } from "../sockets";
 import { NODE_COMPONENTS } from "../nodeRegistry";
 import { getGuardedSocketPosition } from "../guardedSocketPosition";
 import { cableSelectionStore } from "../cableState";
+import { canvasLockStore } from "../canvasLock";
 import { pushNotice } from "../noticeStore";
 import { buildCatalog } from "../catalogUtils";
 import { AddNodeMenu, type NodeCatalogEntry } from "../AddNodeMenu";
@@ -181,6 +182,11 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
     { nodeId: string; screenX: number; screenY: number; isComposite: boolean } | null
   >(null);
   const [ready, setReady] = useState(false);
+  // Canvas lock is a global toggle (the NavMenu pill). The main canvas applies it
+  // via a class + drag-pipe guards; the drill-in area has neither, so mirror the
+  // class onto the host — the `.solenoid-canvas--locked` descendant rules make the
+  // subgraph nodes view-only (pointer-events:none), background pan/zoom still live.
+  const locked = useSyncExternalStore(canvasLockStore.subscribe, canvasLockStore.get);
 
   const compositeId = composite.id;
   const isComposite = true;
@@ -525,7 +531,7 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
     <div className="solenoid-composite-editor__backdrop">
         <div
           ref={hostRef}
-          className="solenoid-composite-editor__host"
+          className={`solenoid-composite-editor__host${locked ? " solenoid-canvas--locked" : ""}`}
           onContextMenu={(e) => {
             e.preventDefault();
             e.stopPropagation();
