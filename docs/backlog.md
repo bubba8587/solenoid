@@ -13,6 +13,22 @@ is archived).
 
 ---
 
+## 1.1 release build (committed 2026-07-06 — see `release-plan.md`)
+
+- [ ] **Finance / market-data connection — flesh out in a BIG way.** The `DataFeedNode`
+  (fetch/cache/refresh/key-state) + `dataProviders.ts` (FRED/Stooq/Alpha Vantage) +
+  `apiKeyStore` Settings UI EXIST and are tested but the node was never registered/
+  catalogued/given a component — unreachable. Wire it up, then widen: more providers,
+  series/symbol picker, date-range/frequency, chart-ready output, a finance demo seed.
+  Scope in `release-plan.md` §3a (a couple of provider/UI-depth questions for the author).
+- [ ] **Massive seed overhaul** — pass on all 27 seeds: loads clean, tells a real 1.1
+  story, no deprecated shapes; `seeds.test.ts` stays green. `release-plan.md` §3b. Near the cut.
+- [ ] **"What's New" overlay** — short slide series (reuse overlay chrome, not a node),
+  shown once per release (localStorage flag), re-openable from Help → What's New. Content
+  from `release-notes-features.md`. `release-plan.md` §3c.
+- [ ] **Keep `release-notes-features.md` current** — the curated selling list + What's-New
+  slide source (author writes the final release notes).
+
 ## Needs an author decision / author-present session
 
 - [ ] **First-class composite drill-in — remaining gaps** (the "active graph context"

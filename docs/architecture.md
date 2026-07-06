@@ -260,6 +260,7 @@ there is no solver in the Rust engine itself.
 | `dev-notes.md` | living log | session DIGESTS + open problems only (per-item history in `archive/dev-notes-history.md`) |
 | `backlog.md` | living | OPEN items only — the task queue (landed items are deleted) |
 | `release-plan.md` | living | the sequenced path to the next tagged release — readiness, cut line, checklist, author decisions |
+| `release-notes-features.md` | living | curated high-value 1.1 feature list — release-notes source + What's-New slide content |
 | `archive/build-plan.md` | archived | the 2026-07-05 autonomous build plan (Tiers A–F, shipped bar a few backlog items) |
 | `format-model.md` | living | the FC function model — control truth table + precision rule (mirrored in `formatModel.ts`) |
 | `value-semantics.md` | living | null/NaN/Infinity/SolError semantics per computation context (all shipped) |
