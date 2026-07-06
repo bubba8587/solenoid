@@ -27,54 +27,81 @@ against code the same way as the backlog (delete/flip lines as they land).
 **tsc + full vitest (2279) green; `cargo test` (32 parity) green; 27 seeds load
 (`seeds.test.ts`).** The tree is release-shaped *right now* minus the hygiene pass.
 
-## 2. The cut line — AUTHOR DECISION
+## 2. The cut — DECIDED (author 2026-07-06)
 
-The shippable body since 1.0 is large and coherent. Two shapes:
+**Cut the built body as `1.1.0`.** Reserve `2.0.0` for the genuinely-major, author-present
+flagships — **FC A4 units-by-dimensionality** and the **Excel `.xlsx` transpiler**. Nothing
+since 1.0 breaks the save format, so this is a feature-scale call, not a compatibility one.
 
-- **Option A (recommended) — cut the built body now, hold the flagships.** Tag what's
-  built + green (a big, clean release), and reserve the two genuinely-major,
-  author-present features — **FC A4 units-by-dimensionality** and the **Excel `.xlsx`
-  transpiler** — for the following cycle. Clean cadence; doesn't hold a huge amount of
-  shippable, tested work hostage to multi-week flagships.
-- **Option B — hold this release for the flagships.** Fold A4 units (and/or the
-  transpiler) into this tag. Weeks of author-present work before it can ship.
+**1.1 is NOT just "tag what's built" — it gets three committed additions (author 2026-07-06):**
 
-**Version number** (independent of A/B): nothing since 1.0 breaks the save format
-(the `v` field + forward-guard are intact; pre-alpha means no back-compat is owed
-anyway), but the feature surface is a major step. Call it **`1.1.0`** if Option A,
-**`2.0.0`** if the flagships land in it. Recommendation: **Option A as `1.1.0` now**,
-`2.0.0` reserved for the units flagship.
+1. **Finance / market-data connections — fleshed out in a big way** (§3). NOTE: the
+   audit mis-read this as shipped. Reality: `DataFeedNode` (fetch/cache/refresh/key-state)
+   + `dataProviders.ts` + `apiKeyStore.ts` (Settings key store) exist and are tested, but
+   the node was **never registered / catalogued / given a component** — it's unreachable.
+2. **A massive pass on all 27 seeds** — the eyeball + selling vehicle for 1.1.
+3. **A "What's New" overlay** — a short slide series, shown once, re-openable from the menu bar.
 
-## 3. Scope for the next release (assuming Option A)
+Plus a maintained **curated high-value feature list** that sells 1.1 — see
+`release-notes-features.md`. (The author personally writes the final release notes;
+that file is the source material + the What's-New slide content.)
+
+## 3. Scope for 1.1
+
+### Committed — the 1.1 build (author 2026-07-06)
+- **Finance / market-data connections (big):** register + catalogue + build the
+  `DataFeedNode` component so it's usable; expand it into a genuine feature (§3a).
+- **Seed overhaul:** a pass on all 27 seeds — each loads clean, demos a real 1.1 story,
+  no dead/embarrassing ones; `seeds.test.ts` stays green (§3b).
+- **What's New overlay:** shown once (localStorage flag), re-openable from the menu bar (§3c).
+- **Curated feature list** kept current in `release-notes-features.md`.
+
+### Finish-if-time (near-done, low-risk — pull in if the cut has room)
+- **Gauge collapsed preview** (last of the per-node collapse set; 3 input sockets must stay reachable).
+- **F-2 remainder** — per-slot doc palette overrides + document-level FC defaults.
+- **D-2 simulation inner display** — series renders inside the drill-in.
+- **Goal-seek solver parameters** — max-iter/tolerance/bounds (polish on the new run modes).
+
+### Explicitly RESERVED for 2.0 (author-present flagships)
+- **FC A4 units-by-dimensionality** (`v2.0/05`) — foundation landed; build together.
+- **Excel `.xlsx` transpiler** (`v2.0/08`).
+- **D2 toolbar reroute** (finishes the first-class drill-in) · **D4 conditional formatting**.
+
+### Deferred / OUT (tracked, not blocking)
+- E-1 Obsidian trio · D-3 aliasing UI · D-4 pack variant reconcile · Monte Carlo (gates
+  `v2.0/10` + `v2.0/12`) · cable collision avoidance · grid system · the border seam
+  (UNSOLVED) · the drill-in's remaining main-only subsystems (Group/Isolate/nav/lasso/history).
 
 ### Release blockers — NONE known
-No open regressions or half-shipped features are on `main`'s path; the drill-in
-subsystems that are main-only are *folded/hidden*, not broken (backlog "First-class
-composite drill-in"). If the eyeball pass (§5) surfaces a regression, it becomes a
-blocker.
+No open regressions on `main`'s path; the drill-in's main-only subsystems are *folded/hidden*,
+not broken. A regression from the eyeball pass (§5) would become one.
 
-### Finish-if-time (near-done, low-risk, optional for the cut)
-- **Gauge collapsed preview** (last of the per-node collapse set; investigate — its 3
-  input sockets must stay reachable).
-- **F-2 remainder** — per-slot doc palette overrides + document-level FC defaults.
-- **D-2 simulation inner display** — series renders inside the drill-in, not just the
-  outer card.
-- **Solver parameters** (goal-seek max-iter/tolerance/bounds) — small, high polish for
-  the just-shipped run modes.
+## 3a. Finance flesh-out — proposed "big way" (confirm scope)
+Starting point: `DataFeedNode` + `dataProviders.ts` (FRED / Stooq / Alpha Vantage) + the
+`apiKeyStore` Settings UI all exist and are tested; only the node wiring is missing. The build:
+1. **Make it real** — component (`DataFeedComponent`), `nodeRegistry` row, `rete-nodes` export,
+   catalog leaf; provider dropdown + series/ticker field + status + "add key" link + the
+   `refreshMinutes` timer (reuse the WebSource/connection pattern).
+2. **Widen the provider set** — beyond the 3: more FRED-style economic series presets, a
+   crypto source, an FX source, maybe a keyless quote source; each a `ProviderPreset`.
+3. **Usability** — a series/symbol hint or small picker; graceful no-key state; date-range +
+   frequency where the provider supports it; chart-ready frame output (date/value typed).
+4. **Demo seed** — a finance dashboard seed (FRED series → Chart; loads gracefully with no key,
+   showing the "add key" state) — doubles as a 1.1 showcase.
+   *(Open scope questions for the author: which extra providers matter most; how far to take the
+   symbol picker vs. a plain field.)*
 
-### Design-gated / author-present — NEXT cycle (the `2.0` differentiators)
-- **FC A4 units-by-dimensionality** (`v2.0/05`, the flagship) — foundation landed
-  (tagged cells, `dimension.ts`); build together.
-- **D2 — reroute the real top toolbar / mobile bar to the active subgraph** — finishes
-  the first-class drill-in; wants live eyeballing.
-- **D4 — conditional formatting** — needs its own design pass (must clear Excel by a lot).
-- **Excel `.xlsx` transpiler** (`v2.0/08`) — deliberately sequenced late.
+## 3b. Seed overhaul — approach
+Inventory the 27 seeds; for each: loads clean? tells a real 1.1 story? uses current nodes (no
+deprecated shapes)? Then: fix/retire the weak ones, add/refresh to showcase the headline 1.1
+features (drill-in composites, run modes, Finance, recharts, Report/Presenter). Keep
+`seeds.test.ts` green throughout. This is the author's eyeball vehicle — do it near the cut.
 
-### Deferred / OUT of this release (tracked, not blocking)
-- E-1 Obsidian vault trio · D-3 aliasing/hidden-port UI · D-4 pack variant reconcile ·
-  Monte Carlo run mode (gates `v2.0/10` sensitivity + `v2.0/12` uncertain values) ·
-  cable collision avoidance · grid system · the header/body border seam (UNSOLVED) ·
-  the drill-in's remaining main-only subsystems (Group/Isolate/navigator/lasso/history).
+## 3c. What's New overlay — design
+A lightweight slide deck (reuse the Presenter/overlay chrome, NOT a node): 4–8 slides, each a
+title + one line + a small image/gif or a mini live demo. `localStorage` "seen version" flag
+shows it once per release; a **Help → What's New** menu item re-opens it any time. Slide content
+comes from `release-notes-features.md` (author-editable). No Captain-Obvious copy; DESIGN.md.
 
 ## 4. Release checklist (definition of done)
 
