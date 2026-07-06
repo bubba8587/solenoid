@@ -54,7 +54,7 @@ import {
 } from "./rete-nodes";
 import { reconcileFcTypes } from "./fcReconcile";
 import { CONDUIT_PIVOT } from "./ribbonCable";
-import { toggleAllChrome } from "./chromeToggle";
+import { toggleAllChrome, toggleChrome } from "./chromeToggle";
 import {
   createGroupFromSelection, moveGroupMembers, reconcileGroupMembership,
   dropFromGroups, sendGroupToBack, absorbIntoContainingGroup, autofitGroupBox,
@@ -813,6 +813,8 @@ export function Canvas() {
               expandCollapseGroups(); e.preventDefault(); return;
             case "KeyF": // Autofit group box to members
               autofitGroups(); e.preventDefault(); return;
+            case "KeyN": // Toggle the Navigator (outline) panel
+              toggleChrome("navigator"); e.preventDefault(); return;
             case "BracketLeft":  // Rotate the selected rotatable thing one step CCW
             case "BracketRight": // …or CW (Conduit / Angle Dial node / Standoff)
               if (rotateSelection(e.code === "BracketRight" ? 1 : -1) > 0) {

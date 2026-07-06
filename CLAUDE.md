@@ -146,7 +146,7 @@ delete it and lean on the affordance + a hover tooltip.
 
 - **Cables**: draw, delete, highlights on hover (cable + endpoints). Diagonal shape default.
 - **Delete**: Backspace/Delete removes selected nodes/cables.
-- **Single-key graph shortcuts** (no modifier, ignored while typing): A add node (at cursor) · G group · I isolate · T tidy · E expand/collapse groups · F autofit · C cleanup. OS-convention combos keep Ctrl (undo/copy/paste/select-all/save/find). Wired in Canvas's keydown; reference overlay + MenuBar/TopBar labels track them.
+- **Single-key graph shortcuts** (no modifier, ignored while typing): A add node (at cursor) · G group · I isolate · T tidy · E expand/collapse groups · F autofit · C cleanup · N toggle Navigator. OS-convention combos keep Ctrl (undo/copy/paste/select-all/save/find). Wired in Canvas's keydown; reference overlay + MenuBar/TopBar labels track them.
 - **Undo/redo**: Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y via `rete-history-plugin`.
 - **Copy/paste**: Ctrl+C / Ctrl+V with topology preserved.
 - **Add menu**: intent-based categories with search (scores against Excel function names).
