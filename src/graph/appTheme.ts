@@ -53,6 +53,12 @@ function apply() {
     const val = kind === "array" ? socketArrayShade(base) : kind === "matrix" ? socketMatrixShade(base) : base;
     root.style.setProperty(varName, val);
   }
+
+  // The semantic ERROR/Problems red derives from the palette's `vermilion` slot
+  // (freed from the Table socket 2026-07-06), so there's ONE red and a custom
+  // palette retints errors too. errorChip.css keeps a static fallback for before
+  // this first runs; this inline root var wins over it.
+  root.style.setProperty("--sol-error", themeAccent(resolveColor("vermilion"), _mode));
 }
 
 function persist() {

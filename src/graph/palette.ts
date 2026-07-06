@@ -119,7 +119,7 @@ export const PALETTE = {
   lime:      "#c8e040", // --sock-string
   pink:      "#de7cb0", // --sock-date
   sky:       "#56b4e9", // --sock-complex
-  vermilion: "#e95c3c", // the semantic ERROR red (freed from --sock-table → amber); a red-orange
+  vermilion: "#e0473a", // the semantic ERROR red (freed from --sock-table → amber); drives --sol-error
   violet:    "#7b64ed", // --sock-frame — nudged a little bluer
 } as const;
 
