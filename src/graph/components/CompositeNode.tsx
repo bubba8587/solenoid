@@ -275,6 +275,14 @@ export function CompositeComponent({ data: node, emit }: NodeProps<CompositeNode
   useSyncExternalStore(compositeStaleStore.subscribe, compositeStaleStore.getVersion);
   const heavy = node.isHeavyMode();
   const stale = compositeStaleStore.isStale(node.id);
+  // Goal-seek failure IS detectable (#CONV! → a SolError on goalSeekResult), so the
+  // status circle gets a red "no solution" state on top of stale/solved.
+  const failed = heavy && runMode === "goal-seek" && isSolError(node.goalSeekResult);
+  // In goal-seek the DRIVER input is solved-for, not fed — its value is overridden by
+  // the solve — so hide its socket. The other exposed inputs are real held parameters.
+  const inputKeys = runMode === "goal-seek" && node.goalSeek
+    ? Object.keys(node.inputs).filter((k) => k !== node.goalSeek!.inputPortId)
+    : undefined;
 
   return (
     <NodeShell node={node} emit={emit} labelPlaceholder="Composite" hideOutputSockets>
@@ -296,7 +304,7 @@ export function CompositeComponent({ data: node, emit }: NodeProps<CompositeNode
         <EditSvg />
         Edit contents
       </button>
-      <InlineInputs node={node} emit={emit} />
+      <InlineInputs node={node} emit={emit} keys={inputKeys} />
       {(node.inputPorts.length > 0 || node.outputPorts.length > 0) && (
         <OpSelect value={runMode} options={RUN_MODE_OPTIONS} onChange={setRunMode} />
       )}
@@ -314,16 +322,23 @@ export function CompositeComponent({ data: node, emit }: NodeProps<CompositeNode
             Solve
           </button>
           {/* Status circle — ALWAYS present (so it never resizes the Solve button):
-              an amber ring while stale (alert-badge amber #d9822b), a filled green
+              an amber RING while stale (alert-badge amber #d9822b), a filled RED
+              (--sol-error) when the solve found no solution, else filled GREEN
               (--sock-lambda, the semantic positive) once solved / up to date. */}
-          <span
-            title={stale ? "Stale" : "Up to date"}
-            style={{
-              width: 10, height: 10, borderRadius: "50%", flexShrink: 0, boxSizing: "border-box",
-              border: `1.5px solid ${stale ? "#d9822b" : "var(--sock-lambda)"}`,
-              background: stale ? "transparent" : "var(--sock-lambda)",
-            }}
-          />
+          {(() => {
+            const color = stale ? "#d9822b" : failed ? "var(--sol-error)" : "var(--sock-lambda)";
+            const title = stale ? "Stale" : failed ? "No solution" : "Up to date";
+            return (
+              <span
+                title={title}
+                style={{
+                  width: 10, height: 10, borderRadius: "50%", flexShrink: 0, boxSizing: "border-box",
+                  border: `1.5px solid ${color}`,
+                  background: stale ? "transparent" : color,
+                }}
+              />
+            );
+          })()}
         </div>
       )}
       {runMode === "scenarios" && <ScenarioTable node={node} />}
