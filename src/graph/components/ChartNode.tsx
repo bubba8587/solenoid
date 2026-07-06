@@ -112,12 +112,10 @@ export function ChartComponent({ data, emit }: NodeProps<ChartNodeType>) {
           Collapsed, the leading socket is gone, so fold `values` into this row's pill.
           Options: a matplotlib-style string, or wire a Chart Builder (field hides
           when wired). */}
-      {/* `frame` (labeled x-axis: col 0 labels, col 1 values) shows for the 1-D ops,
-          alongside the leading `values` socket. Matrix ops (composed/bubble) use `series`. */}
       <InlineInputs
         node={data}
         emit={emit}
-        keys={collapsed ? (isMatrix ? ["series", "options"] : ["values", "frame", "options"]) : (isMatrix ? ["series", "options"] : ["frame", "options"])}
+        keys={collapsed ? (isMatrix ? ["series", "options"] : ["values", "options"]) : (isMatrix ? ["series", "options"] : ["options"])}
       />
       {/* Collapsed → the hero box shows just the [Chart] chip (opens the popup),
           right-aligned like every other value chip. */}
