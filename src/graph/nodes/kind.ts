@@ -75,8 +75,9 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
   // Composite boundary markers (drill-in only): input marker reads as a SOURCE
   // (amber), output marker as a SINK/display (gold) — so the two ends of the
   // subgraph are told apart at a glance, and from the compute nodes between them.
-  if (node instanceof CompositeInputNode) return "input";
-  if (node instanceof CompositeOutputNode) return "display";
+  // Composite boundary markers read green ("special"); the Composite node itself
+  // stays neutral gray (util, below).
+  if (node instanceof CompositeInputNode || node instanceof CompositeOutputNode) return "boundary";
   if (node instanceof NumberInputNode || node instanceof ConstantNode || node instanceof SliderInputNode || node instanceof RandBetweenNode || node instanceof WebSourceNode || node instanceof CsvConnectionNode || node instanceof ParquetConnectionNode || node instanceof ImportHtmlNode || node instanceof ImportXmlNode || node instanceof XYPadNode || node instanceof ColorPickerNode) return "input";
   if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof MermaidNode || node instanceof GaugeNode || node instanceof HeatmapCellNode || node instanceof ChartBuilderNode || node instanceof TornadoNode) return "display";
   if (node instanceof ConvertNode || node instanceof CastNode) return "convert";
