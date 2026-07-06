@@ -5,7 +5,6 @@ export * from "./nodes/scalar";
 export * from "./nodes/logic";
 export * from "./nodes/list";
 export * from "./nodes/stats";
-export * from "./nodes/lookup";
 export * from "./nodes/convert";
 export * from "./nodes/finance";
 export * from "./nodes/complex";

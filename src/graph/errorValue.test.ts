@@ -2,7 +2,8 @@ import { describe, it, expect } from "vitest";
 import { solError, isSolError, firstInputError, installErrorGuards, type SolError } from "./errorValue";
 import { ArithmeticNode, MathFnNode, CombinatoricsNode } from "./nodes/scalar";
 import { IFErrorNode, IsTestNode } from "./nodes/logic";
-import { XLookupNode } from "./nodes/lookup";
+import { XLookupNode } from "./nodes/frame";
+import type { FrameValue } from "./frame";
 import { XMatchNode, FilterNode, ListIndexNode } from "./nodes/list";
 import { ExpressionNode } from "./nodes/expression";
 import { IrrNode, RateNode, MirrNode } from "./nodes/finance";
@@ -259,12 +260,20 @@ describe("error producers", () => {
   });
 
   it("XLOOKUP miss is #N/A unless If-not-found is wired", () => {
-    const keys = [[1, 2, 3]], values = [[10, 20, 30]];
-    const miss = new XLookupNode().data({ lookup: [99], keys, values });
-    expect(isSolError(miss.result)).toBe(true);
-    expect((miss.result as SolError).code).toBe("#N/A");
-    expect(new XLookupNode().data({ lookup: [99], keys, values, if_not_found: [0] }).result).toBe(0);
-    expect(new XLookupNode().data({ lookup: [2], keys, values }).result).toBe(20);
+    const f: FrameValue = { __frame: true, columns: [
+      { name: "k", type: "number", values: [1, 2, 3] },
+      { name: "v", type: "number", values: [10, 20, 30] },
+    ] };
+    const lookup = (val: string, ifNotFound = "") => {
+      const n = new XLookupNode();
+      n.stringLiterals = { lookup: val, inColumn: "k", returnColumn: "v", ifNotFound };
+      return n.data({ frame: [f] }).value;
+    };
+    const miss = lookup("99");
+    expect(isSolError(miss)).toBe(true);
+    expect((miss as SolError).code).toBe("#N/A");
+    expect(lookup("99", "0")).toBe(0);
+    expect(lookup("2")).toBe(20);
   });
 
   it("XMATCH miss on a wired array is #N/A; unwired stays blank", () => {

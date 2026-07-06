@@ -82,7 +82,6 @@ export { ListLengthComponent } from "./ListLengthNode";
 export { ListIndexComponent } from "./ListIndexNode";
 export { ArgMinMaxComponent } from "./ArgMinMaxNode";
 export { ContainsComponent } from "./ContainsNode";
-export { XLookupComponent } from "./XLookupNode";
 
 // ─── Lists — aggregate / stats ────────────────────────────────────────────────
 export { AggregateComponent } from "./AggregateNode";
@@ -149,7 +148,7 @@ export { LambdaComponent } from "./LambdaNode";
 // ─── Frames (named-column data tables) ─────────────────────────────────────────
 export {
   FrameInputComponent, BuildFrameComponent, SplitFrameComponent, GetColumnComponent, AddColumnComponent, GetRowComponent,
-  DistinctComponent, HeadComponent, SortFrameComponent, FilterFrameComponent, JoinComponent, FrameLookupComponent,
+  DistinctComponent, HeadComponent, SortFrameComponent, FilterFrameComponent, JoinComponent, XLookupComponent,
   SelectColumnsComponent, DropColumnsComponent, GroupByFrameComponent, PivotComponent, UnpivotComponent,
   NestComponent, UnnestComponent, AppendComponent, RenameComponent,
   SplitColumnComponent, AddIndexComponent, DecisionMatrixComponent, DecisionSensitivityComponent,

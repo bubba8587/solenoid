@@ -34,7 +34,7 @@ import { NormDistNode, NormInvNode, NormSDistNode, NormSInvNode, TDistNode, TInv
 import { FDistNode, FInvNode, BetaDistNode, BetaInvNode, GammaDistNode, GammaInvNode, LognormDistNode, LognormInvNode, WeibullDistNode, ExponDistNode } from "./dist-continuous";
 import { BinomDistNode, BinomInvNode, PoissonDistNode, HypgeomDistNode, NegbinomDistNode } from "./dist-discrete";
 import { ConduitNode } from "./conduit";
-import { FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, GetRowNode, DistinctNode, HeadNode, SortFrameNode, FilterFrameNode, JoinNode, FrameLookupNode, SelectColumnsNode, DropColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode } from "./frame";
+import { FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, GetRowNode, DistinctNode, HeadNode, SortFrameNode, FilterFrameNode, JoinNode, XLookupNode, SelectColumnsNode, DropColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode } from "./frame";
 import { CubeRollupNode } from "./cube";
 import { WebSourceNode, CsvConnectionNode, ParquetConnectionNode, ImportHtmlNode, ImportXmlNode } from "./connection";
 import { WriteCsvNode, WriteJsonNode } from "./sink";
@@ -174,7 +174,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof SortFrameNode ||
     node instanceof FilterFrameNode ||
     node instanceof JoinNode ||
-    node instanceof FrameLookupNode ||
+    node instanceof XLookupNode ||
     node instanceof SelectColumnsNode ||
     node instanceof DropColumnsNode ||
     node instanceof GroupByFrameNode ||

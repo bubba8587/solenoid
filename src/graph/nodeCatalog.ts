@@ -46,7 +46,7 @@ import {
   HStackTableNode, TableReshapeNode, TableSelectNode, TableInfoNode,
   MapTableNode, ByAxisNode, MakeArrayNode, ReduceLambdaNode, LambdaNode,
   FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, GetRowNode, DistinctNode,
-  HeadNode, SortFrameNode, FilterFrameNode, JoinNode, FrameLookupNode,
+  HeadNode, SortFrameNode, FilterFrameNode, JoinNode,
   SelectColumnsNode, DropColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode,
   ReconcileNode,
   BuildCubeNode, NestJoinNode, CubeColumnsNode, CubeRollupNode,
@@ -479,7 +479,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
         type: "category", label: "Find", description: "Look up values and positions.",
         children: [
           { type: "pair", children: [
-            { type: "lookup-xlookup", label: "XLOOKUP", description: "Find a value in one list, return the value at the same position in another   (Excel: =XLOOKUP)", accent: NODE_KIND_ACCENTS.list, create: () => new XLookupNode() },
+            { type: "lookup-xlookup", label: "XLOOKUP", description: "Look a value up in one column of a Frame (or Cube) and return the matching cell from another column — VLOOKUP / XLOOKUP for tables. Return = * gives the whole matched row. On a Cube the matched cell comes out WHOLE, so a nested table/cube stays intact (drill in with INDEX). Exact match by default; ≤/≥ falls back to the closest smaller/larger number or date; First/Last picks which duplicate wins. If-not-found falls back, else #N/A. Two aligned lists? Build Frame them first (Excel: =XLOOKUP / =VLOOKUP).", accent: NODE_KIND_ACCENTS.frame, keywords: "xlookup vlookup hlookup lookup frame cube table list match find nested column", create: () => new XLookupNode() },
             { type: "lookup-xmatch",  label: "XMATCH",  description: "1-based position with match mode selector (exact / next larger / next smaller) — supersedes the classic MATCH   (Excel 365: =XMATCH)", create: () => new XMatchNode() },
           ]},
           { type: "pair", children: [
@@ -908,7 +908,6 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "sort-frame",  label: "Sort",        description: "Order a Frame's rows by one column, ascending or descending. Blanks and errors sort last (Excel: =SORT).", create: () => new SortFrameNode(), parity: false },
           { type: "filter-frame",label: "Filter Rows", description: "Keep a Frame's rows passing condition rows (column + test + value) combined with AND/OR — SQL WHERE made visual. Blanks/errors drop. Text tests ignore case like Excel's =; Match case per condition (Excel: =FILTER).", create: () => new FilterFrameNode(), parity: false },
           { type: "join",        label: "Join",        description: "Combine two Frames on a key column — inner / left / right / outer, or as-of (nearest match on a sorted number/date key, with a direction + tolerance). A left row matching several right rows fans out (as-of never fans out). Keys match case-sensitively, unlike Excel lookups. The relational JOIN (Excel: VLOOKUP/XLOOKUP do a left join one column at a time).", create: () => new JoinNode(), parity: false },
-          { type: "frame-lookup",label: "Frame Lookup", description: "Look up a value in one column of a Frame OR a Cube and return the matching cell from another column — VLOOKUP / XLOOKUP for tables. On a Cube it matches the key in the top-level column and returns the matched cell WHOLE, so a nested table/cube comes out intact (drill into it with INDEX). Exact match by default; an approximate mode (≤/≥) falls back to the closest smaller/larger number (or date; a Cube key matches dates by serial). If-not-found falls back, else #N/A (Excel: =XLOOKUP / =VLOOKUP).", create: () => new FrameLookupNode(), parity: false, keywords: "xlookup vlookup lookup frame cube table match find nested" },
           { type: "select-cols", label: "Select Columns", description: "Keep only the named columns, in the order given. Type a comma-separated list or wire one (Excel: =CHOOSECOLS).", create: () => new SelectColumnsNode(), parity: false },
           { type: "drop-cols",   label: "Drop Columns",   description: "Remove the named columns from a Frame; the rest pass through. Type a comma-separated list or wire one.", create: () => new DropColumnsNode(), parity: false },
           { type: "group-by-frame", label: "Group By", description: "Group a Frame's rows by one or more key columns and aggregate one column (sum / average / min / max / count), with optional grand-total / subtotal rows that re-aggregate the source (GROUPBY's total_depth) — a PivotTable's row grouping, but keys group case-sensitively (no silent case-merge) (Excel: =GROUPBY).", create: () => new GroupByFrameNode(), parity: false },

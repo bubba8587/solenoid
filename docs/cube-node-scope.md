@@ -265,15 +265,18 @@ this baseline — not a per-verb default, and not in v1.0.
     (`INDEX(…):INDEX(…)`). Solenoid INDEX is cell-only. Consider: `row=0`/`col=0` → return a whole
     row/column as a list (dimensional output); whether INDEX should accept/emit ranges. Pairs with
     XLOOKUP's "return the whole row" question below.
-- **Unified XLOOKUP** (author decision 2026-07-01) — frame mode shipped (Frame Lookup);
-  **the cube half also shipped 2026-07-05** (Frame Lookup's source is now `any`, so it takes
-  a Cube and returns the matched top-level cell whole via `lookupCubeCell`). The remaining
-  plan is to MERGE list XLOOKUP + Frame Lookup (now frame+cube) into ONE node still named
-  XLOOKUP that handles every source and returns the matched value WHOLE (no drill-down):
-  scalar / list / 2-D frame, and if the returned 2-D value has nested cells, **XLOOKUP itself
-  outputs a Cube** (`any` socket, `isCubeValue` runtime check). Full design note + open
-  questions in `archive/v1.1-plan.md` WS-D — the OPEN part now is the list↔frame↔cube input-surface
-  merge + migration, not the cube lookup itself.
+- [done] **Unified XLOOKUP** (author decision 2026-07-01; MERGED 2026-07-06) — the list,
+  frame, and cube lookups are now ONE `XLookupNode` (in `frame.ts`, named XLOOKUP). It takes
+  an `any` source (Frame / Cube / widened list), names an **In column** + **Return** column,
+  and returns the matched cell — or the WHOLE matched row when **Return = `*`** (a single-row
+  Frame, or a single-row Cube keeping nested cells intact). NO wire-driven / dropdown mode
+  swap: the input surface is fixed. The old two-loose-lists XLOOKUP was DELETED — its two
+  arrays must be aligned, and by the standing rule aligned columns belong in a Frame (Build
+  Frame two lists, then XLOOKUP). `matchMode` (exact / ≤ / ≥) + `searchMode` (first / last)
+  carry across frame & cube; the row-finding is shared by cell- and whole-row-return via
+  `lookupFrameRowIndex` / `lookupCubeRowIndex` (zero drift) + `frameRowAt` / `cubeRowAt`.
+  (Excel's binary search_mode 2/-2 is omitted — on a materialized column it finds the same
+  row a linear scan does.)
 - [done] Multi-column Build Cube — the **Cube Columns** node (2026-06-29): N extensible
   `any` column inputs (list → cells, single-col cube → its cells, frame/scalar → one
   cell) + a Names CSV, assembled side by side. Composes with the cell-wise Build Cube

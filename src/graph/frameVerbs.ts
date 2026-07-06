@@ -16,6 +16,7 @@ import {
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
   type CubeValue, type CubeColumn, type CubeCell,
   frameRowCount, makeHeaders, cubeFromColumns, cubeRowCount, inferColumn, isFrameValue,
+  isCubeValue, frameFromRows,
 } from "./frame";
 import { isSolError, solError } from "./errorValue";
 import { forAggregate, coerceLogical, guardFinite } from "./valueKinds";
@@ -1143,6 +1144,15 @@ function keyMatches(cell: FrameCell, lookup: string, type: FrameColType): boolea
  *  require an orderable (number/date) key column. */
 export type LookupMatchMode = "exact" | "nextSmaller" | "nextLarger";
 
+/** XLOOKUP's `search_mode`: which end to scan from — so which row wins when the
+ *  key column has DUPLICATES. "first" (default, Excel's search_mode 1) returns the
+ *  first match top-to-bottom; "last" (search_mode -1) returns the last. Excel's
+ *  binary modes (2 / -2) are omitted: on a materialized column a binary search over
+ *  sorted data finds the SAME row a linear scan does, so it's a pure speed knob with
+ *  no distinct result here — and we always scan linearly for correctness. Affects
+ *  exact matching; an approximate (≤/≥) match already picks the closest key. */
+export type LookupSearchMode = "first" | "last";
+
 /** XLOOKUP over a Frame: the FIRST row whose `lookupColumn` cell equals `lookup`
  *  (type-aware via keyMatches), returning that row's `returnColumn` cell.
  *  `undefined` when no row matches (the node turns that into If-not-found / #N/A);
@@ -1151,18 +1161,39 @@ export type LookupMatchMode = "exact" | "nextSmaller" | "nextLarger";
  *  "exact") opts into an approximate fallback — see `LookupMatchMode`. */
 export function lookupFrameCell(
   f: FrameValue, lookupColumn: string, returnColumn: string, lookup: string,
-  matchMode: LookupMatchMode = "exact",
+  matchMode: LookupMatchMode = "exact", searchMode: LookupSearchMode = "first",
 ): FrameCell | undefined {
+  const idx = lookupFrameRowIndex(f, lookupColumn, lookup, matchMode, searchMode);
+  const ret = requireColumn(f, returnColumn); // #REF! if the return column is missing (even on a miss)
+  return idx < 0 ? undefined : cellAt(ret, idx);
+}
+
+/** The row-finding half of the frame XLOOKUP, shared by the single-cell return
+ *  (`lookupFrameCell`) and the whole-row `*` return (`frameRowAt`) so both agree on
+ *  which row matched. Returns the 0-based row index, or -1 for a miss. Only requires
+ *  the KEY column (a missing key column is a #REF!; the return column is checked by
+ *  the caller). A null / error key cell never matches — same rule as a join key. */
+export function lookupFrameRowIndex(
+  f: FrameValue, lookupColumn: string, lookup: string,
+  matchMode: LookupMatchMode = "exact", searchMode: LookupSearchMode = "first",
+): number {
   const key = requireColumn(f, lookupColumn);
-  const ret = requireColumn(f, returnColumn);
   const n = frameRowCount(f);
   if (matchMode === "exact") {
-    for (let i = 0; i < n; i++) {
-      const cell = cellAt(key, i);
-      if (cell === null || isSolError(cell)) continue;
-      if (keyMatches(cell, lookup, key.type)) return cellAt(ret, i);
+    if (searchMode === "last") {
+      for (let i = n - 1; i >= 0; i--) {
+        const cell = cellAt(key, i);
+        if (cell === null || isSolError(cell)) continue;
+        if (keyMatches(cell, lookup, key.type)) return i;
+      }
+    } else {
+      for (let i = 0; i < n; i++) {
+        const cell = cellAt(key, i);
+        if (cell === null || isSolError(cell)) continue;
+        if (keyMatches(cell, lookup, key.type)) return i;
+      }
     }
-    return undefined;
+    return -1;
   }
   if (!isOrderableKey(key.type)) {
     throw solError("#VALUE!", "Approximate lookup requires a numeric or date column");
@@ -1171,17 +1202,17 @@ export function lookupFrameCell(
   const target = key.type === "date"
     ? (/^-?\d+(\.\d+)?$/.test(t) ? Number(t) : parseDateToSerial(t))
     : Number(t);
-  if (!Number.isFinite(target)) return undefined;
+  if (!Number.isFinite(target)) return -1;
   let bestIdx = -1, bestKey = NaN;
   for (let i = 0; i < n; i++) {
     const cell = cellAt(key, i);
     if (cell === null || isSolError(cell)) continue;
     const k = Number(cell);
-    if (k === target) return cellAt(ret, i); // exact match always wins, first-seen
+    if (k === target) return i; // exact match always wins, first-seen
     if (matchMode === "nextSmaller" && k < target && (bestIdx === -1 || k > bestKey)) { bestIdx = i; bestKey = k; }
     if (matchMode === "nextLarger" && k > target && (bestIdx === -1 || k < bestKey)) { bestIdx = i; bestKey = k; }
   }
-  return bestIdx === -1 ? undefined : cellAt(ret, bestIdx);
+  return bestIdx;
 }
 
 /** A cube's top-level column by name, or a #REF! (thrown; the caller's guard
@@ -1224,42 +1255,89 @@ function inferCubeKeyType(col: CubeColumn): FrameColType {
  *  `lookupFrameCell`. `matchMode` approximate fallback needs a numeric key column. */
 export function lookupCubeCell(
   c: CubeValue, lookupColumn: string, returnColumn: string, lookup: string,
-  matchMode: LookupMatchMode = "exact",
+  matchMode: LookupMatchMode = "exact", searchMode: LookupSearchMode = "first",
 ): CubeCell | undefined {
+  const idx = lookupCubeRowIndex(c, lookupColumn, lookup, matchMode, searchMode);
+  const ret = requireCubeColumn(c, returnColumn); // #REF! if the return column is missing
+  if (idx < 0) return undefined;
+  return idx < ret.cells.length ? ret.cells[idx] ?? null : null;
+}
+
+/** The row-finding half of the cube XLOOKUP — shared by cell return and whole-row
+ *  `*` return (`cubeRowAt`). Returns the matched 0-based row index, or -1. Only the
+ *  KEY column is required (#REF! if missing). A null / error / nested-container key
+ *  cell is never a key (same first-match-wins + join-key rules as the frame path). */
+export function lookupCubeRowIndex(
+  c: CubeValue, lookupColumn: string, lookup: string,
+  matchMode: LookupMatchMode = "exact", searchMode: LookupSearchMode = "first",
+): number {
   const key = requireCubeColumn(c, lookupColumn);
-  const ret = requireCubeColumn(c, returnColumn);
   const n = cubeRowCount(c);
   const keyType = inferCubeKeyType(key);
   // A key cell usable for matching: a flat scalar only (a nested frame/cube/list is
-  // never a key). null / error already excluded. Returns undefined for a non-key cell.
+  // never a key). Returns undefined for a non-key cell (null/error/container).
   const scalarAt = (i: number): FrameCell | undefined => {
     const cell = i < key.cells.length ? key.cells[i] : null;
     if (typeof cell === "number" || typeof cell === "string" || typeof cell === "boolean") return cell;
     return undefined;
   };
-  const retAt = (i: number): CubeCell => (i < ret.cells.length ? ret.cells[i] ?? null : null);
   if (matchMode === "exact") {
-    for (let i = 0; i < n; i++) {
-      const cell = scalarAt(i);
-      if (cell === undefined) continue;
-      if (keyMatches(cell, lookup, keyType)) return retAt(i);
+    if (searchMode === "last") {
+      for (let i = n - 1; i >= 0; i--) {
+        const cell = scalarAt(i);
+        if (cell === undefined) continue;
+        if (keyMatches(cell, lookup, keyType)) return i;
+      }
+    } else {
+      for (let i = 0; i < n; i++) {
+        const cell = scalarAt(i);
+        if (cell === undefined) continue;
+        if (keyMatches(cell, lookup, keyType)) return i;
+      }
     }
-    return undefined;
+    return -1;
   }
   if (keyType !== "number") {
     throw solError("#VALUE!", "Approximate lookup requires a numeric key column");
   }
   const target = Number(lookup.trim());
-  if (!Number.isFinite(target)) return undefined;
+  if (!Number.isFinite(target)) return -1;
   let bestIdx = -1, bestKey = NaN;
   for (let i = 0; i < n; i++) {
     const cell = scalarAt(i);
     if (typeof cell !== "number") continue;
-    if (cell === target) return retAt(i); // an exact match always wins first
+    if (cell === target) return i; // an exact match always wins first
     if (matchMode === "nextSmaller" && cell < target && (bestIdx === -1 || cell > bestKey)) { bestIdx = i; bestKey = cell; }
     if (matchMode === "nextLarger" && cell > target && (bestIdx === -1 || cell < bestKey)) { bestIdx = i; bestKey = cell; }
   }
-  return bestIdx === -1 ? undefined : retAt(bestIdx);
+  return bestIdx;
+}
+
+/** XLOOKUP's whole-row return (`Return = *`): the matched row as a single-row Frame
+ *  (derived, so `raw` source text is dropped — same as any reordered frame). */
+export function frameRowAt(f: FrameValue, i: number): FrameValue {
+  return reorderRows(f, [i]);
+}
+
+/** The cube whole-row return: the matched row as a single-row Cube, each top-level
+ *  column keeping its one cell WHOLE (a nested frame/cube stays intact). */
+export function cubeRowAt(c: CubeValue, i: number): CubeValue {
+  return cubeFromColumns(
+    c.columns.map((col) => ({ name: col.name, cells: [i < col.cells.length ? col.cells[i] ?? null : null] })),
+  );
+}
+
+// The source is an `any` socket so XLOOKUP takes a Frame OR a Cube (a cube can't
+// narrow into a frame socket — sockets.ts): a cube flows to the cube path, a frame
+// to the frame path. A bare list/matrix/scalar widens into a frame exactly as a
+// `frame` socket would (a list-of-rows reads as a table; a flat list as one row),
+// so two aligned lists reach XLOOKUP by way of Build Frame. null → no source.
+export function asLookupSource(v: unknown): FrameValue | CubeValue | null {
+  if (v == null) return null;
+  if (isCubeValue(v)) return v;
+  if (isFrameValue(v)) return v;
+  if (Array.isArray(v)) return Array.isArray(v[0]) ? frameFromRows(v as unknown[][]) : frameFromRows([v as unknown[]]);
+  return frameFromRows([[v]]);
 }
 
 // ─── Append / Union (n-ary) ────────────────────────────────────────────────────
