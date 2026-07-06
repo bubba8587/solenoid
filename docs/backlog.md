@@ -88,6 +88,11 @@ is archived).
 
 ## Composite / drill-in
 
+- [ ] **Inside-solve stale dot is uniform** (author 2026-07-06, minor): after an INSIDE Solve
+  (runs on marker seeds, ignoring outside wiring) the stale dot reads green though the held result
+  is seed-based, not wired — you re-solve outside to use wiring. Distinguishing the two needs a
+  drill-state signal in the compute layer (couples `data()` to `compositeEditorStore`); left simple
+  on purpose. Revisit only if it reads as misleading.
 - [ ] **Solver parameters (advanced tier per heavy mode)** (author 2026-07-06, after
   arm-and-run shipped): goal-seek **max iterations / tolerance / driver bounds**
   (bounds both aid convergence and cap a runaway search — the honest analog of Excel

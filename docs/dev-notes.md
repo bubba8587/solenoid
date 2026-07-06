@@ -5,6 +5,41 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-06 late — composite drill-in polish + editable input markers)
+Local dev server. tsc + full vitest (2279) green. A long interactive pass over the
+Composite drill-in with the author. Highlights:
+- **Add composites like any node:** the catalog entry was `hidden: true` (Ctrl+Shift+G-only);
+  un-hidden — drop an empty Composite and Edit contents (the drill-in is first-class now).
+- **Run-mode/Solve/config controls INSIDE the drill-in:** extracted `CompositeRunControls`
+  (run-mode selector + Solve/status + the active mode's config editor), rendered on the outer
+  card AND a floating panel top-LEFT under the breadcrumb in the overlay (top-right is the
+  Zoom pill / HUDs). `emit` is outer-only (the goal-seek Solution socket anchors to the outer
+  node); inside it's a plain display.
+- **Editable input markers (`CompositeInputNode.defaultValue`, persisted via INIT_FIELD_ORDER):**
+  the marker gets the Number-Input field (`value-input`, commit on blur). It's the input's value
+  when the port is unwired + the goal-seek seed. runPass fallback: override → wired → marker seed →
+  port default. **Inside-vs-outside solve:** `requestSolve(insideOnly)` — an inside Solve
+  (`CompositeRunControls insideOnly`) runs on the seeds, IGNORING outside wiring; an outside Solve
+  uses the wired values. **Writeback:** a goal-seek writes the solved driver back onto its marker,
+  cleaned via `formatScalar` (integer/4-dp — no raw float tail). `solveKey` includes the seeds;
+  `lastSolveKey` is recomputed AFTER the solve (the writeback would otherwise read stale next pass).
+  KNOWN: the stale dot is uniform (external inputs + seeds), so post-inside-solve it reads green
+  though the result is seed-based — re-solve outside to use wiring (needs a drill-state signal in
+  compute to distinguish; left simple — see backlog).
+- **Immediate label propagation:** `syncPortLabels()` runs at the top of `data()` (cheap, every
+  pass) so a marker rename updates the port-label-driven controls (goal-seek Set/By) on blur; the
+  overlay subscribes to `compositePassStore` to reflect it. Outer card still updates on drill-up.
+  syncPortLabels now falls back to the marker PLACEHOLDER (Input/Output) on a cleared label.
+- **Pointer/zoom parity:** the drill-in used rete's stock zoom (fixed-step + double-click zoom);
+  extracted `CappedZoom` + `installSurfacePointer` (dblclick swallow) into `areaPresets.ts`, called
+  from getDrillMount; Canvas uses the same shared `CappedZoom`. (Full mobile touch select/lasso is
+  the separate lasso item.)
+- **Green boundary markers:** new `boundary` node kind → green ("special"); Composite stays gray.
+- **Goal-seek visual:** Solution is the SOLE hero (output boxes suppressed) and wireable (target
+  port socket on it, emitting the solution); status circle is an SVG (round) with 3 states — amber
+  ring (stale) / red (`#CONV!` no solution) / green (solved); `#CONV!` renders via ValueDisplay
+  (same red badge as every error). Driver input socket kept (feeds the seed).
+
 ### SESSION DIGEST (2026-07-06 late — goal-seek hero/socket + arm-and-run for heavy composites)
 Local dev server; commit freely, no pushes. tsc + full vitest (2277) green.
 - **Goal-seek is single-hero + wireable:** the composite card suppressed the output-port
