@@ -26,7 +26,8 @@ export interface ProviderPreset {
 }
 
 /** FRED returns `{observations: [{date, value}, …]}` with value "." for a gap —
- *  reduce it to a two-column date/value frame (gaps → missing). */
+ *  reduce it to a two-column date/value frame (gaps → missing). Kept for the keyed
+ *  API path (not the default). */
 export function parseFredObservations(text: string): FrameValue {
   const data = JSON.parse(text) as { observations?: Array<{ date?: string; value?: string }> };
   const obs = data.observations ?? [];
@@ -40,18 +41,40 @@ export function parseFredObservations(text: string): FrameValue {
   return frameFromColumnar({ date, value });
 }
 
+/** The KEYLESS FRED route: `fredgraph.csv?id=SERIES` returns a 2-column CSV
+ *  (`observation_date,SERIES_ID`) with `.` for a gap. Parse it directly (csvToFrame
+ *  would turn the whole column to text on the first `.`), keeping the real column
+ *  names (so the value column is named after the series) and mapping gaps → missing. */
+export function parseFredCsv(text: string): FrameValue {
+  const lines = text.trim().split(/\r?\n/).filter((l) => l.length > 0);
+  const header = (lines[0] ?? "date,value").split(",");
+  const dateCol = header[0]?.trim() || "date";
+  const valCol = header[1]?.trim() || "value";
+  const date: string[] = [];
+  const value: (number | null)[] = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cells = lines[i].split(",");
+    const d = cells[0]?.trim();
+    if (!d) continue;
+    date.push(d);
+    const raw = cells[1]?.trim();
+    const n = raw === undefined || raw === "" || raw === "." ? NaN : Number(raw);
+    value.push(Number.isFinite(n) ? n : null);
+  }
+  return frameFromColumnar({ [dateCol]: date, [valCol]: value });
+}
+
 export const PROVIDERS: Record<ProviderId, ProviderPreset> = {
   fred: {
     id: "fred",
-    label: "FRED — economic series",
-    needsKey: true,
-    keyProvider: "fred",
-    keyUrl: "https://fredaccount.stlouisfed.org/apikeys",
+    // KEYLESS by default via the public fredgraph.csv download — works out of the box.
+    label: "FRED — economic series (no key)",
+    needsKey: false,
     inputLabel: "Series ID",
-    placeholder: "e.g. GDP, UNRATE, CPIAUCSL",
-    buildUrl: (id, key) =>
-      `https://api.stlouisfed.org/fred/series/observations?series_id=${encodeURIComponent(id.trim())}&api_key=${encodeURIComponent(key)}&file_type=json`,
-    parse: parseFredObservations,
+    placeholder: "e.g. UNRATE, CPIAUCSL, GDP",
+    buildUrl: (id) =>
+      `https://fred.stlouisfed.org/graph/fredgraph.csv?id=${encodeURIComponent(id.trim())}`,
+    parse: parseFredCsv,
   },
   stooq: {
     id: "stooq",
@@ -79,6 +102,19 @@ export const PROVIDERS: Record<ProviderId, ProviderPreset> = {
 };
 
 export const PROVIDER_LIST: ProviderPreset[] = Object.values(PROVIDERS);
+
+/** Common FRED series — the ids are cryptic, so the node offers these as quick-picks
+ *  that fill the Series ID field (you can still type any id). */
+export const FRED_QUICK_PICKS: ReadonlyArray<{ id: string; label: string }> = [
+  { id: "UNRATE", label: "Unemployment rate" },
+  { id: "CPIAUCSL", label: "CPI (inflation)" },
+  { id: "GDPC1", label: "Real GDP" },
+  { id: "FEDFUNDS", label: "Fed funds rate" },
+  { id: "DGS10", label: "10-yr Treasury yield" },
+  { id: "T10Y2Y", label: "10yr–2yr spread" },
+  { id: "MORTGAGE30US", label: "30-yr mortgage rate" },
+  { id: "SP500", label: "S&P 500" },
+];
 
 export function getProvider(id: string): ProviderPreset {
   return PROVIDERS[id as ProviderId] ?? PROVIDERS.fred;
