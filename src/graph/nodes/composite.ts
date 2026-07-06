@@ -647,6 +647,11 @@ export class CompositeNode extends ClassicPreset.Node {
   }
 
   async data(inputs: Record<string, unknown[]>): Promise<Record<string, unknown>> {
+    // Keep the port labels fresh from their boundary markers on every pass — so
+    // renaming a marker inside the drill-in updates the port-label-driven controls
+    // (goal-seek Set/By dropdowns) as soon as the blur fires a recompute, without
+    // waiting for drill-up (the outer card still re-renders on leave). Cheap.
+    this.syncPortLabels();
     // Heavy modes (many internal passes) are arm-and-run: solve once, then HOLD the
     // cached result and flag `stale` instead of re-solving on every upstream tick.
     // The Solve button (solveRequested) or a never-solved node forces one solve.
