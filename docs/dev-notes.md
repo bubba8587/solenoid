@@ -5,6 +5,40 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-06 late — first-class composite drill-in, phase 1)
+Local dev server; commit freely, no pushes. tsc + full vitest (2276) green.
+Author asked to upgrade the Composite drill-in from a second-class overlay to a
+first-class canvas ("copy paste, titles not propagating, right click… make it open
+in the main app like its own graph"), and to trust my method. Approach = **B1-surgical**:
+keep `process.ts` `getEditor()/getArea()` MAIN-only forever (228 call sites incl.
+persistence/serialize — routing them through an override would autosave the subgraph
+over the document), and add a NEW resolver the ACTION layer uses.
+- **`activeGraph.ts` (the keystone):** `setActiveGraph(ctx|null)` registers the drill-in's
+  current level; `getActiveEditor/Area/History` resolve override-else-main; `getOwningEditor(id)`
+  returns the drill-in editor when it holds the node, else main (never routes a MAIN node to
+  the override). The overlay's mount effect calls `setActiveGraph({internalEditor, area, history})`,
+  cleanup clears it. Locked by `activeGraph.test.ts` — the cardinal split (action layer follows
+  the drill-in, `getEditor()`/persistence stays MAIN).
+- **Drill-in affordances wired:** copy/paste (Ctrl+C/V at cursor, routed through getActive*,
+  pasteClipboard has a subgraph branch), A-to-add at cursor, arrow-nudge, and a **right-click
+  node menu** (`DrillNodeMenu` in the overlay — Edit-contents (composites) / Duplicate / Delete;
+  the main canvas's node menu is isolate/pin/standoff, all MAIN-only, so the drill-in gets its
+  own focused set). Duplicate reuses copy/paste by transiently isolating the target on the
+  `.selected` flag; markers stay on the add/remove-port gesture.
+- **"Titles/formats/types not propagating" — the systemic root + fix:** render-time cross-node
+  resolvers (value-box FC annotation in `nodeKit`, `displayedType`, Display FC) and in-node
+  socket/row actions (Cast, Chart, Alert, TVM, Extensible + Paired rows, Build Frame rows,
+  Get/Add/Split retype, Expression/LAMBDA rebuild) all read `getEditor()/getArea()` (MAIN) —
+  so for an internal node they resolved the wrong graph and silently no-op'd. Rerouted the
+  display resolvers + unit-flow relocks (Convert/FC) through `getOwningEditor`, and the
+  socket/row actions through `getActive*`. `cast.ts` `sourceKind()` left as-is (compute-time,
+  not render/action — coupling compute to the drill-in override is a layering smell + only
+  helps the drilled-in case).
+- **STILL OPEN (see backlog "First-class composite drill-in"):** drill-in render parity
+  (minimap, grid-snap, Tidy), factoring Canvas's full keydown onto the active graph, drill-in
+  **history routing** (row/socket/label edits still push to MAIN history, so drill-in Ctrl+Z
+  doesn't undo them), lasso parity, and D2 proper (reroute the real toolbar — author-present).
+
 ### SESSION DIGEST (2026-07-06 evening — command palette overhaul + D-1 goal-seek)
 Local dev server; commit freely, no pushes. tsc + full vitest (2271) green.
 - **Command palette overhaul:** extracted a shared `menuModel.ts` (one source for the
