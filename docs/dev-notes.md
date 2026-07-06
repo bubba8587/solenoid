@@ -5,6 +5,33 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-06 late — goal-seek hero/socket + arm-and-run for heavy composites)
+Local dev server; commit freely, no pushes. tsc + full vitest (2277) green.
+- **Goal-seek is single-hero + wireable:** the composite card suppressed the output-port
+  value boxes in goal-seek mode (`runMode !== "goal-seek"` guard) — the achieved output
+  just equals the target, so the **Solution** is the sole hero. It then needed its socket
+  back: the Solution hero now carries the target output port's `MeasuredSocketRow`, and
+  `runGoalSeek` EMITS the solved DRIVER on that port (`row[gs.outputPortId] = solved`), so
+  the composite's output IS its solution — wire the break-even units downstream, not the
+  trivially-zero profit. Tests updated to the new semantic (output == solution).
+- **Arm-and-run for heavy modes (author ask — "Calculate button instead of auto fire; they
+  get heavy"):** goal-seek / scenarios / data-table / simulation each do many internal
+  passes; in automatic mode they re-solved on every upstream tick. Now `CompositeNode.data()`
+  gates on `isHeavyMode()`: solve once (first run OR `requestSolve()`), then HOLD `cachedOutputs`
+  and set `stale = key !== lastSolveKey`. `solveKey` is a CHEAP signature — object inputs
+  (frames) → a stable ref token via a `WeakMap`, not a deep serialize — so the per-tick cost
+  is trivial. `runActiveMode` holds the original dispatch. All arm state is session-transient
+  (not persisted): a fresh load solves once, matching the load reveal.
+- **Stale indicator:** `compositeStaleStore` (module store) drives it — a HELD composite's
+  output doesn't change, so processGraph's changed-output re-render pruning would skip the
+  card; the card subscribes to the store instead. UI = a Solve (play) button + an ALWAYS-present
+  status circle (so it never resizes the button): amber ring (#d9822b, the alert tone — reused,
+  not a new colour) while stale, filled green (`--sock-lambda`, semantic positive) once solved.
+  Tooltip "Stale"/"Up to date", no instructional copy.
+- **Still open (author raised, not built):** solver PARAMETERS — goal-seek max-iterations /
+  tolerance / driver bounds; simulation step count is `simulationSteps` already; Monte Carlo
+  (unbuilt) sample count + seed. Fits an advanced-tier expander per mode. See backlog.
+
 ### SESSION DIGEST (2026-07-06 late — first-class composite drill-in)
 Local dev server; commit freely, no pushes. tsc + full vitest (2276) green.
 Author asked to upgrade the Composite drill-in from a second-class overlay to a
