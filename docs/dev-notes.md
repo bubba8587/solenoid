@@ -5,7 +5,9 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
-### SESSION DIGEST (2026-07-06 pm — C-4 XLOOKUP + C-2 Switcher + F-1 palette + F-2 doc props)
+### SESSION DIGEST (2026-07-06 pm — autonomous: C-4 XLOOKUP · C-2 Input Switcher · F-1 custom palette · F-2 doc properties)
+Local dev server (HMR); commit freely, no pushes. Every commit tsc + full vitest green (→2263).
+Five bundles + one incidental persistence bugfix; NOT pushed. Sections newest-first.
 
 **F-2 Document Properties window (v1) — `docMetaStore.ts` + `components/DocumentProperties.tsx`.**
 Opened from the DocumentTitle menu ("Document properties…"). Reuses the Settings modal
@@ -25,8 +27,6 @@ and the report/export palette were being LOST across a save / doc-switch. Added 
 text-form sidecar (comments name-address their `nodeId` like pins); `docMeta.test.ts` locks
 the round-trip.
 
-### SESSION DIGEST (2026-07-06 pm — C-4 XLOOKUP + C-2 Input Switcher + F-1 custom palette)
-
 **F-1 custom palette editor (`palette.ts` + `components/PaletteEditor.tsx`).** The app
 palette dropdown gains **"Custom…"** → a user-authored full 12-slot map.
 - Model: `_appBase` is now `PaletteChoice = PaletteName | "Custom"`; `_customMap` persists
@@ -44,8 +44,6 @@ palette dropdown gains **"Custom…"** → a user-authored full 12-slot map.
   EYEBALL: Settings → Appearance → Color palette → "Custom…"; edit a well, watch the canvas
   retint; Load a template to start from one; the sample previews in-context.
 
-### SESSION DIGEST (2026-07-06 pm — C-4 XLOOKUP merge + C-2 Input Switcher upgrade)
-
 **C-2 Input Switcher upgrade (`CableSwitchNode`).** Two features:
 - **Editable per-slot titles** — each input row has a title field (draft-commit via
   `useDraftCommit`), so slots read as named choices; `titleFor(key)` falls back to
@@ -61,9 +59,8 @@ palette dropdown gains **"Custom…"** → a user-authored full 12-slot map.
   gained Plan A/Plan B titles, and a new **Many-mode `switch-many`** collects Plan A/B/C into
   a cube (eyeball: the card shows the collected cube chip). `cableSwitch.test.ts` covers it.
 
-### SESSION DIGEST (2026-07-06 pm — author-present, C-4 unified XLOOKUP merge)
-Local dev server (HMR); commit freely, no pushes. tsc + full vitest (2243) green.
-- **C-4 XLOOKUP merge — REAL merge, not a wire-driven socket swap.** The author vetoed
+**C-4 unified XLOOKUP merge (`frame.ts` `XLookupNode`).**
+- **REAL merge, not a wire-driven socket swap.** The author vetoed
   inventing a node whose sockets change based on what's wired in (the Explore-scoped
   duck-typing plan). The legitimate merge came from the author's OWN 2026-07-06 standing
   rule: XLOOKUP's two arrays must be ALIGNED, and aligned columns belong in a FRAME, not
