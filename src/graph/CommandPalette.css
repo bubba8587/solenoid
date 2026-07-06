@@ -4,6 +4,11 @@
   z-index: 300;
 }
 
+/* Docked (always-on) mode: the scrim doesn't blanket the canvas — only the palette
+   box itself is interactive, so the rest of the screen stays clickable. */
+.solenoid-cmdpalette-scrim--persistent { pointer-events: none; }
+.solenoid-cmdpalette-scrim--persistent .solenoid-cmdpalette { pointer-events: auto; }
+
 .solenoid-cmdpalette {
   position: fixed;
   left: 50%;

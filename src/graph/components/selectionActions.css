@@ -1,9 +1,11 @@
-/* Floating align/distribute cluster — a contextual pill at the bottom-centre of
-   the canvas, shown only while ≥2 nodes are selected. Reuses the overlay-pill
-   tokens the nav/zoom pills use so it reads as the same family of floating chrome. */
+/* Floating align/distribute cluster — a contextual pill at the top-centre of the
+   canvas (below the menu bar), shown only while ≥2 nodes are selected. Sits up top
+   so it never collides with the always-on command palette docked at the bottom.
+   Reuses the overlay-pill tokens the nav/zoom pills use so it reads as the same
+   family of floating chrome. */
 .solenoid-selbar {
   position: fixed;
-  bottom: 30px;
+  top: 52px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 7; /* above the StatusBar (6), below the HUD stack + modals */
@@ -59,9 +61,9 @@
   background: var(--panel-border);
 }
 
-/* On touch the mobile action bar owns the bottom edge — lift clear of it. */
+/* Mobile: clear the top app bar / safe area. */
 @media (max-width: 639px) {
   .solenoid-selbar {
-    bottom: 84px;
+    top: calc(env(safe-area-inset-top, 0px) + 56px);
   }
 }

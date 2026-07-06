@@ -79,7 +79,7 @@ function typeLabel(n: unknown): string {
     .replace(/([a-z])([A-Z])/g, "$1 $2");
 }
 
-export function CommandPalette({ onClose }: { onClose: () => void }) {
+export function CommandPalette({ onClose, persistent = false }: { onClose: () => void; persistent?: boolean }) {
   const [query, setQuery] = useState("");
   // -1 = nothing selected. The palette opens with NO active row — a blind
   // Enter must never fire an action the user didn't pick (the browse list is
@@ -91,12 +91,16 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
   const commands = useMemo(buildCommands, []);
   const toggles = useMemo(buildSettingToggles, []);
 
-  useEffect(() => { inputRef.current?.focus(); }, []);
+  // Persistent (docked) mode must NOT steal focus from the canvas on mount; the
+  // modal opens for immediate typing, so it focuses.
+  useEffect(() => { if (!persistent) inputRef.current?.focus(); }, [persistent]);
   useEffect(() => setActiveIndex(query.trim() ? 0 : -1), [query]);
 
   const results = useMemo<PaletteItem[]>(() => {
     const q = query.trim();
-    if (!q) return commands.slice(0, 8);
+    // Docked with no query → just the input bar (a compact command line); the
+    // modal previews the first few commands so an empty palette isn't blank.
+    if (!q) return persistent ? [] : commands.slice(0, 8);
     const scored: { item: PaletteItem; score: number }[] = [];
     for (const c of [...commands, ...toggles]) {
       const s = fieldScore(q, c.label);
@@ -122,11 +126,13 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
     }
     scored.sort((a, b) => b.score - a.score);
     return scored.slice(0, 20).map((s) => s.item);
-  }, [query, commands, toggles]);
+  }, [query, commands, toggles, persistent]);
 
   function run(item: PaletteItem) {
     item.run();
-    onClose();
+    // Docked: stay open, ready for the next command; modal: dismiss.
+    if (persistent) { setQuery(""); setActiveIndex(-1); inputRef.current?.focus(); }
+    else onClose();
   }
 
   function onKeyDown(e: React.KeyboardEvent) {
@@ -134,12 +140,17 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
     else if (e.key === "ArrowUp") { e.preventDefault(); setActiveIndex((i) => Math.max(i - 1, 0)); }
     // activeIndex -1 (nothing selected) makes Enter a no-op — see its comment.
     else if (e.key === "Enter") { e.preventDefault(); if (activeIndex >= 0 && results[activeIndex]) run(results[activeIndex]); }
-    else if (e.key === "Escape") { e.preventDefault(); onClose(); }
+    // Docked: Escape clears the query + hands focus back to the canvas but keeps
+    // the bar; modal: Escape dismisses.
+    else if (e.key === "Escape") { e.preventDefault(); if (persistent) { setQuery(""); inputRef.current?.blur(); } else onClose(); }
   }
 
   return (
-    <div className="solenoid-cmdpalette-scrim" onMouseDown={onClose}>
-      <div className="solenoid-cmdpalette" onMouseDown={(e) => e.stopPropagation()}>
+    <div
+      className={`solenoid-cmdpalette-scrim${persistent ? " solenoid-cmdpalette-scrim--persistent" : ""}`}
+      onMouseDown={persistent ? undefined : onClose}
+    >
+      <div className={`solenoid-cmdpalette${persistent ? " solenoid-cmdpalette--persistent" : ""}`} onMouseDown={(e) => e.stopPropagation()}>
         {results.length > 0 && (
           <div className="solenoid-cmdpalette__results">
             {results.map((r, i) => (
