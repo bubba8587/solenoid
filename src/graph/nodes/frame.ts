@@ -7,7 +7,7 @@ import { coerceLogical } from "../valueKinds";
 import { APP_LOCALE } from "../locale";
 import {
   buildFrame, splitFrame, getColumn, addColumn, frameRowCount, frameHasTextColumns,
-  frameFromInputText, formatFrameCell, isCubeValue,
+  frameFromInputText, formatFrameCell, isCubeValue, isFrameValue,
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
 } from "../frame";
 import {
@@ -1263,12 +1263,24 @@ export class XLookupNode extends ClassicPreset.Node {
     frame?: unknown[]; lookup?: string[];
     inColumn?: string[]; returnColumn?: string[]; ifNotFound?: string[];
   }) {
-    const src = asLookupSource(inputs.frame?.[0] ?? null);
+    const raw = inputs.frame?.[0] ?? null;
     const lookup = (inputs.lookup?.[0] ?? this.stringLiterals.lookup ?? "").trim();
     const inCol = (inputs.inColumn?.[0] ?? this.stringLiterals.inColumn ?? "").trim();
     const retCol = (inputs.returnColumn?.[0] ?? this.stringLiterals.returnColumn ?? "").trim();
     const fallbackRaw = inputs.ifNotFound?.[0] ?? this.stringLiterals.ifNotFound ?? "";
-    if (!src || inCol === "" || retCol === "" || lookup === "") { this.cachedResult = null; return { value: null }; }
+    if (raw == null || inCol === "" || retCol === "" || lookup === "") { this.cachedResult = null; return { value: null }; }
+    // The source socket is `any` (the only socket type that passes a Frame OR a Cube
+    // through UNCOERCED — a `cube` socket would re-brand a frame, an `anytable` rejects
+    // both). So guard the shape at runtime: XLOOKUP needs a 2-D table — a Frame, a Cube,
+    // or a 2-D matrix (widens to a frame). A scalar or a bare 1-D list is not a lookup
+    // table; reject it with a clear code instead of silently widening it to a useless
+    // 1-row frame (two aligned lists → Build Frame them together first).
+    const tabular = isFrameValue(raw) || isCubeValue(raw) || (Array.isArray(raw) && Array.isArray((raw as unknown[])[0]));
+    if (!tabular) {
+      this.cachedResult = solError("#VALUE!", "XLOOKUP needs a table or cube — Build Frame two aligned lists first");
+      return { value: this.cachedResult };
+    }
+    const src = asLookupSource(raw)!;
     const wholeRow = retCol === "*"; // return the matched row intact, not one cell
     const result = runVerb<CubeCell>(() => {
       let cell: CubeCell | undefined;
