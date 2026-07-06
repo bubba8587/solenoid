@@ -6,6 +6,7 @@ import { extractInit } from "../copyPaste";
 import { installErrorGuards, solError, type SolError } from "../errorValue";
 import { installInputCoercion } from "../coerceInputs";
 import { loopMembers } from "../process";
+import { compositeStaleStore } from "../compositeStaleStore";
 import type { NodeCtor } from "../nodeCtorRegistry";
 
 // ─── Composite node — a real, computing subgraph container ────────────────────
@@ -180,6 +181,21 @@ export class CompositeNode extends ClassicPreset.Node {
   /** The solved driver value (or a `#CONV!` SolError), surfaced in the editor.
    *  Component-read only; not persisted (re-solved on every pass). */
   goalSeekResult: number | SolError | null = null;
+
+  // ─── Arm-and-run for the HEAVY modes (goal-seek / scenarios / data-table /
+  // simulation) ─── each does many internal passes per recompute, so they must NOT
+  // re-solve on every upstream tick. Instead data() solves once (on first run or an
+  // explicit Solve) then HOLDS the cached result, flagging `stale` when the inputs
+  // or config change. All three are session-transient (not persisted): a fresh load
+  // solves once, matching the load-reveal's compute pass.
+  /** Set by the Solve button; consumed by the next data() to force one solve. */
+  solveRequested = false;
+  /** Signature of the inputs+config at the last solve; null = never solved. */
+  lastSolveKey: string | null = null;
+  /** True when inputs/config changed since the last solve — drives the stale dot. */
+  stale = false;
+  private _refIds = new WeakMap<object, number>();
+  private _refSeq = 0;
   /** Internal-graph layout, keyed by LIVE internal node id (remapped on
    *  hydrate, like port internalNodeIds). Written at collapse time and by the
    *  drill-in editor on close; read by the editor on open and by unpack. */
@@ -609,11 +625,80 @@ export class CompositeNode extends ClassicPreset.Node {
   }
 
   async data(inputs: Record<string, unknown[]>): Promise<Record<string, unknown>> {
-    let outputs: Record<string, unknown>;
+    // Heavy modes (many internal passes) are arm-and-run: solve once, then HOLD the
+    // cached result and flag `stale` instead of re-solving on every upstream tick.
+    // The Solve button (solveRequested) or a never-solved node forces one solve.
+    if (this.isHeavyMode()) {
+      const key = this.solveKey(inputs);
+      if (this.solveRequested || this.lastSolveKey === null) {
+        const outputs = await this.runActiveMode(inputs);
+        this.cachedOutputs = outputs;
+        this.lastSolveKey = key;
+        this.solveRequested = false;
+        this.stale = false;
+        compositeStaleStore.set(this.id, false);
+        return outputs;
+      }
+      this.stale = key !== this.lastSolveKey;
+      compositeStaleStore.set(this.id, this.stale);
+      return this.cachedOutputs;
+    }
+    // Light modes (single passthrough) stay fully live.
+    const outputs = await this.runActiveMode(inputs);
+    this.cachedOutputs = outputs;
+    this.stale = false;
+    compositeStaleStore.set(this.id, false);
+    return outputs;
+  }
+
+  /** True when the active run mode does multi-pass work worth gating behind Solve —
+   *  a data-table with no axes / empty scenarios collapse to a single pass (light). */
+  isHeavyMode(): boolean {
+    if (this.runMode === "simulation") return true;
+    if (this.runMode === "scenarios") return this.scenarios.length > 0;
+    if (this.runMode === "goal-seek") return !!this.goalSeek;
+    if (this.runMode === "data-table") {
+      return this.inputPorts.some(
+        (p) => p.exposure === "exposed" && (this.dataTableValues[p.id]?.length ?? 0) > 0,
+      );
+    }
+    return false;
+  }
+
+  /** Request the next data() to solve (the Solve button). Caller triggers a recompute. */
+  requestSolve(): void { this.solveRequested = true; }
+
+  /** A cheap signature of the inputs + the active mode's config: a change to either
+   *  makes the last solve stale. Objects (frames/cubes) contribute a stable reference
+   *  token (a recomputed upstream frame = a new reference = stale) rather than a deep
+   *  serialize, so this stays cheap on every tick. */
+  private solveKey(inputs: Record<string, unknown[]>): string {
+    const token = (v: unknown): unknown => {
+      if (v === null || typeof v !== "object") return v; // primitive → by value
+      let id = this._refIds.get(v as object);
+      if (id === undefined) { id = ++this._refSeq; this._refIds.set(v as object, id); }
+      return `#ref${id}`;
+    };
+    const inputTokens: Record<string, unknown> = {};
+    for (const [k, arr] of Object.entries(inputs)) {
+      inputTokens[k] = Array.isArray(arr) ? arr.map(token) : token(arr);
+    }
+    return JSON.stringify({
+      inputs: inputTokens,
+      mode: this.runMode,
+      goalSeek: this.goalSeek,
+      scenarios: this.scenarios,
+      dataTableValues: this.dataTableValues,
+      simulationSteps: this.simulationSteps,
+    });
+  }
+
+  /** The raw mode dispatch (no arm/hold) — the original data() body. */
+  private async runActiveMode(inputs: Record<string, unknown[]>): Promise<Record<string, unknown>> {
     if (this.runMode === "simulation") {
-      outputs = await this.runSimulation(inputs);
+      return this.runSimulation(inputs);
     } else if (this.runMode === "scenarios" && this.scenarios.length > 0) {
-      outputs = await this.collectMultiple(inputs, this.scenarios.map((s) => s.overrides));
+      return this.collectMultiple(inputs, this.scenarios.map((s) => s.overrides));
     } else if (this.runMode === "data-table") {
       // Only exposed ports with a non-empty sweep list are axes of the grid;
       // a port with no entry keeps its normal wired/default value on every run.
@@ -630,17 +715,13 @@ export class CompositeNode extends ClassicPreset.Node {
           axes.forEach((axis, i) => { o[axis.portId] = combo[i]; });
           return o;
         });
-        outputs = await this.collectMultiple(inputs, overridesList);
-      } else {
-        outputs = await this.runPass(inputs);
+        return this.collectMultiple(inputs, overridesList);
       }
+      return this.runPass(inputs);
     } else if (this.runMode === "goal-seek" && this.goalSeek) {
-      outputs = await this.runGoalSeek(inputs, this.goalSeek);
-    } else {
-      outputs = await this.runPass(inputs);
+      return this.runGoalSeek(inputs, this.goalSeek);
     }
-    this.cachedOutputs = outputs;
-    return outputs;
+    return this.runPass(inputs);
   }
 
   // ─── Goal-seek solver ────────────────────────────────────────────────────

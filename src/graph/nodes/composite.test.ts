@@ -482,6 +482,23 @@ describe("CompositeNode Goal Seek run mode", () => {
     expect((out[outId] as { code: string }).code).toBe("#CONV!");
   });
 
+  it("arm-and-run: holds the solution and flags stale until Solve", async () => {
+    const { c, inAId, inBId, outId } = await makeAdder();
+    c.setGoalSeek({ inputPortId: inAId, outputPortId: outId, target: 15 });
+    const out1 = await c.data({ [inBId]: [10] }); // first call solves: A = 5
+    expect(out1[outId] as number).toBeCloseTo(5, 4);
+    expect(c.stale).toBe(false);
+    // An input change does NOT re-solve — it holds the old solution and flags stale.
+    const out2 = await c.data({ [inBId]: [20] }); // would be A = -5, but not solved
+    expect(out2[outId] as number).toBeCloseTo(5, 4); // held
+    expect(c.stale).toBe(true);
+    // Solve re-runs against the new input.
+    c.requestSolve();
+    const out3 = await c.data({ [inBId]: [20] });
+    expect(out3[outId] as number).toBeCloseTo(-5, 4);
+    expect(c.stale).toBe(false);
+  });
+
   it("goalSeek round-trips through extractInit (deep-copied, not aliased)", async () => {
     const { c, inAId, outId } = await makeAdder();
     c.setGoalSeek({ inputPortId: inAId, outputPortId: outId, target: 42 });

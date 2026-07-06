@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import type { CompositeNode as CompositeNodeType, CompositeInputNode as CompositeInputNodeType, CompositeOutputNode as CompositeOutputNodeType, CompositeRunMode } from "../rete-nodes";
 import { isSolError } from "../errorValue";
 import { InlineInputs, InlineNumberField } from "./inlineInput";
@@ -7,6 +7,7 @@ import { MeasuredSocketRow } from "./NodeSocket";
 import type { DisplayValue } from "./valueDisplayFormat";
 import { processGraph } from "../process";
 import { compositeEditorStore } from "../compositeEditorStore";
+import { compositeStaleStore } from "../compositeStaleStore";
 import { stopDragStart } from "../coarse";
 import { isFrameValue, isCubeValue } from "../frame";
 import { isChartValue } from "../chartValue";
@@ -251,6 +252,13 @@ function GoalSeekEditor({ node, emit }: { node: CompositeNodeType; emit: NodePro
 // In Scenarios mode each output's cachedOutputs value is already an ARRAY
 // (one entry per scenario, in order) — ValueDisplay renders that as a list
 // chip with no changes needed here, which is the "lay outputs side by side".
+// Lucide "play" — the Solve trigger for arm-and-run heavy modes.
+const SolveSvg = () => (
+  <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" stroke="none" style={{ display: "block" }}>
+    <path d="M6 4.5v15a1 1 0 0 0 1.5.87l12-7.5a1 1 0 0 0 0-1.74l-12-7.5A1 1 0 0 0 6 4.5z" />
+  </svg>
+);
+
 // Lucide "pencil" — the drill-in trigger. https://lucide.dev/icons/pencil
 const EditSvg = () => (
   <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}>
@@ -261,6 +269,12 @@ const EditSvg = () => (
 
 export function CompositeComponent({ data: node, emit }: NodeProps<CompositeNodeType>) {
   const [runMode, setRunMode] = useNodeField(node, "runMode");
+  // Heavy modes are arm-and-run: an explicit Solve, with an orange "stale" dot when
+  // inputs/config drifted since the last solve (compositeStaleStore drives the dot —
+  // a held composite's output doesn't change, so processGraph won't re-render it).
+  useSyncExternalStore(compositeStaleStore.subscribe, compositeStaleStore.getVersion);
+  const heavy = node.isHeavyMode();
+  const stale = compositeStaleStore.isStale(node.id);
 
   return (
     <NodeShell node={node} emit={emit} labelPlaceholder="Composite" hideOutputSockets>
@@ -285,6 +299,32 @@ export function CompositeComponent({ data: node, emit }: NodeProps<CompositeNode
       <InlineInputs node={node} emit={emit} />
       {(node.inputPorts.length > 0 || node.outputPorts.length > 0) && (
         <OpSelect value={runMode} options={RUN_MODE_OPTIONS} onChange={setRunMode} />
+      )}
+      {heavy && (
+        <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 4 }}>
+          <button
+            type="button"
+            className="solenoid-node__inline-input"
+            style={{ flex: 1, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
+            onClick={(e) => { e.stopPropagation(); node.requestSolve(); void processGraph(node.id); }}
+            onPointerDown={stopDragStart}
+            onMouseDown={stopDragStart}
+          >
+            <SolveSvg />
+            Solve
+          </button>
+          {/* Status circle — ALWAYS present (so it never resizes the Solve button):
+              an amber ring while stale (alert-badge amber #d9822b), a filled green
+              (--sock-lambda, the semantic positive) once solved / up to date. */}
+          <span
+            title={stale ? "Stale" : "Up to date"}
+            style={{
+              width: 10, height: 10, borderRadius: "50%", flexShrink: 0, boxSizing: "border-box",
+              border: `1.5px solid ${stale ? "#d9822b" : "var(--sock-lambda)"}`,
+              background: stale ? "transparent" : "var(--sock-lambda)",
+            }}
+          />
+        </div>
       )}
       {runMode === "scenarios" && <ScenarioTable node={node} />}
       {runMode === "data-table" && <DataTableEditor node={node} />}
