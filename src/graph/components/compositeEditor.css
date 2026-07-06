@@ -40,7 +40,7 @@
   background: var(--surface);
 }
 .solenoid-composite-editor__crumb--current {
-  color: var(--text-bright);
+  color: var(--accent);
   font-weight: 600;
   cursor: default;
 }
@@ -133,9 +133,12 @@
   gap: 10px;
   padding: 4px 6px 4px 8px;
   background: var(--surface-sunken);
-  border: 1px solid var(--border);
+  /* Accent-tinted border + faint accent glow: a quiet "you're in a subgraph"
+     state cue (accent = state, per DESIGN — not a decorative stripe). */
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
   border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18),
+    0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
   max-width: calc(100vw - 24px);
 }
 .solenoid-composite-editor__strip-actions {
