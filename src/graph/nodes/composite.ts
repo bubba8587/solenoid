@@ -665,7 +665,13 @@ export class CompositeNode extends ClassicPreset.Node {
       return row;
     }
     this.goalSeekResult = solved;
-    return this.runPass(inputs, { [gs.inputPortId]: solved });
+    // The composite's OUTPUT is its solution: emit the solved DRIVER value on the
+    // target port (not the achieved output, which just equals the target). So the
+    // Solution hero's socket carries the answer downstream — wire the break-even
+    // units into the next calc, not the trivially-zero profit.
+    const row = await this.runPass(inputs, { [gs.inputPortId]: solved });
+    row[gs.outputPortId] = solved;
+    return row;
   }
 }
 

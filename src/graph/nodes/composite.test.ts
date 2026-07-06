@@ -447,20 +447,22 @@ describe("CompositeNode Goal Seek run mode", () => {
     return { c, inAId, inBId, outId };
   }
 
-  it("drives the input until the output reaches the target", async () => {
+  it("drives the input until the output reaches the target, and emits the solution", async () => {
     const { c, inAId, inBId, outId } = await makeAdder();
     c.setGoalSeek({ inputPortId: inAId, outputPortId: outId, target: 15 });
     const out = await c.data({ [inBId]: [10] }); // Sum = A + 10, want 15 → A = 5
-    expect(out[outId] as number).toBeCloseTo(15, 4);
+    // The composite's OUTPUT is its solution (the solved driver), not the achieved
+    // output — so the Solution hero's socket wires the answer downstream.
     expect(c.goalSeekResult as number).toBeCloseTo(5, 4);
+    expect(out[outId] as number).toBeCloseTo(5, 4);
   });
 
-  it("solves a negative driver too", async () => {
+  it("solves a negative driver too, emitting the solution", async () => {
     const { c, inAId, inBId, outId } = await makeAdder();
     c.setGoalSeek({ inputPortId: inAId, outputPortId: outId, target: 4 });
     const out = await c.data({ [inBId]: [10] }); // want 4 → A = -6
     expect(c.goalSeekResult as number).toBeCloseTo(-6, 4);
-    expect(out[outId] as number).toBeCloseTo(4, 4);
+    expect(out[outId] as number).toBeCloseTo(-6, 4);
   });
 
   // Out = B, ignoring the driven A: no value of A can move the output → #CONV!.
