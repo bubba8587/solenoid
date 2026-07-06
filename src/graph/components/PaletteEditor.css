@@ -56,6 +56,21 @@
 }
 /* The node sits inside the group body (like a real member) with a little breathing room. */
 .sol-pal-sample__nodeslot { padding: 10px; }
+/* On the canvas rete's transform is the node's positioning context; the static
+   sample has none, so the membership-corner ::before (inset:0) would anchor to the
+   group body. Make the sample node its own context so the corner lands on the NODE
+   (and the socket below anchors to the content wrapper). */
+.sol-pal-sample .solenoid-node { position: relative; }
+.sol-pal-sample .solenoid-node__content { position: relative; }
+.sol-pal-sample__socket {
+  position: absolute;
+  right: -6px;
+  top: 50%;
+  margin-top: -6px;
+  width: 12px;
+  height: 12px;
+  line-height: 0;
+}
 /* The sample is a static preview — no drag cursors / hover affordances firing. */
 .sol-pal-sample .solenoid-group,
 .sol-pal-sample .solenoid-node,

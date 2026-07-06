@@ -24,13 +24,13 @@ const SLOT_ROLES: { slot: PaletteSlot; label: string }[] = [
   { slot: "pink",      label: "Date" },
   { slot: "sky",       label: "Complex" },
   { slot: "purple",    label: "Logical" },
-  { slot: "violet",    label: "Frame / cube" },
-  { slot: "green",     label: "Lambda / chart" },
+  { slot: "violet",    label: "Frame / Cube" },
+  { slot: "green",     label: "Lambda / Chart" },
   { slot: "amber",     label: "Input" },
   { slot: "blue",      label: "Math" },
   { slot: "teal",      label: "Convert" },
   { slot: "vermilion", label: "Error" },
-  { slot: "gray",      label: "Any / neutral" },
+  { slot: "gray",      label: "Any" },
 ];
 
 type Draft = Record<PaletteSlot, string>;
@@ -141,6 +141,7 @@ function PaletteSample({ draft }: { draft: Draft }) {
   const nodeAccent = themeAccent(draft.blue, mode);
   const nodeAccentDark = darkenAccent(draft.blue);
   const nc = themeAccent(draft.pink, mode);
+  const numberColor = themeAccent(draft.gold, mode); // the sample node's output socket
   return (
     <div className="sol-pal-sample">
       <div
@@ -164,6 +165,14 @@ function PaletteSample({ draft }: { draft: Draft }) {
                 <div className="solenoid-node__body">
                   <div className="solenoid-node__display-value">42</div>
                 </div>
+                {/* One real output socket (Number) at the card edge, colored from the
+                    draft — so the socket palette shows in context too. */}
+                <span className="sol-pal-sample__socket">
+                  <svg viewBox="0 0 12 12" width={12} height={12} style={{ overflow: "visible", display: "block" }} aria-hidden="true">
+                    <circle cx="6" cy="6" r="6" fill={numberColor} />
+                    <circle cx="6" cy="6" r="5" fill="none" stroke="var(--socket-ring)" strokeWidth="2" />
+                  </svg>
+                </span>
               </div>
             </div>
           </div>
