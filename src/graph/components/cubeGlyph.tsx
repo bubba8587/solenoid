@@ -23,18 +23,21 @@ const CUBE_SCALE = 0.056;
 export function cubeTransform(dy = 0): string {
   return `translate(6 ${6 + dy}) scale(${CUBE_SCALE}) translate(-120 -120)`;
 }
-const CUBE_STROKE = "#6346a5";
 // Source-space stroke; bumped down so the bigger scale doesn't thicken it.
 const CUBE_STROKE_WIDTH = 26;
 
 /** The cube's faces: filled silhouette + opaque matching seams + ring. `dy` shifts
  *  it down (the live socket passes 2; the legend leaves it 0). */
 export function CubeGlyphFaces({ fill, dy = 0 }: { fill: string; dy?: number }) {
+  // The seams/ring are a darker shade of the fill (was hardcoded #6346a5, which only
+  // matched the default violet), so the edges track any palette the socket is drawn in.
+  // color-mix (not a JS shade helper) because `fill` is usually a CSS var, not a hex.
+  const stroke = `color-mix(in srgb, ${fill} 72%, #000)`;
   return (
     <g transform={cubeTransform(dy)}>
       <path d={CUBE_FILL_PATH} fill={fill} fillRule="nonzero" />
-      <path d={CUBE_SEAMS_PATH} fill="none" stroke={CUBE_STROKE} strokeWidth={CUBE_STROKE_WIDTH} strokeLinecap="round" strokeLinejoin="round" />
-      <path d={CUBE_RING_PATH} fill="none" stroke={CUBE_STROKE} strokeWidth={CUBE_STROKE_WIDTH} strokeLinecap="butt" strokeLinejoin="round" />
+      <path d={CUBE_SEAMS_PATH} fill="none" stroke={stroke} strokeWidth={CUBE_STROKE_WIDTH} strokeLinecap="round" strokeLinejoin="round" />
+      <path d={CUBE_RING_PATH} fill="none" stroke={stroke} strokeWidth={CUBE_STROKE_WIDTH} strokeLinecap="butt" strokeLinejoin="round" />
     </g>
   );
 }
