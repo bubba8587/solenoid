@@ -1,6 +1,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { CableSwitchNode as CableSwitchNodeType } from "../rete-nodes";
 import { getEditor, getArea, processGraph, bumpConnectionVersion, pushHistory } from "../process";
+import { retypeOutputCables } from "../fcReconcile";
 import { collapseStore } from "../collapseStore";
 import { pushRowRemovalUndo, pushRowAddUndo } from "./ExtensibleInputs";
 import { CollapsedInputPill } from "./CollapsedInputPill";
@@ -30,7 +31,7 @@ function SwitchValue({ value, label }: { value: unknown; label?: string }) {
   if (isFrameValue(value)) return <FrameDisplay frame={value} label={label} />;
   // A display-value box so NodeCard measures it (--out-socket-top → the collapsed
   // input pill + output socket center on it); right-aligned like every value chip.
-  if (isCubeValue(value)) return <div className="solenoid-node__display-value" style={{ display: "flex", justifyContent: "flex-end" }}><CubeChip value={value} label={label} accent="var(--sock-cube)" /></div>;
+  if (isCubeValue(value)) return <div className="solenoid-node__display-value" style={{ display: "flex", justifyContent: "flex-end" }}><CubeChip value={value} label={label} size="sm" accent="var(--sock-cube)" /></div>;
   if (isChartValue(value)) return <div className="solenoid-node__display-value" style={{ display: "flex", justifyContent: "flex-end" }}><ChartChip value={value} label={label} /></div>;
   if (isMermaidValue(value)) return <MermaidView source={value.source} />;
   if (isLambdaValue(value)) return <div className="solenoid-node__display-value">{formatLambda(value)}</div>;
@@ -140,6 +141,14 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
   function setMode(many: boolean) {
     data.multiSelect = many;
     setMulti(many);
+    // Output is a Cube in Many mode, `any` in One — retype the socket and drop any
+    // downstream cable the new type can't feed (retypeOutputCables), then refresh the
+    // node so the output dot's glyph updates.
+    const changed = data.syncOutputType();
+    const ed = getEditor();
+    const area = getArea();
+    if (changed && ed && area) void retypeOutputCables(ed, area, data.id, "out");
+    void area?.update("node", data.id);
     void processGraph();
   }
   function toggleMulti(key: string) {

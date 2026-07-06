@@ -39,12 +39,13 @@
 .sol-switch__title::placeholder { color: var(--text-muted); }
 .sol-switch__title:focus { outline: none; border-color: var(--node-accent, var(--accent)); }
 
-/* Multi-select include checkbox — same 20px footprint as the route button. */
+/* Multi-select include checkbox — a normal-sized box, roughly aligned with the
+   20px route-button slot it replaces. */
 .sol-switch__check {
   flex: 0 0 auto;
-  width: 20px;
-  height: 18px;
-  margin: 0;
+  width: 15px;
+  height: 15px;
+  margin: 0 3px 0 1px;
   accent-color: var(--node-accent, var(--accent));
   cursor: pointer;
 }
