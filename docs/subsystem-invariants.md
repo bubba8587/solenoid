@@ -123,6 +123,14 @@ save. Settled grammar rules:
 - **Visual state (position, size, collapsed, etc.) lives in a separate trailing
   block/sidecar, not inline in the per-node lines** — keeps the readable lines looking
   like code (type, name, wiring), not a scene graph.
+- **The sidecar ALSO carries every non-node top-level SavedGraph field**: `positions`,
+  `standoffs`, `pins`, `comments`, `seedId`, `palette`, `reportPalette`, `meta` (doc
+  author/tags, F-2), `packs` (+ `v`). A NEW top-level field MUST be added to BOTH
+  `writeTextForm` and `readTextForm` — `serializeGraph` round-trips through the text form,
+  so anything the sidecar omits is **silently dropped on every save** (the per-doc autosave
+  goes through `serializeGraph` via `captureCurrent`). `comments` + `reportPalette` were lost
+  this way from their ship date until 2026-07-06 — a real data-loss bug; don't reintroduce the
+  gap. Node references inside the sidecar (pins/standoffs/comments `nodeId`) are name-addressed.
 - The JSON save is *generated* from the text form, not hand-maintained in parallel —
   contain the two-formats-to-sync risk by making JSON strictly derived.
 - Round-trip losslessness (text → graph → text is idempotent) is machine-checked the
