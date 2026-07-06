@@ -134,10 +134,6 @@ is archived).
 
 - [ ] **More domain packs** — post-v1 polish (framework + Geometry worked example
   done). Don't build unprompted.
-- [ ] **Input Switcher upgrade** (author 2026-07-01): editable slot titles (reads
-  as named choices) + a multi-select mode collecting selected values into a Cube.
-  (Its rich-value rendering + collapsed pill were fixed 2026-07-06; the titles +
-  multi-select-to-Cube upgrade is the open part.)
 - [ ] **Pack variant-switch reconciles the socket set** — a simple pack's variant
   dropdown must add/remove sockets like Cast/read-as do (retype + reconcile), not
   leave stale ones.

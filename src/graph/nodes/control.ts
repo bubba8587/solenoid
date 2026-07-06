@@ -1,31 +1,43 @@
 import { ClassicPreset } from "rete";
 import { numberSocket, anySocket } from "../sockets";
 import { frameIn, frameOut, anyOut, dateOut, numOut } from "./shared";
-import { isFrameValue, getColumn, frameRowCount, type FrameValue, type FrameColType } from "../frame";
+import { isFrameValue, getColumn, frameRowCount, cubeFromColumns, type FrameValue, type FrameColType, type CubeCell } from "../frame";
 import { jsDateToSerial } from "./date";
 
 export type SlicerCell = number | string;
 
 // ─── Cable Switch ───────────────────────────────────────────────────────────────
-// A control multiplexer (not the logical SWITCH): several `any` cable inputs, a
-// selector that picks which one is live, one `any` output passing it through.
-// Reuses the ExtensibleInputs add/remove machinery (addValueInput / nextInputId)
-// so the input set round-trips through copy/paste + persistence (valueKeys).
+// A control multiplexer (not the logical SWITCH): several `any` cable inputs, each
+// with an editable title so they read as NAMED choices. Two modes:
+//   • single (default): a selector picks ONE live input; the output passes it through.
+//   • multi: check several inputs; the output is a Cube collecting the chosen values
+//     — a `name` column (the titles) + a `value` column (each wired value, whole).
+// Reuses the ExtensibleInputs add/remove machinery (addValueInput / nextInputId) so
+// the input set round-trips through copy/paste + persistence (valueKeys).
 
 export class CableSwitchNode extends ClassicPreset.Node {
   label: string;
   /** Index (into the ordered inputs) of the live input. (Not `selected` — that's
    *  rete's node-selection flag.) */
   activeIndex: number;
+  /** Per-input title (key → name), so a slot reads as a named choice. */
+  titles: Record<string, string>;
+  /** Collect several inputs into a Cube instead of routing one. */
+  multiSelect: boolean;
+  /** In multi mode, the checked input keys. */
+  selectedKeys: string[];
   cachedValue: unknown = null;
   nextInputId = 0;
   readonly valueSocket = anySocket;
   width = 200; height = 220;
 
-  constructor(init?: { label?: string; activeIndex?: number; valueKeys?: string[] }) {
+  constructor(init?: { label?: string; activeIndex?: number; valueKeys?: string[]; titles?: Record<string, string>; multiSelect?: boolean; selectedKeys?: string[] }) {
     super("CableSwitch");
     this.label = init?.label ?? "Input Switch";
     this.activeIndex = init?.activeIndex ?? 0;
+    this.titles = { ...(init?.titles ?? {}) };
+    this.multiSelect = init?.multiSelect ?? false;
+    this.selectedKeys = [...(init?.selectedKeys ?? [])];
     this.addOutput("out", anyOut("Out"));
     if (init?.valueKeys?.length) {
       for (const k of init.valueKeys) this.addInputWithKey(k);
@@ -48,10 +60,29 @@ export class CableSwitchNode extends ClassicPreset.Node {
 
   removeValueInput(key: string): void {
     this.removeInput(key);
+    delete this.titles[key];
+    this.selectedKeys = this.selectedKeys.filter((k) => k !== key);
+  }
+
+  /** A slot's display name: its title, else a 1-based positional fallback. */
+  titleFor(key: string): string {
+    const t = (this.titles[key] ?? "").trim();
+    return t || `Input ${Object.keys(this.inputs).indexOf(key) + 1}`;
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {
     const keys = Object.keys(this.inputs);
+    if (this.multiSelect) {
+      // Collect the checked inputs (in slot order) into a Cube: name + whole value.
+      const chosen = keys.filter((k) => this.selectedKeys.includes(k));
+      if (chosen.length === 0) { this.cachedValue = null; return { out: null }; }
+      const cube = cubeFromColumns([
+        { name: "name", cells: chosen.map((k) => this.titleFor(k)) },
+        { name: "value", cells: chosen.map((k) => (inputs[k]?.[0] ?? null) as CubeCell) },
+      ]);
+      this.cachedValue = cube;
+      return { out: cube };
+    }
     const idx = keys.length ? Math.max(0, Math.min(this.activeIndex, keys.length - 1)) : 0;
     const key = keys[idx];
     const v = key ? (inputs[key]?.[0] ?? null) : null;
