@@ -13,11 +13,13 @@ describe("built-in palettes", () => {
   });
 
   // Author's rule (2026-06-21): slots may share a colour ONLY where colourblindness
-  // forces it (Colorblind-safe maps 12 slots onto a smaller proven CVD set). Every
-  // other built-in must give all 12 slots visibly distinct hexes.
+  // forces it (Colorblind-safe maps 12 slots onto a smaller proven CVD set) or where
+  // a palette is DELIBERATELY monochrome (Equinox — all one gray, type read by socket
+  // shape). Every other built-in must give all 12 slots visibly distinct hexes.
+  const SHARED_COLOUR_OK = new Set(["Colorblind-safe", "Equinox"]);
   it("non-Colorblind palettes have 12 distinct colours", () => {
     for (const name of PALETTE_NAMES) {
-      if (name === "Colorblind-safe") continue;
+      if (SHARED_COLOUR_OK.has(name)) continue;
       const hexes = COLOR_PALETTE.map((s) => BUILTIN_PALETTES[name][s].toLowerCase());
       expect(new Set(hexes).size, `${name} has duplicate colours`).toBe(hexes.length);
     }
