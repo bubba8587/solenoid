@@ -184,7 +184,7 @@ function SimulationEditor({ node }: { node: CompositeNodeType }) {
 // Goal-seek: drive one exposed input until a chosen output hits a target (Excel's
 // Goal Seek). Reads "Set <output> To <value> By changing <input>"; the solved driver
 // value (or #CONV!) shows below. The solve runs in composite.ts runGoalSeek.
-function GoalSeekEditor({ node }: { node: CompositeNodeType }) {
+function GoalSeekEditor({ node, emit }: { node: CompositeNodeType; emit: NodeProps<CompositeNodeType>["emit"] }) {
   const exposed = node.inputPorts.filter((p) => p.exposure === "exposed");
   const outputs = node.outputPorts;
   const recompute = () => { void processGraph(node.id); };
@@ -221,16 +221,21 @@ function GoalSeekEditor({ node }: { node: CompositeNodeType }) {
           {exposed.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
         </select>
       </div>
-      {result != null && (
+      {result != null && node.outputs[outputId] && (
         // The solved driver value is the HERO of a goal-seek composite (the whole
-        // point — the achieved output just equals the target you set).
-        <div style={{ marginTop: 4 }}>
-          <span className="solenoid-node__io-label" style={{ display: "block", marginBottom: 3 }}>
+        // point — the achieved output just equals the target you set). It carries the
+        // target output port's socket, so the composite's OUTPUT is its solution:
+        // the Solution value is wireable downstream (composite.ts runGoalSeek emits
+        // the solved driver on this port).
+        <div className="solenoid-composite__output" style={{ marginTop: 4 }}>
+          <span className="solenoid-node__io-label">
             Solution — {exposed.find((p) => p.id === inputId)?.label ?? "input"}
           </span>
-          {isSolError(result)
-            ? <div className="solenoid-node__display-value" style={{ color: "var(--sol-error)" }}>{result.code}</div>
-            : <ValueDisplay value={result} />}
+          <MeasuredSocketRow side="output" socketKey={outputId} nodeId={node.id} emit={emit} payload={node.outputs[outputId]!.socket}>
+            {isSolError(result)
+              ? <div className="solenoid-node__display-value" style={{ color: "var(--sol-error)" }}>{result.code}</div>
+              : <ValueDisplay value={result} />}
+          </MeasuredSocketRow>
         </div>
       )}
     </div>
@@ -284,7 +289,7 @@ export function CompositeComponent({ data: node, emit }: NodeProps<CompositeNode
       {runMode === "scenarios" && <ScenarioTable node={node} />}
       {runMode === "data-table" && <DataTableEditor node={node} />}
       {runMode === "simulation" && <SimulationEditor node={node} />}
-      {runMode === "goal-seek" && <GoalSeekEditor node={node} />}
+      {runMode === "goal-seek" && <GoalSeekEditor node={node} emit={emit} />}
       {/* Goal-seek's Solution is the sole hero — the achieved output just equals
           the target you set, so its value box is redundant and suppressed here
           (the GoalSeekEditor above owns the one hero box). */}
