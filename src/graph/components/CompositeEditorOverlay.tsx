@@ -6,7 +6,9 @@ import { ConnectionPlugin, ClassicFlow, getSourceTarget } from "rete-connection-
 import { ReactPlugin, Presets as ReactPresets } from "rete-react-plugin";
 import { HistoryPlugin, Presets as HistoryPresets } from "rete-history-plugin";
 import { MinimapPlugin } from "rete-minimap-plugin";
+import type { AutoArrangePlugin } from "rete-auto-arrange-plugin";
 import { solenoidMinimapPreset, collapsedAwareNodesRect } from "./Minimap";
+import { settingsStore } from "../settingsStore";
 import type { Schemes, AreaExtra, SolenoidNode } from "../schemes";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "../rete-nodes";
 import { compositeEditorStore, compositePassStore } from "../compositeEditorStore";
@@ -61,6 +63,9 @@ type DrillMount = {
   selector: ReturnType<typeof AreaExtensions.selector>;
   selectable: ReturnType<typeof AreaExtensions.selectableNodes>;
   history: HistoryPlugin<Schemes>;
+  // Lazily created on the first Tidy (T) — the ELK plugin is heavy, dynamically
+  // imported, and cached on the mount so it's built once per composite.
+  arrange: AutoArrangePlugin<Schemes> | null;
 };
 
 type MountHolder = { __drillMount?: DrillMount };
@@ -175,7 +180,7 @@ async function getDrillMount(composite: CompositeNode): Promise<DrillMount> {
     return ctx;
   });
 
-  const mount: DrillMount = { container, area, selector, selectable, history };
+  const mount: DrillMount = { container, area, selector, selectable, history, arrange: null };
   holder.__drillMount = mount;
   return mount;
 }
@@ -335,6 +340,11 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
       if (e.code === "KeyA") {
         e.preventDefault();
         setMenu({ screenX: cursorRef.current.x, screenY: cursorRef.current.y });
+      }
+      // T — tidy / auto-arrange the subgraph (matches the canvas T shortcut).
+      if (e.code === "KeyT") {
+        e.preventDefault();
+        void tidyDrill();
       }
       // Arrow keys nudge the selected nodes (Shift = larger step), like the canvas.
       if (e.key === "ArrowLeft" || e.key === "ArrowRight" || e.key === "ArrowUp" || e.key === "ArrowDown") {
@@ -535,6 +545,36 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
       await editor.removeConnection(c.id);
     }
     await editor.removeNode(nodeId);
+    void processGraph(recomputeTarget());
+    scheduleAutosave();
+  }
+
+  /** Tidy (T) — auto-arrange the subgraph with the same symmetric ELK port preset
+   *  the main canvas uses (node centres / top edges align per the tidyAlign
+   *  setting). A BASIC layout: composites are small and rarely hold groups or
+   *  standoffs, so the main canvas's cluster / size-pin machinery isn't needed. The
+   *  ELK plugin is heavy — dynamically imported + cached on the mount on first use. */
+  async function tidyDrill() {
+    const mount = mountRef.current;
+    if (!mount) return;
+    if (!mount.arrange) {
+      const { AutoArrangePlugin } = await import("rete-auto-arrange-plugin");
+      const plugin = new AutoArrangePlugin<Schemes>();
+      plugin.addPreset(() => ({
+        port(data: { side: "input" | "output"; index: number; ports: number; width: number; height: number }) {
+          const spacing = 16;
+          const y = settingsStore.get("tidyAlign") === "top"
+            ? 20 + data.index * spacing
+            : data.height / 2 + (data.index - (data.ports - 1) / 2) * spacing;
+          return { x: 0, y, width: 15, height: 15, side: data.side === "output" ? "EAST" : "WEST" } as const;
+        },
+      }));
+      mount.area.use(plugin);
+      mount.arrange = plugin;
+    }
+    await mount.arrange.layout();
+    const nodes = comp.internalEditor.getNodes();
+    if (nodes.length > 0) await AreaExtensions.zoomAt(mount.area, nodes);
     void processGraph(recomputeTarget());
     scheduleAutosave();
   }
