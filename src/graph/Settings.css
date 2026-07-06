@@ -208,6 +208,24 @@
 
 /* Dropdown select (e.g. the palette switcher — list may grow). The native arrow is
    hidden (appearance:none) and replaced with a Lucide chevron via the wrap. */
+.solenoid-settings__palette-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.solenoid-settings__palette-edit {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 7px;
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.solenoid-settings__palette-edit:hover { border-color: var(--accent); color: var(--accent); }
+
 .solenoid-settings__select-wrap {
   position: relative;
   display: inline-flex;

@@ -27,22 +27,26 @@ and the report/export palette were being LOST across a save / doc-switch. Added 
 text-form sidecar (comments name-address their `nodeId` like pins); `docMeta.test.ts` locks
 the round-trip.
 
-**F-1 custom palette editor (`palette.ts` + `components/PaletteEditor.tsx`).** The app
-palette dropdown gains **"Custom…"** → a user-authored full 12-slot map.
+**F-1 custom palette editor (`palette.ts` + `components/PaletteEditor.tsx`).** A user-authored
+full 12-slot palette, selectable as the app base ("Custom" in the dropdown), edited in a
+dedicated modal.
 - Model: `_appBase` is now `PaletteChoice = PaletteName | "Custom"`; `_customMap` persists
   separately (`solenoid.palette.custom`), seeds from Default. `recompute`/`recomputeReport`
-  route through `baseMapFor` (Custom → the user map). New store API: `activeBase()`/`setActiveBase`
-  accept "Custom"; `customMap()`, `setCustomSlot(slot,hex)` (live retint when Custom active + no
-  doc pin), `loadCustomTemplate(name)` (seed from a built-in). Doc/report palettes stay
-  built-in-name-only (a doc pin still wins over app Custom). `initPalette` loads both keys.
-- UI: `PaletteEditor` shows when Custom is active — 12 role-labelled native color wells
-  (Number/Text/Date/… not the opaque slot ids), Load-template buttons (Default/Muted/CVD/
-  Solarized), and a **live sample** (a node in a Group + a Lorem Note, retinting live; the
-  Group/Note slot are pickable via SwatchGrid). Only the 12 base slots edit — array/matrix
-  stay derived siblings (DESIGN.md Sibling Rule). Slot edit retints via CSS vars (onChange)
-  + rebuilds the group-dot cache on blur (not per drag-tick). `palette.test.ts` covers it.
-  EYEBALL: Settings → Appearance → Color palette → "Custom…"; edit a well, watch the canvas
-  retint; Load a template to start from one; the sample previews in-context.
+  route through `baseMapFor` (Custom → the user map). Store API: `activeBase()`/`setActiveBase`
+  accept "Custom"; `customMap()`, `loadCustomTemplate(name)`, **`setCustomMap(map)`** (commit a
+  whole map at once — the editor's Save), `paletteEditorPanel` (modal open flag). Doc/report
+  palettes stay built-in-name-only (a doc pin still wins over app Custom). `initPalette` loads both.
+- UI (`PaletteEditorModal`, mounted at App level, opened from Settings' **"Edit custom…"** button):
+  a real MODAL you enter/exit + Save/Cancel — NOT the old always-inline editor. **Edits live in a
+  local DRAFT** that previews ONLY in the sample; the whole app retints ONCE on Save (`setCustomMap`
+  + `setActiveBase("Custom")`), never live on every color-drag tick (the reported lag — the old
+  onChange→setCustomSlot retinted the whole app per tick). 12 role-labelled color wells
+  (Number/Text/Date/…), Load-template buttons, and a sample built from the **REAL** node/group/note
+  chrome (`.solenoid-node`/`--grouped` in a `.solenoid-group`, a `.solenoid-note`) colored from the
+  draft via the same inline vars the real components set — not a hand-drawn mockup. Only the 12 base
+  slots edit; array/matrix stay derived siblings (DESIGN.md Sibling Rule). `palette.test.ts` covers it.
+  EYEBALL: Settings → Appearance → **Edit custom…** → edit a well (canvas does NOT retint mid-edit,
+  only the sample) → **Save** applies to the app; Cancel discards. Load a template to start from one.
 
 **C-2 Input Switcher upgrade (`CableSwitchNode`).** Two features:
 - **Editable per-slot titles** — each input row has a title field (draft-commit via
