@@ -4,18 +4,31 @@ import type { HistoryPlugin } from "rete-history-plugin";
 import type { Schemes, AreaExtra } from "./schemes";
 import { getEditor, getArea, getHistoryPlugin } from "./process";
 
-// ─── Active graph (the ACTION layer's target) ─────────────────────────────────
+// ─── Active graph (the ACTION layer's target) — THE canvas-substitution seam ────
 // The graph the app CHROME acts on — keyboard shortcuts, copy/paste, right-click
-// menus, the command palette, tidy, selection. It defaults to the MAIN graph; while
-// a Composite drill-in is open its CURRENT level registers here, so those actions
-// operate on the subgraph and the drill-in feels first-class.
+// menus, the command palette, tidy, selection, zoom/fit/lock, minimap. It defaults
+// to the MAIN graph; while a Composite drill-in is open its CURRENT level registers
+// here, so those actions operate on the subgraph and the drill-in feels first-class.
 //
-// CRITICAL: this is deliberately NOT `getEditor()/getArea()`. Those stay MAIN-only
-// forever, because persistence/autosave/serialize (`buildRawSavedGraph`) read them —
-// routing them through the override would autosave the subgraph OVER the document.
-// Only the NEW getActive* accessors below resolve through the override. Data/compute
-// keeps calling `getEditor()/getArea()` (the recompute retarget through
-// `findCompositeOwner` already invalidates the owning composite card).
+// EXTENSION POINT — this is the general seam for ANY surface that "steals the
+// canvas" (a composite drill-in today; a future focus/scratch surface tomorrow):
+//   1. On mount, register your surface:   setActiveGraph({ editor, area, history }).
+//   2. On unmount, clear it:              setActiveGraph(null).
+//   3. Read the active surface in chrome: getActive*/getOwningEditor (NOT getEditor).
+// The chrome then follows your surface with no further wiring. NESTED surfaces work
+// without a stack because the model is REPLACE-not-pile-up: drilling deeper unmounts
+// the current level (→ its cleanup) and mounts the deeper one (→ it re-registers);
+// the breadcrumb STACK lives in compositeEditorStore, and this holds only "the
+// current surface". If a future feature ever stacks two live surfaces at once, THAT
+// is when to grow `_override` into a push/pop stack — not before.
+//
+// CRITICAL INVARIANT: this is deliberately NOT `getEditor()/getArea()`. Those stay
+// MAIN-only forever, because persistence/autosave/serialize (`buildRawSavedGraph`)
+// read them — routing them through the override would autosave the substituted
+// surface OVER the document. Only the getActive* accessors below resolve through the
+// override. Data/compute keeps calling `getEditor()/getArea()` (the recompute
+// retarget through `findCompositeOwner` already invalidates the owning card).
+// Locked by activeGraph.test.ts.
 
 export interface ActiveGraph {
   editor: NodeEditor<Schemes>;
