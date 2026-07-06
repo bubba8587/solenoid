@@ -15,13 +15,20 @@ is archived).
 
 ## Needs an author decision / author-present session
 
-- [ ] **D2 — reroute the real toolbar / mobile bar to the ACTIVE subgraph** —
-  APPROVED 2026-07-05, as its own AUTHOR-PRESENT session (not the autonomous
-  plan). Cross-cutting: the op singletons in `process.ts`
-  bind to the MAIN editor/area; Canvas keydown stands down during drill-in; no
-  drill-in Tidy. Proposed architecture (an "active graph context" bundle the overlay
-  swaps on open/close) is written up in the archived dev-note "Composite drill-in —
-  toolbar reroute is its own session". Wants live eyeballing.
+- [ ] **First-class composite drill-in — remaining gaps** (the "active graph context"
+  arc; author 2026-07-06 said proceed on this method). BUILT so far: `activeGraph.ts`
+  resolver (`getActive*` / `getOwningEditor`, `getEditor()` stays MAIN for autosave
+  safety — locked by `activeGraph.test.ts`); drill-in copy/paste, A-to-add, arrow
+  nudge, right-click node menu (Duplicate/Delete/Edit-contents); every render-time
+  cross-node resolver + in-node socket/row action reroutes to the owning/active graph
+  (labels, FC units/formats, type-default, Cast/Chart/Alert/TVM/Extensible/Frame
+  retype). STILL OPEN: (a) drill-in **render parity** — minimap, grid-snap, and Tidy/
+  auto-arrange don't run on the drill-in stack; (b) factor Canvas's ~900-line keydown
+  (G group, T tidy, I isolate, etc.) onto the active graph — only A/copy/paste/delete/
+  nudge are wired; (c) **history routing** — row/socket edits + label rename push to
+  the MAIN history, so the drill-in's Ctrl+Z doesn't undo them; (d) lasso/box-select
+  parity. (e) **D2 proper** — reroute the real top toolbar / mobile bar to the active
+  subgraph (author-present, wants live eyeballing).
 - [ ] **D4 — conditional formatting for tables** (#41; deferred again 2026-07-05).
   Needs its own design pass: must clear Excel's version by a lot (author's explicit
   dislike), Display-node-only, must not step on FC format/units territory.
