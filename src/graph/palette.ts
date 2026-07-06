@@ -110,7 +110,7 @@ export function darkenAccent(hex: string): string {
 // pull date-pink redward so it no longer reads like boolean-purple.
 export const PALETTE = {
   gray:      "#8a8f98", // --sock-any
-  amber:     "#d9742b", // --sock-table (numeric matrix) + input kind — nudged more orange
+  amber:     "#d9742b", // (input kind only — no socket family) — nudged more orange
   blue:      "#3173e0", // (math kind) — nudged deeper (darker / more saturated)
   teal:      "#4fc89a", // (convert kind) — pushed into green (jade), away from sky blue
   purple:    "#c05dd1", // (logic kind) — nudged slightly redder, stays violet-purple
@@ -145,8 +145,9 @@ export const COLOR_PALETTE: PaletteSlot[] = [
 //     the old hand-tuned arrays closely for most families (string's was a deliberate
 //     extra-dark olive; it comes out a touch brighter now — accepted).
 //   - matrix (a 2-D grid): a punchier, slightly hue-shifted sibling — +6° hue, L ×0.86.
-// number's MATRIX is the Table socket, which is its own scalar (amber), not a
-// derived shade of number — hence --sock-table is a scalar mapping.
+// number's MATRIX is the Table socket — a matrix-shade of number (gold), like
+// every other 2-D socket derives from its scalar; the grid glyph (not colour)
+// tells it apart from numlist.
 const ARRAY_DARKEN = 0.8;
 export function socketArrayShade(hex: string): string {
   const t = parseHex(hex);
@@ -176,7 +177,7 @@ export const SOCKET_VARS: { var: string; slot: PaletteSlot; kind: SocketVarKind 
   { var: "--sock-logical",     slot: "purple",    kind: "scalar" }, // boolean — matches the logic node-kind
   { var: "--sock-logicallist", slot: "purple",    kind: "array" },
   { var: "--sock-logicaltable",slot: "purple",    kind: "matrix" },
-  { var: "--sock-table",       slot: "amber",     kind: "scalar" }, // numeric matrix — moved off vermilion (freeing it for the semantic error red)
+  { var: "--sock-table",       slot: "gold",      kind: "matrix" }, // numeric matrix — a matrix shade of Number (gold), like every other 2-D socket derives from its scalar (the grid glyph distinguishes it from numlist)
   { var: "--sock-frame",       slot: "violet",    kind: "scalar" },
   { var: "--sock-cube",        slot: "violet",    kind: "scalar" }, // recursive container — shares the frame's violet (distinguished by its hexagon glyph, not colour)
   { var: "--sock-lambda",      slot: "green",     kind: "scalar" },

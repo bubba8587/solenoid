@@ -211,7 +211,7 @@ export const NODE_KIND_SLOTS: Record<NodeKind, PaletteSlot> = {
   string:  "lime",      // text / string nodes (matches string socket)
   date:    "pink",      // date / time nodes (matches date socket)
   complex: "sky",       // complex number nodes (matches complex socket)
-  table:   "vermilion", // 2D matrix / table nodes (matches table socket)
+  table:   "gold",      // 2D matrix / table nodes — numeric family (the table socket is a gold matrix-shade)
   frame:   "violet",    // frame / data-table nodes (matches frame socket)
   format:  "gold",      // format controller (amber family)
 };
