@@ -198,7 +198,7 @@ function isPaletteSlot(s: string): s is PaletteSlot {
 //   - Colorblind-safe: the Okabe–Ito CVD-safe set mapped onto the slots (see map comment).
 //   - Solarized: Ethan Schoonover's Solarized accent set mapped onto the slots — a warm,
 //     vintage character distinct from Muted's desaturation (see map comment).
-export type PaletteName = "Default" | "Muted" | "Colorblind-safe" | "Solarized";
+export type PaletteName = "Default" | "Muted" | "Colorblind-safe" | "Solarized" | "Equinox";
 
 // Default hues at ~0.62 of their saturation (an earlier pass at ~0.5 washed out),
 // lightness nudged slightly toward mid so nothing glares or muddies. Calmer than
@@ -277,11 +277,20 @@ const SOLARIZED: Record<PaletteSlot, string> = {
   pink:      SOL.magenta, // date
 };
 
+// Equinox: every slot the SAME neutral gray — a fully monochrome canvas where type
+// is told apart by socket SHAPE (circle/square/grid/hexagon) alone, not colour. Note
+// this also neutralizes the error red (vermilion drives --sol-error), by design.
+const EQUINOX_GRAY = "#8a8f98"; // the app's neutral (--sock-any) gray
+const EQUINOX: Record<PaletteSlot, string> = Object.fromEntries(
+  COLOR_PALETTE.map((slot) => [slot, EQUINOX_GRAY]),
+) as Record<PaletteSlot, string>;
+
 export const BUILTIN_PALETTES: Record<PaletteName, Record<PaletteSlot, string>> = {
   "Default": { ...PALETTE },
   "Muted": MUTED,
   "Colorblind-safe": COLORBLIND,
   "Solarized": SOLARIZED,
+  "Equinox": EQUINOX,
 };
 
 export const PALETTE_NAMES = Object.keys(BUILTIN_PALETTES) as PaletteName[];
