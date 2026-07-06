@@ -56,6 +56,19 @@ Local dev server (HMR); commit freely, no pushes. Every commit tsc + full vitest
   normalize on load (area→line, bar→column).
 - Small: socket legend clears the footer when the minimap hides; collapsed-group edge sockets
   align with their readout rows (the summary's flex `gap` wasn't in `pillY`).
+- **Late stretch (colour system + polish):** `prefers-reduced-motion` snaps the load reveal
+  (reuses the doc-switch instant path); dropped the now-dead `nodeSizeStore` dragging flag.
+  **Colour consolidation:** the Table (numeric-matrix) socket moved off `vermilion` → `amber`
+  (distinct orange from gold/Number in default/solarized; coincides only in the colourblind
+  set — no free CVD hue), freeing `vermilion` to be the semantic ERROR red — `appTheme` now
+  writes `--sol-error` from the `vermilion` slot so a custom palette retints every error
+  surface (default value unchanged). Reordered `COLOR_PALETTE` (the SWATCH PICKER only — chart
+  series use a separate `SERIES_SLOTS`): gold-led, gold/gray + green/red column pairs, rest
+  alternating. **Sparkline win/loss colours by sign** (up = palette green, down = the palette
+  error red) — resolved to hex (recharts fills are SVG attrs), reaching the node AND the expand
+  popup; still plain in a Report/Display embed (would need `winloss` as a first-class op — a
+  deliberate small follow-up, author OK). Minified sparkline made slightly rectangular + tighter
+  vertical padding so the spark fills its height and clears the edge sockets.
 - OPEN (parked): **#7 Conduits sometimes unselectable/unmovable except via the Navigator** —
   intermittent, no repro yet; author suspects it's tied to getting group membership (likely a
   z-order / hit-area or membership-sync issue). **FC advanced text options** (alignment /
