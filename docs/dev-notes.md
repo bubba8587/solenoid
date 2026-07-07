@@ -6,7 +6,15 @@ swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
 ### SESSION DIGEST (2026-07-07 — composite drill-in: collapsible controls + mobile pass)
-Vercel preview of `develop` (mobile session). tsc + full vitest (2280) green.
+Vercel preview of `develop` (mobile session). tsc + full vitest (2281→2282) green.
+- **Drill-in undo history routing (backlog gap c, DONE):** node components push undoable
+  edits via the global `pushHistory` (extensible rows, cable-switch, group resize), which
+  Canvas had hard-wired to the MAIN history plugin — so an edit made INSIDE a drill-in was
+  recorded on the main stack and the drill-in's own undo (Ctrl+Z / the mobile bar, which
+  routes there) couldn't reverse it. Rerouted the registration to `getActiveHistory()?.add`
+  (the drill-in's `mount.history` while a subgraph is active, main otherwise). The undo/redo
+  closures already refreshed via `getActiveArea()`, so this one line completes it.
+  `historyRouting.test.ts` locks the contract.
 - **Run-controls panel is collapsible** (`CompositeEditorOverlay`): a head bar showing the
   current run mode + a chevron folds the body (`CompositeRunControls`) away; starts COLLAPSED
   on mobile (`IS_MOBILE`) where a 240px open panel blanketed the small canvas. New
