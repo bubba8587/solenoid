@@ -247,10 +247,37 @@ describe("lattice invariants — TYPE separation + DIMENSIONAL flow (full sweep)
   });
 
   it("`any` bridges everything, both directions", () => {
-    for (const t of [...allTypes, "anytable", "frame", "cube", "lambda", "chart"] as SocketDataType[]) {
+    for (const t of [...allTypes, "anytable", "anylist", "frame", "cube", "lambda", "chart"] as SocketDataType[]) {
       expect(canConnect(t, "any")).toBe(true);
       expect(canConnect("any", t)).toBe(true);
     }
+  });
+
+  // `anylist` is the rank-1 element-agnostic wildcard — the 1-D sibling of `anytable`.
+  // Same shape as the anytable invariants, one rank down: any scalar/list/combo widens
+  // IN; the output stays 1-D (drops into a concrete list/combo, widens up into the 2-D
+  // containers) and never narrows to a scalar or fills an element-specific matrix.
+  it("anylist INPUT: any rank≤1 value (any family) widens in; a matrix / 2-D does not", () => {
+    for (const f of fams) {
+      expect(canConnect(FAM[f].scalar, "anylist")).toBe(true);
+      expect(canConnect(FAM[f].list, "anylist")).toBe(true);
+      expect(canConnect(FAM[f].combo, "anylist")).toBe(true);
+      expect(canConnect(FAM[f].matrix, "anylist")).toBe(false); // narrowing 2-D → 1-D
+    }
+    expect(canConnect("anytable", "anylist")).toBe(false);
+    expect(canConnect("anylist", "anylist")).toBe(true);        // identity
+  });
+
+  it("anylist OUTPUT: → any concrete list/combo + widens up (anytable/frame/cube), never a scalar or element-specific matrix", () => {
+    for (const f of fams) {
+      expect(canConnect("anylist", FAM[f].list)).toBe(true);
+      expect(canConnect("anylist", FAM[f].combo)).toBe(true);
+      expect(canConnect("anylist", FAM[f].scalar)).toBe(false); // no narrowing to a scalar
+      expect(canConnect("anylist", FAM[f].matrix)).toBe(false); // element-specific 2-D, not a wildcard
+    }
+    expect(canConnect("anylist", "anytable")).toBe(true);
+    expect(canConnect("anylist", "frame")).toBe(true);
+    expect(canConnect("anylist", "cube")).toBe(true);
   });
 
   // The OBJECT socket family (`lambda`, `chart`) sits OUTSIDE the element×dimension

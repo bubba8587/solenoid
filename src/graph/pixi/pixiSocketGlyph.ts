@@ -5,7 +5,7 @@
 
 export type GlyphKind = "circle" | "square" | "split" | "grid" | "hex";
 
-const LIST_TYPES = new Set(["list", "strlist", "datelist", "complexlist", "logicallist"]);
+const LIST_TYPES = new Set(["list", "strlist", "datelist", "complexlist", "logicallist", "anylist"]);
 const TABLE_TYPES = new Set(["table", "frame", "strtable", "datetable", "complextable", "logicaltable", "anytable"]);
 
 /** Combo (scalar|list) types → their [scalar, list] dataType pair, so the caller

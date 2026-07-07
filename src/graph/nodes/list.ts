@@ -2,7 +2,7 @@ import { ClassicPreset } from "rete";
 import { numListSocket, strListSocket, dateListSocket, logicalListSocket, type SolenoidSocket } from "../sockets";
 import { parseDateToSerial } from "./date";
 import { getRecalcGen } from "../process";
-import { listIn, listOut, numIn, numOut, anyIn, anyOut, tableIn, tableOut, logicalOut } from "./shared";
+import { listIn, listOut, numIn, numOut, anyIn, anyOut, tableIn, tableOut, logicalOut, anyListIn, anyListOut } from "./shared";
 import { compareOp } from "./logic";
 import type { ComparisonOp } from "./logic";
 import { solError, isSolError, type SolError } from "../errorValue";
@@ -535,12 +535,12 @@ export class SetOpNode extends ClassicPreset.Node {
     this.label = init?.label ?? "Set";
     // Default to the most-asked op (the "in X but not Y" subreddit staple).
     this.op = init?.op ?? "difference";
-    this.addInput("a", listIn("A"));
-    this.addInput("b", listIn("B"));
-    this.addOutput("result", listOut("Result"));
+    this.addInput("a", anyListIn("A"));
+    this.addInput("b", anyListIn("B"));
+    this.addOutput("result", anyListOut("Result"));
   }
 
-  data(inputs: { a?: number[][]; b?: number[][] }) {
+  data(inputs: { a?: unknown[][]; b?: unknown[][] }) {
     const a = (inputs.a?.[0] ?? []) as unknown[];
     const b = (inputs.b?.[0] ?? []) as unknown[];
 
@@ -611,12 +611,12 @@ export class SetRelationNode extends ClassicPreset.Node {
     super("SetRelation");
     this.label = init?.label ?? "Set relation";
     this.op = init?.op ?? "equal";
-    this.addInput("a", listIn("A"));
-    this.addInput("b", listIn("B"));
+    this.addInput("a", anyListIn("A"));
+    this.addInput("b", anyListIn("B"));
     this.addOutput("result", logicalOut("Result"));
   }
 
-  data(inputs: { a?: number[][]; b?: number[][] }): { result: Tri } {
+  data(inputs: { a?: unknown[][]; b?: unknown[][] }): { result: Tri } {
     const aRaw = inputs.a?.[0];
     const bRaw = inputs.b?.[0];
     // Nothing wired on either side — no sets to compare, so the relation is unknown.

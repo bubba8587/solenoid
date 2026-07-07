@@ -17,7 +17,7 @@ const TYPE_LABEL: Record<SocketDataType, string> = {
   complexcombo: "Complex/List", complextable: "Complex matrix",
   logical: "Boolean", logicallist: "Boolean list", logicalcombo: "Boolean/List", logicaltable: "Boolean matrix",
   table: "Matrix", strtable: "Text matrix",
-  datetable: "Date matrix", anytable: "Matrix (any)", frame: "Frame", cube: "Cube",
+  datetable: "Date matrix", anytable: "Matrix (any)", anylist: "List (any)", frame: "Frame", cube: "Cube",
   lambda: "Lambda", chart: "Chart", any: "Any",
 };
 const typeName = (t?: SocketDataType) => (t ? TYPE_LABEL[t] : "—");

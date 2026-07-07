@@ -18,6 +18,7 @@ describe("familyOf — the ENTIRE SocketDataType union is covered or explicitly 
     logical: "logical", logicallist: "logical", logicalcombo: "logical", logicaltable: "logical",
     complex: "complex", complexlist: "complex", complexcombo: "complex", complextable: "complex",
     frame: "none", cube: "none",  // per-column formats are the A4 units milestone
+    anylist: "none",              // element-agnostic wildcard — no format family until a concrete type flows in
     chart: "none", lambda: "none",
   };
   for (const [dt, fam] of Object.entries(EXPECTED)) {
