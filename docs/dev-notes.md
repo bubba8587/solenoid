@@ -5,6 +5,26 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-07 — commit-walk audit, ~130 commits newest-first)
+Six fixes across three commits (`e9184b0`, `9bab17b`, `30b6cfa`+`7bdba07`):
+- **anylist gaps:** `coerceInputs` had no `anylist` case (a scalar reached Set's `for...of` raw —
+  number threw, string iterated PER CHARACTER); List Input's type switch pruned only OUTPUT cables
+  (a wired row kept a type-illegal cable after Num→Text); Expect "In list" used the number-only
+  `listIn` so a TEXT allowlist couldn't be wired (now `anyListIn`).
+- **Heavy-composite stale dot lied:** arm-and-run keyed staleness on inputs/config/seeds only — an
+  INTERNAL edit (drill-in value change / rewire) held the old solution under a green dot. Added
+  `internalEditSeq` to `solveKey`, bumped by an internal-editor topology pipe + process.ts's
+  retargeted pass (`markInternalEditChain` marks every nesting level). Tests for both funnels.
+- **Drill-in resolver sweep misses (9316c2d follow-up):** CableSwitch (mode retype/prune against
+  MAIN), inlineInput's `useConnectedInputs`/`useIncomingSources` (wired rows read unwired inside a
+  drill-in), NoteNode `commitFields` (frontmatter cable prune + reconcileFcTypes on the wrong graph),
+  ResizeHandle (grip didn't render at all for internal nodes). All routed through
+  `getOwningEditor`/`getActive*`. Remaining `getEditor/getArea` component imports verified main-only.
+- Open observations (not fixed, judgment calls): Set-node membership compares complex `[re,im]`
+  cells by REFERENCE (equal complexes from different sources never intersect); the stale-chunk
+  reload guard can loop on a genuine outage in private browsing (sessionStorage throws → the 10s
+  guard never persists — an in-memory fallback would close it).
+
 ### SESSION DIGEST (2026-07-07 — Data Feed widening + Trust-node audit)
 - **Data Feed widening:** FRED gains start/end date fields (cosd/coed) + a frequency dropdown
   (fq + fam=avg); Alpha Vantage gains a frequency dropdown that swaps the TIME_SERIES_* function +
