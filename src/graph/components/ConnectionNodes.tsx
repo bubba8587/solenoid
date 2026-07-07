@@ -13,7 +13,7 @@ import { connectionStore, refreshConnection, type ConnectionState } from "../con
 import { settingsStore } from "../settingsStore";
 import { isDesktop, listCsvFiles, listParquetFiles } from "../fileBridge";
 import { apiKeyStore } from "../apiKeyStore";
-import { PROVIDER_LIST, FRED_QUICK_PICKS, getProvider, type ProviderId } from "../dataProviders";
+import { PROVIDER_LIST, getProvider, type ProviderId } from "../dataProviders";
 import { FrameDisplay } from "./FrameDisplay";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import "./ConnectionNodes.css";
@@ -330,6 +330,9 @@ export function DataFeedComponent({ data, emit }: NodeProps<DataFeedNodeType>) {
   useSyncExternalStore(apiKeyStore.subscribe, apiKeyStore.version);
   const [provider, setProvider] = useState<ProviderId>(data.provider);
   const [input, setInput] = useState(data.stringLiterals.input ?? "");
+  const [freq, setFreq] = useState(data.stringLiterals.freq ?? "");
+  const [start, setStart] = useState(data.stringLiterals.start ?? "");
+  const [end, setEnd] = useState(data.stringLiterals.end ?? "");
   const [minutes, setMinutes] = useState(data.refreshMinutes);
   useEffect(() => { setProvider(data.provider); }, [data.provider]);
   useEffect(() => { setInput(data.stringLiterals.input ?? ""); }, [data.stringLiterals.input]);
@@ -340,12 +343,22 @@ export function DataFeedComponent({ data, emit }: NodeProps<DataFeedNodeType>) {
   function pickProvider(next: ProviderId) {
     setProvider(next);
     data.provider = next;
+    // Refinements are provider-specific (a FRED frequency word isn't an AV one) — reset
+    // them on a provider switch so a stale value can't build a bad URL for the new one.
+    data.stringLiterals.freq = ""; data.stringLiterals.start = ""; data.stringLiterals.end = "";
+    setFreq(""); setStart(""); setEnd("");
     void processGraph();
   }
   function commitInput(next: string) {
     const v = next.trim();
     setInput(v);
     if (v !== (data.stringLiterals.input ?? "")) { data.stringLiterals.input = v; void processGraph(); }
+  }
+  // Discrete refinements (frequency select, date pickers) apply immediately.
+  function setParam(key: "freq" | "start" | "end", v: string) {
+    data.stringLiterals[key] = v;
+    if (key === "freq") setFreq(v); else if (key === "start") setStart(v); else setEnd(v);
+    void processGraph();
   }
 
   return (
@@ -354,11 +367,11 @@ export function DataFeedComponent({ data, emit }: NodeProps<DataFeedNodeType>) {
         <select className="sol-conn__select" value={provider} onChange={(e) => pickProvider(e.target.value as ProviderId)} {...stopDrag}>
           {PROVIDER_LIST.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
         </select>
-        {provider === "fred" && (
-          // Quick-picks fill the field (FRED ids are cryptic); reset to "" so it's re-pickable.
+        {preset.quickPicks && (
+          // Quick-picks fill the field (the ids are cryptic); reset to "" so it's re-pickable.
           <select className="sol-conn__select" value="" onChange={(e) => { if (e.target.value) commitInput(e.target.value); }} {...stopDrag}>
-            <option value="">Common series…</option>
-            {FRED_QUICK_PICKS.map((q) => <option key={q.id} value={q.id}>{q.label} ({q.id})</option>)}
+            <option value="">Common {preset.inputLabel.toLowerCase()}s…</option>
+            {preset.quickPicks.map((q) => <option key={q.id} value={q.id}>{q.label} ({q.id})</option>)}
           </select>
         )}
         <input
@@ -372,6 +385,18 @@ export function DataFeedComponent({ data, emit }: NodeProps<DataFeedNodeType>) {
           onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
           {...stopDrag}
         />
+        {preset.frequencies && (
+          <select className="sol-conn__select" value={freq} onChange={(e) => setParam("freq", e.target.value)} title="Frequency" {...stopDrag}>
+            {preset.frequencies.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
+          </select>
+        )}
+        {preset.supportsDateRange && (
+          <div className="sol-conn__dates">
+            <input className="sol-conn__date" type="date" value={start} max={end || undefined} onChange={(e) => setParam("start", e.target.value)} title="Start date" {...stopDrag} />
+            <span className="sol-conn__date-sep">→</span>
+            <input className="sol-conn__date" type="date" value={end} min={start || undefined} onChange={(e) => setParam("end", e.target.value)} title="End date" {...stopDrag} />
+          </div>
+        )}
         {data.needsKey() && (
           <div className="sol-conn__note">Add a {preset.label} API key in Settings ▸ Data.</div>
         )}

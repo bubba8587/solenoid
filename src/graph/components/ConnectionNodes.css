@@ -40,6 +40,31 @@
   box-shadow: inset 0 0 0 1px var(--node-accent, var(--accent));
 }
 
+/* Optional date-range row (FRED). Two date pickers with an arrow between them. */
+.sol-conn__dates {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.sol-conn__date {
+  box-sizing: border-box;
+  flex: 1;
+  min-width: 0;
+  padding: 4px 6px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-bright);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  outline: none;
+}
+.sol-conn__date:focus {
+  border-color: var(--node-accent, var(--accent));
+  box-shadow: inset 0 0 0 1px var(--node-accent, var(--accent));
+}
+.sol-conn__date-sep { color: var(--text-muted); font-size: 11px; flex: 0 0 auto; }
+
 /* Inline labelled field (Import HTML's table index). */
 .sol-conn__field {
   display: flex;
