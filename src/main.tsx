@@ -66,6 +66,24 @@ if (IS_MOBILE) document.documentElement.classList.add("is-mobile");
   };
   window.addEventListener("unhandledrejection", (e) => surface("unhandled rejection", e.reason));
   window.addEventListener("error", (e) => surface("uncaught error", e.error ?? e.message));
+
+  // A dynamically-imported chunk failed to LOAD (not a runtime error inside it) —
+  // almost always because a NEW deploy replaced the hashed chunk files while this
+  // tab was open, so the old hash 404s the instant a lazy import fires (Tidy's ELK,
+  // Mermaid, charts, KaTeX — anything code-split). Vite raises `vite:preloadError`
+  // for exactly this. Reload ONCE to pull the fresh index.html + valid chunk refs;
+  // guarded via sessionStorage so a genuine network outage can't loop (one reload
+  // per 10s window, else let it surface as a normal error instead).
+  window.addEventListener("vite:preloadError", (e) => {
+    const KEY = "sol:chunkReloadAt";
+    let last = 0;
+    try { last = Number(sessionStorage.getItem(KEY) || 0); } catch { /* private mode */ }
+    const now = Date.now();
+    if (now - last < 10_000) return; // already reloaded for a stale chunk — don't loop
+    e.preventDefault(); // we're recovering via reload; don't also throw to the console
+    try { sessionStorage.setItem(KEY, String(now)); } catch { /* ignore */ }
+    window.location.reload();
+  });
 }
 
 initAppTheme();
