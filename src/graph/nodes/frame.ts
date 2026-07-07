@@ -913,6 +913,12 @@ function summarizeReconcile(s: ReconcileSummary): string {
   // isn't mistaken for a clean reconciliation.
   if (s.skipped > 0) parts.push(`**${s.skipped}** skipped`);
   let out = parts.join(" · ");
+  // A one-sided (added/removed/renamed) column is a schema change the row counts can't
+  // show — surface it so an all-"unchanged" result isn't mistaken for identical frames.
+  if (s.addedColumns.length || s.removedColumns.length) {
+    const bits = [...s.addedColumns.map((n) => `+${n}`), ...s.removedColumns.map((n) => `−${n}`)];
+    out += `\n\n_Columns: ${bits.join(" · ")}._`;
+  }
   if (s.pvm) {
     const p = s.pvm;
     const sign = (n: number) => (n >= 0 ? "+" : "");

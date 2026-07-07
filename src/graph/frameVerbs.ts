@@ -627,6 +627,13 @@ export interface ReconcileSummary {
   /** Rows with a blank (null) or errored KEY — they can't be matched, so they're
    *  emitted as their own "skipped" rows rather than silently dropped. */
   skipped: number;
+  /** Non-key columns present on only ONE side (a schema diff). A renamed column shows
+   *  up as a removed + added pair. These do NOT drive row status — a one-sided column
+   *  applies to every matched row equally — so they're surfaced here (and as labeled
+   *  output columns) rather than making every row read "changed" or, worse, hiding the
+   *  schema change behind an all-"unchanged" result. */
+  addedColumns: string[];
+  removedColumns: string[];
   pvm?: PvmBreakdown;
 }
 
@@ -656,6 +663,15 @@ export function reconcileFrames(
     .map((c) => ({ name: c.name, left: c, right: right.columns.find((rc) => rc.name === c.name) ?? null }))
     .filter((s): s is { name: string; left: FrameColumn; right: FrameColumn } => s.right !== null);
 
+  // Non-key columns on ONE side only — the schema diff. Surfaced so a renamed or
+  // dropped/added column doesn't vanish (leaving an all-"unchanged" report that hides
+  // the change). A removed column carries its before-values (null after); an added one
+  // its after-values (null before), aligned to the same output rows via li/ri below.
+  const rightNames = new Set(right.columns.map((c) => c.name));
+  const leftNames = new Set(left.columns.map((c) => c.name));
+  const removedCols = left.columns.filter((c) => c.name !== opts.leftKey && !rightNames.has(c.name));
+  const addedCols = right.columns.filter((c) => c.name !== opts.rightKey && !leftNames.has(c.name));
+
   let priceIdx = -1, qtyIdx = -1;
   sharedCols.forEach((s, i) => {
     if (opts.priceColumn && s.name === opts.priceColumn && s.left.type === "number" && s.right.type === "number") priceIdx = i;
@@ -668,6 +684,8 @@ export function reconcileFrames(
   const beforeCols: FrameCell[][] = sharedCols.map(() => []);
   const afterCols: FrameCell[][] = sharedCols.map(() => []);
   const deltaCols: (number | null)[][] = sharedCols.map(() => []);
+  const removedColVals: FrameCell[][] = removedCols.map(() => []);
+  const addedColVals: FrameCell[][] = addedCols.map(() => []);
 
   // Emit one output row (key + status + per-shared-column before/after/Δ). Shared by
   // the matched/added/removed rows AND the "skipped" keyless rows appended below, so
@@ -685,6 +703,8 @@ export function reconcileFrames(
       const an = typeof av === "number" ? av : null;
       deltaCols[ci].push(s.left.type === "number" && bn !== null && an !== null ? an - bn : null);
     });
+    removedCols.forEach((c, ci) => removedColVals[ci].push(li !== null ? cellAt(c, li) : null));
+    addedCols.forEach((c, ci) => addedColVals[ci].push(ri !== null ? cellAt(c, ri) : null));
   };
 
   // A PVM factor is genuinely 0 when the row is ABSENT on that side (a new/removed row
@@ -757,10 +777,16 @@ export function reconcileFrames(
     outCols.push({ name: `${s.name} (after)`, type: s.right.type, values: afterCols[ci] });
     if (s.left.type === "number") outCols.push({ name: `${s.name} Δ`, type: "number", values: deltaCols[ci] });
   });
+  removedCols.forEach((c, ci) => outCols.push({ name: `${c.name} (removed)`, type: c.type, values: removedColVals[ci] }));
+  addedCols.forEach((c, ci) => outCols.push({ name: `${c.name} (added)`, type: c.type, values: addedColVals[ci] }));
   const names = makeHeaders(outCols.map((c) => c.name), outCols.length);
   const finalCols = outCols.map((c, i) => ({ ...c, name: names[i] }));
 
-  const summary: ReconcileSummary = { added, removed, changed, unchanged, skipped };
+  const summary: ReconcileSummary = {
+    added, removed, changed, unchanged, skipped,
+    addedColumns: addedCols.map((c) => c.name),
+    removedColumns: removedCols.map((c) => c.name),
+  };
   if (havePvm) {
     summary.pvm = { totalBefore, totalAfter, delta: totalAfter - totalBefore, price: pvmPrice, volume: pvmVolume, mix: pvmMix, excluded: pvmExcluded };
   }

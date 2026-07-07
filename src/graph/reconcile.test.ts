@@ -51,6 +51,80 @@ describe("reconcileFrames — (a) blank/invalid key rows are surfaced, not dropp
   });
 });
 
+describe("reconcileFrames — (c) one-sided columns are surfaced, not silently ignored", () => {
+  it("reports a left-only column as removed and carries its before-values", () => {
+    const before: FrameValue = { __frame: true, columns: [
+      { name: "id", type: "string", values: ["a", "b"] },
+      { name: "qty", type: "number", values: [10, 20] },
+      { name: "region", type: "string", values: ["N", "S"] },
+    ] };
+    const after: FrameValue = { __frame: true, columns: [
+      { name: "id", type: "string", values: ["a", "b"] },
+      { name: "qty", type: "number", values: [10, 25] },
+    ] };
+    const { frame, summary } = reconcileFrames(before, after, { leftKey: "id", rightKey: "id" });
+    expect(summary.removedColumns).toEqual(["region"]);
+    expect(summary.addedColumns).toEqual([]);
+    // A one-sided column does NOT change row status — 'a' is still unchanged (only the
+    // shared 'qty' drives it), 'b' changed on qty.
+    expect(summary).toMatchObject({ unchanged: 1, changed: 1 });
+    const removedCol = frame.columns.find((c) => c.name === "region (removed)")!;
+    expect(removedCol.values).toEqual(["N", "S"]);
+  });
+
+  it("reports a right-only column as added and carries its after-values", () => {
+    const before: FrameValue = { __frame: true, columns: [
+      { name: "id", type: "string", values: ["a"] },
+      { name: "qty", type: "number", values: [10] },
+    ] };
+    const after: FrameValue = { __frame: true, columns: [
+      { name: "id", type: "string", values: ["a"] },
+      { name: "qty", type: "number", values: [10] },
+      { name: "segment", type: "string", values: ["X"] },
+    ] };
+    const { frame, summary } = reconcileFrames(before, after, { leftKey: "id", rightKey: "id" });
+    expect(summary.addedColumns).toEqual(["segment"]);
+    expect(summary.removedColumns).toEqual([]);
+    expect(frame.columns.find((c) => c.name === "segment (added)")!.values).toEqual(["X"]);
+  });
+
+  it("a renamed column shows as removed+added (data reads unchanged, schema change visible)", () => {
+    const before: FrameValue = { __frame: true, columns: [
+      { name: "id", type: "string", values: ["a", "b"] },
+      { name: "qty", type: "number", values: [10, 20] },
+    ] };
+    const after: FrameValue = { __frame: true, columns: [
+      { name: "id", type: "string", values: ["a", "b"] },
+      { name: "quantity", type: "number", values: [10, 20] },
+    ] };
+    const { summary } = reconcileFrames(before, after, { leftKey: "id", rightKey: "id" });
+    expect(summary.removedColumns).toEqual(["qty"]);
+    expect(summary.addedColumns).toEqual(["quantity"]);
+    // No SHARED non-key column, so every matched row reads unchanged — but the rename is
+    // no longer hidden: it's in added/removed columns.
+    expect(summary).toMatchObject({ unchanged: 2, changed: 0 });
+  });
+
+  it("a removed column's cells align to added/removed rows (null where the left row is absent)", () => {
+    const before: FrameValue = { __frame: true, columns: [
+      { name: "id", type: "string", values: ["a"] },
+      { name: "region", type: "string", values: ["N"] },
+      { name: "v", type: "number", values: [1] },
+    ] };
+    const after: FrameValue = { __frame: true, columns: [
+      { name: "id", type: "string", values: ["a", "b"] },
+      { name: "v", type: "number", values: [1, 2] },
+    ] };
+    const { frame, summary } = reconcileFrames(before, after, { leftKey: "id", rightKey: "id" });
+    expect(summary).toMatchObject({ unchanged: 1, added: 1, removedColumns: ["region"] });
+    const statusCol = frame.columns.find((c) => c.name === "Status")!;
+    const removedCol = frame.columns.find((c) => c.name === "region (removed)")!;
+    // Row 'a' (matched) keeps its region; row 'b' (added — no left row) is null.
+    expect(statusCol.values).toEqual(["unchanged", "added"]);
+    expect(removedCol.values).toEqual(["N", null]);
+  });
+});
+
 describe("reconcileFrames — (b) PVM excludes errored/missing price or qty (never zeroes them)", () => {
   const mk = (rows: [string, number, number][]): FrameValue => ({
     __frame: true,

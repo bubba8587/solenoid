@@ -45,11 +45,11 @@ is archived).
   per-cell SolError; fuzz no longer reports a downstream Expect's rejection of a synthetic extreme
   (circular noise). STILL OPEN (design/perf calls): (a) **Problems panel + fuzz miss per-cell errors
   inside frames/lists** — `errorValue.reportOut` + `modelFuzz.badValue` only see top-level SolError;
-  scanning every frame cell each pass is a perf tradeoff, hence deferred. (b) **Reconcile ignores
-  columns not shared by name** — a renamed/one-sided column reads `unchanged`; surface added/removed
-  columns. (c) **Fuzz "+ Clamp" inserts an UNconfigured pass-through Clamp** — seed it with bounds from
-  the finding. (d) **Tornado ranking conflates sensitivity with perturbation width** (Slider full-range
-  vs Number ±10%) + drops a leaf that diverges at an extreme — normalize / mark diverged.
+  scanning every frame cell each pass is a perf tradeoff, hence deferred. (b) **Fuzz "+ Clamp" inserts
+  an UNconfigured pass-through Clamp** — seed it with bounds from the finding (needs safe-range capture
+  during the sweep). (c) **Tornado ranking conflates sensitivity with perturbation width** (Slider
+  full-range vs Number ±10%) + drops a leaf that diverges at an extreme — normalize / mark diverged
+  (semantic call: a tornado traditionally shows raw swing, so normalizing may not be wanted).
 
 ## Needs an author decision / author-present session
 
