@@ -9,28 +9,28 @@ import "./helpDialogs.css";
 type Slide = { title: string; body: string };
 const SLIDES: Slide[] = [
   {
-    title: "Edit a composite like its own canvas",
-    body: "Drill into a composite node and the whole app comes with you — toolbar, minimap, zoom, right-click, copy/paste, keyboard, Tidy. A real canvas, not a stripped-down popup.",
+    title: "Edit composites in the full canvas",
+    body: "Drill into a composite node to work on its inner graph with the whole editor. The minimap, zoom, right-click menu, copy/paste, and Tidy all behave the same as they do on the main canvas.",
   },
   {
-    title: "Ask “what if” — four ways",
-    body: "Composite containers run as Goal Seek, Scenarios, Data Table, and Simulation. Heavy runs are arm-and-run: a Solve button and a stale dot, so nothing recomputes behind your back.",
+    title: "What-if analysis",
+    body: "A composite container can run as Goal Seek, Scenarios, a Data Table, or a Monte Carlo simulation. The heavier modes recompute when you press Solve, and a marker shows when the result no longer matches its inputs.",
   },
   {
-    title: "Live market & economic data",
-    body: "Pull FRED economic series and stock/FX quotes straight onto the canvas with your own API keys — refreshes on a timer, charts in a click, and never bakes the data into the file.",
+    title: "Live market and economic data",
+    body: "Pull FRED economic series and stock or FX quotes onto the canvas with your own API keys. They refresh on a timer and are never saved into the file.",
   },
   {
-    title: "Every chart Excel has, and then some",
-    body: "Pie, Scatter, Bubble, Radar, Radial, Funnel, Composed — plus Treemap, Sankey, Histogram, KPI cards and Bullet graphs, all themed to your palette.",
+    title: "More chart types",
+    body: "Pie, Scatter, Bubble, Radar, Radial, Funnel, and Composed, plus Treemap, Sankey, Histogram, KPI cards, and Bullet graphs. Every chart follows your palette.",
   },
   {
-    title: "Reports & presentations, built in",
-    body: "A Report node writes plain markdown with live =value embeds — numbers, tables, charts, equations, Mermaid diagrams. Presenter mode turns the canvas into a click-through slideshow.",
+    title: "Reports and presentations",
+    body: "The Report node is plain markdown that embeds live values by name: numbers, tables, charts, equations, and Mermaid diagrams. Presenter mode plays the canvas back as a slideshow.",
   },
   {
-    title: "Make it yours",
-    body: "A custom palette editor, per-document properties, type-coloured chips, and a command palette that's every menu action plus your recent ones in one Enter-press.",
+    title: "Theming and shortcuts",
+    body: "A palette editor, per-document properties, type-coloured chips, and a command palette that covers every menu action alongside the ones you've used recently.",
   },
 ];
 
@@ -75,12 +75,12 @@ function About() {
       <div className="solenoid-helpdlg__wordmark">Solenoid</div>
       <div className="solenoid-helpdlg__version">Version {pkg.version}</div>
       <p className="solenoid-helpdlg__tagline">
-        A node-based computation graph — an Excel alternative for data tables.
+        A node-graph alternative to Excel for data tables.
       </p>
       <p className="solenoid-helpdlg__about-body">
-        Each node is one operation; typed cables carry values — scalars, lists, tables, frames —
-        between them, and the graph recomputes as inputs change. It makes the logic of a
-        computation visible and editable in a way a spreadsheet hides.
+        Each node is one operation, and typed cables carry values between them: scalars, lists,
+        tables, and frames. The graph recomputes as its inputs change, so the steps of a
+        calculation stay visible on the canvas.
       </p>
       <button
         className="solenoid-helpdlg__btn solenoid-helpdlg__btn--accent"
