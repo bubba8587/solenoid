@@ -25,6 +25,7 @@ import {
   beginGraphRebuild, endGraphRebuild, bulkSettle, setCtorRegistryProvider,
 } from "./process";
 import { copySelected, pasteClipboard } from "./copyPaste";
+import { getActiveHistory } from "./activeGraph";
 import { ctorRegistry } from "./nodeCtorRegistry";
 import { createCompositeFromSelection, unpackComposite } from "./compositeLogic";
 import { compositeEditorStore } from "./compositeEditorStore";
@@ -1330,8 +1331,12 @@ export function Canvas() {
       (history as unknown as { history: { limit?: number } }).history.limit = 200;
       // Expose the plugin instance for the Session History node (see process.ts).
       setHistoryPlugin(history);
-      // Let non-graph changes (e.g. a group resize) push their own undo entries.
-      setPushHistory((action) => history.add(action));
+      // Let non-graph changes (e.g. a group resize, an extensible-row add, a label
+      // edit) push their own undo entries — onto the ACTIVE graph's history, so an
+      // edit made INSIDE a composite drill-in is undone by the drill-in's own
+      // undo (Ctrl+Z / the mobile bar), not stranded on the main stack. Resolves to
+      // the main history when not drilled in (getActiveHistory falls back to it).
+      setPushHistory((action) => { void getActiveHistory()?.add(action); });
       setClearHistory(() => history.clear());
       // Visual minimap size is set in the React preset below; the
       // plugin itself only takes ratio + boundViewport + minDistance.

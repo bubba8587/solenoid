@@ -61,8 +61,12 @@ is archived).
   a group there would be a static frame, so folded not half-shipped; needs those subsystems
   taught the active area. (b) **Navigator + lasso** in the drill-in — navigator list/select/jump/
   rename target main (route via a new active-selection hook); lasso is a custom Canvas rebuild.
-  Both folded/hidden while drilled in for now. (c) **History routing** — row/socket/label edits +
-  Edit-menu undo/redo push to MAIN history, so drill-in Ctrl+Z (buttons) don't undo them.
+  Both folded/hidden while drilled in for now. (c) **History routing — DONE 2026-07-07:**
+  `pushHistory` now targets the ACTIVE graph's history (`getActiveHistory`), so an
+  extensible-row/cable-switch/group-resize edit made inside a drill-in is undone by the
+  drill-in's own undo (Ctrl+Z + the mobile bar), not stranded on the main stack
+  (`historyRouting.test.ts`). Remaining: a plain node-label edit isn't undoable on ANY surface
+  yet (it never went through `pushHistory` — separate gap, not drill-in-specific).
   (d) **D2 proper** — reroute the real top toolbar / mobile bar to the active subgraph
   (author-present, wants live eyeballing).
 - [ ] **D4 — conditional formatting for tables** (#41; deferred again 2026-07-05).
