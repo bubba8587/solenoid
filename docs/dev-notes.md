@@ -6,7 +6,7 @@ swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
 ### SESSION DIGEST (2026-07-07 — commit-walk audit, ~130 commits newest-first)
-Six fixes across three commits (`e9184b0`, `9bab17b`, `30b6cfa`+`7bdba07`):
+Eight fixes across four commits (`e9184b0`, `9bab17b`, `30b6cfa`+`7bdba07`, `ef641de`):
 - **anylist gaps:** `coerceInputs` had no `anylist` case (a scalar reached Set's `for...of` raw —
   number threw, string iterated PER CHARACTER); List Input's type switch pruned only OUTPUT cables
   (a wired row kept a type-illegal cable after Num→Text); Expect "In list" used the number-only
@@ -20,6 +20,20 @@ Six fixes across three commits (`e9184b0`, `9bab17b`, `30b6cfa`+`7bdba07`):
   drill-in), NoteNode `commitFields` (frontmatter cable prune + reconcileFcTypes on the wrong graph),
   ResizeHandle (grip didn't render at all for internal nodes). All routed through
   `getOwningEditor`/`getActive*`. Remaining `getEditor/getArea` component imports verified main-only.
+- **Collapsed groups never gain members (author report: wrong membership near collapsed groups):**
+  a collapsed group renders as a small card with members hidden, but all three membership editors
+  treated the card as a drop target — a node dragged/created over it silently joined and was hidden
+  by the next syncGroupCollapse (visibly vanished). reconcileGroupMembership skips collapsed join
+  targets; absorbIntoContainingGroup skips collapsed groups; reconcileGroupBox no-ops while collapsed
+  (its card-box would DUMP every member). Membership edits require the group expanded. The suspected
+  duplicate-"Group"-label cause was ruled out: runtime membership is id-based, saves use the minted
+  unique names (per-prefix counter), labels are never identity.
+- **Docked FC never let go (author report):** two holes — (1) cutting the FC↔host glue cable did
+  NOTHING (no code path reacted; the FC kept trailing the host + annotating its socket): the
+  connectionremoved pipe now dissolves the dock (full undock), skipped while graph-rebuilding;
+  (2) drag-to-empty cleared only the dockedNodeStore entry — the stale hostNodeId persisted into
+  the save and load-time dockSelf() RESURRECTED the dock: new FC.releaseDock() (forget dock
+  identity, keep annotation) runs on the drop-to-empty path.
 - Open observations (not fixed, judgment calls): Set-node membership compares complex `[re,im]`
   cells by REFERENCE (equal complexes from different sources never intersect); the stale-chunk
   reload guard can loop on a genuine outage in private browsing (sessionStorage throws → the 10s
