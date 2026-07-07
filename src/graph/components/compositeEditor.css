@@ -228,12 +228,14 @@ html.sol-drilled-in .solenoid-outline__open-pill { display: none; }
       moves to the BOTTOM-left (out of the crowded top) and starts COLLAPSED (set in
       the component) so it's just a tappable bar until opened. ── */
 /* The breadcrumb strip must clear BOTH mobile top rows (accent ~30px + toolbar
-   52px = ~82px + notch); at 56px it hid UNDER them. */
+   52px = ~82px + notch); at 56px it hid UNDER them. And it shares that row-band
+   with the right-anchored Fit/Lock pill (.solenoid-nav, right:12px, ~110px wide),
+   so cap the width to stop before it — the port buttons wrap to a second row. */
 html.is-mobile .solenoid-composite-editor__strip {
   top: calc(88px + env(safe-area-inset-top));
   left: 8px;
   flex-wrap: wrap;
-  max-width: calc(100vw - 16px);
+  max-width: calc(100vw - 130px);
 }
 html.is-mobile .solenoid-composite-editor__btn {
   min-height: 36px;
