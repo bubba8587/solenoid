@@ -2,6 +2,7 @@
 // separate module — walking upstream connections and driving processGraph needs
 // the live editor, which node classes stay decoupled from).
 import { getEditor, processGraph, beginGraphRebuild, endGraphRebuild } from "./process";
+import { beginCompute, endCompute } from "./computeOverlayStore";
 import { calcModeStore } from "./calcModeStore";
 import { NumberInputNode, SliderInputNode } from "./nodes/input";
 import type { TornadoNode, TornadoResult } from "./nodes/tornado";
@@ -52,6 +53,14 @@ export async function runTornado(tornado: TornadoNode): Promise<TornadoResult[]>
   const leaves = findUpstreamLeaves(editor, tornado.id);
   const results: TornadoResult[] = [];
 
+  // Two recompute passes per leaf is irreducibly heavy on a big graph — show the
+  // busy curtain for the whole sweep. Each processGraph() brackets ITSELF with
+  // begin/endCompute, but those fast sub-passes drop the counter to 0 between
+  // perturbations and cancel the deferred reveal before it fires; an outer bracket
+  // across the entire sweep keeps the counter ≥1 so the 150ms reveal lands and the
+  // curtain also BLOCKS interaction during the multi-pass run (same pattern as
+  // modelFuzz).
+  beginCompute();
   // Drive the sweep the way modelFuzz does. beginGraphRebuild exempts the manual-mode
   // short-circuit in processGraph (else EVERY perturbation recompute no-ops → base ==
   // high == low → all-zero swings, silently) AND suppresses Expect/Alert edge-detect
@@ -102,6 +111,7 @@ export async function runTornado(tornado: TornadoNode): Promise<TornadoResult[]>
   } finally {
     calcModeStore.endForceExact();
     endGraphRebuild();
+    endCompute();
   }
 
   results.sort((a, b) => Math.abs(b.high - b.low) - Math.abs(a.high - a.low));
