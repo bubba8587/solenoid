@@ -108,8 +108,6 @@ is archived).
   simulation step count is `simulationSteps` already, just surface it consistently.
   Fits the FC-style advanced-tier chip-foot expander. Arm-and-run + the Solve button /
   amber-ring-vs-green stale dot already shipped (`compositeStaleStore`).
-- [ ] **Simulation-container output series renders on the outer card only** — the
-  drill-in should show it too.
 - [ ] **Monte Carlo run mode** — driver slot exists; blocked on bundle 12's
   distribution representation for the sampling.
 - [ ] **Aliasing / hidden-port promotion UI** — the data model has `hidden`/`advanced`
