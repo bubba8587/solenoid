@@ -78,7 +78,7 @@ export const INIT_FIELD_ORDER = [
   "label", "op", "value", "unitSuffix", "fromUnit", "toUnit", "lanes", "matchMode", "matchCase", "searchMode", "paymentTiming", "ignoreEmpty", "noCommas", "hostNodeId", "socketKey", "side", "format", "customPattern", "decimalDigits", "decimalMode", "unit", "customUnit", "socketDataType", "expr", "params", "locked", "axis", "op2", "combine", "textCase", "bold", "italic", "textScale", "textAlign", "textMarkdown", "textMono", "logicalStyle", "grouping", "negativeStyle", "scaleMode", "advancedOpen",
   "tableText", "frameText", "url", "fileName", "assetPath", "path", "refreshMinutes", "tableIndex", "query", "dir", "how", "mode", "inFormat", "outFormat", "provider",
   "inputAngle", "outputAngle", "inputTightness", "outputTightness", "angle",
-  "selectedColumn", "selectedValues", "multiSelect", "readAs", "addAs", "activeIndex", "target", "resultAs", "colType",
+  "selectedColumn", "selectedValues", "multiSelect", "readAs", "addAs", "activeIndex", "target", "resultAs", "colType", "dataType",
   "totalDepth", "rowTotalDepth", "colTotalDepth", "rowSort", "colSort", "relativeTo", "normalize", "detail",
   "members", "color", "collapsed", "width", "height", "title", "body", "seq", "defaultValue",
   "checkNotNull", "checkUnique", "checkRange", "checkRegex", "checkAllowed",
