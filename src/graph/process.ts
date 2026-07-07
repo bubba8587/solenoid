@@ -518,6 +518,22 @@ function findCompositeOwner(editor: NodeEditor<Schemes>, innerId: string): strin
   return null;
 }
 
+// An internal VALUE edit fires no editor event (topology changes are piped inside
+// composite.ts), so this is where a held heavy solve learns its subgraph changed:
+// bump markInternalEdit on EVERY composite whose (possibly nested) internal tree
+// holds the edited node, so each level's stale dot lights. Duck-typed like above.
+function markInternalEditChain(editor: NodeEditor<Schemes>, innerId: string): boolean {
+  for (const n of editor.getNodes()) {
+    const c = n as unknown as { internalEditor?: NodeEditor<Schemes>; markInternalEdit?: () => void };
+    if (!c.internalEditor) continue;
+    if (c.internalEditor.getNode(innerId) || markInternalEditChain(c.internalEditor, innerId)) {
+      c.markInternalEdit?.();
+      return true;
+    }
+  }
+  return false;
+}
+
 async function runGraphPass(changedNodeId?: string, renderOnly?: Set<string>, topologyChanged = false) {
   if (!_editor || !_engine || !_area) return;
   // An edit made inside a composite's drill-in editor targets an internal node
@@ -525,7 +541,10 @@ async function runGraphPass(changedNodeId?: string, renderOnly?: Set<string>, to
   // invalidated, and its data() re-runs the whole internal graph anyway.
   if (changedNodeId && !_editor.getNode(changedNodeId)) {
     const owner = findCompositeOwner(_editor, changedNodeId);
-    if (owner) changedNodeId = owner;
+    if (owner) {
+      markInternalEditChain(_editor, changedNodeId);
+      changedNodeId = owner;
+    }
   }
   // Fresh per-pass memo for lazy-frame collects: within one pass a ref fanned
   // out to N consumers materializes once, not N times (audit finding 24).
