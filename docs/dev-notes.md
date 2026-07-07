@@ -19,7 +19,13 @@ drill into the archive (or `git log`) only for the mechanics of a specific item.
   toolbar (which reads the ROOT color-scheme) paint itself dark and override `theme-color` — no
   toolbar in fullscreen, so it only bit non-fullscreen. Moved the color-scheme onto `document.body`:
   content form controls/scrollbars still theme (used value propagates down the cascade) but the root
-  stays neutral, so the normal-tab toolbar honors the accent too. Works in both modes now.
+  stays neutral, so the normal-tab toolbar honors the accent too. — STILL failed in the normal tab.
+  Proved via `git diff c8310c7 82c548c` that the committed status-bar config (theme-color meta + root
+  color-scheme, no color-scheme meta) is BYTE-IDENTICAL to when it worked days earlier → the change is
+  external (Chrome auto-updated). Newer Chrome Android ignores a media-LESS `theme-color` in a dark-mode
+  normal tab (toolbar goes dark, eats it; fullscreen has no toolbar, so it was spared). Fix: set the
+  accent on explicit `media` variants too — `setThemeColorMeta(null | light | dark, hex)` — so whichever
+  Chrome honors is the accent. Kept the body color-scheme as a second guard.
 - **HUD (pins/problems/alerts) overlapped the Fit/Lock pill on mobile:** the stack was pinned at a
   fixed `top:124px` (desktop, no safe-area) while the mobile pill sits at `92px + notch` — worse in
   fullscreen where the safe-area shifts but a fixed top can't track it. Added a mobile override
