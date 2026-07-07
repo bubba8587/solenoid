@@ -1,4 +1,6 @@
 import { useCallback, useState, useRef, type ReactNode, useLayoutEffect, useContext, useSyncExternalStore } from "react";
+import { marked } from "marked";
+import DOMPurify from "dompurify";
 import { copyText } from "../clipboard";
 import { commentStore, commentsPanelUi } from "../commentStore";
 import type { ClassicPreset } from "rete";
@@ -61,6 +63,17 @@ function renderTextValue(s: string): ReactNode {
       {trail && <span className="solenoid-node__text-ws">{"·".repeat(trail.length)}</span>}
     </>
   );
+}
+
+/**
+ * Render a text value as INLINE markdown (a text FC's "Markdown" advanced
+ * option). A value box is a single cell, so inline-only (`parseInline` — no
+ * block <p>/<ul> wrapping). The string is untrusted (arrives in shared
+ * .solenoid files), so sanitize the HTML before injecting it.
+ */
+function renderTextMarkdown(s: string): ReactNode {
+  const html = DOMPurify.sanitize(marked.parseInline(s, { async: false, gfm: true }) as string);
+  return <span dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
 type Port = { socket: ClassicPreset.Socket; label?: string };
@@ -552,6 +565,8 @@ export function ValueDisplay({
     fontWeight: ann.bold ? 700 : undefined,
     fontStyle: ann.italic ? "italic" : "normal",
     fontSize: ann.textScale ? `${ann.textScale}px` : undefined,
+    // Monospace opt-in overrides the span's default sans face (advanced tier).
+    fontFamily: ann.textMono ? "var(--font-mono)" : undefined,
   } : undefined;
   const cased = (s: string): string => (ann ? applyTextCase(s, ann.textCase) : s);
 
@@ -610,6 +625,8 @@ export function ValueDisplay({
       style={{
         position: "relative",
         ...(isList ? { fontSize: full ? 14 : 13 } : {}),
+        // Text alignment override (advanced tier); the box is right-aligned by default.
+        ...(isString && ann?.textAlign ? { textAlign: ann.textAlign } : {}),
         // Desktop selects text to copy; touch pans across it instead (the copy
         // button covers copying), so don't let a drag grab a text selection.
         userSelect: IS_COARSE ? "none" : "text",
@@ -624,7 +641,9 @@ export function ValueDisplay({
       {isEmpty ? empty
         : isString ? (
             <span style={{ fontFamily: "var(--font-sans)", ...(textStyle ?? {}) }}>
-              {renderTextValue(cased(value as string))}
+              {ann?.textMarkdown
+                ? renderTextMarkdown(cased(value as string))
+                : renderTextValue(cased(value as string))}
             </span>
           )
         : isLogical ? applyLogicalStyle(value as boolean, ann?.logicalStyle)

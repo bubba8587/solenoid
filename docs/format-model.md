@@ -69,6 +69,9 @@ Which controls exist per family (popup rows AND resolution axes):
 | · 1,000 separator toggle | `decimal` / `integer` / `percent` | — | — | — | — |
 | · negative style (−1,234 · (1,234) · red · red parens) | every style but `custom` (the pattern owns its own form) | — | — | — | — |
 | · scale (K / M / B) | `decimal` / `integer` only — scaling a percent or a mantissa is nonsense | — | — | — | — |
+| · alignment (L / C / R) | — | — | ✔ (box is right-aligned by default) | — | — |
+| · render as markdown | — | — | ✔ (inline markdown, sanitized) | — | — |
+| · monospace | — | — | ✔ (text is sans by default) | — | — |
 
 Notes:
 - **Percent takes a unit** like any other number style. Rendering order is fixed:
