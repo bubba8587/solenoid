@@ -15,12 +15,12 @@ is archived).
 
 ## 1.1 release build (committed 2026-07-06 — see `release-plan.md`)
 
-- [ ] **Finance / market-data connection — flesh out in a BIG way.** The `DataFeedNode`
-  (fetch/cache/refresh/key-state) + `dataProviders.ts` (FRED/Stooq/Alpha Vantage) +
-  `apiKeyStore` Settings UI EXIST and are tested but the node was never registered/
-  catalogued/given a component — unreachable. Wire it up, then widen: more providers,
-  series/symbol picker, date-range/frequency, chart-ready output, a finance demo seed.
-  Scope in `release-plan.md` §3a (a couple of provider/UI-depth questions for the author).
+- [ ] **Data Feed — remaining widening only** (core SHIPPED 2026-07-06, commits `5675c48` +
+  `bf4f531`: `DataFeedNode` registered + catalogued + component; FRED keyless CSV + Alpha
+  Vantage keyed stock history; provider dropdown, series/ticker field, refresh timer,
+  Frame output that wires into a Chart. Stooq dropped — bot-blocked). Still OPEN: a richer
+  series/symbol PICKER (today it's a bare text field), date-range / frequency controls, more
+  providers, and a dedicated finance DEMO SEED with a live Data Feed node. Scope: `release-plan.md` §3a.
 - [ ] **iFrame / embed node** (author 2026-07-06) — a general web-embed node: FRED graph
   direct embeds, YouTube, social (Twitter/X), dashboards. Emits an embed value out the green
   `chart` socket (like Image/Mermaid) so it also embeds in a Report. **SECURITY (author-gated
