@@ -205,6 +205,12 @@ export class CompositeNode extends ClassicPreset.Node {
   lastSolveKey: string | null = null;
   /** True when inputs/config changed since the last solve — drives the stale dot. */
   stale = false;
+  /** Bumped on any edit to the INTERNAL graph (topology via the editor pipe in the
+   *  constructor; value edits via the retargeted pass — see process.ts). Folded into
+   *  solveKey so a held heavy solve reads stale when the subgraph ITSELF changes,
+   *  not just its inputs/config — otherwise a drill-in edit left the old solution
+   *  under a green "Up to date" dot. Session-transient, like the rest. */
+  internalEditSeq = 0;
   private _refIds = new WeakMap<object, number>();
   private _refSeq = 0;
   /** Internal-graph layout, keyed by LIVE internal node id (remapped on
@@ -249,6 +255,17 @@ export class CompositeNode extends ClassicPreset.Node {
     // relocated node keeps narrowing/widening its inputs to its declared
     // socket shape exactly as it did on the outer canvas.
     installInputCoercion(this.internalEditor);
+    // Any internal TOPOLOGY change (drill-in add/delete/rewire) invalidates a held
+    // heavy solve. Hydration bumps too — harmless, lastSolveKey is null until the
+    // first pass. Internal VALUE edits can't fire editor events; they reach
+    // markInternalEdit via the retargeted pass (process.ts).
+    this.internalEditor.addPipe((ctx) => {
+      const t = (ctx as { type?: string }).type;
+      if (t === "nodecreated" || t === "noderemoved" || t === "connectioncreated" || t === "connectionremoved") {
+        this.markInternalEdit();
+      }
+      return ctx;
+    });
     this.internalEngine = new DataflowEngine<Schemes>();
     this.internalEditor.use(this.internalEngine);
     this._pending = init?.internal ? { nodes: [...init.internal.nodes], connections: [...init.internal.connections] } : null;
@@ -722,6 +739,9 @@ export class CompositeNode extends ClassicPreset.Node {
    *  triggers a recompute. */
   requestSolve(insideOnly = false): void { this.solveRequested = true; this.solveInsideOnly = insideOnly; }
 
+  /** An edit landed in the internal graph — a held heavy solve is no longer current. */
+  markInternalEdit(): void { this.internalEditSeq++; }
+
   /** A cheap signature of the inputs + the active mode's config: a change to either
    *  makes the last solve stale. Objects (frames/cubes) contribute a stable reference
    *  token (a recomputed upstream frame = a new reference = stale) rather than a deep
@@ -741,6 +761,8 @@ export class CompositeNode extends ClassicPreset.Node {
       inputs: inputTokens,
       // Inside-editable seeds affect the solve, so a seed edit marks it stale too.
       seeds: this.inputPorts.map((p) => (this.internalEditor.getNode(p.internalNodeId) as CompositeInputNode | undefined)?.defaultValue ?? null),
+      // Any other internal edit (topology, an internal node's value) — see the field.
+      edits: this.internalEditSeq,
       mode: this.runMode,
       goalSeek: this.goalSeek,
       scenarios: this.scenarios,

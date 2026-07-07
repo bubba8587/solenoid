@@ -499,6 +499,30 @@ describe("CompositeNode Goal Seek run mode", () => {
     expect(c.stale).toBe(false);
   });
 
+  it("arm-and-run: an INTERNAL edit flags the held solve stale (dot must not lie)", async () => {
+    const { c, inAId, inBId, outId } = await makeAdder();
+    c.setGoalSeek({ inputPortId: inAId, outputPortId: outId, target: 15 });
+    await c.data({ [inBId]: [10] }); // solves: A = 5
+    expect(c.stale).toBe(false);
+    // A drill-in edit to the SUBGRAPH (value edits arrive via process.ts's
+    // markInternalEditChain; topology via the internal-editor pipe) must flag
+    // stale — the inputs/config key alone can't see it.
+    c.markInternalEdit();
+    await c.data({ [inBId]: [10] }); // same inputs — still holds, but now stale
+    expect(c.stale).toBe(true);
+  });
+
+  it("arm-and-run: an internal TOPOLOGY change (editor pipe) flags stale too", async () => {
+    const { c, inAId, inBId, outId } = await makeAdder();
+    c.setGoalSeek({ inputPortId: inAId, outputPortId: outId, target: 15 });
+    await c.data({ [inBId]: [10] });
+    expect(c.stale).toBe(false);
+    const anyConn = c.internalEditor.getConnections()[0]!;
+    await c.internalEditor.removeConnection(anyConn.id); // fires connectionremoved
+    await c.data({ [inBId]: [10] });
+    expect(c.stale).toBe(true);
+  });
+
   it("inside-only Solve runs on marker seeds (ignores wiring) and writes the solution back", async () => {
     const { c, inAId, inBId, outId } = await makeAdder();
     const inAMarker = c.internalEditor.getNode(c.inputPorts.find((p) => p.id === inAId)!.internalNodeId) as unknown as { defaultValue: number | null };
