@@ -18,6 +18,23 @@ let _accent = DEFAULT_ACCENT;
 let _mode: ThemeMode = "dark";
 const { notify, subscribe, version } = createNotifier();
 
+/** Ensure a `<meta name="theme-color">` for the given media (null = the media-less
+ *  fallback) exists in <head> and set its content. Keyed on the exact media string
+ *  so the three variants stay distinct and each updates in place. */
+function setThemeColorMeta(media: string | null, hex: string): void {
+  const sel = media
+    ? `meta[name="theme-color"][media="${media}"]`
+    : 'meta[name="theme-color"]:not([media])';
+  let m = document.head.querySelector<HTMLMetaElement>(sel);
+  if (!m) {
+    m = document.createElement("meta");
+    m.setAttribute("name", "theme-color");
+    if (media) m.setAttribute("media", media);
+    document.head.appendChild(m);
+  }
+  m.setAttribute("content", hex);
+}
+
 function apply() {
   const root = document.documentElement;
   const hex = resolveColor(_accent);
@@ -40,13 +57,16 @@ function apply() {
   // only drives the TOP status bar in a normal browser tab — the bottom system nav
   // bar isn't web-controllable there (it follows the page only in an installed
   // standalone PWA), so this is a best-effort top-edge match.
-  let themeMeta = document.querySelector('meta[name="theme-color"]');
-  if (!themeMeta) {
-    themeMeta = document.createElement("meta");
-    themeMeta.setAttribute("name", "theme-color");
-    document.head.appendChild(themeMeta);
-  }
-  themeMeta.setAttribute("content", hex);
+  //
+  // Newer Chrome for Android IGNORES a single media-less `theme-color` in a dark-mode
+  // normal tab (the toolbar goes dark and eats it) — this used to work and stopped
+  // when Chrome auto-updated (the committed config is byte-identical to when it did).
+  // The fix is explicit `media` variants; set the SAME accent on the media-less
+  // fallback + both prefers-color-scheme variants so whichever Chrome honors is the
+  // accent. (Fullscreen was always fine — it has no toolbar.)
+  setThemeColorMeta(null, hex);
+  setThemeColorMeta("(prefers-color-scheme: light)", hex);
+  setThemeColorMeta("(prefers-color-scheme: dark)", hex);
 
   // Match the native Windows 11 window border to the accent (desktop only).
   syncNativeAccent(hex);
