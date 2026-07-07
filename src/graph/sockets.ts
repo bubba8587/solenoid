@@ -36,6 +36,9 @@ export type SocketDataType =
   | "strtable"  // 2-D string matrix (polyform MAP/MAKEARRAY over text)
   | "datetable" // 2-D date-serial matrix (polyform MAP/MAKEARRAY over dates)
   | "anytable"  // 2-D matrix of any element type — the reshapers' output (Any 2D)
+  | "anylist"   // 1-D list of ANY element type — the element-agnostic list wildcard
+                // (Any List), the rank-1 sibling of `anytable`. Used by element-
+                // agnostic list ops (Set).
   | "frame"     // named-column data table (Matrix + headers) — see frame.ts
   | "cube"      // recursive container: a frame whose cells hold ANY value (incl. a
                 // nested frame/cube) — the lattice SUPREMUM. See frame.ts CubeValue.
@@ -73,6 +76,7 @@ export const SOCKET_COLORS: Record<SocketDataType, string> = {
   strtable: "var(--sock-strtable)", // saturated y-g — grid (string matrix; scalar-derived, like table↔number)
   datetable:"var(--sock-datetable)",// saturated rose— grid (date matrix; scalar-derived)
   anytable: "var(--sock-any)",      // gray          — grid (any-element 2-D matrix; reshaper output)
+  anylist:  "var(--sock-any)",      // gray          — square (any-element 1-D list)
   frame:    "var(--sock-frame)",    // violet        — grid (named-column data table)
   cube:     "var(--sock-cube)",     // violet (frame) — hexagon (recursive any-value container)
   lambda:   "var(--sock-lambda)",   // teal-green    — circle with λ (function value)
@@ -105,6 +109,7 @@ export const SOCKET_TYPE_LABELS: Record<SocketDataType, string> = {
   strtable:     "Matrix (text)",
   datetable:    "Matrix (date)",
   anytable:     "Matrix (any)",
+  anylist:      "List (any)",
   frame:        "Frame (table)",
   cube:         "Cube (nested table)",
   lambda:       "Function",
@@ -165,6 +170,19 @@ const MATRIX_TYPES = new Set<SocketDataType>([
 // heterogeneous columns) and `lambda` (a function), which are structurally distinct.
 const FAMILY_VALUE_TYPES = new Set<SocketDataType>(
   Object.values(FAMILIES).flatMap((fam) => Object.values(fam)),
+);
+
+// Rank-≤1 family values (scalar / list / combo of every family) — what an `anylist`
+// INPUT accepts by dimensional widening (a matrix does NOT: that would be narrowing).
+// The 1-D analogue of FAMILY_VALUE_TYPES. Derived, so a new family needs no edit.
+const RANK1_VALUE_TYPES = new Set<SocketDataType>(
+  Object.values(FAMILIES).flatMap((fam) => [fam.scalar, fam.list, fam.combo]),
+);
+// The concrete 1-D list + combo types — where an `anylist` OUTPUT may drop (its
+// element type is unknown statically, so this is a runtime-accepted risk, exactly
+// like `anytable` flowing into a concrete matrix).
+const LIST_COMBO_TYPES = new Set<SocketDataType>(
+  Object.values(FAMILIES).flatMap((fam) => [fam.list, fam.combo]),
 );
 
 /** Derived directional accept-sets: for each lattice type, which OTHER types
@@ -246,17 +264,25 @@ function accepts(inT: SocketDataType, outT: SocketDataType): boolean {
   // `anytable` as an INPUT is a 2-D, element-agnostic wildcard that any lower-rank
   // value WIDENS into — a 1-D list or a scalar of any family (TRANSPOSE of a list →
   // a column; MAP over a list), exactly as a `list` widens into a `table` input.
-  if (inT === "anytable" && FAMILY_VALUE_TYPES.has(outT)) return true;
+  if (inT === "anytable" && (FAMILY_VALUE_TYPES.has(outT) || outT === "anylist")) return true;
   // `anytable` as an OUTPUT stays strictly 2-D: it drops into a concrete matrix
   // input but never narrows into a 1-D/0-D one.
   if (outT === "anytable" && MATRIX_TYPES.has(inT)) return true;
+  // `anylist` — the 1-D element-agnostic wildcard, the rank-1 sibling of `anytable`.
+  // As an INPUT, any scalar / list / combo of ANY family widens in (a matrix does not
+  // — that's narrowing). As an OUTPUT, it stays 1-D: it drops into any concrete list/
+  // combo input (element unknown statically → runtime-accepted, like anytable→matrix)
+  // and widens UP into the 2-D containers (handled by the anytable/frame/cube rules,
+  // which accept `anylist` too).
+  if (inT === "anylist" && RANK1_VALUE_TYPES.has(outT)) return true;
+  if (outT === "anylist" && LIST_COMBO_TYPES.has(inT)) return true;
   // A `frame` INPUT accepts ANY lower-rank value by DIMENSIONAL widening — the type
   // system enforces ELEMENT separation (date/number/complex/string never auto-cross;
   // only the deliberate logical↔number bridge does) but allows DIMENSIONAL flow. So a
   // 2-D matrix → rows×cols, a 1-D list → a single ROW (CSV-consistent — transpose for
   // a column), a scalar → 1×1. coerceInputs builds the frame. (A frame OUTPUT does NOT
   // flow into a matrix input — it'd lose its headers / assume homogeneity.)
-  if (inT === "frame" && (FAMILY_VALUE_TYPES.has(outT) || outT === "anytable")) return true;
+  if (inT === "frame" && (FAMILY_VALUE_TYPES.has(outT) || outT === "anytable" || outT === "anylist")) return true;
   // A `cube` INPUT is the lattice SUPREMUM — the universal recursive container (a
   // frame whose cells may themselves hold any value). EVERY data value widens UP
   // into it: a scalar/list/matrix (→ a 1×1 / row / body of flat cells), an
@@ -266,7 +292,7 @@ function accepts(inT: SocketDataType, outT: SocketDataType): boolean {
   // matrix / list / anytable) — the nesting would be silently dropped — so it
   // reaches only another cube (identity) or `any` (both handled above). This is
   // what "closes" the socket lattice: a single top type every value reaches.
-  if (inT === "cube" && (FAMILY_VALUE_TYPES.has(outT) || outT === "anytable" || outT === "frame")) return true;
+  if (inT === "cube" && (FAMILY_VALUE_TYPES.has(outT) || outT === "anytable" || outT === "anylist" || outT === "frame")) return true;
   return SOCKET_ACCEPTS[inT]?.includes(outT) ?? false;
 }
 
@@ -323,6 +349,7 @@ export const tableSocket   = new SolenoidSocket("table");
 export const strTableSocket  = new SolenoidSocket("strtable");
 export const dateTableSocket = new SolenoidSocket("datetable");
 export const anyTableSocket  = new SolenoidSocket("anytable");
+export const anyListSocket   = new SolenoidSocket("anylist");
 export const stringSocket  = new SolenoidSocket("string");
 export const strListSocket = new SolenoidSocket("strlist");
 export const dateSocket    = new SolenoidSocket("date");

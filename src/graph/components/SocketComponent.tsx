@@ -18,7 +18,7 @@ import "./socket.css";
  * circle proportions stay the same regardless of the CSS box size —
  * shrinks/grows uniformly with the box.
  */
-const LIST_TYPES = new Set(["list", "strlist", "datelist", "complexlist", "logicallist"]);
+const LIST_TYPES = new Set(["list", "strlist", "datelist", "complexlist", "logicallist", "anylist"]);
 
 // Combo (scalar | list) types → their [scalar, list] color pair for the
 // bicolor split square.

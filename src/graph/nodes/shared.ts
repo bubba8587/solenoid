@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { numberSocket, listSocket, numListSocket, tableSocket, strTableSocket, dateTableSocket, anyTableSocket, stringSocket, strListSocket, strComboSocket, dateSocket, dateListSocket, dateComboSocket, complexSocket, complexListSocket, complexComboSocket, complexTableSocket, logicalSocket, logicalListSocket, logicalComboSocket, logicalTableSocket, frameSocket, cubeSocket, lambdaSocket, chartSocket, anySocket } from "../sockets";
+import { numberSocket, listSocket, numListSocket, tableSocket, strTableSocket, dateTableSocket, anyTableSocket, anyListSocket, stringSocket, strListSocket, strComboSocket, dateSocket, dateListSocket, dateComboSocket, complexSocket, complexListSocket, complexComboSocket, complexTableSocket, logicalSocket, logicalListSocket, logicalComboSocket, logicalTableSocket, frameSocket, cubeSocket, lambdaSocket, chartSocket, anySocket } from "../sockets";
 import { resolveColor, paletteStore, type PaletteSlot } from "../palette";
 import { type SolError } from "../errorValue";
 import { cellShortCircuit, guardFinite, COMPUTE } from "../valueKinds";
@@ -22,6 +22,11 @@ export const anyIn      = (label: string) => new ClassicPreset.Input(anySocket, 
 // (TRANSPOSE / HSTACK / CHOOSEROWS / reshape / MAP). A lower-rank value (a 1-D
 // list, a scalar) widens IN, the same way a `list` widens into a `table` input.
 export const anyTableIn = (label: string) => new ClassicPreset.Input(anyTableSocket, label);
+// A 1-D (list) input/output of ANY element type — for element-agnostic list ops
+// (Set). Any scalar/list/combo of any family widens IN; the output stays 1-D and
+// drops into any concrete list input. The rank-1 sibling of anyTableIn.
+export const anyListIn  = (label: string) => new ClassicPreset.Input(anyListSocket, label);
+export const anyListOut = (label: string) => new ClassicPreset.Output(anyListSocket, label);
 export const numOut     = (label: string) => new ClassicPreset.Output(numberSocket,  label);
 export const listOut    = (label: string) => new ClassicPreset.Output(listSocket,    label);
 export const numListOut = (label: string) => new ClassicPreset.Output(numListSocket, label);

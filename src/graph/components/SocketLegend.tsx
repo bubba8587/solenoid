@@ -55,6 +55,7 @@ const GROUPS: LegendGroup[] = [
   ] },
   { label: "Any", dots: [
     { kind: "circle", color: SOCKET_COLORS.any },
+    { kind: "square", color: SOCKET_COLORS.anylist },
     { kind: "grid",   color: SOCKET_COLORS.anytable },
   ] },
 ];
