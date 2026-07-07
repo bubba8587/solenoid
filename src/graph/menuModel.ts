@@ -21,8 +21,7 @@ import { connectionDialog } from "./connectionDialogStore";
 import { settingsPanel, settingsStore } from "./settingsStore";
 import { pickFolderDialog, openInFileManager, isDesktop } from "./fileBridge";
 import { docPropertiesPanel } from "./docMetaStore";
-import { rendererSpikeStore } from "./rendererSpikeStore";
-import { htmlCanvasSpikeStore } from "./htmlCanvasSpikeStore";
+import { helpDialogStore } from "./helpDialogStore";
 import { gridSnapStore } from "./gridSnapStore";
 import { APP_LOCALE } from "./locale";
 
@@ -101,14 +100,6 @@ export function buildMenus(): Menu[] {
         { label: "Autofit group box", shortcut: "F", onClick: () => fireMenuKey("KeyF") },
         { sep: true },
         { label: "Find node…", shortcut: "Ctrl+F", onClick: () => outlineSearch.open() },
-        { sep: true },
-        // Buried dev tool: a throwaway PixiJS proof-of-architecture that covers
-        // the canvas with a GPU-rendered node/cable scene to measure fps at high
-        // counts during pan/zoom/drag. See docs/renderer-decision.md.
-        { label: "Renderer spike (Pixi)", onClick: () => rendererSpikeStore.open() },
-        // Native HTML-in-Canvas (drawElementImage): draws the REAL node DOM into a
-        // canvas — auto-fidelity, crisp at any zoom. Chrome flag required.
-        { label: "Renderer spike (HTML-in-Canvas)", onClick: () => htmlCanvasSpikeStore.open() },
       ],
     },
     {
@@ -185,7 +176,9 @@ export function buildMenus(): Menu[] {
         { label: "Notes", onClick: () => frStore.open("notes") },
         { sep: true },
         { label: "Keyboard shortcuts…", onClick: () => shortcutsStore.toggle() },
-        { label: "About Solenoid", disabled: true },
+        { sep: true },
+        { label: "What's new…", onClick: () => helpDialogStore.openWhatsNew() },
+        { label: "About Solenoid", onClick: () => helpDialogStore.openAbout() },
       ],
     },
   ];
