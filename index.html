@@ -10,11 +10,12 @@
     <!-- Mobile browser chrome (Android status bar) tint. Updated to the live accent
          at runtime by appTheme.apply(); this is the pre-JS default. -->
     <meta name="theme-color" content="#56b4e9" />
-    <!-- Declare light/dark support so the browser themes its own UI (system bars in
-         a standalone PWA, status-bar icon contrast, form controls, scrollbars) to the
-         app's mode. appTheme.apply() sets the authoritative `color-scheme` on <html>
-         at runtime; this is the pre-JS default. -->
-    <meta name="color-scheme" content="light dark" />
+    <!-- NB: do NOT add `<meta name="color-scheme" content="light dark">` here. It
+         makes Chrome Android theme its OWN toolbar per the page's color-scheme and
+         IGNORE `theme-color`, so the accent status-bar tint above vanishes in dark
+         mode. appTheme.apply() sets the authoritative `color-scheme` on <html> at
+         runtime (form controls / scrollbars still theme correctly) WITHOUT that
+         side effect. (Removed 2026-07-07 — it had silently killed the accent bar.) -->
     <title>Solenoid</title>
   </head>
 
