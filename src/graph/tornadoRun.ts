@@ -12,7 +12,7 @@ type Leaf = { node: NumberInputNode | SliderInputNode; label: string };
 /** Upstream leaf source nodes (no inputs of their own) feeding `startId`, walked
  *  backward over connections — only Number/Slider inputs are perturbable; a
  *  Constant is fixed and any other producer isn't a "declared input" to sweep. */
-function findUpstreamLeaves(editor: AnyEditor, startId: string): Leaf[] {
+export function findUpstreamLeaves(editor: AnyEditor, startId: string): Leaf[] {
   const incoming = new Map<string, string[]>();
   for (const c of editor.getConnections()) {
     (incoming.get(c.target) ?? incoming.set(c.target, []).get(c.target)!).push(c.source);
@@ -27,8 +27,12 @@ function findUpstreamLeaves(editor: AnyEditor, startId: string): Leaf[] {
       seen.add(s);
       const node = editor.getNode(s);
       if (!node) continue;
-      const hasInputs = Object.keys((node as unknown as { inputs?: Record<string, unknown> }).inputs ?? {}).length > 0;
-      if (!hasInputs && (node instanceof NumberInputNode || node instanceof SliderInputNode)) {
+      // A Number/Slider IS the perturbable input to sweep — even though a Slider
+      // carries its own (usually unwired) min/max/step config sockets. Stop the
+      // walk here (don't chase whatever feeds those bounds — that would change the
+      // slider's RANGE, not its value). Any other producer isn't a "declared
+      // input", so keep walking upstream through it.
+      if (node instanceof NumberInputNode || node instanceof SliderInputNode) {
         const label = (node.label ?? "").trim() || (node instanceof SliderInputNode ? "Slider" : "Number");
         leaves.push({ node, label });
       } else {
@@ -67,8 +71,10 @@ export async function runTornado(tornado: TornadoNode): Promise<TornadoResult[]>
 
       let lo: number, hi: number;
       if (node instanceof SliderInputNode) {
-        lo = node.literals.min ?? original;
-        hi = node.literals.max ?? original;
+        // effectiveMin/Max resolve wired bounds too (data() ran in the base pass);
+        // fall back to the literals, then the current value if unset.
+        lo = node.effectiveMin ?? node.literals.min ?? original;
+        hi = node.effectiveMax ?? node.literals.max ?? original;
       } else {
         const delta = original !== 0 ? Math.abs(original) * 0.1 : 1;
         lo = original - delta;
