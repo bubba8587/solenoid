@@ -76,22 +76,19 @@ Six fixes across three commits (`e9184b0`, `9bab17b`, `30b6cfa`+`7bdba07`):
   the off-flags (Chrome ignores `autocomplete="off"`, and a `name`d `type="text"` reads as a
   fillable form field). Switched it to a semantic `type="search"` (no `name`) — Chrome drops the
   credential/payment/address prompts for a real search field; native clear-button hidden in CSS.
-- **Accent status bar restored (Android):** the `<meta name="color-scheme" content="light dark">`
-  added in `c576570` made Chrome Android theme its own toolbar per the page color-scheme and
-  IGNORE `theme-color`, so the accent status-bar tint vanished in dark mode. Removed the meta
-  (with a load-bearing "do not re-add" comment) — that fixed FULLSCREEN. But normal-tab was still
-  dark: a SECOND lever, `apply()`'s runtime `color-scheme` on `<html>`, made Chrome's normal-tab
-  toolbar (which reads the ROOT color-scheme) paint itself dark and override `theme-color` — no
-  toolbar in fullscreen, so it only bit non-fullscreen. Moved the color-scheme onto `document.body`:
-  content form controls/scrollbars still theme but the root stays neutral. **RESOLVED as a Chrome
-  limitation, not a bug we can fix.** Proved via `git diff c8310c7 82c548c` that the committed
-  status-bar config is BYTE-IDENTICAL to when the accent bar worked days earlier → the regression is
-  external: a Chrome-for-Android auto-update (~2026-07) dropped `theme-color` tinting of the NORMAL-tab
-  toolbar in dark mode. Everything tried failed to restore it: removing the color-scheme meta (fixed
-  FULLSCREEN only), color-scheme on root-vs-body, and explicit `media` theme-color variants. The only
-  remaining lever is shipping a PWA manifest — **author declined**. Reverted to the clean baseline
-  (single media-less meta, root color-scheme); `theme-color` still serves Android fullscreen + iOS + a
-  future PWA. Author said note-and-drop. Backlog "Android normal-tab status-bar tint" parks it.
+- **Accent status bar (Android) — SOLVED 2026-07-07, and the earlier "Chrome auto-update"
+  conclusion was WRONG.** The variable was the PHONE's dark mode all along: Chrome for Android
+  ignores `theme-color` on its normal-tab toolbar whenever the BROWSER UI is in dark theme
+  (system dark / Chrome theme setting / battery saver) — long-standing documented behavior, not
+  a 2026 regression. In light mode the accent tints fine (author-confirmed on device); fullscreen
+  has no toolbar, so the status bar tints in BOTH modes there. The 07-07 session's three fixes
+  (drop the color-scheme meta, color-scheme root→body, media theme-color variants) and the
+  "byte-identical config → Chrome auto-updated, platform limit" proof were chasing a phone
+  setting; the diff couldn't see it because the phone's theme isn't in git. (Chrome also doesn't
+  honor `media` variants on theme-color — that's Safari — so that experiment couldn't
+  discriminate.) Baseline (single media-less meta + root color-scheme) is correct and stays.
+  Nothing to fix; do NOT reopen a fix hunt for the dark-toolbar case — a PWA manifest is the one
+  real lever and the author declined it.
 - **HUD (pins/problems/alerts) overlapped the Fit/Lock pill on mobile:** the stack was pinned at a
   fixed `top:124px` (desktop, no safe-area) while the mobile pill sits at `92px + notch` — worse in
   fullscreen where the safe-area shifts but a fixed top can't track it. Added a mobile override

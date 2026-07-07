@@ -28,16 +28,16 @@ function apply() {
   root.setAttribute("data-theme", _mode);
   root.style.colorScheme = _mode;
 
-  // Tint the mobile browser chrome to the accent via `theme-color`. This WORKS on
-  // the Android FULLSCREEN status bar and iOS, and drives an installed PWA's system
-  // bars. It does NOT tint Chrome-for-Android's normal-tab TOOLBAR in dark mode:
-  // that used to work and a Chrome auto-update (~2026-07) dropped it — proven by
-  // `git diff c8310c7 82c548c`, where the committed config is byte-identical to when
-  // it worked. media-variant theme-color, color-scheme on root-vs-body, and removing
-  // the color-scheme meta were all tried; none restore the normal-tab toolbar (the
-  // only remaining lever is shipping a PWA manifest, which the author declined). So
-  // this is a single media-less meta again — the fullscreen/iOS/PWA cases it still
-  // serves. See docs/backlog.md "Android normal-tab status-bar tint".
+  // Tint the mobile browser chrome to the accent via `theme-color`. This works on
+  // the Android FULLSCREEN status bar, iOS, an installed PWA's system bars, and the
+  // normal-tab toolbar when the BROWSER UI is in light theme. When the browser UI is
+  // dark (phone system dark / Chrome theme setting / battery saver), Chrome for
+  // Android paints its own dark toolbar and ignores theme-color — long-standing
+  // documented behavior, NOT something we can override from the page (the 2026-07-07
+  // "a Chrome auto-update dropped it" note was wrong: the variable was the phone's
+  // dark mode, invisible to a git diff). Don't re-chase via color-scheme moves or
+  // media-variant metas (Chrome ignores media on theme-color; that's Safari) — the
+  // one real lever for the dark-toolbar case is a PWA manifest, author-declined.
   let themeMeta = document.querySelector('meta[name="theme-color"]');
   if (!themeMeta) {
     themeMeta = document.createElement("meta");

@@ -203,18 +203,6 @@ is archived).
   the archived dev-notes (2026-06-20).
 - [ ] **Pinch-zoom on a real Mac trackpad** — should work via `e.ctrlKey` pinch
   wheel events; verify on hardware, intercept manually if not.
-- [ ] **Android normal-tab status-bar tint — DROPPED (platform limit, author-declined fix).**
-  On the author's Chrome-for-Android, the NORMAL-tab status bar ignores `theme-color`
-  entirely (it paints Chrome's own UI color — dark/light). The accent tint that DOES
-  work is a separate mechanism: in FULLSCREEN the page is edge-to-edge so the mobile
-  menubar (`.solenoid-menubar { padding-top: env(safe-area-inset-top); background: var(--accent) }`)
-  physically paints the accent up into the status-bar area. In a normal tab the page sits
-  below Chrome's toolbar, `safe-area-inset-top` is 0, so the menubar can't reach it and
-  `theme-color` is the only lever — which this Chrome ignores. **No web fix exists short of
-  a PWA manifest (installable → standalone honors theme-color); author declined the PWA route.**
-  `appTheme.ts` keeps a single media-less `theme-color` = accent for the contexts that DO honor
-  it (fullscreen, iOS, a future PWA). Don't re-chase via appTheme/color-scheme/meta — proven dead
-  (2026-07-07; `git diff c8310c7 82c548c` shows the config was byte-identical to when it "worked").
 
 ## Parked (superseded levers / far-future — revisit only if their trigger returns)
 
