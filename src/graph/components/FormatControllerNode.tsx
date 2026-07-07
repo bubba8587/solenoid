@@ -5,7 +5,7 @@ import {
   FORMAT_STYLE_LABELS, FORMAT_STYLE_GROUPS, DATE_FORMAT_STYLES, UNIT_ANNOTATIONS,
   LOGICAL_STYLE_LABELS, NEGATIVE_STYLE_LABELS, SCALE_MODE_LABELS,
   unitGroupLabel, formatMismatchStore,
-  type FormatStyleId, type TextCase, type DecimalMode, type LogicalStyle,
+  type FormatStyleId, type TextCase, type TextAlign, type DecimalMode, type LogicalStyle,
   type NegativeStyle, type ScaleMode,
 } from "../formatAnnotationStore";
 import {
@@ -70,6 +70,9 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
   const [bold,          setBoldLocal]     = useState(node.bold);
   const [italic,        setItalicLocal]   = useState(node.italic);
   const [textScale,     setScaleLocal]    = useState(node.textScale);
+  const [textAlign,     setTextAlignLocal] = useState<TextAlign>(node.textAlign);
+  const [textMarkdown,  setTextMdLocal]   = useState(node.textMarkdown);
+  const [textMono,      setTextMonoLocal] = useState(node.textMono);
   const [decimalDigits, setDigitsLocal]   = useState(node.decimalDigits);
   const [decimalMode,   setModeLocal]     = useState<DecimalMode>(node.decimalMode);
   // Raw text of the digits box, kept separate from the committed number so the
@@ -126,6 +129,9 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
     setBoldLocal(node.bold);
     setItalicLocal(node.italic);
     setScaleLocal(node.textScale);
+    setTextAlignLocal(node.textAlign);
+    setTextMdLocal(node.textMarkdown);
+    setTextMonoLocal(node.textMono);
     // Resync when the wiring changes these externally — e.g. a forwarding FC's
     // unit being mirrored/locked from its upstream — so the dropdowns reflect it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -228,6 +234,24 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
   function onScaleChange(s: number) {
     node.textScale = s;
     setScaleLocal(s);
+    syncNode();
+  }
+
+  function onTextAlignChange(a: TextAlign) {
+    node.textAlign = a;
+    setTextAlignLocal(a);
+    syncNode();
+  }
+
+  function toggleTextMarkdown() {
+    node.textMarkdown = !node.textMarkdown;
+    setTextMdLocal(node.textMarkdown);
+    syncNode();
+  }
+
+  function toggleTextMono() {
+    node.textMono = !node.textMono;
+    setTextMonoLocal(node.textMono);
     syncNode();
   }
 
@@ -377,6 +401,69 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
           </select>
           <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
         </div>
+        {/* Advanced tier — alignment / markdown / monospace, all display-only. */}
+        {c.advanced && advancedOpen && (
+          <>
+            <div className="solenoid-fc__row">
+              <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
+              <SegToggle
+                className="solenoid-seg--inline"
+                value={textAlign}
+                onChange={onTextAlignChange}
+                options={[
+                  { value: "left",   label: "L", title: "Align left" },
+                  { value: "center", label: "C", title: "Align center" },
+                  { value: "right",  label: "R", title: "Align right (default)" },
+                ]}
+              />
+              <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
+            </div>
+            <div className="solenoid-fc__row">
+              <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
+              <label
+                className="solenoid-fc__check"
+                title="Render the text as markdown"
+                onPointerDown={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                <input type="checkbox" checked={textMarkdown} onChange={toggleTextMarkdown} />
+                Markdown
+              </label>
+              <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
+            </div>
+            <div className="solenoid-fc__row">
+              <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
+              <label
+                className="solenoid-fc__check"
+                title="Render in a monospace face"
+                onPointerDown={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                <input type="checkbox" checked={textMono} onChange={toggleTextMono} />
+                Monospace
+              </label>
+              <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
+            </div>
+          </>
+        )}
+        {c.advanced && (
+          <div className="solenoid-fc__more-row">
+            <button
+              type="button"
+              className="solenoid-fc__more"
+              onClick={toggleAdvanced}
+              onPointerDown={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              title="Advanced text options"
+              aria-expanded={advancedOpen}
+            >
+              <svg width="8" height="8" viewBox="0 0 10 10" aria-hidden="true"
+                   style={{ display: "block", transform: advancedOpen ? "rotate(180deg)" : undefined }}>
+                <path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          </div>
+        )}
         </>
       ) : c.dateStyle ? (
         /* Date socket: one date-style dropdown, no units. */

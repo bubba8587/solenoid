@@ -40,9 +40,10 @@ export function precisionApplies(style: FormatStyleId): boolean {
   return style === "decimal" || style === "percent" || style === "scientific";
 }
 
-// ── The advanced tier (number family only; the FC chip expands to show it) ──
-// Same never-disabled-but-visible rule: each advanced control exists only for
-// the styles where it means something.
+// ── The advanced tier (the FC chip expands to show it) ──
+// Number family: grouping / negative / scale, each per-style gated below (same
+// never-disabled-but-visible rule). Text family: alignment / markdown / mono,
+// always available (no per-style gate) — see controlsFor.
 
 /** Thousands-separator toggle: grouped locale styles only (scientific has no
  *  grouping; fraction/custom/auto own their own text). */
@@ -85,7 +86,10 @@ export function controlsFor(family: FormatFamily, style: FormatStyleId): FcContr
     dateStyle:    family === "date",
     text:         family === "text",
     logical:      family === "logical",
-    advanced:     family === "number" &&
-      (groupingApplies(style) || scaleApplies(style) || negativeApplies(style)),
+    // The advanced tier exists for numbers (grouping/negative/scale, per style)
+    // and for text (alignment / markdown / monospace — always available).
+    advanced:     (family === "number" &&
+      (groupingApplies(style) || scaleApplies(style) || negativeApplies(style)))
+      || family === "text",
   };
 }

@@ -1,5 +1,5 @@
 import { ClassicPreset, type NodeEditor } from "rete";
-import { formatAnnotationStore, isDateStyle, isFcUnit, type FormatStyleId, type FormatAnnotation, type TextCase, type DecimalMode, type LogicalStyle, type NegativeStyle, type ScaleMode } from "../formatAnnotationStore";
+import { formatAnnotationStore, isDateStyle, isFcUnit, type FormatStyleId, type FormatAnnotation, type TextCase, type TextAlign, type DecimalMode, type LogicalStyle, type NegativeStyle, type ScaleMode } from "../formatAnnotationStore";
 import { makeUnitResolver } from "../unitFlow";
 import { dockedNodeStore } from "../dockedNodeStore";
 import { SolenoidSocket, isDateType, type SocketDataType } from "../sockets";
@@ -60,6 +60,10 @@ export class FormatControllerNode extends ClassicPreset.Node {
   bold: boolean;
   italic: boolean;
   textScale: number;
+  // Text advanced tier (display only; behind the chip's expander).
+  textAlign: TextAlign;       // horizontal alignment (default right)
+  textMarkdown: boolean;      // render as markdown
+  textMono: boolean;          // render in the monospace face
   // Logical-socket show-as (display only).
   logicalStyle: LogicalStyle;
   // Advanced tier (number family; behind the chip's expander).
@@ -109,6 +113,9 @@ export class FormatControllerNode extends ClassicPreset.Node {
     bold?: boolean;
     italic?: boolean;
     textScale?: number;
+    textAlign?: TextAlign;
+    textMarkdown?: boolean;
+    textMono?: boolean;
     logicalStyle?: LogicalStyle;
     grouping?: boolean;
     negativeStyle?: NegativeStyle;
@@ -131,6 +138,9 @@ export class FormatControllerNode extends ClassicPreset.Node {
     this.bold       = init?.bold       ?? false;
     this.italic     = init?.italic     ?? false;
     this.textScale  = init?.textScale  ?? 14; // px font size for text display
+    this.textAlign    = init?.textAlign    ?? "right";
+    this.textMarkdown = init?.textMarkdown ?? false;
+    this.textMono     = init?.textMono     ?? false;
     this.logicalStyle = init?.logicalStyle ?? "truefalse";
     this.grouping      = init?.grouping      ?? true;
     this.negativeStyle = init?.negativeStyle ?? "minus";
@@ -320,6 +330,9 @@ export class FormatControllerNode extends ClassicPreset.Node {
       bold:          this.bold,
       italic:        this.italic,
       textScale:     this.textScale,
+      textAlign:     this.textAlign,
+      textMarkdown:  this.textMarkdown,
+      textMono:      this.textMono,
       logicalStyle:  this.logicalStyle,
       grouping:      this.grouping,
       negativeStyle: this.negativeStyle,

@@ -5,8 +5,26 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
-### SESSION DIGEST (2026-07-07 — Gauge → single-input percentage + square-collapse)
-Vercel preview of `develop` (mobile session). tsc + full vitest (2280) green.
+### SESSION DIGEST (2026-07-07 — Gauge percentage + FC text advanced tier)
+Vercel preview of `develop` (mobile session; `develop` is the deploy branch now). tsc +
+full vitest (2280) green.
+- **FC advanced tier for TEXT values** (backlog "FC advanced options for TEXT"): a
+  string-typed Format Controller now has an expander (reusing the number tier's
+  `advancedOpen` / `toggleAdvanced` + chevron) with three display-only controls —
+  **alignment** L/C/R (SegToggle; the display box is right-aligned by default, so
+  this is an override), **Markdown** (renders the value as sanitized INLINE markdown
+  via `marked.parseInline` + DOMPurify — untrusted strings from shared files), and
+  **Monospace** (text renders sans by default; opt into `--font-mono`). New
+  `FormatAnnotation` fields `textAlign` / `textMarkdown` / `textMono` (+ `TextAlign`
+  type), FC node props + `annotation()`, `controlsFor().advanced` now true for text,
+  applied in `nodeKit.tsx` ValueDisplay (the same surface as the existing case/B/I/size
+  attrs), persisted via `copyPaste.ts` INIT_FIELD_ORDER. Format-model doc truth table +
+  `formatModel.test.ts` updated.
+- **Doc-rot fix (author called it out):** the Data Feed node shipped 2026-07-06 (`5675c48`
+  + `bf4f531`) but the backlog still marked it "unreachable / never registered." Reconciled
+  the line to the genuine remainder (symbol picker, date-range/frequency, more providers,
+  demo seed). Verified the rest of the 1.1 section against code — iFrame node + What's New
+  overlay are genuinely unbuilt (correctly open).
 - **Gauge is now a single-value percentage dial.** Dropped the Min/Max inputs — the node
   takes ONE `value` read as a fraction of 100% (1 → 100%, 1.5 → 150%). The arc always spans
   0→100% and fills the clamped fraction (150% overfills to a full arc); the centre label shows

@@ -407,6 +407,11 @@ export function unitsCompatible(a: string, b: string): boolean {
 
 export type TextCase = "none" | "upper" | "lower" | "proper";
 
+// Text-value advanced tier (format-model.md): horizontal alignment override
+// (the display box is right-aligned by default), render-as-markdown, and a
+// monospace toggle (text renders in the sans face by default). All display-only.
+export type TextAlign = "left" | "center" | "right";
+
 // Logical "show-as" (format-model.md): how a boolean renders through an FC.
 export type LogicalStyle = "truefalse" | "binary" | "yesno" | "check";
 
@@ -459,6 +464,10 @@ export type FormatAnnotation = {
   bold?: boolean;
   italic?: boolean;
   textScale?: number; // font-size multiplier (1 = normal)
+  // Text advanced tier (all display-only; default undefined = current behavior).
+  textAlign?: TextAlign;    // overrides the box's right-aligned default
+  textMarkdown?: boolean;   // render the string as (inline) markdown
+  textMono?: boolean;       // render in the monospace face instead of sans
   // Flexible "decimal" format params (digit count + places-vs-sig-figs).
   decimalDigits?: number;
   decimalMode?: DecimalMode;

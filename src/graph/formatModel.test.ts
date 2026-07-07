@@ -53,11 +53,12 @@ describe("controlsFor — the truth table rows", () => {
     expect(c.numberStyle).toBe(false);
   });
 
-  it("text family: case/B/I/size only", () => {
+  it("text family: case/B/I/size + an advanced tier (align/markdown/mono)", () => {
     const c = controlsFor("text", "auto");
     expect(c.text).toBe(true);
     expect(c.unit).toBe(false);
     expect(c.numberStyle).toBe(false);
+    expect(c.advanced).toBe(true); // alignment / markdown / monospace live here
   });
 
   it("logical family: show-as only", () => {
