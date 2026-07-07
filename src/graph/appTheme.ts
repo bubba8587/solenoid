@@ -18,23 +18,6 @@ let _accent = DEFAULT_ACCENT;
 let _mode: ThemeMode = "dark";
 const { notify, subscribe, version } = createNotifier();
 
-/** Ensure a `<meta name="theme-color">` for the given media (null = the media-less
- *  fallback) exists in <head> and set its content. Keyed on the exact media string
- *  so the three variants stay distinct and each updates in place. */
-function setThemeColorMeta(media: string | null, hex: string): void {
-  const sel = media
-    ? `meta[name="theme-color"][media="${media}"]`
-    : 'meta[name="theme-color"]:not([media])';
-  let m = document.head.querySelector<HTMLMetaElement>(sel);
-  if (!m) {
-    m = document.createElement("meta");
-    m.setAttribute("name", "theme-color");
-    if (media) m.setAttribute("media", media);
-    document.head.appendChild(m);
-  }
-  m.setAttribute("content", hex);
-}
-
 function apply() {
   const root = document.documentElement;
   const hex = resolveColor(_accent);
@@ -43,30 +26,25 @@ function apply() {
   root.style.setProperty("--accent-mid", hexToRgba(hex, 0.4));
   root.style.setProperty("--accent-ink", contrastInk(hex)); // readable text on the accent
   root.setAttribute("data-theme", _mode);
-  // color-scheme goes on BODY, not <html>. Content form controls / scrollbars still
-  // theme to the mode (the used value propagates down the cascade from body), but the
-  // ROOT stays neutral — so Android Chrome's normal-tab toolbar honors the accent
-  // `theme-color` above instead of reading a dark root color-scheme and painting
-  // itself dark (which overrode it: the accent status-bar tint survived ONLY in
-  // fullscreen, where there's no browser toolbar to steal it).
-  root.style.colorScheme = "";
-  if (document.body) document.body.style.colorScheme = _mode;
+  root.style.colorScheme = _mode;
 
-  // Tint the mobile browser chrome (Android Chrome status bar; iOS PWA) to the
-  // accent, matching the accent doc-title row directly beneath it. `theme-color`
-  // only drives the TOP status bar in a normal browser tab — the bottom system nav
-  // bar isn't web-controllable there (it follows the page only in an installed
-  // standalone PWA), so this is a best-effort top-edge match.
-  //
-  // Newer Chrome for Android IGNORES a single media-less `theme-color` in a dark-mode
-  // normal tab (the toolbar goes dark and eats it) — this used to work and stopped
-  // when Chrome auto-updated (the committed config is byte-identical to when it did).
-  // The fix is explicit `media` variants; set the SAME accent on the media-less
-  // fallback + both prefers-color-scheme variants so whichever Chrome honors is the
-  // accent. (Fullscreen was always fine — it has no toolbar.)
-  setThemeColorMeta(null, hex);
-  setThemeColorMeta("(prefers-color-scheme: light)", hex);
-  setThemeColorMeta("(prefers-color-scheme: dark)", hex);
+  // Tint the mobile browser chrome to the accent via `theme-color`. This WORKS on
+  // the Android FULLSCREEN status bar and iOS, and drives an installed PWA's system
+  // bars. It does NOT tint Chrome-for-Android's normal-tab TOOLBAR in dark mode:
+  // that used to work and a Chrome auto-update (~2026-07) dropped it — proven by
+  // `git diff c8310c7 82c548c`, where the committed config is byte-identical to when
+  // it worked. media-variant theme-color, color-scheme on root-vs-body, and removing
+  // the color-scheme meta were all tried; none restore the normal-tab toolbar (the
+  // only remaining lever is shipping a PWA manifest, which the author declined). So
+  // this is a single media-less meta again — the fullscreen/iOS/PWA cases it still
+  // serves. See docs/backlog.md "Android normal-tab status-bar tint".
+  let themeMeta = document.querySelector('meta[name="theme-color"]');
+  if (!themeMeta) {
+    themeMeta = document.createElement("meta");
+    themeMeta.setAttribute("name", "theme-color");
+    document.head.appendChild(themeMeta);
+  }
+  themeMeta.setAttribute("content", hex);
 
   // Match the native Windows 11 window border to the accent (desktop only).
   syncNativeAccent(hex);
