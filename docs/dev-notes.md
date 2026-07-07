@@ -5,6 +5,14 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-07 — stale-chunk reload guard)
+- **"Failed to fetch dynamically imported module" (autoarrange/ELK):** not an autoarrange bug —
+  the classic stale-chunk-after-redeploy race (a new deploy rotates the hashed chunk names; an
+  already-open tab 404s the old hash the moment a lazy import fires — ELK Tidy, Mermaid, charts,
+  KaTeX are all code-split). Added a `vite:preloadError` handler in `main.tsx` that reloads ONCE
+  to pull fresh chunk refs, sessionStorage-guarded so a real network outage can't loop. Autoarrange
+  stays lazy on purpose (ELK is ~1.5 MB / ~471 KB gzip, kept out of the main chunk — `4635e54`).
+
 ### SESSION DIGEST (2026-07-07 — mobile status bar + HUD overlap)
 - **Command palette Android autofill bar killed:** the palette search input showed Chrome's
   password/card/location autofill bar despite already carrying `autocomplete="off"` + `name` +
