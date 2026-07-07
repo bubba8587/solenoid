@@ -10,6 +10,7 @@
 // itself: remove the cable, drop a Clamp between source and target.
 import { ClassicPreset } from "rete";
 import { getEditor, getArea, processGraph, downstreamClosure, beginGraphRebuild, endGraphRebuild } from "./process";
+import { beginCompute, endCompute } from "./computeOverlayStore";
 import { NumberInputNode, SliderInputNode } from "./nodes/input";
 import { TextInputNode } from "./nodes/text";
 import { ClampNode } from "./nodes/scalar";
@@ -146,6 +147,13 @@ export async function runModelFuzz(): Promise<FuzzRunSummary> {
   const found = new Map<string, { nodeId: string; code: SolErrorCode; message: string; suggestion?: { socketKey: string; label: string } }>();
   let samples = 0;
 
+  // Hundreds of recompute passes per leaf is irreducibly heavy — show the busy
+  // curtain for the whole sweep. Each processGraph() brackets ITSELF with
+  // begin/endCompute, but those fast sub-passes drop the counter to 0 between
+  // samples and cancel the deferred reveal before it fires; an outer bracket
+  // across the entire sweep keeps the counter ≥1 so the 150ms reveal lands and
+  // the curtain also BLOCKS interaction during the multi-second run.
+  beginCompute();
   // The whole sweep runs inside the graph-rebuild gate, which does two jobs at
   // once: (1) the manual-calc short-circuit exempts rebuilds, so every sampled
   // recompute actually RUNS in manual mode (it otherwise just marked dirty and
@@ -183,6 +191,7 @@ export async function runModelFuzz(): Promise<FuzzRunSummary> {
     }
   } finally {
     endGraphRebuild();
+    endCompute();
   }
 
   const findings = [...found.values()];
