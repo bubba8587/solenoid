@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import type { ExpectNode as ExpectNodeType } from "../rete-nodes";
 import { EXPECT_CHECK_LABEL } from "../nodes/quality";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
@@ -36,15 +37,32 @@ function CheckRow({ label, checked, onChange }: { label: string; checked: boolea
  */
 export function ExpectComponent({ data, emit }: NodeProps<ExpectNodeType>) {
   const connected = useConnectedInputs(data.id);
+  // The checkboxes are CONTROLLED, so their `checked` must be React state — mutating
+  // the node property + processGraph doesn't re-render this component (the pass-through
+  // value is unchanged), so React would reset the box to its last-rendered value and
+  // the toggle would appear to do nothing. Mirror to state here; write to the node in
+  // the handler. (Same pattern the Format Controller uses — see nodeKit gotchas.)
+  const [checks, setChecks] = useState({
+    checkNotNull: data.checkNotNull, checkUnique: data.checkUnique,
+    checkRange: data.checkRange, checkRegex: data.checkRegex,
+  });
+  // Resync if the flags change externally (paste, load, undo).
+  useEffect(() => {
+    setChecks({
+      checkNotNull: data.checkNotNull, checkUnique: data.checkUnique,
+      checkRange: data.checkRange, checkRegex: data.checkRegex,
+    });
+  }, [data.checkNotNull, data.checkUnique, data.checkRange, data.checkRegex]);
   const toggle = (key: CheckKey) => (v: boolean) => {
     data[key] = v;
+    setChecks((c) => ({ ...c, [key]: v }));
     void processGraph(data.id);
   };
 
   // A wired socket must never disappear (its cable endpoint would dangle), so a
   // check's rows stay visible while connected even with the check toggled off.
-  const showRange = data.checkRange || connected.has("min") || connected.has("max");
-  const showRegex = data.checkRegex || connected.has("pattern");
+  const showRange = checks.checkRange || connected.has("min") || connected.has("max");
+  const showRegex = checks.checkRegex || connected.has("pattern");
 
   return (
     <NodeShell
@@ -56,11 +74,11 @@ export function ExpectComponent({ data, emit }: NodeProps<ExpectNodeType>) {
           : null
       }
     >
-      <CheckRow label="Not null" checked={data.checkNotNull} onChange={toggle("checkNotNull")} />
-      <CheckRow label="Unique (list)" checked={data.checkUnique} onChange={toggle("checkUnique")} />
-      <CheckRow label="In range" checked={data.checkRange} onChange={toggle("checkRange")} />
+      <CheckRow label="Not null" checked={checks.checkNotNull} onChange={toggle("checkNotNull")} />
+      <CheckRow label="Unique (list)" checked={checks.checkUnique} onChange={toggle("checkUnique")} />
+      <CheckRow label="In range" checked={checks.checkRange} onChange={toggle("checkRange")} />
       {showRange && <InlineInputs node={data} emit={emit} keys={["min", "max"]} />}
-      <CheckRow label="Matches regex" checked={data.checkRegex} onChange={toggle("checkRegex")} />
+      <CheckRow label="Matches regex" checked={checks.checkRegex} onChange={toggle("checkRegex")} />
       {showRegex && <InlineInputs node={data} emit={emit} keys={["pattern"]} />}
       <ValueDisplay value={data.cachedValue as DisplayValue} />
       {data.violations.length > 0 && (
