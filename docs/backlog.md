@@ -159,6 +159,18 @@ is archived).
 
 ## Packs
 
+- [ ] **Set / relational pack** (author 2026-07-07 — parked as a pack idea, don't build
+  unprompted). The core set nodes ship in-app: **Set** (union/intersect/difference/symmetric
+  diff → `SetOpNode`) + **Set relation** (equal/subset/superset/disjoint → `SetRelationNode`).
+  Candidate pack members surfaced while scoping, NOT built: (1) **"Is in" membership mask** —
+  elementwise Contains: for each item in A, TRUE/FALSE if it's in B → a logical list aligned to
+  A (the `ISNUMBER(MATCH())` pattern; pairs with Filter to keep original rows + their columns;
+  the scalar `ContainsNode` only does one needle); (2) **Count distinct** — best as a new
+  `ReduceOp` on `AggregateNode`, not a node; (3) **Anti / semi join** — new `JoinHow` modes
+  (rows of A whose key is / isn't in B, keeping A's columns — the table-level set diff/intersect);
+  (4) **Tally / value counts** — distinct value → count as a Frame (a bare-list shortcut; GroupBy
+  already does it for frames). Skipped as niche: multiset (dup-respecting) ops, power set,
+  Cartesian product, combination/permutation generation, Jaccard similarity.
 - [ ] **More domain packs** — post-v1 polish (framework + Geometry worked example
   done). Don't build unprompted.
 - [ ] **Pack variant-switch reconciles the socket set** — a simple pack's variant
