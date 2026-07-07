@@ -454,11 +454,13 @@ export class UniqueNode extends ClassicPreset.Node {
 
 export type SetOp = "union" | "intersect" | "difference" | "symdiff";
 
-export const SET_OP_META: Record<SetOp, { label: string }> = {
-  union:      { label: "Union — in A or B  (A ∪ B)" },
-  intersect:  { label: "Intersection — in both  (A ∩ B)" },
-  difference: { label: "Difference — in A, not B  (A ∖ B)" },
-  symdiff:    { label: "Symmetric — in one only  (A △ B)" },
+// label = the dropdown text; tex = the set notation (KaTeX, rendered on the card);
+// plain = the Unicode fallback shown until the KaTeX chunk loads.
+export const SET_OP_META: Record<SetOp, { label: string; tex: string; plain: string }> = {
+  union:      { label: "Union — in A or B",        tex: "A \\cup B",             plain: "A ∪ B" },
+  intersect:  { label: "Intersection — in both",   tex: "A \\cap B",             plain: "A ∩ B" },
+  difference: { label: "Difference — in A, not B", tex: "A \\setminus B",        plain: "A ∖ B" },
+  symdiff:    { label: "Symmetric — in one only",  tex: "A \\mathbin{\\triangle} B", plain: "A △ B" },
 };
 
 // Set operations over two lists — the gap Excel never filled (it ships only UNIQUE, no
