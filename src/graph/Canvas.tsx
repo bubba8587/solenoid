@@ -2757,7 +2757,9 @@ export function Canvas() {
         if (memberMoveRaf) { cancelAnimationFrame(memberMoveRaf); memberMoveRaf = 0; }
         const g = pendingGroup, dx = pendingDX, dy = pendingDY;
         pendingGroup = null; pendingDX = 0; pendingDY = 0;
-        if (g && (dx !== 0 || dy !== 0)) moveGroupMembers(editor, area, g, dx, dy);
+        // skipSelected: a member that's also in the selection is already moved by
+        // rete's selector during the drag — moving it again here would double it.
+        if (g && (dx !== 0 || dy !== 0)) moveGroupMembers(editor, area, g, dx, dy, true);
       };
       const scheduleMemberMove = (group: GroupNode, dx: number, dy: number) => {
         pendingGroup = group; pendingDX += dx; pendingDY += dy;
@@ -3017,8 +3019,10 @@ export function Canvas() {
                 const ddx = sx - dv.position.x, ddy = sy - dv.position.y;
                 if (ddx !== 0 || ddy !== 0) {
                   void area.translate(ctx.data.id, { x: sx, y: sy });
-                  // A group carries its members by the same delta.
-                  if (dn instanceof GroupNode) moveGroupMembers(editor, area, dn, ddx, ddy);
+                  // A group carries its members by the same delta. The snap's
+                  // area.translate on the still-picked lead already moved any SELECTED
+                  // members via the selector, so skip them (avoid the double-move).
+                  if (dn instanceof GroupNode) moveGroupMembers(editor, area, dn, ddx, ddy, true);
                 }
               }
             }
