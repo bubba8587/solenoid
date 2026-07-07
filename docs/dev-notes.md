@@ -16,8 +16,10 @@ Vercel preview of `develop` (mobile session). tsc + full vitest (2280) green.
   the drill-in had effectively no mobile styling. Replaced with real rules: breadcrumb strip
   clears the mobile header + notch and wraps; `+ Input/Output` buttons finger-sized; the
   run-controls panel moves to BOTTOM-left (out of the crowded top) and grows upward when opened.
-- STILL OPEN in this drill-in arc (author flagged "simulation and more"): simulation output
-  series inside the drill-in; further overlap polish.
+- **Backlog reconcile:** "Simulation output series renders on the outer card only" was already
+  resolved by `334bdf4` (2026-07-03, "sim marker value") — `runSimulation` sets
+  `marker.cachedResult = series` and both the outer card and the drill-in marker render it via
+  the SAME `CompositeBoundaryValue`. Deleted the stale line.
 
 ### SESSION DIGEST (2026-07-07 — Gauge percentage + FC text advanced tier)
 Vercel preview of `develop` (mobile session; `develop` is the deploy branch now). tsc +
