@@ -5,6 +5,23 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-07 — Data Feed widening + Trust-node audit)
+- **Data Feed widening:** FRED gains start/end date fields (cosd/coed) + a frequency dropdown
+  (fq + fam=avg); Alpha Vantage gains a frequency dropdown that swaps the TIME_SERIES_* function +
+  its own symbol quick-picks. Quick-picks generalized to `preset.quickPicks`; refinements live in
+  `stringLiterals` (round-trip), fold into the URL (→ cache key → re-fetch), reset on provider switch.
+  `buildUrl` gained an optional `opts` arg (existing 2-arg calls unchanged).
+- **Trust-node audit** (background subagent, 9 findings; comments / Reconcile-PVM / Expect-persistence
+  found clean). FIXED: **Tornado** produced all-zero swings in manual/sketch calc mode (drove the sweep
+  with plain `processGraph` — no rebuild-gate, so the manual short-circuit no-op'd every perturbation)
+  AND fired real Expect/Alert HUD alerts from synthetic values AND left a leaf pinned on a mid-sweep
+  throw — now wrapped in `beginGraphRebuild` + `beginForceExact` with a per-leaf `try/finally` restore,
+  mirroring modelFuzz. **model-fuzz** was leaving synthetic `#DIV/0!` etc. in the Problems "compute" log
+  (`reportLive` now gated on `isGraphRebuilding`, load-safe — the post-load settle is outside the gate).
+  **Expect** not-null now flags a per-cell SolError. **fuzz** no longer reports a downstream Expect's
+  rejection of a synthetic extreme (circular noise). Remaining follow-ups → backlog (per-cell errors in
+  Problems, Reconcile non-shared cols, fuzz Clamp bounds, Tornado ranking normalization).
+
 ### SESSION DIGEST (2026-07-07 — What's New + About, renderer-spike cleanup)
 - **What's New overlay + About Solenoid** (`helpDialogStore.ts`, `HelpDialogs.tsx` + CSS):
   one modal slot for both Help dialogs. What's New is a 6-slide carousel (the `[slide]`

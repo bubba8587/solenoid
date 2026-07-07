@@ -38,11 +38,18 @@ is archived).
   story, no deprecated shapes; `seeds.test.ts` stays green. `release-plan.md` §3b. Near the cut.
 - [ ] **Keep `release-notes-features.md` current** — the curated selling list + What's-New
   slide source (author writes the final release notes).
-- [ ] **Rigorous Trust-node audit** (author 2026-07-06 — flagged, NOT now): the trust &
-  data-quality set (**Expect** not-null/unique/range/regex, **Problems** panel, **Reconcile**
-  two-frame compare, **Tornado** sensitivity, **model fuzz**, node-anchored comments; built
-  2026-07-03) was never reviewed rigorously. Audit each for correctness + edge cases before
-  1.1 ships — "Trust your model" is a headline selling point, so it must actually hold up.
+- [ ] **Trust-node audit — remaining follow-ups** (audit DONE 2026-07-07; comments/Reconcile-PVM/
+  Expect-config-persistence found clean). Fixed this pass: Tornado all-zero in manual/sketch mode
+  (no rebuild-gate/force-exact) + no try/finally restore + synthetic alerts; model-fuzz polluting the
+  Problems "compute" log (reportLive now gated on isGraphRebuilding); Expect not-null now catches a
+  per-cell SolError; fuzz no longer reports a downstream Expect's rejection of a synthetic extreme
+  (circular noise). STILL OPEN (design/perf calls): (a) **Problems panel + fuzz miss per-cell errors
+  inside frames/lists** — `errorValue.reportOut` + `modelFuzz.badValue` only see top-level SolError;
+  scanning every frame cell each pass is a perf tradeoff, hence deferred. (b) **Reconcile ignores
+  columns not shared by name** — a renamed/one-sided column reads `unchanged`; surface added/removed
+  columns. (c) **Fuzz "+ Clamp" inserts an UNconfigured pass-through Clamp** — seed it with bounds from
+  the finding. (d) **Tornado ranking conflates sensitivity with perturbation width** (Slider full-range
+  vs Number ±10%) + drops a leaf that diverges at an extreme — normalize / mark diverged.
 
 ## Needs an author decision / author-present session
 

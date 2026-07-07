@@ -82,7 +82,10 @@ export class ExpectNode extends ClassicPreset.Node {
 
     const violations: ExpectCheck[] = [];
 
-    if (this.checkNotNull && values.some((v) => v === null || v === undefined)) {
+    // Not-null also catches a per-cell error: a #DIV/0!/#N/A cell isn't a valid
+    // present value, and the range/regex checks skip it (wrong type), so without
+    // this a table with errored cells would pass the quality gate as "clean".
+    if (this.checkNotNull && values.some((v) => v === null || v === undefined || isSolError(v))) {
       violations.push("notNull");
     }
     if (this.checkUnique && frame) {

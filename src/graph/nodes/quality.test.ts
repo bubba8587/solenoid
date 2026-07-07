@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { ExpectNode } from "./quality";
+import { solError } from "../errorValue";
 import type { FrameValue, FrameCell, FrameColType } from "../frame";
 
 // Expect checks over FRAMES (the audit-found blind spot: a FrameValue fell into
@@ -41,6 +42,14 @@ describe("Expect over frames", () => {
     expect(run(n, bad)).toEqual(["range", "regex"]);
     const good = frame([["a", "number", [5, 9]], ["b", "string", ["ok", "fine"]]]);
     expect(run(n, good)).toEqual([]);
+  });
+
+  it("notNull flags a per-cell error (a #DIV/0! cell isn't valid present data)", () => {
+    const n = new ExpectNode({ checkNotNull: true });
+    const err = solError("#DIV/0!", "divide by zero") as unknown as FrameCell;
+    expect(run(n, frame([["a", "number", [1, err]], ["b", "string", ["x", "y"]]]))).toEqual(["notNull"]);
+    // A list with an errored element too.
+    expect(run(n, [1, solError("#N/A", "not available"), 3])).toEqual(["notNull"]);
   });
 
   it("passes the frame through unchanged", () => {
