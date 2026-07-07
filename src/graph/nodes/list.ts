@@ -1,11 +1,11 @@
 import { ClassicPreset } from "rete";
 import { numListSocket } from "../sockets";
 import { getRecalcGen } from "../process";
-import { listIn, listOut, numIn, numOut, anyIn, anyOut, tableIn, tableOut } from "./shared";
+import { listIn, listOut, numIn, numOut, anyIn, anyOut, tableIn, tableOut, logicalOut } from "./shared";
 import { compareOp } from "./logic";
 import type { ComparisonOp } from "./logic";
 import { solError, isSolError, type SolError } from "../errorValue";
-import { forAggregate, isMissing } from "../valueKinds";
+import { forAggregate, isMissing, type Tri } from "../valueKinds";
 import { iterMin, iterMax } from "./mathUtils";
 import { isFrameValue, isCubeValue, cubeRowCount, frameRowCount, type FrameValue, type CubeValue, type CubeCell } from "../frame";
 
@@ -526,6 +526,74 @@ export class SetOpNode extends ClassicPreset.Node {
 
     this.cachedList = out as number[];
     return { result: this.cachedList };
+  }
+}
+
+export type SetRelation = "equal" | "subset" | "superset" | "disjoint";
+
+// label = plain-English dropdown text; tex = the KaTeX relation on the card; plain =
+// the Unicode fallback shown until the KaTeX chunk loads.
+export const SET_RELATION_META: Record<SetRelation, { label: string; tex: string; plain: string }> = {
+  equal:    { label: "Equal (same set)",         tex: "A = B",                    plain: "A = B" },
+  subset:   { label: "Subset (A within B)",      tex: "A \\subseteq B",           plain: "A ⊆ B" },
+  superset: { label: "Superset (A contains B)",  tex: "A \\supseteq B",           plain: "A ⊇ B" },
+  disjoint: { label: "Disjoint (no overlap)",    tex: "A \\cap B = \\varnothing", plain: "A ∩ B = ∅" },
+};
+
+// Set RELATION tests — predicates that answer TRUE/FALSE about two lists as sets. The
+// companion to the Set node (which PRODUCES a set): here you ask "are these the same
+// set?", "is every A also in B?", "do they share nothing?" — questions Excel makes you
+// assemble out of COUNTIF / SUMPRODUCT. Compares by VALUE over each side's distinct
+// members; blank (null) and error cells aren't members (same stance as the Set node), so
+// the answer is about the real values. Both inputs unwired → null (indeterminate). The
+// empty-set edge cases follow set theory: ∅ ⊆ anything, ∅ is disjoint with anything,
+// ∅ = ∅.
+export class SetRelationNode extends ClassicPreset.Node {
+  label: string;
+  op: SetRelation;
+  cachedResult: Tri = null;
+  width = 180;
+  height = 200;
+
+  constructor(init?: { label?: string; op?: SetRelation }) {
+    super("SetRelation");
+    this.label = init?.label ?? "Set relation";
+    this.op = init?.op ?? "equal";
+    this.addInput("a", listIn("A"));
+    this.addInput("b", listIn("B"));
+    this.addOutput("result", logicalOut("Result"));
+  }
+
+  data(inputs: { a?: number[][]; b?: number[][] }): { result: Tri } {
+    const aRaw = inputs.a?.[0];
+    const bRaw = inputs.b?.[0];
+    // Nothing wired on either side — no sets to compare, so the relation is unknown.
+    if (aRaw === undefined && bRaw === undefined) { this.cachedResult = null; return { result: null }; }
+
+    const memberSet = (arr: unknown[]) => {
+      const s = new Set<unknown>();
+      for (const v of arr) if (!isMissing(v) && !isSolError(v)) s.add(v);
+      return s;
+    };
+    const aSet = memberSet((aRaw ?? []) as unknown[]);
+    const bSet = memberSet((bRaw ?? []) as unknown[]);
+    const subsetOf = (x: Set<unknown>, y: Set<unknown>) => {
+      for (const v of x) if (!y.has(v)) return false;
+      return true;
+    };
+
+    let result = false;
+    switch (this.op) {
+      case "equal":    result = aSet.size === bSet.size && subsetOf(aSet, bSet); break;
+      case "subset":   result = subsetOf(aSet, bSet); break;
+      case "superset": result = subsetOf(bSet, aSet); break;
+      case "disjoint":
+        result = true;
+        for (const v of aSet) if (bSet.has(v)) { result = false; break; }
+        break;
+    }
+    this.cachedResult = result;
+    return { result };
   }
 }
 

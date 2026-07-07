@@ -11,7 +11,7 @@ import {
   ListInputNode, AggregateNode, RangeNode, ListLengthNode, ListIndexNode,
   SortNode, ReverseNode, SliceNode, FilterNode, FillNode, XLookupNode,
   GcdNode, IFErrorNode, NaNode, RandBetweenNode, RoundNNode, ConvertNode,
-  UniqueNode, SetOpNode, TakeNode, DropNode, VStackNode, CumulativeNode, DiffNode,
+  UniqueNode, SetOpNode, SetRelationNode, TakeNode, DropNode, VStackNode, CumulativeNode, DiffNode,
   ArgMinMaxNode, ContainsNode, NthValueNode, PercentileNode, QuartileNode,
   PercentrankNode, RankNode, CorrelNode, CombinatoricsNode, TwoInputMathNode,
   SumProductNode, ChooseNode, BooleanInputNode, SliderInputNode, ColorPickerNode, IsTestNode,
@@ -450,7 +450,10 @@ export const NODE_CATALOG: CatalogEntry[] = [
             { type: "list-drop",  label: "DROP",   description: "Remove the first or last N elements   (Excel: =DROP)", create: () => new DropNode() },
           ]},
           { type: "list-unique",  label: "UNIQUE", description: "Remove duplicates, preserving first-occurrence order   (Excel: =UNIQUE)", create: () => new UniqueNode() },
-          { type: "list-set",  label: "Set", description: "Set operations on two lists: union (in A or B), intersection (in both), difference (in A but not B), and symmetric difference (in one only). The thing Excel makes you hack together — it only ships UNIQUE.", create: () => new SetOpNode(), parity: false, keywords: "set union intersect intersection difference except minus complement symmetric in A not in B compare two lists distinct dedupe subtract exclude common overlap" },
+          { type: "pair", children: [
+            { type: "list-set",  label: "Set", description: "Set operations on two lists: union (in A or B), intersection (in both), difference (in A but not B), and symmetric difference (in one only). The thing Excel makes you hack together — it only ships UNIQUE.", create: () => new SetOpNode(), parity: false, keywords: "set union intersect intersection difference except minus complement symmetric in A not in B compare two lists distinct dedupe subtract exclude common overlap" },
+            { type: "list-set-relation", label: "Set relation", description: "Test two lists as sets and get TRUE/FALSE: equal (same set), subset (every A is in B), superset (A contains all of B), or disjoint (no overlap). The set questions Excel makes you build out of COUNTIF.", create: () => new SetRelationNode(), parity: false, keywords: "set relation equal same identical subset superset disjoint overlap contains all within compare two lists membership issubset issuperset predicate test boolean" },
+          ]},
           { type: "pair", children: [
             { type: "list-diff",       label: "DIFF",       description: "Consecutive differences — result[i] = list[i+1] − list[i]", create: () => new DiffNode() },
             { type: "list-cumulative", label: "Cumulative", description: "Running SUM / MAX / MIN / PRODUCT along the list", create: () => new CumulativeNode() },
