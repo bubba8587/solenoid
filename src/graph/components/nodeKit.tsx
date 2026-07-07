@@ -495,6 +495,15 @@ export function ValueDisplay({
   const [copied, setCopied] = useState(false);
   const copyTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // These two hooks must run UNCONDITIONALLY, BEFORE the object-kind early return
+  // below — the value can flip between a scalar (falls through) and an object kind
+  // like a frame (returns early), and a hook AFTER the early return changes the
+  // per-render hook count → React error #300 ("rendered fewer hooks than expected"),
+  // which crashes and unmounts the node (e.g. an Expect fed a frame: null on the
+  // first render, then the frame). Used only in the non-object path, but declared here.
+  const ctxNodeId = useContext(NodeFormatContext);
+  useSyncExternalStore(formatAnnotationStore.subscribe, formatAnnotationStore.version);
+
   // Safety net: an object-valued kind (chart/frame/cube/diagram/image/lambda) can
   // slip in through an `any`/casted value. It must NOT reach the number/string
   // path below (→ "[object Object]" or a .toFixed crash). Surfaces that want the
@@ -508,8 +517,6 @@ export function ValueDisplay({
   // Local-display formatting: if a Format Controller is docked to this node,
   // render the value through its annotation. Only kicks in when the component
   // doesn't already supply its own `render` (custom displays keep theirs).
-  const ctxNodeId = useContext(NodeFormatContext);
-  useSyncExternalStore(formatAnnotationStore.subscribe, formatAnnotationStore.version);
   let ann = ctxNodeId ? formatAnnotationStore.getForNode(ctxNodeId) : undefined;
   // With no DIRECT annotation, a node that merely PASSES the value along (Display)
   // or SELECTS it (IF/CHOOSE/SWITCH/IFS) carries the locked format/unit on its
