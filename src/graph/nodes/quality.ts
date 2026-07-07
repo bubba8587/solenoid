@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { anyIn, anyOut, numIn, strIn, listIn } from "./shared";
+import { anyIn, anyOut, numIn, strIn, anyListIn } from "./shared";
 import { isSolError } from "../errorValue";
 import { fireAlert } from "../alertStore";
 import { isGraphRebuilding } from "../process";
@@ -58,7 +58,10 @@ export class ExpectNode extends ClassicPreset.Node {
     this.addInput("min", numIn("Min"));
     this.addInput("max", numIn("Max"));
     this.addInput("pattern", strIn("Pattern"));
-    this.addInput("allowed", listIn("Allowed"));
+    // anyListIn, not listIn: the allowlist is element-agnostic (the common case is
+    // TEXT — "Apple, Banana"), and `list` is the number-only socket, which the
+    // lattice would block a strlist/datelist cable from reaching.
+    this.addInput("allowed", anyListIn("Allowed"));
     this.addOutput("out", anyOut("Out"));
   }
 
