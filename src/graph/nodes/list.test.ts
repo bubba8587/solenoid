@@ -14,6 +14,7 @@ import {
   SortNode,
   SortByNode,
   InterleaveNode,
+  ListInputNode,
   SetOpNode,
   SET_OP_META,
   SetRelationNode,
@@ -61,6 +62,51 @@ describe("Normalize", () => {
 describe("Diff", () => {
   it("is the first difference, one shorter than the input", () => {
     expect(new DiffNode().data({ list: [[1, 3, 6, 10]] }).result).toEqual([2, 3, 4]);
+  });
+});
+
+describe("List Input (multi-type)", () => {
+  const sockType = (s: unknown) => (s as { dataType?: string } | undefined)?.dataType;
+  it("defaults to a single number row + numlist output", () => {
+    const n = new ListInputNode();
+    expect(Object.keys(n.inputs).length).toBe(1);
+    expect(n.dataType).toBe("number");
+    expect(sockType(n.outputs.list?.socket)).toBe("numlist");
+  });
+  it("parses a comma-separated number list", () => {
+    const n = new ListInputNode();
+    n.stringLiterals["v0"] = "1, 2.5, 3";
+    expect(n.data({}).list).toEqual([1, 2.5, 3]);
+  });
+  it("switches to text: re-types row + output sockets and parses a CSV of strings", () => {
+    const n = new ListInputNode();
+    expect(n.setDataType("string")).toBe(true);
+    expect(sockType(n.outputs.list?.socket)).toBe("strlist");
+    expect(sockType(n.inputs.v0?.socket)).toBe("strlist");
+    n.stringLiterals["v0"] = "apple, pear, fig";
+    expect(n.data({}).list).toEqual(["apple", "pear", "fig"]);
+  });
+  it("date type parses to ascending serials", () => {
+    const n = new ListInputNode({ dataType: "date" });
+    n.stringLiterals["v0"] = "01-Jan-2026, 02-Jan-2026";
+    const out = n.data({}).list;
+    expect(out.length).toBe(2);
+    expect(typeof out[0]).toBe("number");
+    expect(out[1] as number).toBeGreaterThan(out[0] as number);
+  });
+  it("logical type parses booleans (true/false/1/0/yes/no) and drops junk", () => {
+    const n = new ListInputNode({ dataType: "logical" });
+    n.stringLiterals["v0"] = "true, false, 1, 0, yes, no, maybe";
+    expect(n.data({}).list).toEqual([true, false, true, false, true, false]);
+  });
+  it("setDataType is a no-op (returns false) when unchanged", () => {
+    expect(new ListInputNode().setDataType("number")).toBe(false);
+  });
+  it("concatenates rows + a wired list, keeping only elements of the current type", () => {
+    const n = new ListInputNode();
+    const k2 = n.addValueInput();
+    n.stringLiterals["v0"] = "1, 2";
+    expect(n.data({ [k2]: [[3, 4]] }).list).toEqual([1, 2, 3, 4]);
   });
 });
 

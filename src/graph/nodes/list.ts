@@ -1,5 +1,6 @@
 import { ClassicPreset } from "rete";
-import { numListSocket } from "../sockets";
+import { numListSocket, strListSocket, dateListSocket, logicalListSocket, type SolenoidSocket } from "../sockets";
+import { parseDateToSerial } from "./date";
 import { getRecalcGen } from "../process";
 import { listIn, listOut, numIn, numOut, anyIn, anyOut, tableIn, tableOut, logicalOut } from "./shared";
 import { compareOp } from "./logic";
@@ -11,46 +12,80 @@ import { isFrameValue, isCubeValue, cubeRowCount, frameRowCount, type FrameValue
 
 // ─── List Input ─────────────────────────────────────────────────────────────
 
-/** Parse a CSV-of-numbers string ("1, 2.5, 3") into a number array, dropping
- *  blanks and non-numeric parts. Empty / undefined → []. */
-function parseCsvNumbers(s: string | undefined): number[] {
+export type ListElemType = "number" | "string" | "date" | "logical";
+
+const LIST_ELEM_SOCKET: Record<ListElemType, SolenoidSocket> = {
+  number: numListSocket,
+  string: strListSocket,
+  date: dateListSocket,
+  logical: logicalListSocket,
+};
+
+function parseBoolCell(s: string): boolean | null {
+  const t = s.trim().toLowerCase();
+  if (t === "true" || t === "1" || t === "yes" || t === "y" || t === "t") return true;
+  if (t === "false" || t === "0" || t === "no" || t === "n" || t === "f") return false;
+  return null;
+}
+
+/** Parse one row's comma-separated text into a typed list, per element type. Blanks
+ *  are dropped; a part that doesn't parse for the type is dropped. Empty → []. */
+function parseCsvList(dt: ListElemType, s: string | undefined): (number | string | boolean)[] {
   if (!s) return [];
-  const out: number[] = [];
-  for (const part of s.split(",")) {
-    const t = part.trim();
-    if (t === "") continue;
-    const n = Number(t);
-    if (Number.isFinite(n)) out.push(n);
+  const parts = s.split(",").map((p) => p.trim()).filter((p) => p !== "");
+  switch (dt) {
+    case "number":  return parts.map(Number).filter((n) => Number.isFinite(n));
+    case "string":  return parts;
+    case "date":    return parts.map(parseDateToSerial).filter((n) => Number.isFinite(n));
+    case "logical": return parts.map(parseBoolCell).filter((b): b is boolean => b !== null);
   }
-  return out;
+}
+
+/** Does a wired element match the current element type? (Dates are serial numbers.) */
+function isElemKind(dt: ListElemType, v: unknown): boolean {
+  switch (dt) {
+    case "number":  return typeof v === "number";
+    case "date":    return typeof v === "number";
+    case "string":  return typeof v === "string";
+    case "logical": return typeof v === "boolean";
+  }
 }
 
 export class ListInputNode extends ClassicPreset.Node {
   label: string;
-  cachedList: number[] = [];
-  // Each row holds a CSV numeric LIST typed in place ("1, 2, 3"); a wired numlist
-  // on the row overrides its text. All rows are concatenated into the output — so
-  // the node both builds a list from typed values AND joins several wired lists.
-  // Sparse: only rows with text (or a cable) contribute.
+  // Homogeneous list of the selected element type: numbers, strings, date serials, or
+  // booleans. Cast to DisplayValue at the value box.
+  cachedList: (number | string | boolean)[] = [];
+  // The element type, switched by the card's SegToggle (re-types the row + output
+  // sockets in place — see setDataType).
+  dataType: ListElemType;
+  // Each row holds a comma-separated LIST typed in place ("1, 2, 3" · "a, b, c" ·
+  // "01-Jan-2026, 02-Jan-2026" · "true, false"); a wired list on the row overrides its
+  // text. All rows concatenate into the output — so the node both builds a list from
+  // typed values AND joins several wired lists. Sparse: only rows with text (or a
+  // cable) contribute.
   stringLiterals: Record<string, string> = {};
-  // Extensible inputs: rows are added/removed by the user (see
-  // ExtensibleInputs). `nextInputId` keeps keys unique across removals.
+  // Extensible inputs: rows are added/removed by the user (see ExtensibleInputs).
+  // `nextInputId` keeps keys unique across removals.
   nextInputId = 0;
-  readonly valueSocket = numListSocket;
   width = 180;
   height = 200;
 
-  constructor(init?: { label?: string; valueKeys?: string[] }) {
+  /** The list socket for the current element type — new rows adopt it. */
+  get valueSocket(): SolenoidSocket { return LIST_ELEM_SOCKET[this.dataType]; }
+
+  constructor(init?: { label?: string; valueKeys?: string[]; dataType?: ListElemType }) {
     super("ListInput");
     this.label = init?.label ?? "List Input";
-    // Rebuild the exact input keys on load/paste (so saved literals + cables
-    // still line up); otherwise start with three blank rows.
+    this.dataType = init?.dataType ?? "number";
+    // Rebuild the exact input keys on load/paste (so saved literals + cables still line
+    // up); otherwise start with a single blank row.
     if (init?.valueKeys?.length) {
       for (const k of init.valueKeys) this.addInputWithKey(k);
     } else {
-      for (let i = 0; i < 3; i++) this.addValueInput();
+      this.addValueInput();
     }
-    this.addOutput("list", listOut("List"));
+    this.addOutput("list", new ClassicPreset.Output(this.valueSocket, "List"));
   }
 
   private addInputWithKey(key: string): void {
@@ -70,17 +105,34 @@ export class ListInputNode extends ClassicPreset.Node {
     delete this.stringLiterals[key];
   }
 
-  data(inputs: Record<string, (number | number[])[] | undefined>) {
-    const list: number[] = [];
+  /** Switch the element type IN PLACE: re-type every row input socket + the output
+   *  socket. The component follows with retypeOutputCables + a recompute (an in-place
+   *  socket retype fires no connection event — see the type-propagation invariant).
+   *  Returns false (no-op) when the type is unchanged. */
+  setDataType(dt: ListElemType): boolean {
+    if (this.dataType === dt) return false;
+    this.dataType = dt;
+    const sock = LIST_ELEM_SOCKET[dt];
+    for (const key of Object.keys(this.inputs)) {
+      const input = this.inputs[key];
+      if (input) input.socket = sock;
+    }
+    const out = this.outputs.list;
+    if (out) out.socket = sock;
+    return true;
+  }
+
+  data(inputs: Record<string, unknown[] | undefined>) {
+    const list: (number | string | boolean)[] = [];
     for (const key of Object.keys(this.inputs)) {
       const wired = inputs[key]?.[0];
       if (wired != null) {
-        // A wired numlist (or scalar) — take its numbers.
+        // A wired list (or scalar) — take the elements matching the element type.
         const arr = Array.isArray(wired) ? wired : [wired];
-        for (const v of arr) if (typeof v === "number") list.push(v);
+        for (const v of arr) if (isElemKind(this.dataType, v)) list.push(v as number | string | boolean);
       } else {
-        // Otherwise the row's typed CSV list.
-        for (const n of parseCsvNumbers(this.stringLiterals[key])) list.push(n);
+        // Otherwise the row's typed, comma-separated list.
+        for (const v of parseCsvList(this.dataType, this.stringLiterals[key])) list.push(v);
       }
     }
     this.cachedList = list;

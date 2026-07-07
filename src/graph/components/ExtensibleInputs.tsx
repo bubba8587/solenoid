@@ -195,9 +195,10 @@ export function ExtensibleInputs({
         if (!input) return null;
         const isConn = connected.has(key);
         const dt = input.socket instanceof SolenoidSocket ? input.socket.dataType : undefined;
-        // A list-typed row (List Input's numlist) is typed as a CSV of numbers in
-        // the same text field a string row uses; the node parses it.
-        const isTextField = dt === "string" || dt === "numlist";
+        // A list-typed row (List Input's numlist/strlist/datelist/logicallist) is typed
+        // as a comma-separated list in the same text field a string row uses; the node
+        // parses it per element type. So every List Input type gets CSV entry.
+        const isTextField = dt === "string" || dt === "numlist" || dt === "strlist" || dt === "datelist" || dt === "logicallist";
         return (
           <MeasuredSocketRow key={key} side="input" socketKey={key} nodeId={node.id} emit={emit} payload={input.socket}>
             {isConn ? (
