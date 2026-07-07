@@ -3,7 +3,8 @@ import { useKatexRender } from "./katexLoader";
 import type { ClassicPreset } from "rete";
 import type { ClassicScheme, RenderEmit } from "rete-react-plugin";
 import { SolenoidSocket } from "../sockets";
-import { connectionVersionStore, getEditor, processGraph, pushHistory } from "../process";
+import { connectionVersionStore, processGraph, pushHistory } from "../process";
+import { getOwningEditor } from "../activeGraph";
 import { nodeName } from "../catalogUtils";
 import { collapseStore } from "../collapseStore";
 import { NodeSocket, MeasuredSocketRow } from "./NodeSocket";
@@ -24,8 +25,10 @@ export const INPUT_ROW_PITCH = 28;
  * rename — also picks up current graph state, with no stale snapshot.
  */
 export function useConnectedInputs(nodeId: string): Set<string> {
+  // getOwningEditor, not getEditor: a node INSIDE a composite drill-in must read
+  // its own graph's connections, or its wired rows render as unwired there.
   useSyncExternalStore(connectionVersionStore.subscribe, connectionVersionStore.get);
-  const conns = getEditor()?.getConnections() ?? [];
+  const conns = getOwningEditor(nodeId)?.getConnections() ?? [];
   const set = new Set<string>();
   for (const c of conns) {
     if (c.target === nodeId && typeof c.targetInput === "string") set.add(c.targetInput);
@@ -45,7 +48,7 @@ export type IncomingSource = { sourceId: string; sourceOutput: string; label: st
  */
 export function useIncomingSources(nodeId: string): Map<string, IncomingSource> {
   useSyncExternalStore(connectionVersionStore.subscribe, connectionVersionStore.get);
-  const editor = getEditor();
+  const editor = getOwningEditor(nodeId); // own graph inside a drill-in (see above)
   const map = new Map<string, IncomingSource>();
   for (const c of editor?.getConnections() ?? []) {
     if (c.target !== nodeId || typeof c.targetInput !== "string") continue;

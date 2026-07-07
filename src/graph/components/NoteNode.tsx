@@ -8,7 +8,11 @@ import { SwatchGrid } from "./SwatchGrid";
 import { SocketDot, type SocketGlyph } from "./SocketLegend";
 import { NodeSocket } from "./NodeSocket";
 import { useDismissOnOutside } from "./useDismissOnOutside";
-import { getArea, getEditor, processGraph, bumpConnectionVersion, pushHistory } from "../process";
+// getActiveEditor/getActiveArea, NOT getEditor/getArea: a Note inside a composite
+// drill-in must prune/reconcile/refresh on its OWN graph (same miss the Input
+// Switch had — the 9316c2d resolver sweep didn't reach this component).
+import { processGraph, bumpConnectionVersion, pushHistory } from "../process";
+import { getActiveEditor, getActiveArea } from "../activeGraph";
 import { reconcileFcTypes } from "../fcReconcile";
 import { scheduleAutosave } from "../persistence";
 import { gridSnapStore, snapCoord } from "../gridSnapStore";
@@ -144,8 +148,8 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
     const newBody = data.body;
     lastSyncRef.current = data.body;
     const { removed, retyped } = data.syncFields();
-    const editor = getEditor();
-    const area = getArea();
+    const editor = getActiveEditor();
+    const area = getActiveArea();
     let strandedByRemoval = false; // did we drop a cable because its output key was REMOVED?
     if (editor && (removed.length || retyped.length)) {
       // A retyped output (same key, new socket type) keeps its cable when the
@@ -172,7 +176,7 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
       pushNoteFieldRemovalUndo(data, prevBody, newBody, () => {
         setBody(data.body);
         setFieldsVersion((v) => v + 1);
-        const ed = getEditor(); const ar = getArea();
+        const ed = getActiveEditor(); const ar = getActiveArea();
         void ar?.update("node", data.id);
         if (ed && ar) reconcileFcTypes(ed, ar);
         bumpConnectionVersion();
@@ -213,7 +217,7 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
     e.preventDefault();
     const startX = e.clientX, startY = e.clientY;
     const startW = data.width, startH = data.height;
-    const area = getArea();
+    const area = getActiveArea();
     const k = area?.area.transform.k ?? 1;
     const handle = e.currentTarget as HTMLElement;
     handle.setPointerCapture(e.pointerId);
@@ -283,8 +287,8 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
       data.label = next;
       scheduleAutosave();
       pushHistory(
-        () => { data.label = prev; void getArea()?.update("node", data.id); scheduleAutosave(); },
-        () => { data.label = next; void getArea()?.update("node", data.id); scheduleAutosave(); },
+        () => { data.label = prev; void getActiveArea()?.update("node", data.id); scheduleAutosave(); },
+        () => { data.label = next; void getActiveArea()?.update("node", data.id); scheduleAutosave(); },
       );
     }
     setEditingLabel(false);
@@ -295,7 +299,7 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   // area.update fires the area "render"/node pipe the HTML-canvas renderer rebuilds on, so a
   // recolor re-captures the note's clone (a bare setColor only re-renders rete's root — the
   // canvas never sees it, leaving the next pan/zoom showing the OLD color).
-  function pick(c: string) { setColor(c); data.color = c; void getArea()?.update("node", data.id); scheduleAutosave(); }
+  function pick(c: string) { setColor(c); data.color = c; void getActiveArea()?.update("node", data.id); scheduleAutosave(); }
   function toggleCollapse() { const v = !collapsed; setCollapsed(v); data.collapsed = v; scheduleAutosave(); }
 
   const mode = appThemeStore.getMode();

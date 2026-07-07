@@ -1,5 +1,8 @@
 import { useRef, type PointerEvent as ReactPointerEvent } from "react";
-import { getArea, getEditor } from "../process";
+// Active/owning accessors, not getEditor/getArea: a resizable node inside a
+// composite drill-in isn't in the MAIN editor, so the grip wouldn't render there
+// (and the drag would read the wrong area's zoom).
+import { getOwningEditor, getActiveArea } from "../activeGraph";
 import { nodeSizeStore } from "../nodeSizeStore";
 import { scheduleAutosave } from "../persistence";
 import { nodeResizable } from "../rete-nodes";
@@ -39,7 +42,7 @@ function onUp() {
   window.removeEventListener("pointerup", onUp);
   window.removeEventListener("pointercancel", onUp);
   // One sync now that the drag is done (sockets / minimap / docked FCs).
-  void getArea()?.update("node", id);
+  void getActiveArea()?.update("node", id);
   scheduleAutosave();
 }
 
@@ -51,7 +54,7 @@ function onUp() {
  */
 export function ResizeHandle({ nodeId }: { nodeId: string }) {
   const ref = useRef<HTMLDivElement>(null);
-  const node = getEditor()?.getNode(nodeId);
+  const node = getOwningEditor(nodeId)?.getNode(nodeId);
   const resizable = !!node && nodeResizable(node);
   if (!resizable) return null;
 
@@ -59,7 +62,7 @@ export function ResizeHandle({ nodeId }: { nodeId: string }) {
     // Block rete's node-drag / area-pan from also starting on this press.
     e.stopPropagation();
     e.preventDefault();
-    const area = getArea();
+    const area = getActiveArea();
     const card = area?.nodeViews.get(nodeId)?.element;
     // offsetParent is the positioned box the grip sits in — its height is what
     // the drag controls.
