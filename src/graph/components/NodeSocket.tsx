@@ -52,7 +52,7 @@ function useRowSocketTop(ref: React.RefObject<HTMLElement | null>): number | und
  * the absolutely-positioned socket is order-independent.
  */
 export function MeasuredSocketRow({
-  side, socketKey, nodeId, emit, payload, children,
+  side, socketKey, nodeId, emit, payload, children, hero = false,
 }: {
   side: Side;
   socketKey: string;
@@ -60,13 +60,17 @@ export function MeasuredSocketRow({
   emit: RenderEmit<ClassicScheme>;
   payload: ClassicPreset.Socket;
   children: ReactNode;
+  /** A tall hero box (a FrameDisplay, a markdown summary) rather than a compact
+   *  label|value row — drops the fixed 22px row height so it doesn't overflow and
+   *  overlap its neighbours; the socket dot still measures onto the box centre. */
+  hero?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const top = useRowSocketTop(ref);
   return (
     // Output rows get a modifier so they SURVIVE collapse (a multi-output node —
     // TableInfo, SplitFrame, … — collapses to its output values, not a blank box).
-    <div ref={ref} className={"solenoid-node__io-row" + (side === "output" ? " solenoid-node__io-row--output" : "")}>
+    <div ref={ref} className={"solenoid-node__io-row" + (side === "output" ? " solenoid-node__io-row--output" : "") + (hero ? " solenoid-node__io-row--hero" : "")}>
       {top !== undefined && (
         <NodeSocket
           side={side}

@@ -71,7 +71,7 @@ function renderTextValue(s: string): ReactNode {
  * real <h1>, which is the point (inline-only parse left `#` literal). The string
  * is untrusted (arrives in shared .solenoid files), so sanitize before injecting.
  */
-function renderTextMarkdownHtml(s: string): string {
+export function renderTextMarkdownHtml(s: string): string {
   return DOMPurify.sanitize(marked.parse(s, { async: false, gfm: true, breaks: true }) as string);
 }
 
