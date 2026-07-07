@@ -67,6 +67,22 @@ Deep detail lives in `docs/` so this always-loaded file stays lean:
 - `docs/architecture.md` — file map (incl. the per-doc status table). `docs/grid-system.md` is the one unbuilt spec still live.
 - `docs/archive/` — finalized/inactive docs (point-in-time research, reviews, resolved scoping, and the dev-notes per-item history). See `docs/archive/README.md`. The live `dev-notes.md` holds only session digests + open problems.
 
+### Author's UI vocabulary (aliases) — what a name maps to in code
+The author names each element ONE way; this is the lookup so you don't have to hunt. Geometry
+(offsets, z-index, reflow) is in `docs/layout-chrome.md`; this is just term → code handle.
+- **File / menu bar** (a.k.a. **menu bar**) — the top strip (File/Edit/… + doc name). `MenuBar.tsx` · `.solenoid-menubar`. Mobile = Row A (accent strip: doc name + hamburger sheet).
+- **Top bar** — the toolbar row under the menu bar. `TopBar.tsx` / `AppToolbar.tsx` · `.solenoid-topbar`. Mobile = Row B (tools row).
+- **Navigator** — the left outline panel (node list + search). `OutlinePanel.tsx` · `.solenoid-outline` (open state sets `body.solenoid-nav-open`).
+- **Bottom bar** (mobile only) — the touch action bar (Undo · Redo · ➕ · Select · Delete). `MobileControls.tsx` · `.solenoid-mobile-bar`.
+- **Zoom pill** (desktop) / **Lock pill** (mobile) — the upper-right canvas-controls cluster (Fit / Lock, + zoom on desktop). `NavMenu.tsx` · `.solenoid-nav`.
+- **Align bar** — the top-center align/distribute pill (shows when ≥2 nodes selected). `SelectionActionsBar.tsx` · `.solenoid-selbar`.
+- **Minimap** — the bottom-right canvas map. `Minimap.tsx` · `.solenoid-minimap` (hidden on mobile).
+- **Cable inspector** — the panel for a selected cable. `CableInspector.tsx` · `.solenoid-cable-inspector`.
+- **Conduit popup** — the floating toolbar on a Conduit (angle dial, extend lanes). `ConduitComponent.tsx` · `.solenoid-conduit-toolbar` (`--docked` when parked lower-left).
+- **Chips** — the compact value previews on a node's value box. `ArrayChip.tsx` · `.solenoid-array-chip` with variants `--array` (list) / `--frame` / `--cube` / `--chart`; `FrameChip`/`CubeChip`/`ChartChip` wrap it; errors render as `ErrorChip` (`.sol-error-chip`).
+- **List / Frame / Cube popups** — the click-to-open value viewers. List & Frame → `TablePopup.tsx` (`.table-popup`); Cube → `CubePopup.tsx` (`.cube-popup`). (Chart → `ChartPopup.tsx`.)
+- **Problems / Alerts / Pins** — the right-side HUD stack sections. Container `HudStack.tsx` · `.solenoid-hud-stack`; Alerts → `alertStore.ts`, Pins → `pinStore.ts`, Problems → `.solenoid-problems-layer` + `problemsStore.ts`, Comments → `.solenoid-comments-layer` + `commentStore.ts`.
+
 ### Pre-alpha — break freely, don't build compat layers
 The project is pre-alpha with ONE user (the author), who has explicitly said: feel free to break old saves, old code, and legacy names. So **don't** add back-compat shims, type aliases, migration maps, or deprecation paths for renames/format changes — just make the clean change and update the seed JSONs + tests. An old save referencing a removed/renamed node loads it as a Placeholder (wiring + data kept; re-saves as the original type) — acceptable, no alias needed. (Example: the Reduce→Aggregate rename shipped with NO persistence alias — see dev-notes.) When unsure whether to preserve something old, prefer deleting it — the v1→v2 `LEGACY_TYPES_V1` type-rename map and the pre-documents autosave migration were both swept out (2026-06-19). The save-format `v` field + the "refuse a newer-than-current file" guard stay (forward safety, not legacy baggage); there is just no backward migration.
 
