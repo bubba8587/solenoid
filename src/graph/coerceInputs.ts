@@ -125,6 +125,14 @@ function coerceValue(dataType: SocketDataType, v: unknown): unknown {
       if (dataType === "complexlist")
         return Array.isArray(v) && Array.isArray((v as unknown[])[0]) ? v : [v];
       return Array.isArray(v) ? v : [v];
+    case "anylist":
+      // The element-agnostic 1-D wildcard (Set nodes): the lattice lets a scalar of
+      // ANY family widen in, so promote a lone value to a singleton — without this a
+      // number throws in the node's for...of and a string iterates PER CHARACTER.
+      // (A complex scalar is itself [re, im] — an array — so it passes through as-is;
+      // element-agnostic means we can't disambiguate it from a 2-list here.)
+      if (v == null) return v;
+      return Array.isArray(v) ? v : [v];
     case "frame":
       // Any lower-rank value widens into a frame (dimensional flow): a 2-D matrix →
       // named columns (Col1, Col2…, types inferred); a 1-D list → a single ROW
