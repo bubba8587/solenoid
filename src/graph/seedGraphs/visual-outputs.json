@@ -11,8 +11,8 @@
     {"id":"spark_data","type":"SparklineNode","x":320,"y":430,"init":{"label":"Sales (column)","op":"column"}},
     {"id":"chart_data","type":"ChartNode","x":320,"y":620,"init":{"label":"Sales (column)","op":"column"}},
 
-    {"id":"slider","type":"SliderInputNode","x":0,"y":960,"init":{"label":"Reading","value":72,"min":0,"max":100,"step":1}},
-    {"id":"gauge","type":"GaugeNode","x":300,"y":920,"init":{"label":"Gauge"},"literals":{"value":0,"min":0,"max":100}},
+    {"id":"slider","type":"SliderInputNode","x":0,"y":960,"init":{"label":"Reading","value":0.72,"min":0,"max":1,"step":0.01}},
+    {"id":"gauge","type":"GaugeNode","x":300,"y":920,"init":{"label":"Gauge"},"literals":{"value":0}},
 
     {"id":"grid","type":"TableInputNode","x":0,"y":1180,"init":{"label":"Correlation-ish grid","tableText":"1, 4, 9, 16\n2, 6, 12, 20\n4, 9, 15, 22\n8, 13, 19, 25"}},
     {"id":"heat","type":"HeatmapCellNode","x":320,"y":1140,"init":{"label":"Heatmap"}},

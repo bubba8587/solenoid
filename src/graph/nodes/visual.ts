@@ -273,11 +273,12 @@ export class MermaidNode extends ClassicPreset.Node {
 }
 
 // ─── Gauge ────────────────────────────────────────────────────────────────────
-// A radial gauge of a scalar within [min, max]. Pass-through value out.
+// A radial gauge of a single value read as a fraction of 100% (1 = 100%). The
+// dial always spans 0→100%; the value passes straight through.
 
 export class GaugeNode extends ClassicPreset.Node {
   label: string;
-  literals: Record<string, number> = { value: 0, min: 0, max: 100 };
+  literals: Record<string, number> = { value: 0 };
   cachedResult: number | null = null;
   width = 180;
   height = 200;
@@ -285,18 +286,14 @@ export class GaugeNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("Gauge");
     this.label = init?.label ?? "Gauge";
+    // A single value read as a fraction of 100% (1 = 100%, 1.5 = 150%). The dial
+    // scale is always 0→100%; no Min/Max inputs.
     this.addInput("value", numIn("Value"));
-    this.addInput("min",   numIn("Min"));
-    this.addInput("max",   numIn("Max"));
     this.addOutput("result", numOut("Pass-through"));
   }
 
-  data(inputs: { value?: number[]; min?: number[]; max?: number[] }) {
+  data(inputs: { value?: number[] }) {
     const v = inputs.value?.[0] ?? this.literals.value ?? null;
-    // min/max read by the component for the dial scale; mirror live inputs so a
-    // wired bound is honoured there too.
-    this.literals.min = inputs.min?.[0] ?? this.literals.min ?? 0;
-    this.literals.max = inputs.max?.[0] ?? this.literals.max ?? 100;
     this.cachedResult = v;
     return { result: v };
   }

@@ -94,7 +94,7 @@ n("flt-out", "FilterNode",      -1180,  140, { label: "Keep spend (< 0)", op: "l
 n("red-out", "ReduceLambdaNode", -900,  140, { label: "Spend", expr: "acc + x" });
 n("disp-out","DisplayNode",      -640,  100, { label: "Expenses (3 mo)" });
 n("expr-rate","ExpressionNode",-680,  380, { label: "Savings rate", expr: "(income + expense) / income" });
-n("gauge-rate","GaugeNode",    -420,  360, { label: "Savings rate" }, { literals: { value: 0, min: 0, max: 1 } });
+n("gauge-rate","GaugeNode",    -420,  360, { label: "Savings rate" }, { literals: { value: 0 } });
 n("sld-savetarget","SliderInputNode", -420, 560, { label: "Target savings rate %", value: 20, min: 0, max: 60, step: 1 }, { literals: { min: 0, max: 60, step: 1 } });
 n("expr-savet","ExpressionNode",-680, 560, { label: "Target (fraction)", expr: "t / 100" });
 n("alert-rate","AlertNode",    -160,  360, { label: "Low-savings watch", mode: "range" }, { literals: { value: 50, low: 0.2, high: 1, target: 0 } });
@@ -163,7 +163,8 @@ n("col-bal", "GetColumnNode", 60,  860, { label: "Balance", readAs: "number" }, 
 n("col-type","GetColumnNode", 60, 1100, { label: "Type", readAs: "text" }, { stringLiterals: { name: "Type" } });
 n("red-nw",  "AggregateNode",   340,  820, { label: "Net worth", op: "sum" });
 n("disp-nw", "DisplayNode",  620,  800, { label: "Net worth" });
-n("gauge-nw","GaugeNode",    620, 1020, { label: "Toward goal" }, { literals: { value: 0, min: 0, max: 120000 } });
+n("gauge-nw","GaugeNode",    620, 1020, { label: "Toward goal" }, { literals: { value: 0 } });
+n("ratio-nw","ExpressionNode", 430, 1180, { label: "Progress", expr: "nw / goal" });
 n("slider-goal","SliderInputNode", 60, 1340, { label: "Net-worth goal", value: 120000, min: 50000, max: 250000, step: 5000 }, { literals: { min: 50000, max: 250000, step: 5000 } });
 n("flt-assets","FilterNode",      340, 1320, { label: "Keep assets (> 0)", op: "gt" });
 n("red-assets","ReduceLambdaNode", 600, 1320, { label: "Assets total", expr: "acc + x" });
@@ -175,14 +176,15 @@ n("chart-type","ChartNode",  620, 1260, { label: "Assets vs liabilities", op: "c
 n("disp-type","DisplayNode", 900, 1080, { label: "Class totals" });
 n("alert-nw","AlertNode",    900,  820, { label: "Emergency-fund watch", mode: "range" }, { literals: { value: 50, low: 0, high: 1000000000, target: 0 } });
 n("cd-acct", "ConduitNode", 1160,  900, { angle: 0, seq: 2 });
-const GRP_ACCT = ["col-bal","col-type","red-nw","disp-nw","gauge-nw","slider-goal","flt-assets","red-assets","flt-liab","red-liab","expr-debt","gb-type","chart-type","disp-type","alert-nw","cd-acct"];
+const GRP_ACCT = ["col-bal","col-type","red-nw","disp-nw","gauge-nw","ratio-nw","slider-goal","flt-assets","red-assets","flt-liab","red-liab","expr-debt","gb-type","chart-type","disp-type","alert-nw","cd-acct"];
 
 c("ws-acct","frame","col-bal","frame");
 c("ws-acct","frame","col-type","frame");
 c("col-bal","values","red-nw","list");
 c("red-nw","result","disp-nw","in");
-c("red-nw","result","gauge-nw","value");
-c("slider-goal","value","gauge-nw","max");
+c("red-nw","result","ratio-nw","nw");
+c("slider-goal","value","ratio-nw","goal");
+c("ratio-nw","result","gauge-nw","value");
 c("col-bal","values","flt-assets","list");
 c("flt-assets","result","red-assets","table");
 c("col-bal","values","flt-liab","list");
@@ -224,13 +226,14 @@ n("expr-nper", "ExpressionNode", 1960, -360, { label: "Months", expr: "years * 1
 n("expr-pv",   "ExpressionNode", 1960, -120, { label: "Today (outflow)", expr: "-nw" });
 n("tvm-fv",    "TvmNode",        2220, -260, { label: "Projected nest egg", op: "fv", paymentTiming: "end" });
 n("disp-proj", "DisplayNode",    2480, -300, { label: "Projected nest egg" });
-n("gauge-proj","GaugeNode",      2480,  -60, { label: "Toward target" }, { literals: { value: 0, min: 0, max: 1000000 } });
+n("gauge-proj","GaugeNode",      2480,  -60, { label: "Toward target" }, { literals: { value: 0 } });
+n("ratio-proj","ExpressionNode", 2340,  100, { label: "Progress", expr: "fv / target" });
 n("sld-target","SliderInputNode",2220,  200, { label: "Retirement target $", value: 1000000, min: 100000, max: 3000000, step: 50000 }, { literals: { min: 100000, max: 3000000, step: 50000 } });
 n("alert-proj","AlertNode",      2480,  200, { label: "Off-track watch", mode: "range" }, { literals: { value: 50, low: 0, high: 1000000000000, target: 0 } });
 n("seq-years","SequenceNode",    1960,  440, { label: "Years 1…N" });
 n("expr-traj","ExpressionNode",   2240,  440, { label: "FV after c years", expr: "pv*(1+i)^(12*c) + IF(i=0, pmt*12*c, pmt*((1+i)^(12*c)-1)/i)" });
 n("spark-growth","SparklineNode", 2520,  440, { label: "Growth trajectory", op: "line" });
-const GRP_PROJ = ["sld-contrib","sld-return","expr-pmt","expr-mrate","expr-nper","expr-pv","tvm-fv","disp-proj","gauge-proj","sld-target","alert-proj","seq-years","expr-traj","spark-growth"];
+const GRP_PROJ = ["sld-contrib","sld-return","expr-pmt","expr-mrate","expr-nper","expr-pv","tvm-fv","disp-proj","gauge-proj","ratio-proj","sld-target","alert-proj","seq-years","expr-traj","spark-growth"];
 
 c("sld-contrib","value","expr-pmt","contrib");
 c("sld-return","value","expr-mrate","ret");
@@ -241,8 +244,9 @@ c("expr-nper","result","tvm-fv","nper");
 c("expr-pmt","result","tvm-fv","pmt");
 c("expr-pv","result","tvm-fv","pv");
 c("tvm-fv","result","disp-proj","in");
-c("tvm-fv","result","gauge-proj","value");
-c("sld-target","value","gauge-proj","max");
+c("tvm-fv","result","ratio-proj","fv");
+c("sld-target","value","ratio-proj","target");
+c("ratio-proj","result","gauge-proj","value");
 c("tvm-fv","result","alert-proj","value");
 c("sld-target","value","alert-proj","low");
 c("in-years","value","seq-years","count");

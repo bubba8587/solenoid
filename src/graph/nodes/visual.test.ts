@@ -50,11 +50,9 @@ describe("visual nodes", () => {
     expect(m.cachedSource).toBe("sequenceDiagram; A->>B: hi");
   });
 
-  it("Gauge passes the value through and mirrors live min/max", () => {
+  it("Gauge passes the single value through (read as a percentage by the view)", () => {
     const g = new GaugeNode();
-    expect(g.data({ value: [42], min: [0], max: [50] })).toEqual({ result: 42 });
-    expect(g.literals.min).toBe(0);
-    expect(g.literals.max).toBe(50);
+    expect(g.data({ value: [1.5] })).toEqual({ result: 1.5 });
     // unwired value → literal fallback (0)
     expect(g.data({})).toEqual({ result: 0 });
   });

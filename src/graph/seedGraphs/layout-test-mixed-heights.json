@@ -4,7 +4,7 @@
   "order": 90,
   "nodes": [
     {"id":"v_num","type":"NumberInputNode","x":0,"y":0,"init":{"label":"Short (Number)","value":42}},
-    {"id":"v_gauge","type":"GaugeNode","x":0,"y":130,"init":{"label":"Tall (Gauge)"},"literals":{"value":64,"min":0,"max":100}},
+    {"id":"v_gauge","type":"GaugeNode","x":0,"y":130,"init":{"label":"Tall (Gauge)"},"literals":{"value":0.64}},
     {"id":"v_disp","type":"DisplayNode","x":0,"y":400,"init":{"label":"Medium (Display)"}},
     {"id":"v_frame","type":"FrameInputNode","x":0,"y":470,"init":{"label":"Tall (Frame)","frameText":"Region, Sales\nNorth, 120\nSouth, 90\nEast, 140\nWest, 75"}},
     {"id":"v_chart","type":"ChartNode","x":0,"y":520,"init":{"label":"Tall (Chart)","op":"column"}},
@@ -14,7 +14,7 @@
     {"id":"h_slider","type":"SliderInputNode","x":250,"y":1320,"init":{"label":"Slider","value":30}},
     {"id":"h_frame","type":"FrameInputNode","x":700,"y":1320,"init":{"label":"Wide (Frame)","frameText":"A, B\n1, 2\n3, 4"}},
     {"id":"h_chart","type":"ChartNode","x":760,"y":1320,"init":{"label":"Wide (Chart)","op":"line"}},
-    {"id":"h_gauge","type":"GaugeNode","x":1400,"y":1320,"init":{"label":"Gauge (far)"},"literals":{"value":80,"min":0,"max":100}}
+    {"id":"h_gauge","type":"GaugeNode","x":1400,"y":1320,"init":{"label":"Gauge (far)"},"literals":{"value":0.8}}
   ],
   "connections": []
 }
