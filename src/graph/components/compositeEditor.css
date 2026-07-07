@@ -230,13 +230,27 @@ html.sol-drilled-in .solenoid-outline__open-pill { display: none; }
 /* The breadcrumb strip must clear BOTH mobile top rows (accent ~30px + toolbar
    52px = ~82px + notch); at 56px it hid UNDER them. And it shares that row-band
    with the right-anchored Fit/Lock pill (.solenoid-nav, right:12px, ~110px wide),
-   so cap the width to stop before it — the port buttons wrap to a second row. */
+   so cap the width to stop before it. The breadcrumb takes the whole first row and
+   the port buttons wrap BELOW it — otherwise the two buttons squeezed the crumb
+   text to nothing on a narrow phone. Scaled down overall. */
 html.is-mobile .solenoid-composite-editor__strip {
   top: calc(88px + env(safe-area-inset-top));
   left: 8px;
-  flex-wrap: wrap;
-  max-width: calc(100vw - 130px);
+  /* Stack: breadcrumb row on top, the +Input/+Output buttons on their own row
+     below — a plain row squeezed the crumb text to nothing on a narrow phone. */
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+  padding: 4px 6px;
+  max-width: calc(100vw - 150px);
 }
+html.is-mobile .solenoid-composite-editor__crumbs { flex: 0 0 auto; }
+html.is-mobile .solenoid-composite-editor__crumb {
+  font-size: 11.5px;
+  padding: 1px 3px;
+  max-width: 130px;
+}
+html.is-mobile .solenoid-composite-editor__crumb-sep { font-size: 10px; }
 html.is-mobile .solenoid-composite-editor__btn {
   min-height: 36px;
   padding: 7px 14px;
