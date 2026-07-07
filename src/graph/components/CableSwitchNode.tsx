@@ -1,6 +1,10 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { CableSwitchNode as CableSwitchNodeType } from "../rete-nodes";
-import { getEditor, getArea, processGraph, bumpConnectionVersion, pushHistory } from "../process";
+// getActiveEditor/getActiveArea, NOT getEditor/getArea: an Input Switch inside a
+// composite drill-in must retype/prune/refresh on its OWN graph (the 9316c2d
+// resolver sweep missed this component — every gesture no-op'd against main).
+import { processGraph, bumpConnectionVersion, pushHistory } from "../process";
+import { getActiveEditor, getActiveArea } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
 import { collapseStore } from "../collapseStore";
 import { pushRowRemovalUndo, pushRowAddUndo } from "./ExtensibleInputs";
@@ -67,7 +71,7 @@ function SwitchOptionRow({ data, emit, keyName, index, multiSelect, active, chec
       // A title relabels the multi-select cube's `name` column → recompute in multi
       // mode; single mode only needs a re-render.
       if (data.multiSelect) void processGraph();
-      else void getArea()?.update("node", data.id);
+      else void getActiveArea()?.update("node", data.id);
     },
   );
   const input = data.inputs[keyName];
@@ -145,8 +149,8 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
     // downstream cable the new type can't feed (retypeOutputCables), then refresh the
     // node so the output dot's glyph updates.
     const changed = data.syncOutputType();
-    const ed = getEditor();
-    const area = getArea();
+    const ed = getActiveEditor();
+    const area = getActiveArea();
     if (changed && ed && area) void retypeOutputCables(ed, area, data.id, "out");
     void area?.update("node", data.id);
     void processGraph();
@@ -161,11 +165,11 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
   async function addRow() {
     const key = data.addValueInput();
     pushRowAddUndo(data, [key], () => data.removeValueInput(key));
-    await getArea()?.update("node", data.id);
+    await getActiveArea()?.update("node", data.id);
     await processGraph();
   }
   async function removeRow(key: string) {
-    const editor = getEditor();
+    const editor = getActiveEditor();
     if (editor) {
       for (const c of editor.getConnections()) {
         if (c.target === data.id && c.targetInput === key) await editor.removeConnection(c.id);
@@ -186,11 +190,11 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
       // out-of-range render). The component re-syncs off data.activeIndex on
       // the area update the entry triggers.
       pushHistory(
-        () => { data.activeIndex = prevActive; void getArea()?.update("node", data.id); void processGraph(); },
-        () => { data.activeIndex = clamped; void getArea()?.update("node", data.id); void processGraph(); },
+        () => { data.activeIndex = prevActive; void getActiveArea()?.update("node", data.id); void processGraph(); },
+        () => { data.activeIndex = clamped; void getActiveArea()?.update("node", data.id); void processGraph(); },
       );
     }
-    await getArea()?.update("node", data.id);
+    await getActiveArea()?.update("node", data.id);
     bumpConnectionVersion(); // re-route cables on rows that shifted up
     await processGraph();
   }
