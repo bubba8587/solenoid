@@ -128,8 +128,10 @@ export function GaugeArc(props: { pct: number; track: string; size: number }) {
 }
 
 export function TornadoBars(props: { data: TornadoBar[]; grid: string; axis: string }) {
+  // 218 = TORNADO_W (kept a literal so the lazy chartRender chunk isn't pulled
+  // eagerly just to read the constant).
   return (
-    <Suspense fallback={box(260, Math.max(70, props.data.length * 22 + 16))}>
+    <Suspense fallback={box(218, Math.max(70, props.data.length * 22 + 16))}>
       <TornadoBarsInner {...props} />
     </Suspense>
   );

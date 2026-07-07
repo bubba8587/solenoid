@@ -407,10 +407,15 @@ const FALLING = "#4c8bf5";
 
 export type TornadoBar = { label: string; offset: number; range: number; rising: boolean };
 
+// Fits the wide card (240px) minus body padding — a hardcoded 260 overflowed the
+// card and clipped on the right (matches ChartNode's W). Exported so the Suspense
+// fallback box reserves the same width.
+export const TORNADO_W = 218;
+
 export function TornadoBars({ data, grid, axis }: { data: TornadoBar[]; grid: string; axis: string }) {
   return (
     <BarChart
-      width={260}
+      width={TORNADO_W}
       height={Math.max(70, data.length * 22 + 16)}
       data={data}
       layout="vertical"
@@ -418,7 +423,7 @@ export function TornadoBars({ data, grid, axis }: { data: TornadoBar[]; grid: st
     >
       <CartesianGrid stroke={grid} horizontal={false} />
       <XAxis type="number" tick={{ fontSize: 9, fill: axis }} tickLine={false} />
-      <YAxis type="category" dataKey="label" width={72} tick={{ fontSize: 9, fill: axis }} tickLine={false} />
+      <YAxis type="category" dataKey="label" width={64} tick={{ fontSize: 9, fill: axis }} tickLine={false} />
       <Tooltip isAnimationActive={false} />
       <Bar dataKey="offset" stackId="tornado" fill="transparent" isAnimationActive={false} />
       <Bar dataKey="range" stackId="tornado" isAnimationActive={false}>

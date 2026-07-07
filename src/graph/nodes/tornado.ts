@@ -24,7 +24,10 @@ export class TornadoNode extends ClassicPreset.Node {
   cachedResult: number | null = null;
   /** Last completed run's ranking, best (biggest swing) first. Null = never run. */
   results: TornadoResult[] | null = null;
-  width = 300;
+  // Rendered on the --wide (240px) card via nodeWide(); the inline chart is sized
+  // to fit that (see TORNADO_W). Keep this hint in sync so ELK reserves the right
+  // footprint.
+  width = 240;
   height = 280;
 
   constructor(init?: { label?: string }) {
