@@ -1,0 +1,12 @@
+/* The set-notation line under the op selector (KaTeX, or the Unicode fallback while
+   the chunk loads). Centered, theme-coloured; KaTeX inherits currentColor so it tracks
+   light/dark. */
+.solenoid-setop__notation {
+  text-align: center;
+  padding: 4px 0 2px;
+  color: var(--text);
+  user-select: none;
+}
+.solenoid-setop__notation .katex {
+  font-size: 1.15em;
+}

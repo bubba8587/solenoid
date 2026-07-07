@@ -15,11 +15,13 @@ import {
   SortByNode,
   InterleaveNode,
   SetOpNode,
+  SET_OP_META,
   type ReduceOp,
   type FillOp,
 } from "./list";
 import { broadcast, broadcastErr } from "./shared";
 import { solError, isSolError } from "../errorValue";
+import katex from "katex";
 
 describe("Range", () => {
   it("counts up, stop-exclusive", () => {
@@ -95,6 +97,12 @@ describe("Set operations (two lists)", () => {
     expect(run("difference", [e, 1], [1]).some((v) => isSolError(v))).toBe(true);
     // intersection: an error can't be "in both" → dropped
     expect(run("intersect", [e, 2], [e, 2])).toEqual([2]);
+  });
+
+  it("every op's set notation is valid KaTeX (else the card silently shows plain text)", () => {
+    for (const meta of Object.values(SET_OP_META)) {
+      expect(() => katex.renderToString(meta.tex, { throwOnError: true })).not.toThrow();
+    }
   });
 });
 
