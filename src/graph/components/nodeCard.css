@@ -550,6 +550,33 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   font-weight: 400;
 }
 
+/* Markdown-rendered text value (a text FC's "Markdown" advanced option). Compact,
+   value-box-tuned (tight margins, em-relative header sizes so it scales with the
+   FC text size) — deliberately NOT the doc-oriented .sol-md. Font family/weight/
+   size come from the element's inline style; alignment from the container. */
+.solenoid-node__md { line-height: 1.35; }
+.solenoid-node__md > :first-child { margin-top: 0; }
+.solenoid-node__md > :last-child { margin-bottom: 0; }
+.solenoid-node__md h1 { font-size: 1.6em; font-weight: 700; margin: 0.2em 0; color: var(--text-bright); }
+.solenoid-node__md h2 { font-size: 1.35em; font-weight: 700; margin: 0.2em 0; color: var(--text-bright); }
+.solenoid-node__md h3 { font-size: 1.15em; font-weight: 600; margin: 0.2em 0; }
+.solenoid-node__md h4, .solenoid-node__md h5, .solenoid-node__md h6 { font-size: 1em; font-weight: 600; margin: 0.2em 0; }
+.solenoid-node__md p { margin: 0.3em 0; }
+.solenoid-node__md ul, .solenoid-node__md ol { margin: 0.3em 0; padding-left: 1.4em; text-align: left; }
+.solenoid-node__md li { margin: 0.1em 0; }
+.solenoid-node__md a { color: var(--accent); text-decoration: none; }
+.solenoid-node__md a:hover { text-decoration: underline; }
+.solenoid-node__md strong { font-weight: 700; color: var(--text-bright); }
+.solenoid-node__md code {
+  font-family: var(--font-mono); font-size: 0.9em;
+  padding: 0 4px; border-radius: 3px;
+  background: var(--surface); border: 1px solid var(--border);
+}
+.solenoid-node__md blockquote {
+  margin: 0.3em 0; padding: 0 8px;
+  border-left: 2px solid var(--border-strong); color: var(--text-dim);
+}
+
 /* Residual NaN: dirty DATA (an undefined value in the source), NOT an error — an
    error is a tagged SolError with the red #CODE! badge. A quiet NEUTRAL affordance:
    muted text on a faint neutral tint, mono + italic so it reads as a state, not a

@@ -12,9 +12,13 @@ full vitest (2280) green.
   string-typed Format Controller now has an expander (reusing the number tier's
   `advancedOpen` / `toggleAdvanced` + chevron) with three display-only controls —
   **alignment** L/C/R (SegToggle; the display box is right-aligned by default, so
-  this is an override), **Markdown** (renders the value as sanitized INLINE markdown
-  via `marked.parseInline` + DOMPurify — untrusted strings from shared files), and
-  **Monospace** (text renders sans by default; opt into `--font-mono`). New
+  this is an override), **Markdown** (renders the value as sanitized BLOCK markdown
+  via `marked.parse` + DOMPurify — `# h` → real `<h1>`; styled by a compact
+  value-box `.solenoid-node__md` class, untrusted strings from shared files), and
+  **Monospace** (text renders sans by default; opt into `--font-mono`). Two follow-up
+  fixes after author testing: the mono checkbox spread a `fontFamily: undefined` that
+  clobbered the base sans → forced mono on ALL FC-text (now only emits the key when
+  ON); Markdown was `parseInline` (no headers) → block `parse`. New
   `FormatAnnotation` fields `textAlign` / `textMarkdown` / `textMono` (+ `TextAlign`
   type), FC node props + `annotation()`, `controlsFor().advanced` now true for text,
   applied in `nodeKit.tsx` ValueDisplay (the same surface as the existing case/B/I/size
