@@ -66,14 +66,13 @@ function renderTextValue(s: string): ReactNode {
 }
 
 /**
- * Render a text value as INLINE markdown (a text FC's "Markdown" advanced
- * option). A value box is a single cell, so inline-only (`parseInline` — no
- * block <p>/<ul> wrapping). The string is untrusted (arrives in shared
- * .solenoid files), so sanitize the HTML before injecting it.
+ * Sanitized markdown → HTML for a text FC's "Markdown" advanced option. FULL
+ * (block) parse so headers / lists / blockquotes render — `# heading` becomes a
+ * real <h1>, which is the point (inline-only parse left `#` literal). The string
+ * is untrusted (arrives in shared .solenoid files), so sanitize before injecting.
  */
-function renderTextMarkdown(s: string): ReactNode {
-  const html = DOMPurify.sanitize(marked.parseInline(s, { async: false, gfm: true }) as string);
-  return <span dangerouslySetInnerHTML={{ __html: html }} />;
+function renderTextMarkdownHtml(s: string): string {
+  return DOMPurify.sanitize(marked.parse(s, { async: false, gfm: true, breaks: true }) as string);
 }
 
 type Port = { socket: ClassicPreset.Socket; label?: string };
@@ -566,7 +565,10 @@ export function ValueDisplay({
     fontStyle: ann.italic ? "italic" : "normal",
     fontSize: ann.textScale ? `${ann.textScale}px` : undefined,
     // Monospace opt-in overrides the span's default sans face (advanced tier).
-    fontFamily: ann.textMono ? "var(--font-mono)" : undefined,
+    // Only emit the key when ON — a `fontFamily: undefined` in the spread would
+    // clobber the span's base `var(--font-sans)` and fall back to the container's
+    // mono, forcing mono on every FC-annotated text value.
+    ...(ann.textMono ? { fontFamily: "var(--font-mono)" } : {}),
   } : undefined;
   const cased = (s: string): string => (ann ? applyTextCase(s, ann.textCase) : s);
 
@@ -640,11 +642,26 @@ export function ValueDisplay({
     >
       {isEmpty ? empty
         : isString ? (
-            <span style={{ fontFamily: "var(--font-sans)", ...(textStyle ?? {}) }}>
-              {ann?.textMarkdown
-                ? renderTextMarkdown(cased(value as string))
-                : renderTextValue(cased(value as string))}
-            </span>
+            ann?.textMarkdown ? (
+              // Block markdown renders as its own styled container (a <div> can't
+              // live inside the text <span>); font attrs still apply, headers/lists
+              // set their own sizes relative to it.
+              <div
+                className="solenoid-node__md"
+                style={{
+                  width: "100%",
+                  fontFamily: ann.textMono ? "var(--font-mono)" : "var(--font-sans)",
+                  fontWeight: ann.bold ? 700 : undefined,
+                  fontStyle: ann.italic ? "italic" : undefined,
+                  fontSize: ann.textScale ? `${ann.textScale}px` : undefined,
+                }}
+                dangerouslySetInnerHTML={{ __html: renderTextMarkdownHtml(cased(value as string)) }}
+              />
+            ) : (
+              <span style={{ fontFamily: "var(--font-sans)", ...(textStyle ?? {}) }}>
+                {renderTextValue(cased(value as string))}
+              </span>
+            )
           )
         : isLogical ? applyLogicalStyle(value as boolean, ann?.logicalStyle)
         : listIsString ? (listInline ? (value as (string | null)[]).map((v) => (v === null ? "null" : cased(v))).join(", ") : <ArrayChip value={value as string[]} />)
