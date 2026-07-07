@@ -220,3 +220,37 @@ The system is flat at rest and uses elevation only to communicate state. Cards s
 - **Don't** fill a panel, button, or section header with the accent or a socket hue for visual interest; color must communicate type or state.
 - **Don't** inflate type sizes for "breathing room," and don't substitute a generic geometric sans for the hyperlegible face.
 - **Don't** degrade cables (straighten, hide, swap shape) during motion as a performance trick.
+
+## 7. Voice & copy
+
+Rules for shipped UI text — headings, dialog bodies, What's New slides, tooltips, empty states.
+The house voice is plain and declarative: name the feature, say what it does, stop. These were
+distilled from a pass that rewrote the What's New / About copy (before → after shown). They sit
+alongside the "no Captain Obvious UI strings" rule in CLAUDE.md (don't narrate an affordance the
+control already conveys) — that rule still governs; these are about tone once the string earns its place.
+
+- **No em dashes.** Use a period, a colon, or restructure. The em dash is the tell of the machine-written
+  aside. _"the whole app comes with you — toolbar, minimap, zoom"_ → _"…the whole editor. The minimap,
+  zoom, right-click menu…"_
+- **Name the feature; don't slogan it.** A heading is a label, not ad copy. Kill "and then some", "built in",
+  "made simple", "…, meet …". _"Every chart Excel has, and then some"_ → _"More chart types"_. _"Make it
+  yours"_ → _"Theming and shortcuts"_.
+- **Don't tease a count.** No "three ways", "and more", "…, four ways". Say the thing. _"Ask 'what if' —
+  four ways"_ → _"What-if analysis"_.
+- **Define by what it is, not what it isn't.** Drop the "X, not Y" / "not a stripped-down Y" antithesis and
+  its strawman. _"A real canvas, not a stripped-down popup."_ → (cut; the sentence before it already said
+  the editor comes with you).
+- **No knowing wink, no editorializing clause.** State the mechanism instead of the attitude; don't
+  anthropomorphize or take a swipe at the alternative. _"so nothing recomputes behind your back"_ →
+  _"recompute when you press Solve, and a marker shows when the result no longer matches its inputs"_.
+  _"visible in a way a spreadsheet hides"_ → _"the steps of a calculation stay visible on the canvas"_.
+- **Complete sentences, not headline fragments strung on dashes.** Subject, verb, period. A colon or "plus"
+  for a genuine enumeration is fine; the dash as a rhythmic beat is not. _"…with your own API keys —
+  refreshes on a timer, charts in a click, and never bakes the data into the file."_ → _"…with your own
+  API keys. They refresh on a timer and are never saved into the file."_
+- **Representative, not exhaustive.** List a few concrete examples; don't inventory every feature (and never
+  list the same one twice for cadence). One definition per noun — no stacked appositives. _"A node-based
+  computation graph — an Excel alternative for data tables."_ → _"A node-graph alternative to Excel for data
+  tables."_
+- **Second person for instructions, not for asides.** "Pull … onto the canvas" is fine; "behind your back"
+  is not. Address the user to tell them what to do, never to be chummy.
