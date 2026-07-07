@@ -42,6 +42,26 @@ describe("dataProviders", () => {
     expect(PROVIDERS.alphavantage.needsKey).toBe(true);
   });
 
+  it("FRED folds date range + frequency into the URL (cosd/coed/fq/fam)", () => {
+    const url = PROVIDERS.fred.buildUrl("UNRATE", "", { start: "2020-01-01", end: "2021-01-01", freq: "Monthly" });
+    expect(url).toContain("id=UNRATE");
+    expect(url).toContain("cosd=2020-01-01");
+    expect(url).toContain("coed=2021-01-01");
+    expect(url).toContain("fq=Monthly");
+    expect(url).toContain("fam=avg");
+    // No refinements → a bare id URL (unchanged from before).
+    expect(PROVIDERS.fred.buildUrl("UNRATE", "")).toBe("https://fred.stlouisfed.org/graph/fredgraph.csv?id=UNRATE");
+  });
+
+  it("Alpha Vantage frequency swaps the TIME_SERIES_* function; daily stays compact", () => {
+    expect(PROVIDERS.alphavantage.buildUrl("AAPL", "K")).toContain("function=TIME_SERIES_DAILY");
+    expect(PROVIDERS.alphavantage.buildUrl("AAPL", "K")).toContain("outputsize=compact");
+    expect(PROVIDERS.alphavantage.buildUrl("AAPL", "K", { freq: "weekly" })).toContain("function=TIME_SERIES_WEEKLY");
+    expect(PROVIDERS.alphavantage.buildUrl("AAPL", "K", { freq: "monthly" })).toContain("function=TIME_SERIES_MONTHLY");
+    // Weekly/monthly carry full history, so no outputsize param.
+    expect(PROVIDERS.alphavantage.buildUrl("AAPL", "K", { freq: "weekly" })).not.toContain("outputsize");
+  });
+
   it("getProvider falls back to fred for an unknown id", () => {
     expect(getProvider("nope").id).toBe("fred");
     expect(getProvider("alphavantage").id).toBe("alphavantage");

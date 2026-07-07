@@ -63,7 +63,14 @@ export class DataFeedNode extends ClassicPreset.Node {
       return { frame: null };
     }
     const key = p.needsKey ? apiKeyStore.get(p.keyProvider ?? p.id) : "";
-    const url = p.buildUrl(input, key);
+    // Optional refinements (date range / frequency) live in stringLiterals so they
+    // round-trip; empty → undefined so the URL omits them. They're in the URL, hence
+    // the cache key, so changing any of them re-fetches.
+    const url = p.buildUrl(input, key, {
+      start: this.stringLiterals.start?.trim() || undefined,
+      end: this.stringLiterals.end?.trim() || undefined,
+      freq: this.stringLiterals.freq?.trim() || undefined,
+    });
     // The cache key folds in the provider so switching provider re-fetches; a stored
     // key change also re-fetches (the URL changes for keyed providers).
     const cacheKey = connectionStore.key(this.id, `${this.provider}:${url}`);
