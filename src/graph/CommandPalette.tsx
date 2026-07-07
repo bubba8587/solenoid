@@ -175,11 +175,13 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
           ref={inputRef}
           className="solenoid-cmdpalette__input"
           value={query}
-          type="text"
-          // Suppress Android/iOS autofill (password / card / address prompts) — this
-          // is a search box, not a credential field. name="search" + inputMode search
-          // + the off flags tell the OS it's plain text, same as our other fields.
-          name="search"
+          // A SEMANTIC search field — the reliable lever to stop Android Chrome's
+          // autofill bar (password / card / address). `autocomplete="off"` alone
+          // doesn't (Chrome ignores it), and a `name`d `type="text"` reads as a
+          // fillable form field; `type="search"` tells the OS it's a search box, so
+          // it drops the credential/payment/address prompts. No `name` (our other
+          // fields have none and don't trigger it). Native clear (×) hidden in CSS.
+          type="search"
           inputMode="search"
           enterKeyHint="go"
           autoComplete="off"

@@ -84,6 +84,10 @@
 }
 .solenoid-cmdpalette__input:focus { border-color: var(--accent); }
 .solenoid-cmdpalette__input::placeholder { color: var(--text-muted); }
+/* type="search" adds a native clear button + decoration on WebKit — hide them so
+   the field looks identical to the old type="text" box. */
+.solenoid-cmdpalette__input::-webkit-search-cancel-button,
+.solenoid-cmdpalette__input::-webkit-search-decoration { -webkit-appearance: none; appearance: none; }
 
 /* Mobile: the on-screen keyboard owns the bottom half of the viewport, so the
    palette anchors to the TOP with the input first and results below it

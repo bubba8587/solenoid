@@ -6,6 +6,11 @@ swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
 ### SESSION DIGEST (2026-07-07 — mobile status bar + HUD overlap)
+- **Command palette Android autofill bar killed:** the palette search input showed Chrome's
+  password/card/location autofill bar despite already carrying `autocomplete="off"` + `name` +
+  the off-flags (Chrome ignores `autocomplete="off"`, and a `name`d `type="text"` reads as a
+  fillable form field). Switched it to a semantic `type="search"` (no `name`) — Chrome drops the
+  credential/payment/address prompts for a real search field; native clear-button hidden in CSS.
 - **Accent status bar restored (Android):** the `<meta name="color-scheme" content="light dark">`
   added in `c576570` made Chrome Android theme its own toolbar per the page color-scheme and
   IGNORE `theme-color`, so the accent status-bar tint vanished in dark mode. Removed the meta
