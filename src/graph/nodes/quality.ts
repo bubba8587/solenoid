@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { anyIn, anyOut, numIn, strIn } from "./shared";
+import { anyIn, anyOut, numIn, strIn, listIn } from "./shared";
 import { isSolError } from "../errorValue";
 import { fireAlert } from "../alertStore";
 import { isGraphRebuilding } from "../process";
@@ -17,7 +17,7 @@ function safeRegex(pattern: string): RegExp | null {
   try { return new RegExp(pattern); } catch { return null; }
 }
 
-export type ExpectCheck = "notNull" | "unique" | "range" | "regex";
+export type ExpectCheck = "notNull" | "unique" | "range" | "regex" | "allowed";
 
 export class ExpectNode extends ClassicPreset.Node {
   label: string;
@@ -25,13 +25,16 @@ export class ExpectNode extends ClassicPreset.Node {
   checkUnique: boolean;
   checkRange: boolean;
   checkRegex: boolean;
+  checkAllowed: boolean;
   cachedValue: unknown = null;
   /** Which checks currently fail (empty = passing) — the component's red badge. */
   violations: ExpectCheck[] = [];
   literals: Record<string, number> = { min: 0, max: 100 };
-  stringLiterals: Record<string, string> = { pattern: "" };
+  // `pattern` = regex source; `allowed` = comma-separated allowlist (used when the
+  // `allowed` list socket is unwired — like Excel data-validation's typed list).
+  stringLiterals: Record<string, string> = { pattern: "", allowed: "" };
   width = 220;
-  height = 235;
+  height = 258;
   // Edge-detect on the SET of failing checks (like Alert's statusKey) so a value
   // that keeps failing the same way doesn't refire every recompute.
   private lastStatusKey = "";
@@ -42,6 +45,7 @@ export class ExpectNode extends ClassicPreset.Node {
     checkUnique?: boolean;
     checkRange?: boolean;
     checkRegex?: boolean;
+    checkAllowed?: boolean;
   }) {
     super("Expect");
     this.label = init?.label ?? "Expect";
@@ -49,14 +53,16 @@ export class ExpectNode extends ClassicPreset.Node {
     this.checkUnique = init?.checkUnique ?? false;
     this.checkRange = init?.checkRange ?? false;
     this.checkRegex = init?.checkRegex ?? false;
+    this.checkAllowed = init?.checkAllowed ?? false;
     this.addInput("in", anyIn("Value"));
     this.addInput("min", numIn("Min"));
     this.addInput("max", numIn("Max"));
     this.addInput("pattern", strIn("Pattern"));
+    this.addInput("allowed", listIn("Allowed"));
     this.addOutput("out", anyOut("Out"));
   }
 
-  data(inputs: { in?: unknown[]; min?: number[]; max?: number[]; pattern?: string[] }) {
+  data(inputs: { in?: unknown[]; min?: number[]; max?: number[]; pattern?: string[]; allowed?: unknown[][] }) {
     const raw = inputs.in?.[0] ?? null;
     this.cachedValue = raw;
 
@@ -117,6 +123,21 @@ export class ExpectNode extends ClassicPreset.Node {
         if (bad) violations.push("regex");
       }
     }
+    if (this.checkAllowed) {
+      // Membership against an allowlist. A wired `allowed` list wins; otherwise
+      // parse the typed comma-separated literal. Compare by string form so a
+      // number, date-serial, or text value all match by their rendered token.
+      const wired = inputs.allowed?.[0];
+      const allowVals: unknown[] = Array.isArray(wired)
+        ? wired.flat(1)
+        : (this.stringLiterals.allowed ?? "").split(",").map((s) => s.trim()).filter((s) => s !== "");
+      if (allowVals.length > 0) {
+        const set = new Set(allowVals.map((v) => String(v)));
+        // A null cell is the not-null check's job, not membership's — skip it here.
+        const bad = values.some((v) => v !== null && v !== undefined && !isSolError(v) && !set.has(String(v)));
+        if (bad) violations.push("allowed");
+      }
+    }
 
     this.violations = violations;
     const key = violations.join(",");
@@ -140,4 +161,5 @@ export const EXPECT_CHECK_LABEL: Record<ExpectCheck, string> = {
   unique: "unique",
   range: "range",
   regex: "regex",
+  allowed: "in-list",
 };
