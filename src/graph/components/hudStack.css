@@ -15,3 +15,12 @@
   max-width: 260px;
   pointer-events: none;
 }
+
+/* Mobile: the Fit/Lock pill sits lower (top: 92px + notch) and grows with the
+   safe-area, so the fixed desktop 124px overlapped it — worse in fullscreen, where
+   the safe-area changes but a fixed top can't track it. Anchor the HUD below the
+   pill using the SAME safe-area term, so the gap holds in both modes. */
+html.is-mobile .solenoid-hud-stack {
+  top: calc(136px + env(safe-area-inset-top));
+  max-width: min(260px, calc(100vw - 24px));
+}

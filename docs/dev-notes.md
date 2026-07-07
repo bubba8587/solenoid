@@ -5,6 +5,18 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-07 — mobile status bar + HUD overlap)
+- **Accent status bar restored (Android):** the `<meta name="color-scheme" content="light dark">`
+  added in `c576570` made Chrome Android theme its own toolbar per the page color-scheme and
+  IGNORE `theme-color`, so the accent status-bar tint vanished in dark mode. Removed the meta
+  (with a load-bearing "do not re-add" comment); `appTheme.apply()`'s runtime `root.style.colorScheme`
+  stays the authoritative light/dark lever for form controls/scrollbars, without the toolbar side effect.
+- **HUD (pins/problems/alerts) overlapped the Fit/Lock pill on mobile:** the stack was pinned at a
+  fixed `top:124px` (desktop, no safe-area) while the mobile pill sits at `92px + notch` — worse in
+  fullscreen where the safe-area shifts but a fixed top can't track it. Added a mobile override
+  `top: calc(136px + env(safe-area-inset-top))` (+ width cap), tracking the SAME safe-area as the pill
+  so the gap holds in both modes.
+
 ### SESSION DIGEST (2026-07-07 — composite drill-in: collapsible controls + mobile pass)
 Vercel preview of `develop` (mobile session). tsc + full vitest (2281→2282) green.
 - **Drill-in undo history routing (backlog gap c, DONE):** node components push undoable
