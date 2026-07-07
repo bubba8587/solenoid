@@ -14,7 +14,7 @@ import {
   ListInputNode, RangeNode, AggregateNode,
   ListLengthNode, ListIndexNode, SortNode,
   ReverseNode, SliceNode,
-  UniqueNode, TakeNode, DropNode, SetOpNode,
+  UniqueNode, TakeNode, DropNode, SetOpNode, SetRelationNode,
   VStackNode, CumulativeNode, DiffNode,
   ArgMinMaxNode, ContainsNode,
   NormalizeNode, LinSpaceNode, RepeatNode,
@@ -94,7 +94,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof ComparisonNode || node instanceof BooleanOpNode ||
     node instanceof NotNode ||
     node instanceof BooleanInputNode || node instanceof IsTestNode ||
-    node instanceof IsEvenOddNode
+    node instanceof IsEvenOddNode || node instanceof SetRelationNode
   ) return "logic";
   if (
     node instanceof ListInputNode || node instanceof RangeNode || node instanceof AggregateNode ||

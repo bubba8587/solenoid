@@ -16,6 +16,8 @@ import {
   InterleaveNode,
   SetOpNode,
   SET_OP_META,
+  SetRelationNode,
+  SET_RELATION_META,
   type ReduceOp,
   type FillOp,
 } from "./list";
@@ -101,6 +103,49 @@ describe("Set operations (two lists)", () => {
 
   it("every op's set notation is valid KaTeX (else the card silently shows plain text)", () => {
     for (const meta of Object.values(SET_OP_META)) {
+      expect(() => katex.renderToString(meta.tex, { throwOnError: true })).not.toThrow();
+    }
+  });
+});
+
+describe("Set relation tests (two lists → TRUE/FALSE)", () => {
+  const run = (op: "equal" | "subset" | "superset" | "disjoint", a: unknown[], b: unknown[]) =>
+    new SetRelationNode({ op }).data({ a: [a as number[]], b: [b as number[]] }).result;
+
+  it("equal — same set regardless of order or duplicates", () => {
+    expect(run("equal", [1, 2, 3], [3, 2, 1])).toBe(true);
+    expect(run("equal", [1, 1, 2], [2, 1])).toBe(true);
+    expect(run("equal", [1, 2], [1, 2, 3])).toBe(false);
+  });
+  it("subset — every A is in B", () => {
+    expect(run("subset", [1, 2], [1, 2, 3])).toBe(true);
+    expect(run("subset", [1, 4], [1, 2, 3])).toBe(false);
+  });
+  it("superset — A contains all of B", () => {
+    expect(run("superset", [1, 2, 3], [1, 2])).toBe(true);
+    expect(run("superset", [1, 2], [1, 2, 3])).toBe(false);
+  });
+  it("disjoint — no shared members", () => {
+    expect(run("disjoint", [1, 2], [3, 4])).toBe(true);
+    expect(run("disjoint", [1, 2], [2, 3])).toBe(false);
+  });
+  it("empty-set edge cases follow set theory", () => {
+    expect(run("subset", [], [1, 2])).toBe(true);    // ∅ ⊆ anything
+    expect(run("disjoint", [], [1, 2])).toBe(true);  // ∅ disjoint with anything
+    expect(run("equal", [], [])).toBe(true);         // ∅ = ∅
+    expect(run("superset", [1], [])).toBe(true);     // anything ⊇ ∅
+  });
+  it("blanks and errors are not members", () => {
+    const e = solError("#REF!", "bad");
+    expect(run("equal", [1, null, 2], [2, 1])).toBe(true);
+    expect(run("equal", [1, 2, e], [1, 2])).toBe(true);       // the error isn't a value
+    expect(run("subset", [1, e], [1])).toBe(true);            // A's members are just {1}
+  });
+  it("both inputs unwired → null (indeterminate)", () => {
+    expect(new SetRelationNode().data({}).result).toBe(null);
+  });
+  it("every relation's notation is valid KaTeX", () => {
+    for (const meta of Object.values(SET_RELATION_META)) {
       expect(() => katex.renderToString(meta.tex, { throwOnError: true })).not.toThrow();
     }
   });

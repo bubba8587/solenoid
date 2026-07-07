@@ -67,6 +67,7 @@ export { TakeComponent } from "./TakeNode";
 export { DropComponent } from "./DropNode";
 export { UniqueComponent } from "./UniqueNode";
 export { SetOpComponent } from "./SetOpNode";
+export { SetRelationComponent } from "./SetRelationNode";
 export { FilterComponent } from "./FilterNode";
 export { FillComponent } from "./FillNode";
 export { DiffComponent } from "./DiffNode";
