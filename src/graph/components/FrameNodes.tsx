@@ -45,7 +45,7 @@ import { pushRowAddUndo, pushRowRemovalUndo } from "./ExtensibleInputs";
 import { FrameDisplay } from "./FrameDisplay";
 import { ResultDisplay } from "./ResultDisplay";
 import { ArrayChip } from "./ArrayChip";
-import { NodeShell, ValueDisplay, OpSelect, useNodeField, type NodeProps } from "./nodeKit";
+import { NodeShell, ValueDisplay, OpSelect, useNodeField, renderTextMarkdownHtml, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { applyGetColumnReadAs, applyAddColumnAddAs, applySplitColType } from "./frameEdit";
@@ -586,21 +586,26 @@ export function ReconcileComponent({ data, emit }: NodeProps<ReconcileNodeType>)
     <NodeShell node={data} emit={emit} hideOutputSockets>
       <InlineInputs node={data} emit={emit} keys={["left", "right", "key", "priceColumn", "qtyColumn"]} />
       {frameOut && (
-        <MeasuredSocketRow side="output" socketKey="frame" nodeId={data.id} emit={emit} payload={frameOut.socket}>
+        <MeasuredSocketRow hero side="output" socketKey="frame" nodeId={data.id} emit={emit} payload={frameOut.socket}>
           <div style={{ width: "100%" }}>
             <FrameDisplay frame={data.cachedResult} label={data.label} />
           </div>
         </MeasuredSocketRow>
       )}
       {summaryOut && (
-        <MeasuredSocketRow side="output" socketKey="summary" nodeId={data.id} emit={emit} payload={summaryOut.socket}>
-          <span
-            className="solenoid-node__io-label"
-            style={{ fontSize: 10.5, color: "var(--text-dim)", whiteSpace: "normal", lineHeight: 1.4 }}
-            title={data.cachedSummary || undefined}
-          >
-            {data.cachedSummary || "—"}
-          </span>
+        <MeasuredSocketRow hero side="output" socketKey="summary" nodeId={data.id} emit={emit} payload={summaryOut.socket}>
+          {/* The summary is markdown (bold counts + a Δ paragraph) — render it here
+              in its own hero box; the raw markdown flows out the socket for a
+              Display + markdown FC downstream. */}
+          {data.cachedSummary ? (
+            <div
+              className="solenoid-node__display-value solenoid-node__md"
+              style={{ width: "100%", fontFamily: "var(--font-sans)", fontSize: 11.5, textAlign: "left", color: "var(--text)" }}
+              dangerouslySetInnerHTML={{ __html: renderTextMarkdownHtml(data.cachedSummary) }}
+            />
+          ) : (
+            <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>
+          )}
         </MeasuredSocketRow>
       )}
     </NodeShell>

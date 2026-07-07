@@ -753,6 +753,17 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   flex: 0 0 auto;
 }
 
+/* A hero output box inside a measured socket row (Reconcile's frame + markdown
+   summary): a tall block, NOT the fixed-height label|value flex row — else it
+   overflowed the 22px height and overlapped the rows above. The socket dot still
+   measures onto the box centre (it's absolutely positioned, unaffected by this). */
+.solenoid-node__io-row--hero {
+  display: block;
+  height: auto;
+  min-height: 0;
+  padding: 0;
+}
+
 /* Composite output: label stacked ABOVE its hero value box (not beside it — a
    full-height ValueDisplay box doesn't fit a 22px io-row and got pushed off the
    card). The measured row holds only the box and grows to it, so the output dot
