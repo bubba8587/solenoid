@@ -169,9 +169,20 @@ export async function autofitGroupWithHistory(editor: Editor, area: Area, group:
 }
 
 /** Move every member of a group by (dx, dy) — called as the group is dragged. */
-export function moveGroupMembers(_editor: Editor, area: Area, group: GroupNode, dx: number, dy: number): void {
+export function moveGroupMembers(
+  editor: Editor, area: Area, group: GroupNode, dx: number, dy: number,
+  // When a user DRAGS a group whose members are ALSO selected, rete's selector
+  // already translates those members by the same delta (it moves the whole
+  // selection off the picked/lead node). Moving them again here doubles their
+  // speed — the recurring "members outrun their group" bug. So the drag + drop-snap
+  // callers pass `skipSelected` to move ONLY the members the group is solely
+  // responsible for. A programmatic push (translatePushed) is NOT selector-driven,
+  // so it leaves this off and moves every member.
+  skipSelected = false,
+): void {
   if (dx === 0 && dy === 0) return;
   for (const id of group.members) {
+    if (skipSelected && (editor.getNode(id) as { selected?: boolean } | undefined)?.selected) continue;
     const v = area.nodeViews.get(id);
     if (!v) continue;
     void area.translate(id, { x: v.position.x + dx, y: v.position.y + dy });
