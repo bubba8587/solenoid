@@ -59,6 +59,45 @@ describe("Expect over frames", () => {
   });
 });
 
+describe("Expect — in-list (allowlist) membership", () => {
+  it("flags a value outside a wired allowlist", () => {
+    const n = new ExpectNode({ checkNotNull: false, checkAllowed: true });
+    // Wired allowlist wins over the literal.
+    expect(n.data({ in: ["Pear"], allowed: [["Apple", "Banana"]] }).out).toBe("Pear");
+    expect(n.violations).toEqual(["allowed"]);
+    n.data({ in: ["Apple"], allowed: [["Apple", "Banana"]] });
+    expect(n.violations).toEqual([]);
+  });
+
+  it("scans every cell of a list/frame against the allowlist", () => {
+    const n = new ExpectNode({ checkNotNull: false, checkAllowed: true });
+    n.data({ in: [["Apple", "Kiwi", "Banana"]], allowed: [["Apple", "Banana"]] });
+    expect(n.violations).toEqual(["allowed"]);
+    const f = frame([["fruit", "string", ["Apple", "Banana"]]]);
+    n.data({ in: [f], allowed: [["Apple", "Banana"]] });
+    expect(n.violations).toEqual([]);
+  });
+
+  it("uses the comma-separated literal when the socket is unwired, matching by string form", () => {
+    const n = new ExpectNode({ checkNotNull: false, checkAllowed: true });
+    n.stringLiterals.allowed = "1, 2, 3";
+    // Numbers match by their rendered token.
+    expect(run(n, [1, 2, 4])).toEqual(["allowed"]);
+    expect(run(n, [1, 2, 3])).toEqual([]);
+  });
+
+  it("skips the check when the allowlist is empty (unwired + blank literal)", () => {
+    const n = new ExpectNode({ checkNotNull: false, checkAllowed: true });
+    expect(run(n, ["anything"])).toEqual([]);
+  });
+
+  it("ignores null cells (that's not-null's job)", () => {
+    const n = new ExpectNode({ checkNotNull: false, checkAllowed: true });
+    n.stringLiterals.allowed = "A, B";
+    expect(run(n, ["A", null, "B"])).toEqual([]);
+  });
+});
+
 describe("Expect over lists/scalars (unchanged behavior)", () => {
   it("unique still works on a plain list", () => {
     const n = new ExpectNode({ checkNotNull: false, checkUnique: true });

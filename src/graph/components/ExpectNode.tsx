@@ -2,14 +2,14 @@ import { useEffect, useState } from "react";
 import type { ExpectNode as ExpectNodeType } from "../rete-nodes";
 import { EXPECT_CHECK_LABEL } from "../nodes/quality";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
-import { InlineInputs, useConnectedInputs } from "./inlineInput";
-import { NodeSocket } from "./NodeSocket";
+import { InlineInputs, InlineCsvField, useConnectedInputs, useIncomingSources } from "./inlineInput";
+import { NodeSocket, MeasuredSocketRow } from "./NodeSocket";
 import { processGraph } from "../process";
 import { solError } from "../errorValue";
 import { ErrorChip } from "./ErrorChip";
 import type { DisplayValue } from "./valueDisplayFormat";
 
-type CheckKey = "checkNotNull" | "checkUnique" | "checkRange" | "checkRegex";
+type CheckKey = "checkNotNull" | "checkUnique" | "checkRange" | "checkRegex" | "checkAllowed";
 
 function CheckRow({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -37,6 +37,7 @@ function CheckRow({ label, checked, onChange }: { label: string; checked: boolea
  */
 export function ExpectComponent({ data, emit }: NodeProps<ExpectNodeType>) {
   const connected = useConnectedInputs(data.id);
+  const incoming = useIncomingSources(data.id);
   // The checkboxes are CONTROLLED, so their `checked` must be React state — mutating
   // the node property + processGraph doesn't re-render this component (the pass-through
   // value is unchanged), so React would reset the box to its last-rendered value and
@@ -44,15 +45,15 @@ export function ExpectComponent({ data, emit }: NodeProps<ExpectNodeType>) {
   // the handler. (Same pattern the Format Controller uses — see nodeKit gotchas.)
   const [checks, setChecks] = useState({
     checkNotNull: data.checkNotNull, checkUnique: data.checkUnique,
-    checkRange: data.checkRange, checkRegex: data.checkRegex,
+    checkRange: data.checkRange, checkRegex: data.checkRegex, checkAllowed: data.checkAllowed,
   });
   // Resync if the flags change externally (paste, load, undo).
   useEffect(() => {
     setChecks({
       checkNotNull: data.checkNotNull, checkUnique: data.checkUnique,
-      checkRange: data.checkRange, checkRegex: data.checkRegex,
+      checkRange: data.checkRange, checkRegex: data.checkRegex, checkAllowed: data.checkAllowed,
     });
-  }, [data.checkNotNull, data.checkUnique, data.checkRange, data.checkRegex]);
+  }, [data.checkNotNull, data.checkUnique, data.checkRange, data.checkRegex, data.checkAllowed]);
   const toggle = (key: CheckKey) => (v: boolean) => {
     data[key] = v;
     setChecks((c) => ({ ...c, [key]: v }));
@@ -63,6 +64,7 @@ export function ExpectComponent({ data, emit }: NodeProps<ExpectNodeType>) {
   // check's rows stay visible while connected even with the check toggled off.
   const showRange = checks.checkRange || connected.has("min") || connected.has("max");
   const showRegex = checks.checkRegex || connected.has("pattern");
+  const showAllowed = checks.checkAllowed || connected.has("allowed");
 
   return (
     <NodeShell
@@ -80,6 +82,22 @@ export function ExpectComponent({ data, emit }: NodeProps<ExpectNodeType>) {
       {showRange && <InlineInputs node={data} emit={emit} keys={["min", "max"]} />}
       <CheckRow label="Matches regex" checked={checks.checkRegex} onChange={toggle("checkRegex")} />
       {showRegex && <InlineInputs node={data} emit={emit} keys={["pattern"]} />}
+      <CheckRow label="In list" checked={checks.checkAllowed} onChange={toggle("checkAllowed")} />
+      {showAllowed && data.inputs.allowed && (
+        <MeasuredSocketRow side="input" socketKey="allowed" nodeId={data.id} emit={emit} payload={data.inputs.allowed.socket}>
+          <span className="solenoid-node__io-label">List</span>
+          {connected.has("allowed") ? (
+            <span className="solenoid-node__io-wired" title="Driven by an incoming cable (named here)">
+              ↩ {incoming.get("allowed")?.label || "wired"}
+            </span>
+          ) : (
+            <InlineCsvField
+              value={data.stringLiterals.allowed}
+              onChange={(v) => { data.stringLiterals.allowed = v; void processGraph(data.id); }}
+            />
+          )}
+        </MeasuredSocketRow>
+      )}
       <ValueDisplay value={data.cachedValue as DisplayValue} />
       {data.violations.length > 0 && (
         <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 2 }}>
