@@ -14,7 +14,7 @@ import {
   ListInputNode, RangeNode, AggregateNode,
   ListLengthNode, ListIndexNode, SortNode,
   ReverseNode, SliceNode,
-  UniqueNode, TakeNode, DropNode,
+  UniqueNode, TakeNode, DropNode, SetOpNode,
   VStackNode, CumulativeNode, DiffNode,
   ArgMinMaxNode, ContainsNode,
   NormalizeNode, LinSpaceNode, RepeatNode,
@@ -101,6 +101,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof ListLengthNode || node instanceof ListIndexNode || node instanceof SortNode ||
     node instanceof ReverseNode || node instanceof SliceNode ||
     node instanceof UniqueNode || node instanceof TakeNode || node instanceof DropNode ||
+    node instanceof SetOpNode ||
     node instanceof VStackNode || node instanceof CumulativeNode || node instanceof DiffNode ||
     node instanceof ArgMinMaxNode || node instanceof ContainsNode ||
     node instanceof NormalizeNode || node instanceof LinSpaceNode || node instanceof RepeatNode ||

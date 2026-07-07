@@ -14,6 +14,7 @@ import {
   SortNode,
   SortByNode,
   InterleaveNode,
+  SetOpNode,
   type ReduceOp,
   type FillOp,
 } from "./list";
@@ -56,6 +57,44 @@ describe("Normalize", () => {
 describe("Diff", () => {
   it("is the first difference, one shorter than the input", () => {
     expect(new DiffNode().data({ list: [[1, 3, 6, 10]] }).result).toEqual([2, 3, 4]);
+  });
+});
+
+describe("Set operations (two lists)", () => {
+  const run = (op: "union" | "intersect" | "difference" | "symdiff", a: unknown[], b: unknown[]) =>
+    new SetOpNode({ op }).data({ a: [a as number[]], b: [b as number[]] }).result;
+
+  it("difference — in A but not B (the headline op), first-seen order", () => {
+    expect(run("difference", [1, 2, 3, 4], [2, 4])).toEqual([1, 3]);
+    expect(run("difference", ["apple", "pear", "fig"], ["pear"])).toEqual(["apple", "fig"]);
+  });
+  it("intersection — in both", () => {
+    expect(run("intersect", [1, 2, 3, 4], [2, 4, 9])).toEqual([2, 4]);
+  });
+  it("union — in either, deduped, A's order then B's new ones", () => {
+    expect(run("union", [1, 2, 2, 3], [3, 4, 1])).toEqual([1, 2, 3, 4]);
+  });
+  it("symmetric difference — in exactly one", () => {
+    expect(run("symdiff", [1, 2, 3], [2, 3, 4])).toEqual([1, 4]);
+  });
+  it("dedupes within a side (like UNIQUE)", () => {
+    expect(run("intersect", [1, 1, 2, 2], [2, 2])).toEqual([2]);
+    expect(run("difference", [5, 5, 6], [])).toEqual([5, 6]);
+  });
+  it("ignores blank (null) cells — they are not members", () => {
+    expect(run("union", [1, null, 2], [null, 3])).toEqual([1, 2, 3]);
+    expect(run("difference", [1, null, 2], [2])).toEqual([1]);
+  });
+  it("errors survive union + A-side difference, drop from intersection (never match)", () => {
+    const e = solError("#REF!", "bad");
+    // union: A's error passes through (not deduped against values)
+    const u = run("union", [1, e], [2]);
+    expect(u.filter((v) => isSolError(v)).length).toBe(1);
+    expect(u.filter((v) => !isSolError(v))).toEqual([1, 2]);
+    // difference: A's error is "not in B" → kept
+    expect(run("difference", [e, 1], [1]).some((v) => isSolError(v))).toBe(true);
+    // intersection: an error can't be "in both" → dropped
+    expect(run("intersect", [e, 2], [e, 2])).toEqual([2]);
   });
 });
 

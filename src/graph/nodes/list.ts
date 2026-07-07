@@ -452,6 +452,80 @@ export class UniqueNode extends ClassicPreset.Node {
   }
 }
 
+export type SetOp = "union" | "intersect" | "difference" | "symdiff";
+
+export const SET_OP_META: Record<SetOp, { label: string }> = {
+  union:      { label: "Union — in A or B  (A ∪ B)" },
+  intersect:  { label: "Intersection — in both  (A ∩ B)" },
+  difference: { label: "Difference — in A, not B  (A ∖ B)" },
+  symdiff:    { label: "Symmetric — in one only  (A △ B)" },
+};
+
+// Set operations over two lists — the gap Excel never filled (it ships only UNIQUE, no
+// intersect/except/union). "Which customers are in this list but not that one" is one
+// dropdown away here. Compares by VALUE, preserving first-seen order and deduping the
+// result the way UNIQUE does. Blank (null) cells aren't members and are ignored. An error
+// cell is never equal to anything, so it can't match across sides — it passes through
+// where it belongs (kept in union, and on the A-side of difference / symmetric difference;
+// dropped from intersection) rather than silently vanishing, same stance as UNIQUE.
+export class SetOpNode extends ClassicPreset.Node {
+  label: string;
+  op: SetOp;
+  cachedList: number[] = [];
+  width = 180;
+  height = 200;
+
+  constructor(init?: { label?: string; op?: SetOp }) {
+    super("Set");
+    this.label = init?.label ?? "Set";
+    // Default to the most-asked op (the "in X but not Y" subreddit staple).
+    this.op = init?.op ?? "difference";
+    this.addInput("a", listIn("A"));
+    this.addInput("b", listIn("B"));
+    this.addOutput("result", listOut("Result"));
+  }
+
+  data(inputs: { a?: number[][]; b?: number[][] }) {
+    const a = (inputs.a?.[0] ?? []) as unknown[];
+    const b = (inputs.b?.[0] ?? []) as unknown[];
+
+    // Value-membership of a side — blanks and errors are excluded (not members).
+    const memberSet = (arr: unknown[]) => {
+      const s = new Set<unknown>();
+      for (const v of arr) if (!isMissing(v) && !isSolError(v)) s.add(v);
+      return s;
+    };
+    const aSet = memberSet(a);
+    const bSet = memberSet(b);
+
+    const out: unknown[] = [];
+    const emitted = new Set<unknown>();
+    // Values dedupe (first-seen wins); errors bypass this and are pushed as-is, so a
+    // repeated error survives once per occurrence — deterministic, like UNIQUE.
+    const emitValue = (v: unknown) => { if (!emitted.has(v)) { emitted.add(v); out.push(v); } };
+
+    switch (this.op) {
+      case "union":
+        for (const v of a) { if (isMissing(v)) continue; if (isSolError(v)) out.push(v); else emitValue(v); }
+        for (const v of b) { if (isMissing(v)) continue; if (isSolError(v)) out.push(v); else emitValue(v); }
+        break;
+      case "intersect":
+        for (const v of a) { if (isMissing(v) || isSolError(v)) continue; if (bSet.has(v)) emitValue(v); }
+        break;
+      case "difference":
+        for (const v of a) { if (isMissing(v)) continue; if (isSolError(v)) out.push(v); else if (!bSet.has(v)) emitValue(v); }
+        break;
+      case "symdiff":
+        for (const v of a) { if (isMissing(v)) continue; if (isSolError(v)) out.push(v); else if (!bSet.has(v)) emitValue(v); }
+        for (const v of b) { if (isMissing(v)) continue; if (isSolError(v)) out.push(v); else if (!aSet.has(v)) emitValue(v); }
+        break;
+    }
+
+    this.cachedList = out as number[];
+    return { result: this.cachedList };
+  }
+}
+
 export type TakeDir = "first" | "last";
 
 export class TakeNode extends ClassicPreset.Node {
