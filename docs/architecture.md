@@ -257,6 +257,7 @@ there is no solver in the Rust engine itself.
 |---|---|---|
 | `architecture.md` | living | (this file) module map |
 | `subsystem-invariants.md` | living | the "don't break this" deep-dives — cable routing, group push, standoffs, tidy, resizable nodes, error values, unit flow, alerts |
+| `layout-chrome.md` | living | on-screen chrome map (desktop + mobile) — bar/overlay geometry, offset sync map, z-index ladder, reflow root-classes; read before adding/moving chrome |
 | `dev-notes.md` | living log | session DIGESTS + open problems only (per-item history in `archive/dev-notes-history.md`) |
 | `backlog.md` | living | OPEN items only — the task queue (landed items are deleted) |
 | `release-plan.md` | living | the sequenced path to the next tagged release — readiness, cut line, checklist, author decisions |
