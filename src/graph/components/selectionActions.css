@@ -62,9 +62,12 @@
   background: var(--panel-border);
 }
 
-/* Mobile: clear the top app bar / safe area. */
+/* Mobile: the top chrome is TWO rows (accent menu bar Row A ~30px + neutral tools
+   Row B 52px = 82px below the safe-area inset), so 56px sat INSIDE Row B and the
+   pill overlapped the toolbar. Drop below both rows, level with the nav pill
+   (mobile.css: .solenoid-nav is 92px + safe-area) so the floating chrome lines up. */
 @media (max-width: 639px) {
   .solenoid-selbar {
-    top: calc(env(safe-area-inset-top, 0px) + 56px);
+    top: calc(env(safe-area-inset-top, 0px) + 92px);
   }
 }
