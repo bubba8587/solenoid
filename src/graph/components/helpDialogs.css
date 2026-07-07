@@ -1,0 +1,145 @@
+/* About Solenoid + What's New — one modal slot, mirroring the shortcuts overlay
+   chrome (neutral surface, accent only for state/action). */
+.solenoid-helpdlg {
+  position: absolute;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+.solenoid-helpdlg__panel {
+  position: relative;
+  width: min(460px, 92vw);
+  max-height: 84vh;
+  overflow: auto;
+  padding: 26px 26px 22px;
+  background: var(--surface);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-pop);
+}
+
+.solenoid-helpdlg__close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  border-radius: 6px;
+}
+.solenoid-helpdlg__close:hover { background: var(--btn-hover); color: var(--accent); }
+
+/* ── About ── */
+.solenoid-helpdlg__about { text-align: center; }
+.solenoid-helpdlg__wordmark {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-bright);
+}
+.solenoid-helpdlg__version {
+  margin-top: 2px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+.solenoid-helpdlg__tagline {
+  margin: 16px 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+.solenoid-helpdlg__about-body {
+  margin: 0 auto 20px;
+  max-width: 34ch;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-dim);
+}
+
+/* ── What's New ── */
+.solenoid-helpdlg__eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.solenoid-helpdlg__slide {
+  min-height: 148px;
+  padding: 18px 2px 8px;
+}
+.solenoid-helpdlg__slide-num {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+.solenoid-helpdlg__slide-title {
+  margin: 8px 0 10px;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text-bright);
+}
+.solenoid-helpdlg__slide-body {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-dim);
+}
+
+.solenoid-helpdlg__nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 12px;
+}
+.solenoid-helpdlg__dots {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.solenoid-helpdlg__dot {
+  width: 7px;
+  height: 7px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--border-strong);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.solenoid-helpdlg__dot--on { background: var(--accent); }
+.solenoid-helpdlg__dot:hover { background: var(--text-dim); }
+
+/* ── Buttons (shared) ── */
+.solenoid-helpdlg__btn {
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  background: var(--btn-bg);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  cursor: pointer;
+}
+.solenoid-helpdlg__btn:hover:not(:disabled) { border-color: var(--border-strong); color: var(--text-bright); }
+.solenoid-helpdlg__btn:disabled { opacity: 0.4; cursor: default; }
+.solenoid-helpdlg__btn--accent {
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.solenoid-helpdlg__btn--accent:hover:not(:disabled) { color: var(--accent-ink); filter: brightness(1.06); }

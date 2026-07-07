@@ -36,9 +36,6 @@ is archived).
   not arbitrary pages. Needs the author's CSP-posture call before build.
 - [ ] **Massive seed overhaul** — pass on all 27 seeds: loads clean, tells a real 1.1
   story, no deprecated shapes; `seeds.test.ts` stays green. `release-plan.md` §3b. Near the cut.
-- [ ] **"What's New" overlay** — short slide series (reuse overlay chrome, not a node),
-  shown once per release (localStorage flag), re-openable from Help → What's New. Content
-  from `release-notes-features.md`. `release-plan.md` §3c.
 - [ ] **Keep `release-notes-features.md` current** — the curated selling list + What's-New
   slide source (author writes the final release notes).
 - [ ] **Rigorous Trust-node audit** (author 2026-07-06 — flagged, NOT now): the trust &
@@ -91,9 +88,9 @@ is archived).
 - [ ] **String lt/gt ordering** (byte vs locale) — small P3, decide + pin when touched.
 - [ ] **Document Properties — remaining parts** (the window itself shipped 2026-07-06:
   title / author / tags / per-doc palette BASE, via `docMetaStore` + `SavedGraph.meta` +
-  sidecar). Still open: (a) **per-slot doc palette overrides** (the window only sets the
-  base; overrides stay hand/seed-authored on `SavedGraph.palette.overrides`) — a small
-  per-slot editor like F-1's, scoped to the doc; (b) **document-level FC defaults**
+  sidecar). Still open: (a) **per-slot doc palette overrides** — DEFERRED (author 2026-07-07);
+  the window only sets the base, overrides stay hand/seed-authored on
+  `SavedGraph.palette.overrides`; (b) **document-level FC defaults**
   (default places / number format — the date default `DD-MMM-YYYY` already shipped;
   toolbar-supplementals [SETTING] verdict) — a format-pipeline integration (FC reads a
   doc default), best done deliberately / author-present.
@@ -209,7 +206,10 @@ is archived).
   `v2.0/12-value-model-extensions.md`.
 
 - [ ] **WebGPU/wgpu renderer + the LOD swap** — superseded by HTML-in-Canvas as the
-  zoom-at-scale lever. The WGSL/Pixi spikes are BUILT and parked (console-only
-  `"canvas"` mode); the LOD hide is blocked on rete's ResizeObserver loop. Records:
+  zoom-at-scale lever. The Pixi/WGSL spike is parked (console-only `"canvas"` mode +
+  `window.__spike`; its Help-menu item was removed 2026-07-07). The **HTML-in-Canvas
+  *spike*** (`HtmlCanvasSpike.tsx` + store) was DELETED 2026-07-07 — the shipped
+  HTML-in-Canvas renderer (`HtmlCanvasLayer`/`htmlCanvasRenderer`, renderMode "html")
+  is the real thing and stays. The LOD hide is blocked on rete's ResizeObserver loop. Records:
   `archive/renderer-plan.md`, `archive/performance-hardening.md`. Reopen only if
   `drawElementImage` never reaches stable or a native-GPU need appears.

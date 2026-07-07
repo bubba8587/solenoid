@@ -5,6 +5,21 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-07 — What's New + About, renderer-spike cleanup)
+- **What's New overlay + About Solenoid** (`helpDialogStore.ts`, `HelpDialogs.tsx` + CSS):
+  one modal slot for both Help dialogs. What's New is a 6-slide carousel (the `[slide]`
+  headliners from `release-notes-features.md`) with dots/Back/Next, auto-shown ONCE per
+  `WHATS_NEW_VERSION` (localStorage `solenoid.whatsNewSeen`; first-ever visitors recorded
+  silently so the modal never lands over a new user's first load; deferred 1.4s past the load
+  reveal). About shows the wordmark, `pkg.version`, the tagline, and a "What's new" button.
+  Help menu gains "What's new…" and enables "About Solenoid" (was disabled). Mirrors the
+  shortcuts-overlay chrome; shared `CloseIcon`.
+- **Renderer-spike cleanup:** deleted the HTML-in-Canvas SPIKE (`HtmlCanvasSpike.tsx` +
+  `htmlCanvasSpikeStore.ts` + its App mount + Edit-menu item) — the shipped HTML-in-Canvas
+  renderer (`HtmlCanvasLayer`/`htmlCanvasRenderer`, renderMode "html") is untouched. Removed the
+  Pixi spike's Edit-menu item too (hidden; the `RendererSpike`/`pixi/*` code + `window.__spike`
+  dev hook stay). Backlog + WebGPU parked note updated.
+
 ### SESSION DIGEST (2026-07-07 — stale-chunk reload guard)
 - **"Failed to fetch dynamically imported module" (autoarrange/ELK):** not an autoarrange bug —
   the classic stale-chunk-after-redeploy race (a new deploy rotates the hashed chunk names; an

@@ -1,4 +1,7 @@
+import { useEffect } from "react";
 import { Canvas } from "./graph/Canvas";
+import { HelpDialogs } from "./graph/components/HelpDialogs";
+import { autoShowWhatsNewOnce } from "./graph/helpDialogStore";
 import { Header } from "./graph/Header";
 import { NavMenu } from "./graph/NavMenu";
 import { OutlinePanel } from "./graph/OutlinePanel";
@@ -21,13 +24,19 @@ import { PaletteEditorModal } from "./graph/components/PaletteEditor";
 import { HudStack } from "./graph/components/HudStack";
 import { SelectionActionsBar } from "./graph/components/SelectionActionsBar";
 import { RendererSpike } from "./graph/components/RendererSpike";
-import { HtmlCanvasSpike } from "./graph/components/HtmlCanvasSpike";
 import { WebDemoBanner } from "./graph/WebDemoBanner";
 import "./App.css";
 import "./graph/StatusBar.css";
 import "./mobile.css";
 
 function App() {
+  // Show the What's New slides once per release (returning users; first-ever visitors
+  // are recorded silently). Deferred so it lands after the cinematic load reveal.
+  useEffect(() => {
+    const t = setTimeout(autoShowWhatsNewOnce, 1400);
+    return () => clearTimeout(t);
+  }, []);
+
   return (
     <div className="solenoid-app">
       <Canvas />
@@ -49,13 +58,13 @@ function App() {
       <ChartPopup />
       <PivotEditorPopup />
       <ShortcutsOverlay />
+      <HelpDialogs />
       <Settings />
       <DocumentProperties />
       <PaletteEditorModal />
       <HudStack />
       <SelectionActionsBar />
       <RendererSpike />
-      <HtmlCanvasSpike />
       <WebDemoBanner />
       <MobileControls />
     </div>
