@@ -18,6 +18,8 @@ Vercel preview of `develop` (mobile session). tsc + full vitest (2280) green.
   (accent ~30 + toolbar 52 = ~82px + notch; was hiding under them at 56px); run-controls panel
   sits ABOVE the ~86px bottom pill (it was pinned to bottom:10px → behind the pill → "not present");
   drill-in minimap hidden on mobile (no room, overlapped chrome). `+ Input/Output` finger-sized.
+  Strip width capped to `calc(100vw - 130px)` so it clears the right-anchored Fit/Lock pill
+  (`.solenoid-nav`, ~110px) it shared a row-band with (author: breadcrumb overlapped the pill).
 - **Backlog reconcile:** "Simulation output series renders on the outer card only" was already
   resolved by `334bdf4` (2026-07-03, "sim marker value") — `runSimulation` sets
   `marker.cachedResult = series` and both the outer card and the drill-in marker render it via
