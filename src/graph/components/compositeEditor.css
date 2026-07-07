@@ -227,8 +227,10 @@ html.sol-drilled-in .solenoid-outline__open-pill { display: none; }
       strip clears the mobile header + notch and may wrap; the run-controls panel
       moves to the BOTTOM-left (out of the crowded top) and starts COLLAPSED (set in
       the component) so it's just a tappable bar until opened. ── */
+/* The breadcrumb strip must clear BOTH mobile top rows (accent ~30px + toolbar
+   52px = ~82px + notch); at 56px it hid UNDER them. */
 html.is-mobile .solenoid-composite-editor__strip {
-  top: calc(56px + env(safe-area-inset-top));
+  top: calc(88px + env(safe-area-inset-top));
   left: 8px;
   flex-wrap: wrap;
   max-width: calc(100vw - 16px);
@@ -238,14 +240,18 @@ html.is-mobile .solenoid-composite-editor__btn {
   padding: 7px 14px;
   font-size: 13px;
 }
+/* The drill-in chrome lives on the z-index:4 backdrop, BELOW the app bars — so a
+   panel pinned to bottom:10px hid behind the ~86px bottom pill (it read as "not
+   present"). Sit it just above that pill; collapsed by default it's a small bar. */
 html.is-mobile .solenoid-composite-editor__controls {
-  /* Bottom-left, pinned so an expanded panel grows UPWARD from the thumb rather
-     than colliding with the breadcrumb strip up top. Width capped so it never
-     spans the whole phone; height capped so canvas stays visible when open. */
   top: auto;
-  bottom: calc(10px + env(safe-area-inset-bottom));
+  bottom: calc(96px + env(safe-area-inset-bottom));
   left: 8px;
   width: min(280px, calc(100vw - 16px));
 }
 html.is-mobile .solenoid-composite-editor__controls-head { min-height: 40px; }
-html.is-mobile .solenoid-composite-editor__controls-body { max-height: 42vh; }
+html.is-mobile .solenoid-composite-editor__controls-body { max-height: 40vh; }
+
+/* The drill-in minimap is off on mobile — it overlapped other chrome and a phone
+   has no room for it (later than the desktop re-show rule, so this wins). */
+html.is-mobile .solenoid-composite-editor__host .solenoid-minimap { display: none; }
