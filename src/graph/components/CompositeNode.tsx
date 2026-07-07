@@ -37,7 +37,7 @@ function CompositeBoundaryValue({ value, label }: { value: unknown; label: strin
 // Only modes with a real data() branch appear here — see the CompositeRunMode
 // union's own comment (nodes/composite.ts) for why the list grows in lockstep
 // with the driver, not ahead of it.
-const RUN_MODE_OPTIONS: OpOption<CompositeRunMode>[] = [
+export const RUN_MODE_OPTIONS: OpOption<CompositeRunMode>[] = [
   { value: "single", label: "Single run" },
   { value: "scenarios", label: "Scenarios" },
   { value: "data-table", label: "Data table" },

@@ -5,6 +5,20 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-07 — composite drill-in: collapsible controls + mobile pass)
+Vercel preview of `develop` (mobile session). tsc + full vitest (2280) green.
+- **Run-controls panel is collapsible** (`CompositeEditorOverlay`): a head bar showing the
+  current run mode + a chevron folds the body (`CompositeRunControls`) away; starts COLLAPSED
+  on mobile (`IS_MOBILE`) where a 240px open panel blanketed the small canvas. New
+  `__controls-head` / `__controls-body` structure; scroll/max-height moved to the body.
+- **Drill-in mobile pass:** the mobile CSS block was DEAD — it targeted `__panel` / `__header`,
+  classes from an older full-panel design that the current strip/controls structure dropped, so
+  the drill-in had effectively no mobile styling. Replaced with real rules: breadcrumb strip
+  clears the mobile header + notch and wraps; `+ Input/Output` buttons finger-sized; the
+  run-controls panel moves to BOTTOM-left (out of the crowded top) and grows upward when opened.
+- STILL OPEN in this drill-in arc (author flagged "simulation and more"): simulation output
+  series inside the drill-in; further overlap polish.
+
 ### SESSION DIGEST (2026-07-07 — Gauge percentage + FC text advanced tier)
 Vercel preview of `develop` (mobile session; `develop` is the deploy branch now). tsc +
 full vitest (2280) green.

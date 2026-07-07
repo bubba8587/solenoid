@@ -151,23 +151,51 @@
 /* Run-mode / Solve / config panel inside the drill-in — top-LEFT, tucked directly
    UNDER the breadcrumb strip. The top-right corner is taken by the Zoom pill / Problems
    / Alerts HUDs, so it can't live there. Mirrors the outer card's controls so the
-   subgraph is configurable/solvable without leaving. */
+   subgraph is configurable/solvable without leaving. Collapsible: a head bar always
+   shows (the current run mode), the body folds away — starts collapsed on mobile. */
 .solenoid-composite-editor__controls {
   position: absolute;
   top: 120px;
   left: 12px;
   width: 240px;
-  max-height: calc(100vh - 120px - 40px);
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 8px 10px;
   font-size: 12px;
   background: var(--surface-sunken);
   border: 1px solid var(--border);
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+}
+/* Collapsed → the panel shrinks to just the head pill. */
+.solenoid-composite-editor__controls--collapsed { width: auto; }
+.solenoid-composite-editor__controls-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 10px;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 8px;
+}
+.solenoid-composite-editor__controls-head:hover { color: var(--text-bright); }
+.solenoid-composite-editor__controls-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.solenoid-composite-editor__controls-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 10px 8px;
+  max-height: calc(100vh - 160px - 40px);
+  overflow-y: auto;
 }
 
 /* While drilled in: hide the MAIN minimap (it floats at z-index 100 over the
@@ -194,33 +222,30 @@ html.sol-drilled-in .solenoid-outline__open-pill { display: none; }
   background: var(--canvas-bg);
 }
 
-/* ── Mobile (gated on html.is-mobile, same convention as mobile.css):
-      full-viewport panel with safe-area insets, finger-sized header targets.
-      The header wraps — title row, then the action row — because seven
-      finger-sized buttons plus a title don't fit one phone-width row. ── */
-html.is-mobile .solenoid-composite-editor__panel {
-  width: 100vw;
-  height: 100vh;
-  height: 100dvh;
-  border: none;
-  border-radius: 0;
-  padding-bottom: env(safe-area-inset-bottom);
-}
-html.is-mobile .solenoid-composite-editor__header {
+/* ── Mobile (html.is-mobile, same convention as mobile.css): finger-sized targets
+      and keep the top-left chrome from blanketing the small canvas. The breadcrumb
+      strip clears the mobile header + notch and may wrap; the run-controls panel
+      moves to the BOTTOM-left (out of the crowded top) and starts COLLAPSED (set in
+      the component) so it's just a tappable bar until opened. ── */
+html.is-mobile .solenoid-composite-editor__strip {
+  top: calc(56px + env(safe-area-inset-top));
+  left: 8px;
   flex-wrap: wrap;
-  padding: calc(6px + env(safe-area-inset-top)) 10px 6px;
-}
-html.is-mobile .solenoid-composite-editor__actions {
-  flex-wrap: wrap;
-  gap: 6px;
+  max-width: calc(100vw - 16px);
 }
 html.is-mobile .solenoid-composite-editor__btn {
-  min-height: 38px;
-  padding: 8px 12px;
+  min-height: 36px;
+  padding: 7px 14px;
   font-size: 13px;
 }
-html.is-mobile .solenoid-composite-editor__btn--icon {
-  width: 38px;
-  height: 38px;
-  padding: 8px;
+html.is-mobile .solenoid-composite-editor__controls {
+  /* Bottom-left, pinned so an expanded panel grows UPWARD from the thumb rather
+     than colliding with the breadcrumb strip up top. Width capped so it never
+     spans the whole phone; height capped so canvas stays visible when open. */
+  top: auto;
+  bottom: calc(10px + env(safe-area-inset-bottom));
+  left: 8px;
+  width: min(280px, calc(100vw - 16px));
 }
+html.is-mobile .solenoid-composite-editor__controls-head { min-height: 40px; }
+html.is-mobile .solenoid-composite-editor__controls-body { max-height: 42vh; }
