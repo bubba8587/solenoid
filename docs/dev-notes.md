@@ -14,8 +14,12 @@ drill into the archive (or `git log`) only for the mechanics of a specific item.
 - **Accent status bar restored (Android):** the `<meta name="color-scheme" content="light dark">`
   added in `c576570` made Chrome Android theme its own toolbar per the page color-scheme and
   IGNORE `theme-color`, so the accent status-bar tint vanished in dark mode. Removed the meta
-  (with a load-bearing "do not re-add" comment); `appTheme.apply()`'s runtime `root.style.colorScheme`
-  stays the authoritative light/dark lever for form controls/scrollbars, without the toolbar side effect.
+  (with a load-bearing "do not re-add" comment) — that fixed FULLSCREEN. But normal-tab was still
+  dark: a SECOND lever, `apply()`'s runtime `color-scheme` on `<html>`, made Chrome's normal-tab
+  toolbar (which reads the ROOT color-scheme) paint itself dark and override `theme-color` — no
+  toolbar in fullscreen, so it only bit non-fullscreen. Moved the color-scheme onto `document.body`:
+  content form controls/scrollbars still theme (used value propagates down the cascade) but the root
+  stays neutral, so the normal-tab toolbar honors the accent too. Works in both modes now.
 - **HUD (pins/problems/alerts) overlapped the Fit/Lock pill on mobile:** the stack was pinned at a
   fixed `top:124px` (desktop, no safe-area) while the mobile pill sits at `92px + notch` — worse in
   fullscreen where the safe-area shifts but a fixed top can't track it. Added a mobile override

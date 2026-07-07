@@ -26,7 +26,14 @@ function apply() {
   root.style.setProperty("--accent-mid", hexToRgba(hex, 0.4));
   root.style.setProperty("--accent-ink", contrastInk(hex)); // readable text on the accent
   root.setAttribute("data-theme", _mode);
-  root.style.colorScheme = _mode;
+  // color-scheme goes on BODY, not <html>. Content form controls / scrollbars still
+  // theme to the mode (the used value propagates down the cascade from body), but the
+  // ROOT stays neutral — so Android Chrome's normal-tab toolbar honors the accent
+  // `theme-color` above instead of reading a dark root color-scheme and painting
+  // itself dark (which overrode it: the accent status-bar tint survived ONLY in
+  // fullscreen, where there's no browser toolbar to steal it).
+  root.style.colorScheme = "";
+  if (document.body) document.body.style.colorScheme = _mode;
 
   // Tint the mobile browser chrome (Android Chrome status bar; iOS PWA) to the
   // accent, matching the accent doc-title row directly beneath it. `theme-color`
