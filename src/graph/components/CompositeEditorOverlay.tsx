@@ -24,7 +24,8 @@ import { canvasLockStore } from "../canvasLock";
 import { pushNotice } from "../noticeStore";
 import { buildCatalog } from "../catalogUtils";
 import { AddNodeMenu, type NodeCatalogEntry } from "../AddNodeMenu";
-import { CompositeRunControls } from "./CompositeNode";
+import { CompositeRunControls, RUN_MODE_OPTIONS } from "./CompositeNode";
+import { IS_MOBILE } from "../coarse";
 import "./compositeEditor.css";
 import "./SocketContextMenu.css";
 
@@ -168,6 +169,9 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
     { nodeId: string; screenX: number; screenY: number; isComposite: boolean } | null
   >(null);
   const [ready, setReady] = useState(false);
+  // The run-controls panel is collapsible — and starts COLLAPSED on mobile, where a
+  // 240px-wide open panel would blanket the small canvas (the author's mobile-pass ask).
+  const [controlsOpen, setControlsOpen] = useState(!IS_MOBILE);
   // Canvas lock is a global toggle (the NavMenu pill). The main canvas applies it
   // via a class + drag-pipe guards; the drill-in area has neither, so mirror the
   // class onto the host — the `.solenoid-canvas--locked` descendant rules make the
@@ -648,8 +652,32 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
             so you configure and solve from INSIDE the subgraph. Floated top-right,
             opposite the breadcrumb strip. Only when the composite has a boundary. */}
         {(comp.inputPorts.length > 0 || comp.outputPorts.length > 0) && (
-          <div className="solenoid-composite-editor__controls" onPointerDown={(e) => e.stopPropagation()}>
-            <CompositeRunControls node={comp} insideOnly />
+          <div
+            className={`solenoid-composite-editor__controls${controlsOpen ? "" : " solenoid-composite-editor__controls--collapsed"}`}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            {/* Collapse toggle — the bar shows the current run mode so a collapsed
+                panel still reads at a glance (esp. mobile, where it starts folded). */}
+            <button
+              type="button"
+              className="solenoid-composite-editor__controls-head"
+              onClick={() => setControlsOpen((v) => !v)}
+              title={controlsOpen ? "Hide run controls" : "Show run controls"}
+              aria-expanded={controlsOpen}
+            >
+              <span className="solenoid-composite-editor__controls-title">
+                {RUN_MODE_OPTIONS.find((o) => o.value === comp.runMode)?.label ?? "Run"}
+              </span>
+              <svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true"
+                   style={{ display: "block", flexShrink: 0, transform: controlsOpen ? "rotate(180deg)" : undefined }}>
+                <path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            {controlsOpen && (
+              <div className="solenoid-composite-editor__controls-body">
+                <CompositeRunControls node={comp} insideOnly />
+              </div>
+            )}
           </div>
         )}
       {menu && (
