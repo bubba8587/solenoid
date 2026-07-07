@@ -1,7 +1,6 @@
 import type { GaugeNode as GaugeNodeType } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, type NodeProps } from "./nodeKit";
-import { formatScalar } from "./format";
 import { useChartColors, GaugeArc } from "./chartView";
 import { isSolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
@@ -14,6 +13,15 @@ import { flyToNode } from "../flyToNode";
 // the base 180px card's inner width.
 const SIZE = 160;
 const SHOW = 88;
+// Minified (square-collapse) dial — a tiny axis-less arc filling the square.
+const MINI_SIZE = 46;
+const MINI_SHOW = 24;
+
+// The value is read as a fraction of 100% (1 → 100%, 1.5 → 150%). Round to at
+// most one decimal and drop a trailing ".0".
+function formatPct(v: number): string {
+  return `${Math.round(v * 1000) / 10}%`;
+}
 
 export function GaugeComponent({ data, emit }: NodeProps<GaugeNodeType>) {
   const { track } = useChartColors();
@@ -35,28 +43,31 @@ export function GaugeComponent({ data, emit }: NodeProps<GaugeNodeType>) {
       </NodeShell>
     );
   }
-  const min = data.literals.min ?? 0;
-  const max = data.literals.max ?? 100;
-  const span = max - min;
-  const frac = value === null || span === 0 ? 0 : Math.min(1, Math.max(0, (value - min) / span));
+  // The dial always spans 0→100%; the arc fills the value's fraction (clamped, so
+  // 150% overfills to a full arc) while the label shows the true percentage.
+  const frac = value === null ? 0 : Math.min(1, Math.max(0, value));
   const pct = frac * 100;
 
   return (
-    <NodeShell node={data} emit={emit} collapsible={false}>
+    <NodeShell node={data} emit={emit} squareCollapse>
       <InlineInputs node={data} emit={emit} />
       <div style={{ position: "relative", width: SIZE, height: SHOW, margin: "2px auto 0", overflow: "hidden" }}>
         <GaugeArc pct={pct} track={track} size={SIZE} />
         <div style={{ position: "absolute", left: 0, right: 0, top: 50, textAlign: "center", fontSize: 16, fontWeight: 600, color: "var(--text)" }}>
-          {value === null ? "—" : formatScalar(value)}
+          {value === null ? "—" : formatPct(value)}
         </div>
-        {/* Scale labels at the arc ends so the dial reads as a range, not a bare
-            number — min at the left end (180°), max at the right end (0°). */}
-        <div style={{ position: "absolute", left: 4, bottom: 0, fontSize: 9, color: "var(--text-dim)" }}>
-          {formatScalar(min)}
-        </div>
-        <div style={{ position: "absolute", right: 4, bottom: 0, fontSize: 9, color: "var(--text-dim)" }}>
-          {formatScalar(max)}
-        </div>
+        {/* Scale labels at the arc ends — the dial's fixed 0→100% range. */}
+        <div style={{ position: "absolute", left: 4, bottom: 0, fontSize: 9, color: "var(--text-dim)" }}>0%</div>
+        <div style={{ position: "absolute", right: 4, bottom: 0, fontSize: 9, color: "var(--text-dim)" }}>100%</div>
+      </div>
+      {/* Minified (square) readout: a tiny axis-less dial filling the square;
+          double-click the square to expand (the chevron is hidden — see NodeCard). */}
+      <div className="solenoid-node__collapsed-only">
+        {value === null
+          ? <span className="solenoid-node__display-value solenoid-node__display-value--empty">—</span>
+          : <div style={{ position: "relative", width: MINI_SIZE, height: MINI_SHOW, overflow: "hidden" }}>
+              <GaugeArc pct={pct} track={track} size={MINI_SIZE} />
+            </div>}
       </div>
     </NodeShell>
   );

@@ -95,10 +95,6 @@ is archived).
   family currently exposes only `textCase`).
 
 - [ ] **String lt/gt ordering** (byte vs locale) — small P3, decide + pin when touched.
-- [ ] **Collapsed Gauge mini-preview** (the last of the per-node set — Slicer
-  summary + Sparkline square shipped; Chart/Treemap/Sankey/Histogram now collapse
-  to a `[Chart]` chip): Gauge → investigate a small-square collapse, but its 3
-  input sockets must stay anchored/reachable when collapsed. Heatmap → NOT in scope.
 - [ ] **Document Properties — remaining parts** (the window itself shipped 2026-07-06:
   title / author / tags / per-doc palette BASE, via `docMetaStore` + `SavedGraph.meta` +
   sidecar). Still open: (a) **per-slot doc palette overrides** (the window only sets the

@@ -183,9 +183,7 @@
         "label": "Savings rate"
       },
       "literals": {
-        "value": 0,
-        "min": 0,
-        "max": 1
+        "value": 0
       }
     },
     {
@@ -508,9 +506,17 @@
         "label": "Toward goal"
       },
       "literals": {
-        "value": 0,
-        "min": 0,
-        "max": 120000
+        "value": 0
+      }
+    },
+    {
+      "id": "ratio-nw",
+      "type": "ExpressionNode",
+      "x": 430,
+      "y": 1180,
+      "init": {
+        "label": "Progress",
+        "expr": "nw / goal"
       }
     },
     {
@@ -840,9 +846,17 @@
         "label": "Toward target"
       },
       "literals": {
-        "value": 0,
-        "min": 0,
-        "max": 1000000
+        "value": 0
+      }
+    },
+    {
+      "id": "ratio-proj",
+      "type": "ExpressionNode",
+      "x": 2340,
+      "y": 100,
+      "init": {
+        "label": "Progress",
+        "expr": "fv / target"
       }
     },
     {
@@ -1838,6 +1852,7 @@
           "red-nw",
           "disp-nw",
           "gauge-nw",
+          "ratio-nw",
           "slider-goal",
           "flt-assets",
           "red-assets",
@@ -1893,6 +1908,7 @@
           "tvm-fv",
           "disp-proj",
           "gauge-proj",
+          "ratio-proj",
           "sld-target",
           "alert-proj",
           "seq-years",
@@ -2238,14 +2254,20 @@
     {
       "source": "red-nw",
       "sourceOutput": "result",
-      "target": "gauge-nw",
-      "targetInput": "value"
+      "target": "ratio-nw",
+      "targetInput": "nw"
     },
     {
       "source": "slider-goal",
       "sourceOutput": "value",
+      "target": "ratio-nw",
+      "targetInput": "goal"
+    },
+    {
+      "source": "ratio-nw",
+      "sourceOutput": "result",
       "target": "gauge-nw",
-      "targetInput": "max"
+      "targetInput": "value"
     },
     {
       "source": "col-bal",
@@ -2394,14 +2416,20 @@
     {
       "source": "tvm-fv",
       "sourceOutput": "result",
-      "target": "gauge-proj",
-      "targetInput": "value"
+      "target": "ratio-proj",
+      "targetInput": "fv"
     },
     {
       "source": "sld-target",
       "sourceOutput": "value",
+      "target": "ratio-proj",
+      "targetInput": "target"
+    },
+    {
+      "source": "ratio-proj",
+      "sourceOutput": "result",
       "target": "gauge-proj",
-      "targetInput": "max"
+      "targetInput": "value"
     },
     {
       "source": "tvm-fv",

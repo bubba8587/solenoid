@@ -5,6 +5,24 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-07 — Gauge → single-input percentage + square-collapse)
+Vercel preview of `develop` (mobile session). tsc + full vitest (2280) green.
+- **Gauge is now a single-value percentage dial.** Dropped the Min/Max inputs — the node
+  takes ONE `value` read as a fraction of 100% (1 → 100%, 1.5 → 150%). The arc always spans
+  0→100% and fills the clamped fraction (150% overfills to a full arc); the centre label shows
+  the true percentage (`formatPct`), and the end labels are a fixed `0%` / `100%`. Node class,
+  component, catalog description, and `visual.test.ts` all updated.
+- **Gauge minifies** (copies the Sparkline pattern exactly): `squareCollapse` on the NodeShell
+  + a `collapsed-only` mini `GaugeArc` (46×24, cropped). Single input via `InlineInputs`, so the
+  socket survives the fold (`data-socket-side`) and re-wiring works while collapsed. This closes
+  the "Collapsed Gauge mini-preview" backlog item — the last of the per-node minified set.
+- **Seed fixups for the new percentage model:** `visual-outputs` slider → 0–1 range (shows 72%);
+  `layout-test-mixed-heights` gauges → 0.64 / 0.8; **personal-finance** rewired — the two
+  toward-goal gauges (`gauge-nw`, `gauge-proj`) that used a dollar Max now feed through new
+  `ratio-nw`/`ratio-proj` ExpressionNodes (`nw / goal`, `fv / target`) so the gauge reads a real
+  progress fraction; `gauge-rate` already carried a 0–1 savings rate. The seed is generated —
+  edited `scripts/gen-personal-finance-seed.cjs` and regenerated the JSON (pfSeedCheck lockstep).
+
 ### SESSION DIGEST (2026-07-06 late — composite drill-in polish + editable input markers)
 Local dev server. tsc + full vitest (2279) green. A long interactive pass over the
 Composite drill-in with the author. Highlights:
