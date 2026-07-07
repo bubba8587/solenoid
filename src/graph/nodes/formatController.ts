@@ -355,6 +355,16 @@ export class FormatControllerNode extends ClassicPreset.Node {
     this.socketKey = "";
   }
 
+  /** Forget the dock IDENTITY but keep the annotation (drag-away-to-empty: the FC
+   *  stops following its host but keeps formatting what it's wired to). Without
+   *  clearing hostNodeId here, the stale id persists into the save and the load-time
+   *  dockSelf() RESURRECTS the dock — the "once-docked FC never lets go" bug. */
+  releaseDock(): void {
+    dockedNodeStore.undock(this.id);
+    this.hostNodeId = "";
+    this.socketKey = "";
+  }
+
   data(inputs: { in?: unknown[] }): { out: unknown } {
     const val = inputs.in?.[0] ?? null;
     return { out: val };

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { moveGroupMembers } from "./groupLogic";
-import type { GroupNode } from "./rete-nodes";
+import { moveGroupMembers, reconcileGroupMembership, absorbIntoContainingGroup } from "./groupLogic";
+import { GroupNode } from "./rete-nodes";
 import type { NodeEditor } from "rete";
 import type { AreaPlugin } from "rete-area-plugin";
 import type { Schemes, AreaExtra } from "./schemes";
@@ -56,5 +56,59 @@ describe("moveGroupMembers — skipSelected guards the double-move", () => {
     const h = harness(new Set());
     moveGroupMembers(h.editor, h.area, h.group, 0, 0, true);
     expect(h.translated).toEqual([]);
+  });
+});
+
+// Regression: a COLLAPSED group renders as a small card, its members hidden. A node
+// dragged/created over that card must NOT be absorbed — it would be hidden by the
+// next syncGroupCollapse and visibly vanish ("incorrect membership" near collapsed
+// groups). Membership edits require the group expanded.
+describe("collapsed groups never absorb members", () => {
+  // Geometry: collapsed A renders 160×40 at (0,0); expanded B is 400×300 at (600,0).
+  // The loose node is 180×80.
+  function harness2() {
+    const groupA = new GroupNode({ label: "Group", collapsed: true,  width: 320, height: 220 });
+    const groupB = new GroupNode({ label: "Group", collapsed: false, width: 400, height: 300 });
+    const loose = { id: "n1" };
+    const ids = new Map<string, unknown>([[groupA.id, groupA], [groupB.id, groupB], ["n1", loose]]);
+    const nodeViews = new Map<string, { position: { x: number; y: number }; element: { offsetWidth: number; offsetHeight: number } }>([
+      [groupA.id, { position: { x: 0, y: 0 },   element: { offsetWidth: 160, offsetHeight: 40 } }],
+      [groupB.id, { position: { x: 600, y: 0 }, element: { offsetWidth: 400, offsetHeight: 300 } }],
+      ["n1",      { position: { x: 0, y: 0 },   element: { offsetWidth: 180, offsetHeight: 80 } }],
+    ]);
+    const editor = {
+      getNode: (id: string) => ids.get(id),
+      getNodes: () => [...ids.values()],
+    } as unknown as Editor;
+    const area = { nodeViews } as unknown as Area;
+    const setLoosePos = (x: number, y: number) => { nodeViews.get("n1")!.position = { x, y }; };
+    return { groupA, groupB, editor, area, setLoosePos };
+  }
+
+  it("drag-drop onto a collapsed group's card does not join it", () => {
+    const h = harness2();
+    h.setLoosePos(-10, -10); // node center (80, 30) — inside A's 160×40 card
+    reconcileGroupMembership(h.editor, h.area, "n1");
+    expect(h.groupA.members).toEqual([]);
+  });
+
+  it("drag-drop into an expanded group still joins (guard doesn't overblock)", () => {
+    const h = harness2();
+    h.setLoosePos(650, 50); // center (740, 90) — inside B's 400×300 box
+    reconcileGroupMembership(h.editor, h.area, "n1");
+    expect(h.groupB.members).toEqual(["n1"]);
+  });
+
+  it("a new node fully over a collapsed card is not absorbed; over an expanded box it is", () => {
+    const h = harness2();
+    // A tiny node fully inside A's card bounds.
+    h.area.nodeViews.get("n1")!.element = { offsetWidth: 40, offsetHeight: 20 } as unknown as HTMLElement;
+    h.setLoosePos(10, 10);
+    expect(absorbIntoContainingGroup(h.editor, h.area, "n1")).toBe(false);
+    expect(h.groupA.members).toEqual([]);
+    // Same node fully inside B's expanded box → absorbed.
+    h.setLoosePos(650, 50);
+    expect(absorbIntoContainingGroup(h.editor, h.area, "n1")).toBe(true);
+    expect(h.groupB.members).toEqual(["n1"]);
   });
 });
