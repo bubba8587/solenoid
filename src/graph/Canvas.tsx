@@ -2607,6 +2607,24 @@ export function Canvas() {
           // entries for connections that no longer exist.
           cableGhostStore.commit(removedId);
           cableSelectionStore.remove(removedId);
+          // Cutting the cable that GLUES a docked FC to its host dissolves the dock
+          // (undock: stop following, clear the annotation, forget the host) — it
+          // otherwise kept trailing the host and re-docked on every load. Skipped
+          // while rebuilding: a bulk load/undo replays cable removals wholesale and
+          // must not strip dock state the rebuild is about to restore. (The rehome
+          // flow's removeFcInline also lands here — harmless: dockSelf re-docks it
+          // one await later.)
+          if (!isGraphRebuilding()) {
+            const cc = ctx.data as { source: string; target: string };
+            for (const end of [cc.source, cc.target]) {
+              const fc = editor.getNode(end);
+              if (!(fc instanceof FormatControllerNode) || !fc.hostNodeId) continue;
+              if ((end === cc.source ? cc.target : cc.source) === fc.hostNodeId) {
+                fc.undock();
+                void area.update("node", fc.id);
+              }
+            }
+          }
         }
         return ctx;
       });
@@ -3095,6 +3113,10 @@ export function Canvas() {
             }
             // else (no nearby socket): leave it undocked where dropped — it keeps
             // its inline cables and its annotation; it just no longer follows.
+            // MUST also forget the dock identity: dragstart only cleared the STORE
+            // entry, and a stale hostNodeId persists into the save, where the
+            // load-time dockSelf() would re-dock it to the old host.
+            else dragged.releaseDock();
           }
         }
         return ctx;

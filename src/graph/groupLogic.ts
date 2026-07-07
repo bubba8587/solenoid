@@ -227,7 +227,11 @@ export function reconcileGroupMembership(editor: Editor, area: Area, draggedId: 
     host = undefined;
   }
   if (!host) {
-    const target = groups.find((g) => g !== current && centerInside(area, g, b));
+    // Never join a COLLAPSED group: its rendered box is the small card (you can't
+    // see what's inside), and a new member would be hidden by the very next
+    // syncGroupCollapse — the node visibly vanishes. Membership edits on a
+    // collapsed group require expanding it first.
+    const target = groups.find((g) => g !== current && !g.collapsed && centerInside(area, g, b));
     if (target) { target.members = [...target.members, draggedId]; host = target; }
   }
   // A docked FC follows its host's group membership (it moves programmatically
@@ -243,6 +247,10 @@ export function reconcileGroupMembership(editor: Editor, area: Area, draggedId: 
 
 /** Re-evaluate a single group's membership against all nodes — after its box is resized. */
 export function reconcileGroupBox(editor: Editor, area: Area, group: GroupNode): void {
+  // A collapsed group's rendered box is the small card — reconciling against it
+  // would dump every member (none are "inside" a card) and absorb bystanders
+  // under it into a hidden set. Membership only reconciles while expanded.
+  if (group.collapsed) return;
   const gv = area.nodeViews.get(group.id);
   if (!gv) return;
   const groups = editor.getNodes().filter((n): n is GroupNode => n instanceof GroupNode);
@@ -278,7 +286,10 @@ export function absorbIntoContainingGroup(editor: Editor, area: Area, nodeId: st
   const b = nodeBox(area, nodeId);
   if (!b) return false;
   for (const g of editor.getNodes()) {
-    if (!(g instanceof GroupNode)) continue;
+    // Skip collapsed groups: their rendered box is the small card, and absorbing
+    // a freshly created node would immediately HIDE it (a member of a collapsed
+    // group) — it looks like the new node never appeared.
+    if (!(g instanceof GroupNode) || g.collapsed) continue;
     const gv = area.nodeViews.get(g.id);
     if (!gv) continue;
     const { w, h } = groupRenderedSize(area, g);
