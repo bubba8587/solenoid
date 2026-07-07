@@ -100,13 +100,15 @@ function badValue(v: unknown, depth = 0): Badness | null {
 const CACHE_FIELDS = ["cachedResult", "cachedValue", "cachedString", "cachedText", "cachedList", "cachedMatrix", "cachedHeaders"] as const;
 
 function inspectNode(node: unknown): Badness | null {
+  // An Expect node REJECTING a synthetic extreme isn't a model defect — the fuzzer
+  // feeds the very out-of-range values Expect exists to catch (±1e6, …), so treating
+  // its violation as a finding is guaranteed, circular noise. Skip Expect entirely;
+  // it's a validator, not a computation whose output can be "bad".
+  if (node instanceof ExpectNode) return null;
   const n = node as Record<string, unknown>;
   for (const field of CACHE_FIELDS) {
     const hit = badValue(n[field]);
     if (hit) return hit;
-  }
-  if (node instanceof ExpectNode && node.violations.length > 0) {
-    return { code: "#VALUE!", message: `An Expect check failed: ${node.violations.join(", ")}.` };
   }
   return null;
 }

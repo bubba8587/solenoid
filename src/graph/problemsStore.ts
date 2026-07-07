@@ -16,6 +16,7 @@
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 import { registerErrorSink, type SolError, type SolErrorCode } from "./errorValue";
+import { isGraphRebuilding } from "./process";
 
 export type ProblemOrigin = "compute" | "fuzz";
 
@@ -47,6 +48,12 @@ export const problemsStore = {
    *  logging here if origin is somehow unset (defensive; installErrorGuards
    *  should always tag it). */
   reportLive(nodeId: string, err: SolError): void {
+    // Don't log during a bulk/synthetic rebuild — a model-fuzz or Tornado sweep
+    // (and a document load) drives many transient passes on values that aren't the
+    // real graph state; logging them leaves stale "compute" rows after the run.
+    // Mirrors the fireAlert edge-detect gate. The post-load settle runs OUTSIDE the
+    // rebuild scope, so genuine errors on a freshly-loaded doc still surface.
+    if (isGraphRebuilding()) return;
     if (err.origin && err.origin.nodeId !== nodeId) return;
     if (_lastLiveCode.get(nodeId) === err.code) return; // same failure, already logged
     _lastLiveCode.set(nodeId, err.code);
