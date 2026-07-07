@@ -21,6 +21,11 @@ drill into the archive (or `git log`) only for the mechanics of a specific item.
   **Expect** not-null now flags a per-cell SolError. **fuzz** no longer reports a downstream Expect's
   rejection of a synthetic extreme (circular noise). Remaining follow-ups → backlog (per-cell errors in
   Problems, Reconcile non-shared cols, fuzz Clamp bounds, Tornado ranking normalization).
+- **Trust demo seed** (`seedGraphs/trust-data-quality.json`): three clusters exercising the set —
+  Expect (not-null + range 0–50 over a sensor frame with a blank + an 88 → red badge + 2 Problems),
+  Reconcile (Jan→Feb price/qty frames, PVM key=SKU → changed/added/removed + PVM), Tornado (3 sliders →
+  a Profit expression → sensitivity; run-on-demand), plus two node-anchored comments. Loads clean +
+  textForm round-trips (auto-registered via the seedGraphs glob).
 
 ### SESSION DIGEST (2026-07-07 — What's New + About, renderer-spike cleanup)
 - **What's New overlay + About Solenoid** (`helpDialogStore.ts`, `HelpDialogs.tsx` + CSS):
