@@ -34,7 +34,9 @@ export function useChartColors() {
   return {
     grid: get("--border-strong", "#3a3a3a"),
     axis: get("--text-dim", "#888"),
-    track: get("--border-subtle", "#2a2a2a"),
+    // The Gauge's unfilled-arc track — a neutral gray tuned for clear contrast
+    // against the node body in both themes (--border-subtle was near-invisible).
+    track: get("--gauge-track", "#4d5157"),
   };
 }
 

@@ -30,6 +30,8 @@ full vitest (2280) green.
   0→100% and fills the clamped fraction (150% overfills to a full arc); the centre label shows
   the true percentage (`formatPct`), and the end labels are a fixed `0%` / `100%`. Node class,
   component, catalog description, and `visual.test.ts` all updated.
+- **Gauge track contrast:** new `--gauge-track` token (both themes) for the unfilled arc —
+  `--border-subtle` was near-invisible against the node body; `chartCore` `track` reads it.
 - **Gauge minifies** (copies the Sparkline pattern exactly): `squareCollapse` on the NodeShell
   + a `collapsed-only` mini `GaugeArc` (46×24, cropped). Single input via `InlineInputs`, so the
   socket survives the fold (`data-socket-side`) and re-wiring works while collapsed. This closes

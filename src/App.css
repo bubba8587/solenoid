@@ -29,6 +29,10 @@
   --border: #2d2d2d;
   --border-strong: #3a3a3a;
   --border-subtle: #2a2a2a;
+  /* Gauge unfilled-arc track — a neutral gray tuned to read clearly against the
+     node body (--surface), a step stronger than the border tokens (which are too
+     faint here). Mirrored in the light theme below. */
+  --gauge-track: #4d5157;
   --text: #e8e8e8;
   --text-bright: #f3f4f5;
   --text-dim: #9aa0a6;
@@ -91,6 +95,8 @@
   --border: #ccd2da;
   --border-strong: #b2bac4;
   --border-subtle: #dfe3e9;
+  /* Gauge track (see dark theme) — a clear medium gray on the near-white body. */
+  --gauge-track: #a8b0bb;
   --text: #1b1e23;
   --text-bright: #0d0f12;
   --text-dim: #5b636b;
