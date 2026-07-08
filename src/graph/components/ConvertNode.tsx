@@ -7,6 +7,7 @@ import {
 import { processGraph } from "../process";
 import { getOwningEditor } from "../activeGraph";
 import { collapseStore } from "../collapseStore";
+import { LazySelect } from "./LazySelect";
 import { NodeSocket } from "./NodeSocket";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 
@@ -35,7 +36,7 @@ function withUnit(n: number, code: string, format: FormatStyle): string {
 // reusing the FC number-format groups.
 function FormatSelect({ value, onChange }: { value: FormatStyle; onChange: (e: ChangeEvent<HTMLSelectElement>) => void }) {
   return (
-    <select
+    <LazySelect
       className="solenoid-node__op-select"
       value={value}
       onChange={onChange}
@@ -54,7 +55,7 @@ function FormatSelect({ value, onChange }: { value: FormatStyle; onChange: (e: C
           </optgroup>
         )
       )}
-    </select>
+    </LazySelect>
   );
 }
 
@@ -187,7 +188,7 @@ export function ConvertComponent({ data, emit }: NodeProps<ConvertNodeType>) {
         </div>
       </div>
       <FormatSelect value={inFormat} onChange={onInFormatChange} />
-      <select
+      <LazySelect
         className="solenoid-node__op-select"
         value={fromUnit}
         onChange={onFromChange}
@@ -205,11 +206,11 @@ export function ConvertComponent({ data, emit }: NodeProps<ConvertNodeType>) {
             </optgroup>
           );
         })}
-      </select>
+      </LazySelect>
       <div style={{ textAlign: "center", fontSize: "0.65rem", color: "rgba(255,255,255,0.3)", margin: "2px 0" }}>
         ↓ convert to
       </div>
-      <select
+      <LazySelect
         className="solenoid-node__op-select"
         value={toUnit}
         onChange={onToChange}
@@ -219,7 +220,7 @@ export function ConvertComponent({ data, emit }: NodeProps<ConvertNodeType>) {
         {toCatUnits.map(([key, def]) => (
           <option key={key} value={key}>{def.label}</option>
         ))}
-      </select>
+      </LazySelect>
       <FormatSelect value={outFormat} onChange={onOutFormatChange} />
       {/* Output value, in its to-unit. The ▶ marks that Convert sets the
           downstream FC's unit; it sits by the output socket, beside the box. */}
