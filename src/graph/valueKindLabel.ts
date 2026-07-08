@@ -1,6 +1,7 @@
 import { isChartValue } from "./chartValue";
 import { isMermaidValue } from "./mermaidValue";
 import { isImageValue } from "./imageValue";
+import { isSvgValue } from "./svgValue";
 import { isFrameValue, isCubeValue } from "./frame";
 import { isLambdaValue, formatLambda } from "./nodes/lambda";
 
@@ -20,6 +21,7 @@ export function describeValueKind(v: unknown): string | null {
   if (isChartValue(v)) return "Chart";
   if (isMermaidValue(v)) return "Diagram";
   if (isImageValue(v)) return "Image";
+  if (isSvgValue(v)) return "SVG";
   if (isLambdaValue(v)) return formatLambda(v);
   if (isFrameValue(v)) {
     const cols = v.columns.length;

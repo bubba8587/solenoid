@@ -12,10 +12,12 @@ import { CubeDisplay } from "./CubeDisplay";
 import { ChartFigure } from "./chartView";
 import { ChartChip } from "./ChartChip";
 import { MermaidView } from "./MermaidView";
+import { SvgFigure } from "./SvgFigure";
 import { isFrameValue, isCubeValue } from "../frame";
 import { isChartValue, type ChartValue } from "../chartValue";
 import { nodeSizeStore } from "../nodeSizeStore";
 import { isMermaidValue } from "../mermaidValue";
+import { isSvgValue } from "../svgValue";
 import { isLambdaValue, formatLambda } from "../nodes/lambda";
 import { isSolError } from "../errorValue";
 
@@ -91,12 +93,13 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
   // Chart (or Mermaid / lambda) was wired in. Render each by kind instead.
   const isChart = isChartValue(v);
   const isMermaid = isMermaidValue(v);
+  const isSvg = isSvgValue(v);
   const isLambda = isLambdaValue(v);
   const isTable = Array.isArray(v) && Array.isArray((v as unknown[])[0]);
-  // 2D data (frame/cube/table) and a figure (chart/diagram) grow the card to fit;
-  // a SCALAR grows to fit a long number/string (capped, then ellipsizes) instead of
-  // clipping in the fixed card. Lists wrap as text.
-  const grow = full && (isFrame || isCube || isTable || isChart || isMermaid);
+  // 2D data (frame/cube/table) and a figure (chart/diagram/svg) grow the card to
+  // fit; a SCALAR grows to fit a long number/string (capped, then ellipsizes)
+  // instead of clipping in the fixed card. Lists wrap as text.
+  const grow = full && (isFrame || isCube || isTable || isChart || isMermaid || isSvg);
   const growScalar = full && !grow && !isError && !isLambda && v != null && !Array.isArray(v) && typeof v !== "object";
   const growClass = grow ? "solenoid-node--display-grow" : growScalar ? "solenoid-node--display-grow-scalar" : undefined;
 
@@ -105,6 +108,7 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
   // rows; scalars/lists fall to the global minimum. The grip reads this to clamp.
   const minSize = isChart ? { w: 230, h: 150 }
     : isMermaid ? { w: 200, h: 120 }
+    : isSvg ? { w: 200, h: 120 }
     : (isFrame || isCube || isTable) ? { w: 200, h: 90 }
     : { w: 140, h: 40 };
   useLayoutEffect(() => {
@@ -128,6 +132,8 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
               : <ChartFigure value={v} width={210} height={130} />
       ) : isMermaid ? (
         <MermaidView source={v.source} />
+      ) : isSvg ? (
+        <SvgFigure value={v} height={full ? 200 : 120} />
       ) : isLambda ? (
         <div className="solenoid-node__display-value">{formatLambda(v)}</div>
       ) : isTable ? (

@@ -5,6 +5,23 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-08 — SVG Picker node)
+- **New node: SVG Picker** (`SvgPickerNode`, Add menu "Other" → "SVG"). An interactive
+  picture that doubles as a visual data slicer: load an SVG (local `.svg` or a URL,
+  inlined so inner shapes are live), CLICK a shape/layer → the `Layer` string output
+  emits its name → feed a Filter to slice a dataset by the clicked region. Also emits an
+  `SvgValue` on the `chart` socket so a Report embeds the picture (highlighting the same
+  pick). Layer name = element `inkscape:label`/`data-name`/`aria-label`/`id`
+  (human-first, walks up to the nearest named ancestor; pure `svgLayer.ts`). Highlight
+  colour adjustable; hover/select glow is an imperative `drop-shadow` (not per-move
+  React state). Markup persists in `stringLiterals.source` (Mermaid pattern, no bundling
+  — SVG is text). Full wiring in node-coverage "Annotation → SVG Picker". Shared
+  read-only renderer `SvgFigure.tsx` reused by Display/CableSwitch/Composite/Report.
+  Open: cross-origin URL fetch is CORS-limited (local file is the reliable path);
+  non-collapsible for now; single-select only (multi-select → list is a natural
+  follow-up). Kind is `input` — flip if the author prefers a display-family header.
+  `tsc` + full vitest green (2252).
+
 ### SESSION DIGEST (2026-07-08, evening — What's New resell + 1.2/2.0 plans)
 - **What's New rebuilt around the author's sell bar** ("a shiny thing a user will go
   discover and play with / would inspire a download on social media; What's New is not

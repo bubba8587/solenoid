@@ -6,7 +6,7 @@ import type { JSXElementConstructor } from "react";
 import type { RenderEmit } from "rete-react-plugin";
 import type { Schemes } from "./schemes";
 import {
-  AngleDialNode, SlicerNode, CableSwitchNode, NoteNode, ReportNode, SessionHistoryNode, PresentationNode, ImageNode,
+  AngleDialNode, SlicerNode, CableSwitchNode, NoteNode, ReportNode, SessionHistoryNode, PresentationNode, ImageNode, SvgPickerNode,
   SparklineNode, ChartNode, HistogramNode, KpiNode, BulletNode, TreemapNode, SankeyNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, DatePickerNode, DateRangeNode, XYPadNode,
   NumberInputNode, ArithmeticNode, DisplayNode, ComparisonNode, MathFnNode,
   ColorPickerNode,
@@ -74,7 +74,7 @@ import {
   TornadoNode,
 } from "./rete-nodes";
 import {
-  AngleDialComponent, SlicerComponent, CableSwitchComponent, NoteComponent, ReportComponent, SessionHistoryComponent, PresentationComponent, ImageComponent,
+  AngleDialComponent, SlicerComponent, CableSwitchComponent, NoteComponent, ReportComponent, SessionHistoryComponent, PresentationComponent, ImageComponent, SvgPickerComponent,
   SparklineComponent, ChartComponent, HistogramComponent, KpiComponent, BulletComponent, TreemapComponent, SankeyComponent, MermaidComponent, GaugeComponent, HeatmapCellComponent, ChartBuilderComponent, DatePickerComponent, DateRangeComponent, XYPadComponent,
   NumberInputComponent, ArithmeticComponent, DisplayComponent, ComparisonComponent,
   MathFnComponent, ClampComponent, BooleanComponent, NotComponent, IfComponent, ConduitComponent, CastComponent,
@@ -167,6 +167,7 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [SessionHistoryNode, comp(SessionHistoryComponent)],
   [PresentationNode, comp(PresentationComponent)],
   [ImageNode,       comp(ImageComponent)],
+  [SvgPickerNode,   comp(SvgPickerComponent)],
   [SparklineNode,   comp(SparklineComponent)],
   [ChartNode,       comp(ChartComponent)],
   [HistogramNode,   comp(HistogramComponent)],

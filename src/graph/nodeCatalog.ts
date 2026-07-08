@@ -52,7 +52,7 @@ import {
   BuildCubeNode, NestJoinNode, CubeColumnsNode, CubeRollupNode,
   WebSourceNode, CsvConnectionNode, ParquetConnectionNode, ImportHtmlNode, ImportXmlNode, DataFeedNode,
   WriteCsvNode, WriteJsonNode,
-  GroupNode, NoteNode, ReportNode, SessionHistoryNode, PresentationNode, ImageNode,
+  GroupNode, NoteNode, ReportNode, SessionHistoryNode, PresentationNode, ImageNode, SvgPickerNode,
   CompositeNode, CompositeInputNode, CompositeOutputNode,
   MAT_DET_OP_META, TABLE_RESHAPE_OP_META, TABLE_SELECT_OP_META,
   type MatDetOp, type TableReshapeOp, type TableSelectOp,
@@ -947,6 +947,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
     type: "category", label: "Other", description: "Catch-all for odd one-offs and uncategorized pack nodes.",
     children: [
       { type: "image", label: "Image", description: "A free-floating picture: attach a local file or paste a web URL, and set its height. Annotation only; carries no data. Web URLs persist in the save; local files are session-only, not yet embedded.", create: () => new ImageNode(), parity: false },
+      { type: "svg", label: "SVG", description: "An interactive SVG: attach a local .svg or paste a URL, then click a shape or layer to output its name — wire that into a Filter to slice a dataset by the region you clicked (a clickable map / floorplan / schematic as a data selector). The layer name comes from the element's label / id; the highlight colour is adjustable. Also flows the picture out a chart socket so a Report can embed it.", create: () => new SvgPickerNode(), parity: false, keywords: "svg map picker region layer shape hotspot clickable diagram floorplan schematic slice filter select vector" },
       { type: "promo", label: "✨ Promo", description: "A random Solenoid tagline; re-rolls on recalc (F9). Pure easter egg.", create: () => new PromoNode() },
     ],
   },

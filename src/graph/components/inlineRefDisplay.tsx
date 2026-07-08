@@ -12,7 +12,9 @@ import { isFrameValue, isCubeValue } from "../frame";
 import { isChartValue, type ChartValue } from "../chartValue";
 import { isMermaidValue } from "../mermaidValue";
 import { isImageValue } from "../imageValue";
+import { isSvgValue } from "../svgValue";
 import { MermaidView } from "./MermaidView";
+import { SvgFigure } from "./SvgFigure";
 import { isLambdaValue, type LambdaValue } from "../nodes/lambda";
 import { formulaToLatex } from "../excelFormula";
 import { FrameDisplay } from "./FrameDisplay";
@@ -71,6 +73,7 @@ export function refPreview(value: unknown, ann: FormatAnnotation | undefined): s
   if (isLambdaValue(value)) return lambdaText(value);
   if (isMermaidValue(value)) return value.title || "diagram";
   if (isImageValue(value)) return value.title || "image";
+  if (isSvgValue(value)) return value.selected || value.title || "svg";
   if (isChartValue(value)) return value.title || "chart";
   if (isFrameValue(value)) return "frame";
   if (isCubeValue(value)) return "cube";
@@ -208,6 +211,15 @@ function figureFor(
           />
         )
         : <span className="report-embed-missing">no image attached</span>,
+    };
+  }
+  if (isSvgValue(value)) {
+    return {
+      title: value.title || refKey,
+      caption: value.title ? <span className="solenoid-ref-figure__title">{value.title}</span> : null,
+      body: value.source
+        ? <SvgFigure value={value} className="solenoid-ref-svg" />
+        : <span className="report-embed-missing">no SVG loaded</span>,
     };
   }
   if (isFrameValue(value)) {
