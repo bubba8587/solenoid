@@ -1,6 +1,6 @@
 {
   "v": 2,
-  "label": "Cubes (nested tables)",
+  "label": "Cubes: nested tables",
   "order": 20,
   "nodes": [
     {
@@ -9,8 +9,8 @@
       "x": -40,
       "y": -300,
       "init": {
-        "label": "Cubes = nested tables",
-        "body": "A **Cube** is a Frame whose cells hold ANY value — a scalar, list, nested **Frame**, or another **Cube**. The recursive container that closes the socket lattice. One **Orders** fact table + two dimensions drive every demo; drill any chip for the breadcrumb.",
+        "label": "Cubes: nested tables",
+        "body": "A **Cube** is a Frame whose cells hold ANY value: a scalar, list, nested **Frame**, or another **Cube**. It is the recursive container that closes the socket lattice. One **Orders** fact table + two dimensions drive every demo; drill any chip for the breadcrumb.",
         "color": "violet",
         "width": 560,
         "height": 180
@@ -52,8 +52,8 @@
       "x": 440,
       "y": -300,
       "init": {
-        "label": "Nest Join — depth 1",
-        "body": "**Nest Join** Reps × Orders on **Rep**: each rep keeps one row, their matching orders tucked into a nested-Frame cell (tidyr nest_join). **INDEX** reads a cell back out — a whole sub-Frame, or a scalar.",
+        "label": "Nest Join: depth 1",
+        "body": "**Nest Join** joins Reps × Orders on **Rep**: each rep keeps one row, their matching orders tucked into a nested-Frame cell (tidyr's nest_join). **INDEX** reads a cell back out: a whole sub-Frame, or a scalar.",
         "color": "violet",
         "width": 330,
         "height": 180
@@ -131,7 +131,7 @@
       "x": 440,
       "y": 560,
       "init": {
-        "label": "Multi-level — depth 2",
+        "label": "Multi-level: depth 2",
         "body": "Feed a Nest Join's **Cube** back in as the Parent and it deepens one level. Regions × Reps, then that cube × Orders → **Region → Rep → Orders**. The depth badge reads 2.",
         "color": "violet",
         "width": 330,
@@ -201,8 +201,8 @@
       "x": 440,
       "y": 1110,
       "init": {
-        "label": "Unnest — flatten back",
-        "body": "**Unnest** the depth-1 cube's orders column → the flat joined table (one row per order). `Unnest(Nest Join) = a flat join`.",
+        "label": "Unnest: flatten back",
+        "body": "**Unnest** the depth-1 cube's orders column to get the flat joined table back, one row per order. `Unnest(Nest Join) = a flat join`.",
         "color": "violet",
         "width": 330,
         "height": 150
@@ -236,7 +236,7 @@
       "y": 760,
       "init": {
         "label": "Build by hand",
-        "body": "**Build Cube** packs values into ONE column (a scalar, a list, a Frame…). **Cube Columns** lines several columns up side by side — here a count and the source table itself per row.",
+        "body": "**Build Cube** packs values into ONE column: a scalar, a list, a Frame… **Cube Columns** lines several columns up side by side. Here each row holds a count and the source table itself.",
         "color": "violet",
         "width": 360,
         "height": 170
@@ -309,8 +309,8 @@
       "x": 1520,
       "y": 660,
       "init": {
-        "label": "Depth = cube-in-cube",
-        "body": "A flat cube is depth 1; a nested Frame is a leaf (no depth). Only a cube INSIDE a cube grows it. Wrap the depth-2 cube → **depth 3**.",
+        "label": "Depth: cube-in-cube",
+        "body": "A flat cube is depth 1; a nested Frame is a leaf with no depth. Only a cube INSIDE a cube grows it. Wrap the depth-2 cube → **depth 3**.",
         "color": "violet",
         "width": 300,
         "height": 160
@@ -370,7 +370,7 @@
       "y": -300,
       "init": {
         "label": "Roll a cube back up",
-        "body": "**Cube Rollup** aggregates a column inside each row's nested table — SUM of each Rep's `orders.Revenue` lands as a flat `Total` column. The BOM shape: cost of an assembly = sum of its parts.",
+        "body": "**Cube Rollup** aggregates a column inside each row's nested table. SUM of each Rep's `orders.Revenue` lands as a flat `Total` column. This is the BOM shape: the cost of an assembly is the sum of its parts.",
         "width": 340,
         "height": 150
       }

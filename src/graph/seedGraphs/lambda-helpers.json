@@ -1,6 +1,6 @@
 {
   "v": 1,
-  "label": "LAMBDA Helpers (MAP / BYROW / BYCOL / MAKEARRAY)",
+  "label": "LAMBDA Helpers",
   "nodes": [
     {
       "id": "vals",

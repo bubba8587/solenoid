@@ -648,7 +648,7 @@
       "y": 2820,
       "init": {
         "label": "The namesake",
-        "body": "A solenoid: field **B = μ₀ n I** inside the coil, flux **Φ = B·A**, inductance **μ₀N²A/ℓ** — the formula chain this app is named after.",
+        "body": "A solenoid: field **B = μ₀ n I** inside the coil, flux **Φ = B·A**, inductance **μ₀N²A/ℓ**. This is the formula chain the app is named after.",
         "width": 420,
         "height": 120
       }

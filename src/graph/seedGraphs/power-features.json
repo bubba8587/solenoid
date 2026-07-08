@@ -9,7 +9,7 @@
       "y": -680,
       "init": {
         "label": "Start here",
-        "body": "# Power features tour\nEach cluster shows something you wouldn't guess on day one. Drag the sliders, click the Conduit, right-click pairs of nodes and selected cables; **Ctrl+/** for the full Reference.",
+        "body": "# Power features tour\nEach cluster shows a feature that is easy to miss. Drag the sliders, click the Conduit, and right-click pairs of nodes and selected cables. **Ctrl+/** opens the full Reference.",
         "color": "blue",
         "width": 430,
         "height": 160,
@@ -23,7 +23,7 @@
       "y": -400,
       "init": {
         "label": "Lambdas",
-        "body": "# λ as a value\nThe **LAMBDA** node packages a formula. `rate` isn't a parameter, so it became a wired input — its live value is baked into the λ (Excel would write LET). Wire the λ into MAP or REDUCE and it replaces their inline formula; parameters bind by position. Drag the Rate slider and everything downstream follows.",
+        "body": "# λ as a value\nThe **LAMBDA** node packages a formula. `rate` isn't a parameter, so it became a wired input whose live value is baked into the λ; Excel would write LET. Wire the λ into MAP or REDUCE and it replaces their inline formula; parameters bind by position. Drag the Rate slider and everything downstream follows.",
         "color": "green",
         "width": 360,
         "height": 250,
@@ -247,7 +247,7 @@
       "y": 560,
       "init": {
         "label": "Units",
-        "body": "# Units travel with the value\n**Convert** turns miles into kilometres, and from there the *value itself* carries km. The Display and its docked **Format** controller pick the unit up and lock to it: you can re-format the number, never mislabel the unit. Convert is the authority in any chain of formats.",
+        "body": "# Units travel with the value\n**Convert** turns miles into kilometres, and from there the *value itself* carries km. The Display and its docked **Format** controller pick the unit up and lock to it: you can re-format the number but never mislabel the unit. Convert is the authority in any chain of formats.",
         "color": "vermilion",
         "width": 360,
         "height": 240,
@@ -317,7 +317,7 @@
       "y": 620,
       "init": {
         "label": "Live controls",
-        "body": "# Switch + Expression\nName each slot on the **Input Switch** so it reads as a labelled choice, then pick which cable is live — cycle to flip scenarios, no rewiring. Flip it to **Many** (see the switch below) and it collects the checked inputs into a **Cube** instead. The **Expression** node grew an input socket for every variable in its formula (`monthly` here); click the formula for the big typeset editor.",
+        "body": "# Switch + Expression\nName each slot on the **Input Switch** so it reads as a labelled choice, then pick which cable is live; cycle to flip scenarios without rewiring. Flip it to **Many** (see the switch below) and it collects the checked inputs into a **Cube** instead. The **Expression** node grew an input socket for every variable in its formula (`monthly` here); click the formula for the big typeset editor.",
         "color": "lime",
         "width": 360,
         "height": 240,
