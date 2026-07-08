@@ -35,7 +35,7 @@ bottom; everything else floats over the canvas.
 | Minimap | `.solenoid-minimap` | `bottom:30px; right:16px`, ~105px tall | 100 | `Minimap.css:5,8` |
 | HUD stack (alerts/pins/problems/comments) | `.solenoid-hud-stack` | `top:124px; right:12px` | 110 | `hudStack.css` |
 | Cable inspector | `.solenoid-cable-inspector` | bottom-left | 110 | `cableInspector.css:10` |
-| Command palette | `.solenoid-cmdk` | bottom-docked (`left:50%; bottom:40px`), full-screen scrim behind | 300 | `CommandPalette.css:4` |
+| Command palette | `.solenoid-cmdk` | bottom-docked (`left:50%; bottom:40px`), full-screen scrim behind | 300 modal · **150 persistent** (the always-on bar yields to the 200 modal band: Settings/help/shortcuts) | `CommandPalette.css:4,12` |
 | Docked report panel | `.report-panel--docked` | `top:66px; right:0; bottom:19px; width:440px` (via `--report-dock-*`) | 90 | `ReportOverlay.css:321` |
 
 **The header envelope is 66px** (22 + 44), plus a 2px accent underline ≈ **68px** to the
@@ -63,6 +63,7 @@ places — keep them in sync:
 | Nav pill | `92px + safe-area` (edge + 10 gap) | `mobile.css:229` |
 | Navigator panel | `88px + safe-area` (and `bottom: 84px + safe-area-bottom`) | `mobile.css:261,264` |
 | **Align pill** (`.solenoid-selbar`) | `92px + safe-area` — level with the nav pill | `selectionActions.css:66` |
+| Command palette (top-anchored on mobile) | `92px + safe-area` — level with the nav pill | `CommandPalette.css:96` |
 | Web-demo notice | `48px + safe-area` | `mobile.css:217` |
 
 The minimap is **`display:none` on mobile** (`mobile.css:35`) — the corner is given to the

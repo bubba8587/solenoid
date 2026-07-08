@@ -5,8 +5,10 @@
 }
 
 /* Docked (always-on) mode: the scrim doesn't blanket the canvas — only the palette
-   box itself is interactive, so the rest of the screen stays clickable. */
-.solenoid-cmdpalette-scrim--persistent { pointer-events: none; }
+   box itself is interactive, so the rest of the screen stays clickable. It also
+   yields to the modal band (Settings/help/shortcuts at 200): a docked bar is
+   ambient chrome, not an invoked overlay, so dialogs must cover it. */
+.solenoid-cmdpalette-scrim--persistent { pointer-events: none; z-index: 150; }
 .solenoid-cmdpalette-scrim--persistent .solenoid-cmdpalette { pointer-events: auto; }
 
 .solenoid-cmdpalette {
@@ -94,7 +96,9 @@
    (desktop keeps the Spotlight-style input-at-bottom). Rows get touch-sized
    padding; keyboard-shortcut hints mean nothing without a keyboard. */
 html.is-mobile .solenoid-cmdpalette {
-  top: calc(env(safe-area-inset-top, 0px) + 64px);
+  /* 92 = the mobile top-chrome bottom edge (82) + 10 gap — level with the nav
+     pill; see docs/layout-chrome.md "Mobile stack" (hand-keyed, keep in sync). */
+  top: calc(env(safe-area-inset-top, 0px) + 92px);
   bottom: auto;
 }
 html.is-mobile .solenoid-cmdpalette__results {
