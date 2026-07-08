@@ -2,59 +2,72 @@
 
 Curated, high-value features that sell 1.1 — the source material for the release
 notes (the author writes the final copy) and the **What's New** slides. Living doc:
-keep it current as 1.1 scope lands; each entry is a *benefit*, not a changelog line.
-Order = rough selling priority. Mark `[slide]` on the ones worth a What's-New slide.
+keep it current; each entry is a *benefit*, not a changelog line. Order = rough
+selling priority. Mark `[slide]` on the ones worth a What's-New slide.
 
-## Headliners
+**The bar (author 2026-07-08):** a sell is a shiny thing a user will go discover and
+play with, or something that would inspire a download / link click on social media —
+what makes someone want this alongside or over Excel. What's New is not a changelog;
+GitHub is. Non-sells that shipped (document properties, type-colored chips, charts
+following the palette as its own line, composite-editor/main-canvas parity) live in
+the body sections or under the hood, not on slides.
 
-- **[slide] Edit a composite like it's its own canvas.** Drill into a composite node
-  and the whole app comes with you — toolbar, minimap, zoom, right-click, copy/paste,
-  keyboard, Tidy. It's a real canvas now, not a stripped-down popup.
-- **[slide] Ask "what if" — four ways.** Composite containers run as **Goal Seek**
-  (drive an input until an output hits a target), **Scenarios**, **Data Table** (sweep
-  a grid of inputs), and **Simulation**. Heavy ones are arm-and-run: a Solve button and
-  a stale dot, so nothing recomputes behind your back.
-- **[slide] Live market & economic data.** Pull FRED economic series straight onto the
-  canvas with **no API key** — pick a date range and frequency, chart it in a click, and
-  compute on the real series. Stock history comes via a free Alpha Vantage key. Feeds
-  refresh on a timer and never bake data into the file. (The **Live Market Data** seed
-  is the demo.)
-- **[slide] Every chart Excel has, and then some.** Pie, Scatter, Bubble, Radar,
-  RadialBar, Funnel, Composed — plus **Treemap, Sankey, Histogram, KPI cards, Bullet
-  graphs**, and a date-range control. All themed to your palette.
+## Headliners — the slide deck (11, in order)
 
-## Analysis & data
+- **[slide] What-if analysis.** Wrap part of a model in a composite node and ask
+  what-if without disturbing the rest: **Goal Seek** (drive an input until an output
+  hits a target), **Scenarios**, **Data Table** (sweep a grid), **Simulation** (step a
+  feedback loop). Heavy modes run on Solve, with a stale marker. *(The composite
+  drill-in editor is the machinery behind this, not the sell.)*
+- **[slide] Command palette.** Ctrl+K, type, Enter: every menu action and toggle, with
+  recent actions first. Can be docked always-on.
+- **[slide] Live market & economic data.** FRED series with **no API key**; date range
+  + frequency; stock history via a free Alpha Vantage key. Chart it and compute on the
+  same numbers; feeds refresh on a timer and never bake data into the file. The
+  **Live Market Data** seed is the demo.
+- **[slide] Mobile redesign.** Three role-split zones: document strip, tool row, and a
+  thumb-reach bottom action bar (undo, add, select, delete). Palette, navigator, and
+  examples all work on a phone.
+- **[slide] Reports.** Markdown with live `=name` embeds: numbers, tables, charts,
+  equations, diagrams, all recomputing in place. Docks to the right edge while the
+  canvas stays live.
+- **[slide] Presenter mode.** A Presentation node plays the canvas as a slideshow: the
+  camera flies step to step, chrome hides, the graph stays live.
+- **[slide] Mermaid diagrams.** Flowcharts, sequence/state diagrams, Gantt, pie, from
+  plain text; template starters; embeds in a Report.
+- **[slide] Set operations.** Union / intersection / difference / symmetric difference
+  plus membership tests, rendered in set notation on the card. Excel has no direct
+  equivalent.
+- **[slide] More chart types.** Pie, Scatter, Bubble, Radar, Radial, Funnel, Composed,
+  plus Treemap, Sankey, Histogram, KPI cards, and Bullet graphs.
+- **[slide] Align & distribute bar.** Select two or more nodes: align edges or centers
+  and distribute spacing evenly, both axes.
+- **[slide] Palette editor.** Design a palette on live sample nodes; use it app-wide or
+  pin one to a document. Charts, diagrams, and the desktop window border follow it.
+
+## Analysis & data (sells for the release notes body, not slides)
 
 - **One XLOOKUP for everything** — lists, frames, and cubes through a single node,
   with approximate match and as-of (nearest-date) lookups.
 - **Trust your model.** An **Expect** node (not-null / unique / range / regex checks),
   a **Problems** panel, a **Reconcile** node (compare two frames), **Tornado** sensitivity,
   and a one-click model fuzzer that finds inputs that break your math.
-- **[slide] Reports & presentations, built in.** A **Report** node writes plain markdown
-  with live `=value` embeds (numbers, tables, charts, equations, Mermaid diagrams);
-  **Presenter mode** turns the canvas into a click-through slideshow. Add **Mermaid**
-  diagrams as a first-class node.
 - **Fast on big tables.** Native Polars engine on desktop; **Sketch** mode samples huge
   tables so editing stays snappy, and **Manual** calc (F9) puts you in control.
-
-## Polish & control
-
 - **Format once, flows everywhere.** The redesigned Format Controller carries a value's
   unit + number format downstream, with an advanced tier (separators, accounting negatives,
   K/M/B scaling) — and Convert stays first-class.
-- **[slide] Make it yours.** A custom palette editor, per-document properties (title/author/
-  tags/palette), type-coloured chips, and a command palette that's every menu action + recent
-  actions in one Enter-press.
 - **Zero-Googling from Excel.** Hover tooltips with Excel equivalents, a socket legend, and a
   Ctrl+/ function reference.
 
 ## Under the hood (mention, don't headline)
 
-- First-class drill-in seam (`activeGraph`) + shared area presets so surfaces can't drift.
+- Composite drill-in runs in the full editor (minimap, keyboard, right-click, Tidy) via
+  the `activeGraph` seam + shared area presets.
+- Document properties (title/author/tags/palette), type-colored chips, charts themed to
+  the palette.
 - Rust engine parity (byte-identical keys, Infinity handling), native CSV date inference,
   AND/OR frame filters, headless graph runner + file-sink nodes.
-
----
 
 ## Known issues (for the GitHub release body — deliberately NOT shown in-app)
 

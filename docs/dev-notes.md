@@ -5,6 +5,29 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-08, evening — What's New resell + 1.2/2.0 plans)
+- **What's New rebuilt around the author's sell bar** ("a shiny thing a user will go
+  discover and play with / would inspire a download on social media; What's New is not
+  a changelog"). 6 slides → 11: What-if analysis (recast — composites exist to run
+  isolated what-ifs; editor/main-canvas parity is machinery, NOT the sell), Command
+  palette, Live market data, Mobile redesign (the three-zone chrome), Reports,
+  Presenter mode, Mermaid diagrams, Set operations, More chart types, Align &
+  distribute bar, Palette editor. Dropped as sells per the author: charts-follow-the-
+  palette as its own line, type-colored chips, Document Properties, composite-editor
+  parity. The bar itself is now written into `release-notes-features.md`'s header and
+  the slide list there mirrors the deck. About gained the type-enforcement + unit-lock
+  sentence. (Judgment call left to the author: the model fuzzer/trust set reads as
+  slide-worthy by the same bar; it stayed in the release-notes body, not the deck.)
+- **American spelling in shipped strings** (author): three nodeCatalog descriptions
+  carried "colour"/"coloured"; respelled. Code comments keep whatever they have.
+- **Post-1.1 work organized into two release views:** `docs/1.2-plan.md` (tiered:
+  known-issue fixes with tidy/cleanup-around-groups as the backbone, half-built tails
+  F-2/D-2/goal-seek-params/drill-in-subsystems, widening incl. the CSP-gated iFrame
+  node, unscheduled candidates, parked items) and `docs/2.0-plan.md` (the author-
+  present flagships A4 → transpiler → D2 → D4, the Monte Carlo gate, verdict-pending
+  #23/#35; bundle detail stays in `v2.0/`). backlog.md remains the per-item source of
+  truth; docs/README index + release-plan pointers updated.
+
 ### SESSION DIGEST (2026-07-08, latest — Writing & Copy pass over every shipped string)
 - **Full copy pass (author order): every user-facing string held to DESIGN.md §7 + the
   Captain-Obvious rule; internal docs exempt.** ~700 strings rewritten across seven

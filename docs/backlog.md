@@ -18,7 +18,9 @@ is archived).
 **FEATURE-COMPLETE (author 2026-07-08).** Everything below in this section is
 explicitly DEFERRED past the 1.1 tag by the author on 2026-07-08 — none of it
 gates the cut. The only open 1.1 work is the author-run release tail
-(eyeball pass, cargo on Windows, desktop build, merge, tag).
+(eyeball pass, cargo on Windows, desktop build, merge, tag). The deferred set is
+ORGANIZED in `1.2-plan.md` (incremental queue) and `2.0-plan.md` (flagships);
+this backlog stays the per-item source of truth.
 
 - [ ] **Keep `release-notes-features.md` current** — the curated selling list + What's-New
   slide source (author writes the final release notes). Reconciled 2026-07-08 (FRED-keyless
