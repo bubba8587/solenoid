@@ -5,6 +5,46 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-08, night — DOM-weight investigation + reductions)
+- **Measurement methodology (the load-bearing finding).** Chrome's Performance-Monitor
+  "DOM Nodes" is NOT "elements on the page": it counts every live DOM node in the
+  renderer — detached trees retained by JS (Vite HMR retains whole old component trees
+  per hot reload; a hard reload's old document lingers until GC), plus text/comment
+  nodes (~2.3× the element count). And the HTML-in-Canvas renderer keeps an ATTACHED
+  clone of every visible node (what `drawElementImage` rasterizes), so the GPU toggle
+  ~doubles node DOM by design. The honest metric: hard reload, GPU toggle OFF,
+  `document.querySelectorAll('*').length`. Blank canvas = 312 real elements (the
+  monitor read 36k — all artifact). Per-type attribution: tally elements by first
+  class token (snippet in the archived session), plus `.katex`/`.recharts-wrapper`
+  subtree sums.
+- **Reductions shipped (all pixel-identical):** Famous Math 15,237 → 10,826 (−29%);
+  Personal Finance reads 8,401 (~86/node, already lean). (1) **KaTeX `output:"html"`**
+  (`katexRender.ts`) — the default `htmlAndMathml` emits a hidden MathML duplicate of
+  every formula (−~850 on FM). (2) **`LazySelect`** (`components/LazySelect.tsx`) — a
+  closed `<select>` renders ONE option; the full list mounts on pointerenter/focus
+  (both precede the mousedown/keydown that opens the native picker) and unmounts on
+  blur/un-focused pointerleave, NEVER while focused (the open OS popup breaks if
+  options vanish). Invisible `<option>`s were the #1 bucket: ~3,400 elements, 24% of
+  FM — the FC's full unit catalog + format groups per card. **Width invariant:** cards
+  are max-content-sized, so the WIDEST option held the card wide — LazySelect mounts
+  the full list for one pre-paint pass, measures, locks the natural width as inline
+  `min-width`, THEN drops to one option (re-measures when the option set changes —
+  async file lists, pack units). Converted: OpSelect, all FC selects, Convert,
+  Connection nodes, Mermaid template; popup/panel singletons stay native. (3)
+  **Semantic-zoom span** mounts only while the Settings toggle (default off) is on —
+  the zoom-crossing swap stays pure CSS. (4) **Sparkline/Gauge single-mount** — each
+  rendered TWO recharts trees (live + square-collapse mini) with CSS showing one;
+  now conditional on `collapseStore` (recharts animations are globally off, so the
+  remount is instant).
+- **Deliberately NOT done (quality-gated, don't retread blind):** socket SVG → CSS
+  circle (~1,200–1,500 el; the SVG exists to kill subpixel ovals — SocketComponent
+  header comment); ValueDisplay copy button (it is a VISIBLE at-rest affordance,
+  opacity 0.45, not hover-only); recharts ink (dots/axes/grids are content); KaTeX
+  spans (the typeset formula itself). Remaining honest levers → backlog: SVG Picker
+  rasterize-for-display (its `innerHTML = source` inlines ~3k+ paths for a county
+  map — the single biggest lever when present), `content-visibility: auto`
+  experiment, collapsed Chart/Histogram/Sankey/Treemap live figures.
+
 ### SESSION DIGEST (2026-07-08 — SVG Picker node)
 - **New node: SVG Picker** (`SvgPickerNode`, Add menu "Other" → "SVG"). An interactive
   picture that doubles as a visual data slicer: load an SVG (local `.svg` or a URL,

@@ -225,9 +225,23 @@ this backlog stays the per-item source of truth.
   graph engages the GPU renderer sooner. Keep it cheap (a per-kind weight table summed off
   the same nodecreated/noderemoved recount, not a live DOM element count). Exact weights
   TBD ("to some degree"). Hook: `HtmlCanvasLayer.tsx` (the `active`/`nodeCount` gate) +
-  `nodeKindOf`. **Companion lever (Fable, investigating): reduce per-node DOM element count
-  — charts first — which lowers the DOM baseline so raw count tracks real cost better.**
-  The two are complementary.
+  `nodeKindOf`. The companion DOM-reduction investigation LANDED 2026-07-08 (dev-notes
+  digest "DOM-weight investigation": −29% on Famous Math, pixel-identical); remaining
+  levers are the three items below.
+- [ ] **SVG Picker: rasterize for display, inline only for hit-testing** (from the
+  2026-07-08 DOM audit — the single biggest DOM lever when a big picture is on canvas):
+  `SvgPickerNode.tsx` `well.innerHTML = source` permanently mounts every path of the
+  source document (a US county map ≈ +40k elements). Display via `<img>` (blob URL,
+  re-rasterized on zoom for crispness); swap the real SVG in on pointerenter for
+  hit-testing/highlight, out on leave. Report embeds (`SvgFigure`) may keep inlining.
+- [ ] **`content-visibility: auto` on node roots — untried experiment** (floated in the
+  archived perf notes, never attempted): skips style/layout/paint for offscreen nodes
+  without touching DOM count or visuals. Risks to check: rete's socket measurement
+  (`offsetTop` queries force layout), minimap/fit reading sizes, the GPU clone capture.
+- [ ] **Unmount collapsed viz nodes' live figures** (small, same pattern as the shipped
+  Sparkline/Gauge single-mount): Chart/Histogram/Sankey/Treemap keep their full recharts
+  tree mounted while collapsed (CSS-hidden); render it `{!collapsed && …}` off
+  `collapseStore`. Only pays off on docs that keep collapsed charts around.
 - [ ] **Cable collision avoidance** — DEFERRED for later (author 2026-07-05).
   Spec: `archive/cable-routing.md` §2 (avoid nodes; parallel runs + bridge hops;
   per-cable overrides).
