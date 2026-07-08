@@ -2,27 +2,211 @@
   "v": 1,
   "label": "LAMBDA Helpers (MAP / BYROW / BYCOL / MAKEARRAY)",
   "nodes": [
-    {"id":"vals","type":"TableInputNode","x":0,"y":-40,"init":{"label":"Values","tableText":"12\n55\n78\n90\n64\n51"}},
-    {"id":"map","type":"MapTableNode","x":380,"y":-40,"init":{"label":"MAP — between 50 and 80"},"stringLiterals":{"formula":"IF(AND(x>50, x<80), 1, 0)"}},
-    {"id":"temps","type":"TableInputNode","x":0,"y":420,"init":{"label":"Temperatures °F (week × day)","tableText":"82, 84, 80, 79, 85\n88, 90, 92, 89, 91\n86, 88, 84, 83, 85\n70, 72, 75, 73, 71"}},
-    {"id":"byrow","type":"ByAxisNode","x":380,"y":250,"init":{"label":"BYROW — avg temp per week","axis":"row"},"stringLiterals":{"formula":"AVERAGE(v)"}},
-    {"id":"bycol","type":"ByAxisNode","x":380,"y":540,"init":{"label":"BYCOL — avg temp per day","axis":"col"},"stringLiterals":{"formula":"AVERAGE(v)"}},
-    {"id":"mk","type":"MakeArrayNode","x":380,"y":830,"init":{"label":"MAKEARRAY — r × c grid"},"literals":{"rows":5,"cols":5},"stringLiterals":{"formula":"r * c"}},
-    {"id":"grp","type":"GroupNode","x":352,"y":-112,"init":{"label":"Array lambdas","members":["map","byrow","bycol","mk"],"color":"green","collapsed":false,"width":280,"height":1240}},
-
-    {"id":"hotmask","type":"ByAxisNode","x":760,"y":150,"init":{"label":"BYROW — hot week? (avg > 85)","axis":"row"},"stringLiterals":{"formula":"IF(AVERAGE(v) > 85, 1, 0)"}},
-    {"id":"hotfilter","type":"FilterNode","x":760,"y":430,"init":{"label":"FILTER — keep hot weeks"}},
-    {"id":"tocelsius","type":"MapTableNode","x":760,"y":710,"init":{"label":"MAP — °F → °C"},"stringLiterals":{"formula":"(x - 32) * 5 / 9"}},
-    {"id":"grphero","type":"GroupNode","x":732,"y":78,"init":{"label":"LAMBDA as argument: hot weeks → °C","members":["hotmask","hotfilter","tocelsius"],"color":"amber","collapsed":false,"width":300,"height":860}},
-    {"id":"grpsrc","type":"GroupNode","x":-32,"y":-112,"init":{"label":"Source tables","members":["vals","temps"],"color":"sky","collapsed":false,"width":280,"height":760}}
+    {
+      "id": "vals",
+      "type": "TableInputNode",
+      "x": 0,
+      "y": -21,
+      "init": {
+        "label": "Values",
+        "tableText": "12\n55\n78\n90\n64\n51"
+      }
+    },
+    {
+      "id": "map",
+      "type": "MapTableNode",
+      "x": 380,
+      "y": -58,
+      "init": {
+        "label": "MAP — between 50 and 80"
+      },
+      "stringLiterals": {
+        "formula": "IF(AND(x>50, x<80), 1, 0)"
+      }
+    },
+    {
+      "id": "temps",
+      "type": "TableInputNode",
+      "x": 0,
+      "y": 423,
+      "init": {
+        "label": "Temperatures °F (week × day)",
+        "tableText": "82, 84, 80, 79, 85\n88, 90, 92, 89, 91\n86, 88, 84, 83, 85\n70, 72, 75, 73, 71"
+      }
+    },
+    {
+      "id": "byrow",
+      "type": "ByAxisNode",
+      "x": 380,
+      "y": 250,
+      "init": {
+        "label": "BYROW — avg temp per week",
+        "axis": "row"
+      },
+      "stringLiterals": {
+        "formula": "AVERAGE(v)"
+      }
+    },
+    {
+      "id": "bycol",
+      "type": "ByAxisNode",
+      "x": 380,
+      "y": 540,
+      "init": {
+        "label": "BYCOL — avg temp per day",
+        "axis": "col"
+      },
+      "stringLiterals": {
+        "formula": "AVERAGE(v)"
+      }
+    },
+    {
+      "id": "mk",
+      "type": "MakeArrayNode",
+      "x": 380,
+      "y": 830,
+      "init": {
+        "label": "MAKEARRAY — r × c grid"
+      },
+      "literals": {
+        "rows": 5,
+        "cols": 5
+      },
+      "stringLiterals": {
+        "formula": "r * c"
+      }
+    },
+    {
+      "id": "grp",
+      "type": "GroupNode",
+      "x": 340,
+      "y": -128,
+      "init": {
+        "label": "Array lambdas",
+        "members": [
+          "map",
+          "byrow",
+          "bycol",
+          "mk"
+        ],
+        "color": "green",
+        "collapsed": false,
+        "width": 290,
+        "height": 1268
+      }
+    },
+    {
+      "id": "hotmask",
+      "type": "ByAxisNode",
+      "x": 757,
+      "y": 150,
+      "init": {
+        "label": "BYROW — hot week? (avg > 85)",
+        "axis": "row"
+      },
+      "stringLiterals": {
+        "formula": "IF(AVERAGE(v) > 85, 1, 0)"
+      }
+    },
+    {
+      "id": "hotfilter",
+      "type": "FilterNode",
+      "x": 767,
+      "y": 446,
+      "init": {
+        "label": "FILTER — keep hot weeks"
+      }
+    },
+    {
+      "id": "tocelsius",
+      "type": "MapTableNode",
+      "x": 757,
+      "y": 710,
+      "init": {
+        "label": "MAP — °F → °C"
+      },
+      "stringLiterals": {
+        "formula": "(x - 32) * 5 / 9"
+      }
+    },
+    {
+      "id": "grphero",
+      "type": "GroupNode",
+      "x": 717,
+      "y": 80,
+      "init": {
+        "label": "LAMBDA as argument: hot weeks → °C",
+        "members": [
+          "hotmask",
+          "hotfilter",
+          "tocelsius"
+        ],
+        "color": "amber",
+        "collapsed": false,
+        "width": 290,
+        "height": 964
+      }
+    },
+    {
+      "id": "grpsrc",
+      "type": "GroupNode",
+      "x": -40,
+      "y": -91,
+      "init": {
+        "label": "Source tables",
+        "members": [
+          "vals",
+          "temps"
+        ],
+        "color": "sky",
+        "collapsed": false,
+        "width": 300,
+        "height": 774
+      }
+    }
   ],
   "connections": [
-    {"source":"vals","sourceOutput":"table","target":"map","targetInput":"table"},
-    {"source":"temps","sourceOutput":"table","target":"byrow","targetInput":"table"},
-    {"source":"temps","sourceOutput":"table","target":"bycol","targetInput":"table"},
-    {"source":"temps","sourceOutput":"table","target":"hotmask","targetInput":"table"},
-    {"source":"temps","sourceOutput":"table","target":"hotfilter","targetInput":"list"},
-    {"source":"hotmask","sourceOutput":"result","target":"hotfilter","targetInput":"mask"},
-    {"source":"hotfilter","sourceOutput":"result","target":"tocelsius","targetInput":"table"}
+    {
+      "source": "vals",
+      "sourceOutput": "table",
+      "target": "map",
+      "targetInput": "table"
+    },
+    {
+      "source": "temps",
+      "sourceOutput": "table",
+      "target": "byrow",
+      "targetInput": "table"
+    },
+    {
+      "source": "temps",
+      "sourceOutput": "table",
+      "target": "bycol",
+      "targetInput": "table"
+    },
+    {
+      "source": "temps",
+      "sourceOutput": "table",
+      "target": "hotmask",
+      "targetInput": "table"
+    },
+    {
+      "source": "temps",
+      "sourceOutput": "table",
+      "target": "hotfilter",
+      "targetInput": "list"
+    },
+    {
+      "source": "hotmask",
+      "sourceOutput": "result",
+      "target": "hotfilter",
+      "targetInput": "mask"
+    },
+    {
+      "source": "hotfilter",
+      "sourceOutput": "result",
+      "target": "tocelsius",
+      "targetInput": "table"
+    }
   ]
 }

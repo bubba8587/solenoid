@@ -20,7 +20,7 @@
       "id": "sales",
       "type": "FrameInputNode",
       "x": 0,
-      "y": -340,
+      "y": -350,
       "init": {
         "label": "Sales",
         "frameText": "[{\"name\":\"Rep\",\"type\":\"string\",\"values\":[\"Ada\",\"Bo\",\"Ada\",\"Cy\",\"Bo\",\"Ada\"]},{\"name\":\"Region\",\"type\":\"string\",\"values\":[\"N\",\"S\",\"N\",\"E\",\"S\",\"N\"]},{\"name\":\"Amount\",\"type\":\"number\",\"values\":[100,50,100,200,75,30]}]"
@@ -30,7 +30,7 @@
       "id": "reps",
       "type": "FrameInputNode",
       "x": 0,
-      "y": -60,
+      "y": -65,
       "init": {
         "label": "Reps (Join lookup)",
         "frameText": "[{\"name\":\"Rep\",\"type\":\"string\",\"values\":[\"Ada\",\"Bo\",\"Cy\"]},{\"name\":\"Team\",\"type\":\"string\",\"values\":[\"Red\",\"Blue\",\"Green\"]}]"
@@ -49,7 +49,7 @@
     {
       "id": "distinct",
       "type": "DistinctNode",
-      "x": 480,
+      "x": 486,
       "y": -440,
       "init": {
         "label": "Distinct → drops dup row"
@@ -58,8 +58,8 @@
     {
       "id": "sort",
       "type": "SortFrameNode",
-      "x": 480,
-      "y": -200,
+      "x": 481,
+      "y": -257,
       "init": {
         "label": "Sort → Amount, desc",
         "dir": "desc"
@@ -71,8 +71,8 @@
     {
       "id": "head",
       "type": "HeadNode",
-      "x": 480,
-      "y": 40,
+      "x": 486,
+      "y": -19,
       "init": {
         "label": "Head → first 3"
       },
@@ -83,8 +83,8 @@
     {
       "id": "filter",
       "type": "FilterFrameNode",
-      "x": 480,
-      "y": 260,
+      "x": 471,
+      "y": 194,
       "init": {
         "label": "Filter → Amount ≥ 100",
         "condConfig": {
@@ -106,7 +106,7 @@
     {
       "id": "filteror",
       "type": "FilterFrameNode",
-      "x": 480,
+      "x": 471,
       "y": 1160,
       "init": {
         "label": "Filter → Region = N OR Amount > 150",
@@ -137,8 +137,8 @@
     {
       "id": "select",
       "type": "SelectColumnsNode",
-      "x": 480,
-      "y": 500,
+      "x": 481,
+      "y": 496,
       "init": {
         "label": "Select → Rep, Amount"
       },
@@ -149,8 +149,8 @@
     {
       "id": "drop",
       "type": "DropColumnsNode",
-      "x": 480,
-      "y": 720,
+      "x": 481,
+      "y": 709,
       "init": {
         "label": "Drop → Region"
       },
@@ -161,8 +161,8 @@
     {
       "id": "rename",
       "type": "RenameNode",
-      "x": 480,
-      "y": 940,
+      "x": 481,
+      "y": 922,
       "init": {
         "label": "Rename → Amount to \"Sales $\""
       },
@@ -174,7 +174,7 @@
     {
       "id": "groupby",
       "type": "GroupByFrameNode",
-      "x": 900,
+      "x": 903,
       "y": -440,
       "init": {
         "label": "Group By Rep → SUM(Amount)",
@@ -189,8 +189,8 @@
     {
       "id": "join",
       "type": "JoinNode",
-      "x": 900,
-      "y": -180,
+      "x": 898,
+      "y": -189,
       "init": {
         "label": "Join Sales × Reps (left, on Rep)",
         "how": "left"
@@ -203,8 +203,8 @@
     {
       "id": "append",
       "type": "AppendNode",
-      "x": 900,
-      "y": 80,
+      "x": 908,
+      "y": 146,
       "init": {
         "label": "Append Sales + More Sales"
       }
@@ -212,8 +212,8 @@
     {
       "id": "pivot",
       "type": "PivotNode",
-      "x": 900,
-      "y": 340,
+      "x": 893,
+      "y": 367,
       "init": {
         "label": "Pivot → Rep × Region (SUM)",
         "op": "sum"
@@ -227,8 +227,8 @@
     {
       "id": "nest",
       "type": "NestNode",
-      "x": 900,
-      "y": 720,
+      "x": 903,
+      "y": 712,
       "init": {
         "label": "Nest by Rep → Cube"
       },
@@ -240,8 +240,8 @@
     {
       "id": "unpivot",
       "type": "UnpivotNode",
-      "x": 1340,
-      "y": 340,
+      "x": 1338,
+      "y": 313,
       "init": {
         "label": "Unpivot back → long"
       },
@@ -253,8 +253,8 @@
     {
       "id": "unnest",
       "type": "UnnestNode",
-      "x": 1340,
-      "y": 720,
+      "x": 1343,
+      "y": 724,
       "init": {
         "label": "Unnest Orders → flat again"
       },
@@ -279,7 +279,7 @@
       "id": "quotes",
       "type": "FrameInputNode",
       "x": 1790,
-      "y": -360,
+      "y": -350,
       "init": {
         "label": "Quotes",
         "frameText": "[{\"name\":\"time\",\"type\":\"number\",\"values\":[0,2,4,8,12]},{\"name\":\"price\",\"type\":\"number\",\"values\":[100,101,102.5,103,104.5]}]"
@@ -289,7 +289,7 @@
       "id": "trades",
       "type": "FrameInputNode",
       "x": 1790,
-      "y": -100,
+      "y": -80,
       "init": {
         "label": "Trades",
         "frameText": "[{\"name\":\"time\",\"type\":\"number\",\"values\":[-1,1,5,10,20]},{\"name\":\"qty\",\"type\":\"number\",\"values\":[5,10,15,20,25]}]"
@@ -308,8 +308,8 @@
     {
       "id": "asofjoin",
       "type": "JoinNode",
-      "x": 2250,
-      "y": -260,
+      "x": 2248,
+      "y": -259,
       "init": {
         "label": "As-of Join — trade price at execution time (≤)",
         "how": "asof",
@@ -323,8 +323,8 @@
     {
       "id": "lookup",
       "type": "XLookupNode",
-      "x": 2250,
-      "y": 220,
+      "x": 2253,
+      "y": 226,
       "init": {
         "label": "XLOOKUP — next-smaller volume tier (≤)",
         "matchMode": "nextSmaller"

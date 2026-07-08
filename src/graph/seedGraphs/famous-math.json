@@ -16,7 +16,7 @@
       "id": "in_b",
       "type": "NumberInputNode",
       "x": 0,
-      "y": 120,
+      "y": 93,
       "init": {
         "label": "Leg b",
         "value": 4
@@ -25,8 +25,8 @@
     {
       "id": "ex_c",
       "type": "ExpressionNode",
-      "x": 340,
-      "y": 40,
+      "x": 326,
+      "y": 38,
       "init": {
         "label": "Pythagoras  c",
         "expr": "SQRT(a^2 + b^2)"
@@ -35,8 +35,8 @@
     {
       "id": "disp_c",
       "type": "DisplayNode",
-      "x": 700,
-      "y": 40,
+      "x": 683,
+      "y": 68,
       "init": {
         "label": "Hypotenuse c"
       }
@@ -55,7 +55,7 @@
       "id": "in_qb",
       "type": "NumberInputNode",
       "x": 0,
-      "y": 540,
+      "y": 547,
       "init": {
         "label": "b",
         "value": -3
@@ -65,7 +65,7 @@
       "id": "in_qc",
       "type": "NumberInputNode",
       "x": 0,
-      "y": 660,
+      "y": 673,
       "init": {
         "label": "c",
         "value": 2
@@ -74,7 +74,7 @@
     {
       "id": "ex_disc",
       "type": "ExpressionNode",
-      "x": 340,
+      "x": 326,
       "y": 540,
       "init": {
         "label": "Discriminant",
@@ -84,8 +84,8 @@
     {
       "id": "ex_r1",
       "type": "ExpressionNode",
-      "x": 680,
-      "y": 440,
+      "x": 683,
+      "y": 425,
       "init": {
         "label": "Quadratic root +",
         "expr": "(-b + SQRT(disc)) / (2*a)"
@@ -94,8 +94,8 @@
     {
       "id": "ex_r2",
       "type": "ExpressionNode",
-      "x": 680,
-      "y": 640,
+      "x": 683,
+      "y": 618,
       "init": {
         "label": "Quadratic root -",
         "expr": "(-b - SQRT(disc)) / (2*a)"
@@ -105,7 +105,7 @@
       "id": "disp_r1",
       "type": "DisplayNode",
       "x": 1020,
-      "y": 440,
+      "y": 455,
       "init": {
         "label": "Root x₁"
       }
@@ -114,7 +114,7 @@
       "id": "disp_r2",
       "type": "DisplayNode",
       "x": 1020,
-      "y": 640,
+      "y": 648,
       "init": {
         "label": "Root x₂"
       }
@@ -122,7 +122,7 @@
     {
       "id": "ex_phi",
       "type": "ExpressionNode",
-      "x": 340,
+      "x": 326,
       "y": 980,
       "init": {
         "label": "Golden ratio φ",
@@ -132,7 +132,7 @@
     {
       "id": "ex_check",
       "type": "ExpressionNode",
-      "x": 680,
+      "x": 683,
       "y": 980,
       "init": {
         "label": "Identity φ²−φ−1",
@@ -161,7 +161,7 @@
       "id": "in_n",
       "type": "NumberInputNode",
       "x": 0,
-      "y": 1400,
+      "y": 1383,
       "init": {
         "label": "n (large)",
         "value": 1000000
@@ -170,8 +170,8 @@
     {
       "id": "ex_e",
       "type": "ExpressionNode",
-      "x": 340,
-      "y": 1400,
+      "x": 326,
+      "y": 1410,
       "init": {
         "label": "Euler limit (1+1/n)ⁿ",
         "expr": "(1 + 1/n)^n"
@@ -180,8 +180,8 @@
     {
       "id": "ex_etrue",
       "type": "ExpressionNode",
-      "x": 680,
-      "y": 1400,
+      "x": 683,
+      "y": 1410,
       "init": {
         "label": "True e",
         "expr": "EXP(1)"
@@ -191,7 +191,7 @@
       "id": "disp_e",
       "type": "DisplayNode",
       "x": 1020,
-      "y": 1340,
+      "y": 1358,
       "init": {
         "label": "Limit → e"
       }
@@ -200,7 +200,7 @@
       "id": "disp_etrue",
       "type": "DisplayNode",
       "x": 1020,
-      "y": 1460,
+      "y": 1440,
       "init": {
         "label": "e ≈ 2.71828…"
       }
@@ -209,7 +209,7 @@
       "id": "in_terms",
       "type": "NumberInputNode",
       "x": 0,
-      "y": 1840,
+      "y": 1845,
       "init": {
         "label": "Terms",
         "value": 200
@@ -218,8 +218,8 @@
     {
       "id": "seq",
       "type": "SequenceNode",
-      "x": 300,
-      "y": 1840,
+      "x": 346,
+      "y": 1844,
       "init": {
         "label": "k = 1…terms"
       }
@@ -227,8 +227,8 @@
     {
       "id": "ex_recip",
       "type": "ExpressionNode",
-      "x": 600,
-      "y": 1840,
+      "x": 610,
+      "y": 1836,
       "init": {
         "label": "1 / k²",
         "expr": "1 / k^2"
@@ -237,8 +237,8 @@
     {
       "id": "red",
       "type": "AggregateNode",
-      "x": 920,
-      "y": 1840,
+      "x": 933,
+      "y": 1815,
       "init": {
         "label": "Σ 1/k²",
         "op": "sum"
@@ -247,7 +247,7 @@
     {
       "id": "ex_basel",
       "type": "ExpressionNode",
-      "x": 600,
+      "x": 610,
       "y": 2030,
       "init": {
         "label": "Basel target π²/6",
@@ -257,8 +257,8 @@
     {
       "id": "disp_basel",
       "type": "DisplayNode",
-      "x": 1240,
-      "y": 1800,
+      "x": 1233,
+      "y": 1820,
       "init": {
         "label": "Partial sum"
       }
@@ -266,7 +266,7 @@
     {
       "id": "disp_basel_true",
       "type": "DisplayNode",
-      "x": 1240,
+      "x": 1233,
       "y": 1960,
       "init": {
         "label": "π²/6 ≈ 1.6449…"
@@ -276,7 +276,7 @@
       "id": "in_sn",
       "type": "NumberInputNode",
       "x": 0,
-      "y": 2400,
+      "y": 2383,
       "init": {
         "label": "n",
         "value": 10
@@ -285,8 +285,8 @@
     {
       "id": "ex_stir",
       "type": "ExpressionNode",
-      "x": 340,
-      "y": 2400,
+      "x": 326,
+      "y": 2410,
       "init": {
         "label": "Stirling √(2πn)(n/e)ⁿ",
         "expr": "SQRT(2*PI()*n) * (n/EXP(1))^n"
@@ -295,8 +295,8 @@
     {
       "id": "ex_fact",
       "type": "ExpressionNode",
-      "x": 680,
-      "y": 2400,
+      "x": 683,
+      "y": 2410,
       "init": {
         "label": "Exact n!",
         "expr": "FACT(n)"
@@ -306,7 +306,7 @@
       "id": "disp_stir",
       "type": "DisplayNode",
       "x": 1020,
-      "y": 2340,
+      "y": 2358,
       "init": {
         "label": "Stirling approx"
       }
@@ -315,7 +315,7 @@
       "id": "disp_fact",
       "type": "DisplayNode",
       "x": 1020,
-      "y": 2460,
+      "y": 2440,
       "init": {
         "label": "n! exact"
       }
@@ -323,8 +323,8 @@
     {
       "id": "fc_c",
       "type": "FormatControllerNode",
-      "x": 1020,
-      "y": 40,
+      "x": 1003,
+      "y": 68,
       "init": {
         "label": "Format",
         "hostNodeId": "disp_c",
@@ -341,7 +341,7 @@
       "id": "fc_r1",
       "type": "FormatControllerNode",
       "x": 1340,
-      "y": 440,
+      "y": 455,
       "init": {
         "label": "Format",
         "hostNodeId": "disp_r1",
@@ -358,7 +358,7 @@
       "id": "fc_r2",
       "type": "FormatControllerNode",
       "x": 1340,
-      "y": 640,
+      "y": 648,
       "init": {
         "label": "Format",
         "hostNodeId": "disp_r2",
@@ -409,7 +409,7 @@
       "id": "fc_e",
       "type": "FormatControllerNode",
       "x": 1340,
-      "y": 1340,
+      "y": 1358,
       "init": {
         "label": "Format",
         "hostNodeId": "disp_e",
@@ -426,7 +426,7 @@
       "id": "fc_etrue",
       "type": "FormatControllerNode",
       "x": 1340,
-      "y": 1460,
+      "y": 1440,
       "init": {
         "label": "Format",
         "hostNodeId": "disp_etrue",
@@ -442,8 +442,8 @@
     {
       "id": "fc_basel",
       "type": "FormatControllerNode",
-      "x": 1560,
-      "y": 1800,
+      "x": 1553,
+      "y": 1820,
       "init": {
         "label": "Format",
         "hostNodeId": "disp_basel",
@@ -459,7 +459,7 @@
     {
       "id": "fc_basel_true",
       "type": "FormatControllerNode",
-      "x": 1560,
+      "x": 1553,
       "y": 1960,
       "init": {
         "label": "Format",
@@ -477,7 +477,7 @@
       "id": "fc_stir",
       "type": "FormatControllerNode",
       "x": 1340,
-      "y": 2340,
+      "y": 2358,
       "init": {
         "label": "Format",
         "hostNodeId": "disp_stir",
@@ -494,7 +494,7 @@
       "id": "fc_fact",
       "type": "FormatControllerNode",
       "x": 1340,
-      "y": 2460,
+      "y": 2440,
       "init": {
         "label": "Format",
         "hostNodeId": "disp_fact",
@@ -510,8 +510,8 @@
     {
       "id": "grp_pyth",
       "type": "GroupNode",
-      "x": -24,
-      "y": -64,
+      "x": -40,
+      "y": -70,
       "init": {
         "label": "Pythagorean theorem  ·  a²+b²=c²",
         "members": [
@@ -523,15 +523,15 @@
         ],
         "color": "sky",
         "collapsed": false,
-        "width": 1210,
-        "height": 404
+        "width": 1199,
+        "height": 358
       }
     },
     {
       "id": "grp_quad",
       "type": "GroupNode",
-      "x": -24,
-      "y": 356,
+      "x": -40,
+      "y": 350,
       "init": {
         "label": "Quadratic formula  ·  x = (−b ± √(b²−4ac)) / 2a",
         "members": [
@@ -548,15 +548,15 @@
         ],
         "color": "amber",
         "collapsed": false,
-        "width": 1530,
-        "height": 504
+        "width": 1536,
+        "height": 518
       }
     },
     {
       "id": "grp_golden",
       "type": "GroupNode",
-      "x": 316,
-      "y": 900,
+      "x": 286,
+      "y": 870,
       "init": {
         "label": "Golden ratio  ·  φ = (1+√5)/2",
         "members": [
@@ -569,15 +569,15 @@
         ],
         "color": "pink",
         "collapsed": false,
-        "width": 1190,
-        "height": 404
+        "width": 1210,
+        "height": 380
       }
     },
     {
       "id": "grp_euler",
       "type": "GroupNode",
-      "x": -24,
-      "y": 1320,
+      "x": -40,
+      "y": 1288,
       "init": {
         "label": "Euler's number  ·  e = lim (1+1/n)ⁿ",
         "members": [
@@ -591,15 +591,15 @@
         ],
         "color": "green",
         "collapsed": false,
-        "width": 1530,
-        "height": 404
+        "width": 1536,
+        "height": 372
       }
     },
     {
       "id": "grp_basel",
       "type": "GroupNode",
-      "x": -24,
-      "y": 1736,
+      "x": -40,
+      "y": 1745,
       "init": {
         "label": "Basel problem  ·  Σ 1/k² = π²/6",
         "members": [
@@ -615,15 +615,15 @@
         ],
         "color": "amber",
         "collapsed": false,
-        "width": 1750,
-        "height": 494
+        "width": 1749,
+        "height": 535
       }
     },
     {
       "id": "grp_stir",
       "type": "GroupNode",
-      "x": -24,
-      "y": 2276,
+      "x": -40,
+      "y": 2288,
       "init": {
         "label": "Stirling's approximation  ·  n! ≈ √(2πn)(n/e)ⁿ",
         "members": [
@@ -637,8 +637,8 @@
         ],
         "color": "green",
         "collapsed": false,
-        "width": 1530,
-        "height": 404
+        "width": 1536,
+        "height": 372
       }
     },
     {
@@ -657,7 +657,7 @@
       "id": "in_N",
       "type": "NumberInputNode",
       "x": 0,
-      "y": 3000,
+      "y": 2993,
       "init": {
         "label": "Turns N",
         "value": 500
@@ -667,7 +667,7 @@
       "id": "in_L",
       "type": "NumberInputNode",
       "x": 0,
-      "y": 3110,
+      "y": 3101,
       "init": {
         "label": "Length ℓ (m)",
         "value": 0.2
@@ -677,7 +677,7 @@
       "id": "in_I",
       "type": "NumberInputNode",
       "x": 0,
-      "y": 3220,
+      "y": 3210,
       "init": {
         "label": "Current I (A)",
         "value": 3
@@ -687,7 +687,7 @@
       "id": "in_r",
       "type": "NumberInputNode",
       "x": 0,
-      "y": 3330,
+      "y": 3318,
       "init": {
         "label": "Radius r (m)",
         "value": 0.02
@@ -696,7 +696,7 @@
     {
       "id": "ex_n",
       "type": "ExpressionNode",
-      "x": 320,
+      "x": 326,
       "y": 2990,
       "init": {
         "label": "Turn density n (1/m)",
@@ -706,7 +706,7 @@
     {
       "id": "ex_A",
       "type": "ExpressionNode",
-      "x": 320,
+      "x": 326,
       "y": 3320,
       "init": {
         "label": "Core area A (m²)",
@@ -716,8 +716,8 @@
     {
       "id": "ex_B",
       "type": "ExpressionNode",
-      "x": 620,
-      "y": 3080,
+      "x": 610,
+      "y": 3077,
       "init": {
         "label": "Field B = μ₀ n I (T)",
         "expr": "(4 * PI() * 1e-7) * n * I"
@@ -726,8 +726,8 @@
     {
       "id": "ex_Lind",
       "type": "ExpressionNode",
-      "x": 620,
-      "y": 3420,
+      "x": 610,
+      "y": 3417,
       "init": {
         "label": "Inductance μ₀N²A/ℓ (H)",
         "expr": "(4 * PI() * 1e-7) * N^2 * A / L"
@@ -736,8 +736,8 @@
     {
       "id": "ex_flux",
       "type": "ExpressionNode",
-      "x": 920,
-      "y": 3080,
+      "x": 913,
+      "y": 3077,
       "init": {
         "label": "Flux Φ = B A (Wb)",
         "expr": "B * A"
@@ -746,8 +746,8 @@
     {
       "id": "ex_energy",
       "type": "ExpressionNode",
-      "x": 920,
-      "y": 3420,
+      "x": 913,
+      "y": 3417,
       "init": {
         "label": "Energy ½L I² (J)",
         "expr": "0.5 * Lind * I^2"
@@ -756,8 +756,8 @@
     {
       "id": "ex_link",
       "type": "ExpressionNode",
-      "x": 1220,
-      "y": 3080,
+      "x": 1233,
+      "y": 3077,
       "init": {
         "label": "Flux linkage NΦ (Wb)",
         "expr": "N * flux"
@@ -767,7 +767,7 @@
       "id": "disp_B",
       "type": "DisplayNode",
       "x": 1520,
-      "y": 2960,
+      "y": 2968,
       "init": {
         "label": "Magnetic field (T)"
       }
@@ -776,7 +776,7 @@
       "id": "disp_flux",
       "type": "DisplayNode",
       "x": 1520,
-      "y": 3120,
+      "y": 3128,
       "init": {
         "label": "Magnetic flux (Wb)"
       }
@@ -785,7 +785,7 @@
       "id": "disp_Lind",
       "type": "DisplayNode",
       "x": 1520,
-      "y": 3280,
+      "y": 3287,
       "init": {
         "label": "Inductance (H)"
       }
@@ -794,7 +794,7 @@
       "id": "disp_energy",
       "type": "DisplayNode",
       "x": 1520,
-      "y": 3440,
+      "y": 3447,
       "init": {
         "label": "Stored energy (J)"
       }
@@ -803,7 +803,7 @@
       "id": "fc_B",
       "type": "FormatControllerNode",
       "x": 1740,
-      "y": 2960,
+      "y": 2968,
       "init": {
         "label": "Format",
         "hostNodeId": "disp_B",
@@ -821,7 +821,7 @@
       "id": "fc_flux",
       "type": "FormatControllerNode",
       "x": 1740,
-      "y": 3120,
+      "y": 3128,
       "init": {
         "label": "Format",
         "hostNodeId": "disp_flux",
@@ -839,7 +839,7 @@
       "id": "fc_Lind",
       "type": "FormatControllerNode",
       "x": 1740,
-      "y": 3280,
+      "y": 3287,
       "init": {
         "label": "Format",
         "hostNodeId": "disp_Lind",
@@ -857,7 +857,7 @@
       "id": "fc_energy",
       "type": "FormatControllerNode",
       "x": 1740,
-      "y": 3440,
+      "y": 3447,
       "init": {
         "label": "Format",
         "hostNodeId": "disp_energy",
@@ -874,8 +874,8 @@
     {
       "id": "grp_in",
       "type": "GroupNode",
-      "x": -32,
-      "y": 2928,
+      "x": -40,
+      "y": 2923,
       "init": {
         "label": "Coil parameters",
         "members": [
@@ -886,15 +886,15 @@
         ],
         "color": "sky",
         "collapsed": false,
-        "width": 224,
-        "height": 482
+        "width": 260,
+        "height": 535
       }
     },
     {
       "id": "grp_res",
       "type": "GroupNode",
-      "x": 1488,
-      "y": 2888,
+      "x": 1480,
+      "y": 2898,
       "init": {
         "label": "Results",
         "members": [
@@ -909,8 +909,8 @@
         ],
         "color": "green",
         "collapsed": false,
-        "width": 420,
-        "height": 700
+        "width": 416,
+        "height": 739
       }
     }
   ],

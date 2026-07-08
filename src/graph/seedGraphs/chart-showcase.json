@@ -6,7 +6,7 @@
     {
       "id": "cats",
       "type": "ListInputNode",
-      "x": 0,
+      "x": 10,
       "y": 40,
       "init": {
         "label": "Categories",
@@ -29,7 +29,7 @@
     {
       "id": "pie",
       "type": "ChartNode",
-      "x": 300,
+      "x": 313,
       "y": -40,
       "init": {
         "label": "Share (pie)",
@@ -39,7 +39,7 @@
     {
       "id": "radar",
       "type": "ChartNode",
-      "x": 600,
+      "x": 623,
       "y": -40,
       "init": {
         "label": "Profile (radar)",
@@ -69,7 +69,7 @@
     {
       "id": "scores",
       "type": "ListInputNode",
-      "x": 0,
+      "x": 10,
       "y": 470,
       "init": {
         "label": "Samples",
@@ -102,8 +102,8 @@
     {
       "id": "hist",
       "type": "HistogramNode",
-      "x": 300,
-      "y": 400,
+      "x": 313,
+      "y": 403,
       "init": {
         "label": "Distribution"
       },
@@ -114,8 +114,8 @@
     {
       "id": "kpi",
       "type": "KpiNode",
-      "x": 640,
-      "y": 440,
+      "x": 653,
+      "y": 438,
       "init": {
         "label": "Revenue"
       },
@@ -128,8 +128,8 @@
     {
       "id": "bullet",
       "type": "BulletNode",
-      "x": 880,
-      "y": 460,
+      "x": 853,
+      "y": 458,
       "init": {
         "label": "To target"
       },
@@ -142,7 +142,7 @@
     {
       "id": "tm_frame",
       "type": "FrameInputNode",
-      "x": 0,
+      "x": -20,
       "y": 840,
       "init": {
         "label": "Spending table",
@@ -152,7 +152,7 @@
     {
       "id": "treemap",
       "type": "TreemapNode",
-      "x": 320,
+      "x": 313,
       "y": 840,
       "init": {
         "label": "Spending (treemap)"
@@ -161,7 +161,7 @@
     {
       "id": "sk_frame",
       "type": "FrameInputNode",
-      "x": 640,
+      "x": 623,
       "y": 900,
       "init": {
         "label": "Budget flows",
@@ -180,7 +180,7 @@
     {
       "id": "matrix",
       "type": "TableInputNode",
-      "x": 0,
+      "x": -10,
       "y": 1520,
       "init": {
         "label": "Series matrix",
@@ -190,7 +190,7 @@
     {
       "id": "composed",
       "type": "ChartNode",
-      "x": 320,
+      "x": 313,
       "y": 1460,
       "init": {
         "label": "Bars + line (composed)",
@@ -200,7 +200,7 @@
     {
       "id": "bubble",
       "type": "ChartNode",
-      "x": 640,
+      "x": 623,
       "y": 1460,
       "init": {
         "label": "Points (bubble)",
@@ -210,8 +210,8 @@
     {
       "id": "ls_x",
       "type": "LinSpaceNode",
-      "x": 0,
-      "y": 1720,
+      "x": 10,
+      "y": 1715,
       "init": {
         "label": "Angles 0–2π"
       },
@@ -224,8 +224,8 @@
     {
       "id": "sin",
       "type": "MathFnNode",
-      "x": 260,
-      "y": 1740,
+      "x": 280,
+      "y": 1745,
       "init": {
         "label": "sin",
         "op": "sin"
@@ -235,7 +235,7 @@
       "id": "spark_wave",
       "type": "SparklineNode",
       "x": 520,
-      "y": 1680,
+      "y": 1701,
       "init": {
         "label": "Wave (line)",
         "op": "line"
@@ -244,7 +244,7 @@
     {
       "id": "data",
       "type": "ListInputNode",
-      "x": 0,
+      "x": 10,
       "y": 2190,
       "init": {
         "label": "Weekly sales",
@@ -271,7 +271,7 @@
     {
       "id": "spark_data",
       "type": "SparklineNode",
-      "x": 320,
+      "x": 313,
       "y": 2150,
       "init": {
         "label": "Sales (column)",
@@ -294,7 +294,7 @@
     {
       "id": "gauge",
       "type": "GaugeNode",
-      "x": 300,
+      "x": 280,
       "y": 2640,
       "init": {
         "label": "Gauge"
@@ -306,7 +306,7 @@
     {
       "id": "grid",
       "type": "TableInputNode",
-      "x": 0,
+      "x": -10,
       "y": 2900,
       "init": {
         "label": "Correlation-ish grid",
@@ -316,7 +316,7 @@
     {
       "id": "heat",
       "type": "HeatmapCellNode",
-      "x": 320,
+      "x": 313,
       "y": 2860,
       "init": {
         "label": "Heatmap"
@@ -325,8 +325,8 @@
     {
       "id": "color_a",
       "type": "ColorPickerNode",
-      "x": 880,
-      "y": 1680,
+      "x": 873,
+      "y": 1666,
       "init": {
         "label": "Line color",
         "mode": "hsv",
@@ -341,8 +341,8 @@
     {
       "id": "cb_a",
       "type": "ChartBuilderNode",
-      "x": 1120,
-      "y": 1660,
+      "x": 1130,
+      "y": 1676,
       "init": {
         "label": "Style: sine"
       },
@@ -362,7 +362,7 @@
       "id": "chart_a",
       "type": "ChartNode",
       "x": 1400,
-      "y": 1680,
+      "y": 1656,
       "init": {
         "label": "Sine (styled line)",
         "op": "line"
@@ -371,8 +371,8 @@
     {
       "id": "color_b",
       "type": "ColorPickerNode",
-      "x": 880,
-      "y": 2280,
+      "x": 873,
+      "y": 2273,
       "init": {
         "label": "Bar color",
         "mode": "rgb",
@@ -387,8 +387,8 @@
     {
       "id": "cb_b",
       "type": "ChartBuilderNode",
-      "x": 1120,
-      "y": 2260,
+      "x": 1130,
+      "y": 2283,
       "init": {
         "label": "Style: sales"
       },
@@ -406,7 +406,7 @@
       "id": "chart_b",
       "type": "ChartNode",
       "x": 1400,
-      "y": 2280,
+      "y": 2263,
       "init": {
         "label": "Sales (styled column)",
         "op": "column"
