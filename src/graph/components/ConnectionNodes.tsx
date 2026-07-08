@@ -51,7 +51,7 @@ function RefreshIntervalField({ minutes, onCommit }: { minutes: number; onCommit
     if (n !== minutes) onCommit(n);
   }
   return (
-    <label className="sol-conn__field" title="Automatically refresh on this cadence (0 = off)">
+    <label className="sol-conn__field" title="Automatically refresh on this cadence; 0 turns it off">
       Auto-refresh (min)
       <input
         className="sol-conn__num"
@@ -289,7 +289,7 @@ export function CsvConnectionComponent({ data, emit }: NodeProps<CsvConnectionNo
         {!desktop ? (
           <div className="sol-conn__note">Local files are available in the desktop app only.</div>
         ) : !folder ? (
-          <div className="sol-conn__note">No target folder set — open Settings ▸ Data to choose one.</div>
+          <div className="sol-conn__note">No target folder set. Open Settings ▸ Data to choose one.</div>
         ) : (
           <select
             className="sol-conn__select"
@@ -444,7 +444,7 @@ export function ParquetConnectionComponent({ data, emit }: NodeProps<ParquetConn
         {!desktop ? (
           <div className="sol-conn__note">Local files are available in the desktop app only.</div>
         ) : !folder ? (
-          <div className="sol-conn__note">No target folder set — open Settings ▸ Data to choose one.</div>
+          <div className="sol-conn__note">No target folder set. Open Settings ▸ Data to choose one.</div>
         ) : (
           <select
             className="sol-conn__select"

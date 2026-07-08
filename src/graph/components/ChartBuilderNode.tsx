@@ -34,7 +34,7 @@ function ToggleInputRow({ node, emit, socketKey, label }: {
     <MeasuredSocketRow side="input" socketKey={socketKey} nodeId={node.id} emit={emit} payload={port.socket}>
       <span className="solenoid-node__io-label">{label}</span>
       {wired ? (
-        <span className="solenoid-node__io-wired" title="Driven by an incoming cable (named here)">
+        <span className="solenoid-node__io-wired" title="Driven by the incoming cable named here">
           ↩ {incoming.get(socketKey)?.label || "wired"}
         </span>
       ) : (
@@ -82,7 +82,7 @@ export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNode
               whiteSpace: "nowrap",
             }}
           >
-            {data.cachedString || "(no options set)"}
+            {data.cachedString || "No options set"}
           </code>
         </MeasuredSocketRow>
       )}

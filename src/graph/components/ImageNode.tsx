@@ -178,7 +178,7 @@ export function ImageComponent({ data, emit }: NodeProps<ImageNodeType>) {
               onBlur={commitValue}
               onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
             />
-            <label className="solenoid-image__height" title="Image height (px)">
+            <label className="solenoid-image__height" title="Image height in px">
               H
               <input
                 type="number"
@@ -193,7 +193,7 @@ export function ImageComponent({ data, emit }: NodeProps<ImageNodeType>) {
           </div>
 
           {dataUrl && !data.assetPath && (
-            <div className="solenoid-image__hint">Local file — not saved</div>
+            <div className="solenoid-image__hint">Local file; not saved with the document</div>
           )}
         </div>
       )}

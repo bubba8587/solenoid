@@ -4,8 +4,8 @@ import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from 
 import type { DisplayValue } from "./valueDisplayFormat";
 
 const OPS: { value: IFErrorMode; label: string }[] = [
-  { value: "iferror", label: "IFERROR — catch NaN / ±Infinity" },
-  { value: "ifna",    label: "IFNA — catch null (not found)" },
+  { value: "iferror", label: "IFERROR: catch NaN / ±Infinity" },
+  { value: "ifna",    label: "IFNA: catch a not-found null" },
 ];
 
 export function IFErrorComponent({ data, emit }: NodeProps<IFErrorNodeType>) {

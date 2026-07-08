@@ -230,7 +230,7 @@ function GoalSeekEditor({ node, emit }: { node: CompositeNodeType; emit?: NodePr
         // the solved driver on this port).
         <div className="solenoid-composite__output" style={{ marginTop: 4 }}>
           <span className="solenoid-node__io-label">
-            Solution — {exposed.find((p) => p.id === inputId)?.label ?? "input"}
+            Solution: {exposed.find((p) => p.id === inputId)?.label ?? "input"}
           </span>
           {/* ValueDisplay renders a SolError (#CONV!) the SAME as everywhere — the red
               #CODE! badge + errorTip. On the OUTER card (emit) the Solution carries the

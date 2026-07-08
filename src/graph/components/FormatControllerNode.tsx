@@ -358,7 +358,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
             onChange={(e) => onCaseChange(e.target.value as TextCase)}
             onPointerDown={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
-            title="Letter case (display only)"
+            title="Letter case, display only"
           >
             <option value="none">Aa (as-is)</option>
             <option value="upper">UPPER</option>
@@ -413,7 +413,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
                 options={[
                   { value: "left",   label: "L", title: "Align left" },
                   { value: "center", label: "C", title: "Align center" },
-                  { value: "right",  label: "R", title: "Align right (default)" },
+                  { value: "right",  label: "R", title: "Align right, the default" },
                 ]}
               />
               <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
@@ -525,7 +525,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
            per-column frame formats are the v1.1 units milestone. */
         <div
           className="solenoid-fc__row solenoid-fc__row--none"
-          title="No formattable value on this socket — table columns get formats with the units milestone"
+          title="No formattable value on this socket. Table columns get formats with the units milestone."
         >—</div>
       ) : (
         /* Number-ish socket: number format and unit, stacked for a narrow chip.
@@ -664,7 +664,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
                   onChange={(e) => onScaleChangeMode(e.target.value as ScaleMode)}
                   onPointerDown={(e) => e.stopPropagation()}
                   onMouseDown={(e) => e.stopPropagation()}
-                  title="Show scaled down — 1,200,000 in millions reads 1.2M"
+                  title="Show scaled down: 1,200,000 in millions reads 1.2M"
                 >
                   {Object.entries(SCALE_MODE_LABELS).map(([id, label]) => (
                     <option key={id} value={id}>{label}</option>
@@ -709,7 +709,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
             onChange={(e) => onUnitChange(e.target.value)}
             onPointerDown={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
-            title={node.unitLocked ? "Unit locked (set elsewhere in the chain)" : "Unit label / cable constraint"}
+            title={node.unitLocked ? "Unit locked; set elsewhere in the chain" : "Unit label / cable constraint"}
           >
             {unitGroupOrder.map((group) => {
               const items = unitGroups.get(group);

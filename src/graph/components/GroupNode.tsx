@@ -343,7 +343,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
           <button
             type="button"
             className="solenoid-group__tidy"
-            title="Tidy group (auto-arrange members + fit the box)"
+            title="Tidy group: auto-arrange members and fit the box"
             aria-label="Tidy group"
             onClick={(e) => { e.stopPropagation(); void tidyThenAutofit(); }}
             onPointerDown={stop}

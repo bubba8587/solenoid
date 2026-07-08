@@ -35,7 +35,7 @@ export function ExpressionComponent({ data: node, emit }: NodeProps<ExpressionNo
   const lockBadge = node.locked ? (
     <svg className="solenoid-node__corner-lock" width="10" height="10" viewBox="0 0 24 24"
       fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-      <title>Formula set by its pack — locked. Rename the title freely.</title>
+      <title>Formula set by its pack and locked. Rename the title freely.</title>
       <rect x="4" y="11" width="16" height="9" rx="2" />
       <path d="M8 11V7a4 4 0 0 1 8 0v4" />
     </svg>

@@ -267,7 +267,7 @@ export function FormulaPopup() {
               are overridden to our impl). The load-bearing thing left to tell the user is
               the SHAPE cap: formulas are scalar / 1-D only. See dev-notes 2026-06-25. */}
           <div className="formula-popup__engine-note">
-            ƒ Works on <strong>single values and 1-D lists</strong> — it broadcasts element-wise and aggregates a list (SUM, AVERAGE…). A 2-D table/matrix can't go straight into a formula (<code>#SHAPE!</code>); use <strong>MAP / BYROW / BYCOL / REDUCE / MAKEARRAY</strong> to run a formula over a table — those apply it per cell/row and can return 2-D.
+            ƒ Works on <strong>single values and 1-D lists</strong>: it broadcasts element-wise and aggregates a list (SUM, AVERAGE…). A 2-D table/matrix can't go straight into a formula and returns <code>#SHAPE!</code>; use <strong>MAP / BYROW / BYCOL / REDUCE / MAKEARRAY</strong> to run a formula over a table. Those apply it per cell/row and can return 2-D.
           </div>
 
           {SHOW_STEPS && steps && (

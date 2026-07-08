@@ -510,7 +510,7 @@ export function InlineInputs({ node, emit, keys, labelFor, cableOnlyKeys, mathLa
               // The tooltip stays structural — dynamic data lives in the text.
               <span
                 className="solenoid-node__io-wired"
-                title="Driven by an incoming cable (named here)"
+                title="Driven by the incoming cable named here"
               >↩ {incoming.get(key)?.label || "wired"}</span>
             ) : cableOnlyKeys?.has(key) ? null
               : isNumber ? (

@@ -102,8 +102,8 @@ export function CubePopup() {
             <span
               className="table-popup__dims"
               title={depth > 1
-                ? `This cube nests ${depth} levels of cubes deep — drill into the chips to reach them`
-                : "A flat cube (no cube nested inside a cube)"}
+                ? `This cube nests ${depth} levels of cubes deep. Drill into the chips to reach them.`
+                : "A flat cube, with no cube nested inside"}
             >
               Depth {depth}
             </span>

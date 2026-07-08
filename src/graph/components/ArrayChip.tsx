@@ -62,7 +62,7 @@ export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId
   // Lists are always 1D, so the chip just says "List" — only tables show R×C.
   const chipLabel = table ? `${rows}×${cols} Table` : "List";
   const verb = onSave ? "edit" : "view";
-  const titleText = table ? `${rows}×${cols} table — click to ${verb}` : `${rows}-item list — click to ${verb}`;
+  const titleText = table ? `${rows}×${cols} table. Click to ${verb}.` : `${rows}-item list. Click to ${verb}.`;
 
   return (
     <button

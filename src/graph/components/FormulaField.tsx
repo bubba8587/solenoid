@@ -33,7 +33,7 @@ interface FormulaFieldProps {
  * node and the LAMBDA family — any node with a textual formula gets the same
  * rendered box for free, whether or not it exposes a formula input socket.
  */
-const LOCK_TITLE = "Formula set by its pack — locked. Rename the title freely.";
+const LOCK_TITLE = "Formula set by its pack and locked. Rename the title freely.";
 
 export function FormulaField({
   value, onChange, placeholder = "a * b + c …", disabled, disabledTitle, locked, onOpen, grip,

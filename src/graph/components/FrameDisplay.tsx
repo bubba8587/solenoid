@@ -91,7 +91,7 @@ export function FrameDisplay({ frame, label, onSave, source, onSaveSource, full,
                 const cell = c.values[i] ?? null;
                 const nan = isNanCell(cell);
                 return (
-                <td key={j} className={nan ? "solenoid-nan-cell" : undefined} title={nan ? "Not a number — an undefined value in the data" : undefined} style={{ padding: full ? "2px 8px" : "1px 4px", textAlign: c.type === "string" ? "left" : "right", fontSize: full ? 13 : 12, fontFamily: "var(--font-mono)", color: "var(--text)", borderRight: "1px solid var(--border)", whiteSpace: full ? "nowrap" : undefined, ...(full ? {} : { overflow: "hidden", textOverflow: "ellipsis" }) }}>
+                <td key={j} className={nan ? "solenoid-nan-cell" : undefined} title={nan ? "Not a number: an undefined value in the data" : undefined} style={{ padding: full ? "2px 8px" : "1px 4px", textAlign: c.type === "string" ? "left" : "right", fontSize: full ? 13 : 12, fontFamily: "var(--font-mono)", color: "var(--text)", borderRight: "1px solid var(--border)", whiteSpace: full ? "nowrap" : undefined, ...(full ? {} : { overflow: "hidden", textOverflow: "ellipsis" }) }}>
                   {fmtCell(cell, c.type)}
                 </td>
                 );
