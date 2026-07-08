@@ -215,7 +215,7 @@ export function ReportOverlay() {
               className="report-embed-btn"
               disabled={exporting}
               onClick={() => void doExport()}
-              title="Export as a self-contained webpage — refs frozen to today's values, charts and a canvas snapshot inlined"
+              title="Export as a self-contained webpage. Refs are frozen to today's values; charts and a canvas snapshot are inlined."
             >
               {exporting ? "Exporting…" : "Export as webpage"}
             </button>
@@ -224,7 +224,7 @@ export function ReportOverlay() {
             <button
               className={`report-dock-btn${docked ? " report-dock-btn--on" : ""}`}
               onClick={() => reportStore.toggleDock()}
-              title={docked ? "Undock (float)" : "Dock to the right side"}
+              title={docked ? "Undock to a floating panel" : "Dock to the right side"}
               aria-label={docked ? "Undock report" : "Dock report to the right"}
               aria-pressed={docked}
             >
@@ -268,7 +268,7 @@ export function ReportOverlay() {
             ref={sourceRef}
             className="report-source"
             value={body}
-            placeholder="Write the report… (markdown · `=name` shows a wired value · ![[Note]] embeds a note)"
+            placeholder="Write in markdown. `=name` shows a wired value; ![[Note]] embeds a note."
             spellCheck={false}
             onChange={(e) => onBody(e.target.value)}
             onBlur={() => void commitBody()}
@@ -282,7 +282,7 @@ export function ReportOverlay() {
                 collapsibleEmbeds
                 renderEmbed={(name) => {
                   const note = noteByName(name);
-                  if (!note) return <span className="report-embed-missing">![[{name}]] — no note by that name</span>;
+                  if (!note) return <span className="report-embed-missing">![[{name}]]: no note by that name</span>;
                   // A note embed folds under the same titled bar as chart/table
                   // embeds — the bar's title IS the note name, so the note renders
                   // bare (no second header).

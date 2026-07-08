@@ -469,7 +469,7 @@ function applyOp(op: string, a: unknown, b: unknown): unknown {
       let cmp: number;
       if (typeof x === "number" && typeof y === "number") cmp = x < y ? -1 : x > y ? 1 : 0;
       else if (typeof x === "string" && typeof y === "string") cmp = x.localeCompare(y);
-      else return solError("#TYPE!", "Cannot order values of different types — Cast one side first");
+      else return solError("#TYPE!", "Cannot order values of different types; Cast one side first");
       switch (op) {
         case "<": return cmp < 0;
         case ">": return cmp > 0;

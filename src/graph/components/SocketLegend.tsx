@@ -175,7 +175,7 @@ export function SocketLegend() {
 export function DimensionalityFlow() {
   return (
     <div className="solenoid-dimflow">
-      <div className="solenoid-dimflow__heading">Dimensionality — how shapes connect</div>
+      <div className="solenoid-dimflow__heading">Dimensionality: how shapes connect</div>
       <div className="solenoid-dimflow__ladder">
         <DimStep dot={{ kind: "circle", color: SOCKET_COLORS.number }} dim="0-D" name="Scalar" sub="one value" />
         <span className="solenoid-dimflow__arrow" aria-hidden="true">→</span>
@@ -185,18 +185,18 @@ export function DimensionalityFlow() {
       </div>
       <p className="solenoid-dimflow__rule">
         <span className="solenoid-dimflow__badge solenoid-dimflow__badge--ok">Widening flows ▸</span>
-        A value drops into a <em>wider</em> socket and is reshaped for you — a scalar
+        A value drops into a <em>wider</em> socket and is reshaped for you: a scalar
         becomes a 1×1, a list becomes a single row. So a scalar can feed a list or
         table input, and a list can feed a table input.
       </p>
       <p className="solenoid-dimflow__rule">
         <span className="solenoid-dimflow__badge solenoid-dimflow__badge--no">◂ Narrowing blocked</span>
         The reverse is refused at the socket: a 2-D table/frame output won't connect
-        into a 1-D or 0-D input — it would always be a shape error. Reshape first, e.g.
+        into a 1-D or 0-D input; it would always be a shape error. Reshape first, e.g.
         <em> Get Column</em> to pull one list out of a frame.
       </p>
       <p className="solenoid-dimflow__note">
-        Split-square sockets — the numeric / text / date <em>combos</em> — accept either
+        Split-square sockets (the numeric / text / date <em>combos</em>) accept either
         a single value or a list. The grey <em>Any</em> socket accepts anything.
       </p>
     </div>

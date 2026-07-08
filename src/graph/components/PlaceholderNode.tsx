@@ -16,8 +16,8 @@ export function PlaceholderComponent({ data, emit }: NodeProps<PlaceholderNode>)
       <div className="solenoid-placeholder">
         <div className="solenoid-placeholder__type" title={data.missingType}>{data.missingType}</div>
         <div className="solenoid-placeholder__msg">
-          This node type isn’t available here. Its connections and data are kept —
-          turn its pack on (or open in a build that has it) to restore it.
+          This node type isn’t available here. Its connections and data are kept.
+          Turn its pack on, or open the file in a build that has it, to restore the node.
         </div>
       </div>
     </NodeShell>

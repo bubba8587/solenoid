@@ -464,14 +464,14 @@ export function OutlinePanel() {
         <span className="solenoid-outline__sortlabel">Sort</span>
         <button
           className={`solenoid-outline__sortbtn${sortMode === "position" ? " solenoid-outline__sortbtn--on" : ""}`}
-          title="Sort by canvas position (reading order: top→bottom, left→right)"
+          title="Sort by canvas position: top→bottom, then left→right"
           onClick={() => setSort("position")}
         >
           Position
         </button>
         <button
           className={`solenoid-outline__sortbtn${sortMode === "alpha" ? " solenoid-outline__sortbtn--on" : ""}`}
-          title="Sort alphabetically (A→Z)"
+          title="Sort alphabetically"
           onClick={() => setSort("alpha")}
         >
           A–Z
@@ -527,7 +527,7 @@ export function OutlinePanel() {
               {connCount > 0 && (
                 <button
                   className={`solenoid-outline__plug${showConns ? " solenoid-outline__plug--on" : ""}`}
-                  title={showConns ? "Hide connections" : `Connections (${connCount})`}
+                  title={showConns ? "Hide connections" : "Show connections"}
                   aria-label="Toggle connections"
                   onClick={(e) => { e.stopPropagation(); toggleConns(r.id); }}
                 >

@@ -158,7 +158,7 @@ export function PresentationComponent({ data }: NodeProps<PresentationNodeType>)
           className="solenoid-pres__present"
           onClick={() => presentationStore.start(data.id)}
           disabled={data.steps.length === 0}
-          title="Present full screen — click/Space/→ to advance, Esc to exit"
+          title="Present full screen. Click, Space, or → advances; Esc exits."
         >
           ▶ Present
         </button>

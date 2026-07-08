@@ -400,7 +400,7 @@ export function TablePopup() {
                           <button
                             type="button"
                             className="table-popup__coltype"
-                            title={`Column type: ${COLTYPE_NAME[colTypeAt(c)]} — click to cycle (Number / Text / Date / Boolean)`}
+                            title={`Column type: ${COLTYPE_NAME[colTypeAt(c)]}. Click to cycle Number / Text / Date / Boolean.`}
                             onClick={() => toggleColumnType(c)}
                           >
                             {COLTYPE_GLYPH[colTypeAt(c)]}
@@ -430,7 +430,7 @@ export function TablePopup() {
                       // raw view shows the source token ("oops"), never "NaN".
                       const nan = !isTextType(colTypeAt(c)) && (row[c] ?? "") === "NaN";
                       return (
-                      <td key={c} className={`table-popup__cell${nan ? " table-popup__cell--nan" : ""}`} title={nan ? "Not a number — an undefined value in the data" : undefined}>
+                      <td key={c} className={`table-popup__cell${nan ? " table-popup__cell--nan" : ""}`} title={nan ? "Not a number: an undefined value in the data" : undefined}>
                         <input
                           className={isTextType(colTypeAt(c)) ? "table-popup__input table-popup__input--text" : "table-popup__input"}
                           value={row[c] ?? ""}
@@ -475,7 +475,7 @@ export function TablePopup() {
             <label
               className="table-popup__source-check"
               title={literalSource
-                ? "Checked: show & edit exactly what you typed. Unchecked: the derived render (TRUE/FALSE, formatted dates)"
+                ? "Checked: show & edit exactly what you typed. Unchecked: the derived render, e.g. TRUE/FALSE and formatted dates."
                 : "Show the inputted source text instead of the formatted value"}
             >
               <input

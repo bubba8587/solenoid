@@ -110,7 +110,7 @@ export function StatusBar() {
           <button
             type="button"
             className="solenoid-statusbar__problems"
-            title={`${problemCount} tagged error${problemCount !== 1 ? "s" : ""} — open the Problems panel`}
+            title={`${problemCount} tagged error${problemCount !== 1 ? "s" : ""}. Open the Problems panel.`}
             onClick={() => problemsPanelUi.setOpen(true)}
           >
             {problemCount} {problemCount === 1 ? "problem" : "problems"}
@@ -121,7 +121,7 @@ export function StatusBar() {
             <button
               type="button"
               className="solenoid-statusbar__calc solenoid-statusbar__calc--dirty"
-              title="Changes pending — recompute the graph (F9)"
+              title="Changes pending. Recompute the graph (F9)."
               onClick={() => void requestRecalc()}
             >
               Calculate
@@ -129,7 +129,7 @@ export function StatusBar() {
           ) : (
             <span
               className="solenoid-statusbar__calc"
-              title="Manual calculation — edits don't recompute until you press F9"
+              title="Manual calculation: edits don't recompute until you press F9."
             >
               Manual
             </span>
@@ -138,7 +138,7 @@ export function StatusBar() {
         {sketch && (
           <span
             className="solenoid-statusbar__sketch"
-            title="Sketch mode — verbs run on a sample of the data; F9 forces an exact recompute"
+            title="Sketch mode: verbs run on a sample of the data. F9 forces an exact recompute."
           >
             ≈ approximate
           </span>
@@ -164,14 +164,13 @@ function NodeBudgetModal({ count, onClose }: { count: number; onClose: () => voi
       <div className="solenoid-nbmodal__panel" onPointerDown={(e) => e.stopPropagation()}>
         <div className="solenoid-nbmodal__title">Large graph on the web demo</div>
         <p className="solenoid-nbmodal__body">
-          You've passed <strong>{WEB_DEMO_NODE_BUDGET} nodes</strong> ({count} now). The
-          in-browser demo renders the graph as DOM, so pan and zoom get choppy on big
-          graphs — that's a limit of the browser, not your machine.
+          This graph has {count} nodes, past the demo's soft budget of{" "}
+          <strong>{WEB_DEMO_NODE_BUDGET}</strong>. The in-browser demo renders the graph
+          as DOM, so pan and zoom get choppy at this size.
         </p>
         <p className="solenoid-nbmodal__body">
-          You can keep going — nothing is blocked. For large graphs, the{" "}
-          <strong>desktop app</strong> runs smoother, and collapsing or grouping nodes
-          helps here too.
+          Nothing is blocked. The <strong>desktop app</strong> runs smoother on large
+          graphs, and collapsing or grouping nodes helps here too.
         </p>
         <div className="solenoid-nbmodal__actions">
           <button type="button" className="solenoid-nbmodal__ok" onClick={onClose}>
