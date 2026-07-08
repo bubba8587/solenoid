@@ -579,7 +579,7 @@ async function runGraphPass(changedNodeId?: string, renderOnly?: Set<string>, to
   const loop = (changedNodeId || renderOnly) && !topologyChanged
     ? (_cachedLoop ?? (_cachedLoop = loopMembers(_editor)))
     : (_cachedLoop = loopMembers(_editor));
-  const circErr = solError("#CIRC!", "This node is part of a circular dependency — the calculation feeds back into itself");
+  const circErr = solError("#CIRC!", "This node is part of a circular dependency: the calculation feeds back into itself");
   for (const id of loop) {
     const node = _editor.getNode(id);
     if (!node) continue;
