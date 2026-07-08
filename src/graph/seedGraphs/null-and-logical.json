@@ -8,8 +8,8 @@
       "x": -40,
       "y": -200,
       "init": {
-        "label": "Null & Logical — array-semantics tour",
-        "body": "A living checklist for the value model: a first-class **null** (missing, rendered `null`, skipped by aggregators), a real **logical** type (TRUE/FALSE, purple sockets, coerces to 1/0 in math), and **per-cell errors** that stay in a list. Each cluster shows one decision.",
+        "label": "Null & Logical: the value model",
+        "body": "This canvas tours the value model: a first-class **null**, a real **logical** type, and **per-cell errors** that stay in a list. Null means missing; it renders as `null` and aggregators skip it. Logicals are TRUE/FALSE on purple sockets and coerce to 1/0 in math. Each cluster shows one decision.",
         "color": "blue",
         "width": 760,
         "height": 190
@@ -22,7 +22,7 @@
       "y": 40,
       "init": {
         "label": "A · Aggregators skip null",
-        "body": "The `vals` column has a **blank cell** (row 2) → imports as **null**. SUM = 8; AVERAGE = 8/3 (divides by the 3 PRESENT values, not 4). The list shows `1, null, 3, 4`.",
+        "body": "The `vals` column has a **blank cell** in row 2, which imports as **null**. SUM = 8; AVERAGE = 8/3, dividing by the 3 PRESENT values, not 4. The list shows `1, null, 3, 4`.",
         "color": "green",
         "width": 230,
         "height": 230
@@ -97,7 +97,7 @@
       "y": 640,
       "init": {
         "label": "B · Comparison → real TRUE/FALSE",
-        "body": "`5 > 3` emits a real **logical** (purple socket), shown **TRUE** — not 1. Into ×10 it coerces to 1/0 → **10** (the multiply-by-a-condition trick still works). **AND** also emits a logical; its `b=1` coerces the other way (number → TRUE).",
+        "body": "`5 > 3` emits a real **logical** (purple socket), shown as **TRUE**, not 1. Into ×10 it coerces to 1/0 → **10**; the multiply-by-a-condition trick still works. **AND** also emits a logical; its `b=1` coerces the other way, number → TRUE.",
         "color": "purple",
         "width": 230,
         "height": 300
@@ -277,8 +277,8 @@
       "x": -40,
       "y": 1620,
       "init": {
-        "label": "D · Test node — null vs unwired",
-        "body": "A 1×1 Table into ISNULL → `[[FALSE]]`. An **unwired** ISNULL is NOT null — nothing to test, so it shows blank `—`.",
+        "label": "D · Test node: null vs unwired",
+        "body": "A 1×1 Table into ISNULL → `[[FALSE]]`. An **unwired** ISNULL is NOT null: there is nothing to test, so it shows a blank `—`.",
         "color": "pink",
         "width": 230,
         "height": 230
@@ -330,7 +330,7 @@
       "y": 2080,
       "init": {
         "label": "E · Empty Table Input stays editable",
-        "body": "Its text is just a comma → no numeric cells, so the value is `null`. It keeps an **editable 1×1 chip** + an \"empty\" hint.",
+        "body": "Its text is just a comma, so there are no numeric cells and the value is `null`. It keeps an **editable 1×1 chip** and an \"empty\" hint.",
         "color": "gray",
         "width": 230,
         "height": 230
@@ -353,7 +353,7 @@
       "y": 2300,
       "init": {
         "label": "F · Kleene logic + Filter on missing data",
-        "body": "Reuses the null-bearing `vals` from A. **`> 2`** per element → `FALSE, null, TRUE, TRUE` — a comparison with a missing value is **unknown**, not FALSE (Kleene). **Filter `> 1`** drops the unknown row (SQL WHERE keeps only TRUE) → `3, 4`.",
+        "body": "This cluster reuses the null-bearing `vals` from A. **`> 2`** per element → `FALSE, null, TRUE, TRUE`: a comparison with a missing value is **unknown**, not FALSE (Kleene logic). **Filter `> 1`** keeps only TRUE rows, like SQL WHERE, so it drops the unknown row → `3, 4`.",
         "color": "teal",
         "width": 230,
         "height": 250
@@ -411,8 +411,8 @@
       "x": -40,
       "y": 2700,
       "init": {
-        "label": "G · Coalesce / Fill — opt into treating a gap",
-        "body": "The `vals` column is `1, null, 3, null, 5`. Each **Fill** mode turns the gaps into something — the explicit opt-in. A per-cell error passes straight through (it fills *missing*, not errors).",
+        "label": "G · Coalesce / Fill: opt into treating a gap",
+        "body": "The `vals` column is `1, null, 3, null, 5`. Each **Fill** mode turns the gaps into something; that is the explicit opt-in. A per-cell error passes straight through: Fill handles *missing* values, not errors.",
         "color": "green",
         "width": 520,
         "height": 150
@@ -566,7 +566,7 @@
       "y": 3520,
       "init": {
         "label": "H · IS-checks are per-cell on a 2-D table",
-        "body": "The table is `[[1, null], [null, 4]]`. **ISNUMBER** and **ISNULL** test **each cell** (open the chip for the grid), not the rows — ISNUMBER says a `null` cell is *not* a number while ISNULL flags it.",
+        "body": "The table is `[[1, null], [null, 4]]`. **ISNUMBER** and **ISNULL** test **each cell**, not the rows; open the chip for the grid. ISNUMBER says a `null` cell is *not* a number while ISNULL flags it.",
         "color": "purple",
         "width": 520,
         "height": 150
@@ -626,8 +626,8 @@
       "x": 1460,
       "y": -200,
       "init": {
-        "label": "Error codes — a guided tour",
-        "body": "Each row triggers one error code on purpose, wires it through a **Display** (red badge, passes it on) into an **ISERROR** check that explains the code and the fix. Nothing's broken — hover any badge for the short version.",
+        "label": "Error codes",
+        "body": "Each row triggers one error code on purpose, wires it through a **Display** (red badge, passes it on) into an **ISERROR** check that explains the code and the fix. Nothing here is broken; hover any badge for the short version.",
         "color": "blue",
         "width": 900,
         "height": 210
@@ -1078,7 +1078,7 @@
       "y": 2530,
       "init": {
         "label": "Circular reference",
-        "body": "A feeds B and B feeds A — a loop with no starting value (the return cable arcs over the top through the flipped **Conduit**). Both nodes, and everything downstream, read **#CIRC!**.",
+        "body": "A feeds B and B feeds A: a loop with no starting value. The return cable arcs over the top through the flipped **Conduit**. Both nodes, and everything downstream, read **#CIRC!**.",
         "color": "purple",
         "width": 210,
         "height": 230

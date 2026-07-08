@@ -185,14 +185,14 @@
       "id": "cm1",
       "nodeId": "exp",
       "author": "You",
-      "text": "88 °C on sensor D is above the 50° limit and sensor B has no reading — the Expect badge flags both. Open the Problems panel to see them.",
+      "text": "88 °C on sensor D is above the 50° limit and sensor B has no reading; the Expect badge flags both. Open the Problems panel to see them.",
       "resolved": false
     },
     {
       "id": "cm2",
       "nodeId": "tornado",
       "author": "You",
-      "text": "Click Run to sweep each slider across its range one at a time — the longest bar is what your profit is most sensitive to.",
+      "text": "Click Run to sweep each slider across its range one at a time. The longest bar is what your profit is most sensitive to.",
       "resolved": false
     }
   ]

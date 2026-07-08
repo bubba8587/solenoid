@@ -146,8 +146,8 @@
       "x": -40,
       "y": 260,
       "init": {
-        "label": "Simulation = a wired feedback loop",
-        "body": "# Simulation mode\nThis container holds a REAL cable cycle (add deposit → grow 5% → back into add). In **Simulation** mode the loop runs as bounded feedback — one entry per step. Every other mode dead-ends the same loop as **#CIRC!**. Drill in to see (and rewire) the loop.",
+        "label": "Simulation mode",
+        "body": "# Simulation mode\nThis container holds a REAL cable cycle (add deposit → grow 5% → back into add). In **Simulation** mode the loop runs as bounded feedback: one entry per step. Every other mode dead-ends the same loop as **#CIRC!**. Drill in to see (and rewire) the loop.",
         "color": "amber",
         "width": 430,
         "height": 180
@@ -278,7 +278,7 @@
       "y": 760,
       "init": {
         "label": "#CIRC! on the open canvas",
-        "body": "# The same loop, unboxed\nThese two cards feed each other OUTSIDE a Simulate container, so the pass dead-ends them with **#CIRC!** instead of recursing — and everything downstream shows the propagated error. Collapse them into a composite (Ctrl+Shift+G) and switch it to Simulation to resolve the loop.",
+        "body": "# The same loop, unboxed\nThese two cards feed each other OUTSIDE a Simulate container, so the pass dead-ends them with **#CIRC!** instead of recursing. Everything downstream shows the propagated error. Collapse them into a composite (Ctrl+Shift+G) and switch it to Simulation to resolve the loop.",
         "color": "red",
         "width": 430,
         "height": 190
@@ -325,8 +325,8 @@
       "x": -40,
       "y": 1260,
       "init": {
-        "label": "Goal seek — solve backwards",
-        "body": "# Goal-seek mode\nThis composite computes **profit = units × $25 margin − $500 fixed**. The container is in **Goal seek** mode: it drives the **Units** input until **Profit** hits the target (0 = break-even) and shows the solved value (20). Excel's Goal Seek, as a run mode.",
+        "label": "Goal-seek mode",
+        "body": "# Goal-seek mode\nThis composite computes **profit = units × $25 margin − $500 fixed**. The container is in **Goal seek** mode: it drives the **Units** input until **Profit** hits the target (0 = break-even) and shows the solved value, 20. Excel: Goal Seek.",
         "color": "teal",
         "width": 430,
         "height": 180

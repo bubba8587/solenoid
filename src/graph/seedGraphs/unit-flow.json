@@ -8,8 +8,8 @@
       "x": -380,
       "y": -220,
       "init": {
-        "label": "Unit Flow — how a Format Controller locks a value",
-        "body": "A **Format Controller (FC)** locks a value's **unit** and **number format** ($, km, 2 decimals…). The lock belongs to the *value*, so it travels through every node that just **passes the value along** (a Display) — up AND down the stream — and **breaks** at any node that **transforms** it. Each lane shows one rule; watch the value boxes.",
+        "label": "Unit Flow: how a Format Controller locks a value",
+        "body": "A **Format Controller (FC)** locks a value's **unit** and **number format**: $, km, 2 decimals… The lock belongs to the *value*, so it travels up AND down the stream through every node that just **passes the value along**, like a Display, and **breaks** at any node that **transforms** it. Each lane shows one rule; watch the value boxes.",
         "color": "gray",
         "width": 900,
         "height": 190
@@ -22,7 +22,7 @@
       "y": 40,
       "init": {
         "label": "A · Lock once → carries DOWNSTREAM",
-        "body": "The FC locks `$` + 2dp on Revenue. Every Display *after* it shows `$1,234.50` with **no trailing FC** of its own — the lock rides the value forward through passthroughs.",
+        "body": "The FC locks `$` + 2dp on Revenue. Every Display *after* it shows `$1,234.50` with **no trailing FC** of its own; the lock rides the value forward through passthroughs.",
         "color": "blue",
         "width": 330,
         "height": 170
@@ -80,7 +80,7 @@
       "y": 300,
       "init": {
         "label": "B · Reaches UPSTREAM too",
-        "body": "The FC sits at the **end**. Both Displays in *front* of it — even two hops up — still show `1,200 km`. (The raw input box stays unformatted: the lock lives in the passthrough run, between the value's origin and the FC.)",
+        "body": "The FC sits at the **end**. Both Displays in *front* of it, even two hops up, still show `1,200 km`. The raw input box stays unformatted: the lock lives in the passthrough run, between the value's origin and the FC.",
         "color": "green",
         "width": 330,
         "height": 180
@@ -138,7 +138,7 @@
       "y": 560,
       "init": {
         "label": "C · A transform BREAKS it",
-        "body": "`$10.00` each. Multiplying by 100 makes a **new value**, so the `$` doesn't carry — the lot total shows a bare `1,000`. Breaking at a transform is the default for anything that isn't a passthrough.",
+        "body": "Each one costs `$10.00`. Multiplying by 100 makes a **new value**, so the `$` doesn't carry; the lot total shows a bare `1,000`. Breaking at a transform is the default for anything that isn't a passthrough.",
         "color": "amber",
         "width": 330,
         "height": 170
@@ -210,7 +210,7 @@
       "y": 800,
       "init": {
         "label": "D · Convert FORWARDS the new unit",
-        "body": "`mi → km` changes the value *and* the unit. The FC on the result didn't pick `km` — it's **locked** to what Convert hands it (the unit dropdown is greyed out). A marathon reads `42.20 km`.",
+        "body": "`mi → km` changes the value *and* the unit. The FC on the result didn't pick `km`; it's **locked** to what Convert hands it, and the unit dropdown is greyed out. A marathon reads `42.20 km`.",
         "color": "purple",
         "width": 330,
         "height": 170
@@ -270,7 +270,7 @@
       "y": 1080,
       "init": {
         "label": "E · A selector KEEPS the unit",
-        "body": "IF picks a branch from the condition (in stock → Sale price). It only *selects* a value, it doesn't transform it — so the chosen branch's `$` rides straight through. The result reads `$80.00`, no trailing FC.",
+        "body": "IF picks a branch from the condition (in stock → Sale price). It only *selects* a value, never transforms it, so the chosen branch's `$` rides straight through. The result reads `$80.00` with no trailing FC.",
         "color": "teal",
         "width": 330,
         "height": 180

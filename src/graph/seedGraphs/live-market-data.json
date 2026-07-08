@@ -152,21 +152,21 @@
       "id": "cm-fred",
       "nodeId": "feed-unrate",
       "author": "You",
-      "text": "Fetched live from FRED — no key needed. Type any series id (or use a quick-pick) and it re-pulls.",
+      "text": "Fetched live from FRED; no key needed. Type any series id (or use a quick-pick) and it re-pulls.",
       "resolved": false
     },
     {
       "id": "cm-agg",
       "nodeId": "agg-unrate",
       "author": "You",
-      "text": "It's the data series, not a picture — pull the column out and compute on it.",
+      "text": "It's the data series, not a picture: pull the column out and compute on it.",
       "resolved": false
     },
     {
       "id": "cm-aapl",
       "nodeId": "feed-aapl",
       "author": "You",
-      "text": "Stock history needs a free Alpha Vantage key — the node links you to Settings to add one.",
+      "text": "Stock history needs a free Alpha Vantage key; the node links you to Settings to add one.",
       "resolved": false
     }
   ]
