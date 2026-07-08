@@ -36,7 +36,7 @@ Beyond per-value math, Solenoid covers the relational work a spreadsheet usually
 
 ## Desktop
 
-The desktop app (Windows, v1.0) is the full product: it runs the relational verbs on a native Rust (Polars) engine for memory-heavy tables. The web build uses an identical in-process JS engine.
+The desktop app (Windows) is the full product: it runs the relational verbs on a native Rust (Polars) engine for memory-heavy tables. The web build uses an identical in-process JS engine.
 
 ## From source
 
