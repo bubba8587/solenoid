@@ -65,14 +65,14 @@ function fc(id, host, kind, members, label) {
 
 // ─── Title ──────────────────────────────────────────────────────────────────
 note("note-title", 180, -940,
-  "Personal Finance — live dashboard",
-  "# Your money, as a graph\nThree CSVs (transactions, accounts, budgets) flow in from the repo at left; everything to the right is **computed live** — drag any slider and the pivots, gauges, projections and alerts recompute. Each group ships its headline numbers through a **Conduit** as one **Ribbon** into the Dashboard. Click a **Display** chip to inspect a table; **Ctrl+/** for the function reference.",
+  "Personal Finance dashboard",
+  "# Your money, as a graph\nThree CSVs (transactions, accounts, budgets) flow in from the repo at left; everything to the right is **computed live**. Drag any slider and the pivots, gauges, projections and alerts recompute. Each group ships its headline numbers through a **Conduit** as one **Ribbon** into the Dashboard. Click a **Display** chip to inspect a table; **Ctrl+/** opens the function reference.",
   "blue", 580, 220);
 
 // ─── A · Data Sources ─────────────────────────────────────────────────────────
 note("note-data", -1920, -560,
   "1 · Data sources",
-  "# Live from the repo\nEach **Web Source** pulls a CSV and types every column automatically. It stores the URL, not the data — hit **Data ▸ Refresh** to re-pull. Desktop can read a local file via the **CSV File** node.",
+  "# Live from the repo\nEach **Web Source** pulls a CSV and types every column automatically. It stores the URL, not the data; **Data ▸ Refresh** re-pulls. Desktop can read a local file via the **CSV File** node.",
   "blue", 360, 230);
 n("ws-tx",   "WebSourceNode", -1900, -300, { label: "Transactions", url: `${RAW}/transactions.csv` });
 n("ws-acct", "WebSourceNode", -1900,  -40, { label: "Accounts",     url: `${RAW}/accounts.csv` });
@@ -82,7 +82,7 @@ const GRP_DATA = ["ws-tx", "ws-acct", "ws-bud"];
 // ─── B · Cash flow ─────────────────────────────────────────────────────────────
 note("note-cash", -1480, -560,
   "2 · Cash flow this quarter",
-  "# Income vs. expenses\n**Filter** the Amount column twice — `> 0` for income, `< 0` for spend — and fold each slice with a **REDUCE** lambda (`acc + x`). A SUMIF in two nodes, no mask tricks. **Savings rate** = net ÷ income drives a gauge and an alert; drag the target slider to trip it.",
+  "# Income vs. expenses\n**Filter** the Amount column twice, `> 0` for income and `< 0` for spend, then fold each slice with a **REDUCE** lambda (`acc + x`). Excel: SUMIF. **Savings rate** = net ÷ income drives a gauge and an alert; drag the target slider to trip it.",
   "green", 380, 200);
 n("col-amt", "GetColumnNode", -1460, -260, { label: "Amount", readAs: "number" }, { stringLiterals: { name: "Amount" } });
 n("red-net", "AggregateNode",    -1180, -360, { label: "Net cash flow", op: "sum" });
@@ -127,7 +127,7 @@ fc("fc-out", "disp-out", "currency_usd", GRP_CASH);
 // ─── C · Spending pivot (expenses only) ─────────────────────────────────────────
 note("note-pivot", 40, -600,
   "3 · Spending pivot",
-  "# Group-by = a pivot table\nA **Slicer** drops the income rows, then **Group By** collapses the rest to one row per **Category**, summing the absolute spend. A second Group By counts transactions. Totals feed a **Chart**.",
+  "# Group By as a pivot table\nA **Slicer** drops the income rows, then **Group By** collapses the rest to one row per **Category**, summing the absolute spend. A second Group By counts transactions. Totals feed a **Chart**.",
   "gold", 380, 200);
 n("slicer-exp","SlicerNode",   60, -300, { label: "Expenses only", selectedColumn: "Category", selectedValues: ["Housing","Groceries","Dining","Transport","Utilities","Entertainment","Shopping","Health"], multiSelect: true });
 n("col-cat", "GetColumnNode", 340, -380, { label: "Category", readAs: "text" }, { stringLiterals: { name: "Category" } });
@@ -157,7 +157,7 @@ c("gb-cnt","values","spark-cnt","values");
 // ─── D · Accounts / net worth ───────────────────────────────────────────────────
 note("note-acct", 40, 560,
   "4 · Net worth",
-  "# Assets − liabilities\nLiabilities are stored as negative balances, so net worth is just **SUM(Balance)**. Split by **sign** like cash flow — **Filter** `> 0` for assets, `< 0` for debt, **REDUCE** each — robust to any account order. A **Group By Type** pivot drives the chart; the gauge tracks the goal slider and the alert watches your emergency fund.",
+  "# Assets − liabilities\nLiabilities are stored as negative balances, so net worth is **SUM(Balance)**. Split by sign as in cash flow: **Filter** `> 0` for assets, `< 0` for debt, **REDUCE** each. The split holds in any account order. A **Group By Type** pivot drives the chart; the gauge tracks the goal slider and the alert watches the emergency fund.",
   "violet", 380, 230);
 n("col-bal", "GetColumnNode", 60,  860, { label: "Balance", readAs: "number" }, { stringLiterals: { name: "Balance" } });
 n("col-type","GetColumnNode", 60, 1100, { label: "Type", readAs: "text" }, { stringLiterals: { name: "Type" } });
@@ -203,7 +203,7 @@ fc("fc-nw", "disp-nw", "currency_usd", GRP_ACCT);
 // ─── S · Assumptions (stray external inputs) ────────────────────────────────────
 note("note-assump", -1920, 820,
   "Assumptions (your numbers)",
-  "# Stray inputs\nHand-entered knobs that aren't in any CSV — they feed the projections and alerts. Change one and the right side reacts.",
+  "# Stray inputs\nHand-entered values that appear in no CSV. They feed the projections and alerts; change one and the right side recomputes.",
   "vermilion", 360, 170);
 n("in-inflation","NumberInputNode", -1900, 1020, { label: "Inflation %/yr", value: 3.2 });
 n("in-emerg",    "SliderInputNode", -1900, 1180, { label: "Emergency-fund target $", value: 15000, min: 0, max: 60000, step: 1000 }, { literals: { min: 0, max: 60000, step: 1000 } });
@@ -216,7 +216,7 @@ c("in-emerg","value","alert-nw","low");
 // ─── E · Retirement projection (what-if) ────────────────────────────────────────
 note("note-proj", 1420, -560,
   "5 · Retirement what-if",
-  "# Compound it forward\n**TVM (FV)** grows today's net worth plus monthly contributions at your assumed return — the headline. The **year-by-year** curve broadcasts the *same* FV formula across a **SEQUENCE** of years (one Expression over a list), so its last point equals the headline. Drag **Contribution** or **Return** and everything moves.",
+  "# Retirement projection\n**TVM (FV)** grows today's net worth plus monthly contributions at the assumed return; that is the headline number. The **year-by-year** curve broadcasts the same FV formula across a **SEQUENCE** of years, one Expression over a list, so its last point equals the headline. Drag **Contribution** or **Return** and the projection updates.",
   "green", 400, 220);
 n("sld-contrib","SliderInputNode", 1420, -360, { label: "Monthly contribution $", value: 600, min: 0, max: 3000, step: 50 }, { literals: { min: 0, max: 3000, step: 50 } });
 n("sld-return", "SliderInputNode", 1420,  -60, { label: "Annual return %", value: 7, min: 0, max: 15, step: 0.5 }, { literals: { min: 0, max: 15, step: 0.5 } });
@@ -260,7 +260,7 @@ fc("fc-proj", "disp-proj", "currency_usd", GRP_PROJ);
 // ─── F · Mortgage / debt ────────────────────────────────────────────────────────
 note("note-mort", 1420, 660,
   "6 · Mortgage stress-test",
-  "# Can you afford it?\n**TVM (PMT)** turns a loan, rate and term into a monthly payment; **CUMIPMT** totals lifetime interest. The **Alert** trips when the payment exceeds 28% of take-home pay.",
+  "# Mortgage stress test\n**TVM (PMT)** turns a loan, rate and term into a monthly payment; **CUMIPMT** totals lifetime interest. The **Alert** trips when the payment exceeds 28% of take-home pay.",
   "vermilion", 380, 200);
 n("sld-loan", "SliderInputNode", 1420,  860, { label: "Home loan $", value: 350000, min: 100000, max: 800000, step: 10000 }, { literals: { min: 100000, max: 800000, step: 10000 } });
 n("sld-apr",  "SliderInputNode", 1420, 1140, { label: "Mortgage APR %", value: 6.25, min: 2, max: 9, step: 0.05 }, { literals: { min: 2, max: 9, step: 0.05 } });
@@ -302,7 +302,7 @@ fc("fc-int", "disp-int", "currency_usd", GRP_MORT);
 // ─── G · Budget vs actual (interactive slicer) ──────────────────────────────────
 note("note-bud", 1420, 1860,
   "7 · Budget vs actual",
-  "# Spend vs. the Budgets CSV\nThe **Slicer** keeps the rows for the category you pick (try Groceries), summed into the quarter's spend. The **same category's** `MonthlyBudget` is pulled straight from the **Budgets CSV** (×3 for the quarter) — no hand-typed number. The **Alert** trips the moment spend passes budget.",
+  "# Spend vs. the Budgets CSV\nThe **Slicer** keeps the rows for the category you pick (try Groceries), summed into the quarter's spend. The same category's `MonthlyBudget` comes from the **Budgets CSV**, tripled for the quarter; no number is hand-typed. The **Alert** trips the moment spend passes budget.",
   "amber", 380, 210);
 n("slicer",  "SlicerNode",     1420, 2060, { label: "Pick category", selectedColumn: "Category", selectedValues: ["Groceries"], multiSelect: true });
 n("col-gamt","GetColumnNode",  1700, 2060, { label: "Amount", readAs: "number" }, { stringLiterals: { name: "Amount" } });

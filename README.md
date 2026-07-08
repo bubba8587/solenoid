@@ -40,7 +40,7 @@ The desktop app (Windows) is the full product: it runs the relational verbs on a
 
 ## From source
 
-The **web build** needs only [Node](https://nodejs.org) (20+) — no Rust:
+The **web build** needs only [Node](https://nodejs.org) 20+, no Rust:
 
 ```
 npm install
@@ -48,7 +48,7 @@ npm run dev          # http://localhost:1420, hot reload
 ```
 
 The **desktop build** additionally needs the [Rust toolchain](https://rustup.rs) and
-Tauri's platform prerequisites — on Windows: the WebView2 runtime (preinstalled on
+Tauri's platform prerequisites. On Windows: the WebView2 runtime (preinstalled on
 Windows 11) and the MSVC C++ build tools, see
 [tauri.app/start/prerequisites](https://tauri.app/start/prerequisites/). Desktop is
 **Windows-only** for now.
