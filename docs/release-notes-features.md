@@ -76,7 +76,6 @@ the body sections or under the hood, not on slides.
 - Goal Seek, Scenarios, Data Table & Simulation run modes on composites
 - Composite sub-graphs with an isolated, manual compute chain (Solve button + stale marker)
 - Full drill-in editor: minimap, keyboard, right-click, Tidy, copy/paste inside a composite
-- Editable composite input markers with seed values
 
 ### Nodes & analysis
 - Set Operations & Set Relations nodes
@@ -103,7 +102,6 @@ the body sections or under the hood, not on slides.
 - Mermaid diagram node
 - Chart accepts a Frame for a labeled x-axis
 - Minified (collapsed) previews: Sparkline, Gauge, Slicer & charts
-- Type-colored value chips
 
 ### Reports & presentation
 - Report node: markdown with live `=name` embeds (numbers, tables, charts, equations, diagrams)
@@ -111,20 +109,15 @@ the body sections or under the hood, not on slides.
 - Export a Report as a webpage (static HTML)
 - Presentation node & Presenter mode
 - Image bundling: attached images save to an `images/` folder beside the document
-- Report/export-only brand palette override
 
 ### Data & engine
 - Verb chains compile to one fused Polars query
 - Sketch calc mode: sampled execution on huge tables
 - Native CSV reader on desktop (with date inference)
 - Native Parquet & Arrow source
-- Infinity is first-class in frames
-- Static shape-checking across verb chains
 - Error provenance: every error carries its origin; popups fly to the source
 - Connection nodes auto-refresh on an interval
 - Headless graph runner (`npm run run-graph`)
-- Per-document autosave slots
-- Stable, user-editable node names + a lossless text form of the graph
 
 ### Canvas & app
 - Command Palette (Ctrl+K), with an always-on docked option
@@ -141,9 +134,6 @@ the body sections or under the hood, not on slides.
 - Conduit lanes with switchable socket types
 - Minimap position setting (bottom / top / hidden)
 - Fullscreen: F11 on desktop, a button on mobile
-- Library folder opener
-- Accessibility pass: focus traps, reduced motion, socket titles
-- What's New & About dialogs
 
 ## Known issues (for the GitHub release body — deliberately NOT shown in-app)
 
