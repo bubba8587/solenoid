@@ -5,6 +5,29 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-08, latest — Writing & Copy pass over every shipped string)
+- **Full copy pass (author order): every user-facing string held to DESIGN.md §7 + the
+  Captain-Obvious rule; internal docs exempt.** ~700 strings rewritten across seven
+  surfaces by parallel agents on disjoint files, then audited centrally: nodeCatalog
+  (223 of 303 descriptions — these render in the Add menu + Function Reference),
+  nodes/*.ts op metas (~315, mostly the trailing "(Excel: =FOO)" idiom → the plain
+  sentence "Excel: FOO."), top-level chrome (~40: menus, StatusBar, Settings, notices,
+  error prose), components A–L (~48) and M–Z (27), seed titles/notes/comments (~50 +
+  the PF generator's ten notes, re-emitted in lockstep), README's two em dashes.
+- **New style rule codified (author 2026-07-08): no trailing parenthetical.** A string
+  may not end with "(…)"; fold the aside in, promote it to a sentence, or delete it.
+  Added to DESIGN.md §7 with the "Excel: XLOOKUP." convention as the worked example.
+- **Deliberately unchanged, for the next pass to know:** shortcut-hint parens
+  ("Save (Ctrl+S)") are functional key names, not prose; the paired
+  "Align center (vertical/horizontal)" command names disambiguate two identical labels
+  and are synced between SelectionActionsBar and CommandPalette; the bare "—"
+  empty-value glyph is typography; math notation (Σ(score × weight), (m×n)) is not an
+  aside; genuinely informative mechanism contrasts ("stores the URL, not the data")
+  survive the no-antithesis rule; code comments/console.warn are dev-facing.
+- Twin-string traps found by the audit: process.ts carried its own copy of the #CIRC!
+  message (now matches errorValue's); "Grand (at start)" existed in both
+  PivotEditorPopup and FrameNodes (fixed consistently on both surfaces).
+
 ### SESSION DIGEST (2026-07-08, later — seed consolidation 27→17 + release odds & ends)
 - **Seed set consolidated 27 → 17 (author-directed "rebuild from scratch" pass).**
   Retired outright: mortgage (PF §6 is a mortgage stress test), investment, break-even,
