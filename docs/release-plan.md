@@ -66,11 +66,15 @@ that file is the source material + the What's-New slide content.)
   copy corrected 2026-07-08 (FRED keyless, no FX, Simulation ≠ Monte Carlo).
 - **Curated feature list** reconciled 2026-07-08 in `release-notes-features.md`.
 
-### Finish-if-time (near-done, low-risk — pull in if the cut has room)
-- **Gauge collapsed preview** (last of the per-node collapse set; 3 input sockets must stay reachable).
-- **F-2 remainder** — per-slot doc palette overrides + document-level FC defaults.
-- **D-2 simulation inner display** — series renders inside the drill-in.
-- **Goal-seek solver parameters** — max-iter/tolerance/bounds (polish on the new run modes).
+### Finish-if-time — RESOLVED (author 2026-07-08): 1.1 is feature-complete
+- **Gauge collapsed preview — DONE** (`GaugeNode.tsx` `squareCollapse` + the MINI_SIZE
+  axis-less dial; only the error branch stays non-collapsible, deliberately).
+- **Deferred past 1.1 by the author:** F-2 remainder (per-slot doc-palette override UI +
+  document-level FC defaults; the store half exists), D-2 simulation inner display,
+  goal-seek solver parameters. Also deferred the same day: the iFrame/embed node (still
+  needs the CSP call first), the trust-node audit residue, the seed follow-ups
+  (personal-finance headliners, scenarios/data-table cards), and further Data Feed
+  widening (date-range/frequency/quick-picks already shipped).
 
 ### Explicitly RESERVED for 2.0 (author-present flagships)
 - **FC A4 units-by-dimensionality** (`v2.0/05`) — foundation landed; build together.
