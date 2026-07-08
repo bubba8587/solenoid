@@ -136,7 +136,7 @@ export class MapTableNode extends ClassicPreset.Node {
       if (!e) continue;
       const oneByOne = e.length === 1 && (e[0]?.length ?? 0) === 1;
       if (!oneByOne && (e.length !== m.length || (e[0]?.length ?? 0) !== (m[0]?.length ?? 0))) {
-        const msg = `Shape mismatch (${e.length}×${e[0]?.length ?? 0} vs ${m.length}×${m[0]?.length ?? 0})`;
+        const msg = `Shape mismatch: ${e.length}×${e[0]?.length ?? 0} vs ${m.length}×${m[0]?.length ?? 0}`;
         this.cachedResult = null;
         this.cachedError = msg;
         return fnError(msg, "#SHAPE!");
@@ -294,7 +294,7 @@ export class MakeArrayNode extends ClassicPreset.Node {
     if (!fn) { this.cachedResult = null; this.cachedError = err; return fnError(err!, code); }
     if (rows < 1 || cols < 1) { this.cachedResult = null; this.cachedError = null; return { result: null }; }
     if (rows * cols > MAKEARRAY_MAX_CELLS) {
-      const msg = `Too large (${rows}×${cols})`;
+      const msg = `Too large: ${rows}×${cols}`;
       this.cachedResult = null;
       this.cachedError = msg;
       return fnError(msg, "#OVERFLOW!");

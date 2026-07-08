@@ -42,7 +42,7 @@ function tagResult(v: unknown): unknown {
   if (isSolError(v)) return v;
   if (v instanceof Error) return fxErrorToSol(v);
   if (typeof v === "number" && Number.isNaN(v)) {
-    return solError("#DOMAIN!", "The result is undefined (not a number)");
+    return solError("#DOMAIN!", "The result is undefined: not a number");
   }
   return guard(v, true);
 }
@@ -139,7 +139,7 @@ export class ExpressionNode extends ClassicPreset.Node {
         const val = env[v];
         if (Array.isArray(val) && val.some((e) => Array.isArray(e))) {
           this.cachedError = "Matrix input not supported";
-          const err = solError("#SHAPE!", "A formula works on values and 1-D lists, not a 2-D matrix — use MAP / BYROW / REDUCE to run it over a table.");
+          const err = solError("#SHAPE!", "A formula works on values and 1-D lists, not a 2-D matrix. Use MAP / BYROW / REDUCE to run it over a table.");
           this.cachedResult = err;
           return { result: err };
         }

@@ -34,7 +34,7 @@ function asNumericMatrix(m: CellMat): NumMat | SolError {
   for (const row of m)
     for (const cell of row) {
       if (cell === null || cell === undefined || cell === "")
-        return solError("#VALUE!", "This matrix operation needs complete data — a cell is missing (null)");
+        return solError("#VALUE!", "This matrix operation needs complete data; a cell is missing");
       if (typeof cell !== "number" || !Number.isFinite(cell))
         return solError("#TYPE!", "This matrix operation needs numbers, but got text");
     }
@@ -175,8 +175,8 @@ export class TableInputNode extends ClassicPreset.Node {
 export type MatDetOp = "mdeterm" | "minverse";
 
 export const MAT_DET_OP_META = {
-  mdeterm:  { label: "MDETERM",  description: "Determinant of a square matrix   (Excel: =MDETERM)" },
-  minverse: { label: "MINVERSE", description: "Inverse of a square matrix — result × input = identity   (Excel: =MINVERSE)" },
+  mdeterm:  { label: "MDETERM",  description: "Determinant of a square matrix. Excel: MDETERM." },
+  minverse: { label: "MINVERSE", description: "Inverse of a square matrix: result × input = identity. Excel: MINVERSE." },
 } satisfies Record<MatDetOp, { label: string; description: string }>;
 
 export class MatDetNode extends ClassicPreset.Node {
@@ -228,7 +228,7 @@ export class MatDetNode extends ClassicPreset.Node {
     } else {
       const inv = matInverse(m);
       if (inv === null) {
-        const err = solError("#DIV/0!", "Matrix is singular (no inverse)");
+        const err = solError("#DIV/0!", "Matrix is singular; it has no inverse");
         this.cachedMatrix = err;
         return { result: err };
       }
@@ -351,10 +351,10 @@ export class HStackTableNode extends ClassicPreset.Node {
 export type TableReshapeOp = "wraprows" | "wrapcols" | "tocol" | "torow";
 
 export const TABLE_RESHAPE_OP_META = {
-  wraprows: { label: "WRAPROWS", description: "Wrap a list into a table row-by-row — each row has Wrap_count values   (Excel: =WRAPROWS)" },
-  wrapcols: { label: "WRAPCOLS", description: "Wrap a list into a table column-by-column — each column has Wrap_count values   (Excel: =WRAPCOLS)" },
-  tocol:    { label: "TOCOL",    description: "Flatten a table to a 1D list, reading row by row   (Excel: =TOCOL)" },
-  torow:    { label: "TOROW",    description: "Flatten a table to a 1D list, reading column by column   (Excel: =TOROW)" },
+  wraprows: { label: "WRAPROWS", description: "Wrap a list into a table row-by-row; each row has Wrap_count values. Excel: WRAPROWS." },
+  wrapcols: { label: "WRAPCOLS", description: "Wrap a list into a table column-by-column; each column has Wrap_count values. Excel: WRAPCOLS." },
+  tocol:    { label: "TOCOL",    description: "Flatten a table to a 1D list, reading row by row. Excel: TOCOL." },
+  torow:    { label: "TOROW",    description: "Flatten a table to a 1D list, reading column by column. Excel: TOROW." },
 } satisfies Record<TableReshapeOp, { label: string; description: string }>;
 
 export class TableReshapeNode extends ClassicPreset.Node {
@@ -423,8 +423,8 @@ export class TableReshapeNode extends ClassicPreset.Node {
 export type TableSelectOp = "chooserows" | "choosecols";
 
 export const TABLE_SELECT_OP_META = {
-  chooserows: { label: "CHOOSEROWS", description: "Select rows from a table by 1-based index list   (Excel: =CHOOSEROWS)" },
-  choosecols: { label: "CHOOSECOLS", description: "Select columns from a table by 1-based index list   (Excel: =CHOOSECOLS)" },
+  chooserows: { label: "CHOOSEROWS", description: "Select rows from a table by 1-based index list. Excel: CHOOSEROWS." },
+  choosecols: { label: "CHOOSECOLS", description: "Select columns from a table by 1-based index list. Excel: CHOOSECOLS." },
 } satisfies Record<TableSelectOp, { label: string; description: string }>;
 
 export class TableSelectNode extends ClassicPreset.Node {

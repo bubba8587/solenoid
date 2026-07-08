@@ -188,12 +188,12 @@ export class IfNode extends ClassicPreset.Node {
 export type BooleanOp = "and" | "or" | "xor" | "nand" | "nor" | "xnor";
 
 export const BOOLEAN_OP_META = {
-  and:  { label: "AND",  description: "TRUE if ALL inputs are true — add as many as you need   (Excel: =AND(…))" },
-  or:   { label: "OR",   description: "TRUE if ANY input is true — add as many as you need   (Excel: =OR(…))" },
-  xor:  { label: "XOR",  description: "TRUE if an ODD number of inputs are true   (Excel: =XOR(…))" },
-  nand: { label: "NAND", description: "Negated AND — FALSE only when every input is true   (Excel: =NOT(AND(…)))" },
-  nor:  { label: "NOR",  description: "Negated OR — TRUE only when every input is false   (Excel: =NOT(OR(…)))" },
-  xnor: { label: "XNOR", description: "TRUE if an EVEN number of inputs are true (negated XOR)" },
+  and:  { label: "AND",  description: "TRUE if ALL inputs are true. Excel: AND(…)." },
+  or:   { label: "OR",   description: "TRUE if ANY input is true. Excel: OR(…)." },
+  xor:  { label: "XOR",  description: "TRUE if an ODD number of inputs are true. Excel: XOR(…)." },
+  nand: { label: "NAND", description: "Negated AND: FALSE only when every input is true. Excel: NOT(AND(…))." },
+  nor:  { label: "NOR",  description: "Negated OR: TRUE only when every input is false. Excel: NOT(OR(…))." },
+  xnor: { label: "XNOR", description: "TRUE if an EVEN number of inputs are true; the negation of XOR" },
 } satisfies Record<BooleanOp, { label: string; description: string }>;
 
 /** Fold N tri-valued operands per the op (Kleene three-valued logic). NOT is a
@@ -456,7 +456,7 @@ export class NaNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("Na");
     this.label = init?.label ?? "NA";
-    this.cachedResult = solError("#N/A", "Not available (NA)");
+    this.cachedResult = solError("#N/A", "Not available");
     this.addOutput("result", new ClassicPreset.Output(numberSocket, "N/A"));
   }
 
@@ -532,7 +532,7 @@ export class ChooseNode extends ClassicPreset.Node {
     // An index outside 1..N is a real error, not a blank → #VALUE! (Excel's code for
     // an out-of-range CHOOSE index), aligned with the tagged-error model.
     if (!key) {
-      const err = solError("#VALUE!", `CHOOSE index ${idx} is out of range (1–${keys.length})`);
+      const err = solError("#VALUE!", `CHOOSE index ${idx} is outside the range 1–${keys.length}`);
       this.cachedResult = err;
       return { result: err };
     }
@@ -740,8 +740,8 @@ export class IfsNode extends ClassicPreset.Node {
 export type ParityOp = "iseven" | "isodd";
 
 export const PARITY_OP_META = {
-  iseven: { label: "ISEVEN", description: "TRUE if the integer part is even   (Excel: =ISEVEN(x))" },
-  isodd:  { label: "ISODD",  description: "TRUE if the integer part is odd   (Excel: =ISODD(x))" },
+  iseven: { label: "ISEVEN", description: "TRUE if the integer part is even. Excel: ISEVEN(x)." },
+  isodd:  { label: "ISODD",  description: "TRUE if the integer part is odd. Excel: ISODD(x)." },
 } satisfies Record<ParityOp, { label: string; description: string }>;
 
 export class IsEvenOddNode extends ClassicPreset.Node {

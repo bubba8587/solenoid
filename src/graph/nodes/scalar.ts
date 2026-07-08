@@ -97,10 +97,10 @@ export const ARITHMETIC_OP_META = {
   add:      { label: "+ Add",      description: "A + B" },
   sub:      { label: "− Subtract", description: "A − B" },
   mul:      { label: "× Multiply", description: "A × B" },
-  div:      { label: "÷ Divide",   description: "A ÷ B — #DIV/0! when B = 0." },
-  mod:      { label: "MOD",        description: "Remainder of A ÷ B   (Excel: =MOD)" },
-  quotient: { label: "QUOTIENT",   description: "Integer part of A ÷ B, truncated toward zero   (Excel: =QUOTIENT)" },
-  pow:      { label: "xⁿ Power",   description: "A raised to the power B. 0^0 = 1 (JS/Python/Polars convention; Excel gives #NUM!). A finite result too large to represent → #OVERFLOW!.   (Excel: =POWER / =A^B)" },
+  div:      { label: "÷ Divide",   description: "A ÷ B. #DIV/0! when B = 0." },
+  mod:      { label: "MOD",        description: "Remainder of A ÷ B. Excel: MOD." },
+  quotient: { label: "QUOTIENT",   description: "Integer part of A ÷ B, truncated toward zero. Excel: QUOTIENT." },
+  pow:      { label: "xⁿ Power",   description: "A raised to the power B. 0^0 = 1 (JS/Python/Polars convention; Excel gives #NUM!). A finite result too large to represent → #OVERFLOW!. Excel: POWER / A^B." },
 } satisfies Record<ArithmeticOp, { label: string; description: string }>;
 
 export class ArithmeticNode extends ClassicPreset.Node {
@@ -169,45 +169,45 @@ export type MathFnOp =
   | "gamma" | "gammaln";
 
 export const MATH_FN_OP_META = {
-  abs:     { label: "ABS",     group: "Functions",    description: "Absolute value   (Excel: =ABS(x))" },
-  sign:    { label: "SIGN",    group: "Functions",    description: "−1, 0, or 1 depending on sign   (Excel: =SIGN(x))" },
-  sqrt:    { label: "SQRT",    group: "Functions",    description: "Square root   (Excel: =SQRT(x))" },
-  sqrtpi:  { label: "SQRTPI",  group: "Functions",    description: "√(x × π)   (Excel: =SQRTPI(x))" },
-  exp:     { label: "EXP",     group: "Functions",    description: "e raised to the power x   (Excel: =EXP(x))" },
-  round:   { label: "ROUND",   group: "Rounding",     description: "Round to nearest integer   (Excel: =ROUND(x,0))" },
-  trunc:   { label: "TRUNC",   group: "Rounding",     description: "Truncate toward zero — TRUNC(−3.7) = −3   (Excel: =TRUNC(x))" },
-  int:     { label: "INT",     group: "Rounding",     description: "Round DOWN toward −∞ — INT(−3.7) = −4   (Excel: =INT(x))" },
-  even:    { label: "EVEN",    group: "Rounding",     description: "Round away from zero to nearest even integer   (Excel: =EVEN(x))" },
-  odd:     { label: "ODD",     group: "Rounding",     description: "Round away from zero to nearest odd integer   (Excel: =ODD(x))" },
-  log:     { label: "LN",      group: "Logarithms",   description: "Natural log (base e)   (Excel: =LN(x))" },
-  log10:   { label: "LOG10",   group: "Logarithms",   description: "Log base 10   (Excel: =LOG10(x))" },
-  log2:    { label: "LOG2",    group: "Logarithms",   description: "Log base 2 — log₂(x), e.g. how many bits represent x   (Excel: =LOG(x, 2))" },
-  sin:     { label: "SIN",     group: "Trigonometry", description: "Sine   (Excel: =SIN(x))" },
-  cos:     { label: "COS",     group: "Trigonometry", description: "Cosine   (Excel: =COS(x))" },
-  tan:     { label: "TAN",     group: "Trigonometry", description: "Tangent   (Excel: =TAN(x))" },
-  cot:     { label: "COT",     group: "Trigonometry", description: "Cotangent (1/tan)   (Excel: =COT(x))" },
-  csc:     { label: "CSC",     group: "Trigonometry", description: "Cosecant (1/sin)   (Excel: =CSC(x))" },
-  sec:     { label: "SEC",     group: "Trigonometry", description: "Secant (1/cos)   (Excel: =SEC(x))" },
-  asin:    { label: "ASIN",    group: "Trigonometry", description: "Arc sine → [−π/2, π/2]   (Excel: =ASIN(x))" },
-  acos:    { label: "ACOS",    group: "Trigonometry", description: "Arc cosine → [0, π]   (Excel: =ACOS(x))" },
-  atan:    { label: "ATAN",    group: "Trigonometry", description: "Arc tangent → (−π/2, π/2)   (Excel: =ATAN(x))" },
-  acot:    { label: "ACOT",    group: "Trigonometry", description: "Arc cotangent → (0, π)   (Excel: =ACOT(x))" },
-  sinh:    { label: "SINH",    group: "Hyperbolic",   description: "Hyperbolic sine   (Excel: =SINH(x))" },
-  cosh:    { label: "COSH",    group: "Hyperbolic",   description: "Hyperbolic cosine   (Excel: =COSH(x))" },
-  tanh:    { label: "TANH",    group: "Hyperbolic",   description: "Hyperbolic tangent   (Excel: =TANH(x))" },
-  asinh:   { label: "ASINH",   group: "Hyperbolic",   description: "Inverse hyperbolic sine   (Excel: =ASINH(x))" },
-  acosh:   { label: "ACOSH",   group: "Hyperbolic",   description: "Inverse hyperbolic cosine   (Excel: =ACOSH(x))" },
-  atanh:   { label: "ATANH",   group: "Hyperbolic",   description: "Inverse hyperbolic tangent   (Excel: =ATANH(x))" },
-  coth:    { label: "COTH",    group: "Hyperbolic",   description: "Hyperbolic cotangent (cosh/sinh)   (Excel: =COTH(x))" },
-  csch:    { label: "CSCH",    group: "Hyperbolic",   description: "Hyperbolic cosecant (1/sinh)   (Excel: =CSCH(x))" },
-  sech:    { label: "SECH",    group: "Hyperbolic",   description: "Hyperbolic secant (1/cosh)   (Excel: =SECH(x))" },
-  acoth:   { label: "ACOTH",   group: "Hyperbolic",   description: "Inverse hyperbolic cotangent — domain |x| > 1   (Excel: =ACOTH(x))" },
-  phi:     { label: "PHI",     group: "Probability",  description: "Standard normal PDF φ(x)   (Excel: =PHI(x))" },
-  gauss:   { label: "GAUSS",   group: "Probability",  description: "Φ(x) − 0.5 — area from 0 to x under the standard normal curve   (Excel: =GAUSS(x))" },
-  erf:     { label: "ERF",     group: "Special",      description: "Error function erf(x) = (2/√π)∫₀ˣ e^(−t²) dt   (Excel: =ERF(x))" },
-  erfc:    { label: "ERFC",    group: "Special",      description: "Complementary error function: 1 − erf(x)   (Excel: =ERFC(x))" },
-  gamma:   { label: "GAMMA",   group: "Special",      description: "Gamma function Γ(x) — generalizes factorial: Γ(n) = (n−1)!   (Excel: =GAMMA(x))" },
-  gammaln: { label: "GAMMALN", group: "Special",      description: "Natural log of the Gamma function ln(Γ(x))   (Excel: =GAMMALN(x))" },
+  abs:     { label: "ABS",     group: "Functions",    description: "Absolute value. Excel: ABS(x)." },
+  sign:    { label: "SIGN",    group: "Functions",    description: "−1, 0, or 1 depending on sign. Excel: SIGN(x)." },
+  sqrt:    { label: "SQRT",    group: "Functions",    description: "Square root. Excel: SQRT(x)." },
+  sqrtpi:  { label: "SQRTPI",  group: "Functions",    description: "√(x × π). Excel: SQRTPI(x)." },
+  exp:     { label: "EXP",     group: "Functions",    description: "e raised to the power x. Excel: EXP(x)." },
+  round:   { label: "ROUND",   group: "Rounding",     description: "Round to nearest integer. Excel: ROUND(x,0)." },
+  trunc:   { label: "TRUNC",   group: "Rounding",     description: "Truncate toward zero: TRUNC(−3.7) = −3. Excel: TRUNC(x)." },
+  int:     { label: "INT",     group: "Rounding",     description: "Round DOWN toward −∞: INT(−3.7) = −4. Excel: INT(x)." },
+  even:    { label: "EVEN",    group: "Rounding",     description: "Round away from zero to nearest even integer. Excel: EVEN(x)." },
+  odd:     { label: "ODD",     group: "Rounding",     description: "Round away from zero to nearest odd integer. Excel: ODD(x)." },
+  log:     { label: "LN",      group: "Logarithms",   description: "Natural log (base e). Excel: LN(x)." },
+  log10:   { label: "LOG10",   group: "Logarithms",   description: "Log base 10. Excel: LOG10(x)." },
+  log2:    { label: "LOG2",    group: "Logarithms",   description: "Log base 2: log₂(x), e.g. how many bits represent x. Excel: LOG(x, 2)." },
+  sin:     { label: "SIN",     group: "Trigonometry", description: "Sine. Excel: SIN(x)." },
+  cos:     { label: "COS",     group: "Trigonometry", description: "Cosine. Excel: COS(x)." },
+  tan:     { label: "TAN",     group: "Trigonometry", description: "Tangent. Excel: TAN(x)." },
+  cot:     { label: "COT",     group: "Trigonometry", description: "Cotangent (1/tan). Excel: COT(x)." },
+  csc:     { label: "CSC",     group: "Trigonometry", description: "Cosecant (1/sin). Excel: CSC(x)." },
+  sec:     { label: "SEC",     group: "Trigonometry", description: "Secant (1/cos). Excel: SEC(x)." },
+  asin:    { label: "ASIN",    group: "Trigonometry", description: "Arc sine → [−π/2, π/2]. Excel: ASIN(x)." },
+  acos:    { label: "ACOS",    group: "Trigonometry", description: "Arc cosine → [0, π]. Excel: ACOS(x)." },
+  atan:    { label: "ATAN",    group: "Trigonometry", description: "Arc tangent → (−π/2, π/2). Excel: ATAN(x)." },
+  acot:    { label: "ACOT",    group: "Trigonometry", description: "Arc cotangent → (0, π). Excel: ACOT(x)." },
+  sinh:    { label: "SINH",    group: "Hyperbolic",   description: "Hyperbolic sine. Excel: SINH(x)." },
+  cosh:    { label: "COSH",    group: "Hyperbolic",   description: "Hyperbolic cosine. Excel: COSH(x)." },
+  tanh:    { label: "TANH",    group: "Hyperbolic",   description: "Hyperbolic tangent. Excel: TANH(x)." },
+  asinh:   { label: "ASINH",   group: "Hyperbolic",   description: "Inverse hyperbolic sine. Excel: ASINH(x)." },
+  acosh:   { label: "ACOSH",   group: "Hyperbolic",   description: "Inverse hyperbolic cosine. Excel: ACOSH(x)." },
+  atanh:   { label: "ATANH",   group: "Hyperbolic",   description: "Inverse hyperbolic tangent. Excel: ATANH(x)." },
+  coth:    { label: "COTH",    group: "Hyperbolic",   description: "Hyperbolic cotangent (cosh/sinh). Excel: COTH(x)." },
+  csch:    { label: "CSCH",    group: "Hyperbolic",   description: "Hyperbolic cosecant (1/sinh). Excel: CSCH(x)." },
+  sech:    { label: "SECH",    group: "Hyperbolic",   description: "Hyperbolic secant (1/cosh). Excel: SECH(x)." },
+  acoth:   { label: "ACOTH",   group: "Hyperbolic",   description: "Inverse hyperbolic cotangent; domain |x| > 1. Excel: ACOTH(x)." },
+  phi:     { label: "PHI",     group: "Probability",  description: "Standard normal PDF φ(x). Excel: PHI(x)." },
+  gauss:   { label: "GAUSS",   group: "Probability",  description: "Φ(x) − 0.5: the area from 0 to x under the standard normal curve. Excel: GAUSS(x)." },
+  erf:     { label: "ERF",     group: "Special",      description: "Error function erf(x) = (2/√π)∫₀ˣ e^(−t²) dt. Excel: ERF(x)." },
+  erfc:    { label: "ERFC",    group: "Special",      description: "Complementary error function: 1 − erf(x). Excel: ERFC(x)." },
+  gamma:   { label: "GAMMA",   group: "Special",      description: "Gamma function Γ(x): generalizes factorial, Γ(n) = (n−1)! Excel: GAMMA(x)." },
+  gammaln: { label: "GAMMALN", group: "Special",      description: "Natural log of the Gamma function ln(Γ(x)). Excel: GAMMALN(x)." },
 } satisfies Record<MathFnOp, { label: string; description: string; group: string }>;
 
 // Abramowitz & Stegun approximation, max error ~1.5e-7.
@@ -317,7 +317,7 @@ export class MathFnNode extends ClassicPreset.Node {
 
 export const BASE_CONVERT_META = {
   label: "Base Convert",
-  description: "Convert an integer from one base to another (2–36). Interpretations of input digits and output digits are limited to 0–9 — bases needing A–F return null.   (Excel: =DEC2BIN / =BIN2DEC / =BASE / =DECIMAL etc.)",
+  description: "Convert an integer from one base to another (2–36). Input and output digits are limited to 0–9; bases needing A–F return null. Excel: DEC2BIN / BIN2DEC / BASE / DECIMAL.",
 };
 
 export class BaseConvertNode extends ClassicPreset.Node {
@@ -427,9 +427,9 @@ export class ClampNode extends ClassicPreset.Node {
 export type MRoundOp = "nearest" | "up" | "down";
 
 export const MROUND_OP_META = {
-  nearest: { label: "MROUND",  description: "Round to the nearest multiple   (Excel: =MROUND(x, multiple))" },
-  up:      { label: "CEILING", description: "Round UP to a multiple (toward +∞)   (Excel: =CEILING.MATH(x, sig))" },
-  down:    { label: "FLOOR",   description: "Round DOWN to a multiple (toward −∞)   (Excel: =FLOOR.MATH(x, sig))" },
+  nearest: { label: "MROUND",  description: "Round to the nearest multiple. Excel: MROUND(x, multiple)." },
+  up:      { label: "CEILING", description: "Round UP to a multiple (toward +∞). Excel: CEILING.MATH(x, sig)." },
+  down:    { label: "FLOOR",   description: "Round DOWN to a multiple (toward −∞). Excel: FLOOR.MATH(x, sig)." },
 } satisfies Record<MRoundOp, { label: string; description: string }>;
 
 export class MRoundNode extends ClassicPreset.Node {
@@ -552,12 +552,12 @@ export class GcdNode extends ClassicPreset.Node {
 export type CombinatoricsOp = "combin" | "combina" | "permut" | "permutationa" | "fact" | "factdouble";
 
 export const COMBINATORICS_OP_META = {
-  fact:       { label: "FACT",       description: "n! — factorial   (Excel: =FACT(n))" },
-  factdouble: { label: "FACTDOUBLE", description: "n!! — double factorial   (Excel: =FACTDOUBLE(n))" },
-  combin:     { label: "COMBIN",     description: "C(n,k) — combinations without repetition   (Excel: =COMBIN(n,k))" },
-  combina:    { label: "COMBINA",    description: "C(n+k−1,k) — combinations with repetition   (Excel: =COMBINA(n,k))" },
-  permut:       { label: "PERMUT",       description: "P(n,k) — ordered arrangements without repetition   (Excel: =PERMUT(n,k))" },
-  permutationa: { label: "PERMUTATIONA", description: "nᵏ — ordered arrangements with repetition   (Excel: =PERMUTATIONA(n,k))" },
+  fact:       { label: "FACT",       description: "n!, the factorial. Excel: FACT(n)." },
+  factdouble: { label: "FACTDOUBLE", description: "n!!, the double factorial. Excel: FACTDOUBLE(n)." },
+  combin:     { label: "COMBIN",     description: "C(n,k): combinations without repetition. Excel: COMBIN(n,k)." },
+  combina:    { label: "COMBINA",    description: "C(n+k−1,k): combinations with repetition. Excel: COMBINA(n,k)." },
+  permut:       { label: "PERMUT",       description: "P(n,k): ordered arrangements without repetition. Excel: PERMUT(n,k)." },
+  permutationa: { label: "PERMUTATIONA", description: "nᵏ: ordered arrangements with repetition. Excel: PERMUTATIONA(n,k)." },
 } satisfies Record<CombinatoricsOp, { label: string; description: string }>;
 
 function factorial(n: number): number {
@@ -628,7 +628,7 @@ export class CombinatoricsNode extends ClassicPreset.Node {
       return { result: err };
     }
     if (result !== null && !Number.isFinite(result)) {
-      const err = solError("#OVERFLOW!", "The result is too large to represent — reduce N");
+      const err = solError("#OVERFLOW!", "The result is too large to represent; reduce N");
       this.cachedResult = err;
       return { result: err };
     }
@@ -642,11 +642,11 @@ export class CombinatoricsNode extends ClassicPreset.Node {
 export type TwoInputMathOp = "atan2" | "hypot" | "log" | "delta" | "gestep";
 
 export const TWO_INPUT_MATH_OP_META = {
-  atan2: { label: "ATAN2", description: "Angle from x,y coordinates — atan2(y, x)   (Excel: =ATAN2(x_num, y_num))" },
+  atan2: { label: "ATAN2", description: "Angle from x,y coordinates: atan2(y, x). Excel: ATAN2(x_num, y_num)." },
   hypot: { label: "HYPOT", description: "Hypotenuse √(A² + B²)" },
-  log:     { label: "LOG",     description: "Log of x in any base   (Excel: =LOG(x, base))" },
-  delta:   { label: "DELTA",   description: "1 if A = B (within rounding), else 0 — tests exact equality   (Excel: =DELTA(a, b))" },
-  gestep:  { label: "GESTEP",  description: "1 if A ≥ B, else 0   (Excel: =GESTEP(a, step))" },
+  log:     { label: "LOG",     description: "Log of x in any base. Excel: LOG(x, base)." },
+  delta:   { label: "DELTA",   description: "1 if A = B (within rounding), else 0. Excel: DELTA(a, b)." },
+  gestep:  { label: "GESTEP",  description: "1 if A ≥ B, else 0. Excel: GESTEP(a, step)." },
 } satisfies Record<TwoInputMathOp, { label: string; description: string }>;
 
 export class TwoInputMathNode extends ClassicPreset.Node {
@@ -696,10 +696,10 @@ export class TwoInputMathNode extends ClassicPreset.Node {
 export type SumProductOp = "sumx2my2" | "sumx2py2" | "sumxmy2" | "sumproduct";
 
 export const SUM_PRODUCT_OP_META = {
-  sumx2my2: { label: "SUMX2MY2", description: "Σ(xi² − yi²) across two lists   (Excel: =SUMX2MY2)" },
-  sumx2py2: { label: "SUMX2PY2", description: "Σ(xi² + yi²)   (Excel: =SUMX2PY2)" },
-  sumxmy2:    { label: "SUMXMY2",    description: "Σ(xi − yi)²   (Excel: =SUMXMY2)" },
-  sumproduct: { label: "SUMPRODUCT", description: "Dot product Σ(xi × yi)   (Excel: =SUMPRODUCT(array1, array2))" },
+  sumx2my2: { label: "SUMX2MY2", description: "Σ(xi² − yi²) across two lists. Excel: SUMX2MY2." },
+  sumx2py2: { label: "SUMX2PY2", description: "Σ(xi² + yi²). Excel: SUMX2PY2." },
+  sumxmy2:    { label: "SUMXMY2",    description: "Σ(xi − yi)². Excel: SUMXMY2." },
+  sumproduct: { label: "SUMPRODUCT", description: "Dot product Σ(xi × yi). Excel: SUMPRODUCT(array1, array2)." },
 } satisfies Record<SumProductOp, { label: string; description: string }>;
 
 export class SumProductNode extends ClassicPreset.Node {
@@ -811,10 +811,10 @@ export class MultinomialNode extends ClassicPreset.Node {
 export type BesselOp = "besselj" | "bessely" | "besseli" | "besselk";
 
 export const BESSEL_OP_META = {
-  besselj: { label: "BESSELJ", description: "Bessel function of the first kind, order n   (Excel: =BESSELJ)" },
-  bessely: { label: "BESSELY", description: "Bessel function of the second kind, order n — x must be > 0   (Excel: =BESSELY)" },
-  besseli: { label: "BESSELI", description: "Modified Bessel function of the first kind, order n   (Excel: =BESSELI)" },
-  besselk: { label: "BESSELK", description: "Modified Bessel function of the second kind, order n — x must be > 0   (Excel: =BESSELK)" },
+  besselj: { label: "BESSELJ", description: "Bessel function of the first kind, order n. Excel: BESSELJ." },
+  bessely: { label: "BESSELY", description: "Bessel function of the second kind, order n; x must be > 0. Excel: BESSELY." },
+  besseli: { label: "BESSELI", description: "Modified Bessel function of the first kind, order n. Excel: BESSELI." },
+  besselk: { label: "BESSELK", description: "Modified Bessel function of the second kind, order n; x must be > 0. Excel: BESSELK." },
 } satisfies Record<BesselOp, { label: string; description: string }>;
 
 export class BesselNode extends ClassicPreset.Node {

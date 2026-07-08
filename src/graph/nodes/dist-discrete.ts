@@ -6,8 +6,8 @@ import { lnCombin, lnGamma, regularizedBeta, regularizedGamma } from "./mathUtil
 export type BinomDistOp = "pmf" | "cdf";
 
 export const BINOM_DIST_OP_META = {
-  pmf: { label: "PMF", description: "Binomial P(X = k) = C(n,k)·p^k·(1−p)^(n−k)   (Excel: BINOM.DIST, cumulative=FALSE)" },
-  cdf: { label: "CDF", description: "Binomial P(X ≤ k) — cumulative   (Excel: BINOM.DIST, cumulative=TRUE)" },
+  pmf: { label: "PMF", description: "Binomial P(X = k) = C(n,k)·p^k·(1−p)^(n−k). Excel: BINOM.DIST, cumulative=FALSE." },
+  cdf: { label: "CDF", description: "Cumulative binomial P(X ≤ k). Excel: BINOM.DIST, cumulative=TRUE." },
 } satisfies Record<BinomDistOp, { label: string; description: string }>;
 
 function binomPmf(k: number, n: number, p: number): number | null {
@@ -62,7 +62,7 @@ export class BinomDistNode extends ClassicPreset.Node {
 // ─── BINOM.INV ────────────────────────────────────────────────────────────────
 export const BINOM_INV_META = {
   label: "BINOM.INV",
-  description: "Smallest k such that BINOM.DIST(k, n, p) ≥ alpha   (Excel: BINOM.INV / CRITBINOM)",
+  description: "Smallest k such that BINOM.DIST(k, n, p) ≥ alpha. Excel: BINOM.INV / CRITBINOM.",
 };
 
 export class BinomInvNode extends ClassicPreset.Node {
@@ -109,8 +109,8 @@ export class BinomInvNode extends ClassicPreset.Node {
 export type PoissonDistOp = "pmf" | "cdf";
 
 export const POISSON_DIST_OP_META = {
-  pmf: { label: "PMF", description: "Poisson P(X = k) = e^(−λ)·λ^k/k!   (Excel: POISSON.DIST, cumulative=FALSE)" },
-  cdf: { label: "CDF", description: "Poisson P(X ≤ k) = 1 − Γ(k+1, λ)/Γ(k+1)   (Excel: POISSON.DIST, cumulative=TRUE)" },
+  pmf: { label: "PMF", description: "Poisson P(X = k) = e^(−λ)·λ^k/k! Excel: POISSON.DIST, cumulative=FALSE." },
+  cdf: { label: "CDF", description: "Poisson P(X ≤ k) = 1 − Γ(k+1, λ)/Γ(k+1). Excel: POISSON.DIST, cumulative=TRUE." },
 } satisfies Record<PoissonDistOp, { label: string; description: string }>;
 
 export class PoissonDistNode extends ClassicPreset.Node {
@@ -166,8 +166,8 @@ export class PoissonDistNode extends ClassicPreset.Node {
 export type HypgeomDistOp = "pmf" | "cdf";
 
 export const HYPGEOM_DIST_OP_META = {
-  pmf: { label: "PMF", description: "Hypergeometric P(X = k) = C(M,k)·C(N−M,n−k)/C(N,n)   (Excel: HYPGEOM.DIST, cumulative=FALSE)" },
-  cdf: { label: "CDF", description: "Hypergeometric cumulative P(X ≤ k)   (Excel: HYPGEOM.DIST, cumulative=TRUE)" },
+  pmf: { label: "PMF", description: "Hypergeometric P(X = k) = C(M,k)·C(N−M,n−k)/C(N,n). Excel: HYPGEOM.DIST, cumulative=FALSE." },
+  cdf: { label: "CDF", description: "Hypergeometric cumulative P(X ≤ k). Excel: HYPGEOM.DIST, cumulative=TRUE." },
 } satisfies Record<HypgeomDistOp, { label: string; description: string }>;
 
 function hypgeomPmf(k: number, n: number, M: number, N: number): number | null {
@@ -234,8 +234,8 @@ export class HypgeomDistNode extends ClassicPreset.Node {
 export type NegbinomDistOp = "pmf" | "cdf";
 
 export const NEGBINOM_DIST_OP_META = {
-  pmf: { label: "PMF", description: "Negative binomial P(X = k failures before r successes)   (Excel: NEGBINOM.DIST, cumulative=FALSE)" },
-  cdf: { label: "CDF", description: "Negative binomial cumulative   (Excel: NEGBINOM.DIST, cumulative=TRUE)" },
+  pmf: { label: "PMF", description: "Negative binomial P(X = k failures before r successes). Excel: NEGBINOM.DIST, cumulative=FALSE." },
+  cdf: { label: "CDF", description: "Negative binomial cumulative. Excel: NEGBINOM.DIST, cumulative=TRUE." },
 } satisfies Record<NegbinomDistOp, { label: string; description: string }>;
 
 export class NegbinomDistNode extends ClassicPreset.Node {

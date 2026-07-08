@@ -922,10 +922,10 @@ function summarizeReconcile(s: ReconcileSummary): string {
   if (s.pvm) {
     const p = s.pvm;
     const sign = (n: number) => (n >= 0 ? "+" : "");
-    out += `\n\n**Δ ${sign(p.delta)}${fmt(p.delta)}** — price ${sign(p.price)}${fmt(p.price)} · volume ${sign(p.volume)}${fmt(p.volume)} · mix ${sign(p.mix)}${fmt(p.mix)}`;
+    out += `\n\n**Δ ${sign(p.delta)}${fmt(p.delta)}**: price ${sign(p.price)}${fmt(p.price)} · volume ${sign(p.volume)}${fmt(p.volume)} · mix ${sign(p.mix)}${fmt(p.mix)}`;
     // The decomposition covers only rows with clean price+qty on both present sides;
     // say so when some were dropped, so Δ isn't read as the whole-population change.
-    if (p.excluded > 0) out += `\n\n_PVM excludes ${p.excluded} row${p.excluded === 1 ? "" : "s"} (blank/errored price or qty)._`;
+    if (p.excluded > 0) out += `\n\n_PVM excludes ${p.excluded} row${p.excluded === 1 ? "" : "s"} with blank or errored price or qty._`;
   }
   return out;
 }
@@ -1293,7 +1293,7 @@ export class XLookupNode extends ClassicPreset.Node {
     // 1-row frame (two aligned lists → Build Frame them together first).
     const tabular = isFrameValue(raw) || isCubeValue(raw) || (Array.isArray(raw) && Array.isArray((raw as unknown[])[0]));
     if (!tabular) {
-      this.cachedResult = solError("#VALUE!", "XLOOKUP needs a table or cube — Build Frame two aligned lists first");
+      this.cachedResult = solError("#VALUE!", "XLOOKUP needs a table or cube. Build Frame two aligned lists first.");
       return { value: this.cachedResult };
     }
     const src = asLookupSource(raw)!;

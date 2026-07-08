@@ -163,7 +163,7 @@ export function htmlTableToFrame(html: string, index1: number): FrameValue {
   const tables = doc.querySelectorAll("table");
   const idx = Math.max(1, Math.floor(index1 || 1)) - 1;
   const table = tables[idx] as HTMLTableElement | undefined;
-  if (!table) throw new Error(`No table #${index1} on the page (found ${tables.length}).`);
+  if (!table) throw new Error(`No table #${index1} on the page; found ${tables.length}.`);
   const rows = [...table.rows].map((tr) => [...tr.cells].map((td) => (td.textContent ?? "").replace(/\s+/g, " ").trim()));
   if (rows.length === 0) return { __frame: true, columns: [] };
   const firstIsHeader = table.tHead != null || [...table.rows[0].cells].every((c) => c.tagName === "TH");

@@ -240,7 +240,7 @@ export class ConvertNode extends ClassicPreset.Node {
     // CONVERT returns #N/A; kept as #N/A (not #UNIT!) so IFNA/ISNA still catch a
     // bad Convert pick, matching the node's long-standing contract.
     if (from && to && !commensurable(from.dim, to.dim)) {
-      const err = solError("#N/A", `Can't convert ${from.category} to ${to.category} — the units measure different things`);
+      const err = solError("#N/A", `Can't convert ${from.category} to ${to.category}: the units measure different things`);
       this.cachedResult = err;
       return { out: err };
     }

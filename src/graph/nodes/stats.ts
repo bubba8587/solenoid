@@ -32,8 +32,8 @@ function forPair(
 export type NthValueOp = "large" | "small";
 
 export const NTH_VALUE_OP_META = {
-  large: { label: "LARGE", description: "Kth largest value   (Excel: =LARGE)" },
-  small: { label: "SMALL", description: "Kth smallest value   (Excel: =SMALL)" },
+  large: { label: "LARGE", description: "Kth largest value. Excel: LARGE." },
+  small: { label: "SMALL", description: "Kth smallest value. Excel: SMALL." },
 } satisfies Record<NthValueOp, { label: string; description: string }>;
 
 export class NthValueNode extends ClassicPreset.Node {
@@ -111,7 +111,7 @@ export class PercentileNode extends ClassicPreset.Node {
         // outside it Excel returns #NUM!. Clamping here silently returned the
         // min/max element instead.
         if (p < 1 / (n + 1) || p > n / (n + 1)) {
-          const err = solError("#DOMAIN!", "Percentile is outside the EXC domain (1/(n+1), n/(n+1))");
+          const err = solError("#DOMAIN!", "Percentile is outside the EXC domain: it must lie strictly between 1/(n+1) and n/(n+1)");
           this.cachedResult = err; return { result: err };
         }
         const i = p * (n + 1) - 1;
@@ -210,8 +210,8 @@ export class PercentrankNode extends ClassicPreset.Node {
 export type RankOp = "eq" | "avg";
 
 export const RANK_OP_META = {
-  eq:  { label: "RANK.EQ",  description: "Rank — ties share the lowest rank   (Excel: =RANK.EQ)" },
-  avg: { label: "RANK.AVG", description: "Rank — ties share the average rank   (Excel: =RANK.AVG)" },
+  eq:  { label: "RANK.EQ",  description: "Rank; ties share the lowest rank. Excel: RANK.EQ." },
+  avg: { label: "RANK.AVG", description: "Rank; ties share the average rank. Excel: RANK.AVG." },
 } satisfies Record<RankOp, { label: string; description: string }>;
 
 export class RankNode extends ClassicPreset.Node {
@@ -245,8 +245,8 @@ export class RankNode extends ClassicPreset.Node {
 export type CorrelOp = "correl" | "rsq";
 
 export const CORREL_OP_META = {
-  correl: { label: "CORREL", description: "Pearson correlation r between two lists   (Excel: =CORREL)" },
-  rsq:    { label: "RSQ",    description: "R² — square of the correlation coefficient   (Excel: =RSQ)" },
+  correl: { label: "CORREL", description: "Pearson correlation r between two lists. Excel: CORREL." },
+  rsq:    { label: "RSQ",    description: "R², the square of the correlation coefficient. Excel: RSQ." },
 } satisfies Record<CorrelOp, { label: string; description: string }>;
 
 export class CorrelNode extends ClassicPreset.Node {
@@ -329,8 +329,8 @@ export class StandardizeNode extends ClassicPreset.Node {
 export type CovarianceOp = "pop" | "samp";
 
 export const COVARIANCE_OP_META = {
-  pop:  { label: "COVARIANCE.P", description: "Population covariance — how two lists move together; divides by n (use when you have every data point)   (Excel: =COVARIANCE.P)" },
-  samp: { label: "COVARIANCE.S", description: "Sample covariance — how two lists move together; divides by n−1 (use for a sample of a bigger population)   (Excel: =COVARIANCE.S)" },
+  pop:  { label: "COVARIANCE.P", description: "Population covariance: how two lists move together; divides by n. Use when you have every data point. Excel: COVARIANCE.P." },
+  samp: { label: "COVARIANCE.S", description: "Sample covariance: how two lists move together; divides by n−1. Use for a sample of a bigger population. Excel: COVARIANCE.S." },
 } satisfies Record<CovarianceOp, { label: string; description: string }>;
 
 export class CovarianceNode extends ClassicPreset.Node {
@@ -368,8 +368,8 @@ export class CovarianceNode extends ClassicPreset.Node {
 export type FisherOp = "fisher" | "fisherinv";
 
 export const FISHER_OP_META = {
-  fisher:    { label: "FISHER",    description: "Fisher transformation: atanh(x), valid for −1 < x < 1   (Excel: =FISHER)" },
-  fisherinv: { label: "FISHERINV", description: "Inverse Fisher: tanh(x)   (Excel: =FISHERINV)" },
+  fisher:    { label: "FISHER",    description: "Fisher transformation: atanh(x), valid for −1 < x < 1. Excel: FISHER." },
+  fisherinv: { label: "FISHERINV", description: "Inverse Fisher: tanh(x). Excel: FISHERINV." },
 } satisfies Record<FisherOp, { label: string; description: string }>;
 
 export class FisherNode extends ClassicPreset.Node {
@@ -411,9 +411,9 @@ export class FisherNode extends ClassicPreset.Node {
 export type RegressionOp = "slope" | "intercept" | "steyx";
 
 export const REGRESSION_OP_META = {
-  slope:     { label: "SLOPE",     description: "Slope of linear regression line through known_ys and known_xs   (Excel: =SLOPE(known_ys, known_xs))" },
-  intercept: { label: "INTERCEPT", description: "Y-intercept of linear regression line   (Excel: =INTERCEPT(known_ys, known_xs))" },
-  steyx:     { label: "STEYX",     description: "Standard error of predicted y-values in linear regression   (Excel: =STEYX(known_ys, known_xs))" },
+  slope:     { label: "SLOPE",     description: "Slope of linear regression line through known_ys and known_xs. Excel: SLOPE(known_ys, known_xs)." },
+  intercept: { label: "INTERCEPT", description: "Y-intercept of linear regression line. Excel: INTERCEPT(known_ys, known_xs)." },
+  steyx:     { label: "STEYX",     description: "Standard error of predicted y-values in linear regression. Excel: STEYX(known_ys, known_xs)." },
 } satisfies Record<RegressionOp, { label: string; description: string }>;
 
 export class RegressionNode extends ClassicPreset.Node {
@@ -631,8 +631,8 @@ export class FrequencyNode extends ClassicPreset.Node {
 export type ConfidenceOp = "norm" | "t";
 
 export const CONFIDENCE_OP_META = {
-  norm: { label: "NORM", description: "Confidence interval half-width using normal distribution   (Excel: =CONFIDENCE.NORM(alpha, stdev, n))" },
-  t:    { label: "T",    description: "Confidence interval half-width using t-distribution   (Excel: =CONFIDENCE.T(alpha, stdev, n))" },
+  norm: { label: "NORM", description: "Confidence interval half-width using normal distribution. Excel: CONFIDENCE.NORM(alpha, stdev, n)." },
+  t:    { label: "T",    description: "Confidence interval half-width using t-distribution. Excel: CONFIDENCE.T(alpha, stdev, n)." },
 } satisfies Record<ConfidenceOp, { label: string; description: string }>;
 
 function tCDF(x: number, df: number): number {
@@ -741,9 +741,9 @@ export class ZTestNode extends ClassicPreset.Node {
 export type TTestOp = "paired" | "equal-var" | "unequal-var";
 
 export const T_TEST_OP_META = {
-  paired:          { label: "Paired",       description: "Paired t-test — same subjects measured twice   (Excel: type=1)" },
-  "equal-var":     { label: "Equal var",    description: "Two-sample t-test with pooled variance   (Excel: type=2)" },
-  "unequal-var":   { label: "Unequal var",  description: "Welch's t-test — variances may differ   (Excel: type=3)" },
+  paired:          { label: "Paired",       description: "Paired t-test: the same subjects measured twice. Excel: T.TEST type 1." },
+  "equal-var":     { label: "Equal var",    description: "Two-sample t-test with pooled variance. Excel: T.TEST type 2." },
+  "unequal-var":   { label: "Unequal var",  description: "Welch's t-test: variances may differ. Excel: T.TEST type 3." },
 } satisfies Record<TTestOp, { label: string; description: string }>;
 
 export class TTestNode extends ClassicPreset.Node {

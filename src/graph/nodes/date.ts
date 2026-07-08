@@ -89,8 +89,8 @@ function isoWeek(d: Date): number {
 export type TodayNowOp = "today" | "now";
 
 export const TODAY_NOW_OP_META = {
-  today: { label: "TODAY", description: "Today's date as a serial number — wire to Date Part, EDATE, DAYS, etc.   (Excel: =TODAY())" },
-  now:   { label: "NOW",   description: "Current date + time as a serial — fractional part encodes time of day   (Excel: =NOW())" },
+  today: { label: "TODAY", description: "Today's date as a serial number. Wire it to Date Part, EDATE, or DAYS. Excel: TODAY()." },
+  now:   { label: "NOW",   description: "Current date + time as a serial; the fractional part encodes time of day. Excel: NOW()." },
 } satisfies Record<TodayNowOp, { label: string; description: string }>;
 
 export class TodayNowNode extends ClassicPreset.Node {
@@ -268,12 +268,12 @@ export class TimeValueNode extends ClassicPreset.Node {
 export type DatePartOp = "year" | "month" | "day" | "hour" | "minute" | "second";
 
 export const DATE_PART_OP_META = {
-  year:   { label: "YEAR",   description: "Year component of a date   (Excel: =YEAR)" },
-  month:  { label: "MONTH",  description: "Month component 1–12   (Excel: =MONTH)" },
-  day:    { label: "DAY",    description: "Day of month 1–31   (Excel: =DAY)" },
-  hour:   { label: "HOUR",   description: "Hour 0–23 from a date+time serial   (Excel: =HOUR)" },
-  minute: { label: "MINUTE", description: "Minute 0–59 from a date+time serial   (Excel: =MINUTE)" },
-  second: { label: "SECOND", description: "Second 0–59 from a date+time serial   (Excel: =SECOND)" },
+  year:   { label: "YEAR",   description: "Year component of a date. Excel: YEAR." },
+  month:  { label: "MONTH",  description: "Month component 1–12. Excel: MONTH." },
+  day:    { label: "DAY",    description: "Day of month 1–31. Excel: DAY." },
+  hour:   { label: "HOUR",   description: "Hour 0–23 from a date+time serial. Excel: HOUR." },
+  minute: { label: "MINUTE", description: "Minute 0–59 from a date+time serial. Excel: MINUTE." },
+  second: { label: "SECOND", description: "Second 0–59 from a date+time serial. Excel: SECOND." },
 } satisfies Record<DatePartOp, { label: string; description: string }>;
 
 export class DatePartNode extends ClassicPreset.Node {
@@ -313,9 +313,9 @@ export class DatePartNode extends ClassicPreset.Node {
 export type WeekInfoOp = "weekday" | "weeknum" | "isoweeknum";
 
 export const WEEK_INFO_OP_META = {
-  weekday:    { label: "WEEKDAY",    description: "Day of week — return_type 1: 1=Sun…7=Sat | 2: 1=Mon…7=Sun | 3: 0=Mon…6=Sun   (Excel: =WEEKDAY)" },
-  weeknum:    { label: "WEEKNUM",    description: "Week of year — return_type 1: Sun start | 2: Mon start   (Excel: =WEEKNUM)" },
-  isoweeknum: { label: "ISOWEEKNUM", description: "ISO 8601 week number — week containing first Thursday; Mon start (return_type ignored)   (Excel: =ISOWEEKNUM)" },
+  weekday:    { label: "WEEKDAY",    description: "Day of week. return_type 1: 1=Sun…7=Sat | 2: 1=Mon…7=Sun | 3: 0=Mon…6=Sun. Excel: WEEKDAY." },
+  weeknum:    { label: "WEEKNUM",    description: "Week of year. return_type 1: Sun start | 2: Mon start. Excel: WEEKNUM." },
+  isoweeknum: { label: "ISOWEEKNUM", description: "ISO 8601 week number: the week containing the first Thursday, Monday start. return_type is ignored. Excel: ISOWEEKNUM." },
 } satisfies Record<WeekInfoOp, { label: string; description: string }>;
 
 export class WeekInfoNode extends ClassicPreset.Node {
@@ -369,9 +369,9 @@ export class WeekInfoNode extends ClassicPreset.Node {
 export type DateDiffOp = "days" | "days360" | "yearfrac";
 
 export const DATE_DIFF_OP_META = {
-  days:     { label: "DAYS",     description: "Days between dates: end − start (basis ignored)   (Excel: =DAYS(end, start))" },
-  days360:  { label: "DAYS360",  description: "Days on a 360-day year — basis 0: US/NASD, 1: European   (Excel: =DAYS360)" },
-  yearfrac: { label: "YEARFRAC", description: "Fraction of year — basis 0: 30/360US, 1: actual/actual (≈÷365.25), 2: actual/360, 3: actual/365, 4: 30/360EU   (Excel: =YEARFRAC)" },
+  days:     { label: "DAYS",     description: "Days between dates: end − start (basis ignored). Excel: DAYS(end, start)." },
+  days360:  { label: "DAYS360",  description: "Days on a 360-day year. Basis 0: US/NASD, 1: European. Excel: DAYS360." },
+  yearfrac: { label: "YEARFRAC", description: "Fraction of year. Basis 0: 30/360US, 1: actual/actual (≈÷365.25), 2: actual/360, 3: actual/365, 4: 30/360EU. Excel: YEARFRAC." },
 } satisfies Record<DateDiffOp, { label: string; description: string }>;
 
 export class DateDiffNode extends ClassicPreset.Node {
@@ -441,8 +441,8 @@ export class DateDiffNode extends ClassicPreset.Node {
 export type DateAddOp = "edate" | "eomonth";
 
 export const DATE_ADD_OP_META = {
-  edate:   { label: "EDATE",   description: "Date N months before/after start, preserving day of month   (Excel: =EDATE)" },
-  eomonth: { label: "EOMONTH", description: "Last day of month N months before/after start   (Excel: =EOMONTH)" },
+  edate:   { label: "EDATE",   description: "Date N months before/after start, preserving day of month. Excel: EDATE." },
+  eomonth: { label: "EOMONTH", description: "Last day of month N months before/after start. Excel: EOMONTH." },
 } satisfies Record<DateAddOp, { label: string; description: string }>;
 
 export class DateAddNode extends ClassicPreset.Node {
