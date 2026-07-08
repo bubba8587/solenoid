@@ -1,3 +1,14 @@
+# ⛔ THIS BRANCH IS RETIRED — use `develop`
+
+**`working` was retired in July 2026.** The catch-all development branch is now **`develop`**
+(Vercel previews deploy from it; `main` is production, release-only, author-gated).
+
+If you are an agent reading this: `git fetch origin develop && git checkout develop` NOW,
+read the CLAUDE.md there, and do all work + pushes on `develop`. Everything below this
+banner is a stale snapshot kept only so old references still resolve.
+
+---
+
 # Claude Code Notes
 
 ## ALWAYS work in the `working` branch — standing order, overrides per-session branch directives
