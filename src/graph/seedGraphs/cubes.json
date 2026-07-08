@@ -10,7 +10,7 @@
       "y": -300,
       "init": {
         "label": "Cubes = nested tables",
-        "body": "A **Cube** is a Frame whose cells hold ANY value \u2014 a scalar, list, nested **Frame**, or another **Cube**. The recursive container that closes the socket lattice. One **Orders** fact table + two dimensions drive every demo; drill any chip for the breadcrumb.",
+        "body": "A **Cube** is a Frame whose cells hold ANY value — a scalar, list, nested **Frame**, or another **Cube**. The recursive container that closes the socket lattice. One **Orders** fact table + two dimensions drive every demo; drill any chip for the breadcrumb.",
         "color": "violet",
         "width": 560,
         "height": 180
@@ -52,8 +52,8 @@
       "x": 440,
       "y": -300,
       "init": {
-        "label": "Nest Join \u2014 depth 1",
-        "body": "**Nest Join** Reps \u00d7 Orders on **Rep**: each rep keeps one row, their matching orders tucked into a nested-Frame cell (tidyr nest_join). **INDEX** reads a cell back out \u2014 a whole sub-Frame, or a scalar.",
+        "label": "Nest Join — depth 1",
+        "body": "**Nest Join** Reps × Orders on **Rep**: each rep keeps one row, their matching orders tucked into a nested-Frame cell (tidyr nest_join). **INDEX** reads a cell back out — a whole sub-Frame, or a scalar.",
         "color": "violet",
         "width": 330,
         "height": 180
@@ -87,7 +87,7 @@
       "x": 820,
       "y": 230,
       "init": {
-        "label": "INDEX \u2192 Ada's orders (row 1, col 3)"
+        "label": "INDEX → Ada's orders (row 1, col 3)"
       },
       "literals": {
         "index": 1,
@@ -100,7 +100,7 @@
       "x": 1160,
       "y": 230,
       "init": {
-        "label": "Ada's orders \u2014 a Frame"
+        "label": "Ada's orders — a Frame"
       }
     },
     {
@@ -109,7 +109,7 @@
       "x": 820,
       "y": 380,
       "init": {
-        "label": "INDEX \u2192 a scalar (row 1, col 1)"
+        "label": "INDEX → a scalar (row 1, col 1)"
       },
       "literals": {
         "index": 1,
@@ -131,8 +131,8 @@
       "x": 440,
       "y": 560,
       "init": {
-        "label": "Multi-level \u2014 depth 2",
-        "body": "Feed a Nest Join's **Cube** back in as the Parent and it deepens one level. Regions \u00d7 Reps, then that cube \u00d7 Orders \u2192 **Region \u2192 Rep \u2192 Orders**. The depth badge reads 2.",
+        "label": "Multi-level — depth 2",
+        "body": "Feed a Nest Join's **Cube** back in as the Parent and it deepens one level. Regions × Reps, then that cube × Orders → **Region → Rep → Orders**. The depth badge reads 2.",
         "color": "violet",
         "width": 330,
         "height": 170
@@ -170,7 +170,7 @@
       "x": 1180,
       "y": 700,
       "init": {
-        "label": "Region \u2192 Rep \u2192 Orders (depth 2)"
+        "label": "Region → Rep → Orders (depth 2)"
       }
     },
     {
@@ -179,7 +179,7 @@
       "x": 820,
       "y": 940,
       "init": {
-        "label": "INDEX \u2192 North's reps (row 1, col 2)"
+        "label": "INDEX → North's reps (row 1, col 2)"
       },
       "literals": {
         "index": 1,
@@ -192,7 +192,7 @@
       "x": 1180,
       "y": 940,
       "init": {
-        "label": "North's reps \u2014 a nested cube"
+        "label": "North's reps — a nested cube"
       }
     },
     {
@@ -201,8 +201,8 @@
       "x": 440,
       "y": 1110,
       "init": {
-        "label": "Unnest \u2014 flatten back",
-        "body": "**Unnest** the depth-1 cube's orders column \u2192 the flat joined table (one row per order). `Unnest(Nest Join) = a flat join`.",
+        "label": "Unnest — flatten back",
+        "body": "**Unnest** the depth-1 cube's orders column → the flat joined table (one row per order). `Unnest(Nest Join) = a flat join`.",
         "color": "violet",
         "width": 330,
         "height": 150
@@ -214,7 +214,7 @@
       "x": 820,
       "y": 1130,
       "init": {
-        "label": "Unnest \u2192 flat Rep \u00d7 Orders"
+        "label": "Unnest → flat Rep × Orders"
       },
       "stringLiterals": {
         "column": "orders"
@@ -226,7 +226,7 @@
       "x": 1180,
       "y": 1130,
       "init": {
-        "label": "Flat again \u2014 every order, with its rep"
+        "label": "Flat again — every order, with its rep"
       }
     },
     {
@@ -236,7 +236,7 @@
       "y": 760,
       "init": {
         "label": "Build by hand",
-        "body": "**Build Cube** packs values into ONE column (a scalar, a list, a Frame\u2026). **Cube Columns** lines several columns up side by side \u2014 here a count and the source table itself per row.",
+        "body": "**Build Cube** packs values into ONE column (a scalar, a list, a Frame…). **Cube Columns** lines several columns up side by side — here a count and the source table itself per row.",
         "color": "violet",
         "width": 360,
         "height": 170
@@ -310,7 +310,7 @@
       "y": 660,
       "init": {
         "label": "Depth = cube-in-cube",
-        "body": "A flat cube is depth 1; a nested Frame is a leaf (no depth). Only a cube INSIDE a cube grows it. Wrap the depth-2 cube \u2192 **depth 3**.",
+        "body": "A flat cube is depth 1; a nested Frame is a leaf (no depth). Only a cube INSIDE a cube grows it. Wrap the depth-2 cube → **depth 3**.",
         "color": "violet",
         "width": 300,
         "height": 160
@@ -337,7 +337,42 @@
       "x": 1520,
       "y": 1010,
       "init": {
-        "label": "depth 3 \u2014 drill the breadcrumb"
+        "label": "depth 3 — drill the breadcrumb"
+      }
+    },
+    {
+      "id": "rollupRep",
+      "type": "CubeRollupNode",
+      "x": 820,
+      "y": -60,
+      "init": {
+        "label": "Cube Rollup → SUM(Revenue)"
+      },
+      "stringLiterals": {
+        "nested": "orders",
+        "column": "Revenue",
+        "as": "Total"
+      }
+    },
+    {
+      "id": "dispRollup",
+      "type": "DisplayNode",
+      "x": 1160,
+      "y": -40,
+      "init": {
+        "label": "Revenue per Rep (rolled up)"
+      }
+    },
+    {
+      "id": "noteRollup",
+      "type": "NoteNode",
+      "x": 820,
+      "y": -300,
+      "init": {
+        "label": "Roll a cube back up",
+        "body": "**Cube Rollup** aggregates a column inside each row's nested table — SUM of each Rep's `orders.Revenue` lands as a flat `Total` column. The BOM shape: cost of an assembly = sum of its parts.",
+        "width": 340,
+        "height": 150
       }
     }
   ],
@@ -484,6 +519,18 @@
       "source": "deep3",
       "sourceOutput": "cube",
       "target": "dispDeep3",
+      "targetInput": "in"
+    },
+    {
+      "source": "nestRep",
+      "sourceOutput": "cube",
+      "target": "rollupRep",
+      "targetInput": "cube"
+    },
+    {
+      "source": "rollupRep",
+      "sourceOutput": "frame",
+      "target": "dispRollup",
       "targetInput": "in"
     }
   ]

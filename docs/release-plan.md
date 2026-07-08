@@ -24,10 +24,11 @@ against code the same way as the backlog (delete/flip lines as they land).
     node, Report/Presenter, Cube, trust & data-quality nodes — all in.
 - **v2.0 bundle set** (`v2.0/`): built 01–07, 09, 11–15. OPEN bundles below.
 
-**tsc + full vitest (2331) green; `cargo test` (32 parity) green; 27 seeds load
-(`seeds.test.ts` — 29 files minus the two 2026-07-08 retirements, plus Live Market
-Data).** The tree is release-shaped; the committed 1.1 additions are in (§3) and the
-version is bumped — what's left is the author-run tail of §4.
+**tsc + full vitest green; `cargo test` (32 parity) green; 17 seeds load
+(`seeds.test.ts`).** The seed set was consolidated 27 → 17 on 2026-07-08 (the
+author-directed rebuild-from-scratch pass: six retired, four merged, Getting
+Started rebuilt). The tree is release-shaped; the committed 1.1 additions are in
+(§3) and the version is bumped — what's left is the author-run tail of §4.
 
 ## 2. The cut — DECIDED (author 2026-07-06)
 
@@ -133,7 +134,7 @@ Ordered; each must be green before the tag.
    *Status 2026-07-08: tsc clean, vitest 2331/2331 (after the seed retirements). `cargo test`
    must run on the author's Windows machine — the cloud container lacks Tauri's GTK deps.*
 2. **Every seed loads** — `seeds.test.ts` green; run the **seed-cleanup pass** (the
-   author-decreed last-minute polish: each of the 27 seeds loads clean and demos its
+   author-decreed last-minute polish: each of the 17 seeds loads clean and demos its
    feature; don't over-polish).
 3. **Author eyeball pass** — consolidate the "author eyeball" notes from the dev-notes
    digests into one list and walk it on the dev server (the author's verification path).
