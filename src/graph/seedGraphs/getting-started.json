@@ -202,61 +202,6 @@
       }
     },
     {
-      "id": "f66cfed86a572601",
-      "type": "NumberInputNode",
-      "x": -319,
-      "y": 1445,
-      "init": {
-        "label": "Angle (°)",
-        "value": 90,
-        "width": 180,
-        "height": 76
-      }
-    },
-    {
-      "id": "aaa06a904afaf457",
-      "type": "ConvertNode",
-      "x": 6,
-      "y": 1210,
-      "init": {
-        "label": "deg → rad",
-        "fromUnit": "deg",
-        "toUnit": "rad",
-        "unit": "rad",
-        "width": 180,
-        "height": 318
-      }
-    },
-    {
-      "id": "5feee99669621980",
-      "type": "MathFnNode",
-      "x": 393,
-      "y": 1146,
-      "init": {
-        "label": "SIN",
-        "op": "sin",
-        "width": 180,
-        "height": 149,
-        "in": 0
-      },
-      "literals": {
-        "in": 0
-      },
-      "stringLiterals": {}
-    },
-    {
-      "id": "c04528d541196409",
-      "type": "DisplayNode",
-      "x": 703,
-      "y": 1143,
-      "init": {
-        "label": "sin θ",
-        "unitSuffix": "none",
-        "width": 180,
-        "height": 88
-      }
-    },
-    {
       "id": "eccce2ca25f6520e",
       "type": "NumberInputNode",
       "x": 758,
@@ -336,111 +281,6 @@
         "unit": "km",
         "customUnit": "",
         "socketDataType": "numlist",
-        "textCase": "none",
-        "bold": false,
-        "italic": false,
-        "textScale": 14,
-        "width": 152,
-        "height": 91
-      }
-    },
-    {
-      "id": "978d75753283e617",
-      "type": "NumberInputNode",
-      "x": -319,
-      "y": 1004,
-      "init": {
-        "label": "Score 1",
-        "value": 82,
-        "width": 180,
-        "height": 76
-      }
-    },
-    {
-      "id": "367d1801d5d456a1",
-      "type": "NumberInputNode",
-      "x": -319,
-      "y": 1101,
-      "init": {
-        "label": "Score 2",
-        "value": 91,
-        "width": 180,
-        "height": 76
-      }
-    },
-    {
-      "id": "39ee49c402cbb7c0",
-      "type": "NumberInputNode",
-      "x": -319,
-      "y": 1198,
-      "init": {
-        "label": "Score 3",
-        "value": 76,
-        "width": 180,
-        "height": 76
-      }
-    },
-    {
-      "id": "6c239c5de09b96d8",
-      "type": "ListInputNode",
-      "x": -32,
-      "y": 981,
-      "init": {
-        "label": "List",
-        "width": 180,
-        "height": 208,
-        "valueKeys": [
-          "v0",
-          "v1",
-          "v2"
-        ]
-      },
-      "literals": {},
-      "stringLiterals": {}
-    },
-    {
-      "id": "b15db1d93852021e",
-      "type": "AggregateNode",
-      "x": 393,
-      "y": 917,
-      "init": {
-        "label": "AVERAGE",
-        "op": "avg",
-        "width": 180,
-        "height": 149
-      },
-      "literals": {},
-      "stringLiterals": {}
-    },
-    {
-      "id": "fddd6f45ce0636b1",
-      "type": "DisplayNode",
-      "x": 703,
-      "y": 897,
-      "init": {
-        "label": "Average score",
-        "unitSuffix": "none",
-        "width": 180,
-        "height": 88
-      }
-    },
-    {
-      "id": "5126bc6aa4d5e879",
-      "type": "FormatControllerNode",
-      "x": 885,
-      "y": 910,
-      "init": {
-        "label": "Format",
-        "hostNodeId": "fddd6f45ce0636b1",
-        "socketKey": "out",
-        "side": "output",
-        "format": "decimal",
-        "customPattern": "0.00",
-        "decimalDigits": 1,
-        "decimalMode": "places",
-        "unit": "none",
-        "customUnit": "",
-        "socketDataType": "number",
         "textCase": "none",
         "bold": false,
         "italic": false,
@@ -612,29 +452,100 @@
       }
     },
     {
-      "id": "32c3411794b8d4d9",
-      "type": "GroupNode",
-      "x": -343,
-      "y": 841,
+      "id": "gs-sales",
+      "type": "FrameInputNode",
+      "x": -325,
+      "y": 900,
       "init": {
-        "label": "Trig & averages",
-        "members": [
-          "f66cfed86a572601",
-          "aaa06a904afaf457",
-          "5feee99669621980",
-          "c04528d541196409",
-          "978d75753283e617",
-          "367d1801d5d456a1",
-          "39ee49c402cbb7c0",
-          "6c239c5de09b96d8",
-          "b15db1d93852021e",
-          "fddd6f45ce0636b1",
-          "5126bc6aa4d5e879"
-        ],
+        "label": "Quarterly sales",
+        "frameText": "[{\"name\": \"Quarter\", \"type\": \"string\", \"values\": [\"Q1\", \"Q2\", \"Q3\", \"Q4\"]}, {\"name\": \"Sales\", \"type\": \"number\", \"values\": [1200, 1550, 1340, 1810]}]"
+      }
+    },
+    {
+      "id": "gs-chart",
+      "type": "ChartNode",
+      "x": -20,
+      "y": 880,
+      "init": {
+        "label": "Sales by quarter",
+        "op": "column"
+      }
+    },
+    {
+      "id": "gs-getcol",
+      "type": "GetColumnNode",
+      "x": -20,
+      "y": 1190,
+      "init": {
+        "label": "Get Column → Sales"
+      },
+      "stringLiterals": {
+        "name": "Sales"
+      }
+    },
+    {
+      "id": "gs-sum",
+      "type": "AggregateNode",
+      "x": 250,
+      "y": 1210,
+      "init": {
+        "label": "SUM",
+        "op": "sum"
+      }
+    },
+    {
+      "id": "gs-total",
+      "type": "DisplayNode",
+      "x": 500,
+      "y": 1200,
+      "init": {
+        "label": "Total sales"
+      }
+    },
+    {
+      "id": "gs-fc",
+      "type": "FormatControllerNode",
+      "x": 680,
+      "y": 1215,
+      "init": {
+        "label": "Format",
+        "hostNodeId": "gs-total",
+        "socketKey": "out",
+        "side": "output",
+        "format": "decimal",
+        "customPattern": "0.00",
+        "decimalDigits": 0,
+        "decimalMode": "places",
+        "unit": "usd",
+        "customUnit": "",
+        "socketDataType": "numlist",
+        "textCase": "none",
+        "bold": false,
+        "italic": false,
+        "textScale": 14,
+        "width": 152,
+        "height": 91
+      }
+    },
+    {
+      "id": "gs-group",
+      "type": "GroupNode",
+      "x": -345,
+      "y": 850,
+      "init": {
+        "label": "Tables & charts",
         "color": "amber",
-        "collapsed": true,
-        "width": 1406,
-        "height": 715
+        "collapsed": false,
+        "width": 1210,
+        "height": 560,
+        "members": [
+          "gs-sales",
+          "gs-chart",
+          "gs-getcol",
+          "gs-sum",
+          "gs-total",
+          "gs-fc"
+        ]
       }
     }
   ],
@@ -652,24 +563,6 @@
       "targetInput": "b"
     },
     {
-      "source": "f66cfed86a572601",
-      "sourceOutput": "value",
-      "target": "aaa06a904afaf457",
-      "targetInput": "in"
-    },
-    {
-      "source": "aaa06a904afaf457",
-      "sourceOutput": "out",
-      "target": "5feee99669621980",
-      "targetInput": "in"
-    },
-    {
-      "source": "5feee99669621980",
-      "sourceOutput": "result",
-      "target": "c04528d541196409",
-      "targetInput": "in"
-    },
-    {
       "source": "81e3f277a3a0a7b2",
       "sourceOutput": "out",
       "target": "9232ae9ba13eb334",
@@ -685,42 +578,6 @@
       "source": "9232ae9ba13eb334",
       "sourceOutput": "out",
       "target": "e4fac14f53029814",
-      "targetInput": "in"
-    },
-    {
-      "source": "978d75753283e617",
-      "sourceOutput": "value",
-      "target": "6c239c5de09b96d8",
-      "targetInput": "v0"
-    },
-    {
-      "source": "367d1801d5d456a1",
-      "sourceOutput": "value",
-      "target": "6c239c5de09b96d8",
-      "targetInput": "v1"
-    },
-    {
-      "source": "39ee49c402cbb7c0",
-      "sourceOutput": "value",
-      "target": "6c239c5de09b96d8",
-      "targetInput": "v2"
-    },
-    {
-      "source": "6c239c5de09b96d8",
-      "sourceOutput": "list",
-      "target": "b15db1d93852021e",
-      "targetInput": "list"
-    },
-    {
-      "source": "b15db1d93852021e",
-      "sourceOutput": "result",
-      "target": "fddd6f45ce0636b1",
-      "targetInput": "in"
-    },
-    {
-      "source": "fddd6f45ce0636b1",
-      "sourceOutput": "out",
-      "target": "5126bc6aa4d5e879",
       "targetInput": "in"
     },
     {
@@ -794,6 +651,39 @@
       "sourceOutput": "out",
       "target": "fb924a7fb971dd3a",
       "targetInput": "in"
+    },
+    {
+      "source": "gs-sales",
+      "sourceOutput": "frame",
+      "target": "gs-chart",
+      "targetInput": "values"
+    },
+    {
+      "source": "gs-sales",
+      "sourceOutput": "frame",
+      "target": "gs-getcol",
+      "targetInput": "frame"
+    },
+    {
+      "source": "gs-getcol",
+      "sourceOutput": "values",
+      "target": "gs-sum",
+      "targetInput": "list"
+    },
+    {
+      "source": "gs-sum",
+      "sourceOutput": "result",
+      "target": "gs-total",
+      "targetInput": "in"
+    }
+  ],
+  "comments": [
+    {
+      "id": "gs-cm1",
+      "nodeId": "gs-chart",
+      "author": "You",
+      "text": "Every entry in File → New from example is a live canvas like this one. Ctrl+K searches every command.",
+      "resolved": false
     }
   ]
 }

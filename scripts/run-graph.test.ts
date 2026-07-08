@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { runGraph } from "./run-graph";
 import { isFrameValue, type FrameValue } from "../src/graph/frame";
-import frames from "../src/graph/seedGraphs/frames.json";
+import gettingStarted from "../src/graph/seedGraphs/getting-started.json";
 import tableVerbs from "../src/graph/seedGraphs/table-verbs.json";
 
 // scripts/run-graph.ts is the headless CLI (bundle 07, "in → through → out →
@@ -19,11 +19,11 @@ describe("run-graph (headless CLI)", () => {
 
   it("runs a saved graph outside the browser and prints real values, keyed by label", async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const out = await runGraph(frames as any);
-    expect(out["Column names"]).toEqual({ result: ["Year", "Revenue", "Profit"] });
-    const built = out["Build Frame = Matrix + headers"] as { frame: FrameValue };
-    expect(isFrameValue(built.frame)).toBe(true);
-    expect(built.frame.columns.map((c) => c.name)).toEqual(["Year", "Revenue", "Profit"]);
+    const out = await runGraph(gettingStarted as any);
+    const sales = out["Quarterly sales"] as { frame: FrameValue };
+    expect(isFrameValue(sales.frame)).toBe(true);
+    expect(sales.frame.columns.map((c) => c.name)).toEqual(["Quarter", "Sales"]);
+    expect(out["SUM"]).toEqual({ result: 1200 + 1550 + 1340 + 1810 });
   });
 
   it("routes Join and Group By (Polars-backed on desktop) through the JS oracle correctly, with lazy handles resolved before printing", async () => {
