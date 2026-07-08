@@ -5,5 +5,8 @@ import katex, { type KatexOptions } from "katex";
 import "katex/dist/katex.min.css";
 
 export function renderTex(latex: string, options?: KatexOptions): string {
-  return katex.renderToString(latex, options);
+  // output: "html" — the default (htmlAndMathml) emits a hidden MathML copy of the
+  // whole formula alongside the visible HTML tree, nearly doubling each formula's
+  // DOM node count for no visual difference. Canvas cards render dozens of formulas.
+  return katex.renderToString(latex, { output: "html", ...options });
 }
