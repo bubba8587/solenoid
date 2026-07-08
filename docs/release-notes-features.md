@@ -14,9 +14,11 @@ Order = rough selling priority. Mark `[slide]` on the ones worth a What's-New sl
   (drive an input until an output hits a target), **Scenarios**, **Data Table** (sweep
   a grid of inputs), and **Simulation**. Heavy ones are arm-and-run: a Solve button and
   a stale dot, so nothing recomputes behind your back.
-- **[slide] Live market & economic data.** *(1.1 build)* Pull FRED economic series and
-  stock/FX quotes straight onto the canvas with your own API keys — refreshes on a timer,
-  charts in a click, never bakes data into the file.
+- **[slide] Live market & economic data.** Pull FRED economic series straight onto the
+  canvas with **no API key** — pick a date range and frequency, chart it in a click, and
+  compute on the real series. Stock history comes via a free Alpha Vantage key. Feeds
+  refresh on a timer and never bake data into the file. (The **Live Market Data** seed
+  is the demo.)
 - **[slide] Every chart Excel has, and then some.** Pie, Scatter, Bubble, Radar,
   RadialBar, Funnel, Composed — plus **Treemap, Sankey, Histogram, KPI cards, Bullet
   graphs**, and a date-range control. All themed to your palette.

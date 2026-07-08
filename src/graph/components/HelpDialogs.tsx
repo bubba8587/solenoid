@@ -14,11 +14,11 @@ const SLIDES: Slide[] = [
   },
   {
     title: "What-if analysis",
-    body: "A composite container can run as Goal Seek, Scenarios, a Data Table, or a Monte Carlo simulation. The heavier modes recompute when you press Solve, and a marker shows when the result no longer matches its inputs.",
+    body: "A composite container can run as Goal Seek, Scenarios, a Data Table, or an iterative Simulation. The heavier modes recompute when you press Solve, and a marker shows when the result no longer matches its inputs.",
   },
   {
     title: "Live market and economic data",
-    body: "Pull FRED economic series and stock or FX quotes onto the canvas with your own API keys. They refresh on a timer and are never saved into the file.",
+    body: "Pull FRED economic series onto the canvas with no API key, and stock history with a free Alpha Vantage key. Feeds refresh on a timer and are never saved into the file.",
   },
   {
     title: "More chart types",
