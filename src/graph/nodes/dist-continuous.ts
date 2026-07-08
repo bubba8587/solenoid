@@ -13,9 +13,9 @@ import {
 export type FDistOp = "cdf" | "pdf" | "rt";
 
 export const F_DIST_OP_META = {
-  cdf: { label: "CDF",        description: "Left-tail F cumulative distribution (Excel: F.DIST)" },
+  cdf: { label: "CDF",        description: "Left-tail F cumulative distribution. Excel: F.DIST." },
   pdf: { label: "PDF",        description: "Probability density" },
-  rt:  { label: "Right-tail", description: "Right-tail F probability (Excel: F.DIST.RT)" },
+  rt:  { label: "Right-tail", description: "Right-tail F probability. Excel: F.DIST.RT." },
 } satisfies Record<FDistOp, { label: string; description: string }>;
 
 export class FDistNode extends ClassicPreset.Node {
@@ -73,8 +73,8 @@ export class FDistNode extends ClassicPreset.Node {
 export type FInvOp = "left" | "rt";
 
 export const F_INV_OP_META = {
-  left: { label: "Left",       description: "Inverse of left-tail F distribution (Excel: F.INV)" },
-  rt:   { label: "Right-tail", description: "Inverse of right-tail F distribution (Excel: F.INV.RT)" },
+  left: { label: "Left",       description: "Inverse of left-tail F distribution. Excel: F.INV." },
+  rt:   { label: "Right-tail", description: "Inverse of right-tail F distribution. Excel: F.INV.RT." },
 } satisfies Record<FInvOp, { label: string; description: string }>;
 
 export class FInvNode extends ClassicPreset.Node {
@@ -115,8 +115,8 @@ export class FInvNode extends ClassicPreset.Node {
 export type BetaDistOp = "cdf" | "pdf";
 
 export const BETA_DIST_OP_META = {
-  cdf: { label: "CDF", description: "Beta cumulative distribution I_x(alpha, beta) (Excel: BETA.DIST, cumulative=TRUE)" },
-  pdf: { label: "PDF", description: "Beta probability density (Excel: BETA.DIST, cumulative=FALSE)" },
+  cdf: { label: "CDF", description: "Beta cumulative distribution I_x(alpha, beta). Excel: BETA.DIST, cumulative=TRUE." },
+  pdf: { label: "PDF", description: "Beta probability density. Excel: BETA.DIST, cumulative=FALSE." },
 } satisfies Record<BetaDistOp, { label: string; description: string }>;
 
 export class BetaDistNode extends ClassicPreset.Node {
@@ -203,8 +203,8 @@ export class BetaInvNode extends ClassicPreset.Node {
 export type GammaDistOp = "cdf" | "pdf";
 
 export const GAMMA_DIST_OP_META = {
-  cdf: { label: "CDF", description: "Gamma cumulative distribution (Excel: GAMMA.DIST, cumulative=TRUE)" },
-  pdf: { label: "PDF", description: "Gamma probability density (Excel: GAMMA.DIST, cumulative=FALSE)" },
+  cdf: { label: "CDF", description: "Gamma cumulative distribution. Excel: GAMMA.DIST, cumulative=TRUE." },
+  pdf: { label: "PDF", description: "Gamma probability density. Excel: GAMMA.DIST, cumulative=FALSE." },
 } satisfies Record<GammaDistOp, { label: string; description: string }>;
 
 export class GammaDistNode extends ClassicPreset.Node {
@@ -280,8 +280,8 @@ export class GammaInvNode extends ClassicPreset.Node {
 export type LognormDistOp = "cdf" | "pdf";
 
 export const LOGNORM_DIST_OP_META = {
-  cdf: { label: "CDF", description: "Lognormal CDF — Φ((ln(x)−μ)/σ)   (Excel: LOGNORM.DIST)" },
-  pdf: { label: "PDF", description: "Lognormal PDF   (Excel: LOGNORM.DIST, cumulative=FALSE)" },
+  cdf: { label: "CDF", description: "Lognormal CDF: Φ((ln(x)−μ)/σ). Excel: LOGNORM.DIST." },
+  pdf: { label: "PDF", description: "Lognormal PDF. Excel: LOGNORM.DIST, cumulative=FALSE." },
 } satisfies Record<LognormDistOp, { label: string; description: string }>;
 
 export class LognormDistNode extends ClassicPreset.Node {
@@ -357,8 +357,8 @@ export class LognormInvNode extends ClassicPreset.Node {
 export type WeibullDistOp = "cdf" | "pdf";
 
 export const WEIBULL_DIST_OP_META = {
-  cdf: { label: "CDF", description: "Weibull CDF: 1 − exp(−(x/β)^α)   (Excel: WEIBULL.DIST, cumulative=TRUE)" },
-  pdf: { label: "PDF", description: "Weibull PDF   (Excel: WEIBULL.DIST, cumulative=FALSE)" },
+  cdf: { label: "CDF", description: "Weibull CDF: 1 − exp(−(x/β)^α). Excel: WEIBULL.DIST, cumulative=TRUE." },
+  pdf: { label: "PDF", description: "Weibull PDF. Excel: WEIBULL.DIST, cumulative=FALSE." },
 } satisfies Record<WeibullDistOp, { label: string; description: string }>;
 
 export class WeibullDistNode extends ClassicPreset.Node {
@@ -405,8 +405,8 @@ export class WeibullDistNode extends ClassicPreset.Node {
 export type ExponDistOp = "cdf" | "pdf";
 
 export const EXPON_DIST_OP_META = {
-  cdf: { label: "CDF", description: "Exponential CDF: 1 − e^(−λx)   (Excel: EXPON.DIST, cumulative=TRUE)" },
-  pdf: { label: "PDF", description: "Exponential PDF: λ·e^(−λx)   (Excel: EXPON.DIST, cumulative=FALSE)" },
+  cdf: { label: "CDF", description: "Exponential CDF: 1 − e^(−λx). Excel: EXPON.DIST, cumulative=TRUE." },
+  pdf: { label: "PDF", description: "Exponential PDF: λ·e^(−λx). Excel: EXPON.DIST, cumulative=FALSE." },
 } satisfies Record<ExponDistOp, { label: string; description: string }>;
 
 export class ExponDistNode extends ClassicPreset.Node {

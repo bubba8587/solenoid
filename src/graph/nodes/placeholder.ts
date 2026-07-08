@@ -48,7 +48,7 @@ export class PlaceholderNode extends ClassicPreset.Node {
   data(): Record<string, unknown> {
     const err = solError(
       "#REF!",
-      `This node ("${this.missingType}") isn't available here — turn its pack on, or open in a build that has it, to restore it.`,
+      `This node ("${this.missingType}") isn't available here. Turn its pack on, or open in a build that has it, to restore it.`,
     );
     const out: Record<string, unknown> = {};
     for (const k of Object.keys(this.outputs)) out[k] = err;

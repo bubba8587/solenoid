@@ -486,7 +486,7 @@ export class CompositeNode extends ClassicPreset.Node {
   private seedInternalLoopErrors(): void {
     const loop = loopMembers(this.internalEditor);
     if (loop.size === 0) return;
-    const circErr = solError("#CIRC!", "This node is part of a circular dependency inside the composite — the calculation feeds back into itself. Switch the container to Simulation mode to run it as a feedback loop instead.");
+    const circErr = solError("#CIRC!", "This node is part of a circular dependency inside the composite: the calculation feeds back into itself. Switch the container to Simulation mode to run it as a feedback loop instead.");
     for (const id of loop) {
       const node = this.internalEditor.getNode(id);
       if (!node) continue;

@@ -43,7 +43,7 @@ export class TextInputNode extends ClassicPreset.Node {
 const PROMO_LINES = [
   "Solenoid: wire it, don't write it. ⚡",
   "Spreadsheets, but the formulas have shapes now.",
-  "No more =SUM(A1:A8) — just plug it in.",
+  "No more =SUM(A1:A8). Just plug it in.",
   "Every cell wishes it were a node.",
   "Built with Excel envy and React. 🔌",
   "If you can chart it, you can wire it.",
@@ -79,11 +79,11 @@ export class PromoNode extends ClassicPreset.Node {
 export type TextTransformOp = "upper" | "lower" | "trim" | "proper" | "clean";
 
 export const TEXT_TRANSFORM_OP_META = {
-  upper:  { label: "UPPER",  description: "Convert all characters to uppercase   (Excel: =UPPER)" },
-  lower:  { label: "LOWER",  description: "Convert all characters to lowercase   (Excel: =LOWER)" },
-  trim:   { label: "TRIM",   description: "Remove leading/trailing spaces and collapse internal spaces   (Excel: =TRIM)" },
-  proper: { label: "PROPER", description: "Capitalize the first letter of each word   (Excel: =PROPER)" },
-  clean:  { label: "CLEAN",  description: "Remove non-printable control characters (ASCII 0–31)   (Excel: =CLEAN)" },
+  upper:  { label: "UPPER",  description: "Convert all characters to uppercase. Excel: UPPER." },
+  lower:  { label: "LOWER",  description: "Convert all characters to lowercase. Excel: LOWER." },
+  trim:   { label: "TRIM",   description: "Remove leading/trailing spaces and collapse internal spaces. Excel: TRIM." },
+  proper: { label: "PROPER", description: "Capitalize the first letter of each word. Excel: PROPER." },
+  clean:  { label: "CLEAN",  description: "Remove non-printable control characters (ASCII 0–31). Excel: CLEAN." },
 } satisfies Record<TextTransformOp, { label: string; description: string }>;
 
 // UPPER/LOWER/TRIM are verified byte-identical to Formula.js, so those three route
@@ -203,9 +203,9 @@ export class ConcatNode extends ClassicPreset.Node {
 export type TextSliceOp = "left" | "right" | "mid";
 
 export const TEXT_SLICE_OP_META = {
-  left:  { label: "LEFT",  description: "First N characters   (Excel: =LEFT)" },
-  right: { label: "RIGHT", description: "Last N characters   (Excel: =RIGHT)" },
-  mid:   { label: "MID",   description: "Substring starting at position Start with length Len (1-based)   (Excel: =MID)" },
+  left:  { label: "LEFT",  description: "First N characters. Excel: LEFT." },
+  right: { label: "RIGHT", description: "Last N characters. Excel: RIGHT." },
+  mid:   { label: "MID",   description: "Substring starting at position Start with length Len (1-based). Excel: MID." },
 } satisfies Record<TextSliceOp, { label: string; description: string }>;
 
 export class TextSliceNode extends ClassicPreset.Node {
@@ -250,8 +250,8 @@ export class TextSliceNode extends ClassicPreset.Node {
 export type TextFindOp = "find" | "search";
 
 export const TEXT_FIND_OP_META = {
-  find:   { label: "FIND",   description: "1-based position of find_text in within_text (case-sensitive); #VALUE! if not found   (Excel: =FIND)" },
-  search: { label: "SEARCH", description: "1-based position of find_text in within_text (case-insensitive); #VALUE! if not found   (Excel: =SEARCH)" },
+  find:   { label: "FIND",   description: "1-based position of find_text in within_text (case-sensitive); #VALUE! if not found. Excel: FIND." },
+  search: { label: "SEARCH", description: "1-based position of find_text in within_text (case-insensitive); #VALUE! if not found. Excel: SEARCH." },
 } satisfies Record<TextFindOp, { label: string; description: string }>;
 
 export class TextFindNode extends ClassicPreset.Node {
@@ -507,8 +507,8 @@ export class TextSplitNode extends ClassicPreset.Node {
 export type TextAfterBeforeOp = "after" | "before";
 
 export const TEXT_AFTER_BEFORE_OP_META = {
-  after:  { label: "TEXTAFTER",  description: "Text after the first occurrence of delimiter — null if not found   (Excel: =TEXTAFTER)" },
-  before: { label: "TEXTBEFORE", description: "Text before the first occurrence of delimiter — null if not found   (Excel: =TEXTBEFORE)" },
+  after:  { label: "TEXTAFTER",  description: "Text after the first occurrence of delimiter; null if not found. Excel: TEXTAFTER." },
+  before: { label: "TEXTBEFORE", description: "Text before the first occurrence of delimiter; null if not found. Excel: TEXTBEFORE." },
 } satisfies Record<TextAfterBeforeOp, { label: string; description: string }>;
 
 export class TextAfterBeforeNode extends ClassicPreset.Node {
@@ -573,7 +573,7 @@ export class ExactNode extends ClassicPreset.Node {
 export type TextFilterOp = "contains" | "not_contains" | "starts_with" | "ends_with";
 
 export const TEXT_FILTER_OP_META = {
-  contains:     { label: "Contains",     description: "Keep strings that contain the pattern (case-sensitive)" },
+  contains:     { label: "Contains",     description: "Keep strings that contain the pattern; case-sensitive" },
   not_contains: { label: "Not contains", description: "Keep strings that do NOT contain the pattern" },
   starts_with:  { label: "Starts with",  description: "Keep strings that begin with the pattern" },
   ends_with:    { label: "Ends with",    description: "Keep strings that end with the pattern" },
@@ -822,10 +822,10 @@ export class FixedNode extends ClassicPreset.Node {
 export type RegexOp = "test" | "extract" | "extract_all" | "replace";
 
 export const REGEX_OP_META: Record<RegexOp, { label: string; description: string }> = {
-  test:        { label: "REGEXTEST",         description: "Returns 1 if text matches the pattern, else 0. Wired list input broadcasts element-wise.   (Excel 365: =REGEXTEST)" },
-  extract:     { label: "REGEXEXTRACT",      description: "Returns the first match found in text, or empty string if none. Wired list input returns a list of first matches.   (Excel 365: =REGEXEXTRACT)" },
-  extract_all: { label: "REGEXEXTRACT (all)", description: "Returns all matches found in a single string as a list.   (Excel 365: =REGEXEXTRACT with return_all=TRUE)" },
-  replace:     { label: "REGEXREPLACE",      description: "Replaces all regex matches with the replacement string. Wired list input broadcasts element-wise.   (Excel 365: =REGEXREPLACE)" },
+  test:        { label: "REGEXTEST",         description: "Returns 1 if text matches the pattern, else 0. Wired list input broadcasts element-wise. Excel 365: REGEXTEST." },
+  extract:     { label: "REGEXEXTRACT",      description: "Returns the first match found in text, or empty string if none. Wired list input returns a list of first matches. Excel 365: REGEXEXTRACT." },
+  extract_all: { label: "REGEXEXTRACT (all)", description: "Returns all matches found in a single string as a list. Excel 365: REGEXEXTRACT with return_all=TRUE." },
+  replace:     { label: "REGEXREPLACE",      description: "Replaces all regex matches with the replacement string. Wired list input broadcasts element-wise. Excel 365: REGEXREPLACE." },
 };
 
 function safeRegex(pattern: string, flags: string): RegExp | null {

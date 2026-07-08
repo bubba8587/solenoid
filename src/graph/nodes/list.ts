@@ -258,7 +258,7 @@ export class ListIndexNode extends ClassicPreset.Node {
     if (!Array.isArray(v)) {
       // A scalar wired in is a 1×1 — row/col 1 returns it, anything else #REF!.
       const ok = r === 0 && (col === null || Math.round(col) === 1);
-      const res = ok ? (v as number) : solError("#REF!", "Index is outside a single value (1)");
+      const res = ok ? (v as number) : solError("#REF!", "Index is outside a single value; only index 1 exists");
       this.cachedResult = res;
       return { result: res };
     }
@@ -510,10 +510,10 @@ export type SetOp = "union" | "intersect" | "difference" | "symdiff";
 // selector carries the symbols); tex = the set notation rendered on the card; plain =
 // the Unicode fallback shown until the KaTeX chunk loads.
 export const SET_OP_META: Record<SetOp, { label: string; tex: string; plain: string }> = {
-  union:      { label: "Union (in A or B)",             tex: "A \\cup B",                plain: "A ∪ B" },
-  intersect:  { label: "Intersection (in both)",        tex: "A \\cap B",                plain: "A ∩ B" },
-  difference: { label: "Difference (in A, not B)",      tex: "A \\setminus B",           plain: "A ∖ B" },
-  symdiff:    { label: "Symmetric difference (in one only)", tex: "A \\mathbin{\\triangle} B", plain: "A △ B" },
+  union:      { label: "Union: in A or B",             tex: "A \\cup B",                plain: "A ∪ B" },
+  intersect:  { label: "Intersection: in both",        tex: "A \\cap B",                plain: "A ∩ B" },
+  difference: { label: "Difference: in A, not B",      tex: "A \\setminus B",           plain: "A ∖ B" },
+  symdiff:    { label: "Symmetric difference: in one only", tex: "A \\mathbin{\\triangle} B", plain: "A △ B" },
 };
 
 // Set operations over two lists — the gap Excel never filled (it ships only UNIQUE, no
@@ -586,10 +586,10 @@ export type SetRelation = "equal" | "subset" | "superset" | "disjoint";
 // label = plain-English dropdown text; tex = the KaTeX relation on the card; plain =
 // the Unicode fallback shown until the KaTeX chunk loads.
 export const SET_RELATION_META: Record<SetRelation, { label: string; tex: string; plain: string }> = {
-  equal:    { label: "Equal (same set)",         tex: "A = B",                    plain: "A = B" },
-  subset:   { label: "Subset (A within B)",      tex: "A \\subseteq B",           plain: "A ⊆ B" },
-  superset: { label: "Superset (A contains B)",  tex: "A \\supseteq B",           plain: "A ⊇ B" },
-  disjoint: { label: "Disjoint (no overlap)",    tex: "A \\cap B = \\varnothing", plain: "A ∩ B = ∅" },
+  equal:    { label: "Equal: same set",         tex: "A = B",                    plain: "A = B" },
+  subset:   { label: "Subset: A within B",      tex: "A \\subseteq B",           plain: "A ⊆ B" },
+  superset: { label: "Superset: A contains B",  tex: "A \\supseteq B",           plain: "A ⊇ B" },
+  disjoint: { label: "Disjoint: no overlap",    tex: "A \\cap B = \\varnothing", plain: "A ∩ B = ∅" },
 };
 
 // Set RELATION tests — predicates that answer TRUE/FALSE about two lists as sets. The
@@ -1103,7 +1103,7 @@ export const ROLLING_OP_META = {
   avg:    { label: "Rolling AVG",    description: "Sliding-window average" },
   min:    { label: "Rolling MIN",    description: "Sliding-window minimum" },
   max:    { label: "Rolling MAX",    description: "Sliding-window maximum" },
-  stdev:  { label: "Rolling STDEV", description: "Sliding-window sample standard deviation (n−1)" },
+  stdev:  { label: "Rolling STDEV", description: "Sliding-window sample standard deviation; divides by n−1" },
   median: { label: "Rolling MEDIAN",description: "Sliding-window median" },
 } satisfies Record<RollingOp, { label: string; description: string }>;
 
@@ -1166,9 +1166,9 @@ export class RollingNode extends ClassicPreset.Node {
 export type WeightedOp = "wavg" | "wvar" | "wstdev";
 
 export const WEIGHTED_OP_META = {
-  wavg:   { label: "WAVG",   description: "Weighted average — Σ(x·w) / Σw   (Excel: =SUMPRODUCT(x,w)/SUM(w))" },
-  wvar:   { label: "WVAR",   description: "Weighted sample variance (reliability weights)" },
-  wstdev: { label: "WSTDEV", description: "Weighted sample standard deviation — √WVAR" },
+  wavg:   { label: "WAVG",   description: "Weighted average: Σ(x·w) / Σw. Excel: SUMPRODUCT(x,w)/SUM(w)." },
+  wvar:   { label: "WVAR",   description: "Weighted sample variance with reliability weights" },
+  wstdev: { label: "WSTDEV", description: "Weighted sample standard deviation: √WVAR" },
 } satisfies Record<WeightedOp, { label: string; description: string }>;
 
 export class WeightedNode extends ClassicPreset.Node {
@@ -1228,25 +1228,25 @@ export type ReduceOp =
   | "geomean" | "harmean" | "sumsq" | "var_s" | "var_p" | "stdev_p" | "devsq" | "avedev" | "skew" | "skew_p" | "kurt";
 
 export const REDUCE_OP_META = {
-  sum:     { label: "SUM",     description: "Sum all values   (Excel: =SUM)" },
-  avg:     { label: "AVERAGE", description: "Arithmetic mean   (Excel: =AVERAGE)" },
-  min:     { label: "MIN",     description: "Smallest value   (Excel: =MIN)" },
-  max:     { label: "MAX",     description: "Largest value   (Excel: =MAX)" },
-  count:   { label: "COUNT",   description: "Number of values   (Excel: =COUNT)" },
-  median:  { label: "MEDIAN",  description: "Middle value   (Excel: =MEDIAN)" },
-  product: { label: "PRODUCT", description: "Multiply all values   (Excel: =PRODUCT)" },
-  stdev:   { label: "STDEV.S", description: "Sample standard deviation (n−1)   (Excel: =STDEV.S)" },
-  stdev_p: { label: "STDEV.P", description: "Population standard deviation (n)   (Excel: =STDEV.P)" },
-  var_s:   { label: "VAR.S",   description: "Sample variance (n−1)   (Excel: =VAR.S)" },
-  var_p:   { label: "VAR.P",   description: "Population variance (n)   (Excel: =VAR.P)" },
-  geomean: { label: "GEOMEAN", description: "Geometric mean (all values must be > 0)   (Excel: =GEOMEAN)" },
-  harmean: { label: "HARMEAN", description: "Harmonic mean (all values must be > 0)   (Excel: =HARMEAN)" },
-  sumsq:   { label: "SUMSQ",   description: "Sum of squares Σ(xi²)   (Excel: =SUMSQ)" },
-  devsq:   { label: "DEVSQ",   description: "Sum of squared deviations from the mean   (Excel: =DEVSQ)" },
-  avedev:  { label: "AVEDEV",  description: "Mean absolute deviation from the mean   (Excel: =AVEDEV)" },
-  skew:    { label: "SKEW",    description: "Sample skewness of the distribution   (Excel: =SKEW)" },
-  skew_p:  { label: "SKEW.P",  description: "Population skewness — divides by n   (Excel: =SKEW.P)" },
-  kurt:    { label: "KURT",    description: "Excess kurtosis of the distribution   (Excel: =KURT)" },
+  sum:     { label: "SUM",     description: "Sum all values. Excel: SUM." },
+  avg:     { label: "AVERAGE", description: "Arithmetic mean. Excel: AVERAGE." },
+  min:     { label: "MIN",     description: "Smallest value. Excel: MIN." },
+  max:     { label: "MAX",     description: "Largest value. Excel: MAX." },
+  count:   { label: "COUNT",   description: "Number of values. Excel: COUNT." },
+  median:  { label: "MEDIAN",  description: "Middle value. Excel: MEDIAN." },
+  product: { label: "PRODUCT", description: "Multiply all values. Excel: PRODUCT." },
+  stdev:   { label: "STDEV.S", description: "Sample standard deviation (n−1). Excel: STDEV.S." },
+  stdev_p: { label: "STDEV.P", description: "Population standard deviation (n). Excel: STDEV.P." },
+  var_s:   { label: "VAR.S",   description: "Sample variance (n−1). Excel: VAR.S." },
+  var_p:   { label: "VAR.P",   description: "Population variance (n). Excel: VAR.P." },
+  geomean: { label: "GEOMEAN", description: "Geometric mean (all values must be > 0). Excel: GEOMEAN." },
+  harmean: { label: "HARMEAN", description: "Harmonic mean (all values must be > 0). Excel: HARMEAN." },
+  sumsq:   { label: "SUMSQ",   description: "Sum of squares Σ(xi²). Excel: SUMSQ." },
+  devsq:   { label: "DEVSQ",   description: "Sum of squared deviations from the mean. Excel: DEVSQ." },
+  avedev:  { label: "AVEDEV",  description: "Mean absolute deviation from the mean. Excel: AVEDEV." },
+  skew:    { label: "SKEW",    description: "Sample skewness of the distribution. Excel: SKEW." },
+  skew_p:  { label: "SKEW.P",  description: "Population skewness; divides by n. Excel: SKEW.P." },
+  kurt:    { label: "KURT",    description: "Excess kurtosis of the distribution. Excel: KURT." },
 } satisfies Record<ReduceOp, { label: string; description: string }>;
 
 // NB: the user-facing identity is "Aggregate" (header title, hover type hint via
@@ -1642,15 +1642,15 @@ export type FillOp =
   | "interpolate" | "drop" | "coalesce";
 
 export const FILL_OP_META = {
-  constant:    { label: "Fill with value",  description: "Replace each missing (null) cell with a constant (Excel-ish: =IF(ISBLANK,…))" },
-  ffill:       { label: "Forward fill",      description: "Carry the last present value forward over gaps (pandas ffill)" },
-  bfill:       { label: "Backward fill",     description: "Carry the next present value back over gaps (pandas bfill)" },
+  constant:    { label: "Fill with value",  description: "Replace each missing (null) cell with a constant. Excel: IF(ISBLANK, …)." },
+  ffill:       { label: "Forward fill",      description: "Carry the last present value forward over gaps. Pandas: ffill." },
+  bfill:       { label: "Backward fill",     description: "Carry the next present value back over gaps. Pandas: bfill." },
   mean:        { label: "Fill with mean",    description: "Impute gaps with the mean of present values" },
   median:      { label: "Fill with median",  description: "Impute gaps with the median of present values" },
   mode:        { label: "Fill with mode",    description: "Impute gaps with the most common present value" },
   interpolate: { label: "Interpolate",       description: "Linearly interpolate interior gaps between bracketing present values" },
-  drop:        { label: "Drop missing",      description: "Remove missing (null) cells — shortens the list (pandas dropna)" },
-  coalesce:    { label: "Coalesce (else)",   description: "First present of List then each Else in order, per position (SQL COALESCE)" },
+  drop:        { label: "Drop missing",      description: "Remove missing (null) cells, shortening the list. Pandas: dropna." },
+  coalesce:    { label: "Coalesce (else)",   description: "First present of List then each Else in order, per position. SQL: COALESCE." },
 } satisfies Record<FillOp, { label: string; description: string }>;
 
 type Cell = number | null | SolError;

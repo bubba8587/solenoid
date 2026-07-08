@@ -24,8 +24,8 @@ function tDistCDF(x: number, df: number): number {
 export type NormDistOp = "cdf" | "pdf";
 
 export const NORM_DIST_OP_META = {
-  cdf: { label: "CDF", description: "Cumulative probability Φ((x−μ)/σ)   (Excel: =NORM.DIST with cumulative=TRUE)" },
-  pdf: { label: "PDF", description: "Probability density (bell curve height)   (Excel: =NORM.DIST with cumulative=FALSE)" },
+  cdf: { label: "CDF", description: "Cumulative probability Φ((x−μ)/σ). Excel: NORM.DIST with cumulative=TRUE." },
+  pdf: { label: "PDF", description: "Probability density (bell curve height). Excel: NORM.DIST with cumulative=FALSE." },
 } satisfies Record<NormDistOp, { label: string; description: string }>;
 
 export class NormDistNode extends ClassicPreset.Node {
@@ -98,8 +98,8 @@ export class NormInvNode extends ClassicPreset.Node {
 export type NormSDistOp = "cdf" | "pdf";
 
 export const NORM_S_DIST_OP_META = {
-  cdf: { label: "CDF", description: "Standard normal cumulative probability Φ(z)   (Excel: =NORM.S.DIST with cumulative=TRUE)" },
-  pdf: { label: "PDF", description: "Standard normal probability density   (Excel: =NORM.S.DIST with cumulative=FALSE)" },
+  cdf: { label: "CDF", description: "Standard normal cumulative probability Φ(z). Excel: NORM.S.DIST with cumulative=TRUE." },
+  pdf: { label: "PDF", description: "Standard normal probability density. Excel: NORM.S.DIST with cumulative=FALSE." },
 } satisfies Record<NormSDistOp, { label: string; description: string }>;
 
 export class NormSDistNode extends ClassicPreset.Node {
@@ -161,10 +161,10 @@ export class NormSInvNode extends ClassicPreset.Node {
 export type TDistOp = "cdf" | "pdf" | "2t" | "rt";
 
 export const T_DIST_OP_META = {
-  cdf: { label: "CDF",  description: "Left-tail cumulative t-distribution   (Excel: =T.DIST)" },
+  cdf: { label: "CDF",  description: "Left-tail cumulative t-distribution. Excel: T.DIST." },
   pdf: { label: "PDF",  description: "Probability density function" },
-  "2t": { label: "2T",  description: "Two-tailed probability   (Excel: =T.DIST.2T)" },
-  rt:  { label: "RT",   description: "Right-tail (upper) probability   (Excel: =T.DIST.RT)" },
+  "2t": { label: "2T",  description: "Two-tailed probability. Excel: T.DIST.2T." },
+  rt:  { label: "RT",   description: "Right-tail (upper) probability. Excel: T.DIST.RT." },
 } satisfies Record<TDistOp, { label: string; description: string }>;
 
 export class TDistNode extends ClassicPreset.Node {
@@ -219,8 +219,8 @@ export class TDistNode extends ClassicPreset.Node {
 export type TInvOp = "left" | "2t";
 
 export const T_INV_OP_META = {
-  left: { label: "Left",     description: "Inverse of left-tail t-distribution   (Excel: =T.INV)" },
-  "2t": { label: "Two-tail", description: "Inverse of two-tailed t-distribution   (Excel: =T.INV.2T)" },
+  left: { label: "Left",     description: "Inverse of left-tail t-distribution. Excel: T.INV." },
+  "2t": { label: "Two-tail", description: "Inverse of two-tailed t-distribution. Excel: T.INV.2T." },
 } satisfies Record<TInvOp, { label: string; description: string }>;
 
 export class TInvNode extends ClassicPreset.Node {
@@ -261,9 +261,9 @@ export class TInvNode extends ClassicPreset.Node {
 export type ChisqDistOp = "cdf" | "pdf" | "rt";
 
 export const CHISQ_DIST_OP_META = {
-  cdf: { label: "CDF",        description: "Left-tail chi-squared CDF   (Excel: =CHISQ.DIST)" },
+  cdf: { label: "CDF",        description: "Left-tail chi-squared CDF. Excel: CHISQ.DIST." },
   pdf: { label: "PDF",        description: "Probability density" },
-  rt:  { label: "Right-tail", description: "Right-tail probability   (Excel: =CHISQ.DIST.RT)" },
+  rt:  { label: "Right-tail", description: "Right-tail probability. Excel: CHISQ.DIST.RT." },
 } satisfies Record<ChisqDistOp, { label: string; description: string }>;
 
 export class ChisqDistNode extends ClassicPreset.Node {
@@ -315,8 +315,8 @@ export class ChisqDistNode extends ClassicPreset.Node {
 export type ChisqInvOp = "left" | "rt";
 
 export const CHISQ_INV_OP_META = {
-  left: { label: "Left",        description: "Inverse of left-tail chi-squared   (Excel: =CHISQ.INV)" },
-  rt:   { label: "Right-tail",  description: "Inverse of right-tail chi-squared   (Excel: =CHISQ.INV.RT)" },
+  left: { label: "Left",        description: "Inverse of left-tail chi-squared. Excel: CHISQ.INV." },
+  rt:   { label: "Right-tail",  description: "Inverse of right-tail chi-squared. Excel: CHISQ.INV.RT." },
 } satisfies Record<ChisqInvOp, { label: string; description: string }>;
 
 export class ChisqInvNode extends ClassicPreset.Node {
