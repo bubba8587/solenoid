@@ -15,6 +15,18 @@ is archived).
 
 ## 1.1 release build (committed 2026-07-06 — see `release-plan.md`)
 
+**FEATURE-COMPLETE (author 2026-07-08).** Everything below in this section is
+explicitly DEFERRED past the 1.1 tag by the author on 2026-07-08 — none of it
+gates the cut. The only open 1.1 work is the author-run release tail
+(eyeball pass, cargo on Windows, desktop build, merge, tag).
+
+- [ ] **Keep `release-notes-features.md` current** — the curated selling list + What's-New
+  slide source (author writes the final release notes). Reconciled 2026-07-08 (FRED-keyless
+  copy, no FX, Simulation ≠ Monte Carlo — slides synced in `HelpDialogs.tsx`).
+- [ ] **F-2 remainder (deferred)** — a UI to edit per-slot doc-palette overrides (the store
+  half exists: `paletteStore.setDocPalette` overrides round-trip) + document-level FC defaults.
+- [ ] **D-2 simulation inner display (deferred)** — the series renders inside the drill-in.
+- [ ] **Goal-seek solver parameters (deferred)** — max-iter / tolerance / bounds.
 - [ ] **Data Feed — post-1.1 widening only** (core + date-range/frequency/quick-picks +
   the **Live Market Data** demo seed all SHIPPED; Stooq dropped — bot-blocked). Still OPEN,
   none release-gating: a richer series/symbol PICKER (today a text field + quick-picks),
