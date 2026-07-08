@@ -441,6 +441,97 @@
       "init": {
         "label": "Profit at solution"
       }
+    },
+    {
+      "id": "note-fv",
+      "type": "NoteNode",
+      "x": -40,
+      "y": 1860,
+      "init": {
+        "label": "Goal-seek a savings plan",
+        "body": "Solve asks: what monthly deposit reaches a **$500k** nest egg in 30 years at 7%? Drill in to change the rate or horizon.",
+        "width": 300,
+        "height": 140
+      }
+    },
+    {
+      "id": "fvComp",
+      "type": "CompositeNode",
+      "x": 300,
+      "y": 1860,
+      "init": {
+        "label": "Retirement deposit finder",
+        "runMode": "goal-seek",
+        "goalSeek": {
+          "inputPortId": "p_pmt",
+          "outputPortId": "p_fv",
+          "target": 500000
+        },
+        "inputPorts": [
+          {
+            "id": "p_pmt",
+            "label": "Monthly deposit",
+            "exposure": "exposed",
+            "tier": "basic",
+            "internalNodeId": "m_pmt",
+            "default": 300
+          }
+        ],
+        "outputPorts": [
+          {
+            "id": "p_fv",
+            "label": "Nest egg",
+            "tier": "basic",
+            "internalNodeId": "m_fv"
+          }
+        ],
+        "internal": {
+          "nodes": [
+            {
+              "id": "m_pmt",
+              "type": "CompositeInputNode",
+              "init": {
+                "label": "Monthly deposit"
+              },
+              "x": 0,
+              "y": 40
+            },
+            {
+              "id": "fv",
+              "type": "ExpressionNode",
+              "init": {
+                "label": "30 yrs at 7% (monthly)",
+                "expr": "pmt * ((1 + 0.07/12)^360 - 1) / (0.07/12)"
+              },
+              "x": 300,
+              "y": 20
+            },
+            {
+              "id": "m_fv",
+              "type": "CompositeOutputNode",
+              "init": {
+                "label": "Nest egg"
+              },
+              "x": 640,
+              "y": 40
+            }
+          ],
+          "connections": [
+            {
+              "source": "m_pmt",
+              "sourceOutput": "value",
+              "target": "fv",
+              "targetInput": "pmt"
+            },
+            {
+              "source": "fv",
+              "sourceOutput": "result",
+              "target": "m_fv",
+              "targetInput": "value"
+            }
+          ]
+        }
+      }
     }
   ],
   "connections": [
