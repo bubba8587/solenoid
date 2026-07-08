@@ -120,7 +120,7 @@ export function RendererSpike() {
       if (mode === "live") {
         const snap = snapshotGraph();
         if (!snap || snap.nodes.length === 0) {
-          setStats({ nodes: 0, cables: 0, note: "No nodes in the current graph — switch to Synthetic, or add nodes first." });
+          setStats({ nodes: 0, cables: 0, note: "No nodes in the current graph. Switch to Synthetic, or add nodes first." });
           scene = buildSyntheticScene(PIXI, 0, textMode, theme, fonts); // empty placeholder
           cam.fit(scene.bounds, W, H);
         } else {
@@ -597,7 +597,7 @@ export function RendererSpike() {
         <div className="renderer-spike__seg renderer-spike__seg--sub">
           <span className="renderer-spike__seg-label">text</span>
           {(["bitmap", "text"] as const).map((t) => (
-            <button key={t} className={t === textMode ? "active" : ""} onClick={() => setTextMode(t)} title={t === "bitmap" ? "MSDF BitmapText — shared atlas, crisp at any zoom (batched)" : "Text — a texture per label (the slow path)"}>
+            <button key={t} className={t === textMode ? "active" : ""} onClick={() => setTextMode(t)} title={t === "bitmap" ? "MSDF BitmapText: a shared batched atlas, crisp at any zoom" : "Text: a texture per label, the slow path"}>
               {t === "bitmap" ? "MSDF" : "Text"}
             </button>
           ))}
@@ -605,9 +605,9 @@ export function RendererSpike() {
 
         <div className="renderer-spike__seg renderer-spike__seg--sub">
           <span className="renderer-spike__seg-label">perf</span>
-          <button className={lodOn ? "active" : ""} onClick={() => setLodOn((v) => !v)} title={`LOD — drop text below ${LOD_SIMPLE_BELOW}× zoom`}>LOD</button>
-          <button className={cullOn ? "active" : ""} onClick={() => setCullOn((v) => !v)} title="Frustum cull — skip offscreen cards">Cull</button>
-          <button className={cablesOn ? "active" : ""} onClick={() => setCablesOn((v) => !v)} title="Toggle cables — isolate node vs cable cost">Cables</button>
+          <button className={lodOn ? "active" : ""} onClick={() => setLodOn((v) => !v)} title={`LOD: drop text below ${LOD_SIMPLE_BELOW}× zoom`}>LOD</button>
+          <button className={cullOn ? "active" : ""} onClick={() => setCullOn((v) => !v)} title="Frustum cull: skip offscreen cards">Cull</button>
+          <button className={cablesOn ? "active" : ""} onClick={() => setCablesOn((v) => !v)} title="Toggle cables: isolate node vs cable cost">Cables</button>
           <button onClick={fitView} title="Frame the whole scene">Fit</button>
         </div>
 

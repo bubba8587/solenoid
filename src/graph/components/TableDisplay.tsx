@@ -97,7 +97,7 @@ export function TableDisplay({ table, label, onSave, full, kind }: {
               {row.slice(0, maxC).map((v, j) => {
                 const nan = isNanCell(v);
                 return (
-                <td key={j} className={nan ? "solenoid-nan-cell" : undefined} title={nan ? "Not a number — an undefined value in the data" : undefined} style={{ padding: full ? "2px 7px" : "1px 3px", textAlign: typeof v === "string" ? "left" : "right", fontSize: full ? 13 : 12, fontFamily: "var(--font-mono)", color: "var(--text)", borderRight: "1px solid var(--border)", overflow: "hidden", textOverflow: "ellipsis" }}>
+                <td key={j} className={nan ? "solenoid-nan-cell" : undefined} title={nan ? "Not a number: an undefined value in the data" : undefined} style={{ padding: full ? "2px 7px" : "1px 3px", textAlign: typeof v === "string" ? "left" : "right", fontSize: full ? 13 : 12, fontFamily: "var(--font-mono)", color: "var(--text)", borderRight: "1px solid var(--border)", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {fmtCell(v, kind)}
                 </td>
                 );

@@ -123,7 +123,7 @@ export const PROVIDERS: Record<ProviderId, ProviderPreset> = {
   fred: {
     id: "fred",
     // KEYLESS by default via the public fredgraph.csv download — works out of the box.
-    label: "FRED — economic series (no key)",
+    label: "FRED economic series, no key needed",
     needsKey: false,
     inputLabel: "Series ID",
     placeholder: "e.g. UNRATE, CPIAUCSL, GDP",
@@ -141,7 +141,7 @@ export const PROVIDERS: Record<ProviderId, ProviderPreset> = {
   },
   alphavantage: {
     id: "alphavantage",
-    label: "Alpha Vantage — stocks",
+    label: "Alpha Vantage stocks",
     needsKey: true,
     keyProvider: "alphavantage",
     keyUrl: "https://www.alphavantage.co/support/#api-key",

@@ -140,7 +140,7 @@ export function PinLayer() {
     if (node instanceof GroupNode) {
       const rows = groupReadouts(editor, node);
       return (
-        <div key={pin.nodeId} className="solenoid-pin solenoid-pin--group" onClick={() => flyToNode(pin.nodeId)} title="Click to go to this group">
+        <div key={pin.nodeId} className="solenoid-pin solenoid-pin--group" onClick={() => flyToNode(pin.nodeId)} title="Go to this group">
           <div className="solenoid-pin__group-head">
             <span className="solenoid-pin__label">{(node.label ?? "").trim() || "Group"}</span>
             {removeBtn(label, pin.nodeId)}
@@ -163,7 +163,7 @@ export function PinLayer() {
 
     const value = cableValueStore.get(pin.nodeId, pin.outputKey);
     return (
-      <div key={pin.nodeId} className="solenoid-pin" onClick={() => flyToNode(pin.nodeId)} title="Click to go to this node">
+      <div key={pin.nodeId} className="solenoid-pin" onClick={() => flyToNode(pin.nodeId)} title="Go to this node">
         <span className="solenoid-pin__label">{label}</span>
         {renderValue(value, undefined, pin.nodeId)}
         {removeBtn(label, pin.nodeId)}

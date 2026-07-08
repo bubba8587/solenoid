@@ -413,7 +413,7 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
             <textarea
               className="solenoid-note__body"
               value={body}
-              placeholder="Note… (markdown)"
+              placeholder="Markdown note…"
               spellCheck={false}
               autoFocus
               onChange={(e) => onBody(e.target.value)}
@@ -442,7 +442,7 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
               onPointerDown={stopDragStart}
               onMouseDown={stopDragStart}
             >
-              Note… (markdown)
+              Markdown note…
             </div>
           )}
         </div>
@@ -503,7 +503,7 @@ function FieldRow({
         ref={btnRef}
         type="button"
         className="solenoid-note__field-glyph"
-        title={`${FIELD_TYPE_LABEL[type]} — click to change type`}
+        title={`${FIELD_TYPE_LABEL[type]}. Click to change the type.`}
         onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
         onPointerDown={stop}
         onMouseDown={stop}

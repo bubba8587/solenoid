@@ -96,7 +96,7 @@ export function TopBar() {
             <rect x="5" y="8.5" width="6" height="5" rx="0.5" />
           </svg>
         </button>
-        <button className="solenoid-nav__btn" title="Save As — save to a new file (Ctrl+Shift+S)" aria-label="Save As" onClick={() => void saveToDisk({ forceDialog: true })}>
+        <button className="solenoid-nav__btn" title="Save As: save to a new file (Ctrl+Shift+S)" aria-label="Save As" onClick={() => void saveToDisk({ forceDialog: true })}>
           <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M8 2.5 V10" /><path d="M5 7 8 10 11 7" /><path d="M3 12.5 h10" />
           </svg>
@@ -110,7 +110,7 @@ export function TopBar() {
 
       {/* Layout pill: Tidy + Cleanup + collapse/expand-all together. */}
       <div className="solenoid-topbar__group solenoid-topbar__group--layout">
-        <button className="solenoid-nav__btn" title="Tidy — auto-arrange (T)" aria-label="Tidy" onClick={() => autoArrange()}>
+        <button className="solenoid-nav__btn" title="Tidy: auto-arrange (T)" aria-label="Tidy" onClick={() => autoArrange()}>
           <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
             {/* One source node branching into two — a tidy graph layout. */}
             <rect x="1.2" y="5.5" width="3.6" height="5" rx="0.8" />
@@ -121,7 +121,7 @@ export function TopBar() {
             <path d="M8 8 V11.6 H11.2" />
           </svg>
         </button>
-        <button className="solenoid-nav__btn" title="Cleanup — tidy, collapse & fit (C)" aria-label="Cleanup" onClick={() => cleanup()}>
+        <button className="solenoid-nav__btn" title="Cleanup: tidy, collapse & fit (C)" aria-label="Cleanup" onClick={() => cleanup()}>
           {/* Lucide "brush" (ISC). */}
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
             <path d="m11 10 3 3" />

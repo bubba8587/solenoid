@@ -114,10 +114,10 @@ export function cellError(args: ReadonlyArray<unknown>): SolError | undefined {
 export function guardFinite(result: number, ...inputs: unknown[]): number | SolError {
   if (Number.isFinite(result)) return result;
   if (Number.isNaN(result)) {
-    return solError("#DOMAIN!", "The result is undefined — an indeterminate operation (e.g. ∞ − ∞, 0 × ∞, or a value outside the function's domain).");
+    return solError("#DOMAIN!", "The result is undefined: an indeterminate operation such as ∞ − ∞, 0 × ∞, or a value outside the function's domain.");
   }
   const fromInfiniteInput = inputs.some((v) => v === Infinity || v === -Infinity);
-  return fromInfiniteInput ? result : solError("#OVERFLOW!", "The result is too large to represent — the true value exceeds the numeric range.");
+  return fromInfiniteInput ? result : solError("#OVERFLOW!", "The result is too large to represent; the true value exceeds the numeric range.");
 }
 
 // ── Kleene (three-valued) boolean logic ──────────────────────────────────────

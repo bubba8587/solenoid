@@ -144,7 +144,7 @@ export function SliderInputComponent({ data, emit }: NodeProps<SliderInputNodeTy
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, marginTop: 4 }}>
           <TransportButton title="Step back one increment" onClick={() => nudge(-1)}>{StepBackIcon}</TransportButton>
           <TransportButton
-            title={playing ? "Pause" : "Play — walk the slider through its values at Speed, looping"}
+            title={playing ? "Pause" : "Play. Walks the slider through its values at Speed, looping."}
             onClick={() => setPlaying((p) => !p)}
           >{playing ? PauseIcon : PlayIcon}</TransportButton>
           <TransportButton title="Step forward one increment" onClick={() => nudge(1)}>{StepFwdIcon}</TransportButton>

@@ -181,7 +181,7 @@ function persist(): void {
     if (_saveFailNoticeId !== null) { dismissNotice(_saveFailNoticeId); _saveFailNoticeId = null; }
   } else if (_saveFailNoticeId === null) {
     _saveFailNoticeId = pushNotice(
-      "Couldn't autosave — local storage may be full or disabled. Save your graph to a file (Ctrl+S) to be safe.",
+      "Couldn't autosave: local storage may be full or disabled. Save your graph to a file (Ctrl+S) to be safe.",
       "error",
       0,
     );

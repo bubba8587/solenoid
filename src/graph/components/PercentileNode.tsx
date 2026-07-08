@@ -3,8 +3,8 @@ import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 
 const OPS: { value: PercentileMode; label: string }[] = [
-  { value: "inc", label: "PERCENTILE.INC (0 and 1 inclusive)" },
-  { value: "exc", label: "PERCENTILE.EXC (0 and 1 exclusive)" },
+  { value: "inc", label: "PERCENTILE.INC · includes 0 and 1" },
+  { value: "exc", label: "PERCENTILE.EXC · excludes 0 and 1" },
 ];
 
 export function PercentileComponent({ data, emit }: NodeProps<PercentileNodeType>) {

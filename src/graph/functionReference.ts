@@ -135,7 +135,7 @@ export function buildFunctionReference(): FnRefRow[] {
       location: [], packs: [], dependency: false, implemented: false,
       composition, parity: false, oos: g.oos ?? false, note: g.note,
       groupKey: composition ? "compose" : "gap",
-      groupLabel: composition ? "Composable" : "Excel — no Solenoid node",
+      groupLabel: composition ? "Composable" : "No Solenoid node",
     });
   }
 

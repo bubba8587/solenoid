@@ -254,7 +254,7 @@ function CommentIndicator({ nodeId }: { nodeId: string }) {
     <button
       type="button"
       className={`solenoid-node__comment-badge${unresolved ? "" : " solenoid-node__comment-badge--resolved"}`}
-      title={`${commentStore.forNode(nodeId).length} comment${commentStore.forNode(nodeId).length === 1 ? "" : "s"} — open`}
+      title={`${commentStore.forNode(nodeId).length} comment${commentStore.forNode(nodeId).length === 1 ? "" : "s"}. Click to open.`}
       onClick={(e) => { e.stopPropagation(); commentsPanelUi.openFor(nodeId); }}
       onPointerDown={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
@@ -677,7 +677,7 @@ export function ValueDisplay({
             // A residual NaN is dirty DATA, not an error (an error is a tagged
             // SolError, rendered red above). Quiet muted affordance + a structural
             // tooltip — not error-red, not plain-number, not an ArrayChip.
-            <span className="solenoid-node__nan" title="Not a number — an undefined value in the data">NaN</span>
+            <span className="solenoid-node__nan" title="Not a number: an undefined value in the data">NaN</span>
           )
         : annotationRendersNegativeRed(ann, value) ? (
             // The FC's red negative style — the string already carries the

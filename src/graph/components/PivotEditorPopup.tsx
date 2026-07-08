@@ -19,7 +19,7 @@ const FUNC_OPTIONS: { value: AggOp; label: string }[] = [
 ];
 const TOTAL_DEPTH_OPTIONS = [
   { value: "0", label: "No totals" }, { value: "1", label: "Grand total" }, { value: "2", label: "Grand + subtotals" },
-  { value: "-1", label: "Grand (at start)" }, { value: "-2", label: "Grand + sub (at start)" },
+  { value: "-1", label: "Grand at start" }, { value: "-2", label: "Grand + sub at start" },
 ];
 const REL_TO_OPTIONS = [
   { value: "0", label: "% of column total" }, { value: "1", label: "% of row total" }, { value: "2", label: "% of grand total" },
@@ -62,7 +62,7 @@ function writeToNode(node: PivotNode, c: Cfg) {
  *  1-based offset into [fields…, values…]; negative ⇒ descending (Excel order). */
 function sortOptions(fields: string[], values: string[]): { value: string; label: string }[] {
   const cand = [...fields, ...values.map((v) => `${v} (value)`)];
-  const out = [{ value: "0", label: "— no sort —" }];
+  const out = [{ value: "0", label: "No sort" }];
   cand.forEach((label, i) => {
     out.push({ value: String(i + 1), label: `${label} ↑` });
     out.push({ value: String(-(i + 1)), label: `${label} ↓` });
@@ -314,7 +314,7 @@ export function PivotEditorPopup() {
         <div className="pivot-editor__body">
           {/* Field list — the upstream columns, drag into a zone (or use a zone's + add). */}
           <div className="pivot-fields">
-            <div className="pivot-fields__head">Fields {fields.length === 0 && <span className="pivot-fields__hint">— connect a frame</span>}</div>
+            <div className="pivot-fields__head">Fields {fields.length === 0 && <span className="pivot-fields__hint">· connect a frame</span>}</div>
             <div className="pivot-fields__list">
               {fields.map((f) => (
                 <span key={f.name} className={`pivot-chip pivot-chip--${f.type}${usedSet.has(f.name) ? " pivot-chip--used" : ""}`} draggable

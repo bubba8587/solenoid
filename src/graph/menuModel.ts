@@ -108,8 +108,8 @@ export function buildMenus(): Menu[] {
         { label: mode === "dark" ? "Light theme" : "Dark theme", onClick: () => appThemeStore.toggleMode() },
         { label: "Lock canvas", checked: locked, onClick: () => canvasLockStore.toggle() },
         { sep: true },
-        { label: "Tidy (auto-arrange)", shortcut: "T", onClick: () => autoArrange() },
-        { label: "Cleanup (tidy + collapse + fit)", shortcut: "C", onClick: () => cleanup() },
+        { label: "Tidy: auto-arrange", shortcut: "T", onClick: () => autoArrange() },
+        { label: "Cleanup: tidy, collapse, fit", shortcut: "C", onClick: () => cleanup() },
         { label: "Snap to grid", checked: snap, onClick: () => gridSnapStore.toggle() },
         { sep: true },
         { label: "Function reference", shortcut: "Ctrl+/", onClick: () => frStore.open("reference") },
@@ -129,13 +129,13 @@ export function buildMenus(): Menu[] {
         { label: "Refresh all connections", onClick: () => void refreshAllConnections() },
         { sep: true },
         {
-          label: "Run model check (fuzz)",
+          label: "Run model check",
           onClick: () => void (async () => {
             const r = await runModelFuzz();
             problemsPanelUi.setOpen(true);
             pushNotice(
               r.findings > 0
-                ? `Model check: ${r.findings} finding${r.findings === 1 ? "" : "s"} across ${r.samples.toLocaleString(APP_LOCALE)} samples — see Problems.`
+                ? `Model check: ${r.findings} finding${r.findings === 1 ? "" : "s"} across ${r.samples.toLocaleString(APP_LOCALE)} samples. See Problems.`
                 : `Model check: no problems found across ${r.samples.toLocaleString(APP_LOCALE)} samples.`,
               r.findings > 0 ? "warn" : "info",
             );
@@ -160,7 +160,7 @@ export function buildMenus(): Menu[] {
           onClick: () => { calcModeStore.setMode("manual"); },
         },
         {
-          label: "Sketch (approximate on a sample)",
+          label: "Sketch: approximate on a sample",
           checked: calcMode === "sketch",
           // Sketch recomputes live, same as Automatic — catch up on anything
           // suppressed while Manual, same as switching to Automatic does.

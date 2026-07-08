@@ -82,7 +82,7 @@ export async function openFromDisk(): Promise<void> {
   try {
     graph = JSON.parse(res.content) as SavedGraph;
   } catch {
-    pushNotice("That file isn't valid JSON — it can't be opened as a Solenoid graph.", "error", 0);
+    pushNotice("That file isn't valid JSON, so it can't be opened as a Solenoid graph.", "error", 0);
     return;
   }
   if (!validateSavedGraph(graph).ok) {

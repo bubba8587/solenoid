@@ -176,7 +176,7 @@ function RendererSection() {
     <div className="solenoid-settings__section">
       <div className="solenoid-settings__section-title">Renderer</div>
       <Row
-        label="GPU renderer (HTML-in-Canvas)"
+        label="HTML-in-Canvas GPU renderer"
         help={
           supported
             ? "Faster zoom and pan on big graphs. Experimental; the DOM renderer is the fallback."
@@ -232,8 +232,8 @@ function PacksSection() {
 // provider in localStorage on this device only (apiKeyStore) — the "never bundled"
 // key store. Stooq stocks need no key, so they're not listed here.
 const API_PROVIDERS = [
-  { id: "fred", label: "FRED (St. Louis Fed)", help: "Free key at fredaccount.stlouisfed.org — for economic data series." },
-  { id: "alphavantage", label: "Alpha Vantage", help: "Free key at alphavantage.co — stock quotes (Stooq needs no key)." },
+  { id: "fred", label: "FRED", help: "Economic data series from the St. Louis Fed; free key at fredaccount.stlouisfed.org." },
+  { id: "alphavantage", label: "Alpha Vantage", help: "Stock quotes; free key at alphavantage.co. Stooq needs no key." },
 ] as const;
 
 function ApiKeyRow({ id, label, help }: { id: string; label: string; help: string }) {
@@ -274,7 +274,7 @@ function ApiKeysSection() {
   useSyncExternalStore(apiKeyStore.subscribe, apiKeyStore.version);
   return (
     <div className="solenoid-settings__section">
-      <div className="solenoid-settings__section-title">Data connections — API keys</div>
+      <div className="solenoid-settings__section-title">Data connection API keys</div>
       {API_PROVIDERS.map((p) => <ApiKeyRow key={p.id} id={p.id} label={p.label} help={p.help} />)}
       <div className="solenoid-settings__note">Stored only on this device; sent only to each provider's own API.</div>
     </div>

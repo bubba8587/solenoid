@@ -227,7 +227,7 @@ export async function loadGraph(g: SavedGraph, opts?: { animate?: boolean }): Pr
   // through the rebuild, after the user's graph was already gone.
   const valid = validateSavedGraph(g);
   if (!valid.ok) {
-    pushNotice(`Couldn't open this graph — ${valid.reason}. Your current work is unchanged.`, "error", 0);
+    pushNotice(`Couldn't open this graph: ${valid.reason}. Your current work is unchanged.`, "error", 0);
     return false;
   }
 
@@ -257,7 +257,7 @@ export async function loadGraph(g: SavedGraph, opts?: { animate?: boolean }): Pr
     if (placeholdered.length > 0) {
       const types = [...new Set(placeholdered)].join(", ");
       pushNotice(
-        `${placeholdered.length} node${placeholdered.length === 1 ? "" : "s"} (type: ${types}) couldn't be loaded here — kept as placeholders so your wiring and data are intact. Turn the matching pack on, or open in a build that has them, to restore.`,
+        `${placeholdered.length} node${placeholdered.length === 1 ? "" : "s"} (type: ${types}) couldn't be loaded here; placeholders keep your wiring and data intact. Turn the matching pack on, or open the file in a build that has them, to restore.`,
         "warn",
       );
     }

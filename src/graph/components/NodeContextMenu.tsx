@@ -121,7 +121,7 @@ export function NodeContextMenu({ target, onIsolate, onIsolateChain, onWhereUsed
       {item("⛓", "Isolate chain", () => onIsolateChain(target.seedIds),
         "Isolate everything connected to this, upstream and downstream")}
       {onWhereUsed && item(<WhereUsedSvg />, "Where used", () => onWhereUsed!(target.nodeId),
-        "Isolate only what this node feeds — downstream, not its inputs")}
+        "Isolate this node and everything downstream of it")}
       {onPin && target.canPin && item(<PinSvg />, "Pin value", () => onPin!(target.nodeId))}
       {onAddComment && item(<CommentSvg />, "Add comment", () => onAddComment!(target.nodeId))}
       {target.standoff && onLinkStandoff &&
