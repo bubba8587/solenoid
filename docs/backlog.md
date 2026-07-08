@@ -209,6 +209,25 @@ this backlog stays the per-item source of truth.
 
 ## Cables / canvas / chrome
 
+- [ ] **Weight the HTML-in-Canvas auto-engage threshold by node KIND — heavy charts
+  should count for more than one node** (author 2026-07-08). Today the `"html"` renderer
+  auto-engages purely on RAW node count: `HtmlCanvasLayer.tsx` `active = mode === "html"
+  && nodeCount >= RENDERER_MIN_NODES (100)`, where `nodeCount` is
+  `editor.getNodes().length` (the Setting is the master on/off; ON already MEANS
+  "auto-engage at 100 nodes", it doesn't tune the threshold; `window.__hcMinNodes` tunes
+  it live). The problem: raw count undercounts DOM cost. The DOM renderer's cost tracks
+  total **DOM element count**, and **heavy charts dominate it** — one recharts figure is a
+  large SVG subtree, so ~10 charts can be as DOM-heavy as 100 scalar nodes yet the graph
+  reads as "10 nodes" and never trips the renderer. (Mermaid, inlined SVG — the new
+  SvgPicker — and frame grids are the other heavy DOM producers; scalar/logic nodes are
+  light.) Fix: replace the raw `nodeCount` in that gate with a **kind-WEIGHTED count**
+  (chart/mermaid/svg/frame contribute >1 toward the 100; scalars = 1), so a chart-heavy
+  graph engages the GPU renderer sooner. Keep it cheap (a per-kind weight table summed off
+  the same nodecreated/noderemoved recount, not a live DOM element count). Exact weights
+  TBD ("to some degree"). Hook: `HtmlCanvasLayer.tsx` (the `active`/`nodeCount` gate) +
+  `nodeKindOf`. **Companion lever (Fable, investigating): reduce per-node DOM element count
+  — charts first — which lowers the DOM baseline so raw count tracks real cost better.**
+  The two are complementary.
 - [ ] **Cable collision avoidance** — DEFERRED for later (author 2026-07-05).
   Spec: `archive/cable-routing.md` §2 (avoid nodes; parallel runs + bridge hops;
   per-cable overrides).
