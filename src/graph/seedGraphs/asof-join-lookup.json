@@ -1,19 +1,101 @@
 {
   "v": 1,
   "label": "As-Of Join & Lookup",
+  "order": 55,
   "nodes": [
-    {"id":"note0","type":"NoteNode","x":-40,"y":-420,"init":{"label":"Nearest-match, not exact-match","body":"# As-of join & lookup\n**Join** (how = As-of) matches each Trade to the LATEST Quote at or before its time — no exact timestamp needed. **Frame Lookup** (match ≤) falls back to the closest SMALLER volume tier when there's no exact qty match.","color":"violet","width":420,"height":170}},
-
-    {"id":"quotes","type":"FrameInputNode","x":0,"y":-160,"init":{"label":"Quotes","frameText":"[{\"name\":\"time\",\"type\":\"number\",\"values\":[0,2,4,8,12]},{\"name\":\"price\",\"type\":\"number\",\"values\":[100,101,102.5,103,104.5]}]"}},
-    {"id":"trades","type":"FrameInputNode","x":0,"y":100,"init":{"label":"Trades","frameText":"[{\"name\":\"time\",\"type\":\"number\",\"values\":[-1,1,5,10,20]},{\"name\":\"qty\",\"type\":\"number\",\"values\":[5,10,15,20,25]}]"}},
-    {"id":"breaks","type":"FrameInputNode","x":0,"y":420,"init":{"label":"Volume tiers","frameText":"[{\"name\":\"qty\",\"type\":\"number\",\"values\":[1,10,50,100]},{\"name\":\"discount\",\"type\":\"number\",\"values\":[0,0.05,0.1,0.2]}]"}},
-
-    {"id":"asofjoin","type":"JoinNode","x":460,"y":-60,"init":{"label":"As-of Join — trade price at execution time (≤)","how":"asof","asofDirection":"backward"},"stringLiterals":{"leftKey":"time","rightKey":"time"}},
-    {"id":"lookup","type":"XLookupNode","x":460,"y":420,"init":{"label":"XLOOKUP — next-smaller volume tier (≤)","matchMode":"nextSmaller"},"stringLiterals":{"lookup":"35","inColumn":"qty","returnColumn":"discount","ifNotFound":"0"}}
+    {
+      "id": "note0",
+      "type": "NoteNode",
+      "x": -40,
+      "y": -420,
+      "init": {
+        "label": "Nearest-match, not exact-match",
+        "body": "# As-of join & lookup\n**Join** (how = As-of) matches each Trade to the LATEST Quote at or before its time — no exact timestamp needed. **XLOOKUP** (match ≤) falls back to the closest SMALLER volume tier when there's no exact qty match.",
+        "color": "violet",
+        "width": 420,
+        "height": 170
+      }
+    },
+    {
+      "id": "quotes",
+      "type": "FrameInputNode",
+      "x": 0,
+      "y": -160,
+      "init": {
+        "label": "Quotes",
+        "frameText": "[{\"name\":\"time\",\"type\":\"number\",\"values\":[0,2,4,8,12]},{\"name\":\"price\",\"type\":\"number\",\"values\":[100,101,102.5,103,104.5]}]"
+      }
+    },
+    {
+      "id": "trades",
+      "type": "FrameInputNode",
+      "x": 0,
+      "y": 100,
+      "init": {
+        "label": "Trades",
+        "frameText": "[{\"name\":\"time\",\"type\":\"number\",\"values\":[-1,1,5,10,20]},{\"name\":\"qty\",\"type\":\"number\",\"values\":[5,10,15,20,25]}]"
+      }
+    },
+    {
+      "id": "breaks",
+      "type": "FrameInputNode",
+      "x": 0,
+      "y": 420,
+      "init": {
+        "label": "Volume tiers",
+        "frameText": "[{\"name\":\"qty\",\"type\":\"number\",\"values\":[1,10,50,100]},{\"name\":\"discount\",\"type\":\"number\",\"values\":[0,0.05,0.1,0.2]}]"
+      }
+    },
+    {
+      "id": "asofjoin",
+      "type": "JoinNode",
+      "x": 460,
+      "y": -60,
+      "init": {
+        "label": "As-of Join — trade price at execution time (≤)",
+        "how": "asof",
+        "asofDirection": "backward"
+      },
+      "stringLiterals": {
+        "leftKey": "time",
+        "rightKey": "time"
+      }
+    },
+    {
+      "id": "lookup",
+      "type": "XLookupNode",
+      "x": 460,
+      "y": 420,
+      "init": {
+        "label": "XLOOKUP — next-smaller volume tier (≤)",
+        "matchMode": "nextSmaller"
+      },
+      "stringLiterals": {
+        "lookup": "35",
+        "inColumn": "qty",
+        "returnColumn": "discount",
+        "ifNotFound": "0"
+      }
+    }
   ],
   "connections": [
-    {"source":"trades","sourceOutput":"frame","target":"asofjoin","targetInput":"left"},
-    {"source":"quotes","sourceOutput":"frame","target":"asofjoin","targetInput":"right"},
-    {"source":"breaks","sourceOutput":"frame","target":"lookup","targetInput":"frame"}
+    {
+      "source": "trades",
+      "sourceOutput": "frame",
+      "target": "asofjoin",
+      "targetInput": "left"
+    },
+    {
+      "source": "quotes",
+      "sourceOutput": "frame",
+      "target": "asofjoin",
+      "targetInput": "right"
+    },
+    {
+      "source": "breaks",
+      "sourceOutput": "frame",
+      "target": "lookup",
+      "targetInput": "frame"
+    }
   ]
 }
