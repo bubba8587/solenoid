@@ -3,6 +3,7 @@ import { marked } from "marked";
 import DOMPurify from "dompurify";
 import { copyText } from "../clipboard";
 import { commentStore, commentsPanelUi } from "../commentStore";
+import { settingsStore } from "../settingsStore";
 import type { ClassicPreset } from "rete";
 import type { ClassicScheme, RenderEmit } from "rete-react-plugin";
 import { processGraph } from "../process";
@@ -311,6 +312,10 @@ export function NodeShell({
   // never collapses to a zero-height sliver (was a bug with blank labels).
   const effectivePlaceholder = labelPlaceholder ?? nodeName(node) ?? undefined;
 
+  // The SETTING, not the zoom state — changes only on a Settings click, so the
+  // full-graph re-render it triggers is fine; see the semantic div below.
+  const semanticZoomSetting = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("semanticZoom"));
+
   // Auto-size the textarea to content, capped at 4 lines (edit mode only).
   // useLayoutEffect (not useEffect): the height must settle BEFORE paint, in the
   // same frame NodeCard measures the output socket (--out-socket-top tracks the
@@ -406,10 +411,15 @@ export function NodeShell({
             hidden (nodeCard.css) and this draws the node's NAME large + centered so a
             card still reads as an identifiable block, not a blank rectangle. Only
             visible under html.solenoid-semantic-zoom; transparent so the socket dots
-            still show; aria-hidden + pointer-events:none so it's purely decorative. */}
-        <div className="solenoid-node__semantic" aria-hidden="true">
-          <span>{node.label || effectivePlaceholder || ""}</span>
-        </div>
+            still show; aria-hidden + pointer-events:none so it's purely decorative.
+            Mounted only while the Settings toggle is on (2 elements × every node is
+            dead weight otherwise, and the toggle defaults off); the per-zoom-crossing
+            swap stays pure CSS via the root class — nodes never subscribe to zoom. */}
+        {semanticZoomSetting && (
+          <div className="solenoid-node__semantic" aria-hidden="true">
+            <span>{node.label || effectivePlaceholder || ""}</span>
+          </div>
+        )}
       </NodeCard>
     </NodeFormatContext.Provider>
   );
