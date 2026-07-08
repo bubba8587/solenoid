@@ -35,14 +35,12 @@ is archived).
 - [ ] **Keep `release-notes-features.md` current** — the curated selling list + What's-New
   slide source (author writes the final release notes). Reconciled 2026-07-08 (FRED-keyless
   copy, no FX, Simulation ≠ Monte Carlo — slides synced in `HelpDialogs.tsx`).
-- [ ] **Seed follow-ups from the 2026-07-08 overhaul** (the overhaul itself is DONE — two
-  seeds retired, content bugs fixed, headliners ordered; these are the author-call residue):
-  (a) **getting-started demos zero 1.1 headliners** — consider seeding one hero (a chart or
-  small composite) and reconsider the collapsed "Trig & averages" group hiding 11 nodes on
-  first load; (b) **personal-finance** (generator-locked) uses WebSource, no DataFeed/
-  composite/trust section — any change goes through `gen-personal-finance-seed.cjs`;
-  (c) **composite-workbench** covers 3 of 4 run modes — no scenarios/data-table card;
-  (d) **visual-outputs** could drop its bare Chart lanes (now chart-showcase's job).
+- [ ] **Seed follow-ups after the 2026-07-08 consolidation** (27 → 17, author-directed:
+  six retired outright, four merged, Getting Started rebuilt with a Tables & charts
+  cluster; run-graph/errorSeed tests re-anchored). Remaining author calls:
+  (a) **personal-finance** (generator-locked) uses WebSource, no DataFeed/composite/trust
+  section — any change goes through `gen-personal-finance-seed.cjs`; (b) **composite-workbench**
+  now has two goal-seek cards but still no scenarios/data-table card.
 - [ ] **Trust-node audit — remaining follow-ups** (audit DONE 2026-07-07; comments/Reconcile-PVM/
   Expect-config-persistence found clean). Fixed this pass: Tornado all-zero in manual/sketch mode
   (no rebuild-gate/force-exact) + no try/finally restore + synthetic alerts; model-fuzz polluting the

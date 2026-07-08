@@ -5,6 +5,44 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-08, later — seed consolidation 27→17 + release odds & ends)
+- **Seed set consolidated 27 → 17 (author-directed "rebuild from scratch" pass).**
+  Retired outright: mortgage (PF §6 is a mortgage stress test), investment, break-even,
+  stats, bom-costing (the same 5-step chain built twice), frames. Merged: as-of/lookup
+  corner → **Table Verbs** (order 65); visual-outputs' unique widgets (Sparkline/Gauge/
+  Heatmap/ChartBuilder styling) → chart-showcase, retitled **"Charts & Visuals"** (its two
+  bare Chart lanes dropped as gallery duplicates); magnetic-flux → **Famous Math** as "The
+  namesake" cluster + intro note; error-codes tour → null-and-logical as a side-by-side
+  column, retitled **"Errors, Null & Logic"** (cluster ids preserved — `errorSeed.test.ts`
+  just repointed its import and still drives all 11 codes through the real engine).
+  **Getting Started rebuilt:** the collapsed amber trig/averages group (11 hidden nodes)
+  DELETED per the author; in its place a Tables & charts cluster (Quarterly-sales frame →
+  column Chart; Get Column → SUM → $-Display) + one comment pointing at Ctrl+K / the
+  example menu. `run-graph.test.ts` re-anchored its headless assertions on that cluster
+  (frames.json was its fixture). **Cube Rollup kept a demo**: a rollup row added to the
+  cubes seed (SUM of each Rep's nested orders.Revenue) since bom-costing was its only
+  appearance. **Composite Workbench** gained a second goal-seek card ("Retirement deposit
+  finder": Solve the monthly deposit → $500k in 30 yrs at 7%, annuity-FV Expression
+  inside; probed FV(300)=**$365,991** via tsx). bomCostingSeed.test + framesSeed.test
+  retired with their seeds.
+- **Mobile command palette fixes** (author-reported): the persistent (always-on) bar sat
+  at z-index 300 ABOVE the Settings/help/shortcuts modal band (200) — persistent scrim
+  now 150 (ambient chrome yields to dialogs; the explicitly-invoked modal palette keeps
+  300); mobile top anchor 64px → **92px** (the 82px top-chrome edge + 10, level with the
+  nav pill). layout-chrome.md ladder + mobile-offsets table synced.
+- **Known-issues section** added to `release-notes-features.md` (GitHub release body ONLY,
+  not in-app — author call): tidy/cleanup-around-groups wonkiness, drill-in main-only
+  subsystems, label-edit undo gap, zoom seam, web CORS limits on Data Feed, Problems-panel
+  per-cell blindness, Tornado ranking caveats, fuzz Clamp, Set-node complex identity
+  compare, private-browsing reload loop, Android status-bar tint.
+- **`working` branch formally retired**: its CLAUDE.md now opens with a redirect banner
+  to `develop` (stale copies of main's CLAUDE.md still name `working`; main self-corrects
+  at the 1.1 merge). Commit identity verified: all session commits are
+  `Claude <noreply@anthropic.com>` author+committer; the earlier hook warning referenced
+  pre-rewrite hashes that no longer exist.
+- **agent-coordination.md swept to dormant** — it still carried the entire 2026-07-05
+  autonomous-run claims board (all landed long ago).
+
 ### SESSION DIGEST (2026-07-08 — 1.1 release build: finance seed, seed overhaul, bump)
 - **Live Market Data seed** (`seedGraphs/live-market-data.json`, order 45): the committed
   §3a demo — FRED UNRATE (since 2015) → line chart + Get Column → Aggregate average
