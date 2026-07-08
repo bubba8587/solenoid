@@ -9,28 +9,48 @@ import "./helpDialogs.css";
 type Slide = { title: string; body: string };
 const SLIDES: Slide[] = [
   {
-    title: "Edit composites in the full canvas",
-    body: "Drill into a composite node to work on its inner graph with the whole editor. The minimap, zoom, right-click menu, copy/paste, and Tidy all behave the same as they do on the main canvas.",
+    title: "What-if analysis",
+    body: "Wrap part of a model in a composite node and ask what-if without disturbing the rest. Goal Seek drives an input until an output hits a target, Scenarios compare saved cases, a Data Table sweeps a grid of inputs, and Simulation steps a feedback loop. The heavier modes run when you press Solve, and a marker shows when a result no longer matches its inputs.",
   },
   {
-    title: "What-if analysis",
-    body: "A composite container can run as Goal Seek, Scenarios, a Data Table, or an iterative Simulation. The heavier modes recompute when you press Solve, and a marker shows when the result no longer matches its inputs.",
+    title: "Command palette",
+    body: "Press Ctrl+K and type. Every menu action and toggle is one search away, with your recent actions first. A Settings option keeps the palette docked on screen.",
   },
   {
     title: "Live market and economic data",
-    body: "Pull FRED economic series onto the canvas with no API key, and stock history with a free Alpha Vantage key. Feeds refresh on a timer and are never saved into the file.",
+    body: "Pull FRED economic series onto the canvas with no API key, and stock history with a free Alpha Vantage key. Pick a date range and frequency, chart the series, and compute on the same numbers. Feeds refresh on a timer and are never saved into the file.",
+  },
+  {
+    title: "Rebuilt for your phone",
+    body: "The mobile layout is three zones: the document strip on top, the tool row under it, and a thumb-reach action bar with undo, add, select, and delete at the bottom. The command palette, navigator, and example menu all work on a small screen.",
+  },
+  {
+    title: "Reports",
+    body: "A Report is a markdown document that embeds live values by name. Type =total and the number, table, chart, equation, or diagram it names renders inline and stays current as the graph recomputes. Dock a report to the right edge and keep working on the canvas beside it.",
+  },
+  {
+    title: "Presenter mode",
+    body: "A Presentation node turns the canvas into a slideshow. Press Present and the camera flies from step to step while the app chrome hides; click or press Space to advance. The graph stays live, so a slide reacts when its inputs change.",
+  },
+  {
+    title: "Mermaid diagrams",
+    body: "A Mermaid node renders flowcharts, sequence and state diagrams, Gantt charts, and pie charts from plain text. A template dropdown drops in a working starter, and the diagram embeds in a Report like any chart.",
+  },
+  {
+    title: "Set operations",
+    body: "Union, intersection, difference, and symmetric difference over two lists, plus a second node for membership tests. The card renders its operation in set notation. Excel has no direct equivalent.",
   },
   {
     title: "More chart types",
-    body: "Pie, Scatter, Bubble, Radar, Radial, Funnel, and Composed, plus Treemap, Sankey, Histogram, KPI cards, and Bullet graphs. Every chart follows your palette.",
+    body: "Pie, Scatter, Bubble, Radar, Radial, Funnel, and Composed, plus Treemap, Sankey, Histogram, KPI cards, and Bullet graphs. A Histogram bins a list for you; KPI cards and Bullet graphs turn a number into a dashboard tile.",
   },
   {
-    title: "Reports and presentations",
-    body: "The Report node is plain markdown that embeds live values by name: numbers, tables, charts, equations, and Mermaid diagrams. Presenter mode plays the canvas back as a slideshow.",
+    title: "Align and distribute",
+    body: "Select two or more nodes and an alignment bar appears above the canvas: align edges or centers, and distribute spacing evenly, in either direction.",
   },
   {
-    title: "Theming and shortcuts",
-    body: "A palette editor, per-document properties, type-coloured chips, and a command palette that covers every menu action alongside the ones you've used recently.",
+    title: "Palette editor",
+    body: "Design your own color palette on live sample nodes, then use it app-wide or pin one to a document. Charts, diagrams, and the desktop window border follow it.",
   },
 ];
 
@@ -80,7 +100,8 @@ function About() {
       <p className="solenoid-helpdlg__about-body">
         Each node is one operation, and typed cables carry values between them: scalars, lists,
         tables, and frames. The graph recomputes as its inputs change, so the steps of a
-        calculation stay visible on the canvas.
+        calculation stay visible on the canvas. Cables enforce their types, a number can't wire
+        into a date, and a value's unit and format travel with it until a calculation changes it.
       </p>
       <button
         className="solenoid-helpdlg__btn solenoid-helpdlg__btn--accent"
