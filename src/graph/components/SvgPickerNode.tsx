@@ -116,10 +116,19 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedLayer, hoverColor]);
 
-  function onPointerMove(e: React.PointerEvent) {
+  // Resolve a pointer target to a layer, but ONLY if it's actually inside the SVG
+  // — clicking the well's padding lands on the container div, and without this
+  // guard resolveLayer would walk UP out of the svg into the node card DOM (whose
+  // rete elements have ids) and mis-pick. Outside the svg → no hit.
+  function hitLayer(target: EventTarget | null): { el: Element; name: string } | null {
     const root = svgRootRef.current;
-    if (!root) return;
-    const hit = resolveLayer(e.target as Element, root);
+    if (!root || !(target instanceof Element) || !root.contains(target)) return null;
+    return resolveLayer(target, root);
+  }
+
+  function onPointerMove(e: React.PointerEvent) {
+    if (!svgRootRef.current) return;
+    const hit = hitLayer(e.target);
     const el = hit?.el ?? null;
     if (el === hoverElRef.current) return; // only repaint when the target changes
     hoverElRef.current = el;
@@ -134,9 +143,8 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
   // A pick is a discrete action → commit immediately (like a dropdown). Clicking
   // the current selection (or empty space) clears it.
   function onClickWell(e: React.MouseEvent) {
-    const root = svgRootRef.current;
-    if (!root) return;
-    const name = resolveLayer(e.target as Element, root)?.name ?? "";
+    if (!svgRootRef.current) return;
+    const name = hitLayer(e.target)?.name ?? "";
     const next = name === data.selectedLayer ? "" : name;
     setSelectedLayer(next);
     data.selectedLayer = next;
