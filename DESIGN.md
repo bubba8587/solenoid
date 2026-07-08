@@ -254,3 +254,9 @@ control already conveys) — that rule still governs; these are about tone once 
   tables."_
 - **Second person for instructions, not for asides.** "Pull … onto the canvas" is fine; "behind your back"
   is not. Address the user to tell them what to do, never to be chummy.
+- **No trailing parenthetical.** A string that ends with "(…)" is a sentence that didn't commit. Fold the
+  aside into the sentence, promote it to its own sentence, or delete it. _"Stores the series id, not the
+  data (refresh to re-pull)."_ → _"Stores the series id, not the data; refresh to re-pull."_ A parenthesis
+  mid-sentence for a genuinely optional gloss is fine, sparingly — never two in one string, and never as
+  the string's sign-off. The Excel-equivalent note in a tooltip becomes a plain trailing sentence:
+  _"Excel: XLOOKUP."_
