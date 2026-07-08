@@ -39,8 +39,8 @@
     {
       "id": "lineComp",
       "type": "CompositeNode",
-      "x": 300,
-      "y": -40,
+      "x": 288,
+      "y": -37,
       "init": {
         "label": "Line total (drill in!)",
         "runMode": "single",
@@ -135,7 +135,7 @@
       "id": "totalDisp",
       "type": "DisplayNode",
       "x": 640,
-      "y": -40,
+      "y": -42,
       "init": {
         "label": "Order total"
       }
@@ -157,7 +157,7 @@
       "id": "deposit",
       "type": "NumberInputNode",
       "x": -40,
-      "y": 480,
+      "y": 468,
       "init": {
         "label": "Deposit / step",
         "value": 100
@@ -166,8 +166,8 @@
     {
       "id": "simComp",
       "type": "CompositeNode",
-      "x": 300,
-      "y": 440,
+      "x": 288,
+      "y": 448,
       "init": {
         "label": "Savings simulator",
         "runMode": "simulation",
@@ -266,7 +266,7 @@
       "id": "seriesDisp",
       "type": "DisplayNode",
       "x": 640,
-      "y": 440,
+      "y": 443,
       "init": {
         "label": "Balance per step"
       }
@@ -288,7 +288,7 @@
       "id": "loopA",
       "type": "ArithmeticNode",
       "x": -40,
-      "y": 980,
+      "y": 972,
       "init": {
         "label": "Feeds B",
         "op": "add"
@@ -300,8 +300,8 @@
     {
       "id": "loopB",
       "type": "ArithmeticNode",
-      "x": 300,
-      "y": 980,
+      "x": 318,
+      "y": 972,
       "init": {
         "label": "Feeds A",
         "op": "add"
@@ -314,7 +314,7 @@
       "id": "circDisp",
       "type": "DisplayNode",
       "x": 640,
-      "y": 980,
+      "y": 997,
       "init": {
         "label": "Propagates the error"
       }
@@ -335,8 +335,8 @@
     {
       "id": "gsComp",
       "type": "CompositeNode",
-      "x": 300,
-      "y": 1440,
+      "x": 288,
+      "y": 1443,
       "init": {
         "label": "Break-even finder",
         "runMode": "goal-seek",
@@ -437,7 +437,7 @@
       "id": "gsDisp",
       "type": "DisplayNode",
       "x": 640,
-      "y": 1440,
+      "y": 1438,
       "init": {
         "label": "Profit at solution"
       }
@@ -457,7 +457,7 @@
     {
       "id": "fvComp",
       "type": "CompositeNode",
-      "x": 300,
+      "x": 288,
       "y": 1860,
       "init": {
         "label": "Retirement deposit finder",

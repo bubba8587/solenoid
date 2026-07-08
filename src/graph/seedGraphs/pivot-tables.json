@@ -179,7 +179,7 @@
     {
       "id": "splitDate",
       "type": "SplitColumnNode",
-      "x": 480,
+      "x": 478,
       "y": 940,
       "init": {
         "label": "Split Column → SKU into Dept/Code"
@@ -193,7 +193,7 @@
     {
       "id": "addIdx",
       "type": "AddIndexNode",
-      "x": 480,
+      "x": 483,
       "y": 1180,
       "init": {
         "label": "Add Index → row numbers"

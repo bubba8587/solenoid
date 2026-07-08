@@ -2,67 +2,502 @@
   "v": 1,
   "label": "Unit Flow",
   "nodes": [
-    {"id":"hdr","type":"NoteNode","x":-380,"y":-220,"init":{"label":"Unit Flow — how a Format Controller locks a value","body":"A **Format Controller (FC)** locks a value's **unit** and **number format** ($, km, 2 decimals…). The lock belongs to the *value*, so it travels through every node that just **passes the value along** (a Display) — up AND down the stream — and **breaks** at any node that **transforms** it. Each lane shows one rule; watch the value boxes.","color":"gray","width":900,"height":190}},
-
-    {"id":"capA","type":"NoteNode","x":-380,"y":40,"init":{"label":"A · Lock once → carries DOWNSTREAM","body":"The FC locks `$` + 2dp on Revenue. Every Display *after* it shows `$1,234.50` with **no trailing FC** of its own — the lock rides the value forward through passthroughs.","color":"blue","width":330,"height":170}},
-    {"id":"A_num","type":"NumberInputNode","x":40,"y":60,"init":{"label":"Revenue","value":1234.5}},
-    {"id":"A_fc","type":"FormatControllerNode","x":250,"y":78,"init":{"label":"Format","hostNodeId":"A_num","socketKey":"value","side":"output","format":"decimal","decimalDigits":2,"decimalMode":"places","unit":"usd","socketDataType":"number"}},
-    {"id":"A_d1","type":"DisplayNode","x":470,"y":40,"init":{"label":"Dashboard"}},
-    {"id":"A_d2","type":"DisplayNode","x":760,"y":40,"init":{"label":"Report"}},
-
-    {"id":"capB","type":"NoteNode","x":-380,"y":300,"init":{"label":"B · Reaches UPSTREAM too","body":"The FC sits at the **end**. Both Displays in *front* of it — even two hops up — still show `1,200 km`. (The raw input box stays unformatted: the lock lives in the passthrough run, between the value's origin and the FC.)","color":"green","width":330,"height":180}},
-    {"id":"B_num","type":"NumberInputNode","x":40,"y":320,"init":{"label":"Sensor","value":1200}},
-    {"id":"B_d1","type":"DisplayNode","x":260,"y":320,"init":{"label":"Live feed"}},
-    {"id":"B_d2","type":"DisplayNode","x":550,"y":320,"init":{"label":"Logged"}},
-    {"id":"B_fc","type":"FormatControllerNode","x":830,"y":340,"init":{"label":"Format","hostNodeId":"B_d2","socketKey":"out","side":"output","format":"decimal","decimalDigits":0,"decimalMode":"places","unit":"km","socketDataType":"number"}},
-
-    {"id":"capC","type":"NoteNode","x":-380,"y":560,"init":{"label":"C · A transform BREAKS it","body":"`$10.00` each. Multiplying by 100 makes a **new value**, so the `$` doesn't carry — the lot total shows a bare `1,000`. Breaking at a transform is the default for anything that isn't a passthrough.","color":"amber","width":330,"height":170}},
-    {"id":"C_num","type":"NumberInputNode","x":40,"y":580,"init":{"label":"Item price","value":10}},
-    {"id":"C_fc","type":"FormatControllerNode","x":250,"y":598,"init":{"label":"Format","hostNodeId":"C_num","socketKey":"value","side":"output","format":"decimal","decimalDigits":2,"decimalMode":"places","unit":"usd","socketDataType":"number"}},
-    {"id":"C_d1","type":"DisplayNode","x":470,"y":560,"init":{"label":"Each"}},
-    {"id":"C_mul","type":"ArithmeticNode","x":760,"y":585,"init":{"label":"× 100 (a lot)","op":"mul"},"literals":{"a":0,"b":100}},
-    {"id":"C_d2","type":"DisplayNode","x":1010,"y":560,"init":{"label":"Lot total — unit lost"}},
-
-    {"id":"capD","type":"NoteNode","x":-380,"y":800,"init":{"label":"D · Convert FORWARDS the new unit","body":"`mi → km` changes the value *and* the unit. The FC on the result didn't pick `km` — it's **locked** to what Convert hands it (the unit dropdown is greyed out). A marathon reads `42.20 km`.","color":"purple","width":330,"height":170}},
-    {"id":"D_num","type":"NumberInputNode","x":40,"y":820,"init":{"label":"Marathon (mi)","value":26.21875}},
-    {"id":"D_conv","type":"ConvertNode","x":250,"y":800,"init":{"label":"mi → km","fromUnit":"mi","toUnit":"km"}},
-    {"id":"D_d1","type":"DisplayNode","x":560,"y":820,"init":{"label":"Metric"}},
-    {"id":"D_fc","type":"FormatControllerNode","x":840,"y":838,"init":{"label":"Format","hostNodeId":"D_d1","socketKey":"out","side":"output","format":"decimal","decimalDigits":2,"decimalMode":"places","unit":"km","socketDataType":"number"}},
-
-    {"id":"capE","type":"NoteNode","x":-380,"y":1080,"init":{"label":"E · A selector KEEPS the unit","body":"IF picks a branch from the condition (in stock → Sale price). It only *selects* a value, it doesn't transform it — so the chosen branch's `$` rides straight through. The result reads `$80.00`, no trailing FC.","color":"teal","width":330,"height":180}},
-    {"id":"E_sale","type":"NumberInputNode","x":40,"y":1020,"init":{"label":"Sale price","value":80}},
-    {"id":"E_saleFc","type":"FormatControllerNode","x":250,"y":1038,"init":{"label":"Format","hostNodeId":"E_sale","socketKey":"value","side":"output","format":"decimal","decimalDigits":2,"decimalMode":"places","unit":"usd","socketDataType":"number"}},
-    {"id":"E_list","type":"NumberInputNode","x":40,"y":1160,"init":{"label":"List price","value":100}},
-    {"id":"E_listFc","type":"FormatControllerNode","x":250,"y":1178,"init":{"label":"Format","hostNodeId":"E_list","socketKey":"value","side":"output","format":"decimal","decimalDigits":2,"decimalMode":"places","unit":"usd","socketDataType":"number"}},
-    {"id":"E_units","type":"NumberInputNode","x":40,"y":1300,"init":{"label":"Units in stock","value":5}},
-    {"id":"E_cmp","type":"ComparisonNode","x":260,"y":1300,"init":{"label":"in stock? (> 0)","op":"gt"},"literals":{"a":0,"b":0}},
-    {"id":"E_if","type":"IfNode","x":560,"y":1120,"init":{"label":"IF in stock"},"literals":{"cond":0,"then":0,"else":0}},
-    {"id":"E_disp","type":"DisplayNode","x":840,"y":1120,"init":{"label":"Charged"}}
+    {
+      "id": "hdr",
+      "type": "NoteNode",
+      "x": -380,
+      "y": -220,
+      "init": {
+        "label": "Unit Flow — how a Format Controller locks a value",
+        "body": "A **Format Controller (FC)** locks a value's **unit** and **number format** ($, km, 2 decimals…). The lock belongs to the *value*, so it travels through every node that just **passes the value along** (a Display) — up AND down the stream — and **breaks** at any node that **transforms** it. Each lane shows one rule; watch the value boxes.",
+        "color": "gray",
+        "width": 900,
+        "height": 190
+      }
+    },
+    {
+      "id": "capA",
+      "type": "NoteNode",
+      "x": -380,
+      "y": 40,
+      "init": {
+        "label": "A · Lock once → carries DOWNSTREAM",
+        "body": "The FC locks `$` + 2dp on Revenue. Every Display *after* it shows `$1,234.50` with **no trailing FC** of its own — the lock rides the value forward through passthroughs.",
+        "color": "blue",
+        "width": 330,
+        "height": 170
+      }
+    },
+    {
+      "id": "A_num",
+      "type": "NumberInputNode",
+      "x": 40,
+      "y": 63,
+      "init": {
+        "label": "Revenue",
+        "value": 1234.5
+      }
+    },
+    {
+      "id": "A_fc",
+      "type": "FormatControllerNode",
+      "x": 250,
+      "y": 81,
+      "init": {
+        "label": "Format",
+        "hostNodeId": "A_num",
+        "socketKey": "value",
+        "side": "output",
+        "format": "decimal",
+        "decimalDigits": 2,
+        "decimalMode": "places",
+        "unit": "usd",
+        "socketDataType": "number"
+      }
+    },
+    {
+      "id": "A_d1",
+      "type": "DisplayNode",
+      "x": 380,
+      "y": 38,
+      "init": {
+        "label": "Dashboard"
+      }
+    },
+    {
+      "id": "A_d2",
+      "type": "DisplayNode",
+      "x": 750,
+      "y": 38,
+      "init": {
+        "label": "Report"
+      }
+    },
+    {
+      "id": "capB",
+      "type": "NoteNode",
+      "x": -380,
+      "y": 300,
+      "init": {
+        "label": "B · Reaches UPSTREAM too",
+        "body": "The FC sits at the **end**. Both Displays in *front* of it — even two hops up — still show `1,200 km`. (The raw input box stays unformatted: the lock lives in the passthrough run, between the value's origin and the FC.)",
+        "color": "green",
+        "width": 330,
+        "height": 180
+      }
+    },
+    {
+      "id": "B_num",
+      "type": "NumberInputNode",
+      "x": 40,
+      "y": 337,
+      "init": {
+        "label": "Sensor",
+        "value": 1200
+      }
+    },
+    {
+      "id": "B_d1",
+      "type": "DisplayNode",
+      "x": 252,
+      "y": 312,
+      "init": {
+        "label": "Live feed"
+      }
+    },
+    {
+      "id": "B_d2",
+      "type": "DisplayNode",
+      "x": 550,
+      "y": 312,
+      "init": {
+        "label": "Logged"
+      }
+    },
+    {
+      "id": "B_fc",
+      "type": "FormatControllerNode",
+      "x": 830,
+      "y": 332,
+      "init": {
+        "label": "Format",
+        "hostNodeId": "B_d2",
+        "socketKey": "out",
+        "side": "output",
+        "format": "decimal",
+        "decimalDigits": 0,
+        "decimalMode": "places",
+        "unit": "km",
+        "socketDataType": "number"
+      }
+    },
+    {
+      "id": "capC",
+      "type": "NoteNode",
+      "x": -380,
+      "y": 560,
+      "init": {
+        "label": "C · A transform BREAKS it",
+        "body": "`$10.00` each. Multiplying by 100 makes a **new value**, so the `$` doesn't carry — the lot total shows a bare `1,000`. Breaking at a transform is the default for anything that isn't a passthrough.",
+        "color": "amber",
+        "width": 330,
+        "height": 170
+      }
+    },
+    {
+      "id": "C_num",
+      "type": "NumberInputNode",
+      "x": 40,
+      "y": 583,
+      "init": {
+        "label": "Item price",
+        "value": 10
+      }
+    },
+    {
+      "id": "C_fc",
+      "type": "FormatControllerNode",
+      "x": 250,
+      "y": 601,
+      "init": {
+        "label": "Format",
+        "hostNodeId": "C_num",
+        "socketKey": "value",
+        "side": "output",
+        "format": "decimal",
+        "decimalDigits": 2,
+        "decimalMode": "places",
+        "unit": "usd",
+        "socketDataType": "number"
+      }
+    },
+    {
+      "id": "C_d1",
+      "type": "DisplayNode",
+      "x": 470,
+      "y": 558,
+      "init": {
+        "label": "Each"
+      }
+    },
+    {
+      "id": "C_mul",
+      "type": "ArithmeticNode",
+      "x": 770,
+      "y": 585,
+      "init": {
+        "label": "× 100 (a lot)",
+        "op": "mul"
+      },
+      "literals": {
+        "a": 0,
+        "b": 100
+      }
+    },
+    {
+      "id": "C_d2",
+      "type": "DisplayNode",
+      "x": 1010,
+      "y": 558,
+      "init": {
+        "label": "Lot total — unit lost"
+      }
+    },
+    {
+      "id": "capD",
+      "type": "NoteNode",
+      "x": -380,
+      "y": 800,
+      "init": {
+        "label": "D · Convert FORWARDS the new unit",
+        "body": "`mi → km` changes the value *and* the unit. The FC on the result didn't pick `km` — it's **locked** to what Convert hands it (the unit dropdown is greyed out). A marathon reads `42.20 km`.",
+        "color": "purple",
+        "width": 330,
+        "height": 170
+      }
+    },
+    {
+      "id": "D_num",
+      "type": "NumberInputNode",
+      "x": 40,
+      "y": 833,
+      "init": {
+        "label": "Marathon (mi)",
+        "value": 26.21875
+      }
+    },
+    {
+      "id": "D_conv",
+      "type": "ConvertNode",
+      "x": 262,
+      "y": 800,
+      "init": {
+        "label": "mi → km",
+        "fromUnit": "mi",
+        "toUnit": "km"
+      }
+    },
+    {
+      "id": "D_d1",
+      "type": "DisplayNode",
+      "x": 550,
+      "y": 808,
+      "init": {
+        "label": "Metric"
+      }
+    },
+    {
+      "id": "D_fc",
+      "type": "FormatControllerNode",
+      "x": 830,
+      "y": 826,
+      "init": {
+        "label": "Format",
+        "hostNodeId": "D_d1",
+        "socketKey": "out",
+        "side": "output",
+        "format": "decimal",
+        "decimalDigits": 2,
+        "decimalMode": "places",
+        "unit": "km",
+        "socketDataType": "number"
+      }
+    },
+    {
+      "id": "capE",
+      "type": "NoteNode",
+      "x": -380,
+      "y": 1080,
+      "init": {
+        "label": "E · A selector KEEPS the unit",
+        "body": "IF picks a branch from the condition (in stock → Sale price). It only *selects* a value, it doesn't transform it — so the chosen branch's `$` rides straight through. The result reads `$80.00`, no trailing FC.",
+        "color": "teal",
+        "width": 330,
+        "height": 180
+      }
+    },
+    {
+      "id": "E_sale",
+      "type": "NumberInputNode",
+      "x": 40,
+      "y": 1020,
+      "init": {
+        "label": "Sale price",
+        "value": 80
+      }
+    },
+    {
+      "id": "E_saleFc",
+      "type": "FormatControllerNode",
+      "x": 250,
+      "y": 1038,
+      "init": {
+        "label": "Format",
+        "hostNodeId": "E_sale",
+        "socketKey": "value",
+        "side": "output",
+        "format": "decimal",
+        "decimalDigits": 2,
+        "decimalMode": "places",
+        "unit": "usd",
+        "socketDataType": "number"
+      }
+    },
+    {
+      "id": "E_list",
+      "type": "NumberInputNode",
+      "x": 40,
+      "y": 1160,
+      "init": {
+        "label": "List price",
+        "value": 100
+      }
+    },
+    {
+      "id": "E_listFc",
+      "type": "FormatControllerNode",
+      "x": 250,
+      "y": 1178,
+      "init": {
+        "label": "Format",
+        "hostNodeId": "E_list",
+        "socketKey": "value",
+        "side": "output",
+        "format": "decimal",
+        "decimalDigits": 2,
+        "decimalMode": "places",
+        "unit": "usd",
+        "socketDataType": "number"
+      }
+    },
+    {
+      "id": "E_units",
+      "type": "NumberInputNode",
+      "x": 40,
+      "y": 1300,
+      "init": {
+        "label": "Units in stock",
+        "value": 5
+      }
+    },
+    {
+      "id": "E_cmp",
+      "type": "ComparisonNode",
+      "x": 272,
+      "y": 1300,
+      "init": {
+        "label": "in stock? (> 0)",
+        "op": "gt"
+      },
+      "literals": {
+        "a": 0,
+        "b": 0
+      }
+    },
+    {
+      "id": "E_if",
+      "type": "IfNode",
+      "x": 570,
+      "y": 1108,
+      "init": {
+        "label": "IF in stock"
+      },
+      "literals": {
+        "cond": 0,
+        "then": 0,
+        "else": 0
+      }
+    },
+    {
+      "id": "E_disp",
+      "type": "DisplayNode",
+      "x": 840,
+      "y": 1133,
+      "init": {
+        "label": "Charged"
+      }
+    }
   ],
   "connections": [
-    {"source":"A_num","sourceOutput":"value","target":"A_fc","targetInput":"in"},
-    {"source":"A_fc","sourceOutput":"out","target":"A_d1","targetInput":"in"},
-    {"source":"A_d1","sourceOutput":"out","target":"A_d2","targetInput":"in"},
-
-    {"source":"B_num","sourceOutput":"value","target":"B_d1","targetInput":"in"},
-    {"source":"B_d1","sourceOutput":"out","target":"B_d2","targetInput":"in"},
-    {"source":"B_d2","sourceOutput":"out","target":"B_fc","targetInput":"in"},
-
-    {"source":"C_num","sourceOutput":"value","target":"C_fc","targetInput":"in"},
-    {"source":"C_fc","sourceOutput":"out","target":"C_d1","targetInput":"in"},
-    {"source":"C_d1","sourceOutput":"out","target":"C_mul","targetInput":"a"},
-    {"source":"C_mul","sourceOutput":"result","target":"C_d2","targetInput":"in"},
-
-    {"source":"D_num","sourceOutput":"value","target":"D_conv","targetInput":"in"},
-    {"source":"D_conv","sourceOutput":"out","target":"D_d1","targetInput":"in"},
-    {"source":"D_d1","sourceOutput":"out","target":"D_fc","targetInput":"in"},
-
-    {"source":"E_sale","sourceOutput":"value","target":"E_saleFc","targetInput":"in"},
-    {"source":"E_saleFc","sourceOutput":"out","target":"E_if","targetInput":"then"},
-    {"source":"E_list","sourceOutput":"value","target":"E_listFc","targetInput":"in"},
-    {"source":"E_listFc","sourceOutput":"out","target":"E_if","targetInput":"else"},
-    {"source":"E_units","sourceOutput":"value","target":"E_cmp","targetInput":"a"},
-    {"source":"E_cmp","sourceOutput":"result","target":"E_if","targetInput":"cond"},
-    {"source":"E_if","sourceOutput":"result","target":"E_disp","targetInput":"in"}
+    {
+      "source": "A_num",
+      "sourceOutput": "value",
+      "target": "A_fc",
+      "targetInput": "in"
+    },
+    {
+      "source": "A_fc",
+      "sourceOutput": "out",
+      "target": "A_d1",
+      "targetInput": "in"
+    },
+    {
+      "source": "A_d1",
+      "sourceOutput": "out",
+      "target": "A_d2",
+      "targetInput": "in"
+    },
+    {
+      "source": "B_num",
+      "sourceOutput": "value",
+      "target": "B_d1",
+      "targetInput": "in"
+    },
+    {
+      "source": "B_d1",
+      "sourceOutput": "out",
+      "target": "B_d2",
+      "targetInput": "in"
+    },
+    {
+      "source": "B_d2",
+      "sourceOutput": "out",
+      "target": "B_fc",
+      "targetInput": "in"
+    },
+    {
+      "source": "C_num",
+      "sourceOutput": "value",
+      "target": "C_fc",
+      "targetInput": "in"
+    },
+    {
+      "source": "C_fc",
+      "sourceOutput": "out",
+      "target": "C_d1",
+      "targetInput": "in"
+    },
+    {
+      "source": "C_d1",
+      "sourceOutput": "out",
+      "target": "C_mul",
+      "targetInput": "a"
+    },
+    {
+      "source": "C_mul",
+      "sourceOutput": "result",
+      "target": "C_d2",
+      "targetInput": "in"
+    },
+    {
+      "source": "D_num",
+      "sourceOutput": "value",
+      "target": "D_conv",
+      "targetInput": "in"
+    },
+    {
+      "source": "D_conv",
+      "sourceOutput": "out",
+      "target": "D_d1",
+      "targetInput": "in"
+    },
+    {
+      "source": "D_d1",
+      "sourceOutput": "out",
+      "target": "D_fc",
+      "targetInput": "in"
+    },
+    {
+      "source": "E_sale",
+      "sourceOutput": "value",
+      "target": "E_saleFc",
+      "targetInput": "in"
+    },
+    {
+      "source": "E_saleFc",
+      "sourceOutput": "out",
+      "target": "E_if",
+      "targetInput": "then"
+    },
+    {
+      "source": "E_list",
+      "sourceOutput": "value",
+      "target": "E_listFc",
+      "targetInput": "in"
+    },
+    {
+      "source": "E_listFc",
+      "sourceOutput": "out",
+      "target": "E_if",
+      "targetInput": "else"
+    },
+    {
+      "source": "E_units",
+      "sourceOutput": "value",
+      "target": "E_cmp",
+      "targetInput": "a"
+    },
+    {
+      "source": "E_cmp",
+      "sourceOutput": "result",
+      "target": "E_if",
+      "targetInput": "cond"
+    },
+    {
+      "source": "E_if",
+      "sourceOutput": "result",
+      "target": "E_disp",
+      "targetInput": "in"
+    }
   ]
 }

@@ -3,32 +3,197 @@
   "label": "Trust & Data Quality",
   "order": 78,
   "nodes": [
-    {"id":"fi-sensors","type":"FrameInputNode","x":0,"y":0,"init":{"label":"Sensor readings","frameText":"Sensor, Temp\nA, 21\nB, \nC, 45\nD, 88"}},
-    {"id":"exp","type":"ExpectNode","x":360,"y":-30,"init":{"label":"Temp 0–50 °C?","checkNotNull":true,"checkRange":true},"literals":{"min":0,"max":50}},
-
-    {"id":"fi-jan","type":"FrameInputNode","x":0,"y":330,"init":{"label":"Prices — January","frameText":"SKU, Price, Qty\nA, 10, 5\nB, 20, 3\nC, 30, 2"}},
-    {"id":"fi-feb","type":"FrameInputNode","x":0,"y":600,"init":{"label":"Prices — February","frameText":"SKU, Price, Qty\nA, 10, 6\nB, 25, 3\nD, 40, 1"}},
-    {"id":"rec","type":"ReconcileNode","x":380,"y":420,"init":{"label":"Jan → Feb"},"stringLiterals":{"key":"SKU","priceColumn":"Price","qtyColumn":"Qty"}},
-
-    {"id":"sl-price","type":"SliderInputNode","x":0,"y":940,"init":{"label":"Price","value":12,"min":8,"max":18,"step":1},"literals":{"min":8,"max":18,"step":1}},
-    {"id":"sl-cost","type":"SliderInputNode","x":0,"y":1080,"init":{"label":"Unit cost","value":7,"min":4,"max":10,"step":1},"literals":{"min":4,"max":10,"step":1}},
-    {"id":"sl-units","type":"SliderInputNode","x":0,"y":1220,"init":{"label":"Units sold","value":100,"min":50,"max":200,"step":10},"literals":{"min":50,"max":200,"step":10}},
-    {"id":"expr-profit","type":"ExpressionNode","x":320,"y":1060,"init":{"label":"Profit","expr":"(price - cost) * units"}},
-    {"id":"tornado","type":"TornadoNode","x":660,"y":1040,"init":{"label":"Profit sensitivity"}}
+    {
+      "id": "fi-sensors",
+      "type": "FrameInputNode",
+      "x": -10,
+      "y": -5,
+      "init": {
+        "label": "Sensor readings",
+        "frameText": "Sensor, Temp\nA, 21\nB, \nC, 45\nD, 88"
+      }
+    },
+    {
+      "id": "exp",
+      "type": "ExpectNode",
+      "x": 340,
+      "y": -24,
+      "init": {
+        "label": "Temp 0–50 °C?",
+        "checkNotNull": true,
+        "checkRange": true
+      },
+      "literals": {
+        "min": 0,
+        "max": 50
+      }
+    },
+    {
+      "id": "fi-jan",
+      "type": "FrameInputNode",
+      "x": -10,
+      "y": 330,
+      "init": {
+        "label": "Prices — January",
+        "frameText": "SKU, Price, Qty\nA, 10, 5\nB, 20, 3\nC, 30, 2"
+      }
+    },
+    {
+      "id": "fi-feb",
+      "type": "FrameInputNode",
+      "x": -10,
+      "y": 600,
+      "init": {
+        "label": "Prices — February",
+        "frameText": "SKU, Price, Qty\nA, 10, 6\nB, 25, 3\nD, 40, 1"
+      }
+    },
+    {
+      "id": "rec",
+      "type": "ReconcileNode",
+      "x": 380,
+      "y": 420,
+      "init": {
+        "label": "Jan → Feb"
+      },
+      "stringLiterals": {
+        "key": "SKU",
+        "priceColumn": "Price",
+        "qtyColumn": "Qty"
+      }
+    },
+    {
+      "id": "sl-price",
+      "type": "SliderInputNode",
+      "x": 10,
+      "y": 940,
+      "init": {
+        "label": "Price",
+        "value": 12,
+        "min": 8,
+        "max": 18,
+        "step": 1
+      },
+      "literals": {
+        "min": 8,
+        "max": 18,
+        "step": 1
+      }
+    },
+    {
+      "id": "sl-cost",
+      "type": "SliderInputNode",
+      "x": 10,
+      "y": 1056,
+      "init": {
+        "label": "Unit cost",
+        "value": 7,
+        "min": 4,
+        "max": 10,
+        "step": 1
+      },
+      "literals": {
+        "min": 4,
+        "max": 10,
+        "step": 1
+      }
+    },
+    {
+      "id": "sl-units",
+      "type": "SliderInputNode",
+      "x": 10,
+      "y": 1220,
+      "init": {
+        "label": "Units sold",
+        "value": 100,
+        "min": 50,
+        "max": 200,
+        "step": 10
+      },
+      "literals": {
+        "min": 50,
+        "max": 200,
+        "step": 10
+      }
+    },
+    {
+      "id": "expr-profit",
+      "type": "ExpressionNode",
+      "x": 340,
+      "y": 1080,
+      "init": {
+        "label": "Profit",
+        "expr": "(price - cost) * units"
+      }
+    },
+    {
+      "id": "tornado",
+      "type": "TornadoNode",
+      "x": 660,
+      "y": 1045,
+      "init": {
+        "label": "Profit sensitivity"
+      }
+    }
   ],
   "connections": [
-    {"source":"fi-sensors","sourceOutput":"frame","target":"exp","targetInput":"in"},
-
-    {"source":"fi-jan","sourceOutput":"frame","target":"rec","targetInput":"left"},
-    {"source":"fi-feb","sourceOutput":"frame","target":"rec","targetInput":"right"},
-
-    {"source":"sl-price","sourceOutput":"value","target":"expr-profit","targetInput":"price"},
-    {"source":"sl-cost","sourceOutput":"value","target":"expr-profit","targetInput":"cost"},
-    {"source":"sl-units","sourceOutput":"value","target":"expr-profit","targetInput":"units"},
-    {"source":"expr-profit","sourceOutput":"result","target":"tornado","targetInput":"value"}
+    {
+      "source": "fi-sensors",
+      "sourceOutput": "frame",
+      "target": "exp",
+      "targetInput": "in"
+    },
+    {
+      "source": "fi-jan",
+      "sourceOutput": "frame",
+      "target": "rec",
+      "targetInput": "left"
+    },
+    {
+      "source": "fi-feb",
+      "sourceOutput": "frame",
+      "target": "rec",
+      "targetInput": "right"
+    },
+    {
+      "source": "sl-price",
+      "sourceOutput": "value",
+      "target": "expr-profit",
+      "targetInput": "price"
+    },
+    {
+      "source": "sl-cost",
+      "sourceOutput": "value",
+      "target": "expr-profit",
+      "targetInput": "cost"
+    },
+    {
+      "source": "sl-units",
+      "sourceOutput": "value",
+      "target": "expr-profit",
+      "targetInput": "units"
+    },
+    {
+      "source": "expr-profit",
+      "sourceOutput": "result",
+      "target": "tornado",
+      "targetInput": "value"
+    }
   ],
   "comments": [
-    {"id":"cm1","nodeId":"exp","author":"You","text":"88 °C on sensor D is above the 50° limit and sensor B has no reading — the Expect badge flags both. Open the Problems panel to see them.","resolved":false},
-    {"id":"cm2","nodeId":"tornado","author":"You","text":"Click Run to sweep each slider across its range one at a time — the longest bar is what your profit is most sensitive to.","resolved":false}
+    {
+      "id": "cm1",
+      "nodeId": "exp",
+      "author": "You",
+      "text": "88 °C on sensor D is above the 50° limit and sensor B has no reading — the Expect badge flags both. Open the Problems panel to see them.",
+      "resolved": false
+    },
+    {
+      "id": "cm2",
+      "nodeId": "tornado",
+      "author": "You",
+      "text": "Click Run to sweep each slider across its range one at a time — the longest bar is what your profit is most sensitive to.",
+      "resolved": false
+    }
   ]
 }

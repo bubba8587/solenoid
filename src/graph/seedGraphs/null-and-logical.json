@@ -31,8 +31,8 @@
     {
       "id": "fiA",
       "type": "FrameInputNode",
-      "x": 230,
-      "y": 60,
+      "x": 212,
+      "y": 39,
       "init": {
         "label": "CSV (blank cell in vals)",
         "frameText": "vals, tag\n1, a\n, b\n3, c\n4, d"
@@ -41,8 +41,8 @@
     {
       "id": "gcA",
       "type": "GetColumnNode",
-      "x": 470,
-      "y": 60,
+      "x": 473,
+      "y": 46,
       "init": {
         "label": "Get \"vals\"",
         "readAs": "number"
@@ -54,8 +54,8 @@
     {
       "id": "dAlist",
       "type": "DisplayNode",
-      "x": 720,
-      "y": 40,
+      "x": 714,
+      "y": 74,
       "init": {
         "label": "the list → 1, null, 3, 4"
       }
@@ -63,7 +63,7 @@
     {
       "id": "aggSum",
       "type": "AggregateNode",
-      "x": 720,
+      "x": 734,
       "y": 170,
       "init": {
         "label": "SUM → 8",
@@ -73,7 +73,7 @@
     {
       "id": "aggAvg",
       "type": "AggregateNode",
-      "x": 960,
+      "x": 996,
       "y": 170,
       "init": {
         "label": "AVERAGE → 8/3",
@@ -83,7 +83,7 @@
     {
       "id": "isnA",
       "type": "IsTestNode",
-      "x": 720,
+      "x": 734,
       "y": 330,
       "init": {
         "label": "ISNULL → F,T,F,F",
@@ -106,8 +106,8 @@
     {
       "id": "s5",
       "type": "NumberInputNode",
-      "x": 230,
-      "y": 660,
+      "x": 242,
+      "y": 673,
       "init": {
         "label": "5",
         "value": 5
@@ -116,8 +116,8 @@
     {
       "id": "s3",
       "type": "NumberInputNode",
-      "x": 230,
-      "y": 800,
+      "x": 242,
+      "y": 794,
       "init": {
         "label": "3",
         "value": 3
@@ -126,8 +126,8 @@
     {
       "id": "cmpB",
       "type": "ComparisonNode",
-      "x": 470,
-      "y": 720,
+      "x": 483,
+      "y": 744,
       "init": {
         "label": "A > B",
         "op": "gt"
@@ -136,8 +136,8 @@
     {
       "id": "dCmp",
       "type": "DisplayNode",
-      "x": 720,
-      "y": 660,
+      "x": 714,
+      "y": 648,
       "init": {
         "label": "TRUE (logical)"
       }
@@ -145,7 +145,7 @@
     {
       "id": "mulB",
       "type": "ArithmeticNode",
-      "x": 720,
+      "x": 734,
       "y": 800,
       "init": {
         "label": "× 10  (coerces TRUE→1)",
@@ -159,8 +159,8 @@
     {
       "id": "dMul",
       "type": "DisplayNode",
-      "x": 980,
-      "y": 800,
+      "x": 976,
+      "y": 769,
       "init": {
         "label": "→ 10"
       }
@@ -168,8 +168,8 @@
     {
       "id": "andB",
       "type": "BooleanOpNode",
-      "x": 720,
-      "y": 960,
+      "x": 734,
+      "y": 950,
       "init": {
         "label": "AND (b=1 coerces to TRUE)",
         "op": "and"
@@ -182,8 +182,8 @@
     {
       "id": "dAnd",
       "type": "DisplayNode",
-      "x": 980,
-      "y": 960,
+      "x": 976,
+      "y": 980,
       "init": {
         "label": "AND → TRUE (logical)"
       }
@@ -204,7 +204,7 @@
     {
       "id": "llC",
       "type": "ListInputNode",
-      "x": 230,
+      "x": 242,
       "y": 1140,
       "init": {
         "label": "[1, 0, 2]",
@@ -223,8 +223,8 @@
     {
       "id": "exprC",
       "type": "ExpressionNode",
-      "x": 470,
-      "y": 1140,
+      "x": 463,
+      "y": 1135,
       "init": {
         "label": "1 / x",
         "expr": "1 / x"
@@ -233,8 +233,8 @@
     {
       "id": "dExpr",
       "type": "DisplayNode",
-      "x": 720,
-      "y": 1140,
+      "x": 714,
+      "y": 1165,
       "init": {
         "label": "1, #DIV/0!, 0.5"
       }
@@ -242,8 +242,8 @@
     {
       "id": "tspC",
       "type": "TextSplitNode",
-      "x": 230,
-      "y": 1340,
+      "x": 242,
+      "y": 1338,
       "init": {
         "label": "split \"1,abc,3\""
       },
@@ -255,8 +255,8 @@
     {
       "id": "castC",
       "type": "CastNode",
-      "x": 470,
-      "y": 1340,
+      "x": 447,
+      "y": 1331,
       "init": {
         "label": "Cast → Number",
         "target": "number"
@@ -265,8 +265,8 @@
     {
       "id": "dCast",
       "type": "DisplayNode",
-      "x": 720,
-      "y": 1340,
+      "x": 714,
+      "y": 1351,
       "init": {
         "label": "1, #VALUE!, 3"
       }
@@ -287,8 +287,8 @@
     {
       "id": "tiD",
       "type": "TableInputNode",
-      "x": 230,
-      "y": 1640,
+      "x": 222,
+      "y": 1649,
       "init": {
         "label": "1×1 Table [1]",
         "tableText": "1"
@@ -297,8 +297,8 @@
     {
       "id": "isnD",
       "type": "IsTestNode",
-      "x": 470,
-      "y": 1640,
+      "x": 483,
+      "y": 1669,
       "init": {
         "label": "ISNULL (click the chip!)",
         "op": "isnull"
@@ -307,8 +307,8 @@
     {
       "id": "dIsnD",
       "type": "DisplayNode",
-      "x": 720,
-      "y": 1640,
+      "x": 714,
+      "y": 1684,
       "init": {
         "label": "[[FALSE]] — no crash"
       }
@@ -316,7 +316,7 @@
     {
       "id": "isnU",
       "type": "IsTestNode",
-      "x": 470,
+      "x": 483,
       "y": 1820,
       "init": {
         "label": "ISNULL (UNWIRED) → blank",
@@ -339,7 +339,7 @@
     {
       "id": "tiE",
       "type": "TableInputNode",
-      "x": 230,
+      "x": 222,
       "y": 2100,
       "init": {
         "label": "just a comma",
@@ -362,8 +362,8 @@
     {
       "id": "cmpF",
       "type": "ComparisonNode",
-      "x": 720,
-      "y": 2320,
+      "x": 734,
+      "y": 2308,
       "init": {
         "label": "vals > 2",
         "op": "gt"
@@ -376,8 +376,8 @@
     {
       "id": "dCmpF",
       "type": "DisplayNode",
-      "x": 980,
-      "y": 2320,
+      "x": 976,
+      "y": 2333,
       "init": {
         "label": "FALSE, null, TRUE, TRUE"
       }
@@ -385,8 +385,8 @@
     {
       "id": "filF",
       "type": "FilterNode",
-      "x": 720,
-      "y": 2500,
+      "x": 729,
+      "y": 2485,
       "init": {
         "label": "Filter vals > 1",
         "op": "gt"
@@ -399,8 +399,8 @@
     {
       "id": "dFilF",
       "type": "DisplayNode",
-      "x": 980,
-      "y": 2500,
+      "x": 976,
+      "y": 2515,
       "init": {
         "label": "keeps 3, 4 (null row dropped)"
       }
@@ -421,8 +421,8 @@
     {
       "id": "fiG",
       "type": "FrameInputNode",
-      "x": 230,
-      "y": 2880,
+      "x": 212,
+      "y": 2864,
       "init": {
         "label": "CSV (gaps in g)",
         "frameText": "g, k\n1, a\n, b\n3, c\n, d\n5, e"
@@ -431,8 +431,8 @@
     {
       "id": "gcG",
       "type": "GetColumnNode",
-      "x": 470,
-      "y": 2880,
+      "x": 473,
+      "y": 2871,
       "init": {
         "label": "Get \"g\" → 1,null,3,null,5",
         "readAs": "number"
@@ -444,8 +444,8 @@
     {
       "id": "llElseG",
       "type": "ListInputNode",
-      "x": 230,
-      "y": 3160,
+      "x": 242,
+      "y": 3148,
       "init": {
         "label": "Else [9,9,9,9,9]",
         "valueKeys": [
@@ -467,8 +467,8 @@
     {
       "id": "fillConstG",
       "type": "FillNode",
-      "x": 720,
-      "y": 2740,
+      "x": 724,
+      "y": 2734,
       "init": {
         "label": "Fill 0 → 1,0,3,0,5",
         "op": "constant"
@@ -477,8 +477,8 @@
     {
       "id": "dfillConstG",
       "type": "DisplayNode",
-      "x": 980,
-      "y": 2740,
+      "x": 976,
+      "y": 2746,
       "init": {
         "label": "→ 1, 0, 3, 0, 5"
       }
@@ -486,8 +486,8 @@
     {
       "id": "fillFfillG",
       "type": "FillNode",
-      "x": 720,
-      "y": 2880,
+      "x": 724,
+      "y": 2886,
       "init": {
         "label": "Forward fill → 1,1,3,3,5",
         "op": "ffill"
@@ -496,8 +496,8 @@
     {
       "id": "dfillFfillG",
       "type": "DisplayNode",
-      "x": 980,
-      "y": 2880,
+      "x": 976,
+      "y": 2899,
       "init": {
         "label": "→ 1, 1, 3, 3, 5"
       }
@@ -505,8 +505,8 @@
     {
       "id": "fillDropG",
       "type": "FillNode",
-      "x": 720,
-      "y": 3020,
+      "x": 724,
+      "y": 3014,
       "init": {
         "label": "Drop → 1,3,5",
         "op": "drop"
@@ -515,8 +515,8 @@
     {
       "id": "dfillDropG",
       "type": "DisplayNode",
-      "x": 980,
-      "y": 3020,
+      "x": 976,
+      "y": 3026,
       "init": {
         "label": "→ 1, 3, 5"
       }
@@ -524,7 +524,7 @@
     {
       "id": "fillInterpG",
       "type": "FillNode",
-      "x": 720,
+      "x": 724,
       "y": 3160,
       "init": {
         "label": "Interpolate → 1,2,3,4,5",
@@ -534,8 +534,8 @@
     {
       "id": "dfillInterpG",
       "type": "DisplayNode",
-      "x": 980,
-      "y": 3160,
+      "x": 976,
+      "y": 3173,
       "init": {
         "label": "→ 1, 2, 3, 4, 5"
       }
@@ -543,8 +543,8 @@
     {
       "id": "fillCoalG",
       "type": "FillNode",
-      "x": 720,
-      "y": 3300,
+      "x": 724,
+      "y": 3294,
       "init": {
         "label": "Coalesce(else 9) → 1,9,3,9,5",
         "op": "coalesce"
@@ -553,8 +553,8 @@
     {
       "id": "dfillCoalG",
       "type": "DisplayNode",
-      "x": 980,
-      "y": 3300,
+      "x": 976,
+      "y": 3306,
       "init": {
         "label": "→ 1, 9, 3, 9, 5"
       }
@@ -575,7 +575,7 @@
     {
       "id": "tiH",
       "type": "TableInputNode",
-      "x": 230,
+      "x": 222,
       "y": 3700,
       "init": {
         "label": "Table [[1,null],[null,4]]",
@@ -585,8 +585,8 @@
     {
       "id": "isnumH",
       "type": "IsTestNode",
-      "x": 470,
-      "y": 3640,
+      "x": 483,
+      "y": 3633,
       "init": {
         "label": "ISNUMBER → [[T,F],[F,T]]",
         "op": "isnumber"
@@ -595,8 +595,8 @@
     {
       "id": "isnullH",
       "type": "IsTestNode",
-      "x": 470,
-      "y": 3800,
+      "x": 483,
+      "y": 3793,
       "init": {
         "label": "ISNULL → [[F,T],[T,F]]",
         "op": "isnull"
@@ -605,8 +605,8 @@
     {
       "id": "dIsnumH",
       "type": "DisplayNode",
-      "x": 740,
-      "y": 3640,
+      "x": 714,
+      "y": 3648,
       "init": {
         "label": "[[T,F],[F,T]]"
       }
@@ -614,8 +614,8 @@
     {
       "id": "dIsnullH",
       "type": "DisplayNode",
-      "x": 740,
-      "y": 3800,
+      "x": 714,
+      "y": 3808,
       "init": {
         "label": "[[F,T],[T,F]]"
       }
@@ -636,8 +636,8 @@
     {
       "id": "p_div",
       "type": "ArithmeticNode",
-      "x": 1780,
-      "y": 60,
+      "x": 1786,
+      "y": 49,
       "init": {
         "label": "#DIV/0!  ·  1 ÷ 0",
         "op": "div"
@@ -650,8 +650,8 @@
     {
       "id": "d_div",
       "type": "DisplayNode",
-      "x": 2080,
-      "y": 60,
+      "x": 2061,
+      "y": 74,
       "init": {
         "label": "Display"
       }
@@ -660,7 +660,7 @@
       "id": "c_div",
       "type": "IsTestNode",
       "x": 2360,
-      "y": 60,
+      "y": 59,
       "init": {
         "label": "ISERROR",
         "op": "iserror"
@@ -669,8 +669,8 @@
     {
       "id": "p_dom",
       "type": "MathFnNode",
-      "x": 1780,
-      "y": 290,
+      "x": 1786,
+      "y": 292,
       "init": {
         "label": "#DOMAIN!  ·  √(−4)",
         "op": "sqrt"
@@ -682,8 +682,8 @@
     {
       "id": "d_dom",
       "type": "DisplayNode",
-      "x": 2080,
-      "y": 290,
+      "x": 2061,
+      "y": 297,
       "init": {
         "label": "Display"
       }
@@ -692,7 +692,7 @@
       "id": "c_dom",
       "type": "IsTestNode",
       "x": 2360,
-      "y": 290,
+      "y": 282,
       "init": {
         "label": "ISERROR",
         "op": "iserror"
@@ -701,8 +701,8 @@
     {
       "id": "p_rng",
       "type": "CombinatoricsNode",
-      "x": 1780,
-      "y": 520,
+      "x": 1786,
+      "y": 508,
       "init": {
         "label": "#OVERFLOW!  ·  200!",
         "op": "fact"
@@ -715,8 +715,8 @@
     {
       "id": "d_rng",
       "type": "DisplayNode",
-      "x": 2080,
-      "y": 520,
+      "x": 2061,
+      "y": 533,
       "init": {
         "label": "Display"
       }
@@ -725,7 +725,7 @@
       "id": "c_rng",
       "type": "IsTestNode",
       "x": 2360,
-      "y": 520,
+      "y": 518,
       "init": {
         "label": "ISERROR",
         "op": "iserror"
@@ -734,8 +734,8 @@
     {
       "id": "p_syn",
       "type": "ExpressionNode",
-      "x": 1780,
-      "y": 750,
+      "x": 1766,
+      "y": 739,
       "init": {
         "label": "#SYNTAX!",
         "expr": "1 +* 1"
@@ -744,8 +744,8 @@
     {
       "id": "d_syn",
       "type": "DisplayNode",
-      "x": 2080,
-      "y": 750,
+      "x": 2061,
+      "y": 769,
       "init": {
         "label": "Display"
       }
@@ -754,7 +754,7 @@
       "id": "c_syn",
       "type": "IsTestNode",
       "x": 2360,
-      "y": 750,
+      "y": 754,
       "init": {
         "label": "ISERROR",
         "op": "iserror"
@@ -763,8 +763,8 @@
     {
       "id": "s_val",
       "type": "TextInputNode",
-      "x": 1500,
-      "y": 980,
+      "x": 1507,
+      "y": 1003,
       "init": {
         "label": "\"abc\"",
         "value": "abc"
@@ -773,8 +773,8 @@
     {
       "id": "p_val",
       "type": "CastNode",
-      "x": 1780,
-      "y": 980,
+      "x": 1750,
+      "y": 960,
       "init": {
         "label": "#VALUE!  ·  CAST(\"abc\"→#)",
         "target": "number"
@@ -783,7 +783,7 @@
     {
       "id": "d_val",
       "type": "DisplayNode",
-      "x": 2080,
+      "x": 2061,
       "y": 980,
       "init": {
         "label": "Display"
@@ -793,7 +793,7 @@
       "id": "c_val",
       "type": "IsTestNode",
       "x": 2360,
-      "y": 980,
+      "y": 965,
       "init": {
         "label": "ISERROR",
         "op": "iserror"
@@ -802,8 +802,8 @@
     {
       "id": "s_na",
       "type": "NumberInputNode",
-      "x": 1500,
-      "y": 1210,
+      "x": 1507,
+      "y": 1190,
       "init": {
         "label": "5 metres",
         "value": 5
@@ -812,7 +812,7 @@
     {
       "id": "p_na",
       "type": "ConvertNode",
-      "x": 1780,
+      "x": 1776,
       "y": 1210,
       "init": {
         "label": "#N/A  ·  m → kg",
@@ -823,8 +823,8 @@
     {
       "id": "d_na",
       "type": "DisplayNode",
-      "x": 2080,
-      "y": 1210,
+      "x": 2061,
+      "y": 1218,
       "init": {
         "label": "Display"
       }
@@ -833,7 +833,7 @@
       "id": "c_na",
       "type": "IsTestNode",
       "x": 2360,
-      "y": 1210,
+      "y": 1203,
       "init": {
         "label": "ISERROR",
         "op": "iserror"
@@ -842,8 +842,8 @@
     {
       "id": "s_conv",
       "type": "ListInputNode",
-      "x": 1500,
-      "y": 1450,
+      "x": 1507,
+      "y": 1433,
       "init": {
         "label": "All-positive cash flows",
         "valueKeys": [
@@ -861,8 +861,8 @@
     {
       "id": "p_conv",
       "type": "IrrNode",
-      "x": 1780,
-      "y": 1450,
+      "x": 1786,
+      "y": 1466,
       "init": {
         "label": "#CONV!  ·  IRR"
       }
@@ -870,8 +870,8 @@
     {
       "id": "d_conv",
       "type": "DisplayNode",
-      "x": 2080,
-      "y": 1450,
+      "x": 2061,
+      "y": 1458,
       "init": {
         "label": "Display"
       }
@@ -880,7 +880,7 @@
       "id": "c_conv",
       "type": "IsTestNode",
       "x": 2360,
-      "y": 1450,
+      "y": 1443,
       "init": {
         "label": "ISERROR",
         "op": "iserror"
@@ -889,8 +889,8 @@
     {
       "id": "s_ref",
       "type": "ListInputNode",
-      "x": 1500,
-      "y": 1690,
+      "x": 1507,
+      "y": 1659,
       "init": {
         "label": "A 3-item list",
         "valueKeys": [
@@ -908,8 +908,8 @@
     {
       "id": "p_ref",
       "type": "ListIndexNode",
-      "x": 1780,
-      "y": 1690,
+      "x": 1786,
+      "y": 1664,
       "init": {
         "label": "#REF!  ·  INDEX #99"
       },
@@ -920,8 +920,8 @@
     {
       "id": "d_ref",
       "type": "DisplayNode",
-      "x": 2080,
-      "y": 1690,
+      "x": 2061,
+      "y": 1684,
       "init": {
         "label": "Display"
       }
@@ -930,7 +930,7 @@
       "id": "c_ref",
       "type": "IsTestNode",
       "x": 2360,
-      "y": 1690,
+      "y": 1669,
       "init": {
         "label": "ISERROR",
         "op": "iserror"
@@ -939,8 +939,8 @@
     {
       "id": "s_shp",
       "type": "TableInputNode",
-      "x": 1500,
-      "y": 1940,
+      "x": 1487,
+      "y": 1923,
       "init": {
         "label": "A 2×3 table (non-square)",
         "tableText": "1, 2, 3\n4, 5, 6"
@@ -949,8 +949,8 @@
     {
       "id": "p_shp",
       "type": "MatDetNode",
-      "x": 1780,
-      "y": 1940,
+      "x": 1786,
+      "y": 1936,
       "init": {
         "label": "#SHAPE!  ·  determinant needs a square matrix",
         "op": "mdeterm"
@@ -959,8 +959,8 @@
     {
       "id": "d_shp",
       "type": "DisplayNode",
-      "x": 2080,
-      "y": 1940,
+      "x": 2061,
+      "y": 1958,
       "init": {
         "label": "Display"
       }
@@ -969,7 +969,7 @@
       "id": "c_shp",
       "type": "IsTestNode",
       "x": 2360,
-      "y": 1940,
+      "y": 1943,
       "init": {
         "label": "ISERROR",
         "op": "iserror"
@@ -978,8 +978,8 @@
     {
       "id": "s_nam",
       "type": "LambdaNode",
-      "x": 1500,
-      "y": 2190,
+      "x": 1487,
+      "y": 2174,
       "init": {
         "label": "LAMBDA with a bad name",
         "params": "x, 2y",
@@ -989,7 +989,7 @@
     {
       "id": "p_nam",
       "type": "MapTableNode",
-      "x": 1780,
+      "x": 1771,
       "y": 2190,
       "init": {
         "label": "#NAME?  ·  MAP"
@@ -998,8 +998,8 @@
     {
       "id": "d_nam",
       "type": "DisplayNode",
-      "x": 2080,
-      "y": 2190,
+      "x": 2061,
+      "y": 2205,
       "init": {
         "label": "Display"
       }
@@ -1028,7 +1028,7 @@
       "id": "cyc_a",
       "type": "ArithmeticNode",
       "x": 1690,
-      "y": 2620,
+      "y": 2611,
       "init": {
         "label": "#CIRC!  ·  A = B + 0",
         "op": "add"
@@ -1041,8 +1041,8 @@
     {
       "id": "cyc_b",
       "type": "ArithmeticNode",
-      "x": 1970,
-      "y": 2620,
+      "x": 1957,
+      "y": 2611,
       "init": {
         "label": "B = A + 0  (loop!)",
         "op": "add"
@@ -1055,8 +1055,8 @@
     {
       "id": "d_circ",
       "type": "DisplayNode",
-      "x": 2250,
-      "y": 2620,
+      "x": 2223,
+      "y": 2636,
       "init": {
         "label": "Display"
       }
@@ -1065,7 +1065,7 @@
       "id": "c_circ",
       "type": "IsTestNode",
       "x": 2530,
-      "y": 2620,
+      "y": 2621,
       "init": {
         "label": "ISERROR",
         "op": "iserror"

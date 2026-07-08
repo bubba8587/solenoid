@@ -15,7 +15,7 @@
     {
       "id": "col",
       "type": "GetColumnNode",
-      "x": 300,
+      "x": 313,
       "y": 20,
       "init": {
         "label": "Get Column → Bookings",
@@ -28,8 +28,8 @@
     {
       "id": "chart",
       "type": "ChartNode",
-      "x": 660,
-      "y": -220,
+      "x": 645,
+      "y": -216,
       "init": {
         "label": "Bookings by month",
         "op": "column"
@@ -41,7 +41,7 @@
     {
       "id": "total",
       "type": "AggregateNode",
-      "x": 660,
+      "x": 675,
       "y": 120,
       "init": {
         "label": "Total bookings",
@@ -51,8 +51,8 @@
     {
       "id": "model",
       "type": "LambdaNode",
-      "x": 300,
-      "y": 280,
+      "x": 303,
+      "y": 267,
       "init": {
         "label": "Forecast model",
         "params": "t",
@@ -66,7 +66,7 @@
     {
       "id": "flow",
       "type": "MermaidNode",
-      "x": 300,
+      "x": 283,
       "y": 520,
       "init": {
         "label": "Reporting pipeline"
@@ -92,7 +92,7 @@
       "id": "report",
       "type": "ReportNode",
       "x": 1060,
-      "y": -140,
+      "y": -144,
       "init": {
         "label": "Quarterly review",
         "body": "# Quarterly review\n\nTotal bookings came to **`=total`** units across the six-month period, drawn from the source ledger:\n\n`=table`\n\nPlotted month over month:\n\n`=fig`\n\nBookings climbed steadily, with a soft patch in month 3.\n\n## Forecast\n\nWe project month *t* forward from the latest run-rate using compound growth:\n\n`=model`\n\n## How the numbers flow\n\n`=flow`\n\n![[Methodology]]\n\n*Draft — figures subject to revision.*"
