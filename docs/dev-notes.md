@@ -5,6 +5,39 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-08 — 1.1 release build: finance seed, seed overhaul, bump)
+- **Live Market Data seed** (`seedGraphs/live-market-data.json`, order 45): the committed
+  §3a demo — FRED UNRATE (since 2015) → line chart + Get Column → Aggregate average
+  ("it's the data, not a picture"), FRED MORTGAGE30US monthly → chart, and an Alpha
+  Vantage AAPL cluster that intentionally demos the add-a-key state when no key is stored.
+  GOTCHA: a hand-authored seed MUST say `"v": 2` (`CURRENT_SAVE_VERSION`) — `seeds.test.ts`
+  doesn't validate the field and a higher value is refused at load, silently from the
+  test suite's point of view.
+- **Seed overhaul (release-plan §3b) — DONE.** Four parallel review agents over all 27
+  pre-1.1 seeds (story/currency/copy; structure already machine-checked). Retired
+  `value-semantics-tail.json` (internal 1.0-QA framing, superseded by null-and-logical)
+  and `layout-test-mixed-heights.json` (dev fixture in the user menu — seeds.ts globs
+  everything, there's no exclude mechanism). Content bugs fixed: null-and-logical
+  cluster F claimed `[1,null,3,4] > 2` → `FALSE, null, FALSE, TRUE` (correct:
+  `FALSE, null, TRUE, TRUE`); pivot-tables title said 9 columns (10 since SKU);
+  asof-join-lookup's note called XLOOKUP "Frame Lookup" (never a user-facing name).
+  Menu orders added (composite-workbench 12, asof-join-lookup 55 — headliners were
+  sinking to the alphabetical tail at default 1000). getting-started: named the three
+  bare "Group" groups, pruned the Concat node's dead `a/b/c/d` literals (old 4-slot
+  shape). Retitles: Visual Outputs → "Gauges, Sparklines & Chart Styling",
+  Dimensional Flow → "Types & Shapes" (menu-collided with Unit Flow). Author-call
+  residue → backlog ("Seed follow-ups from the 2026-07-08 overhaul").
+- **What's New / feature-list copy corrected:** FRED is keyless (say so — it's the
+  selling point), FX quotes don't exist, and composite Simulation is iterative
+  loop-stepping, not Monte Carlo (2.0-reserved). `HelpDialogs.tsx` slides synced with
+  `release-notes-features.md`.
+- **Version bumped to 1.1.0** in lockstep: `package.json`, `tauri.conf.json`,
+  `Cargo.toml` + `Cargo.lock` (hand-edited — the cloud container can't build Tauri:
+  no GTK dev libs, so `cargo test` must run on the author's Windows machine before
+  the tag). README's desktop line de-versioned ("Windows, v1.0" → "Windows").
+- **Remaining to tag** (all author-run): eyeball pass on the Vercel preview, `cargo test`
+  on Windows, release desktop build, merge `develop` → `main`, tag `v1.1.0`.
+
 ### SESSION DIGEST (2026-07-07 — commit-walk audit, ~130 commits newest-first)
 Eight fixes across four commits (`e9184b0`, `9bab17b`, `30b6cfa`+`7bdba07`, `ef641de`):
 - **anylist gaps:** `coerceInputs` had no `anylist` case (a scalar reached Set's `for...of` raw —
