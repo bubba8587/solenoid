@@ -381,7 +381,7 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
       if (droppedCables > 0) {
         const name = comp.label?.trim() || "Composite";
         pushNotice(
-          `Removed ${droppedCables} cable${droppedCables === 1 ? "" : "s"} connected to ${name} — ${droppedPorts === 1 ? "a port was" : `${droppedPorts} ports were`} deleted inside.`,
+          `Removed ${droppedCables} cable${droppedCables === 1 ? "" : "s"} connected to ${name}; ${droppedPorts === 1 ? "a port was" : `${droppedPorts} ports were`} deleted inside.`,
           "warn",
         );
       }

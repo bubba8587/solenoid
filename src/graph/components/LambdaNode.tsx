@@ -52,7 +52,7 @@ export function LambdaComponent({ data: node, emit }: NodeProps<LambdaNodeType>)
           onPointerDown={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
           spellCheck={false}
-          title="Parameters — bound positionally where the lambda is used"
+          title="Parameters, bound positionally where the lambda is used"
         />
         <span className="solenoid-node__io-label">)</span>
       </div>

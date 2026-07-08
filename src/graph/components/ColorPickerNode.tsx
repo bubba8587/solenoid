@@ -14,7 +14,7 @@ const MODE_OPTS = [
 ] as const;
 
 const FORMAT_OPTS = [
-  { value: "hex", label: "Hex — #rrggbb" },
+  { value: "hex", label: "Hex: #rrggbb" },
   { value: "rgb", label: "rgb(r, g, b)" },
 ] as const;
 

@@ -121,12 +121,12 @@ export function FunctionReference() {
               <button
                 className={`fr-filter-pill${filterMode === "todo" ? " fr-filter-pill--active" : ""}`}
                 onClick={() => setFilterMode((m) => (m === "todo" ? "all" : "todo"))}
-                title="Show only genuinely planned functions (excludes out-of-scope ones like cell refs, OLAP, superseded classics)"
+                title="Show only planned functions, excluding out-of-scope ones like cell refs, OLAP, and superseded classics"
               >To-do only</button>
               <button
                 className={`fr-filter-pill${filterMode === "oos" ? " fr-filter-pill--active" : ""}`}
                 onClick={() => setFilterMode((m) => (m === "oos" ? "all" : "oos"))}
-                title="Show only out-of-scope functions (cell refs, OLAP, superseded classics — not planned for Solenoid)"
+                title="Show only functions not planned for Solenoid: cell refs, OLAP, and superseded classics"
               >Out of scope</button>
             </div>
             <label className="fr-colcheck" title="Show or hide the Excel Function and Excel Syntax columns">

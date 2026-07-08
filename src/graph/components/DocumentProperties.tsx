@@ -106,7 +106,7 @@ export function DocumentProperties() {
             <div className="solenoid-settings__section-title">Appearance</div>
             <label className="solenoid-settings__row solenoid-settings__row--palette">
               <span className="solenoid-settings__row-text">
-                <span className="solenoid-settings__row-label">Color palette (this document)</span>
+                <span className="solenoid-settings__row-label">Color palette for this document</span>
               </span>
               <span className="solenoid-settings__select-wrap">
                 <select className="solenoid-settings__select" value={docBase} onChange={(e) => setDocBase(e.target.value)}>

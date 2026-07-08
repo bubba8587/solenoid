@@ -45,8 +45,8 @@ const OPTIONS: ReadonlyArray<OpOption<ChartOp>> = [
   { value: "radar",     label: "Radar",  group: "Categorical" },
   { value: "radialbar", label: "Radial", group: "Categorical" },
   { value: "funnel",    label: "Funnel", group: "Categorical" },
-  { value: "composed",  label: "Composed", group: "Multi-series (wire Series)" },
-  { value: "bubble",    label: "Bubble",   group: "Multi-series (wire Series)" },
+  { value: "composed",  label: "Composed", group: "Multi-series: wire Series" },
+  { value: "bubble",    label: "Bubble",   group: "Multi-series: wire Series" },
 ];
 
 // Fills the wide card (240) minus body padding.

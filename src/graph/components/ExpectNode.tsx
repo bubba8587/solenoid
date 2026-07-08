@@ -87,7 +87,7 @@ export function ExpectComponent({ data, emit }: NodeProps<ExpectNodeType>) {
         <MeasuredSocketRow side="input" socketKey="allowed" nodeId={data.id} emit={emit} payload={data.inputs.allowed.socket}>
           <span className="solenoid-node__io-label">List</span>
           {connected.has("allowed") ? (
-            <span className="solenoid-node__io-wired" title="Driven by an incoming cable (named here)">
+            <span className="solenoid-node__io-wired" title="Driven by the incoming cable named here">
               ↩ {incoming.get("allowed")?.label || "wired"}
             </span>
           ) : (

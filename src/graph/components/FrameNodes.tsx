@@ -242,7 +242,7 @@ export function FilterFrameComponent({ data, emit }: NodeProps<FilterFrameNodeTy
                   {TEXT_MATCH_OPS.has(c.op) && (
                     <button
                       type="button"
-                      title="Match case — off matches text like Excel's ="
+                      title="Match case. Off matches text like Excel's = does."
                       aria-pressed={c.matchCase ?? false}
                       onClick={(e) => { e.stopPropagation(); updateCfg(id, { matchCase: !c.matchCase }); }}
                       onPointerDown={(e) => e.stopPropagation()}
@@ -282,7 +282,7 @@ const JOIN_HOW_OPTIONS: { value: JoinHow; label: string; title: string }[] = [
   { value: "left", label: "Left", title: "All left rows; unmatched right side is blank" },
   { value: "right", label: "Right", title: "All right rows; unmatched left side is blank" },
   { value: "outer", label: "Outer", title: "All rows from both sides" },
-  { value: "asof", label: "As-of", title: "Nearest match on a sorted number/date key (no exact match required)" },
+  { value: "asof", label: "As-of", title: "Nearest match on a sorted number/date key; no exact match required" },
 ];
 
 const ASOF_DIRECTION_OPTIONS: { value: AsofDirection; label: string; title: string }[] = [
@@ -345,7 +345,7 @@ export const AGG_OP_OPTIONS: { value: AggOp; label: string }[] = [
 // rowTotalDepth): 0/1/2, negative ⇒ totals placed at the top.
 const GROUP_TOTAL_OPTIONS = [
   { value: "0", label: "No totals" }, { value: "1", label: "Grand total" }, { value: "2", label: "Grand + subtotals" },
-  { value: "-1", label: "Grand (at start)" }, { value: "-2", label: "Grand + sub (at start)" },
+  { value: "-1", label: "Grand at start" }, { value: "-2", label: "Grand + sub at start" },
 ];
 
 export function GroupByFrameComponent({ data, emit }: NodeProps<GroupByFrameNodeType>) {
@@ -373,7 +373,7 @@ function pivotSummary(data: PivotNodeType): string {
   const rows = splitNames(data.stringLiterals?.rowFields);
   const cols = splitNames(data.stringLiterals?.colFields);
   const vals = splitNames(data.stringLiterals?.values);
-  if (!rows.length && !cols.length && !vals.length) return "Not configured — click Configure";
+  if (!rows.length && !cols.length && !vals.length) return "Not configured";
   const parts: string[] = [];
   if (rows.length) parts.push(`Rows: ${rows.join(", ")}`);
   if (cols.length) parts.push(`Cols: ${cols.join(", ")}`);
@@ -478,21 +478,21 @@ export function AddIndexComponent({ data, emit }: NodeProps<AddIndexNodeType>) {
 const DECISION_NORMALIZE_OPTIONS: { value: DecisionNormalize; label: string; title: string }[] = [
   { value: "none", label: "Raw", title: "Score with the criteria values as-is" },
   { value: "max", label: "÷ Max", title: "Scale each criterion by its largest magnitude (≈ [-1, 1]) so different ranges compare" },
-  { value: "rank", label: "Rank", title: "Replace each criterion's values with their within-column rank — compares incompatible scales like $ vs out-of-10" },
+  { value: "rank", label: "Rank", title: "Replace each criterion's values with their within-column rank, so incompatible scales like $ vs out-of-10 compare" },
 ];
 
 const DECISION_DETAIL_OPTIONS: { value: DecisionDetail; label: string; title: string }[] = [
   { value: "summary", label: "Summary", title: "Output just Option · Score · Rank" },
-  { value: "breakdown", label: "Breakdown", title: "Also show each criterion's effective (post-normalize) value per option — the contributions behind the score" },
+  { value: "breakdown", label: "Breakdown", title: "Also show each criterion's effective post-normalize value per option: the contributions behind the score" },
 ];
 
 // Per-criterion normalize override. "" = inherit the node's default mode (the global
 // SegToggle); the rest are the DMBV per-column "Rank Raws" / Normalize, set per column.
 const DECISION_PERCOL_OPTIONS: { value: "" | DecisionNormalize; label: string; title: string }[] = [
-  { value: "", label: "—", title: "Use the node's default normalize mode (above)" },
+  { value: "", label: "—", title: "Use the node's default normalize mode, set above" },
   { value: "none", label: "Raw", title: "This column: score the raw values as-is" },
   { value: "max", label: "÷Max", title: "This column: scale by its largest magnitude → [0,1]" },
-  { value: "rank", label: "Rank", title: "This column: within-column rank → [0,1] (DMBV Rank Raws) — for $-scale columns" },
+  { value: "rank", label: "Rank", title: "This column: within-column rank → [0,1] (DMBV Rank Raws); suits $-scale columns" },
 ];
 
 const DECISION_CABLE_ONLY = new Set(["weights"]);
@@ -527,22 +527,22 @@ export function DecisionMatrixComponent({ data, emit }: NodeProps<DecisionMatrix
       {/* Global normalize is the DEFAULT each criterion inherits; the per-row "Norm"
           column below overrides it ("—" = use this default). Caption + shared wording
           ("Normalize") make that relationship explicit. */}
-      <div className="solenoid-node__dm-caption">Normalize — default for every criterion (override per-row below):</div>
+      <div className="solenoid-node__dm-caption">Default normalize for every criterion; override per row below:</div>
       <SegToggle value={normalize} options={DECISION_NORMALIZE_OPTIONS} onChange={setNormalize} />
       <div className="solenoid-node__dm-weights">
         {criteria.length === 0 ? (
-          <div className="solenoid-node__dm-hint">Wire a Scores frame — a row appears per criterion.</div>
+          <div className="solenoid-node__dm-hint">Wire a Scores frame; a row appears per criterion.</div>
         ) : (
           <>
             <div className="solenoid-node__dm-weight-row solenoid-node__dm-weights-head">
               <span className="solenoid-node__dm-col-crit">Criterion</span>
               {!wired && <span className="solenoid-node__dm-col-weight">Weight</span>}
-              <span className="solenoid-node__dm-col-norm" title="Per-criterion normalize override; — uses the default above">Norm</span>
+              <span className="solenoid-node__dm-col-norm" title={'Per-criterion normalize override; "—" uses the default above'}>Norm</span>
             </div>
             {wired && <div className="solenoid-node__dm-hint">Weights from the wired list; per-column Norm still applies.</div>}
             {criteria.map((name) => (
               <div className="solenoid-node__dm-weight-row" key={name}>
-                <span className="solenoid-node__io-label solenoid-node__dm-col-crit" title={`“${name}” — weight (negative = lower is better) and per-column normalize`}>{name}</span>
+                <span className="solenoid-node__io-label solenoid-node__dm-col-crit" title={`“${name}”: weight and per-column normalize. A negative weight means lower is better.`}>{name}</span>
                 {!wired && <InlineNumberField value={data.weightMap[name] ?? 1} onChange={(v) => setWeight(name, v)} />}
                 <OpSelect value={data.normMap[name] ?? ""} options={DECISION_PERCOL_OPTIONS} onChange={(m) => setNorm(name, m)} />
               </div>
@@ -618,9 +618,9 @@ export function ReconcileComponent({ data, emit }: NodeProps<ReconcileNodeType>)
 const SPLIT_COLTYPE_OPTIONS: { value: SplitColType; label: string; title: string }[] = [
   { value: "all", label: "All", title: "Keep every column" },
   { value: "number", label: "Num", title: "Keep only number columns" },
-  { value: "date", label: "Date", title: "Keep only date columns (Matrix = serials)" },
-  { value: "logical", label: "Bool", title: "Keep only logical columns (Matrix = 1/0)" },
-  { value: "string", label: "Text", title: "Keep only text columns (Headers only — text has no numeric Matrix)" },
+  { value: "date", label: "Date", title: "Keep only date columns; the Matrix carries serials" },
+  { value: "logical", label: "Bool", title: "Keep only logical columns; the Matrix carries 1/0" },
+  { value: "string", label: "Text", title: "Keep only text columns. Headers only, since text has no numeric Matrix." },
 ];
 
 export function SplitFrameComponent({ data, emit }: NodeProps<SplitFrameNodeType>) {
@@ -638,16 +638,16 @@ export function SplitFrameComponent({ data, emit }: NodeProps<SplitFrameNodeType
         <span className="solenoid-node__io-label">Matrix</span>
         <span className="solenoid-node__output-value" style={{ display: "flex", justifyContent: "flex-end" }}>
           {matrix && matrix.length
-            ? <ArrayChip value={matrix} label={`${data.label} — Matrix`} size="sm" />
+            ? <ArrayChip value={matrix} label={`${data.label}: Matrix`} size="sm" />
             : data.cachedMixed
-              ? <span style={{ fontSize: 10, color: "var(--text-muted)", fontStyle: "italic" }} title="A frame with text columns has no numeric matrix. Pull a column with Get Column.">mixed — use Get Column</span>
+              ? <span style={{ fontSize: 10, color: "var(--text-muted)", fontStyle: "italic" }} title="A frame with text columns has no numeric matrix. Pull a column with Get Column.">mixed; use Get Column</span>
               : "—"}
         </span>
       </MeasuredSocketRow>
       <MeasuredSocketRow side="output" socketKey="headers" nodeId={data.id} emit={emit} payload={data.outputs.headers!.socket}>
         <span className="solenoid-node__io-label">Headers</span>
         <span className="solenoid-node__output-value" style={{ display: "flex", justifyContent: "flex-end" }}>
-          {headers && headers.length ? <ArrayChip value={headers} label={`${data.label} — Headers`} size="sm" /> : "—"}
+          {headers && headers.length ? <ArrayChip value={headers} label={`${data.label}: Headers`} size="sm" /> : "—"}
         </span>
       </MeasuredSocketRow>
     </NodeShell>
@@ -659,7 +659,7 @@ export function SplitFrameComponent({ data, emit }: NodeProps<SplitFrameNodeType
 const GET_COLUMN_READ_OPTIONS: { value: GetColumnReadAs; label: string; title: string }[] = [
   { value: "number", label: "Number", title: "Read the column as numbers" },
   { value: "text", label: "Text", title: "Read the column as text" },
-  { value: "date", label: "Date", title: "Read the column as dates (Excel serials)" },
+  { value: "date", label: "Date", title: "Read the column as dates, stored as Excel serials" },
   { value: "logical", label: "Boolean", title: "Read the column as logicals (TRUE/FALSE); a 0/1 or true/false column coerces" },
 ];
 
@@ -687,7 +687,7 @@ export function GetColumnComponent({ data, emit }: NodeProps<GetColumnNodeType>)
 const ADD_COLUMN_OPTIONS: { value: AddColumnAddAs; label: string; title: string }[] = [
   { value: "number", label: "Number", title: "Add a numeric column" },
   { value: "text", label: "Text", title: "Add a text column" },
-  { value: "date", label: "Date", title: "Add a date column (Excel serials)" },
+  { value: "date", label: "Date", title: "Add a date column of Excel serials" },
   { value: "logical", label: "Boolean", title: "Add a logical column (TRUE/FALSE); a 0/1 list coerces" },
 ];
 
@@ -730,8 +730,8 @@ const LOOKUP_MATCH_OPTIONS: { value: LookupMatchMode; label: string; title: stri
 ];
 
 const LOOKUP_SEARCH_OPTIONS: { value: LookupSearchMode; label: string; title: string }[] = [
-  { value: "first", label: "First", title: "On duplicate keys, return the first match (top-to-bottom)" },
-  { value: "last", label: "Last", title: "On duplicate keys, return the last match (bottom-to-top)" },
+  { value: "first", label: "First", title: "On duplicate keys, return the first match, scanning top to bottom" },
+  { value: "last", label: "Last", title: "On duplicate keys, return the last match, scanning bottom to top" },
 ];
 
 export function XLookupComponent({ data, emit }: NodeProps<XLookupNodeType>) {

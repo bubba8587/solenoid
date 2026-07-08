@@ -322,7 +322,7 @@ export function ConduitComponent({ data, emit }: Props) {
           {/* Header bar styled like a node-card header (accent border wrapping
               top + sides, uppercase tinted label) — accent derived from the
               Conduit's pin-1 stripe red. Holds the editable sequenced ID. */}
-          <div className="solenoid-conduit-toolbar__header" title="Sequenced Conduit number — drives the default name (Conduit N)">
+          <div className="solenoid-conduit-toolbar__header" title="Sequenced Conduit number. Drives the default name, Conduit N.">
             <span className="solenoid-conduit-toolbar__header-name">Conduit</span>
             <input
               type="number"
