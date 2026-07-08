@@ -159,7 +159,7 @@
       "id": "cm-agg",
       "nodeId": "agg-unrate",
       "author": "You",
-      "text": "It's the data series, not a picture: pull the column out and compute on it.",
+      "text": "The feed arrives as a typed frame: pull the column out and compute on it.",
       "resolved": false
     },
     {
