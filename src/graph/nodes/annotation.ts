@@ -5,8 +5,9 @@ import {
   SolenoidSocket,
 } from "../sockets";
 import { parseDateToSerial } from "./date";
-import { chartOut } from "./shared";
+import { chartOut, strOut } from "./shared";
 import type { ImageValue } from "../imageValue";
+import type { SvgValue } from "../svgValue";
 import {
   parseNoteFrontmatter,
   type FrontmatterFieldType,
@@ -245,5 +246,65 @@ export class ImageNode extends ClassicPreset.Node {
     const src = this.src;
     if (!src) return { image: null };
     return { image: { __image: true, src, height: this.height, alt: this.label, title: this.label } };
+  }
+}
+
+// ─── SVG Picker ───────────────────────────────────────────────────────────────
+// An interactive picture that doubles as a visual slicer. Load an SVG (a local
+// `.svg` file or a web URL, like Image), then CLICK a shape or layer inside it —
+// the node outputs that layer's NAME on its `Layer` (string) socket. Wire that
+// into a Filter's comparison value and you slice a dataset by whatever region you
+// clicked (a clickable map / floorplan / schematic → a data selector). Hovering a
+// selectable element highlights it in the chosen colour.
+//
+// It ALSO flows the picture out the `chart` object socket (like Image / Mermaid)
+// carrying the current selection, so a Report embeds it with the same highlight.
+//
+// Persistence: unlike Image (whose bytes can't sit in the JSON), an SVG is just
+// text, so the markup persists directly in `stringLiterals.source` (the Mermaid
+// pattern — persistence restores stringLiterals for every node, no bundling). The
+// `url` is kept as the last web source; `hoverColor` + `selectedLayer` round-trip
+// as plain fields (both added to copyPaste's INIT_FIELD_ORDER whitelist).
+
+const DEFAULT_SVG_HOVER = "#4f9dff";
+
+export class SvgPickerNode extends ClassicPreset.Node {
+  url: string;                                  // last web source URL — persisted
+  stringLiterals: Record<string, string> = {}; // .source = inlined SVG markup — persisted
+  hoverColor: string;                           // hover/selection highlight colour — persisted
+  selectedLayer: string;                        // the clicked layer name ("" = none) — persisted
+  height: number;                               // rendered SVG-well height in px
+  width: number;                                // node card width
+
+  constructor(init?: {
+    label?: string; url?: string; source?: string; hoverColor?: string;
+    selectedLayer?: string; height?: number; width?: number;
+  }) {
+    super(init?.label ?? "SVG");
+    this.url = init?.url ?? "";
+    // `source` is a construction convenience (seeds / tests); on load, persistence
+    // restores stringLiterals separately (extractInit doesn't capture it).
+    this.stringLiterals.source = init?.source ?? "";
+    this.hoverColor = init?.hoverColor ?? DEFAULT_SVG_HOVER;
+    this.selectedLayer = init?.selectedLayer ?? "";
+    this.height = init?.height ?? 200;
+    this.width = init?.width ?? 260;
+    // The picture as a chart-family figure (Report-embeddable), carrying the pick.
+    this.addOutput("chart", chartOut("SVG"));
+    // The picked layer name — the whole point: feed a Filter to slice by region.
+    // `null` (missing) until something is clicked.
+    this.addOutput("layer", strOut("Layer"));
+  }
+
+  /** The inlined SVG markup to render (source of truth for the figure + picking). */
+  get source(): string { return this.stringLiterals.source ?? ""; }
+
+  data(): { chart: SvgValue | null; layer: string | null } {
+    const source = this.source;
+    const layer = this.selectedLayer || null;
+    const chart: SvgValue | null = source
+      ? { __svg: true, source, selected: layer, hoverColor: this.hoverColor, height: this.height, title: this.label }
+      : null;
+    return { chart, layer };
   }
 }

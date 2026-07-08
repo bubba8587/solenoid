@@ -13,6 +13,7 @@ import { NodeSocket } from "./NodeSocket";
 import { isFrameValue, isCubeValue } from "../frame";
 import { isChartValue } from "../chartValue";
 import { isMermaidValue } from "../mermaidValue";
+import { isSvgValue } from "../svgValue";
 import { isLambdaValue, formatLambda } from "../nodes/lambda";
 import { useDraftCommit } from "./inlineInput";
 import { MeasuredSocketRow } from "./NodeSocket";
@@ -23,6 +24,7 @@ import { CubeChip } from "./CubeChip";
 import { TableDisplay } from "./TableDisplay";
 import { ChartChip } from "./ChartChip";
 import { MermaidView } from "./MermaidView";
+import { SvgFigure } from "./SvgFigure";
 import "./CableSwitchNode.css";
 
 const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
@@ -38,6 +40,7 @@ function SwitchValue({ value, label }: { value: unknown; label?: string }) {
   if (isCubeValue(value)) return <div className="solenoid-node__display-value" style={{ display: "flex", justifyContent: "flex-end" }}><CubeChip value={value} label={label} size="sm" accent="var(--sock-cube)" /></div>;
   if (isChartValue(value)) return <div className="solenoid-node__display-value" style={{ display: "flex", justifyContent: "flex-end" }}><ChartChip value={value} label={label} /></div>;
   if (isMermaidValue(value)) return <MermaidView source={value.source} />;
+  if (isSvgValue(value)) return <SvgFigure value={value} height={120} />;
   if (isLambdaValue(value)) return <div className="solenoid-node__display-value">{formatLambda(value)}</div>;
   if (Array.isArray(value) && Array.isArray((value as unknown[])[0])) {
     return <TableDisplay table={value as number[][]} label={label} />;

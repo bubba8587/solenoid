@@ -187,6 +187,7 @@ export { PresentationComponent } from "./PresentationNode";
 
 // ─── Image (canvas annotation) ──────────────────────────────────────────────────
 export { ImageComponent } from "./ImageNode";
+export { SvgPickerComponent } from "./SvgPickerNode";
 
 // ─── Group (framing container) ────────────────────────────────────────────────
 export { GroupComponent } from "./GroupNode";

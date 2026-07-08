@@ -12,11 +12,13 @@ import { stopDragStart } from "../coarse";
 import { isFrameValue, isCubeValue } from "../frame";
 import { isChartValue } from "../chartValue";
 import { isMermaidValue } from "../mermaidValue";
+import { isSvgValue } from "../svgValue";
 import { isLambdaValue, formatLambda } from "../nodes/lambda";
 import { FrameDisplay } from "./FrameDisplay";
 import { CubeDisplay } from "./CubeDisplay";
 import { ChartFigure } from "./chartView";
 import { MermaidView } from "./MermaidView";
+import { SvgFigure } from "./SvgFigure";
 
 /**
  * The value a Composite boundary carries (a port output, or an input/output
@@ -30,6 +32,7 @@ function CompositeBoundaryValue({ value, label }: { value: unknown; label: strin
   if (isCubeValue(value)) return <CubeDisplay cube={value} label={label} full={false} />;
   if (isChartValue(value)) return <ChartFigure value={value} width={200} height={110} />;
   if (isMermaidValue(value)) return <MermaidView source={value.source} />;
+  if (isSvgValue(value)) return <SvgFigure value={value} height={110} />;
   if (isLambdaValue(value)) return <div className="solenoid-node__display-value">{formatLambda(value)}</div>;
   return <ValueDisplay value={value as DisplayValue} />;
 }
