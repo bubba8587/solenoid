@@ -1,0 +1,106 @@
+{
+  "v": 2,
+  "label": "Live Market Data",
+  "order": 45,
+  "nodes": [
+    {
+      "id": "feed-unrate",
+      "type": "DataFeedNode",
+      "x": 0,
+      "y": 0,
+      "init": { "label": "US unemployment (FRED)" },
+      "stringLiterals": { "input": "UNRATE", "start": "2015-01-01" }
+    },
+    {
+      "id": "chart-unrate",
+      "type": "ChartNode",
+      "x": 360,
+      "y": -40,
+      "init": { "label": "Unemployment rate", "op": "line" }
+    },
+    {
+      "id": "getcol-unrate",
+      "type": "GetColumnNode",
+      "x": 360,
+      "y": 260,
+      "init": { "label": "Series values" },
+      "stringLiterals": { "name": "UNRATE" }
+    },
+    {
+      "id": "agg-unrate",
+      "type": "AggregateNode",
+      "x": 640,
+      "y": 290,
+      "init": { "label": "Average since 2015", "op": "average" }
+    },
+    {
+      "id": "feed-mortgage",
+      "type": "DataFeedNode",
+      "x": 0,
+      "y": 560,
+      "init": { "label": "30-yr mortgage (FRED)" },
+      "stringLiterals": { "input": "MORTGAGE30US", "start": "2020-01-01", "freq": "Monthly" }
+    },
+    {
+      "id": "chart-mortgage",
+      "type": "ChartNode",
+      "x": 360,
+      "y": 530,
+      "init": { "label": "Mortgage rate", "op": "line" }
+    },
+    {
+      "id": "feed-aapl",
+      "type": "DataFeedNode",
+      "x": 0,
+      "y": 1100,
+      "init": { "label": "Apple stock (Alpha Vantage)", "provider": "alphavantage" },
+      "stringLiterals": { "input": "AAPL", "freq": "monthly" }
+    },
+    {
+      "id": "getcol-close",
+      "type": "GetColumnNode",
+      "x": 360,
+      "y": 1130,
+      "init": { "label": "Close" },
+      "stringLiterals": { "name": "close" }
+    },
+    {
+      "id": "chart-aapl",
+      "type": "ChartNode",
+      "x": 640,
+      "y": 1060,
+      "init": { "label": "AAPL monthly close", "op": "line" }
+    }
+  ],
+  "connections": [
+    { "source": "feed-unrate", "sourceOutput": "frame", "target": "chart-unrate", "targetInput": "values" },
+    { "source": "feed-unrate", "sourceOutput": "frame", "target": "getcol-unrate", "targetInput": "frame" },
+    { "source": "getcol-unrate", "sourceOutput": "values", "target": "agg-unrate", "targetInput": "list" },
+    { "source": "feed-mortgage", "sourceOutput": "frame", "target": "chart-mortgage", "targetInput": "values" },
+    { "source": "feed-aapl", "sourceOutput": "frame", "target": "getcol-close", "targetInput": "frame" },
+    { "source": "getcol-close", "sourceOutput": "values", "target": "chart-aapl", "targetInput": "values" }
+  ],
+  "comments": [
+    {
+      "id": "cm-fred",
+      "nodeId": "feed-unrate",
+      "author": "You",
+      "text": "Fetched live from FRED — no key needed. Type any series id (or use a quick-pick) and it re-pulls.",
+      "resolved": false
+    },
+    {
+      "id": "cm-agg",
+      "nodeId": "agg-unrate",
+      "author": "You",
+      "text": "It's the data series, not a picture — pull the column out and compute on it.",
+      "resolved": false
+    },
+    {
+      "id": "cm-aapl",
+      "nodeId": "feed-aapl",
+      "author": "You",
+      "text": "Stock history needs a free Alpha Vantage key — the node links you to Settings to add one.",
+      "resolved": false
+    }
+  ]
+}
