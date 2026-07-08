@@ -69,6 +69,82 @@ the body sections or under the hood, not on slides.
 - Rust engine parity (byte-identical keys, Infinity handling), native CSV date inference,
   AND/OR frame filters, headless graph runner + file-sink nodes.
 
+## Feature changelog (for the GitHub release body — features only, no fixes)
+
+### Composites & what-if
+- Composite sub-graph container node
+- Goal Seek, Scenarios, Data Table & Simulation run modes on composites
+- Composite sub-graphs with an isolated, manual compute chain (Solve button + stale marker)
+- Full drill-in editor: minimap, keyboard, right-click, Tidy, copy/paste inside a composite
+- Editable composite input markers with seed values
+
+### Nodes & analysis
+- Set Operations & Set Relations nodes
+- Unified XLOOKUP node: lists, frames & cubes; approximate + as-of match
+- As-Of Join (nearest-match on time keys, with tolerance)
+- Data Feed node: FRED economic series (no key) & Alpha Vantage stock history; date range, frequency, quick-picks
+- Expect, Reconcile & Tornado nodes
+- One-click model fuzzer
+- Problems panel
+- Where-used highlight
+- Node-anchored comments
+- Cube Rollup node
+- Coalesce/Fill is N-ary (extensible Else rows)
+- Filter Rows with extensible AND/OR condition rows
+- Input Switch: named slots + Many mode (collects into a Cube)
+- Date Range picker node
+- Session History node
+- Write CSV / Write JSON file-sink nodes
+
+### Charts & visuals
+- Chart ops: Pie, Scatter, Bubble, Radar, Radial, Funnel, Composed
+- Treemap, Sankey, Histogram, KPI card & Bullet nodes
+- Sparkline node (line / column / win-loss)
+- Mermaid diagram node
+- Chart accepts a Frame for a labeled x-axis
+- Minified (collapsed) previews: Sparkline, Gauge, Slicer & charts
+- Type-colored value chips
+
+### Reports & presentation
+- Report node: markdown with live `=name` embeds (numbers, tables, charts, equations, diagrams)
+- Report docks to the right edge
+- Export a Report as a webpage (static HTML)
+- Presentation node & Presenter mode
+- Image bundling: attached images save to an `images/` folder beside the document
+- Report/export-only brand palette override
+
+### Data & engine
+- Verb chains compile to one fused Polars query
+- Sketch calc mode: sampled execution on huge tables
+- Native CSV reader on desktop (with date inference)
+- Native Parquet & Arrow source
+- Infinity is first-class in frames
+- Static shape-checking across verb chains
+- Error provenance: every error carries its origin; popups fly to the source
+- Connection nodes auto-refresh on an interval
+- Headless graph runner (`npm run run-graph`)
+- Per-document autosave slots
+- Stable, user-editable node names + a lossless text form of the graph
+
+### Canvas & app
+- Command Palette (Ctrl+K), with an always-on docked option
+- Align & Distribute bar, plus batch collapse/expand
+- Mobile design pass: three-zone chrome + touch action bar
+- Custom Palette Editor (+ the Equinox palette)
+- Document Properties
+- Format Controller redesign: one function model, flow-state arrows, advanced tier (separators, accounting negatives, K/M/B)
+- Type-default display: values render in their type's format everywhere
+- Quick-wire: drop a cable on empty canvas for a filtered Add menu
+- Semantic zoom
+- Drag-to-scrub number fields
+- Universal node body resizer
+- Conduit lanes with switchable socket types
+- Minimap position setting (bottom / top / hidden)
+- Fullscreen: F11 on desktop, a button on mobile
+- Library folder opener
+- Accessibility pass: focus traps, reduced motion, socket titles
+- What's New & About dialogs
+
 ## Known issues (for the GitHub release body — deliberately NOT shown in-app)
 
 Honest list of what's rough in 1.1; each is tracked in `backlog.md` / dev-notes.
