@@ -15,6 +15,7 @@ import { isDesktop, listCsvFiles, listParquetFiles } from "../fileBridge";
 import { apiKeyStore } from "../apiKeyStore";
 import { PROVIDER_LIST, getProvider, type ProviderId } from "../dataProviders";
 import { FrameDisplay } from "./FrameDisplay";
+import { LazySelect } from "./LazySelect";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import "./ConnectionNodes.css";
 
@@ -250,7 +251,7 @@ export function ImportXmlComponent({ data, emit }: NodeProps<ImportXmlNodeType>)
 // ─── CSV CONNECTION (local folder) ──────────────────────────────────────────────
 // Pick a .csv from the Settings target folder. The dropdown is populated by
 // listing the folder; the node reads the chosen file on refresh. Desktop only —
-// the browser build shows a note instead (no filesystem). Native <select> needs
+// the browser build shows a note instead (no filesystem). Native <LazySelect> needs
 // pointerdown/mousedown stopPropagation so the node-drag re-render doesn't close
 // the OS dropdown mid-pick (see CLAUDE.md).
 
@@ -291,7 +292,7 @@ export function CsvConnectionComponent({ data, emit }: NodeProps<CsvConnectionNo
         ) : !folder ? (
           <div className="sol-conn__note">No target folder set. Open Settings ▸ Data to choose one.</div>
         ) : (
-          <select
+          <LazySelect
             className="sol-conn__select"
             value={name}
             onChange={(e) => pick(e.target.value)}
@@ -301,7 +302,7 @@ export function CsvConnectionComponent({ data, emit }: NodeProps<CsvConnectionNo
             <option value="">Pick a file…</option>
             {name !== "" && !files.includes(name) && <option value={name}>{name} (missing)</option>}
             {files.map((f) => <option key={f} value={f}>{f}</option>)}
-          </select>
+          </LazySelect>
         )}
         <ConnectionStatusRow nodeId={data.id} onRefresh={refresh} />
         {desktop && folder && (
@@ -364,15 +365,15 @@ export function DataFeedComponent({ data, emit }: NodeProps<DataFeedNodeType>) {
   return (
     <NodeShell node={data} emit={emit} labelPlaceholder="Data Feed">
       <div className="sol-conn">
-        <select className="sol-conn__select" value={provider} onChange={(e) => pickProvider(e.target.value as ProviderId)} {...stopDrag}>
+        <LazySelect className="sol-conn__select" value={provider} onChange={(e) => pickProvider(e.target.value as ProviderId)} {...stopDrag}>
           {PROVIDER_LIST.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
-        </select>
+        </LazySelect>
         {preset.quickPicks && (
           // Quick-picks fill the field (the ids are cryptic); reset to "" so it's re-pickable.
-          <select className="sol-conn__select" value="" onChange={(e) => { if (e.target.value) commitInput(e.target.value); }} {...stopDrag}>
+          <LazySelect className="sol-conn__select" value="" onChange={(e) => { if (e.target.value) commitInput(e.target.value); }} {...stopDrag}>
             <option value="">Common {preset.inputLabel.toLowerCase()}s…</option>
             {preset.quickPicks.map((q) => <option key={q.id} value={q.id}>{q.label} ({q.id})</option>)}
-          </select>
+          </LazySelect>
         )}
         <input
           className="sol-conn__url"
@@ -386,9 +387,9 @@ export function DataFeedComponent({ data, emit }: NodeProps<DataFeedNodeType>) {
           {...stopDrag}
         />
         {preset.frequencies && (
-          <select className="sol-conn__select" value={freq} onChange={(e) => setParam("freq", e.target.value)} title="Frequency" {...stopDrag}>
+          <LazySelect className="sol-conn__select" value={freq} onChange={(e) => setParam("freq", e.target.value)} title="Frequency" {...stopDrag}>
             {preset.frequencies.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
-          </select>
+          </LazySelect>
         )}
         {preset.supportsDateRange && (
           <div className="sol-conn__dates">
@@ -446,7 +447,7 @@ export function ParquetConnectionComponent({ data, emit }: NodeProps<ParquetConn
         ) : !folder ? (
           <div className="sol-conn__note">No target folder set. Open Settings ▸ Data to choose one.</div>
         ) : (
-          <select
+          <LazySelect
             className="sol-conn__select"
             value={name}
             onChange={(e) => pick(e.target.value)}
@@ -456,7 +457,7 @@ export function ParquetConnectionComponent({ data, emit }: NodeProps<ParquetConn
             <option value="">Pick a file…</option>
             {name !== "" && !files.includes(name) && <option value={name}>{name} (missing)</option>}
             {files.map((f) => <option key={f} value={f}>{f}</option>)}
-          </select>
+          </LazySelect>
         )}
         <ConnectionStatusRow nodeId={data.id} onRefresh={refresh} />
         <FrameDisplay frame={data.cachedResult} label={data.label} />

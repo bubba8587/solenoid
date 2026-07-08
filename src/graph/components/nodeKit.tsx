@@ -9,6 +9,7 @@ import { processGraph } from "../process";
 import { getOwningEditor } from "../activeGraph";
 import { sharedAnnotationResolver } from "../unitFlow";
 import { NodeCard } from "./NodeCard";
+import { LazySelect } from "./LazySelect";
 import { NodeSocket, MeasuredSocketRow } from "./NodeSocket";
 import { useDraftCommit } from "./inlineInput";
 import { describeNode, nodeName } from "../catalogUtils";
@@ -444,7 +445,7 @@ export function OpSelect<T extends string>({
 }) {
   const hasGroups = options.some((o) => o.group != null);
   return (
-    <select
+    <LazySelect
       className="solenoid-node__op-select"
       value={value}
       onChange={(e) => onChange(e.target.value as T)}
@@ -455,7 +456,7 @@ export function OpSelect<T extends string>({
         ? opGrouped(options)
         : options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)
       }
-    </select>
+    </LazySelect>
   );
 }
 

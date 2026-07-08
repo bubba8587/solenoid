@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import type { MermaidNode as MermaidNodeType } from "../rete-nodes";
+import { LazySelect } from "./LazySelect";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { NodeSocket } from "./NodeSocket";
 import { useConnectedInputs } from "./inlineInput";
@@ -65,7 +66,7 @@ export function MermaidComponent({ data, emit }: NodeProps<MermaidNodeType>) {
         : null}
     >
       {!sourceWired && (
-        <select
+        <LazySelect
           className="solenoid-node__op-select solenoid-mermaid-template"
           value=""
           title="Insert a starter diagram"
@@ -75,7 +76,7 @@ export function MermaidComponent({ data, emit }: NodeProps<MermaidNodeType>) {
         >
           <option value="" disabled>Template…</option>
           {MERMAID_TEMPLATES.map((t, i) => <option key={t.label} value={i}>{t.label}</option>)}
-        </select>
+        </LazySelect>
       )}
       <div ref={feedRef} style={{ position: "relative" }}>
         {sourceWired ? (
