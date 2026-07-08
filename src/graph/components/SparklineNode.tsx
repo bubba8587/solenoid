@@ -5,6 +5,7 @@ import { SegToggle } from "./SegToggle";
 import { ChartView, toSeries, type ChartShape } from "./chartView";
 import { ChartExpandButton } from "./ChartExpandButton";
 import { appThemeStore } from "../appTheme";
+import { collapseStore } from "../collapseStore";
 import { resolveColor } from "../palette";
 
 const OPTIONS: ReadonlyArray<{ value: SparklineOp; label: string }> = [
@@ -19,6 +20,11 @@ const H = 56;
 
 export function SparklineComponent({ data, emit }: NodeProps<SparklineNodeType>) {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version); // re-resolve on palette/theme change
+  // Exactly one of the two figures (live / minified) is visible at a time (CSS,
+  // .solenoid-node__collapsed-only) — mount only that one instead of both, since
+  // each is a full recharts tree (~dozens of SVG elements). Animations are off
+  // globally (isAnimationActive={false}), so the remount on toggle is instant.
+  const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   const [op, setOp] = useNodeField(data, "op");
   const rawSeries = toSeries(data.cachedResult);
   // Win/Loss draws as a column chart of the signs (+1 up / −1 down / 0 flat),
@@ -35,7 +41,7 @@ export function SparklineComponent({ data, emit }: NodeProps<SparklineNodeType>)
       <div style={{ position: "relative", marginTop: 4, height: H }}>
         {series.length === 0 ? (
           <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>
-        ) : (
+        ) : !collapsed && (
           <>
             <ChartView op={chartOp} series={series} width={W} height={H} axes={false} signColors={signColors} />
             <ChartExpandButton title={data.label || "Sparkline"} op={chartOp} axes={false} series={series} signColors={signColors} />
@@ -47,7 +53,7 @@ export function SparklineComponent({ data, emit }: NodeProps<SparklineNodeType>)
       <div className="solenoid-node__collapsed-only">
         {series.length === 0
           ? <span className="solenoid-node__display-value solenoid-node__display-value--empty">—</span>
-          : <ChartView op={chartOp} series={series} width={46} height={22} axes={false} signColors={signColors} />}
+          : collapsed && <ChartView op={chartOp} series={series} width={46} height={22} axes={false} signColors={signColors} />}
       </div>
     </NodeShell>
   );

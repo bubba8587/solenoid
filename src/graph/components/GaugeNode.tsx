@@ -1,4 +1,6 @@
+import { useSyncExternalStore } from "react";
 import type { GaugeNode as GaugeNodeType } from "../rete-nodes";
+import { collapseStore } from "../collapseStore";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { useChartColors, GaugeArc } from "./chartView";
@@ -25,6 +27,11 @@ function formatPct(v: number): string {
 
 export function GaugeComponent({ data, emit }: NodeProps<GaugeNodeType>) {
   const { track } = useChartColors();
+  // Exactly one of the two dials (live / minified) is visible at a time (CSS,
+  // .solenoid-node__collapsed-only) — mount only that one instead of both, since
+  // each GaugeArc is a full recharts tree. Animations are off globally, so the
+  // remount on collapse toggle is instant.
+  const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   const value = data.cachedResult;
   // An upstream error makes the guard set cachedResult to a SolError (Gauge isn't
   // in SEES_ERRORS). Render the red #CODE! badge instead of letting it become a NaN
@@ -52,7 +59,7 @@ export function GaugeComponent({ data, emit }: NodeProps<GaugeNodeType>) {
     <NodeShell node={data} emit={emit} squareCollapse>
       <InlineInputs node={data} emit={emit} />
       <div style={{ position: "relative", width: SIZE, height: SHOW, margin: "2px auto 0", overflow: "hidden" }}>
-        <GaugeArc pct={pct} track={track} size={SIZE} />
+        {!collapsed && <GaugeArc pct={pct} track={track} size={SIZE} />}
         <div style={{ position: "absolute", left: 0, right: 0, top: 50, textAlign: "center", fontSize: 16, fontWeight: 600, color: "var(--text)" }}>
           {value === null ? "—" : formatPct(value)}
         </div>
@@ -65,7 +72,7 @@ export function GaugeComponent({ data, emit }: NodeProps<GaugeNodeType>) {
       <div className="solenoid-node__collapsed-only">
         {value === null
           ? <span className="solenoid-node__display-value solenoid-node__display-value--empty">—</span>
-          : <div style={{ position: "relative", width: MINI_SIZE, height: MINI_SHOW, overflow: "hidden" }}>
+          : collapsed && <div style={{ position: "relative", width: MINI_SIZE, height: MINI_SHOW, overflow: "hidden" }}>
               <GaugeArc pct={pct} track={track} size={MINI_SIZE} />
             </div>}
       </div>
