@@ -1,51 +1,462 @@
 {
   "v": 1,
   "label": "Table verbs (all of them)",
+  "order": 65,
   "nodes": [
-    {"id":"note0","type":"NoteNode","x":-40,"y":-620,"init":{"label":"Every relational table verb","body":"# One source → every verb\nThe **Sales** frame feeds each table verb on its own branch (click a chip for the full table). **Reps** is the Join lookup; **More Sales** is the Append bottom. A row is duplicated (Ada/N/100) for Distinct; Pivot→Unpivot and Nest→Unnest are round-trips. Column lists are typed right in the node (e.g. `Rep, Amount`).","color":"violet","width":420,"height":210}},
-
-    {"id":"sales","type":"FrameInputNode","x":0,"y":-340,"init":{"label":"Sales","frameText":"[{\"name\":\"Rep\",\"type\":\"string\",\"values\":[\"Ada\",\"Bo\",\"Ada\",\"Cy\",\"Bo\",\"Ada\"]},{\"name\":\"Region\",\"type\":\"string\",\"values\":[\"N\",\"S\",\"N\",\"E\",\"S\",\"N\"]},{\"name\":\"Amount\",\"type\":\"number\",\"values\":[100,50,100,200,75,30]}]"}},
-    {"id":"reps","type":"FrameInputNode","x":0,"y":-60,"init":{"label":"Reps (Join lookup)","frameText":"[{\"name\":\"Rep\",\"type\":\"string\",\"values\":[\"Ada\",\"Bo\",\"Cy\"]},{\"name\":\"Team\",\"type\":\"string\",\"values\":[\"Red\",\"Blue\",\"Green\"]}]"}},
-    {"id":"more","type":"FrameInputNode","x":0,"y":220,"init":{"label":"More Sales (Append bottom)","frameText":"[{\"name\":\"Rep\",\"type\":\"string\",\"values\":[\"Di\",\"Eve\"]},{\"name\":\"Region\",\"type\":\"string\",\"values\":[\"W\",\"N\"]},{\"name\":\"Amount\",\"type\":\"number\",\"values\":[60,45]}]"}},
-
-    {"id":"distinct","type":"DistinctNode","x":480,"y":-440,"init":{"label":"Distinct → drops dup row"}},
-    {"id":"sort","type":"SortFrameNode","x":480,"y":-200,"init":{"label":"Sort → Amount, desc","dir":"desc"},"stringLiterals":{"column":"Amount"}},
-    {"id":"head","type":"HeadNode","x":480,"y":40,"init":{"label":"Head → first 3"},"literals":{"rows":3}},
-    {"id":"filter","type":"FilterFrameNode","x":480,"y":260,"init":{"label":"Filter → Amount ≥ 100","condConfig":{"0":{"op":"gte"}},"valueKeys":["frame","column0","value0"]},"stringLiterals":{"column0":"Amount","value0":"100"}},
-    {"id":"filteror","type":"FilterFrameNode","x":480,"y":1160,"init":{"label":"Filter → Region = N OR Amount > 150","combine":"or","condConfig":{"0":{"op":"eq"},"1":{"op":"gt"}},"valueKeys":["frame","column0","value0","column1","value1"]},"stringLiterals":{"column0":"Region","value0":"N","column1":"Amount","value1":"150"}},
-    {"id":"select","type":"SelectColumnsNode","x":480,"y":500,"init":{"label":"Select → Rep, Amount"},"stringLiterals":{"columns":"Rep, Amount"}},
-    {"id":"drop","type":"DropColumnsNode","x":480,"y":720,"init":{"label":"Drop → Region"},"stringLiterals":{"columns":"Region"}},
-    {"id":"rename","type":"RenameNode","x":480,"y":940,"init":{"label":"Rename → Amount to \"Sales $\""},"stringLiterals":{"from":"Amount","to":"Sales $"}},
-
-    {"id":"groupby","type":"GroupByFrameNode","x":900,"y":-440,"init":{"label":"Group By Rep → SUM(Amount)","op":"sum","totalDepth":1},"stringLiterals":{"keys":"Rep","column":"Amount"}},
-    {"id":"join","type":"JoinNode","x":900,"y":-180,"init":{"label":"Join Sales × Reps (left, on Rep)","how":"left"},"stringLiterals":{"leftKey":"Rep","rightKey":"Rep"}},
-    {"id":"append","type":"AppendNode","x":900,"y":80,"init":{"label":"Append Sales + More Sales"}},
-    {"id":"pivot","type":"PivotNode","x":900,"y":340,"init":{"label":"Pivot → Rep × Region (SUM)","op":"sum"},"stringLiterals":{"rowFields":"Rep","colFields":"Region","values":"Amount"}},
-    {"id":"nest","type":"NestNode","x":900,"y":720,"init":{"label":"Nest by Rep → Cube"},"stringLiterals":{"keys":"Rep","nestedName":"Orders"}},
-
-    {"id":"unpivot","type":"UnpivotNode","x":1340,"y":340,"init":{"label":"Unpivot back → long"},"stringLiterals":{"idColumns":"Rep","valueColumns":"N, S, E"}},
-    {"id":"unnest","type":"UnnestNode","x":1340,"y":720,"init":{"label":"Unnest Orders → flat again"},"stringLiterals":{"column":"Orders"}}
+    {
+      "id": "note0",
+      "type": "NoteNode",
+      "x": -40,
+      "y": -620,
+      "init": {
+        "label": "Every relational table verb",
+        "body": "# One source → every verb\nThe **Sales** frame feeds each table verb on its own branch (click a chip for the full table). **Reps** is the Join lookup; **More Sales** is the Append bottom. A row is duplicated (Ada/N/100) for Distinct; Pivot→Unpivot and Nest→Unnest are round-trips. Column lists are typed right in the node (e.g. `Rep, Amount`).",
+        "color": "violet",
+        "width": 420,
+        "height": 210
+      }
+    },
+    {
+      "id": "sales",
+      "type": "FrameInputNode",
+      "x": 0,
+      "y": -340,
+      "init": {
+        "label": "Sales",
+        "frameText": "[{\"name\":\"Rep\",\"type\":\"string\",\"values\":[\"Ada\",\"Bo\",\"Ada\",\"Cy\",\"Bo\",\"Ada\"]},{\"name\":\"Region\",\"type\":\"string\",\"values\":[\"N\",\"S\",\"N\",\"E\",\"S\",\"N\"]},{\"name\":\"Amount\",\"type\":\"number\",\"values\":[100,50,100,200,75,30]}]"
+      }
+    },
+    {
+      "id": "reps",
+      "type": "FrameInputNode",
+      "x": 0,
+      "y": -60,
+      "init": {
+        "label": "Reps (Join lookup)",
+        "frameText": "[{\"name\":\"Rep\",\"type\":\"string\",\"values\":[\"Ada\",\"Bo\",\"Cy\"]},{\"name\":\"Team\",\"type\":\"string\",\"values\":[\"Red\",\"Blue\",\"Green\"]}]"
+      }
+    },
+    {
+      "id": "more",
+      "type": "FrameInputNode",
+      "x": 0,
+      "y": 220,
+      "init": {
+        "label": "More Sales (Append bottom)",
+        "frameText": "[{\"name\":\"Rep\",\"type\":\"string\",\"values\":[\"Di\",\"Eve\"]},{\"name\":\"Region\",\"type\":\"string\",\"values\":[\"W\",\"N\"]},{\"name\":\"Amount\",\"type\":\"number\",\"values\":[60,45]}]"
+      }
+    },
+    {
+      "id": "distinct",
+      "type": "DistinctNode",
+      "x": 480,
+      "y": -440,
+      "init": {
+        "label": "Distinct → drops dup row"
+      }
+    },
+    {
+      "id": "sort",
+      "type": "SortFrameNode",
+      "x": 480,
+      "y": -200,
+      "init": {
+        "label": "Sort → Amount, desc",
+        "dir": "desc"
+      },
+      "stringLiterals": {
+        "column": "Amount"
+      }
+    },
+    {
+      "id": "head",
+      "type": "HeadNode",
+      "x": 480,
+      "y": 40,
+      "init": {
+        "label": "Head → first 3"
+      },
+      "literals": {
+        "rows": 3
+      }
+    },
+    {
+      "id": "filter",
+      "type": "FilterFrameNode",
+      "x": 480,
+      "y": 260,
+      "init": {
+        "label": "Filter → Amount ≥ 100",
+        "condConfig": {
+          "0": {
+            "op": "gte"
+          }
+        },
+        "valueKeys": [
+          "frame",
+          "column0",
+          "value0"
+        ]
+      },
+      "stringLiterals": {
+        "column0": "Amount",
+        "value0": "100"
+      }
+    },
+    {
+      "id": "filteror",
+      "type": "FilterFrameNode",
+      "x": 480,
+      "y": 1160,
+      "init": {
+        "label": "Filter → Region = N OR Amount > 150",
+        "combine": "or",
+        "condConfig": {
+          "0": {
+            "op": "eq"
+          },
+          "1": {
+            "op": "gt"
+          }
+        },
+        "valueKeys": [
+          "frame",
+          "column0",
+          "value0",
+          "column1",
+          "value1"
+        ]
+      },
+      "stringLiterals": {
+        "column0": "Region",
+        "value0": "N",
+        "column1": "Amount",
+        "value1": "150"
+      }
+    },
+    {
+      "id": "select",
+      "type": "SelectColumnsNode",
+      "x": 480,
+      "y": 500,
+      "init": {
+        "label": "Select → Rep, Amount"
+      },
+      "stringLiterals": {
+        "columns": "Rep, Amount"
+      }
+    },
+    {
+      "id": "drop",
+      "type": "DropColumnsNode",
+      "x": 480,
+      "y": 720,
+      "init": {
+        "label": "Drop → Region"
+      },
+      "stringLiterals": {
+        "columns": "Region"
+      }
+    },
+    {
+      "id": "rename",
+      "type": "RenameNode",
+      "x": 480,
+      "y": 940,
+      "init": {
+        "label": "Rename → Amount to \"Sales $\""
+      },
+      "stringLiterals": {
+        "from": "Amount",
+        "to": "Sales $"
+      }
+    },
+    {
+      "id": "groupby",
+      "type": "GroupByFrameNode",
+      "x": 900,
+      "y": -440,
+      "init": {
+        "label": "Group By Rep → SUM(Amount)",
+        "op": "sum",
+        "totalDepth": 1
+      },
+      "stringLiterals": {
+        "keys": "Rep",
+        "column": "Amount"
+      }
+    },
+    {
+      "id": "join",
+      "type": "JoinNode",
+      "x": 900,
+      "y": -180,
+      "init": {
+        "label": "Join Sales × Reps (left, on Rep)",
+        "how": "left"
+      },
+      "stringLiterals": {
+        "leftKey": "Rep",
+        "rightKey": "Rep"
+      }
+    },
+    {
+      "id": "append",
+      "type": "AppendNode",
+      "x": 900,
+      "y": 80,
+      "init": {
+        "label": "Append Sales + More Sales"
+      }
+    },
+    {
+      "id": "pivot",
+      "type": "PivotNode",
+      "x": 900,
+      "y": 340,
+      "init": {
+        "label": "Pivot → Rep × Region (SUM)",
+        "op": "sum"
+      },
+      "stringLiterals": {
+        "rowFields": "Rep",
+        "colFields": "Region",
+        "values": "Amount"
+      }
+    },
+    {
+      "id": "nest",
+      "type": "NestNode",
+      "x": 900,
+      "y": 720,
+      "init": {
+        "label": "Nest by Rep → Cube"
+      },
+      "stringLiterals": {
+        "keys": "Rep",
+        "nestedName": "Orders"
+      }
+    },
+    {
+      "id": "unpivot",
+      "type": "UnpivotNode",
+      "x": 1340,
+      "y": 340,
+      "init": {
+        "label": "Unpivot back → long"
+      },
+      "stringLiterals": {
+        "idColumns": "Rep",
+        "valueColumns": "N, S, E"
+      }
+    },
+    {
+      "id": "unnest",
+      "type": "UnnestNode",
+      "x": 1340,
+      "y": 720,
+      "init": {
+        "label": "Unnest Orders → flat again"
+      },
+      "stringLiterals": {
+        "column": "Orders"
+      }
+    },
+    {
+      "id": "asof-note",
+      "type": "NoteNode",
+      "x": 1750,
+      "y": -620,
+      "init": {
+        "label": "Nearest-match, not exact-match",
+        "body": "# As-of join & lookup\n**Join** (how = As-of) matches each Trade to the LATEST Quote at or before its time — no exact timestamp needed. **XLOOKUP** (match ≤) falls back to the closest SMALLER volume tier when there's no exact qty match.",
+        "color": "violet",
+        "width": 420,
+        "height": 170
+      }
+    },
+    {
+      "id": "quotes",
+      "type": "FrameInputNode",
+      "x": 1790,
+      "y": -360,
+      "init": {
+        "label": "Quotes",
+        "frameText": "[{\"name\":\"time\",\"type\":\"number\",\"values\":[0,2,4,8,12]},{\"name\":\"price\",\"type\":\"number\",\"values\":[100,101,102.5,103,104.5]}]"
+      }
+    },
+    {
+      "id": "trades",
+      "type": "FrameInputNode",
+      "x": 1790,
+      "y": -100,
+      "init": {
+        "label": "Trades",
+        "frameText": "[{\"name\":\"time\",\"type\":\"number\",\"values\":[-1,1,5,10,20]},{\"name\":\"qty\",\"type\":\"number\",\"values\":[5,10,15,20,25]}]"
+      }
+    },
+    {
+      "id": "breaks",
+      "type": "FrameInputNode",
+      "x": 1790,
+      "y": 220,
+      "init": {
+        "label": "Volume tiers",
+        "frameText": "[{\"name\":\"qty\",\"type\":\"number\",\"values\":[1,10,50,100]},{\"name\":\"discount\",\"type\":\"number\",\"values\":[0,0.05,0.1,0.2]}]"
+      }
+    },
+    {
+      "id": "asofjoin",
+      "type": "JoinNode",
+      "x": 2250,
+      "y": -260,
+      "init": {
+        "label": "As-of Join — trade price at execution time (≤)",
+        "how": "asof",
+        "asofDirection": "backward"
+      },
+      "stringLiterals": {
+        "leftKey": "time",
+        "rightKey": "time"
+      }
+    },
+    {
+      "id": "lookup",
+      "type": "XLookupNode",
+      "x": 2250,
+      "y": 220,
+      "init": {
+        "label": "XLOOKUP — next-smaller volume tier (≤)",
+        "matchMode": "nextSmaller"
+      },
+      "stringLiterals": {
+        "lookup": "35",
+        "inColumn": "qty",
+        "returnColumn": "discount",
+        "ifNotFound": "0"
+      }
+    }
   ],
   "connections": [
-    {"source":"sales","sourceOutput":"frame","target":"distinct","targetInput":"frame"},
-    {"source":"sales","sourceOutput":"frame","target":"sort","targetInput":"frame"},
-    {"source":"sales","sourceOutput":"frame","target":"head","targetInput":"frame"},
-    {"source":"sales","sourceOutput":"frame","target":"filter","targetInput":"frame"},
-    {"source":"sales","sourceOutput":"frame","target":"filteror","targetInput":"frame"},
-    {"source":"sales","sourceOutput":"frame","target":"select","targetInput":"frame"},
-    {"source":"sales","sourceOutput":"frame","target":"drop","targetInput":"frame"},
-    {"source":"sales","sourceOutput":"frame","target":"rename","targetInput":"frame"},
-    {"source":"sales","sourceOutput":"frame","target":"groupby","targetInput":"frame"},
-    {"source":"sales","sourceOutput":"frame","target":"pivot","targetInput":"frame"},
-    {"source":"sales","sourceOutput":"frame","target":"nest","targetInput":"frame"},
-
-    {"source":"sales","sourceOutput":"frame","target":"join","targetInput":"left"},
-    {"source":"reps","sourceOutput":"frame","target":"join","targetInput":"right"},
-
-    {"source":"sales","sourceOutput":"frame","target":"append","targetInput":"top"},
-    {"source":"more","sourceOutput":"frame","target":"append","targetInput":"bottom"},
-
-    {"source":"pivot","sourceOutput":"frame","target":"unpivot","targetInput":"frame"},
-    {"source":"nest","sourceOutput":"cube","target":"unnest","targetInput":"cube"}
+    {
+      "source": "sales",
+      "sourceOutput": "frame",
+      "target": "distinct",
+      "targetInput": "frame"
+    },
+    {
+      "source": "sales",
+      "sourceOutput": "frame",
+      "target": "sort",
+      "targetInput": "frame"
+    },
+    {
+      "source": "sales",
+      "sourceOutput": "frame",
+      "target": "head",
+      "targetInput": "frame"
+    },
+    {
+      "source": "sales",
+      "sourceOutput": "frame",
+      "target": "filter",
+      "targetInput": "frame"
+    },
+    {
+      "source": "sales",
+      "sourceOutput": "frame",
+      "target": "filteror",
+      "targetInput": "frame"
+    },
+    {
+      "source": "sales",
+      "sourceOutput": "frame",
+      "target": "select",
+      "targetInput": "frame"
+    },
+    {
+      "source": "sales",
+      "sourceOutput": "frame",
+      "target": "drop",
+      "targetInput": "frame"
+    },
+    {
+      "source": "sales",
+      "sourceOutput": "frame",
+      "target": "rename",
+      "targetInput": "frame"
+    },
+    {
+      "source": "sales",
+      "sourceOutput": "frame",
+      "target": "groupby",
+      "targetInput": "frame"
+    },
+    {
+      "source": "sales",
+      "sourceOutput": "frame",
+      "target": "pivot",
+      "targetInput": "frame"
+    },
+    {
+      "source": "sales",
+      "sourceOutput": "frame",
+      "target": "nest",
+      "targetInput": "frame"
+    },
+    {
+      "source": "sales",
+      "sourceOutput": "frame",
+      "target": "join",
+      "targetInput": "left"
+    },
+    {
+      "source": "reps",
+      "sourceOutput": "frame",
+      "target": "join",
+      "targetInput": "right"
+    },
+    {
+      "source": "sales",
+      "sourceOutput": "frame",
+      "target": "append",
+      "targetInput": "top"
+    },
+    {
+      "source": "more",
+      "sourceOutput": "frame",
+      "target": "append",
+      "targetInput": "bottom"
+    },
+    {
+      "source": "pivot",
+      "sourceOutput": "frame",
+      "target": "unpivot",
+      "targetInput": "frame"
+    },
+    {
+      "source": "nest",
+      "sourceOutput": "cube",
+      "target": "unnest",
+      "targetInput": "cube"
+    },
+    {
+      "source": "trades",
+      "sourceOutput": "frame",
+      "target": "asofjoin",
+      "targetInput": "left"
+    },
+    {
+      "source": "quotes",
+      "sourceOutput": "frame",
+      "target": "asofjoin",
+      "targetInput": "right"
+    },
+    {
+      "source": "breaks",
+      "sourceOutput": "frame",
+      "target": "lookup",
+      "targetInput": "frame"
+    }
   ]
 }

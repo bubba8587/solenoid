@@ -6,9 +6,10 @@ import type { Schemes } from "./schemes";
 import { installInputCoercion } from "./coerceInputs";
 import { installErrorGuards, isSolError, solError, type SolError } from "./errorValue";
 import { loopMembers } from "./process";
-import seed from "./seedGraphs/error-codes.json";
+import seed from "./seedGraphs/null-and-logical.json";
 
-// Loads the error-codes showcase seed and runs it through a real editor +
+// Loads the "Errors, Null & Logic" seed (the error-codes tour merged into it,
+// 2026-07-08 — the c_*/d_* cluster ids are preserved) and runs it through a real editor +
 // DataflowEngine with the SAME wrappers + cycle handling Canvas/processGraph use,
 // then checks that every ISERROR cluster lights up with the code its row promises.
 // A wrong socket key or a producer that quietly returns null shows up here as a
@@ -32,7 +33,7 @@ const EXPECTED: Record<string, string> = {
   c_shp: "#SHAPE!", c_nam: "#NAME?", c_circ: "#CIRC!",
 };
 
-describe("error-codes seed", () => {
+describe("errors-null-logic seed (error-codes tour)", () => {
   it("every ISERROR cluster reports the code its row demonstrates", async () => {
     const editor = new NodeEditor<Schemes>();
     installInputCoercion(editor);
