@@ -24,8 +24,10 @@ against code the same way as the backlog (delete/flip lines as they land).
     node, Report/Presenter, Cube, trust & data-quality nodes — all in.
 - **v2.0 bundle set** (`v2.0/`): built 01–07, 09, 11–15. OPEN bundles below.
 
-**tsc + full vitest (2279) green; `cargo test` (32 parity) green; 27 seeds load
-(`seeds.test.ts`).** The tree is release-shaped *right now* minus the hygiene pass.
+**tsc + full vitest (2331) green; `cargo test` (32 parity) green; 27 seeds load
+(`seeds.test.ts` — 29 files minus the two 2026-07-08 retirements, plus Live Market
+Data).** The tree is release-shaped; the committed 1.1 additions are in (§3) and the
+version is bumped — what's left is the author-run tail of §4.
 
 ## 2. The cut — DECIDED (author 2026-07-06)
 
@@ -48,13 +50,20 @@ that file is the source material + the What's-New slide content.)
 
 ## 3. Scope for 1.1
 
-### Committed — the 1.1 build (author 2026-07-06)
-- **Finance / market-data connections (big):** register + catalogue + build the
-  `DataFeedNode` component so it's usable; expand it into a genuine feature (§3a).
-- **Seed overhaul:** a pass on all 27 seeds — each loads clean, demos a real 1.1 story,
-  no dead/embarrassing ones; `seeds.test.ts` stays green (§3b).
-- **What's New overlay:** shown once (localStorage flag), re-openable from the menu bar (§3c).
-- **Curated feature list** kept current in `release-notes-features.md`.
+### Committed — the 1.1 build (author 2026-07-06) — ALL SHIPPED as of 2026-07-08
+- **Finance / market-data connections — DONE:** `DataFeedNode` registered/catalogued/
+  componentized (2026-07-06), date-range + frequency + quick-picks widening (2026-07-07),
+  and the **Live Market Data** demo seed (2026-07-08: two keyless FRED clusters + an
+  Alpha Vantage add-a-key cluster). Post-1.1 widening residue is in `backlog.md`.
+- **Seed overhaul — DONE 2026-07-08:** four parallel reviews over all 27 pre-1.1 seeds;
+  retired `value-semantics-tail` (1.0-QA framing, superseded by null-and-logical) and
+  `layout-test-mixed-heights` (dev fixture); fixed the null-and-logical Kleene-result and
+  pivot-tables column-count content bugs + the "Frame Lookup" naming; ordered the
+  composite/as-of headliners into the menu; cleaned getting-started. Author-call residue
+  (getting-started hero, personal-finance headliners, run-mode cards) → `backlog.md`.
+- **What's New overlay — DONE 2026-07-07** (`helpDialogStore.ts`/`HelpDialogs.tsx`); slide
+  copy corrected 2026-07-08 (FRED keyless, no FX, Simulation ≠ Monte Carlo).
+- **Curated feature list** reconciled 2026-07-08 in `release-notes-features.md`.
 
 ### Finish-if-time (near-done, low-risk — pull in if the cut has room)
 - **Gauge collapsed preview** (last of the per-node collapse set; 3 input sockets must stay reachable).
@@ -121,6 +130,8 @@ comes from `release-notes-features.md` (author-editable). No Captain-Obvious cop
 Ordered; each must be green before the tag.
 
 1. **`tsc` clean + full `vitest` green + `cargo test` green** (32 Rust parity tests).
+   *Status 2026-07-08: tsc clean, vitest 2331/2331 (after the seed retirements). `cargo test`
+   must run on the author's Windows machine — the cloud container lacks Tauri's GTK deps.*
 2. **Every seed loads** — `seeds.test.ts` green; run the **seed-cleanup pass** (the
    author-decreed last-minute polish: each of the 27 seeds loads clean and demos its
    feature; don't over-polish).
@@ -129,7 +140,7 @@ Ordered; each must be green before the tag.
 4. **README bar** — `docs/README.md` still states *what it is* + the non-obvious
    differentiators, no feature inventory (per the standing rule).
 5. **Version bump — THREE files in lockstep:** `package.json`, `src-tauri/tauri.conf.json`,
-   `src-tauri/Cargo.toml` (all at `1.0.0` today).
+   `src-tauri/Cargo.toml`. *DONE 2026-07-08 — all at `1.1.0` (+ `Cargo.lock`).*
 6. **Path-stripped desktop build** — `npm run release:desktop` (`scripts/release-build.ps1`)
    strips the build-machine username from the binary. Verify no real-name leak
    (`[[feedback-keep-real-name-private]]`).

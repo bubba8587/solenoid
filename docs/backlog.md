@@ -15,12 +15,10 @@ is archived).
 
 ## 1.1 release build (committed 2026-07-06 — see `release-plan.md`)
 
-- [ ] **Data Feed — remaining widening only** (core SHIPPED 2026-07-06, commits `5675c48` +
-  `bf4f531`: `DataFeedNode` registered + catalogued + component; FRED keyless CSV + Alpha
-  Vantage keyed stock history; provider dropdown, series/ticker field, refresh timer,
-  Frame output that wires into a Chart. Stooq dropped — bot-blocked). Still OPEN: a richer
-  series/symbol PICKER (today it's a bare text field), date-range / frequency controls, more
-  providers, and a dedicated finance DEMO SEED with a live Data Feed node. Scope: `release-plan.md` §3a.
+- [ ] **Data Feed — post-1.1 widening only** (core + date-range/frequency/quick-picks +
+  the **Live Market Data** demo seed all SHIPPED; Stooq dropped — bot-blocked). Still OPEN,
+  none release-gating: a richer series/symbol PICKER (today a text field + quick-picks),
+  more providers. Scope: `release-plan.md` §3a.
 - [ ] **iFrame / embed node** (author 2026-07-06) — a general web-embed node: FRED graph
   direct embeds, YouTube, social (Twitter/X), dashboards. Emits an embed value out the green
   `chart` socket (like Image/Mermaid) so it also embeds in a Report. **SECURITY (author-gated
@@ -34,10 +32,17 @@ is archived).
   context — click-to-load + don't render off-screen + cap concurrent. Reality check: most sites
   send `X-Frame-Options: DENY`, so this works for EMBED-friendly content (FRED/video/social),
   not arbitrary pages. Needs the author's CSP-posture call before build.
-- [ ] **Massive seed overhaul** — pass on all 27 seeds: loads clean, tells a real 1.1
-  story, no deprecated shapes; `seeds.test.ts` stays green. `release-plan.md` §3b. Near the cut.
 - [ ] **Keep `release-notes-features.md` current** — the curated selling list + What's-New
-  slide source (author writes the final release notes).
+  slide source (author writes the final release notes). Reconciled 2026-07-08 (FRED-keyless
+  copy, no FX, Simulation ≠ Monte Carlo — slides synced in `HelpDialogs.tsx`).
+- [ ] **Seed follow-ups from the 2026-07-08 overhaul** (the overhaul itself is DONE — two
+  seeds retired, content bugs fixed, headliners ordered; these are the author-call residue):
+  (a) **getting-started demos zero 1.1 headliners** — consider seeding one hero (a chart or
+  small composite) and reconsider the collapsed "Trig & averages" group hiding 11 nodes on
+  first load; (b) **personal-finance** (generator-locked) uses WebSource, no DataFeed/
+  composite/trust section — any change goes through `gen-personal-finance-seed.cjs`;
+  (c) **composite-workbench** covers 3 of 4 run modes — no scenarios/data-table card;
+  (d) **visual-outputs** could drop its bare Chart lanes (now chart-showcase's job).
 - [ ] **Trust-node audit — remaining follow-ups** (audit DONE 2026-07-07; comments/Reconcile-PVM/
   Expect-config-persistence found clean). Fixed this pass: Tornado all-zero in manual/sketch mode
   (no rebuild-gate/force-exact) + no try/finally restore + synthetic alerts; model-fuzz polluting the
