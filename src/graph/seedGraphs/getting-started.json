@@ -2,72 +2,798 @@
   "v": 1,
   "order": 0,
   "nodes": [
-    {"id":"3dc4458fdead68ca","type":"NumberInputNode","x":-278,"y":-151,"init":{"label":"Monthly budget","value":50,"width":180,"height":76}},
-    {"id":"707e9dcb674a0586","type":"NumberInputNode","x":-278,"y":-11,"init":{"label":"Months","value":12,"width":180,"height":76}},
-    {"id":"e69146c2dff9ae27","type":"ArithmeticNode","x":12,"y":-122,"init":{"label":"Annual total","op":"mul","width":180,"height":177,"a":0,"b":0},"literals":{"a":0,"b":0},"stringLiterals":{}},
-    {"id":"cac028027f370893","type":"DisplayNode","x":310,"y":-37,"init":{"label":"Annual budget","unitSuffix":"none","width":180,"height":88}},
-    {"id":"10e354041ab33d0a","type":"FormatControllerNode","x":492,"y":-24,"init":{"label":"Format","hostNodeId":"cac028027f370893","socketKey":"out","side":"output","format":"decimal","customPattern":"0.00","decimalDigits":0,"decimalMode":"places","unit":"usd","customUnit":"","socketDataType":"numlist","textCase":"none","bold":false,"italic":false,"textScale":14,"width":152,"height":91}},
-    {"id":"8aa83ef9f3cbce64","type":"GroupNode","x":-318,"y":-221,"init":{"label":"Budget","members":["3dc4458fdead68ca","707e9dcb674a0586","e69146c2dff9ae27"],"color":"blue","collapsed":false,"width":582,"height":337}},
-    {"id":"bfa05e574426869f","type":"TextInputNode","x":-325,"y":563,"init":{"label":"First name","value":"ada","width":180,"height":76}},
-    {"id":"d51023727681c51c","type":"TextInputNode","x":-325,"y":660,"init":{"label":"Last name","value":"lovelace","width":180,"height":76}},
-    {"id":"18267a40310b0a0c","type":"ConcatNode","x":-92,"y":563,"init":{"label":"Full name","width":180,"height":227,"valueKeys":["v0","v1","v2"]},"literals":{},"stringLiterals":{"a":"","b":" ","c":"","d":"","v1":" "}},
-    {"id":"b7055a5f9c1c878c","type":"DisplayNode","x":109,"y":602,"init":{"label":"Name badge","unitSuffix":"none","width":180,"height":126}},
-    {"id":"fb924a7fb971dd3a","type":"FormatControllerNode","x":290,"y":647,"init":{"label":"Format","hostNodeId":"b7055a5f9c1c878c","socketKey":"out","side":"output","format":"auto","customPattern":"0.00","decimalDigits":2,"decimalMode":"places","unit":"none","customUnit":"","socketDataType":"string","textCase":"upper","bold":true,"italic":false,"textScale":24,"width":118,"height":64}},
-    {"id":"c5276e978b610c7f","type":"GroupNode","x":-349,"y":509,"init":{"label":"Name badge","members":["bfa05e574426869f","d51023727681c51c","18267a40310b0a0c","b7055a5f9c1c878c","fb924a7fb971dd3a"],"color":"lime","collapsed":false,"width":787,"height":309}},
-    {"id":"f66cfed86a572601","type":"NumberInputNode","x":-319,"y":1445,"init":{"label":"Angle (°)","value":90,"width":180,"height":76}},
-    {"id":"aaa06a904afaf457","type":"ConvertNode","x":6,"y":1210,"init":{"label":"deg → rad","fromUnit":"deg","toUnit":"rad","unit":"rad","width":180,"height":318}},
-    {"id":"5feee99669621980","type":"MathFnNode","x":393,"y":1146,"init":{"label":"SIN","op":"sin","width":180,"height":149,"in":0},"literals":{"in":0},"stringLiterals":{}},
-    {"id":"c04528d541196409","type":"DisplayNode","x":703,"y":1143,"init":{"label":"sin θ","unitSuffix":"none","width":180,"height":88}},
-    {"id":"eccce2ca25f6520e","type":"NumberInputNode","x":758,"y":-150,"init":{"label":"Distance","value":1.5,"width":180,"height":76}},
-    {"id":"81e3f277a3a0a7b2","type":"ConvertNode","x":1149,"y":-123,"init":{"label":"mi → km","fromUnit":"mi","toUnit":"km","unit":"km","width":180,"height":318}},
-    {"id":"9232ae9ba13eb334","type":"DisplayNode","x":1371,"y":-83,"init":{"label":"Distance (km)","unitSuffix":"none","width":180,"height":88}},
-    {"id":"2326393ec84f58da","type":"FormatControllerNode","x":940,"y":-143,"init":{"label":"Format","hostNodeId":"eccce2ca25f6520e","socketKey":"value","side":"output","format":"decimal","customPattern":"0.00","decimalDigits":2,"decimalMode":"places","unit":"mi","customUnit":"","socketDataType":"number","textCase":"none","bold":false,"italic":false,"textScale":14,"width":152,"height":91}},
-    {"id":"e4fac14f53029814","type":"FormatControllerNode","x":1553,"y":-70,"init":{"label":"Format","hostNodeId":"9232ae9ba13eb334","socketKey":"out","side":"output","format":"decimal","customPattern":"0.00","decimalDigits":2,"decimalMode":"places","unit":"km","customUnit":"","socketDataType":"numlist","textCase":"none","bold":false,"italic":false,"textScale":14,"width":152,"height":91}},
-    {"id":"978d75753283e617","type":"NumberInputNode","x":-319,"y":1004,"init":{"label":"Score 1","value":82,"width":180,"height":76}},
-    {"id":"367d1801d5d456a1","type":"NumberInputNode","x":-319,"y":1101,"init":{"label":"Score 2","value":91,"width":180,"height":76}},
-    {"id":"39ee49c402cbb7c0","type":"NumberInputNode","x":-319,"y":1198,"init":{"label":"Score 3","value":76,"width":180,"height":76}},
-    {"id":"6c239c5de09b96d8","type":"ListInputNode","x":-32,"y":981,"init":{"label":"List","width":180,"height":208,"valueKeys":["v0","v1","v2"]},"literals":{},"stringLiterals":{}},
-    {"id":"b15db1d93852021e","type":"AggregateNode","x":393,"y":917,"init":{"label":"AVERAGE","op":"avg","width":180,"height":149},"literals":{},"stringLiterals":{}},
-    {"id":"fddd6f45ce0636b1","type":"DisplayNode","x":703,"y":897,"init":{"label":"Average score","unitSuffix":"none","width":180,"height":88}},
-    {"id":"5126bc6aa4d5e879","type":"FormatControllerNode","x":885,"y":910,"init":{"label":"Format","hostNodeId":"fddd6f45ce0636b1","socketKey":"out","side":"output","format":"decimal","customPattern":"0.00","decimalDigits":1,"decimalMode":"places","unit":"none","customUnit":"","socketDataType":"number","textCase":"none","bold":false,"italic":false,"textScale":14,"width":152,"height":91}},
-    {"id":"1b7810cc8a788307","type":"TextInputNode","x":757,"y":650,"init":{"label":"CSV","value":"apple,banana,cherry","width":180,"height":76}},
-    {"id":"c2611d5dbac7e563","type":"TextSplitNode","x":987,"y":575,"init":{"label":"TEXTSPLIT","width":180,"height":197},"literals":{},"stringLiterals":{"text":"","delimiter":","}},
-    {"id":"4cb6d87da6931ba9","type":"TextJoinNode","x":1217,"y":467,"init":{"label":"TEXTJOIN","ignoreEmpty":"include","width":180,"height":229},"literals":{},"stringLiterals":{"delimiter":" · "}},
-    {"id":"3c071df0f0f5d899","type":"DisplayNode","x":1447,"y":413,"init":{"label":"Joined","unitSuffix":"none","width":180,"height":141}},
-    {"id":"fd35e7e286babf8d","type":"TodayNowNode","x":-318,"y":281,"init":{"label":"TODAY","op":"today","width":180,"height":177}},
-    {"id":"d96699eb75dc9ee3","type":"DisplayNode","x":-80,"y":287,"init":{"label":"Today","unitSuffix":"none","width":180,"height":115}},
-    {"id":"c2e0bfe3d60c2820","type":"FormatControllerNode","x":102,"y":342,"init":{"label":"Format","hostNodeId":"d96699eb75dc9ee3","socketKey":"out","side":"output","format":"date_iso","customPattern":"0.00","decimalDigits":2,"decimalMode":"places","unit":"none","customUnit":"","socketDataType":"date","textCase":"none","bold":false,"italic":false,"textScale":14,"width":144,"height":32}},
-    {"id":"d43e296a48729cc5","type":"GroupNode","x":-351,"y":231,"init":{"label":"Group","members":["fd35e7e286babf8d","d96699eb75dc9ee3","c2e0bfe3d60c2820"],"color":"pink","collapsed":false,"width":624,"height":243}},
-    {"id":"551f5558f6e9b0ec","type":"GroupNode","x":732,"y":-217,"init":{"label":"Convert Mi to KM","members":["eccce2ca25f6520e","81e3f277a3a0a7b2","9232ae9ba13eb334","2326393ec84f58da","e4fac14f53029814"],"color":"gold","collapsed":false,"width":997,"height":462}},
-    {"id":"610e3e14726cf88f","type":"GroupNode","x":733,"y":359,"init":{"label":"Group","members":["1b7810cc8a788307","c2611d5dbac7e563","4cb6d87da6931ba9","3c071df0f0f5d899"],"color":"lime","collapsed":false,"width":916,"height":449}},
-    {"id":"32c3411794b8d4d9","type":"GroupNode","x":-343,"y":841,"init":{"label":"Group","members":["f66cfed86a572601","aaa06a904afaf457","5feee99669621980","c04528d541196409","978d75753283e617","367d1801d5d456a1","39ee49c402cbb7c0","6c239c5de09b96d8","b15db1d93852021e","fddd6f45ce0636b1","5126bc6aa4d5e879"],"color":"amber","collapsed":true,"width":1406,"height":715}}
+    {
+      "id": "3dc4458fdead68ca",
+      "type": "NumberInputNode",
+      "x": -278,
+      "y": -151,
+      "init": {
+        "label": "Monthly budget",
+        "value": 50,
+        "width": 180,
+        "height": 76
+      }
+    },
+    {
+      "id": "707e9dcb674a0586",
+      "type": "NumberInputNode",
+      "x": -278,
+      "y": -11,
+      "init": {
+        "label": "Months",
+        "value": 12,
+        "width": 180,
+        "height": 76
+      }
+    },
+    {
+      "id": "e69146c2dff9ae27",
+      "type": "ArithmeticNode",
+      "x": 12,
+      "y": -122,
+      "init": {
+        "label": "Annual total",
+        "op": "mul",
+        "width": 180,
+        "height": 177,
+        "a": 0,
+        "b": 0
+      },
+      "literals": {
+        "a": 0,
+        "b": 0
+      },
+      "stringLiterals": {}
+    },
+    {
+      "id": "cac028027f370893",
+      "type": "DisplayNode",
+      "x": 310,
+      "y": -37,
+      "init": {
+        "label": "Annual budget",
+        "unitSuffix": "none",
+        "width": 180,
+        "height": 88
+      }
+    },
+    {
+      "id": "10e354041ab33d0a",
+      "type": "FormatControllerNode",
+      "x": 492,
+      "y": -24,
+      "init": {
+        "label": "Format",
+        "hostNodeId": "cac028027f370893",
+        "socketKey": "out",
+        "side": "output",
+        "format": "decimal",
+        "customPattern": "0.00",
+        "decimalDigits": 0,
+        "decimalMode": "places",
+        "unit": "usd",
+        "customUnit": "",
+        "socketDataType": "numlist",
+        "textCase": "none",
+        "bold": false,
+        "italic": false,
+        "textScale": 14,
+        "width": 152,
+        "height": 91
+      }
+    },
+    {
+      "id": "8aa83ef9f3cbce64",
+      "type": "GroupNode",
+      "x": -318,
+      "y": -221,
+      "init": {
+        "label": "Budget",
+        "members": [
+          "3dc4458fdead68ca",
+          "707e9dcb674a0586",
+          "e69146c2dff9ae27"
+        ],
+        "color": "blue",
+        "collapsed": false,
+        "width": 582,
+        "height": 337
+      }
+    },
+    {
+      "id": "bfa05e574426869f",
+      "type": "TextInputNode",
+      "x": -325,
+      "y": 563,
+      "init": {
+        "label": "First name",
+        "value": "ada",
+        "width": 180,
+        "height": 76
+      }
+    },
+    {
+      "id": "d51023727681c51c",
+      "type": "TextInputNode",
+      "x": -325,
+      "y": 660,
+      "init": {
+        "label": "Last name",
+        "value": "lovelace",
+        "width": 180,
+        "height": 76
+      }
+    },
+    {
+      "id": "18267a40310b0a0c",
+      "type": "ConcatNode",
+      "x": -92,
+      "y": 563,
+      "init": {
+        "label": "Full name",
+        "width": 180,
+        "height": 227,
+        "valueKeys": [
+          "v0",
+          "v1",
+          "v2"
+        ]
+      },
+      "literals": {},
+      "stringLiterals": {
+        "v1": " "
+      }
+    },
+    {
+      "id": "b7055a5f9c1c878c",
+      "type": "DisplayNode",
+      "x": 109,
+      "y": 602,
+      "init": {
+        "label": "Name badge",
+        "unitSuffix": "none",
+        "width": 180,
+        "height": 126
+      }
+    },
+    {
+      "id": "fb924a7fb971dd3a",
+      "type": "FormatControllerNode",
+      "x": 290,
+      "y": 647,
+      "init": {
+        "label": "Format",
+        "hostNodeId": "b7055a5f9c1c878c",
+        "socketKey": "out",
+        "side": "output",
+        "format": "auto",
+        "customPattern": "0.00",
+        "decimalDigits": 2,
+        "decimalMode": "places",
+        "unit": "none",
+        "customUnit": "",
+        "socketDataType": "string",
+        "textCase": "upper",
+        "bold": true,
+        "italic": false,
+        "textScale": 24,
+        "width": 118,
+        "height": 64
+      }
+    },
+    {
+      "id": "c5276e978b610c7f",
+      "type": "GroupNode",
+      "x": -349,
+      "y": 509,
+      "init": {
+        "label": "Name badge",
+        "members": [
+          "bfa05e574426869f",
+          "d51023727681c51c",
+          "18267a40310b0a0c",
+          "b7055a5f9c1c878c",
+          "fb924a7fb971dd3a"
+        ],
+        "color": "lime",
+        "collapsed": false,
+        "width": 787,
+        "height": 309
+      }
+    },
+    {
+      "id": "f66cfed86a572601",
+      "type": "NumberInputNode",
+      "x": -319,
+      "y": 1445,
+      "init": {
+        "label": "Angle (°)",
+        "value": 90,
+        "width": 180,
+        "height": 76
+      }
+    },
+    {
+      "id": "aaa06a904afaf457",
+      "type": "ConvertNode",
+      "x": 6,
+      "y": 1210,
+      "init": {
+        "label": "deg → rad",
+        "fromUnit": "deg",
+        "toUnit": "rad",
+        "unit": "rad",
+        "width": 180,
+        "height": 318
+      }
+    },
+    {
+      "id": "5feee99669621980",
+      "type": "MathFnNode",
+      "x": 393,
+      "y": 1146,
+      "init": {
+        "label": "SIN",
+        "op": "sin",
+        "width": 180,
+        "height": 149,
+        "in": 0
+      },
+      "literals": {
+        "in": 0
+      },
+      "stringLiterals": {}
+    },
+    {
+      "id": "c04528d541196409",
+      "type": "DisplayNode",
+      "x": 703,
+      "y": 1143,
+      "init": {
+        "label": "sin θ",
+        "unitSuffix": "none",
+        "width": 180,
+        "height": 88
+      }
+    },
+    {
+      "id": "eccce2ca25f6520e",
+      "type": "NumberInputNode",
+      "x": 758,
+      "y": -150,
+      "init": {
+        "label": "Distance",
+        "value": 1.5,
+        "width": 180,
+        "height": 76
+      }
+    },
+    {
+      "id": "81e3f277a3a0a7b2",
+      "type": "ConvertNode",
+      "x": 1149,
+      "y": -123,
+      "init": {
+        "label": "mi → km",
+        "fromUnit": "mi",
+        "toUnit": "km",
+        "unit": "km",
+        "width": 180,
+        "height": 318
+      }
+    },
+    {
+      "id": "9232ae9ba13eb334",
+      "type": "DisplayNode",
+      "x": 1371,
+      "y": -83,
+      "init": {
+        "label": "Distance (km)",
+        "unitSuffix": "none",
+        "width": 180,
+        "height": 88
+      }
+    },
+    {
+      "id": "2326393ec84f58da",
+      "type": "FormatControllerNode",
+      "x": 940,
+      "y": -143,
+      "init": {
+        "label": "Format",
+        "hostNodeId": "eccce2ca25f6520e",
+        "socketKey": "value",
+        "side": "output",
+        "format": "decimal",
+        "customPattern": "0.00",
+        "decimalDigits": 2,
+        "decimalMode": "places",
+        "unit": "mi",
+        "customUnit": "",
+        "socketDataType": "number",
+        "textCase": "none",
+        "bold": false,
+        "italic": false,
+        "textScale": 14,
+        "width": 152,
+        "height": 91
+      }
+    },
+    {
+      "id": "e4fac14f53029814",
+      "type": "FormatControllerNode",
+      "x": 1553,
+      "y": -70,
+      "init": {
+        "label": "Format",
+        "hostNodeId": "9232ae9ba13eb334",
+        "socketKey": "out",
+        "side": "output",
+        "format": "decimal",
+        "customPattern": "0.00",
+        "decimalDigits": 2,
+        "decimalMode": "places",
+        "unit": "km",
+        "customUnit": "",
+        "socketDataType": "numlist",
+        "textCase": "none",
+        "bold": false,
+        "italic": false,
+        "textScale": 14,
+        "width": 152,
+        "height": 91
+      }
+    },
+    {
+      "id": "978d75753283e617",
+      "type": "NumberInputNode",
+      "x": -319,
+      "y": 1004,
+      "init": {
+        "label": "Score 1",
+        "value": 82,
+        "width": 180,
+        "height": 76
+      }
+    },
+    {
+      "id": "367d1801d5d456a1",
+      "type": "NumberInputNode",
+      "x": -319,
+      "y": 1101,
+      "init": {
+        "label": "Score 2",
+        "value": 91,
+        "width": 180,
+        "height": 76
+      }
+    },
+    {
+      "id": "39ee49c402cbb7c0",
+      "type": "NumberInputNode",
+      "x": -319,
+      "y": 1198,
+      "init": {
+        "label": "Score 3",
+        "value": 76,
+        "width": 180,
+        "height": 76
+      }
+    },
+    {
+      "id": "6c239c5de09b96d8",
+      "type": "ListInputNode",
+      "x": -32,
+      "y": 981,
+      "init": {
+        "label": "List",
+        "width": 180,
+        "height": 208,
+        "valueKeys": [
+          "v0",
+          "v1",
+          "v2"
+        ]
+      },
+      "literals": {},
+      "stringLiterals": {}
+    },
+    {
+      "id": "b15db1d93852021e",
+      "type": "AggregateNode",
+      "x": 393,
+      "y": 917,
+      "init": {
+        "label": "AVERAGE",
+        "op": "avg",
+        "width": 180,
+        "height": 149
+      },
+      "literals": {},
+      "stringLiterals": {}
+    },
+    {
+      "id": "fddd6f45ce0636b1",
+      "type": "DisplayNode",
+      "x": 703,
+      "y": 897,
+      "init": {
+        "label": "Average score",
+        "unitSuffix": "none",
+        "width": 180,
+        "height": 88
+      }
+    },
+    {
+      "id": "5126bc6aa4d5e879",
+      "type": "FormatControllerNode",
+      "x": 885,
+      "y": 910,
+      "init": {
+        "label": "Format",
+        "hostNodeId": "fddd6f45ce0636b1",
+        "socketKey": "out",
+        "side": "output",
+        "format": "decimal",
+        "customPattern": "0.00",
+        "decimalDigits": 1,
+        "decimalMode": "places",
+        "unit": "none",
+        "customUnit": "",
+        "socketDataType": "number",
+        "textCase": "none",
+        "bold": false,
+        "italic": false,
+        "textScale": 14,
+        "width": 152,
+        "height": 91
+      }
+    },
+    {
+      "id": "1b7810cc8a788307",
+      "type": "TextInputNode",
+      "x": 757,
+      "y": 650,
+      "init": {
+        "label": "CSV",
+        "value": "apple,banana,cherry",
+        "width": 180,
+        "height": 76
+      }
+    },
+    {
+      "id": "c2611d5dbac7e563",
+      "type": "TextSplitNode",
+      "x": 987,
+      "y": 575,
+      "init": {
+        "label": "TEXTSPLIT",
+        "width": 180,
+        "height": 197
+      },
+      "literals": {},
+      "stringLiterals": {
+        "text": "",
+        "delimiter": ","
+      }
+    },
+    {
+      "id": "4cb6d87da6931ba9",
+      "type": "TextJoinNode",
+      "x": 1217,
+      "y": 467,
+      "init": {
+        "label": "TEXTJOIN",
+        "ignoreEmpty": "include",
+        "width": 180,
+        "height": 229
+      },
+      "literals": {},
+      "stringLiterals": {
+        "delimiter": " · "
+      }
+    },
+    {
+      "id": "3c071df0f0f5d899",
+      "type": "DisplayNode",
+      "x": 1447,
+      "y": 413,
+      "init": {
+        "label": "Joined",
+        "unitSuffix": "none",
+        "width": 180,
+        "height": 141
+      }
+    },
+    {
+      "id": "fd35e7e286babf8d",
+      "type": "TodayNowNode",
+      "x": -318,
+      "y": 281,
+      "init": {
+        "label": "TODAY",
+        "op": "today",
+        "width": 180,
+        "height": 177
+      }
+    },
+    {
+      "id": "d96699eb75dc9ee3",
+      "type": "DisplayNode",
+      "x": -80,
+      "y": 287,
+      "init": {
+        "label": "Today",
+        "unitSuffix": "none",
+        "width": 180,
+        "height": 115
+      }
+    },
+    {
+      "id": "c2e0bfe3d60c2820",
+      "type": "FormatControllerNode",
+      "x": 102,
+      "y": 342,
+      "init": {
+        "label": "Format",
+        "hostNodeId": "d96699eb75dc9ee3",
+        "socketKey": "out",
+        "side": "output",
+        "format": "date_iso",
+        "customPattern": "0.00",
+        "decimalDigits": 2,
+        "decimalMode": "places",
+        "unit": "none",
+        "customUnit": "",
+        "socketDataType": "date",
+        "textCase": "none",
+        "bold": false,
+        "italic": false,
+        "textScale": 14,
+        "width": 144,
+        "height": 32
+      }
+    },
+    {
+      "id": "d43e296a48729cc5",
+      "type": "GroupNode",
+      "x": -351,
+      "y": 231,
+      "init": {
+        "label": "Today's date",
+        "members": [
+          "fd35e7e286babf8d",
+          "d96699eb75dc9ee3",
+          "c2e0bfe3d60c2820"
+        ],
+        "color": "pink",
+        "collapsed": false,
+        "width": 624,
+        "height": 243
+      }
+    },
+    {
+      "id": "551f5558f6e9b0ec",
+      "type": "GroupNode",
+      "x": 732,
+      "y": -217,
+      "init": {
+        "label": "Convert Mi to KM",
+        "members": [
+          "eccce2ca25f6520e",
+          "81e3f277a3a0a7b2",
+          "9232ae9ba13eb334",
+          "2326393ec84f58da",
+          "e4fac14f53029814"
+        ],
+        "color": "gold",
+        "collapsed": false,
+        "width": 997,
+        "height": 462
+      }
+    },
+    {
+      "id": "610e3e14726cf88f",
+      "type": "GroupNode",
+      "x": 733,
+      "y": 359,
+      "init": {
+        "label": "Split & join text",
+        "members": [
+          "1b7810cc8a788307",
+          "c2611d5dbac7e563",
+          "4cb6d87da6931ba9",
+          "3c071df0f0f5d899"
+        ],
+        "color": "lime",
+        "collapsed": false,
+        "width": 916,
+        "height": 449
+      }
+    },
+    {
+      "id": "32c3411794b8d4d9",
+      "type": "GroupNode",
+      "x": -343,
+      "y": 841,
+      "init": {
+        "label": "Trig & averages",
+        "members": [
+          "f66cfed86a572601",
+          "aaa06a904afaf457",
+          "5feee99669621980",
+          "c04528d541196409",
+          "978d75753283e617",
+          "367d1801d5d456a1",
+          "39ee49c402cbb7c0",
+          "6c239c5de09b96d8",
+          "b15db1d93852021e",
+          "fddd6f45ce0636b1",
+          "5126bc6aa4d5e879"
+        ],
+        "color": "amber",
+        "collapsed": true,
+        "width": 1406,
+        "height": 715
+      }
+    }
   ],
   "connections": [
-    {"source":"3dc4458fdead68ca","sourceOutput":"value","target":"e69146c2dff9ae27","targetInput":"a"},
-    {"source":"707e9dcb674a0586","sourceOutput":"value","target":"e69146c2dff9ae27","targetInput":"b"},
-    {"source":"f66cfed86a572601","sourceOutput":"value","target":"aaa06a904afaf457","targetInput":"in"},
-    {"source":"aaa06a904afaf457","sourceOutput":"out","target":"5feee99669621980","targetInput":"in"},
-    {"source":"5feee99669621980","sourceOutput":"result","target":"c04528d541196409","targetInput":"in"},
-    {"source":"81e3f277a3a0a7b2","sourceOutput":"out","target":"9232ae9ba13eb334","targetInput":"in"},
-    {"source":"eccce2ca25f6520e","sourceOutput":"value","target":"2326393ec84f58da","targetInput":"in"},
-    {"source":"9232ae9ba13eb334","sourceOutput":"out","target":"e4fac14f53029814","targetInput":"in"},
-    {"source":"978d75753283e617","sourceOutput":"value","target":"6c239c5de09b96d8","targetInput":"v0"},
-    {"source":"367d1801d5d456a1","sourceOutput":"value","target":"6c239c5de09b96d8","targetInput":"v1"},
-    {"source":"39ee49c402cbb7c0","sourceOutput":"value","target":"6c239c5de09b96d8","targetInput":"v2"},
-    {"source":"6c239c5de09b96d8","sourceOutput":"list","target":"b15db1d93852021e","targetInput":"list"},
-    {"source":"b15db1d93852021e","sourceOutput":"result","target":"fddd6f45ce0636b1","targetInput":"in"},
-    {"source":"fddd6f45ce0636b1","sourceOutput":"out","target":"5126bc6aa4d5e879","targetInput":"in"},
-    {"source":"1b7810cc8a788307","sourceOutput":"value","target":"c2611d5dbac7e563","targetInput":"text"},
-    {"source":"c2611d5dbac7e563","sourceOutput":"result","target":"4cb6d87da6931ba9","targetInput":"strings"},
-    {"source":"4cb6d87da6931ba9","sourceOutput":"result","target":"3c071df0f0f5d899","targetInput":"in"},
-    {"source":"fd35e7e286babf8d","sourceOutput":"result","target":"d96699eb75dc9ee3","targetInput":"in"},
-    {"source":"d96699eb75dc9ee3","sourceOutput":"out","target":"c2e0bfe3d60c2820","targetInput":"in"},
-    {"source":"2326393ec84f58da","sourceOutput":"out","target":"81e3f277a3a0a7b2","targetInput":"in"},
-    {"source":"e69146c2dff9ae27","sourceOutput":"result","target":"cac028027f370893","targetInput":"in"},
-    {"source":"cac028027f370893","sourceOutput":"out","target":"10e354041ab33d0a","targetInput":"in"},
-    {"source":"bfa05e574426869f","sourceOutput":"value","target":"18267a40310b0a0c","targetInput":"v0"},
-    {"source":"d51023727681c51c","sourceOutput":"value","target":"18267a40310b0a0c","targetInput":"v2"},
-    {"source":"18267a40310b0a0c","sourceOutput":"result","target":"b7055a5f9c1c878c","targetInput":"in"},
-    {"source":"b7055a5f9c1c878c","sourceOutput":"out","target":"fb924a7fb971dd3a","targetInput":"in"}
+    {
+      "source": "3dc4458fdead68ca",
+      "sourceOutput": "value",
+      "target": "e69146c2dff9ae27",
+      "targetInput": "a"
+    },
+    {
+      "source": "707e9dcb674a0586",
+      "sourceOutput": "value",
+      "target": "e69146c2dff9ae27",
+      "targetInput": "b"
+    },
+    {
+      "source": "f66cfed86a572601",
+      "sourceOutput": "value",
+      "target": "aaa06a904afaf457",
+      "targetInput": "in"
+    },
+    {
+      "source": "aaa06a904afaf457",
+      "sourceOutput": "out",
+      "target": "5feee99669621980",
+      "targetInput": "in"
+    },
+    {
+      "source": "5feee99669621980",
+      "sourceOutput": "result",
+      "target": "c04528d541196409",
+      "targetInput": "in"
+    },
+    {
+      "source": "81e3f277a3a0a7b2",
+      "sourceOutput": "out",
+      "target": "9232ae9ba13eb334",
+      "targetInput": "in"
+    },
+    {
+      "source": "eccce2ca25f6520e",
+      "sourceOutput": "value",
+      "target": "2326393ec84f58da",
+      "targetInput": "in"
+    },
+    {
+      "source": "9232ae9ba13eb334",
+      "sourceOutput": "out",
+      "target": "e4fac14f53029814",
+      "targetInput": "in"
+    },
+    {
+      "source": "978d75753283e617",
+      "sourceOutput": "value",
+      "target": "6c239c5de09b96d8",
+      "targetInput": "v0"
+    },
+    {
+      "source": "367d1801d5d456a1",
+      "sourceOutput": "value",
+      "target": "6c239c5de09b96d8",
+      "targetInput": "v1"
+    },
+    {
+      "source": "39ee49c402cbb7c0",
+      "sourceOutput": "value",
+      "target": "6c239c5de09b96d8",
+      "targetInput": "v2"
+    },
+    {
+      "source": "6c239c5de09b96d8",
+      "sourceOutput": "list",
+      "target": "b15db1d93852021e",
+      "targetInput": "list"
+    },
+    {
+      "source": "b15db1d93852021e",
+      "sourceOutput": "result",
+      "target": "fddd6f45ce0636b1",
+      "targetInput": "in"
+    },
+    {
+      "source": "fddd6f45ce0636b1",
+      "sourceOutput": "out",
+      "target": "5126bc6aa4d5e879",
+      "targetInput": "in"
+    },
+    {
+      "source": "1b7810cc8a788307",
+      "sourceOutput": "value",
+      "target": "c2611d5dbac7e563",
+      "targetInput": "text"
+    },
+    {
+      "source": "c2611d5dbac7e563",
+      "sourceOutput": "result",
+      "target": "4cb6d87da6931ba9",
+      "targetInput": "strings"
+    },
+    {
+      "source": "4cb6d87da6931ba9",
+      "sourceOutput": "result",
+      "target": "3c071df0f0f5d899",
+      "targetInput": "in"
+    },
+    {
+      "source": "fd35e7e286babf8d",
+      "sourceOutput": "result",
+      "target": "d96699eb75dc9ee3",
+      "targetInput": "in"
+    },
+    {
+      "source": "d96699eb75dc9ee3",
+      "sourceOutput": "out",
+      "target": "c2e0bfe3d60c2820",
+      "targetInput": "in"
+    },
+    {
+      "source": "2326393ec84f58da",
+      "sourceOutput": "out",
+      "target": "81e3f277a3a0a7b2",
+      "targetInput": "in"
+    },
+    {
+      "source": "e69146c2dff9ae27",
+      "sourceOutput": "result",
+      "target": "cac028027f370893",
+      "targetInput": "in"
+    },
+    {
+      "source": "cac028027f370893",
+      "sourceOutput": "out",
+      "target": "10e354041ab33d0a",
+      "targetInput": "in"
+    },
+    {
+      "source": "bfa05e574426869f",
+      "sourceOutput": "value",
+      "target": "18267a40310b0a0c",
+      "targetInput": "v0"
+    },
+    {
+      "source": "d51023727681c51c",
+      "sourceOutput": "value",
+      "target": "18267a40310b0a0c",
+      "targetInput": "v2"
+    },
+    {
+      "source": "18267a40310b0a0c",
+      "sourceOutput": "result",
+      "target": "b7055a5f9c1c878c",
+      "targetInput": "in"
+    },
+    {
+      "source": "b7055a5f9c1c878c",
+      "sourceOutput": "out",
+      "target": "fb924a7fb971dd3a",
+      "targetInput": "in"
+    }
   ]
 }

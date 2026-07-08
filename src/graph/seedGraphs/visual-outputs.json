@@ -1,47 +1,311 @@
 {
   "v": 2,
-  "label": "Visual Outputs",
+  "label": "Gauges, Sparklines & Chart Styling",
   "nodes": [
-    {"id":"ls_x","type":"LinSpaceNode","x":0,"y":0,"init":{"label":"Angles 0–2π"},"literals":{"start":0,"end":6.5,"count":13}},
-    {"id":"sin","type":"MathFnNode","x":260,"y":20,"init":{"label":"sin","op":"sin"}},
-    {"id":"spark_wave","type":"SparklineNode","x":520,"y":-40,"init":{"label":"Wave (line)","op":"line"}},
-    {"id":"chart_wave","type":"ChartNode","x":520,"y":150,"init":{"label":"Wave (area)","op":"area"}},
-
-    {"id":"data","type":"ListInputNode","x":0,"y":470,"init":{"label":"Weekly sales","valueKeys":["v0","v1","v2","v3","v4","v5","v6"]},"stringLiterals":{"v0":"12","v1":"19","v2":"7","v3":"23","v4":"15","v5":"28","v6":"9"}},
-    {"id":"spark_data","type":"SparklineNode","x":320,"y":430,"init":{"label":"Sales (column)","op":"column"}},
-    {"id":"chart_data","type":"ChartNode","x":320,"y":620,"init":{"label":"Sales (column)","op":"column"}},
-
-    {"id":"slider","type":"SliderInputNode","x":0,"y":960,"init":{"label":"Reading","value":0.72,"min":0,"max":1,"step":0.01}},
-    {"id":"gauge","type":"GaugeNode","x":300,"y":920,"init":{"label":"Gauge"},"literals":{"value":0}},
-
-    {"id":"grid","type":"TableInputNode","x":0,"y":1180,"init":{"label":"Correlation-ish grid","tableText":"1, 4, 9, 16\n2, 6, 12, 20\n4, 9, 15, 22\n8, 13, 19, 25"}},
-    {"id":"heat","type":"HeatmapCellNode","x":320,"y":1140,"init":{"label":"Heatmap"}},
-
-    {"id":"color_a","type":"ColorPickerNode","x":880,"y":-40,"init":{"label":"Line color","mode":"hsv","format":"hex"},"literals":{"c0":174,"c1":65,"c2":80}},
-    {"id":"cb_a","type":"ChartBuilderNode","x":1120,"y":-60,"init":{"label":"Style: sine"},"literals":{"linewidth":3,"ymin":-1.2,"ymax":1.2},"stringLiterals":{"title":"Sine Wave","ylabel":"sin θ","grid":"on","marker":"on"}},
-    {"id":"chart_a","type":"ChartNode","x":1400,"y":-40,"init":{"label":"Sine (styled line)","op":"line"}},
-
-    {"id":"color_b","type":"ColorPickerNode","x":880,"y":560,"init":{"label":"Bar color","mode":"rgb","format":"rgb"},"literals":{"c0":235,"c1":145,"c2":45}},
-    {"id":"cb_b","type":"ChartBuilderNode","x":1120,"y":540,"init":{"label":"Style: sales"},"literals":{"ymin":0,"alpha":0.85},"stringLiterals":{"title":"Weekly Sales","ylabel":"units","grid":"off"}},
-    {"id":"chart_b","type":"ChartNode","x":1400,"y":560,"init":{"label":"Sales (styled column)","op":"column"}}
+    {
+      "id": "ls_x",
+      "type": "LinSpaceNode",
+      "x": 0,
+      "y": 0,
+      "init": {
+        "label": "Angles 0–2π"
+      },
+      "literals": {
+        "start": 0,
+        "end": 6.5,
+        "count": 13
+      }
+    },
+    {
+      "id": "sin",
+      "type": "MathFnNode",
+      "x": 260,
+      "y": 20,
+      "init": {
+        "label": "sin",
+        "op": "sin"
+      }
+    },
+    {
+      "id": "spark_wave",
+      "type": "SparklineNode",
+      "x": 520,
+      "y": -40,
+      "init": {
+        "label": "Wave (line)",
+        "op": "line"
+      }
+    },
+    {
+      "id": "chart_wave",
+      "type": "ChartNode",
+      "x": 520,
+      "y": 150,
+      "init": {
+        "label": "Wave (area)",
+        "op": "area"
+      }
+    },
+    {
+      "id": "data",
+      "type": "ListInputNode",
+      "x": 0,
+      "y": 470,
+      "init": {
+        "label": "Weekly sales",
+        "valueKeys": [
+          "v0",
+          "v1",
+          "v2",
+          "v3",
+          "v4",
+          "v5",
+          "v6"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "12",
+        "v1": "19",
+        "v2": "7",
+        "v3": "23",
+        "v4": "15",
+        "v5": "28",
+        "v6": "9"
+      }
+    },
+    {
+      "id": "spark_data",
+      "type": "SparklineNode",
+      "x": 320,
+      "y": 430,
+      "init": {
+        "label": "Sales (column)",
+        "op": "column"
+      }
+    },
+    {
+      "id": "chart_data",
+      "type": "ChartNode",
+      "x": 320,
+      "y": 620,
+      "init": {
+        "label": "Sales (column)",
+        "op": "column"
+      }
+    },
+    {
+      "id": "slider",
+      "type": "SliderInputNode",
+      "x": 0,
+      "y": 960,
+      "init": {
+        "label": "Reading",
+        "value": 0.72,
+        "min": 0,
+        "max": 1,
+        "step": 0.01
+      }
+    },
+    {
+      "id": "gauge",
+      "type": "GaugeNode",
+      "x": 300,
+      "y": 920,
+      "init": {
+        "label": "Gauge"
+      },
+      "literals": {
+        "value": 0
+      }
+    },
+    {
+      "id": "grid",
+      "type": "TableInputNode",
+      "x": 0,
+      "y": 1180,
+      "init": {
+        "label": "Correlation-ish grid",
+        "tableText": "1, 4, 9, 16\n2, 6, 12, 20\n4, 9, 15, 22\n8, 13, 19, 25"
+      }
+    },
+    {
+      "id": "heat",
+      "type": "HeatmapCellNode",
+      "x": 320,
+      "y": 1140,
+      "init": {
+        "label": "Heatmap"
+      }
+    },
+    {
+      "id": "color_a",
+      "type": "ColorPickerNode",
+      "x": 880,
+      "y": -40,
+      "init": {
+        "label": "Line color",
+        "mode": "hsv",
+        "format": "hex"
+      },
+      "literals": {
+        "c0": 174,
+        "c1": 65,
+        "c2": 80
+      }
+    },
+    {
+      "id": "cb_a",
+      "type": "ChartBuilderNode",
+      "x": 1120,
+      "y": -60,
+      "init": {
+        "label": "Style: sine"
+      },
+      "literals": {
+        "linewidth": 3,
+        "ymin": -1.2,
+        "ymax": 1.2
+      },
+      "stringLiterals": {
+        "title": "Sine Wave",
+        "ylabel": "sin θ",
+        "grid": "on",
+        "marker": "on"
+      }
+    },
+    {
+      "id": "chart_a",
+      "type": "ChartNode",
+      "x": 1400,
+      "y": -40,
+      "init": {
+        "label": "Sine (styled line)",
+        "op": "line"
+      }
+    },
+    {
+      "id": "color_b",
+      "type": "ColorPickerNode",
+      "x": 880,
+      "y": 560,
+      "init": {
+        "label": "Bar color",
+        "mode": "rgb",
+        "format": "rgb"
+      },
+      "literals": {
+        "c0": 235,
+        "c1": 145,
+        "c2": 45
+      }
+    },
+    {
+      "id": "cb_b",
+      "type": "ChartBuilderNode",
+      "x": 1120,
+      "y": 540,
+      "init": {
+        "label": "Style: sales"
+      },
+      "literals": {
+        "ymin": 0,
+        "alpha": 0.85
+      },
+      "stringLiterals": {
+        "title": "Weekly Sales",
+        "ylabel": "units",
+        "grid": "off"
+      }
+    },
+    {
+      "id": "chart_b",
+      "type": "ChartNode",
+      "x": 1400,
+      "y": 560,
+      "init": {
+        "label": "Sales (styled column)",
+        "op": "column"
+      }
+    }
   ],
   "connections": [
-    {"source":"ls_x","sourceOutput":"result","target":"sin","targetInput":"in"},
-    {"source":"sin","sourceOutput":"result","target":"spark_wave","targetInput":"values"},
-    {"source":"sin","sourceOutput":"result","target":"chart_wave","targetInput":"values"},
-
-    {"source":"data","sourceOutput":"list","target":"spark_data","targetInput":"values"},
-    {"source":"data","sourceOutput":"list","target":"chart_data","targetInput":"values"},
-
-    {"source":"slider","sourceOutput":"value","target":"gauge","targetInput":"value"},
-    {"source":"grid","sourceOutput":"table","target":"heat","targetInput":"table"},
-
-    {"source":"sin","sourceOutput":"result","target":"chart_a","targetInput":"values"},
-    {"source":"color_a","sourceOutput":"color","target":"cb_a","targetInput":"color"},
-    {"source":"cb_a","sourceOutput":"result","target":"chart_a","targetInput":"options"},
-
-    {"source":"data","sourceOutput":"list","target":"chart_b","targetInput":"values"},
-    {"source":"color_b","sourceOutput":"color","target":"cb_b","targetInput":"color"},
-    {"source":"cb_b","sourceOutput":"result","target":"chart_b","targetInput":"options"}
+    {
+      "source": "ls_x",
+      "sourceOutput": "result",
+      "target": "sin",
+      "targetInput": "in"
+    },
+    {
+      "source": "sin",
+      "sourceOutput": "result",
+      "target": "spark_wave",
+      "targetInput": "values"
+    },
+    {
+      "source": "sin",
+      "sourceOutput": "result",
+      "target": "chart_wave",
+      "targetInput": "values"
+    },
+    {
+      "source": "data",
+      "sourceOutput": "list",
+      "target": "spark_data",
+      "targetInput": "values"
+    },
+    {
+      "source": "data",
+      "sourceOutput": "list",
+      "target": "chart_data",
+      "targetInput": "values"
+    },
+    {
+      "source": "slider",
+      "sourceOutput": "value",
+      "target": "gauge",
+      "targetInput": "value"
+    },
+    {
+      "source": "grid",
+      "sourceOutput": "table",
+      "target": "heat",
+      "targetInput": "table"
+    },
+    {
+      "source": "sin",
+      "sourceOutput": "result",
+      "target": "chart_a",
+      "targetInput": "values"
+    },
+    {
+      "source": "color_a",
+      "sourceOutput": "color",
+      "target": "cb_a",
+      "targetInput": "color"
+    },
+    {
+      "source": "cb_a",
+      "sourceOutput": "result",
+      "target": "chart_a",
+      "targetInput": "options"
+    },
+    {
+      "source": "data",
+      "sourceOutput": "list",
+      "target": "chart_b",
+      "targetInput": "values"
+    },
+    {
+      "source": "color_b",
+      "sourceOutput": "color",
+      "target": "cb_b",
+      "targetInput": "color"
+    },
+    {
+      "source": "cb_b",
+      "sourceOutput": "result",
+      "target": "chart_b",
+      "targetInput": "options"
+    }
   ]
 }

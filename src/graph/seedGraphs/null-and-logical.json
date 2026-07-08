@@ -8,7 +8,7 @@
       "x": -40,
       "y": -200,
       "init": {
-        "label": "Null & Logical \u2014 array-semantics tour",
+        "label": "Null & Logical — array-semantics tour",
         "body": "A living checklist for the value model: a first-class **null** (missing, rendered `null`, skipped by aggregators), a real **logical** type (TRUE/FALSE, purple sockets, coerces to 1/0 in math), and **per-cell errors** that stay in a list. Each cluster shows one decision.",
         "color": "blue",
         "width": 760,
@@ -21,8 +21,8 @@
       "x": -40,
       "y": 40,
       "init": {
-        "label": "A \u00b7 Aggregators skip null",
-        "body": "The `vals` column has a **blank cell** (row 2) \u2192 imports as **null**. SUM = 8; AVERAGE = 8/3 (divides by the 3 PRESENT values, not 4). The list shows `1, null, 3, 4`.",
+        "label": "A · Aggregators skip null",
+        "body": "The `vals` column has a **blank cell** (row 2) → imports as **null**. SUM = 8; AVERAGE = 8/3 (divides by the 3 PRESENT values, not 4). The list shows `1, null, 3, 4`.",
         "color": "green",
         "width": 230,
         "height": 230
@@ -57,7 +57,7 @@
       "x": 720,
       "y": 40,
       "init": {
-        "label": "the list \u2192 1, null, 3, 4"
+        "label": "the list → 1, null, 3, 4"
       }
     },
     {
@@ -66,7 +66,7 @@
       "x": 720,
       "y": 170,
       "init": {
-        "label": "SUM \u2192 8",
+        "label": "SUM → 8",
         "op": "sum"
       }
     },
@@ -76,7 +76,7 @@
       "x": 960,
       "y": 170,
       "init": {
-        "label": "AVERAGE \u2192 8/3",
+        "label": "AVERAGE → 8/3",
         "op": "avg"
       }
     },
@@ -86,7 +86,7 @@
       "x": 720,
       "y": 330,
       "init": {
-        "label": "ISNULL \u2192 F,T,F,F",
+        "label": "ISNULL → F,T,F,F",
         "op": "isnull"
       }
     },
@@ -96,8 +96,8 @@
       "x": -40,
       "y": 640,
       "init": {
-        "label": "B \u00b7 Comparison \u2192 real TRUE/FALSE",
-        "body": "`5 > 3` emits a real **logical** (purple socket), shown **TRUE** \u2014 not 1. Into \u00d710 it coerces to 1/0 \u2192 **10** (the multiply-by-a-condition trick still works). **AND** also emits a logical; its `b=1` coerces the other way (number \u2192 TRUE).",
+        "label": "B · Comparison → real TRUE/FALSE",
+        "body": "`5 > 3` emits a real **logical** (purple socket), shown **TRUE** — not 1. Into ×10 it coerces to 1/0 → **10** (the multiply-by-a-condition trick still works). **AND** also emits a logical; its `b=1` coerces the other way (number → TRUE).",
         "color": "purple",
         "width": 230,
         "height": 300
@@ -148,7 +148,7 @@
       "x": 720,
       "y": 800,
       "init": {
-        "label": "\u00d7 10  (coerces TRUE\u21921)",
+        "label": "× 10  (coerces TRUE→1)",
         "op": "mul"
       },
       "literals": {
@@ -162,7 +162,7 @@
       "x": 980,
       "y": 800,
       "init": {
-        "label": "\u2192 10"
+        "label": "→ 10"
       }
     },
     {
@@ -185,7 +185,7 @@
       "x": 980,
       "y": 960,
       "init": {
-        "label": "AND \u2192 TRUE (logical)"
+        "label": "AND → TRUE (logical)"
       }
     },
     {
@@ -194,8 +194,8 @@
       "x": -40,
       "y": 1120,
       "init": {
-        "label": "C \u00b7 Per-cell errors stay in the list",
-        "body": "Lists now carry errors per element. `1 / [1,0,2]` \u2192 `1, #DIV/0!, 0.5`. Casting `[\"1\",\"abc\",\"3\"]` to number \u2192 `1, #VALUE!, 3`. The good cells compute around the bad one.",
+        "label": "C · Per-cell errors stay in the list",
+        "body": "Lists now carry errors per element. `1 / [1,0,2]` → `1, #DIV/0!, 0.5`. Casting `[\"1\",\"abc\",\"3\"]` to number → `1, #VALUE!, 3`. The good cells compute around the bad one.",
         "color": "amber",
         "width": 230,
         "height": 230
@@ -258,7 +258,7 @@
       "x": 470,
       "y": 1340,
       "init": {
-        "label": "Cast \u2192 Number",
+        "label": "Cast → Number",
         "target": "number"
       }
     },
@@ -277,8 +277,8 @@
       "x": -40,
       "y": 1620,
       "init": {
-        "label": "D \u00b7 Test node \u2014 null vs unwired",
-        "body": "A 1\u00d71 Table into ISNULL \u2192 `[[FALSE]]` (this used to black out the app). An **unwired** ISNULL is NOT null \u2014 nothing to test, so it shows blank `\u2014`.",
+        "label": "D · Test node — null vs unwired",
+        "body": "A 1×1 Table into ISNULL → `[[FALSE]]`. An **unwired** ISNULL is NOT null — nothing to test, so it shows blank `—`.",
         "color": "pink",
         "width": 230,
         "height": 230
@@ -290,7 +290,7 @@
       "x": 230,
       "y": 1640,
       "init": {
-        "label": "1\u00d71 Table [1]",
+        "label": "1×1 Table [1]",
         "tableText": "1"
       }
     },
@@ -310,7 +310,7 @@
       "x": 720,
       "y": 1640,
       "init": {
-        "label": "[[FALSE]] \u2014 no crash"
+        "label": "[[FALSE]] — no crash"
       }
     },
     {
@@ -319,7 +319,7 @@
       "x": 470,
       "y": 1820,
       "init": {
-        "label": "ISNULL (UNWIRED) \u2192 blank",
+        "label": "ISNULL (UNWIRED) → blank",
         "op": "isnull"
       }
     },
@@ -329,8 +329,8 @@
       "x": -40,
       "y": 2080,
       "init": {
-        "label": "E \u00b7 Empty Table Input stays editable",
-        "body": "Its text is just a comma \u2192 no numeric cells, so the value is `null`. It keeps an **editable 1\u00d71 chip** + an \"empty\" hint instead of blanking to an uneditable `\u2014`.",
+        "label": "E · Empty Table Input stays editable",
+        "body": "Its text is just a comma → no numeric cells, so the value is `null`. It keeps an **editable 1×1 chip** + an \"empty\" hint.",
         "color": "gray",
         "width": 230,
         "height": 230
@@ -352,8 +352,8 @@
       "x": -40,
       "y": 2300,
       "init": {
-        "label": "F \u00b7 Kleene logic + Filter on missing data",
-        "body": "Reuses the null-bearing `vals` from A. **`> 2`** per element \u2192 `FALSE, null, FALSE, TRUE` \u2014 a comparison with a missing value is **unknown**, not FALSE (Kleene). **Filter `> 1`** drops the unknown row (SQL WHERE keeps only TRUE) \u2192 `3, 4`.",
+        "label": "F · Kleene logic + Filter on missing data",
+        "body": "Reuses the null-bearing `vals` from A. **`> 2`** per element → `FALSE, null, TRUE, TRUE` — a comparison with a missing value is **unknown**, not FALSE (Kleene). **Filter `> 1`** drops the unknown row (SQL WHERE keeps only TRUE) → `3, 4`.",
         "color": "teal",
         "width": 230,
         "height": 250
@@ -379,7 +379,7 @@
       "x": 980,
       "y": 2320,
       "init": {
-        "label": "FALSE, null, FALSE, TRUE"
+        "label": "FALSE, null, TRUE, TRUE"
       }
     },
     {
@@ -411,8 +411,8 @@
       "x": -40,
       "y": 2700,
       "init": {
-        "label": "G \u00b7 Coalesce / Fill \u2014 opt into treating a gap",
-        "body": "The `vals` column is `1, null, 3, null, 5`. Each **Fill** mode turns the gaps into something \u2014 the explicit opt-in. A per-cell error passes straight through (it fills *missing*, not errors).",
+        "label": "G · Coalesce / Fill — opt into treating a gap",
+        "body": "The `vals` column is `1, null, 3, null, 5`. Each **Fill** mode turns the gaps into something — the explicit opt-in. A per-cell error passes straight through (it fills *missing*, not errors).",
         "color": "green",
         "width": 520,
         "height": 150
@@ -434,7 +434,7 @@
       "x": 470,
       "y": 2880,
       "init": {
-        "label": "Get \"g\" \u2192 1,null,3,null,5",
+        "label": "Get \"g\" → 1,null,3,null,5",
         "readAs": "number"
       },
       "stringLiterals": {
@@ -470,7 +470,7 @@
       "x": 720,
       "y": 2740,
       "init": {
-        "label": "Fill 0 \u2192 1,0,3,0,5",
+        "label": "Fill 0 → 1,0,3,0,5",
         "op": "constant"
       }
     },
@@ -480,7 +480,7 @@
       "x": 980,
       "y": 2740,
       "init": {
-        "label": "\u2192 1, 0, 3, 0, 5"
+        "label": "→ 1, 0, 3, 0, 5"
       }
     },
     {
@@ -489,7 +489,7 @@
       "x": 720,
       "y": 2880,
       "init": {
-        "label": "Forward fill \u2192 1,1,3,3,5",
+        "label": "Forward fill → 1,1,3,3,5",
         "op": "ffill"
       }
     },
@@ -499,7 +499,7 @@
       "x": 980,
       "y": 2880,
       "init": {
-        "label": "\u2192 1, 1, 3, 3, 5"
+        "label": "→ 1, 1, 3, 3, 5"
       }
     },
     {
@@ -508,7 +508,7 @@
       "x": 720,
       "y": 3020,
       "init": {
-        "label": "Drop \u2192 1,3,5",
+        "label": "Drop → 1,3,5",
         "op": "drop"
       }
     },
@@ -518,7 +518,7 @@
       "x": 980,
       "y": 3020,
       "init": {
-        "label": "\u2192 1, 3, 5"
+        "label": "→ 1, 3, 5"
       }
     },
     {
@@ -527,7 +527,7 @@
       "x": 720,
       "y": 3160,
       "init": {
-        "label": "Interpolate \u2192 1,2,3,4,5",
+        "label": "Interpolate → 1,2,3,4,5",
         "op": "interpolate"
       }
     },
@@ -537,7 +537,7 @@
       "x": 980,
       "y": 3160,
       "init": {
-        "label": "\u2192 1, 2, 3, 4, 5"
+        "label": "→ 1, 2, 3, 4, 5"
       }
     },
     {
@@ -546,7 +546,7 @@
       "x": 720,
       "y": 3300,
       "init": {
-        "label": "Coalesce(else 9) \u2192 1,9,3,9,5",
+        "label": "Coalesce(else 9) → 1,9,3,9,5",
         "op": "coalesce"
       }
     },
@@ -556,7 +556,7 @@
       "x": 980,
       "y": 3300,
       "init": {
-        "label": "\u2192 1, 9, 3, 9, 5"
+        "label": "→ 1, 9, 3, 9, 5"
       }
     },
     {
@@ -565,8 +565,8 @@
       "x": -40,
       "y": 3520,
       "init": {
-        "label": "H \u00b7 IS-checks are per-cell on a 2-D table",
-        "body": "The table is `[[1, null], [null, 4]]`. **ISNUMBER** and **ISNULL** test **each cell** (open the chip for the grid), not the rows \u2014 ISNUMBER says a `null` cell is *not* a number while ISNULL flags it.",
+        "label": "H · IS-checks are per-cell on a 2-D table",
+        "body": "The table is `[[1, null], [null, 4]]`. **ISNUMBER** and **ISNULL** test **each cell** (open the chip for the grid), not the rows — ISNUMBER says a `null` cell is *not* a number while ISNULL flags it.",
         "color": "purple",
         "width": 520,
         "height": 150
@@ -588,7 +588,7 @@
       "x": 470,
       "y": 3640,
       "init": {
-        "label": "ISNUMBER \u2192 [[T,F],[F,T]]",
+        "label": "ISNUMBER → [[T,F],[F,T]]",
         "op": "isnumber"
       }
     },
@@ -598,7 +598,7 @@
       "x": 470,
       "y": 3800,
       "init": {
-        "label": "ISNULL \u2192 [[F,T],[T,F]]",
+        "label": "ISNULL → [[F,T],[T,F]]",
         "op": "isnull"
       }
     },

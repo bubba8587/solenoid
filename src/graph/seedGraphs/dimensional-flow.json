@@ -1,6 +1,6 @@
 {
   "v": 2,
-  "label": "Dimensional Flow",
+  "label": "Types & Shapes",
   "nodes": [
     {
       "id": "hdr",
@@ -9,7 +9,7 @@
       "y": -200,
       "init": {
         "label": "Dimensional Flow & the Type Wall",
-        "body": "The lattice enforces **type separation** (date/number/complex/string never auto-cross \u2014 Cast required) but allows **dimensional flow**: a value widens freely scalar \u2192 list \u2192 matrix \u2192 **frame**. A\u2013D show widening; E shows the wall.",
+        "body": "The lattice enforces **type separation** (date/number/complex/string never auto-cross — Cast required) but allows **dimensional flow**: a value widens freely scalar → list → matrix → **frame**. A–D show widening; E shows the wall.",
         "color": "green",
         "width": 760,
         "height": 180
@@ -21,8 +21,8 @@
       "x": -40,
       "y": 40,
       "init": {
-        "label": "A \u00b7 a list widens into a frame (\u2192 one ROW)",
-        "body": "A 1-D list `[10,20,30]` into a `frame` input lands as a **single row** \u2192 **1 \u00d7 3**.",
+        "label": "A · a list widens into a frame (→ one ROW)",
+        "body": "A 1-D list `[10,20,30]` into a `frame` input lands as a **single row** → **1 × 3**.",
         "color": "blue",
         "width": 430,
         "height": 150
@@ -62,7 +62,7 @@
       "x": 710,
       "y": 180,
       "init": {
-        "label": "ROWS \u2192 1"
+        "label": "ROWS → 1"
       }
     },
     {
@@ -71,7 +71,7 @@
       "x": 710,
       "y": 320,
       "init": {
-        "label": "COLS \u2192 3"
+        "label": "COLS → 3"
       }
     },
     {
@@ -80,8 +80,8 @@
       "x": -40,
       "y": 470,
       "init": {
-        "label": "B \u00b7 a scalar widens into a frame (\u2192 1\u00d71)",
-        "body": "A bare number `42` \u2192 a **1\u00d71** frame.",
+        "label": "B · a scalar widens into a frame (→ 1×1)",
+        "body": "A bare number `42` → a **1×1** frame.",
         "color": "blue",
         "width": 430,
         "height": 130
@@ -112,7 +112,7 @@
       "x": 710,
       "y": 590,
       "init": {
-        "label": "ROWS \u2192 1"
+        "label": "ROWS → 1"
       }
     },
     {
@@ -121,7 +121,7 @@
       "x": 710,
       "y": 730,
       "init": {
-        "label": "COLS \u2192 1"
+        "label": "COLS → 1"
       }
     },
     {
@@ -130,8 +130,8 @@
       "x": -40,
       "y": 880,
       "init": {
-        "label": "C \u00b7 a matrix widens into a frame (no Build Frame)",
-        "body": "The 3\u00d72 Table Input drops straight into Table Info **and** Get Column \u2014 read as a default-header frame, no Build Frame. Get \"Col1\" \u2192 `10, 30, 50`.",
+        "label": "C · a matrix widens into a frame (no Build Frame)",
+        "body": "The 3×2 Table Input drops straight into Table Info **and** Get Column — read as a default-header frame, no Build Frame. Get \"Col1\" → `10, 30, 50`.",
         "color": "blue",
         "width": 430,
         "height": 170
@@ -143,7 +143,7 @@
       "x": 230,
       "y": 1080,
       "init": {
-        "label": "3\u00d72 Table",
+        "label": "3×2 Table",
         "tableText": "10, 20\n30, 40\n50, 60"
       }
     },
@@ -162,7 +162,7 @@
       "x": 730,
       "y": 1000,
       "init": {
-        "label": "ROWS \u2192 3"
+        "label": "ROWS → 3"
       }
     },
     {
@@ -171,7 +171,7 @@
       "x": 730,
       "y": 1140,
       "init": {
-        "label": "COLS \u2192 2"
+        "label": "COLS → 2"
       }
     },
     {
@@ -193,7 +193,7 @@
       "x": 730,
       "y": 1240,
       "init": {
-        "label": "\u2192 10, 30, 50"
+        "label": "→ 10, 30, 50"
       }
     },
     {
@@ -202,7 +202,7 @@
       "x": -40,
       "y": 1400,
       "init": {
-        "label": "D \u00b7 TRANSPOSE of a list \u2192 a column",
+        "label": "D · TRANSPOSE of a list → a column",
         "body": "A list widens into the 2-D `anytable` input; TRANSPOSE of the row `[1,2,3]` is the column `[[1],[2],[3]]`.",
         "color": "blue",
         "width": 430,
@@ -243,7 +243,7 @@
       "x": 710,
       "y": 1590,
       "init": {
-        "label": "\u2192 column 3\u00d71"
+        "label": "→ column 3×1"
       }
     },
     {
@@ -252,8 +252,8 @@
       "x": -40,
       "y": 1820,
       "init": {
-        "label": "E \u00b7 the TYPE wall \u2014 elements don't auto-cross",
-        "body": "A **text** or **date** won't wire straight into a number socket \u2014 drag one to the `\u00d7 10` input and the cable is **refused**. Cross explicitly with **Cast** (top two rows). The ONE auto-bridge is **logical \u2192 number** (bottom): a comparison feeds a math node directly, coercing TRUE\u21921.",
+        "label": "E · the TYPE wall — elements don't auto-cross",
+        "body": "A **text** or **date** won't wire straight into a number socket — drag one to the `× 10` input and the cable is **refused**. Cross explicitly with **Cast** (top two rows). The ONE auto-bridge is **logical → number** (bottom): a comparison feeds a math node directly, coercing TRUE→1.",
         "color": "purple",
         "width": 560,
         "height": 190
@@ -275,7 +275,7 @@
       "x": 470,
       "y": 2040,
       "init": {
-        "label": "Cast \u2192 Number",
+        "label": "Cast → Number",
         "target": "number"
       }
     },
@@ -285,7 +285,7 @@
       "x": 740,
       "y": 2040,
       "init": {
-        "label": "\u2192 42"
+        "label": "→ 42"
       }
     },
     {
@@ -304,7 +304,7 @@
       "x": 470,
       "y": 2190,
       "init": {
-        "label": "Cast \u2192 Number",
+        "label": "Cast → Number",
         "target": "number"
       }
     },
@@ -314,7 +314,7 @@
       "x": 740,
       "y": 2190,
       "init": {
-        "label": "\u2192 serial 45658"
+        "label": "→ serial 45658"
       }
     },
     {
@@ -343,7 +343,7 @@
       "x": 460,
       "y": 2410,
       "init": {
-        "label": "5 > 3 \u2192 TRUE",
+        "label": "5 > 3 → TRUE",
         "op": "gt"
       }
     },
@@ -353,7 +353,7 @@
       "x": 680,
       "y": 2410,
       "init": {
-        "label": "\u00d7 10  (TRUE\u21921, auto-bridge)",
+        "label": "× 10  (TRUE→1, auto-bridge)",
         "op": "mul"
       },
       "literals": {
@@ -367,7 +367,7 @@
       "x": 920,
       "y": 2410,
       "init": {
-        "label": "\u2192 10"
+        "label": "→ 10"
       }
     }
   ],
