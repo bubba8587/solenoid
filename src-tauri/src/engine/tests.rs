@@ -243,6 +243,39 @@ fn join_left_keeps_unmatched_with_null() {
 }
 
 #[test]
+fn join_semi_and_anti_filter_left_columns_only() {
+    let left = frame(vec![
+        ("id", SolType::Number, num(&[1.0, 2.0, 3.0])),
+        ("a", SolType::Str, strs(&["p", "q", "r"])),
+    ]);
+    let right = frame(vec![
+        ("fk", SolType::Number, num(&[2.0, 2.0])),
+        ("v", SolType::Str, strs(&["x", "y"])),
+    ]);
+    let semi = verb_join(
+        &left,
+        &right,
+        &WireJoinOpts { left_key: "id".into(), right_key: "fk".into(), how: "semi".into(), ..Default::default() },
+    )
+    .unwrap();
+    let d = dump(&semi);
+    // Left columns only, and NO fan-out despite the duplicated right key.
+    assert_eq!(d.iter().map(|c| c.0.clone()).collect::<Vec<_>>(), vec!["id", "a"]);
+    assert_eq!(d[0].2, j(&[2.0]));
+    assert_eq!(d[1].2, vec![Json::String("q".into())]);
+
+    let anti = verb_join(
+        &left,
+        &right,
+        &WireJoinOpts { left_key: "id".into(), right_key: "fk".into(), how: "anti".into(), ..Default::default() },
+    )
+    .unwrap();
+    let d = dump(&anti);
+    assert_eq!(d[0].2, j(&[1.0, 3.0]));
+    assert_eq!(d[1].2, vec![Json::String("p".into()), Json::String("r".into())]);
+}
+
+#[test]
 fn append_union_by_name_fills_missing() {
     let a = frame(vec![
         ("x", SolType::Number, num(&[1.0])),

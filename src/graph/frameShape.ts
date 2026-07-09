@@ -108,6 +108,10 @@ export function shapeOf(op: FrameOp, input: Shape): Shape {
 export function shapeOfJoin(left: Shape, right: Shape, opts: JoinOpts): Shape {
   requireCol(left, opts.leftKey);
   requireCol(right, opts.rightKey);
+  // Semi/anti keep LEFT columns only (a filter, not a widening join).
+  if (opts.how === "semi" || opts.how === "anti") {
+    return { columns: left.columns.map((c) => ({ name: c.name, type: c.type })) };
+  }
   const rightNonKey = right.columns.filter((c) => c.name !== opts.rightKey);
   const names = makeHeaders(
     [...left.columns.map((c) => c.name), ...rightNonKey.map((c) => c.name)],

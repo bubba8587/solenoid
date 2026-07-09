@@ -1408,6 +1408,22 @@ fn verb_join(left: &SolFrame, right: &SolFrame, opts: &WireJoinOpts) -> Result<S
     if opts.how.as_str() == "asof" {
         return verb_join_asof(left, right, opts);
     }
+    // Semi/anti FILTER the left frame (left columns only, original order, no
+    // fan-out) — Polars' own semi/anti layout already matches the oracle's, so
+    // no assemble_join_layout pass is needed. Null keys never match (Polars'
+    // default), mirroring the oracle: dropped by semi, kept by anti.
+    if matches!(opts.how.as_str(), "semi" | "anti") {
+        let how = if opts.how == "semi" { JoinType::Semi } else { JoinType::Anti };
+        let mut args = JoinArgs::new(how);
+        args.maintain_order = MaintainOrderJoin::LeftRight;
+        let joined = collect_lazy(left.df.clone().lazy().join(
+            right.df.clone().lazy(),
+            vec![col(opts.left_key.as_str())],
+            vec![col(opts.right_key.as_str())],
+            args,
+        ))?;
+        return Ok(SolFrame { df: joined, types: left.types.clone() });
+    }
     let how = match opts.how.as_str() {
         "inner" => JoinType::Inner,
         "left" => JoinType::Left,

@@ -343,6 +343,9 @@ export { ColebrookComponent } from "./FluidsNodes";
 // ─── Thermodynamics & Air pack ───────────────────────────────────────────────────
 export { IsaAtmosphereComponent, AntoineComponent } from "./ThermoNodes";
 
+// ─── Set & Relational pack ───────────────────────────────────────────────────────
+export { IsInComponent, TallyComponent } from "./SetPackNodes";
+
 // ─── Missing-type placeholder (load-time only, not in the Add menu) ───────────
 export { PlaceholderComponent } from "./PlaceholderNode";
 

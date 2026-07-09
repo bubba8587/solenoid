@@ -2,13 +2,13 @@ import { ClassicPreset } from "rete";
 import { numListSocket, strListSocket, dateListSocket, logicalListSocket, type SolenoidSocket } from "../sockets";
 import { parseDateToSerial } from "./date";
 import { getRecalcGen } from "../process";
-import { listIn, listOut, numIn, numOut, anyIn, anyOut, tableIn, tableOut, logicalOut, anyListIn, anyListOut } from "./shared";
+import { listIn, listOut, numIn, numOut, anyIn, anyOut, tableIn, tableOut, logicalOut, logicalListOut, frameOut, anyListIn, anyListOut } from "./shared";
 import { compareOp } from "./logic";
 import type { ComparisonOp } from "./logic";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { forAggregate, isMissing, type Tri } from "../valueKinds";
 import { iterMin, iterMax } from "./mathUtils";
-import { isFrameValue, isCubeValue, cubeRowCount, frameRowCount, type FrameValue, type CubeValue, type CubeCell } from "../frame";
+import { isFrameValue, isCubeValue, cubeRowCount, frameRowCount, inferColumn, type FrameValue, type CubeValue, type CubeCell } from "../frame";
 
 // ─── List Input ─────────────────────────────────────────────────────────────
 
@@ -578,6 +578,80 @@ export class SetOpNode extends ClassicPreset.Node {
 
     this.cachedList = out as number[];
     return { result: this.cachedList };
+  }
+}
+
+// ─── Is In (membership mask) — Set & Relational pack ─────────────────────────
+// Elementwise Contains: for each item of A, TRUE/FALSE whether it appears in B —
+// a logical list ALIGNED to A (the Excel `ISNUMBER(MATCH(...))` idiom). Pairs
+// with Filter to keep original rows; the scalar Contains node only answers for
+// one needle. Membership stance matches the Set node: blank and error cells of
+// B aren't members; an A-side blank stays blank (missing propagates), an A-side
+// error propagates per cell.
+export class IsInNode extends ClassicPreset.Node {
+  label: string;
+  cachedList: unknown[] = [];
+  width = 180;
+  height = 170;
+
+  constructor(init?: { label?: string }) {
+    super("IsIn");
+    this.label = init?.label ?? "Is In";
+    this.addInput("a", anyListIn("Values"));
+    this.addInput("b", anyListIn("Set"));
+    this.addOutput("result", logicalListOut("Mask"));
+  }
+
+  data(inputs: { a?: unknown[][]; b?: unknown[][] }) {
+    const a = (inputs.a?.[0] ?? []) as unknown[];
+    const b = (inputs.b?.[0] ?? []) as unknown[];
+    const members = new Set<unknown>();
+    for (const v of b) if (!isMissing(v) && !isSolError(v)) members.add(v);
+    const result = a.map((v) => {
+      if (isMissing(v)) return null;
+      if (isSolError(v)) return v;
+      return members.has(v);
+    });
+    this.cachedList = result;
+    return { result };
+  }
+}
+
+// ─── Tally (value counts) — Set & Relational pack ─────────────────────────────
+// Distinct value → occurrence count, as a two-column Frame — the bare-list
+// shortcut for what Group By already does over a frame (Excel: a one-column
+// pivot table, or GROUPBY in 365). First-seen order; blank and error cells
+// aren't counted (the count is about the real values, same stance as Set).
+export class TallyNode extends ClassicPreset.Node {
+  label: string;
+  cachedResult: FrameValue | null = null;
+  width = 200;
+  height = 200;
+
+  constructor(init?: { label?: string }) {
+    super("Tally");
+    this.label = init?.label ?? "Tally";
+    this.addInput("list", anyListIn("List"));
+    this.addOutput("frame", frameOut("Counts"));
+  }
+
+  data(inputs: { list?: unknown[][] }) {
+    const list = (inputs.list?.[0] ?? []) as unknown[];
+    const counts = new Map<unknown, number>();
+    for (const v of list) {
+      if (isMissing(v) || isSolError(v)) continue;
+      counts.set(v, (counts.get(v) ?? 0) + 1);
+    }
+    const values = [...counts.keys()];
+    const frame: FrameValue = {
+      __frame: true,
+      columns: [
+        inferColumn("Value", values),
+        { name: "Count", type: "number", values: values.map((v) => counts.get(v)!) },
+      ],
+    };
+    this.cachedResult = list.length || counts.size ? frame : null;
+    return { frame: this.cachedResult };
   }
 }
 
@@ -1224,7 +1298,7 @@ export class WeightedNode extends ClassicPreset.Node {
 // ─── Reduce ───────────────────────────────────────────────────────────────────
 
 export type ReduceOp =
-  | "sum" | "avg" | "min" | "max" | "count" | "median" | "product" | "stdev"
+  | "sum" | "avg" | "min" | "max" | "count" | "countdistinct" | "median" | "product" | "stdev"
   | "geomean" | "harmean" | "sumsq" | "var_s" | "var_p" | "stdev_p" | "devsq" | "avedev" | "skew" | "skew_p" | "kurt";
 
 export const REDUCE_OP_META = {
@@ -1233,6 +1307,7 @@ export const REDUCE_OP_META = {
   min:     { label: "MIN",     description: "Smallest value. Excel: MIN." },
   max:     { label: "MAX",     description: "Largest value. Excel: MAX." },
   count:   { label: "COUNT",   description: "Number of values. Excel: COUNT." },
+  countdistinct: { label: "COUNT DISTINCT", description: "Number of unique values. In Excel you'd write COUNTA(UNIQUE(range))." },
   median:  { label: "MEDIAN",  description: "Middle value. Excel: MEDIAN." },
   product: { label: "PRODUCT", description: "Multiply all values. Excel: PRODUCT." },
   stdev:   { label: "STDEV.S", description: "Sample standard deviation (n−1). Excel: STDEV.S." },
@@ -1286,6 +1361,7 @@ export class AggregateNode extends ClassicPreset.Node {
         case "min":     result = iterMin(arr); break;
         case "max":     result = iterMax(arr); break;
         case "count":   result = arr.length; break;
+        case "countdistinct": result = new Set(arr).size; break;
         case "product": result = arr.reduce((a, b) => a * b, 1); break;
         case "median": {
           const s = [...arr].sort((a, b) => a - b);

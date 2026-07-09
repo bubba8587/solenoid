@@ -501,7 +501,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "pair", children: [reduceLeaf("sum"), reduceLeaf("product")] },
           { type: "pair", children: [reduceLeaf("avg"), reduceLeaf("median")] },
           { type: "pair", children: [reduceLeaf("min"), reduceLeaf("max")] },
-          reduceLeaf("count"),
+          { type: "pair", children: [reduceLeaf("count"), reduceLeaf("countdistinct")] },
           { type: "pair", children: [reduceLeaf("geomean"), reduceLeaf("harmean")] },
           { type: "pair", children: [reduceLeaf("stdev"), reduceLeaf("stdev_p")] },
           { type: "pair", children: [reduceLeaf("var_s"), reduceLeaf("var_p")] },
