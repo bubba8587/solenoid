@@ -926,3 +926,109 @@ export class FormatDollarNode extends ClassicPreset.Node {
   }
 }
 
+
+// ─── Reverse Text (Timesavers pack) ───────────────────────────────────────────
+// Excel famously has no string-reverse (the VBA StrReverse workaround) — a
+// declared custom-logic pack node. Spread-iteration keeps surrogate pairs
+// (emoji) intact.
+
+export class ReverseTextNode extends ClassicPreset.Node {
+  label: string;
+  cachedText: string | null = null;
+  stringLiterals: Record<string, string> = { text: "" };
+  width = 190; height = 135;
+
+  constructor(init?: { label?: string }) {
+    super("ReverseText");
+    this.label = init?.label ?? "Reverse Text";
+    this.addInput("text", strIn("Text"));
+    this.addOutput("result", strOut("Reversed"));
+  }
+
+  data(inputs: { text?: string[] }): { result: string } {
+    const t = strVal(inputs.text, this, "text");
+    const result = [...t].reverse().join("");
+    this.cachedText = result;
+    return { result };
+  }
+}
+
+// ─── Spell Number (Timesavers pack) ───────────────────────────────────────────
+// Number → English words — the perennial #1 "no Excel function" request
+// (Microsoft's own answer is a VBA SpellNumber macro). Cardinal words up to
+// the trillions; decimals read digit-by-digit ("three point one four");
+// negatives prefixed. A custom-logic pack node (no Formula.js equivalent).
+
+const SPELL_ONES = [
+  "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
+  "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen",
+  "seventeen", "eighteen", "nineteen",
+];
+const SPELL_TENS = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"];
+const SPELL_SCALES = ["", " thousand", " million", " billion", " trillion"];
+
+function spellUnder1000(n: number): string {
+  const parts: string[] = [];
+  if (n >= 100) { parts.push(`${SPELL_ONES[Math.floor(n / 100)]} hundred`); n %= 100; }
+  if (n >= 20) {
+    const tens = SPELL_TENS[Math.floor(n / 10)];
+    parts.push(n % 10 ? `${tens}-${SPELL_ONES[n % 10]}` : tens);
+  } else if (n > 0) {
+    parts.push(SPELL_ONES[n]);
+  }
+  return parts.join(" ");
+}
+
+/** English cardinal words for any |n| < 10^15. Exported for tests. */
+export function spellNumber(n: number): string | SolError {
+  if (!Number.isFinite(n)) return solError("#DOMAIN!", "Not a finite number");
+  if (Math.abs(n) >= 1e15) return solError("#DOMAIN!", "Spell Number goes up to the trillions");
+  const neg = n < 0;
+  const abs = Math.abs(n);
+  const int = Math.floor(abs);
+
+  let words: string;
+  if (int === 0) {
+    words = "zero";
+  } else {
+    // Split into 3-digit groups, spell each with its scale word.
+    const groups: string[] = [];
+    let rest = int, scale = 0;
+    while (rest > 0) {
+      const g = rest % 1000;
+      if (g > 0) groups.unshift(spellUnder1000(g) + SPELL_SCALES[scale]);
+      rest = Math.floor(rest / 1000);
+      scale++;
+    }
+    words = groups.join(" ");
+  }
+
+  // Decimal digits read one by one; cap at 6 to dodge float dust.
+  const fracText = String(abs).includes(".") ? String(abs).split(".")[1].slice(0, 6) : "";
+  if (fracText) words += ` point ${[...fracText].map((d) => SPELL_ONES[Number(d)]).join(" ")}`;
+
+  return neg ? `negative ${words}` : words;
+}
+
+export class SpellNumberNode extends ClassicPreset.Node {
+  label: string;
+  cachedText: string | SolError | null = null;
+  literals: Record<string, number> = { value: 0 };
+  width = 210; height = 135;
+
+  constructor(init?: { label?: string }) {
+    super("SpellNumber");
+    this.label = init?.label ?? "Spell Number";
+    this.addInput("value", numIn("Number"));
+    this.addOutput("result", strOut("Words"));
+  }
+
+  data(inputs: { value?: (number | null)[] }) {
+    const v = inputs.value === undefined || inputs.value.length === 0
+      ? this.literals.value
+      : inputs.value[0];
+    const result = typeof v === "number" ? spellNumber(v) : null;
+    this.cachedText = result;
+    return { result };
+  }
+}
