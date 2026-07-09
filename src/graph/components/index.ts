@@ -334,6 +334,9 @@ export { HypotenuseComponent } from "./HypotenuseNode";
 // ─── Electricity & Circuits pack ───────────────────────────────────────────────
 export { ParallelCombineComponent, ESeriesComponent, AwgComponent } from "./ElectricalNodes";
 
+// ─── Electromagnetism pack ───────────────────────────────────────────────────────
+export { PhysicsConstantComponent } from "./PhysicsConstantNode";
+
 // ─── Missing-type placeholder (load-time only, not in the Add menu) ───────────
 export { PlaceholderComponent } from "./PlaceholderNode";
 
