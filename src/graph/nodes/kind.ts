@@ -31,7 +31,7 @@ import {
   StandardizeNode, CovarianceNode, FisherNode,
   RegressionNode, ForecastNode, ModeNode, TrimMeanNode, FrequencyNode, ConfidenceNode,
 } from "./stats";
-import { BitwiseNode, InterestRateNode, DepreciationNode, TvmNode, RateNode, IpmtPpmtNode, NpvNode, IrrNode, MirrNode, CumPmtNode } from "./finance";
+import { BitwiseNode, DepreciationNode, TvmNode, IpmtPpmtNode, NpvNode, IrrNode, MirrNode, CumPmtNode } from "./finance";
 import { DisplayNode, AlertNode, RandBetweenNode } from "./display";
 import { NormDistNode, NormInvNode, NormSDistNode, NormSInvNode, TDistNode, TInvNode, ChisqDistNode, ChisqInvNode } from "./dist-normal";
 import { FDistNode, FInvNode, BetaDistNode, BetaInvNode, GammaDistNode, GammaInvNode, LognormDistNode, LognormInvNode, WeibullDistNode, ExponDistNode } from "./dist-continuous";
@@ -120,13 +120,13 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof PercentrankNode || node instanceof RankNode || node instanceof CorrelNode ||
     node instanceof CombinatoricsNode || node instanceof TwoInputMathNode || node instanceof SumProductNode ||
     node instanceof StandardizeNode || node instanceof CovarianceNode || node instanceof FisherNode ||
-    node instanceof BitwiseNode || node instanceof InterestRateNode || node instanceof DepreciationNode ||
+    node instanceof BitwiseNode || node instanceof DepreciationNode ||
     node instanceof RegressionNode || node instanceof ForecastNode || node instanceof ModeNode ||
     node instanceof TrimMeanNode || node instanceof FrequencyNode || node instanceof ConfidenceNode ||
     node instanceof SeriesSumNode || node instanceof MultinomialNode
   ) return "math";
   if (
-    node instanceof TvmNode || node instanceof RateNode || node instanceof IpmtPpmtNode ||
+    node instanceof TvmNode || node instanceof IpmtPpmtNode ||
     node instanceof NpvNode || node instanceof IrrNode || node instanceof MirrNode ||
     node instanceof CumPmtNode
   ) return "math";

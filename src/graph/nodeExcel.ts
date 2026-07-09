@@ -192,8 +192,14 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "ifs": [{ excel: "IFS", syntax: "=IFS(c1, v1, c2, v2, ...)", parity: false, note: "Fixed 3 conditions; Excel is variadic" }],
   "ipmt-ipmt": [{ excel: "IPMT", syntax: "=IPMT(rate, per, nper, pv)", parity: true }],
   "ipmt-ppmt": [{ excel: "PPMT", syntax: "=PPMT(rate, per, nper, pv)", parity: true }],
-  "ir-effect": [{ excel: "EFFECT", syntax: "=EFFECT(rate, npery)", parity: true }],
-  "ir-nominal": [{ excel: "NOMINAL", syntax: "=NOMINAL(eff_rate, npery)", parity: true }],
+  "fin-effective-rate": [
+    { excel: "EFFECT", syntax: "=EFFECT(rate, npery)", parity: true, note: "One Equation node: wire nom + npery, read eff" },
+    { excel: "NOMINAL", syntax: "=NOMINAL(eff_rate, npery)", parity: true, note: "Same node the other way: wire eff + npery, read nom" },
+  ],
+  "fin-compound-growth": [
+    { excel: "PDURATION", syntax: "=PDURATION(rate, pv, fv)", parity: true, note: "The Compound Growth equation solving for nper" },
+    { excel: "RRI", syntax: "=RRI(nper, pv, fv)", parity: true, note: "The Compound Growth equation solving for rate" },
+  ],
   "irr": [{ excel: "IRR", syntax: "=IRR(cashflows)", parity: true }],
   "is-test": [
     { excel: "ISBLANK", syntax: "=ISBLANK(v)", parity: true },
@@ -319,7 +325,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "oddcoupon-oddfyield": [{ excel: "ODDFYIELD", syntax: "=ODDFYIELD(...)", parity: false, note: "30/360 basis only" }],
   "oddcoupon-oddlprice": [{ excel: "ODDLPRICE", syntax: "=ODDLPRICE(...)", parity: false, note: "30/360 basis only" }],
   "oddcoupon-oddlyield": [{ excel: "ODDLYIELD", syntax: "=ODDLYIELD(...)", parity: false, note: "30/360 basis only" }],
-  "pduration": [{ excel: "PDURATION", syntax: "=PDURATION(rate, pv, fv)" }],
+
   "poissondist": [{ excel: "POISSON.DIST", syntax: "=POISSON.DIST(k, λ, cum)" }],
   "pricedisc-pricedisc": [{ excel: "PRICEDISC", syntax: "=PRICEDISC(settle,maturity,discount,redemption)", parity: false, note: "Discount bond price; not yet supported" }],
   "pricedisc-yielddisc": [{ excel: "YIELDDISC", syntax: "=YIELDDISC(settle,maturity,pr,redemption)", parity: false, note: "Discount bond yield; not yet supported" }],
@@ -332,7 +338,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   ],
   "rank-avg": [{ excel: "RANK.AVG", syntax: "=RANK.AVG(x, array)", parity: true }],
   "rank-eq": [{ excel: "RANK.EQ", syntax: "=RANK.EQ(x, array)", parity: true }],
-  "rate": [{ excel: "RATE", syntax: "=RATE(nper, pmt, pv)", parity: true }],
+
   "reduce-avedev": [{ excel: "AVEDEV", syntax: "=AVEDEV(range)", parity: true }],
   "reduce-avg": [
     { excel: "AVERAGE", syntax: "=AVERAGE(range)", parity: true },
@@ -394,7 +400,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
     { excel: "ROUNDUP", syntax: "=ROUNDUP(x, digits)", parity: true },
   ],
   "roundn-round": [{ excel: "ROUND", syntax: "=ROUND(x, digits)", parity: true }],
-  "rri": [{ excel: "RRI", syntax: "=RRI(nper, pv, fv)" }],
+
   "secdesc-disc": [{ excel: "DISC", syntax: "=DISC(settle,maturity,pr,redemption)", parity: false, note: "Discount rate; not yet supported" }],
   "secdesc-intrate": [{ excel: "INTRATE", syntax: "=INTRATE(settle,maturity,invest,redemption)", parity: false, note: "Interest rate for fully invested security; not yet supported" }],
   "secdesc-received": [{ excel: "RECEIVED", syntax: "=RECEIVED(settle,maturity,invest,discount)", parity: false, note: "Amount received at maturity; not yet supported" }],
@@ -499,10 +505,13 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   ],
   "trend": [{ excel: "TREND", syntax: "=TREND(ys, xs, new_xs)", parity: false, note: "Linear only; new_xs required (Excel makes it optional)" }],
   "trimmean": [{ excel: "TRIMMEAN", syntax: "=TRIMMEAN(range, pct)", parity: true }],
-  "tvm-fv": [{ excel: "FV", syntax: "=FV(rate, nper, pmt, pv)", parity: true }],
-  "tvm-nper": [{ excel: "NPER", syntax: "=NPER(rate, pmt, pv)", parity: true }],
-  "tvm-pmt": [{ excel: "PMT", syntax: "=PMT(rate, nper, pv)", parity: true }],
-  "tvm-pv": [{ excel: "PV", syntax: "=PV(rate, nper, pmt, fv)", parity: true }],
+  "tvm": [
+    { excel: "PMT", syntax: "=PMT(rate, nper, pv)", parity: true, note: "One acausal TVM node: leave pmt unwired and it solves" },
+    { excel: "PV", syntax: "=PV(rate, nper, pmt, fv)", parity: true, note: "Leave pv unwired" },
+    { excel: "FV", syntax: "=FV(rate, nper, pmt, pv)", parity: true, note: "Leave fv unwired" },
+    { excel: "NPER", syntax: "=NPER(rate, pmt, pv)", parity: true, note: "Leave nper unwired" },
+    { excel: "RATE", syntax: "=RATE(nper, pmt, pv)", parity: true, note: "Leave rate unwired; no guess needed" },
+  ],
   "twomath-atan2": [{ excel: "ATAN2", syntax: "=ATAN2(x, y)", parity: true }],
   "twomath-delta": [{ excel: "DELTA", syntax: "=DELTA(a, b)", parity: true }],
   "twomath-gestep": [{ excel: "GESTEP", syntax: "=GESTEP(a, step)", parity: true }],

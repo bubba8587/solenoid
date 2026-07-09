@@ -105,10 +105,8 @@ export { FrequencyComponent } from "./FrequencyNode";
 export { ConfidenceComponent } from "./ConfidenceNode";
 
 // ─── Finance ──────────────────────────────────────────────────────────────────
-export { InterestRateComponent } from "./InterestRateNode";
 export { DepreciationComponent } from "./DepreciationNode";
 export { TvmComponent } from "./TvmNode";
-export { RateComponent } from "./RateNode";
 export { IpmtPpmtComponent } from "./IpmtPpmtNode";
 export { NpvComponent } from "./NpvNode";
 export { IrrComponent } from "./IrrNode";
@@ -118,8 +116,6 @@ export { FvScheduleComponent } from "./FvScheduleNode";
 export { IspmtComponent } from "./IspmtNode";
 export { DollarComponent } from "./DollarNode";
 export { VdbComponent } from "./VdbNode";
-export { PdurationComponent } from "./PdurationNode";
-export { RriComponent } from "./RriNode";
 export { TBillComponent } from "./TBillNode";
 export { SecurityDiscComponent } from "./SecurityDiscNode";
 export { CouponComponent } from "./CouponNode";

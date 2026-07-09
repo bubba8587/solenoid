@@ -12,7 +12,7 @@ lean; update it when the catalog changes meaningfully.)
 
 **Stats**: NormDist, NormInv, NormSDist, NormSInv, TDist, TInv, ChisqDist, ChisqInv, FDist, FInv, BetaDist, BetaInv, GammaDist, GammaInv, BinomDist, BinomInv, LognormDist, PoissonDist, and more.
 
-**Finance**: Rate, TVM (PMT/PV/FV/NPER — hides the solved-for input), IPMT/PPMT, CumPmt, NPV, IRR, MIRR, depreciation (SLN/DB/DDB/SYD/VDB), bond pricing (PRICE/YIELD, odd coupons, accrued interest), XIRR/XNPV, interest rate conversion.
+**Finance**: TVM — ONE acausal Equation node covering PMT/PV/FV/NPER/RATE (wire four of {rate, nper, pmt, pv, fv}, the fifth solves; payment-timing dropdown swaps the locked relation; rate = 0 uses the exact limit form), Compound Growth (fv = pv·(1+rate)^nper; covers PDURATION/RRI) and Effective Rate (EFFECT/NOMINAL) as locked Equation presets, IPMT/PPMT, CumPmt, NPV, IRR, MIRR, depreciation (SLN/DB/DDB/SYD/VDB), bond pricing (PRICE/YIELD, odd coupons, accrued interest), XIRR/XNPV.
 
 **Distributions**: normal/t/chi-sq/F + inverses, beta, gamma, lognormal, Weibull, exponential, binomial, Poisson, hypergeometric, negative binomial; Z/T/F/Chisq tests.
 

@@ -1,49 +1,106 @@
 import { describe, it, expect } from "vitest";
 import {
   TvmNode,
-  RateNode,
   IpmtPpmtNode,
   NpvNode,
   IrrNode,
   MirrNode,
   DepreciationNode,
 } from "./finance";
+import { EquationNode } from "./equation";
 
 // Reference values are what Excel's matching function returns. Excel cash-flow
 // sign convention: money received is positive, money paid out is negative, so a
 // loan's PMT/IPMT/PPMT are all negative when PV is positive.
 
-describe("TVM", () => {
-  it("PMT matches =PMT(0.08, 10, 10000)", () => {
-    const r = new TvmNode({ op: "pmt" }).data({ rate: [0.08], nper: [10], pv: [10000], fv: [0] });
-    expect(r.result).toBeCloseTo(-1490.29, 2);
+// The TVM node is now ONE acausal Equation: wire four of {rate, nper, pmt, pv,
+// fv}, read the fifth off its own output — no op selector, no guess input.
+describe("TVM (equation)", () => {
+  it("solves PMT like =PMT(0.08, 10, 10000)", () => {
+    const r = new TvmNode().data({ rate: [0.08], nper: [10], pv: [10000], fv: [0] });
+    expect(r.pmt).toBeCloseTo(-1490.29, 2);
   });
 
-  it("PV matches =PV(0.05, 10, -100)", () => {
-    const r = new TvmNode({ op: "pv" }).data({ rate: [0.05], nper: [10], pmt: [-100], fv: [0] });
-    expect(r.result).toBeCloseTo(772.17, 2);
+  it("solves PV like =PV(0.05, 10, -100)", () => {
+    const r = new TvmNode().data({ rate: [0.05], nper: [10], pmt: [-100], fv: [0] });
+    expect(r.pv).toBeCloseTo(772.17, 2);
   });
 
-  it("FV matches =FV(0.06, 10, -200, -500)", () => {
-    const r = new TvmNode({ op: "fv" }).data({ rate: [0.06], nper: [10], pmt: [-200], pv: [-500] });
-    expect(r.result).toBeCloseTo(3531.58, 2);
+  it("solves FV like =FV(0.06, 10, -200, -500)", () => {
+    const r = new TvmNode().data({ rate: [0.06], nper: [10], pmt: [-200], pv: [-500] });
+    expect(r.fv).toBeCloseTo(3531.58, 2);
   });
 
-  it("NPER matches =NPER(0.05, -100, 1000)", () => {
-    const r = new TvmNode({ op: "nper" }).data({ rate: [0.05], pmt: [-100], pv: [1000], fv: [0] });
-    expect(r.result).toBeCloseTo(14.2067, 3);
+  it("solves NPER like =NPER(0.05, -100, 1000)", () => {
+    const r = new TvmNode().data({ rate: [0.05], pmt: [-100], pv: [1000], fv: [0] });
+    expect(r.nper).toBeCloseTo(14.2067, 3);
   });
 
-  it("PMT at zero rate is straight-line", () => {
-    const r = new TvmNode({ op: "pmt" }).data({ rate: [0], nper: [10], pv: [1000], fv: [0] });
-    expect(r.result).toBeCloseTo(-100, 9);
+  it("solves RATE like =RATE(12, -100, 1000) — smallest-magnitude root, no guess", () => {
+    const r = new TvmNode().data({ nper: [12], pmt: [-100], pv: [1000], fv: [0] });
+    expect(r.rate).toBeCloseTo(0.029215, 4);
+  });
+
+  it("solves PMT at zero rate exactly (straight-line limit relation)", () => {
+    const r = new TvmNode().data({ rate: [0], nper: [10], pv: [1000], fv: [0] });
+    expect(r.pmt).toBeCloseTo(-100, 9);
+    expect(r.rate).toBe(0); // the fixed rate still flows out its own socket
+  });
+
+  it("annuity-due PMT matches =PMT(0.08, 10, 10000, 0, 1)", () => {
+    const node = new TvmNode({ paymentTiming: "beg" });
+    const r = node.data({ rate: [0.08], nper: [10], pv: [10000], fv: [0] });
+    expect(r.pmt).toBeCloseTo(-1490.294887 / 1.08, 2);
+  });
+
+  it("truth-checks when all five are wired", () => {
+    const pmt = new TvmNode().data({ rate: [0.08], nper: [10], pv: [10000], fv: [0] }).pmt as number;
+    const check = new TvmNode().data({ rate: [0.08], nper: [10], pv: [10000], fv: [0], pmt: [pmt] });
+    expect(check.holds).toBe(true);
+    const wrong = new TvmNode().data({ rate: [0.08], nper: [10], pv: [10000], fv: [0], pmt: [pmt + 1] });
+    expect(wrong.holds).toBe(false);
+  });
+
+  it("zero-rate truth check is exact", () => {
+    const r = new TvmNode().data({ rate: [0], nper: [10], pv: [1000], fv: [0], pmt: [-100] });
+    expect(r.holds).toBe(true);
+  });
+
+  it("timing switch swaps the locked relation without changing sockets", () => {
+    const node = new TvmNode();
+    const before = [...node.varNames];
+    node.setPaymentTiming("beg");
+    expect(node.varNames).toEqual(before);
+    expect(node.expr).toContain("pmt*(1+rate)*");
   });
 });
 
-describe("RATE", () => {
-  it("solves =RATE(12, -100, 1000)", () => {
-    const r = new RateNode().data({ nper: [12], pmt: [-100], pv: [1000], fv: [0], guess: [0.1] });
-    expect(r.result).toBeCloseTo(0.029215, 4);
+// The two locked Equation presets that replaced PDURATION/RRI and
+// EFFECT/NOMINAL (nodeCatalog.ts Finance) — same exprs, pinned to the Excel
+// functions they stand in for.
+describe("Compound Growth / Effective Rate presets", () => {
+  const growth = () => new EquationNode({ expr: "fv = pv * (1 + rate)^nper", locked: true });
+  const effective = () => new EquationNode({ expr: "eff = (1 + nom/npery)^npery - 1", locked: true });
+
+  it("solves nper like =PDURATION(0.05, 1000, 2000)", () => {
+    expect(growth().data({ rate: [0.05], pv: [1000], fv: [2000] }).nper).toBeCloseTo(14.2067, 3);
+  });
+
+  it("solves rate like =RRI(5, 1000, 2000)", () => {
+    expect(growth().data({ nper: [5], pv: [1000], fv: [2000] }).rate).toBeCloseTo(0.148698, 5);
+  });
+
+  it("solves fv and pv lump-sum both ways", () => {
+    expect(growth().data({ rate: [0.06], nper: [10], pv: [500] }).fv).toBeCloseTo(895.42, 2);
+    expect(growth().data({ rate: [0.06], nper: [10], fv: [895.42] }).pv).toBeCloseTo(500, 2);
+  });
+
+  it("solves eff like =EFFECT(0.05, 12)", () => {
+    expect(effective().data({ nom: [0.05], npery: [12] }).eff).toBeCloseTo(0.051162, 5);
+  });
+
+  it("solves nom like =NOMINAL(0.051162, 12)", () => {
+    expect(effective().data({ eff: [0.0511619], npery: [12] }).nom).toBeCloseTo(0.05, 6);
   });
 });
 
@@ -74,7 +131,7 @@ describe("IPMT / PPMT", () => {
     const args = { rate: [0.05], per: [3], nper: [12], pv: [1000], fv: [0] };
     const ipmt = new IpmtPpmtNode({ op: "ipmt" }).data(args).result!;
     const ppmt = new IpmtPpmtNode({ op: "ppmt" }).data(args).result!;
-    const pmt = new TvmNode({ op: "pmt" }).data({ rate: [0.05], nper: [12], pv: [1000], fv: [0] }).result!;
+    const pmt = new TvmNode().data({ rate: [0.05], nper: [12], pv: [1000], fv: [0] }).pmt as number;
     expect(ipmt + ppmt).toBeCloseTo(pmt, 6);
   });
 });
