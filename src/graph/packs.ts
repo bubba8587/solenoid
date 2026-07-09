@@ -30,6 +30,7 @@ import { createNotifier } from "./storeKit";
 import { GEOMETRY_PACK } from "./packs/geometry";
 import { TIMESAVERS_PACK } from "./packs/timesavers";
 import { ELECTRICITY_PACK } from "./packs/electricity";
+import { ELECTROMAGNETISM_PACK } from "./packs/electromagnetism";
 import type { Pack, PackPlacement } from "./packs/packShared";
 
 // Re-export the authoring types so existing consumers keep one import site.
@@ -39,6 +40,7 @@ export const BUILTIN_PACKS: Pack[] = [
   GEOMETRY_PACK,
   TIMESAVERS_PACK,
   ELECTRICITY_PACK,
+  ELECTROMAGNETISM_PACK,
 ];
 
 // Reclassification of EXISTING core catalog nodes into add-on packs — a node

@@ -1,0 +1,117 @@
+// Electromagnetism — fields, forces, waves, and induction, one level deeper
+// than the Electricity & Circuits pack it builds on (dependsOn pulls that pack
+// in on activation). Constants are baked into each formula at CODATA 2018
+// precision — a locked preset's promise is that the number is RIGHT — and the
+// Physics Constant node exposes the same library as a wireable source.
+// SI units throughout; angles in radians (core Trigonometry convention).
+
+import { PhysicsConstantNode } from "../rete-nodes";
+import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
+
+// CODATA 2018, written as decimal·10^n so the formula grammar stays simple.
+const KE   = "8.9875517923*10^9";    // Coulomb constant (N·m²/C²)
+const EPS0 = "8.8541878128*10^-12";  // vacuum permittivity (F/m)
+const MU0  = "1.25663706212*10^-6";  // vacuum permeability (H/m)
+const C    = "299792458";            // speed of light (m/s)
+const H    = "6.62607015*10^-34";    // Planck constant (J·s)
+const QE   = "1.602176634*10^-19";   // elementary charge (C)
+
+export const EM_ELECTROSTATICS: FormulaPackEntry[] = [
+  { type: "em-coulomb-force", label: "Coulomb Force", expr: `${KE}*q1*q2/r^2`,
+    description: "Force between two point charges q1, q2 (C) at distance r (m)   (F = kₑq₁q₂/r²)",
+    keywords: "electrostatic charge" },
+  { type: "em-e-field", label: "Electric Field (Point Charge)", expr: `${KE}*q/r^2`,
+    description: "Field magnitude at distance r from a point charge q   (E = kₑq/r², V/m)" },
+  { type: "em-e-potential", label: "Electric Potential (Point Charge)", expr: `${KE}*q/r`,
+    description: "Potential at distance r from a point charge q   (V = kₑq/r)" },
+  { type: "em-plate-capacitance", label: "Parallel-Plate Capacitance", expr: `${EPS0}*er*a/d`,
+    description: "Capacitance of parallel plates: relative permittivity er, plate area a (m²), gap d (m)   (C = ε₀εᵣA/d)",
+    keywords: "dielectric" },
+  // `ef`, not `e` — the formula grammar reserves e for Euler's constant.
+  { type: "em-e-energy-density", label: "Electric Energy Density", expr: `${EPS0}*ef^2/2`,
+    description: "Energy per volume in an electric field ef (V/m)   (u = ½ε₀E², J/m³)" },
+];
+
+export const EM_MAGNETISM: FormulaPackEntry[] = [
+  { type: "em-solenoid-inductance", label: "Solenoid Inductance", expr: `${MU0}*n^2*a/len`,
+    description: "Inductance of an air-core solenoid: n total turns, cross-section a (m²), length len (m)   (L = µ₀N²A/ℓ)",
+    keywords: "coil henries" },
+  { type: "em-solenoid-field", label: "Solenoid Field", expr: `${MU0}*n*i`,
+    description: "Field inside a long solenoid: n turns per metre, current i   (B = µ₀nI, tesla)",
+    keywords: "coil tesla" },
+  { type: "em-wire-field", label: "Straight-Wire Field", expr: `${MU0}*i/(2*PI()*r)`,
+    description: "Field at distance r from a long straight wire carrying i   (B = µ₀I/(2πr))",
+    keywords: "ampere tesla" },
+  { type: "em-loop-field", label: "Loop-Centre Field", expr: `${MU0}*i/(2*r)`,
+    description: "Field at the centre of a circular loop of radius r carrying i   (B = µ₀I/(2r))" },
+  { type: "em-wire-force", label: "Force on a Wire", expr: "b*i*len*SIN(theta)",
+    description: "Force on a wire of length len carrying i in field b, at angle theta (radians)   (F = BIℓ·sinθ)" },
+  { type: "em-lorentz", label: "Lorentz Force (Magnetic)", expr: "q*v*b*SIN(theta)",
+    description: "Force on a charge q moving at v through field b, at angle theta (radians)   (F = qvB·sinθ)" },
+  { type: "em-cyclotron", label: "Cyclotron Frequency", expr: "q*b/(2*PI()*m)",
+    description: "Orbit frequency of a charge q, mass m in field b   (f = qB/(2πm))" },
+  { type: "em-b-energy-density", label: "Magnetic Energy Density", expr: `b^2/(2*${MU0})`,
+    description: "Energy per volume in a magnetic field b (T)   (u = B²/2µ₀, J/m³)" },
+  { type: "em-hall", label: "Hall Voltage", expr: `i*b/(n*${QE}*t)`,
+    description: "Hall voltage across a conductor: current i, field b, carrier density n (1/m³), thickness t (m)   (V = IB/(nqt))" },
+];
+
+export const EM_WAVES: FormulaPackEntry[] = [
+  { type: "em-wavelength", label: "Wavelength from Frequency", expr: `${C}/f`,
+    description: "Free-space wavelength of an EM wave at frequency f (Hz)   (λ = c/f)",
+    keywords: "radio antenna" },
+  { type: "em-frequency", label: "Frequency from Wavelength", expr: `${C}/lambda`,
+    description: "Frequency of an EM wave from its free-space wavelength lambda (m)   (f = c/λ)",
+    keywords: "radio antenna" },
+  { type: "em-photon-energy", label: "Photon Energy (Frequency)", expr: `${H}*f`,
+    description: "Energy of one photon at frequency f   (E = hf, joules)" },
+  { type: "em-photon-energy-wl", label: "Photon Energy (Wavelength)", expr: `${H}*${C}/lambda`,
+    description: "Energy of one photon from wavelength lambda (m)   (E = hc/λ, joules)" },
+  { type: "em-skin-depth", label: "Skin Depth", expr: `SQRT(rho/(PI()*f*${MU0}*mur))`,
+    description: "AC skin depth: resistivity rho (Ω·m), frequency f, relative permeability mur   (δ = √(ρ/πfµ), metres)",
+    keywords: "eddy high frequency conductor" },
+];
+
+export const EM_INDUCTION: FormulaPackEntry[] = [
+  { type: "em-faraday-emf", label: "Induced EMF (Faraday)", expr: "-n*dphi/dt",
+    description: "EMF induced in n turns by flux change dphi (Wb) over dt (s)   (ε = −N·ΔΦ/Δt)",
+    keywords: "induction flux" },
+  { type: "em-transformer", label: "Transformer Voltage", expr: "vp*ns/np",
+    description: "Ideal transformer secondary voltage: primary vp, turns np → ns   (Vs = Vp·Ns/Np)",
+    keywords: "turns ratio" },
+];
+
+export const EM_FORMULAS: FormulaPackEntry[] = [
+  ...EM_ELECTROSTATICS, ...EM_MAGNETISM, ...EM_WAVES, ...EM_INDUCTION,
+];
+
+export const ELECTROMAGNETISM_PACK: Pack = {
+  id: "electromagnetism",
+  name: "Electromagnetism",
+  description: "Fields, forces, waves, and induction: Coulomb's law, capacitance and inductance from geometry, magnetic fields, Lorentz force, photons, skin depth, Faraday's law — plus the CODATA physical-constants node. Builds on Electricity & Circuits.",
+  builtin: true,
+  defaultActive: false,
+  dependsOn: ["electricity"],
+  nodes: [
+    {
+      path: ["Input"],
+      entry: {
+        type: "em-constant",
+        label: "Physics Constant",
+        description: "CODATA 2018 physical constants: c, e, ε₀, µ₀, h, k_B, Nₐ, G… grouped by domain, SI units",
+        keywords: "codata speed of light planck boltzmann avogadro permittivity permeability",
+        create: () => new PhysicsConstantNode(),
+      },
+    },
+    ...placeFormulas(["Numbers", "Electromagnetism"], EM_ELECTROSTATICS),
+    ...placeFormulas(["Numbers", "Electromagnetism", "Magnetism"], EM_MAGNETISM),
+    ...placeFormulas(["Numbers", "Electromagnetism", "Waves & Photons"], EM_WAVES),
+    ...placeFormulas(["Numbers", "Electromagnetism", "Induction"], EM_INDUCTION),
+  ],
+  units: [
+    { id: "T", label: " T", group: "electrical" },
+    { id: "mT", label: " mT", group: "electrical" },
+    { id: "Wb", label: " Wb", group: "electrical" },
+    { id: "eV", label: " eV", group: "electrical" },
+  ],
+};

@@ -36,5 +36,6 @@ export * from "./nodes/expression";
 export * from "./nodes/placeholder";
 export * from "./nodes/quality";
 export * from "./nodes/electrical";
+export * from "./nodes/physicsConstants";
 export * from "./nodes/tornado";
 export * from "./nodes/composite";

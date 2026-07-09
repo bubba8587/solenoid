@@ -2,6 +2,7 @@ import { ClassicPreset } from "rete";
 import type { NodeKind } from "./shared";
 import { SolenoidSocket } from "../sockets";
 import { NumberInputNode, ConstantNode, BooleanInputNode, SliderInputNode, ColorPickerNode } from "./input";
+import { PhysicsConstantNode } from "./physicsConstants";
 import { ConvertNode } from "./convert";
 import { CastNode } from "./cast";
 import { FormatControllerNode } from "./formatController";
@@ -79,7 +80,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
   // Composite boundary markers read green ("special"); the Composite node itself
   // stays neutral gray (util, below).
   if (node instanceof CompositeInputNode || node instanceof CompositeOutputNode) return "boundary";
-  if (node instanceof NumberInputNode || node instanceof ConstantNode || node instanceof SliderInputNode || node instanceof RandBetweenNode || node instanceof WebSourceNode || node instanceof CsvConnectionNode || node instanceof ParquetConnectionNode || node instanceof ImportHtmlNode || node instanceof ImportXmlNode || node instanceof DataFeedNode || node instanceof XYPadNode || node instanceof ColorPickerNode) return "input";
+  if (node instanceof NumberInputNode || node instanceof ConstantNode || node instanceof PhysicsConstantNode || node instanceof SliderInputNode || node instanceof RandBetweenNode || node instanceof WebSourceNode || node instanceof CsvConnectionNode || node instanceof ParquetConnectionNode || node instanceof ImportHtmlNode || node instanceof ImportXmlNode || node instanceof DataFeedNode || node instanceof XYPadNode || node instanceof ColorPickerNode) return "input";
   if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof MermaidNode || node instanceof GaugeNode || node instanceof HeatmapCellNode || node instanceof ChartBuilderNode || node instanceof TornadoNode) return "display";
   if (node instanceof ConvertNode || node instanceof CastNode) return "convert";
   if (
