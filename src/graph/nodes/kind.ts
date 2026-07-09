@@ -52,7 +52,7 @@ import { NoteNode, ImageNode } from "./annotation";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "./composite";
 import {
   TableInputNode, MatDetNode, TableMultNode, TableUnitNode, TableTransposeNode,
-  HStackTableNode, VStackNode, TableReshapeNode, TableSelectNode, TableInfoNode,
+  HStackTableNode, VStackNode, TableReshapeNode, TableSelectNode, TableTakeDropNode, ExpandNode, TableInfoNode,
 } from "./matrix";
 import { MapTableNode, ByAxisNode, MakeArrayNode, ReduceLambdaNode } from "./tableLambda";
 import { LambdaNode } from "./lambda";
@@ -175,6 +175,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof TableMultNode || node instanceof TableUnitNode ||
     node instanceof TableTransposeNode || node instanceof HStackTableNode || node instanceof VStackNode ||
     node instanceof TableReshapeNode || node instanceof TableSelectNode ||
+    node instanceof TableTakeDropNode || node instanceof ExpandNode ||
     node instanceof TableInfoNode || node instanceof MapTableNode ||
     node instanceof ByAxisNode || node instanceof MakeArrayNode ||
     node instanceof ReduceLambdaNode

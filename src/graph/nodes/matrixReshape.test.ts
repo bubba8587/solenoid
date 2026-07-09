@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { isSolError } from "../errorValue";
-import { TableTransposeNode, HStackTableNode, TableReshapeNode, TableSelectNode, TableInfoNode, TableMultNode, MatDetNode, parseTableText } from "./matrix";
+import { TableTransposeNode, HStackTableNode, TableReshapeNode, TableSelectNode, TableTakeDropNode, ExpandNode, TableInfoNode, TableMultNode, MatDetNode, parseTableText } from "./matrix";
 import { SolenoidSocket, type SocketDataType } from "../sockets";
 
 // The pure-reshape matrix ops are element-agnostic: they accept any matrix on an
@@ -61,6 +61,30 @@ describe("reshapers are element-polymorphic", () => {
       ["a", "x"],
       ["b", "y"],
     ]);
+  });
+
+  it("TAKE/DROP (table) cut both axes; negative counts work from the end", () => {
+    const m = [[1, 2, 3], [4, 5, 6], [7, 8, 9]];
+    expect(new TableTakeDropNode({ op: "take" }).data({ matrix: [m], rows: [2] }).result)
+      .toEqual([[1, 2, 3], [4, 5, 6]]);
+    expect(new TableTakeDropNode({ op: "take" }).data({ matrix: [m], rows: [-1], cols: [-2] }).result)
+      .toEqual([[8, 9]]);
+    expect(new TableTakeDropNode({ op: "take" }).data({ matrix: [m], rows: [99] }).result)
+      .toEqual(m); // past the size keeps everything, like Excel
+    expect(new TableTakeDropNode({ op: "drop" }).data({ matrix: [m], rows: [1], cols: [-1] }).result)
+      .toEqual([[4, 5], [7, 8]]);
+    // TAKE cols on a bare list (one row) — the 2-D spelling of "first 2 elements"
+    expect(new TableTakeDropNode({ op: "take" }).data({ matrix: [[9, 8, 7]], cols: [2] }).result)
+      .toEqual([[9, 8]]);
+  });
+
+  it("EXPAND grows with the fill (or #N/A); shrinking is #VALUE!", () => {
+    const grown = new ExpandNode().data({ matrix: [[[1, 2]]], rows: [2], cols: [3], fill: [0] }).result as unknown[][];
+    expect(grown).toEqual([[1, 2, 0], [0, 0, 0]]);
+    const na = new ExpandNode().data({ matrix: [[[1]]], rows: [1], cols: [2] }).result as unknown[][];
+    expect(na[0][0]).toBe(1);
+    expect(isSolError(na[0][1])).toBe(true);
+    expect(isSolError(new ExpandNode().data({ matrix: [[[1, 2], [3, 4]]], rows: [1] }).result)).toBe(true);
   });
 
   it("CHOOSEROWS selects rows from a text matrix by 1-based index", () => {

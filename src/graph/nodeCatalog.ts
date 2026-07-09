@@ -43,7 +43,7 @@ import {
   COMPLEX_UNARY_OP_META, COMPLEX_BINARY_OP_META,
   type ComplexUnaryOp, type ComplexBinaryOp,
   TableInputNode, MatDetNode, TableMultNode, TableUnitNode, TableTransposeNode,
-  HStackTableNode, TableReshapeNode, TableSelectNode, TableInfoNode,
+  HStackTableNode, TableReshapeNode, TableSelectNode, TableTakeDropNode, ExpandNode, TableInfoNode,
   MapTableNode, ByAxisNode, MakeArrayNode, ReduceLambdaNode, LambdaNode,
   FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, GetRowNode, DistinctNode,
   HeadNode, SortFrameNode, FilterFrameNode, JoinNode,
@@ -54,8 +54,8 @@ import {
   WriteCsvNode, WriteJsonNode,
   GroupNode, NoteNode, ReportNode, SessionHistoryNode, PresentationNode, ImageNode,
   CompositeNode, CompositeInputNode, CompositeOutputNode,
-  MAT_DET_OP_META, TABLE_RESHAPE_OP_META, TABLE_SELECT_OP_META,
-  type MatDetOp, type TableReshapeOp, type TableSelectOp,
+  MAT_DET_OP_META, TABLE_RESHAPE_OP_META, TABLE_SELECT_OP_META, TABLE_TAKEDROP_OP_META,
+  type MatDetOp, type TableReshapeOp, type TableSelectOp, type TableTakeDropOp,
   IsEvenOddNode, FormatDollarNode,
   NormDistNode, NormInvNode, NormSDistNode, NormSInvNode,
   TDistNode, TInvNode, ChisqDistNode, ChisqInvNode,
@@ -144,6 +144,7 @@ const besselLeaf = (op: BesselOp): NodeCatalogEntry => ({ type: `bessel-${op}`, 
 const matDetLeaf    = (op: MatDetOp):      NodeCatalogEntry => ({ type: `matdet-${op}`,    label: MAT_DET_OP_META[op].label,    description: MAT_DET_OP_META[op].description,    create: () => new MatDetNode({ op }),    parity: false });
 const reshapeLeaf   = (op: TableReshapeOp):NodeCatalogEntry => ({ type: `reshape-${op}`,   label: TABLE_RESHAPE_OP_META[op].label, description: TABLE_RESHAPE_OP_META[op].description, create: () => new TableReshapeNode({ op }), parity: false });
 const selectLeaf    = (op: TableSelectOp): NodeCatalogEntry => ({ type: `tblsel-${op}`,    label: TABLE_SELECT_OP_META[op].label, description: TABLE_SELECT_OP_META[op].description, create: () => new TableSelectNode({ op }), parity: false });
+const takeDropLeaf  = (op: TableTakeDropOp): NodeCatalogEntry => ({ type: `tbltd-${op}`,   label: TABLE_TAKEDROP_OP_META[op].label, description: TABLE_TAKEDROP_OP_META[op].description, create: () => new TableTakeDropNode({ op }), parity: false, keywords: "rows columns edge first last head tail" });
 
 const romanArabicLeaf = (op: RomanArabicOp): NodeCatalogEntry => ({
   type: `roman-arabic-${op}`,
@@ -874,12 +875,14 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "pair", children: [reshapeLeaf("tocol"),    reshapeLeaf("torow")]    },
           { type: "hstack-table", label: "HSTACK", description: "Concatenate tables side by side, in row order — add rows for more tables; a list counts as one row, so two lists make one long row. A shorter table pads down with #N/A. Excel: HSTACK.", create: () => new HStackTableNode(), parity: false },
           { type: "vstack-table", label: "VSTACK", description: "Stack tables top-to-bottom, in row order — add rows for more tables; a list counts as one row, so two lists make a 2-row table. A narrower table pads right with #N/A. Excel: VSTACK.", create: () => new VStackNode(), parity: false, keywords: "stack rows lists to table matrix" },
+          { type: "table-expand", label: "EXPAND", description: "Grow a table to a target row/column count; new cells take the wired Fill value, or #N/A without one. Shrinking is #VALUE! — that's TAKE's job. Excel: EXPAND.", create: () => new ExpandNode(), parity: false, keywords: "grow pad resize table fill" },
         ],
       },
       {
-        type: "category", label: "Select", description: "Pick specific rows or columns by index.",
+        type: "category", label: "Select", description: "Pick rows or columns — by index, or from the table's edges.",
         children: [
           { type: "pair", children: [selectLeaf("chooserows"), selectLeaf("choosecols")] },
+          { type: "pair", children: [takeDropLeaf("take"), takeDropLeaf("drop")] },
         ],
       },
       {

@@ -1,8 +1,10 @@
 import type { FilterNode as FilterNodeType, ComparisonOp, FilterCombine } from "../rete-nodes";
 import { InlineInputs, useConnectedInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
+import { MeasuredSocketRow } from "./NodeSocket";
 import { TableDisplay } from "./TableDisplay";
-import { type SolError } from "../errorValue";
+import { ArrayChip } from "./ArrayChip";
+import { isSolError, type SolError } from "../errorValue";
 
 const OPS: { value: ComparisonOp; label: string }[] = [
   { value: "gt",  label: "keep where x > value" },
@@ -51,8 +53,11 @@ export function FilterComponent({ data, emit }: NodeProps<FilterNodeType>) {
   }
 
   const res = data.cachedResult;
+  const drp = data.cachedDropped;
+  // Vector complements flatten back to a plain list for the chip.
+  const droppedView = Array.isArray(drp) ? (isVector(drp) ? flatten(drp) : drp) : null;
   return (
-    <NodeShell node={data} emit={emit}>
+    <NodeShell node={data} emit={emit} hideOutputSockets>
       <InlineInputs node={data} emit={emit} keys={keys} />
       {predicateMode && (
         <>
@@ -63,11 +68,23 @@ export function FilterComponent({ data, emit }: NodeProps<FilterNodeType>) {
       )}
       {/* A dimension mismatch lands in cachedResult as a #SHAPE! error, which
           TableDisplay renders as the red badge — same path as every other error. */}
-      {isVector(res) ? (
-        <ValueDisplay value={flatten(res)} />
-      ) : (
-        <TableDisplay table={res} label={data.label} />
-      )}
+      <MeasuredSocketRow side="output" socketKey="result" nodeId={data.id} emit={emit} payload={data.outputs.result!.socket} hero>
+        {isVector(res) ? (
+          <ValueDisplay value={flatten(res)} />
+        ) : (
+          <TableDisplay table={res} label={data.label} />
+        )}
+      </MeasuredSocketRow>
+      {/* The complement rides a compact secondary row — the same split that
+          produced Kept, so it needs no display of its own beyond a chip. */}
+      <MeasuredSocketRow side="output" socketKey="dropped" nodeId={data.id} emit={emit} payload={data.outputs.dropped!.socket}>
+        <span className="solenoid-node__io-label">Dropped</span>
+        <span className="solenoid-node__output-value" style={{ display: "flex", justifyContent: "flex-end" }}>
+          {droppedView && droppedView.length > 0
+            ? <ArrayChip value={droppedView} label={`${data.label}: Dropped`} size="sm" />
+            : isSolError(drp) ? drp.code : "—"}
+        </span>
+      </MeasuredSocketRow>
     </NodeShell>
   );
 }

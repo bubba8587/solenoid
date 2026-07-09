@@ -125,7 +125,24 @@ drill into the archive (or `git log`) only for the mechanics of a specific item.
   constructors), add-a-row = Get Row → Append (a positional list into a
   by-name append is a refused footgun). Socket keys changed (top/bottom→f*,
   a/b→t*/l*) — table-verbs seed rewired; old saves load those cables dropped
-  (pre-alpha). Full reasoning in D15.
+  (pre-alpha). Full reasoning in D15. — **Follow-up wave (same day, author
+  approved the queue):** (1) **Filter gained a PERMANENT `Dropped` output** —
+  the exhaustive complement by position (null-predicate cells land in Dropped,
+  nothing vanishes); author asked "dropdown mode on Filter?" — answer NO, a
+  dropdown that toggles a socket kills downstream cables on switch (the
+  fixed-socket rule), and the complement is free in the same pass, so it's
+  always there. Frame Filter's Dropped is backlogged (verb seam + null-safe
+  complement). (2) **TAKE/DROP (table)** — Excel's real 2-D edge cuts
+  (rows+cols, negative = from end, 0 = omitted arg) as one op node; the 1-D
+  list Take/Drop stay and their NODE_EXCEL parity claims were corrected.
+  (3) **EXPAND** — the 2-D pad (grow to R×C, wired Fill or #N/A, shrink =
+  #VALUE! like Excel); retired the old "list-pad ≈ EXPAND" mapping.
+  (4) **anylist coherence sweep**: Reverse/Slice/Take/Drop/Shuffle/NthElement/
+  Interleave/Pad are position-only, so they're now element-agnostic
+  (text/date/logical lists reverse and slice like numbers). Sort/Cumulative
+  stay typed (comparison/arithmetic semantics). (5) **`Cell` type hygiene**:
+  the matrix cell alias widened to the honest runtime union (± boolean/null/
+  SolError) — zero tsc fallout, the #N/A-padding casts deleted.
 
 ### SESSION DIGEST (2026-07-08, evening — What's New resell + 1.2/2.0 plans)
 - **What's New rebuilt around the author's sell bar** ("a shiny thing a user will go
