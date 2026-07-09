@@ -283,18 +283,15 @@ describe("error producers", () => {
     expect(new XMatchNode().data({ value: [2], array: [[1, 2, 3]] }).result).toBe(2);
   });
 
-  it("Filter dimension mismatches are #SHAPE!", () => {
-    // A mask matching neither the data's rows nor columns is a shape error;
-    // so is asking the predicate to filter a genuine 2-D table with no mask.
-    const badMask = new FilterNode().data({ list: [[[1, 2, 3]]], mask: [[1, 0]] }).result;
-    expect(isSolError(badMask)).toBe(true);
-    expect((badMask as SolError).code).toBe("#SHAPE!");
-    const noMask2D = new FilterNode().data({ list: [[[1, 2], [3, 4]]] }).result;
-    expect(isSolError(noMask2D)).toBe(true);
-    expect((noMask2D as SolError).code).toBe("#SHAPE!");
-    // A clean 1-D filter still returns data, never an error.
-    const ok = new FilterNode({ op: "gt" }).data({ list: [[[1, 5, 2]]], threshold: [3] }).result;
-    expect(isSolError(ok)).toBe(false);
+  it("Filter (D16) never shape-errors: a per-cell error just fails its condition", () => {
+    // The 1-D Filter has no mask and takes no tables, so its old #SHAPE!
+    // sources are gone; an error CELL fails the condition and exits Dropped.
+    const n = new FilterNode({ condConfig: { "0": { op: "gt" } } });
+    n.stringLiterals.value0 = "1";
+    const err = solError("#DIV/0!", "x");
+    const out = n.data({ list: [[1, err, 3]] });
+    expect(out.result).toEqual([3]);
+    expect((out.dropped as unknown[])).toEqual([1, err]);
   });
 
   it("Expression syntax failures are #SYNTAX!; empty formula stays blank", () => {

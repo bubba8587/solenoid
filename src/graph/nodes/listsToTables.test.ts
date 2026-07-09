@@ -1,11 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { VStackNode, HStackTableNode } from "./matrix";
 import { ConcatListsNode } from "./list";
-import { FrameFromListsNode, AppendNode } from "./frame";
+import { FrameFromListsNode, AppendNode, FilterFrameNode } from "./frame";
 import { QuadraticRootsNode } from "./complex";
 import { isSolError } from "../errorValue";
 import { frameFromCells, type FrameValue } from "../frame";
 import { readFrame } from "../frameBackend";
+import { wrapNodeData } from "../coerceInputs";
 
 describe("VSTACK stacks; Concat appends (the Excel row semantics)", () => {
   it("two lists VSTACK into a 2-row table (a list is one row)", () => {
@@ -134,6 +135,24 @@ describe("Frame Append — N-ary, by column name", () => {
     const solo = (await readFrame((await n.data({ f0: [mk([7])] })).frame)) as FrameValue;
     expect(solo.columns[0].values).toEqual([7]);
     expect((await n.data({})).frame).toBe(null);
+  });
+});
+
+describe("the D16 table-filter route: a MATRIX widens into the frame Filter", () => {
+  it("filters a bare matrix's rows by Col2 — no Build Frame needed", async () => {
+    const n = new FilterFrameNode({
+      valueKeys: ["column0", "value0"],
+      condConfig: { "0": { op: "gt" } },
+    });
+    n.stringLiterals.column0 = "Col2";
+    n.stringLiterals.value0 = "10";
+    wrapNodeData(n as never);
+    const out = await (n.data as (i: unknown) => Promise<{ frame: unknown }>)({
+      frame: [[[1, 5], [2, 20], [3, 30]]],
+    });
+    const f = (await readFrame(out.frame as never)) as FrameValue;
+    expect(f.columns.map((c) => c.name)).toEqual(["Col1", "Col2"]);
+    expect(f.columns[1].values).toEqual([20, 30]);
   });
 });
 

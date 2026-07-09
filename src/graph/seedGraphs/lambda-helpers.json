@@ -109,15 +109,6 @@
       }
     },
     {
-      "id": "hotfilter",
-      "type": "FilterNode",
-      "x": 767,
-      "y": 446,
-      "init": {
-        "label": "FILTER — keep hot weeks"
-      }
-    },
-    {
       "id": "tocelsius",
       "type": "MapTableNode",
       "x": 757,
@@ -135,10 +126,9 @@
       "x": 717,
       "y": 80,
       "init": {
-        "label": "LAMBDA as argument: hot weeks → °C",
+        "label": "LAMBDA as argument: BYROW + MAP",
         "members": [
           "hotmask",
-          "hotfilter",
           "tocelsius"
         ],
         "color": "amber",
@@ -193,18 +183,6 @@
     {
       "source": "temps",
       "sourceOutput": "table",
-      "target": "hotfilter",
-      "targetInput": "list"
-    },
-    {
-      "source": "hotmask",
-      "sourceOutput": "result",
-      "target": "hotfilter",
-      "targetInput": "mask"
-    },
-    {
-      "source": "hotfilter",
-      "sourceOutput": "result",
       "target": "tocelsius",
       "targetInput": "table"
     }

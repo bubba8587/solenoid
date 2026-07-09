@@ -2,13 +2,13 @@ import { ClassicPreset } from "rete";
 import { numListSocket, strListSocket, dateListSocket, logicalListSocket, type SolenoidSocket } from "../sockets";
 import { parseDateToSerial } from "./date";
 import { getRecalcGen } from "../process";
-import { listIn, listOut, numIn, numOut, anyIn, anyOut, tableIn, tableOut, logicalOut, logicalListOut, frameOut, anyListIn, anyListOut } from "./shared";
-import { compareOp } from "./logic";
-import type { ComparisonOp } from "./logic";
+import { listIn, listOut, numIn, numOut, anyIn, anyOut, strIn, logicalOut, logicalListOut, frameOut, anyListIn, anyListOut } from "./shared";
+import { pairIdsFromKeys } from "./logic";
+import { passesFilter, type FilterOp, type FilterCondConfig } from "../frameVerbs";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { forAggregate, isMissing, type Tri } from "../valueKinds";
 import { iterMin, iterMax } from "./mathUtils";
-import { isFrameValue, isCubeValue, cubeRowCount, frameRowCount, inferColumn, type FrameValue, type CubeValue, type CubeCell } from "../frame";
+import { isFrameValue, isCubeValue, cubeRowCount, frameRowCount, inferColumn, type FrameValue, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
 
 // ─── List Input ─────────────────────────────────────────────────────────────
 
@@ -380,119 +380,241 @@ export class SliceNode extends ClassicPreset.Node {
 }
 
 // ─── Filter ────────────────────────────────────────────────────────────────────
+// The 1-D filter, redesigned 2026-07-09 (decisions.md D16): a list tested
+// against ITS OWN values with the frame Filter's condition engine — extensible
+// condition rows (op + value, per-row Match case) combined with AND/OR, any
+// element family (anylist). What it deliberately no longer does: accept a
+// table (filtering a table's rows is the frame Filter's job — a matrix widens
+// into it as Col1..N), or take a "Keep if" mask (filtering one list by a
+// PARALLEL list is SUMIFS below for aggregation, or Frame from Lists → Filter
+// Rows for the filtered list itself). Kept ∪ Dropped stays the exhaustive
+// complement: a null/error cell fails its condition and lands in Dropped.
 
-// Keep list elements that satisfy `element <op> threshold`. Excel FILTER.
-// Compose with a Reduce (SUM/COUNT/AVERAGE) to get SUMIF/COUNTIF/AVERAGEIF.
-export type FilterCombine = "none" | "and" | "or";
+/** Re-export so the barrel keeps one FilterCombine (the frame Filter's). */
+export type { FilterCombine } from "../frameVerbs";
+import type { FilterCombine } from "../frameVerbs";
+
+/** The element family driving passesFilter's comparison semantics. Dates are
+ *  serials, so they compare as numbers; blanks/errors don't vote. */
+function listElemColType(arr: readonly unknown[]): FrameColType {
+  for (const v of arr) {
+    if (v == null || isSolError(v)) continue;
+    if (typeof v === "string") return "string";
+    if (typeof v === "boolean") return "logical";
+    if (typeof v === "number") return "number";
+  }
+  return "number";
+}
 
 export class FilterNode extends ClassicPreset.Node {
   label: string;
-  op: ComparisonOp;
-  // Optional second predicate. `combine` = "none" keeps the classic single-
-  // condition behavior; "and"/"or" applies both predicates. Two conditions
-  // with OR is what Excel's SUMIFS/COUNTIFS can't do natively — chain this
-  // Filter into a Reduce for SUMIFS / OR-SUMIF.
-  op2: ComparisonOp;
   combine: FilterCombine;
-  cachedResult: (number | null)[][] | SolError | null = null;
-  cachedDropped: (number | null)[][] | SolError | null = null;
-  literals: Record<string, number> = { threshold: 0, threshold2: 0 };
-  width = 190;
-  height = 210;
+  /** Per-row {op, matchCase}, keyed by the row id (the `value${id}` suffix). */
+  condConfig: Record<string, FilterCondConfig> = {};
+  stringLiterals: Record<string, string> = {};
+  nextCondId = 0;
+  cachedResult: unknown[] | null = null;
+  cachedDropped: unknown[] | null = null;
+  width = 200;
+  height = 240;
 
-  constructor(init?: { label?: string; op?: ComparisonOp; op2?: ComparisonOp; combine?: FilterCombine }) {
+  constructor(init?: {
+    label?: string;
+    // Old saves carried "none" (single-condition mode) — it folds to "and".
+    combine?: FilterCombine | "none";
+    condConfig?: Record<string, FilterCondConfig>;
+    valueKeys?: string[];
+  }) {
     super("Filter");
     this.label = init?.label ?? "FILTER";
-    this.op = init?.op ?? "gt";
-    this.op2 = init?.op2 ?? "lt";
-    this.combine = init?.combine ?? "none";
-    // One polymorphic data input: `table` is the numeric supertype, so a scalar
-    // or list arrives as a 1×N row (central coercion handles it). `mask` is
-    // Excel's explicit `include`; without it the comparison predicate builds the
-    // mask from the data (1-D only). The filter axis follows the mask's length.
-    // The key stays "list" so graphs saved before Filter became table-shaped keep
-    // their data wire (the socket re-validates under the supertype lattice).
-    this.addInput("list",       tableIn("Data"));
-    this.addInput("mask",       listIn("Keep if"));
-    this.addInput("threshold",  numIn("Value"));
-    this.addInput("threshold2", numIn("Value 2"));
-    this.addOutput("result",    tableOut("Kept"));
-    // The complement is computed in the same pass anyway, so it's a PERMANENT
-    // second output (never a mode: a dropdown that toggles a socket into
-    // existence kills downstream cables on switch — the D14/D15 fixed-socket
-    // rule). Kept ∪ Dropped = the whole input, split by position.
-    this.addOutput("dropped",   tableOut("Dropped"));
-  }
-
-  private predicate(x: number, t1: number, t2: number): boolean {
-    const p1 = compareOp(this.op, x, t1);
-    if (this.combine === "none") return p1;
-    const p2 = compareOp(this.op2, x, t2);
-    return this.combine === "and" ? p1 && p2 : p1 || p2;
-  }
-
-  data(inputs: {
-    list?: (number | null)[][][]; mask?: number[][];
-    threshold?: number[]; threshold2?: number[];
-  }): { result: (number | null)[][] | SolError | null; dropped: (number | null)[][] | SolError | null } {
-    const m = inputs.list?.[0] ?? null; // coerced to a matrix by the engine boundary
-    this.cachedResult = null;
-    this.cachedDropped = null;
-    // A mask that lines up with neither dimension, or a 2-D table with no explicit
-    // mask, is a dimension mismatch — emit #SHAPE! so it shows the red badge here
-    // and propagates downstream like every other error.
-    const shapeErr = (msg: string): { result: SolError; dropped: SolError } => {
-      const e = solError("#SHAPE!", msg);
-      this.cachedResult = e;
-      this.cachedDropped = e;
-      return { result: e, dropped: e };
-    };
-    if (!m || m.length === 0) return { result: null, dropped: null };
-    const rows = m.length, cols = m[0]?.length ?? 0;
-
-    const maskIn = inputs.mask?.[0];
-    let keep: boolean[];
-    let axis: "row" | "col";
-
-    if (maskIn && maskIn.length > 0) {
-      // Excel `include`: nonzero keeps (Number() folds booleans → 1/0).
-      keep = maskIn.map((v) => { const n = Number(v); return Number.isFinite(n) && n !== 0; });
-      // Axis follows the mask length — rows checked first, so a square table and
-      // a 1×N list both resolve cleanly. Matching neither dimension is a #SHAPE!.
-      if (keep.length === rows) axis = "row";
-      else if (keep.length === cols) axis = "col";
-      else return shapeErr(`A ${keep.length}-long mask matches neither the ${rows}×${cols} data's rows nor its columns`);
-    } else {
-      // Predicate builds the mask, but only makes sense on effectively-1-D data;
-      // a genuine 2-D table needs an explicit mask. A fully-blank row/column
-      // still counts toward the shape (a padded import, a stray delimiter) — a
-      // frequent surprise, so the message names it when it's the likely cause.
-      if (rows !== 1 && cols !== 1) {
-        const hasBlankLane =
-          m.some((r) => r.every((x) => isMissing(x))) ||
-          Array.from({ length: cols }, (_, j) => m.every((r) => isMissing(r[j]))).some(Boolean);
-        return shapeErr(`Filtering a ${rows}×${cols} table needs a Keep-if mask (length = rows or columns); for per-cell filtering flatten first with TOCOL, for column-driven rows use the frame Filter${hasBlankLane ? ". A fully-blank row/column still counts toward the shape (a trailing delimiter in the source does this)" : ""}`);
+    this.combine = init?.combine === "or" ? "or" : "and";
+    this.addInput("list", anyListIn("List"));
+    const ids = pairIdsFromKeys(init?.valueKeys?.filter((k) => k.startsWith("value")), "value");
+    if (ids.length) {
+      for (const id of ids) this.addCondWithId(id);
+      for (const id of ids) {
+        const cfg = init?.condConfig?.[String(id)];
+        if (cfg) this.condConfig[String(id)] = { ...cfg };
       }
-      axis = rows === 1 ? "col" : "row";
-      const vec = rows === 1 ? m[0] : m.map((r) => r[0]);
-      const t1 = inputs.threshold?.[0] ?? this.literals.threshold ?? 0;
-      const t2 = inputs.threshold2?.[0] ?? this.literals.threshold2 ?? 0;
-      // A null (missing) cell makes the predicate UNKNOWN → the row is excluded
-      // (SQL WHERE keeps only TRUE), rather than coercing null→0 and guessing.
-      keep = vec.map((x) => (isMissing(x) ? false : this.predicate(x as number, t1, t2)));
+    } else {
+      this.addValueInput();
     }
+    this.addOutput("result", anyListOut("Kept"));
+    this.addOutput("dropped", anyListOut("Dropped"));
+  }
 
-    const result = axis === "row"
-      ? m.filter((_, i) => keep[i])
-      : m.map((row) => row.filter((_, j) => keep[j]));
-    // The complement BY POSITION (not predicate negation): a null cell fails
-    // the predicate, so it lands in Dropped — the split is exhaustive.
-    const dropped = axis === "row"
-      ? m.filter((_, i) => !keep[i])
-      : m.map((row) => row.filter((_, j) => !keep[j]));
-    this.cachedResult = result;
+  private addCondWithId(id: number): void {
+    this.addInput(`value${id}`, strIn(`Value ${id + 1}`));
+    if (!this.condConfig[String(id)]) this.condConfig[String(id)] = { op: "gt" };
+    this.nextCondId = Math.max(this.nextCondId, id + 1);
+  }
+
+  /** Ordered condition-row keys (insertion order). */
+  valueInputKeys(): string[] {
+    return Object.keys(this.inputs).filter((k) => k.startsWith("value"));
+  }
+
+  addValueInput(): string {
+    const key = `value${this.nextCondId}`;
+    this.addCondWithId(this.nextCondId);
+    return key;
+  }
+
+  removeValueInput(key: string): void {
+    this.removeInput(key);
+    delete this.stringLiterals[key];
+    // condConfig entry stays for row-removal undo; reload prunes orphans.
+  }
+
+  data(inputs: Record<string, unknown[] | undefined>): { result: unknown[] | null; dropped: unknown[] | null } {
+    const arr = inputs.list?.[0] as unknown[] | null | undefined;
+    if (arr == null) {
+      this.cachedResult = null;
+      this.cachedDropped = null;
+      return { result: null, dropped: null };
+    }
+    const type = listElemColType(arr);
+    const conds: { op: FilterOp; value: string; matchCase: boolean }[] = [];
+    for (const key of this.valueInputKeys()) {
+      const id = key.slice(5);
+      const val = String((inputs[key] as string[] | undefined)?.[0] ?? this.stringLiterals[key] ?? "");
+      if (val.trim() === "") continue; // "not written yet" — excluded (frame-Filter parity)
+      const cfg = this.condConfig[id];
+      conds.push({ op: cfg?.op ?? "gt", value: val, matchCase: cfg?.matchCase ?? false });
+    }
+    if (conds.length === 0) {
+      // No complete conditions = pass-through, like the frame Filter.
+      this.cachedResult = [...arr];
+      this.cachedDropped = null;
+      return { result: this.cachedResult, dropped: null };
+    }
+    const kept: unknown[] = [];
+    const dropped: unknown[] = [];
+    for (const cell of arr) {
+      const pass = (c: { op: FilterOp; value: string; matchCase: boolean }) =>
+        passesFilter(cell as FrameCell, c.op, c.value, type, c.matchCase);
+      if (this.combine === "and" ? conds.every(pass) : conds.some(pass)) kept.push(cell);
+      else dropped.push(cell); // incl. null/error cells — the split is exhaustive
+    }
+    this.cachedResult = kept;
     this.cachedDropped = dropped;
-    return { result, dropped };
+    return { result: kept, dropped };
+  }
+}
+
+// ─── SUMIFS / COUNTIFS / AVERAGEIFS / MINIFS / MAXIFS ─────────────────────────
+// The task-shaped home of the PARALLEL-LIST pattern (D16): aggregate Values
+// where every criteria row passes — each row pairs a wired criteria LIST with
+// an op + value, exactly Excel's mental model, minus its range-alignment
+// footguns. AND-only like Excel's *IFS. A position with a criteria cell that
+// is blank, an error, or beyond the row's length fails that criterion.
+
+export type CondAggOp = "sumifs" | "countifs" | "averageifs" | "minifs" | "maxifs";
+
+export const COND_AGG_OP_META = {
+  sumifs:     { label: "SUMIFS",     description: "Sum the Values at positions where every criteria row passes. Excel: SUMIFS / SUMIF." },
+  countifs:   { label: "COUNTIFS",   description: "Count the positions where every criteria row passes (needs no Values). Excel: COUNTIFS / COUNTIF." },
+  averageifs: { label: "AVERAGEIFS", description: "Average the Values where every criteria row passes; nothing matching is #DIV/0! like Excel. Excel: AVERAGEIFS / AVERAGEIF." },
+  minifs:     { label: "MINIFS",     description: "Smallest Value where every criteria row passes; nothing matching is 0 like Excel. Excel: MINIFS." },
+  maxifs:     { label: "MAXIFS",     description: "Largest Value where every criteria row passes; nothing matching is 0 like Excel. Excel: MAXIFS." },
+} satisfies Record<CondAggOp, { label: string; description: string }>;
+
+export class SumIfsNode extends ClassicPreset.Node {
+  label: string;
+  op: CondAggOp;
+  /** Per-pair {op, matchCase}, keyed by the pair id (the `crit${id}` suffix). */
+  condConfig: Record<string, FilterCondConfig> = {};
+  stringLiterals: Record<string, string> = {};
+  nextPairId = 0;
+  readonly pairLabels: [string, string] = ["Criteria", "Value"];
+  cachedResult: number | SolError | null = null;
+  width = 210;
+  height = 260;
+
+  constructor(init?: {
+    label?: string; op?: CondAggOp;
+    condConfig?: Record<string, FilterCondConfig>; valueKeys?: string[];
+  }) {
+    super("SumIfs");
+    this.op = init?.op ?? "sumifs";
+    this.label = init?.label ?? COND_AGG_OP_META[this.op].label;
+    this.addInput("values", anyListIn("Values"));
+    const ids = pairIdsFromKeys(init?.valueKeys, "crit");
+    if (ids.length) {
+      for (const id of ids) this.addPairWithId(id);
+      for (const id of ids) {
+        const cfg = init?.condConfig?.[String(id)];
+        if (cfg) this.condConfig[String(id)] = { ...cfg };
+      }
+    } else {
+      this.addValuePair();
+    }
+    this.addOutput("result", numOut("Result"));
+  }
+
+  private addPairWithId(id: number): void {
+    this.addInput(`crit${id}`, anyListIn(`Criteria ${id + 1}`));
+    this.addInput(`cval${id}`, strIn(`Value ${id + 1}`));
+    if (!this.condConfig[String(id)]) this.condConfig[String(id)] = { op: "eq" };
+    this.nextPairId = Math.max(this.nextPairId, id + 1);
+  }
+
+  /** Ordered (critKey, cvalKey) pairs currently present, in insertion order. */
+  valuePairKeys(): Array<[string, string]> {
+    return Object.keys(this.inputs)
+      .filter((k) => k.startsWith("crit"))
+      .map((k) => { const id = k.slice(4); return [`crit${id}`, `cval${id}`] as [string, string]; });
+  }
+
+  addValuePair(): void {
+    this.addPairWithId(this.nextPairId);
+  }
+
+  removeValuePair(critKey: string): void {
+    const id = critKey.slice(4);
+    this.removeInput(`crit${id}`);
+    this.removeInput(`cval${id}`);
+    delete this.stringLiterals[`cval${id}`];
+  }
+
+  data(inputs: Record<string, unknown[] | undefined>): { result: number | SolError | null } {
+    const values = inputs.values?.[0] as unknown[] | null | undefined;
+    interface Crit { arr: unknown[]; op: FilterOp; value: string; matchCase: boolean; type: FrameColType }
+    const crits: Crit[] = [];
+    for (const [critKey, cvalKey] of this.valuePairKeys()) {
+      const id = critKey.slice(4);
+      const arr = inputs[critKey]?.[0] as unknown[] | null | undefined;
+      const val = String((inputs[cvalKey] as string[] | undefined)?.[0] ?? this.stringLiterals[cvalKey] ?? "");
+      if (arr == null || val.trim() === "") continue; // row not written yet
+      const cfg = this.condConfig[id];
+      crits.push({ arr, op: cfg?.op ?? "eq", value: val, matchCase: cfg?.matchCase ?? false, type: listElemColType(arr) });
+    }
+    const finish = (r: number | SolError | null) => { this.cachedResult = r; return { result: r }; };
+    if (crits.length === 0) return finish(null);
+    // COUNTIFS runs on the criteria alone (Excel takes no values range); the
+    // others aggregate Values and need them wired.
+    const n = this.op === "countifs"
+      ? Math.max(...crits.map((c) => c.arr.length))
+      : (values?.length ?? 0);
+    if (this.op !== "countifs" && values == null) return finish(null);
+    const passes = (i: number) => crits.every((c) =>
+      i < c.arr.length && passesFilter(c.arr[i] as FrameCell, c.op, c.value, c.type, c.matchCase));
+    if (this.op === "countifs") {
+      let count = 0;
+      for (let i = 0; i < n; i++) if (passes(i)) count++;
+      return finish(count);
+    }
+    const kept: unknown[] = [];
+    for (let i = 0; i < n; i++) if (passes(i)) kept.push((values as unknown[])[i]);
+    const prep = forAggregate(kept);
+    if (prep.error) return finish(prep.error);
+    const nums = prep.nums;
+    switch (this.op) {
+      case "sumifs":     return finish(nums.reduce((a, b) => a + b, 0));
+      case "averageifs": return finish(nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : solError("#DIV/0!", "No values matched the criteria"));
+      case "minifs":     return finish(nums.length ? Math.min(...nums) : 0); // Excel: empty match → 0
+      case "maxifs":     return finish(nums.length ? Math.max(...nums) : 0);
+    }
   }
 }
 

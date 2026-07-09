@@ -389,11 +389,14 @@
       "y": 2485,
       "init": {
         "label": "Filter vals > 1",
-        "op": "gt"
+        "condConfig": {
+          "0": {
+            "op": "gt"
+          }
+        }
       },
-      "literals": {
-        "threshold": 1,
-        "threshold2": 0
+      "stringLiterals": {
+        "value0": "1"
       }
     },
     {

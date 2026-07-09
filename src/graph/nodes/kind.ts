@@ -15,7 +15,7 @@ import { ComparisonNode, BooleanOpNode, NotNode, IfNode, IFErrorNode, IsTestNode
 import { ComplexFromNode, ComplexUnpackNode, ComplexUnaryNode, ComplexBinaryNode, ComplexPowerNode, QuadraticRootsNode } from "./complex";
 import {
   ListInputNode, RangeNode, AggregateNode,
-  ListLengthNode, ListIndexNode, SortNode,
+  ListLengthNode, ListIndexNode, SortNode, FilterNode, SumIfsNode,
   ReverseNode, SliceNode,
   UniqueNode, TakeNode, DropNode, SetOpNode, SetRelationNode, IsInNode, TallyNode,
   ConcatListsNode, CumulativeNode, DiffNode,
@@ -105,6 +105,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
   if (
     node instanceof ListInputNode || node instanceof RangeNode || node instanceof AggregateNode ||
     node instanceof ListLengthNode || node instanceof ListIndexNode || node instanceof SortNode ||
+    node instanceof FilterNode || node instanceof SumIfsNode ||
     node instanceof ReverseNode || node instanceof SliceNode ||
     node instanceof UniqueNode || node instanceof TakeNode || node instanceof DropNode ||
     node instanceof SetOpNode || node instanceof TallyNode ||

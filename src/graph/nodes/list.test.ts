@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import type { CondAggOp } from "./list";
 import {
   RangeNode,
   LinSpaceNode,
@@ -10,6 +11,7 @@ import {
   ArgMinMaxNode,
   AggregateNode,
   FilterNode,
+  SumIfsNode,
   FillNode,
   SortNode,
   SortByNode,
@@ -348,57 +350,114 @@ describe("Reduce — means and shape", () => {
   });
 });
 
-describe("Filter — a null/unknown predicate row is excluded (SQL WHERE keeps only TRUE)", () => {
-  it("a missing data cell is dropped, not coerced to 0 and guessed", () => {
-    // keep x > 1 over [1, null, 3]: 1>1 false, null → unknown → excluded, 3>1 true → [3].
-    const r = new FilterNode({ op: "gt" }).data({ list: [[[1, null, 3]]], threshold: [1] }).result;
-    expect(r).toEqual([[3]]);
-  });
-
-  it("Dropped is the exhaustive complement by position (Kept ∪ Dropped = input)", () => {
-    const out = new FilterNode({ op: "gt" }).data({ list: [[[1, null, 3]]], threshold: [1] });
-    expect(out.result).toEqual([[3]]);
-    // The null cell failed the predicate, so it lands in Dropped — nothing vanishes.
-    expect(out.dropped).toEqual([[1, null]]);
-  });
-
-  it("a mask splits rows of a 2-D table into Kept and Dropped", () => {
-    const out = new FilterNode().data({
-      list: [[[1, 2], [3, 4], [5, 6]]],
-      mask: [[1, 0, 1]],
+describe("Filter — condition rows over the list's own values (D16)", () => {
+  const mk = (
+    conds: Array<{ op: import("../frameVerbs").FilterOp; value: string; matchCase?: boolean }>,
+    combine: "and" | "or" = "and",
+  ) => {
+    const n = new FilterNode({
+      combine,
+      valueKeys: conds.map((_, i) => `value${i}`),
+      condConfig: Object.fromEntries(conds.map((c, i) => [String(i), { op: c.op, matchCase: c.matchCase }])),
     });
-    expect(out.result).toEqual([[1, 2], [5, 6]]);
-    expect(out.dropped).toEqual([[3, 4]]);
+    conds.forEach((c, i) => { n.stringLiterals[`value${i}`] = c.value; });
+    return n;
+  };
+
+  it("a missing cell fails the condition and lands in Dropped (exhaustive split)", () => {
+    const out = mk([{ op: "gt", value: "1" }]).data({ list: [[1, null, 3]] });
+    expect(out.result).toEqual([3]);
+    expect(out.dropped).toEqual([1, null]);
   });
 
-  it("the 2-D-needs-a-mask error names a fully-blank row/column when one exists", () => {
-    const out = new FilterNode({ op: "gt" }).data({ list: [[[1, null], [3, null]]], threshold: [1] });
-    expect(isSolError(out.result) && out.result.message).toContain("fully-blank");
-    // No blank lane → the plain message, no red herring.
-    const plain = new FilterNode({ op: "gt" }).data({ list: [[[1, 2], [3, 4]]], threshold: [1] });
-    expect(isSolError(plain.result) && plain.result.message).not.toContain("fully-blank");
+  it("text lists filter with the frame ops; Match case rides per condition", () => {
+    const cities = ["Oslo", "BERGEN", "oslo"];
+    expect(mk([{ op: "eq", value: "oslo" }]).data({ list: [cities] }).result).toEqual(["Oslo", "oslo"]);
+    expect(mk([{ op: "eq", value: "oslo", matchCase: true }]).data({ list: [cities] }).result).toEqual(["oslo"]);
+    expect(mk([{ op: "contains", value: "berg" }]).data({ list: [cities] }).result).toEqual(["BERGEN"]);
   });
 
-  it("the 2-D-needs-a-mask error names a fully-blank row/column when one exists", () => {
-    const out = new FilterNode({ op: "gt" }).data({ list: [[[1, null], [3, null]]], threshold: [1] });
-    expect(isSolError(out.result) && out.result.message).toContain("fully-blank");
-    // No blank lane → the plain message, no red herring.
-    const plain = new FilterNode({ op: "gt" }).data({ list: [[[1, 2], [3, 4]]], threshold: [1] });
-    expect(isSolError(plain.result) && plain.result.message).not.toContain("fully-blank");
+  it("AND narrows, OR unions", () => {
+    const arr = [1, 5, 10, 20];
+    expect(mk([{ op: "gt", value: "2" }, { op: "lt", value: "15" }], "and").data({ list: [arr] }).result).toEqual([5, 10]);
+    expect(mk([{ op: "lt", value: "2" }, { op: "gt", value: "15" }], "or").data({ list: [arr] }).result).toEqual([1, 20]);
   });
 
-  it("the 2-D-needs-a-mask error names a fully-blank lane when one exists (the trailing-comma trap)", () => {
-    const out = new FilterNode({ op: "gt" }).data({ list: [[[1, null], [3, null]]], threshold: [1] });
-    expect(isSolError(out.result) && out.result.message).toContain("fully-blank");
-    // No blank lane → no red herring in the message.
-    const plain = new FilterNode({ op: "gt" }).data({ list: [[[1, 2], [3, 4]]], threshold: [1] });
-    expect(isSolError(plain.result) && plain.result.message).not.toContain("fully-blank");
+  it("no written condition = pass-through (Dropped stays blank)", () => {
+    const out = new FilterNode().data({ list: [[1, 2]] });
+    expect(out.result).toEqual([1, 2]);
+    expect(out.dropped).toBeNull();
   });
 
-  it("a shape error lands on BOTH outputs", () => {
-    const out = new FilterNode().data({ list: [[[1, 2], [3, 4]]], mask: [[1, 0, 1]] });
-    expect(isSolError(out.result)).toBe(true);
-    expect(isSolError(out.dropped)).toBe(true);
+  it("a per-cell error fails its condition and lands in Dropped unmorphed", () => {
+    const err = solError("#DIV/0!", "x");
+    const out = mk([{ op: "gt", value: "1" }]).data({ list: [[1, err, 3]] });
+    expect(out.result).toEqual([3]);
+    expect((out.dropped as unknown[])[1]).toBe(err);
+  });
+
+  it("legacy combine \"none\" folds to AND; valueKeys round-trip (persistence contract)", () => {
+    expect(new FilterNode({ combine: "none" }).combine).toBe("and");
+    const n = mk([{ op: "gt", value: "1" }, { op: "lt", value: "9" }]);
+    const clone = new FilterNode({ valueKeys: n.valueInputKeys(), condConfig: n.condConfig });
+    expect(clone.valueInputKeys()).toEqual(n.valueInputKeys());
+    expect(clone.condConfig["1"].op).toBe("lt");
+  });
+});
+
+describe("SUMIFS — the parallel-list pattern, task-shaped (D16)", () => {
+  const region = ["North", "South", "North", "East", "North", "South"];
+  const sales = [120, 80, 200, 150, 90, 60];
+  const mk = (
+    op: CondAggOp,
+    pairs: Array<{ crit: unknown[]; op: import("../frameVerbs").FilterOp; value: string }>,
+  ) => {
+    const n = new SumIfsNode({
+      op,
+      valueKeys: pairs.flatMap((_, i) => [`crit${i}`, `cval${i}`]),
+      condConfig: Object.fromEntries(pairs.map((c, i) => [String(i), { op: c.op }])),
+    });
+    pairs.forEach((c, i) => { n.stringLiterals[`cval${i}`] = c.value; });
+    const inputs: Record<string, unknown[]> = {};
+    pairs.forEach((c, i) => { inputs[`crit${i}`] = [c.crit]; });
+    return { n, inputs };
+  };
+
+  it("SUMIFS(sales, region, North) — the whole point, one node", () => {
+    const { n, inputs } = mk("sumifs", [{ crit: region, op: "eq", value: "North" }]);
+    expect(n.data({ values: [sales], ...inputs }).result).toBe(410); // 120+200+90
+  });
+
+  it("COUNTIFS needs no Values; two criteria AND like Excel", () => {
+    const { n, inputs } = mk("countifs", [{ crit: region, op: "eq", value: "North" }]);
+    expect(n.data(inputs).result).toBe(3);
+    const two = mk("sumifs", [
+      { crit: region, op: "eq", value: "North" },
+      { crit: sales, op: "gt", value: "100" },
+    ]);
+    expect(two.n.data({ values: [sales], ...two.inputs }).result).toBe(320); // 120+200
+  });
+
+  it("empty matches follow Excel: AVERAGEIFS → #DIV/0!, MINIFS/MAXIFS → 0", () => {
+    const { n, inputs } = mk("averageifs", [{ crit: region, op: "eq", value: "Mars" }]);
+    const avg = n.data({ values: [sales], ...inputs }).result;
+    expect(isSolError(avg) && avg.code).toBe("#DIV/0!");
+    const { n: mn, inputs: i2 } = mk("minifs", [{ crit: region, op: "eq", value: "Mars" }]);
+    expect(mn.data({ values: [sales], ...i2 }).result).toBe(0);
+  });
+
+  it("kept nulls are skipped; a kept error propagates (aggregate policy)", () => {
+    const { n, inputs } = mk("sumifs", [{ crit: [1, 1, 1], op: "eq", value: "1" }]);
+    expect(n.data({ values: [[10, null, 5]], ...inputs }).result).toBe(15);
+    const err = solError("#DIV/0!", "x");
+    const { n: n2, inputs: i2 } = mk("sumifs", [{ crit: [1, 1], op: "eq", value: "1" }]);
+    const out = n2.data({ values: [[10, err]], ...i2 }).result;
+    expect(isSolError(out) && out.code).toBe("#DIV/0!");
+  });
+
+  it("a criteria cell beyond its row's length fails that criterion", () => {
+    const { n, inputs } = mk("sumifs", [{ crit: [1], op: "eq", value: "1" }]); // shorter than values
+    expect(n.data({ values: [[10, 99]], ...inputs }).result).toBe(10);
   });
 });
 

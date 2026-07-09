@@ -166,7 +166,24 @@ drill into the archive (or `git log`) only for the mechanics of a specific item.
   modifiers on the --sock-* vars; numeric keeps the current look. And
   **List/Table Input header accents track the SegToggle** (NodeShell grew the
   accentOverride passthrough NodeCard already had; SOCKET_COLORS values, the
-  FC-header precedent).
+  FC-header precedent). — **The Filter-family redesign (D16, author-led over
+  several rounds; ship only after explicit agreement):** the old list/table
+  Filter was FOUR tools in one card (own-value predicate, parallel-list mask,
+  table rows/cols, Excel FILTER). Now: **Filter = 1-D only**, the frame
+  Filter's shared condition engine (`passesFilter` exported; extensible AND/OR
+  op+value rows, per-row Match case, anylist, Kept+Dropped); the **mask and
+  the table socket are DELETED** (the socket advertised `table` while the
+  predicate refused genuine 2-D — the incoherence that triggered this).
+  **Tables filter through the frame Filter** — a matrix widens into its frame
+  input as Col1..N (already true in the lattice; pinned by test). **The
+  parallel-list pattern got a task-shaped node: SUMIFS**
+  (SUMIFS/COUNTIFS/AVERAGEIFS/MINIFS/MAXIFS; Values + paired criteria rows,
+  AND-only, Excel's empty-match parity — AVERAGEIFS #DIV/0!, MIN/MAXIFS 0).
+  Non-aggregating parallel-list filtering = Frame from Lists → Filter Rows
+  (mixed-family parallels can't share a matrix anyway). Seeds rewired
+  (lambda-helpers lost its mask demo — MAP reads temps directly;
+  null-and-logical + the personal-finance generator moved to condition rows).
+  Full reasoning incl. the per-cell/flatten/hole-punch rejections in D16.
 
 ### SESSION DIGEST (2026-07-08, evening — What's New resell + 1.2/2.0 plans)
 - **What's New rebuilt around the author's sell bar** ("a shiny thing a user will go

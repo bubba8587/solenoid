@@ -69,6 +69,7 @@ export { UniqueComponent } from "./UniqueNode";
 export { SetOpComponent } from "./SetOpNode";
 export { SetRelationComponent } from "./SetRelationNode";
 export { FilterComponent } from "./FilterNode";
+export { SumIfsComponent } from "./SumIfsNode";
 export { FillComponent } from "./FillNode";
 export { DiffComponent } from "./DiffNode";
 export { CumulativeComponent } from "./CumulativeNode";

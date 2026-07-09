@@ -126,7 +126,7 @@ export function SortFrameComponent({ data, emit }: NodeProps<SortFrameNodeType>)
 
 // ─── FILTER FRAME ──────────────────────────────────────────────────────────────
 
-const FILTER_OP_OPTIONS: { value: FilterOp; label: string }[] = [
+export const FILTER_OP_OPTIONS: { value: FilterOp; label: string }[] = [
   { value: "gt", label: "＞ greater than" },
   { value: "gte", label: "≥ at least" },
   { value: "lt", label: "＜ less than" },
@@ -140,9 +140,9 @@ const FILTER_OP_OPTIONS: { value: FilterOp; label: string }[] = [
 
 // The ops where case can matter — string eq/neq + the three text predicates.
 // Numeric/date/logical comparisons ignore the flag, so the checkbox hides.
-const TEXT_MATCH_OPS: ReadonlySet<FilterOp> = new Set(["eq", "neq", "contains", "startsWith", "endsWith"]);
+export const TEXT_MATCH_OPS: ReadonlySet<FilterOp> = new Set(["eq", "neq", "contains", "startsWith", "endsWith"]);
 
-const FILTER_COMBINE_OPTIONS: { value: FilterCombine; label: string; title: string }[] = [
+export const FILTER_COMBINE_OPTIONS: { value: FilterCombine; label: string; title: string }[] = [
   { value: "and", label: "AND", title: "Keep rows matching every condition" },
   { value: "or", label: "OR", title: "Keep rows matching any condition" },
 ];

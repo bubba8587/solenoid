@@ -15,10 +15,10 @@ import {
   splitColumn, addIndexColumn, decisionMatrix, decisionCriteria, decisionSensitivity,
   lookupFrameCell, lookupCubeCell, lookupFrameRowIndex, lookupCubeRowIndex,
   frameRowAt, cubeRowAt, asLookupSource, reconcileFrames,
-  type FilterOp, type FilterCond, type FilterCombine, type JoinHow, type AsofDirection, type AggOp, type DecisionNormalize, type LookupMatchMode, type LookupSearchMode, type ReconcileSummary,
+  type FilterCond, type FilterCombine, type JoinHow, type AsofDirection, type AggOp, type DecisionNormalize, type LookupMatchMode, type LookupSearchMode, type ReconcileSummary,
 } from "../frameVerbs";
 import { pairIdsFromKeys } from "./logic";
-import type { PivotSpec } from "../frameVerbs";
+import type { PivotSpec, FilterCondConfig } from "../frameVerbs";
 import { runFrameUnary, runFrameJoin, runFrameAppend, readFrame, collectPreview, dropFrameRef, isFrameRef, frameBackend, materialize, flushRef, type FrameInput, type FrameRef } from "../frameBackend";
 import type { CubeValue, CubeCell } from "../frame";
 
@@ -199,7 +199,7 @@ export class SortFrameNode extends ClassicPreset.Node {
 // Blanks/errors in the data fail that row's condition (under OR another
 // condition can still keep the row).
 
-export interface FilterCondConfig { op: FilterOp; matchCase?: boolean }
+export type { FilterCondConfig } from "../frameVerbs";
 
 export class FilterFrameNode extends ClassicPreset.Node {
   label: string;

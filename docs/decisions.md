@@ -263,6 +263,44 @@ accepts N cables) would collapse the extensible-row pattern across all four node
 
 ---
 
+### D16 — The Filter family: one honest job per node (mask removed, SUMIFS born)
+**When:** 2026-07-09 (author-led redesign after "I'm really not happy with the node"; the
+final shape was agreed in-conversation before building).
+**The diagnosis:** the old list/table Filter was FOUR tools wearing one card — filter a
+list by its own values; filter a list by a PARALLEL list (the "Keep if" mask); filter a
+table's rows/columns; be Excel's FILTER. Every earlier fix added chrome (mask sockets,
+axis toggles, index pickers) to bridge them; the redesign deletes capability instead.
+**What shipped:**
+- **Filter (list)** does exactly one thing: a 1-D list tested against ITS OWN values,
+  using the frame Filter's condition engine (`passesFilter` — shared, not copied):
+  extensible op+value rows, AND/OR, text ops with per-row Match case, `anylist` in,
+  Kept + Dropped out. The mask is GONE (author: not intuitive enough); the table
+  acceptance is GONE (the socket used to advertise `table` while the predicate path
+  refused genuine 2-D — the incoherence that triggered the redesign).
+- **Table filtering routes through the frame Filter**: a bare matrix ALREADY widens into
+  its `frame` input as auto-named `Col1..N` columns (zero new code — pinned by test).
+  Column filtering = TRANSPOSE → filter → TRANSPOSE, accepted as rare. The full merge
+  (lists too) is impossible by design: a list widens as ONE ROW (CSV orientation), so
+  row-filtering it is meaningless — lists keep their own node.
+- **SUMIFS node** (`SumIfsNode`, ops SUMIFS/COUNTIFS/AVERAGEIFS/MINIFS/MAXIFS): the
+  task-shaped home of the parallel-list pattern — aggregate Values where every criteria
+  ROW (wired criteria list + op + value) passes, AND-only like Excel's *IFS. Replaces
+  the mask's bread-and-butter job (`SUMIF(region, "North", sales)` = one node) with
+  Excel's own mental model minus its range-alignment footguns. Empty-match parity:
+  AVERAGEIFS → #DIV/0!, MINIFS/MAXIFS → 0, SUMIFS → 0, COUNTIFS needs no Values.
+- Parallel-list filtering WITHOUT aggregation = Frame from Lists → Filter Rows (the
+  honest relational modeling; mixed-family parallel lists can't share a matrix anyway,
+  so frames were always that data's only container).
+**Cost accepted:** `FILTER(sales, region="North")` as a bare list has no 2-node spelling
+anymore (mask + Comparison used to do it); the sanctioned spellings are SUMIFS (when
+aggregating — the overwhelmingly common case) or the frames route.
+**What would reverse it:** the mask's return would need evidence that non-aggregating
+parallel-list filtering is common enough to out-vote the mask's opacity; per-cell 2-D
+filtering stays out regardless (Excel's FILTER refuses 2-D includes; ragged output
+doesn't exist in its model — TOCOL → Filter is the explicit spelling).
+
+---
+
 ## Structural risks (the threats register — distinct from bugs)
 
 Not defects (those are the audit) and not opportunities (those are strategy-threads).

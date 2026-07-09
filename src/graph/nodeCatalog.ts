@@ -9,7 +9,7 @@ import {
   FormatControllerNode, ExpressionNode, EquationNode, RegexNode, GroupByNode,
   ClampNode, BooleanOpNode, NotNode, IfNode, ConduitNode, CastNode, ConstantNode, MRoundNode,
   ListInputNode, AggregateNode, RangeNode, ListLengthNode, ListIndexNode,
-  SortNode, ReverseNode, SliceNode, FilterNode, FillNode, XLookupNode,
+  SortNode, ReverseNode, SliceNode, FilterNode, SumIfsNode, FillNode, XLookupNode,
   GcdNode, IFErrorNode, NaNode, RandBetweenNode, RoundNNode, ConvertNode,
   UniqueNode, SetOpNode, SetRelationNode, TakeNode, DropNode, VStackNode, ConcatListsNode, FrameFromListsNode, QuadraticRootsNode, CumulativeNode, DiffNode,
   ArgMinMaxNode, ContainsNode, NthValueNode, PercentileNode, QuartileNode,
@@ -439,7 +439,8 @@ export const NODE_CATALOG: CatalogEntry[] = [
       {
         type: "category", label: "Shape", description: "Reorder, trim, and filter lists.",
         children: [
-          { type: "list-filter",  label: "FILTER", description: "Keep list values or table rows that pass a condition: one or two comparisons combined with AND/OR, or a wired Keep-if mask where nonzero keeps. Chain with SUM / COUNT / AVERAGE for SUMIF(S) / COUNTIF(S). Excel: FILTER.", accent: NODE_KIND_ACCENTS.list, create: () => new FilterNode() },
+          { type: "list-filter",  label: "FILTER", description: "Keep list values passing condition rows (op + value, add rows for AND/OR; text tests ignore case like Excel's =, Match case per row); failures exit the Dropped output. Any element type. To filter a TABLE's rows, wire the table into Filter Rows (its columns arrive as Col1, Col2…). Excel: FILTER.", accent: NODE_KIND_ACCENTS.list, create: () => new FilterNode(), keywords: "keep where condition predicate" },
+          { type: "sumifs", label: "SUMIFS", description: "Aggregate one list by conditions on PARALLEL lists: pick sum/count/average/min/max, wire Values, and add criteria rows (a criteria list + test + value, all must pass — Excel's *IFS). SUMIFS(sales, region, =North) as one node. Excel: SUMIFS, COUNTIFS, AVERAGEIFS, MINIFS, MAXIFS.", accent: NODE_KIND_ACCENTS.list, create: () => new SumIfsNode(), keywords: "sumif countif averageif minif maxif criteria conditional aggregate parallel" },
           { type: "list-fill",  label: "Coalesce / Fill", description: "Handle missing (null) cells: fill with a constant, forward/back-fill, impute mean/median/mode, interpolate, drop them, or coalesce any number of lists in priority order, where the first present value wins, like SQL COALESCE. Errors pass through; stats use the present values only. Pairs with ISNULL.", accent: NODE_KIND_ACCENTS.list, create: () => new FillNode() },
           { type: "pair", children: [
             { type: "list-sort",    label: "SORT",    description: "Sort ascending or descending. Excel: SORT(range).", create: () => new SortNode() },
