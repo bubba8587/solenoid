@@ -2,7 +2,7 @@ import { ClassicPreset } from "rete";
 import { numListSocket, strListSocket, dateListSocket, logicalListSocket, type SolenoidSocket } from "../sockets";
 import { parseDateToSerial } from "./date";
 import { getRecalcGen } from "../process";
-import { listIn, listOut, numIn, numOut, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameOut, anyListIn, anyListOut } from "./shared";
+import { listIn, listOut, numIn, numOut, anyIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameOut, anyListIn, anyListOut } from "./shared";
 import { pairIdsFromKeys } from "./logic";
 import { passesFilter, type FilterOp, type FilterCondConfig } from "../frameVerbs";
 import { solError, isSolError, type SolError } from "../errorValue";
@@ -407,6 +407,18 @@ function listElemColType(arr: readonly unknown[]): FrameColType {
   return "number";
 }
 
+/** Read a Filter/SUMIFS Value slot: the wired value wins over the literal even
+ *  when it's `null` (the readInput rule) — a wired missing reads as "not written
+ *  yet" (blank). A wired scalar STRINGIFIES, so both engines see exactly what a
+ *  typed literal would say ("5", "true", a date serial); a wired SolError becomes
+ *  its code text, which matches no rows (the unparseable-value rule). */
+export function readFilterValue(wired: unknown[] | undefined, literal: string | undefined): string {
+  const raw: unknown = wired !== undefined && wired.length > 0 ? wired[0] : (literal ?? "");
+  if (raw === null || raw === undefined) return "";
+  if (isSolError(raw)) return raw.code;
+  return String(raw);
+}
+
 export class FilterNode extends ClassicPreset.Node {
   label: string;
   combine: FilterCombine;
@@ -445,7 +457,9 @@ export class FilterNode extends ClassicPreset.Node {
   }
 
   private addCondWithId(id: number): void {
-    this.addInput(`value${id}`, strIn(`Value ${id + 1}`));
+    // `any` (scalar): a wired Slider/Number/Date/Boolean threshold connects;
+    // unwired, the typed text field is the literal (parsed per the list's type).
+    this.addInput(`value${id}`, anyIn(`Value ${id + 1}`));
     if (!this.condConfig[String(id)]) this.condConfig[String(id)] = { op: "gt" };
     this.nextCondId = Math.max(this.nextCondId, id + 1);
   }
@@ -478,7 +492,7 @@ export class FilterNode extends ClassicPreset.Node {
     const conds: { op: FilterOp; value: string; matchCase: boolean }[] = [];
     for (const key of this.valueInputKeys()) {
       const id = key.slice(5);
-      const val = String((inputs[key] as string[] | undefined)?.[0] ?? this.stringLiterals[key] ?? "");
+      const val = readFilterValue(inputs[key], this.stringLiterals[key]);
       if (val.trim() === "") continue; // "not written yet" — excluded (frame-Filter parity)
       const cfg = this.condConfig[id];
       conds.push({ op: cfg?.op ?? "gt", value: val, matchCase: cfg?.matchCase ?? false });

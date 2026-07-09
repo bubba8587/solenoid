@@ -389,6 +389,19 @@ describe("Filter — condition rows over the list's own values (D16)", () => {
     expect(out.dropped).toBeNull();
   });
 
+  it("a WIRED scalar drives a Value row (the `any` socket): number, boolean, and a wired null reads as unwritten", () => {
+    const n = mk([{ op: "gt", value: "999" }]); // literal is overridden by the cable
+    expect(n.data({ list: [[1, 5, 10]], value0: [4] }).result).toEqual([5, 10]);
+    // Boolean threshold on a logical list (stringifies to "true").
+    const nb = mk([{ op: "eq", value: "" }]);
+    expect(nb.data({ list: [[true, false, true]], value0: [true] }).result).toEqual([true, true]);
+    // A wired MISSING wins over the literal and reads as "not written yet".
+    const nn = mk([{ op: "gt", value: "2" }]);
+    const out = nn.data({ list: [[1, 5]], value0: [null] });
+    expect(out.result).toEqual([1, 5]);
+    expect(out.dropped).toBeNull();
+  });
+
   it("a per-cell error fails its condition and lands in Dropped unmorphed", () => {
     const err = solError("#DIV/0!", "x");
     const out = mk([{ op: "gt", value: "1" }]).data({ list: [[1, err, 3]] });
