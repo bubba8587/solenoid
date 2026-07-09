@@ -5,6 +5,40 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-09, overnight — Pack Duty: 8 domain packs + pack infra)
+- **Pack definitions split into `src/graph/packs/`** (one file per pack on
+  `packs/packShared.ts` — authoring types + `formulaNode`/`placeFormulas`; `packs.ts`
+  stays the registry/activation store, public surface unchanged). `FormulaPackEntry`
+  gained `resultAs`/`excel`/`keywords`; `NODE_PACK_TAGS` now derives from per-pack
+  `tags`. `packs/formulaTestKit.ts` evaluates presets exactly as placed — every pack
+  ships a vitest file asserting its formulas against hand-checked reference values
+  (several of MY first-guess references were wrong and the tests caught me, not the
+  formulas — the kit earns its keep).
+- **Six new domain packs, all `defaultActive: false`:** Electricity & Circuits
+  (26 [F] + Parallel Combine, E-Series, AWG; electrical FC units + an SI-prefix
+  format), **Electromagnetism** (21 [F] + the CODATA Physics Constant node; the first
+  real `dependsOn` — activating it pulls in Electricity), Health & Fitness (20 [F]),
+  Fluid Mechanics (20 [F] + the Colebrook root-finding node), Thermodynamics & Air
+  (21 [F] + ISA standard atmosphere (7 layers, derived base pressures) + Antoine
+  vapor pressure (9 substances, each triple test-verified by reproducing its normal
+  boiling point)), Earth & Sky (8 [F] + NOAA Sun Position / Sunrise-Sunset + Moon
+  Phase), Chemistry Basics (13 [F] + Element (118 IUPAC weights) + Molar Mass (real
+  formula parser: nesting, hydrates)). Existing packs got waves too: Geometry +15
+  (circles & arcs, solids), Timesavers +7 [F] + Reverse Text + Spell Number.
+- **Sets & Membership pack + core companions** (the backlog's parked Set/relational
+  scoping, built as scoped): Is In (membership mask → logical list) + Tally (value
+  counts → Frame) in the pack; COUNT DISTINCT as a new `ReduceOp` (pack-tagged);
+  **semi/anti `JoinHow` on the core Join** — JS oracle + native Polars
+  (`JoinType::Semi/Anti`, new `semi_anti_join` cargo feature), left-columns-only in
+  `shapeOfJoin`, cargo parity test (69 rust tests green).
+- **Formula-grammar gotcha for pack authors:** `e` is Euler's constant, not a
+  usable variable name (an EM formula silently read e² as 7.389 until the value
+  test caught it — use `ef`, `ev`, etc.).
+- Composite-shaped pack ideas (Wheatstone, pump operating point, psychrometric
+  state point, Pareto, % of Total…) deliberately NOT hand-rolled — planned in
+  **`docs/pack-composite-plans.md`**; backlog Packs section reconciled (Set pack
+  line deleted, Timesavers remainder + Materials-pack/Interpolated-Lookup lines).
+
 ### SESSION DIGEST (2026-07-08, evening — What's New resell + 1.2/2.0 plans)
 - **What's New rebuilt around the author's sell bar** ("a shiny thing a user will go
   discover and play with / would inspire a download on social media; What's New is not

@@ -176,27 +176,27 @@ this backlog stays the per-item source of truth.
 
 ## Packs
 
-- [ ] **Set / relational pack** (author 2026-07-07 — parked as a pack idea, don't build
-  unprompted). The core set nodes ship in-app: **Set** (union/intersect/difference/symmetric
-  diff → `SetOpNode`) + **Set relation** (equal/subset/superset/disjoint → `SetRelationNode`).
-  Candidate pack members surfaced while scoping, NOT built: (1) **"Is in" membership mask** —
-  elementwise Contains: for each item in A, TRUE/FALSE if it's in B → a logical list aligned to
-  A (the `ISNUMBER(MATCH())` pattern; pairs with Filter to keep original rows + their columns;
-  the scalar `ContainsNode` only does one needle); (2) **Count distinct** — best as a new
-  `ReduceOp` on `AggregateNode`, not a node; (3) **Anti / semi join** — new `JoinHow` modes
-  (rows of A whose key is / isn't in B, keeping A's columns — the table-level set diff/intersect);
-  (4) **Tally / value counts** — distinct value → count as a Frame (a bare-list shortcut; GroupBy
-  already does it for frames). Skipped as niche: multiset (dup-respecting) ops, power set,
-  Cartesian product, combination/permutation generation, Jaccard similarity.
-- [ ] **More domain packs** — post-v1 polish (framework + Geometry worked example
-  done). Don't build unprompted.
+- [ ] **Materials & Mechanical pack + the Interpolated Lookup primitive** — the next
+  domain candidate after the 2026-07-09 pack wave (Electricity, Electromagnetism, Health,
+  Fluids, Thermo & Air, Sets, Earth & Sky, Chemistry). Gated on Interpolated Lookup
+  (1-D/2-D dataset interpolation node) for the table-driven half (hardness conversion,
+  pipe schedules, material properties). See `pack-composite-plans.md` tail.
+- [ ] **Timesavers remainder** (proposal: `archive/timesavers-pack-proposal.md`; [F] batch +
+  Reverse Text + Spell Number landed 2026-07-09): the date-serial [F] idioms (pending the
+  Formula.js serial-interop check), the duration trio (wants an elapsed-`[h]:mm` format
+  first), Split Name (multi-output [C]), and the list-reducer CORE batch (Conditional
+  Aggregate AND/OR, Multi-Criteria Lookup, Last/First Non-Blank, Rank-in-Group…).
+- [ ] **Composite pack-node shape** — packs can't ship subgraphs yet; the queued
+  composite pack nodes (Wheatstone, pump operating point, psychrometric state point,
+  Pareto, % of Total…) are planned in `pack-composite-plans.md`.
 - [ ] **Pack variant-switch reconciles the socket set** — a simple pack's variant
   dropdown must add/remove sockets like Cast/read-as do (retype + reconcile), not
-  leave stale ones.
-- [ ] **Excel Timesavers pack additions** (proposal: `archive/timesavers-pack-proposal.md`)
-  — ~25 formula-data presets + ~8 custom-logic + ~3 composites.
+  leave stale ones. (The 2026-07-09 custom nodes — E-Series, Antoine, Element — all keep
+  FIXED sockets across their dropdowns, deliberately, so nothing waits on this.)
 - [ ] **Pack distribution + dependency system** — LAST for 1.1 and a "maybe"; must
-  land in tandem with subgraphs (`archive/v1.1-plan.md` B1 remainder).
+  land in tandem with subgraphs (`archive/v1.1-plan.md` B1 remainder). (In-app
+  `dependsOn` auto-activation already works — Electromagnetism → Electricity is the
+  live example; this item is about DISTRIBUTION of third-party packs.)
 
 ## Desktop shell
 
