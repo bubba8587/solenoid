@@ -113,7 +113,14 @@
       "y": -120,
       "init": {
         "label": "Keep income (> 0)",
-        "op": "gt"
+        "condConfig": {
+          "0": {
+            "op": "gt"
+          }
+        }
+      },
+      "stringLiterals": {
+        "value0": "0"
       }
     },
     {
@@ -142,7 +149,14 @@
       "y": 140,
       "init": {
         "label": "Keep spend (< 0)",
-        "op": "lt"
+        "condConfig": {
+          "0": {
+            "op": "lt"
+          }
+        }
+      },
+      "stringLiterals": {
+        "value0": "0"
       }
     },
     {
@@ -544,7 +558,14 @@
       "y": 1320,
       "init": {
         "label": "Keep assets (> 0)",
-        "op": "gt"
+        "condConfig": {
+          "0": {
+            "op": "gt"
+          }
+        }
+      },
+      "stringLiterals": {
+        "value0": "0"
       }
     },
     {
@@ -564,7 +585,14 @@
       "y": 1540,
       "init": {
         "label": "Keep debt (< 0)",
-        "op": "lt"
+        "condConfig": {
+          "0": {
+            "op": "lt"
+          }
+        }
+      },
+      "stringLiterals": {
+        "value0": "0"
       }
     },
     {

@@ -42,6 +42,9 @@ export type FilterOp = ComparisonOp | "contains" | "startsWith" | "endsWith";
 /** One predicate of a multi-condition filter (B-2). `matchCase` rides
  *  PER-CONDITION — "Region eq west (any case) AND Code contains X (exact)". */
 export interface FilterCond { column: string; op: FilterOp; value: FrameCell; matchCase?: boolean }
+/** Per-row {op, matchCase} config, shared by every condition-row card (the
+ *  frame Filter, the 1-D Filter, SUMIFS). */
+export interface FilterCondConfig { op: FilterOp; matchCase?: boolean }
 export type FilterCombine = "and" | "or";
 
 /** The verb set. Unary ops compose via `applyVerb`; binary ops (join, append)
@@ -199,7 +202,7 @@ function filterValueToNumber(value: FrameCell, type: FrameColType): number | nul
   return null;
 }
 
-function passesFilter(cell: FrameCell, op: FilterOp, value: FrameCell, type: FrameColType, matchCase: boolean): boolean {
+export function passesFilter(cell: FrameCell, op: FilterOp, value: FrameCell, type: FrameColType, matchCase: boolean): boolean {
   if (cell === null || isSolError(cell)) return false;
   // Simple lowercase fold, NOT locale-aware — the one spec both engines
   // implement identically (Rust `to_lowercase()` agrees with JS `toLowerCase()`).
