@@ -139,6 +139,12 @@ this backlog stays the per-item source of truth.
   per port; no UI to flip exposure or edit a hidden port's baked default. Includes the
   pack-shell "many internal ports → one shell parameter" aliasing (the stats
   confidence-level example).
+- [ ] **trueany adoption inside the drill-in + composite OUTPUT ports** (D17 follow-up,
+  2026-07-09): `settleWildcardTypes` runs on the MAIN editor only, so trueany ports on
+  nodes INSIDE a composite never adopt (hollow rings stay hollow there); and a composite
+  shell's OUTPUT ports stay static trueany (they could adopt from the internal Output
+  marker's wiring, like the shell INPUTS already adopt from outside). Both need the
+  reconcile taught the drill-in editor stack — fold into the active-graph arc above.
 
 ## Nodes / engine
 
@@ -148,7 +154,8 @@ this backlog stays the per-item source of truth.
   "series (2-D)" — unhelpful, inconsistent. Design a rigorous convention (named,
   ordered, positional columns) that every node feeding a frame reuses, so the label
   itself documents the expected shape. Ties to the 2026-07-06 standing rule (aligned
-  columns → one frame input, not parallel sockets).
+  columns → one frame input, not parallel sockets — SUMIFS joined that club 2026-07-09,
+  so the club is now charts + SUMIFS + the frame verbs).
 - [ ] **Lossless frame→cube (typed `CubeColumn`)** (author-flagged 2026-07-06, bigger
   project) — the ladder is "a Frame IS a Cube with all-flat cells," but `toCube(frame)`
   (`frameToCube`) drops column types because `CubeColumn` is `{name, cells}` with NO

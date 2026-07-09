@@ -38,6 +38,7 @@ drill into the archive (or `git log`) only for the mechanics of a specific item.
   state point, Pareto, % of Total…) deliberately NOT hand-rolled — planned in
   **`docs/pack-composite-plans.md`**; backlog Packs section reconciled (Set pack
   line deleted, Timesavers remainder + Materials-pack/Interpolated-Lookup lines).
+### SESSION DIGEST (2026-07-09, day — Equation node, append ladder, Filter redesign, the wildcard split)
 - **Morning follow-ups (author-directed):** the **EQUATION NODE** — type `V = I * R`,
   every variable is an input AND an output plus an always-present logical `Check`;
   one unknown → solved (symbolic AST isolation → unparse → recompile, so lists
