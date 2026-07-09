@@ -464,8 +464,15 @@ export class FilterNode extends ClassicPreset.Node {
       else return shapeErr(`A ${keep.length}-long mask matches neither the ${rows}×${cols} data's rows nor its columns`);
     } else {
       // Predicate builds the mask, but only makes sense on effectively-1-D data;
-      // a genuine 2-D table needs an explicit mask.
-      if (rows !== 1 && cols !== 1) return shapeErr(`Filtering a ${rows}×${cols} table needs an explicit Keep-if mask`);
+      // a genuine 2-D table needs an explicit mask. A fully-blank row/column
+      // still counts toward the shape (a padded import, a stray delimiter) — a
+      // frequent surprise, so the message names it when it's the likely cause.
+      if (rows !== 1 && cols !== 1) {
+        const hasBlankLane =
+          m.some((r) => r.every((x) => isMissing(x))) ||
+          Array.from({ length: cols }, (_, j) => m.every((r) => isMissing(r[j]))).some(Boolean);
+        return shapeErr(`Filtering a ${rows}×${cols} table needs an explicit Keep-if mask${hasBlankLane ? " — a fully-blank row/column still counts toward the shape (a trailing delimiter in the source does this)" : ""}`);
+      }
       axis = rows === 1 ? "col" : "row";
       const vec = rows === 1 ? m[0] : m.map((r) => r[0]);
       const t1 = inputs.threshold?.[0] ?? this.literals.threshold ?? 0;

@@ -144,7 +144,13 @@ export const TABLE_ELEM_SOCKET = {
 export function tableRawCells(text: string): string[][] {
   const raw = parseCsvRows(text);
   if (raw.length === 0) return [];
-  const cols = raw.reduce((m, r) => Math.max(m, r.length), 0);
+  let cols = raw.reduce((m, r) => Math.max(m, r.length), 0);
+  // A TRAILING all-empty column is a typing artifact (a trailing comma on each
+  // line), not data — left in, it silently promotes a list to a 2-D table and
+  // flips downstream shape rules (Filter's predicate refuses genuine 2-D).
+  // Interior blanks are real missing cells and stay. (All-blank LINES never
+  // arrive — parseCsvRows' greedy skip drops them.)
+  while (cols > 1 && raw.every((r) => (r[cols - 1] ?? "").trim() === "")) cols--;
   return raw.map((r) => Array.from({ length: cols }, (_, j) => (r[j] ?? "").trim()));
 }
 

@@ -160,6 +160,22 @@ describe("Table Input is a LITERAL source (the Frame Input model)", () => {
     expect(bad[1]).toEqual([3, 4]);
   });
 
+  it("a trailing all-blank column is a typing artifact and is stripped; interior blanks stay", () => {
+    // "10,\n20," — a trailing comma per line — must stay a LIST (one column),
+    // not silently become a 2-D table that flips Filter's shape rules.
+    expect(tableRawCells("10,\n20,")).toEqual([["10"], ["20"]]);
+    // An interior blank column is real missing data.
+    expect(tableRawCells("1,,3\n4,,6")).toEqual([["1", "", "3"], ["4", "", "6"]]);
+  });
+
+  it("a trailing all-blank column is a typing artifact and is stripped; interior blanks stay", () => {
+    // "10,\n20," — a trailing comma per line — must stay a LIST (one column),
+    // not silently become a 2-D table that flips Filter's shape rules.
+    expect(tableRawCells("10,\n20,")).toEqual([["10"], ["20"]]);
+    // An interior blank column is real missing data.
+    expect(tableRawCells("1,,3\n4,,6")).toEqual([["1", "", "3"], ["4", "", "6"]]);
+  });
+
   it("raw cells round-trip verbatim through the text form (quoting incl.)", () => {
     const cells = [["1", "abc"], ["he, said", '"hi"']];
     expect(tableRawCells(rawCellsToText(cells))).toEqual(cells);
