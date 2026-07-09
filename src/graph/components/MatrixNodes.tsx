@@ -13,6 +13,7 @@ import {
   MAT_DET_OP_META, TABLE_RESHAPE_OP_META, TABLE_SELECT_OP_META,
 } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
+import { ExtensibleInputs } from "./ExtensibleInputs";
 import { TableDisplay } from "./TableDisplay";
 import { NodeShell, OpSelect, ValueDisplay, InlineOutputRows, useNodeField, type NodeProps } from "./nodeKit";
 
@@ -73,7 +74,7 @@ export function TableTransposeComponent({ data, emit }: NodeProps<TableTranspose
 export function HStackTableComponent({ data, emit }: NodeProps<HStackTableNodeType>) {
   return (
     <NodeShell node={data} emit={emit}>
-      <InlineInputs node={data} emit={emit} />
+      <ExtensibleInputs node={data} emit={emit} />
       <TableDisplay table={data.cachedResult} label={data.label} />
     </NodeShell>
   );

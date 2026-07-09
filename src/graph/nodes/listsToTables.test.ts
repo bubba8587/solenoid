@@ -1,35 +1,64 @@
 import { describe, it, expect } from "vitest";
 import { VStackNode, HStackTableNode } from "./matrix";
 import { ConcatListsNode } from "./list";
-import { FrameFromListsNode } from "./frame";
+import { FrameFromListsNode, AppendNode } from "./frame";
 import { QuadraticRootsNode } from "./complex";
 import { isSolError } from "../errorValue";
-import type { FrameValue } from "../frame";
+import { frameFromCells, type FrameValue } from "../frame";
+import { readFrame } from "../frameBackend";
 
 describe("VSTACK stacks; Concat appends (the Excel row semantics)", () => {
   it("two lists VSTACK into a 2-row table (a list is one row)", () => {
-    const r = new VStackNode().data({ a: [[1, 2, 3]], b: [[4, 5, 6]] }).result;
+    const r = new VStackNode().data({ t0: [[1, 2, 3]], t1: [[4, 5, 6]] }).result;
     expect(r).toEqual([[1, 2, 3], [4, 5, 6]]);
   });
 
   it("two lists HSTACK into one long row", () => {
-    const r = new HStackTableNode().data({ a: [[1, 2]], b: [[3, 4, 5]] }).result;
+    const r = new HStackTableNode().data({ t0: [[1, 2]], t1: [[3, 4, 5]] }).result;
     expect(r).toEqual([[1, 2, 3, 4, 5]]);
   });
 
   it("VSTACK stacks tables and mixes a table with a list row", () => {
     const table = [[1, 2], [3, 4]];
-    expect(new VStackNode().data({ a: [table], b: [[5, 6]] }).result)
+    expect(new VStackNode().data({ t0: [table], t1: [[5, 6]] }).result)
       .toEqual([[1, 2], [3, 4], [5, 6]]);
   });
 
-  it("column-count mismatch is #SHAPE!; a missing side is blank", () => {
-    expect(isSolError(new VStackNode().data({ a: [[1, 2]], b: [[1, 2, 3]] }).result)).toBe(true);
-    expect(new VStackNode().data({ a: [[1, 2]] }).result).toBe(null);
+  it("a narrower input pads right with #N/A (Excel VSTACK), not #SHAPE!", () => {
+    const r = new VStackNode().data({ t0: [[1, 2]], t1: [[1, 2, 3]] }).result as unknown[][];
+    expect(r[0].slice(0, 2)).toEqual([1, 2]);
+    expect(isSolError(r[0][2])).toBe(true);
+    expect(r[1]).toEqual([1, 2, 3]);
+    expect(new VStackNode().data({ t0: [[1, 2]] }).result).toEqual([[1, 2]]);
   });
 
-  it("Concat Lists keeps the old end-to-end join", () => {
-    expect(new ConcatListsNode().data({ a: [[1, 2]], b: [[3]] }).result).toEqual([1, 2, 3]);
+  it("a shorter HSTACK input pads down with #N/A (Excel HSTACK)", () => {
+    const r = new HStackTableNode().data({ t0: [[[1], [2]]], t1: [[[9]]] }).result as unknown[][];
+    expect(r[0]).toEqual([1, 9]);
+    expect(r[1][0]).toBe(2);
+    expect(isSolError(r[1][1])).toBe(true);
+  });
+
+  it("stacking is N-ary: a third row joins the stack in row order", () => {
+    const n = new VStackNode();
+    n.addValueInput(); // t2
+    expect(n.data({ t0: [[1, 2]], t1: [[3, 4]], t2: [[5, 6]] }).result)
+      .toEqual([[1, 2], [3, 4], [5, 6]]);
+  });
+
+  it("Concat Lists keeps the end-to-end join, N-ary and element-agnostic", () => {
+    expect(new ConcatListsNode().data({ l0: [[1, 2]], l1: [[3]] }).result).toEqual([1, 2, 3]);
+    const n = new ConcatListsNode();
+    n.addValueInput(); // l2
+    expect(n.data({ l0: [["a"]], l1: [[1, 2]], l2: [[true]] }).result).toEqual(["a", 1, 2, true]);
+  });
+
+  it("stackers round-trip their rows through valueKeys (persistence contract)", () => {
+    const n = new VStackNode();
+    n.addValueInput();
+    const keys = Object.keys(n.inputs).filter((k) => k.startsWith("t"));
+    const clone = new VStackNode({ valueKeys: keys });
+    expect(clone.valueInputKeys()).toEqual(keys);
   });
 });
 
@@ -85,6 +114,26 @@ describe("Frame from Lists — the fast lists→Frame path", () => {
     const keys = Object.keys(n.inputs);
     const clone = new FrameFromListsNode({ valueKeys: keys });
     expect(Object.keys(clone.inputs)).toEqual(keys);
+  });
+});
+
+describe("Frame Append — N-ary, by column name", () => {
+  const mk = (vals: number[]): FrameValue => frameFromCells(["x"], vals.map((v) => [v]));
+
+  it("stacks three frames in row order", async () => {
+    const n = new AppendNode();
+    n.addValueInput(); // f2
+    const out = await n.data({ f0: [mk([1])], f1: [mk([2, 3])], f2: [mk([4])] });
+    // The append result is a LAZY ref — materialize it like a consumer would.
+    const f = (await readFrame(out.frame)) as FrameValue;
+    expect(f.columns[0].values).toEqual([1, 2, 3, 4]);
+  });
+
+  it("one wired frame passes through; none is blank", async () => {
+    const n = new AppendNode();
+    const solo = (await readFrame((await n.data({ f0: [mk([7])] })).frame)) as FrameValue;
+    expect(solo.columns[0].values).toEqual([7]);
+    expect((await n.data({})).frame).toBe(null);
   });
 });
 

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
+import { isSolError } from "../errorValue";
 import { TableTransposeNode, HStackTableNode, TableReshapeNode, TableSelectNode, TableInfoNode, TableMultNode, MatDetNode, parseTableText } from "./matrix";
 import { SolenoidSocket, type SocketDataType } from "../sockets";
-import { isSolError } from "../errorValue";
 
 // The pure-reshape matrix ops are element-agnostic: they accept any matrix on an
 // `any` input and emit the 2-D wildcard `anytable` (or a 1-D `any` list when
@@ -42,9 +42,22 @@ describe("reshapers are element-polymorphic", () => {
     ]);
   });
 
+  it("WRAPROWS/WRAPCOLS pad the leftover cells with #N/A (Excel default)", () => {
+    const rows = new TableReshapeNode({ op: "wraprows" })
+      .data({ list: [["a", "b", "c", "d", "e"]], wrapCount: [3] }).result as unknown[][];
+    expect(rows[0]).toEqual(["a", "b", "c"]);
+    expect(rows[1].slice(0, 2)).toEqual(["d", "e"]);
+    expect(isSolError(rows[1][2])).toBe(true);
+    const cols = new TableReshapeNode({ op: "wrapcols" })
+      .data({ list: [[1, 2, 3]], wrapCount: [2] }).result as unknown[][];
+    expect(cols[0]).toEqual([1, 3]);
+    expect(cols[1][0]).toBe(2);
+    expect(isSolError(cols[1][1])).toBe(true);
+  });
+
   it("HSTACK stitches two text matrices side by side", () => {
     const n = new HStackTableNode();
-    expect(n.data({ a: [[["a"], ["b"]]], b: [[["x"], ["y"]]] }).result).toEqual([
+    expect(n.data({ t0: [[["a"], ["b"]]], t1: [[["x"], ["y"]]] }).result).toEqual([
       ["a", "x"],
       ["b", "y"],
     ]);

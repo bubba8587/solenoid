@@ -106,7 +106,26 @@ drill into the archive (or `git log`) only for the mechanics of a specific item.
   0) — remember the committed JSON is a re-emit check, edit the generator.
   Surveyed, NOT converted: Depreciation (period-discrete), IPMT/PPMT/CUMIPMT/
   ISPMT (derived quantities), DOLLARDE/FR (piecewise), bonds/T-bills (date
-  sockets), DIST/INV pairs (no closed-form CDFs). D14 amended again.
+  sockets), DIST/INV pairs (no closed-form CDFs). D14 amended again. —
+  **The append ladder (author: "heavy thinking pass over the appending
+  nodes"), recorded as D15:** ONE N-ary element-agnostic append node per
+  container rank, all on the BooleanOp extensible-row pattern (`valueKeys`,
+  add/remove undo): **Concat Lists** (anylist rows → anylist; scalar widens to
+  1-element list, so "push one value" is free), **VSTACK/HSTACK** (anytable
+  rows; ragged inputs now PAD WITH #N/A cells like Excel — the old
+  whole-result #SHAPE! made "stack a 3-list on a 5-list" unusable; VSTACK pads
+  right, HSTACK pads down), **frame Append** (frame rows, union by column
+  name — runFrameAppend was always N-ary, the node now exposes it).
+  WRAPROWS/WRAPCOLS joined the #N/A padding rule (they disagreed: ragged short
+  row vs NaN fill). `ExtensibleInputs` gained a WIRE-ONLY row branch
+  (container-typed rows show position / "↩ source", never a literal field).
+  Deliberately not unified: Interleave (2 distinct roles), Pad/Repeat
+  (fill/self-append utilities), Add Column (single named column; bulk = Frame
+  from Lists, keyed = Join), Build Frame vs Frame from Lists (different
+  constructors), add-a-row = Get Row → Append (a positional list into a
+  by-name append is a refused footgun). Socket keys changed (top/bottom→f*,
+  a/b→t*/l*) — table-verbs seed rewired; old saves load those cables dropped
+  (pre-alpha). Full reasoning in D15.
 
 ### SESSION DIGEST (2026-07-08, evening — What's New resell + 1.2/2.0 plans)
 - **What's New rebuilt around the author's sell bar** ("a shiny thing a user will go

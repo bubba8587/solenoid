@@ -1,4 +1,13 @@
 import type { ConcatListsNode as ConcatListsNodeType } from "../rete-nodes";
-import { makeNodeComponent } from "./standardNode";
+import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
+import { ExtensibleInputs } from "./ExtensibleInputs";
+import type { DisplayValue } from "./valueDisplayFormat";
 
-export const ConcatListsComponent = makeNodeComponent<ConcatListsNodeType>((n) => n.cachedList);
+export function ConcatListsComponent({ data, emit }: NodeProps<ConcatListsNodeType>) {
+  return (
+    <NodeShell node={data} emit={emit}>
+      <ExtensibleInputs node={data} emit={emit} />
+      <ValueDisplay value={data.cachedList as DisplayValue} />
+    </NodeShell>
+  );
+}

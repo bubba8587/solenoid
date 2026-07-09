@@ -780,28 +780,58 @@ export class DropNode extends ClassicPreset.Node {
   }
 }
 
-// Joins two lists end-to-end — VSTACK's old job here, renamed 2026-07-09 when
+// Joins lists end-to-end — VSTACK's old job here, renamed 2026-07-09 when
 // VSTACK became the true table stacker (matrix.ts): appending and stacking are
-// different operations, and this one stays 1-D.
+// different operations, and this one stays 1-D. The 1-D rung of the APPEND
+// LADDER (decisions.md D15): N extensible element-agnostic rows (anylist — a
+// scalar widens to a 1-element list, so "push one value" needs no wrapper),
+// concatenated in row order. Rows are wire-only: a typed literal list belongs
+// to List Input, not here.
 export class ConcatListsNode extends ClassicPreset.Node {
   label: string;
-  cachedList: number[] = [];
+  cachedList: unknown[] = [];
+  nextInputId = 0;
   width = 180;
-  height = 160;
+  height = 210;
 
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; valueKeys?: string[] }) {
     super("ConcatLists");
     this.label = init?.label ?? "Concat Lists";
-    this.addInput("a", listIn("First"));
-    this.addInput("b", listIn("Second"));
-    this.addOutput("result", listOut("Combined"));
+    const vKeys = (init?.valueKeys ?? []).filter((k) => k.startsWith("l"));
+    if (vKeys.length) for (const k of vKeys) this.addInputWithKey(k);
+    else for (let i = 0; i < 2; i++) this.addValueInput();
+    this.addOutput("result", anyListOut("Combined"));
   }
 
-  data(inputs: { a?: number[][]; b?: number[][] }) {
-    const a = inputs.a?.[0] ?? [];
-    const b = inputs.b?.[0] ?? [];
-    this.cachedList = [...a, ...b];
-    return { result: this.cachedList };
+  private addInputWithKey(key: string): void {
+    this.addInput(key, anyListIn("List"));
+    const n = parseInt(key.replace(/^l/, ""), 10);
+    if (Number.isFinite(n)) this.nextInputId = Math.max(this.nextInputId, n + 1);
+  }
+
+  /** Ordered list-row keys (insertion order = concatenation order). */
+  valueInputKeys(): string[] {
+    return Object.keys(this.inputs).filter((k) => k.startsWith("l"));
+  }
+
+  addValueInput(): string {
+    const key = `l${this.nextInputId}`;
+    this.addInputWithKey(key);
+    return key;
+  }
+
+  removeValueInput(key: string): void {
+    this.removeInput(key);
+  }
+
+  data(inputs: Record<string, unknown[][] | undefined>) {
+    const out: unknown[] = [];
+    for (const k of this.valueInputKeys()) {
+      const arr = inputs[k]?.[0];
+      if (arr != null) out.push(...arr);
+    }
+    this.cachedList = out;
+    return { result: out };
   }
 }
 

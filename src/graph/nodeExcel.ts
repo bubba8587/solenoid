@@ -183,7 +183,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
     { excel: "GCD", syntax: "=GCD(a, b)", parity: true },
     { excel: "LCM", syntax: "=LCM(a, b)", parity: true },
   ],
-  "hstack-table": [{ excel: "HSTACK", syntax: "=HSTACK(a, b)", parity: false, note: "Both tables must have the same number of rows" }],
+  "hstack-table": [{ excel: "HSTACK", syntax: "=HSTACK(array1, array2, ...)", parity: true, note: "N-ary; ragged inputs pad with #N/A like Excel. A bare list counts as ONE ROW" }],
   "hypgeomdist": [{ excel: "HYPGEOM.DIST", syntax: "=HYPGEOM.DIST(s, ns, M, N, cum)" }],
   "iferror": [
     { excel: "IFERROR", syntax: "=IFERROR(v, fallback)", parity: true },
@@ -231,7 +231,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "list-sortby": [{ excel: "SORTBY", syntax: "=SORTBY(array, by_array)", parity: false, note: "Solenoid sorts 1D lists only; 1D list-by-list sorting works" }],
   "list-take": [{ excel: "TAKE", syntax: "=TAKE(array, rows)", parity: true }],
   "list-unique": [{ excel: "UNIQUE", syntax: "=UNIQUE(array)", parity: true }],
-  "vstack-table": [{ excel: "VSTACK", syntax: "=VSTACK(a, b)", parity: false, note: "Mismatched column counts error instead of padding with #N/A" }],
+  "vstack-table": [{ excel: "VSTACK", syntax: "=VSTACK(array1, array2, ...)", parity: true, note: "N-ary; ragged inputs pad with #N/A like Excel. A bare list counts as ONE ROW" }],
   "logest": [{ excel: "LOGEST", syntax: "=LOGEST(ys, xs)", parity: false, note: "Returns [m, b] as a list; Excel returns a full coefficient array" }],
   // Keys track the post-split catalog types (bool-*/if/not — the old multi-op
   // LogicalNode's "logic-*" keys went stale unnoticed until the drift test);
@@ -391,8 +391,8 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "regression-steyx": [{ excel: "STEYX", syntax: "=STEYX(ys, xs)", parity: true }],
   "reshape-tocol": [{ excel: "TOCOL", syntax: "=TOCOL(array)", parity: false, note: "ignore_empty and scan_by_column flags not supported" }],
   "reshape-torow": [{ excel: "TOROW", syntax: "=TOROW(array)", parity: false, note: "ignore_empty flag not supported" }],
-  "reshape-wrapcols": [{ excel: "WRAPCOLS", syntax: "=WRAPCOLS(vector, rows)", parity: false, note: "Pad value not supported" }],
-  "reshape-wraprows": [{ excel: "WRAPROWS", syntax: "=WRAPROWS(vector, cols)", parity: false, note: "Pad value not supported; short last row is left as-is" }],
+  "reshape-wrapcols": [{ excel: "WRAPCOLS", syntax: "=WRAPCOLS(vector, rows)", parity: false, note: "Pads with #N/A (Excel's default); a custom pad_with is not supported" }],
+  "reshape-wraprows": [{ excel: "WRAPROWS", syntax: "=WRAPROWS(vector, cols)", parity: false, note: "Pads with #N/A (Excel's default); a custom pad_with is not supported" }],
   "roman-arabic-arabic": [{ excel: "ARABIC", syntax: "=ARABIC(text)", parity: false, note: "Roman numeral string → integer" }],
   "roman-arabic-roman": [{ excel: "ROMAN", syntax: "=ROMAN(n)", parity: false, note: "Integer (1–3999) → Roman numeral string" }],
   "roundn-dir": [
