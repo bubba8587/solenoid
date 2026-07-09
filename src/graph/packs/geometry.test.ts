@@ -105,6 +105,21 @@ describe("Triangle Solver", () => {
     expect(bad.valid).toBe(false);
   });
 
+  it("broadcasts over parallel lists: three triangles, Valid a logical list", () => {
+    const n = new TriangleSolverNode();
+    // Three right triangles: (3,4,5), (6,8,10), (5,12,13).
+    const out = n.data({ a: [[3, 6, 5]], b: [[4, 8, 12]], c: [[5, 10, 13]] });
+    expect(out.valid).toEqual([true, true, true]);
+    expect((out.C as number[]).map((x) => Math.round(x))).toEqual([90, 90, 90]);
+    (out.area as number[]).forEach((v, i) => expect(v).toBeCloseTo([6, 24, 30][i], 9));
+    // A scalar part broadcasts against a list: fixed c=5, varying a/b.
+    const mixed = n.data({ a: [[3, 6]], b: [[4, 8]], c: [5] });
+    expect((mixed.area as number[])[0]).toBeCloseTo(6, 9);
+    // A short list pads with null → that index has <3 parts → quiet (Valid null).
+    const ragged = n.data({ a: [[3, 6]], b: [[4, 8]], c: [[5]] });
+    expect((ragged.valid as unknown[])[1]).toBeNull();
+  });
+
   it("fewer than three parts pass through quietly (no error, Valid stays blank)", () => {
     const n = new TriangleSolverNode();
     const out = n.data({ a: [3], b: [4] });

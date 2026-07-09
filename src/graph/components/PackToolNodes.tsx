@@ -129,8 +129,13 @@ const TRIANGLE_KEYS = ["a", "b", "c", "A", "B", "C"] as const;
 // over-given, agree on) a real triangle.
 export function TriangleSolverComponent({ data, emit }: NodeProps<TriangleSolverNodeType>) {
   const v = data.cachedValues;
+  // The figure draws ONE triangle — index 0 when parts are broadcast lists.
+  const scalarPart = (val: unknown): number | undefined => {
+    const cell = Array.isArray(val) ? val[0] : val;
+    return typeof cell === "number" ? cell : undefined;
+  };
   const figureParts = Object.fromEntries(
-    TRIANGLE_KEYS.map((k) => [k, typeof v[k] === "number" ? v[k] : undefined]),
+    TRIANGLE_KEYS.map((k) => [k, scalarPart(v[k])]),
   ) as Partial<TriangleSolved>;
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>

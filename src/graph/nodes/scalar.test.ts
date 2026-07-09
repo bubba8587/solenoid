@@ -163,3 +163,36 @@ describe("GCD / LCM", () => {
     expect(new GcdNode({ op: "lcm" }).data({ a: [4], b: [6] }).result).toBe(12);
   });
 });
+
+describe("MathFn — deg/rad/auto angle modes", () => {
+  it("default (auto, no unit resolved) computes radians — Excel parity", () => {
+    // A fresh SIN node is angleMode:"auto" with _resolvedAngleMode:"rad".
+    expect(new MathFnNode({ op: "sin" }).data({ in: [Math.PI / 2] }).result as number).toBeCloseTo(1, 9);
+  });
+
+  it("forward trig in deg mode converts the input: SIN(90°) = 1, COS(60°) = 0.5", () => {
+    expect(new MathFnNode({ op: "sin", angleMode: "deg" }).data({ in: [90] }).result as number).toBeCloseTo(1, 9);
+    expect(new MathFnNode({ op: "cos", angleMode: "deg" }).data({ in: [60] }).result as number).toBeCloseTo(0.5, 9);
+    // Rad pin ignores the degree reading: SIN(90 rad) is not 1.
+    expect(new MathFnNode({ op: "sin", angleMode: "rad" }).data({ in: [90] }).result as number).toBeCloseTo(Math.sin(90), 9);
+  });
+
+  it("inverse trig in deg mode converts the RESULT to degrees + tags the deg unit", () => {
+    const n = new MathFnNode({ op: "asin", angleMode: "deg" });
+    expect(n.data({ in: [1] }).result as number).toBeCloseTo(90, 9);
+    expect(n.data({ in: [0.5] }).result as number).toBeCloseTo(30, 9);
+    expect(n.annotationFor("result")?.unit).toBe("deg");
+    // Rad mode: radians out, no unit.
+    const r = new MathFnNode({ op: "asin", angleMode: "rad" });
+    expect(r.data({ in: [1] }).result as number).toBeCloseTo(Math.PI / 2, 9);
+    expect(r.annotationFor("result")).toBeUndefined();
+  });
+
+  it("the mode only touches trig ops (SQRT/EXP ignore it) and broadcasts over lists", () => {
+    expect(new MathFnNode({ op: "sqrt", angleMode: "deg" }).data({ in: [9] }).result as number).toBe(3);
+    const list = new MathFnNode({ op: "sin", angleMode: "deg" }).data({ in: [[0, 90, 180]] }).result as number[];
+    expect(list[0]).toBeCloseTo(0, 9);
+    expect(list[1]).toBeCloseTo(1, 9);
+    expect(list[2]).toBeCloseTo(0, 9);
+  });
+});
