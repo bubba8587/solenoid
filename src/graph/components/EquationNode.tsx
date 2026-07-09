@@ -7,18 +7,23 @@ import { formulaPopup } from "../formulaPopupStore";
 import type { DisplayValue } from "./valueDisplayFormat";
 import "./ExpressionNode.css";
 
-// Same measurement as MeasuredSocketRow's hook (NodeSocket.tsx): the row's
-// vertical center relative to .solenoid-node__content, so the dots stay
+// Same measurement idea as MeasuredSocketRow's hook (NodeSocket.tsx) — a
+// center relative to .solenoid-node__content, so the dots stay
 // header-independent. Local copy because this row carries TWO sockets — the
 // variable's input on the left edge and its output on the right — which the
-// single-socket MeasuredSocketRow can't.
+// single-socket MeasuredSocketRow can't. Unlike that hook it centers on the
+// HERO VALUE BOX, not the row: the label sits stacked ABOVE the box inside the
+// row, so the row's own center would land between label and box. The box's
+// offsetParent is the content wrapper (the row is deliberately NOT a
+// positioning context), so its offsetTop is already content-relative.
 function useRowTop(ref: React.RefObject<HTMLElement | null>): number | undefined {
   const prev = useRef<number | undefined>(undefined);
   const [top, setTop] = useState<number | undefined>(undefined);
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const t = el.offsetTop + el.offsetHeight / 2 - 6;
+    const box = el.querySelector<HTMLElement>(".solenoid-node__display-value") ?? el;
+    const t = box.offsetTop + box.offsetHeight / 2 - 6;
     if (prev.current !== t) { prev.current = t; setTop(t); }
   });
   return top;
