@@ -98,6 +98,14 @@ this backlog stays the per-item source of truth.
   dedicated AUTHOR-PRESENT arc (not the autonomous plan). Representation decided
   (tagged cells), `dimension.ts` algebra core landed. THE plan:
   `v2.0/05-units-format-controller.md`.
+  - **Requirement (author 2026-07-09): a mixed-unit list must compute PER-ELEMENT
+    by each cell's own unit — NOT collapse to "no unit".** Concrete case: a list
+    where some cells are `deg` and some `rad` fed into an Auto-mode trig `Math`
+    node should interpret each cell in its own unit, element by element. Today
+    `resolveTrigModes` reads ONE socket-level unit (the value carries one unit),
+    so a genuinely mixed list resolves to `none` → rad — accepted "fine for now",
+    but A4's per-element units must drive per-element interpretation in consumers
+    (trig Auto is the worked example; the same applies to any unit-aware op).
 - [ ] **Header/body border seam under zoom — UNSOLVED, parked for a human/later
   model.** See dev-notes "UNSOLVED" for constraints + the two eliminated approaches.
 - [ ] **Deferred pile — RESOLVED 2026-07-05 (author ruled each):** still deferred =
