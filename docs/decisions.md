@@ -191,12 +191,18 @@ that morphs numlist→logical — because in-place retype is a known minefield
 rewired, silently breaking downstream cables. (3) Solving is our own AST isolation
 (unparse → recompile, so broadcasting is free) + a numeric bracket/bisection fallback —
 no CAS dependency (nerdamer/algebrite are heavy, stale, and speak a different grammar).
-**Cost accepted:** principal branches on inversion (√/ASIN — the returned value satisfies
-the equation but may not be the branch you meant); the numeric fallback is scalar-only
-and reports the root nearest an ascending log-grid scan; tall cards (2n+1 value rows).
-**What would reverse it:** users routinely hitting the multi-occurrence wall (quadratics
-beyond the numeric fallback's comfort) would justify a polynomial special case or a
-vendored CAS; per-output socket annotations would unlock richer per-variable typing.
+**Cost accepted:** principal branches on NON-polynomial inversion (√/ASIN — the returned
+value satisfies the equation but may not be the branch you meant); the numeric fallback is
+scalar-only and reports the root nearest an ascending log-grid scan; tall cards (2n+1 value
+rows).
+**Amended same day (author):** the polynomial special case landed immediately — a residual
+that is QUADRATIC in the unknown (detected by numeric probing, so any arrangement counts,
+and only for scalar knowns) solves via the quadratic formula and yields EVERY real root as
+an ascending list (x² = 36 → [−6, 6]); a double root stays scalar, a negative discriminant
+is #SOLVE!. This intercepts BEFORE symbolic isolation, so a probe-detectable quadratic
+never loses its negative root to the principal branch.
+**What would reverse it:** demand for cubic/higher roots (Cardano or a vendored CAS);
+per-output socket annotations would unlock richer per-variable typing.
 
 ---
 

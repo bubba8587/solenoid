@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseEquation, compileSolver, solveNumeric, astToFormula, isolate, equalsWithin, type ParsedEquation } from "./equationSolve";
+import { parseEquation, compileSolver, solveNumeric, sniffQuadratic, solveQuadratic, astToFormula, isolate, equalsWithin, type ParsedEquation } from "./equationSolve";
 import { parseFormula } from "./excelFormula";
 import { EquationNode } from "./nodes/equation";
 import { isSolError, type SolError } from "./errorValue";
@@ -93,9 +93,35 @@ describe("symbolic isolation", () => {
   });
 });
 
+describe("quadratic sniffing (both roots, not a principal branch)", () => {
+  it("recognises a quadratic residual in any arrangement, exactly", () => {
+    expect(sniffQuadratic((x) => x * x - 36)).toEqual({ a: 1, b: 0, c: -36 });
+    // (x−1)(x+3) − 5, pre-expanded by the probe fit: a=1, b=2, c=−8.
+    const q = sniffQuadratic((x) => (x - 1) * (x + 3) - 5)!;
+    expect(q.a).toBeCloseTo(1, 12);
+    expect(q.b).toBeCloseTo(2, 12);
+    expect(q.c).toBeCloseTo(-8, 12);
+  });
+
+  it("declines non-polynomials and cubics", () => {
+    expect(sniffQuadratic((x) => Math.sqrt(Math.abs(x)) - 2)).toBe(null);
+    expect(sniffQuadratic((x) => x * x * x - 10)).toBe(null);
+    expect(sniffQuadratic((x) => (x <= 0 ? null : Math.log10(x)))).toBe(null); // domain hole at a probe
+  });
+
+  it("solveQuadratic: ascending pair, double root scalar, negative discriminant, linear declines", () => {
+    expect(solveQuadratic({ a: 1, b: 0, c: -36 })).toEqual([-6, 6]);
+    expect(solveQuadratic({ a: 1, b: 2, c: -8 })).toEqual([-4, 2]);
+    expect(solveQuadratic({ a: 1, b: -6, c: 9 })).toBe(3); // (x−3)²
+    const none = solveQuadratic({ a: 1, b: 0, c: 1 });
+    expect(isSolError(none)).toBe(true);
+    expect((none as SolError).code).toBe("#SOLVE!");
+    expect(solveQuadratic({ a: 0, b: 2, c: -10 })).toBe(null); // linear → caller falls through
+  });
+});
+
 describe("numeric fallback", () => {
-  it("finds the quadratic root the algebra can't isolate", () => {
-    // x² + x = 6 → x = 2 (or −3; the scan reports a real root).
+  it("finds a real root of what it's given (quadratics are intercepted upstream)", () => {
     const root = solveNumeric((x) => x * x + x - 6);
     expect(typeof root).toBe("number");
     const r = root as number;
@@ -178,11 +204,20 @@ describe("EquationNode", () => {
     expect(out.holds).toBe(null);
   });
 
-  it("numeric fallback drives the node when algebra can't", () => {
-    const n = node("x^2 + x = c");
-    const out = n.data({ c: [6] });
+  it("a quadratic yields BOTH roots as an ascending list", () => {
+    expect(node("x^2 - 36 = 0").data({}).x).toEqual([-6, 6]);
+    expect(node("x^2 + x = c").data({ c: [6] }).x).toEqual([-3, 2]);
+    expect(node("x^2 = c").data({ c: [36] }).x).toEqual([-6, 6]); // beats the principal branch
+    expect(node("(x-3)^2 = 0").data({}).x).toBe(3); // double root stays scalar
+    const none = node("x^2 + 1 = 0").data({});
+    expect(isSolError(none.x)).toBe(true);
+  });
+
+  it("numeric fallback still drives non-polynomial multi-occurrence equations", () => {
+    const n = node("x^3 + x = c");
+    const out = n.data({ c: [10] });
     const x = out.x as number;
-    expect(Math.abs(x * x + x - 6)).toBeLessThan(1e-6);
+    expect(Math.abs(x * x * x + x - 10)).toBeLessThan(1e-6);
   });
 
   it("missing/error knowns propagate; no equals → message", () => {

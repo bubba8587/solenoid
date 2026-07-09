@@ -193,6 +193,59 @@ export function compileSolver(eq: ParsedEquation, unknown: string): ExprEvaluato
   return compileEvaluator(astToFormula(iso));
 }
 
+// ─── Quadratic detection (both roots, not a principal branch) ─────────────────
+// x² − 36 = 0 must yield [−6, 6] — symbolic isolation would take the principal
+// square root and lose −6, and the bracket scan would report one root. So when
+// the knowns are scalars, the node first SNIFFS whether the residual is a
+// polynomial of degree ≤ 2 in the unknown: probe it at 3 nodes (the fit is
+// EXACT for a true polynomial — a = (f(1)+f(−1)−2f(0))/2 …) and verify at 4
+// more generic points. Any arrangement of a quadratic passes ((x−1)(x+3) = 5
+// included); anything with the unknown behind SQRT/trig/1/x fails a probe or
+// the verification and falls through to the symbolic/numeric layers.
+
+export interface QuadraticFit { a: number; b: number; c: number }
+
+export function sniffQuadratic(residual: (x: number) => number | null): QuadraticFit | null {
+  const probe = (x: number): number | null => {
+    const f = residual(x);
+    return f !== null && Number.isFinite(f) ? f : null;
+  };
+  const f0 = probe(0), f1 = probe(1), fm1 = probe(-1);
+  if (f0 === null || f1 === null || fm1 === null) return null;
+  const a = (f1 + fm1 - 2 * f0) / 2;
+  const b = (f1 - fm1) / 2;
+  const c = f0;
+  for (const x of [2.5, -3.75, 17, -41.5]) {
+    const fx = probe(x);
+    if (fx === null) return null;
+    const pred = (a * x + b) * x + c;
+    const scale = Math.max(1, Math.abs(fx), Math.abs(pred), Math.abs(a * x * x), Math.abs(b * x), Math.abs(c));
+    if (Math.abs(fx - pred) > 1e-9 * scale) return null;
+  }
+  return { a, b, c };
+}
+
+/** Real roots of a·x² + b·x + c = 0. Two roots → ascending list; a double root →
+ *  scalar; negative discriminant → #SOLVE!; degree < 2 (a ≈ 0) → null so the
+ *  caller falls through to the symbolic/numeric layers. */
+export function solveQuadratic(q: QuadraticFit): number | number[] | SolError | null {
+  const { a, b, c } = q;
+  const cscale = Math.max(Math.abs(a), Math.abs(b), Math.abs(c));
+  if (cscale === 0 || Math.abs(a) <= 1e-12 * cscale) return null; // linear/constant — not ours
+  const disc = b * b - 4 * a * c;
+  const dscale = Math.max(b * b, Math.abs(4 * a * c));
+  if (Math.abs(disc) <= 1e-12 * dscale) return -b / (2 * a); // double root
+  if (disc < 0) {
+    return solError("#SOLVE!", "No real solution — the quadratic's discriminant is negative");
+  }
+  // Numerically stable form: avoid subtracting nearly-equal magnitudes.
+  const s = Math.sqrt(disc);
+  const qq = -(b + Math.sign(b || 1) * s) / 2;
+  const r1 = qq / a;
+  const r2 = c / qq;
+  return r1 < r2 ? [r1, r2] : [r2, r1];
+}
+
 // ─── Numeric fallback ─────────────────────────────────────────────────────────
 
 /** Residual sign-change scan over a symmetric log grid, then bisection. The
