@@ -8,6 +8,7 @@ import { ConvertNode } from "./convert";
 import { CastNode } from "./cast";
 import { FormatControllerNode } from "./formatController";
 import { ExpressionNode } from "./expression";
+import { EquationNode } from "./equation";
 import { GroupByNode } from "./list";
 import { RegexNode } from "./text";
 import { ComparisonNode, BooleanOpNode, NotNode, IfNode, IFErrorNode, IsTestNode, IsEvenOddNode, NaNode, ChooseNode, SwitchNode, IfsNode } from "./logic";
@@ -208,6 +209,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
   if (node instanceof FormatControllerNode) return "format";
   if (node instanceof LambdaNode) return "lambda";
   if (node instanceof ExpressionNode) return "math";
+  if (node instanceof EquationNode) return "math";
   if (node instanceof RegexNode) return "string";
   if (node instanceof GroupByNode) return "list";
   // Arithmetic, MathFn, Clamp, MRound, RoundN

@@ -315,6 +315,9 @@ export { FormatControllerComponent } from "./FormatControllerNode";
 // ─── Expression ───────────────────────────────────────────────────────────────
 export { ExpressionComponent } from "./ExpressionNode";
 
+// ─── Equation (bidirectional solve) ─────────────────────────────────────────────
+export { EquationComponent } from "./EquationNode";
+
 // ─── Regex / GroupBy ──────────────────────────────────────────────────────────
 export { RegexComponent } from "./RegexNode";
 export { GroupByComponent } from "./GroupByNode";
