@@ -299,7 +299,7 @@ export class SortNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; dir?: SortDir }) {
     super("Sort");
-    this.label = init?.label ?? "SORT";
+    this.label = init?.label ?? "List Sort";
     this.dir = init?.dir ?? "asc";
     this.addInput("list", listIn("List"));
     this.addOutput("result", listOut("Sorted"));
@@ -439,7 +439,7 @@ export class FilterNode extends ClassicPreset.Node {
     valueKeys?: string[];
   }) {
     super("Filter");
-    this.label = init?.label ?? "FILTER";
+    this.label = init?.label ?? "List Filter";
     this.combine = init?.combine === "or" ? "or" : "and";
     this.addInput("list", anyListIn("List"));
     const ids = pairIdsFromKeys(init?.valueKeys?.filter((k) => k.startsWith("value")), "value");

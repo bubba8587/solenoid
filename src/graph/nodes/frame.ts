@@ -174,7 +174,7 @@ export class SortFrameNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; dir?: FrameSortDir }) {
     super("SortFrame");
-    this.label = init?.label ?? "Sort";
+    this.label = init?.label ?? "Frame Sort";
     this.dir = init?.dir ?? "asc";
     this.addInput("frame", frameIn("Frame"));
     this.addInput("column", strIn("Column"));
@@ -224,7 +224,7 @@ export class FilterFrameNode extends ClassicPreset.Node {
     condConfig?: Record<string, FilterCondConfig>; valueKeys?: string[];
   }) {
     super("FilterFrame");
-    this.label = init?.label ?? "Filter Rows";
+    this.label = init?.label ?? "Frame Filter";
     this.combine = init?.combine ?? "and";
     this.addInput("frame", frameIn("Frame"));
     const ids = pairIdsFromKeys(init?.valueKeys, "column");
