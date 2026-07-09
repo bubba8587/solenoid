@@ -65,6 +65,7 @@ import {
   IsEvenOddNode, FormatDollarNode,
   FormatControllerNode,
   ExpressionNode,
+  EquationNode,
   RegexNode,
   GroupByNode,
   HypotenuseNode,
@@ -148,6 +149,7 @@ import {
   FormatDollarComponent, IsEvenOddComponent,
   FormatControllerComponent,
   ExpressionComponent,
+  EquationComponent,
   RegexComponent,
   GroupByComponent,
   HypotenuseComponent,
@@ -441,6 +443,7 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [TextFilterNode,        comp(TextFilterComponent)],
   [FormatControllerNode,  comp(FormatControllerComponent)],
   [ExpressionNode,        comp(ExpressionComponent)],
+  [EquationNode,          comp(EquationComponent)],
   [RegexNode,             comp(RegexComponent)],
   [GroupByNode,           comp(GroupByComponent)],
   // Packs (example built-in pack node — registered always so saved graphs that

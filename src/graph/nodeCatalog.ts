@@ -6,7 +6,7 @@ import {
   AngleDialNode, SlicerNode, CableSwitchNode, DatePickerNode, DateRangeNode, XYPadNode,
   SparklineNode, ChartNode, HistogramNode, KpiNode, BulletNode, TreemapNode, SankeyNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode,
   NumberInputNode, ArithmeticNode, DisplayNode, ComparisonNode, MathFnNode,
-  FormatControllerNode, ExpressionNode, RegexNode, GroupByNode,
+  FormatControllerNode, ExpressionNode, EquationNode, RegexNode, GroupByNode,
   ClampNode, BooleanOpNode, NotNode, IfNode, ConduitNode, CastNode, ConstantNode, MRoundNode,
   ListInputNode, AggregateNode, RangeNode, ListLengthNode, ListIndexNode,
   SortNode, ReverseNode, SliceNode, FilterNode, FillNode, XLookupNode,
@@ -273,6 +273,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
     type: "category", label: "Numbers", description: "Scalar math: arithmetic, functions, rounding, and trigonometry.",
     children: [
       { type: "expression", label: "Expression", description: "Type a formula like a*b+1; named variables become input sockets. Supports math functions, the constants pi / tau / e / phi, and list broadcasting. Pick the result type to loop any function over arrays (e.g. UPPER(name), DATE(y,m,d)). Functions evaluate via Formula.js, a standard Excel-function library, separate from the visual nodes, so a function here can differ from the matching node for statistics, dates, units, and error / null handling. Scope is capped on purpose: scalars and 1-D lists only, with no matrices/frames, no complex numbers, and no type-directed semantics. For those, build a subgraph instead.", create: () => new ExpressionNode(), accent: NODE_KIND_ACCENTS.math },
+      { type: "equation", label: "Equation", description: "Type a relation like V = I * R; every variable becomes an input AND an output. Leave one variable unwired and the node solves for it — algebraically where the equation inverts, numerically otherwise. Wire in all of them and the Holds? output turns TRUE/FALSE. Numbers and 1-D lists; √ and trig inversions take the principal branch.", create: () => new EquationNode(), accent: NODE_KIND_ACCENTS.math, keywords: "solve rearrange unknown goal seek formula bidirectional check" },
       {
         type: "category", label: "Arithmetic", description: "Two-input operations on numbers.",
         children: [

@@ -152,11 +152,31 @@ export function PortSockets({
  */
 // ─── Multi-output rows ────────────────────────────────────────────────────────
 
+// A row's value: scalar (number / logical), a list of them (rendered as a short
+// preview), an error, or blank. Lists/logicals arrived with the Equation node's
+// per-variable outputs; plain numeric rows are unaffected.
+export type OutputRowValue = number | boolean | (number | boolean | SolError | null)[] | SolError | null;
+
 export type OutputRowDef = {
   key: string;
   label: string;
-  value: number | SolError | null;
+  value: OutputRowValue;
 };
+
+function formatRowCell(v: number | boolean | SolError | null): string {
+  if (v === null) return "—";
+  if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
+  if (isSolError(v)) return v.code;
+  return formatScalar(v);
+}
+
+function formatRowValue(v: Exclude<OutputRowValue, SolError>): string {
+  if (Array.isArray(v)) {
+    const head = v.slice(0, 3).map(formatRowCell).join(", ");
+    return v.length > 3 ? `${head}, …` : head || "—";
+  }
+  return formatRowCell(v);
+}
 
 /**
  * Renders a labelled row for each output with the socket dot measured-centered
@@ -168,7 +188,7 @@ function MeasuredOutputRow({
 }: {
   rowKey: string;
   label: string;
-  value: number | SolError | null;
+  value: OutputRowValue;
   node: ShellNode;
   emit: Emit;
 }) {
@@ -189,7 +209,7 @@ function MeasuredOutputRow({
         >{value.code}</span>
       ) : (
         <span className="solenoid-node__output-value">
-          {value === null ? "—" : formatScalar(value)}
+          {formatRowValue(value)}
         </span>
       )}
     </MeasuredSocketRow>
