@@ -106,6 +106,12 @@ describe("Expression — value-polymorphic results", () => {
     expect(dt(new ExpressionNode({ resultAs: "auto" }).outputs.result?.socket)).toBe("any");
   });
 
+  it("the 2-D producers: Number default is the numeric matrix; Auto is anytable (D17)", () => {
+    expect(dt(new MapTableNode().outputs.result?.socket)).toBe("table"); // default resultAs: number
+    expect(dt(new MapTableNode({ resultAs: "auto" }).outputs.result?.socket)).toBe("anytable");
+    expect(dt(new MakeArrayNode({ resultAs: "auto" }).outputs.result?.socket)).toBe("anytable");
+  });
+
   it("variable inputs are `any` so text/date arrays connect", () => {
     const n = new ExpressionNode({ expr: "UPPER(name)", resultAs: "text" });
     expect(dt(n.inputs.name?.socket)).toBe("anylist");
