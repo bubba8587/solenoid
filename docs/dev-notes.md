@@ -28,10 +28,16 @@ task-shaped additions, one per pack, each with pinned tests:
 - **Pipe Roughness (fluids):** the 13-material textbook ε table (mm); a diameter
   makes it emit ε/D straight into Colebrook/Swamee–Jain — the number every Moody
   problem starts with.
-- **Triangle Solver (geometry):** wire/type ANY three parts (≥1 side; degrees) →
-  all six + area + perimeter. SSS/SAS/ASA/AAS; the genuinely ambiguous SSA case
-  is an honest #SOLVE! instead of a silent pick — the Equation-node spirit as a
-  fixed-socket custom node.
+- **Triangle Solver (geometry):** wire ANY three parts (≥1 side; degrees) → all
+  six + area + perimeter. SSS/SAS/ASA/AAS; the genuinely ambiguous SSA case is
+  an honest #SOLVE! instead of a silent pick. **Reworked same evening (author):
+  the card now IS the current Equation design** — `EquationVarRow`/
+  `EquationOutRow` exported from EquationNode.tsx (shared, not copied; the
+  Check row deduped onto it) give each part ONE dual-socket hero row; a logical
+  **Valid** output mirrors Equation's Check (3 parts → solve, TRUE/FALSE;
+  >3 parts → solve from the side-richest subset and CHECK the rest agree at
+  1e-6); <3 parts pass through quietly. And the card **draws the triangle to
+  scale** (letters only — numbers live in the rows; neutral stroke).
 - Pack-level descriptions + node-coverage inventory updated; new node classes in
   `nodes/{emSpectrum,health,triangle}.ts` + additions to electrical/fluids/
   chemistry; cards in `PackToolNodes.tsx`/`ElectricalNodes`/`ChemistryNodes` +

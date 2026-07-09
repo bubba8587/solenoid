@@ -29,18 +29,29 @@ function useRowTop(ref: React.RefObject<HTMLElement | null>): number | undefined
   return top;
 }
 
+// The structural slice of a node these rows need — any acausal card (Equation,
+// TVM, the Triangle Solver) satisfies it.
+export interface AcausalRowNode {
+  id: string;
+  inputs: Partial<Record<string, { socket: import("rete").ClassicPreset.Socket }>>;
+  outputs: Partial<Record<string, { socket: import("rete").ClassicPreset.Socket }>>;
+}
+
 // One variable = one hero row: label, value box (chips for lists, error badge
 // for #CODE!), input socket on the left edge and output socket on the right —
 // the acausal card in miniature. The `--output` modifier keeps the rows visible
-// when the node is collapsed.
-function EquationVarRow({
-  node, emit, varKey, value, solved,
+// when the node is collapsed. Shared by every acausal card (Equation, TVM,
+// Triangle Solver) — the CURRENT Equation design, don't rebuild it per node.
+export function EquationVarRow({
+  node, emit, varKey, value, solved, label,
 }: {
-  node: EquationNodeType;
+  node: AcausalRowNode;
   emit: Emit;
   varKey: string;
   value: DisplayValue;
   solved: boolean;
+  /** Display label; defaults to the socket key. */
+  label?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const top = useRowTop(ref);
@@ -59,8 +70,33 @@ function EquationVarRow({
         style={solved ? { color: "var(--node-accent)" } : undefined}
         title={solved ? "Solved from the other variables" : undefined}
       >
-        {varKey}
+        {label ?? varKey}
       </span>
+      <ValueDisplay value={value} />
+    </div>
+  );
+}
+
+// A single-OUTPUT hero row measured the same way — the Check row, and the
+// derived rows on acausal cards (Triangle Solver's Area / Perimeter / Valid).
+export function EquationOutRow({
+  node, emit, socketKey, label, value,
+}: {
+  node: AcausalRowNode;
+  emit: Emit;
+  socketKey: string;
+  label: string;
+  value: DisplayValue;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const top = useRowTop(ref);
+  const port = node.outputs[socketKey];
+  return (
+    <div ref={ref} className="solenoid-node__io-row solenoid-node__io-row--output solenoid-node__io-row--hero solenoid-eq__var-row">
+      {top !== undefined && port && (
+        <NodeSocket side="output" socketKey={socketKey} nodeId={node.id} emit={emit} payload={port.socket} top={top} />
+      )}
+      <span className="solenoid-node__io-label">{label}</span>
       <ValueDisplay value={value} />
     </div>
   );
@@ -71,10 +107,6 @@ export function EquationComponent({ data: node, emit, config }: NodeProps<Equati
    *  variable rows (the TVM node's payment-timing dropdown). */
   config?: ReactNode;
 }) {
-  const checkRef = useRef<HTMLDivElement>(null);
-  const checkTop = useRowTop(checkRef);
-  const checkPort = node.outputs.holds;
-
   return (
     <NodeShell node={node} emit={emit} labelPlaceholder="Equation" hideOutputSockets>
       {/* The relation, KaTeX-rendered; sockets derive from its variables. Clicking
@@ -102,13 +134,7 @@ export function EquationComponent({ data: node, emit, config }: NodeProps<Equati
           solved={node.solvedFor === v}
         />
       ))}
-      <div ref={checkRef} className="solenoid-node__io-row solenoid-node__io-row--output solenoid-node__io-row--hero solenoid-eq__var-row">
-        {checkTop !== undefined && checkPort && (
-          <NodeSocket side="output" socketKey="holds" nodeId={node.id} emit={emit} payload={checkPort.socket} top={checkTop} />
-        )}
-        <span className="solenoid-node__io-label">Check</span>
-        <ValueDisplay value={node.cachedHolds as DisplayValue} />
-      </div>
+      <EquationOutRow node={node} emit={emit} socketKey="holds" label="Check" value={node.cachedHolds as DisplayValue} />
     </NodeShell>
   );
 }

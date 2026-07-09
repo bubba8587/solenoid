@@ -94,12 +94,36 @@ describe("Triangle Solver", () => {
     expect(isSolError(solveTriangle({ a: 1, A: 100, B: 100 }))).toBe(true);       // angles ≥ 180
   });
 
-  it("the node passes givens through and errors every output on a bad set", () => {
+  it("the node: three parts solve and Valid is TRUE; a bad set errors with Valid FALSE", () => {
     const n = new TriangleSolverNode();
     const out = n.data({ a: [3], b: [4], c: [5] });
     expect(out.area as number).toBeCloseTo(6, 9);
     expect(out.C as number).toBeCloseTo(90, 9);
-    const empty = n.data({});
-    expect(empty.area).toBeNull();
+    expect(out.valid).toBe(true);
+    const bad = n.data({ a: [1], b: [1], c: [5] });
+    expect(isSolError(bad.area)).toBe(true);
+    expect(bad.valid).toBe(false);
+  });
+
+  it("fewer than three parts pass through quietly (no error, Valid stays blank)", () => {
+    const n = new TriangleSolverNode();
+    const out = n.data({ a: [3], b: [4] });
+    expect(out.a).toBe(3);
+    expect(out.c).toBeNull();
+    expect(out.valid).toBeNull();
+    expect(n.data({}).area).toBeNull();
+  });
+
+  it("over-determined = the Equation-style Check: consistent parts → TRUE, off ones → FALSE", () => {
+    const n = new TriangleSolverNode();
+    // The full 3-4-5 with its right angle: closes.
+    const ok = n.data({ a: [3], b: [4], c: [5], C: [90] });
+    expect(ok.valid).toBe(true);
+    expect(ok.A as number).toBeCloseTo(36.8699, 3); // still solved for the rest
+    // Perturb the angle: doesn't close, but the givens still pass through.
+    const off = n.data({ a: [3], b: [4], c: [5], C: [80] });
+    expect(off.valid).toBe(false);
+    expect(off.C).toBe(80);
+    expect(off.area as number).toBeCloseTo(6, 9); // solved from the side-rich subset
   });
 });
