@@ -340,6 +340,9 @@ export { PhysicsConstantComponent } from "./PhysicsConstantNode";
 // ─── Fluid Mechanics pack ────────────────────────────────────────────────────────
 export { ColebrookComponent } from "./FluidsNodes";
 
+// ─── Thermodynamics & Air pack ───────────────────────────────────────────────────
+export { IsaAtmosphereComponent, AntoineComponent } from "./ThermoNodes";
+
 // ─── Missing-type placeholder (load-time only, not in the Add menu) ───────────
 export { PlaceholderComponent } from "./PlaceholderNode";
 
