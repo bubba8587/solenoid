@@ -352,6 +352,9 @@ export { ReverseTextComponent, SpellNumberComponent } from "./TimesaverNodes";
 // ─── Earth & Sky pack ────────────────────────────────────────────────────────────
 export { SolarPositionComponent, SunriseSunsetComponent, MoonPhaseComponent } from "./AstroNodes";
 
+// ─── Chemistry Basics pack ───────────────────────────────────────────────────────
+export { ElementComponent, MolarMassComponent } from "./ChemistryNodes";
+
 // ─── Missing-type placeholder (load-time only, not in the Add menu) ───────────
 export { PlaceholderComponent } from "./PlaceholderNode";
 
