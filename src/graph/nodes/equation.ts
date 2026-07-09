@@ -9,7 +9,7 @@
 import { ClassicPreset } from "rete";
 import { numListIn, numListOut, logicalComboOut } from "./shared";
 import { extractVariables, compileEvaluator, type ExprEvaluator } from "../excelFormula";
-import { parseEquation, compileSolver, solveNumeric, equalsWithin, type ParsedEquation } from "../equationSolve";
+import { parseEquation, compileSolver, solveNumeric, sniffQuadratic, solveQuadratic, equalsWithin, type ParsedEquation } from "../equationSolve";
 import { isSolError, solError, type SolError } from "../errorValue";
 
 type Val = number | (number | SolError | null)[] | SolError | null;
@@ -192,22 +192,11 @@ export class EquationNode extends ClassicPreset.Node {
     if (errIn) { values[unknown] = errIn as SolError; return finish(null); }
     if (knownVals.some((k) => k === null)) { values[unknown] = null; return finish(null); }
 
-    const solver = this.solverFor(unknown);
-    if (solver) {
-      try {
-        values[unknown] = guardVal(solver(env));
-      } catch {
-        values[unknown] = solError("#VALUE!", "Solving failed to evaluate");
-      }
-      return finish(null);
-    }
-
-    // Numeric fallback — scalar knowns only.
-    if (knownVals.some(Array.isArray)) {
-      values[unknown] = solError("#SHAPE!", "Numeric solving works on single values — this equation only solves lists where the algebra can be inverted");
-      return finish(null);
-    }
+    // With scalar knowns, check for a QUADRATIC in the unknown before anything
+    // else — symbolic isolation would keep only the principal root (x² = 36
+    // must yield [−6, 6], not 6). Degree ≤ 1 returns null and falls through.
     const lhs = this.lhsEval, rhs = this.rhsEval;
+    const scalarKnowns = !knownVals.some(Array.isArray);
     const residual = (x: number): number | null => {
       try {
         const e2 = { ...env, [unknown]: x };
@@ -219,6 +208,32 @@ export class EquationNode extends ClassicPreset.Node {
         return null;
       }
     };
+    if (scalarKnowns) {
+      const quad = sniffQuadratic(residual);
+      if (quad) {
+        const roots = solveQuadratic(quad);
+        if (roots !== null) {
+          values[unknown] = roots;
+          return finish(null);
+        }
+      }
+    }
+
+    const solver = this.solverFor(unknown);
+    if (solver) {
+      try {
+        values[unknown] = guardVal(solver(env));
+      } catch {
+        values[unknown] = solError("#VALUE!", "Solving failed to evaluate");
+      }
+      return finish(null);
+    }
+
+    // Numeric fallback — scalar knowns only.
+    if (!scalarKnowns) {
+      values[unknown] = solError("#SHAPE!", "Numeric solving works on single values — this equation only solves lists where the algebra can be inverted");
+      return finish(null);
+    }
     values[unknown] = solveNumeric(residual);
     return finish(null);
   }

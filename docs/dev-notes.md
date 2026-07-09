@@ -59,7 +59,14 @@ drill into the archive (or `git log`) only for the mechanics of a specific item.
   bidirectional ones. Groups that are NOT rearrangements of one relation (the
   power trio P=VI/I²R/V²/R — different variable sets) stay directional
   Expressions on purpose. The Equation seed (order 15) demos the node with
-  non-pack equations.
+  non-pack equations. **Quadratics (author, same morning):** a residual that is
+  quadratic in the unknown — sniffed by numeric probing (7 points; the 3-point
+  fit is exact for a true polynomial), so ANY arrangement counts — returns EVERY
+  real root ascending (x² − 36 = 0 → [−6, 6]); double root scalar, negative
+  discriminant #SOLVE!. Intercepts BEFORE symbolic isolation so the principal
+  branch can't eat the negative root; non-polynomials (SQRT/1/x/trig in the
+  unknown) fail a probe and keep the old behavior. D14 amended; seed gained the
+  x² − 36 block.
 
 ### SESSION DIGEST (2026-07-08, evening — What's New resell + 1.2/2.0 plans)
 - **What's New rebuilt around the author's sell bar** ("a shiny thing a user will go

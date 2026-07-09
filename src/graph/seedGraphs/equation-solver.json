@@ -15,62 +15,83 @@
         "height": 110
       }
     },
-
     {
       "id": "n-dist",
       "type": "NumberInputNode",
       "x": 0,
       "y": 60,
-      "init": { "label": "Distance km", "value": 120 }
+      "init": {
+        "label": "Distance km",
+        "value": 120
+      }
     },
     {
       "id": "n-time",
       "type": "NumberInputNode",
       "x": 0,
       "y": 185,
-      "init": { "label": "Time h", "value": 1.5 }
+      "init": {
+        "label": "Time h",
+        "value": 1.5
+      }
     },
     {
       "id": "eq-speed",
       "type": "EquationNode",
       "x": 360,
       "y": 40,
-      "init": { "label": "d = s·t (find speed)", "expr": "d = s * t" }
+      "init": {
+        "label": "d = s·t (find speed)",
+        "expr": "d = s * t"
+      }
     },
     {
       "id": "disp-speed",
       "type": "DisplayNode",
       "x": 780,
       "y": 130,
-      "init": { "label": "Speed km/h" }
+      "init": {
+        "label": "Speed km/h"
+      }
     },
     {
       "id": "n-speed2",
       "type": "NumberInputNode",
       "x": 0,
       "y": 460,
-      "init": { "label": "Speed km/h", "value": 90 }
+      "init": {
+        "label": "Speed km/h",
+        "value": 90
+      }
     },
     {
       "id": "n-time2",
       "type": "NumberInputNode",
       "x": 0,
       "y": 585,
-      "init": { "label": "Time h", "value": 2 }
+      "init": {
+        "label": "Time h",
+        "value": 2
+      }
     },
     {
       "id": "eq-dist",
       "type": "EquationNode",
       "x": 360,
       "y": 440,
-      "init": { "label": "d = s·t (find distance)", "expr": "d = s * t" }
+      "init": {
+        "label": "d = s·t (find distance)",
+        "expr": "d = s * t"
+      }
     },
     {
       "id": "disp-dist",
       "type": "DisplayNode",
       "x": 780,
       "y": 530,
-      "init": { "label": "Distance km" }
+      "init": {
+        "label": "Distance km"
+      }
     },
     {
       "id": "note-directions",
@@ -84,34 +105,44 @@
         "height": 130
       }
     },
-
     {
       "id": "n-hyp",
       "type": "NumberInputNode",
       "x": 0,
       "y": 900,
-      "init": { "label": "Hypotenuse c", "value": 13 }
+      "init": {
+        "label": "Hypotenuse c",
+        "value": 13
+      }
     },
     {
       "id": "n-lega",
       "type": "NumberInputNode",
       "x": 0,
       "y": 1025,
-      "init": { "label": "Leg a", "value": 5 }
+      "init": {
+        "label": "Leg a",
+        "value": 5
+      }
     },
     {
       "id": "eq-pyth",
       "type": "EquationNode",
       "x": 360,
       "y": 880,
-      "init": { "label": "Pythagoras, backwards", "expr": "c = SQRT(a^2 + b^2)" }
+      "init": {
+        "label": "Pythagoras, backwards",
+        "expr": "c = SQRT(a^2 + b^2)"
+      }
     },
     {
       "id": "disp-legb",
       "type": "DisplayNode",
       "x": 780,
       "y": 970,
-      "init": { "label": "Leg b" }
+      "init": {
+        "label": "Leg b"
+      }
     },
     {
       "id": "note-invert",
@@ -125,41 +156,54 @@
         "height": 140
       }
     },
-
     {
       "id": "n-pv",
       "type": "NumberInputNode",
       "x": 0,
       "y": 1330,
-      "init": { "label": "Start value", "value": 1000 }
+      "init": {
+        "label": "Start value",
+        "value": 1000
+      }
     },
     {
       "id": "n-fv",
       "type": "NumberInputNode",
       "x": 0,
       "y": 1455,
-      "init": { "label": "Target value", "value": 2000 }
+      "init": {
+        "label": "Target value",
+        "value": 2000
+      }
     },
     {
       "id": "n-years",
       "type": "NumberInputNode",
       "x": 0,
       "y": 1580,
-      "init": { "label": "Years", "value": 10 }
+      "init": {
+        "label": "Years",
+        "value": 10
+      }
     },
     {
       "id": "eq-growth",
       "type": "EquationNode",
       "x": 360,
       "y": 1330,
-      "init": { "label": "Compound growth", "expr": "fv = pv * (1 + r) ^ n" }
+      "init": {
+        "label": "Compound growth",
+        "expr": "fv = pv * (1 + r) ^ n"
+      }
     },
     {
       "id": "disp-rate",
       "type": "DisplayNode",
       "x": 780,
       "y": 1440,
-      "init": { "label": "Rate to double" }
+      "init": {
+        "label": "Rate to double"
+      }
     },
     {
       "id": "note-growth",
@@ -173,27 +217,34 @@
         "height": 140
       }
     },
-
     {
       "id": "n-cubic",
       "type": "NumberInputNode",
       "x": 0,
       "y": 1900,
-      "init": { "label": "Right side", "value": 10 }
+      "init": {
+        "label": "Right side",
+        "value": 10
+      }
     },
     {
       "id": "eq-cubic",
       "type": "EquationNode",
       "x": 360,
       "y": 1880,
-      "init": { "label": "x³ + x = 10", "expr": "x^3 + x = c" }
+      "init": {
+        "label": "x³ + x = 10",
+        "expr": "x^3 + x = c"
+      }
     },
     {
       "id": "disp-root",
       "type": "DisplayNode",
       "x": 780,
       "y": 1950,
-      "init": { "label": "Root x" }
+      "init": {
+        "label": "Root x"
+      }
     },
     {
       "id": "note-numeric",
@@ -207,42 +258,90 @@
         "height": 130
       }
     },
-
+    {
+      "id": "eq-quad",
+      "type": "EquationNode",
+      "x": 360,
+      "y": 2200,
+      "init": {
+        "label": "x² − 36 = 0",
+        "expr": "x^2 - 36 = 0"
+      }
+    },
+    {
+      "id": "disp-quad",
+      "type": "DisplayNode",
+      "x": 780,
+      "y": 2260,
+      "init": {
+        "label": "Both roots"
+      }
+    },
+    {
+      "id": "note-quad",
+      "type": "NoteNode",
+      "x": 1120,
+      "y": 2230,
+      "init": {
+        "label": "Quadratics keep both roots",
+        "body": "A relation that is quadratic in the unknown — however it's arranged — solves with the quadratic formula and outputs **every real root** as a list: [−6, 6] here, never just the positive branch. A repeated root comes out as one value; no real root is **#SOLVE!**.",
+        "width": 400,
+        "height": 150
+      }
+    },
     {
       "id": "eq-check-true",
       "type": "EquationNode",
       "x": 360,
-      "y": 2300,
-      "init": { "label": "3-4-5 triangle?", "expr": "a^2 + b^2 = c^2" },
-      "literals": { "a": 3, "b": 4, "c": 5 }
+      "y": 2600,
+      "init": {
+        "label": "3-4-5 triangle?",
+        "expr": "a^2 + b^2 = c^2"
+      },
+      "literals": {
+        "a": 3,
+        "b": 4,
+        "c": 5
+      }
     },
     {
       "id": "disp-true",
       "type": "DisplayNode",
       "x": 780,
-      "y": 2400,
-      "init": { "label": "Right-angled?" }
+      "y": 2700,
+      "init": {
+        "label": "Right-angled?"
+      }
     },
     {
       "id": "eq-check-false",
       "type": "EquationNode",
       "x": 360,
-      "y": 2720,
-      "init": { "label": "7-8-11 triangle?", "expr": "a^2 + b^2 = c^2" },
-      "literals": { "a": 7, "b": 8, "c": 11 }
+      "y": 3020,
+      "init": {
+        "label": "7-8-11 triangle?",
+        "expr": "a^2 + b^2 = c^2"
+      },
+      "literals": {
+        "a": 7,
+        "b": 8,
+        "c": 11
+      }
     },
     {
       "id": "disp-false",
       "type": "DisplayNode",
       "x": 780,
-      "y": 2820,
-      "init": { "label": "Right-angled?" }
+      "y": 3120,
+      "init": {
+        "label": "Right-angled?"
+      }
     },
     {
       "id": "note-check",
       "type": "NoteNode",
       "x": 1120,
-      "y": 2480,
+      "y": 2780,
       "init": {
         "label": "All knowns → a check",
         "body": "With every variable filled in (typed here, no cables needed), there is nothing left to solve — **Holds?** turns into a TRUE/FALSE test with a float-safe tolerance. 3-4-5 passes; 7-8-11 misses (49 + 64 ≠ 121).",
@@ -250,44 +349,59 @@
         "height": 150
       }
     },
-
     {
       "id": "list-dist",
       "type": "ListInputNode",
       "x": 0,
-      "y": 3160,
+      "y": 3460,
       "init": {
         "label": "Distances km",
-        "valueKeys": ["v0", "v1", "v2"]
+        "valueKeys": [
+          "v0",
+          "v1",
+          "v2"
+        ]
       },
-      "stringLiterals": { "v0": "100", "v1": "200", "v2": "300" }
+      "stringLiterals": {
+        "v0": "100",
+        "v1": "200",
+        "v2": "300"
+      }
     },
     {
       "id": "n-time3",
       "type": "NumberInputNode",
       "x": 0,
-      "y": 3400,
-      "init": { "label": "Time h", "value": 2 }
+      "y": 3700,
+      "init": {
+        "label": "Time h",
+        "value": 2
+      }
     },
     {
       "id": "eq-broadcast",
       "type": "EquationNode",
       "x": 360,
-      "y": 3160,
-      "init": { "label": "Solve a whole column", "expr": "d = s * t" }
+      "y": 3460,
+      "init": {
+        "label": "Solve a whole column",
+        "expr": "d = s * t"
+      }
     },
     {
       "id": "disp-speeds",
       "type": "DisplayNode",
       "x": 780,
-      "y": 3250,
-      "init": { "label": "Speeds km/h" }
+      "y": 3550,
+      "init": {
+        "label": "Speeds km/h"
+      }
     },
     {
       "id": "note-broadcast",
       "type": "NoteNode",
       "x": 1120,
-      "y": 3220,
+      "y": 3520,
       "init": {
         "label": "Solving broadcasts",
         "body": "Wire a list into a known and the solved variable comes out as a list — three distances over the same 2 h give three speeds. The rearranged form is an ordinary formula underneath, so it maps like one.",
@@ -297,31 +411,131 @@
     }
   ],
   "connections": [
-    { "source": "n-dist", "sourceOutput": "value", "target": "eq-speed", "targetInput": "d" },
-    { "source": "n-time", "sourceOutput": "value", "target": "eq-speed", "targetInput": "t" },
-    { "source": "eq-speed", "sourceOutput": "s", "target": "disp-speed", "targetInput": "in" },
-
-    { "source": "n-speed2", "sourceOutput": "value", "target": "eq-dist", "targetInput": "s" },
-    { "source": "n-time2", "sourceOutput": "value", "target": "eq-dist", "targetInput": "t" },
-    { "source": "eq-dist", "sourceOutput": "d", "target": "disp-dist", "targetInput": "in" },
-
-    { "source": "n-hyp", "sourceOutput": "value", "target": "eq-pyth", "targetInput": "c" },
-    { "source": "n-lega", "sourceOutput": "value", "target": "eq-pyth", "targetInput": "a" },
-    { "source": "eq-pyth", "sourceOutput": "b", "target": "disp-legb", "targetInput": "in" },
-
-    { "source": "n-fv", "sourceOutput": "value", "target": "eq-growth", "targetInput": "fv" },
-    { "source": "n-pv", "sourceOutput": "value", "target": "eq-growth", "targetInput": "pv" },
-    { "source": "n-years", "sourceOutput": "value", "target": "eq-growth", "targetInput": "n" },
-    { "source": "eq-growth", "sourceOutput": "r", "target": "disp-rate", "targetInput": "in" },
-
-    { "source": "n-cubic", "sourceOutput": "value", "target": "eq-cubic", "targetInput": "c" },
-    { "source": "eq-cubic", "sourceOutput": "x", "target": "disp-root", "targetInput": "in" },
-
-    { "source": "eq-check-true", "sourceOutput": "holds", "target": "disp-true", "targetInput": "in" },
-    { "source": "eq-check-false", "sourceOutput": "holds", "target": "disp-false", "targetInput": "in" },
-
-    { "source": "list-dist", "sourceOutput": "list", "target": "eq-broadcast", "targetInput": "d" },
-    { "source": "n-time3", "sourceOutput": "value", "target": "eq-broadcast", "targetInput": "t" },
-    { "source": "eq-broadcast", "sourceOutput": "s", "target": "disp-speeds", "targetInput": "in" }
+    {
+      "source": "n-dist",
+      "sourceOutput": "value",
+      "target": "eq-speed",
+      "targetInput": "d"
+    },
+    {
+      "source": "n-time",
+      "sourceOutput": "value",
+      "target": "eq-speed",
+      "targetInput": "t"
+    },
+    {
+      "source": "eq-speed",
+      "sourceOutput": "s",
+      "target": "disp-speed",
+      "targetInput": "in"
+    },
+    {
+      "source": "n-speed2",
+      "sourceOutput": "value",
+      "target": "eq-dist",
+      "targetInput": "s"
+    },
+    {
+      "source": "n-time2",
+      "sourceOutput": "value",
+      "target": "eq-dist",
+      "targetInput": "t"
+    },
+    {
+      "source": "eq-dist",
+      "sourceOutput": "d",
+      "target": "disp-dist",
+      "targetInput": "in"
+    },
+    {
+      "source": "n-hyp",
+      "sourceOutput": "value",
+      "target": "eq-pyth",
+      "targetInput": "c"
+    },
+    {
+      "source": "n-lega",
+      "sourceOutput": "value",
+      "target": "eq-pyth",
+      "targetInput": "a"
+    },
+    {
+      "source": "eq-pyth",
+      "sourceOutput": "b",
+      "target": "disp-legb",
+      "targetInput": "in"
+    },
+    {
+      "source": "n-fv",
+      "sourceOutput": "value",
+      "target": "eq-growth",
+      "targetInput": "fv"
+    },
+    {
+      "source": "n-pv",
+      "sourceOutput": "value",
+      "target": "eq-growth",
+      "targetInput": "pv"
+    },
+    {
+      "source": "n-years",
+      "sourceOutput": "value",
+      "target": "eq-growth",
+      "targetInput": "n"
+    },
+    {
+      "source": "eq-growth",
+      "sourceOutput": "r",
+      "target": "disp-rate",
+      "targetInput": "in"
+    },
+    {
+      "source": "n-cubic",
+      "sourceOutput": "value",
+      "target": "eq-cubic",
+      "targetInput": "c"
+    },
+    {
+      "source": "eq-cubic",
+      "sourceOutput": "x",
+      "target": "disp-root",
+      "targetInput": "in"
+    },
+    {
+      "source": "eq-check-true",
+      "sourceOutput": "holds",
+      "target": "disp-true",
+      "targetInput": "in"
+    },
+    {
+      "source": "eq-check-false",
+      "sourceOutput": "holds",
+      "target": "disp-false",
+      "targetInput": "in"
+    },
+    {
+      "source": "list-dist",
+      "sourceOutput": "list",
+      "target": "eq-broadcast",
+      "targetInput": "d"
+    },
+    {
+      "source": "n-time3",
+      "sourceOutput": "value",
+      "target": "eq-broadcast",
+      "targetInput": "t"
+    },
+    {
+      "source": "eq-broadcast",
+      "sourceOutput": "s",
+      "target": "disp-speeds",
+      "targetInput": "in"
+    },
+    {
+      "source": "eq-quad",
+      "sourceOutput": "x",
+      "target": "disp-quad",
+      "targetInput": "in"
+    }
   ]
 }
