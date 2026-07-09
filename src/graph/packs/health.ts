@@ -90,11 +90,11 @@ export const HEALTH_PACK: Pack = {
   builtin: true,
   defaultActive: false,
   nodes: [
-    ...placeFormulas(["Numbers", "Health & Fitness"], HEALTH_BODY),
-    ...placeFormulas(["Numbers", "Health & Fitness", "Body Composition"], HEALTH_COMPOSITION),
-    ...placeFormulas(["Numbers", "Health & Fitness", "Energy & Metabolism"], HEALTH_ENERGY),
-    ...placeFormulas(["Numbers", "Health & Fitness", "Heart & Cardio"], HEALTH_CARDIO),
-    ...placeFormulas(["Numbers", "Health & Fitness", "Clinical"], HEALTH_CLINICAL),
+    ...placeFormulas(["Packs", "Health & Fitness"], HEALTH_BODY),
+    ...placeFormulas(["Packs", "Health & Fitness", "Body Composition"], HEALTH_COMPOSITION),
+    ...placeFormulas(["Packs", "Health & Fitness", "Energy & Metabolism"], HEALTH_ENERGY),
+    ...placeFormulas(["Packs", "Health & Fitness", "Heart & Cardio"], HEALTH_CARDIO),
+    ...placeFormulas(["Packs", "Health & Fitness", "Clinical"], HEALTH_CLINICAL),
   ],
   units: [
     { id: "kcal", label: " kcal", group: "health", groupLabel: "Health" },

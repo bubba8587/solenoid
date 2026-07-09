@@ -87,9 +87,9 @@ export const THERMO_PACK: Pack = {
   builtin: true,
   defaultActive: false,
   nodes: [
-    ...placeFormulas(["Numbers", "Thermo & Heat"], THERMO_GAS),
+    ...placeFormulas(["Packs", "Thermo & Heat"], THERMO_GAS),
     {
-      path: ["Numbers", "Thermo & Heat"],
+      path: ["Packs", "Thermo & Heat"],
       entry: {
         type: "th-isa",
         label: "Standard Atmosphere",
@@ -98,10 +98,10 @@ export const THERMO_PACK: Pack = {
         create: () => new IsaAtmosphereNode(),
       },
     },
-    ...placeFormulas(["Numbers", "Thermo & Heat", "Heat Transfer"], THERMO_HEAT),
-    ...placeFormulas(["Numbers", "Thermo & Heat", "Humid Air"], THERMO_AIR),
+    ...placeFormulas(["Packs", "Thermo & Heat", "Heat Transfer"], THERMO_HEAT),
+    ...placeFormulas(["Packs", "Thermo & Heat", "Humid Air"], THERMO_AIR),
     {
-      path: ["Numbers", "Thermo & Heat", "Humid Air"],
+      path: ["Packs", "Thermo & Heat", "Humid Air"],
       entry: {
         type: "th-antoine",
         label: "Vapor Pressure (Antoine)",

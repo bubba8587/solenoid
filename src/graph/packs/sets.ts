@@ -16,7 +16,7 @@ export const SETS_PACK: Pack = {
   defaultActive: false,
   nodes: [
     {
-      path: ["Lists", "Find"],
+      path: ["Packs", "Sets & Membership"],
       entry: {
         type: "sets-isin",
         label: "Is In",
@@ -26,7 +26,7 @@ export const SETS_PACK: Pack = {
       },
     },
     {
-      path: ["Lists", "Aggregate"],
+      path: ["Packs", "Sets & Membership"],
       entry: {
         type: "sets-tally",
         label: "Tally",

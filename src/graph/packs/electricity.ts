@@ -126,9 +126,9 @@ export const ELECTRICITY_PACK: Pack = {
   builtin: true,
   defaultActive: false,
   nodes: [
-    ...placeFormulas(["Numbers", "Electricity"], ELECTRICITY_BASE),
+    ...placeFormulas(["Packs", "Electricity"], ELECTRICITY_BASE),
     {
-      path: ["Numbers", "Electricity"],
+      path: ["Packs", "Electricity"],
       entry: {
         type: "elec-parallel",
         label: "Parallel Combine",
@@ -137,11 +137,11 @@ export const ELECTRICITY_PACK: Pack = {
         create: () => new ParallelCombineNode(),
       },
     },
-    ...placeFormulas(["Numbers", "Electricity", "AC & Reactance"], ELECTRICITY_AC),
-    ...placeFormulas(["Numbers", "Electricity", "Transients & Timing"], ELECTRICITY_TRANSIENTS),
-    ...placeFormulas(["Numbers", "Electricity", "Signal Levels"], ELECTRICITY_DB),
+    ...placeFormulas(["Packs", "Electricity", "AC & Reactance"], ELECTRICITY_AC),
+    ...placeFormulas(["Packs", "Electricity", "Transients & Timing"], ELECTRICITY_TRANSIENTS),
+    ...placeFormulas(["Packs", "Electricity", "Signal Levels"], ELECTRICITY_DB),
     {
-      path: ["Numbers", "Electricity", "Components & Wire"],
+      path: ["Packs", "Electricity", "Components & Wire"],
       entry: {
         type: "elec-eseries",
         label: "E-Series Value",
@@ -151,7 +151,7 @@ export const ELECTRICITY_PACK: Pack = {
       },
     },
     {
-      path: ["Numbers", "Electricity", "Components & Wire"],
+      path: ["Packs", "Electricity", "Components & Wire"],
       entry: {
         type: "elec-awg",
         label: "AWG Wire",

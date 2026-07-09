@@ -94,7 +94,7 @@ export const ELECTROMAGNETISM_PACK: Pack = {
   dependsOn: ["electricity"],
   nodes: [
     {
-      path: ["Input"],
+      path: ["Packs", "Electromagnetism"],
       entry: {
         type: "em-constant",
         label: "Physics Constant",
@@ -103,10 +103,10 @@ export const ELECTROMAGNETISM_PACK: Pack = {
         create: () => new PhysicsConstantNode(),
       },
     },
-    ...placeFormulas(["Numbers", "Electromagnetism"], EM_ELECTROSTATICS),
-    ...placeFormulas(["Numbers", "Electromagnetism", "Magnetism"], EM_MAGNETISM),
-    ...placeFormulas(["Numbers", "Electromagnetism", "Waves & Photons"], EM_WAVES),
-    ...placeFormulas(["Numbers", "Electromagnetism", "Induction"], EM_INDUCTION),
+    ...placeFormulas(["Packs", "Electromagnetism"], EM_ELECTROSTATICS),
+    ...placeFormulas(["Packs", "Electromagnetism", "Magnetism"], EM_MAGNETISM),
+    ...placeFormulas(["Packs", "Electromagnetism", "Waves & Photons"], EM_WAVES),
+    ...placeFormulas(["Packs", "Electromagnetism", "Induction"], EM_INDUCTION),
   ],
   units: [
     { id: "T", label: " T", group: "electrical" },
