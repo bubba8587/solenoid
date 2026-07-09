@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { numIn, anyListIn, anyTableIn, strIn, lambdaIn, resultOut, type ResultType } from "./shared";
+import { numIn, anyListIn, anyTableIn, lambdaIn, resultOut, type ResultType } from "./shared";
 import { toAnyMatrix } from "./coerce";
 import { compilePositional } from "../excelFormula";
 import { isLambdaValue } from "./lambda";
@@ -8,12 +8,10 @@ import { solError, isSolError, type SolError, type SolErrorCode } from "../error
 // ─── 2D LAMBDA family: MAP / BYROW / BYCOL / MAKEARRAY / REDUCE ─────────────────
 // Excel's MAP/BYROW/BYCOL/MAKEARRAY/REDUCE take a LAMBDA. Each node holds its
 // formula as a string, typed inline in the node's "Formula" field (or the big
-// FormulaPopup editor); a wired LAMBDA value supersedes it. BYROW/BYCOL/REDUCE
-// additionally accept the formula TEXT piped from a Text Input (the formula
-// socket overrides the inline text when wired) — so a formula can be authored
-// once and fed to several lambdas. MAP and MAKEARRAY dropped that string
-// socket (2026-07-09): the popup + the lambda socket cover both authoring
-// paths, and reuse is the LAMBDA node's job.
+// FormulaPopup editor); a wired LAMBDA value supersedes it. The old third
+// path — formula TEXT piped from a Text Input through a "Formula" string
+// socket — was removed 2026-07-09: the popup + the lambda socket cover both
+// authoring paths, and reuse-across-nodes is the LAMBDA node's job.
 // Fixed variables:
 //   MAP        → `x` (cell value; `y`,`z` from optional 2nd/3rd tables), plus
 //                `r`,`c` (1-based position)
@@ -44,24 +42,18 @@ export function compileLambda(expr: string, varNames: string[]): LambdaFn | null
   return compilePositional(expr, varNames) as LambdaFn | null;
 }
 
-// A wired Text Input (the `formula` socket) overrides the inline formula text.
-function effectiveFormula(piped: unknown, inline: string | undefined, fallback: string): string {
-  if (typeof piped === "string" && piped.trim()) return piped;
-  return inline && inline.trim() ? inline : fallback;
-}
-
 /**
  * Resolve the function a lambda-family node runs. A wired LAMBDA value wins
  * (its declared params bind positionally to the first of this node's call
- * args, Excel-style); otherwise the wired/inline formula text compiles over
- * the node's fixed variable names. `provided` is how many positional values
+ * args, Excel-style); otherwise the inline formula text compiles over the
+ * node's fixed variable names. `provided` is how many positional values
  * the node passes per call — a lambda declaring more can't be satisfied.
  */
 // `err` is the short message shown inline in the node (FormulaError); `code` tags
 // the same failure for the propagating SolError so downstream nodes show the red
 // badge. An arity mismatch is a #VALUE! (wrong operand), a bad formula a #SYNTAX!.
 function resolveFn(
-  lam: unknown, piped: unknown, inline: string | undefined,
+  lam: unknown, inline: string | undefined,
   fallback: string, varNames: string[], provided: number,
 ): { fn: LambdaFn | null; err: string | null; code: SolErrorCode } {
   if (isLambdaValue(lam)) {
@@ -70,7 +62,7 @@ function resolveFn(
     }
     return { fn: lam.fn as LambdaFn, err: null, code: "#VALUE!" };
   }
-  const fn = compileLambda(effectiveFormula(piped, inline, fallback), varNames);
+  const fn = compileLambda(inline && inline.trim() ? inline : fallback, varNames);
   return fn ? { fn, err: null, code: "#SYNTAX!" } : { fn: null, err: "Syntax error", code: "#SYNTAX!" };
 }
 
@@ -129,7 +121,7 @@ export class MapTableNode extends ClassicPreset.Node {
   data(inputs: { table?: unknown[]; table2?: unknown[]; table3?: unknown[]; lambda?: unknown[] }): { result: Mat | SolError | null } {
     const m = toAnyMatrix(inputs.table?.[0]);
     const { fn, err, code } = resolveFn(
-      inputs.lambda?.[0], undefined, this.stringLiterals.formula,
+      inputs.lambda?.[0], this.stringLiterals.formula,
       "x^2", ["x", "y", "z", "r", "c"], 5);
     if (!fn) { this.cachedResult = null; this.cachedError = err; return fnError(err!, code); }
     if (!m) { this.cachedResult = null; this.cachedError = null; return { result: null }; }
@@ -172,7 +164,7 @@ export class ByAxisNode extends ClassicPreset.Node {
   cachedResult: Cell[] | SolError | null = null;
   cachedError: string | null = null;
   width = 210;
-  height = 242;
+  height = 218;
 
   constructor(init?: { label?: string; expr?: string; axis?: ByAxis; resultAs?: ResultType }) {
     super("ByAxis");
@@ -181,15 +173,14 @@ export class ByAxisNode extends ClassicPreset.Node {
     this.resultAs = init?.resultAs ?? "number";
     this.stringLiterals = { formula: init?.expr ?? "SUM(v)" };
     this.addInput("table", anyTableIn("Table"));
-    this.addInput("formula", strIn("f(v)"));
     this.addInput("lambda", lambdaIn("Lambda"));
     this.addOutput("result", resultOut("Per-" + this.axis, "combo", this.resultAs));
   }
 
-  data(inputs: { table?: unknown[]; formula?: string[]; lambda?: unknown[] }): { result: Cell[] | SolError | null } {
+  data(inputs: { table?: unknown[]; lambda?: unknown[] }): { result: Cell[] | SolError | null } {
     const m = toAnyMatrix(inputs.table?.[0]);
     const { fn, err, code } = resolveFn(
-      inputs.lambda?.[0], inputs.formula?.[0], this.stringLiterals.formula,
+      inputs.lambda?.[0], this.stringLiterals.formula,
       "SUM(v)", ["v"], 1);
     if (!fn) { this.cachedResult = null; this.cachedError = err; return fnError(err!, code); }
     if (!m || m.length === 0) { this.cachedResult = null; this.cachedError = null; return { result: null }; }
@@ -221,7 +212,7 @@ export class ReduceLambdaNode extends ClassicPreset.Node {
   cachedResult: Cell | SolError | null = null;
   cachedError: string | null = null;
   width = 210;
-  height = 270;
+  height = 246;
 
   constructor(init?: { label?: string; expr?: string; resultAs?: ResultType; literals?: Record<string, number> }) {
     super("ReduceLambda");
@@ -231,16 +222,15 @@ export class ReduceLambdaNode extends ClassicPreset.Node {
     if (init?.literals) this.literals = { ...init.literals };
     this.addInput("initial", anyListIn("Initial"));
     this.addInput("table", anyTableIn("Values"));
-    this.addInput("formula", strIn("f(acc,x)"));
     this.addInput("lambda", lambdaIn("Lambda"));
     this.addOutput("result", resultOut("Result", "scalar", this.resultAs));
   }
 
-  data(inputs: { initial?: unknown[]; table?: unknown[]; formula?: string[]; lambda?: unknown[] }): { result: Cell | SolError | null } {
+  data(inputs: { initial?: unknown[]; table?: unknown[]; lambda?: unknown[] }): { result: Cell | SolError | null } {
     const initial = inputs.initial?.[0] ?? this.literals.initial ?? 0;
     const m = toAnyMatrix(inputs.table?.[0]);
     const { fn, err, code } = resolveFn(
-      inputs.lambda?.[0], inputs.formula?.[0], this.stringLiterals.formula,
+      inputs.lambda?.[0], this.stringLiterals.formula,
       "acc + x", ["acc", "x", "i"], 3);
     if (!fn) { this.cachedResult = null; this.cachedError = err; return fnError(err!, code); }
     if (!m) { this.cachedResult = null; this.cachedError = null; return { result: null }; }
@@ -290,7 +280,7 @@ export class MakeArrayNode extends ClassicPreset.Node {
     const rows = Math.round(inputs.rows?.[0] ?? this.literals.rows ?? 0);
     const cols = Math.round(inputs.cols?.[0] ?? this.literals.cols ?? 0);
     const { fn, err, code } = resolveFn(
-      inputs.lambda?.[0], undefined, this.stringLiterals.formula,
+      inputs.lambda?.[0], this.stringLiterals.formula,
       "r * c", ["r", "c"], 2);
     if (!fn) { this.cachedResult = null; this.cachedError = err; return fnError(err!, code); }
     if (rows < 1 || cols < 1) { this.cachedResult = null; this.cachedError = null; return { result: null }; }

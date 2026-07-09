@@ -168,12 +168,6 @@ describe("ReduceLambda (REDUCE)", () => {
     expect(n.data({ initial: [-999], table: [[[3, 7, 2]]] }).result).toBe(7);
   });
 
-  it("a wired formula string overrides the inline one", () => {
-    const n = new ReduceLambdaNode({ expr: "acc + x" });
-    expect(n.data({ table: [[[2, 3]]], formula: ["acc * x"] }).result).toBe(0);
-    expect(n.data({ initial: [1], table: [[[2, 3]]], formula: ["acc * x"] }).result).toBe(6);
-  });
-
   it("returns null with no values wired", () => {
     const n = new ReduceLambdaNode();
     expect(n.data({}).result).toBeNull();
