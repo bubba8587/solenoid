@@ -187,3 +187,75 @@ export class AwgNode extends ClassicPreset.Node {
     return { diameter, area, resistance, ampacity };
   }
 }
+
+// ─── Resistor color code ──────────────────────────────────────────────────────
+// Decode 4- or 5-band resistor markings: digit bands + multiplier → ohms, the
+// tolerance band → ±%. The IEC 60062 code; the component renders the actual
+// band colors on a resistor glyph, so the node doubles as a visual reference.
+
+export const RESISTOR_DIGIT: Record<string, number> = {
+  black: 0, brown: 1, red: 2, orange: 3, yellow: 4,
+  green: 5, blue: 6, violet: 7, gray: 8, white: 9,
+};
+export const RESISTOR_MULT: Record<string, number> = {
+  black: 1, brown: 10, red: 100, orange: 1e3, yellow: 1e4,
+  green: 1e5, blue: 1e6, violet: 1e7, gray: 1e8, white: 1e9,
+  gold: 0.1, silver: 0.01,
+};
+export const RESISTOR_TOL: Record<string, number> = {
+  brown: 1, red: 2, green: 0.5, blue: 0.25, violet: 0.1, gray: 0.05,
+  gold: 5, silver: 10,
+};
+
+/** ohms + tolerance for the chosen bands ("brown", "black", …). `five` reads a
+ *  third digit band. */
+export function decodeResistor(
+  d1: string, d2: string, d3: string, mult: string, tol: string, five: boolean,
+): { ohms: number; tolerance: number } | SolError {
+  const digits = five ? [d1, d2, d3] : [d1, d2];
+  let value = 0;
+  for (const d of digits) {
+    const v = RESISTOR_DIGIT[d];
+    if (v === undefined) return solError("#VALUE!", `"${d}" is not a digit band color`);
+    value = value * 10 + v;
+  }
+  const m = RESISTOR_MULT[mult];
+  if (m === undefined) return solError("#VALUE!", `"${mult}" is not a multiplier band color`);
+  const t = RESISTOR_TOL[tol];
+  if (t === undefined) return solError("#VALUE!", `"${tol}" is not a tolerance band color`);
+  return { ohms: value * m, tolerance: t };
+}
+
+export class ResistorCodeNode extends ClassicPreset.Node {
+  label: string;
+  /** Band count: "4" (two digits) or "5" (three digits). */
+  op: "4" | "5";
+  /** Band color picks — persisted with the node (b3 read only in 5-band). */
+  stringLiterals: Record<string, string> = { b1: "brown", b2: "black", b3: "black", mult: "red", tol: "gold" };
+  cachedOhms: number | SolError | null = null;
+  cachedTol: number | SolError | null = null;
+  width = 220;
+  height = 230;
+
+  constructor(init?: { label?: string; op?: "4" | "5"; stringLiterals?: Record<string, string> }) {
+    super("ResistorCode");
+    this.label = init?.label ?? "Resistor Color Code";
+    this.op = init?.op === "5" ? "5" : "4";
+    if (init?.stringLiterals) this.stringLiterals = { ...this.stringLiterals, ...init.stringLiterals };
+    this.addOutput("ohms", numOut("Ω"));
+    this.addOutput("tolerance", numOut("± %"));
+  }
+
+  data() {
+    const L = this.stringLiterals;
+    const r = decodeResistor(L.b1, L.b2, L.b3, L.mult, L.tol, this.op === "5");
+    if ("code" in (r as object)) {
+      this.cachedOhms = this.cachedTol = r as SolError;
+      return { ohms: r as SolError, tolerance: r as SolError };
+    }
+    const { ohms, tolerance } = r as { ohms: number; tolerance: number };
+    this.cachedOhms = ohms;
+    this.cachedTol = tolerance;
+    return { ohms, tolerance };
+  }
+}

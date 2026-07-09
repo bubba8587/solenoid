@@ -1,23 +1,42 @@
 import {
   ElementNode as ElementNodeType,
   MolarMassNode as MolarMassNodeType,
-  ELEMENTS, ELEMENT_BY_SYMBOL,
+  ELEMENT_BY_SYMBOL,
 } from "../rete-nodes";
-import { NodeShell, OpSelect, InlineOutputRows, useNodeField, type NodeProps } from "./nodeKit";
+import { NodeShell, InlineOutputRows, type NodeProps } from "./nodeKit";
 import { makeNodeComponent } from "./standardNode";
+import { elementPicker } from "../elementPickerStore";
+import { getActiveArea } from "../activeGraph";
+import { processGraph } from "../process";
 
-const ELEMENT_OPS = ELEMENTS.map((e) => ({
-  value: e.symbol,
-  label: `${e.n}  ${e.symbol} — ${e.name}`,
-  group: `Period ${e.period}`,
-}));
-
+// The Element card: one button showing the pick (`26 · Fe — Iron`) that opens
+// the picker popup (search + clickable periodic table) — 118 entries outgrew a
+// dropdown. The popup lives in App (ElementPicker.tsx, module store), since
+// this card renders in rete's separate React root.
 export function ElementComponent({ data, emit }: NodeProps<ElementNodeType>) {
-  const [op, setOp] = useNodeField(data, "op");
-  const el = ELEMENT_BY_SYMBOL.get(op)!;
+  const el = ELEMENT_BY_SYMBOL.get(data.op)!;
+  const openPicker = () => {
+    elementPicker.open({
+      symbol: data.op,
+      onPick: (symbol) => {
+        data.op = symbol;
+        void getActiveArea()?.update("node", data.id);
+        void processGraph();
+      },
+    });
+  };
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
-      <OpSelect value={op} onChange={setOp} options={ELEMENT_OPS} />
+      <button
+        type="button"
+        className="solenoid-node__op-select el-picker__open"
+        onClick={(e) => { e.stopPropagation(); openPicker(); }}
+        onPointerDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        title="Search or pick from the periodic table"
+      >
+        {el.n} · {el.symbol} — {el.name}
+      </button>
       <InlineOutputRows
         node={data}
         emit={emit}

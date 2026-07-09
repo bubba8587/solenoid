@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { EM_FORMULAS, ELECTROMAGNETISM_PACK } from "./electromagnetism";
 import { auditFormulaPack, entryByType, evalFormula, evalEquation } from "./formulaTestKit";
+import { emBand, EmSpectrumNode } from "../nodes/emSpectrum";
 import { PHYS_CONSTANTS, PhysicsConstantNode } from "../rete-nodes";
 
 const num = (type: string, inputs: Record<string, number>): number => {
@@ -108,5 +109,28 @@ describe("Physics Constant node", () => {
 describe("pack wiring", () => {
   it("depends on the electricity pack", () => {
     expect(ELECTROMAGNETISM_PACK.dependsOn).toEqual(["electricity"]);
+  });
+});
+
+describe("EM Spectrum Band", () => {
+  it("names the conventional bands by wavelength", () => {
+    expect(emBand(10)).toBe("Radio");                 // 30 MHz-ish
+    expect(emBand(0.125)).toBe("Microwave");          // 2.4 GHz Wi-Fi
+    expect(emBand(10e-6)).toBe("Infrared");           // 10 µm thermal
+    expect(emBand(532e-9)).toBe("Visible (green)");   // green laser pointer
+    expect(emBand(650e-9)).toBe("Visible (red)");
+    expect(emBand(254e-9)).toBe("Ultraviolet");       // germicidal UV
+    expect(emBand(1e-10)).toBe("X-ray");              // 0.1 nm
+    expect(emBand(1e-12)).toBe("Gamma");
+  });
+
+  it("the node takes either quantity and computes the other via c", () => {
+    const n = new EmSpectrumNode();
+    const byFreq = n.data({ freq: [2.4e9] });
+    expect(byFreq.band).toBe("Microwave");
+    expect(byFreq.wavelength as number).toBeCloseTo(0.1249, 3);
+    const byWl = n.data({ freq: [null], wavelength: [532e-9] });
+    expect(byWl.band).toBe("Visible (green)");
+    expect(byWl.freq as number).toBeCloseTo(5.635e14, -11);
   });
 });

@@ -332,7 +332,7 @@ export { StandoffLayer } from "./StandoffLayer";
 export { HypotenuseComponent } from "./HypotenuseNode";
 
 // ─── Electricity & Circuits pack ───────────────────────────────────────────────
-export { ParallelCombineComponent, ESeriesComponent, AwgComponent } from "./ElectricalNodes";
+export { ParallelCombineComponent, ESeriesComponent, AwgComponent, ResistorCodeComponent } from "./ElectricalNodes";
 
 // ─── Electromagnetism pack ───────────────────────────────────────────────────────
 export { PhysicsConstantComponent } from "./PhysicsConstantNode";

@@ -5,6 +5,40 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-09, evening — pack enhancement wave: domain tools beyond formulas)
+Author brief: "walk the new packs as their domain's user — beyond equations, what
+tools/tables/charts does solving problems in this domain actually need?" Six
+task-shaped additions, one per pack, each with pinned tests:
+- **Element picker (chemistry — the author's own example, built as agreed):** the
+  118-entry dropdown became a button (`26 · Fe — Iron`) opening a popup (module
+  store + App mount, the TablePopup pattern): a fuzzy-search field (symbol exact >
+  symbol prefix > name prefix > substring > atomic number — `searchElements`) over
+  a CLICKABLE periodic table, symbols only, real 18-column layout with the
+  detached f-block (`elementCell(n)`, collision-free by test). Quiet Accent Rule
+  holds: cells are neutral; color marks only the current pick + best match.
+- **Resistor Color Code (electricity):** 4/5-band SegToggle, per-band dropdowns,
+  and a live resistor GLYPH drawing the actual band colors (information, not
+  decoration — fixed IEC 60062 hexes like chart data colors) → Ω + tolerance %.
+  Band picks live in `stringLiterals` (free round-trip).
+- **EM Spectrum Band (electromagnetism):** frequency OR wavelength → the named
+  band (Radio…Gamma; visible names its color) + both quantities via c.
+- **Heart-Rate Zones (health):** age / optional resting HR (switches to Karvonen)
+  / optional max override → a five-zone Low/High FRAME — the pack's chartable,
+  lookupable table ("organize data", not just compute).
+- **Pipe Roughness (fluids):** the 13-material textbook ε table (mm); a diameter
+  makes it emit ε/D straight into Colebrook/Swamee–Jain — the number every Moody
+  problem starts with.
+- **Triangle Solver (geometry):** wire/type ANY three parts (≥1 side; degrees) →
+  all six + area + perimeter. SSS/SAS/ASA/AAS; the genuinely ambiguous SSA case
+  is an honest #SOLVE! instead of a silent pick — the Equation-node spirit as a
+  fixed-socket custom node.
+- Pack-level descriptions + node-coverage inventory updated; new node classes in
+  `nodes/{emSpectrum,health,triangle}.ts` + additions to electrical/fluids/
+  chemistry; cards in `PackToolNodes.tsx`/`ElectricalNodes`/`ChemistryNodes` +
+  `ElementPicker.tsx` (+ css). NOT built (still composite-shaped, planned in
+  `pack-composite-plans.md`): Wheatstone, pump operating point, psychrometric
+  state point; Materials pack stays gated on Interpolated Lookup (backlog).
+
 ### SESSION DIGEST (2026-07-09, overnight — Pack Duty: 8 domain packs + pack infra)
 - **Pack definitions split into `src/graph/packs/`** (one file per pack on
   `packs/packShared.ts` — authoring types + `formulaNode`/`placeFormulas`; `packs.ts`

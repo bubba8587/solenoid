@@ -99,7 +99,8 @@ the body sections or under the hood, not on slides.
 - Cube Rollup node
 - Coalesce/Fill is N-ary (extensible Else rows)
 - Equation node: acausal solve / truth-check; TVM, Compound Growth & Effective Rate built on it
-- 8 new domain packs (~130 tested formula presets + 15 custom nodes) with pack FC units
+- 8 new domain packs (~130 tested formula presets + 21 custom nodes) with pack FC units
+- Pack tools: periodic-table Element picker (search + clickable table), Resistor Color Code with live bands, EM Spectrum Band, Heart-Rate Zones table, Pipe Roughness, Triangle Solver
 - The append ladder: N-ary Concat Lists / VSTACK / HSTACK (Excel #N/A padding) / frame Append; Frame from Lists
 - TAKE/DROP (table) + EXPAND (2-D edge cuts & pad)
 - SUMIFS node: conditional aggregation over a frame (SUMIFS/COUNTIFS/AVERAGEIFS/MINIFS/MAXIFS)

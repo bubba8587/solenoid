@@ -6,7 +6,7 @@
 //
 // Ships OFF by default. The Electromagnetism pack builds on this one.
 
-import { ParallelCombineNode, ESeriesNode, AwgNode } from "../rete-nodes";
+import { ParallelCombineNode, ESeriesNode, AwgNode, ResistorCodeNode } from "../rete-nodes";
 import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
 
 // Base category: Ohm's law, power, and the everyday one-liners. Rearrangement
@@ -117,7 +117,7 @@ function toSiPrefix(n: number): string {
 export const ELECTRICITY_PACK: Pack = {
   id: "electricity",
   name: "Electricity & Circuits",
-  description: "Everyday electrical engineering: Ohm's law and power, dividers, reactance and resonance, RC/RL transients, decibels, E-series component values, and AWG wire properties. SI units.",
+  description: "Everyday electrical engineering: Ohm's law and power, dividers, reactance and resonance, RC/RL transients, decibels, the resistor color-code decoder, E-series component values, and AWG wire properties. SI units.",
   builtin: true,
   defaultActive: false,
   nodes: [
@@ -135,6 +135,16 @@ export const ELECTRICITY_PACK: Pack = {
     ...placeFormulas(["Packs", "Electricity", "AC & Reactance"], ELECTRICITY_AC),
     ...placeFormulas(["Packs", "Electricity", "Transients & Timing"], ELECTRICITY_TRANSIENTS),
     ...placeFormulas(["Packs", "Electricity", "Signal Levels"], ELECTRICITY_DB),
+    {
+      path: ["Packs", "Electricity"],
+      entry: {
+        type: "elec-resistor-code",
+        label: "Resistor Color Code",
+        description: "Decode resistor bands: pick the colors on a live band diagram → resistance (Ω) and tolerance (±%). 4- or 5-band, IEC 60062",
+        keywords: "resistor bands color colour code ohms decode",
+        create: () => new ResistorCodeNode(),
+      },
+    },
     {
       path: ["Packs", "Electricity", "Components & Wire"],
       entry: {

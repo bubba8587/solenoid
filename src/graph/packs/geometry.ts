@@ -3,7 +3,7 @@
 // convention); wire a Convert node to go from degrees.
 
 import type { NodeCatalogEntry } from "../AddNodeMenu";
-import { HypotenuseNode } from "../rete-nodes";
+import { HypotenuseNode, TriangleSolverNode } from "../rete-nodes";
 import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
 
 const GEOMETRY_FORMULAS: FormulaPackEntry[] = [
@@ -99,11 +99,21 @@ export const HYPOTENUSE_ENTRY: NodeCatalogEntry = {
 export const GEOMETRY_PACK: Pack = {
   id: "geometry",
   name: "Geometry",
-  description: "Geometric helpers (hypotenuse, …). On by default; turn off to declutter.",
+  description: "Geometric helpers: hypotenuse, the any-three-parts Triangle Solver, circles and arcs, solids. On by default; turn off to declutter.",
   builtin: true,
   defaultActive: true,
   nodes: [
     { path: ["Numbers", "Trigonometry"], entry: HYPOTENUSE_ENTRY },
+    {
+      path: ["Packs", "Geometry"],
+      entry: {
+        type: "geo-triangle-solver",
+        label: "Triangle Solver",
+        description: "Give any three parts — sides a b c, angles A B C in degrees, at least one side — and the rest solve, plus area and perimeter. SSS, SAS, ASA, AAS; a genuinely ambiguous SSA says so instead of guessing",
+        keywords: "triangle solve sides angles law sines cosines sss sas asa aas ssa",
+        create: () => new TriangleSolverNode(),
+      },
+    },
     // Formula-data nodes — each a pre-set Expression node, no new class.
     ...placeFormulas(["Packs", "Geometry"], GEOMETRY_FORMULAS),
     ...placeFormulas(["Packs", "Geometry", "Circles & Arcs"], GEOMETRY_CIRCLES),

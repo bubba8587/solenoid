@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { HEALTH_FORMULAS } from "./health";
 import { auditFormulaPack, entryByType, evalFormula } from "./formulaTestKit";
+import { hrZonesFrame, HrZonesNode } from "../nodes/health";
 
 const num = (type: string, inputs: Record<string, number>): number => {
   const r = evalFormula(entryByType(HEALTH_FORMULAS, type), inputs);
@@ -52,5 +53,29 @@ describe("Health & Fitness formulas", () => {
   it("clinical", () => {
     expect(num("hf-crcl-cockcroft-m", { age: 60, w: 70, scr: 1 })).toBeCloseTo(77.78, 1);
     expect(num("hf-crcl-cockcroft-w", { age: 60, w: 70, scr: 1 })).toBeCloseTo(66.11, 1);
+  });
+});
+
+describe("Heart-Rate Zones", () => {
+  it("percent-of-max bands: age 40 → max 180, Z5 = 162–180", () => {
+    const f = hrZonesFrame(180, null);
+    expect(f.columns[0].values).toEqual(["Z1 Recovery", "Z2 Endurance", "Z3 Tempo", "Z4 Threshold", "Z5 Maximum"]);
+    expect(f.columns[1].values).toEqual([90, 108, 126, 144, 162]); // lows
+    expect(f.columns[2].values).toEqual([108, 126, 144, 162, 180]); // highs
+  });
+
+  it("a resting HR switches to Karvonen (heart-rate reserve)", () => {
+    // max 180, rest 60 → reserve 120; Z3 = 60 + [0.7, 0.8]·120 = 144–156.
+    const f = hrZonesFrame(180, 60);
+    expect(f.columns[1].values[2]).toBe(144);
+    expect(f.columns[2].values[2]).toBe(156);
+  });
+
+  it("the node defaults max to 220 − age and validates the resting HR", () => {
+    const n = new HrZonesNode();
+    const out = n.data({ age: [40] });
+    expect((out.zones as { columns: { values: unknown[] }[] }).columns[2].values[4]).toBe(180);
+    const bad = n.data({ age: [40], resting: [200] });
+    expect((bad.zones as { code?: string }).code).toBe("#DOMAIN!");
   });
 });

@@ -61,7 +61,7 @@ export const CHEMISTRY_PACK: Pack = {
       entry: {
         type: "ch-element",
         label: "Element",
-        description: "Periodic-table lookup: pick an element → standard atomic weight (g/mol) and atomic number (IUPAC values)",
+        description: "Periodic-table lookup: search by symbol, name, or number, or click the table itself → standard atomic weight (g/mol) and atomic number (IUPAC values)",
         keywords: "periodic table atomic weight number symbol",
         create: () => new ElementNode(),
       },
