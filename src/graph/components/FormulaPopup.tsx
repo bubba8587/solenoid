@@ -53,7 +53,8 @@ function formulaHostOf(node: ClassicPreset.Node | undefined): FormulaHost | null
     const n = node as ExpressionNode;
     return { label, text: n.expr, locked: n.locked, setText: (s) => applyExprChange(n, s) };
   }
-  if (typeName === "EquationNode") {
+  if (typeName === "EquationNode" || typeName === "TvmNode") {
+    // TvmNode is an EquationNode subclass (always locked → read-only view here).
     const n = node as EquationNode;
     return { label, text: n.expr, locked: n.locked, setText: (s) => applyEquationChange(n, s), equation: true };
   }

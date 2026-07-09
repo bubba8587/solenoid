@@ -1,4 +1,4 @@
-import { useRef, useState, useLayoutEffect } from "react";
+import { useRef, useState, useLayoutEffect, type ReactNode } from "react";
 import type { EquationNode as EquationNodeType } from "../rete-nodes";
 import { NodeShell, ValueDisplay, type NodeProps, type Emit } from "./nodeKit";
 import { NodeSocket } from "./NodeSocket";
@@ -61,7 +61,11 @@ function EquationVarRow({
   );
 }
 
-export function EquationComponent({ data: node, emit }: NodeProps<EquationNodeType>) {
+export function EquationComponent({ data: node, emit, config }: NodeProps<EquationNodeType> & {
+  /** Extra control row a subclass card slots between the formula box and the
+   *  variable rows (the TVM node's payment-timing dropdown). */
+  config?: ReactNode;
+}) {
   const checkRef = useRef<HTMLDivElement>(null);
   const checkTop = useRowTop(checkRef);
   const checkPort = node.outputs.holds;
@@ -79,6 +83,7 @@ export function EquationComponent({ data: node, emit }: NodeProps<EquationNodeTy
         noPrefix
         onOpen={() => formulaPopup.open(node.id)}
       />
+      {config}
       {node.cachedError && (
         <div className="solenoid-expr__error">{node.cachedError}</div>
       )}

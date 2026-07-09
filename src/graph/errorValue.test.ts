@@ -6,7 +6,7 @@ import { XLookupNode } from "./nodes/frame";
 import type { FrameValue } from "./frame";
 import { XMatchNode, FilterNode, ListIndexNode } from "./nodes/list";
 import { ExpressionNode } from "./nodes/expression";
-import { IrrNode, RateNode, MirrNode } from "./nodes/finance";
+import { IrrNode, TvmNode, MirrNode } from "./nodes/finance";
 import { ConvertNode } from "./nodes/convert";
 import { ShapeError } from "./nodes/coerce";
 
@@ -313,10 +313,11 @@ describe("error producers", () => {
     expect((irr as SolError).code).toBe("#CONV!");
     // A real sign-changing series still converges to a number.
     expect(new IrrNode().data({ list: [[-100, 0, 0, 0, 146.41]] }).result).toBeCloseTo(0.1, 4);
-    // RATE on an unsolvable annuity (all same-sign, no rate balances it).
-    const rate = new RateNode().data({ nper: [10], pmt: [100], pv: [100], fv: [100] }).result;
+    // Solving RATE on an unsolvable annuity (all same-sign, no rate balances
+    // it) now runs through the Equation TVM's numeric fallback → #SOLVE!.
+    const rate = new TvmNode().data({ nper: [10], pmt: [100], pv: [100], fv: [100] }).rate;
     expect(isSolError(rate)).toBe(true);
-    expect((rate as SolError).code).toBe("#CONV!");
+    expect((rate as SolError).code).toBe("#SOLVE!");
     // An IRR that is wired but has too few points stays a blank, not an error.
     expect(new IrrNode().data({ list: [[5]] }).result).toBeNull();
   });

@@ -18,10 +18,10 @@ import {
   AlertNode, NormalizeNode, LinSpaceNode, RepeatNode,
   ShuffleNode, NthElementNode, InterleaveNode, PadNode, GeometricNode,
   FibonacciNode, StandardizeNode, CovarianceNode, FisherNode, BitwiseNode,
-  InterestRateNode, DepreciationNode,
-  TvmNode, RateNode, IpmtPpmtNode, NpvNode, IrrNode, MirrNode, CumPmtNode,
+  DepreciationNode,
+  TvmNode, IpmtPpmtNode, NpvNode, IrrNode, MirrNode, CumPmtNode,
   FvScheduleNode, IspmtNode, DollarNode, VdbNode, ProbNode,
-  PdurationNode, RriNode, WeightedNode, BaseConvertNode,
+  WeightedNode, BaseConvertNode,
   TextInputNode, TextTransformNode, TextLenNode, ConcatNode, TextSliceNode,
   TextFindNode, SubstituteNode, TextReplaceNode,
   ReptNode, ExactNode,
@@ -73,8 +73,8 @@ import {
   COMBINATORICS_OP_META, NTH_VALUE_OP_META, ARG_MIN_MAX_OP_META,
   SUM_PRODUCT_OP_META, RANK_OP_META, CORREL_OP_META, TWO_INPUT_MATH_OP_META,
   COVARIANCE_OP_META, FISHER_OP_META, BITWISE_OP_META,
-  INTEREST_RATE_OP_META, DEPRECIATION_OP_META,
-  TVM_OP_META, IPMT_PPMT_OP_META, CUM_PMT_OP_META, DOLLAR_OP_META,
+  DEPRECIATION_OP_META,
+  IPMT_PPMT_OP_META, CUM_PMT_OP_META, DOLLAR_OP_META,
   WEIGHTED_OP_META,
   TEXT_TRANSFORM_OP_META, TEXT_SLICE_OP_META, TEXT_FIND_OP_META, TEXT_AFTER_BEFORE_OP_META,
   BESSEL_OP_META, REGRESSION_OP_META, ROLLING_OP_META, T_TEST_OP_META,
@@ -83,8 +83,8 @@ import {
   type CombinatoricsOp, type NthValueOp, type ArgMinMaxOp,
   type SumProductOp, type RankOp, type CorrelOp, type TwoInputMathOp,
   type CovarianceOp, type FisherOp, type BitwiseOp,
-  type InterestRateOp, type DepreciationOp,
-  type TvmOp, type IpmtPpmtOp, type CumPmtOp, type DollarOp, type WeightedOp,
+  type DepreciationOp,
+  type IpmtPpmtOp, type CumPmtOp, type DollarOp, type WeightedOp,
   type CouponOp, type PriceDiscOp, type PriceMatOp, type DurationOp,
   type TextTransformOp, type TextSliceOp, type TextFindOp, type CharCodeOp, type TextAfterBeforeOp,
   type RomanArabicOp,
@@ -112,9 +112,7 @@ const twoMathLeaf  = (op: TwoInputMathOp): NodeCatalogEntry => ({ type: `twomath
 const covLeaf      = (op: CovarianceOp):   NodeCatalogEntry => ({ type: `cov-${op}`,       label: COVARIANCE_OP_META[op].label,     description: COVARIANCE_OP_META[op].description,     create: () => new CovarianceNode({ op })    });
 const fisherLeaf   = (op: FisherOp):       NodeCatalogEntry => ({ type: `fisher-${op}`,    label: FISHER_OP_META[op].label,         description: FISHER_OP_META[op].description,         create: () => new FisherNode({ op })        });
 const bitwiseLeaf  = (op: BitwiseOp):      NodeCatalogEntry => ({ type: `bitwise-${op}`,   label: BITWISE_OP_META[op].label,        description: BITWISE_OP_META[op].description,        create: () => new BitwiseNode({ op })       });
-const irLeaf       = (op: InterestRateOp): NodeCatalogEntry => ({ type: `ir-${op}`,        label: INTEREST_RATE_OP_META[op].label,  description: INTEREST_RATE_OP_META[op].description,  create: () => new InterestRateNode({ op })  });
 const deprLeaf     = (op: DepreciationOp): NodeCatalogEntry => ({ type: `depr-${op}`,      label: DEPRECIATION_OP_META[op].label,   description: DEPRECIATION_OP_META[op].description,   create: () => new DepreciationNode({ op })  });
-const tvmLeaf      = (op: TvmOp):          NodeCatalogEntry => ({ type: `tvm-${op}`,       label: TVM_OP_META[op].label,            description: TVM_OP_META[op].description,            create: () => new TvmNode({ op })           });
 const ipmtPpmtLeaf = (op: IpmtPpmtOp):    NodeCatalogEntry => ({ type: `ipmt-${op}`,      label: IPMT_PPMT_OP_META[op].label,      description: IPMT_PPMT_OP_META[op].description,      create: () => new IpmtPpmtNode({ op })      });
 const cumPmtLeaf   = (op: CumPmtOp):       NodeCatalogEntry => ({ type: `cumpmt-${op}`,    label: CUM_PMT_OP_META[op].label,        description: CUM_PMT_OP_META[op].description,        create: () => new CumPmtNode({ op })        });
 const regressionLeaf = (op: RegressionOp): NodeCatalogEntry => ({ type: `regression-${op}`,label: REGRESSION_OP_META[op].label,     description: REGRESSION_OP_META[op].description,     create: () => new RegressionNode({ op })    });
@@ -596,15 +594,16 @@ export const NODE_CATALOG: CatalogEntry[] = [
     type: "category", label: "Finance", description: "Interest rate, TVM, depreciation, and cash-flow calculations.",
     children: [
       {
-        type: "category", label: "Rate conversion", description: "Convert between nominal and effective interest rates.",
-        children: [{ type: "pair", children: [irLeaf("effect"), irLeaf("nominal")] }],
+        type: "category", label: "Time value of money", description: "The annuity and compound-growth relations as acausal Equation nodes.",
+        children: [
+          { type: "tvm", label: "Time Value of Money", description: "The whole loan/annuity family in one relation: rate, nper, pmt, pv, fv around pv·(1+r)ⁿ + pmt·((1+r)ⁿ−1)/r + fv = 0. Wire any four and the fifth solves; wire all five and Check answers TRUE/FALSE. Payment timing (Excel's type argument) is the dropdown. Excel: PMT, PV, FV, NPER, RATE.", create: () => new TvmNode(), keywords: "pmt pv fv nper rate loan annuity payment mortgage present future value" },
+          { type: "fin-compound-growth", label: "Compound Growth", description: "Lump-sum growth fv = pv·(1+rate)^nper — wire three, the fourth solves. Excel: FV/PV (pmt-less), PDURATION (solve nper), RRI (solve rate).", create: () => new EquationNode({ label: "Compound Growth", expr: "fv = pv * (1 + rate)^nper", locked: true }), keywords: "pduration rri compound interest growth doubling lump sum" },
+        ],
       },
       {
-        type: "category", label: "Time value of money", description: "PMT, PV, FV, NPER: core loan and investment calculations.",
+        type: "category", label: "Rate conversion", description: "Convert between nominal and effective interest rates.",
         children: [
-          { type: "pair", children: [tvmLeaf("pmt"), tvmLeaf("pv")] },
-          { type: "pair", children: [tvmLeaf("fv"), tvmLeaf("nper")] },
-          { type: "rate", label: "RATE", description: "Interest rate per period, solved iteratively from nper, pmt, pv. Excel: RATE.", create: () => new RateNode() },
+          { type: "fin-effective-rate", label: "Effective Rate", description: "APR ↔ APY: eff = (1 + nom/npery)^npery − 1. Wire two of nominal rate, effective rate, and compounds-per-year; the third solves. Excel: EFFECT, NOMINAL.", create: () => new EquationNode({ label: "Effective Rate", expr: "eff = (1 + nom/npery)^npery - 1", locked: true }), keywords: "effect nominal apr apy compounding annual percentage yield" },
         ],
       },
       {
@@ -645,10 +644,6 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "fvschedule", label: "FVSCHEDULE", description: "Future value of principal after applying a schedule of interest rates. Excel: FVSCHEDULE.", create: () => new FvScheduleNode() },
           { type: "ispmt",      label: "ISPMT",      description: "Interest paid in a specific period of a straight-line-principal loan. Excel: ISPMT.", create: () => new IspmtNode() },
           { type: "pair", children: [dollarLeaf("dollarde"), dollarLeaf("dollarfr")] },
-          { type: "pair", children: [
-            { type: "pduration", label: "PDURATION", description: "Periods needed to grow PV to FV at a given rate. Excel: PDURATION.", create: () => new PdurationNode() },
-            { type: "rri",       label: "RRI",       description: "Equivalent interest rate for growth from PV to FV in N periods. Excel: RRI.", create: () => new RriNode() },
-          ]},
           { type: "pair", children: [tbillLeaf("tbilleq"), tbillLeaf("tbillprice")] },
           tbillLeaf("tbillyield"),
           { type: "pair", children: [secDiscLeaf("disc"), secDiscLeaf("intrate")] },

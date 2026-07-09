@@ -250,8 +250,12 @@ export function solveQuadratic(q: QuadraticFit): number | number[] | SolError | 
 
 /** Residual sign-change scan over a symmetric log grid, then bisection. The
  *  residual comes from the node's own compiled LHS/RHS evaluators; a point
- *  where either side errors or goes non-finite is skipped. Returns the root
- *  nearest the start of the ascending scan, or a #SOLVE! error. */
+ *  where either side errors or goes non-finite is skipped. EVERY sign-change
+ *  bracket is bisected and the root CLOSEST TO ZERO wins — not the first
+ *  bracket in ascending order, which for a multi-root equation picks whichever
+ *  root lies most negative (a TVM rate residual also crosses zero out at
+ *  1+r < 0; an interest rate of −290% is never the answer). Returns #SOLVE!
+ *  when no bracket exists. */
 export function solveNumeric(residual: (x: number) => number | null): number | SolError {
   const grid: number[] = [0];
   for (let k = -6; k <= 12; k++) {
@@ -259,26 +263,32 @@ export function solveNumeric(residual: (x: number) => number | null): number | S
   }
   grid.sort((a, b) => a - b);
 
+  let best: number | null = null;
+  const consider = (root: number) => {
+    if (best === null || Math.abs(root) < Math.abs(best)) best = root;
+  };
   let prevX: number | null = null;
   let prevF: number | null = null;
   for (const x of grid) {
     const f = residual(x);
     if (f === null || !Number.isFinite(f)) { prevX = null; prevF = null; continue; }
-    if (f === 0) return x;
+    if (f === 0) { consider(x); prevX = x; prevF = f; continue; }
     if (prevX !== null && prevF !== null && Math.sign(f) !== Math.sign(prevF)) {
       // Bisect [prevX, x].
       let lo = prevX, hi = x, flo = prevF;
+      let root: number | null = null;
       for (let i = 0; i < 200; i++) {
         const mid = (lo + hi) / 2;
         const fm = residual(mid);
         if (fm === null || !Number.isFinite(fm)) break;
-        if (fm === 0) return mid;
+        if (fm === 0) { root = mid; break; }
         if (Math.sign(fm) === Math.sign(flo)) { lo = mid; flo = fm; } else { hi = mid; }
       }
-      return (lo + hi) / 2;
+      consider(root ?? (lo + hi) / 2);
     }
     prevX = x; prevF = f;
   }
+  if (best !== null) return best;
   return solError("#SOLVE!", "No solution found between ±10¹² — the equation may have no real root here");
 }
 

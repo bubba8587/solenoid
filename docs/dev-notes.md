@@ -79,7 +79,34 @@ drill into the archive (or `git log`) only for the mechanics of a specific item.
   evaluator's [re,im]-is-a-list ambiguity — D2's own wall — plus socket
   morphing); instead **Quadratic Roots** joined the Complex family (a,b,c → x₁,
   x₂ complex outputs; conjugate pair on negative discriminant; −0 normalized).
-  Equation's #SOLVE! message stays the real-domain answer.
+  Equation's #SOLVE! message stays the real-domain answer. — **Equation card
+  rework (author, 4 corrections):** variables lost the typeable literal fields —
+  each is now a HERO ROW (value box + chips) with its input socket on the left
+  edge and output socket on the right of the SAME row (dual-socket rows via a
+  local `useRowTop`, same content-relative math as MeasuredSocketRow); "Holds?"
+  renamed **Check** (output key stays `holds`); the "=" prefix stripped
+  (`FormulaField` `noPrefix`); editing routes through the syntax-highlighted
+  FormulaPopup like Expression (`formulaHostOf` equation host, no "=" prefix,
+  solve-semantics engine note). — **Finance conversion sweep (author: "sweep
+  non-pack nodes for Equation conversion"):** the 4-op TvmNode + the RATE Newton
+  node collapsed into ONE `TvmNode extends EquationNode` (locked annuity
+  relation; wire any four of rate/nper/pmt/pv/fv; **payment timing stays a
+  CONFIG dropdown** — it swaps which locked relation is compiled (end/beg), the
+  template for future Equation subclasses via `EquationComponent`'s new `config`
+  slot; rate = 0 delegates to the exact zero-rate limit relation so
+  zero-interest loans solve/check exactly; RATE's guess input gone).
+  PDURATION/RRI → **Compound Growth** and EFFECT/NOMINAL → **Effective Rate**,
+  plain locked EquationNode catalog presets (pinned in finance.test.ts).
+  `solveNumeric` policy change: bisect EVERY bracket, return the
+  SMALLEST-MAGNITUDE root (the ascending-scan-first policy would have returned
+  the spurious 1+r < 0 crossing for RATE). NODE_EXCEL remapped (PMT/PV/FV/NPER/
+  RATE → `tvm`; PDURATION/RRI/EFFECT/NOMINAL → the presets); the
+  personal-finance seed GENERATOR (`gen-personal-finance-seed.cjs`) rewired
+  (tvm nodes drop `op`, outputs `result` → `fv`/`pmt`, mortgage fv as a literal
+  0) — remember the committed JSON is a re-emit check, edit the generator.
+  Surveyed, NOT converted: Depreciation (period-discrete), IPMT/PPMT/CUMIPMT/
+  ISPMT (derived quantities), DOLLARDE/FR (piecewise), bonds/T-bills (date
+  sockets), DIST/INV pairs (no closed-form CDFs). D14 amended again.
 
 ### SESSION DIGEST (2026-07-08, evening — What's New resell + 1.2/2.0 plans)
 - **What's New rebuilt around the author's sell bar** ("a shiny thing a user will go

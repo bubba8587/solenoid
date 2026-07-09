@@ -201,6 +201,25 @@ and only for scalar knowns) solves via the quadratic formula and yields EVERY re
 an ascending list (x² = 36 → [−6, 6]); a double root stays scalar, a negative discriminant
 is #SOLVE!. This intercepts BEFORE symbolic isolation, so a probe-detectable quadratic
 never loses its negative root to the principal branch.
+**Amended 2026-07-09 (the finance conversion sweep, author: "sweep non-pack nodes"):**
+three core-catalog rearrangement families collapsed onto the framework. (1) **TVM**: the
+old 4-op TvmNode + the separate RATE Newton node became ONE `TvmNode extends EquationNode`
+carrying the locked annuity relation — wire any four of {rate, nper, pmt, pv, fv}, the
+fifth solves; RATE's guess input is gone (subsumed by the bracket scan). Payment timing
+stays a CONFIG dropdown that swaps which locked relation is compiled (end/beg) — a config
+is anything that changes the RELATION rather than a quantity in it; that's the template
+for future Equation subclasses. rate = 0 delegates to the exact zero-rate limit relation
+(`pv + pmt·nper + fv = 0`) rather than an epsilon nudge, so zero-interest loans solve and
+truth-check exactly. (2) **PDURATION/RRI → "Compound Growth"** and (3) **EFFECT/NOMINAL →
+"Effective Rate"** are plain locked EquationNode CATALOG presets (no subclass — nothing to
+configure). Excel-name searchability is preserved via NODE_EXCEL remaps + keywords.
+Alongside, `solveNumeric` changed policy: it now bisects EVERY sign-change bracket and
+returns the SMALLEST-MAGNITUDE root, not the first bracket of the ascending scan — the
+TVM rate residual has a spurious crossing out at 1+r < 0 that the old policy would have
+returned. Surveyed and deliberately NOT converted: Depreciation (period-discrete),
+IPMT/PPMT/CUMIPMT/ISPMT (derived quantities, not relations), DOLLARDE/FR (piecewise digit
+trick), bonds/T-bills (date sockets — outside Equation's numeric domain), distribution
+DIST/INV pairs (no closed-form CDFs in the formula grammar).
 **What would reverse it:** demand for cubic/higher roots (Cardano or a vendored CAS);
 per-output socket annotations would unlock richer per-variable typing.
 

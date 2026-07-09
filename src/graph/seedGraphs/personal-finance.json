@@ -824,7 +824,6 @@
       "y": -260,
       "init": {
         "label": "Projected nest egg",
-        "op": "fv",
         "paymentTiming": "end"
       }
     },
@@ -1032,8 +1031,10 @@
       "y": 980,
       "init": {
         "label": "Monthly payment",
-        "op": "pmt",
         "paymentTiming": "end"
+      },
+      "literals": {
+        "fv": 0
       }
     },
     {
@@ -2409,13 +2410,13 @@
     },
     {
       "source": "tvm-fv",
-      "sourceOutput": "result",
+      "sourceOutput": "fv",
       "target": "disp-proj",
       "targetInput": "in"
     },
     {
       "source": "tvm-fv",
-      "sourceOutput": "result",
+      "sourceOutput": "fv",
       "target": "ratio-proj",
       "targetInput": "fv"
     },
@@ -2433,7 +2434,7 @@
     },
     {
       "source": "tvm-fv",
-      "sourceOutput": "result",
+      "sourceOutput": "fv",
       "target": "alert-proj",
       "targetInput": "value"
     },
@@ -2517,7 +2518,7 @@
     },
     {
       "source": "tvm-pmt",
-      "sourceOutput": "result",
+      "sourceOutput": "pmt",
       "target": "expr-absp",
       "targetInput": "pmt"
     },
@@ -2727,7 +2728,7 @@
     },
     {
       "source": "tvm-fv",
-      "sourceOutput": "result",
+      "sourceOutput": "fv",
       "target": "d-proj",
       "targetInput": "in"
     },
@@ -2887,7 +2888,7 @@
     },
     {
       "nodeId": "tvm-fv",
-      "outputKey": "result"
+      "outputKey": "fv"
     },
     {
       "nodeId": "expr-absp",
