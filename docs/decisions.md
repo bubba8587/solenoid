@@ -292,7 +292,7 @@ axis toggles, index pickers) to bridge them; the redesign deletes capability ins
   exact hazard the rule targets (a shorter criteria list silently failed rows past its
   end). Rebuilt as ONE frame input + a Values-column field + criteria rows
   (column + op + value) — the frame Filter's row UI plus an aggregate-op selector.
-- Parallel-list filtering WITHOUT aggregation = Frame from Lists → Filter Rows (the
+- Parallel-list filtering WITHOUT aggregation = Frame from Lists → Frame Filter (the
   honest relational modeling; mixed-family parallel lists can't share a matrix anyway,
   so frames were always that data's only container).
 **Cost accepted:** `FILTER(sales, region="North")` as a bare list has no 2-node spelling

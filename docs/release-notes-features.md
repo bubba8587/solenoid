@@ -59,6 +59,15 @@ the body sections or under the hood, not on slides.
   K/M/B scaling) — and Convert stays first-class.
 - **Zero-Googling from Excel.** Hover tooltips with Excel equivalents, a socket legend, and a
   Ctrl+/ function reference.
+- **Equations that solve themselves** *(2026-07-09; slide candidate — author's call)*. The
+  Equation node is acausal: type `V = I * R` and wire any two variables — the third solves.
+  Quadratics return every real root; a fully-wired equation becomes a live Check. TVM
+  (PMT/PV/FV/NPER/RATE as one node), Compound Growth, and Effective Rate ride it.
+- **Domain packs** *(2026-07-09; slide candidate — author's call)*. Ten optional packs —
+  electricity & circuits, electromagnetism, health & fitness, fluid mechanics, thermo & air,
+  sets, earth & sky, chemistry, plus bigger geometry & timesavers — ~130 tested formula
+  presets and 15 custom nodes (ISA atmosphere, Colebrook, sun position, molar mass…), with
+  matching Format Controller units.
 
 ## Under the hood (mention, don't headline)
 
@@ -89,7 +98,14 @@ the body sections or under the hood, not on slides.
 - Node-anchored comments
 - Cube Rollup node
 - Coalesce/Fill is N-ary (extensible Else rows)
-- Filter Rows with extensible AND/OR condition rows
+- Equation node: acausal solve / truth-check; TVM, Compound Growth & Effective Rate built on it
+- 8 new domain packs (~130 tested formula presets + 15 custom nodes) with pack FC units
+- The append ladder: N-ary Concat Lists / VSTACK / HSTACK (Excel #N/A padding) / frame Append; Frame from Lists
+- TAKE/DROP (table) + EXPAND (2-D edge cuts & pad)
+- SUMIFS node: conditional aggregation over a frame (SUMIFS/COUNTIFS/AVERAGEIFS/MINIFS/MAXIFS)
+- List Filter & Frame Filter redesign: on-card condition rows + permanent Dropped outputs
+- Table Input: literal source (Source view keeps what you typed) + element-type toggle
+- The wildcard socket ladder: any / any-list / any-table + the hollow-ring "anything" socket that adopts the wired cable's type
 - Input Switch: named slots + Many mode (collects into a Cube)
 - Date Range picker node
 - Session History node
