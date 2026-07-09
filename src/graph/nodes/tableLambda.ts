@@ -6,11 +6,14 @@ import { isLambdaValue } from "./lambda";
 import { solError, isSolError, type SolError, type SolErrorCode } from "../errorValue";
 
 // ─── 2D LAMBDA family: MAP / BYROW / BYCOL / MAKEARRAY / REDUCE ─────────────────
-// Excel's MAP/BYROW/BYCOL/MAKEARRAY/REDUCE take a LAMBDA. Solenoid has no
-// first-class function value to pass down a cable, so each node holds the
-// formula as a string. It's typed inline in the node's "Formula" field, OR
-// piped in from a Text Input (the formula socket overrides the inline text
-// when wired) — so a formula can be authored once and fed to several lambdas.
+// Excel's MAP/BYROW/BYCOL/MAKEARRAY/REDUCE take a LAMBDA. Each node holds its
+// formula as a string, typed inline in the node's "Formula" field (or the big
+// FormulaPopup editor); a wired LAMBDA value supersedes it. BYROW/BYCOL/REDUCE
+// additionally accept the formula TEXT piped from a Text Input (the formula
+// socket overrides the inline text when wired) — so a formula can be authored
+// once and fed to several lambdas. MAP and MAKEARRAY dropped that string
+// socket (2026-07-09): the popup + the lambda socket cover both authoring
+// paths, and reuse is the LAMBDA node's job.
 // Fixed variables:
 //   MAP        → `x` (cell value; `y`,`z` from optional 2nd/3rd tables), plus
 //                `r`,`c` (1-based position)
@@ -109,7 +112,7 @@ export class MapTableNode extends ClassicPreset.Node {
   cachedResult: Mat | SolError | null = null;
   cachedError: string | null = null;
   width = 210;
-  height = 294;
+  height = 270;
 
   constructor(init?: { label?: string; expr?: string; resultAs?: ResultType }) {
     super("MapTable");
@@ -119,15 +122,14 @@ export class MapTableNode extends ClassicPreset.Node {
     this.addInput("table", anyTableIn("Values (x)"));
     this.addInput("table2", anyTableIn("y (optional)"));
     this.addInput("table3", anyTableIn("z (optional)"));
-    this.addInput("formula", strIn("f(x,y,z,r,c)"));
     this.addInput("lambda", lambdaIn("Lambda"));
     this.addOutput("result", resultOut("Mapped", "matrix", this.resultAs));
   }
 
-  data(inputs: { table?: unknown[]; table2?: unknown[]; table3?: unknown[]; formula?: string[]; lambda?: unknown[] }): { result: Mat | SolError | null } {
+  data(inputs: { table?: unknown[]; table2?: unknown[]; table3?: unknown[]; lambda?: unknown[] }): { result: Mat | SolError | null } {
     const m = toAnyMatrix(inputs.table?.[0]);
     const { fn, err, code } = resolveFn(
-      inputs.lambda?.[0], inputs.formula?.[0], this.stringLiterals.formula,
+      inputs.lambda?.[0], undefined, this.stringLiterals.formula,
       "x^2", ["x", "y", "z", "r", "c"], 5);
     if (!fn) { this.cachedResult = null; this.cachedError = err; return fnError(err!, code); }
     if (!m) { this.cachedResult = null; this.cachedError = null; return { result: null }; }
@@ -270,7 +272,7 @@ export class MakeArrayNode extends ClassicPreset.Node {
   cachedResult: Mat | SolError | null = null;
   cachedError: string | null = null;
   width = 210;
-  height = 270;
+  height = 246;
 
   constructor(init?: { label?: string; expr?: string; resultAs?: ResultType; literals?: Record<string, number> }) {
     super("MakeArray");
@@ -280,16 +282,15 @@ export class MakeArrayNode extends ClassicPreset.Node {
     if (init?.literals) this.literals = { ...init.literals };
     this.addInput("rows", numIn("Rows"));
     this.addInput("cols", numIn("Cols"));
-    this.addInput("formula", strIn("f(r,c)"));
     this.addInput("lambda", lambdaIn("Lambda"));
     this.addOutput("result", resultOut("Array", "matrix", this.resultAs));
   }
 
-  data(inputs: { rows?: number[]; cols?: number[]; formula?: string[]; lambda?: unknown[] }): { result: Mat | SolError | null } {
+  data(inputs: { rows?: number[]; cols?: number[]; lambda?: unknown[] }): { result: Mat | SolError | null } {
     const rows = Math.round(inputs.rows?.[0] ?? this.literals.rows ?? 0);
     const cols = Math.round(inputs.cols?.[0] ?? this.literals.cols ?? 0);
     const { fn, err, code } = resolveFn(
-      inputs.lambda?.[0], inputs.formula?.[0], this.stringLiterals.formula,
+      inputs.lambda?.[0], undefined, this.stringLiterals.formula,
       "r * c", ["r", "c"], 2);
     if (!fn) { this.cachedResult = null; this.cachedError = err; return fnError(err!, code); }
     if (rows < 1 || cols < 1) { this.cachedResult = null; this.cachedError = null; return { result: null }; }

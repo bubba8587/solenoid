@@ -45,8 +45,8 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "bondprice-price": [{ excel: "PRICE", syntax: "=PRICE(settle,maturity,rate,yld,redemption,freq)", parity: false, note: "30/360 basis only; other basis values not yet supported" }],
   "bondprice-yield": [{ excel: "YIELD", syntax: "=YIELD(settle,maturity,rate,pr,redemption,freq)", parity: false, note: "30/360 basis only" }],
   "by-axis": [
-    { excel: "BYROW", syntax: "=BYROW(array, LAMBDA(row, ...))", parity: false, note: "BYROW/BYCOL node reduces each row/column with an embedded formula; full LAMBDA values aren't first-class" },
-    { excel: "BYCOL", syntax: "=BYCOL(array, LAMBDA(col, ...))", parity: false, note: "BYROW/BYCOL node reduces each row/column with an embedded formula; full LAMBDA values aren't first-class" },
+    { excel: "BYROW", syntax: "=BYROW(array, LAMBDA(row, ...))", parity: false, note: "BYROW/BYCOL node reduces each row/column with its own formula, a piped formula string, or a wired LAMBDA value" },
+    { excel: "BYCOL", syntax: "=BYCOL(array, LAMBDA(col, ...))", parity: false, note: "BYROW/BYCOL node reduces each row/column with its own formula, a piped formula string, or a wired LAMBDA value" },
   ],
   "char-code-char": [
     { excel: "CHAR", syntax: "=CHAR(code)", parity: false, note: "Full Unicode (=UNICHAR) — code point 0–1114111" },
@@ -244,8 +244,8 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "lognorminv": [{ excel: "LOGNORM.INV", syntax: "=LOGNORM.INV(p, μ, σ)" }],
   "lookup-xlookup": [{ excel: "XLOOKUP", syntax: "=XLOOKUP(x, lookup, return)", parity: true }],
   "lookup-xmatch": [{ excel: "XMATCH", syntax: "=XMATCH(x, array, mode)", parity: false, note: "Modes 0 (exact), 1 (next larger), -1 (next smaller) supported; wildcard mode not supported" }],
-  "make-array": [{ excel: "MAKEARRAY", syntax: "=MAKEARRAY(rows, cols, LAMBDA(r, c, ...))", parity: false, note: "MAKEARRAY node builds a grid from an embedded formula of (r, c); full LAMBDA values aren't first-class" }],
-  "map-table": [{ excel: "MAP", syntax: "=MAP(array1, [array2, ...], LAMBDA(x, ...))", parity: false, note: "MAP node zips up to three same-shape arrays through an embedded formula (x, y, z; a 1×1 broadcasts); Excel takes any number of arrays and full LAMBDA values aren't first-class" }],
+  "make-array": [{ excel: "MAKEARRAY", syntax: "=MAKEARRAY(rows, cols, LAMBDA(r, c, ...))", parity: false, note: "MAKEARRAY node builds a grid from its own formula of (r, c), or a wired LAMBDA value" }],
+  "map-table": [{ excel: "MAP", syntax: "=MAP(array1, [array2, ...], LAMBDA(x, ...))", parity: false, note: "MAP node zips up to three same-shape arrays through its own formula (x, y, z; a 1×1 broadcasts) or a wired LAMBDA value; Excel takes any number of arrays" }],
   "matdet-mdeterm": [{ excel: "MDETERM", syntax: "=MDETERM(array)", parity: false, note: "Square matrices only; uses LU decomposition with partial pivoting" }],
   "matdet-minverse": [{ excel: "MINVERSE", syntax: "=MINVERSE(array)", parity: false, note: "Square matrices only; returns null for singular matrices" }],
   "math-abs": [{ excel: "ABS", syntax: "=ABS(x)", parity: true }],
@@ -351,7 +351,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "reduce-geomean": [{ excel: "GEOMEAN", syntax: "=GEOMEAN(range)", parity: true }],
   "reduce-harmean": [{ excel: "HARMEAN", syntax: "=HARMEAN(range)", parity: true }],
   "reduce-kurt": [{ excel: "KURT", syntax: "=KURT(range)", parity: true }],
-  "reduce-lambda": [{ excel: "REDUCE", syntax: "=REDUCE(init, array, LAMBDA(acc, x, ...))", parity: false, note: "REDUCE node folds with an embedded formula of (acc, x); full LAMBDA values aren't first-class" }],
+  "reduce-lambda": [{ excel: "REDUCE", syntax: "=REDUCE(init, array, LAMBDA(acc, x, ...))", parity: false, note: "REDUCE node folds with its own formula of (acc, x), a piped formula string, or a wired LAMBDA value" }],
   "reduce-max": [
     { excel: "MAX", syntax: "=MAX(range)", parity: true },
     { excel: "MAXA", syntax: "=MAXA(range)", parity: false, note: "MAXA counts text as 0; Solenoid is numbers-only" },
