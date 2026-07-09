@@ -6,6 +6,7 @@
 
 import { ClassicPreset } from "rete";
 import { numOut } from "./shared";
+import type { FormatAnnotation } from "../formatAnnotationStore";
 
 export type PhysConstOp =
   // Universal
@@ -65,5 +66,17 @@ export class PhysicsConstantNode extends ClassicPreset.Node {
 
   data() {
     return { value: PHYS_CONSTANTS[this.op].value };
+  }
+
+  /**
+   * A constant CARRIES its unit the way an FC lock does: the annotation
+   * resolver (unitFlow.ts, duck-typed on this method) picks it up at the
+   * output, rides it through pure passthroughs (Display), and drops it at the
+   * first transform — so "299792458 m/s" reads as m/s wherever the value
+   * flows unchanged. Emitted as a custom unit suffix (physical-constant units
+   * like J·s aren't FC-pickable ids), format left on auto.
+   */
+  annotation(): FormatAnnotation {
+    return { format: "auto", unit: "custom", customUnit: ` ${PHYS_CONSTANTS[this.op].unit}` };
   }
 }

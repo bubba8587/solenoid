@@ -84,6 +84,24 @@ describe("Physics Constant node", () => {
     const n = new PhysicsConstantNode({ op: "nope" as never });
     expect(n.op).toBe("c");
   });
+
+  it("carries its unit like an FC lock: the annotation rides through a Display", async () => {
+    const { NodeEditor, ClassicPreset } = await import("rete");
+    const { makeAnnotationResolver } = await import("../unitFlow");
+    const editor = new NodeEditor() as never as Parameters<typeof makeAnnotationResolver>[0];
+    const c = new PhysicsConstantNode({ op: "c" });
+    const disp = Object.assign(new ClassicPreset.Node("Display"), { passesUnitThrough: true });
+    const sock = new (class extends ClassicPreset.Socket {})("any");
+    disp.addInput("in", new ClassicPreset.Input(sock, "In"));
+    disp.addOutput("out", new ClassicPreset.Output(sock, "Out"));
+    await editor.addNode(c as never);
+    await editor.addNode(disp as never);
+    await editor.addConnection(new ClassicPreset.Connection(c as never, "value", disp as never, "in") as never);
+    const r = makeAnnotationResolver(editor);
+    const ann = r.inAnnotation(disp.id, "in");
+    expect(ann?.unit).toBe("custom");
+    expect(ann?.customUnit).toBe(" m/s");
+  });
 });
 
 describe("pack wiring", () => {

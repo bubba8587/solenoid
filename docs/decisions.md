@@ -179,6 +179,25 @@ bug than a documented deviation.
 **Cost accepted:** occasional parity:false notes where Excel is the odd one out.
 **What would reverse it:** nothing; this is an ordering of loyalties, not a feature.
 
+### D14 — The Equation node is a SIBLING of Expression, acausal, with a FIXED socket set
+**When:** 2026-07-09 (author: "just build it now"). **Where:** `nodes/equation.ts`,
+`equationSolve.ts`; the design discussion is in the session digest.
+**Why:** three sub-decisions. (1) A new node, NOT a widened Expression — D2 caps
+Expression permanently, ~135 locked pack presets and the LAMBDA hosts lean on its
+directional contract, and the card shape differs anyway. (2) Every variable gets an input
+AND an output plus one always-present logical `Holds?` — rather than the single output
+that morphs numlist→logical — because in-place retype is a known minefield
+(fcReconcile/retypeOutputCables) and a morphing output changes MEANING when inputs are
+rewired, silently breaking downstream cables. (3) Solving is our own AST isolation
+(unparse → recompile, so broadcasting is free) + a numeric bracket/bisection fallback —
+no CAS dependency (nerdamer/algebrite are heavy, stale, and speak a different grammar).
+**Cost accepted:** principal branches on inversion (√/ASIN — the returned value satisfies
+the equation but may not be the branch you meant); the numeric fallback is scalar-only
+and reports the root nearest an ascending log-grid scan; tall cards (2n+1 value rows).
+**What would reverse it:** users routinely hitting the multi-occurrence wall (quadratics
+beyond the numeric fallback's comfort) would justify a polynomial special case or a
+vendored CAS; per-output socket annotations would unlock richer per-variable typing.
+
 ---
 
 ## Structural risks (the threats register — distinct from bugs)
