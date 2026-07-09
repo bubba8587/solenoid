@@ -283,11 +283,15 @@ axis toggles, index pickers) to bridge them; the redesign deletes capability ins
   (lists too) is impossible by design: a list widens as ONE ROW (CSV orientation), so
   row-filtering it is meaningless — lists keep their own node.
 - **SUMIFS node** (`SumIfsNode`, ops SUMIFS/COUNTIFS/AVERAGEIFS/MINIFS/MAXIFS): the
-  task-shaped home of the parallel-list pattern — aggregate Values where every criteria
-  ROW (wired criteria list + op + value) passes, AND-only like Excel's *IFS. Replaces
-  the mask's bread-and-butter job (`SUMIF(region, "North", sales)` = one node) with
-  Excel's own mental model minus its range-alignment footguns. Empty-match parity:
-  AVERAGEIFS → #DIV/0!, MINIFS/MAXIFS → 0, SUMIFS → 0, COUNTIFS needs no Values.
+  task-shaped conditional aggregate. Replaces the mask's bread-and-butter job
+  (`SUMIF(region, "North", sales)` = one node) with Excel's own mental model minus its
+  range-alignment footguns. Empty-match parity: AVERAGEIFS → #DIV/0!, MINIFS/MAXIFS → 0,
+  SUMIFS → 0, COUNTIFS needs no Values. **AMENDED same day (author catch):** the first
+  build took parallel criteria LISTS — a violation of the 2026-07-06 standing rule
+  (position-aligned columns arrive as a 2-D input, never parallel list sockets), with the
+  exact hazard the rule targets (a shorter criteria list silently failed rows past its
+  end). Rebuilt as ONE frame input + a Values-column field + criteria rows
+  (column + op + value) — the frame Filter's row UI plus an aggregate-op selector.
 - Parallel-list filtering WITHOUT aggregation = Frame from Lists → Filter Rows (the
   honest relational modeling; mixed-family parallel lists can't share a matrix anyway,
   so frames were always that data's only container).
@@ -298,6 +302,38 @@ aggregating — the overwhelmingly common case) or the frames route.
 parallel-list filtering is common enough to out-vote the mask's opacity; per-cell 2-D
 filtering stays out regardless (Excel's FILTER refuses 2-D includes; ragged output
 doesn't exist in its model — TOCOL → Filter is the explicit spelling).
+
+---
+
+### D17 — The wildcard ladder: `any` is a scalar; `trueany` is the supremum
+**When:** 2026-07-09 (author challenge: "(any accepts everything) — um, it shouldn't?
+that's why we have any, any list, and any matrix").
+**The problem:** `any` was doing two jobs — the rank-0 rung of the untyped ladder AND the
+accept-everything supremum. The code made it the supremum (`accepts()` returned true for
+`any` on either side); the DESIGN — a plain gray circle among circles-are-scalars — had
+always said "one value of any type." With `anylist`/`anytable` as explicit 1-D/2-D untyped
+rungs, an `any` input silently swallowing frames, cubes, and lambdas was a lattice hole:
+Expand's Fill ("any scalar fill value") happily accepted a whole frame.
+**The decision:** split them. `any` = element-agnostic SCALAR — accepts any family's
+scalar (and combos, which can be scalars); its output widens anywhere data flows, never
+into the object family. `trueany` = the true supremum — accepts and flows to everything —
+with a NEW glyph: a HOLLOW gray circle (border only, no fill), distinguishable from every
+filled shape even zoomed out. So the untyped ladder reads any → anylist → anytable, with
+trueany above the whole lattice.
+**Call sites re-sorted by what they mean:** genuine anything-ports (Display, selectors
+IF/IFERROR/CHOOSE/SWITCH-then, IS.TEST, Cast, Expect, Report refs, Build Cube cells,
+Nest Join sides, INDEX array/result, XLOOKUP result, Input Switch, Placeholder, composite
+ports, unwired Conduit lanes, FC in/out) → `trueany`; scalar-or-1-D under the Expression
+cap (Expression/LAMBDA variables — now enforced at CONNECT time, not runtime #SHAPE! —
+REDUCE initial, Regex text, Group Lists keys, wrap/flatten reshape) → `anylist`; true
+scalars (SWITCH expr/when equality, Expand fill, Filter/SUMIFS Value rows) stay `any`,
+which is what makes wired thresholds + a typed text field legitimate on the same row.
+`isWildcardType()` centralizes "walk past untyped passthroughs" (FC adoption,
+type-default display, conduit trace) over BOTH rungs.
+**Cost accepted:** `any` outputs (INDEX, Regex result) can still deliver a non-scalar at
+runtime into a scalar input — the same accepted risk as a combo narrowing to its scalar;
+there is no untyped COMBO socket (Regex result is the known combo-shaped hole).
+**What would reverse it:** none foreseen; adding an `anycombo` rung would only refine it.
 
 ---
 
