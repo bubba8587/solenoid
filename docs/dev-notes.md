@@ -131,8 +131,14 @@ drill into the archive (or `git log`) only for the mechanics of a specific item.
   nothing vanishes); author asked "dropdown mode on Filter?" — answer NO, a
   dropdown that toggles a socket kills downstream cables on switch (the
   fixed-socket rule), and the complement is free in the same pass, so it's
-  always there. Frame Filter's Dropped is backlogged (verb seam + null-safe
-  complement). (2) **TAKE/DROP (table)** — Excel's real 2-D edge cuts
+  always there. Frame Filter's Dropped landed the same day: `filterMulti`
+  gained a `complement` flag through the verb seam (JS oracle keep-set flip;
+  Rust BOTH paths — the text-scan hand-roll and the lazy expr fold, where
+  `fill_null(false).not()` keeps null-predicate rows in the complement), the
+  node publishes a SECOND lazy ref with emitFrame's stale-pass/prev-ref
+  lifecycle minus the preview (`_refDropped`, freed on noderemoved too), and
+  the card shows just the Dropped socket row — materializing a chip for it
+  would collect a frame nobody asked for. Cargo 69→71. (2) **TAKE/DROP (table)** — Excel's real 2-D edge cuts
   (rows+cols, negative = from end, 0 = omitted arg) as one op node; the 1-D
   list Take/Drop stay and their NODE_EXCEL parity claims were corrected.
   (3) **EXPAND** — the 2-D pad (grow to R×C, wired Fill or #N/A, shrink =

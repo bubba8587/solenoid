@@ -262,6 +262,21 @@ describe("filterMulti — AND/OR condition rows (B-2)", () => {
     });
     expect(out.columns[1].values).toEqual(["Bergen", "Tromso"]);
   });
+
+  it("complement is the exhaustive ROW complement (null/error rows land in Dropped)", () => {
+    // Kept for qty≥10: rows 12, 20. Dropped: 5, the null row, the error row —
+    // the cargo twin is filter_multi_complement_is_the_exhaustive_row_complement.
+    const conditions = [{ column: "qty", op: "gte" as const, value: 15 }];
+    const kept = filterRowsMulti(t, "and", conditions);
+    const dropped = filterRowsMulti(t, "and", conditions, true);
+    expect(kept.columns[0].values.length + dropped.columns[0].values.length)
+      .toBe(t.columns[0].values.length);
+    expect(dropped.columns[1].values).toEqual(["Oslo", "Bergen", "Oslo", "Oslo"]);
+    // Complement of the no-conditions identity = the empty frame, same schema.
+    const empty = filterRowsMulti(t, "and", [], true);
+    expect(empty.columns.map((c) => c.name)).toEqual(["qty", "city"]);
+    expect(empty.columns[0].values).toEqual([]);
+  });
 });
 
 describe("groupBy", () => {
