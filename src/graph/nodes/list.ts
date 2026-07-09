@@ -471,7 +471,7 @@ export class FilterNode extends ClassicPreset.Node {
         const hasBlankLane =
           m.some((r) => r.every((x) => isMissing(x))) ||
           Array.from({ length: cols }, (_, j) => m.every((r) => isMissing(r[j]))).some(Boolean);
-        return shapeErr(`Filtering a ${rows}×${cols} table needs an explicit Keep-if mask${hasBlankLane ? " — a fully-blank row/column still counts toward the shape (a trailing delimiter in the source does this)" : ""}`);
+        return shapeErr(`Filtering a ${rows}×${cols} table needs a Keep-if mask (length = rows or columns); for per-cell filtering flatten first with TOCOL, for column-driven rows use the frame Filter${hasBlankLane ? ". A fully-blank row/column still counts toward the shape (a trailing delimiter in the source does this)" : ""}`);
       }
       axis = rows === 1 ? "col" : "row";
       const vec = rows === 1 ? m[0] : m.map((r) => r[0]);

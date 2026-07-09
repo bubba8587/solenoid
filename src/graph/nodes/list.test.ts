@@ -387,6 +387,14 @@ describe("Filter — a null/unknown predicate row is excluded (SQL WHERE keeps o
     expect(isSolError(plain.result) && plain.result.message).not.toContain("fully-blank");
   });
 
+  it("the 2-D-needs-a-mask error names a fully-blank lane when one exists (the trailing-comma trap)", () => {
+    const out = new FilterNode({ op: "gt" }).data({ list: [[[1, null], [3, null]]], threshold: [1] });
+    expect(isSolError(out.result) && out.result.message).toContain("fully-blank");
+    // No blank lane → no red herring in the message.
+    const plain = new FilterNode({ op: "gt" }).data({ list: [[[1, 2], [3, 4]]], threshold: [1] });
+    expect(isSolError(plain.result) && plain.result.message).not.toContain("fully-blank");
+  });
+
   it("a shape error lands on BOTH outputs", () => {
     const out = new FilterNode().data({ list: [[[1, 2], [3, 4]]], mask: [[1, 0, 1]] });
     expect(isSolError(out.result)).toBe(true);
