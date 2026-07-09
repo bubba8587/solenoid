@@ -349,6 +349,9 @@ export { IsInComponent, TallyComponent } from "./SetPackNodes";
 // ─── Timesavers pack custom nodes ────────────────────────────────────────────────
 export { ReverseTextComponent, SpellNumberComponent } from "./TimesaverNodes";
 
+// ─── Earth & Sky pack ────────────────────────────────────────────────────────────
+export { SolarPositionComponent, SunriseSunsetComponent, MoonPhaseComponent } from "./AstroNodes";
+
 // ─── Missing-type placeholder (load-time only, not in the Add menu) ───────────
 export { PlaceholderComponent } from "./PlaceholderNode";
 
