@@ -38,6 +38,24 @@ task-shaped additions, one per pack, each with pinned tests:
   >3 parts → solve from the side-richest subset and CHECK the rest agree at
   1e-6); <3 parts pass through quietly. And the card **draws the triangle to
   scale** (letters only — numbers live in the rows; neutral stroke).
+- **Trig deg/rad/Auto + Triangle broadcast (author follow-up):** a `Math` node's
+  trig ops (sin/cos/tan/cot/csc/sec + asin/acos/atan/acot; NOT hyperbolic) gained a
+  **deg/rad/Auto** SegToggle. Forward trig converts the input deg→rad; inverse trig
+  converts the result rad→deg and tags the real `deg` unit on its output. **Auto
+  (default) reads the incoming unit** — a °-tagged value (a Triangle angle, an
+  FC-locked deg, an inverse-trig-deg output) computes in degrees, else radians =
+  Excel parity. The unit read is `trigMode.ts` `resolveTrigModes`, run from
+  processGraph before the engine pull, stamping a transient `_resolvedAngleMode`
+  data() reads — the FIRST and only place compute consults the unit plane; a manual
+  Rad/Deg pin ignores it; early-outs when no auto trig node exists. To make that
+  read see producer units, `makeUnitResolver` gained the same `annotationFor`/
+  `annotation` branches `makeAnnotationResolver` already had (unit plane now agrees
+  with annotation plane; FC keeps its forward/author branch). **Triangle Solver
+  sockets → numlist** (Equation-family parity, the flagged inconsistency): parts
+  broadcast element-wise (parallel lists → a triangle per index, Valid a logical
+  list, figure draws index 0); the angle annotation switched from custom "°" to the
+  real `deg` unit so the resolver reads it as an angle. Runs main-editor only inside
+  a drill-in (backlog, same as trueany/FC reconcile).
 - **Per-output unit locks + per-socket FC boxes (author follow-up):** unitFlow
   gained the per-OUTPUT producer seam — `annotationFor(outKey)`, checked before
   the node-level `annotation()` — so the **Triangle Solver's angles carry °**

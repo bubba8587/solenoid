@@ -134,7 +134,7 @@ export function makeUnitResolver(editor: AnyEditor): UnitResolver {
     return "none";
   }
 
-  function compute(nodeId: string): string {
+  function compute(nodeId: string, outKey: string): string {
     const n = editor.getNode(nodeId);
     if (isConvert(n)) return isFcUnit(n.toUnit) ? n.toUnit : "none";
     if (isFc(n)) {
@@ -142,6 +142,13 @@ export function makeUnitResolver(editor: AnyEditor): UnitResolver {
       if (iu !== "none") return iu;                       // forward
       return n.unit && n.unit !== "none" ? n.unit : "none"; // author
     }
+    // A producer whose outputs carry their own unit (Triangle degrees, Element
+    // g/mol via annotationFor; Physics Constant via annotation) — so the unit
+    // resolver agrees with the annotation resolver, and a trig node in Auto mode
+    // sees the ° feeding it. Checked AFTER isFc (an FC has both and keeps its
+    // forward/author branch above).
+    if (hasAnnotationFor(n)) { const u = n.annotationFor(outKey)?.unit; if (u) return u; }
+    if (hasAnnotation(n)) return n.annotation().unit || "none";
     if (isPassthrough(n)) {
       const sel = selectedKey(n);
       if (sel) return inUnit(nodeId, sel);           // follow the actually-selected branch
@@ -157,7 +164,7 @@ export function makeUnitResolver(editor: AnyEditor): UnitResolver {
     if (cached !== undefined) return cached;
     if (visiting.has(key)) return "none"; // cycle guard (shouldn't happen in a DAG)
     visiting.add(key);
-    const u = compute(nodeId);
+    const u = compute(nodeId, outKey);
     visiting.delete(key);
     memo.set(key, u);
     return u;

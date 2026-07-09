@@ -270,8 +270,8 @@ describe("per-output producer annotations (annotationFor) — Triangle degrees, 
     const { TriangleSolverNode } = await import("./nodes/triangle");
     const { ElementNode } = await import("./nodes/chemistry");
     const tri = new TriangleSolverNode();
-    expect(tri.annotationFor("A")?.customUnit).toBe("\u00b0");
-    expect(tri.annotationFor("B")?.customUnit).toBe("\u00b0");
+    expect(tri.annotationFor("A")?.unit).toBe("deg");
+    expect(tri.annotationFor("B")?.unit).toBe("deg");
     expect(tri.annotationFor("a")).toBeUndefined();
     expect(tri.annotationFor("area")).toBeUndefined();
     const el = new ElementNode();

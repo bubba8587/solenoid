@@ -145,6 +145,10 @@ this backlog stays the per-item source of truth.
   shell's OUTPUT ports stay static trueany (they could adopt from the internal Output
   marker's wiring, like the shell INPUTS already adopt from outside). Both need the
   reconcile taught the drill-in editor stack — fold into the active-graph arc above.
+- [ ] **Auto trig angle-mode inside the drill-in** (2026-07-09): `resolveTrigModes` (the
+  Auto deg/rad unit read) runs on the MAIN editor only, so a `Math` trig node in Auto mode
+  inside a composite keeps the rad default. Same fold-into-active-graph fix as the trueany
+  gap above.
 
 ## Nodes / engine
 
