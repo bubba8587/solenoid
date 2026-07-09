@@ -1,5 +1,6 @@
 // Compact table preview — shows up to 4×4 with ellipsis for larger matrices.
-import { ArrayChip } from "./ArrayChip";
+import { ArrayChip, type ElemFamily } from "./ArrayChip";
+import type { TablePopupState } from "../tablePopupStore";
 import { isSolError, type SolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import { flyToNode } from "../flyToNode";
@@ -33,12 +34,17 @@ function fmtCell(v: Cell, kind?: ResultType): string {
   return fmtNum(v);
 }
 
-export function TableDisplay({ table, label, onSave, full, kind }: {
+export function TableDisplay({ table, label, onSave, full, kind, elem, popupOverrides }: {
   table: Mat | SolError | null;
   label?: string;
   /** When set, the chip opens the grid in editable mode and Save writes back
    *  through this — used by Table Input, whose result box is its editor. */
   onSave?: (next: (number | null)[][]) => void;
+  /** Element-family chip tint when the caller knows the socket family. */
+  elem?: ElemFamily;
+  /** Forwarded to the chip's popup open() — Table Input's raw literal cells +
+   *  onSaveRaw (the grid edits source text, never derived values). */
+  popupOverrides?: Partial<TablePopupState>;
   /** Render the full matrix (no 4×4 cap, no chip) — for the Display node, whose
    *  box scrolls when resized. Default is the compact preview. */
   full?: boolean;
@@ -70,12 +76,12 @@ export function TableDisplay({ table, label, onSave, full, kind }: {
     // uneditable. The starter is a 1×1 the user grows via the popup's Add Row/Col
     // or CSV view. (Inc 6 / matrix-null will let blanks round-trip as real null
     // cells instead of collapsing the whole table.)
-    if (onSave) {
+    if (onSave || popupOverrides) {
       return (
         <div className="solenoid-node__display-value solenoid-table-display" style={{ padding: "4px 8px", userSelect: "text" }}>
           <div style={{ color: "var(--text-muted)", fontSize: 11, fontStyle: "italic" }}>empty</div>
           <div className="solenoid-table-display__chip" style={{ display: "flex", justifyContent: "flex-end", marginTop: 3 }}>
-            <ArrayChip value={[[0]]} label={label} size="sm" onSave={onSave} />
+            <ArrayChip value={[[0]]} label={label} size="sm" onSave={onSave} elem={elem} popupOverrides={popupOverrides} />
           </div>
         </div>
       );
@@ -114,7 +120,7 @@ export function TableDisplay({ table, label, onSave, full, kind }: {
       </table>
       {!full && (
         <div className="solenoid-table-display__chip" style={{ display: "flex", justifyContent: "flex-end", marginTop: 3 }}>
-          <ArrayChip value={table} label={label} size="sm" onSave={onSave} />
+          <ArrayChip value={table} label={label} size="sm" onSave={onSave} elem={elem} popupOverrides={popupOverrides} />
         </div>
       )}
     </div>

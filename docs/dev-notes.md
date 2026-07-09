@@ -148,7 +148,25 @@ drill into the archive (or `git log`) only for the mechanics of a specific item.
   (text/date/logical lists reverse and slice like numbers). Sort/Cumulative
   stay typed (comparison/arithmetic semantics). (5) **`Cell` type hygiene**:
   the matrix cell alias widened to the honest runtime union (± boolean/null/
-  SolError) — zero tsc fallout, the #N/A-padding casts deleted.
+  SolError) — zero tsc fallout, the #N/A-padding casts deleted. — **Table Input
+  rebuilt as a LITERAL source (author: Frame Input's model is the desired
+  behavior)**: raw `tableText` is the stored truth, the typed matrix derives
+  through coerceFrameCell — the SAME coercion as Frame Input, so bad cells are
+  NaN (the carefully-designed quiet dirty-data affordance, 1.0-tail #6 — NOT an
+  error badge; author explicitly guarded this) and blanks are null; the grid
+  popup edits RAW cells via a new lean `onSaveRaw` literal mode (the old
+  parse→tableToText round trip silently coerced bad text away — deleted, with
+  parseTableText/tableToText). ONE element type per table via a
+  Num/Text/Date/Bool SegToggle (the List Input retype pattern; mixed columns =
+  Frame Input's job). — **Type-by-COLOR (author chose color over glyph
+  shorthand):** chips now tint by ELEMENT family when the container is
+  homogeneous — explicit socket knowledge (`elem` prop; date serials are
+  numbers by value) or a cell scan; mixed/unknown keeps the container color (a
+  chip must not guess). CSS: `--elem-{string,date,logical}` (+`-table`)
+  modifiers on the --sock-* vars; numeric keeps the current look. And
+  **List/Table Input header accents track the SegToggle** (NodeShell grew the
+  accentOverride passthrough NodeCard already had; SOCKET_COLORS values, the
+  FC-header precedent).
 
 ### SESSION DIGEST (2026-07-08, evening — What's New resell + 1.2/2.0 plans)
 - **What's New rebuilt around the author's sell bar** ("a shiny thing a user will go

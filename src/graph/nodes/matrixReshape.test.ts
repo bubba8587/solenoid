@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { isSolError } from "../errorValue";
-import { TableTransposeNode, HStackTableNode, TableReshapeNode, TableSelectNode, TableTakeDropNode, ExpandNode, TableInfoNode, TableMultNode, MatDetNode, parseTableText } from "./matrix";
+import { TableTransposeNode, HStackTableNode, TableReshapeNode, TableSelectNode, TableTakeDropNode, ExpandNode, TableInfoNode, TableMultNode, MatDetNode, TableInputNode, tableRawCells, rawCellsToText, deriveTable } from "./matrix";
 import { SolenoidSocket, type SocketDataType } from "../sockets";
 
 // The pure-reshape matrix ops are element-agnostic: they accept any matrix on an
@@ -147,27 +147,47 @@ describe("numeric matrix ops reject a text anytable with #TYPE!", () => {
   });
 });
 
-describe("matrix null (Inc 6): parse preserves blanks; numeric ops reject missing cells", () => {
-  it("parseTableText: a blank cell → null (not 0); non-numeric → reject whole table", () => {
-    // An all-blank row (just ",") is greedily dropped by the CSV reader → empty → null.
-    expect(parseTableText(",")).toBeNull();
-    // But blanks in rows that have content are preserved as null (not 0).
-    expect(parseTableText("1,\n,4")).toEqual([[1, null], [null, 4]]);
-    expect(parseTableText("1, 2\n3, 4")).toEqual([[1, 2], [3, 4]]);
-    expect(parseTableText("1, abc")).toBeNull();
+describe("Table Input is a LITERAL source (the Frame Input model)", () => {
+  it("blank cell → null; an unparseable cell → NaN (dirty data), never a whole-table reject", () => {
+    // Old parseTableText nulled the ENTIRE table on one bad cell; the literal
+    // model keeps the good cells and marks the bad one NaN (quiet affordance,
+    // 1.0-tail #6 — not an error badge).
+    const t = deriveTable(tableRawCells("1,\n,4"), "number");
+    expect(t).toEqual([[1, null], [null, 4]]);
+    const bad = deriveTable(tableRawCells("1, abc\n3, 4"), "number") as (number | null)[][];
+    expect(bad[0][0]).toBe(1);
+    expect(Number.isNaN(bad[0][1])).toBe(true);
+    expect(bad[1]).toEqual([3, 4]);
   });
+
+  it("raw cells round-trip verbatim through the text form (quoting incl.)", () => {
+    const cells = [["1", "abc"], ["he, said", '"hi"']];
+    expect(tableRawCells(rawCellsToText(cells))).toEqual(cells);
+  });
+
+  it("the element-type toggle derives text/date/logical tables from the same raw text", () => {
+    const raw = tableRawCells("a, b\nc,");
+    expect(deriveTable(raw, "string")).toEqual([["a", "b"], ["c", null]]);
+    const logical = deriveTable(tableRawCells("true, 0\n1, x"), "logical") as unknown[][];
+    expect(logical[0]).toEqual([true, false]);
+    expect(logical[1][0]).toBe(true);
+    expect(logical[1][1]).toBeNull(); // a bad logical is null — coerceLogical's (Frame Input's) contract
+    const dates = deriveTable(tableRawCells("2026-03-15"), "date") as number[][];
+    expect(dates[0][0]).toBe(46096); // the audit-29 serial pin
+  });
+
+  it("setDataType swaps the output socket in place; dataType persists via init", () => {
+    const n = new TableInputNode({ tableText: "a, b", dataType: "string" });
+    expect(n.data().table).toEqual([["a", "b"]]);
+    expect(n.setDataType("string")).toBe(false); // unchanged → no-op
+    expect(n.setDataType("logical")).toBe(true);
+    expect((n.outputs.table!.socket as { dataType?: string }).dataType).toBe("logicaltable");
+  });
+
   it("MMULT / MDETERM reject a matrix with a missing cell (#VALUE!, complete data needed)", () => {
     const mm = new TableMultNode().data({ a: [[[1, null], [3, 4]]] as never, b: [[[1, 0], [0, 1]]] as never }).result;
     expect(isSolError(mm) && mm.code).toBe("#VALUE!");
     const det = new MatDetNode({ op: "mdeterm" }).data({ matrix: [[[1, null], [3, 4]]] as never }).result;
     expect(isSolError(det) && det.code).toBe("#VALUE!");
-  });
-
-  it("a Table Input edit round-trips null (tableToText → parseTableText), no 0-fabrication", async () => {
-    const { tableToText } = await import("./matrix");
-    // The popup's fromGrid now keeps a blank cell as null; tableToText writes it as
-    // a blank field, and parseTableText reads it back as null — no false 0.
-    const edited: (number | null)[][] = [[1, null], [null, 4]];
-    expect(parseTableText(tableToText(edited))).toEqual([[1, null], [null, 4]]);
   });
 });
