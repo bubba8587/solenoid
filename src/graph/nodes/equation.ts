@@ -64,6 +64,10 @@ export class EquationNode extends ClassicPreset.Node {
   cachedError: string | null = null;
   /** Per-variable displayed value (solved or passthrough), by var name. */
   cachedValues: Record<string, Val> = {};
+  /** Optional prose explaining each variable (var name → description). Kept OUT
+   *  of the formula string (KaTeX never renders it); a card tooltip + a popup
+   *  legend. Display-only. */
+  varDescriptions: Record<string, string> = {};
   cachedHolds: boolean | (boolean | SolError | null)[] | SolError | null = null;
   /** The variable currently being solved for (accent highlight), or null. */
   solvedFor: string | null = null;
@@ -78,12 +82,13 @@ export class EquationNode extends ClassicPreset.Node {
   width = 240;
   height = 220;
 
-  constructor(init?: { label?: string; expr?: string; locked?: boolean; literals?: Record<string, number> }) {
+  constructor(init?: { label?: string; expr?: string; locked?: boolean; literals?: Record<string, number>; varDescriptions?: Record<string, string> }) {
     super("Equation");
     this.label = init?.label ?? "Equation";
     this.expr = init?.expr ?? "";
     this.locked = init?.locked ?? false;
     if (init?.literals) this.literals = { ...init.literals };
+    if (init?.varDescriptions) this.varDescriptions = { ...init.varDescriptions };
     // Output key stays "holds" (existing cables reference it); the user-facing
     // name is "Check".
     this.addOutput("holds", logicalComboOut("Check"));

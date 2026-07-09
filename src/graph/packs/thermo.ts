@@ -14,7 +14,8 @@ export const THERMO_GAS: FormulaPackEntry[] = [
   // One equation instead of the four solved forms it shipped as pre-Equation.
   { type: "th-ideal-gas", label: "Ideal Gas (pV = nRT)", expr: `p * vol = n * ${R_GAS} * tk`, equation: true,
     description: "The ideal-gas law with any one of p (Pa), vol (m³), n (mol), tk (K) unwired — the node solves for it",
-    keywords: "pv nrt pressure volume moles temperature gas law" },
+    keywords: "pv nrt pressure volume moles temperature gas law",
+    varDescriptions: { p: "Pressure (Pa)", vol: "Volume (m³)", n: "Amount (mol)", tk: "Temperature (K)" }, },
   { type: "th-air-density", label: "Air Density", expr: "p/(287.05*tk)",
     description: "Dry air density from pressure p (Pa) and temperature tk (K)   (ρ = p/R_specificT, R = 287.05)" },
 ];

@@ -43,7 +43,7 @@ export interface AcausalRowNode {
 // when the node is collapsed. Shared by every acausal card (Equation, TVM,
 // Triangle Solver) — the CURRENT Equation design, don't rebuild it per node.
 export function EquationVarRow({
-  node, emit, varKey, value, solved, label,
+  node, emit, varKey, value, solved, label, desc,
 }: {
   node: AcausalRowNode;
   emit: Emit;
@@ -52,6 +52,8 @@ export function EquationVarRow({
   solved: boolean;
   /** Display label; defaults to the socket key. */
   label?: string;
+  /** Optional hover tooltip (the variable's description). */
+  desc?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const top = useRowTop(ref);
@@ -68,7 +70,7 @@ export function EquationVarRow({
       <span
         className="solenoid-node__io-label"
         style={solved ? { color: "var(--node-accent)" } : undefined}
-        title={solved ? "Solved from the other variables" : undefined}
+        title={desc || (solved ? "Solved from the other variables" : undefined)}
       >
         {label ?? varKey}
       </span>
@@ -132,6 +134,7 @@ export function EquationComponent({ data: node, emit, config }: NodeProps<Equati
           varKey={v}
           value={(node.cachedValues[v] ?? null) as DisplayValue}
           solved={node.solvedFor === v}
+          desc={node.varDescriptions[v] || undefined}
         />
       ))}
       <EquationOutRow node={node} emit={emit} socketKey="holds" label="Check" value={node.cachedHolds as DisplayValue} />

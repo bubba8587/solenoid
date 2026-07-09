@@ -38,6 +38,19 @@ task-shaped additions, one per pack, each with pinned tests:
   >3 parts → solve from the side-richest subset and CHECK the rest agree at
   1e-6); <3 parts pass through quietly. And the card **draws the triangle to
   scale** (letters only — numbers live in the rows; neutral stroke).
+- **Per-variable explanations on Expression + Equation (author ask):** each
+  variable can carry a prose description (`varDescriptions` map on the node),
+  kept OUT of the formula string so KaTeX never renders it. Shown as a hover
+  tooltip on the card's variable rows (Expression via a new InlineInputs
+  `titleFor`; Equation via `EquationVarRow desc`) AND as an editable legend
+  under the big KaTeX in the FormulaPopup (a Variables section — name typeset,
+  description field; editable even when the formula is locked, since it's a
+  note not the formula). Persists via extractInit (LIVE-var-filtered, blanks
+  dropped) + INIT_EXTRA_FIELD_ORDER; textForm round-trips it generically.
+  `FormulaPackEntry.varDescriptions` lets presets ship them — seeded on Ohm's
+  Law, ideal gas, Nernst, wavelength↔frequency. Report-embed "where:" legend
+  deferred (Expression/Equation embed as VALUES, not formulas — needs a
+  formula-embed mode first; backlog).
 - **Trig deg/rad/Auto + Triangle broadcast (author follow-up):** a `Math` node's
   trig ops (sin/cos/tan/cot/csc/sec + asin/acos/atan/acot; NOT hyperbolic) gained a
   **deg/rad/Auto** SegToggle. Forward trig converts the input deg→rad; inverse trig

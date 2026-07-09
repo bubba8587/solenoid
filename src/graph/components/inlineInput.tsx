@@ -403,6 +403,8 @@ type Props = {
   keys?: string[];
   /** Override the row label for a key (e.g. Logical's per-op labels). */
   labelFor?: (key: string, index: number) => string;
+  /** Optional hover tooltip per key (e.g. an Expression variable's description). */
+  titleFor?: (key: string) => string | undefined;
   /** Input keys rendered socket+label only (no inline field) — the value comes
    *  from a cable, or an editor elsewhere in the node (e.g. a LAMBDA formula). */
   cableOnlyKeys?: ReadonlySet<string>;
@@ -439,7 +441,7 @@ function MathLabel({ text }: { text: string }) {
  * Each input dot centers on its own row (see .solenoid-node__io-row), so rows
  * can sit anywhere in the body — no fixed-offset assumption about the header.
  */
-export function InlineInputs({ node, emit, keys, labelFor, cableOnlyKeys, mathLabelKeys }: Props) {
+export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKeys, mathLabelKeys }: Props) {
   const connected = useConnectedInputs(node.id);
   const incoming = useIncomingSources(node.id);
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(node.id));
@@ -504,7 +506,7 @@ export function InlineInputs({ node, emit, keys, labelFor, cableOnlyKeys, mathLa
           <MeasuredSocketRow key={key} side="input" socketKey={key} nodeId={node.id} emit={emit} payload={socket}>
             {mathLabelKeys?.has(key)
               ? <MathLabel text={label} />
-              : <span className="solenoid-node__io-label">{label}</span>}
+              : <span className="solenoid-node__io-label" title={titleFor?.(key)}>{label}</span>}
             {isConn ? (
               // Name the driver, not just the fact: "↩ Rate" beats "↩ wired".
               // The tooltip stays structural — dynamic data lives in the text.

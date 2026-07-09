@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { ExpressionNode } from "./expression";
+import { EquationNode } from "./equation";
 import { MapTableNode, ByAxisNode, ReduceLambdaNode, MakeArrayNode } from "./tableLambda";
 import { LambdaNode } from "./lambda";
 import { isSolError, type SolError } from "../errorValue";
@@ -191,5 +192,19 @@ describe("BYROW / REDUCE / MAKEARRAY — text", () => {
       ["cell 1,1", "cell 1,2"],
       ["cell 2,1", "cell 2,2"],
     ]);
+  });
+});
+
+describe("per-variable descriptions (Expression + Equation)", () => {
+  it("round-trip through init, and stay OUT of the formula string", () => {
+    const e = new ExpressionNode({ expr: "rate * hours", varDescriptions: { rate: "Hourly rate ($)", hours: "Hours worked" } });
+    expect(e.varDescriptions.rate).toBe("Hourly rate ($)");
+    expect(e.expr).toBe("rate * hours"); // formula untouched — KaTeX never sees the prose
+    expect(e.varNames).toEqual(["rate", "hours"]);
+  });
+
+  it("the Equation node carries them too", () => {
+    const q = new EquationNode({ expr: "v = i * r", varDescriptions: { v: "Voltage (V)", i: "Current (A)", r: "Resistance (Ω)" } });
+    expect(q.varDescriptions.r).toBe("Resistance (Ω)");
   });
 });

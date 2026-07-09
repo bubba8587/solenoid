@@ -3,6 +3,7 @@ import { useKatexRender, getKatexRenderer } from "./katexLoader";
 import { ClassicPreset } from "rete";
 import { formulaPopup } from "../formulaPopupStore";
 import { getEditor, processGraph } from "../process";
+import { getActiveArea } from "../activeGraph";
 import { formulaToLatex, evaluateSteps, extractVariables } from "../excelFormula";
 import { nodeKindOf, NODE_KIND_ACCENTS } from "../rete-nodes";
 import type { ExpressionNode, EquationNode, MapTableNode, LambdaNode } from "../rete-nodes";
@@ -36,6 +37,11 @@ type FormulaHost = {
   /** The Equation node: no "=" prefix (the text carries its own), an equation
    *  placeholder, and the solve-oriented engine note. */
   equation?: boolean;
+  /** Per-variable prose (var name → description). Present on Expression /
+   *  Equation; editable even when the formula is locked (they're notes, not the
+   *  formula). Undefined = this host doesn't support variable descriptions. */
+  varDescriptions?: Record<string, string>;
+  setVarDescription?: (name: string, desc: string) => void;
 };
 
 // Identify the host by constructor NAME, not instanceof: a Vite hot swap
@@ -45,18 +51,28 @@ type FormulaHost = {
 // Names survive the swap; persistence already keys saved nodes on them.
 const TABLE_LAMBDA_TYPES = new Set(["MapTableNode", "ByAxisNode", "MakeArrayNode", "ReduceLambdaNode"]);
 
+/** Set a per-variable description on an Expression/Equation node — display-only
+ *  (no recompute), so just update the map and re-render the card for its tooltip. */
+function setVarDesc(node: { id: string; varDescriptions: Record<string, string> }, name: string, desc: string): void {
+  if (desc.trim() === "") delete node.varDescriptions[name];
+  else node.varDescriptions[name] = desc;
+  void getActiveArea()?.update("node", node.id);
+}
+
 function formulaHostOf(node: ClassicPreset.Node | undefined): FormulaHost | null {
   if (!node) return null;
   const label = (node as { label?: string }).label || "Formula";
   const typeName = node.constructor.name;
   if (typeName === "ExpressionNode") {
     const n = node as ExpressionNode;
-    return { label, text: n.expr, locked: n.locked, setText: (s) => applyExprChange(n, s) };
+    return { label, text: n.expr, locked: n.locked, setText: (s) => applyExprChange(n, s),
+      varDescriptions: n.varDescriptions, setVarDescription: (name, desc) => setVarDesc(n, name, desc) };
   }
   if (typeName === "EquationNode" || typeName === "TvmNode") {
     // TvmNode is an EquationNode subclass (always locked → read-only view here).
     const n = node as EquationNode;
-    return { label, text: n.expr, locked: n.locked, setText: (s) => applyEquationChange(n, s), equation: true };
+    return { label, text: n.expr, locked: n.locked, setText: (s) => applyEquationChange(n, s), equation: true,
+      varDescriptions: n.varDescriptions, setVarDescription: (name, desc) => setVarDesc(n, name, desc) };
   }
   if (typeName === "LambdaNode") {
     const n = node as LambdaNode;
@@ -72,6 +88,36 @@ function formulaHostOf(node: ClassicPreset.Node | undefined): FormulaHost | null
     };
   }
   return null;
+}
+
+// The per-variable explanation editor + legend (Expression / Equation). The
+// variable name renders as KaTeX; the description is plain prose kept OUT of the
+// formula string, so it never affects the math. Display-only, so edits commit
+// per keystroke (no recompute) and just re-render the card tooltip. Editable even
+// when the formula is locked — the descriptions are notes, not the formula.
+function VariableDescriptions({ vars, host }: { vars: string[]; host: FormulaHost }) {
+  const [local, setLocal] = useState<Record<string, string>>(() => ({ ...host.varDescriptions }));
+  const set = (v: string, desc: string) => {
+    setLocal((m) => ({ ...m, [v]: desc }));
+    host.setVarDescription?.(v, desc);
+  };
+  return (
+    <div className="formula-popup__vars">
+      <div className="formula-popup__vars-title">Variables</div>
+      {vars.map((v) => (
+        <div key={v} className="formula-popup__var-row">
+          <span className="formula-popup__var-name" dangerouslySetInnerHTML={{ __html: renderTex(v) }} />
+          <input
+            className="formula-popup__var-desc"
+            value={local[v] ?? ""}
+            placeholder="what it means, its unit…"
+            onChange={(e) => set(v, e.target.value)}
+            onPointerDown={(e) => e.stopPropagation()}
+          />
+        </div>
+      ))}
+    </div>
+  );
 }
 
 // Render a KaTeX string to HTML, falling back to the raw string on error or while
@@ -277,6 +323,10 @@ export function FormulaPopup() {
           <div className="formula-popup__engine-note">
             ƒ Works on <strong>single values and 1-D lists</strong>: it broadcasts element-wise and aggregates a list (SUM, AVERAGE…). A 2-D table/matrix can't go straight into a formula and returns <code>#SHAPE!</code>; use <strong>MAP / BYROW / BYCOL / REDUCE / MAKEARRAY</strong> to run a formula over a table. Those apply it per cell/row and can return 2-D.
           </div>
+          )}
+
+          {host.varDescriptions && varSuggestions.length > 0 && (
+            <VariableDescriptions vars={varSuggestions} host={host} />
           )}
 
           {SHOW_STEPS && steps && (
