@@ -40,5 +40,6 @@ export * from "./nodes/physicsConstants";
 export * from "./nodes/fluids";
 export * from "./nodes/thermo";
 export * from "./nodes/astro";
+export * from "./nodes/chemistry";
 export * from "./nodes/tornado";
 export * from "./nodes/composite";
