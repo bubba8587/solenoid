@@ -359,6 +359,17 @@ export class MutableSocket extends SolenoidSocket {
   }
 }
 
+/** A `trueany` PLACEHOLDER socket that ADOPTS the type of the cable plugged into
+ *  it and reverts to `trueany` on disconnect — see `reconcileTrueAnyTypes`
+ *  (trueAnyAdopt.ts). Marker subclass: the central reconcile pass finds adopting
+ *  sockets by `instanceof`, so a node opts a port in just by constructing one.
+ *  One instance per port, never shared (a retype must not leak across cards). */
+export class AdoptiveSocket extends MutableSocket {
+  constructor() {
+    super("trueany");
+  }
+}
+
 export const numberSocket  = new SolenoidSocket("number");
 export const listSocket    = new SolenoidSocket("list");
 export const numListSocket = new SolenoidSocket("numlist");

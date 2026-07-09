@@ -333,6 +333,19 @@ type-default display, conduit trace) over BOTH rungs.
 **Cost accepted:** `any` outputs (INDEX, Regex result) can still deliver a non-scalar at
 runtime into a scalar input — the same accepted risk as a combo narrowing to its scalar;
 there is no untyped COMBO socket (Regex result is the known combo-shaped hole).
+**AMENDED same day — trueany is ADOPTIVE (author):** a trueany port is a PLACEHOLDER that
+adopts the wired cable's type and reverts on disconnect (`AdoptiveSocket` +
+`reconcileTrueAnyTypes` in `trueAnyAdopt.ts`, alternated with the Conduit-lane reconcile
+via `settleWildcardTypes` — one entry point off the connection pipe and the load path).
+INPUTS adopt universally (informative — the cable already landed); OUTPUTS only where
+honest: passthroughs (Display, Expect, Input Switch One-mode) adopt through, selector
+results (IF/IFERROR/CHOOSE/SWITCH/IFS) adopt when every wired branch agrees, and the
+value-dependent results (INDEX, XLOOKUP) keep a STATIC trueany that never adopts. Like
+the Conduit reconcile, adoption never drops cables (derived state — the mismatch scan
+flags; explicit retypes still go through `retypeOutputCables`), and adopted types are
+never persisted — the pass re-derives from wiring after load/paste. So the hollow ring
+on screen always means "nothing has flowed here yet"; the gray circle/square/grid are
+the deliberately NEUTRAL rungs.
 **What would reverse it:** none foreseen; adding an `anycombo` rung would only refine it.
 
 ---

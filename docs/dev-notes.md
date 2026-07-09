@@ -202,6 +202,21 @@ drill into the archive (or `git log`) only for the mechanics of a specific item.
   Wired scalars stringify via `readFilterValue` (wired null = "not written yet";
   wired SolError = its code text, matches no rows) so both engines see exactly
   what a typed literal would say.
+- **trueany is ADOPTIVE (D17 amended, author):** every trueany placeholder port
+  adopts the wired cable's type and reverts on disconnect — `AdoptiveSocket`
+  (per-port instances, never the shared singleton) + `trueAnyAdopt.ts`
+  (`reconcileTrueAnyTypes` fixpoint; `settleWildcardTypes` alternates it with the
+  Conduit reconcile — reconcileFcTypes and the load path both route through it).
+  Inputs adopt universally; outputs only where honest (Display/Expect/Input
+  Switch pass through; IF/IFERROR/CHOOSE/SWITCH/IFS results adopt when all wired
+  branches agree; INDEX/XLOOKUP results stay static). Never drops cables
+  (mismatch scan flags), never persists. So the hollow ring on canvas always
+  means "nothing has flowed here yet".
+- **Rename (author picks):** Frame Filter / List Filter / Frame Sort / List Sort
+  replace Filter Rows / FILTER / Sort / SORT — the pair relationship reads
+  directly off the Add menu. Also pinned MAP/MAKEARRAY result sockets by test
+  (Number default = numeric matrix; Auto = anytable — the numeric socket on a
+  fresh card is the declared default, not a D17 regression).
 - **SUMIFS rebuilt onto ONE FRAME (D16 amended)** — the author caught it violating
   the 2026-07-06 aligned-columns standing rule (parallel criteria lists, with the
   silent short-list misalignment hazard the rule exists to kill). Now: frame in,
