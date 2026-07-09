@@ -51,7 +51,15 @@ drill into the archive (or `git log`) only for the mechanics of a specific item.
   carry units:** `PhysicsConstantNode.annotation()` rides the unit (" m/s") through
   passthroughs exactly like an FC lock — the unitFlow duck-type seam took ONE
   method; Element deliberately skipped (two outputs, one unitless — needs
-  per-output annotations first).
+  per-output annotations first). — **Packs now use Equation presets**
+  (`FormulaPackEntry.equation: true` → a locked EquationNode): every
+  rearrangement-REDUNDANT group collapsed to one node — Ohm's law trio and
+  dBm↔W pair (electricity), wavelength↔frequency (EM), the ideal-gas quartet
+  (thermo), moles↔mass + pH↔[H⁺] (chemistry); 12 directional presets → 6
+  bidirectional ones. Groups that are NOT rearrangements of one relation (the
+  power trio P=VI/I²R/V²/R — different variable sets) stay directional
+  Expressions on purpose. The Equation seed (order 15) demos the node with
+  non-pack equations.
 
 ### SESSION DIGEST (2026-07-08, evening — What's New resell + 1.2/2.0 plans)
 - **What's New rebuilt around the author's sell bar** ("a shiny thing a user will go

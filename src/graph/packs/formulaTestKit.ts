@@ -4,7 +4,8 @@
 // hand-checked / published reference values, so a typo'd formula string can't
 // ship silently — the whole point of a locked preset is that it's RIGHT.
 
-import { ExpressionNode } from "../rete-nodes";
+import { ExpressionNode, EquationNode } from "../rete-nodes";
+import { parseEquation } from "../equationSolve";
 import type { FormulaPackEntry, Pack } from "./packShared";
 
 /** Evaluate one formula entry with the given variable values. */
@@ -17,6 +18,19 @@ export function evalFormula(
   const env: Record<string, unknown[]> = {};
   for (const [k, v] of Object.entries(inputs)) env[k] = [v];
   return (node.data(env) as { result: unknown }).result;
+}
+
+/** Run one EQUATION entry with the given knowns; returns the node's full output
+ *  record (each variable + `holds`), so a test reads the solved unknown or the
+ *  truth check directly. */
+export function evalEquation(
+  e: FormulaPackEntry,
+  inputs: Record<string, number | number[]>,
+): Record<string, unknown> {
+  const node = new EquationNode({ expr: e.expr, locked: true });
+  const env: Record<string, unknown[]> = {};
+  for (const [k, v] of Object.entries(inputs)) env[k] = [v];
+  return node.data(env);
 }
 
 /** Find a formula entry by catalog type; throws if absent (test misspelling). */
@@ -34,8 +48,15 @@ export function auditFormulaPack(entries: FormulaPackEntry[]): string[] {
   for (const e of entries) {
     if (seen.has(e.type)) problems.push(`${e.type}: duplicate type id`);
     seen.add(e.type);
-    const node = new ExpressionNode({ expr: e.expr, locked: true, resultAs: e.resultAs });
-    if (!node.evaluator) problems.push(`${e.type}: formula does not compile: ${e.expr}`);
+    if (e.equation) {
+      const parsed = parseEquation(e.expr);
+      if (parsed === null || typeof parsed === "string") {
+        problems.push(`${e.type}: equation does not parse: ${e.expr}${typeof parsed === "string" ? ` (${parsed})` : ""}`);
+      }
+    } else {
+      const node = new ExpressionNode({ expr: e.expr, locked: true, resultAs: e.resultAs });
+      if (!node.evaluator) problems.push(`${e.type}: formula does not compile: ${e.expr}`);
+    }
     if (!e.description) problems.push(`${e.type}: missing description`);
   }
   return problems;

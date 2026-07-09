@@ -11,18 +11,10 @@ const R_GAS = "8.314462618";   // J/(mol·K)
 const SIGMA = "5.670374419*10^-8"; // Stefan–Boltzmann
 
 export const THERMO_GAS: FormulaPackEntry[] = [
-  { type: "th-ideal-gas-p", label: "Ideal Gas: Pressure", expr: `n*${R_GAS}*tk/vol`,
-    description: "p = nRT/V — moles n, temperature tk (K), volume vol (m³) → pascals",
-    keywords: "pv nrt" },
-  { type: "th-ideal-gas-v", label: "Ideal Gas: Volume", expr: `n*${R_GAS}*tk/p`,
-    description: "V = nRT/p — moles n, temperature tk (K), pressure p (Pa) → m³",
-    keywords: "pv nrt" },
-  { type: "th-ideal-gas-n", label: "Ideal Gas: Moles", expr: `p*vol/(${R_GAS}*tk)`,
-    description: "n = pV/RT — pressure p (Pa), volume vol (m³), temperature tk (K)",
-    keywords: "pv nrt" },
-  { type: "th-ideal-gas-t", label: "Ideal Gas: Temperature", expr: `p*vol/(n*${R_GAS})`,
-    description: "T = pV/nR — pressure p (Pa), volume vol (m³), moles n → kelvin",
-    keywords: "pv nrt" },
+  // One equation instead of the four solved forms it shipped as pre-Equation.
+  { type: "th-ideal-gas", label: "Ideal Gas (pV = nRT)", expr: `p * vol = n * ${R_GAS} * tk`, equation: true,
+    description: "The ideal-gas law with any one of p (Pa), vol (m³), n (mol), tk (K) unwired — the node solves for it",
+    keywords: "pv nrt pressure volume moles temperature gas law" },
   { type: "th-air-density", label: "Air Density", expr: "p/(287.05*tk)",
     description: "Dry air density from pressure p (Pa) and temperature tk (K)   (ρ = p/R_specificT, R = 287.05)" },
 ];

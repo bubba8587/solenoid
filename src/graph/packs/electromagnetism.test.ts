@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { EM_FORMULAS, ELECTROMAGNETISM_PACK } from "./electromagnetism";
-import { auditFormulaPack, entryByType, evalFormula } from "./formulaTestKit";
+import { auditFormulaPack, entryByType, evalFormula, evalEquation } from "./formulaTestKit";
 import { PHYS_CONSTANTS, PhysicsConstantNode } from "../rete-nodes";
 
 const num = (type: string, inputs: Record<string, number>): number => {
@@ -42,9 +42,10 @@ describe("Electromagnetism formulas", () => {
   });
 
   it("waves & photons reference values", () => {
-    // 100 MHz FM → 3.00 m; and the inverse round-trips.
-    expect(num("em-wavelength", { f: 1e8 })).toBeCloseTo(2.99792458, 6);
-    expect(num("em-frequency", { lambda: 2.99792458 })).toBeCloseTo(1e8, -1);
+    // 100 MHz FM → 3.00 m; the one equation preset solves both directions.
+    const wf = entryByType(EM_FORMULAS, "em-wavelength-frequency");
+    expect(evalEquation(wf, { f: 1e8 }).lambda as number).toBeCloseTo(2.99792458, 6);
+    expect(evalEquation(wf, { lambda: 2.99792458 }).f as number).toBeCloseTo(1e8, -1);
     // Green 500 nm photon → 3.973e-19 J.
     expect(num("em-photon-energy-wl", { lambda: 500e-9 })).toBeCloseTo(3.9729e-19, 21);
     expect(num("em-photon-energy", { f: 5e14 })).toBeCloseTo(3.313e-19, 21);
