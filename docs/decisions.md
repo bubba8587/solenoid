@@ -185,7 +185,7 @@ bug than a documented deviation.
 **Why:** three sub-decisions. (1) A new node, NOT a widened Expression — D2 caps
 Expression permanently, ~135 locked pack presets and the LAMBDA hosts lean on its
 directional contract, and the card shape differs anyway. (2) Every variable gets an input
-AND an output plus one always-present logical `Holds?` — rather than the single output
+AND an output plus one always-present logical `Check` — rather than the single output
 that morphs numlist→logical — because in-place retype is a known minefield
 (fcReconcile/retypeOutputCables) and a morphing output changes MEANING when inputs are
 rewired, silently breaking downstream cables. (3) Solving is our own AST isolation

@@ -39,7 +39,7 @@ drill into the archive (or `git log`) only for the mechanics of a specific item.
   **`docs/pack-composite-plans.md`**; backlog Packs section reconciled (Set pack
   line deleted, Timesavers remainder + Materials-pack/Interpolated-Lookup lines).
 - **Morning follow-ups (author-directed):** the **EQUATION NODE** — type `V = I * R`,
-  every variable is an input AND an output plus an always-present logical `Holds?`;
+  every variable is an input AND an output plus an always-present logical `Check`;
   one unknown → solved (symbolic AST isolation → unparse → recompile, so lists
   broadcast free; numeric log-grid + bisection fallback, new `#SOLVE!` code); all
   known → tolerance truth check. **Decision D14** records why it's a SIBLING of

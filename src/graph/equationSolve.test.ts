@@ -158,7 +158,7 @@ describe("astToFormula round-trips", () => {
 describe("EquationNode", () => {
   const node = (expr: string) => new EquationNode({ expr });
 
-  it("derives paired input+output sockets plus Holds?", () => {
+  it("derives paired input+output sockets plus Check", () => {
     const n = node("V = I * R");
     expect(n.varNames).toEqual(["V", "I", "R"]);
     expect(Object.keys(n.inputs)).toEqual(["V", "I", "R"]);

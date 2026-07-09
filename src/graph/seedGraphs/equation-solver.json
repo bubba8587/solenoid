@@ -10,7 +10,7 @@
       "y": -210,
       "init": {
         "label": "One equation, any direction",
-        "body": "An **Equation** node has no fixed output: every variable is an input *and* an output. Leave exactly one unwired and it solves for it; wire them all and **Holds?** answers TRUE/FALSE. Edit any equation below or unwire a different variable to change what gets solved.",
+        "body": "An **Equation** node has no fixed output: every variable is an input *and* an output. Leave exactly one unwired and it solves for it; wire them all and **Check** answers TRUE/FALSE. Edit any equation below or unwire a different variable to change what gets solved.",
         "width": 720,
         "height": 110
       }
@@ -344,7 +344,7 @@
       "y": 2780,
       "init": {
         "label": "All knowns → a check",
-        "body": "With every variable filled in (typed here, no cables needed), there is nothing left to solve — **Holds?** turns into a TRUE/FALSE test with a float-safe tolerance. 3-4-5 passes; 7-8-11 misses (49 + 64 ≠ 121).",
+        "body": "With every variable filled in (typed here, no cables needed), there is nothing left to solve — **Check** turns into a TRUE/FALSE test with a float-safe tolerance. 3-4-5 passes; 7-8-11 misses (49 + 64 ≠ 121).",
         "width": 400,
         "height": 150
       }
