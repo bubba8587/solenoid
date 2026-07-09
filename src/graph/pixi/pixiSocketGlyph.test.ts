@@ -22,8 +22,9 @@ describe("socketGlyphKind", () => {
       expect(socketGlyphKind(t)).toBe("grid");
     }
   });
-  it("cube → hex; undefined → circle", () => {
+  it("cube → hex; trueany → ring; undefined → circle", () => {
     expect(socketGlyphKind("cube")).toBe("hex");
+    expect(socketGlyphKind("trueany")).toBe("ring");
     expect(socketGlyphKind(undefined)).toBe("circle");
   });
   it("COMBO_PAIRS maps to [scalar, list]", () => {

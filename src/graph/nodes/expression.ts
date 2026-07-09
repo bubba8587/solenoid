@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { anyIn, resultOut, type ResultType } from "./shared";
+import { anyListIn, resultOut, type ResultType } from "./shared";
 import { extractVariables, compileEvaluator, type ExprEvaluator } from "../excelFormula";
 import { fxErrorToSol } from "../excelFunctions";
 import { isSolError, solError } from "../errorValue";
@@ -97,7 +97,7 @@ export class ExpressionNode extends ClassicPreset.Node {
 
     for (const v of next) {
       if (!prev.has(v)) {
-        this.addInput(v, anyIn(v));
+        this.addInput(v, anyListIn(v));
         added.push(v);
       }
     }

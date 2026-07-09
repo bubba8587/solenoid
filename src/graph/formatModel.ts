@@ -4,7 +4,7 @@
 // resolution (applyFormatStyle & friends) enforces the same gates. Keep this
 // file in lockstep with the spec's truth table — it IS the truth table.
 
-import { type SocketDataType, elementFamilyOf } from "./sockets";
+import { type SocketDataType, elementFamilyOf, isWildcardType } from "./sockets";
 import { type FormatStyleId, type FormatStyle } from "./formatAnnotationStore";
 
 export type FormatFamily = "number" | "date" | "text" | "logical" | "complex" | "none";
@@ -17,7 +17,7 @@ export type FormatFamily = "number" | "date" | "text" | "logical" | "complex" | 
  * representation problem, not a scalar annotation stretched over a table.
  */
 export function familyOf(dt: SocketDataType): FormatFamily {
-  if (dt === "any") return "number";
+  if (isWildcardType(dt)) return "number";
   if (dt === "anytable") return "number";
   switch (elementFamilyOf(dt)) {
     case "number":  return "number";

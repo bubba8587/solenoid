@@ -6,7 +6,7 @@
 // an ad-hoc `render` formatter.
 
 import { getOwningEditor } from "../activeGraph";
-import { SolenoidSocket, isDateType, type SocketDataType } from "../sockets";
+import { SolenoidSocket, isDateType, isWildcardType, type SocketDataType } from "../sockets";
 import { formatDateSerial, DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT } from "../nodes/date";
 import { isSolError, type SolError } from "../errorValue";
 
@@ -76,7 +76,7 @@ function displayedType(
   const out = outKey ? node.outputs?.[outKey] : (node.outputs?.result ?? Object.values(node.outputs ?? {})[0]);
   const sock = out?.socket;
   const dt = sock instanceof SolenoidSocket ? sock.dataType : undefined;
-  if (dt && dt !== "any") return dt; // concrete socket (a producer, or a typed Conduit lane)
+  if (dt && !isWildcardType(dt)) return dt; // concrete socket (a producer, or a typed Conduit lane)
 
   const isPassthrough = node.passesUnitThrough === true || typeof node.unitPassInputs === "function";
   if (!isPassthrough) return dt; // an `any` producer's output type is genuinely `any`
@@ -86,7 +86,7 @@ function displayedType(
   for (const c of editor!.getConnections()) {
     if (c.target !== nodeId) continue;
     const t = displayedType(c.source, c.sourceOutput, seen, depth + 1);
-    if (t && t !== "any") return t;
+    if (t && !isWildcardType(t)) return t;
   }
   return dt;
 }

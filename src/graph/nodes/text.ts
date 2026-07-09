@@ -1,6 +1,6 @@
 import { ClassicPreset } from "rete";
 import { stringSocket } from "../sockets";
-import { strIn, strOut, strListIn, strListOut, numIn, numOut, logicalOut, anyIn, anyOut } from "./shared";
+import { strIn, strOut, strListIn, strListOut, numIn, numOut, logicalOut, anyListIn, anyOut } from "./shared";
 import { getRecalcGen } from "../process";
 import { solError, type SolError } from "../errorValue";
 import { resolveExcelFunction } from "../excelFunctions";
@@ -843,7 +843,7 @@ export class RegexNode extends ClassicPreset.Node {
     super("Regex");
     this.op    = init?.op    ?? "test";
     this.label = init?.label ?? REGEX_OP_META[this.op].label;
-    this.addInput("text",        anyIn("Text"));
+    this.addInput("text",        anyListIn("Text"));
     this.addInput("pattern",     strIn("Pattern"));
     this.addInput("replacement", strIn("Replace with"));
     this.addOutput("result", anyOut("Result"));

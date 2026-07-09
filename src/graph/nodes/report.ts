@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { anyIn } from "./shared";
+import { trueAnyIn } from "./shared";
 import { extractInlineRefs } from "../noteInlineRefs";
 
 // ─── Report ─────────────────────────────────────────────────────────────────
@@ -71,7 +71,7 @@ export class ReportNode extends ClassicPreset.Node {
       }
     }
     for (const key of wanted) {
-      if (!this.inputs[key]) this.addInput(key, anyIn(key));
+      if (!this.inputs[key]) this.addInput(key, trueAnyIn(key));
     }
     this._refKeys = wanted;
     return { removedInputs };

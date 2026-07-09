@@ -108,7 +108,7 @@ describe("Expression — value-polymorphic results", () => {
 
   it("variable inputs are `any` so text/date arrays connect", () => {
     const n = new ExpressionNode({ expr: "UPPER(name)", resultAs: "text" });
-    expect(dt(n.inputs.name?.socket)).toBe("any");
+    expect(dt(n.inputs.name?.socket)).toBe("anylist");
   });
 });
 

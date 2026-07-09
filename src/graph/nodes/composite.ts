@@ -1,7 +1,7 @@
 import { ClassicPreset, NodeEditor } from "rete";
 import { DataflowEngine } from "rete-engine";
 import type { Schemes, SolenoidNode, SolenoidConnection } from "../schemes";
-import { anySocket } from "../sockets";
+import { trueAnySocket } from "../sockets";
 import { extractInit } from "../copyPaste";
 import { installErrorGuards, solError, type SolError } from "../errorValue";
 import { installInputCoercion } from "../coerceInputs";
@@ -113,7 +113,7 @@ export type CompositeDataTableValues = Record<string, unknown[]>;
 // ─── Internal boundary markers ─────────────────────────────────────────────────
 // Not user-addable — no catalog entry. They only ever live inside a
 // CompositeNode's internalEditor as the concrete wire-end for one promoted
-// port. Both marker classes use `anySocket` — matching the composite's own
+// port. Both marker classes use `trueAnySocket` — matching the composite's own
 // external port sockets (also `any`, see addInputPort/addOutputPort below) —
 // deliberately, for two reasons: (1) it's the same "type-agnostic boundary"
 // precedent Expression's inputs already use (anyIn), and (2) it keeps the
@@ -138,7 +138,7 @@ export class CompositeInputNode extends ClassicPreset.Node {
     super("Composite Input");
     this.label = init?.label ?? "Input";
     this.defaultValue = init?.defaultValue ?? null;
-    this.addOutput("value", new ClassicPreset.Output(anySocket, this.label));
+    this.addOutput("value", new ClassicPreset.Output(trueAnySocket, this.label));
   }
   data(): { value: unknown } {
     return { value: this.value };
@@ -155,7 +155,7 @@ export class CompositeOutputNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("Composite Output");
     this.label = init?.label ?? "Output";
-    this.addInput("value", new ClassicPreset.Input(anySocket, this.label));
+    this.addInput("value", new ClassicPreset.Input(trueAnySocket, this.label));
   }
   data(inputs: Record<string, unknown[]>): { value: unknown } {
     const v = inputs.value?.[0] ?? null;
@@ -271,10 +271,10 @@ export class CompositeNode extends ClassicPreset.Node {
     this._pending = init?.internal ? { nodes: [...init.internal.nodes], connections: [...init.internal.connections] } : null;
 
     for (const p of this.inputPorts) {
-      if (p.exposure === "exposed") this.addInput(p.id, new ClassicPreset.Input(anySocket, p.label));
+      if (p.exposure === "exposed") this.addInput(p.id, new ClassicPreset.Input(trueAnySocket, p.label));
     }
     for (const p of this.outputPorts) {
-      this.addOutput(p.id, new ClassicPreset.Output(anySocket, p.label));
+      this.addOutput(p.id, new ClassicPreset.Output(trueAnySocket, p.label));
     }
   }
 
@@ -372,7 +372,7 @@ export class CompositeNode extends ClassicPreset.Node {
   addInputPort(spec: Omit<CompositeInputPort, "id"> & { id?: string }): string {
     const id = spec.id ?? `in_${this.inputPorts.length}_${Math.random().toString(36).slice(2, 7)}`;
     this.inputPorts.push({ ...spec, id });
-    if (spec.exposure === "exposed") this.addInput(id, new ClassicPreset.Input(anySocket, spec.label));
+    if (spec.exposure === "exposed") this.addInput(id, new ClassicPreset.Input(trueAnySocket, spec.label));
     return id;
   }
 
@@ -406,7 +406,7 @@ export class CompositeNode extends ClassicPreset.Node {
   addOutputPort(spec: Omit<CompositeOutputPort, "id"> & { id?: string }): string {
     const id = spec.id ?? `out_${this.outputPorts.length}_${Math.random().toString(36).slice(2, 7)}`;
     this.outputPorts.push({ ...spec, id });
-    this.addOutput(id, new ClassicPreset.Output(anySocket, spec.label));
+    this.addOutput(id, new ClassicPreset.Output(trueAnySocket, spec.label));
     return id;
   }
 

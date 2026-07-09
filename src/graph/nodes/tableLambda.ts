@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { numIn, anyIn, anyTableIn, strIn, lambdaIn, resultOut, type ResultType } from "./shared";
+import { numIn, anyListIn, anyTableIn, strIn, lambdaIn, resultOut, type ResultType } from "./shared";
 import { toAnyMatrix } from "./coerce";
 import { compilePositional } from "../excelFormula";
 import { isLambdaValue } from "./lambda";
@@ -227,7 +227,7 @@ export class ReduceLambdaNode extends ClassicPreset.Node {
     this.resultAs = init?.resultAs ?? "number";
     this.stringLiterals = { formula: init?.expr ?? "acc + x" };
     if (init?.literals) this.literals = { ...init.literals };
-    this.addInput("initial", anyIn("Initial"));
+    this.addInput("initial", anyListIn("Initial"));
     this.addInput("table", anyTableIn("Values"));
     this.addInput("formula", strIn("f(acc,x)"));
     this.addInput("lambda", lambdaIn("Lambda"));

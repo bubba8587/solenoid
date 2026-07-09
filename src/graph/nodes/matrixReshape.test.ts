@@ -29,7 +29,7 @@ describe("reshapers are element-polymorphic", () => {
 
   it("TOCOL flattens a text matrix to a 1-D list (the MAP→column link)", () => {
     const n = new TableReshapeNode({ op: "tocol" });
-    expect(dt(n.outputs.result?.socket)).toBe("any"); // 1-D, untyped element
+    expect(dt(n.outputs.result?.socket)).toBe("anylist"); // 1-D, untyped element
     expect(n.data({ matrix: [[["Jo"], ["Di"]]] }).result).toEqual(["Jo", "Di"]);
   });
 

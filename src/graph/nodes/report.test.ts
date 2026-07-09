@@ -15,8 +15,8 @@ describe("ReportNode", () => {
   it("mints an `any` INPUT socket per distinct `=name` span, source order", () => {
     const n = new ReportNode({ body: "Revenue was `=revenue`, up from `=lastRevenue`." });
     expect(n.refKeys()).toEqual(["revenue", "lastRevenue"]);
-    expect(n.inputs.revenue?.socket.name).toBe("any");
-    expect(n.inputs.lastRevenue?.socket.name).toBe("any");
+    expect(n.inputs.revenue?.socket.name).toBe("trueany");
+    expect(n.inputs.lastRevenue?.socket.name).toBe("trueany");
   });
 
   it("syncRefs reports a vanished ref as removedInputs", () => {

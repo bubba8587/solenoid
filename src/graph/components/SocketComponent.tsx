@@ -51,6 +51,7 @@ export function SocketComponent({ data }: { data: ClassicPreset.Socket }) {
   const isCube = dataType === "cube";
   const isLambda = dataType === "lambda";
   const isChart = dataType === "chart";
+  const isTrueAny = dataType === "trueany";
 
   return (
     <svg className="solenoid-socket-dot" viewBox="0 0 12 12" preserveAspectRatio="xMidYMid meet">
@@ -113,6 +114,13 @@ export function SocketComponent({ data }: { data: ClassicPreset.Socket }) {
             <rect x="7.7" y="6"   width="1.7" height="4" />
           </g>
           <rect x="1" y="1" width="10" height="10" rx="0.5" fill="none" stroke="var(--socket-ring)" strokeWidth="2" />
+        </>
+      ) : isTrueAny ? (
+        <>
+          {/* The trueany wildcard: a HOLLOW circle — border only, no fill — so
+              "anything" reads distinct from every filled shape even zoomed out.
+              Stroke centered at r=4.5 spans r≈3.25 to 5.75 (inside the 12-box). */}
+          <circle cx="6" cy="6" r="4.5" fill="none" stroke={color} strokeWidth="2.5" />
         </>
       ) : (
         <>
