@@ -105,7 +105,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
   if (
     node instanceof ListInputNode || node instanceof RangeNode || node instanceof AggregateNode ||
     node instanceof ListLengthNode || node instanceof ListIndexNode || node instanceof SortNode ||
-    node instanceof FilterNode || node instanceof SumIfsNode ||
+    node instanceof FilterNode ||
     node instanceof ReverseNode || node instanceof SliceNode ||
     node instanceof UniqueNode || node instanceof TakeNode || node instanceof DropNode ||
     node instanceof SetOpNode || node instanceof TallyNode ||
@@ -190,6 +190,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof HeadNode ||
     node instanceof SortFrameNode ||
     node instanceof FilterFrameNode ||
+    node instanceof SumIfsNode ||
     node instanceof JoinNode ||
     node instanceof XLookupNode ||
     node instanceof SelectColumnsNode ||

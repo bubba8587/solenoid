@@ -418,59 +418,69 @@ describe("Filter — condition rows over the list's own values (D16)", () => {
   });
 });
 
-describe("SUMIFS — the parallel-list pattern, task-shaped (D16)", () => {
+describe("SUMIFS — conditional aggregation over one frame (D16, amended)", () => {
   const region = ["North", "South", "North", "East", "North", "South"];
   const sales = [120, 80, 200, 150, 90, 60];
+  const frame = (vals: unknown[] = sales, regs: unknown[] = region) => ({
+    __frame: true as const,
+    columns: [
+      { name: "region", type: "string" as const, values: regs },
+      { name: "sales", type: "number" as const, values: vals },
+    ],
+  });
   const mk = (
     op: CondAggOp,
-    pairs: Array<{ crit: unknown[]; op: import("../frameVerbs").FilterOp; value: string }>,
+    conds: Array<{ column: string; op: import("../frameVerbs").FilterOp; value: string }>,
+    valuesCol = "sales",
   ) => {
     const n = new SumIfsNode({
       op,
-      valueKeys: pairs.flatMap((_, i) => [`crit${i}`, `cval${i}`]),
-      condConfig: Object.fromEntries(pairs.map((c, i) => [String(i), { op: c.op }])),
+      valueKeys: conds.flatMap((_, i) => [`column${i}`, `value${i}`]),
+      condConfig: Object.fromEntries(conds.map((c, i) => [String(i), { op: c.op }])),
     });
-    pairs.forEach((c, i) => { n.stringLiterals[`cval${i}`] = c.value; });
-    const inputs: Record<string, unknown[]> = {};
-    pairs.forEach((c, i) => { inputs[`crit${i}`] = [c.crit]; });
-    return { n, inputs };
+    n.stringLiterals.values = valuesCol;
+    conds.forEach((c, i) => {
+      n.stringLiterals[`column${i}`] = c.column;
+      n.stringLiterals[`value${i}`] = c.value;
+    });
+    return n;
   };
 
-  it("SUMIFS(sales, region, North) — the whole point, one node", () => {
-    const { n, inputs } = mk("sumifs", [{ crit: region, op: "eq", value: "North" }]);
-    expect(n.data({ values: [sales], ...inputs }).result).toBe(410); // 120+200+90
+  it("SUMIFS(sales, region, North) — the whole point, one node on one frame", () => {
+    const n = mk("sumifs", [{ column: "region", op: "eq", value: "North" }]);
+    expect(n.data({ frame: [frame()] }).result).toBe(410); // 120+200+90
   });
 
-  it("COUNTIFS needs no Values; two criteria AND like Excel", () => {
-    const { n, inputs } = mk("countifs", [{ crit: region, op: "eq", value: "North" }]);
-    expect(n.data(inputs).result).toBe(3);
+  it("COUNTIFS needs no Values column; two criteria AND like Excel", () => {
+    const n = mk("countifs", [{ column: "region", op: "eq", value: "North" }]);
+    expect(n.data({ frame: [frame()] }).result).toBe(3);
     const two = mk("sumifs", [
-      { crit: region, op: "eq", value: "North" },
-      { crit: sales, op: "gt", value: "100" },
+      { column: "region", op: "eq", value: "North" },
+      { column: "sales", op: "gt", value: "100" },
     ]);
-    expect(two.n.data({ values: [sales], ...two.inputs }).result).toBe(320); // 120+200
+    expect(two.data({ frame: [frame()] }).result).toBe(320); // 120+200
   });
 
   it("empty matches follow Excel: AVERAGEIFS → #DIV/0!, MINIFS/MAXIFS → 0", () => {
-    const { n, inputs } = mk("averageifs", [{ crit: region, op: "eq", value: "Mars" }]);
-    const avg = n.data({ values: [sales], ...inputs }).result;
+    const avg = mk("averageifs", [{ column: "region", op: "eq", value: "Mars" }]).data({ frame: [frame()] }).result;
     expect(isSolError(avg) && avg.code).toBe("#DIV/0!");
-    const { n: mn, inputs: i2 } = mk("minifs", [{ crit: region, op: "eq", value: "Mars" }]);
-    expect(mn.data({ values: [sales], ...i2 }).result).toBe(0);
+    expect(mk("minifs", [{ column: "region", op: "eq", value: "Mars" }]).data({ frame: [frame()] }).result).toBe(0);
   });
 
   it("kept nulls are skipped; a kept error propagates (aggregate policy)", () => {
-    const { n, inputs } = mk("sumifs", [{ crit: [1, 1, 1], op: "eq", value: "1" }]);
-    expect(n.data({ values: [[10, null, 5]], ...inputs }).result).toBe(15);
+    const n = mk("sumifs", [{ column: "region", op: "eq", value: "North" }]);
+    expect(n.data({ frame: [frame([10, 1, null, 1, 5, 1])] }).result).toBe(15);
     const err = solError("#DIV/0!", "x");
-    const { n: n2, inputs: i2 } = mk("sumifs", [{ crit: [1, 1], op: "eq", value: "1" }]);
-    const out = n2.data({ values: [[10, err]], ...i2 }).result;
+    const out = n.data({ frame: [frame([10, 1, err, 1, 5, 1])] }).result;
     expect(isSolError(out) && out.code).toBe("#DIV/0!");
   });
 
-  it("a criteria cell beyond its row's length fails that criterion", () => {
-    const { n, inputs } = mk("sumifs", [{ crit: [1], op: "eq", value: "1" }]); // shorter than values
-    expect(n.data({ values: [[10, 99]], ...inputs }).result).toBe(10);
+  it("a missing column is an honest #REF!; a WIRED scalar drives a Value row", () => {
+    const bad = mk("sumifs", [{ column: "nope", op: "eq", value: "x" }]).data({ frame: [frame()] }).result;
+    expect(isSolError(bad) && bad.code).toBe("#REF!");
+    // wired threshold (the `any` scalar socket) overrides the literal
+    const n = mk("sumifs", [{ column: "sales", op: "gt", value: "999" }]);
+    expect(n.data({ frame: [frame()], value0: [100] }).result).toBe(470); // 120+200+150
   });
 });
 

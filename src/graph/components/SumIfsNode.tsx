@@ -4,7 +4,7 @@ import { COND_AGG_OP_META } from "../rete-nodes";
 import type { FilterCondConfig } from "../frameVerbs";
 import { processGraph, bumpConnectionVersion } from "../process";
 import { getActiveEditor, getActiveArea } from "../activeGraph";
-import { useConnectedInputs, useIncomingSources, InlineTextField } from "./inlineInput";
+import { useConnectedInputs, InlineInputs, InlineTextField } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { pushRowAddUndo, pushRowRemovalUndo } from "./ExtensibleInputs";
@@ -15,12 +15,11 @@ const OPS = (Object.keys(COND_AGG_OP_META) as CondAggOp[]).map((op) => ({
   label: COND_AGG_OP_META[op].label,
 }));
 
-// Excel's SUMIFS mental model as one card: a Values list plus extensible
-// criteria PAIRS (a wired criteria list + op + value), AND-combined like the
-// *IFS family. The task-shaped home of the parallel-list pattern (D16).
+// Excel's SUMIFS mental model over ONE FRAME (D16, amended): pick the op, name
+// the Values column, and add criteria rows (column + op + value, AND-combined
+// like the *IFS family). The frame Filter's condition-row UI plus an aggregate.
 export function SumIfsComponent({ data, emit }: NodeProps<SumIfsNodeType>) {
   const connected = useConnectedInputs(data.id);
-  const incoming = useIncomingSources(data.id);
   const [op, setOp] = useNodeField(data, "op");
   const [cfg, setCfg] = useState<Record<string, FilterCondConfig>>(() => ({ ...data.condConfig }));
   const strLiterals = (data.stringLiterals ??= {});
@@ -42,23 +41,23 @@ export function SumIfsComponent({ data, emit }: NodeProps<SumIfsNodeType>) {
     const before = new Set(Object.keys(data.inputs));
     data.addValuePair();
     const added = Object.keys(data.inputs).filter((k) => !before.has(k));
-    const critKey = added[0];
-    if (critKey) pushRowAddUndo(data, added, () => data.removeValuePair(critKey));
+    const colKey = added[0];
+    if (colKey) pushRowAddUndo(data, added, () => data.removeValuePair(colKey));
     await getActiveArea()?.update("node", data.id);
     await processGraph();
   }
 
-  async function removePair(critKey: string, cvalKey: string) {
+  async function removePair(colKey: string, valKey: string) {
     const editor = getActiveEditor();
     if (editor) {
       for (const c of editor.getConnections()) {
-        if (c.target === data.id && (c.targetInput === critKey || c.targetInput === cvalKey)) {
+        if (c.target === data.id && (c.targetInput === colKey || c.targetInput === valKey)) {
           await editor.removeConnection(c.id);
         }
       }
     }
-    pushRowRemovalUndo(data, [critKey, cvalKey], () => data.removeValuePair(critKey));
-    data.removeValuePair(critKey);
+    pushRowRemovalUndo(data, [colKey, valKey], () => data.removeValuePair(colKey));
+    data.removeValuePair(colKey);
     await getActiveArea()?.update("node", data.id);
     bumpConnectionVersion();
     await processGraph();
@@ -66,43 +65,48 @@ export function SumIfsComponent({ data, emit }: NodeProps<SumIfsNodeType>) {
 
   return (
     <NodeShell node={data} emit={emit}>
+      <InlineInputs node={data} emit={emit} keys={["frame"]} />
       <OpSelect value={op} onChange={setOp} options={OPS} />
       {op !== "countifs" && (
         <MeasuredSocketRow side="input" socketKey="values" nodeId={data.id} emit={emit} payload={data.inputs.values!.socket}>
           <span className="solenoid-node__io-label">Values</span>
-          {connected.has("values") && (
-            <span className="solenoid-node__io-wired" title="Driven by the incoming cable named here">↩ {incoming.get("values")?.label || "wired"}</span>
+          {connected.has("values") ? (
+            <span className="solenoid-node__io-wired" title="Driven by an incoming cable">↩ wired</span>
+          ) : (
+            <InlineTextField value={strLiterals.values} onChange={(v) => setStr("values", v)} />
           )}
         </MeasuredSocketRow>
       )}
-      {pairs.map(([critKey, cvalKey], i) => {
-        const id = critKey.slice(4);
+      {pairs.map(([colKey, valKey], i) => {
+        const id = colKey.slice(6);
         const c = rowCfg(id);
         return (
-          <div key={critKey} className="solenoid-node__pair-group">
-            <MeasuredSocketRow side="input" socketKey={critKey} nodeId={data.id} emit={emit} payload={data.inputs[critKey]!.socket}>
-              <span className="solenoid-node__io-label">Criteria{pairs.length > 1 ? ` ${i + 1}` : ""}</span>
-              {connected.has(critKey) && (
-                <span className="solenoid-node__io-wired" title="Driven by the incoming cable named here">↩ {incoming.get(critKey)?.label || "wired"}</span>
+          <div key={colKey} className="solenoid-node__pair-group">
+            <MeasuredSocketRow side="input" socketKey={colKey} nodeId={data.id} emit={emit} payload={data.inputs[colKey]!.socket}>
+              <span className="solenoid-node__io-label">Column{pairs.length > 1 ? ` ${i + 1}` : ""}</span>
+              {connected.has(colKey) ? (
+                <span className="solenoid-node__io-wired" title="Driven by an incoming cable">↩ wired</span>
+              ) : (
+                <InlineTextField value={strLiterals[colKey]} onChange={(v) => setStr(colKey, v)} />
               )}
               {pairs.length > 1 && (
                 <button
                   type="button"
                   className="solenoid-node__row-remove"
                   title="Remove this criterion"
-                  onClick={(e) => { e.stopPropagation(); void removePair(critKey, cvalKey); }}
+                  onClick={(e) => { e.stopPropagation(); void removePair(colKey, valKey); }}
                 >
                   ×
                 </button>
               )}
             </MeasuredSocketRow>
             <OpSelect value={c.op} options={FILTER_OP_OPTIONS} onChange={(next) => updateCfg(id, { op: next })} />
-            <MeasuredSocketRow side="input" socketKey={cvalKey} nodeId={data.id} emit={emit} payload={data.inputs[cvalKey]!.socket}>
+            <MeasuredSocketRow side="input" socketKey={valKey} nodeId={data.id} emit={emit} payload={data.inputs[valKey]!.socket}>
               <span className="solenoid-node__io-label">Value</span>
-              {connected.has(cvalKey) ? (
+              {connected.has(valKey) ? (
                 <span className="solenoid-node__io-wired" title="Driven by an incoming cable">↩ wired</span>
               ) : (
-                <InlineTextField value={strLiterals[cvalKey]} onChange={(v) => setStr(cvalKey, v)} />
+                <InlineTextField value={strLiterals[valKey]} onChange={(v) => setStr(valKey, v)} />
               )}
               {TEXT_MATCH_OPS.has(c.op) && (
                 <button

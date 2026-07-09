@@ -2,13 +2,13 @@ import { ClassicPreset } from "rete";
 import { numListSocket, strListSocket, dateListSocket, logicalListSocket, type SolenoidSocket } from "../sockets";
 import { parseDateToSerial } from "./date";
 import { getRecalcGen } from "../process";
-import { listIn, listOut, numIn, numOut, anyIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameOut, anyListIn, anyListOut } from "./shared";
+import { listIn, listOut, numIn, numOut, anyIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameIn, frameOut, anyListIn, anyListOut } from "./shared";
 import { pairIdsFromKeys } from "./logic";
 import { passesFilter, type FilterOp, type FilterCondConfig } from "../frameVerbs";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { forAggregate, isMissing, type Tri } from "../valueKinds";
 import { iterMin, iterMax } from "./mathUtils";
-import { isFrameValue, isCubeValue, cubeRowCount, frameRowCount, inferColumn, type FrameValue, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
+import { isFrameValue, isCubeValue, cubeRowCount, frameRowCount, inferColumn, getColumn, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
 
 // ─── List Input ─────────────────────────────────────────────────────────────
 
@@ -518,33 +518,34 @@ export class FilterNode extends ClassicPreset.Node {
 }
 
 // ─── SUMIFS / COUNTIFS / AVERAGEIFS / MINIFS / MAXIFS ─────────────────────────
-// The task-shaped home of the PARALLEL-LIST pattern (D16): aggregate Values
-// where every criteria row passes — each row pairs a wired criteria LIST with
-// an op + value, exactly Excel's mental model, minus its range-alignment
-// footguns. AND-only like Excel's *IFS. A position with a criteria cell that
-// is blank, an error, or beyond the row's length fails that criterion.
+// Conditional aggregation over ONE FRAME (D16, amended): aggregate the Values
+// COLUMN over the rows where every criteria row (column + op + value) passes —
+// AND-only like Excel's *IFS. The 2026-07-06 standing rule applies: position-
+// aligned columns arrive as a frame, never as parallel list sockets the user
+// lines up by hand (parallel lists route through Frame from Lists first).
+// A blank/error criteria cell fails that criterion.
 
 export type CondAggOp = "sumifs" | "countifs" | "averageifs" | "minifs" | "maxifs";
 
 export const COND_AGG_OP_META = {
-  sumifs:     { label: "SUMIFS",     description: "Sum the Values at positions where every criteria row passes. Excel: SUMIFS / SUMIF." },
-  countifs:   { label: "COUNTIFS",   description: "Count the positions where every criteria row passes (needs no Values). Excel: COUNTIFS / COUNTIF." },
-  averageifs: { label: "AVERAGEIFS", description: "Average the Values where every criteria row passes; nothing matching is #DIV/0! like Excel. Excel: AVERAGEIFS / AVERAGEIF." },
-  minifs:     { label: "MINIFS",     description: "Smallest Value where every criteria row passes; nothing matching is 0 like Excel. Excel: MINIFS." },
-  maxifs:     { label: "MAXIFS",     description: "Largest Value where every criteria row passes; nothing matching is 0 like Excel. Excel: MAXIFS." },
+  sumifs:     { label: "SUMIFS",     description: "Sum the Values column over the rows where every criteria row passes. Excel: SUMIFS / SUMIF." },
+  countifs:   { label: "COUNTIFS",   description: "Count the rows where every criteria row passes (needs no Values column). Excel: COUNTIFS / COUNTIF." },
+  averageifs: { label: "AVERAGEIFS", description: "Average the Values column where every criteria row passes; nothing matching is #DIV/0! like Excel. Excel: AVERAGEIFS / AVERAGEIF." },
+  minifs:     { label: "MINIFS",     description: "Smallest Values-column cell where every criteria row passes; nothing matching is 0 like Excel. Excel: MINIFS." },
+  maxifs:     { label: "MAXIFS",     description: "Largest Values-column cell where every criteria row passes; nothing matching is 0 like Excel. Excel: MAXIFS." },
 } satisfies Record<CondAggOp, { label: string; description: string }>;
 
 export class SumIfsNode extends ClassicPreset.Node {
   label: string;
   op: CondAggOp;
-  /** Per-pair {op, matchCase}, keyed by the pair id (the `crit${id}` suffix). */
+  /** Per-pair {op, matchCase}, keyed by the pair id (the `column${id}` suffix). */
   condConfig: Record<string, FilterCondConfig> = {};
   stringLiterals: Record<string, string> = {};
   nextPairId = 0;
-  readonly pairLabels: [string, string] = ["Criteria", "Value"];
+  readonly pairLabels: [string, string] = ["Column", "Value"];
   cachedResult: number | SolError | null = null;
   width = 210;
-  height = 260;
+  height = 280;
 
   constructor(init?: {
     label?: string; op?: CondAggOp;
@@ -553,8 +554,9 @@ export class SumIfsNode extends ClassicPreset.Node {
     super("SumIfs");
     this.op = init?.op ?? "sumifs";
     this.label = init?.label ?? COND_AGG_OP_META[this.op].label;
-    this.addInput("values", anyListIn("Values"));
-    const ids = pairIdsFromKeys(init?.valueKeys, "crit");
+    this.addInput("frame", frameIn("Frame"));
+    this.addInput("values", strIn("Values column"));
+    const ids = pairIdsFromKeys(init?.valueKeys, "column");
     if (ids.length) {
       for (const id of ids) this.addPairWithId(id);
       for (const id of ids) {
@@ -568,65 +570,72 @@ export class SumIfsNode extends ClassicPreset.Node {
   }
 
   private addPairWithId(id: number): void {
-    this.addInput(`crit${id}`, anyListIn(`Criteria ${id + 1}`));
-    this.addInput(`cval${id}`, strIn(`Value ${id + 1}`));
+    this.addInput(`column${id}`, strIn(`Column ${id + 1}`));
+    // `any` (scalar): a wired threshold connects; unwired, the typed text field
+    // is the literal (parsed per the column type) — same row as the frame Filter.
+    this.addInput(`value${id}`, anyIn(`Value ${id + 1}`));
     if (!this.condConfig[String(id)]) this.condConfig[String(id)] = { op: "eq" };
     this.nextPairId = Math.max(this.nextPairId, id + 1);
   }
 
-  /** Ordered (critKey, cvalKey) pairs currently present, in insertion order. */
+  /** Ordered (columnKey, valueKey) pairs currently present, in insertion order. */
   valuePairKeys(): Array<[string, string]> {
     return Object.keys(this.inputs)
-      .filter((k) => k.startsWith("crit"))
-      .map((k) => { const id = k.slice(4); return [`crit${id}`, `cval${id}`] as [string, string]; });
+      .filter((k) => k.startsWith("column"))
+      .map((k) => { const id = k.slice(6); return [`column${id}`, `value${id}`] as [string, string]; });
   }
 
   addValuePair(): void {
     this.addPairWithId(this.nextPairId);
   }
 
-  removeValuePair(critKey: string): void {
-    const id = critKey.slice(4);
-    this.removeInput(`crit${id}`);
-    this.removeInput(`cval${id}`);
-    delete this.stringLiterals[`cval${id}`];
+  removeValuePair(colKey: string): void {
+    const id = colKey.slice(6);
+    this.removeInput(`column${id}`);
+    this.removeInput(`value${id}`);
+    delete this.stringLiterals[`column${id}`];
+    delete this.stringLiterals[`value${id}`];
   }
 
   data(inputs: Record<string, unknown[] | undefined>): { result: number | SolError | null } {
-    const values = inputs.values?.[0] as unknown[] | null | undefined;
-    interface Crit { arr: unknown[]; op: FilterOp; value: string; matchCase: boolean; type: FrameColType }
-    const crits: Crit[] = [];
-    for (const [critKey, cvalKey] of this.valuePairKeys()) {
-      const id = critKey.slice(4);
-      const arr = inputs[critKey]?.[0] as unknown[] | null | undefined;
-      const val = String((inputs[cvalKey] as string[] | undefined)?.[0] ?? this.stringLiterals[cvalKey] ?? "");
-      if (arr == null || val.trim() === "") continue; // row not written yet
-      const cfg = this.condConfig[id];
-      crits.push({ arr, op: cfg?.op ?? "eq", value: val, matchCase: cfg?.matchCase ?? false, type: listElemColType(arr) });
-    }
     const finish = (r: number | SolError | null) => { this.cachedResult = r; return { result: r }; };
+    const f = inputs.frame?.[0] as FrameValue | null | undefined;
+    if (!isFrameValue(f)) return finish(null);
+    interface Crit { col: FrameColumn; op: FilterOp; value: string; matchCase: boolean }
+    const crits: Crit[] = [];
+    for (const [colKey, valKey] of this.valuePairKeys()) {
+      const id = colKey.slice(6);
+      const name = String(inputs[colKey]?.[0] ?? this.stringLiterals[colKey] ?? "").trim();
+      const val = readFilterValue(inputs[valKey], this.stringLiterals[valKey]);
+      if (name === "" || val.trim() === "") continue; // row not written yet
+      const col = getColumn(f, name);
+      if (!col) return finish(solError("#REF!", `No column "${name}" in the frame`));
+      const cfg = this.condConfig[id];
+      crits.push({ col, op: cfg?.op ?? "eq", value: val, matchCase: cfg?.matchCase ?? false });
+    }
     if (crits.length === 0) return finish(null);
-    // COUNTIFS runs on the criteria alone (Excel takes no values range); the
-    // others aggregate Values and need them wired.
-    const n = this.op === "countifs"
-      ? Math.max(...crits.map((c) => c.arr.length))
-      : (values?.length ?? 0);
-    if (this.op !== "countifs" && values == null) return finish(null);
+    const n = frameRowCount(f);
     const passes = (i: number) => crits.every((c) =>
-      i < c.arr.length && passesFilter(c.arr[i] as FrameCell, c.op, c.value, c.type, c.matchCase));
+      passesFilter((c.col.values[i] ?? null) as FrameCell, c.op, c.value, c.col.type, c.matchCase));
+    // COUNTIFS runs on the criteria alone (Excel takes no values range); the
+    // others aggregate the Values column and need it named.
     if (this.op === "countifs") {
       let count = 0;
       for (let i = 0; i < n; i++) if (passes(i)) count++;
       return finish(count);
     }
+    const vname = String(inputs.values?.[0] ?? this.stringLiterals.values ?? "").trim();
+    if (vname === "") return finish(null); // not written yet
+    const vcol = getColumn(f, vname);
+    if (!vcol) return finish(solError("#REF!", `No column "${vname}" in the frame`));
     const kept: unknown[] = [];
-    for (let i = 0; i < n; i++) if (passes(i)) kept.push((values as unknown[])[i]);
+    for (let i = 0; i < n; i++) if (passes(i)) kept.push(vcol.values[i] ?? null);
     const prep = forAggregate(kept);
     if (prep.error) return finish(prep.error);
     const nums = prep.nums;
     switch (this.op) {
       case "sumifs":     return finish(nums.reduce((a, b) => a + b, 0));
-      case "averageifs": return finish(nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : solError("#DIV/0!", "No values matched the criteria"));
+      case "averageifs": return finish(nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : solError("#DIV/0!", "No rows matched the criteria"));
       case "minifs":     return finish(nums.length ? Math.min(...nums) : 0); // Excel: empty match → 0
       case "maxifs":     return finish(nums.length ? Math.max(...nums) : 0);
     }

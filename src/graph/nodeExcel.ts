@@ -505,7 +505,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "trend": [{ excel: "TREND", syntax: "=TREND(ys, xs, new_xs)", parity: false, note: "Linear only; new_xs required (Excel makes it optional)" }],
   "trimmean": [{ excel: "TRIMMEAN", syntax: "=TRIMMEAN(range, pct)", parity: true }],
   "sumifs": [
-    { excel: "SUMIFS", syntax: "=SUMIFS(sum_range, criteria_range1, criteria1, ...)", parity: true, note: "Criteria are op + value rows instead of criteria strings (\">10\")" },
+    { excel: "SUMIFS", syntax: "=SUMIFS(sum_range, criteria_range1, criteria1, ...)", parity: true, note: "Takes one frame: ranges are named columns; criteria are op + value rows instead of criteria strings (\">10\")" },
     { excel: "SUMIF", syntax: "=SUMIF(range, criteria, [sum_range])", parity: true },
     { excel: "COUNTIFS", syntax: "=COUNTIFS(criteria_range1, criteria1, ...)", parity: true },
     { excel: "COUNTIF", syntax: "=COUNTIF(range, criteria)", parity: true },
