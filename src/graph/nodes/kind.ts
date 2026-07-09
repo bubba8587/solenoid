@@ -61,6 +61,7 @@ import {
   TextInputNode, TextTransformNode, TextLenNode, ConcatNode, TextSliceNode,
   TextFindNode, SubstituteNode, TextReplaceNode,
   ReptNode, ExactNode, CharCodeNode, TextJoinNode, TextSplitNode, TextAfterBeforeNode,
+  ReverseTextNode, SpellNumberNode,
 } from "./text";
 import {
   TodayNowNode, DateConstructNode, TimeConstructNode,
@@ -155,7 +156,8 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof SubstituteNode || node instanceof TextReplaceNode ||
     node instanceof ReptNode || node instanceof ExactNode ||
     node instanceof CharCodeNode || node instanceof TextJoinNode ||
-    node instanceof TextSplitNode || node instanceof TextAfterBeforeNode
+    node instanceof TextSplitNode || node instanceof TextAfterBeforeNode ||
+    node instanceof ReverseTextNode || node instanceof SpellNumberNode
   ) return "string";
   if (
     node instanceof TodayNowNode || node instanceof DateConstructNode ||
