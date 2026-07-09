@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { numIn, numListIn, tableIn, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, anyIn, trueAnyOut, anyListIn } from "./shared";
+import { numIn, numListIn, tableIn, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, anyIn, staticTrueAnyOut, anyListIn } from "./shared";
 import { readFilterValue } from "./list";
 import { toMatrix } from "./coerce";
 import { parseDateToSerial } from "./date";
@@ -1433,7 +1433,7 @@ export class XLookupNode extends ClassicPreset.Node {
     this.addInput("inColumn", strIn("In column"));
     this.addInput("returnColumn", strIn("Return"));
     this.addInput("ifNotFound", strIn("If not found"));
-    this.addOutput("value", trueAnyOut("Value"));
+    this.addOutput("value", staticTrueAnyOut("Value"));
   }
 
   data(inputs: {

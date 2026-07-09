@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { numberSocket, listSocket, numListSocket, tableSocket, strTableSocket, dateTableSocket, anyTableSocket, anyListSocket, stringSocket, strListSocket, strComboSocket, dateSocket, dateListSocket, dateComboSocket, complexSocket, complexListSocket, complexComboSocket, complexTableSocket, logicalSocket, logicalListSocket, logicalComboSocket, logicalTableSocket, frameSocket, cubeSocket, lambdaSocket, chartSocket, anySocket, trueAnySocket } from "../sockets";
+import { numberSocket, listSocket, numListSocket, tableSocket, strTableSocket, dateTableSocket, anyTableSocket, anyListSocket, stringSocket, strListSocket, strComboSocket, dateSocket, dateListSocket, dateComboSocket, complexSocket, complexListSocket, complexComboSocket, complexTableSocket, logicalSocket, logicalListSocket, logicalComboSocket, logicalTableSocket, frameSocket, cubeSocket, lambdaSocket, chartSocket, anySocket, trueAnySocket, AdoptiveSocket } from "../sockets";
 import { resolveColor, paletteStore, type PaletteSlot } from "../palette";
 import { type SolError } from "../errorValue";
 import { cellShortCircuit, guardFinite, COMPUTE } from "../valueKinds";
@@ -18,10 +18,18 @@ export const strListIn  = (label: string) => new ClassicPreset.Input(strListSock
 export const dateIn     = (label: string) => new ClassicPreset.Input(dateSocket,    label);
 export const dateListIn = (label: string) => new ClassicPreset.Input(dateListSocket,label);
 // `any` = element-agnostic SCALAR (a single value of any family). For a true
-// accept-anything port (containers + object family) use trueAnyIn/trueAnyOut.
+// accept-anything port (containers + object family) use the adoptive/trueany
+// factories below.
 export const anyIn      = (label: string) => new ClassicPreset.Input(anySocket,     label);
-export const trueAnyIn  = (label: string) => new ClassicPreset.Input(trueAnySocket, label);
-export const trueAnyOut = (label: string) => new ClassicPreset.Output(trueAnySocket, label);
+// ADOPTIVE trueany ports (the default for accept-anything): a fresh
+// AdoptiveSocket per port — it adopts the wired cable's type and reverts to the
+// hollow trueany on disconnect (reconcileTrueAnyTypes). Use the STATIC variants
+// only for a port whose type genuinely stays unknowable while wired (INDEX /
+// XLOOKUP results — the value's type varies per row/column).
+export const trueAnyIn        = (label: string) => new ClassicPreset.Input(new AdoptiveSocket(), label);
+export const trueAnyOut       = (label: string) => new ClassicPreset.Output(new AdoptiveSocket(), label);
+export const staticTrueAnyIn  = (label: string) => new ClassicPreset.Input(trueAnySocket, label);
+export const staticTrueAnyOut = (label: string) => new ClassicPreset.Output(trueAnySocket, label);
 // A 2-D (grid) input of ANY element type — for element-agnostic matrix ops
 // (TRANSPOSE / HSTACK / CHOOSEROWS / reshape / MAP). A lower-rank value (a 1-D
 // list, a scalar) widens IN, the same way a `list` widens into a `table` input.

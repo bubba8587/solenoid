@@ -1,7 +1,7 @@
 import { ClassicPreset, NodeEditor } from "rete";
 import { DataflowEngine } from "rete-engine";
 import type { Schemes, SolenoidNode, SolenoidConnection } from "../schemes";
-import { trueAnySocket } from "../sockets";
+import { AdoptiveSocket, trueAnySocket } from "../sockets";
 import { extractInit } from "../copyPaste";
 import { installErrorGuards, solError, type SolError } from "../errorValue";
 import { installInputCoercion } from "../coerceInputs";
@@ -271,7 +271,7 @@ export class CompositeNode extends ClassicPreset.Node {
     this._pending = init?.internal ? { nodes: [...init.internal.nodes], connections: [...init.internal.connections] } : null;
 
     for (const p of this.inputPorts) {
-      if (p.exposure === "exposed") this.addInput(p.id, new ClassicPreset.Input(trueAnySocket, p.label));
+      if (p.exposure === "exposed") this.addInput(p.id, new ClassicPreset.Input(new AdoptiveSocket(), p.label));
     }
     for (const p of this.outputPorts) {
       this.addOutput(p.id, new ClassicPreset.Output(trueAnySocket, p.label));
@@ -372,7 +372,7 @@ export class CompositeNode extends ClassicPreset.Node {
   addInputPort(spec: Omit<CompositeInputPort, "id"> & { id?: string }): string {
     const id = spec.id ?? `in_${this.inputPorts.length}_${Math.random().toString(36).slice(2, 7)}`;
     this.inputPorts.push({ ...spec, id });
-    if (spec.exposure === "exposed") this.addInput(id, new ClassicPreset.Input(trueAnySocket, spec.label));
+    if (spec.exposure === "exposed") this.addInput(id, new ClassicPreset.Input(new AdoptiveSocket(), spec.label));
     return id;
   }
 

@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { trueAnySocket } from "../sockets";
+import { AdoptiveSocket, trueAnySocket } from "../sockets";
 import { solError } from "../errorValue";
 
 // A stand-in for a saved node whose `type` isn't registered in this build — a
@@ -39,7 +39,7 @@ export class PlaceholderNode extends ClassicPreset.Node {
     this.savedInit = init.savedInit ?? {};
     this.savedLiterals = init.savedLiterals;
     this.savedStringLiterals = init.savedStringLiterals;
-    for (const k of init.inputKeys ?? []) this.addInput(k, new ClassicPreset.Input(trueAnySocket, k));
+    for (const k of init.inputKeys ?? []) this.addInput(k, new ClassicPreset.Input(new AdoptiveSocket(), k));
     for (const k of init.outputKeys ?? []) this.addOutput(k, new ClassicPreset.Output(trueAnySocket, k));
     const rows = Math.max(init.inputKeys?.length ?? 0, init.outputKeys?.length ?? 0);
     this.height = 104 + rows * 24;

@@ -2,7 +2,7 @@ import { ClassicPreset } from "rete";
 import { numListSocket, strListSocket, dateListSocket, logicalListSocket, type SolenoidSocket } from "../sockets";
 import { parseDateToSerial } from "./date";
 import { getRecalcGen } from "../process";
-import { listIn, listOut, numIn, numOut, anyIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameIn, frameOut, anyListIn, anyListOut } from "./shared";
+import { listIn, listOut, numIn, numOut, anyIn, trueAnyIn, staticTrueAnyOut, strIn, logicalOut, logicalListOut, frameIn, frameOut, anyListIn, anyListOut } from "./shared";
 import { pairIdsFromKeys } from "./logic";
 import { passesFilter, type FilterOp, type FilterCondConfig } from "../frameVerbs";
 import { solError, isSolError, type SolError } from "../errorValue";
@@ -221,8 +221,9 @@ export class ListIndexNode extends ClassicPreset.Node {
     this.addInput("list",  trueAnyIn("Array")); // list, matrix, frame, or cube
     this.addInput("index", numIn("Row"));
     this.addInput("column", numIn("Column"));   // 2-D / frame / cube only
-    // The result can be a whole cube cell (a nested frame), so it stays trueany.
-    this.addOutput("result", trueAnyOut("Value"));
+    // The result's type varies per row/column (a cube cell can be a nested
+    // frame), so it stays the STATIC wildcard — never adopts.
+    this.addOutput("result", staticTrueAnyOut("Value"));
   }
 
   data(inputs: { list?: unknown[]; index?: number[]; column?: number[] }): { result: number | SolError | null | CubeCell | FrameValue | CubeValue } {

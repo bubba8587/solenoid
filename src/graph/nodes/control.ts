@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { numberSocket, trueAnySocket, MutableSocket, type SocketDataType } from "../sockets";
+import { numberSocket, AdoptiveSocket, MutableSocket, type SocketDataType } from "../sockets";
 import { frameIn, frameOut, dateOut, numOut } from "./shared";
 import { isFrameValue, getColumn, frameRowCount, cubeFromColumns, type FrameValue, type FrameColType, type CubeCell } from "../frame";
 import { jsDateToSerial } from "./date";
@@ -28,7 +28,6 @@ export class CableSwitchNode extends ClassicPreset.Node {
   selectedKeys: string[];
   cachedValue: unknown = null;
   nextInputId = 0;
-  readonly valueSocket = trueAnySocket;
   /** Output socket type flips with the mode: `cube` in Many (the collected values),
    *  `trueany` in One (the routed value passes through). Own MutableSocket instance
    *  so a retype never touches a shared singleton. */
@@ -52,7 +51,8 @@ export class CableSwitchNode extends ClassicPreset.Node {
   }
 
   private addInputWithKey(key: string): void {
-    this.addInput(key, new ClassicPreset.Input(this.valueSocket));
+    // Adoptive per-row socket: the slot shows the wired cable's type.
+    this.addInput(key, new ClassicPreset.Input(new AdoptiveSocket()));
     const n = parseInt(key.replace(/^v/, ""), 10);
     if (Number.isFinite(n)) this.nextInputId = Math.max(this.nextInputId, n + 1);
   }
