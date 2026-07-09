@@ -68,6 +68,7 @@ import {
   RegexNode,
   GroupByNode,
   HypotenuseNode,
+  ParallelCombineNode, ESeriesNode, AwgNode,
   PromoNode,
   PlaceholderNode,
   ExpectNode,
@@ -143,6 +144,7 @@ import {
   RegexComponent,
   GroupByComponent,
   HypotenuseComponent,
+  ParallelCombineComponent, ESeriesComponent, AwgComponent,
   PromoComponent,
   PlaceholderComponent,
   ExpectComponent,
@@ -430,6 +432,9 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   // Packs (example built-in pack node — registered always so saved graphs that
   // use it still render even when the pack is deactivated).
   [HypotenuseNode,        comp(HypotenuseComponent)],
+  [ParallelCombineNode,   comp(ParallelCombineComponent)],
+  [ESeriesNode,           comp(ESeriesComponent)],
+  [AwgNode,               comp(AwgComponent)],
   [PromoNode,             comp(PromoComponent)],
   // Load-time stand-in for an unregistered saved type (pack off / renamed).
   [PlaceholderNode,       comp(PlaceholderComponent)],
