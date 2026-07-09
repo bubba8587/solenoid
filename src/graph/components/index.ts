@@ -337,6 +337,9 @@ export { ParallelCombineComponent, ESeriesComponent, AwgComponent } from "./Elec
 // ─── Electromagnetism pack ───────────────────────────────────────────────────────
 export { PhysicsConstantComponent } from "./PhysicsConstantNode";
 
+// ─── Fluid Mechanics pack ────────────────────────────────────────────────────────
+export { ColebrookComponent } from "./FluidsNodes";
+
 // ─── Missing-type placeholder (load-time only, not in the Add menu) ───────────
 export { PlaceholderComponent } from "./PlaceholderNode";
 
