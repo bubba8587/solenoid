@@ -184,6 +184,30 @@ drill into the archive (or `git log`) only for the mechanics of a specific item.
   (lambda-helpers lost its mask demo — MAP reads temps directly;
   null-and-logical + the personal-finance generator moved to condition rows).
   Full reasoning incl. the per-cell/flatten/hole-punch rejections in D16.
+- **The wildcard ladder (D17, author challenge):** `any` had been BOTH the rank-0
+  untyped rung and the accept-everything supremum; the author called it ("that's
+  why we have any, any list, and any matrix"). Split: **`any` = element-agnostic
+  SCALAR** (accepts family scalars/combos; output widens anywhere data flows),
+  **`trueany` = the supremum** (accepts/flows-to everything) with a new HOLLOW
+  gray circle glyph (DOM + pixi "ring" + legend). ~30 call sites re-sorted:
+  passthroughs/selectors/Cast/Report/composite ports/unwired lanes → trueany;
+  Expression/LAMBDA variables + Regex text + Group Lists keys + wrap/flatten →
+  anylist (the Expression cap now enforced at CONNECT time); SWITCH expr/when +
+  Expand fill stay `any`, now honest. `isWildcardType()` centralizes the
+  resolve-past-untyped checks (FC adoption, type-default display, conduit trace).
+  MAP/MAKEARRAY Auto output → `anytable`. Full sweep rewritten in
+  socketConnect.test.ts; details in D17.
+- **Filter Value rows → `any` scalar** (both Filters): strIn had been a functional
+  regression (a Slider couldn't drive a threshold — number→string refused).
+  Wired scalars stringify via `readFilterValue` (wired null = "not written yet";
+  wired SolError = its code text, matches no rows) so both engines see exactly
+  what a typed literal would say.
+- **SUMIFS rebuilt onto ONE FRAME (D16 amended)** — the author caught it violating
+  the 2026-07-06 aligned-columns standing rule (parallel criteria lists, with the
+  silent short-list misalignment hazard the rule exists to kill). Now: frame in,
+  Values-column field (hidden for COUNTIFS), criteria rows column+op+value — the
+  frame Filter's row UI plus an aggregate op selector; missing column → #REF!;
+  catalog entry moved to the frame verbs, node kind frame.
 
 ### SESSION DIGEST (2026-07-08, evening — What's New resell + 1.2/2.0 plans)
 - **What's New rebuilt around the author's sell bar** ("a shiny thing a user will go
