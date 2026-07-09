@@ -70,13 +70,13 @@ The current built-in set — Geometry + Common Excel Timesavers ship ON; the res
 
 - **Geometry** (ON): 27 formula presets (areas/volumes, circles & arcs, solids) + HYPOTENUSE; DMS format, turn/px units.
 - **Common Excel Timesavers** (ON): core-node reclassification tags + 7 presets (Percent Change, CAGR, Ordinal, Clean Whitespace, Mask, word/occurrence counts) + Reverse Text + Spell Number.
-- **Electricity & Circuits**: 26 presets (Ohm/power, AC & reactance, transients & 555, decibels) + Parallel Combine, E-Series Value, AWG Wire; Electrical FC units + SI-prefix format.
-- **Electromagnetism** (dependsOn electricity): 21 presets (electrostatics, magnetism, waves & photons, induction) + the CODATA Physics Constant node.
+- **Electricity & Circuits**: 23 presets + Parallel Combine, E-Series Value, AWG Wire; Electrical FC units + SI-prefix format. Ohm's Law and dBm ↔ Watts are locked EQUATION presets (solve any way, or truth-check).
+- **Electromagnetism** (dependsOn electricity): 20 presets (Wavelength ↔ Frequency is an equation preset) + the CODATA Physics Constant node, whose unit rides downstream like an FC lock.
 - **Health & Fitness**: 20 presets (BMI/BSA/IBW, body fat, BMR/TDEE, cardio, clinical).
 - **Fluid Mechanics**: 20 presets + the Colebrook root-finding friction-factor node; pressure/flow/viscosity FC units.
-- **Thermodynamics & Air**: 21 presets (ideal gas, heat transfer, psychrometrics) + ISA Standard Atmosphere + Antoine Vapor Pressure; Energy FC units.
+- **Thermodynamics & Air**: 18 presets + ISA Standard Atmosphere + Antoine Vapor Pressure; Energy FC units. The old four solved ideal-gas forms are ONE pV = nRT equation preset.
 - **Sets & Membership**: Is In (membership mask) + Tally (value counts); claims the core COUNT DISTINCT aggregate op. (Semi/anti join modes are core Join.)
 - **Earth & Sky**: 8 presets (haversine, bearing, gravity, orbits) + NOAA Sun Position, Sunrise/Sunset, Moon Phase.
-- **Chemistry Basics**: 13 presets (amounts, pH, Nernst, Arrhenius, Gibbs, decay) + Element (118 IUPAC weights) + Molar Mass (formula parser); Chemistry FC units.
+- **Chemistry Basics**: 11 presets + Element (118 IUPAC weights) + Molar Mass (formula parser); Chemistry FC units. Moles ↔ Mass and pH ↔ [H⁺] are equation presets.
 
 Composite-shaped pack ideas are planned, not built — `docs/pack-composite-plans.md`.

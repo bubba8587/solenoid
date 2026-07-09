@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { THERMO_FORMULAS } from "./thermo";
-import { auditFormulaPack, entryByType, evalFormula } from "./formulaTestKit";
+import { auditFormulaPack, entryByType, evalFormula, evalEquation } from "./formulaTestKit";
 import { isaAtGeopotential, isaAtGeometric, IsaAtmosphereNode, ANTOINE, antoinePressure, AntoineNode, type AntoineOp } from "../nodes/thermo";
 import { isSolError } from "../errorValue";
 
@@ -15,11 +15,16 @@ describe("Thermodynamics & Air formulas", () => {
     expect(auditFormulaPack(THERMO_FORMULAS)).toEqual([]);
   });
 
-  it("ideal gas: one mole at STP occupies 22.7 L (and the four forms invert)", () => {
-    expect(num("th-ideal-gas-v", { n: 1, tk: 273.15, p: 100000 })).toBeCloseTo(0.022711, 5);
-    expect(num("th-ideal-gas-p", { n: 1, tk: 273.15, vol: 0.022711 })).toBeCloseTo(100000, -1);
-    expect(num("th-ideal-gas-n", { p: 100000, vol: 0.022711, tk: 273.15 })).toBeCloseTo(1, 4);
-    expect(num("th-ideal-gas-t", { p: 100000, vol: 0.022711, n: 1 })).toBeCloseTo(273.15, 1);
+  it("ideal gas is ONE equation preset: one mole at STP occupies 22.7 L, any variable solvable", () => {
+    const gas = entryByType(THERMO_FORMULAS, "th-ideal-gas");
+    expect(evalEquation(gas, { n: 1, tk: 273.15, p: 100000 }).vol as number).toBeCloseTo(0.022711, 5);
+    expect(evalEquation(gas, { n: 1, tk: 273.15, vol: 0.022711 }).p as number).toBeCloseTo(100000, -1);
+    expect(evalEquation(gas, { p: 100000, vol: 0.022711, tk: 273.15 }).n as number).toBeCloseTo(1, 4);
+    expect(evalEquation(gas, { p: 100000, vol: 0.022711, n: 1 }).tk as number).toBeCloseTo(273.15, 1);
+    // The truth check is strict (relative 1e-9), so hand it the EXACT volume.
+    const vExact = (1 * 8.314462618 * 273.15) / 100000;
+    expect(evalEquation(gas, { p: 100000, vol: vExact, n: 1, tk: 273.15 }).holds).toBe(true);
+    expect(evalEquation(gas, { p: 100000, vol: vExact * 1.01, n: 1, tk: 273.15 }).holds).toBe(false);
     // Sea-level air: 101325 Pa, 15 °C → 1.225 kg/m³.
     expect(num("th-air-density", { p: 101325, tk: 288.15 })).toBeCloseTo(1.225, 3);
   });

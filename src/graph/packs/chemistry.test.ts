@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { CHEMISTRY_FORMULAS } from "./chemistry";
-import { auditFormulaPack, entryByType, evalFormula } from "./formulaTestKit";
+import { auditFormulaPack, entryByType, evalFormula, evalEquation } from "./formulaTestKit";
 import { ELEMENTS, ELEMENT_BY_SYMBOL, molarMass, ElementNode, MolarMassNode } from "../nodes/chemistry";
 import { isSolError, type SolError } from "../errorValue";
 
@@ -16,18 +16,22 @@ describe("Chemistry formulas", () => {
   });
 
   it("amounts: moles/mass/molarity/dilution/yield", () => {
-    expect(num("ch-moles", { m: 36.03, mm: 18.015 })).toBeCloseTo(2, 6);
-    expect(num("ch-mass", { n: 2, mm: 18.015 })).toBeCloseTo(36.03, 6);
+    // One equation preset: moles from mass, mass from moles, or molar mass from both.
+    const mm = entryByType(CHEMISTRY_FORMULAS, "ch-moles-mass");
+    expect(evalEquation(mm, { m: 36.03, mm: 18.015 }).n as number).toBeCloseTo(2, 6);
+    expect(evalEquation(mm, { n: 2, mm: 18.015 }).m as number).toBeCloseTo(36.03, 6);
+    expect(evalEquation(mm, { n: 2, m: 36.03 }).mm as number).toBeCloseTo(18.015, 6);
     expect(num("ch-molarity", { n: 0.5, v: 0.25 })).toBe(2);
     // 10 mL of 12 M stock into 100 mL → 1.2 M.
     expect(num("ch-dilution", { c1: 12, v1: 10, v2: 100 })).toBeCloseTo(1.2, 9);
     expect(num("ch-percent-yield", { actual: 4.1, theoretical: 5 })).toBeCloseTo(82, 9);
   });
 
-  it("pH pair round-trips; neutral water is 7", () => {
-    expect(num("ch-ph", { h: 1e-7 })).toBeCloseTo(7, 9);
-    expect(num("ch-h-from-ph", { ph: 3 })).toBeCloseTo(1e-3, 9);
-    expect(num("ch-ph", { h: num("ch-h-from-ph", { ph: 4.5 }) })).toBeCloseTo(4.5, 9);
+  it("pH is one equation preset: both directions; neutral water is 7", () => {
+    const ph = entryByType(CHEMISTRY_FORMULAS, "ch-ph");
+    expect(evalEquation(ph, { h: 1e-7 }).ph as number).toBeCloseTo(7, 9);
+    expect(evalEquation(ph, { ph: 3 }).h as number).toBeCloseTo(1e-3, 9);
+    expect(evalEquation(ph, { ph: 4.5, h: 10 ** -4.5 }).holds).toBe(true);
   });
 
   it("Nernst: the 59.2 mV/decade slope at 25 °C", () => {

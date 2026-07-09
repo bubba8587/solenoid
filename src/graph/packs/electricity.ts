@@ -9,17 +9,13 @@
 import { ParallelCombineNode, ESeriesNode, AwgNode } from "../rete-nodes";
 import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
 
-// Base category: Ohm's law, power, and the everyday one-liners.
+// Base category: Ohm's law, power, and the everyday one-liners. Rearrangement
+// groups ship as ONE locked Equation preset (wire any two, read the third) —
+// the old solved-form trio collapsed when the Equation node landed.
 export const ELECTRICITY_BASE: FormulaPackEntry[] = [
-  { type: "elec-ohms-voltage", label: "Voltage (Ohm's Law)", expr: "i*r",
-    description: "Voltage across a resistance from current   (V = I·R)",
-    keywords: "ohm ohms law volts" },
-  { type: "elec-ohms-current", label: "Current (Ohm's Law)", expr: "v/r",
-    description: "Current through a resistance from voltage   (I = V/R)",
-    keywords: "ohm ohms law amps" },
-  { type: "elec-ohms-resistance", label: "Resistance (Ohm's Law)", expr: "v/i",
-    description: "Resistance from voltage and current   (R = V/I)",
-    keywords: "ohm ohms law" },
+  { type: "elec-ohms-law", label: "Ohm's Law", expr: "v = i * r", equation: true,
+    description: "V = I·R, solved for whichever of the three you leave unwired; wire all three and Holds? checks the triangle",
+    keywords: "ohm ohms law volts amps resistance triangle" },
   { type: "elec-power-vi", label: "Power (V·I)", expr: "v*i",
     description: "Electrical power from voltage and current   (P = V·I)",
     keywords: "watts" },
@@ -91,10 +87,9 @@ export const ELECTRICITY_DB: FormulaPackEntry[] = [
   { type: "elec-db-voltage", label: "Decibels (Voltage Ratio)", expr: "20*LOG10(v2/v1)",
     description: "Voltage (amplitude) ratio in dB   (20·log₁₀(V₂/V₁))",
     keywords: "gain attenuation" },
-  { type: "elec-dbm-to-w", label: "dBm → Watts", expr: "10^((dbm-30)/10)",
-    description: "Absolute power from a dBm level (0 dBm = 1 mW)   (P = 10^((dBm−30)/10) W)" },
-  { type: "elec-w-to-dbm", label: "Watts → dBm", expr: "10*LOG10(w)+30",
-    description: "dBm level from absolute power in watts   (dBm = 10·log₁₀(P) + 30)" },
+  { type: "elec-dbm-w", label: "dBm ↔ Watts", expr: "dbm = 10*LOG10(w)+30", equation: true,
+    description: "Absolute power both ways: wire dbm to get watts, or w to get dBm (0 dBm = 1 mW)",
+    keywords: "dbm watts milliwatt level convert" },
 ];
 
 export const ELECTRICITY_FORMULAS: FormulaPackEntry[] = [

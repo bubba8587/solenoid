@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { ELECTRICITY_FORMULAS } from "./electricity";
-import { auditFormulaPack, entryByType, evalFormula } from "./formulaTestKit";
+import { auditFormulaPack, entryByType, evalFormula, evalEquation } from "./formulaTestKit";
 
 const num = (type: string, inputs: Record<string, number>): number => {
   const r = evalFormula(entryByType(ELECTRICITY_FORMULAS, type), inputs);
@@ -13,10 +13,13 @@ describe("Electricity & Circuits formulas", () => {
     expect(auditFormulaPack(ELECTRICITY_FORMULAS)).toEqual([]);
   });
 
-  it("Ohm's law triangle is self-consistent", () => {
-    expect(num("elec-ohms-voltage", { i: 2, r: 50 })).toBe(100);
-    expect(num("elec-ohms-current", { v: 100, r: 50 })).toBe(2);
-    expect(num("elec-ohms-resistance", { v: 100, i: 2 })).toBe(50);
+  it("Ohm's law is ONE equation preset that solves all three ways + checks", () => {
+    const ohm = entryByType(ELECTRICITY_FORMULAS, "elec-ohms-law");
+    expect(evalEquation(ohm, { i: 2, r: 50 }).v).toBe(100);
+    expect(evalEquation(ohm, { v: 100, r: 50 }).i).toBe(2);
+    expect(evalEquation(ohm, { v: 100, i: 2 }).r).toBe(50);
+    expect(evalEquation(ohm, { v: 100, i: 2, r: 50 }).holds).toBe(true);
+    expect(evalEquation(ohm, { v: 100, i: 2, r: 51 }).holds).toBe(false);
   });
 
   it("power forms agree with each other", () => {
@@ -61,8 +64,9 @@ describe("Electricity & Circuits formulas", () => {
   it("decibels", () => {
     expect(num("elec-db-power", { p2: 100, p1: 1 })).toBeCloseTo(20, 9);
     expect(num("elec-db-voltage", { v2: 10, v1: 1 })).toBeCloseTo(20, 9);
-    expect(num("elec-dbm-to-w", { dbm: 30 })).toBeCloseTo(1, 9);
-    expect(num("elec-dbm-to-w", { dbm: 0 })).toBeCloseTo(0.001, 9);
-    expect(num("elec-w-to-dbm", { w: 1 })).toBeCloseTo(30, 9);
+    const dbm = entryByType(ELECTRICITY_FORMULAS, "elec-dbm-w");
+    expect(evalEquation(dbm, { dbm: 30 }).w as number).toBeCloseTo(1, 9);
+    expect(evalEquation(dbm, { dbm: 0 }).w as number).toBeCloseTo(0.001, 9);
+    expect(evalEquation(dbm, { w: 1 }).dbm as number).toBeCloseTo(30, 9);
   });
 });

@@ -10,12 +10,9 @@ const R_GAS = "8.314462618";
 const FARADAY = "96485.33212";
 
 export const CHEM_AMOUNTS: FormulaPackEntry[] = [
-  { type: "ch-moles", label: "Moles from Mass", expr: "m/mm",
-    description: "Amount of substance: mass m (g) ÷ molar mass mm (g/mol) → mol",
-    keywords: "amount substance stoichiometry" },
-  { type: "ch-mass", label: "Mass from Moles", expr: "n*mm",
-    description: "Mass in grams: moles n × molar mass mm (g/mol)",
-    keywords: "stoichiometry" },
+  { type: "ch-moles-mass", label: "Moles ↔ Mass", expr: "n = m / mm", equation: true,
+    description: "n = m/mm with any one unknown: moles from mass, mass from moles, or even the molar mass from both — wire a Molar Mass node into mm",
+    keywords: "amount substance stoichiometry grams moles molar" },
   { type: "ch-molarity", label: "Molarity", expr: "n/v",
     description: "Concentration: moles n ÷ volume v (L) → mol/L",
     keywords: "concentration molar" },
@@ -27,12 +24,9 @@ export const CHEM_AMOUNTS: FormulaPackEntry[] = [
 ];
 
 export const CHEM_EQUILIBRIA: FormulaPackEntry[] = [
-  { type: "ch-ph", label: "pH from [H⁺]", expr: "-LOG10(h)",
-    description: "pH from hydrogen-ion concentration h (mol/L)   (pH = −log₁₀[H⁺])",
-    keywords: "acid base" },
-  { type: "ch-h-from-ph", label: "[H⁺] from pH", expr: "10^-ph",
-    description: "Hydrogen-ion concentration (mol/L) from pH   ([H⁺] = 10^−pH)",
-    keywords: "acid base" },
+  { type: "ch-ph", label: "pH ↔ [H⁺]", expr: "ph = -LOG10(h)", equation: true,
+    description: "pH = −log₁₀[H⁺], either way around: wire h (mol/L) to get the pH, or ph to get the concentration",
+    keywords: "acid base hydrogen concentration" },
   { type: "ch-nernst", label: "Nernst Equation", expr: `e0-${R_GAS}*tk/(z*${FARADAY})*LN(q)`,
     description: "Cell potential off standard conditions: standard potential e0 (V), temperature tk (K), electrons z, reaction quotient q   (E = E° − RT/zF·lnQ)",
     keywords: "electrochemistry cell potential redox" },

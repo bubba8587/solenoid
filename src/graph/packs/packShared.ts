@@ -8,7 +8,7 @@
 import type { NodeCatalogEntry, ExcelEquiv } from "../AddNodeMenu";
 import type { PackUnit, PackFormat } from "../formatAnnotationStore";
 import type { ResultType } from "../nodes/shared";
-import { ExpressionNode } from "../rete-nodes";
+import { ExpressionNode, EquationNode } from "../rete-nodes";
 
 // ─── Formula packs: the default, no-new-code pack shape ─────────────────────────
 // A formula pack is pure data: a list of {label, expr} records that base Solenoid
@@ -29,6 +29,12 @@ export interface FormulaPackEntry {
   label: string;         // node title
   description: string;   // hover text — show the formula, Excel-style where it helps
   expr: string;          // compiled by the core formula engine; vars → input sockets
+  /** The preset is a locked EQUATION ("v = i * r") rather than a directional
+   *  Expression: every variable is an input AND an output, the node solves for
+   *  whichever is left unknown (or truth-checks when all are known). Use for a
+   *  relation the pack would otherwise ship as several solved forms — the Ohm's
+   *  law trio is ONE equation preset. `resultAs` doesn't apply (numeric only). */
+  equation?: boolean;
   /** Result element type when the formula yields text/date (default number). */
   resultAs?: ResultType;
   /** Excel function(s) the preset stands in for (most pack formulas have none). */
@@ -48,7 +54,9 @@ export function formulaNode(e: FormulaPackEntry): NodeCatalogEntry {
     // the core Expression node…), not these presets.
     // `locked`: a preset's formula is fixed (the pack's promise — the node stays
     // reliable); the title stays editable.
-    create: () => new ExpressionNode({ label: e.label, expr: e.expr, locked: true, resultAs: e.resultAs }),
+    create: () => e.equation
+      ? new EquationNode({ label: e.label, expr: e.expr, locked: true })
+      : new ExpressionNode({ label: e.label, expr: e.expr, locked: true, resultAs: e.resultAs }),
   };
 }
 
