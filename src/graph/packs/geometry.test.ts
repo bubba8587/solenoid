@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { GEOMETRY_CIRCLES, GEOMETRY_SOLIDS } from "./geometry";
 import { auditFormulaPack, entryByType, evalFormula } from "./formulaTestKit";
+import { solveTriangle, TriangleSolverNode, type TriangleSolved } from "../nodes/triangle";
+import { isSolError } from "../errorValue";
 
 const ALL = [...GEOMETRY_CIRCLES, ...GEOMETRY_SOLIDS];
 
@@ -40,5 +42,64 @@ describe("Geometry second-wave formulas", () => {
     // Torus R=3, r=1: V = 6π², A = 12π².
     expect(num("geo-torus-vol", { rr: 3, r: 1 })).toBeCloseTo(6 * Math.PI ** 2, 9);
     expect(num("geo-torus-area", { rr: 3, r: 1 })).toBeCloseTo(12 * Math.PI ** 2, 9);
+  });
+});
+
+describe("Triangle Solver", () => {
+  const solved = (g: Parameters<typeof solveTriangle>[0]): TriangleSolved => {
+    const r = solveTriangle(g);
+    expect(isSolError(r), JSON.stringify(r)).toBe(false);
+    return r as TriangleSolved;
+  };
+
+  it("SSS: the 3-4-5 right triangle", () => {
+    const t = solved({ a: 3, b: 4, c: 5 });
+    expect(t.C).toBeCloseTo(90, 9);
+    expect(t.A).toBeCloseTo(36.8699, 3);
+    expect(t.area).toBeCloseTo(6, 9);
+    expect(t.perimeter).toBe(12);
+  });
+
+  it("SAS: two sides + the included angle", () => {
+    // b = 4, c = 5, A = 60° between them → a² = 16 + 25 − 40·cos60 = 21.
+    const t = solved({ b: 4, c: 5, A: 60 });
+    expect(t.a).toBeCloseTo(Math.sqrt(21), 9);
+    expect(t.A + t.B + t.C).toBeCloseTo(180, 9);
+    expect(t.area).toBeCloseTo(0.5 * 4 * 5 * Math.sin(Math.PI / 3), 9);
+  });
+
+  it("ASA / AAS: two angles + a side", () => {
+    const t = solved({ A: 30, B: 60, c: 10 }); // C = 90; a = 10·sin30 = 5
+    expect(t.C).toBeCloseTo(90, 9);
+    expect(t.a).toBeCloseTo(5, 9);
+    expect(t.b).toBeCloseTo(10 * Math.sin(Math.PI / 3), 9);
+  });
+
+  it("SSA: unique when the opposite side dominates; honest error when ambiguous", () => {
+    // a = 10 ≥ b = 6: unique.
+    const t = solved({ a: 10, b: 6, A: 50 });
+    expect(t.A + t.B + t.C).toBeCloseTo(180, 6);
+    // a = 5, b = 6, A = 50°: b·sinA ≈ 4.6 < a < b → two triangles fit.
+    const amb = solveTriangle({ a: 5, b: 6, A: 50 });
+    expect(isSolError(amb) && amb.code).toBe("#SOLVE!");
+    // b·sinA > a: no triangle at all.
+    const none = solveTriangle({ a: 3, b: 6, A: 50 });
+    expect(isSolError(none) && none.code).toBe("#DOMAIN!");
+  });
+
+  it("degenerate givens error honestly", () => {
+    expect(isSolError(solveTriangle({ A: 60, B: 60, C: 60 }))).toBe(true);        // no scale
+    expect(isSolError(solveTriangle({ a: 1, b: 1, c: 5 }))).toBe(true);           // inequality
+    expect(isSolError(solveTriangle({ a: 1, b: 1 }))).toBe(true);                 // two parts
+    expect(isSolError(solveTriangle({ a: 1, A: 100, B: 100 }))).toBe(true);       // angles ≥ 180
+  });
+
+  it("the node passes givens through and errors every output on a bad set", () => {
+    const n = new TriangleSolverNode();
+    const out = n.data({ a: [3], b: [4], c: [5] });
+    expect(out.area as number).toBeCloseTo(6, 9);
+    expect(out.C as number).toBeCloseTo(90, 9);
+    const empty = n.data({});
+    expect(empty.area).toBeNull();
   });
 });

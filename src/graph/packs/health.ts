@@ -5,6 +5,7 @@
 // Sex-specific equations ship as two presets (the constants differ; a locked
 // formula stays reliable instead of hiding a ±sign input).
 
+import { HrZonesNode } from "../rete-nodes";
 import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
 
 export const HEALTH_BODY: FormulaPackEntry[] = [
@@ -86,10 +87,20 @@ export const HEALTH_FORMULAS: FormulaPackEntry[] = [
 export const HEALTH_PACK: Pack = {
   id: "health",
   name: "Health & Fitness",
-  description: "Body and fitness formulas: BMI, body surface area, BMR/TDEE, body-fat estimates (Deurenberg, US Navy), heart-rate zones, VO₂max, ideal body weight, creatinine clearance. Metric inputs; estimates, not medical advice.",
+  description: "Body and fitness formulas: BMI, body surface area, BMR/TDEE, body-fat estimates (Deurenberg, US Navy), the heart-rate zone table, VO₂max, ideal body weight, creatinine clearance. Metric inputs; estimates, not medical advice.",
   builtin: true,
   defaultActive: false,
   nodes: [
+    {
+      path: ["Packs", "Health & Fitness"],
+      entry: {
+        type: "hf-zones",
+        label: "Heart-Rate Zones",
+        description: "Five training zones as a table: age (or a wired max HR) → Z1–Z5 low/high BPM. Add a resting HR for the Karvonen method. Chart it or look a zone up",
+        keywords: "heart rate zones training karvonen bpm z1 z2 z3 z4 z5",
+        create: () => new HrZonesNode(),
+      },
+    },
     ...placeFormulas(["Packs", "Health & Fitness"], HEALTH_BODY),
     ...placeFormulas(["Packs", "Health & Fitness", "Body Composition"], HEALTH_COMPOSITION),
     ...placeFormulas(["Packs", "Health & Fitness", "Energy & Metabolism"], HEALTH_ENERGY),

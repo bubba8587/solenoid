@@ -4,7 +4,7 @@
 // equations, Stokes settling, drag, and compressible-flow basics.
 // SI units throughout; g = 9.80665 m/s² baked where gravity appears.
 
-import { ColebrookNode } from "../rete-nodes";
+import { ColebrookNode, PipeRoughnessNode } from "../rete-nodes";
 import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
 
 const G0 = "9.80665";
@@ -75,12 +75,22 @@ export const FLUIDS_FORMULAS: FormulaPackEntry[] = [
 export const FLUIDS_PACK: Pack = {
   id: "fluids",
   name: "Fluid Mechanics",
-  description: "Pipe flow, pumps, and aero classics: Reynolds number, Colebrook/Swamee–Jain friction factors, Darcy–Weisbach and Hazen–Williams losses, Bernoulli, orifice and pump power, Stokes settling, drag, speed of sound. SI units.",
+  description: "Pipe flow, pumps, and aero classics: Reynolds number, the pipe-roughness table, Colebrook/Swamee–Jain friction factors, Darcy–Weisbach and Hazen–Williams losses, Bernoulli, orifice and pump power, Stokes settling, drag, speed of sound. SI units.",
   builtin: true,
   defaultActive: false,
   nodes: [
     ...placeFormulas(["Packs", "Fluids"], FLUIDS_BASE),
     ...placeFormulas(["Packs", "Fluids", "Pipe Flow"], FLUIDS_PIPE),
+    {
+      path: ["Packs", "Fluid Mechanics"],
+      entry: {
+        type: "fl-roughness",
+        label: "Pipe Roughness",
+        description: "Absolute roughness ε for common pipe materials (textbook values, mm); give a diameter and it also emits ε/D, ready for the Friction Factor nodes",
+        keywords: "roughness epsilon material pipe moody colebrook relative",
+        create: () => new PipeRoughnessNode(),
+      },
+    },
     {
       path: ["Packs", "Fluids", "Pipe Flow"],
       entry: {

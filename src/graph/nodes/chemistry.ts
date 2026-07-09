@@ -85,6 +85,49 @@ export const ELEMENTS: ElementMeta[] = [
 export const ELEMENT_BY_SYMBOL: Map<string, ElementMeta> =
   new Map(ELEMENTS.map((e) => [e.symbol, e]));
 
+// ─── Periodic-table geometry + search (the Element picker) ────────────────────
+
+/** Standard 18-column periodic-table cell for an atomic number: rows 1–7 are the
+ *  main body, rows 9–10 the detached f-block (lanthanides/actinides, cols 4–18);
+ *  row 8 is left empty as the visual gap. Pure — drives the picker's CSS grid. */
+export function elementCell(n: number): { row: number; col: number } {
+  if (n === 1) return { row: 1, col: 1 };
+  if (n === 2) return { row: 1, col: 18 };
+  if (n <= 4) return { row: 2, col: n - 2 };          // Li, Be
+  if (n <= 10) return { row: 2, col: n + 8 };         // B … Ne
+  if (n <= 12) return { row: 3, col: n - 10 };        // Na, Mg
+  if (n <= 18) return { row: 3, col: n };             // Al … Ar
+  if (n <= 36) return { row: 4, col: n - 18 };        // K … Kr
+  if (n <= 54) return { row: 5, col: n - 36 };        // Rb … Xe
+  if (n <= 56) return { row: 6, col: n - 54 };        // Cs, Ba
+  if (n <= 71) return { row: 9, col: n - 53 };        // La … Lu (f-block)
+  if (n <= 86) return { row: 6, col: n - 68 };        // Hf … Rn
+  if (n <= 88) return { row: 7, col: n - 86 };        // Fr, Ra
+  if (n <= 103) return { row: 10, col: n - 85 };      // Ac … Lr (f-block)
+  return { row: 7, col: n - 100 };                    // Rf … Og
+}
+
+/** Rank elements against a typed query: symbol exact > symbol prefix > name
+ *  prefix > name substring > atomic-number match. Case-insensitive; empty query
+ *  matches everything in table order. Pure — the picker's search field. */
+export function searchElements(query: string): ElementMeta[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return ELEMENTS;
+  const scored: Array<[number, ElementMeta]> = [];
+  for (const e of ELEMENTS) {
+    const sym = e.symbol.toLowerCase();
+    const name = e.name.toLowerCase();
+    let score: number | null = null;
+    if (sym === q) score = 0;
+    else if (sym.startsWith(q)) score = 1;
+    else if (name.startsWith(q)) score = 2;
+    else if (name.includes(q)) score = 3;
+    else if (String(e.n) === q) score = 4;
+    if (score !== null) scored.push([score, e]);
+  }
+  return scored.sort((x, y) => x[0] - y[0] || x[1].n - y[1].n).map(([, e]) => e);
+}
+
 // ─── Molar-mass parser ────────────────────────────────────────────────────────
 // Grammar: formula = segment (('·'|'.'|'*') segment)*   (hydrate notation)
 //          segment = count? unit+

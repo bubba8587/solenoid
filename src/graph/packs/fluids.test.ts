@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { FLUIDS_FORMULAS } from "./fluids";
 import { auditFormulaPack, entryByType, evalFormula } from "./formulaTestKit";
+import { PIPE_ROUGHNESS, PipeRoughnessNode } from "../nodes/fluids";
 import { ColebrookNode, colebrookF } from "../nodes/fluids";
 import { isSolError } from "../errorValue";
 
@@ -88,5 +89,26 @@ describe("Colebrook friction factor", () => {
     expect(isSolError(n.data({ re: [1e5], rr: [1.5] }).result)).toBe(true);
     const dflt = n.data({});
     expect(typeof dflt.result).toBe("number"); // literal defaults compute
+  });
+});
+
+describe("Pipe Roughness", () => {
+  it("carries the textbook values, sorted smooth to rough", () => {
+    const byId = Object.fromEntries(PIPE_ROUGHNESS.map((r) => [r.id, r.mm]));
+    expect(byId.pvc).toBe(0.0015);
+    expect(byId.steel).toBe(0.045);
+    expect(byId.castiron).toBe(0.26);
+    for (let i = 1; i < PIPE_ROUGHNESS.length; i++) {
+      expect(PIPE_ROUGHNESS[i].mm).toBeGreaterThanOrEqual(PIPE_ROUGHNESS[i - 1].mm);
+    }
+  });
+
+  it("emits ε and, with a diameter, the ε/D that feeds Colebrook", () => {
+    const n = new PipeRoughnessNode({ op: "steel" });
+    const bare = n.data({});
+    expect(bare.eps).toBe(0.045);
+    expect(bare.rel).toBeNull();
+    const withD = n.data({ d: [100] }); // 100 mm pipe
+    expect(withD.rel as number).toBeCloseTo(0.00045, 9);
   });
 });

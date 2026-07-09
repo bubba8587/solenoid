@@ -76,7 +76,7 @@ import {
   IsInNode, TallyNode,
   ReverseTextNode, SpellNumberNode,
   SolarPositionNode, SunriseSunsetNode, MoonPhaseNode,
-  ElementNode, MolarMassNode,
+  ElementNode, MolarMassNode, ResistorCodeNode, EmSpectrumNode, HrZonesNode, PipeRoughnessNode, TriangleSolverNode,
   PromoNode,
   PlaceholderNode,
   ExpectNode,
@@ -160,12 +160,13 @@ import {
   IsInComponent, TallyComponent,
   ReverseTextComponent, SpellNumberComponent,
   SolarPositionComponent, SunriseSunsetComponent, MoonPhaseComponent,
-  ElementComponent, MolarMassComponent,
+  ElementComponent, MolarMassComponent, ResistorCodeComponent,
   PromoComponent,
   PlaceholderComponent,
   ExpectComponent,
   TornadoComponent,
 } from "./components";
+import { EmSpectrumComponent, HrZonesComponent, PipeRoughnessComponent, TriangleSolverComponent } from "./components/PackToolNodes";
 
 export type AnyNodeComponent = JSXElementConstructor<{
   data: ClassicPreset.Node & { width?: number; height?: number };
@@ -468,6 +469,11 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [SunriseSunsetNode,     comp(SunriseSunsetComponent)],
   [MoonPhaseNode,         comp(MoonPhaseComponent)],
   [ElementNode,           comp(ElementComponent)],
+  [ResistorCodeNode,      comp(ResistorCodeComponent)],
+  [EmSpectrumNode,        comp(EmSpectrumComponent)],
+  [HrZonesNode,           comp(HrZonesComponent)],
+  [PipeRoughnessNode,     comp(PipeRoughnessComponent)],
+  [TriangleSolverNode,    comp(TriangleSolverComponent)],
   [MolarMassNode,         comp(MolarMassComponent)],
   [PromoNode,             comp(PromoComponent)],
   // Load-time stand-in for an unregistered saved type (pack off / renamed).

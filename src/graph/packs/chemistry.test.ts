@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { CHEMISTRY_FORMULAS } from "./chemistry";
 import { auditFormulaPack, entryByType, evalFormula, evalEquation } from "./formulaTestKit";
-import { ELEMENTS, ELEMENT_BY_SYMBOL, molarMass, ElementNode, MolarMassNode } from "../nodes/chemistry";
+import { ELEMENTS, ELEMENT_BY_SYMBOL, molarMass, ElementNode, MolarMassNode, elementCell, searchElements } from "../nodes/chemistry";
 import { isSolError, type SolError } from "../errorValue";
 
 const num = (type: string, inputs: Record<string, number>): number => {
@@ -111,5 +111,43 @@ describe("Molar mass parser", () => {
     expect(n.data({ formula: ["NaHCO3"] }).result as number).toBeCloseTo(84.007, 1);
     n.stringLiterals.formula = "KMnO4";
     expect(n.data({}).result as number).toBeCloseTo(158.03, 1);
+  });
+});
+
+describe("Element picker — table geometry + search", () => {
+  it("elementCell puts every element on the standard 18-column grid", () => {
+    expect(elementCell(1)).toEqual({ row: 1, col: 1 });    // H
+    expect(elementCell(2)).toEqual({ row: 1, col: 18 });   // He
+    expect(elementCell(5)).toEqual({ row: 2, col: 13 });   // B
+    expect(elementCell(13)).toEqual({ row: 3, col: 13 });  // Al
+    expect(elementCell(26)).toEqual({ row: 4, col: 8 });   // Fe
+    expect(elementCell(47)).toEqual({ row: 5, col: 11 });  // Ag
+    expect(elementCell(56)).toEqual({ row: 6, col: 2 });   // Ba
+    expect(elementCell(57)).toEqual({ row: 9, col: 4 });   // La → f-block
+    expect(elementCell(71)).toEqual({ row: 9, col: 18 });  // Lu
+    expect(elementCell(72)).toEqual({ row: 6, col: 4 });   // Hf resumes the main body
+    expect(elementCell(89)).toEqual({ row: 10, col: 4 });  // Ac
+    expect(elementCell(104)).toEqual({ row: 7, col: 4 });  // Rf
+    expect(elementCell(118)).toEqual({ row: 7, col: 18 }); // Og
+    // No two elements share a cell.
+    const seen = new Set<string>();
+    for (const e of ELEMENTS) {
+      const { row, col } = elementCell(e.n);
+      const key = `${row}/${col}`;
+      expect(seen.has(key), `${e.symbol} collides at ${key}`).toBe(false);
+      expect(col >= 1 && col <= 18).toBe(true);
+      seen.add(key);
+    }
+  });
+
+  it("searchElements ranks symbol > name prefix > substring > number", () => {
+    expect(searchElements("fe")[0].symbol).toBe("Fe");          // symbol exact
+    expect(searchElements("iron")[0].symbol).toBe("Fe");        // name prefix
+    expect(searchElements("c")[0].symbol).toBe("C");            // exact beats Ca/Cl/…
+    expect(searchElements("26")[0].symbol).toBe("Fe");          // atomic number
+    expect(searchElements("sod")[0].symbol).toBe("Na");         // name prefix, symbol unrelated
+    expect(searchElements("ver").map((e) => e.symbol)).toContain("Ag"); // silVER substring
+    expect(searchElements("")).toHaveLength(118);               // empty = everything
+    expect(searchElements("zzz")).toHaveLength(0);
   });
 });

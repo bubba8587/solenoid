@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { ELECTRICITY_FORMULAS } from "./electricity";
 import { auditFormulaPack, entryByType, evalFormula, evalEquation } from "./formulaTestKit";
+import { decodeResistor, ResistorCodeNode } from "../nodes/electrical";
 
 const num = (type: string, inputs: Record<string, number>): number => {
   const r = evalFormula(entryByType(ELECTRICITY_FORMULAS, type), inputs);
@@ -68,5 +69,27 @@ describe("Electricity & Circuits formulas", () => {
     expect(evalEquation(dbm, { dbm: 30 }).w as number).toBeCloseTo(1, 9);
     expect(evalEquation(dbm, { dbm: 0 }).w as number).toBeCloseTo(0.001, 9);
     expect(evalEquation(dbm, { w: 1 }).dbm as number).toBeCloseTo(30, 9);
+  });
+});
+
+describe("Resistor color code", () => {
+  it("decodes the classics", () => {
+    expect(decodeResistor("brown", "black", "", "red", "gold", false)).toEqual({ ohms: 1000, tolerance: 5 });
+    expect(decodeResistor("yellow", "violet", "", "orange", "gold", false)).toEqual({ ohms: 47000, tolerance: 5 });
+    expect(decodeResistor("orange", "orange", "", "brown", "silver", false)).toEqual({ ohms: 330, tolerance: 10 });
+    // 5-band 1% precision part: 10.0 kΩ.
+    expect(decodeResistor("brown", "black", "black", "red", "brown", true)).toEqual({ ohms: 10000, tolerance: 1 });
+    // Gold multiplier divides: 4.7 Ω.
+    const r = decodeResistor("yellow", "violet", "", "gold", "gold", false);
+    expect((r as { ohms: number }).ohms).toBeCloseTo(4.7, 9);
+  });
+
+  it("the node wires band picks to its outputs", () => {
+    const n = new ResistorCodeNode();
+    // Defaults: brown black × red, gold → 1 kΩ ± 5%.
+    expect(n.data()).toEqual({ ohms: 1000, tolerance: 5 });
+    n.op = "5";
+    n.stringLiterals = { b1: "brown", b2: "black", b3: "black", mult: "red", tol: "brown" };
+    expect(n.data()).toEqual({ ohms: 10000, tolerance: 1 });
   });
 });

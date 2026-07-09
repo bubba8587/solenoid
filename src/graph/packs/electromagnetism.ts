@@ -5,7 +5,7 @@
 // Physics Constant node exposes the same library as a wireable source.
 // SI units throughout; angles in radians (core Trigonometry convention).
 
-import { PhysicsConstantNode } from "../rete-nodes";
+import { PhysicsConstantNode, EmSpectrumNode } from "../rete-nodes";
 import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
 
 // CODATA 2018, written as decimal·10^n so the formula grammar stays simple.
@@ -85,11 +85,21 @@ export const EM_FORMULAS: FormulaPackEntry[] = [
 export const ELECTROMAGNETISM_PACK: Pack = {
   id: "electromagnetism",
   name: "Electromagnetism",
-  description: "Fields, forces, waves, and induction: Coulomb's law, capacitance and inductance from geometry, magnetic fields, Lorentz force, photons, skin depth, Faraday's law — plus the CODATA physical-constants node. Builds on Electricity & Circuits.",
+  description: "Fields, forces, waves, and induction: Coulomb's law, capacitance and inductance from geometry, magnetic fields, Lorentz force, photons, skin depth, Faraday's law, the EM spectrum band namer, and the CODATA physical-constants node. Builds on Electricity & Circuits.",
   builtin: true,
   defaultActive: false,
   dependsOn: ["electricity"],
   nodes: [
+    {
+      path: ["Packs", "Electromagnetism"],
+      entry: {
+        type: "em-spectrum-band",
+        label: "EM Spectrum Band",
+        description: "Name the band for a frequency or wavelength: Radio, Microwave, Infrared, Visible (with its color), Ultraviolet, X-ray, Gamma. Also emits both quantities via c",
+        keywords: "spectrum band radio microwave infrared visible ultraviolet xray gamma light classify",
+        create: () => new EmSpectrumNode(),
+      },
+    },
     {
       path: ["Packs", "Electromagnetism"],
       entry: {

@@ -2,11 +2,16 @@ import {
   ParallelCombineNode as ParallelCombineNodeType,
   ESeriesNode as ESeriesNodeType,
   AwgNode as AwgNodeType,
+  ResistorCodeNode as ResistorCodeNodeType,
+  RESISTOR_DIGIT, RESISTOR_MULT, RESISTOR_TOL,
   type ESeriesOp,
 } from "../rete-nodes";
 import { NodeShell, OpSelect, InlineOutputRows, useNodeField, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { makeNodeComponent } from "./standardNode";
+import { SegToggle } from "./SegToggle";
+import { processGraph } from "../process";
+import { useState } from "react";
 
 export const ParallelCombineComponent =
   makeNodeComponent<ParallelCombineNodeType>((n) => n.cachedResult);
@@ -50,6 +55,72 @@ export function AwgComponent({ data, emit }: NodeProps<AwgNodeType>) {
           { key: "area",       label: "MM²",      value: data.cachedArea },
           { key: "resistance", label: "Ω/KM",     value: data.cachedResistance },
           { key: "ampacity",   label: "AMPACITY", value: data.cachedAmpacity },
+        ]}
+      />
+    </NodeShell>
+  );
+}
+
+
+// ─── Resistor Color Code ───────────────────────────────────────────────────────
+
+// The PHYSICAL band colors (IEC 60062) — information, not decoration, so they
+// are fixed hexes rather than palette tokens (like a chart's data colors).
+const BAND_HEX: Record<string, string> = {
+  black: "#1c1c1c", brown: "#7a4a21", red: "#c62f2f", orange: "#e07b28",
+  yellow: "#e8c02e", green: "#3d8b40", blue: "#2f6bc4", violet: "#8a4fbf",
+  gray: "#9a9a9a", white: "#f2f2f2", gold: "#c19a34", silver: "#bfbfbf",
+};
+
+const cap = (c: string) => c[0].toUpperCase() + c.slice(1);
+const DIGIT_OPTIONS = Object.keys(RESISTOR_DIGIT).map((c) => ({ value: c, label: `${cap(c)} (${RESISTOR_DIGIT[c]})` }));
+const MULT_OPTIONS = Object.keys(RESISTOR_MULT).map((c) => ({ value: c, label: `${cap(c)} (×${RESISTOR_MULT[c] >= 1 ? RESISTOR_MULT[c].toLocaleString("en-US") : RESISTOR_MULT[c]})` }));
+const TOL_OPTIONS = Object.keys(RESISTOR_TOL).map((c) => ({ value: c, label: `${cap(c)} (±${RESISTOR_TOL[c]}%)` }));
+
+/** The resistor glyph: body + lead wire, band colors live from the picks. */
+function ResistorGlyph({ bands }: { bands: string[] }) {
+  const n = bands.length;
+  const bodyX = 14, bodyW = 92, bodyY = 4, bodyH = 20;
+  // Digit/multiplier bands cluster left; the tolerance band sits apart right.
+  const xs = bands.map((_, i) =>
+    i === n - 1 ? bodyX + bodyW - 16 : bodyX + 12 + i * 16);
+  return (
+    <svg viewBox="0 0 120 28" style={{ width: "100%", height: 28, display: "block" }} aria-hidden="true">
+      <line x1="0" y1="14" x2="120" y2="14" stroke="var(--border)" strokeWidth="2" />
+      <rect x={bodyX} y={bodyY} width={bodyW} height={bodyH} rx="7" fill="var(--surface-sunken)" stroke="var(--border)" />
+      {bands.map((c, i) => (
+        <rect key={i} x={xs[i]} y={bodyY + 1} width="7" height={bodyH - 2} fill={BAND_HEX[c] ?? "var(--border)"} />
+      ))}
+    </svg>
+  );
+}
+
+export function ResistorCodeComponent({ data, emit }: NodeProps<ResistorCodeNodeType>) {
+  const [op, setOp] = useNodeField(data, "op");
+  const [, bump] = useState(0);
+  const L = data.stringLiterals;
+  const set = (key: string, v: string) => {
+    L[key] = v;
+    bump((n) => n + 1);
+    void processGraph();
+  };
+  const five = op === "5";
+  const bands = five ? [L.b1, L.b2, L.b3, L.mult, L.tol] : [L.b1, L.b2, L.mult, L.tol];
+  return (
+    <NodeShell node={data} emit={emit} hideOutputSockets>
+      <SegToggle value={op} options={[{ value: "4", label: "4 band" }, { value: "5", label: "5 band" }]} onChange={setOp} />
+      <ResistorGlyph bands={bands} />
+      <OpSelect value={L.b1} options={DIGIT_OPTIONS} onChange={(v) => set("b1", v)} />
+      <OpSelect value={L.b2} options={DIGIT_OPTIONS} onChange={(v) => set("b2", v)} />
+      {five && <OpSelect value={L.b3} options={DIGIT_OPTIONS} onChange={(v) => set("b3", v)} />}
+      <OpSelect value={L.mult} options={MULT_OPTIONS} onChange={(v) => set("mult", v)} />
+      <OpSelect value={L.tol} options={TOL_OPTIONS} onChange={(v) => set("tol", v)} />
+      <InlineOutputRows
+        node={data}
+        emit={emit}
+        rows={[
+          { key: "ohms",      label: "Ω",   value: data.cachedOhms },
+          { key: "tolerance", label: "± %", value: data.cachedTol },
         ]}
       />
     </NodeShell>
