@@ -296,6 +296,7 @@ export function NodeShell({
   collapsible = true,
   squareCollapse = false,
   className,
+  accentOverride,
 }: {
   node: ShellNode;
   emit: Emit;
@@ -312,6 +313,10 @@ export function NodeShell({
   squareCollapse?: boolean;
   /** Extra class on the card (e.g. a node-specific width override). */
   className?: string;
+  /** Forwarded to NodeCard — a header accent replacing the kind color (List /
+   *  Table Input tint their header by the SegToggle's element family, like the
+   *  FC tinting by its socket type). */
+  accentOverride?: string;
 }) {
   // Title edits commit on Enter/clickaway (Escape reverts), NOT per keystroke —
   // a committed rename propagates (processGraph re-renders consumers' wired
@@ -364,7 +369,7 @@ export function NodeShell({
 
   return (
     <NodeFormatContext.Provider value={node.id}>
-      <NodeCard selected={node.selected} node={node} collapsible={collapsible} squareCollapse={squareCollapse} className={className}>
+      <NodeCard selected={node.selected} node={node} collapsible={collapsible} squareCollapse={squareCollapse} className={className} accentOverride={accentOverride}>
         {/* Header hover = the node's catalog one-liner (incl. Excel equivalent)
             — the self-documentation rule. The label display's own title (the
             untruncated label) wins inside its bounds. */}
@@ -693,7 +698,7 @@ export function ValueDisplay({
           )
         : isLogical ? applyLogicalStyle(value as boolean, ann?.logicalStyle)
         : listIsString ? (listInline ? (value as (string | null)[]).map((v) => (v === null ? "null" : cased(v))).join(", ") : <ArrayChip value={value as string[]} />)
-        : isList ? (listInline ? (value as (number | null | SolError)[]).map((v) => formatListCell(v, fmtScalar)).join(", ") : <ArrayChip value={value as number[] | number[][]} />)
+        : isList ? (listInline ? (value as (number | null | SolError)[]).map((v) => formatListCell(v, fmtScalar)).join(", ") : <ArrayChip value={value as number[] | number[][]} elem={nodeOutputIsDate(ctxNodeId) ? "date" : undefined} />)
         : typeof value === "number" && Number.isNaN(value) ? (
             // A residual NaN is dirty DATA, not an error (an error is a tagged
             // SolError, rendered red above). Quiet muted affordance + a structural

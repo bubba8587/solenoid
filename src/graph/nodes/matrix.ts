@@ -1,9 +1,10 @@
 import { ClassicPreset } from "rete";
 import { numIn, numOut, listIn, anyIn, anyOut, anyTableIn, anyTableOut, tableIn, tableOut, frameIn } from "./shared";
 import { toAnyMatrix, type Cell } from "./coerce";
+import { tableSocket, strTableSocket, dateTableSocket, logicalTableSocket } from "../sockets";
 import { parseCsvRows } from "../csv";
 import { solError, isSolError, type SolError } from "../errorValue";
-import { isFrameValue, frameRowCount } from "../frame";
+import { isFrameValue, frameRowCount, coerceFrameCell } from "../frame";
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
@@ -119,54 +120,89 @@ function matInverse(m: NumMat): NumMat | null {
   return aug.map(row => row.slice(n));
 }
 
-export function parseTableText(text: string): Mat | null {
-  const raw = parseCsvRows(text);
-  if (raw.length === 0) return null;
-  const cols = raw[0].length;
-  const rows: (number | null)[][] = [];
-  for (const r of raw) {
-    if (r.length !== cols) return null; // ragged → reject the whole table
-    const cells: (number | null)[] = [];
-    for (const v of r) {
-      const t = v.trim();
-      if (t === "") { cells.push(null); continue; } // a blank cell is MISSING → null
-      const n = Number(t);
-      if (Number.isNaN(n)) return null; // a non-blank, non-numeric cell → not a numeric table
-      cells.push(n);
-    }
-    rows.push(cells);
-  }
-  return rows;
-}
-
-// Serialize a matrix back to the Table Input text form (one row per line, values
-// comma-separated) — the inverse of parseTableText, used when the grid editor
-// saves edits back to the node.
-export function tableToText(m: Mat): string {
-  return m.map(row => row.join(", ")).join("\n");
-}
-
 // ─── TABLE INPUT ──────────────────────────────────────────────────────────────
+// A LITERAL source, exactly like Frame Input (subsystem-invariants "Frame Input
+// is a LITERAL source"): `tableText` stores the raw text the user typed, the
+// typed matrix is DERIVED at compute, and the grid editor edits the raw cells —
+// never a parse→serialize round trip (the old one silently coerced bad text
+// away). A blank cell is null (missing); an unparseable cell is NaN — dirty
+// data with the quiet display affordance, deliberately NOT an error badge
+// (1.0-tail #6). One homogeneous element type per table, switched by the
+// card's SegToggle (the List Input pattern; mixed columns is Frame Input's job).
+
+export type TableElemType = "number" | "string" | "date" | "logical";
+
+export const TABLE_ELEM_SOCKET = {
+  number: tableSocket,
+  string: strTableSocket,
+  date: dateTableSocket,
+  logical: logicalTableSocket,
+} as const;
+
+/** Split the literal text into RAW CELLS — lossless (parseCsvRows handles
+ *  quoting); ragged rows pad with "" so the grid always shows a rectangle. */
+export function tableRawCells(text: string): string[][] {
+  const raw = parseCsvRows(text);
+  if (raw.length === 0) return [];
+  const cols = raw.reduce((m, r) => Math.max(m, r.length), 0);
+  return raw.map((r) => Array.from({ length: cols }, (_, j) => (r[j] ?? "").trim()));
+}
+
+/** Serialize raw cells back to the text form — re-quoting a cell that would
+ *  otherwise be ambiguous (RFC 4180), so the round trip is verbatim. The
+ *  friendly ", " separator drops to a bare "," when any cell needs quoting: a
+ *  quoted field must start immediately after the comma (Papa is RFC-strict —
+ *  a space before the opening quote de-quotes the field). */
+export function rawCellsToText(cells: string[][]): string {
+  const needsQuote = (c: string) => /[",\n]/.test(c);
+  const q = (c: string) => (needsQuote(c) ? `"${c.replace(/"/g, '""')}"` : c);
+  const sep = cells.some((r) => r.some(needsQuote)) ? "," : ", ";
+  return cells.map((r) => r.map(q).join(sep)).join("\n");
+}
+
+/** Derive the typed matrix from raw cells via the frame family's OWN per-type
+ *  coercion (coerceFrameCell): blank → null, an unparseable number/date → NaN
+ *  (dirty data), a bad logical → null (coerceLogical's contract) — so Table
+ *  Input's bad-cell semantics are Frame Input's by construction. */
+export function deriveTable(cells: string[][], dt: TableElemType): CellMat {
+  return cells.map((row) => row.map((c) => coerceFrameCell(dt, c) as Cell));
+}
 
 export class TableInputNode extends ClassicPreset.Node {
   label: string;
-  cachedResult: Mat | null = null;
+  cachedResult: CellMat | null = null;
   tableText: string = "1, 0\n0, 1";
-  width = 220; height = 220;
+  dataType: TableElemType;
+  width = 220; height = 250;
 
-  constructor(init?: { label?: string; tableText?: string }) {
+  constructor(init?: { label?: string; tableText?: string; dataType?: TableElemType }) {
     super("TableInput");
     this.label = init?.label ?? "Table Input";
     if (init?.tableText != null) this.tableText = init.tableText;
-    this.addOutput("table", tableOut("Table"));
+    this.dataType = init?.dataType ?? "number";
+    this.addOutput("table", new ClassicPreset.Output(TABLE_ELEM_SOCKET[this.dataType], "Table"));
     // Dimensions are available from the ROWS / COLUMNS node, so no redundant
     // number outputs here — just the table.
   }
 
+  /** The raw text cells — the grid editor's truth. */
+  rawCells(): string[][] { return tableRawCells(this.tableText); }
+
+  /** Switch the element type IN PLACE (re-types the output socket; the component
+   *  follows with retypeOutputCables — an in-place retype fires no connection
+   *  event). Returns false when unchanged. */
+  setDataType(dt: TableElemType): boolean {
+    if (this.dataType === dt) return false;
+    this.dataType = dt;
+    const out = this.outputs.table;
+    if (out) out.socket = TABLE_ELEM_SOCKET[dt];
+    return true;
+  }
+
   data() {
-    const m = parseTableText(this.tableText);
-    this.cachedResult = m;
-    return { table: m };
+    const cells = this.rawCells();
+    this.cachedResult = cells.length ? deriveTable(cells, this.dataType) : null;
+    return { table: this.cachedResult };
   }
 }
 

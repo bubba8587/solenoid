@@ -1,5 +1,6 @@
-import { tablePopup, type Cell } from "../tablePopupStore";
+import { tablePopup, type Cell, type TablePopupState } from "../tablePopupStore";
 import { useHostNodeId } from "./nodeContext";
+import { isSolError } from "../errorValue";
 import "./ArrayChip.css";
 
 // A list or a table (2D), of numbers (number/list/table sockets) or text
@@ -21,6 +22,28 @@ function cellTypeOf(v: ArrayValue): "number" | "string" {
   return typeof first === "string" ? "string" : "number";
 }
 
+export type ElemFamily = "number" | "string" | "date" | "logical";
+
+/** The chip's element-family tint, when the container is HOMOGENEOUS and known.
+ *  Dates are indistinguishable from numbers by value (serials) — a caller that
+ *  knows the socket family passes `elem` instead. Mixed/unknown → undefined
+ *  (the container-kind default color — a chip must not guess). */
+function elemFamilyOfCells(v: ArrayValue): ElemFamily | undefined {
+  let fam: ElemFamily | undefined;
+  for (const cell of (is2D(v) ? (v as Cell[][]).flat() : (v as Cell[]))) {
+    if (cell === null || cell === undefined || isSolError(cell)) continue; // blanks/errors don't vote
+    const f: ElemFamily | undefined =
+      typeof cell === "number" ? "number"
+      : typeof cell === "string" ? "string"
+      : typeof cell === "boolean" ? "logical"
+      : undefined;
+    if (!f) return undefined;
+    if (fam && fam !== f) return undefined; // mixed — no tint
+    fam = f;
+  }
+  return fam;
+}
+
 /**
  * A clickable chip for an array value — `[List]` for a 1D list, `[R×C Table]` for
  * a 2D table — that opens the full grid in the CSV popup. Works for numeric and
@@ -28,7 +51,7 @@ function cellTypeOf(v: ArrayValue): "number" | "string" {
  * readouts: result boxes are too narrow for an inline value preview, so the chip
  * stands alone. Pass a `label` to title the popup.
  */
-export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId }: {
+export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId, elem, popupOverrides }: {
   value: ArrayValue;
   label?: string;
   /** `"sm"` is the compact chip used in node result boxes (where a grid preview
@@ -49,6 +72,15 @@ export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId
    *  the popup can still pin that member. Leave unset (and outside any node) for
    *  the HUD chips, which are already pinned. */
   pinNodeId?: string;
+  /** Element-family tint override — pass when the caller KNOWS the socket family
+   *  (a date list's serials are numbers by value). Otherwise the chip derives it
+   *  from the cells when they're homogeneous, and stays the container color when
+   *  mixed or empty. */
+  elem?: ElemFamily;
+  /** Extra fields merged into the popup open() — Table Input passes its raw
+   *  literal cells + onSaveRaw so the grid edits source text, never derived
+   *  values. */
+  popupOverrides?: Partial<TablePopupState>;
 }) {
   // The node the Pin action targets: an explicit prop wins (group readouts), else
   // the host node from context (a chip inside a node body), else null (HUD chips).
@@ -58,6 +90,12 @@ export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId
   const table = is2D(value);
   const rows = value.length;
   const cols = table ? (value[0] as number[]).length : 1;
+  // Family tint class: explicit socket knowledge wins, else a homogeneous cell
+  // scan; numeric keeps the container default (no visual churn).
+  const family = elem ?? elemFamilyOfCells(value);
+  const famClass = family && family !== "number"
+    ? ` solenoid-array-chip--elem-${family}${table ? "-table" : ""}`
+    : "";
 
   // Lists are always 1D, so the chip just says "List" — only tables show R×C.
   const chipLabel = table ? `${rows}×${cols} Table` : "List";
@@ -67,7 +105,7 @@ export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId
   return (
     <button
       type="button"
-      className={`solenoid-array-chip solenoid-array-chip--array${size === "sm" ? " solenoid-array-chip--sm" : ""}`}
+      className={`solenoid-array-chip solenoid-array-chip--array${famClass}${size === "sm" ? " solenoid-array-chip--sm" : ""}`}
       title={titleText}
       onClick={(e) => {
         e.stopPropagation();
@@ -96,6 +134,7 @@ export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId
           groupColorDark: groupColorDark || undefined,
           pinNodeId: hostId ?? undefined,
           onSave,
+          ...popupOverrides,
         });
       }}
       onPointerDown={(e) => e.stopPropagation()}

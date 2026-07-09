@@ -158,7 +158,7 @@ export function TablePopup() {
     setView("grid");
     // A literal-source editor opens in SOURCE so you can edit raw text immediately;
     // a read-only view opens FORMATTED (nice dates).
-    setDisplayMode(state.onSaveSource ? "source" : "formatted");
+    setDisplayMode(state.onSaveSource || state.onSaveRaw ? "source" : "formatted");
   }, [state]);
 
   useEffect(() => {
@@ -173,9 +173,9 @@ export function TablePopup() {
   if (!state) return null;
   const cellType: CellType = state.cellType ?? "number";
   // Editable when a numeric matrix save (Table Input) or a frame save is wired.
-  const editable = (!!state.onSave && cellType === "number") || !!state.onSaveFrame || !!state.onSaveSource;
-  // Literal-source editor (Frame Input): the grid holds RAW text, never coerced.
-  const literalSource = !!state.onSaveSource;
+  const editable = (!!state.onSave && cellType === "number") || !!state.onSaveFrame || !!state.onSaveSource || !!state.onSaveRaw;
+  // Literal-source editor (Frame Input / Table Input): the grid holds RAW text, never coerced.
+  const literalSource = !!state.onSaveSource || !!state.onSaveRaw;
   // Formatted PREVIEW (derived render, read-only) — only meaningful for a literal source.
   const formattedPreview = literalSource && displayMode === "formatted";
   const editableHeaders = editable && !!state.editableHeaders;
@@ -348,7 +348,8 @@ export function TablePopup() {
     }));
   }
   function save() {
-    if (state?.onSaveSource) state.onSaveSource(buildSourceColumns());
+    if (state?.onSaveRaw) state.onSaveRaw(grid.map((row) => [...row]));
+    else if (state?.onSaveSource) state.onSaveSource(buildSourceColumns());
     else if (state?.onSaveFrame) state.onSaveFrame(buildFrameColumns());
     else state?.onSave?.(fromGrid(grid), editableHeaders ? headerNames : state.headers);
     tablePopup.close();

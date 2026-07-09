@@ -52,6 +52,11 @@ export interface TablePopupState {
    *  hands back the raw source. Takes precedence over onSaveFrame/onSave. */
   literalSource?: boolean;
   onSaveSource?: (columns: FrameSourceColumn[]) => void;
+  /** Lean literal-source mode (Table Input): `data` holds the RAW text cells
+   *  (row-major, no headers/column chrome); the uniform `cellType` drives the
+   *  Formatted preview. Save hands back the raw cells verbatim. Same precedence
+   *  tier as onSaveSource. */
+  onSaveRaw?: (cells: string[][]) => void;
   /** When provided, the editor is editable and Save calls this with the parsed
    *  grid (and, for editableHeaders, the edited column names). Omit for a
    *  read-only view (computed tables, all string lists). */
