@@ -138,7 +138,7 @@ export { TableInputComponent } from "./TableInputNode";
 export {
   MatDetComponent, TableMultComponent, TableUnitComponent,
   TableTransposeComponent, HStackTableComponent,
-  TableReshapeComponent, TableSelectComponent, TableInfoComponent,
+  TableReshapeComponent, TableSelectComponent, TableTakeDropComponent, ExpandTableComponent, TableInfoComponent,
 } from "./MatrixNodes";
 export { MapTableComponent, ByAxisComponent, MakeArrayComponent, ReduceLambdaComponent } from "./TableLambdaNodes";
 export { LambdaComponent } from "./LambdaNode";

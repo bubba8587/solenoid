@@ -354,6 +354,28 @@ describe("Filter — a null/unknown predicate row is excluded (SQL WHERE keeps o
     const r = new FilterNode({ op: "gt" }).data({ list: [[[1, null, 3]]], threshold: [1] }).result;
     expect(r).toEqual([[3]]);
   });
+
+  it("Dropped is the exhaustive complement by position (Kept ∪ Dropped = input)", () => {
+    const out = new FilterNode({ op: "gt" }).data({ list: [[[1, null, 3]]], threshold: [1] });
+    expect(out.result).toEqual([[3]]);
+    // The null cell failed the predicate, so it lands in Dropped — nothing vanishes.
+    expect(out.dropped).toEqual([[1, null]]);
+  });
+
+  it("a mask splits rows of a 2-D table into Kept and Dropped", () => {
+    const out = new FilterNode().data({
+      list: [[[1, 2], [3, 4], [5, 6]]],
+      mask: [[1, 0, 1]],
+    });
+    expect(out.result).toEqual([[1, 2], [5, 6]]);
+    expect(out.dropped).toEqual([[3, 4]]);
+  });
+
+  it("a shape error lands on BOTH outputs", () => {
+    const out = new FilterNode().data({ list: [[[1, 2], [3, 4]]], mask: [[1, 0, 1]] });
+    expect(isSolError(out.result)).toBe(true);
+    expect(isSolError(out.dropped)).toBe(true);
+  });
 });
 
 describe("Fill / Coalesce — missing-value strategies (array-semantics policy)", () => {

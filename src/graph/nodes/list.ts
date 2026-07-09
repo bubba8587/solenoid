@@ -323,20 +323,25 @@ export class SortNode extends ClassicPreset.Node {
   }
 }
 
+// Position-based (element-blind) 1-D utilities — Reverse, Slice, Take, Drop,
+// Shuffle, NthElement, Interleave, Pad — ride the element-agnostic `anylist`
+// sockets: they only move positions, so text/date/logical lists work too
+// (the D15 coherence sweep). Order/arithmetic ops (Sort, Cumulative) stay
+// typed — they need comparison/arithmetic semantics.
 export class ReverseNode extends ClassicPreset.Node {
   label: string;
-  cachedList: number[] = [];
+  cachedList: unknown[] = [];
   width = 180;
   height = 120;
 
   constructor(init?: { label?: string }) {
     super("Reverse");
     this.label = init?.label ?? "REVERSE";
-    this.addInput("list", listIn("List"));
-    this.addOutput("result", listOut("Reversed"));
+    this.addInput("list", anyListIn("List"));
+    this.addOutput("result", anyListOut("Reversed"));
   }
 
-  data(inputs: { list?: number[][] }) {
+  data(inputs: { list?: unknown[][] }) {
     const arr = inputs.list?.[0] ?? [];
     const reversed = [...arr].reverse();
     this.cachedList = reversed;
@@ -346,7 +351,7 @@ export class ReverseNode extends ClassicPreset.Node {
 
 export class SliceNode extends ClassicPreset.Node {
   label: string;
-  cachedList: number[] = [];
+  cachedList: unknown[] = [];
   // 1-based, inclusive. `end` unset → through the end of the list.
   literals: Record<string, number> = { start: 1 };
   width = 180;
@@ -355,13 +360,13 @@ export class SliceNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("Slice");
     this.label = init?.label ?? "SLICE";
-    this.addInput("list",  listIn("List"));
+    this.addInput("list",  anyListIn("List"));
     this.addInput("start", numIn("Start"));
     this.addInput("end",   numIn("End"));
-    this.addOutput("result", listOut("Slice"));
+    this.addOutput("result", anyListOut("Slice"));
   }
 
-  data(inputs: { list?: number[][]; start?: number[]; end?: number[] }) {
+  data(inputs: { list?: unknown[][]; start?: number[]; end?: number[] }) {
     const arr = inputs.list?.[0] ?? [];
     const start = Math.round(inputs.start?.[0] ?? this.literals.start ?? 1);
     const endRaw = inputs.end?.[0] ?? this.literals.end;
@@ -389,6 +394,7 @@ export class FilterNode extends ClassicPreset.Node {
   op2: ComparisonOp;
   combine: FilterCombine;
   cachedResult: (number | null)[][] | SolError | null = null;
+  cachedDropped: (number | null)[][] | SolError | null = null;
   literals: Record<string, number> = { threshold: 0, threshold2: 0 };
   width = 190;
   height = 210;
@@ -410,6 +416,11 @@ export class FilterNode extends ClassicPreset.Node {
     this.addInput("threshold",  numIn("Value"));
     this.addInput("threshold2", numIn("Value 2"));
     this.addOutput("result",    tableOut("Kept"));
+    // The complement is computed in the same pass anyway, so it's a PERMANENT
+    // second output (never a mode: a dropdown that toggles a socket into
+    // existence kills downstream cables on switch — the D14/D15 fixed-socket
+    // rule). Kept ∪ Dropped = the whole input, split by position.
+    this.addOutput("dropped",   tableOut("Dropped"));
   }
 
   private predicate(x: number, t1: number, t2: number): boolean {
@@ -422,18 +433,20 @@ export class FilterNode extends ClassicPreset.Node {
   data(inputs: {
     list?: (number | null)[][][]; mask?: number[][];
     threshold?: number[]; threshold2?: number[];
-  }): { result: (number | null)[][] | SolError | null } {
+  }): { result: (number | null)[][] | SolError | null; dropped: (number | null)[][] | SolError | null } {
     const m = inputs.list?.[0] ?? null; // coerced to a matrix by the engine boundary
     this.cachedResult = null;
+    this.cachedDropped = null;
     // A mask that lines up with neither dimension, or a 2-D table with no explicit
     // mask, is a dimension mismatch — emit #SHAPE! so it shows the red badge here
     // and propagates downstream like every other error.
-    const shapeErr = (msg: string): { result: SolError } => {
+    const shapeErr = (msg: string): { result: SolError; dropped: SolError } => {
       const e = solError("#SHAPE!", msg);
       this.cachedResult = e;
-      return { result: e };
+      this.cachedDropped = e;
+      return { result: e, dropped: e };
     };
-    if (!m || m.length === 0) return { result: null };
+    if (!m || m.length === 0) return { result: null, dropped: null };
     const rows = m.length, cols = m[0]?.length ?? 0;
 
     const maskIn = inputs.mask?.[0];
@@ -464,8 +477,14 @@ export class FilterNode extends ClassicPreset.Node {
     const result = axis === "row"
       ? m.filter((_, i) => keep[i])
       : m.map((row) => row.filter((_, j) => keep[j]));
+    // The complement BY POSITION (not predicate negation): a null cell fails
+    // the predicate, so it lands in Dropped — the split is exhaustive.
+    const dropped = axis === "row"
+      ? m.filter((_, i) => !keep[i])
+      : m.map((row) => row.filter((_, j) => !keep[j]));
     this.cachedResult = result;
-    return { result };
+    this.cachedDropped = dropped;
+    return { result, dropped };
   }
 }
 
@@ -728,7 +747,7 @@ export type TakeDir = "first" | "last";
 export class TakeNode extends ClassicPreset.Node {
   label: string;
   dir: TakeDir;
-  cachedList: number[] = [];
+  cachedList: unknown[] = [];
   literals: Record<string, number> = { count: 1 };
   width = 180;
   height = 170;
@@ -737,12 +756,12 @@ export class TakeNode extends ClassicPreset.Node {
     super("Take");
     this.label = init?.label ?? "TAKE";
     this.dir = init?.dir ?? "first";
-    this.addInput("list",  listIn("List"));
+    this.addInput("list",  anyListIn("List"));
     this.addInput("count", numIn("Count"));
-    this.addOutput("result", listOut("Result"));
+    this.addOutput("result", anyListOut("Result"));
   }
 
-  data(inputs: { list?: number[][]; count?: number[] }) {
+  data(inputs: { list?: unknown[][]; count?: number[] }) {
     const arr = inputs.list?.[0] ?? [];
     const n = Math.round(inputs.count?.[0] ?? this.literals.count ?? 1);
     if (n <= 0) { this.cachedList = []; return { result: [] }; }
@@ -756,7 +775,7 @@ export type DropDir = "first" | "last";
 export class DropNode extends ClassicPreset.Node {
   label: string;
   dir: DropDir;
-  cachedList: number[] = [];
+  cachedList: unknown[] = [];
   literals: Record<string, number> = { count: 1 };
   width = 180;
   height = 170;
@@ -765,12 +784,12 @@ export class DropNode extends ClassicPreset.Node {
     super("Drop");
     this.label = init?.label ?? "DROP";
     this.dir = init?.dir ?? "first";
-    this.addInput("list",  listIn("List"));
+    this.addInput("list",  anyListIn("List"));
     this.addInput("count", numIn("Count"));
-    this.addOutput("result", listOut("Result"));
+    this.addOutput("result", anyListOut("Result"));
   }
 
-  data(inputs: { list?: number[][]; count?: number[] }) {
+  data(inputs: { list?: unknown[][]; count?: number[] }) {
     const arr = inputs.list?.[0] ?? [];
     const n = Math.round(inputs.count?.[0] ?? this.literals.count ?? 1);
     if (n <= 0) { this.cachedList = [...arr]; return { result: this.cachedList }; }
@@ -1030,7 +1049,7 @@ export class RepeatNode extends ClassicPreset.Node {
 // ─── Shuffle ──────────────────────────────────────────────────────────────────
 export class ShuffleNode extends ClassicPreset.Node {
   label: string;
-  cachedList: number[] = [];
+  cachedList: unknown[] = [];
   width = 180; height = 150;
   // Volatile: the random order is fixed until a recalc (or the input length
   // changes), so editing an unrelated node doesn't reshuffle. We keep per-slot
@@ -1041,11 +1060,11 @@ export class ShuffleNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("Shuffle");
     this.label = init?.label ?? "Shuffle";
-    this.addInput("list",    listIn("List"));
-    this.addOutput("result", listOut("Shuffled"));
+    this.addInput("list",    anyListIn("List"));
+    this.addOutput("result", anyListOut("Shuffled"));
   }
 
-  data(inputs: { list?: number[][] }) {
+  data(inputs: { list?: unknown[][] }) {
     const arr = [...(inputs.list?.[0] ?? [])];
     const gen = getRecalcGen();
     if (this.lastGen !== gen || this.keys.length !== arr.length) {
@@ -1064,19 +1083,19 @@ export class ShuffleNode extends ClassicPreset.Node {
 // ─── NthElement ───────────────────────────────────────────────────────────────
 export class NthElementNode extends ClassicPreset.Node {
   label: string;
-  cachedList: number[] = [];
+  cachedList: unknown[] = [];
   literals: Record<string, number> = { n: 2 };
   width = 180; height = 160;
 
   constructor(init?: { label?: string }) {
     super("NthElement");
     this.label = init?.label ?? "Nth Element";
-    this.addInput("list", listIn("List"));
+    this.addInput("list", anyListIn("List"));
     this.addInput("n",    numIn("Step N"));
-    this.addOutput("result", listOut("Every Nth"));
+    this.addOutput("result", anyListOut("Every Nth"));
   }
 
-  data(inputs: { list?: number[][]; n?: number[] }) {
+  data(inputs: { list?: unknown[][]; n?: number[] }) {
     const arr = inputs.list?.[0] ?? [];
     const n = Math.max(1, Math.round(inputs.n?.[0] ?? this.literals.n ?? 2));
     this.cachedList = arr.filter((_, i) => i % n === 0);
@@ -1087,28 +1106,28 @@ export class NthElementNode extends ClassicPreset.Node {
 // ─── Interleave ───────────────────────────────────────────────────────────────
 export class InterleaveNode extends ClassicPreset.Node {
   label: string;
-  cachedList: number[] = [];
+  cachedList: unknown[] = [];
   width = 180; height = 160;
 
   constructor(init?: { label?: string }) {
     super("Interleave");
     this.label = init?.label ?? "Interleave";
-    this.addInput("a", listIn("A"));
-    this.addInput("b", listIn("B"));
-    this.addOutput("result", listOut("Interleaved"));
+    this.addInput("a", anyListIn("A"));
+    this.addInput("b", anyListIn("B"));
+    this.addOutput("result", anyListOut("Interleaved"));
   }
 
-  data(inputs: { a?: number[][]; b?: number[][] }) {
+  data(inputs: { a?: unknown[][]; b?: unknown[][] }) {
     const a = inputs.a?.[0] ?? [], b = inputs.b?.[0] ?? [];
     // Ragged inputs pad to the LONGEST with null so the A/B alternation stays
     // aligned and no tail element is silently dropped.
     const n = Math.max(a.length, b.length);
-    const out: (number | null)[] = [];
+    const out: unknown[] = [];
     for (let i = 0; i < n; i++) {
       out.push(i < a.length ? a[i] : null, i < b.length ? b[i] : null);
     }
-    this.cachedList = out as number[];
-    return { result: out as number[] };
+    this.cachedList = out;
+    return { result: out };
   }
 }
 
@@ -1123,7 +1142,7 @@ export const PAD_OP_META = {
 export class PadNode extends ClassicPreset.Node {
   label: string;
   dir: PadDir;
-  cachedList: number[] = [];
+  cachedList: unknown[] = [];
   literals: Record<string, number> = { n: 5, fill: 0 };
   width = 180; height = 230;
 
@@ -1131,13 +1150,13 @@ export class PadNode extends ClassicPreset.Node {
     super("Pad");
     this.label = init?.label ?? "Pad";
     this.dir = init?.dir ?? "right";
-    this.addInput("list", listIn("List"));
+    this.addInput("list", anyListIn("List"));
     this.addInput("n",    numIn("Target length"));
     this.addInput("fill", numIn("Fill value"));
-    this.addOutput("result", listOut("Padded"));
+    this.addOutput("result", anyListOut("Padded"));
   }
 
-  data(inputs: { list?: number[][]; n?: number[]; fill?: number[] }) {
+  data(inputs: { list?: unknown[][]; n?: number[]; fill?: number[] }) {
     const arr  = inputs.list?.[0] ?? [];
     const n    = Math.round(inputs.n?.[0] ?? this.literals.n ?? 5);
     const fill = inputs.fill?.[0] ?? this.literals.fill ?? 0;

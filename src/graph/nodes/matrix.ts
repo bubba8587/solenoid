@@ -324,11 +324,9 @@ export class TableTransposeNode extends ClassicPreset.Node {
 // recoverable (IFNA/Fill), where the old whole-result #SHAPE! made the common
 // "stack a 3-list on a 5-list" case unusable.
 
-/** One #N/A pad cell per data() pass (SolErrors are immutable — sharing is fine).
- *  Typed through Cell: the runtime matrix model carries per-cell SolErrors even
- *  though the pure-reshape Cell alias predates them (array-semantics policy). */
+/** One #N/A pad cell per data() pass (SolErrors are immutable — sharing is fine). */
 function padCell(what: string): Cell {
-  return solError("#N/A", `Padded: this input is ${what} than the largest one`) as unknown as Cell;
+  return solError("#N/A", `Padded: this input is ${what} than the largest one`);
 }
 
 /** Shared extensible-row plumbing for the two stackers. */
@@ -473,7 +471,7 @@ export class TableReshapeNode extends ClassicPreset.Node {
       const list = toAnyMatrix(inputs.list?.[0])?.flat() ?? null;
       const w = Math.round(inputs.wrapCount?.[0] ?? this.literals.wrapCount ?? 3);
       if (!list || w < 1) return { result: null };
-      const na = solError("#N/A", "Padded: the list doesn't fill the last row") as unknown as Cell;
+      const na: Cell = solError("#N/A", "Padded: the list doesn't fill the last row");
       const rows: CellMat = [];
       for (let i = 0; i < list.length; i += w) {
         const row = list.slice(i, i + w);
@@ -486,7 +484,7 @@ export class TableReshapeNode extends ClassicPreset.Node {
       const list = toAnyMatrix(inputs.list?.[0])?.flat() ?? null;
       const w = Math.round(inputs.wrapCount?.[0] ?? this.literals.wrapCount ?? 3);
       if (!list || w < 1) return { result: null };
-      const na = solError("#N/A", "Padded: the list doesn't fill the last column") as unknown as Cell;
+      const na: Cell = solError("#N/A", "Padded: the list doesn't fill the last column");
       const nCols = Math.ceil(list.length / w);
       const mat: CellMat = Array.from({ length: w }, () => Array<Cell>(nCols).fill(na));
       for (let i = 0; i < list.length; i++) mat[i % w][Math.floor(i / w)] = list[i];
@@ -553,6 +551,110 @@ export class TableSelectNode extends ClassicPreset.Node {
       this.cachedResult = result;
     }
     return { result: this.cachedResult };
+  }
+}
+
+// ─── TAKE / DROP (2-D) ────────────────────────────────────────────────────────
+// Excel's TAKE/DROP are 2-D edge selectors: rows AND columns in one call,
+// positive counts from the start, negative from the end. The 1-D Take/Drop
+// (list.ts) stay the list spellings; these are the table ones. 0 (the default)
+// means "all" for TAKE and "none" for DROP, standing in for Excel's omitted
+// argument.
+
+export type TableTakeDropOp = "take" | "drop";
+
+export const TABLE_TAKEDROP_OP_META = {
+  take: { label: "TAKE (table)", description: "Keep rows/columns from a table's edges: positive counts take from the start, negative from the end, 0 takes all. A bare list counts as ONE ROW — use Cols to take its elements. Excel: TAKE(array, rows, [cols])." },
+  drop: { label: "DROP (table)", description: "Remove rows/columns from a table's edges: positive counts drop from the start, negative from the end, 0 drops none. Excel: DROP(array, rows, [cols])." },
+} satisfies Record<TableTakeDropOp, { label: string; description: string }>;
+
+export class TableTakeDropNode extends ClassicPreset.Node {
+  label: string;
+  op: TableTakeDropOp;
+  cachedResult: CellMat | null = null;
+  literals: Record<string, number> = { rows: 0, cols: 0 };
+  width = 190; height = 250;
+
+  constructor(init?: { label?: string; op?: TableTakeDropOp }) {
+    super("TableTakeDrop");
+    this.op    = init?.op    ?? "take";
+    this.label = init?.label ?? TABLE_TAKEDROP_OP_META[this.op].label;
+    // Labels stay op-neutral — the op dropdown swaps at runtime but sockets
+    // (and their labels) are fixed at construction.
+    this.addInput("matrix", anyTableIn("Table"));
+    this.addInput("rows",   numIn("Rows (± from end)"));
+    this.addInput("cols",   numIn("Cols (± from end)"));
+    this.addOutput("result", anyTableOut("Result"));
+  }
+
+  // 0 = identity for both ops ("take all" / "drop none", Excel's omitted arg).
+  private takeDrop<T>(arr: T[], n: number): T[] {
+    if (n === 0) return arr;
+    if (this.op === "take") {
+      // Counts past the size keep everything (Excel's behavior).
+      return n > 0 ? arr.slice(0, n) : arr.slice(Math.max(0, arr.length + n));
+    }
+    // Drop past the size leaves an empty result, not an error.
+    return n > 0 ? arr.slice(Math.min(n, arr.length)) : arr.slice(0, Math.max(0, arr.length + n));
+  }
+
+  data(inputs: { matrix?: unknown[]; rows?: number[]; cols?: number[] }) {
+    const m = toAnyMatrix(inputs.matrix?.[0]);
+    if (!m || m.length === 0) { this.cachedResult = null; return { result: null }; }
+    const nRows = Math.round(inputs.rows?.[0] ?? this.literals.rows ?? 0);
+    const nCols = Math.round(inputs.cols?.[0] ?? this.literals.cols ?? 0);
+    const result = this.takeDrop(m, nRows).map((r) => [...this.takeDrop(r, nCols)]);
+    this.cachedResult = result;
+    return { result };
+  }
+}
+
+// ─── EXPAND (grow a table, padding new cells) ─────────────────────────────────
+// The 2-D Pad: grow to R×C, new cells fill with the wired Fill value or #N/A
+// (Excel's default). Shrinking is #VALUE! like Excel — TAKE is the shrinker.
+
+export class ExpandNode extends ClassicPreset.Node {
+  label: string;
+  cachedResult: CellMat | SolError | null = null;
+  literals: Record<string, number> = { rows: 0, cols: 0 };
+  width = 190; height = 260;
+
+  constructor(init?: { label?: string }) {
+    super("Expand");
+    this.label = init?.label ?? "EXPAND";
+    this.addInput("matrix", anyTableIn("Table"));
+    this.addInput("rows",   numIn("Rows (0 = keep)"));
+    this.addInput("cols",   numIn("Cols (0 = keep)"));
+    this.addInput("fill",   anyIn("Fill"));
+    this.addOutput("result", anyTableOut("Expanded"));
+  }
+
+  data(inputs: { matrix?: unknown[]; rows?: number[]; cols?: number[]; fill?: unknown[] }): { result: CellMat | SolError | null } {
+    const m = toAnyMatrix(inputs.matrix?.[0]);
+    if (!m || m.length === 0) { this.cachedResult = null; return { result: null }; }
+    const curR = matRows(m), curC = matCols(m);
+    const reqR = Math.round(inputs.rows?.[0] ?? this.literals.rows ?? 0);
+    const reqC = Math.round(inputs.cols?.[0] ?? this.literals.cols ?? 0);
+    const R = reqR > 0 ? reqR : curR;
+    const C = reqC > 0 ? reqC : curC;
+    if (R < curR || C < curC) {
+      const e = solError("#VALUE!", `EXPAND can only grow: the table is ${curR}×${curC}, the target ${R}×${C}. Use TAKE to shrink`);
+      this.cachedResult = e;
+      return { result: e };
+    }
+    const fillRaw = inputs.fill?.[0];
+    const fill = (fillRaw === undefined || fillRaw === null
+      ? solError("#N/A", "Expanded cell with no Fill value")
+      : fillRaw) as Cell;
+    const result: CellMat = [];
+    for (let i = 0; i < R; i++) {
+      const src = i < curR ? m[i] : [];
+      const row: Cell[] = [];
+      for (let j = 0; j < C; j++) row.push(j < src.length ? src[j] : fill);
+      result.push(row);
+    }
+    this.cachedResult = result;
+    return { result };
   }
 }
 
