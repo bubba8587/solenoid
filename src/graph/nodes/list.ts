@@ -190,7 +190,8 @@ export class ListLengthNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("ListLength");
     this.label = init?.label ?? "LENGTH";
-    this.addInput("list", listIn("List"));
+    // Element-blind (it only counts) — anylist like the other position ops.
+    this.addInput("list", anyListIn("List"));
     this.addOutput("result", numOut("Count"));
   }
 
