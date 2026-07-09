@@ -331,6 +331,9 @@ export { StandoffLayer } from "./StandoffLayer";
 // ─── Packs (example built-in pack node) ───────────────────────────────────────
 export { HypotenuseComponent } from "./HypotenuseNode";
 
+// ─── Electricity & Circuits pack ───────────────────────────────────────────────
+export { ParallelCombineComponent, ESeriesComponent, AwgComponent } from "./ElectricalNodes";
+
 // ─── Missing-type placeholder (load-time only, not in the Add menu) ───────────
 export { PlaceholderComponent } from "./PlaceholderNode";
 

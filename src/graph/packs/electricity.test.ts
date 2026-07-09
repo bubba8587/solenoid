@@ -1,0 +1,68 @@
+import { describe, it, expect } from "vitest";
+import { ELECTRICITY_FORMULAS } from "./electricity";
+import { auditFormulaPack, entryByType, evalFormula } from "./formulaTestKit";
+
+const num = (type: string, inputs: Record<string, number>): number => {
+  const r = evalFormula(entryByType(ELECTRICITY_FORMULAS, type), inputs);
+  expect(typeof r, `${type} → ${JSON.stringify(r)}`).toBe("number");
+  return r as number;
+};
+
+describe("Electricity & Circuits formulas", () => {
+  it("every formula compiles and is well-formed", () => {
+    expect(auditFormulaPack(ELECTRICITY_FORMULAS)).toEqual([]);
+  });
+
+  it("Ohm's law triangle is self-consistent", () => {
+    expect(num("elec-ohms-voltage", { i: 2, r: 50 })).toBe(100);
+    expect(num("elec-ohms-current", { v: 100, r: 50 })).toBe(2);
+    expect(num("elec-ohms-resistance", { v: 100, i: 2 })).toBe(50);
+  });
+
+  it("power forms agree with each other", () => {
+    // 12 V across 6 Ω → 2 A, 24 W by every form.
+    expect(num("elec-power-vi", { v: 12, i: 2 })).toBe(24);
+    expect(num("elec-power-i2r", { i: 2, r: 6 })).toBe(24);
+    expect(num("elec-power-v2r", { v: 12, r: 6 })).toBe(24);
+    expect(num("elec-energy", { p: 24, t: 10 })).toBe(240);
+  });
+
+  it("divider, LED resistor, wire resistance, battery life", () => {
+    expect(num("elec-voltage-divider", { vin: 10, r1: 1000, r2: 1000 })).toBe(5);
+    expect(num("elec-led-resistor", { vs: 5, vf: 2, i: 0.02 })).toBe(150);
+    // 100 m of 1.5 mm² copper: 1.724e-8 · 100 / 1.5e-6 = 1.149 Ω
+    expect(num("elec-wire-resistance", { rho: 1.724e-8, len: 100, a: 1.5e-6 })).toBeCloseTo(1.149, 3);
+    expect(num("elec-battery-life", { mah: 2000, ma: 100 })).toBe(20);
+  });
+
+  it("stored energies", () => {
+    expect(num("elec-cap-energy", { c: 1e-6, v: 100 })).toBeCloseTo(0.005, 9);
+    expect(num("elec-ind-energy", { l: 0.01, i: 2 })).toBeCloseTo(0.02, 9);
+  });
+
+  it("reactance, impedance, resonance", () => {
+    // 1 µF at 1 kHz → 159.15 Ω; 10 mH at 1 kHz → 62.83 Ω.
+    expect(num("elec-cap-reactance", { f: 1000, c: 1e-6 })).toBeCloseTo(159.1549, 3);
+    expect(num("elec-ind-reactance", { f: 1000, l: 0.01 })).toBeCloseTo(62.8319, 3);
+    expect(num("elec-rlc-impedance", { r: 30, xl: 60, xc: 20 })).toBe(50); // 3-4-5
+    // 1 mH + 1 µF → 5033 Hz (the classic LC pair).
+    expect(num("elec-resonance", { l: 1e-3, c: 1e-6 })).toBeCloseTo(5032.92, 1);
+  });
+
+  it("transients hit the 63%/37% marks at t = τ", () => {
+    expect(num("elec-rc-tau", { r: 10000, c: 1e-4 })).toBeCloseTo(1, 9);
+    expect(num("elec-rl-tau", { l: 0.5, r: 100 })).toBeCloseTo(0.005, 9);
+    expect(num("elec-cap-charge", { v0: 10, t: 1, r: 10000, c: 1e-4 })).toBeCloseTo(6.3212, 3);
+    expect(num("elec-cap-discharge", { v0: 10, t: 1, r: 10000, c: 1e-4 })).toBeCloseTo(3.6788, 3);
+    // The canonical 555 datasheet example: R1=1k, R2=10k, C=1µF → ~68.6 Hz.
+    expect(num("elec-555-astable", { r1: 1000, r2: 10000, c: 1e-6 })).toBeCloseTo(68.571, 2);
+  });
+
+  it("decibels", () => {
+    expect(num("elec-db-power", { p2: 100, p1: 1 })).toBeCloseTo(20, 9);
+    expect(num("elec-db-voltage", { v2: 10, v1: 1 })).toBeCloseTo(20, 9);
+    expect(num("elec-dbm-to-w", { dbm: 30 })).toBeCloseTo(1, 9);
+    expect(num("elec-dbm-to-w", { dbm: 0 })).toBeCloseTo(0.001, 9);
+    expect(num("elec-w-to-dbm", { w: 1 })).toBeCloseTo(30, 9);
+  });
+});
