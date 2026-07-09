@@ -105,9 +105,9 @@ export const GEOMETRY_PACK: Pack = {
   nodes: [
     { path: ["Numbers", "Trigonometry"], entry: HYPOTENUSE_ENTRY },
     // Formula-data nodes — each a pre-set Expression node, no new class.
-    ...placeFormulas(["Numbers", "Geometry"], GEOMETRY_FORMULAS),
-    ...placeFormulas(["Numbers", "Geometry", "Circles & Arcs"], GEOMETRY_CIRCLES),
-    ...placeFormulas(["Numbers", "Geometry", "Solids"], GEOMETRY_SOLIDS),
+    ...placeFormulas(["Packs", "Geometry"], GEOMETRY_FORMULAS),
+    ...placeFormulas(["Packs", "Geometry", "Circles & Arcs"], GEOMETRY_CIRCLES),
+    ...placeFormulas(["Packs", "Geometry", "Solids"], GEOMETRY_SOLIDS),
   ],
   // Pack contributions to the Format Controller: a unit in an existing group
   // (angle: turns), a unit in a brand-new group (Geometry: pixels), and a number

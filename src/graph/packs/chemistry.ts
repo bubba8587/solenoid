@@ -63,7 +63,7 @@ export const CHEMISTRY_PACK: Pack = {
   defaultActive: false,
   nodes: [
     {
-      path: ["Numbers", "Chemistry"],
+      path: ["Packs", "Chemistry"],
       entry: {
         type: "ch-element",
         label: "Element",
@@ -73,7 +73,7 @@ export const CHEMISTRY_PACK: Pack = {
       },
     },
     {
-      path: ["Numbers", "Chemistry"],
+      path: ["Packs", "Chemistry"],
       entry: {
         type: "ch-molar-mass",
         label: "Molar Mass",
@@ -82,8 +82,8 @@ export const CHEMISTRY_PACK: Pack = {
         create: () => new MolarMassNode(),
       },
     },
-    ...placeFormulas(["Numbers", "Chemistry"], CHEM_AMOUNTS),
-    ...placeFormulas(["Numbers", "Chemistry", "Equilibria & Kinetics"], CHEM_EQUILIBRIA),
+    ...placeFormulas(["Packs", "Chemistry"], CHEM_AMOUNTS),
+    ...placeFormulas(["Packs", "Chemistry", "Equilibria & Kinetics"], CHEM_EQUILIBRIA),
   ],
   units: [
     { id: "mol", label: " mol", group: "chemistry", groupLabel: "Chemistry" },

@@ -79,10 +79,10 @@ export const FLUIDS_PACK: Pack = {
   builtin: true,
   defaultActive: false,
   nodes: [
-    ...placeFormulas(["Numbers", "Fluids"], FLUIDS_BASE),
-    ...placeFormulas(["Numbers", "Fluids", "Pipe Flow"], FLUIDS_PIPE),
+    ...placeFormulas(["Packs", "Fluids"], FLUIDS_BASE),
+    ...placeFormulas(["Packs", "Fluids", "Pipe Flow"], FLUIDS_PIPE),
     {
-      path: ["Numbers", "Fluids", "Pipe Flow"],
+      path: ["Packs", "Fluids", "Pipe Flow"],
       entry: {
         type: "fl-colebrook",
         label: "Friction Factor (Colebrook)",
@@ -91,8 +91,8 @@ export const FLUIDS_PACK: Pack = {
         create: () => new ColebrookNode(),
       },
     },
-    ...placeFormulas(["Numbers", "Fluids", "Pumps & Orifices"], FLUIDS_PUMPS),
-    ...placeFormulas(["Numbers", "Fluids", "Aero & Particles"], FLUIDS_AERO),
+    ...placeFormulas(["Packs", "Fluids", "Pumps & Orifices"], FLUIDS_PUMPS),
+    ...placeFormulas(["Packs", "Fluids", "Aero & Particles"], FLUIDS_AERO),
   ],
   units: [
     { id: "Pa", label: " Pa", group: "pressure", groupLabel: "Pressure" },

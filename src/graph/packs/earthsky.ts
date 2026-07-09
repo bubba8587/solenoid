@@ -51,9 +51,9 @@ export const EARTHSKY_PACK: Pack = {
   builtin: true,
   defaultActive: false,
   nodes: [
-    ...placeFormulas(["Numbers", "Earth & Sky"], EARTH_FORMULAS),
+    ...placeFormulas(["Packs", "Earth & Sky"], EARTH_FORMULAS),
     {
-      path: ["Numbers", "Earth & Sky"],
+      path: ["Packs", "Earth & Sky"],
       entry: {
         type: "es-sun-position",
         label: "Sun Position",
@@ -63,7 +63,7 @@ export const EARTHSKY_PACK: Pack = {
       },
     },
     {
-      path: ["Numbers", "Earth & Sky"],
+      path: ["Packs", "Earth & Sky"],
       entry: {
         type: "es-sunrise-sunset",
         label: "Sunrise / Sunset",
@@ -73,7 +73,7 @@ export const EARTHSKY_PACK: Pack = {
       },
     },
     {
-      path: ["Numbers", "Earth & Sky"],
+      path: ["Packs", "Earth & Sky"],
       entry: {
         type: "es-moon-phase",
         label: "Moon Phase",
@@ -82,6 +82,6 @@ export const EARTHSKY_PACK: Pack = {
         create: () => new MoonPhaseNode(),
       },
     },
-    ...placeFormulas(["Numbers", "Earth & Sky", "Orbits"], ORBIT_FORMULAS),
+    ...placeFormulas(["Packs", "Earth & Sky", "Orbits"], ORBIT_FORMULAS),
   ],
 };

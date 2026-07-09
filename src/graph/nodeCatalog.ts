@@ -186,6 +186,21 @@ export const NODE_CATALOG: CatalogEntry[] = [
       { type: "constant",      label: "Constant",    description: "Predefined value: π, e, φ, ∞, 0, 1, true, false …", create: () => new ConstantNode() },
       { type: "randbetween",   label: "RAND",        description: "Random float in [Bottom, Top]. Defaults to 0–1 (like Excel RAND()). Wire Bottom/Top for a custom range.", create: () => new RandBetweenNode(), parity: false },
       { type: "na",            label: "NA",          description: "Outputs #N/A, which propagates through calculations like Excel. Catch it with IFERROR / IFNA.", create: () => new NaNode() },
+      // Control widgets folded in 2026-07-09 (they're sources too — interactive
+      // ones); the freed top-level row went to Packs.
+      {
+        type: "category", label: "Control", description: "Interactive widgets that drive values in your graph.",
+        children: [
+          { type: "slider",      label: "Slider",      description: "Drag a slider to set a value; configure min, max, and step on the node.", accent: NODE_KIND_ACCENTS.input, create: () => new SliderInputNode() },
+          { type: "angle-dial",  label: "Angle Dial",  description: "A rotary dial: spin or type to set an angle in degrees, 0–359.", create: () => new AngleDialNode() },
+          { type: "date-picker", label: "Date Picker", description: "Pick a day from a calendar field; it outputs the matching date serial. Wire it into any date function.", create: () => new DatePickerNode(), parity: false },
+          { type: "date-range",  label: "Date Range",  description: "Pick a start and end date; it outputs both serials. Subtract them for a duration, or feed a filter's bounds.", create: () => new DateRangeNode(), parity: false, keywords: "date range period start end duration between from to picker" },
+          { type: "xy-pad",      label: "XY Pad",      description: "Drag a handle in a square to set two values at once. Outputs X and Y, each 0–1; scale them with arithmetic for any range.", create: () => new XYPadNode(), parity: false },
+          { type: "color-picker", label: "Color", description: "Pick a color in RGB or HSV and choose the output format: hex, rgb(), or hsl(). Outputs a CSS color string.", create: () => new ColorPickerNode(), parity: false },
+          { type: "slicer",      label: "Slicer",      description: "Filter a Frame like an Excel slicer: pick a column, then click its values to keep matching rows.", create: () => new SlicerNode() },
+          { type: "cable-switch", label: "Input Switch", description: "A multiplexer, distinct from the logical SWITCH: wire several cables in, name each slot, and pick which one passes through. Any type. Switch to Many to check several slots instead; the output becomes a Cube collecting the chosen values (name + value), one row each.", create: () => new CableSwitchNode(), parity: false, keywords: "switch multiplexer select choose route mux named cube collect multi" },
+        ],
+      },
       {
         type: "category", label: "Connections", description: "Live external data: load from a URL, a local CSV, or a web page. Stores the source, not the data; refresh to re-pull.",
         children: [
@@ -199,21 +214,6 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "write-json",    label: "Write JSON",  description: "Write a Frame to a .json file (array of row records): arm it, then press Run. Never writes on its own; a normal recompute only updates the preview. Desktop only.", create: () => new WriteJsonNode(), parity: false },
         ],
       },
-    ],
-  },
-
-  // ── CONTROL ──────────────────────────────────────────────────────────────────
-  {
-    type: "category", label: "Control", description: "Interactive widgets that drive values in your graph.",
-    children: [
-      { type: "slider",      label: "Slider",      description: "Drag a slider to set a value; configure min, max, and step on the node.", accent: NODE_KIND_ACCENTS.input, create: () => new SliderInputNode() },
-      { type: "angle-dial",  label: "Angle Dial",  description: "A rotary dial: spin or type to set an angle in degrees, 0–359.", create: () => new AngleDialNode() },
-      { type: "date-picker", label: "Date Picker", description: "Pick a day from a calendar field; it outputs the matching date serial. Wire it into any date function.", create: () => new DatePickerNode(), parity: false },
-      { type: "date-range",  label: "Date Range",  description: "Pick a start and end date; it outputs both serials. Subtract them for a duration, or feed a filter's bounds.", create: () => new DateRangeNode(), parity: false, keywords: "date range period start end duration between from to picker" },
-      { type: "xy-pad",      label: "XY Pad",      description: "Drag a handle in a square to set two values at once. Outputs X and Y, each 0–1; scale them with arithmetic for any range.", create: () => new XYPadNode(), parity: false },
-      { type: "color-picker", label: "Color", description: "Pick a color in RGB or HSV and choose the output format: hex, rgb(), or hsl(). Outputs a CSS color string.", create: () => new ColorPickerNode(), parity: false },
-      { type: "slicer",      label: "Slicer",      description: "Filter a Frame like an Excel slicer: pick a column, then click its values to keep matching rows.", create: () => new SlicerNode() },
-      { type: "cable-switch", label: "Input Switch", description: "A multiplexer, distinct from the logical SWITCH: wire several cables in, name each slot, and pick which one passes through. Any type. Switch to Many to check several slots instead; the output becomes a Cube collecting the chosen values (name + value), one row each.", create: () => new CableSwitchNode(), parity: false, keywords: "switch multiplexer select choose route mux named cube collect multi" },
     ],
   },
 
@@ -941,6 +941,18 @@ export const NODE_CATALOG: CatalogEntry[] = [
   },
 
   // ── OTHER ────────────────────────────────────────────────────────────────────
+  // ── PACKS ────────────────────────────────────────────────────────────────────
+  // The domain packs' home row (2026-07-09; the top-level slot freed by folding
+  // Control into Input). Declared here EMPTY so it sits before "Other" — the
+  // catalog builder inserts each active pack's nodes under ["Packs", <domain>]
+  // and prunes the row entirely when no pack targets it. Cross-woven pack nodes
+  // (Timesavers presets beside their Excel kin, HYPOTENUSE in Trigonometry)
+  // deliberately stay where they are, marked by the pack dot.
+  {
+    type: "category", label: "Packs", description: "Nodes from your enabled packs, by domain. Manage packs in Settings.",
+    children: [],
+  },
+
   // Catch-all home: the Promo easter egg (below) plus any pack node that doesn't
   // target a specific category. The catalog builder prunes it only if it ends up
   // empty — it won't here, since Promo is a permanent core member.
