@@ -57,3 +57,24 @@ lean; update it when the catalog changes meaningfully.)
 - **Genuinely type-agnostic / passthrough** → `any` (a circle; the true wildcard). Cast, Display, the Test inspector, Cable Switch, Conduit lanes, and the **polyform** formula producers' (Expression / MAP / BYROW / BYCOL / REDUCE / MAKEARRAY / LAMBDA) variable INPUTS, which declare their OUTPUT element type with a Number/Text/Date/Auto result-type selector that swaps the output socket at the node's dimensionality. (REDUCE's iterable `values` and the MAP/BYROW table inputs are `anyTableIn` grids, not `any`; the scalar seed stays `any`.) See the "Polyform" dev-notes entry.
 
 The 2026-06-19 audit found the codebase consistent under this rule. The 2026-06-22 array-semantics + lattice work then ADDED to it: the **logical** family (purple, with `logical↔number` as the one cross-family bridge), `anyTableIn` (grid sockets for the element-agnostic matrix ops, replacing a scalar-circle `any`), and lower-rank→`frame` widening. Governing principle now: **enforce TYPE separation (Cast to cross element families), allow DIMENSIONAL flow** (subsystem-invariants "Socket lattice"; machine-checked by the full-sweep `socketConnect.test.ts`).
+
+## Packs (add-on node bundles — `src/graph/packs/`, 2026-07-09 wave)
+
+Pack nodes live in per-pack files (`packs/electricity.ts`, …), NOT `nodeCatalog.ts` —
+each pack file IS its inventory (formula entries + custom-node placements + FC
+units/formats), and every pack has a vitest file asserting its formulas against
+reference values. Registry/activation: `packs.ts`; authoring shapes: `packs/packShared.ts`.
+The current built-in set — Geometry + Common Excel Timesavers ship ON; the rest ship OFF:
+
+- **Geometry** (ON): 27 formula presets (areas/volumes, circles & arcs, solids) + HYPOTENUSE; DMS format, turn/px units.
+- **Common Excel Timesavers** (ON): core-node reclassification tags + 7 presets (Percent Change, CAGR, Ordinal, Clean Whitespace, Mask, word/occurrence counts) + Reverse Text + Spell Number.
+- **Electricity & Circuits**: 26 presets (Ohm/power, AC & reactance, transients & 555, decibels) + Parallel Combine, E-Series Value, AWG Wire; Electrical FC units + SI-prefix format.
+- **Electromagnetism** (dependsOn electricity): 21 presets (electrostatics, magnetism, waves & photons, induction) + the CODATA Physics Constant node.
+- **Health & Fitness**: 20 presets (BMI/BSA/IBW, body fat, BMR/TDEE, cardio, clinical).
+- **Fluid Mechanics**: 20 presets + the Colebrook root-finding friction-factor node; pressure/flow/viscosity FC units.
+- **Thermodynamics & Air**: 21 presets (ideal gas, heat transfer, psychrometrics) + ISA Standard Atmosphere + Antoine Vapor Pressure; Energy FC units.
+- **Sets & Membership**: Is In (membership mask) + Tally (value counts); claims the core COUNT DISTINCT aggregate op. (Semi/anti join modes are core Join.)
+- **Earth & Sky**: 8 presets (haversine, bearing, gravity, orbits) + NOAA Sun Position, Sunrise/Sunset, Moon Phase.
+- **Chemistry Basics**: 13 presets (amounts, pH, Nernst, Arrhenius, Gibbs, decay) + Element (118 IUPAC weights) + Molar Mass (formula parser); Chemistry FC units.
+
+Composite-shaped pack ideas are planned, not built — `docs/pack-composite-plans.md`.
