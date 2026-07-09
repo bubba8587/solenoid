@@ -72,7 +72,7 @@ export function EquationVarRow({
       >
         {label ?? varKey}
       </span>
-      <ValueDisplay value={value} />
+      <ValueDisplay value={value} socketKey={varKey} />
     </div>
   );
 }
@@ -97,7 +97,7 @@ export function EquationOutRow({
         <NodeSocket side="output" socketKey={socketKey} nodeId={node.id} emit={emit} payload={port.socket} top={top} />
       )}
       <span className="solenoid-node__io-label">{label}</span>
-      <ValueDisplay value={value} />
+      <ValueDisplay value={value} socketKey={socketKey} />
     </div>
   );
 }
