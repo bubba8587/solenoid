@@ -48,9 +48,13 @@ task-shaped additions, one per pack, each with pinned tests:
   note not the formula). Persists via extractInit (LIVE-var-filtered, blanks
   dropped) + INIT_EXTRA_FIELD_ORDER; textForm round-trips it generically.
   `FormulaPackEntry.varDescriptions` lets presets ship them — seeded on Ohm's
-  Law, ideal gas, Nernst, wavelength↔frequency. Report-embed "where:" legend
-  deferred (Expression/Equation embed as VALUES, not formulas — needs a
-  formula-embed mode first; backlog).
+  Law, ideal gas, Nernst, wavelength↔frequency. **Extended to LAMBDA (author
+  follow-up, same session):** LambdaNode carries `varDescriptions` (a `varNames`
+  getter = params + captured lets extractInit filter uniformly), the value
+  carries them (`LambdaValue.descriptions`), and a **LAMBDA wired into a Report
+  renders its formula as KaTeX with a muted "where:" legend beneath** (params
+  first, then described captures) — the report home the Expression/Equation
+  embeds lack (those still embed as values).
 - **Trig deg/rad/Auto + Triangle broadcast (author follow-up):** a `Math` node's
   trig ops (sin/cos/tan/cot/csc/sec + asin/acos/atan/acot; NOT hyperbolic) gained a
   **deg/rad/Auto** SegToggle. Forward trig converts the input deg→rad; inverse trig

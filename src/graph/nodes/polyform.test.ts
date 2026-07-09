@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { ExpressionNode } from "./expression";
 import { EquationNode } from "./equation";
 import { MapTableNode, ByAxisNode, ReduceLambdaNode, MakeArrayNode } from "./tableLambda";
-import { LambdaNode } from "./lambda";
+import { LambdaNode, isLambdaValue } from "./lambda";
 import { isSolError, type SolError } from "../errorValue";
 import { SolenoidSocket, type SocketDataType } from "../sockets";
 
@@ -206,5 +206,19 @@ describe("per-variable descriptions (Expression + Equation)", () => {
   it("the Equation node carries them too", () => {
     const q = new EquationNode({ expr: "v = i * r", varDescriptions: { v: "Voltage (V)", i: "Current (A)", r: "Resistance (Ω)" } });
     expect(q.varDescriptions.r).toBe("Resistance (Ω)");
+  });
+
+  it("Lambda carries them + surfaces them on its VALUE for the Report legend", () => {
+    const l = new LambdaNode({ params: "x, y", expr: "x * y", varDescriptions: { x: "width", y: "height" } });
+    // varNames spans params + captured, so extractInit filters correctly.
+    expect(l.varNames).toContain("x");
+    expect(l.varNames).toContain("y");
+    const out = l.data({});
+    expect(isLambdaValue(out.result)).toBe(true);
+    // The value carries the descriptions so a Report embed can show "where:".
+    expect(isLambdaValue(out.result) && out.result.descriptions).toEqual({ x: "width", y: "height" });
+    // A description-less lambda leaves the value's field undefined (kept small).
+    const bare = new LambdaNode({ params: "x", expr: "x + 1" });
+    expect(isLambdaValue(bare.data({}).result) && (bare.data({}).result as { descriptions?: unknown }).descriptions).toBeUndefined();
   });
 });

@@ -168,13 +168,6 @@ this backlog stays the per-item source of truth.
   itself documents the expected shape. Ties to the 2026-07-06 standing rule (aligned
   columns → one frame input, not parallel sockets — SUMIFS joined that club 2026-07-09,
   so the club is now charts + SUMIFS + the frame verbs).
-- [ ] **Report "where:" legend for Expression/Equation embeds** (2026-07-09 follow-up):
-  the per-variable descriptions (`varDescriptions`) render as a hover tooltip + a
-  popup legend now, but a `` `=name` `` Report embed of an Expression/Equation shows
-  the VALUE, not the formula — so there's no KaTeX to hang a "where: V = voltage…"
-  legend under. Needs a formula-embed mode (render the node's formula as KaTeX in a
-  Report, with the legend beneath); a lambda already renders as a formula there, so
-  that's the natural first home. Small once the embed mode exists.
 - [ ] **Lossless frame→cube (typed `CubeColumn`)** (author-flagged 2026-07-06, bigger
   project) — the ladder is "a Frame IS a Cube with all-flat cells," but `toCube(frame)`
   (`frameToCube`) drops column types because `CubeColumn` is `{name, cells}` with NO

@@ -109,3 +109,21 @@
 .solenoid-ref-embed__title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .solenoid-ref-embed__body { display: block; margin-top: 6px; }
 .solenoid-ref-chartbody { display: block; }
+
+/* A wired lambda's "where:" legend in a Report — prose beneath the KaTeX
+   formula, the math-renders/prose-explains split. Muted, not competing with
+   the equation above it. */
+.solenoid-ref-formula-block { display: block; margin: 12px 0; }
+.solenoid-ref-formula-block .solenoid-ref-formula { margin: 0 0 6px 0; }
+.solenoid-ref-where {
+  display: block;
+  font-size: 0.85em;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.solenoid-ref-where__lead {
+  font-style: italic;
+  margin-right: 6px;
+}
+.solenoid-ref-where__item { display: block; margin-left: 14px; }
+.solenoid-ref-where__item em { font-style: normal; color: var(--text); }
