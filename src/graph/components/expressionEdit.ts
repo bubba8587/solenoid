@@ -47,10 +47,11 @@ export async function applyExprChange(node: ExpressionNode, newExpr: string): Pr
   await processGraph();
 }
 
-/** Card height for an Equation node: header + formula box + one row per input
- *  variable + one output row per variable + the Holds row. */
+/** Card height for an Equation node: header + formula box + one HERO row per
+ *  variable (in+out sockets share the row) + the Check row. The rendered card
+ *  is content-driven; this just seeds a sane size after a formula edit. */
 export function computeEquationHeight(varCount: number): number {
-  return 150 + Math.max(varCount, 0) * 2 * INPUT_ROW_PITCH + INPUT_ROW_PITCH;
+  return 110 + (Math.max(varCount, 0) + 1) * 46;
 }
 
 /**

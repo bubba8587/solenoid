@@ -5,12 +5,12 @@ import { formulaPopup } from "../formulaPopupStore";
 import { getEditor, processGraph } from "../process";
 import { formulaToLatex, evaluateSteps, extractVariables } from "../excelFormula";
 import { nodeKindOf, NODE_KIND_ACCENTS } from "../rete-nodes";
-import type { ExpressionNode, MapTableNode, LambdaNode } from "../rete-nodes";
+import type { ExpressionNode, EquationNode, MapTableNode, LambdaNode } from "../rete-nodes";
 import { appThemeStore } from "../appTheme";
 import { groupMembershipStore } from "../groupMembership";
 import { cableValueStore } from "../cableValueStore";
 import { themeAccent, darkenAccent } from "../palette";
-import { applyExprChange, applyLambdaChange } from "./expressionEdit";
+import { applyExprChange, applyLambdaChange, applyEquationChange } from "./expressionEdit";
 import { FormulaEditor } from "./FormulaEditor";
 import { useFormulaFit } from "./formulaFit";
 import { formatScalar } from "./format";
@@ -33,6 +33,9 @@ type FormulaHost = {
   text: string;
   locked: boolean;
   setText: (s: string) => void | Promise<void>;
+  /** The Equation node: no "=" prefix (the text carries its own), an equation
+   *  placeholder, and the solve-oriented engine note. */
+  equation?: boolean;
 };
 
 // Identify the host by constructor NAME, not instanceof: a Vite hot swap
@@ -49,6 +52,10 @@ function formulaHostOf(node: ClassicPreset.Node | undefined): FormulaHost | null
   if (typeName === "ExpressionNode") {
     const n = node as ExpressionNode;
     return { label, text: n.expr, locked: n.locked, setText: (s) => applyExprChange(n, s) };
+  }
+  if (typeName === "EquationNode") {
+    const n = node as EquationNode;
+    return { label, text: n.expr, locked: n.locked, setText: (s) => applyEquationChange(n, s), equation: true };
   }
   if (typeName === "LambdaNode") {
     const n = node as LambdaNode;
@@ -249,11 +256,11 @@ export function FormulaPopup() {
           {cachedError && <div className="formula-popup__error">{cachedError}</div>}
 
           <div className="formula-popup__edit-row">
-            <span className="formula-popup__prefix">=</span>
+            {!host.equation && <span className="formula-popup__prefix">=</span>}
             <FormulaEditor
               value={text}
               readOnly={locked}
-              placeholder="a * b + c …"
+              placeholder={host.equation ? "V = I * R" : "a * b + c …"}
               rows={2}
               extraNames={varSuggestions}
               autoFocus={!locked}
@@ -266,9 +273,15 @@ export function FormulaPopup() {
               (the known divergences — MOD/ATAN2/RANK/TRIMMEAN/PERCENTRANK/domain errors —
               are overridden to our impl). The load-bearing thing left to tell the user is
               the SHAPE cap: formulas are scalar / 1-D only. See dev-notes 2026-06-25. */}
+          {host.equation ? (
+            <div className="formula-popup__engine-note">
+              ƒ One <strong>=</strong> with variables on either side. Leave exactly one variable unwired and the node solves for it — a quadratic in the unknown returns <strong>both roots</strong>; no real solution is <code>#SOLVE!</code>. Wire every variable and Check turns TRUE/FALSE.
+            </div>
+          ) : (
           <div className="formula-popup__engine-note">
             ƒ Works on <strong>single values and 1-D lists</strong>: it broadcasts element-wise and aggregates a list (SUM, AVERAGE…). A 2-D table/matrix can't go straight into a formula and returns <code>#SHAPE!</code>; use <strong>MAP / BYROW / BYCOL / REDUCE / MAKEARRAY</strong> to run a formula over a table. Those apply it per cell/row and can return 2-D.
           </div>
+          )}
 
           {SHOW_STEPS && steps && (
             <div className="formula-popup__steps">

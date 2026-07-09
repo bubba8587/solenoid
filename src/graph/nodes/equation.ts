@@ -2,8 +2,9 @@
 // Type a relation ("V = I * R"); every variable becomes an input AND an output.
 // Leave exactly one variable unknown (unwired, empty literal) and the node
 // solves for it — symbolically where the algebra inverts (equationSolve.ts),
-// numerically otherwise. Wire (or type) every variable and the always-present
-// Holds? output turns into a truth check with a relative tolerance.
+// numerically otherwise. Wire every variable and the always-present Check
+// output turns into a truth check with a relative tolerance. (Literals in a
+// saved graph still count as known values; the card itself is wire-driven.)
 // Numeric domain only (scalars + 1-D lists; symbolic solving broadcasts).
 
 import { ClassicPreset } from "rete";
@@ -83,7 +84,9 @@ export class EquationNode extends ClassicPreset.Node {
     this.expr = init?.expr ?? "";
     this.locked = init?.locked ?? false;
     if (init?.literals) this.literals = { ...init.literals };
-    this.addOutput("holds", logicalComboOut("Holds?"));
+    // Output key stays "holds" (existing cables reference it); the user-facing
+    // name is "Check".
+    this.addOutput("holds", logicalComboOut("Check"));
     this._rebuild();
   }
 

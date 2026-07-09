@@ -161,3 +161,13 @@
   font-style: italic;
   color: var(--text-muted);
 }
+
+/* Equation node — one hero row per variable (input socket left, output right).
+   The label sits as a small caption above the value box. */
+.solenoid-eq__var-row {
+  margin: 4px 0;
+}
+.solenoid-eq__var-row > .solenoid-node__io-label {
+  display: block;
+  margin-bottom: 1px;
+}

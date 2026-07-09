@@ -14,7 +14,7 @@ import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
 // the old solved-form trio collapsed when the Equation node landed.
 export const ELECTRICITY_BASE: FormulaPackEntry[] = [
   { type: "elec-ohms-law", label: "Ohm's Law", expr: "v = i * r", equation: true,
-    description: "V = I·R, solved for whichever of the three you leave unwired; wire all three and Holds? checks the triangle",
+    description: "V = I·R, solved for whichever of the three you leave unwired; wire all three and Check answers TRUE/FALSE",
     keywords: "ohm ohms law volts amps resistance triangle" },
   { type: "elec-power-vi", label: "Power (V·I)", expr: "v*i",
     description: "Electrical power from voltage and current   (P = V·I)",
