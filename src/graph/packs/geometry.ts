@@ -33,6 +33,44 @@ const GEOMETRY_FORMULAS: FormulaPackEntry[] = [
     description: "Area of a regular n-sided polygon with side length s   (=n*s²/(4·tan(π/n)))" },
 ];
 
+// Second wave (2026-07-09): circles & arcs, 3-D solids, and the Ramanujan
+// ellipse circumference. Same conventions — radians, any consistent length unit.
+export const GEOMETRY_CIRCLES: FormulaPackEntry[] = [
+  { type: "geo-arc-length", label: "Arc Length", expr: "r*theta",
+    description: "Arc of a circle: radius r × central angle theta (radians)   (s = rθ)" },
+  { type: "geo-sector-area", label: "Sector Area", expr: "r^2*theta/2",
+    description: "Pie-slice area: radius r, central angle theta (radians)   (A = ½r²θ)" },
+  { type: "geo-chord", label: "Chord Length", expr: "2*r*SIN(theta/2)",
+    description: "Straight line across a circle: radius r, central angle theta (radians)   (c = 2r·sin(θ/2))" },
+  { type: "geo-segment-area", label: "Circular Segment Area", expr: "r^2/2*(theta-SIN(theta))",
+    description: "Area between a chord and its arc: radius r, central angle theta (radians)   (A = ½r²(θ−sinθ))" },
+  { type: "geo-annulus-area", label: "Annulus Area", expr: "PI()*(r2^2-r1^2)",
+    description: "Ring between two concentric circles: outer r2, inner r1   (A = π(r₂²−r₁²))" },
+  { type: "geo-ellipse-circum", label: "Ellipse Circumference", expr: "PI()*(3*(a+b)-SQRT((3*a+b)*(a+3*b)))",
+    description: "Perimeter of an ellipse with semi-axes a, b — Ramanujan's approximation (error < 0.05%)" },
+];
+
+export const GEOMETRY_SOLIDS: FormulaPackEntry[] = [
+  { type: "geo-distance-3d", label: "Distance (3D)", expr: "SQRT((x2-x1)^2+(y2-y1)^2+(z2-z1)^2)",
+    description: "Straight-line distance between two points (x1,y1,z1) and (x2,y2,z2)" },
+  { type: "geo-cuboid-diag", label: "Box Diagonal", expr: "SQRT(a^2+b^2+c^2)",
+    description: "Space diagonal of an a×b×c box   (d = √(a²+b²+c²))" },
+  { type: "geo-cone-slant", label: "Cone Slant Height", expr: "SQRT(r^2+h^2)",
+    description: "Slant height of a right cone from base radius and height   (l = √(r²+h²))" },
+  { type: "geo-cone-area", label: "Cone Surface Area", expr: "PI()*r*(r+SQRT(r^2+h^2))",
+    description: "Total surface of a right cone (base + side) from radius and height   (A = πr(r+l))" },
+  { type: "geo-cylinder-area", label: "Cylinder Surface Area", expr: "2*PI()*r*(r+h)",
+    description: "Total surface of a closed cylinder from radius and height   (A = 2πr(r+h))" },
+  { type: "geo-pyramid-vol", label: "Pyramid Volume", expr: "b*h/3",
+    description: "Volume of any pyramid or cone from base AREA b and height   (V = Bh/3)" },
+  { type: "geo-tetra-vol", label: "Tetrahedron Volume", expr: "s^3/(6*SQRT(2))",
+    description: "Volume of a regular tetrahedron with edge s   (V = s³/(6√2))" },
+  { type: "geo-torus-vol", label: "Torus Volume", expr: "2*PI()^2*rr*r^2",
+    description: "Volume of a torus: ring radius rr (centre of tube), tube radius r   (V = 2π²Rr²)" },
+  { type: "geo-torus-area", label: "Torus Surface Area", expr: "4*PI()^2*rr*r",
+    description: "Surface of a torus: ring radius rr, tube radius r   (A = 4π²Rr)" },
+];
+
 // Decimal degrees → D°M′S″ (a real geometry/navigation format — demonstrates a
 // pack contributing display logic the core doesn't ship).
 function toDMS(n: number): string {
@@ -68,6 +106,8 @@ export const GEOMETRY_PACK: Pack = {
     { path: ["Numbers", "Trigonometry"], entry: HYPOTENUSE_ENTRY },
     // Formula-data nodes — each a pre-set Expression node, no new class.
     ...placeFormulas(["Numbers", "Geometry"], GEOMETRY_FORMULAS),
+    ...placeFormulas(["Numbers", "Geometry", "Circles & Arcs"], GEOMETRY_CIRCLES),
+    ...placeFormulas(["Numbers", "Geometry", "Solids"], GEOMETRY_SOLIDS),
   ],
   // Pack contributions to the Format Controller: a unit in an existing group
   // (angle: turns), a unit in a brand-new group (Geometry: pixels), and a number
