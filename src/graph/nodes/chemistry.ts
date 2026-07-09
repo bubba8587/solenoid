@@ -8,6 +8,7 @@
 import { ClassicPreset } from "rete";
 import { numOut, strIn } from "./shared";
 import { solError, type SolError } from "../errorValue";
+import type { FormatAnnotation } from "../formatAnnotationStore";
 
 export interface ElementMeta {
   n: number;       // atomic number
@@ -213,6 +214,13 @@ export class ElementNode extends ClassicPreset.Node {
   data() {
     const el = ELEMENT_BY_SYMBOL.get(this.op)!;
     return { mass: el.mass, number: el.n };
+  }
+
+  /** The mass output carries g/mol (per-output, unitFlow `annotationFor`);
+   *  the atomic number stays unitless — the case that was waiting on
+   *  per-output annotations. */
+  annotationFor(outKey: string): FormatAnnotation | undefined {
+    return outKey === "mass" ? { format: "auto", unit: "custom", customUnit: " g/mol" } : undefined;
   }
 }
 

@@ -38,6 +38,17 @@ task-shaped additions, one per pack, each with pinned tests:
   >3 parts → solve from the side-richest subset and CHECK the rest agree at
   1e-6); <3 parts pass through quietly. And the card **draws the triangle to
   scale** (letters only — numbers live in the rows; neutral stroke).
+- **Per-output unit locks + per-socket FC boxes (author follow-up):** unitFlow
+  gained the per-OUTPUT producer seam — `annotationFor(outKey)`, checked before
+  the node-level `annotation()` — so the **Triangle Solver's angles carry °**
+  (sides bare) and **Element's mass carries g/mol** (Z bare; the exact case the
+  Pack-Duty digest recorded as blocked on per-output annotations). And the FC
+  now reaches INDIVIDUAL hero boxes: the write side always was per-socket
+  (`nodeId::socketKey`; findDockTarget snaps to the nearest socket), the READ
+  side caught up — `ValueDisplay` takes a `socketKey` and hero rows
+  (EquationVarRow/EquationOutRow) pass theirs, reading `get(node, socket)`
+  instead of the any-socket `getForNode`, with the per-output producer lock as
+  the resolver fallback so ° shows on the Triangle's own rows too.
 - Pack-level descriptions + node-coverage inventory updated; new node classes in
   `nodes/{emSpectrum,health,triangle}.ts` + additions to electrical/fluids/
   chemistry; cards in `PackToolNodes.tsx`/`ElectricalNodes`/`ChemistryNodes` +

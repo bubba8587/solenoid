@@ -7,6 +7,7 @@
 import { ClassicPreset } from "rete";
 import { numIn, numOut, logicalOut, readInput } from "./shared";
 import { isSolError, solError, type SolError } from "../errorValue";
+import type { FormatAnnotation } from "../formatAnnotationStore";
 
 export interface TriangleGiven {
   a?: number; b?: number; c?: number; // sides (opposite the same-letter angle)
@@ -139,6 +140,15 @@ export class TriangleSolverNode extends ClassicPreset.Node {
   solvedKeys: Set<string> = new Set();
   width = 240;
   height = 430;
+
+  /** The angle outputs CARRY degrees the way a Physics Constant carries its
+   *  unit — per-output (unitFlow `annotationFor`), so A/B/C read as 36.87°
+   *  wherever they flow while the sides stay unitless. */
+  annotationFor(outKey: string): FormatAnnotation | undefined {
+    return outKey === "A" || outKey === "B" || outKey === "C"
+      ? { format: "auto", unit: "custom", customUnit: "\u00b0" }
+      : undefined;
+  }
 
   constructor(init?: { label?: string }) {
     super("TriangleSolver");
