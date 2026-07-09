@@ -210,6 +210,12 @@ export class FilterFrameNode extends ClassicPreset.Node {
   readonly pairLabels: [string, string] = ["Column", "Value"];
   cachedResult: FrameValue | SolError | null = null;
   stringLiterals: Record<string, string> = {};
+  // emitFrame's pass-guard fields (stamped structurally on every verb node) —
+  // declared here because the Dropped ref lifecycle below reads them directly.
+  _gen?: number;
+  _ref?: FrameRef | null;
+  /** The Dropped output's owned ref — same lifecycle as _ref, no preview. */
+  _refDropped?: FrameRef | null;
   width = 210; height = 240;
 
   constructor(init?: {
@@ -233,6 +239,10 @@ export class FilterFrameNode extends ClassicPreset.Node {
       this.addValuePair();
     }
     this.addOutput("frame", frameOut("Kept"));
+    // The complement, permanently — same fixed-socket rule as the list Filter's
+    // Dropped (never a mode). A lazy ref: costs nothing until a consumer
+    // collects it, so the always-on second output is free.
+    this.addOutput("dropped", frameOut("Dropped"));
   }
 
   private addPairWithId(id: number): void {
@@ -263,9 +273,23 @@ export class FilterFrameNode extends ClassicPreset.Node {
     // the surviving entry restores its op/matchCase; reload prunes orphans.
   }
 
+  /** emitFrame's stale-pass + previous-ref lifecycle for the secondary output,
+   *  minus the preview — the card never materializes Dropped; it stays a lazy
+   *  ref until a consumer collects it. */
+  private publishDropped(gen: number, out: FrameRef | FrameValue | SolError | null): FrameRef | FrameValue | SolError | null {
+    if (gen !== this._gen) {
+      if (isFrameRef(out) && out !== this._refDropped) dropFrameRef(out);
+      return null;
+    }
+    if (this._refDropped && this._refDropped !== out) dropFrameRef(this._refDropped);
+    this._refDropped = isFrameRef(out) ? out : null;
+    return out;
+  }
+
   async data(inputs: { frame?: (FrameInput | null)[]; [k: string]: unknown[] | undefined }) {
     const f = inputs.frame?.[0] ?? null;
-    if (f == null) return emitFrame(this, beginPass(this), null);
+    const gen = beginPass(this);
+    if (f == null) return { ...(await emitFrame(this, gen, null)), dropped: this.publishDropped(gen, null) };
     const conditions: FilterCond[] = [];
     for (const [colKey, valKey] of this.valuePairKeys()) {
       const id = colKey.slice(6);
@@ -275,9 +299,15 @@ export class FilterFrameNode extends ClassicPreset.Node {
       const cfg = this.condConfig[id];
       conditions.push({ column: col, op: cfg?.op ?? "gt", value: val as FrameCell, matchCase: cfg?.matchCase ?? false });
     }
-    return emitFrame(this, beginPass(this), conditions.length === 0
-      ? await readFrame(f)
-      : await runFrameUnary(f, { kind: "filterMulti", combine: this.combine, conditions }));
+    if (conditions.length === 0) {
+      // Pass-through ("not written yet"): Kept = everything, Dropped = blank.
+      return { ...(await emitFrame(this, gen, await readFrame(f))), dropped: this.publishDropped(gen, null) };
+    }
+    // Two independent lazy refs off the same input: the kept filter and its ROW
+    // complement (null-predicate rows land in Dropped, not lost — see D15).
+    const kept = await runFrameUnary(f, { kind: "filterMulti", combine: this.combine, conditions });
+    const dropped = await runFrameUnary(f, { kind: "filterMulti", combine: this.combine, conditions, complement: true });
+    return { ...(await emitFrame(this, gen, kept)), dropped: this.publishDropped(gen, dropped) };
   }
 }
 

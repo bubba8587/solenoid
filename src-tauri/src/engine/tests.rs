@@ -1010,7 +1010,7 @@ fn filter_multi_and_matches_chained_filters() {
     let out = verb_filter_multi(&f, "and", &[
         cond("qty", "gte", serde_json::json!(10), false),
         cond("city", "eq", serde_json::json!("oslo"), false),
-    ]).unwrap();
+    ], false).unwrap();
     assert_eq!(out.df.height(), 0); // no qty≥10 Oslo row (the JS twin's is the error row)
     let chained = verb_filter(
         &verb_filter(&f, "qty", "gte", &serde_json::json!(10), false).unwrap(),
@@ -1025,7 +1025,7 @@ fn filter_multi_or_unions_conditions() {
     let out = verb_filter_multi(&f, "or", &[
         cond("qty", "gte", serde_json::json!(15), false),
         cond("city", "eq", serde_json::json!("bergen"), false),
-    ]).unwrap();
+    ], false).unwrap();
     let d = dump(&out);
     assert_eq!(d[1].2, vec![Json::String("Bergen".into()), Json::String("Tromso".into())]);
     assert_eq!(d[0].2, j(&[12.0, 20.0]));
@@ -1037,7 +1037,7 @@ fn filter_multi_matchcase_rides_per_condition() {
     let out = verb_filter_multi(&f, "or", &[
         cond("city", "eq", serde_json::json!("bergen"), true), // exact: no match
         cond("city", "startsWith", serde_json::json!("tr"), false), // folded: Tromso
-    ]).unwrap();
+    ], false).unwrap();
     assert_eq!(dump(&out)[1].2, vec![Json::String("Tromso".into())]);
 }
 
@@ -1047,7 +1047,7 @@ fn filter_multi_or_saves_a_row_whose_other_condition_nulled() {
     let out = verb_filter_multi(&f, "or", &[
         cond("qty", "gte", serde_json::json!(0), false),  // null rows fail here…
         cond("city", "eq", serde_json::json!("oslo"), false), // …but two are Oslo
-    ]).unwrap();
+    ], false).unwrap();
     assert_eq!(out.df.height(), 5);
 }
 
@@ -1057,20 +1057,56 @@ fn filter_multi_unparseable_value_matches_no_rows_for_that_condition() {
     let or = verb_filter_multi(&f, "or", &[
         cond("qty", "gt", serde_json::json!("garbage"), false),
         cond("city", "eq", serde_json::json!("bergen"), false),
-    ]).unwrap();
+    ], false).unwrap();
     assert_eq!(dump(&or)[1].2, vec![Json::String("Bergen".into())]);
     let and = verb_filter_multi(&f, "and", &[
         cond("qty", "gt", serde_json::json!("garbage"), false),
         cond("city", "eq", serde_json::json!("bergen"), false),
-    ]).unwrap();
+    ], false).unwrap();
     assert_eq!(and.df.height(), 0);
 }
 
 #[test]
 fn filter_multi_no_conditions_is_identity() {
     let f = multi_fixture();
-    assert_eq!(verb_filter_multi(&f, "or", &[]).unwrap().df.height(), 5);
-    assert_eq!(verb_filter_multi(&f, "and", &[]).unwrap().df.height(), 5);
+    assert_eq!(verb_filter_multi(&f, "or", &[], false).unwrap().df.height(), 5);
+    assert_eq!(verb_filter_multi(&f, "and", &[], false).unwrap().df.height(), 5);
+    // …and the complement of identity is the empty frame (same schema).
+    assert_eq!(verb_filter_multi(&f, "or", &[], true).unwrap().df.height(), 0);
+}
+
+#[test]
+fn filter_multi_complement_is_the_exhaustive_row_complement() {
+    // Kept ∪ Dropped = every row: the null-qty rows FAIL qty≥10, so the
+    // COMPLEMENT keeps them (row complement, not predicate negation) — the
+    // Filter node's Dropped output. JS twin in frameVerbs.test.ts.
+    let f = multi_fixture();
+    let conds = [cond("qty", "gte", serde_json::json!(10), false)];
+    let kept = verb_filter_multi(&f, "and", &conds, false).unwrap();
+    let dropped = verb_filter_multi(&f, "and", &conds, true).unwrap();
+    assert_eq!(kept.df.height() + dropped.df.height(), f.df.height());
+    assert_eq!(dump(&kept)[0].2, j(&[12.0, 20.0]));
+    assert_eq!(dropped.df.height(), 3); // 5 + the two null rows
+}
+
+#[test]
+fn filter_multi_complement_fuses_lazily_and_keeps_null_rows() {
+    // The lazy fold path: fill_null(false).not() must land null-predicate rows
+    // in the complement, mirroring the hand-rolled scan path exactly.
+    let f = multi_fixture();
+    let op: WireOp = serde_json::from_value(serde_json::json!({
+        "kind": "filterMulti", "combine": "or", "complement": true,
+        "conditions": [
+            {"column": "qty", "op": "gte", "value": 15},
+            {"column": "qty", "op": "lt", "value": 6}
+        ]
+    })).unwrap();
+    let out = apply_ops(&f, &[op]).unwrap();
+    let qty = &dump(&out)[0].2;
+    assert_eq!(qty.len(), 3); // kept was [5, 20] → complement = 12 + the two null rows
+    assert_eq!(qty[0], j(&[12.0])[0]);
+    assert_eq!(qty[1], Json::Null);
+    assert_eq!(qty[2], Json::Null);
 }
 
 #[test]
@@ -1079,7 +1115,7 @@ fn filter_multi_unknown_column_errors() {
     assert!(verb_filter_multi(&f, "and", &[
         cond("qty", "gte", serde_json::json!(1), false),
         cond("nope", "eq", serde_json::json!(1), false),
-    ]).is_err());
+    ], false).is_err());
 }
 
 #[test]

@@ -199,7 +199,7 @@ export function FilterFrameComponent({ data, emit }: NodeProps<FilterFrameNodeTy
   }
 
   return (
-    <NodeShell node={data} emit={emit}>
+    <NodeShell node={data} emit={emit} hideOutputSockets>
       {collapsed ? (
         <CollapsedInputPill node={data} emit={emit} keys={["frame", ...pairs.flat()]} />
       ) : (
@@ -270,7 +270,14 @@ export function FilterFrameComponent({ data, emit }: NodeProps<FilterFrameNodeTy
           </button>
         </>
       )}
-      <FrameDisplay frame={data.cachedResult} label={data.label} />
+      <MeasuredSocketRow side="output" socketKey="frame" nodeId={data.id} emit={emit} payload={data.outputs.frame!.socket} hero>
+        <FrameDisplay frame={data.cachedResult} label={data.label} />
+      </MeasuredSocketRow>
+      {/* The complement stays a LAZY ref — no preview here, just its socket
+          (materializing it for a chip would collect a frame nobody asked for). */}
+      <MeasuredSocketRow side="output" socketKey="dropped" nodeId={data.id} emit={emit} payload={data.outputs.dropped!.socket}>
+        <span className="solenoid-node__io-label">Dropped</span>
+      </MeasuredSocketRow>
     </NodeShell>
   );
 }

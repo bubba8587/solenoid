@@ -142,11 +142,6 @@ this backlog stays the per-item source of truth.
 
 ## Nodes / engine
 
-- [ ] **Frame Filter `Dropped` output** — mirror the list Filter's permanent complement
-  output on `FilterFrameNode`: a second lazy ref whose predicate is the ROW complement
-  (null-predicate rows land in Dropped, not lost — NOT plain predicate negation, which
-  drops them from both sides). Touches the verb seam (JS oracle + Polars
-  `fill_null(false).not()`); costs nothing unwired thanks to lazy refs.
 - [ ] **Rigorous multi-column input-socket label syntax** (author 2026-07-06) — a
   frame/2-D input socket should state which columns it expects in ONE consistent
   grammar. Today it's ad hoc: Sankey reads "From+To+Value", standard charts read

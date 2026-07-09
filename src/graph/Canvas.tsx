@@ -2510,7 +2510,9 @@ export function Canvas() {
           const n = ctx.data as object;
           // A verb node holds a backend frame ref; free it so the handle store
           // doesn't keep the deleted node's frame (independent frames → safe).
+          // Filter also owns a second ref for its Dropped output.
           dropFrameRef((n as { _ref?: unknown })._ref);
+          dropFrameRef((n as { _refDropped?: unknown })._refDropped);
           // Deleting the node behind an open report/presentation must tear the
           // overlay state down with it — a DOCKED report otherwise leaves
           // `html.sol-report-docked` (the canvas squeeze) on the root forever,
