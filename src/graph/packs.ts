@@ -35,6 +35,7 @@ import { HEALTH_PACK } from "./packs/health";
 import { FLUIDS_PACK } from "./packs/fluids";
 import { THERMO_PACK } from "./packs/thermo";
 import { SETS_PACK } from "./packs/sets";
+import { EARTHSKY_PACK } from "./packs/earthsky";
 import type { Pack, PackPlacement } from "./packs/packShared";
 
 // Re-export the authoring types so existing consumers keep one import site.
@@ -49,6 +50,7 @@ export const BUILTIN_PACKS: Pack[] = [
   FLUIDS_PACK,
   THERMO_PACK,
   SETS_PACK,
+  EARTHSKY_PACK,
 ];
 
 // Reclassification of EXISTING core catalog nodes into add-on packs — a node
