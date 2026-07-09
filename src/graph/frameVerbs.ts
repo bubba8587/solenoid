@@ -417,7 +417,7 @@ export function addIndexColumn(f: FrameValue, name: string, start: number): Fram
 }
 
 // ─── Join (binary) ─────────────────────────────────────────────────────────────
-export type JoinHow = "inner" | "left" | "right" | "outer" | "asof";
+export type JoinHow = "inner" | "left" | "right" | "outer" | "semi" | "anti" | "asof";
 // backward = latest right key ≤ left key (Polars' default strategy); forward =
 // earliest right key ≥ left key; nearest = whichever is closer (ties → backward).
 export type AsofDirection = "backward" | "forward" | "nearest";
@@ -558,6 +558,23 @@ export function joinFrames(left: FrameValue, right: FrameValue, opts: JoinOpts):
   const lk = requireColumn(left, opts.leftKey);
   const rk = requireColumn(right, opts.rightKey);
   const ln = frameRowCount(left), rn = frameRowCount(right);
+
+  // Semi/anti FILTER the left frame (the table-level set intersect/difference):
+  // keep left rows whose key does / doesn't match in right — original order, no
+  // fan-out, LEFT columns only (Polars' semi/anti layout). A null/error key never
+  // matches (same rule as the equality joins), so it's dropped by semi, kept by anti.
+  if (opts.how === "semi" || opts.how === "anti") {
+    const rIdx = keyIndex(rk, rn);
+    const keep: number[] = [];
+    for (let i = 0; i < ln; i++) {
+      const cell = cellAt(lk, i);
+      const matched = cell !== null && !isSolError(cell) && rIdx.has(encKey(cell));
+      if (matched === (opts.how === "semi")) keep.push(i);
+    }
+    return frame(left.columns.map((c) => ({
+      name: c.name, type: c.type, values: keep.map((i) => cellAt(c, i)),
+    })));
+  }
 
   // pairs of [leftRow | null, rightRow | null], in output order.
   let pairs: [number | null, number | null][];

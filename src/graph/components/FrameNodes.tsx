@@ -282,6 +282,8 @@ const JOIN_HOW_OPTIONS: { value: JoinHow; label: string; title: string }[] = [
   { value: "left", label: "Left", title: "All left rows; unmatched right side is blank" },
   { value: "right", label: "Right", title: "All right rows; unmatched left side is blank" },
   { value: "outer", label: "Outer", title: "All rows from both sides" },
+  { value: "semi", label: "Semi", title: "Left rows whose key matches in right — left columns only" },
+  { value: "anti", label: "Anti", title: "Left rows with no match in right — left columns only" },
   { value: "asof", label: "As-of", title: "Nearest match on a sorted number/date key; no exact match required" },
 ];
 
