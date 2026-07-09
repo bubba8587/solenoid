@@ -64,15 +64,10 @@ function formulaHostOf(node: ClassicPreset.Node | undefined): FormulaHost | null
   }
   if (TABLE_LAMBDA_TYPES.has(typeName)) {
     const n = node as MapTableNode;
-    // A wired Formula input overrides the literal — the popup shows the LIVE
-    // piped text (what actually runs), read-only, matching the on-card field.
-    const fml = getEditor()?.getConnections().find((c) => c.target === n.id && c.targetInput === "formula");
-    const piped = fml ? cableValueStore.get(fml.source, fml.sourceOutput) : undefined;
-    const text = typeof piped === "string" && piped.trim() ? piped : (n.stringLiterals.formula ?? "");
     return {
       label,
-      text,
-      locked: !!fml,
+      text: n.stringLiterals.formula ?? "",
+      locked: false,
       setText: async (s) => { n.stringLiterals.formula = s; await processGraph(); },
     };
   }

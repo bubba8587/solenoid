@@ -151,17 +151,6 @@
   color: var(--text-muted);
 }
 
-/* Source line under a formula field whose text is piped from a cable. */
-.solenoid-expr__wired-note {
-  padding: 0 8px 3px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 10px;
-  font-style: italic;
-  color: var(--text-muted);
-}
-
 /* Equation node — one hero row per variable (input socket left, output right).
    The label sits as a small caption above the value box. */
 .solenoid-eq__var-row {

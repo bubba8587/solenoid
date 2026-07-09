@@ -23,27 +23,23 @@ type ScalarVal = number | string | SolError | null;
 type ListVal = number[] | string[] | SolError | null;
 
 // The LAMBDA-family formula is edited in the roomy box below (or the big
-// FormulaPopup); a wired LAMBDA value supersedes it. BYROW/BYCOL/REDUCE also
-// keep a "Formula" string socket — wire a Text Input into it to override the
-// inline text. MAP and MAKEARRAY have no string socket (2026-07-09).
-// Variables are fixed per node — a small hint names them.
+// FormulaPopup); a wired LAMBDA value supersedes it. The old piped-formula
+// string socket was removed 2026-07-09. Variables are fixed per node — a
+// small hint names them.
 
-const FORMULA_KEYS = new Set(["formula", "lambda"]);
+const FORMULA_KEYS = new Set(["lambda"]);
 
 type FormulaNode = { id: string; stringLiterals: Record<string, string> };
 
-/** Formula editor bound to node.stringLiterals.formula. When a cable
+/** Formula editor bound to node.stringLiterals.formula. When a wired LAMBDA
  *  supersedes the inline text, this shows WHAT actually runs and WHO sends it
- *  instead of dimming stale text: a wired LAMBDA renders as its live signature
- *  + source label; a wired formula STRING renders as the live piped text,
- *  read-only at full strength, with the source named underneath. */
+ *  instead of dimming stale text: the lambda's live signature + source label. */
 function FormulaBox({ node }: { node: FormulaNode }) {
   const incoming = useIncomingSources(node.id);
   // Re-render when processGraph refreshes live values — the wired lambda's
-  // signature / the piped formula text can change without a topology change.
+  // signature can change without a topology change.
   useSyncExternalStore(cableValueStore.subscribe, cableValueStore.version);
   const lambdaSrc = incoming.get("lambda");
-  const formulaSrc = incoming.get("formula");
   const [val, setVal] = useState(node.stringLiterals.formula ?? "");
 
   useEffect(() => {
@@ -57,31 +53,17 @@ function FormulaBox({ node }: { node: FormulaNode }) {
     await processGraph();
   }
 
-  // A wired LAMBDA value wins over everything (incl. a wired formula string).
   if (lambdaSrc) {
     const live = cableValueStore.get(lambdaSrc.sourceId, lambdaSrc.sourceOutput);
     const sig = isLambdaValue(live) ? formatLambda(live) : "λ";
     return (
       <div
         className="solenoid-expr__override"
-        title={`Runs the wired lambda${formulaSrc ? " (supersedes the wired formula)" : ""}; parameters bind positionally`}
+        title="Runs the wired lambda; parameters bind positionally"
       >
         <span className="solenoid-expr__override-sig">{sig}</span>
         <span className="solenoid-expr__override-src">↩ {lambdaSrc.label || "wired"}</span>
       </div>
-    );
-  }
-
-  if (formulaSrc) {
-    const live = cableValueStore.get(formulaSrc.sourceId, formulaSrc.sourceOutput);
-    const piped = typeof live === "string" && live.trim() ? live : (node.stringLiterals.formula ?? "");
-    return (
-      <>
-        <FormulaField value={piped} onChange={onChange} locked onOpen={() => formulaPopup.open(node.id)} />
-        <div className="solenoid-expr__wired-note" title="Formula text is piped in from the named cable source">
-          ↩ {formulaSrc.label || "wired"}
-        </div>
-      </>
     );
   }
 

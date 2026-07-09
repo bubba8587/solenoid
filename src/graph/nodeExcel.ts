@@ -45,8 +45,8 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "bondprice-price": [{ excel: "PRICE", syntax: "=PRICE(settle,maturity,rate,yld,redemption,freq)", parity: false, note: "30/360 basis only; other basis values not yet supported" }],
   "bondprice-yield": [{ excel: "YIELD", syntax: "=YIELD(settle,maturity,rate,pr,redemption,freq)", parity: false, note: "30/360 basis only" }],
   "by-axis": [
-    { excel: "BYROW", syntax: "=BYROW(array, LAMBDA(row, ...))", parity: false, note: "BYROW/BYCOL node reduces each row/column with its own formula, a piped formula string, or a wired LAMBDA value" },
-    { excel: "BYCOL", syntax: "=BYCOL(array, LAMBDA(col, ...))", parity: false, note: "BYROW/BYCOL node reduces each row/column with its own formula, a piped formula string, or a wired LAMBDA value" },
+    { excel: "BYROW", syntax: "=BYROW(array, LAMBDA(row, ...))", parity: false, note: "BYROW/BYCOL node reduces each row/column with its own formula of (v), or a wired LAMBDA value" },
+    { excel: "BYCOL", syntax: "=BYCOL(array, LAMBDA(col, ...))", parity: false, note: "BYROW/BYCOL node reduces each row/column with its own formula of (v), or a wired LAMBDA value" },
   ],
   "char-code-char": [
     { excel: "CHAR", syntax: "=CHAR(code)", parity: false, note: "Full Unicode (=UNICHAR) — code point 0–1114111" },
@@ -351,7 +351,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "reduce-geomean": [{ excel: "GEOMEAN", syntax: "=GEOMEAN(range)", parity: true }],
   "reduce-harmean": [{ excel: "HARMEAN", syntax: "=HARMEAN(range)", parity: true }],
   "reduce-kurt": [{ excel: "KURT", syntax: "=KURT(range)", parity: true }],
-  "reduce-lambda": [{ excel: "REDUCE", syntax: "=REDUCE(init, array, LAMBDA(acc, x, ...))", parity: false, note: "REDUCE node folds with its own formula of (acc, x), a piped formula string, or a wired LAMBDA value" }],
+  "reduce-lambda": [{ excel: "REDUCE", syntax: "=REDUCE(init, array, LAMBDA(acc, x, ...))", parity: false, note: "REDUCE node folds with its own formula of (acc, x), or a wired LAMBDA value" }],
   "reduce-max": [
     { excel: "MAX", syntax: "=MAX(range)", parity: true },
     { excel: "MAXA", syntax: "=MAXA(range)", parity: false, note: "MAXA counts text as 0; Solenoid is numbers-only" },
