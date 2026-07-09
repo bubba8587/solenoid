@@ -38,6 +38,20 @@ drill into the archive (or `git log`) only for the mechanics of a specific item.
   state point, Pareto, % of Total…) deliberately NOT hand-rolled — planned in
   **`docs/pack-composite-plans.md`**; backlog Packs section reconciled (Set pack
   line deleted, Timesavers remainder + Materials-pack/Interpolated-Lookup lines).
+- **Morning follow-ups (author-directed):** the **EQUATION NODE** — type `V = I * R`,
+  every variable is an input AND an output plus an always-present logical `Holds?`;
+  one unknown → solved (symbolic AST isolation → unparse → recompile, so lists
+  broadcast free; numeric log-grid + bisection fallback, new `#SOLVE!` code); all
+  known → tolerance truth check. **Decision D14** records why it's a SIBLING of
+  Expression with a FIXED socket set (no morphing output — the retype minefield),
+  and why no CAS library. `parseFormula` is now exported from excelFormula;
+  `OutputRowDef` accepts logical/list values. — **Add menu:** top-level **Packs**
+  row (domain packs moved out of Numbers; Timesavers/HYPOTENUSE stay woven with
+  their pack dots); **Control folded into Input** to free the row. — **Constants
+  carry units:** `PhysicsConstantNode.annotation()` rides the unit (" m/s") through
+  passthroughs exactly like an FC lock — the unitFlow duck-type seam took ONE
+  method; Element deliberately skipped (two outputs, one unitless — needs
+  per-output annotations first).
 
 ### SESSION DIGEST (2026-07-08, evening — What's New resell + 1.2/2.0 plans)
 - **What's New rebuilt around the author's sell bar** ("a shiny thing a user will go
