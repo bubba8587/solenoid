@@ -59,7 +59,8 @@ export const EM_MAGNETISM: FormulaPackEntry[] = [
 export const EM_WAVES: FormulaPackEntry[] = [
   { type: "em-wavelength-frequency", label: "Wavelength ↔ Frequency", expr: `lambda = ${C} / f`, equation: true,
     description: "Free-space λ = c/f, either way around: wire f to get the wavelength, or lambda to get the frequency",
-    keywords: "radio antenna wavelength frequency band" },
+    keywords: "radio antenna wavelength frequency band",
+    varDescriptions: { lambda: "Wavelength (m)", f: "Frequency (Hz)" }, },
   { type: "em-photon-energy", label: "Photon Energy (Frequency)", expr: `${H}*f`,
     description: "Energy of one photon at frequency f   (E = hf, joules)" },
   { type: "em-photon-energy-wl", label: "Photon Energy (Wavelength)", expr: `${H}*${C}/lambda`,

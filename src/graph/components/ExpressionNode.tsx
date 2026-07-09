@@ -56,7 +56,11 @@ export function ExpressionComponent({ data: node, emit }: NodeProps<ExpressionNo
       {node.cachedError && (
         <div className="solenoid-expr__error">{node.cachedError}</div>
       )}
-      <InlineInputs node={node} emit={emit} />
+      <InlineInputs
+        node={node}
+        emit={emit}
+        titleFor={(k) => node.varDescriptions[k] || undefined}
+      />
       <ResultTypeToggle node={node} dim="combo" />
       {/* cachedResult is value-polymorphic (number | string | their lists |
           error); ValueDisplay already branches on each of those shapes. */}

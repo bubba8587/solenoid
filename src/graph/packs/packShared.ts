@@ -41,6 +41,10 @@ export interface FormulaPackEntry {
   excel?: ExcelEquiv[];
   /** Extra Add-menu search synonyms (space-separated, never displayed). */
   keywords?: string;
+  /** Optional prose explaining each variable (var name → description) — the
+   *  card hover tooltip + the formula-popup legend. Display-only; kept out of
+   *  the formula string. */
+  varDescriptions?: Record<string, string>;
 }
 
 export function formulaNode(e: FormulaPackEntry): NodeCatalogEntry {
@@ -55,8 +59,8 @@ export function formulaNode(e: FormulaPackEntry): NodeCatalogEntry {
     // `locked`: a preset's formula is fixed (the pack's promise — the node stays
     // reliable); the title stays editable.
     create: () => e.equation
-      ? new EquationNode({ label: e.label, expr: e.expr, locked: true })
-      : new ExpressionNode({ label: e.label, expr: e.expr, locked: true, resultAs: e.resultAs }),
+      ? new EquationNode({ label: e.label, expr: e.expr, locked: true, varDescriptions: e.varDescriptions })
+      : new ExpressionNode({ label: e.label, expr: e.expr, locked: true, resultAs: e.resultAs, varDescriptions: e.varDescriptions }),
   };
 }
 

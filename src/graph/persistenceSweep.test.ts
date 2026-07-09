@@ -83,3 +83,16 @@ describe("persistence fixed-point sweep (every catalog node)", () => {
     expect(broken).toEqual([]);
   });
 });
+
+describe("varDescriptions — captured, but only for LIVE variables", () => {
+  it("keeps live-var descriptions and drops orphans / blanks", async () => {
+    const { ExpressionNode } = await import("./nodes/expression");
+    const n = new ExpressionNode({ expr: "a * b" });
+    n.varDescriptions = { a: "first", b: "  ", gone: "stale from a since-removed var" };
+    const init = extractInit(n) as { varDescriptions?: Record<string, string> };
+    expect(init.varDescriptions).toEqual({ a: "first" }); // b blank + gone orphan dropped
+    // No descriptions at all → the field is omitted (not an empty object).
+    const bare = new ExpressionNode({ expr: "x" });
+    expect((extractInit(bare) as { varDescriptions?: unknown }).varDescriptions).toBeUndefined();
+  });
+});

@@ -194,3 +194,43 @@
   border-radius: 6px;
 }
 .formula-popup__engine-note strong { color: var(--text); font-weight: 600; }
+
+/* Per-variable explanations (Expression / Equation): the name typeset via KaTeX,
+   an editable prose description that stays OUT of the formula. Legend + editor. */
+.formula-popup__vars {
+  margin-top: 10px;
+  padding: 8px;
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+  border-radius: 6px;
+}
+.formula-popup__vars-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.formula-popup__var-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+.formula-popup__var-name {
+  flex: 0 0 auto;
+  min-width: 22px;
+  text-align: right;
+  color: var(--text);
+}
+.formula-popup__var-desc {
+  flex: 1 1 auto;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 7px;
+  outline: none;
+}
+.formula-popup__var-desc:focus { border-color: var(--accent); }
+.formula-popup__var-desc::placeholder { color: var(--text-dim, #888); }
