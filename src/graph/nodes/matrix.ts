@@ -317,64 +317,112 @@ export class TableTransposeNode extends ClassicPreset.Node {
   }
 }
 
-// ─── HSTACK ───────────────────────────────────────────────────────────────────
+// ─── HSTACK / VSTACK — the 2-D rungs of the append ladder (decisions.md D15) ──
+// N extensible element-agnostic rows (anytable — a scalar widens to 1×1, a list
+// to ONE ROW per the lattice rule), stacked in row order. Ragged inputs pad
+// with #N/A cells exactly like Excel's VSTACK/HSTACK — a hole is visible and
+// recoverable (IFNA/Fill), where the old whole-result #SHAPE! made the common
+// "stack a 3-list on a 5-list" case unusable.
 
-export class HStackTableNode extends ClassicPreset.Node {
-  label: string;
-  cachedResult: CellMat | SolError | null = null;
-  width = 180; height = 210;
-
-  constructor(init?: { label?: string }) {
-    super("HStackTable");
-    this.label = init?.label ?? "HSTACK";
-    this.addInput("a", anyTableIn("A"));
-    this.addInput("b", anyTableIn("B"));
-    this.addOutput("result", anyTableOut("A | B"));
-  }
-
-  data(inputs: { a?: unknown[]; b?: unknown[] }): { result: CellMat | SolError | null } {
-    const a = toAnyMatrix(inputs.a?.[0]), b = toAnyMatrix(inputs.b?.[0]);
-    if (!a || !b) { this.cachedResult = null; return { result: null }; }
-    // Side-by-side stacking needs equal row counts — a mismatch is #SHAPE!.
-    if (matRows(a) !== matRows(b)) {
-      const err = solError("#SHAPE!", "A and B must have the same number of rows");
-      this.cachedResult = err;
-      return { result: err };
-    }
-    this.cachedResult = a.map((row, i) => [...row, ...b[i]]);
-    return { result: this.cachedResult };
-  }
+/** One #N/A pad cell per data() pass (SolErrors are immutable — sharing is fine).
+ *  Typed through Cell: the runtime matrix model carries per-cell SolErrors even
+ *  though the pure-reshape Cell alias predates them (array-semantics policy). */
+function padCell(what: string): Cell {
+  return solError("#N/A", `Padded: this input is ${what} than the largest one`) as unknown as Cell;
 }
 
-// VSTACK — the top-to-bottom sibling of HSTACK. Element-agnostic like HSTACK,
-// and the FAST lists→table path: a bare list widens to ONE ROW (the lattice
-// rule), so stacking two lists yields a 2×n table — Excel's VSTACK of two rows.
-// (The node's previous life as a 1-D list concatenator moved to Concat Lists in
-// list.ts, 2026-07-09 — stacking and appending are different operations.)
-export class VStackNode extends ClassicPreset.Node {
+/** Shared extensible-row plumbing for the two stackers. */
+abstract class StackNodeBase extends ClassicPreset.Node {
   label: string;
   cachedResult: CellMat | SolError | null = null;
-  width = 180; height = 210;
+  nextInputId = 0;
+  width = 180; height = 250;
 
-  constructor(init?: { label?: string }) {
-    super("VStack");
-    this.label = init?.label ?? "VSTACK";
-    this.addInput("a", anyTableIn("Top"));
-    this.addInput("b", anyTableIn("Bottom"));
+  constructor(name: string, label: string, init?: { label?: string; valueKeys?: string[] }) {
+    super(name);
+    this.label = init?.label ?? label;
+    const vKeys = (init?.valueKeys ?? []).filter((k) => k.startsWith("t"));
+    if (vKeys.length) for (const k of vKeys) this.addInputWithKey(k);
+    else for (let i = 0; i < 2; i++) this.addValueInput();
     this.addOutput("result", anyTableOut("Stacked"));
   }
 
-  data(inputs: { a?: unknown[]; b?: unknown[] }): { result: CellMat | SolError | null } {
-    const a = toAnyMatrix(inputs.a?.[0]), b = toAnyMatrix(inputs.b?.[0]);
-    if (!a || !b) { this.cachedResult = null; return { result: null }; }
-    // Top-to-bottom stacking needs equal column counts — a mismatch is #SHAPE!.
-    if (matCols(a) !== matCols(b)) {
-      const err = solError("#SHAPE!", "Top and Bottom must have the same number of columns");
-      this.cachedResult = err;
-      return { result: err };
+  private addInputWithKey(key: string): void {
+    this.addInput(key, anyTableIn("Table"));
+    const n = parseInt(key.replace(/^t/, ""), 10);
+    if (Number.isFinite(n)) this.nextInputId = Math.max(this.nextInputId, n + 1);
+  }
+
+  /** Ordered table-row keys (insertion order = stack order). */
+  valueInputKeys(): string[] {
+    return Object.keys(this.inputs).filter((k) => k.startsWith("t"));
+  }
+
+  addValueInput(): string {
+    const key = `t${this.nextInputId}`;
+    this.addInputWithKey(key);
+    return key;
+  }
+
+  removeValueInput(key: string): void {
+    this.removeInput(key);
+  }
+
+  /** Wired inputs as matrices, in row order; empties (zero-row) drop out. */
+  protected matsOf(inputs: Record<string, unknown[] | undefined>): CellMat[] {
+    return this.valueInputKeys()
+      .map((k) => toAnyMatrix(inputs[k]?.[0]))
+      .filter((m): m is CellMat => !!m && m.length > 0);
+  }
+}
+
+export class HStackTableNode extends StackNodeBase {
+  constructor(init?: { label?: string; valueKeys?: string[] }) {
+    super("HStackTable", "HSTACK", init);
+  }
+
+  data(inputs: Record<string, unknown[] | undefined>): { result: CellMat | SolError | null } {
+    const mats = this.matsOf(inputs);
+    if (mats.length === 0) { this.cachedResult = null; return { result: null }; }
+    // Side-by-side: rows = the tallest input; a shorter input pads down with #N/A.
+    const height = Math.max(...mats.map(matRows));
+    const na = padCell("shorter");
+    const out: CellMat = Array.from({ length: height }, () => []);
+    for (const m of mats) {
+      const w = matCols(m);
+      for (let i = 0; i < height; i++) {
+        out[i].push(...(i < m.length ? m[i] : Array<Cell>(w).fill(na)));
+      }
     }
-    this.cachedResult = [...a.map((r) => [...r]), ...b.map((r) => [...r])];
-    return { result: this.cachedResult };
+    this.cachedResult = out;
+    return { result: out };
+  }
+}
+
+// VSTACK — the top-to-bottom sibling of HSTACK, and the FAST lists→table path:
+// a bare list widens to ONE ROW, so stacking two lists yields a 2×n table —
+// Excel's VSTACK of two rows. (The node's previous life as a 1-D list
+// concatenator moved to Concat Lists in list.ts, 2026-07-09 — stacking and
+// appending are different operations.)
+export class VStackNode extends StackNodeBase {
+  constructor(init?: { label?: string; valueKeys?: string[] }) {
+    super("VStack", "VSTACK", init);
+  }
+
+  data(inputs: Record<string, unknown[] | undefined>): { result: CellMat | SolError | null } {
+    const mats = this.matsOf(inputs);
+    if (mats.length === 0) { this.cachedResult = null; return { result: null }; }
+    // Top-to-bottom: columns = the widest input; a narrower input pads right with #N/A.
+    const width = Math.max(...mats.map(matCols));
+    const na = padCell("narrower");
+    const out: CellMat = [];
+    for (const m of mats) {
+      for (const r of m) {
+        out.push(r.length < width ? [...r, ...Array<Cell>(width - r.length).fill(na)] : [...r]);
+      }
+    }
+    this.cachedResult = out;
+    return { result: out };
   }
 }
 
@@ -418,21 +466,29 @@ export class TableReshapeNode extends ClassicPreset.Node {
   data(inputs: { list?: unknown[]; wrapCount?: number[]; matrix?: unknown[] }) {
     this.cachedList = null;
     this.cachedMatrix = null;
+    // Both wraps pad the leftover cells with #N/A — Excel's default pad_with.
+    // (Was inconsistent: wraprows left a ragged short last row, wrapcols
+    // filled with NaN, which renders as garbage.)
     if (this.op === "wraprows") {
       const list = toAnyMatrix(inputs.list?.[0])?.flat() ?? null;
       const w = Math.round(inputs.wrapCount?.[0] ?? this.literals.wrapCount ?? 3);
       if (!list || w < 1) return { result: null };
+      const na = solError("#N/A", "Padded: the list doesn't fill the last row") as unknown as Cell;
       const rows: CellMat = [];
-      for (let i = 0; i < list.length; i += w)
-        rows.push(list.slice(i, i + w));
+      for (let i = 0; i < list.length; i += w) {
+        const row = list.slice(i, i + w);
+        while (row.length < w) row.push(na);
+        rows.push(row);
+      }
       this.cachedMatrix = rows;
       return { result: rows };
     } else if (this.op === "wrapcols") {
       const list = toAnyMatrix(inputs.list?.[0])?.flat() ?? null;
       const w = Math.round(inputs.wrapCount?.[0] ?? this.literals.wrapCount ?? 3);
       if (!list || w < 1) return { result: null };
+      const na = solError("#N/A", "Padded: the list doesn't fill the last column") as unknown as Cell;
       const nCols = Math.ceil(list.length / w);
-      const mat: CellMat = Array.from({ length: w }, () => Array(nCols).fill(NaN));
+      const mat: CellMat = Array.from({ length: w }, () => Array<Cell>(nCols).fill(na));
       for (let i = 0; i < list.length; i++) mat[i % w][Math.floor(i / w)] = list[i];
       this.cachedMatrix = mat;
       return { result: mat };

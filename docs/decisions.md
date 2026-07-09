@@ -225,6 +225,44 @@ per-output socket annotations would unlock richer per-variable typing.
 
 ---
 
+### D15 — The append ladder: ONE N-ary, element-agnostic append node per container rank
+**When:** 2026-07-09 (author: "heavy thinking pass over the entire set of nodes which
+involve appending data … continuing from the VSTACK/HSTACK changes").
+**What:** appending is the same idea at every rank, so each rank gets exactly one node,
+and they all share the same shape — extensible wire-only rows (add/remove, order =
+stack order), element-agnostic accepts, lattice widening on the way in:
+- **1-D — Concat Lists**: `anylist` rows (a scalar widens to a 1-element list, so "push
+  one value" needs no wrapper) → `anylist` out. Concatenation has no ragged case.
+- **2-D — VSTACK / HSTACK**: `anytable` rows (scalar → 1×1, list → ONE ROW) → `anytable`.
+  Ragged inputs PAD WITH #N/A CELLS exactly like Excel — VSTACK pads narrower inputs
+  right, HSTACK pads shorter inputs down. The old whole-result #SHAPE! made the common
+  "stack a 3-list on a 5-list" case unusable; a per-cell #N/A is visible, honest, and
+  recoverable (IFNA/Fill), and SUM over it goes #N/A like Excel.
+- **Frame — Append**: `frame` rows (union by column NAME via the verb engine, which was
+  always N-ary — the node just exposes it; missing column fills blank, type clash #TYPE!).
+  Ragged-by-name ≠ ragged-by-position, so no #N/A padding here — blanks are the frame
+  semantics.
+- WRAPROWS/WRAPCOLS joined the same padding rule (#N/A, Excel's default pad_with) —
+  they previously disagreed with each other (ragged short row vs NaN fill).
+**Deliberately NOT unified:** Interleave (positional A/B alternation — two DISTINCT
+roles, stays 2-ary), Pad (fill-to-length) and Repeat (self-append) are 1-D utilities,
+not appends; Add Column is the frame's single-named-column horizontal add (bulk = Frame
+from Lists, keyed = Join); Build Frame (matrix+headers) vs Frame from Lists (named typed
+columns) are different constructors, both kept; "add one row to a frame" is Get Row →
+Append (a 1-row frame keeps column names — a bare positional list into a by-name append
+is a footgun we refuse).
+**How (mechanics):** the extensible-row plumbing is the BooleanOp pattern (`valueKeys`
+persistence, `addValueInput`/`removeValueInput`, row undo via pushRow*Undo);
+`ExtensibleInputs` gained a WIRE-ONLY row branch (container-typed rows render position
+number / "↩ source", never a literal field — a typed literal has no meaning for a
+list/table/frame operand and typed lists belong to List Input).
+**Cost accepted:** container rows can't be typed in place; #N/A padding can hide a
+genuine width mistake until an aggregate goes #N/A (Excel makes the same trade).
+**What would reverse it:** a variadic "multi-connection socket" primitive (one pill that
+accepts N cables) would collapse the extensible-row pattern across all four nodes.
+
+---
+
 ## Structural risks (the threats register — distinct from bugs)
 
 Not defects (those are the audit) and not opportunities (those are strategy-threads).

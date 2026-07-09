@@ -644,25 +644,53 @@ export class UnnestNode extends ClassicPreset.Node {
 }
 
 // ─── APPEND ────────────────────────────────────────────────────────────────────
-// Stack two Frames vertically, union by column name (verb: appendFrames). A
-// conflicting column type across the two is a #TYPE!. One side alone passes
-// through (so it's safe while you're still wiring the other).
+// The Frame rung of the append ladder (decisions.md D15): N extensible frame
+// rows stacked top-to-bottom in row order, union by column NAME (verb:
+// appendFrames — a column missing from one input fills blank; a conflicting
+// column type is #TYPE!). One frame alone passes through (safe while you're
+// still wiring the others). runFrameAppend was always N-ary; the node now
+// exposes it.
 
 export class AppendNode extends ClassicPreset.Node {
   label: string;
   cachedResult: FrameValue | SolError | null = null;
-  width = 190; height = 175;
+  nextInputId = 0;
+  width = 190; height = 215;
 
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; valueKeys?: string[] }) {
     super("Append");
     this.label = init?.label ?? "Append";
-    this.addInput("top", frameIn("Top"));
-    this.addInput("bottom", frameIn("Bottom"));
+    const vKeys = (init?.valueKeys ?? []).filter((k) => k.startsWith("f"));
+    if (vKeys.length) for (const k of vKeys) this.addInputWithKey(k);
+    else for (let i = 0; i < 2; i++) this.addValueInput();
     this.addOutput("frame", frameOut("Stacked"));
   }
 
-  async data(inputs: { top?: (FrameInput | null)[]; bottom?: (FrameInput | null)[] }) {
-    const frames = [inputs.top?.[0] ?? null, inputs.bottom?.[0] ?? null].filter((f): f is FrameInput => f != null);
+  private addInputWithKey(key: string): void {
+    this.addInput(key, frameIn("Frame"));
+    const n = parseInt(key.replace(/^f/, ""), 10);
+    if (Number.isFinite(n)) this.nextInputId = Math.max(this.nextInputId, n + 1);
+  }
+
+  /** Ordered frame-row keys (insertion order = stack order). */
+  valueInputKeys(): string[] {
+    return Object.keys(this.inputs).filter((k) => k.startsWith("f"));
+  }
+
+  addValueInput(): string {
+    const key = `f${this.nextInputId}`;
+    this.addInputWithKey(key);
+    return key;
+  }
+
+  removeValueInput(key: string): void {
+    this.removeInput(key);
+  }
+
+  async data(inputs: Record<string, (FrameInput | null)[] | undefined>) {
+    const frames = this.valueInputKeys()
+      .map((k) => inputs[k]?.[0] ?? null)
+      .filter((f): f is FrameInput => f != null);
     if (frames.length === 0) return emitFrame(this, beginPass(this), null);
     return emitFrame(this, beginPass(this), frames.length === 1 ? await readFrame(frames[0]) : await runFrameAppend(frames));
   }

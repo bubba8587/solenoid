@@ -425,7 +425,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
         children: [
           { type: "list-range",    label: "Range",     description: "Generate a sequence: start, start+step, …, < stop. Excel: SEQUENCE.", accent: NODE_KIND_ACCENTS.list, create: () => new RangeNode() },
           { type: "list-linspace", label: "LinSpace",  description: "Count evenly spaced values from Start to End inclusive", create: () => new LinSpaceNode() },
-          { type: "list-concat",   label: "Concat Lists", description: "Join two lists end-to-end. To stack lists as rows of a table instead, use VSTACK.", create: () => new ConcatListsNode(), keywords: "append join combine concatenate" },
+          { type: "list-concat",   label: "Concat Lists", description: "Join lists end-to-end, in row order — add rows for more lists; a lone value counts as a 1-element list. Any element type. To stack lists as rows of a table instead, use VSTACK.", create: () => new ConcatListsNode(), keywords: "append join combine concatenate push" },
           { type: "list-repeat",   label: "Repeat",    description: "An array of one value repeated N times, like ZEROS or ONES.", create: () => new RepeatNode() },
           { type: "pair", children: [
             { type: "list-geometric", label: "Geometric", description: "Geometric series: start × ratio^0, start × ratio^1, …", create: () => new GeometricNode() },
@@ -872,8 +872,8 @@ export const NODE_CATALOG: CatalogEntry[] = [
         children: [
           { type: "pair", children: [reshapeLeaf("wraprows"), reshapeLeaf("wrapcols")] },
           { type: "pair", children: [reshapeLeaf("tocol"),    reshapeLeaf("torow")]    },
-          { type: "hstack-table", label: "HSTACK", description: "Concatenate two tables side by side (same number of rows); a list counts as one row, so two lists make one long row. Excel: HSTACK.", create: () => new HStackTableNode(), parity: false },
-          { type: "vstack-table", label: "VSTACK", description: "Stack two tables top-to-bottom (same number of columns); a list counts as one row, so two lists make a 2-row table. Excel: VSTACK.", create: () => new VStackNode(), parity: false, keywords: "stack rows lists to table matrix" },
+          { type: "hstack-table", label: "HSTACK", description: "Concatenate tables side by side, in row order — add rows for more tables; a list counts as one row, so two lists make one long row. A shorter table pads down with #N/A. Excel: HSTACK.", create: () => new HStackTableNode(), parity: false },
+          { type: "vstack-table", label: "VSTACK", description: "Stack tables top-to-bottom, in row order — add rows for more tables; a list counts as one row, so two lists make a 2-row table. A narrower table pads right with #N/A. Excel: VSTACK.", create: () => new VStackNode(), parity: false, keywords: "stack rows lists to table matrix" },
         ],
       },
       {
@@ -917,7 +917,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "unpivot",     label: "Unpivot",     description: "Reshape wide → long (melt): keep the Id columns, turn each chosen Value column into variable/value rows. Excel's Power Query Unpivot.", create: () => new UnpivotNode(), parity: false },
           { type: "nest",        label: "Nest",        description: "Group a flat Frame by key into a Cube; each key's other columns collapse into a nested table cell. The flat → nested bridge.", create: () => new NestNode(), parity: false },
           { type: "unnest",      label: "Unnest",      description: "Expand a Cube's nested-table column back to a flat Frame; each parent row repeats per nested row. The nested → flat bridge, the inverse of Nest.", create: () => new UnnestNode(), parity: false },
-          { type: "append",      label: "Append",      description: "Stack two Frames vertically, matching columns by name; a missing column fills blank. A type clash on a shared column is #TYPE!. Excel: VSTACK.", create: () => new AppendNode(), parity: false },
+          { type: "append",      label: "Append",      description: "Stack Frames vertically in row order — add rows for more Frames; columns match by name, a missing column fills blank. A type clash on a shared column is #TYPE!. Excel: VSTACK.", create: () => new AppendNode(), parity: false },
           { type: "rename",      label: "Rename",      description: "Rename columns via two parallel lists zipped by position: From [\"qty\"] → To [\"Quantity\"]. Type or wire each list.", create: () => new RenameNode(), parity: false },
           { type: "split-column", label: "Split Column", description: "Split one text column into several by a delimiter; the source column is replaced by the parts. Name the new columns or let them auto-number. Power Query: Split Column by Delimiter.", create: () => new SplitColumnNode(), parity: false, keywords: "split delimiter text column separate parse divide power query" },
           { type: "add-index",   label: "Add Index",   description: "Prepend a numeric row-number column counting from a start value; the default is 1. Power Query: Add Index Column; Excel: SEQUENCE(ROWS(...)).", create: () => new AddIndexNode(), parity: false, keywords: "index row number sequence counter rownum power query" },

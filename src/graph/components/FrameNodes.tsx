@@ -41,7 +41,7 @@ import { collapseStore } from "../collapseStore";
 import { pivotEditor } from "../pivotEditorStore";
 import { InlineInputs, InlineNumberField, InlineTextField, useConnectedInputs } from "./inlineInput";
 import { CollapsedInputPill } from "./CollapsedInputPill";
-import { pushRowAddUndo, pushRowRemovalUndo } from "./ExtensibleInputs";
+import { ExtensibleInputs, pushRowAddUndo, pushRowRemovalUndo } from "./ExtensibleInputs";
 import { FrameDisplay } from "./FrameDisplay";
 import { ResultDisplay } from "./ResultDisplay";
 import { ArrayChip } from "./ArrayChip";
@@ -442,7 +442,7 @@ export function UnnestComponent({ data, emit }: NodeProps<UnnestNodeType>) {
 export function AppendComponent({ data, emit }: NodeProps<AppendNodeType>) {
   return (
     <NodeShell node={data} emit={emit}>
-      <InlineInputs node={data} emit={emit} />
+      <ExtensibleInputs node={data} emit={emit} />
       <FrameDisplay frame={data.cachedResult} label={data.label} />
     </NodeShell>
   );

@@ -7,6 +7,7 @@ import { collapseStore } from "../collapseStore";
 import { SolenoidSocket } from "../sockets";
 import {
   useConnectedInputs,
+  useIncomingSources,
   InlineInputs,
   InlineNumberField,
   InlineTextField,
@@ -119,6 +120,7 @@ export function ExtensibleInputs({
   valueKeys?: string[];
 }) {
   const connected = useConnectedInputs(node.id);
+  const incoming = useIncomingSources(node.id);
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(node.id));
   const literals = (node.literals ??= {});
   const strLiterals = (node.stringLiterals ??= {});
@@ -190,7 +192,7 @@ export function ExtensibleInputs({
   return (
     <>
       {leading.length > 0 && <InlineInputs node={node} emit={emit} keys={leading} />}
-      {keys.map((key) => {
+      {keys.map((key, rowIdx) => {
         const input = node.inputs[key];
         if (!input) return null;
         const isConn = connected.has(key);
@@ -199,9 +201,20 @@ export function ExtensibleInputs({
         // as a comma-separated list in the same text field a string row uses; the node
         // parses it per element type. So every List Input type gets CSV entry.
         const isTextField = dt === "string" || dt === "numlist" || dt === "strlist" || dt === "datelist" || dt === "logicallist";
+        // A container-typed row (the append family: Concat Lists / VSTACK /
+        // HSTACK / frame Append) is WIRE-ONLY — a typed literal has no meaning
+        // for a list/table/frame operand. Unwired it shows just its position
+        // (order = stack order); wired it names the incoming node.
+        const isWireOnly = dt === "anylist" || dt === "anytable" || dt === "table" || dt === "frame" || dt === "cube";
         return (
           <MeasuredSocketRow key={key} side="input" socketKey={key} nodeId={node.id} emit={emit} payload={input.socket}>
-            {isConn ? (
+            {isWireOnly ? (
+              isConn ? (
+                <span className="solenoid-node__io-wired" style={{ flex: 1 }} title="Driven by the incoming cable named here">↩ {incoming.get(key)?.label || "wired"}</span>
+              ) : (
+                <span className="solenoid-node__io-label" style={{ flex: 1 }}>{rowIdx + 1}</span>
+              )
+            ) : isConn ? (
               <span className="solenoid-node__io-wired" style={{ flex: 1 }} title="Driven by an incoming cable">↩ wired</span>
             ) : isTextField ? (
               <InlineTextField value={strLiterals[key]} onChange={(v) => setStr(key, v)} />
