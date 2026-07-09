@@ -155,7 +155,7 @@ export function PortSockets({
 // A row's value: scalar (number / logical), a list of them (rendered as a short
 // preview), an error, or blank. Lists/logicals arrived with the Equation node's
 // per-variable outputs; plain numeric rows are unaffected.
-export type OutputRowValue = number | boolean | (number | boolean | SolError | null)[] | SolError | null;
+export type OutputRowValue = number | boolean | string | (number | boolean | string | SolError | null)[] | SolError | null;
 
 export type OutputRowDef = {
   key: string;
@@ -163,9 +163,10 @@ export type OutputRowDef = {
   value: OutputRowValue;
 };
 
-function formatRowCell(v: number | boolean | SolError | null): string {
+function formatRowCell(v: number | boolean | string | SolError | null): string {
   if (v === null) return "—";
   if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
+  if (typeof v === "string") return v; // pre-formatted (e.g. a complex "3+2i")
   if (isSolError(v)) return v.code;
   return formatScalar(v);
 }

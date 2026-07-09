@@ -12,13 +12,13 @@ import { EquationNode } from "./equation";
 import { GroupByNode } from "./list";
 import { RegexNode } from "./text";
 import { ComparisonNode, BooleanOpNode, NotNode, IfNode, IFErrorNode, IsTestNode, IsEvenOddNode, NaNode, ChooseNode, SwitchNode, IfsNode } from "./logic";
-import { ComplexFromNode, ComplexUnpackNode, ComplexUnaryNode, ComplexBinaryNode, ComplexPowerNode } from "./complex";
+import { ComplexFromNode, ComplexUnpackNode, ComplexUnaryNode, ComplexBinaryNode, ComplexPowerNode, QuadraticRootsNode } from "./complex";
 import {
   ListInputNode, RangeNode, AggregateNode,
   ListLengthNode, ListIndexNode, SortNode,
   ReverseNode, SliceNode,
   UniqueNode, TakeNode, DropNode, SetOpNode, SetRelationNode, IsInNode, TallyNode,
-  VStackNode, CumulativeNode, DiffNode,
+  ConcatListsNode, CumulativeNode, DiffNode,
   ArgMinMaxNode, ContainsNode,
   NormalizeNode, LinSpaceNode, RepeatNode,
   ShuffleNode, NthElementNode, InterleaveNode,
@@ -37,6 +37,7 @@ import { NormDistNode, NormInvNode, NormSDistNode, NormSInvNode, TDistNode, TInv
 import { FDistNode, FInvNode, BetaDistNode, BetaInvNode, GammaDistNode, GammaInvNode, LognormDistNode, LognormInvNode, WeibullDistNode, ExponDistNode } from "./dist-continuous";
 import { BinomDistNode, BinomInvNode, PoissonDistNode, HypgeomDistNode, NegbinomDistNode } from "./dist-discrete";
 import { ConduitNode } from "./conduit";
+import { FrameFromListsNode } from "./frame";
 import { FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, GetRowNode, DistinctNode, HeadNode, SortFrameNode, FilterFrameNode, JoinNode, XLookupNode, SelectColumnsNode, DropColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode } from "./frame";
 import { CubeRollupNode } from "./cube";
 import { WebSourceNode, CsvConnectionNode, ParquetConnectionNode, ImportHtmlNode, ImportXmlNode } from "./connection";
@@ -51,7 +52,7 @@ import { NoteNode, ImageNode } from "./annotation";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "./composite";
 import {
   TableInputNode, MatDetNode, TableMultNode, TableUnitNode, TableTransposeNode,
-  HStackTableNode, TableReshapeNode, TableSelectNode, TableInfoNode,
+  HStackTableNode, VStackNode, TableReshapeNode, TableSelectNode, TableInfoNode,
 } from "./matrix";
 import { MapTableNode, ByAxisNode, MakeArrayNode, ReduceLambdaNode } from "./tableLambda";
 import { LambdaNode } from "./lambda";
@@ -89,7 +90,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
   if (
     node instanceof ComplexFromNode || node instanceof ComplexUnpackNode ||
     node instanceof ComplexUnaryNode || node instanceof ComplexBinaryNode ||
-    node instanceof ComplexPowerNode
+    node instanceof ComplexPowerNode || node instanceof QuadraticRootsNode
   ) return "complex";
   // Nodes that EMIT the logical type (purple TRUE/FALSE socket) read as logic, so
   // their header colour matches what they output: Boolean source, the IS-checks,
@@ -107,7 +108,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof ReverseNode || node instanceof SliceNode ||
     node instanceof UniqueNode || node instanceof TakeNode || node instanceof DropNode ||
     node instanceof SetOpNode || node instanceof TallyNode ||
-    node instanceof VStackNode || node instanceof CumulativeNode || node instanceof DiffNode ||
+    node instanceof ConcatListsNode || node instanceof CumulativeNode || node instanceof DiffNode ||
     node instanceof ArgMinMaxNode || node instanceof ContainsNode ||
     node instanceof NormalizeNode || node instanceof LinSpaceNode || node instanceof RepeatNode ||
     node instanceof ShuffleNode || node instanceof NthElementNode || node instanceof InterleaveNode ||
@@ -172,7 +173,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
   if (
     node instanceof TableInputNode || node instanceof MatDetNode ||
     node instanceof TableMultNode || node instanceof TableUnitNode ||
-    node instanceof TableTransposeNode || node instanceof HStackTableNode ||
+    node instanceof TableTransposeNode || node instanceof HStackTableNode || node instanceof VStackNode ||
     node instanceof TableReshapeNode || node instanceof TableSelectNode ||
     node instanceof TableInfoNode || node instanceof MapTableNode ||
     node instanceof ByAxisNode || node instanceof MakeArrayNode ||
@@ -180,7 +181,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
   ) return "table";
   if (
     node instanceof FrameInputNode ||
-    node instanceof BuildFrameNode || node instanceof SplitFrameNode ||
+    node instanceof BuildFrameNode || node instanceof FrameFromListsNode || node instanceof SplitFrameNode ||
     node instanceof GetColumnNode || node instanceof AddColumnNode ||
     node instanceof GetRowNode ||
     node instanceof DistinctNode ||

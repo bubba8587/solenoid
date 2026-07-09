@@ -225,7 +225,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "list-sortby": [{ excel: "SORTBY", syntax: "=SORTBY(array, by_array)", parity: false, note: "Solenoid sorts 1D lists only; 1D list-by-list sorting works" }],
   "list-take": [{ excel: "TAKE", syntax: "=TAKE(array, rows)", parity: true }],
   "list-unique": [{ excel: "UNIQUE", syntax: "=UNIQUE(array)", parity: true }],
-  "list-vstack": [{ excel: "VSTACK", syntax: "=VSTACK(a, b)", parity: false, note: "Solenoid concatenates 1D lists only; Excel can stack 2D ranges" }],
+  "vstack-table": [{ excel: "VSTACK", syntax: "=VSTACK(a, b)", parity: false, note: "Mismatched column counts error instead of padding with #N/A" }],
   "logest": [{ excel: "LOGEST", syntax: "=LOGEST(ys, xs)", parity: false, note: "Returns [m, b] as a list; Excel returns a full coefficient array" }],
   // Keys track the post-split catalog types (bool-*/if/not — the old multi-op
   // LogicalNode's "logic-*" keys went stale unnoticed until the drift test);

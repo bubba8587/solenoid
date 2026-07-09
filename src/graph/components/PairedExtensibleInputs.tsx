@@ -8,6 +8,7 @@ import {
   useConnectedInputs,
   InlineInputs,
   InlineNumberField,
+  InlineTextField,
 } from "./inlineInput";
 import { NodeSocket, MeasuredSocketRow } from "./NodeSocket";
 import { CollapsedInputPill } from "./CollapsedInputPill";
@@ -32,6 +33,9 @@ export interface PairedExtensibleNode {
   removeValuePair: (aKey: string) => void;
   /** Row labels for the two halves of a pair, e.g. ["If", "Then"]. */
   pairLabels: [string, string];
+  /** Inline TEXT literals, for pairs whose first half is a string socket
+   *  (Frame from Lists' column names). Numeric slots keep using `literals`. */
+  stringLiterals?: Record<string, string>;
 }
 
 /**
@@ -52,6 +56,7 @@ export function PairedExtensibleInputs({
   const connected = useConnectedInputs(node.id);
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(node.id));
   const literals = (node.literals ??= {});
+  const strLiterals = (node.stringLiterals ??= {});
   const leading = leadingKeys ?? [];
   const trailing = trailingKeys ?? [];
   const pairs = node.valuePairKeys();
@@ -60,6 +65,12 @@ export function PairedExtensibleInputs({
   async function setLiteral(key: string, v: number | undefined) {
     if (v === undefined) delete literals[key];
     else literals[key] = v;
+    await processGraph();
+  }
+
+  async function setStrLiteral(key: string, v: string) {
+    if (v === "") delete strLiterals[key];
+    else strLiterals[key] = v;
     await processGraph();
   }
 
@@ -118,6 +129,8 @@ export function PairedExtensibleInputs({
         <span className="solenoid-node__io-label">{label}</span>
         {isConn ? (
           <span className="solenoid-node__io-wired" title="Driven by an incoming cable">↩ wired</span>
+        ) : (input.socket as { dataType?: string }).dataType === "string" ? (
+          <InlineTextField value={strLiterals[key]} onChange={(v) => void setStrLiteral(key, v)} placeholder={placeholder} />
         ) : (
           <InlineNumberField value={literals[key]} onChange={(v) => setLiteral(key, v)} placeholder={placeholder} />
         )}

@@ -11,7 +11,7 @@ import {
   ListInputNode, AggregateNode, RangeNode, ListLengthNode, ListIndexNode,
   SortNode, ReverseNode, SliceNode, FilterNode, FillNode, XLookupNode,
   GcdNode, IFErrorNode, NaNode, RandBetweenNode, RoundNNode, ConvertNode,
-  UniqueNode, SetOpNode, SetRelationNode, TakeNode, DropNode, VStackNode, CumulativeNode, DiffNode,
+  UniqueNode, SetOpNode, SetRelationNode, TakeNode, DropNode, VStackNode, ConcatListsNode, FrameFromListsNode, QuadraticRootsNode, CumulativeNode, DiffNode,
   ArgMinMaxNode, ContainsNode, NthValueNode, PercentileNode, QuartileNode,
   PercentrankNode, RankNode, CorrelNode, CombinatoricsNode, TwoInputMathNode,
   SumProductNode, ChooseNode, BooleanInputNode, SliderInputNode, ColorPickerNode, IsTestNode,
@@ -410,6 +410,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
               { type: "pair", children: [complexBinaryLeaf("sum"),     complexBinaryLeaf("sub")]     },
               { type: "pair", children: [complexBinaryLeaf("product"), complexBinaryLeaf("div")]     },
               { type: "cx-power", label: "IMPOWER", description: "Complex number raised to a real power. Excel: IMPOWER.", create: () => new ComplexPowerNode(), parity: false },
+              { type: "cx-quadratic", label: "Quadratic Roots", description: "Both roots of ax² + bx + c = 0 as complex numbers — a negative discriminant gives the conjugate pair. The Equation node covers the real-root case.", create: () => new QuadraticRootsNode(), parity: false, keywords: "quadratic formula discriminant complex roots polynomial" },
             ],
           },
         ],
@@ -426,7 +427,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
         children: [
           { type: "list-range",    label: "Range",     description: "Generate a sequence: start, start+step, …, < stop. Excel: SEQUENCE.", accent: NODE_KIND_ACCENTS.list, create: () => new RangeNode() },
           { type: "list-linspace", label: "LinSpace",  description: "Count evenly spaced values from Start to End inclusive", create: () => new LinSpaceNode() },
-          { type: "list-vstack",   label: "VStack",    description: "Join two lists end-to-end. Excel: VSTACK.", create: () => new VStackNode() },
+          { type: "list-concat",   label: "Concat Lists", description: "Join two lists end-to-end. To stack lists as rows of a table instead, use VSTACK.", create: () => new ConcatListsNode(), keywords: "append join combine concatenate" },
           { type: "list-repeat",   label: "Repeat",    description: "An array of one value repeated N times, like ZEROS or ONES.", create: () => new RepeatNode() },
           { type: "pair", children: [
             { type: "list-geometric", label: "Geometric", description: "Geometric series: start × ratio^0, start × ratio^1, …", create: () => new GeometricNode() },
@@ -876,7 +877,8 @@ export const NODE_CATALOG: CatalogEntry[] = [
         children: [
           { type: "pair", children: [reshapeLeaf("wraprows"), reshapeLeaf("wrapcols")] },
           { type: "pair", children: [reshapeLeaf("tocol"),    reshapeLeaf("torow")]    },
-          { type: "hstack-table", label: "HSTACK", description: "Concatenate two tables side by side (same number of rows). Excel: HSTACK.", create: () => new HStackTableNode(), parity: false },
+          { type: "hstack-table", label: "HSTACK", description: "Concatenate two tables side by side (same number of rows); a list counts as one row, so two lists make one long row. Excel: HSTACK.", create: () => new HStackTableNode(), parity: false },
+          { type: "vstack-table", label: "VSTACK", description: "Stack two tables top-to-bottom (same number of columns); a list counts as one row, so two lists make a 2-row table. Excel: VSTACK.", create: () => new VStackNode(), parity: false, keywords: "stack rows lists to table matrix" },
         ],
       },
       {
@@ -898,6 +900,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
         type: "category", label: "Frames (named columns)", description: "A data table = a Matrix plus a header list. Build one, take it apart, and read or add columns.",
         children: [
           { type: "build-frame", label: "Build Frame", description: "Combine a Matrix and a header text-list into a Frame. Missing headers auto-fill as Col1, Col2…; duplicates are made unique.", create: () => new BuildFrameNode(), parity: false },
+          { type: "frame-from-lists", label: "Frame from Lists", description: "Build a Frame straight from lists: each row pairs a typed column name with a wired list of any type. Ragged columns pad with blanks; add or remove columns with the row buttons.", create: () => new FrameFromListsNode(), parity: false, keywords: "lists to frame columns table build fast assemble" },
           { type: "split-frame", label: "Split Frame", description: "Take a Frame apart into its numeric Matrix body and its header text-list; the inverse of Build Frame. A type filter (All / Num / Date / Bool / Text) keeps only columns of that type, so you can pull just the numeric columns out of a mixed frame: a text·num·date·num frame → Num gives a 2-column matrix + those 2 headers. Text → headers only.", create: () => new SplitFrameNode(), parity: false },
           { type: "get-column",  label: "Get Column",  description: "Pull one column out of a Frame as a list, by name or 1-based number. Read as Number, Text, or Date; this sets the output type.", create: () => new GetColumnNode(), parity: false },
           { type: "get-row",     label: "Get Row",     description: "Pull one row out of a Frame by 1-based number, giving a 1-row Frame: a row mixes types, so it's not a list.", create: () => new GetRowNode(), parity: false },
