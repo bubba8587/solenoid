@@ -5,8 +5,8 @@
 // law-of-sines/cosines preset, no mode dropdown.
 
 import { ClassicPreset } from "rete";
-import { numIn, numOut, readInput } from "./shared";
-import { solError, type SolError } from "../errorValue";
+import { numIn, numOut, logicalOut, readInput } from "./shared";
+import { isSolError, solError, type SolError } from "../errorValue";
 
 export interface TriangleGiven {
   a?: number; b?: number; c?: number; // sides (opposite the same-letter angle)
@@ -118,55 +118,114 @@ function fillBySines(t: TriangleGiven, knownSide: "a" | "b" | "c", knownAngle: "
   }
 }
 
+const PART_KEYS = ["a", "b", "c", "A", "B", "C"] as const;
+type PartKey = (typeof PART_KEYS)[number];
+
+/** Relative-tolerance agreement for the over-determined Check (sides and
+ *  degrees both live on human scales, so one rule serves). */
+function agrees(got: number, given: number): boolean {
+  return Math.abs(got - given) <= 1e-6 * Math.max(1, Math.abs(given));
+}
+
 export class TriangleSolverNode extends ClassicPreset.Node {
   label: string;
   literals: Record<string, number> = {};
-  cached: Partial<TriangleSolved> | null = null;
-  cachedError: SolError | null = null;
-  width = 230;
-  height = 330;
+  /** Per-part displayed value (given passthrough or solved). */
+  cachedValues: Record<string, number | SolError | null> = {};
+  cachedArea: number | SolError | null = null;
+  cachedPerimeter: number | SolError | null = null;
+  cachedValid: boolean | SolError | null = null;
+  /** Parts that were SOLVED (accent label), not given. */
+  solvedKeys: Set<string> = new Set();
+  width = 240;
+  height = 430;
 
   constructor(init?: { label?: string }) {
     super("TriangleSolver");
     this.label = init?.label ?? "Triangle Solver";
-    this.addInput("a", numIn("a"));
-    this.addInput("b", numIn("b"));
-    this.addInput("c", numIn("c"));
-    this.addInput("A", numIn("A °"));
-    this.addInput("B", numIn("B °"));
-    this.addInput("C", numIn("C °"));
-    this.addOutput("a", numOut("a"));
-    this.addOutput("b", numOut("b"));
-    this.addOutput("c", numOut("c"));
-    this.addOutput("A", numOut("A °"));
-    this.addOutput("B", numOut("B °"));
-    this.addOutput("C", numOut("C °"));
+    // The current Equation design: every part is an input AND an output on one
+    // hero row, plus the logical Valid check — the acausal card.
+    for (const k of PART_KEYS) {
+      this.addInput(k, numIn(k.toUpperCase() === k ? `${k} °` : k));
+      this.addOutput(k, numOut(k.toUpperCase() === k ? `${k} °` : k));
+    }
     this.addOutput("area", numOut("Area"));
     this.addOutput("perimeter", numOut("Perimeter"));
+    this.addOutput("valid", logicalOut("Valid"));
   }
 
   data(inputs: Record<string, (number | null)[] | undefined>) {
     const given: TriangleGiven = {};
-    for (const k of ["a", "b", "c", "A", "B", "C"] as const) {
+    for (const k of PART_KEYS) {
       const v = readInput(inputs[k], this.literals[k] ?? null);
       if (typeof v === "number") given[k] = v;
     }
-    const count = Object.keys(given).length;
-    if (count === 0) {
-      this.cached = null;
-      this.cachedError = null;
-      return { a: null, b: null, c: null, A: null, B: null, C: null, area: null, perimeter: null };
+    const givenKeys = PART_KEYS.filter((k) => given[k] !== undefined);
+    const values: Record<string, number | SolError | null> = {};
+    const finish = (
+      area: number | SolError | null,
+      perimeter: number | SolError | null,
+      valid: boolean | SolError | null,
+      solved: Set<string> = new Set(),
+    ) => {
+      this.cachedValues = values;
+      this.cachedArea = area;
+      this.cachedPerimeter = perimeter;
+      this.cachedValid = valid;
+      this.solvedKeys = solved;
+      const out: Record<string, number | SolError | boolean | null> = {};
+      for (const k of PART_KEYS) out[k] = values[k] ?? null;
+      out.area = area;
+      out.perimeter = perimeter;
+      out.valid = valid;
+      return out;
+    };
+
+    // Fewer than three parts: pass the givens through, stay quiet — nothing to
+    // solve or judge yet.
+    if (givenKeys.length < 3) {
+      for (const k of givenKeys) values[k] = given[k]!;
+      return finish(null, null, null);
     }
-    const r = solveTriangle(given);
-    if ("code" in (r as object)) {
-      const err = r as SolError;
-      this.cached = null;
-      this.cachedError = err;
-      return { a: err, b: err, c: err, A: err, B: err, C: err, area: err, perimeter: err };
+
+    if (givenKeys.length === 3) {
+      const r = solveTriangle(given);
+      if (isSolError(r)) {
+        for (const k of PART_KEYS) values[k] = r;
+        return finish(r, r, false);
+      }
+      for (const k of PART_KEYS) values[k] = r[k];
+      const solved = new Set<string>(PART_KEYS.filter((k) => given[k] === undefined));
+      return finish(r.area, r.perimeter, true, solved);
     }
-    const t = r as TriangleSolved;
-    this.cached = t;
-    this.cachedError = null;
-    return { ...t };
+
+    // Over-determined — the Equation-style Check: solve from an independent
+    // three-part subset (prefer side-rich ones; first that solves wins), then
+    // Valid reports whether every REMAINING given agrees with the solved
+    // triangle. Given values pass through to their own outputs either way, so a
+    // set of measurements that doesn't close still shows what you typed.
+    const subsets: PartKey[][] = [];
+    for (let i = 0; i < givenKeys.length; i++)
+      for (let j = i + 1; j < givenKeys.length; j++)
+        for (let k = j + 1; k < givenKeys.length; k++)
+          subsets.push([givenKeys[i], givenKeys[j], givenKeys[k]]);
+    const sideCount = (sub: PartKey[]) => sub.filter((k) => k === k.toLowerCase()).length;
+    subsets.sort((x, y) => sideCount(y) - sideCount(x));
+
+    let solvedTri: TriangleSolved | null = null;
+    for (const sub of subsets) {
+      if (sideCount(sub) === 0) continue;
+      const r = solveTriangle(Object.fromEntries(sub.map((k) => [k, given[k]!])));
+      if (!isSolError(r)) { solvedTri = r; break; }
+    }
+    if (!solvedTri) {
+      const err = solError("#SOLVE!", "No three of those parts pin down a triangle");
+      for (const k of PART_KEYS) values[k] = k in given ? given[k]! : err;
+      return finish(err, err, false);
+    }
+    for (const k of PART_KEYS) values[k] = given[k] ?? solvedTri[k];
+    const valid = givenKeys.every((k) => agrees(solvedTri![k], given[k]!));
+    const solved = new Set<string>(PART_KEYS.filter((k) => given[k] === undefined));
+    return finish(solvedTri.area, solvedTri.perimeter, valid, solved);
   }
 }
