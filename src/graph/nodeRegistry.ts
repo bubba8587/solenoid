@@ -70,6 +70,7 @@ import {
   HypotenuseNode,
   ParallelCombineNode, ESeriesNode, AwgNode,
   PhysicsConstantNode,
+  ColebrookNode,
   PromoNode,
   PlaceholderNode,
   ExpectNode,
@@ -147,6 +148,7 @@ import {
   HypotenuseComponent,
   ParallelCombineComponent, ESeriesComponent, AwgComponent,
   PhysicsConstantComponent,
+  ColebrookComponent,
   PromoComponent,
   PlaceholderComponent,
   ExpectComponent,
@@ -438,6 +440,7 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [ESeriesNode,           comp(ESeriesComponent)],
   [AwgNode,               comp(AwgComponent)],
   [PhysicsConstantNode,   comp(PhysicsConstantComponent)],
+  [ColebrookNode,         comp(ColebrookComponent)],
   [PromoNode,             comp(PromoComponent)],
   // Load-time stand-in for an unregistered saved type (pack off / renamed).
   [PlaceholderNode,       comp(PlaceholderComponent)],

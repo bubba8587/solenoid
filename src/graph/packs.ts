@@ -32,6 +32,7 @@ import { TIMESAVERS_PACK } from "./packs/timesavers";
 import { ELECTRICITY_PACK } from "./packs/electricity";
 import { ELECTROMAGNETISM_PACK } from "./packs/electromagnetism";
 import { HEALTH_PACK } from "./packs/health";
+import { FLUIDS_PACK } from "./packs/fluids";
 import type { Pack, PackPlacement } from "./packs/packShared";
 
 // Re-export the authoring types so existing consumers keep one import site.
@@ -43,6 +44,7 @@ export const BUILTIN_PACKS: Pack[] = [
   ELECTRICITY_PACK,
   ELECTROMAGNETISM_PACK,
   HEALTH_PACK,
+  FLUIDS_PACK,
 ];
 
 // Reclassification of EXISTING core catalog nodes into add-on packs — a node
