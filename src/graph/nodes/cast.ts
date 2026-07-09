@@ -1,6 +1,6 @@
 import { ClassicPreset } from "rete";
 import { isDateType, type SocketDataType } from "../sockets";
-import { anyIn, numListOut, strComboOut, dateComboOut, complexOut, logicalComboOut } from "./shared";
+import { trueAnyIn, numListOut, strComboOut, dateComboOut, complexOut, logicalComboOut } from "./shared";
 import { coerceLogical } from "../valueKinds";
 import { formatDateSerial, parseDateToSerial, DEFAULT_DATE_FORMAT } from "./date";
 import { formatCx, type Cx } from "./complex";
@@ -161,7 +161,7 @@ export class CastNode extends ClassicPreset.Node {
     super("Cast");
     this.label = init?.label ?? "Cast";
     this.target = init?.target ?? "text";
-    this.addInput("value",  anyIn("Value"));
+    this.addInput("value",  trueAnyIn("Value"));
     this.addOutput("result", castOutput(this.target));
   }
 

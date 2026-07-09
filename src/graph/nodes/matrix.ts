@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { numIn, numOut, listIn, anyIn, anyOut, anyTableIn, anyTableOut, tableIn, tableOut, frameIn } from "./shared";
+import { numIn, numOut, listIn, anyIn, anyListIn, anyListOut, anyTableIn, anyTableOut, tableIn, tableOut, frameIn } from "./shared";
 import { toAnyMatrix, type Cell } from "./coerce";
 import { tableSocket, strTableSocket, dateTableSocket, logicalTableSocket } from "../sockets";
 import { parseCsvRows } from "../csv";
@@ -490,16 +490,16 @@ export class TableReshapeNode extends ClassicPreset.Node {
     this.op    = init?.op    ?? "wraprows";
     this.label = init?.label ?? TABLE_RESHAPE_OP_META[this.op].label;
     const wraps = this.op === "wraprows" || this.op === "wrapcols";
-    // Element-agnostic: `any` inputs accept text/date arrays too. Wrapping
-    // produces a matrix (the 2-D wildcard `anytable`); flattening produces a
-    // 1-D list of unknown element type (`any`).
+    // Element-agnostic, rank-honest: wrapping takes a 1-D list of any family
+    // (`anylist`) and produces a matrix (the 2-D wildcard `anytable`);
+    // flattening produces a 1-D list of unknown element type (`anylist`).
     if (wraps) {
-      this.addInput("list",      anyIn("List"));
+      this.addInput("list",      anyListIn("List"));
       this.addInput("wrapCount", numIn("Wrap count"));
       this.addOutput("result", anyTableOut("Table"));
     } else {
       this.addInput("matrix", anyTableIn("Matrix"));
-      this.addOutput("result", anyOut("List"));
+      this.addOutput("result", anyListOut("List"));
     }
   }
 

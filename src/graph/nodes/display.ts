@@ -2,7 +2,7 @@ import { ClassicPreset } from "rete";
 import { getRecalcGen, isGraphRebuilding } from "../process";
 import type { UnitSuffix } from "../unitFormat";
 import { isFrameValue, isCubeValue, type FrameValue, type CubeValue } from "../frame";
-import { anyIn, anyOut, numIn, numOut, numListIn, numListOut, strIn, broadcast } from "./shared";
+import { trueAnyIn, trueAnyOut, numIn, numOut, numListIn, numListOut, strIn, broadcast } from "./shared";
 import { isLambdaValue, formatLambda } from "./lambda";
 import { isSolError, type SolError } from "../errorValue";
 import { fireAlert } from "../alertStore";
@@ -28,8 +28,8 @@ export class DisplayNode extends ClassicPreset.Node {
     super("Display");
     this.label = init?.label ?? "Display";
     this.unitSuffix = init?.unitSuffix ?? "none";
-    this.addInput("in", anyIn("In"));
-    this.addOutput("out", anyOut("Out"));
+    this.addInput("in", trueAnyIn("In"));
+    this.addOutput("out", trueAnyOut("Out"));
   }
 
   data(inputs: { in?: unknown[] }) {

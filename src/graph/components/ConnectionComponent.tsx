@@ -311,7 +311,7 @@ export function ConnectionComponent({ data }: { data: ConnPayload }) {
   let typeColor = DEFAULT_COLOR;
   if (activeSocket instanceof SolenoidSocket) {
     const dt = activeSocket.dataType;
-    const isCombo = dt === "numlist" || dt === "strcombo" || dt === "datecombo" || dt === "any";
+    const isCombo = dt === "numlist" || dt === "strcombo" || dt === "datecombo" || dt === "any" || dt === "trueany";
     if (isCombo && valSource && valOutput) {
       const val = cableValueStore.get(valSource, valOutput);
       if (val !== undefined && val !== null) {

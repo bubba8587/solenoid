@@ -13,6 +13,7 @@ describe("familyOf — the ENTIRE SocketDataType union is covered or explicitly 
     number: "number", list: "number", numlist: "number", table: "number",
     anytable: "number",           // formats its numeric cells
     any: "number",                // provisional until the concrete type flows in
+    trueany: "number",            // wildcard rung — same provisional default (isWildcardType)
     date: "date", datelist: "date", datecombo: "date", datetable: "date",
     string: "text", strlist: "text", strcombo: "text", strtable: "text",
     logical: "logical", logicallist: "logical", logicalcombo: "logical", logicaltable: "logical",

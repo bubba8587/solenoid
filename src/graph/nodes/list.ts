@@ -2,7 +2,7 @@ import { ClassicPreset } from "rete";
 import { numListSocket, strListSocket, dateListSocket, logicalListSocket, type SolenoidSocket } from "../sockets";
 import { parseDateToSerial } from "./date";
 import { getRecalcGen } from "../process";
-import { listIn, listOut, numIn, numOut, anyIn, anyOut, strIn, logicalOut, logicalListOut, frameOut, anyListIn, anyListOut } from "./shared";
+import { listIn, listOut, numIn, numOut, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameOut, anyListIn, anyListOut } from "./shared";
 import { pairIdsFromKeys } from "./logic";
 import { passesFilter, type FilterOp, type FilterCondConfig } from "../frameVerbs";
 import { solError, isSolError, type SolError } from "../errorValue";
@@ -218,10 +218,11 @@ export class ListIndexNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("ListIndex");
     this.label = init?.label ?? "INDEX";
-    this.addInput("list",  anyIn("Array"));     // list, matrix, frame, or cube
+    this.addInput("list",  trueAnyIn("Array")); // list, matrix, frame, or cube
     this.addInput("index", numIn("Row"));
     this.addInput("column", numIn("Column"));   // 2-D / frame / cube only
-    this.addOutput("result", anyOut("Value"));
+    // The result can be a whole cube cell (a nested frame), so it stays trueany.
+    this.addOutput("result", trueAnyOut("Value"));
   }
 
   data(inputs: { list?: unknown[]; index?: number[]; column?: number[] }): { result: number | SolError | null | CubeCell | FrameValue | CubeValue } {
@@ -1846,9 +1847,9 @@ export class GroupByNode extends ClassicPreset.Node {
     super("GroupBy");
     this.label = init?.label ?? "Group Lists";
     this.op    = init?.op    ?? "sum";
-    this.addInput("keys",   anyIn("Keys"));
+    this.addInput("keys",   anyListIn("Keys"));
     this.addInput("values", listIn("Values"));
-    this.addOutput("keys",   anyOut("Unique keys"));
+    this.addOutput("keys",   anyListOut("Unique keys"));
     this.addOutput("values", listOut("Aggregated"));
   }
 

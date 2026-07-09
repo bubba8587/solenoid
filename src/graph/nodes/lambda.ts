@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { anyIn, lambdaOut } from "./shared";
+import { anyListIn, lambdaOut } from "./shared";
 import { extractVariables, compilePositional } from "../excelFormula";
 import { solError, type SolError } from "../errorValue";
 
@@ -93,7 +93,7 @@ export class LambdaNode extends ClassicPreset.Node {
     const added: string[] = [];
     const removed: string[] = [];
     for (const v of next) {
-      if (!prev.has(v)) { this.addInput(v, anyIn(v)); added.push(v); }
+      if (!prev.has(v)) { this.addInput(v, anyListIn(v)); added.push(v); }
     }
     for (const v of prev) {
       if (!nextSet.has(v)) removed.push(v);

@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { numberSocket, anySocket, MutableSocket, type SocketDataType } from "../sockets";
+import { numberSocket, trueAnySocket, MutableSocket, type SocketDataType } from "../sockets";
 import { frameIn, frameOut, dateOut, numOut } from "./shared";
 import { isFrameValue, getColumn, frameRowCount, cubeFromColumns, type FrameValue, type FrameColType, type CubeCell } from "../frame";
 import { jsDateToSerial } from "./date";
@@ -28,11 +28,11 @@ export class CableSwitchNode extends ClassicPreset.Node {
   selectedKeys: string[];
   cachedValue: unknown = null;
   nextInputId = 0;
-  readonly valueSocket = anySocket;
+  readonly valueSocket = trueAnySocket;
   /** Output socket type flips with the mode: `cube` in Many (the collected values),
-   *  `any` in One (the routed value passes through). Own MutableSocket instance so a
-   *  retype never touches a shared singleton. */
-  readonly outSocket = new MutableSocket("any");
+   *  `trueany` in One (the routed value passes through). Own MutableSocket instance
+   *  so a retype never touches a shared singleton. */
+  readonly outSocket = new MutableSocket("trueany");
   width = 200; height = 220;
 
   constructor(init?: { label?: string; activeIndex?: number; valueKeys?: string[]; titles?: Record<string, string>; multiSelect?: boolean; selectedKeys?: string[] }) {
@@ -42,7 +42,7 @@ export class CableSwitchNode extends ClassicPreset.Node {
     this.titles = { ...(init?.titles ?? {}) };
     this.multiSelect = init?.multiSelect ?? false;
     this.selectedKeys = [...(init?.selectedKeys ?? [])];
-    this.outSocket.setType(this.multiSelect ? "cube" : "any");
+    this.outSocket.setType(this.multiSelect ? "cube" : "trueany");
     this.addOutput("out", new ClassicPreset.Output(this.outSocket, "Out"));
     if (init?.valueKeys?.length) {
       for (const k of init.valueKeys) this.addInputWithKey(k);
@@ -75,10 +75,10 @@ export class CableSwitchNode extends ClassicPreset.Node {
     return t || `Input ${Object.keys(this.inputs).indexOf(key) + 1}`;
   }
 
-  /** Keep the output socket type in sync with the mode (`cube` in Many, else `any`).
+  /** Keep the output socket type in sync with the mode (`cube` in Many, else `trueany`).
    *  Returns true if it changed, so the caller retypes any now-invalid downstream cables. */
   syncOutputType(): boolean {
-    const want: SocketDataType = this.multiSelect ? "cube" : "any";
+    const want: SocketDataType = this.multiSelect ? "cube" : "trueany";
     if (this.outSocket.dataType === want) return false;
     this.outSocket.setType(want);
     return true;

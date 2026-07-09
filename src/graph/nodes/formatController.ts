@@ -2,7 +2,7 @@ import { ClassicPreset, type NodeEditor } from "rete";
 import { formatAnnotationStore, isDateStyle, isFcUnit, type FormatStyleId, type FormatAnnotation, type TextCase, type TextAlign, type DecimalMode, type LogicalStyle, type NegativeStyle, type ScaleMode } from "../formatAnnotationStore";
 import { makeUnitResolver } from "../unitFlow";
 import { dockedNodeStore } from "../dockedNodeStore";
-import { SolenoidSocket, isDateType, type SocketDataType } from "../sockets";
+import { SolenoidSocket, isDateType, isWildcardType, type SocketDataType } from "../sockets";
 
 // ─── Format Controller ────────────────────────────────────────────────────────
 // Docks to a socket on a host node. Annotates it with a display format (how
@@ -22,23 +22,23 @@ class MutableSocket extends SolenoidSocket {
 type FcEditor = NodeEditor<{ Node: ClassicPreset.Node; Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node> }>;
 
 // The concrete data type carried on an output socket, resolving *through*
-// passthrough "any" sockets — a Display (or other pass-through) declares its
-// output as "any" but actually carries whatever feeds it. Walks back through the
-// feeding node's inputs until a non-"any" socket is found, so an FC on a
+// passthrough wildcard sockets — a Display (or other pass-through) declares its
+// output as trueany but actually carries whatever feeds it. Walks back through the
+// feeding node's inputs until a non-wildcard socket is found, so an FC on a
 // Display fed by a Text input adapts to text, not number.
 function concreteTypeOfOutput(editor: FcEditor, nodeId: string, outKey: string, seen = new Set<string>()): SocketDataType {
   const key = `${nodeId}::${outKey}`;
-  if (seen.has(key)) return "any";
+  if (seen.has(key)) return "trueany";
   seen.add(key);
   const sock = editor.getNode(nodeId)?.outputs[outKey]?.socket;
-  if (sock instanceof SolenoidSocket && sock.dataType !== "any") return sock.dataType;
+  if (sock instanceof SolenoidSocket && !isWildcardType(sock.dataType)) return sock.dataType;
   for (const c of editor.getConnections()) {
     if (c.target === nodeId) {
       const t = concreteTypeOfOutput(editor, c.source, c.sourceOutput, seen);
-      if (t !== "any") return t;
+      if (!isWildcardType(t)) return t;
     }
   }
-  return "any";
+  return "trueany";
 }
 
 export class FormatControllerNode extends ClassicPreset.Node {
@@ -72,7 +72,7 @@ export class FormatControllerNode extends ClassicPreset.Node {
   scaleMode: ScaleMode;       // show in K / M / B
   advancedOpen: boolean;      // the expander's persisted open/closed state
   // The resolved socket dataType of the host socket (drives accent color).
-  socketDataType: SocketDataType = "any";
+  socketDataType: SocketDataType = "trueany";
   // Sockets this FC currently writes annotations to. A normal FC (fed by a
   // regular node) writes one — its upstream (backward display). A "forwarding"
   // FC (fed by ANOTHER FC) instead writes its unit onto each downstream consumer
@@ -95,8 +95,8 @@ export class FormatControllerNode extends ClassicPreset.Node {
   width = 116;
   height = 64;
 
-  private readonly _inSock  = new MutableSocket("any");
-  private readonly _outSock = new MutableSocket("any");
+  private readonly _inSock  = new MutableSocket("trueany");
+  private readonly _outSock = new MutableSocket("trueany");
 
   constructor(init?: {
     label?: string;
@@ -172,7 +172,7 @@ export class FormatControllerNode extends ClassicPreset.Node {
         socketKey:  this.socketKey,
         side:       this.side,
       });
-      // Resolve the host socket's data type (through passthrough "any" sockets)
+      // Resolve the host socket's data type (through passthrough wildcard sockets)
       // and mirror it onto our sockets.
       if (editor) {
         this.adaptTypeFromConnections(editor);
@@ -197,14 +197,14 @@ export class FormatControllerNode extends ClassicPreset.Node {
 
   /**
    * Adopt the concrete type of whatever this FC is attached to — resolving
-   * through passthrough "any" sockets (a Display fed by text reads as text).
+   * through passthrough wildcard sockets (a Display fed by text reads as text).
    * Works for a docked FC (from its host socket) and a wired one (from its
-   * cables); resets to "any" when nothing typed is attached.
+   * cables); resets to the wildcard when nothing typed is attached.
    */
   adaptTypeFromConnections(
     editor: NodeEditor<{ Node: ClassicPreset.Node; Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node> }>,
   ): boolean {
-    let resolved: SocketDataType = "any";
+    let resolved: SocketDataType = "trueany";
     if (this.hostNodeId) {
       // Docked: resolve from the host socket.
       if (this.side === "output") {
@@ -218,10 +218,10 @@ export class FormatControllerNode extends ClassicPreset.Node {
       for (const c of editor.getConnections()) {
         if (c.target === this.id && c.targetInput === "in") {
           const t = concreteTypeOfOutput(editor, c.source, c.sourceOutput);
-          if (t !== "any") { resolved = t; break; }
+          if (!isWildcardType(t)) { resolved = t; break; }
         } else if (c.source === this.id && c.sourceOutput === "out") {
           const sock = editor.getNode(c.target)?.inputs[c.targetInput]?.socket;
-          if (sock instanceof SolenoidSocket && sock.dataType !== "any") { resolved = sock.dataType; break; }
+          if (sock instanceof SolenoidSocket && !isWildcardType(sock.dataType)) { resolved = sock.dataType; break; }
         }
       }
     }

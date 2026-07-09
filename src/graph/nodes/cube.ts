@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { anyIn, strIn, strListIn, cubeIn, cubeOut, frameOut } from "./shared";
+import { trueAnyIn, strIn, strListIn, cubeIn, cubeOut, frameOut } from "./shared";
 import { cubeFromColumns, relateFramesToCube, relateCubeToFrame, cubeColumnFromValue, cubeRowCount, inferColumn, makeHeaders, frameFromRows, isCubeValue, isFrameValue, type CubeValue, type CubeCell, type FrameValue, type FrameCell } from "../frame";
 import { aggregateGroup, type AggOp } from "../frameVerbs";
 import { solError, type SolError } from "../errorValue";
@@ -45,7 +45,7 @@ export class BuildCubeNode extends ClassicPreset.Node {
   }
 
   private addInputWithKey(key: string): void {
-    this.addInput(key, anyIn(key));
+    this.addInput(key, trueAnyIn(key));
     const n = parseInt(key.replace(/^v/, ""), 10);
     if (Number.isFinite(n)) this.nextInputId = Math.max(this.nextInputId, n + 1);
   }
@@ -113,8 +113,8 @@ export class NestJoinNode extends ClassicPreset.Node {
     super("NestJoin");
     this.label = init?.label ?? "Nest Join";
     // `any` on both sides so parent/child can each be a Frame OR a Cube (see above).
-    this.addInput("parent", anyIn("Parent"));
-    this.addInput("child", anyIn("Child"));
+    this.addInput("parent", trueAnyIn("Parent"));
+    this.addInput("child", trueAnyIn("Child"));
     this.addInput("key", strIn("Key column"));
     this.addInput("name", strIn("Nested name"));
     this.addOutput("cube", cubeOut("Cube"));
@@ -170,7 +170,7 @@ export class CubeColumnsNode extends ClassicPreset.Node {
   }
 
   private addInputWithKey(key: string): void {
-    this.addInput(key, anyIn(key));
+    this.addInput(key, trueAnyIn(key));
     const n = parseInt(key.replace(/^c/, ""), 10);
     if (Number.isFinite(n)) this.nextInputId = Math.max(this.nextInputId, n + 1);
   }

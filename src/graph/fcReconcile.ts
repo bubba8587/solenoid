@@ -9,7 +9,7 @@ import { reconcileConduitTypes } from "./conduitTrace";
  * Re-adapt every Format Controller's socket type to whatever it's now attached to
  * and re-project its annotation, then re-render. This is the type-propagation pass:
  * an FC adopts the CONCRETE type flowing into it (resolving through passthrough
- * "any" sockets), so when an upstream output's type changes — a new/removed cable,
+ * wildcard sockets), so when an upstream output's type changes — a new/removed cable,
  * a Cast, or a Note frontmatter key retyped from date→number — the downstream FCs
  * must re-resolve or they keep formatting by the stale type (a number still shown
  * as a date). Shared by the Canvas connection-event pipe AND any code that mutates
@@ -35,7 +35,7 @@ export async function retypeOutputCables(
   outKey: string,
 ): Promise<void> {
   const outSock = editor.getNode(nodeId)?.outputs[outKey]?.socket;
-  const newType = outSock instanceof SolenoidSocket ? outSock.dataType : "any";
+  const newType = outSock instanceof SolenoidSocket ? outSock.dataType : "trueany";
   for (const c of [...editor.getConnections()]) {
     if (c.source !== nodeId || c.sourceOutput !== outKey) continue;
     const inSock = editor.getNode(c.target)?.inputs?.[c.targetInput]?.socket;

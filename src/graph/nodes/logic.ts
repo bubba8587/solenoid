@@ -1,6 +1,6 @@
 import { ClassicPreset } from "rete";
 import { numberSocket } from "../sockets";
-import { numListIn, logicalComboOut, logicalComboIn, logicalIn, numIn, anyIn, anyOut } from "./shared";
+import { numListIn, logicalComboOut, logicalComboIn, logicalIn, numIn, anyIn, trueAnyIn, trueAnyOut } from "./shared";
 import { isSolError, isNaError, solError, type SolError } from "../errorValue";
 import { kleeneAnd, kleeneOr, kleeneNot, isMissing, cellError, type Tri } from "../valueKinds";
 import { isFrameValue, frameRowCount, type FrameValue } from "../frame";
@@ -149,10 +149,10 @@ export class IfNode extends ClassicPreset.Node {
     // number (or a comparison) drive it — coerceInputs turns it into a real boolean.
     this.addInput("cond", logicalComboIn("Condition"));
     // then/else just PASS A VALUE THROUGH — IF selects, it doesn't transform — so
-    // they're `any` (a number, text, date, list, … flows unchanged to the output).
-    this.addInput("then", anyIn("Value if true"));
-    this.addInput("else", anyIn("Value if false"));
-    this.addOutput("result", anyOut("Result"));
+    // they're `trueany` (a number, list, frame, … flows unchanged to the output).
+    this.addInput("then", trueAnyIn("Value if true"));
+    this.addInput("else", trueAnyIn("Value if false"));
+    this.addOutput("result", trueAnyOut("Result"));
   }
 
   /** IF selects a value, it doesn't transform it — so a unit/format on the chosen
@@ -311,9 +311,9 @@ export class IFErrorNode extends ClassicPreset.Node {
     super("IFError");
     this.label = init?.label ?? "IFERROR";
     this.mode = init?.mode ?? "iferror";
-    this.addInput("value",    anyIn("Value"));
-    this.addInput("fallback", anyIn("Fallback"));
-    this.addOutput("result",  anyOut("Result"));
+    this.addInput("value",    trueAnyIn("Value"));
+    this.addInput("fallback", trueAnyIn("Fallback"));
+    this.addOutput("result",  trueAnyOut("Result"));
   }
 
   data(inputs: { value?: unknown[]; fallback?: unknown[] }) {
@@ -374,7 +374,7 @@ export class IsTestNode extends ClassicPreset.Node {
     super("IsTest");
     this.label = init?.label ?? "IS.TEST";
     this.op = init?.op ?? "isnumber";
-    this.addInput("value", anyIn("Value"));
+    this.addInput("value", trueAnyIn("Value"));
     this.addOutput("result", logicalComboOut("Result"));
   }
 
@@ -493,11 +493,11 @@ export class ChooseNode extends ClassicPreset.Node {
     const vKeys = (init?.valueKeys ?? []).filter((k) => k.startsWith("v"));
     if (vKeys.length) for (const k of vKeys) this.addInputWithKey(k);
     else for (let i = 0; i < 4; i++) this.addValueInput();
-    this.addOutput("result", anyOut("Result"));
+    this.addOutput("result", trueAnyOut("Result"));
   }
 
   private addInputWithKey(key: string): void {
-    this.addInput(key, anyIn(key));
+    this.addInput(key, trueAnyIn(key));
     const n = parseInt(key.replace(/^v/, ""), 10);
     if (Number.isFinite(n)) this.nextInputId = Math.max(this.nextInputId, n + 1);
   }
@@ -573,13 +573,13 @@ export class SwitchNode extends ClassicPreset.Node {
       // unset Default → #N/A.
       this.literals = { expr: 1, when0: 1, then0: 10, when1: 2, then1: 20, when2: 3, then2: 30 };
     }
-    this.addInput("default", anyIn("Default"));
-    this.addOutput("result", anyOut("Result"));
+    this.addInput("default", trueAnyIn("Default"));
+    this.addOutput("result", trueAnyOut("Result"));
   }
 
   private addPairWithId(id: number): void {
     this.addInput(`when${id}`, anyIn(`When ${id + 1}`));
-    this.addInput(`then${id}`, anyIn(`Then ${id + 1}`));
+    this.addInput(`then${id}`, trueAnyIn(`Then ${id + 1}`));
     this.nextPairId = Math.max(this.nextPairId, id + 1);
   }
 
@@ -667,13 +667,13 @@ export class IfsNode extends ClassicPreset.Node {
     // A differently-labeled fallback appended AFTER the pairs — returned when no
     // condition matched. Resolves the "fake a `TRUE, fallback` last pair" pattern
     // Excel forces; unset → null (the old no-match behaviour is preserved).
-    this.addInput("otherwise", anyIn("Otherwise"));
-    this.addOutput("result", anyOut("Result"));
+    this.addInput("otherwise", trueAnyIn("Otherwise"));
+    this.addOutput("result", trueAnyOut("Result"));
   }
 
   private addPairWithId(id: number): void {
     this.addInput(`cond${id}`, logicalIn(`Condition ${id + 1}`));
-    this.addInput(`val${id}`,  anyIn(`Value ${id + 1}`));
+    this.addInput(`val${id}`,  trueAnyIn(`Value ${id + 1}`));
     this.nextPairId = Math.max(this.nextPairId, id + 1);
   }
 

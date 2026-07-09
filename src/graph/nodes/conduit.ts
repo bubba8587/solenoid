@@ -106,7 +106,7 @@ export class ConduitNode extends ClassicPreset.Node {
       // so a lane genuinely carries its type downstream — a date leaves as a
       // date (FC can lock it, a Display formats it), not an opaque `any`.
       this.addInput(conduitInKey(i), new ClassicPreset.Input(anySocket));
-      this.addOutput(conduitOutKey(i), new ClassicPreset.Output(new MutableSocket("any")));
+      this.addOutput(conduitOutKey(i), new ClassicPreset.Output(new MutableSocket("trueany")));
     }
   }
 
