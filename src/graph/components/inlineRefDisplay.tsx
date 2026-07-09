@@ -113,7 +113,29 @@ function LambdaFormula({ value }: { value: LambdaValue }) {
     } catch { return null; }
   })();
   if (!html) return <span className="solenoid-ref-inline">{lambdaText(value)}</span>;
-  return <span className="solenoid-ref-figure solenoid-ref-formula" dangerouslySetInnerHTML={{ __html: html }} />;
+  // A "where:" legend under the formula: the per-variable descriptions the lambda
+  // carries (params first, then any described captured vars). Prose, not math — so
+  // it's plain text beneath the KaTeX, exactly the "math renders, prose explains"
+  // split. Omitted when the lambda has no descriptions.
+  const desc = value.descriptions;
+  const described = desc
+    ? [...value.params, ...Object.keys(desc).filter((k) => !value.params.includes(k))].filter((k) => desc[k]?.trim())
+    : [];
+  const figure = <span className="solenoid-ref-figure solenoid-ref-formula" dangerouslySetInnerHTML={{ __html: html }} />;
+  if (described.length === 0) return figure;
+  return (
+    <span className="solenoid-ref-formula-block">
+      {figure}
+      <span className="solenoid-ref-where">
+        <span className="solenoid-ref-where__lead">where</span>
+        {described.map((k) => (
+          <span key={k} className="solenoid-ref-where__item">
+            <em>{k}</em> — {desc![k]}
+          </span>
+        ))}
+      </span>
+    </span>
+  );
 }
 
 /** A wired chart's plot, sized to its CONTAINER (the report's content width,

@@ -31,6 +31,9 @@ export interface LambdaValue {
   /** The source body expression — carried so a consumer can RENDER the formula
    *  (e.g. the Report shows a wired lambda as KaTeX). Empty for a bare lambda. */
   expr: string;
+  /** Optional per-variable prose (var name → description), carried so a Report
+   *  embed can show a "where:" legend under the formula. Kept out of `expr`. */
+  descriptions?: Record<string, string>;
 }
 
 /** Duck-typed brand check — lambda values cross `any` sockets and React roots. */
@@ -61,16 +64,29 @@ export class LambdaNode extends ClassicPreset.Node {
   width = 220;
   height = 212;
 
+  /** Optional prose explaining each variable (params + captured), kept OUT of the
+   *  formula so KaTeX never renders it — a card tooltip, a popup legend, and a
+   *  Report "where:" legend under the wired formula. */
+  varDescriptions: Record<string, string> = {};
+
   // Derived — recomputed by _rebuild() whenever expr/params change.
   captured: string[] = [];
   compiled: Compiled | null = null;
 
-  constructor(init?: { label?: string; expr?: string; params?: string; literals?: Record<string, number> }) {
+  /** All the lambda's variables (params + captured, deduped) — lets extractInit
+   *  filter varDescriptions to live vars uniformly with Expression/Equation. */
+  get varNames(): string[] {
+    const params = this.paramList();
+    return [...params, ...this.captured.filter((v) => !params.includes(v))];
+  }
+
+  constructor(init?: { label?: string; expr?: string; params?: string; literals?: Record<string, number>; varDescriptions?: Record<string, string> }) {
     super("Lambda");
     this.label = init?.label ?? "LAMBDA";
     this.params = init?.params ?? "x";
     this.expr = init?.expr ?? "";
     if (init?.literals) this.literals = { ...init.literals };
+    if (init?.varDescriptions) this.varDescriptions = { ...init.varDescriptions };
     this.addOutput("result", lambdaOut("λ"));
     this._rebuild();
   }
@@ -128,7 +144,8 @@ export class LambdaNode extends ClassicPreset.Node {
     const capturedVals = this.captured.map((v) => inputs[v]?.[0] ?? this.literals[v] ?? 0);
     const fn: Compiled = (...args) =>
       compiled(...args.slice(0, params.length), ...capturedVals);
-    const value: LambdaValue = { __lambda: true, params, fn, expr: this.expr };
+    const descriptions = Object.keys(this.varDescriptions).length ? { ...this.varDescriptions } : undefined;
+    const value: LambdaValue = { __lambda: true, params, fn, expr: this.expr, descriptions };
     this.cachedValue = value;
     this.cachedError = null;
     return { result: value };

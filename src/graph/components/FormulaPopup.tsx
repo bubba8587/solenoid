@@ -76,7 +76,8 @@ function formulaHostOf(node: ClassicPreset.Node | undefined): FormulaHost | null
   }
   if (typeName === "LambdaNode") {
     const n = node as LambdaNode;
-    return { label, text: n.expr, locked: false, setText: (s) => applyLambdaChange(n, { expr: s }) };
+    return { label, text: n.expr, locked: false, setText: (s) => applyLambdaChange(n, { expr: s }),
+      varDescriptions: n.varDescriptions, setVarDescription: (name, desc) => setVarDesc(n, name, desc) };
   }
   if (TABLE_LAMBDA_TYPES.has(typeName)) {
     const n = node as MapTableNode;
