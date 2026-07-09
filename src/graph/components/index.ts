@@ -358,6 +358,11 @@ export { SolarPositionComponent, SunriseSunsetComponent, MoonPhaseComponent } fr
 // ─── Chemistry Basics pack ───────────────────────────────────────────────────────
 export { ElementComponent, MolarMassComponent } from "./ChemistryNodes";
 
+// ─── Lists → tables fast path (2026-07-09) ──────────────────────────────────────
+export { ConcatListsComponent } from "./ConcatListsNode";
+export { FrameFromListsComponent } from "./FrameFromListsNode";
+export { QuadraticRootsComponent } from "./QuadraticRootsNode";
+
 // ─── Missing-type placeholder (load-time only, not in the Add menu) ───────────
 export { PlaceholderComponent } from "./PlaceholderNode";
 

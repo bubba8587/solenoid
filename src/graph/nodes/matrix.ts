@@ -346,6 +346,38 @@ export class HStackTableNode extends ClassicPreset.Node {
   }
 }
 
+// VSTACK — the top-to-bottom sibling of HSTACK. Element-agnostic like HSTACK,
+// and the FAST lists→table path: a bare list widens to ONE ROW (the lattice
+// rule), so stacking two lists yields a 2×n table — Excel's VSTACK of two rows.
+// (The node's previous life as a 1-D list concatenator moved to Concat Lists in
+// list.ts, 2026-07-09 — stacking and appending are different operations.)
+export class VStackNode extends ClassicPreset.Node {
+  label: string;
+  cachedResult: CellMat | SolError | null = null;
+  width = 180; height = 210;
+
+  constructor(init?: { label?: string }) {
+    super("VStack");
+    this.label = init?.label ?? "VSTACK";
+    this.addInput("a", anyTableIn("Top"));
+    this.addInput("b", anyTableIn("Bottom"));
+    this.addOutput("result", anyTableOut("Stacked"));
+  }
+
+  data(inputs: { a?: unknown[]; b?: unknown[] }): { result: CellMat | SolError | null } {
+    const a = toAnyMatrix(inputs.a?.[0]), b = toAnyMatrix(inputs.b?.[0]);
+    if (!a || !b) { this.cachedResult = null; return { result: null }; }
+    // Top-to-bottom stacking needs equal column counts — a mismatch is #SHAPE!.
+    if (matCols(a) !== matCols(b)) {
+      const err = solError("#SHAPE!", "Top and Bottom must have the same number of columns");
+      this.cachedResult = err;
+      return { result: err };
+    }
+    this.cachedResult = [...a.map((r) => [...r]), ...b.map((r) => [...r])];
+    return { result: this.cachedResult };
+  }
+}
+
 // ─── WRAPROWS / WRAPCOLS / TOCOL / TOROW ──────────────────────────────────────
 
 export type TableReshapeOp = "wraprows" | "wrapcols" | "tocol" | "torow";

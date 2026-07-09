@@ -1,4 +1,13 @@
-import type { VStackNode } from "../rete-nodes";
-import { makeNodeComponent } from "./standardNode";
+import type { VStackNode as VStackNodeType } from "../rete-nodes";
+import { NodeShell, type NodeProps } from "./nodeKit";
+import { InlineInputs } from "./inlineInput";
+import { TableDisplay } from "./TableDisplay";
 
-export const VStackComponent = makeNodeComponent<VStackNode>((n) => n.cachedList);
+export function VStackComponent({ data, emit }: NodeProps<VStackNodeType>) {
+  return (
+    <NodeShell node={data} emit={emit}>
+      <InlineInputs node={data} emit={emit} />
+      <TableDisplay table={data.cachedResult} label={data.label} />
+    </NodeShell>
+  );
+}

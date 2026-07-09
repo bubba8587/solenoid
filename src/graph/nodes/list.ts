@@ -780,17 +780,20 @@ export class DropNode extends ClassicPreset.Node {
   }
 }
 
-export class VStackNode extends ClassicPreset.Node {
+// Joins two lists end-to-end — VSTACK's old job here, renamed 2026-07-09 when
+// VSTACK became the true table stacker (matrix.ts): appending and stacking are
+// different operations, and this one stays 1-D.
+export class ConcatListsNode extends ClassicPreset.Node {
   label: string;
   cachedList: number[] = [];
   width = 180;
   height = 160;
 
   constructor(init?: { label?: string }) {
-    super("VStack");
-    this.label = init?.label ?? "VStack";
-    this.addInput("a", listIn("Top"));
-    this.addInput("b", listIn("Bottom"));
+    super("ConcatLists");
+    this.label = init?.label ?? "Concat Lists";
+    this.addInput("a", listIn("First"));
+    this.addInput("b", listIn("Second"));
     this.addOutput("result", listOut("Combined"));
   }
 

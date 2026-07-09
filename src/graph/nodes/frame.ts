@@ -1,12 +1,12 @@
 import { ClassicPreset } from "rete";
-import { numIn, numListIn, tableIn, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, anyOut } from "./shared";
+import { numIn, numListIn, tableIn, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, anyOut, anyListIn } from "./shared";
 import { toMatrix } from "./coerce";
 import { parseDateToSerial } from "./date";
 import { isSolError, solError, type SolError } from "../errorValue";
 import { coerceLogical } from "../valueKinds";
 import { APP_LOCALE } from "../locale";
 import {
-  buildFrame, splitFrame, getColumn, addColumn, frameRowCount, frameHasTextColumns,
+  buildFrame, splitFrame, getColumn, addColumn, frameRowCount, frameHasTextColumns, makeHeaders,
   frameFromInputText, formatFrameCell, isCubeValue, isFrameValue,
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
 } from "../frame";
@@ -963,6 +963,106 @@ export class BuildFrameNode extends ClassicPreset.Node {
     this.cachedResult = buildFrame(m, headers);
     this._builtFromMatrix = rawMatrix;
     this._builtFromHeaders = headers;
+    return { frame: this.cachedResult };
+  }
+}
+
+// ─── FRAME FROM LISTS ─────────────────────────────────────────────────────────
+// The fast lists→Frame path: each extensible row pairs a column NAME (typed or
+// wired) with a LIST of values (any element family — the anylist wildcard).
+// Build Frame stays the matrix+headers assembler; this one skips the matrix.
+// Type-PRESERVING per column (a wired list is already typed — no re-inference
+// that would turn "1" the string into 1 the number); mixed cells coerce to
+// text; ragged columns pad with blanks. Date lists arrive as serials and type
+// as numbers — retype downstream with Get Column's read-as if needed.
+
+function columnFromCells(name: string, cells: unknown[], length: number): FrameColumn {
+  const present = cells.filter((c) => c !== null && c !== undefined && !isSolError(c));
+  const type: FrameColType =
+    present.length > 0 && present.every((c) => typeof c === "number") ? "number"
+    : present.length > 0 && present.every((c) => typeof c === "boolean") ? "logical"
+    : "string";
+  const values: FrameCell[] = [];
+  for (let i = 0; i < length; i++) {
+    const c = cells[i];
+    if (c === null || c === undefined) { values.push(null); continue; }
+    if (isSolError(c)) { values.push(c); continue; }
+    values.push(type === "string" && typeof c !== "string" ? String(c) : (c as FrameCell));
+  }
+  return { name, type, values };
+}
+
+export class FrameFromListsNode extends ClassicPreset.Node {
+  label: string;
+  cachedResult: FrameValue | null = null;
+  stringLiterals: Record<string, string> = {};
+  literals: Record<string, number> = {};
+  nextPairId = 0;
+  readonly pairLabels: [string, string] = ["Name", "Values"];
+  width = 220; height = 240;
+
+  // Identity-stable memoization (same rationale as BuildFrame, audit finding 42):
+  // a fresh FrameValue per pass defeats the backend's identity source-cache.
+  private _sig: unknown[] = [];
+
+  constructor(init?: { label?: string; valueKeys?: string[] }) {
+    super("FrameFromLists");
+    this.label = init?.label ?? "Frame from Lists";
+    const ids = pairIdsFromKeys(init?.valueKeys, "name");
+    if (ids.length) {
+      for (const id of ids) this.addPairWithId(id);
+    } else {
+      for (let i = 0; i < 2; i++) this.addValuePair();
+    }
+    this.addOutput("frame", frameOut("Frame"));
+  }
+
+  private addPairWithId(id: number): void {
+    this.addInput(`name${id}`, strIn(`Name ${id + 1}`));
+    this.addInput(`vals${id}`, anyListIn(`Column ${id + 1}`));
+    this.nextPairId = Math.max(this.nextPairId, id + 1);
+  }
+
+  /** Ordered (nameKey, valsKey) pairs currently present, in insertion order. */
+  valuePairKeys(): Array<[string, string]> {
+    return Object.keys(this.inputs)
+      .filter((k) => k.startsWith("name"))
+      .map((k) => { const id = k.slice(4); return [`name${id}`, `vals${id}`] as [string, string]; });
+  }
+
+  addValuePair(): void {
+    this.addPairWithId(this.nextPairId);
+  }
+
+  removeValuePair(nameKey: string): void {
+    const id = nameKey.slice(4);
+    this.removeInput(`name${id}`);
+    this.removeInput(`vals${id}`);
+    delete this.stringLiterals[`name${id}`];
+  }
+
+  data(inputs: Record<string, unknown[]>) {
+    const cols: { name: string; cells: unknown[] }[] = [];
+    const sig: unknown[] = [];
+    for (const [nameK, valsK] of this.valuePairKeys()) {
+      const wired = inputs[valsK]?.[0];
+      if (wired === undefined || wired === null) continue; // an unwired row contributes nothing
+      const cells = Array.isArray(wired) ? wired : [wired]; // a scalar makes a 1-cell column
+      const name = String(inputs[nameK]?.[0] ?? this.stringLiterals[nameK] ?? "").trim();
+      cols.push({ name, cells });
+      sig.push(name, wired);
+    }
+    if (cols.length === 0) { this.cachedResult = null; this._sig = []; return { frame: null }; }
+    if (this.cachedResult && sig.length === this._sig.length && sig.every((v, i) => Object.is(v, this._sig[i]))) {
+      return { frame: this.cachedResult };
+    }
+    const length = Math.max(...cols.map((c) => c.cells.length));
+    const names = makeHeaders(cols.map((c) => c.name), cols.length);
+    this.cachedResult = {
+      __frame: true,
+      columns: cols.map((c, i) => columnFromCells(names[i], c.cells, length)),
+    };
+    this._sig = sig;
     return { frame: this.cachedResult };
   }
 }

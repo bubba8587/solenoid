@@ -1,6 +1,6 @@
 import { ClassicPreset } from "rete";
 import { numIn, numOut, complexIn, complexOut } from "./shared";
-import { isSolError, type SolError } from "../errorValue";
+import { isSolError, solError, type SolError } from "../errorValue";
 
 // ─── Internal complex type ────────────────────────────────────────────────────
 // Stored as a [real, imag] tuple. All IM* functions operate on this.
@@ -269,5 +269,57 @@ export class ComplexPowerNode extends ClassicPreset.Node {
     if (!z) { this.cachedResult = null; return { result: null }; }
     this.cachedResult = cxPow(z, n);
     return { result: this.cachedResult };
+  }
+}
+
+// ─── Quadratic roots (complex) ────────────────────────────────────────────────
+// Both roots of a·x² + b·x + c = 0 as COMPLEX numbers — the companion to the
+// Equation node's quadratic solve, which stays in the real domain (its numeric
+// sockets can't morph to complex; a negative discriminant there is #SOLVE!).
+// Here the conjugate pair comes out the complex sockets like any other Cx.
+
+export class QuadraticRootsNode extends ClassicPreset.Node {
+  label: string;
+  literals: Record<string, number> = { a: 1, b: 0, c: 1 };
+  cachedX1: Cx | SolError | null = null;
+  cachedX2: Cx | SolError | null = null;
+  width = 210;
+  height = 200;
+
+  constructor(init?: { label?: string }) {
+    super("QuadraticRoots");
+    this.label = init?.label ?? "Quadratic Roots";
+    this.addInput("a", numIn("a"));
+    this.addInput("b", numIn("b"));
+    this.addInput("c", numIn("c"));
+    this.addOutput("x1", complexOut("x₁"));
+    this.addOutput("x2", complexOut("x₂"));
+  }
+
+  data(inputs: { a?: (number | null)[]; b?: (number | null)[]; c?: (number | null)[] }) {
+    const a = inputs.a?.[0] ?? this.literals.a;
+    const b = inputs.b?.[0] ?? this.literals.b;
+    const c = inputs.c?.[0] ?? this.literals.c;
+    let x1: Cx | SolError | null = null;
+    let x2: Cx | SolError | null = null;
+    if (typeof a === "number" && typeof b === "number" && typeof c === "number") {
+      if (a === 0) {
+        const err = solError("#DOMAIN!", "a = 0 is a line, not a quadratic — solve b·x + c = 0 directly");
+        x1 = x2 = err;
+      } else {
+        const disc = b * b - 4 * a * c;
+        const s = Math.sqrt(Math.abs(disc)) / (2 * a);
+        const z = (v: number) => (v === 0 ? 0 : v); // kill -0 (it would display "-0")
+        const re = z(-b / (2 * a));
+        if (disc >= 0) {
+          x1 = [z(re - s), 0]; x2 = [z(re + s), 0];
+        } else {
+          x1 = [re, z(-s)]; x2 = [re, z(s)]; // the conjugate pair
+        }
+      }
+    }
+    this.cachedX1 = x1;
+    this.cachedX2 = x2;
+    return { x1, x2 };
   }
 }

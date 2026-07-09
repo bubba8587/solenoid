@@ -66,7 +66,20 @@ drill into the archive (or `git log`) only for the mechanics of a specific item.
   discriminant #SOLVE!. Intercepts BEFORE symbolic isolation so the principal
   branch can't eat the negative root; non-polynomials (SQRT/1/x/trig in the
   unknown) fail a probe and keep the old behavior. D14 amended; seed gained the
-  x² − 36 block.
+  x² − 36 block. — **Lists→tables gap closed (author):** VSTACK was a 1-D list
+  concatenator, so stacking two lists could never make a table. Now VSTACK is
+  HSTACK's true sibling (element-agnostic anytable in/out; a list widens to ONE
+  ROW, so two lists → a 2×n table; equal column counts or #SHAPE!); the old
+  append behavior lives on honestly named as **Concat Lists**. NEW **Frame from
+  Lists** (`FrameFromListsNode`) is the fast lists→Frame path: paired extensible
+  rows (typed column name + anylist), TYPE-PRESERVING per column (no
+  re-inference — "01" stays text), ragged pad, makeHeaders naming, identity-
+  stable memo (audit-42 contract). PairedExtensibleInputs learned string-socket
+  text fields for it. — **Complex × Equation:** deliberately NOT integrated (the
+  evaluator's [re,im]-is-a-list ambiguity — D2's own wall — plus socket
+  morphing); instead **Quadratic Roots** joined the Complex family (a,b,c → x₁,
+  x₂ complex outputs; conjugate pair on negative discriminant; −0 normalized).
+  Equation's #SOLVE! message stays the real-domain answer.
 
 ### SESSION DIGEST (2026-07-08, evening — What's New resell + 1.2/2.0 plans)
 - **What's New rebuilt around the author's sell bar** ("a shiny thing a user will go
