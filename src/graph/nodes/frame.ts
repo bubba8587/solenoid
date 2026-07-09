@@ -1,5 +1,6 @@
 import { ClassicPreset } from "rete";
-import { numIn, numListIn, tableIn, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, trueAnyOut, anyListIn } from "./shared";
+import { numIn, numListIn, tableIn, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, anyIn, trueAnyOut, anyListIn } from "./shared";
+import { readFilterValue } from "./list";
 import { toMatrix } from "./coerce";
 import { parseDateToSerial } from "./date";
 import { isSolError, solError, type SolError } from "../errorValue";
@@ -247,7 +248,9 @@ export class FilterFrameNode extends ClassicPreset.Node {
 
   private addPairWithId(id: number): void {
     this.addInput(`column${id}`, strIn(`Column ${id + 1}`));
-    this.addInput(`value${id}`, strIn(`Value ${id + 1}`));
+    // `any` (scalar): a wired Slider/Number/Date/Boolean threshold connects;
+    // unwired, the typed text field is the literal (parsed per the column type).
+    this.addInput(`value${id}`, anyIn(`Value ${id + 1}`));
     if (!this.condConfig[String(id)]) this.condConfig[String(id)] = { op: "gt" };
     this.nextPairId = Math.max(this.nextPairId, id + 1);
   }
@@ -294,8 +297,8 @@ export class FilterFrameNode extends ClassicPreset.Node {
     for (const [colKey, valKey] of this.valuePairKeys()) {
       const id = colKey.slice(6);
       const col = String((inputs[colKey] as string[] | undefined)?.[0] ?? this.stringLiterals[colKey] ?? "").trim();
-      const val = (inputs[valKey] as string[] | undefined)?.[0] ?? this.stringLiterals[valKey] ?? "";
-      if (col === "" || String(val).trim() === "") continue;
+      const val = readFilterValue(inputs[valKey], this.stringLiterals[valKey]);
+      if (col === "" || val.trim() === "") continue;
       const cfg = this.condConfig[id];
       conditions.push({ column: col, op: cfg?.op ?? "gt", value: val as FrameCell, matchCase: cfg?.matchCase ?? false });
     }
