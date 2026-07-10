@@ -645,6 +645,14 @@ describe("SortBy — ragged pad-to-longest; null/error keys sort last (audit fin
     expect(new SortByNode().data({ array: [[10]], by_array: [[3, 1]] }).list)
       .toEqual([null, 10]);
   });
+  it("sorts a TEXT array by a parallel numeric key (the reorder is element-agnostic)", () => {
+    // "names by scores": the array is any element type, only the keys are numeric.
+    expect(new SortByNode().data({ array: [["Ann", "Bob", "Cy"]], by_array: [[3, 1, 2]] }).list)
+      .toEqual(["Bob", "Cy", "Ann"]);
+    // A date-serial array reorders the same way.
+    expect(new SortByNode().data({ array: [[46000, 45000, 45500]], by_array: [[2, 3, 1]] }).list)
+      .toEqual([45500, 46000, 45000]);
+  });
 });
 
 describe("Interleave — ragged pad-to-longest keeps the A/B alternation aligned", () => {
