@@ -1,0 +1,137 @@
+/* Node showcase (?showcase) — the node-level UI-audit harness. Dev-tool chrome:
+   neutral surfaces off the app vars, nothing decorative, the staged node is the
+   only thing that matters visually. */
+
+.sol-showcase {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.sol-showcase__side {
+  width: 280px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--border);
+}
+
+.sol-showcase__search {
+  margin: 8px;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  outline: none;
+}
+.sol-showcase__search:focus {
+  border-color: var(--accent);
+}
+
+.sol-showcase__list {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.sol-showcase__item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  color: var(--text);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.sol-showcase__item:hover {
+  background: color-mix(in srgb, var(--text) 7%, transparent);
+}
+.sol-showcase__item--active {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.sol-showcase__item-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sol-showcase__item-type {
+  flex: none;
+  font-size: 11px;
+  opacity: 0.55;
+  font-family: var(--font-mono, monospace);
+}
+
+.sol-showcase__count {
+  padding: 6px 10px;
+  font-size: 12px;
+  opacity: 0.65;
+  border-top: 1px solid var(--border);
+}
+
+.sol-showcase__main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sol-showcase__bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sol-showcase__nav {
+  padding: 3px 9px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.sol-showcase__nav:hover {
+  background: color-mix(in srgb, var(--text) 7%, transparent);
+}
+.sol-showcase__nav--active {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border-color: var(--accent);
+}
+
+.sol-showcase__title {
+  font-weight: 600;
+  font-size: 14px;
+}
+.sol-showcase__type {
+  font-size: 12px;
+  opacity: 0.55;
+  font-family: var(--font-mono, monospace);
+}
+.sol-showcase__zoom {
+  margin-left: auto;
+  display: flex;
+  gap: 4px;
+}
+
+/* The rete mount. Fixed transform (no pan/zoom handlers), node parked at PAD. */
+.sol-showcase__stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
