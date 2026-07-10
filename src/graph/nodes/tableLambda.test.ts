@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { MapTableNode, ByAxisNode, ReduceLambdaNode, ScanLambdaNode } from "./tableLambda";
-import { LambdaNode, isLambdaValue, formatLambda, type LambdaValue } from "./lambda";
+import { LambdaNode, isLambdaValue, formatLambda, formatLambdaSig, lambdaSigMismatch, type LambdaValue } from "./lambda";
 import { isSolError, type SolError } from "../errorValue";
 
 /** Narrow a node result the test knows is a lambda value (the node now returns a
@@ -220,5 +220,19 @@ describe("ScanLambda (SCAN)", () => {
   it("seeds from a scalar `any` socket, not a list (regression: blank table)", () => {
     expect(new ScanLambdaNode().inputs.initial!.socket.name).toBe("any");
     expect(new ReduceLambdaNode().inputs.initial!.socket.name).toBe("any");
+  });
+
+  // A wired lambda binds POSITIONALLY to (acc, x, i); its param NAMES are cosmetic.
+  // The card flags any declaration that isn't an ordered prefix so the names can't
+  // silently lie (λ(x) drops acc; λ(x, acc) swaps them). SCAN/REDUCE advertise it.
+  it("flags a wired lambda whose params aren't the (acc, x, i) prefix", () => {
+    const sig = new ScanLambdaNode().lambdaSig;
+    expect(formatLambdaSig(sig)).toBe("acc, x, [i]");
+    expect(lambdaSigMismatch(["acc", "x"], sig)).toBe(false);       // correct
+    expect(lambdaSigMismatch(["acc", "x", "i"], sig)).toBe(false);  // correct, with i
+    expect(lambdaSigMismatch(["x"], sig)).toBe(true);               // acc dropped
+    expect(lambdaSigMismatch(["x", "acc"], sig)).toBe(true);        // order swapped
+    expect(lambdaSigMismatch(["a", "b"], sig)).toBe(true);          // arbitrary names
+    expect(new ReduceLambdaNode().lambdaSig).toEqual(sig);
   });
 });

@@ -6,7 +6,7 @@ import type {
   ReduceLambdaNode as ReduceLambdaNodeType,
   ScanLambdaNode as ScanLambdaNodeType,
 } from "../rete-nodes";
-import { isLambdaValue, formatLambda } from "../nodes/lambda";
+import { isLambdaValue, formatLambda, formatLambdaSig, lambdaSigMismatch, type LambdaSig } from "../nodes/lambda";
 import { processGraph } from "../process";
 import { formulaPopup } from "../formulaPopupStore";
 import { cableValueStore } from "../cableValueStore";
@@ -30,7 +30,7 @@ type ListVal = number[] | string[] | SolError | null;
 
 const FORMULA_KEYS = new Set(["lambda"]);
 
-type FormulaNode = { id: string; stringLiterals: Record<string, string> };
+type FormulaNode = { id: string; label?: string; stringLiterals: Record<string, string>; lambdaSig?: LambdaSig };
 
 /** Formula editor bound to node.stringLiterals.formula. When a wired LAMBDA
  *  supersedes the inline text, this shows WHAT actually runs and WHO sends it
@@ -57,14 +57,25 @@ function FormulaBox({ node }: { node: FormulaNode }) {
   if (lambdaSrc) {
     const live = cableValueStore.get(lambdaSrc.sourceId, lambdaSrc.sourceOutput);
     const sig = isLambdaValue(live) ? formatLambda(live) : "λ";
+    // Wired lambdas bind by POSITION, so a lambda whose params aren't this node's
+    // fixed vars (in order) silently computes something other than its names read
+    // (`λ(x)` drops acc; `λ(x, acc)` swaps them). Still runs — just advise the shape.
+    const mismatch = node.lambdaSig && isLambdaValue(live) && lambdaSigMismatch(live.params, node.lambdaSig);
     return (
-      <div
-        className="solenoid-expr__override"
-        title="Runs the wired lambda; parameters bind positionally"
-      >
-        <span className="solenoid-expr__override-sig">{sig}</span>
-        <span className="solenoid-expr__override-src">↩ {lambdaSrc.label || "wired"}</span>
-      </div>
+      <>
+        <div
+          className="solenoid-expr__override"
+          title="Runs the wired lambda; parameters bind positionally"
+        >
+          <span className="solenoid-expr__override-sig">{sig}</span>
+          <span className="solenoid-expr__override-src">↩ {lambdaSrc.label || "wired"}</span>
+        </div>
+        {mismatch && (
+          <div className="solenoid-expr__lambda-hint">
+            {node.label || "This node"} binds by position — expects λ({formatLambdaSig(node.lambdaSig!)})
+          </div>
+        )}
+      </>
     );
   }
 

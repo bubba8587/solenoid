@@ -114,6 +114,15 @@
   color: #e06c2e;
 }
 
+/* Advisory (not an error — the node still computes): a wired lambda whose
+   declared params don't match this node's positional signature. */
+.solenoid-expr__lambda-hint {
+  margin: 0 8px 4px;
+  font-size: 10px;
+  line-height: 1.3;
+  color: #e06c2e;
+}
+
 /* Variable hint under a LAMBDA-family formula. */
 .solenoid-lambda__hint {
   padding: 0 8px 3px;
