@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { numIn, anyListIn, anyTableIn, lambdaIn, resultOut, type ResultType } from "./shared";
+import { numIn, anyIn, anyTableIn, lambdaIn, resultOut, type ResultType } from "./shared";
 import { toAnyMatrix } from "./coerce";
 import { compilePositional } from "../excelFormula";
 import { isLambdaValue } from "./lambda";
@@ -220,7 +220,7 @@ export class ReduceLambdaNode extends ClassicPreset.Node {
     this.resultAs = init?.resultAs ?? "number";
     this.stringLiterals = { formula: init?.expr ?? "acc + x" };
     if (init?.literals) this.literals = { ...init.literals };
-    this.addInput("initial", anyListIn("Initial"));
+    this.addInput("initial", anyIn("Initial"));
     this.addInput("table", anyTableIn("Values"));
     this.addInput("lambda", lambdaIn("Lambda"));
     this.addOutput("result", resultOut("Result", "scalar", this.resultAs));
@@ -273,7 +273,7 @@ export class ScanLambdaNode extends ClassicPreset.Node {
     this.resultAs = init?.resultAs ?? "number";
     this.stringLiterals = { formula: init?.expr ?? "acc + x" };
     if (init?.literals) this.literals = { ...init.literals };
-    this.addInput("initial", anyListIn("Initial"));
+    this.addInput("initial", anyIn("Initial"));
     this.addInput("table", anyTableIn("Values"));
     this.addInput("lambda", lambdaIn("Lambda"));
     this.addOutput("result", resultOut("Scanned", "matrix", this.resultAs));

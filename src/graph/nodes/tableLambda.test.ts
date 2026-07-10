@@ -212,4 +212,13 @@ describe("ScanLambda (SCAN)", () => {
     const bad = new ScanLambdaNode({ expr: "acc +* x" }).data({ table: [[[1]]] }).result;
     expect(isSolError(bad) && (bad as SolError).code).toBe("#SYNTAX!");
   });
+
+  // The Initial input is a SCALAR seed. It was an `anyListIn` (list socket), so a
+  // wired scalar arrived wrapped as `[v]`; `acc` then started as an array, the
+  // fold broadcast to arrays, and every cell nulled out ("1×10 blank table").
+  // REDUCE shared the bug. Guard the socket type on both.
+  it("seeds from a scalar `any` socket, not a list (regression: blank table)", () => {
+    expect(new ScanLambdaNode().inputs.initial!.socket.name).toBe("any");
+    expect(new ReduceLambdaNode().inputs.initial!.socket.name).toBe("any");
+  });
 });

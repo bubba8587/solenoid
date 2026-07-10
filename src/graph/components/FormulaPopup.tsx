@@ -49,7 +49,7 @@ type FormulaHost = {
 // old ones, so an instanceof gate silently stops matching mid-session — the
 // popup then opens but never commits ("rename does nothing until reload").
 // Names survive the swap; persistence already keys saved nodes on them.
-const TABLE_LAMBDA_TYPES = new Set(["MapTableNode", "ByAxisNode", "MakeArrayNode", "ReduceLambdaNode"]);
+const TABLE_LAMBDA_TYPES = new Set(["MapTableNode", "ByAxisNode", "MakeArrayNode", "ReduceLambdaNode", "ScanLambdaNode"]);
 
 /** Set a per-variable description on an Expression/Equation node — display-only
  *  (no recompute), so just update the map and re-render the card for its tooltip. */
