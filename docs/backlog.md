@@ -189,9 +189,15 @@ this backlog stays the per-item source of truth.
 - [ ] **Error UX on restriction violation** — typed error out the socket vs the node
   flagging the offending input locally. Pending a call.
 - [ ] **Formula re-audit remainder** — `formulaDivergence.test.ts` guards the known
-  overrides (incl. the 2026-07-05 TEXT-family sweep); NOT yet swept: node `data()`
-  paths that don't share the registered impl; distributions validated only at
-  representative points — widen if accuracy is ever in doubt.
+  overrides (incl. the 2026-07-05 TEXT-family sweep). **Node-vs-formula sweep done
+  2026-07-10:** stats (STDEV/VAR/MEDIAN/PERCENTILE/RANK/…), rounding, and math all
+  agree or share the impl; fixed the two genuine drifts (Combinatorics round→floor;
+  MROUND opposite-sign → #DOMAIN!). Residual, deliberately NOT fixed (obscure abuse
+  cases, one deliberate): POWER `0^0`=1 (documented JS/Polars convention vs Excel
+  #NUM!); CEILING.MATH/FLOOR.MATH with NEGATIVE significance (node doesn't `abs` it);
+  GCD/LCM on NON-integer args (node rounds, Excel truncates, Formula.js is itself
+  broken here). Still open elsewhere: distributions validated only at representative
+  points — widen if accuracy is ever in doubt.
 
 ## Notes / documents
 
