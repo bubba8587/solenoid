@@ -5,6 +5,35 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-10, overnight — autonomous robustness/parity pass)
+Unattended loop pass; brief = "iterate, review existing code/design vs new additions,
+keep tsc + vitest green, commit to develop." Two genuine defects fixed + a full clean
+audit of the newest features.
+- **`Math.min(...)`/`Math.max(...)` RangeError on data-scale arrays — CLOSED.** The
+  spread form throws past ~125k args, and `mathUtils.iterMin/iterMax` exist precisely
+  for this (the doc comment names Aggregate(min)). Two stragglers still on the spread:
+  **MINIFS/MAXIFS** (`SumIfsNode`, list.ts) over a large frame column, and
+  **`histogramBins`** (visual.ts) over a big series — both would black out on render.
+  Swapped to the helpers; `list.ts` already used them everywhere else. Swept the whole
+  `src` tree: every other `Math.min(...)`/`Math.max(...)` is over a bounded structural
+  count (matrix/column counts, socket keys, 3 triangle vertices) — safe. Class closed.
+- **CHOOSEROWS/CHOOSECOLS out-of-range → #VALUE!, not a NaN-padded row** (`TableSelectNode`,
+  matrix.ts). It padded a bad pick with raw NaN — unlike Excel (any zero/out-of-range
+  index errors the whole call) and unlike its sibling EXPAND (whole-result #VALUE!
+  SolError) in the same file; its `cachedResult` type didn't even admit a SolError, and
+  chooserows crashed on a fractional in-range index (`[...m[1.5]]`). Now truncates the
+  1-based index (negatives from the end), bounds-checks, and returns one #VALUE!.
+- **Audited clean (no changes):** the append ladder (VSTACK/HSTACK #N/A padding,
+  WRAP/TAKE/DROP/EXPAND), the SUMIFS family's Excel empty-match parity, the Equation
+  solver (symbolic isolation, quadratic roots, closest-to-zero numeric fallback) +
+  TvmNode zero-rate limit, Triangle Solver (SSS/SAS/ASA/AAS + ambiguous-SSA #SOLVE!),
+  trueany adoption, and INDEX/XLOOKUP (all out-of-range branches already #REF!;
+  approximate nextSmaller/nextLarger + not-found #N/A correct). The recent code is as
+  solid as the audit culture implies — real bugs were rare and narrow.
+- Non-bug noted for a later author call: `TableSelectNode`/INDEX round-vs-truncate a
+  fractional index differently now (trunc vs `Math.round`); both are Excel-rare edges,
+  left as-is to avoid an unprompted parity change.
+
 ### SESSION DIGEST (2026-07-09, evening — pack enhancement wave: domain tools beyond formulas)
 Author brief: "walk the new packs as their domain's user — beyond equations, what
 tools/tables/charts does solving problems in this domain actually need?" Six
