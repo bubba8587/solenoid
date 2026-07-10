@@ -44,7 +44,7 @@ import {
   type ComplexUnaryOp, type ComplexBinaryOp,
   TableInputNode, MatDetNode, TableMultNode, TableUnitNode, TableTransposeNode,
   HStackTableNode, TableReshapeNode, TableSelectNode, TableTakeDropNode, ExpandNode, TableInfoNode,
-  MapTableNode, ByAxisNode, MakeArrayNode, ReduceLambdaNode, LambdaNode,
+  MapTableNode, ByAxisNode, MakeArrayNode, ReduceLambdaNode, ScanLambdaNode, LambdaNode,
   FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, GetRowNode, DistinctNode,
   HeadNode, SortFrameNode, FilterFrameNode, JoinNode,
   SelectColumnsNode, DropColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode,
@@ -892,6 +892,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "by-axis",    label: "BYROW / BYCOL", description: "Reduce each row or column of a table to one value. Variable v = the row/column as a list; pick the result type for text/date. Excel: BYROW / BYCOL.", create: () => new ByAxisNode(), parity: false },
           { type: "make-array", label: "MAKEARRAY", description: "Build a rows×cols table from a formula of its indices. Variables r, c = 1-based row, column; pick the result type for text/date. Excel: MAKEARRAY.", create: () => new MakeArrayNode(), parity: false },
           { type: "reduce-lambda", label: "REDUCE", description: "Fold a list or table to one value, starting from Initial. Variables acc = running value, x = current cell, i = position; pick the result type for text/date. Excel: REDUCE.", create: () => new ReduceLambdaNode(), parity: false },
+          { type: "scan-lambda", label: "SCAN", description: "Like REDUCE but keeps every running value: fold a list or table from Initial and emit the accumulator after each cell, same shape as the input. A running total is acc + x from 0; a running max is MAX(acc, x). Variables acc, x, i; pick the result type for text/date. Excel: SCAN.", create: () => new ScanLambdaNode(), parity: false, keywords: "running total cumulative accumulate prefix sum" },
         ],
       },
       {

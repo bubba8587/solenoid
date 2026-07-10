@@ -250,6 +250,61 @@ export class ReduceLambdaNode extends ClassicPreset.Node {
   }
 }
 
+// ─── SCAN ───────────────────────────────────────────────────────────────────────
+// REDUCE's running-intermediate twin: the SAME row-major fold, but it EMITS the
+// accumulator after every cell, so the output keeps the input's shape (Excel
+// SCAN). A running total is `acc + x` from Initial 0; a running max is
+// `MAX(acc, x)`; text builds with `acc & x` from "". REDUCE gives only the final
+// value, so this covers the arbitrary-formula case the fixed-op Cumulative can't.
+
+export class ScanLambdaNode extends ClassicPreset.Node {
+  label: string;
+  resultAs: ResultType;
+  literals: Record<string, number> = {};
+  stringLiterals: Record<string, string>;
+  cachedResult: Mat | SolError | null = null;
+  cachedError: string | null = null;
+  width = 210;
+  height = 246;
+
+  constructor(init?: { label?: string; expr?: string; resultAs?: ResultType; literals?: Record<string, number> }) {
+    super("ScanLambda");
+    this.label = init?.label ?? "SCAN";
+    this.resultAs = init?.resultAs ?? "number";
+    this.stringLiterals = { formula: init?.expr ?? "acc + x" };
+    if (init?.literals) this.literals = { ...init.literals };
+    this.addInput("initial", anyListIn("Initial"));
+    this.addInput("table", anyTableIn("Values"));
+    this.addInput("lambda", lambdaIn("Lambda"));
+    this.addOutput("result", resultOut("Scanned", "matrix", this.resultAs));
+  }
+
+  data(inputs: { initial?: unknown[]; table?: unknown[]; lambda?: unknown[] }): { result: Mat | SolError | null } {
+    const initial = inputs.initial?.[0] ?? this.literals.initial ?? 0;
+    const m = toAnyMatrix(inputs.table?.[0]);
+    const { fn, err, code } = resolveFn(
+      inputs.lambda?.[0], this.stringLiterals.formula,
+      "acc + x", ["acc", "x", "i"], 3);
+    if (!fn) { this.cachedResult = null; this.cachedError = err; return fnError(err!, code); }
+    if (!m) { this.cachedResult = null; this.cachedError = null; return { result: null }; }
+    try {
+      let acc: unknown = initial;
+      let i = 0;
+      // The fold carries the RAW accumulator (fn's return); each output cell is
+      // only its normalized snapshot — normalizing the carried acc would corrupt
+      // the fold (e.g. a valid intermediate flattened to null).
+      const out: Mat = m.map((row) => row.map((x) => { acc = fn(acc, x, ++i); return cell(acc); }));
+      this.cachedResult = out;
+      this.cachedError = null;
+      return { result: out };
+    } catch {
+      this.cachedResult = null;
+      this.cachedError = "Evaluation error";
+      return fnError("Evaluation error", "#VALUE!");
+    }
+  }
+}
+
 // ─── MAKEARRAY ────────────────────────────────────────────────────────────────────
 
 const MAKEARRAY_MAX_CELLS = 40000;
