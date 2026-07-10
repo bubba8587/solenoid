@@ -54,7 +54,7 @@ import {
   TableInputNode, MatDetNode, TableMultNode, TableUnitNode, TableTransposeNode,
   HStackTableNode, VStackNode, TableReshapeNode, TableSelectNode, TableTakeDropNode, ExpandNode, TableInfoNode,
 } from "./matrix";
-import { MapTableNode, ByAxisNode, MakeArrayNode, ReduceLambdaNode } from "./tableLambda";
+import { MapTableNode, ByAxisNode, MakeArrayNode, ReduceLambdaNode, ScanLambdaNode } from "./tableLambda";
 import { LambdaNode } from "./lambda";
 import {
   CombinatoricsNode, TwoInputMathNode, SumProductNode,
@@ -179,7 +179,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof TableTakeDropNode || node instanceof ExpandNode ||
     node instanceof TableInfoNode || node instanceof MapTableNode ||
     node instanceof ByAxisNode || node instanceof MakeArrayNode ||
-    node instanceof ReduceLambdaNode
+    node instanceof ReduceLambdaNode || node instanceof ScanLambdaNode
   ) return "table";
   if (
     node instanceof FrameInputNode ||
