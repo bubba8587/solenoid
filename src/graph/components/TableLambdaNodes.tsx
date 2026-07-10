@@ -57,22 +57,23 @@ function FormulaBox({ node }: { node: FormulaNode }) {
   if (lambdaSrc) {
     const live = cableValueStore.get(lambdaSrc.sourceId, lambdaSrc.sourceOutput);
     const sig = isLambdaValue(live) ? formatLambda(live) : "λ";
-    // Wired lambdas bind by POSITION, so a lambda whose params aren't this node's
-    // fixed vars (in order) silently computes something other than its names read
-    // (`λ(x)` drops acc; `λ(x, acc)` swaps them). Still runs — just advise the shape.
+    // Params bind to this node's variables BY NAME (D18). A lambda that declares
+    // valid names but omits a required one (`λ(x)` drops acc → captured 0, fold
+    // degenerates) still runs, so advise the shape; a param that isn't one of the
+    // node's variables is a hard error surfaced via cachedError, not here.
     const mismatch = node.lambdaSig && isLambdaValue(live) && lambdaSigMismatch(live.params, node.lambdaSig);
     return (
       <>
         <div
           className="solenoid-expr__override"
-          title="Runs the wired lambda; parameters bind positionally"
+          title="Runs the wired lambda; parameters bind by name"
         >
           <span className="solenoid-expr__override-sig">{sig}</span>
           <span className="solenoid-expr__override-src">↩ {lambdaSrc.label || "wired"}</span>
         </div>
         {mismatch && (
           <div className="solenoid-expr__lambda-hint">
-            {node.label || "This node"} binds by position — expects λ({formatLambdaSig(node.lambdaSig!)})
+            {node.label || "This node"} folds on {node.lambdaSig!.vars.slice(0, node.lambdaSig!.required).join(", ")} — declare λ({formatLambdaSig(node.lambdaSig!)})
           </div>
         )}
       </>

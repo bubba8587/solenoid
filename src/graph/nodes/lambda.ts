@@ -6,13 +6,14 @@ import { solError, type SolError } from "../errorValue";
 // ─── LAMBDA: a first-class function value ───────────────────────────────────────
 // Excel's =LAMBDA(param, ..., calculation) as a node. The node compiles its
 // formula and emits a callable VALUE down a `lambda` cable; the lambda-family
-// consumers (MAP / BYROW / MAKEARRAY / REDUCE) call it positionally, overriding
-// their embedded formula text.
+// consumers (MAP / BYROW / MAKEARRAY / REDUCE / SCAN) call it, overriding their
+// embedded formula text. MAP/BYROW/MAKEARRAY bind params by POSITION; SCAN/REDUCE
+// bind by NAME (D18) — a param named `acc` gets the accumulator, order-free.
 //
 // Variables split two ways:
 //   • declared PARAMETERS (the comma-separated `params` field) stay unbound and
-//     define the call signature — bound positionally at the call site, exactly
-//     like Excel's LAMBDA params;
+//     define the call signature — bound by position (MAP…) or by name (SCAN/
+//     REDUCE, D18) at the call site;
 //   • every OTHER variable in the formula becomes an input socket and is
 //     CAPTURED into the closure at compute time — the graph-shaped equivalent
 //     of Excel's LET/closure bindings (`LAMBDA(x, x * rate)` with `rate` from
@@ -49,10 +50,10 @@ export function formatLambda(v: LambdaValue): string {
   return `λ(${v.params.join(", ")})`;
 }
 
-/** A lambda-family consumer's expected call signature: its fixed variable names
- *  in binding ORDER, and how many are required (trailing ones — e.g. REDUCE's
- *  `i` — are optional). A wired lambda binds POSITIONALLY, so its params must be
- *  this list's prefix; the names it chose are ignored. */
+/** A lambda-family consumer's call signature: its fixed variable names (the first
+ *  `required` are mandatory; trailing ones like REDUCE's `i` are optional). For a
+ *  by-name consumer (SCAN/REDUCE, D18) a wired lambda's params must be drawn from
+ *  these names — order-free — and must include the required ones. */
 export interface LambdaSig { vars: string[]; required: number }
 
 /** Human signature for the advisory, optional slots in brackets: `acc, x, [i]`. */
@@ -60,16 +61,15 @@ export function formatLambdaSig(sig: LambdaSig): string {
   return sig.vars.map((v, i) => (i < sig.required ? v : `[${v}]`)).join(", ");
 }
 
-/** True when a wired lambda's declared params won't bind the way its names read
- *  — anything but an ordered prefix of the consumer's fixed vars (of at least
- *  `required` length). Catches the accumulator dropped (`λ(x)` into REDUCE), the
- *  order swapped (`λ(x, acc)`), and arbitrary names (`λ(a, b)`) that only work
- *  by luck of position. An exact prefix (`λ(acc, x)` / `λ(acc, x, i)`) is fine. */
+/** True when a wired lambda declares valid variable names but LEAVES OUT a
+ *  required one — e.g. `λ(x)` into REDUCE, where `acc` isn't a param so it's a
+ *  captured 0 and the fold degenerates. Binding is BY NAME (D18), so order is
+ *  free (`λ(x, acc)` is fine) and a param that isn't one of the node's variables
+ *  is a hard compute error handled in `resolveFn`, not this advisory. */
 export function lambdaSigMismatch(params: string[], sig: LambdaSig): boolean {
-  const ok = params.length >= sig.required
-    && params.length <= sig.vars.length
-    && params.every((p, i) => p === sig.vars[i]);
-  return !ok;
+  const allKnown = params.every((p) => sig.vars.includes(p));
+  const hasRequired = sig.vars.slice(0, sig.required).every((r) => params.includes(r));
+  return allKnown && !hasRequired;
 }
 
 const IDENT = /^[A-Za-z_][A-Za-z0-9_]*$/;

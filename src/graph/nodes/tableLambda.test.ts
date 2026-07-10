@@ -59,22 +59,24 @@ describe("Lambda wired into consumers", () => {
   const lambdaOf = (params: string, expr: string, inputs = {}) =>
     new LambdaNode({ params, expr }).data(inputs).result!;
 
-  it("overrides MAP's inline formula, binding (x, y)", () => {
+  // MAP/BYROW still bind POSITIONALLY (arbitrary param names OK); SCAN/REDUCE bind
+  // by NAME (D18), so their lambdas must use the node's variable names (acc, x, i).
+  it("overrides MAP's inline formula, binding (x, y) positionally", () => {
     const map = new MapTableNode({ expr: "x + 1000" });
     const lam = lambdaOf("v, w", "v * w");
     expect(map.data({ table: [[[1, 2]]], table2: [[[10, 20]]], lambda: [lam] }).result)
       .toEqual([[10, 40]]);
   });
 
-  it("overrides REDUCE's inline formula, binding (acc, x)", () => {
+  it("REDUCE binds a wired lambda by name — its params must be acc, x", () => {
     const red = new ReduceLambdaNode();
-    const lam = lambdaOf("total, v", "total + v * v");
+    const lam = lambdaOf("acc, x", "acc + x * x");
     expect(red.data({ table: [[[1, 2, 3]]], lambda: [lam] }).result).toBe(14);
   });
 
   it("a captured value rides the closure into the consumer", () => {
     const red = new ReduceLambdaNode();
-    const lam = lambdaOf("acc, v", "acc + v * scale", { scale: [10] });
+    const lam = lambdaOf("acc, x", "acc + x * scale", { scale: [10] });
     expect(red.data({ table: [[[1, 2]]], lambda: [lam] }).result).toBe(30);
   });
 
@@ -222,17 +224,37 @@ describe("ScanLambda (SCAN)", () => {
     expect(new ReduceLambdaNode().inputs.initial!.socket.name).toBe("any");
   });
 
-  // A wired lambda binds POSITIONALLY to (acc, x, i); its param NAMES are cosmetic.
-  // The card flags any declaration that isn't an ordered prefix so the names can't
-  // silently lie (λ(x) drops acc; λ(x, acc) swaps them). SCAN/REDUCE advertise it.
-  it("flags a wired lambda whose params aren't the (acc, x, i) prefix", () => {
+  // A wired lambda binds to (acc, x, i) BY NAME (D18): declaration ORDER is free,
+  // the names can't lie, captured constants pass through, and a param that isn't
+  // one of the node's variables is a hard error.
+  const lval = (params: string, expr: string, wired: Record<string, unknown[]> = {}) =>
+    new LambdaNode({ params, expr }).data(wired).result;
+
+  it("binds a wired lambda's params by name — order is free", () => {
+    const ones = [1, 1, 1];
+    // acc + 2*x from 0 → 2, 4, 6, whichever order the params were declared:
+    expect(new ScanLambdaNode().data({ initial: [0], table: [ones], lambda: [lval("acc, x", "acc + 2 * x")] }).result).toEqual([[2, 4, 6]]);
+    expect(new ScanLambdaNode().data({ initial: [0], table: [ones], lambda: [lval("x, acc", "acc + 2 * x")] }).result).toEqual([[2, 4, 6]]);
+  });
+
+  it("passes a captured (non-reserved) socket through the fold", () => {
+    const lv = lval("acc, x", "acc + x * rate", { rate: [3] });   // rate wired = 3
+    expect(new ScanLambdaNode().data({ initial: [0], table: [[1, 1, 1]], lambda: [lv] }).result).toEqual([[3, 6, 9]]);
+  });
+
+  it("errors when a wired lambda param isn't one of the node's variables", () => {
+    const out = new ScanLambdaNode().data({ initial: [0], table: [[1, 1, 1]], lambda: [lval("a, b", "a + b")] }).result;
+    expect(isSolError(out) && (out as SolError).code).toBe("#VALUE!");
+  });
+
+  it("advisory fires only when a REQUIRED var is undeclared (order-free)", () => {
     const sig = new ScanLambdaNode().lambdaSig;
     expect(formatLambdaSig(sig)).toBe("acc, x, [i]");
-    expect(lambdaSigMismatch(["acc", "x"], sig)).toBe(false);       // correct
-    expect(lambdaSigMismatch(["acc", "x", "i"], sig)).toBe(false);  // correct, with i
-    expect(lambdaSigMismatch(["x"], sig)).toBe(true);               // acc dropped
-    expect(lambdaSigMismatch(["x", "acc"], sig)).toBe(true);        // order swapped
-    expect(lambdaSigMismatch(["a", "b"], sig)).toBe(true);          // arbitrary names
+    expect(lambdaSigMismatch(["acc", "x"], sig)).toBe(false);      // correct
+    expect(lambdaSigMismatch(["x", "acc"], sig)).toBe(false);      // order-free now
+    expect(lambdaSigMismatch(["acc", "x", "i"], sig)).toBe(false); // with i
+    expect(lambdaSigMismatch(["x"], sig)).toBe(true);              // acc dropped → advise
+    expect(lambdaSigMismatch(["a", "b"], sig)).toBe(false);        // unknown → hard error, not advisory
     expect(new ReduceLambdaNode().lambdaSig).toEqual(sig);
   });
 });
