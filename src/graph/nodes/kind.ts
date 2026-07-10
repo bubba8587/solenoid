@@ -39,7 +39,7 @@ import { BinomDistNode, BinomInvNode, PoissonDistNode, HypgeomDistNode, Negbinom
 import { ConduitNode } from "./conduit";
 import { FrameFromListsNode } from "./frame";
 import { FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, GetRowNode, DistinctNode, HeadNode, SortFrameNode, FilterFrameNode, JoinNode, XLookupNode, SelectColumnsNode, DropColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode } from "./frame";
-import { CubeRollupNode } from "./cube";
+import { BuildCubeNode, NestJoinNode, CubeColumnsNode, CubeRollupNode } from "./cube";
 import { WebSourceNode, CsvConnectionNode, ParquetConnectionNode, ImportHtmlNode, ImportXmlNode } from "./connection";
 import { DataFeedNode } from "./dataFeed";
 import { WriteCsvNode, WriteJsonNode } from "./sink";
@@ -207,6 +207,9 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof DecisionMatrixNode ||
     node instanceof DecisionSensitivityNode ||
     node instanceof ReconcileNode ||
+    node instanceof BuildCubeNode ||
+    node instanceof NestJoinNode ||
+    node instanceof CubeColumnsNode ||
     node instanceof CubeRollupNode ||
     node instanceof SlicerNode
   ) return "frame";
