@@ -72,7 +72,14 @@ src/
 | `nodeNameStore.ts`, `nodeNaming.ts` | The addressable model's other half: every node's stable, user-editable, unique `name` (separate from rete's regenerated-on-load `id`) |
 | `docMetaStore.ts` | Per-document metadata (F-2): author + tags → `SavedGraph.meta`, sidecar-carried; the Document Properties modal open flag (`docPropertiesPanel`). Title stays the documentStore name |
 | `seeds.ts` + `seedGraphs/*.json` | Example graphs in Export format, globbed into a registry |
-| `Canvas.tsx` | Rete bootstrap: plugins, pipes (selection, lasso, keys, group reconcile), delete/undo wiring |
+| `Canvas.tsx` | Rete bootstrap: plugin construction + the event pipes (selection semantics, drag bookkeeping, group reconcile, FC dock/undock) and the component JSX. The separable subsystems live in the `canvas*`/`tidyArrange`/`fcDocking` modules below and are wired here |
+| `canvasKeyboard.ts` | `installCanvasKeyboard(deps)` — the whole keyboard map (single-key graph actions, Ctrl chords, F9, arrows/nudge, rotate, Tab chrome toggle) + its helpers (resolveGroupTargets, rotateSelection, nudgeSelection) |
+| `canvasLasso.ts` | `installLassoSelection(deps)` — shift-drag / touch-select lasso: winding-direction touch vs enclose modes, cached node rects, frame-coalesced live apply, release-time cable path sampling |
+| `canvasContextMenu.ts` | `installCanvasContextMenu(deps)` — native right-click routing: socket (with near-miss radius) → cable (ribbon/selection expansion) → node body (pin/standoff offers) → blank canvas Add menu |
+| `canvasActions.ts` | The graph actions those menus/keys invoke: `deleteSelection` (ghost-splicing bulk delete), `insertConduitForCables` (lane-bundled Conduit splice), `linkStandoffBetween`, `deleteCables`, `attachFormatController` |
+| `canvasGeometry.ts` | Screen ↔ canvas coordinate helpers (`getSocketScreenCenter`, `screenToCanvas`) shared by FC docking + quick-wire placement |
+| `fcDocking.ts` | FC docking: `findDockTarget` (canvas-unit snap), `computeDockedCanvasPos`/`dockedRenderedDims`, and the inline splice/unsplice (`insertFcInline`/`removeFcInline`) |
+| `tidyArrange.ts` | Tidy + Cleanup: `makeEnsureArrange` (lazy ELK), `makeArrangeFn` (the group/standoff/docked-FC-aware ELK layout — see subsystem-invariants "Auto-arrange / Tidy"), `makeCleanupFn` |
 
 ### Typing / sockets / units
 
@@ -293,8 +300,9 @@ there is no solver in the Rust engine itself.
   constructor fields must be listed there or they silently don't survive
   save/load/paste.
 - **Module-singleton stores** for anything read across React roots
-  (`storeKit.ts`: `createNotifier` / `createToggleStore`), consumed via
-  `useSyncExternalStore`.
+  (`storeKit.ts`: `createNotifier` / `createToggleStore` / `createValueStore`
+  — the last is the "one nullable open/close value" popup-store shape),
+  consumed via `useSyncExternalStore`.
 - **Composability rule**: scalars → fine-grained one-op nodes; lists/tables →
   bundled task-shaped nodes with op selectors.
 - **Excel metadata lives on the node** (`nodeExcel.ts`); menus and the
