@@ -6,7 +6,7 @@
 import { describe, it, expect } from "vitest";
 import { NodeEditor, ClassicPreset } from "rete";
 import { FormatControllerNode } from "./nodes/formatController";
-import { LambdaNode } from "./nodes/lambda";
+import { LambdaNode, isLambdaValue } from "./nodes/lambda";
 import { DisplayNode } from "./nodes/display";
 import { ChartNode } from "./nodes/visual";
 import { makeAnnotationResolver } from "./unitFlow";
@@ -98,6 +98,16 @@ describe("FC lambdaView / chartFontScale reach a downstream Display", () => {
     expect(displayAnn(editor, disp.id)?.lambdaView).toBe("syntax");
 
     formatAnnotationStore.delete(lam.id, "result");
+  });
+
+  it("DisplayNode.data keeps the LambdaValue in cachedValue (the component renders by kind)", () => {
+    const value = { __lambda: true as const, params: ["x"], fn: (x: unknown) => x, expr: "x * 2" };
+    expect(isLambdaValue(value)).toBe(true);
+    const disp = new DisplayNode();
+    disp.data({ in: [value] });
+    // The old data() stringified here (formatLambda), which made the component's
+    // lambda branch unreachable — the FC's lambdaView could never apply.
+    expect(isLambdaValue(disp.cachedValue)).toBe(true);
   });
 
   it("un-splicing a hand-wired (undocked) FC bridges around it instead of eating the downstream cable", async () => {

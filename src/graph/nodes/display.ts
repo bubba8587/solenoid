@@ -3,7 +3,7 @@ import { getRecalcGen, isGraphRebuilding } from "../process";
 import type { UnitSuffix } from "../unitFormat";
 import { isFrameValue, isCubeValue, type FrameValue, type CubeValue } from "../frame";
 import { trueAnyIn, trueAnyOut, numIn, numOut, numListIn, numListOut, strIn, broadcast } from "./shared";
-import { isLambdaValue, formatLambda } from "./lambda";
+import { isLambdaValue, type LambdaValue } from "./lambda";
 import { isSolError, type SolError } from "../errorValue";
 import { fireAlert } from "../alertStore";
 
@@ -13,7 +13,7 @@ export class DisplayNode extends ClassicPreset.Node {
   label: string;
   // `in` is an "any" socket, so the value may also be a 2D table (number[][]),
   // a list of text (string[]), or a Frame.
-  cachedValue: number | number[] | number[][] | string | string[] | FrameValue | CubeValue | SolError | null = null;
+  cachedValue: number | number[] | number[][] | string | string[] | FrameValue | CubeValue | LambdaValue | SolError | null = null;
   unitSuffix: UnitSuffix = "none";
   // Display passes its value through unchanged, so it preserves the unit too:
   // the unit-flow resolver carries an upstream unit straight across it. (See
@@ -43,8 +43,11 @@ export class DisplayNode extends ClassicPreset.Node {
     if (isFrameValue(raw) || isCubeValue(raw)) {
       this.cachedValue = raw;
     } else if (isLambdaValue(raw)) {
-      // Show the signature; the raw closure still passes through `out`.
-      this.cachedValue = formatLambda(raw);
+      // Keep the VALUE — the component renders it by kind (the compact signature
+      // by default, or an FC's view-as: KaTeX / highlighted / mono). Stringifying
+      // here made the component's lambda branch unreachable, so the FC's
+      // lambdaView never applied (the string fell to the generic text path).
+      this.cachedValue = raw;
     } else if (Array.isArray(raw)) {
       // 2D table → keep the matrix (rendered as a grid); string list and number
       // list both keep the array so the value box shows a chip → popup.
