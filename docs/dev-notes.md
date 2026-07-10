@@ -5,6 +5,48 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-10 — whole-codebase refactor pass)
+Author brief: "refactor duty — make the code itself better; no bug/perf hunt required."
+All pure code motion / dedup, zero behavior change (one deliberate exception, noted),
+tsc + vitest green at every commit, 2526 tests unchanged.
+- **Canvas.tsx split 3798 → ~1980 lines.** The separable subsystems moved to focused
+  modules, each wired back through a small deps object: `canvasKeyboard.ts` (the whole
+  key map), `canvasLasso.ts` (shift-drag lasso), `canvasContextMenu.ts` (right-click
+  routing), `canvasActions.ts` (deleteSelection / insertConduitForCables /
+  linkStandoffBetween / deleteCables / attachFormatController), `tidyArrange.ts`
+  (lazy-ELK loader + arrangeFn + Cleanup as factories), `fcDocking.ts` +
+  `canvasGeometry.ts` (FC dock/splice + screen↔canvas math), and syncSemanticZoomFor
+  → `semanticZoomStore.ts`. What stays IS the canvas component: rete construction,
+  the event pipes (selection/drag/dock bookkeeping — genuinely coupled shared-state),
+  handleMenuSelect, and JSX. Deliberate fix en route: the bare-Enter palette guard
+  read `menu` through a mount-frozen closure (always null, never blocked); it now
+  reads a live menuRef — the guard's documented intent.
+- **Store layer deduped onto storeKit.** New `createValueStore<T>` absorbs the eight
+  popup/dialog stores' identical open/close/subscribe plumbing (chart/table/cube/
+  formula popups, connection dialog, element picker, help dialog, pivot editor —
+  public surfaces unchanged, extras layered on the core). Seven hand-rolled listener
+  Sets replaced with `createNotifier` (compositeStale, commentsPanelUi, problemsPanelUi,
+  formatAnnotation + formatMismatch, isoEndpointSelect, groupCollapse, computeOverlay).
+  The four legacy useState+useEffect store hooks now use `useSyncExternalStore`.
+- **Shared helpers extracted.** `components/useEscapeToClose.ts` replaces the copy-
+  pasted window-keydown Escape handler in 14 overlays (capture sites all also
+  preventDefault — one `{capture}` option covers every site; HelpDialogs keeps its own,
+  it also drives arrow nav). One `clamp()` in `nodes/mathUtils.ts` (pixiCamera
+  re-exports; ~12 inline forms migrated; standoffs' band-ordering expression is NOT a
+  clamp and stays). `valueKinds.coerceNumber` replaces the duplicate spreadsheet
+  coercer in excelFunctions/composite. `components/chipStyle.ts readChipPopupStyle`
+  factors the chip popup accent/group-color getComputedStyle block (ArrayChip/
+  FrameChip/CubeChip/ChartChip/Pivot; ChartExpandButton reads inline style — different
+  semantics, left).
+- **PopupShell** (`components/PopupShell.tsx`): the shared overlay/card/header/Escape
+  scaffold, DOM-identical migration of all six popups (Chart/Cube/Table/Formula/
+  PivotEditor/ElementPicker). Deviations expressed as props: `headerExtra` (dims/Depth/
+  Locked), `headerActions` (Table's overflow menu), `onEscape` (Cube drills up),
+  `pinNodeId` gating the GoTo/Pin pair.
+- Not touched, deliberately: the init-effect pipe bodies (drag/selection mutable state
+  is genuinely shared), nodes/list.ts's size (organized by category, splitting is
+  churn), the flat src/graph directory (the docs are the map).
+
 ### SESSION DIGEST (2026-07-10, overnight — autonomous robustness/parity pass)
 Unattended loop pass; brief = "iterate, review existing code/design vs new additions,
 keep tsc + vitest green, commit to develop." Three defects fixed, one feature shipped,
