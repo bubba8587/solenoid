@@ -7,18 +7,22 @@
 import { type SocketDataType, elementFamilyOf, isWildcardType } from "./sockets";
 import { type FormatStyleId, type FormatStyle } from "./formatAnnotationStore";
 
-export type FormatFamily = "number" | "date" | "text" | "logical" | "complex" | "none";
+export type FormatFamily = "number" | "date" | "text" | "logical" | "complex" | "lambda" | "chart" | "none";
 
 /**
  * The format family of an FC's adopted socket type. `any` (an FC docked to an
  * unresolved passthrough) is provisionally NUMBER — the common case — until a
  * concrete type flows in and fcReconcile re-adapts. `anytable` formats its
- * numeric cells. Frames/cubes are `none`: per-column units/formats are the A4
+ * numeric cells. Lambda and chart are display-only families: a lambda's
+ * view-as (signature / KaTeX / highlighted / monospace) and a chart's text
+ * scale. Frames/cubes are `none`: per-column units/formats are the A4
  * representation problem, not a scalar annotation stretched over a table.
  */
 export function familyOf(dt: SocketDataType): FormatFamily {
   if (isWildcardType(dt)) return "number";
   if (dt === "anytable") return "number";
+  if (dt === "lambda") return "lambda";
+  if (dt === "chart") return "chart";
   switch (elementFamilyOf(dt)) {
     case "number":  return "number";
     case "string":  return "text";
@@ -73,6 +77,8 @@ export type FcControls = {
   dateStyle: boolean;    // the date-style dropdown
   text: boolean;         // case + bold/italic/size
   logical: boolean;      // the show-as dropdown (TRUE/FALSE · 1/0 · Yes/No · ✓/✗)
+  lambda: boolean;       // the view-as dropdown (signature · KaTeX · highlighted · monospace)
+  chart: boolean;        // the chart text-scale dropdown
   advanced: boolean;     // the expandable advanced tier exists (number family)
 };
 
@@ -86,6 +92,8 @@ export function controlsFor(family: FormatFamily, style: FormatStyleId): FcContr
     dateStyle:    family === "date",
     text:         family === "text",
     logical:      family === "logical",
+    lambda:       family === "lambda",
+    chart:        family === "chart",
     // The advanced tier exists for numbers (grouping/negative/scale, per style)
     // and for text (alignment / markdown / monospace — always available).
     advanced:     (family === "number" &&

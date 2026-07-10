@@ -2,6 +2,7 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { useSyncExternalStore } from "react";
 import { chartPopup } from "../chartPopupStore";
 import { appThemeStore } from "../appTheme";
+import { formatAnnotationStore } from "../formatAnnotationStore";
 import { ChartView, ChartFigure } from "./chartView";
 import { PopupShell } from "./PopupShell";
 import { clamp } from "../nodes/mathUtils";
@@ -31,6 +32,11 @@ function chartSize() {
 export function ChartPopup() {
   const state = useSyncExternalStore(chartPopup.subscribe, chartPopup.get);
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
+  // An FC on the host node's chart output scales the figure text here too.
+  useSyncExternalStore(formatAnnotationStore.subscribe, formatAnnotationStore.version);
+  const fontScale = state?.pinNodeId
+    ? formatAnnotationStore.getForNode(state.pinNodeId)?.chartFontScale
+    : undefined;
   const [{ w, h }, setSize] = useState(chartSize);
 
   useEffect(() => {
@@ -57,7 +63,7 @@ export function ChartPopup() {
         {state.value ? (
           // General path: render any ChartValue (covers treemap / sankey /
           // composed / bubble / kpi / bullet), title stripped (header shows it).
-          <ChartFigure value={{ ...state.value, title: undefined }} width={w} height={h} />
+          <ChartFigure value={{ ...state.value, title: undefined }} width={w} height={h} fontScale={fontScale} />
         ) : !state.series || state.series.length === 0 ? (
           <div style={{ color: "var(--text-dim, #888)", padding: 40 }}>No data</div>
         ) : (
@@ -72,6 +78,7 @@ export function ChartPopup() {
             // The header already shows the title — strip it so ChartView
             // doesn't draw a second one above the plot.
             opts={state.opts ? { ...state.opts, title: undefined } : undefined}
+            fontScale={fontScale}
           />
         )}
       </div>

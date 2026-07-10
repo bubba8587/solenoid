@@ -423,6 +423,22 @@ export const LOGICAL_STYLE_LABELS: Record<LogicalStyle, string> = {
   check:     "✓ / ✗",
 };
 
+// Lambda-socket view-as (display only): how a flowing LambdaValue renders in a
+// value box. The value already carries its source (`expr`/`params`), so every
+// view derives from the same object — nothing extra travels the cable.
+export type LambdaView = "signature" | "katex" | "syntax" | "mono";
+
+export const LAMBDA_VIEW_LABELS: Record<LambdaView, string> = {
+  signature: "λ(params)",
+  katex:     "Equation (KaTeX)",
+  syntax:    "Highlighted formula",
+  mono:      "Monospace formula",
+};
+
+// Chart-socket text scale (display only): multiplies every text size inside a
+// chart figure (axis ticks, title, labels, KPI digits). 1 = the built-in sizes.
+export const CHART_FONT_SCALES: number[] = [0.8, 1, 1.25, 1.5, 2];
+
 /** Display-only boolean rendering (default = the Excel TRUE/FALSE form). */
 export function applyLogicalStyle(b: boolean, style?: LogicalStyle): string {
   switch (style) {
@@ -474,6 +490,10 @@ export type FormatAnnotation = {
   decimalMode?: DecimalMode;
   // Logical-socket show-as (display only).
   logicalStyle?: LogicalStyle;
+  // Lambda-socket view-as (display only).
+  lambdaView?: LambdaView;
+  // Chart-socket text-scale multiplier (display only; 1 = built-in sizes).
+  chartFontScale?: number;
   // Advanced tier (number family).
   grouping?: boolean;           // thousands separator (default true)
   negativeStyle?: NegativeStyle;

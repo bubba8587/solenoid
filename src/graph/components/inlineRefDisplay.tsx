@@ -4,7 +4,8 @@ import type { ClassicPreset } from "rete";
 import type { RenderEmit, ClassicScheme } from "rete-react-plugin";
 import { getEditor } from "../process";
 import { cableValueStore } from "../cableValueStore";
-import { formatAnnotationStore, formatNumberWithAnnotation, applyLogicalStyle, type FormatAnnotation } from "../formatAnnotationStore";
+import { formatAnnotationStore, formatNumberWithAnnotation, applyLogicalStyle, type FormatAnnotation, type LambdaView } from "../formatAnnotationStore";
+import { highlightFormula } from "../formulaSyntax";
 import { sharedAnnotationResolver } from "../unitFlow";
 import { formatScalar } from "./format";
 import { useKatexRender } from "./katexLoader";
@@ -103,9 +104,26 @@ function lambdaText(v: LambdaValue): string {
 /** Render a wired lambda as its formula: `f(params) = body` typeset with KaTeX
  *  (reusing formulaToLatex — the same path the formula fields use). Falls back to
  *  plain text if the body doesn't parse (a half-typed lambda). Block display, so
- *  it reads as an equation in the report, not a mid-sentence chip. */
-function LambdaFormula({ value }: { value: LambdaValue }) {
+ *  it reads as an equation in the report, not a mid-sentence chip. An FC on the
+ *  ref can pick a different view-as (the KaTeX equation stays the default —
+ *  that's the Report's whole point). */
+function LambdaFormula({ value, view }: { value: LambdaValue; view?: LambdaView }) {
   const render = useKatexRender();
+  if (view === "signature") {
+    return <span className="solenoid-ref-inline">{`λ(${value.params.join(", ")})`}</span>;
+  }
+  if (view === "mono") {
+    return <span className="solenoid-ref-inline solenoid-ref-inline--mono">{lambdaText(value)}</span>;
+  }
+  if (view === "syntax") {
+    const src = (value.expr ?? "").trim();
+    return (
+      <span className="solenoid-ref-inline solenoid-ref-inline--mono fx-tokens">
+        {`λ(${value.params.join(", ")})${src ? " = " : ""}`}
+        {src ? <span dangerouslySetInnerHTML={{ __html: highlightFormula(src) }} /> : null}
+      </span>
+    );
+  }
   const params = value.params.map((p) => p.replace(/[\\{}]/g, "")).join(",\\,");
   const expr = (value.expr ?? "").trim();
   const bodyTex = expr ? formulaToLatex(expr) : null;
@@ -146,7 +164,7 @@ function LambdaFormula({ value }: { value: LambdaValue }) {
  *  overflowed a narrow/mobile report by a few px and scrolled sideways for no
  *  reason. Capped so it doesn't stretch comically wide on a big report. Renders
  *  the plot ONLY (no caption); the caller supplies the title/collapse bar. */
-function ChartBody({ value }: { value: ChartValue }) {
+function ChartBody({ value, fontScale }: { value: ChartValue; fontScale?: number }) {
   const ref = useRef<HTMLSpanElement>(null);
   const [w, setW] = useState(0);
   useLayoutEffect(() => {
@@ -165,7 +183,7 @@ function ChartBody({ value }: { value: ChartValue }) {
   return (
     <span className="solenoid-ref-chartbody" ref={ref}>
       {cardOp || width > 0
-        ? <ChartFigure value={value} width={width || 320} height={200} />
+        ? <ChartFigure value={value} width={width || 320} height={200} fontScale={fontScale} />
         : null}
     </span>
   );
@@ -203,12 +221,13 @@ function figureFor(
   value: unknown,
   refKey: string,
   rich: boolean,
+  ann?: FormatAnnotation,
 ): { title: string; caption: ReactNode; body: ReactNode } | null {
   if (isChartValue(value)) {
     return {
       title: value.title || refKey,
       caption: value.title ? <span className="solenoid-ref-figure__title">{value.title}</span> : null,
-      body: <ChartBody value={value} />,
+      body: <ChartBody value={value} fontScale={ann?.chartFontScale} />,
     };
   }
   if (isMermaidValue(value)) {
@@ -268,7 +287,7 @@ export function InlineRefValue({ nodeId, refKey, collapsible }: { nodeId: string
   const value = node?.refValue(refKey);
   const ann = useRefAnnotation(nodeId, refKey);
 
-  const fig = figureFor(value, refKey, !!collapsible);
+  const fig = figureFor(value, refKey, !!collapsible, ann);
   if (fig) {
     // In the Report (collapsible), each figure folds under a titled bar; in a Note
     // card it renders as the plain captioned figure.
@@ -276,7 +295,7 @@ export function InlineRefValue({ nodeId, refKey, collapsible }: { nodeId: string
       ? <CollapsibleFigure title={fig.title}>{fig.body}</CollapsibleFigure>
       : <span className="solenoid-ref-figure">{fig.caption}{fig.body}</span>;
   }
-  if (isLambdaValue(value)) return <LambdaFormula value={value} />;
+  if (isLambdaValue(value)) return <LambdaFormula value={value} view={ann?.lambdaView} />;
   if (isSolError(value)) {
     return (
       <span className="solenoid-ref-inline solenoid-ref-inline--error" title={errorTip(value)}>

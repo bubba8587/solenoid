@@ -5,6 +5,43 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-10 — FC lambda/chart families + Chart Builder reach)
+Author brief: FC options for LAMBDA (view-as) and Chart (font scale) sockets;
+"think about upgrading" Chart Builder beyond the standard Chart node.
+- **Two new format families** (`formatModel.ts` familyOf/controlsFor + the
+  format-model.md truth table): `lambda` → a view-as dropdown (`lambdaView`:
+  signature default · KaTeX · highlighted syntax · monospace), `chart` → a text
+  scale dropdown (`chartFontScale`: ×0.8…×2). Both display-only annotation
+  fields riding exactly like `logicalStyle`; FC node fields persisted via
+  INIT_FIELD_ORDER. No hidden-string plumbing was needed — the flowing
+  LambdaValue already carries `expr`/`params`/`descriptions`.
+- **Lambda render surfaces**: shared `components/LambdaView.tsx`
+  (LambdaValueView — KaTeX via formulaToLatex/useKatexRender, highlighted via
+  highlightFormula, mono source; token colors re-scoped `.fx-editor` →
+  `.fx-tokens` so non-editor surfaces can use them). Wired into the Display
+  node's lambda branch + the Report embed (LambdaFormula honors the annotation;
+  its no-annotation default stays KaTeX). **The Lambda node's own hero box
+  deliberately stays the compact signature** (author call mid-session: the
+  authoring card doesn't self-format).
+- **Chart text scale end-to-end**: `fontScale` threads ChartFigure → ChartView /
+  Treemap / Sankey / Composed / Bubble (hardcoded px × scale) and KPI / Bullet
+  (a `--chart-fscale` CSS var into chartCards.css calc()s). Surfaces resolving
+  the annotation: Chart node card, Display chart branch, ChartPopup (via
+  pinNodeId), Report ChartBody. Composes with the new **`fontsize` ChartOptions
+  kwarg** (matplotlib points, 10 = built-in) rather than replacing it.
+- **Chart Builder reach**: KPI / Bullet / Treemap / Sankey gained the same
+  `options` string socket Chart/Histogram had (their previously-dead
+  `chartOptions` field now actually populated; `title` overrides the label as
+  figure title); Chart Builder gained the `fontsize` field. Inapplicable
+  options are inert per node, matplotlib-style. NOT extended: Mermaid (author
+  decision 2026-07-04: no chart-options socket), Sparkline (deliberately
+  minimal), Gauge (fixed 0–100% by design), Tornado (own renderer, not a
+  ChartValue).
+- Regression tests: `fcLambdaChart.test.ts` pins the annotation reaching a
+  downstream Display with REAL node classes in both directions (upstream FC via
+  inAnnotation, trailing FC via downstreamAnnotation) for both new fields;
+  formatModel.test extended for the two families.
+
 ### SESSION DIGEST (2026-07-10 — whole-codebase refactor pass)
 Author brief: "refactor duty — make the code itself better; no bug/perf hunt required."
 All pure code motion / dedup, zero behavior change (one deliberate exception, noted),

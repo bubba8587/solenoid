@@ -57,6 +57,11 @@
 .solenoid-ref-inline--error {
   color: var(--sol-error);
 }
+/* Lambda view-as "mono"/"syntax" (FC lambdaView): full formula source — regular
+   weight so a long body reads as code, not a bolded metric. */
+.solenoid-ref-inline--mono {
+  font-weight: 500;
+}
 .solenoid-ref-inline--empty {
   color: var(--text-muted);
   font-weight: 500;

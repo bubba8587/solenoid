@@ -10,7 +10,7 @@
   min-height: 60px;
 }
 .sol-kpi__value {
-  font-size: 30px;
+  font-size: calc(30px * var(--chart-fscale, 1));
   font-weight: 650;
   line-height: 1.05;
   color: var(--text);
@@ -18,20 +18,20 @@
   letter-spacing: -0.01em;
 }
 .sol-kpi__unit {
-  font-size: 15px;
+  font-size: calc(15px * var(--chart-fscale, 1));
   font-weight: 550;
   color: var(--text-dim);
   margin-left: 2px;
 }
 .sol-kpi__delta {
-  font-size: 12px;
+  font-size: calc(12px * var(--chart-fscale, 1));
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   display: inline-flex;
   align-items: baseline;
   gap: 3px;
 }
-.sol-kpi__arrow { font-size: 10px; }
+.sol-kpi__arrow { font-size: calc(10px * var(--chart-fscale, 1)); }
 
 .sol-bullet {
   display: flex;
@@ -69,7 +69,7 @@
   transform: translateX(-1px);
 }
 .sol-bullet__num {
-  font-size: 13px;
+  font-size: calc(13px * var(--chart-fscale, 1));
   font-weight: 600;
   color: var(--text);
   font-variant-numeric: tabular-nums;
@@ -79,7 +79,7 @@
 .sol-bullet__scale {
   display: flex;
   justify-content: space-between;
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--chart-fscale, 1));
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
 }

@@ -18,6 +18,9 @@ export interface ChartOptions {
   ymax?: number;
   linewidth?: number;
   alpha?: number;
+  // matplotlib's font.size rcParam: points, default 10 = the built-in sizes.
+  // Render surfaces scale every text size by fontsize/10.
+  fontsize?: number;
 }
 
 const TRUTHY = new Set(["on", "true", "1", "yes", "y"]);
@@ -61,6 +64,7 @@ export function parseChartOptions(input: string | null | undefined): ChartOption
       case "linewidth":
       case "lw":     { const n = toNum(val); if (n !== undefined) opts.linewidth = n; break; }
       case "alpha":  { const n = toNum(val); if (n !== undefined) opts.alpha = n; break; }
+      case "fontsize": { const n = toNum(val); if (n !== undefined && n > 0) opts.fontsize = n; break; }
       case "ylim": {
         const [lo, hi] = val.split(",");
         const a = toNum(lo ?? "");
@@ -89,6 +93,7 @@ export interface ChartBuilderFields {
   ymax?: number | null;
   linewidth?: number | null;
   alpha?: number | null;
+  fontsize?: number | null;
 }
 
 /**
@@ -117,5 +122,6 @@ export function serializeChartOptions(f: ChartBuilderFields): string {
   }
   num("linewidth", f.linewidth);
   num("alpha", f.alpha);
+  num("fontsize", f.fontsize);
   return parts.join(";");
 }

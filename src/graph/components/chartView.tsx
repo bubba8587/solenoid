@@ -41,6 +41,8 @@ type ChartViewProps = {
   signColors?: { pos: string; neg: string };
   /** X-axis category labels (Frame col 0) — shown instead of the 1,2,3… index. */
   labels?: (string | number)[];
+  /** Display-layer text multiplier (an FC on the chart socket). */
+  fontScale?: number;
 };
 
 export function ChartView(props: ChartViewProps) {
@@ -51,7 +53,7 @@ export function ChartView(props: ChartViewProps) {
   );
 }
 
-export function TreemapView(props: { names: string[]; values: number[]; width: number; height: number }) {
+export function TreemapView(props: { names: string[]; values: number[]; width: number; height: number; fscale?: number }) {
   return (
     <Suspense fallback={box(props.width, props.height)}>
       <TreemapViewInner {...props} />
@@ -59,7 +61,7 @@ export function TreemapView(props: { names: string[]; values: number[]; width: n
   );
 }
 
-export function SankeyView(props: { sources: string[]; targets: string[]; values: number[]; width: number; height: number }) {
+export function SankeyView(props: { sources: string[]; targets: string[]; values: number[]; width: number; height: number; fscale?: number }) {
   return (
     <Suspense fallback={box(props.width, props.height)}>
       <SankeyViewInner {...props} />
@@ -67,7 +69,7 @@ export function SankeyView(props: { sources: string[]; targets: string[]; values
   );
 }
 
-export function ComposedView(props: { matrix: (number | null)[][]; width: number; height: number }) {
+export function ComposedView(props: { matrix: (number | null)[][]; width: number; height: number; fscale?: number }) {
   return (
     <Suspense fallback={box(props.width, props.height)}>
       <ComposedViewInner {...props} />
@@ -75,7 +77,7 @@ export function ComposedView(props: { matrix: (number | null)[][]; width: number
   );
 }
 
-export function BubbleView(props: { matrix: (number | null)[][]; width: number; height: number }) {
+export function BubbleView(props: { matrix: (number | null)[][]; width: number; height: number; fscale?: number }) {
   return (
     <Suspense fallback={box(props.width, props.height)}>
       <BubbleViewInner {...props} />
@@ -88,35 +90,41 @@ export function BubbleView(props: { matrix: (number | null)[][]; width: number; 
  *  (treemap/sankey). The ONE place that maps a chart value to a figure — shared by
  *  the Display and Composite-boundary node surfaces (a report embed keeps its own
  *  width-measured wrapper). Empty → the muted em-dash box. */
-export function ChartFigure({ value, width, height, axes = true }: {
+export function ChartFigure({ value, width, height, axes = true, fontScale }: {
   value: ChartValue; width: number; height: number; axes?: boolean;
+  /** Display-layer text multiplier (an FC on the chart socket); composes with
+   *  the value's own options.fontsize (matplotlib points, 10 = built-in). */
+  fontScale?: number;
 }) {
-  if (value.op === "kpi" && value.payload?.kind === "kpi") return <KpiCard payload={value.payload} />;
-  if (value.op === "bullet" && value.payload?.kind === "bullet") return <BulletBar payload={value.payload} width={width} />;
+  // The payload/matrix figures don't read options, so fold both factors here;
+  // ChartView folds options.fontsize itself (it takes `opts` directly).
+  const fscale = (fontScale ?? 1) * ((value.options?.fontsize ?? 10) / 10);
+  if (value.op === "kpi" && value.payload?.kind === "kpi") return <KpiCard payload={value.payload} fscale={fscale} />;
+  if (value.op === "bullet" && value.payload?.kind === "bullet") return <BulletBar payload={value.payload} width={width} fscale={fscale} />;
   if (value.op === "treemap" && value.payload?.kind === "treemap")
-    return <TreemapView names={value.payload.names} values={value.payload.values} width={width} height={height} />;
+    return <TreemapView names={value.payload.names} values={value.payload.values} width={width} height={height} fscale={fscale} />;
   if (value.op === "sankey" && value.payload?.kind === "sankey")
-    return <SankeyView sources={value.payload.sources} targets={value.payload.targets} values={value.payload.values} width={width} height={height} />;
+    return <SankeyView sources={value.payload.sources} targets={value.payload.targets} values={value.payload.values} width={width} height={height} fscale={fscale} />;
   // The 2-D ops read the matrix; with no matrix wired they fall back to the
   // single `values` series (composed → columns, bubble → a scatter).
   const hasMatrix = Array.isArray(value.matrix) && value.matrix.length > 0;
   if (value.op === "composed") {
-    if (hasMatrix) return <ComposedView matrix={value.matrix!} width={width} height={height} />;
-    return renderSeries(value, "column", width, height, axes);
+    if (hasMatrix) return <ComposedView matrix={value.matrix!} width={width} height={height} fscale={fscale} />;
+    return renderSeries(value, "column", width, height, axes, fontScale);
   }
   if (value.op === "bubble") {
-    if (hasMatrix) return <BubbleView matrix={value.matrix!} width={width} height={height} />;
-    return renderSeries(value, "scatter", width, height, axes);
+    if (hasMatrix) return <BubbleView matrix={value.matrix!} width={width} height={height} fscale={fscale} />;
+    return renderSeries(value, "scatter", width, height, axes, fontScale);
   }
-  return renderSeries(value, value.op as ChartShape, width, height, axes);
+  return renderSeries(value, value.op as ChartShape, width, height, axes, fontScale);
 }
 
 /** The single-series ChartView path with the em-dash empty state — shared by the
  *  series ops and the matrix ops' no-matrix fallback. */
-function renderSeries(value: ChartValue, op: ChartShape, width: number, height: number, axes: boolean) {
+function renderSeries(value: ChartValue, op: ChartShape, width: number, height: number, axes: boolean, fontScale?: number) {
   const series = toSeries(value.values);
   if (series.length === 0) return <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;
-  return <ChartView op={op} series={series} width={width} height={height} axes={axes} opts={value.options} labels={value.labels} />;
+  return <ChartView op={op} series={series} width={width} height={height} axes={axes} opts={value.options} labels={value.labels} fontScale={fontScale} />;
 }
 
 export function GaugeArc(props: { pct: number; track: string; size: number }) {

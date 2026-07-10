@@ -319,14 +319,16 @@ export class KpiNode extends ClassicPreset.Node {
     this.label = init?.label ?? "KPI";
     this.addInput("value", numIn("Value"));
     this.addInput("prev", numIn("Prior"));
+    this.addInput("options", strIn("Options"));
     this.addOutput("chart", chartOut("Chart"));
   }
 
-  data(inputs: { value?: number[]; prev?: number[] }): { chart: ChartValue } {
+  data(inputs: { value?: number[]; prev?: number[]; options?: string[] }): { chart: ChartValue } {
     const value = inputs.value?.[0] ?? this.literals.value ?? null;
     const prev = inputs.prev?.[0] ?? this.literals.prev ?? null;
     if (inputs.value?.[0] === undefined) this.literals.value = value ?? 0;
     if (inputs.prev?.[0] === undefined) this.literals.prev = prev ?? 0;
+    this.chartOptions = parseChartOptions(inputs.options?.[0] ?? this.stringLiterals.options ?? null);
     const payload: KpiPayload = {
       kind: "kpi",
       value,
@@ -336,7 +338,7 @@ export class KpiNode extends ClassicPreset.Node {
     };
     this.cachedPayload = payload;
     return {
-      chart: { __chart: true, op: "kpi", values: value, payload, options: this.chartOptions, title: this.label || "KPI" },
+      chart: { __chart: true, op: "kpi", values: value, payload, options: this.chartOptions, title: this.chartOptions.title || this.label || "KPI" },
     };
   }
 }
@@ -348,6 +350,7 @@ export class KpiNode extends ClassicPreset.Node {
 export class BulletNode extends ClassicPreset.Node {
   label: string;
   literals: Record<string, number> = { value: 0, target: 80, max: 100 };
+  stringLiterals: Record<string, string> = {};
   chartOptions: ChartOptions = {};
   cachedPayload: BulletPayload | null = null;
   width = 240;
@@ -359,20 +362,22 @@ export class BulletNode extends ClassicPreset.Node {
     this.addInput("value", numIn("Value"));
     this.addInput("target", numIn("Target"));
     this.addInput("max", numIn("Max"));
+    this.addInput("options", strIn("Options"));
     this.addOutput("chart", chartOut("Chart"));
   }
 
-  data(inputs: { value?: number[]; target?: number[]; max?: number[] }): { chart: ChartValue } {
+  data(inputs: { value?: number[]; target?: number[]; max?: number[]; options?: string[] }): { chart: ChartValue } {
     const value = inputs.value?.[0] ?? this.literals.value ?? null;
     const target = inputs.target?.[0] ?? this.literals.target ?? null;
     const max = inputs.max?.[0] ?? this.literals.max ?? 100;
     if (inputs.value?.[0] === undefined) this.literals.value = value ?? 0;
     if (inputs.target?.[0] === undefined) this.literals.target = target ?? 0;
     if (inputs.max?.[0] === undefined) this.literals.max = max;
+    this.chartOptions = parseChartOptions(inputs.options?.[0] ?? this.stringLiterals.options ?? null);
     const payload: BulletPayload = { kind: "bullet", value, target, min: 0, max };
     this.cachedPayload = payload;
     return {
-      chart: { __chart: true, op: "bullet", values: value, payload, options: this.chartOptions, title: this.label || "Bullet" },
+      chart: { __chart: true, op: "bullet", values: value, payload, options: this.chartOptions, title: this.chartOptions.title || this.label || "Bullet" },
     };
   }
 }
@@ -412,6 +417,7 @@ function colAsNumbers(col: FrameColumn | undefined): number[] {
 
 export class TreemapNode extends ClassicPreset.Node {
   label: string;
+  stringLiterals: Record<string, string> = {};
   chartOptions: ChartOptions = {};
   cachedPayload: TreemapPayload | null = null;
   width = 240;
@@ -421,17 +427,19 @@ export class TreemapNode extends ClassicPreset.Node {
     super("Treemap");
     this.label = init?.label ?? "Treemap";
     this.addInput("frame", frameIn("Label + Value"));
+    this.addInput("options", strIn("Options"));
     this.addOutput("chart", chartOut("Chart"));
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[] }): Promise<{ chart: ChartValue }> {
+  async data(inputs: { frame?: (FrameInput | null)[]; options?: string[] }): Promise<{ chart: ChartValue }> {
     const cols = await readFrameColumns(inputs.frame?.[0] ?? null);
     const names = colAsStrings(cols[0]);
     const values = colAsNumbers(cols[1]);
+    this.chartOptions = parseChartOptions(inputs.options?.[0] ?? this.stringLiterals.options ?? null);
     const payload: TreemapPayload = { kind: "treemap", names, values };
     this.cachedPayload = payload;
     return {
-      chart: { __chart: true, op: "treemap", values, payload, options: this.chartOptions, title: this.label || "Treemap" },
+      chart: { __chart: true, op: "treemap", values, payload, options: this.chartOptions, title: this.chartOptions.title || this.label || "Treemap" },
     };
   }
 }
@@ -443,6 +451,7 @@ export class TreemapNode extends ClassicPreset.Node {
 
 export class SankeyNode extends ClassicPreset.Node {
   label: string;
+  stringLiterals: Record<string, string> = {};
   chartOptions: ChartOptions = {};
   cachedPayload: SankeyPayload | null = null;
   width = 260;
@@ -452,18 +461,20 @@ export class SankeyNode extends ClassicPreset.Node {
     super("Sankey");
     this.label = init?.label ?? "Sankey";
     this.addInput("frame", frameIn("From + To + Value"));
+    this.addInput("options", strIn("Options"));
     this.addOutput("chart", chartOut("Chart"));
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[] }): Promise<{ chart: ChartValue }> {
+  async data(inputs: { frame?: (FrameInput | null)[]; options?: string[] }): Promise<{ chart: ChartValue }> {
     const cols = await readFrameColumns(inputs.frame?.[0] ?? null);
     const sources = colAsStrings(cols[0]);
     const targets = colAsStrings(cols[1]);
     const values = colAsNumbers(cols[2]);
+    this.chartOptions = parseChartOptions(inputs.options?.[0] ?? this.stringLiterals.options ?? null);
     const payload: SankeyPayload = { kind: "sankey", sources, targets, values };
     this.cachedPayload = payload;
     return {
-      chart: { __chart: true, op: "sankey", values, payload, options: this.chartOptions, title: this.label || "Sankey" },
+      chart: { __chart: true, op: "sankey", values, payload, options: this.chartOptions, title: this.chartOptions.title || this.label || "Sankey" },
     };
   }
 }
@@ -503,7 +514,7 @@ export class HeatmapCellNode extends ClassicPreset.Node {
 // `literals` — the same inline stores InlineInputs reads/writes, so they
 // round-trip through persistence with no extra plumbing.
 const CB_STR_FIELDS = ["title", "xlabel", "ylabel", "color", "grid", "marker"] as const;
-const CB_NUM_FIELDS = ["ymin", "ymax", "linewidth", "alpha"] as const;
+const CB_NUM_FIELDS = ["ymin", "ymax", "linewidth", "alpha", "fontsize"] as const;
 
 export class ChartBuilderNode extends ClassicPreset.Node {
   label: string;
@@ -526,6 +537,7 @@ export class ChartBuilderNode extends ClassicPreset.Node {
     this.addInput("ymax",      numIn("Y max"));
     this.addInput("linewidth", numIn("Line width"));
     this.addInput("alpha",     numIn("Fill alpha"));
+    this.addInput("fontsize",  numIn("Font size (pt)"));
     this.addOutput("result", strOut("Options"));
   }
 
@@ -546,6 +558,7 @@ export class ChartBuilderNode extends ClassicPreset.Node {
       ymax:      num("ymax"),
       linewidth: num("linewidth"),
       alpha:     num("alpha"),
+      fontsize:  num("fontsize"),
     });
     this.cachedString = out;
     return { result: out };

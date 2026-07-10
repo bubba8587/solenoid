@@ -20,7 +20,8 @@ describe("familyOf — the ENTIRE SocketDataType union is covered or explicitly 
     complex: "complex", complexlist: "complex", complexcombo: "complex", complextable: "complex",
     frame: "none", cube: "none",  // per-column formats are the A4 units milestone
     anylist: "none",              // element-agnostic wildcard — no format family until a concrete type flows in
-    chart: "none", lambda: "none",
+    chart: "chart",               // text-scale control (display only)
+    lambda: "lambda",             // view-as control (signature/KaTeX/highlighted/mono)
   };
   for (const [dt, fam] of Object.entries(EXPECTED)) {
     it(`${dt} → ${fam}`, () => expect(familyOf(dt as SocketDataType)).toBe(fam));
@@ -41,7 +42,7 @@ describe("precisionApplies — ONE list: decimal, percent, scientific", () => {
 describe("controlsFor — the truth table rows", () => {
   it("number family: styles + unit; precision follows the style", () => {
     const dec = controlsFor("number", "decimal");
-    expect(dec).toEqual({ numberStyle: true, complexStyle: false, precision: true, unit: true, dateStyle: false, text: false, logical: false, advanced: true });
+    expect(dec).toEqual({ numberStyle: true, complexStyle: false, precision: true, unit: true, dateStyle: false, text: false, logical: false, lambda: false, chart: false, advanced: true });
     expect(controlsFor("number", "scientific").precision).toBe(true); // the model's new grant
     expect(controlsFor("number", "integer").precision).toBe(false);
     expect(controlsFor("number", "fraction").precision).toBe(false);
@@ -77,6 +78,24 @@ describe("controlsFor — the truth table rows", () => {
     expect(c.precision).toBe(true);
     expect(c.unit).toBe(true);
     expect(COMPLEX_FORMAT_STYLES).toEqual(["auto", "decimal", "scientific"]);
+  });
+
+  it("lambda family: the view-as dropdown only", () => {
+    const c = controlsFor("lambda", "auto");
+    expect(c.lambda).toBe(true);
+    expect(c.chart).toBe(false);
+    expect(c.unit).toBe(false);
+    expect(c.numberStyle).toBe(false);
+    expect(c.advanced).toBe(false);
+  });
+
+  it("chart family: the text-scale dropdown only", () => {
+    const c = controlsFor("chart", "auto");
+    expect(c.chart).toBe(true);
+    expect(c.lambda).toBe(false);
+    expect(c.unit).toBe(false);
+    expect(c.numberStyle).toBe(false);
+    expect(c.advanced).toBe(false);
   });
 
   it("none family: every control off", () => {
