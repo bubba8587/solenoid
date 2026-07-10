@@ -7,11 +7,8 @@ import { parseCsvRows } from "../csv";
 import { isSolError } from "../errorValue";
 import { formatDateSerial, parseDateToSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
 import { coerceFrameCell, formatFrameCell, type FrameSourceColumn } from "../frame";
-import "./popupChrome.css";
-import { CloseIcon } from "./CloseIcon";
-import { PopupPinButton, PopupGoToButton } from "./PopupPinButton";
+import { PopupShell } from "./PopupShell";
 import { PopupOverflowMenu } from "./PopupOverflowMenu";
-import { useEscapeToClose } from "./useEscapeToClose";
 import { saveCsvFileDialog } from "../fileBridge";
 import { APP_LOCALE } from "../locale";
 import "./TablePopup.css";
@@ -161,8 +158,6 @@ export function TablePopup() {
     // a read-only view opens FORMATTED (nice dates).
     setDisplayMode(state.onSaveSource || state.onSaveRaw ? "source" : "formatted");
   }, [state]);
-
-  useEscapeToClose(() => tablePopup.close(), !!state, { capture: true });
 
   if (!state) return null;
   const cellType: CellType = state.cellType ?? "number";
@@ -357,149 +352,145 @@ export function TablePopup() {
   if (state.groupColorDark) cardVars["--group-color-dark"] = state.groupColorDark;
 
   return (
-    <div className="sol-popup-overlay" onPointerDown={() => tablePopup.close()}>
-      <div
-        className={`sol-popup table-popup${grouped ? " sol-popup--grouped" : ""}`}
-        style={cardStyle}
-        onPointerDown={(e) => e.stopPropagation()}
-      >
-        <div className="sol-popup__header">
-          <div className="sol-popup__title">{state.title}</div>
-          <span className="table-popup__dims">{rows}×{cols}{rowsTruncated ? ` · first ${MAX_VISIBLE_ROWS.toLocaleString(APP_LOCALE)}` : ""}</span>
-          {state.pinNodeId && <PopupGoToButton nodeId={state.pinNodeId} onClose={() => tablePopup.close()} />}
-          {state.pinNodeId && <PopupPinButton nodeId={state.pinNodeId} />}
-          <PopupOverflowMenu
-            items={[
-              { label: state.list ? "Copy" : "Copy CSV", onClick: copy },
-              { label: "Copy as Markdown", onClick: copyMarkdown },
-              { label: "Export CSV…", onClick: exportCsv },
-            ]}
-          />
-          <button className="sol-popup__close" onClick={() => tablePopup.close()} aria-label="Close"><CloseIcon size={16} /></button>
-        </div>
-
-        {view === "grid" ? (
-          <div className="table-popup__grid-scroll">
-            <table className="table-popup__grid">
-              <thead>
-                <tr>
-                  <th className="table-popup__corner" />
-                  {Array.from({ length: cols }, (_, c) => (
-                    <th
-                      key={c}
-                      className={headers ? "table-popup__colhead table-popup__colhead--name" : "table-popup__colhead"}
-                      title={headers?.[c]}
-                    >
-                      {editableHeaders ? (
-                        <div className="table-popup__colhead-edit">
-                          <button
-                            type="button"
-                            className="table-popup__coltype"
-                            title={`Column type: ${COLTYPE_NAME[colTypeAt(c)]}. Click to cycle Number / Text / Date / Boolean.`}
-                            onClick={() => toggleColumnType(c)}
-                          >
-                            {COLTYPE_GLYPH[colTypeAt(c)]}
-                          </button>
-                          <input
-                            className="table-popup__input table-popup__input--text table-popup__colhead-input"
-                            value={headerNames[c] ?? ""}
-                            placeholder={colLabel(c)}
-                            spellCheck={false}
-                            onChange={(e) => setHeaderName(c, e.target.value)}
-                          />
-                        </div>
-                      ) : (
-                        headers?.[c] ?? colLabel(c)
-                      )}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {displayGrid.map((row, r) => (
-                  <tr key={r}>
-                    <th className="table-popup__rowhead">{r + 1}</th>
-                    {Array.from({ length: cols }, (_, c) => {
-                      // In a NUMERIC column the shown string "NaN" can only be a real
-                      // NaN (dirty data) — a text column is excluded, and the editable
-                      // raw view shows the source token ("oops"), never "NaN".
-                      const nan = !isTextType(colTypeAt(c)) && (row[c] ?? "") === "NaN";
-                      return (
-                      <td key={c} className={`table-popup__cell${nan ? " table-popup__cell--nan" : ""}`} title={nan ? "Not a number: an undefined value in the data" : undefined}>
+    <PopupShell
+      title={state.title}
+      onClose={() => tablePopup.close()}
+      cardClassName="table-popup"
+      grouped={grouped}
+      cardStyle={cardStyle}
+      headerExtra={<span className="table-popup__dims">{rows}×{cols}{rowsTruncated ? ` · first ${MAX_VISIBLE_ROWS.toLocaleString(APP_LOCALE)}` : ""}</span>}
+      pinNodeId={state.pinNodeId}
+      headerActions={
+        <PopupOverflowMenu
+          items={[
+            { label: state.list ? "Copy" : "Copy CSV", onClick: copy },
+            { label: "Copy as Markdown", onClick: copyMarkdown },
+            { label: "Export CSV…", onClick: exportCsv },
+          ]}
+        />
+      }
+    >
+      {view === "grid" ? (
+        <div className="table-popup__grid-scroll">
+          <table className="table-popup__grid">
+            <thead>
+              <tr>
+                <th className="table-popup__corner" />
+                {Array.from({ length: cols }, (_, c) => (
+                  <th
+                    key={c}
+                    className={headers ? "table-popup__colhead table-popup__colhead--name" : "table-popup__colhead"}
+                    title={headers?.[c]}
+                  >
+                    {editableHeaders ? (
+                      <div className="table-popup__colhead-edit">
+                        <button
+                          type="button"
+                          className="table-popup__coltype"
+                          title={`Column type: ${COLTYPE_NAME[colTypeAt(c)]}. Click to cycle Number / Text / Date / Boolean.`}
+                          onClick={() => toggleColumnType(c)}
+                        >
+                          {COLTYPE_GLYPH[colTypeAt(c)]}
+                        </button>
                         <input
-                          className={isTextType(colTypeAt(c)) ? "table-popup__input table-popup__input--text" : "table-popup__input"}
-                          value={row[c] ?? ""}
-                          readOnly={!editable || formattedPreview}
-                          inputMode={isTextType(colTypeAt(c)) ? "text" : "decimal"}
+                          className="table-popup__input table-popup__input--text table-popup__colhead-input"
+                          value={headerNames[c] ?? ""}
+                          placeholder={colLabel(c)}
                           spellCheck={false}
-                          onChange={(e) => setCell(r, c, e.target.value)}
+                          onChange={(e) => setHeaderName(c, e.target.value)}
                         />
-                      </td>
-                      );
-                    })}
-                  </tr>
+                      </div>
+                    ) : (
+                      headers?.[c] ?? colLabel(c)
+                    )}
+                  </th>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <textarea
-            className="table-popup__csv"
-            value={csvText}
-            readOnly={!editable || formattedPreview}
-            spellCheck={false}
-            wrap="off"
-            onChange={(e) => onCsvChange(e.target.value)}
-          />
-        )}
-
-        <div className="table-popup__footer">
-          <div className="table-popup__view" role="group" aria-label="View">
-            <button
-              type="button"
-              aria-pressed={view === "grid"}
-              onClick={() => setView("grid")}
-            >Grid</button>
-            <button
-              type="button"
-              aria-pressed={view === "csv"}
-              onClick={showCSV}
-            >CSV</button>
-          </div>
-          {showFmtToggle && (
-            <label
-              className="table-popup__source-check"
-              title={literalSource
-                ? "Checked: show & edit exactly what you typed. Unchecked: the derived render, e.g. TRUE/FALSE and formatted dates."
-                : "Show the inputted source text instead of the formatted value"}
-            >
-              <input
-                type="checkbox"
-                checked={displayMode === "source"}
-                onChange={(e) => setDisplayMode(e.target.checked ? "source" : "formatted")}
-              />
-              Source
-            </label>
-          )}
-          {editable && view === "grid" && !formattedPreview && (
-            <div className="table-popup__dim-controls">
-              <button className="table-popup__btn" onClick={addRow} title="Add row">+ Row</button>
-              <button className="table-popup__btn" onClick={removeRow} title="Remove last row" disabled={rows <= 1}>− Row</button>
-              <button className="table-popup__btn" onClick={addCol} title="Add column">+ Col</button>
-              <button className="table-popup__btn" onClick={removeCol} title="Remove last column" disabled={cols <= 1}>− Col</button>
-            </div>
-          )}
-          <div className="table-popup__spacer" />
-          {editable ? (
-            <>
-              <button className="table-popup__btn" onClick={() => tablePopup.close()}>Cancel</button>
-              <button className="table-popup__btn table-popup__btn--primary" onClick={save}>Save</button>
-            </>
-          ) : (
-            <button className="table-popup__btn table-popup__btn--primary" onClick={() => tablePopup.close()}>Done</button>
-          )}
+              </tr>
+            </thead>
+            <tbody>
+              {displayGrid.map((row, r) => (
+                <tr key={r}>
+                  <th className="table-popup__rowhead">{r + 1}</th>
+                  {Array.from({ length: cols }, (_, c) => {
+                    // In a NUMERIC column the shown string "NaN" can only be a real
+                    // NaN (dirty data) — a text column is excluded, and the editable
+                    // raw view shows the source token ("oops"), never "NaN".
+                    const nan = !isTextType(colTypeAt(c)) && (row[c] ?? "") === "NaN";
+                    return (
+                    <td key={c} className={`table-popup__cell${nan ? " table-popup__cell--nan" : ""}`} title={nan ? "Not a number: an undefined value in the data" : undefined}>
+                      <input
+                        className={isTextType(colTypeAt(c)) ? "table-popup__input table-popup__input--text" : "table-popup__input"}
+                        value={row[c] ?? ""}
+                        readOnly={!editable || formattedPreview}
+                        inputMode={isTextType(colTypeAt(c)) ? "text" : "decimal"}
+                        spellCheck={false}
+                        onChange={(e) => setCell(r, c, e.target.value)}
+                      />
+                    </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
+      ) : (
+        <textarea
+          className="table-popup__csv"
+          value={csvText}
+          readOnly={!editable || formattedPreview}
+          spellCheck={false}
+          wrap="off"
+          onChange={(e) => onCsvChange(e.target.value)}
+        />
+      )}
+
+      <div className="table-popup__footer">
+        <div className="table-popup__view" role="group" aria-label="View">
+          <button
+            type="button"
+            aria-pressed={view === "grid"}
+            onClick={() => setView("grid")}
+          >Grid</button>
+          <button
+            type="button"
+            aria-pressed={view === "csv"}
+            onClick={showCSV}
+          >CSV</button>
+        </div>
+        {showFmtToggle && (
+          <label
+            className="table-popup__source-check"
+            title={literalSource
+              ? "Checked: show & edit exactly what you typed. Unchecked: the derived render, e.g. TRUE/FALSE and formatted dates."
+              : "Show the inputted source text instead of the formatted value"}
+          >
+            <input
+              type="checkbox"
+              checked={displayMode === "source"}
+              onChange={(e) => setDisplayMode(e.target.checked ? "source" : "formatted")}
+            />
+            Source
+          </label>
+        )}
+        {editable && view === "grid" && !formattedPreview && (
+          <div className="table-popup__dim-controls">
+            <button className="table-popup__btn" onClick={addRow} title="Add row">+ Row</button>
+            <button className="table-popup__btn" onClick={removeRow} title="Remove last row" disabled={rows <= 1}>− Row</button>
+            <button className="table-popup__btn" onClick={addCol} title="Add column">+ Col</button>
+            <button className="table-popup__btn" onClick={removeCol} title="Remove last column" disabled={cols <= 1}>− Col</button>
+          </div>
+        )}
+        <div className="table-popup__spacer" />
+        {editable ? (
+          <>
+            <button className="table-popup__btn" onClick={() => tablePopup.close()}>Cancel</button>
+            <button className="table-popup__btn table-popup__btn--primary" onClick={save}>Save</button>
+          </>
+        ) : (
+          <button className="table-popup__btn table-popup__btn--primary" onClick={() => tablePopup.close()}>Done</button>
+        )}
       </div>
-    </div>
+    </PopupShell>
   );
 }
