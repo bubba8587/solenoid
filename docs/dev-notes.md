@@ -41,6 +41,17 @@ Author brief: FC options for LAMBDA (view-as) and Chart (font scale) sockets;
   downstream Display with REAL node classes in both directions (upstream FC via
   inAnnotation, trailing FC via downstreamAnnotation) for both new fields;
   formatModel.test extended for the two families.
+- **Two root-cause fixes found while live-debugging with the author:**
+  (1) `DisplayNode.data()` STRINGIFIED a lambda into `cachedValue`
+  (formatLambda) — the component's lambda branch was unreachable, so no view
+  ever applied and an FC's textScale shrank the signature via the generic text
+  path. data() now keeps the value; the component renders by kind. (2)
+  `removeFcInline` on a hand-wired (never-docked) FC deleted its downstream
+  cable outright — the reconnects were host-gated; it now bridges FC.in's
+  source to FC.out's consumers. Debugging lesson recorded: a wedged long-lived
+  Vite watcher was chased first — restart the dev server before trusting
+  "still doesn't work" symptoms that contradict the on-disk code, but ALSO
+  don't stop there (both real bugs sat underneath).
 
 ### SESSION DIGEST (2026-07-10 — whole-codebase refactor pass)
 Author brief: "refactor duty — make the code itself better; no bug/perf hunt required."
