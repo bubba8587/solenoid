@@ -236,8 +236,10 @@ export function nodeResizable(node: ClassicPreset.Node): boolean {
 
 // ─── Width tier ────────────────────────────────────────────────────────────────
 // A node that carries 2D data (a table/matrix or a frame socket on either side)
-// gets a wider default card so grid + named-column previews aren't cramped.
-// Heights stay content-driven. Detected from sockets, so any new table/frame node
+// gets a wider default card so grid + named-column previews aren't cramped —
+// and so does any node with a LAMBDA socket, whose card shows a formula
+// (signature + body text cramps badly at the narrow width). Heights stay
+// content-driven. Detected from sockets, so any new table/frame/lambda node
 // is wide automatically — no per-class list to maintain. A manual resize still
 // overrides this (inline width wins over the class).
 export function nodeWide(node: ClassicPreset.Node): boolean {
@@ -248,6 +250,6 @@ export function nodeWide(node: ClassicPreset.Node): boolean {
   const ports = [...Object.values(node.inputs ?? {}), ...Object.values(node.outputs ?? {})];
   return ports.some((p) => {
     const s = (p as { socket?: ClassicPreset.Socket } | undefined)?.socket;
-    return s instanceof SolenoidSocket && (s.dataType === "table" || s.dataType === "frame");
+    return s instanceof SolenoidSocket && (s.dataType === "table" || s.dataType === "frame" || s.dataType === "lambda");
   });
 }
