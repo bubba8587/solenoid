@@ -11,6 +11,7 @@ import { DisplayNode } from "./nodes/display";
 import { ChartNode } from "./nodes/visual";
 import { makeAnnotationResolver } from "./unitFlow";
 import { formatAnnotationStore } from "./formatAnnotationStore";
+import { insertFcInline } from "./fcDocking";
 
 type AnyEditor = NodeEditor<{ Node: ClassicPreset.Node; Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node> }>;
 
@@ -66,6 +67,37 @@ describe("FC lambdaView / chartFontScale reach a downstream Display", () => {
     expect(displayAnn(editor, disp.id)?.lambdaView).toBe("mono");
 
     formatAnnotationStore.delete(disp.id, "out");
+  });
+
+  it("the REAL attach flow — Display wired first, FC right-click-attached to the λ output (dockSelf + insertFcInline)", async () => {
+    const editor = new NodeEditor() as unknown as AnyEditor;
+    const lam = new LambdaNode();
+    const disp = new DisplayNode();
+    for (const n of [lam, disp]) await editor.addNode(n as never);
+    // The pre-existing cable the user already had.
+    await connect(editor, lam as unknown as ClassicPreset.Node, "result", disp as unknown as ClassicPreset.Node, "in");
+
+    // attachFormatController's sequence (canvasActions.ts): construct docked,
+    // add, dockSelf (adopts the type + refreshes), splice inline.
+    const fc = new FormatControllerNode({ hostNodeId: lam.id, socketKey: "result", side: "output" });
+    await editor.addNode(fc as never);
+    fc.dockSelf(editor as never);
+    await insertFcInline(editor as never, fc);
+    expect(fc.socketDataType).toBe("lambda");
+
+    // The dropdown change (FormatControllerNode.tsx onLambdaViewChange → syncNode).
+    fc.lambdaView = "syntax";
+    for (const n of editor.getNodes()) {
+      if (n instanceof FormatControllerNode) n.refreshAnnotation(editor as never);
+    }
+
+    // The splice rerouted the Display behind the FC…
+    const conns = editor.getConnections();
+    expect(conns.some((c) => c.source === fc.id && c.target === disp.id)).toBe(true);
+    // …and the Display resolves the view.
+    expect(displayAnn(editor, disp.id)?.lambdaView).toBe("syntax");
+
+    formatAnnotationStore.delete(lam.id, "result");
   });
 
   it("Chart → FC → Display: the Display resolves the FC's chartFontScale", async () => {

@@ -65,7 +65,7 @@ export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNode
       <InlineInputs node={data} emit={emit} keys={["title", "xlabel", "ylabel", "color"]} />
       <ToggleInputRow node={data} emit={emit} socketKey="grid" label="Grid" />
       <ToggleInputRow node={data} emit={emit} socketKey="marker" label="Markers" />
-      <InlineInputs node={data} emit={emit} keys={["ymin", "ymax", "linewidth", "alpha"]} />
+      <InlineInputs node={data} emit={emit} keys={["ymin", "ymax", "linewidth", "alpha", "fontsize"]} />
       <div className="solenoid-node__section-divider" />
       {out && (
         <MeasuredSocketRow side="output" socketKey="result" nodeId={data.id} emit={emit} payload={out.socket}>
