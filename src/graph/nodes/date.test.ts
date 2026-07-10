@@ -45,6 +45,31 @@ describe("parseDateToSerial — a year token must be exactly four digits", () =>
   });
 });
 
+describe("parseDateToSerial — timezone-independent wall-clock", () => {
+  // The most subtle half of the one canonical text→date parser: zone-less text is
+  // rebuilt via Date.UTC so a plain date/datetime is the SAME calendar instant on
+  // every machine (a raw getTime() serial would drift with the runner's TZ — an
+  // off-by-one day east of UTC); an explicit zone designator is an absolute instant.
+  // These pin that reasoning so a "simplify" can't quietly reintroduce the drift.
+  it("a zone-less datetime is read as UTC wall-clock, not machine-local", () => {
+    // Noon on the 20th → the same X.5 serial regardless of the test runner's TZ.
+    expect(parseDateToSerial("2026-03-20T12:00:00"))
+      .toBe(jsDateToSerial(new Date(Date.UTC(2026, 2, 20, 12, 0, 0))));
+  });
+  it("a zone-designated datetime is an absolute instant (Z and numeric offset)", () => {
+    expect(parseDateToSerial("2026-03-20T12:00:00Z"))
+      .toBe(jsDateToSerial(new Date(Date.UTC(2026, 2, 20, 12, 0, 0))));
+    // 12:00 at +05:00 is 07:00 UTC.
+    expect(parseDateToSerial("2026-03-20T12:00:00+05:00"))
+      .toBe(jsDateToSerial(new Date(Date.UTC(2026, 2, 20, 7, 0, 0))));
+  });
+  it("an ISO date-only form is UTC midnight — an integer serial, no time fraction", () => {
+    const s = parseDateToSerial("2026-03-20");
+    expect(s).toBe(jsDateToSerial(new Date(Date.UTC(2026, 2, 20))));
+    expect(Number.isInteger(s)).toBe(true);
+  });
+});
+
 // Dates flow through the graph as Excel-style serials (1900 system, where the
 // JS epoch is serial 25569). Build them the same way the date nodes do.
 const ser = (y: number, m: number, d: number) =>
