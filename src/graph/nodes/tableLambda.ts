@@ -211,6 +211,8 @@ export class ReduceLambdaNode extends ClassicPreset.Node {
   stringLiterals: Record<string, string>;
   cachedResult: Cell | SolError | null = null;
   cachedError: string | null = null;
+  // Wired lambdas bind positionally to (acc, x, i) — the card advises the shape.
+  readonly lambdaSig = { vars: ["acc", "x", "i"], required: 2 };
   width = 210;
   height = 246;
 
@@ -264,6 +266,8 @@ export class ScanLambdaNode extends ClassicPreset.Node {
   stringLiterals: Record<string, string>;
   cachedResult: Mat | SolError | null = null;
   cachedError: string | null = null;
+  // Wired lambdas bind positionally to (acc, x, i) — the card advises the shape.
+  readonly lambdaSig = { vars: ["acc", "x", "i"], required: 2 };
   width = 210;
   height = 246;
 

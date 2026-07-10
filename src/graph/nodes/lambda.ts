@@ -49,6 +49,29 @@ export function formatLambda(v: LambdaValue): string {
   return `λ(${v.params.join(", ")})`;
 }
 
+/** A lambda-family consumer's expected call signature: its fixed variable names
+ *  in binding ORDER, and how many are required (trailing ones — e.g. REDUCE's
+ *  `i` — are optional). A wired lambda binds POSITIONALLY, so its params must be
+ *  this list's prefix; the names it chose are ignored. */
+export interface LambdaSig { vars: string[]; required: number }
+
+/** Human signature for the advisory, optional slots in brackets: `acc, x, [i]`. */
+export function formatLambdaSig(sig: LambdaSig): string {
+  return sig.vars.map((v, i) => (i < sig.required ? v : `[${v}]`)).join(", ");
+}
+
+/** True when a wired lambda's declared params won't bind the way its names read
+ *  — anything but an ordered prefix of the consumer's fixed vars (of at least
+ *  `required` length). Catches the accumulator dropped (`λ(x)` into REDUCE), the
+ *  order swapped (`λ(x, acc)`), and arbitrary names (`λ(a, b)`) that only work
+ *  by luck of position. An exact prefix (`λ(acc, x)` / `λ(acc, x, i)`) is fine. */
+export function lambdaSigMismatch(params: string[], sig: LambdaSig): boolean {
+  const ok = params.length >= sig.required
+    && params.length <= sig.vars.length
+    && params.every((p, i) => p === sig.vars[i]);
+  return !ok;
+}
+
 const IDENT = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 type Compiled = (...args: unknown[]) => unknown;
