@@ -11,21 +11,13 @@ export type ConnDialogReq = {
   tgt?: Prefill;
 };
 
-import { createNotifier } from "./storeKit";
+import { createValueStore } from "./storeKit";
 
-let _req: ConnDialogReq | null = null; // null = closed
-const { notify, subscribe } = createNotifier();
+const core = createValueStore<ConnDialogReq>(); // null = closed
 
 export const connectionDialog = {
-  get: (): ConnDialogReq | null => _req,
+  ...core,
   open(req: ConnDialogReq = {}) {
-    _req = req;
-    notify();
+    core.open(req);
   },
-  close() {
-    if (_req === null) return;
-    _req = null;
-    notify();
-  },
-  subscribe,
 };

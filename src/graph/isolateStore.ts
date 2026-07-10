@@ -47,18 +47,16 @@ export const isolateStore = {
 // system: the canvas's background/node/cable pointerdown handler clears it, and
 // selecting a terminal clears node/cable/standoff — mutually exclusive, like a node.
 let _selectedEndpoint: string | null = null;
-const _epListeners = new Set<() => void>();
-let _epVersion = 0;
+const epNotifier = createNotifier();
 export const isoEndpointSelect = {
   get: (): string | null => _selectedEndpoint,
   set(v: string | null): void {
     if (_selectedEndpoint === v) return;
     _selectedEndpoint = v;
-    _epVersion++;
-    for (const l of _epListeners) l();
+    epNotifier.notify();
   },
-  version: (): number => _epVersion,
-  subscribe(l: () => void): () => void { _epListeners.add(l); return () => { _epListeners.delete(l); }; },
+  version: epNotifier.version,
+  subscribe: epNotifier.subscribe,
 };
 
 // ─── Chain closure (pure, testable) ───────────────────────────────────────────

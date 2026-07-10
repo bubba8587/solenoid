@@ -1,7 +1,7 @@
 // The two Help-menu dialogs — "About Solenoid" and "What's New" — share one modal
 // slot (only one shows at a time). A tiny mode store, plus the once-per-release
 // auto-show for What's New (localStorage-flagged, dismissible, re-openable from Help).
-import { createNotifier } from "./storeKit";
+import { createValueStore } from "./storeKit";
 
 export type HelpDialog = "about" | "whatsnew";
 
@@ -11,19 +11,17 @@ export type HelpDialog = "about" | "whatsnew";
 export const WHATS_NEW_VERSION = "1.1";
 const SEEN_KEY = "solenoid.whatsNewSeen";
 
-let _current: HelpDialog | null = null;
-const { notify, subscribe, version } = createNotifier();
+const core = createValueStore<HelpDialog>();
 
 function set(v: HelpDialog | null) {
-  if (_current === v) return;
-  _current = v;
-  notify();
+  if (core.get() === v) return;
+  if (v === null) core.close(); else core.open(v);
 }
 
 export const helpDialogStore = {
-  subscribe,
-  version,
-  get: (): HelpDialog | null => _current,
+  subscribe: core.subscribe,
+  version: core.version,
+  get: core.get,
   openAbout: () => set("about"),
   openWhatsNew: () => set("whatsnew"),
   close: () => set(null),

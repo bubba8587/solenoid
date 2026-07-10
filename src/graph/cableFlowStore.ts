@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { createNotifier } from "./storeKit";
 
 // "Animated mode" — when on, every live cable carries a stream of beads flowing
@@ -31,7 +31,6 @@ export function initCableFlow() {
 }
 
 export function useCableFlow(): { flow: boolean; toggleFlow: () => void } {
-  const [flow, setFlow] = useState(_on);
-  useEffect(() => cableFlowStore.subscribe(() => setFlow(cableFlowStore.get())), []);
+  const flow = useSyncExternalStore(cableFlowStore.subscribe, cableFlowStore.get);
   return { flow, toggleFlow: () => cableFlowStore.toggle() };
 }

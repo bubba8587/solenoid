@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { createNotifier } from "./storeKit";
 import type { GpuCapability } from "./gpuProbe";
 import { supportsHtmlInCanvas } from "./htmlCanvasSupport";
@@ -51,9 +51,7 @@ export function initRenderMode() {
 }
 
 export function useRenderMode(): RenderMode {
-  const [mode, setMode] = useState(_mode);
-  useEffect(() => renderModeStore.subscribe(() => setMode(renderModeStore.get())), []);
-  return mode;
+  return useSyncExternalStore(renderModeStore.subscribe, renderModeStore.get);
 }
 
 // ─── GPU capability (set once by the startup probe) ─────────────────────────────

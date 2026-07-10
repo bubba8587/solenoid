@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { createNotifier } from "./storeKit";
 
 // Snap-to-grid: when on, a node dropped after a drag rounds its position to the
@@ -47,7 +47,6 @@ export function initGridSnap() {
 }
 
 export function useGridSnap(): { snap: boolean; toggleSnap: () => void } {
-  const [snap, setSnap] = useState(_on);
-  useEffect(() => gridSnapStore.subscribe(() => setSnap(gridSnapStore.get())), []);
+  const snap = useSyncExternalStore(gridSnapStore.subscribe, gridSnapStore.get);
   return { snap, toggleSnap: () => gridSnapStore.toggle() };
 }

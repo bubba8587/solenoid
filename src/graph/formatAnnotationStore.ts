@@ -4,6 +4,7 @@
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "./nodes/date";
 import { groupingApplies, scaleApplies, negativeApplies } from "./formatModel";
 import { APP_LOCALE } from "./locale";
+import { createNotifier } from "./storeKit";
 
 // ─── Format style (how the number renders) ───────────────────────────────────
 
@@ -502,12 +503,9 @@ const _store = new Map<string, FormatAnnotation>();
 // and the startsWith scan over the whole map multiplied out on big graphs
 // (audit finding 41).
 const _byNode = new Map<string, Map<string, FormatAnnotation>>();
-const _listeners = new Set<() => void>();
-// Bumped on every change so useSyncExternalStore consumers (every node's
+// Version bumps on every change so useSyncExternalStore consumers (every node's
 // value box) re-render when an annotation is added / edited / removed.
-let _version = 0;
-
-function notify() { _version++; for (const l of _listeners) l(); }
+const { notify, subscribe, version } = createNotifier();
 
 function key(nodeId: string, socketKey: string): string {
   return `${nodeId}::${socketKey}`;
@@ -541,14 +539,9 @@ export const formatAnnotationStore = {
       notify();
     }
   },
-  subscribe(listener: () => void): () => void {
-    _listeners.add(listener);
-    return () => { _listeners.delete(listener); };
-  },
+  subscribe,
   /** Monotonic version for useSyncExternalStore snapshots. */
-  version(): number {
-    return _version;
-  },
+  version,
   /** All annotations keyed by nodeId::socketKey. */
   snapshot(): ReadonlyMap<string, FormatAnnotation> {
     return _store;
@@ -561,24 +554,19 @@ export const formatAnnotationStore = {
 // Written by the Canvas connection pipe; read by FormatControllerComponent.
 
 const _mismatch = new Set<string>();
-const _mismatchListeners = new Set<() => void>();
-
-function notifyMismatch() { for (const l of _mismatchListeners) l(); }
+const mismatchNotifier = createNotifier();
 
 export const formatMismatchStore = {
   setMismatch(nodeId: string, has: boolean): void {
     const changed = has ? !_mismatch.has(nodeId) : _mismatch.has(nodeId);
     if (!changed) return;
     if (has) _mismatch.add(nodeId); else _mismatch.delete(nodeId);
-    notifyMismatch();
+    mismatchNotifier.notify();
   },
   has(nodeId: string): boolean {
     return _mismatch.has(nodeId);
   },
-  subscribe(listener: () => void): () => void {
-    _mismatchListeners.add(listener);
-    return () => { _mismatchListeners.delete(listener); };
-  },
+  subscribe: mismatchNotifier.subscribe,
 };
 
 /** Format a number with a resolved annotation — the format-model pipeline:

@@ -1,7 +1,7 @@
 // The currently-open chart popup (a big read-only view of a Sparkline/Chart),
 // or null. Module store like tablePopup / formulaPopup: opened from inside a
 // node (separate React root), mounted once in App.
-import { createNotifier } from "./storeKit";
+import { createValueStore } from "./storeKit";
 import type { ChartShape } from "./components/chartView";
 import type { ChartOptions } from "./nodes/chartOptions";
 import type { ChartValue } from "./chartValue";
@@ -29,19 +29,4 @@ export interface ChartPopupState {
   pinNodeId?: string;
 }
 
-let _state: ChartPopupState | null = null;
-const { notify, subscribe } = createNotifier();
-
-export const chartPopup = {
-  get: (): ChartPopupState | null => _state,
-  open(state: ChartPopupState) {
-    _state = state;
-    notify();
-  },
-  close() {
-    if (_state === null) return;
-    _state = null;
-    notify();
-  },
-  subscribe,
-};
+export const chartPopup = createValueStore<ChartPopupState>();
