@@ -82,16 +82,16 @@ const GRP_DATA = ["ws-tx", "ws-acct", "ws-bud"];
 // ─── B · Cash flow ─────────────────────────────────────────────────────────────
 note("note-cash", -1480, -560,
   "2 · Cash flow this quarter",
-  "# Income vs. expenses\n**Filter** the Amount column twice, `> 0` for income and `< 0` for spend, then fold each slice with a **REDUCE** lambda (`acc + x`). Excel: SUMIF. **Savings rate** = net ÷ income drives a gauge and an alert; drag the target slider to trip it.",
+  "# Income vs. expenses\n**Filter** the Amount column twice, `> 0` for income and `< 0` for spend, then fold each slice with a **REDUCE** lambda (`acc + value`). Excel: SUMIF. **Savings rate** = net ÷ income drives a gauge and an alert; drag the target slider to trip it.",
   "green", 380, 200);
 n("col-amt", "GetColumnNode", -1460, -260, { label: "Amount", readAs: "number" }, { stringLiterals: { name: "Amount" } });
 n("red-net", "AggregateNode",    -1180, -360, { label: "Net cash flow", op: "sum" });
 n("disp-net","DisplayNode",    -900, -360, { label: "Net cash flow" });
 n("flt-in",  "FilterNode",      -1180, -120, { label: "Keep income (> 0)", condConfig: { "0": { op: "gt" } } }, { stringLiterals: { value0: "0" } });
-n("red-in",  "ReduceLambdaNode", -900, -120, { label: "Income", expr: "acc + x" });
+n("red-in",  "ReduceLambdaNode", -900, -120, { label: "Income", expr: "acc + value" });
 n("disp-in", "DisplayNode",      -640, -160, { label: "Income (3 mo)" });
 n("flt-out", "FilterNode",      -1180,  140, { label: "Keep spend (< 0)", condConfig: { "0": { op: "lt" } } }, { stringLiterals: { value0: "0" } });
-n("red-out", "ReduceLambdaNode", -900,  140, { label: "Spend", expr: "acc + x" });
+n("red-out", "ReduceLambdaNode", -900,  140, { label: "Spend", expr: "acc + value" });
 n("disp-out","DisplayNode",      -640,  100, { label: "Expenses (3 mo)" });
 n("expr-rate","ExpressionNode",-680,  380, { label: "Savings rate", expr: "(income + expense) / income" });
 n("gauge-rate","GaugeNode",    -420,  360, { label: "Savings rate" }, { literals: { value: 0 } });
@@ -167,9 +167,9 @@ n("gauge-nw","GaugeNode",    620, 1020, { label: "Toward goal" }, { literals: { 
 n("ratio-nw","ExpressionNode", 430, 1180, { label: "Progress", expr: "nw / goal" });
 n("slider-goal","SliderInputNode", 60, 1340, { label: "Net-worth goal", value: 120000, min: 50000, max: 250000, step: 5000 }, { literals: { min: 50000, max: 250000, step: 5000 } });
 n("flt-assets","FilterNode",      340, 1320, { label: "Keep assets (> 0)", condConfig: { "0": { op: "gt" } } }, { stringLiterals: { value0: "0" } });
-n("red-assets","ReduceLambdaNode", 600, 1320, { label: "Assets total", expr: "acc + x" });
+n("red-assets","ReduceLambdaNode", 600, 1320, { label: "Assets total", expr: "acc + value" });
 n("flt-liab", "FilterNode",       340, 1540, { label: "Keep debt (< 0)", condConfig: { "0": { op: "lt" } } }, { stringLiterals: { value0: "0" } });
-n("red-liab", "ReduceLambdaNode",  600, 1540, { label: "Liabilities (signed)", expr: "acc + x" });
+n("red-liab", "ReduceLambdaNode",  600, 1540, { label: "Liabilities (signed)", expr: "acc + value" });
 n("expr-debt","ExpressionNode",    860, 1540, { label: "Liabilities", expr: "-l" });
 n("gb-type", "GroupByNode",  340, 1080, { label: "By asset class", op: "sum" });
 n("chart-type","ChartNode",  620, 1260, { label: "Assets vs liabilities", op: "column" });

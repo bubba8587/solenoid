@@ -6,7 +6,7 @@ import type {
   ReduceLambdaNode as ReduceLambdaNodeType,
   ScanLambdaNode as ScanLambdaNodeType,
 } from "../rete-nodes";
-import { isLambdaValue, formatLambda, formatLambdaSig, lambdaSigMismatch, type LambdaSig } from "../nodes/lambda";
+import { isLambdaValue, formatLambda, formatLambdaSig, undeclaredConsumerVars, type LambdaSig } from "../nodes/lambda";
 import { processGraph } from "../process";
 import { formulaPopup } from "../formulaPopupStore";
 import { cableValueStore } from "../cableValueStore";
@@ -57,11 +57,11 @@ function FormulaBox({ node }: { node: FormulaNode }) {
   if (lambdaSrc) {
     const live = cableValueStore.get(lambdaSrc.sourceId, lambdaSrc.sourceOutput);
     const sig = isLambdaValue(live) ? formatLambda(live) : "λ";
-    // Params bind to this node's variables BY NAME (D18). A lambda that declares
-    // valid names but omits a required one (`λ(x)` drops acc → captured 0, fold
-    // degenerates) still runs, so advise the shape; a param that isn't one of the
-    // node's variables is a hard error surfaced via cachedError, not here.
-    const mismatch = node.lambdaSig && isLambdaValue(live) && lambdaSigMismatch(live.params, node.lambdaSig);
+    // Params bind to this node's variables BY NAME (D18). A body variable that is
+    // one of this node's variables but ISN'T declared as a param can't be bound —
+    // it silently reads as a captured constant (0), not the live value. Advise it;
+    // a param that isn't one of the node's variables is a hard cachedError, not here.
+    const undeclared = node.lambdaSig && isLambdaValue(live) ? undeclaredConsumerVars(live.captured, node.lambdaSig) : [];
     return (
       <>
         <div
@@ -71,9 +71,12 @@ function FormulaBox({ node }: { node: FormulaNode }) {
           <span className="solenoid-expr__override-sig">{sig}</span>
           <span className="solenoid-expr__override-src">↩ {lambdaSrc.label || "wired"}</span>
         </div>
-        {mismatch && (
-          <div className="solenoid-expr__lambda-hint">
-            {node.label || "This node"} folds on {node.lambdaSig!.vars.slice(0, node.lambdaSig!.required).join(", ")} — declare λ({formatLambdaSig(node.lambdaSig!)})
+        {undeclared.length > 0 && (
+          <div
+            className="solenoid-expr__lambda-hint"
+            title="Used but not declared as a parameter — binds as a captured constant, not the live value."
+          >
+            {undeclared.join(", ")} not declared — λ({formatLambdaSig(node.lambdaSig!)})
           </div>
         )}
       </>

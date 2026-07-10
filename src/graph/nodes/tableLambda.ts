@@ -12,12 +12,14 @@ import { solError, isSolError, type SolError, type SolErrorCode } from "../error
 // path — formula TEXT piped from a Text Input through a "Formula" string
 // socket — was removed 2026-07-09: the popup + the lambda socket cover both
 // authoring paths, and reuse-across-nodes is the LAMBDA node's job.
-// Fixed variables:
-//   MAP        → `x` (cell value; `y`,`z` from optional 2nd/3rd tables), plus
-//                `r`,`c` (1-based position)
-//   BYROW/BYCOL→ `v` (the row/column as a list — reduce it with SUM/MAX/…)
-//   MAKEARRAY  → `r`,`c` (1-based indices)
-//   REDUCE     → `acc` (running value), `x` (current cell), plus `i` (1-based)
+// Fixed variables — word names, and the fold pair uses stepped language (they run
+// in sequence) while MAP/MAKEARRAY are parallel-per-cell (positional, no stepping):
+//   MAP        → `value` (cell; `value2`,`value3` from optional 2nd/3rd tables),
+//                plus `row`,`col` (1-based position)
+//   BYROW/BYCOL→ `values` (the row/column as a list — reduce it with SUM/MAX/…)
+//   MAKEARRAY  → `row`,`col` (1-based indices)
+//   REDUCE/SCAN→ `acc` (running accumulator), `value` (element at this step),
+//                `step` (1-based position in the sequence)
 // Compiled by the shared excelFormula engine; Excel aggregates (SUM, AVERAGE, …)
 // resolve through Formula.js and accept the vector `v`.
 //
@@ -37,7 +39,7 @@ type LambdaFn = (...args: unknown[]) => unknown;
  *  array-aware evaluator. Hosts call it positionally (MAP `fn(x,y,z,r,c)` per cell,
  *  BYROW `fn(vec)` per vector, REDUCE `fn(acc,x,i)` folding, MAKEARRAY `fn(r,c)`);
  *  the evaluator decides broadcast-vs-aggregate per call site, so a BYROW vector
- *  flows whole into `SUM(v)`. */
+ *  flows whole into `SUM(values)`. */
 export function compileLambda(expr: string, varNames: string[]): LambdaFn | null {
   return compilePositional(expr, varNames) as LambdaFn | null;
 }
@@ -110,10 +112,11 @@ function cell(v: unknown): Cell {
 }
 
 // ─── MAP ────────────────────────────────────────────────────────────────────────
-// Like Excel's MAP, takes up to three arrays zipped through one lambda: `x` is
-// the first table's cell, `y`/`z` the optional second/third tables'. An extra
-// table must match the first's shape, or be 1×1 (a wired scalar widens to 1×1),
-// which broadcasts over every cell — Solenoid's stand-in for a captured constant.
+// Like Excel's MAP, takes up to three arrays zipped through one lambda: `value` is
+// the first table's cell, `value2`/`value3` the optional second/third tables'. An
+// extra table must match the first's shape, or be 1×1 (a wired scalar widens to
+// 1×1), which broadcasts over every cell — Solenoid's stand-in for a captured
+// constant.
 
 export class MapTableNode extends ClassicPreset.Node {
   label: string;
@@ -121,6 +124,8 @@ export class MapTableNode extends ClassicPreset.Node {
   stringLiterals: Record<string, string>;
   cachedResult: Mat | SolError | null = null;
   cachedError: string | null = null;
+  // A wired lambda binds by name (D18); `value` is the primary, the rest optional.
+  readonly lambdaSig = { vars: ["value", "value2", "value3", "row", "col"], required: 1 };
   width = 210;
   height = 270;
 
@@ -128,10 +133,10 @@ export class MapTableNode extends ClassicPreset.Node {
     super("MapTable");
     this.label = init?.label ?? "MAP";
     this.resultAs = init?.resultAs ?? "number";
-    this.stringLiterals = { formula: init?.expr ?? "x^2" };
-    this.addInput("table", anyTableIn("Values (x)"));
-    this.addInput("table2", anyTableIn("y (optional)"));
-    this.addInput("table3", anyTableIn("z (optional)"));
+    this.stringLiterals = { formula: init?.expr ?? "value^2" };
+    this.addInput("table", anyTableIn("Values (value)"));
+    this.addInput("table2", anyTableIn("value2 (optional)"));
+    this.addInput("table3", anyTableIn("value3 (optional)"));
     this.addInput("lambda", lambdaIn("Lambda"));
     this.addOutput("result", resultOut("Mapped", "matrix", this.resultAs));
   }
@@ -140,7 +145,7 @@ export class MapTableNode extends ClassicPreset.Node {
     const m = toAnyMatrix(inputs.table?.[0]);
     const { fn, err, code } = resolveFn(
       inputs.lambda?.[0], this.stringLiterals.formula,
-      "x^2", ["x", "y", "z", "r", "c"], 5);
+      "value^2", ["value", "value2", "value3", "row", "col"], 5, true);
     if (!fn) { this.cachedResult = null; this.cachedError = err; return fnError(err!, code); }
     if (!m) { this.cachedResult = null; this.cachedError = null; return { result: null }; }
     const extras: (Mat | null)[] = [toAnyMatrix(inputs.table2?.[0]), toAnyMatrix(inputs.table3?.[0])];
@@ -181,6 +186,8 @@ export class ByAxisNode extends ClassicPreset.Node {
   stringLiterals: Record<string, string>;
   cachedResult: Cell[] | SolError | null = null;
   cachedError: string | null = null;
+  // A wired lambda binds by name (D18); `values` is the row/column as a list.
+  readonly lambdaSig = { vars: ["values"], required: 1 };
   width = 210;
   height = 218;
 
@@ -189,7 +196,7 @@ export class ByAxisNode extends ClassicPreset.Node {
     this.axis = init?.axis ?? "row";
     this.label = init?.label ?? (this.axis === "row" ? "BYROW" : "BYCOL");
     this.resultAs = init?.resultAs ?? "number";
-    this.stringLiterals = { formula: init?.expr ?? "SUM(v)" };
+    this.stringLiterals = { formula: init?.expr ?? "SUM(values)" };
     this.addInput("table", anyTableIn("Table"));
     this.addInput("lambda", lambdaIn("Lambda"));
     this.addOutput("result", resultOut("Per-" + this.axis, "combo", this.resultAs));
@@ -199,7 +206,7 @@ export class ByAxisNode extends ClassicPreset.Node {
     const m = toAnyMatrix(inputs.table?.[0]);
     const { fn, err, code } = resolveFn(
       inputs.lambda?.[0], this.stringLiterals.formula,
-      "SUM(v)", ["v"], 1);
+      "SUM(values)", ["values"], 1, true);
     if (!fn) { this.cachedResult = null; this.cachedError = err; return fnError(err!, code); }
     if (!m || m.length === 0) { this.cachedResult = null; this.cachedError = null; return { result: null }; }
     try {
@@ -220,7 +227,7 @@ export class ByAxisNode extends ClassicPreset.Node {
 // Folds every cell (row-major, matching Excel) into one value, starting from
 // Initial. The `Values` input widens any shape to a matrix, so REDUCE over a
 // plain list is the everyday case and a matrix folds across all cells. The fold
-// can be textual (`acc & x` with an Initial of "") or numeric.
+// can be textual (`acc & value` with an Initial of "") or numeric.
 
 export class ReduceLambdaNode extends ClassicPreset.Node {
   label: string;
@@ -229,8 +236,8 @@ export class ReduceLambdaNode extends ClassicPreset.Node {
   stringLiterals: Record<string, string>;
   cachedResult: Cell | SolError | null = null;
   cachedError: string | null = null;
-  // Wired lambdas bind positionally to (acc, x, i) — the card advises the shape.
-  readonly lambdaSig = { vars: ["acc", "x", "i"], required: 2 };
+  // Wired lambdas bind to (acc, value, step) by name (D18) — the card advises it.
+  readonly lambdaSig = { vars: ["acc", "value", "step"], required: 2 };
   width = 210;
   height = 246;
 
@@ -238,7 +245,7 @@ export class ReduceLambdaNode extends ClassicPreset.Node {
     super("ReduceLambda");
     this.label = init?.label ?? "REDUCE";
     this.resultAs = init?.resultAs ?? "number";
-    this.stringLiterals = { formula: init?.expr ?? "acc + x" };
+    this.stringLiterals = { formula: init?.expr ?? "acc + value" };
     if (init?.literals) this.literals = { ...init.literals };
     this.addInput("initial", anyIn("Initial"));
     this.addInput("table", anyTableIn("Values"));
@@ -251,7 +258,7 @@ export class ReduceLambdaNode extends ClassicPreset.Node {
     const m = toAnyMatrix(inputs.table?.[0]);
     const { fn, err, code } = resolveFn(
       inputs.lambda?.[0], this.stringLiterals.formula,
-      "acc + x", ["acc", "x", "i"], 3, true);
+      "acc + value", ["acc", "value", "step"], 3, true);
     if (!fn) { this.cachedResult = null; this.cachedError = err; return fnError(err!, code); }
     if (!m) { this.cachedResult = null; this.cachedError = null; return { result: null }; }
     try {
@@ -273,9 +280,10 @@ export class ReduceLambdaNode extends ClassicPreset.Node {
 // ─── SCAN ───────────────────────────────────────────────────────────────────────
 // REDUCE's running-intermediate twin: the SAME row-major fold, but it EMITS the
 // accumulator after every cell, so the output keeps the input's shape (Excel
-// SCAN). A running total is `acc + x` from Initial 0; a running max is
-// `MAX(acc, x)`; text builds with `acc & x` from "". REDUCE gives only the final
-// value, so this covers the arbitrary-formula case the fixed-op Cumulative can't.
+// SCAN). A running total is `acc + value` from Initial 0; a running max is
+// `MAX(acc, value)`; text builds with `acc & value` from "". REDUCE gives only the
+// final value, so this covers the arbitrary-formula case the fixed-op Cumulative
+// can't.
 
 export class ScanLambdaNode extends ClassicPreset.Node {
   label: string;
@@ -284,8 +292,8 @@ export class ScanLambdaNode extends ClassicPreset.Node {
   stringLiterals: Record<string, string>;
   cachedResult: Mat | SolError | null = null;
   cachedError: string | null = null;
-  // Wired lambdas bind positionally to (acc, x, i) — the card advises the shape.
-  readonly lambdaSig = { vars: ["acc", "x", "i"], required: 2 };
+  // Wired lambdas bind to (acc, value, step) by name (D18) — the card advises it.
+  readonly lambdaSig = { vars: ["acc", "value", "step"], required: 2 };
   width = 210;
   height = 246;
 
@@ -293,7 +301,7 @@ export class ScanLambdaNode extends ClassicPreset.Node {
     super("ScanLambda");
     this.label = init?.label ?? "SCAN";
     this.resultAs = init?.resultAs ?? "number";
-    this.stringLiterals = { formula: init?.expr ?? "acc + x" };
+    this.stringLiterals = { formula: init?.expr ?? "acc + value" };
     if (init?.literals) this.literals = { ...init.literals };
     this.addInput("initial", anyIn("Initial"));
     this.addInput("table", anyTableIn("Values"));
@@ -306,7 +314,7 @@ export class ScanLambdaNode extends ClassicPreset.Node {
     const m = toAnyMatrix(inputs.table?.[0]);
     const { fn, err, code } = resolveFn(
       inputs.lambda?.[0], this.stringLiterals.formula,
-      "acc + x", ["acc", "x", "i"], 3, true);
+      "acc + value", ["acc", "value", "step"], 3, true);
     if (!fn) { this.cachedResult = null; this.cachedError = err; return fnError(err!, code); }
     if (!m) { this.cachedResult = null; this.cachedError = null; return { result: null }; }
     try {
@@ -338,6 +346,8 @@ export class MakeArrayNode extends ClassicPreset.Node {
   stringLiterals: Record<string, string>;
   cachedResult: Mat | SolError | null = null;
   cachedError: string | null = null;
+  // A wired lambda binds by name (D18); `row`,`col` are the 1-based indices.
+  readonly lambdaSig = { vars: ["row", "col"], required: 2 };
   width = 210;
   height = 246;
 
@@ -345,7 +355,7 @@ export class MakeArrayNode extends ClassicPreset.Node {
     super("MakeArray");
     this.label = init?.label ?? "MAKEARRAY";
     this.resultAs = init?.resultAs ?? "number";
-    this.stringLiterals = { formula: init?.expr ?? "r * c" };
+    this.stringLiterals = { formula: init?.expr ?? "row * col" };
     if (init?.literals) this.literals = { ...init.literals };
     this.addInput("rows", numIn("Rows"));
     this.addInput("cols", numIn("Cols"));
@@ -358,7 +368,7 @@ export class MakeArrayNode extends ClassicPreset.Node {
     const cols = Math.round(inputs.cols?.[0] ?? this.literals.cols ?? 0);
     const { fn, err, code } = resolveFn(
       inputs.lambda?.[0], this.stringLiterals.formula,
-      "r * c", ["r", "c"], 2);
+      "row * col", ["row", "col"], 2, true);
     if (!fn) { this.cachedResult = null; this.cachedError = err; return fnError(err!, code); }
     if (rows < 1 || cols < 1) { this.cachedResult = null; this.cachedError = null; return { result: null }; }
     if (rows * cols > MAKEARRAY_MAX_CELLS) {

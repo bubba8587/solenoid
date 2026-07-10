@@ -32,6 +32,10 @@ export interface LambdaValue {
   /** The source body expression — carried so a consumer can RENDER the formula
    *  (e.g. the Report shows a wired lambda as KaTeX). Empty for a bare lambda. */
   expr: string;
+  /** The body variables that are NOT params (captured as closure constants). A
+   *  by-name consumer uses this to warn when one collides with its own variable
+   *  names — the user meant a live value but got a captured constant. */
+  captured?: string[];
   /** Optional per-variable prose (var name → description), carried so a Report
    *  embed can show a "where:" legend under the formula. Kept out of `expr`. */
   descriptions?: Record<string, string>;
@@ -61,15 +65,15 @@ export function formatLambdaSig(sig: LambdaSig): string {
   return sig.vars.map((v, i) => (i < sig.required ? v : `[${v}]`)).join(", ");
 }
 
-/** True when a wired lambda declares valid variable names but LEAVES OUT a
- *  required one — e.g. `λ(x)` into REDUCE, where `acc` isn't a param so it's a
- *  captured 0 and the fold degenerates. Binding is BY NAME (D18), so order is
- *  free (`λ(x, acc)` is fine) and a param that isn't one of the node's variables
- *  is a hard compute error handled in `resolveFn`, not this advisory. */
-export function lambdaSigMismatch(params: string[], sig: LambdaSig): boolean {
-  const allKnown = params.every((p) => sig.vars.includes(p));
-  const hasRequired = sig.vars.slice(0, sig.required).every((r) => params.includes(r));
-  return allKnown && !hasRequired;
+/** The consumer's own variables that a wired lambda USED in its body but did NOT
+ *  declare as params — so binding by name (D18) can't reach them and they silently
+ *  became captured constants (0) instead of the live per-step/per-cell value. e.g.
+ *  `λ(step) = acc + value` into REDUCE captures `acc` and `value`; `λ(row) = value +
+ *  row` into MAP captures `value`. Non-empty → the card advises declaring them. (A
+ *  param that ISN'T one of the node's variables is a separate hard compute error in
+ *  `resolveFn`, not this advisory.) */
+export function undeclaredConsumerVars(captured: string[] | undefined, sig: LambdaSig): string[] {
+  return (captured ?? []).filter((c) => sig.vars.includes(c));
 }
 
 const IDENT = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -168,7 +172,7 @@ export class LambdaNode extends ClassicPreset.Node {
     const fn: Compiled = (...args) =>
       compiled(...args.slice(0, params.length), ...capturedVals);
     const descriptions = Object.keys(this.varDescriptions).length ? { ...this.varDescriptions } : undefined;
-    const value: LambdaValue = { __lambda: true, params, fn, expr: this.expr, descriptions };
+    const value: LambdaValue = { __lambda: true, params, fn, expr: this.expr, captured: [...this.captured], descriptions };
     this.cachedValue = value;
     this.cachedError = null;
     return { result: value };

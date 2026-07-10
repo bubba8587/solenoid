@@ -21,7 +21,7 @@
         "label": "MAP — between 50 and 80"
       },
       "stringLiterals": {
-        "formula": "IF(AND(x>50, x<80), 1, 0)"
+        "formula": "IF(AND(value>50, value<80), 1, 0)"
       }
     },
     {
@@ -44,7 +44,7 @@
         "axis": "row"
       },
       "stringLiterals": {
-        "formula": "AVERAGE(v)"
+        "formula": "AVERAGE(values)"
       }
     },
     {
@@ -57,7 +57,7 @@
         "axis": "col"
       },
       "stringLiterals": {
-        "formula": "AVERAGE(v)"
+        "formula": "AVERAGE(values)"
       }
     },
     {
@@ -73,7 +73,7 @@
         "cols": 5
       },
       "stringLiterals": {
-        "formula": "r * c"
+        "formula": "row * col"
       }
     },
     {
@@ -105,7 +105,7 @@
         "axis": "row"
       },
       "stringLiterals": {
-        "formula": "IF(AVERAGE(v) > 85, 1, 0)"
+        "formula": "IF(AVERAGE(values) > 85, 1, 0)"
       }
     },
     {
@@ -117,7 +117,7 @@
         "label": "MAP — °F → °C"
       },
       "stringLiterals": {
-        "formula": "(x - 32) * 5 / 9"
+        "formula": "(value - 32) * 5 / 9"
       }
     },
     {

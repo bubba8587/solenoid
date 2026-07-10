@@ -355,26 +355,33 @@ the deliberately NEUTRAL rungs.
 the way anything else in this project works; every other node explicitly declares its
 sockets so you know exactly what is getting wired in where").
 **The problem:** the lambda-family consumers called a wired LAMBDA positionally (Excel's
-model). The param NAMES were cosmetic, so `LAMBDA(x, acc, "x + 2*acc")` into SCAN silently
-computed `acc + 2*x` — the names lied — and `LAMBDA(x, "acc + x")` silently dropped the
-accumulator (`acc` became a captured 0), yielding a blank/degenerate fold with no error.
-Opaque binding is the opposite of Solenoid's every-socket-is-named principle.
-**The decision:** for the fold consumers (SCAN, REDUCE — `byName` in `resolveFn`), a wired
-lambda's declared params bind to the node's fixed variables (`acc`, `x`, `i`) **by name**,
-order-free. A param that ISN'T one of the node's variables is a hard `#VALUE!` (the consumer
-can't supply it). A param that's valid but omits a REQUIRED var (`λ(x)` without `acc`) still
-runs — `acc` is a captured 0 — but draws the red advisory. **Captured constants are
-untouched:** any non-param body variable (`rate`) stays an explicit input socket on the
-LAMBDA node and rides the closure through, verified (`rate` wired 3 → `[3,6,9]`). So the two
-authoring paths finally agree — a wired lambda behaves like the inline formula, both writing
-the body in the node's variable vocabulary.
-**Break from Excel (deliberate):** Excel's LAMBDA is positional; you may name params freely.
-Here the per-iteration variables use the consumer's reserved names (`acc`/`x`/`i`) and can't
-be renamed. Everything else is preserved or better: full computational parity, and captured
-constants become explicit wireable sockets (vs Excel's invisible outer-cell/LET capture).
-Catalog entries stay `parity:false`.
-**Scope:** SCAN + REDUCE now; MAP/BYROW/MAKEARRAY still positional (they carry no `lambdaSig`)
-— roll the same `byName` + `lambdaSig` through them when their turn comes.
+model). The param NAMES were cosmetic, so `LAMBDA(value, acc, "value + 2*acc")` into SCAN
+silently computed `acc + 2*value` — the names lied — and `LAMBDA(value, "acc + value")`
+silently dropped the accumulator (`acc` became a captured 0), a blank/degenerate fold with no
+error. Opaque binding is the opposite of Solenoid's every-socket-is-named principle.
+**The decision:** ALL lambda-family consumers (MAP, BYROW/BYCOL, REDUCE, SCAN, MAKEARRAY —
+`byName` in `resolveFn`) bind a wired lambda's declared params to the node's fixed variables
+**by name**, order-free. A param that ISN'T one of the node's variables is a hard `#VALUE!`
+(the consumer can't supply it). The advisory is CAPTURE-based, not required-based: if a body
+variable is one of the node's OWN variables but wasn't declared as a param, it silently became
+a captured constant (0) instead of the live value — `undeclaredConsumerVars` (from the
+LambdaValue's new `captured` list ∩ the node's `lambdaSig.vars`) names those on the card. So
+`λ(value)="acc + value"` into REDUCE flags `acc`; `λ(row)="value + row"` into MAP flags
+`value`; a genuine constant (`rate`) is never flagged. **Captured constants are untouched:**
+any non-node-variable body var stays an explicit input socket on the LAMBDA node and rides the
+closure through, verified (`rate` wired 3 → `[3,6,9]`). The two authoring paths finally agree —
+a wired lambda behaves like the inline formula, both writing the body in the node's vocabulary.
+**Variable names (2026-07-10, same session):** the fixed variables are WORDS, not single
+letters, and the fold pair carries stepped language (they run in sequence) while MAP/MAKEARRAY
+are parallel-per-cell. REDUCE/SCAN → `acc`, `value`, `step`; MAP → `value`, `value2`, `value3`,
+`row`, `col`; MAKEARRAY → `row`, `col`; BYROW/BYCOL → `values`. Autocomplete caveat, accepted by
+the author: the fuzzy suggester surfaces same/prefix function names, so `value`→VALUE(),
+`row`→ROW(), `step`/`acc`/`col` also fuzzy-match — kept anyway (clarity > the stray suggestion;
+`val`/`item`/`cell` etc. were considered — `val` is a VALUE prefix, the rest rejected on taste).
+**Break from Excel (deliberate):** Excel's LAMBDA is positional; you may name params freely. Here
+the per-iteration variables use the consumer's reserved names and can't be renamed. Everything
+else is preserved or better: full computational parity, and captured constants become explicit
+wireable sockets (vs Excel's invisible outer-cell/LET capture). Catalog entries stay `parity:false`.
 **What would reverse it:** going the other way (Level 2 — reserved names auto-bind even when
 undeclared, overriding a wire on those sockets) was rejected: it leaves dead sockets on the
 lambda card and silently ignores a deliberately-wired value. Declaration stays required so

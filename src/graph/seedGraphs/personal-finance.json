@@ -67,7 +67,7 @@
       "y": -560,
       "init": {
         "label": "2 · Cash flow this quarter",
-        "body": "# Income vs. expenses\n**Filter** the Amount column twice, `> 0` for income and `< 0` for spend, then fold each slice with a **REDUCE** lambda (`acc + x`). Excel: SUMIF. **Savings rate** = net ÷ income drives a gauge and an alert; drag the target slider to trip it.",
+        "body": "# Income vs. expenses\n**Filter** the Amount column twice, `> 0` for income and `< 0` for spend, then fold each slice with a **REDUCE** lambda (`acc + value`). Excel: SUMIF. **Savings rate** = net ÷ income drives a gauge and an alert; drag the target slider to trip it.",
         "color": "green",
         "width": 380,
         "height": 200,
@@ -130,7 +130,7 @@
       "y": -120,
       "init": {
         "label": "Income",
-        "expr": "acc + x"
+        "expr": "acc + value"
       }
     },
     {
@@ -166,7 +166,7 @@
       "y": 140,
       "init": {
         "label": "Spend",
-        "expr": "acc + x"
+        "expr": "acc + value"
       }
     },
     {
@@ -575,7 +575,7 @@
       "y": 1320,
       "init": {
         "label": "Assets total",
-        "expr": "acc + x"
+        "expr": "acc + value"
       }
     },
     {
@@ -602,7 +602,7 @@
       "y": 1540,
       "init": {
         "label": "Liabilities (signed)",
-        "expr": "acc + x"
+        "expr": "acc + value"
       }
     },
     {
