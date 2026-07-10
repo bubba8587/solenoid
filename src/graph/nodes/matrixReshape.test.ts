@@ -94,6 +94,26 @@ describe("reshapers are element-polymorphic", () => {
       .toEqual([["a", "b"], ["e", "f"]]);
   });
 
+  it("CHOOSEROWS negative index counts from the end; CHOOSECOLS picks columns", () => {
+    const rows = new TableSelectNode({ op: "chooserows" });
+    expect(rows.data({ matrix: [[["a", "b"], ["c", "d"], ["e", "f"]]], indices: [[-1, 1]] }).result)
+      .toEqual([["e", "f"], ["a", "b"]]);
+    const cols = new TableSelectNode({ op: "choosecols" });
+    expect(cols.data({ matrix: [[["a", "b", "c"], ["d", "e", "f"]]], indices: [[3, 1]] }).result)
+      .toEqual([["c", "a"], ["f", "d"]]);
+  });
+
+  it("CHOOSEROWS/CHOOSECOLS: an out-of-range or zero index errors the whole call with #VALUE! (Excel), not a NaN-padded row", () => {
+    const mat = [["a", "b"], ["c", "d"], ["e", "f"]];
+    const over = new TableSelectNode({ op: "chooserows" }).data({ matrix: [mat], indices: [[1, 4]] }).result;
+    expect(isSolError(over) && over.code).toBe("#VALUE!");
+    // Index 0 is invalid — Excel's indices are 1-based (negatives count from the end).
+    const zero = new TableSelectNode({ op: "chooserows" }).data({ matrix: [mat], indices: [[0]] }).result;
+    expect(isSolError(zero) && zero.code).toBe("#VALUE!");
+    const colOver = new TableSelectNode({ op: "choosecols" }).data({ matrix: [mat], indices: [[5]] }).result;
+    expect(isSolError(colOver) && colOver.code).toBe("#VALUE!");
+  });
+
   it("Table Info reports dimensions of a text matrix", () => {
     const n = new TableInfoNode();
     const out = n.data({ matrix: [[["a", "b", "c"], ["d", "e", "f"]]] });
