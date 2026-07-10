@@ -1761,18 +1761,22 @@ export class SequenceNode extends ClassicPreset.Node {
 
 export class SortByNode extends ClassicPreset.Node {
   label: string;
-  cachedList: number[] = [];
+  cachedList: unknown[] = [];
   width = 180; height = 175;
 
   constructor(init?: { label?: string }) {
     super("SortBy");
     this.label = init?.label ?? "SORTBY";
-    this.addInput("array",    listIn("Array to sort"));
+    // The array being reordered is POSITION-ONLY (element-agnostic, `anylist` per
+    // the D15 sweep) — so a text/date/logical list sorts by a parallel key too
+    // ("names by scores"). Only the by_array keys drive comparison, so they stay
+    // numeric (widening those to text keys is the deferred string-ordering call).
+    this.addInput("array",    anyListIn("Array to sort"));
     this.addInput("by_array", listIn("Sort by (parallel list)"));
-    this.addOutput("list", listOut("Sorted list"));
+    this.addOutput("list", anyListOut("Sorted list"));
   }
 
-  data(inputs: { array?: (number | null)[][]; by_array?: (number | null | SolError)[][] }): { list: number[] } {
+  data(inputs: { array?: unknown[][]; by_array?: (number | null | SolError)[][] }): { list: unknown[] } {
     const arr = inputs.array?.[0] ?? [];
     const by  = inputs.by_array?.[0] ?? [];
     // Ragged inputs pad to the LONGEST with null (never silently drop a value);
@@ -1789,7 +1793,7 @@ export class SortByNode extends ClassicPreset.Node {
       const c = (ki as number) - (kj as number);
       return c !== 0 ? c : i - j; // stable on ties
     });
-    const list = idx.map((i) => (i < arr.length ? arr[i] : null)) as number[];
+    const list = idx.map((i) => (i < arr.length ? arr[i] : null));
     this.cachedList = list;
     return { list };
   }

@@ -468,7 +468,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
             { type: "list-nthelement", label: "Nth Element", description: "Every N-th element; step subsampling.", create: () => new NthElementNode() },
           ]},
           { type: "list-pad", label: "Pad", description: "Extend list to a target length by prepending or appending a fill value. Excel: PADLEFT / PADRIGHT.", create: () => new PadNode() },
-          { type: "list-sortby", label: "SORTBY", description: "Sort one list by the values in a parallel list; elements at the same index stay paired. Excel 365: SORTBY.", create: () => new SortByNode(), parity: false },
+          { type: "list-sortby", label: "SORTBY", description: "Sort one list by the values in a parallel numeric list; elements at the same index stay paired. The sorted list can be any element type (sort names by their scores). Excel 365: SORTBY.", create: () => new SortByNode(), parity: false },
           {
             type: "category", label: "Rolling", description: "Sliding-window aggregate over a list.",
             children: [
