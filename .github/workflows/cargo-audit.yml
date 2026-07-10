@@ -10,7 +10,7 @@ on:
     paths:
       - "src-tauri/Cargo.lock"
       - ".github/workflows/cargo-audit.yml"
-      - "src-tauri/audit.toml"
+      - "src-tauri/.cargo/audit.toml"
   workflow_dispatch:
 
 jobs:
