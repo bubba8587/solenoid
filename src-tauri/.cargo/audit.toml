@@ -1,0 +1,11 @@
+# cargo-audit config. Add advisory IDs here as triage noise comes up, with a
+# one-line reason each — don't blanket-ignore a whole crate.
+[advisories]
+ignore = [
+  # quick-xml XML-parsing DoS advisories. Reaches us ONLY at build time via
+  # plist <- tauri-build, which parses Tauri's OWN config (trusted input, no
+  # attacker-controlled XML). plist 1.9 pins quick-xml 0.39, so the fix needs a
+  # Tauri/plist bump, not ours. Revisit when tauri-build updates plist.
+  "RUSTSEC-2026-0194",  # quadratic runtime on duplicate attribute names
+  "RUSTSEC-2026-0195",  # unbounded namespace-declaration allocation
+]
