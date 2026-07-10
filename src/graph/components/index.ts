@@ -141,7 +141,7 @@ export {
   TableTransposeComponent, HStackTableComponent,
   TableReshapeComponent, TableSelectComponent, TableTakeDropComponent, ExpandTableComponent, TableInfoComponent,
 } from "./MatrixNodes";
-export { MapTableComponent, ByAxisComponent, MakeArrayComponent, ReduceLambdaComponent } from "./TableLambdaNodes";
+export { MapTableComponent, ByAxisComponent, MakeArrayComponent, ReduceLambdaComponent, ScanLambdaComponent } from "./TableLambdaNodes";
 export { LambdaComponent } from "./LambdaNode";
 
 // ─── Frames (named-column data tables) ─────────────────────────────────────────

@@ -219,7 +219,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
     { excel: "SLOPE", syntax: "=SLOPE(ys, xs)", parity: false, note: "Superseded by LINEST — use the Slope output socket" },
   ],
   "lambda-make": [{ excel: "LAMBDA", syntax: "=LAMBDA(param, ..., calculation)", parity: false, note: "LAMBDA node emits a function value for MAP/BYROW/REDUCE/MAKEARRAY; non-parameter variables become captured inputs (the LET/closure equivalent). No recursion (a self-reference is a graph cycle) and no lambdas of lambdas" }],
-  "list-cumulative": [{ excel: "SCAN", syntax: "=SCAN(init, array, LAMBDA(acc, x, ...))", parity: false, note: "Solenoid's Cumulative covers CumSum/CumMax/…; for an arbitrary formula, REDUCE gives the final value — a formula SCAN (running intermediates) isn't built" }],
+  "list-cumulative": [{ excel: "SCAN", syntax: "=SCAN(init, array, LAMBDA(acc, x, ...))", parity: false, note: "Solenoid's Cumulative covers the fixed running ops (CumSum/CumMax/…); the SCAN node runs a running fold with an arbitrary formula, and REDUCE gives just the final value" }],
   "list-drop": [{ excel: "DROP", syntax: "=DROP(list, count)", parity: false, note: "The 1-D list spelling; DROP (table) is the 2-D rows+cols one" }],
   "list-filter": [{ excel: "FILTER", syntax: "=FILTER(array, include)", parity: false, note: "Conditions live on the card (extensible AND/OR rows) instead of an include vector; filtering by a PARALLEL list is the SUMIFS node or Frame from Lists → Frame Filter" }],
   "list-groupby": [{ excel: "GROUPBY", syntax: "=GROUPBY(row_fields, values, function)", parity: false, note: "1D parallel-list version: keys + values lists; 2D range grouping not supported" }],
@@ -352,6 +352,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "reduce-harmean": [{ excel: "HARMEAN", syntax: "=HARMEAN(range)", parity: true }],
   "reduce-kurt": [{ excel: "KURT", syntax: "=KURT(range)", parity: true }],
   "reduce-lambda": [{ excel: "REDUCE", syntax: "=REDUCE(init, array, LAMBDA(acc, x, ...))", parity: false, note: "REDUCE node folds with its own formula of (acc, x), or a wired LAMBDA value" }],
+  "scan-lambda": [{ excel: "SCAN", syntax: "=SCAN(init, array, LAMBDA(acc, x, ...))", parity: false, note: "SCAN node folds like REDUCE but emits every running accumulator, same shape as the input, with its own formula of (acc, x) or a wired LAMBDA value" }],
   "reduce-max": [
     { excel: "MAX", syntax: "=MAX(range)", parity: true },
     { excel: "MAXA", syntax: "=MAXA(range)", parity: false, note: "MAXA counts text as 0; Solenoid is numbers-only" },

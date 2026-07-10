@@ -4,6 +4,7 @@ import type {
   ByAxisNode as ByAxisNodeType, ByAxis,
   MakeArrayNode as MakeArrayNodeType,
   ReduceLambdaNode as ReduceLambdaNodeType,
+  ScanLambdaNode as ScanLambdaNodeType,
 } from "../rete-nodes";
 import { isLambdaValue, formatLambda } from "../nodes/lambda";
 import { processGraph } from "../process";
@@ -120,6 +121,20 @@ export function ReduceLambdaComponent({ data, emit }: NodeProps<ReduceLambdaNode
       <FormulaBox node={data} />
       <ResultTypeToggle node={data} dim="scalar" />
       <ValueDisplay value={data.cachedResult as ScalarVal} />
+      <FormulaError msg={data.cachedError} />
+    </NodeShell>
+  );
+}
+
+// ─── SCAN ───────────────────────────────────────────────────────────────────────
+
+export function ScanLambdaComponent({ data, emit }: NodeProps<ScanLambdaNodeType>) {
+  return (
+    <NodeShell node={data} emit={emit} labelPlaceholder="SCAN">
+      <InlineInputs node={data} emit={emit} cableOnlyKeys={FORMULA_KEYS} mathLabelKeys={FORMULA_KEYS} />
+      <FormulaBox node={data} />
+      <ResultTypeToggle node={data} dim="matrix" />
+      <TableDisplay table={data.cachedResult} label={data.label} kind={data.resultAs} />
       <FormulaError msg={data.cachedError} />
     </NodeShell>
   );
