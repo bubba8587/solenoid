@@ -680,6 +680,15 @@ export class UniqueNode extends ClassicPreset.Node {
 
 export type SetOp = "union" | "intersect" | "difference" | "symdiff";
 
+// A complex number is an [re, im] ARRAY, and a JS Set/Map keys an array by
+// REFERENCE — so two equal complexes from different sources would never match
+// (a known Set-node bug). Key membership by VALUE instead: a complex tuple
+// canonicalizes to a string, every primitive (number incl. a date serial,
+// string, boolean) stays itself. Used by every Set/membership/tally node below.
+function setKey(v: unknown): unknown {
+  return Array.isArray(v) ? `\x00cx:${(v as unknown[]).join(",")}` : v;
+}
+
 // label = the plain-English dropdown text (no notation — the KaTeX line under the
 // selector carries the symbols); tex = the set notation rendered on the card; plain =
 // the Unicode fallback shown until the KaTeX chunk loads.
@@ -721,7 +730,7 @@ export class SetOpNode extends ClassicPreset.Node {
     // Value-membership of a side — blanks and errors are excluded (not members).
     const memberSet = (arr: unknown[]) => {
       const s = new Set<unknown>();
-      for (const v of arr) if (!isMissing(v) && !isSolError(v)) s.add(v);
+      for (const v of arr) if (!isMissing(v) && !isSolError(v)) s.add(setKey(v));
       return s;
     };
     const aSet = memberSet(a);
@@ -731,7 +740,7 @@ export class SetOpNode extends ClassicPreset.Node {
     const emitted = new Set<unknown>();
     // Values dedupe (first-seen wins); errors bypass this and are pushed as-is, so a
     // repeated error survives once per occurrence — deterministic, like UNIQUE.
-    const emitValue = (v: unknown) => { if (!emitted.has(v)) { emitted.add(v); out.push(v); } };
+    const emitValue = (v: unknown) => { const k = setKey(v); if (!emitted.has(k)) { emitted.add(k); out.push(v); } };
 
     switch (this.op) {
       case "union":
@@ -739,14 +748,14 @@ export class SetOpNode extends ClassicPreset.Node {
         for (const v of b) { if (isMissing(v)) continue; if (isSolError(v)) out.push(v); else emitValue(v); }
         break;
       case "intersect":
-        for (const v of a) { if (isMissing(v) || isSolError(v)) continue; if (bSet.has(v)) emitValue(v); }
+        for (const v of a) { if (isMissing(v) || isSolError(v)) continue; if (bSet.has(setKey(v))) emitValue(v); }
         break;
       case "difference":
-        for (const v of a) { if (isMissing(v)) continue; if (isSolError(v)) out.push(v); else if (!bSet.has(v)) emitValue(v); }
+        for (const v of a) { if (isMissing(v)) continue; if (isSolError(v)) out.push(v); else if (!bSet.has(setKey(v))) emitValue(v); }
         break;
       case "symdiff":
-        for (const v of a) { if (isMissing(v)) continue; if (isSolError(v)) out.push(v); else if (!bSet.has(v)) emitValue(v); }
-        for (const v of b) { if (isMissing(v)) continue; if (isSolError(v)) out.push(v); else if (!aSet.has(v)) emitValue(v); }
+        for (const v of a) { if (isMissing(v)) continue; if (isSolError(v)) out.push(v); else if (!bSet.has(setKey(v))) emitValue(v); }
+        for (const v of b) { if (isMissing(v)) continue; if (isSolError(v)) out.push(v); else if (!aSet.has(setKey(v))) emitValue(v); }
         break;
     }
 
@@ -780,11 +789,11 @@ export class IsInNode extends ClassicPreset.Node {
     const a = (inputs.a?.[0] ?? []) as unknown[];
     const b = (inputs.b?.[0] ?? []) as unknown[];
     const members = new Set<unknown>();
-    for (const v of b) if (!isMissing(v) && !isSolError(v)) members.add(v);
+    for (const v of b) if (!isMissing(v) && !isSolError(v)) members.add(setKey(v));
     const result = a.map((v) => {
       if (isMissing(v)) return null;
       if (isSolError(v)) return v;
-      return members.has(v);
+      return members.has(setKey(v));
     });
     this.cachedList = result;
     return { result };
@@ -811,17 +820,22 @@ export class TallyNode extends ClassicPreset.Node {
 
   data(inputs: { list?: unknown[][] }) {
     const list = (inputs.list?.[0] ?? []) as unknown[];
-    const counts = new Map<unknown, number>();
+    // Key by value (so equal complexes tally together) but keep the first-seen
+    // original value as the row's representative.
+    const counts = new Map<unknown, { value: unknown; count: number }>();
     for (const v of list) {
       if (isMissing(v) || isSolError(v)) continue;
-      counts.set(v, (counts.get(v) ?? 0) + 1);
+      const k = setKey(v);
+      const e = counts.get(k);
+      if (e) e.count++; else counts.set(k, { value: v, count: 1 });
     }
-    const values = [...counts.keys()];
+    const entries = [...counts.values()];
+    const values = entries.map((e) => e.value);
     const frame: FrameValue = {
       __frame: true,
       columns: [
         inferColumn("Value", values),
-        { name: "Count", type: "number", values: values.map((v) => counts.get(v)!) },
+        { name: "Count", type: "number", values: entries.map((e) => e.count) },
       ],
     };
     this.cachedResult = list.length || counts.size ? frame : null;
@@ -872,7 +886,7 @@ export class SetRelationNode extends ClassicPreset.Node {
 
     const memberSet = (arr: unknown[]) => {
       const s = new Set<unknown>();
-      for (const v of arr) if (!isMissing(v) && !isSolError(v)) s.add(v);
+      for (const v of arr) if (!isMissing(v) && !isSolError(v)) s.add(setKey(v));
       return s;
     };
     const aSet = memberSet((aRaw ?? []) as unknown[]);

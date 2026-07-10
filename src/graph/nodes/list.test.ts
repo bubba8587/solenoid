@@ -21,6 +21,8 @@ import {
   SET_OP_META,
   SetRelationNode,
   SET_RELATION_META,
+  IsInNode,
+  TallyNode,
   type ReduceOp,
   type FillOp,
 } from "./list";
@@ -147,6 +149,22 @@ describe("Set operations (two lists)", () => {
     expect(run("difference", [e, 1], [1]).some((v) => isSolError(v))).toBe(true);
     // intersection: an error can't be "in both" → dropped
     expect(run("intersect", [e, 2], [e, 2])).toEqual([2]);
+  });
+
+  it("complex numbers compare by VALUE, not array identity (Set-node fix)", () => {
+    // A complex is an [re, im] array; each 3+4i below is a SEPARATE array instance,
+    // so a reference-keyed Set would never match them. They must intersect/dedupe.
+    expect(run("intersect", [[3, 4], [1, 2]], [[3, 4], [5, 6]])).toEqual([[3, 4]]);
+    expect(run("union", [[3, 4], [1, 2]], [[3, 4]])).toEqual([[3, 4], [1, 2]]);
+    expect(run("difference", [[3, 4], [1, 2]], [[3, 4]])).toEqual([[1, 2]]);
+    // Is In: membership by value across distinct instances.
+    expect(new IsInNode().data({ a: [[[3, 4], [9, 9]]], b: [[[3, 4]]] }).result).toEqual([true, false]);
+    // Tally: equal complexes count together — two distinct rows, not three.
+    // (The frame Value column stringifies complex since frames have no complex
+    // type — a separate limitation; the fix is that the COUNT groups by value.)
+    const tally = new TallyNode().data({ list: [[[3, 4], [3, 4], [1, 2]]] }).frame;
+    expect(tally?.columns[0].values.length).toBe(2);
+    expect(tally?.columns[1].values).toEqual([2, 1]);
   });
 
   it("every op's set notation is valid KaTeX (else the card silently shows plain text)", () => {
