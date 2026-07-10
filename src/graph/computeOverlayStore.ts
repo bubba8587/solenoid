@@ -16,6 +16,8 @@
 // processGraph brackets itself with begin/endCompute; the counter tolerates the
 // overlapping passes a seed/paste settle can fire.
 
+import { createNotifier } from "./storeKit";
+
 const REVEAL_DELAY = 150; // ms a pass must run before the curtain appears
 const MIN_VISIBLE = 350;  // ms the curtain stays once shown (anti-flash)
 
@@ -24,9 +26,7 @@ let _visible = false;
 let _shownAt = 0;
 let _revealTimer: ReturnType<typeof setTimeout> | undefined;
 let _hideTimer: ReturnType<typeof setTimeout> | undefined;
-const _listeners = new Set<() => void>();
-
-function emit() { for (const l of _listeners) l(); }
+const { notify: emit, subscribe } = createNotifier();
 
 /** Enter a compute pass. Schedules the deferred reveal on the first concurrent pass. */
 export function beginCompute(): void {
@@ -57,5 +57,5 @@ export function endCompute(): void {
 
 export const computeOverlayStore = {
   visible: (): boolean => _visible,
-  subscribe: (l: () => void) => { _listeners.add(l); return () => { _listeners.delete(l); }; },
+  subscribe,
 };

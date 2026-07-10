@@ -2,7 +2,7 @@
 // (not React context): it's opened from inside a node / group, which Rete renders
 // in a separate React root, so the popup is mounted once in App and reads this
 // store. Mirrors formulaPopup / connectionDialogStore.
-import { createNotifier } from "./storeKit";
+import { createValueStore } from "./storeKit";
 import type { SolError } from "./errorValue";
 import type { FrameSourceColumn } from "./frame";
 
@@ -80,19 +80,4 @@ export interface TablePopupState {
   pinNodeId?: string;
 }
 
-let _state: TablePopupState | null = null;
-const { notify, subscribe } = createNotifier();
-
-export const tablePopup = {
-  get: (): TablePopupState | null => _state,
-  open(state: TablePopupState) {
-    _state = state;
-    notify();
-  },
-  close() {
-    if (_state === null) return;
-    _state = null;
-    notify();
-  },
-  subscribe,
-};
+export const tablePopup = createValueStore<TablePopupState>();

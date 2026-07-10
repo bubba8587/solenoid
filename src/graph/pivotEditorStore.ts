@@ -3,7 +3,7 @@
 // in a separate React root, so the popup is mounted once in App and reads this
 // store. Mirrors tablePopup / formulaPopup. The popup edits the live node instance
 // directly (mutate + processGraph), so the state just carries that node.
-import { createNotifier } from "./storeKit";
+import { createValueStore } from "./storeKit";
 import type { PivotNode } from "./rete-nodes";
 
 export interface PivotEditorState {
@@ -18,19 +18,4 @@ export interface PivotEditorState {
   accent?: string;
 }
 
-let _state: PivotEditorState | null = null;
-const { notify, subscribe } = createNotifier();
-
-export const pivotEditor = {
-  get: (): PivotEditorState | null => _state,
-  open(state: PivotEditorState) {
-    _state = state;
-    notify();
-  },
-  close() {
-    if (_state === null) return;
-    _state = null;
-    notify();
-  },
-  subscribe,
-};
+export const pivotEditor = createValueStore<PivotEditorState>();

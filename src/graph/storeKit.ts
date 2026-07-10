@@ -7,7 +7,9 @@
 // monotonic version counter.
 //
 // createNotifier() is that plumbing. createToggleStore() is the further-shared
-// shape for the handful of boolean open/closed flag stores.
+// shape for the handful of boolean open/closed flag stores, and
+// createValueStore() the one for the "current value or null (closed)" popup /
+// dialog stores.
 
 export interface Notifier {
   /** Call after mutating state to re-render subscribers (also bumps version). */
@@ -51,5 +53,33 @@ export function createToggleStore(initial = false): ToggleStore {
     close: () => { if (on) { on = false; notify(); } },
     toggle: () => { on = !on; notify(); },
     subscribe,
+  };
+}
+
+export interface ValueStore<T> {
+  /** The current value, or null when closed. */
+  get: () => T | null;
+  /** Set the value (replacing any previous one) and notify. */
+  open: (value: T) => void;
+  /** Clear the value; no-op when already closed. */
+  close: () => void;
+  subscribe: (listener: () => void) => () => void;
+  version: () => number;
+}
+
+/** A "current value or null (closed)" store — the shape shared by the popup and
+ *  dialog stores (table/chart/cube/formula popups, the connection dialog, the
+ *  element picker, the pivot editor). Stores with extra verbs or a non-standard
+ *  open (cubePopup's drill/backTo, formulaPopup's same-id dedupe) spread the
+ *  core and layer them on via get()/open(). */
+export function createValueStore<T>(): ValueStore<T> {
+  const { notify, subscribe, version } = createNotifier();
+  let value: T | null = null;
+  return {
+    get: () => value,
+    open(v) { value = v; notify(); },
+    close() { if (value === null) return; value = null; notify(); },
+    subscribe,
+    version,
   };
 }

@@ -3,6 +3,7 @@ import type { AreaPlugin } from "rete-area-plugin";
 import type { Schemes, AreaExtra } from "./schemes";
 import { GroupNode, DisplayNode, FormatControllerNode, ConduitNode } from "./rete-nodes";
 import { dockedNodeStore } from "./dockedNodeStore";
+import { createNotifier } from "./storeKit";
 
 // ─── Group collapse engine ──────────────────────────────────────────────────────
 // Collapse is visual-only: members stay wired and computing. When a group is
@@ -104,9 +105,7 @@ const _retained = new Map<string, RetainedTerminal[]>();
 const _outPill = new Map<string, PillPos>();        // "nodeId::socketKey" → pill
 const _inPill = new Map<string, PillPos>();          // "nodeId::socketKey" → pill
 const _inputPillList = new Map<string, InputPill[]>(); // groupId → input pills to render
-let _version = 0;
-const _listeners = new Set<() => void>();
-function notify() { _version++; for (const l of _listeners) l(); }
+const { notify, subscribe, version } = createNotifier();
 
 export const groupCollapseStore = {
   isNodeHidden: (id: string) => _hiddenNodes.has(id),
@@ -117,8 +116,8 @@ export const groupCollapseStore = {
   outPillFor: (nodeId: string, key: string): PillPos | undefined => _outPill.get(`${nodeId}::${key}`),
   inPillFor: (nodeId: string, key: string): PillPos | undefined => _inPill.get(`${nodeId}::${key}`),
   inputPillsFor: (groupId: string): InputPill[] => _inputPillList.get(groupId) ?? [],
-  version: () => _version,
-  subscribe: (l: () => void) => { _listeners.add(l); return () => { _listeners.delete(l); }; },
+  version,
+  subscribe,
 };
 
 function outgoing(editor: Editor, nodeId: string, socketKey: string) {

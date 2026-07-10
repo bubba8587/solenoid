@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { createNotifier } from "./storeKit";
 
 export type CableShape = "spline" | "straight" | "diagonal";
@@ -46,8 +46,7 @@ export function initCableShape() {
 }
 
 export function useCableShape(): { shape: CableShape; setShape: (s: CableShape) => void } {
-  const [shape, setShapeState] = useState<CableShape>(_shape);
-  useEffect(() => cableShapeStore.subscribe(() => setShapeState(cableShapeStore.get())), []);
+  const shape = useSyncExternalStore(cableShapeStore.subscribe, cableShapeStore.get);
   return {
     shape,
     setShape: (s: CableShape) => cableShapeStore.set(s),

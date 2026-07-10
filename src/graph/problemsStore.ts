@@ -113,16 +113,14 @@ registerNodeForgetAll(() => problemsStore.clear());
 // ─── Panel open/collapse — lifted out of the component (unlike Pin/Alert's local
 // useState) so the StatusBar badge can force the panel open without prop-drilling.
 let _panelOpen = false;
-const _panelListeners = new Set<() => void>();
-let _panelVersion = 0;
+const panelNotifier = createNotifier();
 export const problemsPanelUi = {
   isOpen: (): boolean => _panelOpen,
   setOpen(open: boolean): void {
     if (_panelOpen === open) return;
     _panelOpen = open;
-    _panelVersion++;
-    for (const l of _panelListeners) l();
+    panelNotifier.notify();
   },
-  version: (): number => _panelVersion,
-  subscribe(l: () => void): () => void { _panelListeners.add(l); return () => { _panelListeners.delete(l); }; },
+  version: panelNotifier.version,
+  subscribe: panelNotifier.subscribe,
 };

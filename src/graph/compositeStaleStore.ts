@@ -5,9 +5,10 @@
 // change — so processGraph's changed-output re-render pruning would skip the card. The
 // card subscribes here so the stale dot appears the moment data() flags it.
 
+import { createNotifier } from "./storeKit";
+
 const stale = new Set<string>();
-const listeners = new Set<() => void>();
-let version = 0;
+const { notify, subscribe, version } = createNotifier();
 
 export const compositeStaleStore = {
   /** Called from CompositeNode.data() each pass with the node's current staleness. */
@@ -15,17 +16,11 @@ export const compositeStaleStore = {
     const had = stale.has(id);
     if (isStale === had) return;
     if (isStale) stale.add(id); else stale.delete(id);
-    version++;
-    for (const l of listeners) l();
+    notify();
   },
   isStale(id: string): boolean {
     return stale.has(id);
   },
-  subscribe(fn: () => void): () => void {
-    listeners.add(fn);
-    return () => { listeners.delete(fn); };
-  },
-  getVersion(): number {
-    return version;
-  },
+  subscribe,
+  getVersion: version,
 };

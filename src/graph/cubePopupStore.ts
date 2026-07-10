@@ -5,7 +5,7 @@
 // nothing ever opens a second overlapping window. Nesting is never hidden: the
 // header shows a cube's cached depth, and the path shows how deep you've drilled.
 // Module store (like tablePopupStore) so it's readable from the separate Rete root.
-import { createNotifier } from "./storeKit";
+import { createValueStore } from "./storeKit";
 import type { CubeValue, FrameValue, CubeCell } from "./frame";
 
 /** One level in the drill stack. A cube/frame view carries the value; a `grid`
@@ -26,31 +26,23 @@ export interface CubePopupState {
   pinNodeId?: string;
 }
 
-let _state: CubePopupState | null = null;
-const { notify, subscribe } = createNotifier();
+const core = createValueStore<CubePopupState>();
 
 export const cubePopup = {
-  get: (): CubePopupState | null => _state,
+  ...core,
   open(view: DrillView, opts?: Omit<CubePopupState, "stack">) {
-    _state = { stack: [view], ...opts };
-    notify();
+    core.open({ stack: [view], ...opts });
   },
   /** Drill into a nested cell (push a level). */
   drill(view: DrillView) {
-    if (!_state) return;
-    _state = { ..._state, stack: [..._state.stack, view] };
-    notify();
+    const s = core.get();
+    if (!s) return;
+    core.open({ ...s, stack: [...s.stack, view] });
   },
   /** Jump back to breadcrumb level `i` (0 = root). */
   backTo(i: number) {
-    if (!_state || i < 0 || i >= _state.stack.length) return;
-    _state = { ..._state, stack: _state.stack.slice(0, i + 1) };
-    notify();
+    const s = core.get();
+    if (!s || i < 0 || i >= s.stack.length) return;
+    core.open({ ...s, stack: s.stack.slice(0, i + 1) });
   },
-  close() {
-    if (_state === null) return;
-    _state = null;
-    notify();
-  },
-  subscribe,
 };

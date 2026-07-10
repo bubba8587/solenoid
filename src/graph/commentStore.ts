@@ -97,28 +97,25 @@ export const commentAuthorStore = {
 // right-click "Add comment" can force the panel open (and focus a node).
 let _panelOpen = false;
 let _focusNodeId: string | null = null;
-const _panelListeners = new Set<() => void>();
-let _panelVersion = 0;
+const panelNotifier = createNotifier();
 export const commentsPanelUi = {
   isOpen: (): boolean => _panelOpen,
   setOpen(open: boolean): void {
     if (_panelOpen === open) return;
     _panelOpen = open;
-    _panelVersion++;
-    for (const l of _panelListeners) l();
+    panelNotifier.notify();
   },
   /** Open the panel scrolled/focused to one node's thread (right-click → Add comment). */
   openFor(nodeId: string): void {
     _focusNodeId = nodeId;
     _panelOpen = true;
-    _panelVersion++;
-    for (const l of _panelListeners) l();
+    panelNotifier.notify();
   },
   consumeFocusNode(): string | null {
     const id = _focusNodeId;
     _focusNodeId = null;
     return id;
   },
-  version: (): number => _panelVersion,
-  subscribe(l: () => void): () => void { _panelListeners.add(l); return () => { _panelListeners.delete(l); }; },
+  version: panelNotifier.version,
+  subscribe: panelNotifier.subscribe,
 };
