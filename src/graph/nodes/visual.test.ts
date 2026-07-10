@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode } from "./visual";
+import { SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, histogramBins } from "./visual";
 import { DatePickerNode, XYPadNode } from "./control";
 import { extractInit } from "../copyPaste";
 import { jsDateToSerial } from "./date";
@@ -98,6 +98,25 @@ describe("Chart Builder", () => {
 
   it("an untouched builder emits an empty string", () => {
     expect(new ChartBuilderNode().data({})).toEqual({ result: "" });
+  });
+});
+
+describe("histogramBins", () => {
+  it("counts values into equal-width bins over the data's own range", () => {
+    // 0..9 into 5 bins → pairs, with the max landing in the closed last bin
+    expect(histogramBins([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 5)).toEqual([2, 2, 2, 2, 2]);
+    expect(histogramBins([], 5)).toEqual([]);
+    expect(histogramBins([3, 3, 3], 4)).toEqual([3, 0, 0, 0]); // one spike, all in bin 0
+  });
+
+  it("a large series doesn't RangeError (iterMin/iterMax, not Math.min/max spread)", () => {
+    // A histogram over a big frame column is an ordinary ask; the spread form
+    // throws past ~125k args on min/max.
+    const N = 200_000;
+    const vals = Array.from({ length: N }, (_, i) => i);
+    const bins = histogramBins(vals, 10);
+    expect(bins).toHaveLength(10);
+    expect(bins.reduce((a, b) => a + b, 0)).toBe(N);
   });
 });
 

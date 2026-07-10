@@ -637,8 +637,8 @@ export class SumIfsNode extends ClassicPreset.Node {
     switch (this.op) {
       case "sumifs":     return finish(nums.reduce((a, b) => a + b, 0));
       case "averageifs": return finish(nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : solError("#DIV/0!", "No rows matched the criteria"));
-      case "minifs":     return finish(nums.length ? Math.min(...nums) : 0); // Excel: empty match → 0
-      case "maxifs":     return finish(nums.length ? Math.max(...nums) : 0);
+      case "minifs":     return finish(nums.length ? iterMin(nums) : 0); // Excel: empty match → 0
+      case "maxifs":     return finish(nums.length ? iterMax(nums) : 0);
     }
   }
 }

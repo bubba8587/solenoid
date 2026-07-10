@@ -467,6 +467,17 @@ describe("SUMIFS — conditional aggregation over one frame (D16, amended)", () 
     expect(mk("minifs", [{ column: "region", op: "eq", value: "Mars" }]).data({ frame: [frame()] }).result).toBe(0);
   });
 
+  it("MINIFS/MAXIFS over a large matched set don't RangeError (iterMin/iterMax, not spread)", () => {
+    // A frame this big is ordinary once verbs run in Polars; Math.min(...nums)
+    // throws past ~125k args, so the spread form would black out on a real table.
+    const N = 200_000;
+    const regs = new Array(N).fill("North");
+    const vals = Array.from({ length: N }, (_, i) => i);
+    const big = () => frame(vals, regs);
+    expect(mk("minifs", [{ column: "region", op: "eq", value: "North" }]).data({ frame: [big()] }).result).toBe(0);
+    expect(mk("maxifs", [{ column: "region", op: "eq", value: "North" }]).data({ frame: [big()] }).result).toBe(N - 1);
+  });
+
   it("kept nulls are skipped; a kept error propagates (aggregate policy)", () => {
     const n = mk("sumifs", [{ column: "region", op: "eq", value: "North" }]);
     expect(n.data({ frame: [frame([10, 1, null, 1, 5, 1])] }).result).toBe(15);
