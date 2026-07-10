@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Canvas } from "./graph/Canvas";
 import { HelpDialogs } from "./graph/components/HelpDialogs";
 import { autoShowWhatsNewOnce } from "./graph/helpDialogStore";
@@ -30,7 +30,24 @@ import "./App.css";
 import "./graph/StatusBar.css";
 import "./mobile.css";
 
+// ?showcase[=<catalog type>] swaps the whole app for the node-showcase harness —
+// one real node on a static stage, for node-level UI audits (see showcase/
+// NodeShowcase.tsx). Read once at module load; entering/leaving is a reload.
+const SHOWCASE_TYPE = new URLSearchParams(window.location.search).get("showcase");
+const NodeShowcase = lazy(() => import("./graph/showcase/NodeShowcase"));
+
 function App() {
+  if (SHOWCASE_TYPE !== null) {
+    return (
+      <Suspense fallback={null}>
+        <NodeShowcase initialType={SHOWCASE_TYPE} />
+      </Suspense>
+    );
+  }
+  return <MainApp />;
+}
+
+function MainApp() {
   // Show the What's New slides once per release (returning users; first-ever visitors
   // are recorded silently). Deferred so it lands after the cinematic load reveal.
   useEffect(() => {
