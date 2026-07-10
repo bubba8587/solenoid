@@ -154,6 +154,26 @@ export async function removeFcInline(editor: NodeEditor<Schemes>, fc: FormatCont
   const host = fc.hostNodeId ? editor.getNode(fc.hostNodeId) : undefined;
   const hostKey = fc.socketKey;
 
+  if (!host) {
+    // A WIRED but undocked FC (hand-wired inline, now being drag-docked onto a
+    // host): there is no host socket to reconnect through, so bridge whatever
+    // feeds FC.in straight to FC.out's consumers, then drop the FC's own
+    // cables. Without this the host-gated reconnects below just DELETED the
+    // downstream cable (re-homing a hand-wired FC ate the wire).
+    const inConn = editor.getConnections().find((c) => c.target === fc.id && c.targetInput === "in");
+    const src = inConn ? editor.getNode(inConn.source) : undefined;
+    for (const c of editor.getConnections().filter((c) => c.source === fc.id && c.sourceOutput === "out")) {
+      const tgt = editor.getNode(c.target);
+      const targetInput = c.targetInput;
+      await editor.removeConnection(c.id);
+      if (src && tgt && inConn) {
+        try { await editor.addConnection(new ClassicPreset.Connection(src, inConn.sourceOutput, tgt, targetInput) as SolenoidConnection); } catch { /* incompatible — leave disconnected */ }
+      }
+    }
+    if (inConn) { try { await editor.removeConnection(inConn.id); } catch { /* already gone */ } }
+    return;
+  }
+
   if (fc.side === "output") {
     // FC.out consumers → back to host output; drop host → FC.in.
     for (const c of editor.getConnections().filter((c) => c.source === fc.id && c.sourceOutput === "out")) {

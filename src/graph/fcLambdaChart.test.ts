@@ -11,7 +11,7 @@ import { DisplayNode } from "./nodes/display";
 import { ChartNode } from "./nodes/visual";
 import { makeAnnotationResolver } from "./unitFlow";
 import { formatAnnotationStore } from "./formatAnnotationStore";
-import { insertFcInline } from "./fcDocking";
+import { insertFcInline, removeFcInline } from "./fcDocking";
 
 type AnyEditor = NodeEditor<{ Node: ClassicPreset.Node; Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node> }>;
 
@@ -98,6 +98,26 @@ describe("FC lambdaView / chartFontScale reach a downstream Display", () => {
     expect(displayAnn(editor, disp.id)?.lambdaView).toBe("syntax");
 
     formatAnnotationStore.delete(lam.id, "result");
+  });
+
+  it("un-splicing a hand-wired (undocked) FC bridges around it instead of eating the downstream cable", async () => {
+    const editor = new NodeEditor() as unknown as AnyEditor;
+    const lam = new LambdaNode();
+    const d1 = new DisplayNode();
+    const d2 = new DisplayNode();
+    const fc = new FormatControllerNode(); // hand-wired inline, never docked
+    for (const n of [lam, d1, d2, fc]) await editor.addNode(n as never);
+    await connect(editor, lam as unknown as ClassicPreset.Node, "result", d1 as unknown as ClassicPreset.Node, "in");
+    await connect(editor, d1 as unknown as ClassicPreset.Node, "out", fc, "in");
+    await connect(editor, fc, "out", d2 as unknown as ClassicPreset.Node, "in");
+
+    // The drag-dock re-home un-splices FIRST (Canvas nodedragged) — with no host
+    // this used to delete the fc→d2 cable outright and reconnect nothing.
+    await removeFcInline(editor as never, fc);
+
+    const conns = editor.getConnections();
+    expect(conns.some((c) => c.source === d1.id && c.target === d2.id)).toBe(true); // bridged
+    expect(conns.some((c) => c.source === fc.id || c.target === fc.id)).toBe(false); // fc fully unwired
   });
 
   it("Chart → FC → Display: the Display resolves the FC's chartFontScale", async () => {
