@@ -16,8 +16,6 @@ import {
   setEditorRefs, processGraph, bumpConnectionVersion, setCableDragging, cableDragStore,
   setUnselectAllNodes, setAutoArrange, setSelectNode, setRepositionDocked, setPushHistory, setClearHistory, setHistoryPlugin,
   setDeleteSelected, setCleanup,
-  unselectAllNodes as unselectAllNodesFromProcess,
-  selectNode as selectNodeFromProcess,
   isGraphRebuilding, setBulkSettle, markBulkTopoDirty,
   beginGraphRebuild, endGraphRebuild, bulkSettle, setCtorRegistryProvider,
 } from "./process";
@@ -41,30 +39,28 @@ import { type Pt } from "./lasso";
 import {
   ConduitNode,
   FormatControllerNode, GroupNode, CompositeNode,
-  CONDUIT_MAX_LANES, conduitInKey, conduitOutKey, conduitGhostSpecs,
+  conduitGhostSpecs,
 } from "./rete-nodes";
 import { reconcileFcTypes } from "./fcReconcile";
-import { getSocketScreenCenter, screenToCanvas } from "./canvasGeometry";
 import { installCanvasKeyboard } from "./canvasKeyboard";
 import { makeEnsureArrange, makeArrangeFn, makeCleanupFn } from "./tidyArrange";
 import { installLassoSelection } from "./canvasLasso";
+import { installCanvasContextMenu } from "./canvasContextMenu";
+import { insertConduitForCables, linkStandoffBetween, deleteCables, attachFormatController } from "./canvasActions";
 import { computeDockedCanvasPos, dockedRenderedDims, findDockTarget, insertFcInline, removeFcInline } from "./fcDocking";
-import { CONDUIT_PIVOT } from "./ribbonCable";
 import {
   moveGroupMembers, reconcileGroupMembership,
   dropFromGroups, sendGroupToBack, absorbIntoContainingGroup,
 } from "./groupLogic";
 import { groupPushStore, restoreSettledPushes, translateEntityBy } from "./groupPush";
-import { PUSH_GAP } from "./groupPushCore";
 import {
-  standoffStore, standoffClusters, standoffLayoutTick, setStandoffSettle, settleStandoffs,
-  anchorPoint, anchorFromVector, OPPOSITE_ANCHOR, ANCHOR_DIR,
+  standoffStore, standoffClusters, standoffLayoutTick, setStandoffSettle,
   type Box as StandoffBox,
 } from "./standoffs";
 import { solveStandoffs } from "./standoffSolver";
 import { rebuildGroupMembership } from "./groupMembership";
 import { dropFrameRef } from "./frameBackend";
-import { syncGroupCollapse, groupCollapseStore, COLLAPSE_LAYOUT, pillY } from "./groupCollapse";
+import { syncGroupCollapse } from "./groupCollapse";
 import { formatAnnotationStore, formatMismatchStore, unitsCompatible } from "./formatAnnotationStore";
 import { SocketLegend, ConfirmDialog, NoticeToasts, SocketContextMenu, CableContextMenu, NodeContextMenu, StandoffLayer } from "./components";
 import { CableFlourish } from "./components/CableFlourish";
@@ -1845,146 +1841,14 @@ export function Canvas() {
   // because nodes render in a SEPARATE React root (see CLAUDE.md) — a synthetic
   // handler on the wrapper doesn't reliably resolve `e.target` into the node
   // DOM, so socket/node hits fell through and the Add menu opened everywhere.
-  // A native listener on the canvas element sees the true DOM target.
+  // Routing (socket / cable / node / blank) lives in canvasContextMenu.ts.
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const handler = (e: MouseEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (!target) return;
-      // Right-click / long-press inside an actively-edited text field (e.g. a Note's
-      // body while editing) should get the BROWSER's native copy/paste menu, not
-      // Solenoid's node menu. Bail before preventDefault so the native menu shows.
-      const editable = target.closest("textarea, input, [contenteditable='true']");
-      if (editable && editable === document.activeElement) return;
-      e.preventDefault();
-      // Socket → socket context menu (attach Format Controller, etc.).
-      // The socket dot is only ~12px, and a click can land on the SVG child,
-      // rete's wrapper, or the node body just off the dot. So: try an exact
-      // hit first, then fall back to the nearest socket within a small radius
-      // of the cursor. This makes the whole visible dot (and a little around
-      // it) open the socket menu instead of falling through to Add.
-      let socketEl = target.closest("[data-socket-key][data-socket-side][data-node-id]") as HTMLElement | null;
-      if (!socketEl) {
-        const SOCKET_HIT_PX = 11;
-        let bestD = SOCKET_HIT_PX;
-        el.querySelectorAll<HTMLElement>("[data-socket-key][data-socket-side][data-node-id]").forEach((s) => {
-          const r = s.getBoundingClientRect();
-          const d = Math.hypot(r.left + r.width / 2 - e.clientX, r.top + r.height / 2 - e.clientY);
-          if (d <= bestD) { bestD = d; socketEl = s; }
-        });
-      }
-      if (socketEl) {
-        setSocketCtx({
-          nodeId:    socketEl.dataset.nodeId    ?? "",
-          socketKey: socketEl.dataset.socketKey ?? "",
-          side:      (socketEl.dataset.socketSide ?? "output") as "input" | "output",
-          screenX: e.clientX, screenY: e.clientY,
-        });
-        return;
-      }
-      // Cable hit path → cable context menu (insert Conduit, delete). The menu
-      // acts on the whole multi-selection when the clicked cable is part of it,
-      // otherwise on just the clicked cable (which gets selected for feedback).
-      // Ribbons expand to their member lanes either way.
-      const cablePath = target.closest("path.solenoid-cable-hit") as SVGPathElement | null;
-      const clickedConnId = cablePath?.dataset.connId;
-      if (clickedConnId) {
-        const editor = editorRef.current;
-        if (!editor || cableGhostStore.isGhost(clickedConnId)) return; // ghosts: no menu
-        const conns = editor.getConnections();
-        const expand = (id: string): string[] => {
-          const conn = conns.find((c) => c.id === id);
-          if (!conn || cableGhostStore.isGhost(id)) return [];
-          const ribbon = ribbonForConnection(editor, conn);
-          return ribbon ? ribbon.members.map((m) => m.id) : [id];
-        };
-        const clickedIds = expand(clickedConnId);
-        if (clickedIds.length === 0) return;
-        const selectedIds = new Set(cableSelectionStore.ids().flatMap(expand));
-        let connIds: string[];
-        if (clickedIds.some((id) => selectedIds.has(id))) {
-          for (const id of clickedIds) selectedIds.add(id);
-          connIds = [...selectedIds];
-        } else {
-          const clicked = conns.find((c) => c.id === clickedConnId)!;
-          const ribbon = ribbonForConnection(editor, clicked);
-          cableSelectionStore.set(ribbon ? ribbon.repId : clickedConnId);
-          unselectAllNodesFromProcess();
-          connIds = clickedIds;
-        }
-        setCableCtx({ connIds, screenX: e.clientX, screenY: e.clientY });
-        return;
-      }
-      // On an item body (any node — regular, Note, or Group, but not a socket):
-      // open the node menu (Isolate / Isolate chain, plus the Standoff link when
-      // exactly two linkable items are selected and one of them was clicked).
-      // Detect via the authoritative nodeViews map rather than a CSS class — node
-      // roots vary (.solenoid-node, .solenoid-note, .solenoid-group) and rete adds
-      // no shared wrapper class, so any class-based gate misses some node type.
-      {
-        const editor = editorRef.current;
-        const area = areaRef.current;
-        // Which node element (if any) was clicked?
-        let clickedId: string | null = null;
-        if (editor && area) {
-          for (const [id, view] of area.nodeViews) {
-            if (view.element.contains(target)) { clickedId = id; break; }
-          }
-        }
-        if (editor && area && clickedId) {
-
-        // Isolate acts on the selection if the clicked node is part of it,
-        // otherwise on just the clicked node (no selection surgery on right-click).
-        const selectedIds = editor.getNodes()
-          .filter((n) => (n as { selected?: boolean }).selected)
-          .map((n) => n.id);
-        const seedIds = selectedIds.includes(clickedId) ? selectedIds : [clickedId];
-
-        // Pinnable: a group (shows its readouts), or a real value node (has an
-        // output), but not a bundler / FC.
-        const clickedNode = editor.getNode(clickedId);
-        const canPin = !!clickedNode && (
-          clickedNode instanceof GroupNode || (
-            Object.keys((clickedNode as unknown as { outputs?: Record<string, unknown> }).outputs ?? {}).length > 0
-            && !(clickedNode instanceof ConduitNode)
-            && !(clickedNode instanceof FormatControllerNode)
-          )
-        );
-
-        // Standoff link offer: exactly two linkable items selected, one clicked.
-        const grouped = new Set<string>();
-        for (const n of editor.getNodes()) {
-          if (n instanceof GroupNode) for (const m of n.members) grouped.add(m);
-        }
-        const linkable = (n: SolenoidNode) =>
-          !(n instanceof ConduitNode) &&
-          !(n instanceof FormatControllerNode) &&
-          !grouped.has(n.id) &&
-          !dockedNodeStore.get(n.id);
-        const linkableSel = editor.getNodes().filter(
-          (n) => (n as { selected?: boolean }).selected && linkable(n),
-        );
-        let standoff: { aId: string; bId: string } | undefined;
-        if (
-          linkableSel.length === 2 &&
-          linkableSel.some((n) => n.id === clickedId) &&
-          !standoffStore.hasPair(linkableSel[0].id, linkableSel[1].id)
-        ) {
-          standoff = { aId: linkableSel[0].id, bId: linkableSel[1].id };
-        }
-
-        const isComposite = clickedNode instanceof CompositeNode;
-        setNodeCtx({ nodeId: clickedId, seedIds, screenX: e.clientX, screenY: e.clientY, canPin, isComposite, standoff });
-        return;
-        }
-      }
-      // Blank canvas → Add-node menu (suppressed while isolating — no new nodes).
-      if (isolateStore.isActive()) return;
-      setMenu({ screenX: e.clientX, screenY: e.clientY });
-    };
-    el.addEventListener("contextmenu", handler);
-    return () => el.removeEventListener("contextmenu", handler);
+    return installCanvasContextMenu({
+      el, editorRef, areaRef, setSocketCtx, setCableCtx, setNodeCtx,
+      openAddMenu: (screenX, screenY) => setMenu({ screenX, screenY }),
+    });
   }, []);
 
   // Isolate overlay: non-focus nodes recede (dim + non-interactive); the focus
@@ -2095,155 +1959,14 @@ export function Canvas() {
     [menu],
   );
 
-  // Splice a Conduit into every cable of the selection: source → in_i and
-  // out_i → target, lane-ordered top-to-bottom by each cable's midpoint. One
-  // Conduit takes up to CONDUIT_MAX_LANES cables; a bigger selection gets
-  // chunked into several. Each Conduit lands at its cables' midpoint centroid,
-  // rotated (45°-snapped) to the mean flow direction.
+  // Splice Conduit(s) into the selected cables — see canvasActions.ts.
   const handleInsertConduit = useCallback(async (target: CableContextTarget) => {
     const editor = editorRef.current;
     const area = areaRef.current;
     const container = containerRef.current;
     if (!editor || !area || !container) return;
-
-    // Where the cable's endpoint actually is, in canvas coords. A socket on a
-    // collapsed group's hidden member still MEASURES at its expanded position
-    // (members hide via visibility, so their rects stay live) — but its cable
-    // is drawn to the group-edge pill, so use the pill point, exactly like
-    // ConnectionComponent does. Then the live socket rect; then the node
-    // position as a last resort.
-    const socketCanvasPoint = (nodeId: string, key: string, side: "input" | "output") => {
-      const pill = side === "output"
-        ? groupCollapseStore.outPillFor(nodeId, key)
-        : groupCollapseStore.inPillFor(nodeId, key);
-      if (pill) {
-        const g = area.nodeViews.get(pill.groupId)?.position;
-        if (g) {
-          return {
-            x: pill.side === "left" ? g.x : g.x + COLLAPSE_LAYOUT.width,
-            y: g.y + pillY(pill.index),
-          };
-        }
-      }
-      const sc = getSocketScreenCenter(area, nodeId, key, side);
-      if (sc && (sc.x !== 0 || sc.y !== 0)) return screenToCanvas(area, container, sc.x, sc.y);
-      const np = area.nodeViews.get(nodeId)?.position;
-      if (!np) return null;
-      const node = editor.getNode(nodeId);
-      return {
-        x: np.x + (side === "output" ? node?.width ?? 100 : 0),
-        y: np.y + (node?.height ?? 60) / 2,
-      };
-    };
-
-    // One LANE per unique source socket, not per cable: a value fanning out to
-    // several targets (B→B1, B→B2) rides the Conduit once — B→in_i, and the
-    // fan-out moves to the Conduit's output (out_i→B1, out_i→B2).
-    type Lane = { conns: SolenoidConnection[]; mid: Pt; dir: Pt };
-    const laneBySource = new Map<string, { conns: SolenoidConnection[]; mids: Pt[]; dirs: Pt[] }>();
-    for (const id of target.connIds) {
-      const conn = editor.getConnections().find((c) => c.id === id);
-      if (!conn) continue;
-      const s = socketCanvasPoint(conn.source, conn.sourceOutput, "output");
-      const t = socketCanvasPoint(conn.target, conn.targetInput, "input");
-      if (!s || !t) continue;
-      const key = `${conn.source}::${conn.sourceOutput}`;
-      const lane = laneBySource.get(key) ?? { conns: [], mids: [], dirs: [] };
-      lane.conns.push(conn);
-      lane.mids.push({ x: (s.x + t.x) / 2, y: (s.y + t.y) / 2 });
-      lane.dirs.push({ x: t.x - s.x, y: t.y - s.y });
-      laneBySource.set(key, lane);
-    }
-    const lanes: Lane[] = [...laneBySource.values()].map((l) => ({
-      conns: l.conns,
-      mid: {
-        x: l.mids.reduce((s2, p) => s2 + p.x, 0) / l.mids.length,
-        y: l.mids.reduce((s2, p) => s2 + p.y, 0) / l.mids.length,
-      },
-      dir: {
-        x: l.dirs.reduce((s2, p) => s2 + p.x, 0) / l.dirs.length,
-        y: l.dirs.reduce((s2, p) => s2 + p.y, 0) / l.dirs.length,
-      },
-    }));
-    if (lanes.length === 0) return;
-    // Lane 0 is the Conduit's top row — order lanes by visual position so the
-    // spliced cables don't cross.
-    lanes.sort((a, b) => a.mid.y - b.mid.y || a.mid.x - b.mid.x);
-
-    cableSelectionStore.clear();
-    unselectAllNodesFromProcess();
-    const created: string[] = [];
-    for (let base = 0; base < lanes.length; base += CONDUIT_MAX_LANES) {
-      const chunk = lanes.slice(base, base + CONDUIT_MAX_LANES);
-      const cx = chunk.reduce((s2, it) => s2 + it.mid.x, 0) / chunk.length;
-      let cy = chunk.reduce((s2, it) => s2 + it.mid.y, 0) / chunk.length;
-      const dx = chunk.reduce((s2, it) => s2 + it.dir.x, 0);
-      const dy = chunk.reduce((s2, it) => s2 + it.dir.y, 0);
-      const angle = Math.round(((Math.atan2(dy, dx) * 180) / Math.PI) / 45) * 45;
-      // Don't bury the new Conduit under an existing node: it renders at
-      // z-index -1 (behind nodes), so a centroid that lands on a node body
-      // would leave it invisible and unclickable. Nudge it below any covering
-      // node. EXPANDED groups are background boxes (fine to sit inside);
-      // COLLAPSED groups render an opaque summary card, so they're obstacles.
-      // Members hidden inside a collapsed group hide via visibility (their
-      // boxes still measure) — they're not really there, skip them.
-      for (let pass = 0; pass < 4; pass++) {
-        let bumped = false;
-        for (const n of editor.getNodes()) {
-          if (n instanceof GroupNode && !n.collapsed) continue;
-          if (groupCollapseStore.isNodeHidden(n.id)) continue;
-          const view = area.nodeViews.get(n.id);
-          if (!view) continue;
-          const w = view.element.offsetWidth || n.width || 0;
-          const h = view.element.offsetHeight || n.height || 0;
-          if (w === 0 || h === 0) continue;
-          const p = view.position;
-          if (
-            cx + CONDUIT_PIVOT > p.x && cx - CONDUIT_PIVOT < p.x + w &&
-            cy + CONDUIT_PIVOT > p.y && cy - CONDUIT_PIVOT < p.y + h
-          ) {
-            cy = p.y + h + CONDUIT_PIVOT + 16;
-            bumped = true;
-          }
-        }
-        if (!bumped) break;
-      }
-      const conduit = new ConduitNode({ angle }) as unknown as SolenoidNode;
-      await editor.addNode(conduit);
-      await area.translate(conduit.id, { x: cx - CONDUIT_PIVOT, y: cy - CONDUIT_PIVOT });
-      for (let i = 0; i < chunk.length; i++) {
-        const lane = chunk[i];
-        const src = editor.getNode(lane.conns[0].source);
-        if (!src) continue;
-        for (const conn of lane.conns) {
-          try { await editor.removeConnection(conn.id); } catch { /* already gone */ }
-        }
-        try {
-          await editor.addConnection(
-            new ClassicPreset.Connection(src, lane.conns[0].sourceOutput, conduit, conduitInKey(i)) as SolenoidConnection,
-          );
-        } catch { /* incompatible — leave disconnected */ }
-        for (const conn of lane.conns) {
-          const tgt = editor.getNode(conn.target);
-          if (!tgt) continue;
-          try {
-            await editor.addConnection(
-              new ClassicPreset.Connection(conduit, conduitOutKey(i), tgt, conn.targetInput) as SolenoidConnection,
-            );
-          } catch { /* incompatible — leave disconnected */ }
-        }
-      }
-      created.push(conduit.id);
-    }
-    // Select the new Conduit(s) — feedback, and the expanded block shows its lanes.
-    created.forEach((id, i) => selectNodeFromProcess(id, i > 0));
-    await processGraph();
+    await insertConduitForCables(editor, area, container, target);
   }, []);
-
-  // Create a Standoff between the two selected items: anchors face each other
-  // along the dominant direction (one of 8 — sides for cardinal, corners for
-  // diagonal), the band defaults to [gap, current distance] — "never closer
-  // than a gap, never farther than where I placed it".
   // Shared with the value popups' Pin button (resolves the node's primary output,
   // or the empty key for a group whose chip shows its readouts). See pinStore.
   const handlePin = useCallback((nodeId: string) => pinNodeValue(nodeId), []);
@@ -2252,53 +1975,13 @@ export function Canvas() {
     const editor = editorRef.current;
     const area = areaRef.current;
     if (!editor || !area) return;
-    const boxOf = (id: string): StandoffBox | null => {
-      const view = area.nodeViews.get(id);
-      const node = editor.getNode(id) as { width?: number; height?: number } | undefined;
-      if (!view || !node) return null;
-      return {
-        x: view.position.x,
-        y: view.position.y,
-        w: view.element.offsetWidth || node.width || 100,
-        h: view.element.offsetHeight || node.height || 50,
-      };
-    };
-    const ba = boxOf(t.aId);
-    const bb = boxOf(t.bId);
-    if (!ba || !bb) return;
-    const anchor = anchorFromVector(
-      bb.x + bb.w / 2 - (ba.x + ba.w / 2),
-      bb.y + bb.h / 2 - (ba.y + ba.h / 2),
-    );
-    const opposite = OPPOSITE_ANCHOR[anchor];
-    const pa = anchorPoint(ba, anchor);
-    const pb = anchorPoint(bb, opposite);
-    const axis = ANCHOR_DIR[anchor];
-    const dist = Math.max(0, (pb.x - pa.x) * axis.x + (pb.y - pa.y) * axis.y);
-    const min = Math.min(PUSH_GAP, dist);
-    const s = standoffStore.add(
-      { nodeId: t.aId, anchor },
-      { nodeId: t.bId, anchor: opposite },
-      min,
-      Math.max(dist, min),
-      true, // new standoffs lock to 45° by default; the toolbar can unlock
-    );
-    standoffStore.select(s.id);
-    unselectAllNodesFromProcess();
-    cableSelectionStore.set(null);
-    settleStandoffs(); // apply the rigid 45° alignment right away
-    scheduleAutosave();
+    linkStandoffBetween(editor, area, t);
   }, []);
 
   const handleCableDelete = useCallback(async (target: CableContextTarget) => {
     const editor = editorRef.current;
     if (!editor) return;
-    cableSelectionStore.clear();
-    for (const id of target.connIds) {
-      cableGhostStore.commit(id);
-      try { await editor.removeConnection(id); } catch { /* already gone */ }
-    }
-    await processGraph();
+    await deleteCables(editor, target);
   }, []);
 
   const handleAttachFormat = useCallback(async (target: SocketContextTarget) => {
@@ -2306,22 +1989,7 @@ export function Canvas() {
     const editor    = editorRef.current;
     const container = containerRef.current;
     if (!area || !editor || !container) return;
-
-    const fc = new FormatControllerNode({
-      hostNodeId: target.nodeId,
-      socketKey:  target.socketKey,
-      side:       target.side,
-    });
-    await editor.addNode(fc as SolenoidNode);
-    // dockSelf() was called by the nodecreated pipe — now position it.
-    const rel = dockedNodeStore.get(fc.id);
-    if (rel) {
-      const pos = computeDockedCanvasPos(area, container, rel.hostNodeId, rel.socketKey, rel.side, fc.width, fc.height);
-      if (pos) await area.translate(fc.id, pos);
-    }
-    // Insert it into the data path so the original value flows through it.
-    await insertFcInline(editor, fc);
-    await processGraph();
+    await attachFormatController(editor, area, container, target);
   }, []);
 
   // Add-menu catalog = core tree with any active packs' nodes inserted in place.
