@@ -1,5 +1,6 @@
-import { useEffect, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 import { shortcutsStore } from "./shortcutsStore";
+import { useEscapeToClose } from "./components/useEscapeToClose";
 import "./ShortcutsOverlay.css";
 
 /**
@@ -68,12 +69,7 @@ const GROUPS: Group[] = [
 export function ShortcutsOverlay() {
   const open = useSyncExternalStore(shortcutsStore.subscribe, shortcutsStore.get);
 
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") shortcutsStore.close(); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
+  useEscapeToClose(() => shortcutsStore.close(), open);
 
   if (!open) return null;
 

@@ -18,6 +18,7 @@ import { formatScalar } from "./format";
 import "./popupChrome.css";
 import { CloseIcon } from "./CloseIcon";
 import { PopupPinButton, PopupGoToButton } from "./PopupPinButton";
+import { useEscapeToClose } from "./useEscapeToClose";
 import "./FormulaPopup.css";
 
 // Step-by-step evaluator: built, then shelved. Flip to re-enable — all the wiring
@@ -212,13 +213,7 @@ export function FormulaPopup() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodeId]);
 
-  useEffect(() => {
-    if (!nodeId) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { e.preventDefault(); commitAndClose(); } };
-    window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nodeId]);
+  useEscapeToClose(commitAndClose, !!nodeId, { capture: true });
 
   // The formula's own variables, offered in autocomplete alongside functions.
   const varSuggestions = useMemo(() => extractVariables(text), [text]);

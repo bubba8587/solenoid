@@ -1,5 +1,6 @@
 import { tablePopup, type Cell, type TablePopupState } from "../tablePopupStore";
 import { useHostNodeId } from "./nodeContext";
+import { readChipPopupStyle } from "./chipStyle";
 import { isSolError } from "../errorValue";
 import "./ArrayChip.css";
 
@@ -109,29 +110,17 @@ export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId
       title={titleText}
       onClick={(e) => {
         e.stopPropagation();
-        // Inherit the host node's (or group's) accent + group color so the popup
-        // header and (when grouped) its border + corner triangle match the node,
-        // like the Formula popup. These vars are set on the card / group root and
-        // cascade to this chip.
-        const cs = getComputedStyle(e.currentTarget);
-        // Accent: explicit prop, else the host node's accent, else the list TYPE
-        // colour — so a chip opened with no node context (e.g. inline in a Report)
-        // still gets the standard coloured header instead of a bare one.
-        const popupAccent =
-          accent ||
-          cs.getPropertyValue("--node-accent").trim() ||
-          cs.getPropertyValue("--sock-list").trim() ||
-          undefined;
-        const groupColor = cs.getPropertyValue("--group-color").trim();
-        const groupColorDark = cs.getPropertyValue("--group-color-dark").trim();
+        // Accent: explicit prop, else the inherited node/group style (list TYPE
+        // colour when there's no node context).
+        const st = readChipPopupStyle(e.currentTarget, "--sock-list");
         tablePopup.open({
           title: label || (table ? "Table" : "List"),
           data: to2D(value),
           cellType: cellTypeOf(value),
           list: !table,
-          accent: popupAccent,
-          groupColor: groupColor || undefined,
-          groupColorDark: groupColorDark || undefined,
+          accent: accent || st.accent,
+          groupColor: st.groupColor,
+          groupColorDark: st.groupColorDark,
           pinNodeId: hostId ?? undefined,
           onSave,
           ...popupOverrides,

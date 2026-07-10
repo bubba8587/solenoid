@@ -1,4 +1,5 @@
 import { ClassicPreset } from "rete";
+import { clamp } from "./mathUtils";
 
 // ─── Presentation ───────────────────────────────────────────────────────────
 // Bundle 13 #51 — presenter mode, kept deliberately light. Stores an ORDERED list
@@ -68,7 +69,7 @@ export class PresentationNode extends ClassicPreset.Node {
   /** Clamp + set the active step; returns the resulting index (0 when empty). */
   goTo(index: number): number {
     if (this.steps.length === 0) { this.activeIndex = 0; return 0; }
-    this.activeIndex = Math.max(0, Math.min(index, this.steps.length - 1));
+    this.activeIndex = clamp(index, 0, this.steps.length - 1);
     return this.activeIndex;
   }
   next(): number { return this.goTo(this.activeIndex + 1); }

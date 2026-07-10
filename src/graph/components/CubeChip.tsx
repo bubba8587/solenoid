@@ -1,6 +1,7 @@
 import { cubePopup } from "../cubePopupStore";
 import { cubeRowCount, cubeDepth, type CubeValue } from "../frame";
 import { useHostNodeId } from "./nodeContext";
+import { readChipPopupStyle } from "./chipStyle";
 import "./ArrayChip.css";
 
 /**
@@ -29,23 +30,15 @@ export function CubeChip({ value, label, size = "md", accent, pinNodeId }: {
       title={`${rows}×${cols}×${depth} cube (rows × cols × depth).${depth > 1 ? ` Nests ${depth} levels deep.` : ""} Click to view.`}
       onClick={(e) => {
         e.stopPropagation();
-        const cs = getComputedStyle(e.currentTarget);
-        // Explicit prop, else host accent, else the cube TYPE colour — so a chip
-        // opened with no node context (e.g. inline in a Report) still gets the
-        // standard coloured header (see FrameChip).
-        const popupAccent =
-          accent ||
-          cs.getPropertyValue("--node-accent").trim() ||
-          cs.getPropertyValue("--sock-cube").trim() ||
-          undefined;
-        const groupColor = cs.getPropertyValue("--group-color").trim();
-        const groupColorDark = cs.getPropertyValue("--group-color-dark").trim();
+        // Explicit prop, else the inherited node/group style (cube TYPE colour
+        // when there's no node context — see FrameChip).
+        const st = readChipPopupStyle(e.currentTarget, "--sock-cube");
         cubePopup.open(
           { kind: "cube", cube: value, label: label || "Cube" },
           {
-            accent: popupAccent,
-            groupColor: groupColor || undefined,
-            groupColorDark: groupColorDark || undefined,
+            accent: accent || st.accent,
+            groupColor: st.groupColor,
+            groupColorDark: st.groupColorDark,
             pinNodeId: hostId ?? undefined,
           },
         );

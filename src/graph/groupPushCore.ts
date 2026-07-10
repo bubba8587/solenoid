@@ -27,6 +27,8 @@
 // Boxes that already overlapped the collapsed card were placed there by the
 // user — expansion neither "fixes" nor displaces them (exempt).
 
+import { clamp } from "./nodes/mathUtils";
+
 export interface PushBox {
   id: string;
   x: number;
@@ -75,7 +77,6 @@ const xOverlap = (a: Rect, b: Rect) => span(a.x, a.x + a.w, b.x, b.x + b.w);
 const yOverlap = (a: Rect, b: Rect) => span(a.y, a.y + a.h, b.y, b.y + b.h);
 const rectsOverlap = (a: Rect, b: Rect) => xOverlap(a, b) > 0 && yOverlap(a, b) > 0;
 
-const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi);
 const pairKey = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 
 export function computeExpandPush(

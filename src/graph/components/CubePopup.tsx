@@ -1,10 +1,11 @@
-import { useEffect, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
+import { useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { cubePopup, type DrillView } from "../cubePopupStore";
 import { appThemeStore } from "../appTheme";
 import { cubeRowCount, cubeDepth, frameRowCount } from "../frame";
 import { CubeCellChip, frameCellNode } from "./cubeCell";
 import { CloseIcon } from "./CloseIcon";
 import { PopupPinButton, PopupGoToButton } from "./PopupPinButton";
+import { useEscapeToClose } from "./useEscapeToClose";
 import { APP_LOCALE } from "../locale";
 import "./popupChrome.css";
 import "./TablePopup.css";
@@ -59,18 +60,12 @@ export function CubePopup() {
   const state = useSyncExternalStore(cubePopup.subscribe, cubePopup.get);
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
 
-  useEffect(() => {
+  // Esc pops one drill level; at the root it closes.
+  useEscapeToClose(() => {
     if (!state) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      e.preventDefault();
-      // Esc pops one drill level; at the root it closes.
-      if (state.stack.length > 1) cubePopup.backTo(state.stack.length - 2);
-      else cubePopup.close();
-    };
-    window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
-  }, [state]);
+    if (state.stack.length > 1) cubePopup.backTo(state.stack.length - 2);
+    else cubePopup.close();
+  }, !!state, { capture: true });
 
   if (!state) return null;
   const view = state.stack[state.stack.length - 1];

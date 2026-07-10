@@ -13,6 +13,7 @@
 //   revealing → overlay fading, nodes/cables animating in wave by wave.
 
 import { createNotifier } from "./storeKit";
+import { clamp } from "./nodes/mathUtils";
 
 export type RevealPhase = "idle" | "building" | "revealing";
 
@@ -38,7 +39,7 @@ export const loadRevealStore = {
     notify();
   },
   setProgress(p: number): void {
-    _progress = Math.max(0, Math.min(1, p));
+    _progress = clamp(p, 0, 1);
     notify();
   },
   /** Build done — overlay fades, the staged reveal begins. */

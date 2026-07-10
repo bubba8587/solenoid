@@ -6,6 +6,10 @@
 // SAME space the caller feeds in (canvas-local CSS px in the spike). Matches the
 // area-plugin transform shape ({ k, x, y }) so a camera can be seeded from rete.
 
+import { clamp } from "../nodes/mathUtils";
+
+export { clamp };
+
 export interface Bounds { minX: number; minY: number; maxX: number; maxY: number }
 
 export class Camera {
@@ -74,10 +78,6 @@ export class Camera {
     this.tx = viewW / 2 - cx * s;
     this.ty = viewH / 2 - cy * s;
   }
-}
-
-export function clamp(v: number, lo: number, hi: number): number {
-  return v < lo ? lo : v > hi ? hi : v;
 }
 
 /** Benchmark pan path. Holds `scale` fixed and traces the viewport CENTRE along a

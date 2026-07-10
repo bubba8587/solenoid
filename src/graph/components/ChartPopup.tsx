@@ -6,6 +6,8 @@ import { ChartView, ChartFigure } from "./chartView";
 import "./popupChrome.css";
 import { CloseIcon } from "./CloseIcon";
 import { PopupPinButton, PopupGoToButton } from "./PopupPinButton";
+import { useEscapeToClose } from "./useEscapeToClose";
+import { clamp } from "../nodes/mathUtils";
 
 // Desktop max; the chart shrinks to fit smaller viewports (phones) so the popup
 // never overflows the screen. ChartView needs explicit pixel dims (no
@@ -19,8 +21,8 @@ const MARGIN_X = 32;
 const CHROME_Y = 32 /* overlay margin */ + 38 /* header */ + 32 /* chart padding */;
 
 function chartSize() {
-  const w = Math.max(200, Math.min(MAX_W, window.innerWidth - MARGIN_X - 32));
-  const h = Math.max(140, Math.min(MAX_H, window.innerHeight - CHROME_Y));
+  const w = clamp(window.innerWidth - MARGIN_X - 32, 200, MAX_W);
+  const h = clamp(window.innerHeight - CHROME_Y, 140, MAX_H);
   return { w, h };
 }
 
@@ -34,19 +36,14 @@ export function ChartPopup() {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const [{ w, h }, setSize] = useState(chartSize);
 
+  useEscapeToClose(() => chartPopup.close(), !!state, { capture: true });
+
   useEffect(() => {
     if (!state) return;
     setSize(chartSize());
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { e.preventDefault(); chartPopup.close(); }
-    };
     const onResize = () => setSize(chartSize());
-    window.addEventListener("keydown", onKey, true);
     window.addEventListener("resize", onResize);
-    return () => {
-      window.removeEventListener("keydown", onKey, true);
-      window.removeEventListener("resize", onResize);
-    };
+    return () => window.removeEventListener("resize", onResize);
   }, [state]);
 
   if (!state) return null;

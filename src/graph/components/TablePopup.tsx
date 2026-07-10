@@ -11,6 +11,7 @@ import "./popupChrome.css";
 import { CloseIcon } from "./CloseIcon";
 import { PopupPinButton, PopupGoToButton } from "./PopupPinButton";
 import { PopupOverflowMenu } from "./PopupOverflowMenu";
+import { useEscapeToClose } from "./useEscapeToClose";
 import { saveCsvFileDialog } from "../fileBridge";
 import { APP_LOCALE } from "../locale";
 import "./TablePopup.css";
@@ -161,14 +162,7 @@ export function TablePopup() {
     setDisplayMode(state.onSaveSource || state.onSaveRaw ? "source" : "formatted");
   }, [state]);
 
-  useEffect(() => {
-    if (!state) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { e.preventDefault(); tablePopup.close(); }
-    };
-    window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
-  }, [state]);
+  useEscapeToClose(() => tablePopup.close(), !!state, { capture: true });
 
   if (!state) return null;
   const cellType: CellType = state.cellType ?? "number";

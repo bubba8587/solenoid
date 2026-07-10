@@ -6,6 +6,7 @@ import type { AggOp } from "../frameVerbs";
 import type { PivotNode } from "../rete-nodes";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
 import { CloseIcon } from "./CloseIcon";
+import { useEscapeToClose } from "./useEscapeToClose";
 import "./popupChrome.css";
 import "./PivotEditorPopup.css";
 
@@ -87,12 +88,7 @@ export function PivotEditorPopup() {
     setCfg(cfgFromNode(state.node));
   }, [state]);
 
-  useEffect(() => {
-    if (!state) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { e.preventDefault(); pivotEditor.close(); } };
-    window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
-  }, [state]);
+  useEscapeToClose(() => pivotEditor.close(), !!state, { capture: true });
 
   if (!state) return null;
   const node = state.node;

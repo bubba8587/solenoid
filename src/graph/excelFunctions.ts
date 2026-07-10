@@ -3,6 +3,7 @@ import { solError, type SolError, type SolErrorCode } from "./errorValue";
 import { serialToJsDate, jsDateToSerial } from "./nodes/date";
 import { regularizedBeta, regularizedGamma, bisectionInv, lnGamma } from "./nodes/mathUtils";
 import { convertValue } from "./nodes/convert";
+import { coerceNumber as toNum } from "./valueKinds";
 
 // ─── EXCEL_FUNCTIONS — the one declared home for "where does each function live?" ──
 // The app computes through TWO parallel implementations of the same Excel functions:
@@ -293,17 +294,6 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   BETWEEN:     { returns: "logical", arity: [3, 3], native: true },
 };
 
-// Spreadsheet-style argument coercion: a boolean is 1/0, numeric text parses, blank
-// is empty; NaN signals "not a number" so an impl can return #VALUE!.
-function toNum(x: unknown): number {
-  if (typeof x === "number") return x;
-  if (typeof x === "boolean") return x ? 1 : 0;
-  if (typeof x === "string" && x.trim() !== "") {
-    const n = Number(x);
-    if (!Number.isNaN(n)) return n;
-  }
-  return NaN;
-}
 /** Number → text for STRING contexts (`&`, CONCAT/CONCATENATE/TEXTJOIN, and any
  *  text fn via `toStr`): 15 significant digits, trailing zeros stripped — so
  *  `(0.1+0.2) & " kg"` is "0.3 kg", not "0.30000000000000004 kg". The rationale is

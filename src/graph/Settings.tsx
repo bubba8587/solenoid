@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 import { useFocusTrap } from "./components/useFocusTrap";
+import { useEscapeToClose } from "./components/useEscapeToClose";
 import { settingsStore, settingsPanel, SETTINGS_SCHEMA, type SettingField } from "./settingsStore";
 import { apiKeyStore } from "./apiKeyStore";
 import { packsStore, allPacks, loadCustomPacks, customPacksFolder } from "./packs";
@@ -287,12 +288,7 @@ export function Settings() {
   const panelRef = useRef<HTMLDivElement>(null);
   useFocusTrap(open, panelRef);
 
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") settingsPanel.close(); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
+  useEscapeToClose(() => settingsPanel.close(), open);
 
   if (!open) return null;
 

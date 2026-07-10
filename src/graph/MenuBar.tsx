@@ -4,6 +4,7 @@ import { canvasLockStore } from "./canvasLock";
 import { calcModeStore } from "./calcModeStore";
 import { mobileMenuStore } from "./mobileMenuStore";
 import { DocumentTitle } from "./components/DocumentTitle";
+import { useEscapeToClose } from "./components/useEscapeToClose";
 import { CableShapeSelector } from "./CableShapeSelector";
 import { useGridSnap } from "./gridSnapStore";
 import { buildMenus, type MenuItem } from "./menuModel";
@@ -35,23 +36,18 @@ export function MenuBar() {
   const rootRef = useRef<HTMLDivElement>(null);
 
   // Close on outside click / Escape.
+  useEscapeToClose(() => { setOpen(null); mobileMenuStore.set(false); }, open !== null || mobileOpen);
   useEffect(() => {
     if (open === null && !mobileOpen) return;
-    const close = () => { setOpen(null); mobileMenuStore.set(false); };
     const onDown = (e: PointerEvent) => {
       const t = e.target as HTMLElement | null;
       // Ignore the app-bar logo button (the menu trigger on mobile) so its own
       // toggle isn't immediately undone by this outside-click handler.
       if (t?.closest(".solenoid-topbar__icon")) return;
-      if (!rootRef.current?.contains(t)) close();
+      if (!rootRef.current?.contains(t)) { setOpen(null); mobileMenuStore.set(false); }
     };
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
     window.addEventListener("pointerdown", onDown, true);
-    window.addEventListener("keydown", onKey);
-    return () => {
-      window.removeEventListener("pointerdown", onDown, true);
-      window.removeEventListener("keydown", onKey);
-    };
+    return () => window.removeEventListener("pointerdown", onDown, true);
   }, [open, mobileOpen]);
 
   const run = (it: MenuItem) => {
