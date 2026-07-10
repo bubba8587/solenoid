@@ -350,6 +350,38 @@ the deliberately NEUTRAL rungs.
 
 ---
 
+### D18 — A wired LAMBDA binds to the consumer's variables BY NAME, not by position
+**When:** 2026-07-10 (author: "positional params just aren't acceptable at all — that's not
+the way anything else in this project works; every other node explicitly declares its
+sockets so you know exactly what is getting wired in where").
+**The problem:** the lambda-family consumers called a wired LAMBDA positionally (Excel's
+model). The param NAMES were cosmetic, so `LAMBDA(x, acc, "x + 2*acc")` into SCAN silently
+computed `acc + 2*x` — the names lied — and `LAMBDA(x, "acc + x")` silently dropped the
+accumulator (`acc` became a captured 0), yielding a blank/degenerate fold with no error.
+Opaque binding is the opposite of Solenoid's every-socket-is-named principle.
+**The decision:** for the fold consumers (SCAN, REDUCE — `byName` in `resolveFn`), a wired
+lambda's declared params bind to the node's fixed variables (`acc`, `x`, `i`) **by name**,
+order-free. A param that ISN'T one of the node's variables is a hard `#VALUE!` (the consumer
+can't supply it). A param that's valid but omits a REQUIRED var (`λ(x)` without `acc`) still
+runs — `acc` is a captured 0 — but draws the red advisory. **Captured constants are
+untouched:** any non-param body variable (`rate`) stays an explicit input socket on the
+LAMBDA node and rides the closure through, verified (`rate` wired 3 → `[3,6,9]`). So the two
+authoring paths finally agree — a wired lambda behaves like the inline formula, both writing
+the body in the node's variable vocabulary.
+**Break from Excel (deliberate):** Excel's LAMBDA is positional; you may name params freely.
+Here the per-iteration variables use the consumer's reserved names (`acc`/`x`/`i`) and can't
+be renamed. Everything else is preserved or better: full computational parity, and captured
+constants become explicit wireable sockets (vs Excel's invisible outer-cell/LET capture).
+Catalog entries stay `parity:false`.
+**Scope:** SCAN + REDUCE now; MAP/BYROW/MAKEARRAY still positional (they carry no `lambdaSig`)
+— roll the same `byName` + `lambdaSig` through them when their turn comes.
+**What would reverse it:** going the other way (Level 2 — reserved names auto-bind even when
+undeclared, overriding a wire on those sockets) was rejected: it leaves dead sockets on the
+lambda card and silently ignores a deliberately-wired value. Declaration stays required so
+every socket means exactly what it shows.
+
+---
+
 ## Structural risks (the threats register — distinct from bugs)
 
 Not defects (those are the audit) and not opportunities (those are strategy-threads).

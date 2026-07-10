@@ -43,11 +43,12 @@ export function compileLambda(expr: string, varNames: string[]): LambdaFn | null
 }
 
 /**
- * Resolve the function a lambda-family node runs. A wired LAMBDA value wins
- * (its declared params bind positionally to the first of this node's call
- * args, Excel-style); otherwise the inline formula text compiles over the
- * node's fixed variable names. `provided` is how many positional values
- * the node passes per call — a lambda declaring more can't be satisfied.
+ * Resolve the function a lambda-family node runs. A wired LAMBDA value wins;
+ * otherwise the inline formula text compiles over the node's fixed variable
+ * names. Binding of a wired lambda's params: by POSITION by default (`provided`
+ * = how many positional values the node passes; a lambda declaring more can't be
+ * satisfied), or — with `byName` (SCAN/REDUCE, D18) — matched to `varNames` by
+ * NAME (order-free; a param outside `varNames` is an error, see the branch).
  */
 // `err` is the short message shown inline in the node (FormulaError); `code` tags
 // the same failure for the propagating SolError so downstream nodes show the red
@@ -55,8 +56,25 @@ export function compileLambda(expr: string, varNames: string[]): LambdaFn | null
 function resolveFn(
   lam: unknown, inline: string | undefined,
   fallback: string, varNames: string[], provided: number,
+  byName = false,
 ): { fn: LambdaFn | null; err: string | null; code: SolErrorCode } {
   if (isLambdaValue(lam)) {
+    if (byName) {
+      // Bind the lambda's declared params to THIS node's variables BY NAME, not by
+      // position — a param named `acc` always receives the accumulator, whatever
+      // order it was declared in, so the param names can't silently lie. A param
+      // that isn't one of the node's variables can't be supplied → error (captured
+      // constants aren't params; they stay baked in the closure and pass through).
+      // See decisions.md D18.
+      const unknown = lam.params.filter((p) => !varNames.includes(p));
+      if (unknown.length) {
+        return { fn: null, err: `Lambda param ${unknown.join(", ")} isn't one of this node's variables (${varNames.join(", ")})`, code: "#VALUE!" };
+      }
+      const base = lam.fn as LambdaFn;
+      const order = lam.params.map((p) => varNames.indexOf(p));
+      const byNameFn: LambdaFn = (...nodeArgs) => base(...order.map((i) => nodeArgs[i]));
+      return { fn: byNameFn, err: null, code: "#VALUE!" };
+    }
     if (lam.params.length > provided) {
       return { fn: null, err: `Lambda takes ${lam.params.length} values; this node passes ${provided}`, code: "#VALUE!" };
     }
@@ -233,7 +251,7 @@ export class ReduceLambdaNode extends ClassicPreset.Node {
     const m = toAnyMatrix(inputs.table?.[0]);
     const { fn, err, code } = resolveFn(
       inputs.lambda?.[0], this.stringLiterals.formula,
-      "acc + x", ["acc", "x", "i"], 3);
+      "acc + x", ["acc", "x", "i"], 3, true);
     if (!fn) { this.cachedResult = null; this.cachedError = err; return fnError(err!, code); }
     if (!m) { this.cachedResult = null; this.cachedError = null; return { result: null }; }
     try {
@@ -288,7 +306,7 @@ export class ScanLambdaNode extends ClassicPreset.Node {
     const m = toAnyMatrix(inputs.table?.[0]);
     const { fn, err, code } = resolveFn(
       inputs.lambda?.[0], this.stringLiterals.formula,
-      "acc + x", ["acc", "x", "i"], 3);
+      "acc + x", ["acc", "x", "i"], 3, true);
     if (!fn) { this.cachedResult = null; this.cachedError = err; return fnError(err!, code); }
     if (!m) { this.cachedResult = null; this.cachedError = null; return { result: null }; }
     try {
