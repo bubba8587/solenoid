@@ -5,6 +5,7 @@ import {
   RoundNNode,
   MRoundNode,
   GcdNode,
+  CombinatoricsNode,
   TwoInputMathNode,
   type MathFnOp,
 } from "./scalar";
@@ -135,6 +136,31 @@ describe("MROUND", () => {
     expect(new MRoundNode({ op: "down" }).data({ value: [2.9], multiple: [1] }).result).toBe(2);
     expect(new MRoundNode({ op: "down" }).data({ value: [-2.1], multiple: [1] }).result).toBe(-3); // toward −∞
     expect(new MRoundNode({ op: "down" }).label).toBe("FLOOR");
+  });
+  it("MROUND with opposite signs is #DOMAIN! (Excel #NUM!), same-sign computes", () => {
+    const r = new MRoundNode().data({ value: [-10], multiple: [3] }).result;
+    expect(isSolError(r) && r.code).toBe("#DOMAIN!");
+    const r2 = new MRoundNode().data({ value: [10], multiple: [-3] }).result;
+    expect(isSolError(r2) && r2.code).toBe("#DOMAIN!");
+    expect(new MRoundNode().data({ value: [-10], multiple: [-3] }).result).toBe(-9); // same sign
+    expect(new MRoundNode().data({ value: [0], multiple: [3] }).result).toBe(0);     // zero is fine
+    // CEILING/FLOOR keep the opposite-sign case (no MROUND restriction).
+    expect(new MRoundNode({ op: "up" }).data({ value: [-2.1], multiple: [1] }).result).toBe(-2);
+  });
+});
+
+describe("Combinatorics — Excel truncates non-integer args", () => {
+  const run = (op: "fact" | "combin" | "permut" | "combina" | "permutationa" | "factdouble", n: number, k?: number) =>
+    new CombinatoricsNode({ op }).data({ n: [n], k: k === undefined ? undefined : [k] }).result;
+  it("FACT/COMBIN/PERMUT truncate a fractional argument, matching =FACT(2.9)=2", () => {
+    expect(run("fact", 2.9)).toBe(2);        // FACT(2), not FACT(3)=6
+    expect(run("combin", 5.9, 2)).toBe(10);  // COMBIN(5,2), not COMBIN(6,2)=15
+    expect(run("permut", 5.6, 2)).toBe(20);  // P(5,2), not P(6,2)=30
+  });
+  it("still computes the whole-number cases correctly", () => {
+    expect(run("fact", 5)).toBe(120);
+    expect(run("combin", 6, 2)).toBe(15);
+    expect(run("permut", 5, 2)).toBe(20);
   });
 });
 
