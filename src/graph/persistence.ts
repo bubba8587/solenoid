@@ -6,7 +6,7 @@ import type { SeedSelection } from "./process";
 import { extractInit } from "./copyPaste";
 import { ctorRegistry } from "./nodeCtorRegistry";
 import { FormatControllerNode, ConvertNode, PlaceholderNode, CompositeNode } from "./rete-nodes";
-import { reconcileConduitTypes } from "./conduitTrace";
+import { settleWildcardTypes } from "./trueAnyAdopt";
 import { rebuildGroupMembership } from "./groupMembership";
 import { syncGroupCollapse } from "./groupCollapse";
 import { nodeSizeStore } from "./nodeSizeStore";
@@ -490,9 +490,10 @@ async function rebuildGraph(
   for (const node of created) {
     if (node instanceof CompositeNode) await node.hydrate(reg);
   }
-  // Conduit lanes adopt the type feeding them BEFORE the FC refresh below, so an
-  // FC downstream of a Conduit resolves against the real lane type, not `any`.
-  reconcileConduitTypes(editor);
+  // Derived socket types settle BEFORE the FC refresh below — Conduit lanes and
+  // trueany placeholder ports adopt the types feeding them, so an FC downstream
+  // of either resolves against the real type, not the wildcard.
+  settleWildcardTypes(editor);
   // Final settle pass (wiring is the source of truth for both).
   for (const node of editor.getNodes()) {
     if (node instanceof ConvertNode) node.syncUnitArrows(editor);

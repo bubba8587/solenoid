@@ -65,7 +65,11 @@ export function LambdaComponent({ data: node, emit }: NodeProps<LambdaNodeType>)
       {node.cachedError && (
         <div className="solenoid-expr__error">{node.cachedError}</div>
       )}
-      <InlineInputs node={node} emit={emit} />
+      <InlineInputs
+        node={node}
+        emit={emit}
+        titleFor={(k) => node.varDescriptions[k] || undefined}
+      />
       <ValueDisplay value={node.cachedValue ? formatLambda(node.cachedValue) : null} />
     </NodeShell>
   );

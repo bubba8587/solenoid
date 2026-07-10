@@ -2,20 +2,23 @@ import { ClassicPreset } from "rete";
 import type { NodeKind } from "./shared";
 import { SolenoidSocket } from "../sockets";
 import { NumberInputNode, ConstantNode, BooleanInputNode, SliderInputNode, ColorPickerNode } from "./input";
+import { PhysicsConstantNode } from "./physicsConstants";
+import { ElementNode } from "./chemistry";
 import { ConvertNode } from "./convert";
 import { CastNode } from "./cast";
 import { FormatControllerNode } from "./formatController";
 import { ExpressionNode } from "./expression";
+import { EquationNode } from "./equation";
 import { GroupByNode } from "./list";
 import { RegexNode } from "./text";
 import { ComparisonNode, BooleanOpNode, NotNode, IfNode, IFErrorNode, IsTestNode, IsEvenOddNode, NaNode, ChooseNode, SwitchNode, IfsNode } from "./logic";
-import { ComplexFromNode, ComplexUnpackNode, ComplexUnaryNode, ComplexBinaryNode, ComplexPowerNode } from "./complex";
+import { ComplexFromNode, ComplexUnpackNode, ComplexUnaryNode, ComplexBinaryNode, ComplexPowerNode, QuadraticRootsNode } from "./complex";
 import {
   ListInputNode, RangeNode, AggregateNode,
-  ListLengthNode, ListIndexNode, SortNode,
+  ListLengthNode, ListIndexNode, SortNode, FilterNode, SumIfsNode,
   ReverseNode, SliceNode,
-  UniqueNode, TakeNode, DropNode, SetOpNode, SetRelationNode,
-  VStackNode, CumulativeNode, DiffNode,
+  UniqueNode, TakeNode, DropNode, SetOpNode, SetRelationNode, IsInNode, TallyNode,
+  ConcatListsNode, CumulativeNode, DiffNode,
   ArgMinMaxNode, ContainsNode,
   NormalizeNode, LinSpaceNode, RepeatNode,
   ShuffleNode, NthElementNode, InterleaveNode,
@@ -28,12 +31,13 @@ import {
   StandardizeNode, CovarianceNode, FisherNode,
   RegressionNode, ForecastNode, ModeNode, TrimMeanNode, FrequencyNode, ConfidenceNode,
 } from "./stats";
-import { BitwiseNode, InterestRateNode, DepreciationNode, TvmNode, RateNode, IpmtPpmtNode, NpvNode, IrrNode, MirrNode, CumPmtNode } from "./finance";
+import { BitwiseNode, DepreciationNode, TvmNode, IpmtPpmtNode, NpvNode, IrrNode, MirrNode, CumPmtNode } from "./finance";
 import { DisplayNode, AlertNode, RandBetweenNode } from "./display";
 import { NormDistNode, NormInvNode, NormSDistNode, NormSInvNode, TDistNode, TInvNode, ChisqDistNode, ChisqInvNode } from "./dist-normal";
 import { FDistNode, FInvNode, BetaDistNode, BetaInvNode, GammaDistNode, GammaInvNode, LognormDistNode, LognormInvNode, WeibullDistNode, ExponDistNode } from "./dist-continuous";
 import { BinomDistNode, BinomInvNode, PoissonDistNode, HypgeomDistNode, NegbinomDistNode } from "./dist-discrete";
 import { ConduitNode } from "./conduit";
+import { FrameFromListsNode } from "./frame";
 import { FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, GetRowNode, DistinctNode, HeadNode, SortFrameNode, FilterFrameNode, JoinNode, XLookupNode, SelectColumnsNode, DropColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode } from "./frame";
 import { CubeRollupNode } from "./cube";
 import { WebSourceNode, CsvConnectionNode, ParquetConnectionNode, ImportHtmlNode, ImportXmlNode } from "./connection";
@@ -48,7 +52,7 @@ import { NoteNode, ImageNode, SvgPickerNode } from "./annotation";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "./composite";
 import {
   TableInputNode, MatDetNode, TableMultNode, TableUnitNode, TableTransposeNode,
-  HStackTableNode, TableReshapeNode, TableSelectNode, TableInfoNode,
+  HStackTableNode, VStackNode, TableReshapeNode, TableSelectNode, TableTakeDropNode, ExpandNode, TableInfoNode,
 } from "./matrix";
 import { MapTableNode, ByAxisNode, MakeArrayNode, ReduceLambdaNode } from "./tableLambda";
 import { LambdaNode } from "./lambda";
@@ -60,6 +64,7 @@ import {
   TextInputNode, TextTransformNode, TextLenNode, ConcatNode, TextSliceNode,
   TextFindNode, SubstituteNode, TextReplaceNode,
   ReptNode, ExactNode, CharCodeNode, TextJoinNode, TextSplitNode, TextAfterBeforeNode,
+  ReverseTextNode, SpellNumberNode,
 } from "./text";
 import {
   TodayNowNode, DateConstructNode, TimeConstructNode,
@@ -79,13 +84,13 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
   // Composite boundary markers read green ("special"); the Composite node itself
   // stays neutral gray (util, below).
   if (node instanceof CompositeInputNode || node instanceof CompositeOutputNode) return "boundary";
-  if (node instanceof NumberInputNode || node instanceof ConstantNode || node instanceof SliderInputNode || node instanceof RandBetweenNode || node instanceof WebSourceNode || node instanceof CsvConnectionNode || node instanceof ParquetConnectionNode || node instanceof ImportHtmlNode || node instanceof ImportXmlNode || node instanceof DataFeedNode || node instanceof XYPadNode || node instanceof ColorPickerNode || node instanceof SvgPickerNode) return "input";
+  if (node instanceof NumberInputNode || node instanceof ConstantNode || node instanceof PhysicsConstantNode || node instanceof ElementNode || node instanceof SliderInputNode || node instanceof RandBetweenNode || node instanceof WebSourceNode || node instanceof CsvConnectionNode || node instanceof ParquetConnectionNode || node instanceof ImportHtmlNode || node instanceof ImportXmlNode || node instanceof DataFeedNode || node instanceof XYPadNode || node instanceof ColorPickerNode || node instanceof SvgPickerNode) return "input";
   if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof MermaidNode || node instanceof GaugeNode || node instanceof HeatmapCellNode || node instanceof ChartBuilderNode || node instanceof TornadoNode) return "display";
   if (node instanceof ConvertNode || node instanceof CastNode) return "convert";
   if (
     node instanceof ComplexFromNode || node instanceof ComplexUnpackNode ||
     node instanceof ComplexUnaryNode || node instanceof ComplexBinaryNode ||
-    node instanceof ComplexPowerNode
+    node instanceof ComplexPowerNode || node instanceof QuadraticRootsNode
   ) return "complex";
   // Nodes that EMIT the logical type (purple TRUE/FALSE socket) read as logic, so
   // their header colour matches what they output: Boolean source, the IS-checks,
@@ -94,15 +99,17 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof ComparisonNode || node instanceof BooleanOpNode ||
     node instanceof NotNode ||
     node instanceof BooleanInputNode || node instanceof IsTestNode ||
-    node instanceof IsEvenOddNode || node instanceof SetRelationNode
+    node instanceof IsEvenOddNode || node instanceof SetRelationNode ||
+    node instanceof IsInNode
   ) return "logic";
   if (
     node instanceof ListInputNode || node instanceof RangeNode || node instanceof AggregateNode ||
     node instanceof ListLengthNode || node instanceof ListIndexNode || node instanceof SortNode ||
+    node instanceof FilterNode ||
     node instanceof ReverseNode || node instanceof SliceNode ||
     node instanceof UniqueNode || node instanceof TakeNode || node instanceof DropNode ||
-    node instanceof SetOpNode ||
-    node instanceof VStackNode || node instanceof CumulativeNode || node instanceof DiffNode ||
+    node instanceof SetOpNode || node instanceof TallyNode ||
+    node instanceof ConcatListsNode || node instanceof CumulativeNode || node instanceof DiffNode ||
     node instanceof ArgMinMaxNode || node instanceof ContainsNode ||
     node instanceof NormalizeNode || node instanceof LinSpaceNode || node instanceof RepeatNode ||
     node instanceof ShuffleNode || node instanceof NthElementNode || node instanceof InterleaveNode ||
@@ -114,13 +121,13 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof PercentrankNode || node instanceof RankNode || node instanceof CorrelNode ||
     node instanceof CombinatoricsNode || node instanceof TwoInputMathNode || node instanceof SumProductNode ||
     node instanceof StandardizeNode || node instanceof CovarianceNode || node instanceof FisherNode ||
-    node instanceof BitwiseNode || node instanceof InterestRateNode || node instanceof DepreciationNode ||
+    node instanceof BitwiseNode || node instanceof DepreciationNode ||
     node instanceof RegressionNode || node instanceof ForecastNode || node instanceof ModeNode ||
     node instanceof TrimMeanNode || node instanceof FrequencyNode || node instanceof ConfidenceNode ||
     node instanceof SeriesSumNode || node instanceof MultinomialNode
   ) return "math";
   if (
-    node instanceof TvmNode || node instanceof RateNode || node instanceof IpmtPpmtNode ||
+    node instanceof TvmNode || node instanceof IpmtPpmtNode ||
     node instanceof NpvNode || node instanceof IrrNode || node instanceof MirrNode ||
     node instanceof CumPmtNode
   ) return "math";
@@ -153,7 +160,8 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof SubstituteNode || node instanceof TextReplaceNode ||
     node instanceof ReptNode || node instanceof ExactNode ||
     node instanceof CharCodeNode || node instanceof TextJoinNode ||
-    node instanceof TextSplitNode || node instanceof TextAfterBeforeNode
+    node instanceof TextSplitNode || node instanceof TextAfterBeforeNode ||
+    node instanceof ReverseTextNode || node instanceof SpellNumberNode
   ) return "string";
   if (
     node instanceof TodayNowNode || node instanceof DateConstructNode ||
@@ -166,21 +174,23 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
   if (
     node instanceof TableInputNode || node instanceof MatDetNode ||
     node instanceof TableMultNode || node instanceof TableUnitNode ||
-    node instanceof TableTransposeNode || node instanceof HStackTableNode ||
+    node instanceof TableTransposeNode || node instanceof HStackTableNode || node instanceof VStackNode ||
     node instanceof TableReshapeNode || node instanceof TableSelectNode ||
+    node instanceof TableTakeDropNode || node instanceof ExpandNode ||
     node instanceof TableInfoNode || node instanceof MapTableNode ||
     node instanceof ByAxisNode || node instanceof MakeArrayNode ||
     node instanceof ReduceLambdaNode
   ) return "table";
   if (
     node instanceof FrameInputNode ||
-    node instanceof BuildFrameNode || node instanceof SplitFrameNode ||
+    node instanceof BuildFrameNode || node instanceof FrameFromListsNode || node instanceof SplitFrameNode ||
     node instanceof GetColumnNode || node instanceof AddColumnNode ||
     node instanceof GetRowNode ||
     node instanceof DistinctNode ||
     node instanceof HeadNode ||
     node instanceof SortFrameNode ||
     node instanceof FilterFrameNode ||
+    node instanceof SumIfsNode ||
     node instanceof JoinNode ||
     node instanceof XLookupNode ||
     node instanceof SelectColumnsNode ||
@@ -203,6 +213,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
   if (node instanceof FormatControllerNode) return "format";
   if (node instanceof LambdaNode) return "lambda";
   if (node instanceof ExpressionNode) return "math";
+  if (node instanceof EquationNode) return "math";
   if (node instanceof RegexNode) return "string";
   if (node instanceof GroupByNode) return "list";
   // Arithmetic, MathFn, Clamp, MRound, RoundN

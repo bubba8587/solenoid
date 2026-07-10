@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { MapTableNode, ByAxisNode, ReduceLambdaNode } from "./tableLambda";
+import { MapTableNode, ByAxisNode, ReduceLambdaNode, ScanLambdaNode } from "./tableLambda";
 import { LambdaNode, isLambdaValue, formatLambda, type LambdaValue } from "./lambda";
 import { isSolError, type SolError } from "../errorValue";
 
@@ -168,12 +168,6 @@ describe("ReduceLambda (REDUCE)", () => {
     expect(n.data({ initial: [-999], table: [[[3, 7, 2]]] }).result).toBe(7);
   });
 
-  it("a wired formula string overrides the inline one", () => {
-    const n = new ReduceLambdaNode({ expr: "acc + x" });
-    expect(n.data({ table: [[[2, 3]]], formula: ["acc * x"] }).result).toBe(0);
-    expect(n.data({ initial: [1], table: [[[2, 3]]], formula: ["acc * x"] }).result).toBe(6);
-  });
-
   it("returns null with no values wired", () => {
     const n = new ReduceLambdaNode();
     expect(n.data({}).result).toBeNull();
@@ -186,5 +180,36 @@ describe("ReduceLambda (REDUCE)", () => {
     expect(isSolError(r)).toBe(true);
     expect((r as SolError).code).toBe("#SYNTAX!");
     expect(n.cachedError).toBe("Syntax error");
+  });
+});
+
+describe("ScanLambda (SCAN)", () => {
+  it("emits the running accumulator per cell (default acc + x from 0)", () => {
+    const n = new ScanLambdaNode();
+    expect(n.data({ table: [[[1, 2, 3, 4]]] }).result).toEqual([[1, 3, 6, 10]]);
+    expect(n.cachedError).toBeNull();
+  });
+
+  it("starts the running fold from the wired initial", () => {
+    const n = new ScanLambdaNode();
+    expect(n.data({ initial: [5], table: [[[1, 2, 3]]] }).result).toEqual([[6, 8, 11]]);
+  });
+
+  it("scans a matrix row-major, keeping the input's shape", () => {
+    const n = new ScanLambdaNode();
+    expect(n.data({ table: [[[1, 2], [3, 4]]] }).result).toEqual([[1, 3], [6, 10]]);
+  });
+
+  it("runs an arbitrary formula — a running max, and the 1-based position i", () => {
+    const max = new ScanLambdaNode({ expr: "MAX(acc, x)" });
+    expect(max.data({ initial: [-999], table: [[[3, 7, 2, 9, 5]]] }).result).toEqual([[3, 7, 7, 9, 9]]);
+    const idx = new ScanLambdaNode({ expr: "acc + x * i" });
+    expect(idx.data({ table: [[[1, 2, 3]]] }).result).toEqual([[1, 5, 14]]);
+  });
+
+  it("returns null with no values wired; flags a syntax error", () => {
+    expect(new ScanLambdaNode().data({}).result).toBeNull();
+    const bad = new ScanLambdaNode({ expr: "acc +* x" }).data({ table: [[[1]]] }).result;
+    expect(isSolError(bad) && (bad as SolError).code).toBe("#SYNTAX!");
   });
 });

@@ -69,6 +69,7 @@ export { UniqueComponent } from "./UniqueNode";
 export { SetOpComponent } from "./SetOpNode";
 export { SetRelationComponent } from "./SetRelationNode";
 export { FilterComponent } from "./FilterNode";
+export { SumIfsComponent } from "./SumIfsNode";
 export { FillComponent } from "./FillNode";
 export { DiffComponent } from "./DiffNode";
 export { CumulativeComponent } from "./CumulativeNode";
@@ -105,10 +106,8 @@ export { FrequencyComponent } from "./FrequencyNode";
 export { ConfidenceComponent } from "./ConfidenceNode";
 
 // ─── Finance ──────────────────────────────────────────────────────────────────
-export { InterestRateComponent } from "./InterestRateNode";
 export { DepreciationComponent } from "./DepreciationNode";
 export { TvmComponent } from "./TvmNode";
-export { RateComponent } from "./RateNode";
 export { IpmtPpmtComponent } from "./IpmtPpmtNode";
 export { NpvComponent } from "./NpvNode";
 export { IrrComponent } from "./IrrNode";
@@ -118,8 +117,6 @@ export { FvScheduleComponent } from "./FvScheduleNode";
 export { IspmtComponent } from "./IspmtNode";
 export { DollarComponent } from "./DollarNode";
 export { VdbComponent } from "./VdbNode";
-export { PdurationComponent } from "./PdurationNode";
-export { RriComponent } from "./RriNode";
 export { TBillComponent } from "./TBillNode";
 export { SecurityDiscComponent } from "./SecurityDiscNode";
 export { CouponComponent } from "./CouponNode";
@@ -142,9 +139,9 @@ export { TableInputComponent } from "./TableInputNode";
 export {
   MatDetComponent, TableMultComponent, TableUnitComponent,
   TableTransposeComponent, HStackTableComponent,
-  TableReshapeComponent, TableSelectComponent, TableInfoComponent,
+  TableReshapeComponent, TableSelectComponent, TableTakeDropComponent, ExpandTableComponent, TableInfoComponent,
 } from "./MatrixNodes";
-export { MapTableComponent, ByAxisComponent, MakeArrayComponent, ReduceLambdaComponent } from "./TableLambdaNodes";
+export { MapTableComponent, ByAxisComponent, MakeArrayComponent, ReduceLambdaComponent, ScanLambdaComponent } from "./TableLambdaNodes";
 export { LambdaComponent } from "./LambdaNode";
 
 // ─── Frames (named-column data tables) ─────────────────────────────────────────
@@ -316,6 +313,9 @@ export { FormatControllerComponent } from "./FormatControllerNode";
 // ─── Expression ───────────────────────────────────────────────────────────────
 export { ExpressionComponent } from "./ExpressionNode";
 
+// ─── Equation (bidirectional solve) ─────────────────────────────────────────────
+export { EquationComponent } from "./EquationNode";
+
 // ─── Regex / GroupBy ──────────────────────────────────────────────────────────
 export { RegexComponent } from "./RegexNode";
 export { GroupByComponent } from "./GroupByNode";
@@ -331,6 +331,35 @@ export { StandoffLayer } from "./StandoffLayer";
 
 // ─── Packs (example built-in pack node) ───────────────────────────────────────
 export { HypotenuseComponent } from "./HypotenuseNode";
+
+// ─── Electricity & Circuits pack ───────────────────────────────────────────────
+export { ParallelCombineComponent, ESeriesComponent, AwgComponent, ResistorCodeComponent } from "./ElectricalNodes";
+
+// ─── Electromagnetism pack ───────────────────────────────────────────────────────
+export { PhysicsConstantComponent } from "./PhysicsConstantNode";
+
+// ─── Fluid Mechanics pack ────────────────────────────────────────────────────────
+export { ColebrookComponent } from "./FluidsNodes";
+
+// ─── Thermodynamics & Air pack ───────────────────────────────────────────────────
+export { IsaAtmosphereComponent, AntoineComponent } from "./ThermoNodes";
+
+// ─── Set & Relational pack ───────────────────────────────────────────────────────
+export { IsInComponent, TallyComponent } from "./SetPackNodes";
+
+// ─── Timesavers pack custom nodes ────────────────────────────────────────────────
+export { ReverseTextComponent, SpellNumberComponent } from "./TimesaverNodes";
+
+// ─── Earth & Sky pack ────────────────────────────────────────────────────────────
+export { SolarPositionComponent, SunriseSunsetComponent, MoonPhaseComponent } from "./AstroNodes";
+
+// ─── Chemistry Basics pack ───────────────────────────────────────────────────────
+export { ElementComponent, MolarMassComponent } from "./ChemistryNodes";
+
+// ─── Lists → tables fast path (2026-07-09) ──────────────────────────────────────
+export { ConcatListsComponent } from "./ConcatListsNode";
+export { FrameFromListsComponent } from "./FrameFromListsNode";
+export { QuadraticRootsComponent } from "./QuadraticRootsNode";
 
 // ─── Missing-type placeholder (load-time only, not in the Add menu) ───────────
 export { PlaceholderComponent } from "./PlaceholderNode";

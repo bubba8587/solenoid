@@ -72,6 +72,15 @@ type FcAnnLike = { annotation: () => FormatAnnotation };
 function hasAnnotation(n: unknown): n is FcAnnLike {
   return typeof (n as Record<string, unknown> | null)?.annotation === "function";
 }
+/** Per-OUTPUT producer annotation — for a node whose outputs carry DIFFERENT
+ *  locks (Triangle Solver: degrees on the angles, nothing on the sides; Element:
+ *  g/mol on the mass, nothing on Z). Returning undefined for a key means that
+ *  output carries nothing; the node-level annotation() stays the single-output
+ *  form (Physics Constant). */
+type FcAnnForLike = { annotationFor: (outKey: string) => FormatAnnotation | undefined };
+function hasAnnotationFor(n: unknown): n is FcAnnForLike {
+  return typeof (n as Record<string, unknown> | null)?.annotationFor === "function";
+}
 
 /** Combine value-branch units: ignore unitless branches; the rest must agree, else the
  *  result is ambiguous (a runtime branch we can't predict) → no unit. */
@@ -125,7 +134,7 @@ export function makeUnitResolver(editor: AnyEditor): UnitResolver {
     return "none";
   }
 
-  function compute(nodeId: string): string {
+  function compute(nodeId: string, outKey: string): string {
     const n = editor.getNode(nodeId);
     if (isConvert(n)) return isFcUnit(n.toUnit) ? n.toUnit : "none";
     if (isFc(n)) {
@@ -133,6 +142,13 @@ export function makeUnitResolver(editor: AnyEditor): UnitResolver {
       if (iu !== "none") return iu;                       // forward
       return n.unit && n.unit !== "none" ? n.unit : "none"; // author
     }
+    // A producer whose outputs carry their own unit (Triangle degrees, Element
+    // g/mol via annotationFor; Physics Constant via annotation) — so the unit
+    // resolver agrees with the annotation resolver, and a trig node in Auto mode
+    // sees the ° feeding it. Checked AFTER isFc (an FC has both and keeps its
+    // forward/author branch above).
+    if (hasAnnotationFor(n)) { const u = n.annotationFor(outKey)?.unit; if (u) return u; }
+    if (hasAnnotation(n)) return n.annotation().unit || "none";
     if (isPassthrough(n)) {
       const sel = selectedKey(n);
       if (sel) return inUnit(nodeId, sel);           // follow the actually-selected branch
@@ -148,7 +164,7 @@ export function makeUnitResolver(editor: AnyEditor): UnitResolver {
     if (cached !== undefined) return cached;
     if (visiting.has(key)) return "none"; // cycle guard (shouldn't happen in a DAG)
     visiting.add(key);
-    const u = compute(nodeId);
+    const u = compute(nodeId, outKey);
     visiting.delete(key);
     memo.set(key, u);
     return u;
@@ -207,9 +223,10 @@ export function makeAnnotationResolver(editor: AnyEditor): AnnotationResolver {
     const c = byTarget.get(nodeId)?.[0];
     return c ? outAnnotation(c.source, c.sourceOutput) : undefined;
   }
-  function compute(nodeId: string): FormatAnnotation | undefined {
+  function compute(nodeId: string, outKey: string): FormatAnnotation | undefined {
     const n = editor.getNode(nodeId);
     if (isConvert(n)) return undefined;                  // unit transform → format drops
+    if (hasAnnotationFor(n)) return n.annotationFor(outKey); // per-output producer lock
     if (hasAnnotation(n)) return n.annotation();         // FC locks its own format+unit
     if (isPassthrough(n)) {                              // carry across unchanged
       const sel = selectedKey(n);
@@ -225,7 +242,7 @@ export function makeAnnotationResolver(editor: AnyEditor): AnnotationResolver {
     if (cached !== undefined) return cached ?? undefined;
     if (visiting.has(key)) return undefined; // cycle guard
     visiting.add(key);
-    const a = compute(nodeId);
+    const a = compute(nodeId, outKey);
     visiting.delete(key);
     memo.set(key, a ?? null);
     return a;

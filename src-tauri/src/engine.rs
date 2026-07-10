@@ -473,6 +473,11 @@ pub enum WireOp {
         // oracle's filterRowsMulti — matchCase rides per-condition).
         combine: String,
         conditions: Vec<WireFilterCond>,
+        // Keep the rows the plain filter would DISCARD (the Filter node's
+        // Dropped output). Row complement, not predicate negation: a null cell
+        // fails its condition, so under complement its row is kept.
+        #[serde(default)]
+        complement: bool,
     },
     #[serde(rename = "groupBy")]
     GroupBy { keys: Vec<String>, aggs: Vec<WireAgg> },
@@ -1142,9 +1147,10 @@ fn condition_mask(frame: &SolFrame, c: &WireFilterCond) -> Result<Vec<bool>, Ipc
 
 /// Keep rows passing ALL ("and") / ANY ("or") conditions — the oracle's
 /// `filterRowsMulti` (frameVerbs.ts). No conditions = identity on both engines.
-fn verb_filter_multi(frame: &SolFrame, combine: &str, conditions: &[WireFilterCond]) -> Result<SolFrame, IpcError> {
+fn verb_filter_multi(frame: &SolFrame, combine: &str, conditions: &[WireFilterCond], complement: bool) -> Result<SolFrame, IpcError> {
     if conditions.is_empty() {
-        let all: Vec<usize> = (0..frame.df.height()).collect();
+        // Identity — and its complement, the empty frame (same schema).
+        let all: Vec<usize> = if complement { Vec::new() } else { (0..frame.df.height()).collect() };
         return reorder_rows(frame, &all);
     }
     let masks = conditions
@@ -1153,7 +1159,10 @@ fn verb_filter_multi(frame: &SolFrame, combine: &str, conditions: &[WireFilterCo
         .collect::<Result<Vec<_>, _>>()?;
     let is_and = combine != "or";
     let keep: Vec<usize> = (0..frame.df.height())
-        .filter(|&i| if is_and { masks.iter().all(|m| m[i]) } else { masks.iter().any(|m| m[i]) })
+        .filter(|&i| {
+            let pass = if is_and { masks.iter().all(|m| m[i]) } else { masks.iter().any(|m| m[i]) };
+            pass != complement
+        })
         .collect();
     reorder_rows(frame, &keep)
 }
@@ -1408,6 +1417,22 @@ fn verb_join(left: &SolFrame, right: &SolFrame, opts: &WireJoinOpts) -> Result<S
     if opts.how.as_str() == "asof" {
         return verb_join_asof(left, right, opts);
     }
+    // Semi/anti FILTER the left frame (left columns only, original order, no
+    // fan-out) — Polars' own semi/anti layout already matches the oracle's, so
+    // no assemble_join_layout pass is needed. Null keys never match (Polars'
+    // default), mirroring the oracle: dropped by semi, kept by anti.
+    if matches!(opts.how.as_str(), "semi" | "anti") {
+        let how = if opts.how == "semi" { JoinType::Semi } else { JoinType::Anti };
+        let mut args = JoinArgs::new(how);
+        args.maintain_order = MaintainOrderJoin::LeftRight;
+        let joined = collect_lazy(left.df.clone().lazy().join(
+            right.df.clone().lazy(),
+            vec![col(opts.left_key.as_str())],
+            vec![col(opts.right_key.as_str())],
+            args,
+        ))?;
+        return Ok(SolFrame { df: joined, types: left.types.clone() });
+    }
     let how = match opts.how.as_str() {
         "inner" => JoinType::Inner,
         "left" => JoinType::Left,
@@ -1642,9 +1667,15 @@ fn apply_step(plan: Plan, op: &WireOp) -> Result<Plan, IpcError> {
                 }
             }
         }
-        WireOp::FilterMulti { combine, conditions } => {
+        WireOp::FilterMulti { combine, conditions, complement } => {
             if conditions.is_empty() {
-                return Ok(plan); // identity — matches the oracle (not OR's vacuous false)
+                // Identity — matches the oracle (not OR's vacuous false); the
+                // complement of identity is the empty frame (same schema).
+                return if *complement {
+                    Ok(Plan { lf: plan.lf.filter(lit(false)), ..plan })
+                } else {
+                    Ok(plan)
+                };
             }
             for c in conditions {
                 require_in(&plan.names, std::slice::from_ref(&c.column))?;
@@ -1657,12 +1688,14 @@ fn apply_step(plan: Plan, op: &WireOp) -> Result<Plan, IpcError> {
                 // One text-predicate condition forces the row scan — collect this
                 // step and hand-roll, exactly like the single-condition filter.
                 let frame = plan.collect()?;
-                let out = verb_filter_multi(&frame, combine, conditions)?;
+                let out = verb_filter_multi(&frame, combine, conditions, *complement)?;
                 Ok(Plan::from_frame(&out))
             } else {
                 // All comparisons — fold ONE combined expr onto the lazy plan.
                 // Kleene nulls collapse to the oracle's keep-set: a null
-                // comparison is never TRUE, and filter drops null rows.
+                // comparison is never TRUE, and filter drops null rows. The
+                // complement is the ROW complement, so a null-predicate row must
+                // land there: fill_null(false) BEFORE the not() keeps it.
                 let is_and = combine != "or";
                 let mut acc: Option<Expr> = None;
                 for c in conditions {
@@ -1674,7 +1707,9 @@ fn apply_step(plan: Plan, op: &WireOp) -> Result<Plan, IpcError> {
                         Some(a) => if is_and { a.and(e) } else { a.or(e) },
                     });
                 }
-                Ok(Plan { lf: plan.lf.filter(acc.unwrap()), ..plan })
+                let pred = acc.unwrap();
+                let pred = if *complement { pred.fill_null(lit(false)).not() } else { pred };
+                Ok(Plan { lf: plan.lf.filter(pred), ..plan })
             }
         }
         WireOp::Distinct { columns } => {

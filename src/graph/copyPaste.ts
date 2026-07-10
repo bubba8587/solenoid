@@ -78,7 +78,7 @@ export const INIT_FIELD_ORDER = [
   "label", "op", "value", "unitSuffix", "fromUnit", "toUnit", "lanes", "matchMode", "matchCase", "searchMode", "paymentTiming", "ignoreEmpty", "noCommas", "hostNodeId", "socketKey", "side", "format", "customPattern", "decimalDigits", "decimalMode", "unit", "customUnit", "socketDataType", "expr", "params", "locked", "axis", "op2", "combine", "textCase", "bold", "italic", "textScale", "textAlign", "textMarkdown", "textMono", "logicalStyle", "grouping", "negativeStyle", "scaleMode", "advancedOpen",
   "tableText", "frameText", "url", "fileName", "assetPath", "path", "refreshMinutes", "tableIndex", "query", "dir", "how", "mode", "inFormat", "outFormat", "provider",
   "inputAngle", "outputAngle", "inputTightness", "outputTightness", "angle",
-  "selectedColumn", "selectedValues", "selectedLayer", "multiSelect", "readAs", "addAs", "activeIndex", "target", "resultAs", "colType", "dataType",
+  "selectedColumn", "selectedValues", "selectedLayer", "multiSelect", "readAs", "addAs", "activeIndex", "target", "resultAs", "colType", "dataType", "angleMode",
   "hoverColor",
   "totalDepth", "rowTotalDepth", "colTotalDepth", "rowSort", "colSort", "relativeTo", "normalize", "detail",
   "members", "color", "collapsed", "width", "height", "title", "body", "seq", "defaultValue",
@@ -89,7 +89,7 @@ export const INIT_FIELD_ORDER = [
 // Object-valued extras appended after INIT_FIELD_ORDER (below), in this fixed
 // order, when present — same reuse rationale as INIT_FIELD_ORDER.
 export const INIT_EXTRA_FIELD_ORDER = [
-  "funcs", "filterExclude", "condConfig", "fieldTypes", "weightMap", "normMap", "titles", "selectedKeys",
+  "funcs", "filterExclude", "condConfig", "fieldTypes", "weightMap", "normMap", "titles", "selectedKeys", "varDescriptions",
 ] as const;
 
 export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
@@ -153,6 +153,15 @@ export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
     const kept = (n.selectedKeys as string[]).filter((k) => k in liveInputs);
     if (kept.length) init.selectedKeys = kept;
     else delete init.selectedKeys;
+  }
+  // Expression / Equation per-variable descriptions (var name → prose). Deep-copy
+  // and keep only LIVE variables (`varNames`) so a stale entry can't leak into a
+  // save and break the text form's byte-identical second write.
+  if (n.varDescriptions && typeof n.varDescriptions === "object") {
+    const live = new Set((n.varNames as string[] | undefined) ?? []);
+    const entries = Object.entries(n.varDescriptions as Record<string, string>)
+      .filter(([k, v]) => live.has(k) && v.trim() !== "");
+    if (entries.length) init.varDescriptions = Object.fromEntries(entries);
   }
   // Composite node: its declared ports (deep-copied — mutated live as ports are
   // added) plus its ENTIRE internal subgraph, captured via the node's own

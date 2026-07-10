@@ -36,6 +36,14 @@ describe("Cast node", () => {
     expect(isSolError(r[2]) && (r[2] as import("../errorValue").SolError).code).toBe("#VALUE!");
   });
 
+  it("casts a logical to number via the 0/1 bridge (Excel N(TRUE)=1), scalar and per-cell", () => {
+    expect(cast("number", true)).toBe(1);
+    expect(cast("number", false)).toBe(0);
+    // a logical list (Comparison / BooleanOp / IS.TEST emit these) → 1/0 per cell,
+    // not a row of #VALUE!.
+    expect(cast("number", [true, false, true])).toEqual([1, 0, 1]);
+  });
+
   it("casts to text (default representation, element-wise)", () => {
     expect(cast("text", 3.14159)).toBe("3.14159");
     expect(cast("text", [1, 2.5])).toEqual(["1", "2.5"]);

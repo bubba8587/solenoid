@@ -87,10 +87,10 @@ note("note-cash", -1480, -560,
 n("col-amt", "GetColumnNode", -1460, -260, { label: "Amount", readAs: "number" }, { stringLiterals: { name: "Amount" } });
 n("red-net", "AggregateNode",    -1180, -360, { label: "Net cash flow", op: "sum" });
 n("disp-net","DisplayNode",    -900, -360, { label: "Net cash flow" });
-n("flt-in",  "FilterNode",      -1180, -120, { label: "Keep income (> 0)", op: "gt" });
+n("flt-in",  "FilterNode",      -1180, -120, { label: "Keep income (> 0)", condConfig: { "0": { op: "gt" } } }, { stringLiterals: { value0: "0" } });
 n("red-in",  "ReduceLambdaNode", -900, -120, { label: "Income", expr: "acc + x" });
 n("disp-in", "DisplayNode",      -640, -160, { label: "Income (3 mo)" });
-n("flt-out", "FilterNode",      -1180,  140, { label: "Keep spend (< 0)", op: "lt" });
+n("flt-out", "FilterNode",      -1180,  140, { label: "Keep spend (< 0)", condConfig: { "0": { op: "lt" } } }, { stringLiterals: { value0: "0" } });
 n("red-out", "ReduceLambdaNode", -900,  140, { label: "Spend", expr: "acc + x" });
 n("disp-out","DisplayNode",      -640,  100, { label: "Expenses (3 mo)" });
 n("expr-rate","ExpressionNode",-680,  380, { label: "Savings rate", expr: "(income + expense) / income" });
@@ -166,9 +166,9 @@ n("disp-nw", "DisplayNode",  620,  800, { label: "Net worth" });
 n("gauge-nw","GaugeNode",    620, 1020, { label: "Toward goal" }, { literals: { value: 0 } });
 n("ratio-nw","ExpressionNode", 430, 1180, { label: "Progress", expr: "nw / goal" });
 n("slider-goal","SliderInputNode", 60, 1340, { label: "Net-worth goal", value: 120000, min: 50000, max: 250000, step: 5000 }, { literals: { min: 50000, max: 250000, step: 5000 } });
-n("flt-assets","FilterNode",      340, 1320, { label: "Keep assets (> 0)", op: "gt" });
+n("flt-assets","FilterNode",      340, 1320, { label: "Keep assets (> 0)", condConfig: { "0": { op: "gt" } } }, { stringLiterals: { value0: "0" } });
 n("red-assets","ReduceLambdaNode", 600, 1320, { label: "Assets total", expr: "acc + x" });
-n("flt-liab", "FilterNode",       340, 1540, { label: "Keep debt (< 0)", op: "lt" });
+n("flt-liab", "FilterNode",       340, 1540, { label: "Keep debt (< 0)", condConfig: { "0": { op: "lt" } } }, { stringLiterals: { value0: "0" } });
 n("red-liab", "ReduceLambdaNode",  600, 1540, { label: "Liabilities (signed)", expr: "acc + x" });
 n("expr-debt","ExpressionNode",    860, 1540, { label: "Liabilities", expr: "-l" });
 n("gb-type", "GroupByNode",  340, 1080, { label: "By asset class", op: "sum" });
@@ -224,7 +224,7 @@ n("expr-pmt",  "ExpressionNode", 1700, -360, { label: "Contribution (outflow)", 
 n("expr-mrate","ExpressionNode", 1700,  -60, { label: "Monthly rate", expr: "ret / 100 / 12" });
 n("expr-nper", "ExpressionNode", 1960, -360, { label: "Months", expr: "years * 12" });
 n("expr-pv",   "ExpressionNode", 1960, -120, { label: "Today (outflow)", expr: "-nw" });
-n("tvm-fv",    "TvmNode",        2220, -260, { label: "Projected nest egg", op: "fv", paymentTiming: "end" });
+n("tvm-fv",    "TvmNode",        2220, -260, { label: "Projected nest egg", paymentTiming: "end" });
 n("disp-proj", "DisplayNode",    2480, -300, { label: "Projected nest egg" });
 n("gauge-proj","GaugeNode",      2480,  -60, { label: "Toward target" }, { literals: { value: 0 } });
 n("ratio-proj","ExpressionNode", 2340,  100, { label: "Progress", expr: "fv / target" });
@@ -243,11 +243,11 @@ c("expr-mrate","result","tvm-fv","rate");
 c("expr-nper","result","tvm-fv","nper");
 c("expr-pmt","result","tvm-fv","pmt");
 c("expr-pv","result","tvm-fv","pv");
-c("tvm-fv","result","disp-proj","in");
-c("tvm-fv","result","ratio-proj","fv");
+c("tvm-fv","fv","disp-proj","in");
+c("tvm-fv","fv","ratio-proj","fv");
 c("sld-target","value","ratio-proj","target");
 c("ratio-proj","result","gauge-proj","value");
-c("tvm-fv","result","alert-proj","value");
+c("tvm-fv","fv","alert-proj","value");
 c("sld-target","value","alert-proj","low");
 c("in-years","value","seq-years","count");
 c("seq-years","list","expr-traj","c");
@@ -267,7 +267,7 @@ n("sld-apr",  "SliderInputNode", 1420, 1140, { label: "Mortgage APR %", value: 6
 n("in-term",  "NumberInputNode", 1420, 1420, { label: "Term (years)", value: 30 });
 n("expr-mapr","ExpressionNode",  1700, 1140, { label: "Monthly rate", expr: "apr / 100 / 12" });
 n("expr-mnper","ExpressionNode", 1700, 1420, { label: "Payments", expr: "term * 12" });
-n("tvm-pmt",  "TvmNode",         1960,  980, { label: "Monthly payment", op: "pmt", paymentTiming: "end" });
+n("tvm-pmt",  "TvmNode",         1960,  980, { label: "Monthly payment", paymentTiming: "end" }, { literals: { fv: 0 } });
 n("expr-absp","ExpressionNode",  2240,  980, { label: "Payment (positive)", expr: "-pmt" });
 n("disp-pmt", "DisplayNode",     2520,  980, { label: "Monthly payment" });
 n("cumipmt",  "CumPmtNode",      1960, 1280, { label: "Interest (signed)", op: "cumipmt", paymentTiming: "end" });
@@ -283,7 +283,7 @@ c("in-term","value","expr-mnper","term");
 c("expr-mapr","result","tvm-pmt","rate");
 c("expr-mnper","result","tvm-pmt","nper");
 c("sld-loan","value","tvm-pmt","pv");
-c("tvm-pmt","result","expr-absp","pmt");
+c("tvm-pmt","pmt","expr-absp","pmt");
 c("expr-absp","result","disp-pmt","in");
 c("expr-mapr","result","cumipmt","rate");
 c("expr-mnper","result","cumipmt","nper");
@@ -358,7 +358,7 @@ c("cd-cash","out_0","d-cash-net","in");
 c("cd-cash","out_1","d-cash-in","in");
 c("cd-cash","out_2","d-cash-out","in");
 c("cd-cash","out_3","d-cash-rate","in");
-c("tvm-fv","result","d-proj","in");
+c("tvm-fv","fv","d-proj","in");
 c("cd-acct","out_0","d-acct-nw","in");
 c("cd-acct","out_1","d-acct-assets","in");
 c("cd-acct","out_2","d-acct-liab","in");
@@ -411,7 +411,7 @@ const pins = [
   { nodeId: "red-net",  outputKey: "result" },
   { nodeId: "red-nw",   outputKey: "result" },
   { nodeId: "expr-rate", outputKey: "result" },
-  { nodeId: "tvm-fv",   outputKey: "result" },
+  { nodeId: "tvm-fv",   outputKey: "fv" },
   { nodeId: "expr-absp", outputKey: "result" },
 ];
 const standoffs = [

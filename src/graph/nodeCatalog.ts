@@ -6,22 +6,22 @@ import {
   AngleDialNode, SlicerNode, CableSwitchNode, DatePickerNode, DateRangeNode, XYPadNode,
   SparklineNode, ChartNode, HistogramNode, KpiNode, BulletNode, TreemapNode, SankeyNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode,
   NumberInputNode, ArithmeticNode, DisplayNode, ComparisonNode, MathFnNode,
-  FormatControllerNode, ExpressionNode, RegexNode, GroupByNode,
+  FormatControllerNode, ExpressionNode, EquationNode, RegexNode, GroupByNode,
   ClampNode, BooleanOpNode, NotNode, IfNode, ConduitNode, CastNode, ConstantNode, MRoundNode,
   ListInputNode, AggregateNode, RangeNode, ListLengthNode, ListIndexNode,
-  SortNode, ReverseNode, SliceNode, FilterNode, FillNode, XLookupNode,
+  SortNode, ReverseNode, SliceNode, FilterNode, SumIfsNode, FillNode, XLookupNode,
   GcdNode, IFErrorNode, NaNode, RandBetweenNode, RoundNNode, ConvertNode,
-  UniqueNode, SetOpNode, SetRelationNode, TakeNode, DropNode, VStackNode, CumulativeNode, DiffNode,
+  UniqueNode, SetOpNode, SetRelationNode, TakeNode, DropNode, VStackNode, ConcatListsNode, FrameFromListsNode, QuadraticRootsNode, CumulativeNode, DiffNode,
   ArgMinMaxNode, ContainsNode, NthValueNode, PercentileNode, QuartileNode,
   PercentrankNode, RankNode, CorrelNode, CombinatoricsNode, TwoInputMathNode,
   SumProductNode, ChooseNode, BooleanInputNode, SliderInputNode, ColorPickerNode, IsTestNode,
   AlertNode, NormalizeNode, LinSpaceNode, RepeatNode,
   ShuffleNode, NthElementNode, InterleaveNode, PadNode, GeometricNode,
   FibonacciNode, StandardizeNode, CovarianceNode, FisherNode, BitwiseNode,
-  InterestRateNode, DepreciationNode,
-  TvmNode, RateNode, IpmtPpmtNode, NpvNode, IrrNode, MirrNode, CumPmtNode,
+  DepreciationNode,
+  TvmNode, IpmtPpmtNode, NpvNode, IrrNode, MirrNode, CumPmtNode,
   FvScheduleNode, IspmtNode, DollarNode, VdbNode, ProbNode,
-  PdurationNode, RriNode, WeightedNode, BaseConvertNode,
+  WeightedNode, BaseConvertNode,
   TextInputNode, TextTransformNode, TextLenNode, ConcatNode, TextSliceNode,
   TextFindNode, SubstituteNode, TextReplaceNode,
   ReptNode, ExactNode,
@@ -43,8 +43,8 @@ import {
   COMPLEX_UNARY_OP_META, COMPLEX_BINARY_OP_META,
   type ComplexUnaryOp, type ComplexBinaryOp,
   TableInputNode, MatDetNode, TableMultNode, TableUnitNode, TableTransposeNode,
-  HStackTableNode, TableReshapeNode, TableSelectNode, TableInfoNode,
-  MapTableNode, ByAxisNode, MakeArrayNode, ReduceLambdaNode, LambdaNode,
+  HStackTableNode, TableReshapeNode, TableSelectNode, TableTakeDropNode, ExpandNode, TableInfoNode,
+  MapTableNode, ByAxisNode, MakeArrayNode, ReduceLambdaNode, ScanLambdaNode, LambdaNode,
   FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, GetRowNode, DistinctNode,
   HeadNode, SortFrameNode, FilterFrameNode, JoinNode,
   SelectColumnsNode, DropColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode,
@@ -54,8 +54,8 @@ import {
   WriteCsvNode, WriteJsonNode,
   GroupNode, NoteNode, ReportNode, SessionHistoryNode, PresentationNode, ImageNode, SvgPickerNode,
   CompositeNode, CompositeInputNode, CompositeOutputNode,
-  MAT_DET_OP_META, TABLE_RESHAPE_OP_META, TABLE_SELECT_OP_META,
-  type MatDetOp, type TableReshapeOp, type TableSelectOp,
+  MAT_DET_OP_META, TABLE_RESHAPE_OP_META, TABLE_SELECT_OP_META, TABLE_TAKEDROP_OP_META,
+  type MatDetOp, type TableReshapeOp, type TableSelectOp, type TableTakeDropOp,
   IsEvenOddNode, FormatDollarNode,
   NormDistNode, NormInvNode, NormSDistNode, NormSInvNode,
   TDistNode, TInvNode, ChisqDistNode, ChisqInvNode,
@@ -73,8 +73,8 @@ import {
   COMBINATORICS_OP_META, NTH_VALUE_OP_META, ARG_MIN_MAX_OP_META,
   SUM_PRODUCT_OP_META, RANK_OP_META, CORREL_OP_META, TWO_INPUT_MATH_OP_META,
   COVARIANCE_OP_META, FISHER_OP_META, BITWISE_OP_META,
-  INTEREST_RATE_OP_META, DEPRECIATION_OP_META,
-  TVM_OP_META, IPMT_PPMT_OP_META, CUM_PMT_OP_META, DOLLAR_OP_META,
+  DEPRECIATION_OP_META,
+  IPMT_PPMT_OP_META, CUM_PMT_OP_META, DOLLAR_OP_META,
   WEIGHTED_OP_META,
   TEXT_TRANSFORM_OP_META, TEXT_SLICE_OP_META, TEXT_FIND_OP_META, TEXT_AFTER_BEFORE_OP_META,
   BESSEL_OP_META, REGRESSION_OP_META, ROLLING_OP_META, T_TEST_OP_META,
@@ -83,8 +83,8 @@ import {
   type CombinatoricsOp, type NthValueOp, type ArgMinMaxOp,
   type SumProductOp, type RankOp, type CorrelOp, type TwoInputMathOp,
   type CovarianceOp, type FisherOp, type BitwiseOp,
-  type InterestRateOp, type DepreciationOp,
-  type TvmOp, type IpmtPpmtOp, type CumPmtOp, type DollarOp, type WeightedOp,
+  type DepreciationOp,
+  type IpmtPpmtOp, type CumPmtOp, type DollarOp, type WeightedOp,
   type CouponOp, type PriceDiscOp, type PriceMatOp, type DurationOp,
   type TextTransformOp, type TextSliceOp, type TextFindOp, type CharCodeOp, type TextAfterBeforeOp,
   type RomanArabicOp,
@@ -112,9 +112,7 @@ const twoMathLeaf  = (op: TwoInputMathOp): NodeCatalogEntry => ({ type: `twomath
 const covLeaf      = (op: CovarianceOp):   NodeCatalogEntry => ({ type: `cov-${op}`,       label: COVARIANCE_OP_META[op].label,     description: COVARIANCE_OP_META[op].description,     create: () => new CovarianceNode({ op })    });
 const fisherLeaf   = (op: FisherOp):       NodeCatalogEntry => ({ type: `fisher-${op}`,    label: FISHER_OP_META[op].label,         description: FISHER_OP_META[op].description,         create: () => new FisherNode({ op })        });
 const bitwiseLeaf  = (op: BitwiseOp):      NodeCatalogEntry => ({ type: `bitwise-${op}`,   label: BITWISE_OP_META[op].label,        description: BITWISE_OP_META[op].description,        create: () => new BitwiseNode({ op })       });
-const irLeaf       = (op: InterestRateOp): NodeCatalogEntry => ({ type: `ir-${op}`,        label: INTEREST_RATE_OP_META[op].label,  description: INTEREST_RATE_OP_META[op].description,  create: () => new InterestRateNode({ op })  });
 const deprLeaf     = (op: DepreciationOp): NodeCatalogEntry => ({ type: `depr-${op}`,      label: DEPRECIATION_OP_META[op].label,   description: DEPRECIATION_OP_META[op].description,   create: () => new DepreciationNode({ op })  });
-const tvmLeaf      = (op: TvmOp):          NodeCatalogEntry => ({ type: `tvm-${op}`,       label: TVM_OP_META[op].label,            description: TVM_OP_META[op].description,            create: () => new TvmNode({ op })           });
 const ipmtPpmtLeaf = (op: IpmtPpmtOp):    NodeCatalogEntry => ({ type: `ipmt-${op}`,      label: IPMT_PPMT_OP_META[op].label,      description: IPMT_PPMT_OP_META[op].description,      create: () => new IpmtPpmtNode({ op })      });
 const cumPmtLeaf   = (op: CumPmtOp):       NodeCatalogEntry => ({ type: `cumpmt-${op}`,    label: CUM_PMT_OP_META[op].label,        description: CUM_PMT_OP_META[op].description,        create: () => new CumPmtNode({ op })        });
 const regressionLeaf = (op: RegressionOp): NodeCatalogEntry => ({ type: `regression-${op}`,label: REGRESSION_OP_META[op].label,     description: REGRESSION_OP_META[op].description,     create: () => new RegressionNode({ op })    });
@@ -146,6 +144,7 @@ const besselLeaf = (op: BesselOp): NodeCatalogEntry => ({ type: `bessel-${op}`, 
 const matDetLeaf    = (op: MatDetOp):      NodeCatalogEntry => ({ type: `matdet-${op}`,    label: MAT_DET_OP_META[op].label,    description: MAT_DET_OP_META[op].description,    create: () => new MatDetNode({ op }),    parity: false });
 const reshapeLeaf   = (op: TableReshapeOp):NodeCatalogEntry => ({ type: `reshape-${op}`,   label: TABLE_RESHAPE_OP_META[op].label, description: TABLE_RESHAPE_OP_META[op].description, create: () => new TableReshapeNode({ op }), parity: false });
 const selectLeaf    = (op: TableSelectOp): NodeCatalogEntry => ({ type: `tblsel-${op}`,    label: TABLE_SELECT_OP_META[op].label, description: TABLE_SELECT_OP_META[op].description, create: () => new TableSelectNode({ op }), parity: false });
+const takeDropLeaf  = (op: TableTakeDropOp): NodeCatalogEntry => ({ type: `tbltd-${op}`,   label: TABLE_TAKEDROP_OP_META[op].label, description: TABLE_TAKEDROP_OP_META[op].description, create: () => new TableTakeDropNode({ op }), parity: false, keywords: "rows columns edge first last head tail" });
 
 const romanArabicLeaf = (op: RomanArabicOp): NodeCatalogEntry => ({
   type: `roman-arabic-${op}`,
@@ -179,13 +178,28 @@ export const NODE_CATALOG: CatalogEntry[] = [
       { type: "list-input",  label: "List Input",    description: "Build a list from comma-separated values (e.g. 1, 2, 3) in each row, or wire a list into a row; every row concatenates into one output list. Toggle the element type: number, text, date, or TRUE/FALSE. Excel: selecting a range like A1:A8.", accent: NODE_KIND_ACCENTS.list, keywords: "literal array csv combine concat number text string date boolean logical type", create: () => new ListInputNode() },
       { type: "text-input",    label: "Text Input",    description: "A literal string value, typed directly on the node.", accent: STR, keywords: "string literal", create: () => new TextInputNode() },
       { type: "boolean-input", label: "Boolean Input", description: "A TRUE / FALSE toggle that outputs a logical. It coerces to 1 / 0 where a number is needed.", accent: NODE_KIND_ACCENTS.logic, create: () => new BooleanInputNode() },
-      { type: "table-input",   label: "Table Input",   description: "Enter a 2D table: one row per line, comma-separated values per row. Outputs a table socket plus row and column counts.", accent: NODE_KIND_ACCENTS.table, create: () => new TableInputNode() },
+      { type: "table-input",   label: "Table Input",   description: "Enter a 2D table: one row per line, comma-separated values per row. One element type per table, switched by the Num/Text/Date/Bool toggle (mixed columns belong in Frame Input). The text you type is the stored truth: a cell that doesn't parse shows NaN and keeps its original text in the grid editor's Source view.", accent: NODE_KIND_ACCENTS.table, create: () => new TableInputNode() },
       { type: "frame-input",   label: "Frame Input", description: "Type a data table directly, with named columns and editable cells. Click the chip to edit in a grid. Outputs a Frame.", accent: NODE_KIND_ACCENTS.frame, create: () => new FrameInputNode(), parity: false },
       { type: "cx-from",       label: "COMPLEX",     description: "Build a complex number from real and imaginary parts. Excel: COMPLEX.", accent: CX, create: () => new ComplexFromNode(), parity: false },
       { type: "lambda-make",   label: "LAMBDA",      description: "Define a reusable formula as a value. Parameters go in the λ(…) row; other variables become captured inputs. Wire into MAP / BYROW / REDUCE / MAKEARRAY; parameters bind positionally. Like Expression, the formula evaluates via Formula.js with standard Excel functions, separate from the visual nodes. Excel: LAMBDA.", accent: NODE_KIND_ACCENTS.lambda, create: () => new LambdaNode(), parity: false },
       { type: "constant",      label: "Constant",    description: "Predefined value: π, e, φ, ∞, 0, 1, true, false …", create: () => new ConstantNode() },
       { type: "randbetween",   label: "RAND",        description: "Random float in [Bottom, Top]. Defaults to 0–1 (like Excel RAND()). Wire Bottom/Top for a custom range.", create: () => new RandBetweenNode(), parity: false },
       { type: "na",            label: "NA",          description: "Outputs #N/A, which propagates through calculations like Excel. Catch it with IFERROR / IFNA.", create: () => new NaNode() },
+      // Control widgets folded in 2026-07-09 (they're sources too — interactive
+      // ones); the freed top-level row went to Packs.
+      {
+        type: "category", label: "Control", description: "Interactive widgets that drive values in your graph.",
+        children: [
+          { type: "slider",      label: "Slider",      description: "Drag a slider to set a value; configure min, max, and step on the node.", accent: NODE_KIND_ACCENTS.input, create: () => new SliderInputNode() },
+          { type: "angle-dial",  label: "Angle Dial",  description: "A rotary dial: spin or type to set an angle in degrees, 0–359.", create: () => new AngleDialNode() },
+          { type: "date-picker", label: "Date Picker", description: "Pick a day from a calendar field; it outputs the matching date serial. Wire it into any date function.", create: () => new DatePickerNode(), parity: false },
+          { type: "date-range",  label: "Date Range",  description: "Pick a start and end date; it outputs both serials. Subtract them for a duration, or feed a filter's bounds.", create: () => new DateRangeNode(), parity: false, keywords: "date range period start end duration between from to picker" },
+          { type: "xy-pad",      label: "XY Pad",      description: "Drag a handle in a square to set two values at once. Outputs X and Y, each 0–1; scale them with arithmetic for any range.", create: () => new XYPadNode(), parity: false },
+          { type: "color-picker", label: "Color", description: "Pick a color in RGB or HSV and choose the output format: hex, rgb(), or hsl(). Outputs a CSS color string.", create: () => new ColorPickerNode(), parity: false },
+          { type: "slicer",      label: "Slicer",      description: "Filter a Frame like an Excel slicer: pick a column, then click its values to keep matching rows.", create: () => new SlicerNode() },
+          { type: "cable-switch", label: "Input Switch", description: "A multiplexer, distinct from the logical SWITCH: wire several cables in, name each slot, and pick which one passes through. Any type. Switch to Many to check several slots instead; the output becomes a Cube collecting the chosen values (name + value), one row each.", create: () => new CableSwitchNode(), parity: false, keywords: "switch multiplexer select choose route mux named cube collect multi" },
+        ],
+      },
       {
         type: "category", label: "Connections", description: "Live external data: load from a URL, a local CSV, or a web page. Stores the source, not the data; refresh to re-pull.",
         children: [
@@ -199,21 +213,6 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "write-json",    label: "Write JSON",  description: "Write a Frame to a .json file (array of row records): arm it, then press Run. Never writes on its own; a normal recompute only updates the preview. Desktop only.", create: () => new WriteJsonNode(), parity: false },
         ],
       },
-    ],
-  },
-
-  // ── CONTROL ──────────────────────────────────────────────────────────────────
-  {
-    type: "category", label: "Control", description: "Interactive widgets that drive values in your graph.",
-    children: [
-      { type: "slider",      label: "Slider",      description: "Drag a slider to set a value; configure min, max, and step on the node.", accent: NODE_KIND_ACCENTS.input, create: () => new SliderInputNode() },
-      { type: "angle-dial",  label: "Angle Dial",  description: "A rotary dial: spin or type to set an angle in degrees, 0–359.", create: () => new AngleDialNode() },
-      { type: "date-picker", label: "Date Picker", description: "Pick a day from a calendar field; it outputs the matching date serial. Wire it into any date function.", create: () => new DatePickerNode(), parity: false },
-      { type: "date-range",  label: "Date Range",  description: "Pick a start and end date; it outputs both serials. Subtract them for a duration, or feed a filter's bounds.", create: () => new DateRangeNode(), parity: false, keywords: "date range period start end duration between from to picker" },
-      { type: "xy-pad",      label: "XY Pad",      description: "Drag a handle in a square to set two values at once. Outputs X and Y, each 0–1; scale them with arithmetic for any range.", create: () => new XYPadNode(), parity: false },
-      { type: "color-picker", label: "Color", description: "Pick a color in RGB or HSV and choose the output format: hex, rgb(), or hsl(). Outputs a CSS color string.", create: () => new ColorPickerNode(), parity: false },
-      { type: "slicer",      label: "Slicer",      description: "Filter a Frame like an Excel slicer: pick a column, then click its values to keep matching rows.", create: () => new SlicerNode() },
-      { type: "cable-switch", label: "Input Switch", description: "A multiplexer, distinct from the logical SWITCH: wire several cables in, name each slot, and pick which one passes through. Any type. Switch to Many to check several slots instead; the output becomes a Cube collecting the chosen values (name + value), one row each.", create: () => new CableSwitchNode(), parity: false, keywords: "switch multiplexer select choose route mux named cube collect multi" },
     ],
   },
 
@@ -273,6 +272,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
     type: "category", label: "Numbers", description: "Scalar math: arithmetic, functions, rounding, and trigonometry.",
     children: [
       { type: "expression", label: "Expression", description: "Type a formula like a*b+1; named variables become input sockets. Supports math functions, the constants pi / tau / e / phi, and list broadcasting. Pick the result type to loop any function over arrays (e.g. UPPER(name), DATE(y,m,d)). Functions evaluate via Formula.js, a standard Excel-function library, separate from the visual nodes, so a function here can differ from the matching node for statistics, dates, units, and error / null handling. Scope is capped on purpose: scalars and 1-D lists only, with no matrices/frames, no complex numbers, and no type-directed semantics. For those, build a subgraph instead.", create: () => new ExpressionNode(), accent: NODE_KIND_ACCENTS.math },
+      { type: "equation", label: "Equation", description: "Type a relation like V = I * R; every variable becomes an input AND an output. Leave one variable unwired and the node solves for it — algebraically where the equation inverts, numerically otherwise; a quadratic yields every real root as a list (x² = 36 → −6, 6). Wire in all of them and the Check output turns TRUE/FALSE. Numbers and 1-D lists; √ and trig inversions take the principal branch.", create: () => new EquationNode(), accent: NODE_KIND_ACCENTS.math, keywords: "solve rearrange unknown goal seek formula bidirectional check quadratic roots" },
       {
         type: "category", label: "Arithmetic", description: "Two-input operations on numbers.",
         children: [
@@ -409,6 +409,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
               { type: "pair", children: [complexBinaryLeaf("sum"),     complexBinaryLeaf("sub")]     },
               { type: "pair", children: [complexBinaryLeaf("product"), complexBinaryLeaf("div")]     },
               { type: "cx-power", label: "IMPOWER", description: "Complex number raised to a real power. Excel: IMPOWER.", create: () => new ComplexPowerNode(), parity: false },
+              { type: "cx-quadratic", label: "Quadratic Roots", description: "Both roots of ax² + bx + c = 0 as complex numbers — a negative discriminant gives the conjugate pair. The Equation node covers the real-root case.", create: () => new QuadraticRootsNode(), parity: false, keywords: "quadratic formula discriminant complex roots polynomial" },
             ],
           },
         ],
@@ -425,7 +426,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
         children: [
           { type: "list-range",    label: "Range",     description: "Generate a sequence: start, start+step, …, < stop. Excel: SEQUENCE.", accent: NODE_KIND_ACCENTS.list, create: () => new RangeNode() },
           { type: "list-linspace", label: "LinSpace",  description: "Count evenly spaced values from Start to End inclusive", create: () => new LinSpaceNode() },
-          { type: "list-vstack",   label: "VStack",    description: "Join two lists end-to-end. Excel: VSTACK.", create: () => new VStackNode() },
+          { type: "list-concat",   label: "Concat Lists", description: "Join lists end-to-end, in row order — add rows for more lists; a lone value counts as a 1-element list. Any element type. To stack lists as rows of a table instead, use VSTACK.", create: () => new ConcatListsNode(), keywords: "append join combine concatenate push" },
           { type: "list-repeat",   label: "Repeat",    description: "An array of one value repeated N times, like ZEROS or ONES.", create: () => new RepeatNode() },
           { type: "pair", children: [
             { type: "list-geometric", label: "Geometric", description: "Geometric series: start × ratio^0, start × ratio^1, …", create: () => new GeometricNode() },
@@ -438,10 +439,10 @@ export const NODE_CATALOG: CatalogEntry[] = [
       {
         type: "category", label: "Shape", description: "Reorder, trim, and filter lists.",
         children: [
-          { type: "list-filter",  label: "FILTER", description: "Keep list values or table rows that pass a condition: one or two comparisons combined with AND/OR, or a wired Keep-if mask where nonzero keeps. Chain with SUM / COUNT / AVERAGE for SUMIF(S) / COUNTIF(S). Excel: FILTER.", accent: NODE_KIND_ACCENTS.list, create: () => new FilterNode() },
+          { type: "list-filter",  label: "List Filter", description: "Keep list values passing condition rows (op + value, add rows for AND/OR; text tests ignore case like Excel's =, Match case per row); failures exit the Dropped output. Any element type. To filter a TABLE's rows, wire the table into Frame Filter (its columns arrive as Col1, Col2…). Excel: FILTER.", accent: NODE_KIND_ACCENTS.list, create: () => new FilterNode(), keywords: "keep where condition predicate" },
           { type: "list-fill",  label: "Coalesce / Fill", description: "Handle missing (null) cells: fill with a constant, forward/back-fill, impute mean/median/mode, interpolate, drop them, or coalesce any number of lists in priority order, where the first present value wins, like SQL COALESCE. Errors pass through; stats use the present values only. Pairs with ISNULL.", accent: NODE_KIND_ACCENTS.list, create: () => new FillNode() },
           { type: "pair", children: [
-            { type: "list-sort",    label: "SORT",    description: "Sort ascending or descending. Excel: SORT(range).", create: () => new SortNode() },
+            { type: "list-sort",    label: "List Sort", description: "Sort ascending or descending. Excel: SORT(range).", create: () => new SortNode() },
             { type: "list-reverse", label: "REVERSE", description: "Reverse the order of the list", create: () => new ReverseNode() },
           ]},
           { type: "list-slice",   label: "SLICE",  description: "Sublist from Start to End, 1-based inclusive; leave End blank to run to the end.", create: () => new SliceNode() },
@@ -467,7 +468,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
             { type: "list-nthelement", label: "Nth Element", description: "Every N-th element; step subsampling.", create: () => new NthElementNode() },
           ]},
           { type: "list-pad", label: "Pad", description: "Extend list to a target length by prepending or appending a fill value. Excel: PADLEFT / PADRIGHT.", create: () => new PadNode() },
-          { type: "list-sortby", label: "SORTBY", description: "Sort one list by the values in a parallel list; elements at the same index stay paired. Excel 365: SORTBY.", create: () => new SortByNode(), parity: false },
+          { type: "list-sortby", label: "SORTBY", description: "Sort one list by the values in a parallel numeric list; elements at the same index stay paired. The sorted list can be any element type (sort names by their scores). Excel 365: SORTBY.", create: () => new SortByNode(), parity: false },
           {
             type: "category", label: "Rolling", description: "Sliding-window aggregate over a list.",
             children: [
@@ -501,7 +502,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "pair", children: [reduceLeaf("sum"), reduceLeaf("product")] },
           { type: "pair", children: [reduceLeaf("avg"), reduceLeaf("median")] },
           { type: "pair", children: [reduceLeaf("min"), reduceLeaf("max")] },
-          reduceLeaf("count"),
+          { type: "pair", children: [reduceLeaf("count"), reduceLeaf("countdistinct")] },
           { type: "pair", children: [reduceLeaf("geomean"), reduceLeaf("harmean")] },
           { type: "pair", children: [reduceLeaf("stdev"), reduceLeaf("stdev_p")] },
           { type: "pair", children: [reduceLeaf("var_s"), reduceLeaf("var_p")] },
@@ -594,15 +595,16 @@ export const NODE_CATALOG: CatalogEntry[] = [
     type: "category", label: "Finance", description: "Interest rate, TVM, depreciation, and cash-flow calculations.",
     children: [
       {
-        type: "category", label: "Rate conversion", description: "Convert between nominal and effective interest rates.",
-        children: [{ type: "pair", children: [irLeaf("effect"), irLeaf("nominal")] }],
+        type: "category", label: "Time value of money", description: "The annuity and compound-growth relations as acausal Equation nodes.",
+        children: [
+          { type: "tvm", label: "Time Value of Money", description: "The whole loan/annuity family in one relation: rate, nper, pmt, pv, fv around pv·(1+r)ⁿ + pmt·((1+r)ⁿ−1)/r + fv = 0. Wire any four and the fifth solves; wire all five and Check answers TRUE/FALSE. Payment timing (Excel's type argument) is the dropdown. Excel: PMT, PV, FV, NPER, RATE.", create: () => new TvmNode(), keywords: "pmt pv fv nper rate loan annuity payment mortgage present future value" },
+          { type: "fin-compound-growth", label: "Compound Growth", description: "Lump-sum growth fv = pv·(1+rate)^nper — wire three, the fourth solves. Excel: FV/PV (pmt-less), PDURATION (solve nper), RRI (solve rate).", create: () => new EquationNode({ label: "Compound Growth", expr: "fv = pv * (1 + rate)^nper", locked: true }), keywords: "pduration rri compound interest growth doubling lump sum" },
+        ],
       },
       {
-        type: "category", label: "Time value of money", description: "PMT, PV, FV, NPER: core loan and investment calculations.",
+        type: "category", label: "Rate conversion", description: "Convert between nominal and effective interest rates.",
         children: [
-          { type: "pair", children: [tvmLeaf("pmt"), tvmLeaf("pv")] },
-          { type: "pair", children: [tvmLeaf("fv"), tvmLeaf("nper")] },
-          { type: "rate", label: "RATE", description: "Interest rate per period, solved iteratively from nper, pmt, pv. Excel: RATE.", create: () => new RateNode() },
+          { type: "fin-effective-rate", label: "Effective Rate", description: "APR ↔ APY: eff = (1 + nom/npery)^npery − 1. Wire two of nominal rate, effective rate, and compounds-per-year; the third solves. Excel: EFFECT, NOMINAL.", create: () => new EquationNode({ label: "Effective Rate", expr: "eff = (1 + nom/npery)^npery - 1", locked: true }), keywords: "effect nominal apr apy compounding annual percentage yield" },
         ],
       },
       {
@@ -643,10 +645,6 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "fvschedule", label: "FVSCHEDULE", description: "Future value of principal after applying a schedule of interest rates. Excel: FVSCHEDULE.", create: () => new FvScheduleNode() },
           { type: "ispmt",      label: "ISPMT",      description: "Interest paid in a specific period of a straight-line-principal loan. Excel: ISPMT.", create: () => new IspmtNode() },
           { type: "pair", children: [dollarLeaf("dollarde"), dollarLeaf("dollarfr")] },
-          { type: "pair", children: [
-            { type: "pduration", label: "PDURATION", description: "Periods needed to grow PV to FV at a given rate. Excel: PDURATION.", create: () => new PdurationNode() },
-            { type: "rri",       label: "RRI",       description: "Equivalent interest rate for growth from PV to FV in N periods. Excel: RRI.", create: () => new RriNode() },
-          ]},
           { type: "pair", children: [tbillLeaf("tbilleq"), tbillLeaf("tbillprice")] },
           tbillLeaf("tbillyield"),
           { type: "pair", children: [secDiscLeaf("disc"), secDiscLeaf("intrate")] },
@@ -875,13 +873,16 @@ export const NODE_CATALOG: CatalogEntry[] = [
         children: [
           { type: "pair", children: [reshapeLeaf("wraprows"), reshapeLeaf("wrapcols")] },
           { type: "pair", children: [reshapeLeaf("tocol"),    reshapeLeaf("torow")]    },
-          { type: "hstack-table", label: "HSTACK", description: "Concatenate two tables side by side (same number of rows). Excel: HSTACK.", create: () => new HStackTableNode(), parity: false },
+          { type: "hstack-table", label: "HSTACK", description: "Concatenate tables side by side, in row order — add rows for more tables; a list counts as one row, so two lists make one long row. A shorter table pads down with #N/A. Excel: HSTACK.", create: () => new HStackTableNode(), parity: false },
+          { type: "vstack-table", label: "VSTACK", description: "Stack tables top-to-bottom, in row order — add rows for more tables; a list counts as one row, so two lists make a 2-row table. A narrower table pads right with #N/A. Excel: VSTACK.", create: () => new VStackNode(), parity: false, keywords: "stack rows lists to table matrix" },
+          { type: "table-expand", label: "EXPAND", description: "Grow a table to a target row/column count; new cells take the wired Fill value, or #N/A without one. Shrinking is #VALUE! — that's TAKE's job. Excel: EXPAND.", create: () => new ExpandNode(), parity: false, keywords: "grow pad resize table fill" },
         ],
       },
       {
-        type: "category", label: "Select", description: "Pick specific rows or columns by index.",
+        type: "category", label: "Select", description: "Pick rows or columns — by index, or from the table's edges.",
         children: [
           { type: "pair", children: [selectLeaf("chooserows"), selectLeaf("choosecols")] },
+          { type: "pair", children: [takeDropLeaf("take"), takeDropLeaf("drop")] },
         ],
       },
       {
@@ -891,12 +892,14 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "by-axis",    label: "BYROW / BYCOL", description: "Reduce each row or column of a table to one value. Variable v = the row/column as a list; pick the result type for text/date. Excel: BYROW / BYCOL.", create: () => new ByAxisNode(), parity: false },
           { type: "make-array", label: "MAKEARRAY", description: "Build a rows×cols table from a formula of its indices. Variables r, c = 1-based row, column; pick the result type for text/date. Excel: MAKEARRAY.", create: () => new MakeArrayNode(), parity: false },
           { type: "reduce-lambda", label: "REDUCE", description: "Fold a list or table to one value, starting from Initial. Variables acc = running value, x = current cell, i = position; pick the result type for text/date. Excel: REDUCE.", create: () => new ReduceLambdaNode(), parity: false },
+          { type: "scan-lambda", label: "SCAN", description: "Like REDUCE but keeps every running value: fold a list or table from Initial and emit the accumulator after each cell, same shape as the input. A running total is acc + x from 0; a running max is MAX(acc, x). Variables acc, x, i; pick the result type for text/date. Excel: SCAN.", create: () => new ScanLambdaNode(), parity: false, keywords: "running total cumulative accumulate prefix sum" },
         ],
       },
       {
         type: "category", label: "Frames (named columns)", description: "A data table = a Matrix plus a header list. Build one, take it apart, and read or add columns.",
         children: [
           { type: "build-frame", label: "Build Frame", description: "Combine a Matrix and a header text-list into a Frame. Missing headers auto-fill as Col1, Col2…; duplicates are made unique.", create: () => new BuildFrameNode(), parity: false },
+          { type: "frame-from-lists", label: "Frame from Lists", description: "Build a Frame straight from lists: each row pairs a typed column name with a wired list of any type. Ragged columns pad with blanks; add or remove columns with the row buttons.", create: () => new FrameFromListsNode(), parity: false, keywords: "lists to frame columns table build fast assemble" },
           { type: "split-frame", label: "Split Frame", description: "Take a Frame apart into its numeric Matrix body and its header text-list; the inverse of Build Frame. A type filter (All / Num / Date / Bool / Text) keeps only columns of that type, so you can pull just the numeric columns out of a mixed frame: a text·num·date·num frame → Num gives a 2-column matrix + those 2 headers. Text → headers only.", create: () => new SplitFrameNode(), parity: false },
           { type: "get-column",  label: "Get Column",  description: "Pull one column out of a Frame as a list, by name or 1-based number. Read as Number, Text, or Date; this sets the output type.", create: () => new GetColumnNode(), parity: false },
           { type: "get-row",     label: "Get Row",     description: "Pull one row out of a Frame by 1-based number, giving a 1-row Frame: a row mixes types, so it's not a list.", create: () => new GetRowNode(), parity: false },
@@ -908,17 +911,18 @@ export const NODE_CATALOG: CatalogEntry[] = [
         children: [
           { type: "distinct",    label: "Distinct",    description: "Remove duplicate rows from a Frame, keeping the first of each; the table form of UNIQUE. Rows compare case-sensitively: keys are identity, unlike Excel.", create: () => new DistinctNode(), parity: false },
           { type: "head",        label: "Head",        description: "Keep the first N rows of a Frame. Wire or type the row count.", create: () => new HeadNode(), parity: false },
-          { type: "sort-frame",  label: "Sort",        description: "Order a Frame's rows by one column, ascending or descending. Blanks and errors sort last. Excel: SORT.", create: () => new SortFrameNode(), parity: false },
-          { type: "filter-frame",label: "Filter Rows", description: "Keep a Frame's rows passing condition rows (column + test + value) combined with AND/OR; the SQL WHERE. Blanks/errors drop. Text tests ignore case like Excel's =; Match case per condition. Excel: FILTER.", create: () => new FilterFrameNode(), parity: false },
+          { type: "sort-frame",  label: "Frame Sort",  description: "Order a Frame's rows by one column, ascending or descending. Blanks and errors sort last. Excel: SORT.", create: () => new SortFrameNode(), parity: false },
+          { type: "filter-frame",label: "Frame Filter", description: "Keep a Frame's rows passing condition rows (column + test + value) combined with AND/OR; the SQL WHERE. Blanks/errors fail their condition and land on the Dropped output — Kept + Dropped is always the whole Frame. Text tests ignore case like Excel's =; Match case per condition. Excel: FILTER.", create: () => new FilterFrameNode(), parity: false, keywords: "filter rows where keep" },
           { type: "join",        label: "Join",        description: "Combine two Frames on a key column: inner / left / right / outer, or as-of (nearest match on a sorted number/date key, with a direction + tolerance). A left row matching several right rows fans out; as-of never fans out. Keys match case-sensitively, unlike Excel lookups. The relational JOIN. Excel: VLOOKUP/XLOOKUP do a left join one column at a time.", create: () => new JoinNode(), parity: false },
           { type: "select-cols", label: "Select Columns", description: "Keep only the named columns, in the order given. Type a comma-separated list or wire one. Excel: CHOOSECOLS.", create: () => new SelectColumnsNode(), parity: false },
           { type: "drop-cols",   label: "Drop Columns",   description: "Remove the named columns from a Frame; the rest pass through. Type a comma-separated list or wire one.", create: () => new DropColumnsNode(), parity: false },
+          { type: "sumifs", label: "SUMIFS", description: "Aggregate one frame column by conditions on its other columns: pick sum/count/average/min/max, name the Values column, and add criteria rows (column + test + value, all must pass — Excel's *IFS). SUMIFS(sales, region, =North) as one node; parallel lists go through Frame from Lists first. Excel: SUMIFS, COUNTIFS, AVERAGEIFS, MINIFS, MAXIFS.", create: () => new SumIfsNode(), keywords: "sumif countif averageif minif maxif criteria conditional aggregate frame" },
           { type: "group-by-frame", label: "Group By", description: "Group a Frame's rows by one or more key columns and aggregate one column (sum / average / min / max / count), with optional grand-total / subtotal rows that re-aggregate the source, GROUPBY's total_depth. A PivotTable's row grouping, but keys group case-sensitively, with no silent case-merge. Excel: GROUPBY.", create: () => new GroupByFrameNode(), parity: false },
           { type: "pivot",       label: "PIVOTBY",     description: "Cross-tab long → wide: group by one or more Row and Column fields with multi-level headers, and aggregate one or more value columns with a per-value function (SUM / AVERAGE / COUNT / MEDIAN / STDEV / PRODUCT / PERCENTOF …). Supports grand totals + subtotals, sort, a filter mask, and % running totals. Totals re-aggregate the source. Excel: PIVOTBY.", create: () => new PivotNode(), parity: true },
           { type: "unpivot",     label: "Unpivot",     description: "Reshape wide → long (melt): keep the Id columns, turn each chosen Value column into variable/value rows. Excel's Power Query Unpivot.", create: () => new UnpivotNode(), parity: false },
           { type: "nest",        label: "Nest",        description: "Group a flat Frame by key into a Cube; each key's other columns collapse into a nested table cell. The flat → nested bridge.", create: () => new NestNode(), parity: false },
           { type: "unnest",      label: "Unnest",      description: "Expand a Cube's nested-table column back to a flat Frame; each parent row repeats per nested row. The nested → flat bridge, the inverse of Nest.", create: () => new UnnestNode(), parity: false },
-          { type: "append",      label: "Append",      description: "Stack two Frames vertically, matching columns by name; a missing column fills blank. A type clash on a shared column is #TYPE!. Excel: VSTACK.", create: () => new AppendNode(), parity: false },
+          { type: "append",      label: "Append",      description: "Stack Frames vertically in row order — add rows for more Frames; columns match by name, a missing column fills blank. A type clash on a shared column is #TYPE!. Excel: VSTACK.", create: () => new AppendNode(), parity: false },
           { type: "rename",      label: "Rename",      description: "Rename columns via two parallel lists zipped by position: From [\"qty\"] → To [\"Quantity\"]. Type or wire each list.", create: () => new RenameNode(), parity: false },
           { type: "split-column", label: "Split Column", description: "Split one text column into several by a delimiter; the source column is replaced by the parts. Name the new columns or let them auto-number. Power Query: Split Column by Delimiter.", create: () => new SplitColumnNode(), parity: false, keywords: "split delimiter text column separate parse divide power query" },
           { type: "add-index",   label: "Add Index",   description: "Prepend a numeric row-number column counting from a start value; the default is 1. Power Query: Add Index Column; Excel: SEQUENCE(ROWS(...)).", create: () => new AddIndexNode(), parity: false, keywords: "index row number sequence counter rownum power query" },
@@ -940,6 +944,18 @@ export const NODE_CATALOG: CatalogEntry[] = [
   },
 
   // ── OTHER ────────────────────────────────────────────────────────────────────
+  // ── PACKS ────────────────────────────────────────────────────────────────────
+  // The domain packs' home row (2026-07-09; the top-level slot freed by folding
+  // Control into Input). Declared here EMPTY so it sits before "Other" — the
+  // catalog builder inserts each active pack's nodes under ["Packs", <domain>]
+  // and prunes the row entirely when no pack targets it. Cross-woven pack nodes
+  // (Timesavers presets beside their Excel kin, HYPOTENUSE in Trigonometry)
+  // deliberately stay where they are, marked by the pack dot.
+  {
+    type: "category", label: "Packs", description: "Nodes from your enabled packs, by domain. Manage packs in Settings.",
+    children: [],
+  },
+
   // Catch-all home: the Promo easter egg (below) plus any pack node that doesn't
   // target a specific category. The catalog builder prunes it only if it ends up
   // empty — it won't here, since Promo is a permanent core member.

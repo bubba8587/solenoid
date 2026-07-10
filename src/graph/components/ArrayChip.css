@@ -21,6 +21,15 @@
 
 /* Per-type chip colours (retint with the palette via the --sock-* vars). */
 .solenoid-array-chip--array { --chip-accent: var(--sock-number); } /* lists + tables */
+/* Element-family tints (homogeneous containers only — set by ArrayChip when the
+   family is known; numeric keeps the default above). List vs table shades match
+   the corresponding socket colours. */
+.solenoid-array-chip--elem-string        { --chip-accent: var(--sock-strlist); }
+.solenoid-array-chip--elem-string-table  { --chip-accent: var(--sock-strtable); }
+.solenoid-array-chip--elem-date          { --chip-accent: var(--sock-datelist); }
+.solenoid-array-chip--elem-date-table    { --chip-accent: var(--sock-datetable); }
+.solenoid-array-chip--elem-logical       { --chip-accent: var(--sock-logicallist); }
+.solenoid-array-chip--elem-logical-table { --chip-accent: var(--sock-logicaltable); }
 .solenoid-array-chip--frame { --chip-accent: var(--sock-frame); }  /* frames */
 .solenoid-array-chip--cube  { --chip-accent: var(--sock-cube); }   /* cubes */
 .solenoid-array-chip--chart { --chip-accent: var(--sock-chart); }  /* charts */

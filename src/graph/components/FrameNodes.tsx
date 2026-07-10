@@ -41,7 +41,7 @@ import { collapseStore } from "../collapseStore";
 import { pivotEditor } from "../pivotEditorStore";
 import { InlineInputs, InlineNumberField, InlineTextField, useConnectedInputs } from "./inlineInput";
 import { CollapsedInputPill } from "./CollapsedInputPill";
-import { pushRowAddUndo, pushRowRemovalUndo } from "./ExtensibleInputs";
+import { ExtensibleInputs, pushRowAddUndo, pushRowRemovalUndo } from "./ExtensibleInputs";
 import { FrameDisplay } from "./FrameDisplay";
 import { ResultDisplay } from "./ResultDisplay";
 import { ArrayChip } from "./ArrayChip";
@@ -126,7 +126,7 @@ export function SortFrameComponent({ data, emit }: NodeProps<SortFrameNodeType>)
 
 // ─── FILTER FRAME ──────────────────────────────────────────────────────────────
 
-const FILTER_OP_OPTIONS: { value: FilterOp; label: string }[] = [
+export const FILTER_OP_OPTIONS: { value: FilterOp; label: string }[] = [
   { value: "gt", label: "＞ greater than" },
   { value: "gte", label: "≥ at least" },
   { value: "lt", label: "＜ less than" },
@@ -140,9 +140,9 @@ const FILTER_OP_OPTIONS: { value: FilterOp; label: string }[] = [
 
 // The ops where case can matter — string eq/neq + the three text predicates.
 // Numeric/date/logical comparisons ignore the flag, so the checkbox hides.
-const TEXT_MATCH_OPS: ReadonlySet<FilterOp> = new Set(["eq", "neq", "contains", "startsWith", "endsWith"]);
+export const TEXT_MATCH_OPS: ReadonlySet<FilterOp> = new Set(["eq", "neq", "contains", "startsWith", "endsWith"]);
 
-const FILTER_COMBINE_OPTIONS: { value: FilterCombine; label: string; title: string }[] = [
+export const FILTER_COMBINE_OPTIONS: { value: FilterCombine; label: string; title: string }[] = [
   { value: "and", label: "AND", title: "Keep rows matching every condition" },
   { value: "or", label: "OR", title: "Keep rows matching any condition" },
 ];
@@ -199,7 +199,7 @@ export function FilterFrameComponent({ data, emit }: NodeProps<FilterFrameNodeTy
   }
 
   return (
-    <NodeShell node={data} emit={emit}>
+    <NodeShell node={data} emit={emit} hideOutputSockets>
       {collapsed ? (
         <CollapsedInputPill node={data} emit={emit} keys={["frame", ...pairs.flat()]} />
       ) : (
@@ -270,7 +270,14 @@ export function FilterFrameComponent({ data, emit }: NodeProps<FilterFrameNodeTy
           </button>
         </>
       )}
-      <FrameDisplay frame={data.cachedResult} label={data.label} />
+      <MeasuredSocketRow side="output" socketKey="frame" nodeId={data.id} emit={emit} payload={data.outputs.frame!.socket} hero>
+        <FrameDisplay frame={data.cachedResult} label={data.label} />
+      </MeasuredSocketRow>
+      {/* The complement stays a LAZY ref — no preview here, just its socket
+          (materializing it for a chip would collect a frame nobody asked for). */}
+      <MeasuredSocketRow side="output" socketKey="dropped" nodeId={data.id} emit={emit} payload={data.outputs.dropped!.socket}>
+        <span className="solenoid-node__io-label">Dropped</span>
+      </MeasuredSocketRow>
     </NodeShell>
   );
 }
@@ -282,6 +289,8 @@ const JOIN_HOW_OPTIONS: { value: JoinHow; label: string; title: string }[] = [
   { value: "left", label: "Left", title: "All left rows; unmatched right side is blank" },
   { value: "right", label: "Right", title: "All right rows; unmatched left side is blank" },
   { value: "outer", label: "Outer", title: "All rows from both sides" },
+  { value: "semi", label: "Semi", title: "Left rows whose key matches in right — left columns only" },
+  { value: "anti", label: "Anti", title: "Left rows with no match in right — left columns only" },
   { value: "asof", label: "As-of", title: "Nearest match on a sorted number/date key; no exact match required" },
 ];
 
@@ -440,7 +449,7 @@ export function UnnestComponent({ data, emit }: NodeProps<UnnestNodeType>) {
 export function AppendComponent({ data, emit }: NodeProps<AppendNodeType>) {
   return (
     <NodeShell node={data} emit={emit}>
-      <InlineInputs node={data} emit={emit} />
+      <ExtensibleInputs node={data} emit={emit} />
       <FrameDisplay frame={data.cachedResult} label={data.label} />
     </NodeShell>
   );

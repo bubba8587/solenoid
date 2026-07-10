@@ -1,12 +1,13 @@
 import { ClassicPreset } from "rete";
-import { numIn, numListIn, tableIn, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, anyOut } from "./shared";
+import { numIn, numListIn, tableIn, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, anyIn, staticTrueAnyOut, anyListIn } from "./shared";
+import { readFilterValue } from "./list";
 import { toMatrix } from "./coerce";
 import { parseDateToSerial } from "./date";
 import { isSolError, solError, type SolError } from "../errorValue";
 import { coerceLogical } from "../valueKinds";
 import { APP_LOCALE } from "../locale";
 import {
-  buildFrame, splitFrame, getColumn, addColumn, frameRowCount, frameHasTextColumns,
+  buildFrame, splitFrame, getColumn, addColumn, frameRowCount, frameHasTextColumns, makeHeaders,
   frameFromInputText, formatFrameCell, isCubeValue, isFrameValue,
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
 } from "../frame";
@@ -15,10 +16,10 @@ import {
   splitColumn, addIndexColumn, decisionMatrix, decisionCriteria, decisionSensitivity,
   lookupFrameCell, lookupCubeCell, lookupFrameRowIndex, lookupCubeRowIndex,
   frameRowAt, cubeRowAt, asLookupSource, reconcileFrames,
-  type FilterOp, type FilterCond, type FilterCombine, type JoinHow, type AsofDirection, type AggOp, type DecisionNormalize, type LookupMatchMode, type LookupSearchMode, type ReconcileSummary,
+  type FilterCond, type FilterCombine, type JoinHow, type AsofDirection, type AggOp, type DecisionNormalize, type LookupMatchMode, type LookupSearchMode, type ReconcileSummary,
 } from "../frameVerbs";
 import { pairIdsFromKeys } from "./logic";
-import type { PivotSpec } from "../frameVerbs";
+import type { PivotSpec, FilterCondConfig } from "../frameVerbs";
 import { runFrameUnary, runFrameJoin, runFrameAppend, readFrame, collectPreview, dropFrameRef, isFrameRef, frameBackend, materialize, flushRef, type FrameInput, type FrameRef } from "../frameBackend";
 import type { CubeValue, CubeCell } from "../frame";
 
@@ -173,7 +174,7 @@ export class SortFrameNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; dir?: FrameSortDir }) {
     super("SortFrame");
-    this.label = init?.label ?? "Sort";
+    this.label = init?.label ?? "Frame Sort";
     this.dir = init?.dir ?? "asc";
     this.addInput("frame", frameIn("Frame"));
     this.addInput("column", strIn("Column"));
@@ -199,7 +200,7 @@ export class SortFrameNode extends ClassicPreset.Node {
 // Blanks/errors in the data fail that row's condition (under OR another
 // condition can still keep the row).
 
-export interface FilterCondConfig { op: FilterOp; matchCase?: boolean }
+export type { FilterCondConfig } from "../frameVerbs";
 
 export class FilterFrameNode extends ClassicPreset.Node {
   label: string;
@@ -210,6 +211,12 @@ export class FilterFrameNode extends ClassicPreset.Node {
   readonly pairLabels: [string, string] = ["Column", "Value"];
   cachedResult: FrameValue | SolError | null = null;
   stringLiterals: Record<string, string> = {};
+  // emitFrame's pass-guard fields (stamped structurally on every verb node) —
+  // declared here because the Dropped ref lifecycle below reads them directly.
+  _gen?: number;
+  _ref?: FrameRef | null;
+  /** The Dropped output's owned ref — same lifecycle as _ref, no preview. */
+  _refDropped?: FrameRef | null;
   width = 210; height = 240;
 
   constructor(init?: {
@@ -217,7 +224,7 @@ export class FilterFrameNode extends ClassicPreset.Node {
     condConfig?: Record<string, FilterCondConfig>; valueKeys?: string[];
   }) {
     super("FilterFrame");
-    this.label = init?.label ?? "Filter Rows";
+    this.label = init?.label ?? "Frame Filter";
     this.combine = init?.combine ?? "and";
     this.addInput("frame", frameIn("Frame"));
     const ids = pairIdsFromKeys(init?.valueKeys, "column");
@@ -233,11 +240,17 @@ export class FilterFrameNode extends ClassicPreset.Node {
       this.addValuePair();
     }
     this.addOutput("frame", frameOut("Kept"));
+    // The complement, permanently — same fixed-socket rule as the list Filter's
+    // Dropped (never a mode). A lazy ref: costs nothing until a consumer
+    // collects it, so the always-on second output is free.
+    this.addOutput("dropped", frameOut("Dropped"));
   }
 
   private addPairWithId(id: number): void {
     this.addInput(`column${id}`, strIn(`Column ${id + 1}`));
-    this.addInput(`value${id}`, strIn(`Value ${id + 1}`));
+    // `any` (scalar): a wired Slider/Number/Date/Boolean threshold connects;
+    // unwired, the typed text field is the literal (parsed per the column type).
+    this.addInput(`value${id}`, anyIn(`Value ${id + 1}`));
     if (!this.condConfig[String(id)]) this.condConfig[String(id)] = { op: "gt" };
     this.nextPairId = Math.max(this.nextPairId, id + 1);
   }
@@ -263,21 +276,41 @@ export class FilterFrameNode extends ClassicPreset.Node {
     // the surviving entry restores its op/matchCase; reload prunes orphans.
   }
 
+  /** emitFrame's stale-pass + previous-ref lifecycle for the secondary output,
+   *  minus the preview — the card never materializes Dropped; it stays a lazy
+   *  ref until a consumer collects it. */
+  private publishDropped(gen: number, out: FrameRef | FrameValue | SolError | null): FrameRef | FrameValue | SolError | null {
+    if (gen !== this._gen) {
+      if (isFrameRef(out) && out !== this._refDropped) dropFrameRef(out);
+      return null;
+    }
+    if (this._refDropped && this._refDropped !== out) dropFrameRef(this._refDropped);
+    this._refDropped = isFrameRef(out) ? out : null;
+    return out;
+  }
+
   async data(inputs: { frame?: (FrameInput | null)[]; [k: string]: unknown[] | undefined }) {
     const f = inputs.frame?.[0] ?? null;
-    if (f == null) return emitFrame(this, beginPass(this), null);
+    const gen = beginPass(this);
+    if (f == null) return { ...(await emitFrame(this, gen, null)), dropped: this.publishDropped(gen, null) };
     const conditions: FilterCond[] = [];
     for (const [colKey, valKey] of this.valuePairKeys()) {
       const id = colKey.slice(6);
       const col = String((inputs[colKey] as string[] | undefined)?.[0] ?? this.stringLiterals[colKey] ?? "").trim();
-      const val = (inputs[valKey] as string[] | undefined)?.[0] ?? this.stringLiterals[valKey] ?? "";
-      if (col === "" || String(val).trim() === "") continue;
+      const val = readFilterValue(inputs[valKey], this.stringLiterals[valKey]);
+      if (col === "" || val.trim() === "") continue;
       const cfg = this.condConfig[id];
       conditions.push({ column: col, op: cfg?.op ?? "gt", value: val as FrameCell, matchCase: cfg?.matchCase ?? false });
     }
-    return emitFrame(this, beginPass(this), conditions.length === 0
-      ? await readFrame(f)
-      : await runFrameUnary(f, { kind: "filterMulti", combine: this.combine, conditions }));
+    if (conditions.length === 0) {
+      // Pass-through ("not written yet"): Kept = everything, Dropped = blank.
+      return { ...(await emitFrame(this, gen, await readFrame(f))), dropped: this.publishDropped(gen, null) };
+    }
+    // Two independent lazy refs off the same input: the kept filter and its ROW
+    // complement (null-predicate rows land in Dropped, not lost — see D15).
+    const kept = await runFrameUnary(f, { kind: "filterMulti", combine: this.combine, conditions });
+    const dropped = await runFrameUnary(f, { kind: "filterMulti", combine: this.combine, conditions, complement: true });
+    return { ...(await emitFrame(this, gen, kept)), dropped: this.publishDropped(gen, dropped) };
   }
 }
 
@@ -644,25 +677,53 @@ export class UnnestNode extends ClassicPreset.Node {
 }
 
 // ─── APPEND ────────────────────────────────────────────────────────────────────
-// Stack two Frames vertically, union by column name (verb: appendFrames). A
-// conflicting column type across the two is a #TYPE!. One side alone passes
-// through (so it's safe while you're still wiring the other).
+// The Frame rung of the append ladder (decisions.md D15): N extensible frame
+// rows stacked top-to-bottom in row order, union by column NAME (verb:
+// appendFrames — a column missing from one input fills blank; a conflicting
+// column type is #TYPE!). One frame alone passes through (safe while you're
+// still wiring the others). runFrameAppend was always N-ary; the node now
+// exposes it.
 
 export class AppendNode extends ClassicPreset.Node {
   label: string;
   cachedResult: FrameValue | SolError | null = null;
-  width = 190; height = 175;
+  nextInputId = 0;
+  width = 190; height = 215;
 
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; valueKeys?: string[] }) {
     super("Append");
     this.label = init?.label ?? "Append";
-    this.addInput("top", frameIn("Top"));
-    this.addInput("bottom", frameIn("Bottom"));
+    const vKeys = (init?.valueKeys ?? []).filter((k) => k.startsWith("f"));
+    if (vKeys.length) for (const k of vKeys) this.addInputWithKey(k);
+    else for (let i = 0; i < 2; i++) this.addValueInput();
     this.addOutput("frame", frameOut("Stacked"));
   }
 
-  async data(inputs: { top?: (FrameInput | null)[]; bottom?: (FrameInput | null)[] }) {
-    const frames = [inputs.top?.[0] ?? null, inputs.bottom?.[0] ?? null].filter((f): f is FrameInput => f != null);
+  private addInputWithKey(key: string): void {
+    this.addInput(key, frameIn("Frame"));
+    const n = parseInt(key.replace(/^f/, ""), 10);
+    if (Number.isFinite(n)) this.nextInputId = Math.max(this.nextInputId, n + 1);
+  }
+
+  /** Ordered frame-row keys (insertion order = stack order). */
+  valueInputKeys(): string[] {
+    return Object.keys(this.inputs).filter((k) => k.startsWith("f"));
+  }
+
+  addValueInput(): string {
+    const key = `f${this.nextInputId}`;
+    this.addInputWithKey(key);
+    return key;
+  }
+
+  removeValueInput(key: string): void {
+    this.removeInput(key);
+  }
+
+  async data(inputs: Record<string, (FrameInput | null)[] | undefined>) {
+    const frames = this.valueInputKeys()
+      .map((k) => inputs[k]?.[0] ?? null)
+      .filter((f): f is FrameInput => f != null);
     if (frames.length === 0) return emitFrame(this, beginPass(this), null);
     return emitFrame(this, beginPass(this), frames.length === 1 ? await readFrame(frames[0]) : await runFrameAppend(frames));
   }
@@ -963,6 +1024,106 @@ export class BuildFrameNode extends ClassicPreset.Node {
     this.cachedResult = buildFrame(m, headers);
     this._builtFromMatrix = rawMatrix;
     this._builtFromHeaders = headers;
+    return { frame: this.cachedResult };
+  }
+}
+
+// ─── FRAME FROM LISTS ─────────────────────────────────────────────────────────
+// The fast lists→Frame path: each extensible row pairs a column NAME (typed or
+// wired) with a LIST of values (any element family — the anylist wildcard).
+// Build Frame stays the matrix+headers assembler; this one skips the matrix.
+// Type-PRESERVING per column (a wired list is already typed — no re-inference
+// that would turn "1" the string into 1 the number); mixed cells coerce to
+// text; ragged columns pad with blanks. Date lists arrive as serials and type
+// as numbers — retype downstream with Get Column's read-as if needed.
+
+function columnFromCells(name: string, cells: unknown[], length: number): FrameColumn {
+  const present = cells.filter((c) => c !== null && c !== undefined && !isSolError(c));
+  const type: FrameColType =
+    present.length > 0 && present.every((c) => typeof c === "number") ? "number"
+    : present.length > 0 && present.every((c) => typeof c === "boolean") ? "logical"
+    : "string";
+  const values: FrameCell[] = [];
+  for (let i = 0; i < length; i++) {
+    const c = cells[i];
+    if (c === null || c === undefined) { values.push(null); continue; }
+    if (isSolError(c)) { values.push(c); continue; }
+    values.push(type === "string" && typeof c !== "string" ? String(c) : (c as FrameCell));
+  }
+  return { name, type, values };
+}
+
+export class FrameFromListsNode extends ClassicPreset.Node {
+  label: string;
+  cachedResult: FrameValue | null = null;
+  stringLiterals: Record<string, string> = {};
+  literals: Record<string, number> = {};
+  nextPairId = 0;
+  readonly pairLabels: [string, string] = ["Name", "Values"];
+  width = 220; height = 240;
+
+  // Identity-stable memoization (same rationale as BuildFrame, audit finding 42):
+  // a fresh FrameValue per pass defeats the backend's identity source-cache.
+  private _sig: unknown[] = [];
+
+  constructor(init?: { label?: string; valueKeys?: string[] }) {
+    super("FrameFromLists");
+    this.label = init?.label ?? "Frame from Lists";
+    const ids = pairIdsFromKeys(init?.valueKeys, "name");
+    if (ids.length) {
+      for (const id of ids) this.addPairWithId(id);
+    } else {
+      for (let i = 0; i < 2; i++) this.addValuePair();
+    }
+    this.addOutput("frame", frameOut("Frame"));
+  }
+
+  private addPairWithId(id: number): void {
+    this.addInput(`name${id}`, strIn(`Name ${id + 1}`));
+    this.addInput(`vals${id}`, anyListIn(`Column ${id + 1}`));
+    this.nextPairId = Math.max(this.nextPairId, id + 1);
+  }
+
+  /** Ordered (nameKey, valsKey) pairs currently present, in insertion order. */
+  valuePairKeys(): Array<[string, string]> {
+    return Object.keys(this.inputs)
+      .filter((k) => k.startsWith("name"))
+      .map((k) => { const id = k.slice(4); return [`name${id}`, `vals${id}`] as [string, string]; });
+  }
+
+  addValuePair(): void {
+    this.addPairWithId(this.nextPairId);
+  }
+
+  removeValuePair(nameKey: string): void {
+    const id = nameKey.slice(4);
+    this.removeInput(`name${id}`);
+    this.removeInput(`vals${id}`);
+    delete this.stringLiterals[`name${id}`];
+  }
+
+  data(inputs: Record<string, unknown[]>) {
+    const cols: { name: string; cells: unknown[] }[] = [];
+    const sig: unknown[] = [];
+    for (const [nameK, valsK] of this.valuePairKeys()) {
+      const wired = inputs[valsK]?.[0];
+      if (wired === undefined || wired === null) continue; // an unwired row contributes nothing
+      const cells = Array.isArray(wired) ? wired : [wired]; // a scalar makes a 1-cell column
+      const name = String(inputs[nameK]?.[0] ?? this.stringLiterals[nameK] ?? "").trim();
+      cols.push({ name, cells });
+      sig.push(name, wired);
+    }
+    if (cols.length === 0) { this.cachedResult = null; this._sig = []; return { frame: null }; }
+    if (this.cachedResult && sig.length === this._sig.length && sig.every((v, i) => Object.is(v, this._sig[i]))) {
+      return { frame: this.cachedResult };
+    }
+    const length = Math.max(...cols.map((c) => c.cells.length));
+    const names = makeHeaders(cols.map((c) => c.name), cols.length);
+    this.cachedResult = {
+      __frame: true,
+      columns: cols.map((c, i) => columnFromCells(names[i], c.cells, length)),
+    };
+    this._sig = sig;
     return { frame: this.cachedResult };
   }
 }
@@ -1272,7 +1433,7 @@ export class XLookupNode extends ClassicPreset.Node {
     this.addInput("inColumn", strIn("In column"));
     this.addInput("returnColumn", strIn("Return"));
     this.addInput("ifNotFound", strIn("If not found"));
-    this.addOutput("value", anyOut("Value"));
+    this.addOutput("value", staticTrueAnyOut("Value"));
   }
 
   data(inputs: {

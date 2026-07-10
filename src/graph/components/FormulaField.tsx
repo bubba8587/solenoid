@@ -24,6 +24,8 @@ interface FormulaFieldProps {
   onOpen?: () => void;
   /** Optional element seated in the field's corner (e.g. a resize grip). */
   grip?: ReactNode;
+  /** Hide the leading "=" glyph — the Equation node's text contains its own =. */
+  noPrefix?: boolean;
 }
 
 /**
@@ -36,7 +38,7 @@ interface FormulaFieldProps {
 const LOCK_TITLE = "Formula set by its pack and locked. Rename the title freely.";
 
 export function FormulaField({
-  value, onChange, placeholder = "a * b + c …", disabled, disabledTitle, locked, onOpen, grip,
+  value, onChange, placeholder = "a * b + c …", disabled, disabledTitle, locked, onOpen, grip, noPrefix,
 }: FormulaFieldProps) {
   // Inline editing applies only to the click-to-edit (LAMBDA) case: not when
   // wired/overridden, not when locked, and not when a popup owns editing (onOpen).
@@ -88,7 +90,7 @@ export function FormulaField({
       style={disabled ? { opacity: 0.45 } : undefined}
       title={disabled ? disabledTitle : undefined}
     >
-      <span className="solenoid-expr__prefix">=</span>
+      {!noPrefix && <span className="solenoid-expr__prefix">=</span>}
       {/* The field wrapper is the positioned box the grip sits in, so the grip
           lands in the field's corner (not the outer row's padding). */}
       <div className="solenoid-expr__field">

@@ -58,7 +58,11 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
   // A chart scales to fill only once the Display has a manual size (a definite
   // box); before that it renders at its fixed default — measuring the
   // content-driven card would feed back and oscillate.
-  const sized = !collapsed && !!useSyncExternalStore(nodeSizeStore.subscribe, () => nodeSizeStore.get(data.id));
+  // The hook must run UNCONDITIONALLY — `!collapsed && !!useSyncExternalStore(…)`
+  // short-circuited it away while collapsed, so toggling collapse changed the
+  // per-render hook count (React #310) and crashed the node.
+  const manualSize = useSyncExternalStore(nodeSizeStore.subscribe, () => nodeSizeStore.get(data.id));
+  const sized = !collapsed && !!manualSize;
 
   // Honor an FC docked to EITHER of the Display's sockets (in or out), not
   // just "in" — the FC keys the annotation to whichever socket it snapped to.

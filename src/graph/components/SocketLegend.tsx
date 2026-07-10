@@ -13,7 +13,8 @@ type Dot =
   | { kind: "grid";   color: string }
   | { kind: "cube";   color: string }
   | { kind: "lambda"; color: string }
-  | { kind: "chart";  color: string };
+  | { kind: "chart";  color: string }
+  | { kind: "ring";   color: string };
 
 type LegendGroup = { dots: Dot[]; label: string };
 
@@ -53,10 +54,13 @@ const GROUPS: LegendGroup[] = [
     { kind: "lambda", color: SOCKET_COLORS.lambda },
     { kind: "chart", color: SOCKET_COLORS.chart },
   ] },
+  // The wildcard ladder: any (one value) → anylist (1-D) → anytable (2-D),
+  // plus the hollow ring = trueany, the accept-ANYTHING supremum.
   { label: "Any", dots: [
     { kind: "circle", color: SOCKET_COLORS.any },
     { kind: "square", color: SOCKET_COLORS.anylist },
     { kind: "grid",   color: SOCKET_COLORS.anytable },
+    { kind: "ring",   color: SOCKET_COLORS.trueany },
   ] },
 ];
 
@@ -102,6 +106,14 @@ export function SocketDot({ entry }: { entry: Dot }) {
           <path d="M6 20l6.5 -9 M19 20c-6 0 -6 -16 -12 -16" fill="none" stroke="var(--socket-ring)" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" />
         </g>
         <circle cx="6" cy="6" r="5" fill="none" stroke="var(--socket-ring)" strokeWidth="2" />
+      </svg>
+    );
+  }
+  if (entry.kind === "ring") {
+    return (
+      <svg width={14} height={14} viewBox="-1 -1 14 14" style={{ flexShrink: 0 }}>
+        {/* Hollow circle — border only, no fill: the trueany "anything" socket. */}
+        <circle cx="6" cy="6" r="4.5" fill="none" stroke={entry.color} strokeWidth="2.5" />
       </svg>
     );
   }
@@ -197,7 +209,9 @@ export function DimensionalityFlow() {
       </p>
       <p className="solenoid-dimflow__note">
         Split-square sockets (the numeric / text / date <em>combos</em>) accept either
-        a single value or a list. The grey <em>Any</em> socket accepts anything.
+        a single value or a list. The grey <em>Any</em> sockets are the untyped ladder —
+        circle = one value of any type, square = any list, grid = any table — and the
+        hollow ring accepts anything at all.
       </p>
     </div>
   );

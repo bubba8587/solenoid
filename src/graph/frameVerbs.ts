@@ -42,6 +42,9 @@ export type FilterOp = ComparisonOp | "contains" | "startsWith" | "endsWith";
 /** One predicate of a multi-condition filter (B-2). `matchCase` rides
  *  PER-CONDITION — "Region eq west (any case) AND Code contains X (exact)". */
 export interface FilterCond { column: string; op: FilterOp; value: FrameCell; matchCase?: boolean }
+/** Per-row {op, matchCase} config, shared by every condition-row card (the
+ *  frame Filter, the 1-D Filter, SUMIFS). */
+export interface FilterCondConfig { op: FilterOp; matchCase?: boolean }
 export type FilterCombine = "and" | "or";
 
 /** The verb set. Unary ops compose via `applyVerb`; binary ops (join, append)
@@ -54,7 +57,7 @@ export type FrameOp =
   | { kind: "distinct"; columns?: string[] }         // unique rows (on these cols, or all)
   | { kind: "head"; n: number }                      // first n rows
   | { kind: "filter"; column: string; op: FilterOp; value: FrameCell; matchCase?: boolean } // keep rows passing a predicate
-  | { kind: "filterMulti"; combine: FilterCombine; conditions: FilterCond[] } // keep rows passing ALL ("and") / ANY ("or") predicates
+  | { kind: "filterMulti"; combine: FilterCombine; conditions: FilterCond[]; complement?: boolean } // keep rows passing ALL ("and") / ANY ("or") predicates; complement keeps the REST
   | { kind: "groupBy"; keys: string[]; aggs: AggSpec[] } // one row per key combo + aggregates
   | { kind: "unpivot"; idColumns: string[]; valueColumns: string[]; variableName?: string; valueName?: string } // wide → long
   | ({ kind: "pivot" } & PivotSpec); // long → wide cross-tab (Excel PIVOTBY)
@@ -199,7 +202,7 @@ function filterValueToNumber(value: FrameCell, type: FrameColType): number | nul
   return null;
 }
 
-function passesFilter(cell: FrameCell, op: FilterOp, value: FrameCell, type: FrameColType, matchCase: boolean): boolean {
+export function passesFilter(cell: FrameCell, op: FilterOp, value: FrameCell, type: FrameColType, matchCase: boolean): boolean {
   if (cell === null || isSolError(cell)) return false;
   // Simple lowercase fold, NOT locale-aware — the one spec both engines
   // implement identically (Rust `to_lowercase()` agrees with JS `toLowerCase()`).
@@ -234,14 +237,19 @@ export function filterRows(f: FrameValue, column: string, op: FilterOp, value: F
  *  (blanks/errors fail THAT condition; an unparseable value matches no rows for
  *  that condition — under OR the others still can). No conditions = identity
  *  on BOTH engines (not OR's vacuous-false), so a blank node passes data through. */
-export function filterRowsMulti(f: FrameValue, combine: FilterCombine, conditions: readonly FilterCond[]): FrameValue {
-  if (conditions.length === 0) return f;
+export function filterRowsMulti(f: FrameValue, combine: FilterCombine, conditions: readonly FilterCond[], complement = false): FrameValue {
+  // `complement` keeps the rows the plain filter would discard — the ROW
+  // complement, not predicate negation: a null/error cell fails its condition,
+  // so under complement that row is KEPT (Kept ∪ Dropped = every row; the same
+  // exhaustive-split rule as the list Filter's Dropped output).
+  if (conditions.length === 0) return complement ? reorderRows(f, []) : f;
   const cols = conditions.map((c) => requireColumn(f, c.column));
   const keep: number[] = [];
   for (let i = 0; i < frameRowCount(f); i++) {
     const pass = (c: FilterCond, j: number) =>
       passesFilter(cellAt(cols[j], i), c.op, c.value, cols[j].type, c.matchCase ?? false);
-    if (combine === "and" ? conditions.every(pass) : conditions.some(pass)) keep.push(i);
+    const kept = combine === "and" ? conditions.every(pass) : conditions.some(pass);
+    if (kept !== complement) keep.push(i);
   }
   return reorderRows(f, keep);
 }
@@ -417,7 +425,7 @@ export function addIndexColumn(f: FrameValue, name: string, start: number): Fram
 }
 
 // ─── Join (binary) ─────────────────────────────────────────────────────────────
-export type JoinHow = "inner" | "left" | "right" | "outer" | "asof";
+export type JoinHow = "inner" | "left" | "right" | "outer" | "semi" | "anti" | "asof";
 // backward = latest right key ≤ left key (Polars' default strategy); forward =
 // earliest right key ≥ left key; nearest = whichever is closer (ties → backward).
 export type AsofDirection = "backward" | "forward" | "nearest";
@@ -558,6 +566,23 @@ export function joinFrames(left: FrameValue, right: FrameValue, opts: JoinOpts):
   const lk = requireColumn(left, opts.leftKey);
   const rk = requireColumn(right, opts.rightKey);
   const ln = frameRowCount(left), rn = frameRowCount(right);
+
+  // Semi/anti FILTER the left frame (the table-level set intersect/difference):
+  // keep left rows whose key does / doesn't match in right — original order, no
+  // fan-out, LEFT columns only (Polars' semi/anti layout). A null/error key never
+  // matches (same rule as the equality joins), so it's dropped by semi, kept by anti.
+  if (opts.how === "semi" || opts.how === "anti") {
+    const rIdx = keyIndex(rk, rn);
+    const keep: number[] = [];
+    for (let i = 0; i < ln; i++) {
+      const cell = cellAt(lk, i);
+      const matched = cell !== null && !isSolError(cell) && rIdx.has(encKey(cell));
+      if (matched === (opts.how === "semi")) keep.push(i);
+    }
+    return frame(left.columns.map((c) => ({
+      name: c.name, type: c.type, values: keep.map((i) => cellAt(c, i)),
+    })));
+  }
 
   // pairs of [leftRow | null, rightRow | null], in output order.
   let pairs: [number | null, number | null][];
@@ -1405,7 +1430,7 @@ export function applyVerb(f: FrameValue, op: FrameOp): FrameValue {
     case "distinct": return distinctRows(f, op.columns);
     case "head":     return headRows(f, op.n);
     case "filter":   return filterRows(f, op.column, op.op, op.value, op.matchCase ?? false);
-    case "filterMulti": return filterRowsMulti(f, op.combine, op.conditions);
+    case "filterMulti": return filterRowsMulti(f, op.combine, op.conditions, op.complement ?? false);
     case "groupBy":  return groupByFrame(f, op.keys, op.aggs);
     case "unpivot":  return unpivotFrame(f, op.idColumns, op.valueColumns, { variableName: op.variableName, valueName: op.valueName });
     case "pivot":    return pivotFrame(f, op);

@@ -7,12 +7,15 @@ import type {
   HStackTableNode as HStackTableNodeType,
   TableReshapeNode as TableReshapeNodeType, TableReshapeOp,
   TableSelectNode as TableSelectNodeType, TableSelectOp,
+  TableTakeDropNode as TableTakeDropNodeType, TableTakeDropOp,
+  ExpandNode as ExpandNodeType,
   TableInfoNode as TableInfoNodeType,
 } from "../rete-nodes";
 import {
-  MAT_DET_OP_META, TABLE_RESHAPE_OP_META, TABLE_SELECT_OP_META,
+  MAT_DET_OP_META, TABLE_RESHAPE_OP_META, TABLE_SELECT_OP_META, TABLE_TAKEDROP_OP_META,
 } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
+import { ExtensibleInputs } from "./ExtensibleInputs";
 import { TableDisplay } from "./TableDisplay";
 import { NodeShell, OpSelect, ValueDisplay, InlineOutputRows, useNodeField, type NodeProps } from "./nodeKit";
 
@@ -73,7 +76,7 @@ export function TableTransposeComponent({ data, emit }: NodeProps<TableTranspose
 export function HStackTableComponent({ data, emit }: NodeProps<HStackTableNodeType>) {
   return (
     <NodeShell node={data} emit={emit}>
-      <InlineInputs node={data} emit={emit} />
+      <ExtensibleInputs node={data} emit={emit} />
       <TableDisplay table={data.cachedResult} label={data.label} />
     </NodeShell>
   );
@@ -113,6 +116,32 @@ export function TableSelectComponent({ data, emit }: NodeProps<TableSelectNodeTy
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
       <OpSelect value={op} onChange={setOp} options={SELECT_OPS} />
+      <TableDisplay table={data.cachedResult} label={data.label} />
+    </NodeShell>
+  );
+}
+
+// ─── TAKE / DROP (2-D) + EXPAND ───────────────────────────────────────────────
+
+const TAKEDROP_OPS = (Object.keys(TABLE_TAKEDROP_OP_META) as TableTakeDropOp[]).map(op => ({
+  value: op, label: TABLE_TAKEDROP_OP_META[op].label,
+}));
+
+export function TableTakeDropComponent({ data, emit }: NodeProps<TableTakeDropNodeType>) {
+  const [op, setOp] = useNodeField(data, "op");
+  return (
+    <NodeShell node={data} emit={emit}>
+      <InlineInputs node={data} emit={emit} />
+      <OpSelect value={op} onChange={setOp} options={TAKEDROP_OPS} />
+      <TableDisplay table={data.cachedResult} label={data.label} />
+    </NodeShell>
+  );
+}
+
+export function ExpandTableComponent({ data, emit }: NodeProps<ExpandNodeType>) {
+  return (
+    <NodeShell node={data} emit={emit}>
+      <InlineInputs node={data} emit={emit} />
       <TableDisplay table={data.cachedResult} label={data.label} />
     </NodeShell>
   );

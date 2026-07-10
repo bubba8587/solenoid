@@ -21,11 +21,12 @@ describe("canConnect (directional)", () => {
     expect(canConnect("frame", "numlist")).toBe(false);
   });
 
-  it("still allows table → table / frame → frame and anything ↔ any", () => {
+  it("still allows table → table / frame → frame; wildcards split by rank", () => {
     expect(canConnect("table", "table")).toBe(true);
     expect(canConnect("frame", "frame")).toBe(true);
-    expect(canConnect("table", "any")).toBe(true);
-    expect(canConnect("any", "numlist")).toBe(true);
+    expect(canConnect("table", "trueany")).toBe(true);  // the supremum takes anything
+    expect(canConnect("table", "any")).toBe(false);     // `any` is scalar-only now
+    expect(canConnect("any", "numlist")).toBe(true);    // a scalar widens anywhere
   });
 
   it("ANY lower-rank value widens into a FRAME input (dimensional flow)", () => {
@@ -69,11 +70,12 @@ describe("canConnect (directional)", () => {
     // Narrowing a 2-D matrix output into a 1-D/0-D input is blocked.
     expect(canConnect("strtable", "strlist")).toBe(false);
     expect(canConnect("datetable", "date")).toBe(false);
-    // Cross-family is incompatible; same matrix / any still flow.
+    // Cross-family is incompatible; same matrix / the wildcards still flow.
     expect(canConnect("strtable", "table")).toBe(false);
     expect(canConnect("number", "strtable")).toBe(false);
     expect(canConnect("strtable", "strtable")).toBe(true);
-    expect(canConnect("strtable", "any")).toBe(true);
+    expect(canConnect("strtable", "trueany")).toBe(true);
+    expect(canConnect("strtable", "any")).toBe(false); // 2-D can't narrow into a scalar
     expect(canConnect("any", "datetable")).toBe(true);
   });
 
@@ -83,7 +85,8 @@ describe("canConnect (directional)", () => {
     expect(canConnect("anytable", "strtable")).toBe(true);
     expect(canConnect("anytable", "datetable")).toBe(true);
     expect(canConnect("anytable", "complextable")).toBe(true);
-    expect(canConnect("anytable", "any")).toBe(true);
+    expect(canConnect("anytable", "trueany")).toBe(true);
+    expect(canConnect("anytable", "any")).toBe(false); // 2-D can't narrow into a scalar
     // …and a concrete matrix flows into an `anytable` input.
     expect(canConnect("table", "anytable")).toBe(true);
     expect(canConnect("strtable", "anytable")).toBe(true);
@@ -155,7 +158,8 @@ describe("complex family — derived, not hand-wired", () => {
     expect(canConnect("complextable", "strtable")).toBe(false);
     expect(canConnect("complextable", "anytable")).toBe(true);  // 2-D wildcard accepts it
     expect(canConnect("anytable", "complextable")).toBe(true);
-    expect(canConnect("complextable", "any")).toBe(true);
+    expect(canConnect("complextable", "trueany")).toBe(true);
+    expect(canConnect("complextable", "any")).toBe(false); // scalar rung refuses a matrix
     expect(canConnect("any", "complexcombo")).toBe(true);
   });
 });
@@ -171,7 +175,7 @@ describe("logical family — lattice derivation falls out automatically", () => 
     expect(canConnect("logicaltable", "logicallist")).toBe(false); // narrowing blocked
     expect(canConnect("logical", "string")).toBe(false);           // distinct family, no coercion edge
     expect(canConnect("logicaltable", "anytable")).toBe(true);     // 2-D wildcard accepts it
-    expect(canConnect("any", "logicalcombo")).toBe(true);          // any → anything
+    expect(canConnect("any", "logicalcombo")).toBe(true);          // a scalar fits a combo
     expect(areCompatible("logical", "logicallist")).toBe(true);
   });
   it("logical ↔ number coercion edges are permitted (boolean ↔ 0/1)", () => {
@@ -246,11 +250,40 @@ describe("lattice invariants — TYPE separation + DIMENSIONAL flow (full sweep)
     expect(canConnect("frame", "frame")).toBe(true);
   });
 
-  it("`any` bridges everything, both directions", () => {
-    for (const t of [...allTypes, "anytable", "anylist", "frame", "cube", "lambda", "chart"] as SocketDataType[]) {
-      expect(canConnect(t, "any")).toBe(true);
+  // `trueany` is the supremum wildcard — the ONLY type that bridges everything,
+  // object family included (Display / selectors / Cast / Report refs / composite
+  // ports / unwired Conduit lanes).
+  it("`trueany` bridges everything, both directions", () => {
+    for (const t of [...allTypes, "anytable", "anylist", "frame", "cube", "lambda", "chart", "any"] as SocketDataType[]) {
+      expect(canConnect(t, "trueany")).toBe(true);
+      expect(canConnect("trueany", t)).toBe(true);
+    }
+  });
+
+  // `any` is the rank-0 rung of the wildcard ladder (any → anylist → anytable):
+  // an element-agnostic SINGLE value. Its input takes any family scalar (and a
+  // combo, which can be a scalar); a container does NOT narrow into it. Its
+  // output — a scalar of unknown family — widens anywhere data flows, but never
+  // into the object family.
+  it("`any` INPUT: family scalars + combos in; lists/matrices/containers refused", () => {
+    for (const f of fams) {
+      expect(canConnect(FAM[f].scalar, "any")).toBe(true);
+      expect(canConnect(FAM[f].combo, "any")).toBe(true);   // combo CAN be a scalar
+      expect(canConnect(FAM[f].list, "any")).toBe(false);   // 1-D can't narrow
+      expect(canConnect(FAM[f].matrix, "any")).toBe(false); // 2-D can't narrow
+    }
+    for (const t of ["anylist", "anytable", "frame", "cube", "lambda", "chart"] as SocketDataType[]) {
+      expect(canConnect(t, "any")).toBe(false);
+    }
+    expect(canConnect("any", "any")).toBe(true); // identity
+  });
+
+  it("`any` OUTPUT: widens into every data input (scalar → everywhere), never the object family", () => {
+    for (const t of [...allTypes, "anytable", "anylist", "frame", "cube"] as SocketDataType[]) {
       expect(canConnect("any", t)).toBe(true);
     }
+    expect(canConnect("any", "lambda")).toBe(false);
+    expect(canConnect("any", "chart")).toBe(false);
   });
 
   // `anylist` is the rank-1 element-agnostic wildcard — the 1-D sibling of `anytable`.
@@ -282,10 +315,10 @@ describe("lattice invariants — TYPE separation + DIMENSIONAL flow (full sweep)
 
   // The OBJECT socket family (`lambda`, `chart`) sits OUTSIDE the element×dimension
   // lattice entirely — neither is in FAMILIES/MATRIX_TYPES/FAMILY_VALUE_TYPES, so
-  // `accepts()` falls through to identity + `any` only (no entry in SOCKET_ACCEPTS).
+  // `accepts()` falls through to identity + `trueany` only (no entry in SOCKET_ACCEPTS).
   // `chart` is genuinely new (sockets.ts, alongside the pre-existing `lambda`); this
   // machine-checks it got the identical identity-only treatment.
-  it("chart (like lambda) is identity-only: self + any, never a regular lattice type", () => {
+  it("chart (like lambda) is identity-only: self + trueany, never a regular lattice type", () => {
     expect(canConnect("chart", "chart")).toBe(true);
     for (const t of [...allTypes, "anytable", "frame", "cube"] as SocketDataType[]) {
       expect(canConnect("chart", t)).toBe(false);
@@ -303,7 +336,7 @@ describe("lattice invariants — TYPE separation + DIMENSIONAL flow (full sweep)
 // A `cube` is the universal recursive container (a frame whose cells hold any
 // value). The governing rule: EVERY data value widens UP into a cube input
 // (including a frame and another cube); a cube OUTPUT preserves its nesting, so it
-// flows ONLY into another cube or `any` — never down into a frame / matrix / list
+// flows ONLY into another cube or `trueany` — never down into a frame / matrix / list
 // (that would silently drop the nesting). This is the top of the dimensional ladder.
 describe("cube — universal recursive container (lattice supremum)", () => {
   const FAM = {
@@ -326,7 +359,7 @@ describe("cube — universal recursive container (lattice supremum)", () => {
     expect(canConnect("cube", "cube")).toBe(true);    // identity
   });
 
-  it("a cube OUTPUT preserves nesting: only → cube / any, never a narrower container", () => {
+  it("a cube OUTPUT preserves nesting: only → cube / trueany, never a narrower container", () => {
     for (const t of allTypes) expect(canConnect("cube", t)).toBe(false);
     expect(canConnect("cube", "frame")).toBe(false);   // would drop the nesting
     expect(canConnect("cube", "anytable")).toBe(false);
@@ -334,12 +367,14 @@ describe("cube — universal recursive container (lattice supremum)", () => {
     expect(canConnect("cube", "list")).toBe(false);
     expect(canConnect("cube", "number")).toBe(false);
     expect(canConnect("cube", "cube")).toBe(true);
-    expect(canConnect("cube", "any")).toBe(true);
+    expect(canConnect("cube", "trueany")).toBe(true);
+    expect(canConnect("cube", "any")).toBe(false); // a cube can't narrow into a scalar
   });
 
-  it("`any` bridges a cube both directions", () => {
-    expect(canConnect("any", "cube")).toBe(true);
-    expect(canConnect("cube", "any")).toBe(true);
+  it("the wildcards vs a cube: trueany both ways; scalar `any` widens IN only", () => {
+    expect(canConnect("trueany", "cube")).toBe(true);
+    expect(canConnect("cube", "trueany")).toBe(true);
+    expect(canConnect("any", "cube")).toBe(true);   // a scalar widens into the supremum
   });
 
   it("areCompatible(cube, …) is symmetric over everything it accepts", () => {

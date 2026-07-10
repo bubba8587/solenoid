@@ -78,7 +78,7 @@ src/
 
 | Module | Role |
 |---|---|
-| `sockets.ts` | `SocketDataType` + `SOCKET_COLORS` (CSS vars, incl. purple = logical); `FAMILIES` (element × dim lattice) DERIVES `SOCKET_ACCEPTS`; `accepts`/`areCompatible`/`canConnect`. Governing rule: enforce TYPE separation (Cast to cross families; only logical↔number bridges), allow DIMENSIONAL flow (scalar→list→matrix→frame); `anytable`/`frame` widen from lower rank |
+| `sockets.ts` | `SocketDataType` + `SOCKET_COLORS` (CSS vars, incl. purple = logical); `FAMILIES` (element × dim lattice) DERIVES `SOCKET_ACCEPTS`; `accepts`/`areCompatible`/`canConnect`. Governing rule: enforce TYPE separation (Cast to cross families; only logical↔number bridges), allow DIMENSIONAL flow (scalar→list→matrix→frame); `anytable`/`frame` widen from lower rank. The wildcard ladder (D17): `any` = untyped SCALAR, `anylist`/`anytable` = 1-D/2-D, `trueany` = the adopt-anything supremum (hollow ring; `AdoptiveSocket`/`MutableSocket`, `isWildcardType`) |
 | `valueKinds.ts` | First-class value-model kinds: `null` (missing), logical (boolean), Kleene 3-valued logic helpers; aggregators skip null / propagate `SolError` |
 | `errorValue.ts` | Tagged `SolError` values (Excel-style `#CODE!`); `installErrorGuards(node)` wraps every `data()` at `nodecreated` (error in → error out); `tagOrigin`/`SolErrorOrigin` stamp the FIRST mint site (nodeId/name, row index for list/frame cells) so a chain of passthroughs still points at the true source; `registerErrorSink` is the seam the Problems panel taps (reports `null` on a clean pass so a relapse re-fires) |
 | `nodeStoreRegistry.ts` | The forget seam: any node-keyed module store (collapse, manual size, cable values, socket angles…) calls `registerNodeForget(fn)` once; the single `noderemoved` pipe calls `forgetNode(id)` so a deleted node's entries don't leak — a new store never has to thread its own cleanup into Canvas.tsx |
@@ -88,9 +88,13 @@ src/
 | `unitFormat.ts` | Unit + number-format rendering helpers |
 | `formatAnnotationStore.ts` | Per-socket display annotations (Format Controller writes, value boxes read) |
 | `fcReconcile.ts` | Type propagation: `reconcileFcTypes` re-adapts every FC to its upstream type (shared by the Canvas connection pipe + in-place retypes); `retypeOutputCables` keeps still-valid cables + reconciles after a Cast/LAMBDA/Get Column/Note output retype |
+| `trueAnyAdopt.ts` | trueany ADOPTION (D17): every `AdoptiveSocket` port takes the wired cable's type / reverts on disconnect; outputs adopt only where honest (passthroughs, agreeing selectors). `settleWildcardTypes` = the ONE settle point, alternating this with `conduitTrace.ts`'s lane reconcile to a joint fixpoint (called by `reconcileFcTypes` + the load path) |
+| `conduitTrace.ts` | Conduit lane type adoption: `resolveTypedSource` traces an output lane back through chained Conduits to the real source socket (cable colours); `reconcileConduitTypes` makes lanes adopt the feeding type (fixpoint) |
+| `trigMode.ts` | `resolveTrigModes(editor)` — the ONE compute-time unit read: an Auto-mode trig `Math` node computes degrees when its input resolves to the `deg` unit, else radians (Excel parity). Run from `processGraph` before the engine pull, stamps a transient `_resolvedAngleMode`. Main-editor only |
 | `noteFrontmatter.ts` | Pure parser: a Note body's YAML frontmatter → typed fields (→ NoteNode output sockets) + the markdown below the block |
 | `frame.ts` | Frame value model (named typed columns) + helpers; also the Cube model (recursive cells), cached `depth`, and `relateFramesToCube` |
 | `nodes/cube.ts` | Cube nodes: Build Cube (extensible any-cell constructor) + Nest Join (nest two frames on a key) |
+| `nodes/equation.ts` + `equationSolve.ts` | The ACAUSAL Equation node (D14): every variable is an input AND an output + a logical Check; one unknown → solved. `equationSolve.ts` = the pure solver (symbolic AST isolation, quadratic multi-root, numeric log-grid + bisection fallback returning the smallest-magnitude root, `#SOLVE!`). `nodes/finance.ts` TvmNode/Compound Growth/Effective Rate + the pack presets subclass/lock it |
 | `cubePopupStore.ts` + `components/CubePopup.tsx` / `CubeChip.tsx` / `CubeDisplay.tsx` / `cubeCell.tsx` | Cube drill-in popup (depth + breadcrumb), result-box chip + preview, per-cell rendering |
 | `components/ResultDisplay.tsx` | Dispatches a result box to CubeDisplay / FrameDisplay / ValueDisplay by container kind (used by `makeNodeComponent`) |
 | `chartValue.ts` / `mermaidValue.ts` | First-class FIGURE values (`__chart` / `__mermaid`) riding the green `chart` "Special" socket; a node output, embedded in Reports |
@@ -161,7 +165,7 @@ src/
 | `catalogUtils.ts`, `catalogValidator.ts` | `buildCatalog` (pack insertion, dedup, prune) + dev-time consistency check |
 | `nodeExcel.ts`, `excelToCatalog.ts` | Excel equivalence metadata (single source of truth) + derived maps; `EXCEL_GAP` parity list |
 | `functionReference.ts`, `frStore.ts` | Function Reference overlay data (generated from the catalog) |
-| `packs.ts`, `fcExtensions.ts` | Pack framework (placements, `NODE_PACK_TAGS`, FC unit/format contributions) |
+| `packs.ts`, `fcExtensions.ts` | Pack framework (registry/activation store, placements, `NODE_PACK_TAGS` derived from per-pack tags, FC unit/format contributions); definitions live ONE FILE PER PACK in `packs/` on `packs/packShared.ts` (authoring types, `formulaNode`/`placeFormulas`, Equation presets), each with a vitest file pinning its formulas (`packs/formulaTestKit.ts`) |
 | `AddNodeMenu.tsx`, `addMenuStore.ts`, `fuzzy.ts`, `catalogSearch.ts` (+`.test.ts`) | Right-click add menu + search; `catalogSearch.ts` extracts the scoring (label/description/Excel names/category path/keywords) plus the quick-wire drop filter, which memoizes each catalog type's socket signature so a drop doesn't re-`create()` every leaf |
 | `excelFunctions.ts` | The single declared home for "which of the two parallel Excel implementations is authoritative for this function" (the ~150 native nodes vs Formula.js via `excelFormula.ts` `dispatch`) — per the per-family verdicts in `docs/formulajs-vs-native-audit.md` |
 | `excelFormula.ts` (+`.test.ts`) | The Expression/LAMBDA formula compiler (Formula.js scope) |

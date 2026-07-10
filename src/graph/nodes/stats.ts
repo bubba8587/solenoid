@@ -163,10 +163,17 @@ export class QuartileNode extends ClassicPreset.Node {
         const lo = Math.floor(i), hi = Math.ceil(i);
         result = sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo);
       } else {
+        // QUARTILE.EXC(q) is PERCENTILE.EXC(q/4): p must lie in [1/(n+1), n/(n+1)]
+        // or Excel returns #NUM! — clamping (as this did) silently returned the
+        // min/max element instead. Same fix as PercentileNode EXC above; the q=0/4
+        // guard catches the endpoints, this catches an interior q at small n.
+        if (p < 1 / (n + 1) || p > n / (n + 1)) {
+          const err = solError("#DOMAIN!", "Quartile is outside the EXC domain: q/4 must lie between 1/(n+1) and n/(n+1)");
+          this.cachedResult = err; return { result: err };
+        }
         const i = p * (n + 1) - 1;
-        const clamped = Math.max(0, Math.min(n - 1, i));
-        const lo = Math.floor(clamped), hi = Math.min(n - 1, Math.ceil(clamped));
-        result = sorted[lo] + (sorted[hi] - sorted[lo]) * (clamped - lo);
+        const lo = Math.floor(i), hi = Math.min(n - 1, Math.ceil(i));
+        result = sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo);
       }
     }
     this.cachedResult = result;

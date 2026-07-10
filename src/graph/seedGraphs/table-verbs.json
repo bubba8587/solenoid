@@ -420,13 +420,13 @@
       "source": "sales",
       "sourceOutput": "frame",
       "target": "append",
-      "targetInput": "top"
+      "targetInput": "f0"
     },
     {
       "source": "more",
       "sourceOutput": "frame",
       "target": "append",
-      "targetInput": "bottom"
+      "targetInput": "f1"
     },
     {
       "source": "pivot",

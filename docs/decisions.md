@@ -179,6 +179,175 @@ bug than a documented deviation.
 **Cost accepted:** occasional parity:false notes where Excel is the odd one out.
 **What would reverse it:** nothing; this is an ordering of loyalties, not a feature.
 
+### D14 — The Equation node is a SIBLING of Expression, acausal, with a FIXED socket set
+**When:** 2026-07-09 (author: "just build it now"). **Where:** `nodes/equation.ts`,
+`equationSolve.ts`; the design discussion is in the session digest.
+**Why:** three sub-decisions. (1) A new node, NOT a widened Expression — D2 caps
+Expression permanently, ~135 locked pack presets and the LAMBDA hosts lean on its
+directional contract, and the card shape differs anyway. (2) Every variable gets an input
+AND an output plus one always-present logical `Check` — rather than the single output
+that morphs numlist→logical — because in-place retype is a known minefield
+(fcReconcile/retypeOutputCables) and a morphing output changes MEANING when inputs are
+rewired, silently breaking downstream cables. (3) Solving is our own AST isolation
+(unparse → recompile, so broadcasting is free) + a numeric bracket/bisection fallback —
+no CAS dependency (nerdamer/algebrite are heavy, stale, and speak a different grammar).
+**Cost accepted:** principal branches on NON-polynomial inversion (√/ASIN — the returned
+value satisfies the equation but may not be the branch you meant); the numeric fallback is
+scalar-only and reports the root nearest an ascending log-grid scan; tall cards (2n+1 value
+rows).
+**Amended same day (author):** the polynomial special case landed immediately — a residual
+that is QUADRATIC in the unknown (detected by numeric probing, so any arrangement counts,
+and only for scalar knowns) solves via the quadratic formula and yields EVERY real root as
+an ascending list (x² = 36 → [−6, 6]); a double root stays scalar, a negative discriminant
+is #SOLVE!. This intercepts BEFORE symbolic isolation, so a probe-detectable quadratic
+never loses its negative root to the principal branch.
+**Amended 2026-07-09 (the finance conversion sweep, author: "sweep non-pack nodes"):**
+three core-catalog rearrangement families collapsed onto the framework. (1) **TVM**: the
+old 4-op TvmNode + the separate RATE Newton node became ONE `TvmNode extends EquationNode`
+carrying the locked annuity relation — wire any four of {rate, nper, pmt, pv, fv}, the
+fifth solves; RATE's guess input is gone (subsumed by the bracket scan). Payment timing
+stays a CONFIG dropdown that swaps which locked relation is compiled (end/beg) — a config
+is anything that changes the RELATION rather than a quantity in it; that's the template
+for future Equation subclasses. rate = 0 delegates to the exact zero-rate limit relation
+(`pv + pmt·nper + fv = 0`) rather than an epsilon nudge, so zero-interest loans solve and
+truth-check exactly. (2) **PDURATION/RRI → "Compound Growth"** and (3) **EFFECT/NOMINAL →
+"Effective Rate"** are plain locked EquationNode CATALOG presets (no subclass — nothing to
+configure). Excel-name searchability is preserved via NODE_EXCEL remaps + keywords.
+Alongside, `solveNumeric` changed policy: it now bisects EVERY sign-change bracket and
+returns the SMALLEST-MAGNITUDE root, not the first bracket of the ascending scan — the
+TVM rate residual has a spurious crossing out at 1+r < 0 that the old policy would have
+returned. Surveyed and deliberately NOT converted: Depreciation (period-discrete),
+IPMT/PPMT/CUMIPMT/ISPMT (derived quantities, not relations), DOLLARDE/FR (piecewise digit
+trick), bonds/T-bills (date sockets — outside Equation's numeric domain), distribution
+DIST/INV pairs (no closed-form CDFs in the formula grammar).
+**What would reverse it:** demand for cubic/higher roots (Cardano or a vendored CAS);
+per-output socket annotations would unlock richer per-variable typing.
+
+---
+
+### D15 — The append ladder: ONE N-ary, element-agnostic append node per container rank
+**When:** 2026-07-09 (author: "heavy thinking pass over the entire set of nodes which
+involve appending data … continuing from the VSTACK/HSTACK changes").
+**What:** appending is the same idea at every rank, so each rank gets exactly one node,
+and they all share the same shape — extensible wire-only rows (add/remove, order =
+stack order), element-agnostic accepts, lattice widening on the way in:
+- **1-D — Concat Lists**: `anylist` rows (a scalar widens to a 1-element list, so "push
+  one value" needs no wrapper) → `anylist` out. Concatenation has no ragged case.
+- **2-D — VSTACK / HSTACK**: `anytable` rows (scalar → 1×1, list → ONE ROW) → `anytable`.
+  Ragged inputs PAD WITH #N/A CELLS exactly like Excel — VSTACK pads narrower inputs
+  right, HSTACK pads shorter inputs down. The old whole-result #SHAPE! made the common
+  "stack a 3-list on a 5-list" case unusable; a per-cell #N/A is visible, honest, and
+  recoverable (IFNA/Fill), and SUM over it goes #N/A like Excel.
+- **Frame — Append**: `frame` rows (union by column NAME via the verb engine, which was
+  always N-ary — the node just exposes it; missing column fills blank, type clash #TYPE!).
+  Ragged-by-name ≠ ragged-by-position, so no #N/A padding here — blanks are the frame
+  semantics.
+- WRAPROWS/WRAPCOLS joined the same padding rule (#N/A, Excel's default pad_with) —
+  they previously disagreed with each other (ragged short row vs NaN fill).
+**Deliberately NOT unified:** Interleave (positional A/B alternation — two DISTINCT
+roles, stays 2-ary), Pad (fill-to-length) and Repeat (self-append) are 1-D utilities,
+not appends; Add Column is the frame's single-named-column horizontal add (bulk = Frame
+from Lists, keyed = Join); Build Frame (matrix+headers) vs Frame from Lists (named typed
+columns) are different constructors, both kept; "add one row to a frame" is Get Row →
+Append (a 1-row frame keeps column names — a bare positional list into a by-name append
+is a footgun we refuse).
+**How (mechanics):** the extensible-row plumbing is the BooleanOp pattern (`valueKeys`
+persistence, `addValueInput`/`removeValueInput`, row undo via pushRow*Undo);
+`ExtensibleInputs` gained a WIRE-ONLY row branch (container-typed rows render position
+number / "↩ source", never a literal field — a typed literal has no meaning for a
+list/table/frame operand and typed lists belong to List Input).
+**Cost accepted:** container rows can't be typed in place; #N/A padding can hide a
+genuine width mistake until an aggregate goes #N/A (Excel makes the same trade).
+**What would reverse it:** a variadic "multi-connection socket" primitive (one pill that
+accepts N cables) would collapse the extensible-row pattern across all four nodes.
+
+---
+
+### D16 — The Filter family: one honest job per node (mask removed, SUMIFS born)
+**When:** 2026-07-09 (author-led redesign after "I'm really not happy with the node"; the
+final shape was agreed in-conversation before building).
+**The diagnosis:** the old list/table Filter was FOUR tools wearing one card — filter a
+list by its own values; filter a list by a PARALLEL list (the "Keep if" mask); filter a
+table's rows/columns; be Excel's FILTER. Every earlier fix added chrome (mask sockets,
+axis toggles, index pickers) to bridge them; the redesign deletes capability instead.
+**What shipped:**
+- **Filter (list)** does exactly one thing: a 1-D list tested against ITS OWN values,
+  using the frame Filter's condition engine (`passesFilter` — shared, not copied):
+  extensible op+value rows, AND/OR, text ops with per-row Match case, `anylist` in,
+  Kept + Dropped out. The mask is GONE (author: not intuitive enough); the table
+  acceptance is GONE (the socket used to advertise `table` while the predicate path
+  refused genuine 2-D — the incoherence that triggered the redesign).
+- **Table filtering routes through the frame Filter**: a bare matrix ALREADY widens into
+  its `frame` input as auto-named `Col1..N` columns (zero new code — pinned by test).
+  Column filtering = TRANSPOSE → filter → TRANSPOSE, accepted as rare. The full merge
+  (lists too) is impossible by design: a list widens as ONE ROW (CSV orientation), so
+  row-filtering it is meaningless — lists keep their own node.
+- **SUMIFS node** (`SumIfsNode`, ops SUMIFS/COUNTIFS/AVERAGEIFS/MINIFS/MAXIFS): the
+  task-shaped conditional aggregate. Replaces the mask's bread-and-butter job
+  (`SUMIF(region, "North", sales)` = one node) with Excel's own mental model minus its
+  range-alignment footguns. Empty-match parity: AVERAGEIFS → #DIV/0!, MINIFS/MAXIFS → 0,
+  SUMIFS → 0, COUNTIFS needs no Values. **AMENDED same day (author catch):** the first
+  build took parallel criteria LISTS — a violation of the 2026-07-06 standing rule
+  (position-aligned columns arrive as a 2-D input, never parallel list sockets), with the
+  exact hazard the rule targets (a shorter criteria list silently failed rows past its
+  end). Rebuilt as ONE frame input + a Values-column field + criteria rows
+  (column + op + value) — the frame Filter's row UI plus an aggregate-op selector.
+- Parallel-list filtering WITHOUT aggregation = Frame from Lists → Frame Filter (the
+  honest relational modeling; mixed-family parallel lists can't share a matrix anyway,
+  so frames were always that data's only container).
+**Cost accepted:** `FILTER(sales, region="North")` as a bare list has no 2-node spelling
+anymore (mask + Comparison used to do it); the sanctioned spellings are SUMIFS (when
+aggregating — the overwhelmingly common case) or the frames route.
+**What would reverse it:** the mask's return would need evidence that non-aggregating
+parallel-list filtering is common enough to out-vote the mask's opacity; per-cell 2-D
+filtering stays out regardless (Excel's FILTER refuses 2-D includes; ragged output
+doesn't exist in its model — TOCOL → Filter is the explicit spelling).
+
+---
+
+### D17 — The wildcard ladder: `any` is a scalar; `trueany` is the supremum
+**When:** 2026-07-09 (author challenge: "(any accepts everything) — um, it shouldn't?
+that's why we have any, any list, and any matrix").
+**The problem:** `any` was doing two jobs — the rank-0 rung of the untyped ladder AND the
+accept-everything supremum. The code made it the supremum (`accepts()` returned true for
+`any` on either side); the DESIGN — a plain gray circle among circles-are-scalars — had
+always said "one value of any type." With `anylist`/`anytable` as explicit 1-D/2-D untyped
+rungs, an `any` input silently swallowing frames, cubes, and lambdas was a lattice hole:
+Expand's Fill ("any scalar fill value") happily accepted a whole frame.
+**The decision:** split them. `any` = element-agnostic SCALAR — accepts any family's
+scalar (and combos, which can be scalars); its output widens anywhere data flows, never
+into the object family. `trueany` = the true supremum — accepts and flows to everything —
+with a NEW glyph: a HOLLOW gray circle (border only, no fill), distinguishable from every
+filled shape even zoomed out. So the untyped ladder reads any → anylist → anytable, with
+trueany above the whole lattice.
+**Call sites re-sorted by what they mean:** genuine anything-ports (Display, selectors
+IF/IFERROR/CHOOSE/SWITCH-then, IS.TEST, Cast, Expect, Report refs, Build Cube cells,
+Nest Join sides, INDEX array/result, XLOOKUP result, Input Switch, Placeholder, composite
+ports, unwired Conduit lanes, FC in/out) → `trueany`; scalar-or-1-D under the Expression
+cap (Expression/LAMBDA variables — now enforced at CONNECT time, not runtime #SHAPE! —
+REDUCE initial, Regex text, Group Lists keys, wrap/flatten reshape) → `anylist`; true
+scalars (SWITCH expr/when equality, Expand fill, Filter/SUMIFS Value rows) stay `any`,
+which is what makes wired thresholds + a typed text field legitimate on the same row.
+`isWildcardType()` centralizes "walk past untyped passthroughs" (FC adoption,
+type-default display, conduit trace) over BOTH rungs.
+**Cost accepted:** `any` outputs (INDEX, Regex result) can still deliver a non-scalar at
+runtime into a scalar input — the same accepted risk as a combo narrowing to its scalar;
+there is no untyped COMBO socket (Regex result is the known combo-shaped hole).
+**AMENDED same day — trueany is ADOPTIVE (author):** a trueany port is a PLACEHOLDER that
+adopts the wired cable's type and reverts on disconnect (`AdoptiveSocket` +
+`reconcileTrueAnyTypes` in `trueAnyAdopt.ts`, alternated with the Conduit-lane reconcile
+via `settleWildcardTypes` — one entry point off the connection pipe and the load path).
+INPUTS adopt universally (informative — the cable already landed); OUTPUTS only where
+honest: passthroughs (Display, Expect, Input Switch One-mode) adopt through, selector
+results (IF/IFERROR/CHOOSE/SWITCH/IFS) adopt when every wired branch agrees, and the
+value-dependent results (INDEX, XLOOKUP) keep a STATIC trueany that never adopts. Like
+the Conduit reconcile, adoption never drops cables (derived state — the mismatch scan
+flags; explicit retypes still go through `retypeOutputCables`), and adopted types are
+never persisted — the pass re-derives from wiring after load/paste. So the hollow ring
+on screen always means "nothing has flowed here yet"; the gray circle/square/grid are
+the deliberately NEUTRAL rungs.
+**What would reverse it:** none foreseen; adding an `anycombo` rung would only refine it.
+
 ---
 
 ## Structural risks (the threats register — distinct from bugs)
