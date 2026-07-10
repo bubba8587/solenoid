@@ -4,8 +4,14 @@
 // docs/archive/timesavers-pack-proposal.md — a formula-preset batch (the [F]
 // idioms: percent change, CAGR, ordinal, whitespace cleanup, masking, counting)
 // plus the two marquee custom nodes with NO Excel answer at all (Reverse Text,
-// Spell Number). The proposal's date-serial idioms stay unbuilt pending the
-// Formula.js serial-interop check; its composites are in the composite plan doc.
+// Spell Number), and the first date-serial [F] idioms. The serial-interop gate is
+// CLEARED (2026-07-10): the date extractors (MONTH/DAY/EOMONTH…) are OWNED
+// internally by excelFunctions.ts on Solenoid's serial model — not delegated to
+// Formula.js — so a preset Expression over them reads a date serial correctly.
+// Only the zero-config idioms land here (Quarter, Days in Month); the ones that
+// need a config widget or carry a judgment call (Fiscal Quarter's start month,
+// Age's DATEDIF "MD" nuance, Nth Weekday) stay for the author. Composites are in
+// the composite plan doc.
 
 import { HYPOTENUSE_ENTRY } from "./geometry";
 import { ReverseTextNode, SpellNumberNode } from "../rete-nodes";
@@ -39,8 +45,17 @@ export const TIMESAVER_TEXT: FormulaPackEntry[] = [
     keywords: "substring count find occurrences" },
 ];
 
+export const TIMESAVER_DATE: FormulaPackEntry[] = [
+  { type: "ts-quarter", label: "Quarter", expr: "ROUNDUP(MONTH(date)/3,0)",
+    description: "Calendar quarter 1–4 of a date. No single Excel function — the usual formula is ROUNDUP(MONTH()/3,0).",
+    keywords: "q1 q2 q3 q4 fiscal period three months" },
+  { type: "ts-days-in-month", label: "Days in Month", expr: "DAY(EOMONTH(date,0))",
+    description: "How many days are in a date's month, 28–31. Excel spells it DAY(EOMONTH(date,0)).",
+    keywords: "month length last day eomonth 28 29 30 31" },
+];
+
 export const TIMESAVER_FORMULAS: FormulaPackEntry[] = [
-  ...TIMESAVER_NUMERIC, ...TIMESAVER_TEXT,
+  ...TIMESAVER_NUMERIC, ...TIMESAVER_TEXT, ...TIMESAVER_DATE,
 ];
 
 export const TIMESAVERS_PACK: Pack = {
@@ -53,6 +68,7 @@ export const TIMESAVERS_PACK: Pack = {
     { path: ["Numbers", "Trigonometry"], entry: HYPOTENUSE_ENTRY },
     ...placeFormulas(["Numbers", "Arithmetic"], TIMESAVER_NUMERIC),
     ...placeFormulas(["Text", "Transform"], TIMESAVER_TEXT),
+    ...placeFormulas(["Date & Time"], TIMESAVER_DATE),
     {
       path: ["Text", "Transform"],
       entry: {

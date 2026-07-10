@@ -211,10 +211,13 @@ this backlog stays the per-item source of truth.
   (1-D/2-D dataset interpolation node) for the table-driven half (hardness conversion,
   pipe schedules, material properties). See `pack-composite-plans.md` tail.
 - [ ] **Timesavers remainder** (proposal: `archive/timesavers-pack-proposal.md`; [F] batch +
-  Reverse Text + Spell Number landed 2026-07-09): the date-serial [F] idioms (pending the
-  Formula.js serial-interop check), the duration trio (wants an elapsed-`[h]:mm` format
-  first), Split Name (multi-output [C]), and the list-reducer CORE batch (Conditional
-  Aggregate AND/OR, Multi-Criteria Lookup, Last/First Non-Blank, Rank-in-Group…).
+  Reverse Text + Spell Number landed 2026-07-09; **serial-interop gate cleared + Quarter /
+  Days in Month landed 2026-07-10** — the date extractors are internal + serial-aware, so a
+  preset Expression reads a date serial): remaining date [F] idioms that carry a config or
+  judgment call (Fiscal Quarter's start-month → [C], Age/Tenure with DATEDIF's `"MD"` nuance,
+  Nth Weekday), the duration trio (wants an elapsed-`[h]:mm` format first), Split Name
+  (multi-output [C]), and the list-reducer CORE batch (Conditional Aggregate AND/OR,
+  Multi-Criteria Lookup, Last/First Non-Blank, Rank-in-Group…).
 - [ ] **Composite pack-node shape** — packs can't ship subgraphs yet; the queued
   composite pack nodes (Wheatstone, pump operating point, psychrometric state point,
   Pareto, % of Total…) are planned in `pack-composite-plans.md`.
