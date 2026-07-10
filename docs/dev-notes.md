@@ -7,8 +7,11 @@ drill into the archive (or `git log`) only for the mechanics of a specific item.
 
 ### SESSION DIGEST (2026-07-10, overnight — autonomous robustness/parity pass)
 Unattended loop pass; brief = "iterate, review existing code/design vs new additions,
-keep tsc + vitest green, commit to develop." Two genuine defects fixed + a full clean
-audit of the newest features.
+keep tsc + vitest green, commit to develop." Three defects fixed, one feature shipped,
+one subtle behavior pinned by tests, plus a broad clean audit. (Loop mechanics: the fast 15-min `CronCreate` is session-only
+and dies on container reclaim; a durable hourly claude-code-remote Routine self-binds to
+the session, survives reclaims, and re-arms the fast cron — that combo is what keeps the
+overnight loop alive.)
 - **`Math.min(...)`/`Math.max(...)` RangeError on data-scale arrays — CLOSED.** The
   spread form throws past ~125k args, and `mathUtils.iterMin/iterMax` exist precisely
   for this (the doc comment names Aggregate(min)). Two stragglers still on the spread:
@@ -30,9 +33,32 @@ audit of the newest features.
   trueany adoption, and INDEX/XLOOKUP (all out-of-range branches already #REF!;
   approximate nextSmaller/nextLarger + not-found #N/A correct). The recent code is as
   solid as the audit culture implies — real bugs were rare and narrow.
-- Non-bug noted for a later author call: `TableSelectNode`/INDEX round-vs-truncate a
-  fractional index differently now (trunc vs `Math.round`); both are Excel-rare edges,
-  left as-is to avoid an unprompted parity change.
+- **QUARTILE.EXC out-of-domain → #DOMAIN!, not clamp to min/max** (`stats.ts`). The EXC
+  branch clamped the interpolation position to [0, n-1], silently returning the smallest/
+  largest element for an out-of-domain quartile; Excel returns #NUM!. QUARTILE.EXC(q) is
+  PERCENTILE.EXC(q/4), whose EXC branch was ALREADY fixed for exactly this — mirrored it
+  (domain [1/(n+1), n/(n+1)]). Found by an audit subagent.
+- **parseDateToSerial timezone-independence PINNED** (test-only). The one canonical text→
+  date parser's most subtle logic (zone-less text rebuilt as UTC wall-clock; a zone
+  designator = absolute instant; ISO date-only = UTC midnight) had no direct coverage —
+  the exact code a "simplify" could break into a machine-TZ off-by-one-day. Tests built
+  against UTC references so they hold on any runner.
+- **Timesavers: Quarter + Days in Month** (feature). The date-serial [F] idioms were held
+  "pending the Formula.js serial-interop check". Cleared it: the date extractors
+  (MONTH/DAY/EOMONTH…) are OWNED internally by excelFunctions.ts on Solenoid's serial
+  model — NOT Formula.js — so a preset Expression reads a date serial correctly (verified
+  end-to-end). Shipped the two zero-config, zero-judgment idioms with no single Excel
+  function (`ROUNDUP(MONTH(date)/3,0)`, `DAY(EOMONTH(date,0))`); the config/judgment ones
+  (Fiscal Quarter start-month, Age's DATEDIF "MD" nuance, Nth Weekday) stay for the author.
+- **Also audited clean:** date arithmetic (DATEDIF incl. the MD borrow, 30/360, yearfrac),
+  the text nodes (FIND/SUBSTITUTE not-found → #VALUE!, Roman↔Arabic), the scalar math
+  domain-error tagging (√/log/arc-fns → per-cell #DOMAIN!, overflow → #OVERFLOW!, the
+  combinatorics NaN caught), and the coerceInputs type-coercion seam.
+- Non-bug flags for a later author call: (1) **ModeNode MODE.SNGL tie-break** breaks ties
+  by SMALLEST modal value (deliberate, tested) while the engine's `modeOf` (Group By /
+  Cube Rollup) uses FIRST occurrence per Excel — same data, different answers; recorded in
+  backlog, not flipped (tested deliberate choice). (2) `TableSelectNode`/INDEX round-vs-
+  truncate a fractional index differently (trunc vs `Math.round`); both Excel-rare edges.
 
 ### SESSION DIGEST (2026-07-09, evening — pack enhancement wave: domain tools beyond formulas)
 Author brief: "walk the new packs as their domain's user — beyond equations, what
