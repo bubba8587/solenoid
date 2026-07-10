@@ -25,7 +25,7 @@ import { solError, isSolError, type SolError } from "../errorValue";
 export type CastTarget = "number" | "text" | "date" | "complex" | "logical";
 
 export const CAST_TARGET_META: Record<CastTarget, { label: string; title: string }> = {
-  number:  { label: "Number",  title: "Parse text / take a complex value's real part / pass numbers through" },
+  number:  { label: "Number",  title: "Parse text, a logical's 1/0, or a complex value's real part; pass numbers through" },
   text:    { label: "Text",    title: "Format numbers and dates (with the format pattern) or complex values as text" },
   date:    { label: "Date",    title: "Parse date text to an Excel serial; numbers pass through as serials" },
   complex: { label: "Complex", title: "Parse \"a+bi\" text; numbers become re+0i" },
@@ -69,6 +69,9 @@ function castOne(x: unknown, target: CastTarget, format: string, dateish: boolea
     case "number": {
       if (cx) return (x as Cx)[0]; // real part
       if (typeof x === "number") return x;
+      // logical↔number is the one cross-family bridge (TRUE→1, FALSE→0, Excel
+      // N(TRUE)=1) — Cast already does number→logical, so honour the reverse too.
+      if (typeof x === "boolean") return x ? 1 : 0;
       if (typeof x === "string") { const n = Number(x.trim()); return Number.isNaN(n) ? NaN : n; }
       return NaN;
     }
