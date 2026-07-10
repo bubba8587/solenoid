@@ -2,10 +2,13 @@ import { describe, it, expect } from "vitest";
 import { TIMESAVER_FORMULAS } from "./timesavers";
 import { auditFormulaPack, entryByType, evalFormula } from "./formulaTestKit";
 import { ReverseTextNode, SpellNumberNode, spellNumber } from "../nodes/text";
+import { jsDateToSerial } from "../nodes/date";
 import { isSolError } from "../errorValue";
 
 const run = (type: string, inputs: Record<string, number | string>) =>
   evalFormula(entryByType(TIMESAVER_FORMULAS, type), inputs);
+
+const ser = (y: number, m: number, d: number) => jsDateToSerial(new Date(Date.UTC(y, m - 1, d)));
 
 describe("Timesavers formula presets", () => {
   it("every formula compiles and is well-formed", () => {
@@ -44,6 +47,17 @@ describe("Timesavers formula presets", () => {
     expect(run("ts-count-words", { t: "   " })).toBe(0);
     expect(run("ts-count-occurrences", { t: "banana", sub: "an" })).toBe(2);
     expect(run("ts-count-occurrences", { t: "banana", sub: "z" })).toBe(0);
+  });
+
+  it("quarter and days-in-month read a date serial (internal serial-aware extractors)", () => {
+    expect(run("ts-quarter", { date: ser(2026, 1, 1) })).toBe(1);
+    expect(run("ts-quarter", { date: ser(2026, 4, 1) })).toBe(2);
+    expect(run("ts-quarter", { date: ser(2026, 7, 15) })).toBe(3);
+    expect(run("ts-quarter", { date: ser(2026, 12, 31) })).toBe(4);
+    expect(run("ts-days-in-month", { date: ser(2024, 2, 10) })).toBe(29); // leap February
+    expect(run("ts-days-in-month", { date: ser(2026, 2, 10) })).toBe(28);
+    expect(run("ts-days-in-month", { date: ser(2026, 4, 10) })).toBe(30);
+    expect(run("ts-days-in-month", { date: ser(2026, 7, 10) })).toBe(31);
   });
 });
 
