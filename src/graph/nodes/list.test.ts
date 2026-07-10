@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import type { CondAggOp } from "./list";
 import {
   RangeNode,
   LinSpaceNode,
@@ -10,6 +11,7 @@ import {
   ArgMinMaxNode,
   AggregateNode,
   FilterNode,
+  SumIfsNode,
   FillNode,
   SortNode,
   SortByNode,
@@ -19,6 +21,8 @@ import {
   SET_OP_META,
   SetRelationNode,
   SET_RELATION_META,
+  IsInNode,
+  TallyNode,
   type ReduceOp,
   type FillOp,
 } from "./list";
@@ -145,6 +149,22 @@ describe("Set operations (two lists)", () => {
     expect(run("difference", [e, 1], [1]).some((v) => isSolError(v))).toBe(true);
     // intersection: an error can't be "in both" → dropped
     expect(run("intersect", [e, 2], [e, 2])).toEqual([2]);
+  });
+
+  it("complex numbers compare by VALUE, not array identity (Set-node fix)", () => {
+    // A complex is an [re, im] array; each 3+4i below is a SEPARATE array instance,
+    // so a reference-keyed Set would never match them. They must intersect/dedupe.
+    expect(run("intersect", [[3, 4], [1, 2]], [[3, 4], [5, 6]])).toEqual([[3, 4]]);
+    expect(run("union", [[3, 4], [1, 2]], [[3, 4]])).toEqual([[3, 4], [1, 2]]);
+    expect(run("difference", [[3, 4], [1, 2]], [[3, 4]])).toEqual([[1, 2]]);
+    // Is In: membership by value across distinct instances.
+    expect(new IsInNode().data({ a: [[[3, 4], [9, 9]]], b: [[[3, 4]]] }).result).toEqual([true, false]);
+    // Tally: equal complexes count together — two distinct rows, not three.
+    // (The frame Value column stringifies complex since frames have no complex
+    // type — a separate limitation; the fix is that the COUNT groups by value.)
+    const tally = new TallyNode().data({ list: [[[3, 4], [3, 4], [1, 2]]] }).frame;
+    expect(tally?.columns[0].values.length).toBe(2);
+    expect(tally?.columns[1].values).toEqual([2, 1]);
   });
 
   it("every op's set notation is valid KaTeX (else the card silently shows plain text)", () => {
@@ -348,11 +368,148 @@ describe("Reduce — means and shape", () => {
   });
 });
 
-describe("Filter — a null/unknown predicate row is excluded (SQL WHERE keeps only TRUE)", () => {
-  it("a missing data cell is dropped, not coerced to 0 and guessed", () => {
-    // keep x > 1 over [1, null, 3]: 1>1 false, null → unknown → excluded, 3>1 true → [3].
-    const r = new FilterNode({ op: "gt" }).data({ list: [[[1, null, 3]]], threshold: [1] }).result;
-    expect(r).toEqual([[3]]);
+describe("Filter — condition rows over the list's own values (D16)", () => {
+  const mk = (
+    conds: Array<{ op: import("../frameVerbs").FilterOp; value: string; matchCase?: boolean }>,
+    combine: "and" | "or" = "and",
+  ) => {
+    const n = new FilterNode({
+      combine,
+      valueKeys: conds.map((_, i) => `value${i}`),
+      condConfig: Object.fromEntries(conds.map((c, i) => [String(i), { op: c.op, matchCase: c.matchCase }])),
+    });
+    conds.forEach((c, i) => { n.stringLiterals[`value${i}`] = c.value; });
+    return n;
+  };
+
+  it("a missing cell fails the condition and lands in Dropped (exhaustive split)", () => {
+    const out = mk([{ op: "gt", value: "1" }]).data({ list: [[1, null, 3]] });
+    expect(out.result).toEqual([3]);
+    expect(out.dropped).toEqual([1, null]);
+  });
+
+  it("text lists filter with the frame ops; Match case rides per condition", () => {
+    const cities = ["Oslo", "BERGEN", "oslo"];
+    expect(mk([{ op: "eq", value: "oslo" }]).data({ list: [cities] }).result).toEqual(["Oslo", "oslo"]);
+    expect(mk([{ op: "eq", value: "oslo", matchCase: true }]).data({ list: [cities] }).result).toEqual(["oslo"]);
+    expect(mk([{ op: "contains", value: "berg" }]).data({ list: [cities] }).result).toEqual(["BERGEN"]);
+  });
+
+  it("AND narrows, OR unions", () => {
+    const arr = [1, 5, 10, 20];
+    expect(mk([{ op: "gt", value: "2" }, { op: "lt", value: "15" }], "and").data({ list: [arr] }).result).toEqual([5, 10]);
+    expect(mk([{ op: "lt", value: "2" }, { op: "gt", value: "15" }], "or").data({ list: [arr] }).result).toEqual([1, 20]);
+  });
+
+  it("no written condition = pass-through (Dropped stays blank)", () => {
+    const out = new FilterNode().data({ list: [[1, 2]] });
+    expect(out.result).toEqual([1, 2]);
+    expect(out.dropped).toBeNull();
+  });
+
+  it("a WIRED scalar drives a Value row (the `any` socket): number, boolean, and a wired null reads as unwritten", () => {
+    const n = mk([{ op: "gt", value: "999" }]); // literal is overridden by the cable
+    expect(n.data({ list: [[1, 5, 10]], value0: [4] }).result).toEqual([5, 10]);
+    // Boolean threshold on a logical list (stringifies to "true").
+    const nb = mk([{ op: "eq", value: "" }]);
+    expect(nb.data({ list: [[true, false, true]], value0: [true] }).result).toEqual([true, true]);
+    // A wired MISSING wins over the literal and reads as "not written yet".
+    const nn = mk([{ op: "gt", value: "2" }]);
+    const out = nn.data({ list: [[1, 5]], value0: [null] });
+    expect(out.result).toEqual([1, 5]);
+    expect(out.dropped).toBeNull();
+  });
+
+  it("a per-cell error fails its condition and lands in Dropped unmorphed", () => {
+    const err = solError("#DIV/0!", "x");
+    const out = mk([{ op: "gt", value: "1" }]).data({ list: [[1, err, 3]] });
+    expect(out.result).toEqual([3]);
+    expect((out.dropped as unknown[])[1]).toBe(err);
+  });
+
+  it("legacy combine \"none\" folds to AND; valueKeys round-trip (persistence contract)", () => {
+    expect(new FilterNode({ combine: "none" }).combine).toBe("and");
+    const n = mk([{ op: "gt", value: "1" }, { op: "lt", value: "9" }]);
+    const clone = new FilterNode({ valueKeys: n.valueInputKeys(), condConfig: n.condConfig });
+    expect(clone.valueInputKeys()).toEqual(n.valueInputKeys());
+    expect(clone.condConfig["1"].op).toBe("lt");
+  });
+});
+
+describe("SUMIFS — conditional aggregation over one frame (D16, amended)", () => {
+  const region = ["North", "South", "North", "East", "North", "South"];
+  const sales = [120, 80, 200, 150, 90, 60];
+  const frame = (vals: unknown[] = sales, regs: unknown[] = region) => ({
+    __frame: true as const,
+    columns: [
+      { name: "region", type: "string" as const, values: regs },
+      { name: "sales", type: "number" as const, values: vals },
+    ],
+  });
+  const mk = (
+    op: CondAggOp,
+    conds: Array<{ column: string; op: import("../frameVerbs").FilterOp; value: string }>,
+    valuesCol = "sales",
+  ) => {
+    const n = new SumIfsNode({
+      op,
+      valueKeys: conds.flatMap((_, i) => [`column${i}`, `value${i}`]),
+      condConfig: Object.fromEntries(conds.map((c, i) => [String(i), { op: c.op }])),
+    });
+    n.stringLiterals.values = valuesCol;
+    conds.forEach((c, i) => {
+      n.stringLiterals[`column${i}`] = c.column;
+      n.stringLiterals[`value${i}`] = c.value;
+    });
+    return n;
+  };
+
+  it("SUMIFS(sales, region, North) — the whole point, one node on one frame", () => {
+    const n = mk("sumifs", [{ column: "region", op: "eq", value: "North" }]);
+    expect(n.data({ frame: [frame()] }).result).toBe(410); // 120+200+90
+  });
+
+  it("COUNTIFS needs no Values column; two criteria AND like Excel", () => {
+    const n = mk("countifs", [{ column: "region", op: "eq", value: "North" }]);
+    expect(n.data({ frame: [frame()] }).result).toBe(3);
+    const two = mk("sumifs", [
+      { column: "region", op: "eq", value: "North" },
+      { column: "sales", op: "gt", value: "100" },
+    ]);
+    expect(two.data({ frame: [frame()] }).result).toBe(320); // 120+200
+  });
+
+  it("empty matches follow Excel: AVERAGEIFS → #DIV/0!, MINIFS/MAXIFS → 0", () => {
+    const avg = mk("averageifs", [{ column: "region", op: "eq", value: "Mars" }]).data({ frame: [frame()] }).result;
+    expect(isSolError(avg) && avg.code).toBe("#DIV/0!");
+    expect(mk("minifs", [{ column: "region", op: "eq", value: "Mars" }]).data({ frame: [frame()] }).result).toBe(0);
+  });
+
+  it("MINIFS/MAXIFS over a large matched set don't RangeError (iterMin/iterMax, not spread)", () => {
+    // A frame this big is ordinary once verbs run in Polars; Math.min(...nums)
+    // throws past ~125k args, so the spread form would black out on a real table.
+    const N = 200_000;
+    const regs = new Array(N).fill("North");
+    const vals = Array.from({ length: N }, (_, i) => i);
+    const big = () => frame(vals, regs);
+    expect(mk("minifs", [{ column: "region", op: "eq", value: "North" }]).data({ frame: [big()] }).result).toBe(0);
+    expect(mk("maxifs", [{ column: "region", op: "eq", value: "North" }]).data({ frame: [big()] }).result).toBe(N - 1);
+  });
+
+  it("kept nulls are skipped; a kept error propagates (aggregate policy)", () => {
+    const n = mk("sumifs", [{ column: "region", op: "eq", value: "North" }]);
+    expect(n.data({ frame: [frame([10, 1, null, 1, 5, 1])] }).result).toBe(15);
+    const err = solError("#DIV/0!", "x");
+    const out = n.data({ frame: [frame([10, 1, err, 1, 5, 1])] }).result;
+    expect(isSolError(out) && out.code).toBe("#DIV/0!");
+  });
+
+  it("a missing column is an honest #REF!; a WIRED scalar drives a Value row", () => {
+    const bad = mk("sumifs", [{ column: "nope", op: "eq", value: "x" }]).data({ frame: [frame()] }).result;
+    expect(isSolError(bad) && bad.code).toBe("#REF!");
+    // wired threshold (the `any` scalar socket) overrides the literal
+    const n = mk("sumifs", [{ column: "sales", op: "gt", value: "999" }]);
+    expect(n.data({ frame: [frame()], value0: [100] }).result).toBe(470); // 120+200+150
   });
 });
 
@@ -487,6 +644,14 @@ describe("SortBy — ragged pad-to-longest; null/error keys sort last (audit fin
   it("keys beyond the value list emit null values in key order", () => {
     expect(new SortByNode().data({ array: [[10]], by_array: [[3, 1]] }).list)
       .toEqual([null, 10]);
+  });
+  it("sorts a TEXT array by a parallel numeric key (the reorder is element-agnostic)", () => {
+    // "names by scores": the array is any element type, only the keys are numeric.
+    expect(new SortByNode().data({ array: [["Ann", "Bob", "Cy"]], by_array: [[3, 1, 2]] }).list)
+      .toEqual(["Bob", "Cy", "Ann"]);
+    // A date-serial array reorders the same way.
+    expect(new SortByNode().data({ array: [[46000, 45000, 45500]], by_array: [[2, 3, 1]] }).list)
+      .toEqual([45500, 46000, 45000]);
   });
 });
 

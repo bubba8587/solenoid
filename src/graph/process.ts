@@ -10,6 +10,7 @@ import { beginCompute, endCompute } from "./computeOverlayStore";
 import { calcModeStore } from "./calcModeStore";
 import { compositePassStore } from "./compositeEditorStore";
 import { clearCollectMemo } from "./frameBackend";
+import { resolveTrigModes } from "./trigMode";
 import type { Schemes, AreaExtra } from "./schemes";
 
 let _editor: NodeEditor<Schemes> | null = null;
@@ -549,6 +550,10 @@ async function runGraphPass(changedNodeId?: string, renderOnly?: Set<string>, to
   // Fresh per-pass memo for lazy-frame collects: within one pass a ref fanned
   // out to N consumers materializes once, not N times (audit finding 24).
   clearCollectMemo();
+  // Resolve Auto-mode trig nodes' effective deg/rad from their incoming unit
+  // BEFORE the engine pull, so each MathFn.data() reads a fresh angle mode. The
+  // one place compute consults the unit plane; early-outs when none exist.
+  resolveTrigModes(_editor);
   const perf = perfEnabled();
   if (perf) beginPass();
   const ipc0 = perf ? ipcSnapshot() : null;

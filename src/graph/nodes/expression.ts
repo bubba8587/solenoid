@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { anyIn, resultOut, type ResultType } from "./shared";
+import { anyListIn, resultOut, type ResultType } from "./shared";
 import { extractVariables, compileEvaluator, type ExprEvaluator } from "../excelFormula";
 import { fxErrorToSol } from "../excelFunctions";
 import { isSolError, solError } from "../errorValue";
@@ -69,14 +69,19 @@ export class ExpressionNode extends ClassicPreset.Node {
   // Public so the component can read varNames for rendering.
   varNames: string[]  = [];
   evaluator: ExprEvaluator | null = null;
+  /** Optional prose explaining each variable (var name → description). Kept OUT
+   *  of the formula string, so KaTeX never renders it; shown as a hover tooltip
+   *  on the card and as an editable legend in the formula popup. Display-only. */
+  varDescriptions: Record<string, string> = {};
 
-  constructor(init?: { label?: string; expr?: string; locked?: boolean; resultAs?: ResultType; literals?: Record<string, number> }) {
+  constructor(init?: { label?: string; expr?: string; locked?: boolean; resultAs?: ResultType; literals?: Record<string, number>; varDescriptions?: Record<string, string> }) {
     super("Expression");
     this.label = init?.label ?? "Expression";
     this.expr  = init?.expr  ?? "";
     this.locked = init?.locked ?? false;
     this.resultAs = init?.resultAs ?? "number";
     if (init?.literals) this.literals = { ...init.literals };
+    if (init?.varDescriptions) this.varDescriptions = { ...init.varDescriptions };
 
     this.addOutput("result", resultOut("Result", "combo", this.resultAs));
     this._rebuild();
@@ -97,7 +102,7 @@ export class ExpressionNode extends ClassicPreset.Node {
 
     for (const v of next) {
       if (!prev.has(v)) {
-        this.addInput(v, anyIn(v));
+        this.addInput(v, anyListIn(v));
         added.push(v);
       }
     }

@@ -58,12 +58,12 @@ describe("Input Switch (CableSwitchNode)", () => {
 
   it("output socket is a Cube in Many mode, `any` in One", () => {
     const dt = (n: CableSwitchNode) => (n.outputs.out!.socket as unknown as { dataType: string }).dataType;
-    expect(dt(new CableSwitchNode())).toBe("any");
+    expect(dt(new CableSwitchNode())).toBe("trueany");
     expect(dt(new CableSwitchNode({ multiSelect: true }))).toBe("cube");
     const n = new CableSwitchNode({ multiSelect: true });
     n.multiSelect = false;
     expect(n.syncOutputType()).toBe(true);
-    expect(dt(n)).toBe("any");
+    expect(dt(n)).toBe("trueany");
     expect(n.syncOutputType()).toBe(false); // idempotent
   });
 

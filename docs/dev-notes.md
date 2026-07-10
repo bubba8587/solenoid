@@ -5,6 +5,367 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-10, overnight — autonomous robustness/parity pass)
+Unattended loop pass; brief = "iterate, review existing code/design vs new additions,
+keep tsc + vitest green, commit to develop." Three defects fixed, one feature shipped,
+one subtle behavior pinned by tests, plus a broad clean audit. (Loop mechanics: the fast 15-min `CronCreate` is session-only
+and dies on container reclaim; a durable hourly claude-code-remote Routine self-binds to
+the session, survives reclaims, and re-arms the fast cron — that combo is what keeps the
+overnight loop alive.)
+- **`Math.min(...)`/`Math.max(...)` RangeError on data-scale arrays — CLOSED.** The
+  spread form throws past ~125k args, and `mathUtils.iterMin/iterMax` exist precisely
+  for this (the doc comment names Aggregate(min)). Two stragglers still on the spread:
+  **MINIFS/MAXIFS** (`SumIfsNode`, list.ts) over a large frame column, and
+  **`histogramBins`** (visual.ts) over a big series — both would black out on render.
+  Swapped to the helpers; `list.ts` already used them everywhere else. Swept the whole
+  `src` tree: every other `Math.min(...)`/`Math.max(...)` is over a bounded structural
+  count (matrix/column counts, socket keys, 3 triangle vertices) — safe. Class closed.
+- **CHOOSEROWS/CHOOSECOLS out-of-range → #VALUE!, not a NaN-padded row** (`TableSelectNode`,
+  matrix.ts). It padded a bad pick with raw NaN — unlike Excel (any zero/out-of-range
+  index errors the whole call) and unlike its sibling EXPAND (whole-result #VALUE!
+  SolError) in the same file; its `cachedResult` type didn't even admit a SolError, and
+  chooserows crashed on a fractional in-range index (`[...m[1.5]]`). Now truncates the
+  1-based index (negatives from the end), bounds-checks, and returns one #VALUE!.
+- **Audited clean (no changes):** the append ladder (VSTACK/HSTACK #N/A padding,
+  WRAP/TAKE/DROP/EXPAND), the SUMIFS family's Excel empty-match parity, the Equation
+  solver (symbolic isolation, quadratic roots, closest-to-zero numeric fallback) +
+  TvmNode zero-rate limit, Triangle Solver (SSS/SAS/ASA/AAS + ambiguous-SSA #SOLVE!),
+  trueany adoption, and INDEX/XLOOKUP (all out-of-range branches already #REF!;
+  approximate nextSmaller/nextLarger + not-found #N/A correct). The recent code is as
+  solid as the audit culture implies — real bugs were rare and narrow.
+- **QUARTILE.EXC out-of-domain → #DOMAIN!, not clamp to min/max** (`stats.ts`). The EXC
+  branch clamped the interpolation position to [0, n-1], silently returning the smallest/
+  largest element for an out-of-domain quartile; Excel returns #NUM!. QUARTILE.EXC(q) is
+  PERCENTILE.EXC(q/4), whose EXC branch was ALREADY fixed for exactly this — mirrored it
+  (domain [1/(n+1), n/(n+1)]). Found by an audit subagent.
+- **parseDateToSerial timezone-independence PINNED** (test-only). The one canonical text→
+  date parser's most subtle logic (zone-less text rebuilt as UTC wall-clock; a zone
+  designator = absolute instant; ISO date-only = UTC midnight) had no direct coverage —
+  the exact code a "simplify" could break into a machine-TZ off-by-one-day. Tests built
+  against UTC references so they hold on any runner.
+- **Timesavers: Quarter + Days in Month** (feature). The date-serial [F] idioms were held
+  "pending the Formula.js serial-interop check". Cleared it: the date extractors
+  (MONTH/DAY/EOMONTH…) are OWNED internally by excelFunctions.ts on Solenoid's serial
+  model — NOT Formula.js — so a preset Expression reads a date serial correctly (verified
+  end-to-end). Shipped the two zero-config, zero-judgment idioms with no single Excel
+  function (`ROUNDUP(MONTH(date)/3,0)`, `DAY(EOMONTH(date,0))`); the config/judgment ones
+  (Fiscal Quarter start-month, Age's DATEDIF "MD" nuance, Nth Weekday) stay for the author.
+- **Also audited clean:** date arithmetic (DATEDIF incl. the MD borrow, 30/360, yearfrac),
+  the text nodes (FIND/SUBSTITUTE not-found → #VALUE!, Roman↔Arabic), the scalar math
+  domain-error tagging (√/log/arc-fns → per-cell #DOMAIN!, overflow → #OVERFLOW!, the
+  combinatorics NaN caught), and the coerceInputs type-coercion seam.
+- Non-bug flags for a later author call: (1) **ModeNode MODE.SNGL tie-break** breaks ties
+  by SMALLEST modal value (deliberate, tested) while the engine's `modeOf` (Group By /
+  Cube Rollup) uses FIRST occurrence per Excel — same data, different answers; recorded in
+  backlog, not flipped (tested deliberate choice). (2) `TableSelectNode`/INDEX round-vs-
+  truncate a fractional index differently (trunc vs `Math.round`); both Excel-rare edges.
+
+### SESSION DIGEST (2026-07-09, evening — pack enhancement wave: domain tools beyond formulas)
+Author brief: "walk the new packs as their domain's user — beyond equations, what
+tools/tables/charts does solving problems in this domain actually need?" Six
+task-shaped additions, one per pack, each with pinned tests:
+- **Element picker (chemistry — the author's own example, built as agreed):** the
+  118-entry dropdown became a button (`26 · Fe — Iron`) opening a popup (module
+  store + App mount, the TablePopup pattern): a fuzzy-search field (symbol exact >
+  symbol prefix > name prefix > substring > atomic number — `searchElements`) over
+  a CLICKABLE periodic table, symbols only, real 18-column layout with the
+  detached f-block (`elementCell(n)`, collision-free by test). Quiet Accent Rule
+  holds: cells are neutral; color marks only the current pick + best match.
+- **Resistor Color Code (electricity):** 4/5-band SegToggle, per-band dropdowns,
+  and a live resistor GLYPH drawing the actual band colors (information, not
+  decoration — fixed IEC 60062 hexes like chart data colors) → Ω + tolerance %.
+  Band picks live in `stringLiterals` (free round-trip).
+- **EM Spectrum Band (electromagnetism):** frequency OR wavelength → the named
+  band (Radio…Gamma; visible names its color) + both quantities via c.
+- **Heart-Rate Zones (health):** age / optional resting HR (switches to Karvonen)
+  / optional max override → a five-zone Low/High FRAME — the pack's chartable,
+  lookupable table ("organize data", not just compute).
+- **Pipe Roughness (fluids):** the 13-material textbook ε table (mm); a diameter
+  makes it emit ε/D straight into Colebrook/Swamee–Jain — the number every Moody
+  problem starts with.
+- **Triangle Solver (geometry):** wire ANY three parts (≥1 side; degrees) → all
+  six + area + perimeter. SSS/SAS/ASA/AAS; the genuinely ambiguous SSA case is
+  an honest #SOLVE! instead of a silent pick. **Reworked same evening (author):
+  the card now IS the current Equation design** — `EquationVarRow`/
+  `EquationOutRow` exported from EquationNode.tsx (shared, not copied; the
+  Check row deduped onto it) give each part ONE dual-socket hero row; a logical
+  **Valid** output mirrors Equation's Check (3 parts → solve, TRUE/FALSE;
+  >3 parts → solve from the side-richest subset and CHECK the rest agree at
+  1e-6); <3 parts pass through quietly. And the card **draws the triangle to
+  scale** (letters only — numbers live in the rows; neutral stroke).
+- **Per-variable explanations on Expression + Equation (author ask):** each
+  variable can carry a prose description (`varDescriptions` map on the node),
+  kept OUT of the formula string so KaTeX never renders it. Shown as a hover
+  tooltip on the card's variable rows (Expression via a new InlineInputs
+  `titleFor`; Equation via `EquationVarRow desc`) AND as an editable legend
+  under the big KaTeX in the FormulaPopup (a Variables section — name typeset,
+  description field; editable even when the formula is locked, since it's a
+  note not the formula). Persists via extractInit (LIVE-var-filtered, blanks
+  dropped) + INIT_EXTRA_FIELD_ORDER; textForm round-trips it generically.
+  `FormulaPackEntry.varDescriptions` lets presets ship them — seeded on Ohm's
+  Law, ideal gas, Nernst, wavelength↔frequency. **Extended to LAMBDA (author
+  follow-up, same session):** LambdaNode carries `varDescriptions` (a `varNames`
+  getter = params + captured lets extractInit filter uniformly), the value
+  carries them (`LambdaValue.descriptions`), and a **LAMBDA wired into a Report
+  renders its formula as KaTeX with a muted "where:" legend beneath** (params
+  first, then described captures) — the report home the Expression/Equation
+  embeds lack (those still embed as values).
+- **Trig deg/rad/Auto + Triangle broadcast (author follow-up):** a `Math` node's
+  trig ops (sin/cos/tan/cot/csc/sec + asin/acos/atan/acot; NOT hyperbolic) gained a
+  **deg/rad/Auto** SegToggle. Forward trig converts the input deg→rad; inverse trig
+  converts the result rad→deg and tags the real `deg` unit on its output. **Auto
+  (default) reads the incoming unit** — a °-tagged value (a Triangle angle, an
+  FC-locked deg, an inverse-trig-deg output) computes in degrees, else radians =
+  Excel parity. The unit read is `trigMode.ts` `resolveTrigModes`, run from
+  processGraph before the engine pull, stamping a transient `_resolvedAngleMode`
+  data() reads — the FIRST and only place compute consults the unit plane; a manual
+  Rad/Deg pin ignores it; early-outs when no auto trig node exists. To make that
+  read see producer units, `makeUnitResolver` gained the same `annotationFor`/
+  `annotation` branches `makeAnnotationResolver` already had (unit plane now agrees
+  with annotation plane; FC keeps its forward/author branch). **Triangle Solver
+  sockets → numlist** (Equation-family parity, the flagged inconsistency): parts
+  broadcast element-wise (parallel lists → a triangle per index, Valid a logical
+  list, figure draws index 0); the angle annotation switched from custom "°" to the
+  real `deg` unit so the resolver reads it as an angle. Runs main-editor only inside
+  a drill-in (backlog, same as trueany/FC reconcile).
+- **Per-output unit locks + per-socket FC boxes (author follow-up):** unitFlow
+  gained the per-OUTPUT producer seam — `annotationFor(outKey)`, checked before
+  the node-level `annotation()` — so the **Triangle Solver's angles carry °**
+  (sides bare) and **Element's mass carries g/mol** (Z bare; the exact case the
+  Pack-Duty digest recorded as blocked on per-output annotations). And the FC
+  now reaches INDIVIDUAL hero boxes: the write side always was per-socket
+  (`nodeId::socketKey`; findDockTarget snaps to the nearest socket), the READ
+  side caught up — `ValueDisplay` takes a `socketKey` and hero rows
+  (EquationVarRow/EquationOutRow) pass theirs, reading `get(node, socket)`
+  instead of the any-socket `getForNode`, with the per-output producer lock as
+  the resolver fallback so ° shows on the Triangle's own rows too.
+- Pack-level descriptions + node-coverage inventory updated; new node classes in
+  `nodes/{emSpectrum,health,triangle}.ts` + additions to electrical/fluids/
+  chemistry; cards in `PackToolNodes.tsx`/`ElectricalNodes`/`ChemistryNodes` +
+  `ElementPicker.tsx` (+ css). NOT built (still composite-shaped, planned in
+  `pack-composite-plans.md`): Wheatstone, pump operating point, psychrometric
+  state point; Materials pack stays gated on Interpolated Lookup (backlog).
+
+### SESSION DIGEST (2026-07-09, overnight — Pack Duty: 8 domain packs + pack infra)
+- **Pack definitions split into `src/graph/packs/`** (one file per pack on
+  `packs/packShared.ts` — authoring types + `formulaNode`/`placeFormulas`; `packs.ts`
+  stays the registry/activation store, public surface unchanged). `FormulaPackEntry`
+  gained `resultAs`/`excel`/`keywords`; `NODE_PACK_TAGS` now derives from per-pack
+  `tags`. `packs/formulaTestKit.ts` evaluates presets exactly as placed — every pack
+  ships a vitest file asserting its formulas against hand-checked reference values
+  (several of MY first-guess references were wrong and the tests caught me, not the
+  formulas — the kit earns its keep).
+- **Six new domain packs, all `defaultActive: false`:** Electricity & Circuits
+  (26 [F] + Parallel Combine, E-Series, AWG; electrical FC units + an SI-prefix
+  format), **Electromagnetism** (21 [F] + the CODATA Physics Constant node; the first
+  real `dependsOn` — activating it pulls in Electricity), Health & Fitness (20 [F]),
+  Fluid Mechanics (20 [F] + the Colebrook root-finding node), Thermodynamics & Air
+  (21 [F] + ISA standard atmosphere (7 layers, derived base pressures) + Antoine
+  vapor pressure (9 substances, each triple test-verified by reproducing its normal
+  boiling point)), Earth & Sky (8 [F] + NOAA Sun Position / Sunrise-Sunset + Moon
+  Phase), Chemistry Basics (13 [F] + Element (118 IUPAC weights) + Molar Mass (real
+  formula parser: nesting, hydrates)). Existing packs got waves too: Geometry +15
+  (circles & arcs, solids), Timesavers +7 [F] + Reverse Text + Spell Number.
+- **Sets & Membership pack + core companions** (the backlog's parked Set/relational
+  scoping, built as scoped): Is In (membership mask → logical list) + Tally (value
+  counts → Frame) in the pack; COUNT DISTINCT as a new `ReduceOp` (pack-tagged);
+  **semi/anti `JoinHow` on the core Join** — JS oracle + native Polars
+  (`JoinType::Semi/Anti`, new `semi_anti_join` cargo feature), left-columns-only in
+  `shapeOfJoin`, cargo parity test (69 rust tests green).
+- **Formula-grammar gotcha for pack authors:** `e` is Euler's constant, not a
+  usable variable name (an EM formula silently read e² as 7.389 until the value
+  test caught it — use `ef`, `ev`, etc.).
+- Composite-shaped pack ideas (Wheatstone, pump operating point, psychrometric
+  state point, Pareto, % of Total…) deliberately NOT hand-rolled — planned in
+  **`docs/pack-composite-plans.md`**; backlog Packs section reconciled (Set pack
+  line deleted, Timesavers remainder + Materials-pack/Interpolated-Lookup lines).
+### SESSION DIGEST (2026-07-09, day — Equation node, append ladder, Filter redesign, the wildcard split)
+- **Morning follow-ups (author-directed):** the **EQUATION NODE** — type `V = I * R`,
+  every variable is an input AND an output plus an always-present logical `Check`;
+  one unknown → solved (symbolic AST isolation → unparse → recompile, so lists
+  broadcast free; numeric log-grid + bisection fallback, new `#SOLVE!` code); all
+  known → tolerance truth check. **Decision D14** records why it's a SIBLING of
+  Expression with a FIXED socket set (no morphing output — the retype minefield),
+  and why no CAS library. `parseFormula` is now exported from excelFormula;
+  `OutputRowDef` accepts logical/list values. — **Add menu:** top-level **Packs**
+  row (domain packs moved out of Numbers; Timesavers/HYPOTENUSE stay woven with
+  their pack dots); **Control folded into Input** to free the row. — **Constants
+  carry units:** `PhysicsConstantNode.annotation()` rides the unit (" m/s") through
+  passthroughs exactly like an FC lock — the unitFlow duck-type seam took ONE
+  method; Element deliberately skipped (two outputs, one unitless — needs
+  per-output annotations first). — **Packs now use Equation presets**
+  (`FormulaPackEntry.equation: true` → a locked EquationNode): every
+  rearrangement-REDUNDANT group collapsed to one node — Ohm's law trio and
+  dBm↔W pair (electricity), wavelength↔frequency (EM), the ideal-gas quartet
+  (thermo), moles↔mass + pH↔[H⁺] (chemistry); 12 directional presets → 6
+  bidirectional ones. Groups that are NOT rearrangements of one relation (the
+  power trio P=VI/I²R/V²/R — different variable sets) stay directional
+  Expressions on purpose. The Equation seed (order 15) demos the node with
+  non-pack equations. **Quadratics (author, same morning):** a residual that is
+  quadratic in the unknown — sniffed by numeric probing (7 points; the 3-point
+  fit is exact for a true polynomial), so ANY arrangement counts — returns EVERY
+  real root ascending (x² − 36 = 0 → [−6, 6]); double root scalar, negative
+  discriminant #SOLVE!. Intercepts BEFORE symbolic isolation so the principal
+  branch can't eat the negative root; non-polynomials (SQRT/1/x/trig in the
+  unknown) fail a probe and keep the old behavior. D14 amended; seed gained the
+  x² − 36 block. — **Lists→tables gap closed (author):** VSTACK was a 1-D list
+  concatenator, so stacking two lists could never make a table. Now VSTACK is
+  HSTACK's true sibling (element-agnostic anytable in/out; a list widens to ONE
+  ROW, so two lists → a 2×n table; equal column counts or #SHAPE!); the old
+  append behavior lives on honestly named as **Concat Lists**. NEW **Frame from
+  Lists** (`FrameFromListsNode`) is the fast lists→Frame path: paired extensible
+  rows (typed column name + anylist), TYPE-PRESERVING per column (no
+  re-inference — "01" stays text), ragged pad, makeHeaders naming, identity-
+  stable memo (audit-42 contract). PairedExtensibleInputs learned string-socket
+  text fields for it. — **Complex × Equation:** deliberately NOT integrated (the
+  evaluator's [re,im]-is-a-list ambiguity — D2's own wall — plus socket
+  morphing); instead **Quadratic Roots** joined the Complex family (a,b,c → x₁,
+  x₂ complex outputs; conjugate pair on negative discriminant; −0 normalized).
+  Equation's #SOLVE! message stays the real-domain answer. — **Equation card
+  rework (author, 4 corrections):** variables lost the typeable literal fields —
+  each is now a HERO ROW (value box + chips) with its input socket on the left
+  edge and output socket on the right of the SAME row (dual-socket rows via a
+  local `useRowTop`, same content-relative math as MeasuredSocketRow); "Holds?"
+  renamed **Check** (output key stays `holds`); the "=" prefix stripped
+  (`FormulaField` `noPrefix`); editing routes through the syntax-highlighted
+  FormulaPopup like Expression (`formulaHostOf` equation host, no "=" prefix,
+  solve-semantics engine note). — **Finance conversion sweep (author: "sweep
+  non-pack nodes for Equation conversion"):** the 4-op TvmNode + the RATE Newton
+  node collapsed into ONE `TvmNode extends EquationNode` (locked annuity
+  relation; wire any four of rate/nper/pmt/pv/fv; **payment timing stays a
+  CONFIG dropdown** — it swaps which locked relation is compiled (end/beg), the
+  template for future Equation subclasses via `EquationComponent`'s new `config`
+  slot; rate = 0 delegates to the exact zero-rate limit relation so
+  zero-interest loans solve/check exactly; RATE's guess input gone).
+  PDURATION/RRI → **Compound Growth** and EFFECT/NOMINAL → **Effective Rate**,
+  plain locked EquationNode catalog presets (pinned in finance.test.ts).
+  `solveNumeric` policy change: bisect EVERY bracket, return the
+  SMALLEST-MAGNITUDE root (the ascending-scan-first policy would have returned
+  the spurious 1+r < 0 crossing for RATE). NODE_EXCEL remapped (PMT/PV/FV/NPER/
+  RATE → `tvm`; PDURATION/RRI/EFFECT/NOMINAL → the presets); the
+  personal-finance seed GENERATOR (`gen-personal-finance-seed.cjs`) rewired
+  (tvm nodes drop `op`, outputs `result` → `fv`/`pmt`, mortgage fv as a literal
+  0) — remember the committed JSON is a re-emit check, edit the generator.
+  Surveyed, NOT converted: Depreciation (period-discrete), IPMT/PPMT/CUMIPMT/
+  ISPMT (derived quantities), DOLLARDE/FR (piecewise), bonds/T-bills (date
+  sockets), DIST/INV pairs (no closed-form CDFs). D14 amended again. —
+  **The append ladder (author: "heavy thinking pass over the appending
+  nodes"), recorded as D15:** ONE N-ary element-agnostic append node per
+  container rank, all on the BooleanOp extensible-row pattern (`valueKeys`,
+  add/remove undo): **Concat Lists** (anylist rows → anylist; scalar widens to
+  1-element list, so "push one value" is free), **VSTACK/HSTACK** (anytable
+  rows; ragged inputs now PAD WITH #N/A cells like Excel — the old
+  whole-result #SHAPE! made "stack a 3-list on a 5-list" unusable; VSTACK pads
+  right, HSTACK pads down), **frame Append** (frame rows, union by column
+  name — runFrameAppend was always N-ary, the node now exposes it).
+  WRAPROWS/WRAPCOLS joined the #N/A padding rule (they disagreed: ragged short
+  row vs NaN fill). `ExtensibleInputs` gained a WIRE-ONLY row branch
+  (container-typed rows show position / "↩ source", never a literal field).
+  Deliberately not unified: Interleave (2 distinct roles), Pad/Repeat
+  (fill/self-append utilities), Add Column (single named column; bulk = Frame
+  from Lists, keyed = Join), Build Frame vs Frame from Lists (different
+  constructors), add-a-row = Get Row → Append (a positional list into a
+  by-name append is a refused footgun). Socket keys changed (top/bottom→f*,
+  a/b→t*/l*) — table-verbs seed rewired; old saves load those cables dropped
+  (pre-alpha). Full reasoning in D15. — **Follow-up wave (same day, author
+  approved the queue):** (1) **Filter gained a PERMANENT `Dropped` output** —
+  the exhaustive complement by position (null-predicate cells land in Dropped,
+  nothing vanishes); author asked "dropdown mode on Filter?" — answer NO, a
+  dropdown that toggles a socket kills downstream cables on switch (the
+  fixed-socket rule), and the complement is free in the same pass, so it's
+  always there. Frame Filter's Dropped landed the same day: `filterMulti`
+  gained a `complement` flag through the verb seam (JS oracle keep-set flip;
+  Rust BOTH paths — the text-scan hand-roll and the lazy expr fold, where
+  `fill_null(false).not()` keeps null-predicate rows in the complement), the
+  node publishes a SECOND lazy ref with emitFrame's stale-pass/prev-ref
+  lifecycle minus the preview (`_refDropped`, freed on noderemoved too), and
+  the card shows just the Dropped socket row — materializing a chip for it
+  would collect a frame nobody asked for. Cargo 69→71. (2) **TAKE/DROP (table)** — Excel's real 2-D edge cuts
+  (rows+cols, negative = from end, 0 = omitted arg) as one op node; the 1-D
+  list Take/Drop stay and their NODE_EXCEL parity claims were corrected.
+  (3) **EXPAND** — the 2-D pad (grow to R×C, wired Fill or #N/A, shrink =
+  #VALUE! like Excel); retired the old "list-pad ≈ EXPAND" mapping.
+  (4) **anylist coherence sweep**: Reverse/Slice/Take/Drop/Shuffle/NthElement/
+  Interleave/Pad are position-only, so they're now element-agnostic
+  (text/date/logical lists reverse and slice like numbers). Sort/Cumulative
+  stay typed (comparison/arithmetic semantics). (5) **`Cell` type hygiene**:
+  the matrix cell alias widened to the honest runtime union (± boolean/null/
+  SolError) — zero tsc fallout, the #N/A-padding casts deleted. — **Table Input
+  rebuilt as a LITERAL source (author: Frame Input's model is the desired
+  behavior)**: raw `tableText` is the stored truth, the typed matrix derives
+  through coerceFrameCell — the SAME coercion as Frame Input, so bad cells are
+  NaN (the carefully-designed quiet dirty-data affordance, 1.0-tail #6 — NOT an
+  error badge; author explicitly guarded this) and blanks are null; the grid
+  popup edits RAW cells via a new lean `onSaveRaw` literal mode (the old
+  parse→tableToText round trip silently coerced bad text away — deleted, with
+  parseTableText/tableToText). ONE element type per table via a
+  Num/Text/Date/Bool SegToggle (the List Input retype pattern; mixed columns =
+  Frame Input's job). — **Type-by-COLOR (author chose color over glyph
+  shorthand):** chips now tint by ELEMENT family when the container is
+  homogeneous — explicit socket knowledge (`elem` prop; date serials are
+  numbers by value) or a cell scan; mixed/unknown keeps the container color (a
+  chip must not guess). CSS: `--elem-{string,date,logical}` (+`-table`)
+  modifiers on the --sock-* vars; numeric keeps the current look. And
+  **List/Table Input header accents track the SegToggle** (NodeShell grew the
+  accentOverride passthrough NodeCard already had; SOCKET_COLORS values, the
+  FC-header precedent). — **The Filter-family redesign (D16, author-led over
+  several rounds; ship only after explicit agreement):** the old list/table
+  Filter was FOUR tools in one card (own-value predicate, parallel-list mask,
+  table rows/cols, Excel FILTER). Now: **Filter = 1-D only**, the frame
+  Filter's shared condition engine (`passesFilter` exported; extensible AND/OR
+  op+value rows, per-row Match case, anylist, Kept+Dropped); the **mask and
+  the table socket are DELETED** (the socket advertised `table` while the
+  predicate refused genuine 2-D — the incoherence that triggered this).
+  **Tables filter through the frame Filter** — a matrix widens into its frame
+  input as Col1..N (already true in the lattice; pinned by test). **The
+  parallel-list pattern got a task-shaped node: SUMIFS**
+  (SUMIFS/COUNTIFS/AVERAGEIFS/MINIFS/MAXIFS; Values + paired criteria rows,
+  AND-only, Excel's empty-match parity — AVERAGEIFS #DIV/0!, MIN/MAXIFS 0).
+  Non-aggregating parallel-list filtering = Frame from Lists → Filter Rows
+  (mixed-family parallels can't share a matrix anyway). Seeds rewired
+  (lambda-helpers lost its mask demo — MAP reads temps directly;
+  null-and-logical + the personal-finance generator moved to condition rows).
+  Full reasoning incl. the per-cell/flatten/hole-punch rejections in D16.
+- **The wildcard ladder (D17, author challenge):** `any` had been BOTH the rank-0
+  untyped rung and the accept-everything supremum; the author called it ("that's
+  why we have any, any list, and any matrix"). Split: **`any` = element-agnostic
+  SCALAR** (accepts family scalars/combos; output widens anywhere data flows),
+  **`trueany` = the supremum** (accepts/flows-to everything) with a new HOLLOW
+  gray circle glyph (DOM + pixi "ring" + legend). ~30 call sites re-sorted:
+  passthroughs/selectors/Cast/Report/composite ports/unwired lanes → trueany;
+  Expression/LAMBDA variables + Regex text + Group Lists keys + wrap/flatten →
+  anylist (the Expression cap now enforced at CONNECT time); SWITCH expr/when +
+  Expand fill stay `any`, now honest. `isWildcardType()` centralizes the
+  resolve-past-untyped checks (FC adoption, type-default display, conduit trace).
+  MAP/MAKEARRAY Auto output → `anytable`. Full sweep rewritten in
+  socketConnect.test.ts; details in D17.
+- **Filter Value rows → `any` scalar** (both Filters): strIn had been a functional
+  regression (a Slider couldn't drive a threshold — number→string refused).
+  Wired scalars stringify via `readFilterValue` (wired null = "not written yet";
+  wired SolError = its code text, matches no rows) so both engines see exactly
+  what a typed literal would say.
+- **trueany is ADOPTIVE (D17 amended, author):** every trueany placeholder port
+  adopts the wired cable's type and reverts on disconnect — `AdoptiveSocket`
+  (per-port instances, never the shared singleton) + `trueAnyAdopt.ts`
+  (`reconcileTrueAnyTypes` fixpoint; `settleWildcardTypes` alternates it with the
+  Conduit reconcile — reconcileFcTypes and the load path both route through it).
+  Inputs adopt universally; outputs only where honest (Display/Expect/Input
+  Switch pass through; IF/IFERROR/CHOOSE/SWITCH/IFS results adopt when all wired
+  branches agree; INDEX/XLOOKUP results stay static). Never drops cables
+  (mismatch scan flags), never persists. So the hollow ring on canvas always
+  means "nothing has flowed here yet".
+- **Rename (author picks):** Frame Filter / List Filter / Frame Sort / List Sort
+  replace Filter Rows / FILTER / Sort / SORT — the pair relationship reads
+  directly off the Add menu. Also pinned MAP/MAKEARRAY result sockets by test
+  (Number default = numeric matrix; Auto = anytable — the numeric socket on a
+  fresh card is the declared default, not a D17 regression).
+- **SUMIFS rebuilt onto ONE FRAME (D16 amended)** — the author caught it violating
+  the 2026-07-06 aligned-columns standing rule (parallel criteria lists, with the
+  silent short-list misalignment hazard the rule exists to kill). Now: frame in,
+  Values-column field (hidden for COUNTIFS), criteria rows column+op+value — the
+  frame Filter's row UI plus an aggregate op selector; missing column → #REF!;
+  catalog entry moved to the frame verbs, node kind frame.
+
 ### SESSION DIGEST (2026-07-08, night — DOM-weight investigation + reductions)
 - **Measurement methodology (the load-bearing finding).** Chrome's Performance-Monitor
   "DOM Nodes" is NOT "elements on the page": it counts every live DOM node in the

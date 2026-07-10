@@ -154,11 +154,32 @@ export function PortSockets({
  */
 // ─── Multi-output rows ────────────────────────────────────────────────────────
 
+// A row's value: scalar (number / logical), a list of them (rendered as a short
+// preview), an error, or blank. Lists/logicals arrived with the Equation node's
+// per-variable outputs; plain numeric rows are unaffected.
+export type OutputRowValue = number | boolean | string | (number | boolean | string | SolError | null)[] | SolError | null;
+
 export type OutputRowDef = {
   key: string;
   label: string;
-  value: number | SolError | null;
+  value: OutputRowValue;
 };
+
+function formatRowCell(v: number | boolean | string | SolError | null): string {
+  if (v === null) return "—";
+  if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
+  if (typeof v === "string") return v; // pre-formatted (e.g. a complex "3+2i")
+  if (isSolError(v)) return v.code;
+  return formatScalar(v);
+}
+
+function formatRowValue(v: Exclude<OutputRowValue, SolError>): string {
+  if (Array.isArray(v)) {
+    const head = v.slice(0, 3).map(formatRowCell).join(", ");
+    return v.length > 3 ? `${head}, …` : head || "—";
+  }
+  return formatRowCell(v);
+}
 
 /**
  * Renders a labelled row for each output with the socket dot measured-centered
@@ -170,7 +191,7 @@ function MeasuredOutputRow({
 }: {
   rowKey: string;
   label: string;
-  value: number | SolError | null;
+  value: OutputRowValue;
   node: ShellNode;
   emit: Emit;
 }) {
@@ -191,7 +212,7 @@ function MeasuredOutputRow({
         >{value.code}</span>
       ) : (
         <span className="solenoid-node__output-value">
-          {value === null ? "—" : formatScalar(value)}
+          {formatRowValue(value)}
         </span>
       )}
     </MeasuredSocketRow>
@@ -277,6 +298,7 @@ export function NodeShell({
   collapsible = true,
   squareCollapse = false,
   className,
+  accentOverride,
 }: {
   node: ShellNode;
   emit: Emit;
@@ -293,6 +315,10 @@ export function NodeShell({
   squareCollapse?: boolean;
   /** Extra class on the card (e.g. a node-specific width override). */
   className?: string;
+  /** Forwarded to NodeCard — a header accent replacing the kind color (List /
+   *  Table Input tint their header by the SegToggle's element family, like the
+   *  FC tinting by its socket type). */
+  accentOverride?: string;
 }) {
   // Title edits commit on Enter/clickaway (Escape reverts), NOT per keystroke —
   // a committed rename propagates (processGraph re-renders consumers' wired
@@ -349,7 +375,7 @@ export function NodeShell({
 
   return (
     <NodeFormatContext.Provider value={node.id}>
-      <NodeCard selected={node.selected} node={node} collapsible={collapsible} squareCollapse={squareCollapse} className={className}>
+      <NodeCard selected={node.selected} node={node} collapsible={collapsible} squareCollapse={squareCollapse} className={className} accentOverride={accentOverride}>
         {/* Header hover = the node's catalog one-liner (incl. Excel equivalent)
             — the self-documentation rule. The label display's own title (the
             untruncated label) wins inside its bounds. */}
@@ -493,6 +519,7 @@ export function ValueDisplay({
   render,
   toClipboard,
   full,
+  socketKey,
 }: {
   value: DisplayValue;
   empty?: ReactNode;
@@ -501,6 +528,11 @@ export function ValueDisplay({
   /** Show a list in full (all values, joined) instead of a chip — the Display
    *  node, whose box scrolls/wraps when resized. */
   full?: boolean;
+  /** The OUTPUT socket this box displays — set on multi-box cards (the acausal
+   *  hero rows) so a Format Controller docked/wired to ONE output formats ONLY
+   *  that box, and a per-output producer lock (Triangle degrees) shows on its
+   *  own row. Single-box cards omit it and keep the any-socket read. */
+  socketKey?: string;
 }) {
   const [hovered, setHovered] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -528,12 +560,20 @@ export function ValueDisplay({
   // Local-display formatting: if a Format Controller is docked to this node,
   // render the value through its annotation. Only kicks in when the component
   // doesn't already supply its own `render` (custom displays keep theirs).
-  let ann = ctxNodeId ? formatAnnotationStore.getForNode(ctxNodeId) : undefined;
+  // A multi-box card names its socket: read THAT socket's annotation only, so an
+  // FC on one hero row can't smear over its siblings. Single-box cards keep the
+  // any-socket read (a node carries at most one FC there).
+  let ann = ctxNodeId
+    ? (socketKey ? formatAnnotationStore.get(ctxNodeId, socketKey) : formatAnnotationStore.getForNode(ctxNodeId))
+    : undefined;
   // With no DIRECT annotation, a node that merely PASSES the value along (Display)
   // or SELECTS it (IF/CHOOSE/SWITCH/IFS) carries the locked format/unit on its
   // output — so its own value box shows it, exactly like a downstream Display.
   // Guarded to those nodes so sources/transforms (which carry nothing) stay raw and
   // never pay the graph walk; the resolver returns undefined for them anyway.
+  // A socketKey'd box also consults the resolver for ITS output — that is where a
+  // per-output producer lock (Triangle degrees, Element g/mol) surfaces on the
+  // node's own row; compute() is O(1) for a non-passthrough producer.
   if (!ann && ctxNodeId) {
     // Owning editor, not main: a node rendered inside a Composite drill-in lives in
     // the internal editor, so resolve its docked/carried FC there (see getOwningEditor).
@@ -541,7 +581,9 @@ export function ValueDisplay({
     const node = editor?.getNode(ctxNodeId) as
       (Record<string, unknown> & { outputs?: Record<string, unknown> }) | undefined;
     const carries = !!node && (node.passesUnitThrough === true || typeof node.unitPassInputs === "function");
-    if (editor && node && carries) {
+    if (editor && node && socketKey && typeof node.annotationFor === "function") {
+      ann = sharedAnnotationResolver(editor).outAnnotation(ctxNodeId, socketKey);
+    } else if (editor && node && carries) {
       const resolver = sharedAnnotationResolver(editor);
       for (const k of Object.keys(node.outputs ?? {})) {
         const a = resolver.outAnnotation(ctxNodeId, k);
@@ -683,7 +725,7 @@ export function ValueDisplay({
           )
         : isLogical ? applyLogicalStyle(value as boolean, ann?.logicalStyle)
         : listIsString ? (listInline ? (value as (string | null)[]).map((v) => (v === null ? "null" : cased(v))).join(", ") : <ArrayChip value={value as string[]} />)
-        : isList ? (listInline ? (value as (number | null | SolError)[]).map((v) => formatListCell(v, fmtScalar)).join(", ") : <ArrayChip value={value as number[] | number[][]} />)
+        : isList ? (listInline ? (value as (number | null | SolError)[]).map((v) => formatListCell(v, fmtScalar)).join(", ") : <ArrayChip value={value as number[] | number[][]} elem={nodeOutputIsDate(ctxNodeId) ? "date" : undefined} />)
         : typeof value === "number" && Number.isNaN(value) ? (
             // A residual NaN is dirty DATA, not an error (an error is a tagged
             // SolError, rendered red above). Quiet muted affordance + a structural

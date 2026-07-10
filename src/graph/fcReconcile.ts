@@ -3,13 +3,13 @@ import type { AreaPlugin } from "rete-area-plugin";
 import type { Schemes, AreaExtra } from "./schemes";
 import { FormatControllerNode, ConvertNode, ConduitNode } from "./rete-nodes";
 import { SolenoidSocket, canConnect } from "./sockets";
-import { reconcileConduitTypes } from "./conduitTrace";
+import { settleWildcardTypes } from "./trueAnyAdopt";
 
 /**
  * Re-adapt every Format Controller's socket type to whatever it's now attached to
  * and re-project its annotation, then re-render. This is the type-propagation pass:
  * an FC adopts the CONCRETE type flowing into it (resolving through passthrough
- * "any" sockets), so when an upstream output's type changes — a new/removed cable,
+ * wildcard sockets), so when an upstream output's type changes — a new/removed cable,
  * a Cast, or a Note frontmatter key retyped from date→number — the downstream FCs
  * must re-resolve or they keep formatting by the stale type (a number still shown
  * as a date). Shared by the Canvas connection-event pipe AND any code that mutates
@@ -35,7 +35,7 @@ export async function retypeOutputCables(
   outKey: string,
 ): Promise<void> {
   const outSock = editor.getNode(nodeId)?.outputs[outKey]?.socket;
-  const newType = outSock instanceof SolenoidSocket ? outSock.dataType : "any";
+  const newType = outSock instanceof SolenoidSocket ? outSock.dataType : "trueany";
   for (const c of [...editor.getConnections()]) {
     if (c.source !== nodeId || c.sourceOutput !== outKey) continue;
     const inSock = editor.getNode(c.target)?.inputs?.[c.targetInput]?.socket;
@@ -49,18 +49,25 @@ export function reconcileFcTypes(
   editor: NodeEditor<Schemes>,
   area: AreaPlugin<Schemes, AreaExtra>,
 ): void {
-  // Conduits FIRST: each lane's output socket adopts the type feeding its input,
-  // so a lane carries its real type downstream (an FC docked past a Conduit, or a
-  // Display, then sees the true type instead of `any`). Fixpoint over chained
-  // Conduits. On a change, re-render the Conduit cards + their cables so the new
-  // lane types/colours show and downstream FCs (below) resolve against them.
-  if (reconcileConduitTypes(editor)) {
+  // Derived socket types FIRST: Conduit lanes adopt the type feeding them, and
+  // every trueany PLACEHOLDER port adopts the wired cable's type (trueAnyAdopt —
+  // D17), alternated to a joint fixpoint so chains through both settle. On a
+  // change, re-render the affected cards + their cables so the new types/colours
+  // show and downstream FCs (below) resolve against them.
+  const settled = settleWildcardTypes(editor);
+  if (settled.conduitChanged) {
     for (const n of editor.getNodes()) {
       if (!(n instanceof ConduitNode)) continue;
       void area.update("node", n.id);
       for (const c of editor.getConnections()) {
         if (c.source === n.id || c.target === n.id) void area.update("connection", c.id);
       }
+    }
+  }
+  for (const id of settled.adopted) {
+    void area.update("node", id);
+    for (const c of editor.getConnections()) {
+      if (c.source === id || c.target === id) void area.update("connection", c.id);
     }
   }
   // Convert is a hybrid node+FC with unit primacy — refresh its arrows first so the

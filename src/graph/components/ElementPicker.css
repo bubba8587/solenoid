@@ -1,0 +1,76 @@
+/* Element picker — search + the periodic table on the standard 18-column grid.
+   Chrome stays neutral (Quiet Accent Rule): cells are plain surfaces; color is
+   spent only on STATE — the node's current element and the best search match. */
+
+.el-picker__body {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.el-picker__search {
+  font: inherit;
+  font-size: 12px;
+  color: var(--text);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 5px 8px;
+  outline: none;
+}
+.el-picker__search:focus {
+  border-color: var(--accent);
+}
+
+.el-picker__table {
+  display: grid;
+  grid-template-columns: repeat(18, 26px);
+  /* Row 8 is the deliberate gap between the main body and the f-block. */
+  grid-template-rows: repeat(7, 26px) 8px repeat(2, 26px);
+  gap: 2px;
+}
+
+.el-picker__cell {
+  font: inherit;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0;
+  cursor: pointer;
+}
+.el-picker__cell:hover {
+  border-color: var(--accent);
+}
+.el-picker__cell--dim {
+  opacity: 0.25;
+}
+.el-picker__cell--current {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+}
+.el-picker__cell--best {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+/* Phones: the 18-column grid shrinks to fit rather than overflowing. */
+@media (max-width: 560px) {
+  .el-picker__table {
+    grid-template-columns: repeat(18, minmax(14px, 1fr));
+    grid-template-rows: repeat(7, 22px) 6px repeat(2, 22px);
+    width: 100%;
+  }
+  .el-picker__cell { font-size: 9px; }
+}
+
+/* The Element card's opener — the op-select field look, minus the dropdown
+   chevron (it opens the picker popup, not a native menu). */
+.el-picker__open {
+  background-image: none;
+  text-align: left;
+  padding-right: 8px;
+}

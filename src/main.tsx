@@ -10,6 +10,7 @@ import { initSettings } from "./graph/settingsStore";
 import { initPacks } from "./graph/packs";
 import { initPackFcExtensions } from "./graph/fcExtensions";
 import { initFrameBackend } from "./graph/frameBackend";
+import { shouldReloadForChunkError, type ReloadStore } from "./graph/chunkReloadGuard";
 import { initDevtoolsHotkey } from "./graph/devtoolsHotkey";
 import { initFullscreenHotkey } from "./graph/fullscreen";
 import { pushNotice } from "./graph/noticeStore";
@@ -76,12 +77,15 @@ if (IS_MOBILE) document.documentElement.classList.add("is-mobile");
   // per 10s window, else let it surface as a normal error instead).
   window.addEventListener("vite:preloadError", (e) => {
     const KEY = "sol:chunkReloadAt";
-    let last = 0;
-    try { last = Number(sessionStorage.getItem(KEY) || 0); } catch { /* private mode */ }
-    const now = Date.now();
-    if (now - last < 10_000) return; // already reloaded for a stale chunk — don't loop
+    const store: ReloadStore = {
+      get: () => sessionStorage.getItem(KEY),
+      set: (v) => sessionStorage.setItem(KEY, v),
+    };
+    // Fail-safe: reloads only when the guard can be persisted, so a genuine outage
+    // in private browsing (sessionStorage throws) surfaces as an error instead of
+    // looping forever.
+    if (!shouldReloadForChunkError(Date.now(), store)) return;
     e.preventDefault(); // we're recovering via reload; don't also throw to the console
-    try { sessionStorage.setItem(KEY, String(now)); } catch { /* ignore */ }
     window.location.reload();
   });
 }

@@ -90,7 +90,7 @@ describe("reconcileConduitTypes — lanes adopt the wired-in type", () => {
     const dt = (k: string) => (cond.outputs[k]?.socket as { dataType?: string })?.dataType;
     expect(dt(conduitOutKey(2))).toBe("date");   // adopted from the date source
     expect(dt(conduitOutKey(0))).toBe("number");  // adopted from the number source
-    expect(dt(conduitOutKey(1))).toBe("any");     // unwired lane stays any
+    expect(dt(conduitOutKey(1))).toBe("trueany"); // unwired lane stays the wildcard
   });
 
   it("reverts a lane to any when its feed is removed", async () => {
@@ -102,6 +102,6 @@ describe("reconcileConduitTypes — lanes adopt the wired-in type", () => {
 
     await editor.removeConnection(conn.id);
     reconcileConduitTypes(editor);
-    expect((cond.outputs[conduitOutKey(0)]?.socket as { dataType?: string })?.dataType).toBe("any");
+    expect((cond.outputs[conduitOutKey(0)]?.socket as { dataType?: string })?.dataType).toBe("trueany");
   });
 });

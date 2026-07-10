@@ -61,7 +61,7 @@ function reconcileConduitTypesOnce(editor: NodeEditor<Schemes>): boolean {
       const outSock = node.outputs[conduitOutKey(i)]?.socket;
       if (!(outSock instanceof MutableSocket)) continue;
       const feed = conns.find((c) => c.target === node.id && c.targetInput === conduitInKey(i));
-      let newType: SocketDataType = "any";
+      let newType: SocketDataType = "trueany";
       if (feed) {
         const resolved = resolveTypedSource(editor, feed.source, feed.sourceOutput);
         if (resolved.socket instanceof SolenoidSocket) newType = resolved.socket.dataType;

@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { anyIn, anyOut, numIn, strIn, anyListIn } from "./shared";
+import { trueAnyIn, trueAnyOut, numIn, strIn, anyListIn } from "./shared";
 import { isSolError } from "../errorValue";
 import { fireAlert } from "../alertStore";
 import { isGraphRebuilding } from "../process";
@@ -54,7 +54,7 @@ export class ExpectNode extends ClassicPreset.Node {
     this.checkRange = init?.checkRange ?? false;
     this.checkRegex = init?.checkRegex ?? false;
     this.checkAllowed = init?.checkAllowed ?? false;
-    this.addInput("in", anyIn("Value"));
+    this.addInput("in", trueAnyIn("Value"));
     this.addInput("min", numIn("Min"));
     this.addInput("max", numIn("Max"));
     this.addInput("pattern", strIn("Pattern"));
@@ -62,7 +62,7 @@ export class ExpectNode extends ClassicPreset.Node {
     // TEXT — "Apple, Banana"), and `list` is the number-only socket, which the
     // lattice would block a strlist/datelist cable from reaching.
     this.addInput("allowed", anyListIn("Allowed"));
-    this.addOutput("out", anyOut("Out"));
+    this.addOutput("out", trueAnyOut("Out"));
   }
 
   data(inputs: { in?: unknown[]; min?: number[]; max?: number[]; pattern?: string[]; allowed?: unknown[][] }) {

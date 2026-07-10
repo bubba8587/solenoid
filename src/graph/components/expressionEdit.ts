@@ -1,4 +1,4 @@
-import type { ExpressionNode, LambdaNode } from "../rete-nodes";
+import type { ExpressionNode, LambdaNode, EquationNode } from "../rete-nodes";
 import { processGraph } from "../process";
 import { getActiveEditor, getActiveArea } from "../activeGraph";
 import { INPUT_ROW_PITCH } from "./inlineInput";
@@ -41,6 +41,45 @@ export async function applyExprChange(node: ExpressionNode, newExpr: string): Pr
     // tidied, the card can no longer grow, so adding an input row (a+b → a+b+c)
     // makes the value box overflow the frozen height. Clear that pin so the card
     // reflows to its new content; the ResizeObserver then re-syncs node.height.
+    clearPinnedHeight(area, node.id);
+    await area.update("node", node.id);
+  }
+  await processGraph();
+}
+
+/** Card height for an Equation node: header + formula box + one HERO row per
+ *  variable (in+out sockets share the row) + the Check row. The rendered card
+ *  is content-driven; this just seeds a sane size after a formula edit. */
+export function computeEquationHeight(varCount: number): number {
+  return 110 + (Math.max(varCount, 0) + 1) * 46;
+}
+
+/**
+ * Apply a new equation to an Equation node: reparse, add/remove the
+ * per-variable INPUT and OUTPUT sockets (dropping cables on both sides for
+ * removed variables), resize, recompute. Mirrors applyExprChange; the extra
+ * work is the paired output socket per variable.
+ */
+export async function applyEquationChange(node: EquationNode, newExpr: string): Promise<void> {
+  if (node.locked) return;
+  node.expr = newExpr;
+  const { removed } = node._rebuild();
+
+  const editor = getActiveEditor();
+  const area = getActiveArea();
+
+  if (editor && removed.length > 0) {
+    const conns = editor.getConnections().filter(
+      (c) =>
+        (c.target === node.id && removed.includes(c.targetInput as string)) ||
+        (c.source === node.id && removed.includes(c.sourceOutput as string)),
+    );
+    for (const c of conns) await editor.removeConnection(c.id);
+  }
+  for (const v of removed) { node.removeInput(v); node.removeOutput(v); }
+
+  node.height = computeEquationHeight(node.varNames.length);
+  if (area) {
     clearPinnedHeight(area, node.id);
     await area.update("node", node.id);
   }

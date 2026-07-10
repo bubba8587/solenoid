@@ -98,6 +98,14 @@ this backlog stays the per-item source of truth.
   dedicated AUTHOR-PRESENT arc (not the autonomous plan). Representation decided
   (tagged cells), `dimension.ts` algebra core landed. THE plan:
   `v2.0/05-units-format-controller.md`.
+  - **Requirement (author 2026-07-09): a mixed-unit list must compute PER-ELEMENT
+    by each cell's own unit — NOT collapse to "no unit".** Concrete case: a list
+    where some cells are `deg` and some `rad` fed into an Auto-mode trig `Math`
+    node should interpret each cell in its own unit, element by element. Today
+    `resolveTrigModes` reads ONE socket-level unit (the value carries one unit),
+    so a genuinely mixed list resolves to `none` → rad — accepted "fine for now",
+    but A4's per-element units must drive per-element interpretation in consumers
+    (trig Auto is the worked example; the same applies to any unit-aware op).
 - [ ] **Header/body border seam under zoom — UNSOLVED, parked for a human/later
   model.** See dev-notes "UNSOLVED" for constraints + the two eliminated approaches.
 - [ ] **Deferred pile — RESOLVED 2026-07-05 (author ruled each):** still deferred =
@@ -139,6 +147,16 @@ this backlog stays the per-item source of truth.
   per port; no UI to flip exposure or edit a hidden port's baked default. Includes the
   pack-shell "many internal ports → one shell parameter" aliasing (the stats
   confidence-level example).
+- [ ] **trueany adoption inside the drill-in + composite OUTPUT ports** (D17 follow-up,
+  2026-07-09): `settleWildcardTypes` runs on the MAIN editor only, so trueany ports on
+  nodes INSIDE a composite never adopt (hollow rings stay hollow there); and a composite
+  shell's OUTPUT ports stay static trueany (they could adopt from the internal Output
+  marker's wiring, like the shell INPUTS already adopt from outside). Both need the
+  reconcile taught the drill-in editor stack — fold into the active-graph arc above.
+- [ ] **Auto trig angle-mode inside the drill-in** (2026-07-09): `resolveTrigModes` (the
+  Auto deg/rad unit read) runs on the MAIN editor only, so a `Math` trig node in Auto mode
+  inside a composite keeps the rad default. Same fold-into-active-graph fix as the trueany
+  gap above.
 
 ## Nodes / engine
 
@@ -148,7 +166,8 @@ this backlog stays the per-item source of truth.
   "series (2-D)" — unhelpful, inconsistent. Design a rigorous convention (named,
   ordered, positional columns) that every node feeding a frame reuses, so the label
   itself documents the expected shape. Ties to the 2026-07-06 standing rule (aligned
-  columns → one frame input, not parallel sockets).
+  columns → one frame input, not parallel sockets — SUMIFS joined that club 2026-07-09,
+  so the club is now charts + SUMIFS + the frame verbs).
 - [ ] **Lossless frame→cube (typed `CubeColumn`)** (author-flagged 2026-07-06, bigger
   project) — the ladder is "a Frame IS a Cube with all-flat cells," but `toCube(frame)`
   (`frameToCube`) drops column types because `CubeColumn` is `{name, cells}` with NO
@@ -157,12 +176,28 @@ this backlog stays the per-item source of truth.
   "cube socket eats frame types" bugs disappears (the XLOOKUP `rawInputs` bypass could then
   retire). Touches cube representation + `CubeDisplay`/`CubePopup` + the cube verbs + unit
   flow. Do it only if typed cube columns pull weight beyond this one node.
+- [ ] **MODE.SNGL tie-break disagrees across surfaces** (found 2026-07-10 audit) — the
+  standalone `ModeNode` (`stats.ts`) breaks ties by the SMALLEST modal value
+  (`iterMin`, deliberately — `stats.test.ts` "returns the smallest among equally
+  frequent values"), but the engine's `modeOf` (`frameVerbs.ts`, used by Group By +
+  Cube Rollup) breaks ties by FIRST occurrence, documented as Excel MODE.SNGL. So the
+  same data gives different "MODE.SNGL" answers (`[5,5,2,2,9]` → ModeNode 2 vs Group By
+  5; Excel = 5), and ModeNode is the non-Excel one. `ModMultNode` sorts modes ascending
+  too. Author call: align ModeNode to first-occurrence (Excel + engine), or keep the
+  deliberate smallest-tie policy and drop the Excel-parity claim. Not changed
+  autonomously — it's a tested, deliberate choice.
 - [ ] **Error UX on restriction violation** — typed error out the socket vs the node
   flagging the offending input locally. Pending a call.
 - [ ] **Formula re-audit remainder** — `formulaDivergence.test.ts` guards the known
-  overrides (incl. the 2026-07-05 TEXT-family sweep); NOT yet swept: node `data()`
-  paths that don't share the registered impl; distributions validated only at
-  representative points — widen if accuracy is ever in doubt.
+  overrides (incl. the 2026-07-05 TEXT-family sweep). **Node-vs-formula sweep done
+  2026-07-10:** stats (STDEV/VAR/MEDIAN/PERCENTILE/RANK/…), rounding, and math all
+  agree or share the impl; fixed the two genuine drifts (Combinatorics round→floor;
+  MROUND opposite-sign → #DOMAIN!). Residual, deliberately NOT fixed (obscure abuse
+  cases, one deliberate): POWER `0^0`=1 (documented JS/Polars convention vs Excel
+  #NUM!); CEILING.MATH/FLOOR.MATH with NEGATIVE significance (node doesn't `abs` it);
+  GCD/LCM on NON-integer args (node rounds, Excel truncates, Formula.js is itself
+  broken here). Still open elsewhere: distributions validated only at representative
+  points — widen if accuracy is ever in doubt.
 
 ## Notes / documents
 
@@ -176,27 +211,30 @@ this backlog stays the per-item source of truth.
 
 ## Packs
 
-- [ ] **Set / relational pack** (author 2026-07-07 — parked as a pack idea, don't build
-  unprompted). The core set nodes ship in-app: **Set** (union/intersect/difference/symmetric
-  diff → `SetOpNode`) + **Set relation** (equal/subset/superset/disjoint → `SetRelationNode`).
-  Candidate pack members surfaced while scoping, NOT built: (1) **"Is in" membership mask** —
-  elementwise Contains: for each item in A, TRUE/FALSE if it's in B → a logical list aligned to
-  A (the `ISNUMBER(MATCH())` pattern; pairs with Filter to keep original rows + their columns;
-  the scalar `ContainsNode` only does one needle); (2) **Count distinct** — best as a new
-  `ReduceOp` on `AggregateNode`, not a node; (3) **Anti / semi join** — new `JoinHow` modes
-  (rows of A whose key is / isn't in B, keeping A's columns — the table-level set diff/intersect);
-  (4) **Tally / value counts** — distinct value → count as a Frame (a bare-list shortcut; GroupBy
-  already does it for frames). Skipped as niche: multiset (dup-respecting) ops, power set,
-  Cartesian product, combination/permutation generation, Jaccard similarity.
-- [ ] **More domain packs** — post-v1 polish (framework + Geometry worked example
-  done). Don't build unprompted.
+- [ ] **Materials & Mechanical pack + the Interpolated Lookup primitive** — the next
+  domain candidate after the 2026-07-09 pack wave (Electricity, Electromagnetism, Health,
+  Fluids, Thermo & Air, Sets, Earth & Sky, Chemistry). Gated on Interpolated Lookup
+  (1-D/2-D dataset interpolation node) for the table-driven half (hardness conversion,
+  pipe schedules, material properties). See `pack-composite-plans.md` tail.
+- [ ] **Timesavers remainder** (proposal: `archive/timesavers-pack-proposal.md`; [F] batch +
+  Reverse Text + Spell Number landed 2026-07-09; **serial-interop gate cleared + Quarter /
+  Days in Month landed 2026-07-10** — the date extractors are internal + serial-aware, so a
+  preset Expression reads a date serial): remaining date [F] idioms that carry a config or
+  judgment call (Fiscal Quarter's start-month → [C], Age/Tenure with DATEDIF's `"MD"` nuance,
+  Nth Weekday), the duration trio (wants an elapsed-`[h]:mm` format first), Split Name
+  (multi-output [C]), and the list-reducer CORE batch (Conditional Aggregate AND/OR,
+  Multi-Criteria Lookup, Last/First Non-Blank, Rank-in-Group…).
+- [ ] **Composite pack-node shape** — packs can't ship subgraphs yet; the queued
+  composite pack nodes (Wheatstone, pump operating point, psychrometric state point,
+  Pareto, % of Total…) are planned in `pack-composite-plans.md`.
 - [ ] **Pack variant-switch reconciles the socket set** — a simple pack's variant
   dropdown must add/remove sockets like Cast/read-as do (retype + reconcile), not
-  leave stale ones.
-- [ ] **Excel Timesavers pack additions** (proposal: `archive/timesavers-pack-proposal.md`)
-  — ~25 formula-data presets + ~8 custom-logic + ~3 composites.
+  leave stale ones. (The 2026-07-09 custom nodes — E-Series, Antoine, Element — all keep
+  FIXED sockets across their dropdowns, deliberately, so nothing waits on this.)
 - [ ] **Pack distribution + dependency system** — LAST for 1.1 and a "maybe"; must
-  land in tandem with subgraphs (`archive/v1.1-plan.md` B1 remainder).
+  land in tandem with subgraphs (`archive/v1.1-plan.md` B1 remainder). (In-app
+  `dependsOn` auto-activation already works — Electromagnetism → Electricity is the
+  live example; this item is about DISTRIBUTION of third-party packs.)
 
 ## Desktop shell
 

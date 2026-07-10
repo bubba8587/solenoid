@@ -1,73 +1,129 @@
-import type { FilterNode as FilterNodeType, ComparisonOp, FilterCombine } from "../rete-nodes";
-import { InlineInputs, useConnectedInputs } from "./inlineInput";
+import { useState } from "react";
+import type { FilterNode as FilterNodeType } from "../rete-nodes";
+import type { FilterCondConfig } from "../frameVerbs";
+import { processGraph, bumpConnectionVersion } from "../process";
+import { getActiveEditor, getActiveArea } from "../activeGraph";
+import { useConnectedInputs, InlineInputs, InlineTextField } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
-import { TableDisplay } from "./TableDisplay";
-import { type SolError } from "../errorValue";
+import { SegToggle } from "./SegToggle";
+import { MeasuredSocketRow } from "./NodeSocket";
+import { ArrayChip } from "./ArrayChip";
+import { pushRowAddUndo, pushRowRemovalUndo } from "./ExtensibleInputs";
+import { FILTER_OP_OPTIONS, TEXT_MATCH_OPS, FILTER_COMBINE_OPTIONS } from "./FrameNodes";
+import type { DisplayValue } from "./valueDisplayFormat";
 
-const OPS: { value: ComparisonOp; label: string }[] = [
-  { value: "gt",  label: "keep where x > value" },
-  { value: "gte", label: "keep where x ≥ value" },
-  { value: "lt",  label: "keep where x < value" },
-  { value: "lte", label: "keep where x ≤ value" },
-  { value: "eq",  label: "keep where x = value" },
-  { value: "neq", label: "keep where x ≠ value" },
-];
-
-// Second-predicate ops phrase against "value 2".
-const OPS2: { value: ComparisonOp; label: string }[] = OPS.map((o) => ({
-  value: o.value,
-  label: o.label.replace("value", "value 2"),
-}));
-
-const COMBINE: { value: FilterCombine; label: string }[] = [
-  { value: "none", label: "single condition" },
-  { value: "and",  label: "AND second condition" },
-  { value: "or",   label: "OR second condition" },
-];
-
-// A filtered list reads back as a 1×N (or N×1) matrix; show those as a flat list
-// so the classic list-filter still looks like a list, and genuine 2-D as a grid.
-function isVector(m: (number | null)[][] | SolError | null): m is (number | null)[][] {
-  return Array.isArray(m) && (m.length === 1 || m.every((r) => r.length === 1));
-}
-function flatten(m: (number | null)[][]): (number | null)[] {
-  return m.length === 1 ? m[0] : m.map((r) => r[0]);
-}
-
+// The 1-D Filter card (D16): the frame Filter's condition rows minus the
+// column picker — a list has no lanes, so each row is just op + value (+ Match
+// case on the text ops). Kept rides the hero box; Dropped is the complement.
 export function FilterComponent({ data, emit }: NodeProps<FilterNodeType>) {
-  const [op, setOp] = useNodeField(data, "op");
-  const [op2, setOp2] = useNodeField(data, "op2");
+  const connected = useConnectedInputs(data.id);
   const [combine, setCombine] = useNodeField(data, "combine");
+  const [cfg, setCfg] = useState<Record<string, FilterCondConfig>>(() => ({ ...data.condConfig }));
+  const strLiterals = (data.stringLiterals ??= {});
+  const keys = data.valueInputKeys();
 
-  // A wired mask (Excel's `include`) replaces the comparison predicate, so the
-  // op/threshold UI only shows when no mask is present.
-  const masked = useConnectedInputs(data.id).has("mask");
-  const predicateMode = !masked;
+  const rowCfg = (id: string): FilterCondConfig => cfg[id] ?? data.condConfig[id] ?? { op: "gt" };
+  const updateCfg = (id: string, patch: Partial<FilterCondConfig>) => {
+    const next = { ...rowCfg(id), ...patch };
+    setCfg((c) => ({ ...c, [id]: next }));
+    data.condConfig[id] = next;
+    void processGraph();
+  };
+  const setStr = (key: string, v: string) => {
+    strLiterals[key] = v;
+    void processGraph();
+  };
 
-  const keys = ["list", "mask"];
-  if (predicateMode) {
-    keys.push("threshold");
-    if (combine !== "none") keys.push("threshold2");
+  async function addRow() {
+    const key = data.addValueInput();
+    pushRowAddUndo(data, [key], () => data.removeValueInput(key));
+    await getActiveArea()?.update("node", data.id);
+    await processGraph();
   }
 
-  const res = data.cachedResult;
+  async function removeRow(key: string) {
+    const editor = getActiveEditor();
+    if (editor) {
+      for (const c of editor.getConnections()) {
+        if (c.target === data.id && c.targetInput === key) await editor.removeConnection(c.id);
+      }
+    }
+    pushRowRemovalUndo(data, [key], () => data.removeValueInput(key));
+    data.removeValueInput(key);
+    await getActiveArea()?.update("node", data.id);
+    bumpConnectionVersion();
+    await processGraph();
+  }
+
   return (
-    <NodeShell node={data} emit={emit}>
-      <InlineInputs node={data} emit={emit} keys={keys} />
-      {predicateMode && (
-        <>
-          <OpSelect value={op} onChange={setOp} options={OPS} />
-          <OpSelect value={combine} onChange={setCombine} options={COMBINE} />
-          {combine !== "none" && <OpSelect value={op2} onChange={setOp2} options={OPS2} />}
-        </>
+    <NodeShell node={data} emit={emit} hideOutputSockets>
+      <InlineInputs node={data} emit={emit} keys={["list"]} />
+      {keys.length > 1 && (
+        <SegToggle value={combine} options={FILTER_COMBINE_OPTIONS} onChange={setCombine} />
       )}
-      {/* A dimension mismatch lands in cachedResult as a #SHAPE! error, which
-          TableDisplay renders as the red badge — same path as every other error. */}
-      {isVector(res) ? (
-        <ValueDisplay value={flatten(res)} />
-      ) : (
-        <TableDisplay table={res} label={data.label} />
-      )}
+      {keys.map((key, i) => {
+        const id = key.slice(5);
+        const c = rowCfg(id);
+        return (
+          <div key={key} className="solenoid-node__pair-group">
+            <OpSelect value={c.op} options={FILTER_OP_OPTIONS} onChange={(op) => updateCfg(id, { op })} />
+            <MeasuredSocketRow side="input" socketKey={key} nodeId={data.id} emit={emit} payload={data.inputs[key]!.socket}>
+              <span className="solenoid-node__io-label">Value{keys.length > 1 ? ` ${i + 1}` : ""}</span>
+              {connected.has(key) ? (
+                <span className="solenoid-node__io-wired" title="Driven by an incoming cable">↩ wired</span>
+              ) : (
+                <InlineTextField value={strLiterals[key]} onChange={(v) => setStr(key, v)} />
+              )}
+              {TEXT_MATCH_OPS.has(c.op) && (
+                <button
+                  type="button"
+                  title="Match case. Off matches text like Excel's = does."
+                  aria-pressed={c.matchCase ?? false}
+                  onClick={(e) => { e.stopPropagation(); updateCfg(id, { matchCase: !c.matchCase }); }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  style={{
+                    flexShrink: 0, fontSize: 11, lineHeight: 1, padding: "3px 5px",
+                    border: "1px solid var(--border)", borderRadius: 4, cursor: "pointer",
+                    background: c.matchCase ? "var(--accent)" : "transparent",
+                    color: c.matchCase ? "var(--surface)" : "var(--text-muted)",
+                  }}
+                >
+                  Aa
+                </button>
+              )}
+              {keys.length > 1 && (
+                <button
+                  type="button"
+                  className="solenoid-node__row-remove"
+                  title="Remove this condition"
+                  onClick={(e) => { e.stopPropagation(); void removeRow(key); }}
+                >
+                  ×
+                </button>
+              )}
+            </MeasuredSocketRow>
+          </div>
+        );
+      })}
+      <button
+        type="button"
+        className="solenoid-node__add-input"
+        onClick={(e) => { e.stopPropagation(); void addRow(); }}
+      >
+        + Add condition
+      </button>
+      <MeasuredSocketRow side="output" socketKey="result" nodeId={data.id} emit={emit} payload={data.outputs.result!.socket} hero>
+        <ValueDisplay value={data.cachedResult as DisplayValue} />
+      </MeasuredSocketRow>
+      <MeasuredSocketRow side="output" socketKey="dropped" nodeId={data.id} emit={emit} payload={data.outputs.dropped!.socket}>
+        <span className="solenoid-node__io-label">Dropped</span>
+        <span className="solenoid-node__output-value" style={{ display: "flex", justifyContent: "flex-end" }}>
+          {Array.isArray(data.cachedDropped) && data.cachedDropped.length > 0
+            ? <ArrayChip value={data.cachedDropped as (number | string | null)[]} label={`${data.label}: Dropped`} size="sm" />
+            : "—"}
+        </span>
+      </MeasuredSocketRow>
     </NodeShell>
   );
 }

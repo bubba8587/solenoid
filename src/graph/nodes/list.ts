@@ -2,13 +2,13 @@ import { ClassicPreset } from "rete";
 import { numListSocket, strListSocket, dateListSocket, logicalListSocket, type SolenoidSocket } from "../sockets";
 import { parseDateToSerial } from "./date";
 import { getRecalcGen } from "../process";
-import { listIn, listOut, numIn, numOut, anyIn, anyOut, tableIn, tableOut, logicalOut, anyListIn, anyListOut } from "./shared";
-import { compareOp } from "./logic";
-import type { ComparisonOp } from "./logic";
+import { listIn, listOut, numIn, numOut, anyIn, trueAnyIn, staticTrueAnyOut, strIn, logicalOut, logicalListOut, frameIn, frameOut, anyListIn, anyListOut } from "./shared";
+import { pairIdsFromKeys } from "./logic";
+import { passesFilter, type FilterOp, type FilterCondConfig } from "../frameVerbs";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { forAggregate, isMissing, type Tri } from "../valueKinds";
 import { iterMin, iterMax } from "./mathUtils";
-import { isFrameValue, isCubeValue, cubeRowCount, frameRowCount, type FrameValue, type CubeValue, type CubeCell } from "../frame";
+import { isFrameValue, isCubeValue, cubeRowCount, frameRowCount, inferColumn, getColumn, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
 
 // ─── List Input ─────────────────────────────────────────────────────────────
 
@@ -190,7 +190,8 @@ export class ListLengthNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("ListLength");
     this.label = init?.label ?? "LENGTH";
-    this.addInput("list", listIn("List"));
+    // Element-blind (it only counts) — anylist like the other position ops.
+    this.addInput("list", anyListIn("List"));
     this.addOutput("result", numOut("Count"));
   }
 
@@ -217,10 +218,12 @@ export class ListIndexNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("ListIndex");
     this.label = init?.label ?? "INDEX";
-    this.addInput("list",  anyIn("Array"));     // list, matrix, frame, or cube
+    this.addInput("list",  trueAnyIn("Array")); // list, matrix, frame, or cube
     this.addInput("index", numIn("Row"));
     this.addInput("column", numIn("Column"));   // 2-D / frame / cube only
-    this.addOutput("result", anyOut("Value"));
+    // The result's type varies per row/column (a cube cell can be a nested
+    // frame), so it stays the STATIC wildcard — never adopts.
+    this.addOutput("result", staticTrueAnyOut("Value"));
   }
 
   data(inputs: { list?: unknown[]; index?: number[]; column?: number[] }): { result: number | SolError | null | CubeCell | FrameValue | CubeValue } {
@@ -297,7 +300,7 @@ export class SortNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; dir?: SortDir }) {
     super("Sort");
-    this.label = init?.label ?? "SORT";
+    this.label = init?.label ?? "List Sort";
     this.dir = init?.dir ?? "asc";
     this.addInput("list", listIn("List"));
     this.addOutput("result", listOut("Sorted"));
@@ -323,20 +326,25 @@ export class SortNode extends ClassicPreset.Node {
   }
 }
 
+// Position-based (element-blind) 1-D utilities — Reverse, Slice, Take, Drop,
+// Shuffle, NthElement, Interleave, Pad — ride the element-agnostic `anylist`
+// sockets: they only move positions, so text/date/logical lists work too
+// (the D15 coherence sweep). Order/arithmetic ops (Sort, Cumulative) stay
+// typed — they need comparison/arithmetic semantics.
 export class ReverseNode extends ClassicPreset.Node {
   label: string;
-  cachedList: number[] = [];
+  cachedList: unknown[] = [];
   width = 180;
   height = 120;
 
   constructor(init?: { label?: string }) {
     super("Reverse");
     this.label = init?.label ?? "REVERSE";
-    this.addInput("list", listIn("List"));
-    this.addOutput("result", listOut("Reversed"));
+    this.addInput("list", anyListIn("List"));
+    this.addOutput("result", anyListOut("Reversed"));
   }
 
-  data(inputs: { list?: number[][] }) {
+  data(inputs: { list?: unknown[][] }) {
     const arr = inputs.list?.[0] ?? [];
     const reversed = [...arr].reverse();
     this.cachedList = reversed;
@@ -346,7 +354,7 @@ export class ReverseNode extends ClassicPreset.Node {
 
 export class SliceNode extends ClassicPreset.Node {
   label: string;
-  cachedList: number[] = [];
+  cachedList: unknown[] = [];
   // 1-based, inclusive. `end` unset → through the end of the list.
   literals: Record<string, number> = { start: 1 };
   width = 180;
@@ -355,13 +363,13 @@ export class SliceNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("Slice");
     this.label = init?.label ?? "SLICE";
-    this.addInput("list",  listIn("List"));
+    this.addInput("list",  anyListIn("List"));
     this.addInput("start", numIn("Start"));
     this.addInput("end",   numIn("End"));
-    this.addOutput("result", listOut("Slice"));
+    this.addOutput("result", anyListOut("Slice"));
   }
 
-  data(inputs: { list?: number[][]; start?: number[]; end?: number[] }) {
+  data(inputs: { list?: unknown[][]; start?: number[]; end?: number[] }) {
     const arr = inputs.list?.[0] ?? [];
     const start = Math.round(inputs.start?.[0] ?? this.literals.start ?? 1);
     const endRaw = inputs.end?.[0] ?? this.literals.end;
@@ -374,98 +382,264 @@ export class SliceNode extends ClassicPreset.Node {
 }
 
 // ─── Filter ────────────────────────────────────────────────────────────────────
+// The 1-D filter, redesigned 2026-07-09 (decisions.md D16): a list tested
+// against ITS OWN values with the frame Filter's condition engine — extensible
+// condition rows (op + value, per-row Match case) combined with AND/OR, any
+// element family (anylist). What it deliberately no longer does: accept a
+// table (filtering a table's rows is the frame Filter's job — a matrix widens
+// into it as Col1..N), or take a "Keep if" mask (filtering one list by a
+// PARALLEL list is SUMIFS below for aggregation, or Frame from Lists → Filter
+// Rows for the filtered list itself). Kept ∪ Dropped stays the exhaustive
+// complement: a null/error cell fails its condition and lands in Dropped.
 
-// Keep list elements that satisfy `element <op> threshold`. Excel FILTER.
-// Compose with a Reduce (SUM/COUNT/AVERAGE) to get SUMIF/COUNTIF/AVERAGEIF.
-export type FilterCombine = "none" | "and" | "or";
+/** Re-export so the barrel keeps one FilterCombine (the frame Filter's). */
+export type { FilterCombine } from "../frameVerbs";
+import type { FilterCombine } from "../frameVerbs";
+
+/** The element family driving passesFilter's comparison semantics. Dates are
+ *  serials, so they compare as numbers; blanks/errors don't vote. */
+function listElemColType(arr: readonly unknown[]): FrameColType {
+  for (const v of arr) {
+    if (v == null || isSolError(v)) continue;
+    if (typeof v === "string") return "string";
+    if (typeof v === "boolean") return "logical";
+    if (typeof v === "number") return "number";
+  }
+  return "number";
+}
+
+/** Read a Filter/SUMIFS Value slot: the wired value wins over the literal even
+ *  when it's `null` (the readInput rule) — a wired missing reads as "not written
+ *  yet" (blank). A wired scalar STRINGIFIES, so both engines see exactly what a
+ *  typed literal would say ("5", "true", a date serial); a wired SolError becomes
+ *  its code text, which matches no rows (the unparseable-value rule). */
+export function readFilterValue(wired: unknown[] | undefined, literal: string | undefined): string {
+  const raw: unknown = wired !== undefined && wired.length > 0 ? wired[0] : (literal ?? "");
+  if (raw === null || raw === undefined) return "";
+  if (isSolError(raw)) return raw.code;
+  return String(raw);
+}
 
 export class FilterNode extends ClassicPreset.Node {
   label: string;
-  op: ComparisonOp;
-  // Optional second predicate. `combine` = "none" keeps the classic single-
-  // condition behavior; "and"/"or" applies both predicates. Two conditions
-  // with OR is what Excel's SUMIFS/COUNTIFS can't do natively — chain this
-  // Filter into a Reduce for SUMIFS / OR-SUMIF.
-  op2: ComparisonOp;
   combine: FilterCombine;
-  cachedResult: (number | null)[][] | SolError | null = null;
-  literals: Record<string, number> = { threshold: 0, threshold2: 0 };
-  width = 190;
-  height = 210;
+  /** Per-row {op, matchCase}, keyed by the row id (the `value${id}` suffix). */
+  condConfig: Record<string, FilterCondConfig> = {};
+  stringLiterals: Record<string, string> = {};
+  nextCondId = 0;
+  cachedResult: unknown[] | null = null;
+  cachedDropped: unknown[] | null = null;
+  width = 200;
+  height = 240;
 
-  constructor(init?: { label?: string; op?: ComparisonOp; op2?: ComparisonOp; combine?: FilterCombine }) {
+  constructor(init?: {
+    label?: string;
+    // Old saves carried "none" (single-condition mode) — it folds to "and".
+    combine?: FilterCombine | "none";
+    condConfig?: Record<string, FilterCondConfig>;
+    valueKeys?: string[];
+  }) {
     super("Filter");
-    this.label = init?.label ?? "FILTER";
-    this.op = init?.op ?? "gt";
-    this.op2 = init?.op2 ?? "lt";
-    this.combine = init?.combine ?? "none";
-    // One polymorphic data input: `table` is the numeric supertype, so a scalar
-    // or list arrives as a 1×N row (central coercion handles it). `mask` is
-    // Excel's explicit `include`; without it the comparison predicate builds the
-    // mask from the data (1-D only). The filter axis follows the mask's length.
-    // The key stays "list" so graphs saved before Filter became table-shaped keep
-    // their data wire (the socket re-validates under the supertype lattice).
-    this.addInput("list",       tableIn("Data"));
-    this.addInput("mask",       listIn("Keep if"));
-    this.addInput("threshold",  numIn("Value"));
-    this.addInput("threshold2", numIn("Value 2"));
-    this.addOutput("result",    tableOut("Kept"));
-  }
-
-  private predicate(x: number, t1: number, t2: number): boolean {
-    const p1 = compareOp(this.op, x, t1);
-    if (this.combine === "none") return p1;
-    const p2 = compareOp(this.op2, x, t2);
-    return this.combine === "and" ? p1 && p2 : p1 || p2;
-  }
-
-  data(inputs: {
-    list?: (number | null)[][][]; mask?: number[][];
-    threshold?: number[]; threshold2?: number[];
-  }): { result: (number | null)[][] | SolError | null } {
-    const m = inputs.list?.[0] ?? null; // coerced to a matrix by the engine boundary
-    this.cachedResult = null;
-    // A mask that lines up with neither dimension, or a 2-D table with no explicit
-    // mask, is a dimension mismatch — emit #SHAPE! so it shows the red badge here
-    // and propagates downstream like every other error.
-    const shapeErr = (msg: string): { result: SolError } => {
-      const e = solError("#SHAPE!", msg);
-      this.cachedResult = e;
-      return { result: e };
-    };
-    if (!m || m.length === 0) return { result: null };
-    const rows = m.length, cols = m[0]?.length ?? 0;
-
-    const maskIn = inputs.mask?.[0];
-    let keep: boolean[];
-    let axis: "row" | "col";
-
-    if (maskIn && maskIn.length > 0) {
-      // Excel `include`: nonzero keeps (Number() folds booleans → 1/0).
-      keep = maskIn.map((v) => { const n = Number(v); return Number.isFinite(n) && n !== 0; });
-      // Axis follows the mask length — rows checked first, so a square table and
-      // a 1×N list both resolve cleanly. Matching neither dimension is a #SHAPE!.
-      if (keep.length === rows) axis = "row";
-      else if (keep.length === cols) axis = "col";
-      else return shapeErr(`A ${keep.length}-long mask matches neither the ${rows}×${cols} data's rows nor its columns`);
+    this.label = init?.label ?? "List Filter";
+    this.combine = init?.combine === "or" ? "or" : "and";
+    this.addInput("list", anyListIn("List"));
+    const ids = pairIdsFromKeys(init?.valueKeys?.filter((k) => k.startsWith("value")), "value");
+    if (ids.length) {
+      for (const id of ids) this.addCondWithId(id);
+      for (const id of ids) {
+        const cfg = init?.condConfig?.[String(id)];
+        if (cfg) this.condConfig[String(id)] = { ...cfg };
+      }
     } else {
-      // Predicate builds the mask, but only makes sense on effectively-1-D data;
-      // a genuine 2-D table needs an explicit mask.
-      if (rows !== 1 && cols !== 1) return shapeErr(`Filtering a ${rows}×${cols} table needs an explicit Keep-if mask`);
-      axis = rows === 1 ? "col" : "row";
-      const vec = rows === 1 ? m[0] : m.map((r) => r[0]);
-      const t1 = inputs.threshold?.[0] ?? this.literals.threshold ?? 0;
-      const t2 = inputs.threshold2?.[0] ?? this.literals.threshold2 ?? 0;
-      // A null (missing) cell makes the predicate UNKNOWN → the row is excluded
-      // (SQL WHERE keeps only TRUE), rather than coercing null→0 and guessing.
-      keep = vec.map((x) => (isMissing(x) ? false : this.predicate(x as number, t1, t2)));
+      this.addValueInput();
     }
+    this.addOutput("result", anyListOut("Kept"));
+    this.addOutput("dropped", anyListOut("Dropped"));
+  }
 
-    const result = axis === "row"
-      ? m.filter((_, i) => keep[i])
-      : m.map((row) => row.filter((_, j) => keep[j]));
-    this.cachedResult = result;
-    return { result };
+  private addCondWithId(id: number): void {
+    // `any` (scalar): a wired Slider/Number/Date/Boolean threshold connects;
+    // unwired, the typed text field is the literal (parsed per the list's type).
+    this.addInput(`value${id}`, anyIn(`Value ${id + 1}`));
+    if (!this.condConfig[String(id)]) this.condConfig[String(id)] = { op: "gt" };
+    this.nextCondId = Math.max(this.nextCondId, id + 1);
+  }
+
+  /** Ordered condition-row keys (insertion order). */
+  valueInputKeys(): string[] {
+    return Object.keys(this.inputs).filter((k) => k.startsWith("value"));
+  }
+
+  addValueInput(): string {
+    const key = `value${this.nextCondId}`;
+    this.addCondWithId(this.nextCondId);
+    return key;
+  }
+
+  removeValueInput(key: string): void {
+    this.removeInput(key);
+    delete this.stringLiterals[key];
+    // condConfig entry stays for row-removal undo; reload prunes orphans.
+  }
+
+  data(inputs: Record<string, unknown[] | undefined>): { result: unknown[] | null; dropped: unknown[] | null } {
+    const arr = inputs.list?.[0] as unknown[] | null | undefined;
+    if (arr == null) {
+      this.cachedResult = null;
+      this.cachedDropped = null;
+      return { result: null, dropped: null };
+    }
+    const type = listElemColType(arr);
+    const conds: { op: FilterOp; value: string; matchCase: boolean }[] = [];
+    for (const key of this.valueInputKeys()) {
+      const id = key.slice(5);
+      const val = readFilterValue(inputs[key], this.stringLiterals[key]);
+      if (val.trim() === "") continue; // "not written yet" — excluded (frame-Filter parity)
+      const cfg = this.condConfig[id];
+      conds.push({ op: cfg?.op ?? "gt", value: val, matchCase: cfg?.matchCase ?? false });
+    }
+    if (conds.length === 0) {
+      // No complete conditions = pass-through, like the frame Filter.
+      this.cachedResult = [...arr];
+      this.cachedDropped = null;
+      return { result: this.cachedResult, dropped: null };
+    }
+    const kept: unknown[] = [];
+    const dropped: unknown[] = [];
+    for (const cell of arr) {
+      const pass = (c: { op: FilterOp; value: string; matchCase: boolean }) =>
+        passesFilter(cell as FrameCell, c.op, c.value, type, c.matchCase);
+      if (this.combine === "and" ? conds.every(pass) : conds.some(pass)) kept.push(cell);
+      else dropped.push(cell); // incl. null/error cells — the split is exhaustive
+    }
+    this.cachedResult = kept;
+    this.cachedDropped = dropped;
+    return { result: kept, dropped };
+  }
+}
+
+// ─── SUMIFS / COUNTIFS / AVERAGEIFS / MINIFS / MAXIFS ─────────────────────────
+// Conditional aggregation over ONE FRAME (D16, amended): aggregate the Values
+// COLUMN over the rows where every criteria row (column + op + value) passes —
+// AND-only like Excel's *IFS. The 2026-07-06 standing rule applies: position-
+// aligned columns arrive as a frame, never as parallel list sockets the user
+// lines up by hand (parallel lists route through Frame from Lists first).
+// A blank/error criteria cell fails that criterion.
+
+export type CondAggOp = "sumifs" | "countifs" | "averageifs" | "minifs" | "maxifs";
+
+export const COND_AGG_OP_META = {
+  sumifs:     { label: "SUMIFS",     description: "Sum the Values column over the rows where every criteria row passes. Excel: SUMIFS / SUMIF." },
+  countifs:   { label: "COUNTIFS",   description: "Count the rows where every criteria row passes (needs no Values column). Excel: COUNTIFS / COUNTIF." },
+  averageifs: { label: "AVERAGEIFS", description: "Average the Values column where every criteria row passes; nothing matching is #DIV/0! like Excel. Excel: AVERAGEIFS / AVERAGEIF." },
+  minifs:     { label: "MINIFS",     description: "Smallest Values-column cell where every criteria row passes; nothing matching is 0 like Excel. Excel: MINIFS." },
+  maxifs:     { label: "MAXIFS",     description: "Largest Values-column cell where every criteria row passes; nothing matching is 0 like Excel. Excel: MAXIFS." },
+} satisfies Record<CondAggOp, { label: string; description: string }>;
+
+export class SumIfsNode extends ClassicPreset.Node {
+  label: string;
+  op: CondAggOp;
+  /** Per-pair {op, matchCase}, keyed by the pair id (the `column${id}` suffix). */
+  condConfig: Record<string, FilterCondConfig> = {};
+  stringLiterals: Record<string, string> = {};
+  nextPairId = 0;
+  readonly pairLabels: [string, string] = ["Column", "Value"];
+  cachedResult: number | SolError | null = null;
+  width = 210;
+  height = 280;
+
+  constructor(init?: {
+    label?: string; op?: CondAggOp;
+    condConfig?: Record<string, FilterCondConfig>; valueKeys?: string[];
+  }) {
+    super("SumIfs");
+    this.op = init?.op ?? "sumifs";
+    this.label = init?.label ?? COND_AGG_OP_META[this.op].label;
+    this.addInput("frame", frameIn("Frame"));
+    this.addInput("values", strIn("Values column"));
+    const ids = pairIdsFromKeys(init?.valueKeys, "column");
+    if (ids.length) {
+      for (const id of ids) this.addPairWithId(id);
+      for (const id of ids) {
+        const cfg = init?.condConfig?.[String(id)];
+        if (cfg) this.condConfig[String(id)] = { ...cfg };
+      }
+    } else {
+      this.addValuePair();
+    }
+    this.addOutput("result", numOut("Result"));
+  }
+
+  private addPairWithId(id: number): void {
+    this.addInput(`column${id}`, strIn(`Column ${id + 1}`));
+    // `any` (scalar): a wired threshold connects; unwired, the typed text field
+    // is the literal (parsed per the column type) — same row as the frame Filter.
+    this.addInput(`value${id}`, anyIn(`Value ${id + 1}`));
+    if (!this.condConfig[String(id)]) this.condConfig[String(id)] = { op: "eq" };
+    this.nextPairId = Math.max(this.nextPairId, id + 1);
+  }
+
+  /** Ordered (columnKey, valueKey) pairs currently present, in insertion order. */
+  valuePairKeys(): Array<[string, string]> {
+    return Object.keys(this.inputs)
+      .filter((k) => k.startsWith("column"))
+      .map((k) => { const id = k.slice(6); return [`column${id}`, `value${id}`] as [string, string]; });
+  }
+
+  addValuePair(): void {
+    this.addPairWithId(this.nextPairId);
+  }
+
+  removeValuePair(colKey: string): void {
+    const id = colKey.slice(6);
+    this.removeInput(`column${id}`);
+    this.removeInput(`value${id}`);
+    delete this.stringLiterals[`column${id}`];
+    delete this.stringLiterals[`value${id}`];
+  }
+
+  data(inputs: Record<string, unknown[] | undefined>): { result: number | SolError | null } {
+    const finish = (r: number | SolError | null) => { this.cachedResult = r; return { result: r }; };
+    const f = inputs.frame?.[0] as FrameValue | null | undefined;
+    if (!isFrameValue(f)) return finish(null);
+    interface Crit { col: FrameColumn; op: FilterOp; value: string; matchCase: boolean }
+    const crits: Crit[] = [];
+    for (const [colKey, valKey] of this.valuePairKeys()) {
+      const id = colKey.slice(6);
+      const name = String(inputs[colKey]?.[0] ?? this.stringLiterals[colKey] ?? "").trim();
+      const val = readFilterValue(inputs[valKey], this.stringLiterals[valKey]);
+      if (name === "" || val.trim() === "") continue; // row not written yet
+      const col = getColumn(f, name);
+      if (!col) return finish(solError("#REF!", `No column "${name}" in the frame`));
+      const cfg = this.condConfig[id];
+      crits.push({ col, op: cfg?.op ?? "eq", value: val, matchCase: cfg?.matchCase ?? false });
+    }
+    if (crits.length === 0) return finish(null);
+    const n = frameRowCount(f);
+    const passes = (i: number) => crits.every((c) =>
+      passesFilter((c.col.values[i] ?? null) as FrameCell, c.op, c.value, c.col.type, c.matchCase));
+    // COUNTIFS runs on the criteria alone (Excel takes no values range); the
+    // others aggregate the Values column and need it named.
+    if (this.op === "countifs") {
+      let count = 0;
+      for (let i = 0; i < n; i++) if (passes(i)) count++;
+      return finish(count);
+    }
+    const vname = String(inputs.values?.[0] ?? this.stringLiterals.values ?? "").trim();
+    if (vname === "") return finish(null); // not written yet
+    const vcol = getColumn(f, vname);
+    if (!vcol) return finish(solError("#REF!", `No column "${vname}" in the frame`));
+    const kept: unknown[] = [];
+    for (let i = 0; i < n; i++) if (passes(i)) kept.push(vcol.values[i] ?? null);
+    const prep = forAggregate(kept);
+    if (prep.error) return finish(prep.error);
+    const nums = prep.nums;
+    switch (this.op) {
+      case "sumifs":     return finish(nums.reduce((a, b) => a + b, 0));
+      case "averageifs": return finish(nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : solError("#DIV/0!", "No rows matched the criteria"));
+      case "minifs":     return finish(nums.length ? iterMin(nums) : 0); // Excel: empty match → 0
+      case "maxifs":     return finish(nums.length ? iterMax(nums) : 0);
+    }
   }
 }
 
@@ -505,6 +679,15 @@ export class UniqueNode extends ClassicPreset.Node {
 }
 
 export type SetOp = "union" | "intersect" | "difference" | "symdiff";
+
+// A complex number is an [re, im] ARRAY, and a JS Set/Map keys an array by
+// REFERENCE — so two equal complexes from different sources would never match
+// (a known Set-node bug). Key membership by VALUE instead: a complex tuple
+// canonicalizes to a string, every primitive (number incl. a date serial,
+// string, boolean) stays itself. Used by every Set/membership/tally node below.
+function setKey(v: unknown): unknown {
+  return Array.isArray(v) ? `\x00cx:${(v as unknown[]).join(",")}` : v;
+}
 
 // label = the plain-English dropdown text (no notation — the KaTeX line under the
 // selector carries the symbols); tex = the set notation rendered on the card; plain =
@@ -547,7 +730,7 @@ export class SetOpNode extends ClassicPreset.Node {
     // Value-membership of a side — blanks and errors are excluded (not members).
     const memberSet = (arr: unknown[]) => {
       const s = new Set<unknown>();
-      for (const v of arr) if (!isMissing(v) && !isSolError(v)) s.add(v);
+      for (const v of arr) if (!isMissing(v) && !isSolError(v)) s.add(setKey(v));
       return s;
     };
     const aSet = memberSet(a);
@@ -557,7 +740,7 @@ export class SetOpNode extends ClassicPreset.Node {
     const emitted = new Set<unknown>();
     // Values dedupe (first-seen wins); errors bypass this and are pushed as-is, so a
     // repeated error survives once per occurrence — deterministic, like UNIQUE.
-    const emitValue = (v: unknown) => { if (!emitted.has(v)) { emitted.add(v); out.push(v); } };
+    const emitValue = (v: unknown) => { const k = setKey(v); if (!emitted.has(k)) { emitted.add(k); out.push(v); } };
 
     switch (this.op) {
       case "union":
@@ -565,19 +748,98 @@ export class SetOpNode extends ClassicPreset.Node {
         for (const v of b) { if (isMissing(v)) continue; if (isSolError(v)) out.push(v); else emitValue(v); }
         break;
       case "intersect":
-        for (const v of a) { if (isMissing(v) || isSolError(v)) continue; if (bSet.has(v)) emitValue(v); }
+        for (const v of a) { if (isMissing(v) || isSolError(v)) continue; if (bSet.has(setKey(v))) emitValue(v); }
         break;
       case "difference":
-        for (const v of a) { if (isMissing(v)) continue; if (isSolError(v)) out.push(v); else if (!bSet.has(v)) emitValue(v); }
+        for (const v of a) { if (isMissing(v)) continue; if (isSolError(v)) out.push(v); else if (!bSet.has(setKey(v))) emitValue(v); }
         break;
       case "symdiff":
-        for (const v of a) { if (isMissing(v)) continue; if (isSolError(v)) out.push(v); else if (!bSet.has(v)) emitValue(v); }
-        for (const v of b) { if (isMissing(v)) continue; if (isSolError(v)) out.push(v); else if (!aSet.has(v)) emitValue(v); }
+        for (const v of a) { if (isMissing(v)) continue; if (isSolError(v)) out.push(v); else if (!bSet.has(setKey(v))) emitValue(v); }
+        for (const v of b) { if (isMissing(v)) continue; if (isSolError(v)) out.push(v); else if (!aSet.has(setKey(v))) emitValue(v); }
         break;
     }
 
     this.cachedList = out as number[];
     return { result: this.cachedList };
+  }
+}
+
+// ─── Is In (membership mask) — Set & Relational pack ─────────────────────────
+// Elementwise Contains: for each item of A, TRUE/FALSE whether it appears in B —
+// a logical list ALIGNED to A (the Excel `ISNUMBER(MATCH(...))` idiom). Pairs
+// with Filter to keep original rows; the scalar Contains node only answers for
+// one needle. Membership stance matches the Set node: blank and error cells of
+// B aren't members; an A-side blank stays blank (missing propagates), an A-side
+// error propagates per cell.
+export class IsInNode extends ClassicPreset.Node {
+  label: string;
+  cachedList: unknown[] = [];
+  width = 180;
+  height = 170;
+
+  constructor(init?: { label?: string }) {
+    super("IsIn");
+    this.label = init?.label ?? "Is In";
+    this.addInput("a", anyListIn("Values"));
+    this.addInput("b", anyListIn("Set"));
+    this.addOutput("result", logicalListOut("Mask"));
+  }
+
+  data(inputs: { a?: unknown[][]; b?: unknown[][] }) {
+    const a = (inputs.a?.[0] ?? []) as unknown[];
+    const b = (inputs.b?.[0] ?? []) as unknown[];
+    const members = new Set<unknown>();
+    for (const v of b) if (!isMissing(v) && !isSolError(v)) members.add(setKey(v));
+    const result = a.map((v) => {
+      if (isMissing(v)) return null;
+      if (isSolError(v)) return v;
+      return members.has(setKey(v));
+    });
+    this.cachedList = result;
+    return { result };
+  }
+}
+
+// ─── Tally (value counts) — Set & Relational pack ─────────────────────────────
+// Distinct value → occurrence count, as a two-column Frame — the bare-list
+// shortcut for what Group By already does over a frame (Excel: a one-column
+// pivot table, or GROUPBY in 365). First-seen order; blank and error cells
+// aren't counted (the count is about the real values, same stance as Set).
+export class TallyNode extends ClassicPreset.Node {
+  label: string;
+  cachedResult: FrameValue | null = null;
+  width = 200;
+  height = 200;
+
+  constructor(init?: { label?: string }) {
+    super("Tally");
+    this.label = init?.label ?? "Tally";
+    this.addInput("list", anyListIn("List"));
+    this.addOutput("frame", frameOut("Counts"));
+  }
+
+  data(inputs: { list?: unknown[][] }) {
+    const list = (inputs.list?.[0] ?? []) as unknown[];
+    // Key by value (so equal complexes tally together) but keep the first-seen
+    // original value as the row's representative.
+    const counts = new Map<unknown, { value: unknown; count: number }>();
+    for (const v of list) {
+      if (isMissing(v) || isSolError(v)) continue;
+      const k = setKey(v);
+      const e = counts.get(k);
+      if (e) e.count++; else counts.set(k, { value: v, count: 1 });
+    }
+    const entries = [...counts.values()];
+    const values = entries.map((e) => e.value);
+    const frame: FrameValue = {
+      __frame: true,
+      columns: [
+        inferColumn("Value", values),
+        { name: "Count", type: "number", values: entries.map((e) => e.count) },
+      ],
+    };
+    this.cachedResult = list.length || counts.size ? frame : null;
+    return { frame: this.cachedResult };
   }
 }
 
@@ -624,7 +886,7 @@ export class SetRelationNode extends ClassicPreset.Node {
 
     const memberSet = (arr: unknown[]) => {
       const s = new Set<unknown>();
-      for (const v of arr) if (!isMissing(v) && !isSolError(v)) s.add(v);
+      for (const v of arr) if (!isMissing(v) && !isSolError(v)) s.add(setKey(v));
       return s;
     };
     const aSet = memberSet((aRaw ?? []) as unknown[]);
@@ -654,7 +916,7 @@ export type TakeDir = "first" | "last";
 export class TakeNode extends ClassicPreset.Node {
   label: string;
   dir: TakeDir;
-  cachedList: number[] = [];
+  cachedList: unknown[] = [];
   literals: Record<string, number> = { count: 1 };
   width = 180;
   height = 170;
@@ -663,12 +925,12 @@ export class TakeNode extends ClassicPreset.Node {
     super("Take");
     this.label = init?.label ?? "TAKE";
     this.dir = init?.dir ?? "first";
-    this.addInput("list",  listIn("List"));
+    this.addInput("list",  anyListIn("List"));
     this.addInput("count", numIn("Count"));
-    this.addOutput("result", listOut("Result"));
+    this.addOutput("result", anyListOut("Result"));
   }
 
-  data(inputs: { list?: number[][]; count?: number[] }) {
+  data(inputs: { list?: unknown[][]; count?: number[] }) {
     const arr = inputs.list?.[0] ?? [];
     const n = Math.round(inputs.count?.[0] ?? this.literals.count ?? 1);
     if (n <= 0) { this.cachedList = []; return { result: [] }; }
@@ -682,7 +944,7 @@ export type DropDir = "first" | "last";
 export class DropNode extends ClassicPreset.Node {
   label: string;
   dir: DropDir;
-  cachedList: number[] = [];
+  cachedList: unknown[] = [];
   literals: Record<string, number> = { count: 1 };
   width = 180;
   height = 170;
@@ -691,12 +953,12 @@ export class DropNode extends ClassicPreset.Node {
     super("Drop");
     this.label = init?.label ?? "DROP";
     this.dir = init?.dir ?? "first";
-    this.addInput("list",  listIn("List"));
+    this.addInput("list",  anyListIn("List"));
     this.addInput("count", numIn("Count"));
-    this.addOutput("result", listOut("Result"));
+    this.addOutput("result", anyListOut("Result"));
   }
 
-  data(inputs: { list?: number[][]; count?: number[] }) {
+  data(inputs: { list?: unknown[][]; count?: number[] }) {
     const arr = inputs.list?.[0] ?? [];
     const n = Math.round(inputs.count?.[0] ?? this.literals.count ?? 1);
     if (n <= 0) { this.cachedList = [...arr]; return { result: this.cachedList }; }
@@ -706,25 +968,58 @@ export class DropNode extends ClassicPreset.Node {
   }
 }
 
-export class VStackNode extends ClassicPreset.Node {
+// Joins lists end-to-end — VSTACK's old job here, renamed 2026-07-09 when
+// VSTACK became the true table stacker (matrix.ts): appending and stacking are
+// different operations, and this one stays 1-D. The 1-D rung of the APPEND
+// LADDER (decisions.md D15): N extensible element-agnostic rows (anylist — a
+// scalar widens to a 1-element list, so "push one value" needs no wrapper),
+// concatenated in row order. Rows are wire-only: a typed literal list belongs
+// to List Input, not here.
+export class ConcatListsNode extends ClassicPreset.Node {
   label: string;
-  cachedList: number[] = [];
+  cachedList: unknown[] = [];
+  nextInputId = 0;
   width = 180;
-  height = 160;
+  height = 210;
 
-  constructor(init?: { label?: string }) {
-    super("VStack");
-    this.label = init?.label ?? "VStack";
-    this.addInput("a", listIn("Top"));
-    this.addInput("b", listIn("Bottom"));
-    this.addOutput("result", listOut("Combined"));
+  constructor(init?: { label?: string; valueKeys?: string[] }) {
+    super("ConcatLists");
+    this.label = init?.label ?? "Concat Lists";
+    const vKeys = (init?.valueKeys ?? []).filter((k) => k.startsWith("l"));
+    if (vKeys.length) for (const k of vKeys) this.addInputWithKey(k);
+    else for (let i = 0; i < 2; i++) this.addValueInput();
+    this.addOutput("result", anyListOut("Combined"));
   }
 
-  data(inputs: { a?: number[][]; b?: number[][] }) {
-    const a = inputs.a?.[0] ?? [];
-    const b = inputs.b?.[0] ?? [];
-    this.cachedList = [...a, ...b];
-    return { result: this.cachedList };
+  private addInputWithKey(key: string): void {
+    this.addInput(key, anyListIn("List"));
+    const n = parseInt(key.replace(/^l/, ""), 10);
+    if (Number.isFinite(n)) this.nextInputId = Math.max(this.nextInputId, n + 1);
+  }
+
+  /** Ordered list-row keys (insertion order = concatenation order). */
+  valueInputKeys(): string[] {
+    return Object.keys(this.inputs).filter((k) => k.startsWith("l"));
+  }
+
+  addValueInput(): string {
+    const key = `l${this.nextInputId}`;
+    this.addInputWithKey(key);
+    return key;
+  }
+
+  removeValueInput(key: string): void {
+    this.removeInput(key);
+  }
+
+  data(inputs: Record<string, unknown[][] | undefined>) {
+    const out: unknown[] = [];
+    for (const k of this.valueInputKeys()) {
+      const arr = inputs[k]?.[0];
+      if (arr != null) out.push(...arr);
+    }
+    this.cachedList = out;
+    return { result: out };
   }
 }
 
@@ -923,7 +1218,7 @@ export class RepeatNode extends ClassicPreset.Node {
 // ─── Shuffle ──────────────────────────────────────────────────────────────────
 export class ShuffleNode extends ClassicPreset.Node {
   label: string;
-  cachedList: number[] = [];
+  cachedList: unknown[] = [];
   width = 180; height = 150;
   // Volatile: the random order is fixed until a recalc (or the input length
   // changes), so editing an unrelated node doesn't reshuffle. We keep per-slot
@@ -934,11 +1229,11 @@ export class ShuffleNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("Shuffle");
     this.label = init?.label ?? "Shuffle";
-    this.addInput("list",    listIn("List"));
-    this.addOutput("result", listOut("Shuffled"));
+    this.addInput("list",    anyListIn("List"));
+    this.addOutput("result", anyListOut("Shuffled"));
   }
 
-  data(inputs: { list?: number[][] }) {
+  data(inputs: { list?: unknown[][] }) {
     const arr = [...(inputs.list?.[0] ?? [])];
     const gen = getRecalcGen();
     if (this.lastGen !== gen || this.keys.length !== arr.length) {
@@ -957,19 +1252,19 @@ export class ShuffleNode extends ClassicPreset.Node {
 // ─── NthElement ───────────────────────────────────────────────────────────────
 export class NthElementNode extends ClassicPreset.Node {
   label: string;
-  cachedList: number[] = [];
+  cachedList: unknown[] = [];
   literals: Record<string, number> = { n: 2 };
   width = 180; height = 160;
 
   constructor(init?: { label?: string }) {
     super("NthElement");
     this.label = init?.label ?? "Nth Element";
-    this.addInput("list", listIn("List"));
+    this.addInput("list", anyListIn("List"));
     this.addInput("n",    numIn("Step N"));
-    this.addOutput("result", listOut("Every Nth"));
+    this.addOutput("result", anyListOut("Every Nth"));
   }
 
-  data(inputs: { list?: number[][]; n?: number[] }) {
+  data(inputs: { list?: unknown[][]; n?: number[] }) {
     const arr = inputs.list?.[0] ?? [];
     const n = Math.max(1, Math.round(inputs.n?.[0] ?? this.literals.n ?? 2));
     this.cachedList = arr.filter((_, i) => i % n === 0);
@@ -980,28 +1275,28 @@ export class NthElementNode extends ClassicPreset.Node {
 // ─── Interleave ───────────────────────────────────────────────────────────────
 export class InterleaveNode extends ClassicPreset.Node {
   label: string;
-  cachedList: number[] = [];
+  cachedList: unknown[] = [];
   width = 180; height = 160;
 
   constructor(init?: { label?: string }) {
     super("Interleave");
     this.label = init?.label ?? "Interleave";
-    this.addInput("a", listIn("A"));
-    this.addInput("b", listIn("B"));
-    this.addOutput("result", listOut("Interleaved"));
+    this.addInput("a", anyListIn("A"));
+    this.addInput("b", anyListIn("B"));
+    this.addOutput("result", anyListOut("Interleaved"));
   }
 
-  data(inputs: { a?: number[][]; b?: number[][] }) {
+  data(inputs: { a?: unknown[][]; b?: unknown[][] }) {
     const a = inputs.a?.[0] ?? [], b = inputs.b?.[0] ?? [];
     // Ragged inputs pad to the LONGEST with null so the A/B alternation stays
     // aligned and no tail element is silently dropped.
     const n = Math.max(a.length, b.length);
-    const out: (number | null)[] = [];
+    const out: unknown[] = [];
     for (let i = 0; i < n; i++) {
       out.push(i < a.length ? a[i] : null, i < b.length ? b[i] : null);
     }
-    this.cachedList = out as number[];
-    return { result: out as number[] };
+    this.cachedList = out;
+    return { result: out };
   }
 }
 
@@ -1016,7 +1311,7 @@ export const PAD_OP_META = {
 export class PadNode extends ClassicPreset.Node {
   label: string;
   dir: PadDir;
-  cachedList: number[] = [];
+  cachedList: unknown[] = [];
   literals: Record<string, number> = { n: 5, fill: 0 };
   width = 180; height = 230;
 
@@ -1024,13 +1319,13 @@ export class PadNode extends ClassicPreset.Node {
     super("Pad");
     this.label = init?.label ?? "Pad";
     this.dir = init?.dir ?? "right";
-    this.addInput("list", listIn("List"));
+    this.addInput("list", anyListIn("List"));
     this.addInput("n",    numIn("Target length"));
     this.addInput("fill", numIn("Fill value"));
-    this.addOutput("result", listOut("Padded"));
+    this.addOutput("result", anyListOut("Padded"));
   }
 
-  data(inputs: { list?: number[][]; n?: number[]; fill?: number[] }) {
+  data(inputs: { list?: unknown[][]; n?: number[]; fill?: number[] }) {
     const arr  = inputs.list?.[0] ?? [];
     const n    = Math.round(inputs.n?.[0] ?? this.literals.n ?? 5);
     const fill = inputs.fill?.[0] ?? this.literals.fill ?? 0;
@@ -1224,7 +1519,7 @@ export class WeightedNode extends ClassicPreset.Node {
 // ─── Reduce ───────────────────────────────────────────────────────────────────
 
 export type ReduceOp =
-  | "sum" | "avg" | "min" | "max" | "count" | "median" | "product" | "stdev"
+  | "sum" | "avg" | "min" | "max" | "count" | "countdistinct" | "median" | "product" | "stdev"
   | "geomean" | "harmean" | "sumsq" | "var_s" | "var_p" | "stdev_p" | "devsq" | "avedev" | "skew" | "skew_p" | "kurt";
 
 export const REDUCE_OP_META = {
@@ -1233,6 +1528,7 @@ export const REDUCE_OP_META = {
   min:     { label: "MIN",     description: "Smallest value. Excel: MIN." },
   max:     { label: "MAX",     description: "Largest value. Excel: MAX." },
   count:   { label: "COUNT",   description: "Number of values. Excel: COUNT." },
+  countdistinct: { label: "COUNT DISTINCT", description: "Number of unique values. In Excel you'd write COUNTA(UNIQUE(range))." },
   median:  { label: "MEDIAN",  description: "Middle value. Excel: MEDIAN." },
   product: { label: "PRODUCT", description: "Multiply all values. Excel: PRODUCT." },
   stdev:   { label: "STDEV.S", description: "Sample standard deviation (n−1). Excel: STDEV.S." },
@@ -1286,6 +1582,7 @@ export class AggregateNode extends ClassicPreset.Node {
         case "min":     result = iterMin(arr); break;
         case "max":     result = iterMax(arr); break;
         case "count":   result = arr.length; break;
+        case "countdistinct": result = new Set(arr).size; break;
         case "product": result = arr.reduce((a, b) => a * b, 1); break;
         case "median": {
           const s = [...arr].sort((a, b) => a - b);
@@ -1464,18 +1761,22 @@ export class SequenceNode extends ClassicPreset.Node {
 
 export class SortByNode extends ClassicPreset.Node {
   label: string;
-  cachedList: number[] = [];
+  cachedList: unknown[] = [];
   width = 180; height = 175;
 
   constructor(init?: { label?: string }) {
     super("SortBy");
     this.label = init?.label ?? "SORTBY";
-    this.addInput("array",    listIn("Array to sort"));
+    // The array being reordered is POSITION-ONLY (element-agnostic, `anylist` per
+    // the D15 sweep) — so a text/date/logical list sorts by a parallel key too
+    // ("names by scores"). Only the by_array keys drive comparison, so they stay
+    // numeric (widening those to text keys is the deferred string-ordering call).
+    this.addInput("array",    anyListIn("Array to sort"));
     this.addInput("by_array", listIn("Sort by (parallel list)"));
-    this.addOutput("list", listOut("Sorted list"));
+    this.addOutput("list", anyListOut("Sorted list"));
   }
 
-  data(inputs: { array?: (number | null)[][]; by_array?: (number | null | SolError)[][] }): { list: number[] } {
+  data(inputs: { array?: unknown[][]; by_array?: (number | null | SolError)[][] }): { list: unknown[] } {
     const arr = inputs.array?.[0] ?? [];
     const by  = inputs.by_array?.[0] ?? [];
     // Ragged inputs pad to the LONGEST with null (never silently drop a value);
@@ -1492,7 +1793,7 @@ export class SortByNode extends ClassicPreset.Node {
       const c = (ki as number) - (kj as number);
       return c !== 0 ? c : i - j; // stable on ties
     });
-    const list = idx.map((i) => (i < arr.length ? arr[i] : null)) as number[];
+    const list = idx.map((i) => (i < arr.length ? arr[i] : null));
     this.cachedList = list;
     return { list };
   }
@@ -1588,9 +1889,9 @@ export class GroupByNode extends ClassicPreset.Node {
     super("GroupBy");
     this.label = init?.label ?? "Group Lists";
     this.op    = init?.op    ?? "sum";
-    this.addInput("keys",   anyIn("Keys"));
+    this.addInput("keys",   anyListIn("Keys"));
     this.addInput("values", listIn("Values"));
-    this.addOutput("keys",   anyOut("Unique keys"));
+    this.addOutput("keys",   anyListOut("Unique keys"));
     this.addOutput("values", listOut("Aggregated"));
   }
 

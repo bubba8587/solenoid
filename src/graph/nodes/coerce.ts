@@ -1,4 +1,6 @@
 // ─── Array-shape coercion ─────────────────────────────────────────────────────
+// (type-only import — erased at runtime, so no module cycle with errorValue)
+import type { SolError } from "../errorValue";
 // Solenoid's numeric data forms one lattice: a scalar is a 1×1 array, a list is
 // a single ROW (CSV orientation: [1,2,3] → [[1,2,3]], 1×3), a table is M×N. The
 // `table` socket is the supertype, so a node may receive a number, a number[],
@@ -72,10 +74,14 @@ export function toScalar(v: Numeric | null | undefined): number | null {
   throw new ShapeError(`Expected a single value, got ${flat.length}`);
 }
 
-// A 2-D cell — number (date serial included) or text. The reshape nodes accept
-// an `any` input (so text/date matrices connect), which coerceInputs leaves raw;
+// A 2-D cell under the array-semantics value model: number (date serial
+// included), text, a real boolean, a first-class null (missing), or a per-cell
+// SolError (#N/A padding, propagated failures). The reshape nodes accept an
+// `any` input (so text/date matrices connect), which coerceInputs leaves raw;
 // they promote it to a matrix themselves with this element-agnostic widener.
-export type Cell = number | string;
+// (Was `number | string` while the runtime already carried the rest — the
+// padding work made the lie load-bearing, so it's now the honest union.)
+export type Cell = number | string | boolean | SolError | null;
 
 /**
  * Promote any value to a matrix, generic over element type (unlike `toMatrix`,

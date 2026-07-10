@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { ExpressionNode } from "./expression";
+import { EquationNode } from "./equation";
 import { MapTableNode, ByAxisNode, ReduceLambdaNode, MakeArrayNode } from "./tableLambda";
-import { LambdaNode } from "./lambda";
+import { LambdaNode, isLambdaValue } from "./lambda";
 import { isSolError, type SolError } from "../errorValue";
 import { SolenoidSocket, type SocketDataType } from "../sockets";
 
@@ -106,9 +107,15 @@ describe("Expression — value-polymorphic results", () => {
     expect(dt(new ExpressionNode({ resultAs: "auto" }).outputs.result?.socket)).toBe("any");
   });
 
+  it("the 2-D producers: Number default is the numeric matrix; Auto is anytable (D17)", () => {
+    expect(dt(new MapTableNode().outputs.result?.socket)).toBe("table"); // default resultAs: number
+    expect(dt(new MapTableNode({ resultAs: "auto" }).outputs.result?.socket)).toBe("anytable");
+    expect(dt(new MakeArrayNode({ resultAs: "auto" }).outputs.result?.socket)).toBe("anytable");
+  });
+
   it("variable inputs are `any` so text/date arrays connect", () => {
     const n = new ExpressionNode({ expr: "UPPER(name)", resultAs: "text" });
-    expect(dt(n.inputs.name?.socket)).toBe("any");
+    expect(dt(n.inputs.name?.socket)).toBe("anylist");
   });
 });
 
@@ -185,5 +192,33 @@ describe("BYROW / REDUCE / MAKEARRAY — text", () => {
       ["cell 1,1", "cell 1,2"],
       ["cell 2,1", "cell 2,2"],
     ]);
+  });
+});
+
+describe("per-variable descriptions (Expression + Equation)", () => {
+  it("round-trip through init, and stay OUT of the formula string", () => {
+    const e = new ExpressionNode({ expr: "rate * hours", varDescriptions: { rate: "Hourly rate ($)", hours: "Hours worked" } });
+    expect(e.varDescriptions.rate).toBe("Hourly rate ($)");
+    expect(e.expr).toBe("rate * hours"); // formula untouched — KaTeX never sees the prose
+    expect(e.varNames).toEqual(["rate", "hours"]);
+  });
+
+  it("the Equation node carries them too", () => {
+    const q = new EquationNode({ expr: "v = i * r", varDescriptions: { v: "Voltage (V)", i: "Current (A)", r: "Resistance (Ω)" } });
+    expect(q.varDescriptions.r).toBe("Resistance (Ω)");
+  });
+
+  it("Lambda carries them + surfaces them on its VALUE for the Report legend", () => {
+    const l = new LambdaNode({ params: "x, y", expr: "x * y", varDescriptions: { x: "width", y: "height" } });
+    // varNames spans params + captured, so extractInit filters correctly.
+    expect(l.varNames).toContain("x");
+    expect(l.varNames).toContain("y");
+    const out = l.data({});
+    expect(isLambdaValue(out.result)).toBe(true);
+    // The value carries the descriptions so a Report embed can show "where:".
+    expect(isLambdaValue(out.result) && out.result.descriptions).toEqual({ x: "width", y: "height" });
+    // A description-less lambda leaves the value's field undefined (kept small).
+    const bare = new LambdaNode({ params: "x", expr: "x + 1" });
+    expect(isLambdaValue(bare.data({}).result) && (bare.data({}).result as { descriptions?: unknown }).descriptions).toBeUndefined();
   });
 });

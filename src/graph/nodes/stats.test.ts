@@ -67,6 +67,20 @@ describe("QUARTILE", () => {
     expect(new QuartileNode({ op: "inc" }).data({ list: data, q: [2] }).result).toBe(3);
     expect(new QuartileNode({ op: "inc" }).data({ list: data, q: [4] }).result).toBe(5);
   });
+  it("EXC interpolates the in-domain quartiles (= PERCENTILE.EXC(q/4))", () => {
+    expect(new QuartileNode({ op: "exc" }).data({ list: data, q: [1] }).result).toBe(1.5);
+    expect(new QuartileNode({ op: "exc" }).data({ list: data, q: [2] }).result).toBe(3);
+    expect(new QuartileNode({ op: "exc" }).data({ list: data, q: [3] }).result).toBe(4.5);
+  });
+  it("EXC errors out of domain with #DOMAIN! instead of clamping to min/max (Excel #NUM!)", () => {
+    // q=0/4 are always outside the EXC domain.
+    expect(isSolError(new QuartileNode({ op: "exc" }).data({ list: data, q: [0] }).result)).toBe(true);
+    expect(isSolError(new QuartileNode({ op: "exc" }).data({ list: data, q: [4] }).result)).toBe(true);
+    // Small n pushes an interior quartile out of [1/(n+1), n/(n+1)]: n=2 → q1/q3 invalid.
+    const two = [[1, 2]];
+    expect(isSolError(new QuartileNode({ op: "exc" }).data({ list: two, q: [1] }).result)).toBe(true);
+    expect(isSolError(new QuartileNode({ op: "exc" }).data({ list: two, q: [3] }).result)).toBe(true);
+  });
 });
 
 describe("PERCENTRANK", () => {

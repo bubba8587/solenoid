@@ -2,6 +2,7 @@ import { ClassicPreset } from "rete";
 import { broadcast, broadcastErr, readInput, numListIn, numListOut, numIn, numOut, listIn, type BroadcastResult } from "./shared";
 import { lnGamma } from "./mathUtils";
 import { solError, type SolError } from "../errorValue";
+import type { FormatAnnotation } from "../formatAnnotationStore";
 
 // ─── Bessel helper functions ──────────────────────────────────────────────────
 
@@ -217,25 +218,70 @@ function erf(x: number): number {
   return (x < 0 ? -1 : 1) * (1 - p * Math.exp(-x * x));
 }
 
+// Trig ops split by which side is the ANGLE: forward ops take an angle in,
+// inverse ops emit an angle out. Only these show the deg/rad/auto toggle;
+// hyperbolic ops take/return plain reals, not angles, so they're excluded.
+export const FORWARD_TRIG_OPS = new Set<MathFnOp>(["sin", "cos", "tan", "cot", "csc", "sec"]);
+export const INVERSE_TRIG_OPS = new Set<MathFnOp>(["asin", "acos", "atan", "acot"]);
+export function isTrigOp(op: MathFnOp): boolean {
+  return FORWARD_TRIG_OPS.has(op) || INVERSE_TRIG_OPS.has(op);
+}
+
+// deg/rad/auto: `rad` is Excel parity (SIN takes radians); `deg` converts;
+// `auto` (default) reads the incoming unit — a `deg`-tagged value computes in
+// degrees, anything else in radians. Auto's effective mode is resolved at
+// recompute time (trigMode.ts) into `_resolvedAngleMode`.
+export type AngleMode = "auto" | "rad" | "deg";
+const DEG2RAD = Math.PI / 180;
+const RAD2DEG = 180 / Math.PI;
+
 export class MathFnNode extends ClassicPreset.Node {
   label: string;
   op: MathFnOp;
+  /** Angle interpretation for trig ops (ignored by every other op). */
+  angleMode: AngleMode;
+  /** Auto mode's resolved effective mode, stamped by the recompute-time unit
+   *  read (trigMode.ts `resolveTrigModes`); default rad until a pass runs, so a
+   *  node computed before any reconcile still matches Excel. Not persisted. */
+  _resolvedAngleMode: "rad" | "deg" = "rad";
   cachedResult: number | (number | SolError | null)[] | SolError | null = null;
   literals: Record<string, number> = { in: 0 };
   width = 180;
   height = 160;
 
-  constructor(init?: { label?: string; op?: MathFnOp }) {
+  constructor(init?: { label?: string; op?: MathFnOp; angleMode?: AngleMode }) {
     super("MathFn");
     const op = init?.op ?? "abs";
     this.label = init?.label ?? "Math";
     this.op = op;
+    this.angleMode = init?.angleMode ?? "auto";
     this.addInput("in", numListIn("In"));
     this.addOutput("result", numListOut("Result"));
   }
 
+  /** The effective mode for THIS pass: an explicit pin wins; `auto` uses the
+   *  unit-resolved mode (default rad). */
+  effectiveAngleMode(): "rad" | "deg" {
+    return this.angleMode === "auto" ? this._resolvedAngleMode : this.angleMode;
+  }
+
+  /** An INVERSE trig op in degree mode emits an angle in degrees — carry the
+   *  real `deg` unit on the output (per-output, unitFlow `annotationFor`), so it
+   *  reads as 30° and chains into another trig node's Auto mode. */
+  annotationFor(outKey: string): FormatAnnotation | undefined {
+    return outKey === "result" && INVERSE_TRIG_OPS.has(this.op) && this.effectiveAngleMode() === "deg"
+      ? { format: "auto", unit: "deg" }
+      : undefined;
+  }
+
   data(inputs: { in?: (number | number[])[] }) {
     const input = readInput(inputs.in, this.literals.in);
+    const mode = this.effectiveAngleMode();
+    // A forward trig op takes an angle: in deg mode, convert the input to radians
+    // before the math. An inverse trig op emits an angle: convert the radian
+    // result to degrees after.
+    const fwdDeg = mode === "deg" && FORWARD_TRIG_OPS.has(this.op);
+    const invDeg = mode === "deg" && INVERSE_TRIG_OPS.has(this.op);
     // A valid input element with no defined result (√ of a negative, log of 0, an
     // arc-fn outside [−1,1], …) is OUT OF DOMAIN — #DOMAIN!, the specific half of
     // Excel's #NUM!. It tags identically at every dimensionality: a scalar → a
@@ -243,7 +289,7 @@ export class MathFnNode extends ClassicPreset.Node {
     // (array-semantics: lists carry per-cell errors, like the scalar / Map paths).
     // `compute` returns null for the domain miss; broadcastErr maps it via `??`.
     const domainErr = () => solError("#DOMAIN!", "Input is outside this function's domain");
-    const compute = (x: number): number | null => {
+    const computeRaw = (x: number): number | null => {
         switch (this.op) {
           case "abs":   return Math.abs(x);
           // Excel ROUND rounds halves away from zero; JS Math.round rounds them
@@ -300,6 +346,13 @@ export class MathFnNode extends ClassicPreset.Node {
           case "gammaln": return x > 0 ? lnGamma(x) : null;
         }
         return null;
+    };
+    // Degree conversion wraps the raw radian math at the boundary: a forward trig
+    // op's input deg→rad, an inverse trig op's result rad→deg. Every other op is
+    // untouched (fwdDeg/invDeg are false unless the op is trig AND mode is deg).
+    const compute = (x: number): number | null => {
+      const r = computeRaw(fwdDeg ? x * DEG2RAD : x);
+      return r !== null && invDeg ? r * RAD2DEG : r;
     };
     let result: number | (number | SolError | null)[] | SolError | null = null;
     if (input !== null) {
@@ -455,7 +508,16 @@ export class MRoundNode extends ClassicPreset.Node {
     const snap = this.op === "up" ? Math.ceil : this.op === "down" ? Math.floor : Math.round;
     let result: BroadcastResult = null;
     if (value !== null && multiple !== null) {
-      result = broadcast((v, m) => (m === 0 ? 0 : snap(v / m) * m), value, multiple);
+      result = broadcastErr((v, m) => {
+        if (m === 0) return 0;
+        // MROUND requires the value and multiple to share a sign — opposite signs
+        // are #NUM! in Excel (#DOMAIN! here). CEILING/FLOOR (up/down) impose no such
+        // restriction, so the guard is scoped to nearest.
+        if (this.op === "nearest" && v !== 0 && Math.sign(v) !== Math.sign(m)) {
+          return solError("#DOMAIN!", "MROUND needs the value and multiple to share a sign");
+        }
+        return snap(v / m) * m;
+      }, value, multiple);
     }
     this.cachedResult = result;
     return { result };
@@ -586,8 +648,12 @@ export class CombinatoricsNode extends ClassicPreset.Node {
   }
 
   data(inputs: { n?: number[]; k?: number[] }): { result: number | SolError | null } {
-    const n = Math.round(inputs.n?.[0] ?? this.literals.n ?? 0);
-    const k = Math.round(inputs.k?.[0] ?? this.literals.k ?? 0);
+    // Excel TRUNCATES a non-integer argument (FACT(2.9) = FACT(2) = 2), and the
+    // formula path (Formula.js) floors — rounding here made the node disagree with
+    // `=FACT(2.9)`. Floor matches both for the non-negative domain these ops live in
+    // (negatives are caught by the per-op domain guards below).
+    const n = Math.floor(inputs.n?.[0] ?? this.literals.n ?? 0);
+    const k = Math.floor(inputs.k?.[0] ?? this.literals.k ?? 0);
     let result: number | null = null;
     let domainOk = true;
     switch (this.op) {

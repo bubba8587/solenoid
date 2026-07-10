@@ -328,6 +328,9 @@ function drawSocketGlyph(g: Graphics, s: SnapSocket, lx: number, ly: number, r: 
         .stroke({ width: 1, color: ring, alpha: 0.8 });
       g.roundRect(lx - r + 1, ly - r + 1, 2 * r - 2, 2 * r - 2, 1.5).stroke(ringStroke);
       break;
+    case "ring": // trueany: hollow circle — border only, no fill
+      g.circle(lx, ly, r - 1.25).stroke({ width: 2, color: s.color, alpha: 1 });
+      break;
     case "hex": { // cube: hexagon
       const pts: number[] = [];
       for (let i = 0; i < 6; i++) { const a = (Math.PI / 3) * i - Math.PI / 6; pts.push(lx + r * Math.cos(a), ly + r * Math.sin(a)); }

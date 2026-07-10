@@ -3,6 +3,7 @@ import { numIn, numOut, listIn, dateIn } from "./shared";
 import { serialToJsDate, jsDateToSerial } from "./date";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { resolveExcelFunction } from "../excelFunctions";
+import { EquationNode } from "./equation";
 
 // Cashflow-list prep for NPV/IRR/MIRR/FVSCHEDULE: propagate the first SolError in the
 // list (error-in → error-out, was silently swallowed to NaN), and coerce a null cell
@@ -90,46 +91,6 @@ export class BitwiseNode extends ClassicPreset.Node {
   }
 }
 
-// â”€â”€â”€ Interest Rate â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-export type InterestRateOp = "effect" | "nominal";
-
-export const INTEREST_RATE_OP_META = {
-  effect:  { label: "EFFECT",  description: "Effective annual rate (APY) from a nominal rate and how many times a year it compounds: the rate you actually earn or pay. Excel: EFFECT." },
-  nominal: { label: "NOMINAL", description: "Nominal annual rate (APR) from an effective rate and the compounding frequency; the inverse of EFFECT. Excel: NOMINAL." },
-} satisfies Record<InterestRateOp, { label: string; description: string }>;
-
-export class InterestRateNode extends ClassicPreset.Node {
-  label: string;
-  op: InterestRateOp;
-  cachedResult: number | null = null;
-  literals: Record<string, number> = { rate: 0.05, npery: 12 };
-  width = 180; height = 200;
-
-  constructor(init?: { label?: string; op?: InterestRateOp }) {
-    super("InterestRate");
-    this.label = init?.label ?? "EFFECT";
-    this.op = init?.op ?? "effect";
-    this.addInput("rate",  numIn("Rate"));
-    this.addInput("npery", numIn("Periods/year"));
-    this.addOutput("result", numOut("Result"));
-  }
-
-  data(inputs: { rate?: number[]; npery?: number[] }) {
-    const rate  = inputs.rate?.[0]  ?? this.literals.rate  ?? null;
-    const npery = inputs.npery?.[0] ?? this.literals.npery ?? null;
-    let result: number | null = null;
-    if (rate !== null && npery !== null && npery > 0) {
-      const n = Math.round(npery);
-      result = this.op === "effect"
-        ? Math.pow(1 + rate / n, n) - 1
-        : n * (Math.pow(1 + rate, 1 / n) - 1);
-      if (!Number.isFinite(result)) result = null;
-    }
-    this.cachedResult = result;
-    return { result };
-  }
-}
-
 // â”€â”€â”€ Depreciation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export type DepreciationOp = "sln" | "syd" | "ddb" | "db";
 
@@ -189,158 +150,68 @@ export class DepreciationNode extends ClassicPreset.Node {
 }
 
 // â”€â”€â”€ TVM (Time Value of Money) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-export type TvmOp = "pmt" | "pv" | "fv" | "nper";
+// ONE acausal node for the whole PMT / PV / FV / NPER / RATE family: the
+// annuity relation as a locked Equation. Wire any four of {rate, nper, pmt,
+// pv, fv} and the fifth solves — pv/pmt/fv symbolically, nper/rate through the
+// numeric fallback (which subsumes RATE's old Newton iteration and its guess
+// input; the smallest-magnitude-root rule picks the meaningful rate over the
+// spurious 1+r < 0 crossing). Wire all five and Check truth-checks the books.
+// Payment timing stays a CONFIG dropdown, not a variable: it swaps which
+// locked relation is compiled, exactly like Excel's 0/1 `type` argument.
 
-export const TVM_OP_META = {
-  pmt:  { label: "PMT",  description: "Periodic payment for a loan or annuity. Excel: PMT(rate, nper, pv, [fv], [type])." },
-  pv:   { label: "PV",   description: "Present value of future cash flows. Excel: PV(rate, nper, pmt, [fv], [type])." },
-  fv:   { label: "FV",   description: "Future value of an investment or loan. Excel: FV(rate, nper, pmt, [pv], [type])." },
-  nper: { label: "NPER", description: "Number of periods to pay off a loan. Excel: NPER(rate, pmt, pv, [fv], [type])." },
-} satisfies Record<TvmOp, { label: string; description: string }>;
-
-export class TvmNode extends ClassicPreset.Node {
-  label: string;
-  op: TvmOp;
-  paymentTiming: PaymentTiming;
-  cachedResult: number | null = null;
-  literals: Record<string, number> = { rate: 0.05, nper: 12, pmt: 0, pv: 1000, fv: 0 };
-  // 4 input rows shown at a time (the solved-for quantity is hidden).
-  width = 180; height = 342;
-
-  constructor(init?: { label?: string; op?: TvmOp; paymentTiming?: PaymentTiming }) {
-    super("Tvm");
-    this.label         = init?.label         ?? "PMT";
-    this.op            = init?.op            ?? "pmt";
-    this.paymentTiming = init?.paymentTiming ?? "end";
-    this.addInput("rate", numIn("Rate"));
-    this.addInput("nper", numIn("Nper"));
-    this.addInput("pmt",  numIn("Pmt"));
-    this.addInput("pv",   numIn("PV"));
-    this.addInput("fv",   numIn("FV"));
-    this.addOutput("result", numOut("Result"));
-  }
-
-  data(inputs: { rate?: number[]; nper?: number[]; pmt?: number[]; pv?: number[]; fv?: number[] }) {
-    const rate = inputs.rate?.[0] ?? this.literals.rate ?? 0;
-    const nper = inputs.nper?.[0] ?? this.literals.nper ?? 0;
-    const pmt  = inputs.pmt?.[0]  ?? this.literals.pmt  ?? 0;
-    const pv   = inputs.pv?.[0]   ?? this.literals.pv   ?? 0;
-    const fv   = inputs.fv?.[0]   ?? this.literals.fv   ?? 0;
-    const type = this.paymentTiming === "beg" ? 1 : 0;
-
-    // PMT/PV/FV/NPER are closed-form and verified byte-identical to Formula.js —
-    // including its own rate≈0 handling, so THAT branch doesn't need a hand-rolled
-    // formula either. The null-producing DEGENERACY guards (n===0, pmt===0, a bad
-    // log ratio) stay hand-rolled: they gate whether we call Formula.js at all, so
-    // we never have to know what it does on an input this node treats as "no result".
-    let result: number | null = null;
-    const r = rate;
-    const n = nper;
-    const t = type;
-
-    if (Math.abs(r) < 1e-12) {
-      switch (this.op) {
-        case "pmt":  result = n !== 0 ? -(pv + fv) / n : null; break;
-        case "pv":   result = -(pmt * n + fv); break;
-        case "fv":   result = -(pv + pmt * n); break;
-        case "nper": result = pmt !== 0 ? -(pv + fv) / pmt : null; break;
-      }
-    } else {
-      switch (this.op) {
-        case "pmt":  result = resolveExcelFunction("PMT")!(r, n, pv, fv, t) as number; break;
-        case "pv":   result = resolveExcelFunction("PV")!(r, n, pmt, fv, t) as number; break;
-        case "fv":   result = resolveExcelFunction("FV")!(r, n, pmt, pv, t) as number; break;
-        case "nper":
-          if (pmt === 0) {
-            result = null;
-          } else {
-            const num = pmt * (1 + r * t) - fv * r;
-            const den = pmt * (1 + r * t) + pv * r;
-            // The log needs num/den > 0, not num,den individually > 0: a normal
-            // loan (pv > 0, pmt < 0) makes both negative but their ratio valid.
-            const ratio = num / den;
-            result = (!Number.isFinite(ratio) || ratio <= 0) ? null : resolveExcelFunction("NPER")!(r, pmt, pv, fv, t) as number;
-          }
-          break;
-      }
-    }
-
-    if (result !== null && !Number.isFinite(result)) result = null;
-    this.cachedResult = result;
-    return { result };
-  }
-}
-
-// â”€â”€â”€ RATE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-export const RATE_OP_META = {
-  label: "RATE",
-  description: "Interest rate per period for a loan, solved iteratively. Excel: RATE(nper, pmt, pv, [fv], [type], [guess]).",
+export const TVM_TIMING_EXPRS: Record<PaymentTiming, string> = {
+  end: "pv*(1+rate)^nper + pmt*((1+rate)^nper - 1)/rate + fv = 0",
+  beg: "pv*(1+rate)^nper + pmt*(1+rate)*((1+rate)^nper - 1)/rate + fv = 0",
 };
 
-export class RateNode extends ClassicPreset.Node {
-  label: string;
-  paymentTiming: PaymentTiming;
-  cachedResult: number | SolError | null = null;
-  literals: Record<string, number> = { nper: 12, pmt: -100, pv: 1000, fv: 0, guess: 0.1 };
-  width = 180; height = 340;
+// rate = 0 sits exactly on the relation's removable singularity (the
+// ((1+r)ⁿ−1)/r annuity factor); this is its exact limit, same for both
+// timings, so a zero-interest loan still solves and truth-checks exactly.
+const TVM_ZERO_RATE_EXPR = "pv + pmt*nper + fv = 0";
 
-  constructor(init?: { label?: string; paymentTiming?: PaymentTiming }) {
-    super("Rate");
-    this.label         = init?.label         ?? "RATE";
-    this.paymentTiming = init?.paymentTiming ?? "end";
-    this.addInput("nper",  numIn("Nper"));
-    this.addInput("pmt",   numIn("Pmt"));
-    this.addInput("pv",    numIn("PV"));
-    this.addInput("fv",    numIn("FV"));
-    this.addInput("guess", numIn("Guess"));
-    this.addOutput("result", numOut("Result"));
+export class TvmNode extends EquationNode {
+  paymentTiming: PaymentTiming;
+  private _zeroRate: EquationNode | null = null;
+
+  constructor(init?: { label?: string; paymentTiming?: PaymentTiming; locked?: boolean; literals?: Record<string, number> }) {
+    const timing = init?.paymentTiming ?? "end";
+    super({
+      label: init?.label ?? "Time Value of Money",
+      expr: TVM_TIMING_EXPRS[timing],
+      // Locked by default (the relation is the node); honored from init so the
+      // persistence fixed-point sweep round-trips.
+      locked: init?.locked ?? true,
+      literals: init?.literals,
+    });
+    this.paymentTiming = timing;
+    // Hero row per variable + the Check row, plus the timing dropdown row.
+    this.height = 110 + (this.varNames.length + 1) * 46 + 30;
   }
 
-  data(inputs: { nper?: number[]; pmt?: number[]; pv?: number[]; fv?: number[]; guess?: number[] }) {
-    const nper  = inputs.nper?.[0]  ?? this.literals.nper  ?? 12;
-    const pmt   = inputs.pmt?.[0]   ?? this.literals.pmt   ?? 0;
-    const pv    = inputs.pv?.[0]    ?? this.literals.pv    ?? 0;
-    const fv    = inputs.fv?.[0]    ?? this.literals.fv    ?? 0;
-    const type  = this.paymentTiming === "beg" ? 1 : 0;
-    const guess = inputs.guess?.[0] ?? this.literals.guess ?? 0.1;
+  setPaymentTiming(t: PaymentTiming) {
+    this.paymentTiming = t;
+    this.expr = TVM_TIMING_EXPRS[t];
+    this._rebuild(); // both forms share one variable set — no socket change
+  }
 
-    let rate = guess;
-    let result: number | null = null;
-    let converged = false;
-
-    for (let i = 0; i < 100; i++) {
-      if (Math.abs(rate) < 1e-12) {
-        // degenerate r=0 case
-        result = pmt !== 0 ? -(pv + fv) / (nper * pmt) : null;
-        converged = result !== null;
-        break;
-      }
-      const rN = Math.pow(1 + rate, nper);
-      const f = pv * rN + pmt * (1 + rate * type) * (rN - 1) / rate + fv;
-      const df =
-        nper * pv * Math.pow(1 + rate, nper - 1)
-        + pmt * type * (rN - 1) / rate
-        + pmt * (1 + rate * type) * (nper * Math.pow(1 + rate, nper - 1) * rate - (rN - 1)) / (rate * rate);
-      if (Math.abs(df) < 1e-20) break;
-      const newRate = rate - f / df;
-      if (Math.abs(newRate - rate) < 1e-12) {
-        result = newRate;
-        converged = true;
-        break;
-      }
-      rate = newRate;
+  data(inputs: Record<string, unknown[]>): Record<string, unknown> {
+    const rateKnown = inputs.rate !== undefined && inputs.rate.length > 0
+      ? inputs.rate[0]
+      : this.literals.rate;
+    if (rateKnown === 0) {
+      // Delegate to the zero-rate limit relation (rate isn't a variable there),
+      // then stitch the fixed rate back into this card's caches and outputs.
+      const zr = (this._zeroRate ??= new EquationNode({ expr: TVM_ZERO_RATE_EXPR }));
+      zr.literals = this.literals;
+      const out = zr.data(inputs);
+      this.cachedError = zr.cachedError;
+      this.cachedHolds = zr.cachedHolds;
+      this.solvedFor = zr.solvedFor;
+      this.cachedValues = { ...zr.cachedValues, rate: 0 };
+      out.rate = 0;
+      return out;
     }
-
-    // The annuity equation Newton-solves here can fail to settle (no rate
-    // satisfies the cashflow pattern) — Excel returns #NUM! there; we split that
-    // into the more specific #CONV!.
-    if (!converged || result === null || !Number.isFinite(result)) {
-      const err = solError("#CONV!", "RATE couldn't converge on a periodic rate for these terms. Check the payment, present value, and future value signs, or try a different guess");
-      this.cachedResult = err;
-      return { result: err };
-    }
-    this.cachedResult = result;
-    return { result };
+    return super.data(inputs);
   }
 }
 
@@ -566,74 +437,8 @@ export class MirrNode extends ClassicPreset.Node {
   }
 }
 
-// â”€â”€â”€ PDURATION / RRI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-export const PDURATION_META = {
-  label: "PDURATION",
-  description: "Periods required for an investment to reach a target value at a given rate. Excel: PDURATION(rate, pv, fv).",
-};
-
-export class PdurationNode extends ClassicPreset.Node {
-  label: string;
-  cachedResult: number | null = null;
-  literals: Record<string, number> = { rate: 0.05, pv: 1000, fv: 2000 };
-  width = 180; height = 235;
-
-  constructor(init?: { label?: string }) {
-    super("Pduration");
-    this.label = init?.label ?? "PDURATION";
-    this.addInput("rate", numIn("Rate"));
-    this.addInput("pv",   numIn("PV"));
-    this.addInput("fv",   numIn("FV"));
-    this.addOutput("result", numOut("Periods"));
-  }
-
-  data(inputs: { rate?: number[]; pv?: number[]; fv?: number[] }) {
-    const rate = inputs.rate?.[0] ?? this.literals.rate ?? 0;
-    const pv   = inputs.pv?.[0]   ?? this.literals.pv   ?? null;
-    const fv   = inputs.fv?.[0]   ?? this.literals.fv   ?? null;
-    let result: number | null = null;
-    if (pv !== null && fv !== null && pv > 0 && fv > 0 && rate > 0) {
-      result = Math.log(fv / pv) / Math.log(1 + rate);
-      if (!Number.isFinite(result)) result = null;
-    }
-    this.cachedResult = result;
-    return { result };
-  }
-}
-
-export const RRI_META = {
-  label: "RRI",
-  description: "Equivalent interest rate for growth from PV to FV over nper periods. Excel: RRI(nper, pv, fv).",
-};
-
-export class RriNode extends ClassicPreset.Node {
-  label: string;
-  cachedResult: number | null = null;
-  literals: Record<string, number> = { nper: 5, pv: 1000, fv: 2000 };
-  width = 180; height = 235;
-
-  constructor(init?: { label?: string }) {
-    super("Rri");
-    this.label = init?.label ?? "RRI";
-    this.addInput("nper", numIn("Nper"));
-    this.addInput("pv",   numIn("PV"));
-    this.addInput("fv",   numIn("FV"));
-    this.addOutput("result", numOut("Rate"));
-  }
-
-  data(inputs: { nper?: number[]; pv?: number[]; fv?: number[] }) {
-    const nper = inputs.nper?.[0] ?? this.literals.nper ?? null;
-    const pv   = inputs.pv?.[0]   ?? this.literals.pv   ?? null;
-    const fv   = inputs.fv?.[0]   ?? this.literals.fv   ?? null;
-    let result: number | null = null;
-    if (nper !== null && pv !== null && fv !== null && nper > 0 && pv > 0 && fv > 0) {
-      result = Math.pow(fv / pv, 1 / nper) - 1;
-      if (!Number.isFinite(result)) result = null;
-    }
-    this.cachedResult = result;
-    return { result };
-  }
-}
+// PDURATION / RRI collapsed into the "Compound Growth" locked Equation preset
+// (nodeCatalog.ts): fv = pv·(1+rate)^nper — wire three, the fourth solves.
 
 // â”€â”€â”€ FVSCHEDULE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export const FVSCHEDULE_META = {

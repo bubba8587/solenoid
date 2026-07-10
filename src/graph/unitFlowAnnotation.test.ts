@@ -241,3 +241,41 @@ describe("resolveValueOrigin — the popup 'Go to source' upstream walk", () => 
     expect(resolveValueOrigin(editor, disp.id)).toBe(conv.id);
   });
 });
+
+describe("per-output producer annotations (annotationFor) — Triangle degrees, Element g/mol", () => {
+  const DEG: FormatAnnotation = { format: "auto", unit: "custom", customUnit: "\u00b0" } as FormatAnnotation;
+
+  /** A Triangle-Solver-like producer: several outputs, only SOME carry a lock. */
+  function triangleish(label: string) {
+    const n = new ClassicPreset.Node(label) as ClassicPreset.Node & Record<string, unknown>;
+    for (const k of ["a", "A"]) n.addOutput(k, new ClassicPreset.Output(sock, k));
+    n.annotationFor = (outKey: string) => (outKey === "A" ? DEG : undefined);
+    return n;
+  }
+
+  it("the lock rides ONLY the annotated output, and through a Display", async () => {
+    const editor = new NodeEditor() as unknown as AnyEditor;
+    const tri = triangleish("Tri");
+    const disp = node("Display", { passesUnitThrough: true });
+    await editor.addNode(tri as never);
+    await editor.addNode(disp as never);
+    await editor.addConnection(new ClassicPreset.Connection(tri as never, "A", disp as never, "in") as never);
+    const r = makeAnnotationResolver(editor);
+    expect(r.outAnnotation(tri.id, "A")).toEqual(DEG);      // the angle carries °
+    expect(r.outAnnotation(tri.id, "a")).toBeUndefined();   // the side carries nothing
+    expect(r.outAnnotation(disp.id, "out")).toEqual(DEG);   // ° rides the passthrough
+  });
+
+  it("the real nodes: Triangle angles carry °, Element mass carries g/mol, their siblings nothing", async () => {
+    const { TriangleSolverNode } = await import("./nodes/triangle");
+    const { ElementNode } = await import("./nodes/chemistry");
+    const tri = new TriangleSolverNode();
+    expect(tri.annotationFor("A")?.unit).toBe("deg");
+    expect(tri.annotationFor("B")?.unit).toBe("deg");
+    expect(tri.annotationFor("a")).toBeUndefined();
+    expect(tri.annotationFor("area")).toBeUndefined();
+    const el = new ElementNode();
+    expect(el.annotationFor("mass")?.customUnit).toBe(" g/mol");
+    expect(el.annotationFor("number")).toBeUndefined();
+  });
+});

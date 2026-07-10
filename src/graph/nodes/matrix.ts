@@ -1,9 +1,10 @@
 import { ClassicPreset } from "rete";
-import { numIn, numOut, listIn, anyIn, anyOut, anyTableIn, anyTableOut, tableIn, tableOut, frameIn } from "./shared";
+import { numIn, numOut, listIn, anyIn, anyListIn, anyListOut, anyTableIn, anyTableOut, tableIn, tableOut, frameIn } from "./shared";
 import { toAnyMatrix, type Cell } from "./coerce";
+import { tableSocket, strTableSocket, dateTableSocket, logicalTableSocket } from "../sockets";
 import { parseCsvRows } from "../csv";
 import { solError, isSolError, type SolError } from "../errorValue";
-import { isFrameValue, frameRowCount } from "../frame";
+import { isFrameValue, frameRowCount, coerceFrameCell } from "../frame";
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
@@ -119,54 +120,95 @@ function matInverse(m: NumMat): NumMat | null {
   return aug.map(row => row.slice(n));
 }
 
-export function parseTableText(text: string): Mat | null {
-  const raw = parseCsvRows(text);
-  if (raw.length === 0) return null;
-  const cols = raw[0].length;
-  const rows: (number | null)[][] = [];
-  for (const r of raw) {
-    if (r.length !== cols) return null; // ragged → reject the whole table
-    const cells: (number | null)[] = [];
-    for (const v of r) {
-      const t = v.trim();
-      if (t === "") { cells.push(null); continue; } // a blank cell is MISSING → null
-      const n = Number(t);
-      if (Number.isNaN(n)) return null; // a non-blank, non-numeric cell → not a numeric table
-      cells.push(n);
-    }
-    rows.push(cells);
-  }
-  return rows;
-}
-
-// Serialize a matrix back to the Table Input text form (one row per line, values
-// comma-separated) — the inverse of parseTableText, used when the grid editor
-// saves edits back to the node.
-export function tableToText(m: Mat): string {
-  return m.map(row => row.join(", ")).join("\n");
-}
-
 // ─── TABLE INPUT ──────────────────────────────────────────────────────────────
+// A LITERAL source, exactly like Frame Input (subsystem-invariants "Frame Input
+// is a LITERAL source"): `tableText` stores the raw text the user typed, the
+// typed matrix is DERIVED at compute, and the grid editor edits the raw cells —
+// never a parse→serialize round trip (the old one silently coerced bad text
+// away). A blank cell is null (missing); an unparseable cell is NaN — dirty
+// data with the quiet display affordance, deliberately NOT an error badge
+// (1.0-tail #6). One homogeneous element type per table, switched by the
+// card's SegToggle (the List Input pattern; mixed columns is Frame Input's job).
+
+export type TableElemType = "number" | "string" | "date" | "logical";
+
+export const TABLE_ELEM_SOCKET = {
+  number: tableSocket,
+  string: strTableSocket,
+  date: dateTableSocket,
+  logical: logicalTableSocket,
+} as const;
+
+/** Split the literal text into RAW CELLS — lossless (parseCsvRows handles
+ *  quoting); ragged rows pad with "" so the grid always shows a rectangle. */
+export function tableRawCells(text: string): string[][] {
+  const raw = parseCsvRows(text);
+  if (raw.length === 0) return [];
+  let cols = raw.reduce((m, r) => Math.max(m, r.length), 0);
+  // A TRAILING all-empty column is a typing artifact (a trailing comma on each
+  // line), not data — left in, it silently promotes a list to a 2-D table and
+  // flips downstream shape rules (Filter's predicate refuses genuine 2-D).
+  // Interior blanks are real missing cells and stay. (All-blank LINES never
+  // arrive — parseCsvRows' greedy skip drops them.)
+  while (cols > 1 && raw.every((r) => (r[cols - 1] ?? "").trim() === "")) cols--;
+  return raw.map((r) => Array.from({ length: cols }, (_, j) => (r[j] ?? "").trim()));
+}
+
+/** Serialize raw cells back to the text form — re-quoting a cell that would
+ *  otherwise be ambiguous (RFC 4180), so the round trip is verbatim. The
+ *  friendly ", " separator drops to a bare "," when any cell needs quoting: a
+ *  quoted field must start immediately after the comma (Papa is RFC-strict —
+ *  a space before the opening quote de-quotes the field). */
+export function rawCellsToText(cells: string[][]): string {
+  const needsQuote = (c: string) => /[",\n]/.test(c);
+  const q = (c: string) => (needsQuote(c) ? `"${c.replace(/"/g, '""')}"` : c);
+  const sep = cells.some((r) => r.some(needsQuote)) ? "," : ", ";
+  return cells.map((r) => r.map(q).join(sep)).join("\n");
+}
+
+/** Derive the typed matrix from raw cells via the frame family's OWN per-type
+ *  coercion (coerceFrameCell): blank → null, an unparseable number/date → NaN
+ *  (dirty data), a bad logical → null (coerceLogical's contract) — so Table
+ *  Input's bad-cell semantics are Frame Input's by construction. */
+export function deriveTable(cells: string[][], dt: TableElemType): CellMat {
+  return cells.map((row) => row.map((c) => coerceFrameCell(dt, c) as Cell));
+}
 
 export class TableInputNode extends ClassicPreset.Node {
   label: string;
-  cachedResult: Mat | null = null;
+  cachedResult: CellMat | null = null;
   tableText: string = "1, 0\n0, 1";
-  width = 220; height = 220;
+  dataType: TableElemType;
+  width = 220; height = 250;
 
-  constructor(init?: { label?: string; tableText?: string }) {
+  constructor(init?: { label?: string; tableText?: string; dataType?: TableElemType }) {
     super("TableInput");
     this.label = init?.label ?? "Table Input";
     if (init?.tableText != null) this.tableText = init.tableText;
-    this.addOutput("table", tableOut("Table"));
+    this.dataType = init?.dataType ?? "number";
+    this.addOutput("table", new ClassicPreset.Output(TABLE_ELEM_SOCKET[this.dataType], "Table"));
     // Dimensions are available from the ROWS / COLUMNS node, so no redundant
     // number outputs here — just the table.
   }
 
+  /** The raw text cells — the grid editor's truth. */
+  rawCells(): string[][] { return tableRawCells(this.tableText); }
+
+  /** Switch the element type IN PLACE (re-types the output socket; the component
+   *  follows with retypeOutputCables — an in-place retype fires no connection
+   *  event). Returns false when unchanged. */
+  setDataType(dt: TableElemType): boolean {
+    if (this.dataType === dt) return false;
+    this.dataType = dt;
+    const out = this.outputs.table;
+    if (out) out.socket = TABLE_ELEM_SOCKET[dt];
+    return true;
+  }
+
   data() {
-    const m = parseTableText(this.tableText);
-    this.cachedResult = m;
-    return { table: m };
+    const cells = this.rawCells();
+    this.cachedResult = cells.length ? deriveTable(cells, this.dataType) : null;
+    return { table: this.cachedResult };
   }
 }
 
@@ -317,32 +359,110 @@ export class TableTransposeNode extends ClassicPreset.Node {
   }
 }
 
-// ─── HSTACK ───────────────────────────────────────────────────────────────────
+// ─── HSTACK / VSTACK — the 2-D rungs of the append ladder (decisions.md D15) ──
+// N extensible element-agnostic rows (anytable — a scalar widens to 1×1, a list
+// to ONE ROW per the lattice rule), stacked in row order. Ragged inputs pad
+// with #N/A cells exactly like Excel's VSTACK/HSTACK — a hole is visible and
+// recoverable (IFNA/Fill), where the old whole-result #SHAPE! made the common
+// "stack a 3-list on a 5-list" case unusable.
 
-export class HStackTableNode extends ClassicPreset.Node {
+/** One #N/A pad cell per data() pass (SolErrors are immutable — sharing is fine). */
+function padCell(what: string): Cell {
+  return solError("#N/A", `Padded: this input is ${what} than the largest one`);
+}
+
+/** Shared extensible-row plumbing for the two stackers. */
+abstract class StackNodeBase extends ClassicPreset.Node {
   label: string;
   cachedResult: CellMat | SolError | null = null;
-  width = 180; height = 210;
+  nextInputId = 0;
+  width = 180; height = 250;
 
-  constructor(init?: { label?: string }) {
-    super("HStackTable");
-    this.label = init?.label ?? "HSTACK";
-    this.addInput("a", anyTableIn("A"));
-    this.addInput("b", anyTableIn("B"));
-    this.addOutput("result", anyTableOut("A | B"));
+  constructor(name: string, label: string, init?: { label?: string; valueKeys?: string[] }) {
+    super(name);
+    this.label = init?.label ?? label;
+    const vKeys = (init?.valueKeys ?? []).filter((k) => k.startsWith("t"));
+    if (vKeys.length) for (const k of vKeys) this.addInputWithKey(k);
+    else for (let i = 0; i < 2; i++) this.addValueInput();
+    this.addOutput("result", anyTableOut("Stacked"));
   }
 
-  data(inputs: { a?: unknown[]; b?: unknown[] }): { result: CellMat | SolError | null } {
-    const a = toAnyMatrix(inputs.a?.[0]), b = toAnyMatrix(inputs.b?.[0]);
-    if (!a || !b) { this.cachedResult = null; return { result: null }; }
-    // Side-by-side stacking needs equal row counts — a mismatch is #SHAPE!.
-    if (matRows(a) !== matRows(b)) {
-      const err = solError("#SHAPE!", "A and B must have the same number of rows");
-      this.cachedResult = err;
-      return { result: err };
+  private addInputWithKey(key: string): void {
+    this.addInput(key, anyTableIn("Table"));
+    const n = parseInt(key.replace(/^t/, ""), 10);
+    if (Number.isFinite(n)) this.nextInputId = Math.max(this.nextInputId, n + 1);
+  }
+
+  /** Ordered table-row keys (insertion order = stack order). */
+  valueInputKeys(): string[] {
+    return Object.keys(this.inputs).filter((k) => k.startsWith("t"));
+  }
+
+  addValueInput(): string {
+    const key = `t${this.nextInputId}`;
+    this.addInputWithKey(key);
+    return key;
+  }
+
+  removeValueInput(key: string): void {
+    this.removeInput(key);
+  }
+
+  /** Wired inputs as matrices, in row order; empties (zero-row) drop out. */
+  protected matsOf(inputs: Record<string, unknown[] | undefined>): CellMat[] {
+    return this.valueInputKeys()
+      .map((k) => toAnyMatrix(inputs[k]?.[0]))
+      .filter((m): m is CellMat => !!m && m.length > 0);
+  }
+}
+
+export class HStackTableNode extends StackNodeBase {
+  constructor(init?: { label?: string; valueKeys?: string[] }) {
+    super("HStackTable", "HSTACK", init);
+  }
+
+  data(inputs: Record<string, unknown[] | undefined>): { result: CellMat | SolError | null } {
+    const mats = this.matsOf(inputs);
+    if (mats.length === 0) { this.cachedResult = null; return { result: null }; }
+    // Side-by-side: rows = the tallest input; a shorter input pads down with #N/A.
+    const height = Math.max(...mats.map(matRows));
+    const na = padCell("shorter");
+    const out: CellMat = Array.from({ length: height }, () => []);
+    for (const m of mats) {
+      const w = matCols(m);
+      for (let i = 0; i < height; i++) {
+        out[i].push(...(i < m.length ? m[i] : Array<Cell>(w).fill(na)));
+      }
     }
-    this.cachedResult = a.map((row, i) => [...row, ...b[i]]);
-    return { result: this.cachedResult };
+    this.cachedResult = out;
+    return { result: out };
+  }
+}
+
+// VSTACK — the top-to-bottom sibling of HSTACK, and the FAST lists→table path:
+// a bare list widens to ONE ROW, so stacking two lists yields a 2×n table —
+// Excel's VSTACK of two rows. (The node's previous life as a 1-D list
+// concatenator moved to Concat Lists in list.ts, 2026-07-09 — stacking and
+// appending are different operations.)
+export class VStackNode extends StackNodeBase {
+  constructor(init?: { label?: string; valueKeys?: string[] }) {
+    super("VStack", "VSTACK", init);
+  }
+
+  data(inputs: Record<string, unknown[] | undefined>): { result: CellMat | SolError | null } {
+    const mats = this.matsOf(inputs);
+    if (mats.length === 0) { this.cachedResult = null; return { result: null }; }
+    // Top-to-bottom: columns = the widest input; a narrower input pads right with #N/A.
+    const width = Math.max(...mats.map(matCols));
+    const na = padCell("narrower");
+    const out: CellMat = [];
+    for (const m of mats) {
+      for (const r of m) {
+        out.push(r.length < width ? [...r, ...Array<Cell>(width - r.length).fill(na)] : [...r]);
+      }
+    }
+    this.cachedResult = out;
+    return { result: out };
   }
 }
 
@@ -370,37 +490,45 @@ export class TableReshapeNode extends ClassicPreset.Node {
     this.op    = init?.op    ?? "wraprows";
     this.label = init?.label ?? TABLE_RESHAPE_OP_META[this.op].label;
     const wraps = this.op === "wraprows" || this.op === "wrapcols";
-    // Element-agnostic: `any` inputs accept text/date arrays too. Wrapping
-    // produces a matrix (the 2-D wildcard `anytable`); flattening produces a
-    // 1-D list of unknown element type (`any`).
+    // Element-agnostic, rank-honest: wrapping takes a 1-D list of any family
+    // (`anylist`) and produces a matrix (the 2-D wildcard `anytable`);
+    // flattening produces a 1-D list of unknown element type (`anylist`).
     if (wraps) {
-      this.addInput("list",      anyIn("List"));
+      this.addInput("list",      anyListIn("List"));
       this.addInput("wrapCount", numIn("Wrap count"));
       this.addOutput("result", anyTableOut("Table"));
     } else {
       this.addInput("matrix", anyTableIn("Matrix"));
-      this.addOutput("result", anyOut("List"));
+      this.addOutput("result", anyListOut("List"));
     }
   }
 
   data(inputs: { list?: unknown[]; wrapCount?: number[]; matrix?: unknown[] }) {
     this.cachedList = null;
     this.cachedMatrix = null;
+    // Both wraps pad the leftover cells with #N/A — Excel's default pad_with.
+    // (Was inconsistent: wraprows left a ragged short last row, wrapcols
+    // filled with NaN, which renders as garbage.)
     if (this.op === "wraprows") {
       const list = toAnyMatrix(inputs.list?.[0])?.flat() ?? null;
       const w = Math.round(inputs.wrapCount?.[0] ?? this.literals.wrapCount ?? 3);
       if (!list || w < 1) return { result: null };
+      const na: Cell = solError("#N/A", "Padded: the list doesn't fill the last row");
       const rows: CellMat = [];
-      for (let i = 0; i < list.length; i += w)
-        rows.push(list.slice(i, i + w));
+      for (let i = 0; i < list.length; i += w) {
+        const row = list.slice(i, i + w);
+        while (row.length < w) row.push(na);
+        rows.push(row);
+      }
       this.cachedMatrix = rows;
       return { result: rows };
     } else if (this.op === "wrapcols") {
       const list = toAnyMatrix(inputs.list?.[0])?.flat() ?? null;
       const w = Math.round(inputs.wrapCount?.[0] ?? this.literals.wrapCount ?? 3);
       if (!list || w < 1) return { result: null };
+      const na: Cell = solError("#N/A", "Padded: the list doesn't fill the last column");
       const nCols = Math.ceil(list.length / w);
-      const mat: CellMat = Array.from({ length: w }, () => Array(nCols).fill(NaN));
+      const mat: CellMat = Array.from({ length: w }, () => Array<Cell>(nCols).fill(na));
       for (let i = 0; i < list.length; i++) mat[i % w][Math.floor(i / w)] = list[i];
       this.cachedMatrix = mat;
       return { result: mat };
@@ -430,7 +558,7 @@ export const TABLE_SELECT_OP_META = {
 export class TableSelectNode extends ClassicPreset.Node {
   label: string;
   op: TableSelectOp;
-  cachedResult: CellMat | null = null;
+  cachedResult: CellMat | SolError | null = null;
   width = 180; height = 210;
 
   constructor(init?: { label?: string; op?: TableSelectOp }) {
@@ -443,28 +571,134 @@ export class TableSelectNode extends ClassicPreset.Node {
     this.addOutput("result", anyTableOut("Result"));
   }
 
-  data(inputs: { matrix?: unknown[]; indices?: number[][] }) {
+  data(inputs: { matrix?: unknown[]; indices?: number[][] }): { result: CellMat | SolError | null } {
     const m = toAnyMatrix(inputs.matrix?.[0]);
     const idx = inputs.indices?.[0] ?? null;
     if (!m || !idx) { this.cachedResult = null; return { result: null }; }
-    if (this.op === "chooserows") {
-      const rows = matRows(m);
-      const result = idx.map(i => {
-        const r = i < 0 ? rows + i : i - 1;
-        return (r >= 0 && r < rows) ? [...m[r]] : Array(matCols(m)).fill(NaN) as Cell[];
-      });
-      this.cachedResult = result;
-    } else {
-      const cols = matCols(m);
-      const result = m.map(row =>
-        idx.map(j => {
-          const c = j < 0 ? cols + j : j - 1;
-          return (c >= 0 && c < cols) ? row[c] : NaN;
-        })
-      );
-      this.cachedResult = result;
+    // Excel: a 1-based index (negative counts from the end); a fractional index
+    // truncates toward zero; ANY zero/out-of-range index errors the whole call
+    // with #VALUE! — the same edge convention EXPAND uses for a shrink.
+    const kind = this.op === "chooserows" ? "row" : "column";
+    const size = this.op === "chooserows" ? matRows(m) : matCols(m);
+    const resolved: number[] = [];
+    for (const i of idx) {
+      const t = Math.trunc(i);
+      const p = t < 0 ? size + t : t - 1;
+      if (!(p >= 0 && p < size)) {
+        const e = solError("#VALUE!", `${TABLE_SELECT_OP_META[this.op].label}: ${kind} index ${i} is out of range for a table with ${size} ${kind}s`);
+        this.cachedResult = e;
+        return { result: e };
+      }
+      resolved.push(p);
     }
+    this.cachedResult = this.op === "chooserows"
+      ? resolved.map(r => [...m[r]])
+      : m.map(row => resolved.map(c => row[c]));
     return { result: this.cachedResult };
+  }
+}
+
+// ─── TAKE / DROP (2-D) ────────────────────────────────────────────────────────
+// Excel's TAKE/DROP are 2-D edge selectors: rows AND columns in one call,
+// positive counts from the start, negative from the end. The 1-D Take/Drop
+// (list.ts) stay the list spellings; these are the table ones. 0 (the default)
+// means "all" for TAKE and "none" for DROP, standing in for Excel's omitted
+// argument.
+
+export type TableTakeDropOp = "take" | "drop";
+
+export const TABLE_TAKEDROP_OP_META = {
+  take: { label: "TAKE (table)", description: "Keep rows/columns from a table's edges: positive counts take from the start, negative from the end, 0 takes all. A bare list counts as ONE ROW — use Cols to take its elements. Excel: TAKE(array, rows, [cols])." },
+  drop: { label: "DROP (table)", description: "Remove rows/columns from a table's edges: positive counts drop from the start, negative from the end, 0 drops none. Excel: DROP(array, rows, [cols])." },
+} satisfies Record<TableTakeDropOp, { label: string; description: string }>;
+
+export class TableTakeDropNode extends ClassicPreset.Node {
+  label: string;
+  op: TableTakeDropOp;
+  cachedResult: CellMat | null = null;
+  literals: Record<string, number> = { rows: 0, cols: 0 };
+  width = 190; height = 250;
+
+  constructor(init?: { label?: string; op?: TableTakeDropOp }) {
+    super("TableTakeDrop");
+    this.op    = init?.op    ?? "take";
+    this.label = init?.label ?? TABLE_TAKEDROP_OP_META[this.op].label;
+    // Labels stay op-neutral — the op dropdown swaps at runtime but sockets
+    // (and their labels) are fixed at construction.
+    this.addInput("matrix", anyTableIn("Table"));
+    this.addInput("rows",   numIn("Rows (± from end)"));
+    this.addInput("cols",   numIn("Cols (± from end)"));
+    this.addOutput("result", anyTableOut("Result"));
+  }
+
+  // 0 = identity for both ops ("take all" / "drop none", Excel's omitted arg).
+  private takeDrop<T>(arr: T[], n: number): T[] {
+    if (n === 0) return arr;
+    if (this.op === "take") {
+      // Counts past the size keep everything (Excel's behavior).
+      return n > 0 ? arr.slice(0, n) : arr.slice(Math.max(0, arr.length + n));
+    }
+    // Drop past the size leaves an empty result, not an error.
+    return n > 0 ? arr.slice(Math.min(n, arr.length)) : arr.slice(0, Math.max(0, arr.length + n));
+  }
+
+  data(inputs: { matrix?: unknown[]; rows?: number[]; cols?: number[] }) {
+    const m = toAnyMatrix(inputs.matrix?.[0]);
+    if (!m || m.length === 0) { this.cachedResult = null; return { result: null }; }
+    const nRows = Math.round(inputs.rows?.[0] ?? this.literals.rows ?? 0);
+    const nCols = Math.round(inputs.cols?.[0] ?? this.literals.cols ?? 0);
+    const result = this.takeDrop(m, nRows).map((r) => [...this.takeDrop(r, nCols)]);
+    this.cachedResult = result;
+    return { result };
+  }
+}
+
+// ─── EXPAND (grow a table, padding new cells) ─────────────────────────────────
+// The 2-D Pad: grow to R×C, new cells fill with the wired Fill value or #N/A
+// (Excel's default). Shrinking is #VALUE! like Excel — TAKE is the shrinker.
+
+export class ExpandNode extends ClassicPreset.Node {
+  label: string;
+  cachedResult: CellMat | SolError | null = null;
+  literals: Record<string, number> = { rows: 0, cols: 0 };
+  width = 190; height = 260;
+
+  constructor(init?: { label?: string }) {
+    super("Expand");
+    this.label = init?.label ?? "EXPAND";
+    this.addInput("matrix", anyTableIn("Table"));
+    this.addInput("rows",   numIn("Rows (0 = keep)"));
+    this.addInput("cols",   numIn("Cols (0 = keep)"));
+    this.addInput("fill",   anyIn("Fill"));
+    this.addOutput("result", anyTableOut("Expanded"));
+  }
+
+  data(inputs: { matrix?: unknown[]; rows?: number[]; cols?: number[]; fill?: unknown[] }): { result: CellMat | SolError | null } {
+    const m = toAnyMatrix(inputs.matrix?.[0]);
+    if (!m || m.length === 0) { this.cachedResult = null; return { result: null }; }
+    const curR = matRows(m), curC = matCols(m);
+    const reqR = Math.round(inputs.rows?.[0] ?? this.literals.rows ?? 0);
+    const reqC = Math.round(inputs.cols?.[0] ?? this.literals.cols ?? 0);
+    const R = reqR > 0 ? reqR : curR;
+    const C = reqC > 0 ? reqC : curC;
+    if (R < curR || C < curC) {
+      const e = solError("#VALUE!", `EXPAND can only grow: the table is ${curR}×${curC}, the target ${R}×${C}. Use TAKE to shrink`);
+      this.cachedResult = e;
+      return { result: e };
+    }
+    const fillRaw = inputs.fill?.[0];
+    const fill = (fillRaw === undefined || fillRaw === null
+      ? solError("#N/A", "Expanded cell with no Fill value")
+      : fillRaw) as Cell;
+    const result: CellMat = [];
+    for (let i = 0; i < R; i++) {
+      const src = i < curR ? m[i] : [];
+      const row: Cell[] = [];
+      for (let j = 0; j < C; j++) row.push(j < src.length ? src[j] : fill);
+      result.push(row);
+    }
+    this.cachedResult = result;
+    return { result };
   }
 }
 

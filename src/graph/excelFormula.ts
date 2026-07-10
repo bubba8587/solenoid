@@ -182,6 +182,13 @@ function parseExpr(expr: string): Ast | null {
   return parse(toks);
 }
 
+/** Parse a formula to its AST (null on a syntax error). The Equation node's
+ *  solver rearranges this tree symbolically (equationSolve.ts); everything else
+ *  goes through compileEvaluator. */
+export function parseFormula(expr: string): Ast | null {
+  return parseExpr(expr);
+}
+
 // Bare names that resolve to a mathematical constant instead of becoming an
 // input variable — so `2*pi` evaluates to 6.283…, it doesn't request a `pi`
 // input. Matches the math constants the Constant node offers; case-insensitive.
