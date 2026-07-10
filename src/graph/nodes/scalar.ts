@@ -508,7 +508,16 @@ export class MRoundNode extends ClassicPreset.Node {
     const snap = this.op === "up" ? Math.ceil : this.op === "down" ? Math.floor : Math.round;
     let result: BroadcastResult = null;
     if (value !== null && multiple !== null) {
-      result = broadcast((v, m) => (m === 0 ? 0 : snap(v / m) * m), value, multiple);
+      result = broadcastErr((v, m) => {
+        if (m === 0) return 0;
+        // MROUND requires the value and multiple to share a sign — opposite signs
+        // are #NUM! in Excel (#DOMAIN! here). CEILING/FLOOR (up/down) impose no such
+        // restriction, so the guard is scoped to nearest.
+        if (this.op === "nearest" && v !== 0 && Math.sign(v) !== Math.sign(m)) {
+          return solError("#DOMAIN!", "MROUND needs the value and multiple to share a sign");
+        }
+        return snap(v / m) * m;
+      }, value, multiple);
     }
     this.cachedResult = result;
     return { result };
@@ -639,8 +648,12 @@ export class CombinatoricsNode extends ClassicPreset.Node {
   }
 
   data(inputs: { n?: number[]; k?: number[] }): { result: number | SolError | null } {
-    const n = Math.round(inputs.n?.[0] ?? this.literals.n ?? 0);
-    const k = Math.round(inputs.k?.[0] ?? this.literals.k ?? 0);
+    // Excel TRUNCATES a non-integer argument (FACT(2.9) = FACT(2) = 2), and the
+    // formula path (Formula.js) floors — rounding here made the node disagree with
+    // `=FACT(2.9)`. Floor matches both for the non-negative domain these ops live in
+    // (negatives are caught by the per-op domain guards below).
+    const n = Math.floor(inputs.n?.[0] ?? this.literals.n ?? 0);
+    const k = Math.floor(inputs.k?.[0] ?? this.literals.k ?? 0);
     let result: number | null = null;
     let domainOk = true;
     switch (this.op) {
