@@ -5,6 +5,7 @@ import { ELEMENTS, elementCell, searchElements, type ElementMeta } from "../rete
 import "./popupChrome.css";
 import "./ElementPicker.css";
 import { CloseIcon } from "./CloseIcon";
+import { useEscapeToClose } from "./useEscapeToClose";
 
 /**
  * The Element node's picker: a search field over symbol / name / atomic number
@@ -18,15 +19,12 @@ export function ElementPicker() {
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
+  useEscapeToClose(() => elementPicker.close(), !!state, { capture: true });
+
   useEffect(() => {
     if (!state) return;
     setQuery("");
     inputRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { e.preventDefault(); elementPicker.close(); }
-    };
-    window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
   }, [state]);
 
   if (!state) return null;

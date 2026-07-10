@@ -45,6 +45,7 @@ import { ExtensibleInputs, pushRowAddUndo, pushRowRemovalUndo } from "./Extensib
 import { FrameDisplay } from "./FrameDisplay";
 import { ResultDisplay } from "./ResultDisplay";
 import { ArrayChip } from "./ArrayChip";
+import { readChipPopupStyle } from "./chipStyle";
 import { NodeShell, ValueDisplay, OpSelect, useNodeField, renderTextMarkdownHtml, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
 import { MeasuredSocketRow } from "./NodeSocket";
@@ -394,7 +395,7 @@ export function PivotComponent({ data, emit }: NodeProps<PivotNodeType>) {
   // Read the node's category accent (Frame violet) off the live DOM so the popup
   // header tints to match the node it opened from — same trick FrameChip uses.
   const openEditor = (e: MouseEvent<HTMLButtonElement>) => {
-    const accent = getComputedStyle(e.currentTarget).getPropertyValue("--node-accent").trim() || undefined;
+    const { accent } = readChipPopupStyle(e.currentTarget);
     pivotEditor.open({ node: data, nodeId: data.id, title: data.label || "Pivot", accent });
   };
   return (

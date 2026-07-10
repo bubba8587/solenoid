@@ -3,6 +3,7 @@ import { numberSocket, AdoptiveSocket, MutableSocket, type SocketDataType } from
 import { frameIn, frameOut, dateOut, numOut } from "./shared";
 import { isFrameValue, getColumn, frameRowCount, cubeFromColumns, type FrameValue, type FrameColType, type CubeCell } from "../frame";
 import { jsDateToSerial } from "./date";
+import { clamp } from "./mathUtils";
 
 export type SlicerCell = number | string;
 
@@ -97,7 +98,7 @@ export class CableSwitchNode extends ClassicPreset.Node {
       this.cachedValue = cube;
       return { out: cube };
     }
-    const idx = keys.length ? Math.max(0, Math.min(this.activeIndex, keys.length - 1)) : 0;
+    const idx = keys.length ? clamp(this.activeIndex, 0, keys.length - 1) : 0;
     const key = keys[idx];
     const v = key ? (inputs[key]?.[0] ?? null) : null;
     this.cachedValue = v ?? null;

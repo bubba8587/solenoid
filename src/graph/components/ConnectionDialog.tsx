@@ -8,6 +8,7 @@ import { getEditor, processGraph } from "../process";
 import { IS_COARSE } from "../coarse";
 import type { SolenoidConnection } from "../schemes";
 import { useFocusTrap } from "./useFocusTrap";
+import { useEscapeToClose } from "./useEscapeToClose";
 import "./connectionDialog.css";
 
 const TYPE_LABEL: Record<SocketDataType, string> = {
@@ -169,12 +170,7 @@ export function ConnectionDialog() {
     return null;
   }, [src, tgt, req]);
 
-  useEffect(() => {
-    if (!req) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { e.preventDefault(); connectionDialog.close(); } };
-    window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
-  }, [req]);
+  useEscapeToClose(() => connectionDialog.close(), !!req, { capture: true });
 
   if (!req) return null;
 

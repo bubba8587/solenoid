@@ -1,6 +1,11 @@
 // Numerical analysis helpers shared across statistical distribution nodes.
 // All functions are pure and domain-checked — return NaN for invalid inputs.
 
+// ─── Clamp ────────────────────────────────────────────────────────────────────
+export function clamp(v: number, lo: number, hi: number): number {
+  return v < lo ? lo : v > hi ? hi : v;
+}
+
 // ─── Min / max over an iterable ───────────────────────────────────────────────
 // Use these instead of `Math.min(...arr)` / `Math.max(...arr)` on user data:
 // the spread form passes every element as a function argument and throws

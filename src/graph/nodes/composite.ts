@@ -4,6 +4,7 @@ import type { Schemes, SolenoidNode, SolenoidConnection } from "../schemes";
 import { AdoptiveSocket, trueAnySocket } from "../sockets";
 import { extractInit } from "../copyPaste";
 import { installErrorGuards, solError, type SolError } from "../errorValue";
+import { coerceNumber as toNumber } from "../valueKinds";
 import { installInputCoercion } from "../coerceInputs";
 import { loopMembers } from "../process";
 import { compositeStaleStore } from "../compositeStaleStore";
@@ -842,15 +843,6 @@ export class CompositeNode extends ClassicPreset.Node {
     row[gs.outputPortId] = solved;
     return row;
   }
-}
-
-/** number / boolean / numeric-string → number, else NaN. Local (no excelFunctions
- *  dependency) — goal-seek only needs to read one scalar output as a number. */
-function toNumber(v: unknown): number {
-  if (typeof v === "number") return v;
-  if (typeof v === "boolean") return v ? 1 : 0;
-  if (typeof v === "string" && v.trim() !== "") return Number(v);
-  return NaN;
 }
 
 /** Solve f(x) = 0 for x (f = observed output − target). Secant first (few

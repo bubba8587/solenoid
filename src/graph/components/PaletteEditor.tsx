@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useFocusTrap } from "./useFocusTrap";
+import { useEscapeToClose } from "./useEscapeToClose";
 import { CloseIcon } from "./CloseIcon";
 import {
   paletteStore, paletteEditorPanel, BUILTIN_PALETTES,
@@ -52,12 +53,7 @@ export function PaletteEditorModal() {
   // Re-seed the draft from the saved custom map each time the editor opens.
   useEffect(() => { if (open) setDraft(paletteStore.customMap()); }, [open]);
 
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") paletteEditorPanel.close(); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
+  useEscapeToClose(() => paletteEditorPanel.close(), open);
 
   if (!open) return null;
 

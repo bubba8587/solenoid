@@ -15,6 +15,7 @@ import {
 import { packsStore } from "../packs";
 import { activePackUnits, activePackFormats } from "../fcExtensions";
 import { SOCKET_COLORS } from "../sockets";
+import { clamp } from "../nodes/mathUtils";
 import { processGraph, repositionDockedNodes } from "../process";
 import { getOwningEditor } from "../activeGraph";
 import { NodeCard } from "./NodeCard";
@@ -259,7 +260,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
   // Commit a final, clamped digit count (also normalizes the visible text).
   function commitDigits(d: number) {
     const lo = decimalMode === "sigfigs" ? 1 : 0;
-    const clamped = Math.max(lo, Math.min(20, Math.round(d)));
+    const clamped = clamp(Math.round(d), lo, 20);
     node.decimalDigits = clamped;
     setDigitsLocal(clamped);
     setDigitsText(String(clamped));
@@ -274,7 +275,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
     const d = parseInt(raw, 10);
     if (!Number.isFinite(d)) return;
     const lo = decimalMode === "sigfigs" ? 1 : 0;
-    const clamped = Math.max(lo, Math.min(20, Math.round(d)));
+    const clamped = clamp(Math.round(d), lo, 20);
     node.decimalDigits = clamped;
     setDigitsLocal(clamped);
     syncNode();

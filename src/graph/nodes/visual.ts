@@ -1,7 +1,7 @@
 import { ClassicPreset } from "rete";
 import { numIn, numListIn, numOut, tableIn, tableOut, strIn, strOut, chartOut, anyTableIn, frameIn } from "./shared";
 import { parseChartOptions, serializeChartOptions, type ChartOptions } from "./chartOptions";
-import { iterMin, iterMax } from "./mathUtils";
+import { clamp, iterMin, iterMax } from "./mathUtils";
 import type { ChartValue, KpiPayload, BulletPayload, TreemapPayload, SankeyPayload } from "../chartValue";
 import type { MermaidValue } from "../mermaidValue";
 import { readFrame, type FrameInput } from "../frameBackend";
@@ -180,7 +180,7 @@ export class ChartNode extends ClassicPreset.Node {
 /** Count how many values fall in each of `k` equal-width bins over [min,max]. */
 export function histogramBins(vals: (number | null)[], k: number): number[] {
   const nums = vals.filter((x): x is number => typeof x === "number" && Number.isFinite(x));
-  const bins = Math.max(1, Math.min(100, Math.floor(k) || 1));
+  const bins = clamp(Math.floor(k) || 1, 1, 100);
   if (nums.length === 0) return [];
   const min = iterMin(nums);
   const max = iterMax(nums);

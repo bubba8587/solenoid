@@ -3,6 +3,7 @@ import { tablePopup, type FramePopupColumn } from "../tablePopupStore";
 import { frameRowCount, frameToGrid, isFrameValue, type FrameValue, type FrameSourceColumn } from "../frame";
 import { collectPreview, readFrame, type FrameRef } from "../frameBackend";
 import { useHostNodeId } from "./nodeContext";
+import { readChipPopupStyle } from "./chipStyle";
 import "./ArrayChip.css";
 
 /**
@@ -73,18 +74,9 @@ export function FrameChip({ value, label, size = "md", accent, onSave, source, o
       title={`${approx ? "≈ " : ""}${totalRows}×${cols} frame${approx ? ", extrapolated from a sketch-mode sample" : ""}. Click to ${onSave ? "edit" : "view"}.`}
       onClick={async (e) => {
         e.stopPropagation();
-        const cs = getComputedStyle(e.currentTarget);
-        // Header accent: an explicit prop, else the host node's accent, else the
-        // frame TYPE colour (violet). The last fallback is what themes the popup
-        // when a chip is opened somewhere with no node context — e.g. inline in a
-        // Report — so it gets the standard coloured header instead of a bare one.
-        const popupAccent =
-          accent ||
-          cs.getPropertyValue("--node-accent").trim() ||
-          cs.getPropertyValue("--sock-frame").trim() ||
-          undefined;
-        const groupColor = cs.getPropertyValue("--group-color").trim();
-        const groupColorDark = cs.getPropertyValue("--group-color-dark").trim();
+        // Header accent: an explicit prop, else the inherited node/group style
+        // (frame TYPE violet when there's no node context).
+        const st = readChipPopupStyle(e.currentTarget, "--sock-frame");
         // Literal-source editor (Frame Input): seed from the RAW cells the user typed,
         // not the derived value, so editing never canonicalises "1" → "TRUE".
         const isSource = !!source && !!onSaveSource;
@@ -119,9 +111,9 @@ export function FrameChip({ value, label, size = "md", accent, onSave, source, o
           literalSource: isSource,
           onSaveSource: isSource ? onSaveSource : undefined,
           onSaveFrame: isSource ? undefined : onSave,
-          accent: popupAccent,
-          groupColor: groupColor || undefined,
-          groupColorDark: groupColorDark || undefined,
+          accent: accent || st.accent,
+          groupColor: st.groupColor,
+          groupColorDark: st.groupColorDark,
           pinNodeId: hostId ?? undefined,
         });
       }}

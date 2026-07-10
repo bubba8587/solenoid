@@ -64,6 +64,16 @@ export function coerceLogical(v: unknown): boolean | null {
   return null;
 }
 
+// Spreadsheet-style coercion of one scalar to a number: a boolean is 1/0, non-blank
+// numeric text parses. NaN signals "not a number" — the CALLER decides what that
+// means (a formula impl returns #VALUE!, goal-seek gives up on the objective).
+export function coerceNumber(v: unknown): number {
+  if (typeof v === "number") return v;
+  if (typeof v === "boolean") return v ? 1 : 0;
+  if (typeof v === "string" && v.trim() !== "") return Number(v);
+  return NaN;
+}
+
 // ── Per-element broadcast contract ────────────────────────────────────────────
 // ONE rule, shared by every element-wise broadcaster (the numeric ones in
 // nodes/shared.ts, the formula-layer broadcastCall/unary in excelFormula.ts, and

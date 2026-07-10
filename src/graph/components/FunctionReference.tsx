@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useSyncExternalStore } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { frStore } from "../frStore";
 import { buildFunctionReference, fnRefGroups, type FnRefRow } from "../functionReference";
 import { addNodeByCatalogType } from "../catalogUtils";
@@ -11,6 +11,7 @@ import notesMd from "../help/notes.md?raw";
 import dataTypesMd from "../help/data-types.md?raw";
 import "./FunctionReference.css";
 import { CloseIcon } from "./CloseIcon";
+import { useEscapeToClose } from "./useEscapeToClose";
 
 export function FunctionReference() {
   const open = useSyncExternalStore(frStore.subscribe, frStore.get);
@@ -32,12 +33,7 @@ export function FunctionReference() {
     return m;
   }, []);
 
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") frStore.close(); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
+  useEscapeToClose(() => frStore.close(), open);
 
   if (!open) return null;
 

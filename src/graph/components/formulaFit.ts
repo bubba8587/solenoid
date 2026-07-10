@@ -1,4 +1,5 @@
 import { useLayoutEffect, type RefObject } from "react";
+import { clamp } from "../nodes/mathUtils";
 
 /**
  * Scale a rendered-formula box's font so its (non-wrapping KaTeX) content fits.
@@ -34,7 +35,7 @@ export function useFormulaFit(
         const availH = box.clientHeight, contentH = inner.scrollHeight;
         if (availH > 0 && contentH > 0) scale = Math.min(scale, (availH - 6) / contentH);
       }
-      const clamped = Math.max(min, Math.min(max, scale));
+      const clamped = clamp(scale, min, max);
       box.style.fontSize = Math.abs(clamped - 1) > 0.02 ? `${Math.round(clamped * 100)}%` : "";
     };
     let lastW = box.clientWidth, lastH = box.clientHeight;

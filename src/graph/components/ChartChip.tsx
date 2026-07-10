@@ -1,5 +1,6 @@
 import { chartPopup } from "../chartPopupStore";
 import { useHostNodeId } from "./nodeContext";
+import { readChipPopupStyle } from "./chipStyle";
 import type { ChartValue } from "../chartValue";
 
 /**
@@ -27,11 +28,7 @@ export function ChartChip({ value, label, pinNodeId }: {
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => {
         e.stopPropagation();
-        const cs = getComputedStyle(e.currentTarget);
-        const accent =
-          cs.getPropertyValue("--node-accent").trim() ||
-          cs.getPropertyValue("--sock-chart").trim() ||
-          undefined;
+        const { accent } = readChipPopupStyle(e.currentTarget, "--sock-chart");
         chartPopup.open({ title: label || value.title || "Chart", value, accent, pinNodeId: hostId ?? undefined });
       }}
     >

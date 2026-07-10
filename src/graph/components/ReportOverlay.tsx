@@ -10,6 +10,7 @@ import { InlineRefBody, CollapsibleFigure } from "./inlineRefDisplay";
 import { preprocessEmbeds, extractEmbedNames } from "../reportEmbeds";
 import { CloseIcon } from "./CloseIcon";
 import { useDismissOnOutside } from "./useDismissOnOutside";
+import { useEscapeToClose } from "./useEscapeToClose";
 import { exportReportAsWebpage } from "../reportExport";
 import "./Markdown.css";
 import "./ReportOverlay.css";
@@ -71,17 +72,7 @@ export function ReportOverlay() {
     void commitBody();
     reportStore.close();
   }
-  // Keep the latest closeReport reachable from the mount-time Esc listener
-  // (whose effect deps are [nodeId], so it would otherwise capture a stale one).
-  const closeRef = useRef(closeReport);
-  closeRef.current = closeReport;
-
-  useEffect(() => {
-    if (!nodeId) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") closeRef.current(); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [nodeId]);
+  useEscapeToClose(closeReport, !!nodeId);
 
   const bodyHtml = useMemo(
     // preprocessEmbeds turns each `![[Name]]` token into a data-embed marker

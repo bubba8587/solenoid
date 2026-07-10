@@ -5,6 +5,7 @@ import { canvasLockStore } from "./canvasLock";
 import { cableFlourishBridge } from "./cableFlourishStore";
 import { IS_MOBILE } from "./coarse";
 import { fullscreenSupported, toggleFullscreen } from "./fullscreen";
+import { clamp } from "./nodes/mathUtils";
 import "./NavMenu.css";
 
 const ZOOM_STEP = 1.08;
@@ -13,7 +14,7 @@ async function zoomBy(delta: number) {
   const area = getActiveArea(); // zoom the graph you're looking at (drill-in too)
   if (!area) return;
   const { k, x, y } = area.area.transform;
-  const next = Math.max(0.1, Math.min(4, k * delta));
+  const next = clamp(k * delta, 0.1, 4);
   if (next === k) return;
   // Keep the viewport CENTER fixed during the zoom. rete's zoom API
   // accepts an (ox, oy) that gets ADDED to the transform after the

@@ -7,6 +7,7 @@
 import { ClassicPreset } from "rete";
 import { numListIn, numListOut, logicalListOut, readInput } from "./shared";
 import { isSolError, solError, type SolError } from "../errorValue";
+import { clamp } from "./mathUtils";
 import type { FormatAnnotation } from "../formatAnnotationStore";
 
 export interface TriangleGiven {
@@ -91,7 +92,7 @@ export function solveTriangle(g: TriangleGiven): TriangleSolved | SolError {
 }
 
 function clamp1(x: number): number {
-  return Math.max(-1, Math.min(1, x));
+  return clamp(x, -1, 1);
 }
 
 /** With every angle known (or derivable) and one side/angle pair complete, fill

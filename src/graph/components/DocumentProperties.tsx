@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useFocusTrap } from "./useFocusTrap";
+import { useEscapeToClose } from "./useEscapeToClose";
 import { CloseIcon } from "./CloseIcon";
 import { documentStore } from "../documentStore";
 import { docMetaStore, docPropertiesPanel } from "../docMetaStore";
@@ -55,12 +56,7 @@ export function DocumentProperties() {
   const panelRef = useRef<HTMLDivElement>(null);
   useFocusTrap(open, panelRef);
 
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") docPropertiesPanel.close(); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
+  useEscapeToClose(() => docPropertiesPanel.close(), open);
 
   if (!open) return null;
 
