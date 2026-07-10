@@ -558,7 +558,7 @@ export const TABLE_SELECT_OP_META = {
 export class TableSelectNode extends ClassicPreset.Node {
   label: string;
   op: TableSelectOp;
-  cachedResult: CellMat | null = null;
+  cachedResult: CellMat | SolError | null = null;
   width = 180; height = 210;
 
   constructor(init?: { label?: string; op?: TableSelectOp }) {
@@ -571,27 +571,29 @@ export class TableSelectNode extends ClassicPreset.Node {
     this.addOutput("result", anyTableOut("Result"));
   }
 
-  data(inputs: { matrix?: unknown[]; indices?: number[][] }) {
+  data(inputs: { matrix?: unknown[]; indices?: number[][] }): { result: CellMat | SolError | null } {
     const m = toAnyMatrix(inputs.matrix?.[0]);
     const idx = inputs.indices?.[0] ?? null;
     if (!m || !idx) { this.cachedResult = null; return { result: null }; }
-    if (this.op === "chooserows") {
-      const rows = matRows(m);
-      const result = idx.map(i => {
-        const r = i < 0 ? rows + i : i - 1;
-        return (r >= 0 && r < rows) ? [...m[r]] : Array(matCols(m)).fill(NaN) as Cell[];
-      });
-      this.cachedResult = result;
-    } else {
-      const cols = matCols(m);
-      const result = m.map(row =>
-        idx.map(j => {
-          const c = j < 0 ? cols + j : j - 1;
-          return (c >= 0 && c < cols) ? row[c] : NaN;
-        })
-      );
-      this.cachedResult = result;
+    // Excel: a 1-based index (negative counts from the end); a fractional index
+    // truncates toward zero; ANY zero/out-of-range index errors the whole call
+    // with #VALUE! — the same edge convention EXPAND uses for a shrink.
+    const kind = this.op === "chooserows" ? "row" : "column";
+    const size = this.op === "chooserows" ? matRows(m) : matCols(m);
+    const resolved: number[] = [];
+    for (const i of idx) {
+      const t = Math.trunc(i);
+      const p = t < 0 ? size + t : t - 1;
+      if (!(p >= 0 && p < size)) {
+        const e = solError("#VALUE!", `${TABLE_SELECT_OP_META[this.op].label}: ${kind} index ${i} is out of range for a table with ${size} ${kind}s`);
+        this.cachedResult = e;
+        return { result: e };
+      }
+      resolved.push(p);
     }
+    this.cachedResult = this.op === "chooserows"
+      ? resolved.map(r => [...m[r]])
+      : m.map(row => resolved.map(c => row[c]));
     return { result: this.cachedResult };
   }
 }
