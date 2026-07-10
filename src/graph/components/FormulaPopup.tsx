@@ -15,10 +15,7 @@ import { applyExprChange, applyLambdaChange, applyEquationChange } from "./expre
 import { FormulaEditor } from "./FormulaEditor";
 import { useFormulaFit } from "./formulaFit";
 import { formatScalar } from "./format";
-import "./popupChrome.css";
-import { CloseIcon } from "./CloseIcon";
-import { PopupPinButton, PopupGoToButton } from "./PopupPinButton";
-import { useEscapeToClose } from "./useEscapeToClose";
+import { PopupShell } from "./PopupShell";
 import "./FormulaPopup.css";
 
 // Step-by-step evaluator: built, then shelved. Flip to re-enable — all the wiring
@@ -213,8 +210,6 @@ export function FormulaPopup() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodeId]);
 
-  useEscapeToClose(commitAndClose, !!nodeId, { capture: true });
-
   // The formula's own variables, offered in autocomplete alongside functions.
   const varSuggestions = useMemo(() => extractVariables(text), [text]);
 
@@ -266,92 +261,86 @@ export function FormulaPopup() {
   const varEntries = vars ? Object.entries(vars) : [];
 
   return (
-    <div className="sol-popup-overlay" onPointerDown={() => commitAndClose()}>
-      <div
-        className={`sol-popup formula-popup${grouped ? " sol-popup--grouped" : ""}`}
-        style={style}
-        onPointerDown={(e) => e.stopPropagation()}
-      >
-        <div className="sol-popup__header">
-          <div className="sol-popup__title">{host.label}</div>
-          {locked && <span className="formula-popup__lock-tag" title="This formula can't be edited here.">Locked</span>}
-          <PopupGoToButton nodeId={node.id} onClose={() => commitAndClose()} />
-          <PopupPinButton nodeId={node.id} />
-          <button className="sol-popup__close" onClick={() => commitAndClose()} aria-label="Close"><CloseIcon size={16} /></button>
-        </div>
-
-        <div className="formula-popup__body">
-          <div className="formula-popup__render" ref={renderRef}>
-            {katexHtml != null ? (
-              <span dangerouslySetInnerHTML={{ __html: katexHtml }} />
-            ) : text.trim() ? (
-              <span className="formula-popup__raw">{text}</span>
-            ) : (
-              <span className="formula-popup__empty">No formula yet</span>
-            )}
-          </div>
-
-          {cachedError && <div className="formula-popup__error">{cachedError}</div>}
-
-          <div className="formula-popup__edit-row">
-            {!host.equation && <span className="formula-popup__prefix">=</span>}
-            <FormulaEditor
-              value={text}
-              readOnly={locked}
-              placeholder={host.equation ? "V = I * R" : "a * b + c …"}
-              rows={2}
-              extraNames={varSuggestions}
-              autoFocus={!locked}
-              onChange={onChange}
-            />
-          </div>
-
-          {/* Engine note: the formula path now resolves through the same registry the
-              consolidation built, so it matches the visual nodes wherever they overlap
-              (the known divergences — MOD/ATAN2/RANK/TRIMMEAN/PERCENTRANK/domain errors —
-              are overridden to our impl). The load-bearing thing left to tell the user is
-              the SHAPE cap: formulas are scalar / 1-D only. See dev-notes 2026-06-25. */}
-          {host.equation ? (
-            <div className="formula-popup__engine-note">
-              ƒ One <strong>=</strong> with variables on either side. Leave exactly one variable unwired and the node solves for it — a quadratic in the unknown returns <strong>both roots</strong>; no real solution is <code>#SOLVE!</code>. Wire every variable and Check turns TRUE/FALSE.
-            </div>
+    <PopupShell
+      title={host.label}
+      onClose={() => commitAndClose()}
+      cardClassName="formula-popup"
+      grouped={grouped}
+      cardStyle={style}
+      headerExtra={locked && <span className="formula-popup__lock-tag" title="This formula can't be edited here.">Locked</span>}
+      pinNodeId={node.id}
+    >
+      <div className="formula-popup__body">
+        <div className="formula-popup__render" ref={renderRef}>
+          {katexHtml != null ? (
+            <span dangerouslySetInnerHTML={{ __html: katexHtml }} />
+          ) : text.trim() ? (
+            <span className="formula-popup__raw">{text}</span>
           ) : (
-          <div className="formula-popup__engine-note">
-            ƒ Works on <strong>single values and 1-D lists</strong>: it broadcasts element-wise and aggregates a list (SUM, AVERAGE…). A 2-D table/matrix can't go straight into a formula and returns <code>#SHAPE!</code>; use <strong>MAP / BYROW / BYCOL / REDUCE / MAKEARRAY</strong> to run a formula over a table. Those apply it per cell/row and can return 2-D.
-          </div>
-          )}
-
-          {host.varDescriptions && varSuggestions.length > 0 && (
-            <VariableDescriptions vars={varSuggestions} host={host} />
-          )}
-
-          {SHOW_STEPS && steps && (
-            <div className="formula-popup__steps">
-              <div className="formula-popup__steps-title">Step by step</div>
-              {varEntries.length > 0 && (
-                <div className="formula-popup__inputs">
-                  {varEntries.map(([k, v]) => (
-                    <span key={k} className="formula-popup__chip">
-                      <span dangerouslySetInnerHTML={{ __html: renderTex(k) }} /> = {formatScalar(v)}
-                    </span>
-                  ))}
-                </div>
-              )}
-              <ol className="formula-popup__steplist">
-                {steps.steps.map((s, i) => (
-                  <li key={i} className="formula-popup__step" dangerouslySetInnerHTML={{ __html: renderTex(s.latex) }} />
-                ))}
-              </ol>
-              <div className="formula-popup__result">
-                = <strong>{formatScalar(steps.value)}</strong>
-              </div>
-            </div>
-          )}
-          {SHOW_STEPS && !steps && !locked && exprNode && extractVariables(text).length > 0 && !vars && (
-            <div className="formula-popup__steps-note">Step-by-step shows for numeric inputs.</div>
+            <span className="formula-popup__empty">No formula yet</span>
           )}
         </div>
+
+        {cachedError && <div className="formula-popup__error">{cachedError}</div>}
+
+        <div className="formula-popup__edit-row">
+          {!host.equation && <span className="formula-popup__prefix">=</span>}
+          <FormulaEditor
+            value={text}
+            readOnly={locked}
+            placeholder={host.equation ? "V = I * R" : "a * b + c …"}
+            rows={2}
+            extraNames={varSuggestions}
+            autoFocus={!locked}
+            onChange={onChange}
+          />
+        </div>
+
+        {/* Engine note: the formula path now resolves through the same registry the
+            consolidation built, so it matches the visual nodes wherever they overlap
+            (the known divergences — MOD/ATAN2/RANK/TRIMMEAN/PERCENTRANK/domain errors —
+            are overridden to our impl). The load-bearing thing left to tell the user is
+            the SHAPE cap: formulas are scalar / 1-D only. See dev-notes 2026-06-25. */}
+        {host.equation ? (
+          <div className="formula-popup__engine-note">
+            ƒ One <strong>=</strong> with variables on either side. Leave exactly one variable unwired and the node solves for it — a quadratic in the unknown returns <strong>both roots</strong>; no real solution is <code>#SOLVE!</code>. Wire every variable and Check turns TRUE/FALSE.
+          </div>
+        ) : (
+        <div className="formula-popup__engine-note">
+          ƒ Works on <strong>single values and 1-D lists</strong>: it broadcasts element-wise and aggregates a list (SUM, AVERAGE…). A 2-D table/matrix can't go straight into a formula and returns <code>#SHAPE!</code>; use <strong>MAP / BYROW / BYCOL / REDUCE / MAKEARRAY</strong> to run a formula over a table. Those apply it per cell/row and can return 2-D.
+        </div>
+        )}
+
+        {host.varDescriptions && varSuggestions.length > 0 && (
+          <VariableDescriptions vars={varSuggestions} host={host} />
+        )}
+
+        {SHOW_STEPS && steps && (
+          <div className="formula-popup__steps">
+            <div className="formula-popup__steps-title">Step by step</div>
+            {varEntries.length > 0 && (
+              <div className="formula-popup__inputs">
+                {varEntries.map(([k, v]) => (
+                  <span key={k} className="formula-popup__chip">
+                    <span dangerouslySetInnerHTML={{ __html: renderTex(k) }} /> = {formatScalar(v)}
+                  </span>
+                ))}
+              </div>
+            )}
+            <ol className="formula-popup__steplist">
+              {steps.steps.map((s, i) => (
+                <li key={i} className="formula-popup__step" dangerouslySetInnerHTML={{ __html: renderTex(s.latex) }} />
+              ))}
+            </ol>
+            <div className="formula-popup__result">
+              = <strong>{formatScalar(steps.value)}</strong>
+            </div>
+          </div>
+        )}
+        {SHOW_STEPS && !steps && !locked && exprNode && extractVariables(text).length > 0 && !vars && (
+          <div className="formula-popup__steps-note">Step-by-step shows for numeric inputs.</div>
+        )}
       </div>
-    </div>
+    </PopupShell>
   );
 }

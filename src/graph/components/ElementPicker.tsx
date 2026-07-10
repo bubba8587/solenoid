@@ -2,10 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { useSyncExternalStore } from "react";
 import { elementPicker } from "../elementPickerStore";
 import { ELEMENTS, elementCell, searchElements, type ElementMeta } from "../rete-nodes";
-import "./popupChrome.css";
+import { PopupShell } from "./PopupShell";
 import "./ElementPicker.css";
-import { CloseIcon } from "./CloseIcon";
-import { useEscapeToClose } from "./useEscapeToClose";
 
 /**
  * The Element node's picker: a search field over symbol / name / atomic number
@@ -18,8 +16,6 @@ export function ElementPicker() {
   const state = useSyncExternalStore(elementPicker.subscribe, elementPicker.get);
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
-
-  useEscapeToClose(() => elementPicker.close(), !!state, { capture: true });
 
   useEffect(() => {
     if (!state) return;
@@ -47,42 +43,36 @@ export function ElementPicker() {
   };
 
   return (
-    <div className="sol-popup-overlay" onPointerDown={() => elementPicker.close()}>
-      <div className="sol-popup el-picker" onPointerDown={(e) => e.stopPropagation()}>
-        <div className="sol-popup__header">
-          <div className="sol-popup__title">Element</div>
-          <button className="sol-popup__close" onClick={() => elementPicker.close()} aria-label="Close"><CloseIcon size={16} /></button>
-        </div>
-        <div className="el-picker__body">
-          <input
-            ref={inputRef}
-            className="el-picker__search"
-            value={query}
-            placeholder="Fe, iron, 26…"
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && best) { e.preventDefault(); pick(best.symbol); }
-            }}
-          />
-          <div className="el-picker__table" role="listbox" aria-label="Periodic table">
-            {ELEMENTS.map((e) => {
-              const { row, col } = elementCell(e.n);
-              return (
-                <button
-                  key={e.symbol}
-                  type="button"
-                  className={cellClass(e)}
-                  style={{ gridRow: row, gridColumn: col }}
-                  title={`${e.n} · ${e.name} — ${e.mass} g/mol`}
-                  onClick={() => pick(e.symbol)}
-                >
-                  {e.symbol}
-                </button>
-              );
-            })}
-          </div>
+    <PopupShell title="Element" onClose={() => elementPicker.close()} cardClassName="el-picker">
+      <div className="el-picker__body">
+        <input
+          ref={inputRef}
+          className="el-picker__search"
+          value={query}
+          placeholder="Fe, iron, 26…"
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && best) { e.preventDefault(); pick(best.symbol); }
+          }}
+        />
+        <div className="el-picker__table" role="listbox" aria-label="Periodic table">
+          {ELEMENTS.map((e) => {
+            const { row, col } = elementCell(e.n);
+            return (
+              <button
+                key={e.symbol}
+                type="button"
+                className={cellClass(e)}
+                style={{ gridRow: row, gridColumn: col }}
+                title={`${e.n} · ${e.name} — ${e.mass} g/mol`}
+                onClick={() => pick(e.symbol)}
+              >
+                {e.symbol}
+              </button>
+            );
+          })}
         </div>
       </div>
-    </div>
+    </PopupShell>
   );
 }

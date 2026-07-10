@@ -3,11 +3,8 @@ import { cubePopup, type DrillView } from "../cubePopupStore";
 import { appThemeStore } from "../appTheme";
 import { cubeRowCount, cubeDepth, frameRowCount } from "../frame";
 import { CubeCellChip, frameCellNode } from "./cubeCell";
-import { CloseIcon } from "./CloseIcon";
-import { PopupPinButton, PopupGoToButton } from "./PopupPinButton";
-import { useEscapeToClose } from "./useEscapeToClose";
+import { PopupShell } from "./PopupShell";
 import { APP_LOCALE } from "../locale";
-import "./popupChrome.css";
 import "./TablePopup.css";
 
 // What to render for the current drill level, normalized across the three view
@@ -60,13 +57,6 @@ export function CubePopup() {
   const state = useSyncExternalStore(cubePopup.subscribe, cubePopup.get);
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
 
-  // Esc pops one drill level; at the root it closes.
-  useEscapeToClose(() => {
-    if (!state) return;
-    if (state.stack.length > 1) cubePopup.backTo(state.stack.length - 2);
-    else cubePopup.close();
-  }, !!state, { capture: true });
-
   if (!state) return null;
   const view = state.stack[state.stack.length - 1];
   const { headers, rows, cols, depth, cell } = describe(view);
@@ -84,14 +74,19 @@ export function CubePopup() {
   if (state.groupColorDark) cardVars["--group-color-dark"] = state.groupColorDark;
 
   return (
-    <div className="sol-popup-overlay" onPointerDown={() => cubePopup.close()}>
-      <div
-        className={`sol-popup table-popup${grouped ? " sol-popup--grouped" : ""}`}
-        style={cardStyle}
-        onPointerDown={(e) => e.stopPropagation()}
-      >
-        <div className="sol-popup__header">
-          <div className="sol-popup__title">{view.label}</div>
+    <PopupShell
+      title={view.label}
+      onClose={() => cubePopup.close()}
+      // Esc pops one drill level; at the root it closes.
+      onEscape={() => {
+        if (state.stack.length > 1) cubePopup.backTo(state.stack.length - 2);
+        else cubePopup.close();
+      }}
+      cardClassName="table-popup"
+      grouped={grouped}
+      cardStyle={cardStyle}
+      headerExtra={
+        <>
           <span className="table-popup__dims">{rows}×{cols}{rowsTruncated ? ` · first ${MAX_VISIBLE_ROWS.toLocaleString(APP_LOCALE)}` : ""}</span>
           {depth !== null && (
             <span
@@ -103,58 +98,56 @@ export function CubePopup() {
               Depth {depth}
             </span>
           )}
-          {state.stack.length === 1 && state.pinNodeId && <PopupGoToButton nodeId={state.pinNodeId} onClose={() => cubePopup.close()} />}
-          {state.stack.length === 1 && state.pinNodeId && <PopupPinButton nodeId={state.pinNodeId} />}
-          <button className="sol-popup__close" onClick={() => cubePopup.close()} aria-label="Close"><CloseIcon size={16} /></button>
+        </>
+      }
+      pinNodeId={state.stack.length === 1 ? state.pinNodeId : undefined}
+    >
+      {state.stack.length > 1 && (
+        <div className="cube-popup__crumbs">
+          {state.stack.map((v, i) => (
+            <span key={i}>
+              {i > 0 && <span className="cube-popup__crumb-sep"> ▸ </span>}
+              {i === state.stack.length - 1 ? (
+                <span className="cube-popup__crumb cube-popup__crumb--here">{v.label}</span>
+              ) : (
+                <button type="button" className="cube-popup__crumb" onClick={() => cubePopup.backTo(i)}>{v.label}</button>
+              )}
+            </span>
+          ))}
         </div>
+      )}
 
-        {state.stack.length > 1 && (
-          <div className="cube-popup__crumbs">
-            {state.stack.map((v, i) => (
-              <span key={i}>
-                {i > 0 && <span className="cube-popup__crumb-sep"> ▸ </span>}
-                {i === state.stack.length - 1 ? (
-                  <span className="cube-popup__crumb cube-popup__crumb--here">{v.label}</span>
-                ) : (
-                  <button type="button" className="cube-popup__crumb" onClick={() => cubePopup.backTo(i)}>{v.label}</button>
-                )}
-              </span>
-            ))}
-          </div>
-        )}
-
-        <div className="table-popup__grid-scroll">
-          <table className="table-popup__grid">
-            <thead>
-              <tr>
-                <th className="table-popup__corner" />
+      <div className="table-popup__grid-scroll">
+        <table className="table-popup__grid">
+          <thead>
+            <tr>
+              <th className="table-popup__corner" />
+              {Array.from({ length: cols }, (_, c) => (
+                <th key={c} className={headers ? "table-popup__colhead table-popup__colhead--name" : "table-popup__colhead"} title={headers?.[c]}>
+                  {headers ? headers[c] : c + 1}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {Array.from({ length: shownRows }, (_, r) => (
+              <tr key={r}>
+                <th className="table-popup__rowhead">{r + 1}</th>
                 {Array.from({ length: cols }, (_, c) => (
-                  <th key={c} className={headers ? "table-popup__colhead table-popup__colhead--name" : "table-popup__colhead"} title={headers?.[c]}>
-                    {headers ? headers[c] : c + 1}
-                  </th>
+                  <td key={c} className="table-popup__cell" style={{ padding: "2px 6px", textAlign: "left" }}>
+                    {cell(r, c)}
+                  </td>
                 ))}
               </tr>
-            </thead>
-            <tbody>
-              {Array.from({ length: shownRows }, (_, r) => (
-                <tr key={r}>
-                  <th className="table-popup__rowhead">{r + 1}</th>
-                  {Array.from({ length: cols }, (_, c) => (
-                    <td key={c} className="table-popup__cell" style={{ padding: "2px 6px", textAlign: "left" }}>
-                      {cell(r, c)}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="table-popup__footer">
-          <div className="table-popup__spacer" />
-          <button className="table-popup__btn table-popup__btn--primary" onClick={() => cubePopup.close()}>Done</button>
-        </div>
+            ))}
+          </tbody>
+        </table>
       </div>
-    </div>
+
+      <div className="table-popup__footer">
+        <div className="table-popup__spacer" />
+        <button className="table-popup__btn table-popup__btn--primary" onClick={() => cubePopup.close()}>Done</button>
+      </div>
+    </PopupShell>
   );
 }

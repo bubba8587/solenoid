@@ -5,9 +5,7 @@ import { appThemeStore } from "../appTheme";
 import type { AggOp } from "../frameVerbs";
 import type { PivotNode } from "../rete-nodes";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
-import { CloseIcon } from "./CloseIcon";
-import { useEscapeToClose } from "./useEscapeToClose";
-import "./popupChrome.css";
+import { PopupShell } from "./PopupShell";
 import "./PivotEditorPopup.css";
 
 // ── Option lists (the popup owns the pivot-specific selectors) ──────────────────
@@ -87,8 +85,6 @@ export function PivotEditorPopup() {
     initedFor.current = state;
     setCfg(cfgFromNode(state.node));
   }, [state]);
-
-  useEscapeToClose(() => pivotEditor.close(), !!state, { capture: true });
 
   if (!state) return null;
   const node = state.node;
@@ -300,63 +296,61 @@ export function PivotEditorPopup() {
   );
 
   return (
-    <div className="sol-popup-overlay" onPointerDown={() => pivotEditor.close()}>
-      <div className="sol-popup pivot-editor" style={state.accent ? ({ ["--node-accent"]: state.accent } as Record<string, string>) : undefined} onPointerDown={(e) => e.stopPropagation()}>
-        <div className="sol-popup__header">
-          <div className="sol-popup__title">{state.title}</div>
-          <button className="sol-popup__close" onClick={() => pivotEditor.close()} aria-label="Close"><CloseIcon size={16} /></button>
-        </div>
-
-        <div className="pivot-editor__body">
-          {/* Field list — the upstream columns, drag into a zone (or use a zone's + add). */}
-          <div className="pivot-fields">
-            <div className="pivot-fields__head">Fields {fields.length === 0 && <span className="pivot-fields__hint">· connect a frame</span>}</div>
-            <div className="pivot-fields__list">
-              {fields.map((f) => (
-                <span key={f.name} className={`pivot-chip pivot-chip--${f.type}${usedSet.has(f.name) ? " pivot-chip--used" : ""}`} draggable
-                  onDragStart={() => { drag.current = { from: "fields", field: f.name }; }} title={`${f.name} · ${f.type}`}>
-                  <span className="pivot-chip__glyph">{TYPE_GLYPH[f.type] ?? "?"}</span>
-                  <span className="pivot-chip__name">{f.name}</span>
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* The Excel 2×2: Filters · Columns / Rows · Values. */}
-          <div className="pivot-grid">
-            {renderFilters()}
-
-            <div className="pivot-zone-wrap">
-              {renderZone("cols", "Columns")}
-              <div className="pivot-zone__controls">
-                <label>Totals {numSelect(cfg.colTotalDepth, TOTAL_DEPTH_OPTIONS, (n) => commit({ ...cfg, colTotalDepth: n }))}</label>
-                <label>Sort {numSelect(cfg.colSort, sortOptions(cfg.cols, cfg.vals), (n) => commit({ ...cfg, colSort: n }))}</label>
-              </div>
-            </div>
-
-            <div className="pivot-zone-wrap">
-              {renderZone("rows", "Rows")}
-              <div className="pivot-zone__controls">
-                <label>Totals {numSelect(cfg.rowTotalDepth, TOTAL_DEPTH_OPTIONS, (n) => commit({ ...cfg, rowTotalDepth: n }))}</label>
-                <label>Sort {numSelect(cfg.rowSort, sortOptions(cfg.rows, cfg.vals), (n) => commit({ ...cfg, rowSort: n }))}</label>
-              </div>
-            </div>
-
-            <div className="pivot-zone-wrap">
-              {renderZone("vals", "Values")}
-              {anyPercent && (
-                <div className="pivot-zone__controls">
-                  <label>% relative to {numSelect(cfg.relativeTo, REL_TO_OPTIONS, (n) => commit({ ...cfg, relativeTo: n }))}</label>
-                </div>
-              )}
-            </div>
+    <PopupShell
+      title={state.title}
+      onClose={() => pivotEditor.close()}
+      cardClassName="pivot-editor"
+      cardStyle={state.accent ? ({ ["--node-accent"]: state.accent } as Record<string, string>) : undefined}
+    >
+      <div className="pivot-editor__body">
+        {/* Field list — the upstream columns, drag into a zone (or use a zone's + add). */}
+        <div className="pivot-fields">
+          <div className="pivot-fields__head">Fields {fields.length === 0 && <span className="pivot-fields__hint">· connect a frame</span>}</div>
+          <div className="pivot-fields__list">
+            {fields.map((f) => (
+              <span key={f.name} className={`pivot-chip pivot-chip--${f.type}${usedSet.has(f.name) ? " pivot-chip--used" : ""}`} draggable
+                onDragStart={() => { drag.current = { from: "fields", field: f.name }; }} title={`${f.name} · ${f.type}`}>
+                <span className="pivot-chip__glyph">{TYPE_GLYPH[f.type] ?? "?"}</span>
+                <span className="pivot-chip__name">{f.name}</span>
+              </span>
+            ))}
           </div>
         </div>
 
-        <div className="pivot-editor__footer">
-          <button className="pivot-editor__done" onClick={() => pivotEditor.close()}>Done</button>
+        {/* The Excel 2×2: Filters · Columns / Rows · Values. */}
+        <div className="pivot-grid">
+          {renderFilters()}
+
+          <div className="pivot-zone-wrap">
+            {renderZone("cols", "Columns")}
+            <div className="pivot-zone__controls">
+              <label>Totals {numSelect(cfg.colTotalDepth, TOTAL_DEPTH_OPTIONS, (n) => commit({ ...cfg, colTotalDepth: n }))}</label>
+              <label>Sort {numSelect(cfg.colSort, sortOptions(cfg.cols, cfg.vals), (n) => commit({ ...cfg, colSort: n }))}</label>
+            </div>
+          </div>
+
+          <div className="pivot-zone-wrap">
+            {renderZone("rows", "Rows")}
+            <div className="pivot-zone__controls">
+              <label>Totals {numSelect(cfg.rowTotalDepth, TOTAL_DEPTH_OPTIONS, (n) => commit({ ...cfg, rowTotalDepth: n }))}</label>
+              <label>Sort {numSelect(cfg.rowSort, sortOptions(cfg.rows, cfg.vals), (n) => commit({ ...cfg, rowSort: n }))}</label>
+            </div>
+          </div>
+
+          <div className="pivot-zone-wrap">
+            {renderZone("vals", "Values")}
+            {anyPercent && (
+              <div className="pivot-zone__controls">
+                <label>% relative to {numSelect(cfg.relativeTo, REL_TO_OPTIONS, (n) => commit({ ...cfg, relativeTo: n }))}</label>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+
+      <div className="pivot-editor__footer">
+        <button className="pivot-editor__done" onClick={() => pivotEditor.close()}>Done</button>
+      </div>
+    </PopupShell>
   );
 }
