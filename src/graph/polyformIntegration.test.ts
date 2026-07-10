@@ -42,7 +42,7 @@ describe("polyform through the engine", () => {
   it("MAP turns a numeric matrix source into a text matrix", async () => {
     const { editor, engine } = makeEditor();
     const table = new TableInputNode({ tableText: "1, 2\n3, 4" });
-    const map = new MapTableNode({ expr: '"r" & r & "c" & c', resultAs: "text" });
+    const map = new MapTableNode({ expr: '"r" & row & "c" & col', resultAs: "text" });
     await editor.addNode(table);
     await editor.addNode(map);
     // table (a `table` output) → MAP's `any` value input: the matrix passes
@@ -86,7 +86,7 @@ describe("polyform through the engine", () => {
   it("a text matrix flows MAP → TOCOL → list (the reshaper completes the chain)", async () => {
     const { editor, engine } = makeEditor();
     const table = new TableInputNode({ tableText: "1, 2\n3, 4" });
-    const map = new MapTableNode({ expr: '"#" & x', resultAs: "text" });
+    const map = new MapTableNode({ expr: '"#" & value', resultAs: "text" });
     const tocol = new TableReshapeNode({ op: "tocol" });
     await editor.addNode(table);
     await editor.addNode(map);

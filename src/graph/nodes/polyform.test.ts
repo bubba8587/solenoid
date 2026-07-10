@@ -121,7 +121,7 @@ describe("Expression — value-polymorphic results", () => {
 
 describe("MAP — text & date matrices", () => {
   it("TEXTJOINs two text columns with an index (the author's case)", () => {
-    const n = new MapTableNode({ expr: 'x & " " & y & " #" & r', resultAs: "text" });
+    const n = new MapTableNode({ expr: 'value & " " & value2 & " #" & row', resultAs: "text" });
     const r = n.data({
       table:  [[["John"], ["Jane"]]],
       table2: [[["Doe"], ["Roe"]]],
@@ -130,7 +130,7 @@ describe("MAP — text & date matrices", () => {
   });
 
   it("maps a date function over a date matrix", () => {
-    const n = new MapTableNode({ expr: "x + 1", resultAs: "date" });
+    const n = new MapTableNode({ expr: "value + 1", resultAs: "date" });
     expect(n.data({ table: [[[45000, 45001]]] }).result).toEqual([[45001, 45002]]);
   });
 
@@ -147,7 +147,7 @@ describe("MAP — text & date matrices", () => {
   });
 
   it("a per-cell error in a mapped matrix propagates (#DIV/0!); good cells compute", () => {
-    const r = new MapTableNode({ expr: "1 / x", resultAs: "number" })
+    const r = new MapTableNode({ expr: "1 / value", resultAs: "number" })
       .data({ table: [[[1, 0, 2]]] }).result as Array<Array<number | SolError>>;
     expect(r[0][0]).toBe(1);
     expect(isSolError(r[0][1]) && (r[0][1] as SolError).code).toBe("#DIV/0!");
@@ -155,12 +155,12 @@ describe("MAP — text & date matrices", () => {
   });
 
   it("accepts a 1-D text list (widened to a single row)", () => {
-    const n = new MapTableNode({ expr: "UPPER(x)", resultAs: "text" });
+    const n = new MapTableNode({ expr: "UPPER(value)", resultAs: "text" });
     expect(n.data({ table: [["a", "b"]] }).result).toEqual([["A", "B"]]);
   });
 
   it("runs a wired text LAMBDA over the cells", () => {
-    const lam = new LambdaNode({ params: "s", expr: "LOWER(s)" }).data({}).result;
+    const lam = new LambdaNode({ params: "value", expr: "LOWER(value)" }).data({}).result;
     const n = new MapTableNode({ resultAs: "text" });
     expect(n.data({ table: [[["A", "B"]]], lambda: [lam] }).result).toEqual([["a", "b"]]);
   });
@@ -168,7 +168,7 @@ describe("MAP — text & date matrices", () => {
 
 describe("BYROW / REDUCE / MAKEARRAY — text", () => {
   it("BYROW joins each row to a string", () => {
-    const n = new ByAxisNode({ expr: 'TEXTJOIN(",", FALSE, v)', resultAs: "text" });
+    const n = new ByAxisNode({ expr: 'TEXTJOIN(",", FALSE, values)', resultAs: "text" });
     expect(n.data({ table: [[["a", "b"], ["c", "d"]]] }).result).toEqual(["a,b", "c,d"]);
   });
 
@@ -177,7 +177,7 @@ describe("BYROW / REDUCE / MAKEARRAY — text", () => {
   });
 
   it("REDUCE concatenates from a wired text initial", () => {
-    const n = new ReduceLambdaNode({ expr: "acc & x", resultAs: "text" });
+    const n = new ReduceLambdaNode({ expr: "acc & value", resultAs: "text" });
     expect(n.data({ initial: [""], table: [[["a", "b", "c"]]] }).result).toBe("abc");
   });
 
@@ -187,7 +187,7 @@ describe("BYROW / REDUCE / MAKEARRAY — text", () => {
   });
 
   it("MAKEARRAY can build a text grid", () => {
-    const n = new MakeArrayNode({ expr: '"cell " & r & "," & c', resultAs: "text" });
+    const n = new MakeArrayNode({ expr: '"cell " & row & "," & col', resultAs: "text" });
     expect(n.data({ rows: [2], cols: [2] }).result).toEqual([
       ["cell 1,1", "cell 1,2"],
       ["cell 2,1", "cell 2,2"],
