@@ -1,5 +1,5 @@
 import { ClassicPreset, type NodeEditor } from "rete";
-import { formatAnnotationStore, isDateStyle, isFcUnit, type FormatStyleId, type FormatAnnotation, type TextCase, type TextAlign, type DecimalMode, type LogicalStyle, type NegativeStyle, type ScaleMode } from "../formatAnnotationStore";
+import { formatAnnotationStore, isDateStyle, isFcUnit, type FormatStyleId, type FormatAnnotation, type TextCase, type TextAlign, type DecimalMode, type LogicalStyle, type LambdaView, type NegativeStyle, type ScaleMode } from "../formatAnnotationStore";
 import { makeUnitResolver } from "../unitFlow";
 import { dockedNodeStore } from "../dockedNodeStore";
 import { SolenoidSocket, isDateType, isWildcardType, type SocketDataType } from "../sockets";
@@ -66,6 +66,10 @@ export class FormatControllerNode extends ClassicPreset.Node {
   textMono: boolean;          // render in the monospace face
   // Logical-socket show-as (display only).
   logicalStyle: LogicalStyle;
+  // Lambda-socket view-as (display only).
+  lambdaView: LambdaView;
+  // Chart-socket text-scale multiplier (display only).
+  chartFontScale: number;
   // Advanced tier (number family; behind the chip's expander).
   grouping: boolean;          // thousands separator
   negativeStyle: NegativeStyle;
@@ -117,6 +121,8 @@ export class FormatControllerNode extends ClassicPreset.Node {
     textMarkdown?: boolean;
     textMono?: boolean;
     logicalStyle?: LogicalStyle;
+    lambdaView?: LambdaView;
+    chartFontScale?: number;
     grouping?: boolean;
     negativeStyle?: NegativeStyle;
     scaleMode?: ScaleMode;
@@ -142,6 +148,8 @@ export class FormatControllerNode extends ClassicPreset.Node {
     this.textMarkdown = init?.textMarkdown ?? false;
     this.textMono     = init?.textMono     ?? false;
     this.logicalStyle = init?.logicalStyle ?? "truefalse";
+    this.lambdaView     = init?.lambdaView     ?? "signature";
+    this.chartFontScale = init?.chartFontScale ?? 1;
     this.grouping      = init?.grouping      ?? true;
     this.negativeStyle = init?.negativeStyle ?? "minus";
     this.scaleMode     = init?.scaleMode     ?? "none";
@@ -334,6 +342,8 @@ export class FormatControllerNode extends ClassicPreset.Node {
       textMarkdown:  this.textMarkdown,
       textMono:      this.textMono,
       logicalStyle:  this.logicalStyle,
+      lambdaView:    this.lambdaView,
+      chartFontScale: this.chartFontScale,
       grouping:      this.grouping,
       negativeStyle: this.negativeStyle,
       scaleMode:     this.scaleMode,

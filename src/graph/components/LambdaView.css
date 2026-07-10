@@ -1,0 +1,22 @@
+/* Lambda view-as (FC lambdaView) — the non-default renderings of a flowing
+   LambdaValue in a value box. Formulas read left-to-right, so these views
+   left-align inside the (right-aligned-by-default) box. */
+.solenoid-lambda-view {
+  text-align: left;
+}
+.solenoid-lambda-view--mono {
+  font-family: var(--font-mono, ui-monospace, "SF Mono", Menlo, monospace);
+  font-size: 12px;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+/* KaTeX draws its own layout; keep the equation compact and scrollable when it
+   outgrows the card instead of blowing the box open. */
+.solenoid-lambda-view--katex {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.solenoid-lambda-view--katex .katex-display {
+  margin: 2px 0;
+}

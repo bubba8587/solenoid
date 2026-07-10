@@ -43,8 +43,10 @@ non-finite number → `String(n)`. These outrank any annotation.
 | `text` | `string`, `strlist` |
 | `logical` | `logical`, `logicallist`, `logicalcombo`, `logicaltable` |
 | `complex` | `complex`, `complexlist` |
+| `lambda` | `lambda` — display-only view-as for a flowing LambdaValue |
+| `chart` | `chart` — display-only text scale for a flowing chart figure |
 | `number` (provisional) | `any` — an FC docked to an unresolved passthrough shows number controls until a concrete type flows in and re-adapts it |
-| `none` | everything else (`frame`, `cube`, `chart`, `lambda`, …) |
+| `none` | everything else (`frame`, `cube`, …) |
 
 Lists/matrices format PER CELL with the one annotation (the array-semantics model:
 `null` and `SolError` cells short-circuit per cell). Frames are `none` in this
@@ -72,6 +74,21 @@ Which controls exist per family (popup rows AND resolution axes):
 | · alignment (L / C / R) | — | — | ✔ (box is right-aligned by default) | — | — |
 | · render as markdown | — | — | ✔ (inline markdown, sanitized) | — | — |
 | · monospace | — | — | ✔ (text is sans by default) | — | — |
+
+The two object families each carry exactly ONE control (not in the matrix above —
+they'd be a column of dashes):
+
+| family | control | values |
+|---|---|---|
+| `lambda` | view-as dropdown (`lambdaView`) | `signature` (default, λ(params)) · `katex` (f(params) = … equation) · `syntax` (highlighted formula) · `mono` (monospace source) |
+| `chart` | text scale dropdown (`chartFontScale`) | ×0.8 · ×1 (default) · ×1.25 · ×1.5 · ×2 — multiplies every text size in the figure (axis ticks, title, labels, KPI digits), composing with the value's own `fontsize` option (matplotlib points, 10 = built-in) |
+
+Both are display-only and ride the annotation exactly like `logicalStyle`. The
+lambda's SOURCE node keeps its compact signature box regardless (the view-as
+applies downstream — Display boxes, Report embeds — not to the authoring card;
+a Report embed's default stays KaTeX). The flowing `LambdaValue` already
+carries `expr`/`params`/`descriptions`, so every view derives from the value —
+nothing extra travels the cable.
 
 Notes:
 - **Percent takes a unit** like any other number style. Rendering order is fixed:

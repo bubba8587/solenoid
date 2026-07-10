@@ -89,7 +89,7 @@ export function FormulaEditor({
 
   return (
     <div className={`fx-editor${className ? " " + className : ""}`}>
-      <pre ref={preRef} className="fx-editor__hl" aria-hidden="true" dangerouslySetInnerHTML={{ __html: html }} />
+      <pre ref={preRef} className="fx-editor__hl fx-tokens" aria-hidden="true" dangerouslySetInnerHTML={{ __html: html }} />
       <textarea
         ref={taRef}
         className="fx-editor__ta"

@@ -10,6 +10,7 @@ import { ChartChip } from "./ChartChip";
 import { collapseStore } from "../collapseStore";
 import { processGraph } from "../process";
 import { getActiveEditor, getActiveArea } from "../activeGraph";
+import { formatAnnotationStore } from "../formatAnnotationStore";
 import type { ChartValue } from "../chartValue";
 
 // A Chart reads ONE data input per op: the 2-D `series` matrix for composed/bubble,
@@ -58,6 +59,9 @@ export function ChartComponent({ data, emit }: NodeProps<ChartNodeType>) {
   const setOp = useCallback((v: ChartOp) => { setOpState(v); void applyChartOp(data, v); }, [data]);
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   const opts = data.chartOptions;
+  // An FC on the chart output scales the figure's text (display only).
+  useSyncExternalStore(formatAnnotationStore.subscribe, formatAnnotationStore.version);
+  const fontScale = formatAnnotationStore.getForNode(data.id)?.chartFontScale;
   const isMatrix = CHART_MATRIX_OPS.has(op);
   // Has anything to draw? Matrix ops read cachedMatrix (with a values fallback);
   // 1-D ops read the values series.
@@ -97,7 +101,7 @@ export function ChartComponent({ data, emit }: NodeProps<ChartNodeType>) {
           <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>
         ) : (
           <>
-            <ChartFigure value={cv} width={W} height={H} />
+            <ChartFigure value={cv} width={W} height={H} fontScale={fontScale} />
             {/* The expand popup renders a single series — offer it only for the
                 1-D ops (the matrix ops have no popup path). */}
             {!isMatrix && (

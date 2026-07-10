@@ -70,6 +70,8 @@ export function LambdaComponent({ data: node, emit }: NodeProps<LambdaNodeType>)
         emit={emit}
         titleFor={(k) => node.varDescriptions[k] || undefined}
       />
+      {/* The authoring node's own box stays the compact signature — the FC's
+          view-as applies downstream (Display / Report), not to the source. */}
       <ValueDisplay value={node.cachedValue ? formatLambda(node.cachedValue) : null} />
     </NodeShell>
   );

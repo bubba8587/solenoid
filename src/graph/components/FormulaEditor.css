@@ -46,17 +46,19 @@
 .fx-editor__ta::placeholder { color: var(--text-muted); opacity: 1; }
 
 /* Token colours — variables use the number-socket amber (they become input
-   sockets), an unknown call / stray char reads as an error. */
-.fx-editor .fx-fn      { color: #4aa3df; font-weight: 600; }
-.fx-editor .fx-unknown { color: #e0707a; }
-.fx-editor .fx-var     { color: #d9a521; }
-.fx-editor .fx-const   { color: #b48cff; }
-.fx-editor .fx-num     { color: #4cae8f; }
-.fx-editor .fx-str     { color: #8aab46; }
-.fx-editor .fx-op,
-.fx-editor .fx-paren,
-.fx-editor .fx-comma   { color: var(--text-muted); }
-.fx-editor .fx-err     { color: #e0707a; text-decoration: underline wavy; }
+   sockets), an unknown call / stray char reads as an error. Scoped to
+   `.fx-tokens` so any surface can paint highlightFormula() output (the editor's
+   <pre> and the FC's highlighted lambda view both carry the class). */
+.fx-tokens .fx-fn      { color: #4aa3df; font-weight: 600; }
+.fx-tokens .fx-unknown { color: #e0707a; }
+.fx-tokens .fx-var     { color: #d9a521; }
+.fx-tokens .fx-const   { color: #b48cff; }
+.fx-tokens .fx-num     { color: #4cae8f; }
+.fx-tokens .fx-str     { color: #8aab46; }
+.fx-tokens .fx-op,
+.fx-tokens .fx-paren,
+.fx-tokens .fx-comma   { color: var(--text-muted); }
+.fx-tokens .fx-err     { color: #e0707a; text-decoration: underline wavy; }
 
 /* Autocomplete menu — drops just below the field. */
 .fx-editor__menu {

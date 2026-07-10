@@ -3,10 +3,11 @@ import { FormatControllerNode } from "../rete-nodes";
 import type { FormatControllerNode as FormatControllerNodeType } from "../rete-nodes";
 import {
   FORMAT_STYLE_LABELS, FORMAT_STYLE_GROUPS, DATE_FORMAT_STYLES, UNIT_ANNOTATIONS,
-  LOGICAL_STYLE_LABELS, NEGATIVE_STYLE_LABELS, SCALE_MODE_LABELS,
+  LOGICAL_STYLE_LABELS, LAMBDA_VIEW_LABELS, CHART_FONT_SCALES,
+  NEGATIVE_STYLE_LABELS, SCALE_MODE_LABELS,
   unitGroupLabel, formatMismatchStore,
   type FormatStyleId, type TextCase, type TextAlign, type DecimalMode, type LogicalStyle,
-  type NegativeStyle, type ScaleMode,
+  type LambdaView, type NegativeStyle, type ScaleMode,
 } from "../formatAnnotationStore";
 import {
   familyOf, controlsFor, COMPLEX_FORMAT_STYLES,
@@ -65,6 +66,8 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
   const [customUnit,    setCustomUnitLocal] = useState(node.customUnit);
   const [textCase,      setTextCaseLocal] = useState<TextCase>(node.textCase);
   const [logicalStyle,  setLogicalLocal]  = useState<LogicalStyle>(node.logicalStyle);
+  const [lambdaView,    setLambdaLocal]   = useState<LambdaView>(node.lambdaView);
+  const [chartFontScale, setChartScaleLocal] = useState(node.chartFontScale);
   const [grouping,      setGroupingLocal] = useState(node.grouping);
   const [negativeStyle, setNegativeLocal] = useState<NegativeStyle>(node.negativeStyle);
   const [scaleMode,     setScaleModeLocal] = useState<ScaleMode>(node.scaleMode);
@@ -125,6 +128,8 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
     setUnitLocal(node.unit);
     setTextCaseLocal(node.textCase);
     setLogicalLocal(node.logicalStyle);
+    setLambdaLocal(node.lambdaView);
+    setChartScaleLocal(node.chartFontScale);
     setGroupingLocal(node.grouping);
     setNegativeLocal(node.negativeStyle);
     setScaleModeLocal(node.scaleMode);
@@ -189,6 +194,23 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
   function onLogicalChange(s: LogicalStyle) {
     node.logicalStyle = s;
     setLogicalLocal(s);
+    syncNode();
+  }
+
+  function onLambdaViewChange(v: LambdaView) {
+    node.lambdaView = v;
+    setLambdaLocal(v);
+    syncNode();
+    // KaTeX/highlighted views change the host box height; a docked FC must
+    // re-center on its host socket once the new height has laid out.
+    if (node.hostNodeId) {
+      requestAnimationFrame(() => requestAnimationFrame(() => repositionDockedNodes(node.hostNodeId)));
+    }
+  }
+
+  function onChartScaleChange(s: number) {
+    node.chartFontScale = s;
+    setChartScaleLocal(s);
     syncNode();
   }
 
@@ -522,8 +544,44 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
           </LazySelect>
           <FcArrow dir="fwd" title={fwdTitle} />
         </div>
+      ) : c.lambda ? (
+        /* Lambda socket: view-as (signature · KaTeX · highlighted · mono), display only. */
+        <div className="solenoid-fc__row">
+          <FcArrow dir="back" title={backTitle} />
+          <LazySelect
+            className="solenoid-node__op-select solenoid-fc__select solenoid-fc__select--wide"
+            value={lambdaView}
+            onChange={(e) => onLambdaViewChange(e.target.value as LambdaView)}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            title="How the formula renders"
+          >
+            {Object.entries(LAMBDA_VIEW_LABELS).map(([id, label]) => (
+              <option key={id} value={id}>{label}</option>
+            ))}
+          </LazySelect>
+          <FcArrow dir="fwd" title={fwdTitle} />
+        </div>
+      ) : c.chart ? (
+        /* Chart socket: text-scale multiplier for every size inside the figure. */
+        <div className="solenoid-fc__row">
+          <FcArrow dir="back" title={backTitle} />
+          <LazySelect
+            className="solenoid-node__op-select solenoid-fc__select solenoid-fc__select--wide"
+            value={chartFontScale}
+            onChange={(e) => onChartScaleChange(parseFloat(e.target.value))}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            title="Chart text size (axis ticks, title, labels)"
+          >
+            {CHART_FONT_SCALES.map((s) => (
+              <option key={s} value={s}>{s === 1 ? "Text ×1" : `Text ×${s}`}</option>
+            ))}
+          </LazySelect>
+          <FcArrow dir="fwd" title={fwdTitle} />
+        </div>
       ) : !c.numberStyle && !c.complexStyle ? (
-        /* Structural socket (frame/cube/chart/lambda): nothing formattable here —
+        /* Structural socket (frame/cube): nothing formattable here —
            per-column frame formats are the v1.1 units milestone. */
         <div
           className="solenoid-fc__row solenoid-fc__row--none"

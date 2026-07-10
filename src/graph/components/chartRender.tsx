@@ -48,7 +48,7 @@ const SLICE_TIP = <Tooltip isAnimationActive={false} content={<SliceTooltip />} 
  * formatted via formatScalar (not recharts' raw full-float).
  */
 export function ChartView({
-  op, series, width, height, axes, opts, signColors, labels,
+  op, series, width, height, axes, opts, signColors, labels, fontScale,
 }: {
   op: ChartShape;
   series: { i: number; v: number }[];
@@ -61,11 +61,15 @@ export function ChartView({
   signColors?: { pos: string; neg: string };
   /** X-axis category labels (Frame col 0) — the axis shows these instead of 1,2,3… */
   labels?: (string | number)[];
+  /** Display-layer text multiplier (an FC on the chart socket) — multiplies the
+   *  options' own fontsize (matplotlib points, 10 = the built-in sizes). */
+  fontScale?: number;
 }) {
   const { grid, axis } = useChartColors();
   const seriesColors = useSeriesColors();
   const paint = (i: number) => seriesColors[i % seriesColors.length];
-  const AXIS = { fontSize: 9, fill: axis } as const;
+  const fs = (fontScale ?? 1) * ((opts?.fontsize ?? 10) / 10);
+  const AXIS = { fontSize: 9 * fs, fill: axis } as const;
   // With Frame labels, the axis/category tick shows the label for that index; else
   // the 1-based ordinal (the historical behaviour).
   const tickFmt = (i: number | string) =>
@@ -82,14 +86,14 @@ export function ChartView({
     ? [opts?.ymin ?? "auto", opts?.ymax ?? "auto"] as [number | string, number | string]
     : undefined;
   const xLabel = axes && opts?.xlabel
-    ? { value: opts.xlabel, position: "insideBottom" as const, offset: -3, fontSize: 10, fill: axis }
+    ? { value: opts.xlabel, position: "insideBottom" as const, offset: -3, fontSize: 10 * fs, fill: axis }
     : undefined;
   const yLabel = axes && opts?.ylabel
-    ? { value: opts.ylabel, angle: -90, position: "insideLeft" as const, fontSize: 10, fill: axis }
+    ? { value: opts.ylabel, angle: -90, position: "insideLeft" as const, fontSize: 10 * fs, fill: axis }
     : undefined;
   // Make room for axis labels / a title when present.
   const title = opts?.title;
-  const titleH = title ? 16 : 0;
+  const titleH = title ? Math.ceil(16 * fs) : 0;
   const chartH = height - titleH;
   const yAxisW = axes ? (yLabel ? 40 : 26) : 0;
   const bottomM = axes ? (xLabel ? 18 : 4) : 2;
@@ -165,7 +169,7 @@ export function ChartView({
       <FunnelChart width={width} height={chartH}>
         {SLICE_TIP}
         <Funnel dataKey="v" data={series} isAnimationActive={false}>
-          <LabelList position="right" dataKey="v" fill={axis} stroke="none" fontSize={10} />
+          <LabelList position="right" dataKey="v" fill={axis} stroke="none" fontSize={10 * fs} />
           {series.map((_, i) => <Cell key={i} fill={paint(i)} />)}
         </Funnel>
       </FunnelChart>
@@ -202,7 +206,7 @@ export function ChartView({
   if (!title) return chart;
   return (
     <div style={{ width }}>
-      <div style={{ height: titleH, lineHeight: `${titleH}px`, textAlign: "center", fontSize: 11, fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+      <div style={{ height: titleH, lineHeight: `${titleH}px`, textAlign: "center", fontSize: 11 * fs, fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
         {title}
       </div>
       {chart}
@@ -215,22 +219,22 @@ export function ChartView({
 // from the categorical set. recharts hands the cell renderer geometry + index.
 type TreemapCellProps = {
   x?: number; y?: number; width?: number; height?: number;
-  index?: number; name?: string; colors?: string[];
+  index?: number; name?: string; colors?: string[]; fscale?: number;
 };
-function TreemapCell({ x = 0, y = 0, width = 0, height = 0, index = 0, name = "", colors = [] }: TreemapCellProps) {
+function TreemapCell({ x = 0, y = 0, width = 0, height = 0, index = 0, name = "", colors = [], fscale = 1 }: TreemapCellProps) {
   const fill = colors[index % (colors.length || 1)] || VIZ;
   return (
     <g>
       <rect x={x} y={y} width={width} height={height} fill={fill} stroke="var(--surface)" strokeWidth={1} />
-      {width > 46 && height > 20 ? (
-        <text x={x + 5} y={y + 15} fontSize={10} fill="#fff" style={{ pointerEvents: "none" }}>{name}</text>
+      {width > 46 * fscale && height > 20 * fscale ? (
+        <text x={x + 5} y={y + 5 + 10 * fscale} fontSize={10 * fscale} fill="#fff" style={{ pointerEvents: "none" }}>{name}</text>
       ) : null}
     </g>
   );
 }
 
-export function TreemapView({ names, values, width, height }: {
-  names: string[]; values: number[]; width: number; height: number;
+export function TreemapView({ names, values, width, height, fscale = 1 }: {
+  names: string[]; values: number[]; width: number; height: number; fscale?: number;
 }) {
   const colors = useSeriesColors();
   const data = names
@@ -241,7 +245,7 @@ export function TreemapView({ names, values, width, height }: {
     // recharts 3.x: `content` must be a FUNCTION to receive each node's geometry
     // (x/y/width/height/index). A static element is rendered once with no geometry —
     // every rect collapses to 0×0 and the treemap reads as a blank box.
-    <Treemap width={width} height={height} data={data} dataKey="size" isAnimationActive={false} content={(props) => <TreemapCell {...props} colors={colors} />}>
+    <Treemap width={width} height={height} data={data} dataKey="size" isAnimationActive={false} content={(props) => <TreemapCell {...props} colors={colors} fscale={fscale} />}>
       {SLICE_TIP}
     </Treemap>
   );
@@ -253,9 +257,9 @@ export function TreemapView({ names, values, width, height }: {
 // loops are dropped (recharts' layout assumes a DAG).
 type SankeyNodeProps = {
   x?: number; y?: number; width?: number; height?: number;
-  index?: number; payload?: { name?: string }; colors?: string[]; containerWidth?: number;
+  index?: number; payload?: { name?: string }; colors?: string[]; containerWidth?: number; fscale?: number;
 };
-function SankeyNodeShape({ x = 0, y = 0, width = 0, height = 0, index = 0, payload, colors = [], containerWidth = 0 }: SankeyNodeProps) {
+function SankeyNodeShape({ x = 0, y = 0, width = 0, height = 0, index = 0, payload, colors = [], containerWidth = 0, fscale = 1 }: SankeyNodeProps) {
   const fill = colors[index % (colors.length || 1)] || VIZ;
   const rightHalf = x > containerWidth / 2;
   return (
@@ -266,7 +270,7 @@ function SankeyNodeShape({ x = 0, y = 0, width = 0, height = 0, index = 0, paylo
         y={y + height / 2}
         textAnchor={rightHalf ? "end" : "start"}
         dominantBaseline="middle"
-        fontSize={10}
+        fontSize={10 * fscale}
         fill="var(--text)"
         style={{ pointerEvents: "none" }}
       >{payload?.name}</text>
@@ -274,8 +278,8 @@ function SankeyNodeShape({ x = 0, y = 0, width = 0, height = 0, index = 0, paylo
   );
 }
 
-export function SankeyView({ sources, targets, values, width, height }: {
-  sources: string[]; targets: string[]; values: number[]; width: number; height: number;
+export function SankeyView({ sources, targets, values, width, height, fscale = 1 }: {
+  sources: string[]; targets: string[]; values: number[]; width: number; height: number; fscale?: number;
 }) {
   const colors = useSeriesColors();
   const { grid } = useChartColors();
@@ -308,7 +312,7 @@ export function SankeyView({ sources, targets, values, width, height }: {
       // recharts' node props DON'T carry containerWidth, so pass the figure width
       // through — SankeyNodeShape uses it to flip labels to the outer side (else
       // every node reads as "right half" and the left column's labels fly off-canvas).
-      node={(props) => <SankeyNodeShape {...props} colors={colors} containerWidth={width} />}
+      node={(props) => <SankeyNodeShape {...props} colors={colors} containerWidth={width} fscale={fscale} />}
       // Labels sit INWARD (left column → right, right column → left; see
       // SankeyNodeShape), so no wide outer gutter is needed — small even margins
       // let the flow diagram fill the figure width.
@@ -322,12 +326,12 @@ export function SankeyView({ sources, targets, values, width, height }: {
 // ─── Composed (multi-series) ──────────────────────────────────────────────────
 // Each COLUMN of the matrix is a series over the row index: column 0 draws as bars,
 // the rest as lines (the classic "bars + trend line" combo), coloured categorically.
-export function ComposedView({ matrix, width, height }: {
-  matrix: (number | null)[][]; width: number; height: number;
+export function ComposedView({ matrix, width, height, fscale = 1 }: {
+  matrix: (number | null)[][]; width: number; height: number; fscale?: number;
 }) {
   const { grid, axis } = useChartColors();
   const colors = useSeriesColors();
-  const AXIS = { fontSize: 9, fill: axis } as const;
+  const AXIS = { fontSize: 9 * fscale, fill: axis } as const;
   const ncols = matrix.reduce((m, r) => Math.max(m, r.length), 0);
   const data = matrix.map((row, i) => {
     const o: Record<string, number | null> = { i };
@@ -351,12 +355,12 @@ export function ComposedView({ matrix, width, height }: {
 
 // ─── Bubble ───────────────────────────────────────────────────────────────────
 // Each ROW is a point: column 0 = x, 1 = y, 2 = bubble size (defaults if absent).
-export function BubbleView({ matrix, width, height }: {
-  matrix: (number | null)[][]; width: number; height: number;
+export function BubbleView({ matrix, width, height, fscale = 1 }: {
+  matrix: (number | null)[][]; width: number; height: number; fscale?: number;
 }) {
   const { grid, axis } = useChartColors();
   const colors = useSeriesColors();
-  const AXIS = { fontSize: 9, fill: axis } as const;
+  const AXIS = { fontSize: 9 * fscale, fill: axis } as const;
   const data = matrix
     .map((row, i) => ({
       x: typeof row[0] === "number" ? row[0] : i,

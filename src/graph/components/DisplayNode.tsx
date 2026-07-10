@@ -18,14 +18,15 @@ import { isChartValue, type ChartValue } from "../chartValue";
 import { nodeSizeStore } from "../nodeSizeStore";
 import { isMermaidValue } from "../mermaidValue";
 import { isSvgValue } from "../svgValue";
-import { isLambdaValue, formatLambda } from "../nodes/lambda";
+import { isLambdaValue } from "../nodes/lambda";
+import { LambdaValueView } from "./LambdaView";
 import { isSolError } from "../errorValue";
 
 // A chart in a RESIZED Display fills its box and scales live. Only used when the
 // Display has a definite size — measuring a content-driven (max-content) card
 // would feed back (chart size → card size → chart size…) and oscillate. overflow
 // is hidden so the figure can't spawn a scrollbar that re-triggers the measure.
-function MeasuredChart({ value }: { value: ChartValue }) {
+function MeasuredChart({ value, fontScale }: { value: ChartValue; fontScale?: number }) {
   const ref = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 210, h: 130 });
   useLayoutEffect(() => {
@@ -43,7 +44,7 @@ function MeasuredChart({ value }: { value: ChartValue }) {
   }, []);
   return (
     <div ref={ref} style={{ width: "100%", height: "100%", overflow: "hidden" }}>
-      <ChartFigure value={value} width={size.w} height={size.h} />
+      <ChartFigure value={value} width={size.w} height={size.h} fontScale={fontScale} />
     </div>
   );
 }
@@ -132,14 +133,14 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
         // Collapsed → the [Chart] chip in the hero box (matching how a frame/table
         // collapses to its chip); expanded → the full figure.
         !full ? <div className="solenoid-node__display-value" style={{ display: "flex", justifyContent: "flex-end" }}><ChartChip value={v} /></div>
-              : sized ? <MeasuredChart value={v} />
-              : <ChartFigure value={v} width={210} height={130} />
+              : sized ? <MeasuredChart value={v} fontScale={ann?.chartFontScale} />
+              : <ChartFigure value={v} width={210} height={130} fontScale={ann?.chartFontScale} />
       ) : isMermaid ? (
         <MermaidView source={v.source} />
       ) : isSvg ? (
         <SvgFigure value={v} height={full ? 200 : 120} />
       ) : isLambda ? (
-        <div className="solenoid-node__display-value">{formatLambda(v)}</div>
+        <LambdaValueView value={v} view={ann?.lambdaView} />
       ) : isTable ? (
         <TableDisplay table={v as number[][]} label={data.label} full={full} />
       ) : (

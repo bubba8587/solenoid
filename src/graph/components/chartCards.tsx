@@ -12,8 +12,14 @@ import "./chartCards.css";
 // Matches the connection "ok" dot so green means the same thing across the app.
 const POS = "#2fae7a";
 
+// Text-scale multiplier (FC chartFontScale × options fontsize) — published as a
+// CSS var the stylesheet's calc() sizes read, so one factor scales every label.
+function fscaleStyle(fscale: number | undefined): React.CSSProperties | undefined {
+  return fscale && fscale !== 1 ? ({ "--chart-fscale": fscale } as React.CSSProperties) : undefined;
+}
+
 /** A big-number stat card with an optional ↑/↓ delta vs a prior value. */
-export function KpiCard({ payload }: { payload: KpiPayload }) {
+export function KpiCard({ payload, fscale }: { payload: KpiPayload; fscale?: number }) {
   const { value, prev, unit, goodUp } = payload;
   const has = value !== null && Number.isFinite(value);
   const delta = has && prev !== null && Number.isFinite(prev) ? value! - prev : null;
@@ -22,7 +28,7 @@ export function KpiCard({ payload }: { payload: KpiPayload }) {
   const good = (dir > 0 && goodUp) || (dir < 0 && !goodUp);
   const color = dir === 0 ? "var(--text-dim)" : good ? POS : "var(--sol-error)";
   return (
-    <div className="sol-kpi">
+    <div className="sol-kpi" style={fscaleStyle(fscale)}>
       <div className="sol-kpi__value">
         {has ? formatScalar(value!) : "—"}
         {unit ? <span className="sol-kpi__unit">{unit}</span> : null}
@@ -39,7 +45,7 @@ export function KpiCard({ payload }: { payload: KpiPayload }) {
 }
 
 /** A bullet graph — a value bar on a min..max track with a target tick. */
-export function BulletBar({ payload, width }: { payload: BulletPayload; width?: number }) {
+export function BulletBar({ payload, width, fscale }: { payload: BulletPayload; width?: number; fscale?: number }) {
   const { value, target, min, max } = payload;
   const span = max - min || 1;
   const frac = (x: number) => Math.max(0, Math.min(1, (x - min) / span));
@@ -48,7 +54,7 @@ export function BulletBar({ payload, width }: { payload: BulletPayload; width?: 
   const tFrac = target !== null && Number.isFinite(target) ? frac(target) : null;
   const met = has && target !== null && value! >= target;
   return (
-    <div className="sol-bullet" style={width ? { width } : undefined}>
+    <div className="sol-bullet" style={{ ...(width ? { width } : undefined), ...fscaleStyle(fscale) }}>
       <div className="sol-bullet__row">
         <div className="sol-bullet__track">
           <div
