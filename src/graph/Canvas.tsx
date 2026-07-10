@@ -16,8 +16,7 @@ import {
   setEditorRefs, processGraph, bumpConnectionVersion, setCableDragging, cableDragStore,
   setUnselectAllNodes, setAutoArrange, setSelectNode, setRepositionDocked, setPushHistory, setClearHistory, setHistoryPlugin,
   setDeleteSelected, setCleanup,
-  isGraphRebuilding, setBulkSettle, markBulkTopoDirty,
-  beginGraphRebuild, endGraphRebuild, bulkSettle, setCtorRegistryProvider,
+  isGraphRebuilding, setBulkSettle, markBulkTopoDirty, setCtorRegistryProvider,
 } from "./process";
 import { getActiveHistory } from "./activeGraph";
 import { ctorRegistry } from "./nodeCtorRegistry";
@@ -29,24 +28,19 @@ import { paletteStore } from "./paletteStore";
 import { CommandPalette } from "./CommandPalette";
 import { settingsStore } from "./settingsStore";
 import { cableSelectionStore, cableGhostStore, socketHighlightStore, socketHoverCableStore, dragSocketKey } from "./cableState";
-import { ribbonForConnection } from "./ribbonCable";
 import { resolveSocketHighlights } from "./highlightUtils";
 import { canvasLockStore } from "./canvasLock";
 import { touchSelectStore } from "./touchSelectStore";
 import { IS_MOBILE } from "./coarse";
 import { installErrorGuards } from "./errorValue";
 import { type Pt } from "./lasso";
-import {
-  ConduitNode,
-  FormatControllerNode, GroupNode, CompositeNode,
-  conduitGhostSpecs,
-} from "./rete-nodes";
+import { FormatControllerNode, GroupNode, CompositeNode } from "./rete-nodes";
 import { reconcileFcTypes } from "./fcReconcile";
 import { installCanvasKeyboard } from "./canvasKeyboard";
 import { makeEnsureArrange, makeArrangeFn, makeCleanupFn } from "./tidyArrange";
 import { installLassoSelection } from "./canvasLasso";
 import { installCanvasContextMenu } from "./canvasContextMenu";
-import { insertConduitForCables, linkStandoffBetween, deleteCables, attachFormatController } from "./canvasActions";
+import { insertConduitForCables, linkStandoffBetween, deleteCables, deleteSelection, attachFormatController } from "./canvasActions";
 import { computeDockedCanvasPos, dockedRenderedDims, findDockTarget, insertFcInline, removeFcInline } from "./fcDocking";
 import {
   moveGroupMembers, reconcileGroupMembership,
@@ -184,134 +178,13 @@ export function Canvas() {
   // open toggle, and non-modal (see CommandPalette `persistent`).
   const paletteAlwaysOn = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("commandPaletteAlwaysOn"));
 
-  // Remove the selected cables and/or the selected nodes (a lasso can select
-  // both at once). Shared by the Delete/Backspace key path and the mobile
-  // delete control. Node deletion splices a ghost cable when a node has
-  // exactly one in + one out.
+  // Remove the selected cables and/or nodes — mechanics in canvasActions.ts
+  // (deleteSelection). Shared by the Delete/Backspace key path and the mobile
+  // delete control.
   const deleteSelected = useCallback(async () => {
     const editor = editorRef.current;
     if (!editor) return;
-
-    // A selected standoff is its own deletion target (exclusive selection).
-    const standoffSel = standoffStore.selected();
-    if (standoffSel) {
-      standoffStore.remove(standoffSel);
-      scheduleAutosave();
-      return;
-    }
-
-    const selectedCableIds = cableSelectionStore.ids();
-    const selected = editor.getNodes().filter((n) => n.selected);
-    // Gate the WHOLE removal (selected cables + nodes): each removeConnection fires
-    // `connectionremoved` (FC reconcile + mismatch rescan + a FULL processGraph +
-    // collapse re-sync) and each removeNode fires `noderemoved` (rebuildGroupMembership
-    // + syncGroupCollapse + restoreSettledPushes + forgetNode) — run per item that's
-    // O((nodes+cables) × nodes), i.e. a bulk delete hangs the tab. Suppress the
-    // per-event sweeps and do the equivalents ONCE below. (dropFromGroups +
-    // standoffStore cleanup still run per noderemoved — they're cheap, outside the gate.)
-    const deletedIds: string[] = [];
-    let deletedGroup = false;
-    beginGraphRebuild();
-    try {
-      if (selectedCableIds.length > 0) {
-        cableSelectionStore.clear();
-        // A Ribbon (bundled Conduit cable) is one entity: any selected lane
-        // takes every lane with it.
-        const doomed = new Set<string>();
-        for (const id of selectedCableIds) {
-          const conn = editor.getConnections().find((c) => c.id === id);
-          if (!conn) continue;
-          const ribbon = ribbonForConnection(editor, conn);
-          if (ribbon) for (const m of ribbon.members) doomed.add(m.id);
-          else doomed.add(id);
-        }
-        for (const id of doomed) {
-          cableGhostStore.commit(id);
-          try { await editor.removeConnection(id); } catch { /* already gone */ }
-        }
-      }
-
-      for (const node of selected) {
-        deletedIds.push(node.id);
-        if (node instanceof GroupNode) deletedGroup = true;
-        const incoming = editor.getConnections().filter((c) => c.target === node.id);
-        const outgoing = editor.getConnections().filter((c) => c.source === node.id);
-
-        // Conduit: splice PER LANE. The generic 1-in/1-out splice below can't see a
-        // multi-lane bundle, so without this a deleted Conduit drops every cable
-        // with no ghost. `conduitGhostSpecs` pairs in_i→out_i and yields the
-        // unambiguous per-lane rewires (skipping missing ends, self-loops, dups);
-        // we drop the Conduit + its cables, then add a ghost per spec. (Also covers
-        // a 1-lane Conduit, so it goes through here, not the generic path below.)
-        if (node instanceof ConduitNode) {
-          const specs = conduitGhostSpecs(incoming, outgoing, editor.getConnections());
-          for (const conn of [...incoming, ...outgoing]) await editor.removeConnection(conn.id);
-          await editor.removeNode(node.id);
-          for (const s of specs) {
-            const src = editor.getNode(s.source);
-            const dst = editor.getNode(s.target);
-            if (!src || !dst) continue;
-            const ghost = new ClassicPreset.Connection(src, s.sourceOutput, dst, s.targetInput) as SolenoidConnection;
-            await editor.addConnection(ghost);
-            cableGhostStore.mark(ghost.id);
-          }
-          continue;
-        }
-
-        // Splice case: 1 in + 1 out → leave a ghost cable from the upstream
-        // source to the downstream target. Click the ghost to adopt it.
-        const canSplice =
-          incoming.length === 1 &&
-          outgoing.length === 1 &&
-          incoming[0].source !== outgoing[0].target &&
-          !editor.getConnections().some(
-            (c) =>
-              c.source === incoming[0].source &&
-              c.sourceOutput === incoming[0].sourceOutput &&
-              c.target === outgoing[0].target &&
-              c.targetInput === outgoing[0].targetInput,
-          );
-
-        if (canSplice) {
-          const src = editor.getNode(incoming[0].source);
-          const dst = editor.getNode(outgoing[0].target);
-          if (src && dst) {
-            await editor.removeConnection(incoming[0].id);
-            await editor.removeConnection(outgoing[0].id);
-            await editor.removeNode(node.id);
-            const ghost = new ClassicPreset.Connection(
-              src,
-              incoming[0].sourceOutput,
-              dst,
-              outgoing[0].targetInput,
-            ) as SolenoidConnection;
-            await editor.addConnection(ghost);
-            cableGhostStore.mark(ghost.id);
-            continue;
-          }
-        }
-
-        for (const conn of [...incoming, ...outgoing]) {
-          await editor.removeConnection(conn.id);
-        }
-        await editor.removeNode(node.id);
-      }
-    } finally {
-      endGraphRebuild();
-    }
-
-    // The per-event settles were suppressed above — run the equivalents ONCE, in the
-    // same order noderemoved/connectionremoved would: forget store state, rebuild
-    // membership, the FC/mismatch/recompute/collapse pass (bulkSettle), then restore
-    // any pushes a deleted expanded group was holding open.
-    if (deletedIds.length || selectedCableIds.length) {
-      for (const id of deletedIds) forgetNode(id);
-      if (deletedIds.length) rebuildGroupMembership(editor);
-      await bulkSettle();
-      if (deletedGroup && areaRef.current) restoreSettledPushes(editor, areaRef.current);
-    } else {
-      await processGraph();
-    }
+    await deleteSelection(editor, areaRef.current);
   }, []);
 
   // Expose it to the mobile controls (no keyboard there).
