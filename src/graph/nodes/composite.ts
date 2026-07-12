@@ -5,6 +5,10 @@ import { AdoptiveSocket, trueAnySocket } from "../sockets";
 import { extractInit } from "../copyPaste";
 import { installErrorGuards, solError, type SolError } from "../errorValue";
 import { coerceNumber as toNumber } from "../valueKinds";
+import {
+  mulberry32, sampleUncertain, summarizeSamples,
+  DEFAULT_MC_SAMPLES, DEFAULT_MC_SEED, type DistributionKind,
+} from "../monteCarlo";
 import { installInputCoercion } from "../coerceInputs";
 import { loopMembers } from "../process";
 import { compositeStaleStore } from "../compositeStaleStore";
@@ -73,16 +77,36 @@ export interface CompositeInternalSnapshot {
 // port as a list, instead of a single scalar. Only list modes actually wired
 // up appear here; a mode gets added to this union in the same commit its
 // data() branch + UI land (see CompositeComponent's run-mode dropdown).
-export type CompositeRunMode = "single" | "scenarios" | "data-table" | "simulation" | "goal-seek";
+export type CompositeRunMode = "single" | "scenarios" | "data-table" | "simulation" | "goal-seek" | "montecarlo";
 
 /** Goal-seek mode: drive ONE exposed input port until a chosen output port reaches
  *  `target`. Excel's Goal Seek. Both ports are `any`-typed (no static numeric type),
  *  so numeric-ness is enforced at solve time — a non-numeric objective or a failure
- *  to converge yields a `#CONV!` on the target output. */
+ *  to converge yields a `#CONV!` on the target output.
+ *
+ *  The solver-parameter fields are all OPTIONAL and only present when the user
+ *  overrides a default from the advanced tier (so a plain goal-seek config stays
+ *  `{inputPortId, outputPortId, target}` and its round-trip test is unaffected).
+ *  `solveGoalSeek` falls back to its built-in constants for any unset field. */
 export interface CompositeGoalSeek {
   inputPortId: string;
   outputPortId: string;
   target: number;
+  /** Max objective evaluations before giving up (each is one internal pass). */
+  maxIterations?: number;
+  /** |output − target| convergence tolerance. */
+  tolerance?: number;
+  /** Lower / upper clamp on the driver's search range (bisection stays inside). */
+  boundsLo?: number;
+  boundsHi?: number;
+}
+
+/** Monte Carlo mode config: how many draws + the RNG seed (a fixed seed makes the
+ *  run reproducible). Null until the mode is first configured, exactly like
+ *  goalSeek; the driver falls back to DEFAULT_MC_* when it reads a null config. */
+export interface CompositeMonteCarlo {
+  samples: number;
+  seed: number;
 }
 
 /** One named input set for Scenarios mode. `overrides` is keyed by
@@ -133,12 +157,21 @@ export class CompositeInputNode extends ClassicPreset.Node {
    *  seed). A wired value or a solve overrides it, so it's editable "even if it gets
    *  overridden". Persisted (INIT_FIELD_ORDER "defaultValue"). */
   defaultValue: number | null = null;
+  /** Monte-Carlo uncertainty declared on THIS input, inside the drill-in: the ±
+   *  spread of the marker's value (a 1σ for a normal draw, a ± half-width for a
+   *  uniform one). `null`/0 = a point value (not sampled). SCOPED to composites —
+   *  only the container's Monte Carlo run mode reads it (see monteCarlo.ts). */
+  uncertainty: number | null = null;
+  /** Which distribution the Monte Carlo driver samples this input from. */
+  distribution: DistributionKind = "normal";
   width = 140;
   height = 70;
-  constructor(init?: { label?: string; defaultValue?: number | null }) {
+  constructor(init?: { label?: string; defaultValue?: number | null; uncertainty?: number | null; distribution?: DistributionKind }) {
     super("Composite Input");
     this.label = init?.label ?? "Input";
     this.defaultValue = init?.defaultValue ?? null;
+    this.uncertainty = init?.uncertainty ?? null;
+    this.distribution = init?.distribution === "uniform" ? "uniform" : "normal";
     this.addOutput("value", new ClassicPreset.Output(trueAnySocket, this.label));
   }
   data(): { value: unknown } {
@@ -186,6 +219,8 @@ export class CompositeNode extends ClassicPreset.Node {
   simulationSteps: number;
   /** Goal-seek config (null until the mode is configured). */
   goalSeek: CompositeGoalSeek | null;
+  /** Monte Carlo config (null until the mode is configured). */
+  monteCarlo: CompositeMonteCarlo | null;
   /** The solved driver value (or a `#CONV!` SolError), surfaced in the editor.
    *  Component-read only; not persisted (re-solved on every pass). */
   goalSeekResult: number | SolError | null = null;
@@ -236,6 +271,7 @@ export class CompositeNode extends ClassicPreset.Node {
     dataTableValues?: CompositeDataTableValues;
     simulationSteps?: number;
     goalSeek?: CompositeGoalSeek;
+    monteCarlo?: CompositeMonteCarlo;
   }) {
     super("Composite");
     this.label = init?.label ?? "Composite";
@@ -250,6 +286,7 @@ export class CompositeNode extends ClassicPreset.Node {
     );
     this.simulationSteps = init?.simulationSteps ?? 10;
     this.goalSeek = init?.goalSeek ? { ...init.goalSeek } : null;
+    this.monteCarlo = init?.monteCarlo ? { ...init.monteCarlo } : null;
     this.internalEditor = new NodeEditor<Schemes>();
     // Same two wrappers the outer Canvas installs on the real editor (see
     // errorIntegration.test.ts's makeEditor): coercion first (inner), so a
@@ -476,6 +513,24 @@ export class CompositeNode extends ClassicPreset.Node {
       target: 0,
     };
     this.goalSeek = { ...base, ...patch };
+  }
+
+  // ─── Monte Carlo mutator ─────────────────────────────────────────────────
+
+  /** Merge a patch into the Monte Carlo config (creating it with the defaults if
+   *  unset). Values are clamped/normalized at solve time in runMonteCarlo. */
+  setMonteCarlo(patch: Partial<CompositeMonteCarlo>): void {
+    const base: CompositeMonteCarlo = this.monteCarlo ?? { samples: DEFAULT_MC_SAMPLES, seed: DEFAULT_MC_SEED };
+    this.monteCarlo = { ...base, ...patch };
+  }
+
+  /** The exposed input ports whose drill-in marker declares a positive Monte Carlo
+   *  spread — the set the sampler actually varies. */
+  private uncertainInputPorts(): CompositeInputPort[] {
+    return this.inputPorts.filter((p) => {
+      const m = this.internalEditor.getNode(p.internalNodeId) as CompositeInputNode | undefined;
+      return !!m && typeof m.uncertainty === "number" && m.uncertainty > 0;
+    });
   }
 
   // ─── Compute ─────────────────────────────────────────────────────────────
@@ -727,6 +782,9 @@ export class CompositeNode extends ClassicPreset.Node {
     if (this.runMode === "simulation") return true;
     if (this.runMode === "scenarios") return this.scenarios.length > 0;
     if (this.runMode === "goal-seek") return !!this.goalSeek;
+    // Monte Carlo is only heavy when something actually varies — with no uncertain
+    // input it collapses to a single pass (like a data-table with no axes).
+    if (this.runMode === "montecarlo") return this.uncertainInputPorts().length > 0;
     if (this.runMode === "data-table") {
       return this.inputPorts.some(
         (p) => p.exposure === "exposed" && (this.dataTableValues[p.id]?.length ?? 0) > 0,
@@ -762,10 +820,17 @@ export class CompositeNode extends ClassicPreset.Node {
       inputs: inputTokens,
       // Inside-editable seeds affect the solve, so a seed edit marks it stale too.
       seeds: this.inputPorts.map((p) => (this.internalEditor.getNode(p.internalNodeId) as CompositeInputNode | undefined)?.defaultValue ?? null),
+      // Per-input Monte-Carlo spec (spread + distribution): editing a marker's error
+      // bar or distribution kind restales a held MC solve.
+      uncertainty: this.inputPorts.map((p) => {
+        const m = this.internalEditor.getNode(p.internalNodeId) as CompositeInputNode | undefined;
+        return m ? [m.uncertainty ?? null, m.distribution] : null;
+      }),
       // Any other internal edit (topology, an internal node's value) — see the field.
       edits: this.internalEditSeq,
       mode: this.runMode,
       goalSeek: this.goalSeek,
+      monteCarlo: this.monteCarlo,
       scenarios: this.scenarios,
       dataTableValues: this.dataTableValues,
       simulationSteps: this.simulationSteps,
@@ -799,8 +864,60 @@ export class CompositeNode extends ClassicPreset.Node {
       return this.runPass(inputs);
     } else if (this.runMode === "goal-seek" && this.goalSeek) {
       return this.runGoalSeek(inputs, this.goalSeek);
+    } else if (this.runMode === "montecarlo") {
+      return this.runMonteCarlo(inputs);
     }
     return this.runPass(inputs);
+  }
+
+  // ─── Monte Carlo driver ────────────────────────────────────────────────────
+  /**
+   * Sample every uncertain input `samples` times from a seeded RNG, re-run the
+   * container on each draw, and summarize each output port into an UncertainNumber
+   * (mean ± sample sd, carrying the raw draws for a histogram). A non-uncertain
+   * input keeps its normal wired/default value on every draw (runPass handles it);
+   * an input's mean is its wired value if exposed+wired, else its inside seed. With
+   * no uncertain input at all this collapses to a single ordinary pass (nothing to
+   * sample). The draws are deterministic in the seed — same seed, same result.
+   */
+  private async runMonteCarlo(inputs: Record<string, unknown[]>): Promise<Record<string, unknown>> {
+    const uncertainPorts = this.uncertainInputPorts();
+    if (uncertainPorts.length === 0) return this.runPass(inputs);
+    const cfg = this.monteCarlo ?? { samples: DEFAULT_MC_SAMPLES, seed: DEFAULT_MC_SEED };
+    const draws = Math.max(1, Math.round(cfg.samples));
+    const rng = mulberry32((cfg.seed | 0) >>> 0);
+
+    // Each uncertain port's mean: the wired value if exposed+wired, else the
+    // marker's inside seed (defaultValue), else the port default (else 0).
+    const meanOf = (port: CompositeInputPort, marker: CompositeInputNode): number => {
+      const wired = port.exposure === "exposed" ? inputs[port.id]?.[0] : undefined;
+      const raw = wired ?? marker.defaultValue ?? port.default ?? 0;
+      const n = toNumber(raw);
+      return Number.isFinite(n) ? n : 0;
+    };
+    const specs = uncertainPorts.map((port) => {
+      const marker = this.internalEditor.getNode(port.internalNodeId) as CompositeInputNode;
+      return { port, marker, mean: meanOf(port, marker), spread: marker.uncertainty as number, kind: marker.distribution };
+    });
+
+    const rows: Record<string, unknown>[] = [];
+    for (let i = 0; i < draws; i++) {
+      const overrides: Record<string, unknown> = {};
+      for (const s of specs) overrides[s.port.id] = sampleUncertain(s.mean, { kind: s.kind, spread: s.spread }, rng);
+      rows.push(await this.runPass(inputs, overrides));
+    }
+
+    const outputs: Record<string, unknown> = {};
+    for (const port of this.outputPorts) {
+      const nums = rows.map((r) => toNumber(r[port.id]));
+      const summary = summarizeSamples(nums);
+      outputs[port.id] = summary;
+      // Mirror into the output marker so the drill-in value box shows mean ± sd too
+      // (its own data() never runs on this driver path — same fix as runSimulation).
+      const marker = this.internalEditor.getNode(port.internalNodeId);
+      if (marker instanceof CompositeOutputNode) marker.cachedResult = summary;
+    }
+    return outputs;
   }
 
   // ─── Goal-seek solver ────────────────────────────────────────────────────
@@ -819,7 +936,12 @@ export class CompositeNode extends ClassicPreset.Node {
     const driverMarker = driverPort ? this.internalEditor.getNode(driverPort.internalNodeId) as CompositeInputNode | undefined : undefined;
     const seedRaw = inputs[gs.inputPortId]?.[0] ?? driverMarker?.defaultValue ?? driverPort?.default ?? 0;
     const seed = Number.isFinite(toNumber(seedRaw)) ? toNumber(seedRaw) : 0;
-    const solvedRaw = await solveGoalSeek(objective, seed);
+    const solvedRaw = await solveGoalSeek(objective, seed, {
+      maxIterations: gs.maxIterations,
+      tolerance: gs.tolerance,
+      boundsLo: gs.boundsLo,
+      boundsHi: gs.boundsHi,
+    });
     if (solvedRaw === null) {
       const err = solError("#CONV!", `Goal seek couldn't drive "${gs.inputPortId}" to make "${gs.outputPortId}" reach ${gs.target}`);
       this.goalSeekResult = err;
@@ -849,12 +971,22 @@ export class CompositeNode extends ClassicPreset.Node {
  *  evaluations for smooth objectives), then a bracket-expand + bisection fallback
  *  for robustness. Returns null when it can't converge (non-numeric objective, no
  *  sign change found, or a diverging step). */
-async function solveGoalSeek(f: (x: number) => Promise<number>, x0: number): Promise<number | null> {
-  const FTOL = 1e-7;   // |output − target|
+async function solveGoalSeek(
+  f: (x: number) => Promise<number>,
+  x0: number,
+  opts?: { maxIterations?: number; tolerance?: number; boundsLo?: number; boundsHi?: number },
+): Promise<number | null> {
+  // Advanced-tier overrides fall back to the built-in defaults when unset/invalid.
+  const FTOL = opts?.tolerance != null && opts.tolerance > 0 ? opts.tolerance : 1e-7; // |output − target|
   const XTOL = 1e-9;   // step size
-  const MAX = 80;
+  const MAX = opts?.maxIterations != null && opts.maxIterations >= 1 ? Math.round(opts.maxIterations) : 80;
+  // Optional driver clamp: the search never leaves [lo, hi] when both are given.
+  const LO = opts?.boundsLo;
+  const HI = opts?.boundsHi;
+  const hasBounds = LO != null && HI != null && Number.isFinite(LO) && Number.isFinite(HI) && LO < HI;
+  const clamp = (x: number): number => (hasBounds ? Math.min(HI!, Math.max(LO!, x)) : x);
 
-  let a = x0;
+  let a = clamp(x0);
   let fa = await f(a);
   if (!Number.isFinite(fa)) return null; // non-numeric objective — can't solve
   if (Math.abs(fa) <= FTOL) return a;
@@ -867,7 +999,7 @@ async function solveGoalSeek(f: (x: number) => Promise<number>, x0: number): Pro
     if (Math.abs(fb) <= FTOL) return b;
     const denom = fb - fa;
     if (denom === 0) break;
-    const c = b - (fb * (b - a)) / denom;
+    const c = clamp(b - (fb * (b - a)) / denom);
     if (!Number.isFinite(c)) break;
     const step = Math.abs(c - b);
     a = b; fa = fb;
@@ -878,13 +1010,15 @@ async function solveGoalSeek(f: (x: number) => Promise<number>, x0: number): Pro
   }
 
   // ── Bracket-expand + bisection fallback ──
-  let lo = x0;
+  // With bounds, bisect the whole [lo, hi] window directly — it already brackets
+  // the driver's admissible range, so expansion isn't needed (and mustn't escape it).
+  let lo = hasBounds ? LO! : x0;
   let flo = await f(lo);
   if (!Number.isFinite(flo)) return null;
-  let hi = x0 + (x0 === 0 ? 1 : Math.abs(x0));
+  let hi = hasBounds ? HI! : x0 + (x0 === 0 ? 1 : Math.abs(x0));
   let fhi = await f(hi);
   let span = Math.abs(hi - lo) || 1;
-  for (let i = 0; i < 60 && (!Number.isFinite(fhi) || Math.sign(flo) === Math.sign(fhi)); i++) {
+  for (let i = 0; !hasBounds && i < 60 && (!Number.isFinite(fhi) || Math.sign(flo) === Math.sign(fhi)); i++) {
     span *= 2;
     // Expand outward on both sides alternately so we bracket a root either direction.
     hi = x0 + (i % 2 === 0 ? span : -span);

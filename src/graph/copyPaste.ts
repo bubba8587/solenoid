@@ -185,10 +185,22 @@ export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
       Object.entries(n.dataTableValues as Record<string, unknown[]>).map(([k, v]) => [k, [...v]]),
     );
   }
-  // Composite goal-seek config (input/output port ids + target). Deep-copy; null
-  // means unconfigured, so drop it rather than persisting a null.
+  // Composite goal-seek config (input/output port ids + target + optional solver
+  // params). Deep-copy; null means unconfigured, so drop it rather than a null.
   if (n.goalSeek && typeof n.goalSeek === "object") {
     init.goalSeek = { ...(n.goalSeek as object) };
+  }
+  // Composite Monte Carlo config (sample count + seed). Same shape as goalSeek —
+  // deep-copy when present, drop the null.
+  if (n.monteCarlo && typeof n.monteCarlo === "object") {
+    init.monteCarlo = { ...(n.monteCarlo as object) };
+  }
+  // Composite INPUT MARKER Monte-Carlo spec (drill-in only). Only when SET — a
+  // point-value marker persists nothing extra, and a default "normal" distribution
+  // is implied, so a bare `± spread` marker stays minimal in the save.
+  if (typeof n.uncertainty === "number" && n.uncertainty > 0) {
+    init.uncertainty = n.uncertainty;
+    if (n.distribution === "uniform") init.distribution = "uniform";
   }
   if (typeof n.snapshotInternal === "function") {
     init.internal = (n.snapshotInternal as () => unknown)();
