@@ -7,7 +7,7 @@ import { isSolError } from "../errorValue";
 import { loopMembers } from "../process";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "./composite";
 import { NumberInputNode } from "./input";
-import { ArithmeticNode } from "./scalar";
+import { ArithmeticNode, MathFnNode } from "./scalar";
 
 function connect(
   editor: NodeEditor<Schemes>,
@@ -185,6 +185,77 @@ describe("CompositeNode shell", () => {
 
     const out = await reloaded.data({ [inId]: [1] });
     expect(out[outId]).toBe(7); // 1 (exposed input) + 6 (add's baked "b")
+  });
+});
+
+describe("CompositeNode boundary output-type adoption (D17)", () => {
+  it("an output port adopts the concrete type feeding its internal marker", async () => {
+    const c = new CompositeNode();
+    const num = new NumberInputNode({ value: 7 }); // number-typed "value" output
+    const outMarker = new CompositeOutputNode({ label: "N" });
+    await c.internalEditor.addNode(num as unknown as Schemes["Node"]);
+    await c.internalEditor.addNode(outMarker as unknown as Schemes["Node"]);
+    await connect(c.internalEditor, num, "value", outMarker, "value");
+    const outId = c.addOutputPort({ label: "N", tier: "basic", internalNodeId: outMarker.id });
+
+    // Before settle the outer socket is the neutral placeholder.
+    expect((c.outputs[outId]!.socket as unknown as { dataType: string }).dataType).toBe("trueany");
+    c.settleInternalTypes();
+    expect((c.outputs[outId]!.socket as unknown as { dataType: string }).dataType).toBe("number");
+  });
+
+  it("a live rewire reverts the port to trueany when the marker is unwired", async () => {
+    const c = new CompositeNode();
+    const num = new NumberInputNode({ value: 1 });
+    const outMarker = new CompositeOutputNode({ label: "N" });
+    await c.internalEditor.addNode(num as unknown as Schemes["Node"]);
+    await c.internalEditor.addNode(outMarker as unknown as Schemes["Node"]);
+    const outId = c.addOutputPort({ label: "N", tier: "basic", internalNodeId: outMarker.id });
+    // Wiring AFTER the port exists → the internal pipe settles automatically.
+    await connect(c.internalEditor, num, "value", outMarker, "value");
+    expect((c.outputs[outId]!.socket as unknown as { dataType: string }).dataType).toBe("number");
+    // Removing the feed reverts to the placeholder (the pipe settles again).
+    const conn = c.internalEditor.getConnections()[0]!;
+    await c.internalEditor.removeConnection(conn.id);
+    expect((c.outputs[outId]!.socket as unknown as { dataType: string }).dataType).toBe("trueany");
+  });
+
+  it("adoption survives a snapshot/hydrate round-trip (load path settles once)", async () => {
+    const c = new CompositeNode();
+    const num = new NumberInputNode({ value: 3 });
+    const outMarker = new CompositeOutputNode({ label: "N" });
+    await c.internalEditor.addNode(num as unknown as Schemes["Node"]);
+    await c.internalEditor.addNode(outMarker as unknown as Schemes["Node"]);
+    await connect(c.internalEditor, num, "value", outMarker, "value");
+    const outId = c.addOutputPort({ label: "N", tier: "basic", internalNodeId: outMarker.id });
+
+    const reloaded = new CompositeNode({ outputPorts: c.outputPorts, internal: c.snapshotInternal() });
+    // Before hydrate the reconstructed socket is the placeholder.
+    expect((reloaded.outputs[outId]!.socket as unknown as { dataType: string }).dataType).toBe("trueany");
+    await reloaded.hydrate(ctorRegistry());
+    expect((reloaded.outputs[outId]!.socket as unknown as { dataType: string }).dataType).toBe("number");
+  });
+});
+
+describe("CompositeNode Auto-trig reads the internal unit plane", () => {
+  it("an Auto SIN inside the subgraph computes in degrees off a deg-tagged feed", async () => {
+    const c = new CompositeNode();
+    // A number source that publishes the `deg` angle unit on its output (the
+    // unitFlow annotation the trig resolver reads) — mirrors trigMode.test.ts.
+    const angle = new NumberInputNode({ value: 90 });
+    (angle as unknown as { annotationFor: (k: string) => unknown }).annotationFor =
+      (k: string) => (k === "value" ? { format: "auto", unit: "deg" } : undefined);
+    const sin = new MathFnNode({ op: "sin" }); // auto angle mode
+    const outMarker = new CompositeOutputNode({ label: "S" });
+    for (const n of [angle, sin, outMarker]) await c.internalEditor.addNode(n as unknown as Schemes["Node"]);
+    await connect(c.internalEditor, angle, "value", sin, "in");
+    await connect(c.internalEditor, sin, "result", outMarker, "value");
+    const outId = c.addOutputPort({ label: "S", tier: "basic", internalNodeId: outMarker.id });
+
+    // data() resolves the internal trig mode from the deg unit → SIN(90°) = 1,
+    // not SIN(90 rad) ≈ 0.894.
+    const out = await c.data({});
+    expect(out[outId] as number).toBeCloseTo(1, 9);
   });
 });
 

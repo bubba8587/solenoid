@@ -775,7 +775,7 @@ export class CompositeNode extends ClassicPreset.Node {
    *  own world — the main canvas's connection-pipe settle (Canvas.tsx) never
    *  touches it — so a Display/Conduit/selector chain inside a composite only
    *  adopts its trueany rings if we run the same joint fixpoint here. Cheap
-   *  (composites are small); returns true if any type changed. */
+   *  (composites are small); returns true if any boundary type changed. */
   settleInternalTypes(): boolean {
     settleWildcardTypes(this.internalEditor);
     return this.adoptBoundaryTypes();
@@ -797,7 +797,7 @@ export class CompositeNode extends ClassicPreset.Node {
       if (marker) {
         const feed = conns.find((c) => c.target === marker.id && c.targetInput === "value");
         const src = feed ? this.internalEditor.getNode(feed.source) : undefined;
-        const s = src?.outputs?.[feed!.sourceOutput]?.socket;
+        const s = feed ? src?.outputs?.[feed.sourceOutput]?.socket : undefined;
         if (s instanceof SolenoidSocket) want = s.dataType;
       }
       if (outSock.dataType !== want) { outSock.setType(want); changed = true; }

@@ -5,10 +5,15 @@
 //  - isolateChain: the transitive up/downstream closure over the cables.
 
 import { getEditor, downstreamClosure } from "./process";
+import { getActiveEditor } from "./activeGraph";
 import { GroupNode, FormatControllerNode } from "./rete-nodes";
 import type { SolenoidNode } from "./schemes";
 import { chainClosure, isolateStore } from "./isolateStore";
 
+// Isolate resolves through the ACTIVE editor (the composite drill-in when one is
+// open, else main) so the focus-set / dim view works INSIDE a subgraph too — the
+// drill-in node cards read the same global isolateStore.isVisible(). getEditor()
+// === getActiveEditor() on the main canvas, so nothing changes there.
 type AnyEditor = NonNullable<ReturnType<typeof getEditor>>;
 
 function selectedIds(editor: AnyEditor): Set<string> {
@@ -36,7 +41,7 @@ function expandEntities(editor: AnyEditor, ids: Set<string>): Set<string> {
 
 /** Isolate an explicit set of nodes (expanded to whole entities). */
 export function isolateNodes(ids: Iterable<string>): boolean {
-  const editor = getEditor();
+  const editor = getActiveEditor();
   if (!editor) return false;
   const seed = new Set(ids);
   if (seed.size === 0) return false;
@@ -46,7 +51,7 @@ export function isolateNodes(ids: Iterable<string>): boolean {
 
 /** Isolate the connected chain through an explicit set (up- and downstream). */
 export function isolateChainOf(ids: Iterable<string>): boolean {
-  const editor = getEditor();
+  const editor = getActiveEditor();
   if (!editor) return false;
   const seed0 = new Set(ids);
   if (seed0.size === 0) return false;
@@ -64,7 +69,7 @@ export function isolateChainOf(ids: Iterable<string>): boolean {
  *  the targeted-recompute path walks (process.ts), fed into the existing
  *  isolate/dim visual (no new dim CSS — see isolateStore + IsolatePill). */
 export function isolateWhereUsed(nodeId: string): boolean {
-  const editor = getEditor();
+  const editor = getActiveEditor();
   if (!editor) return false;
   const downstream = downstreamClosure(editor, nodeId);
   // The mode label keeps the pill from reading as a plain Isolate — the SET
@@ -76,12 +81,12 @@ export function isolateWhereUsed(nodeId: string): boolean {
 
 /** Isolate the current selection (used by the hotkey). */
 export function isolateSelection(): boolean {
-  const editor = getEditor();
+  const editor = getActiveEditor();
   return editor ? isolateNodes(selectedIds(editor)) : false;
 }
 
 /** Isolate the chain through the current selection (used by the hotkey). */
 export function isolateChain(): boolean {
-  const editor = getEditor();
+  const editor = getActiveEditor();
   return editor ? isolateChainOf(selectedIds(editor)) : false;
 }
