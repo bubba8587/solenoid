@@ -33,6 +33,46 @@ the other two flagged as author-present/entangled (see below).
   singletons + a custom Canvas gesture, no unit-testable surface (vitest is
   node-env). (3) **D2 toolbar reroute** — the repo's own 1.2-plan marks D2 an
   author-present 2.0 item; left for live eyeballing.
+### SESSION DIGEST (2026-07-12 — Composite run modes: Monte Carlo + uncertainty + solver params; Stream C of the overnight 1.2 build)
+Built the composite what-if tail (`1.2-plan.md` Tier 2, `docs/v2.0/12` #21). Everything
+here is SCOPED to composites (author call this session): the uncertain-value kind + Monte
+Carlo exist for a composite's internal inputs and its MC output, NOT the app-wide Number
+node or general graph arithmetic — blast radius kept inside the composite subsystem.
+- **`UncertainNumber` kind decision — SYMMETRIC ERROR BAR `{value, error}` (author-confirmable).**
+  Picked `10 ± 2` over the interval `[8,12]` alternative per the doc's guidance — simplest
+  to propagate (sums add errors in quadrature, products compound relative error) and it IS
+  what Monte Carlo needs (mean + sd). `error` is a 1σ, normalized non-negative. Added to
+  `valueKinds.ts` as a tagged object (`kind:"uncertain"` brand — unlike bare null/logical it
+  MUST be a wrapper, like SolError): `isUncertain`, `uncertain()`, `asUncertain`,
+  `uncertainCenter`, and the analytic propagation ops (`add/sub/mul/divUncertain`).
+  `coerceNumber` collapses an uncertain to its `.value` (the one degradation path when an
+  error bar meets a numeric context). Deliberately did NOT touch `forAggregate` or the
+  arithmetic ops (Stream A's turf + out of scope) — the addition is self-contained to ease
+  the A→C merge. The propagation math is unit-tested but not yet wired into any node (it's
+  the closed-form companion to the numeric MC sampler).
+- **Monte Carlo** (`monteCarlo.ts`, pure/seeded): mulberry32 PRNG + Box–Muller normal +
+  uniform draws + `summarizeSamples` (mean ± unbiased sd, carries raw draws) + `histogram`.
+  Determinism is seed-based (same seed → identical result), tested end-to-end. A composite
+  input marker gained `uncertainty: number|null` + `distribution: "normal"|"uniform"`
+  (drill-in-only authoring; persisted only when spread>0). New `montecarlo` run mode:
+  `runMonteCarlo` samples every uncertain input N times, re-runs `runPass`, and emits each
+  output port as an `UncertainNumber` (mirrored into the output marker's cachedResult like
+  simulation). Heavy/arm-and-run + stale-key wired exactly like goal-seek (uncertainty edits
+  restale). No uncertain input → collapses to a single pass.
+- **Solver params (advanced tier)**: optional `maxIterations`/`tolerance`/`boundsLo`/`boundsHi`
+  on `CompositeGoalSeek` (undefined = defaults, so the existing round-trip test is untouched);
+  `solveGoalSeek` honors them (bounds clamp the secant + bisect the `[lo,hi]` window directly
+  instead of expanding). MC sample-count + seed in a matching tier. FC-style chip-foot
+  expander (`AdvancedFoot`, local-state open). Simulation `steps` already surfaced.
+- **D-2 inner display**: `MiniSparkline` for a numeric per-step series renders above the
+  list chip INSIDE the drill-in output marker AND on the card (numeric-series-gated). MC's
+  first output distribution shows as a `MiniHistogram` in the MC editor.
+- **Seeds**: added Monte Carlo / Scenarios / Data Table cards to the Composite Workbench
+  seed; `compositeSeed.test.ts` covers all three (MC determinism, scenario side-by-side,
+  data-table grid). All seed/textForm round-trips stay green.
+- **Left + flagged**: inside-solve stale dot (backlog "Composite / drill-in" — distinguishing
+  a seed-based inside-Solve from a wired one needs a drill-state signal coupling `data()` to
+  `compositeEditorStore`; the backlog deems it fragile, left simple on purpose).
 
 ### SESSION DIGEST (2026-07-10 — FC lambda/chart families + Chart Builder reach)
 Author brief: FC options for LAMBDA (view-as) and Chart (font scale) sockets;

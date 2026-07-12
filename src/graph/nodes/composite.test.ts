@@ -636,4 +636,121 @@ describe("CompositeNode Goal Seek run mode", () => {
     c.removeInputPort(inAId);
     expect(c.goalSeek).toBeNull();
   });
+
+  it("respects driver bounds — a root outside [lo, hi] is unreachable (#CONV!), reachable without them", async () => {
+    // Sum = A + B, B = 10, want 5 → the true A = −5. Bounds [0, 100] exclude it, so
+    // the constrained search finds no sign change and reports #CONV!.
+    const { c, inAId, inBId, outId } = await makeAdder();
+    c.setGoalSeek({ inputPortId: inAId, outputPortId: outId, target: 5, boundsLo: 0, boundsHi: 100 });
+    const bounded = await c.data({ [inBId]: [10] });
+    expect(isSolError(bounded[outId])).toBe(true);
+    expect((bounded[outId] as { code: string }).code).toBe("#CONV!");
+    // Drop the bounds and re-solve: the same model now reaches −5.
+    c.setGoalSeek({ boundsLo: undefined, boundsHi: undefined });
+    c.requestSolve();
+    const free = await c.data({ [inBId]: [10] });
+    expect(free[outId] as number).toBeCloseTo(-5, 3);
+  });
+
+  it("goalSeek solver params round-trip through extractInit", async () => {
+    const { c, inAId, outId } = await makeAdder();
+    c.setGoalSeek({ inputPortId: inAId, outputPortId: outId, target: 1, maxIterations: 20, tolerance: 1e-3, boundsLo: -5, boundsHi: 5 });
+    const init = extractInit(c as unknown as ClassicPreset.Node);
+    const clone = new CompositeNode(init as ConstructorParameters<typeof CompositeNode>[0]);
+    expect(clone.goalSeek).toMatchObject({ maxIterations: 20, tolerance: 1e-3, boundsLo: -5, boundsHi: 5 });
+  });
+});
+
+describe("CompositeNode Monte Carlo run mode", () => {
+  // Sum = A + B, both exposed; A carries an uncertainty spread declared on its
+  // drill-in marker, B is a plain wired value.
+  async function makeAdder(spread: number, dist: "normal" | "uniform" = "normal") {
+    const c = new CompositeNode({ runMode: "montecarlo" });
+    const add = new ArithmeticNode({ op: "add" });
+    add.literals = { a: 0, b: 0 };
+    const inA = new CompositeInputNode({ label: "A", defaultValue: 100, uncertainty: spread, distribution: dist });
+    const inB = new CompositeInputNode({ label: "B" });
+    const outMarker = new CompositeOutputNode({ label: "Sum" });
+    for (const n of [add, inA, inB, outMarker]) await c.internalEditor.addNode(n as unknown as Schemes["Node"]);
+    await connect(c.internalEditor, inA, "value", add, "a");
+    await connect(c.internalEditor, inB, "value", add, "b");
+    await connect(c.internalEditor, add, "result", outMarker, "value");
+    const inAId = c.addInputPort({ label: "A", exposure: "exposed", tier: "basic", internalNodeId: inA.id });
+    const inBId = c.addInputPort({ label: "B", exposure: "exposed", tier: "basic", internalNodeId: inB.id });
+    const outId = c.addOutputPort({ label: "Sum", tier: "basic", internalNodeId: outMarker.id });
+    return { c, inA, inAId, inBId, outId };
+  }
+
+  it("samples the uncertain input and surfaces the output as mean ± sd", async () => {
+    const { c, inBId, outId } = await makeAdder(10);
+    c.setMonteCarlo({ samples: 4000, seed: 1 });
+    const out = await c.data({ [inBId]: [0] }); // Sum = A (mean 100, σ 10) + 0
+    const u = out[outId] as { kind: string; value: number; error: number; samples?: number[] };
+    expect(u.kind).toBe("uncertain");
+    expect(u.value).toBeCloseTo(100, 0); // mean ≈ 100
+    expect(u.error).toBeGreaterThan(7); // sd ≈ 10 (loose bound — sampling noise)
+    expect(u.error).toBeLessThan(13);
+    expect(u.samples).toHaveLength(4000);
+  });
+
+  it("is deterministic in the seed — same seed replays the identical summary", async () => {
+    const runOnce = async () => {
+      const { c, inBId, outId } = await makeAdder(10);
+      c.setMonteCarlo({ samples: 500, seed: 7 });
+      const out = await c.data({ [inBId]: [0] });
+      return out[outId] as { value: number; error: number };
+    };
+    const a = await runOnce();
+    const b = await runOnce();
+    expect(a.value).toBe(b.value);
+    expect(a.error).toBe(b.error);
+  });
+
+  it("a different seed gives a different draw", async () => {
+    const { c, inBId, outId } = await makeAdder(10);
+    c.setMonteCarlo({ samples: 500, seed: 1 });
+    const a = (await c.data({ [inBId]: [0] }))[outId] as { value: number };
+    c.setMonteCarlo({ seed: 2 });
+    c.requestSolve();
+    const b = (await c.data({ [inBId]: [0] }))[outId] as { value: number };
+    expect(a.value).not.toBe(b.value);
+  });
+
+  it("with no uncertain input, collapses to a single ordinary pass", async () => {
+    const { c, inBId, outId } = await makeAdder(0); // spread 0 → not sampled
+    expect(c.isHeavyMode()).toBe(false);
+    const out = await c.data({ [inBId]: [5] });
+    expect(out[outId]).toBe(105); // a plain scalar (100 seed + 5), not an uncertain
+  });
+
+  it("mirrors the summary into the output marker's cachedResult (drill-in box)", async () => {
+    const { c, inBId, outId } = await makeAdder(10);
+    c.setMonteCarlo({ samples: 300, seed: 5 });
+    const out = await c.data({ [inBId]: [0] });
+    const marker = c.internalEditor.getNode(c.outputPorts.find((p) => p.id === outId)!.internalNodeId) as CompositeOutputNode;
+    expect(marker.cachedResult).toBe(out[outId]);
+  });
+
+  it("arm-and-run: holds and flags stale when a marker's spread changes", async () => {
+    const { c, inA, inBId, outId } = await makeAdder(10);
+    c.setMonteCarlo({ samples: 300, seed: 1 });
+    const first = (await c.data({ [inBId]: [0] }))[outId] as { error: number };
+    expect(c.stale).toBe(false);
+    inA.uncertainty = 20; // widen the error bar inside the drill-in
+    const held = (await c.data({ [inBId]: [0] }))[outId] as { error: number };
+    expect(held.error).toBe(first.error); // held (not re-sampled)
+    expect(c.stale).toBe(true);
+  });
+
+  it("monteCarlo config round-trips through extractInit; marker uncertainty rides the internal snapshot", async () => {
+    const { c } = await makeAdder(15, "uniform");
+    c.setMonteCarlo({ samples: 250, seed: 3 });
+    const init = extractInit(c as unknown as ClassicPreset.Node);
+    const clone = new CompositeNode(init as ConstructorParameters<typeof CompositeNode>[0]);
+    await clone.hydrate(ctorRegistry());
+    expect(clone.monteCarlo).toEqual({ samples: 250, seed: 3 });
+    const marker = clone.internalEditor.getNodes().find((n) => n instanceof CompositeInputNode && (n as CompositeInputNode).uncertainty === 15) as CompositeInputNode;
+    expect(marker).toBeDefined();
+    expect(marker.distribution).toBe("uniform");
+  });
 });
