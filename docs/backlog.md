@@ -55,18 +55,6 @@ this backlog stays the per-item source of truth.
   (a) **personal-finance** (generator-locked) uses WebSource, no DataFeed/composite/trust
   section — any change goes through `gen-personal-finance-seed.cjs`; (b) **composite-workbench**
   now has two goal-seek cards but still no scenarios/data-table card.
-- [ ] **Trust-node audit — remaining follow-ups** (audit DONE 2026-07-07; comments/Reconcile-PVM/
-  Expect-config-persistence found clean). Fixed this pass: Tornado all-zero in manual/sketch mode
-  (no rebuild-gate/force-exact) + no try/finally restore + synthetic alerts; model-fuzz polluting the
-  Problems "compute" log (reportLive now gated on isGraphRebuilding); Expect not-null now catches a
-  per-cell SolError; fuzz no longer reports a downstream Expect's rejection of a synthetic extreme
-  (circular noise). STILL OPEN (design/perf calls): (a) **Problems panel + fuzz miss per-cell errors
-  inside frames/lists** — `errorValue.reportOut` + `modelFuzz.badValue` only see top-level SolError;
-  scanning every frame cell each pass is a perf tradeoff, hence deferred. (b) **Fuzz "+ Clamp" inserts
-  an UNconfigured pass-through Clamp** — seed it with bounds from the finding (needs safe-range capture
-  during the sweep). (c) **Tornado ranking conflates sensitivity with perturbation width** (Slider
-  full-range vs Number ±10%) + drops a leaf that diverges at an extreme — normalize / mark diverged
-  (semantic call: a tornado traditionally shows raw swing, so normalizing may not be wanted).
 
 ## Needs an author decision / author-present session
 
@@ -117,7 +105,6 @@ this backlog stays the per-item source of truth.
 
 ## Decided, unbuilt (mechanical — no design session needed)
 
-- [ ] **String lt/gt ordering** (byte vs locale) — small P3, decide + pin when touched.
 - [ ] **Document Properties — remaining parts** (the window itself shipped 2026-07-06:
   title / author / tags / per-doc palette BASE, via `docMetaStore` + `SavedGraph.meta` +
   sidecar). Still open: (a) **per-slot doc palette overrides** — DEFERRED (author 2026-07-07);
