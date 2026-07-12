@@ -187,10 +187,61 @@ type DataFn = (inputs: Record<string, unknown[] | undefined>) =>
 // which itself imports isSolError from this module; a real import would cycle.
 interface FrameLikeColumn { values: unknown[] }
 interface FrameLike { __frame: true; columns: FrameLikeColumn[] }
-function isFrameLike(v: unknown): v is FrameLike {
+export function isFrameLike(v: unknown): v is FrameLike {
   return typeof v === "object" && v !== null &&
     (v as { __frame?: unknown }).__frame === true &&
     Array.isArray((v as { columns?: unknown }).columns);
+}
+
+// ─── Bounded per-cell error scan ──────────────────────────────────────────────
+// A per-cell SolError inside a list/matrix/frame must surface in the Problems
+// panel and the model fuzzer — but a FULL O(rows×cols) scan on EVERY node's
+// output EVERY recompute pass was rejected on perf (see subsystem-invariants
+// "Error values"). So the scan is BOUNDED: per 1-D container we examine the HEAD
+// (first CELL_SCAN_HEAD cells) plus a stride SAMPLE across the remainder — at
+// most CELL_SCAN_HEAD + CELL_SCAN_STRIDE_SAMPLES indices, a constant. A
+// systematic (whole-column) per-cell error — the overwhelmingly common case, a
+// bad transform applied to every row — is always caught by the head; a lone bad
+// cell buried past the head between two sampled strides can be missed. That miss
+// is the accepted cost of keeping the hot path O(1)-per-output.
+export const CELL_SCAN_HEAD = 64;
+export const CELL_SCAN_STRIDE_SAMPLES = 32;
+
+/** The bounded set of indices to examine in a container of length `len`: the
+ *  head (0..HEAD-1) plus a stride sample of the tail. Shared by errorValue's
+ *  scan and the model fuzzer so both cap the same way. */
+export function sampledCellIndices(len: number): number[] {
+  if (len <= CELL_SCAN_HEAD) return Array.from({ length: len }, (_, i) => i);
+  const idx: number[] = [];
+  for (let i = 0; i < CELL_SCAN_HEAD; i++) idx.push(i);
+  const step = Math.ceil((len - CELL_SCAN_HEAD) / CELL_SCAN_STRIDE_SAMPLES);
+  for (let i = CELL_SCAN_HEAD; i < len; i += step) idx.push(i);
+  return idx;
+}
+
+/** First SolError reachable in `v` (scalar, list, matrix, or frame) under the
+ *  bounded per-cell scan. Returns null when the sampled cells are all clean.
+ *  Matrix rows recurse with the SAME per-row bound, so a wide matrix stays
+ *  O(constant²) worst-case, not O(rows×cols). */
+export function findCellError(v: unknown): SolError | null {
+  if (isSolError(v)) return v;
+  if (Array.isArray(v)) {
+    for (const i of sampledCellIndices(v.length)) {
+      const cell = v[i];
+      if (isSolError(cell)) return cell;
+      if (Array.isArray(cell)) { const e = findCellError(cell); if (e) return e; }
+    }
+    return null;
+  }
+  if (isFrameLike(v)) {
+    for (const col of v.columns) {
+      for (const i of sampledCellIndices(col.values.length)) {
+        if (isSolError(col.values[i])) return col.values[i] as SolError;
+      }
+    }
+    return null;
+  }
+  return null;
 }
 
 // Same title-or-type-name derivation as nodeNames.ts's baseName — duplicated
@@ -278,8 +329,11 @@ function reportOut(nodeId: string, out: Record<string, unknown> | undefined): vo
   if (!out || _errorSinks.length === 0) return;
   for (const v of Object.values(out)) {
     // Reports the (already origin-tagged, by the time this runs) error — first
-    // error wins, like the guard itself.
-    if (isSolError(v)) { reportError(nodeId, v); return; }
+    // error wins, like the guard itself. findCellError also catches a per-cell
+    // error inside a list/matrix/frame (bounded scan), so a bad column surfaces
+    // in the Problems panel, not just a top-level scalar failure.
+    const err = findCellError(v);
+    if (err) { reportError(nodeId, err); return; }
   }
   reportError(nodeId, null); // clean pass — reset the sinks' edge-detect
 }

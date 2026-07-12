@@ -15,7 +15,7 @@ import { NumberInputNode, SliderInputNode } from "./nodes/input";
 import { TextInputNode } from "./nodes/text";
 import { ClampNode } from "./nodes/scalar";
 import { ExpectNode } from "./nodes/quality";
-import { isSolError, type SolErrorCode } from "./errorValue";
+import { isSolError, isFrameLike, sampledCellIndices, type SolErrorCode } from "./errorValue";
 import { problemsStore } from "./problemsStore";
 import { SolenoidSocket } from "./sockets";
 import type { SolenoidConnection } from "./schemes";
@@ -80,17 +80,41 @@ function findLeaves(editor: AnyEditor): Leaf[] {
 
 interface Badness { code: SolErrorCode; message: string }
 
-function badValue(v: unknown, depth = 0): Badness | null {
-  if (depth > 3) return null;
+/** A bad SCALAR cell: a tagged error, or a leaked NaN/Infinity (per the
+ *  guardFinite model a computation never yields a bare non-finite, so one is
+ *  dirty data worth flagging). Nulls are NOT flagged — a `null` is a first-class
+ *  MISSING value, legitimate inside any list/frame, so treating it as a defect
+ *  would be pure noise (see valueKinds.ts). */
+function scalarBad(v: unknown): Badness | null {
   if (isSolError(v)) return { code: v.code, message: v.message };
   if (typeof v === "number") {
     if (Number.isNaN(v)) return { code: "#VALUE!", message: "A NaN leaked into this node's result." };
     if (!Number.isFinite(v)) return { code: "#OVERFLOW!", message: "An infinite value leaked into this node's result." };
   }
+  return null;
+}
+
+/** Scan a value (scalar, list, matrix, or frame) for the first bad cell, using
+ *  the SAME bounded head-plus-stride cap as errorValue's per-cell scan — a full
+ *  per-cell scan was rejected on perf, and the fuzzer runs this on every
+ *  downstream node after every one of hundreds of samples. So a per-cell error
+ *  now surfaces (previously only top-level did), without the O(rows×cols) cost. */
+function badValue(v: unknown): Badness | null {
+  const s = scalarBad(v);
+  if (s) return s;
   if (Array.isArray(v)) {
-    for (const el of v) {
-      const hit = badValue(el, depth + 1);
+    for (const i of sampledCellIndices(v.length)) {
+      const hit = badValue(v[i]); // recurse for matrix rows (same per-row bound)
       if (hit) return hit;
+    }
+    return null;
+  }
+  if (isFrameLike(v)) {
+    for (const col of v.columns) {
+      for (const i of sampledCellIndices(col.values.length)) {
+        const hit = scalarBad(col.values[i]);
+        if (hit) return hit;
+      }
     }
   }
   return null;
