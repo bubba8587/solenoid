@@ -408,8 +408,45 @@ export function GaugeArc({ pct, track, size }: { pct: number; track: string; siz
 // ─── Tornado bars (stacked horizontal BarChart) ───────────────────────────────
 const RISING = "#e0524d";
 const FALLING = "#4c8bf5";
+// A diverged leaf (its extreme sent the output non-finite) has no finite swing —
+// drawn as a full-width MUTED bar so it reads as "off the chart", not as a real
+// magnitude to compare against the coloured swings.
+const DIVERGED = "var(--text-dim)";
 
-export type TornadoBar = { label: string; offset: number; range: number; rising: boolean };
+export type TornadoBar = {
+  label: string; offset: number; range: number; rising: boolean;
+  diverged?: boolean;
+  // Carried for the readout so the RAW swing can be read against the width of the
+  // perturbation that produced it (the basis marker), not silently normalized.
+  outLow?: number; outHigh?: number; inLow?: number; inHigh?: number; basis?: "slider" | "number";
+};
+
+// The hover readout: output swing, the INPUT swing that drove it, and the basis
+// (slider full-range vs number ±10%) — so a wide slider bar isn't mistaken for a
+// like-for-like comparison against a narrow number nudge.
+function TornadoTooltip({ active, payload }: { active?: boolean; payload?: { payload?: TornadoBar }[] }) {
+  if (!active || !payload || !payload.length) return null;
+  const d = payload[0]?.payload;
+  if (!d) return null;
+  const dim = { color: "var(--text-dim)" };
+  return (
+    <div style={{ fontSize: 11, padding: "3px 7px", background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: 4, color: "var(--text)" }}>
+      <div style={{ fontWeight: 600 }}>{d.label}</div>
+      <div>
+        output{" "}
+        {d.diverged
+          ? "diverged (non-finite)"
+          : `${formatScalar(d.outLow ?? 0)} → ${formatScalar(d.outHigh ?? 0)}`}
+      </div>
+      {typeof d.inLow === "number" && typeof d.inHigh === "number" && (
+        <div style={dim}>
+          input {formatScalar(d.inLow)} → {formatScalar(d.inHigh)}{" "}
+          ({d.basis === "slider" ? "slider range" : "±10%"})
+        </div>
+      )}
+    </div>
+  );
+}
 
 // Fits the wide card (240px) minus body padding — a hardcoded 260 overflowed the
 // card and clipped on the right (matches ChartNode's W). Exported so the Suspense
@@ -428,10 +465,10 @@ export function TornadoBars({ data, grid, axis }: { data: TornadoBar[]; grid: st
       <CartesianGrid stroke={grid} horizontal={false} />
       <XAxis type="number" tick={{ fontSize: 9, fill: axis }} tickLine={false} />
       <YAxis type="category" dataKey="label" width={64} tick={{ fontSize: 9, fill: axis }} tickLine={false} />
-      <Tooltip isAnimationActive={false} />
+      <Tooltip isAnimationActive={false} content={<TornadoTooltip />} />
       <Bar dataKey="offset" stackId="tornado" fill="transparent" isAnimationActive={false} />
       <Bar dataKey="range" stackId="tornado" isAnimationActive={false}>
-        {data.map((d, i) => <Cell key={i} fill={d.rising ? RISING : FALLING} />)}
+        {data.map((d, i) => <Cell key={i} fill={d.diverged ? DIVERGED : d.rising ? RISING : FALLING} fillOpacity={d.diverged ? 0.4 : 1} />)}
       </Bar>
     </BarChart>
   );

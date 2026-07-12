@@ -17,6 +17,19 @@ export interface TornadoResult {
   base: number;
   low: number;
   high: number;
+  /** The actual INPUT values swept — so the swing can be read against the width
+   *  of the perturbation that produced it (a Slider's full declared range is a
+   *  much wider nudge than a Number's ±10%). */
+  inputLow: number;
+  inputHigh: number;
+  /** Where the perturbation width came from: a Slider's declared min/max, or a
+   *  Number's ±10%. The tornado shows RAW swing (traditional), so this is the
+   *  BASIS MARKER that keeps the ranking honest instead of silently normalizing. */
+  basis: "slider" | "number";
+  /** The result at an extreme was non-finite (NaN/±∞) — the swing couldn't be
+   *  measured. Such a leaf is no longer silently dropped; it's kept and MARKED
+   *  (the model blows up on this input, arguably the most sensitive finding). */
+  diverged: boolean;
 }
 
 export class TornadoNode extends ClassicPreset.Node {

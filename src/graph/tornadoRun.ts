@@ -79,6 +79,7 @@ export async function runTornado(tornado: TornadoNode): Promise<TornadoResult[]>
       if (typeof original !== "number" || !Number.isFinite(original)) continue;
 
       let lo: number, hi: number;
+      const basis: "slider" | "number" = node instanceof SliderInputNode ? "slider" : "number";
       if (node instanceof SliderInputNode) {
         // effectiveMin/Max resolve wired bounds too (data() ran in the base pass);
         // fall back to the literals, then the current value if unset.
@@ -100,9 +101,14 @@ export async function runTornado(tornado: TornadoNode): Promise<TornadoResult[]>
         await processGraph(node.id);
         const lowResult = typeof tornado.cachedResult === "number" ? tornado.cachedResult : NaN;
 
-        if (Number.isFinite(highResult) && Number.isFinite(lowResult)) {
-          results.push({ nodeId: node.id, label, base, low: lowResult, high: highResult });
-        }
+        // KEEP the leaf even when an extreme diverged (non-finite) — previously it
+        // was dropped, hiding the most dramatic sensitivity. Mark it instead.
+        const diverged = !Number.isFinite(highResult) || !Number.isFinite(lowResult);
+        results.push({
+          nodeId: node.id, label, base,
+          low: lowResult, high: highResult,
+          inputLow: lo, inputHigh: hi, basis, diverged,
+        });
       } finally {
         node.value = original;
         await processGraph(node.id);
@@ -114,6 +120,17 @@ export async function runTornado(tornado: TornadoNode): Promise<TornadoResult[]>
     endCompute();
   }
 
-  results.sort((a, b) => Math.abs(b.high - b.low) - Math.abs(a.high - a.low));
-  return results;
+  return rankTornado(results);
+}
+
+/** Order the sweep results. RAW swing stays the ranking key (a tornado
+ *  traditionally shows raw swing — the author's explicit lean over normalizing
+ *  by perturbation width). Diverged leaves have no finite swing to rank, so they
+ *  surface at the TOP, marked, as the most sensitive findings (the model blew up
+ *  on them); finite leaves follow, biggest swing first. */
+export function rankTornado(results: TornadoResult[]): TornadoResult[] {
+  const diverged = results.filter((r) => r.diverged);
+  const finite = results.filter((r) => !r.diverged)
+    .sort((a, b) => Math.abs(b.high - b.low) - Math.abs(a.high - a.low));
+  return [...diverged, ...finite];
 }
