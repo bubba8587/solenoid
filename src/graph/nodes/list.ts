@@ -7,6 +7,8 @@ import { pairIdsFromKeys } from "./logic";
 import { passesFilter, type FilterOp, type FilterCondConfig } from "../frameVerbs";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { forAggregate, isMissing, type Tri } from "../valueKinds";
+import { forAggregateUnits, tagDim, type UnitCell } from "../unitValue";
+import { type Dim, DIMENSIONLESS, dimPow, isDimensionless } from "../dimension";
 import { iterMin, iterMax } from "./mathUtils";
 import { isFrameValue, isCubeValue, cubeRowCount, frameRowCount, inferColumn, getColumn, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
 
@@ -544,7 +546,7 @@ export class SumIfsNode extends ClassicPreset.Node {
   stringLiterals: Record<string, string> = {};
   nextPairId = 0;
   readonly pairLabels: [string, string] = ["Column", "Value"];
-  cachedResult: number | SolError | null = null;
+  cachedResult: number | UnitCell | SolError | null = null;
   width = 210;
   height = 280;
 
@@ -598,8 +600,8 @@ export class SumIfsNode extends ClassicPreset.Node {
     delete this.stringLiterals[`value${id}`];
   }
 
-  data(inputs: Record<string, unknown[] | undefined>): { result: number | SolError | null } {
-    const finish = (r: number | SolError | null) => { this.cachedResult = r; return { result: r }; };
+  data(inputs: Record<string, unknown[] | undefined>): { result: number | UnitCell | SolError | null } {
+    const finish = (r: number | UnitCell | SolError | null) => { this.cachedResult = r; return { result: r }; };
     const f = inputs.frame?.[0] as FrameValue | null | undefined;
     if (!isFrameValue(f)) return finish(null);
     interface Crit { col: FrameColumn; op: FilterOp; value: string; matchCase: boolean }
@@ -634,11 +636,16 @@ export class SumIfsNode extends ClassicPreset.Node {
     const prep = forAggregate(kept);
     if (prep.error) return finish(prep.error);
     const nums = prep.nums;
+    // A values column LOCKED to a dimensional unit (Bundle 05) re-tags the result —
+    // sum/avg/min/max all preserve the column's dimension. A no-op for an unlocked
+    // column (tagDim collapses a dimensionless tag to a bare number).
+    const dim: Dim = vcol.unit ? vcol.unit.dim : DIMENSIONLESS;
+    const tag = (n: number): number | UnitCell => (isDimensionless(dim) ? n : tagDim(n, dim));
     switch (this.op) {
-      case "sumifs":     return finish(nums.reduce((a, b) => a + b, 0));
-      case "averageifs": return finish(nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : solError("#DIV/0!", "No rows matched the criteria"));
-      case "minifs":     return finish(nums.length ? iterMin(nums) : 0); // Excel: empty match → 0
-      case "maxifs":     return finish(nums.length ? iterMax(nums) : 0);
+      case "sumifs":     return finish(tag(nums.reduce((a, b) => a + b, 0)));
+      case "averageifs": return finish(nums.length ? tag(nums.reduce((a, b) => a + b, 0) / nums.length) : solError("#DIV/0!", "No rows matched the criteria"));
+      case "minifs":     return finish(nums.length ? tag(iterMin(nums)) : 0); // Excel: empty match → 0
+      case "maxifs":     return finish(nums.length ? tag(iterMax(nums)) : 0);
     }
   }
 }
@@ -1552,10 +1559,29 @@ export const REDUCE_OP_META = {
 // ReduceNode (no save-compat alias — pre-alpha, old saves skip it). The internal
 // op tokens (`ReduceOp`, `REDUCE_OP_META`, the `reduce-${op}` catalog ids) keep
 // their names — never user-visible.
+// How an aggregate transforms the shared dimension of its inputs (Bundle 05, step 6):
+//   preserve (sum/avg/min/max/median/geomean/harmean/stdev/spread) → same dim ·
+//   square (var/devsq/sumsq) → dim² · product → dimⁿ · everything else (count,
+//   normalized moments) → dimensionless. `n` = the number of aggregated cells.
+export function aggregateResultDim(op: ReduceOp, dim: Dim, n: number): Dim {
+  if (isDimensionless(dim)) return DIMENSIONLESS;
+  switch (op) {
+    case "sum": case "avg": case "min": case "max": case "median":
+    case "geomean": case "harmean": case "stdev": case "stdev_p": case "avedev":
+      return dim;
+    case "var_s": case "var_p": case "devsq": case "sumsq":
+      return dimPow(dim, 2);
+    case "product":
+      return dimPow(dim, n);
+    default: // count, countdistinct, skew, skew_p, kurt → a plain number
+      return DIMENSIONLESS;
+  }
+}
+
 export class AggregateNode extends ClassicPreset.Node {
   label: string;
   op: ReduceOp;
-  cachedResult: number | SolError | null = null;
+  cachedResult: number | UnitCell | SolError | null = null;
   width = 180;
   height = 160;
 
@@ -1569,11 +1595,15 @@ export class AggregateNode extends ClassicPreset.Node {
 
   data(inputs: { list?: (number | null | SolError)[][] }) {
     // Aggregator policy: a SolError in the list PROPAGATES; `null` (missing) is
-    // SKIPPED. No-op for today's all-number lists (forAggregate returns them
-    // unchanged, NaN included) — only bites once producers emit null/errors.
-    const prep = forAggregate(inputs.list?.[0] ?? []);
+    // SKIPPED; every PRESENT cell must share ONE dimension (mixed units → #UNIT!,
+    // the unit sibling of the element-family #TYPE! separation). Base-SI storage
+    // means commensurable-but-differently-authored cells (km + m) are already
+    // unified — no conversion step. No-op for all-number lists (dim = dimensionless
+    // → the result re-tags to a bare number, unchanged).
+    const prep = forAggregateUnits(inputs.list?.[0] ?? []);
     if (prep.error) { this.cachedResult = prep.error; return { result: prep.error }; }
     const arr = prep.nums;
+    const dim = prep.dim;
     let result: number | null = null;
     if (arr.length > 0) {
       switch (this.op) {
@@ -1673,8 +1703,14 @@ export class AggregateNode extends ClassicPreset.Node {
     } else if (this.op === "product") {
       result = 1;
     }
-    this.cachedResult = result;
-    return { result };
+    // Re-tag the reduced magnitude with the op's result dimension (a no-op for
+    // dimensionless data — tagDim collapses it back to a bare number).
+    const tagged: number | UnitCell | null =
+      result !== null && !isDimensionless(dim)
+        ? tagDim(result, aggregateResultDim(this.op, dim, arr.length))
+        : result;
+    this.cachedResult = tagged;
+    return { result: tagged };
   }
 }
 

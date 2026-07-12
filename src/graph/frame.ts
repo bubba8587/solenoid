@@ -8,11 +8,12 @@
 // List (the column headers). Build Frame and Split Frame are the literal adapter
 // between those two worlds; Get Column / Add Column are the general per-column
 // path that a text column would later flow through.
-import type { UnitSuffix } from "./unitFormat";
 import { parseCsvRows } from "./csv";
 import { parseDateToSerial, formatDateSerial, DEFAULT_DATE_FORMAT } from "./nodes/date";
 import { isSolError, type SolError } from "./errorValue";
 import { coerceLogical } from "./valueKinds";
+import { type ColumnUnit } from "./unitValue";
+import { parseColumnUnitFromHeader } from "./unitColumn";
 
 // A column is one of: numeric, free text, DATE, or LOGICAL. A date column stores
 // Excel serials (numbers) just like a numeric column — the `type: "date"` tag is
@@ -34,8 +35,12 @@ export interface FrameColumn {
   type: FrameColType;
   /** Cell values, aligned by row index. `null` is an empty cell. */
   values: FrameCell[];
-  /** Numeric columns may carry a unit, so unit propagation survives a frame. */
-  unit?: UnitSuffix;
+  /** A numeric column may be LOCKED to a dimensional unit (Bundle 05: FC A4). The
+   *  cells stay bare base-SI numbers; the column carries the dimension + the display
+   *  unit id it was locked to (from a `Name (unit)` header, or a docked FC). Unit
+   *  propagation survives a frame this way — a frame row IS a list, so its column's
+   *  unit is the per-column analog of a list cell's tag. */
+  unit?: ColumnUnit;
   /** The INPUTTED source text per cell — exactly what the user typed (Frame Input)
    *  or what the file/URL contained (CSV File, Web Source, Import …), BEFORE type
    *  inference rewrote it (a date → a serial, "1"/"true" → a boolean). Present only
@@ -103,14 +108,22 @@ export function makeHeaders(names: ReadonlyArray<string> | undefined, ncols: num
 // ─── Build / Split (the Matrix ⇄ Frame adapter) ───────────────────────────────
 
 /** Build a numeric Frame from a row-major matrix and a header String List.
- *  Columns are the matrix's columns; names follow makeHeaders. */
+ *  Columns are the matrix's columns; names follow makeHeaders. A header of the form
+ *  `Name (unit)` LOCKS that column to the unit (Bundle 05: FC A4, step 5) — the
+ *  parenthetical is stripped from the name and the column carries a `ColumnUnit`
+ *  (`[id, Item, Revenue ($0.00)]` + rows → a Revenue column locked to $). */
 export function buildFrame(matrix: number[][], names?: ReadonlyArray<string>): FrameValue {
   const ncols = matrix.reduce((m, r) => Math.max(m, r.length), 0);
-  const headers = makeHeaders(names, ncols);
+  // Parse the header units BEFORE dedup so the clean name (sans the `(unit)`) is
+  // what makeHeaders sees and de-duplicates.
+  const parsed = (names ?? []).map((n) => parseColumnUnitFromHeader(n));
+  const cleanNames = (names ?? []).map((_, i) => parsed[i]?.clean ?? names![i]);
+  const headers = makeHeaders(cleanNames, ncols);
   const columns: FrameColumn[] = headers.map((name, j) => ({
     name,
-    type: "number",
+    type: "number" as const,
     values: matrix.map((row) => (row[j] === undefined ? null : row[j])),
+    ...(parsed[j]?.unit ? { unit: parsed[j]!.unit } : {}),
   }));
   return { __frame: true, columns };
 }
@@ -177,16 +190,19 @@ export function addColumn(
   values: FrameCell[],
   type: FrameColType = "number",
 ): FrameValue {
-  const existingIdx = f.columns.findIndex((c) => c.name === name.trim());
+  // A `Name (unit)` header locks the new column to that unit (Bundle 05: FC A4).
+  const { clean, unit } = parseColumnUnitFromHeader(name);
+  const unitTag = unit && type === "number" ? { unit } : {};
+  const existingIdx = f.columns.findIndex((c) => c.name === clean.trim());
   if (existingIdx >= 0) {
     const columns = f.columns.map((c, i) =>
-      i === existingIdx ? { ...c, type, values, raw: undefined } : c, // replaced data is computed — no source text
+      i === existingIdx ? { ...c, type, values, raw: undefined, ...unitTag } : c, // replaced data is computed — no source text
     );
     return { __frame: true, columns };
   }
   const others = f.columns.map((c) => c.name);
-  const [finalName] = makeHeaders([...others, name], others.length + 1).slice(-1);
-  return { __frame: true, columns: [...f.columns, { name: finalName, type, values }] };
+  const [finalName] = makeHeaders([...others, clean], others.length + 1).slice(-1);
+  return { __frame: true, columns: [...f.columns, { name: finalName, type, values, ...unitTag }] };
 }
 
 // ─── Frame Input (editable in-node LITERAL source) ──────────────────────────────
