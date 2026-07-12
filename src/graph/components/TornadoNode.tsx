@@ -25,15 +25,28 @@ export function TornadoComponent({ data, emit }: NodeProps<TornadoNodeType>) {
   }
 
   const results = data.results ?? [];
-  const chartData = results.map((r) => {
+  // The chart floor/ceiling come from the FINITE swings only; a diverged leaf
+  // has no finite low/high to contribute (and would poison the min/max).
+  const finiteRs = results.filter((r) => !r.diverged);
+  const starts = finiteRs.map((r) => Math.min(r.low, r.high));
+  const ends = finiteRs.map((r) => Math.max(r.low, r.high));
+  const floor = starts.length ? Math.min(...starts) : 0;
+  const ceil = ends.length ? Math.max(...ends) : floor + 1;
+  const fullSpan = ceil - floor || 1;
+  // recharts stacks from 0, so the "offset" spacer starts every row at the SAME
+  // floor, with `range` the visible swing. A diverged row spans the full extent
+  // (a muted full-width bar — "off the chart"), carrying the raw values for the
+  // basis-marker tooltip.
+  const normalized = results.map((r) => {
+    const common = {
+      label: r.label, outLow: r.low, outHigh: r.high,
+      inLow: r.inputLow, inHigh: r.inputHigh, basis: r.basis,
+    };
+    if (r.diverged) return { ...common, offset: 0, range: fullSpan, rising: true, diverged: true };
     const start = Math.min(r.low, r.high);
     const end = Math.max(r.low, r.high);
-    return { label: r.label, offset: start, range: end - start, rising: r.high >= r.low };
+    return { ...common, offset: start - floor, range: end - start, rising: r.high >= r.low, diverged: false };
   });
-  const minOffset = chartData.length ? Math.min(...chartData.map((d) => d.offset)) : 0;
-  // recharts stacks from 0, so the "offset" segment must start at the SAME floor
-  // for every row (an invisible spacer bar), with `range` the visible swing.
-  const normalized = chartData.map((d) => ({ ...d, offset: d.offset - minOffset }));
 
   return (
     <NodeShell node={data} emit={emit}>
