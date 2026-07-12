@@ -48,17 +48,57 @@ dimensional algebra.** True unit calculation: `5 m ÷ 1 s = 5 m/s`; `mass · acc
   upstream reach · transform break · Convert forwarding · selector pass-through).
   Must still pass after `unitFlow.ts` is deleted and replaced.
 
+## Foundation layer LANDED 2026-07-12 (pure, tested — wiring pending)
+
+Steps 1/2/3 + 6 shipped as PURE modules (no editor/React/node deps), the same way
+`dimension.ts` landed before Convert wired it. They are cherry-pickable and green
+but NOT yet wired into the live value engine — that wiring (and steps 4/5/7) is the
+author-present half.
+
+- **`src/graph/unitValue.ts`** (+ `unitValue.test.ts`, 21 tests) — steps 1/2/6 core:
+  - **`UnitCell`** — the tagged list-element cell (author's tagged-cell decision).
+    Stored **base-SI magnitude + dimension vector**; a dimensionless quantity stays
+    a bare `number` (so today's untagged lists are unchanged, and `isUnitCell` is a
+    clean discriminator). `fromUnit(value, Unit)` normalises to base (consuming the
+    affine °C offset). Constructor `tagDim` enforces "dimensionless ⇒ bare number".
+  - **Per-cell algebra** — `mulUnits`/`divUnits`/`addUnits`/`subUnits`/`powUnits`/
+    `compareUnits`. `5 m ÷ 1 s = 5 m/s`, `mass·accel → N`; `+`/`−`/compare demand
+    commensurability (else `#UNIT!`); cancellation free (`5 m ÷ 1 m = 5` bare).
+    Base-SI storage makes `+` a plain magnitude add (km + m already unified).
+  - **`forAggregateUnits`** (step 6) — the unit-aware sibling of
+    `valueKinds.forAggregate`: error propagates, `null` skipped, all present cells
+    must share one dimension (mixed → `#UNIT!`); commensurable-but-differently-
+    authored cells are already unified by base-SI storage, so "convert if
+    commensurable" is automatic.
+  - **`ColumnUnit`** — the per-column frame representation (dim + optional display
+    unit id). NOT yet on `FrameColumn` (left as the vestigial `UnitSuffix` to avoid
+    a mid-flight type change to a hot shared file; wire when producers write it).
+- **`src/graph/unitDimExpr.ts`** (+ `unitDimExpr.test.ts`, 20 tests) — step 3: a
+  dimensional interpretation `dimEval(Ast, DimEnv)` over `excelFormula`'s AST.
+  Operators by the algebra; a per-function signature table (dimensionless-in
+  transcendentals; preserve-dim ABS/MIN/MAX/SUM; multiply PRODUCT; SQRT halves;
+  `^`/POWER need a constant exponent; IF branch agreement). Returns
+  `Dim | #UNIT! | null` (null = indeterminate — drops the unit, not a conflict).
+
+**Still to wire (author-present):** the live broadcast/aggregator paths
+(`nodes/shared.ts`) tagging + reading `UnitCell`; `FrameColumn` adopting
+`ColumnUnit`; Expression/LAMBDA calling `dimEval` for its result unit; then steps
+4/5/7 below. `unitFlow.ts` is UNTOUCHED (step 4 not started).
+
 ## Build order
 
 1. **Value model:** tagged-cell unit on list elements (exponent vector + scale via
    `dimension.ts`); per-column unit on frames; matrices opt out. Save format
    changes freely (pre-alpha — update seeds + tests, no migration).
+   → **core shipped in `unitValue.ts`; live-node wiring pending.**
 2. **Algebra at the ops:** × adds exponents, ÷ subtracts, +/− requires
    commensurability (else `#UNIT!`), powers scale, cancellation free. Derived-unit
    display (m/s, N, W) is formatting over the vector.
+   → **shipped as pure per-cell ops in `unitValue.ts`; wiring into `broadcast*` pending.**
 3. **Expression/LAMBDA:** a second dimensional interpretation over the formula AST
    (`excelFormula.ts` `Ast`) — operators by the algebra, catalog functions by
    per-function dimensional signature.
+   → **shipped in `unitDimExpr.ts`; call site in the Expression/LAMBDA nodes pending.**
 4. **Replace `unitFlow.ts`:** re-express the v0.9 lock/carry/break semantics
    (downstream + upstream + data-aware selectors + Convert primacy) on the new
    layer; keep `resolveValueOrigin`; verify against the Unit Flow seed's 5 lanes.
@@ -67,8 +107,11 @@ dimensional algebra.** True unit calculation: `5 m ÷ 1 s = 5 m/s`; `mass · acc
    acceptance demo.
 6. **Aggregators:** SUM over mixed units → convert if commensurable, else
    `#UNIT!` (parallel to the element-family `#TYPE!` separation).
+   → **shipped as `forAggregateUnits` in `unitValue.ts`; wiring into the reducer
+   nodes pending.**
 7. **Socket lattice:** units as the finer-grained sibling of element-family
    separation, machine-checked with a `socketConnect.test.ts`-style full sweep.
+   → not started (deep `accepts()` change; author-present).
 
 ## Exit criteria
 
