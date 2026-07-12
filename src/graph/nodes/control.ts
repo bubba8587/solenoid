@@ -4,6 +4,7 @@ import { frameIn, frameOut, dateOut, numOut } from "./shared";
 import { isFrameValue, getColumn, frameRowCount, cubeFromColumns, type FrameValue, type FrameColType, type CubeCell } from "../frame";
 import { jsDateToSerial } from "./date";
 import { clamp } from "./mathUtils";
+import { compareStrings } from "../stringOrder";
 
 export type SlicerCell = number | string;
 
@@ -252,7 +253,7 @@ export class SlicerNode extends ClassicPreset.Node {
     // Unique, non-blank values from that column, sorted (numeric or lexical).
     const uniq = [...new Set(col.values.filter((v): v is SlicerCell => v !== null && v !== ""))];
     uniq.sort((a, b) =>
-      typeof a === "number" && typeof b === "number" ? a - b : String(a).localeCompare(String(b)),
+      typeof a === "number" && typeof b === "number" ? a - b : compareStrings(String(a), String(b)),
     );
     this.cachedUniqueValues = uniq;
 

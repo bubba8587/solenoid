@@ -25,8 +25,11 @@
 //    errors. Frames flowing to the engine are source/relational data, where this is
 //    a non-issue.
 //  • string inequality (`<`/`>` in filter, and sort) is byte/lexicographic in
-//    Polars vs `localeCompare` in JS — identical for ASCII, may differ for accented
-//    text. eq/neq and the text predicates (contains/startsWith/endsWith) match —
+//    BOTH engines now — the JS oracle uses `compareStrings` (UTF-16 code-unit
+//    order, ≈ Polars UTF-8 byte order for the BMP), NOT `localeCompare`, so the
+//    two agree on ordinary text; they can still differ only for astral-plane
+//    codepoints (surrogate-pair vs codepoint order), an accepted edge case.
+//    eq/neq and the text predicates (contains/startsWith/endsWith) match —
 //    both engines fold with a plain Unicode lowercase (Rust `to_lowercase` = JS
 //    `toLowerCase`) for the default case-insensitive text matching.
 //  • the OUTER join's appended-unmatched-right rows are not guaranteed to be in the
