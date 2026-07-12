@@ -1,0 +1,128 @@
+{
+  "v": 2,
+  "label": "Units by Dimension",
+  "order": 60,
+  "nodes": [
+    {
+      "id": "hdr",
+      "type": "NoteNode",
+      "x": -40,
+      "y": -220,
+      "init": {
+        "label": "Units by dimensionality (FC A4)",
+        "body": "Numbers carry a **physical dimension** and compute with it. A metre ÷ a second **is** a m/s; metres + seconds is a **#UNIT!**. A unit rides **per element** through a list and **per column** through a frame — cancellation is free, mismatch is caught.",
+        "color": "teal",
+        "width": 760,
+        "height": 150
+      }
+    },
+    {
+      "id": "nA",
+      "type": "NoteNode",
+      "x": -40,
+      "y": -20,
+      "init": {
+        "label": "A · dimensional algebra: 5 m ÷ 1 s = 5 m/s",
+        "body": "Give a Number node a **unit** and it becomes a dimensioned quantity. Divide a length by a time and the result reads **m/s** — computed from the dimensions, not a label.",
+        "color": "blue",
+        "width": 360,
+        "height": 150
+      }
+    },
+    {
+      "id": "numD",
+      "type": "NumberInputNode",
+      "x": 20,
+      "y": 170,
+      "init": { "label": "Distance", "value": 5, "unit": "m" }
+    },
+    {
+      "id": "numT",
+      "type": "NumberInputNode",
+      "x": 20,
+      "y": 300,
+      "init": { "label": "Time", "value": 1, "unit": "s" }
+    },
+    {
+      "id": "ariB",
+      "type": "ArithmeticNode",
+      "x": 230,
+      "y": 210,
+      "init": { "label": "Speed = d ÷ t", "op": "div" }
+    },
+    {
+      "id": "dispB",
+      "type": "DisplayNode",
+      "x": 430,
+      "y": 235,
+      "init": { "label": "= 5 m/s" }
+    },
+    {
+      "id": "nB",
+      "type": "NoteNode",
+      "x": 360,
+      "y": -20,
+      "init": {
+        "label": "B · a frame column LOCKS to its header's unit",
+        "body": "Head a Build Frame column `Revenue ($0.00)` and the column is locked to **$**. Get Column carries the unit out as a list, and SUM keeps it — the total reads **$18.00**.",
+        "color": "violet",
+        "width": 360,
+        "height": 150
+      }
+    },
+    {
+      "id": "tblA",
+      "type": "TableInputNode",
+      "x": 420,
+      "y": 170,
+      "init": { "label": "Revenue rows", "tableText": "5\n6\n7", "dataType": "number" }
+    },
+    {
+      "id": "hdrA",
+      "type": "ListInputNode",
+      "x": 420,
+      "y": 440,
+      "init": { "label": "Header", "dataType": "string", "valueKeys": ["v0"] },
+      "stringLiterals": { "v0": "Revenue ($0.00)" }
+    },
+    {
+      "id": "bfA",
+      "type": "BuildFrameNode",
+      "x": 640,
+      "y": 250,
+      "init": { "label": "Build Frame" }
+    },
+    {
+      "id": "gcA",
+      "type": "GetColumnNode",
+      "x": 850,
+      "y": 250,
+      "init": { "label": "Get Revenue", "readAs": "number" },
+      "stringLiterals": { "name": "Revenue" }
+    },
+    {
+      "id": "aggA",
+      "type": "AggregateNode",
+      "x": 1060,
+      "y": 250,
+      "init": { "label": "Total revenue", "op": "sum" }
+    },
+    {
+      "id": "dispA",
+      "type": "DisplayNode",
+      "x": 1260,
+      "y": 265,
+      "init": { "label": "= $18.00" }
+    }
+  ],
+  "connections": [
+    { "source": "numD", "sourceOutput": "value", "target": "ariB", "targetInput": "a" },
+    { "source": "numT", "sourceOutput": "value", "target": "ariB", "targetInput": "b" },
+    { "source": "ariB", "sourceOutput": "result", "target": "dispB", "targetInput": "in" },
+    { "source": "tblA", "sourceOutput": "table", "target": "bfA", "targetInput": "matrix" },
+    { "source": "hdrA", "sourceOutput": "list", "target": "bfA", "targetInput": "headers" },
+    { "source": "bfA", "sourceOutput": "frame", "target": "gcA", "targetInput": "frame" },
+    { "source": "gcA", "sourceOutput": "values", "target": "aggA", "targetInput": "list" },
+    { "source": "aggA", "sourceOutput": "result", "target": "dispA", "targetInput": "in" }
+  ]
+}
