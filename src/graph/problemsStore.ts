@@ -28,8 +28,10 @@ export interface ProblemEntry {
   origin: ProblemOrigin;
   time: number;
   /** A mechanical-fix affordance (model fuzzing only): insert a Clamp node ahead
-   *  of this input to keep the offending value in range. */
-  suggestion?: { socketKey: string; label: string };
+   *  of this input to keep the offending value in range. `min`/`max` are the
+   *  observed-safe bounds captured during the sweep, used to SEED the Clamp
+   *  (absent when the sweep saw no usable safe range). */
+  suggestion?: { socketKey: string; label: string; min?: number; max?: number };
 }
 
 const MAX_ENTRIES = 200;

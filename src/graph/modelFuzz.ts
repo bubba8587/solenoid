@@ -154,6 +154,70 @@ function firstNumericInput(node: unknown): { socketKey: string; label: string } 
   return undefined;
 }
 
+// ─── Safe-range capture (Clamp seeding) ───────────────────────────────────────
+// To seed the "+ Clamp" fix with real bounds instead of an unconfigured
+// pass-through, we observe the value ARRIVING on a node's clamp-target input on
+// every CLEAN sample (the node didn't go bad) and track its [min, max]. Seeding
+// the Clamp with that observed-safe range keeps future values inside the
+// territory the sweep never saw fail. Heuristic, and inherently limited to
+// EXTREME-bound problems (a Clamp imposes only min/max, so it can't exclude an
+// interior bad point like a divisor of 0 — for #DIV/0! the seeded range still
+// spans 0); it genuinely helps the magnitude cases (#OVERFLOW!, a domain miss at
+// a large/small input).
+interface SafeRange { min: number; max: number }
+
+/** A "+ Clamp" suggestion: which input to splice onto, plus (when the sweep
+ *  captured a safe range) the bounds to seed the Clamp with. */
+export interface ClampSuggestion { socketKey: string; label: string; min?: number; max?: number }
+
+/** Finite numbers reachable in a value (scalar/list/matrix), bounded by the same
+ *  head-plus-stride cap as the error scan — the source could output a big list. */
+export function collectFinite(v: unknown): number[] {
+  if (typeof v === "number") return Number.isFinite(v) ? [v] : [];
+  if (Array.isArray(v)) {
+    const out: number[] = [];
+    for (const i of sampledCellIndices(v.length)) {
+      const cell = v[i];
+      if (typeof cell === "number" && Number.isFinite(cell)) out.push(cell);
+      else if (Array.isArray(cell)) {
+        for (const j of sampledCellIndices(cell.length)) {
+          const c2 = cell[j];
+          if (typeof c2 === "number" && Number.isFinite(c2)) out.push(c2);
+        }
+      }
+    }
+    return out;
+  }
+  return [];
+}
+
+/** The numeric value(s) a node is currently outputting — read from its cache
+ *  (or a source node's `.value`), used to observe what flows into a downstream
+ *  node's clamp-target input. */
+function readNumericValues(node: unknown): number[] {
+  if (!node) return [];
+  const n = node as Record<string, unknown>;
+  for (const field of [...CACHE_FIELDS, "value"] as string[]) {
+    const nums = collectFinite(n[field]);
+    if (nums.length) return nums;
+  }
+  return [];
+}
+
+export function extendSafeRange(acc: Map<string, SafeRange>, nodeId: string, vals: number[]): void {
+  let e = acc.get(nodeId);
+  if (!e) { e = { min: Infinity, max: -Infinity }; acc.set(nodeId, e); }
+  for (const x of vals) { if (x < e.min) e.min = x; if (x > e.max) e.max = x; }
+}
+
+/** Turn an accumulated safe range into Clamp bounds — but only a NON-DEGENERATE,
+ *  finite range. A single-point range (min === max) would pin the value and
+ *  break the model, so it yields no bounds (the Clamp is inserted unconfigured). */
+export function boundsFromSafeRange(range: SafeRange | undefined): { min: number; max: number } | undefined {
+  if (!range || !Number.isFinite(range.min) || !Number.isFinite(range.max) || range.min >= range.max) return undefined;
+  return { min: range.min, max: range.max };
+}
+
 export interface FuzzRunSummary {
   leaves: number;
   samples: number;
@@ -168,7 +232,14 @@ export async function runModelFuzz(): Promise<FuzzRunSummary> {
   if (!editor) return { leaves: 0, samples: 0, findings: 0 };
   const leaves = findLeaves(editor);
   const rng = mulberry32(0x5EED_F022);
-  const found = new Map<string, { nodeId: string; code: SolErrorCode; message: string; suggestion?: { socketKey: string; label: string } }>();
+  const found = new Map<string, { nodeId: string; code: SolErrorCode; message: string; suggestion?: ClampSuggestion }>();
+  // Per-node observed-safe input range, accumulated across every clean sample —
+  // used at the end to seed a finding's Clamp with real bounds.
+  const safeRanges = new Map<string, SafeRange>();
+  // (target::input) → the source feeding it, so we can read the value arriving on
+  // a downstream node's clamp-target input. Connections don't change mid-sweep.
+  const inputSource = new Map<string, string>();
+  for (const c of editor.getConnections()) inputSource.set(`${c.target}::${c.targetInput}`, c.source);
   let samples = 0;
 
   // Hundreds of recompute passes per leaf is irreducibly heavy — show the busy
@@ -199,10 +270,20 @@ export async function runModelFuzz(): Promise<FuzzRunSummary> {
             const node = editor.getNode(id);
             if (!node) continue;
             const hit = inspectNode(node);
+            const numInput = firstNumericInput(node);
+            // On a CLEAN pass, record the value arriving on this node's
+            // clamp-target input, so a later finding can seed real bounds.
+            if (!hit && numInput) {
+              const srcId = inputSource.get(`${id}::${numInput.socketKey}`);
+              if (srcId) {
+                const vals = readNumericValues(editor.getNode(srcId));
+                if (vals.length) extendSafeRange(safeRanges, id, vals);
+              }
+            }
             if (!hit) continue;
             const key = `${id}:${hit.code}`;
             if (found.has(key)) continue;
-            const suggestion = CLAMPABLE_CODES.has(hit.code) ? firstNumericInput(node) : undefined;
+            const suggestion = CLAMPABLE_CODES.has(hit.code) ? numInput : undefined;
             found.set(key, { nodeId: id, code: hit.code, message: hit.message, suggestion });
           }
         }
@@ -218,7 +299,14 @@ export async function runModelFuzz(): Promise<FuzzRunSummary> {
     endCompute();
   }
 
-  const findings = [...found.values()];
+  // Seed each clampable finding with the observed-safe [min, max] for its node —
+  // but only a non-degenerate range (min < max); a single-point range would pin
+  // the value and break the model, so leave those as an unconfigured Clamp.
+  const findings = [...found.values()].map((f) => {
+    if (!f.suggestion) return f;
+    const b = boundsFromSafeRange(safeRanges.get(f.nodeId));
+    return b ? { ...f, suggestion: { ...f.suggestion, ...b } } : f;
+  });
   problemsStore.setFuzzFindings(findings);
   return { leaves: leaves.length, samples, findings: findings.length };
 }
@@ -226,8 +314,14 @@ export async function runModelFuzz(): Promise<FuzzRunSummary> {
 /** The one-click mechanical fix: splice a Clamp node onto the cable feeding
  *  `nodeId`'s `socketKey` input. Built from scratch (add node → remove the old
  *  connection → rewire through the Clamp) since no mid-cable insertion API
- *  exists yet. No-op if the input isn't actually wired (nothing to splice). */
-export async function insertClampBefore(nodeId: string, socketKey: string): Promise<boolean> {
+ *  exists yet. No-op if the input isn't actually wired (nothing to splice).
+ *  `bounds` (from the fuzz finding's captured safe range) seeds the Clamp's
+ *  min/max literals so it arrives CONFIGURED, not as a no-op pass-through. */
+export async function insertClampBefore(
+  nodeId: string,
+  socketKey: string,
+  bounds?: { min?: number; max?: number },
+): Promise<boolean> {
   const editor = getEditor();
   const area = getArea();
   if (!editor || !area) return false;
@@ -239,6 +333,10 @@ export async function insertClampBefore(nodeId: string, socketKey: string): Prom
   if (!source) return false;
 
   const clamp = new ClampNode({ label: "Clamp" });
+  // Seed the bounds (each optional — Clamp applies floor/ceiling independently);
+  // an unwired min/max input reads its literal, so this makes the splice active.
+  if (typeof bounds?.min === "number") clamp.literals.min = bounds.min;
+  if (typeof bounds?.max === "number") clamp.literals.max = bounds.max;
   await editor.addNode(clamp);
   const srcPos = area.nodeViews.get(conn.source)?.position ?? { x: 0, y: 0 };
   const tgtPos = area.nodeViews.get(nodeId)?.position ?? { x: 0, y: 0 };
