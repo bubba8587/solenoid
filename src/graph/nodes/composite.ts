@@ -1,7 +1,9 @@
 import { ClassicPreset, NodeEditor } from "rete";
 import { DataflowEngine } from "rete-engine";
 import type { Schemes, SolenoidNode, SolenoidConnection } from "../schemes";
-import { AdoptiveSocket, trueAnySocket } from "../sockets";
+import { AdoptiveSocket, MutableSocket, SolenoidSocket, trueAnySocket, type SocketDataType } from "../sockets";
+import { resolveTrigModes } from "../trigMode";
+import { settleWildcardTypes } from "../trueAnyAdopt";
 import { extractInit } from "../copyPaste";
 import { installErrorGuards, solError, type SolError } from "../errorValue";
 import { coerceNumber as toNumber } from "../valueKinds";
@@ -173,6 +175,9 @@ export class CompositeNode extends ClassicPreset.Node {
   outputPorts: CompositeOutputPort[];
   internalEditor: NodeEditor<Schemes>;
   internalEngine: DataflowEngine<Schemes>;
+  /** True only during hydrate()'s bulk node/connection build — suppresses the
+   *  per-item internal type settle (run ONCE at the end of hydrate instead). */
+  private _hydrating = false;
   /** Last computed output per port id, keyed by CompositeOutputPort.id — read
    *  by the component to render each output row's value box. In "single" mode
    *  each value is a scalar/list/etc as usual; in a multi-run mode (Scenarios,
@@ -264,6 +269,13 @@ export class CompositeNode extends ClassicPreset.Node {
       const t = (ctx as { type?: string }).type;
       if (t === "nodecreated" || t === "noderemoved" || t === "connectioncreated" || t === "connectionremoved") {
         this.markInternalEdit();
+        // Re-derive the internal wildcard socket types (Conduit lanes + trueany
+        // adoption) and the boundary output-port types on a LIVE drill-in edit —
+        // the mirror of the outer canvas's connection-pipe settle. Suppressed
+        // during hydrate's bulk build (settled once at its end instead).
+        if (!this._hydrating && (t === "connectioncreated" || t === "connectionremoved")) {
+          this.settleInternalTypes();
+        }
       }
       return ctx;
     });
@@ -275,7 +287,11 @@ export class CompositeNode extends ClassicPreset.Node {
       if (p.exposure === "exposed") this.addInput(p.id, new ClassicPreset.Input(new AdoptiveSocket(), p.label));
     }
     for (const p of this.outputPorts) {
-      this.addOutput(p.id, new ClassicPreset.Output(trueAnySocket, p.label));
+      // Adoptive (not the shared static `trueAnySocket`): an output port ADOPTS
+      // the type feeding its internal Output marker (adoptBoundaryTypes), the
+      // mirror of the input ports adopting from OUTSIDE. Starts `trueany` (hollow
+      // ring) until settled.
+      this.addOutput(p.id, new ClassicPreset.Output(new AdoptiveSocket(), p.label));
     }
   }
 
@@ -299,6 +315,7 @@ export class CompositeNode extends ClassicPreset.Node {
     const pending = this._pending;
     if (!pending) return;
     this._pending = null;
+    this._hydrating = true;
     const built = new Map<string, ClassicPreset.Node>();
     for (const sn of pending.nodes) {
       const Ctor = reg.get(sn.type);
@@ -338,6 +355,11 @@ export class CompositeNode extends ClassicPreset.Node {
       const mapped = built.get(p.internalNodeId);
       if (mapped) p.internalNodeId = mapped.id;
     }
+    // Bulk build done — settle the internal wildcard/boundary types ONCE (the
+    // per-item pipe settle was suppressed via _hydrating). Mirrors the outer
+    // load-path settle (persistence.ts) that runs on the MAIN editor.
+    this._hydrating = false;
+    this.settleInternalTypes();
   }
 
   /** Snapshot the internal graph as plain JSON — the `internal` constructor
@@ -407,7 +429,7 @@ export class CompositeNode extends ClassicPreset.Node {
   addOutputPort(spec: Omit<CompositeOutputPort, "id"> & { id?: string }): string {
     const id = spec.id ?? `out_${this.outputPorts.length}_${Math.random().toString(36).slice(2, 7)}`;
     this.outputPorts.push({ ...spec, id });
-    this.addOutput(id, new ClassicPreset.Output(trueAnySocket, spec.label));
+    this.addOutput(id, new ClassicPreset.Output(new AdoptiveSocket(), spec.label));
     return id;
   }
 
@@ -687,6 +709,11 @@ export class CompositeNode extends ClassicPreset.Node {
     // (goal-seek Set/By dropdowns) as soon as the blur fires a recompute, without
     // waiting for drill-up (the outer card still re-renders on leave). Cheap.
     this.syncPortLabels();
+    // Resolve Auto-mode trig nodes INSIDE the subgraph from their incoming unit
+    // before the internal engine pull — the same pass process.ts runs on the main
+    // editor, scoped here to the composite's own graph (else an Auto deg/rad trig
+    // node inside a composite always computed in radians). Early-outs when none.
+    resolveTrigModes(this.internalEditor);
     // Heavy modes (many internal passes) are arm-and-run: solve once, then HOLD the
     // cached result and flag `stale` instead of re-solving on every upstream tick.
     // The Solve button (solveRequested) or a never-solved node forces one solve.
@@ -742,6 +769,41 @@ export class CompositeNode extends ClassicPreset.Node {
 
   /** An edit landed in the internal graph — a held heavy solve is no longer current. */
   markInternalEdit(): void { this.internalEditSeq++; }
+
+  /** Re-derive every DERIVED socket type inside the subgraph, then re-derive the
+   *  boundary OUTPUT-port types from it. The composite's internal editor is its
+   *  own world — the main canvas's connection-pipe settle (Canvas.tsx) never
+   *  touches it — so a Display/Conduit/selector chain inside a composite only
+   *  adopts its trueany rings if we run the same joint fixpoint here. Cheap
+   *  (composites are small); returns true if any boundary type changed. */
+  settleInternalTypes(): boolean {
+    settleWildcardTypes(this.internalEditor);
+    return this.adoptBoundaryTypes();
+  }
+
+  /** The mirror of the input ports adopting from OUTSIDE: each EXPOSED output port
+   *  adopts the concrete type feeding its internal Output marker's `value` input
+   *  (reverting to `trueany` when the marker is unwired). Adoption NEVER drops an
+   *  outer cable — it is derived state (the D17 rule). Returns true if a type
+   *  changed (the caller re-renders the outer card + its cables). */
+  adoptBoundaryTypes(): boolean {
+    const conns = this.internalEditor.getConnections();
+    let changed = false;
+    for (const port of this.outputPorts) {
+      const outSock = this.outputs[port.id]?.socket;
+      if (!(outSock instanceof MutableSocket)) continue; // hidden port → no outer socket
+      let want: SocketDataType = "trueany";
+      const marker = this.internalEditor.getNode(port.internalNodeId);
+      if (marker) {
+        const feed = conns.find((c) => c.target === marker.id && c.targetInput === "value");
+        const src = feed ? this.internalEditor.getNode(feed.source) : undefined;
+        const s = feed ? src?.outputs?.[feed.sourceOutput]?.socket : undefined;
+        if (s instanceof SolenoidSocket) want = s.dataType;
+      }
+      if (outSock.dataType !== want) { outSock.setType(want); changed = true; }
+    }
+    return changed;
+  }
 
   /** A cheap signature of the inputs + the active mode's config: a change to either
    *  makes the last solve stale. Objects (frames/cubes) contribute a stable reference
