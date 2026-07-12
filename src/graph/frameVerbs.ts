@@ -20,6 +20,7 @@ import {
 } from "./frame";
 import { isSolError, solError } from "./errorValue";
 import { forAggregate, coerceLogical, guardFinite } from "./valueKinds";
+import { compareStrings } from "./stringOrder";
 import { compareOp, type ComparisonOp } from "./nodes/logic";
 import { parseDateToSerial } from "./nodes/date";
 
@@ -97,10 +98,11 @@ export function reorderRows(f: FrameValue, indices: readonly number[]): FrameVal
 
 /** Within-type comparator for the SORTABLE (non-null, non-error) cells of a
  *  column. Numbers and dates compare numerically (a date IS a serial), strings
- *  by locale, logicals false<true. */
+ *  by BYTE order (compareStrings — matches the Polars backend), logicals
+ *  false<true. */
 function comparatorFor(type: FrameColType): (a: FrameCell, b: FrameCell) => number {
   switch (type) {
-    case "string": return (a, b) => String(a).localeCompare(String(b));
+    case "string": return (a, b) => compareStrings(String(a), String(b));
     case "logical": return (a, b) => (a ? 1 : 0) - (b ? 1 : 0);
     default: return (a, b) => (a as number) - (b as number); // number | date
   }
@@ -174,7 +176,7 @@ export function sampleFrame(f: FrameValue, n: number): FrameValue {
 
 /** Does one cell pass the predicate? A `null` or error cell is EXCLUDED (SQL
  *  WHERE keeps only TRUE — matches FilterNode). Comparisons reuse `compareOp`:
- *  numeric/date numerically, logical via 0/1, string via the localeCompare sign;
+ *  numeric/date numerically, logical via 0/1, string via BYTE order (compareStrings);
  *  text ops match on the stringified cell. TEXT MATCHING (string eq/neq + the
  *  three text predicates) is case-INsensitive unless `matchCase` — Filter
  *  matches like Excel's `=` (FILTER/AutoFilter); keys (Join/Group By/Distinct)
@@ -213,7 +215,7 @@ export function passesFilter(cell: FrameCell, op: FilterOp, value: FrameCell, ty
   if (type === "string") {
     if (op === "eq")  return fold(String(cell)) === fold(String(value));
     if (op === "neq") return fold(String(cell)) !== fold(String(value));
-    return compareOp(op, String(cell).localeCompare(String(value)), 0);
+    return compareOp(op, compareStrings(String(cell), String(value)), 0);
   }
   const x = type === "logical" ? (cell ? 1 : 0) : Number(cell);
   const y = filterValueToNumber(value, type);

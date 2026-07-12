@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { findUpstreamLeaves } from "./tornadoRun";
+import { findUpstreamLeaves, rankTornado } from "./tornadoRun";
 import { NumberInputNode, SliderInputNode } from "./nodes/input";
+import type { TornadoResult } from "./nodes/tornado";
 
 // Regression: a Slider carries its own min/max/step input sockets, so the old
 // leaf gate (`!hasInputs && instanceof SliderInputNode`) never matched it and the
@@ -56,5 +57,30 @@ describe("findUpstreamLeaves", () => {
       "tornado",
     );
     expect(leaves.map((l) => l.label)).toEqual(["Rate"]);
+  });
+});
+
+// Task 3 (Stream D): the tornado keeps RAW swing as the ranking key (traditional,
+// author's lean) but no longer silently drops a leaf that diverges at an extreme —
+// diverged leaves are kept and surfaced at the top, marked.
+describe("rankTornado", () => {
+  const r = (label: string, low: number, high: number, diverged = false): TornadoResult =>
+    ({ nodeId: label, label, base: 0, low, high, inputLow: 0, inputHigh: 1, basis: "number", diverged });
+
+  it("orders finite leaves by RAW swing, biggest first (not normalized by width)", () => {
+    const ranked = rankTornado([r("small", 0, 2), r("big", -5, 5), r("mid", 0, 4)]);
+    expect(ranked.map((x) => x.label)).toEqual(["big", "mid", "small"]);
+  });
+
+  it("keeps a diverged leaf and surfaces it at the TOP, marked", () => {
+    const ranked = rankTornado([r("finite", 0, 3), r("blows-up", 0, Infinity, true)]);
+    expect(ranked.map((x) => x.label)).toEqual(["blows-up", "finite"]);
+    expect(ranked[0].diverged).toBe(true);
+  });
+
+  it("does not let a diverged (NaN swing) leaf corrupt the finite ordering", () => {
+    const ranked = rankTornado([r("a", 0, 1), r("nan", NaN, NaN, true), r("b", 0, 10)]);
+    // Diverged first, then finite by swing.
+    expect(ranked.map((x) => x.label)).toEqual(["nan", "b", "a"]);
   });
 });
