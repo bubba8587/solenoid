@@ -16,7 +16,7 @@ export class NumberInputNode extends ClassicPreset.Node {
    *  (the default) emits a bare number, unchanged. */
   unit: string;
   width = 180;
-  height = 100;
+  height = 140;
 
   constructor(init?: { label?: string; value?: number; unit?: string }) {
     super("NumberInput");
