@@ -1,8 +1,12 @@
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import type { CompositeNode as CompositeNodeType, CompositeInputNode as CompositeInputNodeType, CompositeOutputNode as CompositeOutputNodeType, CompositeRunMode } from "../rete-nodes";
+import { CompositeInputNode } from "../nodes/composite";
 import { isSolError } from "../errorValue";
+import { isUncertain } from "../valueKinds";
+import { histogram, type DistributionKind } from "../monteCarlo";
 import { InlineInputs, InlineNumberField, useDraftCommit, INVALID_DRAFT } from "./inlineInput";
 import { NodeShell, ValueDisplay, OpSelect, useNodeField, PortSockets, type NodeProps, type OpOption } from "./nodeKit";
+import { SegToggle } from "./SegToggle";
 import { MeasuredSocketRow } from "./NodeSocket";
 import type { DisplayValue } from "./valueDisplayFormat";
 import { processGraph } from "../process";
@@ -46,7 +50,35 @@ export const RUN_MODE_OPTIONS: OpOption<CompositeRunMode>[] = [
   { value: "data-table", label: "Data table" },
   { value: "simulation", label: "Simulation" },
   { value: "goal-seek", label: "Goal seek" },
+  { value: "montecarlo", label: "Monte Carlo" },
 ];
+
+// A collapsible "advanced" foot — the FC's chip-foot expander pattern (a centered
+// chevron that reveals extra controls), reused for the composite solver tiers.
+// Local-state open (not persisted) — these tiers are transient tuning knobs.
+function AdvancedFoot({ open, onToggle, title, children }: { open: boolean; onToggle: () => void; title: string; children: React.ReactNode }) {
+  return (
+    <>
+      {open && <div style={{ marginTop: 4, display: "flex", flexDirection: "column", gap: 4 }}>{children}</div>}
+      <div className="solenoid-fc__more-row">
+        <button
+          type="button"
+          className="solenoid-fc__more"
+          onClick={(e) => { e.stopPropagation(); onToggle(); }}
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          title={title}
+          aria-expanded={open}
+        >
+          <svg width="8" height="8" viewBox="0 0 10 10" aria-hidden="true"
+               style={{ display: "block", transform: open ? "rotate(180deg)" : undefined }}>
+            <path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      </div>
+    </>
+  );
+}
 
 /** "3.5" → 3.5; "" → undefined (clears the override, falls back to the port's
  *  normal wired/default value); anything else stays a string. Scenario cells
@@ -185,12 +217,125 @@ function SimulationEditor({ node }: { node: CompositeNodeType }) {
   );
 }
 
+const DIST_OPTIONS: ReadonlyArray<{ value: DistributionKind; label: string; title: string }> = [
+  { value: "normal", label: "Normal", title: "Gaussian — the ± is a standard deviation (1σ)" },
+  { value: "uniform", label: "Uniform", title: "Flat — the ± is a half-width around the value" },
+];
+
+// A compact SVG histogram of a Monte Carlo output's sample distribution.
+function MiniHistogram({ samples }: { samples: readonly number[] }) {
+  const { counts } = histogram(samples, 16);
+  const peak = Math.max(1, ...counts);
+  const W = 200, H = 44, n = counts.length;
+  const bw = W / n;
+  return (
+    <svg width="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ display: "block", marginTop: 2 }}>
+      {counts.map((c, i) => {
+        const h = (c / peak) * (H - 2);
+        return <rect key={i} x={i * bw + 0.5} y={H - h} width={Math.max(0.5, bw - 1)} height={h} fill="var(--accent)" opacity={0.75} />;
+      })}
+    </svg>
+  );
+}
+
+// A compact line sparkline for a numeric series — the Simulation output's
+// per-step trend, drawn inside the drill-in output marker (D-2) so the series
+// reads as a curve, not only as a list chip.
+function MiniSparkline({ series }: { series: readonly number[] }) {
+  const nums = series.filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+  if (nums.length < 2) return null;
+  const W = 200, H = 40;
+  let min = Infinity, max = -Infinity;
+  for (const v of nums) { if (v < min) min = v; if (v > max) max = v; }
+  const span = max - min || 1;
+  const pts = nums.map((v, i) => {
+    const x = (i / (nums.length - 1)) * (W - 2) + 1;
+    const y = H - 1 - ((v - min) / span) * (H - 2);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(" ");
+  return (
+    <svg width="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ display: "block", marginBottom: 2 }}>
+      <polyline points={pts} fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+}
+
+/** True for a plain numeric series (a Simulation per-step output), so it earns a
+ *  sparkline. An uncertain value / frame / string list is excluded. */
+function isNumericSeries(v: unknown): v is number[] {
+  return Array.isArray(v) && v.length >= 2 && v.every((x) => typeof x === "number" && Number.isFinite(x));
+}
+
+// Monte Carlo: declare a ± spread (and distribution) on each exposed input's
+// drill-in marker, then sample the container N times. The output boxes show each
+// port's mean ± sd; the first output's sample distribution renders as a histogram.
+// Sample count + seed live in the advanced foot (a fixed seed = reproducible draws).
+function MonteCarloEditor({ node }: { node: CompositeNodeType }) {
+  const exposed = node.inputPorts.filter((p) => p.exposure === "exposed");
+  const [advanced, setAdvanced] = useState(false);
+  const recompute = () => { void processGraph(node.id); };
+  // Ensure a config exists so the advanced defaults show real numbers.
+  useEffect(() => { if (!node.monteCarlo) { node.setMonteCarlo({}); } /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  const mc = node.monteCarlo;
+
+  if (exposed.length === 0) {
+    return <div className="solenoid-node__text-empty">expose an input to give it an error bar</div>;
+  }
+  const markerOf = (portInternalId: string) =>
+    node.internalEditor.getNode(portInternalId) as CompositeInputNode | undefined;
+  const row = { display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,0.9fr) auto", gap: 6, alignItems: "center" } as const;
+
+  // First output that carries sampled draws → its distribution.
+  const distSamples = (() => {
+    for (const p of node.outputPorts) {
+      const v = node.cachedOutputs[p.id];
+      if (isUncertain(v) && v.samples && v.samples.length > 1) return v.samples;
+    }
+    return null;
+  })();
+
+  return (
+    <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 3 }}>
+      {exposed.map((p) => {
+        const m = markerOf(p.internalNodeId);
+        return (
+          <div key={p.id} style={row}>
+            <span className="solenoid-node__io-label" title={p.label} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.label}</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+              <span style={{ color: "var(--text-muted, #9aa0a6)" }}>±</span>
+              <InlineNumberField
+                value={m?.uncertainty ?? 0}
+                onChange={(v) => { if (m) m.uncertainty = v && v > 0 ? v : null; recompute(); }}
+              />
+            </div>
+            <SegToggle<DistributionKind>
+              value={m?.distribution ?? "normal"}
+              onChange={(d) => { if (m) m.distribution = d; recompute(); }}
+              options={DIST_OPTIONS}
+            />
+          </div>
+        );
+      })}
+      {distSamples && <MiniHistogram samples={distSamples} />}
+      <AdvancedFoot open={advanced} onToggle={() => setAdvanced((o) => !o)} title="Sampling options">
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 6, alignItems: "center" }}>
+          <span className="solenoid-node__io-label">Samples</span>
+          <InlineNumberField value={mc?.samples ?? 500} onChange={(v) => { node.setMonteCarlo({ samples: v && v >= 1 ? Math.round(v) : 500 }); recompute(); }} />
+          <span className="solenoid-node__io-label">Seed</span>
+          <InlineNumberField value={mc?.seed ?? 1} onChange={(v) => { node.setMonteCarlo({ seed: v != null ? Math.round(v) : 1 }); recompute(); }} />
+        </div>
+      </AdvancedFoot>
+    </div>
+  );
+}
+
 // Goal-seek: drive one exposed input until a chosen output hits a target (Excel's
 // Goal Seek). Reads "Set <output> To <value> By changing <input>"; the solved driver
 // value (or #CONV!) shows below. The solve runs in composite.ts runGoalSeek.
 function GoalSeekEditor({ node, emit }: { node: CompositeNodeType; emit?: NodeProps<CompositeNodeType>["emit"] }) {
   const exposed = node.inputPorts.filter((p) => p.exposure === "exposed");
   const outputs = node.outputPorts;
+  const [advanced, setAdvanced] = useState(false);
   const recompute = () => { void processGraph(node.id); };
   // Initialize the config the first time the mode is entered so it solves immediately.
   useEffect(() => {
@@ -225,6 +370,21 @@ function GoalSeekEditor({ node, emit }: { node: CompositeNodeType; emit?: NodePr
           {exposed.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
         </select>
       </div>
+      <AdvancedFoot open={advanced} onToggle={() => setAdvanced((o) => !o)} title="Solver options">
+        <div style={row}>
+          <span className="solenoid-node__io-label">Max iters</span>
+          <InlineNumberField value={gs?.maxIterations ?? 80} onChange={(v) => { node.setGoalSeek({ maxIterations: v && v >= 1 ? Math.round(v) : undefined }); recompute(); }} />
+        </div>
+        <div style={row}>
+          <span className="solenoid-node__io-label">Tolerance</span>
+          <InlineNumberField value={gs?.tolerance ?? 0} placeholder="1e-7" onChange={(v) => { node.setGoalSeek({ tolerance: v && v > 0 ? v : undefined }); recompute(); }} />
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,0.8fr) minmax(0,0.6fr) minmax(0,0.6fr)", gap: 6, alignItems: "center" }}>
+          <span className="solenoid-node__io-label">Bounds</span>
+          <InlineNumberField value={gs?.boundsLo ?? undefined} placeholder="lo" onChange={(v) => { node.setGoalSeek({ boundsLo: v ?? undefined }); recompute(); }} />
+          <InlineNumberField value={gs?.boundsHi ?? undefined} placeholder="hi" onChange={(v) => { node.setGoalSeek({ boundsHi: v ?? undefined }); recompute(); }} />
+        </div>
+      </AdvancedFoot>
       {result != null && node.outputs[outputId] && (
         // The solved driver value is the HERO of a goal-seek composite (the whole
         // point — the achieved output just equals the target you set). It carries the
@@ -327,6 +487,7 @@ export function CompositeRunControls({ node, emit, insideOnly = false }: { node:
       {runMode === "data-table" && <DataTableEditor node={node} />}
       {runMode === "simulation" && <SimulationEditor node={node} />}
       {runMode === "goal-seek" && <GoalSeekEditor node={node} emit={emit} />}
+      {runMode === "montecarlo" && <MonteCarloEditor node={node} />}
     </>
   );
 }
@@ -374,6 +535,7 @@ export function CompositeComponent({ data: node, emit }: NodeProps<CompositeNode
           <div key={p.id} className="solenoid-composite__output">
             <span className="solenoid-node__io-label">{p.label}</span>
             <MeasuredSocketRow side="output" socketKey={p.id} nodeId={node.id} emit={emit} payload={port.socket}>
+              {isNumericSeries(value) && <MiniSparkline series={value} />}
               <CompositeBoundaryValue value={value} label={p.label} />
             </MeasuredSocketRow>
           </div>
@@ -432,6 +594,9 @@ export function CompositeOutputMarkerComponent({ data, emit }: NodeProps<Composi
       className="solenoid-node--composite-marker"
       leading={<PortSockets node={data} emit={emit} side="input" />}
     >
+      {/* A per-step numeric series (Simulation / a Monte-Carlo-free sweep) gets a
+          sparkline above its list chip, so the trend is legible inside the drill-in. */}
+      {isNumericSeries(data.cachedResult) && <MiniSparkline series={data.cachedResult} />}
       <CompositeBoundaryValue value={data.cachedResult} label={data.label} />
     </NodeShell>
   );
