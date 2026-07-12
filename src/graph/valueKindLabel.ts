@@ -4,6 +4,15 @@ import { isImageValue } from "./imageValue";
 import { isSvgValue } from "./svgValue";
 import { isFrameValue, isCubeValue } from "./frame";
 import { isLambdaValue, formatLambda } from "./nodes/lambda";
+import { isUncertain, type UncertainNumber } from "./valueKinds";
+import { formatScalar } from "./components/format";
+
+/** "12.3 ± 1.5" — an uncertain number's compact readout (value ± 1σ), each part
+ *  through the app's standard scalar formatter. Shared by every value surface via
+ *  describeValueKind so the wrapper object never stringifies to "[object Object]". */
+export function formatUncertain(v: UncertainNumber): string {
+  return `${formatScalar(v.value)} ± ${formatScalar(v.error)}`;
+}
 
 /**
  * A short human label for an OBJECT-valued kind (chart, diagram, image, lambda,
@@ -23,6 +32,7 @@ export function describeValueKind(v: unknown): string | null {
   if (isImageValue(v)) return "Image";
   if (isSvgValue(v)) return "SVG";
   if (isLambdaValue(v)) return formatLambda(v);
+  if (isUncertain(v)) return formatUncertain(v);
   if (isFrameValue(v)) {
     const cols = v.columns.length;
     const rows = v.__totalRows ?? v.columns[0]?.values.length ?? 0;

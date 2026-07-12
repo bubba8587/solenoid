@@ -69,9 +69,93 @@ export function coerceLogical(v: unknown): boolean | null {
 // means (a formula impl returns #VALUE!, goal-seek gives up on the objective).
 export function coerceNumber(v: unknown): number {
   if (typeof v === "number") return v;
+  if (isUncertain(v)) return v.value; // an error bar collapses to its central estimate
   if (typeof v === "boolean") return v ? 1 : 0;
   if (typeof v === "string" && v.trim() !== "") return Number(v);
   return NaN;
+}
+
+// ── Uncertain numbers (COMPOSITE-scoped) ─────────────────────────────────────
+// A number with a symmetric error bar: `value ± error`, where `error` is a 1σ
+// standard deviation (always non-negative). Unlike null/logical (bare values that
+// are their own tag), an uncertain number MUST be a wrapper object, so it carries
+// an explicit `kind: "uncertain"` brand — the same "tagged object" shape as
+// SolError.
+//
+// SCOPE (author, 2026-07-12): this kind exists ONLY for the composite subsystem.
+// A composite's Monte Carlo run mode samples the distribution declared on an
+// internal input marker and emits the OUTPUT distribution as an UncertainNumber
+// (mean ± sd). It is deliberately NOT threaded through general graph arithmetic —
+// a downstream numeric consumer coerces it to its central `value` (see
+// coerceNumber above). The analytic propagation helpers below (add-in-quadrature
+// sums, relative-error products) are the closed-form companion to the numeric MC
+// sampler, for a caller that combines two error bars directly.
+export interface UncertainNumber {
+  readonly kind: "uncertain";
+  readonly value: number;
+  readonly error: number;
+  /** The raw draws behind a Monte Carlo summary — powers the histogram. Not part
+   *  of the identity: a hand-built `value ± error` omits it. */
+  readonly samples?: readonly number[];
+}
+
+export function isUncertain(v: unknown): v is UncertainNumber {
+  return (
+    typeof v === "object" && v !== null &&
+    (v as { kind?: unknown }).kind === "uncertain" &&
+    typeof (v as { value?: unknown }).value === "number" &&
+    typeof (v as { error?: unknown }).error === "number"
+  );
+}
+
+/** Build an UncertainNumber, normalizing the error bar to |error| (a σ is
+ *  non-negative). `samples` rides along when a Monte Carlo summary supplies them. */
+export function uncertain(value: number, error: number, samples?: readonly number[]): UncertainNumber {
+  const e = Math.abs(error);
+  return samples ? { kind: "uncertain", value, error: e, samples } : { kind: "uncertain", value, error: e };
+}
+
+/** The central estimate of any scalar: an UncertainNumber's `value`, else the
+ *  number itself. The one place error bars collapse when an uncertain value meets
+ *  a plain-number context. */
+export function uncertainCenter(v: number | UncertainNumber): number {
+  return isUncertain(v) ? v.value : v;
+}
+
+/** Widen a plain number to a zero-error UncertainNumber; pass an uncertain
+ *  through unchanged. The normalizer every propagation op runs on its operands. */
+export function asUncertain(v: number | UncertainNumber): UncertainNumber {
+  return isUncertain(v) ? v : { kind: "uncertain", value: v, error: 0 };
+}
+
+// ── Analytic error propagation (first-order / Gaussian) ───────────────────────
+// The textbook independent-variable rules (no covariance term — the honest
+// default for two separately-specified uncertain inputs):
+//   sum / difference → absolute errors add in QUADRATURE:  σ = √(σa² + σb²)
+//   product / quotient → RELATIVE errors add in quadrature, i.e. the absolute
+//     result error is √((∂f/∂a·σa)² + (∂f/∂b·σb)²) with the partials of a·b / a÷b.
+// These mirror how SolError propagates through element-wise ops: a well-defined
+// rule applied per combination.
+export function addUncertain(a: number | UncertainNumber, b: number | UncertainNumber): UncertainNumber {
+  const x = asUncertain(a), y = asUncertain(b);
+  return uncertain(x.value + y.value, Math.hypot(x.error, y.error));
+}
+export function subUncertain(a: number | UncertainNumber, b: number | UncertainNumber): UncertainNumber {
+  const x = asUncertain(a), y = asUncertain(b);
+  return uncertain(x.value - y.value, Math.hypot(x.error, y.error));
+}
+export function mulUncertain(a: number | UncertainNumber, b: number | UncertainNumber): UncertainNumber {
+  const x = asUncertain(a), y = asUncertain(b);
+  // d(ab) = √((b·σa)² + (a·σb)²) — the a=0 / b=0 safe form of |ab|·√((σa/a)²+(σb/b)²).
+  return uncertain(x.value * y.value, Math.hypot(y.value * x.error, x.value * y.error));
+}
+export function divUncertain(a: number | UncertainNumber, b: number | UncertainNumber): UncertainNumber {
+  const x = asUncertain(a), y = asUncertain(b);
+  const q = x.value / y.value;
+  // d(a/b) = √((σa/b)² + (a·σb/b²)²) — safe when a=0 (a zero denominator still
+  // yields ±Inf/NaN, as any division by zero does).
+  const err = Math.hypot(x.error / y.value, (x.value * y.error) / (y.value * y.value));
+  return uncertain(q, err);
 }
 
 // ── Per-element broadcast contract ────────────────────────────────────────────
