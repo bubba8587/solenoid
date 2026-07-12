@@ -21,6 +21,8 @@ import { installErrorGuards } from "../errorValue";
 import { ctorRegistry } from "../nodeCtorRegistry";
 import { cableSelectionStore } from "../cableState";
 import { canvasLockStore } from "../canvasLock";
+import { isolateStore } from "../isolateStore";
+import { isolateSelection } from "../isolate";
 import { pushNotice } from "../noticeStore";
 import { buildCatalog } from "../catalogUtils";
 import { AddNodeMenu, type NodeCatalogEntry } from "../AddNodeMenu";
@@ -236,6 +238,10 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
     })();
     return () => {
       cancelled = true;
+      // Isolate is a transient VIEW state keyed on THIS level's node ids — drop it
+      // on leave so the main canvas (or a deeper level) isn't left dimmed against
+      // a focus set of ids it doesn't own.
+      isolateStore.exit();
       setActiveGraph(null); // back to the main graph (a deeper level re-registers)
       const mount = mountRef.current;
       if (mount) {
@@ -321,14 +327,24 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
         e.preventDefault();
         void tidyDrill();
       }
+      // I — isolate the subgraph selection / exit if already isolating. Isolate
+      // resolves through the ACTIVE editor (this level) and the dim view reads the
+      // global isolateStore that the drill-in node cards already observe.
+      if (e.code === "KeyI") {
+        e.preventDefault();
+        if (isolateStore.isActive()) isolateStore.exit(); else isolateSelection();
+      }
       // Arrow keys nudge the selected nodes (Shift = larger step), like the canvas.
       if (e.key === "ArrowLeft" || e.key === "ArrowRight" || e.key === "ArrowUp" || e.key === "ArrowDown") {
         e.preventDefault();
         void nudgeSelection(e.key, e.shiftKey);
       }
       if (e.key === "Escape") {
-        // Esc pops ONE breadcrumb level (drill up); at the root it closes.
+        // Esc: close an open Add menu → exit an active isolate → else pop ONE
+        // breadcrumb level (drill up; at the root it closes). Same precedence the
+        // main canvas gives isolate over its own Esc actions.
         if (menu) setMenu(null);
+        else if (isolateStore.isActive()) isolateStore.exit();
         else void drillTo(compositeEditorStore.stack().length - 2);
       }
     }
