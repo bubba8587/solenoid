@@ -4,7 +4,17 @@ Shared scratchpad for when several agents work this repo in parallel. Dormant in
 
 **Protocol.** Check here before starting a task and claim it in one line so two agents don't pick the same thing. Update on claim and on hand-off, not on every edit. Delete an entry once it lands; prior history is in `git log`. Agent 1 is Lead. The durable role split, shared-file policy, and commit/push rules live in the agent's memory; a session may post a short "This session" block here that overrides them where they conflict.
 
-## This session — OVERNIGHT 1.2 BUILD (author asleep, reviews in morning)
+## COMPLETE 2026-07-12 — all four streams integrated to `develop` @ `8c8a298`, green (tsc clean, 2641 tests)
+
+A → B → C → D all merged and pushed; worktrees/branches cleaned up. What LANDED vs what's FLAGGED for the author:
+- **A (units):** foundation modules only (`unitValue.ts`/`unitDimExpr.ts`, 41 tests), NOT wired into the live engine; `unitFlow.ts` untouched. Steps 4/5/7 (wiring, FC header keys, socket lattice) left for the author-present arc.
+- **B (drill-in):** trueany+Auto-trig+Isolate inside composites DONE. Group/Cleanup/Autofit/Expand, navigator+lasso, and D2 toolbar reroute FLAGGED (DOM-verified/cross-cutting — author-present).
+- **C (run modes):** Monte Carlo + uncertainty (`{value,error}`, author-confirmable) + solver params + D-2 sim display + seeds DONE, all composite-scoped. Inside-solve stale dot left (fragile).
+- **D (data-quality):** per-cell error scan, Clamp seeding, Tornado diverged-marker, byte-order strings all DONE. One comment-only `engine.rs` change (author verify on desktop build).
+
+Detail in the 2026-07-12 dev-notes digests + `1.2-plan.md`/`backlog.md`.
+
+## (superseded) This session — OVERNIGHT 1.2 BUILD (author asleep, reviews in morning)
 
 Integration branch: **`develop`** (standing order — never `claude/*`). Author runs from mobile + Vercel preview of `develop`; **Rust/`cargo test` cannot run in this container** (no Tauri GTK deps) — Rust changes are written but verified only by the author on Windows. Keep **tsc + vitest green at every commit**; author eyeballs UI on the preview.
 
