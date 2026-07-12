@@ -73,6 +73,28 @@ node or general graph arithmetic — blast radius kept inside the composite subs
 - **Left + flagged**: inside-solve stale dot (backlog "Composite / drill-in" — distinguishing
   a seed-based inside-Solve from a wired one needs a drill-state signal coupling `data()` to
   `compositeEditorStore`; the backlog deems it fragile, left simple on purpose).
+### SESSION DIGEST (2026-07-12 — Stream D: data-quality + mechanical fixes)
+Four independent 1.2 Tier-1/Trust items (backlog "Trust-node audit" a/b/c + "String lt/gt").
+- **Per-cell errors now surface** (task a): `errorValue.findCellError` + `sampledCellIndices`
+  do a BOUNDED head-plus-stride scan (`CELL_SCAN_HEAD`=64 + 32 tail samples per container,
+  matrices recurse under the same per-row bound) — full-cell scans were rejected on perf.
+  Wired into `reportOut` (Problems panel) and `modelFuzz.badValue` (now frame-aware). A
+  systematic whole-column error is always caught; a lone buried cell can be missed (the cap).
+  Nulls are deliberately NOT flagged (missing is first-class-legit).
+- **Fuzz "+ Clamp" seeded** (task b): the sweep captures, per node, the [min,max] of the value
+  arriving on its clamp-target input across CLEAN samples (safeRanges + an inputSource map);
+  `boundsFromSafeRange` (only a non-degenerate finite range) seeds the inserted Clamp's
+  min/max literals. Heuristic, limited to extreme-bound problems (a Clamp can't exclude an
+  interior bad point like a 0 divisor).
+- **Tornado keeps + marks diverged leaves** (task c): raw swing stays the ranking key
+  (author's lean, not normalized); `TornadoResult` gains inputLow/inputHigh + basis +
+  diverged; `rankTornado` surfaces diverged leaves at the top (muted full-width bar), never
+  lets their NaN swing corrupt the finite order; the bar tooltip shows the input swing + basis.
+- **String order pinned to BYTE order** (task d): one shared `stringOrder.compareStrings`
+  (JS `<`/`>`, ≈ Polars UTF-8 byte order) replaces `localeCompare` at the four data sites
+  (Frame Sort, Frame Filter, formula `<`/`>`, Slicer uniques) — deterministic + closes the
+  documented web(JS)/desktop(Polars) divergence. UI list ordering keeps locale. engine.rs
+  header comment updated (comment-only Rust; author verify on next desktop build).
 
 ### SESSION DIGEST (2026-07-10 — FC lambda/chart families + Chart Builder reach)
 Author brief: FC options for LAMBDA (view-as) and Chart (font scale) sockets;

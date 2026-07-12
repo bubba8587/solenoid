@@ -15,6 +15,7 @@
 import { solError, isSolError, isNaError } from "./errorValue";
 import { resolveExcelFunction, EXCEL_IMPL_META, normalizeFxResult, fxErrorToSol, FX_FUNCTION_NAMES, numberToText } from "./excelFunctions";
 import { isMissing, guardFinite } from "./valueKinds";
+import { compareStrings } from "./stringOrder";
 
 // ─── AST ────────────────────────────────────────────────────────────────────
 export type Ast =
@@ -475,7 +476,7 @@ function applyOp(op: string, a: unknown, b: unknown): unknown {
       const x = num(a), y = num(b);
       let cmp: number;
       if (typeof x === "number" && typeof y === "number") cmp = x < y ? -1 : x > y ? 1 : 0;
-      else if (typeof x === "string" && typeof y === "string") cmp = x.localeCompare(y);
+      else if (typeof x === "string" && typeof y === "string") cmp = compareStrings(x, y); // byte order — see stringOrder.ts
       else return solError("#TYPE!", "Cannot order values of different types; Cast one side first");
       switch (op) {
         case "<": return cmp < 0;
