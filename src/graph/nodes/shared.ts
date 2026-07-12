@@ -3,6 +3,8 @@ import { numberSocket, listSocket, numListSocket, tableSocket, strTableSocket, d
 import { resolveColor, paletteStore, type PaletteSlot } from "../palette";
 import { type SolError } from "../errorValue";
 import { cellShortCircuit, guardFinite, COMPUTE } from "../valueKinds";
+import { type UnitCell, isUnitCell, magnitudeOf, tagDim } from "../unitValue";
+import { dimOf } from "../unitValue";
 
 // Socket-typed port factories. `new ClassicPreset.Input(numberSocket, "A")`
 // repeated across ~60 constructor lines is just noise; these name the
@@ -203,6 +205,66 @@ export function broadcastErr(
   }
   return out;
 }
+
+// ─── Unit-aware broadcast (Bundle 05: FC A4, step 2) ────────────────────────────
+// The dimensional twin of `broadcastErr`. Operands are `number | UnitCell` (a bare
+// number is dimensionless); the per-cell `fn` receives the RAW operands and returns
+// a tagged cell (a `UnitCell` when the result carries a dimension, a bare number
+// when dimensionless), a `SolError` (`#UNIT!` on a dimensional mismatch, `#DIV/0!`,
+// …), or `null`. The plain-number fast path is byte-identical to `broadcastErr`
+// (no `UnitCell` anywhere ⇒ `fn` sees plain numbers, `guardFinite` classifies a
+// non-finite result), so an untagged graph is unaffected. Only once a value carries
+// a dimension does the unit algebra bite.
+export type UnitOperand = number | UnitCell;
+export type BroadcastUnitResult =
+  number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null;
+
+/** Classify a numeric-or-cell result: apply `guardFinite` to its magnitude (so an
+ *  overflowing dimensioned product still becomes `#OVERFLOW!`), keeping the tag. */
+function guardCell(r: number | UnitCell | SolError | null, ...inputs: unknown[]): number | UnitCell | SolError | null {
+  if (r === null || typeof r === "string") return r;
+  if (isUnitCell(r)) {
+    const g = guardFinite(r.value, ...inputs);
+    return typeof g === "number" ? tagDim(g, r.dim) : g; // re-tag, or surface the error
+  }
+  if (typeof r === "number") return guardFinite(r, ...inputs);
+  return r; // a SolError from fn passes through
+}
+
+export function broadcastUnit(
+  fn: (...xs: UnitOperand[]) => number | UnitCell | SolError | null,
+  ...args: Array<UnitOperand | UnitOperand[] | null>
+): BroadcastUnitResult {
+  const lists = args.filter((a): a is UnitOperand[] => Array.isArray(a));
+  if (lists.length === 0) {
+    const sc = cellShortCircuit(args);
+    if (sc !== COMPUTE) return sc;
+    return guardCell(fn(...(args as UnitOperand[])), ...args);
+  }
+  const len = lists.reduce((m, l) => Math.max(m, l.length), 0);
+  const out: (number | UnitCell | SolError | null)[] = [];
+  for (let i = 0; i < len; i++) {
+    if (lists.some((l) => i >= l.length)) { out.push(null); continue; } // ragged pad
+    const ops = args.map((a) => (Array.isArray(a) ? a[i] : a)) as UnitOperand[];
+    const sc = cellShortCircuit(ops);
+    if (sc !== COMPUTE) { out.push(sc); continue; }
+    out.push(guardCell(fn(...ops), ...ops));
+  }
+  return out;
+}
+
+/** True when any operand (scalar or a list cell) carries a real dimension — the
+ *  cheap gate a unit-aware node uses to skip the unit path entirely for plain data. */
+export function anyDimensioned(...args: Array<UnitOperand | UnitOperand[] | null>): boolean {
+  for (const a of args) {
+    if (Array.isArray(a)) { if (a.some((c) => isUnitCell(c))) return true; }
+    else if (isUnitCell(a)) return true;
+  }
+  return false;
+}
+
+// Re-export the per-cell primitives so unit-aware nodes import them from one place.
+export { dimOf, magnitudeOf };
 
 // ─── Node kind → header accent ─────────────────────────────────────────────────
 // A node's "kind" is its family (what it does), distinct from socket

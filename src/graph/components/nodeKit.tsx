@@ -22,7 +22,7 @@ import { nodeResizable } from "../rete-nodes";
 import { formatScalar } from "./format";
 import { ArrayChip } from "./ArrayChip";
 import { formatAnnotationStore, formatNumberWithAnnotation, applyTextCase, applyLogicalStyle, annotationRendersNegativeRed } from "../formatAnnotationStore";
-import { nodeOutputIsDate, dateFormatDisplay, shouldRenderListInline, formatListCell, type DisplayValue } from "./valueDisplayFormat";
+import { nodeOutputIsDate, dateFormatDisplay, shouldRenderListInline, formatListCell, unwrapUnitCells, type DisplayValue } from "./valueDisplayFormat";
 import { IS_COARSE } from "../coarse";
 import { NodeFormatContext } from "./nodeContext";
 import { describeValueKind } from "../valueKindLabel";
@@ -597,7 +597,9 @@ export function ValueDisplay({
   // without an ad-hoc `render`. Deferred to the FC when one is docked (it owns
   // date patterns then). After this, a date value is a string / string[] and
   // flows through the normal text / chip rendering below.
-  const value = dateFormatDisplay(rawValue, nodeOutputIsDate(ctxNodeId), !!ann);
+  // Dimensioned cells (Bundle 05 units) unwrap first: with an FC docked → the
+  // magnitude in its display unit; without → a "5 m/s" string. No-op for plain data.
+  const value = dateFormatDisplay(unwrapUnitCells(rawValue, ann), nodeOutputIsDate(ctxNodeId), !!ann);
 
   // An empty array (a 0-element list/matrix — e.g. a filter that matched nothing, or
   // Split Frame with no columns of the chosen type) is "nothing to show", same as no

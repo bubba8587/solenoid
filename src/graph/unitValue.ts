@@ -87,6 +87,19 @@ export function unitLabelOf(v: unknown): string {
   return formatDim(dimOf(v));
 }
 
+/**
+ * Render a `UnitCell` as "magnitude unit" (e.g. `5 m/s`, `12 N`). The magnitude is
+ * the stored base-SI value formatted by the caller's number formatter; the unit is
+ * the derived-symbol form over the dimension vector. A dimensionless input (a bare
+ * number reaching here) formats with no suffix. This is the pure display helper the
+ * value boxes / chips call for a dimensioned cell.
+ */
+export function formatUnitCell(v: number | UnitCell, fmtNum: (n: number) => string): string {
+  const mag = fmtNum(magnitudeOf(v));
+  const sym = formatDim(dimOf(v));
+  return sym ? `${mag} ${sym}` : mag;
+}
+
 // ─── The #UNIT! helper ──────────────────────────────────────────────────────────
 export function unitError(detail = ""): SolError {
   return solError(

@@ -1,8 +1,10 @@
 import { ClassicPreset } from "rete";
-import { broadcast, broadcastErr, readInput, numListIn, numListOut, numIn, numOut, listIn, type BroadcastResult } from "./shared";
+import { broadcast, broadcastErr, broadcastUnit, anyDimensioned, readInput, numListIn, numListOut, numIn, numOut, listIn, type BroadcastResult, type UnitOperand } from "./shared";
 import { lnGamma } from "./mathUtils";
 import { solError, type SolError } from "../errorValue";
 import type { FormatAnnotation } from "../formatAnnotationStore";
+import { type UnitCell, dimOf, magnitudeOf, tagDim, unitError } from "../unitValue";
+import { dimEqual, dimMul, dimDiv, dimPow, isDimensionless } from "../dimension";
 
 // ─── Bessel helper functions ──────────────────────────────────────────────────
 
@@ -104,10 +106,47 @@ export const ARITHMETIC_OP_META = {
   pow:      { label: "xⁿ Power",   description: "A raised to the power B. 0^0 = 1 (JS/Python/Polars convention; Excel gives #NUM!). A finite result too large to represent → #OVERFLOW!. Excel: POWER / A^B." },
 } satisfies Record<ArithmeticOp, { label: string; description: string }>;
 
+// Per-cell arithmetic WITH dimensional algebra (Bundle 05: FC A4, step 2). Runs
+// only when an operand carries a unit; every op does the numeric math on the
+// base-SI magnitudes and combines the dimension vectors per its rule:
+//   × adds exponents · ÷ subtracts · +/− require commensurability (else #UNIT!) ·
+//   pow scales by the (dimensionless) exponent · cancellation collapses to a bare
+//   number via tagDim. QUOTIENT divides dimensionally; MOD keeps the dividend's
+//   unit (commensurable divisor required, like subtraction).
+export function arithmeticCell(
+  op: ArithmeticOp,
+  a: UnitOperand,
+  b: UnitOperand,
+): number | UnitCell | SolError {
+  const da = dimOf(a), db = dimOf(b);
+  const x = magnitudeOf(a), y = magnitudeOf(b);
+  const divZero = () => solError("#DIV/0!", "Division by zero");
+  switch (op) {
+    case "add":
+      if (!dimEqual(da, db)) return unitError();
+      return tagDim(x + y, da);
+    case "sub":
+      if (!dimEqual(da, db)) return unitError();
+      return tagDim(x - y, da);
+    case "mul":
+      return tagDim(x * y, dimMul(da, db));
+    case "div":
+      return y === 0 ? divZero() : tagDim(x / y, dimDiv(da, db));
+    case "mod":
+      if (!dimEqual(da, db)) return unitError();
+      return y === 0 ? divZero() : tagDim(x - y * Math.floor(x / y), da);
+    case "quotient":
+      return y === 0 ? divZero() : tagDim(Math.trunc(x / y), dimDiv(da, db));
+    case "pow":
+      if (!isDimensionless(db)) return unitError("An exponent must be a plain number, not a dimensioned quantity.");
+      return tagDim(Math.pow(x, y), dimPow(da, y));
+  }
+}
+
 export class ArithmeticNode extends ClassicPreset.Node {
   label: string;
   op: ArithmeticOp;
-  cachedResult: number | (number | SolError | null)[] | SolError | null = null;
+  cachedResult: number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null = null;
   // Inline literals — used for any input without an incoming cable.
   literals: Record<string, number> = { a: 0, b: 0 };
   width = 180;
@@ -133,22 +172,30 @@ export class ArithmeticNode extends ClassicPreset.Node {
     // for MOD / QUOTIENT, which also divide. (Was: list ÷0 collapsed to NaN →
     // surfaced as #N/A, inconsistent with the scalar and table+Map cases.)
     const divZero = () => solError("#DIV/0!", "Division by zero");
-    let result: number | (number | SolError | null)[] | SolError | null = null;
+    let result: number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null = null;
     if (a !== null && b !== null) {
-      result = broadcastErr((x, y) => {
-        switch (this.op) {
-          case "add": return x + y;
-          case "sub": return x - y;
-          case "mul": return x * y;
-          case "div": return y === 0 ? divZero() : x / y;
-          // Excel MOD's sign follows the divisor: MOD(-3,2)=1. JS % follows the
-          // dividend (-3 % 2 = -1), so use the floored definition instead.
-          case "mod": return y === 0 ? divZero() : x - y * Math.floor(x / y);
-          case "pow":      return Math.pow(x, y);
-          case "quotient": return y === 0 ? divZero() : Math.trunc(x / y);
-        }
-        return null;
-      }, a, b);
+      // Unit-aware path only when a dimension is actually present (base-SI algebra:
+      // × adds exponents, ÷ subtracts, +/− demand commensurability → #UNIT!). Plain
+      // number data takes the original broadcastErr fast path unchanged.
+      if (anyDimensioned(a as UnitOperand | UnitOperand[], b as UnitOperand | UnitOperand[])) {
+        result = broadcastUnit((x, y) => arithmeticCell(this.op, x, y),
+          a as UnitOperand | UnitOperand[], b as UnitOperand | UnitOperand[]);
+      } else {
+        result = broadcastErr((x, y) => {
+          switch (this.op) {
+            case "add": return x + y;
+            case "sub": return x - y;
+            case "mul": return x * y;
+            case "div": return y === 0 ? divZero() : x / y;
+            // Excel MOD's sign follows the divisor: MOD(-3,2)=1. JS % follows the
+            // dividend (-3 % 2 = -1), so use the floored definition instead.
+            case "mod": return y === 0 ? divZero() : x - y * Math.floor(x / y);
+            case "pow":      return Math.pow(x, y);
+            case "quotient": return y === 0 ? divZero() : Math.trunc(x / y);
+          }
+          return null;
+        }, a, b);
+      }
     }
     this.cachedResult = result;
     return { result };
