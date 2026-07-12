@@ -89,6 +89,43 @@ describe("Composite Workbench seed", () => {
     expect(loop.has(byId.get("circDisp")!.id)).toBe(false);
   });
 
+  it("Monte Carlo container emits a reproducible mean ± sd distribution", async () => {
+    const run = async () => {
+      const { editor, engine } = buildEditor();
+      const byId = await loadSeed(editor);
+      const out = await engine.fetch(byId.get("mcComp")!.id) as Record<string, unknown>;
+      return out.p_profit as { kind?: string; value?: number; error?: number; samples?: number[] };
+    };
+    const a = await run();
+    expect(a.kind).toBe("uncertain");
+    // Profit = Revenue(1000 ± 120) − Cost(600 ± 80) → mean ≈ 400, σ ≈ √(120²+80²) ≈ 144.
+    expect(a.value!).toBeGreaterThan(370); // ≈ 400, within sampling noise at n=500
+    expect(a.value!).toBeLessThan(430);
+    expect(a.error!).toBeGreaterThan(110);
+    expect(a.error!).toBeLessThan(180);
+    expect(a.samples!.length).toBe(500);
+    // Seeded → identical on a second independent load.
+    const b = await run();
+    expect(b.value).toBe(a.value);
+    expect(b.error).toBe(a.error);
+  });
+
+  it("Scenarios container lays revenue side by side per case", async () => {
+    const { editor, engine } = buildEditor();
+    const byId = await loadSeed(editor);
+    const out = await engine.fetch(byId.get("scComp")!.id) as Record<string, unknown>;
+    // Base 100×9.5, Bull 140×11, Bear 70×8 — in scenario order.
+    expect(out.p_rev2).toEqual([950, 1540, 560]);
+  });
+
+  it("Data-table container computes the full Price × Qty grid (row-major)", async () => {
+    const { editor, engine } = buildEditor();
+    const byId = await loadSeed(editor);
+    const out = await engine.fetch(byId.get("dtComp")!.id) as Record<string, unknown>;
+    // Price {8,10,12} × Qty {100,200}, first axis slowest.
+    expect(out.p_dtot).toEqual([800, 1600, 1000, 2000, 1200, 2400]);
+  });
+
   it("hydrated composites carry their drill-in layout", async () => {
     const { editor } = buildEditor();
     const byId = await loadSeed(editor);
