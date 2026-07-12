@@ -5,6 +5,35 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-12 — drill-in Stream B: Isolate + trueany/trig inside composites)
+First-class composite drill-in, three of the four Stream-B items landed green;
+the other two flagged as author-present/entangled (see below).
+- **trueany adoption + Auto-trig INSIDE a composite** (was MAIN-editor-only). The
+  composite's internal graph is its own world — the main canvas's connection-pipe
+  settle never touches it — so it now runs the same passes scoped to
+  `internalEditor`: `resolveTrigModes(internalEditor)` at the top of
+  `CompositeNode.data()` (Auto deg/rad trig inside a subgraph reads its unit, was
+  always rad), and `settleWildcardTypes(internalEditor)` on every live internal
+  topology change (internal-editor pipe, `_hydrating`-gated), once at the end of
+  `hydrate()`, and once after `createCompositeFromSelection` wires the ports.
+- **Composite shell OUTPUT ports now ADOPT** (were static `trueAnySocket`): each is
+  an `AdoptiveSocket` that takes the concrete type feeding its internal Output
+  marker (`adoptBoundaryTypes`), reverting to trueany when unwired — the mirror of
+  the shell INPUTS adopting from outside. Never drops an outer cable (D17). 4 new
+  cases in `composite.test.ts`.
+- **Isolate works inside the drill-in**: `isolate.ts` entry points route through
+  `getActiveEditor()` (the drill-in cards read the same global `isolateStore`); the
+  overlay keyboard gained `I` (toggle) + Esc precedence (menu → exit isolate →
+  drill up) + isolate-cleared-on-leave. `isolateActive.test.ts`.
+- **FLAGGED, not shipped** (SAFE-FALLBACK — a green partial over a broken whole):
+  (1) **Group/Cleanup/Autofit/Expand** in the drill-in — a REAL group needs the
+  group-drag reconcile pipe + `pushHistory`/`settleStandoffs`/GroupNode-component
+  all taught the active area; a half-wired group is a static frame, which the brief
+  said NOT to ship. (2) **Navigator + lasso** — entangled with main selection
+  singletons + a custom Canvas gesture, no unit-testable surface (vitest is
+  node-env). (3) **D2 toolbar reroute** — the repo's own 1.2-plan marks D2 an
+  author-present 2.0 item; left for live eyeballing.
+
 ### SESSION DIGEST (2026-07-10 — FC lambda/chart families + Chart Builder reach)
 Author brief: FC options for LAMBDA (view-as) and Chart (font scale) sockets;
 "think about upgrading" Chart Builder beyond the standard Chart node.

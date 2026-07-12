@@ -77,10 +77,14 @@ this backlog stays the per-item source of truth.
   floating breadcrumb strip); chrome on the active graph (NavMenu zoom/fit, a real drill-in
   minimap, lock); keyboard: copy/paste/delete/duplicate/add(A)/nudge/undo-redo/select-all(Ctrl+A)/
   Tidy(T); right-click node menu; propagation fixes (labels/FC/type-default); `areaPresets.ts`
-  shared so surfaces can't drift. STILL OPEN: (a) **Group/Cleanup/Autofit/Expand + Isolate**
-  in the drill-in — main-pipe subsystems (membership/push/collapse/standoffs, isolate z-order);
-  a group there would be a static frame, so folded not half-shipped; needs those subsystems
-  taught the active area. (b) **Navigator + lasso** in the drill-in — navigator list/select/jump/
+  shared so surfaces can't drift. **Isolate DONE 2026-07-12** (I toggles, Esc exits before
+  drill-up, cleared on leave; `isolate.ts` routes through `getActiveEditor` — the drill-in
+  cards read the same global `isolateStore`; `isolateActive.test.ts`). STILL OPEN:
+  (a) **Group/Cleanup/Autofit/Expand** in the drill-in — main-pipe subsystems
+  (membership/push/collapse/standoffs); a group there needs the group-drag reconcile pipe +
+  `pushHistory`/`settleStandoffs`/GroupNode-component taught the active area, so a real (not
+  static-frame) group is a bigger, DOM-verified lift — folded not half-shipped.
+  (b) **Navigator + lasso** in the drill-in — navigator list/select/jump/
   rename target main (route via a new active-selection hook); lasso is a custom Canvas rebuild.
   Both folded/hidden while drilled in for now. (c) **History routing — DONE 2026-07-07:**
   `pushHistory` now targets the ACTIVE graph's history (`getActiveHistory`), so an
@@ -147,17 +151,6 @@ this backlog stays the per-item source of truth.
   per port; no UI to flip exposure or edit a hidden port's baked default. Includes the
   pack-shell "many internal ports → one shell parameter" aliasing (the stats
   confidence-level example).
-- [ ] **trueany adoption inside the drill-in + composite OUTPUT ports** (D17 follow-up,
-  2026-07-09): `settleWildcardTypes` runs on the MAIN editor only, so trueany ports on
-  nodes INSIDE a composite never adopt (hollow rings stay hollow there); and a composite
-  shell's OUTPUT ports stay static trueany (they could adopt from the internal Output
-  marker's wiring, like the shell INPUTS already adopt from outside). Both need the
-  reconcile taught the drill-in editor stack — fold into the active-graph arc above.
-- [ ] **Auto trig angle-mode inside the drill-in** (2026-07-09): `resolveTrigModes` (the
-  Auto deg/rad unit read) runs on the MAIN editor only, so a `Math` trig node in Auto mode
-  inside a composite keeps the rad default. Same fold-into-active-graph fix as the trueany
-  gap above.
-
 ## Nodes / engine
 
 - [ ] **Rigorous multi-column input-socket label syntax** (author 2026-07-06) — a
