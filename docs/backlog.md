@@ -27,8 +27,6 @@ this backlog stays the per-item source of truth.
   copy, no FX, Simulation ≠ Monte Carlo — slides synced in `HelpDialogs.tsx`).
 - [ ] **F-2 remainder (deferred)** — a UI to edit per-slot doc-palette overrides (the store
   half exists: `paletteStore.setDocPalette` overrides round-trip) + document-level FC defaults.
-- [ ] **D-2 simulation inner display (deferred)** — the series renders inside the drill-in.
-- [ ] **Goal-seek solver parameters (deferred)** — max-iter / tolerance / bounds.
 - [ ] **Data Feed — post-1.1 widening only** (core + date-range/frequency/quick-picks +
   the **Live Market Data** demo seed all SHIPPED; Stooq dropped — bot-blocked). Still OPEN,
   none release-gating: a richer series/symbol PICKER (today a text field + quick-picks),
@@ -134,15 +132,6 @@ this backlog stays the per-item source of truth.
   is seed-based, not wired — you re-solve outside to use wiring. Distinguishing the two needs a
   drill-state signal in the compute layer (couples `data()` to `compositeEditorStore`); left simple
   on purpose. Revisit only if it reads as misleading.
-- [ ] **Solver parameters (advanced tier per heavy mode)** (author 2026-07-06, after
-  arm-and-run shipped): goal-seek **max iterations / tolerance / driver bounds**
-  (bounds both aid convergence and cap a runaway search — the honest analog of Excel
-  Solver constraints); Monte Carlo **sample count + seed** (seed = reproducible draws);
-  simulation step count is `simulationSteps` already, just surface it consistently.
-  Fits the FC-style advanced-tier chip-foot expander. Arm-and-run + the Solve button /
-  amber-ring-vs-green stale dot already shipped (`compositeStaleStore`).
-- [ ] **Monte Carlo run mode** — driver slot exists; blocked on bundle 12's
-  distribution representation for the sampling.
 - [ ] **Aliasing / hidden-port promotion UI** — the data model has `hidden`/`advanced`
   per port; no UI to flip exposure or edit a hidden port's baked default. Includes the
   pack-shell "many internal ports → one shell parameter" aliasing (the stats

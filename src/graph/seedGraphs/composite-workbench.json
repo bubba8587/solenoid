@@ -1,593 +1,1009 @@
 {
-  "v": 1,
-  "label": "Composite Workbench",
-  "order": 12,
-  "nodes": [
-    {
-      "id": "note0",
-      "type": "NoteNode",
-      "x": -40,
-      "y": -360,
-      "init": {
-        "label": "Subgraphs in one card",
-        "body": "# Composite workbench\nA **Composite** is a computing subgraph behind one typed card. Right-click a card (or its **Edit contents** button) to drill in: rewire, add nodes, add **+ Input / + Output** boundary ports, or **Unpack** it back onto the canvas. Select nodes and press **Ctrl+Shift+G** to make your own.",
-        "color": "violet",
-        "width": 430,
-        "height": 190
-      }
-    },
-    {
-      "id": "price",
-      "type": "NumberInputNode",
-      "x": -40,
-      "y": -80,
-      "init": {
-        "label": "Unit price",
-        "value": 250
-      }
-    },
-    {
-      "id": "qty",
-      "type": "NumberInputNode",
-      "x": -40,
-      "y": 80,
-      "init": {
-        "label": "Quantity",
-        "value": 4
-      }
-    },
-    {
-      "id": "lineComp",
-      "type": "CompositeNode",
-      "x": 288,
-      "y": -37,
-      "init": {
-        "label": "Line total (drill in!)",
-        "runMode": "single",
-        "inputPorts": [
-          {
-            "id": "p_price",
-            "label": "Price",
-            "exposure": "exposed",
-            "tier": "basic",
-            "internalNodeId": "m_price"
-          },
-          {
-            "id": "p_qty",
-            "label": "Qty",
-            "exposure": "exposed",
-            "tier": "basic",
-            "internalNodeId": "m_qty"
-          }
-        ],
-        "outputPorts": [
-          {
-            "id": "p_total",
-            "label": "Total",
-            "tier": "basic",
-            "internalNodeId": "m_total"
-          }
-        ],
-        "internal": {
-          "nodes": [
-            {
-              "id": "m_price",
-              "type": "CompositeInputNode",
-              "init": {
-                "label": "Price"
-              },
-              "x": 0,
-              "y": 0
-            },
-            {
-              "id": "m_qty",
-              "type": "CompositeInputNode",
-              "init": {
-                "label": "Qty"
-              },
-              "x": 0,
-              "y": 160
-            },
-            {
-              "id": "mul",
-              "type": "ArithmeticNode",
-              "init": {
-                "label": "Price × Qty",
-                "op": "mul"
-              },
-              "x": 260,
-              "y": 60
-            },
-            {
-              "id": "m_total",
-              "type": "CompositeOutputNode",
-              "init": {
-                "label": "Total"
-              },
-              "x": 540,
-              "y": 60
-            }
-          ],
-          "connections": [
-            {
-              "source": "m_price",
-              "sourceOutput": "value",
-              "target": "mul",
-              "targetInput": "a"
-            },
-            {
-              "source": "m_qty",
-              "sourceOutput": "value",
-              "target": "mul",
-              "targetInput": "b"
-            },
-            {
-              "source": "mul",
-              "sourceOutput": "result",
-              "target": "m_total",
-              "targetInput": "value"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "id": "totalDisp",
-      "type": "DisplayNode",
-      "x": 640,
-      "y": -42,
-      "init": {
-        "label": "Order total"
-      }
-    },
-    {
-      "id": "note1",
-      "type": "NoteNode",
-      "x": -40,
-      "y": 260,
-      "init": {
-        "label": "Simulation mode",
-        "body": "# Simulation mode\nThis container holds a REAL cable cycle (add deposit → grow 5% → back into add). In **Simulation** mode the loop runs as bounded feedback: one entry per step. Every other mode dead-ends the same loop as **#CIRC!**. Drill in to see (and rewire) the loop.",
-        "color": "amber",
-        "width": 430,
-        "height": 180
-      }
-    },
-    {
-      "id": "deposit",
-      "type": "NumberInputNode",
-      "x": -40,
-      "y": 468,
-      "init": {
-        "label": "Deposit / step",
-        "value": 100
-      }
-    },
-    {
-      "id": "simComp",
-      "type": "CompositeNode",
-      "x": 288,
-      "y": 448,
-      "init": {
-        "label": "Savings simulator",
-        "runMode": "simulation",
-        "simulationSteps": 10,
-        "inputPorts": [
-          {
-            "id": "p_dep",
-            "label": "Deposit / step",
-            "exposure": "exposed",
-            "tier": "basic",
-            "internalNodeId": "m_dep"
-          }
-        ],
-        "outputPorts": [
-          {
-            "id": "p_series",
-            "label": "Balance series",
-            "tier": "basic",
-            "internalNodeId": "m_series"
-          }
-        ],
-        "internal": {
-          "nodes": [
-            {
-              "id": "m_dep",
-              "type": "CompositeInputNode",
-              "init": {
-                "label": "Deposit / step"
-              },
-              "x": 0,
-              "y": 120
-            },
-            {
-              "id": "acc",
-              "type": "ArithmeticNode",
-              "init": {
-                "label": "Add deposit",
-                "op": "add"
-              },
-              "x": 260,
-              "y": 40
-            },
-            {
-              "id": "grow",
-              "type": "ArithmeticNode",
-              "init": {
-                "label": "Grow 5%",
-                "op": "mul"
-              },
-              "literals": {
-                "b": 1.05
-              },
-              "x": 520,
-              "y": 40
-            },
-            {
-              "id": "m_series",
-              "type": "CompositeOutputNode",
-              "init": {
-                "label": "Balance series"
-              },
-              "x": 780,
-              "y": 40
-            }
-          ],
-          "connections": [
-            {
-              "source": "m_dep",
-              "sourceOutput": "value",
-              "target": "acc",
-              "targetInput": "b"
-            },
-            {
-              "source": "grow",
-              "sourceOutput": "result",
-              "target": "acc",
-              "targetInput": "a"
-            },
-            {
-              "source": "acc",
-              "sourceOutput": "result",
-              "target": "grow",
-              "targetInput": "a"
-            },
-            {
-              "source": "grow",
-              "sourceOutput": "result",
-              "target": "m_series",
-              "targetInput": "value"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "id": "seriesDisp",
-      "type": "DisplayNode",
-      "x": 640,
-      "y": 443,
-      "init": {
-        "label": "Balance per step"
-      }
-    },
-    {
-      "id": "note2",
-      "type": "NoteNode",
-      "x": -40,
-      "y": 760,
-      "init": {
-        "label": "#CIRC! on the open canvas",
-        "body": "# The same loop, unboxed\nThese two cards feed each other OUTSIDE a Simulate container, so the pass dead-ends them with **#CIRC!** instead of recursing. Everything downstream shows the propagated error. Collapse them into a composite (Ctrl+Shift+G) and switch it to Simulation to resolve the loop.",
-        "color": "red",
-        "width": 430,
-        "height": 190
-      }
-    },
-    {
-      "id": "loopA",
-      "type": "ArithmeticNode",
-      "x": -40,
-      "y": 972,
-      "init": {
-        "label": "Feeds B",
-        "op": "add"
+ "v": 1,
+ "label": "Composite Workbench",
+ "order": 12,
+ "nodes": [
+  {
+   "id": "note0",
+   "type": "NoteNode",
+   "x": -40,
+   "y": -360,
+   "init": {
+    "label": "Subgraphs in one card",
+    "body": "# Composite workbench\nA **Composite** is a computing subgraph behind one typed card. Right-click a card (or its **Edit contents** button) to drill in: rewire, add nodes, add **+ Input / + Output** boundary ports, or **Unpack** it back onto the canvas. Select nodes and press **Ctrl+Shift+G** to make your own.",
+    "color": "violet",
+    "width": 430,
+    "height": 190
+   }
+  },
+  {
+   "id": "price",
+   "type": "NumberInputNode",
+   "x": -40,
+   "y": -80,
+   "init": {
+    "label": "Unit price",
+    "value": 250
+   }
+  },
+  {
+   "id": "qty",
+   "type": "NumberInputNode",
+   "x": -40,
+   "y": 80,
+   "init": {
+    "label": "Quantity",
+    "value": 4
+   }
+  },
+  {
+   "id": "lineComp",
+   "type": "CompositeNode",
+   "x": 288,
+   "y": -37,
+   "init": {
+    "label": "Line total (drill in!)",
+    "runMode": "single",
+    "inputPorts": [
+     {
+      "id": "p_price",
+      "label": "Price",
+      "exposure": "exposed",
+      "tier": "basic",
+      "internalNodeId": "m_price"
+     },
+     {
+      "id": "p_qty",
+      "label": "Qty",
+      "exposure": "exposed",
+      "tier": "basic",
+      "internalNodeId": "m_qty"
+     }
+    ],
+    "outputPorts": [
+     {
+      "id": "p_total",
+      "label": "Total",
+      "tier": "basic",
+      "internalNodeId": "m_total"
+     }
+    ],
+    "internal": {
+     "nodes": [
+      {
+       "id": "m_price",
+       "type": "CompositeInputNode",
+       "init": {
+        "label": "Price"
+       },
+       "x": 0,
+       "y": 0
       },
-      "literals": {
-        "b": 1
-      }
-    },
-    {
-      "id": "loopB",
-      "type": "ArithmeticNode",
-      "x": 318,
-      "y": 972,
-      "init": {
-        "label": "Feeds A",
-        "op": "add"
+      {
+       "id": "m_qty",
+       "type": "CompositeInputNode",
+       "init": {
+        "label": "Qty"
+       },
+       "x": 0,
+       "y": 160
       },
-      "literals": {
-        "b": 1
+      {
+       "id": "mul",
+       "type": "ArithmeticNode",
+       "init": {
+        "label": "Price \u00d7 Qty",
+        "op": "mul"
+       },
+       "x": 260,
+       "y": 60
+      },
+      {
+       "id": "m_total",
+       "type": "CompositeOutputNode",
+       "init": {
+        "label": "Total"
+       },
+       "x": 540,
+       "y": 60
       }
-    },
-    {
-      "id": "circDisp",
-      "type": "DisplayNode",
-      "x": 640,
-      "y": 997,
-      "init": {
-        "label": "Propagates the error"
+     ],
+     "connections": [
+      {
+       "source": "m_price",
+       "sourceOutput": "value",
+       "target": "mul",
+       "targetInput": "a"
+      },
+      {
+       "source": "m_qty",
+       "sourceOutput": "value",
+       "target": "mul",
+       "targetInput": "b"
+      },
+      {
+       "source": "mul",
+       "sourceOutput": "result",
+       "target": "m_total",
+       "targetInput": "value"
       }
-    },
-    {
-      "id": "note-gs",
-      "type": "NoteNode",
-      "x": -40,
-      "y": 1260,
-      "init": {
-        "label": "Goal-seek mode",
-        "body": "# Goal-seek mode\nThis composite computes **profit = units × $25 margin − $500 fixed**. The container is in **Goal seek** mode: it drives the **Units** input until **Profit** hits the target (0 = break-even) and shows the solved value, 20. Excel: Goal Seek.",
-        "color": "teal",
-        "width": 430,
-        "height": 180
-      }
-    },
-    {
-      "id": "gsComp",
-      "type": "CompositeNode",
-      "x": 288,
-      "y": 1443,
-      "init": {
-        "label": "Break-even finder",
-        "runMode": "goal-seek",
-        "goalSeek": {
-          "inputPortId": "p_units",
-          "outputPortId": "p_profit",
-          "target": 0
-        },
-        "inputPorts": [
-          {
-            "id": "p_units",
-            "label": "Units",
-            "exposure": "exposed",
-            "tier": "basic",
-            "internalNodeId": "m_units",
-            "default": 10
-          }
-        ],
-        "outputPorts": [
-          {
-            "id": "p_profit",
-            "label": "Profit",
-            "tier": "basic",
-            "internalNodeId": "m_profit"
-          }
-        ],
-        "internal": {
-          "nodes": [
-            {
-              "id": "m_units",
-              "type": "CompositeInputNode",
-              "init": {
-                "label": "Units"
-              },
-              "x": 0,
-              "y": 60
-            },
-            {
-              "id": "rev",
-              "type": "ArithmeticNode",
-              "init": {
-                "label": "× $25 margin",
-                "op": "mul"
-              },
-              "literals": {
-                "b": 25
-              },
-              "x": 260,
-              "y": 40
-            },
-            {
-              "id": "profit",
-              "type": "ArithmeticNode",
-              "init": {
-                "label": "− $500 fixed",
-                "op": "sub"
-              },
-              "literals": {
-                "b": 500
-              },
-              "x": 520,
-              "y": 40
-            },
-            {
-              "id": "m_profit",
-              "type": "CompositeOutputNode",
-              "init": {
-                "label": "Profit"
-              },
-              "x": 780,
-              "y": 40
-            }
-          ],
-          "connections": [
-            {
-              "source": "m_units",
-              "sourceOutput": "value",
-              "target": "rev",
-              "targetInput": "a"
-            },
-            {
-              "source": "rev",
-              "sourceOutput": "result",
-              "target": "profit",
-              "targetInput": "a"
-            },
-            {
-              "source": "profit",
-              "sourceOutput": "result",
-              "target": "m_profit",
-              "targetInput": "value"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "id": "gsDisp",
-      "type": "DisplayNode",
-      "x": 640,
-      "y": 1438,
-      "init": {
-        "label": "Profit at solution"
-      }
-    },
-    {
-      "id": "note-fv",
-      "type": "NoteNode",
-      "x": -40,
-      "y": 1860,
-      "init": {
-        "label": "Goal-seek a savings plan",
-        "body": "Solve asks: what monthly deposit reaches a **$500k** nest egg in 30 years at 7%? Drill in to change the rate or horizon.",
-        "width": 300,
-        "height": 140
-      }
-    },
-    {
-      "id": "fvComp",
-      "type": "CompositeNode",
-      "x": 288,
-      "y": 1860,
-      "init": {
-        "label": "Retirement deposit finder",
-        "runMode": "goal-seek",
-        "goalSeek": {
-          "inputPortId": "p_pmt",
-          "outputPortId": "p_fv",
-          "target": 500000
-        },
-        "inputPorts": [
-          {
-            "id": "p_pmt",
-            "label": "Monthly deposit",
-            "exposure": "exposed",
-            "tier": "basic",
-            "internalNodeId": "m_pmt",
-            "default": 300
-          }
-        ],
-        "outputPorts": [
-          {
-            "id": "p_fv",
-            "label": "Nest egg",
-            "tier": "basic",
-            "internalNodeId": "m_fv"
-          }
-        ],
-        "internal": {
-          "nodes": [
-            {
-              "id": "m_pmt",
-              "type": "CompositeInputNode",
-              "init": {
-                "label": "Monthly deposit"
-              },
-              "x": 0,
-              "y": 40
-            },
-            {
-              "id": "fv",
-              "type": "ExpressionNode",
-              "init": {
-                "label": "30 yrs at 7% (monthly)",
-                "expr": "pmt * ((1 + 0.07/12)^360 - 1) / (0.07/12)"
-              },
-              "x": 300,
-              "y": 20
-            },
-            {
-              "id": "m_fv",
-              "type": "CompositeOutputNode",
-              "init": {
-                "label": "Nest egg"
-              },
-              "x": 640,
-              "y": 40
-            }
-          ],
-          "connections": [
-            {
-              "source": "m_pmt",
-              "sourceOutput": "value",
-              "target": "fv",
-              "targetInput": "pmt"
-            },
-            {
-              "source": "fv",
-              "sourceOutput": "result",
-              "target": "m_fv",
-              "targetInput": "value"
-            }
-          ]
-        }
-      }
+     ]
     }
-  ],
-  "connections": [
-    {
-      "source": "price",
-      "sourceOutput": "value",
-      "target": "lineComp",
-      "targetInput": "p_price"
-    },
-    {
-      "source": "qty",
-      "sourceOutput": "value",
-      "target": "lineComp",
-      "targetInput": "p_qty"
-    },
-    {
-      "source": "lineComp",
-      "sourceOutput": "p_total",
-      "target": "totalDisp",
-      "targetInput": "in"
-    },
-    {
-      "source": "deposit",
-      "sourceOutput": "value",
-      "target": "simComp",
-      "targetInput": "p_dep"
-    },
-    {
-      "source": "simComp",
-      "sourceOutput": "p_series",
-      "target": "seriesDisp",
-      "targetInput": "in"
-    },
-    {
-      "source": "loopA",
-      "sourceOutput": "result",
-      "target": "loopB",
-      "targetInput": "a"
-    },
-    {
-      "source": "loopB",
-      "sourceOutput": "result",
-      "target": "loopA",
-      "targetInput": "a"
-    },
-    {
-      "source": "loopB",
-      "sourceOutput": "result",
-      "target": "circDisp",
-      "targetInput": "in"
-    },
-    {
-      "source": "gsComp",
-      "sourceOutput": "p_profit",
-      "target": "gsDisp",
-      "targetInput": "in"
+   }
+  },
+  {
+   "id": "totalDisp",
+   "type": "DisplayNode",
+   "x": 640,
+   "y": -42,
+   "init": {
+    "label": "Order total"
+   }
+  },
+  {
+   "id": "note1",
+   "type": "NoteNode",
+   "x": -40,
+   "y": 260,
+   "init": {
+    "label": "Simulation mode",
+    "body": "# Simulation mode\nThis container holds a REAL cable cycle (add deposit \u2192 grow 5% \u2192 back into add). In **Simulation** mode the loop runs as bounded feedback: one entry per step. Every other mode dead-ends the same loop as **#CIRC!**. Drill in to see (and rewire) the loop.",
+    "color": "amber",
+    "width": 430,
+    "height": 180
+   }
+  },
+  {
+   "id": "deposit",
+   "type": "NumberInputNode",
+   "x": -40,
+   "y": 468,
+   "init": {
+    "label": "Deposit / step",
+    "value": 100
+   }
+  },
+  {
+   "id": "simComp",
+   "type": "CompositeNode",
+   "x": 288,
+   "y": 448,
+   "init": {
+    "label": "Savings simulator",
+    "runMode": "simulation",
+    "simulationSteps": 10,
+    "inputPorts": [
+     {
+      "id": "p_dep",
+      "label": "Deposit / step",
+      "exposure": "exposed",
+      "tier": "basic",
+      "internalNodeId": "m_dep"
+     }
+    ],
+    "outputPorts": [
+     {
+      "id": "p_series",
+      "label": "Balance series",
+      "tier": "basic",
+      "internalNodeId": "m_series"
+     }
+    ],
+    "internal": {
+     "nodes": [
+      {
+       "id": "m_dep",
+       "type": "CompositeInputNode",
+       "init": {
+        "label": "Deposit / step"
+       },
+       "x": 0,
+       "y": 120
+      },
+      {
+       "id": "acc",
+       "type": "ArithmeticNode",
+       "init": {
+        "label": "Add deposit",
+        "op": "add"
+       },
+       "x": 260,
+       "y": 40
+      },
+      {
+       "id": "grow",
+       "type": "ArithmeticNode",
+       "init": {
+        "label": "Grow 5%",
+        "op": "mul"
+       },
+       "literals": {
+        "b": 1.05
+       },
+       "x": 520,
+       "y": 40
+      },
+      {
+       "id": "m_series",
+       "type": "CompositeOutputNode",
+       "init": {
+        "label": "Balance series"
+       },
+       "x": 780,
+       "y": 40
+      }
+     ],
+     "connections": [
+      {
+       "source": "m_dep",
+       "sourceOutput": "value",
+       "target": "acc",
+       "targetInput": "b"
+      },
+      {
+       "source": "grow",
+       "sourceOutput": "result",
+       "target": "acc",
+       "targetInput": "a"
+      },
+      {
+       "source": "acc",
+       "sourceOutput": "result",
+       "target": "grow",
+       "targetInput": "a"
+      },
+      {
+       "source": "grow",
+       "sourceOutput": "result",
+       "target": "m_series",
+       "targetInput": "value"
+      }
+     ]
     }
-  ]
+   }
+  },
+  {
+   "id": "seriesDisp",
+   "type": "DisplayNode",
+   "x": 640,
+   "y": 443,
+   "init": {
+    "label": "Balance per step"
+   }
+  },
+  {
+   "id": "note2",
+   "type": "NoteNode",
+   "x": -40,
+   "y": 760,
+   "init": {
+    "label": "#CIRC! on the open canvas",
+    "body": "# The same loop, unboxed\nThese two cards feed each other OUTSIDE a Simulate container, so the pass dead-ends them with **#CIRC!** instead of recursing. Everything downstream shows the propagated error. Collapse them into a composite (Ctrl+Shift+G) and switch it to Simulation to resolve the loop.",
+    "color": "red",
+    "width": 430,
+    "height": 190
+   }
+  },
+  {
+   "id": "loopA",
+   "type": "ArithmeticNode",
+   "x": -40,
+   "y": 972,
+   "init": {
+    "label": "Feeds B",
+    "op": "add"
+   },
+   "literals": {
+    "b": 1
+   }
+  },
+  {
+   "id": "loopB",
+   "type": "ArithmeticNode",
+   "x": 318,
+   "y": 972,
+   "init": {
+    "label": "Feeds A",
+    "op": "add"
+   },
+   "literals": {
+    "b": 1
+   }
+  },
+  {
+   "id": "circDisp",
+   "type": "DisplayNode",
+   "x": 640,
+   "y": 997,
+   "init": {
+    "label": "Propagates the error"
+   }
+  },
+  {
+   "id": "note-gs",
+   "type": "NoteNode",
+   "x": -40,
+   "y": 1260,
+   "init": {
+    "label": "Goal-seek mode",
+    "body": "# Goal-seek mode\nThis composite computes **profit = units \u00d7 $25 margin \u2212 $500 fixed**. The container is in **Goal seek** mode: it drives the **Units** input until **Profit** hits the target (0 = break-even) and shows the solved value, 20. Excel: Goal Seek.",
+    "color": "teal",
+    "width": 430,
+    "height": 180
+   }
+  },
+  {
+   "id": "gsComp",
+   "type": "CompositeNode",
+   "x": 288,
+   "y": 1443,
+   "init": {
+    "label": "Break-even finder",
+    "runMode": "goal-seek",
+    "goalSeek": {
+     "inputPortId": "p_units",
+     "outputPortId": "p_profit",
+     "target": 0
+    },
+    "inputPorts": [
+     {
+      "id": "p_units",
+      "label": "Units",
+      "exposure": "exposed",
+      "tier": "basic",
+      "internalNodeId": "m_units",
+      "default": 10
+     }
+    ],
+    "outputPorts": [
+     {
+      "id": "p_profit",
+      "label": "Profit",
+      "tier": "basic",
+      "internalNodeId": "m_profit"
+     }
+    ],
+    "internal": {
+     "nodes": [
+      {
+       "id": "m_units",
+       "type": "CompositeInputNode",
+       "init": {
+        "label": "Units"
+       },
+       "x": 0,
+       "y": 60
+      },
+      {
+       "id": "rev",
+       "type": "ArithmeticNode",
+       "init": {
+        "label": "\u00d7 $25 margin",
+        "op": "mul"
+       },
+       "literals": {
+        "b": 25
+       },
+       "x": 260,
+       "y": 40
+      },
+      {
+       "id": "profit",
+       "type": "ArithmeticNode",
+       "init": {
+        "label": "\u2212 $500 fixed",
+        "op": "sub"
+       },
+       "literals": {
+        "b": 500
+       },
+       "x": 520,
+       "y": 40
+      },
+      {
+       "id": "m_profit",
+       "type": "CompositeOutputNode",
+       "init": {
+        "label": "Profit"
+       },
+       "x": 780,
+       "y": 40
+      }
+     ],
+     "connections": [
+      {
+       "source": "m_units",
+       "sourceOutput": "value",
+       "target": "rev",
+       "targetInput": "a"
+      },
+      {
+       "source": "rev",
+       "sourceOutput": "result",
+       "target": "profit",
+       "targetInput": "a"
+      },
+      {
+       "source": "profit",
+       "sourceOutput": "result",
+       "target": "m_profit",
+       "targetInput": "value"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "gsDisp",
+   "type": "DisplayNode",
+   "x": 640,
+   "y": 1438,
+   "init": {
+    "label": "Profit at solution"
+   }
+  },
+  {
+   "id": "note-fv",
+   "type": "NoteNode",
+   "x": -40,
+   "y": 1860,
+   "init": {
+    "label": "Goal-seek a savings plan",
+    "body": "Solve asks: what monthly deposit reaches a **$500k** nest egg in 30 years at 7%? Drill in to change the rate or horizon.",
+    "width": 300,
+    "height": 140
+   }
+  },
+  {
+   "id": "fvComp",
+   "type": "CompositeNode",
+   "x": 288,
+   "y": 1860,
+   "init": {
+    "label": "Retirement deposit finder",
+    "runMode": "goal-seek",
+    "goalSeek": {
+     "inputPortId": "p_pmt",
+     "outputPortId": "p_fv",
+     "target": 500000
+    },
+    "inputPorts": [
+     {
+      "id": "p_pmt",
+      "label": "Monthly deposit",
+      "exposure": "exposed",
+      "tier": "basic",
+      "internalNodeId": "m_pmt",
+      "default": 300
+     }
+    ],
+    "outputPorts": [
+     {
+      "id": "p_fv",
+      "label": "Nest egg",
+      "tier": "basic",
+      "internalNodeId": "m_fv"
+     }
+    ],
+    "internal": {
+     "nodes": [
+      {
+       "id": "m_pmt",
+       "type": "CompositeInputNode",
+       "init": {
+        "label": "Monthly deposit"
+       },
+       "x": 0,
+       "y": 40
+      },
+      {
+       "id": "fv",
+       "type": "ExpressionNode",
+       "init": {
+        "label": "30 yrs at 7% (monthly)",
+        "expr": "pmt * ((1 + 0.07/12)^360 - 1) / (0.07/12)"
+       },
+       "x": 300,
+       "y": 20
+      },
+      {
+       "id": "m_fv",
+       "type": "CompositeOutputNode",
+       "init": {
+        "label": "Nest egg"
+       },
+       "x": 640,
+       "y": 40
+      }
+     ],
+     "connections": [
+      {
+       "source": "m_pmt",
+       "sourceOutput": "value",
+       "target": "fv",
+       "targetInput": "pmt"
+      },
+      {
+       "source": "fv",
+       "sourceOutput": "result",
+       "target": "m_fv",
+       "targetInput": "value"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "note-mc",
+   "type": "NoteNode",
+   "x": -40,
+   "y": 2240,
+   "init": {
+    "label": "Monte Carlo \u2014 profit at risk",
+    "body": "Each input carries a **\u00b1 error bar**. Solve runs the model hundreds of times, sampling the spreads, and reports the profit as **mean \u00b1 sd** with a histogram. Drill in to set each error bar.",
+    "width": 300,
+    "height": 150
+   }
+  },
+  {
+   "id": "mcComp",
+   "type": "CompositeNode",
+   "x": 288,
+   "y": 2240,
+   "init": {
+    "label": "Profit at risk",
+    "runMode": "montecarlo",
+    "monteCarlo": {
+     "samples": 500,
+     "seed": 1
+    },
+    "inputPorts": [
+     {
+      "id": "p_rev",
+      "label": "Revenue",
+      "exposure": "exposed",
+      "tier": "basic",
+      "internalNodeId": "m_rev"
+     },
+     {
+      "id": "p_cost",
+      "label": "Cost",
+      "exposure": "exposed",
+      "tier": "basic",
+      "internalNodeId": "m_cost"
+     }
+    ],
+    "outputPorts": [
+     {
+      "id": "p_profit",
+      "label": "Profit",
+      "tier": "basic",
+      "internalNodeId": "m_profit"
+     }
+    ],
+    "internal": {
+     "nodes": [
+      {
+       "id": "m_rev",
+       "type": "CompositeInputNode",
+       "init": {
+        "label": "Revenue",
+        "defaultValue": 1000,
+        "uncertainty": 120
+       },
+       "x": 0,
+       "y": 0
+      },
+      {
+       "id": "m_cost",
+       "type": "CompositeInputNode",
+       "init": {
+        "label": "Cost",
+        "defaultValue": 600,
+        "uncertainty": 80,
+        "distribution": "normal"
+       },
+       "x": 0,
+       "y": 160
+      },
+      {
+       "id": "mc_sub",
+       "type": "ArithmeticNode",
+       "init": {
+        "label": "Revenue \u2212 Cost",
+        "op": "sub"
+       },
+       "x": 260,
+       "y": 60
+      },
+      {
+       "id": "m_profit",
+       "type": "CompositeOutputNode",
+       "init": {
+        "label": "Profit"
+       },
+       "x": 540,
+       "y": 60
+      }
+     ],
+     "connections": [
+      {
+       "source": "m_rev",
+       "sourceOutput": "value",
+       "target": "mc_sub",
+       "targetInput": "a"
+      },
+      {
+       "source": "m_cost",
+       "sourceOutput": "value",
+       "target": "mc_sub",
+       "targetInput": "b"
+      },
+      {
+       "source": "mc_sub",
+       "sourceOutput": "result",
+       "target": "m_profit",
+       "targetInput": "value"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "mcDisp",
+   "type": "DisplayNode",
+   "x": 640,
+   "y": 2245,
+   "init": {
+    "label": "Profit (mean \u00b1 sd)"
+   }
+  },
+  {
+   "id": "note-sc",
+   "type": "NoteNode",
+   "x": -40,
+   "y": 2640,
+   "init": {
+    "label": "Scenarios \u2014 revenue cases",
+    "body": "Name a few input sets (Base / Bull / Bear); Solve runs each and lays the results **side by side** as a list. A blank cell falls back to the wired value.",
+    "width": 300,
+    "height": 140
+   }
+  },
+  {
+   "id": "scComp",
+   "type": "CompositeNode",
+   "x": 288,
+   "y": 2640,
+   "init": {
+    "label": "Revenue scenarios",
+    "runMode": "scenarios",
+    "scenarios": [
+     {
+      "id": "s_base",
+      "name": "Base",
+      "overrides": {
+       "p_units": 100,
+       "p_price": 9.5
+      }
+     },
+     {
+      "id": "s_bull",
+      "name": "Bull",
+      "overrides": {
+       "p_units": 140,
+       "p_price": 11
+      }
+     },
+     {
+      "id": "s_bear",
+      "name": "Bear",
+      "overrides": {
+       "p_units": 70,
+       "p_price": 8
+      }
+     }
+    ],
+    "inputPorts": [
+     {
+      "id": "p_units",
+      "label": "Units",
+      "exposure": "exposed",
+      "tier": "basic",
+      "internalNodeId": "m_units"
+     },
+     {
+      "id": "p_price",
+      "label": "Price",
+      "exposure": "exposed",
+      "tier": "basic",
+      "internalNodeId": "m_uprice"
+     }
+    ],
+    "outputPorts": [
+     {
+      "id": "p_rev2",
+      "label": "Revenue",
+      "tier": "basic",
+      "internalNodeId": "m_rev2"
+     }
+    ],
+    "internal": {
+     "nodes": [
+      {
+       "id": "m_units",
+       "type": "CompositeInputNode",
+       "init": {
+        "label": "Units",
+        "defaultValue": 100
+       },
+       "x": 0,
+       "y": 0
+      },
+      {
+       "id": "m_uprice",
+       "type": "CompositeInputNode",
+       "init": {
+        "label": "Price",
+        "defaultValue": 9.5
+       },
+       "x": 0,
+       "y": 160
+      },
+      {
+       "id": "sc_mul",
+       "type": "ArithmeticNode",
+       "init": {
+        "label": "Units \u00d7 Price",
+        "op": "mul"
+       },
+       "x": 260,
+       "y": 60
+      },
+      {
+       "id": "m_rev2",
+       "type": "CompositeOutputNode",
+       "init": {
+        "label": "Revenue"
+       },
+       "x": 540,
+       "y": 60
+      }
+     ],
+     "connections": [
+      {
+       "source": "m_units",
+       "sourceOutput": "value",
+       "target": "sc_mul",
+       "targetInput": "a"
+      },
+      {
+       "source": "m_uprice",
+       "sourceOutput": "value",
+       "target": "sc_mul",
+       "targetInput": "b"
+      },
+      {
+       "source": "sc_mul",
+       "sourceOutput": "result",
+       "target": "m_rev2",
+       "targetInput": "value"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "scDisp",
+   "type": "DisplayNode",
+   "x": 640,
+   "y": 2645,
+   "init": {
+    "label": "Revenue per scenario"
+   }
+  },
+  {
+   "id": "note-dt",
+   "type": "NoteNode",
+   "x": -40,
+   "y": 3040,
+   "init": {
+    "label": "Data table \u2014 a what-if grid",
+    "body": "Sweep one or more inputs over a list of values; Solve computes the **full grid** (Excel's one- and two-variable Data Table, generalized to N axes). Here: Price {8,10,12} \u00d7 Qty {100,200}.",
+    "width": 300,
+    "height": 150
+   }
+  },
+  {
+   "id": "dtComp",
+   "type": "CompositeNode",
+   "x": 288,
+   "y": 3040,
+   "init": {
+    "label": "Line total grid",
+    "runMode": "data-table",
+    "dataTableValues": {
+     "p_dprice": [
+      8,
+      10,
+      12
+     ],
+     "p_dqty": [
+      100,
+      200
+     ]
+    },
+    "inputPorts": [
+     {
+      "id": "p_dprice",
+      "label": "Price",
+      "exposure": "exposed",
+      "tier": "basic",
+      "internalNodeId": "m_dprice"
+     },
+     {
+      "id": "p_dqty",
+      "label": "Qty",
+      "exposure": "exposed",
+      "tier": "basic",
+      "internalNodeId": "m_dqty"
+     }
+    ],
+    "outputPorts": [
+     {
+      "id": "p_dtot",
+      "label": "Total",
+      "tier": "basic",
+      "internalNodeId": "m_dtot"
+     }
+    ],
+    "internal": {
+     "nodes": [
+      {
+       "id": "m_dprice",
+       "type": "CompositeInputNode",
+       "init": {
+        "label": "Price",
+        "defaultValue": 10
+       },
+       "x": 0,
+       "y": 0
+      },
+      {
+       "id": "m_dqty",
+       "type": "CompositeInputNode",
+       "init": {
+        "label": "Qty",
+        "defaultValue": 100
+       },
+       "x": 0,
+       "y": 160
+      },
+      {
+       "id": "dt_mul",
+       "type": "ArithmeticNode",
+       "init": {
+        "label": "Price \u00d7 Qty",
+        "op": "mul"
+       },
+       "x": 260,
+       "y": 60
+      },
+      {
+       "id": "m_dtot",
+       "type": "CompositeOutputNode",
+       "init": {
+        "label": "Total"
+       },
+       "x": 540,
+       "y": 60
+      }
+     ],
+     "connections": [
+      {
+       "source": "m_dprice",
+       "sourceOutput": "value",
+       "target": "dt_mul",
+       "targetInput": "a"
+      },
+      {
+       "source": "m_dqty",
+       "sourceOutput": "value",
+       "target": "dt_mul",
+       "targetInput": "b"
+      },
+      {
+       "source": "dt_mul",
+       "sourceOutput": "result",
+       "target": "m_dtot",
+       "targetInput": "value"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "dtDisp",
+   "type": "DisplayNode",
+   "x": 640,
+   "y": 3045,
+   "init": {
+    "label": "Totals grid (row-major)"
+   }
+  }
+ ],
+ "connections": [
+  {
+   "source": "price",
+   "sourceOutput": "value",
+   "target": "lineComp",
+   "targetInput": "p_price"
+  },
+  {
+   "source": "qty",
+   "sourceOutput": "value",
+   "target": "lineComp",
+   "targetInput": "p_qty"
+  },
+  {
+   "source": "lineComp",
+   "sourceOutput": "p_total",
+   "target": "totalDisp",
+   "targetInput": "in"
+  },
+  {
+   "source": "deposit",
+   "sourceOutput": "value",
+   "target": "simComp",
+   "targetInput": "p_dep"
+  },
+  {
+   "source": "simComp",
+   "sourceOutput": "p_series",
+   "target": "seriesDisp",
+   "targetInput": "in"
+  },
+  {
+   "source": "loopA",
+   "sourceOutput": "result",
+   "target": "loopB",
+   "targetInput": "a"
+  },
+  {
+   "source": "loopB",
+   "sourceOutput": "result",
+   "target": "loopA",
+   "targetInput": "a"
+  },
+  {
+   "source": "loopB",
+   "sourceOutput": "result",
+   "target": "circDisp",
+   "targetInput": "in"
+  },
+  {
+   "source": "gsComp",
+   "sourceOutput": "p_profit",
+   "target": "gsDisp",
+   "targetInput": "in"
+  },
+  {
+   "source": "mcComp",
+   "sourceOutput": "p_profit",
+   "target": "mcDisp",
+   "targetInput": "in"
+  },
+  {
+   "source": "scComp",
+   "sourceOutput": "p_rev2",
+   "target": "scDisp",
+   "targetInput": "in"
+  },
+  {
+   "source": "dtComp",
+   "sourceOutput": "p_dtot",
+   "target": "dtDisp",
+   "targetInput": "in"
+  }
+ ]
 }
