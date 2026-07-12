@@ -2,24 +2,36 @@ import { ClassicPreset } from "rete";
 import { colord } from "colord";
 import { numberSocket } from "../sockets";
 import { numIn, strOut, logicalOut } from "./shared";
+import { fcUnitToUnit } from "../unitBridge";
+import { fromUnit, type UnitCell } from "../unitValue";
 
 // ─── Number Input ────────────────────────────────────────────────────────────
 
 export class NumberInputNode extends ClassicPreset.Node {
   label: string;
   value: number;
+  /** Optional dimensional unit the literal is expressed IN (an FC unit id — "m",
+   *  "km", "usd", …). When set to a real dimensional unit the node emits a base-SI
+   *  `UnitCell` so the value participates in the unit algebra downstream; `"none"`
+   *  (the default) emits a bare number, unchanged. */
+  unit: string;
   width = 180;
   height = 100;
 
-  constructor(init?: { label?: string; value?: number }) {
+  constructor(init?: { label?: string; value?: number; unit?: string }) {
     super("NumberInput");
     this.label = init?.label ?? "Number Input";
     this.value = init?.value ?? 0;
+    this.unit = init?.unit ?? "none";
     this.addOutput("value", new ClassicPreset.Output(numberSocket));
   }
 
-  data() {
-    return { value: this.value };
+  data(): { value: number | UnitCell } {
+    const u = this.unit && this.unit !== "none" ? fcUnitToUnit(this.unit) : null;
+    // `fromUnit` normalises the typed magnitude to base SI (consuming any affine
+    // offset), tagging it with the unit's dimension — or collapsing to a bare
+    // number when the unit is dimensionless.
+    return { value: u ? fromUnit(this.value, u) : this.value };
   }
 }
 

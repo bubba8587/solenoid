@@ -9,12 +9,19 @@ import { getOwningEditor } from "../activeGraph";
 import { SolenoidSocket, isDateType, isWildcardType, type SocketDataType } from "../sockets";
 import { formatDateSerial, DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT } from "../nodes/date";
 import { isSolError, type SolError } from "../errorValue";
+import { isUnitCell, formatUnitCell, type UnitCell } from "../unitValue";
+import { fcUnitToUnit } from "../unitBridge";
+import { dimEqual } from "../dimension";
+import { formatScalar } from "./format";
+import type { FormatAnnotation } from "../formatAnnotationStore";
 
 // Lists may now carry `null` (missing) and per-cell `SolError` as distinct kinds
 // (the relaxed array-semantics model — see dev-notes "Array-semantics policy
 // DECISIONS"). A scalar is still number | string | SolError | null.
 export type DisplayValue =
   | number
+  | UnitCell
+  | (number | UnitCell | null | SolError)[]
   | (number | null | SolError)[]
   | string
   | (string | null)[]
@@ -31,13 +38,51 @@ export type DisplayValue =
 /** Format ONE element of a list for the value box / clipboard: a missing cell
  *  renders literally as `null`, a logical as `TRUE`/`FALSE` (Excel form), a
  *  per-cell error as its `#CODE!`, text as-is, a number via the caller's scalar
- *  formatter. */
-export function formatListCell(v: number | string | boolean | null | SolError, fmtNum: (n: number) => string): string {
+ *  formatter, a dimensioned cell as "magnitude unit" (`5 m/s`). */
+export function formatListCell(v: number | string | boolean | null | SolError | UnitCell, fmtNum: (n: number) => string): string {
   if (v === null) return "null";
+  if (isUnitCell(v)) return formatUnitCell(v, fmtNum);
   if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
   if (isSolError(v)) return v.code;
   if (typeof v === "string") return v;
   return fmtNum(v);
+}
+
+// ─── Unit cells for display (Bundle 05: FC A4) ───────────────────────────────────
+// A value carrying a real dimension (a `UnitCell`, stored base-SI + dim) has to be
+// unwrapped before the number/string branches of ValueDisplay. Two cases:
+//   • an FC is docked → unwrap to the magnitude in the FC's DISPLAY unit (base → that
+//     unit) so the FC formats it and appends its own label (5000 m + km FC → "5 km");
+//   • no FC → render "magnitude derived-symbol" here (5000 ÷ 1000 stays base; a
+//     Convert/derived value shows "5 m/s"), a plain string the text branch draws.
+
+/** The magnitude of a dimensioned cell in the display unit of `ann` when they're
+ *  commensurable, else the raw base-SI magnitude. */
+function displayMagnitude(cell: UnitCell, ann: FormatAnnotation | undefined): number {
+  if (ann && ann.unit && ann.unit !== "none" && ann.unit !== "custom") {
+    const u = fcUnitToUnit(ann.unit);
+    if (u && dimEqual(u.dim, cell.dim)) return (cell.value - (u.offset ?? 0)) / u.scale;
+  }
+  return cell.value;
+}
+
+/** Replace any `UnitCell` in a display value with its render form (see above). A
+ *  no-op when nothing is dimensioned — the overwhelming common case. */
+export function unwrapUnitCells(value: DisplayValue, ann: FormatAnnotation | undefined): DisplayValue {
+  if (isUnitCell(value)) {
+    return ann ? displayMagnitude(value, ann) : formatUnitCell(value, formatScalar);
+  }
+  if (Array.isArray(value) && value.some((c) => isUnitCell(c))) {
+    if (ann) {
+      // FC docked: unwrap every cell to its display magnitude, other kinds intact.
+      return (value as (number | UnitCell | null | SolError)[]).map((c) =>
+        isUnitCell(c) ? displayMagnitude(c, ann) : c) as DisplayValue;
+    }
+    // No FC: render each cell to its display string (units shown per cell).
+    return (value as (number | UnitCell | boolean | string | null | SolError)[])
+      .map((c) => formatListCell(c, formatScalar)) as unknown as DisplayValue;
+  }
+  return value;
 }
 
 /** Format a date serial for a value box: date only, or date + time when the
