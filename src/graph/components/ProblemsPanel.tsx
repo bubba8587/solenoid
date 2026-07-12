@@ -92,7 +92,7 @@ export function ProblemsPanel() {
             type="button"
             className="solenoid-problem__fix"
             title={`Insert a Clamp node on "${e.suggestion.label}" to keep it in range`}
-            onClick={(ev) => { ev.stopPropagation(); void insertClampBefore(e.nodeId, e.suggestion!.socketKey); }}
+            onClick={(ev) => { ev.stopPropagation(); void insertClampBefore(e.nodeId, e.suggestion!.socketKey, { min: e.suggestion!.min, max: e.suggestion!.max }); }}
           >
             + Clamp
           </button>
