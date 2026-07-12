@@ -22,6 +22,7 @@ import { pairIdsFromKeys } from "./logic";
 import type { PivotSpec, FilterCondConfig } from "../frameVerbs";
 import { runFrameUnary, runFrameJoin, runFrameAppend, readFrame, collectPreview, dropFrameRef, isFrameRef, frameBackend, materialize, flushRef, type FrameInput, type FrameRef } from "../frameBackend";
 import type { CubeValue, CubeCell } from "../frame";
+import { tagDim, type UnitCell } from "../unitValue";
 
 // A verb that may throw a tagged SolError (a #REF! for a bad column) must NOT let
 // it escape data(): installErrorGuards' fromThrown flattens a thrown SolError to a
@@ -1216,7 +1217,7 @@ export function getColumnOutput(readAs: GetColumnReadAs) {
 }
 
 type GetColumnValues =
-  | (number | null | SolError)[]
+  | (number | UnitCell | null | SolError)[]
   | string[]
   | (boolean | null | SolError)[]
   | SolError
@@ -1225,7 +1226,7 @@ type GetColumnValues =
 export class GetColumnNode extends ClassicPreset.Node {
   label: string;
   readAs: GetColumnReadAs;
-  cachedResult: (number | null | SolError)[] | string[] | (boolean | null | SolError)[] | null = null;
+  cachedResult: (number | UnitCell | null | SolError)[] | string[] | (boolean | null | SolError)[] | null = null;
   stringLiterals: Record<string, string> = { name: "" };
   width = 200; height = 205;
 
@@ -1292,13 +1293,19 @@ export class GetColumnNode extends ClassicPreset.Node {
     // — reads as Date into serials, and a numeric-text column reads as Number).
     // Anything unparseable → NaN (→ N/A), the same as genuinely bad data. This is
     // element-wise Cast(date) / Cast(number) baked into the read-as choice.
+    // A number column LOCKED to a dimensional unit (Bundle 05: FC A4) tags each
+    // numeric cell as a base-SI UnitCell, so the unit rides OUT of the frame into
+    // the list — Aggregate/arithmetic downstream carry it. Date reads never tag
+    // (a serial isn't a physical quantity).
+    const colUnit = this.readAs === "number" && col.unit ? col.unit : undefined;
     const out = col.values.map((v) => {
       if (v === null) return null; // a blank cell is MISSING — flows as null (aggregators skip it), not NaN
-      if (typeof v === "number") return v;
+      if (typeof v === "number") return colUnit ? tagDim(v, colUnit.dim) : v;
       if (typeof v === "boolean") return v ? 1 : 0; // a logical column coerces to 1/0
       if (isSolError(v)) return v; // a per-cell error propagates (array-semantics policy)
       if (typeof v === "string") {
-        return this.readAs === "date" ? parseDateToSerial(v) : Number(v.trim());
+        const n = this.readAs === "date" ? parseDateToSerial(v) : Number(v.trim());
+        return colUnit && Number.isFinite(n) ? tagDim(n, colUnit.dim) : n;
       }
       return NaN;
     });
