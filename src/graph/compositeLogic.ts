@@ -125,6 +125,10 @@ export async function createCompositeFromSelection(editor: Editor, area: Area): 
       );
     }
 
+    // Boundary ports now all exist — derive the internal wildcard types and let
+    // each output port adopt the concrete type feeding its marker (the per-cable
+    // pipe settle above ran before the ports were registered, so it couldn't).
+    composite.settleInternalTypes();
     await editor.addNode(composite as SolenoidNode);
     await area.translate(composite.id, { x: minX, y: minY });
   } finally {
