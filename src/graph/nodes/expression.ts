@@ -1,8 +1,11 @@
 import { ClassicPreset } from "rete";
 import { anyListIn, resultOut, type ResultType } from "./shared";
-import { extractVariables, compileEvaluator, type ExprEvaluator } from "../excelFormula";
+import { extractVariables, compileEvaluator, parseFormula, type ExprEvaluator, type Ast } from "../excelFormula";
 import { fxErrorToSol } from "../excelFunctions";
 import { isSolError, solError } from "../errorValue";
+import { isUnitCell, tagDim, type UnitCell } from "../unitValue";
+import { dimEval, type DimEnv } from "../unitDimExpr";
+import { type Dim, DIMENSIONLESS, isDimensionless, dimEqual } from "../dimension";
 
 // The formula grammar is real Excel syntax (^, UPPERCASE functions, & …),
 // parsed and compiled by the shared excelFormula engine. Bare names become the
@@ -47,6 +50,30 @@ function tagResult(v: unknown): unknown {
   return guard(v, true);
 }
 
+/** Replace any `UnitCell` with its base-SI magnitude (scalar or per list cell), so
+ *  the numeric formula evaluator never sees a dimensioned object. */
+function stripUnits(v: unknown): unknown {
+  if (isUnitCell(v)) return v.value;
+  if (Array.isArray(v)) return v.map((c) => (isUnitCell(c) ? (c as UnitCell).value : c));
+  return v;
+}
+
+/** The dimension a formula input carries: a scalar UnitCell's dim, or the shared dim
+ *  of a list's tagged cells (dimensionless if none / mixed). */
+function envDim(v: unknown): Dim {
+  if (isUnitCell(v)) return v.dim;
+  if (Array.isArray(v)) {
+    let dim: Dim | null = null;
+    for (const c of v) {
+      if (!isUnitCell(c)) continue;
+      if (dim === null) dim = c.dim;
+      else if (!dimEqual(dim, c.dim)) return DIMENSIONLESS; // mixed → drop
+    }
+    return dim ?? DIMENSIONLESS;
+  }
+  return DIMENSIONLESS;
+}
+
 // ─── Expression node ──────────────────────────────────────────────────────────
 
 export class ExpressionNode extends ClassicPreset.Node {
@@ -69,6 +96,11 @@ export class ExpressionNode extends ClassicPreset.Node {
   // Public so the component can read varNames for rendering.
   varNames: string[]  = [];
   evaluator: ExprEvaluator | null = null;
+  /** The parsed AST — kept alongside the evaluator for the DIMENSIONAL interpretation
+   *  (unitDimExpr.ts `dimEval`): when inputs carry units, the formula's result unit
+   *  is computed by the algebra + per-function signatures, in parallel with the
+   *  numeric evaluator. Null on a syntax error (evaluator is null too). */
+  ast: Ast | null = null;
   /** Optional prose explaining each variable (var name → description). Kept OUT
    *  of the formula string, so KaTeX never renders it; shown as a hover tooltip
    *  on the card and as an editable legend in the formula popup. Display-only. */
@@ -114,6 +146,7 @@ export class ExpressionNode extends ClassicPreset.Node {
 
     this.varNames = next;
     this.evaluator = compileEvaluator(this.expr);
+    this.ast = parseFormula(this.expr);
     return { added, removed };
   }
 
@@ -132,8 +165,13 @@ export class ExpressionNode extends ClassicPreset.Node {
       return { result: err };
     }
     try {
+      // Raw env keeps any UnitCell (for the dimensional interpretation); the numeric
+      // evaluator runs on magnitudes (rawEnv stripped), so a dimensioned input never
+      // reaches the arithmetic as an object.
+      const rawEnv: Record<string, unknown> = {};
+      for (const v of this.varNames) rawEnv[v] = inputs[v]?.[0] ?? this.literals[v] ?? 0;
       const env: Record<string, unknown> = {};
-      for (const v of this.varNames) env[v] = inputs[v]?.[0] ?? this.literals[v] ?? 0;
+      for (const v of this.varNames) env[v] = stripUnits(rawEnv[v]);
 
       // A 2-D matrix wired into an Expression is a #SHAPE! by DESIGN — the formula
       // scope is permanently capped at scalars + 1-D lists (CLAUDE.md / dev-notes).
@@ -141,7 +179,7 @@ export class ExpressionNode extends ClassicPreset.Node {
       // REDUCE / MAKEARRAY): they apply the formula per cell/row and own the 2-D
       // iteration. Fail LOUD rather than silently mis-broadcast a matrix row.
       for (const v of this.varNames) {
-        const val = env[v];
+        const val = rawEnv[v];
         if (Array.isArray(val) && val.some((e) => Array.isArray(e))) {
           this.cachedError = "Matrix input not supported";
           const err = solError("#SHAPE!", "A formula works on values and 1-D lists, not a 2-D matrix. Use MAP / BYROW / REDUCE to run it over a table.");
@@ -158,9 +196,28 @@ export class ExpressionNode extends ClassicPreset.Node {
       // a stray NaN; a missing / boolean → null (P7 logical type pending). Lists now
       // carry per-cell errors and `null` as distinct kinds (array-semantics build).
       const raw = this.evaluator(env);
-      const result = Array.isArray(raw)
+      let result: unknown = Array.isArray(raw)
         ? raw.map((e) => tagResult(e))
         : tagResult(raw);
+
+      // Dimensional interpretation (Bundle 05: FC A4, step 3): only when an input
+      // actually carries a unit and the result is numeric. dimEval returns the
+      // result dim, a #UNIT! conflict (surface it), or null (indeterminate — drop
+      // the unit). Tag the numeric result cells with a determined dimension.
+      if (this.ast && this.varNames.some((v) => envDim(rawEnv[v]) !== DIMENSIONLESS && !isDimensionless(envDim(rawEnv[v])))) {
+        const dimEnv: DimEnv = {};
+        for (const v of this.varNames) dimEnv[v] = envDim(rawEnv[v]);
+        const dr = dimEval(this.ast, dimEnv);
+        if (isSolError(dr)) {
+          this.cachedResult = dr; this.cachedError = null;
+          return { result: dr };
+        }
+        if (dr !== null && !isDimensionless(dr)) {
+          result = Array.isArray(result)
+            ? result.map((c) => (typeof c === "number" ? tagDim(c, dr) : c))
+            : (typeof result === "number" ? tagDim(result, dr) : result);
+        }
+      }
       this.cachedResult = result;
       this.cachedError  = null;
       return { result };
