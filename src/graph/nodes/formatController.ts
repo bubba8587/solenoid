@@ -390,8 +390,9 @@ export class FormatControllerNode extends ClassicPreset.Node {
     this.unitLocked = this.lockedByConvert;
     if (inherited && (this.unit === "none" || this.lockedByConvert)) this.unit = inherited;
     // FC A4 — value-mutating: tag the value with this FC's unit (author a base-SI
-    // `UnitCell`, re-display a commensurable one, or #UNIT! on a dimension clash).
-    // A `none`/text/frame/matrix value passes through untouched. See applyFcUnit.
-    return { out: applyFcUnit(val, this.unit) };
+    // `UnitCell`, re-display a commensurable one, or #UNIT! on a dimension clash). A
+    // `custom` free-text unit becomes an opaque custom dimension (`poop`). A
+    // `none`/text/frame/matrix value passes through untouched. See applyFcUnit.
+    return { out: applyFcUnit(val, this.unit, this.customUnit) };
   }
 }

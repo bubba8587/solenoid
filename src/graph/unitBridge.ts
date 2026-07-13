@@ -8,7 +8,7 @@
 //
 // Pure — imports the dimension algebra + the FC unit list only, no React/Rete.
 
-import { type Unit, type Dim, parseUnit, dimEqual, DIMENSIONLESS, formatDim } from "./dimension";
+import { type Unit, type Dim, parseUnit, dimEqual, DIMENSIONLESS, formatDim, customDim } from "./dimension";
 import { UNIT_ANNOTATIONS } from "./formatAnnotationStore";
 import { fromUnit, isUnitCell, withDisplay, unitError, type UnitCell as UnitCellT } from "./unitValue";
 import { isSolError } from "./errorValue";
@@ -83,21 +83,29 @@ export function isDimensionalFcUnit(id: string): boolean {
  *     dimension-invariant);
  *   • dimensioned + an INCOMMENSURABLE unit → `#UNIT!` (a true dimension clash —
  *     a length can't be re-labelled a mass);
- *   • unit `none` / `custom` / unresolved → unchanged (any existing tag rides on).
+ *   • unit `custom` with a free-text name → an OPAQUE custom dimension (`poop` is its
+ *     own axis: `poop ÷ s` = `poop/s`, not Hz). The name renders via `formatDim`, so
+ *     the cell carries no `display` id (there's no registry unit to resolve).
+ *   • unit `none` / empty / unresolved → unchanged (any existing tag rides on).
  */
-export function applyFcUnit(value: unknown, fcUnitId: string): unknown {
-  const u = fcUnitToUnit(fcUnitId);
-  if (!u) return value; // none / custom / unresolved — carry any existing tag through
+export function applyFcUnit(value: unknown, fcUnitId: string, customUnit?: string): unknown {
+  // A custom free-text unit tags an opaque custom dimension; no display id (formatDim
+  // renders the name). A blank custom name is a no-op.
+  const custom = fcUnitId === "custom" && customUnit && customUnit.trim() !== "";
+  const u: Unit | null = custom ? { dim: customDim(customUnit!.trim()), scale: 1 } : fcUnitToUnit(fcUnitId);
+  const displayId = custom ? undefined : fcUnitId;
+  if (!u) return value; // none / empty custom / unresolved — carry any existing tag through
   const one = (v: unknown): unknown => {
     if (v === null || isSolError(v)) return v;
     if (isUnitCell(v)) {
-      return dimEqual(v.dim, u.dim)
-        ? withDisplay(v, fcUnitId)
-        : unitError(
-            `This value is ${formatDim(v.dim) || "a plain number"}, but the format unit is ${formatDim(u.dim) || "dimensionless"}. Convert it first.`,
-          );
+      if (!dimEqual(v.dim, u.dim)) {
+        return unitError(
+          `This value is ${formatDim(v.dim) || "a plain number"}, but the format unit is ${formatDim(u.dim) || "dimensionless"}. Convert it first.`,
+        );
+      }
+      return displayId ? withDisplay(v, displayId) : v; // custom: keep the cell, no display id
     }
-    return typeof v === "number" ? fromUnit(v, u, fcUnitId) : v;
+    return typeof v === "number" ? fromUnit(v, u, displayId) : v;
   };
   if (Array.isArray(value)) {
     if (value.some((c) => Array.isArray(c))) return value; // matrix — unit-agnostic

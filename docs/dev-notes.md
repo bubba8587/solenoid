@@ -37,6 +37,14 @@ engine silently broke downstream of any FC. The fix (all in `unitCoercion.test.t
 - **The Number node is a plain literal source** — the unit picker + `unit` field were removed
   (author: units are the FC's job only). The `units-by-dimension` seed's lane A now sources
   m/s from docked FCs (the `unit-flow` pattern).
+- **Custom units are OPAQUE dimensions (2026-07-13)**: an FC `custom` free-text unit ("poop")
+  now tags a `custom:<name>` dimension axis instead of being ignored (which made `poop ÷ s`
+  collapse to `1/s` = Hz). `Dim` widened to `Record<string, number>` and the algebra helpers
+  (`dimMul/Div/Pow/Equal`, `isDimensionless`, `formatDim`) are KEY-AGNOSTIC — they fold over
+  every base + custom axis, so a custom axis survives ×/÷ and renders by name (`poop/s`,
+  sorted for a stable label). `poop + poop = poop`, `poop + s = #UNIT!`, two different customs
+  separate, a bare number still adopts. Custom cells carry no `display` id (formatDim renders
+  the name); a blank custom name is a no-op. See `unitBridge.applyFcUnit` + `unitWiring.test.ts`.
 
 ### SESSION DIGEST (2026-07-13 — FC A4 units by dimensionality: wired into the value engine)
 The pure unit-value foundation (`unitValue.ts`, `unitDimExpr.ts`, `dimension.ts`) is now
