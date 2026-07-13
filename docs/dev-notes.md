@@ -5,6 +5,22 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-13c — Sudoku Solver seed: a matrix-algebra constraint solver in a Simulation composite)
+New seed `sudoku-solver.json` (+ `sudokuSeed.test.ts`): a full Sudoku solver built from EXISTING
+nodes only — no engine changes. The whole solver is pure matrix algebra over an **81×9 candidate
+matrix** (cell × digit), iterated to a fixpoint by a **Simulation-mode composite** (the bounded-
+feedback loop doing the work a dataflow graph otherwise can't). One deduction round = 20 loop nodes
+(MAP element-wise formulas + MMULT against constant incidence Table Inputs: peer adjacency A 81×81,
+unit membership U 27×81): naked singles (`A·P`), hidden singles (`Uᵀ·(U·C = 1)`), and **naked pairs**
+vectorized as `E = ((A·M)⊙A)·CP` with `M = (CP·CPᵀ = 2)⊙A` — pairs are load-bearing (the seed puzzle
+stalls on singles alone; unique solution verified by exhaustive search, asserted exactly in the test).
+Non-obvious bits worth reusing: (1) the **loop-entry "prev or initial" idiom** — a MAP with formula
+`IF(value2=value2, value2, value)`, exploiting that an unwired extra table arrives as NaN and
+`NaN = NaN` is FALSE in `applyOp`, so round 1 falls back to the static initial matrix; (2) internal-
+node ARRAY ORDER = Gauss-Seidel evaluation order in `runSimulation`, so a topologically-ordered
+`internal.nodes` gives one full deduction round per simulation step; (3) MAP's `col` variable as a
+free digit index (`IF(value=col, 1, 0)` builds the candidate tensor without a digits matrix).
+
 ### SESSION DIGEST (2026-07-13b — units regression fix: the unit-blind boundary + revived FC locks)
 Author verdict on the first A4 wiring: "nothing propagates or locks correctly" — CONFIRMED
 and root-caused. A raw `UnitCell` reaching any node that doesn't run the dimension algebra
