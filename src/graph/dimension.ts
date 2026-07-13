@@ -191,6 +191,8 @@ const DERIVED_DISPLAY: Array<{ sym: string; dim: Dim }> = [
   { sym: "J", dim: { mass: 1, length: 2, time: -2 } },
   { sym: "W", dim: { mass: 1, length: 2, time: -3 } },
   { sym: "Hz", dim: { time: -1 } },
+  { sym: "V", dim: { mass: 1, length: 2, time: -3, current: -1 } },
+  { sym: "Ω", dim: { mass: 1, length: 2, time: -3, current: -2 } },
 ];
 
 const BASE_SYMBOL: Partial<Record<BaseDim, string>> = {

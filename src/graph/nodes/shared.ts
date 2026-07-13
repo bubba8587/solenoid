@@ -3,7 +3,7 @@ import { numberSocket, listSocket, numListSocket, tableSocket, strTableSocket, d
 import { resolveColor, paletteStore, type PaletteSlot } from "../palette";
 import { type SolError } from "../errorValue";
 import { cellShortCircuit, guardFinite, COMPUTE } from "../valueKinds";
-import { type UnitCell, isUnitCell, magnitudeOf, tagDim } from "../unitValue";
+import { type UnitCell, isUnitCell, magnitudeOf, tagDim, tagRatio } from "../unitValue";
 import { dimOf } from "../unitValue";
 
 // Socket-typed port factories. `new ClassicPreset.Input(numberSocket, "A")`
@@ -225,7 +225,10 @@ function guardCell(r: number | UnitCell | SolError | null, ...inputs: unknown[])
   if (r === null || typeof r === "string") return r;
   if (isUnitCell(r)) {
     const g = guardFinite(r.value, ...inputs);
-    return typeof g === "number" ? tagDim(g, r.dim, r.display) : g; // re-tag (keep display), or surface the error
+    if (typeof g !== "number") return g; // surface the error
+    // Re-tag, keeping the display — and the RATIO brand (tagDim would collapse the
+    // empty-dim ratio cell to a bare number, un-minting it).
+    return r.ratio === true ? tagRatio(g) : tagDim(g, r.dim, r.display);
   }
   if (typeof r === "number") return guardFinite(r, ...inputs);
   return r; // a SolError from fn passes through

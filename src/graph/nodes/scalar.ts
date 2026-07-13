@@ -3,7 +3,7 @@ import { broadcast, broadcastErr, broadcastUnit, anyDimensioned, readInput, numL
 import { lnGamma } from "./mathUtils";
 import { solError, type SolError } from "../errorValue";
 import type { FormatAnnotation } from "../formatAnnotationStore";
-import { type UnitCell, isUnitCell, dimOf, magnitudeOf, tagDim, unitError } from "../unitValue";
+import { type UnitCell, isUnitCell, dimOf, magnitudeOf, tagDim, tagRatio, unitError } from "../unitValue";
 import { type Dim, DIMENSIONLESS, dimEqual, dimMul, dimDiv, dimPow, isDimensionless } from "../dimension";
 
 // ─── Bessel helper functions ──────────────────────────────────────────────────
@@ -151,6 +151,9 @@ export function arithmeticCell(
     case "div": {
       if (y === 0) return divZero();
       const rd = dimDiv(da, db);
+      // Cancellation mints a PURE RATIO (10 m ÷ 2 m = 5:1) — known-dimensionless,
+      // so an FC can't re-label it with a physical unit. Bare ÷ bare stays bare.
+      if (isDimensionless(rd) && (isUnitCell(a) || isUnitCell(b))) return tagRatio(x / y);
       return tagDim(x / y, rd, carry(rd));
     }
     case "mod":
@@ -158,6 +161,7 @@ export function arithmeticCell(
     case "quotient": {
       if (y === 0) return divZero();
       const rd = dimDiv(da, db);
+      if (isDimensionless(rd) && (isUnitCell(a) || isUnitCell(b))) return tagRatio(Math.trunc(x / y));
       return tagDim(Math.trunc(x / y), rd, carry(rd));
     }
     case "pow":

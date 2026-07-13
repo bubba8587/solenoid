@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { ArithmeticNode, arithmeticCell } from "./nodes/scalar";
-import { fromUnit, isUnitCell, magnitudeOf, unitLabelOf, formatUnitCell, type UnitCell } from "./unitValue";
+import { fromUnit, isUnitCell, isRatio, magnitudeOf, unitLabelOf, formatUnitCell, type UnitCell } from "./unitValue";
 import { fcUnitToUnit, applyFcUnit } from "./unitBridge";
 import { isSolError } from "./errorValue";
 import { UNITS } from "./dimension";
@@ -40,10 +40,15 @@ describe("arithmeticCell — dimensional algebra per op", () => {
     expect(isSolError(r)).toBe(true);
     expect((r as { code: string }).code).toBe("#UNIT!");
   });
-  it("cancellation collapses to a bare number (5 m ÷ 1 m = 5)", () => {
+  it("cancellation mints a PURE RATIO (5 m ÷ 1 m = 5:1, known-dimensionless)", () => {
     const r = arithmeticCell("div", cell(5, "m"), cell(1, "m"));
-    expect(isUnitCell(r)).toBe(false);
-    expect(r).toBe(5);
+    expect(isRatio(r)).toBe(true);
+    expect(magnitudeOf(r)).toBe(5);
+    expect(formatUnitCell(r as UnitCell, String)).toBe("5:1");
+    // …and an FC can't re-label a ratio with a physical unit.
+    expect(isSolError(applyFcUnit(r, "usd"))).toBe(true);
+    // bare ÷ bare stays a plain bare number (no tag at all)
+    expect(arithmeticCell("div", 10 as never, 2 as never)).toBe(5);
   });
   it("power scales the dimension; a dimensioned exponent is #UNIT!", () => {
     const area = arithmeticCell("pow", cell(3, "m"), 2);

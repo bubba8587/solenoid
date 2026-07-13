@@ -383,8 +383,8 @@
       "x": -380,
       "y": 1450,
       "init": {
-        "label": "F · Units COMPUTE: 5 m ÷ 1 s = 5 m/s",
-        "body": "True dimensional algebra, not labels: divide a length by a time and the result **is** a speed — the `m/s` is derived from the dimensions. Divide metres by metres and the units **cancel** to a plain number.",
+        "label": "F · Units COMPUTE — and cancel to a RATIO",
+        "body": "True dimensional algebra, not labels: divide a length by a time and the result **is** a speed — the `m/s` is derived from the dimensions. Divide metres by metres and the units **cancel to a pure RATIO** — it reads `5:1`, formats naturally as a **percent**, and an FC can't re-label it `$` (**#UNIT!**): a known-dimensionless number isn't money.",
         "color": "blue",
         "width": 330,
         "height": 170
@@ -529,7 +529,7 @@
       "x": 700,
       "y": 1775,
       "init": {
-        "label": "Slope — units cancel"
+        "label": "Slope"
       }
     },
     {
@@ -828,6 +828,103 @@
       "init": {
         "label": "Throughput"
       }
+    },
+    {
+      "id": "F_pctFc",
+      "type": "FormatControllerNode",
+      "x": 930,
+      "y": 1790,
+      "init": {
+        "label": "Format",
+        "hostNodeId": "F_d2",
+        "socketKey": "out",
+        "side": "output",
+        "format": "percent",
+        "decimalDigits": 0,
+        "decimalMode": "places",
+        "unit": "none",
+        "socketDataType": "number"
+      }
+    },
+    {
+      "id": "capJ",
+      "type": "NoteNode",
+      "x": -380,
+      "y": 2960,
+      "init": {
+        "label": "J · The Equation node derives the unknown's UNIT",
+        "body": "Wire `v` in **m/s** and `t` in **s**, leave `d` unwired — the solve isolates `d = v·t` and runs the same dimensional algebra: the answer comes out in **metres**. Inconsistent knowns are a `#UNIT!`; the Check output refuses to compare different dimensions.",
+        "color": "teal",
+        "width": 330,
+        "height": 190
+      }
+    },
+    {
+      "id": "J_v",
+      "type": "NumberInputNode",
+      "x": 40,
+      "y": 2950,
+      "init": {
+        "label": "Speed",
+        "value": 5
+      }
+    },
+    {
+      "id": "J_vFc",
+      "type": "FormatControllerNode",
+      "x": 250,
+      "y": 2968,
+      "init": {
+        "label": "Format",
+        "hostNodeId": "J_v",
+        "socketKey": "value",
+        "side": "output",
+        "unit": "ms1",
+        "socketDataType": "number"
+      }
+    },
+    {
+      "id": "J_t",
+      "type": "NumberInputNode",
+      "x": 40,
+      "y": 3090,
+      "init": {
+        "label": "For",
+        "value": 10
+      }
+    },
+    {
+      "id": "J_tFc",
+      "type": "FormatControllerNode",
+      "x": 250,
+      "y": 3108,
+      "init": {
+        "label": "Format",
+        "hostNodeId": "J_t",
+        "socketKey": "value",
+        "side": "output",
+        "unit": "s",
+        "socketDataType": "number"
+      }
+    },
+    {
+      "id": "J_eq",
+      "type": "EquationNode",
+      "x": 470,
+      "y": 2990,
+      "init": {
+        "label": "d = v · t",
+        "expr": "d = v * t"
+      }
+    },
+    {
+      "id": "J_d",
+      "type": "DisplayNode",
+      "x": 780,
+      "y": 3010,
+      "init": {
+        "label": "Distance — derived m"
+      }
     }
   ],
   "connections": [
@@ -1111,6 +1208,42 @@
       "source": "I_div",
       "sourceOutput": "result",
       "target": "I_d1",
+      "targetInput": "in"
+    },
+    {
+      "source": "F_d2",
+      "sourceOutput": "out",
+      "target": "F_pctFc",
+      "targetInput": "in"
+    },
+    {
+      "source": "J_vFc",
+      "sourceOutput": "out",
+      "target": "J_eq",
+      "targetInput": "v"
+    },
+    {
+      "source": "J_tFc",
+      "sourceOutput": "out",
+      "target": "J_eq",
+      "targetInput": "t"
+    },
+    {
+      "source": "J_v",
+      "sourceOutput": "value",
+      "target": "J_vFc",
+      "targetInput": "in"
+    },
+    {
+      "source": "J_t",
+      "sourceOutput": "value",
+      "target": "J_tFc",
+      "targetInput": "in"
+    },
+    {
+      "source": "J_eq",
+      "sourceOutput": "d",
+      "target": "J_d",
       "targetInput": "in"
     }
   ]
