@@ -182,10 +182,12 @@ export function dimEval(node: Ast, env: DimEnv): DimResult {
         case "+":
         case "-": {
           if (l === null || r === null) return null;
-          if (!dimEqual(l, r)) {
-            return unitError(`Can't ${node.op === "+" ? "add" : "subtract"} values with different units.`);
-          }
-          return l;
+          // A dimensionless operand ADOPTS the other's unit (`price + 2` keeps the
+          // price's unit — author decision 2026-07-13); two different dims → #UNIT!.
+          if (dimEqual(l, r)) return l;
+          if (isDimensionless(l)) return r;
+          if (isDimensionless(r)) return l;
+          return unitError(`Can't ${node.op === "+" ? "add" : "subtract"} values with different units.`);
         }
         case "^": {
           // Determinable only for a CONSTANT numeric exponent (a `num` literal) or
@@ -196,10 +198,13 @@ export function dimEval(node: Ast, env: DimEnv): DimResult {
         }
         case "&": return DIMENSIONLESS; // string concatenation → unitless
         default: {
-          // Comparison operators (= <> < > <= >=): a boolean result (dimensionless),
-          // but comparing incommensurable quantities is a #UNIT!.
+          // Comparison operators (= <> < > <= >=): a boolean result (dimensionless).
+          // A dimensionless side is allowed against a dimensioned one (`price > 3`);
+          // only two genuinely different dimensions are a #UNIT!.
           if (l === null || r === null) return DIMENSIONLESS;
-          if (!dimEqual(l, r)) return unitError("Can't compare values with different units.");
+          if (!dimEqual(l, r) && !isDimensionless(l) && !isDimensionless(r)) {
+            return unitError("Can't compare values with different units.");
+          }
           return DIMENSIONLESS;
         }
       }

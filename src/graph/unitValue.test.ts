@@ -80,9 +80,18 @@ describe("dimensional algebra at the ops", () => {
     const r = subUnits(cell(1, "m"), cell(1, "kg"));
     expect(isSolError(r)).toBe(true);
   });
-  it("adding a dimensioned value to a bare number is a unit error", () => {
-    const r = addUnits(cell(1, "m"), 5);
-    expect(isSolError(r)).toBe(true);
+  it("a bare number ADOPTS the dimensioned side's unit (spreadsheet reading)", () => {
+    // author decision 2026-07-13: `$5 + 2 = $7` — a dimensionless operand takes the
+    // other's dimension (at base-SI scale) + keeps its display id, rather than #UNIT!.
+    const r = addUnits(cell(5, "m"), 2) as UnitCell;
+    expect(isSolError(r)).toBe(false);
+    expect(r.value).toBe(7);
+    expect(r.dim).toEqual({ length: 1 });
+    // (display preservation through the real FC path is covered in unitCoercion.test.ts)
+    // symmetric: bare number on the left
+    const l = subUnits(10, cell(3, "m")) as UnitCell;
+    expect(l.value).toBe(7);
+    expect(l.dim).toEqual({ length: 1 });
   });
   it("power scales the dimension; a dimensioned exponent errors", () => {
     const area = powUnits(cell(3, "m"), 2) as UnitCell;

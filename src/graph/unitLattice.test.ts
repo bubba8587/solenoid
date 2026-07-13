@@ -32,13 +32,14 @@ describe("unit lattice — full sweep of the dimensional separation contract (st
     }
   });
 
-  it("+/− separate: same dimension flows, different is #UNIT!", () => {
+  it("+/− combine when equal OR either is dimensionless; two real dims → #UNIT!", () => {
     for (const a of NAMES) for (const b of NAMES) {
-      const same = dimensionsAdd(DIMS[a], DIMS[b]);
-      expect(same).toBe(a === b);
+      const combines = dimensionsAdd(DIMS[a], DIMS[b]);
+      // combinable iff same dim, or a bare number adopts the other (dimensionless side)
+      expect(combines).toBe(a === b || isUniversalDim(DIMS[a]) || isUniversalDim(DIMS[b]));
       for (const op of ["add", "sub"] as const) {
         const r = arithmeticCell(op, cellOf(DIMS[a]), cellOf(DIMS[b]));
-        expect(isUnitErr(r)).toBe(!same);
+        expect(isUnitErr(r)).toBe(!combines);
       }
     }
   });
@@ -51,14 +52,13 @@ describe("unit lattice — full sweep of the dimensional separation contract (st
     }
   });
 
-  it("the dimensionless element is universal for × and separated for +", () => {
+  it("the dimensionless element is universal for BOTH × and + (a bare number adopts)", () => {
     for (const name of NAMES) {
       const d = DIMS[name];
       // scalar × d always combines
       expect(isUnitErr(arithmeticCell("mul", 2, cellOf(d)))).toBe(false);
-      // scalar + d is a #UNIT! unless d is itself dimensionless
-      const add = arithmeticCell("add", 2, cellOf(d));
-      expect(isUnitErr(add)).toBe(!isUniversalDim(d));
+      // scalar + d never errors either — the bare 2 adopts d's unit
+      expect(isUnitErr(arithmeticCell("add", 2, cellOf(d)))).toBe(false);
     }
   });
 

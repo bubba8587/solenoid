@@ -68,18 +68,20 @@ describe("Unit Flow seed — the captioned behaviors actually hold (FC A4 value-
     expect(formatAnnotationStore.get(id("B_num"), "value")).toBeUndefined();
   });
 
-  it("C · a transform breaks the DISPLAY lock; the DIMENSION rides the value", () => {
+  it("C · a transform drops the number FORMAT, but the unit ($ dimension + display) rides", () => {
     // The FC tags the price ($10) → a base-SI currency UnitCell.
     const priced = (real.get("C_fc") as FormatControllerNode).data({ in: [10] }).out as number;
     expect(isUnitCell(priced) && (priced as UnitCell).dim).toEqual({ currency: 1 });
     expect(isUnitCell(priced) && (priced as UnitCell).display).toBe("usd");
     expect(ann().inAnnotation(id("C_d1"), "in")?.unit).toBe("usd");        // before the ×100
-    // ×100 is a transform: the number FORMAT + the $ DISPLAY unit DROP, but the
-    // currency DIMENSION rides the value ($10 × 100 is still money).
+    // ×100 by a bare number keeps the result IN the currency dimension, so the $
+    // DISPLAY unit rides the value ($10 × 100 = $1000, still shown as money). What a
+    // transform DOES break is the FORMAT ANNOTATION (precision / style) — that's a
+    // graph-walk display lock, not part of the value.
     const lot = (real.get("C_mul") as ArithmeticNode).data({ a: [priced], b: [100] }).result;
     expect(isUnitCell(lot) && (lot as UnitCell).dim).toEqual({ currency: 1 });
-    expect(isUnitCell(lot) && (lot as UnitCell).display).toBeUndefined(); // clean $ label gone
-    expect(ann().inAnnotation(id("C_d2"), "in")).toBeUndefined();          // format dropped
+    expect(isUnitCell(lot) && (lot as UnitCell).display).toBe("usd");      // $ label rides through
+    expect(ann().inAnnotation(id("C_d2"), "in")).toBeUndefined();          // number FORMAT dropped
     expect(ann().downstreamAnnotation(id("C_d2"), "out")).toBeUndefined();
   });
 

@@ -29,10 +29,13 @@ export function dimensionsMultiply(_a: Dim, _b: Dim): boolean {
   return true;
 }
 
-/** Do two dimensions combine under +/−/compare/aggregate ? Only when EQUAL — the
- *  additive ops separate incommensurable dimensions (→ `#UNIT!`). */
+/** Do two dimensions combine under +/−/compare ? When EQUAL, or when either is
+ *  DIMENSIONLESS — a bare number adopts the other's unit (`$5 + 2 = $7`, author
+ *  decision 2026-07-13). Two genuinely different real dimensions still separate
+ *  (→ `#UNIT!`). NOTE: aggregation stays STRICTER (a mixed-dim list is `#UNIT!`) —
+ *  see `forAggregateUnits`; this helper is the +/−/compare contract only. */
 export function dimensionsAdd(a: Dim, b: Dim): boolean {
-  return dimEqual(a, b);
+  return dimEqual(a, b) || isDimensionless(a) || isDimensionless(b);
 }
 
 /** Is a dimension the universal (dimensionless) element — freely multiplicative with
