@@ -8,7 +8,7 @@ import { passesFilter, type FilterOp, type FilterCondConfig } from "../frameVerb
 import { solError, isSolError, type SolError } from "../errorValue";
 import { forAggregate, isMissing, type Tri } from "../valueKinds";
 import { forAggregateUnits, tagDim, type UnitCell } from "../unitValue";
-import { type Dim, DIMENSIONLESS, dimPow, isDimensionless } from "../dimension";
+import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../dimension";
 import { iterMin, iterMax } from "./mathUtils";
 import { isFrameValue, isCubeValue, cubeRowCount, frameRowCount, inferColumn, getColumn, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
 
@@ -1597,11 +1597,11 @@ export class AggregateNode extends ClassicPreset.Node {
 
   data(inputs: { list?: (number | null | SolError)[][] }) {
     // Aggregator policy: a SolError in the list PROPAGATES; `null` (missing) is
-    // SKIPPED; every PRESENT cell must share ONE dimension (mixed units → #UNIT!,
-    // the unit sibling of the element-family #TYPE! separation). Base-SI storage
-    // means commensurable-but-differently-authored cells (km + m) are already
-    // unified — no conversion step. No-op for all-number lists (dim = dimensionless
-    // → the result re-tags to a bare number, unchanged).
+    // SKIPPED; a DIMENSIONLESS cell (a bare number) ADOPTS the list's real unit
+    // (SUM($5, $2, 3) = $10), and only two genuinely different real dimensions are a
+    // #UNIT!. Base-SI storage means commensurable-but-differently-authored cells
+    // (km + m) are already unified — no conversion step. No-op for all-number lists
+    // (dim = dimensionless → the result re-tags to a bare number, unchanged).
     const prep = forAggregateUnits(inputs.list?.[0] ?? []);
     if (prep.error) { this.cachedResult = prep.error; return { result: prep.error }; }
     const arr = prep.nums;
@@ -1706,10 +1706,13 @@ export class AggregateNode extends ClassicPreset.Node {
       result = 1;
     }
     // Re-tag the reduced magnitude with the op's result dimension (a no-op for
-    // dimensionless data — tagDim collapses it back to a bare number).
+    // dimensionless data — tagDim collapses it back to a bare number). Keep the
+    // display unit only when the op PRESERVES the dimension (SUM/AVG/MIN/MAX of $ →
+    // $), not when it changes it (PRODUCT/SUMSQ/VAR derive a new dim).
+    const resultDim = aggregateResultDim(this.op, dim, arr.length);
     const tagged: number | UnitCell | null =
       result !== null && !isDimensionless(dim)
-        ? tagDim(result, aggregateResultDim(this.op, dim, arr.length))
+        ? tagDim(result, resultDim, dimEqual(resultDim, dim) ? prep.display : undefined)
         : result;
     this.cachedResult = tagged;
     return { result: tagged };

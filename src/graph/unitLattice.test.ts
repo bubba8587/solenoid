@@ -44,11 +44,13 @@ describe("unit lattice — full sweep of the dimensional separation contract (st
     }
   });
 
-  it("aggregation separates: a same-dim list reduces, a mixed-dim list is #UNIT!", () => {
+  it("aggregation reduces when equal OR either is dimensionless; two real dims → #UNIT!", () => {
     for (const a of NAMES) for (const b of NAMES) {
       const prep = forAggregateUnits([cellOf(DIMS[a]), cellOf(DIMS[b])]);
-      if (a === b) expect(prep.error).toBeUndefined();
-      else expect(prep.error && (prep.error as { code: string }).code).toBe("#UNIT!");
+      // a bare number (dimensionless) adopts the other's unit — only two genuinely
+      // different real dimensions separate.
+      const shouldErr = a !== b && !isUniversalDim(DIMS[a]) && !isUniversalDim(DIMS[b]);
+      expect(!!prep.error).toBe(shouldErr);
     }
   });
 

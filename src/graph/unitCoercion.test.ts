@@ -164,6 +164,7 @@ describe("dimensioned cells shape without #SHAPE! (the $ USD regression)", () =>
     expect(isUnitCell(out)).toBe(true);
     expect((out as UnitCell).value).toBe(60);
     expect((out as UnitCell).dim).toEqual({ currency: 1 });
+    expect((out as UnitCell).display).toBe("usd"); // SUM keeps $ (was 60 ¤)
   });
 
   it("a currency value into a unit-blind Comparison compares magnitudes (no #SHAPE!)", async () => {
