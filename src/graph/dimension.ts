@@ -20,8 +20,25 @@ export const BASE_DIMS = [
 ] as const;
 export type BaseDim = (typeof BASE_DIMS)[number];
 
-/** A dimension = exponents over the base dims. Sparse — absent key ⇒ 0. */
-export type Dim = Partial<Record<BaseDim, number>>;
+// A CUSTOM unit (an FC's free-text unit, e.g. "poop") gets its own opaque
+// dimension axis keyed `custom:<name>`, so it participates in the algebra as a
+// first-class base dimension — `poop ÷ s` is `poop/s`, `poop + poop` is `poop`,
+// `poop + s` is `#UNIT!` — instead of collapsing to dimensionless (which made
+// `poop ÷ s` read as `1/s` = Hz). The prefix can't collide with a base dim name.
+export const CUSTOM_DIM_PREFIX = "custom:";
+export const customDim = (name: string): Dim => ({ [CUSTOM_DIM_PREFIX + name]: 1 });
+
+/** A dimension = exponents over the base dims AND any `custom:<name>` axes. Sparse
+ *  — absent key ⇒ 0. */
+export type Dim = Record<string, number>;
+
+/** The distinct axes present across the given dims (base + custom), for the
+ *  key-agnostic algebra below — a custom axis must not be dropped. */
+function dimAxes(...ds: Dim[]): string[] {
+  const seen = new Set<string>();
+  for (const d of ds) for (const k of Object.keys(d)) seen.add(k);
+  return [...seen];
+}
 
 /**
  * A unit = a dimension + how its numeric magnitude relates to the base-SI unit.
@@ -40,10 +57,11 @@ export const DIMENSIONLESS: Dim = {};
 
 // ─── Dimension-vector algebra ──────────────────────────────────────────────────
 
-/** Fold two dims elementwise with `f` (used by mul/div). */
+/** Fold two dims elementwise with `f` (used by mul/div). Key-agnostic: folds over
+ *  every base AND custom axis present in either operand. */
 function combine(a: Dim, b: Dim, f: (x: number, y: number) => number): Dim {
   const out: Dim = {};
-  for (const k of BASE_DIMS) {
+  for (const k of dimAxes(a, b)) {
     const v = f(a[k] ?? 0, b[k] ?? 0);
     if (v !== 0) out[k] = v;
   }
@@ -55,20 +73,21 @@ export const dimDiv = (a: Dim, b: Dim): Dim => combine(a, b, (x, y) => x - y);
 
 export function dimPow(a: Dim, n: number): Dim {
   const out: Dim = {};
-  for (const k of BASE_DIMS) {
+  for (const k of Object.keys(a)) {
     const v = (a[k] ?? 0) * n;
     if (v !== 0) out[k] = v;
   }
   return out;
 }
 
-/** Same dimension? (Commensurable — a conversion between them exists.) */
+/** Same dimension? (Commensurable — a conversion between them exists.) Compares
+ *  every base AND custom axis present in either dim. */
 export function dimEqual(a: Dim, b: Dim): boolean {
-  return BASE_DIMS.every((k) => (a[k] ?? 0) === (b[k] ?? 0));
+  return dimAxes(a, b).every((k) => (a[k] ?? 0) === (b[k] ?? 0));
 }
 
 export function isDimensionless(a: Dim): boolean {
-  return BASE_DIMS.every((k) => (a[k] ?? 0) === 0);
+  return Object.keys(a).every((k) => (a[k] ?? 0) === 0);
 }
 
 // ─── Unit algebra ──────────────────────────────────────────────────────────────
@@ -263,10 +282,16 @@ export function formatDim(dim: Dim): string {
 
   const pos: string[] = [];
   const neg: string[] = [];
-  for (const k of BASE_DIMS) {
+  // Base dims first (stable order), then any custom axes by their name — so a mixed
+  // dimension like `poop/s` reads with the base symbol and the custom name together.
+  const axes = [
+    ...BASE_DIMS.filter((k) => (dim[k] ?? 0) !== 0),
+    ...Object.keys(dim).filter((k) => k.startsWith(CUSTOM_DIM_PREFIX)).sort(), // stable label regardless of op order
+  ];
+  for (const k of axes) {
     const e = dim[k] ?? 0;
     if (e === 0) continue;
-    const sym = BASE_SYMBOL[k]!;
+    const sym = k.startsWith(CUSTOM_DIM_PREFIX) ? k.slice(CUSTOM_DIM_PREFIX.length) : BASE_SYMBOL[k as BaseDim]!;
     const mag = Math.abs(e);
     const term = mag === 1 ? sym : `${sym}^${mag}`;
     (e > 0 ? pos : neg).push(term);

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { ArithmeticNode, arithmeticCell } from "./nodes/scalar";
 import { fromUnit, isUnitCell, magnitudeOf, unitLabelOf, formatUnitCell, type UnitCell } from "./unitValue";
-import { fcUnitToUnit } from "./unitBridge";
+import { fcUnitToUnit, applyFcUnit } from "./unitBridge";
 import { isSolError } from "./errorValue";
 import { UNITS } from "./dimension";
 
@@ -146,5 +146,46 @@ describe("unit bridge", () => {
     expect(fcUnitToUnit("mph")).toEqual(UNITS.mi && { dim: { length: 1, time: -1 }, scale: 1609.344 / 3600 });
     expect(fcUnitToUnit("km")?.scale).toBe(1000);
     expect(fcUnitToUnit("none")).toBeNull();
+  });
+});
+
+describe("custom units — an opaque free-text unit is its own dimension", () => {
+  it("applyFcUnit(custom, 'poop') tags an opaque poop dimension (no display id)", () => {
+    const out = applyFcUnit(5, "custom", "poop") as UnitCell;
+    expect(isUnitCell(out)).toBe(true);
+    expect(out.value).toBe(5);
+    expect(unitLabelOf(out)).toBe("poop");
+    expect(out.display).toBeUndefined(); // no registry id — formatDim renders the name
+  });
+
+  it("poop ÷ s = poop/s (NOT Hz — the custom axis survives the division)", () => {
+    const poop = applyFcUnit(5, "custom", "poop");
+    const sec = applyFcUnit(1, "s");
+    const r = arithmeticCell("div", poop as never, sec as never);
+    expect(isUnitCell(r)).toBe(true);
+    expect(unitLabelOf(r)).toBe("poop/s");
+  });
+
+  it("poop + poop = poop; poop + s = #UNIT!; two DIFFERENT customs separate", () => {
+    const a = applyFcUnit(2, "custom", "poop");
+    const b = applyFcUnit(3, "custom", "poop");
+    expect(unitLabelOf(arithmeticCell("add", a as never, b as never))).toBe("poop");
+    const sec = applyFcUnit(1, "s");
+    expect(isSolError(arithmeticCell("add", a as never, sec as never))).toBe(true);
+    const foo = applyFcUnit(1, "custom", "foo");
+    expect(isSolError(arithmeticCell("add", a as never, foo as never))).toBe(true);
+    expect(unitLabelOf(arithmeticCell("mul", a as never, foo as never))).toBe("foo·poop");
+  });
+
+  it("a bare number still ADOPTS a custom unit (poop × 2 = poop, poop + 3 = poop)", () => {
+    const p = applyFcUnit(2, "custom", "poop");
+    expect(unitLabelOf(arithmeticCell("mul", p as never, 2 as never))).toBe("poop");
+    expect(unitLabelOf(arithmeticCell("add", p as never, 3 as never))).toBe("poop");
+  });
+
+  it("a blank custom name is a no-op (stays a bare number)", () => {
+    expect(applyFcUnit(5, "custom", "")).toBe(5);
+    expect(applyFcUnit(5, "custom", "   ")).toBe(5);
+    expect(applyFcUnit(5, "custom", undefined)).toBe(5);
   });
 });
