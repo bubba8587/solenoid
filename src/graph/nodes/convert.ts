@@ -1,6 +1,7 @@
 import { ClassicPreset, type NodeEditor } from "rete";
 import { broadcastUnit, numListIn, numListOut, type UnitOperand } from "./shared";
 import { isFcUnit, type FormatStyle } from "../formatAnnotationStore";
+import { registerDisplayUnits, fcUnitToUnit } from "../unitBridge";
 import { solError, type SolError } from "../errorValue";
 import { convert as dimConvert, commensurable, dimEqual, formatDim, type Dim, type Unit } from "../dimension";
 import { isUnitCell, fromUnit, withDisplay, unitError, type UnitCell } from "../unitValue";
@@ -158,6 +159,13 @@ export const CONVERT_UNIT_DEFS: Record<string, ConvertUnitDef> = {
   mmHg: mkUnit("mmHg",          "mmHg", "pressure", 133.322387415),
 };
 
+// Register every Convert unit id with the display bridge, so a `UnitCell.display`
+// authored here (yd, psi, km_h, …) resolves at render time even when the id has no
+// FC-registry twin — without this, Convert-to-yd emitted a display-less cell and the
+// downstream box rendered the base-SI derived symbol (metres), losing Convert's
+// primacy over the value's unit.
+registerDisplayUnits(Object.fromEntries(Object.entries(CONVERT_UNIT_DEFS).map(([id, d]) => [id, d.dim])));
+
 export function convertValue(x: number, fromKey: string, toKey: string): number | null {
   const from = CONVERT_UNIT_DEFS[fromKey];
   const to   = CONVERT_UNIT_DEFS[toKey];
@@ -259,7 +267,9 @@ export class ConvertNode extends ClassicPreset.Node {
     // dimensioned input (from an upstream FC) is base-SI, so Convert just re-labels
     // it to toUnit when commensurable, else the source clashes with the target.
     const toDim: Unit | undefined = to?.dim;
-    const display = isFcUnit(this.toUnit) ? this.toUnit : undefined;
+    // Any registered id works as a display (the bridge resolves Convert's own ids
+    // too), so Convert's toUnit ALWAYS wins on the outgoing value's rendering.
+    const display = fcUnitToUnit(this.toUnit) ? this.toUnit : undefined;
     const convertCell = (v: UnitOperand): number | UnitCell | SolError => {
       if (isUnitCell(v)) {
         if (toDim && dimEqual(v.dim, toDim.dim)) return display ? (withDisplay(v, display) as UnitCell) : v;

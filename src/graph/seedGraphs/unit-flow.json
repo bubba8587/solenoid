@@ -8,8 +8,8 @@
       "x": -380,
       "y": -220,
       "init": {
-        "label": "Unit Flow: how a Format Controller locks a value",
-        "body": "A **Format Controller (FC)** locks a value's **unit** and **number format**: $, km, 2 decimals… The lock belongs to the *value*, so it travels up AND down the stream through every node that just **passes the value along**, like a Display, and **breaks** at any node that **transforms** it. Each lane shows one rule; watch the value boxes.",
+        "label": "Unit Flow: units live on the value; format is display",
+        "body": "A value's **unit** is part of the VALUE: a **Format Controller (FC)** authors it, **Convert** re-expresses it, and it **computes** — `5 m ÷ 1 s` IS `5 m/s`, `$ + 2` adopts the `$`, metres + seconds is a **#UNIT!**. The number **format** ($ places, 2 decimals) stays a display lock that rides passthroughs and drops at a transform. Lanes go simple → complex; watch the value boxes and the FC arrows.",
         "color": "gray",
         "width": 900,
         "height": 190
@@ -137,8 +137,8 @@
       "x": -380,
       "y": 560,
       "init": {
-        "label": "C · A transform breaks the DISPLAY",
-        "body": "Each one costs `$10.00`. The number **format** (2 decimals) and the `$` label are *display* — a transform drops them. But the **unit itself is physical**: `$10 × 100` is still money, so the total keeps its currency and reverts to the plain form. Format breaks at a transform; the dimension rides the value.",
+        "label": "C · A transform drops the FORMAT; the unit RIDES",
+        "body": "Each one costs `$10.00`. The **2-decimal format** is display — the ×100 transform drops it. The **currency itself is physical**: `$10 × 100` is still money, so the lot total keeps its `$` — re-dock an FC after a transform only if you want the *format* back.",
         "color": "amber",
         "width": 330,
         "height": 170
@@ -200,7 +200,7 @@
       "x": 1010,
       "y": 558,
       "init": {
-        "label": "Lot total — unit lost"
+        "label": "Lot total"
       }
     },
     {
@@ -210,7 +210,7 @@
       "y": 800,
       "init": {
         "label": "D · Convert AUTHORS the new unit",
-        "body": "`mi → km` re-expresses the value in kilometres and **tags the value** with that unit. It rides straight through the Display, and the FC on the result agrees on `km` — a marathon reads `42.20 km`.",
+        "body": "`mi → km` re-expresses the value in kilometres and **tags the value** with that unit. It rides straight through the Display, and the FC on the result **inherits** `km` (→ → arrows) — a marathon reads `42.20 km`.",
         "color": "purple",
         "width": 330,
         "height": 170
@@ -376,6 +376,458 @@
       "init": {
         "label": "Charged"
       }
+    },
+    {
+      "id": "capF",
+      "type": "NoteNode",
+      "x": -380,
+      "y": 1450,
+      "init": {
+        "label": "F · Units COMPUTE: 5 m ÷ 1 s = 5 m/s",
+        "body": "True dimensional algebra, not labels: divide a length by a time and the result **is** a speed — the `m/s` is derived from the dimensions. Divide metres by metres and the units **cancel** to a plain number.",
+        "color": "blue",
+        "width": 330,
+        "height": 170
+      }
+    },
+    {
+      "id": "F_dist",
+      "type": "NumberInputNode",
+      "x": 40,
+      "y": 1420,
+      "init": {
+        "label": "Distance",
+        "value": 5
+      }
+    },
+    {
+      "id": "F_distFc",
+      "type": "FormatControllerNode",
+      "x": 250,
+      "y": 1438,
+      "init": {
+        "label": "Format",
+        "hostNodeId": "F_dist",
+        "socketKey": "value",
+        "side": "output",
+        "unit": "m",
+        "socketDataType": "number"
+      }
+    },
+    {
+      "id": "F_time",
+      "type": "NumberInputNode",
+      "x": 40,
+      "y": 1560,
+      "init": {
+        "label": "Time",
+        "value": 1
+      }
+    },
+    {
+      "id": "F_timeFc",
+      "type": "FormatControllerNode",
+      "x": 250,
+      "y": 1578,
+      "init": {
+        "label": "Format",
+        "hostNodeId": "F_time",
+        "socketKey": "value",
+        "side": "output",
+        "unit": "s",
+        "socketDataType": "number"
+      }
+    },
+    {
+      "id": "F_div",
+      "type": "ArithmeticNode",
+      "x": 470,
+      "y": 1480,
+      "init": {
+        "label": "d ÷ t",
+        "op": "div"
+      },
+      "literals": {
+        "a": 0,
+        "b": 0
+      }
+    },
+    {
+      "id": "F_d1",
+      "type": "DisplayNode",
+      "x": 700,
+      "y": 1495,
+      "init": {
+        "label": "Speed"
+      }
+    },
+    {
+      "id": "F_len",
+      "type": "NumberInputNode",
+      "x": 40,
+      "y": 1700,
+      "init": {
+        "label": "Rise",
+        "value": 10
+      }
+    },
+    {
+      "id": "F_lenFc",
+      "type": "FormatControllerNode",
+      "x": 250,
+      "y": 1718,
+      "init": {
+        "label": "Format",
+        "hostNodeId": "F_len",
+        "socketKey": "value",
+        "side": "output",
+        "unit": "m",
+        "socketDataType": "number"
+      }
+    },
+    {
+      "id": "F_run",
+      "type": "NumberInputNode",
+      "x": 40,
+      "y": 1840,
+      "init": {
+        "label": "Run",
+        "value": 2
+      }
+    },
+    {
+      "id": "F_runFc",
+      "type": "FormatControllerNode",
+      "x": 250,
+      "y": 1858,
+      "init": {
+        "label": "Format",
+        "hostNodeId": "F_run",
+        "socketKey": "value",
+        "side": "output",
+        "unit": "m",
+        "socketDataType": "number"
+      }
+    },
+    {
+      "id": "F_div2",
+      "type": "ArithmeticNode",
+      "x": 470,
+      "y": 1760,
+      "init": {
+        "label": "rise ÷ run",
+        "op": "div"
+      },
+      "literals": {
+        "a": 0,
+        "b": 0
+      }
+    },
+    {
+      "id": "F_d2",
+      "type": "DisplayNode",
+      "x": 700,
+      "y": 1775,
+      "init": {
+        "label": "Slope — units cancel"
+      }
+    },
+    {
+      "id": "capG",
+      "type": "NoteNode",
+      "x": -380,
+      "y": 2000,
+      "init": {
+        "label": "G · A bare number ADOPTS the unit",
+        "body": "A plain number in an operation that needs a unit takes the other side's: `$5 + 2` is `$7`, and a `$` list **SUMs to $60**. Only two genuinely different dimensions (metres + seconds) refuse with `#UNIT!`.",
+        "color": "green",
+        "width": 330,
+        "height": 170
+      }
+    },
+    {
+      "id": "G_price",
+      "type": "NumberInputNode",
+      "x": 40,
+      "y": 1990,
+      "init": {
+        "label": "Price",
+        "value": 5
+      }
+    },
+    {
+      "id": "G_priceFc",
+      "type": "FormatControllerNode",
+      "x": 250,
+      "y": 2008,
+      "init": {
+        "label": "Format",
+        "hostNodeId": "G_price",
+        "socketKey": "value",
+        "side": "output",
+        "unit": "usd",
+        "socketDataType": "number",
+        "format": "decimal",
+        "decimalDigits": 2,
+        "decimalMode": "places"
+      }
+    },
+    {
+      "id": "G_add",
+      "type": "ArithmeticNode",
+      "x": 470,
+      "y": 2000,
+      "init": {
+        "label": "+ 2 fee",
+        "op": "add"
+      },
+      "literals": {
+        "a": 0,
+        "b": 2
+      }
+    },
+    {
+      "id": "G_d1",
+      "type": "DisplayNode",
+      "x": 700,
+      "y": 2015,
+      "init": {
+        "label": "Total — adopts $"
+      }
+    },
+    {
+      "id": "G_list",
+      "type": "ListInputNode",
+      "x": 40,
+      "y": 2140,
+      "init": {
+        "label": "Line items",
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "10, 20, 30"
+      }
+    },
+    {
+      "id": "G_listFc",
+      "type": "FormatControllerNode",
+      "x": 250,
+      "y": 2158,
+      "init": {
+        "label": "Format",
+        "hostNodeId": "G_list",
+        "socketKey": "list",
+        "side": "output",
+        "unit": "usd",
+        "socketDataType": "list"
+      }
+    },
+    {
+      "id": "G_sum",
+      "type": "AggregateNode",
+      "x": 470,
+      "y": 2145,
+      "init": {
+        "label": "SUM",
+        "op": "sum"
+      }
+    },
+    {
+      "id": "G_d2",
+      "type": "DisplayNode",
+      "x": 700,
+      "y": 2160,
+      "init": {
+        "label": "Invoice"
+      }
+    },
+    {
+      "id": "capH",
+      "type": "NoteNode",
+      "x": -380,
+      "y": 2320,
+      "init": {
+        "label": "H · Convert has PRIMACY — or it errors",
+        "body": "A Convert **dictates the FC in front of it** (← ← arrows, dropdown locked to `m`) so the value is tagged in the unit it reads. Its `toUnit` rides the value out — the result shows **yards** with no trailing FC. Feed it a value in the wrong DIMENSION (a `$`) and it refuses with `#UNIT!` — primacy or an error, never a silent pass.",
+        "color": "purple",
+        "width": 330,
+        "height": 210
+      }
+    },
+    {
+      "id": "H_num",
+      "type": "NumberInputNode",
+      "x": 40,
+      "y": 2310,
+      "init": {
+        "label": "Length",
+        "value": 5
+      }
+    },
+    {
+      "id": "H_fc",
+      "type": "FormatControllerNode",
+      "x": 250,
+      "y": 2328,
+      "init": {
+        "label": "Format",
+        "hostNodeId": "H_num",
+        "socketKey": "value",
+        "side": "output",
+        "unit": "none",
+        "socketDataType": "number"
+      }
+    },
+    {
+      "id": "H_conv",
+      "type": "ConvertNode",
+      "x": 470,
+      "y": 2280,
+      "init": {
+        "label": "m → yd",
+        "fromUnit": "m",
+        "toUnit": "yd"
+      }
+    },
+    {
+      "id": "H_d1",
+      "type": "DisplayNode",
+      "x": 760,
+      "y": 2295,
+      "init": {
+        "label": "In yards"
+      }
+    },
+    {
+      "id": "H_bad",
+      "type": "NumberInputNode",
+      "x": 40,
+      "y": 2500,
+      "init": {
+        "label": "Budget",
+        "value": 5
+      }
+    },
+    {
+      "id": "H_badFc",
+      "type": "FormatControllerNode",
+      "x": 250,
+      "y": 2518,
+      "init": {
+        "label": "Format",
+        "hostNodeId": "H_bad",
+        "socketKey": "value",
+        "side": "output",
+        "unit": "usd",
+        "socketDataType": "number"
+      }
+    },
+    {
+      "id": "H_conv2",
+      "type": "ConvertNode",
+      "x": 470,
+      "y": 2470,
+      "init": {
+        "label": "m → km",
+        "fromUnit": "m",
+        "toUnit": "km"
+      }
+    },
+    {
+      "id": "H_d2",
+      "type": "DisplayNode",
+      "x": 760,
+      "y": 2485,
+      "init": {
+        "label": "$ into a length — #UNIT!"
+      }
+    },
+    {
+      "id": "capI",
+      "type": "NoteNode",
+      "x": -380,
+      "y": 2680,
+      "init": {
+        "label": "I · A CUSTOM unit is a real dimension",
+        "body": "The FC's custom unit mints an opaque dimension: `widgets ÷ s` reads **widgets/s**, `widgets + widgets` works, `widgets + s` is `#UNIT!` — the algebra treats your unit like any physical one.",
+        "color": "amber",
+        "width": 330,
+        "height": 170
+      }
+    },
+    {
+      "id": "I_num",
+      "type": "NumberInputNode",
+      "x": 40,
+      "y": 2670,
+      "init": {
+        "label": "Batch",
+        "value": 5
+      }
+    },
+    {
+      "id": "I_fc",
+      "type": "FormatControllerNode",
+      "x": 250,
+      "y": 2688,
+      "init": {
+        "label": "Format",
+        "hostNodeId": "I_num",
+        "socketKey": "value",
+        "side": "output",
+        "unit": "custom",
+        "socketDataType": "number",
+        "customUnit": "widgets"
+      }
+    },
+    {
+      "id": "I_time",
+      "type": "NumberInputNode",
+      "x": 40,
+      "y": 2810,
+      "init": {
+        "label": "Every",
+        "value": 1
+      }
+    },
+    {
+      "id": "I_timeFc",
+      "type": "FormatControllerNode",
+      "x": 250,
+      "y": 2828,
+      "init": {
+        "label": "Format",
+        "hostNodeId": "I_time",
+        "socketKey": "value",
+        "side": "output",
+        "unit": "s",
+        "socketDataType": "number"
+      }
+    },
+    {
+      "id": "I_div",
+      "type": "ArithmeticNode",
+      "x": 470,
+      "y": 2730,
+      "init": {
+        "label": "rate",
+        "op": "div"
+      },
+      "literals": {
+        "a": 0,
+        "b": 0
+      }
+    },
+    {
+      "id": "I_d1",
+      "type": "DisplayNode",
+      "x": 700,
+      "y": 2745,
+      "init": {
+        "label": "Throughput"
+      }
     }
   ],
   "connections": [
@@ -497,6 +949,168 @@
       "source": "E_if",
       "sourceOutput": "result",
       "target": "E_disp",
+      "targetInput": "in"
+    },
+    {
+      "source": "F_dist",
+      "sourceOutput": "value",
+      "target": "F_distFc",
+      "targetInput": "in"
+    },
+    {
+      "source": "F_distFc",
+      "sourceOutput": "out",
+      "target": "F_div",
+      "targetInput": "a"
+    },
+    {
+      "source": "F_time",
+      "sourceOutput": "value",
+      "target": "F_timeFc",
+      "targetInput": "in"
+    },
+    {
+      "source": "F_timeFc",
+      "sourceOutput": "out",
+      "target": "F_div",
+      "targetInput": "b"
+    },
+    {
+      "source": "F_div",
+      "sourceOutput": "result",
+      "target": "F_d1",
+      "targetInput": "in"
+    },
+    {
+      "source": "F_len",
+      "sourceOutput": "value",
+      "target": "F_lenFc",
+      "targetInput": "in"
+    },
+    {
+      "source": "F_lenFc",
+      "sourceOutput": "out",
+      "target": "F_div2",
+      "targetInput": "a"
+    },
+    {
+      "source": "F_run",
+      "sourceOutput": "value",
+      "target": "F_runFc",
+      "targetInput": "in"
+    },
+    {
+      "source": "F_runFc",
+      "sourceOutput": "out",
+      "target": "F_div2",
+      "targetInput": "b"
+    },
+    {
+      "source": "F_div2",
+      "sourceOutput": "result",
+      "target": "F_d2",
+      "targetInput": "in"
+    },
+    {
+      "source": "G_price",
+      "sourceOutput": "value",
+      "target": "G_priceFc",
+      "targetInput": "in"
+    },
+    {
+      "source": "G_priceFc",
+      "sourceOutput": "out",
+      "target": "G_add",
+      "targetInput": "a"
+    },
+    {
+      "source": "G_add",
+      "sourceOutput": "result",
+      "target": "G_d1",
+      "targetInput": "in"
+    },
+    {
+      "source": "G_list",
+      "sourceOutput": "list",
+      "target": "G_listFc",
+      "targetInput": "in"
+    },
+    {
+      "source": "G_listFc",
+      "sourceOutput": "out",
+      "target": "G_sum",
+      "targetInput": "list"
+    },
+    {
+      "source": "G_sum",
+      "sourceOutput": "result",
+      "target": "G_d2",
+      "targetInput": "in"
+    },
+    {
+      "source": "H_num",
+      "sourceOutput": "value",
+      "target": "H_fc",
+      "targetInput": "in"
+    },
+    {
+      "source": "H_fc",
+      "sourceOutput": "out",
+      "target": "H_conv",
+      "targetInput": "in"
+    },
+    {
+      "source": "H_conv",
+      "sourceOutput": "out",
+      "target": "H_d1",
+      "targetInput": "in"
+    },
+    {
+      "source": "H_bad",
+      "sourceOutput": "value",
+      "target": "H_badFc",
+      "targetInput": "in"
+    },
+    {
+      "source": "H_badFc",
+      "sourceOutput": "out",
+      "target": "H_conv2",
+      "targetInput": "in"
+    },
+    {
+      "source": "H_conv2",
+      "sourceOutput": "out",
+      "target": "H_d2",
+      "targetInput": "in"
+    },
+    {
+      "source": "I_num",
+      "sourceOutput": "value",
+      "target": "I_fc",
+      "targetInput": "in"
+    },
+    {
+      "source": "I_fc",
+      "sourceOutput": "out",
+      "target": "I_div",
+      "targetInput": "a"
+    },
+    {
+      "source": "I_time",
+      "sourceOutput": "value",
+      "target": "I_timeFc",
+      "targetInput": "in"
+    },
+    {
+      "source": "I_timeFc",
+      "sourceOutput": "out",
+      "target": "I_div",
+      "targetInput": "b"
+    },
+    {
+      "source": "I_div",
+      "sourceOutput": "result",
+      "target": "I_d1",
       "targetInput": "in"
     }
   ]

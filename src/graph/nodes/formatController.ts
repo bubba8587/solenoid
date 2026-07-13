@@ -1,5 +1,5 @@
 import { ClassicPreset, type NodeEditor } from "rete";
-import { formatAnnotationStore, isDateStyle, type FormatStyleId, type FormatAnnotation, type TextCase, type TextAlign, type DecimalMode, type LogicalStyle, type LambdaView, type NegativeStyle, type ScaleMode } from "../formatAnnotationStore";
+import { formatAnnotationStore, isDateStyle, isFcUnit, type FormatStyleId, type FormatAnnotation, type TextCase, type TextAlign, type DecimalMode, type LogicalStyle, type LambdaView, type NegativeStyle, type ScaleMode } from "../formatAnnotationStore";
 import { applyFcUnit, fcUnitIdForUnit } from "../unitBridge";
 import { isUnitCell, type UnitCell } from "../unitValue";
 import { dockedNodeStore } from "../dockedNodeStore";
@@ -109,10 +109,13 @@ export class FormatControllerNode extends ClassicPreset.Node {
   lockedByConvert = false;
   // True whenever the unit dropdown is locked (forwarding OR lockedByConvert).
   unitLocked = false;
-  // The value feeding this FC comes (through pure passthroughs) from a Convert —
-  // computed in refreshAnnotation (it has the editor); combined with the incoming
-  // value's tag in data() to set the three lock states above.
-  fedByConvert = false;
+  // Convert primacy (the A2 ← ← state): when this FC FEEDS a Convert downstream
+  // (through pure passthroughs), the Convert's fromUnit dictates this FC's unit —
+  // the FC must tag the value in the unit the Convert will read it as, or the
+  // interpretation forks. Computed in refreshAnnotation (it has the editor); "" =
+  // no Convert downstream. data() combines it with the incoming value's tag to set
+  // the three lock states above.
+  dictatedFromUnit = "";
   // FC A4 value-mutating: the FC needs the incoming `UnitCell` tags intact (it
   // re-displays / clash-checks them) — see coerceInputs' unit-blind boundary.
   unitAware = true;
@@ -282,19 +285,24 @@ export class FormatControllerNode extends ClassicPreset.Node {
     // downstream through passthroughs & selectors and DROPS at a transform, WITHOUT
     // any graph unit-walk. The three lock states (authored / forwarding /
     // Convert-dictated) are derived from the incoming VALUE in data(); the one
-    // graph fact data() can't see — "does a Convert feed me (through pure
-    // passthroughs)?" — is computed here, where the editor is at hand.
-    this.fedByConvert = false;
+    // graph fact data() can't see — "do I FEED a Convert (through pure
+    // passthroughs)?" — is computed here, where the editor is at hand. Convert has
+    // PRIMACY: its fromUnit dictates the FC in front of it (← ← arrows, locked
+    // dropdown), so the value is tagged in the unit the Convert reads it as.
+    this.dictatedFromUnit = "";
     {
-      let nid = inSrcId, depth = 0;
-      while (nid && depth++ < 32) {
-        const n = editor.getNode(nid) as unknown as Record<string, unknown> | undefined;
-        if (!n) break;
-        if (typeof n.fromUnit === "string" && typeof n.toUnit === "string") { this.fedByConvert = true; break; }
-        if (n.passesUnitThrough !== true) break; // a transform/source ends the segment
+      let nid = this.id, depth = 0;
+      walk: while (nid && depth++ < 32) {
         let next = "";
         for (const c of editor.getConnections()) {
-          if (c.target === nid) { next = c.source; break; }
+          if (c.source !== nid) continue;
+          const consumer = editor.getNode(c.target) as unknown as Record<string, unknown> | undefined;
+          if (!consumer) continue;
+          if (typeof consumer.fromUnit === "string" && typeof consumer.toUnit === "string") {
+            this.dictatedFromUnit = consumer.fromUnit as string;
+            break walk;
+          }
+          if (consumer.passesUnitThrough === true) { next = c.target; break; } // continue through the Display
         }
         nid = next;
       }
@@ -376,19 +384,26 @@ export class FormatControllerNode extends ClassicPreset.Node {
 
   data(inputs: { in?: unknown[] }): { out: unknown } {
     const val = inputs.in?.[0] ?? null;
-    // Live lock state (the A2 three-state arrows) from the VALUE layer: an incoming
-    // dimensioned value means an upstream authored the unit — this FC INHERITS it
-    // (→ → forwarding), or is DICTATED by a Convert feeding it (← ←, dropdown
-    // locked). The inherited display id is mirrored into `unit` when the user
-    // hasn't authored one ("none") or the Convert dictates, so the dropdown and
-    // the annotation written behind this FC both show the unit that actually rides
-    // the value. A user pick on a forwarding FC still wins (re-display).
+    // Live lock state (the A2 three-state arrows) from the VALUE layer:
+    //   ← ← lockedByConvert — this FC FEEDS a Convert (refreshAnnotation's walk):
+    //        the Convert's fromUnit dictates the unit, dropdown locked (primacy).
+    //   → → forwarding — the incoming value already carries a unit (an upstream
+    //        FC / Convert / unit source authored it); the dropdown mirrors it when
+    //        the user hasn't authored one ("none"). A user pick still wins
+    //        (re-display; a dimension clash is a #UNIT! on the value).
+    //   ← → authored — neither: this FC is the author.
     const cell = firstUnitCell(val);
     const inherited = cell ? cell.display ?? fcUnitIdForUnit({ dim: cell.dim, scale: 1 }) : undefined;
-    this.lockedByConvert = !!cell && this.fedByConvert;
-    this.forwarding = !!cell && !this.fedByConvert;
+    const dictated = this.dictatedFromUnit && isFcUnit(this.dictatedFromUnit) ? this.dictatedFromUnit : "";
+    // Dictation fills an UNAUTHORED dropdown and locks while the FC follows the
+    // Convert. It never overwrites an authored unit — the user's pick stands, and a
+    // true dimension clash surfaces as the Convert's #UNIT! (primacy OR an error,
+    // never a silent rewrite).
+    if (dictated && this.unit === "none") this.unit = dictated;
+    this.lockedByConvert = dictated !== "" && this.unit === dictated;
     this.unitLocked = this.lockedByConvert;
-    if (inherited && (this.unit === "none" || this.lockedByConvert)) this.unit = inherited;
+    this.forwarding = !!cell && !this.lockedByConvert;
+    if (!this.lockedByConvert && inherited && isFcUnit(inherited) && this.unit === "none") this.unit = inherited;
     // FC A4 — value-mutating: tag the value with this FC's unit (author a base-SI
     // `UnitCell`, re-display a commensurable one, or #UNIT! on a dimension clash). A
     // `custom` free-text unit becomes an opaque custom dimension (`poop`). A

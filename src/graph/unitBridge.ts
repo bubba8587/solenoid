@@ -41,16 +41,27 @@ const PARSE_AS: Record<string, string> = {
   L: "L", mL: "mL", // volume (parser's litre special-case)
 };
 
+// Display-unit ids registered by OTHER registries (the Convert node's
+// CONVERT_UNIT_DEFS — yd, psi, km_h, …), so a `UnitCell.display` can hold ANY id a
+// node can author, and the display layer resolves it here. Convert registers at
+// module load (registration seam — no import cycle: unitBridge never imports nodes/*).
+const EXTRA: Record<string, Unit> = {};
+export function registerDisplayUnits(units: Record<string, Unit>): void {
+  Object.assign(EXTRA, units);
+  _cache.clear(); // ids may have been memoized as unresolvable before registration
+}
+
 // Resolved FC id → Unit, built once. `none` / `custom` / unresolved ⇒ absent.
 const _cache = new Map<string, Unit | null>();
 
-/** The dimensional `Unit` an FC unit id denotes, or null (dimensionless / unknown /
+/** The dimensional `Unit` a display-unit id denotes — an FC unit id or any
+ *  registered id (Convert's registry) — or null (dimensionless / unknown /
  *  `none` / `custom`). Memoized. */
 export function fcUnitToUnit(id: string): Unit | null {
   if (id === "" || id === "none" || id === "custom") return null;
   const hit = _cache.get(id);
   if (hit !== undefined) return hit;
-  let u: Unit | null = DIRECT[id] ?? parseUnit(PARSE_AS[id] ?? id) ?? null;
+  let u: Unit | null = DIRECT[id] ?? parseUnit(PARSE_AS[id] ?? id) ?? EXTRA[id] ?? null;
   _cache.set(id, u);
   return u;
 }
