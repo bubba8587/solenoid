@@ -8,6 +8,7 @@ import { coerceLogical } from "./valueKinds";
 import { parseCsvLine } from "./csv";
 import { isFrameRef, readFrame } from "./frameBackend";
 import { isSolError } from "./errorValue";
+import { stripUnitCells } from "./unitBridge";
 
 // The relational verb nodes are LAZY: they emit a FrameRef and chain it (see
 // frameBackend), so their frame inputs must reach data() as the raw ref, NOT
@@ -160,6 +161,14 @@ type NodeLike = {
   /** Input keys the node wants UNCOERCED — it branches on the runtime shape itself
    *  (see the per-input coercion policy note above). */
   rawInputs?: ReadonlySet<string>;
+  /** The node runs the dimension algebra itself (FC A4) — its inputs keep their
+   *  `UnitCell` tags. Everything else gets cells unwrapped to display magnitudes
+   *  here (the unit-blind boundary — see unitBridge.stripUnitCells). */
+  unitAware?: boolean;
+  /** The pure-passthrough / selector markers (unitFlow duck types) — a node that
+   *  forwards the value unchanged must forward its unit tag too. */
+  passesUnitThrough?: boolean;
+  unitPassInputs?: () => string[];
   __coerced?: boolean;
 };
 
@@ -170,13 +179,21 @@ export function wrapNodeData(node: NodeLike) {
   const className = (node as { constructor: { name: string } }).constructor.name;
   const lazy = LAZY_FRAME_NODES.has(className);
   const rawInputs = node.rawInputs;
+  // The unit-blind boundary (FC A4): only a node that runs the dimension algebra
+  // itself (unitAware) or forwards the value unchanged (the passthrough/selector
+  // duck markers) sees `UnitCell` tags; everything else gets display magnitudes —
+  // so a comparison / threshold / chart downstream of an FC computes on the same
+  // number the user typed, exactly as before units existed.
+  const keepUnits =
+    node.unitAware === true || node.passesUnitThrough === true || typeof node.unitPassInputs === "function";
 
   // The synchronous coercion + literal-injection (the original body), run once
   // inputs are ref-free (either none arrived, or they were materialized first).
   const coerceAll = (inputs: Record<string, unknown[]>) => {
     const coerced: Record<string, unknown[]> = {};
     for (const key of Object.keys(inputs)) {
-      const arr = inputs[key];
+      const raw = inputs[key];
+      const arr = keepUnits || !Array.isArray(raw) ? raw : (raw.map(stripUnitCells) as unknown[]);
       const socket = node.inputs?.[key]?.socket;
       const dt = socket instanceof SolenoidSocket ? socket.dataType : undefined;
       if (!dt || !Array.isArray(arr)) { coerced[key] = arr; continue; }

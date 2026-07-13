@@ -1,6 +1,7 @@
 import { ClassicPreset, type NodeEditor } from "rete";
 import { formatAnnotationStore, isDateStyle, type FormatStyleId, type FormatAnnotation, type TextCase, type TextAlign, type DecimalMode, type LogicalStyle, type LambdaView, type NegativeStyle, type ScaleMode } from "../formatAnnotationStore";
-import { applyFcUnit } from "../unitBridge";
+import { applyFcUnit, fcUnitIdForUnit } from "../unitBridge";
+import { isUnitCell, type UnitCell } from "../unitValue";
 import { dockedNodeStore } from "../dockedNodeStore";
 import { SolenoidSocket, isDateType, isWildcardType, type SocketDataType } from "../sockets";
 
@@ -13,6 +14,16 @@ import { SolenoidSocket, isDateType, isWildcardType, type SocketDataType } from 
 //     `applyFcUnit` (author a dimensionless value, re-display a commensurable one,
 //     `#UNIT!` on a clash). The unit is a property of the value, so it computes
 //     downstream and drops at a transform on its own — no graph unit-walk.
+
+/** The first dimensioned cell in a scalar-or-list value — the lock-state probe:
+ *  its presence means an upstream (FC / Convert / unit source) authored the unit. */
+function firstUnitCell(v: unknown): UnitCell | null {
+  if (isUnitCell(v)) return v;
+  if (Array.isArray(v) && !Array.isArray(v[0])) {
+    for (const c of v) if (isUnitCell(c)) return c;
+  }
+  return null;
+}
 
 // Mutable socket wrapper: each FC owns its own socket instances so we can
 // update the dataType without affecting any shared singleton.
@@ -98,6 +109,13 @@ export class FormatControllerNode extends ClassicPreset.Node {
   lockedByConvert = false;
   // True whenever the unit dropdown is locked (forwarding OR lockedByConvert).
   unitLocked = false;
+  // The value feeding this FC comes (through pure passthroughs) from a Convert —
+  // computed in refreshAnnotation (it has the editor); combined with the incoming
+  // value's tag in data() to set the three lock states above.
+  fedByConvert = false;
+  // FC A4 value-mutating: the FC needs the incoming `UnitCell` tags intact (it
+  // re-displays / clash-checks them) — see coerceInputs' unit-blind boundary.
+  unitAware = true;
   // Compact chip: stacked dropdowns, no header. These are the initial docking-
   // position estimates; NodeCard's ResizeObserver corrects them to the real
   // rendered size after first paint.
@@ -262,14 +280,25 @@ export class FormatControllerNode extends ClassicPreset.Node {
     // FC A4: the FC is VALUE-MUTATING — it AUTHORS the value's unit (tags the
     // `UnitCell` in data()), so the unit is a property of the value and rides it
     // downstream through passthroughs & selectors and DROPS at a transform, WITHOUT
-    // any graph walk. There is no longer an inherited / Convert-dictated unit lock:
-    // the user may always pick a unit; a commensurable pick re-displays, an
-    // incommensurable one surfaces `#UNIT!` on the value itself. The number FORMAT
-    // (places / style / negatives / K-M-B) stays a display annotation written onto
-    // the box behind this FC (below); only the unit moved onto the value.
-    this.forwarding = false;
-    this.unitLocked = false;
-    this.lockedByConvert = false;
+    // any graph unit-walk. The three lock states (authored / forwarding /
+    // Convert-dictated) are derived from the incoming VALUE in data(); the one
+    // graph fact data() can't see — "does a Convert feed me (through pure
+    // passthroughs)?" — is computed here, where the editor is at hand.
+    this.fedByConvert = false;
+    {
+      let nid = inSrcId, depth = 0;
+      while (nid && depth++ < 32) {
+        const n = editor.getNode(nid) as unknown as Record<string, unknown> | undefined;
+        if (!n) break;
+        if (typeof n.fromUnit === "string" && typeof n.toUnit === "string") { this.fedByConvert = true; break; }
+        if (n.passesUnitThrough !== true) break; // a transform/source ends the segment
+        let next = "";
+        for (const c of editor.getConnections()) {
+          if (c.target === nid) { next = c.source; break; }
+        }
+        nid = next;
+      }
+    }
 
     // Format ALWAYS lands on the box feeding this FC's input — the box behind it,
     // in place, exactly like a docked FC. The value carries its own unit, so a
@@ -347,6 +376,19 @@ export class FormatControllerNode extends ClassicPreset.Node {
 
   data(inputs: { in?: unknown[] }): { out: unknown } {
     const val = inputs.in?.[0] ?? null;
+    // Live lock state (the A2 three-state arrows) from the VALUE layer: an incoming
+    // dimensioned value means an upstream authored the unit — this FC INHERITS it
+    // (→ → forwarding), or is DICTATED by a Convert feeding it (← ←, dropdown
+    // locked). The inherited display id is mirrored into `unit` when the user
+    // hasn't authored one ("none") or the Convert dictates, so the dropdown and
+    // the annotation written behind this FC both show the unit that actually rides
+    // the value. A user pick on a forwarding FC still wins (re-display).
+    const cell = firstUnitCell(val);
+    const inherited = cell ? cell.display ?? fcUnitIdForUnit({ dim: cell.dim, scale: 1 }) : undefined;
+    this.lockedByConvert = !!cell && this.fedByConvert;
+    this.forwarding = !!cell && !this.fedByConvert;
+    this.unitLocked = this.lockedByConvert;
+    if (inherited && (this.unit === "none" || this.lockedByConvert)) this.unit = inherited;
     // FC A4 — value-mutating: tag the value with this FC's unit (author a base-SI
     // `UnitCell`, re-display a commensurable one, or #UNIT! on a dimension clash).
     // A `none`/text/frame/matrix value passes through untouched. See applyFcUnit.

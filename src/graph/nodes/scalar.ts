@@ -144,6 +144,8 @@ export function arithmeticCell(
 }
 
 export class ArithmeticNode extends ClassicPreset.Node {
+  /** Keeps `UnitCell` tags on its inputs — runs the dimension algebra itself (FC A4; see coerceInputs). */
+  unitAware = true;
   label: string;
   op: ArithmeticOp;
   cachedResult: number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null = null;
@@ -308,6 +310,8 @@ export function mathFnResultDim(op: MathFnOp, dim: Dim): Dim | SolError | "strip
 }
 
 export class MathFnNode extends ClassicPreset.Node {
+  /** Keeps `UnitCell` tags on its inputs — runs the dimension algebra itself (FC A4; see coerceInputs). */
+  unitAware = true;
   label: string;
   op: MathFnOp;
   /** Angle interpretation for trig ops (ignored by every other op). */

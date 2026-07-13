@@ -79,6 +79,8 @@ function claimSeq(n?: number): number {
 }
 
 export class ConduitNode extends ClassicPreset.Node {
+  /** Keeps `UnitCell` tags on its inputs — runs the dimension algebra itself (FC A4; see coerceInputs). */
+  unitAware = true;
   label: string;
   seq: number;
   angle: number;

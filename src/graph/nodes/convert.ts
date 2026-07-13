@@ -168,6 +168,8 @@ export function convertValue(x: number, fromKey: string, toKey: string): number 
 }
 
 export class ConvertNode extends ClassicPreset.Node {
+  /** Keeps `UnitCell` tags on its inputs — runs the dimension algebra itself (FC A4; see coerceInputs). */
+  unitAware = true;
   label: string;
   fromUnit: string;
   toUnit: string;

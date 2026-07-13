@@ -77,6 +77,8 @@ function envDim(v: unknown): Dim {
 // ─── Expression node ──────────────────────────────────────────────────────────
 
 export class ExpressionNode extends ClassicPreset.Node {
+  /** Keeps `UnitCell` tags on its inputs — runs the dimension algebra itself (FC A4; see coerceInputs). */
+  unitAware = true;
   label: string;
   expr: string;
   // A pack-supplied preset locks its formula: the formula box is read-only so the

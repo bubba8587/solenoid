@@ -5,6 +5,28 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-13b — units regression fix: the unit-blind boundary + revived FC locks)
+Author verdict on the first A4 wiring: "nothing propagates or locks correctly" — CONFIRMED
+and root-caused. A raw `UnitCell` reaching any node that doesn't run the dimension algebra
+coerced to **NaN** (`coerceNumber` is unit-blind), so `Comparison(5 km > 3)` returned FALSE,
+and where a number did get through it was the **base-SI magnitude** (5 km → 5000), so
+thresholds/charts/frames were 1000× off. Only 4 node files were unit-aware; ~90% of the
+engine silently broke downstream of any FC. The fix (all in `unitCoercion.test.ts`):
+- **The unit-blind boundary** (`unitBridge.stripUnitCells`, applied centrally in
+  `coerceInputs.wrapNodeData`): a non-unit-aware node's inputs get every `UnitCell`
+  unwrapped to its **display magnitude** (the number the user typed — "5 km" ⇒ 5, offsets
+  honored), restoring exact pre-units behavior for the whole unit-blind node population.
+- **Who keeps tags**: `unitAware = true` class marks (Arithmetic, MathFn, Aggregate,
+  Convert, Expression, FC, the 5 table-lambda hosts, Conduit) + the existing passthrough
+  duck markers (`passesUnitThrough` / `unitPassInputs` — Display, IF/CHOOSE/SWITCH/IFS), so
+  the algebra and display propagation are untouched. Adding a unit-aware node = one field.
+- **FC lock states revived on the value layer**: `data()` probes the incoming value's first
+  `UnitCell` — present ⇒ this FC INHERITS (`forwarding`, → → arrows) or, when
+  `refreshAnnotation`'s upstream walk finds a Convert through pure passthroughs
+  (`fedByConvert`), is DICTATED (`lockedByConvert`/`unitLocked`, ← ←, dropdown locked). The
+  inherited display id mirrors into `unit` when unauthored ("none") or dictated, so the A2
+  dropdown+arrows read honestly again with zero component changes.
+
 ### SESSION DIGEST (2026-07-13 — FC A4 units by dimensionality: wired into the value engine)
 The pure unit-value foundation (`unitValue.ts`, `unitDimExpr.ts`, `dimension.ts`) is now
 WIRED LIVE. A number carries a physical dimension and computes with it: `5 m ÷ 1 s = 5 m/s`,
