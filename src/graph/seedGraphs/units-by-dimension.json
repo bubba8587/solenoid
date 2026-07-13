@@ -23,7 +23,7 @@
       "y": -20,
       "init": {
         "label": "A · dimensional algebra: 5 m ÷ 1 s = 5 m/s",
-        "body": "Give a Number node a **unit** and it becomes a dimensioned quantity. Divide a length by a time and the result reads **m/s** — computed from the dimensions, not a label.",
+        "body": "A **Format Controller** gives a value its **unit** — the number becomes a dimensioned quantity. Divide a length by a time and the result reads **m/s** — computed from the dimensions, not a label.",
         "color": "blue",
         "width": 360,
         "height": 150
@@ -34,14 +34,28 @@
       "type": "NumberInputNode",
       "x": 20,
       "y": 170,
-      "init": { "label": "Distance", "value": 5, "unit": "m" }
+      "init": { "label": "Distance", "value": 5 }
+    },
+    {
+      "id": "fcD",
+      "type": "FormatControllerNode",
+      "x": 150,
+      "y": 175,
+      "init": { "label": "m", "hostNodeId": "numD", "socketKey": "value", "side": "output", "unit": "m", "socketDataType": "number" }
     },
     {
       "id": "numT",
       "type": "NumberInputNode",
       "x": 20,
       "y": 300,
-      "init": { "label": "Time", "value": 1, "unit": "s" }
+      "init": { "label": "Time", "value": 1 }
+    },
+    {
+      "id": "fcT",
+      "type": "FormatControllerNode",
+      "x": 150,
+      "y": 305,
+      "init": { "label": "s", "hostNodeId": "numT", "socketKey": "value", "side": "output", "unit": "s", "socketDataType": "number" }
     },
     {
       "id": "ariB",
@@ -116,8 +130,10 @@
     }
   ],
   "connections": [
-    { "source": "numD", "sourceOutput": "value", "target": "ariB", "targetInput": "a" },
-    { "source": "numT", "sourceOutput": "value", "target": "ariB", "targetInput": "b" },
+    { "source": "numD", "sourceOutput": "value", "target": "fcD", "targetInput": "in" },
+    { "source": "fcD", "sourceOutput": "out", "target": "ariB", "targetInput": "a" },
+    { "source": "numT", "sourceOutput": "value", "target": "fcT", "targetInput": "in" },
+    { "source": "fcT", "sourceOutput": "out", "target": "ariB", "targetInput": "b" },
     { "source": "ariB", "sourceOutput": "result", "target": "dispB", "targetInput": "in" },
     { "source": "tblA", "sourceOutput": "table", "target": "bfA", "targetInput": "matrix" },
     { "source": "hdrA", "sourceOutput": "list", "target": "bfA", "targetInput": "headers" },

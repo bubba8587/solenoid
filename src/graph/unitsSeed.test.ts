@@ -4,7 +4,7 @@ import seed from "./seedGraphs/units-by-dimension.json";
 import { isUnitCell, magnitudeOf, unitLabelOf, type UnitCell } from "./unitValue";
 import type { BuildFrameNode, GetColumnNode } from "./nodes/frame";
 import type { AggregateNode } from "./nodes/list";
-import type { ArithmeticNode, NumberInputNode } from "./rete-nodes";
+import type { ArithmeticNode, NumberInputNode, FormatControllerNode } from "./rete-nodes";
 
 // The "Units by Dimension" seed is a teaching graph. This test drives its two lanes
 // through the REAL node classes (built from the seed's inits) and asserts the
@@ -20,12 +20,16 @@ function build<T>(id: string): T {
 }
 
 describe("Units by Dimension seed — the captioned behaviors hold", () => {
-  it("A · 5 m ÷ 1 s = 5 m/s through Number → Arithmetic", () => {
+  it("A · 5 m ÷ 1 s = 5 m/s through Number → FC → Arithmetic", () => {
+    // Units are authored by the Format Controller (value-mutating), NOT the Number
+    // node — numD/numT are plain literals; fcD/fcT tag them m and s.
     const numD = build<NumberInputNode>("numD");
+    const fcD = build<FormatControllerNode>("fcD");
     const numT = build<NumberInputNode>("numT");
+    const fcT = build<FormatControllerNode>("fcT");
     const ari = build<ArithmeticNode>("ariB");
-    const a = numD.data().value;   // 5 m (base-SI UnitCell)
-    const b = numT.data().value;   // 1 s
+    const a = fcD.data({ in: [numD.data().value] }).out;  // 5 → 5 m (base-SI UnitCell)
+    const b = fcT.data({ in: [numT.data().value] }).out;  // 1 → 1 s
     expect(isUnitCell(a)).toBe(true);
     const r = ari.data({ a: [a] as never, b: [b] as never }).result;
     expect(isUnitCell(r)).toBe(true);
