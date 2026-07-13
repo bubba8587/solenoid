@@ -1,36 +1,19 @@
 import { describe, it, expect } from "vitest";
 import { ArithmeticNode, arithmeticCell } from "./nodes/scalar";
-import { NumberInputNode } from "./nodes/input";
 import { fromUnit, isUnitCell, magnitudeOf, unitLabelOf, formatUnitCell, type UnitCell } from "./unitValue";
 import { fcUnitToUnit } from "./unitBridge";
 import { isSolError } from "./errorValue";
 import { UNITS } from "./dimension";
 
+// Units enter a value through the Format Controller (the FC is value-mutating) or
+// Convert — NOT the Number node, which is a plain literal source. These tests drive
+// the algebra directly via `fromUnit` (the same base-SI cell an FC authors).
 const cell = (v: number, unitId: string): UnitCell => {
   const u = fcUnitToUnit(unitId)!;
   const c = fromUnit(v, u);
   if (!isUnitCell(c)) throw new Error("expected a UnitCell");
   return c;
 };
-
-describe("NumberInputNode — a dimensional unit tags the literal as a base-SI UnitCell", () => {
-  it("km literal stores metres and carries a length dimension", () => {
-    const n = new NumberInputNode({ value: 5, unit: "km" });
-    const out = n.data().value;
-    expect(isUnitCell(out)).toBe(true);
-    expect(magnitudeOf(out)).toBe(5000);          // 5 km → 5000 m base
-    expect(unitLabelOf(out)).toBe("m");
-  });
-  it("no unit → a bare number, unchanged", () => {
-    expect(new NumberInputNode({ value: 5 }).data().value).toBe(5);
-    expect(new NumberInputNode({ value: 5, unit: "none" }).data().value).toBe(5);
-  });
-  it("a currency literal carries the currency dimension", () => {
-    const out = new NumberInputNode({ value: 12, unit: "usd" }).data().value;
-    expect(isUnitCell(out)).toBe(true);
-    expect(magnitudeOf(out)).toBe(12);
-  });
-});
 
 describe("arithmeticCell — dimensional algebra per op", () => {
   it("5 m ÷ 1 s = 5 m/s", () => {
