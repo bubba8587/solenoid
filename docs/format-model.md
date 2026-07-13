@@ -26,6 +26,19 @@ value ──▶ 1 TYPE GATE ──▶ 2 STYLE (scale-divide, then precision+grou
    currencies, suffix otherwise). Number-family only; a date/text/logical value
    never takes a unit. Orthogonal to style — every number style accepts a unit
    (the unit is a property of the VALUE and a cable constraint, not display sugar).
+
+   **Unit = VALUE-level, format = DISPLAY-level (FC A4, 2026-07-13).** The FC is
+   VALUE-MUTATING for the unit: `FormatControllerNode.data()` tags the value's
+   `UnitCell` (dimension + the chosen display id) via `applyFcUnit` — a
+   dimensionless number is authored (`5` + km → 5000 m base, display km), a
+   commensurable dimensioned value is re-displayed, an incommensurable one is a
+   `#UNIT!`. Because the unit now rides the VALUE (`unitValue.ts`, base-SI +
+   `display`), it carries downstream through passthroughs/selectors and DROPS at a
+   transform on its own — there is no graph unit-walk. The rest of this pipeline
+   (style / precision / negatives / K-M-B) stays a DISPLAY annotation the FC locks
+   onto the box behind it (`unitFlow.ts` `makeAnnotationResolver` carries it to a
+   downstream passthrough box). So the unit computes and clashes honestly; the
+   number format is pure presentation.
 4. **Text attributes.** Case / bold / italic / size apply as display-only
    transforms (the underlying value is never mutated). Text family only.
 

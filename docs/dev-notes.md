@@ -35,14 +35,44 @@ WIRED LIVE. A number carries a physical dimension and computes with it: `5 m ÷ 
   element-family separation, but a value's dimension is RUNTIME — it can't gate a static socket
   `accepts()`, so the separation is a COMPUTE-time `#UNIT!` (×/÷ always combine = dimensional
   flow; +/−/compare/aggregate require the same dim = type separation).
-- **DELIBERATE DEVIATION — `unitFlow.ts` KEPT, not deleted** (step 4 said "delete + replace").
-  Its FC display-lock flow (downstream carry / upstream reach / selectors / Convert primacy) is
-  correct, load-bearing, and ORTHOGONAL to the value-dimension layer; rewriting it would risk the
-  5 seed lanes for zero functional gain. The dimension layer integrates on the DISPLAY side
-  instead. `resolveValueOrigin` + the 5 Unit-Flow lanes still pass. Follow-ups (per-element mixed
-  trig, FC-authors-a-value-unit, Convert→UnitCell, frame-popup column units) in `backlog.md`.
+- **The FC is now VALUE-MUTATING (unification landed later 2026-07-13 — see the digest below).**
+  The earlier pass KEPT `unitFlow.ts`'s display-lock walk; the flagship's last mile then re-expressed
+  the unit half on the value layer and DELETED the walk.
 - 45 new tests; full suite green (2690). Seed: `units-by-dimension.json` (+ `unitsSeed.test.ts`
   drives its two lanes through the real nodes).
+
+### SESSION DIGEST (2026-07-13 — FC A4 flagship last mile: the Format Controller becomes value-mutating)
+The two parallel unit representations are UNIFIED on the value layer. The FC no longer records a
+display-only unit string resolved by a graph walk — it AUTHORS the value's unit.
+- **`UnitCell` gained an optional `display` id** (`unitValue.ts`). The stored value stays base SI;
+  `display` is the FC unit id it renders in. It rides the value through passthroughs/selectors and
+  DROPS at a transform, because every algebra result funnels through `tagDim` (which carries no
+  display) — the carry/break semantics are now a PROPERTY OF THE VALUE, not a graph walk. `guardCell`
+  preserves `display` through the broadcaster.
+- **`applyFcUnit` (`unitBridge.ts`)**: dimensionless number + a real unit → base-SI tag (interpret AS
+  the unit, like the Number picker: `5` + km → 5000 m, display km); already-dimensioned + a
+  COMMENSURABLE unit → re-display (base kept, display swapped); INcommensurable → `#UNIT!` (author's
+  call: a true dimension clash is honest-wrong, not silently re-asserted); none/text/matrix/frame
+  pass through. `FormatControllerNode.data()` runs it; `Convert.data()` tags its output too (a
+  base-SI `UnitCell` + toUnit display, so a downstream FC AGREES on the value's unit); `NumberInput`
+  carries its picked unit as the display id.
+- **`makeUnitResolver` DELETED**, plus the FC forwarding / Convert-lock logic in `refreshAnnotation`
+  (no more inherited/dictated unit arrows — the value carries the unit; the user may always pick, and
+  a clash surfaces `#UNIT!`). `unitFlow.ts` now carries only the number-FORMAT annotation
+  (`makeAnnotationResolver`, which a downstream passthrough box still inherits) + `resolveValueOrigin`
+  (kept). `trigMode` reads the incoming FORMAT annotation's unit (the bare-degree annotationFor path;
+  a genuinely dimensioned angle is already base-radians and computes directly).
+- **Objective 2**: REDUCE / BYROW / BYCOL carry units over a 1-D list — strip tagged cells for the
+  numeric fold, `dimEval` the formula (fold/aggregate vars bound to the element dim) to get the result
+  dim, re-tag (preserving the display when the dim is unchanged). Mixed units / formula clash → `#UNIT!`;
+  a dimensionless-yielding formula (COUNT) strips to a plain number. MAP/MAKEARRAY/SCAN stay agnostic.
+- **Author-review flags**: (1) chose `#UNIT!` over silent re-assert on a dimension clash; (2) lane C of
+  the Unit Flow seed was re-authored — under real dimensional algebra `$10 × 100 = $1000` KEEPS the
+  currency dimension (only the number FORMAT + the specific `$` display break at the transform), so the
+  lane now teaches "format is display, the unit is physical" rather than "the unit vanishes"; (3) the
+  three-state FC flow arrows collapse to plain "authored" (forwarding/Convert-lock states are gone with
+  the walk). Re-authored the Unit-Flow seed test + `unitFlowAnnotation` + Convert output assertions.
+  Full suite green (2702, +new value-mutating + LAMBDA-host tests); tsc clean.
 
 ### SESSION DIGEST (2026-07-12 — drill-in Stream B: Isolate + trueany/trig inside composites)
 First-class composite drill-in, three of the four Stream-B items landed green;
