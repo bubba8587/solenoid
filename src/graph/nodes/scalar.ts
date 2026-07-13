@@ -3,7 +3,7 @@ import { broadcast, broadcastErr, broadcastUnit, anyDimensioned, readInput, numL
 import { lnGamma } from "./mathUtils";
 import { solError, type SolError } from "../errorValue";
 import type { FormatAnnotation } from "../formatAnnotationStore";
-import { type UnitCell, dimOf, magnitudeOf, tagDim, unitError } from "../unitValue";
+import { type UnitCell, isUnitCell, dimOf, magnitudeOf, tagDim, unitError } from "../unitValue";
 import { type Dim, DIMENSIONLESS, dimEqual, dimMul, dimDiv, dimPow, isDimensionless } from "../dimension";
 
 // ─── Bessel helper functions ──────────────────────────────────────────────────
@@ -120,23 +120,46 @@ export function arithmeticCell(
 ): number | UnitCell | SolError {
   const da = dimOf(a), db = dimOf(b);
   const x = magnitudeOf(a), y = magnitudeOf(b);
+  const dispA = isUnitCell(a) ? a.display : undefined;
+  const dispB = isUnitCell(b) ? b.display : undefined;
   const divZero = () => solError("#DIV/0!", "Division by zero");
+  // +/−/mod need commensurable dimensions — BUT a dimensionless operand ADOPTS the
+  // other side's unit (author decision 2026-07-13: `$5 + 2 = $7`, the spreadsheet
+  // reading — a bare number is treated as the same unit, at base-SI scale). The
+  // result keeps the dimensioned side's display id so `$` survives. Only two genuinely
+  // different dimensions (metres + seconds) are a `#UNIT!`.
+  const combine = (r: number): number | UnitCell | SolError => {
+    if (dimEqual(da, db)) return tagDim(r, da, dispA ?? dispB);
+    if (isDimensionless(da)) return tagDim(r, db, dispB);
+    if (isDimensionless(db)) return tagDim(r, da, dispA);
+    return unitError();
+  };
+  // ×/÷ keep the display unit ONLY when the result stays in an operand's dimension
+  // (i.e. the other side was dimensionless): `$5 × 2 = $10` keeps `$`, but
+  // `5 m × 3 s = 15 m·s` reverts to the derived symbol (neither operand's unit fits).
+  const carry = (rd: Dim): string | undefined =>
+    dispA && dimEqual(rd, da) ? dispA : dispB && dimEqual(rd, db) ? dispB : undefined;
   switch (op) {
     case "add":
-      if (!dimEqual(da, db)) return unitError();
-      return tagDim(x + y, da);
+      return combine(x + y);
     case "sub":
-      if (!dimEqual(da, db)) return unitError();
-      return tagDim(x - y, da);
-    case "mul":
-      return tagDim(x * y, dimMul(da, db));
-    case "div":
-      return y === 0 ? divZero() : tagDim(x / y, dimDiv(da, db));
+      return combine(x - y);
+    case "mul": {
+      const rd = dimMul(da, db);
+      return tagDim(x * y, rd, carry(rd));
+    }
+    case "div": {
+      if (y === 0) return divZero();
+      const rd = dimDiv(da, db);
+      return tagDim(x / y, rd, carry(rd));
+    }
     case "mod":
-      if (!dimEqual(da, db)) return unitError();
-      return y === 0 ? divZero() : tagDim(x - y * Math.floor(x / y), da);
-    case "quotient":
-      return y === 0 ? divZero() : tagDim(Math.trunc(x / y), dimDiv(da, db));
+      return y === 0 ? divZero() : combine(x - y * Math.floor(x / y));
+    case "quotient": {
+      if (y === 0) return divZero();
+      const rd = dimDiv(da, db);
+      return tagDim(Math.trunc(x / y), rd, carry(rd));
+    }
     case "pow":
       if (!isDimensionless(db)) return unitError("An exponent must be a plain number, not a dimensioned quantity.");
       return tagDim(Math.pow(x, y), dimPow(da, y));

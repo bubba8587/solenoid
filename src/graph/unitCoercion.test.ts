@@ -85,6 +85,40 @@ describe("unit-aware nodes and passthroughs keep the tags", () => {
     expect((out as UnitCell).display).toBe("km");
   });
 
+  it("a bare number added to a currency value adopts $ (=$7, keeps display)", async () => {
+    const g = makeGraph();
+    const num = new NumberInputNode({ label: "n", value: 5 });
+    const fc = new FormatControllerNode({ unit: "usd" });
+    const two = new NumberInputNode({ label: "t", value: 2 });
+    const add = new ArithmeticNode({ op: "add" });
+    for (const n of [num, fc, two, add]) await g.editor.addNode(n as never);
+    await g.conn(num, "value", fc, "in");
+    await g.conn(fc, "out", add, "a");
+    await g.conn(two, "value", add, "b");
+    const out = (await g.fetch(add)).result;
+    expect(isUnitCell(out)).toBe(true);
+    expect((out as UnitCell).value).toBe(7);
+    expect((out as UnitCell).dim).toEqual({ currency: 1 });
+    expect((out as UnitCell).display).toBe("usd");
+  });
+
+  it("$ × a bare number keeps the $ display (no bare ¤ derived symbol)", async () => {
+    const g = makeGraph();
+    const num = new NumberInputNode({ label: "n", value: 5000 });
+    const fc = new FormatControllerNode({ unit: "usd" });
+    const two = new NumberInputNode({ label: "t", value: 2 });
+    const mul = new ArithmeticNode({ op: "mul" });
+    for (const n of [num, fc, two, mul]) await g.editor.addNode(n as never);
+    await g.conn(num, "value", fc, "in");
+    await g.conn(fc, "out", mul, "a");
+    await g.conn(two, "value", mul, "b");
+    const out = (await g.fetch(mul)).result as UnitCell;
+    expect(isUnitCell(out)).toBe(true);
+    expect(out.value).toBe(10000);
+    expect(out.dim).toEqual({ currency: 1 });
+    expect(out.display).toBe("usd"); // was dropped → rendered "10000 ¤"
+  });
+
   it("Arithmetic runs the dimension algebra on the tags", async () => {
     const g = makeGraph();
     const num = new NumberInputNode({ label: "n", value: 2 });

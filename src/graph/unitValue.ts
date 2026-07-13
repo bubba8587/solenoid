@@ -143,23 +143,31 @@ export function divUnits(a: Operand, b: Operand): UnitCell | number {
   return tagDim(magnitudeOf(a) / magnitudeOf(b), dimDiv(dimOf(a), dimOf(b)));
 }
 
-/** `a + b`: requires commensurable dimensions (both already base SI ⇒ a plain add),
- *  else `#UNIT!`. Keeps the shared dimension. */
+/** `a + b`: commensurable dimensions add directly (both already base SI); a
+ *  DIMENSIONLESS operand ADOPTS the other's unit (`$5 + 2 = $7`, the spreadsheet
+ *  reading — author decision 2026-07-13); two genuinely different dimensions are a
+ *  `#UNIT!`. Keeps the dimensioned side's display id. */
 export function addUnits(a: Operand, b: Operand): UnitCell | number | SolError {
-  const da = dimOf(a), db = dimOf(b);
-  if (!dimEqual(da, db)) {
-    return unitError(`Can't add ${formatDim(da) || "a number"} to ${formatDim(db) || "a number"}.`);
-  }
-  return tagDim(magnitudeOf(a) + magnitudeOf(b), da);
+  return combineAdditive(a, b, magnitudeOf(a) + magnitudeOf(b), "add");
 }
 
-/** `a − b`: same commensurability rule as `addUnits`. */
+/** `a − b`: same commensurable-or-adopt rule as `addUnits`. */
 export function subUnits(a: Operand, b: Operand): UnitCell | number | SolError {
+  return combineAdditive(a, b, magnitudeOf(a) - magnitudeOf(b), "subtract");
+}
+
+/** The shared +/− rule: commensurable → keep the dim; one dimensionless → adopt the
+ *  other's dim + display; two different dims → `#UNIT!`. */
+function combineAdditive(a: Operand, b: Operand, r: number, verb: "add" | "subtract"): UnitCell | number | SolError {
   const da = dimOf(a), db = dimOf(b);
-  if (!dimEqual(da, db)) {
-    return unitError(`Can't subtract ${formatDim(db) || "a number"} from ${formatDim(da) || "a number"}.`);
-  }
-  return tagDim(magnitudeOf(a) - magnitudeOf(b), da);
+  const dispA = isUnitCell(a) ? a.display : undefined;
+  const dispB = isUnitCell(b) ? b.display : undefined;
+  if (dimEqual(da, db)) return tagDim(r, da, dispA ?? dispB);
+  if (isDimensionless(da)) return tagDim(r, db, dispB);
+  if (isDimensionless(db)) return tagDim(r, da, dispA);
+  return verb === "add"
+    ? unitError(`Can't add ${formatDim(da) || "a number"} to ${formatDim(db) || "a number"}.`)
+    : unitError(`Can't subtract ${formatDim(db) || "a number"} from ${formatDim(da) || "a number"}.`);
 }
 
 /** `a ^ n`: `n` must be a plain (dimensionless) number — a dimensioned exponent is
