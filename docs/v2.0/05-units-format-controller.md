@@ -85,6 +85,37 @@ author-present half.
 `ColumnUnit`; Expression/LAMBDA calling `dimEval` for its result unit; then steps
 4/5/7 below. `unitFlow.ts` is UNTOUCHED (step 4 not started).
 
+## LIVE WIRING SHIPPED 2026-07-12/13 (steps 1–7 all wired)
+
+The foundation modules are now WIRED INTO THE VALUE ENGINE and the socket/seed/UI
+surfaces. Every build-order step below is done; the value layer computes with units
+end-to-end. See `unitWiring.test.ts`, `unitColumn.test.ts`, `unitLattice.test.ts`,
+`unitsSeed.test.ts` (45 new tests). Key deltas:
+- **`unitBridge.ts`** — FC unit ids ⇄ `dimension.ts` Units (the display-layer ↔
+  value-layer lookup). **`unitColumn.ts`** — `Name (unit)` header parser + column
+  display helpers.
+- **`shared.ts` `broadcastUnit` / `anyDimensioned`** — the dimensional twin of
+  `broadcastErr`; plain-number data is byte-identical (gate), units only bite when a
+  `UnitCell` is present.
+- **`ArithmeticNode`** (+−×÷ mod pow), **`MathFnNode`** (per-op dimensional
+  signature), **`ExpressionNode`** (`dimEval` in parallel with the numeric run),
+  **`AggregateNode`** + **`SumIfsNode`** (`forAggregateUnits`), **`GetColumnNode`**
+  (a unit-locked column tags cells on the way out), **`NumberInputNode`** (a `unit`
+  field + picker — the scalar entry point).
+- **`FrameColumn.unit`** is now the real `ColumnUnit`; `buildFrame` / `addColumn`
+  lock a column from a `Name (unit)` header. Worked example lives in
+  `seedGraphs/units-by-dimension.json`.
+- **Display**: `unwrapUnitCells` renders a dimensioned cell as "magnitude symbol"
+  (5 m/s), or unwraps to a docked FC's display unit.
+- **`unitFlow.ts` KEPT, not deleted** (deliberate deviation from step 4's letter):
+  its FC display-lock flow is correct, load-bearing, and orthogonal to the dimension
+  layer; deleting it would risk the 5 seed lanes for no functional gain. The
+  dimension layer integrates on the DISPLAY side instead. `resolveValueOrigin` and
+  the 5 lanes still pass.
+- **Step 7 reality**: units ride INSIDE values (runtime tags), so they mint no new
+  static socket types and add no `accepts()` edges; the separation is a COMPUTE-time
+  `#UNIT!`, machine-checked by `unitLattice.test.ts`'s full dimensional sweep.
+
 ## Build order
 
 1. **Value model:** tagged-cell unit on list elements (exponent vector + scale via
