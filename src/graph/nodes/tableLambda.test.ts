@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { MapTableNode, ByAxisNode, ReduceLambdaNode, ScanLambdaNode } from "./tableLambda";
 import { LambdaNode, isLambdaValue, formatLambda, formatLambdaSig, undeclaredConsumerVars, type LambdaValue } from "./lambda";
 import { isSolError, type SolError } from "../errorValue";
+import { fromUnit, isUnitCell, magnitudeOf, type UnitCell } from "../unitValue";
 
 /** Narrow a node result the test knows is a lambda value (the node now returns a
  *  SolError on a broken lambda, so the union needs a guard before .params/.fn). */
@@ -256,5 +257,62 @@ describe("ScanLambda (SCAN)", () => {
     expect(undeclaredConsumerVars(["rate"], sig)).toEqual([]);        // a real constant → fine
     expect(undeclaredConsumerVars(["acc", "value"], sig)).toEqual(["acc", "value"]);
     expect(new ReduceLambdaNode().lambdaSig).toEqual(sig);
+  });
+});
+
+// A km cell: n km stored as base-SI metres (n*1000), tagged length + display "km".
+const KM = { dim: { length: 1 }, scale: 1000 };
+const km = (n: number) => fromUnit(n, KM, "km") as UnitCell;
+
+describe("LAMBDA hosts carry units over a 1-D list (FC A4)", () => {
+  it("BYROW SUM over a km list carries the length dimension + display", () => {
+    const list = [km(1), km(2), km(3)]; // base metres 1000/2000/3000
+    const out = new ByAxisNode({ axis: "row", expr: "SUM(values)" }).data({ table: [list] }).result as UnitCell[];
+    expect(out.length).toBe(1);
+    expect(isUnitCell(out[0])).toBe(true);
+    expect(out[0].dim).toEqual({ length: 1 });
+    expect(magnitudeOf(out[0])).toBeCloseTo(6000, 6); // 6 km in metres
+    expect(out[0].display).toBe("km");
+  });
+
+  it("REDUCE sum over a km list from 0 carries the dimension (initial 0 is the identity)", () => {
+    const list = [km(1), km(2), km(3)];
+    const r = new ReduceLambdaNode({ expr: "acc + value" }).data({ initial: [0], table: [list] }).result;
+    expect(isUnitCell(r) && (r as UnitCell).dim).toEqual({ length: 1 });
+    expect(magnitudeOf(r)).toBeCloseTo(6000, 6);
+    expect((r as UnitCell).display).toBe("km");
+  });
+
+  it("a formula that combines dimensions carries the DERIVED dim (acc*value → length²)", () => {
+    const list = [km(1), km(2)];
+    const r = new ReduceLambdaNode({ expr: "acc * value" }).data({ initial: [1], table: [list] }).result;
+    expect(isUnitCell(r) && (r as UnitCell).dim).toEqual({ length: 2 });
+    expect((r as UnitCell).display).toBeUndefined(); // dim changed → no carried display
+  });
+
+  it("a dimensionless-yielding formula (COUNT) strips the unit to a plain number", () => {
+    const list = [km(1), km(2), km(3)];
+    expect(new ByAxisNode({ axis: "row", expr: "COUNT(values)" }).data({ table: [list] }).result).toEqual([3]);
+  });
+
+  it("mixed units in one list → #UNIT!", () => {
+    const mixed = [km(1), fromUnit(2, { dim: { time: 1 }, scale: 1 }, "s")]; // length + time
+    const out = new ByAxisNode({ axis: "row", expr: "SUM(values)" }).data({ table: [mixed] }).result;
+    expect(isSolError(out) && (out as SolError).code).toBe("#UNIT!");
+    const red = new ReduceLambdaNode({ expr: "acc + value" }).data({ initial: [0], table: [mixed] }).result;
+    expect(isSolError(red) && (red as SolError).code).toBe("#UNIT!");
+  });
+
+  it("a bare (unitless) list is unchanged — no tagging", () => {
+    expect(new ReduceLambdaNode({ expr: "acc + value" }).data({ initial: [0], table: [[1, 2, 3]] }).result).toBe(6);
+    expect(new ByAxisNode({ axis: "row", expr: "SUM(values)" }).data({ table: [[1, 2, 3]] }).result).toEqual([6]);
+  });
+
+  it("a wired LAMBDA's body drives the dimensional interpretation too", () => {
+    const lam = new LambdaNode({ params: "values", expr: "SUM(values)" }).data({}).result;
+    const list = [km(2), km(3)];
+    const out = new ByAxisNode({ axis: "row" }).data({ table: [list], lambda: [lam] }).result as UnitCell[];
+    expect(out[0].dim).toEqual({ length: 1 });
+    expect(magnitudeOf(out[0])).toBeCloseTo(5000, 6);
   });
 });
