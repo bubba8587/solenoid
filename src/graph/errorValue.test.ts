@@ -8,6 +8,7 @@ import { XMatchNode, FilterNode, ListIndexNode } from "./nodes/list";
 import { ExpressionNode } from "./nodes/expression";
 import { IrrNode, TvmNode, MirrNode } from "./nodes/finance";
 import { ConvertNode } from "./nodes/convert";
+import { isUnitCell, type UnitCell } from "./unitValue";
 import { ShapeError } from "./nodes/coerce";
 
 describe("SolError tagging", () => {
@@ -350,7 +351,11 @@ describe("error producers", () => {
     const cross = new ConvertNode({ fromUnit: "m", toUnit: "kg" }).data({ in: [5] }).out;
     expect(isSolError(cross)).toBe(true);
     expect((cross as SolError).code).toBe("#N/A");
-    // A same-family conversion works (metres → kilometres).
-    expect(new ConvertNode({ fromUnit: "m", toUnit: "km" }).data({ in: [2000] }).out).toBeCloseTo(2, 9);
+    // A same-family conversion works (metres → kilometres): a base-SI UnitCell of
+    // 2000 m tagged display "km" (2 km) — FC A4 value-mutating Convert.
+    const ok = new ConvertNode({ fromUnit: "m", toUnit: "km" }).data({ in: [2000] }).out;
+    expect(isUnitCell(ok)).toBe(true);
+    expect((ok as UnitCell).value).toBeCloseTo(2000, 9);
+    expect((ok as UnitCell).display).toBe("km");
   });
 });

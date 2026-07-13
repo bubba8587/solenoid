@@ -1,6 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { NodeEditor, ClassicPreset } from "rete";
-import { makeAnnotationResolver, makeUnitResolver, resolveValueOrigin } from "./unitFlow";
+import { makeAnnotationResolver, resolveValueOrigin } from "./unitFlow";
+import { applyFcUnit } from "./unitBridge";
+import { isUnitCell, magnitudeOf, dimOf, fromUnit, type UnitCell } from "./unitValue";
+import { UNITS } from "./dimension";
+import { isSolError } from "./errorValue";
 import type { FormatAnnotation } from "./formatAnnotationStore";
 
 type AnyEditor = NodeEditor<{ Node: ClassicPreset.Node; Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node> }>;
@@ -10,6 +14,8 @@ const usd: FormatAnnotation = {
   unit: "usd", customUnit: "", textCase: "none", bold: false, italic: false, textScale: 14,
 };
 const eur: FormatAnnotation = { ...usd, unit: "eur" };
+const km: FormatAnnotation = { ...usd, unit: "km" };
+const mi: FormatAnnotation = { ...usd, unit: "mi" };
 
 function node(label: string, extra: Record<string, unknown> = {}) {
   const n = new ClassicPreset.Node(label) as ClassicPreset.Node & Record<string, unknown>;
@@ -105,37 +111,35 @@ describe("downstreamAnnotation — an FC's lock reaches Displays AHEAD of it (up
   });
 });
 
-describe("input-aware passthrough — IF/CHOOSE/SWITCH/IFS pass the value branch's unit", () => {
-  it("IF passes the unit from then/else, ignoring the condition", async () => {
+describe("input-aware passthrough — IF/CHOOSE/SWITCH/IFS pass the value branch's annotation", () => {
+  it("IF passes the annotation from then/else, ignoring the condition", async () => {
     const editor = new NodeEditor() as unknown as AnyEditor;
     const a = fcSource("A", "usd", usd);   // $ value
     const b = fcSource("B", "usd", usd);   // $ value
-    const condFc = fcSource("CondFc", "km"); // a unit on the condition (shouldn't matter)
+    const condFc = fcSource("CondFc", "km", km); // a unit on the condition (shouldn't matter)
     const iff = ifNode("IF", "then");
     for (const n of [a, b, condFc, iff]) await editor.addNode(n as never);
     await connect(editor, condFc, iff, "cond");
     await connect(editor, a, iff, "then");
     await connect(editor, b, iff, "else");
-    const u = makeUnitResolver(editor);
-    expect(u.outUnit(iff.id, "out")).toBe("usd");           // both branches $ → $
     const ann = makeAnnotationResolver(editor);
-    expect(ann.outAnnotation(iff.id, "out")?.unit).toBe("usd");
+    expect(ann.outAnnotation(iff.id, "out")?.unit).toBe("usd"); // both branches $ → $
   });
 
   it("DATA-AWARE: IF(c, km, mi) follows the actually-selected branch", async () => {
     const editor = new NodeEditor() as unknown as AnyEditor;
-    const km = fcSource("KM", "km");
-    const mi = fcSource("MI", "mi");
+    const kmS = fcSource("KM", "km", km);
+    const miS = fcSource("MI", "mi", mi);
     const iffTrue = ifNode("IFtrue", "then");   // condition computed true → km
     const iffFalse = ifNode("IFfalse", "else"); // condition computed false → mi
-    for (const n of [km, mi, iffTrue, iffFalse]) await editor.addNode(n as never);
-    await connect(editor, km, iffTrue, "then");
-    await connect(editor, mi, iffTrue, "else");
-    await connect(editor, km, iffFalse, "then");
-    await connect(editor, mi, iffFalse, "else");
-    const u = makeUnitResolver(editor);
-    expect(u.outUnit(iffTrue.id, "out")).toBe("km");        // selected then
-    expect(u.outUnit(iffFalse.id, "out")).toBe("mi");       // selected else
+    for (const n of [kmS, miS, iffTrue, iffFalse]) await editor.addNode(n as never);
+    await connect(editor, kmS, iffTrue, "then");
+    await connect(editor, miS, iffTrue, "else");
+    await connect(editor, kmS, iffFalse, "then");
+    await connect(editor, miS, iffFalse, "else");
+    const ann = makeAnnotationResolver(editor);
+    expect(ann.outAnnotation(iffTrue.id, "out")?.unit).toBe("km");  // selected then
+    expect(ann.outAnnotation(iffFalse.id, "out")?.unit).toBe("mi"); // selected else
   });
 
   it("only ONE branch with a unit still passes it (the other is unitless)", async () => {
@@ -144,10 +148,10 @@ describe("input-aware passthrough — IF/CHOOSE/SWITCH/IFS pass the value branch
     const iff = ifNode("IF", null);                          // indeterminate → combine
     for (const n of [a, iff]) await editor.addNode(n as never);
     await connect(editor, a, iff, "then");                   // else left unwired (unitless)
-    expect(makeUnitResolver(editor).outUnit(iff.id, "out")).toBe("usd");
+    expect(makeAnnotationResolver(editor).outAnnotation(iff.id, "out")?.unit).toBe("usd");
   });
 
-  it("INDETERMINATE selection (e.g. a list condition) + conflicting branches → no unit", async () => {
+  it("INDETERMINATE selection (e.g. a list condition) + conflicting branches → no annotation", async () => {
     const editor = new NodeEditor() as unknown as AnyEditor;
     const a = fcSource("A", "usd", usd);
     const b = fcSource("B", "eur", eur);
@@ -155,8 +159,41 @@ describe("input-aware passthrough — IF/CHOOSE/SWITCH/IFS pass the value branch
     for (const n of [a, b, iff]) await editor.addNode(n as never);
     await connect(editor, a, iff, "then");
     await connect(editor, b, iff, "else");
-    expect(makeUnitResolver(editor).outUnit(iff.id, "out")).toBe("none");
     expect(makeAnnotationResolver(editor).outAnnotation(iff.id, "out")).toBeUndefined();
+  });
+});
+
+describe("applyFcUnit — the FC is value-mutating (FC A4: the unit rides the VALUE)", () => {
+  it("authors a base-SI UnitCell on a dimensionless number (interprets it AS the unit)", () => {
+    const r = applyFcUnit(5, "km") as UnitCell;
+    expect(isUnitCell(r)).toBe(true);
+    expect(r.dim).toEqual({ length: 1 });
+    expect(r.value).toBeCloseTo(5000, 9); // 5 read as 5 km → 5000 m base
+    expect(r.display).toBe("km");
+  });
+
+  it("RE-DISPLAYS a commensurable already-dimensioned value (base kept, display swapped)", () => {
+    const fiveKm = fromUnit(5, UNITS.m, "km"); // 5 m tagged, display km (contrived)
+    const asMi = applyFcUnit(fromUnit(5000, UNITS.m, "km"), "mi") as UnitCell;
+    expect(asMi.value).toBeCloseTo(5000, 6);   // base metres unchanged
+    expect(asMi.display).toBe("mi");           // re-displayed in miles
+    expect(isUnitCell(fiveKm)).toBe(true);
+  });
+
+  it("#UNIT! on a true dimension clash (a length can't be re-labelled a mass)", () => {
+    const lengthCell = fromUnit(3, UNITS.m, "m");
+    const clash = applyFcUnit(lengthCell, "kg");
+    expect(isSolError(clash) && clash.code).toBe("#UNIT!");
+  });
+
+  it("`none` / text / matrix pass through untouched; a list tags per cell", () => {
+    expect(applyFcUnit(5, "none")).toBe(5);
+    expect(applyFcUnit("hello", "km")).toBe("hello");
+    const matrix = [[1, 2], [3, 4]];
+    expect(applyFcUnit(matrix, "km")).toBe(matrix);      // 2-D is unit-agnostic
+    const list = applyFcUnit([1, 2], "m") as UnitCell[];
+    expect(list.map((c) => magnitudeOf(c))).toEqual([1, 2]);
+    expect(list.every((c) => dimOf(c).length === 1 && c.display === "m")).toBe(true);
   });
 });
 

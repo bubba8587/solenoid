@@ -225,7 +225,7 @@ function guardCell(r: number | UnitCell | SolError | null, ...inputs: unknown[])
   if (r === null || typeof r === "string") return r;
   if (isUnitCell(r)) {
     const g = guardFinite(r.value, ...inputs);
-    return typeof g === "number" ? tagDim(g, r.dim) : g; // re-tag, or surface the error
+    return typeof g === "number" ? tagDim(g, r.dim, r.display) : g; // re-tag (keep display), or surface the error
   }
   if (typeof r === "number") return guardFinite(r, ...inputs);
   return r; // a SolError from fn passes through

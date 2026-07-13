@@ -1,6 +1,6 @@
 import type { NodeEditor, ClassicPreset } from "rete";
 import { MathFnNode, isTrigOp } from "./nodes/scalar";
-import { makeUnitResolver } from "./unitFlow";
+import { makeAnnotationResolver } from "./unitFlow";
 
 type AnyEditor = NodeEditor<{
   Node: ClassicPreset.Node;
@@ -9,12 +9,14 @@ type AnyEditor = NodeEditor<{
 
 // ─── Auto angle-mode resolution ────────────────────────────────────────────────
 // A MathFn trig node in `auto` mode computes in degrees when the value feeding it
-// carries the `deg`/`grad` angle unit, else radians (Excel parity). Units live in
-// the unitFlow resolver over the editor graph, NOT in the compute plane, so this
-// pass reads the incoming unit ONCE per recompute and stamps a transient
-// `_resolvedAngleMode` the node's data() then reads — the first (and only) place
-// compute consults units. A manual Rad/Deg pin never enters here (effectiveMode
-// ignores `_resolvedAngleMode` unless the mode is auto).
+// is a BARE degrees magnitude carrying a `deg` display annotation (a Triangle
+// Solver angle, an inverse-trig-in-degrees output). A genuinely dimensioned angle
+// (a UnitCell) is already stored in base RADIANS, so the trig node computes on its
+// magnitude directly (see MathFnNode.data unit-aware path) and never needs this
+// pass — this only resolves the annotation-tagged bare-degree case. It reads the
+// incoming FORMAT annotation's unit ONCE per recompute and stamps a transient
+// `_resolvedAngleMode` the node's data() then reads. A manual Rad/Deg pin never
+// enters here (effectiveMode ignores `_resolvedAngleMode` unless the mode is auto).
 //
 // Runs from processGraph before the engine fetch (so data() sees a fresh mode),
 // and early-outs when no auto-mode trig node exists — the overwhelming common
@@ -37,10 +39,10 @@ export function resolveTrigModes(editor: AnyEditor): MathFnNode[] {
   }
   if (autos.length === 0) return []; // no work → skip building the resolver
 
-  const resolver = makeUnitResolver(editor);
+  const resolver = makeAnnotationResolver(editor);
   const changed: MathFnNode[] = [];
   for (const n of autos) {
-    const unit = resolver.inUnit(n.id, "in");
+    const unit = resolver.inAnnotation(n.id, "in")?.unit ?? "none";
     const mode = isDegreeUnit(unit) ? "deg" : "rad";
     if (n._resolvedAngleMode !== mode) { n._resolvedAngleMode = mode; changed.push(n); }
   }

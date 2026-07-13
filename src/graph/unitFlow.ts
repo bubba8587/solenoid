@@ -1,32 +1,29 @@
 import type { ClassicPreset } from "rete";
 import type { NodeEditor } from "rete";
-import { isFcUnit, type FormatAnnotation } from "./formatAnnotationStore";
+import { type FormatAnnotation } from "./formatAnnotationStore";
 
 // ─── Unit flow ─────────────────────────────────────────────────────────────────
-// A unit is a property of the *value*, not of a particular cable. It survives
-// any node that passes the value through unchanged, changes at a transform, and
-// is dropped by everything else. This module computes, for any output socket,
-// the unit the value carries there — by walking back through the graph. FCs and
-// Convert read it to decide what to lock to and whether to forward.
+// The UNIT of a value is a property of the *value* itself — a base-SI `UnitCell`
+// with a `display` id (unitValue.ts), authored by a Format Controller / Convert /
+// unit source (FC A4, value-mutating). It rides the value through passthroughs &
+// selectors and DROPS at a transform on its OWN, so there is NO graph unit-walk
+// here anymore. What remains is the FORMAT (number style / precision / negatives /
+// K-M-B) — a DISPLAY annotation an FC locks, which a passthrough box shows without
+// its own trailing FC. This module resolves THAT annotation forward/back, plus the
+// popup "Go to source" origin walk.
 //
 // Per-node rule (all duck-typed so this file imports no node classes):
-//   • Convert     (has fromUnit + toUnit) → transform: output carries toUnit.
-//   • FC          (has unit + format)     → author if its input is unitless
-//                                           (publishes its own unit forward),
-//                                           else forward the input's unit.
-//   • passthrough — a node that SELECTS/PASSES a value unchanged keeps its unit:
+//   • Convert     (has fromUnit + toUnit) → transform: DROPS the inherited format.
+//   • FC / producer (has annotation / annotationFor) → LOCKS its own format.
+//   • passthrough — a node that SELECTS/PASSES a value unchanged carries the lock:
 //       · `passesUnitThrough: true`  → all connected inputs are value inputs (Display).
 //       · `selectedUnitInput(): string | null` → the node has COMPUTED which one branch
 //         it's passing right now (IF knows its condition, CHOOSE its index, …). When a key
-//         is returned, the output simply carries THAT branch's unit — IF(true, km, mi) is
-//         km, IF(false, km, mi) is mi. `null` = indeterminate (e.g. a LIST condition picks
-//         per-element), so fall back to:
-//       · `unitPassInputs(): string[]` → the value branches COMBINED: a unitless branch is
-//         ignored; the rest must AGREE (else ambiguous → no unit). So IF(c, $a, $b) → `$`,
-//         IF(c, $a, b) → `$`, and IF(c, km, mi) over a LIST condition → none.
-//   • anything else                       → clear: no unit (the value is transformed).
-//
-// "none" is the absence of a unit.
+//         is returned, the output simply carries THAT branch's annotation. `null` =
+//         indeterminate (e.g. a LIST condition picks per-element), so fall back to:
+//       · `unitPassInputs(): string[]` → the value branches COMBINED: the annotations must
+//         AGREE (else ambiguous → none).
+//   • anything else                       → clear: nothing locked (the value is transformed).
 
 type AnyEditor = NodeEditor<{
   Node: ClassicPreset.Node;
@@ -82,14 +79,7 @@ function hasAnnotationFor(n: unknown): n is FcAnnForLike {
   return typeof (n as Record<string, unknown> | null)?.annotationFor === "function";
 }
 
-/** Combine value-branch units: ignore unitless branches; the rest must agree, else the
- *  result is ambiguous (a runtime branch we can't predict) → no unit. */
-function combineUnits(units: string[]): string {
-  const real = units.filter((u) => u && u !== "none");
-  if (real.length === 0) return "none";
-  return real.every((u) => u === real[0]) ? real[0] : "none";
-}
-/** Same idea for the full annotation: branches must carry the SAME lock (unit + format)
+/** Branches must carry the SAME lock (unit + format)
  *  to pass it; otherwise none. */
 function combineAnnotations(anns: (FormatAnnotation | undefined)[]): FormatAnnotation | undefined {
   const real = anns.filter((a): a is FormatAnnotation => !!a);
@@ -97,80 +87,6 @@ function combineAnnotations(anns: (FormatAnnotation | undefined)[]): FormatAnnot
   const key = (a: FormatAnnotation) => `${a.unit}|${a.format}|${a.customUnit}`;
   const k0 = key(real[0]);
   return real.every((a) => key(a) === k0) ? real[0] : undefined;
-}
-
-export type UnitResolver = {
-  /** The unit the value carries on this output socket. */
-  outUnit: (nodeId: string, outKey: string) => string;
-  /** The unit established on this input socket (its source's output unit). */
-  inUnit: (nodeId: string, inKey: string) => string;
-};
-
-/**
- * Build a resolver over the editor's current graph. Memoized and cycle-guarded,
- * so it's cheap to query repeatedly within one refresh. Reads live node fields
- * (it recomputes a forwarded unit from the chain root, so it doesn't depend on
- * any FC's locked-unit cache being up to date — order-independent).
- */
-export function makeUnitResolver(editor: AnyEditor): UnitResolver {
-  const memo = new Map<string, string>();
-  const visiting = new Set<string>();
-
-  function inUnit(nodeId: string, inKey: string): string {
-    for (const c of editor.getConnections()) {
-      if (c.target === nodeId && c.targetInput === inKey) {
-        return outUnit(c.source, c.sourceOutput);
-      }
-    }
-    return "none";
-  }
-
-  // The unit feeding a node's first connected input — for single-input
-  // passthrough nodes whose input key we don't want to hardcode.
-  function firstInputUnit(nodeId: string): string {
-    for (const c of editor.getConnections()) {
-      if (c.target === nodeId) return outUnit(c.source, c.sourceOutput);
-    }
-    return "none";
-  }
-
-  function compute(nodeId: string, outKey: string): string {
-    const n = editor.getNode(nodeId);
-    if (isConvert(n)) return isFcUnit(n.toUnit) ? n.toUnit : "none";
-    if (isFc(n)) {
-      const iu = inUnit(nodeId, "in");
-      if (iu !== "none") return iu;                       // forward
-      return n.unit && n.unit !== "none" ? n.unit : "none"; // author
-    }
-    // A producer whose outputs carry their own unit (Triangle degrees, Element
-    // g/mol via annotationFor; Physics Constant via annotation) — so the unit
-    // resolver agrees with the annotation resolver, and a trig node in Auto mode
-    // sees the ° feeding it. Checked AFTER isFc (an FC has both and keeps its
-    // forward/author branch above).
-    if (hasAnnotationFor(n)) { const u = n.annotationFor(outKey)?.unit; if (u) return u; }
-    if (hasAnnotation(n)) return n.annotation().unit || "none";
-    if (isPassthrough(n)) {
-      const sel = selectedKey(n);
-      if (sel) return inUnit(nodeId, sel);           // follow the actually-selected branch
-      const keys = valuePassKeys(n);                 // sel null/undefined → combine / all
-      return keys ? combineUnits(keys.map((k) => inUnit(nodeId, k))) : firstInputUnit(nodeId);
-    }
-    return "none";
-  }
-
-  function outUnit(nodeId: string, outKey: string): string {
-    const key = `${nodeId}::${outKey}`;
-    const cached = memo.get(key);
-    if (cached !== undefined) return cached;
-    if (visiting.has(key)) return "none"; // cycle guard (shouldn't happen in a DAG)
-    visiting.add(key);
-    const u = compute(nodeId, outKey);
-    visiting.delete(key);
-    memo.set(key, u);
-    return u;
-  }
-
-  return { outUnit, inUnit };
 }
 
 export type AnnotationResolver = {

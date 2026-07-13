@@ -1,8 +1,9 @@
 import { ClassicPreset, type NodeEditor } from "rete";
-import { broadcastErr, numListIn, numListOut } from "./shared";
+import { broadcastUnit, numListIn, numListOut, type UnitOperand } from "./shared";
 import { isFcUnit, type FormatStyle } from "../formatAnnotationStore";
 import { solError, type SolError } from "../errorValue";
-import { convert as dimConvert, commensurable, type Dim, type Unit } from "../dimension";
+import { convert as dimConvert, commensurable, dimEqual, formatDim, type Dim, type Unit } from "../dimension";
+import { isUnitCell, fromUnit, withDisplay, unitError, type UnitCell } from "../unitValue";
 
 // ─── Convert ─────────────────────────────────────────────────────────────────
 // Excel equivalent: =CONVERT(number, from_unit, to_unit)
@@ -173,8 +174,8 @@ export class ConvertNode extends ClassicPreset.Node {
   // Convert's own display formats for its in/out boxes (independent of any FC).
   inFormat: FormatStyle = "auto";
   outFormat: FormatStyle = "auto";
-  cachedInput: number | number[] | null = null;
-  cachedResult: number | (number | SolError | null)[] | SolError | null = null;
+  cachedInput: number | number[] | UnitCell | (number | UnitCell)[] | null = null;
+  cachedResult: number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null = null;
   // Convert is a hybrid node+FC with primacy over units in an FC→Convert→FC
   // chain: its own from/to dropdowns are the authority and dictate the units of
   // adjacent FCs (upstream FC locks to fromUnit, downstream FC locks to toUnit).
@@ -225,8 +226,8 @@ export class ConvertNode extends ClassicPreset.Node {
     this.imposesDown = down;
   }
 
-  data(inputs: { in?: (number | number[])[] }): { out: number | (number | SolError | null)[] | SolError | null } {
-    const x = inputs.in?.[0] ?? null;
+  data(inputs: { in?: unknown[] }): { out: number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null } {
+    const x = (inputs.in?.[0] ?? null) as UnitOperand | UnitOperand[] | null;
     this.cachedInput = x;
     if (x === null) { this.cachedResult = null; return { out: null }; }
     // Cross-family conversion (metres → kilograms) measures different things —
@@ -248,7 +249,25 @@ export class ConvertNode extends ClassicPreset.Node {
     // in a list exactly as the scalar tags (array-semantics: lists carry per-cell
     // errors — was a silent per-element null before).
     const rangeErr = () => solError("#OVERFLOW!", "The converted value is too large to represent");
-    const result = broadcastErr((v) => convertValue(v, this.fromUnit, this.toUnit) ?? rangeErr(), x);
+    // FC A4 — Convert AUTHORS the value's unit: its output is a base-SI `UnitCell`
+    // tagged with toUnit's dimension + display (so a downstream Display renders the
+    // converted number and a downstream FC agrees on the value's unit). `display`
+    // is the toUnit key when it maps to an FC unit id, else undefined (derived
+    // symbol). A bare input is interpreted through fromUnit → toUnit; an ALREADY
+    // dimensioned input (from an upstream FC) is base-SI, so Convert just re-labels
+    // it to toUnit when commensurable, else the source clashes with the target.
+    const toDim: Unit | undefined = to?.dim;
+    const display = isFcUnit(this.toUnit) ? this.toUnit : undefined;
+    const convertCell = (v: UnitOperand): number | UnitCell | SolError => {
+      if (isUnitCell(v)) {
+        if (toDim && dimEqual(v.dim, toDim.dim)) return display ? (withDisplay(v, display) as UnitCell) : v;
+        return unitError(`This value is ${formatDim(v.dim) || "a plain number"}, but Convert targets ${formatDim(toDim?.dim ?? {}) || "a plain number"}.`);
+      }
+      const conv = convertValue(v, this.fromUnit, this.toUnit);
+      if (conv === null) return rangeErr();
+      return toDim ? fromUnit(conv, toDim, display) : conv;
+    };
+    const result = broadcastUnit(convertCell, x);
     this.cachedResult = result;
     return { out: result };
   }
