@@ -13,7 +13,7 @@ import { isUnitCell, formatUnitCell, type UnitCell } from "../unitValue";
 import { fcUnitToUnit } from "../unitBridge";
 import { dimEqual } from "../dimension";
 import { formatScalar } from "./format";
-import type { FormatAnnotation } from "../formatAnnotationStore";
+import { formatNumberWithAnnotation, type FormatAnnotation } from "../formatAnnotationStore";
 
 // Lists may now carry `null` (missing) and per-cell `SolError` as distinct kinds
 // (the relaxed array-semantics model — see dev-notes "Array-semantics policy
@@ -41,7 +41,7 @@ export type DisplayValue =
  *  formatter, a dimensioned cell as "magnitude unit" (`5 m/s`). */
 export function formatListCell(v: number | string | boolean | null | SolError | UnitCell, fmtNum: (n: number) => string): string {
   if (v === null) return "null";
-  if (isUnitCell(v)) return formatUnitCell(v, fmtNum);
+  if (isUnitCell(v)) return formatCellWithDisplay(v, fmtNum);
   if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
   if (isSolError(v)) return v.code;
   if (typeof v === "string") return v;
@@ -57,20 +57,41 @@ export function formatListCell(v: number | string | boolean | null | SolError | 
 //     Convert/derived value shows "5 m/s"), a plain string the text branch draws.
 
 /** The magnitude of a dimensioned cell in the display unit of `ann` when they're
- *  commensurable, else the raw base-SI magnitude. */
+ *  commensurable, else the raw base-SI magnitude. The value-mutating FC keeps its
+ *  `unit` field and the cell's `display` in sync, so an annotated box's label
+ *  (ann.unit) and magnitude agree; the UNannotated case is handled by
+ *  `formatCellWithDisplay` (which reads the cell's own display). */
 function displayMagnitude(cell: UnitCell, ann: FormatAnnotation | undefined): number {
-  if (ann && ann.unit && ann.unit !== "none" && ann.unit !== "custom") {
-    const u = fcUnitToUnit(ann.unit);
+  const id = cell.display ?? (ann && ann.unit !== "none" && ann.unit !== "custom" ? ann.unit : undefined);
+  if (id) {
+    const u = fcUnitToUnit(id);
     if (u && dimEqual(u.dim, cell.dim)) return (cell.value - (u.offset ?? 0)) / u.scale;
   }
   return cell.value;
+}
+
+/** Render a dimensioned cell as "magnitude unit" using its authored `display` unit
+ *  where present (`5 km`), else its derived symbol (`5 m/s`). The pure formatter
+ *  (unitValue `formatUnitCell`) only knows the derived symbol, so the display layer
+ *  owns the display-unit resolution (it can reach the FC unit registry). */
+function formatCellWithDisplay(cell: UnitCell, fmtNum: (n: number) => string): string {
+  if (cell.display) {
+    const u = fcUnitToUnit(cell.display);
+    if (u && dimEqual(u.dim, cell.dim)) {
+      const mag = (cell.value - (u.offset ?? 0)) / u.scale;
+      const ann = { format: "auto", unit: cell.display } as FormatAnnotation;
+      // Reuse the annotation number+unit-affix pipeline for the label placement.
+      return formatNumberWithAnnotation(mag, ann);
+    }
+  }
+  return formatUnitCell(cell, fmtNum);
 }
 
 /** Replace any `UnitCell` in a display value with its render form (see above). A
  *  no-op when nothing is dimensioned — the overwhelming common case. */
 export function unwrapUnitCells(value: DisplayValue, ann: FormatAnnotation | undefined): DisplayValue {
   if (isUnitCell(value)) {
-    return ann ? displayMagnitude(value, ann) : formatUnitCell(value, formatScalar);
+    return ann ? displayMagnitude(value, ann) : formatCellWithDisplay(value, formatScalar);
   }
   if (Array.isArray(value) && value.some((c) => isUnitCell(c))) {
     if (ann) {

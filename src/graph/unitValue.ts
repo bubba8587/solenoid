@@ -38,6 +38,14 @@ export interface UnitCell {
   readonly __unitCell: true;
   readonly value: number;
   readonly dim: Dim;
+  /** The display unit id (an FC unit id — "km", "mph", "usd") the value was
+   *  AUTHORED to render in (by a Format Controller, a Convert, or a unit-picking
+   *  source). The stored `value` is ALWAYS base SI; this is only how it renders.
+   *  It rides the value through passthroughs & selectors and DROPS at a transform
+   *  — `tagDim` (every algebra result) carries none, so a multiplied/added value
+   *  reverts to its derived-symbol form. Absent ⇒ render the derived symbol
+   *  (`formatDim`). This is the scalar/list analog of `ColumnUnit.display`. */
+  readonly display?: string;
 }
 
 export function isUnitCell(v: unknown): v is UnitCell {
@@ -65,8 +73,15 @@ export function magnitudeOf(v: unknown): number {
  * This is the ONE constructor — every algebra result funnels through it so the
  * "dimensionless ⇒ bare number" invariant can't be violated.
  */
-export function tagDim(value: number, dim: Dim): UnitCell | number {
-  return isDimensionless(dim) ? value : { __unitCell: true, value, dim };
+export function tagDim(value: number, dim: Dim, display?: string): UnitCell | number {
+  if (isDimensionless(dim)) return value;
+  return display ? { __unitCell: true, value, dim, display } : { __unitCell: true, value, dim };
+}
+
+/** Set (or replace) a UnitCell's display unit id — the FC/Convert re-display path.
+ *  A no-op on anything that isn't a UnitCell. */
+export function withDisplay(v: unknown, display: string): unknown {
+  return isUnitCell(v) ? { __unitCell: true, value: v.value, dim: v.dim, display } : v;
 }
 
 /**
@@ -77,9 +92,9 @@ export function tagDim(value: number, dim: Dim): UnitCell | number {
  * checks; the offset is consumed here and never rides on the cell (a stored value
  * is a pure linear magnitude, so `+`/`−` stay plain adds).
  */
-export function fromUnit(value: number, unit: Unit): UnitCell | number {
+export function fromUnit(value: number, unit: Unit, display?: string): UnitCell | number {
   const base = value * unit.scale + (unit.offset ?? 0);
-  return tagDim(base, unit.dim);
+  return tagDim(base, unit.dim, display);
 }
 
 /** The display symbol for a value's dimension ("m/s", "N", "" for dimensionless). */

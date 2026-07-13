@@ -8,8 +8,10 @@
 //
 // Pure — imports the dimension algebra + the FC unit list only, no React/Rete.
 
-import { type Unit, type Dim, parseUnit, dimEqual, DIMENSIONLESS } from "./dimension";
+import { type Unit, type Dim, parseUnit, dimEqual, DIMENSIONLESS, formatDim } from "./dimension";
 import { UNIT_ANNOTATIONS } from "./formatAnnotationStore";
+import { fromUnit, isUnitCell, withDisplay, unitError } from "./unitValue";
+import { isSolError } from "./errorValue";
 
 // Units the dimension.ts parser can't spell (compound / non-metric areas & volumes,
 // and the shared currency axis — FX is out of scope, so every currency is ONE
@@ -63,6 +65,45 @@ export function fcUnitDim(id: string): Dim {
 export function isDimensionalFcUnit(id: string): boolean {
   const u = fcUnitToUnit(id);
   return u !== null && !dimEqual(u.dim, DIMENSIONLESS);
+}
+
+/**
+ * Apply a Format Controller's chosen unit to a value — the FC is VALUE-MUTATING
+ * (FC A4): the unit becomes a property of the VALUE (a base-SI `UnitCell` +
+ * display id), not a display-only annotation, so it computes downstream and a
+ * dimension clash surfaces as a real `#UNIT!`. Handles a scalar or a 1-D list
+ * (per cell); a 2-D matrix is unit-agnostic (author decision) and passes through,
+ * as do frames / lambdas / strings / objects.
+ *
+ *   • a dimensionless number + a real unit → tag it base SI, interpreting the
+ *     magnitude AS that unit (`5` + km ⇒ 5000 m, display "km") — same reading as
+ *     the Number node's unit picker;
+ *   • an already-dimensioned cell + a COMMENSURABLE unit → keep the base value,
+ *     just RE-DISPLAY in the new unit (km → mi is a display change, base is
+ *     dimension-invariant);
+ *   • dimensioned + an INCOMMENSURABLE unit → `#UNIT!` (a true dimension clash —
+ *     a length can't be re-labelled a mass);
+ *   • unit `none` / `custom` / unresolved → unchanged (any existing tag rides on).
+ */
+export function applyFcUnit(value: unknown, fcUnitId: string): unknown {
+  const u = fcUnitToUnit(fcUnitId);
+  if (!u) return value; // none / custom / unresolved — carry any existing tag through
+  const one = (v: unknown): unknown => {
+    if (v === null || isSolError(v)) return v;
+    if (isUnitCell(v)) {
+      return dimEqual(v.dim, u.dim)
+        ? withDisplay(v, fcUnitId)
+        : unitError(
+            `This value is ${formatDim(v.dim) || "a plain number"}, but the format unit is ${formatDim(u.dim) || "dimensionless"}. Convert it first.`,
+          );
+    }
+    return typeof v === "number" ? fromUnit(v, u, fcUnitId) : v;
+  };
+  if (Array.isArray(value)) {
+    if (value.some((c) => Array.isArray(c))) return value; // matrix — unit-agnostic
+    return value.map(one);
+  }
+  return one(value);
 }
 
 /** Find an FC unit id whose dimension + scale match a `Unit` (for showing a derived

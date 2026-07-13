@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { convertValue, CONVERT_UNIT_DEFS, ConvertNode } from "./convert";
 import { isSolError } from "../errorValue";
+import { isUnitCell, magnitudeOf, dimOf, type UnitCell } from "../unitValue";
 
 describe("convertValue — linear units", () => {
   it("length", () => {
@@ -114,10 +115,19 @@ describe("convertValue — guards", () => {
 });
 
 describe("ConvertNode — scalar/list error consistency", () => {
-  it("converts a scalar and a list element-wise", () => {
-    expect(new ConvertNode({ fromUnit: "km", toUnit: "mi" }).data({ in: [1] }).out).toBeCloseTo(0.621371, 5);
-    const list = new ConvertNode({ fromUnit: "km", toUnit: "m" }).data({ in: [[1, 2]] }).out as number[];
-    expect(list).toEqual([1000, 2000]);
+  it("converts a scalar and a list element-wise, TAGGING the result (FC A4 value-mutating)", () => {
+    // Convert now AUTHORS the value's unit: its output is a base-SI UnitCell tagged
+    // with toUnit's dimension + display. 1 km → mi is base 1000 m, display "mi"
+    // (its display magnitude in miles is 0.621371).
+    const scalar = new ConvertNode({ fromUnit: "km", toUnit: "mi" }).data({ in: [1] }).out as UnitCell;
+    expect(isUnitCell(scalar)).toBe(true);
+    expect(scalar.dim).toEqual({ length: 1 });
+    expect(scalar.display).toBe("mi");
+    expect(scalar.value / CONVERT_UNIT_DEFS.mi.dim.scale).toBeCloseTo(0.621371, 5);
+    // km → m of [1, 2] → base metres [1000, 2000], each tagged length + display "m".
+    const list = new ConvertNode({ fromUnit: "km", toUnit: "m" }).data({ in: [[1, 2]] }).out as UnitCell[];
+    expect(list.map((c) => magnitudeOf(c))).toEqual([1000, 2000]);
+    expect(list.every((c) => dimOf(c).length === 1 && c.display === "m")).toBe(true);
   });
   it("cross-family conversion is a whole-value #N/A at every dimensionality", () => {
     // It's the NODE's unit pick, not a per-cell condition — so a scalar and a

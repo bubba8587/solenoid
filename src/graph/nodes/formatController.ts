@@ -1,6 +1,6 @@
 import { ClassicPreset, type NodeEditor } from "rete";
-import { formatAnnotationStore, isDateStyle, isFcUnit, type FormatStyleId, type FormatAnnotation, type TextCase, type TextAlign, type DecimalMode, type LogicalStyle, type LambdaView, type NegativeStyle, type ScaleMode } from "../formatAnnotationStore";
-import { makeUnitResolver } from "../unitFlow";
+import { formatAnnotationStore, isDateStyle, type FormatStyleId, type FormatAnnotation, type TextCase, type TextAlign, type DecimalMode, type LogicalStyle, type LambdaView, type NegativeStyle, type ScaleMode } from "../formatAnnotationStore";
+import { applyFcUnit } from "../unitBridge";
 import { dockedNodeStore } from "../dockedNodeStore";
 import { SolenoidSocket, isDateType, isWildcardType, type SocketDataType } from "../sockets";
 
@@ -253,59 +253,24 @@ export class FormatControllerNode extends ClassicPreset.Node {
     for (const c of editor.getConnections()) {
       if (c.target === this.id && c.targetInput === "in") { inSrcId = c.source; inSrcSock = c.sourceOutput; break; }
     }
-    // Is a unit already established on this FC's input? The resolver walks back
-    // through the graph — past Displays and any passthrough node, not just an
-    // immediate FC/Convert — so a unit stays locked all the way down a chain. An
-    // FC with a unit on its input forwards it (a chain can re-format the value
-    // but not re-unit it: 3/2 mi, never 3/2 km); an FC fed a unitless value is a
-    // free author.
-    const resolver = makeUnitResolver(editor);
-    const inUnit = resolver.inUnit(this.id, "in");
-    const fedByForwarder = inUnit !== "none";
-    this.forwarding = fedByForwarder;
 
-    // Does FC.out feed a Convert? Convert has primacy over units — it imposes its
-    // fromUnit on the FC feeding it. The FC stays a backward display formatter
-    // (keeps its ◀ marker), but its unit is dictated (locked, no extra arrow —
-    // the imposing arrow lives on the Convert). Duck-typed: a Convert exposes
-    // both fromUnit and toUnit strings; an FC does not.
-    let convertFromUnit: string | undefined;
-    if (!fedByForwarder) {
-      for (const c of editor.getConnections()) {
-        if (c.source === this.id && c.sourceOutput === "out") {
-          const dst = editor.getNode(c.target) as { fromUnit?: string; toUnit?: string } | undefined;
-          if (dst && typeof dst.fromUnit === "string" && typeof dst.toUnit === "string") {
-            convertFromUnit = dst.fromUnit;
-            break;
-          }
-        }
-      }
-    }
-
+    // FC A4: the FC is VALUE-MUTATING — it AUTHORS the value's unit (tags the
+    // `UnitCell` in data()), so the unit is a property of the value and rides it
+    // downstream through passthroughs & selectors and DROPS at a transform, WITHOUT
+    // any graph walk. There is no longer an inherited / Convert-dictated unit lock:
+    // the user may always pick a unit; a commensurable pick re-displays, an
+    // incommensurable one surfaces `#UNIT!` on the value itself. The number FORMAT
+    // (places / style / negatives / K-M-B) stays a display annotation written onto
+    // the box behind this FC (below); only the unit moved onto the value.
+    this.forwarding = false;
     this.unitLocked = false;
     this.lockedByConvert = false;
-    if (fedByForwarder) {
-      this.unit = inUnit;
-      // Carry the custom-unit text from the immediate source when the forwarded
-      // unit is "custom" (its label lives in customUnit, not the id).
-      if (inUnit === "custom" && inSrcId) {
-        const src = editor.getNode(inSrcId) as { customUnit?: string } | undefined;
-        if (typeof src?.customUnit === "string") this.customUnit = src.customUnit;
-      }
-      this.unitLocked = true;
-    } else if (convertFromUnit && convertFromUnit !== "none" && isFcUnit(convertFromUnit)) {
-      this.unit = convertFromUnit;
-      this.unitLocked = true;
-      this.lockedByConvert = true;
-    }
 
-    // Format ALWAYS lands on the box feeding this FC's input — the box behind
-    // it, in place, exactly like a docked FC. It never travels forward. The unit
-    // is the only thing that flows downstream, and it does so through the value
-    // itself (unitFlow), so a downstream FC locks to it without this FC pushing
-    // anything onto it. A "forwarding" FC (unit inherited) therefore just formats
-    // its input-side box — usually another FC's chip, i.e. nothing visible —
-    // which is why a chain needs an FC *after* a box to format that box.
+    // Format ALWAYS lands on the box feeding this FC's input — the box behind it,
+    // in place, exactly like a docked FC. The value carries its own unit, so a
+    // downstream box renders the right unit from the value regardless; this write
+    // only supplies the number FORMAT (and the unit label for a still-untagged
+    // bare producer box).
     const targets: Array<{ nodeId: string; socketKey: string }> = [];
     if (inSrcId) targets.push({ nodeId: inSrcId, socketKey: inSrcSock });
 
@@ -377,6 +342,9 @@ export class FormatControllerNode extends ClassicPreset.Node {
 
   data(inputs: { in?: unknown[] }): { out: unknown } {
     const val = inputs.in?.[0] ?? null;
-    return { out: val };
+    // FC A4 — value-mutating: tag the value with this FC's unit (author a base-SI
+    // `UnitCell`, re-display a commensurable one, or #UNIT! on a dimension clash).
+    // A `none`/text/frame/matrix value passes through untouched. See applyFcUnit.
+    return { out: applyFcUnit(val, this.unit) };
   }
 }

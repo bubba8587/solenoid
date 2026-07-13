@@ -31,7 +31,7 @@ export class NumberInputNode extends ClassicPreset.Node {
     // `fromUnit` normalises the typed magnitude to base SI (consuming any affine
     // offset), tagging it with the unit's dimension — or collapsing to a bare
     // number when the unit is dimensionless.
-    return { value: u ? fromUnit(this.value, u) : this.value };
+    return { value: u ? fromUnit(this.value, u, this.unit) : this.value };
   }
 }
 
