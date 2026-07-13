@@ -26,6 +26,17 @@ engine silently broke downstream of any FC. The fix (all in `unitCoercion.test.t
   (`fedByConvert`), is DICTATED (`lockedByConvert`/`unitLocked`, ← ←, dropdown locked). The
   inherited display id mirrors into `unit` when unauthored ("none") or dictated, so the A2
   dropdown+arrows read honestly again with zero component changes.
+- **Dimensionless ADOPTS the operation's unit (author decision 2026-07-13)**: a bare number in
+  any commensurability-requiring op takes the other side's unit instead of `#UNIT!` — `$5 + 2
+  = $7`, `$5 × 2 = $10`, `SUM($5, $2, 3) = $10`. Only TWO genuinely different real dimensions
+  still separate. Applied in `arithmeticCell` (+/−/mod), `dimEval` (+/− + comparison),
+  `forAggregateUnits`, and the `dimensionsAdd` lattice contract. ×/÷/quotient + the aggregators
+  also PRESERVE the display id when the result stays in an operand's dimension (so `$` rides
+  through `× 2` and `SUM`, no bare `¤`); a dimension-changing op (`m × s`, PRODUCT, VAR) reverts
+  to the derived symbol.
+- **The Number node is a plain literal source** — the unit picker + `unit` field were removed
+  (author: units are the FC's job only). The `units-by-dimension` seed's lane A now sources
+  m/s from docked FCs (the `unit-flow` pattern).
 
 ### SESSION DIGEST (2026-07-13 — FC A4 units by dimensionality: wired into the value engine)
 The pure unit-value foundation (`unitValue.ts`, `unitDimExpr.ts`, `dimension.ts`) is now

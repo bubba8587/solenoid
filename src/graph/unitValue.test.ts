@@ -125,13 +125,23 @@ describe("aggregator prep (step 6)", () => {
     const r = forAggregateUnits([cell(1, "m"), err, cell(2, "m")]);
     expect(r.error).toBe(err);
   });
-  it("mixed dimensions → #UNIT!", () => {
+  it("two different REAL dimensions → #UNIT!", () => {
     const r = forAggregateUnits([cell(1, "m"), cell(1, "s")]);
     expect(r.error && r.error.code).toBe("#UNIT!");
   });
-  it("mixing a bare number with a dimensioned cell → #UNIT!", () => {
-    const r = forAggregateUnits([cell(1, "m"), 5]);
-    expect(r.error && r.error.code).toBe("#UNIT!");
+  it("a bare number ADOPTS the list's unit (SUM(5 m, 2 m, 3) keeps length)", () => {
+    // author decision 2026-07-13: a dimensionless number adopts the op's unit.
+    // (display-carry through the real FC path is covered in unitCoercion.test.ts)
+    const r = forAggregateUnits([cell(5, "m"), cell(2, "m"), 3]);
+    expect(r.error).toBeUndefined();
+    if (!r.error) {
+      expect(r.dim).toEqual({ length: 1 });   // the bare 3 adopts length
+      expect(r.nums).toEqual([5, 2, 3]);
+    }
+    // symmetric: a leading bare number still adopts a later real dimension
+    const r2 = forAggregateUnits([3, cell(1, "m")]);
+    expect(r2.error).toBeUndefined();
+    if (!r2.error) expect(r2.dim).toEqual({ length: 1 });
   });
   it("all-bare list stays dimensionless (behavior no-op for today's lists)", () => {
     const r = forAggregateUnits([1, 2, 3]);

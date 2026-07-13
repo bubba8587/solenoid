@@ -192,35 +192,40 @@ export function compareUnits(a: Operand, b: Operand): { l: number; r: number } |
 // list reducer (SUM/AVERAGE/MIN/…) runs first. Semantics parallel the value one:
 //   • a `SolError` anywhere PROPAGATES (the aggregate is that error);
 //   • `null` (missing) is SKIPPED;
-//   • every PRESENT cell must share ONE dimension — a length list and a bare number
-//     mixed together is a genuine unit error (`#UNIT!`). Because every tagged cell
-//     is stored base SI, commensurable-but-differently-authored cells (km + m) are
-//     ALREADY unified, so the plan's "convert if commensurable, else #UNIT!" is
-//     automatic — no conversion step, just a same-dimension check.
-// Returns the shared dim + the base magnitudes; the reducer runs on `nums`, then
-// re-tags its result with `dim` via `tagDim`.
+//   • DIMENSIONLESS cells (bare numbers) ADOPT the list's real unit — `SUM($5, $2, 3)`
+//     is `$10` (author decision 2026-07-13: a dimensionless number adopts the unit of
+//     the operation it's in). Only TWO genuinely different real dimensions (a length
+//     mixed with a mass) are a `#UNIT!`. Because every tagged cell is stored base SI,
+//     commensurable-but-differently-authored cells (km + m) are ALREADY unified.
+// Returns the shared dim (+ the display of the first dimensioned cell, so the reducer's
+// result renders in that unit) + the base magnitudes; the reducer runs on `nums`, then
+// re-tags its result with `dim`/`display` via `tagDim`.
 export type UnitAggregatePrep =
   | { error: SolError }
-  | { error?: undefined; dim: Dim; nums: number[] };
+  | { error?: undefined; dim: Dim; display?: string; nums: number[] };
 
 export function forAggregateUnits(values: ReadonlyArray<unknown>): UnitAggregatePrep {
   for (const v of values) if (isSolError(v)) return { error: v };
   const present = values.filter((v) => !isMissing(v));
-  let dim: Dim | null = null;
+  let dim: Dim | null = null; // the single REAL dimension in the list, if any
+  let display: string | undefined;
   const nums: number[] = [];
   for (const v of present) {
     const d = dimOf(v);
-    if (dim === null) dim = d;
-    else if (!dimEqual(dim, d)) {
-      return {
-        error: unitError(
-          `Can't aggregate mixed units: ${formatDim(dim) || "a number"} and ${formatDim(d) || "a number"}.`,
-        ),
-      };
+    if (!isDimensionless(d)) {
+      if (dim === null) { dim = d; display = isUnitCell(v) ? v.display : undefined; }
+      else if (!dimEqual(dim, d)) {
+        return {
+          error: unitError(
+            `Can't aggregate mixed units: ${formatDim(dim)} and ${formatDim(d)}.`,
+          ),
+        };
+      }
     }
+    // A dimensionless cell contributes its bare magnitude and ADOPTS `dim`.
     nums.push(magnitudeOf(v));
   }
-  return { dim: dim ?? DIMENSIONLESS, nums };
+  return { dim: dim ?? DIMENSIONLESS, display, nums };
 }
 
 // ─── Per-column frame units (step 1: frames) ─────────────────────────────────────
