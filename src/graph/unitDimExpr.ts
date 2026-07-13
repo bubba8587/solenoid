@@ -157,6 +157,31 @@ function callDim(name: string, argDims: DimResult[]): DimResult {
  * Compute the dimension a formula AST yields, given its inputs' dimensions.
  * The dimensional twin of `excelFormula.ts`'s numeric `evalAst`.
  */
+/** Constant-fold a pure-number subtree (num literals under unary/± × ÷ ^) to its
+ *  value, else null — the exponent form `1/2` an isolated SQRT produces. */
+function constNum(node: Ast): number | null {
+  switch (node.t) {
+    case "num": return Number(node.v);
+    case "unary": {
+      const v = constNum(node.arg);
+      return v === null ? null : node.op === "-" ? -v : v;
+    }
+    case "bin": {
+      const l = constNum(node.l), r = constNum(node.r);
+      if (l === null || r === null) return null;
+      switch (node.op) {
+        case "+": return l + r;
+        case "-": return l - r;
+        case "*": return l * r;
+        case "/": return r === 0 ? null : l / r;
+        case "^": return l ** r;
+        default: return null;
+      }
+    }
+    default: return null;
+  }
+}
+
 export function dimEval(node: Ast, env: DimEnv): DimResult {
   switch (node.t) {
     case "num":
@@ -190,10 +215,12 @@ export function dimEval(node: Ast, env: DimEnv): DimResult {
           return unitError(`Can't ${node.op === "+" ? "add" : "subtract"} values with different units.`);
         }
         case "^": {
-          // Determinable only for a CONSTANT numeric exponent (a `num` literal) or
-          // a dimensionless base. Anything else → indeterminate.
+          // Determinable for a CONSTANT exponent — a `num` literal or a pure-number
+          // subtree (`1/2` from an isolated SQRT: x² = A ⇒ x = A^(1/2), so the dim
+          // halves) — or a dimensionless base. Anything else → indeterminate.
           if (l === null) return null;
-          if (node.r.t === "num") return dimPow(l, Number(node.r.v));
+          const k = constNum(node.r);
+          if (k !== null) return dimPow(l, k);
           return isDimensionless(l) ? DIMENSIONLESS : null;
         }
         case "&": return DIMENSIONLESS; // string concatenation → unitless

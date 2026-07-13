@@ -1,10 +1,12 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { NodeEditor, ClassicPreset } from "rete";
 import * as Nodes from "./rete-nodes";
-import { FormatControllerNode, IfNode, ArithmeticNode, ConvertNode } from "./rete-nodes";
+import { FormatControllerNode, IfNode, ArithmeticNode, ConvertNode, EquationNode } from "./rete-nodes";
 import { makeAnnotationResolver } from "./unitFlow";
 import { formatAnnotationStore } from "./formatAnnotationStore";
-import { isUnitCell, unitLabelOf, type UnitCell } from "./unitValue";
+import { isUnitCell, isRatio, unitLabelOf, type UnitCell } from "./unitValue";
+import { applyFcUnit } from "./unitBridge";
+import { isSolError } from "./errorValue";
 import seed from "./seedGraphs/unit-flow.json";
 
 // The Unit Flow seed is a teaching graph: each lane's caption claims a specific
@@ -110,18 +112,23 @@ describe("Unit Flow seed — the captioned behaviors actually hold (FC A4 value-
     expect(isUnitCell(chosen) && (chosen as UnitCell).dim).toEqual({ currency: 1 });
   });
 
-  it("F · units COMPUTE: 5 m ÷ 1 s = 5 m/s; m ÷ m cancels to a bare number", () => {
+  it("F · units COMPUTE: 5 m ÷ 1 s = 5 m/s; m ÷ m cancels to a PURE RATIO", () => {
     const dist = (real.get("F_distFc") as FormatControllerNode).data({ in: [5] }).out;
     const time = (real.get("F_timeFc") as FormatControllerNode).data({ in: [1] }).out;
     const speed = (real.get("F_div") as ArithmeticNode).data({ a: [dist] as never, b: [time] as never }).result;
     expect(isUnitCell(speed)).toBe(true);
     expect((speed as UnitCell).value).toBe(5);
     expect(unitLabelOf(speed)).toBe("m/s");
-    // cancellation: 10 m ÷ 2 m → plain 5, no unit tag at all
+    // cancellation: 10 m ÷ 2 m → a PURE RATIO (5:1), known-dimensionless
     const rise = (real.get("F_lenFc") as FormatControllerNode).data({ in: [10] }).out;
     const run = (real.get("F_runFc") as FormatControllerNode).data({ in: [2] }).out;
     const slope = (real.get("F_div2") as ArithmeticNode).data({ a: [rise] as never, b: [run] as never }).result;
-    expect(slope).toBe(5);
+    expect(isRatio(slope)).toBe(true);
+    expect((slope as UnitCell).value).toBe(5);
+    // an FC can't re-baptize the ratio with a physical unit…
+    expect(isSolError(applyFcUnit(slope, "usd"))).toBe(true);
+    // …but the percent FC on the Slope box is just a number FORMAT — it applies.
+    expect((real.get("F_pctFc") as FormatControllerNode).unit).toBe("none");
   });
 
   it("G · a bare number ADOPTS: $5 + 2 = $7; a $ list SUMs to $60", () => {
@@ -159,6 +166,16 @@ describe("Unit Flow seed — the captioned behaviors actually hold (FC A4 value-
     const out = (real.get("H_conv2") as ConvertNode).data({ in: [bad] }).out as { __solError?: boolean; code?: string };
     expect(out && out.__solError).toBe(true);
     expect(out.code).toBe("#UNIT!");
+  });
+
+  it("J · the Equation node derives the unknown's unit (d = v·t → metres)", () => {
+    const v = (real.get("J_vFc") as FormatControllerNode).data({ in: [5] }).out;
+    const t = (real.get("J_tFc") as FormatControllerNode).data({ in: [10] }).out;
+    const out = (real.get("J_eq") as EquationNode).data({ v: [v], t: [t] });
+    const dist = out.d as UnitCell;
+    expect(isUnitCell(dist)).toBe(true);
+    expect(dist.value).toBe(50);
+    expect(unitLabelOf(dist)).toBe("m");
   });
 
   it("I · a CUSTOM unit is a real dimension: widgets ÷ s = widgets/s", () => {

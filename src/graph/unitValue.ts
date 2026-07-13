@@ -46,6 +46,21 @@ export interface UnitCell {
    *  reverts to its derived-symbol form. Absent ⇒ render the derived symbol
    *  (`formatDim`). This is the scalar/list analog of `ColumnUnit.display`. */
   readonly display?: string;
+  /** A PURE RATIO: the dimensions provably CANCELLED (`10 m ÷ 2 m`). `dim` is
+   *  empty, and the value computes as a plain number everywhere — but it is
+   *  KNOWN-dimensionless, so an FC can't re-label it with a physical unit
+   *  (`#UNIT!`); number formats (percent, especially) still apply. Renders as
+   *  `5:1`. The one exception to "dimensionless ⇒ bare number". */
+  readonly ratio?: true;
+}
+
+/** Tag a magnitude as a PURE RATIO — a known-dimensionless cancellation result. */
+export function tagRatio(value: number): UnitCell {
+  return { __unitCell: true, value, dim: {}, ratio: true };
+}
+
+export function isRatio(v: unknown): v is UnitCell {
+  return isUnitCell(v) && v.ratio === true;
 }
 
 export function isUnitCell(v: unknown): v is UnitCell {
@@ -111,6 +126,7 @@ export function unitLabelOf(v: unknown): string {
  */
 export function formatUnitCell(v: number | UnitCell, fmtNum: (n: number) => string): string {
   const mag = fmtNum(magnitudeOf(v));
+  if (isRatio(v)) return `${mag}:1`; // a pure ratio reads in ratio notation
   const sym = formatDim(dimOf(v));
   return sym ? `${mag} ${sym}` : mag;
 }

@@ -10,7 +10,7 @@
 
 import { type Unit, type Dim, parseUnit, dimEqual, DIMENSIONLESS, formatDim, customDim } from "./dimension";
 import { UNIT_ANNOTATIONS } from "./formatAnnotationStore";
-import { fromUnit, isUnitCell, withDisplay, unitError, type UnitCell as UnitCellT } from "./unitValue";
+import { fromUnit, isUnitCell, isRatio, withDisplay, unitError, type UnitCell as UnitCellT } from "./unitValue";
 import { isSolError } from "./errorValue";
 
 // Units the dimension.ts parser can't spell (compound / non-metric areas & volumes,
@@ -108,6 +108,11 @@ export function applyFcUnit(value: unknown, fcUnitId: string, customUnit?: strin
   if (!u) return value; // none / empty custom / unresolved — carry any existing tag through
   const one = (v: unknown): unknown => {
     if (v === null || isSolError(v)) return v;
+    if (isRatio(v)) {
+      // A pure ratio is KNOWN-dimensionless (units cancelled) — re-labeling it with
+      // a physical unit is a category error. Number formats (percent) still apply.
+      return unitError("This is a pure ratio (its units cancelled) — it can't be re-labeled with a unit. Multiply by a base quantity instead.");
+    }
     if (isUnitCell(v)) {
       if (!dimEqual(v.dim, u.dim)) {
         return unitError(

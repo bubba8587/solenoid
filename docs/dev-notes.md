@@ -37,6 +37,23 @@ engine silently broke downstream of any FC. The fix (all in `unitCoercion.test.t
 - **The Number node is a plain literal source** — the unit picker + `unit` field were removed
   (author: units are the FC's job only). The `units-by-dimension` seed's lane A now sources
   m/s from docked FCs (the `unit-flow` pattern).
+- **PURE RATIO — cancellation is a first-class kind (2026-07-13, author call)**: `10 m ÷ 2 m`
+  now mints a `UnitCell` with `ratio: true` (empty dim) instead of a bare number — the ONE
+  exception to "dimensionless ⇒ bare". It renders **`5:1`**, computes as a plain number
+  everywhere (strip boundary → magnitude; adopt rules treat it as bare), formats naturally as
+  percent — but an FC CANNOT re-label it with a physical unit (`#UNIT!`: a known-dimensionless
+  number isn't money). Minted in `arithmeticCell` div/quotient only (a blanket "{} from
+  dimensioned inputs" rule would false-positive COUNT-style results; Expression's `/` is a
+  flagged follow-up). `guardCell` preserves the brand (tagDim would collapse it).
+- **Equation node derives the unknown's UNIT (2026-07-13)**: `unitAware = true`; knowns keep
+  their tags on passthrough outputs, the numeric engine runs on BASE-SI magnitudes, and the
+  solved variable is tagged via `dimEval` over the ISOLATED expression (`V = I·R` for R ⇒
+  dim(V)/dim(I) = Ω; `x² = A(m²)` ⇒ both roots in m — `dimEval`'s `^` now constant-folds a
+  pure-number exponent subtree like the isolated `1/2`). Check mode validates dimensional
+  consistency FIRST (`1 km = 1000 m` holds; `m = s` is `#UNIT!`). A multi-occurrence unknown
+  (true quadratic) has no isolated form → unit stays underived (bare, honest). Goal seek needs
+  none of this — its driver's unit is authored on the input marker. `equationUnits.test.ts`;
+  Unit Flow seed lane J.
 - **Convert PRIMACY restored on the value layer (2026-07-13)**: (1) every Convert unit id
   registers with the display bridge (`registerDisplayUnits` — no import cycle), so Convert-to-yd/
   psi/km_h tags a display that actually renders (was: display-less cell → base-SI metres downstream);
