@@ -1,4 +1,12 @@
-# Bundle 05 — Units by dimensionality (FC A4, the flagship)
+# Bundle 05 — Units by dimensionality (FC A4, the flagship) — ✅ COMPLETE
+
+> **DONE 2026-07-13.** The value engine computes with dimensions end-to-end, the
+> Format Controller is VALUE-MUTATING (it authors the value's unit), Convert tags
+> its output, the redundant graph unit-walk is gone, and REDUCE/BYROW/BYCOL carry
+> units over a 1-D list. All exit criteria met (below). Remaining items are the
+> author-present polish tracked in `backlog.md` (per-cell mixed-unit trig; frame
+> popup column-unit rendering) — not part of this milestone.
+
 
 > **Rewritten 2026-07-05.** Phases A–C of the original bundle (the FC function
 > model, the visual redesign + SegToggle unification, the docked-FC movement
@@ -106,12 +114,20 @@ end-to-end. See `unitWiring.test.ts`, `unitColumn.test.ts`, `unitLattice.test.ts
   lock a column from a `Name (unit)` header. Worked example lives in
   `seedGraphs/units-by-dimension.json`.
 - **Display**: `unwrapUnitCells` renders a dimensioned cell as "magnitude symbol"
-  (5 m/s), or unwraps to a docked FC's display unit.
-- **`unitFlow.ts` KEPT, not deleted** (deliberate deviation from step 4's letter):
-  its FC display-lock flow is correct, load-bearing, and orthogonal to the dimension
-  layer; deleting it would risk the 5 seed lanes for no functional gain. The
-  dimension layer integrates on the DISPLAY side instead. `resolveValueOrigin` and
-  the 5 lanes still pass.
+  (5 m/s), or unwraps to a docked FC's display unit; an unannotated `UnitCell`
+  renders in its own authored `display` unit (`formatCellWithDisplay`).
+- **FC is VALUE-MUTATING (unification landed 2026-07-13)**: `UnitCell` gained an
+  optional `display` id; `FormatControllerNode.data()` tags the value via
+  `applyFcUnit` (author / re-display / `#UNIT!`), Convert tags its output too, and
+  `NumberInput` carries its picked unit as the display id. The redundant graph
+  unit-walk (`makeUnitResolver` + the FC forwarding / Convert-lock logic) is
+  DELETED — the unit rides the value and breaks at a transform on its own.
+  `unitFlow.ts` now carries only the number-FORMAT annotation
+  (`makeAnnotationResolver`) + `resolveValueOrigin`. The Unit Flow seed's 5 lanes
+  were re-authored to the value-mutating model and pass.
+- **LAMBDA hosts**: REDUCE / BYROW / BYCOL run `dimEval` alongside the numeric fold
+  (strip → interpret → re-tag; `#UNIT!` on a clash); MAP/MAKEARRAY/SCAN stay
+  matrix-agnostic.
 - **Step 7 reality**: units ride INSIDE values (runtime tags), so they mint no new
   static socket types and add no `accepts()` edges; the separation is a COMPUTE-time
   `#UNIT!`, machine-checked by `unitLattice.test.ts`'s full dimensional sweep.
@@ -129,10 +145,13 @@ end-to-end. See `unitWiring.test.ts`, `unitColumn.test.ts`, `unitLattice.test.ts
 3. **Expression/LAMBDA:** a second dimensional interpretation over the formula AST
    (`excelFormula.ts` `Ast`) — operators by the algebra, catalog functions by
    per-function dimensional signature.
-   → **shipped in `unitDimExpr.ts`; call site in the Expression/LAMBDA nodes pending.**
-4. **Replace `unitFlow.ts`:** re-express the v0.9 lock/carry/break semantics
-   (downstream + upstream + data-aware selectors + Convert primacy) on the new
-   layer; keep `resolveValueOrigin`; verify against the Unit Flow seed's 5 lanes.
+   → **DONE. `unitDimExpr.ts` `dimEval` runs in `ExpressionNode` and the LAMBDA
+   hosts REDUCE/BYROW/BYCOL over 1-D lists.**
+4. **Replace `unitFlow.ts`:** re-express the v0.9 lock/carry/break semantics on the
+   new layer; keep `resolveValueOrigin`; verify against the Unit Flow seed's 5 lanes.
+   → **DONE 2026-07-13. The FC is value-mutating; `makeUnitResolver` + the
+   forwarding/Convert-lock logic are deleted (the unit rides the value); the number
+   FORMAT stays an annotation; `resolveValueOrigin` kept; the 5 lanes re-authored + green.**
 5. **FC → header keys:** an FC tags a string-list element; Build Frame /
    Add Column pull + lock the column unit. The worked example above is the
    acceptance demo.
@@ -144,10 +163,11 @@ end-to-end. See `unitWiring.test.ts`, `unitColumn.test.ts`, `unitLattice.test.ts
    separation, machine-checked with a `socketConnect.test.ts`-style full sweep.
    → not started (deep `accepts()` change; author-present).
 
-## Exit criteria
+## Exit criteria — ✅ all met
 
 A unit rides per-element through a list and per-column through a frame with true
 dimensional algebra (`#UNIT!` on mismatch); `5 m ÷ 1 s` reads `5 m/s`; the
 header-list → locked-column worked example loads in a seed; the Unit Flow seed's
-5 lanes pass with `unitFlow.ts` gone; `resolveValueOrigin` still powers the popup
+5 lanes pass with the graph unit-walk gone (the FC value-mutating); the number
+FORMAT stays a display annotation; `resolveValueOrigin` still powers the popup
 crosshair.

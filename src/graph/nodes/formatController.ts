@@ -5,9 +5,14 @@ import { dockedNodeStore } from "../dockedNodeStore";
 import { SolenoidSocket, isDateType, isWildcardType, type SocketDataType } from "../sockets";
 
 // ─── Format Controller ────────────────────────────────────────────────────────
-// Docks to a socket on a host node. Annotates it with a display format (how
-// the number renders) and a unit label (physical/semantic tag for cable
-// compatibility). Does not transform the value — pass-through only.
+// Docks to a socket on a host node. Two responsibilities, on two layers:
+//   • the number FORMAT (style / precision / negatives / K-M-B) is a DISPLAY
+//     annotation, written to the box behind this FC (refreshAnnotation) and carried
+//     to a downstream passthrough box by `unitFlow.ts` `makeAnnotationResolver`;
+//   • the UNIT is VALUE-MUTATING (FC A4): `data()` tags the value's `UnitCell` via
+//     `applyFcUnit` (author a dimensionless value, re-display a commensurable one,
+//     `#UNIT!` on a clash). The unit is a property of the value, so it computes
+//     downstream and drops at a transform on its own — no graph unit-walk.
 
 // Mutable socket wrapper: each FC owns its own socket instances so we can
 // update the dataType without affecting any shared singleton.

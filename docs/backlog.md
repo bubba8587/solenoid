@@ -83,26 +83,20 @@ this backlog stays the per-item source of truth.
 - [ ] **D4 — conditional formatting for tables** (#41; deferred again 2026-07-05).
   Needs its own design pass: must clear Excel's version by a lot (author's explicit
   dislike), Display-node-only, must not step on FC format/units territory.
-- **FC A4 — units by dimensionality: CORE LANDED 2026-07-12/13.** The value layer
-  computes with dimensions end-to-end (tagged `UnitCell` per list element, `ColumnUnit`
-  per frame column, true `#UNIT!`-on-mismatch algebra). Wired: Arithmetic, MathFn,
-  Expression, Aggregate/SumIfs, Get Column, Number-node entry + picker, Build
-  Frame/Add Column header locking, the display path, a machine-checked lattice sweep,
-  and the `units-by-dimension` seed. Plan/status: `v2.0/05-units-format-controller.md`.
-  Remaining A4 FOLLOW-UPS (author-present polish, none blocking):
+- **FC A4 — units by dimensionality: LANDED (core 2026-07-12, value-mutating FC
+  unification 2026-07-13).** The value layer computes with dimensions end-to-end
+  (tagged `UnitCell` per list element, `ColumnUnit` per frame column, true
+  `#UNIT!`-on-mismatch algebra). The **Format Controller is now VALUE-MUTATING** —
+  it authors the value's unit onto the `UnitCell` (`applyFcUnit`), Convert tags its
+  output, and the redundant graph unit-walk (`makeUnitResolver`) is gone; the number
+  FORMAT stays a display annotation. REDUCE/BYROW/BYCOL carry units over a 1-D list.
+  Plan/status: `v2.0/05-units-format-controller.md` (complete). Remaining A4
+  FOLLOW-UPS (author-present polish, none blocking):
   - [ ] **Per-element mixed-unit trig (author 2026-07-09):** a list mixing `deg`/`rad`
     cells into an Auto-mode trig `Math` node should interpret EACH cell in its own
     unit. `mathFnResultDim` now handles a UnitCell angle (base-radians) per cell, but
     `resolveTrigModes` still reads ONE socket-level FC unit — the per-cell path needs
     the trig `Math` node to branch on each cell's `UnitCell` angle-dim, not the socket.
-  - [ ] **FC authoring of a dimensional unit → tag the VALUE** (not just display): an
-    FC that sets a dimensional unit could mint a `UnitCell` so its lock feeds the
-    algebra, unifying the display-lock (`unitFlow.ts`) and value-dimension layers.
-    Deliberately deferred — needs the author's call on whether the FC becomes
-    value-mutating (today it's display-only).
-  - [ ] **Convert → value-layer dimension:** Convert still emits a plain display
-    number; making it emit a `UnitCell` would let a conversion feed the algebra
-    (weigh against its existing display semantics + the D lane of the Unit Flow seed).
   - [ ] **Frame popup / FrameChip column-unit rendering:** the column now carries a
     `ColumnUnit`; the frame value viewers don't yet show it in the header/cells.
 - [ ] **Header/body border seam under zoom — UNSOLVED, parked for a human/later

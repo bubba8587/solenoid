@@ -137,8 +137,8 @@
       "x": -380,
       "y": 560,
       "init": {
-        "label": "C · A transform BREAKS it",
-        "body": "Each one costs `$10.00`. Multiplying by 100 makes a **new value**, so the `$` doesn't carry; the lot total shows a bare `1,000`. Breaking at a transform is the default for anything that isn't a passthrough.",
+        "label": "C · A transform breaks the DISPLAY",
+        "body": "Each one costs `$10.00`. The number **format** (2 decimals) and the `$` label are *display* — a transform drops them. But the **unit itself is physical**: `$10 × 100` is still money, so the total keeps its currency and reverts to the plain form. Format breaks at a transform; the dimension rides the value.",
         "color": "amber",
         "width": 330,
         "height": 170
@@ -209,8 +209,8 @@
       "x": -380,
       "y": 800,
       "init": {
-        "label": "D · Convert FORWARDS the new unit",
-        "body": "`mi → km` changes the value *and* the unit. The FC on the result didn't pick `km`; it's **locked** to what Convert hands it, and the unit dropdown is greyed out. A marathon reads `42.20 km`.",
+        "label": "D · Convert AUTHORS the new unit",
+        "body": "`mi → km` re-expresses the value in kilometres and **tags the value** with that unit. It rides straight through the Display, and the FC on the result agrees on `km` — a marathon reads `42.20 km`.",
         "color": "purple",
         "width": 330,
         "height": 170
