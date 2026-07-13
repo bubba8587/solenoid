@@ -4,7 +4,7 @@ import { lnGamma } from "./mathUtils";
 import { solError, type SolError } from "../errorValue";
 import type { FormatAnnotation } from "../formatAnnotationStore";
 import { type UnitCell, dimOf, magnitudeOf, tagDim, unitError } from "../unitValue";
-import { dimEqual, dimMul, dimDiv, dimPow, isDimensionless } from "../dimension";
+import { type Dim, DIMENSIONLESS, dimEqual, dimMul, dimDiv, dimPow, isDimensionless } from "../dimension";
 
 // ─── Bessel helper functions ──────────────────────────────────────────────────
 
@@ -282,6 +282,31 @@ export type AngleMode = "auto" | "rad" | "deg";
 const DEG2RAD = Math.PI / 180;
 const RAD2DEG = 180 / Math.PI;
 
+// Ops that PRESERVE their argument's dimension (abs |x|, the rounding family — a
+// rounded length is still a length). Everything else either halves it (SQRT),
+// yields a plain number (SIGN), or demands a dimensionless argument.
+const MATHFN_PRESERVE = new Set<MathFnOp>(["abs", "round", "trunc", "int", "even", "odd"]);
+const MATHFN_FORWARD_TRIG = FORWARD_TRIG_OPS;   // accept angle/dimensionless → number
+const MATHFN_INVERSE_TRIG = INVERSE_TRIG_OPS;   // dimensionless → angle
+
+/** The dimensional signature of a Math-fn op applied to an input of dimension `dim`.
+ *  Returns the result dim, a `#UNIT!` when the op needs a dimensionless argument it
+ *  didn't get, or `"strip"` when the input is dimensionless (compute plainly). */
+export function mathFnResultDim(op: MathFnOp, dim: Dim): Dim | SolError | "strip" {
+  if (isDimensionless(dim)) return "strip";
+  if (MATHFN_PRESERVE.has(op)) return dim;
+  if (op === "sqrt") return dimPow(dim, 0.5);
+  if (op === "sqrtpi") return dimPow(dim, 0.5); // √(x·π) — π is dimensionless
+  if (op === "sign") return DIMENSIONLESS;
+  if (MATHFN_FORWARD_TRIG.has(op)) {
+    return dimEqual(dim, { angle: 1 }) ? DIMENSIONLESS
+      : unitError(`${op.toUpperCase()} needs an angle or a plain number.`);
+  }
+  if (MATHFN_INVERSE_TRIG.has(op)) return { angle: 1 }; // result is an angle (radians)
+  // Transcendentals / special functions: a dimensioned argument is meaningless.
+  return unitError(`${op.toUpperCase()} needs a dimensionless argument.`);
+}
+
 export class MathFnNode extends ClassicPreset.Node {
   label: string;
   op: MathFnOp;
@@ -291,7 +316,7 @@ export class MathFnNode extends ClassicPreset.Node {
    *  read (trigMode.ts `resolveTrigModes`); default rad until a pass runs, so a
    *  node computed before any reconcile still matches Excel. Not persisted. */
   _resolvedAngleMode: "rad" | "deg" = "rad";
-  cachedResult: number | (number | SolError | null)[] | SolError | null = null;
+  cachedResult: number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null = null;
   literals: Record<string, number> = { in: 0 };
   width = 180;
   height = 160;
@@ -401,9 +426,23 @@ export class MathFnNode extends ClassicPreset.Node {
       const r = computeRaw(fwdDeg ? x * DEG2RAD : x);
       return r !== null && invDeg ? r * RAD2DEG : r;
     };
-    let result: number | (number | SolError | null)[] | SolError | null = null;
+    let result: number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null = null;
     if (input !== null) {
-      result = broadcastErr((x) => compute(x) ?? domainErr(), input);
+      if (anyDimensioned(input as UnitOperand | UnitOperand[])) {
+        // Unit-aware path: the op's dimensional signature (mathFnResultDim) gates a
+        // dimensioned argument (SQRT halves, ABS/ROUND preserve, SIN needs an angle,
+        // LOG/EXP need a plain number → #UNIT!). A UnitCell angle is already in base
+        // radians, so trig computes on the magnitude directly — no deg conversion.
+        result = broadcastUnit((cell) => {
+          const rd = mathFnResultDim(this.op, dimOf(cell));
+          if (typeof rd !== "string" && (rd as SolError).code) return rd as SolError;
+          const raw = computeRaw(magnitudeOf(cell));
+          if (raw === null) return domainErr();
+          return rd === "strip" ? raw : tagDim(raw, rd as Dim);
+        }, input as UnitOperand | UnitOperand[]);
+      } else {
+        result = broadcastErr((x) => compute(x) ?? domainErr(), input);
+      }
     }
     this.cachedResult = result;
     return { result };
