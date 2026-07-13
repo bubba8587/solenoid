@@ -83,19 +83,28 @@ this backlog stays the per-item source of truth.
 - [ ] **D4 — conditional formatting for tables** (#41; deferred again 2026-07-05).
   Needs its own design pass: must clear Excel's version by a lot (author's explicit
   dislike), Display-node-only, must not step on FC format/units territory.
-- [ ] **FC A4 — units by dimensionality (the flagship).** Author 2026-07-05: IN,
-  "big boy — we should go through it together when building" — DEFERRED to a
-  dedicated AUTHOR-PRESENT arc (not the autonomous plan). Representation decided
-  (tagged cells), `dimension.ts` algebra core landed. THE plan:
-  `v2.0/05-units-format-controller.md`.
-  - **Requirement (author 2026-07-09): a mixed-unit list must compute PER-ELEMENT
-    by each cell's own unit — NOT collapse to "no unit".** Concrete case: a list
-    where some cells are `deg` and some `rad` fed into an Auto-mode trig `Math`
-    node should interpret each cell in its own unit, element by element. Today
-    `resolveTrigModes` reads ONE socket-level unit (the value carries one unit),
-    so a genuinely mixed list resolves to `none` → rad — accepted "fine for now",
-    but A4's per-element units must drive per-element interpretation in consumers
-    (trig Auto is the worked example; the same applies to any unit-aware op).
+- **FC A4 — units by dimensionality: CORE LANDED 2026-07-12/13.** The value layer
+  computes with dimensions end-to-end (tagged `UnitCell` per list element, `ColumnUnit`
+  per frame column, true `#UNIT!`-on-mismatch algebra). Wired: Arithmetic, MathFn,
+  Expression, Aggregate/SumIfs, Get Column, Number-node entry + picker, Build
+  Frame/Add Column header locking, the display path, a machine-checked lattice sweep,
+  and the `units-by-dimension` seed. Plan/status: `v2.0/05-units-format-controller.md`.
+  Remaining A4 FOLLOW-UPS (author-present polish, none blocking):
+  - [ ] **Per-element mixed-unit trig (author 2026-07-09):** a list mixing `deg`/`rad`
+    cells into an Auto-mode trig `Math` node should interpret EACH cell in its own
+    unit. `mathFnResultDim` now handles a UnitCell angle (base-radians) per cell, but
+    `resolveTrigModes` still reads ONE socket-level FC unit — the per-cell path needs
+    the trig `Math` node to branch on each cell's `UnitCell` angle-dim, not the socket.
+  - [ ] **FC authoring of a dimensional unit → tag the VALUE** (not just display): an
+    FC that sets a dimensional unit could mint a `UnitCell` so its lock feeds the
+    algebra, unifying the display-lock (`unitFlow.ts`) and value-dimension layers.
+    Deliberately deferred — needs the author's call on whether the FC becomes
+    value-mutating (today it's display-only).
+  - [ ] **Convert → value-layer dimension:** Convert still emits a plain display
+    number; making it emit a `UnitCell` would let a conversion feed the algebra
+    (weigh against its existing display semantics + the D lane of the Unit Flow seed).
+  - [ ] **Frame popup / FrameChip column-unit rendering:** the column now carries a
+    `ColumnUnit`; the frame value viewers don't yet show it in the header/cells.
 - [ ] **Header/body border seam under zoom — UNSOLVED, parked for a human/later
   model.** See dev-notes "UNSOLVED" for constraints + the two eliminated approaches.
 - [ ] **Deferred pile — RESOLVED 2026-07-05 (author ruled each):** still deferred =

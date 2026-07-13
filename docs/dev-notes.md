@@ -5,6 +5,45 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-13 — FC A4 units by dimensionality: wired into the value engine)
+The pure unit-value foundation (`unitValue.ts`, `unitDimExpr.ts`, `dimension.ts`) is now
+WIRED LIVE. A number carries a physical dimension and computes with it: `5 m ÷ 1 s = 5 m/s`,
+`mass·accel → N`, `metres + seconds → #UNIT!`. The mechanism, end to end:
+- **Storage**: a list element is a base-SI `UnitCell` (magnitude + dim vector), tagged the
+  way `valueKinds` carries `null`/`SolError`; a bare number is dimensionless (so untagged
+  graphs are unchanged). A frame column carries ONE `ColumnUnit` (cells stay bare base-SI).
+  A matrix is unit-agnostic. `FrameColumn.unit` replaced the vestigial `UnitSuffix`.
+- **Bridge** (`unitBridge.ts`): FC unit ids ("m","km","usd","mph") ⇄ `dimension.ts` Units —
+  the one lookup between the display-unit layer and the value-dimension layer.
+- **Algebra at the ops** (`shared.ts` `broadcastUnit` + `anyDimensioned` gate — plain data is
+  byte-identical): `ArithmeticNode` (× adds exponents, ÷ subtracts, +/− demand commensurability,
+  pow scales, cancellation → bare); `MathFnNode` per-op dimensional signature (SQRT halves,
+  ABS/ROUND preserve, SIGN → number, trig needs an angle, log/exp need dimensionless → #UNIT!);
+  `ExpressionNode` runs `dimEval` in parallel with the numeric evaluator (strips UnitCells to
+  magnitudes for the math, tags the result with the computed dim).
+- **Aggregators** (`forAggregateUnits`): `AggregateNode` re-tags with the op's result dim
+  (sum/avg/min/max preserve, var/sumsq square, product dimⁿ, count/moments dimensionless);
+  mixed units → #UNIT!. `SumIfsNode` re-tags from the values column's unit.
+- **Frame ↔ list bridge**: a `Name (unit)` header (`Revenue ($0.00)`, `Distance (km)`) locks
+  a column via `buildFrame`/`addColumn` (`unitColumn.ts` parses the parenthetical); `GetColumn`
+  tags each cell with the column's dim so the unit rides OUT into a list.
+- **Entry point**: `NumberInputNode` gained a `unit` field + a grouped picker (dimensional ids
+  only); a discrete pick mints a base-SI `UnitCell`. Persists via the existing `unit` init key.
+- **Display**: `unwrapUnitCells` renders a dimensioned cell as "magnitude symbol" (`5 m/s`), or
+  unwraps to a docked FC's display unit (base → that unit) so the FC formats + labels it.
+- **Lattice** (`unitLattice.ts` + full sweep): units are the finer-grained sibling of the
+  element-family separation, but a value's dimension is RUNTIME — it can't gate a static socket
+  `accepts()`, so the separation is a COMPUTE-time `#UNIT!` (×/÷ always combine = dimensional
+  flow; +/−/compare/aggregate require the same dim = type separation).
+- **DELIBERATE DEVIATION — `unitFlow.ts` KEPT, not deleted** (step 4 said "delete + replace").
+  Its FC display-lock flow (downstream carry / upstream reach / selectors / Convert primacy) is
+  correct, load-bearing, and ORTHOGONAL to the value-dimension layer; rewriting it would risk the
+  5 seed lanes for zero functional gain. The dimension layer integrates on the DISPLAY side
+  instead. `resolveValueOrigin` + the 5 Unit-Flow lanes still pass. Follow-ups (per-element mixed
+  trig, FC-authors-a-value-unit, Convert→UnitCell, frame-popup column units) in `backlog.md`.
+- 45 new tests; full suite green (2690). Seed: `units-by-dimension.json` (+ `unitsSeed.test.ts`
+  drives its two lanes through the real nodes).
+
 ### SESSION DIGEST (2026-07-12 — drill-in Stream B: Isolate + trueany/trig inside composites)
 First-class composite drill-in, three of the four Stream-B items landed green;
 the other two flagged as author-present/entangled (see below).
