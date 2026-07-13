@@ -4,7 +4,7 @@ import * as Nodes from "./rete-nodes";
 import { FormatControllerNode, IfNode, ArithmeticNode, ConvertNode } from "./rete-nodes";
 import { makeAnnotationResolver } from "./unitFlow";
 import { formatAnnotationStore } from "./formatAnnotationStore";
-import { isUnitCell, type UnitCell } from "./unitValue";
+import { isUnitCell, unitLabelOf, type UnitCell } from "./unitValue";
 import seed from "./seedGraphs/unit-flow.json";
 
 // The Unit Flow seed is a teaching graph: each lane's caption claims a specific
@@ -24,6 +24,7 @@ beforeAll(async () => {
     const node = new Ctor({ ...(sn.init as Record<string, unknown>) });
     const anyNode = node as unknown as Record<string, unknown>;
     if ("literals" in sn && sn.literals) anyNode.literals = { ...(sn.literals as unknown as Record<string, number>) };
+    if ("stringLiterals" in sn && sn.stringLiterals) anyNode.stringLiterals = { ...(sn.stringLiterals as unknown as Record<string, string>) };
     real.set(sn.id, node);
     await editor.addNode(node as never);
   }
@@ -107,5 +108,65 @@ describe("Unit Flow seed — the captioned behaviors actually hold (FC A4 value-
     const sale = (real.get("E_saleFc") as FormatControllerNode).data({ in: [80] }).out as number;
     const chosen = (real.get("E_if") as IfNode).data({ cond: [true], then: [sale], else: [100] }).result;
     expect(isUnitCell(chosen) && (chosen as UnitCell).dim).toEqual({ currency: 1 });
+  });
+
+  it("F · units COMPUTE: 5 m ÷ 1 s = 5 m/s; m ÷ m cancels to a bare number", () => {
+    const dist = (real.get("F_distFc") as FormatControllerNode).data({ in: [5] }).out;
+    const time = (real.get("F_timeFc") as FormatControllerNode).data({ in: [1] }).out;
+    const speed = (real.get("F_div") as ArithmeticNode).data({ a: [dist] as never, b: [time] as never }).result;
+    expect(isUnitCell(speed)).toBe(true);
+    expect((speed as UnitCell).value).toBe(5);
+    expect(unitLabelOf(speed)).toBe("m/s");
+    // cancellation: 10 m ÷ 2 m → plain 5, no unit tag at all
+    const rise = (real.get("F_lenFc") as FormatControllerNode).data({ in: [10] }).out;
+    const run = (real.get("F_runFc") as FormatControllerNode).data({ in: [2] }).out;
+    const slope = (real.get("F_div2") as ArithmeticNode).data({ a: [rise] as never, b: [run] as never }).result;
+    expect(slope).toBe(5);
+  });
+
+  it("G · a bare number ADOPTS: $5 + 2 = $7; a $ list SUMs to $60", () => {
+    const price = (real.get("G_priceFc") as FormatControllerNode).data({ in: [5] }).out;
+    const total = (real.get("G_add") as ArithmeticNode).data({ a: [price] as never, b: [2] as never }).result as UnitCell;
+    expect(isUnitCell(total)).toBe(true);
+    expect(total.value).toBe(7);
+    expect(total.display).toBe("usd");
+    // the $ list: ListInput's typed rows → FC tags per cell → SUM keeps $
+    const items = (real.get("G_list") as unknown as { data: (i: Record<string, unknown[]>) => { list: unknown } }).data({}).list;
+    const tagged = (real.get("G_listFc") as FormatControllerNode).data({ in: [items] }).out;
+    const sum = (real.get("G_sum") as unknown as { data: (i: Record<string, unknown[]>) => { result: unknown } }).data({ list: [tagged] }).result as UnitCell;
+    expect(isUnitCell(sum)).toBe(true);
+    expect(sum.value).toBe(60);
+    expect(sum.display).toBe("usd");
+  });
+
+  it("H · Convert PRIMACY: dictates the FC in front (← ← m), toUnit rides out as yd", () => {
+    // refreshAnnotation (beforeAll) ran the downstream walk: the FC feeding the
+    // Convert is dictated its fromUnit.
+    const hfc = real.get("H_fc") as FormatControllerNode;
+    expect(hfc.dictatedFromUnit).toBe("m");
+    const tagged = hfc.data({ in: [5] }).out;
+    expect(hfc.lockedByConvert).toBe(true);
+    expect(hfc.unitLocked).toBe(true);
+    expect(hfc.unit).toBe("m"); // dropdown locked + mirrored to the Convert's read unit
+    // …and the Convert's toUnit rides the value out (a non-FC-registry id works too).
+    const out = (real.get("H_conv") as ConvertNode).data({ in: [tagged] }).out as UnitCell;
+    expect(isUnitCell(out)).toBe(true);
+    expect(out.display).toBe("yd");
+  });
+
+  it("H · …or it ERRORS: a $ into an m→km Convert is #UNIT!, never a silent pass", () => {
+    const bad = (real.get("H_badFc") as FormatControllerNode).data({ in: [5] }).out;
+    const out = (real.get("H_conv2") as ConvertNode).data({ in: [bad] }).out as { __solError?: boolean; code?: string };
+    expect(out && out.__solError).toBe(true);
+    expect(out.code).toBe("#UNIT!");
+  });
+
+  it("I · a CUSTOM unit is a real dimension: widgets ÷ s = widgets/s", () => {
+    const batch = (real.get("I_fc") as FormatControllerNode).data({ in: [5] }).out;
+    expect(unitLabelOf(batch)).toBe("widgets");
+    const every = (real.get("I_timeFc") as FormatControllerNode).data({ in: [1] }).out;
+    const rate = (real.get("I_div") as ArithmeticNode).data({ a: [batch] as never, b: [every] as never }).result;
+    expect(isUnitCell(rate)).toBe(true);
+    expect(unitLabelOf(rate)).toBe("widgets/s");
   });
 });

@@ -184,6 +184,7 @@ describe("dimensioned cells shape without #SHAPE! (the $ USD regression)", () =>
 describe("FC lock states live on the value layer (A2 arrows)", () => {
   let fc2: FormatControllerNode;
   let fcAfterConvert: FormatControllerNode;
+  let fcBeforeConvert: FormatControllerNode;
   beforeAll(async () => {
     // Number → FC(km) → FC(none): the second FC INHERITS (forwarding).
     const g = makeGraph();
@@ -196,7 +197,8 @@ describe("FC lock states live on the value layer (A2 arrows)", () => {
     for (const n of g.editor.getNodes()) if (n instanceof FormatControllerNode) n.refreshAnnotation(g.editor as never);
     await g.fetch(fc2);
 
-    // Number → Convert(m→km) → FC: the FC is DICTATED (lockedByConvert).
+    // Number → Convert(m→km) → FC: the FC INHERITS the converted value's unit
+    // (forwarding — the unit arrives WITH the value; dictation is the other way).
     const h = makeGraph();
     const src = new NumberInputNode({ label: "n", value: 5000 });
     const cv = new ConvertNode({ fromUnit: "m", toUnit: "km" });
@@ -206,6 +208,19 @@ describe("FC lock states live on the value layer (A2 arrows)", () => {
     await h.conn(cv, "out", fcAfterConvert, "in");
     for (const n of h.editor.getNodes()) if (n instanceof FormatControllerNode) n.refreshAnnotation(h.editor as never);
     await h.fetch(fcAfterConvert);
+
+    // Number → FC → Convert(m→km): the FC FEEDS a Convert, so the Convert's
+    // fromUnit DICTATES it (← ← lockedByConvert, dropdown locked to m) — Convert
+    // primacy: the value must be tagged in the unit the Convert reads it as.
+    const k = makeGraph();
+    const src2 = new NumberInputNode({ label: "n", value: 5 });
+    fcBeforeConvert = new FormatControllerNode({ unit: "none" });
+    const cv2 = new ConvertNode({ fromUnit: "m", toUnit: "km" });
+    for (const n of [src2, fcBeforeConvert, cv2]) await k.editor.addNode(n as never);
+    await k.conn(src2, "value", fcBeforeConvert, "in");
+    await k.conn(fcBeforeConvert, "out", cv2, "in");
+    for (const n of k.editor.getNodes()) if (n instanceof FormatControllerNode) n.refreshAnnotation(k.editor as never);
+    await k.fetch(cv2);
   });
 
   it("an FC fed by another FC forwards: → → arrows, dropdown mirrors km", () => {
@@ -215,9 +230,44 @@ describe("FC lock states live on the value layer (A2 arrows)", () => {
     expect(fc2.unit).toBe("km");
   });
 
-  it("an FC fed by a Convert is dictated: ← ← arrows, dropdown locked to toUnit", () => {
-    expect(fcAfterConvert.lockedByConvert).toBe(true);
-    expect(fcAfterConvert.unitLocked).toBe(true);
+  it("an FC fed by a Convert forwards the converted unit: → →, mirrors km", () => {
+    expect(fcAfterConvert.forwarding).toBe(true);
+    expect(fcAfterConvert.lockedByConvert).toBe(false);
     expect(fcAfterConvert.unit).toBe("km");
+  });
+
+  it("an FC FEEDING a Convert is dictated its fromUnit: ← ←, locked to m", () => {
+    expect(fcBeforeConvert.lockedByConvert).toBe(true);
+    expect(fcBeforeConvert.unitLocked).toBe(true);
+    expect(fcBeforeConvert.unit).toBe("m");
+  });
+});
+
+describe("Convert primacy on the outgoing value", () => {
+  it("Convert to a non-FC-registry unit (yd) still displays yd downstream, not base m", async () => {
+    const g = makeGraph();
+    const src = new NumberInputNode({ label: "n", value: 10 });
+    const cv = new ConvertNode({ fromUnit: "m", toUnit: "yd" });
+    const disp = new DisplayNode({ label: "d" });
+    for (const n of [src, cv, disp]) await g.editor.addNode(n as never);
+    await g.conn(src, "value", cv, "in");
+    await g.conn(cv, "out", disp, "in");
+    const out = (await g.fetch(disp)).out as UnitCell;
+    expect(isUnitCell(out)).toBe(true);
+    expect(out.display).toBe("yd");                    // primacy: toUnit rides the value
+    expect(displayMagnitudeOf(out)).toBeCloseTo(10.936, 3); // renders in yards, not metres
+  });
+
+  it("a tagged value whose dimension clashes with the Convert target errors", async () => {
+    const g = makeGraph();
+    const src = new NumberInputNode({ label: "n", value: 5 });
+    const fc = new FormatControllerNode({ unit: "usd" });
+    const cv = new ConvertNode({ fromUnit: "m", toUnit: "km" });
+    for (const n of [src, fc, cv]) await g.editor.addNode(n as never);
+    await g.conn(src, "value", fc, "in");
+    await g.conn(fc, "out", cv, "in");
+    const out = (await g.fetch(cv)).out as { __solError?: boolean; code?: string };
+    expect(out && out.__solError).toBe(true);
+    expect(out.code).toBe("#UNIT!"); // primacy can't hold → error, never a silent pass
   });
 });

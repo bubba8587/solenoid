@@ -37,6 +37,19 @@ engine silently broke downstream of any FC. The fix (all in `unitCoercion.test.t
 - **The Number node is a plain literal source** — the unit picker + `unit` field were removed
   (author: units are the FC's job only). The `units-by-dimension` seed's lane A now sources
   m/s from docked FCs (the `unit-flow` pattern).
+- **Convert PRIMACY restored on the value layer (2026-07-13)**: (1) every Convert unit id
+  registers with the display bridge (`registerDisplayUnits` — no import cycle), so Convert-to-yd/
+  psi/km_h tags a display that actually renders (was: display-less cell → base-SI metres downstream);
+  (2) the A2 ← ← lock direction was WRONG-WAY after the revival — corrected: an FC FEEDING a Convert
+  (through pure passthroughs, `refreshAnnotation` downstream walk → `dictatedFromUnit`) is dictated
+  the Convert's fromUnit — dictation FILLS an unauthored dropdown + locks while following, but NEVER
+  overwrites an authored unit (the pick stands; a true clash surfaces as the Convert's #UNIT! —
+  primacy OR an error, never a silent rewrite/pass). An FC AFTER a Convert simply forwards (→ →).
+- **Unit Flow seed upgraded to 9 machine-checked lanes** (`unitFlowSeed.test.ts` asserts every
+  caption): A carry · B upstream format reach · C transform drops format/unit rides · D Convert
+  authors · E selector keeps · F algebra (5 m ÷ 1 s = 5 m/s + cancellation) · G adopt ($5+2=$7,
+  $ list SUMs to $60) · H Convert primacy (dictated FC + the #UNIT! clash lane) · I custom unit
+  (widgets/s).
 - **Custom units are OPAQUE dimensions (2026-07-13)**: an FC `custom` free-text unit ("poop")
   now tags a `custom:<name>` dimension axis instead of being ignored (which made `poop ÷ s`
   collapse to `1/s` = Hz). `Dim` widened to `Record<string, number>` and the algebra helpers
