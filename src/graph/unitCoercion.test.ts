@@ -10,7 +10,7 @@ import { DataflowEngine } from "rete-engine";
 import type { Schemes } from "./schemes";
 import { installInputCoercion } from "./coerceInputs";
 import { installErrorGuards } from "./errorValue";
-import { NumberInputNode, FormatControllerNode, ComparisonNode, RoundNNode, DisplayNode, ArithmeticNode, ConvertNode } from "./rete-nodes";
+import { NumberInputNode, FormatControllerNode, ComparisonNode, RoundNNode, DisplayNode, ArithmeticNode, ConvertNode, AggregateNode, ListInputNode } from "./rete-nodes";
 import { isUnitCell, type UnitCell } from "./unitValue";
 import { stripUnitCells, displayMagnitudeOf } from "./unitBridge";
 
@@ -99,6 +99,50 @@ describe("unit-aware nodes and passthroughs keep the tags", () => {
     expect(isUnitCell(out)).toBe(true);
     expect((out as UnitCell).value).toBe(6000); // 2 km × 3, base SI
     expect((out as UnitCell).dim).toEqual({ length: 1 });
+  });
+});
+
+describe("dimensioned cells shape without #SHAPE! (the $ USD regression)", () => {
+  it("a currency scalar into an Aggregate widens to a singleton, not #SHAPE!", async () => {
+    const g = makeGraph();
+    const num = new NumberInputNode({ label: "n", value: 5 });
+    const fc = new FormatControllerNode({ unit: "usd" });
+    const agg = new AggregateNode({ op: "sum" });
+    for (const n of [num, fc, agg]) await g.editor.addNode(n as never);
+    await g.conn(num, "value", fc, "in");
+    await g.conn(fc, "out", agg, "list");
+    const out = (await g.fetch(agg)).result;
+    expect(isUnitCell(out)).toBe(true);
+    expect((out as UnitCell).dim).toEqual({ currency: 1 });
+    expect((out as UnitCell).value).toBe(5);
+  });
+
+  it("a currency LIST sums to a currency total", async () => {
+    const g = makeGraph();
+    const list = new ListInputNode({ label: "prices" });
+    (list as unknown as { stringLiterals: Record<string, string> }).stringLiterals = { v0: "10, 20, 30" };
+    const fc = new FormatControllerNode({ unit: "usd" });
+    const agg = new AggregateNode({ op: "sum" });
+    for (const n of [list, fc, agg]) await g.editor.addNode(n as never);
+    await g.conn(list, "list", fc, "in");
+    await g.conn(fc, "out", agg, "list");
+    const out = (await g.fetch(agg)).result;
+    expect(isUnitCell(out)).toBe(true);
+    expect((out as UnitCell).value).toBe(60);
+    expect((out as UnitCell).dim).toEqual({ currency: 1 });
+  });
+
+  it("a currency value into a unit-blind Comparison compares magnitudes (no #SHAPE!)", async () => {
+    const g = makeGraph();
+    const num = new NumberInputNode({ label: "n", value: 5 });
+    const fc = new FormatControllerNode({ unit: "usd" });
+    const thr = new NumberInputNode({ label: "t", value: 3 });
+    const cmp = new ComparisonNode({ op: "gt" });
+    for (const n of [num, fc, thr, cmp]) await g.editor.addNode(n as never);
+    await g.conn(num, "value", fc, "in");
+    await g.conn(fc, "out", cmp, "a");
+    await g.conn(thr, "value", cmp, "b");
+    expect((await g.fetch(cmp)).result).toBe(true); // $5 > 3
   });
 });
 
