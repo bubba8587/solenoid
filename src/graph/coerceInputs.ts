@@ -1,7 +1,7 @@
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
 import { SolenoidSocket, type SocketDataType } from "./sockets";
-import { toMatrix, toList, toScalar } from "./nodes/coerce";
+import { toMatrix, toList, toScalar, toAnyMatrix, ShapeError } from "./nodes/coerce";
 import { isFrameValue, frameFromRows, toCube } from "./frame";
 import { parseDateToSerial } from "./nodes/date";
 import { coerceLogical } from "./valueKinds";
@@ -9,6 +9,7 @@ import { parseCsvLine } from "./csv";
 import { isFrameRef, readFrame } from "./frameBackend";
 import { isSolError } from "./errorValue";
 import { stripUnitCells } from "./unitBridge";
+import { isUnitCell } from "./unitValue";
 
 // The relational verb nodes are LAZY: they emit a FrameRef and chain it (see
 // frameBackend), so their frame inputs must reach data() as the raw ref, NOT
@@ -84,12 +85,53 @@ function numsToBools(v: unknown): unknown {
   return v;
 }
 
+/** True when the value is (or contains, in a 1-D list) a dimensioned `UnitCell`.
+ *  Only reachable in coerceValue for a UNIT-AWARE node — every other node's inputs
+ *  are stripped to magnitudes before this runs (the unit-blind boundary). */
+function hasUnitCell(v: unknown): boolean {
+  return isUnitCell(v) || (Array.isArray(v) && v.some(isUnitCell));
+}
+
+/** Shape a unit-cell-bearing value to the socket's rank WITHOUT the numeric
+ *  coercers (`toScalar`/`toList`/`toMatrix` switch on `typeof === "number"`, so a
+ *  `UnitCell` object falls through and throws `#SHAPE!`). Cells are atomic scalars
+ *  in the value lattice, so widen them element-agnostically and KEEP the cell (the
+ *  unit-aware node runs the dimension algebra on it). Cells are scalar or 1-D only
+ *  (matrices are unit-agnostic by decision), so a table/frame/cube target still
+ *  widens via the element-agnostic wideners. */
+function coerceUnitCellValue(dataType: SocketDataType, v: unknown): unknown {
+  switch (dataType) {
+    case "number": {
+      if (isUnitCell(v)) return v;
+      if (Array.isArray(v) && v.length === 1 && isUnitCell(v[0])) return v[0];
+      throw new ShapeError(`Expected a single value, got ${Array.isArray(v) ? v.length : "a table"}`);
+    }
+    case "list":
+    case "anylist":
+      return isUnitCell(v) ? [v] : v; // strict list socket: a scalar cell widens to a singleton
+    case "numlist":
+      return v; // numlist broadcasts number|number[]: a scalar cell STAYS scalar (matches the numeric branch)
+    case "table":
+      return toAnyMatrix(v);
+    case "frame":
+      if (isFrameValue(v)) return v;
+      return Array.isArray(v) ? frameFromRows([v as unknown[]]) : frameFromRows([[v]]);
+    case "cube":
+      return toCube(v);
+    default:
+      return v; // scalar / combo / any / trueany — the node takes the cell as-is
+  }
+}
+
 /** Normalize one incoming value to the shape the consuming socket declares. */
 function coerceValue(dataType: SocketDataType, v: unknown): unknown {
   // A lazy frame ref or a tagged error passes through ANY socket untouched: a ref is
   // an opaque handle (materialized upstream in wrapNodeData for non-lazy nodes, or
   // left raw for the verb nodes), and an error propagates regardless of socket type.
   if (isFrameRef(v) || isSolError(v)) return v;
+  // A dimensioned `UnitCell` (only present for a unit-aware node) is shaped by rank
+  // without the numeric coercers, which would #SHAPE! on the object. See above.
+  if (hasUnitCell(v)) return coerceUnitCellValue(dataType, v);
   switch (dataType) {
     case "table":
       return toMatrix(boolsToNums(v) as Numeric);
