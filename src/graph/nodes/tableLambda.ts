@@ -189,6 +189,8 @@ function retagFold(
 // constant.
 
 export class MapTableNode extends ClassicPreset.Node {
+  /** Keeps `UnitCell` tags on its inputs — runs the dimension algebra itself (FC A4; see coerceInputs). */
+  unitAware = true;
   label: string;
   resultAs: ResultType;
   stringLiterals: Record<string, string>;
@@ -250,6 +252,8 @@ export class MapTableNode extends ClassicPreset.Node {
 export type ByAxis = "row" | "col";
 
 export class ByAxisNode extends ClassicPreset.Node {
+  /** Keeps `UnitCell` tags on its inputs — runs the dimension algebra itself (FC A4; see coerceInputs). */
+  unitAware = true;
   label: string;
   axis: ByAxis;
   resultAs: ResultType;
@@ -310,6 +314,8 @@ export class ByAxisNode extends ClassicPreset.Node {
 // can be textual (`acc & value` with an Initial of "") or numeric.
 
 export class ReduceLambdaNode extends ClassicPreset.Node {
+  /** Keeps `UnitCell` tags on its inputs — runs the dimension algebra itself (FC A4; see coerceInputs). */
+  unitAware = true;
   label: string;
   resultAs: ResultType;
   literals: Record<string, number> = {};
@@ -377,6 +383,8 @@ export class ReduceLambdaNode extends ClassicPreset.Node {
 // can't.
 
 export class ScanLambdaNode extends ClassicPreset.Node {
+  /** Keeps `UnitCell` tags on its inputs — runs the dimension algebra itself (FC A4; see coerceInputs). */
+  unitAware = true;
   label: string;
   resultAs: ResultType;
   literals: Record<string, number> = {};
@@ -431,6 +439,8 @@ export class ScanLambdaNode extends ClassicPreset.Node {
 const MAKEARRAY_MAX_CELLS = 40000;
 
 export class MakeArrayNode extends ClassicPreset.Node {
+  /** Keeps `UnitCell` tags on its inputs — runs the dimension algebra itself (FC A4; see coerceInputs). */
+  unitAware = true;
   label: string;
   resultAs: ResultType;
   literals: Record<string, number> = {};

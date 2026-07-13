@@ -10,7 +10,7 @@
 
 import { type Unit, type Dim, parseUnit, dimEqual, DIMENSIONLESS, formatDim } from "./dimension";
 import { UNIT_ANNOTATIONS } from "./formatAnnotationStore";
-import { fromUnit, isUnitCell, withDisplay, unitError } from "./unitValue";
+import { fromUnit, isUnitCell, withDisplay, unitError, type UnitCell as UnitCellT } from "./unitValue";
 import { isSolError } from "./errorValue";
 
 // Units the dimension.ts parser can't spell (compound / non-metric areas & volumes,
@@ -104,6 +104,40 @@ export function applyFcUnit(value: unknown, fcUnitId: string): unknown {
     return value.map(one);
   }
   return one(value);
+}
+
+/** The magnitude of a dimensioned cell in its own DISPLAY unit — the number the
+ *  user typed/expects ("5 km" ⇒ 5, not the base-SI 5000). A cell with no display
+ *  id (an algebra result) reads as its base magnitude. */
+export function displayMagnitudeOf(cell: UnitCellT): number {
+  if (cell.display) {
+    const u = fcUnitToUnit(cell.display);
+    if (u && dimEqual(u.dim, cell.dim)) return (cell.value - (u.offset ?? 0)) / u.scale;
+  }
+  return cell.value;
+}
+
+/**
+ * Unwrap every `UnitCell` in a value to its display magnitude — the UNIT-BLIND
+ * BOUNDARY (FC A4): the dimension algebra runs only in unit-aware nodes
+ * (`unitAware = true` / the passthrough markers — see coerceInputs); every OTHER
+ * node receives plain numbers, in the unit the user sees, exactly as before units
+ * existed. Without this, a `UnitCell` object reaches `coerceNumber` as NaN and a
+ * comparison/threshold/chart silently breaks (the 2026-07-13 regression).
+ * Returns the SAME reference when nothing is dimensioned (the common case).
+ */
+export function stripUnitCells(v: unknown): unknown {
+  if (isUnitCell(v)) return displayMagnitudeOf(v);
+  if (Array.isArray(v)) {
+    let changed = false;
+    const out = v.map((c) => {
+      const s = stripUnitCells(c);
+      if (s !== c) changed = true;
+      return s;
+    });
+    return changed ? out : v;
+  }
+  return v;
 }
 
 /** Find an FC unit id whose dimension + scale match a `Unit` (for showing a derived

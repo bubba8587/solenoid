@@ -1579,6 +1579,8 @@ export function aggregateResultDim(op: ReduceOp, dim: Dim, n: number): Dim {
 }
 
 export class AggregateNode extends ClassicPreset.Node {
+  /** Keeps `UnitCell` tags on its inputs — runs the dimension algebra itself (FC A4; see coerceInputs). */
+  unitAware = true;
   label: string;
   op: ReduceOp;
   cachedResult: number | UnitCell | SolError | null = null;
