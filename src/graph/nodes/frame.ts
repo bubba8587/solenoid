@@ -1,13 +1,15 @@
 import { ClassicPreset } from "rete";
-import { numIn, numListIn, tableIn, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, anyIn, staticTrueAnyOut, anyListIn } from "./shared";
+import { numIn, numListIn, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, anyIn, staticTrueAnyOut, adoptiveTableIn, adoptiveListIn } from "./shared";
 import { readFilterValue } from "./list";
-import { toMatrix } from "./coerce";
+import { toAnyMatrix } from "./coerce";
+import { SolenoidSocket } from "../sockets";
 import { parseDateToSerial } from "./date";
 import { isSolError, solError, type SolError } from "../errorValue";
 import { coerceLogical } from "../valueKinds";
 import { APP_LOCALE } from "../locale";
 import {
-  buildFrame, splitFrame, getColumn, addColumn, frameRowCount, frameHasTextColumns, makeHeaders,
+  buildFrame, buildFrameTyped, typedColumn, colTypeForSocket,
+  splitFrame, getColumn, addColumn, frameRowCount, frameHasTextColumns, makeHeaders,
   frameFromInputText, formatFrameCell, isCubeValue, isFrameValue,
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
 } from "../frame";
@@ -1002,7 +1004,11 @@ export class BuildFrameNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("BuildFrame");
     this.label = init?.label ?? "Build Frame";
-    this.addInput("matrix", tableIn("Matrix"));
+    // Adoptive matrix input: accepts a matrix of ANY element family and adopts its
+    // concrete type, so a datetable → date columns (values alone can't recover a
+    // date — a serial looks numeric). "Slap headers on a table → Frame"; adding
+    // columns is other nodes' job (Add Column / Frame from Lists).
+    this.addInput("matrix", adoptiveTableIn("Matrix"));
     this.addInput("headers", strListIn("Headers"));
     this.addOutput("frame", frameOut("Frame"));
   }
@@ -1013,46 +1019,44 @@ export class BuildFrameNode extends ClassicPreset.Node {
   // leaked the previous handle) (audit finding 42).
   private _builtFromMatrix: unknown;
   private _builtFromHeaders: unknown;
+  private _builtFromType: unknown;
 
   data(inputs: { matrix?: unknown[]; headers?: string[][] }) {
     const rawMatrix = inputs.matrix?.[0];
     const headers = inputs.headers?.[0];
-    if (this.cachedResult && rawMatrix === this._builtFromMatrix && headers === this._builtFromHeaders) {
+    // The matrix's element family, adopted onto the input socket from the wired
+    // cable (settleWildcardTypes) — the only place `date` survives. Part of the
+    // memo key: an adoption change (a cable retyped date↔number) must rebuild.
+    const dt = this.inputs.matrix?.socket instanceof SolenoidSocket ? this.inputs.matrix.socket.dataType : undefined;
+    if (this.cachedResult && rawMatrix === this._builtFromMatrix && headers === this._builtFromHeaders && dt === this._builtFromType) {
       return { frame: this.cachedResult };
     }
-    const m = toMatrix(rawMatrix as number | number[] | number[][] | null | undefined);
+    const m = toAnyMatrix(rawMatrix);
     if (!m || m.length === 0) { this.cachedResult = null; return { frame: null }; }
-    this.cachedResult = buildFrame(m, headers);
+    const known = colTypeForSocket(dt);
+    // Numeric matrices keep the original builder byte-for-byte (unit headers, an
+    // all-null column typed number, every existing seed/test); date/string/logical
+    // and genuinely-untyped (anytable, not yet adopted) go through the typed path.
+    const allNumeric = known === null && m.every((row) => row.every((c) => c === null || isSolError(c) || typeof c === "number"));
+    this.cachedResult = known === "number" || allNumeric
+      ? buildFrame(m as number[][], headers)
+      : buildFrameTyped(m, headers, known);
     this._builtFromMatrix = rawMatrix;
     this._builtFromHeaders = headers;
+    this._builtFromType = dt;
     return { frame: this.cachedResult };
   }
 }
 
 // ─── FRAME FROM LISTS ─────────────────────────────────────────────────────────
-// The fast lists→Frame path: each extensible row pairs a column NAME (typed or
-// wired) with a LIST of values (any element family — the anylist wildcard).
-// Build Frame stays the matrix+headers assembler; this one skips the matrix.
-// Type-PRESERVING per column (a wired list is already typed — no re-inference
-// that would turn "1" the string into 1 the number); mixed cells coerce to
-// text; ragged columns pad with blanks. Date lists arrive as serials and type
-// as numbers — retype downstream with Get Column's read-as if needed.
-
-function columnFromCells(name: string, cells: unknown[], length: number): FrameColumn {
-  const present = cells.filter((c) => c !== null && c !== undefined && !isSolError(c));
-  const type: FrameColType =
-    present.length > 0 && present.every((c) => typeof c === "number") ? "number"
-    : present.length > 0 && present.every((c) => typeof c === "boolean") ? "logical"
-    : "string";
-  const values: FrameCell[] = [];
-  for (let i = 0; i < length; i++) {
-    const c = cells[i];
-    if (c === null || c === undefined) { values.push(null); continue; }
-    if (isSolError(c)) { values.push(c); continue; }
-    values.push(type === "string" && typeof c !== "string" ? String(c) : (c as FrameCell));
-  }
-  return { name, type, values };
-}
+// The lists→Frame path: each extensible row pairs a column NAME (typed or wired)
+// with a LIST of values. Each list input ADOPTS its wired list's concrete type
+// (adoptiveListIn), so a datelist → a date column — the one family values can't
+// recover (a serial looks numeric). Type-PRESERVING (no CSV-style re-inference of
+// "1"→1); an untyped (anylist) source falls back to value inference (number/
+// logical/string); mixed cells coerce to text; ragged columns pad with blanks.
+// Build Frame stays the matrix+headers assembler; this one takes N typed lists —
+// the path to a genuinely MIXED frame (id:number, name:string, when:date).
 
 export class FrameFromListsNode extends ClassicPreset.Node {
   label: string;
@@ -1081,7 +1085,7 @@ export class FrameFromListsNode extends ClassicPreset.Node {
 
   private addPairWithId(id: number): void {
     this.addInput(`name${id}`, strIn(`Name ${id + 1}`));
-    this.addInput(`vals${id}`, anyListIn(`Column ${id + 1}`));
+    this.addInput(`vals${id}`, adoptiveListIn(`Column ${id + 1}`));
     this.nextPairId = Math.max(this.nextPairId, id + 1);
   }
 
@@ -1104,15 +1108,19 @@ export class FrameFromListsNode extends ClassicPreset.Node {
   }
 
   data(inputs: Record<string, unknown[]>) {
-    const cols: { name: string; cells: unknown[] }[] = [];
+    const cols: { name: string; cells: unknown[]; known: FrameColType | null }[] = [];
     const sig: unknown[] = [];
     for (const [nameK, valsK] of this.valuePairKeys()) {
       const wired = inputs[valsK]?.[0];
       if (wired === undefined || wired === null) continue; // an unwired row contributes nothing
       const cells = Array.isArray(wired) ? wired : [wired]; // a scalar makes a 1-cell column
       const name = String(inputs[nameK]?.[0] ?? this.stringLiterals[nameK] ?? "").trim();
-      cols.push({ name, cells });
-      sig.push(name, wired);
+      // The column type adopted onto this list input from its wired cable (date
+      // survives here; null = an untyped anylist source → infer from values).
+      const sock = this.inputs[valsK]?.socket;
+      const known = colTypeForSocket(sock instanceof SolenoidSocket ? sock.dataType : undefined);
+      cols.push({ name, cells, known });
+      sig.push(name, wired, known);
     }
     if (cols.length === 0) { this.cachedResult = null; this._sig = []; return { frame: null }; }
     if (this.cachedResult && sig.length === this._sig.length && sig.every((v, i) => Object.is(v, this._sig[i]))) {
@@ -1122,7 +1130,7 @@ export class FrameFromListsNode extends ClassicPreset.Node {
     const names = makeHeaders(cols.map((c) => c.name), cols.length);
     this.cachedResult = {
       __frame: true,
-      columns: cols.map((c, i) => columnFromCells(names[i], c.cells, length)),
+      columns: cols.map((c, i) => typedColumn(names[i], c.cells, length, c.known)),
     };
     this._sig = sig;
     return { frame: this.cachedResult };

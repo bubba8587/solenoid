@@ -5,6 +5,32 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-15b — Build Frame / Frame from Lists type-by-adoption + adoptive-socket base)
+"Build Frame = upgrade a table into a frame by slapping headers on it" (author), so it should
+accept ANY homogeneous matrix, not just numeric — and type the columns by the matrix's element
+family. Key realization (author): a matrix is HOMOGENEOUS with a socket-known type, so per-column
+value inference was the wrong model, and specifically **`date` can't be recovered from values** (a
+serial looks numeric) — the type must come from the SOCKET. Done "the right way" for BOTH sibling
+constructors so they stay coherent:
+- **Generalized `AdoptiveSocket` to carry a `base`** (default `trueany`; `reconcileOnce` now reverts
+  to `sock.base`). New `adoptiveTableIn`/`adoptiveListIn` = adoptive with an `anytable`/`anylist`
+  base: accept any element family AND adopt the wired cable's concrete type (via the existing
+  `settleWildcardTypes` universal input-adoption), while staying restricted (a frame/scalar is
+  refused, unlike a `trueany` hole).
+- **Build Frame** `matrix` input → `adoptiveTableIn`; **Frame from Lists** each `vals` input →
+  `adoptiveListIn`. `data()` reads the adopted socket type → `colTypeForSocket` → `FrameColType`.
+  New core helpers `typedColumn` + `buildFrameTyped` (frame.ts). A NUMERIC matrix still routes
+  through the unchanged `buildFrame` (byte-identical — units, all-null-col→number, every seed/test).
+  `null` (not-yet-adopted `anytable`/`anylist`, or `complex`) → value inference (number/logical/
+  string). Removed `columnFromCells` + FFL's "dates arrive as numbers, retype downstream" note.
+- **Adoption runs before compute on load** (`loadGraph` calls `settleWildcardTypes` at
+  persistence.ts:496, like conduits/FCs), so a saved `datetable→BuildFrame` builds date columns.
+  Headless `run-graph.ts` (no settle) degrades to value inference (date→number) — acceptable.
+- INDEX was NOT the issue (its Array input is already `trueany`); the numeric-`table` audit found
+  MMULT/MDETERM/MINVERSE/Heatmap correctly numeric, only these two constructors needed widening.
+Tests in `frame.test.ts` (colTypeForSocket/typedColumn/buildFrameTyped + node-level adoption via
+`setType`). Full suite 2764 green.
+
 ### SESSION DIGEST (2026-07-15 — INDEX whole-axis form)
 INDEX (`ListIndexNode`) gained Excel's whole-axis form (author request): a BLANK or
 0 Row = the whole COLUMN, blank/0 Column = the whole ROW (`INDEX(range, 0, col)`),

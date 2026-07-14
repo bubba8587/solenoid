@@ -13,10 +13,16 @@ import {
   isFrameValue,
   makeHeaders,
   buildFrame,
+  buildFrameTyped,
+  typedColumn,
+  colTypeForSocket,
   addColumn,
   frameHasTextColumns,
 } from "./frame";
 import { parseDateToSerial } from "./nodes/date";
+import { BuildFrameNode, FrameFromListsNode } from "./nodes/frame";
+import { MutableSocket } from "./sockets";
+import { solError } from "./errorValue";
 
 // ─── isFrameValue ─────────────────────────────────────────────────────────────
 
@@ -532,5 +538,109 @@ describe("Frame Input is a LITERAL source — never rewrites what you typed", ()
     expect(src[0].cells).toEqual(["1", "TRUE"]);
     expect(src[1].type).toBe("number");
     expect(src[1].cells).toEqual(["10", "20"]);
+  });
+});
+
+// ─── Typed frame building (Build Frame / Frame from Lists: any homogeneous
+//     matrix/list → typed columns, dates included) ──────────────────────────────
+
+describe("colTypeForSocket — a socket's element family → frame column type", () => {
+  it("maps concrete matrix/list/scalar sockets to their family", () => {
+    expect(colTypeForSocket("number")).toBe("number");
+    expect(colTypeForSocket("table")).toBe("number");
+    expect(colTypeForSocket("numlist")).toBe("number");
+    expect(colTypeForSocket("datetable")).toBe("date");
+    expect(colTypeForSocket("datelist")).toBe("date");
+    expect(colTypeForSocket("strtable")).toBe("string");
+    expect(colTypeForSocket("logicaltable")).toBe("logical");
+  });
+  it("returns null for a wildcard rung (not yet adopted) or complex", () => {
+    expect(colTypeForSocket("anytable")).toBeNull();
+    expect(colTypeForSocket("anylist")).toBeNull();
+    expect(colTypeForSocket("trueany")).toBeNull();
+    expect(colTypeForSocket("complextable")).toBeNull(); // frames hold no complex column
+    expect(colTypeForSocket(undefined)).toBeNull();
+  });
+});
+
+describe("typedColumn", () => {
+  it("a known date type keeps serials but types the column date (values can't recover it)", () => {
+    const s1 = parseDateToSerial("2026-01-03"), s2 = parseDateToSerial("2026-02-04");
+    const col = typedColumn("when", [s1, s2], 2, "date");
+    expect(col.type).toBe("date");
+    expect(col.values).toEqual([s1, s2]);
+  });
+  it("infers number/logical/string from runtime cell types, type-preserving", () => {
+    expect(typedColumn("a", [1, 2, 3], 3).type).toBe("number");
+    expect(typedColumn("b", [true, false], 2).type).toBe("logical");
+    // "1" the string stays a string (no CSV-style re-parse to 1 the number).
+    expect(typedColumn("c", ["1", "x"], 2)).toMatchObject({ type: "string", values: ["1", "x"] });
+  });
+  it("blanks → null, per-cell errors pass through, ragged pads to length", () => {
+    const err = solError("#DIV/0!", "boom");
+    const col = typedColumn("x", [1, null, err], 4, "number");
+    expect(col.values).toEqual([1, null, err, null]);
+  });
+});
+
+describe("buildFrameTyped — a matrix of any element family", () => {
+  it("a string matrix → all string columns", () => {
+    const f = buildFrameTyped([["a", "b"], ["c", "d"]], ["p", "q"], "string");
+    expect(f.columns.map((c) => c.type)).toEqual(["string", "string"]);
+    expect(f.columns[0].values).toEqual(["a", "c"]);
+  });
+  it("colType null → per-column value inference", () => {
+    const f = buildFrameTyped([[1, "x"], [2, "y"]], ["n", "s"], null);
+    expect(f.columns.map((c) => c.type)).toEqual(["number", "string"]);
+  });
+  it("carries a (unit) header onto a numeric column", () => {
+    const f = buildFrameTyped([[5], [6]], ["Revenue ($0.00)"], "number");
+    expect(f.columns[0].name).toBe("Revenue");
+    expect(f.columns[0].unit).toBeTruthy();
+  });
+});
+
+describe("BuildFrameNode — types columns by the adopted matrix socket", () => {
+  const adopt = (n: BuildFrameNode, t: string) => (n.inputs.matrix!.socket as MutableSocket).setType(t as never);
+
+  it("a numeric matrix stays byte-identical to buildFrame", () => {
+    const n = new BuildFrameNode();
+    const out = n.data({ matrix: [[[1, 2], [3, 4]]], headers: [["a", "b"]] }).frame!;
+    expect(out).toEqual(buildFrame([[1, 2], [3, 4]], ["a", "b"]));
+  });
+  it("a datetable adopts → date columns (serials preserved)", () => {
+    const n = new BuildFrameNode();
+    adopt(n, "datetable");
+    const s = parseDateToSerial("2026-03-20");
+    const out = n.data({ matrix: [[[s], [s + 1]]], headers: [["when"]] }).frame!;
+    expect(out.columns[0].type).toBe("date");
+    expect(out.columns[0].values).toEqual([s, s + 1]);
+  });
+  it("a strtable adopts → string columns", () => {
+    const n = new BuildFrameNode();
+    adopt(n, "strtable");
+    const out = n.data({ matrix: [[["x"], ["y"]]], headers: [["name"]] }).frame!;
+    expect(out.columns[0].type).toBe("string");
+  });
+  it("an unadopted anytable falls back to value inference", () => {
+    const n = new BuildFrameNode(); // socket base is anytable (never wired/settled)
+    const out = n.data({ matrix: [[["a"], ["b"]]], headers: [["s"]] }).frame!;
+    expect(out.columns[0].type).toBe("string");
+  });
+});
+
+describe("FrameFromListsNode — a genuinely mixed frame from typed lists", () => {
+  it("adopts each list's type, dates included", () => {
+    const n = new FrameFromListsNode();
+    const [n0, n1] = n.valuePairKeys(); // two default rows
+    (n.inputs[n0[1]]!.socket as MutableSocket).setType("numlist" as never);
+    (n.inputs[n1[1]]!.socket as MutableSocket).setType("datelist" as never);
+    const s = parseDateToSerial("2026-05-01");
+    const out = n.data({
+      [n0[0]]: ["id"], [n0[1]]: [[1, 2]],
+      [n1[0]]: ["when"], [n1[1]]: [[s, s + 1]],
+    }).frame!;
+    expect(out.columns.map((c) => c.type)).toEqual(["number", "date"]);
+    expect(out.columns[1].values).toEqual([s, s + 1]);
   });
 });
