@@ -84,13 +84,18 @@ function cssColorToHex(css: string): string {
   return "#" + m.slice(0, 3).map((n) => Math.round(Number(n)).toString(16).padStart(2, "0")).join("");
 }
 
-const TIP_FONT_FAMILY = "system-ui, -apple-system, sans-serif";
+/** The app's UI font stack (`--font-sans`, Atkinson Hyperlegible) — resolved so the
+ *  canvas measurer uses the SAME font the pill renders in, or the pill sizes wrong. */
+function appFontFamily(): string {
+  const v = getComputedStyle(document.documentElement).getPropertyValue("--font-sans").trim();
+  return v || "system-ui, sans-serif";
+}
 let _measureCtx: CanvasRenderingContext2D | null = null;
 /** Text width via a shared canvas — one pass, so the pill sizes without a reflow flash. */
 function measureTipText(text: string): number {
   if (_measureCtx === null) _measureCtx = document.createElement("canvas").getContext("2d");
   if (!_measureCtx) return text.length * 7; // headless fallback
-  _measureCtx.font = `600 12px ${TIP_FONT_FAMILY}`;
+  _measureCtx.font = `600 12px ${appFontFamily()}`;
   return _measureCtx.measureText(text).width;
 }
 
@@ -116,7 +121,7 @@ function SocketTip({ label, color, anchor }: { label: string; color: string; anc
         <text
           x={W / 2} y={H / 2 + 0.5} fill={ink} fontSize="12" fontWeight="600"
           textAnchor="middle" dominantBaseline="middle"
-          style={{ fontFamily: TIP_FONT_FAMILY }}
+          style={{ fontFamily: "var(--font-sans)" }}
         >{label}</text>
       </svg>
     </div>,
