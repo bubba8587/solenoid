@@ -121,16 +121,19 @@ this backlog stays the per-item source of truth.
 
 ## Composite / drill-in
 
-- [ ] **Simulation stop condition** (surfaced by the sudoku-solver seed, 2026-07-13) — an
-  optional "Stop when" logical output on a Simulation composite: check it after each round,
-  halt early, reinterpret `simulationSteps` as the hard cap. Small change inside
-  `runSimulation`; makes fixpoint loops self-terminating (the sudoku seed hand-tunes 25 steps).
-- [ ] **By-Row run mode** (surfaced 2026-07-13) — run the subgraph once per row of a wired
-  frame (columns bind to same-named input ports), collect per-port series; structurally
-  Scenarios mode with data-driven overrides (`collectMultiple`). The node-level "for each" —
-  per-row logic with real nodes (Set ops, Joins, sub-models), not just BYROW's formula subset.
-  Guardrail: dozens-to-hundreds of rows (full engine reset per pass); the Polars verb chain
-  stays the bulk path. BYCOL = transpose first, don't build it.
+- [ ] **Simulation stop condition** (surfaced by the sudoku-solver seed, 2026-07-13;
+  **author-approved 2026-07-14**) — an optional "Stop when" logical output on a Simulation
+  composite: check it after each round, halt early, reinterpret `simulationSteps` as the hard
+  cap. Small change inside `runSimulation`; makes fixpoint loops self-terminating (the sudoku
+  seed hand-tunes 25 steps).
+- [ ] **By-Row run mode** (surfaced 2026-07-13; shape refined by author 2026-07-14) — the
+  user SELECTS which wired input port to iterate: the mode runs the subgraph once per ROW of
+  that input (the row binds to that port; other ports stay fixed), collecting per-port series.
+  Structurally Scenarios mode with data-driven overrides (`collectMultiple`) + a port picker
+  (goal-seek's Set/By dropdown pattern). The node-level "for each" — per-row logic with real
+  nodes (Set ops, Joins, sub-models), not just BYROW's formula subset. Guardrail:
+  dozens-to-hundreds of rows (full engine reset per pass); the Polars verb chain stays the
+  bulk path. BYCOL = transpose first, don't build it.
 - [ ] **Inside-solve stale dot is uniform** (author 2026-07-06, minor): after an INSIDE Solve
   (runs on marker seeds, ignoring outside wiring) the stale dot reads green though the held result
   is seed-based, not wired — you re-solve outside to use wiring. Distinguishing the two needs a
@@ -142,11 +145,16 @@ this backlog stays the per-item source of truth.
   confidence-level example).
 ## Nodes / engine
 
-- [ ] **Set predicates as formula natives** (surfaced 2026-07-13) — register `SETEQ` (and
-  friends) via the `registerInternal` seam (`excelFunctions.ts`) so Set-relation logic is
-  callable from Expression/MAP/BYROW. Predicates (→ logical) are cheap; set OPERATIONS
-  (→ list) need range-function routing in `broadcastCall` + a list `ExcelReturn` — defer
-  those unless a concrete case shows up.
+- [ ] **Formula ↔ node parity program** (author direction 2026-07-14 — supersedes the
+  narrower "SETEQ as formula native" item) — converge the formula language and the node set;
+  audit + tiered design in **`docs/formula-node-parity.md`** (numbers regenerable via
+  `scripts/formula-node-parity.ts`). Headline gaps: 57 Excel-named nodes whose name isn't
+  formula-dispatchable (TEXTSPLIT, TAKE, SEQUENCE, XLOOKUP…); 75 untracked formula-only
+  legacy names (VLOOKUP dispatches despite D10-oos — drift, not decision); 25-entry native
+  registry stalled. Four author questions at the doc's end gate the tiers; Tier 1 (close the
+  57 via `registerInternal`) + the parity ratchet test are mechanical once greenlit. NOTE:
+  the author REOPENED D2's "permanent" Expression cap and the broadcast assumptions
+  (2026-07-14) — see the doc header + the D2 amendment in decisions.md.
 - [ ] **Rigorous multi-column input-socket label syntax** (author 2026-07-06) — a
   frame/2-D input socket should state which columns it expects in ONE consistent
   grammar. Today it's ad hoc: Sankey reads "From+To+Value", standard charts read
