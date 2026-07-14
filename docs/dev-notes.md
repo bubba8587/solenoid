@@ -5,6 +5,17 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-15f — List popup: display-only vertical (Row/Column) layout)
+The List popup (`TablePopup`, `state.list`) gained a **Row / Column** toggle in the footer: Column
+renders the list DOWN a column (one value per line, nicer to read for a long list) instead of across a
+row. Pure DISPLAY — the value is untouched: a list is stored as a single ROW (`[[1,2,3]]`, the flat
+comma-separated value), and only the rendered `<table>` transposes (`viewGrid`/`viewCols`); `copy` /
+CSV / Markdown / export / save all still read the flat `displayGrid`/`grid`, so `1,2,3` never becomes
+`1\n2\n3` in the value. Lists are read-only in the popup (no `onSave` — only Table Input's matrix is
+editable), so no edit-index remap is needed. Sticky within a session (state persists across opens, not
+reset on reseed), default Row. Vertical view caps at `MAX_VISIBLE_ROWS` like a tall table; the dims
+header reads `N×1`. Visual — author eyeball pending.
+
 ### SESSION DIGEST (2026-07-15e — Socket Reference hover pills)
 Each dot in the Socket Legend / Reference now shows an INSTANT hover pill with its precise
 per-dimension name (Numeric / Numeric List / Numeric Matrix, …, Frame, Cube, LAMBDA, Chart,

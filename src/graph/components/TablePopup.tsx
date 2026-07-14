@@ -140,6 +140,12 @@ export function TablePopup() {
   // editable truth and Formatted is a read-only preview; for a read-only date view it
   // just toggles serial vs date string.
   const [displayMode, setDisplayMode] = useState<"formatted" | "source">("formatted");
+  // DISPLAY-ONLY list orientation: a 1-D list is stored as one ROW (its value is the
+  // flat, comma-separated list, unchanged). This just renders it down a COLUMN — one
+  // value per line, nicer to read for a long list — without touching the value: copy /
+  // CSV / Markdown all still flatten to the same list. Sticky within a session (not
+  // reset on reseed), default horizontal.
+  const [listVertical, setListVertical] = useState(false);
   const initedFor = useRef<TablePopupState | null>(null);
 
   // (Re)seed whenever a different popup opens.
@@ -215,6 +221,18 @@ export function TablePopup() {
           return cell;
         }))
       : shownGrid;
+
+  // A vertical LIST is a pure render transpose of the display grid (the single row
+  // becomes N one-cell rows). `grid`/`displayGrid` stay the 1×N truth, so copy / CSV /
+  // save are untouched; only the rendered <table> changes. Read-only (lists aren't
+  // editable in the popup), so no edit-index remap is needed.
+  const vertical = !!state.list && listVertical;
+  const listLen = displayGrid[0]?.length ?? 0;
+  const listTruncated = vertical && listLen > MAX_VISIBLE_ROWS; // cap rows like a tall table
+  const viewGrid = vertical
+    ? (displayGrid[0] ?? []).slice(0, MAX_VISIBLE_ROWS).map((v) => [v])
+    : displayGrid;
+  const viewCols = vertical ? 1 : cols;
 
   function setCell(r: number, c: number, v: string) {
     setGrid((g) => g.map((row, i) => (i === r ? row.map((cell, j) => (j === c ? v : cell)) : row)));
@@ -358,7 +376,7 @@ export function TablePopup() {
       cardClassName="table-popup"
       grouped={grouped}
       cardStyle={cardStyle}
-      headerExtra={<span className="table-popup__dims">{rows}×{cols}{rowsTruncated ? ` · first ${MAX_VISIBLE_ROWS.toLocaleString(APP_LOCALE)}` : ""}</span>}
+      headerExtra={<span className="table-popup__dims">{vertical ? `${listLen}×1` : `${rows}×${cols}`}{rowsTruncated || listTruncated ? ` · first ${MAX_VISIBLE_ROWS.toLocaleString(APP_LOCALE)}` : ""}</span>}
       pinNodeId={state.pinNodeId}
       headerActions={
         <PopupOverflowMenu
@@ -376,13 +394,13 @@ export function TablePopup() {
             <thead>
               <tr>
                 <th className="table-popup__corner" />
-                {Array.from({ length: cols }, (_, c) => (
+                {Array.from({ length: viewCols }, (_, c) => (
                   <th
                     key={c}
-                    className={headers ? "table-popup__colhead table-popup__colhead--name" : "table-popup__colhead"}
-                    title={headers?.[c]}
+                    className={headers && !vertical ? "table-popup__colhead table-popup__colhead--name" : "table-popup__colhead"}
+                    title={vertical ? undefined : headers?.[c]}
                   >
-                    {editableHeaders ? (
+                    {vertical ? "" : editableHeaders ? (
                       <div className="table-popup__colhead-edit">
                         <button
                           type="button"
@@ -408,21 +426,24 @@ export function TablePopup() {
               </tr>
             </thead>
             <tbody>
-              {displayGrid.map((row, r) => (
+              {viewGrid.map((row, r) => (
                 <tr key={r}>
                   <th className="table-popup__rowhead">{r + 1}</th>
-                  {Array.from({ length: cols }, (_, c) => {
+                  {Array.from({ length: viewCols }, (_, c) => {
+                    // A vertical list has one data column but its type is the list's,
+                    // not column `c` (which is always 0 there).
+                    const type = vertical ? cellType : colTypeAt(c);
                     // In a NUMERIC column the shown string "NaN" can only be a real
                     // NaN (dirty data) — a text column is excluded, and the editable
                     // raw view shows the source token ("oops"), never "NaN".
-                    const nan = !isTextType(colTypeAt(c)) && (row[c] ?? "") === "NaN";
+                    const nan = !isTextType(type) && (row[c] ?? "") === "NaN";
                     return (
                     <td key={c} className={`table-popup__cell${nan ? " table-popup__cell--nan" : ""}`} title={nan ? "Not a number: an undefined value in the data" : undefined}>
                       <input
-                        className={isTextType(colTypeAt(c)) ? "table-popup__input table-popup__input--text" : "table-popup__input"}
+                        className={isTextType(type) ? "table-popup__input table-popup__input--text" : "table-popup__input"}
                         value={row[c] ?? ""}
                         readOnly={!editable || formattedPreview}
-                        inputMode={isTextType(colTypeAt(c)) ? "text" : "decimal"}
+                        inputMode={isTextType(type) ? "text" : "decimal"}
                         spellCheck={false}
                         onChange={(e) => setCell(r, c, e.target.value)}
                       />
@@ -458,6 +479,22 @@ export function TablePopup() {
             onClick={showCSV}
           >CSV</button>
         </div>
+        {state.list && view === "grid" && (
+          <div className="table-popup__view" role="group" aria-label="List layout">
+            <button
+              type="button"
+              aria-pressed={!listVertical}
+              onClick={() => setListVertical(false)}
+              title="Show the list across a row"
+            >Row</button>
+            <button
+              type="button"
+              aria-pressed={listVertical}
+              onClick={() => setListVertical(true)}
+              title="Show the list down a column — one value per line (display only; the value is unchanged)"
+            >Column</button>
+          </div>
+        )}
         {showFmtToggle && (
           <label
             className="table-popup__source-check"
