@@ -5,6 +5,22 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-15 — INDEX whole-axis form)
+INDEX (`ListIndexNode`) gained Excel's whole-axis form (author request): a BLANK or
+0 Row = the whole COLUMN, blank/0 Column = the whole ROW (`INDEX(range, 0, col)`),
+both blank = the container passes through whole. The Row/Column literal fields now
+default EMPTY with an **`[all]`** placeholder — done purely via the socket-label
+`(default …)` convention (`splitDefaultLabel`), zero component work. Slice shapes
+mirror the existing accessors: frame row → ONE-ROW FRAME (Get Row / XLOOKUP `*`),
+frame column → values LIST (Get Column), cube slices stay CUBES (nested cells
+whole), matrix slices → 1-D lists; a flat list is n×1 (Column > 1 = #REF!), and
+0-based bounds still #REF!. BEHAVIOR CHANGE, checked against every usage: a 2-D
+input with Column unset used to read the cell at (row, 1) — now it slices the whole
+row; the cubes seed sets both literals explicitly on all three INDEX nodes and no
+test/seed relied on the old implicit col-1 (the null-and-logical #REF! demo is a
+flat list). New default is pass-through (fresh node = [all]/[all]). Tests in
+`cubeNodes.test.ts`; catalog description + NODE_EXCEL syntax/note updated.
+
 ### SESSION DIGEST (2026-07-14 — formula↔node parity: audit + design frame; D2 reopened)
 Author set a new direction: the formula language and the node set should CONVERGE ("people
 will be expecting that and we've kind of let it stagnate") — and explicitly REOPENED the

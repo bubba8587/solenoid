@@ -488,7 +488,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           ]},
           { type: "pair", children: [
             { type: "list-length", label: "LENGTH",  description: "Number of elements in the list. Excel: COUNT / ROWS.", create: () => new ListLengthNode() },
-            { type: "list-index",  label: "INDEX",   description: "Read a cell out of any container: the nth of a list, the (Row, Column) of a Matrix, or the cell of a Frame / Cube. A nested Frame/Cube cell comes out whole, so this is how you pull data back out of a Cube. Excel: INDEX(range, row, col).", create: () => new ListIndexNode(), keywords: "cube frame cell nested drill get cell unnest" },
+            { type: "list-index",  label: "INDEX",   description: "Read a cell out of any container: the nth of a list, the (Row, Column) of a Matrix, or the cell of a Frame / Cube. A blank (or 0) Row or Column selects the WHOLE column / row — Excel's INDEX(range, 0, col) form. A nested Frame/Cube cell comes out whole, so this is how you pull data back out of a Cube. Excel: INDEX(range, row, col).", create: () => new ListIndexNode(), keywords: "cube frame cell nested drill get cell unnest slice whole row column" },
           ]},
           { type: "pair", children: [argLeaf("argmax"), argLeaf("argmin")] },
           { type: "list-contains", label: "CONTAINS", description: "1 if the list contains the value, else 0. Excel: ISNUMBER(MATCH(value,range,0)).", create: () => new ContainsNode() },

@@ -10,7 +10,7 @@ import { forAggregate, isMissing, type Tri } from "../valueKinds";
 import { forAggregateUnits, tagDim, type UnitCell } from "../unitValue";
 import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../dimension";
 import { iterMin, iterMax } from "./mathUtils";
-import { isFrameValue, isCubeValue, cubeRowCount, frameRowCount, inferColumn, getColumn, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
+import { isFrameValue, isCubeValue, cubeRowCount, cubeFromColumns, frameRowCount, inferColumn, getColumn, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
 
 // ─── List Input ─────────────────────────────────────────────────────────────
 
@@ -210,10 +210,20 @@ export class ListLengthNode extends ClassicPreset.Node {
 // pulled from a cube cell flows on as a frame/cube you can keep working on. This
 // is how you read a relate-built cube back out (see docs/cube-node-scope.md). The
 // 1-D list path keeps Excel's INDEX(array, n); `column` is the 2-D second arg.
+//
+// Excel's whole-axis form (2026-07-15): a BLANK or 0 Row means ALL rows — the
+// whole column — and a blank/0 Column means ALL columns — the whole row — exactly
+// INDEX(range, 0, col) / INDEX(range, row, 0). Both blank passes the container
+// through whole. Slice shapes follow the app's existing accessor conventions:
+// a frame row-slice is a ONE-ROW FRAME (Get Row / XLOOKUP `*`), a frame
+// column-slice is the values LIST (Get Column); cube slices stay CUBES (nested
+// cells come out whole); matrix slices are 1-D lists. The Row/Column literal
+// fields default EMPTY with an `[all]` placeholder (the socket-label
+// `(default …)` convention).
 export class ListIndexNode extends ClassicPreset.Node {
   label: string;
   cachedResult: number | SolError | null | CubeCell | FrameValue | CubeValue = null;
-  literals: Record<string, number> = { index: 1 }; // 1-based (Excel INDEX)
+  literals: Record<string, number> = {}; // 1-based (Excel INDEX); unset = [all]
   width = 180;
   height = 190;
 
@@ -221,8 +231,8 @@ export class ListIndexNode extends ClassicPreset.Node {
     super("ListIndex");
     this.label = init?.label ?? "INDEX";
     this.addInput("list",  trueAnyIn("Array")); // list, matrix, frame, or cube
-    this.addInput("index", numIn("Row"));
-    this.addInput("column", numIn("Column"));   // 2-D / frame / cube only
+    this.addInput("index", numIn("Row (default [all])"));
+    this.addInput("column", numIn("Column (default [all])"));   // 2-D / frame / cube only
     // The result's type varies per row/column (a cube cell can be a nested
     // frame), so it stays the STATIC wildcard — never adopts.
     this.addOutput("result", staticTrueAnyOut("Value"));
@@ -230,64 +240,78 @@ export class ListIndexNode extends ClassicPreset.Node {
 
   data(inputs: { list?: unknown[]; index?: number[]; column?: number[] }): { result: number | SolError | null | CubeCell | FrameValue | CubeValue } {
     const v = inputs.list?.[0] ?? null;
-    const row = inputs.index?.[0] ?? this.literals.index ?? null;
-    const col = inputs.column?.[0] ?? this.literals.column ?? null;
-    if (v === null || v === undefined || row === null) {
-      this.cachedResult = null;
-      return { result: null };
-    }
-    const r = Math.round(row) - 1;
+    const rowIn = inputs.index?.[0] ?? this.literals.index ?? null;
+    const colIn = inputs.column?.[0] ?? this.literals.column ?? null;
+    const done = (result: number | SolError | null | CubeCell | FrameValue | CubeValue) => {
+      this.cachedResult = result;
+      return { result };
+    };
+    if (v === null || v === undefined) return done(null);
+    // Excel INDEX: 0 (or omitted) selects the WHOLE axis.
+    const rowAll = rowIn === null || Math.round(rowIn) === 0;
+    const colAll = colIn === null || Math.round(colIn) === 0;
+    const r = rowAll ? -1 : Math.round(rowIn as number) - 1;
+    const c = colAll ? -1 : Math.round(colIn as number) - 1;
     const refErr = (n: number, max: number, what: string) =>
       solError("#REF!", `${what} ${n} is outside 1…${max}`);
 
-    // A Cube / Frame: pull the cell at (row, column). Column defaults to 1.
     if (isCubeValue(v)) {
-      const c = (col === null ? 1 : Math.round(col)) - 1;
+      if (rowAll && colAll) return done(v);
       const rows = cubeRowCount(v);
-      if (r < 0 || r >= rows) { const e = refErr(r + 1, rows, "Row"); this.cachedResult = e; return { result: e }; }
-      if (c < 0 || c >= v.columns.length) { const e = refErr(c + 1, v.columns.length, "Column"); this.cachedResult = e; return { result: e }; }
-      const cell = v.columns[c].cells[r] ?? null;
-      this.cachedResult = cell;
-      return { result: cell };
+      if (!rowAll && (r < 0 || r >= rows)) return done(refErr(r + 1, rows, "Row"));
+      if (!colAll && (c < 0 || c >= v.columns.length)) return done(refErr(c + 1, v.columns.length, "Column"));
+      // Whole column / whole row stay CUBES so nested cells survive intact.
+      if (rowAll) return done(cubeFromColumns([v.columns[c]]));
+      if (colAll) return done(cubeFromColumns(v.columns.map((col) => ({ name: col.name, cells: [col.cells[r] ?? null] }))));
+      return done(v.columns[c].cells[r] ?? null);
     }
     if (isFrameValue(v)) {
-      const c = (col === null ? 1 : Math.round(col)) - 1;
+      if (rowAll && colAll) return done(v);
       const rows = frameRowCount(v);
-      if (r < 0 || r >= rows) { const e = refErr(r + 1, rows, "Row"); this.cachedResult = e; return { result: e }; }
-      if (c < 0 || c >= v.columns.length) { const e = refErr(c + 1, v.columns.length, "Column"); this.cachedResult = e; return { result: e }; }
-      const cell = v.columns[c].values[r] ?? null;
-      this.cachedResult = cell;
-      return { result: cell };
+      if (!rowAll && (r < 0 || r >= rows)) return done(refErr(r + 1, rows, "Row"));
+      if (!colAll && (c < 0 || c >= v.columns.length)) return done(refErr(c + 1, v.columns.length, "Column"));
+      // Whole column = the values list (Get Column's shape).
+      if (rowAll) return done([...v.columns[c].values] as CubeCell);
+      if (colAll) {
+        // Whole row = a ONE-ROW FRAME (Get Row / XLOOKUP `*` convention).
+        const columns: FrameColumn[] = v.columns.map((col) => ({
+          ...col, values: [col.values[r] ?? null], raw: col.raw ? [col.raw[r] ?? ""] : undefined,
+        }));
+        return done({ __frame: true, columns });
+      }
+      return done(v.columns[c].values[r] ?? null);
     }
 
     if (!Array.isArray(v)) {
-      // A scalar wired in is a 1×1 — row/col 1 returns it, anything else #REF!.
-      const ok = r === 0 && (col === null || Math.round(col) === 1);
-      const res = ok ? (v as number) : solError("#REF!", "Index is outside a single value; only index 1 exists");
-      this.cachedResult = res;
-      return { result: res };
+      // A scalar wired in is a 1×1 — row/col 1 (or [all]) returns it, anything else #REF!.
+      const ok = (rowAll || r === 0) && (colAll || c === 0);
+      return done(ok ? (v as number) : solError("#REF!", "Index is outside a single value; only index 1 exists"));
     }
 
-    // A 2-D matrix when a column is given (or the rows are arrays); else a 1-D list.
-    const is2D = col !== null || Array.isArray((v as unknown[])[0]);
-    if (is2D) {
+    if (Array.isArray((v as unknown[])[0])) {
+      // A genuine 2-D matrix.
       const grid = v as unknown[][];
-      if (r < 0 || r >= grid.length) { const e = refErr(r + 1, grid.length, "Row"); this.cachedResult = e; return { result: e }; }
+      if (rowAll && colAll) return done(grid as CubeCell);
+      if (!rowAll && (r < 0 || r >= grid.length)) return done(refErr(r + 1, grid.length, "Row"));
+      if (rowAll) {
+        // Whole column as a 1-D list (a ragged short row contributes null).
+        const width = grid.reduce<number>((m, row) => Math.max(m, Array.isArray(row) ? row.length : 1), 0);
+        if (c < 0 || c >= width) return done(refErr(c + 1, width, "Column"));
+        return done(grid.map((row) => (Array.isArray(row) ? (row[c] ?? null) : c === 0 ? row : null)) as CubeCell);
+      }
       const rowArr = Array.isArray(grid[r]) ? grid[r] : [grid[r] as unknown];
-      const c = (col === null ? 1 : Math.round(col)) - 1;
-      if (c < 0 || c >= rowArr.length) { const e = refErr(c + 1, rowArr.length, "Column"); this.cachedResult = e; return { result: e }; }
-      const cell = (rowArr[c] ?? null) as CubeCell;
-      this.cachedResult = cell;
-      return { result: cell };
+      if (colAll) return done([...rowArr] as CubeCell); // whole row as a 1-D list
+      if (c < 0 || c >= rowArr.length) return done(refErr(c + 1, rowArr.length, "Column"));
+      return done((rowArr[c] ?? null) as CubeCell);
     }
+
+    // A flat 1-D list — the existing is2D convention treats it as an n×1 column,
+    // so Column (when given) must be 1.
     const arr = v as (number | SolError | null)[];
-    if (r < 0 || r >= arr.length) {
-      const err = refErr(r + 1, arr.length, "list");
-      this.cachedResult = err;
-      return { result: err };
-    }
-    this.cachedResult = arr[r];
-    return { result: arr[r] };
+    if (!colAll && c !== 0) return done(refErr(c + 1, 1, "Column"));
+    if (rowAll) return done([...arr] as CubeCell); // whole column = the list itself
+    if (r < 0 || r >= arr.length) return done(refErr(r + 1, arr.length, "list"));
+    return done(arr[r]);
   }
 }
 
