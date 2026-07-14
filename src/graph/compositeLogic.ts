@@ -4,6 +4,7 @@ import type { AreaPlugin } from "rete-area-plugin";
 import type { Schemes, AreaExtra, SolenoidNode, SolenoidConnection } from "./schemes";
 import { GroupNode, CompositeNode, CompositeInputNode, CompositeOutputNode } from "./rete-nodes";
 import { installErrorGuards } from "./errorValue";
+import { groupCollapseStore } from "./groupCollapse";
 import { cableSelectionStore } from "./cableState";
 import { beginGraphRebuild, endGraphRebuild, bulkSettle, getEditor } from "./process";
 import { ctorRegistry } from "./nodeCtorRegistry";
@@ -30,8 +31,12 @@ export async function createCompositeFromSelection(editor: Editor, area: Area): 
   // Same reasoning as createGroupFromSelection: a lingering cable selection
   // shouldn't ride along into the relocation reflow.
   cableSelectionStore.set(null);
+  // Exclude members hidden inside a collapsed group — same guard as
+  // createGroupFromSelection, and it matters more here: this PHYSICALLY relocates
+  // the selection into the composite's internal editor, so absorbing a hidden
+  // collapsed member would silently rip it out of its group.
   const sel = editor.getNodes().filter(
-    (n) => n.selected && !(n instanceof GroupNode) && !(n instanceof CompositeNode),
+    (n) => n.selected && !(n instanceof GroupNode) && !(n instanceof CompositeNode) && !groupCollapseStore.isNodeHidden(n.id),
   );
   if (sel.length === 0) return null;
 
