@@ -112,6 +112,26 @@ html.minimap-hidden .solenoid-legend {
   flex-shrink: 0;
 }
 
+/* Each glyph is wrapped so it can anchor its hover pill; inline-flex keeps it
+   sitting exactly as the bare SVG did inside the flex row. */
+.solenoid-legend__dot {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* The hover pill: an SVG stadium, portaled to <body> and fixed to the viewport so
+   the legend's overflow never clips it. Positioned centred above the dot (the
+   inline `left`/`top` set the dot centre; the translate lifts + centres the pill).
+   INSTANT — no transition, no delay — per the spec. */
+.solenoid-socktip {
+  position: fixed;
+  transform: translate(-50%, -100%);
+  margin-top: -2px; /* a hair of breathing room above the glyph */
+  pointer-events: none;
+  z-index: 10000;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.28));
+}
+
 .solenoid-legend__type {
   flex: 1;
   white-space: nowrap;
