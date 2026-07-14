@@ -1,1507 +1,1519 @@
 {
-  "v": 2,
-  "label": "Errors, Null & Logic",
-  "nodes": [
-    {
-      "id": "hdr",
-      "type": "NoteNode",
-      "x": -40,
-      "y": -200,
-      "init": {
-        "label": "Null & Logical: the value model",
-        "body": "This canvas tours the value model: a first-class **null**, a real **logical** type, and **per-cell errors** that stay in a list. Null means missing; it renders as `null` and aggregators skip it. Logicals are TRUE/FALSE on purple sockets and coerce to 1/0 in math. Each cluster shows one decision.",
-        "color": "blue",
-        "width": 760,
-        "height": 190
-      }
-    },
-    {
-      "id": "nA",
-      "type": "NoteNode",
-      "x": -40,
-      "y": 40,
-      "init": {
-        "label": "A · Aggregators skip null",
-        "body": "The `vals` column has a **blank cell** in row 2, which imports as **null**. SUM = 8; AVERAGE = 8/3, dividing by the 3 PRESENT values, not 4. The list shows `1, null, 3, 4`.",
-        "color": "green",
-        "width": 230,
-        "height": 230
-      }
-    },
-    {
-      "id": "fiA",
-      "type": "FrameInputNode",
-      "x": 212,
-      "y": 39,
-      "init": {
-        "label": "CSV (blank cell in vals)",
-        "frameText": "vals, tag\n1, a\n, b\n3, c\n4, d"
-      }
-    },
-    {
-      "id": "gcA",
-      "type": "GetColumnNode",
-      "x": 473,
-      "y": 46,
-      "init": {
-        "label": "Get \"vals\"",
-        "readAs": "number"
-      },
-      "stringLiterals": {
-        "name": "vals"
-      }
-    },
-    {
-      "id": "dAlist",
-      "type": "DisplayNode",
-      "x": 714,
-      "y": 74,
-      "init": {
-        "label": "the list → 1, null, 3, 4"
-      }
-    },
-    {
-      "id": "aggSum",
-      "type": "AggregateNode",
-      "x": 734,
-      "y": 170,
-      "init": {
-        "label": "SUM → 8",
-        "op": "sum"
-      }
-    },
-    {
-      "id": "aggAvg",
-      "type": "AggregateNode",
-      "x": 996,
-      "y": 170,
-      "init": {
-        "label": "AVERAGE → 8/3",
-        "op": "avg"
-      }
-    },
-    {
-      "id": "isnA",
-      "type": "IsTestNode",
-      "x": 734,
-      "y": 330,
-      "init": {
-        "label": "ISNULL → F,T,F,F",
-        "op": "isnull"
-      }
-    },
-    {
-      "id": "nB",
-      "type": "NoteNode",
-      "x": -40,
-      "y": 640,
-      "init": {
-        "label": "B · Comparison → real TRUE/FALSE",
-        "body": "`5 > 3` emits a real **logical** (purple socket), shown as **TRUE**, not 1. Into ×10 it coerces to 1/0 → **10**; the multiply-by-a-condition trick still works. **AND** also emits a logical; its `b=1` coerces the other way, number → TRUE.",
-        "color": "purple",
-        "width": 230,
-        "height": 300
-      }
-    },
-    {
-      "id": "s5",
-      "type": "NumberInputNode",
-      "x": 242,
-      "y": 673,
-      "init": {
-        "label": "5",
-        "value": 5
-      }
-    },
-    {
-      "id": "s3",
-      "type": "NumberInputNode",
-      "x": 242,
-      "y": 794,
-      "init": {
-        "label": "3",
-        "value": 3
-      }
-    },
-    {
-      "id": "cmpB",
-      "type": "ComparisonNode",
-      "x": 483,
-      "y": 744,
-      "init": {
-        "label": "A > B",
-        "op": "gt"
-      }
-    },
-    {
-      "id": "dCmp",
-      "type": "DisplayNode",
-      "x": 714,
-      "y": 648,
-      "init": {
-        "label": "TRUE (logical)"
-      }
-    },
-    {
-      "id": "mulB",
-      "type": "ArithmeticNode",
-      "x": 734,
-      "y": 800,
-      "init": {
-        "label": "× 10  (coerces TRUE→1)",
-        "op": "mul"
-      },
-      "literals": {
-        "a": 0,
-        "b": 10
-      }
-    },
-    {
-      "id": "dMul",
-      "type": "DisplayNode",
-      "x": 976,
-      "y": 769,
-      "init": {
-        "label": "→ 10"
-      }
-    },
-    {
-      "id": "andB",
-      "type": "BooleanOpNode",
-      "x": 734,
-      "y": 950,
-      "init": {
-        "label": "AND (b=1 coerces to TRUE)",
-        "op": "and"
-      },
-      "literals": {
-        "a0": 0,
-        "a1": 1
-      }
-    },
-    {
-      "id": "dAnd",
-      "type": "DisplayNode",
-      "x": 976,
-      "y": 980,
-      "init": {
-        "label": "AND → TRUE (logical)"
-      }
-    },
-    {
-      "id": "nC",
-      "type": "NoteNode",
-      "x": -40,
-      "y": 1120,
-      "init": {
-        "label": "C · Per-cell errors stay in the list",
-        "body": "Lists now carry errors per element. `1 / [1,0,2]` → `1, #DIV/0!, 0.5`. Casting `[\"1\",\"abc\",\"3\"]` to number → `1, #VALUE!, 3`. The good cells compute around the bad one.",
-        "color": "amber",
-        "width": 230,
-        "height": 230
-      }
-    },
-    {
-      "id": "llC",
-      "type": "ListInputNode",
-      "x": 242,
-      "y": 1140,
-      "init": {
-        "label": "[1, 0, 2]",
-        "valueKeys": [
-          "v0",
-          "v1",
-          "v2"
-        ]
-      },
-      "stringLiterals": {
-        "v0": "1",
-        "v1": "0",
-        "v2": "2"
-      }
-    },
-    {
-      "id": "exprC",
-      "type": "ExpressionNode",
-      "x": 463,
-      "y": 1135,
-      "init": {
-        "label": "1 / x",
-        "expr": "1 / x"
-      }
-    },
-    {
-      "id": "dExpr",
-      "type": "DisplayNode",
-      "x": 714,
-      "y": 1165,
-      "init": {
-        "label": "1, #DIV/0!, 0.5"
-      }
-    },
-    {
-      "id": "tspC",
-      "type": "TextSplitNode",
-      "x": 242,
-      "y": 1338,
-      "init": {
-        "label": "split \"1,abc,3\""
-      },
-      "stringLiterals": {
-        "text": "1,abc,3",
-        "delimiter": ","
-      }
-    },
-    {
-      "id": "castC",
-      "type": "CastNode",
-      "x": 447,
-      "y": 1331,
-      "init": {
-        "label": "Cast → Number",
-        "target": "number"
-      }
-    },
-    {
-      "id": "dCast",
-      "type": "DisplayNode",
-      "x": 714,
-      "y": 1351,
-      "init": {
-        "label": "1, #VALUE!, 3"
-      }
-    },
-    {
-      "id": "nD",
-      "type": "NoteNode",
-      "x": -40,
-      "y": 1620,
-      "init": {
-        "label": "D · Test node: null vs unwired",
-        "body": "A 1×1 Table into ISNULL → `[[FALSE]]`. An **unwired** ISNULL is NOT null: there is nothing to test, so it shows a blank `—`.",
-        "color": "pink",
-        "width": 230,
-        "height": 230
-      }
-    },
-    {
-      "id": "tiD",
-      "type": "TableInputNode",
-      "x": 222,
-      "y": 1649,
-      "init": {
-        "label": "1×1 Table [1]",
-        "tableText": "1"
-      }
-    },
-    {
-      "id": "isnD",
-      "type": "IsTestNode",
-      "x": 483,
-      "y": 1669,
-      "init": {
-        "label": "ISNULL (click the chip!)",
-        "op": "isnull"
-      }
-    },
-    {
-      "id": "dIsnD",
-      "type": "DisplayNode",
-      "x": 714,
-      "y": 1684,
-      "init": {
-        "label": "[[FALSE]] — no crash"
-      }
-    },
-    {
-      "id": "isnU",
-      "type": "IsTestNode",
-      "x": 483,
-      "y": 1820,
-      "init": {
-        "label": "ISNULL (UNWIRED) → blank",
-        "op": "isnull"
-      }
-    },
-    {
-      "id": "nE",
-      "type": "NoteNode",
-      "x": -40,
-      "y": 2080,
-      "init": {
-        "label": "E · Empty Table Input stays editable",
-        "body": "Its text is just a comma, so there are no numeric cells and the value is `null`. It keeps an **editable 1×1 chip** and an \"empty\" hint.",
-        "color": "gray",
-        "width": 230,
-        "height": 230
-      }
-    },
-    {
-      "id": "tiE",
-      "type": "TableInputNode",
-      "x": 222,
-      "y": 2100,
-      "init": {
-        "label": "just a comma",
-        "tableText": ","
-      }
-    },
-    {
-      "id": "nF",
-      "type": "NoteNode",
-      "x": -40,
-      "y": 2300,
-      "init": {
-        "label": "F · Kleene logic + Filter on missing data",
-        "body": "This cluster reuses the null-bearing `vals` from A. **`> 2`** per element → `FALSE, null, TRUE, TRUE`: a comparison with a missing value is **unknown**, not FALSE (Kleene logic). **Filter `> 1`** keeps only TRUE rows, like SQL WHERE, so it drops the unknown row → `3, 4`.",
-        "color": "teal",
-        "width": 230,
-        "height": 250
-      }
-    },
-    {
-      "id": "cmpF",
-      "type": "ComparisonNode",
-      "x": 734,
-      "y": 2308,
-      "init": {
-        "label": "vals > 2",
-        "op": "gt"
-      },
-      "literals": {
-        "a": 0,
-        "b": 2
-      }
-    },
-    {
-      "id": "dCmpF",
-      "type": "DisplayNode",
-      "x": 976,
-      "y": 2333,
-      "init": {
-        "label": "FALSE, null, TRUE, TRUE"
-      }
-    },
-    {
-      "id": "filF",
-      "type": "FilterNode",
-      "x": 729,
-      "y": 2485,
-      "init": {
-        "label": "Filter vals > 1",
-        "condConfig": {
-          "0": {
-            "op": "gt"
-          }
-        }
-      },
-      "stringLiterals": {
-        "value0": "1"
-      }
-    },
-    {
-      "id": "dFilF",
-      "type": "DisplayNode",
-      "x": 976,
-      "y": 2515,
-      "init": {
-        "label": "keeps 3, 4 (null row dropped)"
-      }
-    },
-    {
-      "id": "noteG",
-      "type": "NoteNode",
-      "x": -40,
-      "y": 2700,
-      "init": {
-        "label": "G · Coalesce / Fill: opt into treating a gap",
-        "body": "The `vals` column is `1, null, 3, null, 5`. Each **Fill** mode turns the gaps into something; that is the explicit opt-in. A per-cell error passes straight through: Fill handles *missing* values, not errors.",
-        "color": "green",
-        "width": 520,
-        "height": 150
-      }
-    },
-    {
-      "id": "fiG",
-      "type": "FrameInputNode",
-      "x": 212,
-      "y": 2864,
-      "init": {
-        "label": "CSV (gaps in g)",
-        "frameText": "g, k\n1, a\n, b\n3, c\n, d\n5, e"
-      }
-    },
-    {
-      "id": "gcG",
-      "type": "GetColumnNode",
-      "x": 473,
-      "y": 2871,
-      "init": {
-        "label": "Get \"g\" → 1,null,3,null,5",
-        "readAs": "number"
-      },
-      "stringLiterals": {
-        "name": "g"
-      }
-    },
-    {
-      "id": "llElseG",
-      "type": "ListInputNode",
-      "x": 242,
-      "y": 3148,
-      "init": {
-        "label": "Else [9,9,9,9,9]",
-        "valueKeys": [
-          "v0",
-          "v1",
-          "v2",
-          "v3",
-          "v4"
-        ]
-      },
-      "stringLiterals": {
-        "v0": "9",
-        "v1": "9",
-        "v2": "9",
-        "v3": "9",
-        "v4": "9"
-      }
-    },
-    {
-      "id": "fillConstG",
-      "type": "FillNode",
-      "x": 724,
-      "y": 2734,
-      "init": {
-        "label": "Fill 0 → 1,0,3,0,5",
-        "op": "constant"
-      }
-    },
-    {
-      "id": "dfillConstG",
-      "type": "DisplayNode",
-      "x": 976,
-      "y": 2746,
-      "init": {
-        "label": "→ 1, 0, 3, 0, 5"
-      }
-    },
-    {
-      "id": "fillFfillG",
-      "type": "FillNode",
-      "x": 724,
-      "y": 2886,
-      "init": {
-        "label": "Forward fill → 1,1,3,3,5",
-        "op": "ffill"
-      }
-    },
-    {
-      "id": "dfillFfillG",
-      "type": "DisplayNode",
-      "x": 976,
-      "y": 2899,
-      "init": {
-        "label": "→ 1, 1, 3, 3, 5"
-      }
-    },
-    {
-      "id": "fillDropG",
-      "type": "FillNode",
-      "x": 724,
-      "y": 3014,
-      "init": {
-        "label": "Drop → 1,3,5",
-        "op": "drop"
-      }
-    },
-    {
-      "id": "dfillDropG",
-      "type": "DisplayNode",
-      "x": 976,
-      "y": 3026,
-      "init": {
-        "label": "→ 1, 3, 5"
-      }
-    },
-    {
-      "id": "fillInterpG",
-      "type": "FillNode",
-      "x": 724,
-      "y": 3160,
-      "init": {
-        "label": "Interpolate → 1,2,3,4,5",
-        "op": "interpolate"
-      }
-    },
-    {
-      "id": "dfillInterpG",
-      "type": "DisplayNode",
-      "x": 976,
-      "y": 3173,
-      "init": {
-        "label": "→ 1, 2, 3, 4, 5"
-      }
-    },
-    {
-      "id": "fillCoalG",
-      "type": "FillNode",
-      "x": 724,
-      "y": 3294,
-      "init": {
-        "label": "Coalesce(else 9) → 1,9,3,9,5",
-        "op": "coalesce"
-      }
-    },
-    {
-      "id": "dfillCoalG",
-      "type": "DisplayNode",
-      "x": 976,
-      "y": 3306,
-      "init": {
-        "label": "→ 1, 9, 3, 9, 5"
-      }
-    },
-    {
-      "id": "noteH",
-      "type": "NoteNode",
-      "x": -40,
-      "y": 3520,
-      "init": {
-        "label": "H · IS-checks are per-cell on a 2-D table",
-        "body": "The table is `[[1, null], [null, 4]]`. **ISNUMBER** and **ISNULL** test **each cell**, not the rows; open the chip for the grid. ISNUMBER says a `null` cell is *not* a number while ISNULL flags it.",
-        "color": "purple",
-        "width": 520,
-        "height": 150
-      }
-    },
-    {
-      "id": "tiH",
-      "type": "TableInputNode",
-      "x": 222,
-      "y": 3700,
-      "init": {
-        "label": "Table [[1,null],[null,4]]",
-        "tableText": "1,\n,4"
-      }
-    },
-    {
-      "id": "isnumH",
-      "type": "IsTestNode",
-      "x": 483,
-      "y": 3633,
-      "init": {
-        "label": "ISNUMBER → [[T,F],[F,T]]",
-        "op": "isnumber"
-      }
-    },
-    {
-      "id": "isnullH",
-      "type": "IsTestNode",
-      "x": 483,
-      "y": 3793,
-      "init": {
-        "label": "ISNULL → [[F,T],[T,F]]",
-        "op": "isnull"
-      }
-    },
-    {
-      "id": "dIsnumH",
-      "type": "DisplayNode",
-      "x": 714,
-      "y": 3648,
-      "init": {
-        "label": "[[T,F],[F,T]]"
-      }
-    },
-    {
-      "id": "dIsnullH",
-      "type": "DisplayNode",
-      "x": 714,
-      "y": 3808,
-      "init": {
-        "label": "[[F,T],[T,F]]"
-      }
-    },
-    {
-      "id": "hdr-errors",
-      "type": "NoteNode",
-      "x": 1460,
-      "y": -200,
-      "init": {
-        "label": "Error codes",
-        "body": "Each row triggers one error code on purpose, wires it through a **Display** (red badge, passes it on) into an **ISERROR** check that explains the code and the fix. Nothing here is broken; hover any badge for the short version.",
-        "color": "blue",
-        "width": 900,
-        "height": 210
-      }
-    },
-    {
-      "id": "p_div",
-      "type": "ArithmeticNode",
-      "x": 1786,
-      "y": 49,
-      "init": {
-        "label": "#DIV/0!  ·  1 ÷ 0",
-        "op": "div"
-      },
-      "literals": {
-        "a": 1,
-        "b": 0
-      }
-    },
-    {
-      "id": "d_div",
-      "type": "DisplayNode",
-      "x": 2061,
-      "y": 74,
-      "init": {
-        "label": "Display"
-      }
-    },
-    {
-      "id": "c_div",
-      "type": "IsTestNode",
-      "x": 2360,
-      "y": 59,
-      "init": {
-        "label": "ISERROR",
-        "op": "iserror"
-      }
-    },
-    {
-      "id": "p_dom",
-      "type": "MathFnNode",
-      "x": 1786,
-      "y": 292,
-      "init": {
-        "label": "#DOMAIN!  ·  √(−4)",
-        "op": "sqrt"
-      },
-      "literals": {
-        "in": -4
-      }
-    },
-    {
-      "id": "d_dom",
-      "type": "DisplayNode",
-      "x": 2061,
-      "y": 297,
-      "init": {
-        "label": "Display"
-      }
-    },
-    {
-      "id": "c_dom",
-      "type": "IsTestNode",
-      "x": 2360,
-      "y": 282,
-      "init": {
-        "label": "ISERROR",
-        "op": "iserror"
-      }
-    },
-    {
-      "id": "p_rng",
-      "type": "CombinatoricsNode",
-      "x": 1786,
-      "y": 508,
-      "init": {
-        "label": "#OVERFLOW!  ·  200!",
-        "op": "fact"
-      },
-      "literals": {
-        "n": 200,
-        "k": 2
-      }
-    },
-    {
-      "id": "d_rng",
-      "type": "DisplayNode",
-      "x": 2061,
-      "y": 533,
-      "init": {
-        "label": "Display"
-      }
-    },
-    {
-      "id": "c_rng",
-      "type": "IsTestNode",
-      "x": 2360,
-      "y": 518,
-      "init": {
-        "label": "ISERROR",
-        "op": "iserror"
-      }
-    },
-    {
-      "id": "p_syn",
-      "type": "ExpressionNode",
-      "x": 1766,
-      "y": 739,
-      "init": {
-        "label": "#SYNTAX!",
-        "expr": "1 +* 1"
-      }
-    },
-    {
-      "id": "d_syn",
-      "type": "DisplayNode",
-      "x": 2061,
-      "y": 769,
-      "init": {
-        "label": "Display"
-      }
-    },
-    {
-      "id": "c_syn",
-      "type": "IsTestNode",
-      "x": 2360,
-      "y": 754,
-      "init": {
-        "label": "ISERROR",
-        "op": "iserror"
-      }
-    },
-    {
-      "id": "s_val",
-      "type": "TextInputNode",
-      "x": 1507,
-      "y": 1003,
-      "init": {
-        "label": "\"abc\"",
-        "value": "abc"
-      }
-    },
-    {
-      "id": "p_val",
-      "type": "CastNode",
-      "x": 1750,
-      "y": 960,
-      "init": {
-        "label": "#VALUE!  ·  CAST(\"abc\"→#)",
-        "target": "number"
-      }
-    },
-    {
-      "id": "d_val",
-      "type": "DisplayNode",
-      "x": 2061,
-      "y": 980,
-      "init": {
-        "label": "Display"
-      }
-    },
-    {
-      "id": "c_val",
-      "type": "IsTestNode",
-      "x": 2360,
-      "y": 965,
-      "init": {
-        "label": "ISERROR",
-        "op": "iserror"
-      }
-    },
-    {
-      "id": "s_na",
-      "type": "NumberInputNode",
-      "x": 1507,
-      "y": 1190,
-      "init": {
-        "label": "5 metres",
-        "value": 5
-      }
-    },
-    {
-      "id": "p_na",
-      "type": "ConvertNode",
-      "x": 1776,
-      "y": 1210,
-      "init": {
-        "label": "#N/A  ·  m → kg",
-        "fromUnit": "m",
-        "toUnit": "kg"
-      }
-    },
-    {
-      "id": "d_na",
-      "type": "DisplayNode",
-      "x": 2061,
-      "y": 1218,
-      "init": {
-        "label": "Display"
-      }
-    },
-    {
-      "id": "c_na",
-      "type": "IsTestNode",
-      "x": 2360,
-      "y": 1203,
-      "init": {
-        "label": "ISERROR",
-        "op": "iserror"
-      }
-    },
-    {
-      "id": "s_conv",
-      "type": "ListInputNode",
-      "x": 1507,
-      "y": 1433,
-      "init": {
-        "label": "All-positive cash flows",
-        "valueKeys": [
-          "v0",
-          "v1",
-          "v2"
-        ]
-      },
-      "stringLiterals": {
-        "v0": "100",
-        "v1": "200",
-        "v2": "300"
-      }
-    },
-    {
-      "id": "p_conv",
-      "type": "IrrNode",
-      "x": 1786,
-      "y": 1466,
-      "init": {
-        "label": "#CONV!  ·  IRR"
-      }
-    },
-    {
-      "id": "d_conv",
-      "type": "DisplayNode",
-      "x": 2061,
-      "y": 1458,
-      "init": {
-        "label": "Display"
-      }
-    },
-    {
-      "id": "c_conv",
-      "type": "IsTestNode",
-      "x": 2360,
-      "y": 1443,
-      "init": {
-        "label": "ISERROR",
-        "op": "iserror"
-      }
-    },
-    {
-      "id": "s_ref",
-      "type": "ListInputNode",
-      "x": 1507,
-      "y": 1659,
-      "init": {
-        "label": "A 3-item list",
-        "valueKeys": [
-          "v0",
-          "v1",
-          "v2"
-        ]
-      },
-      "stringLiterals": {
-        "v0": "10",
-        "v1": "20",
-        "v2": "30"
-      }
-    },
-    {
-      "id": "p_ref",
-      "type": "ListIndexNode",
-      "x": 1786,
-      "y": 1664,
-      "init": {
-        "label": "#REF!  ·  INDEX #99"
-      },
-      "literals": {
-        "index": 99
-      }
-    },
-    {
-      "id": "d_ref",
-      "type": "DisplayNode",
-      "x": 2061,
-      "y": 1684,
-      "init": {
-        "label": "Display"
-      }
-    },
-    {
-      "id": "c_ref",
-      "type": "IsTestNode",
-      "x": 2360,
-      "y": 1669,
-      "init": {
-        "label": "ISERROR",
-        "op": "iserror"
-      }
-    },
-    {
-      "id": "s_shp",
-      "type": "TableInputNode",
-      "x": 1487,
-      "y": 1923,
-      "init": {
-        "label": "A 2×3 table (non-square)",
-        "tableText": "1, 2, 3\n4, 5, 6"
-      }
-    },
-    {
-      "id": "p_shp",
-      "type": "MatDetNode",
-      "x": 1786,
-      "y": 1936,
-      "init": {
-        "label": "#SHAPE!  ·  determinant needs a square matrix",
-        "op": "mdeterm"
-      }
-    },
-    {
-      "id": "d_shp",
-      "type": "DisplayNode",
-      "x": 2061,
-      "y": 1958,
-      "init": {
-        "label": "Display"
-      }
-    },
-    {
-      "id": "c_shp",
-      "type": "IsTestNode",
-      "x": 2360,
-      "y": 1943,
-      "init": {
-        "label": "ISERROR",
-        "op": "iserror"
-      }
-    },
-    {
-      "id": "s_nam",
-      "type": "LambdaNode",
-      "x": 1487,
-      "y": 2174,
-      "init": {
-        "label": "LAMBDA with a bad name",
-        "params": "x, 2y",
-        "expr": "x"
-      }
-    },
-    {
-      "id": "p_nam",
-      "type": "MapTableNode",
-      "x": 1771,
-      "y": 2190,
-      "init": {
-        "label": "#NAME?  ·  MAP"
-      }
-    },
-    {
-      "id": "d_nam",
-      "type": "DisplayNode",
-      "x": 2061,
-      "y": 2205,
-      "init": {
-        "label": "Display"
-      }
-    },
-    {
-      "id": "c_nam",
-      "type": "IsTestNode",
-      "x": 2360,
-      "y": 2190,
-      "init": {
-        "label": "ISERROR",
-        "op": "iserror"
-      }
-    },
-    {
-      "id": "cyc_cond",
-      "type": "ConduitNode",
-      "x": 1866,
-      "y": 2500,
-      "init": {
-        "label": "loop back",
-        "angle": 180
-      }
-    },
-    {
-      "id": "cyc_a",
-      "type": "ArithmeticNode",
-      "x": 1690,
-      "y": 2611,
-      "init": {
-        "label": "#CIRC!  ·  A = B + 0",
-        "op": "add"
-      },
-      "literals": {
-        "a": 0,
-        "b": 0
-      }
-    },
-    {
-      "id": "cyc_b",
-      "type": "ArithmeticNode",
-      "x": 1957,
-      "y": 2611,
-      "init": {
-        "label": "B = A + 0  (loop!)",
-        "op": "add"
-      },
-      "literals": {
-        "a": 0,
-        "b": 0
-      }
-    },
-    {
-      "id": "d_circ",
-      "type": "DisplayNode",
-      "x": 2223,
-      "y": 2636,
-      "init": {
-        "label": "Display"
-      }
-    },
-    {
-      "id": "c_circ",
-      "type": "IsTestNode",
-      "x": 2530,
-      "y": 2621,
-      "init": {
-        "label": "ISERROR",
-        "op": "iserror"
-      }
-    },
-    {
-      "id": "note_circ",
-      "type": "NoteNode",
-      "x": 1460,
-      "y": 2530,
-      "init": {
-        "label": "Circular reference",
-        "body": "A feeds B and B feeds A: a loop with no starting value. The return cable arcs over the top through the flipped **Conduit**. Both nodes, and everything downstream, read **#CIRC!**.",
-        "color": "purple",
-        "width": 210,
-        "height": 230
-      }
+ "v": 2,
+ "label": "Errors, Null & Logic",
+ "nodes": [
+  {
+   "id": "hdr",
+   "type": "NoteNode",
+   "x": -40,
+   "y": -200,
+   "init": {
+    "label": "Null & Logical: the value model",
+    "body": "This canvas tours the value model: a first-class **null**, a real **logical** type, and **per-cell errors** that stay in a list. Null means missing; it renders as `null` and aggregators skip it. Logicals are TRUE/FALSE on purple sockets and coerce to 1/0 in math. Each cluster shows one decision.",
+    "color": "blue",
+    "width": 760,
+    "height": 190
+   }
+  },
+  {
+   "id": "nA",
+   "type": "NoteNode",
+   "x": -40,
+   "y": 40,
+   "init": {
+    "label": "A \u00b7 Aggregators skip null",
+    "body": "The `vals` column has a **blank cell** in row 2, which imports as **null**. SUM = 8; AVERAGE = 8/3, dividing by the 3 PRESENT values, not 4. The list shows `1, null, 3, 4`.",
+    "color": "green",
+    "width": 230,
+    "height": 230
+   }
+  },
+  {
+   "id": "fiA",
+   "type": "FrameInputNode",
+   "x": 212,
+   "y": 39,
+   "init": {
+    "label": "CSV (blank cell in vals)",
+    "frameText": "vals, tag\n1, a\n, b\n3, c\n4, d"
+   }
+  },
+  {
+   "id": "gcA",
+   "type": "GetColumnNode",
+   "x": 473,
+   "y": 46,
+   "init": {
+    "label": "Get \"vals\"",
+    "readAs": "number"
+   },
+   "stringLiterals": {
+    "name": "vals"
+   }
+  },
+  {
+   "id": "dAlist",
+   "type": "DisplayNode",
+   "x": 714,
+   "y": 74,
+   "init": {
+    "label": "the list \u2192 1, null, 3, 4"
+   }
+  },
+  {
+   "id": "aggSum",
+   "type": "AggregateNode",
+   "x": 734,
+   "y": 170,
+   "init": {
+    "label": "SUM \u2192 8",
+    "op": "sum"
+   }
+  },
+  {
+   "id": "aggAvg",
+   "type": "AggregateNode",
+   "x": 996,
+   "y": 170,
+   "init": {
+    "label": "AVERAGE \u2192 8/3",
+    "op": "avg"
+   }
+  },
+  {
+   "id": "isnA",
+   "type": "IsTestNode",
+   "x": 734,
+   "y": 330,
+   "init": {
+    "label": "ISNULL \u2192 F,T,F,F",
+    "op": "isnull"
+   }
+  },
+  {
+   "id": "nB",
+   "type": "NoteNode",
+   "x": -40,
+   "y": 640,
+   "init": {
+    "label": "B \u00b7 Comparison \u2192 real TRUE/FALSE",
+    "body": "`5 > 3` emits a real **logical** (purple socket), shown as **TRUE**, not 1. Into \u00d710 it coerces to 1/0 \u2192 **10**; the multiply-by-a-condition trick still works. **AND** also emits a logical; its `b=1` coerces the other way, number \u2192 TRUE.",
+    "color": "purple",
+    "width": 230,
+    "height": 300
+   }
+  },
+  {
+   "id": "s5",
+   "type": "NumberInputNode",
+   "x": 242,
+   "y": 673,
+   "init": {
+    "label": "5",
+    "value": 5
+   }
+  },
+  {
+   "id": "s3",
+   "type": "NumberInputNode",
+   "x": 242,
+   "y": 794,
+   "init": {
+    "label": "3",
+    "value": 3
+   }
+  },
+  {
+   "id": "cmpB",
+   "type": "ComparisonNode",
+   "x": 483,
+   "y": 744,
+   "init": {
+    "label": "A > B",
+    "op": "gt"
+   }
+  },
+  {
+   "id": "dCmp",
+   "type": "DisplayNode",
+   "x": 714,
+   "y": 648,
+   "init": {
+    "label": "TRUE (logical)"
+   }
+  },
+  {
+   "id": "mulB",
+   "type": "ArithmeticNode",
+   "x": 734,
+   "y": 800,
+   "init": {
+    "label": "\u00d7 10  (coerces TRUE\u21921)",
+    "op": "mul"
+   },
+   "literals": {
+    "a": 0,
+    "b": 10
+   }
+  },
+  {
+   "id": "dMul",
+   "type": "DisplayNode",
+   "x": 976,
+   "y": 769,
+   "init": {
+    "label": "\u2192 10"
+   }
+  },
+  {
+   "id": "andB",
+   "type": "BooleanOpNode",
+   "x": 734,
+   "y": 950,
+   "init": {
+    "label": "AND (b=1 coerces to TRUE)",
+    "op": "and"
+   }
+  },
+  {
+   "id": "dAnd",
+   "type": "DisplayNode",
+   "x": 976,
+   "y": 980,
+   "init": {
+    "label": "AND \u2192 TRUE (logical)"
+   }
+  },
+  {
+   "id": "nC",
+   "type": "NoteNode",
+   "x": -40,
+   "y": 1120,
+   "init": {
+    "label": "C \u00b7 Per-cell errors stay in the list",
+    "body": "Lists now carry errors per element. `1 / [1,0,2]` \u2192 `1, #DIV/0!, 0.5`. Casting `[\"1\",\"abc\",\"3\"]` to number \u2192 `1, #VALUE!, 3`. The good cells compute around the bad one.",
+    "color": "amber",
+    "width": 230,
+    "height": 230
+   }
+  },
+  {
+   "id": "llC",
+   "type": "ListInputNode",
+   "x": 242,
+   "y": 1140,
+   "init": {
+    "label": "[1, 0, 2]",
+    "valueKeys": [
+     "v0",
+     "v1",
+     "v2"
+    ]
+   },
+   "stringLiterals": {
+    "v0": "1",
+    "v1": "0",
+    "v2": "2"
+   }
+  },
+  {
+   "id": "exprC",
+   "type": "ExpressionNode",
+   "x": 463,
+   "y": 1135,
+   "init": {
+    "label": "1 / x",
+    "expr": "1 / x"
+   }
+  },
+  {
+   "id": "dExpr",
+   "type": "DisplayNode",
+   "x": 714,
+   "y": 1165,
+   "init": {
+    "label": "1, #DIV/0!, 0.5"
+   }
+  },
+  {
+   "id": "tspC",
+   "type": "TextSplitNode",
+   "x": 242,
+   "y": 1338,
+   "init": {
+    "label": "split \"1,abc,3\""
+   },
+   "stringLiterals": {
+    "text": "1,abc,3",
+    "delimiter": ","
+   }
+  },
+  {
+   "id": "castC",
+   "type": "CastNode",
+   "x": 447,
+   "y": 1331,
+   "init": {
+    "label": "Cast \u2192 Number",
+    "target": "number"
+   }
+  },
+  {
+   "id": "dCast",
+   "type": "DisplayNode",
+   "x": 714,
+   "y": 1351,
+   "init": {
+    "label": "1, #VALUE!, 3"
+   }
+  },
+  {
+   "id": "nD",
+   "type": "NoteNode",
+   "x": -40,
+   "y": 1620,
+   "init": {
+    "label": "D \u00b7 Test node: null vs unwired",
+    "body": "A 1\u00d71 Table into ISNULL \u2192 `[[FALSE]]`. An **unwired** ISNULL is NOT null: there is nothing to test, so it shows a blank `\u2014`.",
+    "color": "pink",
+    "width": 230,
+    "height": 230
+   }
+  },
+  {
+   "id": "tiD",
+   "type": "TableInputNode",
+   "x": 222,
+   "y": 1649,
+   "init": {
+    "label": "1\u00d71 Table [1]",
+    "tableText": "1"
+   }
+  },
+  {
+   "id": "isnD",
+   "type": "IsTestNode",
+   "x": 483,
+   "y": 1669,
+   "init": {
+    "label": "ISNULL (click the chip!)",
+    "op": "isnull"
+   }
+  },
+  {
+   "id": "dIsnD",
+   "type": "DisplayNode",
+   "x": 714,
+   "y": 1684,
+   "init": {
+    "label": "[[FALSE]] \u2014 no crash"
+   }
+  },
+  {
+   "id": "isnU",
+   "type": "IsTestNode",
+   "x": 483,
+   "y": 1820,
+   "init": {
+    "label": "ISNULL (UNWIRED) \u2192 blank",
+    "op": "isnull"
+   }
+  },
+  {
+   "id": "nE",
+   "type": "NoteNode",
+   "x": -40,
+   "y": 2080,
+   "init": {
+    "label": "E \u00b7 Empty Table Input stays editable",
+    "body": "Its text is just a comma, so there are no numeric cells and the value is `null`. It keeps an **editable 1\u00d71 chip** and an \"empty\" hint.",
+    "color": "gray",
+    "width": 230,
+    "height": 230
+   }
+  },
+  {
+   "id": "tiE",
+   "type": "TableInputNode",
+   "x": 222,
+   "y": 2100,
+   "init": {
+    "label": "just a comma",
+    "tableText": ","
+   }
+  },
+  {
+   "id": "nF",
+   "type": "NoteNode",
+   "x": -40,
+   "y": 2300,
+   "init": {
+    "label": "F \u00b7 Kleene logic + Filter on missing data",
+    "body": "This cluster reuses the null-bearing `vals` from A. **`> 2`** per element \u2192 `FALSE, null, TRUE, TRUE`: a comparison with a missing value is **unknown**, not FALSE (Kleene logic). **Filter `> 1`** keeps only TRUE rows, like SQL WHERE, so it drops the unknown row \u2192 `3, 4`.",
+    "color": "teal",
+    "width": 230,
+    "height": 250
+   }
+  },
+  {
+   "id": "cmpF",
+   "type": "ComparisonNode",
+   "x": 734,
+   "y": 2308,
+   "init": {
+    "label": "vals > 2",
+    "op": "gt"
+   },
+   "literals": {
+    "a": 0,
+    "b": 2
+   }
+  },
+  {
+   "id": "dCmpF",
+   "type": "DisplayNode",
+   "x": 976,
+   "y": 2333,
+   "init": {
+    "label": "FALSE, null, TRUE, TRUE"
+   }
+  },
+  {
+   "id": "filF",
+   "type": "FilterNode",
+   "x": 729,
+   "y": 2485,
+   "init": {
+    "label": "Filter vals > 1",
+    "condConfig": {
+     "0": {
+      "op": "gt"
+     }
     }
-  ],
-  "connections": [
-    {
-      "source": "fiA",
-      "sourceOutput": "frame",
-      "target": "gcA",
-      "targetInput": "frame"
-    },
-    {
-      "source": "gcA",
-      "sourceOutput": "values",
-      "target": "dAlist",
-      "targetInput": "in"
-    },
-    {
-      "source": "gcA",
-      "sourceOutput": "values",
-      "target": "aggSum",
-      "targetInput": "list"
-    },
-    {
-      "source": "gcA",
-      "sourceOutput": "values",
-      "target": "aggAvg",
-      "targetInput": "list"
-    },
-    {
-      "source": "gcA",
-      "sourceOutput": "values",
-      "target": "isnA",
-      "targetInput": "value"
-    },
-    {
-      "source": "s5",
-      "sourceOutput": "value",
-      "target": "cmpB",
-      "targetInput": "a"
-    },
-    {
-      "source": "s3",
-      "sourceOutput": "value",
-      "target": "cmpB",
-      "targetInput": "b"
-    },
-    {
-      "source": "cmpB",
-      "sourceOutput": "result",
-      "target": "dCmp",
-      "targetInput": "in"
-    },
-    {
-      "source": "cmpB",
-      "sourceOutput": "result",
-      "target": "mulB",
-      "targetInput": "a"
-    },
-    {
-      "source": "mulB",
-      "sourceOutput": "result",
-      "target": "dMul",
-      "targetInput": "in"
-    },
-    {
-      "source": "cmpB",
-      "sourceOutput": "result",
-      "target": "andB",
-      "targetInput": "a0"
-    },
-    {
-      "source": "andB",
-      "sourceOutput": "result",
-      "target": "dAnd",
-      "targetInput": "in"
-    },
-    {
-      "source": "llC",
-      "sourceOutput": "list",
-      "target": "exprC",
-      "targetInput": "x"
-    },
-    {
-      "source": "exprC",
-      "sourceOutput": "result",
-      "target": "dExpr",
-      "targetInput": "in"
-    },
-    {
-      "source": "tspC",
-      "sourceOutput": "result",
-      "target": "castC",
-      "targetInput": "value"
-    },
-    {
-      "source": "castC",
-      "sourceOutput": "result",
-      "target": "dCast",
-      "targetInput": "in"
-    },
-    {
-      "source": "tiD",
-      "sourceOutput": "table",
-      "target": "isnD",
-      "targetInput": "value"
-    },
-    {
-      "source": "isnD",
-      "sourceOutput": "result",
-      "target": "dIsnD",
-      "targetInput": "in"
-    },
-    {
-      "source": "gcA",
-      "sourceOutput": "values",
-      "target": "cmpF",
-      "targetInput": "a"
-    },
-    {
-      "source": "cmpF",
-      "sourceOutput": "result",
-      "target": "dCmpF",
-      "targetInput": "in"
-    },
-    {
-      "source": "gcA",
-      "sourceOutput": "values",
-      "target": "filF",
-      "targetInput": "list"
-    },
-    {
-      "source": "filF",
-      "sourceOutput": "result",
-      "target": "dFilF",
-      "targetInput": "in"
-    },
-    {
-      "source": "gcG",
-      "sourceOutput": "values",
-      "target": "fillConstG",
-      "targetInput": "list"
-    },
-    {
-      "source": "fillConstG",
-      "sourceOutput": "result",
-      "target": "dfillConstG",
-      "targetInput": "in"
-    },
-    {
-      "source": "gcG",
-      "sourceOutput": "values",
-      "target": "fillFfillG",
-      "targetInput": "list"
-    },
-    {
-      "source": "fillFfillG",
-      "sourceOutput": "result",
-      "target": "dfillFfillG",
-      "targetInput": "in"
-    },
-    {
-      "source": "gcG",
-      "sourceOutput": "values",
-      "target": "fillDropG",
-      "targetInput": "list"
-    },
-    {
-      "source": "fillDropG",
-      "sourceOutput": "result",
-      "target": "dfillDropG",
-      "targetInput": "in"
-    },
-    {
-      "source": "gcG",
-      "sourceOutput": "values",
-      "target": "fillInterpG",
-      "targetInput": "list"
-    },
-    {
-      "source": "fillInterpG",
-      "sourceOutput": "result",
-      "target": "dfillInterpG",
-      "targetInput": "in"
-    },
-    {
-      "source": "gcG",
-      "sourceOutput": "values",
-      "target": "fillCoalG",
-      "targetInput": "list"
-    },
-    {
-      "source": "fillCoalG",
-      "sourceOutput": "result",
-      "target": "dfillCoalG",
-      "targetInput": "in"
-    },
-    {
-      "source": "fiG",
-      "sourceOutput": "frame",
-      "target": "gcG",
-      "targetInput": "frame"
-    },
-    {
-      "source": "llElseG",
-      "sourceOutput": "list",
-      "target": "fillCoalG",
-      "targetInput": "e0"
-    },
-    {
-      "source": "tiH",
-      "sourceOutput": "table",
-      "target": "isnumH",
-      "targetInput": "value"
-    },
-    {
-      "source": "tiH",
-      "sourceOutput": "table",
-      "target": "isnullH",
-      "targetInput": "value"
-    },
-    {
-      "source": "isnumH",
-      "sourceOutput": "result",
-      "target": "dIsnumH",
-      "targetInput": "in"
-    },
-    {
-      "source": "isnullH",
-      "sourceOutput": "result",
-      "target": "dIsnullH",
-      "targetInput": "in"
-    },
-    {
-      "source": "p_div",
-      "sourceOutput": "result",
-      "target": "d_div",
-      "targetInput": "in"
-    },
-    {
-      "source": "d_div",
-      "sourceOutput": "out",
-      "target": "c_div",
-      "targetInput": "value"
-    },
-    {
-      "source": "p_dom",
-      "sourceOutput": "result",
-      "target": "d_dom",
-      "targetInput": "in"
-    },
-    {
-      "source": "d_dom",
-      "sourceOutput": "out",
-      "target": "c_dom",
-      "targetInput": "value"
-    },
-    {
-      "source": "p_rng",
-      "sourceOutput": "result",
-      "target": "d_rng",
-      "targetInput": "in"
-    },
-    {
-      "source": "d_rng",
-      "sourceOutput": "out",
-      "target": "c_rng",
-      "targetInput": "value"
-    },
-    {
-      "source": "p_syn",
-      "sourceOutput": "result",
-      "target": "d_syn",
-      "targetInput": "in"
-    },
-    {
-      "source": "d_syn",
-      "sourceOutput": "out",
-      "target": "c_syn",
-      "targetInput": "value"
-    },
-    {
-      "source": "s_val",
-      "sourceOutput": "value",
-      "target": "p_val",
-      "targetInput": "value"
-    },
-    {
-      "source": "p_val",
-      "sourceOutput": "result",
-      "target": "d_val",
-      "targetInput": "in"
-    },
-    {
-      "source": "d_val",
-      "sourceOutput": "out",
-      "target": "c_val",
-      "targetInput": "value"
-    },
-    {
-      "source": "s_na",
-      "sourceOutput": "value",
-      "target": "p_na",
-      "targetInput": "in"
-    },
-    {
-      "source": "p_na",
-      "sourceOutput": "out",
-      "target": "d_na",
-      "targetInput": "in"
-    },
-    {
-      "source": "d_na",
-      "sourceOutput": "out",
-      "target": "c_na",
-      "targetInput": "value"
-    },
-    {
-      "source": "s_conv",
-      "sourceOutput": "list",
-      "target": "p_conv",
-      "targetInput": "list"
-    },
-    {
-      "source": "p_conv",
-      "sourceOutput": "result",
-      "target": "d_conv",
-      "targetInput": "in"
-    },
-    {
-      "source": "d_conv",
-      "sourceOutput": "out",
-      "target": "c_conv",
-      "targetInput": "value"
-    },
-    {
-      "source": "s_ref",
-      "sourceOutput": "list",
-      "target": "p_ref",
-      "targetInput": "list"
-    },
-    {
-      "source": "p_ref",
-      "sourceOutput": "result",
-      "target": "d_ref",
-      "targetInput": "in"
-    },
-    {
-      "source": "d_ref",
-      "sourceOutput": "out",
-      "target": "c_ref",
-      "targetInput": "value"
-    },
-    {
-      "source": "s_shp",
-      "sourceOutput": "table",
-      "target": "p_shp",
-      "targetInput": "matrix"
-    },
-    {
-      "source": "p_shp",
-      "sourceOutput": "result",
-      "target": "d_shp",
-      "targetInput": "in"
-    },
-    {
-      "source": "d_shp",
-      "sourceOutput": "out",
-      "target": "c_shp",
-      "targetInput": "value"
-    },
-    {
-      "source": "s_nam",
-      "sourceOutput": "result",
-      "target": "p_nam",
-      "targetInput": "lambda"
-    },
-    {
-      "source": "p_nam",
-      "sourceOutput": "result",
-      "target": "d_nam",
-      "targetInput": "in"
-    },
-    {
-      "source": "d_nam",
-      "sourceOutput": "out",
-      "target": "c_nam",
-      "targetInput": "value"
-    },
-    {
-      "source": "cyc_a",
-      "sourceOutput": "result",
-      "target": "cyc_b",
-      "targetInput": "a"
-    },
-    {
-      "source": "cyc_b",
-      "sourceOutput": "result",
-      "target": "cyc_cond",
-      "targetInput": "in_0"
-    },
-    {
-      "source": "cyc_cond",
-      "sourceOutput": "out_0",
-      "target": "cyc_a",
-      "targetInput": "a"
-    },
-    {
-      "source": "cyc_b",
-      "sourceOutput": "result",
-      "target": "d_circ",
-      "targetInput": "in"
-    },
-    {
-      "source": "d_circ",
-      "sourceOutput": "out",
-      "target": "c_circ",
-      "targetInput": "value"
-    }
-  ]
+   },
+   "stringLiterals": {
+    "value0": "1"
+   }
+  },
+  {
+   "id": "dFilF",
+   "type": "DisplayNode",
+   "x": 976,
+   "y": 2515,
+   "init": {
+    "label": "keeps 3, 4 (null row dropped)"
+   }
+  },
+  {
+   "id": "noteG",
+   "type": "NoteNode",
+   "x": -40,
+   "y": 2700,
+   "init": {
+    "label": "G \u00b7 Coalesce / Fill: opt into treating a gap",
+    "body": "The `vals` column is `1, null, 3, null, 5`. Each **Fill** mode turns the gaps into something; that is the explicit opt-in. A per-cell error passes straight through: Fill handles *missing* values, not errors.",
+    "color": "green",
+    "width": 520,
+    "height": 150
+   }
+  },
+  {
+   "id": "fiG",
+   "type": "FrameInputNode",
+   "x": 212,
+   "y": 2864,
+   "init": {
+    "label": "CSV (gaps in g)",
+    "frameText": "g, k\n1, a\n, b\n3, c\n, d\n5, e"
+   }
+  },
+  {
+   "id": "gcG",
+   "type": "GetColumnNode",
+   "x": 473,
+   "y": 2871,
+   "init": {
+    "label": "Get \"g\" \u2192 1,null,3,null,5",
+    "readAs": "number"
+   },
+   "stringLiterals": {
+    "name": "g"
+   }
+  },
+  {
+   "id": "llElseG",
+   "type": "ListInputNode",
+   "x": 242,
+   "y": 3148,
+   "init": {
+    "label": "Else [9,9,9,9,9]",
+    "valueKeys": [
+     "v0",
+     "v1",
+     "v2",
+     "v3",
+     "v4"
+    ]
+   },
+   "stringLiterals": {
+    "v0": "9",
+    "v1": "9",
+    "v2": "9",
+    "v3": "9",
+    "v4": "9"
+   }
+  },
+  {
+   "id": "fillConstG",
+   "type": "FillNode",
+   "x": 724,
+   "y": 2734,
+   "init": {
+    "label": "Fill 0 \u2192 1,0,3,0,5",
+    "op": "constant"
+   }
+  },
+  {
+   "id": "dfillConstG",
+   "type": "DisplayNode",
+   "x": 976,
+   "y": 2746,
+   "init": {
+    "label": "\u2192 1, 0, 3, 0, 5"
+   }
+  },
+  {
+   "id": "fillFfillG",
+   "type": "FillNode",
+   "x": 724,
+   "y": 2886,
+   "init": {
+    "label": "Forward fill \u2192 1,1,3,3,5",
+    "op": "ffill"
+   }
+  },
+  {
+   "id": "dfillFfillG",
+   "type": "DisplayNode",
+   "x": 976,
+   "y": 2899,
+   "init": {
+    "label": "\u2192 1, 1, 3, 3, 5"
+   }
+  },
+  {
+   "id": "fillDropG",
+   "type": "FillNode",
+   "x": 724,
+   "y": 3014,
+   "init": {
+    "label": "Drop \u2192 1,3,5",
+    "op": "drop"
+   }
+  },
+  {
+   "id": "dfillDropG",
+   "type": "DisplayNode",
+   "x": 976,
+   "y": 3026,
+   "init": {
+    "label": "\u2192 1, 3, 5"
+   }
+  },
+  {
+   "id": "fillInterpG",
+   "type": "FillNode",
+   "x": 724,
+   "y": 3160,
+   "init": {
+    "label": "Interpolate \u2192 1,2,3,4,5",
+    "op": "interpolate"
+   }
+  },
+  {
+   "id": "dfillInterpG",
+   "type": "DisplayNode",
+   "x": 976,
+   "y": 3173,
+   "init": {
+    "label": "\u2192 1, 2, 3, 4, 5"
+   }
+  },
+  {
+   "id": "fillCoalG",
+   "type": "FillNode",
+   "x": 724,
+   "y": 3294,
+   "init": {
+    "label": "Coalesce(else 9) \u2192 1,9,3,9,5",
+    "op": "coalesce"
+   }
+  },
+  {
+   "id": "dfillCoalG",
+   "type": "DisplayNode",
+   "x": 976,
+   "y": 3306,
+   "init": {
+    "label": "\u2192 1, 9, 3, 9, 5"
+   }
+  },
+  {
+   "id": "noteH",
+   "type": "NoteNode",
+   "x": -40,
+   "y": 3520,
+   "init": {
+    "label": "H \u00b7 IS-checks are per-cell on a 2-D table",
+    "body": "The table is `[[1, null], [null, 4]]`. **ISNUMBER** and **ISNULL** test **each cell**, not the rows; open the chip for the grid. ISNUMBER says a `null` cell is *not* a number while ISNULL flags it.",
+    "color": "purple",
+    "width": 520,
+    "height": 150
+   }
+  },
+  {
+   "id": "tiH",
+   "type": "TableInputNode",
+   "x": 222,
+   "y": 3700,
+   "init": {
+    "label": "Table [[1,null],[null,4]]",
+    "tableText": "1,\n,4"
+   }
+  },
+  {
+   "id": "isnumH",
+   "type": "IsTestNode",
+   "x": 483,
+   "y": 3633,
+   "init": {
+    "label": "ISNUMBER \u2192 [[T,F],[F,T]]",
+    "op": "isnumber"
+   }
+  },
+  {
+   "id": "isnullH",
+   "type": "IsTestNode",
+   "x": 483,
+   "y": 3793,
+   "init": {
+    "label": "ISNULL \u2192 [[F,T],[T,F]]",
+    "op": "isnull"
+   }
+  },
+  {
+   "id": "dIsnumH",
+   "type": "DisplayNode",
+   "x": 714,
+   "y": 3648,
+   "init": {
+    "label": "[[T,F],[F,T]]"
+   }
+  },
+  {
+   "id": "dIsnullH",
+   "type": "DisplayNode",
+   "x": 714,
+   "y": 3808,
+   "init": {
+    "label": "[[F,T],[T,F]]"
+   }
+  },
+  {
+   "id": "hdr-errors",
+   "type": "NoteNode",
+   "x": 1460,
+   "y": -200,
+   "init": {
+    "label": "Error codes",
+    "body": "Each row triggers one error code on purpose, wires it through a **Display** (red badge, passes it on) into an **ISERROR** check that explains the code and the fix. Nothing here is broken; hover any badge for the short version.",
+    "color": "blue",
+    "width": 900,
+    "height": 210
+   }
+  },
+  {
+   "id": "p_div",
+   "type": "ArithmeticNode",
+   "x": 1786,
+   "y": 49,
+   "init": {
+    "label": "#DIV/0!  \u00b7  1 \u00f7 0",
+    "op": "div"
+   },
+   "literals": {
+    "a": 1,
+    "b": 0
+   }
+  },
+  {
+   "id": "d_div",
+   "type": "DisplayNode",
+   "x": 2061,
+   "y": 74,
+   "init": {
+    "label": "Display"
+   }
+  },
+  {
+   "id": "c_div",
+   "type": "IsTestNode",
+   "x": 2360,
+   "y": 59,
+   "init": {
+    "label": "ISERROR",
+    "op": "iserror"
+   }
+  },
+  {
+   "id": "p_dom",
+   "type": "MathFnNode",
+   "x": 1786,
+   "y": 292,
+   "init": {
+    "label": "#DOMAIN!  \u00b7  \u221a(\u22124)",
+    "op": "sqrt"
+   },
+   "literals": {
+    "in": -4
+   }
+  },
+  {
+   "id": "d_dom",
+   "type": "DisplayNode",
+   "x": 2061,
+   "y": 297,
+   "init": {
+    "label": "Display"
+   }
+  },
+  {
+   "id": "c_dom",
+   "type": "IsTestNode",
+   "x": 2360,
+   "y": 282,
+   "init": {
+    "label": "ISERROR",
+    "op": "iserror"
+   }
+  },
+  {
+   "id": "p_rng",
+   "type": "CombinatoricsNode",
+   "x": 1786,
+   "y": 508,
+   "init": {
+    "label": "#OVERFLOW!  \u00b7  200!",
+    "op": "fact"
+   },
+   "literals": {
+    "n": 200,
+    "k": 2
+   }
+  },
+  {
+   "id": "d_rng",
+   "type": "DisplayNode",
+   "x": 2061,
+   "y": 533,
+   "init": {
+    "label": "Display"
+   }
+  },
+  {
+   "id": "c_rng",
+   "type": "IsTestNode",
+   "x": 2360,
+   "y": 518,
+   "init": {
+    "label": "ISERROR",
+    "op": "iserror"
+   }
+  },
+  {
+   "id": "p_syn",
+   "type": "ExpressionNode",
+   "x": 1766,
+   "y": 739,
+   "init": {
+    "label": "#SYNTAX!",
+    "expr": "1 +* 1"
+   }
+  },
+  {
+   "id": "d_syn",
+   "type": "DisplayNode",
+   "x": 2061,
+   "y": 769,
+   "init": {
+    "label": "Display"
+   }
+  },
+  {
+   "id": "c_syn",
+   "type": "IsTestNode",
+   "x": 2360,
+   "y": 754,
+   "init": {
+    "label": "ISERROR",
+    "op": "iserror"
+   }
+  },
+  {
+   "id": "s_val",
+   "type": "TextInputNode",
+   "x": 1507,
+   "y": 1003,
+   "init": {
+    "label": "\"abc\"",
+    "value": "abc"
+   }
+  },
+  {
+   "id": "p_val",
+   "type": "CastNode",
+   "x": 1750,
+   "y": 960,
+   "init": {
+    "label": "#VALUE!  \u00b7  CAST(\"abc\"\u2192#)",
+    "target": "number"
+   }
+  },
+  {
+   "id": "d_val",
+   "type": "DisplayNode",
+   "x": 2061,
+   "y": 980,
+   "init": {
+    "label": "Display"
+   }
+  },
+  {
+   "id": "c_val",
+   "type": "IsTestNode",
+   "x": 2360,
+   "y": 965,
+   "init": {
+    "label": "ISERROR",
+    "op": "iserror"
+   }
+  },
+  {
+   "id": "s_na",
+   "type": "NumberInputNode",
+   "x": 1507,
+   "y": 1190,
+   "init": {
+    "label": "5 metres",
+    "value": 5
+   }
+  },
+  {
+   "id": "p_na",
+   "type": "ConvertNode",
+   "x": 1776,
+   "y": 1210,
+   "init": {
+    "label": "#N/A  \u00b7  m \u2192 kg",
+    "fromUnit": "m",
+    "toUnit": "kg"
+   }
+  },
+  {
+   "id": "d_na",
+   "type": "DisplayNode",
+   "x": 2061,
+   "y": 1218,
+   "init": {
+    "label": "Display"
+   }
+  },
+  {
+   "id": "c_na",
+   "type": "IsTestNode",
+   "x": 2360,
+   "y": 1203,
+   "init": {
+    "label": "ISERROR",
+    "op": "iserror"
+   }
+  },
+  {
+   "id": "s_conv",
+   "type": "ListInputNode",
+   "x": 1507,
+   "y": 1433,
+   "init": {
+    "label": "All-positive cash flows",
+    "valueKeys": [
+     "v0",
+     "v1",
+     "v2"
+    ]
+   },
+   "stringLiterals": {
+    "v0": "100",
+    "v1": "200",
+    "v2": "300"
+   }
+  },
+  {
+   "id": "p_conv",
+   "type": "IrrNode",
+   "x": 1786,
+   "y": 1466,
+   "init": {
+    "label": "#CONV!  \u00b7  IRR"
+   }
+  },
+  {
+   "id": "d_conv",
+   "type": "DisplayNode",
+   "x": 2061,
+   "y": 1458,
+   "init": {
+    "label": "Display"
+   }
+  },
+  {
+   "id": "c_conv",
+   "type": "IsTestNode",
+   "x": 2360,
+   "y": 1443,
+   "init": {
+    "label": "ISERROR",
+    "op": "iserror"
+   }
+  },
+  {
+   "id": "s_ref",
+   "type": "ListInputNode",
+   "x": 1507,
+   "y": 1659,
+   "init": {
+    "label": "A 3-item list",
+    "valueKeys": [
+     "v0",
+     "v1",
+     "v2"
+    ]
+   },
+   "stringLiterals": {
+    "v0": "10",
+    "v1": "20",
+    "v2": "30"
+   }
+  },
+  {
+   "id": "p_ref",
+   "type": "ListIndexNode",
+   "x": 1786,
+   "y": 1664,
+   "init": {
+    "label": "#REF!  \u00b7  INDEX #99"
+   },
+   "literals": {
+    "index": 99
+   }
+  },
+  {
+   "id": "d_ref",
+   "type": "DisplayNode",
+   "x": 2061,
+   "y": 1684,
+   "init": {
+    "label": "Display"
+   }
+  },
+  {
+   "id": "c_ref",
+   "type": "IsTestNode",
+   "x": 2360,
+   "y": 1669,
+   "init": {
+    "label": "ISERROR",
+    "op": "iserror"
+   }
+  },
+  {
+   "id": "s_shp",
+   "type": "TableInputNode",
+   "x": 1487,
+   "y": 1923,
+   "init": {
+    "label": "A 2\u00d73 table (non-square)",
+    "tableText": "1, 2, 3\n4, 5, 6"
+   }
+  },
+  {
+   "id": "p_shp",
+   "type": "MatDetNode",
+   "x": 1786,
+   "y": 1936,
+   "init": {
+    "label": "#SHAPE!  \u00b7  determinant needs a square matrix",
+    "op": "mdeterm"
+   }
+  },
+  {
+   "id": "d_shp",
+   "type": "DisplayNode",
+   "x": 2061,
+   "y": 1958,
+   "init": {
+    "label": "Display"
+   }
+  },
+  {
+   "id": "c_shp",
+   "type": "IsTestNode",
+   "x": 2360,
+   "y": 1943,
+   "init": {
+    "label": "ISERROR",
+    "op": "iserror"
+   }
+  },
+  {
+   "id": "s_nam",
+   "type": "LambdaNode",
+   "x": 1487,
+   "y": 2174,
+   "init": {
+    "label": "LAMBDA with a bad name",
+    "params": "x, 2y",
+    "expr": "x"
+   }
+  },
+  {
+   "id": "p_nam",
+   "type": "MapTableNode",
+   "x": 1771,
+   "y": 2190,
+   "init": {
+    "label": "#NAME?  \u00b7  MAP"
+   }
+  },
+  {
+   "id": "d_nam",
+   "type": "DisplayNode",
+   "x": 2061,
+   "y": 2205,
+   "init": {
+    "label": "Display"
+   }
+  },
+  {
+   "id": "c_nam",
+   "type": "IsTestNode",
+   "x": 2360,
+   "y": 2190,
+   "init": {
+    "label": "ISERROR",
+    "op": "iserror"
+   }
+  },
+  {
+   "id": "cyc_cond",
+   "type": "ConduitNode",
+   "x": 1866,
+   "y": 2500,
+   "init": {
+    "label": "loop back",
+    "angle": 180
+   }
+  },
+  {
+   "id": "cyc_a",
+   "type": "ArithmeticNode",
+   "x": 1690,
+   "y": 2611,
+   "init": {
+    "label": "#CIRC!  \u00b7  A = B + 0",
+    "op": "add"
+   },
+   "literals": {
+    "a": 0,
+    "b": 0
+   }
+  },
+  {
+   "id": "cyc_b",
+   "type": "ArithmeticNode",
+   "x": 1957,
+   "y": 2611,
+   "init": {
+    "label": "B = A + 0  (loop!)",
+    "op": "add"
+   },
+   "literals": {
+    "a": 0,
+    "b": 0
+   }
+  },
+  {
+   "id": "d_circ",
+   "type": "DisplayNode",
+   "x": 2223,
+   "y": 2636,
+   "init": {
+    "label": "Display"
+   }
+  },
+  {
+   "id": "c_circ",
+   "type": "IsTestNode",
+   "x": 2530,
+   "y": 2621,
+   "init": {
+    "label": "ISERROR",
+    "op": "iserror"
+   }
+  },
+  {
+   "id": "note_circ",
+   "type": "NoteNode",
+   "x": 1460,
+   "y": 2530,
+   "init": {
+    "label": "Circular reference",
+    "body": "A feeds B and B feeds A: a loop with no starting value. The return cable arcs over the top through the flipped **Conduit**. Both nodes, and everything downstream, read **#CIRC!**.",
+    "color": "purple",
+    "width": 210,
+    "height": 230
+   }
+  },
+  {
+   "id": "oneB",
+   "type": "NumberInputNode",
+   "x": 483,
+   "y": 1010,
+   "init": {
+    "label": "1",
+    "value": 1
+   }
+  }
+ ],
+ "connections": [
+  {
+   "source": "fiA",
+   "sourceOutput": "frame",
+   "target": "gcA",
+   "targetInput": "frame"
+  },
+  {
+   "source": "gcA",
+   "sourceOutput": "values",
+   "target": "dAlist",
+   "targetInput": "in"
+  },
+  {
+   "source": "gcA",
+   "sourceOutput": "values",
+   "target": "aggSum",
+   "targetInput": "list"
+  },
+  {
+   "source": "gcA",
+   "sourceOutput": "values",
+   "target": "aggAvg",
+   "targetInput": "list"
+  },
+  {
+   "source": "gcA",
+   "sourceOutput": "values",
+   "target": "isnA",
+   "targetInput": "value"
+  },
+  {
+   "source": "s5",
+   "sourceOutput": "value",
+   "target": "cmpB",
+   "targetInput": "a"
+  },
+  {
+   "source": "s3",
+   "sourceOutput": "value",
+   "target": "cmpB",
+   "targetInput": "b"
+  },
+  {
+   "source": "cmpB",
+   "sourceOutput": "result",
+   "target": "dCmp",
+   "targetInput": "in"
+  },
+  {
+   "source": "cmpB",
+   "sourceOutput": "result",
+   "target": "mulB",
+   "targetInput": "a"
+  },
+  {
+   "source": "mulB",
+   "sourceOutput": "result",
+   "target": "dMul",
+   "targetInput": "in"
+  },
+  {
+   "source": "cmpB",
+   "sourceOutput": "result",
+   "target": "andB",
+   "targetInput": "a0"
+  },
+  {
+   "source": "andB",
+   "sourceOutput": "result",
+   "target": "dAnd",
+   "targetInput": "in"
+  },
+  {
+   "source": "llC",
+   "sourceOutput": "list",
+   "target": "exprC",
+   "targetInput": "x"
+  },
+  {
+   "source": "exprC",
+   "sourceOutput": "result",
+   "target": "dExpr",
+   "targetInput": "in"
+  },
+  {
+   "source": "tspC",
+   "sourceOutput": "result",
+   "target": "castC",
+   "targetInput": "value"
+  },
+  {
+   "source": "castC",
+   "sourceOutput": "result",
+   "target": "dCast",
+   "targetInput": "in"
+  },
+  {
+   "source": "tiD",
+   "sourceOutput": "table",
+   "target": "isnD",
+   "targetInput": "value"
+  },
+  {
+   "source": "isnD",
+   "sourceOutput": "result",
+   "target": "dIsnD",
+   "targetInput": "in"
+  },
+  {
+   "source": "gcA",
+   "sourceOutput": "values",
+   "target": "cmpF",
+   "targetInput": "a"
+  },
+  {
+   "source": "cmpF",
+   "sourceOutput": "result",
+   "target": "dCmpF",
+   "targetInput": "in"
+  },
+  {
+   "source": "gcA",
+   "sourceOutput": "values",
+   "target": "filF",
+   "targetInput": "list"
+  },
+  {
+   "source": "filF",
+   "sourceOutput": "result",
+   "target": "dFilF",
+   "targetInput": "in"
+  },
+  {
+   "source": "gcG",
+   "sourceOutput": "values",
+   "target": "fillConstG",
+   "targetInput": "list"
+  },
+  {
+   "source": "fillConstG",
+   "sourceOutput": "result",
+   "target": "dfillConstG",
+   "targetInput": "in"
+  },
+  {
+   "source": "gcG",
+   "sourceOutput": "values",
+   "target": "fillFfillG",
+   "targetInput": "list"
+  },
+  {
+   "source": "fillFfillG",
+   "sourceOutput": "result",
+   "target": "dfillFfillG",
+   "targetInput": "in"
+  },
+  {
+   "source": "gcG",
+   "sourceOutput": "values",
+   "target": "fillDropG",
+   "targetInput": "list"
+  },
+  {
+   "source": "fillDropG",
+   "sourceOutput": "result",
+   "target": "dfillDropG",
+   "targetInput": "in"
+  },
+  {
+   "source": "gcG",
+   "sourceOutput": "values",
+   "target": "fillInterpG",
+   "targetInput": "list"
+  },
+  {
+   "source": "fillInterpG",
+   "sourceOutput": "result",
+   "target": "dfillInterpG",
+   "targetInput": "in"
+  },
+  {
+   "source": "gcG",
+   "sourceOutput": "values",
+   "target": "fillCoalG",
+   "targetInput": "list"
+  },
+  {
+   "source": "fillCoalG",
+   "sourceOutput": "result",
+   "target": "dfillCoalG",
+   "targetInput": "in"
+  },
+  {
+   "source": "fiG",
+   "sourceOutput": "frame",
+   "target": "gcG",
+   "targetInput": "frame"
+  },
+  {
+   "source": "llElseG",
+   "sourceOutput": "list",
+   "target": "fillCoalG",
+   "targetInput": "e0"
+  },
+  {
+   "source": "tiH",
+   "sourceOutput": "table",
+   "target": "isnumH",
+   "targetInput": "value"
+  },
+  {
+   "source": "tiH",
+   "sourceOutput": "table",
+   "target": "isnullH",
+   "targetInput": "value"
+  },
+  {
+   "source": "isnumH",
+   "sourceOutput": "result",
+   "target": "dIsnumH",
+   "targetInput": "in"
+  },
+  {
+   "source": "isnullH",
+   "sourceOutput": "result",
+   "target": "dIsnullH",
+   "targetInput": "in"
+  },
+  {
+   "source": "p_div",
+   "sourceOutput": "result",
+   "target": "d_div",
+   "targetInput": "in"
+  },
+  {
+   "source": "d_div",
+   "sourceOutput": "out",
+   "target": "c_div",
+   "targetInput": "value"
+  },
+  {
+   "source": "p_dom",
+   "sourceOutput": "result",
+   "target": "d_dom",
+   "targetInput": "in"
+  },
+  {
+   "source": "d_dom",
+   "sourceOutput": "out",
+   "target": "c_dom",
+   "targetInput": "value"
+  },
+  {
+   "source": "p_rng",
+   "sourceOutput": "result",
+   "target": "d_rng",
+   "targetInput": "in"
+  },
+  {
+   "source": "d_rng",
+   "sourceOutput": "out",
+   "target": "c_rng",
+   "targetInput": "value"
+  },
+  {
+   "source": "p_syn",
+   "sourceOutput": "result",
+   "target": "d_syn",
+   "targetInput": "in"
+  },
+  {
+   "source": "d_syn",
+   "sourceOutput": "out",
+   "target": "c_syn",
+   "targetInput": "value"
+  },
+  {
+   "source": "s_val",
+   "sourceOutput": "value",
+   "target": "p_val",
+   "targetInput": "value"
+  },
+  {
+   "source": "p_val",
+   "sourceOutput": "result",
+   "target": "d_val",
+   "targetInput": "in"
+  },
+  {
+   "source": "d_val",
+   "sourceOutput": "out",
+   "target": "c_val",
+   "targetInput": "value"
+  },
+  {
+   "source": "s_na",
+   "sourceOutput": "value",
+   "target": "p_na",
+   "targetInput": "in"
+  },
+  {
+   "source": "p_na",
+   "sourceOutput": "out",
+   "target": "d_na",
+   "targetInput": "in"
+  },
+  {
+   "source": "d_na",
+   "sourceOutput": "out",
+   "target": "c_na",
+   "targetInput": "value"
+  },
+  {
+   "source": "s_conv",
+   "sourceOutput": "list",
+   "target": "p_conv",
+   "targetInput": "list"
+  },
+  {
+   "source": "p_conv",
+   "sourceOutput": "result",
+   "target": "d_conv",
+   "targetInput": "in"
+  },
+  {
+   "source": "d_conv",
+   "sourceOutput": "out",
+   "target": "c_conv",
+   "targetInput": "value"
+  },
+  {
+   "source": "s_ref",
+   "sourceOutput": "list",
+   "target": "p_ref",
+   "targetInput": "list"
+  },
+  {
+   "source": "p_ref",
+   "sourceOutput": "result",
+   "target": "d_ref",
+   "targetInput": "in"
+  },
+  {
+   "source": "d_ref",
+   "sourceOutput": "out",
+   "target": "c_ref",
+   "targetInput": "value"
+  },
+  {
+   "source": "s_shp",
+   "sourceOutput": "table",
+   "target": "p_shp",
+   "targetInput": "matrix"
+  },
+  {
+   "source": "p_shp",
+   "sourceOutput": "result",
+   "target": "d_shp",
+   "targetInput": "in"
+  },
+  {
+   "source": "d_shp",
+   "sourceOutput": "out",
+   "target": "c_shp",
+   "targetInput": "value"
+  },
+  {
+   "source": "s_nam",
+   "sourceOutput": "result",
+   "target": "p_nam",
+   "targetInput": "lambda"
+  },
+  {
+   "source": "p_nam",
+   "sourceOutput": "result",
+   "target": "d_nam",
+   "targetInput": "in"
+  },
+  {
+   "source": "d_nam",
+   "sourceOutput": "out",
+   "target": "c_nam",
+   "targetInput": "value"
+  },
+  {
+   "source": "cyc_a",
+   "sourceOutput": "result",
+   "target": "cyc_b",
+   "targetInput": "a"
+  },
+  {
+   "source": "cyc_b",
+   "sourceOutput": "result",
+   "target": "cyc_cond",
+   "targetInput": "in_0"
+  },
+  {
+   "source": "cyc_cond",
+   "sourceOutput": "out_0",
+   "target": "cyc_a",
+   "targetInput": "a"
+  },
+  {
+   "source": "cyc_b",
+   "sourceOutput": "result",
+   "target": "d_circ",
+   "targetInput": "in"
+  },
+  {
+   "source": "d_circ",
+   "sourceOutput": "out",
+   "target": "c_circ",
+   "targetInput": "value"
+  },
+  {
+   "source": "oneB",
+   "sourceOutput": "value",
+   "target": "andB",
+   "targetInput": "a1"
+  }
+ ]
 }
