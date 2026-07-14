@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { fieldScore } from "./fuzzy";
 import { commandRecents } from "./commandRecents";
+import { paletteStore } from "./paletteStore";
 import { settingsStore, SETTINGS_SCHEMA } from "./settingsStore";
 import { alignSelection, distributeSelection, collapseSelection } from "./selectionOps";
 import { buildMenus, type MenuItem } from "./menuModel";
@@ -91,6 +92,14 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
   // Persistent (docked) mode must NOT steal focus from the canvas on mount; the
   // modal opens for immediate typing, so it focuses.
   useEffect(() => { if (!persistent) inputRef.current?.focus(); }, [persistent]);
+  // Docked mode is always rendered off the always-on setting, so paletteStore's
+  // open toggle can't mount/unmount it — instead it's the "enter the palette"
+  // signal: the bare Enter hotkey calls paletteStore.open(), and here we FOCUS
+  // the docked bar in response (revealing the suggestion list, ready to type).
+  // Blur resets the store (onBlur below) so a later Enter re-arms. The modal
+  // instance ignores this — it focuses on mount via the effect above.
+  const paletteOpen = useSyncExternalStore(paletteStore.subscribe, paletteStore.get);
+  useEffect(() => { if (persistent && paletteOpen) inputRef.current?.focus(); }, [persistent, paletteOpen]);
   useEffect(() => setActiveIndex(query.trim() ? 0 : -1), [query]);
 
   const results = useMemo<PaletteItem[]>(() => {
@@ -194,7 +203,11 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={onKeyDown}
           onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
+          // Persistent: dropping focus also clears paletteStore (onClose ===
+          // paletteStore.close), so the next bare Enter flips it true again and
+          // the focus effect above re-fires. Without this reset the store stays
+          // true after the first Enter and the hotkey never re-focuses the bar.
+          onBlur={() => { setFocused(false); if (persistent) onClose(); }}
         />
       </div>
     </div>
