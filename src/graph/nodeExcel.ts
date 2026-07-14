@@ -223,7 +223,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "list-drop": [{ excel: "DROP", syntax: "=DROP(list, count)", parity: false, note: "The 1-D list spelling; DROP (table) is the 2-D rows+cols one" }],
   "list-filter": [{ excel: "FILTER", syntax: "=FILTER(array, include)", parity: false, note: "Conditions live on the card (extensible AND/OR rows) instead of an include vector; filtering by a PARALLEL list is the SUMIFS node or Frame from Lists → Frame Filter" }],
   "list-groupby": [{ excel: "GROUPBY", syntax: "=GROUPBY(row_fields, values, function)", parity: false, note: "1D parallel-list version: keys + values lists; 2D range grouping not supported" }],
-  "list-index": [{ excel: "INDEX", syntax: "=INDEX(array, row)", parity: true }],
+  "list-index": [{ excel: "INDEX", syntax: "=INDEX(array, row, [col])", parity: true, note: "Row or Column blank/0 = the whole axis, like Excel's INDEX(range, 0, col) whole-column / INDEX(range, row, 0) whole-row form" }],
   "list-randarray": [{ excel: "RANDARRAY", syntax: "=RANDARRAY([rows],[cols],[min],[max],[integer])", parity: false, note: "1D list; re-rolls on recalc (F9)" }],
   "list-sequence": [{ excel: "SEQUENCE", syntax: "=SEQUENCE(rows, cols, start, step)", parity: false, note: "Solenoid's Range is 1D only; SEQUENCE can produce 2D arrays" }],
   "list-sort": [{ excel: "SORT", syntax: "=SORT(array, sort_index, order)", parity: false, note: "Solenoid sorts 1D lists only; Excel can sort multi-column ranges" }],

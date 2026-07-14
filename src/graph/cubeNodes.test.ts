@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   buildFrame, isCubeValue, isFrameValue, cubeDepth, cubeRowCount, frameRowCount,
-  relateFramesToCube, relateCubeToFrame, type CubeValue,
+  relateFramesToCube, relateCubeToFrame, type CubeValue, type FrameValue,
 } from "./frame";
 import { BuildCubeNode, NestJoinNode, CubeColumnsNode } from "./nodes/cube";
 import { ListIndexNode } from "./nodes/list";
@@ -193,6 +193,57 @@ describe("ListIndexNode (INDEX) — reads a cell out of any container", () => {
     const n = new ListIndexNode();
     const r = n.data({ list: [[1, 2]], index: [9] }).result;
     expect(isSolError(r) && r.code).toBe("#REF!");
+  });
+
+  // ── the Excel whole-axis form: blank/0 Row = whole column, blank/0 Column = whole row ──
+
+  it("matrix: blank Column slices the WHOLE ROW; blank Row slices the WHOLE COLUMN", () => {
+    const grid = [[1, 2], [3, 4]];
+    expect(new ListIndexNode().data({ list: [grid], index: [2] }).result).toEqual([3, 4]);
+    expect(new ListIndexNode().data({ list: [grid], column: [2] }).result).toEqual([2, 4]);
+    // Explicit 0 behaves exactly like blank (Excel INDEX(range, 0, col)).
+    expect(new ListIndexNode().data({ list: [grid], index: [0], column: [1] }).result).toEqual([1, 3]);
+    expect(new ListIndexNode().data({ list: [grid], index: [1], column: [0] }).result).toEqual([1, 2]);
+  });
+
+  it("both blank passes the container through whole (fresh node = [all]/[all] defaults)", () => {
+    const grid = [[1, 2], [3, 4]];
+    expect(new ListIndexNode().data({ list: [grid] }).result).toEqual(grid);
+    expect(new ListIndexNode().data({ list: [[10, 20, 30]] }).result).toEqual([10, 20, 30]);
+    expect(new ListIndexNode().data({ list: [7] }).result).toBe(7);
+  });
+
+  it("frame: blank Row = the column as a values LIST; blank Column = a ONE-ROW FRAME", () => {
+    const frame = buildFrame([[1, 2], [3, 4]], ["a", "b"]);
+    expect(new ListIndexNode().data({ list: [frame], column: [2] }).result).toEqual([2, 4]);
+    const row = new ListIndexNode().data({ list: [frame], index: [2] }).result;
+    expect(isFrameValue(row)).toBe(true);
+    expect(frameRowCount(row as never)).toBe(1);
+    expect((row as FrameValue).columns.map((c) => c.values[0])).toEqual([3, 4]);
+  });
+
+  it("cube: slices stay CUBES so nested cells survive whole", () => {
+    const cube = relateFramesToCube(
+      buildFrame([[1], [2]], ["id"]),
+      buildFrame([[1, 10], [2, 20]], ["id", "amt"]),
+      "id", "orders",
+    )!;
+    const col = new ListIndexNode().data({ list: [cube], column: [2] }).result; // the nested column, whole
+    expect(isCubeValue(col)).toBe(true);
+    expect((col as CubeValue).columns).toHaveLength(1);
+    expect(isFrameValue((col as CubeValue).columns[0].cells[0])).toBe(true);
+    const row = new ListIndexNode().data({ list: [cube], index: [1] }).result; // one-row cube
+    expect(isCubeValue(row)).toBe(true);
+    expect(cubeRowCount(row as CubeValue)).toBe(1);
+    expect(isFrameValue((row as CubeValue).columns[1].cells[0])).toBe(true);
+  });
+
+  it("whole-axis slice bounds still #REF!", () => {
+    const grid = [[1, 2], [3, 4]];
+    const badCol = new ListIndexNode().data({ list: [grid], column: [9] }).result;
+    expect(isSolError(badCol) && badCol.code).toBe("#REF!");
+    const flatCol = new ListIndexNode().data({ list: [[10, 20]], column: [2] }).result;
+    expect(isSolError(flatCol) && flatCol.code).toBe("#REF!"); // a flat list is n×1
   });
 });
 
