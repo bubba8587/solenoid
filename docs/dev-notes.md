@@ -23,8 +23,11 @@ default date formatting), and their input dots color to the wired type. Adopted 
 for these (bool↔num are no-ops on matching values). **NOT yet opted in** (follow-ups, backlog): the
 multi-input APPEND family (Concat/Interleave/HSTACK/VSTACK — need `agree` combine), the RANK-CHANGING
 reshapers (TOCOL/TOROW/WRAP — need element-family-remap with a rank change), and Filter (2 outputs +
-predicate). A global `anyIn`/`anyListIn`/`anyTableIn`→adoptive flip (broad input color) was left out —
-`coerceInputs` runs the adopted concrete type's coercion, so it needs the full-suite empirical check.
+predicate). The global `anyIn`/`anyListIn`/`anyTableIn`→adoptive flip (broad input color — the user's main ask)
+LANDED: all element-agnostic input dots now colour to the wired type and revert on disconnect. The
+`coerceInputs` risk (it runs the adopted concrete type's coercion) proved theoretical — the full suite
+stayed green, so the adopted coercion is equivalent to the neutral one for these. VISUAL change across
+many nodes (MAP/REDUCE tables, Concat rows, Cast, Set, …) — author eyeball pending.
 
 ### SESSION DIGEST (2026-07-15c — Boolean op operands are logical, not numeric)
 `BooleanOpNode` (AND/OR/XOR/NAND/NOR/XNOR) operand rows + `NotNode` input were `numListIn`
