@@ -1,5 +1,6 @@
 import { ClassicPreset } from "rete";
-import { numIn, numOut, listIn, anyIn, anyListIn, anyListOut, anyTableIn, anyTableOut, tableIn, tableOut, frameIn } from "./shared";
+import { numIn, numOut, listIn, anyIn, anyListIn, anyListOut, anyTableIn, anyTableOut, adoptiveTableIn, adoptiveTableOut, tableIn, tableOut, frameIn } from "./shared";
+import type { PassthroughSpec } from "./passthrough";
 import { toAnyMatrix, type Cell } from "./coerce";
 import { tableSocket, strTableSocket, dateTableSocket, logicalTableSocket } from "../sockets";
 import { parseCsvRows } from "../csv";
@@ -339,6 +340,9 @@ export class TableUnitNode extends ClassicPreset.Node {
 // ─── TRANSPOSE ────────────────────────────────────────────────────────────────
 
 export class TableTransposeNode extends ClassicPreset.Node {
+  /** Element-preserving reshape: its output adopts the input\'s type (a reversed
+   *  date list stays a date list) — see passthrough.ts. */
+  passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["matrix"], combine: "single" }];
   label: string;
   cachedResult: CellMat | null = null;
   width = 180; height = 180;
@@ -348,8 +352,8 @@ export class TableTransposeNode extends ClassicPreset.Node {
     this.label = init?.label ?? "TRANSPOSE";
     // Element-agnostic reshape: an `any` input accepts any matrix (text/date too),
     // and the output is the 2-D wildcard `anytable` (see sockets.ts).
-    this.addInput("matrix", anyTableIn("Matrix"));
-    this.addOutput("result", anyTableOut("Transposed"));
+    this.addInput("matrix", adoptiveTableIn("Matrix"));
+    this.addOutput("result", adoptiveTableOut("Transposed"));
   }
 
   data(inputs: { matrix?: unknown[] }) {
@@ -556,6 +560,9 @@ export const TABLE_SELECT_OP_META = {
 } satisfies Record<TableSelectOp, { label: string; description: string }>;
 
 export class TableSelectNode extends ClassicPreset.Node {
+  /** Element-preserving reshape: its output adopts the input\'s type (a reversed
+   *  date list stays a date list) — see passthrough.ts. */
+  passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["matrix"], combine: "single" }];
   label: string;
   op: TableSelectOp;
   cachedResult: CellMat | SolError | null = null;
@@ -566,9 +573,9 @@ export class TableSelectNode extends ClassicPreset.Node {
     this.op    = init?.op    ?? "chooserows";
     this.label = init?.label ?? TABLE_SELECT_OP_META[this.op].label;
     // `any` matrix (text/date too); indices stay a numeric list.
-    this.addInput("matrix",  anyTableIn("Matrix"));
+    this.addInput("matrix",  adoptiveTableIn("Matrix"));
     this.addInput("indices", listIn(this.op === "chooserows" ? "Row indices (1-based)" : "Col indices (1-based)"));
-    this.addOutput("result", anyTableOut("Result"));
+    this.addOutput("result", adoptiveTableOut("Result"));
   }
 
   data(inputs: { matrix?: unknown[]; indices?: number[][] }): { result: CellMat | SolError | null } {
@@ -613,6 +620,9 @@ export const TABLE_TAKEDROP_OP_META = {
 } satisfies Record<TableTakeDropOp, { label: string; description: string }>;
 
 export class TableTakeDropNode extends ClassicPreset.Node {
+  /** Element-preserving reshape: its output adopts the input\'s type (a reversed
+   *  date list stays a date list) — see passthrough.ts. */
+  passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["matrix"], combine: "single" }];
   label: string;
   op: TableTakeDropOp;
   cachedResult: CellMat | null = null;
@@ -625,10 +635,10 @@ export class TableTakeDropNode extends ClassicPreset.Node {
     this.label = init?.label ?? TABLE_TAKEDROP_OP_META[this.op].label;
     // Labels stay op-neutral — the op dropdown swaps at runtime but sockets
     // (and their labels) are fixed at construction.
-    this.addInput("matrix", anyTableIn("Table"));
+    this.addInput("matrix", adoptiveTableIn("Table"));
     this.addInput("rows",   numIn("Rows (± from end)"));
     this.addInput("cols",   numIn("Cols (± from end)"));
-    this.addOutput("result", anyTableOut("Result"));
+    this.addOutput("result", adoptiveTableOut("Result"));
   }
 
   // 0 = identity for both ops ("take all" / "drop none", Excel's omitted arg).
@@ -658,6 +668,9 @@ export class TableTakeDropNode extends ClassicPreset.Node {
 // (Excel's default). Shrinking is #VALUE! like Excel — TAKE is the shrinker.
 
 export class ExpandNode extends ClassicPreset.Node {
+  /** Element-preserving reshape: its output adopts the input\'s type (a reversed
+   *  date list stays a date list) — see passthrough.ts. */
+  passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["matrix"], combine: "single" }];
   label: string;
   cachedResult: CellMat | SolError | null = null;
   literals: Record<string, number> = { rows: 0, cols: 0 };
@@ -666,11 +679,11 @@ export class ExpandNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("Expand");
     this.label = init?.label ?? "EXPAND";
-    this.addInput("matrix", anyTableIn("Table"));
+    this.addInput("matrix", adoptiveTableIn("Table"));
     this.addInput("rows",   numIn("Rows (0 = keep)"));
     this.addInput("cols",   numIn("Cols (0 = keep)"));
     this.addInput("fill",   anyIn("Fill"));
-    this.addOutput("result", anyTableOut("Expanded"));
+    this.addOutput("result", adoptiveTableOut("Expanded"));
   }
 
   data(inputs: { matrix?: unknown[]; rows?: number[]; cols?: number[]; fill?: unknown[] }): { result: CellMat | SolError | null } {

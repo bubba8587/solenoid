@@ -5,6 +5,27 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-15d — the passthrough system: ONE declaration for type + unit flow)
+Killed the drift where "what flows to my output" was re-declared in four places (trueany TYPE
+adoption's `instanceof` chain, UNIT flow's `passesUnitThrough`/`unitPassInputs`/`selectedUnitInput`
+duck markers, the type-default DISPLAY walk, coerceInputs' keep-tags boundary) — so Expect / Cable
+Switch / IFERROR passed TYPE but silently not UNITS. **A node now declares passthrough ONCE**
+(`nodes/passthrough.ts` `PassthroughSpec`: output key, value-branch inputs, combine `single`/`agree`/
+`active`, optional data-aware `selected()`, `pure` flag). `trueAnyAdopt` (dropped its instanceof
+chain entirely), `unitFlow`, `valueDisplayFormat`, `nodeKit`, `coerceInputs` all read it. Adding a
+type-agnostic node is now one method; type and unit sets can't diverge. Behavior-preserving for type;
+Expect/CableSwitch/IFERROR **gained** unit passthrough (the fix). `passthroughSystem.test.ts` pins each
+declaration. **Then opted the element-preserving, same-rank, single-value-input agnostic ops into it**
+(B): Reverse/Slice/Take/Drop/Shuffle/NthElement/Pad (list) + TRANSPOSE/CHOOSEROWS/CHOOSECOLS/table
+TAKE-DROP/EXPAND (matrix) got adoptive IN + OUT sockets + a `passthrough()` — so a reversed/transposed
+date list/matrix keeps its element type downstream (was neutral `anylist`/`anytable`, losing type-
+default date formatting), and their input dots color to the wired type. Adopted coercion is equivalent
+for these (bool↔num are no-ops on matching values). **NOT yet opted in** (follow-ups, backlog): the
+multi-input APPEND family (Concat/Interleave/HSTACK/VSTACK — need `agree` combine), the RANK-CHANGING
+reshapers (TOCOL/TOROW/WRAP — need element-family-remap with a rank change), and Filter (2 outputs +
+predicate). A global `anyIn`/`anyListIn`/`anyTableIn`→adoptive flip (broad input color) was left out —
+`coerceInputs` runs the adopted concrete type's coercion, so it needs the full-suite empirical check.
+
 ### SESSION DIGEST (2026-07-15c — Boolean op operands are logical, not numeric)
 `BooleanOpNode` (AND/OR/XOR/NAND/NOR/XNOR) operand rows + `NotNode` input were `numListIn`
 (numeric combo) — should be logical (author). Swapped to `logicalComboIn` (the symmetric combo

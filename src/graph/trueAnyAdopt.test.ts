@@ -4,8 +4,8 @@ import { reconcileTrueAnyTypes, type AdoptEditor } from "./trueAnyAdopt";
 import { DisplayNode } from "./nodes/display";
 import { IfNode } from "./nodes/logic";
 import { CableSwitchNode } from "./nodes/control";
-import { ListIndexNode } from "./rete-nodes";
-import { numberSocket, stringSocket, frameSocket, SolenoidSocket } from "./sockets";
+import { ListIndexNode, ReverseNode } from "./rete-nodes";
+import { numberSocket, stringSocket, frameSocket, dateListSocket, SolenoidSocket } from "./sockets";
 
 // Same fake-editor surface as conduitTrace.test.ts — the pass only reads
 // getNodes/getNode/getConnections and mutates sockets in place.
@@ -122,6 +122,21 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
     sw.activeIndex = 1;
     reconcileTrueAnyTypes(makeEditor([num, str, sw], conns));
     expect(dt(sw.outputs.out?.socket)).toBe("string");
+  });
+
+  it("an element-preserving op (Reverse) FORWARDS its input's type through to its output", () => {
+    const src = new ClassicPreset.Node("Dates");
+    src.addOutput("out", new ClassicPreset.Output(dateListSocket));
+    const rev = new ReverseNode();
+    const ed = makeEditor([src, rev], [
+      { source: src.id, sourceOutput: "out", target: rev.id, targetInput: "list" },
+    ]);
+    reconcileTrueAnyTypes(ed);
+    expect(dt(rev.inputs.list?.socket)).toBe("datelist");   // input adopts
+    expect(dt(rev.outputs.result?.socket)).toBe("datelist"); // output forwards it (was neutral `anylist`)
+    // Reverts to the neutral base when unwired (both dots gray again).
+    reconcileTrueAnyTypes(makeEditor([src, rev], []));
+    expect(dt(rev.outputs.result?.socket)).toBe("anylist");
   });
 
   it("INDEX: the Array input adopts, the result stays the STATIC wildcard", () => {
