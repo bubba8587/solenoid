@@ -394,6 +394,38 @@ undeclared, overriding a wire on those sockets) was rejected: it leaves dead soc
 lambda card and silently ignores a deliberately-wired value. Declaration stays required so
 every socket means exactly what it shows.
 
+### D19 — Formula↔node parity, round 1: aliases blocked, names unified with the hover hint, packs register formulas
+**When:** 2026-07-14 (the parity direction session — see `docs/formula-node-parity.md`
+for the audit + tiers this decides). Author answered the doc's four gating questions;
+the mechanical work is greenlit but deliberately deferred to a dedicated session.
+**The decisions:**
+1. **Legacy aliases are BLOCKED on the formula surface.** D10 now genuinely applies to
+   every surface: an eliminated/superseded name (VLOOKUP, NORMDIST, STDEVP, the pre-2010
+   family Formula.js drags in) must NOT dispatch — it returns `#NAME?` with a "use X"
+   redirect hint, same spirit as the node-surface redirect table. The current behavior
+   (VLOOKUP quietly works in an Expression) was drift, not a decision, and is now a bug.
+2. **Formula names for Solenoid-native ops are BARE names, UNIFIED with the node's
+   header hover hint** (`typeHint()` in `nodeKit.tsx` — class name minus `Node`,
+   camelCase split, uppercased). The hint text and the formula name are the same
+   identifier, with spaces removed where the hint has them ("SET RELATION" →
+   `SETRELATION`). One identity per op family, shown on the card and typed in a formula
+   — no `SOL.` namespace. Where a class is a multi-op family (SetOpNode's
+   union/intersection/…), the naming of ops within the function (op-as-argument vs
+   per-op names) is an implementation call for the build session, made under this rule.
+3. **Packs can register their own formula functions** into the internal-impl registry
+   (the `registerInternal` seam), following the same naming rule — so a pack ships node
+   + formula surface together. Registration must respect pack enable/disable
+   (`FORMULA_FUNCTION_NAMES` and autocomplete become pack-sensitive).
+4. **Tier 4 (the reopened D2 dimensionality cap) is NOT decided** — author-present
+   discussion explicitly required ("we have to talk about this"). D2 stands as the
+   working default until then.
+**Cost accepted:** blocking aliases breaks any formula that used a legacy name (pre-alpha,
+acceptable per D3); bare names risk future Excel-name collisions (accepted over the
+namespace's ugliness — a collision is handled case-by-case when Excel ships one).
+**What would reverse it:** (1) a real user corpus that leans on legacy names could soften
+blocking into documented aliases; (2) an Excel release colliding with a bare Solenoid name
+forces a rename or precedence rule — revisit then, not preemptively.
+
 ---
 
 ## Structural risks (the threats register — distinct from bugs)

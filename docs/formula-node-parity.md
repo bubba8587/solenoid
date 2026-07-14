@@ -84,15 +84,15 @@ need a call:
 either (a) legacy aliases stay callable as a compat courtesy and get listed in a
 LEGACY_ALIASES table (documented, redirect note in the reference), or (b) D10 applies to
 formulas too and the eliminated/superseded ones return a `#NAME?` with a "use X" hint.
-Either is fine; **undecided-by-drift is the only wrong state.** (Author call — this is
-the D10-consistency question.)
+**DECIDED: (b), blocked — see Decisions below.**
 
 **Tier 3 — formula names for the Solenoid-native data-op core.** SETEQ/SETDIFF-style
 registrations for the list/set utilities. Needs two small pieces of plumbing (a list
 `ExcelReturn` type + range routing for list-in-list-out functions) and one design
 decision: **naming**. Options: bare names matching the node labels (REVERSE, SLICE —
 risk: future Excel collisions), or a SOL. namespace (SOL.REVERSE — the dotted-name
-machinery already exists for NORM.DIST). Frame verbs in formulas are explicitly NOT this
+machinery already exists for NORM.DIST). **DECIDED: bare, unified with the node hover
+hint — see Decisions below.** Frame verbs in formulas are explicitly NOT this
 tier — a query language in a formula string is its own large design (and bundle 08's
 transpiler is the nearer answer for "text in, graph out").
 
@@ -126,9 +126,32 @@ cheap, permanent guards:
    single-source op registry that generates node + formula + reference is a bigger
    refactor; not proposed now.)
 
-## Open questions for the author
+## Decisions (2026-07-14, author — recorded as D19; build deferred to a dedicated session)
 
-1. Tier 2 policy: legacy aliases — compat courtesy (documented) or D10-blocked?
-2. Tier 3 naming: bare node-label names or a SOL. namespace?
-3. Tier 4: keep the 1-D cap (formulas = glue language) or lift to 2-D?
-4. Sequencing: Tier 1 + the ratchet test are mechanical and could start now — greenlight?
+1. **Legacy aliases: BLOCKED.** D10 applies to the formula surface too. Implementation
+   shape: a curated blocklist (the EXCEL_GAP `oos` names + the untracked-75 legacy set)
+   gated at `dispatch`/`resolveExcelFunction`, each returning `#NAME?` with a "use X"
+   redirect hint; drop the blocked names from `RANGE_POSITIONAL` and autocomplete. The
+   ratchet test then pins the *blocked* list instead of tolerating the drift.
+2. **Naming: bare names, UNIFIED with the node header hover hint.** The hint
+   (`typeHint()` in `nodeKit.tsx`: class name minus `Node`, camelCase split, uppercased)
+   and the formula name are the same identity — spaces removed for dispatch
+   ("SET RELATION" → `SETRELATION`). Two implementation notes for the build session:
+   (a) the hint is per-CLASS while several classes are multi-op families (SetOpNode:
+   union/intersection/…) — op-as-argument (`SETOP("union", a, b)`) mirrors the node's
+   own op-selector shape, but per-op names are also defensible; decide there, under the
+   unification rule. (b) Excel-named ops (UPPER, TRIM…) keep their Excel names — this
+   rule is for the Solenoid-native core only.
+3. **Tier 4 (the reopened D2 cap): UNDECIDED — author-present discussion required**
+   ("we have to talk about this"). D2 stands as the working default meanwhile. Queued
+   in backlog under "Needs an author decision / author-present session."
+4. **Packs register their own formula functions** through the `registerInternal` seam,
+   same naming rule — a pack ships its node + formula surface together. Registration
+   must track pack enable/disable (`FORMULA_FUNCTION_NAMES`/autocomplete become
+   pack-sensitive — today they're built once at load; the build session needs to make
+   the name set observable or rebuild-on-toggle).
+
+**Status: the mechanical work (Tier 1 registrations, the alias blocklist, the ratchet
+test, the pack seam) is GREENLIT but not started** — the author explicitly scoped it out
+of the deciding session. Whoever picks this up: start from the ratchet test so the gap
+lists are pinned before they move.

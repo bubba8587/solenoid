@@ -56,6 +56,11 @@ this backlog stays the per-item source of truth.
 
 ## Needs an author decision / author-present session
 
+- [ ] **Parity Tier 4 — the formula dimensionality cap (D2, reopened)** (author 2026-07-14:
+  "we have to talk about this") — keep formulas scalar/1-D (glue language; MAP/BYROW stay the
+  2-D path) vs lift the evaluator to 2-D (unblocks ~15 of the 57 gap names; partially
+  obsoletes the MAP host for simple cases; the sudoku seed is the stress corpus). Options +
+  costs in `docs/formula-node-parity.md` Tier 4; outcome becomes D2's successor entry.
 - [ ] **First-class composite drill-in — remaining gaps** (the "active graph context"
   arc; author 2026-07-06 said proceed). BUILT: `activeGraph.ts` seam (`getActive*` /
   `getOwningEditor`, `getEditor()` stays MAIN — locked by `activeGraph.test.ts`);
@@ -145,16 +150,16 @@ this backlog stays the per-item source of truth.
   confidence-level example).
 ## Nodes / engine
 
-- [ ] **Formula ↔ node parity program** (author direction 2026-07-14 — supersedes the
-  narrower "SETEQ as formula native" item) — converge the formula language and the node set;
-  audit + tiered design in **`docs/formula-node-parity.md`** (numbers regenerable via
-  `scripts/formula-node-parity.ts`). Headline gaps: 57 Excel-named nodes whose name isn't
-  formula-dispatchable (TEXTSPLIT, TAKE, SEQUENCE, XLOOKUP…); 75 untracked formula-only
-  legacy names (VLOOKUP dispatches despite D10-oos — drift, not decision); 25-entry native
-  registry stalled. Four author questions at the doc's end gate the tiers; Tier 1 (close the
-  57 via `registerInternal`) + the parity ratchet test are mechanical once greenlit. NOTE:
-  the author REOPENED D2's "permanent" Expression cap and the broadcast assumptions
-  (2026-07-14) — see the doc header + the D2 amendment in decisions.md.
+- [ ] **Formula ↔ node parity program — GREENLIT, build in a dedicated session** (author
+  direction + decisions 2026-07-14, recorded as **D19**; supersedes the narrower "SETEQ as
+  formula native" item) — converge the formula language and the node set; audit + tiers +
+  decisions in **`docs/formula-node-parity.md`** (numbers regenerable via
+  `scripts/formula-node-parity.ts`). Decided: legacy aliases BLOCKED (`#NAME?` + redirect
+  hint — VLOOKUP dispatching today is a bug); Solenoid-native formula names = the node
+  hover hint despaced (`typeHint()`, "SET RELATION" → `SETRELATION`); packs register their
+  own formula functions (pack-toggle-sensitive registry). Build order: ratchet test FIRST
+  (pin the 57 / the blocklist), then Tier 1 registrations, alias gate, pack seam. Tier 4
+  (the reopened D2 dimensionality cap) is NOT part of this — author-present, see below.
 - [ ] **Rigorous multi-column input-socket label syntax** (author 2026-07-06) — a
   frame/2-D input socket should state which columns it expects in ONE consistent
   grammar. Today it's ad hoc: Sankey reads "From+To+Value", standard charts read

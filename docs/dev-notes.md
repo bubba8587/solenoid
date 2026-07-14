@@ -23,6 +23,13 @@ Doc updates: D2 amended with the reopening (cap stands as working default until 
 Tier 4 decides), CLAUDE.md cap bullet softened to match, backlog: By-Row run mode
 refined per author (user SELECTS which input port to iterate rows of), Simulation stop
 condition author-approved, SETEQ item superseded by the parity program entry.
+**Round-1 decisions landed same day (D19):** legacy aliases BLOCKED on the formula
+surface (`#NAME?` + redirect; VLOOKUP dispatching = now a bug); Solenoid-native formula
+names = the node header hover hint DESPACED (`typeHint()` in `nodeKit.tsx`; "SET
+RELATION" → `SETRELATION`; multi-op-class naming is a build-session call under that
+rule); packs register their own formula functions (pack-toggle-sensitive registry).
+Tier 4 (the reopened cap) explicitly NOT decided — author-present, queued in backlog.
+Mechanical work GREENLIT but scoped OUT of this session (start with the ratchet test).
 
 ### SESSION DIGEST (2026-07-13c — Sudoku Solver seed: a matrix-algebra constraint solver in a Simulation composite)
 New seed `sudoku-solver.json` (+ `sudokuSeed.test.ts`): a full Sudoku solver built from EXISTING
