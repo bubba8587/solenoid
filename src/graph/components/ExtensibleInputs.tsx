@@ -204,8 +204,10 @@ export function ExtensibleInputs({
         // A container-typed row (the append family: Concat Lists / VSTACK /
         // HSTACK / frame Append) is WIRE-ONLY — a typed literal has no meaning
         // for a list/table/frame operand. Unwired it shows just its position
-        // (order = stack order); wired it names the incoming node.
-        const isWireOnly = dt === "anylist" || dt === "anytable" || dt === "table" || dt === "frame" || dt === "cube";
+        // (order = stack order); wired it names the incoming node. A logical
+        // operand (BooleanOp's AND/OR/… rows) is wire-only too — you wire a
+        // condition, matching IfNode; a number still bridges in via the socket.
+        const isWireOnly = dt === "anylist" || dt === "anytable" || dt === "table" || dt === "frame" || dt === "cube" || dt === "logicalcombo";
         return (
           <MeasuredSocketRow key={key} side="input" socketKey={key} nodeId={node.id} emit={emit} payload={input.socket}>
             {isWireOnly ? (

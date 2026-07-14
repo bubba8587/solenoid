@@ -5,6 +5,20 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-15c — Boolean op operands are logical, not numeric)
+`BooleanOpNode` (AND/OR/XOR/NAND/NOR/XNOR) operand rows + `NotNode` input were `numListIn`
+(numeric combo) — should be logical (author). Swapped to `logicalComboIn` (the symmetric combo
+rung, purple split-square): native logicals connect (Comparison/IS.TEST/logicallist) AND a number
+still bridges in (0/1 ⟷ FALSE/TRUE), so nothing existing breaks. Combo↔list are both rank 1, so a
+Comparison's `logicalcombo` output connects fine. Rows are now WIRE-ONLY (added `logicalcombo` to
+`ExtensibleInputs` `isWireOnly` — only BooleanOp uses that type there; NotNode's `InlineInputs`
+renders no field for logicalcombo automatically), matching IfNode's condition. The BooleanOp inline
+number editor was already non-functional (wrote `strLiterals`, which `coerceInputs` injects only for
+`strlist/datelist/logicallist`, not `numlist`), so no real loss; `data()` still honors any stored
+numeric `literals` as an unwired fallback. Migrated the `null-and-logical` seed's `andB`: dropped its
+hidden `{a0:0,a1:1}` literals and WIRED a `Number(1) → a1` so the "1 coerces to TRUE" demo is visible
+(a number flowing into a logical operand — the bridge in action). Full suite 2764 green.
+
 ### SESSION DIGEST (2026-07-15b — Build Frame / Frame from Lists type-by-adoption + adoptive-socket base)
 "Build Frame = upgrade a table into a frame by slapping headers on it" (author), so it should
 accept ANY homogeneous matrix, not just numeric — and type the columns by the matrix's element

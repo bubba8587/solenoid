@@ -236,7 +236,9 @@ export class BooleanOpNode extends ClassicPreset.Node {
   }
 
   private addInputWithKey(key: string): void {
-    this.addInput(key, numListIn(key));
+    // Logical operands (purple). A number still connects via the logical↔number
+    // bridge (0/1 ⟷ FALSE/TRUE), so an unwired numeric literal is honored too.
+    this.addInput(key, logicalComboIn(key));
     const n = parseInt(key.replace(/^a/, ""), 10);
     if (Number.isFinite(n)) this.nextInputId = Math.max(this.nextInputId, n + 1);
   }
@@ -279,7 +281,7 @@ export class NotNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("Not");
     this.label = init?.label ?? "NOT";
-    this.addInput("in", numListIn("In"));
+    this.addInput("in", logicalComboIn("In")); // logical (a number bridges 0/1 ⟷ FALSE/TRUE)
     this.addOutput("result", logicalComboOut("Result"));
   }
 
