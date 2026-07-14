@@ -6,7 +6,7 @@ import { GroupNode, nodeKindOf, NODE_KIND_SLOTS } from "./rete-nodes";
 import { dockedNodeStore } from "./dockedNodeStore";
 import { cableSelectionStore } from "./cableState";
 import { rebuildGroupMembership } from "./groupMembership";
-import { syncGroupCollapse } from "./groupCollapse";
+import { syncGroupCollapse, groupCollapseStore } from "./groupCollapse";
 import { scheduleAutosave } from "./persistence";
 import { pushHistory, getEditor } from "./process";
 import { settleStandoffs } from "./standoffs";
@@ -67,7 +67,14 @@ export async function createGroupFromSelection(editor: Editor, area: Area): Prom
   // reflow garbles its rendering. (Membership never includes cables — this just
   // drops the stale highlight state.)
   cableSelectionStore.set(null);
-  const sel = editor.getNodes().filter((n) => n.selected && !(n instanceof GroupNode));
+  // Exclude members hidden inside a collapsed group. Belt-and-suspenders behind
+  // the lasso fix (which no longer selects them): a node hidden in a collapsed
+  // group must never be silently absorbed into a NEW group — it already belongs
+  // to one, and it isn't visible to be reasoned about. Guards any selection path
+  // (Ctrl+A + G, etc.), not just the lasso.
+  const sel = editor
+    .getNodes()
+    .filter((n) => n.selected && !(n instanceof GroupNode) && !groupCollapseStore.isNodeHidden(n.id));
   if (sel.length === 0) return null;
 
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;

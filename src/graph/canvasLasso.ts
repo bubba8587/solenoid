@@ -7,6 +7,7 @@ import type { NodeEditor } from "rete";
 import type { AreaPlugin } from "rete-area-plugin";
 import type { Schemes, AreaExtra } from "./schemes";
 import { pointInPolygon, polygonIntersectsBBox, signedArea, lassoActiveStore, type Pt } from "./lasso";
+import { groupCollapseStore } from "./groupCollapse";
 import { touchSelectStore } from "./touchSelectStore";
 import { cableSelectionStore, cableGhostStore } from "./cableState";
 import { ribbonForConnection } from "./ribbonCable";
@@ -47,6 +48,13 @@ export function installLassoSelection(deps: LassoDeps): () => void {
     if (!area) return;
     const cr = container.getBoundingClientRect();
     for (const [id, view] of area.nodeViews) {
+      // Skip members hidden inside a collapsed group. They're `visibility:hidden`
+      // but still LAID OUT at their pre-collapse positions (deliberately, to keep
+      // socket/size measurement valid), so getBoundingClientRect returns a real
+      // box the lasso would otherwise "reach over" and select invisibly — pulling
+      // them into a new group when the user then hits G. The group node itself
+      // stays visible (never in this set), so a collapsed group is still lassoable.
+      if (groupCollapseStore.isNodeHidden(id)) continue;
       const br = view.element.getBoundingClientRect();
       nodeCorners.push({ id, corners: [
         { x: br.left  - cr.left, y: br.top    - cr.top },
