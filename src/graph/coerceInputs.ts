@@ -1,6 +1,6 @@
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
-import { SolenoidSocket, type SocketDataType } from "./sockets";
+import { SolenoidSocket, AdoptiveSocket, type SocketDataType } from "./sockets";
 import { toMatrix, toList, toScalar, toAnyMatrix, ShapeError } from "./nodes/coerce";
 import { isPassthroughNode } from "./nodes/passthrough";
 import { isFrameValue, frameFromRows, toCube } from "./frame";
@@ -29,6 +29,17 @@ const LAZY_FRAME_NODES: ReadonlySet<string> = new Set([
 // editor stores the raw text in `node.stringLiterals[key]`; we parse it here per
 // element type and inject it as the list when the input is unwired).
 const TYPEABLE_LIST: ReadonlySet<string> = new Set(["strlist", "datelist", "logicallist"]);
+
+/** The type a socket COERCES its input to. For a CONTAINER-rung adoptive input
+ *  (`any`/`anylist`/`anytable`) that's its declared BASE — NOT the concrete type it
+ *  adopted for colour — so a lower-rank value still WIDENS to the rank the node's
+ *  data() expects (a scalar into an `anylist` op → `[scalar]`, not a bare scalar).
+ *  A `trueany`-based adoptive (Display / IF / Cast — passthroughs that handle any
+ *  shape) keeps coercing on its adopted type, its established pre-existing behavior. */
+function coercionType(socket: unknown): SocketDataType | undefined {
+  if (socket instanceof AdoptiveSocket && socket.base !== "trueany") return socket.base;
+  return socket instanceof SolenoidSocket ? socket.dataType : undefined;
+}
 
 // Per-input coercion policy (the general seam): ACCEPTANCE is socket-driven (the
 // lattice in sockets.ts — every rank accepts lower ranks widening in), but the
@@ -233,7 +244,13 @@ export function wrapNodeData(node: NodeLike) {
       const raw = inputs[key];
       const arr = keepUnits || !Array.isArray(raw) ? raw : (raw.map(stripUnitCells) as unknown[]);
       const socket = node.inputs?.[key]?.socket;
-      const dt = socket instanceof SolenoidSocket ? socket.dataType : undefined;
+      // Coerce to the socket's DECLARED base rung, not an adopted concrete type: an
+      // adoptive `anylist`/`anytable` input colours itself to the wired cable's type
+      // (a scalar that widens IN adopts e.g. `number`), but the node's data() was
+      // authored against the base rung — coercing on the adopted `number` would keep
+      // the scalar instead of widening it to `[scalar]`, breaking the widening the
+      // socket promises. The adopted type stays for colour + downstream resolution.
+      const dt = coercionType(socket);
       if (!dt || !Array.isArray(arr)) { coerced[key] = arr; continue; }
       // A raw input (declared on node.rawInputs) bypasses coercion so the node sees
       // the frame/cube exactly as it flowed in (a ref was already materialized above
