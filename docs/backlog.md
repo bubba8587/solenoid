@@ -56,11 +56,14 @@ this backlog stays the per-item source of truth.
 
 ## Needs an author decision / author-present session
 
-- [ ] **Parity Tier 4 — the formula dimensionality cap (D2, reopened)** (author 2026-07-14:
-  "we have to talk about this") — keep formulas scalar/1-D (glue language; MAP/BYROW stay the
-  2-D path) vs lift the evaluator to 2-D (unblocks ~15 of the 57 gap names; partially
-  obsoletes the MAP host for simple cases; the sudoku seed is the stress corpus). Options +
-  costs in `docs/formula-node-parity.md` Tier 4; outcome becomes D2's successor entry.
+- [ ] **Parity Tier 4 — the formula dimensionality cap (D2, reopened; discussed 2026-07-14)**
+  — NOT decidable yet: precondition is finishing the registry unification (same motion as the
+  greenlit Tier 1 work). Criteria fixed by the author: correctness + coherence only (the
+  identity/auditability objection is RETIRED — don't re-litigate). When it returns, bring a
+  shape-branding design for the type-agnostic evaluator + the Excel-DA broadcast-rules table
+  (machine-checked, formatModel-style); endpoints: "never" vs "matrices-only, full DA
+  semantics" (frames-in-formulas rejected). Full record: `docs/formula-node-parity.md`
+  "Tier 4 in full". The transpiler (bundle 08) is the standing pressure.
 - [ ] **First-class composite drill-in — remaining gaps** (the "active graph context"
   arc; author 2026-07-06 said proceed). BUILT: `activeGraph.ts` seam (`getActive*` /
   `getOwningEditor`, `getEditor()` stays MAIN — locked by `activeGraph.test.ts`);

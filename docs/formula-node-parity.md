@@ -97,17 +97,64 @@ tier — a query language in a formula string is its own large design (and bundl
 transpiler is the nearer answer for "text in, graph out").
 
 **Tier 4 — the dimensionality cap itself (D2, reopened).** Whether formulas accept
-matrices/frames. This is the real fork:
-  - *Keep the cap*: formulas stay the scalar/1-D glue language; 2-D work stays in nodes;
-    Tier 1's 2-D sub-case stays out. Cheapest, and the MAP/BYROW hosts remain the
-    sanctioned 2-D formula path (which they already are — the cap has a deliberate
-    2-D escape hatch today).
-  - *Lift to 2-D*: the evaluator's broadcaster generalizes (element-wise over matrices,
-    aggregates flatten, shape errors on mismatch) — a real but bounded engine project;
-    makes ~15 more of the 57 registrable; partially obsoletes the MAP host node for
-    simple cases. The sudoku seed is a ready-made stress corpus.
-  - Either way, **decide once and record it in decisions.md as the D2 successor** —
-    D2's current text says "permanently," which no longer reflects the author's stance.
+matrices. Discussed with the author 2026-07-14 — full framing in the dedicated section
+below; short version: NOT a now-decision. The precondition is finishing the engine
+unification; the decision criteria are fixed (correctness + coherence — the
+product-identity objection is retired by the author); the endpoint choice ("never" vs
+"after unification, matrices-only") waits until the precondition is real.
+
+## Tier 4 in full — the 2026-07-14 discussion, recorded
+
+**What the original cap was actually protecting (the 2026-06-23 archive record —
+`archive/dev-notes-history.md`, three same-day entries).** The `#SHAPE!` block predated
+the decision and said "yet"; the author's decision made it permanent to close a thread.
+The genuinely technical reason recorded is the **type-agnostic evaluator**: values in
+formula-land are bare JS things (`Array.isArray` = list), so a complex `[re,im]` is
+indistinguishable from a 2-list — fixing that "needs a branded value + a type pass —
+exactly the line we're declining to cross." Same day, the author flagged the
+**two-engine smell** (formulas run on Formula.js, nodes are hand-rolled natives; results
+can diverge — the formula popup still carries the disclosure note) and parked the fix.
+So the cap was partly **containment**: stop feeding the weaker, divergent engine.
+`archive/formulajs-vs-native-audit.md` §4 makes the order explicit: single registry +
+Formula.js→SolError mapping BEFORE any widening.
+
+**What's changed since (verified in code 2026-07-14):** the SolError mapping EXISTS
+(`fxErrorToSol`, applied at the dispatch boundary), and the 2026-07-10 node-vs-formula
+sweep pinned stats/rounding/math agreement with `formulaDivergence.test.ts`. The audit's
+precondition is therefore HALF-met: error integration done, divergence pinned by test,
+**structural registry unification still partial** (25 natives; most nodes don't share an
+impl with the formula path).
+
+**The case against lifting, steelmanned (what a future session must answer):**
+1. *The shape-branding problem* — the type-agnostic evaluator has no way to tell `[[1,2]]`
+   (1×2 matrix) from a list-of-one-list, a 2-list from a row; Excel's grid stamps a shape
+   on every value, we have no grid. Lifting either sneaks in the branded-value/type-pass
+   D2 declined (a second typed engine inside strings) or runs on heuristics that misfire
+   at the edges. This is the hard part, NOT the broadcaster.
+2. *Feeding the divergent engine* — moot once unification is finished; blocking until then.
+3. *The units fork* — matrices are unit-agnostic (A4), so identical math carries units as
+   a node chain and drops them as a 2-D formula. Needs at least a documented rule.
+4. *"Copy Excel DA" is a translation* — no cells → no spill/implicit intersection/#SPILL!;
+   DA-for-sockets is a design act with parity-bug exposure. The broadcast-rules table
+   (formatModel-style, machine-checked) is the cheap probe that surfaces regrets early.
+
+**The author's criteria ruling (2026-07-14, verbatim intent):** the product-identity /
+canvas-auditability objection ("big formulas hide logic and erode the app's
+differentiator") is **explicitly retired** — *"if people find the normal app valuable
+enough to use over Excel in the first place, they won't be tempted to only use the
+Solenoid formula engine either; someone who wants everything in a tiny compact formula
+will just use Excel already."* Tier 4 will be decided on **what is correct and necessary
+for coherence** — engineering grounds only. Do not re-litigate the identity argument.
+
+**Standing plan:** (1) finish the registry unification as part of the D19 Tier 1 work —
+closing the 57 grows the registry anyway, so the precondition and the greenlit work are
+the same motion; (2) with unification real, bring Tier 4 back with a concrete
+shape-branding design + the DA broadcast-rules table; the two defensible endpoints are
+"never (formulas stay 1-D glue)" and "matrices-only, full Excel-DA semantics — frames/
+cubes/complex stay out" (rung 4, frames-in-formulas, is rejected outright: no Excel
+semantics to copy, competes with the verb engine, breaks lazy-FrameRef economics).
+The transpiler (bundle 08) is the standing pressure that keeps the lift alive: real
+workbooks are full of dynamic-array formulas, and under the cap they transpile inert.
 
 ## Proposed machinery — make parity an invariant, not a cleanup
 
@@ -142,9 +189,10 @@ cheap, permanent guards:
    own op-selector shape, but per-op names are also defensible; decide there, under the
    unification rule. (b) Excel-named ops (UPPER, TRIM…) keep their Excel names — this
    rule is for the Solenoid-native core only.
-3. **Tier 4 (the reopened D2 cap): UNDECIDED — author-present discussion required**
-   ("we have to talk about this"). D2 stands as the working default meanwhile. Queued
-   in backlog under "Needs an author decision / author-present session."
+3. **Tier 4 (the reopened D2 cap): discussed 2026-07-14 — see "Tier 4 in full" above.**
+   Not decided; criteria fixed (correctness + coherence; identity objection retired);
+   precondition = finish the registry unification (same motion as the Tier 1 work).
+   D2 stands as the working default meanwhile.
 4. **Packs register their own formula functions** through the `registerInternal` seam,
    same naming rule — a pack ships its node + formula surface together. Registration
    must track pack enable/disable (`FORMULA_FUNCTION_NAMES`/autocomplete become

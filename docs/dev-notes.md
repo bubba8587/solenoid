@@ -30,6 +30,18 @@ RELATION" → `SETRELATION`; multi-op-class naming is a build-session call under
 rule); packs register their own formula functions (pack-toggle-sensitive registry).
 Tier 4 (the reopened cap) explicitly NOT decided — author-present, queued in backlog.
 Mechanical work GREENLIT but scoped OUT of this session (start with the ratchet test).
+**Tier 4 discussion held (same day):** dug out the ORIGINAL cap rationale from the
+2026-06-23 archive — the `#SHAPE!` block said "yet" before the decision hardened it; the
+technical core is the TYPE-AGNOSTIC EVALUATOR (no branded values — `[re,im]` ≡ 2-list,
+and `[[1,2]]` ≡ list-of-lists is the same ambiguity for matrices); the cap was partly
+CONTAINMENT of the two-engine divergence flagged the same day. Since then: `fxErrorToSol`
+landed and the 2026-07-10 sweep + `formulaDivergence.test.ts` pinned agreement — the
+audit-§4 precondition is HALF-met; the structural registry unification is the missing
+half (and coincides with D19 Tier 1). Author fixed the DECISION CRITERIA: correctness +
+coherence only — the identity/auditability objection is RETIRED ("someone who wants
+everything in a tiny compact formula will just use Excel already"). Endpoints when it
+returns: "never" vs "matrices-only, full Excel-DA semantics"; frames-in-formulas
+rejected outright. Recorded in the parity doc ("Tier 4 in full"), D2's note, backlog.
 
 ### SESSION DIGEST (2026-07-13c — Sudoku Solver seed: a matrix-algebra constraint solver in a Simulation composite)
 New seed `sudoku-solver.json` (+ `sudokuSeed.test.ts`): a full Sudoku solver built from EXISTING

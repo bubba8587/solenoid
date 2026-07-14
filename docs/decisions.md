@@ -48,6 +48,16 @@ STANDS as the working default until the parity design decides Tier 4 (keep 1-D v
 to 2-D) — see `docs/formula-node-parity.md`, whose outcome should be recorded here as
 D2's successor. Do not treat D2 as immovable in that design; do not silently widen
 Expression before it's decided either.
+**Tier 4 discussion held same day (see the parity doc's "Tier 4 in full"):** precondition
+= finish the registry unification (the audit §4 order; SolError mapping + the divergence
+sweep already landed, the structural registry is the missing half — and it's the same
+motion as D19's Tier 1 work). Decision criteria FIXED by the author: **correctness +
+coherence only** — the canvas-auditability/identity objection is retired (*"someone who
+wants everything in a tiny compact formula will just use Excel already"*). Endpoints on
+the table when it returns: "never" vs "matrices-only with full Excel-DA semantics"
+(frames-in-formulas rejected outright). The open technical crux is shape-branding in the
+type-agnostic evaluator — the same `[re,im]`-vs-2-list ambiguity this entry's complex
+paragraph records, generalized to `[[1,2]]`-vs-list-of-lists.
 
 ### D3 — No backward compatibility / no migration shims (pre-alpha)
 **When:** ongoing policy; swept clean 2026-06-19. **Where:** `CLAUDE.md` pre-alpha section.
