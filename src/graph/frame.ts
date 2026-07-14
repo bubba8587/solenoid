@@ -14,6 +14,7 @@ import { isSolError, type SolError } from "./errorValue";
 import { coerceLogical } from "./valueKinds";
 import { type ColumnUnit } from "./unitValue";
 import { parseColumnUnitFromHeader } from "./unitColumn";
+import { elementFamilyOf, type SocketDataType } from "./sockets";
 
 // A column is one of: numeric, free text, DATE, or LOGICAL. A date column stores
 // Excel serials (numbers) just like a numeric column — the `type: "date"` tag is
@@ -126,6 +127,73 @@ export function buildFrame(matrix: number[][], names?: ReadonlyArray<string>): F
     ...(parsed[j]?.unit ? { unit: parsed[j]!.unit } : {}),
   }));
   return { __frame: true, columns };
+}
+
+/** One frame column from raw cells. `knownType` (from an adopted socket) wins —
+ *  it's the ONLY way to recover `date` (serials are indistinguishable from numbers
+ *  at the value level); without it the type is inferred from the runtime cell types
+ *  (type-PRESERVING: "1" the string stays a string, unlike CSV's inferColumn which
+ *  re-parses). Blanks → null, per-cell SolErrors pass through, and cells are coerced
+ *  to the column type's representation (a non-string in a string column → String). */
+export function typedColumn(
+  name: string,
+  cells: ReadonlyArray<unknown>,
+  length: number,
+  knownType?: FrameColType | null,
+): FrameColumn {
+  const present = cells.filter((c) => c !== null && c !== undefined && !isSolError(c));
+  const type: FrameColType = knownType
+    ?? (present.length > 0 && present.every((c) => typeof c === "number") ? "number"
+      : present.length > 0 && present.every((c) => typeof c === "boolean") ? "logical"
+      : "string");
+  const values: FrameCell[] = [];
+  for (let i = 0; i < length; i++) {
+    const c = cells[i];
+    if (c === null || c === undefined) { values.push(null); continue; }
+    if (isSolError(c)) { values.push(c); continue; }
+    if (type === "string") { values.push(typeof c === "string" ? c : String(c)); continue; }
+    if (type === "logical") { values.push(typeof c === "boolean" ? c : cellToBool(c)); continue; }
+    // number / date — a date rides as its serial number; keep numbers as-is,
+    // coerce a stray non-number defensively (dirty anytable cell → NaN, the same
+    // quiet affordance Table/Frame Input use).
+    values.push(typeof c === "number" ? c : (cellToNumber(c) ?? NaN));
+  }
+  return { name, type, values };
+}
+
+/** Build a Frame from a matrix of ANY element type, typing every column. `colType`
+ *  (the matrix's homogeneous element family, from its socket) applies to all columns;
+ *  when null the type is inferred per column from values. Header `(unit)` suffixes lock
+ *  a numeric column's unit, as in buildFrame. Build Frame's non-numeric path. */
+export function buildFrameTyped(
+  matrix: ReadonlyArray<ReadonlyArray<unknown>>,
+  names?: ReadonlyArray<string>,
+  colType?: FrameColType | null,
+): FrameValue {
+  const ncols = matrix.reduce((m, r) => Math.max(m, r.length), 0);
+  const parsed = (names ?? []).map((n) => parseColumnUnitFromHeader(n));
+  const cleanNames = (names ?? []).map((_, i) => parsed[i]?.clean ?? names![i]);
+  const headers = makeHeaders(cleanNames, ncols);
+  const columns: FrameColumn[] = headers.map((name, j) => {
+    const cells = matrix.map((row) => (j < row.length ? row[j] : null));
+    const col = typedColumn(name, cells, matrix.length, colType ?? undefined);
+    return parsed[j]?.unit && col.type === "number" ? { ...col, unit: parsed[j]!.unit } : col;
+  });
+  return { __frame: true, columns };
+}
+
+/** Map a socket's dataType to the frame column type it carries (its element family),
+ *  or null when the element family is unknowable for a frame — a wildcard rung
+ *  (any/anylist/anytable/trueany, i.e. a not-yet-adopted adoptive port) or `complex`
+ *  (frames hold no complex column). Callers fall back to value inference on null. */
+export function colTypeForSocket(dataType: string | undefined): FrameColType | null {
+  switch (elementFamilyOf(dataType as SocketDataType)) {
+    case "number": return "number";
+    case "string": return "string";
+    case "date": return "date";
+    case "logical": return "logical";
+    default: return null; // complex, or a wildcard rung (no adopted family yet)
+  }
 }
 
 /** Split a Frame into its numeric Matrix (row-major) and the full header list.

@@ -30,6 +30,13 @@ export const anyIn      = (label: string) => new ClassicPreset.Input(anySocket, 
 // XLOOKUP results — the value's type varies per row/column).
 export const trueAnyIn        = (label: string) => new ClassicPreset.Input(new AdoptiveSocket(), label);
 export const trueAnyOut       = (label: string) => new ClassicPreset.Output(new AdoptiveSocket(), label);
+// Adoptive matrix / list inputs: accept any element family (like anyTableIn /
+// anyListIn) but ADOPT the wired cable's concrete type, so the consuming node can
+// read its element family off the socket — the one thing values can't recover (a
+// date serial is indistinguishable from a number). Build Frame / Frame from Lists
+// use these to type frame columns by the incoming matrix/list, dates included.
+export const adoptiveTableIn  = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anytable"), label);
+export const adoptiveListIn   = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anylist"), label);
 export const staticTrueAnyIn  = (label: string) => new ClassicPreset.Input(trueAnySocket, label);
 export const staticTrueAnyOut = (label: string) => new ClassicPreset.Output(trueAnySocket, label);
 // A 2-D (grid) input of ANY element type — for element-agnostic matrix ops

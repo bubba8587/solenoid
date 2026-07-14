@@ -65,7 +65,9 @@ function reconcileOnce(editor: AdoptEditor): Set<string> {
       const sock = inp?.socket;
       if (!(sock instanceof AdoptiveSocket)) continue;
       const feed = conns.find((c) => c.target === node.id && c.targetInput === key);
-      let want: SocketDataType = "trueany";
+      // Unwired → revert to this port's declared base (usually `trueany`; a narrower
+      // `anytable`/`anylist` base keeps a Build-Frame-style port restricted).
+      let want: SocketDataType = sock.base;
       if (feed) {
         const out = editor.getNode(feed.source)?.outputs?.[feed.sourceOutput]?.socket;
         if (out instanceof SolenoidSocket) want = out.dataType;

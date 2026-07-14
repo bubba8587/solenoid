@@ -365,8 +365,14 @@ export class MutableSocket extends SolenoidSocket {
  *  sockets by `instanceof`, so a node opts a port in just by constructing one.
  *  One instance per port, never shared (a retype must not leak across cards). */
 export class AdoptiveSocket extends MutableSocket {
-  constructor() {
-    super("trueany");
+  /** The type this port reverts to when unwired. Default `trueany` (the hollow-ring
+   *  placeholder). A narrower base (e.g. `anytable`, `anylist`) keeps the port
+   *  RESTRICTED to that rung's acceptance while still adopting the wired cable's
+   *  CONCRETE type — a `datetable` in still reads as `datetable`, but a scalar/frame
+   *  is refused. Used by Build Frame / Frame from Lists to learn a matrix/list's
+   *  element family (the one thing values can't recover — a date serial looks numeric). */
+  constructor(public readonly base: SocketDataType = "trueany") {
+    super(base);
   }
 }
 
