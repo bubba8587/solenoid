@@ -22,7 +22,7 @@ export const dateListIn = (label: string) => new ClassicPreset.Input(dateListSoc
 // `any` = element-agnostic SCALAR (a single value of any family). For a true
 // accept-anything port (containers + object family) use the adoptive/trueany
 // factories below.
-export const anyIn      = (label: string) => new ClassicPreset.Input(anySocket,     label);
+export const anyIn      = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("any"), label); // adoptive: colours to the wired type (see anyTableIn note below)
 // ADOPTIVE trueany ports (the default for accept-anything): a fresh
 // AdoptiveSocket per port — it adopts the wired cable's type and reverts to the
 // hollow trueany on disconnect (reconcileTrueAnyTypes). Use the STATIC variants
@@ -45,14 +45,15 @@ export const adoptiveTableOut = (label: string) => new ClassicPreset.Output(new 
 export const adoptiveListOut  = (label: string) => new ClassicPreset.Output(new AdoptiveSocket("anylist"), label);
 export const staticTrueAnyIn  = (label: string) => new ClassicPreset.Input(trueAnySocket, label);
 export const staticTrueAnyOut = (label: string) => new ClassicPreset.Output(trueAnySocket, label);
-// A 2-D (grid) input of ANY element type — for element-agnostic matrix ops
-// (TRANSPOSE / HSTACK / CHOOSEROWS / reshape / MAP). A lower-rank value (a 1-D
-// list, a scalar) widens IN, the same way a `list` widens into a `table` input.
-export const anyTableIn = (label: string) => new ClassicPreset.Input(anyTableSocket, label);
-// A 1-D (list) input/output of ANY element type — for element-agnostic list ops
-// (Set). Any scalar/list/combo of any family widens IN; the output stays 1-D and
-// drops into any concrete list input. The rank-1 sibling of anyTableIn.
-export const anyListIn  = (label: string) => new ClassicPreset.Input(anyListSocket, label);
+// Element-agnostic INPUTS (any / anylist / anytable) are ADOPTIVE (2026-07-15): they
+// accept any element family (a lower-rank value widens IN, as before) AND colour the
+// dot to the wired cable's concrete type, reverting to the neutral rung on disconnect
+// (settleWildcardTypes). Purely informative — acceptance is unchanged (the base rung),
+// and coerceInputs treats the adopted concrete type identically to the neutral one for
+// these (verified by the full suite). anyTableIn = 2-D (TRANSPOSE/HSTACK/reshape/MAP),
+// anyListIn = 1-D (Set/position ops), anyIn = scalar.
+export const anyTableIn = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anytable"), label);
+export const anyListIn  = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anylist"), label);
 export const anyListOut = (label: string) => new ClassicPreset.Output(anyListSocket, label);
 export const numOut     = (label: string) => new ClassicPreset.Output(numberSocket,  label);
 export const listOut    = (label: string) => new ClassicPreset.Output(listSocket,    label);
