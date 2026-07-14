@@ -121,6 +121,16 @@ this backlog stays the per-item source of truth.
 
 ## Composite / drill-in
 
+- [ ] **Simulation stop condition** (surfaced by the sudoku-solver seed, 2026-07-13) — an
+  optional "Stop when" logical output on a Simulation composite: check it after each round,
+  halt early, reinterpret `simulationSteps` as the hard cap. Small change inside
+  `runSimulation`; makes fixpoint loops self-terminating (the sudoku seed hand-tunes 25 steps).
+- [ ] **By-Row run mode** (surfaced 2026-07-13) — run the subgraph once per row of a wired
+  frame (columns bind to same-named input ports), collect per-port series; structurally
+  Scenarios mode with data-driven overrides (`collectMultiple`). The node-level "for each" —
+  per-row logic with real nodes (Set ops, Joins, sub-models), not just BYROW's formula subset.
+  Guardrail: dozens-to-hundreds of rows (full engine reset per pass); the Polars verb chain
+  stays the bulk path. BYCOL = transpose first, don't build it.
 - [ ] **Inside-solve stale dot is uniform** (author 2026-07-06, minor): after an INSIDE Solve
   (runs on marker seeds, ignoring outside wiring) the stale dot reads green though the held result
   is seed-based, not wired — you re-solve outside to use wiring. Distinguishing the two needs a
@@ -132,6 +142,11 @@ this backlog stays the per-item source of truth.
   confidence-level example).
 ## Nodes / engine
 
+- [ ] **Set predicates as formula natives** (surfaced 2026-07-13) — register `SETEQ` (and
+  friends) via the `registerInternal` seam (`excelFunctions.ts`) so Set-relation logic is
+  callable from Expression/MAP/BYROW. Predicates (→ logical) are cheap; set OPERATIONS
+  (→ list) need range-function routing in `broadcastCall` + a list `ExcelReturn` — defer
+  those unless a concrete case shows up.
 - [ ] **Rigorous multi-column input-socket label syntax** (author 2026-07-06) — a
   frame/2-D input socket should state which columns it expects in ONE consistent
   grammar. Today it's ad hoc: Sankey reads "From+To+Value", standard charts read
