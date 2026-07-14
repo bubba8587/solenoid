@@ -42,6 +42,15 @@ coherence only — the identity/auditability objection is RETIRED ("someone who 
 everything in a tiny compact formula will just use Excel already"). Endpoints when it
 returns: "never" vs "matrices-only, full Excel-DA semantics"; frames-in-formulas
 rejected outright. Recorded in the parity doc ("Tier 4 in full"), D2's note, backlog.
+**D20 (same day) — homogeneous matrix units:** the author corrected the A4 record
+("Matrix = unit-AGNOSTIC always" carried no rationale and didn't match intent): a matrix
+gets ONE unit tag per value, tracking the type plane (one element family per matrix ⇒ one
+unit, like a frame column). Lists STAY per-cell — reaffirmed on the load-bearing
+list⇄frame-row duality (Get Row yields legitimately mixed units). Governing principle
+recorded in D20: *units attach at the granularity where the container guarantees
+homogeneity*. Op rules queued in backlog (element-wise = scalar algebra on the tag; MMULT
+multiplies dims; reshapes carry; MDETERM/MINVERSE = `dimPow` or documented-strip; uniform
+list widens carrying, mixed widens stripped). Also closes most of Tier 4's units fork.
 
 ### SESSION DIGEST (2026-07-13c — Sudoku Solver seed: a matrix-algebra constraint solver in a Simulation composite)
 New seed `sudoku-solver.json` (+ `sudokuSeed.test.ts`): a full Sudoku solver built from EXISTING

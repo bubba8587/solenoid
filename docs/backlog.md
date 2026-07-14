@@ -153,6 +153,14 @@ this backlog stays the per-item source of truth.
   confidence-level example).
 ## Nodes / engine
 
+- [ ] **Homogeneous matrix units (D20, author 2026-07-14)** — matrices get ONE unit tag
+  per value (supersedes A4's "unit-AGNOSTIC always"; principle + op rules in D20). Thread
+  the tag through the matrix family (`matrix.ts`: element-wise = scalar algebra, MMULT
+  multiplies dims, reshapes/TAKE/DROP carry, MDETERM/MINVERSE = `dimPow` or documented-strip
+  initially), the widening edges (uniform list carries its unit in, mixed list strips), FC
+  `applyFcUnit` + Convert on tables (currently pass-through), display (chip/popup show the
+  unit), and the `unitLattice` sweep. Lists stay per-cell (reaffirmed — the frame-row
+  duality).
 - [ ] **Formula ↔ node parity program — GREENLIT, build in a dedicated session** (author
   direction + decisions 2026-07-14, recorded as **D19**; supersedes the narrower "SETEQ as
   formula native" item) — converge the formula language and the node set; audit + tiers +
