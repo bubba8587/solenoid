@@ -1,6 +1,7 @@
 import { ClassicPreset } from "rete";
 import { numberSocket, AdoptiveSocket, MutableSocket, type SocketDataType } from "../sockets";
 import { frameIn, frameOut, dateOut, numOut } from "./shared";
+import type { PassthroughSpec } from "./passthrough";
 import { isFrameValue, getColumn, frameRowCount, cubeFromColumns, type FrameValue, type FrameColType, type CubeCell } from "../frame";
 import { jsDateToSerial } from "./date";
 import { clamp } from "./mathUtils";
@@ -75,6 +76,15 @@ export class CableSwitchNode extends ClassicPreset.Node {
   titleFor(key: string): string {
     const t = (this.titles[key] ?? "").trim();
     return t || `Input ${Object.keys(this.inputs).indexOf(key) + 1}`;
+  }
+
+  /** One mode: routes the ACTIVE input to `out` unchanged → its type + unit ride
+   *  through (now also units — it didn't before). Many mode collects a Cube, so it's
+   *  NOT a passthrough (syncOutputType owns that output). ONE declaration for type
+   *  adoption + unit flow (passthrough.ts). */
+  passthrough(): PassthroughSpec[] {
+    if (this.multiSelect) return [];
+    return [{ output: "out", inputs: Object.keys(this.inputs), combine: "active", activeIndex: () => this.activeIndex }];
   }
 
   /** Keep the output socket type in sync with the mode (`cube` in Many, else `trueany`).

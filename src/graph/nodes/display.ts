@@ -1,5 +1,6 @@
 import { ClassicPreset } from "rete";
 import { getRecalcGen, isGraphRebuilding } from "../process";
+import type { PassthroughSpec } from "./passthrough";
 import type { UnitSuffix } from "../unitFormat";
 import { isFrameValue, isCubeValue, type FrameValue, type CubeValue } from "../frame";
 import { trueAnyIn, trueAnyOut, numIn, numOut, numListIn, numListOut, strIn, broadcast } from "./shared";
@@ -15,10 +16,10 @@ export class DisplayNode extends ClassicPreset.Node {
   // a list of text (string[]), or a Frame.
   cachedValue: number | number[] | number[][] | string | string[] | FrameValue | CubeValue | LambdaValue | SolError | null = null;
   unitSuffix: UnitSuffix = "none";
-  // Display passes its value through unchanged, so it preserves the unit too:
-  // the unit-flow resolver carries an upstream unit straight across it. (See
-  // unitFlow.ts — any value-identical passthrough node sets this.)
-  passesUnitThrough = true;
+  // Display forwards its value byte-for-byte → a PURE passthrough: it adopts the
+  // input's type/unit/format and carries a downstream FC's lock across a run of
+  // Displays. ONE declaration, read by trueany adoption + unitFlow (passthrough.ts).
+  passthrough(): PassthroughSpec[] { return [{ output: "out", inputs: ["in"], combine: "single", pure: true }]; }
   // A bit larger by default than a compute node — it's a display surface, and it's
   // resizable (nodeResizable) so the user can grow it to show a full list/table.
   width = 220;

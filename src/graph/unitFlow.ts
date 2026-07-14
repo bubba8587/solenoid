@@ -1,6 +1,7 @@
 import type { ClassicPreset } from "rete";
 import type { NodeEditor } from "rete";
 import { type FormatAnnotation } from "./formatAnnotationStore";
+import { isPassthroughNode, isPurePassthroughNode, passInputKeys, selectedPassInput } from "./nodes/passthrough";
 
 // ─── Unit flow ─────────────────────────────────────────────────────────────────
 // The UNIT of a value is a property of the *value* itself — a base-SI `UnitCell`
@@ -15,14 +16,12 @@ import { type FormatAnnotation } from "./formatAnnotationStore";
 // Per-node rule (all duck-typed so this file imports no node classes):
 //   • Convert     (has fromUnit + toUnit) → transform: DROPS the inherited format.
 //   • FC / producer (has annotation / annotationFor) → LOCKS its own format.
-//   • passthrough — a node that SELECTS/PASSES a value unchanged carries the lock:
-//       · `passesUnitThrough: true`  → all connected inputs are value inputs (Display).
-//       · `selectedUnitInput(): string | null` → the node has COMPUTED which one branch
-//         it's passing right now (IF knows its condition, CHOOSE its index, …). When a key
-//         is returned, the output simply carries THAT branch's annotation. `null` =
-//         indeterminate (e.g. a LIST condition picks per-element), so fall back to:
-//       · `unitPassInputs(): string[]` → the value branches COMBINED: the annotations must
-//         AGREE (else ambiguous → none).
+//   • passthrough — a node whose `passthrough()` declaration (passthrough.ts, the ONE
+//     source type adoption ALSO reads) says it forwards a value unchanged:
+//       · data-aware `selected()` names the ONE branch it's passing right now (IF from
+//         its condition, CHOOSE from its index) → carry THAT branch's annotation;
+//         `null` = indeterminate (a LIST condition picks per-element), so fall back to:
+//       · the spec's value-branch inputs COMBINED — the annotations must AGREE (else none).
 //   • anything else                       → clear: nothing locked (the value is transformed).
 
 type AnyEditor = NodeEditor<{
@@ -41,30 +40,19 @@ function isFc(n: unknown): n is FcLike {
   const o = n as Record<string, unknown> | null;
   return !!o && typeof o.unit === "string" && typeof o.format === "string";
 }
-/** A passthrough node either marks ALL inputs as value inputs (`passesUnitThrough`)
- *  or names the value-branch inputs via `unitPassInputs()` (the selectors). */
-function isPassthrough(n: unknown): boolean {
-  const o = n as Record<string, unknown> | null;
-  return !!o && (o.passesUnitThrough === true || typeof o.unitPassInputs === "function");
-}
-/** A PURE passthrough (Display): every input is the same value forwarded unchanged
- *  on its single output. Unlike a selector, the value flows straight through, so a
- *  segment of these between a value's origin and an FC all show the FC's lock. */
-function isPurePassthrough(n: unknown): boolean {
-  return (n as Record<string, unknown> | null)?.passesUnitThrough === true;
-}
-/** The explicit value-branch input keys, or null = "all connected inputs". */
+// The passthrough facts (which node passes a value through, which inputs are its value
+// branches, which branch is live) now come from the node's ONE `passthrough()`
+// declaration (passthrough.ts) — the same source trueany TYPE adoption reads, so a node
+// can't pass type-but-not-unit (the Expect / Cable Switch / IFERROR drift this closes).
+const isPassthrough = isPassthroughNode;
+const isPurePassthrough = isPurePassthroughNode;
+/** The explicit value-branch input keys (the selector's value rows, Display's `in`). */
 function valuePassKeys(n: unknown): string[] | null {
-  const f = (n as Record<string, unknown> | null)?.unitPassInputs;
-  return typeof f === "function" ? (f as () => string[]).call(n) : null;
+  return passInputKeys(n);
 }
-/** The ONE input key the node has computed it's currently passing through (data-aware):
- *  a string = that branch, `null` = indeterminate (fall back to combine), `undefined` =
- *  the node doesn't track a selection (Display). */
-function selectedKey(n: unknown): string | null | undefined {
-  const f = (n as Record<string, unknown> | null)?.selectedUnitInput;
-  return typeof f === "function" ? (f as () => string | null).call(n) : undefined;
-}
+/** The ONE input key being passed RIGHT NOW (data-aware): a string = that branch,
+ *  `null` = indeterminate (fall back to combine), `undefined` = no runtime pick. */
+const selectedKey = selectedPassInput;
 type FcAnnLike = { annotation: () => FormatAnnotation };
 function hasAnnotation(n: unknown): n is FcAnnLike {
   return typeof (n as Record<string, unknown> | null)?.annotation === "function";

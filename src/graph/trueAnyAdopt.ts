@@ -1,6 +1,6 @@
 import type { ClassicPreset } from "rete";
 import { AdoptiveSocket, MutableSocket, SolenoidSocket, type SocketDataType } from "./sockets";
-import { DisplayNode, ExpectNode, CableSwitchNode, IfNode, IFErrorNode, ChooseNode, SwitchNode, IfsNode } from "./rete-nodes";
+import { getPassthrough, resolvePassthroughType } from "./nodes/passthrough";
 import { reconcileConduitTypes } from "./conduitTrace";
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
@@ -77,36 +77,14 @@ function reconcileOnce(editor: AdoptEditor): Set<string> {
         changed.add(node.id);
       }
     }
-    // 2) Per-node OUTPUT policy.
-    let outKey: string | null = null;
-    let want: SocketDataType = "trueany";
-    if (node instanceof DisplayNode || node instanceof ExpectNode) {
-      outKey = "out";
-      want = inType(node, "in") ?? "trueany";
-    } else if (node instanceof CableSwitchNode) {
-      if (node.multiSelect) continue; // Many mode: syncOutputType owns the cube type
-      outKey = "out";
-      const keys = Object.keys(node.inputs ?? {});
-      const idx = keys.length ? Math.max(0, Math.min(node.activeIndex, keys.length - 1)) : 0;
-      want = keys[idx] ? (inType(node, keys[idx]) ?? "trueany") : "trueany";
-    } else if (node instanceof IfNode) {
-      outKey = "result";
-      want = agree([inType(node, "then"), inType(node, "else")]);
-    } else if (node instanceof IFErrorNode) {
-      outKey = "result";
-      want = agree([inType(node, "value"), inType(node, "fallback")]);
-    } else if (node instanceof ChooseNode) {
-      outKey = "result";
-      want = agree(node.valueInputKeys().map((k) => inType(node, k)));
-    } else if (node instanceof SwitchNode) {
-      outKey = "result";
-      want = agree([...node.valuePairKeys().map(([, thenK]) => inType(node, thenK)), inType(node, "default")]);
-    } else if (node instanceof IfsNode) {
-      outKey = "result";
-      want = agree([...node.valuePairKeys().map(([, valK]) => inType(node, valK)), inType(node, "otherwise")]);
-    }
-    if (outKey) {
-      const outSock = node.outputs?.[outKey]?.socket;
+    // 2) Per-node OUTPUT policy — driven by the node's passthrough() declaration
+    //    (passthrough.ts), the ONE source both this and unitFlow read. A pure
+    //    passthrough / element-agnostic op adopts its single input; a selector adopts
+    //    the agreed branch type; Cable Switch (One) adopts the active branch. A
+    //    generative output (INDEX/XLOOKUP, MAP, sources) declares nothing → static.
+    for (const spec of getPassthrough(node)) {
+      const want = resolvePassthroughType(spec, (k) => inType(node, k), agree);
+      const outSock = node.outputs?.[spec.output]?.socket;
       if (outSock instanceof MutableSocket && outSock.dataType !== want) {
         outSock.setType(want);
         changed.add(node.id);

@@ -1,6 +1,7 @@
 import { ClassicPreset } from "rete";
 import { numberSocket } from "../sockets";
 import { numListIn, logicalComboOut, logicalComboIn, logicalIn, numIn, anyIn, trueAnyIn, trueAnyOut } from "./shared";
+import type { PassthroughSpec } from "./passthrough";
 import { isSolError, isNaError, solError, type SolError } from "../errorValue";
 import { kleeneAnd, kleeneOr, kleeneNot, isMissing, cellError, type Tri } from "../valueKinds";
 import { isFrameValue, frameRowCount, type FrameValue } from "../frame";
@@ -155,13 +156,14 @@ export class IfNode extends ClassicPreset.Node {
     this.addOutput("result", trueAnyOut("Result"));
   }
 
-  /** IF selects a value, it doesn't transform it — so a unit/format on the chosen
-   *  branch rides through (see unitFlow). The CONDITION is not a value branch. */
-  unitPassInputs(): string[] { return ["then", "else"]; }
-  /** The branch IF is actually passing, so the unit follows it: IF(true, km, mi) is km.
-   *  A LIST condition picks per-element → null (indeterminate → combine the branches). */
+  /** IF SELECTS a value branch (the condition is not a value branch), following its
+   *  actually-chosen branch for units — IF(true, km, mi) is km; a LIST condition picks
+   *  per-element → null (indeterminate → the branches must agree). ONE declaration for
+   *  type adoption + unit flow (passthrough.ts). */
   _selectedUnitKey: string | null = null;
-  selectedUnitInput(): string | null { return this._selectedUnitKey; }
+  passthrough(): PassthroughSpec[] {
+    return [{ output: "result", inputs: ["then", "else"], combine: "agree", selected: () => this._selectedUnitKey }];
+  }
 
   data(inputs: { cond?: unknown[]; then?: unknown[]; else?: unknown[] }) {
     // Connection-presence (not `??`) so a WIRED null/false survives: an unwired input
@@ -308,6 +310,10 @@ export class IFErrorNode extends ClassicPreset.Node {
   literals: Record<string, number> = { value: 0, fallback: 0 };
   width = 180;
   height = 200;
+  // IFERROR/IFNA SELECT value-or-fallback unchanged → both branches' type + unit ride
+  // through when they agree (passthrough.ts). Now carries units (it didn't before —
+  // the same drift Expect / Cable Switch had: in the type set, missing from units).
+  passthrough(): PassthroughSpec[] { return [{ output: "result", inputs: ["value", "fallback"], combine: "agree" }]; }
 
   constructor(init?: { label?: string; mode?: IFErrorMode }) {
     super("IFError");
@@ -509,11 +515,12 @@ export class ChooseNode extends ClassicPreset.Node {
     return Object.keys(this.inputs).filter((k) => k.startsWith("v"));
   }
 
-  /** CHOOSE selects a value row unchanged — a unit/format on the chosen row rides
-   *  through (see unitFlow). The `index` is not a value branch. */
-  unitPassInputs(): string[] { return this.valueInputKeys(); }
+  /** CHOOSE selects a value row unchanged (the `index` is not a value branch),
+   *  following the chosen row for units (passthrough.ts). */
   _selectedUnitKey: string | null = null;
-  selectedUnitInput(): string | null { return this._selectedUnitKey; }
+  passthrough(): PassthroughSpec[] {
+    return [{ output: "result", inputs: this.valueInputKeys(), combine: "agree", selected: () => this._selectedUnitKey }];
+  }
 
   addValueInput(): string {
     const key = `v${this.nextInputId}`;
@@ -593,11 +600,12 @@ export class SwitchNode extends ClassicPreset.Node {
   }
 
   /** SWITCH returns a `then` value (or the default) unchanged — a unit/format on the
-   *  returned branch rides through (see unitFlow). `expr` / the `when` keys match, they
-   *  aren't value branches. */
-  unitPassInputs(): string[] { return [...this.valuePairKeys().map(([, then]) => then), "default"]; }
+   *  returned branch rides through (see unitFlow/passthrough.ts). `expr` / the `when`
+   *  keys match, they aren't value branches. */
   _selectedUnitKey: string | null = null;
-  selectedUnitInput(): string | null { return this._selectedUnitKey; }
+  passthrough(): PassthroughSpec[] {
+    return [{ output: "result", inputs: [...this.valuePairKeys().map(([, then]) => then), "default"], combine: "agree", selected: () => this._selectedUnitKey }];
+  }
 
   addValuePair(): void {
     this.addPairWithId(this.nextPairId);
@@ -687,11 +695,12 @@ export class IfsNode extends ClassicPreset.Node {
   }
 
   /** IFS returns a matched `val` (or Otherwise) unchanged — a unit/format on the
-   *  returned branch rides through (see unitFlow). The `cond` keys are tests, not
-   *  value branches. */
-  unitPassInputs(): string[] { return [...this.valuePairKeys().map(([, val]) => val), "otherwise"]; }
+   *  returned branch rides through (see unitFlow/passthrough.ts). The `cond` keys are
+   *  tests, not value branches. */
   _selectedUnitKey: string | null = null;
-  selectedUnitInput(): string | null { return this._selectedUnitKey; }
+  passthrough(): PassthroughSpec[] {
+    return [{ output: "result", inputs: [...this.valuePairKeys().map(([, val]) => val), "otherwise"], combine: "agree", selected: () => this._selectedUnitKey }];
+  }
 
   addValuePair(): void {
     this.addPairWithId(this.nextPairId);

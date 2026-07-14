@@ -7,6 +7,7 @@
 
 import { getOwningEditor } from "../activeGraph";
 import { SolenoidSocket, isDateType, isWildcardType, type SocketDataType } from "../sockets";
+import { isPassthroughNode } from "../nodes/passthrough";
 import { formatDateSerial, DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT } from "../nodes/date";
 import { isSolError, type SolError } from "../errorValue";
 import { isUnitCell, formatUnitCell, type UnitCell } from "../unitValue";
@@ -144,8 +145,7 @@ function displayedType(
   const dt = sock instanceof SolenoidSocket ? sock.dataType : undefined;
   if (dt && !isWildcardType(dt)) return dt; // concrete socket (a producer, or a typed Conduit lane)
 
-  const isPassthrough = node.passesUnitThrough === true || typeof node.unitPassInputs === "function";
-  if (!isPassthrough) return dt; // an `any` producer's output type is genuinely `any`
+  if (!isPassthroughNode(node)) return dt; // an `any` producer's output type is genuinely `any`
   const key = `${nodeId}::${outKey ?? ""}`;
   if (seen.has(key)) return dt;
   seen.add(key);

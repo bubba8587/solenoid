@@ -1,5 +1,6 @@
 import { ClassicPreset } from "rete";
 import { trueAnyIn, trueAnyOut, numIn, strIn, anyListIn } from "./shared";
+import type { PassthroughSpec } from "./passthrough";
 import { isSolError } from "../errorValue";
 import { fireAlert } from "../alertStore";
 import { isGraphRebuilding } from "../process";
@@ -27,6 +28,10 @@ export class ExpectNode extends ClassicPreset.Node {
   checkRegex: boolean;
   checkAllowed: boolean;
   cachedValue: unknown = null;
+  // Expect checks the value and forwards it unchanged → a PURE passthrough on `in`
+  // (min/max/pattern/allowed are check parameters, NOT value branches). Now carries
+  // the value's type + unit like Display (it didn't before — the drift this fixes).
+  passthrough(): PassthroughSpec[] { return [{ output: "out", inputs: ["in"], combine: "single", pure: true }]; }
   /** Which checks currently fail (empty = passing) — the component's red badge. */
   violations: ExpectCheck[] = [];
   literals: Record<string, number> = { min: 0, max: 100 };
