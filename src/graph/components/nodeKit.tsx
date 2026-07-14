@@ -2,6 +2,7 @@ import { useCallback, useState, useRef, type ReactNode, useLayoutEffect, useCont
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 import { copyText } from "../clipboard";
+import { isPassthroughNode } from "../nodes/passthrough";
 import { commentStore, commentsPanelUi } from "../commentStore";
 import { settingsStore } from "../settingsStore";
 import type { ClassicPreset } from "rete";
@@ -580,7 +581,7 @@ export function ValueDisplay({
     const editor = getOwningEditor(ctxNodeId);
     const node = editor?.getNode(ctxNodeId) as
       (Record<string, unknown> & { outputs?: Record<string, unknown> }) | undefined;
-    const carries = !!node && (node.passesUnitThrough === true || typeof node.unitPassInputs === "function");
+    const carries = !!node && isPassthroughNode(node);
     if (editor && node && socketKey && typeof node.annotationFor === "function") {
       ann = sharedAnnotationResolver(editor).outAnnotation(ctxNodeId, socketKey);
     } else if (editor && node && carries) {

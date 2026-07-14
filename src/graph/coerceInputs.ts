@@ -2,6 +2,7 @@ import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
 import { SolenoidSocket, type SocketDataType } from "./sockets";
 import { toMatrix, toList, toScalar, toAnyMatrix, ShapeError } from "./nodes/coerce";
+import { isPassthroughNode } from "./nodes/passthrough";
 import { isFrameValue, frameFromRows, toCube } from "./frame";
 import { parseDateToSerial } from "./nodes/date";
 import { coerceLogical } from "./valueKinds";
@@ -207,10 +208,6 @@ type NodeLike = {
    *  `UnitCell` tags. Everything else gets cells unwrapped to display magnitudes
    *  here (the unit-blind boundary — see unitBridge.stripUnitCells). */
   unitAware?: boolean;
-  /** The pure-passthrough / selector markers (unitFlow duck types) — a node that
-   *  forwards the value unchanged must forward its unit tag too. */
-  passesUnitThrough?: boolean;
-  unitPassInputs?: () => string[];
   __coerced?: boolean;
 };
 
@@ -226,8 +223,7 @@ export function wrapNodeData(node: NodeLike) {
   // duck markers) sees `UnitCell` tags; everything else gets display magnitudes —
   // so a comparison / threshold / chart downstream of an FC computes on the same
   // number the user typed, exactly as before units existed.
-  const keepUnits =
-    node.unitAware === true || node.passesUnitThrough === true || typeof node.unitPassInputs === "function";
+  const keepUnits = node.unitAware === true || isPassthroughNode(node);
 
   // The synchronous coercion + literal-injection (the original body), run once
   // inputs are ref-free (either none arrived, or they were materialized first).

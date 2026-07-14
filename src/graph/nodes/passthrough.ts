@@ -1,0 +1,108 @@
+import type { SocketDataType } from "../sockets";
+
+// ─── The passthrough declaration — ONE source of truth ─────────────────────────
+// A "passthrough" node forwards a value from an input to an output unchanged: a
+// selector picks a branch (IF/CHOOSE/SWITCH/IFS/IFERROR, Cable Switch), a pure
+// passthrough carries it straight through (Display, Expect), and an element-agnostic
+// op reshapes it without touching its element type (Reverse, TRANSPOSE, …).
+//
+// Every one of those used to be re-declared in FOUR places that each cared about
+// "what flows to my output": trueany TYPE adoption (a hardcoded `instanceof` chain
+// in trueAnyAdopt.ts), UNIT passthrough (the `passesUnitThrough` / `unitPassInputs`
+// / `selectedUnitInput` duck markers in unitFlow.ts), the type-default DISPLAY walk,
+// and the Conduit trace. Same per-node fact, four copies → drift (Expect / Cable
+// Switch / IFERROR passed TYPE but not UNITS, silently). A node now declares it ONCE
+// via `passthrough()`, and every consumer reads THIS. Adding a type-agnostic node is a
+// one-method declaration; the resolvers need no edit. (Duck-typed on purpose — this
+// module imports no node classes, so trueAnyAdopt / unitFlow stay class-agnostic.)
+
+export type CombineMode =
+  | "single" // one input forwarded unchanged (Display, Expect, Reverse, TRANSPOSE)
+  | "agree"  // the common type/annotation of the wired branches, else neutral (IF, CHOOSE…)
+  | "active"; // exactly the branch at activeIndex() (Cable Switch, One mode)
+
+export interface PassthroughSpec {
+  /** The output socket key whose value/type/unit is forwarded. */
+  output: string;
+  /** The value-branch input keys feeding it (only the value branches — NOT a
+   *  selector's condition, NOT Expect's min/max/pattern). */
+  inputs: string[];
+  combine: CombineMode;
+  /** For `active`: the index into `inputs` currently selected. */
+  activeIndex?: () => number;
+  /** Data-aware: the ONE input key the node is passing RIGHT NOW (IF's chosen branch
+   *  from its condition), or null when indeterminate (a list condition picks per
+   *  element). Units follow this when present; static TYPE adoption ignores it (it
+   *  can't know a runtime branch — it uses `combine` instead). Optional. */
+  selected?: () => string | null;
+  /** PURE: the value flows straight through unchanged (Display / Expect), so a run of
+   *  these carries a downstream FC's format lock across the whole segment. A selector
+   *  is NOT pure — its output is one of several possible values. */
+  pure?: boolean;
+}
+
+interface HasPassthrough { passthrough(): PassthroughSpec[]; }
+
+/** A node's passthrough declarations (empty when it isn't a passthrough). */
+export function getPassthrough(n: unknown): PassthroughSpec[] {
+  const f = (n as Partial<HasPassthrough> | null)?.passthrough;
+  return typeof f === "function" ? f.call(n) : [];
+}
+
+export function isPassthroughNode(n: unknown): boolean {
+  return getPassthrough(n).length > 0;
+}
+
+/** A PURE passthrough (Display/Expect): the value is forwarded byte-for-byte, so a
+ *  format lock reaches across a run of them (unitFlow's downstream segment walk). */
+export function isPurePassthroughNode(n: unknown): boolean {
+  return getPassthrough(n).some((s) => s.pure);
+}
+
+/** The passthrough spec producing a given output, if any. */
+export function passthroughForOutput(n: unknown, outKey: string): PassthroughSpec | undefined {
+  return getPassthrough(n).find((s) => s.output === outKey);
+}
+
+/** The value-branch input keys this node forwards (union across its outputs) — the
+ *  unit resolver's "which inputs carry the value" set. */
+export function passInputKeys(n: unknown): string[] {
+  return [...new Set(getPassthrough(n).flatMap((s) => s.inputs))];
+}
+
+/** The ONE input a node is passing RIGHT NOW, or null (indeterminate → combine), or
+ *  undefined (the node tracks no runtime selection — a pure passthrough). Resolves
+ *  `selected()` first, then derives from `active`; `agree`/pure return undefined. */
+export function selectedPassInput(n: unknown): string | null | undefined {
+  const specs = getPassthrough(n);
+  if (specs.length === 0) return undefined;
+  const s = specs[0];
+  if (s.selected) return s.selected();
+  if (s.combine === "active" && s.activeIndex) {
+    const keys = s.inputs;
+    if (keys.length === 0) return null;
+    const i = Math.max(0, Math.min(s.activeIndex(), keys.length - 1));
+    return keys[i] ?? null;
+  }
+  return undefined; // single / agree → no runtime pick (fall back to the input set)
+}
+
+/** Resolve the TYPE a passthrough output should adopt, given a per-input type reader.
+ *  `single` = the one input's type; `active` = the selected branch; `agree` = the
+ *  common type of the wired branches (else `trueany`). Static (connect-time), so it
+ *  never consults `selected()`. `agree` is injected so trueAnyAdopt owns the exact
+ *  "all wired branches must match" rule it already uses elsewhere. */
+export function resolvePassthroughType(
+  spec: PassthroughSpec,
+  typeOf: (key: string) => SocketDataType | null,
+  agree: (types: (SocketDataType | null)[]) => SocketDataType,
+): SocketDataType {
+  if (spec.combine === "single") return typeOf(spec.inputs[0]) ?? "trueany";
+  if (spec.combine === "active") {
+    const keys = spec.inputs;
+    if (keys.length === 0) return "trueany";
+    const i = spec.activeIndex ? Math.max(0, Math.min(spec.activeIndex(), keys.length - 1)) : 0;
+    return typeOf(keys[i]) ?? "trueany";
+  }
+  return agree(spec.inputs.map(typeOf));
+}

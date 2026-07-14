@@ -22,6 +22,12 @@ function node(label: string, extra: Record<string, unknown> = {}) {
   n.addInput("in", new ClassicPreset.Input(sock, "In"));
   n.addOutput("out", new ClassicPreset.Output(sock, "Out"));
   Object.assign(n, extra);
+  // A pure-passthrough mock (Display) now declares it via passthrough() — the ONE
+  // source unitFlow reads (see passthrough.ts). Translate the old test flag.
+  if (extra.passesUnitThrough) {
+    delete n.passesUnitThrough;
+    n.passthrough = () => [{ output: "out", inputs: ["in"], combine: "single", pure: true }];
+  }
   return n;
 }
 /** An FC-like source publishing a fixed unit + annotation on its output. */
@@ -35,12 +41,16 @@ function fcSource(label: string, unit: string, ann?: FormatAnnotation) {
 /** A selector (IF-like) with cond/then/else inputs; only then/else are value branches.
  *  `selected` mimics the node's computed branch ("then"/"else"); null = indeterminate
  *  (a list condition), so the resolver falls back to combining the branches. */
-function ifNode(label: string, selected: string | null = null) {
+function ifNode(label: string, selected: string | null | undefined) {
   const n = new ClassicPreset.Node(label) as ClassicPreset.Node & Record<string, unknown>;
   for (const k of ["cond", "then", "else"]) n.addInput(k, new ClassicPreset.Input(sock, k));
   n.addOutput("out", new ClassicPreset.Output(sock, "Out"));
-  n.unitPassInputs = () => ["then", "else"];
-  n.selectedUnitInput = () => selected;
+  // A selector: `agree` over the value branches, following `selected` when it tracks a
+  // branch. `selected === undefined` = no branch tracking at all (spec omits `selected`).
+  n.passthrough = () => [{
+    output: "out", inputs: ["then", "else"], combine: "agree" as const,
+    ...(selected !== undefined ? { selected: () => selected } : {}),
+  }];
   return n;
 }
 const connect = async (e: AnyEditor, s: ClassicPreset.Node, t: ClassicPreset.Node, tIn = "in") =>
@@ -246,8 +256,7 @@ describe("resolveValueOrigin — the popup 'Go to source' upstream walk", () => 
   it("a selector without branch tracking still walks its ONE wired branch", async () => {
     const editor = new NodeEditor() as unknown as AnyEditor;
     const a = node("A");
-    const iff = ifNode("IF", null);
-    delete (iff as Record<string, unknown>).selectedUnitInput; // no data-awareness at all
+    const iff = ifNode("IF", undefined); // no data-awareness at all → combine fallback
     for (const n of [a, iff]) await editor.addNode(n as never);
     await connect(editor, a, iff, "then");                   // else left unwired
     expect(resolveValueOrigin(editor, iff.id)).toBe(a.id);

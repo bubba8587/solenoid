@@ -1,6 +1,7 @@
 import { ClassicPreset, type NodeEditor } from "rete";
 import { formatAnnotationStore, isDateStyle, isFcUnit, type FormatStyleId, type FormatAnnotation, type TextCase, type TextAlign, type DecimalMode, type LogicalStyle, type LambdaView, type NegativeStyle, type ScaleMode } from "../formatAnnotationStore";
 import { applyFcUnit, fcUnitIdForUnit } from "../unitBridge";
+import { isPurePassthroughNode } from "./passthrough";
 import { isUnitCell, type UnitCell } from "../unitValue";
 import { dockedNodeStore } from "../dockedNodeStore";
 import { SolenoidSocket, isDateType, isWildcardType, type SocketDataType } from "../sockets";
@@ -302,7 +303,7 @@ export class FormatControllerNode extends ClassicPreset.Node {
             this.dictatedFromUnit = consumer.fromUnit as string;
             break walk;
           }
-          if (consumer.passesUnitThrough === true) { next = c.target; break; } // continue through the Display
+          if (isPurePassthroughNode(consumer)) { next = c.target; break; } // continue through the Display / Expect
         }
         nid = next;
       }
