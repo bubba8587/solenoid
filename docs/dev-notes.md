@@ -5,6 +5,25 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-14 — formula↔node parity: audit + design frame; D2 reopened)
+Author set a new direction: the formula language and the node set should CONVERGE ("people
+will be expecting that and we've kind of let it stagnate") — and explicitly REOPENED the
+written-down restrictions in this area (D2's "permanent" Expression cap, the broadcast
+assumptions): the project is fluid, keep an open mind. Deliverables: **`docs/
+formula-node-parity.md`** (mechanics of the two surfaces, measured gaps, four tiers
+cheapest-first, proposed parity RATCHET test, four author questions) + **`scripts/
+formula-node-parity.ts`** (regenerable numbers; companion to `scripts/parity.ts`).
+Headline findings: 266/626 catalog leaves are formula-callable; **57 Excel-named nodes
+whose name isn't dispatchable** (TEXTSPLIT/TAKE/SEQUENCE/XLOOKUP/dotted distributions/
+bond block — Formula.js predates them; the sharpest "users will expect this" gap); **75
+untracked formula-only legacy names** — incl. VLOOKUP dispatching fine despite being
+D10-oos ("superseded"), i.e. D10 is violated on the formula surface by DRIFT, not
+decision; the native-impl registry sits at 25 entries (the stalled "first wave").
+Doc updates: D2 amended with the reopening (cap stands as working default until parity
+Tier 4 decides), CLAUDE.md cap bullet softened to match, backlog: By-Row run mode
+refined per author (user SELECTS which input port to iterate rows of), Simulation stop
+condition author-approved, SETEQ item superseded by the parity program entry.
+
 ### SESSION DIGEST (2026-07-13c — Sudoku Solver seed: a matrix-algebra constraint solver in a Simulation composite)
 New seed `sudoku-solver.json` (+ `sudokuSeed.test.ts`): a full Sudoku solver built from EXISTING
 nodes only — no engine changes. The whole solver is pure matrix algebra over an **81×9 candidate

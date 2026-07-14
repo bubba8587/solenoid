@@ -41,6 +41,13 @@ node or the subgraph escape hatch instead.
 philosophical cap, not a TODO. The pressure it creates should be spent building the
 **composite/subgraph node** (the sanctioned power-user path), never on widening
 Expression. If you're tempted to widen Expression, the answer is "build subgraphs."
+**REOPENED (2026-07-14, author):** in the formula↔node parity direction the author
+explicitly walked back the "permanent" framing — *"I'm not necessarily committed to
+assumptions/restrictions that we already wrote down… let's keep an open mind."* The cap
+STANDS as the working default until the parity design decides Tier 4 (keep 1-D vs lift
+to 2-D) — see `docs/formula-node-parity.md`, whose outcome should be recorded here as
+D2's successor. Do not treat D2 as immovable in that design; do not silently widen
+Expression before it's decided either.
 
 ### D3 — No backward compatibility / no migration shims (pre-alpha)
 **When:** ongoing policy; swept clean 2026-06-19. **Where:** `CLAUDE.md` pre-alpha section.
