@@ -17,6 +17,28 @@ describe("ComparisonNode emits a real logical", () => {
   });
 });
 
+// Unit-aware: comparisons run on BASE-SI magnitudes, and commensurability is
+// enforced (different currencies / dimensions never compare equal). See unitValue.
+describe("ComparisonNode is unit-aware", () => {
+  const km5 = { __unitCell: true as const, value: 5000, dim: { length: 1 }, display: "km" };
+  const m5000 = { __unitCell: true as const, value: 5000, dim: { length: 1 }, display: "m" };
+  const usd5 = { __unitCell: true as const, value: 5, dim: { currency: 1 }, display: "usd" };
+  const eur5 = { __unitCell: true as const, value: 5, dim: { currency: 1 }, display: "eur" };
+  it("5 km equals 5000 m (base-SI compare, not display magnitude)", () => {
+    expect(new ComparisonNode({ op: "eq" }).data({ a: [km5], b: [m5000] }).result).toBe(true);
+  });
+  it("$5 equals 5€ is FALSE (no exchange rate — the reported bug)", () => {
+    expect(new ComparisonNode({ op: "eq" }).data({ a: [usd5], b: [eur5] }).result).toBe(false);
+    expect(new ComparisonNode({ op: "neq" }).data({ a: [usd5], b: [eur5] }).result).toBe(true);
+    // same currency still compares by magnitude
+    expect(new ComparisonNode({ op: "eq" }).data({ a: [usd5], b: [usd5] }).result).toBe(true);
+  });
+  it("ORDERING two incommensurable values → #UNIT!", () => {
+    const r = new ComparisonNode({ op: "gt" }).data({ a: [usd5], b: [eur5] }).result;
+    expect((r as { code?: string }).code).toBe("#UNIT!");
+  });
+});
+
 import { BooleanOpNode, NotNode, IfNode } from "./logic";
 
 // Helper: run a BooleanOp over N scalar operands (a0, a1, …) via literals.

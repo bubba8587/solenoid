@@ -4,6 +4,7 @@ import { numListIn, logicalComboOut, logicalComboIn, logicalIn, numIn, anyIn, tr
 import type { PassthroughSpec } from "./passthrough";
 import { isSolError, isNaError, solError, type SolError } from "../errorValue";
 import { kleeneAnd, kleeneOr, kleeneNot, isMissing, cellError, type Tri } from "../valueKinds";
+import { compareUnits } from "../unitValue";
 import { isFrameValue, frameRowCount, type FrameValue } from "../frame";
 
 /** A Frame's cells in row-major order, raw (null preserved) — lets the IS-check
@@ -100,9 +101,13 @@ export const COMPARISON_SYMBOLS: Record<ComparisonOp, string> = {
 };
 
 export class ComparisonNode extends ClassicPreset.Node {
+  /** Keeps `UnitCell` tags on its inputs so the comparison runs on BASE-SI
+   *  magnitudes (5 km = 5000 m reads TRUE) and enforces commensurability — two
+   *  different dimensions (or two currencies with no FX) never compare equal. */
+  unitAware = true;
   label: string;
   op: ComparisonOp;
-  cachedResult: Tri | Tri[] = null; // a real logical (renders TRUE/FALSE); null when missing
+  cachedResult: Tri | Tri[] | SolError = null; // a real logical (renders TRUE/FALSE); null when missing
   literals: Record<string, number> = { a: 0, b: 0 };
   width = 180;
   height = 200;
@@ -116,17 +121,38 @@ export class ComparisonNode extends ClassicPreset.Node {
     this.addOutput("result", logicalComboOut("Result"));
   }
 
-  data(inputs: { a?: (number | null | (number | null)[])[]; b?: (number | null | (number | null)[])[] }) {
-    const a = inputs.a?.[0] ?? this.literals.a ?? null;
-    const b = inputs.b?.[0] ?? this.literals.b ?? null;
+  data(inputs: { a?: unknown[]; b?: unknown[] }) {
+    const a = (inputs.a?.length ? inputs.a[0] : this.literals.a) ?? null;
+    const b = (inputs.b?.length ? inputs.b[0] : this.literals.b) ?? null;
     // A null (missing) operand → null per element (Kleene: a comparison with an
     // unknown is unknown). Both unwired/blank → null result.
-    const result: Tri | Tri[] =
+    const result: Tri | Tri[] | SolError =
       a === null && b === null ? null
-        : broadcastEl((x, y) => (isMissing(x) || isMissing(y) ? null : compareOp(this.op, x, y)), a, b);
+        : broadcastEl<unknown, Tri | SolError>(
+            (x, y) => compareCell(this.op, x, y),
+            a, b,
+          ) as Tri | Tri[] | SolError;
     this.cachedResult = result;
     return { result };
   }
+}
+
+/** One element-wise comparison cell, unit-aware. A missing operand → null (Kleene:
+ *  comparing with an unknown is unknown). Otherwise route through `compareUnits`,
+ *  which yields the base-SI magnitude pair when the operands are commensurable, or a
+ *  `#UNIT!` when they aren't (different dimensions, or two currencies). For an
+ *  INCOMMENSURABLE pair, equality is still answerable — different things simply
+ *  aren't equal (`=` → FALSE, `≠` → TRUE) — but ORDERING is meaningless, so `<`/`>`
+ *  propagate the `#UNIT!`. */
+function compareCell(op: ComparisonOp, x: unknown, y: unknown): Tri | SolError {
+  if (isMissing(x) || isMissing(y)) return null;
+  const cmp = compareUnits(x as number, y as number);
+  if (isSolError(cmp)) {
+    if (op === "eq") return false;
+    if (op === "neq") return true;
+    return cmp; // ordering incommensurable values → #UNIT!
+  }
+  return compareOp(op, cmp.l, cmp.r);
 }
 
 // ─── IF (value passthrough) ──────────────────────────────────────────────────

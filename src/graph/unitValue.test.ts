@@ -104,6 +104,35 @@ describe("dimensional algebra at the ops", () => {
     expect(ok).toEqual({ l: 1000, r: 900 }); // 1 km > 900 m
     expect(isSolError(compareUnits(cell(1, "km"), cell(1, "s")))).toBe(true);
   });
+  it("compareUnits lets a dimensionless operand ADOPT the other's unit ($5 vs 1000)", () => {
+    // a plain threshold compares against the magnitude, not #UNIT!
+    expect(compareUnits(cell(5, "m"), 3)).toEqual({ l: 5, r: 3 });
+    expect(compareUnits(1000, cell(5, "m"))).toEqual({ l: 1000, r: 5 });
+  });
+});
+
+describe("currency: no exchange rate → different codes are incommensurable", () => {
+  // Currency cells collapse onto the `currency` axis at scale 1, so a magnitude
+  // compare would call $5 == 5€. The display CODE is the real unit identity.
+  const money = (value: number, code: string): UnitCell => ({ __unitCell: true, value, dim: { currency: 1 }, display: code });
+  it("compareUnits: $5 vs 5€ is #UNIT! (not equal-by-magnitude)", () => {
+    expect(isSolError(compareUnits(money(5, "usd"), money(5, "eur")))).toBe(true);
+    // same code still compares by magnitude
+    expect(compareUnits(money(5, "usd"), money(3, "usd"))).toEqual({ l: 5, r: 3 });
+    // an unlabeled currency cell adopts (lenient) — computed currency has no code
+    const bare: UnitCell = { __unitCell: true, value: 5, dim: { currency: 1 } };
+    expect(compareUnits(money(5, "usd"), bare)).toEqual({ l: 5, r: 5 });
+  });
+  it("addUnits: $5 + 5€ → #UNIT! (can't combine currencies)", () => {
+    expect(isSolError(addUnits(money(5, "usd"), money(5, "eur")))).toBe(true);
+    expect((addUnits(money(5, "usd"), money(2, "usd")) as UnitCell).value).toBe(7);
+  });
+  it("forAggregateUnits: mixed currency codes → #UNIT!", () => {
+    const r = forAggregateUnits([money(5, "usd"), money(5, "eur")]);
+    expect(r.error && r.error.code).toBe("#UNIT!");
+    const same = forAggregateUnits([money(5, "usd"), money(2, "usd")]);
+    expect(same.error).toBeUndefined();
+  });
 });
 
 describe("aggregator prep (step 6)", () => {

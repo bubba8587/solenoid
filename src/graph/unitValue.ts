@@ -131,6 +131,30 @@ export function formatUnitCell(v: number | UnitCell, fmtNum: (n: number) => stri
   return sym ? `${mag} ${sym}` : mag;
 }
 
+// ─── Currency: the one axis where display id IS the unit identity ────────────────
+// FX is out of scope, so every currency collapses onto the single `currency` base
+// axis with scale 1 (see unitBridge's DIRECT). That makes `$5` and `5€` store the
+// SAME base magnitude (5) — so a plain magnitude comparison/addition would treat
+// them as identical, which is wrong ($5 is not 5€). For every OTHER dimension,
+// differing display units (km vs m) carry differing SCALES, so their base magnitudes
+// already encode the relationship and compare/combine correctly. Currency is the
+// sole exception: with no exchange rate, the display id (the currency code) is the
+// real unit identity, so two currency cells with DIFFERENT codes are incommensurable.
+const CURRENCY_DIM: Dim = { currency: 1 };
+function isPureCurrency(v: unknown): boolean {
+  return dimEqual(dimOf(v), CURRENCY_DIM);
+}
+/** True when `a` and `b` are both currency cells with DIFFERENT, known currency
+ *  codes — incommensurable (no FX). A currency cell WITHOUT a display id (e.g. a
+ *  computed `currency`-dimensioned result) is treated leniently: it adopts, so this
+ *  only bites when both sides carry an explicit, conflicting code. */
+export function currencyMismatch(a: unknown, b: unknown): boolean {
+  if (!isPureCurrency(a) || !isPureCurrency(b)) return false;
+  const ca = isUnitCell(a) ? a.display : undefined;
+  const cb = isUnitCell(b) ? b.display : undefined;
+  return ca != null && cb != null && ca !== cb;
+}
+
 // ─── The #UNIT! helper ──────────────────────────────────────────────────────────
 export function unitError(detail = ""): SolError {
   return solError(
@@ -178,6 +202,10 @@ function combineAdditive(a: Operand, b: Operand, r: number, verb: "add" | "subtr
   const da = dimOf(a), db = dimOf(b);
   const dispA = isUnitCell(a) ? a.display : undefined;
   const dispB = isUnitCell(b) ? b.display : undefined;
+  // Two different currencies share the `currency` dimension but can't be combined
+  // (no exchange rate) — a real #UNIT!, even though dimEqual would pass.
+  if (currencyMismatch(a, b))
+    return unitError(`Can't ${verb} ${dispA} and ${dispB} — different currencies, no exchange rate.`);
   if (dimEqual(da, db)) return tagDim(r, da, dispA ?? dispB);
   if (isDimensionless(da)) return tagDim(r, db, dispB);
   if (isDimensionless(db)) return tagDim(r, da, dispA);
@@ -199,7 +227,14 @@ export function powUnits(a: Operand, n: Operand): UnitCell | number | SolError {
  *  the base-magnitude pair for the caller's comparator, or the error. */
 export function compareUnits(a: Operand, b: Operand): { l: number; r: number } | SolError {
   const da = dimOf(a), db = dimOf(b);
-  if (!dimEqual(da, db)) return unitError("Can't compare values with different units.");
+  // A dimensionless operand ADOPTS the other's unit (`$5 > 1000` compares 5 vs 1000)
+  // — the spreadsheet reading, matching addUnits. Only two genuinely-different REAL
+  // dimensions are incomparable.
+  if (!isDimensionless(da) && !isDimensionless(db) && !dimEqual(da, db))
+    return unitError("Can't compare values with different units.");
+  // …and two different currencies (same dimension, but no exchange rate).
+  if (currencyMismatch(a, b))
+    return unitError("Can't compare different currencies — no exchange rate.");
   return { l: magnitudeOf(a), r: magnitudeOf(b) };
 }
 
@@ -225,6 +260,7 @@ export function forAggregateUnits(values: ReadonlyArray<unknown>): UnitAggregate
   const present = values.filter((v) => !isMissing(v));
   let dim: Dim | null = null; // the single REAL dimension in the list, if any
   let display: string | undefined;
+  let currencyCode: string | undefined; // the list's currency code, once one is seen
   const nums: number[] = [];
   for (const v of present) {
     const d = dimOf(v);
@@ -236,6 +272,14 @@ export function forAggregateUnits(values: ReadonlyArray<unknown>): UnitAggregate
             `Can't aggregate mixed units: ${formatDim(dim)} and ${formatDim(d)}.`,
           ),
         };
+      }
+      // Currencies share the `currency` dimension but don't combine across codes
+      // (no FX). Track the first explicit code; a conflicting one is a #UNIT!.
+      if (isPureCurrency(v) && isUnitCell(v) && v.display != null) {
+        if (currencyCode === undefined) currencyCode = v.display;
+        else if (currencyCode !== v.display) {
+          return { error: unitError(`Can't aggregate different currencies: ${currencyCode} and ${v.display}.`) };
+        }
       }
     }
     // A dimensionless cell contributes its bare magnitude and ADOPTS `dim`.
