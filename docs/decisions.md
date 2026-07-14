@@ -436,6 +436,33 @@ namespace's ugliness — a collision is handled case-by-case when Excel ships on
 blocking into documented aliases; (2) an Excel release colliding with a bare Solenoid name
 forces a rename or precedence rule — revisit then, not preemptively.
 
+### D20 — Units attach at the granularity of homogeneity; matrices get ONE unit
+**When:** 2026-07-14 (author, correcting the A4 record: "I thought I said matrices should
+have homogeneous units, not none").
+**The problem:** bundle 05 recorded "Matrix = unit-AGNOSTIC always" with no rationale
+attached, and the matrix node family shipped unit-blind (the coercion boundary strips
+tags at their inputs). That didn't match the author's intent, and it left a hole in the
+lattice: a heatmap of temperatures silently loses its unit on becoming a matrix, while
+the same numbers as a frame column keep theirs.
+**The decision — the governing principle:** *units attach at the granularity where the
+container guarantees element homogeneity.* Scalar → the value. Frame → the COLUMN
+(homogeneous population). **Matrix → the WHOLE MATRIX** (one element family per matrix —
+the Table Input SegToggle / table-socket split — so one unit, a single tag per value, NOT
+per-cell). **List → per-cell, deliberately** (reaffirmed): a list is the one rank with no
+homogeneity guarantee — it serves as both a column fragment and a FRAME ROW (Get Row
+yields legitimately mixed units) — so tagged cells stay, with uniformity enforced where
+mixing matters (`forAggregateUnits` → `#UNIT!` at folds; `elemUnitOf`'s shared-unit check).
+**Op rules for the matrix tag (implementation, queued):** element-wise ops run the scalar
+dimension algebra on the tag; MMULT multiplies dims; TRANSPOSE/reshape/TAKE/DROP carry;
+MDETERM/MINVERSE = unitⁿ / unit⁻¹ via `dimPow` (documented-strip acceptable initially);
+a UNIFORMLY-tagged list widens into a matrix carrying its unit, a MIXED list widens
+stripped; structural matrices simply carry no unit. Also closes the Tier 4 "units fork"
+(a future 2-D formula path would share the homogeneous rule instead of diverging).
+**Cost accepted:** threading the tag through the matrix family + display + FC/Convert
+table handling is real, bounded work (backlog); until it lands, matrices stay unit-blind.
+**What would reverse it:** a real need for per-column units on anonymous matrices —
+which is what the FRAME is for; use a frame.
+
 ---
 
 ## Structural risks (the threats register — distinct from bugs)

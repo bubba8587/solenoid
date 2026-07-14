@@ -132,8 +132,9 @@ impl with the formula path).
    D2 declined (a second typed engine inside strings) or runs on heuristics that misfire
    at the edges. This is the hard part, NOT the broadcaster.
 2. *Feeding the divergent engine* — moot once unification is finished; blocking until then.
-3. *The units fork* — matrices are unit-agnostic (A4), so identical math carries units as
-   a node chain and drops them as a 2-D formula. Needs at least a documented rule.
+3. *The units fork* — largely CLOSED by D20 (2026-07-14): matrices get ONE homogeneous
+   unit, so a future 2-D formula path shares the same single-tag rule as the node chain
+   (`dimEval` with one matrix dim is the 1-D machinery unchanged).
 4. *"Copy Excel DA" is a translation* — no cells → no spill/implicit intersection/#SPILL!;
    DA-for-sockets is a design act with parity-bug exposure. The broadcast-rules table
    (formatModel-style, machine-checked) is the cheap probe that surfaces regrets early.

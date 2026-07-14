@@ -21,8 +21,15 @@ dimensional algebra.** True unit calculation: `5 m ÷ 1 s = 5 m/s`; `mass · acc
 **Author decisions already on record — don't re-ask:**
 - **Per-element list units = TAGGED CELLS** (a list is a ROW and must allow mixed
   units), mirroring how `valueKinds.ts` carries per-cell `null`/`SolError`. The
-  "parallel unit array vs tagged cell" fork is CLOSED.
-- Matrix = unit-AGNOSTIC always. Frame = units PER COLUMN (a frame row IS a list).
+  "parallel unit array vs tagged cell" fork is CLOSED. **Reaffirmed 2026-07-14**
+  (the list⇄frame-row duality — Get Row — is the load-bearing reason).
+- ~~Matrix = unit-AGNOSTIC always.~~ **AMENDED 2026-07-14 (author, D20): matrix =
+  ONE HOMOGENEOUS unit** — one tag per matrix value, tracking the type plane (a
+  matrix is one element family, so it gets one unit, like a frame column). The
+  original "agnostic always" line carried no recorded rationale and didn't match
+  the author's intent. Implementation queued in backlog; governing principle in
+  D20: *units attach at the granularity where the container guarantees
+  homogeneity*. Frame = units PER COLUMN (a frame row IS a list) — unchanged.
 - FCs can tag STRING-LIST header keys; Build Frame / Add Column LOCK each column
   to its header's unit (`[id, Item, Revenue ($0.00)]` + `[5,6,7]` → `[$5.00, …]`,
   the per-column FC locked).
