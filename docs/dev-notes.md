@@ -5,6 +5,20 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-15e — Socket Reference hover pills)
+Each dot in the Socket Legend / Reference now shows an INSTANT hover pill with its precise
+per-dimension name (Numeric / Numeric List / Numeric Matrix, …, Frame, Cube, LAMBDA, Chart,
+Any Scalar / Any List / Any Matrix, True Any). Design (author-specced): NOT OS-native (no
+hover delay — `onMouseEnter` → render), a tight SVG STADIUM (not CSS shapes), body fill = the
+socket type colour, border = `--socket-ring` (the same edge-darken the sockets use), text =
+`contrastInk(colour)` (the adaptive ink the menu bar uses). `SocketLegend.tsx`: `SocketDot`
+became a glyph (`SocketGlyphSvg`) + hover wrapper; `SocketTip` renders the pill via a portal to
+`<body>` (fixed position — escapes the legend's `scale(0.85)` transform + overflow), width from a
+shared-canvas `measureText`, colour→ink via a `getComputedStyle` probe (resolves `var(--sock-*)`
++ palette overrides to the exact rendered hex), horizontal clamp so it can't clip the viewport
+(legend is bottom-right). Chose "Matrix" over "Table" for the homogeneous 2-D types (matches
+`SOCKET_LABELS` "Matrix (any)"; distinguishes from Frame/Cube). Visual — author eyeball pending.
+
 ### SESSION DIGEST (2026-07-15d — the passthrough system: ONE declaration for type + unit flow)
 Killed the drift where "what flows to my output" was re-declared in four places (trueany TYPE
 adoption's `instanceof` chain, UNIT flow's `passesUnitThrough`/`unitPassInputs`/`selectedUnitInput`

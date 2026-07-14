@@ -1,72 +1,148 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { SOCKET_COLORS } from "../sockets";
+import { contrastInk } from "../palette";
 import { CubeGlyphFaces } from "./cubeGlyph";
 import { IS_MOBILE } from "../coarse";
 import { registerChrome } from "../chromeToggle";
 import "./SocketLegend.css";
 
 // Circles = scalars, squares = arrays, grid = 2D. A group pairs the scalar and
-// its list/2D sibling under one type label (number + numlist = "Numeric").
-type Dot =
-  | { kind: "circle"; color: string }
-  | { kind: "square"; color: string }
-  | { kind: "grid";   color: string }
-  | { kind: "cube";   color: string }
-  | { kind: "lambda"; color: string }
-  | { kind: "chart";  color: string }
-  | { kind: "ring";   color: string };
+// its list/2D sibling under one type label (number + numlist = "Numeric"). Each
+// dot carries `tip` — its precise per-dimension name, shown in the hover pill.
+type Dot = {
+  kind: "circle" | "square" | "grid" | "cube" | "lambda" | "chart" | "ring";
+  color: string;
+  tip?: string;
+};
 
 type LegendGroup = { dots: Dot[]; label: string };
 
 const GROUPS: LegendGroup[] = [
   { label: "Numeric", dots: [
-    { kind: "circle", color: SOCKET_COLORS.number },
-    { kind: "square", color: SOCKET_COLORS.list },
-    { kind: "grid",   color: SOCKET_COLORS.table },
+    { kind: "circle", color: SOCKET_COLORS.number, tip: "Numeric" },
+    { kind: "square", color: SOCKET_COLORS.list,   tip: "Numeric List" },
+    { kind: "grid",   color: SOCKET_COLORS.table,  tip: "Numeric Matrix" },
   ] },
   { label: "String", dots: [
-    { kind: "circle", color: SOCKET_COLORS.string },
-    { kind: "square", color: SOCKET_COLORS.strlist },
-    { kind: "grid",   color: SOCKET_COLORS.strtable },
+    { kind: "circle", color: SOCKET_COLORS.string,   tip: "String" },
+    { kind: "square", color: SOCKET_COLORS.strlist,  tip: "String List" },
+    { kind: "grid",   color: SOCKET_COLORS.strtable, tip: "String Matrix" },
   ] },
   { label: "Date", dots: [
-    { kind: "circle", color: SOCKET_COLORS.date },
-    { kind: "square", color: SOCKET_COLORS.datelist },
-    { kind: "grid",   color: SOCKET_COLORS.datetable },
+    { kind: "circle", color: SOCKET_COLORS.date,      tip: "Date" },
+    { kind: "square", color: SOCKET_COLORS.datelist,  tip: "Date List" },
+    { kind: "grid",   color: SOCKET_COLORS.datetable, tip: "Date Matrix" },
   ] },
   { label: "Complex", dots: [
-    { kind: "circle", color: SOCKET_COLORS.complex },
-    { kind: "square", color: SOCKET_COLORS.complexlist },
-    { kind: "grid",   color: SOCKET_COLORS.complextable },
+    { kind: "circle", color: SOCKET_COLORS.complex,      tip: "Complex" },
+    { kind: "square", color: SOCKET_COLORS.complexlist,  tip: "Complex List" },
+    { kind: "grid",   color: SOCKET_COLORS.complextable, tip: "Complex Matrix" },
   ] },
   { label: "Boolean", dots: [
-    { kind: "circle", color: SOCKET_COLORS.logical },
-    { kind: "square", color: SOCKET_COLORS.logicallist },
-    { kind: "grid",   color: SOCKET_COLORS.logicaltable },
+    { kind: "circle", color: SOCKET_COLORS.logical,      tip: "Boolean" },
+    { kind: "square", color: SOCKET_COLORS.logicallist,  tip: "Boolean List" },
+    { kind: "grid",   color: SOCKET_COLORS.logicaltable, tip: "Boolean Matrix" },
   ] },
   { label: "Frame", dots: [
-    { kind: "grid", color: SOCKET_COLORS.frame },
-    { kind: "cube", color: SOCKET_COLORS.cube },
+    { kind: "grid", color: SOCKET_COLORS.frame, tip: "Frame" },
+    { kind: "cube", color: SOCKET_COLORS.cube,  tip: "Cube" },
   ] },
   // The OBJECT family — non-lattice, identity-only values distinguished by
   // glyph, not colour (both green). Lambda = a function, Chart = a figure.
   { label: "Special", dots: [
-    { kind: "lambda", color: SOCKET_COLORS.lambda },
-    { kind: "chart", color: SOCKET_COLORS.chart },
+    { kind: "lambda", color: SOCKET_COLORS.lambda, tip: "LAMBDA" },
+    { kind: "chart",  color: SOCKET_COLORS.chart,  tip: "Chart" },
   ] },
   // The wildcard ladder: any (one value) → anylist (1-D) → anytable (2-D),
   // plus the hollow ring = trueany, the accept-ANYTHING supremum.
   { label: "Any", dots: [
-    { kind: "circle", color: SOCKET_COLORS.any },
-    { kind: "square", color: SOCKET_COLORS.anylist },
-    { kind: "grid",   color: SOCKET_COLORS.anytable },
-    { kind: "ring",   color: SOCKET_COLORS.trueany },
+    { kind: "circle", color: SOCKET_COLORS.any,      tip: "Any Scalar" },
+    { kind: "square", color: SOCKET_COLORS.anylist,  tip: "Any List" },
+    { kind: "grid",   color: SOCKET_COLORS.anytable, tip: "Any Matrix" },
+    { kind: "ring",   color: SOCKET_COLORS.trueany,  tip: "True Any" },
   ] },
 ];
 
 export type SocketGlyph = Dot;
 
+// ─── Hover tooltip: an SVG stadium pill (no OS-native delay, no CSS shapes) ──────
+// Body fill = the socket type colour; border = the same --socket-ring that darkens
+// the socket edges; text = contrastInk(colour) — the adaptive ink the menu bar uses.
+
+/** Resolve any CSS colour expression (incl. `var(--sock-*)`, palette-overridden) to a
+ *  #rrggbb hex, so contrastInk picks the readable ink for the EXACT rendered colour. */
+function cssColorToHex(css: string): string {
+  const probe = document.createElement("span");
+  probe.style.color = css;
+  probe.style.display = "none";
+  document.body.appendChild(probe);
+  const rgb = getComputedStyle(probe).color; // "rgb(r, g, b)" / "rgba(...)"
+  probe.remove();
+  const m = rgb.match(/[\d.]+/g);
+  if (!m || m.length < 3) return "#888888";
+  return "#" + m.slice(0, 3).map((n) => Math.round(Number(n)).toString(16).padStart(2, "0")).join("");
+}
+
+const TIP_FONT_FAMILY = "system-ui, -apple-system, sans-serif";
+let _measureCtx: CanvasRenderingContext2D | null = null;
+/** Text width via a shared canvas — one pass, so the pill sizes without a reflow flash. */
+function measureTipText(text: string): number {
+  if (_measureCtx === null) _measureCtx = document.createElement("canvas").getContext("2d");
+  if (!_measureCtx) return text.length * 7; // headless fallback
+  _measureCtx.font = `600 12px ${TIP_FONT_FAMILY}`;
+  return _measureCtx.measureText(text).width;
+}
+
+function SocketTip({ label, color, anchor }: { label: string; color: string; anchor: DOMRect }) {
+  const ink = contrastInk(cssColorToHex(color));
+  const H = 20, PAD_X = 9, SW = 1.5;
+  const W = Math.ceil(measureTipText(label)) + PAD_X * 2;
+  // Centre on the dot, but clamp so the pill never clips the viewport edge (the
+  // legend sits bottom-RIGHT, so its dots are close to the right edge).
+  const half = W / 2 + 4;
+  const cx = Math.max(half, Math.min(anchor.left + anchor.width / 2, window.innerWidth - half));
+  return createPortal(
+    <div
+      className="solenoid-socktip"
+      style={{ left: cx, top: anchor.top - 6 }}
+      aria-hidden="true"
+    >
+      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ display: "block", overflow: "visible" }}>
+        <rect
+          x={SW / 2} y={SW / 2} width={W - SW} height={H - SW} rx={(H - SW) / 2}
+          fill={color} stroke="var(--socket-ring)" strokeWidth={SW}
+        />
+        <text
+          x={W / 2} y={H / 2 + 0.5} fill={ink} fontSize="12" fontWeight="600"
+          textAnchor="middle" dominantBaseline="middle"
+          style={{ fontFamily: TIP_FONT_FAMILY }}
+        >{label}</text>
+      </svg>
+    </div>,
+    document.body,
+  );
+}
+
+/** A legend glyph + its instant hover pill (when the dot carries a `tip`). */
 export function SocketDot({ entry }: { entry: Dot }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [anchor, setAnchor] = useState<DOMRect | null>(null);
+  const show = () => { const r = ref.current?.getBoundingClientRect(); if (r) setAnchor(r); };
+  return (
+    <span
+      ref={ref}
+      className="solenoid-legend__dot"
+      onMouseEnter={entry.tip ? show : undefined}
+      onMouseLeave={anchor ? () => setAnchor(null) : undefined}
+    >
+      <SocketGlyphSvg entry={entry} />
+      {entry.tip && anchor && <SocketTip label={entry.tip} color={entry.color} anchor={anchor} />}
+    </span>
+  );
+}
+
+function SocketGlyphSvg({ entry }: { entry: Dot }) {
   // viewBox is padded 1 unit on every side ("-1 -1 14 14") so the shapes — whose
   // fills reach the 0/12 bounds — never sit on the rendered edge. Without the
   // pad, fractional device-pixel rounding (the legend is scaled 0.85) clips the
