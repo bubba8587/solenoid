@@ -2,7 +2,8 @@ import { ClassicPreset } from "rete";
 import { numListSocket, strListSocket, dateListSocket, logicalListSocket, type SolenoidSocket } from "../sockets";
 import { parseDateToSerial } from "./date";
 import { getRecalcGen } from "../process";
-import { listIn, listOut, numIn, numOut, anyIn, trueAnyIn, staticTrueAnyOut, strIn, logicalOut, logicalListOut, frameIn, frameOut, anyListIn, anyListOut } from "./shared";
+import { listIn, listOut, numIn, numOut, anyIn, trueAnyIn, staticTrueAnyOut, strIn, logicalOut, logicalListOut, frameIn, frameOut, anyListIn, anyListOut, adoptiveListIn, adoptiveListOut } from "./shared";
+import type { PassthroughSpec } from "./passthrough";
 import { pairIdsFromKeys } from "./logic";
 import { passesFilter, type FilterOp, type FilterCondConfig } from "../frameVerbs";
 import { solError, isSolError, type SolError } from "../errorValue";
@@ -358,6 +359,9 @@ export class SortNode extends ClassicPreset.Node {
 // (the D15 coherence sweep). Order/arithmetic ops (Sort, Cumulative) stay
 // typed — they need comparison/arithmetic semantics.
 export class ReverseNode extends ClassicPreset.Node {
+  /** Element-preserving reshape: its output adopts the input\'s type (a reversed
+   *  date list stays a date list) — see passthrough.ts. */
+  passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
   cachedList: unknown[] = [];
   width = 180;
@@ -366,8 +370,8 @@ export class ReverseNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("Reverse");
     this.label = init?.label ?? "REVERSE";
-    this.addInput("list", anyListIn("List"));
-    this.addOutput("result", anyListOut("Reversed"));
+    this.addInput("list", adoptiveListIn("List"));
+    this.addOutput("result", adoptiveListOut("Reversed"));
   }
 
   data(inputs: { list?: unknown[][] }) {
@@ -379,6 +383,9 @@ export class ReverseNode extends ClassicPreset.Node {
 }
 
 export class SliceNode extends ClassicPreset.Node {
+  /** Element-preserving reshape: its output adopts the input\'s type (a reversed
+   *  date list stays a date list) — see passthrough.ts. */
+  passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
   cachedList: unknown[] = [];
   // 1-based, inclusive. `end` unset → through the end of the list.
@@ -389,10 +396,10 @@ export class SliceNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("Slice");
     this.label = init?.label ?? "SLICE";
-    this.addInput("list",  anyListIn("List"));
+    this.addInput("list",  adoptiveListIn("List"));
     this.addInput("start", numIn("Start"));
     this.addInput("end",   numIn("End"));
-    this.addOutput("result", anyListOut("Slice"));
+    this.addOutput("result", adoptiveListOut("Slice"));
   }
 
   data(inputs: { list?: unknown[][]; start?: number[]; end?: number[] }) {
@@ -945,6 +952,9 @@ export class SetRelationNode extends ClassicPreset.Node {
 export type TakeDir = "first" | "last";
 
 export class TakeNode extends ClassicPreset.Node {
+  /** Element-preserving reshape: its output adopts the input\'s type (a reversed
+   *  date list stays a date list) — see passthrough.ts. */
+  passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
   dir: TakeDir;
   cachedList: unknown[] = [];
@@ -956,9 +966,9 @@ export class TakeNode extends ClassicPreset.Node {
     super("Take");
     this.label = init?.label ?? "TAKE";
     this.dir = init?.dir ?? "first";
-    this.addInput("list",  anyListIn("List"));
+    this.addInput("list",  adoptiveListIn("List"));
     this.addInput("count", numIn("Count"));
-    this.addOutput("result", anyListOut("Result"));
+    this.addOutput("result", adoptiveListOut("Result"));
   }
 
   data(inputs: { list?: unknown[][]; count?: number[] }) {
@@ -973,6 +983,9 @@ export class TakeNode extends ClassicPreset.Node {
 export type DropDir = "first" | "last";
 
 export class DropNode extends ClassicPreset.Node {
+  /** Element-preserving reshape: its output adopts the input\'s type (a reversed
+   *  date list stays a date list) — see passthrough.ts. */
+  passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
   dir: DropDir;
   cachedList: unknown[] = [];
@@ -984,9 +997,9 @@ export class DropNode extends ClassicPreset.Node {
     super("Drop");
     this.label = init?.label ?? "DROP";
     this.dir = init?.dir ?? "first";
-    this.addInput("list",  anyListIn("List"));
+    this.addInput("list",  adoptiveListIn("List"));
     this.addInput("count", numIn("Count"));
-    this.addOutput("result", anyListOut("Result"));
+    this.addOutput("result", adoptiveListOut("Result"));
   }
 
   data(inputs: { list?: unknown[][]; count?: number[] }) {
@@ -1248,6 +1261,9 @@ export class RepeatNode extends ClassicPreset.Node {
 
 // ─── Shuffle ──────────────────────────────────────────────────────────────────
 export class ShuffleNode extends ClassicPreset.Node {
+  /** Element-preserving reshape: its output adopts the input\'s type (a reversed
+   *  date list stays a date list) — see passthrough.ts. */
+  passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
   cachedList: unknown[] = [];
   width = 180; height = 150;
@@ -1260,8 +1276,8 @@ export class ShuffleNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("Shuffle");
     this.label = init?.label ?? "Shuffle";
-    this.addInput("list",    anyListIn("List"));
-    this.addOutput("result", anyListOut("Shuffled"));
+    this.addInput("list",    adoptiveListIn("List"));
+    this.addOutput("result", adoptiveListOut("Shuffled"));
   }
 
   data(inputs: { list?: unknown[][] }) {
@@ -1282,6 +1298,9 @@ export class ShuffleNode extends ClassicPreset.Node {
 
 // ─── NthElement ───────────────────────────────────────────────────────────────
 export class NthElementNode extends ClassicPreset.Node {
+  /** Element-preserving reshape: its output adopts the input\'s type (a reversed
+   *  date list stays a date list) — see passthrough.ts. */
+  passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
   cachedList: unknown[] = [];
   literals: Record<string, number> = { n: 2 };
@@ -1290,9 +1309,9 @@ export class NthElementNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("NthElement");
     this.label = init?.label ?? "Nth Element";
-    this.addInput("list", anyListIn("List"));
+    this.addInput("list", adoptiveListIn("List"));
     this.addInput("n",    numIn("Step N"));
-    this.addOutput("result", anyListOut("Every Nth"));
+    this.addOutput("result", adoptiveListOut("Every Nth"));
   }
 
   data(inputs: { list?: unknown[][]; n?: number[] }) {
@@ -1340,6 +1359,9 @@ export const PAD_OP_META = {
 } satisfies Record<PadDir, { label: string; description: string }>;
 
 export class PadNode extends ClassicPreset.Node {
+  /** Element-preserving reshape: its output adopts the input\'s type (a reversed
+   *  date list stays a date list) — see passthrough.ts. */
+  passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
   dir: PadDir;
   cachedList: unknown[] = [];
@@ -1350,10 +1372,10 @@ export class PadNode extends ClassicPreset.Node {
     super("Pad");
     this.label = init?.label ?? "Pad";
     this.dir = init?.dir ?? "right";
-    this.addInput("list", anyListIn("List"));
+    this.addInput("list", adoptiveListIn("List"));
     this.addInput("n",    numIn("Target length"));
     this.addInput("fill", numIn("Fill value"));
-    this.addOutput("result", anyListOut("Padded"));
+    this.addOutput("result", adoptiveListOut("Padded"));
   }
 
   data(inputs: { list?: unknown[][]; n?: number[]; fill?: number[] }) {

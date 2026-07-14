@@ -37,6 +37,12 @@ export const trueAnyOut       = (label: string) => new ClassicPreset.Output(new 
 // use these to type frame columns by the incoming matrix/list, dates included.
 export const adoptiveTableIn  = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anytable"), label);
 export const adoptiveListIn   = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anylist"), label);
+// Adoptive OUTPUTS for element-preserving, same-rank agnostic ops (Reverse,
+// TRANSPOSE, CHOOSEROWS…): the op forwards its input's element type unchanged, so its
+// output adopts that type (via settleWildcardTypes + a passthrough() decl) — a
+// reversed date list stays a date list downstream, not a neutral `anylist`.
+export const adoptiveTableOut = (label: string) => new ClassicPreset.Output(new AdoptiveSocket("anytable"), label);
+export const adoptiveListOut  = (label: string) => new ClassicPreset.Output(new AdoptiveSocket("anylist"), label);
 export const staticTrueAnyIn  = (label: string) => new ClassicPreset.Input(trueAnySocket, label);
 export const staticTrueAnyOut = (label: string) => new ClassicPreset.Output(trueAnySocket, label);
 // A 2-D (grid) input of ANY element type — for element-agnostic matrix ops
