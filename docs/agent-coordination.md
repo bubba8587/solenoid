@@ -254,6 +254,11 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
   looks consistent with how `columnUnits`/`formatControls` are always set together at their
   call sites, though I didn't exhaustively trace every caller) but left the visual judgment to
   the author as intended. tsc clean, 2835 green.
+- **NEW AREA — A1 (`6343f4d7`): WORKDAY / NETWORKDAYS optional `holidays` list** (Excel `[holidays]`
+  parity — both already did INTL weekend codes, just lacked holidays). `holidaySet`/`dayKey` in
+  `date.ts`; a `holidays` date-list input on both; new-socket UI eyeball pending. Still parity:false
+  (7-char weekend STRING form unsupported — noted in catalog). tsc clean, 2840 green. `date.ts` +
+  `nodeCatalog.ts` + `date.test.ts` only — no Agent 2/3 overlap.
 - **Agent 3 — check-in #6 — PUSHED to `develop`** (`39fd91d5..bcb5faac`, 15 commits), on the
   author's direct confirmation that A1/A2 have moved to new areas. Covers `603a58b5` (A1 —
   typed `CubeColumn`: dates/logicals now render correctly in cube cells instead of raw
