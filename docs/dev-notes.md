@@ -5,6 +5,26 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-15j — Simulation "Stop when" condition) [Agent 2, off-theme]
+Author-approved (2026-07-14) simulation follow-up. A Composite in Simulation mode gets a "Stop when
+[output] [op] [value]" condition (`stopWhenPortId`/`stopWhenOp`/`stopWhenValue`, persisted via the
+copyPaste whitelist + `solveKey`); `runSimulation` checks it after each round and halts the round
+`output <op> value` holds, so `simulationSteps` becomes a CAP. The stopping round IS recorded (the
+series ends on the state that satisfied it) — a model self-terminates instead of hand-tuning the count.
+`stopConditionMet` (`>=/<=/>/</=/!=`) reads a logical output as 1/0; null/undefined/NaN never stop
+(guard null FIRST — `Number(null)` is 0). **UX note (author eyeballed mid-build):** the first cut only
+let you pick an OUTPUT (assuming you'd pre-build a logical signal inside the subgraph) — the author
+flagged "no condition for said output", so the comparator+threshold was added; it subsumes the logical
+case ("solved?" output → stop at "= 1"). Two eval paths in `stopSignalTrue`: an output fed straight off
+a loop node reads from the round snapshot; a downstream OBSERVER (an "is-solved?" check / running total
+reading loop outputs, NOT itself on the cycle) resolves by resetting the internal engine, seeding THIS
+round's loop outputs into its cache, and fetching — safe because loop stepping uses direct `data()`
+calls, never the engine, and the reset stops a prior round's observer value leaking. UI:
+`SimulationEditor` (`CompositeNode.tsx`) — port dropdown + op dropdown + value; step label reads "Max
+steps" once set. Possible follow-up: rewire the sudoku-solver seed (hand-tuned 25 steps) to a "solved?"
+stop output (seed-generator change, left for the author). tsc clean, 2799 green. Commits `99f21e06`
+(port) + `8fc79bfc` (comparator).
+
 ### SESSION DIGEST (2026-07-15i — SVG Picker: rasterize for display, inline only on hover) [Agent 2, off-theme]
 `SvgPickerComponent` permanently mounted the source markup via `well.innerHTML = source` — a
 US-county-map SVG ≈ +40k live DOM elements sitting on the canvas at all times (the single biggest DOM

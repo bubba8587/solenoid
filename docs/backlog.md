@@ -132,11 +132,6 @@ this backlog stays the per-item source of truth.
 
 ## Composite / drill-in
 
-- [ ] **Simulation stop condition** (surfaced by the sudoku-solver seed, 2026-07-13;
-  **author-approved 2026-07-14**) — an optional "Stop when" logical output on a Simulation
-  composite: check it after each round, halt early, reinterpret `simulationSteps` as the hard
-  cap. Small change inside `runSimulation`; makes fixpoint loops self-terminating (the sudoku
-  seed hand-tunes 25 steps).
 - [ ] **By-Row run mode** (surfaced 2026-07-13; shape refined by author 2026-07-14) — the
   user SELECTS which wired input port to iterate: the mode runs the subgraph once per ROW of
   that input (the row binds to that port; other ports stay fixed), collecting per-port series.
