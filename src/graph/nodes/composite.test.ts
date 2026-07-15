@@ -655,6 +655,49 @@ describe("CompositeNode By-Row run mode", () => {
   });
 });
 
+describe("CompositeNode input marker display", () => {
+  it("marks an input marker externallyWired only when the port receives an outside value", async () => {
+    const c = new CompositeNode({ runMode: "single" });
+    const inA = new CompositeInputNode({ label: "A" });
+    const outMarker = new CompositeOutputNode({ label: "Out" });
+    for (const n of [inA, outMarker]) await c.internalEditor.addNode(n as unknown as Schemes["Node"]);
+    await connect(c.internalEditor, inA, "value", outMarker, "value");
+    const aId = c.addInputPort({ label: "A", exposure: "exposed", tier: "basic", internalNodeId: inA.id });
+    c.addOutputPort({ label: "Out", tier: "basic", internalNodeId: outMarker.id });
+
+    await c.data({ [aId]: [42] });   // wired from outside
+    expect(inA.externallyWired).toBe(true);
+    expect(inA.value).toBe(42);      // the value the chip renders
+
+    await c.data({});                // not wired → falls back to the seed
+    expect(inA.externallyWired).toBe(false);
+  });
+});
+
+describe("CompositeNode boundary-marker socket adaptation", () => {
+  it("mirrors the flowing type onto the input- and output-marker dots", async () => {
+    const c = new CompositeNode({ runMode: "single" });
+    const inA = new CompositeInputNode({ label: "A" });
+    const outMarker = new CompositeOutputNode({ label: "Out" });
+    for (const n of [inA, outMarker]) await c.internalEditor.addNode(n as unknown as Schemes["Node"]);
+    await connect(c.internalEditor, inA, "value", outMarker, "value"); // A → Out (passthrough)
+    const aId = c.addInputPort({ label: "A", exposure: "exposed", tier: "basic", internalNodeId: inA.id });
+    c.addOutputPort({ label: "Out", tier: "basic", internalNodeId: outMarker.id });
+
+    // Markers start as the trueany hollow ring.
+    expect((inA.outputs.value!.socket as { dataType?: string }).dataType).toBe("trueany");
+
+    // Simulate the shell input port having adopted a concrete type from an outside cable.
+    (c.inputs[aId]!.socket as unknown as { setType: (t: string) => void }).setType("string");
+    await c.data({ [aId]: ["hi"] });
+
+    // Input marker adopts the shell input type; the output marker adopts from its
+    // internal source (the input marker), so it lands on "string" too.
+    expect((inA.outputs.value!.socket as { dataType?: string }).dataType).toBe("string");
+    expect((outMarker.inputs.value!.socket as { dataType?: string }).dataType).toBe("string");
+  });
+});
+
 describe("CompositeNode Goal Seek run mode", () => {
   // A + B → Sum: drive A so Sum hits a target with B wired.
   async function makeAdder() {

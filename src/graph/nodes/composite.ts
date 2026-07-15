@@ -1,7 +1,7 @@
 import { ClassicPreset, NodeEditor } from "rete";
 import { DataflowEngine } from "rete-engine";
 import type { Schemes, SolenoidNode, SolenoidConnection } from "../schemes";
-import { AdoptiveSocket, MutableSocket, SolenoidSocket, trueAnySocket, type SocketDataType } from "../sockets";
+import { AdoptiveSocket, MutableSocket, SolenoidSocket, type SocketDataType } from "../sockets";
 import { resolveTrigModes } from "../trigMode";
 import { settleWildcardTypes } from "../trueAnyAdopt";
 import { extractInit } from "../copyPaste";
@@ -187,20 +187,25 @@ export type CompositeDataTableValues = Record<string, unknown[]>;
 // ─── Internal boundary markers ─────────────────────────────────────────────────
 // Not user-addable — no catalog entry. They only ever live inside a
 // CompositeNode's internalEditor as the concrete wire-end for one promoted
-// port. Both marker classes use `trueAnySocket` — matching the composite's own
-// external port sockets (also `any`, see addInputPort/addOutputPort below) —
-// deliberately, for two reasons: (1) it's the same "type-agnostic boundary"
-// precedent Expression's inputs already use (anyIn), and (2) it keeps the
-// marker constructor shaped like every other node's `(init?: Record<string,
-// unknown>)`, so hydrate() can rebuild one through the generic ctor registry
-// with no socket-identity serialization problem (a live ClassicPreset.Socket
-// instance isn't JSON-safe). `internalEditor` has no ConnectionPlugin, so
-// there's no drag-time type-compat check to satisfy anyway — only the actual
-// runtime VALUE shape matters, which flows through untouched either way.
+// port. Each marker owns a per-instance `MutableSocket("trueany")` — starting as
+// the type-agnostic hollow ring, but the container mirrors the flowing type onto
+// it (syncMarkerSocketTypes) so the dot ADAPTS visually, like the composite's own
+// external ports. It's a plain MutableSocket (not AdoptiveSocket), so it stays OUT
+// of the trueany adoption fixpoint — this is display only. A fresh socket is built
+// in the constructor (no serialized socket identity), so hydrate() rebuilds one
+// through the generic ctor registry fine, and the type re-derives on the next
+// data(). `internalEditor` has no ConnectionPlugin, so there's no drag-time
+// type-compat check to satisfy — only the runtime VALUE shape matters, which flows
+// through untouched regardless of the dot's displayed type.
 
 export class CompositeInputNode extends ClassicPreset.Node {
   label: string;
   value: unknown = null;
+  /** Transient (not persisted): true when the exposed port is EXTERNALLY WIRED, so
+   *  `value` is coming from outside rather than from the editable seed. Stamped by
+   *  the container's data() each pass; the drill-in marker shows a read-only value
+   *  chip when true (what's actually flowing in) instead of the seed field. */
+  externallyWired = false;
   /** An editable DEFAULT/seed, set on the marker INSIDE the drill-in — used as the
    *  input value when the exposed port isn't externally wired (and as the goal-seek
    *  seed). A wired value or a solve overrides it, so it's editable "even if it gets
@@ -221,7 +226,11 @@ export class CompositeInputNode extends ClassicPreset.Node {
     this.defaultValue = init?.defaultValue ?? null;
     this.uncertainty = init?.uncertainty ?? null;
     this.distribution = init?.distribution === "uniform" ? "uniform" : "normal";
-    this.addOutput("value", new ClassicPreset.Output(trueAnySocket, this.label));
+    // A per-instance MutableSocket (not the shared trueAnySocket) so the container
+    // can mirror the flowing type onto it for a visually-ADAPTING dot — see
+    // syncMarkerSocketTypes. Plain MutableSocket, so it stays OUT of the trueany
+    // adoption fixpoint (display only). Starts as the hollow trueany ring.
+    this.addOutput("value", new ClassicPreset.Output(new MutableSocket("trueany"), this.label));
   }
   data(): { value: unknown } {
     return { value: this.value };
@@ -238,7 +247,9 @@ export class CompositeOutputNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("Composite Output");
     this.label = init?.label ?? "Output";
-    this.addInput("value", new ClassicPreset.Input(trueAnySocket, this.label));
+    // Per-instance MutableSocket so the dot adapts to the internal source's type
+    // (syncMarkerSocketTypes); display only, outside the trueany fixpoint.
+    this.addInput("value", new ClassicPreset.Input(new MutableSocket("trueany"), this.label));
   }
   data(inputs: Record<string, unknown[]>): { value: unknown } {
     const v = inputs.value?.[0] ?? null;
@@ -531,6 +542,29 @@ export class CompositeNode extends ClassicPreset.Node {
       p.label = labelOf(p.internalNodeId, "Output", p.label);
       const out = this.outputs[p.id];
       if (out) out.label = p.label;
+    }
+  }
+
+  /** Mirror the flowing type onto the internal boundary-marker sockets so their
+   *  dots ADAPT visually (display only — the markers are plain MutableSockets,
+   *  outside the trueany adoption fixpoint). An INPUT marker takes the shell input
+   *  port's adopted type (what's wired in from outside); an OUTPUT marker takes the
+   *  type of the internal node feeding it (read straight from the internal wiring,
+   *  so it never depends on the shell output — which itself adopts from here). */
+  private syncMarkerSocketTypes(): void {
+    const typeOf = (s: ClassicPreset.Socket | undefined): SocketDataType =>
+      (s as { dataType?: SocketDataType } | undefined)?.dataType ?? "trueany";
+    for (const port of this.inputPorts) {
+      const sock = this.internalEditor.getNode(port.internalNodeId)?.outputs?.value?.socket;
+      if (sock instanceof MutableSocket) sock.setType(typeOf(this.inputs[port.id]?.socket));
+    }
+    const conns = this.internalEditor.getConnections();
+    for (const port of this.outputPorts) {
+      const sock = this.internalEditor.getNode(port.internalNodeId)?.inputs?.value?.socket;
+      if (!(sock instanceof MutableSocket)) continue;
+      const feed = conns.find((c) => c.target === port.internalNodeId && c.targetInput === "value");
+      const srcSock = feed ? this.internalEditor.getNode(feed.source)?.outputs?.[feed.sourceOutput]?.socket : undefined;
+      sock.setType(typeOf(srcSock));
     }
   }
 
@@ -897,6 +931,14 @@ export class CompositeNode extends ClassicPreset.Node {
     // (goal-seek Set/By dropdowns) as soon as the blur fires a recompute, without
     // waiting for drill-up (the outer card still re-renders on leave). Cheap.
     this.syncPortLabels();
+    this.syncMarkerSocketTypes(); // adapt the boundary-marker dots to the flowing type
+    // Stamp each input marker with whether its port is externally wired, so the
+    // drill-in shows the incoming value (read-only) rather than the seed field.
+    // Topology-only (not the value source), so it's current even on a held heavy pass.
+    for (const port of this.inputPorts) {
+      const m = this.internalEditor.getNode(port.internalNodeId) as CompositeInputNode | undefined;
+      if (m) m.externallyWired = port.exposure === "exposed" && inputs[port.id]?.[0] !== undefined;
+    }
     // Resolve Auto-mode trig nodes INSIDE the subgraph from their incoming unit
     // before the internal engine pull — the same pass process.ts runs on the main
     // editor, scoped here to the composite's own graph (else an Auto deg/rad trig
