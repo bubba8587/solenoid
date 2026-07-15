@@ -5,6 +5,7 @@
 import { createValueStore } from "./storeKit";
 import type { SolError } from "./errorValue";
 import type { FrameSourceColumn } from "./frame";
+import type { ColumnUnit } from "./unitValue";
 
 /** A grid cell — numeric, text, boolean (logical), null (missing), or a per-cell
  *  error (#CODE!). The popup's toGrid renders boolean as TRUE/FALSE. */
@@ -74,6 +75,17 @@ export interface TablePopupState {
    *  values with ", " (matching a node's list result box) instead of the
    *  row-per-line CSV a 2D table uses. */
   list?: boolean;
+  /** Render a Format-Controller controls row between the header and the body
+   *  (read-only frames/matrices). `"columns"` stacks a format-over-unit pair per
+   *  column (frames/cubes); `"matrix"` shows one format+unit pair side by side
+   *  (a homogeneous matrix). Display-only — the dropdowns re-render the on-screen
+   *  grid (convert units, apply the number format) without touching the value or
+   *  what Copy/CSV export. */
+  formatControls?: "columns" | "matrix";
+  /** Per-column dimensional unit (frames): seeds each column's unit dropdown and
+   *  drives the base-SI → display-unit conversion. Aligned with `headers`; a
+   *  column with no unit is `undefined`. */
+  columnUnits?: (ColumnUnit | undefined)[];
   /** Host node id, when opened from a node body — enables the header Pin action
    *  (pin this value to the HUD). Absent for HUD/group-readout chips, which have
    *  no single host node to pin. */

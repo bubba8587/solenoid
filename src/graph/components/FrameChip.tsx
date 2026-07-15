@@ -107,6 +107,11 @@ export function FrameChip({ value, label, size = "md", accent, onSave, source, o
             ? undefined
             : Array.from({ length: frameRowCount(full) }, (_, r) => full.columns.map((c) => c.raw?.[r] ?? null)),
           cellType: "number",
+          // Read-only frame: a per-column format+unit controls row (display only).
+          // The literal-source EDITOR (Frame Input) skips it — you're editing raw
+          // text, not viewing a computed frame.
+          formatControls: isSource || onSave ? undefined : "columns",
+          columnUnits: isSource ? undefined : full.columns.map((c) => c.unit),
           editableHeaders: isSource || !!onSave,
           literalSource: isSource,
           onSaveSource: isSource ? onSaveSource : undefined,

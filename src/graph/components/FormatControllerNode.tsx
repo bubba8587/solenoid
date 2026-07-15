@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo, useSyncExternalStore } from "react";
+import { useState, useEffect, useSyncExternalStore } from "react";
 import { FormatControllerNode } from "../rete-nodes";
 import type { FormatControllerNode as FormatControllerNodeType } from "../rete-nodes";
 import {
-  FORMAT_STYLE_LABELS, FORMAT_STYLE_GROUPS, DATE_FORMAT_STYLES, UNIT_ANNOTATIONS,
+  FORMAT_STYLE_LABELS, FORMAT_STYLE_GROUPS, DATE_FORMAT_STYLES,
   LOGICAL_STYLE_LABELS, LAMBDA_VIEW_LABELS, CHART_FONT_SCALES,
   NEGATIVE_STYLE_LABELS, SCALE_MODE_LABELS,
   unitGroupLabel, formatMismatchStore,
@@ -13,8 +13,6 @@ import {
   familyOf, controlsFor, COMPLEX_FORMAT_STYLES,
   groupingApplies, scaleApplies, negativeApplies,
 } from "../formatModel";
-import { packsStore } from "../packs";
-import { activePackUnits, activePackFormats } from "../fcExtensions";
 import { SOCKET_COLORS } from "../sockets";
 import { clamp } from "../nodes/mathUtils";
 import { processGraph, repositionDockedNodes } from "../process";
@@ -23,18 +21,10 @@ import { NodeCard } from "./NodeCard";
 import { LazySelect } from "./LazySelect";
 import { NodeSocket } from "./NodeSocket";
 import { SegToggle } from "./SegToggle";
+import { useFcFormatOptions } from "./fcControls";
 import type { NodeProps } from "./nodeKit";
 import "./nodeCard.css";
 import "./FormatControllerNode.css";
-
-// Base unit-group display order. Active packs' groups are appended (before
-// "custom") at render time — see the component's useMemo.
-const BASE_UNIT_GROUP_ORDER: string[] = [
-  "none", "angle", "length", "mass", "temperature",
-  "time", "area", "volume", "speed", "data", "currency",
-];
-
-type UnitOption = { id: string; label: string };
 
 // A small rounded direction arrow shown beside the Format / Unit controls to
 // show how that property flows. "back" (←) = applies to the box behind this FC;
@@ -89,36 +79,10 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
     () => formatMismatchStore.has(node.id),
   );
 
-  // Merge built-in units/formats with the ones active packs contribute, so the
-  // dropdowns grow when a pack is switched on. (Resolution of a value already
-  // works for any registered pack id; this is just what the dropdowns OFFER.)
-  const packsVersion = useSyncExternalStore(packsStore.subscribe, packsStore.version);
-  const { unitGroups, unitGroupOrder } = useMemo(() => {
-    const byGroup = new Map<string, UnitOption[]>();
-    const add = (g: string, u: UnitOption) => {
-      if (!byGroup.has(g)) byGroup.set(g, []);
-      byGroup.get(g)!.push({ id: u.id, label: u.label });
-    };
-    for (const u of UNIT_ANNOTATIONS) add(u.group, u);
-    const order = [...BASE_UNIT_GROUP_ORDER];
-    for (const u of activePackUnits()) {
-      add(u.group, u);
-      if (!order.includes(u.group)) order.push(u.group);
-    }
-    if (byGroup.has("custom")) order.push("custom");
-    return { unitGroups: byGroup, unitGroupOrder: order };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [packsVersion]);
-  const packFormatGroups = useMemo(() => {
-    const m = new Map<string, UnitOption[]>();
-    for (const f of activePackFormats()) {
-      const g = f.group ?? "Pack";
-      if (!m.has(g)) m.set(g, []);
-      m.get(g)!.push({ id: f.id, label: f.label });
-    }
-    return m;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [packsVersion]);
+  // Built-in units/formats merged with the ones active packs contribute, so the
+  // dropdowns grow when a pack is switched on. Shared with the table popup's
+  // per-column format row (fcControls) — one source of truth for the menus.
+  const { unitGroups, unitGroupOrder, packFormatGroups } = useFcFormatOptions();
 
   // Re-home onto a different-typed socket (drag-to-dock) can change node.format
   // and socketDataType externally; resync local state so the controlled selects

@@ -118,6 +118,10 @@ export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId
           data: to2D(value),
           cellType: cellTypeOf(value),
           list: !table,
+          // A read-only numeric matrix gets one format+unit pair (homogeneous).
+          // The popup only renders it when the grid isn't editable, so an editable
+          // Table Input (onSaveRaw via popupOverrides) never shows it.
+          formatControls: table && cellTypeOf(value) === "number" ? "matrix" : undefined,
           accent: accent || st.accent,
           groupColor: st.groupColor,
           groupColorDark: st.groupColorDark,
