@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, histogramBins } from "./visual";
+import { SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, SurfaceNode, parseBorderedGrid, histogramBins } from "./visual";
 import { DatePickerNode, XYPadNode } from "./control";
 import { extractInit } from "../copyPaste";
 import { jsDateToSerial } from "./date";
@@ -74,6 +74,40 @@ describe("visual nodes", () => {
     const init = extractInit(g);
     expect(init.min).toBe(10);
     expect(init.max).toBe(20);
+  });
+});
+
+describe("Surface (3-D plot)", () => {
+  it("parses a bordered table into axes + heights (corner ignored, non-numeric → blank)", () => {
+    //   ·   0   10        row 0 = X coords
+    //   0   1   2         col 0 = Y coords, interior = Z
+    //   5   3   x         a non-numeric cell → null
+    const { xs, ys, z } = parseBorderedGrid([
+      [null, 0, 10],
+      [0, 1, 2],
+      [5, 3, "x" as unknown as number],
+    ]);
+    expect(xs).toEqual([0, 10]);
+    expect(ys).toEqual([0, 5]);
+    expect(z).toEqual([[1, 2], [3, null]]);
+  });
+
+  it("returns empty axes for a too-small table", () => {
+    expect(parseBorderedGrid([[null, 0]])).toEqual({ xs: [], ys: [], z: [] });
+    expect(parseBorderedGrid(null)).toEqual({ xs: [], ys: [], z: [] });
+  });
+
+  it("emits a surface ChartValue carrying the parsed grid", () => {
+    const s = new SurfaceNode({ label: "Heights" });
+    const out = s.data({ grid: [[[null, 0, 10], [0, 1, 2], [5, 3, 4]]] });
+    expect(out.chart).toMatchObject({
+      __chart: true,
+      op: "surface",
+      title: "Heights",
+      payload: { kind: "surface", xs: [0, 10], ys: [0, 5], z: [[1, 2], [3, 4]] },
+    });
+    // Unwired → empty grid, still a valid (drawable-as-empty) surface value.
+    expect(new SurfaceNode().data({}).chart).toMatchObject({ op: "surface", payload: { kind: "surface", xs: [], ys: [], z: [] } });
   });
 });
 

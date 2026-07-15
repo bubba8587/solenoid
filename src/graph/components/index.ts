@@ -299,6 +299,7 @@ export { KpiComponent } from "./KpiNode";
 export { BulletComponent } from "./BulletNode";
 export { TreemapComponent } from "./TreemapNode";
 export { SankeyComponent } from "./SankeyNode";
+export { SurfaceComponent } from "./SurfaceNode";
 export { MermaidComponent } from "./MermaidNode";
 export { GaugeComponent } from "./GaugeNode";
 export { HeatmapCellComponent } from "./HeatmapCellNode";

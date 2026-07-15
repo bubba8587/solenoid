@@ -10,6 +10,7 @@ import type { ChartOptions } from "../nodes/chartOptions";
 import type { TornadoBar } from "./chartRender";
 import type { ChartValue } from "../chartValue";
 import { KpiCard, BulletBar } from "./chartCards";
+import { SurfaceView } from "./SurfaceView";
 
 export { VIZ, useChartColors, toSeries } from "./chartCore";
 export type { ChartShape } from "./chartCore";
@@ -105,6 +106,8 @@ export function ChartFigure({ value, width, height, axes = true, fontScale }: {
     return <TreemapView names={value.payload.names} values={value.payload.values} width={width} height={height} fscale={fscale} />;
   if (value.op === "sankey" && value.payload?.kind === "sankey")
     return <SankeyView sources={value.payload.sources} targets={value.payload.targets} values={value.payload.values} width={width} height={height} fscale={fscale} />;
+  if (value.op === "surface" && value.payload?.kind === "surface")
+    return <SurfaceView payload={value.payload} width={width} height={height} />;
   // The 2-D ops read the matrix; with no matrix wired they fall back to the
   // single `values` series (composed → columns, bubble → a scatter).
   const hasMatrix = Array.isArray(value.matrix) && value.matrix.length > 0;

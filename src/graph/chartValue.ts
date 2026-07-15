@@ -45,12 +45,22 @@ export interface SankeyPayload {
   targets: string[];
   values: number[];
 }
-export type ChartPayload = KpiPayload | BulletPayload | TreemapPayload | SankeyPayload;
+// A shaded 3-D surface over a coordinate grid: `z[iy][ix]` is the height at
+// (ys[iy], xs[ix]); a null cell is a hole (no quad drawn). The axes carry the real
+// coordinates so the surface honours non-uniform spacing. Parsed from the same
+// bordered table the Grid Interpolate node reads (row 1 = Xs, column 1 = Ys).
+export interface SurfacePayload {
+  kind: "surface";
+  xs: number[];
+  ys: number[];
+  z: (number | null)[][];
+}
+export type ChartPayload = KpiPayload | BulletPayload | TreemapPayload | SankeyPayload | SurfacePayload;
 
 /** Every op the `chart` socket can carry: the ChartView series shapes, the
  *  structured-payload figures rendered outside recharts (kpi/bullet), and the
  *  structured recharts figures (treemap/sankey). */
-export type ChartValueOp = ChartOp | "kpi" | "bullet" | "treemap" | "sankey";
+export type ChartValueOp = ChartOp | "kpi" | "bullet" | "treemap" | "sankey" | "surface";
 
 export interface ChartValue {
   __chart: true;
