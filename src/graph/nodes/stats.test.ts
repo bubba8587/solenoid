@@ -15,6 +15,7 @@ import {
   ForecastNode,
   InterpolateNode,
   interpolateLinear,
+  bilinearGrid,
 } from "./stats";
 import { isSolError, solError } from "../errorValue";
 
@@ -230,6 +231,64 @@ describe("INTERPOLATE (piecewise-linear lookup)", () => {
   });
 });
 
+describe("INTERPOLATE — Grid mode (2-D bilinear)", () => {
+  // A 2×2 grid: Z(y,x) with column Xs [0,10], row Ys [0,10].
+  //   x=0  x=10
+  // y=0: 0   10
+  // y=10:20  30
+  const grid = [[0, 10], [20, 30]];
+  it("bilinearly interpolates the centre of a cell", () => {
+    // (x=5, y=5) → average of all four corners = 15.
+    const r = bilinearGrid(grid, [0, 10], [0, 10], [5], [5]);
+    expect(r).toEqual([[15]]);
+  });
+  it("reduces to 1-D along an edge", () => {
+    // Along y=0: x=5 → midway 0→10 = 5; along x=0: y=5 → midway 0→20 = 10.
+    expect(bilinearGrid(grid, [0, 10], [0, 10], [5], [0])).toEqual([[5]]);
+    expect(bilinearGrid(grid, [0, 10], [0, 10], [0], [5])).toEqual([[10]]);
+  });
+  it("hits grid corners exactly and resamples to a bigger grid", () => {
+    const r = bilinearGrid(grid, [0, 10], [0, 10], [0, 5, 10], [0, 10]);
+    expect(r).toEqual([[0, 5, 10], [20, 25, 30]]);
+  });
+  it("clamps queries outside the grid range", () => {
+    expect(bilinearGrid(grid, [0, 10], [0, 10], [-5, 15], [-5, 15]))
+      .toEqual([[0, 10], [20, 30]]);
+  });
+  it("sorts unordered axes (grid permuted to match)", () => {
+    // Columns given as [10,0] with the grid columns in that order → same result.
+    const flipped = [[10, 0], [30, 20]];
+    expect(bilinearGrid(flipped, [10, 0], [0, 10], [5], [5])).toEqual([[15]]);
+  });
+
+  // Node wiring.
+  it("grid mode reshapes to 5 inputs + a table output", () => {
+    const n = new InterpolateNode({ mode: "grid" });
+    expect(Object.keys(n.inputs).sort()).toEqual(["grid", "new_xs", "new_ys", "xs", "ys"]);
+    expect(n.outputs.result?.socket.name).toBeDefined();
+  });
+  it("_rebuildSockets swaps the socket set on a mode change", () => {
+    const n = new InterpolateNode(); // list mode
+    expect(Object.keys(n.inputs).sort()).toEqual(["new_xs", "xs", "ys"]);
+    n.mode = "grid";
+    n._rebuildSockets();
+    expect(Object.keys(n.inputs).sort()).toEqual(["grid", "new_xs", "new_ys", "xs", "ys"]);
+  });
+  it("interpolates a grid through the node", () => {
+    const r = new InterpolateNode({ mode: "grid" }).data({
+      grid: [grid], xs: [[0, 10]], ys: [[0, 10]], new_xs: [[5]], new_ys: [[5]],
+    }).result;
+    expect(r).toEqual([[15]]);
+  });
+  it("propagates a whole-grid error", () => {
+    const err = solError("#REF!", "bad grid");
+    const r = new InterpolateNode({ mode: "grid" }).data({
+      grid: [err], xs: [[0, 10]], ys: [[0, 10]], new_xs: [[5]], new_ys: [[5]],
+    }).result;
+    expect(isSolError(r) && r.code).toBe("#REF!");
+  });
+});
+
 describe("CORREL / RSQ", () => {
   it("is +1 for a perfectly increasing linear relation", () => {
     const r = new CorrelNode({ op: "correl" }).data({ x: [[1, 2, 3]], y: [[2, 4, 6]] });
@@ -256,12 +315,16 @@ describe("COVARIANCE", () => {
   });
 });
 
-describe("MODE.SNGL", () => {
-  it("returns the most frequent value", () => {
+describe("MODE (scalar OR list — supersedes MODE.SNGL / MODE.MULT)", () => {
+  it("returns a single number when one value is most frequent", () => {
     expect(new ModeNode().data({ list: [[1, 2, 2, 3, 3, 3, 4]] }).result).toBe(3);
   });
-  it("returns the smallest among equally frequent values", () => {
-    expect(new ModeNode().data({ list: [[5, 5, 2, 2, 9]] }).result).toBe(2);
+  it("returns ALL of them as a list when several tie — no arbitrary tie-break", () => {
+    // 5 and 2 both appear twice → the full set, sorted ascending (was: picked 2).
+    expect(new ModeNode().data({ list: [[5, 5, 2, 2, 9]] }).result).toEqual([2, 5]);
+  });
+  it("skips nulls and propagates an error", () => {
+    expect(new ModeNode().data({ list: [[7, null, 7, 1]] }).result).toBe(7);
   });
 });
 

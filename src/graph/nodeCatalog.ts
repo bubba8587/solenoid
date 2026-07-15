@@ -67,7 +67,7 @@ import {
   BesselNode,
   SeriesSumNode, MultinomialNode, RollingNode, SwitchNode, IfsNode,
   ZTestNode, TTestNode, FTestNode, ChisqTestNode,
-  TrendNode, InterpolateNode, LinestNode, LogestNode, BinomDistRangeNode, ModMultNode,
+  TrendNode, InterpolateNode, LinestNode, LogestNode, BinomDistRangeNode,
   NODE_KIND_ACCENTS,
   ARITHMETIC_OP_META, MATH_FN_OP_META, BOOLEAN_OP_META, REDUCE_OP_META,
   COMBINATORICS_OP_META, NTH_VALUE_OP_META, ARG_MIN_MAX_OP_META,
@@ -537,7 +537,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           regressionLeaf("steyx"),
           { type: "logest",  label: "LOGEST",  description: "Exponential regression: [m, b] where y = b·mˣ; requires all Ys > 0. Excel: LOGEST.", create: () => new LogestNode(), parity: false },
           { type: "trend",   label: "TREND",   description: "Predict Y values for new Xs using a fitted linear regression. Excel: TREND.", create: () => new TrendNode(), parity: false },
-          { type: "interpolate", label: "INTERPOLATE", description: "Look up y for new x by piecewise-linear interpolation between the known points (not a regression fit), clamped at the ends. For lookup tables: hardness conversions, pump curves, pipe schedules. No Excel equivalent (LOOKUP is a step match).", create: () => new InterpolateNode(), parity: false },
+          { type: "interpolate", label: "INTERPOLATE", description: "Look up a value by interpolation between known points (not a regression fit), clamped at the ends. Two modes: List (1-D — y for a query x) and Grid (2-D bilinear — resample a numeric table onto new column/row coordinates). For lookup tables: hardness conversions, pump curves, steam tables. No Excel equivalent (LOOKUP is a step match).", create: () => new InterpolateNode(), parity: false },
         ],
       },
       {
@@ -553,8 +553,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
       {
         type: "category", label: "Stats", description: "Distribution summaries and frequency analysis.",
         children: [
-          { type: "mode",      label: "MODE",      description: "Most frequent value; ties resolve to the smallest value. Excel: MODE.SNGL.", create: () => new ModeNode() },
-          { type: "mode-mult", label: "MODE.MULT", description: "All modes as a list, for when multiple values tie for most frequent. Excel: MODE.MULT.", create: () => new ModMultNode() },
+          { type: "mode",      label: "MODE",      description: "Most frequent value — a single number, or a LIST of all of them when several tie for most frequent (so there's no arbitrary tie-break). Supersedes Excel's MODE.SNGL (which picks one on a tie) and MODE.MULT (which always returns an array); this one node covers both.", create: () => new ModeNode() },
           { type: "trimmean", label: "TRIMMEAN",  description: "Average after removing the top and bottom p/2 fraction of values. Excel: TRIMMEAN(list, percent).", create: () => new TrimMeanNode() },
           { type: "frequency", label: "FREQUENCY", description: "Count values falling into each bin interval; the result has bins+1 elements. Excel: FREQUENCY.", create: () => new FrequencyNode() },
           { type: "pair", children: [

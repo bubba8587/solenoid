@@ -279,7 +279,6 @@ export {
 } from "./DateNodes";
 
 // ─── Stats (extended) ─────────────────────────────────────────────────────────
-export { ModMultComponent } from "./ModMultNode";
 export { ProbComponent } from "./ProbNode";
 export { WeightedComponent } from "./WeightedNode";
 

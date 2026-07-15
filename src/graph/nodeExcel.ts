@@ -308,8 +308,10 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "math-tanh": [{ excel: "TANH", syntax: "=TANH(x)", parity: true }],
   "math-trunc": [{ excel: "TRUNC", syntax: "=TRUNC(x)", parity: true }],
   "mirr": [{ excel: "MIRR", syntax: "=MIRR(flows, fin_rate, reinv_rate)", parity: true }],
-  "mode": [{ excel: "MODE.SNGL", syntax: "=MODE.SNGL(range)", parity: true }],
-  "mode-mult": [{ excel: "MODE.MULT", syntax: "=MODE.MULT(range)" }],
+  "mode": [
+    { excel: "MODE.SNGL", syntax: "=MODE.SNGL(range)" },
+    { excel: "MODE.MULT", syntax: "=MODE.MULT(range)" },
+  ],
   "multinomial": [{ excel: "MULTINOMIAL", syntax: "=MULTINOMIAL(n1, n2, ...)", parity: true }],
   "na": [{ excel: "NA", syntax: "=NA()", parity: true }],
   "negbinomdist": [{ excel: "NEGBINOM.DIST", syntax: "=NEGBINOM.DIST(k, r, p, cum)" }],
