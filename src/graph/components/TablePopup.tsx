@@ -8,10 +8,9 @@ import { isSolError } from "../errorValue";
 import { formatDateSerial, parseDateToSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
 import { coerceFrameCell, formatFrameCell, type FrameSourceColumn } from "../frame";
 import { formatNumberWithAnnotation, isDateStyle, type FormatAnnotation, type FormatStyleId } from "../formatAnnotationStore";
-import { fcUnitToUnit } from "../unitBridge";
-import { dimEqual, isDimensionless } from "../dimension";
 import { isUnitCell } from "../unitValue";
 import { columnUnitLabel } from "../unitColumn";
+import { frameFormatStore } from "../frameFormatStore";
 import { formatListCell } from "./valueDisplayFormat";
 import { FormatStyleSelect, DateStyleSelect, UnitSelect } from "./fcControls";
 import { PopupShell } from "./PopupShell";
@@ -175,14 +174,23 @@ export function TablePopup() {
     setHeaderNames(Array.from({ length: ncols }, (_, j) => state.headers?.[j] ?? ""));
     setColumnTypes(Array.from({ length: ncols }, (_, j) => state.columnTypes?.[j] ?? baseType));
     // Seed the FC controls row: a date column defaults to the date style, a number
-    // column to Auto; the unit dropdown seeds from the column's locked unit.
+    // column to Auto; the unit dropdown seeds from the column's locked unit. A
+    // PERSISTED per-column format (frameFormatStore, keyed by node+column name) wins
+    // over the default, so a saved format reopens as it was set.
+    const fmtNodeId = state.pinNodeId;
+    const seedFormat = (colName: string | undefined, dflt: FormatAnnotation): FormatAnnotation => {
+      const saved = fmtNodeId && colName ? frameFormatStore.get(fmtNodeId, colName) : undefined;
+      return saved ? { ...saved, unit: dflt.unit } : dflt;
+    };
     if (state.formatControls === "matrix") {
-      setColFmt([{ format: "auto", unit: "none" }]);
+      // A matrix has no column names — one whole-sheet format under a fixed key.
+      setColFmt([seedFormat("*", { format: "auto", unit: "none" })]);
     } else if (state.formatControls === "columns") {
-      setColFmt(Array.from({ length: ncols }, (_, j) => ({
-        format: state.columnTypes?.[j] === "date" ? "date_dmy" : "auto",
-        unit: state.columnUnits?.[j]?.display ?? "none",
-      })));
+      setColFmt(Array.from({ length: ncols }, (_, j) =>
+        seedFormat(state.headers?.[j], {
+          format: state.columnTypes?.[j] === "date" ? "date_dmy" : "auto",
+          unit: state.columnUnits?.[j]?.display ?? "none",
+        })));
     } else {
       setColFmt([]);
     }
@@ -284,6 +292,22 @@ export function TablePopup() {
       return next;
     });
   }
+  // The store key for a column's persisted format: the DERIVED column name (matches
+  // what FrameDisplay reads), or "*" for a whole-matrix format.
+  function colFmtKey(c: number): string | undefined {
+    return state?.formatControls === "matrix" ? "*" : state?.headers?.[c];
+  }
+  // A format change persists immediately (like the FC), keyed by node + column, so
+  // it survives close/reopen and save. Falls back to local-only when there's no host
+  // node. The UNIT dropdown does NOT go here — a column's unit is its value's, saved
+  // on the source column.
+  function onFormatChange(c: number, format: FormatStyleId) {
+    const idx = state?.formatControls === "matrix" ? 0 : c;
+    setColFmtAt(idx, { format });
+    const nodeId = state?.pinNodeId;
+    const col = colFmtKey(c);
+    if (nodeId && col) frameFormatStore.set(nodeId, col, { ...annFor(c), format, unit: "none" });
+  }
   // Render one cell through its column's format + unit (base-SI → display unit when
   // commensurable; the unit symbol lives in the dropdown/header, not the cell). The
   // input is a read-only frame's typed value (a number) OR an editable source's raw
@@ -304,13 +328,10 @@ export function TablePopup() {
       return formatNumberWithAnnotation(v, { ...ann, format: fmt, unit: "none" });
     }
     if (typeof v === "number" && type === "number") {
-      const dim = state?.columnUnits?.[c]?.dim;
-      let mag = v;
-      if (dim && !isDimensionless(dim)) {
-        const u = fcUnitToUnit(ann.unit);
-        if (u && dimEqual(u.dim, dim)) mag = (v - (u.offset ?? 0)) / u.scale;
-      }
-      return formatNumberWithAnnotation(mag, { ...ann, unit: "none" });
+      // A frame column stores the AS-TYPED magnitude (5 for a km column) — the value
+      // is already in its display unit, so just apply the number format (no unit
+      // conversion; the unit is shown in the header / dropdown, not the cell).
+      return formatNumberWithAnnotation(v, { ...ann, unit: "none" });
     }
     return String(v);
   }
@@ -556,10 +577,10 @@ export function TablePopup() {
                     return (
                       <td key={c} className="table-popup__fmtcell">
                         {type === "date" ? (
-                          <DateStyleSelect className="table-popup__fmtselect" value={annFor(c).format} onChange={(f) => setColFmtAt(c, { format: f })} />
+                          <DateStyleSelect className="table-popup__fmtselect" value={annFor(c).format} onChange={(f) => onFormatChange(c, f)} />
                         ) : type === "number" ? (
                           <div className="table-popup__fmtstack">
-                            <FormatStyleSelect className="table-popup__fmtselect" value={annFor(c).format} onChange={(f) => setColFmtAt(c, { format: f })} />
+                            <FormatStyleSelect className="table-popup__fmtselect" value={annFor(c).format} onChange={(f) => onFormatChange(c, f)} />
                             {state.unitTaggable && (
                               <UnitSelect className="table-popup__fmtselect" value={annFor(c).unit} onChange={(u) => setColFmtAt(c, { unit: u })} />
                             )}

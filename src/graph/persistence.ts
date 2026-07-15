@@ -24,6 +24,7 @@ import { reportStore } from "./reportStore";
 import { presentationStore } from "./presentationStore";
 import { compositeEditorStore } from "./compositeEditorStore";
 import { commentStore, type SavedCommentData } from "./commentStore";
+import { frameFormatStore, type FrameColumnFormat } from "./frameFormatStore";
 import { paletteStore, reportPaletteStore } from "./palette";
 import { docMetaStore } from "./docMetaStore";
 import { loadRevealStore, revealWaves } from "./loadReveal";
@@ -87,6 +88,8 @@ export interface SavedGraph {
   pins?: Pin[];
   // Node-anchored comment threads (optional — absent in older saves).
   comments?: SavedCommentData[];
+  // Per-column frame FORMAT annotations (optional — absent in older saves).
+  frameFormats?: FrameColumnFormat[];
   // Which seed the dropdown should show after this graph is restored ("custom"
   // for an edited / non-seed working graph). Optional: hand-authored seed files
   // omit it, and seed loads set their selection from the filename instead.
@@ -197,6 +200,8 @@ function buildRawSavedGraph(): SavedGraph | null {
   if (pins.length > 0) g.pins = pins;
   const comments = commentStore.serialize();
   if (comments.length > 0) g.comments = comments;
+  const frameFormats = frameFormatStore.serialize();
+  if (frameFormats.length > 0) g.frameFormats = frameFormats;
   const palette = paletteStore.docPalette();
   if (palette) g.palette = palette;
   const reportPalette = reportPaletteStore.reportPalette();
@@ -529,6 +534,13 @@ async function rebuildGraph(
     (g.comments ?? [])
       .map((c) => ({ ...c, nodeId: idMap.get(c.nodeId) ?? "" }))
       .filter((c) => c.nodeId && editor.getNode(c.nodeId)),
+  );
+
+  // Re-link per-column frame formats through the id remap, dropping orphans.
+  frameFormatStore.load(
+    (g.frameFormats ?? [])
+      .map((f) => ({ ...f, nodeId: idMap.get(f.nodeId) ?? "" }))
+      .filter((f) => f.nodeId && editor.getNode(f.nodeId)),
   );
 
   rebuildGroupMembership(editor);
