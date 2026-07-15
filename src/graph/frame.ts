@@ -12,8 +12,9 @@ import { parseCsvRows } from "./csv";
 import { parseDateToSerial, formatDateSerial, DEFAULT_DATE_FORMAT } from "./nodes/date";
 import { isSolError, type SolError } from "./errorValue";
 import { coerceLogical } from "./valueKinds";
-import { type ColumnUnit } from "./unitValue";
-import { parseColumnUnitFromHeader, columnUnitFromSpec } from "./unitColumn";
+import { type ColumnUnit, type UnitCell, isUnitCell } from "./unitValue";
+import { parseColumnUnitFromHeader, columnUnitFromSpec, tagFrameCellUnit, matrixCellsFromList } from "./unitColumn";
+import { displayMagnitudeOf } from "./unitBridge";
 import { elementFamilyOf, type SocketDataType } from "./sockets";
 
 // A column is one of: numeric, free text, DATE, or LOGICAL. A date column stores
@@ -424,6 +425,9 @@ export function frameFromInput(headers: ReadonlyArray<string>, matrix: number[][
 
 function cellToNumber(v: unknown): number | null {
   if (typeof v === "number") return Number.isFinite(v) ? v : null;
+  // A cube can hold a dimensioned `UnitCell` (per-cell, like a list) — read its
+  // DISPLAY magnitude (the number the user sees, matching the unit-blind boundary).
+  if (isUnitCell(v)) { const m = displayMagnitudeOf(v); return Number.isFinite(m) ? m : null; }
   if (typeof v === "boolean") return v ? 1 : 0;
   if (typeof v === "string") {
     const t = v.trim();
@@ -471,6 +475,16 @@ function cellToBool(v: unknown): boolean {
  *  all-TRUE/FALSE → logical; else unambiguous ISO dates → date (stored as serials);
  *  else free text. (Numeric runs first so a 0/1 mask stays numeric.) */
 export function inferColumn(name: string, cells: ReadonlyArray<unknown>): FrameColumn {
+  // Cube extraction hands us dimensioned `UnitCell`s (a cube stores units per cell,
+  // like a list — D20). Recover the column's uniform unit and unwrap the cells to
+  // plain magnitudes before inference — the frame re-carries the unit as its
+  // `ColumnUnit`, so a frame→cube→frame round trip keeps units. Mixed units strip.
+  let recovered: ColumnUnit | undefined;
+  if (cells.some(isUnitCell)) {
+    const { mags, unit } = matrixCellsFromList(cells);
+    cells = mags;
+    recovered = unit;
+  }
   // The inputted source text per cell, kept so the editor's Source view can show
   // exactly what came in (a date before it became a serial, "1" before it became a
   // boolean). A blank → "" (an empty source cell), aligned with the null value.
@@ -478,7 +492,7 @@ export function inferColumn(name: string, cells: ReadonlyArray<unknown>): FrameC
   const nonBlank = cells.filter((c) => !isBlank(c));
   const numeric = nonBlank.length > 0 && nonBlank.every((c) => cellToNumber(c) !== null);
   if (numeric) {
-    return { name, type: "number", values: cells.map((c) => (isBlank(c) ? null : cellToNumber(c))), raw };
+    return { name, type: "number", values: cells.map((c) => (isBlank(c) ? null : cellToNumber(c))), raw, ...(recovered ? { unit: recovered } : {}) };
   }
   const logical = nonBlank.length > 0 && nonBlank.every(isLogicalCell);
   if (logical) {
@@ -527,8 +541,10 @@ export function frameFromRows(rows: ReadonlyArray<ReadonlyArray<unknown>>, heade
 // lambda out of a cube too.)
 
 /** A cube cell: any data value. Recursive — a cell may itself be a Frame or Cube,
- *  a list, or a matrix (an array of cells). */
-export type CubeCell = FrameCell | FrameValue | CubeValue | CubeCell[];
+ *  a list, or a matrix (an array of cells). A cube is heterogeneous PER CELL (like a
+ *  list, not a homogeneous-column frame — D20), so a dimensioned cell carries its
+ *  unit AS A VALUE: a base-SI `UnitCell`, exactly like a list cell. */
+export type CubeCell = FrameCell | FrameValue | CubeValue | UnitCell | CubeCell[];
 
 export interface CubeColumn {
   name: string;
@@ -590,14 +606,21 @@ export function cubeRowCount(c: CubeValue): number {
   return c.columns.reduce((m, col) => Math.max(m, col.cells.length), 0);
 }
 
-/** A Frame is a Cube of flat cells — re-brand each column, cells unchanged. A cube is
- *  UNIT-BLIND by design: a `CubeCell` is heterogeneous and carries no unit tag, and a
- *  frame column's cells are already AS-TYPED (the number the user sees — "5 km" is
- *  stored 5, not the base-SI 5000), so copying them straight through shows the right
- *  number and simply drops the unit LABEL. To keep the unit, extract to a frame/list
- *  (Get Column / Unnest mint tagged cells). Depth is always 1 (cells are scalars). */
+/** A frame COLUMN → cube CELLS: a unit-locked column's cells become per-cell base-SI
+ *  `UnitCell`s (a cube is heterogeneous per cell, so it carries units like a list, not
+ *  as a column annotation — D20). A plain column's cells copy straight through. This is
+ *  the single frame→cube unit bridge — every flattening path routes through it. */
+export function cubeCellsFromColumn(col: FrameColumn): CubeCell[] {
+  return col.unit
+    ? col.values.map((v) => tagFrameCellUnit(v, col.unit!) as CubeCell)
+    : [...col.values];
+}
+
+/** A Frame is a Cube of flat cells — re-brand each column, tagging a unit-locked
+ *  column's cells so the unit rides into the cube per-cell. Depth is always 1 (a
+ *  frame's cells are already scalars). */
 export function frameToCube(f: FrameValue): CubeValue {
-  return makeCube(f.columns.map((col) => ({ name: col.name, cells: [...col.values] })));
+  return makeCube(f.columns.map((col) => ({ name: col.name, cells: cubeCellsFromColumn(col) })));
 }
 
 /** Build a Cube from a row-major grid of arbitrary cells + optional headers.
@@ -659,6 +682,7 @@ function cellKeyId(cell: CubeCell): string | null {
   if (cell === null) return keyId(null);
   if (typeof cell === "number" || typeof cell === "string" || typeof cell === "boolean") return keyId(cell);
   if (isSolError(cell)) return keyId(cell);
+  if (isUnitCell(cell)) return keyId(displayMagnitudeOf(cell)); // a dimensioned key joins on its magnitude
   return null; // a nested frame/cube/list is not a scalar join key
 }
 
@@ -724,10 +748,10 @@ export function relateFramesToCube(
     [...parent.columns.map((c) => c.name), nestedName.trim() || "items"],
     parent.columns.length + 1,
   );
-  const columns: CubeColumn[] = parent.columns.map((c, j) => ({
-    name: names[j],
-    cells: Array.from({ length: pRows }, (_, i) => c.values[i] ?? null),
-  }));
+  const columns: CubeColumn[] = parent.columns.map((c, j) => {
+    const cells = cubeCellsFromColumn(c);
+    return { name: names[j], cells: Array.from({ length: pRows }, (_, i) => cells[i] ?? null) };
+  });
   const nestedCells: CubeCell[] = Array.from({ length: pRows }, (_, i) => {
     const idxs = childByKey.get(keyId(pKey.values[i] ?? null)) ?? [];
     return isCubeValue(child) ? subCube(child, idxs) : subFrame(child, idxs);

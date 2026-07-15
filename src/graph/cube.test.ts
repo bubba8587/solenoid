@@ -9,8 +9,10 @@ import {
   toCube,
   buildFrame,
   isFrameValue,
+  inferColumn,
   type CubeValue,
 } from "./frame";
+import { isUnitCell, magnitudeOf, type UnitCell } from "./unitValue";
 
 // The Cube is the lattice supremum — a frame whose cells hold ANY value (a scalar,
 // a list, a matrix, a nested frame, or another cube). This locks the value model +
@@ -149,5 +151,31 @@ describe("frameToCube", () => {
     expect(c.columns[0].name).toBe("only");
     expect(c.columns[0].cells).toEqual([1, 2]);
     expect("type" in c.columns[0]).toBe(false);
+  });
+});
+
+describe("cube units — per-cell, like a list (D20)", () => {
+  it("a unit-locked frame column flattens to per-cell UnitCells", () => {
+    // "d (km)" locks the column to km; cells are as-typed (5, 10). frameToCube tags
+    // each cell as a base-SI UnitCell carrying the display id — the unit rides the
+    // value per-cell, exactly like a list.
+    const f = buildFrame([[5], [10]], ["d (km)"]);
+    const c = frameToCube(f);
+    const cells = c.columns[0].cells;
+    expect(cells.every((x) => isUnitCell(x))).toBe(true);
+    expect((cells[0] as UnitCell).display).toBe("km");
+    expect(magnitudeOf(cells[0])).toBeCloseTo(5000, 6); // base-SI (5 km = 5000 m)
+    // A PLAIN column stays bare (no spurious tag).
+    const plain = frameToCube(buildFrame([[1], [2]], ["n"]));
+    expect(plain.columns[0].cells.every((x) => !isUnitCell(x))).toBe(true);
+  });
+
+  it("frame → cube → frame round-trips the unit (inferColumn recovers the ColumnUnit)", () => {
+    const f = buildFrame([[5], [10]], ["d (km)"]);
+    const cubeCells = frameToCube(f).columns[0].cells;
+    const col = inferColumn("d", cubeCells);
+    expect(col.type).toBe("number");
+    expect(col.values).toEqual([5, 10]);        // back to as-typed magnitudes
+    expect(col.unit?.display).toBe("km");        // unit recovered
   });
 });
