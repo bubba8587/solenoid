@@ -321,6 +321,10 @@ export class CompositeNode extends ClassicPreset.Node {
   /** The solved driver value (or a `#CONV!` SolError), surfaced in the editor.
    *  Component-read only; not persisted (re-solved on every pass). */
   goalSeekResult: number | SolError | null = null;
+  /** How many rounds the LAST simulation actually ran — < `simulationSteps` means
+   *  a Stop-when condition halted it early. null when it hasn't run a stepped loop.
+   *  Component-read only; transient (re-derives on the next solve). */
+  simLastSteps: number | null = null;
 
   // ─── Arm-and-run for the HEAVY modes (goal-seek / scenarios / data-table /
   // simulation) ─── each does many internal passes per recompute, so they must NOT
@@ -818,6 +822,7 @@ export class CompositeNode extends ClassicPreset.Node {
         : (port.default ?? null);
     }
     this.internalEngine.reset();
+    this.simLastSteps = null; // no stepped loop unless we reach one below
 
     const loop = loopMembers(this.internalEditor);
     if (loop.size === 0) return this.runPass(inputs); // nothing wired as feedback — nothing to simulate
@@ -886,6 +891,7 @@ export class CompositeNode extends ClassicPreset.Node {
       // the cap; the series may be shorter.
       if (stopFeed && (await this.stopSignalTrue(stopFeed, state, loop))) break;
     }
+    this.simLastSteps = fullSeries.length; // < steps ⇒ a Stop-when condition halted early
 
     // Seed the FINAL state into the engine cache so an output port fed by a
     // NON-loop node downstream of the cycle resolves normally through the

@@ -556,6 +556,18 @@ describe("CompositeNode Simulation run mode", () => {
     expect(series).toHaveLength(5);
   });
 
+  it("records simLastSteps — the rounds actually run (< cap = stopped early)", async () => {
+    const early = await makePopulationModel(10); // 100→110→121→133.1; >130 at step 4
+    early.c.stopWhenPortId = early.popOutId; early.c.stopWhenOp = "gt"; early.c.stopWhenValue = 130;
+    await early.c.data({});
+    expect(early.c.simLastSteps).toBe(4); // halted early — the editor reads "stopped at step 4"
+
+    const full = await makePopulationModel(3); // never exceeds 1000 in 3 steps
+    full.c.stopWhenPortId = full.popOutId; full.c.stopWhenOp = "gt"; full.c.stopWhenValue = 1000;
+    await full.c.data({});
+    expect(full.c.simLastSteps).toBe(3); // ran the full cap
+  });
+
   it("the stop-when config round-trips through extractInit", async () => {
     const { c, popOutId } = await makePopulationModel(10);
     c.stopWhenPortId = popOutId; c.stopWhenOp = "ge"; c.stopWhenValue = 130;
