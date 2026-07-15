@@ -55,6 +55,24 @@ so a flat cube renders dates-as-dates / logicals-as-TRUE-FALSE (`cubeCellToken`/
 by type); the "cube socket eats frame types" display bug is gone (XLOOKUP cube-path date-matching +
 `rawInputs` retire is the remaining node-specific follow-on). tsc clean, 2837 green throughout.
 
+### SESSION DIGEST (2026-07-15m — INTERPOLATE node: piecewise-linear lookup-table interpolation) [Agent 2, off-theme]
+New core node clearing the 1-D half of the Materials-pack "Interpolated Lookup" gate. **INTERPOLATE**
+(`stats.ts` `InterpolateNode`, Regression category, `parity:false`) mirrors TREND's shape (Known Ys /
+Known Xs / X lists → Interpolated Ys list) but does true lookup-table interpolation instead of a
+regression fit: for each query x, the y on the straight segment between the two bracketing known points,
+**clamped** at the ends (below the smallest known x → first y, above the largest → last y — a lookup
+table doesn't extrapolate). Excel has NO direct equivalent — LOOKUP/XLOOKUP are STEP matches, FORECAST/
+TREND fit a line through the cloud. Pure exported core `interpolateLinear(xs, ys, queryXs)` (sorts pairs
+by x so known data can arrive unordered; duplicated x → first-seen y, no /0; NaN query stays NaN). Node
+`data()` reuses in-file `forPair` for known-data errors/null-drop, propagates a query SolError, and keeps
+a null query missing IN PLACE (position preserved). Use cases: hardness conversions, pump curves, pipe
+schedules. Wiring surface was small — `export *` re-exports the class, ctor registry derives from
+`FLAT_CATALOG` (catalog leaf auto-registers load/round-trip), one-line `makeNodeComponent`, index +
+nodeRegistry entries; NO copyPaste change (no new persisted fields) and it falls through to the `math`
+kind like its siblings. 12 new tests (pure core + node wiring); full suite 2850 green (+4 auto-generated
+per-node catalog/round-trip/component checks passed too). REMAINING for the pack: the 2-D bilinear grid
+form (steam/thermocouple tables). Backlog + `pack-composite-plans.md` reconciled.
+
 ### SESSION DIGEST (2026-07-15m — Unmount collapsed viz figures: finish + reconcile) [Agent 2, off-theme]
 Closed the backlog "Unmount collapsed viz nodes' live figures" item — collapse is CSS `display:none`
 (nodeCard.css:208), so a hidden recharts tree stays MOUNTED unless React gates it. Audited every
