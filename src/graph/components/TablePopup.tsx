@@ -7,6 +7,12 @@ import { parseCsvRows } from "../csv";
 import { isSolError } from "../errorValue";
 import { formatDateSerial, parseDateToSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
 import { coerceFrameCell, formatFrameCell, type FrameSourceColumn } from "../frame";
+import { formatNumberWithAnnotation, isDateStyle, type FormatAnnotation, type FormatStyleId } from "../formatAnnotationStore";
+import { fcUnitToUnit } from "../unitBridge";
+import { dimEqual, isDimensionless } from "../dimension";
+import { isUnitCell } from "../unitValue";
+import { formatListCell } from "./valueDisplayFormat";
+import { FormatStyleSelect, DateStyleSelect, UnitSelect } from "./fcControls";
 import { PopupShell } from "./PopupShell";
 import { PopupOverflowMenu } from "./PopupOverflowMenu";
 import { saveCsvFileDialog } from "../fileBridge";
@@ -40,6 +46,10 @@ function toGrid(data: CellValue[][], cellType: CellType, columnTypes?: CellType[
       // err.toFixed() throws → blacked-out app).
       if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
       if (isSolError(v)) return v.code;
+      // A dimensioned cell (a list carrying UnitCells — from a pin / cable
+      // inspector, which pass the raw value) renders "magnitude unit" in-cell,
+      // resolving its display unit ("5 km", "5 m/s"). formatScalar would NaN it.
+      if (isUnitCell(v)) return formatListCell(v, formatScalar);
       // Text + logical pass through as-is (a logical cell already arrives as
       // "TRUE"/"FALSE" text); number + date serials format numerically.
       return isTextType(typeAt(j, cellType, columnTypes)) ? String(v) : formatScalar(v as number);
@@ -146,6 +156,10 @@ export function TablePopup() {
   // CSV / Markdown all still flatten to the same list. Sticky within a session (not
   // reset on reseed), default horizontal.
   const [listVertical, setListVertical] = useState(false);
+  // Per-column display format + unit (the FC controls row, read-only frames /
+  // matrices). Index by column; a "matrix" popup uses index 0 for the whole grid.
+  // Display-only: re-renders the on-screen grid, never the value or Copy/CSV.
+  const [colFmt, setColFmt] = useState<FormatAnnotation[]>([]);
   const initedFor = useRef<TablePopupState | null>(null);
 
   // (Re)seed whenever a different popup opens.
@@ -159,6 +173,18 @@ export function TablePopup() {
     const ncols = g.reduce((m, r) => Math.max(m, r.length), 0);
     setHeaderNames(Array.from({ length: ncols }, (_, j) => state.headers?.[j] ?? ""));
     setColumnTypes(Array.from({ length: ncols }, (_, j) => state.columnTypes?.[j] ?? baseType));
+    // Seed the FC controls row: a date column defaults to the date style, a number
+    // column to Auto; the unit dropdown seeds from the column's locked unit.
+    if (state.formatControls === "matrix") {
+      setColFmt([{ format: "auto", unit: "none" }]);
+    } else if (state.formatControls === "columns") {
+      setColFmt(Array.from({ length: ncols }, (_, j) => ({
+        format: state.columnTypes?.[j] === "date" ? "date_dmy" : "auto",
+        unit: state.columnUnits?.[j]?.display ?? "none",
+      })));
+    } else {
+      setColFmt([]);
+    }
     setView("grid");
     // A literal-source editor opens in SOURCE so you can edit raw text immediately;
     // a read-only view opens FORMATTED (nice dates).
@@ -222,6 +248,48 @@ export function TablePopup() {
         }))
       : shownGrid;
 
+  // ── FC controls row (read-only frames / matrices) ──────────────────────────
+  // A format+unit controls row between the header and the body re-renders the
+  // ON-SCREEN grid only — it converts a column's base-SI values into the chosen
+  // unit and applies the number format. `displayGrid` / Copy / CSV stay the raw
+  // value (display-only, like the list Row/Column toggle).
+  const formatControlsActive = !!state.formatControls && !editable && view === "grid" && !state.list;
+  function annFor(c: number): FormatAnnotation {
+    const idx = state?.formatControls === "matrix" ? 0 : c;
+    return colFmt[idx] ?? { format: "auto", unit: "none" };
+  }
+  function setColFmtAt(i: number, patch: Partial<FormatAnnotation>) {
+    setColFmt((f) => {
+      const next = f.slice();
+      while (next.length <= i) next.push({ format: "auto", unit: "none" });
+      next[i] = { ...next[i], ...patch };
+      return next;
+    });
+  }
+  // Render one raw cell through its column's format + unit (base-SI → display unit
+  // when commensurable; the unit symbol lives in the dropdown, not the cell).
+  function controlledCell(raw: CellValue, c: number): string {
+    if (raw === null || raw === undefined || raw === "") return "";
+    if (isSolError(raw)) return raw.code;
+    if (typeof raw === "boolean") return raw ? "TRUE" : "FALSE";
+    const type = colTypeAt(c);
+    const ann = annFor(c);
+    if (typeof raw === "number" && type === "date") {
+      const fmt: FormatStyleId = isDateStyle(ann.format) ? ann.format : "date_dmy";
+      return formatNumberWithAnnotation(raw, { ...ann, format: fmt, unit: "none" });
+    }
+    if (typeof raw === "number" && type === "number") {
+      const dim = state?.columnUnits?.[c]?.dim;
+      let mag = raw;
+      if (dim && !isDimensionless(dim)) {
+        const u = fcUnitToUnit(ann.unit);
+        if (u && dimEqual(u.dim, dim)) mag = (raw - (u.offset ?? 0)) / u.scale;
+      }
+      return formatNumberWithAnnotation(mag, { ...ann, unit: "none" });
+    }
+    return String(raw);
+  }
+
   // A vertical LIST is a pure render transpose of the display grid (the single row
   // becomes N one-cell rows). `grid`/`displayGrid` stay the 1×N truth, so copy / CSV /
   // save are untouched; only the rendered <table> changes. Read-only (lists aren't
@@ -229,9 +297,16 @@ export function TablePopup() {
   const vertical = !!state.list && listVertical;
   const listLen = displayGrid[0]?.length ?? 0;
   const listTruncated = vertical && listLen > MAX_VISIBLE_ROWS; // cap rows like a tall table
+  // The on-screen grid: FC-controlled render (from the RAW data) when active, else
+  // the display grid that also feeds Copy/CSV. (formatControlsActive ⇒ not a list,
+  // so vertical is false here.)
+  const onScreenGrid: string[][] = formatControlsActive
+    ? state.data.slice(0, MAX_VISIBLE_ROWS).map((row) =>
+        Array.from({ length: cols }, (_, c) => controlledCell(row[c], c)))
+    : displayGrid;
   const viewGrid = vertical
     ? (displayGrid[0] ?? []).slice(0, MAX_VISIBLE_ROWS).map((v) => [v])
-    : displayGrid;
+    : onScreenGrid;
   const viewCols = vertical ? 1 : cols;
 
   function setCell(r: number, c: number, v: string) {
@@ -425,6 +500,37 @@ export function TablePopup() {
                 ))}
               </tr>
             </thead>
+            {formatControlsActive && (
+              <tbody className="table-popup__fmtbody">
+                <tr>
+                  <th className="table-popup__corner" />
+                  {state.formatControls === "matrix" ? (
+                    <td className="table-popup__fmtcell" colSpan={viewCols}>
+                      <div className="table-popup__fmtinline">
+                        <FormatStyleSelect className="table-popup__fmtselect" value={annFor(0).format} onChange={(f) => setColFmtAt(0, { format: f })} />
+                        <UnitSelect className="table-popup__fmtselect" value={annFor(0).unit} onChange={(u) => setColFmtAt(0, { unit: u })} />
+                      </div>
+                    </td>
+                  ) : (
+                    Array.from({ length: viewCols }, (_, c) => {
+                      const type = colTypeAt(c);
+                      return (
+                        <td key={c} className="table-popup__fmtcell">
+                          {type === "date" ? (
+                            <DateStyleSelect className="table-popup__fmtselect" value={annFor(c).format} onChange={(f) => setColFmtAt(c, { format: f })} />
+                          ) : type === "number" ? (
+                            <div className="table-popup__fmtstack">
+                              <FormatStyleSelect className="table-popup__fmtselect" value={annFor(c).format} onChange={(f) => setColFmtAt(c, { format: f })} />
+                              <UnitSelect className="table-popup__fmtselect" value={annFor(c).unit} onChange={(u) => setColFmtAt(c, { unit: u })} />
+                            </div>
+                          ) : null}
+                        </td>
+                      );
+                    })
+                  )}
+                </tr>
+              </tbody>
+            )}
             <tbody>
               {viewGrid.map((row, r) => (
                 <tr key={r}>
