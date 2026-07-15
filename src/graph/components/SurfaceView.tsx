@@ -61,14 +61,31 @@ function drawSurface(canvas: HTMLCanvasElement, p: SurfacePayload, W: number, H:
   let mnx = Infinity, mxx = -Infinity, mny = Infinity, mxy = -Infinity;
   const fold = (mx: number, my: number) => { if (mx < mnx) mnx = mx; if (mx > mxx) mxx = mx; if (my < mny) mny = my; if (my > mxy) mxy = my; };
   for (let iy = 0; iy < ny; iy++) for (let ix = 0; ix < nx; ix++) { const [x, y] = model(gx(ix), gy(iy), gz(ix, iy) ?? 0); fold(x, y); }
-  // The axes emanate from the (xmin, ymin) base corner; include their ends so they fit.
-  for (const [a, b, c] of [[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]] as const) { const [x, y] = model(a, b, c); fold(x, y); }
+  // Include the full bounding-box (unit cube) so the reference frame fits too.
+  for (const a of [0, 1]) for (const b of [0, 1]) for (const c of [0, 1]) { const [x, y] = model(a, b, c); fold(x, y); }
   const pad = 14;
   const mw = mxx - mnx || 1, mh = mxy - mny || 1;
   const s = Math.min((W - 2 * pad) / mw, (H - 2 * pad) / mh);
   const ox = (W - s * mw) / 2 - s * mnx, oy = (H - s * mh) / 2 - s * mny;
   const proj = (a: number, b: number, c: number): [number, number] => { const [x, y] = model(a, b, c); return [ox + s * x, oy + s * y]; };
   const screen = (ix: number, iy: number, c: number) => proj(gx(ix), gy(iy), c);
+
+  // ── Reference frame: a light gridded floor + two BACK walls, drawn BEHIND the
+  // surface so the surface sits inside the box and occludes the near parts. ──
+  const frameCol = getComputedStyle(canvas).getPropertyValue("--text").trim() || "#888";
+  const gridPlane = (o: V3, u: V3, v: V3, div = 4) => {
+    const at = (sd: number, td: number) => proj(o[0] + u[0] * sd + v[0] * td, o[1] + u[1] * sd + v[1] * td, o[2] + u[2] * sd + v[2] * td);
+    const line = (p: [number, number], q: [number, number]) => { ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.stroke(); };
+    const c0 = at(0, 0), c1 = at(1, 0), c2 = at(1, 1), c3 = at(0, 1);
+    ctx.beginPath(); ctx.moveTo(c0[0], c0[1]); ctx.lineTo(c1[0], c1[1]); ctx.lineTo(c2[0], c2[1]); ctx.lineTo(c3[0], c3[1]); ctx.closePath();
+    ctx.fillStyle = frameCol; ctx.globalAlpha = 0.05; ctx.fill();
+    ctx.strokeStyle = frameCol; ctx.globalAlpha = 0.16; ctx.lineWidth = 0.5;
+    for (let i = 0; i <= div; i++) { const t = i / div; line(at(t, 0), at(t, 1)); line(at(0, t), at(1, t)); }
+    ctx.globalAlpha = 1;
+  };
+  gridPlane([0, 0, 0], [1, 0, 0], [0, 1, 0]); // floor  (z = min)
+  gridPlane([0, 0, 0], [1, 0, 0], [0, 0, 1]); // back wall (y = min)
+  gridPlane([0, 0, 0], [0, 1, 0], [0, 0, 1]); // back wall (x = min)
 
   // Cells with all four corners known, painted back (small gx+gy) to front.
   const cells: Array<{ ix: number; iy: number; d: number }> = [];
@@ -99,24 +116,17 @@ function drawSurface(canvas: HTMLCanvasElement, p: SurfacePayload, W: number, H:
     ctx.stroke();
   }
 
-  // ── Basic XYZ axes ──────────────────────────────────────────────────────────
-  // Three lines from the (xmin, ymin) base corner: X and Y along the base edges, Z
-  // straight up. A light reference frame, theme-coloured, drawn over the surface.
-  const axisCol = getComputedStyle(canvas).getPropertyValue("--text").trim() || "#888";
+  // ── X / Y / Z labels on the frame's far edges (the box edges ARE the axes). ──
   const O = proj(0, 0, 0);
   const ends: Array<[[number, number], string]> = [[proj(1, 0, 0), "X"], [proj(0, 1, 0), "Y"], [proj(0, 0, 1), "Z"]];
-  ctx.globalAlpha = 0.55;
-  ctx.strokeStyle = axisCol;
-  ctx.lineWidth = 1;
-  for (const [end] of ends) { ctx.beginPath(); ctx.moveTo(O[0], O[1]); ctx.lineTo(end[0], end[1]); ctx.stroke(); }
   ctx.globalAlpha = 0.9;
-  ctx.fillStyle = axisCol;
+  ctx.fillStyle = frameCol;
   ctx.font = "600 10px system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   for (const [end, lab] of ends) {
     const dx = end[0] - O[0], dy = end[1] - O[1], m = Math.hypot(dx, dy) || 1;
-    ctx.fillText(lab, end[0] + (dx / m) * 8, end[1] + (dy / m) * 8);
+    ctx.fillText(lab, end[0] + (dx / m) * 9, end[1] + (dy / m) * 9);
   }
   ctx.globalAlpha = 1;
 }
