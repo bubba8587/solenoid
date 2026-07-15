@@ -10,7 +10,7 @@
 // them from its own state and decides what a change means (the FC mutates the
 // value; the popup re-renders display-only).
 
-import { useMemo, useSyncExternalStore } from "react";
+import { useMemo, useSyncExternalStore, type ReactNode } from "react";
 import {
   FORMAT_STYLE_LABELS, FORMAT_STYLE_GROUPS, DATE_FORMAT_STYLES, UNIT_ANNOTATIONS,
   LOGICAL_STYLE_LABELS, unitGroupLabel, type FormatStyleId, type LogicalStyle,
@@ -18,6 +18,65 @@ import {
 import { packsStore } from "../packs";
 import { activePackUnits, activePackFormats } from "../fcExtensions";
 import { LazySelect } from "./LazySelect";
+
+// ─── Flow arrows + lock (the FC's three-state visual language) ────────────────
+// The Format Controller flanks each control with a ← / → arrow so you can see how
+// the property flows. Shared here so the value-popup dropdowns speak the same
+// language (an authored unit flows forward; an inherited one is locked). The three
+// states (same as FormatControllerNode's):
+//   ← →  authored HERE — applies to this box, travels ahead with the value
+//   → →  inherited     — the value's unit arrived from upstream (read-only / locked)
+//   ← ←  dictated from ahead (Convert primacy) — FC-only, not used in the popup
+
+export type FcDir = "back" | "fwd" | null;
+export interface FcFlowState { left: FcDir; right: FcDir }
+
+/** Authored here: set on this box, rides forward with the value (← →). */
+export const FLOW_AUTHORED: FcFlowState = { left: "back", right: "fwd" };
+/** Inherited from upstream: the value already carries it (→ →) — pairs with a lock. */
+export const FLOW_INHERITED: FcFlowState = { left: "fwd", right: "fwd" };
+
+/** A small rounded direction arrow (matches the FC's). Colour inherits (currentColor)
+ *  so it reads muted in any container; no external CSS dependency. */
+export function FcArrow({ dir, title }: { dir: "back" | "fwd"; title?: string }) {
+  return (
+    <span
+      className="solenoid-fc__arrow"
+      aria-hidden="true"
+      title={title}
+      style={{ display: "inline-flex", opacity: 0.72, flex: "0 0 auto" }}
+    >
+      <svg width="9" height="9" viewBox="0 0 14 14" fill="none" stroke="currentColor"
+           strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+        {dir === "fwd"
+          ? (<><path d="M2.5 7h8.2" /><path d="M7 3.3 10.7 7 7 10.7" /></>)
+          : (<><path d="M11.5 7H3.3" /><path d="M7 3.3 3.3 7 7 10.7" /></>)}
+      </svg>
+    </span>
+  );
+}
+
+/** Flank a control with the flow arrows (a spacer where a side has none, so a stack
+ *  of these stays column-aligned). `title`s explain each direction on hover. */
+export function FcFlow({ flow, backTitle, fwdTitle, children }: {
+  flow?: FcFlowState;
+  backTitle?: string;
+  fwdTitle?: string;
+  children: ReactNode;
+}) {
+  const arrow = (dir: FcDir, side: "left" | "right") =>
+    dir ? <FcArrow key={side} dir={dir} title={dir === "back" ? backTitle : fwdTitle} />
+        : <span aria-hidden="true" key={side} style={{ flex: "0 0 auto", width: 9 }} />;
+  // Layout (display/gap) is in the consumer's CSS (`.sol-fcflow`) so it can differ by
+  // context — inline in a side-by-side bar, filling in a stacked cell.
+  return (
+    <span className="sol-fcflow">
+      {arrow(flow?.left ?? null, "left")}
+      {children}
+      {arrow(flow?.right ?? null, "right")}
+    </span>
+  );
+}
 
 // Base unit-group display order — active packs' groups are appended (before
 // "custom") at render time. Kept in sync with FormatControllerNode's copy.
@@ -188,18 +247,21 @@ export function LogicalStyleSelect({ value, onChange, className, title }: {
   );
 }
 
-/** A unit <select> matching the FC's, driven by external state. */
-export function UnitSelect({ value, onChange, className, title }: {
+/** A unit <select> matching the FC's, driven by external state. `disabled` renders
+ *  the LOCKED state (an inherited unit the value already carries — read-only). */
+export function UnitSelect({ value, onChange, className, title, disabled }: {
   value: string;
   onChange: (v: string) => void;
   className?: string;
   title?: string;
+  disabled?: boolean;
 }) {
   const opts = useFcFormatOptions();
   return (
     <LazySelect
       className={className}
       value={value}
+      disabled={disabled}
       title={title ?? "Unit"}
       onChange={(e) => onChange(e.target.value)}
     >

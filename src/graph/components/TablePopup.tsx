@@ -12,7 +12,15 @@ import { isUnitCell } from "../unitValue";
 import { columnUnitLabel } from "../unitColumn";
 import { frameFormatStore } from "../frameFormatStore";
 import { formatListCell } from "./valueDisplayFormat";
-import { FormatStyleSelect, DateStyleSelect, UnitSelect, LogicalStyleSelect } from "./fcControls";
+import { FormatStyleSelect, DateStyleSelect, UnitSelect, LogicalStyleSelect, FcFlow, FLOW_AUTHORED, FLOW_INHERITED } from "./fcControls";
+
+// Flow-arrow hover copy — the popup's two states (authored here vs inherited from
+// the source), mirroring the FC's language.
+const FLOW_FMT_BACK = "Display format, set here";
+const FLOW_FMT_FWD = "Applies wherever this value is shown";
+const FLOW_UNIT_BACK = "Unit set here, on this source";
+const FLOW_UNIT_FWD = "Travels downstream with the value";
+const FLOW_UNIT_INHERIT = "Unit arrives with the value from its source (set it there)";
 import { PopupShell } from "./PopupShell";
 import { PopupOverflowMenu } from "./PopupOverflowMenu";
 import { saveCsvFileDialog } from "../fileBridge";
@@ -287,12 +295,10 @@ export function TablePopup() {
   // the column unit silently — surface that unit in the header so the numbers aren't
   // ambiguous ("Distance (km)"). Taggable sources show it in the dropdown instead.
   function colHeaderLabel(c: number): string {
-    const base = headers?.[c] ?? colLabel(c);
-    // A matrix's homogeneous unit shows in the bar above the sheet, not per A/B/C
-    // header — only a derived FRAME surfaces the unit in the column header.
-    if (state?.formatControls === "matrix") return base;
-    const cu = state?.columnUnits?.[c];
-    return !state?.unitTaggable && formatRenderActive && cu ? `${base} (${columnUnitLabel(cu)})` : base;
+    // The unit now shows in the format row below the header (an editable picker on a
+    // taggable source, a locked one on a derived column — the FC's flow language), so
+    // the header is just the column name.
+    return headers?.[c] ?? colLabel(c);
   }
   function setColFmtAt(i: number, patch: Partial<FormatAnnotation>) {
     setColFmt((f) => {
@@ -541,22 +547,37 @@ export function TablePopup() {
         // whole sheet, so it sits ABOVE the grid (between the popup header and the
         // table), not inside it as a column row.
         <div className="table-popup__matrix-fmt">
-          {cellType === "logical" ? (
-            <LogicalStyleSelect className="table-popup__fmtselect" value={annFor(0).logicalStyle} onChange={(s) => persistColFmt(0, { logicalStyle: s })} />
-          ) : cellType === "date" ? (
-            <DateStyleSelect className="table-popup__fmtselect" value={annFor(0).format} onChange={(f) => persistColFmt(0, { format: f })} />
-          ) : (
-            <FormatStyleSelect className="table-popup__fmtselect" value={annFor(0).format} onChange={(f) => persistColFmt(0, { format: f })} />
-          )}
+          {/* Format: display-only, authored here (← →). */}
+          <FcFlow flow={FLOW_AUTHORED} backTitle={FLOW_FMT_BACK} fwdTitle={FLOW_FMT_FWD}>
+            {cellType === "logical" ? (
+              <LogicalStyleSelect className="table-popup__fmtselect" value={annFor(0).logicalStyle} onChange={(s) => persistColFmt(0, { logicalStyle: s })} />
+            ) : cellType === "date" ? (
+              <DateStyleSelect className="table-popup__fmtselect" value={annFor(0).format} onChange={(f) => persistColFmt(0, { format: f })} />
+            ) : (
+              <FormatStyleSelect className="table-popup__fmtselect" value={annFor(0).format} onChange={(f) => persistColFmt(0, { format: f })} />
+            )}
+          </FcFlow>
           {state.unitTaggable && cellType === "number" ? (
-            <UnitSelect
-              className="table-popup__fmtselect"
-              value={annFor(0).unit}
-              onChange={(u) => { setColFmtAt(0, { unit: u }); state.onSaveMatrixUnit?.(u); }}
-            />
+            // Taggable source: the unit is AUTHORED here and rides the value (← →).
+            <FcFlow flow={FLOW_AUTHORED} backTitle={FLOW_UNIT_BACK} fwdTitle={FLOW_UNIT_FWD}>
+              <UnitSelect
+                className="table-popup__fmtselect"
+                value={annFor(0).unit}
+                onChange={(u) => { setColFmtAt(0, { unit: u }); state.onSaveMatrixUnit?.(u); }}
+              />
+            </FcFlow>
           ) : cellType === "number" && state.columnUnits?.[0] ? (
-            // Read-only matrix carrying a homogeneous unit tag (D20): show it, no picker.
-            <span className="table-popup__unit-label">{columnUnitLabel(state.columnUnits[0]!)}</span>
+            // Derived matrix: the unit is INHERITED from the source (→ →), so it's
+            // LOCKED here — a disabled picker, exactly like the FC's inherited unit.
+            <FcFlow flow={FLOW_INHERITED} fwdTitle={FLOW_UNIT_INHERIT}>
+              <UnitSelect
+                className="table-popup__fmtselect"
+                value={state.columnUnits[0]!.display ?? "none"}
+                onChange={() => {}}
+                disabled
+                title={`Unit: ${columnUnitLabel(state.columnUnits[0]!)} (inherited from the source)`}
+              />
+            </FcFlow>
           ) : null}
         </div>
       )}
@@ -609,15 +630,35 @@ export function TablePopup() {
                     return (
                       <td key={c} className="table-popup__fmtcell">
                         {type === "date" ? (
-                          <DateStyleSelect className="table-popup__fmtselect" value={annFor(c).format} onChange={(f) => persistColFmt(c, { format: f })} />
+                          <FcFlow flow={FLOW_AUTHORED} backTitle={FLOW_FMT_BACK} fwdTitle={FLOW_FMT_FWD}>
+                            <DateStyleSelect className="table-popup__fmtselect" value={annFor(c).format} onChange={(f) => persistColFmt(c, { format: f })} />
+                          </FcFlow>
                         ) : type === "logical" ? (
-                          <LogicalStyleSelect className="table-popup__fmtselect" value={annFor(c).logicalStyle} onChange={(s) => persistColFmt(c, { logicalStyle: s })} />
+                          <FcFlow flow={FLOW_AUTHORED} backTitle={FLOW_FMT_BACK} fwdTitle={FLOW_FMT_FWD}>
+                            <LogicalStyleSelect className="table-popup__fmtselect" value={annFor(c).logicalStyle} onChange={(s) => persistColFmt(c, { logicalStyle: s })} />
+                          </FcFlow>
                         ) : type === "number" ? (
                           <div className="table-popup__fmtstack">
-                            <FormatStyleSelect className="table-popup__fmtselect" value={annFor(c).format} onChange={(f) => persistColFmt(c, { format: f })} />
-                            {state.unitTaggable && (
-                              <UnitSelect className="table-popup__fmtselect" value={annFor(c).unit} onChange={(u) => setColFmtAt(c, { unit: u })} />
-                            )}
+                            <FcFlow flow={FLOW_AUTHORED} backTitle={FLOW_FMT_BACK} fwdTitle={FLOW_FMT_FWD}>
+                              <FormatStyleSelect className="table-popup__fmtselect" value={annFor(c).format} onChange={(f) => persistColFmt(c, { format: f })} />
+                            </FcFlow>
+                            {state.unitTaggable ? (
+                              // Taggable source column: unit authored here, rides the value (← →).
+                              <FcFlow flow={FLOW_AUTHORED} backTitle={FLOW_UNIT_BACK} fwdTitle={FLOW_UNIT_FWD}>
+                                <UnitSelect className="table-popup__fmtselect" value={annFor(c).unit} onChange={(u) => setColFmtAt(c, { unit: u })} />
+                              </FcFlow>
+                            ) : state.columnUnits?.[c] ? (
+                              // Derived column: unit inherited from the source (→ →), LOCKED.
+                              <FcFlow flow={FLOW_INHERITED} fwdTitle={FLOW_UNIT_INHERIT}>
+                                <UnitSelect
+                                  className="table-popup__fmtselect"
+                                  value={state.columnUnits[c]!.display ?? "none"}
+                                  onChange={() => {}}
+                                  disabled
+                                  title={`Unit: ${columnUnitLabel(state.columnUnits[c]!)} (inherited from the source)`}
+                                />
+                              </FcFlow>
+                            ) : null}
                           </div>
                         ) : null}
                       </td>
