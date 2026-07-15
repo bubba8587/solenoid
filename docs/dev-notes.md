@@ -41,6 +41,11 @@ huge wired frame would freeze Solve — the Polars verb chain stays the bulk pat
 copyPaste whitelist + `solveKey`; `byRowPortId` cleared in `removeInputPort`. **Known limitation:** the
 500-row cap silently drops extra rows — replace with a Problems-panel warning later (no clean surface
 from `data()` today). UI eyeball pending (mode + picker). tsc clean, 2816 green. Commit `f684815d`.
+**Follow-up `a1799db3` (author eyeball):** the outer card shows a numeric-series output with a
+`MiniSparkline` (pre-existing, all multi-run modes — NOT added for By-Row), but the DRILL-IN marker
+showed only the last pass's value — `collectMultiple` left the marker's `cachedResult` at the final
+runPass, never the series. Now it mirrors the collected series onto each output marker (same as
+`runSimulation` already did), so inside==outside for By-Row / Scenarios / Data Table.
 
 ### SESSION DIGEST (2026-07-15j — Simulation "Stop when" condition) [Agent 2, off-theme]
 Author-approved (2026-07-14) simulation follow-up. A Composite in Simulation mode gets a "Stop when
