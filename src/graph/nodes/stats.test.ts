@@ -15,7 +15,7 @@ import {
   ForecastNode,
   InterpolateNode,
   interpolateLinear,
-  bilinearGrid,
+  fillBorderedGrid,
 } from "./stats";
 import { isSolError, solError } from "../errorValue";
 
@@ -231,60 +231,70 @@ describe("INTERPOLATE (piecewise-linear lookup)", () => {
   });
 });
 
-describe("INTERPOLATE — Grid mode (2-D bilinear)", () => {
-  // A 2×2 grid: Z(y,x) with column Xs [0,10], row Ys [0,10].
-  //   x=0  x=10
-  // y=0: 0   10
-  // y=10:20  30
-  const grid = [[0, 10], [20, 30]];
-  it("bilinearly interpolates the centre of a cell", () => {
-    // (x=5, y=5) → average of all four corners = 15.
-    const r = bilinearGrid(grid, [0, 10], [0, 10], [5], [5]);
-    expect(r).toEqual([[15]]);
+describe("INTERPOLATE — Grid mode (fill a bordered table)", () => {
+  it("fills blanks in a bordered lookup table (Z = x + y), incl. a new row×column intersection", () => {
+    // row 0 = X coords, col 0 = Y coords, corner ignored; null = blank to fill.
+    //   ·   0   5   10
+    //   0   0   ·   10
+    //   5   ·   ·   ·      ← a whole new (blank) row at Y=5
+    //   10  10  ·   20     ← plus a new (blank) column at X=5
+    const t = [
+      [null, 0, 5, 10],
+      [0, 0, null, 10],
+      [5, null, null, null],
+      [10, 10, null, 20],
+    ];
+    // Every cell resolves to Z = x + y — the (X=5, Y=5) intersection (blank in BOTH a
+    // new row and a new column) resolves because the row pass seeds the column pass.
+    expect(fillBorderedGrid(t)).toEqual([
+      [null, 0, 5, 10],
+      [0, 0, 5, 10],
+      [5, 5, 10, 15],
+      [10, 10, 15, 20],
+    ]);
   });
-  it("reduces to 1-D along an edge", () => {
-    // Along y=0: x=5 → midway 0→10 = 5; along x=0: y=5 → midway 0→20 = 10.
-    expect(bilinearGrid(grid, [0, 10], [0, 10], [5], [0])).toEqual([[5]]);
-    expect(bilinearGrid(grid, [0, 10], [0, 10], [0], [5])).toEqual([[10]]);
+  it("blanks the top-left corner even when the input had a value there", () => {
+    const t = [[999, 0, 10], [0, 0, 10], [10, 10, 20]];
+    expect(fillBorderedGrid(t)[0][0]).toBeNull();
   });
-  it("hits grid corners exactly and resamples to a bigger grid", () => {
-    const r = bilinearGrid(grid, [0, 10], [0, 10], [0, 5, 10], [0, 10]);
-    expect(r).toEqual([[0, 5, 10], [20, 25, 30]]);
+  it("clamps at the edges (a coordinate past the known range holds the edge value)", () => {
+    //   ·   0   10   20     ← X=20 is past the last known Z column (0,10)
+    //   0   5   15   ·
+    const t = [[null, 0, 10, 20], [0, 5, 15, null]];
+    expect(fillBorderedGrid(t)).toEqual([[null, 0, 10, 20], [0, 5, 15, 15]]);
   });
-  it("clamps queries outside the grid range", () => {
-    expect(bilinearGrid(grid, [0, 10], [0, 10], [-5, 15], [-5, 15]))
-      .toEqual([[0, 10], [20, 30]]);
+  it("leaves a cell no row or column can reach blank", () => {
+    const t = [[null, 0], [0, null]]; // one interior cell, nothing known to reach it
+    expect(fillBorderedGrid(t)).toEqual([[null, 0], [0, null]]);
   });
-  it("sorts unordered axes (grid permuted to match)", () => {
-    // Columns given as [10,0] with the grid columns in that order → same result.
-    const flipped = [[10, 0], [30, 20]];
-    expect(bilinearGrid(flipped, [10, 0], [0, 10], [5], [5])).toEqual([[15]]);
+  it("treats a NaN / dirty interior cell as a blank to fill", () => {
+    const t = [[null, 0, 10], [0, 0, NaN]]; // single known in the row → flat fill
+    expect(fillBorderedGrid(t)).toEqual([[null, 0, 10], [0, 0, 0]]);
   });
 
-  // Node wiring.
-  it("grid mode reshapes to 5 inputs + a table output", () => {
+  // Node wiring — ONE table in, ONE table out.
+  it("grid mode is one bordered-table input and one table output", () => {
     const n = new InterpolateNode({ mode: "grid" });
-    expect(Object.keys(n.inputs).sort()).toEqual(["grid", "new_xs", "new_ys", "xs", "ys"]);
-    expect(n.outputs.result?.socket.name).toBeDefined();
+    expect(Object.keys(n.inputs)).toEqual(["grid"]);
+    expect(Object.keys(n.outputs)).toEqual(["result"]);
   });
-  it("_rebuildSockets swaps the socket set on a mode change", () => {
+  it("_rebuildSockets swaps the list↔grid socket sets", () => {
     const n = new InterpolateNode(); // list mode
     expect(Object.keys(n.inputs).sort()).toEqual(["new_xs", "xs", "ys"]);
-    n.mode = "grid";
-    n._rebuildSockets();
-    expect(Object.keys(n.inputs).sort()).toEqual(["grid", "new_xs", "new_ys", "xs", "ys"]);
+    n.mode = "grid"; n._rebuildSockets();
+    expect(Object.keys(n.inputs)).toEqual(["grid"]);
+    n.mode = "list"; n._rebuildSockets();
+    expect(Object.keys(n.inputs).sort()).toEqual(["new_xs", "xs", "ys"]);
   });
-  it("interpolates a grid through the node", () => {
-    const r = new InterpolateNode({ mode: "grid" }).data({
-      grid: [grid], xs: [[0, 10]], ys: [[0, 10]], new_xs: [[5]], new_ys: [[5]],
-    }).result;
-    expect(r).toEqual([[15]]);
+  it("fills a bordered grid through the node (a per-cell error reads as a blank)", () => {
+    const err = solError("#REF!", "bad cell");
+    const t = [[null, 0, 10], [0, 0, err], [10, 10, 20]];
+    const r = new InterpolateNode({ mode: "grid" }).data({ grid: [t] }).result;
+    expect(r).toEqual([[null, 0, 10], [0, 0, 0], [10, 10, 20]]);
   });
   it("propagates a whole-grid error", () => {
     const err = solError("#REF!", "bad grid");
-    const r = new InterpolateNode({ mode: "grid" }).data({
-      grid: [err], xs: [[0, 10]], ys: [[0, 10]], new_xs: [[5]], new_ys: [[5]],
-    }).result;
+    const r = new InterpolateNode({ mode: "grid" }).data({ grid: [err] }).result;
     expect(isSolError(r) && r.code).toBe("#REF!");
   });
 });

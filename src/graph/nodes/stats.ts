@@ -929,20 +929,24 @@ export class TrendNode extends ClassicPreset.Node {
   }
 }
 
-// ─── Interpolate (List = 1-D, Grid = 2-D bilinear) ──────────────────────────────
+// ─── Interpolate (List = 1-D, Grid = fill a bordered 2-D table) ──────────────────
 // A true lookup-table interpolation, which Excel has no direct function for:
 // LOOKUP/XLOOKUP do a STEP match (nearest key, no blending), and FORECAST/TREND fit a
 // regression LINE through the cloud rather than honouring each point. One node, two
-// modes (a dropdown swaps the socket set): LIST interpolates a 1-D dataset, GRID does
-// 2-D bilinear resampling of a numeric table. Both CLAMP at the ends — a query beyond
-// the known range returns the edge value; a lookup table (hardness conversion, a pump
-// curve, a steam table) doesn't extrapolate past its data.
+// modes (a dropdown swaps the socket set):
+//  • LIST — 1-D: interpolate y for a query x between known (x, y) points.
+//  • GRID — fill the blanks in a coordinate-BORDERED table. The first row holds the X
+//    coordinate of each column, the first column the Y coordinate of each row (the
+//    top-left corner is ignored on input and blanked on output); each blank interior
+//    cell is filled by interpolating from the known cells. ONE self-describing table in
+//    and out — coordinates sit next to their data, no parallel-list alignment to eyeball.
+// Both CLAMP at the ends (no extrapolation past the known range).
 
 export type InterpolateMode = "list" | "grid";
 
 export const INTERPOLATE_MODE_META: Record<InterpolateMode, { label: string; title: string }> = {
   list: { label: "List", title: "1-D: interpolate y for a query x between known (x, y) points" },
-  grid: { label: "Grid", title: "2-D bilinear: resample a numeric grid onto new column/row coordinates" },
+  grid: { label: "Grid", title: "Fill the blanks in a bordered table (row 1 = Xs, column 1 = Ys) by 2-D interpolation" },
 };
 
 // The interpolation bracket for a query against a SORTED-ASCENDING axis: [i0, i1, t]
@@ -978,44 +982,60 @@ export function interpolateLinear(xs: number[], ys: number[], queryXs: number[])
   });
 }
 
-// 2-D bilinear resampling: `grid[r][c]` is the Z value at (rowYs[r], colXs[c]). Sample
-// it onto every (newYs × newXs) point → a newYs.length × newXs.length matrix. Axes are
-// sorted ascending (the grid is permuted to match), so the row/column coordinates may
-// arrive in any order. Clamped at every edge; a NaN query cell → NaN.
-export function bilinearGrid(
-  grid: number[][], colXs: number[], rowYs: number[], newXs: number[], newYs: number[],
-): number[][] {
-  const R = Math.min(grid.length, rowYs.length);
-  const C = Math.min(colXs.length, grid[0]?.length ?? 0);
-  if (R === 0 || C === 0) return newYs.map(() => newXs.map(() => NaN));
-  const rowIdx = Array.from({ length: R }, (_, i) => i).sort((a, b) => rowYs[a] - rowYs[b]);
-  const colIdx = Array.from({ length: C }, (_, j) => j).sort((a, b) => colXs[a] - colXs[b]);
-  const sortedRowYs = rowIdx.map((i) => rowYs[i]);
-  const sortedColXs = colIdx.map((j) => colXs[j]);
-  const z = (sr: number, sc: number): number => grid[rowIdx[sr]][colIdx[sc]];
-  return newYs.map((qy) =>
-    newXs.map((qx) => {
-      if (Number.isNaN(qx) || Number.isNaN(qy)) return NaN;
-      const [r0, r1, ty] = bracket(sortedRowYs, qy);
-      const [c0, c1, tx] = bracket(sortedColXs, qx);
-      const top = z(r0, c0) + tx * (z(r0, c1) - z(r0, c0));
-      const bot = z(r1, c0) + tx * (z(r1, c1) - z(r1, c0));
-      return top + ty * (bot - top);
-    }),
+// Fill the blank interior cells of a coordinate-BORDERED grid. The first row holds the
+// X coordinate of each column, the first column the Y coordinate of each row; the
+// top-left corner is ignored and comes back blank. An interior cell is BLANK when it's
+// null or non-finite. Filling is separable and reuses interpolateLinear: a ROW pass
+// fills each row's blanks from that row's known cells (along X), then a COLUMN pass
+// fills any still-blank cell from its column's known cells (along Y). The row pass runs
+// FIRST so a freshly filled cell seeds the column pass — that's what lets a cell at the
+// intersection of a NEW row and a NEW column resolve. Clamped at the ends; a cell no
+// line can reach (its row and column both empty) stays blank. The known cells should
+// form a lattice (a lookup table); genuinely scattered points aren't handled.
+export function fillBorderedGrid(table: (number | null)[][]): (number | null)[][] {
+  const R = table.length;
+  const C = R > 0 ? Math.max(...table.map((r) => r.length)) : 0;
+  const isKnown = (v: number | null | undefined): v is number => typeof v === "number" && Number.isFinite(v);
+  // Rectangular working copy; a blank (null / non-finite) cell becomes `null`.
+  const g: (number | null)[][] = Array.from({ length: R }, (_, i) =>
+    Array.from({ length: C }, (_, j) => { const v = table[i]?.[j]; return isKnown(v) ? v : null; }),
   );
-}
+  if (R < 2 || C < 2) { if (g[0]) g[0][0] = null; return g; } // no interior to fill
 
-/** Coerce a wired list to plain numbers (a null/error/blank cell → NaN). */
-function axisNums(a: (number | null | SolError)[] | undefined): number[] {
-  return (a ?? []).map((v) => (typeof v === "number" ? v : NaN));
+  const colXs = g[0].slice(1).map((v) => (v == null ? NaN : v));    // X of each interior column
+  const rowYs = g.slice(1).map((r) => (r[0] == null ? NaN : r[0])); // Y of each interior row
+  const Ri = R - 1, Ci = C - 1;
+  const Z: (number | null)[][] = g.slice(1).map((r) => r.slice(1)); // interior, mutated across passes
+
+  // Fill the blanks of one line (row or column) from its known cells, at their coords.
+  const fillLine = (coords: number[], get: (k: number) => number | null, set: (k: number, v: number) => void) => {
+    const kc: number[] = [], kv: number[] = [], qc: number[] = [], qi: number[] = [];
+    for (let k = 0; k < coords.length; k++) {
+      if (Number.isNaN(coords[k])) continue; // an unlabelled row/col can't be placed
+      const v = get(k);
+      if (v == null) { qc.push(coords[k]); qi.push(k); } else { kc.push(coords[k]); kv.push(v); }
+    }
+    if (kc.length === 0 || qi.length === 0) return; // nothing known, or nothing to fill
+    const filled = interpolateLinear(kc, kv, qc);
+    qi.forEach((k, m) => { if (Number.isFinite(filled[m])) set(k, filled[m]); });
+  };
+
+  for (let i = 0; i < Ri; i++) fillLine(colXs, (j) => Z[i][j], (j, v) => { Z[i][j] = v; }); // row pass (along X)
+  for (let j = 0; j < Ci; j++) fillLine(rowYs, (i) => Z[i][j], (i, v) => { Z[i][j] = v; }); // column pass (along Y)
+
+  // Rebuild: corner blanked, border intact, interior filled.
+  const out: (number | null)[][] = g.map((r) => [...r]);
+  out[0][0] = null;
+  for (let i = 0; i < Ri; i++) for (let j = 0; j < Ci; j++) out[i + 1][j + 1] = Z[i][j];
+  return out;
 }
 
 export class InterpolateNode extends ClassicPreset.Node {
   label: string;
   mode: InterpolateMode;
-  // LIST mode: scalar-or-list matching the query shape. GRID mode: a matrix. A whole-
-  // input error propagates as a SolError.
-  cachedResult: number | (number | null)[] | number[][] | SolError | null = null;
+  // LIST mode: scalar-or-list matching the query shape. GRID mode: the filled bordered
+  // table (cells may be null where nothing reached). A whole-input error → SolError.
+  cachedResult: number | (number | null)[] | (number | null)[][] | SolError | null = null;
   literals: Record<string, number> = { x: 0 };
   width = 180; height = 215;
 
@@ -1035,13 +1055,11 @@ export class InterpolateNode extends ClassicPreset.Node {
     for (const key of Object.keys(this.inputs)) this.removeInput(key);
     for (const key of Object.keys(this.outputs)) this.removeOutput(key);
     if (this.mode === "grid") {
-      this.addInput("grid",   tableIn("Grid Z"));
-      this.addInput("xs",     listIn("Column Xs"));
-      this.addInput("ys",     listIn("Row Ys"));
-      this.addInput("new_xs", listIn("New Xs"));
-      this.addInput("new_ys", listIn("New Ys"));
-      this.addOutput("result", tableOut("Interpolated Grid"));
-      this.height = 300;
+      // ONE self-describing table: row 1 = X coords, column 1 = Y coords, interior = Z
+      // with blanks to fill. Output = the same bordered grid, blanks filled.
+      this.addInput("grid", tableIn("Bordered grid"));
+      this.addOutput("result", tableOut("Filled grid"));
+      this.height = 215;
       return;
     }
     this.addInput("ys",     listIn("Known Ys"));
@@ -1053,7 +1071,7 @@ export class InterpolateNode extends ClassicPreset.Node {
     this.height = 215;
   }
 
-  data(inputs: Record<string, unknown[]>): { result: number | (number | null)[] | number[][] | SolError | null } {
+  data(inputs: Record<string, unknown[]>): { result: number | (number | null)[] | (number | null)[][] | SolError | null } {
     return this.mode === "grid" ? this.dataGrid(inputs) : this.dataList(inputs);
   }
 
@@ -1087,22 +1105,16 @@ export class InterpolateNode extends ClassicPreset.Node {
     return { result };
   }
 
-  private dataGrid(inputs: Record<string, unknown[]>): { result: number[][] | SolError } {
+  private dataGrid(inputs: Record<string, unknown[]>): { result: (number | null)[][] | SolError | null } {
     const gridRaw = inputs.grid?.[0] ?? null;
     if (isSolError(gridRaw)) { this.cachedResult = gridRaw; return { result: gridRaw }; }
-    // A dirty/missing/error cell → NaN (the grid interpolates numerically; a whole-
-    // value error already short-circuited above).
-    const grid = (Array.isArray(gridRaw) ? gridRaw : []).map((row) =>
-      (Array.isArray(row) ? row : []).map((c) => (typeof c === "number" ? c : NaN)),
+    if (!Array.isArray(gridRaw)) { this.cachedResult = null; return { result: null }; }
+    // Coerce cells to number|null: a per-cell error or a non-finite cell reads as BLANK
+    // (a hole to fill), so a stray dirty cell doesn't poison the interpolation.
+    const grid: (number | null)[][] = gridRaw.map((row) =>
+      (Array.isArray(row) ? row : []).map((c) => (typeof c === "number" && Number.isFinite(c) ? c : null)),
     );
-    const colXs = axisNums((inputs.xs as (number | null | SolError)[][] | undefined)?.[0]);
-    const rowYs = axisNums((inputs.ys as (number | null | SolError)[][] | undefined)?.[0]);
-    const newXs = axisNums((inputs.new_xs as (number | null | SolError)[][] | undefined)?.[0]);
-    const newYs = axisNums((inputs.new_ys as (number | null | SolError)[][] | undefined)?.[0]);
-    if (grid.length === 0 || newXs.length === 0 || newYs.length === 0) {
-      this.cachedResult = []; return { result: [] };
-    }
-    const result = bilinearGrid(grid, colXs, rowYs, newXs, newYs);
+    const result = fillBorderedGrid(grid);
     this.cachedResult = result;
     return { result };
   }
