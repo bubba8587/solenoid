@@ -18,6 +18,7 @@ import {
   fillBorderedGrid,
 } from "./stats";
 import { isSolError, solError } from "../errorValue";
+import { extractInit } from "../copyPaste";
 
 // List-socket inputs arrive as inputs.<port>[0] = the array.
 
@@ -257,11 +258,27 @@ describe("INTERPOLATE — Grid mode (fill a bordered table)", () => {
     const t = [[999, 0, 10], [0, 0, 10], [10, 10, 20]];
     expect(fillBorderedGrid(t)[0][0]).toBeNull();
   });
-  it("clamps at the edges (a coordinate past the known range holds the edge value)", () => {
+  it("forecasts past the data by default, clamps when forecast is off", () => {
     //   ·   0   10   20     ← X=20 is past the last known Z column (0,10)
-    //   0   5   15   ·
+    //   0   5   15   ·      ← known 5@0, 15@10 (slope 1)
     const t = [[null, 0, 10, 20], [0, 5, 15, null]];
-    expect(fillBorderedGrid(t)).toEqual([[null, 0, 10, 20], [0, 5, 15, 15]]);
+    // forecast ON (default): continue the trend → 25 at X=20
+    expect(fillBorderedGrid(t)).toEqual([[null, 0, 10, 20], [0, 5, 15, 25]]);
+    // forecast OFF: hold the edge value → 15
+    expect(fillBorderedGrid(t, false)).toEqual([[null, 0, 10, 20], [0, 5, 15, 15]]);
+  });
+  it("forecasts a blank edge ROW from the two nearest data rows (Ys [2,4,6,8,10], data at 4 & 8)", () => {
+    //   ·   0        row 0 = X coords (one column)
+    //   2   ·        Y=2  — below the data, forecast fills it
+    //   4   10       Y=4  known
+    //   6   ·        Y=6  — between → interpolate
+    //   8   30       Y=8  known
+    //   10  ·        Y=10 — above the data, forecast fills it
+    const t = [[null, 0], [2, null], [4, 10], [6, null], [8, 30], [10, null]];
+    const out = fillBorderedGrid(t).map((r) => r[1]);
+    // line through (4,10),(8,30): slope 5 → Y2=0, Y6=20, Y10=40; forecast OFF would clamp 2→10, 10→30.
+    expect(out).toEqual([0, 0, 10, 20, 30, 40]); // [corner-col=0 header cell, then per row]
+    expect(fillBorderedGrid(t, false).map((r) => r[1])).toEqual([0, 10, 10, 20, 30, 30]);
   });
   it("leaves a cell no row or column can reach blank", () => {
     const t = [[null, 0], [0, null]]; // one interior cell, nothing known to reach it
@@ -326,6 +343,16 @@ describe("INTERPOLATE — Grid mode (fill a bordered table)", () => {
     const err = solError("#REF!", "bad grid");
     const r = new InterpolateNode({ mode: "grid" }).data({ grid: [err] }).result;
     expect(isSolError(r) && r.code).toBe("#REF!");
+  });
+  it("forecast defaults ON, drives the grid fill, and round-trips through extractInit", () => {
+    const n = new InterpolateNode({ mode: "grid" });
+    expect(n.forecast).toBe(true);
+    const t = [[null, 0, 10, 20], [0, 5, 15, null]]; // slope 1, X=20 past the data
+    expect((n.data({ grid: [t] }).result as (number | null)[][])[1][3]).toBe(25); // forecast → 25
+    n.forecast = false;
+    expect((n.data({ grid: [t] }).result as (number | null)[][])[1][3]).toBe(15); // clamp → 15
+    const n2 = new InterpolateNode(extractInit(n));
+    expect(n2.forecast).toBe(false);
   });
 });
 
