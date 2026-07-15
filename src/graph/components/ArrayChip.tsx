@@ -2,6 +2,8 @@ import { tablePopup, type Cell, type TablePopupState } from "../tablePopupStore"
 import { useHostNodeId } from "./nodeContext";
 import { readChipPopupStyle } from "./chipStyle";
 import { isSolError } from "../errorValue";
+import { matrixUnitOf } from "../unitValue";
+import { columnUnitLabel } from "../unitColumn";
 import "./ArrayChip.css";
 
 // A list or a table (2D), of numbers (number/list/table sockets) or text
@@ -98,8 +100,12 @@ export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId
     ? ` solenoid-array-chip--elem-${family}${table ? "-table" : ""}`
     : "";
 
+  // A homogeneous numeric matrix carries ONE unit for the whole grid (D20) — show
+  // it in the chip so the tag is visible without opening the popup.
+  const matUnit = table ? matrixUnitOf(value) : undefined;
+  const unitSuffix = matUnit ? ` · ${columnUnitLabel(matUnit)}` : "";
   // Lists are always 1D, so the chip just says "List" — only tables show R×C.
-  const chipLabel = table ? `${rows}×${cols} Table` : "List";
+  const chipLabel = (table ? `${rows}×${cols} Table` : "List") + unitSuffix;
   const verb = onSave ? "edit" : "view";
   const titleText = table ? `${rows}×${cols} table. Click to ${verb}.` : `${rows}-item list. Click to ${verb}.`;
 
@@ -122,6 +128,9 @@ export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId
           // The popup only renders it when the grid isn't editable, so an editable
           // Table Input (onSaveRaw via popupOverrides) never shows it.
           formatControls: table && cellTypeOf(value) === "number" ? "matrix" : undefined,
+          // Carry the matrix's homogeneous unit tag (D20) so the popup bar shows it
+          // (as a static label when the matrix isn't a taggable source).
+          columnUnits: matUnit ? [matUnit] : undefined,
           accent: accent || st.accent,
           groupColor: st.groupColor,
           groupColorDark: st.groupColorDark,

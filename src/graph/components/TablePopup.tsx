@@ -286,6 +286,9 @@ export function TablePopup() {
   // ambiguous ("Distance (km)"). Taggable sources show it in the dropdown instead.
   function colHeaderLabel(c: number): string {
     const base = headers?.[c] ?? colLabel(c);
+    // A matrix's homogeneous unit shows in the bar above the sheet, not per A/B/C
+    // header — only a derived FRAME surfaces the unit in the column header.
+    if (state?.formatControls === "matrix") return base;
     const cu = state?.columnUnits?.[c];
     return !state?.unitTaggable && formatRenderActive && cu ? `${base} (${columnUnitLabel(cu)})` : base;
   }
@@ -543,9 +546,12 @@ export function TablePopup() {
           ) : (
             <FormatStyleSelect className="table-popup__fmtselect" value={annFor(0).format} onChange={(f) => persistColFmt(0, { format: f })} />
           )}
-          {state.unitTaggable && cellType === "number" && (
+          {state.unitTaggable && cellType === "number" ? (
             <UnitSelect className="table-popup__fmtselect" value={annFor(0).unit} onChange={(u) => setColFmtAt(0, { unit: u })} />
-          )}
+          ) : cellType === "number" && state.columnUnits?.[0] ? (
+            // Read-only matrix carrying a homogeneous unit tag (D20): show it, no picker.
+            <span className="table-popup__unit-label">{columnUnitLabel(state.columnUnits[0]!)}</span>
+          ) : null}
         </div>
       )}
       {view === "grid" ? (
