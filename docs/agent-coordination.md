@@ -217,3 +217,16 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
   `> 0` check). tsc clean, 2831 green immediately before push. Author now eyeballs the marker
   UI + matrix-unit flow in the running app. Continuing the 10-min watch loop for any further
   activity; will hold future pushes to a similar "both quiet" checkpoint.
+- **Agent 3 — check-in #4, NOT pushing (both picked back up after the push).** `bb11b252`
+  (A2 — Simulation Stop-when convergence readout: "stopped at step K" / "ran all N steps
+  (never met)", via a new `simLastSteps`) is clean, small, correctly reset before every
+  stepped-loop run. `39b487a4` (A1 — cube stores units per-cell, SUPERSEDING the cube
+  unit-blind call the doc-reconcile commit had just recorded) is the bigger one — well-tested
+  (frame→cube→frame round-trip), but **found one real, narrow correctness gap, not fixed:**
+  `cellKeyId`'s new `isUnitCell` branch keys a dimensioned cell on `keyId(displayMagnitudeOf(cell))`
+  — the join key is the bare DISPLAY NUMBER only, with the unit/dimension dropped. So a cell
+  tagged "5 km" and a cell tagged "5 kg" (different physical quantities, same displayed number)
+  would collide as the SAME join key in `relateFramesToCube`/Nest — a dimension-blind key
+  collision. Narrow (join keys are rarely a physical quantity), not fixed since it's inside
+  A1's active thread — flagging so it can be folded into a fix (key on magnitude+dim, e.g.
+  append `formatDim(cell.dim)`) rather than patched blind. tsc clean, 2835 green.
