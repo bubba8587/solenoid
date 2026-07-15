@@ -7,6 +7,7 @@ import { useDismissOnOutside } from "./useDismissOnOutside";
 import { reportStore } from "../reportStore";
 import { scheduleAutosave } from "../persistence";
 import { RefInputRow } from "./inlineRefDisplay";
+import { NodeSocket } from "./NodeSocket";
 import type { NodeProps } from "./nodeKit";
 import { stopDragStart } from "../coarse";
 import "./ReportNode.css";
@@ -129,6 +130,11 @@ export function ReportComponent({ data, emit }: NodeProps<ReportNodeType>) {
           </span>
         )}
       </div>
+      {/* The `document` OUTPUT socket (right edge) — wire the whole report into a
+          document sink (Write to Obsidian). Position: author to eyeball. */}
+      {data.outputs.document && (
+        <NodeSocket side="output" socketKey="document" nodeId={data.id} emit={emit} payload={data.outputs.document.socket} />
+      )}
     </div>
   );
 }

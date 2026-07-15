@@ -403,6 +403,12 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
           })}
         </div>
       )}
+      {/* The `document` OUTPUT — the whole note as a DocumentValue for a document sink
+          (Write to Obsidian). Always present (independent of frontmatter fields).
+          Position: author to eyeball. */}
+      {data.outputs.document && (
+        <NodeSocket side="output" socketKey="document" nodeId={data.id} emit={emit} payload={data.outputs.document.socket} />
+      )}
       {!collapsed && (
         /* Wrapper clips the scrolling body to the card's rounded base — a textarea
            (or its scrollbar) can't be clipped by the note's own radius without an
