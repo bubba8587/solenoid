@@ -91,6 +91,11 @@ export interface TablePopupState {
    *  choice is written back on Save — via the source column's `unit`, so it rides
    *  the value downstream. Derived frames leave this off (format-only, display). */
   unitTaggable?: boolean;
+  /** A unit-taggable MATRIX source (Table Input): the matrix bar's unit dropdown
+   *  writes its choice back through this (an FC unit id, or "none"), persisting the
+   *  homogeneous matrix unit (D20) on the node so it rides the value downstream.
+   *  Frames use the per-column `unit` on onSaveSource instead. */
+  onSaveMatrixUnit?: (unitId: string) => void;
   /** Host node id, when opened from a node body — enables the header Pin action
    *  (pin this value to the HUD). Absent for HUD/group-readout chips, which have
    *  no single host node to pin. */

@@ -7,6 +7,7 @@ import { parseCsvRows } from "../csv";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { isFrameValue, frameRowCount, coerceFrameCell } from "../frame";
 import { carryMatrixUnit } from "../unitValue";
+import { applyFcUnit } from "../unitBridge";
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
@@ -181,13 +182,18 @@ export class TableInputNode extends ClassicPreset.Node {
   cachedResult: CellMat | null = null;
   tableText: string = "1, 0\n0, 1";
   dataType: TableElemType;
+  /** The homogeneous unit AUTHORED on this literal source (D20) — an FC unit id
+   *  ("km", "usd", "none"). A LITERAL source may tag its own unit, exactly like a
+   *  Frame Input column; only applies to a NUMBER table. Persisted (whitelisted). */
+  unit: string = "none";
   width = 220; height = 250;
 
-  constructor(init?: { label?: string; tableText?: string; dataType?: TableElemType }) {
+  constructor(init?: { label?: string; tableText?: string; dataType?: TableElemType; unit?: string }) {
     super("TableInput");
     this.label = init?.label ?? "Table Input";
     if (init?.tableText != null) this.tableText = init.tableText;
     this.dataType = init?.dataType ?? "number";
+    if (init?.unit != null) this.unit = init.unit;
     this.addOutput("table", new ClassicPreset.Output(TABLE_ELEM_SOCKET[this.dataType], "Table"));
     // Dimensions are available from the ROWS / COLUMNS node, so no redundant
     // number outputs here — just the table.
@@ -209,7 +215,15 @@ export class TableInputNode extends ClassicPreset.Node {
 
   data() {
     const cells = this.rawCells();
-    this.cachedResult = cells.length ? deriveTable(cells, this.dataType) : null;
+    let result = cells.length ? deriveTable(cells, this.dataType) : null;
+    // A NUMBER table may carry one homogeneous unit (D20), authored here like a
+    // Frame Input column. applyFcUnit interprets the as-typed cells AS this unit
+    // and tags a COPY of the outer array (cells stay bare). Non-number tables and
+    // "none" pass through untagged.
+    if (result && this.dataType === "number" && this.unit !== "none") {
+      result = applyFcUnit(result, this.unit) as CellMat;
+    }
+    this.cachedResult = result;
     return { table: this.cachedResult };
   }
 }

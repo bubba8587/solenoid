@@ -273,4 +273,21 @@ describe("structural reshapes carry the homogeneous matrix unit (D20, S3)", () =
     const t = new TableTransposeNode().data({ matrix: [[["a", "b"], ["c", "d"]]] }).result;
     expect(matrixUnitOf(t)).toBeUndefined();
   });
+
+  it("Table Input tags its NUMBER output with its authored unit; cells stay as-typed", () => {
+    const n = new TableInputNode({ tableText: "1, 2\n3, 4", dataType: "number", unit: "km" });
+    const out = n.data().table;
+    expect(out).toEqual([[1, 2], [3, 4]]);          // cells bare, as typed (D20)
+    expect(matrixUnitOf(out)).toMatchObject({ display: "km" });
+  });
+
+  it("Table Input unit only applies to a number table; none / text pass untagged", () => {
+    expect(matrixUnitOf(new TableInputNode({ tableText: "1, 2", dataType: "number", unit: "none" }).data().table)).toBeUndefined();
+    expect(matrixUnitOf(new TableInputNode({ tableText: "a, b", dataType: "string", unit: "km" }).data().table)).toBeUndefined();
+  });
+
+  it("Table Input unit round-trips through init (persistence whitelist)", () => {
+    const n = new TableInputNode({ tableText: "1", dataType: "number", unit: "usd" });
+    expect(n.unit).toBe("usd");
+  });
 });
