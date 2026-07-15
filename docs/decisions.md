@@ -452,27 +452,51 @@ per-cell). **List → per-cell, deliberately** (reaffirmed): a list is the one r
 homogeneity guarantee — it serves as both a column fragment and a FRAME ROW (Get Row
 yields legitimately mixed units) — so tagged cells stay, with uniformity enforced where
 mixing matters (`forAggregateUnits` → `#UNIT!` at folds; `elemUnitOf`'s shared-unit check).
-**Op rules for the matrix tag (implementation, queued):** element-wise ops run the scalar
-dimension algebra on the tag; MMULT multiplies dims; TRANSPOSE/reshape/TAKE/DROP carry;
-MDETERM/MINVERSE = unitⁿ / unit⁻¹ via `dimPow` (documented-strip acceptable initially);
-a UNIFORMLY-tagged list widens into a matrix carrying its unit, a MIXED list widens
-stripped; structural matrices simply carry no unit. Also closes the Tier 4 "units fork"
-(a future 2-D formula path would share the homogeneous rule instead of diverging).
-**Cost accepted:** threading the tag through the matrix family + display + FC/Convert
-table handling is real, bounded work (backlog); until it lands, matrices stay unit-blind.
 **Representation (decided 2026-07-15, `0e5e5ae1`):** the one tag is a symbol-keyed
 `ColumnUnit` on the matrix's outer array (`unitValue.ts` `matrixUnitOf` /
 `withMatrixUnit` / `carryMatrixUnit`) — co-located like a frame's `__totalRows`,
 invisible to iteration / JSON / `Array.isArray(v[0])`, read only by unit-aware code.
-LOSSY by design (a fresh array from a transform drops it), so the unit-aware ops
-re-tag and everything else strips (the documented-strip above). A `MatrixValue`
-wrapper was rejected — matrices are detected structurally at ~20 sites, so wrapping
-would be a far larger blast radius for no semantic gain. Matrix-unit PERSISTENCE
-rides the producing node (Table Input's unit field), not the array. `applyFcUnit`
-tags a numeric matrix (landed); widening / ops / Table-Input UI / display / lattice
-are the remaining threading.
+LOSSY by design (a fresh array from a transform drops it), so an op that keeps the
+unit re-tags and everything else strips.
+**A `MatrixValue` wrapper was CONSIDERED and rejected (2026-07-15, author authorized
+a risky rewrite — this is still the right call):** the matrix is the one raw-array
+tabular value (frame/cube are objects), which is tempting to "fix" with a wrapper.
+But a wrapper must pass through `toMatrix`/`toScalar`/`toList` — the UNIVERSAL numeric
+coercion primitives every node leans on — plus every math kernel, display, popup, and
+the serializer: a domain-wide churn with a large bug surface, for a niche case, and
+the type-safety payoff is only partial (node inputs are `unknown[]`). Crucially the
+fragility is LOCALIZED: `toMatrix`/`toAnyMatrix` return a genuine matrix *unchanged*
+(ref intact, tag kept) — only code that REBUILDS the array (a `.map`/`.slice`, a
+reshape) drops the tag, and those sites are few and enumerable. So the right fix is a
+complete, self-guarding DISCIPLINE, not a new representation.
+**The op-unit POLICY (landed 2026-07-15, `636308c8` + earlier) + its guard:** every
+matrix op declares one of — **carry** (structural reshape, same cells: TRANSPOSE,
+CHOOSEROWS/CHOOSECOLS, TAKE/DROP, EXPAND); **carry-if-uniform** (a combiner: VSTACK/
+HSTACK keep the unit only when every part shares it, else strip — `sharedMatrixUnit`);
+**convert** (a rank change crosses carriers — TOCOL/TOROW flatten the grid unit into
+per-cell list `UnitCell`s via `taggedListFromMatrix`; WRAPROWS/WRAPCOLS lift a uniform
+list into one grid unit via `matrixCellsFromList`); **strip** (a value transform —
+MMULT/MDETERM/MINVERSE — documented, dimensioned linear algebra is out of scope);
+**na** (dimension info / a generated matrix); **author** (Table Input mints its own).
+INDEX extraction converts the grid unit into a tagged scalar/list (`tagFrameCellUnit`),
+and the numeric-matrix coercer (`coerceValue`'s `table` case) re-carries across the
+`toMatrix` rebuild — the fix for the trueany-input-adopts-`table` drop. **The guard
+(`matrixUnitPolicy.test.ts`) is the anti-recurrence mechanism:** a policy table with
+per-op behaviour tests PLUS a completeness sweep that instantiates every `matrix.ts`
+node and FAILS THE BUILD if a matrix-taking node ships without a declared policy. This
+is what makes the discipline structural, not whack-a-mole. Matrix-unit PERSISTENCE
+rides the producing node (Table Input's `unit` field), not the array.
+**Cube = deliberately UNIT-BLIND (decided 2026-07-15):** a `CubeCell` is heterogeneous
+by nature (no per-column type, cells can be scalars/lists/matrices/nested frames) and
+carries no unit tag, and the type doesn't include `UnitCell` — forcing units in would
+ripple through all cube handling for the nichest rank. A frame→cube (`frameToCube`)
+copies the frame's AS-TYPED cells straight through, so the cube shows the right NUMBER
+and drops only the LABEL — the same unit-blind behaviour the coercion boundary gives a
+non-unit-aware surface. To keep a unit, extract to a frame/list (Get Column / Unnest
+mint tagged cells).
 **What would reverse it:** a real need for per-column units on anonymous matrices —
-which is what the FRAME is for; use a frame.
+which is what the FRAME is for; use a frame. (For cubes: a concrete demand for
+dimensioned nested tables would reopen the cube-cell-tag question.)
 
 ---
 

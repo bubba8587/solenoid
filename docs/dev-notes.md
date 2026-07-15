@@ -22,11 +22,25 @@ fresh output arrays — TRANSPOSE, CHOOSEROWS/CHOOSECOLS, TAKE/DROP (table), EXP
 a no-op when untagged, so plain/text matrices stay plain). **DISPLAY** (`e9af4b05`): `ArrayChip`
 appends the unit to the chip label ("3×4 Table · km") + passes it as `columnUnits[0]`; the popup
 matrix bar shows a static unit label (read-only) or the dropdown (taggable source); `colHeaderLabel`
-guards matrix mode so the unit rides the bar, not column A. **Remaining (deeper algebra, next focused
-pass, A1 owns):** element-wise scalar-algebra on the tag (scale → same unit; matrix±matrix same-unit →
-same, mismatch → #UNIT!), MMULT mul dims, MDETERM/MINVERSE strip; and (a) the list↔matrix widening
-edge — the rank-changing TOCOL/TOROW + WRAPROWS/WRAPCOLS convert a matrix tag to/from per-cell list
-units (not a plain carry) — plus `coerce.ts` widening + the `unitLattice` sweep. tsc clean, 2808 green.
+guards matrix mode so the unit rides the bar, not column A. **Then the domain refactor (author: "do the right thing, risky rewrite authorized, don't half-ass"):**
+after mapping the whole units domain (an Explore agent's report), the smell was ONE concept with a
+carrier per rank + one gap. Rejected a `MatrixValue` wrapper — the fragility is LOCALIZED to array-
+rebuild sites (`toMatrix`/`toAnyMatrix` pass a genuine matrix through unchanged), so wrapping the
+universal coercers would be domain-wide churn for a niche gain; the right fix is a complete, self-
+guarding discipline. **The real INDEX bug** (`b2250c30`): my first INDEX fix passed a direct-data()
+test but not the live graph — a numeric matrix wired into INDEX's adoptive trueany input makes the
+socket adopt "table", so `coerceValue`'s `table` case ran `toMatrix` (rebuild) and dropped the tag
+BEFORE INDEX ran; fixed by carrying the tag across that rebuild. **Closed every matrix-op gap +
+the guard** (`636308c8`): VSTACK/HSTACK carry-if-uniform (`sharedMatrixUnit`); TOCOL/TOROW→list and
+WRAPROWS/WRAPCOLS←list now CONVERT carriers (`taggedListFromMatrix`/`matrixCellsFromList`, TableReshape
+is `unitAware`); `matrixUnitPolicy.test.ts` — a per-op policy table (carry/carry-if-uniform/convert/
+strip/na/author) with a COMPLETENESS sweep that fails the build if a matrix.ts node ships without a
+policy (the anti-recurrence mechanism). **Cube = explicitly unit-blind** (a `CubeCell` holds no tag;
+`frameToCube` copies as-typed cells = right number, no label; extract to keep the unit). D20 +
+subsystem-invariants "Unit flow" amended with the per-rank carrier map + the guard + the cube call.
+Storage note recorded: scalar/list `UnitCell.value` is BASE-SI, frame/matrix cells are AS-TYPED, so
+crossing carriers CONVERTS. tsc clean, 2831 green. Still genuinely deferred: MMULT-mul-dims (niche,
+documented-strip) + the `unitLattice` sweep.
 
 ### SESSION DIGEST (2026-07-15l — Composite drill-in marker polish) [Agent 2, off-theme]
 Two boundary-marker fixes from an author eyeball of the By-Row work. (1) **Input marker shows the real
