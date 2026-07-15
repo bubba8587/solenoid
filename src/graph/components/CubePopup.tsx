@@ -23,7 +23,7 @@ function describe(view: DrillView): {
       rows: cubeRowCount(cube),
       cols: cube.columns.length,
       depth: cubeDepth(cube),
-      cell: (r, c) => <CubeCellChip cell={cube.columns[c].cells[r] ?? null} crumb={cube.columns[c].name} size="sm" />,
+      cell: (r, c) => <CubeCellChip cell={cube.columns[c].cells[r] ?? null} crumb={cube.columns[c].name} size="sm" type={cube.columns[c].type} />,
     };
   }
   if (view.kind === "frame") {

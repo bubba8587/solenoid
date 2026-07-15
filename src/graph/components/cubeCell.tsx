@@ -19,15 +19,19 @@ import { formatListCell } from "./valueDisplayFormat";
 import { errorTip } from "./ErrorChip";
 import "./ArrayChip.css";
 
-/** A short, drill-free token for the compact preview (no click). */
-export function cubeCellToken(cell: CubeCell): string {
+/** A short, drill-free token for the compact preview (no click). `type` (the source
+ *  frame column's element type, carried onto the cube column) renders a flat scalar
+ *  cell correctly — a date serial as a date, a logical as TRUE/FALSE. */
+export function cubeCellToken(cell: CubeCell, type?: FrameColType): string {
   if (cell === null || cell === undefined) return "";
   if (isCubeValue(cell)) return `Cube ${cubeRowCount(cell)}x${cell.columns.length}x${cubeDepth(cell)}`;
   if (isFrameValue(cell)) return `Frame ${frameRowCount(cell)}x${cell.columns.length}`;
   if (isUnitCell(cell)) return formatListCell(cell, formatScalar); // "5 km"
   if (Array.isArray(cell)) return Array.isArray(cell[0]) ? `${cell.length}x${(cell[0] as unknown[]).length}` : `List ${cell.length}`;
-  if (typeof cell === "boolean") return cell ? "TRUE" : "FALSE";
   if (isSolError(cell)) return cell.code;
+  // A typed flat cell (from a source frame column): render by its type.
+  if (type) { const f = formatFrameCell(type, cell as FrameCell); return f === null ? "" : String(f); }
+  if (typeof cell === "boolean") return cell ? "TRUE" : "FALSE";
   if (typeof cell === "number") return formatScalar(cell);
   return String(cell);
 }
@@ -47,11 +51,13 @@ export function frameCellNode(type: FrameColType, cell: FrameCell): ReactNode {
 
 /** A drillable cell for the viewer grid (cube + grid views). A nested container
  *  drills IN PLACE via the breadcrumb stack; a scalar renders as inline text. */
-export function CubeCellChip({ cell, crumb, size = "md" }: {
+export function CubeCellChip({ cell, crumb, size = "md", type }: {
   cell: CubeCell;
   /** Breadcrumb label a drilled-into view should carry (the column name). */
   crumb: string;
   size?: "sm" | "md";
+  /** The source frame column's element type (a flat scalar cell renders by it). */
+  type?: FrameColType;
 }): ReactNode {
   if (cell === null || cell === undefined) {
     return <span className="solenoid-node__text-empty" style={{ color: "var(--text-muted)" }}>—</span>;
@@ -110,6 +116,9 @@ export function CubeCellChip({ cell, crumb, size = "md" }: {
     return <span title={errorTip(cell)} style={{ color: "var(--error, #d33)" }}>{cell.code}</span>;
   }
   if (isUnitCell(cell)) return <>{formatListCell(cell, formatScalar)}</>; // "5 km"
+  // A typed flat cell (from a source frame column): render by its type — a date
+  // serial as a date, a logical as TRUE/FALSE (frameCellNode shares the frame path).
+  if (type) return frameCellNode(type, cell as FrameCell);
   if (typeof cell === "boolean") return <>{cell ? "TRUE" : "FALSE"}</>;
   if (typeof cell === "number") return <>{formatScalar(cell)}</>;
   return <>{String(cell)}</>;

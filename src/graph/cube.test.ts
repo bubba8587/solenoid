@@ -145,12 +145,12 @@ describe("toCube — every value widens UP into the supremum", () => {
 });
 
 describe("frameToCube", () => {
-  it("preserves column names + cell values, drops per-column type", () => {
+  it("preserves column names, cell values, AND the element type", () => {
     const f = buildFrame([[1], [2]], ["only"]);
     const c = frameToCube(f);
     expect(c.columns[0].name).toBe("only");
     expect(c.columns[0].cells).toEqual([1, 2]);
-    expect("type" in c.columns[0]).toBe(false);
+    expect(c.columns[0].type).toBe("number"); // carried from the frame column (was dropped)
   });
 });
 
@@ -177,5 +177,25 @@ describe("cube units — per-cell, like a list (D20)", () => {
     expect(col.type).toBe("number");
     expect(col.values).toEqual([5, 10]);        // back to as-typed magnitudes
     expect(col.unit?.display).toBe("km");        // unit recovered
+  });
+});
+
+describe("typed cube columns — frame→cube keeps the element type (lossless)", () => {
+  // A frame whose columns carry real types (a date column stores serials — numbers —
+  // that a bare cube would render as raw numbers). frameToCube now carries `type`.
+  const dateFrame = { __frame: true as const, columns: [
+    { name: "when", type: "date" as const, values: [46000, 46001] },
+    { name: "ok", type: "logical" as const, values: [true, false] },
+  ] };
+
+  it("frameToCube carries the column type", () => {
+    const c = frameToCube(dateFrame);
+    expect(c.columns[0].type).toBe("date");
+    expect(c.columns[0].cells).toEqual([46000, 46001]); // serials, unchanged
+    expect(c.columns[1].type).toBe("logical");
+  });
+
+  it("a hand-built cube (no source frame) has no column type", () => {
+    expect(cubeFromColumns([{ name: "x", cells: [1, 2] }]).columns[0].type).toBeUndefined();
   });
 });
