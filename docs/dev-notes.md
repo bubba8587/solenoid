@@ -55,6 +55,23 @@ so a flat cube renders dates-as-dates / logicals-as-TRUE-FALSE (`cubeCellToken`/
 by type); the "cube socket eats frame types" display bug is gone (XLOOKUP cube-path date-matching +
 `rawInputs` retire is the remaining node-specific follow-on). tsc clean, 2837 green throughout.
 
+### SESSION DIGEST (2026-07-15m — Surface node: shaded 3-D plot of a bordered table) [Agent 2, off-theme]
+New chart node (`nodes/visual.ts` `SurfaceNode`, Charts category) pairing with Grid Interpolate: it reads
+the SAME coordinate-bordered table (row 1 = X coords, column 1 = Y coords, interior = Z; `parseBorderedGrid`,
+exported + tested) and emits a `surface` `ChartValue` (new `SurfacePayload` in `chartValue.ts` + a
+`ChartFigure` dispatch branch, so it embeds in a Report like any chart). Rendered by `components/
+SurfaceView.tsx` to a **`<canvas>`** (one DOM element regardless of grid size — deliberate, keeps DOM
+weight flat): axonometric projection, each cell a flat-shaded quad (per-face Lambert light + a viridis
+height colormap), painted back-to-front; a null Z cell is a hole. **Reference frame** (author asked, then
+"too basic — just overlays"): a light gridded FLOOR + two BACK walls drawn BEHIND the surface so it sits
+inside the box and the near parts are occluded (matplotlib/plotly look), X/Y/Z labels on the box edges —
+NOT lines floated on top. **Quality:** supersampled backing store (`scale = min(4, dpr·2)`) + round line
+joins + slight surface translucency (`SURFACE_ALPHA` 0.86) so the frame shows through. Theme-aware (reads
+`--text`, redraws on `appThemeStore`). Card mirrors Sankey (collapsible, ChartChip
+when collapsed, `!collapsed` figure gate). Weight stays default 1 (a canvas is one element). Standard
+node-add surface: chartValue + visual.ts + 2 components + chartView branch + index/registry/catalog + kind.
+tsc clean, 2886 green. Commits `de76ec66` (node) + `270f967a` (3-D frame).
+
 ### SESSION DIGEST (2026-07-15m — INTERPOLATE node: piecewise-linear lookup-table interpolation) [Agent 2, off-theme]
 New core node clearing the 1-D half of the Materials-pack "Interpolated Lookup" gate. **INTERPOLATE**
 (`stats.ts` `InterpolateNode`, Regression category, `parity:false`): Known Ys / Known Xs lists + an X
