@@ -82,12 +82,16 @@ fold parallel columns into one frame), and our Matrix type has no inherent x/y c
 design is a **coordinate-BORDERED single table**: first row = X coords, first column = Y coords (corner
 ignored on input, blanked on output), interior = Z with **blank cells to fill**. ONE Numeric Table in,
 ONE out — coordinates sit next to their data, nothing to align. "Resample to a new point" = add a
-coordinate + a blank row/column; the node fills it, unifying fill-holes and upsample. Fill is
-**separable and reuses `interpolateLinear`**: a ROW pass (fill each row's blanks from its known cells
-along X), then a COLUMN pass (along Y) — row-first so a freshly filled cell seeds the column pass, which
-is what lets a cell at the intersection of a NEW row AND a NEW column resolve (verified with a Z=x+y
-upsample test). Clamped at the ends; a cell no line can reach stays blank; a per-cell error/NaN reads as
-a blank to fill; whole-grid error propagates. The mode dropdown reconciles the socket set (`_rebuildSockets`
+coordinate + a blank row/column; the node fills it, unifying fill-holes and upsample. Fill is a **true
+2-D mesh blend** (fixed from a first separable row-then-column pass, which degenerated to ROW-ONLY
+whenever a cell was reachable horizontally — author caught it): each blank averages its ROW estimate
+(interp along X from that row's known cells) and its COLUMN estimate (along Y), reusing `interpolateLinear`
+per line, so a hole fills from BOTH directions. On a complete grid the two agree ⇒ the average IS the
+bilinear value; on partial data it's a smooth diagonal blend (an L of data ramps diagonally, not
+row-flat). Jacobi iteration (collect a pass's fills, apply, freeze) lets a cell at the crossing of a NEW
+row AND a NEW column resolve on the next pass (verified with a Z=x+y upsample test + a bilinear-centre
+test). Clamped at the ends; a cell no row/column can reach stays blank; a per-cell error/NaN reads as a
+blank to fill; whole-grid error propagates. The mode dropdown reconciles the socket set (`_rebuildSockets`
 + `applyInterpolateMode` drop-cables-then-rebuild, the `applyEquationChange` pattern — the two modes are
 different ops); `mode` persists via the existing init whitelist. Pure core `fillBorderedGrid` (replaced
 the interim `bilinearGrid`). Commits `dc8c3602`/`9ab3e481` (1-D + combo), `3e35bfd6` (grid v1 bundled by
