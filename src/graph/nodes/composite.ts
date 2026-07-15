@@ -220,8 +220,15 @@ export class CompositeNode extends ClassicPreset.Node {
   scenarios: CompositeScenario[];
   dataTableValues: CompositeDataTableValues;
   /** Simulation mode's step count — the container parameter the plan calls
-   *  for. Clamped to >= 1 at run time (see runSimulation). */
+   *  for. With no stop condition it's the exact number of rounds; with one
+   *  (`stopWhenPortId`) it's the hard CAP. Clamped to >= 1 at run time (see
+   *  runSimulation). */
   simulationSteps: number;
+  /** Simulation "Stop when": the id of a logical OUTPUT port checked after each
+   *  round — the loop halts early the round it reads true (the series ends on
+   *  that round). "" = run the full `simulationSteps`. Lets a fixpoint model
+   *  (e.g. the sudoku solver) self-terminate instead of hand-tuning the count. */
+  stopWhenPortId: string;
   /** Goal-seek config (null until the mode is configured). */
   goalSeek: CompositeGoalSeek | null;
   /** Monte Carlo config (null until the mode is configured). */
@@ -275,6 +282,7 @@ export class CompositeNode extends ClassicPreset.Node {
     scenarios?: CompositeScenario[];
     dataTableValues?: CompositeDataTableValues;
     simulationSteps?: number;
+    stopWhenPortId?: string;
     goalSeek?: CompositeGoalSeek;
     monteCarlo?: CompositeMonteCarlo;
   }) {
@@ -290,6 +298,7 @@ export class CompositeNode extends ClassicPreset.Node {
       Object.entries(init?.dataTableValues ?? {}).map(([k, v]) => [k, [...v]]),
     );
     this.simulationSteps = init?.simulationSteps ?? 10;
+    this.stopWhenPortId = init?.stopWhenPortId ?? "";
     this.goalSeek = init?.goalSeek ? { ...init.goalSeek } : null;
     this.monteCarlo = init?.monteCarlo ? { ...init.monteCarlo } : null;
     this.internalEditor = new NodeEditor<Schemes>();
@@ -704,6 +713,10 @@ export class CompositeNode extends ClassicPreset.Node {
     // every loop node's full output object for that round — small and cheap
     // for a hand-relocated container — so each output port below can pick
     // out just the one key it's bound to.
+    // "Stop when": the cable feeding the designated logical output marker, if
+    // configured. Resolved once — its truthiness is read each round to halt early.
+    const stopFeed = this.resolveStopFeed(conns);
+
     const loopOrder = this.internalEditor.getNodes().map((n) => n.id).filter((id) => loop.has(id));
     const steps = Math.max(1, Math.round(this.simulationSteps));
     const fullSeries: Record<string, Record<string, unknown>>[] = [];
@@ -723,6 +736,10 @@ export class CompositeNode extends ClassicPreset.Node {
       const snapshot: Record<string, Record<string, unknown>> = {};
       for (const id of loopOrder) snapshot[id] = state.get(id)!;
       fullSeries.push(snapshot);
+      // Halt the round the stop signal reads true — the round IS recorded (the
+      // user sees the state that satisfied the condition). `simulationSteps` is
+      // the cap; the series may be shorter.
+      if (stopFeed && (await this.stopSignalTrue(stopFeed, state, loop))) break;
     }
 
     // Seed the FINAL state into the engine cache so an output port fed by a
@@ -756,6 +773,49 @@ export class CompositeNode extends ClassicPreset.Node {
       }
     }
     return outputs;
+  }
+
+  /** The connection feeding the "Stop when" output marker's `value` input, or
+   *  null when no stop port is configured / it's missing / unwired. */
+  private resolveStopFeed(conns: ReturnType<NodeEditor<Schemes>["getConnections"]>) {
+    if (!this.stopWhenPortId) return null;
+    const port = this.outputPorts.find((p) => p.id === this.stopWhenPortId);
+    if (!port) return null;
+    const marker = this.internalEditor.getNode(port.internalNodeId);
+    if (!marker) return null;
+    return conns.find((c) => c.target === marker.id && c.targetInput === "value") ?? null;
+  }
+
+  /** Evaluate the stop signal against a round's loop `state`. If the signal is
+   *  fed straight off a loop node it's read from the snapshot (cheap). Otherwise
+   *  it's a downstream OBSERVER (e.g. an "is-solved?" check that reads loop
+   *  outputs) — resolve it by seeding this round's loop outputs into the pull
+   *  engine and fetching. The engine is reset first so a prior round's cached
+   *  observer value can't leak; loop stepping never touches the engine, so this
+   *  is safe mid-loop. True only for a logical TRUE (1 / true) — null / error /
+   *  false never stop. */
+  private async stopSignalTrue(
+    feed: NonNullable<ReturnType<CompositeNode["resolveStopFeed"]>>,
+    state: Map<string, Record<string, unknown>>,
+    loop: Set<string>,
+  ): Promise<boolean> {
+    let raw: unknown;
+    if (loop.has(feed.source)) {
+      raw = state.get(feed.source)?.[feed.sourceOutput] ?? null;
+    } else {
+      this.internalEngine.reset();
+      for (const id of loop) {
+        const seeded = Object.assign(Promise.resolve(state.get(id) ?? {}), { cancel() {} });
+        try { this.internalEngine.cache.add(id, seeded); } catch { this.internalEngine.cache.patch(id, seeded); }
+      }
+      try {
+        const res = await this.internalEngine.fetch(feed.source) as Record<string, unknown>;
+        raw = res?.[feed.sourceOutput] ?? null;
+      } catch {
+        raw = null;
+      }
+    }
+    return raw === true || raw === 1;
   }
 
   async data(inputs: Record<string, unknown[]>): Promise<Record<string, unknown>> {
@@ -896,6 +956,7 @@ export class CompositeNode extends ClassicPreset.Node {
       scenarios: this.scenarios,
       dataTableValues: this.dataTableValues,
       simulationSteps: this.simulationSteps,
+      stopWhenPortId: this.stopWhenPortId,
     });
   }
 

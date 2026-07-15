@@ -202,17 +202,30 @@ function DataTableEditor({ node }: { node: CompositeNodeType }) {
   );
 }
 
-// Simulation's only container-level parameter: how many feedback steps to
-// run. A loop-bound output collects one entry per step (the time series);
-// see nodes/composite.ts runSimulation for the algorithm.
+// Simulation's container-level parameters: how many feedback steps to run, and
+// an optional "Stop when" logical output that halts the loop early (the step
+// count becomes the CAP). A loop-bound output collects one entry per step run
+// (the time series); see nodes/composite.ts runSimulation for the algorithm.
 function SimulationEditor({ node }: { node: CompositeNodeType }) {
+  const hasStop = !!node.stopWhenPortId;
+  const stop = { onPointerDown: (e: React.PointerEvent) => e.stopPropagation(), onMouseDown: (e: React.MouseEvent) => e.stopPropagation() };
   return (
     <div style={{ marginTop: 6, display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 6, alignItems: "center" }}>
-      <span className="solenoid-node__io-label">Steps</span>
+      <span className="solenoid-node__io-label">{hasStop ? "Max steps" : "Steps"}</span>
       <InlineNumberField
         value={node.simulationSteps}
         onChange={(v) => { node.simulationSteps = v ?? 10; void processGraph(node.id); }}
       />
+      <span className="solenoid-node__io-label">Stop when</span>
+      <select
+        className="solenoid-node__inline-input"
+        value={node.stopWhenPortId}
+        onChange={(e) => { node.stopWhenPortId = e.target.value; void processGraph(node.id); }}
+        {...stop}
+      >
+        <option value="">— none</option>
+        {node.outputPorts.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+      </select>
     </div>
   );
 }
