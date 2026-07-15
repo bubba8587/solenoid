@@ -982,18 +982,19 @@ export function interpolateLinear(xs: number[], ys: number[], queryXs: number[])
   });
 }
 
-// Fill the blank interior cells of a coordinate-BORDERED grid as a 2-D surface (a
-// "mesh"). The first row holds the X coordinate of each column, the first column the Y
-// coordinate of each row; the top-left corner is ignored and comes back blank. An
-// interior cell is BLANK when it's null or non-finite. Each blank is filled by BLENDING
-// both directions: its row estimate (1-D interpolation along X from that row's known
-// cells) and its column estimate (along Y) are averaged — so a hole fills from its row
-// AND its column, never row-only. On a complete grid the two agree, so the average IS
-// the bilinear value; on partial data it's a smooth blend of both axes. The fill
-// iterates (Jacobi: collect a pass's fills, then apply them; a filled cell freezes and
-// seeds later passes), so a cell at the crossing of a NEW row and a NEW column — blank
-// in both until its neighbours fill — resolves on the next pass. Clamped at the ends; a
-// cell no row or column can reach stays blank. Reuses interpolateLinear per line.
+// Fill the blank interior cells of a coordinate-BORDERED grid by true BILINEAR
+// interpolation — the standard lookup-table method (MATLAB `interp2`, SciPy
+// `RegularGridInterpolator` with method="linear"). The first row holds the X coordinate
+// of each column, the first column the Y coordinate of each row; the top-left corner is
+// ignored and comes back blank. The KNOWN cells define a coarse grid — its rows/columns
+// are the lines that carry data. A blank cell (an inserted intermediate coordinate, or a
+// hole) is the bilinear blend of the four surrounding known corners: its X is bracketed
+// among the data columns and its Y among the data rows, then interpolated in both. The
+// bracket WIDENS past any line whose corner is blank, so a hole interpolates across it
+// from the neighbouring data lines — the closest four-corner box with all corners known
+// is used. Clamped at the coarse edges (a lookup table doesn't extrapolate). A cell that
+// no four known corners enclose (a genuinely incomplete grid) stays blank — honest,
+// matching interp2's NaN.
 export function fillBorderedGrid(table: (number | null)[][]): (number | null)[][] {
   const R = table.length;
   const C = R > 0 ? Math.max(...table.map((r) => r.length)) : 0;
@@ -1007,39 +1008,52 @@ export function fillBorderedGrid(table: (number | null)[][]): (number | null)[][
   const colXs = g[0].slice(1).map((v) => (v == null ? NaN : v));    // X of each interior column
   const rowYs = g.slice(1).map((r) => (r[0] == null ? NaN : r[0])); // Y of each interior row
   const Ri = R - 1, Ci = C - 1;
-  const Z: (number | null)[][] = g.slice(1).map((r) => r.slice(1)); // interior, mutated across passes
+  const Z: (number | null)[][] = g.slice(1).map((r) => r.slice(1)); // interior values
 
-  // 1-D estimate at coordinate `at` from a line's currently-known cells (needs ≥1);
-  // NaN when the line is empty or `at` is an unlabelled row/column.
-  const lineEstimate = (coords: number[], get: (k: number) => number | null, at: number): number => {
-    if (Number.isNaN(at)) return NaN;
-    const kc: number[] = [], kv: number[] = [];
-    for (let k = 0; k < coords.length; k++) {
-      const v = get(k);
-      if (v != null && !Number.isNaN(coords[k])) { kc.push(coords[k]); kv.push(v); }
-    }
-    return kc.length === 0 ? NaN : interpolateLinear(kc, kv, [at])[0];
+  const out: (number | null)[][] = g.map((r) => [...r]);
+  out[0][0] = null; // corner always blank on output
+
+  // The coarse grid: interior columns/rows that carry ≥1 known value (a blank INSERTED
+  // line has none).
+  const coarseCols: number[] = [];
+  for (let j = 0; j < Ci; j++) if (!Number.isNaN(colXs[j]) && Z.some((row) => row[j] != null)) coarseCols.push(j);
+  const coarseRows: number[] = [];
+  for (let i = 0; i < Ri; i++) if (!Number.isNaN(rowYs[i]) && Z[i].some((v) => v != null)) coarseRows.push(i);
+
+  // Candidate lines bracketing a query coordinate: those at-or-below (nearest first) and
+  // at-or-above (nearest first). When a query sits past the last data line, the empty
+  // side borrows the other's nearest edge — so an out-of-range query CLAMPS to that edge.
+  const sides = (lines: number[], coordOf: (k: number) => number, q: number): [number[], number[]] => {
+    const lo = lines.filter((k) => coordOf(k) <= q).sort((a, b) => coordOf(b) - coordOf(a));
+    const hi = lines.filter((k) => coordOf(k) >= q).sort((a, b) => coordOf(a) - coordOf(b));
+    if (lo.length === 0) return [[hi[0]], hi];
+    if (hi.length === 0) return [lo, [lo[0]]];
+    return [lo, hi];
   };
 
-  let changed = true;
-  while (changed) {
-    changed = false;
-    const fills: Array<[number, number, number]> = [];
-    for (let i = 0; i < Ri; i++) for (let j = 0; j < Ci; j++) {
-      if (Z[i][j] != null) continue;
-      const rEst = lineEstimate(colXs, (k) => Z[i][k], colXs[j]); // along X, row i
-      const cEst = lineEstimate(rowYs, (k) => Z[k][j], rowYs[i]); // along Y, col j
-      const rv = Number.isFinite(rEst), cv = Number.isFinite(cEst);
-      if (!rv && !cv) continue; // nothing reaches this cell yet
-      fills.push([i, j, rv && cv ? (rEst + cEst) / 2 : rv ? rEst : cEst]);
+  for (let i = 0; i < Ri; i++) for (let j = 0; j < Ci; j++) {
+    if (Z[i][j] != null) { out[i + 1][j + 1] = Z[i][j]; continue; }       // known passes through
+    const qx = colXs[j], qy = rowYs[i];
+    if (Number.isNaN(qx) || Number.isNaN(qy)) { out[i + 1][j + 1] = null; continue; } // unlabelled line
+    const [rLoC, rHiC] = sides(coarseRows, (k) => rowYs[k], qy);
+    const [cLoC, cHiC] = sides(coarseCols, (k) => colXs[k], qx);
+    // Nearest-first search for the closest box whose four corners are all known; widening
+    // past blank corners (a hole) is what lets it interpolate across missing samples.
+    let filled: number | null = null;
+    search:
+    for (const rLo of rLoC) for (const rHi of rHiC) for (const cLo of cLoC) for (const cHi of cHiC) {
+      const z00 = Z[rLo][cLo], z01 = Z[rLo][cHi], z10 = Z[rHi][cLo], z11 = Z[rHi][cHi];
+      if (z00 == null || z01 == null || z10 == null || z11 == null) continue;
+      const x0 = colXs[cLo], x1 = colXs[cHi], y0 = rowYs[rLo], y1 = rowYs[rHi];
+      const tx = x1 === x0 ? 0 : (qx - x0) / (x1 - x0);
+      const ty = y1 === y0 ? 0 : (qy - y0) / (y1 - y0);
+      const top = z00 + tx * (z01 - z00);
+      const bot = z10 + tx * (z11 - z10);
+      filled = top + ty * (bot - top);
+      break search;
     }
-    for (const [i, j, v] of fills) { Z[i][j] = v; changed = true; }
+    out[i + 1][j + 1] = filled;
   }
-
-  // Rebuild: corner blanked, border intact, interior filled.
-  const out: (number | null)[][] = g.map((r) => [...r]);
-  out[0][0] = null;
-  for (let i = 0; i < Ri; i++) for (let j = 0; j < Ci; j++) out[i + 1][j + 1] = Z[i][j];
   return out;
 }
 
