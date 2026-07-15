@@ -47,14 +47,20 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
 
 ## Queue (author-flagged, unclaimed — Lead: loop in Agent 3 when ready)
 
-- Frame/table popup unit+format `<select>`s should render in the normal (sans) font, not mono.
-  Note: `.table-popup__fmtselect` in `TablePopup.css` already sets `font-family: var(--font-sans)`
-  explicitly on all three (`FormatStyleSelect`/`DateStyleSelect`/`UnitSelect`), so this may already
-  be fixed on develop — needs an eyeball-in-app check before assuming there's code work left.
 - The **text** column type in table/frame popups should get format/unit controls too — today
   `TablePopup.tsx`'s fmt row only renders for `type === "date"` / `"number"` (text falls through
   to `null`). Needs a design call: what does "format" even mean for text (case? padding?) — units
   presumably N/A for text. Surface to the author before building blind.
+- **Quick fix:** the Source toggle shouldn't hide the +Row/−Row/+Col/−Col buttons in table/frame
+  popups. Confirmed in code: `TablePopup.tsx`'s dim-controls row is gated
+  `editable && view === "grid" && !formattedPreview` (~line 708) — flipping to Formatted preview
+  (`formattedPreview = literalSource && displayMode === "formatted"`) hides them for no reason
+  tied to editability. Drop the `!formattedPreview` clause (or whatever the real gate should be).
+- **Redesign (bigger, separate from the quick fix):** move the add-row/add-column buttons OFF the
+  toolbar and ONTO the grid itself — e.g. a trailing "+" row below the last row / "+" column right
+  of the last column (Sheets/Airtable-style), instead of a detached `+Row −Row +Col −Col` button
+  cluster. Author wants this "really" done, not just the toggle bug fixed — treat as a UX pass on
+  `TablePopup.tsx`'s edit affordances, own design call on exact placement/interaction.
 
 ## Claims
 
@@ -96,11 +102,39 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
   well now shows a rasterized `<img>` (blob URL of the source, selected-layer glow baked in) as the
   idle display — the heavy inline SVG (a source map = tens of thousands of paths) mounts ONLY on
   pointerenter for hit-test/highlight, unmounts on leave. Report `SvgFigure` embeds untouched.
-- **Agent 2 — NEXT (IN PROGRESS)**: OFF-THEME, own lane only (no `TablePopup`/`matrix.ts`/frame
-  overlap with A1's S3). Auditing the PURE canvas/layout/routing modules (`cablePaths.ts`,
-  `ribbonCable.ts`, `standoffSolver.ts`, `groupPushCore.ts`, arrange/tidy applier) for a concrete,
-  vitest-verifiable correctness gap → fix + regression test. Zero units/format touch.
+- **Agent 2 — LANDED** (Simulation "Stop when" condition; `99f21e06` + `8fc79bfc`, push held,
+  explicit-path commits). Author-approved backlog item. A Composite in Simulation mode gets a
+  "Stop when [output] [op] [value]" condition that halts the feedback loop early (simulationSteps →
+  cap). Files: `nodes/composite.ts` (fields + `stopConditionMet` + `stopSignalTrue`), `CompositeNode.tsx`
+  (SimulationEditor UI), `copyPaste.ts` (whitelist +2). Author eyeballed mid-build → drove the
+  comparator+threshold addition (was port-only). tsc clean, 2799 green. (Earlier: audited the pure
+  canvas/layout/routing modules for bugs — came back CLEAN, no fixable defect, so pivoted here.)
 - **Agent 3 — LANDED** (`faa2c528`, push held). Unmount collapsed viz nodes' live figures:
   Chart/Histogram/Sankey/Treemap now gate their figure on `!collapsed` (Treemap/Sankey gained
-  `collapseStore` subscriptions to do it). tsc clean, 2791 green. Standing by for the commit
-  queue / next low-level task.
+  `collapseStore` subscriptions to do it). tsc clean, 2791 green.
+- **Agent 3 — eyeballed this session's changes for bugs, found one real one — 🚨 for A1/S3
+  before threading further:** `applyFcUnit`'s matrix branch (`unitBridge.ts:134`) calls
+  `withMatrixUnit(value, …)`, which tags the array IN PLACE and returns the same reference
+  (deliberate per the `unitValue.test.ts` `toBe(matrix)` assertion). But `value` here is NOT a
+  private copy — `rete-engine`'s `DataflowEngine` caches each node's output in a plain `Map` and
+  hands the identical object reference to every downstream consumer of that socket (no cloning;
+  confirmed reading `fetchInputs`/`Cache` in `rete-engine.esm.js`). So a matrix-producing node
+  feeding TWO consumers (e.g. an FC tagging `km` + a plain Display, or two FCs with different
+  units) has the first FC's `data()` mutate the UPSTREAM node's cached array — the source's own
+  cached value picks up a unit it never authored, and a second consumer racing on the same
+  source sees last-write-wins instead of its own tag. This breaks the "unit rides the value,
+  breaks at any transform" invariant specifically for matrices. Didn't patch it myself (your
+  active S3 foundation, more threading queued on top) — fix is small: clone the outer array
+  before tagging, `withMatrixUnit((value as number[][]).slice() as typeof value, {...})` (rows/
+  cells stay shared, they're immutable numbers — only the outer array needs to be a fresh
+  object so the symbol tag doesn't land on the shared one). Everything else I eyeballed (S1,
+  SvgPicker, the boolean-format WIP) looked clean — tsc + 2793 vitest green throughout.
+- **Agent 3 — LANDED** (`ac599d14`, push held). Fixed the mono-dropdown queue item — my earlier
+  "may already be fixed" note was WRONG, I missed a specificity fight. Root cause:
+  `popupChrome.css`'s shared `.sol-popup select { font-family: inherit }` (specificity 0,1,1)
+  out-specifies the bare-class `.table-popup__fmtselect { font-family: var(--font-sans) }`
+  (0,1,0), so `inherit` won and resolved to `.table-popup__grid`'s mono (the fmt selects sit
+  inside the grid's `.table-popup__fmtcell`) — the FC node's own dropdowns were never inside
+  `.sol-popup` so they were unaffected, which is why the author saw it fine there but mono in
+  the popup. Fix: qualified the selector `.table-popup .table-popup__fmtselect` to win on
+  specificity. tsc clean, 2797 green. Standing by for the commit queue / next task.
