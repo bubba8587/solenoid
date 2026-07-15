@@ -705,7 +705,7 @@ export function TablePopup() {
             Source
           </label>
         )}
-        {editable && view === "grid" && !formattedPreview && (
+        {editable && view === "grid" && (
           <div className="table-popup__dim-controls">
             <button className="table-popup__btn" onClick={addRow} title="Add row">+ Row</button>
             <button className="table-popup__btn" onClick={removeRow} title="Remove last row" disabled={rows <= 1}>− Row</button>
