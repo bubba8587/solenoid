@@ -452,7 +452,7 @@ export const reportPaletteStore = {
   version: reportPaletteVersion,
   /** Resolve a stored slot id through the REPORT palette (not the canvas one). */
   resolve(slot: string): string {
-    return (isPaletteSlot(slot) ? _reportEffective[slot] : undefined) ?? _reportEffective.gray;
+    return NEUTRAL_HEX[slot] ?? (isPaletteSlot(slot) ? _reportEffective[slot] : undefined) ?? _reportEffective.gray;
   },
   /** Apply the open document's report-palette declaration (on graph load). Null clears it. */
   setReportPalette(p?: { base?: string; overrides?: Record<string, string> } | null) {
@@ -504,10 +504,35 @@ export function initPalette() {
   notifyPalette();
 }
 
+// ── Neutral shades (the gray swatch's 3-way cycle) ────────────────────────────
+// The palette's gray swatch cycles a note/group/accent through white → gray →
+// dark on each click (see SwatchGrid). `gray` is a real palette SLOT (retints with
+// the active palette); the two extremes are FIXED neutrals — white is white in any
+// palette — carried as sentinel slot ids so a card can store & serialize them like
+// any color. They resolve here, ahead of the palette lookup, and never appear as
+// their own swatch in the grid (they're reachable only through the gray cycler).
+export const NEUTRAL_WHITE = "neutral-white";
+export const NEUTRAL_DARK = "neutral-dark";
+export const NEUTRAL_HEX: Record<string, string> = {
+  [NEUTRAL_WHITE]: "#f3f4f6", // near-white (a hair off pure white so it reads as a swatch)
+  [NEUTRAL_DARK]: "#3a3d42",  // much darker gray
+};
+// Cycle order matches the split disc: upper-left white, middle gray, bottom-right dark.
+export const NEUTRAL_CYCLE = [NEUTRAL_WHITE, "gray", NEUTRAL_DARK] as const;
+export function isNeutralShade(slot: string): boolean {
+  return slot === NEUTRAL_WHITE || slot === NEUTRAL_DARK;
+}
+/** The gray swatch's next value: gray→dark→white→gray; any real color → gray (home). */
+export function nextNeutral(current: string | undefined): string {
+  const i = NEUTRAL_CYCLE.indexOf(current as (typeof NEUTRAL_CYCLE)[number]);
+  return i === -1 ? "gray" : NEUTRAL_CYCLE[(i + 1) % NEUTRAL_CYCLE.length];
+}
+
 // Resolve a stored color slot id to a hex through the ACTIVE palette — the one
-// boundary where slot → hex happens. Anything that isn't a known slot falls back
-// to gray; this is a total function so a stray value never crashes a render, NOT a
-// back-compat path (a pre-token save's raw hex resolves to gray until re-picked).
+// boundary where slot → hex happens. The two neutral sentinels resolve to their
+// fixed hex first; anything else that isn't a known slot falls back to gray. This
+// is a total function so a stray value never crashes a render, NOT a back-compat
+// path (a pre-token save's raw hex resolves to gray until re-picked).
 export function resolveColor(slot: string): string {
-  return (isPaletteSlot(slot) ? _effective[slot] : undefined) ?? _effective.gray;
+  return NEUTRAL_HEX[slot] ?? (isPaletteSlot(slot) ? _effective[slot] : undefined) ?? _effective.gray;
 }

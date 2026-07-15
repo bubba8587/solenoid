@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { BUILTIN_PALETTES, PALETTE_NAMES, COLOR_PALETTE, paletteStore, reportPaletteStore, resolveColor } from "./palette";
+import { BUILTIN_PALETTES, PALETTE_NAMES, COLOR_PALETTE, paletteStore, reportPaletteStore, resolveColor, NEUTRAL_HEX, NEUTRAL_WHITE, NEUTRAL_DARK, nextNeutral, isNeutralShade } from "./palette";
 
 describe("built-in palettes", () => {
   it("every palette defines all 12 slots as hex colours", () => {
@@ -23,6 +23,38 @@ describe("built-in palettes", () => {
       const hexes = COLOR_PALETTE.map((s) => BUILTIN_PALETTES[name][s].toLowerCase());
       expect(new Set(hexes).size, `${name} has duplicate colours`).toBe(hexes.length);
     }
+  });
+});
+
+// The gray swatch's 3-way neutral cycle (white → gray → dark), reachable only
+// through the gray swatch — never as its own grid slot.
+describe("neutral shades (gray-swatch cycle)", () => {
+  it("cycles gray → dark → white → gray, and homes any real color to gray", () => {
+    expect(nextNeutral("gray")).toBe(NEUTRAL_DARK);
+    expect(nextNeutral(NEUTRAL_DARK)).toBe(NEUTRAL_WHITE);
+    expect(nextNeutral(NEUTRAL_WHITE)).toBe("gray");
+    expect(nextNeutral("gold")).toBe("gray"); // first click from a colored value
+    expect(nextNeutral(undefined)).toBe("gray");
+  });
+
+  it("resolves the two extreme neutrals to their fixed hex, independent of the palette", () => {
+    expect(resolveColor(NEUTRAL_WHITE)).toBe(NEUTRAL_HEX[NEUTRAL_WHITE]);
+    expect(resolveColor(NEUTRAL_DARK)).toBe(NEUTRAL_HEX[NEUTRAL_DARK]);
+    paletteStore.setActiveBase("Solarized");
+    expect(resolveColor(NEUTRAL_WHITE)).toBe(NEUTRAL_HEX[NEUTRAL_WHITE]); // palette-independent
+    paletteStore.setActiveBase("Default");
+  });
+
+  it("the extremes are neutral shades; gray and real slots are not", () => {
+    expect(isNeutralShade(NEUTRAL_WHITE)).toBe(true);
+    expect(isNeutralShade(NEUTRAL_DARK)).toBe(true);
+    expect(isNeutralShade("gray")).toBe(false);
+    expect(isNeutralShade("gold")).toBe(false);
+  });
+
+  it("the neutral extremes never appear as their own grid swatch", () => {
+    expect(COLOR_PALETTE).not.toContain(NEUTRAL_WHITE);
+    expect(COLOR_PALETTE).not.toContain(NEUTRAL_DARK);
   });
 });
 

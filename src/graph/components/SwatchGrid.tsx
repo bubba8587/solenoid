@@ -1,4 +1,5 @@
-import { COLOR_PALETTE, resolveColor } from "../palette";
+import { useId } from "react";
+import { COLOR_PALETTE, resolveColor, NEUTRAL_HEX, NEUTRAL_WHITE, NEUTRAL_DARK, isNeutralShade, nextNeutral } from "../palette";
 import "./SwatchGrid.css";
 
 /**
@@ -9,6 +10,11 @@ import "./SwatchGrid.css";
  * hexes); each swatch resolves its slot to a hex only to paint the disc. In
  * `readOnly` mode the swatches are plain (non-clickable) spans — no buttons, no
  * selected ring — just a swatch display.
+ *
+ * The `gray` slot is special: it renders as a tri-diagonal split disc (upper-left
+ * white, middle the palette gray, bottom-right a much darker gray) and clicking it
+ * CYCLES through those three neutral shades (white → gray → dark) rather than picking
+ * a single color. The two extreme neutrals are sentinel slot ids (see palette.ts).
  */
 export function SwatchGrid({
   value,
@@ -23,25 +29,31 @@ export function SwatchGrid({
   className?: string;
   readOnly?: boolean;
 }) {
+  const neutralSelected = value === "gray" || isNeutralShade(value ?? "");
   return (
     <div className={`solenoid-swatchgrid${readOnly ? " solenoid-swatchgrid--readonly" : ""}${className ? ` ${className}` : ""}`}>
-      {colors.map((slot) =>
-        readOnly ? (
-          <span key={slot} className="solenoid-swatchgrid__opt" title={slot}>
-            <Swatch color={resolveColor(slot)} on={false} />
+      {colors.map((slot) => {
+        const isGray = slot === "gray";
+        const disc = isGray
+          ? <NeutralSwatch on={!readOnly && neutralSelected} />
+          : <Swatch color={resolveColor(slot)} on={slot === value} />;
+        const title = isGray ? "Neutral (click to cycle white / gray / dark)" : slot;
+        return readOnly ? (
+          <span key={slot} className="solenoid-swatchgrid__opt" title={title}>
+            {disc}
           </span>
         ) : (
           <button
             key={slot}
             type="button"
             className="solenoid-swatchgrid__opt"
-            title={slot}
-            onClick={() => onPick?.(slot)}
+            title={title}
+            onClick={() => onPick?.(isGray ? nextNeutral(value) : slot)}
           >
-            <Swatch color={resolveColor(slot)} on={slot === value} />
+            {disc}
           </button>
-        ),
-      )}
+        );
+      })}
     </div>
   );
 }
@@ -67,6 +79,41 @@ function Swatch({ color, on }: { color: string; on: boolean }) {
           disc edge with NO gap — its inner edge overlaps the disc so the panel never
           shows through as a hairline between them. */}
       <circle cx="8" cy="8" r="8" fill={color} />
+      {on && <circle cx="8" cy="8" r="8.6" fill="none" stroke="var(--text)" strokeWidth="1.8" />}
+    </svg>
+  );
+}
+
+/**
+ * The neutral (gray) swatch: one disc split into three diagonal bands by two lines
+ * perpendicular to the upper-left→bottom-right axis — upper-left white, the middle
+ * band the palette gray, bottom-right a much darker gray. Clicking it cycles those
+ * three (see SwatchGrid). A thin outline keeps the white band visible on a light
+ * panel. Same padded viewBox + overflow:visible as `Swatch` so it never clips.
+ */
+function NeutralSwatch({ on }: { on: boolean }) {
+  const clipId = useId();
+  return (
+    <svg
+      width={16}
+      height={16}
+      viewBox="-1 -1 18 18"
+      style={{ overflow: "visible", display: "block" }}
+    >
+      <defs>
+        <clipPath id={clipId}>
+          <circle cx="8" cy="8" r="8" />
+        </clipPath>
+      </defs>
+      <g clipPath={`url(#${clipId})`}>
+        {/* Middle band fills the whole disc; the two extreme regions paint over it.
+            Dividing lines x+y = 12.5 and x+y = 19.5 (symmetric about the centre 8,8). */}
+        <rect x="0" y="0" width="16" height="16" fill={resolveColor("gray")} />
+        <polygon points="0,0 12.5,0 0,12.5" fill={NEUTRAL_HEX[NEUTRAL_WHITE]} />
+        <polygon points="16,3.5 16,16 3.5,16" fill={NEUTRAL_HEX[NEUTRAL_DARK]} />
+      </g>
+      {/* Base outline so the white band reads on any background. */}
+      <circle cx="8" cy="8" r="8" fill="none" stroke="var(--border)" strokeWidth="1" />
       {on && <circle cx="8" cy="8" r="8.6" fill="none" stroke="var(--text)" strokeWidth="1.8" />}
     </svg>
   );
