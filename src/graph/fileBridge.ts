@@ -81,6 +81,32 @@ export async function listVaultFolders(root: string, maxDepth = 6): Promise<stri
   return out.sort((a, b) => a.localeCompare(b));
 }
 
+/** Recursively collect the vault-relative `.md` file paths under `root` (POSIX-style,
+ *  sorted). Same dot-folder skip + depth bound as listVaultFolders. Desktop only. */
+export async function listVaultMarkdownFiles(root: string, maxDepth = 6): Promise<string[]> {
+  if (!isDesktop() || !root) return [];
+  const out: string[] = [];
+  async function walk(abs: string, rel: string, depth: number): Promise<void> {
+    if (depth > maxDepth) return;
+    let entries;
+    try { entries = await readDir(abs); } catch { return; }
+    for (const e of entries) {
+      if (e.name.startsWith(".")) continue;
+      const childRel = rel ? `${rel}/${e.name}` : e.name;
+      if (e.isDirectory) await walk(await join(abs, e.name), childRel, depth + 1);
+      else if (/\.md$/i.test(e.name)) out.push(childRel);
+    }
+  }
+  await walk(root, "", 0);
+  return out.sort((a, b) => a.localeCompare(b));
+}
+
+/** Read a vault-relative file ("notes/weekly.md") as text. Desktop only. */
+export async function readVaultFile(root: string, relPath: string): Promise<string> {
+  const path = await join(root, ...relPath.split("/"));
+  return readTextFile(path);
+}
+
 // ─── Graph file save / open ───────────────────────────────────────────────────
 // Desktop uses native dialogs + real file writes; the browser falls back to a
 // blob download / file-input upload (no persistent path). Each returns the chosen
