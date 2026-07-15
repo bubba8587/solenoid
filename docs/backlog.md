@@ -143,15 +143,17 @@ this backlog stays the per-item source of truth.
   confidence-level example).
 ## Nodes / engine
 
-- [ ] **Homogeneous matrix units (D20) — nearly closed; only the niche tail remains.** DONE
-  (2026-07-15k): representation; AUTHOR (FC + a taggable Table Input `unit`); the FULL op POLICY
-  with a machine-checked completeness guard (`matrixUnitPolicy.test.ts`) — carry (structural
-  reshapes), carry-if-uniform (VSTACK/HSTACK), convert (TOCOL/TOROW↔WRAP cross the list↔matrix
-  carrier), strip (MMULT/MDETERM/MINVERSE), na, author; INDEX extraction + the `coerceValue`
-  `table` re-carry; DISPLAY (chip + popup); cube = explicitly unit-blind. **REMAINING (niche):**
-  MMULT could multiply dims instead of documented-strip; there is no element-wise matrix±matrix
-  arithmetic NODE (the Arithmetic node is scalar/1-D only), so that D20 sub-rule is moot unless
-  such a node is added; the `unitLattice` sweep for the matrix rungs; Convert-on-a-matrix.
+- [ ] **Units by dimensionality (D20) — COMPLETE across all five ranks; only a truly moot tail
+  is unbuilt.** DONE (2026-07-15): scalar/list (`UnitCell`), frame (`ColumnUnit`), matrix (whole-grid
+  Symbol tag) with the FULL op POLICY + a machine-checked completeness guard (`matrixUnitPolicy.test.ts`
+  — carry / carry-if-uniform / convert / strip / na / author), INDEX + `coerceValue` re-carry, chip +
+  popup display, taggable Table Input; and **cube = per-cell like a list** (`CubeCell` holds `UnitCell`s,
+  frame→cube tags, cube→frame recovers the column unit). Verified NON-gaps: Convert-on-a-matrix is
+  unreachable (a matrix can't wire into Convert's `numlist` input — the FC is the matrix relabeler);
+  MMULT-multiplies-dims + the `unitLattice` matrix sweep are MOOT (no element-wise matrix±matrix
+  arithmetic node exists, and the ×/÷·+/− dimension contract is scalar-level, already tested). The
+  only genuinely-open item is MMULT-dims IF a dimensioned-linear-algebra use case ever appears — niche,
+  documented-strip is the deliberate stance until then.
 - [ ] **Formula ↔ node parity program — GREENLIT, build in a dedicated session** (author
   direction + decisions 2026-07-14, recorded as **D19**; supersedes the narrower "SETEQ as
   formula native" item) — converge the formula language and the node set; audit + tiers +
