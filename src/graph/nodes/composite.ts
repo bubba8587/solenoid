@@ -111,6 +111,27 @@ export interface CompositeMonteCarlo {
   seed: number;
 }
 
+/** The comparator for Simulation's "Stop when" condition (see `stopWhenOp`).
+ *  `>= / <= / > / < / = / !=` over the chosen output's numeric value (a logical
+ *  output reads as 1 / 0). */
+export type CompositeStopOp = "gt" | "ge" | "lt" | "le" | "eq" | "ne";
+
+/** Evaluate a "Stop when" comparison. Non-finite (null / #ERR / NaN) never
+ *  stops — a simulation shouldn't halt on a missing/broken round. */
+export function stopConditionMet(raw: unknown, op: CompositeStopOp, value: number): boolean {
+  if (raw === null || raw === undefined) return false; // Number(null) is 0 — guard first
+  const n = typeof raw === "boolean" ? (raw ? 1 : 0) : Number(raw);
+  if (!Number.isFinite(n)) return false;
+  switch (op) {
+    case "gt": return n > value;
+    case "ge": return n >= value;
+    case "lt": return n < value;
+    case "le": return n <= value;
+    case "eq": return n === value;
+    case "ne": return n !== value;
+  }
+}
+
 /** One named input set for Scenarios mode. `overrides` is keyed by
  *  CompositeInputPort.id; a port with no entry falls back to its normal
  *  wired/default value for that run — a scenario only needs to name the
@@ -224,11 +245,15 @@ export class CompositeNode extends ClassicPreset.Node {
    *  (`stopWhenPortId`) it's the hard CAP. Clamped to >= 1 at run time (see
    *  runSimulation). */
   simulationSteps: number;
-  /** Simulation "Stop when": the id of a logical OUTPUT port checked after each
-   *  round — the loop halts early the round it reads true (the series ends on
-   *  that round). "" = run the full `simulationSteps`. Lets a fixpoint model
-   *  (e.g. the sudoku solver) self-terminate instead of hand-tuning the count. */
+  /** Simulation "Stop when": an OUTPUT port + comparator + threshold checked
+   *  after each round — the loop halts early the round `port <op> value` holds
+   *  (the series ends on that round). `stopWhenPortId === ""` = no condition, run
+   *  the full `simulationSteps`. Lets a model self-terminate (e.g. stop when a
+   *  population passes a cap, or a logical "solved?" output reaches 1) instead of
+   *  hand-tuning the step count. A logical output compares as 1 (true) / 0. */
   stopWhenPortId: string;
+  stopWhenOp: CompositeStopOp;
+  stopWhenValue: number;
   /** Goal-seek config (null until the mode is configured). */
   goalSeek: CompositeGoalSeek | null;
   /** Monte Carlo config (null until the mode is configured). */
@@ -283,6 +308,8 @@ export class CompositeNode extends ClassicPreset.Node {
     dataTableValues?: CompositeDataTableValues;
     simulationSteps?: number;
     stopWhenPortId?: string;
+    stopWhenOp?: CompositeStopOp;
+    stopWhenValue?: number;
     goalSeek?: CompositeGoalSeek;
     monteCarlo?: CompositeMonteCarlo;
   }) {
@@ -299,6 +326,8 @@ export class CompositeNode extends ClassicPreset.Node {
     );
     this.simulationSteps = init?.simulationSteps ?? 10;
     this.stopWhenPortId = init?.stopWhenPortId ?? "";
+    this.stopWhenOp = init?.stopWhenOp ?? "eq";
+    this.stopWhenValue = init?.stopWhenValue ?? 1;
     this.goalSeek = init?.goalSeek ? { ...init.goalSeek } : null;
     this.monteCarlo = init?.monteCarlo ? { ...init.monteCarlo } : null;
     this.internalEditor = new NodeEditor<Schemes>();
@@ -786,14 +815,13 @@ export class CompositeNode extends ClassicPreset.Node {
     return conns.find((c) => c.target === marker.id && c.targetInput === "value") ?? null;
   }
 
-  /** Evaluate the stop signal against a round's loop `state`. If the signal is
-   *  fed straight off a loop node it's read from the snapshot (cheap). Otherwise
-   *  it's a downstream OBSERVER (e.g. an "is-solved?" check that reads loop
-   *  outputs) — resolve it by seeding this round's loop outputs into the pull
-   *  engine and fetching. The engine is reset first so a prior round's cached
-   *  observer value can't leak; loop stepping never touches the engine, so this
-   *  is safe mid-loop. True only for a logical TRUE (1 / true) — null / error /
-   *  false never stop. */
+  /** Evaluate the "Stop when" condition (`port <op> value`) against a round's
+   *  loop `state`. If the chosen output is fed straight off a loop node it's read
+   *  from the snapshot (cheap). Otherwise it's a downstream OBSERVER (e.g. an
+   *  "is-solved?" check, or a running total, that reads loop outputs) — resolve it
+   *  by seeding this round's loop outputs into the pull engine and fetching. The
+   *  engine is reset first so a prior round's cached observer value can't leak;
+   *  loop stepping never touches the engine, so this is safe mid-loop. */
   private async stopSignalTrue(
     feed: NonNullable<ReturnType<CompositeNode["resolveStopFeed"]>>,
     state: Map<string, Record<string, unknown>>,
@@ -815,7 +843,7 @@ export class CompositeNode extends ClassicPreset.Node {
         raw = null;
       }
     }
-    return raw === true || raw === 1;
+    return stopConditionMet(raw, this.stopWhenOp, this.stopWhenValue);
   }
 
   async data(inputs: Record<string, unknown[]>): Promise<Record<string, unknown>> {
@@ -957,6 +985,8 @@ export class CompositeNode extends ClassicPreset.Node {
       dataTableValues: this.dataTableValues,
       simulationSteps: this.simulationSteps,
       stopWhenPortId: this.stopWhenPortId,
+      stopWhenOp: this.stopWhenOp,
+      stopWhenValue: this.stopWhenValue,
     });
   }
 
