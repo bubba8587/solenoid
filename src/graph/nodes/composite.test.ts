@@ -793,17 +793,40 @@ describe("CompositeNode Goal Seek run mode", () => {
     expect(c.stale).toBe(true);
   });
 
-  it("inside-only Solve runs on marker seeds (ignores wiring) and writes the solution back", async () => {
+  it("inside-only Solve runs on marker seeds (ignores wiring) and reports the solution", async () => {
     const { c, inAId, inBId, outId } = await makeAdder();
-    const inAMarker = c.internalEditor.getNode(c.inputPorts.find((p) => p.id === inAId)!.internalNodeId) as unknown as { defaultValue: number | null };
+    const inAMarker = c.internalEditor.getNode(c.inputPorts.find((p) => p.id === inAId)!.internalNodeId) as unknown as { defaultValue: number | null; solvedValue: unknown; goalDriver: boolean };
     const inBMarker = c.internalEditor.getNode(c.inputPorts.find((p) => p.id === inBId)!.internalNodeId) as unknown as { defaultValue: number | null };
+    inAMarker.defaultValue = 7; // the driver's starting guess (seed)
     inBMarker.defaultValue = 3; // seed B = 3 from inside
     c.setGoalSeek({ inputPortId: inAId, outputPortId: outId, target: 15 });
     // Inside solve ignores the wired B=99 and uses the seed 3 → Sum = A + 3 = 15 → A = 12.
     c.requestSolve(true);
     const out = await c.data({ [inBId]: [99] });
     expect(out[outId] as number).toBeCloseTo(12, 4); // used seed 3, not wired 99
-    expect(inAMarker.defaultValue as number).toBeCloseTo(12, 4); // solution written back to the driver marker
+    // The solution goes to solvedValue (the readout), NOT the seed — the seed stays put.
+    expect(inAMarker.solvedValue as number).toBeCloseTo(12, 4);
+    expect(inAMarker.goalDriver).toBe(true);
+    expect(inAMarker.defaultValue).toBe(7); // starting guess untouched
+  });
+
+  it("goal-seek stamps driver/target onto the markers and clears them on leaving the mode", async () => {
+    const { c, inAId, inBId, outId } = await makeAdder();
+    c.setGoalSeek({ inputPortId: inAId, outputPortId: outId, target: 15 });
+    c.requestSolve(true);
+    await c.data({ [inBId]: [3] });
+    const marker = (portId: string, list: { id: string; internalNodeId: string }[]) =>
+      c.internalEditor.getNode(list.find((p) => p.id === portId)!.internalNodeId) as unknown as
+        { goalDriver?: boolean; goalTarget?: number | null; solvedValue?: unknown };
+    expect(marker(inAId, c.inputPorts).goalDriver).toBe(true);
+    expect(marker(inBId, c.inputPorts).goalDriver).toBe(false); // a non-driver input
+    expect(marker(outId, c.outputPorts).goalTarget).toBe(15);
+
+    c.runMode = "single"; // leave goal-seek → stamps clear
+    await c.data({ [inAId]: [1], [inBId]: [2] });
+    expect(marker(inAId, c.inputPorts).goalDriver).toBe(false);
+    expect(marker(inAId, c.inputPorts).solvedValue).toBe(null);
+    expect(marker(outId, c.outputPorts).goalTarget).toBe(null);
   });
 
   it("syncPortLabels pulls each port's label from its renamed marker", async () => {
