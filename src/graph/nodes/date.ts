@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { dateIn, dateOut, numIn, numOut, strIn } from "./shared";
+import { dateIn, dateOut, numIn, numOut, strIn, dateListIn } from "./shared";
 import { solError, type SolError } from "../errorValue";
 
 // ─── Serial ↔ JS Date ─────────────────────────────────────────────────────────
@@ -49,6 +49,21 @@ export function parseDateToSerial(s: string): number {
 }
 
 // Excel weekend code → set of JS day indices (0=Sun … 6=Sat).
+/** The whole-day key of a date serial (integer part = the day; fractional = time),
+ *  so WORKDAY/NETWORKDAYS compare a day against a holiday regardless of time-of-day.
+ *  The `+1e-9` absorbs float drift from serial↔ms round-tripping. */
+function dayKey(serial: number): number {
+  return Math.floor(serial + 1e-9);
+}
+
+/** The set of holiday day-keys to skip (Excel's optional `[holidays]` argument on
+ *  WORKDAY / NETWORKDAYS). Blanks / non-finite entries are ignored. */
+function holidaySet(holidays?: (number | null)[]): Set<number> {
+  const s = new Set<number>();
+  if (holidays) for (const h of holidays) if (typeof h === "number" && Number.isFinite(h)) s.add(dayKey(h));
+  return s;
+}
+
 function weekendSet(code: number): Set<number> {
   switch (Math.round(code)) {
     case 1:  return new Set([6, 0]);
@@ -485,7 +500,7 @@ export class WorkdayNode extends ClassicPreset.Node {
   label: string;
   literals: Record<string, number> = { days: 5, weekend_code: 1 };
   cachedResult: number | null = null;
-  width = 180; height = 195;
+  width = 180; height = 230;
 
   constructor(init?: { label?: string }) {
     super("Workday");
@@ -493,21 +508,23 @@ export class WorkdayNode extends ClassicPreset.Node {
     this.addInput("start",        dateIn("Start date"));
     this.addInput("days",         numIn("Days"));
     this.addInput("weekend_code", numIn("Weekend code (1=Sat+Sun)"));
+    this.addInput("holidays",     dateListIn("Holidays (optional)"));
     this.addOutput("result", dateOut("Date"));
   }
 
-  data(inputs: { start?: number[]; days?: number[]; weekend_code?: number[] }): { result: number | null } {
+  data(inputs: { start?: number[]; days?: number[]; weekend_code?: number[]; holidays?: (number | null)[][] }): { result: number | null } {
     const s = inputs.start?.[0];
     if (s == null) { this.cachedResult = null; return { result: null }; }
     const n    = Math.floor(inputs.days?.[0]         ?? this.literals.days         ?? 5);
     const code = Math.floor(inputs.weekend_code?.[0] ?? this.literals.weekend_code ?? 1);
     const off  = weekendSet(code);
+    const hol  = holidaySet(inputs.holidays?.[0]); // dates to skip alongside weekends
     let cur    = serialToJsDate(s);
     const sign = n >= 0 ? 1 : -1;
     let rem    = Math.abs(n);
     while (rem > 0) {
       cur = new Date(cur.getTime() + sign * 86400000);
-      if (!off.has(cur.getUTCDay())) rem--;
+      if (!off.has(cur.getUTCDay()) && !hol.has(dayKey(jsDateToSerial(cur)))) rem--;
     }
     const result = jsDateToSerial(cur);
     this.cachedResult = result;
@@ -521,7 +538,7 @@ export class NetworkdaysNode extends ClassicPreset.Node {
   label: string;
   literals: Record<string, number> = { weekend_code: 1 };
   cachedResult: number | null = null;
-  width = 180; height = 195;
+  width = 180; height = 230;
 
   constructor(init?: { label?: string }) {
     super("Networkdays");
@@ -529,22 +546,24 @@ export class NetworkdaysNode extends ClassicPreset.Node {
     this.addInput("start",        dateIn("Start date"));
     this.addInput("end",          dateIn("End date"));
     this.addInput("weekend_code", numIn("Weekend code (1=Sat+Sun)"));
+    this.addInput("holidays",     dateListIn("Holidays (optional)"));
     this.addOutput("result", numOut("Working days"));
   }
 
-  data(inputs: { start?: number[]; end?: number[]; weekend_code?: number[] }): { result: number | null } {
+  data(inputs: { start?: number[]; end?: number[]; weekend_code?: number[]; holidays?: (number | null)[][] }): { result: number | null } {
     const s = inputs.start?.[0];
     const e = inputs.end?.[0];
     if (s == null || e == null) { this.cachedResult = null; return { result: null }; }
     const code = Math.floor(inputs.weekend_code?.[0] ?? this.literals.weekend_code ?? 1);
     const off  = weekendSet(code);
+    const hol  = holidaySet(inputs.holidays?.[0]); // dates not counted, alongside weekends
     const sign = e >= s ? 1 : -1;
     const lo   = serialToJsDate(Math.min(s, e));
     const hi   = serialToJsDate(Math.max(s, e));
     let count  = 0;
     const cur  = new Date(lo);
     while (cur <= hi) {
-      if (!off.has(cur.getUTCDay())) count++;
+      if (!off.has(cur.getUTCDay()) && !hol.has(dayKey(jsDateToSerial(cur)))) count++;
       cur.setUTCDate(cur.getUTCDate() + 1);
     }
     const result = count * sign;

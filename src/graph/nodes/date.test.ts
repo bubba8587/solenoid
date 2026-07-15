@@ -1,6 +1,35 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { DateIfNode, DateAddNode, TimeValueNode, DateConstructNode, parseDateToSerial, serialToJsDate, jsDateToSerial, type DateIfUnit } from "./date";
+import { DateIfNode, DateAddNode, TimeValueNode, DateConstructNode, WorkdayNode, NetworkdaysNode, parseDateToSerial, serialToJsDate, jsDateToSerial, type DateIfUnit } from "./date";
 import { isSolError } from "../errorValue";
+
+// 2023-01-02 is a Monday; the working week Mon 2 … Fri 6 has no weekend inside it.
+const MON = parseDateToSerial("2023-01-02");
+const WED = parseDateToSerial("2023-01-04");
+const FRI = parseDateToSerial("2023-01-06");
+
+describe("WORKDAY / NETWORKDAYS — optional holidays list (Excel [holidays] parity)", () => {
+  it("NETWORKDAYS skips holidays as well as weekends", () => {
+    // Mon–Fri = 5 working days; a holiday on Wed drops it to 4.
+    expect(new NetworkdaysNode().data({ start: [MON], end: [FRI] }).result).toBe(5);
+    expect(new NetworkdaysNode().data({ start: [MON], end: [FRI], holidays: [[WED]] }).result).toBe(4);
+    // A holiday OUTSIDE the range doesn't change the count.
+    expect(new NetworkdaysNode().data({ start: [MON], end: [FRI], holidays: [[FRI + 10]] }).result).toBe(5);
+    // A holiday that falls on a weekend isn't double-subtracted (still 5).
+    expect(new NetworkdaysNode().data({ start: [MON], end: [FRI], holidays: [[MON - 1]] }).result).toBe(5);
+  });
+
+  it("WORKDAY steps over a holiday", () => {
+    // 1 working day after Mon = Tue; with Tue a holiday it lands on Wed.
+    const tue = new WorkdayNode().data({ start: [MON], days: [1] }).result!;
+    const wed = new WorkdayNode().data({ start: [MON], days: [1], holidays: [[tue]] }).result!;
+    expect(wed).toBe(tue + 1);
+  });
+
+  it("empty / unwired holidays behaves exactly as before", () => {
+    expect(new NetworkdaysNode().data({ start: [MON], end: [FRI], holidays: [[]] }).result).toBe(5);
+    expect(new NetworkdaysNode().data({ start: [MON], end: [FRI], holidays: undefined }).result).toBe(5);
+  });
+});
 
 describe("DATE — numeric year is literal (no century guessing)", () => {
   const yr = (serial: number) => serialToJsDate(serial).getUTCFullYear();
