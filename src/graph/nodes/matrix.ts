@@ -6,6 +6,7 @@ import { tableSocket, strTableSocket, dateTableSocket, logicalTableSocket } from
 import { parseCsvRows } from "../csv";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { isFrameValue, frameRowCount, coerceFrameCell } from "../frame";
+import { carryMatrixUnit } from "../unitValue";
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
@@ -358,7 +359,9 @@ export class TableTransposeNode extends ClassicPreset.Node {
 
   data(inputs: { matrix?: unknown[] }) {
     const m = toAnyMatrix(inputs.matrix?.[0]);
-    this.cachedResult = m ? matTranspose(m) : null;
+    // A structural reshape preserves the homogeneous matrix unit (D20): the cells
+    // are the same, just rearranged, so carry the tag onto the fresh output array.
+    this.cachedResult = m ? carryMatrixUnit(matTranspose(m), m) : null;
     return { result: this.cachedResult };
   }
 }
@@ -598,9 +601,12 @@ export class TableSelectNode extends ClassicPreset.Node {
       }
       resolved.push(p);
     }
-    this.cachedResult = this.op === "chooserows"
-      ? resolved.map(r => [...m[r]])
-      : m.map(row => resolved.map(c => row[c]));
+    this.cachedResult = carryMatrixUnit(
+      this.op === "chooserows"
+        ? resolved.map(r => [...m[r]])
+        : m.map(row => resolved.map(c => row[c])),
+      m,
+    );
     return { result: this.cachedResult };
   }
 }
@@ -657,7 +663,7 @@ export class TableTakeDropNode extends ClassicPreset.Node {
     if (!m || m.length === 0) { this.cachedResult = null; return { result: null }; }
     const nRows = Math.round(inputs.rows?.[0] ?? this.literals.rows ?? 0);
     const nCols = Math.round(inputs.cols?.[0] ?? this.literals.cols ?? 0);
-    const result = this.takeDrop(m, nRows).map((r) => [...this.takeDrop(r, nCols)]);
+    const result = carryMatrixUnit(this.takeDrop(m, nRows).map((r) => [...this.takeDrop(r, nCols)]), m);
     this.cachedResult = result;
     return { result };
   }
@@ -710,6 +716,9 @@ export class ExpandNode extends ClassicPreset.Node {
       for (let j = 0; j < C; j++) row.push(j < src.length ? src[j] : fill);
       result.push(row);
     }
+    // Growing keeps the grid's homogeneous unit (D20) — the pad Fill reads in that
+    // same unit, so carry the tag onto the expanded array.
+    carryMatrixUnit(result, m);
     this.cachedResult = result;
     return { result };
   }
