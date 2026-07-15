@@ -422,3 +422,17 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
   `copyPaste.ts`/`fileBridge.ts`/`nodes/obsidian.ts`/`stats.ts` all mid-edit, and a new
   untracked `noteFrontmatterSync.ts`. `tsc` stays clean even through the WIP. Very
   much not a quiet cycle — multiple fronts in flight at once.
+- **Agent 3 — check-in #19, NOT pushing (a docs digest is mid-write, uncommitted).**
+  `7f3d375f` (Forecast option, ON by default — landed as a real commit, not just the
+  WIP checkbox I'd seen) — verified `sides()`'s forecast branch: when the query is
+  below/above the known range, it borrows the 2nd-nearest same-side line (not the
+  nearest) so the interpolation `t` runs outside [0,1] → true extrapolation, and
+  correctly falls back to single-line clamp when fewer than 2 lines exist on that
+  axis. `6a92675d` (Import from Obsidian node) landed clean, then `86f3de39`
+  self-caught + fixed a real bug within minutes: `ImportObsidianNode extends
+  NoteNode`, and `NODE_COMPONENTS`' `instanceof`-first-match lookup had the base
+  class entry before the subclass, so an imported note silently rendered as a plain
+  Note. Fix reorders the subclass ahead of its base — verified correct. A1's own
+  commit message calls the "Obsidian trio complete." tsc clean, 2904 green. Tree has
+  one uncommitted docs-only edit (a dev-notes digest mid-write) — not touching
+  someone's in-progress paragraph. Not pushing yet.
