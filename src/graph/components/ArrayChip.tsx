@@ -3,7 +3,6 @@ import { useHostNodeId } from "./nodeContext";
 import { readChipPopupStyle } from "./chipStyle";
 import { isSolError } from "../errorValue";
 import { matrixUnitOf } from "../unitValue";
-import { columnUnitLabel } from "../unitColumn";
 import "./ArrayChip.css";
 
 // A list or a table (2D), of numbers (number/list/table sockets) or text
@@ -100,12 +99,12 @@ export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId
     ? ` solenoid-array-chip--elem-${family}${table ? "-table" : ""}`
     : "";
 
-  // A homogeneous numeric matrix carries ONE unit for the whole grid (D20) — show
-  // it in the chip so the tag is visible without opening the popup.
+  // A homogeneous numeric matrix carries ONE unit for the whole grid (D20). The chip
+  // stays short (no unit on the label — the popup surfaces it); we still pass the tag
+  // into the popup below.
   const matUnit = table ? matrixUnitOf(value) : undefined;
-  const unitSuffix = matUnit ? ` · ${columnUnitLabel(matUnit)}` : "";
   // Lists are always 1D, so the chip just says "List" — only tables show R×C.
-  const chipLabel = (table ? `${rows}×${cols} Table` : "List") + unitSuffix;
+  const chipLabel = table ? `${rows}×${cols} Table` : "List";
   const verb = onSave ? "edit" : "view";
   const titleText = table ? `${rows}×${cols} table. Click to ${verb}.` : `${rows}-item list. Click to ${verb}.`;
 

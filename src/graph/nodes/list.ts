@@ -8,7 +8,7 @@ import { pairIdsFromKeys } from "./logic";
 import { passesFilter, type FilterOp, type FilterCondConfig } from "../frameVerbs";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { forAggregate, isMissing, type Tri } from "../valueKinds";
-import { forAggregateUnits, tagDim, type UnitCell } from "../unitValue";
+import { forAggregateUnits, tagDim, matrixUnitOf, type UnitCell } from "../unitValue";
 import { tagFrameCellUnit } from "../unitColumn";
 import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../dimension";
 import { iterMin, iterMax } from "./mathUtils";
@@ -299,18 +299,24 @@ export class ListIndexNode extends ClassicPreset.Node {
     if (Array.isArray((v as unknown[])[0])) {
       // A genuine 2-D matrix.
       const grid = v as unknown[][];
+      // A homogeneous matrix unit (D20) rides out into an extracted cell/row/column
+      // exactly like a frame column's unit — tag each extracted number so the unit
+      // isn't lost (mirrors the frame branch above; the whole-grid case keeps its tag
+      // since it returns the same array). `tag` is identity when the matrix is plain.
+      const mUnit = matrixUnitOf(v);
+      const tag = (x: unknown): unknown => (mUnit ? tagFrameCellUnit(x, mUnit) : x);
       if (rowAll && colAll) return done(grid as CubeCell);
       if (!rowAll && (r < 0 || r >= grid.length)) return done(refErr(r + 1, grid.length, "Row"));
       if (rowAll) {
         // Whole column as a 1-D list (a ragged short row contributes null).
         const width = grid.reduce<number>((m, row) => Math.max(m, Array.isArray(row) ? row.length : 1), 0);
         if (c < 0 || c >= width) return done(refErr(c + 1, width, "Column"));
-        return done(grid.map((row) => (Array.isArray(row) ? (row[c] ?? null) : c === 0 ? row : null)) as CubeCell);
+        return done(grid.map((row) => tag(Array.isArray(row) ? (row[c] ?? null) : c === 0 ? row : null)) as CubeCell);
       }
       const rowArr = Array.isArray(grid[r]) ? grid[r] : [grid[r] as unknown];
-      if (colAll) return done([...rowArr] as CubeCell); // whole row as a 1-D list
+      if (colAll) return done(rowArr.map(tag) as CubeCell); // whole row as a 1-D list
       if (c < 0 || c >= rowArr.length) return done(refErr(c + 1, rowArr.length, "Column"));
-      return done((rowArr[c] ?? null) as CubeCell);
+      return done(tag(rowArr[c] ?? null) as CubeCell);
     }
 
     // A flat 1-D list — the existing is2D convention treats it as an n×1 column,
