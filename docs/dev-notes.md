@@ -35,9 +35,12 @@ the guard** (`636308c8`): VSTACK/HSTACK carry-if-uniform (`sharedMatrixUnit`); T
 WRAPROWS/WRAPCOLS←list now CONVERT carriers (`taggedListFromMatrix`/`matrixCellsFromList`, TableReshape
 is `unitAware`); `matrixUnitPolicy.test.ts` — a per-op policy table (carry/carry-if-uniform/convert/
 strip/na/author) with a COMPLETENESS sweep that fails the build if a matrix.ts node ships without a
-policy (the anti-recurrence mechanism). **Cube = explicitly unit-blind** (a `CubeCell` holds no tag;
-`frameToCube` copies as-typed cells = right number, no label; extract to keep the unit). D20 +
-subsystem-invariants "Unit flow" amended with the per-rank carrier map + the guard + the cube call.
+policy (the anti-recurrence mechanism). **Cube = units PER CELL, like a list** (author call, `39b487a4`, supersedes an interim
+unit-blind attempt): a cube is heterogeneous per cell = the list's shape, so `CubeCell` includes
+`UnitCell`; `cubeCellsFromColumn` tags a frame column into the cube (both flattening paths),
+`inferColumn` recovers a uniform column unit on cube→frame (reusing `matrixCellsFromList`), the
+viewer renders "5 km". D20 + subsystem-invariants "Unit flow" amended with the per-rank carrier map
++ the guard + the cube-per-cell call.
 Storage note recorded: scalar/list `UnitCell.value` is BASE-SI, frame/matrix cells are AS-TYPED, so
 crossing carriers CONVERTS. tsc clean, 2831 green. Still genuinely deferred: MMULT-mul-dims (niche,
 documented-strip) + the `unitLattice` sweep.
