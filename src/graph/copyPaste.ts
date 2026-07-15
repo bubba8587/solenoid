@@ -83,7 +83,7 @@ export const INIT_FIELD_ORDER = [
   "totalDepth", "rowTotalDepth", "colTotalDepth", "rowSort", "colSort", "relativeTo", "normalize", "detail",
   "members", "color", "collapsed", "width", "height", "title", "body", "seq", "defaultValue",
   "checkNotNull", "checkUnique", "checkRange", "checkRegex", "checkAllowed",
-  "runMode", "simulationSteps", "stopWhenPortId", "stopWhenOp", "stopWhenValue", "embeds", "steps",
+  "runMode", "simulationSteps", "stopWhenPortId", "stopWhenOp", "stopWhenValue", "byRowPortId", "embeds", "steps",
 ] as const;
 
 // Object-valued extras appended after INIT_FIELD_ORDER (below), in this fixed

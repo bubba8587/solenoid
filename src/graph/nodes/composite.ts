@@ -12,6 +12,7 @@ import {
   DEFAULT_MC_SAMPLES, DEFAULT_MC_SEED, type DistributionKind,
 } from "../monteCarlo";
 import { installInputCoercion } from "../coerceInputs";
+import { isFrameValue, frameRowCount, frameFromRows } from "../frame";
 import { loopMembers } from "../process";
 import { compositeStaleStore } from "../compositeStaleStore";
 import { formatScalar } from "../components/format";
@@ -79,7 +80,7 @@ export interface CompositeInternalSnapshot {
 // port as a list, instead of a single scalar. Only list modes actually wired
 // up appear here; a mode gets added to this union in the same commit its
 // data() branch + UI land (see CompositeComponent's run-mode dropdown).
-export type CompositeRunMode = "single" | "scenarios" | "data-table" | "simulation" | "goal-seek" | "montecarlo";
+export type CompositeRunMode = "single" | "scenarios" | "data-table" | "simulation" | "goal-seek" | "montecarlo" | "by-row";
 
 /** Goal-seek mode: drive ONE exposed input port until a chosen output port reaches
  *  `target`. Excel's Goal Seek. Both ports are `any`-typed (no static numeric type),
@@ -115,6 +116,31 @@ export interface CompositeMonteCarlo {
  *  `>= / <= / > / < / = / !=` over the chosen output's numeric value (a logical
  *  output reads as 1 / 0). */
 export type CompositeStopOp = "gt" | "ge" | "lt" | "le" | "eq" | "ne";
+
+/** By-Row iterates a WIRED input value into its rows. A frame → one single-row
+ *  frame per row (keeps the port frame-typed for downstream frame ops); an array
+ *  → its outer elements (a 1-D list yields scalars, a 2-D matrix yields its rows);
+ *  a scalar → itself (one row); null/undefined → no rows. Pure + exported so the
+ *  row semantics are unit-tested directly. */
+export function byRowValues(v: unknown): unknown[] {
+  if (v === null || v === undefined) return [];
+  if (isFrameValue(v)) {
+    const n = frameRowCount(v);
+    const headers = v.columns.map((c) => c.name);
+    const out: unknown[] = [];
+    for (let i = 0; i < n; i++) out.push(frameFromRows([v.columns.map((c) => c.values[i] ?? null)], headers));
+    return out;
+  }
+  if (Array.isArray(v)) return [...v];
+  return [v];
+}
+
+/** Safety cap on By-Row passes — each row is a full internal-engine reset, so an
+ *  accidentally-wired huge frame (a CSV import) would freeze the arm-and-run
+ *  Solve. The mode targets dozens-to-hundreds of rows; the Polars verb chain is
+ *  the bulk path. Rows beyond this are dropped (surfaced in the dev-notes as a
+ *  known limitation to replace with a Problems-panel warning). */
+export const BY_ROW_MAX_ROWS = 500;
 
 /** Evaluate a "Stop when" comparison. Non-finite (null / #ERR / NaN) never
  *  stops — a simulation shouldn't halt on a missing/broken round. */
@@ -254,6 +280,12 @@ export class CompositeNode extends ClassicPreset.Node {
   stopWhenPortId: string;
   stopWhenOp: CompositeStopOp;
   stopWhenValue: number;
+  /** By-Row mode: the id of the exposed INPUT port to iterate — the subgraph runs
+   *  once per ROW of that port's wired value (a list → per element, a matrix →
+   *  per row, a frame → per single-row frame), the row bound to that port while
+   *  the others stay fixed; each output collects a per-row series. "" = not set
+   *  (falls back to a single pass). See `runByRow`. */
+  byRowPortId: string;
   /** Goal-seek config (null until the mode is configured). */
   goalSeek: CompositeGoalSeek | null;
   /** Monte Carlo config (null until the mode is configured). */
@@ -310,6 +342,7 @@ export class CompositeNode extends ClassicPreset.Node {
     stopWhenPortId?: string;
     stopWhenOp?: CompositeStopOp;
     stopWhenValue?: number;
+    byRowPortId?: string;
     goalSeek?: CompositeGoalSeek;
     monteCarlo?: CompositeMonteCarlo;
   }) {
@@ -328,6 +361,7 @@ export class CompositeNode extends ClassicPreset.Node {
     this.stopWhenPortId = init?.stopWhenPortId ?? "";
     this.stopWhenOp = init?.stopWhenOp ?? "eq";
     this.stopWhenValue = init?.stopWhenValue ?? 1;
+    this.byRowPortId = init?.byRowPortId ?? "";
     this.goalSeek = init?.goalSeek ? { ...init.goalSeek } : null;
     this.monteCarlo = init?.monteCarlo ? { ...init.monteCarlo } : null;
     this.internalEditor = new NodeEditor<Schemes>();
@@ -518,6 +552,7 @@ export class CompositeNode extends ClassicPreset.Node {
     for (const s of this.scenarios) delete s.overrides[id];
     delete this.dataTableValues[id];
     if (this.goalSeek?.inputPortId === id) this.goalSeek = null;
+    if (this.byRowPortId === id) this.byRowPortId = "";
   }
 
   /** Drop an output port + its outer socket. Same caller contract as above. */
@@ -900,6 +935,7 @@ export class CompositeNode extends ClassicPreset.Node {
     // Monte Carlo is only heavy when something actually varies — with no uncertain
     // input it collapses to a single pass (like a data-table with no axes).
     if (this.runMode === "montecarlo") return this.uncertainInputPorts().length > 0;
+    if (this.runMode === "by-row") return this.inputPorts.some((p) => p.id === this.byRowPortId);
     if (this.runMode === "data-table") {
       return this.inputPorts.some(
         (p) => p.exposure === "exposed" && (this.dataTableValues[p.id]?.length ?? 0) > 0,
@@ -987,6 +1023,7 @@ export class CompositeNode extends ClassicPreset.Node {
       stopWhenPortId: this.stopWhenPortId,
       stopWhenOp: this.stopWhenOp,
       stopWhenValue: this.stopWhenValue,
+      byRowPortId: this.byRowPortId,
     });
   }
 
@@ -1019,8 +1056,28 @@ export class CompositeNode extends ClassicPreset.Node {
       return this.runGoalSeek(inputs, this.goalSeek);
     } else if (this.runMode === "montecarlo") {
       return this.runMonteCarlo(inputs);
+    } else if (this.runMode === "by-row") {
+      return this.runByRow(inputs);
     }
     return this.runPass(inputs);
+  }
+
+  /** By-Row driver: run the subgraph once per ROW of the chosen input port,
+   *  binding that row to the port while every other port keeps its wired/default
+   *  value. Each output collects a per-row series (same shape as Scenarios / Data
+   *  Table). Reuses `collectMultiple` with one override per row. A missing/unwired
+   *  port, or a value with no rows, collapses to a single normal pass. */
+  private async runByRow(inputs: Record<string, unknown[]>): Promise<Record<string, unknown>> {
+    const port = this.inputPorts.find((p) => p.id === this.byRowPortId);
+    if (!port) return this.runPass(inputs);
+    const marker = this.internalEditor.getNode(port.internalNodeId) as CompositeInputNode | undefined;
+    const source = port.exposure === "exposed"
+      ? (inputs[port.id]?.[0] ?? marker?.defaultValue ?? port.default ?? null)
+      : (marker?.defaultValue ?? port.default ?? null);
+    let rows = byRowValues(source);
+    if (rows.length === 0) return this.runPass(inputs);
+    if (rows.length > BY_ROW_MAX_ROWS) rows = rows.slice(0, BY_ROW_MAX_ROWS);
+    return this.collectMultiple(inputs, rows.map((r) => ({ [port.id]: r })));
   }
 
   // ─── Monte Carlo driver ────────────────────────────────────────────────────

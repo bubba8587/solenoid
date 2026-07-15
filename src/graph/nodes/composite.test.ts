@@ -5,7 +5,8 @@ import { ctorRegistry } from "../nodeCtorRegistry";
 import { extractInit } from "../copyPaste";
 import { isSolError } from "../errorValue";
 import { loopMembers } from "../process";
-import { CompositeNode, CompositeInputNode, CompositeOutputNode, stopConditionMet } from "./composite";
+import { CompositeNode, CompositeInputNode, CompositeOutputNode, stopConditionMet, byRowValues, BY_ROW_MAX_ROWS } from "./composite";
+import { frameFromCells, isFrameValue, frameRowCount, type FrameValue } from "../frame";
 import { NumberInputNode } from "./input";
 import { ArithmeticNode, MathFnNode } from "./scalar";
 import { ComparisonNode } from "./logic";
@@ -566,6 +567,79 @@ describe("CompositeNode Simulation run mode", () => {
     expect(clone.stopWhenPortId).toBe(popOutId);
     expect(clone.stopWhenOp).toBe("ge");
     expect(clone.stopWhenValue).toBe(130);
+  });
+});
+
+describe("byRowValues (By-Row row semantics)", () => {
+  it("iterates a list's elements, a matrix's rows, a scalar once, nothing for null", () => {
+    expect(byRowValues([1, 2, 3])).toEqual([1, 2, 3]);          // list → elements
+    expect(byRowValues([[1, 2], [3, 4]])).toEqual([[1, 2], [3, 4]]); // matrix → rows
+    expect(byRowValues(5)).toEqual([5]);                        // scalar → one row
+    expect(byRowValues(null)).toEqual([]);
+    expect(byRowValues(undefined)).toEqual([]);
+  });
+
+  it("turns a frame into one single-row frame per row", () => {
+    const f = frameFromCells(["x", "y"], [[1, 2], [3, 4], [5, 6]]);
+    const rows = byRowValues(f);
+    expect(rows).toHaveLength(3);
+    expect(rows.every((r) => isFrameValue(r))).toBe(true);
+    expect(frameRowCount(rows[0] as FrameValue)).toBe(1);
+    const r0 = rows[0] as FrameValue;
+    expect(r0.columns.map((c) => c.name)).toEqual(["x", "y"]);
+    expect(r0.columns.map((c) => c.values[0])).toEqual([1, 2]);
+  });
+});
+
+describe("CompositeNode By-Row run mode", () => {
+  // A · 2 → Out: iterating A per row doubles each element.
+  async function makeDoubler() {
+    const c = new CompositeNode({ runMode: "by-row" });
+    const inA = new CompositeInputNode({ label: "A" });
+    const mul = new ArithmeticNode({ op: "mul" });
+    mul.literals = { a: 0, b: 2 };
+    const outMarker = new CompositeOutputNode({ label: "Out" });
+    for (const n of [inA, mul, outMarker]) await c.internalEditor.addNode(n as unknown as Schemes["Node"]);
+    await connect(c.internalEditor, inA, "value", mul, "a");
+    await connect(c.internalEditor, mul, "result", outMarker, "value");
+    const aId = c.addInputPort({ label: "A", exposure: "exposed", tier: "basic", internalNodeId: inA.id });
+    const outId = c.addOutputPort({ label: "Out", tier: "basic", internalNodeId: outMarker.id });
+    c.byRowPortId = aId;
+    return { c, aId, outId };
+  }
+
+  it("runs the subgraph once per row of the chosen port, collecting a per-output series", async () => {
+    const { c, aId, outId } = await makeDoubler();
+    const out = await c.data({ [aId]: [[1, 2, 3]] }); // the port's wired value is the list [1,2,3]
+    expect(out[outId]).toEqual([2, 4, 6]);
+  });
+
+  it("with no port chosen, collapses to a single normal pass (scalar, not a series)", async () => {
+    const { c, aId, outId } = await makeDoubler();
+    c.byRowPortId = "";
+    const out = await c.data({ [aId]: [5] }); // scalar 5 → single pass → 10, not [10]
+    expect(out[outId]).toBe(10);
+  });
+
+  it("caps the number of rows at BY_ROW_MAX_ROWS", async () => {
+    const { c, aId, outId } = await makeDoubler();
+    const big = Array.from({ length: BY_ROW_MAX_ROWS + 100 }, (_, i) => i);
+    const out = await c.data({ [aId]: [big] });
+    expect((out[outId] as number[]).length).toBe(BY_ROW_MAX_ROWS);
+  });
+
+  it("byRowPortId round-trips through extractInit", async () => {
+    const { c, aId } = await makeDoubler();
+    const init = extractInit(c as unknown as ClassicPreset.Node);
+    expect(init.byRowPortId).toBe(aId);
+    const clone = new CompositeNode(init as ConstructorParameters<typeof CompositeNode>[0]);
+    expect(clone.byRowPortId).toBe(aId);
+  });
+
+  it("clears byRowPortId when its input port is removed", async () => {
+    const { c, aId } = await makeDoubler();
+    c.removeInputPort(aId);
+    expect(c.byRowPortId).toBe("");
   });
 });
 

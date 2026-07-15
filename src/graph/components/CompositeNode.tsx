@@ -51,6 +51,7 @@ export const RUN_MODE_OPTIONS: OpOption<CompositeRunMode>[] = [
   { value: "simulation", label: "Simulation" },
   { value: "goal-seek", label: "Goal seek" },
   { value: "montecarlo", label: "Monte Carlo" },
+  { value: "by-row", label: "By row" },
 ];
 
 // A collapsible "advanced" foot — the FC's chip-foot expander pattern (a centered
@@ -274,6 +275,32 @@ function SimulationEditor({ node }: { node: CompositeNodeType }) {
           )}
         </>
       )}
+    </div>
+  );
+}
+
+// By-Row mode: pick which exposed input port to iterate — the subgraph runs once
+// per row of that port's wired value (list → element, matrix → row, frame →
+// single-row frame), collecting a per-output series. Heavy (arm-and-run) — see
+// nodes/composite.ts runByRow.
+function ByRowEditor({ node }: { node: CompositeNodeType }) {
+  const stop = { onPointerDown: (e: React.PointerEvent) => e.stopPropagation(), onMouseDown: (e: React.MouseEvent) => e.stopPropagation() };
+  const exposed = node.inputPorts.filter((p) => p.exposure === "exposed");
+  if (exposed.length === 0) {
+    return <div style={{ marginTop: 6, fontSize: 11, color: "var(--text-muted)" }}>— expose an input to iterate</div>;
+  }
+  return (
+    <div style={{ marginTop: 6, display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 6, alignItems: "center" }}>
+      <span className="solenoid-node__io-label">For each row of</span>
+      <select
+        className="solenoid-node__inline-input"
+        value={node.byRowPortId}
+        onChange={(e) => { node.byRowPortId = e.target.value; void processGraph(node.id); }}
+        {...stop}
+      >
+        <option value="">— none</option>
+        {exposed.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+      </select>
     </div>
   );
 }
@@ -549,6 +576,7 @@ export function CompositeRunControls({ node, emit, insideOnly = false }: { node:
       {runMode === "simulation" && <SimulationEditor node={node} />}
       {runMode === "goal-seek" && <GoalSeekEditor node={node} emit={emit} />}
       {runMode === "montecarlo" && <MonteCarloEditor node={node} />}
+      {runMode === "by-row" && <ByRowEditor node={node} />}
     </>
   );
 }
