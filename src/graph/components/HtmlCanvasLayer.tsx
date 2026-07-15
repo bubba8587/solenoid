@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRenderMode } from "../renderMode";
 import { HtmlCanvasRenderer, type EngineNodeSpec } from "../htmlCanvasRenderer";
 import { getEditor, getArea, connectionVersionStore } from "../process";
+import { nodeDomWeight } from "../nodes/kind";
 import { snapshotGraph } from "../pixi/pixiGraphSnapshot";
 import { cableShapeStore } from "../cableShape";
 import { semanticZoomStore } from "../semanticZoomStore";
@@ -13,11 +14,24 @@ import { formatAnnotationStore } from "../formatAnnotationStore";
 import { lassoActiveStore } from "../lasso";
 import "./htmlCanvasLayer.css";
 
-// The canvas only earns its keep on a BIG graph — below this many nodes the native DOM
+// The canvas only earns its keep on a BIG graph — below this much DOM the native DOM
 // pans/zooms fine, and the capture/swap cost (and any momentary stale-clone flash) isn't
 // worth it. So even with render mode "html" ON, stay fully inert until the graph crosses
-// this. Tunable live via `window.__hcMinNodes` for testing. (2026-06-30)
+// this. The gate is a KIND-WEIGHTED node count (nodeDomWeight), not a raw one: a chart /
+// mermaid / inlined-SVG / frame-grid card is far more DOM than a scalar, so it counts for
+// more (~10 charts ≈ this threshold). A plain scalar graph still needs ~100 nodes to trip,
+// so the number's feel is unchanged for the common case. Tunable live via
+// `window.__hcMinNodes` (now a weighted-unit threshold) for testing. (2026-06-30; weighted 2026-07-15)
 const RENDERER_MIN_NODES = 100;
+
+// Sum every node's DOM weight — the value the engage gate compares against the threshold.
+const graphDomWeight = (): number => {
+  const ed = getEditor();
+  if (!ed) return 0;
+  let w = 0;
+  for (const n of ed.getNodes()) w += nodeDomWeight(n);
+  return w;
+};
 
 /**
  * HTML-in-Canvas renderer, mounted when render mode is "html".
@@ -40,12 +54,12 @@ const RENDERER_MIN_NODES = 100;
 export function HtmlCanvasLayer() {
   const mode = useRenderMode();
   const hostRef = useRef<HTMLDivElement>(null);
-  // Live node count, polled below so `active` re-evaluates as the graph grows/shrinks across
-  // the threshold. Seeded synchronously so toggling render mode on over an ALREADY-loaded big
-  // graph engages on the next render (not only after a poll tick or an add/remove).
-  const [nodeCount, setNodeCount] = useState(() => getEditor()?.getNodes().length ?? 0);
+  // Live kind-weighted DOM total, recounted below so `active` re-evaluates as the graph grows/
+  // shrinks across the threshold. Seeded synchronously so toggling render mode on over an
+  // ALREADY-loaded big graph engages on the next render (not only after a recount or an add/remove).
+  const [domWeight, setDomWeight] = useState(graphDomWeight);
   const minNodes = (window as unknown as { __hcMinNodes?: number }).__hcMinNodes ?? RENDERER_MIN_NODES;
-  const active = mode === "html" && nodeCount >= minNodes;
+  const active = mode === "html" && domWeight >= minNodes;
 
   // Readiness gate. This layer is a CHILD of Canvas, so on a fresh page load its effects
   // run BEFORE Canvas's async rete init populates the process.ts singletons — getEditor()/
@@ -64,11 +78,13 @@ export function HtmlCanvasLayer() {
     return () => clearInterval(t);
   }, [active, ready]);
 
-  // Maintain the node count off node add/remove EVENTS — it only changes then (and on load),
-  // so a timer would burn cycles re-reading a value that rarely moves. recount reads
-  // editor.getNodes().length (the footer's source of truth) on BIND and on each nodecreated/
-  // noderemoved, so an already-loaded graph gates the instant we bind and a streaming load
-  // (addNode per node) keeps it current. The editor/area are created once and reused across
+  // Maintain the weighted DOM total off node add/remove EVENTS — it only changes then (and on
+  // load), so a timer would burn cycles re-reading a value that rarely moves. recount sums
+  // nodeDomWeight over every node on BIND and on each nodecreated/noderemoved, so an already-
+  // loaded graph gates the instant we bind and a streaming load (addNode per node) keeps it
+  // current. (A node's WEIGHT can also change without an add/remove — e.g. a Cast retypes a
+  // socket from scalar to frame — but that's rare and self-corrects on the next add/remove or
+  // reload; not worth a per-render resum.) The editor/area are created once and reused across
   // document switches (load clears+refills the SAME editor), so the pipe stays valid. Runs
   // whenever mode is "html" (NOT gated on `active`): below the threshold `active` is false yet
   // we still need to notice it being crossed.
@@ -76,7 +92,7 @@ export function HtmlCanvasLayer() {
     if (mode !== "html") return;
     let live = true;
     let bound = false;
-    const recount = () => { const ed = getEditor(); if (ed) setNodeCount(ed.getNodes().length); };
+    const recount = () => setDomWeight(graphDomWeight());
     const bind = (): boolean => {
       if (bound) return true;
       const area = getArea();
