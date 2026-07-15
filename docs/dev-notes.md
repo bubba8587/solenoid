@@ -65,9 +65,14 @@ weight flat): axonometric projection, each cell a flat-shaded quad (per-face Lam
 height colormap), painted back-to-front; a null Z cell is a hole. **Reference frame** (author asked, then
 "too basic — just overlays"): a light gridded FLOOR + two BACK walls drawn BEHIND the surface so it sits
 inside the box and the near parts are occluded (matplotlib/plotly look), X/Y/Z labels on the box edges —
-NOT lines floated on top. **Quality:** supersampled backing store (`scale = min(4, dpr·2)`) + round line
-joins + slight surface translucency (`SURFACE_ALPHA` 0.86) so the frame shows through. Theme-aware (reads
-`--text`, redraws on `appThemeStore`). Card mirrors Sankey (collapsible, ChartChip
+NOT lines floated on top. **Rotation (author):** the fixed axonometric projection became a yaw/pitch
+orthographic CAMERA (yaw about Z, pitch = elevation); a D-pad of 4 arrows in the figure corner steps yaw
+±45° / pitch ±45° (both wrap 0–360 — pitch flips all the way over), with a centre Home button resetting to
+45/30. Occlusion is recomputed from the rotated cell centroid and the two back frame walls are re-chosen by
+depth, so the box stays correct at any angle. Angles live in `literals` (persist via extractInit spread +
+ride into the payload, so a Report embed shows the same view). **Quality:** supersampled backing store
+(`scale = min(4, dpr·2)`) + round line joins + slight surface translucency (`SURFACE_ALPHA` 0.86) so the
+frame shows through. Theme-aware (reads `--text`, redraws on `appThemeStore`). Card mirrors Sankey (collapsible, ChartChip
 when collapsed, `!collapsed` figure gate). Weight stays default 1 (a canvas is one element). Standard
 node-add surface: chartValue + visual.ts + 2 components + chartView branch + index/registry/catalog + kind.
 tsc clean, 2886 green. Commits `de76ec66` (node) + `270f967a` (3-D frame).
