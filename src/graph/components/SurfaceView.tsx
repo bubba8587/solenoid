@@ -26,6 +26,7 @@ function heightColor(t: number): [number, number, number] {
 
 const DH = 0.55;                 // height exaggeration (model units; base spans ~1)
 const LIGHT = unit([-0.4, -0.6, 0.7]); // from the upper-front-left
+const SURFACE_ALPHA = 0.86;      // slight translucency so the frame shows through
 
 function drawSurface(canvas: HTMLCanvasElement, p: SurfacePayload, W: number, H: number) {
   const ctx = canvas.getContext("2d");
@@ -95,6 +96,7 @@ function drawSurface(canvas: HTMLCanvasElement, p: SurfacePayload, W: number, H:
   }
   cells.sort((a, b) => a.d - b.d);
 
+  ctx.globalAlpha = SURFACE_ALPHA; // let the frame show through faintly
   for (const { ix, iy } of cells) {
     const c00 = gz(ix, iy)!, c10 = gz(ix + 1, iy)!, c01 = gz(ix, iy + 1)!, c11 = gz(ix + 1, iy + 1)!;
     // Face normal (model space, z scaled to match the projection) → Lambert brightness.
@@ -115,6 +117,7 @@ function drawSurface(canvas: HTMLCanvasElement, p: SurfacePayload, W: number, H:
     ctx.lineWidth = 0.5;
     ctx.stroke();
   }
+  ctx.globalAlpha = 1;
 
   // ── X / Y / Z labels on the frame's far edges (the box edges ARE the axes). ──
   const O = proj(0, 0, 0);
