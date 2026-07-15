@@ -52,6 +52,11 @@ export function InterpolateComponent({ data, emit }: NodeProps<InterpolateNodeTy
         options={MODE_OPTIONS}
         onChange={(next) => { setMode(next); void applyInterpolateMode(data, next); }}
       />
+      {mode === "grid" && (
+        <div style={{ fontSize: 11, fontStyle: "italic", color: "var(--text-dim)", marginTop: 2 }}>
+          Bilinear interpolation
+        </div>
+      )}
       <InlineInputs node={data} emit={emit} />
       {data.mode === "grid"
         ? <TableDisplay table={isSolError(data.cachedResult) ? (data.cachedResult as SolError) : (data.cachedResult as (number | null)[][] | null)} label={data.label} />
