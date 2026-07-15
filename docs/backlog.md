@@ -172,14 +172,15 @@ this backlog stays the per-item source of truth.
   itself documents the expected shape. Ties to the 2026-07-06 standing rule (aligned
   columns → one frame input, not parallel sockets — SUMIFS joined that club 2026-07-09,
   so the club is now charts + SUMIFS + the frame verbs).
-- [ ] **Lossless frame→cube (typed `CubeColumn`)** (author-flagged 2026-07-06, bigger
-  project) — the ladder is "a Frame IS a Cube with all-flat cells," but `toCube(frame)`
-  (`frameToCube`) drops column types because `CubeColumn` is `{name, cells}` with NO
-  per-column `type`. Give it an optional `type` so frame→cube preserves it: cubes could
-  render dates as dates, XLOOKUP's cube path could match ISO dates, and the whole class of
-  "cube socket eats frame types" bugs disappears (the XLOOKUP `rawInputs` bypass could then
-  retire). Touches cube representation + `CubeDisplay`/`CubePopup` + the cube verbs + unit
-  flow. Do it only if typed cube columns pull weight beyond this one node.
+- [ ] **Lossless frame→cube (typed `CubeColumn`) — CORE DONE (2026-07-15, `603a58b5`); only the
+  XLOOKUP follow-on remains.** `CubeColumn.type?` carried by `frameToCube`/`relateFramesToCube`/
+  `subCube`; `cubeCellToken`/`CubeCellChip` render a flat cell by its type (date serial → date,
+  logical → TRUE/FALSE); `CubeDisplay`/`CubePopup` pass it. So cubes now render dates as dates (the
+  "cube socket eats frame types" display bug is gone). **REMAINING:** XLOOKUP's cube path could use
+  the column `type` to match ISO dates, and its `rawInputs` bypass (which existed to keep the cube
+  socket from type-stripping a wired frame) could then retire — a node-specific cleanup, do it if it
+  pulls weight. Cube VERBS that build columns from scratch (`cubeFromColumns`/rollup) leave `type`
+  undefined by design (heterogeneous); revisit only if a verb has a genuinely homogeneous output.
 - [ ] **MODE.SNGL tie-break disagrees across surfaces** (found 2026-07-10 audit) — the
   standalone `ModeNode` (`stats.ts`) breaks ties by the SMALLEST modal value
   (`iterMin`, deliberately — `stats.test.ts` "returns the smallest among equally
