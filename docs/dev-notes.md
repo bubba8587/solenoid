@@ -63,8 +63,12 @@ The solver no longer writes its answer back onto the driver's SEED (`defaultValu
 "updates itself" — the solution now lives in transient `CompositeInputNode.solvedValue` (read by the
 readout) and the seed stays the user's starting guess; `#CONV!` shows "no solution". New transient
 `goalDriver`/`solvedValue` (input) + `goalTarget` (output), stamped in `data()` from the run
-mode/config, cleared on leaving goal-seek. This is the markers' first run-mode-aware affordance — the
-same pattern extends to MC (±spread) / scenarios (which set) later.
+mode/config, cleared on leaving goal-seek. **(4) Extended to every run mode (`09964f51`):** a transient
+`CompositeInputNode.modeNote {tag,text}` (stamped in `data()` via `inputModeNote`) makes each input
+marker explain its role in the ACTIVE mode — Monte Carlo shows its ± spread + distribution, By-Row the
+iterated port reads "one run per row", Scenarios "varies", Data Table "N values". Same `MarkerNote`
+renderer; goal-seek keeps its richer solvedValue readout (modeNote is null there). The markers are now
+genuinely run-mode-aware surfaces rather than plain seed boxes.
 
 ### SESSION DIGEST (2026-07-15k — Composite By-Row run mode) [Agent 2, off-theme]
 Author-specced (2026-07-14) backlog item — the node-level "for each." A new Composite `CompositeRunMode`
