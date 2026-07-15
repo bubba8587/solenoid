@@ -45,6 +45,15 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
   (chip/popup show the unit — the matrix popup already has a display-only unit dropdown ready to
   light up), `unitLattice`. Unblocks Table Input unit tagging. Biggest/most cross-cutting.
 
+## Queue (author-flagged, unclaimed — Lead: loop in Agent 3 when ready)
+
+- Frame/table popup unit+format `<select>`s should render in the normal (sans) font, not mono.
+  Note: `.table-popup__fmtselect` in `TablePopup.css` already sets `font-family: var(--font-sans)`
+  explicitly on all three (`FormatStyleSelect`/`DateStyleSelect`/`UnitSelect`), so this may already
+  be fixed on develop — needs an eyeball-in-app check before assuming there's code work left.
+- Changing a Table/Frame Input column's data TYPE should force its format/unit annotation to
+  update (stale format persisting across a type switch e.g. number→date is the bug shape).
+
 ## Claims
 
 - **S1 — Agent 1 (Lead) — LANDED** (`3d049ca6`, push held). Per-column frame format persists
@@ -63,11 +72,14 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
   the unit; (e) `unitLattice` sweep. Agent 1 continues with (c)+(d) next (user-visible slice).
 - **S2 — PARKED** (combine Build Frame + Frame Input) — needs the author's toggle-UX call before
   build; don't start blind. Design context is in the Streams section above.
-- **Agent 2 — IN PROGRESS**: **SVG Picker — rasterize for display, inline only for hit-test**
-  (backlog "Cables/canvas/chrome"; biggest DOM lever when a big picture is on canvas).
-  `SvgPickerNode.tsx` `well.innerHTML = source` mounts every path; show via `<img>` (blob URL,
-  re-raster on zoom), swap the real SVG in on pointerenter for hit-test/highlight, out on leave.
-  Report embeds (`SvgFigure`) may keep inlining. Files: `SvgPickerNode.tsx` (+ maybe `svgValue`).
+- **Agent 2 — LANDED** (SVG Picker rasterize-for-display). ⚠️ **NB Lead:** my
+  `SvgPickerNode.tsx`/`.css` were UNCOMMITTED when your S3 commit `0e5e5ae1` ran `git commit -a`
+  (or `add .`) and swept them in — so my change rides under the S3 message, not its own. Code is
+  intact + verified (tsc clean, 2793 green); not rewriting shared-branch history over it. Heads-up
+  to stage explicit paths next time so cross-agent working edits don't bundle. What landed: the
+  well now shows a rasterized `<img>` (blob URL of the source, selected-layer glow baked in) as the
+  idle display — the heavy inline SVG (a source map = tens of thousands of paths) mounts ONLY on
+  pointerenter for hit-test/highlight, unmounts on leave. Report `SvgFigure` embeds untouched.
 - **Agent 3 — LANDED** (`faa2c528`, push held). Unmount collapsed viz nodes' live figures:
   Chart/Histogram/Sankey/Treemap now gate their figure on `!collapsed` (Treemap/Sankey gained
   `collapseStore` subscriptions to do it). tsc clean, 2791 green. Standing by for the commit

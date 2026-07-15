@@ -263,12 +263,6 @@ this backlog stays the per-item source of truth.
 
 ## Cables / canvas / chrome
 
-- [ ] **SVG Picker: rasterize for display, inline only for hit-testing** (from the
-  2026-07-08 DOM audit — the single biggest DOM lever when a big picture is on canvas):
-  `SvgPickerNode.tsx` `well.innerHTML = source` permanently mounts every path of the
-  source document (a US county map ≈ +40k elements). Display via `<img>` (blob URL,
-  re-rasterized on zoom for crispness); swap the real SVG in on pointerenter for
-  hit-testing/highlight, out on leave. Report embeds (`SvgFigure`) may keep inlining.
 - [ ] **`content-visibility: auto` on node roots — untried experiment** (floated in the
   archived perf notes, never attempted): skips style/layout/paint for offscreen nodes
   without touching DOM count or visuals. Risks to check: rete's socket measurement
