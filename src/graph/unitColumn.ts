@@ -6,8 +6,8 @@
 // between the value-layer `ColumnUnit` (unitValue.ts) and the FC unit ids
 // (unitBridge.ts). Pure — no React/Rete.
 
-import { type ColumnUnit, fromUnit, tagDim } from "./unitValue";
-import { fcUnitToUnit } from "./unitBridge";
+import { type ColumnUnit, fromUnit, tagDim, isUnitCell, sameColumnUnit } from "./unitValue";
+import { fcUnitToUnit, displayMagnitudeOf } from "./unitBridge";
 import { type Unit, formatDim } from "./dimension";
 
 // Currency symbol → FC unit id (the header spec "$0.00" means the currency $).
@@ -87,4 +87,35 @@ export function columnDisplayValue(cu: ColumnUnit, base: number): number {
   const u: Unit | null = cu.display ? fcUnitToUnit(cu.display) : null;
   if (!u) return base;
   return (base - (u.offset ?? 0)) / u.scale;
+}
+
+// ─── The matrix ↔ list unit bridge (rank-changing reshapes) ──────────────────────
+// A matrix carries ONE whole-grid unit over AS-TYPED cells (D20); a list carries
+// per-cell base-SI `UnitCell`s. A rank-changing reshape (TOCOL/TOROW flatten a
+// matrix to a list; WRAPROWS/WRAPCOLS build a matrix from a list) must CONVERT
+// between the two carriers, not just move cells — otherwise the unit vanishes.
+
+/** Matrix → list: tag each as-typed grid cell with the grid's unit, yielding list
+ *  cells (base-SI `UnitCell`s carrying the display id). No unit ⇒ cells unchanged.
+ *  Used by TOCOL / TOROW (and mirrors INDEX's whole-row/column extraction). */
+export function taggedListFromMatrix(cells: readonly unknown[], cu: ColumnUnit | undefined): unknown[] {
+  return cu ? cells.map((c) => tagFrameCellUnit(c, cu)) : [...cells];
+}
+
+/** List → matrix: reduce a flat list to bare as-typed magnitudes + the ONE unit the
+ *  list shares (undefined if the dimensioned cells disagree, or none are tagged) — a
+ *  matrix is one homogeneous unit (D20), so a wrap can only claim a unit when the
+ *  list is uniform. Cells always come back bare (a matrix never holds `UnitCell`s);
+ *  a dimensionless cell keeps its number and adopts the shared unit. Used by
+ *  WRAPROWS / WRAPCOLS. */
+export function matrixCellsFromList(cells: readonly unknown[]): { mags: unknown[]; unit: ColumnUnit | undefined } {
+  const mags = cells.map((c) => (isUnitCell(c) ? displayMagnitudeOf(c) : c));
+  let unit: ColumnUnit | undefined;
+  for (const c of cells) {
+    if (!isUnitCell(c)) continue;
+    const cu: ColumnUnit = { dim: c.dim, display: c.display };
+    if (unit === undefined) unit = cu;
+    else if (!sameColumnUnit(unit, cu)) return { mags, unit: undefined }; // mixed → strip
+  }
+  return { mags, unit };
 }
