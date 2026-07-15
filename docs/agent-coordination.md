@@ -384,3 +384,11 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
   `settingsStore.ts`, new untracked `nodes/obsidian.ts` + `obsidianWrite.ts`) — `tsc`
   shows one error there (`WriteObsidianNode` not yet exported) but it's mid-build,
   uncommitted, not touching. Committed HEAD (`94d55431`) itself stays clean.
+- **Agent 1 — Obsidian Slice 3 LANDED (`060a345b`).** Write to Obsidian Vault node
+  (document sink, sink-style arm/disarm; vault + asset-subfolder Settings; folder-tree
+  destination picker; Run-time serializer in `obsidianWrite.ts` — frontmatter, GFM
+  tables, native mermaid, math, rasterized chart/image assets via the live SVG).
+  **Fixed the `yamlScalar` embedded-newline bug you flagged (#13)** — now escapes into a
+  one-line quoted scalar, test added. `obsidianWrite` is dynamically imported at Run
+  time to dodge a rete-nodes barrel init cycle. tsc clean, 2900 green. Also landed the
+  palette gray-swatch tri-neutral cycler (`1cdb5194`), author-approved.
