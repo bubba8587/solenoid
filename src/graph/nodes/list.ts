@@ -9,6 +9,7 @@ import { passesFilter, type FilterOp, type FilterCondConfig } from "../frameVerb
 import { solError, isSolError, type SolError } from "../errorValue";
 import { forAggregate, isMissing, type Tri } from "../valueKinds";
 import { forAggregateUnits, tagDim, type UnitCell } from "../unitValue";
+import { tagFrameCellUnit } from "../unitColumn";
 import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../dimension";
 import { iterMin, iterMax } from "./mathUtils";
 import { isFrameValue, isCubeValue, cubeRowCount, cubeFromColumns, frameRowCount, inferColumn, getColumn, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
@@ -271,8 +272,12 @@ export class ListIndexNode extends ClassicPreset.Node {
       const rows = frameRowCount(v);
       if (!rowAll && (r < 0 || r >= rows)) return done(refErr(r + 1, rows, "Row"));
       if (!colAll && (c < 0 || c >= v.columns.length)) return done(refErr(c + 1, v.columns.length, "Column"));
-      // Whole column = the values list (Get Column's shape).
-      if (rowAll) return done([...v.columns[c].values] as CubeCell);
+      // Whole column = the values list (Get Column's shape). A unit-locked column
+      // tags each cell so the unit rides out of the frame (same as Get Column).
+      if (rowAll) {
+        const col = v.columns[c];
+        return done((col.unit ? col.values.map((x) => tagFrameCellUnit(x, col.unit!)) : [...col.values]) as CubeCell);
+      }
       if (colAll) {
         // Whole row = a ONE-ROW FRAME (Get Row / XLOOKUP `*` convention).
         const columns: FrameColumn[] = v.columns.map((col) => ({
@@ -280,7 +285,9 @@ export class ListIndexNode extends ClassicPreset.Node {
         }));
         return done({ __frame: true, columns });
       }
-      return done(v.columns[c].values[r] ?? null);
+      // A single cell from a unit-locked column carries the column's unit.
+      const cell = v.columns[c].values[r] ?? null;
+      return done(v.columns[c].unit ? (tagFrameCellUnit(cell, v.columns[c].unit!) as CubeCell) : cell);
     }
 
     if (!Array.isArray(v)) {

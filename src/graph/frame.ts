@@ -13,7 +13,7 @@ import { parseDateToSerial, formatDateSerial, DEFAULT_DATE_FORMAT } from "./node
 import { isSolError, type SolError } from "./errorValue";
 import { coerceLogical } from "./valueKinds";
 import { type ColumnUnit } from "./unitValue";
-import { parseColumnUnitFromHeader } from "./unitColumn";
+import { parseColumnUnitFromHeader, columnUnitFromSpec } from "./unitColumn";
 import { elementFamilyOf, type SocketDataType } from "./sockets";
 
 // A column is one of: numeric, free text, DATE, or LOGICAL. A date column stores
@@ -288,6 +288,11 @@ export interface FrameSourceColumn {
   name: string;
   type: FrameColType;
   cells: string[];
+  /** An explicit dimensional unit (an FC unit id — "km", "usd") tagged on the
+   *  column at the source (the value popup's per-column unit dropdown). Persisted
+   *  in `frameText` and applied by `deriveFrame` → `FrameColumn.unit`, so the unit
+   *  rides the value downstream. Absent ⇒ no unit. */
+  unit?: string;
 }
 export type FrameSource = FrameSourceColumn[];
 
@@ -317,13 +322,19 @@ export function deriveFrame(source: FrameSource): FrameValue {
       type: c.type,
       values: c.cells.map((cell) => coerceFrameCell(c.type, cell)),
       raw: c.cells,
+      // A source-tagged unit ("km", "usd") becomes the column's dimensional unit,
+      // so it rides the value downstream (only meaningful for a number column).
+      ...(c.type === "number" && c.unit ? { unit: columnUnitFromSpec(c.unit) ?? undefined } : {}),
     })),
   };
 }
 
 /** Serialize the raw source to the stored `frameText` (JSON). */
 export function frameSourceToText(source: FrameSource): string {
-  return JSON.stringify(source.map((c) => ({ name: c.name, type: c.type, cells: c.cells })));
+  return JSON.stringify(source.map((c) => (
+    c.unit ? { name: c.name, type: c.type, cells: c.cells, unit: c.unit }
+           : { name: c.name, type: c.type, cells: c.cells }
+  )));
 }
 
 /** Infer just a column's TYPE from raw cells (same rules as inferColumn, cells kept
@@ -359,7 +370,8 @@ export function parseFrameSource(text: string): FrameSource {
               ? (c!.values as unknown[]).map((x) =>
                   x == null ? "" : typeof x === "boolean" ? (x ? "TRUE" : "FALSE") : String(x))
               : [];
-          return { name: names[i], type, cells };
+          const unit = typeof c?.unit === "string" && c.unit !== "" ? c.unit : undefined;
+          return { name: names[i], type, cells, unit };
         });
       }
     } catch { /* malformed — fall through to the legacy CSV reader */ }
