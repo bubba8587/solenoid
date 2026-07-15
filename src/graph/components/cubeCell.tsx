@@ -12,8 +12,10 @@ import {
   type CubeCell, type FrameValue, type CubeValue, type FrameColType, type FrameCell,
 } from "../frame";
 import { isSolError } from "../errorValue";
+import { isUnitCell } from "../unitValue";
 import { cubePopup } from "../cubePopupStore";
 import { formatScalar } from "./format";
+import { formatListCell } from "./valueDisplayFormat";
 import { errorTip } from "./ErrorChip";
 import "./ArrayChip.css";
 
@@ -22,6 +24,7 @@ export function cubeCellToken(cell: CubeCell): string {
   if (cell === null || cell === undefined) return "";
   if (isCubeValue(cell)) return `Cube ${cubeRowCount(cell)}x${cell.columns.length}x${cubeDepth(cell)}`;
   if (isFrameValue(cell)) return `Frame ${frameRowCount(cell)}x${cell.columns.length}`;
+  if (isUnitCell(cell)) return formatListCell(cell, formatScalar); // "5 km"
   if (Array.isArray(cell)) return Array.isArray(cell[0]) ? `${cell.length}x${(cell[0] as unknown[]).length}` : `List ${cell.length}`;
   if (typeof cell === "boolean") return cell ? "TRUE" : "FALSE";
   if (isSolError(cell)) return cell.code;
@@ -106,6 +109,7 @@ export function CubeCellChip({ cell, crumb, size = "md" }: {
   if (isSolError(cell)) {
     return <span title={errorTip(cell)} style={{ color: "var(--error, #d33)" }}>{cell.code}</span>;
   }
+  if (isUnitCell(cell)) return <>{formatListCell(cell, formatScalar)}</>; // "5 km"
   if (typeof cell === "boolean") return <>{cell ? "TRUE" : "FALSE"}</>;
   if (typeof cell === "number") return <>{formatScalar(cell)}</>;
   return <>{String(cell)}</>;
