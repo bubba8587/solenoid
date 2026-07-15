@@ -47,7 +47,7 @@ export function HistogramComponent({ data, emit }: NodeProps<HistogramNodeType>)
       <div ref={chartRef} style={{ position: "relative", height: H }}>
         {series.length === 0 ? (
           <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>
-        ) : (
+        ) : !collapsed && (
           <>
             <ChartView op="column" series={series} width={W} height={H} axes opts={opts} />
             <ChartExpandButton title={opts.title || data.label || "Histogram"} op="column" axes series={series} opts={opts} />

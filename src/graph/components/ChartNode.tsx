@@ -99,7 +99,7 @@ export function ChartComponent({ data, emit }: NodeProps<ChartNodeType>) {
       <div ref={chartRef} className="solenoid-node__figure" style={{ position: "relative", marginTop: 4, height: H }}>
         {!hasData ? (
           <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>
-        ) : (
+        ) : !collapsed && (
           <>
             <ChartFigure value={cv} width={W} height={H} fontScale={fontScale} />
             {/* The expand popup renders a single series — offer it only for the
