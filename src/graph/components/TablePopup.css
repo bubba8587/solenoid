@@ -200,6 +200,17 @@
 .table-popup__fmtselect:hover { border-color: var(--node-accent, var(--accent)); }
 .table-popup__fmtselect:focus { box-shadow: inset 0 0 0 1px var(--accent); }
 
+/* Matrix: one format+unit pair for the whole sheet, above the grid (between the
+   popup header and the table). */
+.table-popup__matrix-fmt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 14px 0;
+}
+.table-popup__matrix-fmt .table-popup__fmtselect { width: auto; min-width: 110px; }
+
 /* CSV view — the same data as a raw, editable text block. */
 .table-popup__csv {
   display: block;

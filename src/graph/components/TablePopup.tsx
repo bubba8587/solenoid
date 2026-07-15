@@ -463,6 +463,15 @@ export function TablePopup() {
         />
       }
     >
+      {view === "grid" && formatControlsActive && state.formatControls === "matrix" && (
+        // A matrix is homogeneous — one format+unit pair for the whole sheet, so it
+        // sits ABOVE the grid (between the popup header and the table), not inside
+        // it as a column row.
+        <div className="table-popup__matrix-fmt">
+          <FormatStyleSelect className="table-popup__fmtselect" value={annFor(0).format} onChange={(f) => setColFmtAt(0, { format: f })} />
+          <UnitSelect className="table-popup__fmtselect" value={annFor(0).unit} onChange={(u) => setColFmtAt(0, { unit: u })} />
+        </div>
+      )}
       {view === "grid" ? (
         <div className="table-popup__grid-scroll">
           <table className="table-popup__grid">
@@ -500,34 +509,25 @@ export function TablePopup() {
                 ))}
               </tr>
             </thead>
-            {formatControlsActive && (
+            {formatControlsActive && state.formatControls === "columns" && (
               <tbody className="table-popup__fmtbody">
                 <tr>
                   <th className="table-popup__corner" />
-                  {state.formatControls === "matrix" ? (
-                    <td className="table-popup__fmtcell" colSpan={viewCols}>
-                      <div className="table-popup__fmtinline">
-                        <FormatStyleSelect className="table-popup__fmtselect" value={annFor(0).format} onChange={(f) => setColFmtAt(0, { format: f })} />
-                        <UnitSelect className="table-popup__fmtselect" value={annFor(0).unit} onChange={(u) => setColFmtAt(0, { unit: u })} />
-                      </div>
-                    </td>
-                  ) : (
-                    Array.from({ length: viewCols }, (_, c) => {
-                      const type = colTypeAt(c);
-                      return (
-                        <td key={c} className="table-popup__fmtcell">
-                          {type === "date" ? (
-                            <DateStyleSelect className="table-popup__fmtselect" value={annFor(c).format} onChange={(f) => setColFmtAt(c, { format: f })} />
-                          ) : type === "number" ? (
-                            <div className="table-popup__fmtstack">
-                              <FormatStyleSelect className="table-popup__fmtselect" value={annFor(c).format} onChange={(f) => setColFmtAt(c, { format: f })} />
-                              <UnitSelect className="table-popup__fmtselect" value={annFor(c).unit} onChange={(u) => setColFmtAt(c, { unit: u })} />
-                            </div>
-                          ) : null}
-                        </td>
-                      );
-                    })
-                  )}
+                  {Array.from({ length: viewCols }, (_, c) => {
+                    const type = colTypeAt(c);
+                    return (
+                      <td key={c} className="table-popup__fmtcell">
+                        {type === "date" ? (
+                          <DateStyleSelect className="table-popup__fmtselect" value={annFor(c).format} onChange={(f) => setColFmtAt(c, { format: f })} />
+                        ) : type === "number" ? (
+                          <div className="table-popup__fmtstack">
+                            <FormatStyleSelect className="table-popup__fmtselect" value={annFor(c).format} onChange={(f) => setColFmtAt(c, { format: f })} />
+                            <UnitSelect className="table-popup__fmtselect" value={annFor(c).unit} onChange={(u) => setColFmtAt(c, { unit: u })} />
+                          </div>
+                        ) : null}
+                      </td>
+                    );
+                  })}
                 </tr>
               </tbody>
             )}
