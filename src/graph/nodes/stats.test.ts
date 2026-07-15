@@ -245,7 +245,7 @@ describe("INTERPOLATE — Grid mode (fill a bordered table)", () => {
       [10, 10, null, 20],
     ];
     // Every cell resolves to Z = x + y — the (X=5, Y=5) intersection (blank in BOTH a
-    // new row and a new column) resolves because the row pass seeds the column pass.
+    // new row and a new column) resolves on the 2nd iteration, once its neighbours fill.
     expect(fillBorderedGrid(t)).toEqual([
       [null, 0, 5, 10],
       [0, 0, 5, 10],
@@ -271,6 +271,37 @@ describe("INTERPOLATE — Grid mode (fill a bordered table)", () => {
     const t = [[null, 0, 10], [0, 0, NaN]]; // single known in the row → flat fill
     expect(fillBorderedGrid(t)).toEqual([[null, 0, 10], [0, 0, 0]]);
   });
+  it("fills as a 2-D mesh, not row-only (an L of data ramps diagonally)", () => {
+    // Only the top row + left column of the interior are known. A pure row-fill would
+    // make each row FLAT at its left value; the mesh BLENDS both directions instead.
+    //   ·   0   1   2
+    //   0   0   1   2
+    //   1   1   ·   ·
+    //   2   2   ·   ·
+    const out = fillBorderedGrid([
+      [null, 0, 1, 2],
+      [0, 0, 1, 2],
+      [1, 1, null, null],
+      [2, 2, null, null],
+    ]);
+    expect(out[2][2]).toBe(1);   // (x=1,y=1)
+    expect(out[2][3]).toBe(1.5); // (x=2,y=1): blended — row-only would give 1
+    expect(out[3][2]).toBe(1.5); // (x=1,y=2): blended — row-only would give 2
+  });
+  it("recovers the bilinear centre of a complete grid with a hole", () => {
+    // Complete 3×3 of Z = x·y with the CENTRE blanked; bilinear centre = 1.
+    //   ·   0   1   2
+    //   0   0   0   0
+    //   1   0   ·   2
+    //   2   0   2   4
+    const out = fillBorderedGrid([
+      [null, 0, 1, 2],
+      [0, 0, 0, 0],
+      [1, 0, null, 2],
+      [2, 0, 2, 4],
+    ]);
+    expect(out[2][2]).toBe(1);
+  });
 
   // Node wiring — ONE table in, ONE table out.
   it("grid mode is one bordered-table input and one table output", () => {
@@ -288,9 +319,10 @@ describe("INTERPOLATE — Grid mode (fill a bordered table)", () => {
   });
   it("fills a bordered grid through the node (a per-cell error reads as a blank)", () => {
     const err = solError("#REF!", "bad cell");
-    const t = [[null, 0, 10], [0, 0, err], [10, 10, 20]];
-    const r = new InterpolateNode({ mode: "grid" }).data({ grid: [t] }).result;
-    expect(r).toEqual([[null, 0, 10], [0, 0, 0], [10, 10, 20]]);
+    // Z = x·y with the centre cell errored → reads as blank, filled by 2-D interp to 1.
+    const t = [[null, 0, 1, 2], [0, 0, 0, 0], [1, 0, err, 2], [2, 0, 2, 4]];
+    const r = new InterpolateNode({ mode: "grid" }).data({ grid: [t] }).result as (number | null)[][];
+    expect(r[2][2]).toBe(1);
   });
   it("propagates a whole-grid error", () => {
     const err = solError("#REF!", "bad grid");
