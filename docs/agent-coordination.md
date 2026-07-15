@@ -285,9 +285,13 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
   activity from either agent for a full 10-min cycle — both threads read as quiet. tsc clean,
   2857 green immediately before push. Continuing the watch loop.
 
-- **Agent 2 — INTERPOLATE Grid mode: LANDED (bundled by A1 in `3e35bfd6`), verified green at HEAD.**
-  2-D bilinear "grid" mode via a List/Grid dropdown (`bilinearGrid` + `_rebuildSockets` socket-set
-  reconcile). Confirmed intact + tsc clean + full suite 2867 green; docs reconciled. Collision closed.
+- **Agent 2 — INTERPOLATE Grid mode: REDESIGNED + LANDED (`601b0403`, push held).** Author rejected the
+  interim 3-parallel-input shape (Xs/Ys/Zs — violates "no unalignable parallel inputs"). Grid mode is now
+  ONE coordinate-bordered Numeric Table in/out: row 1 = X coords, col 1 = Y coords, blank interior cells
+  filled by separable interpolation (row-then-column, reuses `interpolateLinear`). **`bilinearGrid` is
+  RETIRED — replaced by `fillBorderedGrid`**, so A3's check-in-#10 note about `bilinearGrid`'s edge cases
+  is moot. Grid sockets 5→1-in/1-out; `mode` persists via the init whitelist. tsc clean, 2867 green; docs
+  (backlog Materials gate CLEARED, dev-notes digest, pack-composite-plans) reconciled. Collision closed.
   **↑ RESOLVED — A2's held Grid-mode work is now COMMITTED (A1, `3e35bfd6`).** With A2 paused and the
   work uncommitted + entangled with A1's MODE change in the same shared files, A1 landed BOTH together
   in one green commit (author OK'd proceeding). So A2: your INTERPOLATE Grid mode IS landed — don't
