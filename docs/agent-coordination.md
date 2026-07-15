@@ -108,11 +108,11 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
   derived frame/matrix unit (replaces the old static label / header parenthetical — unit moved from
   the column header into the format row). `FcArrow`+`FcFlow` factored into `fcControls` (FC node uses
   the shared copy). Also Agent 2's marker/By-Row UI eyeballs are pending. tsc clean, 2835 green.
-- **NEW TOPIC — A1 CLAIMS: Lossless frame→cube (typed `CubeColumn`)** (backlog "Notes/documents"
-  area). Give `CubeColumn` an optional `type` so `frameToCube` preserves date/logical column types
-  (cubes render dates as dates; XLOOKUP's cube path matches ISO dates; retires the XLOOKUP `rawInputs`
-  bypass). Natural extension of the cube-units work I just landed (`frame.ts` cube section + `CubeDisplay`/
-  `CubePopup` + cube verbs). **Own lane — no `composite.ts`/marker overlap with Agent 2.**
+- **Typed `CubeColumn` (A1) — CORE LANDED `603a58b5`, push held.** `CubeColumn.type?` carried by
+  `frameToCube`/`relateFramesToCube`/`subCube`; `cubeCellToken`/`CubeCellChip` render a flat cell by
+  its type (date serial → date, logical → TRUE/FALSE); `CubeDisplay`/`CubePopup` pass it. Cubes render
+  dates as dates now. tsc clean, 2837 green. Remaining follow-on (node-specific, unclaimed): XLOOKUP
+  cube-path ISO-date matching + retire its `rawInputs` bypass. **Own lane — no Agent 2 overlap.**
 - **S2 — PARKED** (combine Build Frame + Frame Input) — needs the author's toggle-UX call before
   build; don't start blind. Design context is in the Streams section above.
 - **Agent 2 — LANDED** (SVG Picker rasterize-for-display). ⚠️ **NB Lead:** my

@@ -42,8 +42,18 @@ unit-blind attempt): a cube is heterogeneous per cell = the list's shape, so `Cu
 viewer renders "5 km". D20 + subsystem-invariants "Unit flow" amended with the per-rank carrier map
 + the guard + the cube-per-cell call.
 Storage note recorded: scalar/list `UnitCell.value` is BASE-SI, frame/matrix cells are AS-TYPED, so
-crossing carriers CONVERTS. tsc clean, 2831 green. Still genuinely deferred: MMULT-mul-dims (niche,
-documented-strip) + the `unitLattice` sweep.
+crossing carriers CONVERTS. Verified NON-gaps afterward: Convert-on-a-matrix unreachable (a matrix
+can't wire into Convert's `numlist` input — the FC relabels matrices), MMULT-dims + unitLattice-matrix
+MOOT (no element-wise matrix arithmetic node). **Units domain COMPLETE across all five ranks.**
+**Follow-ups landed same session:** (1) **popup flow-arrows + locks** (`02ad50dd`, ⏳ author visual
+review pending): the value-popup format/unit dropdowns adopt the FC's ←/→ language — authored (← →,
+editable) for a taggable source's unit + the format, inherited (→ →, LOCKED disabled picker) for a
+derived frame/matrix unit (`FcArrow`+`FcFlow` factored into `fcControls`, FC node uses the shared
+copy; the derived unit moved from the column-header parenthetical into the format row). (2) **Typed
+`CubeColumn`** (`603a58b5`): `CubeColumn.type?` carried by `frameToCube`/`relateFramesToCube`/`subCube`
+so a flat cube renders dates-as-dates / logicals-as-TRUE-FALSE (`cubeCellToken`/`CubeCellChip` render
+by type); the "cube socket eats frame types" display bug is gone (XLOOKUP cube-path date-matching +
+`rawInputs` retire is the remaining node-specific follow-on). tsc clean, 2837 green throughout.
 
 ### SESSION DIGEST (2026-07-15m — Unmount collapsed viz figures: finish + reconcile) [Agent 2, off-theme]
 Closed the backlog "Unmount collapsed viz nodes' live figures" item — collapse is CSS `display:none`
