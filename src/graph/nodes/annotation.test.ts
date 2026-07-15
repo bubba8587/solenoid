@@ -3,6 +3,7 @@ import { NoteNode } from "./annotation";
 import { SolenoidSocket } from "../sockets";
 import { parseDateToSerial } from "./date";
 import { installErrorGuards } from "../errorValue";
+import { isDocumentValue } from "../documentValue";
 
 const typeOf = (n: NoteNode, key: string) => {
   const s = n.outputs[key]?.socket;
@@ -10,11 +11,12 @@ const typeOf = (n: NoteNode, key: string) => {
 };
 
 describe("NoteNode frontmatter outputs", () => {
-  it("a plain note has no outputs and empty data", () => {
+  it("a plain note has no FRONTMATTER outputs — just the fixed `document` output", () => {
     const n = new NoteNode({ body: "just a sticky note" });
     expect(n.fieldKeys()).toEqual([]);
-    expect(Object.keys(n.outputs)).toEqual([]);
-    expect(n.data()).toEqual({});
+    expect(Object.keys(n.outputs)).toEqual(["document"]);
+    expect(n.fieldValues()).toEqual({});             // no frontmatter fields
+    expect(isDocumentValue(n.data().document)).toBe(true); // the whole-note document value
     expect(n.renderBody).toBe("just a sticky note");
   });
 
@@ -28,13 +30,15 @@ describe("NoteNode frontmatter outputs", () => {
     expect(typeOf(n, "active")).toBe("logical");
     expect(typeOf(n, "due")).toBe("date");
     expect(typeOf(n, "tags")).toBe("strlist");
-    expect(n.data()).toEqual({
+    // fieldValues() is the frontmatter half; data() adds the `document` output.
+    expect(n.fieldValues()).toEqual({
       title: "Budget",
       count: 42,
       active: true,
       due: Math.round(parseDateToSerial("2026-03-01")),
       tags: ["a", "b"],
     });
+    expect(isDocumentValue(n.data().document)).toBe(true);
     expect(n.renderBody).toBe("# Body");
   });
 
@@ -73,7 +77,7 @@ describe("NoteNode frontmatter outputs", () => {
   it("a persisted per-key override pins the type and coerces the value", () => {
     const n = new NoteNode({ body: "---\nid: 42\n---", fieldTypes: { id: "string" } });
     expect(typeOf(n, "id")).toBe("string");
-    expect(n.data()).toEqual({ id: "42" });
+    expect(n.fieldValues()).toEqual({ id: "42" });
   });
 
   it("prunes overrides for keys no longer in the body", () => {

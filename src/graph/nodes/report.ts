@@ -1,6 +1,7 @@
 import { ClassicPreset } from "rete";
-import { trueAnyIn } from "./shared";
+import { trueAnyIn, documentOut } from "./shared";
 import { extractInlineRefs } from "../noteInlineRefs";
+import { makeDocument, type DocumentValue } from "../documentValue";
 
 // ─── Report ─────────────────────────────────────────────────────────────────
 // The report projection (bundle 13, #13): a standalone, blank-by-default markdown
@@ -46,6 +47,11 @@ export class ReportNode extends ClassicPreset.Node {
     this.width = init?.width ?? 200;
     this.height = init?.height ?? 96;
     this.collapsed = init?.collapsed ?? false;
+    // The one OUTPUT: the report's whole content as a DocumentValue (body + resolved
+    // ref values), for a document sink like Write-to-Obsidian. This is NOT the
+    // frontmatter-property output the "Report is a pure sink" rule forbade — it's the
+    // rendered document as a single value (author OK'd 2026-07-15).
+    this.addOutput("document", documentOut("Document"));
     this.syncRefs();
   }
 
@@ -85,13 +91,14 @@ export class ReportNode extends ClassicPreset.Node {
     this.embeds = this.embeds.filter((id) => id !== noteId);
   }
 
-  // No outputs — a Report produces no data for other nodes; it's a document, a
-  // terminal sink. `inputs` carries the resolved ref values, cached for the
-  // overlay to render inline — mirrors DisplayNode's `cachedValue`. Optional (not
-  // required) for the same reason as NoteNode: a bare `new ReportNode().data()`
-  // must not throw when called with no engine behind it.
-  data(inputs?: Record<string, unknown[]>): Record<string, never> {
+  // `inputs` carries the resolved ref values, cached for the overlay to render
+  // inline (mirrors DisplayNode's `cachedValue`) AND assembled into the `document`
+  // output — the report's raw body + those resolved refs (no frontmatter; a Report
+  // has none). Serialization (refs → markdown, `![[Note]]` → note bodies, charts →
+  // images) is the sink's job at write time. Optional `inputs` for the same reason
+  // as NoteNode: a bare `new ReportNode().data()` must not throw with no engine.
+  data(inputs?: Record<string, unknown[]>): { document: DocumentValue } {
     this._refValues = new Map(this._refKeys.map((k) => [k, inputs?.[k]?.[0] ?? null]));
-    return {};
+    return { document: makeDocument(this.body, Object.fromEntries(this._refValues)) };
   }
 }
