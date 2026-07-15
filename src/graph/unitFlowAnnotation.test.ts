@@ -200,11 +200,16 @@ describe("applyFcUnit — the FC is value-mutating (FC A4: the unit rides the VA
     expect(applyFcUnit(5, "none")).toBe(5);
     expect(applyFcUnit("hello", "km")).toBe("hello");
     // A numeric matrix keeps its cells bare but carries one unit on the array (D20).
+    // The tag lands on a COPY, never the input — the DataflowEngine shares a node's
+    // cached array with every consumer, so mutating the source would leak this FC's
+    // unit onto the upstream value and race a second consumer.
     const matrix = [[1, 2], [3, 4]];
     const tagged = applyFcUnit(matrix, "km");
-    expect(tagged).toBe(matrix);                          // same array, cells untouched
+    expect(tagged).not.toBe(matrix);                      // fresh outer array (no source mutation)
+    expect(matrixUnitOf(matrix)).toBeUndefined();         // the shared source stays untagged
     expect(matrixUnitOf(tagged)).toMatchObject({ display: "km" });
-    expect((tagged as number[][])[0][0]).toBe(1);
+    expect((tagged as number[][])[0][0]).toBe(1);         // cells untouched (shared, immutable)
+    expect((tagged as number[][])[0]).toBe(matrix[0]);    // rows shared, only outer array is new
     // A text matrix can't take a physical unit — unchanged, no tag.
     const textMat = [["a", "b"], ["c", "d"]];
     expect(applyFcUnit(textMat, "km")).toBe(textMat);

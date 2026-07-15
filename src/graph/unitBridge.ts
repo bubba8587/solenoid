@@ -130,8 +130,15 @@ export function applyFcUnit(value: unknown, fcUnitId: string, customUnit?: strin
       // (text/logical) can't take a physical unit — pass it through unchanged.
       const firstRow = (value as unknown[]).find((r) => Array.isArray(r)) as unknown[] | undefined;
       const firstCell = firstRow?.find((c) => c !== null && c !== undefined && c !== "");
+      // Tag a COPY of the outer array, never `value` itself. rete-engine's
+      // DataflowEngine caches a node's output and hands the identical reference to
+      // every downstream consumer (no cloning), so mutating `value` in place would
+      // stamp the unit onto the UPSTREAM node's cached matrix — a second consumer
+      // (or a plain Display) would then see a unit it never authored, and two FCs on
+      // one source would race last-write-wins. The rows/cells stay shared (immutable
+      // numbers); only the outer array must be fresh so the symbol tag is private.
       return typeof firstCell === "number"
-        ? withMatrixUnit(value, { dim: u.dim, display: displayId })
+        ? withMatrixUnit((value as unknown[]).slice() as typeof value, { dim: u.dim, display: displayId })
         : value;
     }
     return value.map(one);
