@@ -8,6 +8,7 @@ import { loopMembers } from "../process";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "./composite";
 import { NumberInputNode } from "./input";
 import { ArithmeticNode, MathFnNode } from "./scalar";
+import { ComparisonNode } from "./logic";
 
 function connect(
   editor: NodeEditor<Schemes>,
@@ -496,6 +497,56 @@ describe("CompositeNode Simulation run mode", () => {
     expect(init.simulationSteps).toBe(7);
     const clone = new CompositeNode(init as ConstructorParameters<typeof CompositeNode>[0]);
     expect(clone.simulationSteps).toBe(7);
+  });
+
+  // "Stop when" — a logical OUTPUT port checked after each round halts the loop
+  // early; simulationSteps becomes the cap. The observer (a Comparison reading a
+  // loop node) is NOT itself on the cycle, so it exercises the seed-and-fetch path.
+  async function makePopulationWithStop(cap: number, threshold: number) {
+    const { c, pop, popOutId } = await makePopulationModel(cap);
+    const cmp = new ComparisonNode({ op: "gt" });
+    cmp.literals = { a: 0, b: threshold }; // pop > threshold
+    await c.internalEditor.addNode(cmp as unknown as Schemes["Node"]);
+    await connect(c.internalEditor, pop, "result", cmp, "a");
+    const stopMarker = new CompositeOutputNode({ label: "Reached" });
+    await c.internalEditor.addNode(stopMarker as unknown as Schemes["Node"]);
+    await connect(c.internalEditor, cmp, "result", stopMarker, "value");
+    const stopId = c.addOutputPort({ label: "Reached", tier: "basic", internalNodeId: stopMarker.id });
+    c.stopWhenPortId = stopId;
+    return { c, popOutId, stopId };
+  }
+
+  it("halts the round the stop signal reads true — the series ends there", async () => {
+    // 100 → 110 → 121 → 133.1; the condition (pop > 130) first holds at index 3.
+    const { c, popOutId, stopId } = await makePopulationWithStop(10, 130);
+    const out = await c.data({});
+    const series = out[popOutId] as number[];
+    expect(series).toHaveLength(4);            // stopped at round 3, not the 10 cap
+    expect(series[2]).toBeCloseTo(121, 5);     // last round the condition was false
+    expect(series[3]).toBeCloseTo(133.1, 5);   // the round it went true — recorded
+    expect(out[stopId]).toBe(true);            // the stop output reads true at the end
+  });
+
+  it("runs the full cap when the stop signal never fires", async () => {
+    // Threshold 1000 isn't reached in 3 steps (100/110/121) → cap wins, no early stop.
+    const { c, popOutId } = await makePopulationWithStop(3, 1000);
+    const series = (await c.data({}))[popOutId] as number[];
+    expect(series).toHaveLength(3);
+  });
+
+  it("a missing / cleared stop port runs the full step count (no early stop)", async () => {
+    const { c, popOutId } = await makePopulationWithStop(5, 130);
+    c.stopWhenPortId = ""; // cleared → ignore the condition entirely
+    const series = (await c.data({}))[popOutId] as number[];
+    expect(series).toHaveLength(5);
+  });
+
+  it("stopWhenPortId round-trips through extractInit", async () => {
+    const { c, stopId } = await makePopulationWithStop(10, 130);
+    const init = extractInit(c as unknown as ClassicPreset.Node);
+    expect(init.stopWhenPortId).toBe(stopId);
+    const clone = new CompositeNode(init as ConstructorParameters<typeof CompositeNode>[0]);
+    expect(clone.stopWhenPortId).toBe(stopId);
   });
 });
 
