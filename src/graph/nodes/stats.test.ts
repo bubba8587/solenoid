@@ -258,27 +258,26 @@ describe("INTERPOLATE — Grid mode (fill a bordered table)", () => {
     const t = [[999, 0, 10], [0, 0, 10], [10, 10, 20]];
     expect(fillBorderedGrid(t)[0][0]).toBeNull();
   });
-  it("forecasts past the data by default, clamps when forecast is off", () => {
+  it("forecasts past the data with a linear trend by default, blank when forecast is off", () => {
     //   ·   0   10   20     ← X=20 is past the last known Z column (0,10)
-    //   0   5   15   ·      ← known 5@0, 15@10 (slope 1)
+    //   0   5   15   ·      ← known 5@0, 15@10 (slope 1); 2 collinear points → plane fit
     const t = [[null, 0, 10, 20], [0, 5, 15, null]];
-    // forecast ON (default): continue the trend → 25 at X=20
-    expect(fillBorderedGrid(t)).toEqual([[null, 0, 10, 20], [0, 5, 15, 25]]);
-    // forecast OFF: hold the edge value → 15
-    expect(fillBorderedGrid(t, false)).toEqual([[null, 0, 10, 20], [0, 5, 15, 15]]);
+    expect(fillBorderedGrid(t)[1][3]).toBeCloseTo(25, 3);       // forecast ON: trend → 25
+    expect(fillBorderedGrid(t, false)[1][3]).toBeNull();        // forecast OFF: outside data → blank
   });
-  it("forecasts a blank edge ROW from the two nearest data rows (Ys [2,4,6,8,10], data at 4 & 8)", () => {
+  it("forecasts a blank edge ROW from the trend (Ys [2,4,6,8,10], data at 4 & 8)", () => {
     //   ·   0        row 0 = X coords (one column)
     //   2   ·        Y=2  — below the data, forecast fills it
     //   4   10       Y=4  known
-    //   6   ·        Y=6  — between → interpolate
+    //   6   ·        Y=6  — between → bilinear interpolate
     //   8   30       Y=8  known
     //   10  ·        Y=10 — above the data, forecast fills it
     const t = [[null, 0], [2, null], [4, 10], [6, null], [8, 30], [10, null]];
-    const out = fillBorderedGrid(t).map((r) => r[1]);
-    // line through (4,10),(8,30): slope 5 → Y2=0, Y6=20, Y10=40; forecast OFF would clamp 2→10, 10→30.
-    expect(out).toEqual([0, 0, 10, 20, 30, 40]); // [corner-col=0 header cell, then per row]
-    expect(fillBorderedGrid(t, false).map((r) => r[1])).toEqual([0, 10, 10, 20, 30, 30]);
+    const on = fillBorderedGrid(t).map((r) => r[1]);      // [X header, Y2, Y4, Y6, Y8, Y10]
+    // line through (4,10),(8,30): slope 5 → Y2=0, Y6=20, Y10=40 (forecast).
+    [0, 0, 10, 20, 30, 40].forEach((v, i) => expect(on[i]).toBeCloseTo(v, 2));
+    // forecast OFF: only the bilinear-enclosed Y6 fills; the outside rows stay blank.
+    expect(fillBorderedGrid(t, false).map((r) => r[1])).toEqual([0, null, 10, 20, 30, null]);
   });
   it("leaves a cell no row or column can reach blank", () => {
     const t = [[null, 0], [0, null]]; // one interior cell, nothing known to reach it
@@ -302,20 +301,16 @@ describe("INTERPOLATE — Grid mode (fill a bordered table)", () => {
     ]);
     expect(out[2][2]).toBe(1);
   });
-  it("leaves a cell blank when its four corners aren't all known (interp2 semantics)", () => {
-    // An L of data (top row + left column only): the far corner is missing, so an
-    // interior cell isn't determined by bilinear — left blank, not invented.
+  it("bilinear leaves an unenclosed cell blank; forecast fills it with the spline", () => {
+    // An L of data (top row + left column only): the far corner is missing, so bilinear
+    // can't enclose the interior — with forecast OFF it stays blank; ON, the spline fills.
     //   ·   0   1   2
     //   0   0   1   2
     //   1   1   ·   ·
     //   2   2   ·   ·
-    const out = fillBorderedGrid([
-      [null, 0, 1, 2],
-      [0, 0, 1, 2],
-      [1, 1, null, null],
-      [2, 2, null, null],
-    ]);
-    expect(out[2][2]).toBeNull(); // (x=1,y=1): corner (x=2,y=2) unknown → undetermined
+    const t = [[null, 0, 1, 2], [0, 0, 1, 2], [1, 1, null, null], [2, 2, null, null]];
+    expect(fillBorderedGrid(t, false)[2][2]).toBeNull();          // OFF: undetermined by bilinear
+    expect(Number.isFinite(fillBorderedGrid(t)[2][2] as number)).toBe(true); // ON: spline fills it
   });
 
   // Node wiring — ONE table in, ONE table out.
@@ -348,9 +343,9 @@ describe("INTERPOLATE — Grid mode (fill a bordered table)", () => {
     const n = new InterpolateNode({ mode: "grid" });
     expect(n.forecast).toBe(true);
     const t = [[null, 0, 10, 20], [0, 5, 15, null]]; // slope 1, X=20 past the data
-    expect((n.data({ grid: [t] }).result as (number | null)[][])[1][3]).toBe(25); // forecast → 25
+    expect((n.data({ grid: [t] }).result as (number | null)[][])[1][3]).toBeCloseTo(25, 3); // forecast → trend 25
     n.forecast = false;
-    expect((n.data({ grid: [t] }).result as (number | null)[][])[1][3]).toBe(15); // clamp → 15
+    expect((n.data({ grid: [t] }).result as (number | null)[][])[1][3]).toBeNull(); // OFF → blank
     const n2 = new InterpolateNode(extractInit(n));
     expect(n2.forecast).toBe(false);
   });

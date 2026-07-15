@@ -59,7 +59,7 @@ export function InterpolateComponent({ data, emit }: NodeProps<InterpolateNodeTy
           <div style={{ fontSize: 11, fontStyle: "italic", color: "var(--text-dim)" }}>Bilinear interpolation</div>
           <label
             style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "var(--text)", marginTop: 2, cursor: "pointer" }}
-            title="Also linearly extrapolate cells BEYOND the data range (continue the trend), not just interpolate the interior"
+            title="Fill EVERY remaining blank with a smooth surface (thin-plate spline) fitted through all the known points — the scattered gaps and beyond the data too, not just the bilinear-enclosed interior"
             onPointerDown={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
           >
@@ -68,7 +68,7 @@ export function InterpolateComponent({ data, emit }: NodeProps<InterpolateNodeTy
               checked={forecast}
               onChange={(e) => { setForecast(e.target.checked); data.forecast = e.target.checked; void processGraph(data.id); }}
             />
-            Forecast edges
+            Forecast (fill the rest)
           </label>
         </div>
       )}

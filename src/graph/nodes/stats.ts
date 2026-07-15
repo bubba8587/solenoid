@@ -4,6 +4,7 @@ import { normSInv, regularizedBeta, regularizedGamma, stdNormCDF, lnCombin, bise
 import { solError, isSolError, type SolError } from "../errorValue";
 import { excelRank, excelTrimmean, excelPercentRank } from "../excelFunctions";
 import { forAggregate } from "../valueKinds";
+import { fitSurface, type FitPoint } from "./surfaceFit";
 
 // Pair two parallel sample lists for a bivariate stat (CORREL/COVARIANCE/regression):
 // propagate the first SolError in either list (error-in → error-out), and drop any
@@ -993,14 +994,14 @@ export function interpolateLinear(xs: number[], ys: number[], queryXs: number[])
 // bracket WIDENS past any line whose corner is blank, so a hole interpolates across it
 // from the neighbouring data lines — the closest four-corner box with all corners known
 // is used. Clamped at the coarse edges (a lookup table doesn't extrapolate). A cell that
-// no four known corners enclose (a genuinely incomplete grid) stays blank — honest,
-// matching interp2's NaN.
+// no four known corners ENCLOSE (the query outside every known-corner box) is left for
+// the forecast pass.
 //
-// `forecast` (default true) controls the EDGE behaviour: with it on, a cell BEYOND the
-// known data range is linearly EXTRAPOLATED from the two nearest data lines (the trend
-// continues — so Ys [2,4,6,8,10] with data at 4 & 8 fill 2 and 10, not just 6); with it
-// off, the edge value is held flat (clamped). Extrapolation needs ≥2 data lines on that
-// axis; with only one it falls back to clamp either way.
+// `forecast` (default true): after the bilinear pass, every still-blank cell is filled
+// by a smooth surface fitted through ALL the known points — a thin-plate spline, or a
+// plane for degenerate data (`surfaceFit.ts`). That fills the scattered gaps and
+// extrapolates past the data (a linear trend at the edges). With forecast OFF, only the
+// bilinear-enclosed cells fill; the rest stay blank.
 export function fillBorderedGrid(table: (number | null)[][], forecast = true): (number | null)[][] {
   const R = table.length;
   const C = R > 0 ? Math.max(...table.map((r) => r.length)) : 0;
@@ -1026,27 +1027,28 @@ export function fillBorderedGrid(table: (number | null)[][], forecast = true): (
   const coarseRows: number[] = [];
   for (let i = 0; i < Ri; i++) if (!Number.isNaN(rowYs[i]) && Z[i].some((v) => v != null)) coarseRows.push(i);
 
-  // Candidate lines bracketing a query coordinate: those at-or-below (nearest first) and
-  // at-or-above (nearest first). Past the last data line, the empty side borrows from the
-  // other: the 2nd-nearest when forecasting (so the bracket spans two real lines and `t`
-  // runs beyond [0,1] → linear extrapolation), else the nearest (t clamps → hold flat).
-  const sides = (lines: number[], coordOf: (k: number) => number, q: number): [number[], number[]] => {
+  // Data lines bracketing a query on an axis: those at-or-below (nearest first) and
+  // at-or-above (nearest first). Returns null when the query sits past the data on that
+  // axis (one side empty) — the cell can't be ENCLOSED, so it's left for the forecast.
+  const sides = (lines: number[], coordOf: (k: number) => number, q: number): [number[], number[]] | null => {
     const lo = lines.filter((k) => coordOf(k) <= q).sort((a, b) => coordOf(b) - coordOf(a));
     const hi = lines.filter((k) => coordOf(k) >= q).sort((a, b) => coordOf(a) - coordOf(b));
-    if (lo.length === 0) return [forecast && hi.length >= 2 ? [hi[1]] : [hi[0]], hi]; // below range
-    if (hi.length === 0) return [lo, forecast && lo.length >= 2 ? [lo[1]] : [lo[0]]]; // above range
+    if (lo.length === 0 || hi.length === 0) return null;
     return [lo, hi];
   };
 
+  // ── Pass 1 — bilinear interpolation for cells ENCLOSED by known data. ──
   for (let i = 0; i < Ri; i++) for (let j = 0; j < Ci; j++) {
-    if (Z[i][j] != null) { out[i + 1][j + 1] = Z[i][j]; continue; }       // known passes through
+    if (Z[i][j] != null) { out[i + 1][j + 1] = Z[i][j]; continue; } // known passes through
     const qx = colXs[j], qy = rowYs[i];
-    if (Number.isNaN(qx) || Number.isNaN(qy)) { out[i + 1][j + 1] = null; continue; } // unlabelled line
-    const [rLoC, rHiC] = sides(coarseRows, (k) => rowYs[k], qy);
-    const [cLoC, cHiC] = sides(coarseCols, (k) => colXs[k], qx);
+    if (Number.isNaN(qx) || Number.isNaN(qy)) continue; // unlabelled line → stays blank
+    const rs = sides(coarseRows, (k) => rowYs[k], qy);
+    const cs = sides(coarseCols, (k) => colXs[k], qx);
+    if (!rs || !cs) continue; // not enclosable → leave for the forecast pass
+    const [rLoC, rHiC] = rs, [cLoC, cHiC] = cs;
     // Nearest-first search for the closest box whose four corners are all known; widening
-    // past blank corners (a hole) is what lets it interpolate across missing samples.
-    let filled: number | null = null;
+    // past blank corners (a hole) is what lets it interpolate across missing samples. The
+    // query is always inside the box (lo ≤ q ≤ hi), so this is pure interpolation.
     search:
     for (const rLo of rLoC) for (const rHi of rHiC) for (const cLo of cLoC) for (const cHi of cHiC) {
       const z00 = Z[rLo][cLo], z01 = Z[rLo][cHi], z10 = Z[rHi][cLo], z11 = Z[rHi][cHi];
@@ -1056,10 +1058,25 @@ export function fillBorderedGrid(table: (number | null)[][], forecast = true): (
       const ty = y1 === y0 ? 0 : (qy - y0) / (y1 - y0);
       const top = z00 + tx * (z01 - z00);
       const bot = z10 + tx * (z11 - z10);
-      filled = top + ty * (bot - top);
+      out[i + 1][j + 1] = top + ty * (bot - top);
       break search;
     }
-    out[i + 1][j + 1] = filled;
+  }
+
+  // ── Pass 2 — Forecast: fill every cell pass 1 left blank with a smooth surface fitted
+  // through ALL the known points (thin-plate spline, or a plane for degenerate data). ──
+  if (forecast) {
+    const pts: FitPoint[] = [];
+    for (let i = 0; i < Ri; i++) for (let j = 0; j < Ci; j++) {
+      const v = Z[i][j];
+      if (v != null && !Number.isNaN(colXs[j]) && !Number.isNaN(rowYs[i])) pts.push({ x: colXs[j], y: rowYs[i], z: v });
+    }
+    const f = fitSurface(pts);
+    if (f) for (let i = 0; i < Ri; i++) for (let j = 0; j < Ci; j++) {
+      if (out[i + 1][j + 1] != null || Number.isNaN(colXs[j]) || Number.isNaN(rowYs[i])) continue;
+      const v = f(colXs[j], rowYs[i]);
+      if (Number.isFinite(v)) out[i + 1][j + 1] = v;
+    }
   }
   return out;
 }

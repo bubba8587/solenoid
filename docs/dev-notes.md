@@ -112,9 +112,20 @@ pass then skipped it); (2) averaging the row + column 1-D estimates was an ad-ho
 over-smoothed and isn't a real method. The shipped version: the KNOWN cells define a coarse grid; each
 blank is the bilinear blend of the four surrounding known corners, bracketing its X among the data
 columns and Y among the data rows, and **widening the bracket past a blank corner** so a hole
-interpolates ACROSS it. Clamped at the coarse edges (no extrapolation); a cell that no four known corners
-enclose (a genuinely incomplete/L-shaped grid) stays blank — honest, matching interp2's NaN. Per-cell
-error/NaN reads as a blank to fill; whole-grid error propagates. Verified: Z=x+y upsample exact, x·y hole
+interpolates ACROSS it. A cell that no four known corners enclose (a genuinely incomplete/L-shaped grid)
+stays blank — honest, matching interp2's NaN. Per-cell error/NaN reads as a blank to fill; whole-grid
+error propagates. **Forecast option (`InterpolateNode.forecast`, checkbox, ON by default — author):** a
+TWO-PASS fill. Pass 1 = bilinear, but ONLY for cells ENCLOSED by known data (`sides()` returns null when
+the query is past the data on an axis — no clamp/extrapolation there). Pass 2 (forecast only) = fit a
+smooth surface through ALL known points and fill every still-blank cell — a **thin-plate spline**
+(`surfaceFit.ts` `fitSurface`: passes through every point exactly, extrapolates a linear trend at the
+edges), falling back to a ridge-regularised least-squares **plane** for degenerate data (<3 points or
+collinear, where the TPS system is singular). So forecast fills the scattered gaps AND beyond the data;
+OFF leaves them blank. Author's scattered 11-point test grid (data in every row/col so no global edge)
+was the driver — the earlier linear-edge-extrapolation forecast did nothing there because nothing was
+past the global extent. `surfaceFit` = a small Gauss–Jordan solve + the TPS kernel r²·log r, capped at
+~220 points. Persists via the `"forecast"` whitelist entry. `surfaceFit.test.ts` pins interpolation +
+planar-reproduction + collinear fallback. Verified: Z=x+y upsample exact, x·y hole
 interpolated across = 1, edge clamp, incomplete-grid honest blanks. The mode dropdown reconciles the socket set (`_rebuildSockets`
 + `applyInterpolateMode` drop-cables-then-rebuild, the `applyEquationChange` pattern — the two modes are
 different ops); `mode` persists via the existing init whitelist. Pure core `fillBorderedGrid` (replaced
