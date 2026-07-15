@@ -51,12 +51,7 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
   `TablePopup.tsx`'s fmt row only renders for `type === "date"` / `"number"` (text falls through
   to `null`). Needs a design call: what does "format" even mean for text (case? padding?) — units
   presumably N/A for text. Surface to the author before building blind.
-- **Quick fix:** the Source toggle shouldn't hide the +Row/−Row/+Col/−Col buttons in table/frame
-  popups. Confirmed in code: `TablePopup.tsx`'s dim-controls row is gated
-  `editable && view === "grid" && !formattedPreview` (~line 708) — flipping to Formatted preview
-  (`formattedPreview = literalSource && displayMode === "formatted"`) hides them for no reason
-  tied to editability. Drop the `!formattedPreview` clause (or whatever the real gate should be).
-- **Redesign (bigger, separate from the quick fix):** move the add-row/add-column buttons OFF the
+- **Redesign (the quick-fix half of this LANDED — see Agent 3's claim below):** move the add-row/add-column buttons OFF the
   toolbar and ONTO the grid itself — e.g. a trailing "+" row below the last row / "+" column right
   of the last column (Sheets/Airtable-style), instead of a detached `+Row −Row +Col −Col` button
   cluster. Author wants this "really" done, not just the toggle bug fixed — treat as a UX pass on
@@ -71,27 +66,34 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
   stale date format and vice versa) at render (`controlledCell` + `FrameDisplay`) and at seed.
   tsc clean, 2793 green. Two queue items cleared.
 
-- **S1 — Agent 1 (Lead) — LANDED** (`3d049ca6`, push held). Per-column frame format persists
-  (`frameFormatStore` + persistence + textForm sidecar; popup writes/seeds; FrameDisplay reads).
-  tsc clean, 2791 green. Follow-up left: Report embeds (`inlineRefDisplay`) don't key off the
-  referenced frame node's id yet. **Agent 1 taking S3 next.**
+- **S1 — Agent 1 (Lead) — DONE** (`3d049ca6` + `e46baf51`, push held). Per-column frame format
+  persists (`frameFormatStore` + persistence + textForm sidecar; popup writes/seeds; FrameDisplay
+  reads). Report/Note embeds now key off the referenced frame's SOURCE node (`FrameDisplay`
+  `formatNodeId` prop, threaded through `inlineRefDisplay`). S1 fully closed.
 - **S3 — Agent 1 (Lead) — FOUNDATION LANDED** (`0e5e5ae1`, push held). Representation DECIDED:
   symbol-tagged `ColumnUnit` on the matrix array (`unitValue.ts` `matrixUnitOf`/`withMatrixUnit`/
   `carryMatrixUnit`); `applyFcUnit` tags a numeric matrix. Tests pin it. tsc clean, 2793 green.
   Representation recorded in `decisions.md` D20. REMAINING threading (a units-capable agent CAN
   take pieces — coordinate here to avoid `matrix.ts`/`TablePopup` collisions with Agent 1):
   (a) widening edge (uniform tagged list → matrix carries; mixed strips) — `coerce.ts`/`coerceInputs`;
-  (b) op rules in `matrix.ts` (element-wise scalar-algebra on the tag, MMULT mul dims, transpose/
-  reshape/TAKE/DROP carry, MDETERM/MINVERSE strip); (c) Table Input taggable-unit UI (node field +
-  popup unit dropdown made taggable for a matrix + derive `withMatrixUnit`); (d) chip/popup DISPLAY
-  the unit; (e) `unitLattice` sweep. **Clean milestone reached — handing (a)–(e) OFF** (units-capable
-  agent or A1 next session). For (c): the whitelist already has `"unit"`, so a Table Input `unit`
-  field persists via `INIT_FIELD_ORDER` — but confirm the constructor init accepts it on load; the
-  popup matrix bar already renders a unit dropdown gated on `unitTaggable`, needs an `onSaveMatrixUnit`
-  callback on `TablePopupState`. **Git hygiene ack (re Agent 2):** my bad — will stage explicit paths,
-  never `-A`, in this parallel session. **Queue item 2 (type-switch stale format) TOUCHES S1:**
-  `frameFormatStore` keys by column NAME, so a number→date type change leaves a stale numeric format;
-  fix = clear the store entry (or reset to the type default) when a column/table type flips.
+  (b) op rules in `matrix.ts`; (c) Table Input taggable-unit UI; (d) chip/popup DISPLAY the unit;
+  (e) `unitLattice` sweep.
+  **Progress this session (Agent 1, push held):**
+  - **🚨 Agent 3's mutation flag FIXED** (`0acdb709`): `applyFcUnit`'s matrix branch now tags a
+    COPY of the outer array (`(value).slice()`), never the shared cached ref. Test updated
+    (`not.toBe(matrix)` + source-stays-untagged). RESOLVED — safe to thread on top.
+  - **(d) DISPLAY DONE** (`e9af4b05`): `ArrayChip` appends the unit to the chip label + passes it as
+    `columnUnits[0]`; popup matrix bar shows a static unit label (read-only) / the dropdown (taggable);
+    `colHeaderLabel` guards matrix mode.
+  - **(b) PARTIAL DONE** (`ce9e045e`): the unambiguous matrix→matrix structural reshapes carry the
+    tag — TRANSPOSE, CHOOSEROWS/CHOOSECOLS, TAKE/DROP (table), EXPAND (via `carryMatrixUnit`, no-op
+    when untagged). Tested in `matrixReshape.test.ts`.
+  **(b) REMAINING:** element-wise scalar-algebra on the tag, MMULT mul dims, MDETERM/MINVERSE strip;
+  rank-changing TOCOL/TOROW + WRAPROWS/WRAPCOLS belong with (a) the list↔matrix widening edge (they
+  cross rank — a matrix tag must convert to per-cell list units, or vice versa — not a plain carry).
+  **(c) Table Input UI:** whitelist has `"unit"`; popup matrix bar renders a unit dropdown gated on
+  `unitTaggable`, needs an `onSaveMatrixUnit` callback on `TablePopupState` + the node `unit` field.
+  A1 continues with (a)+(c) next.
 - **S2 — PARKED** (combine Build Frame + Frame Input) — needs the author's toggle-UX call before
   build; don't start blind. Design context is in the Streams section above.
 - **Agent 2 — LANDED** (SVG Picker rasterize-for-display). ⚠️ **NB Lead:** my
@@ -112,8 +114,8 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
 - **Agent 3 — LANDED** (`faa2c528`, push held). Unmount collapsed viz nodes' live figures:
   Chart/Histogram/Sankey/Treemap now gate their figure on `!collapsed` (Treemap/Sankey gained
   `collapseStore` subscriptions to do it). tsc clean, 2791 green.
-- **Agent 3 — eyeballed this session's changes for bugs, found one real one — 🚨 for A1/S3
-  before threading further:** `applyFcUnit`'s matrix branch (`unitBridge.ts:134`) calls
+- **Agent 3 — eyeballed this session's changes for bugs, found one real one — ✅ FIXED by A1
+  in `0acdb709` (tags a copy now; see the S3 claim):** `applyFcUnit`'s matrix branch (`unitBridge.ts:134`) calls
   `withMatrixUnit(value, …)`, which tags the array IN PLACE and returns the same reference
   (deliberate per the `unitValue.test.ts` `toBe(matrix)` assertion). But `value` here is NOT a
   private copy — `rete-engine`'s `DataflowEngine` caches each node's output in a plain `Map` and
@@ -137,4 +139,10 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
   inside the grid's `.table-popup__fmtcell`) — the FC node's own dropdowns were never inside
   `.sol-popup` so they were unaffected, which is why the author saw it fine there but mono in
   the popup. Fix: qualified the selector `.table-popup .table-popup__fmtselect` to win on
-  specificity. tsc clean, 2797 green. Standing by for the commit queue / next task.
+  specificity. tsc clean, 2797 green.
+- **Agent 3 — LANDED** (`a3e25e5c`, push held, author pre-approved). Source toggle no longer
+  hides +Row/−Row/+Col/−Col in table/frame popups: the dim-controls row was gated
+  `editable && view === "grid" && !formattedPreview`; dropped `!formattedPreview` since the
+  buttons mutate the underlying `grid` truth regardless of which view is on screen. The bigger
+  redesign (move the buttons onto the grid itself) stays queued above, unclaimed. tsc clean,
+  2799 green. Standing by for the commit queue / next task.
