@@ -183,16 +183,6 @@ this backlog stays the per-item source of truth.
   lookup code paths (frame + cube) could collapse to one. A behaviour-touching refactor of a
   seed/test-covered node; only if it pulls weight. Cube VERBS that build columns from scratch
   (`cubeFromColumns`/rollup) leave `type` undefined by design (heterogeneous).
-- [ ] **MODE.SNGL tie-break disagrees across surfaces** (found 2026-07-10 audit) — the
-  standalone `ModeNode` (`stats.ts`) breaks ties by the SMALLEST modal value
-  (`iterMin`, deliberately — `stats.test.ts` "returns the smallest among equally
-  frequent values"), but the engine's `modeOf` (`frameVerbs.ts`, used by Group By +
-  Cube Rollup) breaks ties by FIRST occurrence, documented as Excel MODE.SNGL. So the
-  same data gives different "MODE.SNGL" answers (`[5,5,2,2,9]` → ModeNode 2 vs Group By
-  5; Excel = 5), and ModeNode is the non-Excel one. `ModMultNode` sorts modes ascending
-  too. Author call: align ModeNode to first-occurrence (Excel + engine), or keep the
-  deliberate smallest-tie policy and drop the Excel-parity claim. Not changed
-  autonomously — it's a tested, deliberate choice.
 - [ ] **Error UX on restriction violation** — typed error out the socket vs the node
   flagging the offending input locally. Pending a call.
 - [ ] **Formula re-audit remainder** — `formulaDivergence.test.ts` guards the known
