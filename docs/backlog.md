@@ -255,10 +255,6 @@ this backlog stays the per-item source of truth.
   archived perf notes, never attempted): skips style/layout/paint for offscreen nodes
   without touching DOM count or visuals. Risks to check: rete's socket measurement
   (`offsetTop` queries force layout), minimap/fit reading sizes, the GPU clone capture.
-- [ ] **Unmount collapsed viz nodes' live figures** (small, same pattern as the shipped
-  Sparkline/Gauge single-mount): Chart/Histogram/Sankey/Treemap keep their full recharts
-  tree mounted while collapsed (CSS-hidden); render it `{!collapsed && …}` off
-  `collapseStore`. Only pays off on docs that keep collapsed charts around.
 - [ ] **Cable collision avoidance** — DEFERRED for later (author 2026-07-05).
   Spec: `archive/cable-routing.md` §2 (avoid nodes; parallel runs + bridge hops;
   per-cable overrides).
