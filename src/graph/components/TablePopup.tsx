@@ -7,12 +7,12 @@ import { parseCsvRows } from "../csv";
 import { isSolError } from "../errorValue";
 import { formatDateSerial, parseDateToSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
 import { coerceFrameCell, formatFrameCell, type FrameSourceColumn } from "../frame";
-import { formatNumberWithAnnotation, isDateStyle, type FormatAnnotation, type FormatStyleId } from "../formatAnnotationStore";
+import { formatNumberWithAnnotation, isDateStyle, applyLogicalStyle, type FormatAnnotation, type FormatStyleId } from "../formatAnnotationStore";
 import { isUnitCell } from "../unitValue";
 import { columnUnitLabel } from "../unitColumn";
 import { frameFormatStore } from "../frameFormatStore";
 import { formatListCell } from "./valueDisplayFormat";
-import { FormatStyleSelect, DateStyleSelect, UnitSelect } from "./fcControls";
+import { FormatStyleSelect, DateStyleSelect, UnitSelect, LogicalStyleSelect } from "./fcControls";
 import { PopupShell } from "./PopupShell";
 import { PopupOverflowMenu } from "./PopupOverflowMenu";
 import { saveCsvFileDialog } from "../fileBridge";
@@ -180,7 +180,12 @@ export function TablePopup() {
     const fmtNodeId = state.pinNodeId;
     const seedFormat = (colName: string | undefined, dflt: FormatAnnotation): FormatAnnotation => {
       const saved = fmtNodeId && colName ? frameFormatStore.get(fmtNodeId, colName) : undefined;
-      return saved ? { ...saved, unit: dflt.unit } : dflt;
+      if (!saved) return dflt;
+      // A saved format that's cross-type (a date style stuck on a now-number column,
+      // or vice versa, after a type switch) resets to the type default so the dropdown
+      // isn't stuck on a mismatched value; other fields carry over.
+      const fmt = isDateStyle(saved.format) === isDateStyle(dflt.format) ? saved.format : dflt.format;
+      return { ...saved, format: fmt, unit: dflt.unit };
     };
     if (state.formatControls === "matrix") {
       // A matrix has no column names — one whole-sheet format under a fixed key.
@@ -301,12 +306,12 @@ export function TablePopup() {
   // it survives close/reopen and save. Falls back to local-only when there's no host
   // node. The UNIT dropdown does NOT go here — a column's unit is its value's, saved
   // on the source column.
-  function onFormatChange(c: number, format: FormatStyleId) {
+  function persistColFmt(c: number, patch: Partial<FormatAnnotation>) {
     const idx = state?.formatControls === "matrix" ? 0 : c;
-    setColFmtAt(idx, { format });
+    setColFmtAt(idx, patch);
     const nodeId = state?.pinNodeId;
     const col = colFmtKey(c);
-    if (nodeId && col) frameFormatStore.set(nodeId, col, { ...annFor(c), format, unit: "none" });
+    if (nodeId && col) frameFormatStore.set(nodeId, col, { ...annFor(c), ...patch, unit: "none" });
   }
   // Render one cell through its column's format + unit (base-SI → display unit when
   // commensurable; the unit symbol lives in the dropdown/header, not the cell). The
@@ -315,9 +320,15 @@ export function TablePopup() {
   function controlledCell(raw: CellValue, c: number): string {
     if (raw === null || raw === undefined || raw === "") return "";
     if (isSolError(raw)) return raw.code;
-    if (typeof raw === "boolean") return raw ? "TRUE" : "FALSE";
     const type = colTypeAt(c);
     const ann = annFor(c);
+    // Logical column: the cell may be a real boolean, or "TRUE"/"FALSE"/"1"/"0" text
+    // (a frame grid pre-stringifies; a raw source keeps the typed text). Coerce, then
+    // render via the chosen show-as style (TRUE/FALSE · 1/0 · Yes/No · ✓/✗).
+    if (type === "logical" || typeof raw === "boolean") {
+      const b = typeof raw === "boolean" ? raw : coerceFrameCell("logical", String(raw));
+      return typeof b === "boolean" ? applyLogicalStyle(b, ann.logicalStyle) : String(raw);
+    }
     // Editable source: the cell is raw text — coerce to its typed value first.
     const v: CellValue = typeof raw === "string" && (type === "number" || type === "date")
       ? (coerceFrameCell(type, raw) as CellValue)
@@ -330,8 +341,11 @@ export function TablePopup() {
     if (typeof v === "number" && type === "number") {
       // A frame column stores the AS-TYPED magnitude (5 for a km column) — the value
       // is already in its display unit, so just apply the number format (no unit
-      // conversion; the unit is shown in the header / dropdown, not the cell).
-      return formatNumberWithAnnotation(v, { ...ann, unit: "none" });
+      // conversion; the unit is shown in the header / dropdown, not the cell). A stale
+      // DATE format left over from a type switch (number→date→number) must not turn a
+      // number into a date — ignore it.
+      const fmt: FormatStyleId = isDateStyle(ann.format) ? "auto" : ann.format;
+      return formatNumberWithAnnotation(v, { ...ann, format: fmt, unit: "none" });
     }
     return String(v);
   }
@@ -522,8 +536,14 @@ export function TablePopup() {
         // whole sheet, so it sits ABOVE the grid (between the popup header and the
         // table), not inside it as a column row.
         <div className="table-popup__matrix-fmt">
-          <FormatStyleSelect className="table-popup__fmtselect" value={annFor(0).format} onChange={(f) => setColFmtAt(0, { format: f })} />
-          {state.unitTaggable && (
+          {cellType === "logical" ? (
+            <LogicalStyleSelect className="table-popup__fmtselect" value={annFor(0).logicalStyle} onChange={(s) => persistColFmt(0, { logicalStyle: s })} />
+          ) : cellType === "date" ? (
+            <DateStyleSelect className="table-popup__fmtselect" value={annFor(0).format} onChange={(f) => persistColFmt(0, { format: f })} />
+          ) : (
+            <FormatStyleSelect className="table-popup__fmtselect" value={annFor(0).format} onChange={(f) => persistColFmt(0, { format: f })} />
+          )}
+          {state.unitTaggable && cellType === "number" && (
             <UnitSelect className="table-popup__fmtselect" value={annFor(0).unit} onChange={(u) => setColFmtAt(0, { unit: u })} />
           )}
         </div>
@@ -577,10 +597,12 @@ export function TablePopup() {
                     return (
                       <td key={c} className="table-popup__fmtcell">
                         {type === "date" ? (
-                          <DateStyleSelect className="table-popup__fmtselect" value={annFor(c).format} onChange={(f) => onFormatChange(c, f)} />
+                          <DateStyleSelect className="table-popup__fmtselect" value={annFor(c).format} onChange={(f) => persistColFmt(c, { format: f })} />
+                        ) : type === "logical" ? (
+                          <LogicalStyleSelect className="table-popup__fmtselect" value={annFor(c).logicalStyle} onChange={(s) => persistColFmt(c, { logicalStyle: s })} />
                         ) : type === "number" ? (
                           <div className="table-popup__fmtstack">
-                            <FormatStyleSelect className="table-popup__fmtselect" value={annFor(c).format} onChange={(f) => onFormatChange(c, f)} />
+                            <FormatStyleSelect className="table-popup__fmtselect" value={annFor(c).format} onChange={(f) => persistColFmt(c, { format: f })} />
                             {state.unitTaggable && (
                               <UnitSelect className="table-popup__fmtselect" value={annFor(c).unit} onChange={(u) => setColFmtAt(c, { unit: u })} />
                             )}

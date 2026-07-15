@@ -13,7 +13,7 @@
 import { useMemo, useSyncExternalStore } from "react";
 import {
   FORMAT_STYLE_LABELS, FORMAT_STYLE_GROUPS, DATE_FORMAT_STYLES, UNIT_ANNOTATIONS,
-  unitGroupLabel, type FormatStyleId,
+  LOGICAL_STYLE_LABELS, unitGroupLabel, type FormatStyleId, type LogicalStyle,
 } from "../formatAnnotationStore";
 import { packsStore } from "../packs";
 import { activePackUnits, activePackFormats } from "../fcExtensions";
@@ -161,6 +161,28 @@ export function DateStyleSelect({ value, onChange, className, title }: {
         <option key={s} value={s}>
           {s === "date_custom" ? "Custom…" : FORMAT_STYLE_LABELS[s]}
         </option>
+      ))}
+    </LazySelect>
+  );
+}
+
+/** A logical show-as <select> matching the FC's logical socket (TRUE/FALSE · 1/0 ·
+ *  Yes/No · ✓/✗). */
+export function LogicalStyleSelect({ value, onChange, className, title }: {
+  value: LogicalStyle | undefined;
+  onChange: (v: LogicalStyle) => void;
+  className?: string;
+  title?: string;
+}) {
+  return (
+    <LazySelect
+      className={className}
+      value={value ?? "truefalse"}
+      title={title ?? "How TRUE/FALSE renders"}
+      onChange={(e) => onChange(e.target.value as LogicalStyle)}
+    >
+      {Object.entries(LOGICAL_STYLE_LABELS).map(([id, label]) => (
+        <option key={id} value={id}>{label}</option>
       ))}
     </LazySelect>
   );
