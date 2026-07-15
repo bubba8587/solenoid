@@ -181,6 +181,10 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [AngleDialNode,   comp(AngleDialComponent)],
   [SlicerNode,      comp(SlicerComponent)],
   [CableSwitchNode, comp(CableSwitchComponent)],
+  // ImportObsidianNode EXTENDS NoteNode, and component lookup is `instanceof`
+  // first-match (areaPresets.ts) — so the subclass MUST precede its base here, or
+  // an Imported Note resolves to the plain NoteComponent.
+  [ImportObsidianNode, comp(ImportObsidianComponent)],
   [NoteNode,        comp(NoteComponent)],
   [ReportNode,      comp(ReportComponent)],
   [SessionHistoryNode, comp(SessionHistoryComponent)],
@@ -410,7 +414,6 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [WriteCsvNode,          comp(WriteCsvComponent)],
   [WriteJsonNode,         comp(WriteJsonComponent)],
   [WriteObsidianNode,     comp(WriteObsidianComponent)],
-  [ImportObsidianNode,    comp(ImportObsidianComponent)],
   [BuildFrameNode,        comp(BuildFrameComponent)],
   [SplitFrameNode,        comp(SplitFrameComponent)],
   [GetColumnNode,         comp(GetColumnComponent)],
