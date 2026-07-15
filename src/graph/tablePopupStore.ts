@@ -86,6 +86,11 @@ export interface TablePopupState {
    *  drives the base-SI → display-unit conversion. Aligned with `headers`; a
    *  column with no unit is `undefined`. */
   columnUnits?: (ColumnUnit | undefined)[];
+  /** The frame is a UNIT-TAGGABLE source (Frame Input): the controls row shows a
+   *  per-column UNIT dropdown (instead of the display-only format dropdown) whose
+   *  choice is written back on Save — via the source column's `unit`, so it rides
+   *  the value downstream. Derived frames leave this off (format-only, display). */
+  unitTaggable?: boolean;
   /** Host node id, when opened from a node body — enables the header Pin action
    *  (pin this value to the HUD). Absent for HUD/group-readout chips, which have
    *  no single host node to pin. */

@@ -1,9 +1,34 @@
 import { describe, it, expect } from "vitest";
 import { buildFrame, addColumn } from "./frame";
-import { parseColumnUnitFromHeader, columnUnitLabel, columnDisplayValue } from "./unitColumn";
+import { parseColumnUnitFromHeader, columnUnitLabel, columnDisplayValue, tagFrameCellUnit } from "./unitColumn";
+import { displayMagnitudeOf } from "./unitBridge";
 import { GetColumnNode } from "./nodes/frame";
 import { AggregateNode } from "./nodes/list";
 import { isUnitCell, magnitudeOf, unitLabelOf, type UnitCell } from "./unitValue";
+
+describe("tagFrameCellUnit — the as-typed frame cell → base-SI UnitCell carrying the display id", () => {
+  it("currency carries the display id (the $-blank bug): $5 stays $5, not a blank unit", () => {
+    const cu = parseColumnUnitFromHeader("Revenue ($)").unit!;
+    const tagged = tagFrameCellUnit(5, cu) as UnitCell;
+    expect(isUnitCell(tagged)).toBe(true);
+    expect(tagged.display).toBe("usd");
+    expect(magnitudeOf(tagged)).toBe(5);           // scale 1 — base == as-typed
+    expect(displayMagnitudeOf(tagged)).toBe(5);
+  });
+  it("a scaled unit normalises to base SI but reads back in the display unit: 5 km", () => {
+    const cu = parseColumnUnitFromHeader("Distance (km)").unit!;
+    const tagged = tagFrameCellUnit(5, cu) as UnitCell;
+    expect(magnitudeOf(tagged)).toBe(5000);        // base SI (metres)
+    expect(tagged.display).toBe("km");
+    expect(displayMagnitudeOf(tagged)).toBe(5);    // reads back as 5 km
+  });
+  it("passes non-numeric cells through untouched", () => {
+    const cu = parseColumnUnitFromHeader("Distance (km)").unit!;
+    expect(tagFrameCellUnit(null, cu)).toBe(null);
+    expect(tagFrameCellUnit("x", cu)).toBe("x");
+    expect(tagFrameCellUnit(NaN, cu)).toBeNaN();
+  });
+});
 
 describe("parseColumnUnitFromHeader", () => {
   it("strips a `Name (unit)` spec and locks the column", () => {

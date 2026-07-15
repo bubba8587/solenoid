@@ -107,11 +107,13 @@ export function FrameChip({ value, label, size = "md", accent, onSave, source, o
             ? undefined
             : Array.from({ length: frameRowCount(full) }, (_, r) => full.columns.map((c) => c.raw?.[r] ?? null)),
           cellType: "number",
-          // Read-only frame: a per-column format+unit controls row (display only).
-          // The literal-source EDITOR (Frame Input) skips it — you're editing raw
-          // text, not viewing a computed frame.
-          formatControls: isSource || onSave ? undefined : "columns",
-          columnUnits: isSource ? undefined : full.columns.map((c) => c.unit),
+          // A per-column controls row. A UNIT-TAGGABLE source (Frame Input, literal
+          // source) shows the unit dropdown, persisted on Save; a read-only derived
+          // frame shows the display-only format dropdown. Seeded from the current
+          // column units (the derived frame carries them either way).
+          formatControls: "columns",
+          columnUnits: full.columns.map((c) => c.unit),
+          unitTaggable: isSource,
           editableHeaders: isSource || !!onSave,
           literalSource: isSource,
           onSaveSource: isSource ? onSaveSource : undefined,

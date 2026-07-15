@@ -6,7 +6,7 @@
 // between the value-layer `ColumnUnit` (unitValue.ts) and the FC unit ids
 // (unitBridge.ts). Pure — no React/Rete.
 
-import { type ColumnUnit } from "./unitValue";
+import { type ColumnUnit, fromUnit, tagDim } from "./unitValue";
 import { fcUnitToUnit } from "./unitBridge";
 import { type Unit, formatDim } from "./dimension";
 
@@ -61,6 +61,23 @@ export function columnUnitLabel(cu: ColumnUnit): string {
     if (u) return cu.display;
   }
   return formatDim(cu.dim);
+}
+
+/**
+ * Tag a frame cell — the AS-TYPED magnitude the user sees (5 for a `km` column,
+ * 5 for a `$` column) — as a base-SI `UnitCell` carrying the column's unit +
+ * display id, so the unit rides correctly OUT of the frame into a list / scalar
+ * (Get Column, INDEX). `fromUnit` interprets the stored value AS the column's
+ * display unit and normalises to base SI (`5 km` → 5000 m, display "km"; `$5` →
+ * 5, display "usd") — the currency case is why the display id must be carried:
+ * currency collapses to one axis, so its identity IS the id ("$" vs "€"). A
+ * non-numeric cell (null / error / text) passes through untouched; a column whose
+ * display id doesn't resolve falls back to a base-SI dim tag.
+ */
+export function tagFrameCellUnit(v: unknown, cu: ColumnUnit): unknown {
+  if (typeof v !== "number" || !Number.isFinite(v)) return v;
+  const u = cu.display ? fcUnitToUnit(cu.display) : null;
+  return u ? fromUnit(v, u, cu.display) : tagDim(v, cu.dim);
 }
 
 /** Convert a column's stored base-SI magnitude to its display unit (for rendering a

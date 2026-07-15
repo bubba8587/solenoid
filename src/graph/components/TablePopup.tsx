@@ -11,6 +11,7 @@ import { formatNumberWithAnnotation, isDateStyle, type FormatAnnotation, type Fo
 import { fcUnitToUnit } from "../unitBridge";
 import { dimEqual, isDimensionless } from "../dimension";
 import { isUnitCell } from "../unitValue";
+import { columnUnitLabel } from "../unitColumn";
 import { formatListCell } from "./valueDisplayFormat";
 import { FormatStyleSelect, DateStyleSelect, UnitSelect } from "./fcControls";
 import { PopupShell } from "./PopupShell";
@@ -186,9 +187,11 @@ export function TablePopup() {
       setColFmt([]);
     }
     setView("grid");
-    // A literal-source editor opens in SOURCE so you can edit raw text immediately;
-    // a read-only view opens FORMATTED (nice dates).
-    setDisplayMode(state.onSaveSource || state.onSaveRaw ? "source" : "formatted");
+    // Everything opens FORMATTED (Source toggle off) — you see the derived render
+    // (formatted numbers/dates, applied units) first; flip Source on to edit the raw
+    // text. The format dropdown stays visible in both modes; Source just stops it
+    // from RENDERING (you're looking at raw text).
+    setDisplayMode("formatted");
   }, [state]);
 
   if (!state) return null;
@@ -253,10 +256,25 @@ export function TablePopup() {
   // ON-SCREEN grid only — it converts a column's base-SI values into the chosen
   // unit and applies the number format. `displayGrid` / Copy / CSV stay the raw
   // value (display-only, like the list Row/Column toggle).
-  const formatControlsActive = !!state.formatControls && !editable && view === "grid" && !state.list;
+  // The format+unit controls row shows on any frame/matrix popup — read-only
+  // derived (format, display-only) and editable sources alike (Frame Input, Table
+  // Input; a taggable source also gets the unit dropdown).
+  const showFmtControls = !!state.formatControls && view === "grid" && !state.list;
+  // In-cell convert+format render: read-only grids directly, and an editable source
+  // only in its FORMATTED preview (its Source view stays raw text you edit). Never
+  // in-cell for the unit — that stays a tag / dropdown.
+  const formatRenderActive = showFmtControls && (!editable || formattedPreview);
   function annFor(c: number): FormatAnnotation {
     const idx = state?.formatControls === "matrix" ? 0 : c;
     return colFmt[idx] ?? { format: "auto", unit: "none" };
+  }
+  // A read-only DERIVED frame has no unit dropdown, so its cells are converted into
+  // the column unit silently — surface that unit in the header so the numbers aren't
+  // ambiguous ("Distance (km)"). Taggable sources show it in the dropdown instead.
+  function colHeaderLabel(c: number): string {
+    const base = headers?.[c] ?? colLabel(c);
+    const cu = state?.columnUnits?.[c];
+    return !state?.unitTaggable && formatRenderActive && cu ? `${base} (${columnUnitLabel(cu)})` : base;
   }
   function setColFmtAt(i: number, patch: Partial<FormatAnnotation>) {
     setColFmt((f) => {
@@ -266,28 +284,35 @@ export function TablePopup() {
       return next;
     });
   }
-  // Render one raw cell through its column's format + unit (base-SI → display unit
-  // when commensurable; the unit symbol lives in the dropdown, not the cell).
+  // Render one cell through its column's format + unit (base-SI → display unit when
+  // commensurable; the unit symbol lives in the dropdown/header, not the cell). The
+  // input is a read-only frame's typed value (a number) OR an editable source's raw
+  // text (coerced first), so this works for both surfaces.
   function controlledCell(raw: CellValue, c: number): string {
     if (raw === null || raw === undefined || raw === "") return "";
     if (isSolError(raw)) return raw.code;
     if (typeof raw === "boolean") return raw ? "TRUE" : "FALSE";
     const type = colTypeAt(c);
     const ann = annFor(c);
-    if (typeof raw === "number" && type === "date") {
+    // Editable source: the cell is raw text — coerce to its typed value first.
+    const v: CellValue = typeof raw === "string" && (type === "number" || type === "date")
+      ? (coerceFrameCell(type, raw) as CellValue)
+      : raw;
+    if (v === null) return "";
+    if (typeof v === "number" && type === "date") {
       const fmt: FormatStyleId = isDateStyle(ann.format) ? ann.format : "date_dmy";
-      return formatNumberWithAnnotation(raw, { ...ann, format: fmt, unit: "none" });
+      return formatNumberWithAnnotation(v, { ...ann, format: fmt, unit: "none" });
     }
-    if (typeof raw === "number" && type === "number") {
+    if (typeof v === "number" && type === "number") {
       const dim = state?.columnUnits?.[c]?.dim;
-      let mag = raw;
+      let mag = v;
       if (dim && !isDimensionless(dim)) {
         const u = fcUnitToUnit(ann.unit);
-        if (u && dimEqual(u.dim, dim)) mag = (raw - (u.offset ?? 0)) / u.scale;
+        if (u && dimEqual(u.dim, dim)) mag = (v - (u.offset ?? 0)) / u.scale;
       }
       return formatNumberWithAnnotation(mag, { ...ann, unit: "none" });
     }
-    return String(raw);
+    return String(v);
   }
 
   // A vertical LIST is a pure render transpose of the display grid (the single row
@@ -297,11 +322,13 @@ export function TablePopup() {
   const vertical = !!state.list && listVertical;
   const listLen = displayGrid[0]?.length ?? 0;
   const listTruncated = vertical && listLen > MAX_VISIBLE_ROWS; // cap rows like a tall table
-  // The on-screen grid: FC-controlled render (from the RAW data) when active, else
-  // the display grid that also feeds Copy/CSV. (formatControlsActive ⇒ not a list,
-  // so vertical is false here.)
-  const onScreenGrid: string[][] = formatControlsActive
-    ? state.data.slice(0, MAX_VISIBLE_ROWS).map((row) =>
+  // The on-screen grid: FC-controlled render when active, else the display grid that
+  // also feeds Copy/CSV. Read-only frames render from the typed values (state.data);
+  // an editable source's Formatted preview renders from its EDITED raw text (grid).
+  // (formatRenderActive ⇒ not a list, so vertical is false here.)
+  const controlledSrc: CellValue[][] = editable ? shownGrid : state.data;
+  const onScreenGrid: string[][] = formatRenderActive
+    ? controlledSrc.slice(0, MAX_VISIBLE_ROWS).map((row) =>
         Array.from({ length: cols }, (_, c) => controlledCell(row[c], c)))
     : displayGrid;
   const viewGrid = vertical
@@ -423,11 +450,17 @@ export function TablePopup() {
   // Raw source columns from the current grid — cells kept verbatim (the literal
   // source; coercion to typed values happens downstream in deriveFrame).
   function buildSourceColumns(): FrameSourceColumn[] {
-    return Array.from({ length: cols }, (_, c) => ({
-      name: (headerNames[c] ?? "").trim(),
-      type: columnTypes[c] ?? "number",
-      cells: grid.map((row) => row[c] ?? ""),
-    }));
+    return Array.from({ length: cols }, (_, c) => {
+      // A unit-taggable source persists the per-column unit choice (number columns
+      // only) so it rides the value downstream via deriveFrame.
+      const u = state?.unitTaggable && (columnTypes[c] ?? "number") === "number" ? annFor(c).unit : undefined;
+      return {
+        name: (headerNames[c] ?? "").trim(),
+        type: columnTypes[c] ?? "number",
+        cells: grid.map((row) => row[c] ?? ""),
+        ...(u && u !== "none" ? { unit: u } : {}),
+      };
+    });
   }
   function save() {
     if (state?.onSaveRaw) state.onSaveRaw(grid.map((row) => [...row]));
@@ -463,13 +496,15 @@ export function TablePopup() {
         />
       }
     >
-      {view === "grid" && formatControlsActive && state.formatControls === "matrix" && (
-        // A matrix is homogeneous — one format+unit pair for the whole sheet, so it
-        // sits ABOVE the grid (between the popup header and the table), not inside
-        // it as a column row.
+      {view === "grid" && showFmtControls && state.formatControls === "matrix" && (
+        // A matrix is homogeneous — one format (+ unit, when taggable) pair for the
+        // whole sheet, so it sits ABOVE the grid (between the popup header and the
+        // table), not inside it as a column row.
         <div className="table-popup__matrix-fmt">
           <FormatStyleSelect className="table-popup__fmtselect" value={annFor(0).format} onChange={(f) => setColFmtAt(0, { format: f })} />
-          <UnitSelect className="table-popup__fmtselect" value={annFor(0).unit} onChange={(u) => setColFmtAt(0, { unit: u })} />
+          {state.unitTaggable && (
+            <UnitSelect className="table-popup__fmtselect" value={annFor(0).unit} onChange={(u) => setColFmtAt(0, { unit: u })} />
+          )}
         </div>
       )}
       {view === "grid" ? (
@@ -503,18 +538,21 @@ export function TablePopup() {
                         />
                       </div>
                     ) : (
-                      headers?.[c] ?? colLabel(c)
+                      colHeaderLabel(c)
                     )}
                   </th>
                 ))}
               </tr>
             </thead>
-            {formatControlsActive && state.formatControls === "columns" && (
+            {showFmtControls && state.formatControls === "columns" && (
               <tbody className="table-popup__fmtbody">
                 <tr>
                   <th className="table-popup__corner" />
                   {Array.from({ length: viewCols }, (_, c) => {
                     const type = colTypeAt(c);
+                    // FORMAT dropdown on every column (display-only, renders in-cell);
+                    // a UNIT dropdown stacked below on a taggable source (Frame Input),
+                    // persisted on Save. Date columns get a date-style select, no unit.
                     return (
                       <td key={c} className="table-popup__fmtcell">
                         {type === "date" ? (
@@ -522,7 +560,9 @@ export function TablePopup() {
                         ) : type === "number" ? (
                           <div className="table-popup__fmtstack">
                             <FormatStyleSelect className="table-popup__fmtselect" value={annFor(c).format} onChange={(f) => setColFmtAt(c, { format: f })} />
-                            <UnitSelect className="table-popup__fmtselect" value={annFor(c).unit} onChange={(u) => setColFmtAt(c, { unit: u })} />
+                            {state.unitTaggable && (
+                              <UnitSelect className="table-popup__fmtselect" value={annFor(c).unit} onChange={(u) => setColFmtAt(c, { unit: u })} />
+                            )}
                           </div>
                         ) : null}
                       </td>
