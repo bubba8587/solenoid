@@ -628,6 +628,18 @@ describe("CompositeNode By-Row run mode", () => {
     expect((out[outId] as number[]).length).toBe(BY_ROW_MAX_ROWS);
   });
 
+  it("mirrors the collected series onto the output marker (the drill-in shows it too)", async () => {
+    // The outer card reads the series from data(); the drill-in reads the marker's
+    // cachedResult — collectMultiple must mirror the series there or the inside
+    // shows only the last pass's value.
+    const { c, aId, outId } = await makeDoubler();
+    const out = await c.data({ [aId]: [[1, 2, 3]] });
+    const port = c.outputPorts.find((p) => p.id === outId)!;
+    const marker = c.internalEditor.getNode(port.internalNodeId) as CompositeOutputNode;
+    expect(marker.cachedResult).toEqual(out[outId]);
+    expect(marker.cachedResult).toEqual([2, 4, 6]);
+  });
+
   it("byRowPortId round-trips through extractInit", async () => {
     const { c, aId } = await makeDoubler();
     const init = extractInit(c as unknown as ClassicPreset.Node);

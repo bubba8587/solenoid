@@ -703,7 +703,17 @@ export class CompositeNode extends ClassicPreset.Node {
     const rows: Record<string, unknown>[] = [];
     for (const overrides of overridesList) rows.push(await this.runPass(inputs, overrides));
     const outputs: Record<string, unknown> = {};
-    for (const port of this.outputPorts) outputs[port.id] = rows.map((r) => r[port.id]);
+    for (const port of this.outputPorts) {
+      const series = rows.map((r) => r[port.id]);
+      outputs[port.id] = series;
+      // Mirror the collected series onto the output marker so the DRILL-IN value
+      // box shows the same series (+ sparkline) as the outer card — otherwise the
+      // last runPass leaves the marker holding just its final row's value, and the
+      // inside disagrees with the outside. Same fix runSimulation applies for its
+      // series; shared here across Scenarios / Data Table / By-Row.
+      const marker = this.internalEditor.getNode(port.internalNodeId);
+      if (marker instanceof CompositeOutputNode) marker.cachedResult = series;
+    }
     return outputs;
   }
 
