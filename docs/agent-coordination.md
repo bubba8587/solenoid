@@ -125,6 +125,14 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
   `runByRow`; `ByRowEditor` picker; `BY_ROW_MAX_ROWS=500` cap. `composite.ts`/`CompositeNode.tsx`/
   `copyPaste.ts`. tsc clean, 2816 green. UI eyeball pending. (Known: the 500-row cap silently drops
   extras — dev-notes flags replacing it with a Problems warning.)
+- **Agent 2 — LANDED (composite drill-in marker polish arc, push held)** — off-theme, `composite.ts`
+  + `CompositeNode.tsx` only (no S3 overlap): `a1799db3` collectMultiple mirrors the multi-run series
+  onto output markers (drill-in == outer card); `6b2c76a2` input markers show the real incoming value
+  (chip when wired) + marker socket dots ADAPT to the flowing type (per-instance MutableSocket,
+  display-only); `70be5aba` goal-seek markers get "solves to"/"target" readouts + the solver stops
+  overwriting the driver's seed (solvedValue instead); `09964f51` extended readouts to MC (±spread) /
+  By-Row / Scenarios / Data-Table (`modeNote`). Markers are now run-mode-aware. tsc clean, 2831 green.
+  All UI eyeball-pending. Author-driven this session ("the markers serve the run modes").
 - **Agent 3 — LANDED** (`faa2c528`, push held). Unmount collapsed viz nodes' live figures:
   Chart/Histogram/Sankey/Treemap now gate their figure on `!collapsed` (Treemap/Sankey gained
   `collapseStore` subscriptions to do it). tsc clean, 2791 green.
@@ -171,6 +179,30 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
   format-by-source-node is direct-wire only — a passthrough between the frame and the Report
   ref won't resolve; (2) live-toggling a column's type in-popup without reopening can briefly
   show a mismatched format-dropdown selection (cell render itself stays correctly guarded).
-  ⚠️ **Note for Lead, not a landed bug:** `tsc` is currently red, but only in your UNCOMMITTED
-  WIP (`ArrayChip.tsx`, `matrixReshape.test.ts`, `composite.ts`, `copyPaste.ts`, `list.ts`) —
-  didn't touch it, your active files. Standing by for the commit queue / next task.
+  (That "tsc currently red" note has since resolved — the WIP landed clean, see below.)
+- **Agent 3 — round 2 eyeball** (`6faf5e62`, `b2250c30`, `f684815d`, `a1799db3`, `6b2c76a2`),
+  no new bugs. `6faf5e62`/`b2250c30` (INDEX carries the matrix unit out) are the standout —
+  the second commit is a genuine "worked in the direct data() test, broke in the live graph"
+  catch (an adoptive `trueany` input adopting "table" runs `toMatrix`, which rebuilds the array
+  and drops the D20 symbol tag; fixed in `coerceInputs.ts`'s "table" case via `carryMatrixUnit`,
+  with a real integration test that forces socket adoption — good instinct to not trust the
+  narrower unit test). By-Row (`f684815d`) and the marker fixes (`a1799db3`/`6b2c76a2`) are
+  clean; `byRowValues`/`externallyWired`/`syncMarkerSocketTypes` all handle their edge cases
+  (frame/list/matrix/scalar/null, wired-vs-unwired via `undefined` not `null`) correctly.
+  tsc clean, 2820 green at current HEAD (`06fac589`).
+- **Agent 3 — going into /remote-control watch mode per the author:** re-checking in ~10 min
+  intervals (ScheduleWakeup), eyeballing whatever's new each time. **Not pushing yet** — author
+  wants the push to `develop` held until A1's and A2's current threads are BOTH done, then
+  fired on the next check-in after that. Will watch this file's Claims for both going quiet /
+  landing a final "DONE" before pushing.
+- **Agent 3 — check-in #2, still not pushing (both still actively landing).** Reviewed
+  `636308c8` (A1 — closes every remaining D20 matrix-unit gap: VSTACK/HSTACK carry-if-uniform
+  via new `sharedMatrixUnit`, TOCOL/TOROW/WRAPROWS/WRAPCOLS now CONVERT between the matrix
+  whole-grid tag and per-cell list `UnitCell`s via `taggedListFromMatrix`/`matrixCellsFromList`,
+  plus a machine-checked completeness sweep — `matrixUnitPolicy.test.ts` fails the build if any
+  matrix.ts node ships without a declared unit policy. This reads as the natural completion of
+  the "(b)/(a) REMAINING" item from A1's last claim — clean, well-tested, no bugs) and `70be5aba`
+  (A2 — goal-seek driver/target readouts on the drill-in markers; the solver now writes its
+  answer to a transient `solvedValue` instead of overwriting the driver's `defaultValue` seed —
+  verified the stamp/clear/solve sequencing within one `data()` pass is correctly ordered, no
+  stale-read window). tsc clean, 2830 green at current HEAD (`636308c8`).
