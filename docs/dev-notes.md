@@ -82,16 +82,18 @@ fold parallel columns into one frame), and our Matrix type has no inherent x/y c
 design is a **coordinate-BORDERED single table**: first row = X coords, first column = Y coords (corner
 ignored on input, blanked on output), interior = Z with **blank cells to fill**. ONE Numeric Table in,
 ONE out — coordinates sit next to their data, nothing to align. "Resample to a new point" = add a
-coordinate + a blank row/column; the node fills it, unifying fill-holes and upsample. Fill is a **true
-2-D mesh blend** (fixed from a first separable row-then-column pass, which degenerated to ROW-ONLY
-whenever a cell was reachable horizontally — author caught it): each blank averages its ROW estimate
-(interp along X from that row's known cells) and its COLUMN estimate (along Y), reusing `interpolateLinear`
-per line, so a hole fills from BOTH directions. On a complete grid the two agree ⇒ the average IS the
-bilinear value; on partial data it's a smooth diagonal blend (an L of data ramps diagonally, not
-row-flat). Jacobi iteration (collect a pass's fills, apply, freeze) lets a cell at the crossing of a NEW
-row AND a NEW column resolve on the next pass (verified with a Z=x+y upsample test + a bilinear-centre
-test). Clamped at the ends; a cell no row/column can reach stays blank; a per-cell error/NaN reads as a
-blank to fill; whole-grid error propagates. The mode dropdown reconciles the socket set (`_rebuildSockets`
+coordinate + a blank row/column; the node fills it, unifying fill-holes and upsample. Fill is **true
+BILINEAR interpolation** — the standard lookup-table method (MATLAB `interp2` / SciPy
+`RegularGridInterpolator`, method="linear"). Two earlier attempts were WRONG and the author caught both:
+(1) separable row-then-column degenerated to ROW-ONLY (a cell reachable along its row flat-filled, column
+pass then skipped it); (2) averaging the row + column 1-D estimates was an ad-hoc heuristic that
+over-smoothed and isn't a real method. The shipped version: the KNOWN cells define a coarse grid; each
+blank is the bilinear blend of the four surrounding known corners, bracketing its X among the data
+columns and Y among the data rows, and **widening the bracket past a blank corner** so a hole
+interpolates ACROSS it. Clamped at the coarse edges (no extrapolation); a cell that no four known corners
+enclose (a genuinely incomplete/L-shaped grid) stays blank — honest, matching interp2's NaN. Per-cell
+error/NaN reads as a blank to fill; whole-grid error propagates. Verified: Z=x+y upsample exact, x·y hole
+interpolated across = 1, edge clamp, incomplete-grid honest blanks. The mode dropdown reconciles the socket set (`_rebuildSockets`
 + `applyInterpolateMode` drop-cables-then-rebuild, the `applyEquationChange` pattern — the two modes are
 different ops); `mode` persists via the existing init whitelist. Pure core `fillBorderedGrid` (replaced
 the interim `bilinearGrid`). Commits `dc8c3602`/`9ab3e481` (1-D + combo), `3e35bfd6` (grid v1 bundled by
