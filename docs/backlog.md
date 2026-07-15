@@ -25,8 +25,10 @@ this backlog stays the per-item source of truth.
 - [ ] **Keep `release-notes-features.md` current** — the curated selling list + What's-New
   slide source (author writes the final release notes). Reconciled 2026-07-08 (FRED-keyless
   copy, no FX, Simulation ≠ Monte Carlo — slides synced in `HelpDialogs.tsx`).
-- [ ] **F-2 remainder (deferred)** — a UI to edit per-slot doc-palette overrides (the store
-  half exists: `paletteStore.setDocPalette` overrides round-trip) + document-level FC defaults.
+- [ ] **F-2 remainder (deferred)** — **per-slot doc-palette override UI: WON'T DO (author
+  2026-07-15).** Store half stays (overrides round-trip for hand/seed authoring); no editing
+  surface. Only document-level FC defaults remain (format-pipeline, author-present, parked with
+  the format-controller work).
 - [ ] **Data Feed — post-1.1 widening only** (core + date-range/frequency/quick-picks +
   the **Live Market Data** demo seed all SHIPPED; Stooq dropped — bot-blocked). Still OPEN,
   none release-gating: a richer series/symbol PICKER (today a text field + quick-picks),
