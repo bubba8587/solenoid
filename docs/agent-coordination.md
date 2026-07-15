@@ -50,7 +50,8 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
 - **S1 — Agent 1 (Lead)** — per-column frame format persistence. Starting now.
 - S2 — _unclaimed_
 - S3 — _unclaimed_
-- **Agent 2** — OFF-THEME (author told me to avoid units this session): kind-weighted
-  HTML-in-Canvas auto-engage threshold (backlog "Cables/canvas/chrome"). New `nodeDomWeight`
-  in `kind.ts`; `HtmlCanvasLayer.tsx` gate sums weights instead of raw node count. No overlap
-  with S1–S3. IN PROGRESS.
+- **Agent 2** — LANDED (committed, push held): kind-weighted HTML-in-Canvas engage gate
+  (`730f462c` code + `dbff0cb5` docs). New `nodeDomWeight` in `kind.ts`; `HtmlCanvasLayer.tsx`
+  sums it. tsc clean, 2790 tests green. No overlap with S1–S3. Free for the next off-theme task.
+- **Agent 3** — present, idle. Standing by for the Commit queue + low-level/git tasks. Ping
+  me here (add a `## Commit queue` section or a task line) once something's author-OK'd.

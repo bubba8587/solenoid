@@ -1,11 +1,15 @@
 // Compact frame preview — header names + up to 3×4 cells, then a chip. Mirrors
 // TableDisplay (same classes) so the collapse-to-chip CSS applies unchanged.
+import { useSyncExternalStore } from "react";
 import { FrameChip } from "./FrameChip";
 import { frameRowCount, formatFrameCell, type FrameCell, type FrameColType, type FrameValue, type FrameSourceColumn } from "../frame";
 import type { FramePopupColumn } from "../tablePopupStore";
 import { isSolError, type SolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import { flyToNode } from "../flyToNode";
+import { useHostNodeId } from "./nodeContext";
+import { frameFormatStore } from "../frameFormatStore";
+import { formatNumberWithAnnotation, type FormatAnnotation } from "../formatAnnotationStore";
 
 // A NaN cell is dirty DATA (an undefined value from an import), not the #N/A
 // error — render the literal "NaN", tinted at the cell (see the td below).
@@ -13,7 +17,11 @@ function isNanCell(v: FrameCell): boolean {
   return typeof v === "number" && Number.isNaN(v);
 }
 
-function fmtCell(v: FrameCell, type: FrameColType = "number"): string {
+function fmtCell(v: FrameCell, type: FrameColType = "number", ann?: FormatAnnotation): string {
+  // A persisted per-column format (frameFormatStore) applies to a numeric/date cell.
+  if (ann && typeof v === "number" && Number.isFinite(v)) {
+    return formatNumberWithAnnotation(v, { ...ann, unit: "none" });
+  }
   const c = formatFrameCell(type, v); // date serials → date strings
   if (c === null || c === undefined || c === "") return "";
   if (typeof c === "string") return c;
@@ -44,6 +52,13 @@ export function FrameDisplay({ frame, label, onSave, source, onSaveSource, full,
    *  whole document. Keeps the chip (opens the full popup). */
   scroll?: boolean;
 }) {
+  // Per-column persisted formats live on the host node (frameFormatStore). Subscribe
+  // so a format change in the popup re-renders this preview.
+  const hostNodeId = useHostNodeId();
+  useSyncExternalStore(frameFormatStore.subscribe, frameFormatStore.version);
+  const annFor = (colName: string): FormatAnnotation | undefined =>
+    hostNodeId ? frameFormatStore.get(hostNodeId, colName) : undefined;
+
   if (isSolError(frame)) {
     return (
       <div
@@ -92,7 +107,7 @@ export function FrameDisplay({ frame, label, onSave, source, onSaveSource, full,
                 const nan = isNanCell(cell);
                 return (
                 <td key={j} className={nan ? "solenoid-nan-cell" : undefined} title={nan ? "Not a number: an undefined value in the data" : undefined} style={{ padding: full ? "2px 8px" : "1px 4px", textAlign: c.type === "string" ? "left" : "right", fontSize: full ? 13 : 12, fontFamily: "var(--font-mono)", color: "var(--text)", borderRight: "1px solid var(--border)", whiteSpace: full ? "nowrap" : undefined, ...(full ? {} : { overflow: "hidden", textOverflow: "ellipsis" }) }}>
-                  {fmtCell(cell, c.type)}
+                  {fmtCell(cell, c.type, annFor(c.name))}
                 </td>
                 );
               })}

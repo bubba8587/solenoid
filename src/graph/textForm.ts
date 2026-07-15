@@ -258,6 +258,10 @@ export function writeTextForm(g: SavedGraph): string {
     // on read). The comment's own `id` is not a node reference — kept as-is.
     sidecar.comments = g.comments.map((c) => ({ ...c, nodeId: nameOf(c.nodeId) }));
   }
+  if (g.frameFormats && g.frameFormats.length > 0) {
+    // Per-column frame formats — name-address the nodeId like comments/pins.
+    sidecar.frameFormats = g.frameFormats.map((f) => ({ ...f, nodeId: nameOf(f.nodeId) }));
+  }
   if (g.seedId !== undefined) sidecar.seedId = g.seedId;
   if (g.palette !== undefined) sidecar.palette = g.palette;
   if (g.reportPalette !== undefined) sidecar.reportPalette = g.reportPalette;
@@ -334,6 +338,9 @@ export function readTextForm(text: string): SavedGraph {
   }
   if (Array.isArray(sidecar.comments) && sidecar.comments.length > 0) {
     g.comments = sidecar.comments as SavedGraph["comments"];
+  }
+  if (Array.isArray(sidecar.frameFormats) && sidecar.frameFormats.length > 0) {
+    g.frameFormats = sidecar.frameFormats as SavedGraph["frameFormats"];
   }
   if (sidecar.seedId !== undefined) g.seedId = sidecar.seedId;
   if (sidecar.palette !== undefined) g.palette = sidecar.palette;

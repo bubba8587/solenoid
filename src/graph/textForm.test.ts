@@ -137,6 +137,23 @@ describe("text form: unit cases", () => {
     expect(reloaded.nodes[0].name).toBe("MyFilter");
   });
 
+  it("round-trips per-column frame formats through the sidecar (name-addressed)", () => {
+    const g: SavedGraph = {
+      v: 2,
+      nodes: [{ id: "a1", type: "FrameInputNode", name: "Data", x: 0, y: 0, init: {} }],
+      connections: [],
+      frameFormats: [
+        { nodeId: "a1", column: "Revenue", ann: { format: "decimal", unit: "none", decimalDigits: 2, decimalMode: "places" } },
+        { nodeId: "a1", column: "Share", ann: { format: "percent", unit: "none" } },
+      ],
+    };
+    const reloaded = readTextForm(writeTextForm(g));
+    expect(reloaded.frameFormats).toHaveLength(2);
+    // nodeId is name-addressed in the text form (name === id here).
+    expect(reloaded.frameFormats![0]).toMatchObject({ nodeId: "Data", column: "Revenue", ann: { format: "decimal", decimalDigits: 2 } });
+    expect(reloaded.frameFormats![1]).toMatchObject({ column: "Share", ann: { format: "percent" } });
+  });
+
   it("re-synthesizes a name that collides with another node's name", () => {
     const g: SavedGraph = {
       v: 2,
