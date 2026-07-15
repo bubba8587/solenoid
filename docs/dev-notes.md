@@ -21,9 +21,14 @@ reading loop outputs, NOT itself on the cycle) resolves by resetting the interna
 round's loop outputs into its cache, and fetching — safe because loop stepping uses direct `data()`
 calls, never the engine, and the reset stops a prior round's observer value leaking. UI:
 `SimulationEditor` (`CompositeNode.tsx`) — port dropdown + op dropdown + value; step label reads "Max
-steps" once set. Possible follow-up: rewire the sudoku-solver seed (hand-tuned 25 steps) to a "solved?"
-stop output (seed-generator change, left for the author). tsc clean, 2799 green. Commits `99f21e06`
-(port) + `8fc79bfc` (comparator).
+steps" once set. **Type-aware picker (`791f6938`, author question):** output markers are `trueany` +
+adopt the wired type, so the port dropdown filters by the ADOPTED socket type — only number/logical
+families (+ unresolved scalar wildcards) appear, hiding frame/string/date/cube/list outputs a numeric
+threshold can't compare. The NODE stays general (not constrained); the guardrail is UI-only (runtime
+already no-ops a non-numeric value). The whole Stop-when control hides when no comparable output exists;
+a current pick is always kept. Possible follow-up: rewire the sudoku-solver seed (hand-tuned 25 steps)
+to a "solved?" stop output (seed-generator change, left for the author). tsc clean, 2804 green. Commits
+`99f21e06` (port) + `8fc79bfc` (comparator) + `791f6938` (type-aware picker).
 
 ### SESSION DIGEST (2026-07-15i — SVG Picker: rasterize for display, inline only on hover) [Agent 2, off-theme]
 `SvgPickerComponent` permanently mounted the source markup via `well.innerHTML = source` — a
