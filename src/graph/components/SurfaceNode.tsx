@@ -74,15 +74,15 @@ export function SurfaceComponent({ data, emit }: NodeProps<SurfaceNodeType>) {
           : !has && <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>}
         {has && !collapsed && (
           <div style={{ position: "absolute", right: 4, bottom: 4, display: "grid", gridTemplateColumns: "repeat(3, 16px)", gridTemplateRows: "repeat(3, 16px)", gap: 2, opacity: 0.85 }}>
-            <span />
+            <RotBtn title="Rotate left + tilt up" onClick={() => rotate(-45, 45)}>↖</RotBtn>
             <RotBtn title="Tilt up" onClick={() => rotate(0, 45)}>↑</RotBtn>
-            <span />
+            <RotBtn title="Rotate right + tilt up" onClick={() => rotate(45, 45)}>↗</RotBtn>
             <RotBtn title="Rotate left" onClick={() => rotate(-45, 0)}>←</RotBtn>
             <RotBtn title="Reset view" onClick={resetView}><HomeIcon /></RotBtn>
             <RotBtn title="Rotate right" onClick={() => rotate(45, 0)}>→</RotBtn>
-            <span />
+            <RotBtn title="Rotate left + tilt down" onClick={() => rotate(-45, -45)}>↙</RotBtn>
             <RotBtn title="Tilt down" onClick={() => rotate(0, -45)}>↓</RotBtn>
-            <span />
+            <RotBtn title="Rotate right + tilt down" onClick={() => rotate(45, -45)}>↘</RotBtn>
           </div>
         )}
       </div>
