@@ -21,31 +21,13 @@ import { NodeCard } from "./NodeCard";
 import { LazySelect } from "./LazySelect";
 import { NodeSocket } from "./NodeSocket";
 import { SegToggle } from "./SegToggle";
-import { useFcFormatOptions } from "./fcControls";
+import { useFcFormatOptions, FcArrow } from "./fcControls";
 import type { NodeProps } from "./nodeKit";
 import "./nodeCard.css";
 import "./FormatControllerNode.css";
 
-// A small rounded direction arrow shown beside the Format / Unit controls to
-// show how that property flows. "back" (←) = applies to the box behind this FC;
-// "fwd" (→) = travels with the value downstream / arrives from upstream.
-function FcArrow({ dir, title }: { dir: "back" | "fwd"; title?: string }) {
-  return (
-    <span
-      className="solenoid-fc__arrow"
-      aria-hidden="true"
-      title={title}
-      style={{ display: "inline-flex", opacity: 0.72, flex: "0 0 auto" }}
-    >
-      <svg width="9" height="9" viewBox="0 0 14 14" fill="none" stroke="currentColor"
-           strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-        {dir === "fwd"
-          ? (<><path d="M2.5 7h8.2" /><path d="M7 3.3 10.7 7 7 10.7" /></>)
-          : (<><path d="M11.5 7H3.3" /><path d="M7 3.3 3.3 7 7 10.7" /></>)}
-      </svg>
-    </span>
-  );
-}
+// FcArrow (the flow-direction arrow) lives in fcControls now, shared with the
+// value-popup dropdowns so both speak the same ←/→ flow language.
 
 export function FormatControllerComponent({ data, emit }: NodeProps<FormatControllerNodeType>) {
   const node = data;

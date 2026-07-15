@@ -215,13 +215,21 @@
   margin: 10px 14px 0;
 }
 .table-popup__matrix-fmt .table-popup__fmtselect { width: auto; min-width: 110px; }
-/* Read-only matrix carrying a homogeneous unit (D20): the unit shown as a static
-   label (no picker) beside the format select. */
-.table-popup__unit-label {
-  font-family: var(--font-sans);
-  font-size: 12px;
-  color: var(--text-dim);
-  padding: 2px 4px;
+
+/* Flow-arrow wrapper (the FC's ←/→ language): a control flanked by direction arrows.
+   Side-by-side in the matrix bar (natural width); fills its cell in a stacked column. */
+.sol-fcflow {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.table-popup__fmtstack .sol-fcflow { display: flex; }
+.table-popup__fmtstack .sol-fcflow .table-popup__fmtselect { flex: 1 1 auto; width: auto; min-width: 0; }
+/* A locked (inherited) unit picker reads as read-only — dimmed, no hover affordance. */
+.sol-fcflow .table-popup__fmtselect:disabled {
+  opacity: 0.65;
+  cursor: default;
 }
 
 /* CSV view — the same data as a raw, editable text block. */
