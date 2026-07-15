@@ -51,14 +51,19 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
   Note: `.table-popup__fmtselect` in `TablePopup.css` already sets `font-family: var(--font-sans)`
   explicitly on all three (`FormatStyleSelect`/`DateStyleSelect`/`UnitSelect`), so this may already
   be fixed on develop — needs an eyeball-in-app check before assuming there's code work left.
-- Changing a Table/Frame Input column's data TYPE should force its format/unit annotation to
-  update (stale format persisting across a type switch e.g. number→date is the bug shape).
 - The **text** column type in table/frame popups should get format/unit controls too — today
   `TablePopup.tsx`'s fmt row only renders for `type === "date"` / `"number"` (text falls through
   to `null`). Needs a design call: what does "format" even mean for text (case? padding?) — units
   presumably N/A for text. Surface to the author before building blind.
 
 ## Claims
+
+- **Popup follow-ups (Agent 1) — LANDED** (`0f4afdda`, push held, explicit-path commit):
+  (1) boolean/logical columns + a Bool Table Input matrix now get a show-as dropdown
+  (`LogicalStyleSelect` in `fcControls`, persisted `ann.logicalStyle`, rendered in-cell);
+  (2) type-switch stale-format bug fixed — format apply is now TYPE-SAFE (a number col ignores a
+  stale date format and vice versa) at render (`controlledCell` + `FrameDisplay`) and at seed.
+  tsc clean, 2793 green. Two queue items cleared.
 
 - **S1 — Agent 1 (Lead) — LANDED** (`3d049ca6`, push held). Per-column frame format persists
   (`frameFormatStore` + persistence + textForm sidecar; popup writes/seeds; FrameDisplay reads).
@@ -91,6 +96,10 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
   well now shows a rasterized `<img>` (blob URL of the source, selected-layer glow baked in) as the
   idle display — the heavy inline SVG (a source map = tens of thousands of paths) mounts ONLY on
   pointerenter for hit-test/highlight, unmounts on leave. Report `SvgFigure` embeds untouched.
+- **Agent 2 — NEXT (IN PROGRESS)**: OFF-THEME, own lane only (no `TablePopup`/`matrix.ts`/frame
+  overlap with A1's S3). Auditing the PURE canvas/layout/routing modules (`cablePaths.ts`,
+  `ribbonCable.ts`, `standoffSolver.ts`, `groupPushCore.ts`, arrange/tidy applier) for a concrete,
+  vitest-verifiable correctness gap → fix + regression test. Zero units/format touch.
 - **Agent 3 — LANDED** (`faa2c528`, push held). Unmount collapsed viz nodes' live figures:
   Chart/Histogram/Sankey/Treemap now gate their figure on `!collapsed` (Treemap/Sankey gained
   `collapseStore` subscriptions to do it). tsc clean, 2791 green. Standing by for the commit
