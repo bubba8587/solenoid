@@ -275,3 +275,9 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
   too; untyped-cube fallback verified unchanged). All clean, no bugs. tsc clean, 2855 green.
   `0ead2922` closes A1's typed-CubeColumn backlog sub-item specifically (not a whole-session
   DONE signal) — still watching for both to go fully quiet.
+- **Agent 3 — check-in #8, NOT pushing (only one small polish commit, no done signal).**
+  `9ab3e481` (A2 — INTERPOLATE's query/result switched from list-only to a numlist COMBO
+  socket via `readInput`, scalar-in→scalar-out matching the standard broadcaster shape
+  convention) — verified `readInput`'s return type lines up with the `Array.isArray(q)`
+  branch and the new tests (scalar wired, unwired-falls-to-literal, scalar null, no-data)
+  all check out against the traced logic. Clean. tsc clean, 2857 green. A1 quiet this round.
