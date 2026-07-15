@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 import type { NoteNode as NoteNodeType } from "../rete-nodes";
@@ -208,6 +208,23 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   // height) can never clip a socket row. Plain note (no frontmatter) → the original 80.
   const minNoteH = NOTE_MIN_H + fieldsStripHeight(fieldKeys.length);
 
+  // The `document` output dot is centered on the BODY (which sits below the
+  // frontmatter-fields strip, so it shifts DOWN as fields are added). The body
+  // wrapper clips (overflow:hidden), so the dot can't live inside it — it's at the
+  // card root with a measured `top` = the body's center (dot top-left = center − 6).
+  // Collapsed → no body → undefined → the socket's default centering.
+  const noteRootRef = useRef<HTMLDivElement>(null);
+  const noteBodyRef = useRef<HTMLDivElement>(null);
+  const [docDotTop, setDocDotTop] = useState<number | undefined>(undefined);
+  useLayoutEffect(() => {
+    const bodyEl = noteBodyRef.current, rootEl = noteRootRef.current;
+    if (!bodyEl || !rootEl) { setDocDotTop(undefined); return; }
+    let y = 0;
+    for (let el: HTMLElement | null = bodyEl; el && el !== rootEl; el = el.offsetParent as HTMLElement | null) y += el.offsetTop;
+    setDocDotTop(y + bodyEl.offsetHeight / 2 - 6);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [collapsed, fieldKeys.length, data.height, data.width, body]);
+
   // Manual width + height (drag the corner grip — same model as a Group). The note
   // is a fixed box; the body fills it and scrolls. area.update re-renders on each
   // move (width/height read straight off `data` in the style). No history (notes
@@ -311,6 +328,7 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
 
   return (
     <div
+      ref={noteRootRef}
       className={`solenoid-note${data.selected ? " solenoid-note--selected" : ""}${collapsed ? " solenoid-note--collapsed" : ""}${fieldKeys.length ? " solenoid-note--has-fields" : ""}`}
       style={{ width: data.width, height: collapsed ? undefined : Math.max(data.height, minNoteH), ...vars }}
     >
@@ -407,14 +425,14 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
           (Write to Obsidian). Always present (independent of frontmatter fields).
           Position: author to eyeball. */}
       {data.outputs.document && (
-        <NodeSocket side="output" socketKey="document" nodeId={data.id} emit={emit} payload={data.outputs.document.socket} />
+        <NodeSocket side="output" socketKey="document" nodeId={data.id} emit={emit} payload={data.outputs.document.socket} top={docDotTop} />
       )}
       {!collapsed && (
         /* Wrapper clips the scrolling body to the card's rounded base — a textarea
            (or its scrollbar) can't be clipped by the note's own radius without an
            overflow:hidden ancestor, and the note can't clip itself without eating
            the selection ring. */
-        <div className="solenoid-note__content">
+        <div ref={noteBodyRef} className="solenoid-note__content">
           {editing ? (
             <textarea
               className="solenoid-note__body"

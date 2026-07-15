@@ -125,7 +125,7 @@ export const SOCKET_TYPE_LABELS: Record<SocketDataType, string> = {
   cube:         "Cube (nested table)",
   lambda:       "Function",
   chart:        "Chart / visual",
-  document:     "Document (Note / Report)",
+  document:     "Document",
   any:          "Any value",
   trueany:      "Anything",
 };
