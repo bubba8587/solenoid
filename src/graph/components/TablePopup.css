@@ -183,7 +183,12 @@
   align-items: center;
   gap: 6px;
 }
-.table-popup__fmtselect {
+/* Qualified under `.table-popup` (not the bare class) so this out-specifies the
+   shared `.sol-popup select { font-family: inherit }` reset (popupChrome.css) —
+   otherwise `inherit` wins on specificity and resolves to `.table-popup__grid`'s
+   mono (these selects sit inside the grid's `.table-popup__fmtcell`), rendering
+   the format/unit picker text in the mono face instead of sans. */
+.table-popup .table-popup__fmtselect {
   width: 100%;
   box-sizing: border-box;
   padding: 2px 4px;
