@@ -5,7 +5,8 @@ import {
   SolenoidSocket,
 } from "../sockets";
 import { parseDateToSerial } from "./date";
-import { chartOut, strOut } from "./shared";
+import { chartOut, strOut, documentOut } from "./shared";
+import { makeDocument, type DocumentValue } from "../documentValue";
 import type { ImageValue } from "../imageValue";
 import type { SvgValue } from "../svgValue";
 import {
@@ -108,6 +109,11 @@ export class NoteNode extends ClassicPreset.Node {
     this.height = init?.height ?? 150;
     this.collapsed = init?.collapsed ?? false;
     this.fieldTypes = { ...(init?.fieldTypes ?? {}) };
+    // The FIXED `document` output — the whole note as a DocumentValue (its raw body,
+    // which is already Obsidian-ready markdown-with-frontmatter), for a document sink
+    // like Write-to-Obsidian. syncFields skips it when reconciling the dynamic
+    // per-frontmatter-key outputs.
+    this.addOutput("document", documentOut("Document"));
     // Build outputs from the initial body. At construction `outputs` is empty, so
     // this only ADDS — connections (restored after node creation on load) then find
     // their frontmatter-key outputs already present.
@@ -157,6 +163,7 @@ export class NoteNode extends ClassicPreset.Node {
     const removed: string[] = [];
     const retyped: { key: string; type: FrontmatterFieldType }[] = [];
     for (const key of Object.keys(this.outputs)) {
+      if (key === "document") continue; // the fixed document output isn't a frontmatter key
       const w = wanted.get(key);
       const cur = this.outputs[key]!.socket;
       if (!w) {
@@ -181,8 +188,11 @@ export class NoteNode extends ClassicPreset.Node {
   // Each frontmatter key emits its value on the matching OUTPUT. A plain note
   // (no frontmatter) returns {} — no output sockets, exactly as before. A Note has
   // no inputs (output-only source), so data() takes none.
-  data(): Record<string, FrontmatterValue> {
-    return this.fieldValues();
+  data(): Record<string, FrontmatterValue | DocumentValue> {
+    // Each frontmatter key on its output + the whole note as a `document` value (raw
+    // body = already Obsidian-ready markdown-with-frontmatter; a Note is a pure
+    // source, so no refs to resolve).
+    return { ...this.fieldValues(), document: makeDocument(this.body) };
   }
 
   /**
