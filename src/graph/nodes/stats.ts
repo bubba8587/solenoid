@@ -995,7 +995,13 @@ export function interpolateLinear(xs: number[], ys: number[], queryXs: number[])
 // is used. Clamped at the coarse edges (a lookup table doesn't extrapolate). A cell that
 // no four known corners enclose (a genuinely incomplete grid) stays blank — honest,
 // matching interp2's NaN.
-export function fillBorderedGrid(table: (number | null)[][]): (number | null)[][] {
+//
+// `forecast` (default true) controls the EDGE behaviour: with it on, a cell BEYOND the
+// known data range is linearly EXTRAPOLATED from the two nearest data lines (the trend
+// continues — so Ys [2,4,6,8,10] with data at 4 & 8 fill 2 and 10, not just 6); with it
+// off, the edge value is held flat (clamped). Extrapolation needs ≥2 data lines on that
+// axis; with only one it falls back to clamp either way.
+export function fillBorderedGrid(table: (number | null)[][], forecast = true): (number | null)[][] {
   const R = table.length;
   const C = R > 0 ? Math.max(...table.map((r) => r.length)) : 0;
   const isKnown = (v: number | null | undefined): v is number => typeof v === "number" && Number.isFinite(v);
@@ -1021,13 +1027,14 @@ export function fillBorderedGrid(table: (number | null)[][]): (number | null)[][
   for (let i = 0; i < Ri; i++) if (!Number.isNaN(rowYs[i]) && Z[i].some((v) => v != null)) coarseRows.push(i);
 
   // Candidate lines bracketing a query coordinate: those at-or-below (nearest first) and
-  // at-or-above (nearest first). When a query sits past the last data line, the empty
-  // side borrows the other's nearest edge — so an out-of-range query CLAMPS to that edge.
+  // at-or-above (nearest first). Past the last data line, the empty side borrows from the
+  // other: the 2nd-nearest when forecasting (so the bracket spans two real lines and `t`
+  // runs beyond [0,1] → linear extrapolation), else the nearest (t clamps → hold flat).
   const sides = (lines: number[], coordOf: (k: number) => number, q: number): [number[], number[]] => {
     const lo = lines.filter((k) => coordOf(k) <= q).sort((a, b) => coordOf(b) - coordOf(a));
     const hi = lines.filter((k) => coordOf(k) >= q).sort((a, b) => coordOf(a) - coordOf(b));
-    if (lo.length === 0) return [[hi[0]], hi];
-    if (hi.length === 0) return [lo, [lo[0]]];
+    if (lo.length === 0) return [forecast && hi.length >= 2 ? [hi[1]] : [hi[0]], hi]; // below range
+    if (hi.length === 0) return [lo, forecast && lo.length >= 2 ? [lo[1]] : [lo[0]]]; // above range
     return [lo, hi];
   };
 
@@ -1064,12 +1071,16 @@ export class InterpolateNode extends ClassicPreset.Node {
   // table (cells may be null where nothing reached). A whole-input error → SolError.
   cachedResult: number | (number | null)[] | (number | null)[][] | SolError | null = null;
   literals: Record<string, number> = { x: 0 };
+  // GRID mode: also linearly EXTRAPOLATE beyond the known data (the Forecast checkbox),
+  // not just interpolate the interior. On by default.
+  forecast = true;
   width = 180; height = 215;
 
-  constructor(init?: { label?: string; mode?: InterpolateMode }) {
+  constructor(init?: { label?: string; mode?: InterpolateMode; forecast?: boolean }) {
     super("Interpolate");
     this.label = init?.label ?? "INTERPOLATE";
     this.mode = init?.mode ?? "list";
+    if (init?.forecast != null) this.forecast = init.forecast;
     this._rebuildSockets();
   }
 
@@ -1141,7 +1152,7 @@ export class InterpolateNode extends ClassicPreset.Node {
     const grid: (number | null)[][] = gridRaw.map((row) =>
       (Array.isArray(row) ? row : []).map((c) => (typeof c === "number" && Number.isFinite(c) ? c : null)),
     );
-    const result = fillBorderedGrid(grid);
+    const result = fillBorderedGrid(grid, this.forecast);
     this.cachedResult = result;
     return { result };
   }

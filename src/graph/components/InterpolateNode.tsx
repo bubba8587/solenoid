@@ -44,6 +44,8 @@ export function InterpolateComponent({ data, emit }: NodeProps<InterpolateNodeTy
   // socket set (see applyInterpolateMode).
   const [mode, setMode] = useState<InterpolateMode>(data.mode);
   useEffect(() => { setMode(data.mode); }, [data.mode]);
+  const [forecast, setForecast] = useState(data.forecast);
+  useEffect(() => { setForecast(data.forecast); }, [data.forecast]);
 
   return (
     <NodeShell node={data} emit={emit}>
@@ -53,8 +55,21 @@ export function InterpolateComponent({ data, emit }: NodeProps<InterpolateNodeTy
         onChange={(next) => { setMode(next); void applyInterpolateMode(data, next); }}
       />
       {mode === "grid" && (
-        <div style={{ fontSize: 11, fontStyle: "italic", color: "var(--text-dim)", marginTop: 2 }}>
-          Bilinear interpolation
+        <div style={{ marginTop: 2 }}>
+          <div style={{ fontSize: 11, fontStyle: "italic", color: "var(--text-dim)" }}>Bilinear interpolation</div>
+          <label
+            style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "var(--text)", marginTop: 2, cursor: "pointer" }}
+            title="Also linearly extrapolate cells BEYOND the data range (continue the trend), not just interpolate the interior"
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <input
+              type="checkbox"
+              checked={forecast}
+              onChange={(e) => { setForecast(e.target.checked); data.forecast = e.target.checked; void processGraph(data.id); }}
+            />
+            Forecast edges
+          </label>
         </div>
       )}
       <InlineInputs node={data} emit={emit} />
