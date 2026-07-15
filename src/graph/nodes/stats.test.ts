@@ -245,7 +245,7 @@ describe("INTERPOLATE — Grid mode (fill a bordered table)", () => {
       [10, 10, null, 20],
     ];
     // Every cell resolves to Z = x + y — the (X=5, Y=5) intersection (blank in BOTH a
-    // new row and a new column) resolves on the 2nd iteration, once its neighbours fill.
+    // new row and a new column) is the true bilinear blend of the four coarse corners.
     expect(fillBorderedGrid(t)).toEqual([
       [null, 0, 5, 10],
       [0, 0, 5, 10],
@@ -271,9 +271,23 @@ describe("INTERPOLATE — Grid mode (fill a bordered table)", () => {
     const t = [[null, 0, 10], [0, 0, NaN]]; // single known in the row → flat fill
     expect(fillBorderedGrid(t)).toEqual([[null, 0, 10], [0, 0, 0]]);
   });
-  it("fills as a 2-D mesh, not row-only (an L of data ramps diagonally)", () => {
-    // Only the top row + left column of the interior are known. A pure row-fill would
-    // make each row FLAT at its left value; the mesh BLENDS both directions instead.
+  it("interpolates ACROSS a hole (a missing point in a complete grid, not just inserted lines)", () => {
+    // Z = x·y, complete 3×3, one INTERIOR data point missing — bilinear across it = 1.
+    //   ·   0   1   2
+    //   0   0   0   0
+    //   1   0   ·   2      ← the (x=1,y=1) sample is a hole
+    //   2   0   2   4
+    const out = fillBorderedGrid([
+      [null, 0, 1, 2],
+      [0, 0, 0, 0],
+      [1, 0, null, 2],
+      [2, 0, 2, 4],
+    ]);
+    expect(out[2][2]).toBe(1);
+  });
+  it("leaves a cell blank when its four corners aren't all known (interp2 semantics)", () => {
+    // An L of data (top row + left column only): the far corner is missing, so an
+    // interior cell isn't determined by bilinear — left blank, not invented.
     //   ·   0   1   2
     //   0   0   1   2
     //   1   1   ·   ·
@@ -284,23 +298,7 @@ describe("INTERPOLATE — Grid mode (fill a bordered table)", () => {
       [1, 1, null, null],
       [2, 2, null, null],
     ]);
-    expect(out[2][2]).toBe(1);   // (x=1,y=1)
-    expect(out[2][3]).toBe(1.5); // (x=2,y=1): blended — row-only would give 1
-    expect(out[3][2]).toBe(1.5); // (x=1,y=2): blended — row-only would give 2
-  });
-  it("recovers the bilinear centre of a complete grid with a hole", () => {
-    // Complete 3×3 of Z = x·y with the CENTRE blanked; bilinear centre = 1.
-    //   ·   0   1   2
-    //   0   0   0   0
-    //   1   0   ·   2
-    //   2   0   2   4
-    const out = fillBorderedGrid([
-      [null, 0, 1, 2],
-      [0, 0, 0, 0],
-      [1, 0, null, 2],
-      [2, 0, 2, 4],
-    ]);
-    expect(out[2][2]).toBe(1);
+    expect(out[2][2]).toBeNull(); // (x=1,y=1): corner (x=2,y=2) unknown → undetermined
   });
 
   // Node wiring — ONE table in, ONE table out.
