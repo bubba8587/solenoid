@@ -550,6 +550,13 @@ export interface CubeColumn {
   name: string;
   /** Cell values, aligned by row index. `null` is an empty cell. */
   cells: CubeCell[];
+  /** OPTIONAL element type, carried from a source frame column so a flat cube renders
+   *  its cells correctly — a `date` serial as a date, a `logical` as TRUE/FALSE (a
+   *  serial is indistinguishable from a plain number at the value level, so without
+   *  this a frame→cube silently loses date/logical rendering). Absent on a genuinely
+   *  heterogeneous column (a hand-built cube, a nested-table column) — each cell then
+   *  stands on its own kind. A hint for DISPLAY, not a homogeneity guarantee. */
+  type?: FrameColType;
 }
 
 export interface CubeValue {
@@ -616,11 +623,11 @@ export function cubeCellsFromColumn(col: FrameColumn): CubeCell[] {
     : [...col.values];
 }
 
-/** A Frame is a Cube of flat cells — re-brand each column, tagging a unit-locked
- *  column's cells so the unit rides into the cube per-cell. Depth is always 1 (a
- *  frame's cells are already scalars). */
+/** A Frame is a Cube of flat cells — re-brand each column, carrying its element TYPE
+ *  (so dates/logicals still render right) and tagging a unit-locked column's cells so
+ *  the unit rides into the cube per-cell. Depth is always 1 (cells are scalars). */
 export function frameToCube(f: FrameValue): CubeValue {
-  return makeCube(f.columns.map((col) => ({ name: col.name, cells: cubeCellsFromColumn(col) })));
+  return makeCube(f.columns.map((col) => ({ name: col.name, type: col.type, cells: cubeCellsFromColumn(col) })));
 }
 
 /** Build a Cube from a row-major grid of arbitrary cells + optional headers.
@@ -706,6 +713,7 @@ function subFrame(child: FrameValue, rowIdxs: number[]): FrameValue {
 function subCube(child: CubeValue, rowIdxs: number[]): CubeValue {
   return makeCube(child.columns.map((c) => ({
     name: c.name,
+    ...(c.type ? { type: c.type } : {}),
     cells: rowIdxs.map((i) => c.cells[i] ?? null),
   })));
 }
@@ -750,7 +758,7 @@ export function relateFramesToCube(
   );
   const columns: CubeColumn[] = parent.columns.map((c, j) => {
     const cells = cubeCellsFromColumn(c);
-    return { name: names[j], cells: Array.from({ length: pRows }, (_, i) => cells[i] ?? null) };
+    return { name: names[j], type: c.type, cells: Array.from({ length: pRows }, (_, i) => cells[i] ?? null) };
   });
   const nestedCells: CubeCell[] = Array.from({ length: pRows }, (_, i) => {
     const idxs = childByKey.get(keyId(pKey.values[i] ?? null)) ?? [];
