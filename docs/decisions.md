@@ -486,17 +486,19 @@ per-op behaviour tests PLUS a completeness sweep that instantiates every `matrix
 node and FAILS THE BUILD if a matrix-taking node ships without a declared policy. This
 is what makes the discipline structural, not whack-a-mole. Matrix-unit PERSISTENCE
 rides the producing node (Table Input's `unit` field), not the array.
-**Cube = deliberately UNIT-BLIND (decided 2026-07-15):** a `CubeCell` is heterogeneous
-by nature (no per-column type, cells can be scalars/lists/matrices/nested frames) and
-carries no unit tag, and the type doesn't include `UnitCell` — forcing units in would
-ripple through all cube handling for the nichest rank. A frame→cube (`frameToCube`)
-copies the frame's AS-TYPED cells straight through, so the cube shows the right NUMBER
-and drops only the LABEL — the same unit-blind behaviour the coercion boundary gives a
-non-unit-aware surface. To keep a unit, extract to a frame/list (Get Column / Unnest
-mint tagged cells).
+**Cube = units PER CELL, like a list (author decision 2026-07-15, `39b487a4` —
+supersedes an interim "cube unit-blind" call):** a cube is heterogeneous PER CELL (no
+per-column type; a cell can be a scalar, list, matrix, or nested frame), which is the
+LIST's shape, not the frame's — so a dimensioned cube cell carries its unit AS A VALUE,
+a base-SI `UnitCell`, exactly like a list cell. `CubeCell` includes `UnitCell`;
+`cubeCellsFromColumn` is the single frame→cube bridge (a unit-locked column's cells →
+per-cell `UnitCell`s via `tagFrameCellUnit`), routed through both flattening paths
+(`frameToCube` + `relateFramesToCube`). The round trip is closed: `inferColumn`
+recovers a uniform column unit on cube→frame (reusing `matrixCellsFromList`), and
+`cellToNumber`/`cellKeyId` read a cell's DISPLAY magnitude so aggregation / inference /
+joins stay unit-blind-consistent. The cube viewer renders a `UnitCell` as "5 km".
 **What would reverse it:** a real need for per-column units on anonymous matrices —
-which is what the FRAME is for; use a frame. (For cubes: a concrete demand for
-dimensioned nested tables would reopen the cube-cell-tag question.)
+which is what the FRAME is for; use a frame.
 
 ---
 
