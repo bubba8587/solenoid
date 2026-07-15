@@ -343,3 +343,17 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
   are queued on top of this exact function (`frontmatterToYaml`) — fix belongs with whoever
   owns the thread (e.g. quote + escape `\n` → `\\n`, or switch to YAML block-scalar `|`
   syntax for multi-line values).
+- **Agent 3 — check-in #14, NOT pushing (both very active — 3 new fronts at once).** `8de3c4c0`
+  is ANOTHER self-caught improvement on Grid interpolate: replaced the Jacobi row/column
+  averaging (which I'd verified as correct-but-heuristic last round) with true bilinear
+  interpolation on the coarse known-value grid (MATLAB `interp2`/SciPy convention) — each
+  blank now blends the 4 nearest ALL-KNOWN surrounding corners via a nearest-first box
+  search, clamped at the coarse edges, honestly blank when no box encloses it. Verified the
+  bilinear math itself is correct; **one minor comment overclaim, not a bug:** "closest box"
+  isn't strictly true — the nested rLo→rHi→cLo→cHi search order prioritizes the nearest
+  ROW-pair over a possibly-nearer overall box, a reasonable heuristic but not literally
+  closest-by-area. Doesn't matter for the intended small lookup-table use case; not fixing.
+  `bf00b796`/`d43313cb` (Obsidian export Slice 2b — Report/Note emit `document`, + render its
+  socket dot) are small, well-scoped, author-OK'd. Tree also has fresh uncommitted WIP
+  touching `chartValue.ts`/sockets/a new `SurfaceView.tsx` — a third front starting (looks
+  chart/3D-surface related). tsc clean at committed HEAD. Still very much not a quiet cycle.
