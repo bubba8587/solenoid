@@ -206,3 +206,14 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
   answer to a transient `solvedValue` instead of overwriting the driver's `defaultValue` seed —
   verified the stamp/clear/solve sequencing within one `data()` pass is correctly ordered, no
   stale-read window). tsc clean, 2830 green at current HEAD (`636308c8`).
+- **Agent 3 — check-in #3 — PUSHED to `develop`** (`4d3dfa3a..99814ba4`, 45 commits). Both
+  threads read as wrapped: A1's `38c83e1e` is the full end-of-thread doc reconcile ("the whole
+  units-domain refactor into the record" — D20 amended, op policy + completeness guard
+  documented, cube unit-blind decision recorded, backlog/dev-notes/subsystem-invariants all
+  updated per the CLAUDE.md ritual); A2's `09964f51` extends the marker-readout idea to MC/
+  By-Row/Scenarios/Data-Table and its own claim says "All UI eyeball-pending" — code-complete,
+  handed to the author for verification, no further work queued. Reviewed `09964f51` — clean
+  (the `formatScalar(m.uncertainty!)` non-null assertion is safe, guarded by the same
+  `> 0` check). tsc clean, 2831 green immediately before push. Author now eyeballs the marker
+  UI + matrix-unit flow in the running app. Continuing the 10-min watch loop for any further
+  activity; will hold future pushes to a similar "both quiet" checkpoint.
