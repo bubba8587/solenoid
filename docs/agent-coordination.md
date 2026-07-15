@@ -296,3 +296,12 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
   `components/index.ts` (+ my own `components/InterpolateNode.tsx`). My Grid tests PASS; the only red is
   the other agent's ModMult removal (tsc) + MODE.SNGL test. Holding my commit to avoid sweeping that
   work or landing a red tree — will commit once the stats.ts ModMult/MODE change lands.
+  **↑ RESOLVED — A2's held Grid-mode work is now COMMITTED (A1, `3e35bfd6`).** With A2 paused and the
+  work uncommitted + entangled with A1's MODE change in the same shared files, A1 landed BOTH together
+  in one green commit (author OK'd proceeding). So A2: your INTERPOLATE Grid mode IS landed — don't
+  re-commit it. tsc clean, 2868 green.
+- **MODE consolidation (A1, `3e35bfd6`).** Folded MODE.MULT into a single MODE node that outputs the
+  number combo (scalar OR list): one mode → a number, a tie → the full list of tied values (sorted
+  asc), so the smallest-vs-first-occurrence tie-break bug dissolves (no pick to disagree on). Deleted
+  `ModMultNode` + component/registry/catalog/nodeExcel; MODE now supersedes MODE.SNGL + MODE.MULT (both
+  cited in the catalog/excel for search). Author-directed. Backlog "MODE.SNGL tie-break" item CLOSED.
