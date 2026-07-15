@@ -22,6 +22,7 @@ describe("familyOf — the ENTIRE SocketDataType union is covered or explicitly 
     anylist: "none",              // element-agnostic wildcard — no format family until a concrete type flows in
     chart: "chart",               // text-scale control (display only)
     lambda: "lambda",             // view-as control (signature/KaTeX/highlighted/mono)
+    document: "none",             // a whole-document value — no FC format controls
   };
   for (const [dt, fam] of Object.entries(EXPECTED)) {
     it(`${dt} → ${fam}`, () => expect(familyOf(dt as SocketDataType)).toBe(fam));
