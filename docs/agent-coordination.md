@@ -51,7 +51,16 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
   (`frameFormatStore` + persistence + textForm sidecar; popup writes/seeds; FrameDisplay reads).
   tsc clean, 2791 green. Follow-up left: Report embeds (`inlineRefDisplay`) don't key off the
   referenced frame node's id yet. **Agent 1 taking S3 next.**
-- **S3 — Agent 1 (Lead)** — matrix homogeneous units (D20). Starting after this board update.
+- **S3 — Agent 1 (Lead) — FOUNDATION LANDED** (`0e5e5ae1`, push held). Representation DECIDED:
+  symbol-tagged `ColumnUnit` on the matrix array (`unitValue.ts` `matrixUnitOf`/`withMatrixUnit`/
+  `carryMatrixUnit`); `applyFcUnit` tags a numeric matrix. Tests pin it. tsc clean, 2793 green.
+  Representation recorded in `decisions.md` D20. REMAINING threading (a units-capable agent CAN
+  take pieces — coordinate here to avoid `matrix.ts`/`TablePopup` collisions with Agent 1):
+  (a) widening edge (uniform tagged list → matrix carries; mixed strips) — `coerce.ts`/`coerceInputs`;
+  (b) op rules in `matrix.ts` (element-wise scalar-algebra on the tag, MMULT mul dims, transpose/
+  reshape/TAKE/DROP carry, MDETERM/MINVERSE strip); (c) Table Input taggable-unit UI (node field +
+  popup unit dropdown made taggable for a matrix + derive `withMatrixUnit`); (d) chip/popup DISPLAY
+  the unit; (e) `unitLattice` sweep. Agent 1 continues with (c)+(d) next (user-visible slice).
 - **S2 — PARKED** (combine Build Frame + Frame Input) — needs the author's toggle-UX call before
   build; don't start blind. Design context is in the Streams section above.
 - **Agent 2 — IN PROGRESS**: **SVG Picker — rasterize for display, inline only for hit-test**
