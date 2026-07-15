@@ -132,14 +132,6 @@ this backlog stays the per-item source of truth.
 
 ## Composite / drill-in
 
-- [ ] **By-Row run mode** (surfaced 2026-07-13; shape refined by author 2026-07-14) — the
-  user SELECTS which wired input port to iterate: the mode runs the subgraph once per ROW of
-  that input (the row binds to that port; other ports stay fixed), collecting per-port series.
-  Structurally Scenarios mode with data-driven overrides (`collectMultiple`) + a port picker
-  (goal-seek's Set/By dropdown pattern). The node-level "for each" — per-row logic with real
-  nodes (Set ops, Joins, sub-models), not just BYROW's formula subset. Guardrail:
-  dozens-to-hundreds of rows (full engine reset per pass); the Polars verb chain stays the
-  bulk path. BYCOL = transpose first, don't build it.
 - [ ] **Inside-solve stale dot is uniform** (author 2026-07-06, minor): after an INSIDE Solve
   (runs on marker seeds, ignoring outside wiring) the stale dot reads green though the held result
   is seed-based, not wired — you re-solve outside to use wiring. Distinguishing the two needs a

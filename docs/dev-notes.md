@@ -28,6 +28,20 @@ same, mismatch → #UNIT!), MMULT mul dims, MDETERM/MINVERSE strip; and (a) the 
 edge — the rank-changing TOCOL/TOROW + WRAPROWS/WRAPCOLS convert a matrix tag to/from per-cell list
 units (not a plain carry) — plus `coerce.ts` widening + the `unitLattice` sweep. tsc clean, 2808 green.
 
+### SESSION DIGEST (2026-07-15k — Composite By-Row run mode) [Agent 2, off-theme]
+Author-specced (2026-07-14) backlog item — the node-level "for each." A new Composite `CompositeRunMode`
+`"by-row"`: pick an exposed INPUT port (`byRowPortId`, `ByRowEditor` "For each row of" dropdown) and the
+subgraph runs once per ROW of that port's wired value, the row bound to that port while the others stay
+fixed; each output collects a per-row series. Reuses `collectMultiple` (like Scenarios/Data Table) with
+one override per row. Row semantics = pure exported `byRowValues`: a frame → one single-row frame per
+row (`frameFromRows`, keeps the port frame-typed for downstream frame ops), an array → its outer
+elements (1-D list → scalars, 2-D matrix → rows), a scalar → itself, null → none. Heavy (arm-and-run)
+when a port is set; `BY_ROW_MAX_ROWS = 500` safety cap since each row is a full internal-engine reset (a
+huge wired frame would freeze Solve — the Polars verb chain stays the bulk path). Persistence via the
+copyPaste whitelist + `solveKey`; `byRowPortId` cleared in `removeInputPort`. **Known limitation:** the
+500-row cap silently drops extra rows — replace with a Problems-panel warning later (no clean surface
+from `data()` today). UI eyeball pending (mode + picker). tsc clean, 2816 green. Commit `f684815d`.
+
 ### SESSION DIGEST (2026-07-15j — Simulation "Stop when" condition) [Agent 2, off-theme]
 Author-approved (2026-07-14) simulation follow-up. A Composite in Simulation mode gets a "Stop when
 [output] [op] [value]" condition (`stopWhenPortId`/`stopWhenOp`/`stopWhenValue`, persisted via the
