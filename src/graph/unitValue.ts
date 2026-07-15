@@ -341,3 +341,18 @@ export function withMatrixUnit<T>(m: T, unit: ColumnUnit | undefined): T {
 export function carryMatrixUnit<T>(dst: T, src: unknown): T {
   return withMatrixUnit(dst, matrixUnitOf(src));
 }
+
+/** The unit shared by EVERY matrix in `mats`, or undefined if they disagree (or any
+ *  is untagged). For a combiner (VSTACK/HSTACK) the result can only claim ONE unit
+ *  when all its parts carry the SAME one — a km grid stacked on a mi grid, or on an
+ *  untagged grid, has no single honest unit, so it strips (mirrors forAggregateUnits'
+ *  uniform-or-nothing rule for the structural case). */
+export function sharedMatrixUnit(mats: readonly unknown[]): ColumnUnit | undefined {
+  if (mats.length === 0) return undefined;
+  const first = matrixUnitOf(mats[0]);
+  if (!first) return undefined;
+  for (let i = 1; i < mats.length; i++) {
+    if (!sameColumnUnit(first, matrixUnitOf(mats[i]))) return undefined;
+  }
+  return first;
+}

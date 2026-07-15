@@ -6,8 +6,9 @@ import { tableSocket, strTableSocket, dateTableSocket, logicalTableSocket } from
 import { parseCsvRows } from "../csv";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { isFrameValue, frameRowCount, coerceFrameCell } from "../frame";
-import { carryMatrixUnit } from "../unitValue";
+import { carryMatrixUnit, withMatrixUnit, matrixUnitOf, sharedMatrixUnit } from "../unitValue";
 import { applyFcUnit } from "../unitBridge";
+import { taggedListFromMatrix, matrixCellsFromList } from "../unitColumn";
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
@@ -455,6 +456,8 @@ export class HStackTableNode extends StackNodeBase {
         out[i].push(...(i < m.length ? m[i] : Array<Cell>(w).fill(na)));
       }
     }
+    // The result carries a unit only when EVERY part shares the same one (D20).
+    withMatrixUnit(out, sharedMatrixUnit(mats));
     this.cachedResult = out;
     return { result: out };
   }
@@ -482,6 +485,8 @@ export class VStackNode extends StackNodeBase {
         out.push(r.length < width ? [...r, ...Array<Cell>(width - r.length).fill(na)] : [...r]);
       }
     }
+    // The result carries a unit only when EVERY part shares the same one (D20).
+    withMatrixUnit(out, sharedMatrixUnit(mats));
     this.cachedResult = out;
     return { result: out };
   }
@@ -499,6 +504,10 @@ export const TABLE_RESHAPE_OP_META = {
 } satisfies Record<TableReshapeOp, { label: string; description: string }>;
 
 export class TableReshapeNode extends ClassicPreset.Node {
+  /** Keeps `UnitCell` tags on its LIST input (WRAPROWS/WRAPCOLS): it converts a
+   *  uniform-unit list into a whole-grid matrix unit itself (see coerceInputs). The
+   *  matrix→list direction (TOCOL/TOROW) reads the grid's Symbol tag, unaffected. */
+  unitAware = true;
   label: string;
   op: TableReshapeOp;
   cachedList: Cell[] | null = null;
@@ -531,37 +540,44 @@ export class TableReshapeNode extends ClassicPreset.Node {
     // (Was inconsistent: wraprows left a ragged short last row, wrapcols
     // filled with NaN, which renders as garbage.)
     if (this.op === "wraprows") {
-      const list = toAnyMatrix(inputs.list?.[0])?.flat() ?? null;
+      // List → matrix (rank change): a uniform-unit list gives a matrix with that
+      // one whole-grid unit (D20); the cells drop to bare magnitudes, mixed strips.
+      const raw = toAnyMatrix(inputs.list?.[0])?.flat() ?? null;
       const w = Math.round(inputs.wrapCount?.[0] ?? this.literals.wrapCount ?? 3);
-      if (!list || w < 1) return { result: null };
+      if (!raw || w < 1) return { result: null };
+      const { mags: list, unit } = matrixCellsFromList(raw);
       const na: Cell = solError("#N/A", "Padded: the list doesn't fill the last row");
       const rows: CellMat = [];
       for (let i = 0; i < list.length; i += w) {
-        const row = list.slice(i, i + w);
+        const row = list.slice(i, i + w) as Cell[];
         while (row.length < w) row.push(na);
         rows.push(row);
       }
+      withMatrixUnit(rows, unit);
       this.cachedMatrix = rows;
       return { result: rows };
     } else if (this.op === "wrapcols") {
-      const list = toAnyMatrix(inputs.list?.[0])?.flat() ?? null;
+      const raw = toAnyMatrix(inputs.list?.[0])?.flat() ?? null;
       const w = Math.round(inputs.wrapCount?.[0] ?? this.literals.wrapCount ?? 3);
-      if (!list || w < 1) return { result: null };
+      if (!raw || w < 1) return { result: null };
+      const { mags: list, unit } = matrixCellsFromList(raw);
       const na: Cell = solError("#N/A", "Padded: the list doesn't fill the last column");
       const nCols = Math.ceil(list.length / w);
       const mat: CellMat = Array.from({ length: w }, () => Array<Cell>(nCols).fill(na));
-      for (let i = 0; i < list.length; i++) mat[i % w][Math.floor(i / w)] = list[i];
+      for (let i = 0; i < list.length; i++) mat[i % w][Math.floor(i / w)] = list[i] as Cell;
+      withMatrixUnit(mat, unit);
       this.cachedMatrix = mat;
       return { result: mat };
     } else if (this.op === "tocol") {
+      // Matrix → list (rank change): the grid's one unit becomes per-cell list tags.
       const m = toAnyMatrix(inputs.matrix?.[0]);
       if (!m) return { result: null };
-      this.cachedList = m.flat();
+      this.cachedList = taggedListFromMatrix(m.flat(), matrixUnitOf(m)) as Cell[];
       return { result: this.cachedList };
     } else {
       const m = toAnyMatrix(inputs.matrix?.[0]);
       if (!m) return { result: null };
-      this.cachedList = matTranspose(m).flat();
+      this.cachedList = taggedListFromMatrix(matTranspose(m).flat(), matrixUnitOf(m)) as Cell[];
       return { result: this.cachedList };
     }
   }

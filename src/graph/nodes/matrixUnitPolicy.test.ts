@@ -1,0 +1,158 @@
+import { describe, it, expect } from "vitest";
+import { ClassicPreset } from "rete";
+import * as M from "./matrix";
+import { ListIndexNode } from "./list";
+import { wrapNodeData } from "../coerceInputs";
+import { MutableSocket, SolenoidSocket, AdoptiveSocket } from "../sockets";
+import { withMatrixUnit, matrixUnitOf, fromUnit, isUnitCell, type UnitCell } from "../unitValue";
+import { fcUnitToUnit } from "../unitBridge";
+
+// ─── The matrix-unit POLICY guard (D20) ──────────────────────────────────────
+// A matrix carries ONE whole-grid unit as a non-enumerable Symbol tag (unitValue.ts).
+// That tag is dropped by any array rebuild, so EVERY node that transforms a matrix
+// must make a deliberate choice about the unit. This file is the machine-checked
+// register of those choices: the policy table below plus a COMPLETENESS sweep that
+// fails if a new matrix.ts node ships without a declared policy. It's the structural
+// guard that turns "did you remember to carry the unit?" from a silent runtime bug
+// (the 2026-07-15 INDEX/reshape whack-a-mole) into a red test.
+//
+//   carry            — structural reshape, same cells rearranged → the unit rides
+//   carry-if-uniform — a combiner → the unit rides only if every part shares it
+//   convert-to-list  — rank drop (matrix→list): the grid unit becomes per-cell tags
+//   convert-to-matrix— rank lift (list→matrix): a uniform list gives the grid unit
+//   strip            — a value transform (linear algebra) breaks the unit, by design
+//   na               — no dimensioned output (dimension info, a generated matrix)
+//   author           — a literal source that MINTS the unit
+
+type Policy = "carry" | "carry-if-uniform" | "convert-to-list" | "convert-to-matrix" | "strip" | "na" | "author";
+
+const POLICY: Record<string, Policy> = {
+  TableTransposeNode: "carry",
+  TableSelectNode: "carry",       // CHOOSEROWS / CHOOSECOLS
+  TableTakeDropNode: "carry",     // TAKE / DROP (table)
+  ExpandNode: "carry",
+  HStackTableNode: "carry-if-uniform",
+  VStackNode: "carry-if-uniform",
+  TableReshapeNode: "convert-to-matrix", // WRAPROWS/WRAPCOLS lift; TOCOL/TOROW drop (both checked below)
+  TableMultNode: "strip",         // MMULT — dimensioned matrix products are out of scope (documented-strip)
+  MatDetNode: "strip",            // MDETERM (unitⁿ) / MINVERSE (unit⁻¹) — documented-strip
+  TableInfoNode: "na",            // ROWS / COLUMNS → plain numbers
+  TableUnitNode: "na",            // MUNIT → a freshly generated identity matrix
+  TableInputNode: "author",       // a literal source that tags its own output
+};
+
+// A km-tagged 2×2 grid (dim length, display "km"), cells as-typed per D20.
+const kmGrid = () => withMatrixUnit([[1, 2], [3, 4]], { dim: { length: 1 }, display: "km" });
+const plainGrid = () => [[1, 2], [3, 4]];
+
+// Matrix-family socket types (declared or adoptive-base) — a node with one of these
+// on an input takes a matrix and therefore needs a policy.
+const MATRIX_INPUT = new Set(["table", "strtable", "datetable", "logicaltable", "anytable"]);
+function takesMatrix(node: ClassicPreset.Node): boolean {
+  for (const inp of Object.values(node.inputs ?? {})) {
+    const s = inp?.socket as { dataType?: string; base?: string } | undefined;
+    if (s && (MATRIX_INPUT.has(s.dataType ?? "") || MATRIX_INPUT.has(s.base ?? ""))) return true;
+  }
+  return false;
+}
+
+describe("matrix-unit policy — completeness (a new matrix op must declare a policy)", () => {
+  it("every matrix.ts node that takes a matrix is in the POLICY table", () => {
+    const missing: string[] = [];
+    let found = 0;
+    for (const exp of Object.values(M)) {
+      if (typeof exp !== "function") continue;
+      if (!(exp.prototype instanceof ClassicPreset.Node)) continue;
+      let node: ClassicPreset.Node;
+      try { node = new (exp as new () => ClassicPreset.Node)(); } catch { continue; }
+      if (!takesMatrix(node)) continue;
+      found++;
+      if (!(node.constructor.name in POLICY)) missing.push(node.constructor.name);
+    }
+    // If this fails: a new matrix-transforming node shipped without deciding what
+    // happens to a D20 unit tag. Add it to POLICY (and a case below) — carry / strip /
+    // convert — don't let it silently drop the unit.
+    expect(missing).toEqual([]);
+    // Non-vacuous: the sweep must actually be finding matrix-taking nodes (guards
+    // against a socket-detection change silently making this test pass on nothing).
+    expect(found).toBeGreaterThanOrEqual(8);
+  });
+});
+
+describe("matrix-unit policy — behaviour matches the declared policy", () => {
+  it("carry: the whole-grid unit rides a structural reshape", () => {
+    expect(matrixUnitOf(new M.TableTransposeNode().data({ matrix: [kmGrid()] }).result)).toMatchObject({ display: "km" });
+    expect(matrixUnitOf(new M.TableSelectNode({ op: "chooserows" }).data({ matrix: [kmGrid()], indices: [[1]] }).result)).toMatchObject({ display: "km" });
+    expect(matrixUnitOf(new M.TableTakeDropNode({ op: "take" }).data({ matrix: [kmGrid()], rows: [1], cols: [0] }).result)).toMatchObject({ display: "km" });
+    expect(matrixUnitOf(new M.ExpandNode().data({ matrix: [kmGrid()], rows: [3], cols: [2], fill: [0] }).result)).toMatchObject({ display: "km" });
+  });
+
+  it("carry-if-uniform: a stack keeps the unit only when every part shares it", () => {
+    const v = new M.VStackNode({ valueKeys: ["t0", "t1"] });
+    expect(matrixUnitOf(v.data({ t0: [kmGrid()], t1: [kmGrid()] }).result)).toMatchObject({ display: "km" });
+    expect(matrixUnitOf(v.data({ t0: [kmGrid()], t1: [plainGrid()] }).result)).toBeUndefined(); // mixed → strip
+    const h = new M.HStackTableNode({ valueKeys: ["t0", "t1"] });
+    expect(matrixUnitOf(h.data({ t0: [kmGrid()], t1: [kmGrid()] }).result)).toMatchObject({ display: "km" });
+    expect(matrixUnitOf(h.data({ t0: [kmGrid()], t1: [plainGrid()] }).result)).toBeUndefined();
+  });
+
+  it("convert-to-list: TOCOL / TOROW flatten a grid unit into per-cell list tags", () => {
+    const col = new M.TableReshapeNode({ op: "tocol" }).data({ matrix: [kmGrid()] }).result as unknown[];
+    expect(col.every((c) => isUnitCell(c) && (c as UnitCell).display === "km")).toBe(true);
+    const row = new M.TableReshapeNode({ op: "torow" }).data({ matrix: [kmGrid()] }).result as unknown[];
+    expect(row.every((c) => isUnitCell(c) && (c as UnitCell).display === "km")).toBe(true);
+  });
+
+  it("convert-to-matrix: WRAPROWS lifts a uniform-unit list into a grid unit (through the real boundary)", () => {
+    // A list of km UnitCells (base-SI values, display km) wraps into a km grid whose
+    // cells are bare as-typed magnitudes. Run through wrapNodeData because the list
+    // input would otherwise be unit-stripped at the boundary (the node is unitAware).
+    const n = new M.TableReshapeNode({ op: "wraprows" });
+    wrapNodeData(n);
+    const km = fcUnitToUnit("km")!, kg = fcUnitToUnit("kg")!;
+    const kmList = [fromUnit(1, km, "km"), fromUnit(2, km, "km"), fromUnit(3, km, "km"), fromUnit(4, km, "km")];
+    const out = (n.data({ list: [kmList], wrapCount: [2] }) as { result: unknown }).result;
+    expect(matrixUnitOf(out)).toMatchObject({ display: "km" });
+    expect((out as number[][])[0][0]).toBe(1); // as-typed magnitude, not base-SI 1000
+    // A mixed-unit list can't claim one grid unit → strips.
+    const mixed = [fromUnit(1, km, "km"), fromUnit(2, kg, "kg")];
+    const m2 = new M.TableReshapeNode({ op: "wraprows" });
+    wrapNodeData(m2);
+    expect(matrixUnitOf((m2.data({ list: [mixed], wrapCount: [2] }) as { result: unknown }).result)).toBeUndefined();
+  });
+
+  it("strip: linear algebra drops the unit (documented)", () => {
+    // Identity × a km grid: the product is a fresh array with no tag.
+    const id = [[1, 0], [0, 1]];
+    expect(matrixUnitOf(new M.TableMultNode().data({ a: [kmGrid()], b: [id] }).result)).toBeUndefined();
+    expect(matrixUnitOf(new M.MatDetNode({ op: "minverse" }).data({ matrix: [kmGrid()] }).result)).toBeUndefined();
+  });
+
+  it("na: dimension info / a generated matrix carry no unit", () => {
+    const info = new M.TableInfoNode().data({ matrix: [kmGrid()] });
+    expect(typeof info.rows === "number" || info.rows === null).toBe(true); // a number, not a tagged value
+    expect(matrixUnitOf(new M.TableUnitNode().data({ n: [3] }).result)).toBeUndefined();
+  });
+
+  it("author: a NUMBER Table Input tags its own output", () => {
+    expect(matrixUnitOf(new M.TableInputNode({ tableText: "1, 2\n3, 4", dataType: "number", unit: "km" }).data().table)).toMatchObject({ display: "km" });
+  });
+});
+
+// INDEX lives in list.ts but is the other matrix-unit consumer (extraction). Pin it
+// here too so the whole matrix-unit story is guarded in one place — through the REAL
+// coercion boundary, where the adoptive trueany input adopts "table" (the 2026-07-15
+// bug the direct-data() test missed).
+describe("matrix-unit policy — INDEX extraction (list.ts) carries the unit out", () => {
+  it("through the real boundary (socket adopts 'table')", () => {
+    const n = new ListIndexNode();
+    (n.inputs.list!.socket as MutableSocket).setType("table");
+    wrapNodeData(n);
+    const cell = (n.data({ list: [kmGrid()], index: [1], column: [2] }) as { result: unknown }).result;
+    expect(isUnitCell(cell)).toBe(true);
+    expect((cell as UnitCell).display).toBe("km");
+  });
+});
+
+// Guard the guard: keep the imports honest (unused-import trip if a helper is dropped).
+void SolenoidSocket; void AdoptiveSocket;
