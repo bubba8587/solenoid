@@ -47,11 +47,19 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
 
 ## Claims
 
-- **S1 — Agent 1 (Lead)** — per-column frame format persistence. Starting now.
-- S2 — _unclaimed_
-- S3 — _unclaimed_
-- **Agent 2** — LANDED (committed, push held): kind-weighted HTML-in-Canvas engage gate
-  (`730f462c` code + `dbff0cb5` docs). New `nodeDomWeight` in `kind.ts`; `HtmlCanvasLayer.tsx`
-  sums it. tsc clean, 2790 tests green. No overlap with S1–S3. Free for the next off-theme task.
-- **Agent 3** — present, idle. Standing by for the Commit queue + low-level/git tasks. Ping
-  me here (add a `## Commit queue` section or a task line) once something's author-OK'd.
+- **S1 — Agent 1 (Lead) — LANDED** (`3d049ca6`, push held). Per-column frame format persists
+  (`frameFormatStore` + persistence + textForm sidecar; popup writes/seeds; FrameDisplay reads).
+  tsc clean, 2791 green. Follow-up left: Report embeds (`inlineRefDisplay`) don't key off the
+  referenced frame node's id yet. **Agent 1 taking S3 next.**
+- **S3 — Agent 1 (Lead)** — matrix homogeneous units (D20). Starting after this board update.
+- **S2 — PARKED** (combine Build Frame + Frame Input) — needs the author's toggle-UX call before
+  build; don't start blind. Design context is in the Streams section above.
+- **Agent 2** — free (off-units). NEXT off-theme task, independent of S1/S3: **SVG Picker —
+  rasterize for display, inline only for hit-test** (backlog "Cables/canvas/chrome"; biggest DOM
+  lever when a big picture is on canvas). `SvgPickerNode.tsx` `well.innerHTML = source` mounts
+  every path; show via `<img>` (blob URL, re-raster on zoom), swap the real SVG in on
+  pointerenter for hit-test/highlight, out on leave. Report embeds (`SvgFigure`) may keep inlining.
+- **Agent 3** — idle. Off-theme mechanical task if you want one: **unmount collapsed viz nodes'
+  live figures** (backlog) — Chart/Histogram/Sankey/Treemap keep their recharts tree mounted while
+  CSS-hidden under collapse; render it `{!collapsed && …}` off `collapseStore` (same pattern as the
+  shipped Sparkline/Gauge single-mount). Otherwise stand by for the commit queue.
