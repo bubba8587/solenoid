@@ -5,6 +5,23 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-15i — SVG Picker: rasterize for display, inline only on hover) [Agent 2, off-theme]
+`SvgPickerComponent` permanently mounted the source markup via `well.innerHTML = source` — a
+US-county-map SVG ≈ +40k live DOM elements sitting on the canvas at all times (the single biggest DOM
+lever the 2026-07-08 audit flagged). Now the well shows a rasterized `<img>` (blob URL of the source)
+as the IDLE display — one element — and the heavy inline SVG mounts ONLY while the pointer is over the
+well (`hovering` state, `onPointerEnter`→mount / `onPointerLeave`→unmount), for hit-testing + the live
+hover glow, then drops. The selected-layer STEADY glow is preserved when idle by baking it into the
+raster: `bakeSelectionGlow` parses the source, applies `selectedGlow`'s `filter: drop-shadow` to the
+named element, re-serializes (no-selection → source unchanged, no parse). Raster rebuild is debounced
+80ms (a colour drag doesn't re-parse a big SVG per tick; the lag hides behind the hovered live SVG);
+blob URLs revoke prev-once-new-exists (no blank gap) + on unmount. SVG-in-`<img>` stays vector/crisp
+so no zoom re-raster needed. `resolveLayer`/`elementName` (`svgLayer.ts`) unchanged; Report `SvgFigure`
+embeds still inline. NB the drop-shadow-in-img idle glow is the one thing an author eyeball should
+confirm — if a future engine drops it, only the idle glow is lost (hover glow + pick + hero text
+unaffected). Shipped bundled into commit `0e5e5ae1` (a concurrent `git commit -a` swept my uncommitted
+files — see coordination doc). tsc clean, 2793 green.
+
 ### SESSION DIGEST (2026-07-15h — HTML-in-Canvas engage gate weighted by node kind) [Agent 2, off-theme]
 The `"html"` renderer auto-engaged on a RAW node count (`getNodes().length >= 100`), which
 undercounts DOM cost: one recharts figure is a large SVG subtree, an inlined source SVG (SvgPicker,
