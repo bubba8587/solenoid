@@ -537,7 +537,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           regressionLeaf("steyx"),
           { type: "logest",  label: "LOGEST",  description: "Exponential regression: [m, b] where y = b·mˣ; requires all Ys > 0. Excel: LOGEST.", create: () => new LogestNode(), parity: false },
           { type: "trend",   label: "TREND",   description: "Predict Y values for new Xs using a fitted linear regression. Excel: TREND.", create: () => new TrendNode(), parity: false },
-          { type: "interpolate", label: "INTERPOLATE", description: "Look up a value by interpolation between known points (not a regression fit), clamped at the ends. Two modes: List (1-D — y for a query x) and Grid (2-D bilinear — resample a numeric table onto new column/row coordinates). For lookup tables: hardness conversions, pump curves, steam tables. No Excel equivalent (LOOKUP is a step match).", create: () => new InterpolateNode(), parity: false },
+          { type: "interpolate", label: "INTERPOLATE", description: "Look up a value by interpolation between known points (not a regression fit), clamped at the ends. Two modes: List (1-D — y for a query x) and Grid (2-D — fill the blanks in a bordered lookup table where the first row holds the X coordinates and the first column the Y coordinates). For lookup tables: hardness conversions, pump curves, steam tables. No Excel equivalent (LOOKUP is a step match).", create: () => new InterpolateNode(), parity: false },
         ],
       },
       {

@@ -54,7 +54,7 @@ export function InterpolateComponent({ data, emit }: NodeProps<InterpolateNodeTy
       />
       <InlineInputs node={data} emit={emit} />
       {data.mode === "grid"
-        ? <TableDisplay table={isSolError(data.cachedResult) ? (data.cachedResult as SolError) : (data.cachedResult as number[][] | null)} label={data.label} />
+        ? <TableDisplay table={isSolError(data.cachedResult) ? (data.cachedResult as SolError) : (data.cachedResult as (number | null)[][] | null)} label={data.label} />
         : <ResultDisplay value={data.cachedResult} label={data.label} />}
     </NodeShell>
   );
