@@ -9,7 +9,7 @@ import { errorTip } from "./ErrorChip";
 import { flyToNode } from "../flyToNode";
 import { useHostNodeId } from "./nodeContext";
 import { frameFormatStore } from "../frameFormatStore";
-import { formatNumberWithAnnotation, type FormatAnnotation } from "../formatAnnotationStore";
+import { formatNumberWithAnnotation, applyLogicalStyle, isDateStyle, type FormatAnnotation } from "../formatAnnotationStore";
 
 // A NaN cell is dirty DATA (an undefined value from an import), not the #N/A
 // error — render the literal "NaN", tinted at the cell (see the td below).
@@ -18,9 +18,15 @@ function isNanCell(v: FrameCell): boolean {
 }
 
 function fmtCell(v: FrameCell, type: FrameColType = "number", ann?: FormatAnnotation): string {
-  // A persisted per-column format (frameFormatStore) applies to a numeric/date cell.
-  if (ann && typeof v === "number" && Number.isFinite(v)) {
-    return formatNumberWithAnnotation(v, { ...ann, unit: "none" });
+  // A persisted per-column format (frameFormatStore) applies by column KIND — a
+  // logical show-as, or a number/date format. A stale cross-type format left by a
+  // type switch (number↔date) is ignored (guards against a number rendering as a
+  // date), falling through to the type's default below.
+  if (ann) {
+    if (type === "logical" && typeof v === "boolean") return applyLogicalStyle(v, ann.logicalStyle);
+    if (typeof v === "number" && Number.isFinite(v) && (type === "date") === isDateStyle(ann.format)) {
+      return formatNumberWithAnnotation(v, { ...ann, unit: "none" });
+    }
   }
   const c = formatFrameCell(type, v); // date serials → date strings
   if (c === null || c === undefined || c === "") return "";
