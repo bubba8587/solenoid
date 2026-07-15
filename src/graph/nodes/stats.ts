@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { broadcastErr, listIn, listOut, numIn, numOut, numListIn, numListOut } from "./shared";
+import { broadcastErr, listIn, listOut, numIn, numOut, numListIn, numListOut, readInput } from "./shared";
 import { normSInv, regularizedBeta, regularizedGamma, stdNormCDF, lnCombin, bisectionInv, iterMin, iterMax } from "./mathUtils";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { excelRank, excelTrimmean, excelPercentRank } from "../excelFunctions";
@@ -965,8 +965,10 @@ export function interpolateLinear(xs: number[], ys: number[], queryXs: number[])
 
 export class InterpolateNode extends ClassicPreset.Node {
   label: string;
-  cachedList: (number | null)[] | SolError = [];
-  literals: Record<string, number> = {};
+  // Scalar-or-list, matching the query's shape (the numlist combo): a single X in
+  // yields ONE interpolated y, a list of Xs yields a list.
+  cachedResult: number | (number | null)[] | SolError | null = null;
+  literals: Record<string, number> = { x: 0 };
   width = 180; height = 215;
 
   constructor(init?: { label?: string }) {
@@ -974,25 +976,37 @@ export class InterpolateNode extends ClassicPreset.Node {
     this.label = init?.label ?? "INTERPOLATE";
     this.addInput("ys",     listIn("Known Ys"));
     this.addInput("xs",     listIn("Known Xs"));
-    this.addInput("new_xs", listIn("X"));
-    this.addOutput("result", listOut("Interpolated Ys"));
+    // Query is a numlist COMBO (scalar-or-list) so a single X in → a single y out,
+    // a list of Xs in → a list out (result mirrors the query's shape).
+    this.addInput("new_xs", numListIn("X"));
+    this.addOutput("result", numListOut("Interpolated Y"));
   }
 
-  data(inputs: { ys?: (number | null | SolError)[][]; xs?: (number | null | SolError)[][]; new_xs?: (number | null | SolError)[][] }): { result: (number | null)[] | SolError } {
+  data(inputs: { ys?: (number | null | SolError)[][]; xs?: (number | null | SolError)[][]; new_xs?: (number | (number | null | SolError)[] | null | SolError)[] }): { result: number | (number | null)[] | SolError | null } {
     // Known data: propagate the first error, drop pairs missing on either side.
     const { error, xs, ys } = forPair(inputs.xs?.[0] ?? null, inputs.ys?.[0] ?? null);
-    if (error) { this.cachedList = error; return { result: error }; }
-    const qRaw = inputs.new_xs?.[0] ?? null;
-    const qErr = qRaw?.find(isSolError);
-    if (qErr) { this.cachedList = qErr as SolError; return { result: qErr as SolError }; }
-    const q = qRaw ?? [];
-    // No known points or no query → nothing to interpolate (empty, like TREND on bad input).
-    if (xs.length === 0 || q.length === 0) { this.cachedList = []; return { result: [] }; }
-    // A missing (null) query stays missing IN PLACE; a real query gets its interpolated y.
-    const nums = q.map((v) => (v === null ? NaN : (v as number)));
-    const interp = interpolateLinear(xs, ys, nums);
-    const result = q.map((v, i) => (v === null ? null : interp[i]));
-    this.cachedList = result;
+    if (error) { this.cachedResult = error; return { result: error }; }
+    // The combo query arrives as a scalar (a single X wired/typed) or an array (a
+    // list wired) — readInput unwraps it and falls back to the literal when unwired.
+    const q = readInput(inputs.new_xs, this.literals.x);
+    if (isSolError(q)) { this.cachedResult = q; return { result: q }; }
+    const noData = xs.length === 0;
+    if (Array.isArray(q)) {
+      const qErr = q.find(isSolError);
+      if (qErr) { this.cachedResult = qErr as SolError; return { result: qErr as SolError }; }
+      // No known points or no query → nothing to interpolate (empty, like TREND).
+      if (noData || q.length === 0) { this.cachedResult = []; return { result: [] }; }
+      // A missing (null) query stays missing IN PLACE; a real one gets its y.
+      const nums = q.map((v) => (v === null ? NaN : (v as number)));
+      const interp = interpolateLinear(xs, ys, nums);
+      const result = q.map((v, i) => (v === null ? null : interp[i]));
+      this.cachedResult = result;
+      return { result };
+    }
+    // Scalar query → scalar result (a missing/no-data query yields null).
+    if (q === null || noData) { this.cachedResult = null; return { result: null }; }
+    const result = interpolateLinear(xs, ys, [q])[0];
+    this.cachedResult = result;
     return { result };
   }
 }
