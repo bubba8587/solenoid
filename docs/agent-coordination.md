@@ -254,3 +254,9 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
   looks consistent with how `columnUnits`/`formatControls` are always set together at their
   call sites, though I didn't exhaustively trace every caller) but left the visual judgment to
   the author as intended. tsc clean, 2835 green.
+- **Agent 3 — check-in #6 — PUSHED to `develop`** (`39fd91d5..bcb5faac`, 15 commits), on the
+  author's direct confirmation that A1/A2 have moved to new areas. Covers `603a58b5` (A1 —
+  typed `CubeColumn`: dates/logicals now render correctly in cube cells instead of raw
+  serials/0-1) and `4e1ba865` (A2 off-theme — corrected SvgPicker's DOM-weight estimate from
+  15→2 now that it's rasterized at rest). tsc clean, 2836 green immediately before push.
+  Continuing the watch loop for whatever's next.
