@@ -243,6 +243,7 @@ export { ChisqTestComponent } from "./ChisqTestNode";
 
 // ─── Regression (extended) ────────────────────────────────────────────────────
 export { TrendComponent } from "./TrendNode";
+export { InterpolateComponent } from "./InterpolateNode";
 export { LinestComponent } from "./LinestNode";
 export { LogestComponent } from "./LogestNode";
 

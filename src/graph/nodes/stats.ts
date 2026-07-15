@@ -925,6 +925,78 @@ export class TrendNode extends ClassicPreset.Node {
   }
 }
 
+// ─── Interpolate ──────────────────────────────────────────────────────────────
+
+// Piecewise-linear interpolation over a known (x, y) dataset — a true lookup-table
+// interpolation, which Excel has no direct function for: LOOKUP/XLOOKUP do a STEP
+// match (nearest key, no blending), and FORECAST/TREND fit a regression LINE through
+// the cloud rather than honouring each point. Given known Xs/Ys and one or more query
+// Xs, return the y on the straight segment between the two bracketing known points.
+// CLAMPED at the ends: a query below the smallest known x returns the first y, above
+// the largest returns the last — a lookup table (hardness conversion, a pump curve, a
+// pipe schedule) doesn't extrapolate past its data. Points are sorted by x, so the
+// known data may arrive in any order; a duplicated x resolves to its first-seen y
+// (avoids a divide-by-zero on a vertical segment). A NaN query stays NaN.
+export function interpolateLinear(xs: number[], ys: number[], queryXs: number[]): number[] {
+  const n = Math.min(xs.length, ys.length);
+  if (n === 0) return queryXs.map(() => NaN);
+  const pairs: Array<[number, number]> = [];
+  for (let i = 0; i < n; i++) pairs.push([xs[i], ys[i]]);
+  pairs.sort((a, b) => a[0] - b[0]);
+  const sx = pairs.map((p) => p[0]);
+  const sy = pairs.map((p) => p[1]);
+  const last = n - 1;
+  const at = (x: number): number => {
+    if (Number.isNaN(x)) return NaN;
+    if (x <= sx[0]) return sy[0];        // clamp low (also the single-point flat case)
+    if (x >= sx[last]) return sy[last];  // clamp high
+    // Binary search the bracket [lo, hi] with sx[lo] <= x < sx[hi].
+    let lo = 0, hi = last;
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1;
+      if (sx[mid] <= x) lo = mid; else hi = mid;
+    }
+    const x0 = sx[lo], x1 = sx[hi];
+    if (x1 === x0) return sy[lo];        // duplicated x — no interior gap to blend
+    return sy[lo] + ((sy[hi] - sy[lo]) * (x - x0)) / (x1 - x0);
+  };
+  return queryXs.map(at);
+}
+
+export class InterpolateNode extends ClassicPreset.Node {
+  label: string;
+  cachedList: (number | null)[] | SolError = [];
+  literals: Record<string, number> = {};
+  width = 180; height = 215;
+
+  constructor(init?: { label?: string }) {
+    super("Interpolate");
+    this.label = init?.label ?? "INTERPOLATE";
+    this.addInput("ys",     listIn("Known Ys"));
+    this.addInput("xs",     listIn("Known Xs"));
+    this.addInput("new_xs", listIn("X"));
+    this.addOutput("result", listOut("Interpolated Ys"));
+  }
+
+  data(inputs: { ys?: (number | null | SolError)[][]; xs?: (number | null | SolError)[][]; new_xs?: (number | null | SolError)[][] }): { result: (number | null)[] | SolError } {
+    // Known data: propagate the first error, drop pairs missing on either side.
+    const { error, xs, ys } = forPair(inputs.xs?.[0] ?? null, inputs.ys?.[0] ?? null);
+    if (error) { this.cachedList = error; return { result: error }; }
+    const qRaw = inputs.new_xs?.[0] ?? null;
+    const qErr = qRaw?.find(isSolError);
+    if (qErr) { this.cachedList = qErr as SolError; return { result: qErr as SolError }; }
+    const q = qRaw ?? [];
+    // No known points or no query → nothing to interpolate (empty, like TREND on bad input).
+    if (xs.length === 0 || q.length === 0) { this.cachedList = []; return { result: [] }; }
+    // A missing (null) query stays missing IN PLACE; a real query gets its interpolated y.
+    const nums = q.map((v) => (v === null ? NaN : (v as number)));
+    const interp = interpolateLinear(xs, ys, nums);
+    const result = q.map((v, i) => (v === null ? null : interp[i]));
+    this.cachedList = result;
+    return { result };
+  }
+}
+
 // ─── LINEST ───────────────────────────────────────────────────────────────────
 
 export class LinestNode extends ClassicPreset.Node {

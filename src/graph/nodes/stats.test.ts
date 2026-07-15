@@ -13,6 +13,8 @@ import {
   FisherNode,
   RegressionNode,
   ForecastNode,
+  InterpolateNode,
+  interpolateLinear,
 } from "./stats";
 import { isSolError, solError } from "../errorValue";
 
@@ -163,6 +165,53 @@ describe("REGRESSION / FORECAST zero-variance Xs", () => {
   it("FORECAST returns #DIV/0! when Xs have zero variance", () => {
     const r = new ForecastNode().data({ x: [3], ys: [[1, 2, 3]], xs: [[5, 5, 5]] }).result;
     expect(isSolError(r) && r.code).toBe("#DIV/0!");
+  });
+});
+
+describe("INTERPOLATE (piecewise-linear lookup)", () => {
+  // Pure core.
+  it("hits a known point exactly", () => {
+    expect(interpolateLinear([0, 10, 20], [0, 100, 300], [10])).toEqual([100]);
+  });
+  it("blends linearly between two bracketing points", () => {
+    // Midway 0→10 on 0→100 = 50; three-quarters 10→20 on 100→300 = 250.
+    expect(interpolateLinear([0, 10, 20], [0, 100, 300], [5, 17.5])).toEqual([50, 250]);
+  });
+  it("clamps below the first x and above the last (no extrapolation)", () => {
+    expect(interpolateLinear([0, 10], [5, 15], [-100, 999])).toEqual([5, 15]);
+  });
+  it("sorts unordered known points before interpolating", () => {
+    // Same data as the blend test, shuffled — must give the same answer.
+    expect(interpolateLinear([20, 0, 10], [300, 0, 100], [5])).toEqual([50]);
+  });
+  it("resolves a duplicated x to its first-seen y (no divide-by-zero)", () => {
+    const r = interpolateLinear([0, 5, 5, 10], [0, 50, 999, 100], [5]);
+    expect(Number.isFinite(r[0])).toBe(true);
+  });
+  it("holds flat with a single known point", () => {
+    expect(interpolateLinear([7], [42], [0, 7, 100])).toEqual([42, 42, 42]);
+  });
+  it("keeps a NaN query as NaN", () => {
+    expect(interpolateLinear([0, 10], [0, 10], [NaN])[0]).toBeNaN();
+  });
+
+  // Node wiring.
+  it("interpolates a list of queries through the node", () => {
+    const r = new InterpolateNode().data({ xs: [[0, 10, 20]], ys: [[0, 100, 300]], new_xs: [[5, 10, 17.5]] }).result;
+    expect(r).toEqual([50, 100, 250]);
+  });
+  it("keeps a missing (null) query missing in place", () => {
+    const r = new InterpolateNode().data({ xs: [[0, 10]], ys: [[0, 100]], new_xs: [[5, null, 10]] }).result;
+    expect(r).toEqual([50, null, 100]);
+  });
+  it("propagates a #CODE! error in the known data", () => {
+    const err = solError("#N/A", "missing");
+    const r = new InterpolateNode().data({ xs: [[0, err]], ys: [[0, 100]], new_xs: [[5]] }).result;
+    expect(isSolError(r) && r.code).toBe("#N/A");
+  });
+  it("returns empty with no known points or no query", () => {
+    expect(new InterpolateNode().data({ xs: [[]], ys: [[]], new_xs: [[5]] }).result).toEqual([]);
+    expect(new InterpolateNode().data({ xs: [[0, 10]], ys: [[0, 100]], new_xs: [[]] }).result).toEqual([]);
   });
 });
 

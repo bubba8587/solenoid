@@ -67,7 +67,7 @@ import {
   BesselNode,
   SeriesSumNode, MultinomialNode, RollingNode, SwitchNode, IfsNode,
   ZTestNode, TTestNode, FTestNode, ChisqTestNode,
-  TrendNode, LinestNode, LogestNode, BinomDistRangeNode, ModMultNode,
+  TrendNode, InterpolateNode, LinestNode, LogestNode, BinomDistRangeNode, ModMultNode,
   NODE_KIND_ACCENTS,
   ARITHMETIC_OP_META, MATH_FN_OP_META, BOOLEAN_OP_META, REDUCE_OP_META,
   COMBINATORICS_OP_META, NTH_VALUE_OP_META, ARG_MIN_MAX_OP_META,
@@ -530,13 +530,14 @@ export const NODE_CATALOG: CatalogEntry[] = [
         ],
       },
       {
-        type: "category", label: "Regression", description: "Linear regression: fit a line, predict, measure error.",
+        type: "category", label: "Regression", description: "Fit or interpolate: predict y from known data and measure the fit.",
         children: [
           { type: "linest",  label: "LINEST",  description: "Linear regression: three separate outputs (slope, intercept, and R²), wired individually. Excel: LINEST; supersedes SLOPE, INTERCEPT, RSQ.", create: () => new LinestNode(), parity: false },
           { type: "forecast", label: "FORECAST.LINEAR", description: "Predict y for new x using linear regression through known data. Excel: FORECAST.LINEAR.", create: () => new ForecastNode() },
           regressionLeaf("steyx"),
           { type: "logest",  label: "LOGEST",  description: "Exponential regression: [m, b] where y = b·mˣ; requires all Ys > 0. Excel: LOGEST.", create: () => new LogestNode(), parity: false },
           { type: "trend",   label: "TREND",   description: "Predict Y values for new Xs using a fitted linear regression. Excel: TREND.", create: () => new TrendNode(), parity: false },
+          { type: "interpolate", label: "INTERPOLATE", description: "Look up y for new x by piecewise-linear interpolation between the known points (not a regression fit), clamped at the ends. For lookup tables: hardness conversions, pump curves, pipe schedules. No Excel equivalent (LOOKUP is a step match).", create: () => new InterpolateNode(), parity: false },
         ],
       },
       {
