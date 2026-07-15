@@ -238,9 +238,13 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
 // is 1 == one scalar card; the heavy tiers are calibrated so ~10 full charts ≈ the
 // 100-unit default threshold, matching the observed "10 charts ≈ 100 scalars".
 export function nodeDomWeight(node: ClassicPreset.Node): number {
-  // Inlined SVG documents are by far the heaviest single card — a source map can
-  // mount tens of thousands of paths at once (the #1 DOM lever when on canvas).
-  if (node instanceof SvgPickerNode) return 15;
+  // SVG Picker used to be the heaviest card (an inlined source map is tens of
+  // thousands of paths), but since the rasterize-for-display change (2026-07-15i)
+  // its IDLE state is a single <img> — the heavy inline SVG mounts only while the
+  // pointer is over the well, which never coincides with a pan/zoom gesture (the
+  // only time this gate matters). So at rest it's a small figure, not a 15-tier
+  // monster; weight it like a grid preview, not the old always-inlined worst case.
+  if (node instanceof SvgPickerNode) return 2;
   // Full chart / diagram figures: a big recharts SVG subtree or a rendered mermaid
   // diagram. Ten of these ≈ the default threshold.
   if (

@@ -44,9 +44,14 @@ describe("nodeDomWeight", () => {
     }
   });
 
-  it("weighs an inlined SVG document heaviest of all", () => {
+  it("weighs an SVG Picker as a light idle figure (rasterized <img>, not the old inlined SVG)", () => {
+    // Since the rasterize-for-display change the well shows an <img> at rest and
+    // only mounts the heavy inline SVG on hover — which never overlaps a pan/zoom
+    // gesture, the only time the gate reads this. So its steady-state weight sits
+    // down with the frame-grid tier, well below a full chart, NOT heaviest of all.
     const svg = nodeDomWeight(new SvgPickerNode());
-    expect(svg).toBeGreaterThan(nodeDomWeight(new ChartNode()));
+    expect(svg).toBeGreaterThan(nodeDomWeight(new NumberInputNode()));
+    expect(svg).toBeLessThan(nodeDomWeight(new ChartNode()));
   });
 
   it("calibrates ~10 full charts to the default 100 engage threshold", () => {
