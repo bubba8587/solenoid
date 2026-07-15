@@ -195,22 +195,37 @@ describe("INTERPOLATE (piecewise-linear lookup)", () => {
     expect(interpolateLinear([0, 10], [0, 10], [NaN])[0]).toBeNaN();
   });
 
-  // Node wiring.
-  it("interpolates a list of queries through the node", () => {
+  // Node wiring — the query is a numlist COMBO: a SCALAR X in yields a SCALAR y,
+  // a LIST of Xs yields a LIST (result mirrors the query's shape).
+  it("returns a SCALAR y for a scalar X (combo socket)", () => {
+    // A scalar source arrives as inputs.new_xs = [5] (not [[5]]).
+    const r = new InterpolateNode().data({ xs: [[0, 10, 20]], ys: [[0, 100, 300]], new_xs: [5] }).result;
+    expect(r).toBe(50);
+  });
+  it("returns a LIST for a list of queries", () => {
     const r = new InterpolateNode().data({ xs: [[0, 10, 20]], ys: [[0, 100, 300]], new_xs: [[5, 10, 17.5]] }).result;
     expect(r).toEqual([50, 100, 250]);
+  });
+  it("interpolates at the literal query (x=0) when unwired → scalar", () => {
+    // Unwired query falls back to literals.x = 0, clamped to the first known y.
+    const r = new InterpolateNode().data({ xs: [[0, 10]], ys: [[7, 99]] }).result;
+    expect(r).toBe(7);
   });
   it("keeps a missing (null) query missing in place", () => {
     const r = new InterpolateNode().data({ xs: [[0, 10]], ys: [[0, 100]], new_xs: [[5, null, 10]] }).result;
     expect(r).toEqual([50, null, 100]);
   });
+  it("a scalar null query yields null", () => {
+    const r = new InterpolateNode().data({ xs: [[0, 10]], ys: [[0, 100]], new_xs: [null] }).result;
+    expect(r).toBeNull();
+  });
   it("propagates a #CODE! error in the known data", () => {
     const err = solError("#N/A", "missing");
-    const r = new InterpolateNode().data({ xs: [[0, err]], ys: [[0, 100]], new_xs: [[5]] }).result;
+    const r = new InterpolateNode().data({ xs: [[0, err]], ys: [[0, 100]], new_xs: [5] }).result;
     expect(isSolError(r) && r.code).toBe("#N/A");
   });
-  it("returns empty with no known points or no query", () => {
-    expect(new InterpolateNode().data({ xs: [[]], ys: [[]], new_xs: [[5]] }).result).toEqual([]);
+  it("has no result with no known points (scalar null / list empty)", () => {
+    expect(new InterpolateNode().data({ xs: [[]], ys: [[]], new_xs: [5] }).result).toBeNull();
     expect(new InterpolateNode().data({ xs: [[0, 10]], ys: [[0, 100]], new_xs: [[]] }).result).toEqual([]);
   });
 });

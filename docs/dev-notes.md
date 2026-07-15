@@ -57,9 +57,12 @@ by type); the "cube socket eats frame types" display bug is gone (XLOOKUP cube-p
 
 ### SESSION DIGEST (2026-07-15m — INTERPOLATE node: piecewise-linear lookup-table interpolation) [Agent 2, off-theme]
 New core node clearing the 1-D half of the Materials-pack "Interpolated Lookup" gate. **INTERPOLATE**
-(`stats.ts` `InterpolateNode`, Regression category, `parity:false`) mirrors TREND's shape (Known Ys /
-Known Xs / X lists → Interpolated Ys list) but does true lookup-table interpolation instead of a
-regression fit: for each query x, the y on the straight segment between the two bracketing known points,
+(`stats.ts` `InterpolateNode`, Regression category, `parity:false`): Known Ys / Known Xs lists + an X
+QUERY → Interpolated Y. The query + result are a **numlist COMBO** (scalar-or-list, `numListIn`/
+`numListOut` + `readInput`) — a single X in yields a SCALAR y, a list of Xs yields a list (result
+mirrors the query shape, the standard broadcaster convention; author flagged the first cut's list-only
+output). It does true lookup-table interpolation instead of a regression fit: for each query x, the y on
+the straight segment between the two bracketing known points,
 **clamped** at the ends (below the smallest known x → first y, above the largest → last y — a lookup
 table doesn't extrapolate). Excel has NO direct equivalent — LOOKUP/XLOOKUP are STEP matches, FORECAST/
 TREND fit a line through the cloud. Pure exported core `interpolateLinear(xs, ys, queryXs)` (sorts pairs
