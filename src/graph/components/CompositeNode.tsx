@@ -2,6 +2,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import type { CompositeNode as CompositeNodeType, CompositeInputNode as CompositeInputNodeType, CompositeOutputNode as CompositeOutputNodeType, CompositeRunMode } from "../rete-nodes";
 import { CompositeInputNode, type CompositeStopOp } from "../nodes/composite";
 import { isSolError } from "../errorValue";
+import { formatScalar } from "./format";
 import { isUncertain } from "../valueKinds";
 import { histogram, type DistributionKind } from "../monteCarlo";
 import { InlineInputs, InlineNumberField, useDraftCommit, INVALID_DRAFT } from "./inlineInput";
@@ -643,6 +644,18 @@ export function CompositeComponent({ data: node, emit }: NodeProps<CompositeNode
 // `any` boundary carries; CompositeBoundaryValue renders every kind (frame/cube
 // tables, chart/mermaid figures, lambda, scalars/lists/errors).
 
+// A compact run-mode readout appended to a boundary marker (e.g. goal-seek's
+// "solves to" / "target"). The markers aren't fixed to being plain — they carry
+// whatever the active run mode needs to explain itself in the drill-in.
+function MarkerNote({ tag, children }: { tag: string; children: React.ReactNode }) {
+  return (
+    <div style={{ display: "flex", alignItems: "baseline", gap: 5, marginTop: 4 }}>
+      <span style={{ color: "var(--text-muted)", fontSize: 9, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" }}>{tag}</span>
+      <span style={{ fontFamily: "var(--font-mono, var(--font-sans))", fontSize: 12 }}>{children}</span>
+    </div>
+  );
+}
+
 export function CompositeInputMarkerComponent({ data, emit }: NodeProps<CompositeInputNodeType>) {
   // Editable seed/default — the value this input carries when the port isn't externally
   // wired (and the goal-seek seed). A wired value or a solve overrides it (a solve
@@ -676,6 +689,15 @@ export function CompositeInputMarkerComponent({ data, emit }: NodeProps<Composit
           step="any"
         />
       )}
+      {/* Goal-seek driver: the seed above stays the user's starting guess; the
+          solver's answer shows here (not silently overwriting the seed). */}
+      {data.goalDriver && (
+        <MarkerNote tag="solves to">
+          {data.solvedValue == null ? <span style={{ color: "var(--text-muted)" }}>—</span>
+            : isSolError(data.solvedValue) ? <span style={{ color: "var(--sol-error)" }}>no solution</span>
+            : <b>{formatScalar(data.solvedValue)}</b>}
+        </MarkerNote>
+      )}
     </NodeShell>
   );
 }
@@ -694,6 +716,8 @@ export function CompositeOutputMarkerComponent({ data, emit }: NodeProps<Composi
           sparkline above its list chip, so the trend is legible inside the drill-in. */}
       {isNumericSeries(data.cachedResult) && <MiniSparkline series={data.cachedResult} />}
       <CompositeBoundaryValue value={data.cachedResult} label={data.label} />
+      {/* Goal-seek target: what the solver is driving this output to. */}
+      {data.goalTarget != null && <MarkerNote tag="target">{formatScalar(data.goalTarget)}</MarkerNote>}
     </NodeShell>
   );
 }

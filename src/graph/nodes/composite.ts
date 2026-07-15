@@ -206,6 +206,14 @@ export class CompositeInputNode extends ClassicPreset.Node {
    *  the container's data() each pass; the drill-in marker shows a read-only value
    *  chip when true (what's actually flowing in) instead of the seed field. */
   externallyWired = false;
+  /** Transient: true when this input is the ACTIVE goal-seek driver (the value the
+   *  solver adjusts). The drill-in shows a "solves to" readout instead of letting
+   *  the solved value silently overwrite the seed. Stamped in data(). */
+  goalDriver = false;
+  /** Transient: the goal-seek solution for this driver (or a `#CONV!` SolError, or
+   *  null before a solve) — the readout above. Set by runGoalSeek, cleared off the
+   *  driver in data(); NOT persisted (re-solves on load). */
+  solvedValue: number | SolError | null = null;
   /** An editable DEFAULT/seed, set on the marker INSIDE the drill-in — used as the
    *  input value when the exposed port isn't externally wired (and as the goal-seek
    *  seed). A wired value or a solve overrides it, so it's editable "even if it gets
@@ -242,6 +250,10 @@ export class CompositeOutputNode extends ClassicPreset.Node {
   /** Last value seen — the drill-in editor's value box. (Named cachedResult
    *  so the error guard's short-circuit mirrors an error into it.) */
   cachedResult: unknown = null;
+  /** Transient (not persisted): the goal-seek TARGET when this output is the one
+   *  being driven to it — the drill-in shows a "target N" readout. null otherwise.
+   *  Stamped in data(). */
+  goalTarget: number | null = null;
   width = 140;
   height = 70;
   constructor(init?: { label?: string }) {
@@ -932,12 +944,23 @@ export class CompositeNode extends ClassicPreset.Node {
     // waiting for drill-up (the outer card still re-renders on leave). Cheap.
     this.syncPortLabels();
     this.syncMarkerSocketTypes(); // adapt the boundary-marker dots to the flowing type
-    // Stamp each input marker with whether its port is externally wired, so the
-    // drill-in shows the incoming value (read-only) rather than the seed field.
-    // Topology-only (not the value source), so it's current even on a held heavy pass.
+    // Stamp each input marker with whether its port is externally wired (→ show the
+    // incoming value read-only, not the seed) and whether it's the goal-seek driver
+    // (→ show a "solves to" readout). Topology/config-only, so current even on a
+    // held heavy pass; runGoalSeek fills the driver's solvedValue after this.
+    const gsDriverId = this.runMode === "goal-seek" ? this.goalSeek?.inputPortId : undefined;
     for (const port of this.inputPorts) {
       const m = this.internalEditor.getNode(port.internalNodeId) as CompositeInputNode | undefined;
-      if (m) m.externallyWired = port.exposure === "exposed" && inputs[port.id]?.[0] !== undefined;
+      if (!m) continue;
+      m.externallyWired = port.exposure === "exposed" && inputs[port.id]?.[0] !== undefined;
+      m.goalDriver = port.id === gsDriverId;
+      if (!m.goalDriver) m.solvedValue = null; // clear a stale readout off non-drivers / on mode change
+    }
+    // Stamp the goal-seek target onto its output marker (→ "target N" readout).
+    const gsTargetId = this.runMode === "goal-seek" ? this.goalSeek?.outputPortId : undefined;
+    for (const port of this.outputPorts) {
+      const m = this.internalEditor.getNode(port.internalNodeId) as CompositeOutputNode | undefined;
+      if (m) m.goalTarget = port.id === gsTargetId ? (this.goalSeek?.target ?? null) : null;
     }
     // Resolve Auto-mode trig nodes INSIDE the subgraph from their incoming unit
     // before the internal engine pull — the same pass process.ts runs on the main
@@ -1207,6 +1230,7 @@ export class CompositeNode extends ClassicPreset.Node {
     if (solvedRaw === null) {
       const err = solError("#CONV!", `Goal seek couldn't drive "${gs.inputPortId}" to make "${gs.outputPortId}" reach ${gs.target}`);
       this.goalSeekResult = err;
+      if (driverMarker) driverMarker.solvedValue = err; // the drill-in readout reads this
       const row = await this.runPass(inputs); // show the un-solved state
       row[gs.outputPortId] = err;
       return row;
@@ -1216,9 +1240,10 @@ export class CompositeNode extends ClassicPreset.Node {
     // 19.999999998 tail nothing else in the app would.
     const solved = Number(formatScalar(solvedRaw));
     this.goalSeekResult = solved;
-    // The solution CHANGES the driver input — write it back onto the driver marker so
-    // its inside value box shows the solved value (not the stale seed).
-    if (driverMarker) driverMarker.defaultValue = solved;
+    // The solver's answer goes to a dedicated readout (solvedValue), NOT back onto
+    // the seed — so the driver's editable seed stays the user's starting guess
+    // instead of silently becoming the solution. The drill-in shows "solves to N".
+    if (driverMarker) driverMarker.solvedValue = solved;
     // The composite's OUTPUT is its solution: emit the solved DRIVER value on the
     // target port (not the achieved output, which just equals the target). So the
     // Solution hero's socket carries the answer downstream — wire the break-even
