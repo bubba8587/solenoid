@@ -10,7 +10,7 @@ import { parseCsvLine } from "./csv";
 import { isFrameRef, readFrame } from "./frameBackend";
 import { isSolError } from "./errorValue";
 import { stripUnitCells } from "./unitBridge";
-import { isUnitCell } from "./unitValue";
+import { isUnitCell, carryMatrixUnit } from "./unitValue";
 
 // The relational verb nodes are LAZY: they emit a FrameRef and chain it (see
 // frameBackend), so their frame inputs must reach data() as the raw ref, NOT
@@ -146,7 +146,13 @@ function coerceValue(dataType: SocketDataType, v: unknown): unknown {
   if (hasUnitCell(v)) return coerceUnitCellValue(dataType, v);
   switch (dataType) {
     case "table":
-      return toMatrix(boolsToNums(v) as Numeric);
+      // Preserve a homogeneous matrix unit (D20) across the numeric matrix coercer:
+      // toMatrix rebuilds the outer array, which would drop the non-enumerable symbol
+      // tag. A numeric matrix wired into an ADOPTIVE trueany input (INDEX) adopts
+      // "table", so without this its extracted cells lose the unit. carryMatrixUnit is
+      // a no-op when v isn't tagged. The cells stay bare numbers (no NaN-poisoning),
+      // so this is safe for the unit-blind boundary.
+      return carryMatrixUnit(toMatrix(boolsToNums(v) as Numeric), v);
     case "list":
       return toList(boolsToNums(v) as Numeric);
     case "number":
