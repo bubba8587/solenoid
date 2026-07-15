@@ -223,6 +223,51 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
   return "math";
 }
 
+// ─── DOM weight (HTML-in-Canvas engage threshold) ───────────────────────────────
+// Approximate how much a node contributes to the DOM cost the HTML-in-Canvas
+// renderer exists to relieve. The renderer auto-engages once a graph is "big
+// enough", but a RAW node count undercounts: one recharts figure is a large SVG
+// subtree, an inlined source SVG (a county map) is tens of thousands of elements,
+// a frame grid is a small table — while a scalar / logic card is a handful of
+// elements. So a chart-heavy graph reads as "10 nodes" and never trips the gate
+// even though it's as DOM-heavy as 100 scalar cards. Weighting by KIND fixes that.
+//
+// Weights are deliberately COARSE (author: "to some degree") and summed off the
+// same nodecreated/noderemoved recount HtmlCanvasLayer already runs — never a live
+// DOM element count (too expensive, and it's a threshold, not a budget). Baseline
+// is 1 == one scalar card; the heavy tiers are calibrated so ~10 full charts ≈ the
+// 100-unit default threshold, matching the observed "10 charts ≈ 100 scalars".
+export function nodeDomWeight(node: ClassicPreset.Node): number {
+  // Inlined SVG documents are by far the heaviest single card — a source map can
+  // mount tens of thousands of paths at once (the #1 DOM lever when on canvas).
+  if (node instanceof SvgPickerNode) return 15;
+  // Full chart / diagram figures: a big recharts SVG subtree or a rendered mermaid
+  // diagram. Ten of these ≈ the default threshold.
+  if (
+    node instanceof ChartNode || node instanceof HistogramNode ||
+    node instanceof TreemapNode || node instanceof SankeyNode ||
+    node instanceof MermaidNode
+  ) return 10;
+  // Grid-of-cells / inline bar figures — heavy, but a step below a full chart.
+  if (node instanceof HeatmapCellNode || node instanceof TornadoNode) return 6;
+  // Small inline figures (a sparkline strip, a gauge arc) and the option-field
+  // heavy Chart Builder card.
+  if (
+    node instanceof SparklineNode || node instanceof GaugeNode ||
+    node instanceof ChartBuilderNode
+  ) return 3;
+  // A frame / table / cube grid PREVIEW is a small DOM table on the node's value
+  // box — heavier than a scalar card, far lighter than a chart. Detected from the
+  // OUTPUT sockets (where the grid actually renders) so any new grid-emitting node
+  // counts without a class list. Consumers whose output is a scalar don't qualify.
+  const grid = Object.values(node.outputs ?? {}).some((p) => {
+    const s = (p as { socket?: ClassicPreset.Socket } | undefined)?.socket;
+    return s instanceof SolenoidSocket && (s.dataType === "table" || s.dataType === "frame" || s.dataType === "cube");
+  });
+  if (grid) return 2;
+  return 1;
+}
+
 // Which nodes expose a manual resize handle (width+height). The rule: boxes
 // that hold user-entered text or a string / lookup result are worth widening;
 // pure numeric compute results don't get a handle and truncate instead. Kept
