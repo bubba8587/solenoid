@@ -2,7 +2,8 @@ import { describe, it, expect } from "vitest";
 import { isSolError } from "../errorValue";
 import { TableTransposeNode, HStackTableNode, TableReshapeNode, TableSelectNode, TableTakeDropNode, ExpandNode, TableInfoNode, TableMultNode, MatDetNode, TableInputNode, tableRawCells, rawCellsToText, deriveTable } from "./matrix";
 import { SolenoidSocket, type SocketDataType } from "../sockets";
-import { withMatrixUnit, matrixUnitOf } from "../unitValue";
+import { withMatrixUnit, matrixUnitOf, isUnitCell, type UnitCell } from "../unitValue";
+import { ListIndexNode } from "./list";
 
 // The pure-reshape matrix ops are element-agnostic: they accept any matrix on an
 // `any` input and emit the 2-D wildcard `anytable` (or a 1-D `any` list when
@@ -289,5 +290,26 @@ describe("structural reshapes carry the homogeneous matrix unit (D20, S3)", () =
   it("Table Input unit round-trips through init (persistence whitelist)", () => {
     const n = new TableInputNode({ tableText: "1", dataType: "number", unit: "usd" });
     expect(n.unit).toBe("usd");
+  });
+
+  it("INDEX carries the matrix unit out into an extracted cell / row / column", () => {
+    // Single cell — tagged out as a UnitCell carrying the display id (like a frame
+    // column's Get Column / INDEX), so the unit doesn't vanish (the user-flagged bug).
+    const cell = new ListIndexNode().data({ list: [tagged()], index: [1], column: [2] }).result;
+    expect(isUnitCell(cell)).toBe(true);
+    expect((cell as unknown as UnitCell).display).toBe("km");
+    // Whole column (row = [all] = 0) — a list of tagged cells.
+    const col = new ListIndexNode().data({ list: [tagged()], index: [0], column: [1] }).result as unknown as UnitCell[];
+    expect(Array.isArray(col)).toBe(true);
+    expect(col.every((x) => isUnitCell(x) && x.display === "km")).toBe(true);
+    // Whole row (column = [all]) — a list of tagged cells.
+    const row = new ListIndexNode().data({ list: [tagged()], index: [1], column: [0] }).result as unknown as UnitCell[];
+    expect(row.every((x) => isUnitCell(x) && x.display === "km")).toBe(true);
+  });
+
+  it("INDEX on a PLAIN (untagged) matrix returns bare numbers (no spurious unit)", () => {
+    const cell = new ListIndexNode().data({ list: [[[1, 2], [3, 4]]], index: [1], column: [2] }).result;
+    expect(cell).toBe(2);
+    expect(isUnitCell(cell)).toBe(false);
   });
 });
