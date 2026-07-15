@@ -2,7 +2,7 @@ import { ClassicPreset } from "rete";
 import { numIn, numListIn, numOut, tableIn, tableOut, strIn, strOut, chartOut, anyTableIn, frameIn } from "./shared";
 import { parseChartOptions, serializeChartOptions, type ChartOptions } from "./chartOptions";
 import { clamp, iterMin, iterMax } from "./mathUtils";
-import type { ChartValue, KpiPayload, BulletPayload, TreemapPayload, SankeyPayload } from "../chartValue";
+import type { ChartValue, KpiPayload, BulletPayload, TreemapPayload, SankeyPayload, SurfacePayload } from "../chartValue";
 import type { MermaidValue } from "../mermaidValue";
 import { readFrame, type FrameInput } from "../frameBackend";
 import { formatFrameCell, isFrameValue, type FrameColumn } from "../frame";
@@ -501,6 +501,51 @@ export class HeatmapCellNode extends ClassicPreset.Node {
     const t = inputs.table?.[0] ?? null;
     this.cachedResult = t;
     return { result: t };
+  }
+}
+
+// ─── Surface (shaded 3-D plot) ──────────────────────────────────────────────────
+// Reads the SAME coordinate-bordered table the Grid Interpolate node fills (first
+// row = X coordinates, first column = Y coordinates, interior = Z heights) and emits
+// a `surface` ChartValue — a shaded axonometric mesh, drawn by SurfaceView. A blank
+// interior cell is a hole (no quad). Pair it with Grid Interpolate to see the filled
+// surface. Emits on the green `chart` socket, so it embeds in a Report like any chart.
+
+/** Split a bordered table into axes + heights. Row 0 (minus the ignored corner) is
+ *  the X coordinates, column 0 the Y coordinates; a non-numeric cell is a blank. */
+export function parseBorderedGrid(
+  table: (number | null | unknown)[][] | null,
+): { xs: number[]; ys: number[]; z: (number | null)[][] } {
+  if (!Array.isArray(table) || table.length < 2) return { xs: [], ys: [], z: [] };
+  const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  const xs = (table[0] ?? []).slice(1).map((v) => num(v) ?? NaN);
+  const ys = table.slice(1).map((r) => num(r?.[0]) ?? NaN);
+  const z = table.slice(1).map((r) => (Array.isArray(r) ? r.slice(1) : []).map(num));
+  return { xs, ys, z };
+}
+
+export class SurfaceNode extends ClassicPreset.Node {
+  label: string;
+  cachedChart: ChartValue | null = null;
+  width = 240;
+  height = 220;
+
+  constructor(init?: { label?: string }) {
+    super("Surface");
+    this.label = init?.label ?? "Surface";
+    this.addInput("grid", tableIn("Bordered grid"));
+    this.addOutput("chart", chartOut("Chart"));
+  }
+
+  data(inputs: { grid?: (number | null | unknown)[][][] }): { chart: ChartValue } {
+    const { xs, ys, z } = parseBorderedGrid(inputs.grid?.[0] ?? null);
+    const payload: SurfacePayload = { kind: "surface", xs, ys, z };
+    const chart: ChartValue = {
+      __chart: true, op: "surface", values: null, payload,
+      options: {}, title: this.label || "Surface",
+    };
+    this.cachedChart = chart;
+    return { chart };
   }
 }
 

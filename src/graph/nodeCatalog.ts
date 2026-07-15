@@ -4,7 +4,7 @@
 
 import {
   AngleDialNode, SlicerNode, CableSwitchNode, DatePickerNode, DateRangeNode, XYPadNode,
-  SparklineNode, ChartNode, HistogramNode, KpiNode, BulletNode, TreemapNode, SankeyNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode,
+  SparklineNode, ChartNode, HistogramNode, KpiNode, BulletNode, TreemapNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode,
   NumberInputNode, ArithmeticNode, DisplayNode, ComparisonNode, MathFnNode,
   FormatControllerNode, ExpressionNode, EquationNode, RegexNode, GroupByNode,
   ClampNode, BooleanOpNode, NotNode, IfNode, ConduitNode, CastNode, ConstantNode, MRoundNode,
@@ -243,6 +243,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "treemap",   label: "Treemap",   description: "Show labelled values as nested rectangles sized by value, a space-filling alternative to a pie. Wire a 2-column frame (label, value). Emits a chart value a Report can embed.", create: () => new TreemapNode(), parity: false, keywords: "treemap tree map rectangles proportion hierarchy area" },
           { type: "sankey",    label: "Sankey",    description: "A flow diagram: wire a 3-column frame (From, To, Value); each row is an edge and the band width shows the flow. Emits a chart value a Report can embed.", create: () => new SankeyNode(), parity: false, keywords: "sankey flow diagram alluvial edges links network flows" },
           { type: "heatmap-cell", label: "Heatmap", description: "Colour every cell of a Table on a cool-to-warm scale across its data range, like conditional formatting. Pass-through.", create: () => new HeatmapCellNode(), parity: false },
+          { type: "surface", label: "Surface", description: "A shaded 3-D surface plot of a bordered lookup table (first row = X coordinates, first column = Y coordinates, interior = Z heights) — the same format Grid Interpolate fills. Emits a chart value a Report can embed.", create: () => new SurfaceNode(), parity: false, keywords: "surface 3d mesh plot height field terrain contour wireframe grid" },
         ],
       },
       { type: "conduit",    label: "Conduit",   description: "Bundle up to 8 cables into one block; they travel onward as a single ribbon that splits back into lanes at the destination. Rotate or extend it from the inspector.", create: () => new ConduitNode(), parity: false },

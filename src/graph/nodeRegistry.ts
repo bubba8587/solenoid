@@ -7,7 +7,7 @@ import type { RenderEmit } from "rete-react-plugin";
 import type { Schemes } from "./schemes";
 import {
   AngleDialNode, SlicerNode, CableSwitchNode, NoteNode, ReportNode, SessionHistoryNode, PresentationNode, ImageNode, SvgPickerNode,
-  SparklineNode, ChartNode, HistogramNode, KpiNode, BulletNode, TreemapNode, SankeyNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, DatePickerNode, DateRangeNode, XYPadNode,
+  SparklineNode, ChartNode, HistogramNode, KpiNode, BulletNode, TreemapNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, DatePickerNode, DateRangeNode, XYPadNode,
   NumberInputNode, ArithmeticNode, DisplayNode, ComparisonNode, MathFnNode,
   ColorPickerNode,
   ClampNode, BooleanOpNode, NotNode, IfNode, ConduitNode, CastNode, ConstantNode, MRoundNode,
@@ -84,7 +84,7 @@ import {
 } from "./rete-nodes";
 import {
   AngleDialComponent, SlicerComponent, CableSwitchComponent, NoteComponent, ReportComponent, SessionHistoryComponent, PresentationComponent, ImageComponent, SvgPickerComponent,
-  SparklineComponent, ChartComponent, HistogramComponent, KpiComponent, BulletComponent, TreemapComponent, SankeyComponent, MermaidComponent, GaugeComponent, HeatmapCellComponent, ChartBuilderComponent, DatePickerComponent, DateRangeComponent, XYPadComponent,
+  SparklineComponent, ChartComponent, HistogramComponent, KpiComponent, BulletComponent, TreemapComponent, SankeyComponent, SurfaceComponent, MermaidComponent, GaugeComponent, HeatmapCellComponent, ChartBuilderComponent, DatePickerComponent, DateRangeComponent, XYPadComponent,
   NumberInputComponent, ArithmeticComponent, DisplayComponent, ComparisonComponent,
   MathFnComponent, ClampComponent, BooleanComponent, NotComponent, IfComponent, ConduitComponent, CastComponent,
   ConstantComponent, MRoundComponent, ListInputComponent, AggregateComponent,
@@ -194,6 +194,7 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [BulletNode,      comp(BulletComponent)],
   [TreemapNode,     comp(TreemapComponent)],
   [SankeyNode,      comp(SankeyComponent)],
+  [SurfaceNode,     comp(SurfaceComponent)],
   [MermaidNode,     comp(MermaidComponent)],
   [GaugeNode,       comp(GaugeComponent)],
   [HeatmapCellNode, comp(HeatmapCellComponent)],
