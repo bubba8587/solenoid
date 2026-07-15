@@ -189,7 +189,9 @@ export function TablePopup() {
     };
     if (state.formatControls === "matrix") {
       // A matrix has no column names — one whole-sheet format under a fixed key.
-      setColFmt([seedFormat("*", { format: "auto", unit: "none" })]);
+      // Seed the unit from the matrix's homogeneous tag (D20) so a taggable source
+      // opens on its current unit.
+      setColFmt([seedFormat("*", { format: "auto", unit: state.columnUnits?.[0]?.display ?? "none" })]);
     } else if (state.formatControls === "columns") {
       setColFmt(Array.from({ length: ncols }, (_, j) =>
         seedFormat(state.headers?.[j], {
@@ -547,7 +549,11 @@ export function TablePopup() {
             <FormatStyleSelect className="table-popup__fmtselect" value={annFor(0).format} onChange={(f) => persistColFmt(0, { format: f })} />
           )}
           {state.unitTaggable && cellType === "number" ? (
-            <UnitSelect className="table-popup__fmtselect" value={annFor(0).unit} onChange={(u) => setColFmtAt(0, { unit: u })} />
+            <UnitSelect
+              className="table-popup__fmtselect"
+              value={annFor(0).unit}
+              onChange={(u) => { setColFmtAt(0, { unit: u }); state.onSaveMatrixUnit?.(u); }}
+            />
           ) : cellType === "number" && state.columnUnits?.[0] ? (
             // Read-only matrix carrying a homogeneous unit tag (D20): show it, no picker.
             <span className="table-popup__unit-label">{columnUnitLabel(state.columnUnits[0]!)}</span>

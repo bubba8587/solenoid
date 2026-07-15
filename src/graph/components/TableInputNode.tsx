@@ -62,6 +62,19 @@ export function TableInputComponent({ data, emit }: NodeProps<TableInputNodeType
             data.tableText = rawCellsToText(cells);
             void processGraph(data.id);
           },
+          // A NUMBER table is a unit-taggable source (D20), like a Frame Input
+          // column: the matrix bar's unit dropdown writes the homogeneous unit onto
+          // the node so it rides the value downstream. (formatControls/columnUnits
+          // are derived from the tagged cachedResult by the chip.)
+          ...(dt === "number"
+            ? {
+                unitTaggable: true,
+                onSaveMatrixUnit: (u: string) => {
+                  data.unit = u;
+                  void processGraph(data.id);
+                },
+              }
+            : {}),
         }}
       />
     </NodeShell>
