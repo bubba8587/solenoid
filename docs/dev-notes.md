@@ -68,7 +68,7 @@ inside the box and the near parts are occluded (matplotlib/plotly look), X/Y/Z l
 NOT lines floated on top. **Rotation (author):** the fixed axonometric projection became a yaw/pitch
 orthographic CAMERA (yaw about Z, pitch = elevation); a D-pad of 4 arrows in the figure corner steps yaw
 ±45° / pitch ±45° (both wrap 0–360 — pitch flips all the way over), with a centre Home button resetting to
-45/30. Occlusion is recomputed from the rotated cell centroid and the two back frame walls are re-chosen by
+the default 45°/45° (symmetric, so the 45° steps land on clean multiples). Occlusion is recomputed from the rotated cell centroid and the two back frame walls are re-chosen by
 depth, so the box stays correct at any angle. Angles live in `literals` (persist via extractInit spread +
 ride into the payload, so a Report embed shows the same view). **Quality:** supersampled backing store
 (`scale = min(4, dpr·2)`) + round line joins + slight surface translucency (`SURFACE_ALPHA` 0.86) so the

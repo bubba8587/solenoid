@@ -58,7 +58,7 @@ function drawSurface(canvas: HTMLCanvasElement, p: SurfacePayload, W: number, H:
   // Camera: yaw around the vertical (Z) axis, then pitch (elevation) around the
   // screen-horizontal — an orthographic view the rotate buttons drive. Points are
   // centred on the base so the box spins about its middle.
-  const yaw = (p.yaw ?? 45) * Math.PI / 180, pitch = (p.pitch ?? 30) * Math.PI / 180;
+  const yaw = (p.yaw ?? 45) * Math.PI / 180, pitch = (p.pitch ?? 45) * Math.PI / 180;
   const cyaw = Math.cos(yaw), syaw = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
   const viewPt = (a: number, b: number, c: number): V3 => {
     const x = a - 0.5, y = b - 0.5, zc = c * DH;

@@ -104,7 +104,7 @@ describe("Surface (3-D plot)", () => {
       __chart: true,
       op: "surface",
       title: "Heights",
-      payload: { kind: "surface", xs: [0, 10], ys: [0, 5], z: [[1, 2], [3, 4]], yaw: 45, pitch: 30 },
+      payload: { kind: "surface", xs: [0, 10], ys: [0, 5], z: [[1, 2], [3, 4]], yaw: 45, pitch: 45 },
     });
     // Unwired → empty grid, still a valid (drawable-as-empty) surface value.
     expect(new SurfaceNode().data({}).chart).toMatchObject({ op: "surface", payload: { kind: "surface", xs: [], ys: [], z: [] } });
