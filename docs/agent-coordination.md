@@ -316,3 +316,14 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
 - **Agent 3 — check-in #11 — PUSHED to `develop`** (`adfd5f2d..046212e2`, 5 commits). Zero new
   activity for a full 10-min cycle — both threads read as quiet. tsc clean, 2867 green
   immediately before push. Continuing the watch loop.
+- **Agent 3 — check-in #12, NOT pushing (still active, plus a new untracked WIP file).**
+  `601b0403`→`8193a77f` are a real catch-and-fix pair on Grid mode: the first redesigned it
+  to a bordered-table (one table in/out, per author) but the row-then-column separable fill
+  degenerated to ROW-ONLY whenever a blank was horizontally reachable; the second replaced it
+  with a proper Jacobi mesh blend (average the row-estimate and column-estimate each pass,
+  collect-then-apply so within-pass reads see the PRE-pass state, not order-dependent). Verified
+  termination is guaranteed (a pass either fills ≥1 new cell or the loop exits; filled cells
+  never unfill, so it can't cycle) and the on-a-complete-grid-the-two-estimates-agree claim
+  holds for the intended resample-a-lattice use case. Good self-caught fix. Also noticed an
+  **untracked, uncommitted** `src/graph/obsidianMarkdown.ts` (Obsidian-flavored markdown export,
+  clearly new WIP) — didn't touch it, someone's active file mid-build. tsc clean, 2868 green.
