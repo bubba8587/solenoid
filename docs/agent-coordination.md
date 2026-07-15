@@ -368,3 +368,19 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
   `palette.ts`/`SwatchGrid.tsx`/`dev-notes.md` — a 4th front (color palette work) starting;
   `tsc` shows unused-import errors there but it's uncommitted mid-edit, not a landed bug —
   didn't touch it. Committed HEAD itself stays clean.
+- **Agent 3 — landed a small author-requested addition:** `94d55431` — a teeny italic
+  "Bilinear interpolation" caption on INTERPOLATE, shown only in Grid mode, under the
+  SegToggle (pushes the input socket down). Named the actual current algorithm (per
+  `8de3c4c0`) rather than a generic "heuristic" placeholder — author asked for the more
+  specific name. tsc clean, 2891 green at the time.
+- **Agent 3 — check-in #16, NOT pushing (still very active — Surface node getting visual
+  polish, Obsidian export moving into Slice 3).** `549e0f78`/`e438f7c1` are Surface node
+  polish (yaw/pitch D-pad camera + translucency) — reviewed the non-rendering half
+  (`SurfaceNode.tsx`'s rotate handler): pitch clamps correctly to [0,90]; yaw's
+  `% 360` can go negative in JS (unlike Python) after a left-rotate from 0, but since
+  yaw only ever feeds trig functions (never displayed as text, never range-compared),
+  this is benign — not flagging as a bug. Tree now has fresh uncommitted WIP toward
+  **Slice 3: the actual Write-to-Obsidian node** (`WriteNodes.tsx`, `fileBridge.ts`,
+  `settingsStore.ts`, new untracked `nodes/obsidian.ts` + `obsidianWrite.ts`) — `tsc`
+  shows one error there (`WriteObsidianNode` not yet exported) but it's mid-build,
+  uncommitted, not touching. Committed HEAD (`94d55431`) itself stays clean.
