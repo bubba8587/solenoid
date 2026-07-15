@@ -4,6 +4,7 @@ import { isCubeValue } from "./frame";
 import { isSolError } from "./errorValue";
 import { cubeFromColumns, isFrameValue } from "./frame";
 import type { FrameValue, CubeValue } from "./frame";
+import { parseDateToSerial } from "./nodes/date";
 
 const people: FrameValue = {
   __frame: true,
@@ -180,5 +181,41 @@ describe("lookupCubeCell — cube XLOOKUP (top-level key, whole-cell return)", (
       const err = (() => { try { lookupCubeCell(customers, "name", "id", "Bob", "nextSmaller"); } catch (e) { return e; } })();
       expect(isSolError(err) && err.code).toBe("#VALUE!");
     });
+  });
+});
+
+describe("cube XLOOKUP on a TYPED date column (typed CubeColumn — frame→cube keeps the type)", () => {
+  const d1 = parseDateToSerial("2025-01-15");
+  const d2 = parseDateToSerial("2025-06-30");
+  const d3 = parseDateToSerial("2025-12-31");
+  // A cube column carrying `type: "date"` now matches an ISO-date lookup string; before
+  // typed CubeColumn a cube date column matched only by raw serial.
+  const events: CubeValue = cubeFromColumns([
+    { name: "when", type: "date", cells: [d1, d2, d3] },
+    { name: "evt", cells: ["launch", "review", "close"] },
+  ]);
+
+  it("matches an ISO-date string on a date-typed key column", () => {
+    expect(lookupCubeCell(events, "when", "evt", "2025-06-30")).toBe("review");
+    expect(lookupCubeCell(events, "when", "evt", String(d3))).toBe("close"); // raw serial still works
+  });
+
+  it("approximate match works on a date key column (was numeric-only)", () => {
+    expect(lookupCubeCell(events, "when", "evt", "2025-03-01", "nextSmaller")).toBe("launch");
+    expect(lookupCubeCell(events, "when", "evt", "2025-07-01", "nextLarger")).toBe("close");
+  });
+
+  it("an UNTYPED cube date column still matches only by serial (inference fallback)", () => {
+    const untyped: CubeValue = cubeFromColumns([
+      { name: "when", cells: [d1, d2] },
+      { name: "evt", cells: ["a", "b"] },
+    ]);
+    expect(lookupCubeCell(untyped, "when", "evt", String(d2))).toBe("b");        // serial works
+    expect(lookupCubeCell(untyped, "when", "evt", "2025-06-30")).toBeUndefined(); // date string doesn't
+  });
+
+  it("cubeRowAt preserves the column type", () => {
+    const idx = lookupCubeRowIndex(events, "when", "2025-06-30");
+    expect(cubeRowAt(events, idx).columns[0].type).toBe("date");
   });
 });

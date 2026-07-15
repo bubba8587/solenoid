@@ -1276,12 +1276,13 @@ function requireCubeColumn(c: CubeValue, name: string): CubeColumn {
   return col;
 }
 
-/** A cube column carries NO per-column type (its cells are heterogeneous), so infer
- *  a key type from its flat SCALAR cells for `keyMatches`: all-number → number,
- *  all-boolean → logical, otherwise string. Never "date" — a cube stores a date as
- *  its serial NUMBER, so it matches numerically (look a cube date up by serial, or
- *  Unnest to a typed frame first). null / error / nested-container cells are ignored
- *  for the inference (a container can't be a lookup key). */
+/** The FALLBACK key type when a cube column has no carried `type` (a hand-built cube;
+ *  a frame-derived one now carries it — typed CubeColumn). Inferred from the flat
+ *  SCALAR cells: all-number → number, all-boolean → logical, otherwise string. Never
+ *  "date" by inference — a date and a plain number are indistinguishable as serials,
+ *  so an UNTYPED cube date column matches numerically (look it up by serial, or carry
+ *  the type via frame→cube). null / error / nested-container cells are ignored (a
+ *  container can't be a lookup key). */
 function inferCubeKeyType(col: CubeColumn): FrameColType {
   let sawNumber = false, sawBool = false, sawOther = false;
   for (const cell of col.cells) {
@@ -1326,7 +1327,10 @@ export function lookupCubeRowIndex(
 ): number {
   const key = requireCubeColumn(c, lookupColumn);
   const n = cubeRowCount(c);
-  const keyType = inferCubeKeyType(key);
+  // Prefer the column's CARRIED type — frame→cube now preserves it (typed CubeColumn),
+  // so a date-keyed cube column matches an ISO-date lookup like the frame path does.
+  // Fall back to inferring from the flat cells for a hand-built (untyped) cube.
+  const keyType = key.type ?? inferCubeKeyType(key);
   // A key cell usable for matching: a flat scalar only (a nested frame/cube/list is
   // never a key). Returns undefined for a non-key cell (null/error/container).
   const scalarAt = (i: number): FrameCell | undefined => {
@@ -1350,10 +1354,13 @@ export function lookupCubeRowIndex(
     }
     return -1;
   }
-  if (keyType !== "number") {
-    throw solError("#VALUE!", "Approximate lookup requires a numeric key column");
+  if (keyType !== "number" && keyType !== "date") {
+    throw solError("#VALUE!", "Approximate lookup requires a numeric or date key column");
   }
-  const target = Number(lookup.trim());
+  const t = lookup.trim();
+  const target = keyType === "date"
+    ? (/^-?\d+(\.\d+)?$/.test(t) ? Number(t) : parseDateToSerial(t))
+    : Number(t);
   if (!Number.isFinite(target)) return -1;
   let bestIdx = -1, bestKey = NaN;
   for (let i = 0; i < n; i++) {
@@ -1376,7 +1383,7 @@ export function frameRowAt(f: FrameValue, i: number): FrameValue {
  *  column keeping its one cell WHOLE (a nested frame/cube stays intact). */
 export function cubeRowAt(c: CubeValue, i: number): CubeValue {
   return cubeFromColumns(
-    c.columns.map((col) => ({ name: col.name, cells: [i < col.cells.length ? col.cells[i] ?? null : null] })),
+    c.columns.map((col) => ({ name: col.name, type: col.type, cells: [i < col.cells.length ? col.cells[i] ?? null : null] })),
   );
 }
 

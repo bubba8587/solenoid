@@ -642,9 +642,9 @@ export function cubeFromRows(
 }
 
 /** Build a Cube from named columns of arbitrary cells (the general constructor). */
-export function cubeFromColumns(cols: ReadonlyArray<{ name?: string; cells: CubeCell[] }>): CubeValue {
+export function cubeFromColumns(cols: ReadonlyArray<{ name?: string; cells: CubeCell[]; type?: FrameColType }>): CubeValue {
   const names = makeHeaders(cols.map((c) => c.name ?? ""), cols.length);
-  return makeCube(names.map((name, j) => ({ name, cells: cols[j].cells })));
+  return makeCube(names.map((name, j) => ({ name, cells: cols[j].cells, ...(cols[j].type ? { type: cols[j].type } : {}) })));
 }
 
 /** Widen any incoming value into a Cube — the runtime side of "everything flows up
