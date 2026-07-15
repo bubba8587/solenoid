@@ -117,6 +117,14 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
   (SimulationEditor UI), `copyPaste.ts` (whitelist +2). Author eyeballed mid-build → drove the
   comparator+threshold addition (was port-only). tsc clean, 2799 green. (Earlier: audited the pure
   canvas/layout/routing modules for bugs — came back CLEAN, no fixable defect, so pivoted here.)
+  Also added the type-aware Stop-when picker (`791f6938`, author Q — only number/logical outputs).
+- **Agent 2 — LANDED** (`f684815d`, push held, explicit-path commit): **By-Row run mode**
+  (author-specced 2026-07-14 backlog item). New Composite run mode: iterate a chosen exposed input
+  port — the subgraph runs once per ROW of its wired value (list→element, matrix→row, frame→single-row
+  frame), each output collecting a per-row series (reuses `collectMultiple`). Pure `byRowValues` +
+  `runByRow`; `ByRowEditor` picker; `BY_ROW_MAX_ROWS=500` cap. `composite.ts`/`CompositeNode.tsx`/
+  `copyPaste.ts`. tsc clean, 2816 green. UI eyeball pending. (Known: the 500-row cap silently drops
+  extras — dev-notes flags replacing it with a Problems warning.)
 - **Agent 3 — LANDED** (`faa2c528`, push held). Unmount collapsed viz nodes' live figures:
   Chart/Histogram/Sankey/Treemap now gate their figure on `!collapsed` (Treemap/Sankey gained
   `collapseStore` subscriptions to do it). tsc clean, 2791 green.
@@ -151,4 +159,18 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
   `editable && view === "grid" && !formattedPreview`; dropped `!formattedPreview` since the
   buttons mutate the underlying `grid` truth regardless of which view is on screen. The bigger
   redesign (move the buttons onto the grid itself) stays queued above, unclaimed. tsc clean,
-  2799 green. Standing by for the commit queue / next task.
+  2799 green.
+- **Agent 3 — full-session commit eyeball (every commit, not just the new ones), no new bugs.**
+  Verified `0acdb709`'s fix is correct (copy tagged, `not.toBe(matrix)`, source stays untagged).
+  Checked `e9af4b05`/`ce9e045e`/`906cc347` (display + reshape-carry + Table Input authoring) —
+  clean, `carryMatrixUnit` only ever called on freshly-built arrays, no aliasing risk. Traced
+  the Simulation "Stop when" engine-reset-mid-loop carefully (`99f21e06`/`8fc79bfc`/`791f6938`)
+  — the per-round stepping loop never touches `internalEngine`, so the mid-loop reset for a
+  downstream-observer stop check can't corrupt subsequent rounds; sound. Two minor,
+  non-urgent, self-healing notes (not fixed, not blocking): (1) `e46baf51`'s Report-embed
+  format-by-source-node is direct-wire only — a passthrough between the frame and the Report
+  ref won't resolve; (2) live-toggling a column's type in-popup without reopening can briefly
+  show a mismatched format-dropdown selection (cell render itself stays correctly guarded).
+  ⚠️ **Note for Lead, not a landed bug:** `tsc` is currently red, but only in your UNCOMMITTED
+  WIP (`ArrayChip.tsx`, `matrixReshape.test.ts`, `composite.ts`, `copyPaste.ts`, `list.ts`) —
+  didn't touch it, your active files. Standing by for the commit queue / next task.
