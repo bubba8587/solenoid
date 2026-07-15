@@ -1,4 +1,4 @@
-import { useSyncExternalStore, type CSSProperties } from "react";
+import { useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import type { SurfaceNode as SurfaceNodeType } from "../rete-nodes";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
@@ -20,7 +20,7 @@ const ROT_BTN: CSSProperties = {
   border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-dim, #888)",
 };
 
-function RotBtn({ ch, title, onClick }: { ch: string; title: string; onClick: () => void }) {
+function RotBtn({ title, onClick, children }: { title: string; onClick: () => void; children: ReactNode }) {
   return (
     <button
       type="button"
@@ -30,10 +30,21 @@ function RotBtn({ ch, title, onClick }: { ch: string; title: string; onClick: ()
       onPointerDown={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
     >
-      {ch}
+      {children}
     </button>
   );
 }
+
+// A small house glyph (stroked, even 12px so it centres crisply — see the icon rule).
+const HomeIcon = () => (
+  <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" aria-hidden="true">
+    <path d="M2.5 8 L8 3 L13.5 8" />
+    <path d="M4 7.5 V13 H12 V7.5" />
+  </svg>
+);
+
+const DEFAULT_YAW = 45, DEFAULT_PITCH = 30;
+const wrap360 = (deg: number) => ((deg % 360) + 360) % 360;
 
 export function SurfaceComponent({ data, emit }: NodeProps<SurfaceNodeType>) {
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
@@ -42,8 +53,14 @@ export function SurfaceComponent({ data, emit }: NodeProps<SurfaceNodeType>) {
   const has = !!p && p.xs.length >= 2 && p.ys.length >= 2 && p.z.some((r) => r.some((v) => v != null && Number.isFinite(v)));
 
   const rotate = (dYaw: number, dPitch: number) => {
-    data.literals.yaw = ((data.literals.yaw ?? 45) + dYaw) % 360;
-    data.literals.pitch = Math.max(0, Math.min(90, (data.literals.pitch ?? 30) + dPitch));
+    // Both axes wrap fully (0–360) — pitch flips all the way over, not clamped.
+    data.literals.yaw = wrap360((data.literals.yaw ?? DEFAULT_YAW) + dYaw);
+    data.literals.pitch = wrap360((data.literals.pitch ?? DEFAULT_PITCH) + dPitch);
+    void processGraph(data.id);
+  };
+  const resetView = () => {
+    data.literals.yaw = DEFAULT_YAW;
+    data.literals.pitch = DEFAULT_PITCH;
     void processGraph(data.id);
   };
 
@@ -58,13 +75,13 @@ export function SurfaceComponent({ data, emit }: NodeProps<SurfaceNodeType>) {
         {has && !collapsed && (
           <div style={{ position: "absolute", right: 4, bottom: 4, display: "grid", gridTemplateColumns: "repeat(3, 16px)", gridTemplateRows: "repeat(3, 16px)", gap: 2, opacity: 0.85 }}>
             <span />
-            <RotBtn ch="↑" title="Tilt up" onClick={() => rotate(0, 45)} />
+            <RotBtn title="Tilt up" onClick={() => rotate(0, 45)}>↑</RotBtn>
             <span />
-            <RotBtn ch="←" title="Rotate left" onClick={() => rotate(-45, 0)} />
+            <RotBtn title="Rotate left" onClick={() => rotate(-45, 0)}>←</RotBtn>
+            <RotBtn title="Reset view" onClick={resetView}><HomeIcon /></RotBtn>
+            <RotBtn title="Rotate right" onClick={() => rotate(45, 0)}>→</RotBtn>
             <span />
-            <RotBtn ch="→" title="Rotate right" onClick={() => rotate(45, 0)} />
-            <span />
-            <RotBtn ch="↓" title="Tilt down" onClick={() => rotate(0, -45)} />
+            <RotBtn title="Tilt down" onClick={() => rotate(0, -45)}>↓</RotBtn>
             <span />
           </div>
         )}
