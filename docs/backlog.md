@@ -212,13 +212,11 @@ this backlog stays the per-item source of truth.
 
 - [ ] **Materials & Mechanical pack** — the next domain candidate after the 2026-07-09 pack
   wave (Electricity, Electromagnetism, Health, Fluids, Thermo & Air, Sets, Earth & Sky,
-  Chemistry). The **1-D half of the Interpolated Lookup gate is CLEARED** (2026-07-15m):
-  the core **INTERPOLATE** node shipped (`stats.ts` `InterpolateNode` + pure `interpolateLinear`,
-  Regression category) — piecewise-linear lookup-table interpolation, clamped, for hardness
-  conversions / pump curves / pipe schedules. STILL GATING the table-driven half: a **2-D
-  (bilinear) grid interpolation** node for 2-D tables (steam tables, thermocouple grids) —
-  needs a grid-shaped input (row axis + col axis + z matrix + query x,y). See
-  `pack-composite-plans.md` tail.
+  Chemistry). **Interpolated Lookup gate fully CLEARED (2026-07-15):** the **INTERPOLATE**
+  node ships both a **List** mode (1-D — hardness conversions, pipe schedules) and a **Grid**
+  mode (2-D — a coordinate-bordered lookup table: first row = X coords, first column = Y coords,
+  blank interior cells filled by interpolation; covers steam tables, thermocouple grids). Only
+  the pack's own domain content (datasets + presets) remains to build. See `pack-composite-plans.md`.
 - [ ] **Timesavers remainder** (proposal: `archive/timesavers-pack-proposal.md`; [F] batch +
   Reverse Text + Spell Number landed 2026-07-09; **serial-interop gate cleared + Quarter /
   Days in Month landed 2026-07-10** — the date extractors are internal + serial-aware, so a

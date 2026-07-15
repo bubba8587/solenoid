@@ -72,9 +72,26 @@ a null query missing IN PLACE (position preserved). Use cases: hardness conversi
 schedules. Wiring surface was small — `export *` re-exports the class, ctor registry derives from
 `FLAT_CATALOG` (catalog leaf auto-registers load/round-trip), one-line `makeNodeComponent`, index +
 nodeRegistry entries; NO copyPaste change (no new persisted fields) and it falls through to the `math`
-kind like its siblings. 12 new tests (pure core + node wiring); full suite 2850 green (+4 auto-generated
-per-node catalog/round-trip/component checks passed too). REMAINING for the pack: the 2-D bilinear grid
-form (steam/thermocouple tables). Backlog + `pack-composite-plans.md` reconciled.
+kind like its siblings. NO copyPaste change (no new persisted fields) and it falls through to the `math`
+kind like its siblings. **GRID mode added (2026-07-15, one node, List/Grid dropdown) — the Interpolated
+Lookup gate is now fully CLEARED (1-D + 2-D).** Design arc worth recording: a first cut took three
+PARALLEL aligned inputs (Xs list + Ys list + a Z matrix) → resampled table; the author rejected that —
+it violates the "user can't see or align parallel inputs" convention (same reason charts/SUMIFS/verbs
+fold parallel columns into one frame), and our Matrix type has no inherent x/y coordinates to lean on
+(and promoting a matrix's top row into Frame headers is the awkward conversion we avoid). The shipped
+design is a **coordinate-BORDERED single table**: first row = X coords, first column = Y coords (corner
+ignored on input, blanked on output), interior = Z with **blank cells to fill**. ONE Numeric Table in,
+ONE out — coordinates sit next to their data, nothing to align. "Resample to a new point" = add a
+coordinate + a blank row/column; the node fills it, unifying fill-holes and upsample. Fill is
+**separable and reuses `interpolateLinear`**: a ROW pass (fill each row's blanks from its known cells
+along X), then a COLUMN pass (along Y) — row-first so a freshly filled cell seeds the column pass, which
+is what lets a cell at the intersection of a NEW row AND a NEW column resolve (verified with a Z=x+y
+upsample test). Clamped at the ends; a cell no line can reach stays blank; a per-cell error/NaN reads as
+a blank to fill; whole-grid error propagates. The mode dropdown reconciles the socket set (`_rebuildSockets`
++ `applyInterpolateMode` drop-cables-then-rebuild, the `applyEquationChange` pattern — the two modes are
+different ops); `mode` persists via the existing init whitelist. Pure core `fillBorderedGrid` (replaced
+the interim `bilinearGrid`). Commits `dc8c3602`/`9ab3e481` (1-D + combo), `3e35bfd6` (grid v1 bundled by
+A1 during a stats.ts collision), `601b0403` (bordered-grid redesign). tsc clean, 2867 green.
 
 ### SESSION DIGEST (2026-07-15m — Unmount collapsed viz figures: finish + reconcile) [Agent 2, off-theme]
 Closed the backlog "Unmount collapsed viz nodes' live figures" item — collapse is CSS `display:none`
