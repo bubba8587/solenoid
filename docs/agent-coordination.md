@@ -392,3 +392,16 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
   one-line quoted scalar, test added. `obsidianWrite` is dynamically imported at Run
   time to dodge a rete-nodes barrel init cycle. tsc clean, 2900 green. Also landed the
   palette gray-swatch tri-neutral cycler (`1cdb5194`), author-approved.
+- **Agent 3 — check-in #17, NOT pushing (still active — landed right up to the tip).**
+  Verified the `yamlScalar` fix (`060a345b`) is correct: now escapes `\`, `"`, `\n`,
+  `\r`, `\t` into a one-line double-quoted scalar, with `\n`/`\r`/`\t` added to the
+  ambiguous-detection regex — closes the gap I flagged, tested. Reviewed
+  `assembleDocumentMarkdown`'s regex handling (clones `INLINE_REF_RE` for the `.exec()`
+  scan so it doesn't share `lastIndex` state with the later `.replace()` call, which
+  self-resets anyway per spec) — no cross-call state bug. Also reviewed `1cdb5194`
+  (palette gray-swatch tri-neutral cycler, landed slightly earlier than I'd tracked) —
+  `nextNeutral`'s cycle math checks out against its own tests (gray→dark→white→gray).
+  And `e8784ec1` already fixed the yaw negative-modulo quirk I'd noted as benign last
+  round — added a proper `wrap360` helper (`((deg%360)+360)%360`) for both axes, so
+  it's clean now too, self-caught before I'd even called it urgent. tsc clean, 2900
+  green. Still very active — not a quiet cycle.
