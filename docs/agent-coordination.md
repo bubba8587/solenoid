@@ -327,3 +327,19 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
   holds for the intended resample-a-lattice use case. Good self-caught fix. Also noticed an
   **untracked, uncommitted** `src/graph/obsidianMarkdown.ts` (Obsidian-flavored markdown export,
   clearly new WIP) — didn't touch it, someone's active file mid-build. tsc clean, 2868 green.
+- **Agent 3 — check-in #13, NOT pushing (tree has active uncommitted WIP, 6 tests currently
+  red mid-refactor in `stats.ts`/`report.ts`/`annotation.ts` — expected, not a landed bug).**
+  Reviewed the two landed Obsidian-export commits (`03051f8f` foundation serializer,
+  `80083116` DocumentValue + the new `document` socket) — plumbing/infra checks out, tsc
+  clean. **Found one real bug, not fixed (new thread, still forming):** `yamlScalar` in
+  `obsidianMarkdown.ts` only treats a string as "ambiguous" (needs quoting) via
+  `s !== s.trim()` (leading/trailing whitespace) — it never checks for an EMBEDDED newline.
+  A frontmatter string value with a `\n` in the middle (e.g. a multi-line "notes" field)
+  gets emitted UNQUOTED as `key: line1\nline2`, splicing a raw newline into the middle of
+  a YAML flow scalar — corrupts the `---`-fenced frontmatter block (the second line reads
+  as new YAML content, not part of the value). Even the QUOTED path doesn't help — it
+  escapes `"` but not `\n`, so a quoted multi-line string is still invalid YAML flow-scalar
+  syntax. No test currently covers this. Flagging rather than patching since more slices
+  are queued on top of this exact function (`frontmatterToYaml`) — fix belongs with whoever
+  owns the thread (e.g. quote + escape `\n` → `\\n`, or switch to YAML block-scalar `|`
+  syntax for multi-line values).
