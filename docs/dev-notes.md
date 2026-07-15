@@ -28,6 +28,23 @@ same, mismatch → #UNIT!), MMULT mul dims, MDETERM/MINVERSE strip; and (a) the 
 edge — the rank-changing TOCOL/TOROW + WRAPROWS/WRAPCOLS convert a matrix tag to/from per-cell list
 units (not a plain carry) — plus `coerce.ts` widening + the `unitLattice` sweep. tsc clean, 2808 green.
 
+### SESSION DIGEST (2026-07-15l — Composite drill-in marker polish) [Agent 2, off-theme]
+Two boundary-marker fixes from an author eyeball of the By-Row work. (1) **Input marker shows the real
+input:** an externally-wired input marker now renders a read-only `CompositeBoundaryValue` chip of the
+actual incoming value (any kind), not the editable seed number field — the seed only ever showed its own
+default (misleading when wired; a number field can't represent a wired list/frame). Gated by a transient
+`CompositeInputNode.externallyWired`, stamped each pass in `data()` from the container's `inputs`
+(topology-only, so current even on a held heavy pass); an unwired port keeps the editable seed (goal-seek
+seed / MC center still settable). (2) **Marker socket dots adapt:** the Input/Output markers used the
+SHARED static `trueAnySocket` singleton (unmutatable → always the hollow ring). Each marker now owns a
+per-instance `MutableSocket("trueany")`; `syncMarkerSocketTypes()` (called in `data()`) mirrors the shell
+input port's adopted type onto the input marker and the internal source node's output type onto the
+output marker. DISPLAY ONLY — plain MutableSockets stay OUT of the trueany adoption fixpoint (only
+`AdoptiveSocket` participates), and the runtime value flows through untouched regardless of the dot's
+shown type; the type re-derives on the next `data()` so no persistence needed. tsc clean, 2820 green.
+Commit `6b2c76a2`. (Not touched: goal-seek writing the solved value back onto the driver's seed — the
+"updates itself" the author noted — that's the unwired-driver case and a separate, delicate call.)
+
 ### SESSION DIGEST (2026-07-15k — Composite By-Row run mode) [Agent 2, off-theme]
 Author-specced (2026-07-14) backlog item — the node-level "for each." A new Composite `CompositeRunMode`
 `"by-row"`: pick an exposed INPUT port (`byRowPortId`, `ByRowEditor` "For each row of" dropdown) and the
