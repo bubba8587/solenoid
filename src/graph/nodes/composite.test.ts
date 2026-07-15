@@ -5,7 +5,7 @@ import { ctorRegistry } from "../nodeCtorRegistry";
 import { extractInit } from "../copyPaste";
 import { isSolError } from "../errorValue";
 import { loopMembers } from "../process";
-import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "./composite";
+import { CompositeNode, CompositeInputNode, CompositeOutputNode, stopConditionMet } from "./composite";
 import { NumberInputNode } from "./input";
 import { ArithmeticNode, MathFnNode } from "./scalar";
 import { ComparisonNode } from "./logic";
@@ -499,54 +499,73 @@ describe("CompositeNode Simulation run mode", () => {
     expect(clone.simulationSteps).toBe(7);
   });
 
-  // "Stop when" — a logical OUTPUT port checked after each round halts the loop
-  // early; simulationSteps becomes the cap. The observer (a Comparison reading a
-  // loop node) is NOT itself on the cycle, so it exercises the seed-and-fetch path.
-  async function makePopulationWithStop(cap: number, threshold: number) {
-    const { c, pop, popOutId } = await makePopulationModel(cap);
+  // "Stop when [output] [op] [value]" halts the loop the round the condition
+  // holds; simulationSteps becomes the cap. Two evaluation paths: the output is a
+  // loop node (read from the snapshot) or a downstream observer (seed + fetch).
+
+  it("stopConditionMet compares numerically and never stops on a non-finite value", () => {
+    expect(stopConditionMet(133.1, "gt", 130)).toBe(true);
+    expect(stopConditionMet(121, "gt", 130)).toBe(false);
+    expect(stopConditionMet(5, "le", 5)).toBe(true);
+    expect(stopConditionMet(true, "eq", 1)).toBe(true);   // logical → 1
+    expect(stopConditionMet(false, "eq", 1)).toBe(false);
+    expect(stopConditionMet(null, "ge", 0)).toBe(false);  // missing never stops
+    expect(stopConditionMet(NaN, "ge", 0)).toBe(false);
+  });
+
+  it("halts the round the condition holds on a LOOP output (read from the snapshot)", async () => {
+    // 100 → 110 → 121 → 133.1; Population > 130 first holds at index 3.
+    const { c, popOutId } = await makePopulationModel(10);
+    c.stopWhenPortId = popOutId; c.stopWhenOp = "gt"; c.stopWhenValue = 130;
+    const series = (await c.data({}))[popOutId] as number[];
+    expect(series).toHaveLength(4);            // stopped at round 3, not the 10 cap
+    expect(series[2]).toBeCloseTo(121, 5);     // last round the condition was false
+    expect(series[3]).toBeCloseTo(133.1, 5);   // the round it held — recorded
+  });
+
+  it("halts on a downstream OBSERVER output (seed + fetch path), logical read as 1", async () => {
+    // A Comparison (pop > 130) is NOT on the cycle — it observes the loop.
+    const { c, pop, popOutId } = await makePopulationModel(10);
     const cmp = new ComparisonNode({ op: "gt" });
-    cmp.literals = { a: 0, b: threshold }; // pop > threshold
+    cmp.literals = { a: 0, b: 130 };
     await c.internalEditor.addNode(cmp as unknown as Schemes["Node"]);
     await connect(c.internalEditor, pop, "result", cmp, "a");
     const stopMarker = new CompositeOutputNode({ label: "Reached" });
     await c.internalEditor.addNode(stopMarker as unknown as Schemes["Node"]);
     await connect(c.internalEditor, cmp, "result", stopMarker, "value");
     const stopId = c.addOutputPort({ label: "Reached", tier: "basic", internalNodeId: stopMarker.id });
-    c.stopWhenPortId = stopId;
-    return { c, popOutId, stopId };
-  }
+    c.stopWhenPortId = stopId; c.stopWhenOp = "eq"; c.stopWhenValue = 1; // stop when TRUE
 
-  it("halts the round the stop signal reads true — the series ends there", async () => {
-    // 100 → 110 → 121 → 133.1; the condition (pop > 130) first holds at index 3.
-    const { c, popOutId, stopId } = await makePopulationWithStop(10, 130);
     const out = await c.data({});
-    const series = out[popOutId] as number[];
-    expect(series).toHaveLength(4);            // stopped at round 3, not the 10 cap
-    expect(series[2]).toBeCloseTo(121, 5);     // last round the condition was false
-    expect(series[3]).toBeCloseTo(133.1, 5);   // the round it went true — recorded
-    expect(out[stopId]).toBe(true);            // the stop output reads true at the end
+    expect(out[popOutId] as number[]).toHaveLength(4);
+    expect(out[stopId]).toBe(true); // the stop output reads true at the end
   });
 
-  it("runs the full cap when the stop signal never fires", async () => {
-    // Threshold 1000 isn't reached in 3 steps (100/110/121) → cap wins, no early stop.
-    const { c, popOutId } = await makePopulationWithStop(3, 1000);
+  it("runs the full cap when the condition never holds", async () => {
+    const { c, popOutId } = await makePopulationModel(3);
+    c.stopWhenPortId = popOutId; c.stopWhenOp = "gt"; c.stopWhenValue = 1000;
     const series = (await c.data({}))[popOutId] as number[];
     expect(series).toHaveLength(3);
   });
 
-  it("a missing / cleared stop port runs the full step count (no early stop)", async () => {
-    const { c, popOutId } = await makePopulationWithStop(5, 130);
-    c.stopWhenPortId = ""; // cleared → ignore the condition entirely
+  it("a cleared stop port runs the full step count (no early stop)", async () => {
+    const { c, popOutId } = await makePopulationModel(5);
+    c.stopWhenPortId = ""; c.stopWhenOp = "gt"; c.stopWhenValue = 1;
     const series = (await c.data({}))[popOutId] as number[];
     expect(series).toHaveLength(5);
   });
 
-  it("stopWhenPortId round-trips through extractInit", async () => {
-    const { c, stopId } = await makePopulationWithStop(10, 130);
+  it("the stop-when config round-trips through extractInit", async () => {
+    const { c, popOutId } = await makePopulationModel(10);
+    c.stopWhenPortId = popOutId; c.stopWhenOp = "ge"; c.stopWhenValue = 130;
     const init = extractInit(c as unknown as ClassicPreset.Node);
-    expect(init.stopWhenPortId).toBe(stopId);
+    expect(init.stopWhenPortId).toBe(popOutId);
+    expect(init.stopWhenOp).toBe("ge");
+    expect(init.stopWhenValue).toBe(130);
     const clone = new CompositeNode(init as ConstructorParameters<typeof CompositeNode>[0]);
-    expect(clone.stopWhenPortId).toBe(stopId);
+    expect(clone.stopWhenPortId).toBe(popOutId);
+    expect(clone.stopWhenOp).toBe("ge");
+    expect(clone.stopWhenValue).toBe(130);
   });
 });
 

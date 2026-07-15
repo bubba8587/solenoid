@@ -1,6 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { CompositeNode as CompositeNodeType, CompositeInputNode as CompositeInputNodeType, CompositeOutputNode as CompositeOutputNodeType, CompositeRunMode } from "../rete-nodes";
-import { CompositeInputNode } from "../nodes/composite";
+import { CompositeInputNode, type CompositeStopOp } from "../nodes/composite";
 import { isSolError } from "../errorValue";
 import { isUncertain } from "../valueKinds";
 import { histogram, type DistributionKind } from "../monteCarlo";
@@ -202,10 +202,20 @@ function DataTableEditor({ node }: { node: CompositeNodeType }) {
   );
 }
 
+const STOP_OPS: ReadonlyArray<{ value: CompositeStopOp; label: string }> = [
+  { value: "ge", label: "≥" },
+  { value: "le", label: "≤" },
+  { value: "gt", label: ">" },
+  { value: "lt", label: "<" },
+  { value: "eq", label: "=" },
+  { value: "ne", label: "≠" },
+];
+
 // Simulation's container-level parameters: how many feedback steps to run, and
-// an optional "Stop when" logical output that halts the loop early (the step
-// count becomes the CAP). A loop-bound output collects one entry per step run
-// (the time series); see nodes/composite.ts runSimulation for the algorithm.
+// an optional "Stop when [output] [op] [value]" condition that halts the loop
+// early the round it holds (the step count becomes the CAP). A loop-bound output
+// collects one entry per step run (the time series); see nodes/composite.ts
+// runSimulation for the algorithm. A logical output compares as 1 (true) / 0.
 function SimulationEditor({ node }: { node: CompositeNodeType }) {
   const hasStop = !!node.stopWhenPortId;
   const stop = { onPointerDown: (e: React.PointerEvent) => e.stopPropagation(), onMouseDown: (e: React.MouseEvent) => e.stopPropagation() };
@@ -226,6 +236,23 @@ function SimulationEditor({ node }: { node: CompositeNodeType }) {
         <option value="">— none</option>
         {node.outputPorts.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
       </select>
+      {hasStop && (
+        <div style={{ gridColumn: "1 / -1", display: "flex", gap: 6, alignItems: "center" }}>
+          <select
+            className="solenoid-node__inline-input"
+            style={{ flex: "0 0 auto", width: 52 }}
+            value={node.stopWhenOp}
+            onChange={(e) => { node.stopWhenOp = e.target.value as CompositeStopOp; void processGraph(node.id); }}
+            {...stop}
+          >
+            {STOP_OPS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+          <InlineNumberField
+            value={node.stopWhenValue}
+            onChange={(v) => { node.stopWhenValue = v ?? 0; void processGraph(node.id); }}
+          />
+        </div>
+      )}
     </div>
   );
 }
