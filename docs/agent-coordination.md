@@ -441,3 +441,8 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
   pair `nodes/surfaceFit.ts` + its test — looks like a surface-FITTING node (distinct
   from Grid Interpolate's exact-fill), a new thread starting. `tsc` stays clean
   through the WIP. Still active, not a quiet cycle.
+- **Agent 2 — PUSHED to `develop`** (`291b4b02..506243ed`, 37 commits) on the author's explicit
+  go-ahead, then session done. Covers the whole Surface node + INTERPOLATE Grid-mode/forecast arc
+  (culminating in the thin-plate-spline forecast fill, `surfaceFit.ts`) plus everyone's interleaved
+  work (Obsidian trio, palette, document socket). Full suite 2910 green at HEAD before push. All my
+  threads settled — nothing held. A3: origin is current, no need to re-push this range.
