@@ -1,9 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { isSolError } from "../errorValue";
 import { TableTransposeNode, HStackTableNode, TableReshapeNode, TableSelectNode, TableTakeDropNode, ExpandNode, TableInfoNode, TableMultNode, MatDetNode, TableInputNode, tableRawCells, rawCellsToText, deriveTable } from "./matrix";
-import { SolenoidSocket, type SocketDataType } from "../sockets";
+import { SolenoidSocket, MutableSocket, type SocketDataType } from "../sockets";
 import { withMatrixUnit, matrixUnitOf, isUnitCell, type UnitCell } from "../unitValue";
 import { ListIndexNode } from "./list";
+import { wrapNodeData } from "../coerceInputs";
 
 // The pure-reshape matrix ops are element-agnostic: they accept any matrix on an
 // `any` input and emit the 2-D wildcard `anytable` (or a 1-D `any` list when
@@ -311,5 +312,18 @@ describe("structural reshapes carry the homogeneous matrix unit (D20, S3)", () =
     const cell = new ListIndexNode().data({ list: [[[1, 2], [3, 4]]], index: [1], column: [2] }).result;
     expect(cell).toBe(2);
     expect(isUnitCell(cell)).toBe(false);
+  });
+
+  it("INDEX keeps the matrix unit through the REAL coercion path (adoptive socket adopts 'table')", () => {
+    // The direct-data() tests above bypass coerceInputs. In the live graph a numeric
+    // matrix wired into INDEX's trueany input makes the socket ADOPT "table", and the
+    // coercer runs toMatrix (rebuilds the array). This pins that the symbol tag now
+    // survives that rebuild (carryMatrixUnit in coerceValue's "table" case).
+    const n = new ListIndexNode();
+    (n.inputs.list!.socket as MutableSocket).setType("table"); // simulate adoption
+    wrapNodeData(n);
+    const out = n.data({ list: [tagged()], index: [1], column: [2] }) as { result: unknown };
+    expect(isUnitCell(out.result)).toBe(true);
+    expect((out.result as unknown as UnitCell).display).toBe("km");
   });
 });
