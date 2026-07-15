@@ -251,10 +251,20 @@ this backlog stays the per-item source of truth.
 
 ## Cables / canvas / chrome
 
-- [ ] **`content-visibility: auto` on node roots — untried experiment** (floated in the
-  archived perf notes, never attempted): skips style/layout/paint for offscreen nodes
-  without touching DOM count or visuals. Risks to check: rete's socket measurement
-  (`offsetTop` queries force layout), minimap/fit reading sizes, the GPU clone capture.
+- [ ] **`content-visibility: auto` on node roots — EVALUATED, blocked by the live-DOM-geometry
+  model (2026-07-15m).** The idea: skip style/layout/paint for offscreen nodes. The blocker is
+  structural, not cosmetic: socket positions are measured from live DOM geometry — `MeasuredSocketRow`
+  reads `offsetTop/offsetHeight` WITHIN `.solenoid-node__content` (`NodeSocket.tsx`), rete's
+  `getDOMSocketPosition` watcher recomputes a socket's center by walking offsetParents up to the node
+  element, and the GPU clone (`collectSpecs` → `inner.offsetWidth/Height`) + minimap/fit all read real
+  node size regardless of on-screen state. `content-visibility:auto` collapses an off-screen subtree to
+  its `contain-intrinsic-size` and does NOT compute descendant layout, so those reads return the wrong
+  socket offsets → cable endpoints jump as a node crosses the viewport edge (the watcher fires on the
+  size change), and the GPU capture would clone at intrinsic size. An accurate per-node `contain-
+  intrinsic-size` fixes the OUTER box but not the socket-WITHIN-node offset, so it doesn't unblock.
+  Reopen only if the socket model stops depending on live geometry of off-screen nodes (a big rework).
+  With this ruled out and SVG-picker-rasterize + collapsed-figure-unmount both shipped, the DOM-weight
+  reduction lever set is EXHAUSTED — the HTML-in-Canvas GPU renderer is the remaining path at scale.
 - [ ] **Cable collision avoidance** — DEFERRED for later (author 2026-07-05).
   Spec: `archive/cable-routing.md` §2 (avoid nodes; parallel runs + bridge hops;
   per-cable overrides).
