@@ -43,6 +43,7 @@ import { BuildCubeNode, NestJoinNode, CubeColumnsNode, CubeRollupNode } from "./
 import { WebSourceNode, CsvConnectionNode, ParquetConnectionNode, ImportHtmlNode, ImportXmlNode } from "./connection";
 import { DataFeedNode } from "./dataFeed";
 import { WriteCsvNode, WriteJsonNode } from "./sink";
+import { WriteObsidianNode } from "./obsidian";
 import { ExpectNode } from "./quality";
 import { TornadoNode } from "./tornado";
 import { ReconcileNode } from "./frame";
@@ -150,6 +151,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof CableSwitchNode || node instanceof NoteNode ||
     node instanceof ImageNode || node instanceof ExpectNode ||
     node instanceof WriteCsvNode || node instanceof WriteJsonNode ||
+    node instanceof WriteObsidianNode ||
     node instanceof CompositeNode
   ) return "util";
   if (node instanceof DisplayNode) return "util";

@@ -15,7 +15,8 @@
       "identifier": "fs:allow-read-text-file",
       "allow": [
         { "path": "$HOME/**/*.json" },
-        { "path": "$HOME/**/*.csv" }
+        { "path": "$HOME/**/*.csv" },
+        { "path": "$HOME/**/*.md" }
       ]
     },
     {
@@ -24,7 +25,9 @@
         { "path": "$HOME/**/*.json" },
         { "path": "$HOME/**/*.json.tmp" },
         { "path": "$HOME/**/*.csv" },
-        { "path": "$HOME/**/*.csv.tmp" }
+        { "path": "$HOME/**/*.csv.tmp" },
+        { "path": "$HOME/**/*.md" },
+        { "path": "$HOME/**/*.md.tmp" }
       ]
     },
     {
@@ -33,7 +36,9 @@
         { "path": "$HOME/**/*.json" },
         { "path": "$HOME/**/*.json.tmp" },
         { "path": "$HOME/**/*.csv" },
-        { "path": "$HOME/**/*.csv.tmp" }
+        { "path": "$HOME/**/*.csv.tmp" },
+        { "path": "$HOME/**/*.md" },
+        { "path": "$HOME/**/*.md.tmp" }
       ]
     },
     {
@@ -46,17 +51,28 @@
     },
     {
       "identifier": "fs:allow-write-file",
-      "allow": [{ "path": "$HOME/**/images/*" }]
+      "allow": [
+        { "path": "$HOME/**/images/*" },
+        { "path": "$HOME/**/*.png" },
+        { "path": "$HOME/**/*.jpg" },
+        { "path": "$HOME/**/*.jpeg" },
+        { "path": "$HOME/**/*.gif" },
+        { "path": "$HOME/**/*.webp" }
+      ]
     },
     {
       "identifier": "fs:allow-mkdir",
-      "allow": [{ "path": "$HOME/**/images" }]
+      "allow": [
+        { "path": "$HOME/**/images" },
+        { "path": "$HOME/**" }
+      ]
     },
     {
       "identifier": "fs:allow-exists",
       "allow": [
         { "path": "$HOME/**/images" },
-        { "path": "$HOME/**/images/*" }
+        { "path": "$HOME/**/images/*" },
+        { "path": "$HOME/**" }
       ]
     },
     "core:window:allow-close",
