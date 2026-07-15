@@ -306,3 +306,38 @@ export function sameColumnUnit(a: ColumnUnit | undefined, b: ColumnUnit | undefi
   if (!a || !b) return !a && !b;
   return dimEqual(a.dim, b.dim) && (a.display ?? "") === (b.display ?? "");
 }
+
+// ─── Homogeneous matrix units (D20) ──────────────────────────────────────────────
+// A matrix guarantees ONE element family across the whole grid, so it carries ONE
+// unit for the WHOLE matrix (decisions.md D20), NOT a per-cell tag like a list. The
+// cells stay bare numbers; the unit is a `ColumnUnit` (dim + display id) attached to
+// the outer array under a symbol key — co-located with the value like a frame's
+// `__totalRows`, invisible to iteration / JSON / structural detection
+// (`Array.isArray(v[0])` still works), and read only by unit-aware code. It is LOSSY
+// by design: a fresh array from a transform drops it, so the unit-aware matrix ops
+// re-tag explicitly and everything else strips (documented-strip, per D20). Matrix
+// unit PERSISTENCE rides the producing node (like Frame Input), not the array.
+const MATRIX_UNIT = Symbol("solMatrixUnit");
+
+/** The unit a matrix carries, or undefined (a plain/structural matrix). */
+export function matrixUnitOf(m: unknown): ColumnUnit | undefined {
+  return Array.isArray(m) ? (m as { [MATRIX_UNIT]?: ColumnUnit })[MATRIX_UNIT] : undefined;
+}
+
+/** Attach (or clear, with undefined) a matrix's whole-grid unit, returning the SAME
+ *  array. A dimensionless/empty unit clears the tag so a plain matrix stays plain. */
+export function withMatrixUnit<T>(m: T, unit: ColumnUnit | undefined): T {
+  if (!Array.isArray(m)) return m;
+  const holder = m as unknown as { [MATRIX_UNIT]?: ColumnUnit };
+  if (unit && !isDimensionless(unit.dim)) {
+    Object.defineProperty(m, MATRIX_UNIT, { value: unit, enumerable: false, writable: true, configurable: true });
+  } else if (MATRIX_UNIT in holder) {
+    delete holder[MATRIX_UNIT];
+  }
+  return m;
+}
+
+/** Carry `src`'s matrix unit onto `dst` (a fresh array from a unit-carrying op). */
+export function carryMatrixUnit<T>(dst: T, src: unknown): T {
+  return withMatrixUnit(dst, matrixUnitOf(src));
+}

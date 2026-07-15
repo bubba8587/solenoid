@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { NodeEditor, ClassicPreset } from "rete";
 import { makeAnnotationResolver, resolveValueOrigin } from "./unitFlow";
 import { applyFcUnit } from "./unitBridge";
-import { isUnitCell, magnitudeOf, dimOf, fromUnit, type UnitCell } from "./unitValue";
+import { isUnitCell, magnitudeOf, dimOf, fromUnit, matrixUnitOf, type UnitCell } from "./unitValue";
 import { UNITS } from "./dimension";
 import { isSolError } from "./errorValue";
 import type { FormatAnnotation } from "./formatAnnotationStore";
@@ -196,11 +196,19 @@ describe("applyFcUnit — the FC is value-mutating (FC A4: the unit rides the VA
     expect(isSolError(clash) && clash.code).toBe("#UNIT!");
   });
 
-  it("`none` / text / matrix pass through untouched; a list tags per cell", () => {
+  it("`none` / text pass through; a list tags per cell; a NUMERIC matrix takes ONE whole-grid unit (D20)", () => {
     expect(applyFcUnit(5, "none")).toBe(5);
     expect(applyFcUnit("hello", "km")).toBe("hello");
+    // A numeric matrix keeps its cells bare but carries one unit on the array (D20).
     const matrix = [[1, 2], [3, 4]];
-    expect(applyFcUnit(matrix, "km")).toBe(matrix);      // 2-D is unit-agnostic
+    const tagged = applyFcUnit(matrix, "km");
+    expect(tagged).toBe(matrix);                          // same array, cells untouched
+    expect(matrixUnitOf(tagged)).toMatchObject({ display: "km" });
+    expect((tagged as number[][])[0][0]).toBe(1);
+    // A text matrix can't take a physical unit — unchanged, no tag.
+    const textMat = [["a", "b"], ["c", "d"]];
+    expect(applyFcUnit(textMat, "km")).toBe(textMat);
+    expect(matrixUnitOf(textMat)).toBeUndefined();
     const list = applyFcUnit([1, 2], "m") as UnitCell[];
     expect(list.map((c) => magnitudeOf(c))).toEqual([1, 2]);
     expect(list.every((c) => dimOf(c).length === 1 && c.display === "m")).toBe(true);
