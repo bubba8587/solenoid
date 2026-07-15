@@ -211,6 +211,20 @@ const STOP_OPS: ReadonlyArray<{ value: CompositeStopOp; label: string }> = [
   { value: "ne", label: "≠" },
 ];
 
+// A "Stop when" threshold is a numeric comparison, so it only makes sense for a
+// NUMBER or LOGICAL (→ 1/0) output. Output markers are trueany and ADOPT the
+// wired type, so we don't constrain the node — we filter the picker by the
+// adopted socket type, keeping the general node but hiding frame/string/date/
+// cube/list outputs (which have no meaningful `> value`). Unresolved scalar
+// wildcards (`any`/`trueany`, e.g. not yet wired) are kept — they may adopt a
+// number. A non-numeric value is a no-op at run time anyway, so this is a
+// discoverability guardrail, not a correctness gate.
+const STOP_COMPARABLE = new Set(["number", "numlist", "logical", "logicalcombo", "any", "trueany"]);
+function outputComparable(node: CompositeNodeType, portId: string): boolean {
+  const dt = (node.outputs[portId]?.socket as { dataType?: string } | undefined)?.dataType;
+  return dt === undefined || STOP_COMPARABLE.has(dt);
+}
+
 // Simulation's container-level parameters: how many feedback steps to run, and
 // an optional "Stop when [output] [op] [value]" condition that halts the loop
 // early the round it holds (the step count becomes the CAP). A loop-bound output
@@ -219,6 +233,9 @@ const STOP_OPS: ReadonlyArray<{ value: CompositeStopOp; label: string }> = [
 function SimulationEditor({ node }: { node: CompositeNodeType }) {
   const hasStop = !!node.stopWhenPortId;
   const stop = { onPointerDown: (e: React.PointerEvent) => e.stopPropagation(), onMouseDown: (e: React.MouseEvent) => e.stopPropagation() };
+  // Only number/logical outputs can be a threshold target; keep the current pick
+  // even if its type drifted, so the user's choice never silently vanishes.
+  const candidates = node.outputPorts.filter((p) => outputComparable(node, p.id) || p.id === node.stopWhenPortId);
   return (
     <div style={{ marginTop: 6, display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 6, alignItems: "center" }}>
       <span className="solenoid-node__io-label">{hasStop ? "Max steps" : "Steps"}</span>
@@ -226,32 +243,36 @@ function SimulationEditor({ node }: { node: CompositeNodeType }) {
         value={node.simulationSteps}
         onChange={(v) => { node.simulationSteps = v ?? 10; void processGraph(node.id); }}
       />
-      <span className="solenoid-node__io-label">Stop when</span>
-      <select
-        className="solenoid-node__inline-input"
-        value={node.stopWhenPortId}
-        onChange={(e) => { node.stopWhenPortId = e.target.value; void processGraph(node.id); }}
-        {...stop}
-      >
-        <option value="">— none</option>
-        {node.outputPorts.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
-      </select>
-      {hasStop && (
-        <div style={{ gridColumn: "1 / -1", display: "flex", gap: 6, alignItems: "center" }}>
+      {candidates.length > 0 && (
+        <>
+          <span className="solenoid-node__io-label">Stop when</span>
           <select
             className="solenoid-node__inline-input"
-            style={{ flex: "0 0 auto", width: 52 }}
-            value={node.stopWhenOp}
-            onChange={(e) => { node.stopWhenOp = e.target.value as CompositeStopOp; void processGraph(node.id); }}
+            value={node.stopWhenPortId}
+            onChange={(e) => { node.stopWhenPortId = e.target.value; void processGraph(node.id); }}
             {...stop}
           >
-            {STOP_OPS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            <option value="">— none</option>
+            {candidates.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
           </select>
-          <InlineNumberField
-            value={node.stopWhenValue}
-            onChange={(v) => { node.stopWhenValue = v ?? 0; void processGraph(node.id); }}
-          />
-        </div>
+          {hasStop && (
+            <div style={{ gridColumn: "1 / -1", display: "flex", gap: 6, alignItems: "center" }}>
+              <select
+                className="solenoid-node__inline-input"
+                style={{ flex: "0 0 auto", width: 52 }}
+                value={node.stopWhenOp}
+                onChange={(e) => { node.stopWhenOp = e.target.value as CompositeStopOp; void processGraph(node.id); }}
+                {...stop}
+              >
+                {STOP_OPS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+              <InlineNumberField
+                value={node.stopWhenValue}
+                onChange={(v) => { node.stopWhenValue = v ?? 0; void processGraph(node.id); }}
+              />
+            </div>
+          )}
+        </>
       )}
     </div>
   );
