@@ -3,6 +3,7 @@ import {
   isUnitCell, dimOf, magnitudeOf, tagDim, fromUnit, unitLabelOf,
   mulUnits, divUnits, addUnits, subUnits, powUnits, compareUnits,
   forAggregateUnits, sameColumnUnit,
+  matrixUnitOf, withMatrixUnit, carryMatrixUnit,
   type UnitCell,
 } from "./unitValue";
 import { parseUnit, isDimensionless, type Unit } from "./dimension";
@@ -188,5 +189,30 @@ describe("per-column frame unit", () => {
     expect(sameColumnUnit({ dim: { length: 1 }, display: "km" }, { dim: { length: 1 } })).toBe(false);
     expect(sameColumnUnit(undefined, undefined)).toBe(true);
     expect(sameColumnUnit({ dim: { length: 1 } }, undefined)).toBe(false);
+  });
+});
+
+describe("homogeneous matrix unit (D20) — one tag on the array, cells stay bare", () => {
+  it("attaches / reads / carries the tag without touching cells or structural detection", () => {
+    const m = [[1, 2], [3, 4]];
+    expect(matrixUnitOf(m)).toBeUndefined();
+    const tagged = withMatrixUnit(m, { dim: { length: 1 }, display: "km" });
+    expect(tagged).toBe(m);                                  // same array
+    expect(matrixUnitOf(m)).toMatchObject({ display: "km" });
+    expect(Array.isArray(m[0])).toBe(true);                  // structural detection intact
+    expect(Object.keys(m)).toEqual(["0", "1"]);              // tag is non-enumerable
+    expect(JSON.parse(JSON.stringify(m))).toEqual([[1, 2], [3, 4]]); // invisible to JSON
+    // carry onto a fresh array (a unit-preserving op)
+    const t = [[1, 3], [2, 4]];
+    carryMatrixUnit(t, m);
+    expect(matrixUnitOf(t)).toMatchObject({ display: "km" });
+  });
+  it("a dimensionless / undefined unit clears the tag (a plain matrix stays plain)", () => {
+    const m = [[1]];
+    withMatrixUnit(m, { dim: { length: 1 }, display: "km" });
+    withMatrixUnit(m, undefined);
+    expect(matrixUnitOf(m)).toBeUndefined();
+    withMatrixUnit(m, { dim: {} });                          // dimensionless → no tag
+    expect(matrixUnitOf(m)).toBeUndefined();
   });
 });

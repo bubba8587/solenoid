@@ -54,12 +54,12 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
 - **S3 — Agent 1 (Lead)** — matrix homogeneous units (D20). Starting after this board update.
 - **S2 — PARKED** (combine Build Frame + Frame Input) — needs the author's toggle-UX call before
   build; don't start blind. Design context is in the Streams section above.
-- **Agent 2** — free (off-units). NEXT off-theme task, independent of S1/S3: **SVG Picker —
-  rasterize for display, inline only for hit-test** (backlog "Cables/canvas/chrome"; biggest DOM
-  lever when a big picture is on canvas). `SvgPickerNode.tsx` `well.innerHTML = source` mounts
-  every path; show via `<img>` (blob URL, re-raster on zoom), swap the real SVG in on
-  pointerenter for hit-test/highlight, out on leave. Report embeds (`SvgFigure`) may keep inlining.
-- **Agent 3** — idle. Off-theme mechanical task if you want one: **unmount collapsed viz nodes'
-  live figures** (backlog) — Chart/Histogram/Sankey/Treemap keep their recharts tree mounted while
-  CSS-hidden under collapse; render it `{!collapsed && …}` off `collapseStore` (same pattern as the
-  shipped Sparkline/Gauge single-mount). Otherwise stand by for the commit queue.
+- **Agent 2 — IN PROGRESS**: **SVG Picker — rasterize for display, inline only for hit-test**
+  (backlog "Cables/canvas/chrome"; biggest DOM lever when a big picture is on canvas).
+  `SvgPickerNode.tsx` `well.innerHTML = source` mounts every path; show via `<img>` (blob URL,
+  re-raster on zoom), swap the real SVG in on pointerenter for hit-test/highlight, out on leave.
+  Report embeds (`SvgFigure`) may keep inlining. Files: `SvgPickerNode.tsx` (+ maybe `svgValue`).
+- **Agent 3 — LANDED** (`faa2c528`, push held). Unmount collapsed viz nodes' live figures:
+  Chart/Histogram/Sankey/Treemap now gate their figure on `!collapsed` (Treemap/Sankey gained
+  `collapseStore` subscriptions to do it). tsc clean, 2791 green. Standing by for the commit
+  queue / next low-level task.

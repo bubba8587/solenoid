@@ -15,6 +15,29 @@ const MAX_H = 800;
 const hoverGlow = (color: string) => `drop-shadow(0 0 2px ${color}) drop-shadow(0 0 1px ${color})`;
 const selectedGlow = (color: string) => `drop-shadow(0 0 3px ${color}) drop-shadow(0 0 2px ${color})`;
 
+// Build the DISPLAY svg string shown in the idle <img>: the source with the
+// selected layer's steady glow baked in, so the selection still reads when the
+// live (hover-only) SVG isn't mounted. No selection → the source unchanged (no
+// parse — cheap for a huge map). Falls back to the raw source on any parse
+// failure. (The drop-shadow filter renders inside an <img>-loaded SVG in the
+// Chromium webview; if a future engine drops it, only the IDLE glow is lost —
+// the live hover glow, hit-testing and the textual Layer readout are unaffected.)
+function bakeSelectionGlow(source: string, sel: string, color: string): string {
+  if (!source || !sel) return source;
+  try {
+    const doc = new DOMParser().parseFromString(source, "image/svg+xml");
+    if (doc.querySelector("parsererror")) return source;
+    const svg = doc.querySelector("svg");
+    if (!svg) return source;
+    for (const node of Array.from(svg.querySelectorAll<SVGElement>("*"))) {
+      if (elementName(node) === sel) { node.style.filter = selectedGlow(color); break; }
+    }
+    return new XMLSerializer().serializeToString(doc);
+  } catch {
+    return source;
+  }
+}
+
 /**
  * The SVG Picker — an interactive picture that outputs the name of whatever layer
  * you click, so it doubles as a visual data slicer (click a region on a map →
@@ -38,6 +61,14 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
   const [height, setHeight] = useState(data.height);
   const [loadError, setLoadError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Display is a rasterized <img> of the SVG (one DOM element); the heavy inline
+  // markup — a source map can be tens of thousands of paths — is mounted ONLY while
+  // the pointer is over the well, for hit-testing + hover highlight, then dropped on
+  // leave. `hovering` gates that swap; `rasterUrl` is the idle image's blob URL.
+  const [hovering, setHovering] = useState(false);
+  const [rasterUrl, setRasterUrl] = useState<string | null>(null);
+  const rasterUrlRef = useRef<string | null>(null);
 
   // Mirror external changes (undo / paste / load replace the node instance).
   useEffect(() => { setLabel(data.label); }, [data.label]);
@@ -89,11 +120,12 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
     if (hoverEl && hoverEl !== selEl) { apply(hoverEl, hoverGlow(color)); paintedRef.current.push(hoverEl); }
   }
 
-  // (Re)inject the SVG markup whenever the source changes; rescale + re-apply the
-  // selection highlight against the fresh DOM.
+  // Mount the live SVG markup into the well ONLY while hovering (the well is empty
+  // otherwise — see the idle <img>). Rescale it + apply the selection highlight
+  // against the fresh DOM. On leave the well div unmounts, so we just null the root.
   useLayoutEffect(() => {
     const well = wellRef.current;
-    if (!well) return;
+    if (!hovering || !well) { svgRootRef.current = null; return; }
     well.innerHTML = source || "";
     const svg = well.querySelector("svg");
     svgRootRef.current = (svg as SVGSVGElement | null) ?? null;
@@ -108,7 +140,29 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
     hoverElRef.current = null;
     paint(selectedLayer, null, hoverColor);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [source]);
+  }, [source, hovering]);
+
+  // Keep the idle image current: rasterize the source (with the selection glow
+  // baked in) to a blob URL. Debounced so a colour drag — many ticks — doesn't
+  // re-parse a big SVG each tick; the lag is hidden behind the live SVG shown while
+  // hovering. Revokes the PREVIOUS url only once the new one exists (no blank gap).
+  useEffect(() => {
+    if (!source) {
+      if (rasterUrlRef.current) { URL.revokeObjectURL(rasterUrlRef.current); rasterUrlRef.current = null; }
+      setRasterUrl(null);
+      return;
+    }
+    const t = window.setTimeout(() => {
+      const disp = bakeSelectionGlow(source, selectedLayer, hoverColor);
+      const u = URL.createObjectURL(new Blob([disp], { type: "image/svg+xml" }));
+      if (rasterUrlRef.current) URL.revokeObjectURL(rasterUrlRef.current);
+      rasterUrlRef.current = u;
+      setRasterUrl(u);
+    }, 80);
+    return () => window.clearTimeout(t);
+  }, [source, selectedLayer, hoverColor]);
+  // Revoke the live blob URL on unmount.
+  useEffect(() => () => { if (rasterUrlRef.current) URL.revokeObjectURL(rasterUrlRef.current); }, []);
 
   // Re-apply highlights when the selection or colour changes (source untouched).
   useLayoutEffect(() => {
@@ -126,6 +180,9 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
     return resolveLayer(target, root);
   }
 
+  // Entering the well mounts the live SVG (see the injection effect) so the next
+  // move can hit-test + highlight; leaving unmounts it back to the idle image.
+  function onPointerEnterWell() { setHovering(true); }
   function onPointerMove(e: React.PointerEvent) {
     if (!svgRootRef.current) return;
     const hit = hitLayer(e.target);
@@ -135,9 +192,8 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
     paint(selectedLayer, el, hoverColor);
   }
   function onPointerLeaveWell() {
-    if (!hoverElRef.current) return;
     hoverElRef.current = null;
-    paint(selectedLayer, null, hoverColor);
+    setHovering(false); // unmount the live SVG; the idle <img> takes over
   }
 
   // A pick is a discrete action → commit immediately (like a dropdown). Clicking
@@ -250,15 +306,21 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
       <div className="solenoid-svgpick__content">
         {source ? (
           <div
-            ref={wellRef}
             className="solenoid-svgpick__well"
             style={{ height }}
+            onPointerEnter={onPointerEnterWell}
             onPointerMove={onPointerMove}
             onPointerLeave={onPointerLeaveWell}
             onClick={onClickWell}
             onPointerDown={stopDragStart}
             onMouseDown={stopDragStart}
-          />
+          >
+            {hovering ? (
+              <div ref={wellRef} className="solenoid-svgpick__svg" />
+            ) : rasterUrl ? (
+              <img className="solenoid-svgpick__img" src={rasterUrl} alt="" draggable={false} />
+            ) : null}
+          </div>
         ) : (
           <button
             type="button"

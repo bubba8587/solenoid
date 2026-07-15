@@ -10,7 +10,7 @@
 
 import { type Unit, type Dim, parseUnit, dimEqual, DIMENSIONLESS, formatDim, customDim } from "./dimension";
 import { UNIT_ANNOTATIONS } from "./formatAnnotationStore";
-import { fromUnit, isUnitCell, isRatio, withDisplay, unitError, type UnitCell as UnitCellT } from "./unitValue";
+import { fromUnit, isUnitCell, isRatio, withDisplay, unitError, withMatrixUnit, type UnitCell as UnitCellT } from "./unitValue";
 import { isSolError } from "./errorValue";
 
 // Units the dimension.ts parser can't spell (compound / non-metric areas & volumes,
@@ -124,7 +124,16 @@ export function applyFcUnit(value: unknown, fcUnitId: string, customUnit?: strin
     return typeof v === "number" ? fromUnit(v, u, displayId) : v;
   };
   if (Array.isArray(value)) {
-    if (value.some((c) => Array.isArray(c))) return value; // matrix — unit-agnostic
+    if (value.some((c) => Array.isArray(c))) {
+      // A homogeneous NUMERIC matrix carries ONE unit for the whole grid (D20). The
+      // cells stay bare numbers; the unit tags the outer array. A non-numeric matrix
+      // (text/logical) can't take a physical unit — pass it through unchanged.
+      const firstRow = (value as unknown[]).find((r) => Array.isArray(r)) as unknown[] | undefined;
+      const firstCell = firstRow?.find((c) => c !== null && c !== undefined && c !== "");
+      return typeof firstCell === "number"
+        ? withMatrixUnit(value, { dim: u.dim, display: displayId })
+        : value;
+    }
     return value.map(one);
   }
   return one(value);
