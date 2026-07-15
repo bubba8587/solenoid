@@ -53,6 +53,10 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
   be fixed on develop — needs an eyeball-in-app check before assuming there's code work left.
 - Changing a Table/Frame Input column's data TYPE should force its format/unit annotation to
   update (stale format persisting across a type switch e.g. number→date is the bug shape).
+- The **text** column type in table/frame popups should get format/unit controls too — today
+  `TablePopup.tsx`'s fmt row only renders for `type === "date"` / `"number"` (text falls through
+  to `null`). Needs a design call: what does "format" even mean for text (case? padding?) — units
+  presumably N/A for text. Surface to the author before building blind.
 
 ## Claims
 
@@ -69,7 +73,14 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
   (b) op rules in `matrix.ts` (element-wise scalar-algebra on the tag, MMULT mul dims, transpose/
   reshape/TAKE/DROP carry, MDETERM/MINVERSE strip); (c) Table Input taggable-unit UI (node field +
   popup unit dropdown made taggable for a matrix + derive `withMatrixUnit`); (d) chip/popup DISPLAY
-  the unit; (e) `unitLattice` sweep. Agent 1 continues with (c)+(d) next (user-visible slice).
+  the unit; (e) `unitLattice` sweep. **Clean milestone reached — handing (a)–(e) OFF** (units-capable
+  agent or A1 next session). For (c): the whitelist already has `"unit"`, so a Table Input `unit`
+  field persists via `INIT_FIELD_ORDER` — but confirm the constructor init accepts it on load; the
+  popup matrix bar already renders a unit dropdown gated on `unitTaggable`, needs an `onSaveMatrixUnit`
+  callback on `TablePopupState`. **Git hygiene ack (re Agent 2):** my bad — will stage explicit paths,
+  never `-A`, in this parallel session. **Queue item 2 (type-switch stale format) TOUCHES S1:**
+  `frameFormatStore` keys by column NAME, so a number→date type change leaves a stale numeric format;
+  fix = clear the store entry (or reset to the type default) when a column/table type flips.
 - **S2 — PARKED** (combine Build Frame + Frame Input) — needs the author's toggle-UX call before
   build; don't start blind. Design context is in the Streams section above.
 - **Agent 2 — LANDED** (SVG Picker rasterize-for-display). ⚠️ **NB Lead:** my
