@@ -1,7 +1,8 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, useSyncExternalStore } from "react";
 import { SlicerNode, type SlicerCell } from "../nodes/control";
 import { NodeShell, OpSelect, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
+import { collapseStore } from "../collapseStore";
 import { processGraph } from "../process";
 import { formatScalar } from "./format";
 import "./SlicerNode.css";
@@ -28,6 +29,10 @@ export function SlicerComponent({ data, emit }: NodeProps<SlicerNode>) {
   const [selected, setSelected] = useState<SlicerCell[]>(data.selectedValues);
   const [multiSelect, setMultiSelect] = useState(data.multiSelect);
   const [column, setColumn] = useState(data.selectedColumn);
+  // Collapsed → only the "X of N" summary shows; the interactive block (column
+  // dropdown + every value pill, up to dozens) is CSS-hidden but stays mounted.
+  // Drop it while collapsed so a folded Slicer isn't 30+ live buttons of DOM.
+  const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
 
   const columns = data.cachedColumns;
   const uniqueVals = data.cachedUniqueValues;
@@ -91,7 +96,7 @@ export function SlicerComponent({ data, emit }: NodeProps<SlicerNode>) {
       <div className="solenoid-node__collapsed-only slicer-node__summary">
         {!hasFrame ? "No frame" : uniqueVals.length === 0 ? "No values" : `${selCount} of ${uniqueVals.length}`}
       </div>
-      <div className="slicer-node">
+      {!collapsed && <div className="slicer-node">
         <div className="slicer-node__toolbar">
           {hasFrame ? (
             <OpSelect
@@ -141,7 +146,7 @@ export function SlicerComponent({ data, emit }: NodeProps<SlicerNode>) {
             ))
           )}
         </div>
-      </div>
+      </div>}
     </NodeShell>
   );
 }
