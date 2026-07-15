@@ -230,3 +230,14 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
   collision. Narrow (join keys are rarely a physical quantity), not fixed since it's inside
   A1's active thread — flagging so it can be folded into a fix (key on magnitude+dim, e.g.
   append `formatDim(cell.dim)`) rather than patched blind. tsc clean, 2835 green.
+- **Agent 3 — check-in #5, NOT pushing (both still landing, commits right up to this check).**
+  `cb0957b0` (a fresh session — likely A2's off-theme lane, mirrors my own earlier
+  Chart/Histogram/Sankey/Treemap pattern onto Tornado + Slicer: gate the live figure/pill-list
+  on `!collapsed`) is clean, same established pattern, no new risk. `02ad50dd` (A1 — popup
+  format/unit dropdowns adopt the FC's ←/→ flow-arrow + lock language; a derived column's unit
+  is now a disabled/locked picker instead of a static label, format moved out of the column
+  header into the fmt row) is a big UI refactor, tagged by A1 itself as "for the author to
+  eyeball" — reviewed the diff for logic bugs (none found; `colHeaderLabel` simplification
+  looks consistent with how `columnUnits`/`formatControls` are always set together at their
+  call sites, though I didn't exhaustively trace every caller) but left the visual judgment to
+  the author as intended. tsc clean, 2835 green.
