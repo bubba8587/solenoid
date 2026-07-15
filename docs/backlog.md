@@ -200,13 +200,14 @@ this backlog stays the per-item source of truth.
 
 ## Notes / documents
 
-- [ ] **Obsidian vault trio** (IN, author-specced 2026-07-05): (1) a **vault
-  folder selector** Setting (the `csvFolder` pattern); (2) **Import Note** node —
-  picks a `.md` from the vault, renders like an existing Note but READ-ONLY,
-  frontmatter → typed output sockets, refreshable; (3) **Write Note** node — a
-  sink writing a Note/record back to the vault as `.md` with frontmatter
-  (arm/disarm Run-button pattern, like Write CSV). Parse/serialize halves exist
-  (`noteFrontmatter.ts`); desktop-only via `fileBridge`.
+- Obsidian vault trio SHIPPED (2026-07-16): Settings ▸ Obsidian (vault + asset
+  subfolder); **Import from Obsidian** (read-only Note from a vault `.md`,
+  frontmatter → sockets, file explorer + Reload); **Write to Obsidian** (document
+  sink — Note/Report → portable markdown + rasterized chart/image assets). A
+  `document` socket carries a Note/Report's whole content. Follow-ups if wanted:
+  auto-reload an imported note on file change; write config for `![[Note]]`
+  transclusion vs inlining an embedded note's body (today it's left as native
+  transclusion).
 
 ## Packs
 
