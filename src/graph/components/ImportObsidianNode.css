@@ -1,0 +1,82 @@
+/* Import-from-Obsidian file picker — a small file explorer that drops into the
+   note card's body area. Styled to sit inside the .solenoid-note chrome. */
+.sol-import__picker {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--note-color, var(--border));
+}
+.sol-import__search {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 4px 7px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-bright);
+  font-size: 11px;
+  outline: none;
+}
+.sol-import__search:focus {
+  border-color: var(--note-color, var(--accent));
+  box-shadow: inset 0 0 0 1px var(--note-color, var(--accent));
+}
+.sol-import__list {
+  max-height: 148px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--surface-sunken);
+}
+.sol-import__row {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 4px 7px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sol-import__row:last-child { border-bottom: none; }
+.sol-import__row:hover { background: color-mix(in srgb, var(--note-color, var(--accent)) 18%, transparent); }
+.sol-import__row--on { background: color-mix(in srgb, var(--note-color, var(--accent)) 28%, transparent); color: var(--text-bright); }
+.sol-import__empty {
+  padding: 8px 7px;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+}
+.sol-import__foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+.sol-import__file {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sol-import__reload {
+  flex: none;
+  padding: 2px 7px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text);
+  font-size: 11px;
+  cursor: pointer;
+}
+.sol-import__reload:hover { border-color: var(--note-color, var(--accent)); color: var(--text-bright); }

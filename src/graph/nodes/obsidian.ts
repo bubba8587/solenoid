@@ -1,5 +1,7 @@
 import { ClassicPreset } from "rete";
 import { documentIn } from "./shared";
+import { NoteNode } from "./annotation";
+import { type FrontmatterFieldType } from "../noteFrontmatter";
 import { isDocumentValue, type DocumentValue } from "../documentValue";
 import { isSolError, type SolError } from "../errorValue";
 import { isDesktop } from "../fileBridge";
@@ -101,5 +103,36 @@ export class WriteObsidianNode extends ClassicPreset.Node {
       this.status = "error";
       this.statusMessage = e instanceof Error ? e.message : String(e);
     }
+  }
+}
+
+// ─── Import from Obsidian Vault ──────────────────────────────────────────────
+// The read side of the trio: pick a `.md` from the vault and it becomes a Note —
+// its frontmatter → typed OUTPUT sockets, its body rendered read-only, plus the
+// same `document` output every Note has. It IS a Note (extends NoteNode) so it
+// reuses the whole frontmatter-socket + document machinery and reads as a note
+// everywhere (minimap, report embeds, export); it only adds the source file path
+// and a read-only, file-sourced body (the card owns the picker + file read). The
+// body persists in the save, so a loaded doc shows the imported content on web too;
+// desktop can reload it from the vault.
+
+export class ImportObsidianNode extends NoteNode {
+  /** Vault-relative path of the source `.md` file ("" until one is picked). */
+  fileName: string;
+
+  constructor(init?: {
+    label?: string; body?: string; color?: string; width?: number; height?: number;
+    collapsed?: boolean; fieldTypes?: Record<string, FrontmatterFieldType>; fileName?: string;
+  }) {
+    super({
+      label: init?.label ?? "Imported Note",
+      body: init?.body ?? "",
+      color: init?.color ?? "violet",
+      width: init?.width ?? 345,
+      height: init?.height ?? 150,
+      collapsed: init?.collapsed,
+      fieldTypes: init?.fieldTypes,
+    });
+    this.fileName = init?.fileName ?? "";
   }
 }

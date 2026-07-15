@@ -17,7 +17,8 @@ import { reconcileFcTypes } from "../fcReconcile";
 import { scheduleAutosave } from "../persistence";
 import { gridSnapStore, snapCoord } from "../gridSnapStore";
 import { standoffStore, settleStandoffs } from "../standoffs";
-import { SOCKET_COLORS, SolenoidSocket, canConnect } from "../sockets";
+import { SOCKET_COLORS } from "../sockets";
+import { dropStrandedFrontmatterCables } from "../noteFrontmatterSync";
 import { formatAnnotationStore, formatNumberWithAnnotation } from "../formatAnnotationStore";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
 import { parseNoteFrontmatter, type FrontmatterFieldType, type FrontmatterValue } from "../noteFrontmatter";
@@ -150,23 +151,8 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
     const { removed, retyped } = data.syncFields();
     const editor = getActiveEditor();
     const area = getActiveArea();
-    let strandedByRemoval = false; // did we drop a cable because its output key was REMOVED?
-    if (editor && (removed.length || retyped.length)) {
-      // A retyped output (same key, new socket type) keeps its cable when the
-      // downstream input still accepts the new type — an `any` input always does;
-      // a same-family widening (e.g. number→list into a list input) does too. Only
-      // a now-incompatible target, or a fully removed key, drops the cable.
-      const retypedMap = new Map(retyped.map((r) => [r.key, r.type]));
-      for (const c of editor.getConnections()) {
-        if (c.source !== data.id) continue;
-        if (removed.includes(c.sourceOutput)) { await editor.removeConnection(c.id); strandedByRemoval = true; continue; }
-        const newType = retypedMap.get(c.sourceOutput);
-        if (newType === undefined) continue; // unchanged output — leave it
-        const inSock = editor.getNode(c.target)?.inputs?.[c.targetInput]?.socket;
-        const inType = inSock instanceof SolenoidSocket ? inSock.dataType : undefined;
-        if (!inType || !canConnect(newType, inType)) await editor.removeConnection(c.id);
-      }
-    }
+    // Drop cables stranded by a removed/retyped key (shared with the Import node).
+    const strandedByRemoval = await dropStrandedFrontmatterCables(data.id, removed, retyped);
     // If a body EDIT stranded a cable by removing its key, make that body change undoable
     // AS ONE with the cable removal (pushed AFTER the removeConnection entries so undo
     // restores the body + socket before the cable re-add lands — else Ctrl+Z leaves a
@@ -491,8 +477,9 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
  * One frontmatter field row: a type-glyph button (click → override picker, reusing
  * the Socket Legend glyphs), the key, a value preview, and the output socket dot
  * straddling the note's right edge. The row is the socket's positioning context.
+ * Exported so the Import-from-Obsidian card reuses the exact same field row.
  */
-function FieldRow({
+export function FieldRow({
   nodeId, emit, fieldKey, type, value, socket, onPickType,
 }: {
   nodeId: string;

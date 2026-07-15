@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { WriteObsidianNode } from "./obsidian";
+import { WriteObsidianNode, ImportObsidianNode } from "./obsidian";
+import { NoteNode } from "./annotation";
 import { extractInit } from "../copyPaste";
-import { makeDocument } from "../documentValue";
+import { makeDocument, isDocumentValue } from "../documentValue";
 
 // The vitest env is `node` — isDesktop() is false, so run() short-circuits at the
 // "Desktop app only" guard and never touches obsidianWrite / the filesystem. These
@@ -46,5 +47,34 @@ describe("WriteObsidianNode.run() guards", () => {
     await n.run();
     expect(n.status).toBe("error");
     expect(n.statusMessage).toMatch(/desktop/i);
+  });
+});
+
+describe("ImportObsidianNode", () => {
+  it("is a Note (inherits the frontmatter-socket + document machinery)", () => {
+    const n = new ImportObsidianNode({ body: "---\ntitle: Weekly\ncount: 5\n---\n# Body" });
+    expect(n).toBeInstanceOf(NoteNode); // reads as a note everywhere (embeds, export, minimap)
+    // frontmatter → typed OUTPUT sockets
+    expect(n.fieldKeys()).toEqual(["title", "count"]);
+    expect(n.outputs.title).toBeTruthy();
+    expect(n.outputs.count).toBeTruthy();
+    expect(n.outputs.document).toBeTruthy();
+    // body renders below the stripped frontmatter
+    expect(n.renderBody.trim()).toBe("# Body");
+    // data() emits each field + the whole note as a document
+    const out = n.data();
+    expect(out.title).toBe("Weekly");
+    expect(out.count).toBe(5);
+    expect(isDocumentValue(out.document)).toBe(true);
+  });
+
+  it("persists the source fileName + inherited note fields through extractInit", () => {
+    const n = new ImportObsidianNode({ fileName: "notes/weekly.md", body: "---\na: 1\n---\nhi", color: "violet" });
+    const init = extractInit(n);
+    expect(init.fileName).toBe("notes/weekly.md");
+    expect(init.body).toBe("---\na: 1\n---\nhi");
+    const reloaded = new ImportObsidianNode(init);
+    expect(reloaded.fileName).toBe("notes/weekly.md");
+    expect(reloaded.fieldKeys()).toEqual(["a"]); // frontmatter sockets rebuild from the persisted body
   });
 });

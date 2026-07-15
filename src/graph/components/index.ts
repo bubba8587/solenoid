@@ -167,6 +167,9 @@ export { WebSourceComponent, CsvConnectionComponent, ParquetConnectionComponent,
 // ─── File sinks (Write CSV, Write JSON, Write to Obsidian) ────────────────────────
 export { WriteCsvComponent, WriteJsonComponent, WriteObsidianComponent } from "./WriteNodes";
 
+// ─── Import from Obsidian Vault (read a .md into a read-only Note) ────────────────
+export { ImportObsidianComponent } from "./ImportObsidianNode";
+
 // ─── Cable Switch (control multiplexer) ─────────────────────────────────────────
 export { CableSwitchComponent } from "./CableSwitchNode";
 
