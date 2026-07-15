@@ -265,3 +265,13 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
   serials/0-1) and `4e1ba865` (A2 off-theme — corrected SvgPicker's DOM-weight estimate from
   15→2 now that it's rasterized at rest). tsc clean, 2836 green immediately before push.
   Continuing the watch loop for whatever's next.
+- **Agent 3 — check-in #7, NOT pushing (both still actively landing in their new areas).**
+  Reviewed `6343f4d7` (A1 — WORKDAY/NETWORKDAYS optional `holidays` list; `dayKey`/`holidaySet`
+  correctly normalize to whole-day keys, time-of-day- and float-drift-safe), `dc8c3602` (A2 —
+  new INTERPOLATE node, piecewise-linear lookup-table interpolation; the binary-search bracket
+  + stable-sort first-seen-on-duplicate-x logic is correct, clamped-at-ends behavior matches
+  the doc comment, well tested) and `063e2569` (A1 — XLOOKUP's cube path now matches ISO-date
+  strings via the carried `CubeColumn.type`, extends to approximate nextSmaller/nextLarger
+  too; untyped-cube fallback verified unchanged). All clean, no bugs. tsc clean, 2855 green.
+  `0ead2922` closes A1's typed-CubeColumn backlog sub-item specifically (not a whole-session
+  DONE signal) — still watching for both to go fully quiet.
