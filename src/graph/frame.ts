@@ -590,8 +590,12 @@ export function cubeRowCount(c: CubeValue): number {
   return c.columns.reduce((m, col) => Math.max(m, col.cells.length), 0);
 }
 
-/** A Frame is a Cube of flat cells — re-brand each column, cells unchanged. The
- *  trivial widening (a frame's cells are already scalars), so depth is always 1. */
+/** A Frame is a Cube of flat cells — re-brand each column, cells unchanged. A cube is
+ *  UNIT-BLIND by design: a `CubeCell` is heterogeneous and carries no unit tag, and a
+ *  frame column's cells are already AS-TYPED (the number the user sees — "5 km" is
+ *  stored 5, not the base-SI 5000), so copying them straight through shows the right
+ *  number and simply drops the unit LABEL. To keep the unit, extract to a frame/list
+ *  (Get Column / Unnest mint tagged cells). Depth is always 1 (cells are scalars). */
 export function frameToCube(f: FrameValue): CubeValue {
   return makeCube(f.columns.map((col) => ({ name: col.name, cells: [...col.values] })));
 }
