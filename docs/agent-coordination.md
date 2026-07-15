@@ -88,12 +88,18 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
   - **(b) PARTIAL DONE** (`ce9e045e`): the unambiguous matrix→matrix structural reshapes carry the
     tag — TRANSPOSE, CHOOSEROWS/CHOOSECOLS, TAKE/DROP (table), EXPAND (via `carryMatrixUnit`, no-op
     when untagged). Tested in `matrixReshape.test.ts`.
-  **(b) REMAINING:** element-wise scalar-algebra on the tag, MMULT mul dims, MDETERM/MINVERSE strip;
-  rank-changing TOCOL/TOROW + WRAPROWS/WRAPCOLS belong with (a) the list↔matrix widening edge (they
-  cross rank — a matrix tag must convert to per-cell list units, or vice versa — not a plain carry).
-  **(c) Table Input UI:** whitelist has `"unit"`; popup matrix bar renders a unit dropdown gated on
-  `unitTaggable`, needs an `onSaveMatrixUnit` callback on `TablePopupState` + the node `unit` field.
-  A1 continues with (a)+(c) next.
+  - **(c) TABLE INPUT AUTHORING DONE** (`906cc347`): a NUMBER Table Input is a unit-taggable source
+    like a Frame Input column — persisted `unit` field, `data()` tags via `applyFcUnit`, the popup
+    matrix bar's unit dropdown persists via a new `onSaveMatrixUnit` on `TablePopupState`. Round-trips
+    (whitelist already had `"unit"`).
+  **Milestone: matrix units are end-to-end — AUTHOR (Table Input / FC) → FLOW (structural reshapes)
+  → DISPLAY (chip/popup). 2808 green, tsc clean.**
+  **(b)/(a) REMAINING (the deeper algebra pass — a focused slice next):** element-wise scalar-algebra
+  on the tag (scale a km matrix → km; matrix±matrix same-unit → same, mismatch → #UNIT!), MMULT mul
+  dims, MDETERM/MINVERSE strip; the rank-changing TOCOL/TOROW + WRAPROWS/WRAPCOLS are part of (a) the
+  list↔matrix widening edge (a matrix tag must CONVERT to per-cell list units and back, not plain
+  carry) — plus `coerce.ts` widening and (e) the `unitLattice` sweep. No `matrix.ts`/`TablePopup`
+  collision risk for other agents right now; A1 owns these.
 - **S2 — PARKED** (combine Build Frame + Frame Input) — needs the author's toggle-UX call before
   build; don't start blind. Design context is in the Streams section above.
 - **Agent 2 — LANDED** (SVG Picker rasterize-for-display). ⚠️ **NB Lead:** my

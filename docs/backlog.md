@@ -151,16 +151,16 @@ this backlog stays the per-item source of truth.
   confidence-level example).
 ## Nodes / engine
 
-- [ ] **Homogeneous matrix units (D20, author 2026-07-14)** — matrices get ONE unit tag
-  per value (supersedes A4's "unit-AGNOSTIC always"; principle + op rules in D20). Thread
-  the tag through the matrix family (`matrix.ts`: element-wise = scalar algebra, MMULT
-  multiplies dims, reshapes/TAKE/DROP carry, MDETERM/MINVERSE = `dimPow` or documented-strip
-  initially), the widening edges (uniform list carries its unit in, mixed list strips), FC
-  `applyFcUnit` + Convert on tables (currently pass-through), display (chip/popup show the
-  unit), and the `unitLattice` sweep. Lists stay per-cell (reaffirmed — the frame-row
-  duality). NB the matrix VALUE POPUP already has a display-only format+unit dropdown pair
-  (2026-07-15g, `formatControls: "matrix"`) — its format works today; its unit dropdown is
-  an inert label that starts converting for free once the tag exists.
+- [ ] **Homogeneous matrix units (D20, author 2026-07-14)** — matrices get ONE unit tag per
+  value. DONE so far (2026-07-15k): the symbol-tag representation; AUTHOR (FC `applyFcUnit` +
+  a taggable NUMBER Table Input with a persisted `unit` field); FLOW through the matrix→matrix
+  structural reshapes (TRANSPOSE/CHOOSEROWS/CHOOSECOLS/TAKE/DROP/EXPAND carry); DISPLAY (chip
+  label + popup matrix-bar unit label/dropdown). **REMAINING:** element-wise scalar-algebra on
+  the tag (scale → same unit; matrix±matrix same-unit → same, mismatch → #UNIT!), MMULT mul
+  dims, MDETERM/MINVERSE `dimPow`-or-strip; the list↔matrix widening edge (uniform tagged list
+  → matrix and back — the rank-changing TOCOL/TOROW + WRAPROWS/WRAPCOLS live here, they convert
+  matrix-tag ↔ per-cell list units, not a plain carry) + `coerce.ts` widening; Convert on
+  tables; the `unitLattice` sweep. Lists stay per-cell (the frame-row duality).
 - [ ] **Formula ↔ node parity program — GREENLIT, build in a dedicated session** (author
   direction + decisions 2026-07-14, recorded as **D19**; supersedes the narrower "SETEQ as
   formula native" item) — converge the formula language and the node set; audit + tiers +

@@ -5,6 +5,29 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-15k — Matrix homogeneous units (D20): author → flow → display) [Agent 1]
+Threaded S3 (matrix units) from the tagged-representation foundation to an end-to-end slice. **The
+model:** a numeric matrix carries ONE unit for the whole grid (D20) as a non-enumerable symbol tag on
+the outer array (`matrixUnitOf`/`withMatrixUnit`/`carryMatrixUnit` in `unitValue.ts`); cells stay bare
+as-typed numbers (5 for 5 km), exactly like a Frame Input column. **Fixed the mutation bug Agent 3
+flagged** (`0acdb709`): `applyFcUnit`'s matrix branch tagged `value` IN PLACE, but rete-engine's
+DataflowEngine hands the same cached array to every consumer — so an FC tagging a matrix stamped the
+unit onto the UPSTREAM node's cache and two consumers raced. Now tags a `.slice()` copy (rows/cells
+stay shared, only the outer array is fresh). **AUTHOR** (`906cc347`): a NUMBER Table Input is a
+unit-taggable source — persisted `unit` field (FC unit id / "none"), `data()` tags via `applyFcUnit`,
+the popup matrix bar's unit dropdown persists through a new `onSaveMatrixUnit` on `TablePopupState`;
+`unit` was already whitelisted so it round-trips free. (The FC also authors a matrix unit, unchanged.)
+**FLOW** (`ce9e045e`): the unambiguous matrix→matrix structural reshapes re-carry the tag onto their
+fresh output arrays — TRANSPOSE, CHOOSEROWS/CHOOSECOLS, TAKE/DROP (table), EXPAND (`carryMatrixUnit`,
+a no-op when untagged, so plain/text matrices stay plain). **DISPLAY** (`e9af4b05`): `ArrayChip`
+appends the unit to the chip label ("3×4 Table · km") + passes it as `columnUnits[0]`; the popup
+matrix bar shows a static unit label (read-only) or the dropdown (taggable source); `colHeaderLabel`
+guards matrix mode so the unit rides the bar, not column A. **Remaining (deeper algebra, next focused
+pass, A1 owns):** element-wise scalar-algebra on the tag (scale → same unit; matrix±matrix same-unit →
+same, mismatch → #UNIT!), MMULT mul dims, MDETERM/MINVERSE strip; and (a) the list↔matrix widening
+edge — the rank-changing TOCOL/TOROW + WRAPROWS/WRAPCOLS convert a matrix tag to/from per-cell list
+units (not a plain carry) — plus `coerce.ts` widening + the `unitLattice` sweep. tsc clean, 2808 green.
+
 ### SESSION DIGEST (2026-07-15j — Simulation "Stop when" condition) [Agent 2, off-theme]
 Author-approved (2026-07-14) simulation follow-up. A Composite in Simulation mode gets a "Stop when
 [output] [op] [value]" condition (`stopWhenPortId`/`stopWhenOp`/`stopWhenValue`, persisted via the
