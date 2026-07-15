@@ -222,6 +222,7 @@ function figureFor(
   refKey: string,
   rich: boolean,
   ann?: FormatAnnotation,
+  frameNodeId?: string,
 ): { title: string; caption: ReactNode; body: ReactNode } | null {
   if (isChartValue(value)) {
     return {
@@ -267,8 +268,9 @@ function figureFor(
     return {
       title: refKey,
       caption: null,
-      // A document isn't a cramped node box: show many rows in a scrollable box.
-      body: <FrameDisplay frame={value} label={refKey} previewRows={rich ? 25 : 3} previewCols={rich ? 12 : 3} scroll={rich} />,
+      // A document isn't a cramped node box: show many rows in a scrollable box. Read
+      // the format off the SOURCE frame node (frameNodeId), not the Report/Note host.
+      body: <FrameDisplay frame={value} label={refKey} previewRows={rich ? 25 : 3} previewCols={rich ? 12 : 3} scroll={rich} formatNodeId={frameNodeId} />,
     };
   }
   if (isCubeValue(value)) {
@@ -287,7 +289,11 @@ export function InlineRefValue({ nodeId, refKey, collapsible }: { nodeId: string
   const value = node?.refValue(refKey);
   const ann = useRefAnnotation(nodeId, refKey);
 
-  const fig = figureFor(value, refKey, !!collapsible, ann);
+  // The node feeding this ref (the source of the wire into `refKey`) — so an embedded
+  // frame reads the per-column format set on THAT frame, not the Report/Note host.
+  const srcNodeId = editor?.getConnections().find((c) => c.target === nodeId && c.targetInput === refKey)?.source;
+
+  const fig = figureFor(value, refKey, !!collapsible, ann, srcNodeId);
   if (fig) {
     // In the Report (collapsible), each figure folds under a titled bar; in a Note
     // card it renders as the plain captioned figure.

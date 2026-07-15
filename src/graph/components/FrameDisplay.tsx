@@ -36,9 +36,14 @@ function fmtCell(v: FrameCell, type: FrameColType = "number", ann?: FormatAnnota
   return Number.isInteger(c) ? String(c) : c.toFixed(3).replace(/\.?0+$/, "");
 }
 
-export function FrameDisplay({ frame, label, onSave, source, onSaveSource, full, previewRows, previewCols, scroll }: {
+export function FrameDisplay({ frame, label, onSave, source, onSaveSource, full, previewRows, previewCols, scroll, formatNodeId }: {
   frame: FrameValue | SolError | null;
   label?: string;
+  /** Override the node whose persisted per-column formats to read (frameFormatStore).
+   *  Defaults to the host node from context. A Report embed passes the SOURCE frame
+   *  node's id so an embedded frame shows the format set on that frame, not the
+   *  Report's. */
+  formatNodeId?: string;
   /** When set, the chip opens the grid editable (Frame Input) and Save writes
    *  back through this with the edited typed columns. */
   onSave?: (columns: FramePopupColumn[]) => void;
@@ -59,8 +64,10 @@ export function FrameDisplay({ frame, label, onSave, source, onSaveSource, full,
   scroll?: boolean;
 }) {
   // Per-column persisted formats live on the host node (frameFormatStore). Subscribe
-  // so a format change in the popup re-renders this preview.
-  const hostNodeId = useHostNodeId();
+  // so a format change in the popup re-renders this preview. A Report embed overrides
+  // the node id with the referenced frame's source node.
+  const ctxNodeId = useHostNodeId();
+  const hostNodeId = formatNodeId ?? ctxNodeId;
   useSyncExternalStore(frameFormatStore.subscribe, frameFormatStore.version);
   const annFor = (colName: string): FormatAnnotation | undefined =>
     hostNodeId ? frameFormatStore.get(hostNodeId, colName) : undefined;
