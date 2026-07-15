@@ -58,6 +58,20 @@ readout. **Slicer** (scope extension, same spirit) — its interactive block (co
 dozens of value pills) stayed mounted behind the "X of N" summary; gated `.slicer-node` on `!collapsed`.
 Filtering/selection is unaffected — state lives on the instance + the still-mounted component, only the
 inner DOM unmounts. Render-only (no vitest surface, node-env). tsc clean, 2834 green. Backlog line deleted.
+**Then swept the DOM-weight lever list closed:** (a) **SvgPicker weight 15 → 2** (`kind.ts`) — a stale
+over-count. Since the rasterize-for-display change (2026-07-15i) an SVG Picker at rest is a single
+`<img>`; the heavy inline SVG mounts only on hover, which never overlaps a pan/zoom gesture (the only
+time the engage gate reads the weight), so its steady-state DOM is a light figure, not the old 15-tier
+worst case. `kind.test.ts` updated (no longer "heaviest of all"; now grid-tier < chart). A doc of SVG
+pickers now trips the gate at its true DOM cost, not ~10× early. (b) **`content-visibility: auto`
+EVALUATED and ruled out** (backlog rewritten from "untried" to "blocked, here's why"): socket positions
+are measured from live DOM geometry (`MeasuredSocketRow` offsetTop within `.solenoid-node__content`,
+rete's `getDOMSocketPosition` offsetParent walk, the GPU clone's `offsetWidth/Height`, minimap/fit) —
+`content-visibility` collapses off-screen descendants to `contain-intrinsic-size` and skips their layout,
+so those reads return wrong socket offsets → cables jump at the viewport edge; an accurate intrinsic-size
+fixes the outer box but not the socket-within-node offset, so it can't unblock. **With rasterize +
+collapsed-figure-unmount shipped and content-visibility ruled out, the DOM-weight reduction lever set is
+EXHAUSTED — the HTML-in-Canvas GPU renderer is the remaining path at scale.**
 
 ### SESSION DIGEST (2026-07-15l — Composite drill-in marker polish) [Agent 2, off-theme]
 Two boundary-marker fixes from an author eyeball of the By-Row work. (1) **Input marker shows the real
