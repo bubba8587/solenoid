@@ -172,15 +172,17 @@ this backlog stays the per-item source of truth.
   itself documents the expected shape. Ties to the 2026-07-06 standing rule (aligned
   columns → one frame input, not parallel sockets — SUMIFS joined that club 2026-07-09,
   so the club is now charts + SUMIFS + the frame verbs).
-- [ ] **Lossless frame→cube (typed `CubeColumn`) — CORE DONE (2026-07-15, `603a58b5`); only the
-  XLOOKUP follow-on remains.** `CubeColumn.type?` carried by `frameToCube`/`relateFramesToCube`/
-  `subCube`; `cubeCellToken`/`CubeCellChip` render a flat cell by its type (date serial → date,
-  logical → TRUE/FALSE); `CubeDisplay`/`CubePopup` pass it. So cubes now render dates as dates (the
-  "cube socket eats frame types" display bug is gone). **REMAINING:** XLOOKUP's cube path could use
-  the column `type` to match ISO dates, and its `rawInputs` bypass (which existed to keep the cube
-  socket from type-stripping a wired frame) could then retire — a node-specific cleanup, do it if it
-  pulls weight. Cube VERBS that build columns from scratch (`cubeFromColumns`/rollup) leave `type`
-  undefined by design (heterogeneous); revisit only if a verb has a genuinely homogeneous output.
+- [ ] **Lossless frame→cube (typed `CubeColumn`) — DONE bar an optional simplification** (2026-07-15,
+  `603a58b5` + `063e2569`). `CubeColumn.type?` carried by `frameToCube`/`relateFramesToCube`/`subCube`/
+  `cubeRowAt`; `cubeCellToken`/`CubeCellChip` render a flat cell by its type (dates as dates, logicals
+  as TRUE/FALSE); `CubeDisplay`/`CubePopup` pass it. XLOOKUP's cube path now uses the carried type to
+  match ISO dates (exact + approximate), falling back to inference for a hand-built untyped cube. So
+  the "cube socket eats frame types" class of bugs is closed (display + lookup). **OPTIONAL REMAINING
+  (pure cleanup, low priority):** retire XLOOKUP's `rawInputs = {"frame"}` bypass — with typed frame→
+  cube it's no longer needed to preserve types, so a wired frame could coerce to a cube and the two
+  lookup code paths (frame + cube) could collapse to one. A behaviour-touching refactor of a
+  seed/test-covered node; only if it pulls weight. Cube VERBS that build columns from scratch
+  (`cubeFromColumns`/rollup) leave `type` undefined by design (heterogeneous).
 - [ ] **MODE.SNGL tie-break disagrees across surfaces** (found 2026-07-10 audit) — the
   standalone `ModeNode` (`stats.ts`) breaks ties by the SMALLEST modal value
   (`iterMin`, deliberately — `stats.test.ts` "returns the smallest among equally
