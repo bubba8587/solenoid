@@ -526,20 +526,25 @@ export function parseBorderedGrid(
 
 export class SurfaceNode extends ClassicPreset.Node {
   label: string;
+  // View angles (degrees) live in `literals` so they persist (extractInit spreads it)
+  // and the rotate buttons can nudge them by 45°. Default ≈ the isometric starting view.
+  literals: Record<string, number> = { yaw: 45, pitch: 30 };
   cachedChart: ChartValue | null = null;
   width = 240;
   height = 220;
 
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; yaw?: number; pitch?: number }) {
     super("Surface");
     this.label = init?.label ?? "Surface";
+    if (init?.yaw != null) this.literals.yaw = init.yaw;
+    if (init?.pitch != null) this.literals.pitch = init.pitch;
     this.addInput("grid", tableIn("Bordered grid"));
     this.addOutput("chart", chartOut("Chart"));
   }
 
   data(inputs: { grid?: (number | null | unknown)[][][] }): { chart: ChartValue } {
     const { xs, ys, z } = parseBorderedGrid(inputs.grid?.[0] ?? null);
-    const payload: SurfacePayload = { kind: "surface", xs, ys, z };
+    const payload: SurfacePayload = { kind: "surface", xs, ys, z, yaw: this.literals.yaw ?? 45, pitch: this.literals.pitch ?? 30 };
     const chart: ChartValue = {
       __chart: true, op: "surface", values: null, payload,
       options: {}, title: this.label || "Surface",
