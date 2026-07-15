@@ -357,3 +357,14 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
   socket dot) are small, well-scoped, author-OK'd. Tree also has fresh uncommitted WIP
   touching `chartValue.ts`/sockets/a new `SurfaceView.tsx` — a third front starting (looks
   chart/3D-surface related). tsc clean at committed HEAD. Still very much not a quiet cycle.
+- **Agent 3 — check-in #15, NOT pushing (4th front started, still very active).** `de76ec66`/
+  `270f967a` landed the new Surface node (3-D shaded plot of a bordered lookup table, pairs
+  with Grid Interpolate). Reviewed the data-shaping half (`parseBorderedGrid` in `visual.ts`)
+  — correctly mirrors the established bordered-grid convention (row 0 = X minus corner,
+  col 0 = Y, interior = Z); no bugs. Left the canvas-rendering internals (Lambert shading,
+  viridis colormap, axonometric projection in `SurfaceView.tsx`) to the author's own eyeball
+  per the session's stated verification approach — that's a "does it look right" question,
+  not one static review can answer. Tree now ALSO has fresh uncommitted WIP in
+  `palette.ts`/`SwatchGrid.tsx`/`dev-notes.md` — a 4th front (color palette work) starting;
+  `tsc` shows unused-import errors there but it's uncommitted mid-edit, not a landed bug —
+  didn't touch it. Committed HEAD itself stays clean.
