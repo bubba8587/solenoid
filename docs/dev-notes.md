@@ -113,6 +113,10 @@ already no-ops a non-numeric value). The whole Stop-when control hides when no c
 a current pick is always kept. Possible follow-up: rewire the sudoku-solver seed (hand-tuned 25 steps)
 to a "solved?" stop output (seed-generator change, left for the author). tsc clean, 2804 green. Commits
 `99f21e06` (port) + `8fc79bfc` (comparator) + `791f6938` (type-aware picker).
+**Convergence readout (`bb11b252`):** `runSimulation` records `simLastSteps` (rounds actually run) so
+the SimulationEditor shows "stopped at step K" (K < cap → the condition converged) vs "ran all N steps
+(never met)" — otherwise whether a fixpoint converged or just ran out of steps was invisible. Transient,
+re-derived each solve.
 
 ### SESSION DIGEST (2026-07-15i — SVG Picker: rasterize for display, inline only on hover) [Agent 2, off-theme]
 `SvgPickerComponent` permanently mounted the source markup via `well.innerHTML = source` — a
