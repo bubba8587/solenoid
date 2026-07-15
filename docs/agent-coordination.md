@@ -281,3 +281,6 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
   convention) — verified `readInput`'s return type lines up with the `Array.isArray(q)`
   branch and the new tests (scalar wired, unwired-falls-to-literal, scalar null, no-data)
   all check out against the traced logic. Clean. tsc clean, 2857 green. A1 quiet this round.
+- **Agent 3 — check-in #9 — PUSHED to `develop`** (`75198952..417336ac`, 9 commits). Zero new
+  activity from either agent for a full 10-min cycle — both threads read as quiet. tsc clean,
+  2857 green immediately before push. Continuing the watch loop.
