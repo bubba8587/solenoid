@@ -114,6 +114,35 @@ function FolderRow({ field }: { field: SettingField }) {
   );
 }
 
+// A free-text setting (e.g. a relative subfolder name). Commits on blur / Enter,
+// the typed-field convention — never per keystroke.
+function TextRow({ field }: { field: SettingField }) {
+  const value = settingsStore.get(field.key) as string;
+  const [draft, setDraft] = useState(value);
+  const commit = () => settingsStore.set(field.key, draft.trim() as never);
+  return (
+    <div className="solenoid-settings__row solenoid-settings__row--folder">
+      <span className="solenoid-settings__row-text">
+        <span className="solenoid-settings__row-label">{field.label}</span>
+        {field.help && <span className="solenoid-settings__row-help">{field.help}</span>}
+      </span>
+      <span className="solenoid-settings__folder-actions">
+        <input
+          type="text"
+          className="solenoid-settings__key-input"
+          placeholder={field.placeholder}
+          value={draft}
+          spellCheck={false}
+          autoComplete="off"
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); commit(); (e.target as HTMLInputElement).blur(); } }}
+          onBlur={commit}
+        />
+      </span>
+    </div>
+  );
+}
+
 // App-wide color palette switcher. Lives here (not in the accent dropdown) so the
 // accent picker stays about the accent only. Bound to paletteStore, not
 // settingsStore, so it can't reuse the schema-driven SegmentRow — but it borrows
@@ -306,6 +335,7 @@ export function Settings() {
               {section.fields.map((f) =>
                 f.type === "folder" ? <FolderRow key={f.key} field={f} />
                 : f.type === "segment" ? <SegmentRow key={f.key} field={f} />
+                : f.type === "text" ? <TextRow key={f.key} field={f} />
                 : <Toggle key={f.key} field={f} />)}
             </div>
           ))}

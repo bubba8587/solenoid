@@ -164,8 +164,8 @@ export { BuildCubeComponent, NestJoinComponent, CubeColumnsComponent, CubeRollup
 // ─── External-data connections (Web Source, CSV folder, Parquet folder) ─────────
 export { WebSourceComponent, CsvConnectionComponent, ParquetConnectionComponent, ImportHtmlComponent, ImportXmlComponent, DataFeedComponent } from "./ConnectionNodes";
 
-// ─── File sinks (Write CSV, Write JSON) ──────────────────────────────────────────
-export { WriteCsvComponent, WriteJsonComponent } from "./WriteNodes";
+// ─── File sinks (Write CSV, Write JSON, Write to Obsidian) ────────────────────────
+export { WriteCsvComponent, WriteJsonComponent, WriteObsidianComponent } from "./WriteNodes";
 
 // ─── Cable Switch (control multiplexer) ─────────────────────────────────────────
 export { CableSwitchComponent } from "./CableSwitchNode";

@@ -21,6 +21,14 @@ export interface Settings {
    *  keep saved .json graphs. Purely a bookmark for the "open in file manager"
    *  action (File menu + Settings row); Solenoid doesn't index or scan it. */
   docsFolder: string;
+  /** Absolute path to the user's Obsidian vault root — the Write to Obsidian /
+   *  Import from Obsidian nodes read + write `.md` files under it. Empty until
+   *  chosen. Desktop only. */
+  obsidianVault: string;
+  /** Vault-relative subfolder that image assets (charts, embedded images) are
+   *  written into when writing a note (e.g. "assets" or "attachments"). Empty =
+   *  write the asset beside the note itself. */
+  obsidianAssetSubfolder: string;
 
   /** Minimap corner behavior: "bottom" (default, above the socket legend),
    *  "top" (below the Zoom pill), or "hide" (it repaints on every pan). The
@@ -46,6 +54,8 @@ const DEFAULTS: Settings = {
   tidyAlign: "center",
   csvFolder: "",
   docsFolder: "",
+  obsidianVault: "",
+  obsidianAssetSubfolder: "",
   minimapPosition: "bottom",
   hideGridDots: false,
   quickWire: false,
@@ -60,8 +70,11 @@ export interface SettingField {
   help?: string;
   /** Control kind. "boolean" (default) renders a toggle; "folder" renders a
    *  read-only path + a Choose button (OS folder picker, desktop only);
-   *  "segment" renders a row of mutually-exclusive buttons from `options`. */
-  type?: "boolean" | "folder" | "segment";
+   *  "segment" renders a row of mutually-exclusive buttons from `options`;
+   *  "text" renders a free-text input (e.g. a relative subfolder name). */
+  type?: "boolean" | "folder" | "segment" | "text";
+  /** Placeholder for a "text" field. */
+  placeholder?: string;
   /** Choices for a "segment" field. */
   options?: { value: string; label: string }[];
 }
@@ -111,6 +124,24 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
         label: "Documents folder",
         help: "Where you keep saved graphs — File ▸ Open documents folder reveals it",
         type: "folder",
+      },
+    ],
+  },
+  {
+    title: "Obsidian",
+    fields: [
+      {
+        key: "obsidianVault",
+        label: "Vault folder",
+        help: "The Write to Obsidian / Import from Obsidian nodes read and write .md files under this folder",
+        type: "folder",
+      },
+      {
+        key: "obsidianAssetSubfolder",
+        label: "Asset subfolder",
+        help: "Where chart / image assets go when writing a note, relative to the vault. Blank = beside the note",
+        type: "text",
+        placeholder: "assets",
       },
     ],
   },

@@ -13,6 +13,13 @@
 
 import { type FrameValue, formatFrameCell, isFrameValue } from "./frame";
 import { isMermaidValue, type MermaidValue } from "./mermaidValue";
+import { type DocumentValue } from "./documentValue";
+
+// Matches a `` `=name` `` inline-ref code span — the same grammar noteInlineRefs.ts
+// mints input sockets from. Duplicated (not imported) so this module stays a pure,
+// dependency-light serializer; the identifier grammar is fixed and machine-checked
+// against noteInlineRefs in obsidianMarkdown.test.ts.
+const INLINE_REF_RE = /`=([A-Za-z_][A-Za-z0-9_]*)`/g;
 
 /** Escape the markdown table-breaking characters in a cell (pipe, newline). */
 function mdCell(s: string): string {
@@ -54,8 +61,10 @@ export function mathToMarkdown(latex: string): string {
 
 /** A single scalar → its YAML form. Numbers/booleans emit bare; a string is quoted
  *  ONLY when it would otherwise be ambiguous YAML (has a leading/trailing space, a
- *  `:`/`#`, looks like a number/bool, or is empty) — so clean text stays unquoted
- *  and readable. `null`/`undefined` → empty. */
+ *  `:`/`#`, an embedded newline/tab, looks like a number/bool, or is empty) — so
+ *  clean text stays unquoted and readable. A quoted value uses a double-quoted flow
+ *  scalar with `\`, `"`, and newlines/tabs escaped, so a multi-line frontmatter
+ *  value stays valid YAML on ONE line (a raw newline would splice the block). */
 export function yamlScalar(v: unknown): string {
   if (v === null || v === undefined) return "";
   if (typeof v === "number") return Number.isFinite(v) ? String(v) : `"${v}"`;
@@ -65,9 +74,17 @@ export function yamlScalar(v: unknown): string {
     s === "" ||
     s !== s.trim() ||
     /[:#\[\]{}",]/.test(s) ||
+    /[\n\r\t]/.test(s) ||
     /^(true|false|null|yes|no|on|off)$/i.test(s) ||
     /^-?\d/.test(s);
-  return ambiguous ? `"${s.replace(/"/g, '\\"')}"` : s;
+  if (!ambiguous) return s;
+  const esc = s
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, "\\n")
+    .replace(/\r/g, "\\r")
+    .replace(/\t/g, "\\t");
+  return `"${esc}"`;
 }
 
 /** One frontmatter key → its YAML line(s): a list becomes a block sequence, a scalar
@@ -109,4 +126,35 @@ export function valueToObsidianBlock(value: unknown): ObsidianBlock {
     return { kind: "chart", value };
   }
   return { kind: "md", md: value === null || value === undefined ? "" : String(value) };
+}
+
+// ─── Document assembly (the walk) ─────────────────────────────────────────────
+// The pure half of writing a DocumentValue out: prepend the frontmatter block and
+// substitute every `` `=name` `` inline ref with a resolved markdown string. The
+// per-ref resolution is a CALLBACK — the Write node passes one that serializes each
+// value via valueToObsidianBlock and, for a chart/image, writes an image asset to
+// the vault and returns the `![[asset]]` embed. That keeps the DOM-render + file-io
+// out of this module (it stays testable with a synchronous stub resolver). A
+// `![[Note]]` embed is left INTACT — it's already native Obsidian transclusion.
+
+/** Assemble a document's final Obsidian markdown: `frontmatter + body`, with each
+ *  `` `=name` `` span replaced by `resolveRef(name, value)` (all occurrences). The
+ *  resolver may be async (a chart write). A ref with no resolver result ("") drops
+ *  the span. */
+export async function assembleDocumentMarkdown(
+  doc: DocumentValue,
+  resolveRef: (name: string, value: unknown) => string | Promise<string>,
+): Promise<string> {
+  // Resolve every distinct ref once (order-independent; a name repeats verbatim).
+  const names = new Set<string>();
+  let m: RegExpExecArray | null;
+  const re = new RegExp(INLINE_REF_RE);
+  while ((m = re.exec(doc.body))) names.add(m[1]);
+  const resolved = new Map<string, string>();
+  for (const name of names) {
+    resolved.set(name, await resolveRef(name, doc.refs[name]));
+  }
+  const body = doc.body.replace(INLINE_REF_RE, (_full, name: string) => resolved.get(name) ?? "");
+  const front = doc.frontmatter ? frontmatterToYaml(doc.frontmatter) : "";
+  return front + body;
 }

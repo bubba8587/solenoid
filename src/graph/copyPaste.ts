@@ -76,7 +76,7 @@ export function copySelected() {
 // worth doing deliberately.
 export const INIT_FIELD_ORDER = [
   "label", "op", "value", "unitSuffix", "fromUnit", "toUnit", "lanes", "matchMode", "matchCase", "searchMode", "paymentTiming", "ignoreEmpty", "noCommas", "hostNodeId", "socketKey", "side", "format", "customPattern", "decimalDigits", "decimalMode", "unit", "customUnit", "socketDataType", "expr", "params", "locked", "axis", "op2", "combine", "textCase", "bold", "italic", "textScale", "textAlign", "textMarkdown", "textMono", "logicalStyle", "lambdaView", "chartFontScale", "grouping", "negativeStyle", "scaleMode", "advancedOpen",
-  "tableText", "frameText", "url", "fileName", "assetPath", "path", "refreshMinutes", "tableIndex", "query", "dir", "how", "mode", "inFormat", "outFormat", "provider",
+  "tableText", "frameText", "url", "fileName", "assetPath", "path", "subfolder", "refreshMinutes", "tableIndex", "query", "dir", "how", "mode", "inFormat", "outFormat", "provider",
   "inputAngle", "outputAngle", "inputTightness", "outputTightness", "angle",
   "selectedColumn", "selectedValues", "selectedLayer", "multiSelect", "readAs", "addAs", "activeIndex", "target", "resultAs", "colType", "dataType", "angleMode",
   "hoverColor",

@@ -14,6 +14,7 @@ export * from "./nodes/cube";
 export * from "./nodes/connection";
 export * from "./nodes/dataFeed";
 export * from "./nodes/sink";
+export * from "./nodes/obsidian";
 export * from "./nodes/annotation";
 export * from "./nodes/report";
 export * from "./nodes/history";

@@ -53,6 +53,34 @@ export async function readFileText(folder: string, name: string): Promise<string
   return readTextFile(path);
 }
 
+/** List the `.md` file names directly inside `folder` (a vault subfolder). */
+export function listMarkdownFiles(folder: string): Promise<string[]> {
+  return listFilesByExt(folder, "md");
+}
+
+/** Recursively collect the vault-relative subfolder paths under `root` (POSIX-style
+ *  "a/b/c", sorted). The root itself is NOT included (the caller offers "" for it).
+ *  Skips hidden/dot folders — chiefly Obsidian's own `.obsidian` config dir and
+ *  `.trash`. Bounded depth so a pathological vault can't hang the picker. Desktop
+ *  only; [] in the browser. */
+export async function listVaultFolders(root: string, maxDepth = 6): Promise<string[]> {
+  if (!isDesktop() || !root) return [];
+  const out: string[] = [];
+  async function walk(abs: string, rel: string, depth: number): Promise<void> {
+    if (depth > maxDepth) return;
+    let entries;
+    try { entries = await readDir(abs); } catch { return; }
+    for (const e of entries) {
+      if (!e.isDirectory || e.name.startsWith(".")) continue;
+      const childRel = rel ? `${rel}/${e.name}` : e.name;
+      out.push(childRel);
+      await walk(await join(abs, e.name), childRel, depth + 1);
+    }
+  }
+  await walk(root, "", 0);
+  return out.sort((a, b) => a.localeCompare(b));
+}
+
 // ─── Graph file save / open ───────────────────────────────────────────────────
 // Desktop uses native dialogs + real file writes; the browser falls back to a
 // blob download / file-input upload (no persistent path). Each returns the chosen
