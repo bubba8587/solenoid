@@ -5,6 +5,21 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-15h — HTML-in-Canvas engage gate weighted by node kind) [Agent 2, off-theme]
+The `"html"` renderer auto-engaged on a RAW node count (`getNodes().length >= 100`), which
+undercounts DOM cost: one recharts figure is a large SVG subtree, an inlined source SVG (SvgPicker,
+a county map) is tens of thousands of elements, a frame grid is a small table, while a scalar/logic
+card is a handful of elements — so a chart-heavy graph read as "10 nodes" and never tripped the
+renderer though it was as DOM-heavy as 100 scalars. New `nodeDomWeight(node)` in `nodes/kind.ts`
+(coarse per-kind: inlined SVG 15, full chart/diagram 10, grid-of-cells/inline-bar 6, small figure 3,
+frame/table/cube grid preview 2 — detected from OUTPUT sockets so any new grid node counts —
+everything else 1). `HtmlCanvasLayer.tsx` sums it (`graphDomWeight()`) in the engage gate instead of
+raw length; the recount effect resums off the same nodecreated/noderemoved pipe. A plain scalar graph
+still needs ~100 nodes to trip (each weight 1), so the threshold's feel is unchanged for the common
+case; ~10 charts now engage. `__hcMinNodes` stays the live knob (now a weighted-unit threshold). Node
+weight can drift on an in-place retype (Cast scalar→frame) without an add/remove — accepted, self-
+corrects on next add/remove or reload. `kind.test.ts` pins the tier ordering. tsc clean, +6 tests.
+
 ### SESSION DIGEST (2026-07-15g — Value popup: reusable FC format+unit dropdowns per column)
 The value popup (`TablePopup`) gained a Format-Controller controls row between the header and the body
 for READ-ONLY frames and matrices, plus in-cell units for lists. The FC's own number-format and unit
