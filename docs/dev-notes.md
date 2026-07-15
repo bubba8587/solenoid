@@ -45,6 +45,20 @@ Storage note recorded: scalar/list `UnitCell.value` is BASE-SI, frame/matrix cel
 crossing carriers CONVERTS. tsc clean, 2831 green. Still genuinely deferred: MMULT-mul-dims (niche,
 documented-strip) + the `unitLattice` sweep.
 
+### SESSION DIGEST (2026-07-15m — Unmount collapsed viz figures: finish + reconcile) [Agent 2, off-theme]
+Closed the backlog "Unmount collapsed viz nodes' live figures" item — collapse is CSS `display:none`
+(nodeCard.css:208), so a hidden recharts tree stays MOUNTED unless React gates it. Audited every
+figure-bearing card: **Chart / Histogram / Sankey / Treemap** (the four the item named) + **Gauge /
+Sparkline** ALREADY gate on `!collapsed` (done in a prior session, line never deleted — doc-rot).
+**KPI / Bullet** are `collapsible={false}` + plain CSS/SVG (no recharts, nothing to unmount). The
+4×4-capped **TableDisplay** grid is ≤16 cells, trivial. Two genuine stragglers, now fixed with the same
+pattern: **Tornado** — `TornadoBars` (a full recharts BarChart per sensitivity row) stayed mounted while
+collapsed; gated the Run button + bars on `!collapsed`, the `ValueDisplay` hero survives as the collapsed
+readout. **Slicer** (scope extension, same spirit) — its interactive block (column dropdown + up to
+dozens of value pills) stayed mounted behind the "X of N" summary; gated `.slicer-node` on `!collapsed`.
+Filtering/selection is unaffected — state lives on the instance + the still-mounted component, only the
+inner DOM unmounts. Render-only (no vitest surface, node-env). tsc clean, 2834 green. Backlog line deleted.
+
 ### SESSION DIGEST (2026-07-15l — Composite drill-in marker polish) [Agent 2, off-theme]
 Two boundary-marker fixes from an author eyeball of the By-Row work. (1) **Input marker shows the real
 input:** an externally-wired input marker now renders a read-only `CompositeBoundaryValue` chip of the
