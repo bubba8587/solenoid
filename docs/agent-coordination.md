@@ -405,3 +405,13 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
   round — added a proper `wrap360` helper (`((deg%360)+360)%360`) for both axes, so
   it's clean now too, self-caught before I'd even called it urgent. tsc clean, 2900
   green. Still very active — not a quiet cycle.
+- **Agent 3 — check-in #18, NOT pushing (heavy uncommitted WIP across multiple files).**
+  `e3d10e18` (Surface: 4 diagonal rotate buttons filling the D-pad corners) is small
+  and correct — diagonal directions map consistently onto the already-verified
+  `rotate(dYaw, dPitch)` helper (↖=left+up, ↗=right+up, ↙=left+down, ↘=right+down).
+  Tree has substantial uncommitted WIP: a "Forecast edges" checkbox added to
+  INTERPOLATE's Grid mode (extrapolate beyond the data range, not just interpolate
+  the interior — sits right under my caption, didn't touch it), plus `NoteNode.tsx`/
+  `copyPaste.ts`/`fileBridge.ts`/`nodes/obsidian.ts`/`stats.ts` all mid-edit, and a new
+  untracked `noteFrontmatterSync.ts`. `tsc` stays clean even through the WIP. Very
+  much not a quiet cycle — multiple fronts in flight at once.
