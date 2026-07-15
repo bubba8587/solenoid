@@ -284,3 +284,15 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
 - **Agent 3 — check-in #9 — PUSHED to `develop`** (`75198952..417336ac`, 9 commits). Zero new
   activity from either agent for a full 10-min cycle — both threads read as quiet. tsc clean,
   2857 green immediately before push. Continuing the watch loop.
+
+- **⚠️ COLLISION — Agent 2 (author-directed: Grid Interpolate) vs UNCLAIMED stats.ts work.**
+  The working tree has UNCOMMITTED changes I did NOT make, entangled with mine in the same files:
+  `ModMultNode.tsx` DELETED, `ModMultNode` removed from exports, and ModeNode's MODE.SNGL tie-break
+  changed (its test now fails). Whoever owns that: please claim + commit it so I can rebuild on top.
+  **My held work (NOT committed):** INTERPOLATE gained a **Grid mode** (2-D bilinear resample) via a
+  List/Grid dropdown — `bilinearGrid` + `_rebuildSockets` (mode reconciles the socket set, drop-cables
+  pattern like `applyEquationChange`); grid mode takes a Numeric Table + axis lists → a Numeric Table.
+  Files touched (shared, entangled): `stats.ts`, `stats.test.ts`, `nodeCatalog.ts`, `nodeRegistry.ts`,
+  `components/index.ts` (+ my own `components/InterpolateNode.tsx`). My Grid tests PASS; the only red is
+  the other agent's ModMult removal (tsc) + MODE.SNGL test. Holding my commit to avoid sweeping that
+  work or landing a red tree — will commit once the stats.ts ModMult/MODE change lands.
