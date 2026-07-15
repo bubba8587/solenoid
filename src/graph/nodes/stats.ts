@@ -982,16 +982,18 @@ export function interpolateLinear(xs: number[], ys: number[], queryXs: number[])
   });
 }
 
-// Fill the blank interior cells of a coordinate-BORDERED grid. The first row holds the
-// X coordinate of each column, the first column the Y coordinate of each row; the
-// top-left corner is ignored and comes back blank. An interior cell is BLANK when it's
-// null or non-finite. Filling is separable and reuses interpolateLinear: a ROW pass
-// fills each row's blanks from that row's known cells (along X), then a COLUMN pass
-// fills any still-blank cell from its column's known cells (along Y). The row pass runs
-// FIRST so a freshly filled cell seeds the column pass — that's what lets a cell at the
-// intersection of a NEW row and a NEW column resolve. Clamped at the ends; a cell no
-// line can reach (its row and column both empty) stays blank. The known cells should
-// form a lattice (a lookup table); genuinely scattered points aren't handled.
+// Fill the blank interior cells of a coordinate-BORDERED grid as a 2-D surface (a
+// "mesh"). The first row holds the X coordinate of each column, the first column the Y
+// coordinate of each row; the top-left corner is ignored and comes back blank. An
+// interior cell is BLANK when it's null or non-finite. Each blank is filled by BLENDING
+// both directions: its row estimate (1-D interpolation along X from that row's known
+// cells) and its column estimate (along Y) are averaged — so a hole fills from its row
+// AND its column, never row-only. On a complete grid the two agree, so the average IS
+// the bilinear value; on partial data it's a smooth blend of both axes. The fill
+// iterates (Jacobi: collect a pass's fills, then apply them; a filled cell freezes and
+// seeds later passes), so a cell at the crossing of a NEW row and a NEW column — blank
+// in both until its neighbours fill — resolves on the next pass. Clamped at the ends; a
+// cell no row or column can reach stays blank. Reuses interpolateLinear per line.
 export function fillBorderedGrid(table: (number | null)[][]): (number | null)[][] {
   const R = table.length;
   const C = R > 0 ? Math.max(...table.map((r) => r.length)) : 0;
@@ -1007,21 +1009,32 @@ export function fillBorderedGrid(table: (number | null)[][]): (number | null)[][
   const Ri = R - 1, Ci = C - 1;
   const Z: (number | null)[][] = g.slice(1).map((r) => r.slice(1)); // interior, mutated across passes
 
-  // Fill the blanks of one line (row or column) from its known cells, at their coords.
-  const fillLine = (coords: number[], get: (k: number) => number | null, set: (k: number, v: number) => void) => {
-    const kc: number[] = [], kv: number[] = [], qc: number[] = [], qi: number[] = [];
+  // 1-D estimate at coordinate `at` from a line's currently-known cells (needs ≥1);
+  // NaN when the line is empty or `at` is an unlabelled row/column.
+  const lineEstimate = (coords: number[], get: (k: number) => number | null, at: number): number => {
+    if (Number.isNaN(at)) return NaN;
+    const kc: number[] = [], kv: number[] = [];
     for (let k = 0; k < coords.length; k++) {
-      if (Number.isNaN(coords[k])) continue; // an unlabelled row/col can't be placed
       const v = get(k);
-      if (v == null) { qc.push(coords[k]); qi.push(k); } else { kc.push(coords[k]); kv.push(v); }
+      if (v != null && !Number.isNaN(coords[k])) { kc.push(coords[k]); kv.push(v); }
     }
-    if (kc.length === 0 || qi.length === 0) return; // nothing known, or nothing to fill
-    const filled = interpolateLinear(kc, kv, qc);
-    qi.forEach((k, m) => { if (Number.isFinite(filled[m])) set(k, filled[m]); });
+    return kc.length === 0 ? NaN : interpolateLinear(kc, kv, [at])[0];
   };
 
-  for (let i = 0; i < Ri; i++) fillLine(colXs, (j) => Z[i][j], (j, v) => { Z[i][j] = v; }); // row pass (along X)
-  for (let j = 0; j < Ci; j++) fillLine(rowYs, (i) => Z[i][j], (i, v) => { Z[i][j] = v; }); // column pass (along Y)
+  let changed = true;
+  while (changed) {
+    changed = false;
+    const fills: Array<[number, number, number]> = [];
+    for (let i = 0; i < Ri; i++) for (let j = 0; j < Ci; j++) {
+      if (Z[i][j] != null) continue;
+      const rEst = lineEstimate(colXs, (k) => Z[i][k], colXs[j]); // along X, row i
+      const cEst = lineEstimate(rowYs, (k) => Z[k][j], rowYs[i]); // along Y, col j
+      const rv = Number.isFinite(rEst), cv = Number.isFinite(cEst);
+      if (!rv && !cv) continue; // nothing reaches this cell yet
+      fills.push([i, j, rv && cv ? (rEst + cEst) / 2 : rv ? rEst : cEst]);
+    }
+    for (const [i, j, v] of fills) { Z[i][j] = v; changed = true; }
+  }
 
   // Rebuild: corner blanked, border intact, interior filled.
   const out: (number | null)[][] = g.map((r) => [...r]);
