@@ -274,6 +274,14 @@ function SimulationEditor({ node }: { node: CompositeNodeType }) {
               />
             </div>
           )}
+          {/* Did the condition converge, or did it run out of steps? */}
+          {hasStop && node.simLastSteps != null && (
+            <div style={{ gridColumn: "1 / -1", fontSize: 10, color: "var(--text-muted)" }}>
+              {node.simLastSteps < node.simulationSteps
+                ? `stopped at step ${node.simLastSteps}`
+                : `ran all ${node.simulationSteps} steps (never met)`}
+            </div>
+          )}
         </>
       )}
     </div>
