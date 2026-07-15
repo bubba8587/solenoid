@@ -43,7 +43,7 @@ const HomeIcon = () => (
   </svg>
 );
 
-const DEFAULT_YAW = 45, DEFAULT_PITCH = 30;
+const DEFAULT_YAW = 45, DEFAULT_PITCH = 45;
 const wrap360 = (deg: number) => ((deg % 360) + 360) % 360;
 
 export function SurfaceComponent({ data, emit }: NodeProps<SurfaceNodeType>) {
