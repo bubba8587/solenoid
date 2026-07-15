@@ -214,6 +214,11 @@ export class CompositeInputNode extends ClassicPreset.Node {
    *  null before a solve) — the readout above. Set by runGoalSeek, cleared off the
    *  driver in data(); NOT persisted (re-solves on load). */
   solvedValue: number | SolError | null = null;
+  /** Transient: a small run-mode readout the drill-in appends to this input marker
+   *  — MC shows its ± spread, By-Row "one run per row", Scenarios/Data-Table that it
+   *  varies. So the marker explains its role in the ACTIVE mode. Stamped in data();
+   *  goal-seek is handled by goalDriver/solvedValue instead, so it's null there. */
+  modeNote: { tag: string; text: string } | null = null;
   /** An editable DEFAULT/seed, set on the marker INSIDE the drill-in — used as the
    *  input value when the exposed port isn't externally wired (and as the goal-seek
    *  seed). A wired value or a solve overrides it, so it's editable "even if it gets
@@ -577,6 +582,26 @@ export class CompositeNode extends ClassicPreset.Node {
       const feed = conns.find((c) => c.target === port.internalNodeId && c.targetInput === "value");
       const srcSock = feed ? this.internalEditor.getNode(feed.source)?.outputs?.[feed.sourceOutput]?.socket : undefined;
       sock.setType(typeOf(srcSock));
+    }
+  }
+
+  /** The run-mode readout for an input marker (see `CompositeInputNode.modeNote`).
+   *  Goal-seek is deliberately absent — its driver uses the richer solvedValue
+   *  readout instead. Returns null when this input has no role in the active mode. */
+  private inputModeNote(port: CompositeInputPort, m: CompositeInputNode): { tag: string; text: string } | null {
+    switch (this.runMode) {
+      case "montecarlo":
+        return (m.uncertainty ?? 0) > 0 ? { tag: "± spread", text: `${formatScalar(m.uncertainty!)} · ${m.distribution}` } : null;
+      case "by-row":
+        return this.byRowPortId === port.id ? { tag: "by row", text: "one run per row" } : null;
+      case "scenarios":
+        return this.scenarios.some((s) => port.id in s.overrides) ? { tag: "scenarios", text: "varies" } : null;
+      case "data-table": {
+        const n = this.dataTableValues[port.id]?.length ?? 0;
+        return n > 0 ? { tag: "data table", text: `${n} value${n === 1 ? "" : "s"}` } : null;
+      }
+      default:
+        return null;
     }
   }
 
@@ -955,6 +980,7 @@ export class CompositeNode extends ClassicPreset.Node {
       m.externallyWired = port.exposure === "exposed" && inputs[port.id]?.[0] !== undefined;
       m.goalDriver = port.id === gsDriverId;
       if (!m.goalDriver) m.solvedValue = null; // clear a stale readout off non-drivers / on mode change
+      m.modeNote = this.inputModeNote(port, m);
     }
     // Stamp the goal-seek target onto its output marker (→ "target N" readout).
     const gsTargetId = this.runMode === "goal-seek" ? this.goalSeek?.outputPortId : undefined;
