@@ -54,6 +54,10 @@ export interface SurfacePayload {
   xs: number[];
   ys: number[];
   z: (number | null)[][];
+  /** View angles in DEGREES: yaw around the vertical (Z) axis, pitch (elevation)
+   *  around the screen-horizontal. The node's rotate buttons step these by 45°. */
+  yaw: number;
+  pitch: number;
 }
 export type ChartPayload = KpiPayload | BulletPayload | TreemapPayload | SankeyPayload | SurfacePayload;
 

@@ -55,8 +55,18 @@ function drawSurface(canvas: HTMLCanvasElement, p: SurfacePayload, W: number, H:
   const gy = (iy: number) => nrm(ys[iy], ymin, ymax);
   const gz = (ix: number, iy: number) => { const v = z[iy]?.[ix]; return fin(v) ? nrm(v, zmin, zmax) : null; };
 
-  // Axonometric model projection of a unit-cube point → 2-D model space.
-  const model = (a: number, b: number, c: number): [number, number] => [a - b, (a + b) * 0.5 - c * DH];
+  // Camera: yaw around the vertical (Z) axis, then pitch (elevation) around the
+  // screen-horizontal — an orthographic view the rotate buttons drive. Points are
+  // centred on the base so the box spins about its middle.
+  const yaw = (p.yaw ?? 45) * Math.PI / 180, pitch = (p.pitch ?? 30) * Math.PI / 180;
+  const cyaw = Math.cos(yaw), syaw = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
+  const viewPt = (a: number, b: number, c: number): V3 => {
+    const x = a - 0.5, y = b - 0.5, zc = c * DH;
+    const x1 = x * cyaw - y * syaw, y1 = x * syaw + y * cyaw;
+    return [x1, zc * cp - y1 * sp, y1 * cp + zc * sp]; // [screen-right, screen-up, depth]
+  };
+  const model = (a: number, b: number, c: number): [number, number] => { const v = viewPt(a, b, c); return [v[0], -v[1]]; }; // canvas y is down
+  const depthOf = (a: number, b: number, c: number) => viewPt(a, b, c)[2];
 
   // Fit the projected grid — and the axis tripod corner — into the canvas with padding.
   let mnx = Infinity, mxx = -Infinity, mny = Infinity, mxy = -Infinity;
@@ -84,15 +94,25 @@ function drawSurface(canvas: HTMLCanvasElement, p: SurfacePayload, W: number, H:
     for (let i = 0; i <= div; i++) { const t = i / div; line(at(t, 0), at(t, 1)); line(at(0, t), at(1, t)); }
     ctx.globalAlpha = 1;
   };
-  gridPlane([0, 0, 0], [1, 0, 0], [0, 1, 0]); // floor  (z = min)
-  gridPlane([0, 0, 0], [1, 0, 0], [0, 0, 1]); // back wall (y = min)
-  gridPlane([0, 0, 0], [0, 1, 0], [0, 0, 1]); // back wall (x = min)
+  gridPlane([0, 0, 0], [1, 0, 0], [0, 1, 0]); // floor (z = min), always behind
+  // The two vertical walls FARTHEST from the viewer (smallest depth) — recomputed each
+  // draw so the box stays correct as it rotates; the near two stay open (matplotlib style).
+  const WALLS: Array<{ o: V3; u: V3; v: V3; c: V3 }> = [
+    { o: [0, 0, 0], u: [0, 1, 0], v: [0, 0, 1], c: [0, 0.5, 0.5] }, // x = min
+    { o: [1, 0, 0], u: [0, 1, 0], v: [0, 0, 1], c: [1, 0.5, 0.5] }, // x = max
+    { o: [0, 0, 0], u: [1, 0, 0], v: [0, 0, 1], c: [0.5, 0, 0.5] }, // y = min
+    { o: [0, 1, 0], u: [1, 0, 0], v: [0, 0, 1], c: [0.5, 1, 0.5] }, // y = max
+  ];
+  WALLS.map((w) => ({ w, d: depthOf(w.c[0], w.c[1], w.c[2]) })).sort((a, b) => a.d - b.d).slice(0, 2)
+    .forEach(({ w }) => gridPlane(w.o, w.u, w.v));
 
-  // Cells with all four corners known, painted back (small gx+gy) to front.
+  // Cells with all four corners known, painted back (smallest depth) to front.
   const cells: Array<{ ix: number; iy: number; d: number }> = [];
   for (let iy = 0; iy < ny - 1; iy++) for (let ix = 0; ix < nx - 1; ix++) {
-    if (gz(ix, iy) == null || gz(ix + 1, iy) == null || gz(ix, iy + 1) == null || gz(ix + 1, iy + 1) == null) continue;
-    cells.push({ ix, iy, d: gx(ix) + gx(ix + 1) + gy(iy) + gy(iy + 1) });
+    const z00 = gz(ix, iy), z10 = gz(ix + 1, iy), z01 = gz(ix, iy + 1), z11 = gz(ix + 1, iy + 1);
+    if (z00 == null || z10 == null || z01 == null || z11 == null) continue;
+    const ca = (gx(ix) + gx(ix + 1)) / 2, cb = (gy(iy) + gy(iy + 1)) / 2, cc = (z00 + z10 + z01 + z11) / 4;
+    cells.push({ ix, iy, d: depthOf(ca, cb, cc) });
   }
   cells.sort((a, b) => a.d - b.d);
 

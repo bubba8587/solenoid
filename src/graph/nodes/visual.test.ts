@@ -97,17 +97,27 @@ describe("Surface (3-D plot)", () => {
     expect(parseBorderedGrid(null)).toEqual({ xs: [], ys: [], z: [] });
   });
 
-  it("emits a surface ChartValue carrying the parsed grid", () => {
+  it("emits a surface ChartValue carrying the parsed grid + default view angles", () => {
     const s = new SurfaceNode({ label: "Heights" });
     const out = s.data({ grid: [[[null, 0, 10], [0, 1, 2], [5, 3, 4]]] });
     expect(out.chart).toMatchObject({
       __chart: true,
       op: "surface",
       title: "Heights",
-      payload: { kind: "surface", xs: [0, 10], ys: [0, 5], z: [[1, 2], [3, 4]] },
+      payload: { kind: "surface", xs: [0, 10], ys: [0, 5], z: [[1, 2], [3, 4]], yaw: 45, pitch: 30 },
     });
     // Unwired → empty grid, still a valid (drawable-as-empty) surface value.
     expect(new SurfaceNode().data({}).chart).toMatchObject({ op: "surface", payload: { kind: "surface", xs: [], ys: [], z: [] } });
+  });
+
+  it("the view angles round-trip through extractInit (rotate buttons persist)", () => {
+    const s = new SurfaceNode();
+    s.literals.yaw = 135;
+    s.literals.pitch = 60;
+    const s2 = new SurfaceNode(extractInit(s));
+    expect(s2.literals.yaw).toBe(135);
+    expect(s2.literals.pitch).toBe(60);
+    expect(s2.data({}).chart.payload).toMatchObject({ yaw: 135, pitch: 60 });
   });
 });
 
