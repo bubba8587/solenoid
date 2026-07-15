@@ -94,12 +94,25 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
     (whitelist already had `"unit"`).
   **Milestone: matrix units are end-to-end — AUTHOR (Table Input / FC) → FLOW (structural reshapes)
   → DISPLAY (chip/popup). 2808 green, tsc clean.**
-  **(b)/(a) REMAINING (the deeper algebra pass — a focused slice next):** element-wise scalar-algebra
-  on the tag (scale a km matrix → km; matrix±matrix same-unit → same, mismatch → #UNIT!), MMULT mul
-  dims, MDETERM/MINVERSE strip; the rank-changing TOCOL/TOROW + WRAPROWS/WRAPCOLS are part of (a) the
-  list↔matrix widening edge (a matrix tag must CONVERT to per-cell list units and back, not plain
-  carry) — plus `coerce.ts` widening and (e) the `unitLattice` sweep. No `matrix.ts`/`TablePopup`
-  collision risk for other agents right now; A1 owns these.
+  **S3 / units-by-dimensionality (D20) — COMPLETE across all five ranks (A1).** All matrix-op gaps
+  closed + a machine-checked policy guard (`matrixUnitPolicy.test.ts` — carry/carry-if-uniform/convert/
+  strip/na/author, with a completeness sweep that fails the build on a new unhandled matrix op),
+  INDEX + `coerceValue` re-carry, chip+popup display, taggable Table Input, list↔matrix convert
+  (TOCOL/TOROW/WRAP), and **cube = per-cell units like a list** (`CubeCell` holds `UnitCell`s;
+  frame→cube tags, cube→frame recovers). Verified non-gaps: Convert-on-matrix unreachable (socket),
+  MMULT-dims + unitLattice-matrix moot (no element-wise matrix arithmetic node). Commits `0acdb709`
+  `e9af4b05` `ce9e045e` `906cc347` `6faf5e62` `b2250c30` `636308c8` `39b487a4` + docs.
+- **Popup flow-arrows + locks (A1) — LANDED `02ad50dd`, ⏳ AUTHOR VISUAL REVIEW PENDING (after
+  dinner).** The value-popup format/unit dropdowns adopt the FC's ←/→ flow language: authored (← →,
+  editable) for a taggable source's unit + the format; inherited (→ →, LOCKED disabled picker) for a
+  derived frame/matrix unit (replaces the old static label / header parenthetical — unit moved from
+  the column header into the format row). `FcArrow`+`FcFlow` factored into `fcControls` (FC node uses
+  the shared copy). Also Agent 2's marker/By-Row UI eyeballs are pending. tsc clean, 2835 green.
+- **NEW TOPIC — A1 CLAIMS: Lossless frame→cube (typed `CubeColumn`)** (backlog "Notes/documents"
+  area). Give `CubeColumn` an optional `type` so `frameToCube` preserves date/logical column types
+  (cubes render dates as dates; XLOOKUP's cube path matches ISO dates; retires the XLOOKUP `rawInputs`
+  bypass). Natural extension of the cube-units work I just landed (`frame.ts` cube section + `CubeDisplay`/
+  `CubePopup` + cube verbs). **Own lane — no `composite.ts`/marker overlap with Agent 2.**
 - **S2 — PARKED** (combine Build Frame + Frame Input) — needs the author's toggle-UX call before
   build; don't start blind. Design context is in the Streams section above.
 - **Agent 2 — LANDED** (SVG Picker rasterize-for-display). ⚠️ **NB Lead:** my
