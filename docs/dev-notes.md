@@ -42,8 +42,15 @@ input port's adopted type onto the input marker and the internal source node's o
 output marker. DISPLAY ONLY — plain MutableSockets stay OUT of the trueany adoption fixpoint (only
 `AdoptiveSocket` participates), and the runtime value flows through untouched regardless of the dot's
 shown type; the type re-derives on the next `data()` so no persistence needed. tsc clean, 2820 green.
-Commit `6b2c76a2`. (Not touched: goal-seek writing the solved value back onto the driver's seed — the
-"updates itself" the author noted — that's the unwired-driver case and a separate, delicate call.)
+Commit `6b2c76a2`. **(3) Goal-seek marker readouts (`70be5aba`, author idea — "the markers serve the
+run mode, they don't have to stay plain"):** in goal-seek the driver INPUT shows a "solves to N" readout
+and the target OUTPUT a "target N" readout (a small `MarkerNote`), so the drill-in explains the solve.
+The solver no longer writes its answer back onto the driver's SEED (`defaultValue`) — that WAS the
+"updates itself" — the solution now lives in transient `CompositeInputNode.solvedValue` (read by the
+readout) and the seed stays the user's starting guess; `#CONV!` shows "no solution". New transient
+`goalDriver`/`solvedValue` (input) + `goalTarget` (output), stamped in `data()` from the run
+mode/config, cleared on leaving goal-seek. This is the markers' first run-mode-aware affordance — the
+same pattern extends to MC (±spread) / scenarios (which set) later.
 
 ### SESSION DIGEST (2026-07-15k — Composite By-Row run mode) [Agent 2, off-theme]
 Author-specced (2026-07-14) backlog item — the node-level "for each." A new Composite `CompositeRunMode`
