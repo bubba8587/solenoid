@@ -1,6 +1,6 @@
 import { ClassicPreset } from "rete";
-import { broadcastErr, listIn, listOut, numIn, numOut, numListIn, numListOut, readInput } from "./shared";
-import { normSInv, regularizedBeta, regularizedGamma, stdNormCDF, lnCombin, bisectionInv, iterMin, iterMax } from "./mathUtils";
+import { broadcastErr, listIn, listOut, numIn, numOut, numListIn, numListOut, readInput, tableIn, tableOut } from "./shared";
+import { normSInv, regularizedBeta, regularizedGamma, stdNormCDF, lnCombin, bisectionInv, iterMax } from "./mathUtils";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { excelRank, excelTrimmean, excelPercentRank } from "../excelFunctions";
 import { forAggregate } from "../valueKinds";
@@ -532,7 +532,7 @@ export class ForecastNode extends ClassicPreset.Node {
 
 export class ModeNode extends ClassicPreset.Node {
   label: string;
-  cachedResult: number | SolError | null = null;
+  cachedResult: number | number[] | SolError | null = null;
   width = 180;
   height = 135;
 
@@ -540,23 +540,27 @@ export class ModeNode extends ClassicPreset.Node {
     super("Mode");
     this.label = init?.label ?? "MODE";
     this.addInput("list", listIn("List"));
-    this.addOutput("result", numOut("Result"));
+    // Number combo output (scalar OR list): ONE most-frequent value comes out as a
+    // scalar; when several tie, ALL of them come out as a list — so there's no
+    // arbitrary tie-break to pick (supersedes Excel's MODE.SNGL/MODE.MULT split).
+    this.addOutput("result", numListOut("Result"));
   }
 
-  data(inputs: { list?: (number | null | SolError)[][] }) {
+  data(inputs: { list?: (number | null | SolError)[][] }): { result: number | number[] | SolError | null } {
     // SolError propagates; null (missing) is skipped so it isn't counted as a mode.
     const prep = forAggregate(inputs.list?.[0] ?? []);
     if (prep.error) { this.cachedResult = prep.error; return { result: prep.error }; }
     const arr = prep.nums;
-    let result: number | null = null;
+    let result: number | number[] | null = null;
     if (arr.length > 0) {
       const counts = new Map<number, number>();
       for (const v of arr) counts.set(v, (counts.get(v) ?? 0) + 1);
       const maxCount = iterMax(counts.values());
       const modes = [...counts.entries()]
         .filter(([, c]) => c === maxCount)
-        .map(([v]) => v);
-      result = iterMin(modes);
+        .map(([v]) => v)
+        .sort((a, b) => a - b);
+      result = modes.length === 1 ? modes[0] : modes; // one mode → scalar; a tie → the full list
     }
     this.cachedResult = result;
     return { result };
@@ -925,18 +929,40 @@ export class TrendNode extends ClassicPreset.Node {
   }
 }
 
-// ─── Interpolate ──────────────────────────────────────────────────────────────
+// ─── Interpolate (List = 1-D, Grid = 2-D bilinear) ──────────────────────────────
+// A true lookup-table interpolation, which Excel has no direct function for:
+// LOOKUP/XLOOKUP do a STEP match (nearest key, no blending), and FORECAST/TREND fit a
+// regression LINE through the cloud rather than honouring each point. One node, two
+// modes (a dropdown swaps the socket set): LIST interpolates a 1-D dataset, GRID does
+// 2-D bilinear resampling of a numeric table. Both CLAMP at the ends — a query beyond
+// the known range returns the edge value; a lookup table (hardness conversion, a pump
+// curve, a steam table) doesn't extrapolate past its data.
 
-// Piecewise-linear interpolation over a known (x, y) dataset — a true lookup-table
-// interpolation, which Excel has no direct function for: LOOKUP/XLOOKUP do a STEP
-// match (nearest key, no blending), and FORECAST/TREND fit a regression LINE through
-// the cloud rather than honouring each point. Given known Xs/Ys and one or more query
-// Xs, return the y on the straight segment between the two bracketing known points.
-// CLAMPED at the ends: a query below the smallest known x returns the first y, above
-// the largest returns the last — a lookup table (hardness conversion, a pump curve, a
-// pipe schedule) doesn't extrapolate past its data. Points are sorted by x, so the
-// known data may arrive in any order; a duplicated x resolves to its first-seen y
-// (avoids a divide-by-zero on a vertical segment). A NaN query stays NaN.
+export type InterpolateMode = "list" | "grid";
+
+export const INTERPOLATE_MODE_META: Record<InterpolateMode, { label: string; title: string }> = {
+  list: { label: "List", title: "1-D: interpolate y for a query x between known (x, y) points" },
+  grid: { label: "Grid", title: "2-D bilinear: resample a numeric grid onto new column/row coordinates" },
+};
+
+// The interpolation bracket for a query against a SORTED-ASCENDING axis: [i0, i1, t]
+// with value = (1-t)·v[i0] + t·v[i1], clamped at both ends (t=0 outside the range).
+function bracket(axis: number[], x: number): [number, number, number] {
+  const last = axis.length - 1;
+  if (x <= axis[0]) return [0, 0, 0];
+  if (x >= axis[last]) return [last, last, 0];
+  let lo = 0, hi = last;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (axis[mid] <= x) lo = mid; else hi = mid;
+  }
+  const x0 = axis[lo], x1 = axis[hi];
+  return [lo, hi, x1 === x0 ? 0 : (x - x0) / (x1 - x0)]; // x1===x0: duplicated key, no gap
+}
+
+// 1-D piecewise-linear interpolation over a known (x, y) dataset. Points are sorted
+// by x (known data may arrive unordered); a duplicated x resolves to its first-seen y
+// (via bracket's t=0). A NaN query stays NaN. Clamped at the ends.
 export function interpolateLinear(xs: number[], ys: number[], queryXs: number[]): number[] {
   const n = Math.min(xs.length, ys.length);
   if (n === 0) return queryXs.map(() => NaN);
@@ -945,50 +971,101 @@ export function interpolateLinear(xs: number[], ys: number[], queryXs: number[])
   pairs.sort((a, b) => a[0] - b[0]);
   const sx = pairs.map((p) => p[0]);
   const sy = pairs.map((p) => p[1]);
-  const last = n - 1;
-  const at = (x: number): number => {
+  return queryXs.map((x) => {
     if (Number.isNaN(x)) return NaN;
-    if (x <= sx[0]) return sy[0];        // clamp low (also the single-point flat case)
-    if (x >= sx[last]) return sy[last];  // clamp high
-    // Binary search the bracket [lo, hi] with sx[lo] <= x < sx[hi].
-    let lo = 0, hi = last;
-    while (hi - lo > 1) {
-      const mid = (lo + hi) >> 1;
-      if (sx[mid] <= x) lo = mid; else hi = mid;
-    }
-    const x0 = sx[lo], x1 = sx[hi];
-    if (x1 === x0) return sy[lo];        // duplicated x — no interior gap to blend
-    return sy[lo] + ((sy[hi] - sy[lo]) * (x - x0)) / (x1 - x0);
-  };
-  return queryXs.map(at);
+    const [i0, i1, t] = bracket(sx, x);
+    return sy[i0] + t * (sy[i1] - sy[i0]);
+  });
+}
+
+// 2-D bilinear resampling: `grid[r][c]` is the Z value at (rowYs[r], colXs[c]). Sample
+// it onto every (newYs × newXs) point → a newYs.length × newXs.length matrix. Axes are
+// sorted ascending (the grid is permuted to match), so the row/column coordinates may
+// arrive in any order. Clamped at every edge; a NaN query cell → NaN.
+export function bilinearGrid(
+  grid: number[][], colXs: number[], rowYs: number[], newXs: number[], newYs: number[],
+): number[][] {
+  const R = Math.min(grid.length, rowYs.length);
+  const C = Math.min(colXs.length, grid[0]?.length ?? 0);
+  if (R === 0 || C === 0) return newYs.map(() => newXs.map(() => NaN));
+  const rowIdx = Array.from({ length: R }, (_, i) => i).sort((a, b) => rowYs[a] - rowYs[b]);
+  const colIdx = Array.from({ length: C }, (_, j) => j).sort((a, b) => colXs[a] - colXs[b]);
+  const sortedRowYs = rowIdx.map((i) => rowYs[i]);
+  const sortedColXs = colIdx.map((j) => colXs[j]);
+  const z = (sr: number, sc: number): number => grid[rowIdx[sr]][colIdx[sc]];
+  return newYs.map((qy) =>
+    newXs.map((qx) => {
+      if (Number.isNaN(qx) || Number.isNaN(qy)) return NaN;
+      const [r0, r1, ty] = bracket(sortedRowYs, qy);
+      const [c0, c1, tx] = bracket(sortedColXs, qx);
+      const top = z(r0, c0) + tx * (z(r0, c1) - z(r0, c0));
+      const bot = z(r1, c0) + tx * (z(r1, c1) - z(r1, c0));
+      return top + ty * (bot - top);
+    }),
+  );
+}
+
+/** Coerce a wired list to plain numbers (a null/error/blank cell → NaN). */
+function axisNums(a: (number | null | SolError)[] | undefined): number[] {
+  return (a ?? []).map((v) => (typeof v === "number" ? v : NaN));
 }
 
 export class InterpolateNode extends ClassicPreset.Node {
   label: string;
-  // Scalar-or-list, matching the query's shape (the numlist combo): a single X in
-  // yields ONE interpolated y, a list of Xs yields a list.
-  cachedResult: number | (number | null)[] | SolError | null = null;
+  mode: InterpolateMode;
+  // LIST mode: scalar-or-list matching the query shape. GRID mode: a matrix. A whole-
+  // input error propagates as a SolError.
+  cachedResult: number | (number | null)[] | number[][] | SolError | null = null;
   literals: Record<string, number> = { x: 0 };
   width = 180; height = 215;
 
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; mode?: InterpolateMode }) {
     super("Interpolate");
     this.label = init?.label ?? "INTERPOLATE";
+    this.mode = init?.mode ?? "list";
+    this._rebuildSockets();
+  }
+
+  // Rebuild the I/O set for the current mode. The two modes are different operations
+  // with different sockets (LIST: two data lists + a combo query; GRID: a numeric
+  // table + four axis lists), so the dropdown swaps the whole set — see
+  // applyInterpolateMode, which drops this node's cables first (removeInput is unsafe
+  // while a cable references the socket).
+  _rebuildSockets(): void {
+    for (const key of Object.keys(this.inputs)) this.removeInput(key);
+    for (const key of Object.keys(this.outputs)) this.removeOutput(key);
+    if (this.mode === "grid") {
+      this.addInput("grid",   tableIn("Grid Z"));
+      this.addInput("xs",     listIn("Column Xs"));
+      this.addInput("ys",     listIn("Row Ys"));
+      this.addInput("new_xs", listIn("New Xs"));
+      this.addInput("new_ys", listIn("New Ys"));
+      this.addOutput("result", tableOut("Interpolated Grid"));
+      this.height = 300;
+      return;
+    }
     this.addInput("ys",     listIn("Known Ys"));
     this.addInput("xs",     listIn("Known Xs"));
-    // Query is a numlist COMBO (scalar-or-list) so a single X in → a single y out,
+    // Query is a numlist COMBO (scalar-or-list): a single X in → a single y out,
     // a list of Xs in → a list out (result mirrors the query's shape).
     this.addInput("new_xs", numListIn("X"));
     this.addOutput("result", numListOut("Interpolated Y"));
+    this.height = 215;
   }
 
-  data(inputs: { ys?: (number | null | SolError)[][]; xs?: (number | null | SolError)[][]; new_xs?: (number | (number | null | SolError)[] | null | SolError)[] }): { result: number | (number | null)[] | SolError | null } {
+  data(inputs: Record<string, unknown[]>): { result: number | (number | null)[] | number[][] | SolError | null } {
+    return this.mode === "grid" ? this.dataGrid(inputs) : this.dataList(inputs);
+  }
+
+  private dataList(inputs: Record<string, unknown[]>): { result: number | (number | null)[] | SolError | null } {
+    const xsIn = inputs.xs as (number | null | SolError)[][] | undefined;
+    const ysIn = inputs.ys as (number | null | SolError)[][] | undefined;
     // Known data: propagate the first error, drop pairs missing on either side.
-    const { error, xs, ys } = forPair(inputs.xs?.[0] ?? null, inputs.ys?.[0] ?? null);
+    const { error, xs, ys } = forPair(xsIn?.[0] ?? null, ysIn?.[0] ?? null);
     if (error) { this.cachedResult = error; return { result: error }; }
     // The combo query arrives as a scalar (a single X wired/typed) or an array (a
     // list wired) — readInput unwraps it and falls back to the literal when unwired.
-    const q = readInput(inputs.new_xs, this.literals.x);
+    const q = readInput(inputs.new_xs as (number | (number | null | SolError)[] | null | SolError)[] | undefined, this.literals.x);
     if (isSolError(q)) { this.cachedResult = q; return { result: q }; }
     const noData = xs.length === 0;
     if (Array.isArray(q)) {
@@ -1006,6 +1083,26 @@ export class InterpolateNode extends ClassicPreset.Node {
     // Scalar query → scalar result (a missing/no-data query yields null).
     if (q === null || noData) { this.cachedResult = null; return { result: null }; }
     const result = interpolateLinear(xs, ys, [q])[0];
+    this.cachedResult = result;
+    return { result };
+  }
+
+  private dataGrid(inputs: Record<string, unknown[]>): { result: number[][] | SolError } {
+    const gridRaw = inputs.grid?.[0] ?? null;
+    if (isSolError(gridRaw)) { this.cachedResult = gridRaw; return { result: gridRaw }; }
+    // A dirty/missing/error cell → NaN (the grid interpolates numerically; a whole-
+    // value error already short-circuited above).
+    const grid = (Array.isArray(gridRaw) ? gridRaw : []).map((row) =>
+      (Array.isArray(row) ? row : []).map((c) => (typeof c === "number" ? c : NaN)),
+    );
+    const colXs = axisNums((inputs.xs as (number | null | SolError)[][] | undefined)?.[0]);
+    const rowYs = axisNums((inputs.ys as (number | null | SolError)[][] | undefined)?.[0]);
+    const newXs = axisNums((inputs.new_xs as (number | null | SolError)[][] | undefined)?.[0]);
+    const newYs = axisNums((inputs.new_ys as (number | null | SolError)[][] | undefined)?.[0]);
+    if (grid.length === 0 || newXs.length === 0 || newYs.length === 0) {
+      this.cachedResult = []; return { result: [] };
+    }
+    const result = bilinearGrid(grid, colXs, rowYs, newXs, newYs);
     this.cachedResult = result;
     return { result };
   }
@@ -1178,36 +1275,3 @@ export class ProbNode extends ClassicPreset.Node {
   }
 }
 
-// ─── MODE.MULT ────────────────────────────────────────────────────────────────
-
-export class ModMultNode extends ClassicPreset.Node {
-  label: string;
-  cachedList: number[] | SolError = [];
-  width = 180; height = 135;
-
-  constructor(init?: { label?: string }) {
-    super("ModMult");
-    this.label = init?.label ?? "MODE.MULT";
-    this.addInput("list", listIn("List"));
-    this.addOutput("result", listOut("All modes"));
-  }
-
-  data(inputs: { list?: (number | null | SolError)[][] }) {
-    // SolError propagates; null (missing) is skipped so it isn't counted as a mode.
-    const prep = forAggregate(inputs.list?.[0] ?? []);
-    if (prep.error) { this.cachedList = prep.error; return { result: prep.error }; }
-    const arr = prep.nums;
-    let result: number[] = [];
-    if (arr.length > 0) {
-      const counts = new Map<number, number>();
-      for (const v of arr) counts.set(v, (counts.get(v) ?? 0) + 1);
-      const maxCount = iterMax(counts.values());
-      result = [...counts.entries()]
-        .filter(([, c]) => c === maxCount)
-        .map(([v]) => v)
-        .sort((a, b) => a - b);
-    }
-    this.cachedList = result;
-    return { result };
-  }
-}
