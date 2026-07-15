@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { isSolError } from "../errorValue";
 import { TableTransposeNode, HStackTableNode, TableReshapeNode, TableSelectNode, TableTakeDropNode, ExpandNode, TableInfoNode, TableMultNode, MatDetNode, TableInputNode, tableRawCells, rawCellsToText, deriveTable } from "./matrix";
 import { SolenoidSocket, type SocketDataType } from "../sockets";
+import { withMatrixUnit, matrixUnitOf } from "../unitValue";
 
 // The pure-reshape matrix ops are element-agnostic: they accept any matrix on an
 // `any` input and emit the 2-D wildcard `anytable` (or a 1-D `any` list when
@@ -233,5 +234,43 @@ describe("Table Input is a LITERAL source (the Frame Input model)", () => {
     expect(isSolError(mm) && mm.code).toBe("#VALUE!");
     const det = new MatDetNode({ op: "mdeterm" }).data({ matrix: [[[1, null], [3, 4]]] as never }).result;
     expect(isSolError(det) && det.code).toBe("#VALUE!");
+  });
+});
+
+describe("structural reshapes carry the homogeneous matrix unit (D20, S3)", () => {
+  // A numeric matrix tagged with one whole-grid unit; the tag rides through a
+  // structural reshape (same cells, rearranged) but the output is a fresh array,
+  // so the op must re-carry it. km, dim {length:1}.
+  const tagged = () => withMatrixUnit([[1, 2], [3, 4]], { dim: { length: 1 }, display: "km" });
+
+  it("TRANSPOSE carries the unit onto the flipped grid", () => {
+    const r = new TableTransposeNode().data({ matrix: [tagged()] }).result;
+    expect(r).toEqual([[1, 3], [2, 4]]);
+    expect(matrixUnitOf(r)).toMatchObject({ display: "km" });
+  });
+
+  it("CHOOSEROWS / CHOOSECOLS carry the unit", () => {
+    const rows = new TableSelectNode({ op: "chooserows" }).data({ matrix: [tagged()], indices: [[1]] }).result;
+    expect(matrixUnitOf(rows)).toMatchObject({ display: "km" });
+    const cols = new TableSelectNode({ op: "choosecols" }).data({ matrix: [tagged()], indices: [[2]] }).result;
+    expect(matrixUnitOf(cols)).toMatchObject({ display: "km" });
+  });
+
+  it("TAKE (table) carries the unit onto the trimmed grid", () => {
+    const r = new TableTakeDropNode({ op: "take" }).data({ matrix: [tagged()], rows: [1], cols: [0] }).result;
+    expect(r).toEqual([[1, 2]]);
+    expect(matrixUnitOf(r)).toMatchObject({ display: "km" });
+  });
+
+  it("EXPAND carries the unit; the pad reads in that same unit", () => {
+    const r = new ExpandNode().data({ matrix: [tagged()], rows: [3], cols: [2], fill: [0] }).result;
+    expect(matrixUnitOf(r)).toMatchObject({ display: "km" });
+  });
+
+  it("an untagged (plain / text) matrix stays untagged through a reshape", () => {
+    const r = new TableTransposeNode().data({ matrix: [[[1, 2], [3, 4]]] }).result;
+    expect(matrixUnitOf(r)).toBeUndefined();
+    const t = new TableTransposeNode().data({ matrix: [[["a", "b"], ["c", "d"]]] }).result;
+    expect(matrixUnitOf(t)).toBeUndefined();
   });
 });
