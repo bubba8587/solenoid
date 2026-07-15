@@ -698,6 +698,8 @@ export function CompositeInputMarkerComponent({ data, emit }: NodeProps<Composit
             : <b>{formatScalar(data.solvedValue)}</b>}
         </MarkerNote>
       )}
+      {/* Other run modes: MC ± spread, By-Row per-row, Scenarios/Data-Table varies. */}
+      {data.modeNote && <MarkerNote tag={data.modeNote.tag}>{data.modeNote.text}</MarkerNote>}
     </NodeShell>
   );
 }

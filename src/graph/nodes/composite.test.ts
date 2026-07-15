@@ -672,6 +672,28 @@ describe("CompositeNode input marker display", () => {
     await c.data({});                // not wired → falls back to the seed
     expect(inA.externallyWired).toBe(false);
   });
+
+  it("stamps a run-mode note on input markers (MC spread / by-row / none in single)", async () => {
+    const c = new CompositeNode({ runMode: "montecarlo" });
+    const inA = new CompositeInputNode({ label: "A", uncertainty: 5, distribution: "normal" });
+    const outMarker = new CompositeOutputNode({ label: "Out" });
+    for (const n of [inA, outMarker]) await c.internalEditor.addNode(n as unknown as Schemes["Node"]);
+    await connect(c.internalEditor, inA, "value", outMarker, "value");
+    const aId = c.addInputPort({ label: "A", exposure: "exposed", tier: "basic", internalNodeId: inA.id });
+    c.addOutputPort({ label: "Out", tier: "basic", internalNodeId: outMarker.id });
+
+    await c.data({ [aId]: [1] });
+    expect(inA.modeNote?.tag).toBe("± spread");
+    expect(inA.modeNote?.text).toContain("normal");
+
+    c.runMode = "by-row"; c.byRowPortId = aId;
+    await c.data({ [aId]: [[1, 2, 3]] });
+    expect(inA.modeNote?.tag).toBe("by row");
+
+    c.runMode = "single";
+    await c.data({ [aId]: [1] });
+    expect(inA.modeNote).toBe(null);
+  });
 });
 
 describe("CompositeNode boundary-marker socket adaptation", () => {
