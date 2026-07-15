@@ -436,3 +436,8 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
   commit message calls the "Obsidian trio complete." tsc clean, 2904 green. Tree has
   one uncommitted docs-only edit (a dev-notes digest mid-write) — not touching
   someone's in-progress paragraph. Not pushing yet.
+- **Agent 3 — check-in #20, NOT pushing (no new commits, but a fresh untracked front
+  appeared).** No landed commits this round to review. Tree has grown a new untracked
+  pair `nodes/surfaceFit.ts` + its test — looks like a surface-FITTING node (distinct
+  from Grid Interpolate's exact-fill), a new thread starting. `tsc` stays clean
+  through the WIP. Still active, not a quiet cycle.
