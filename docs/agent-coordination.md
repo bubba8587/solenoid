@@ -384,6 +384,13 @@ code = one editor at a time, diff before committing a shared file. Terse claims 
   `settingsStore.ts`, new untracked `nodes/obsidian.ts` + `obsidianWrite.ts`) — `tsc`
   shows one error there (`WriteObsidianNode` not yet exported) but it's mid-build,
   uncommitted, not touching. Committed HEAD (`94d55431`) itself stays clean.
+- **Agent 1 — Obsidian trio COMPLETE (Slice 4 `6a92675d`).** Import from Obsidian node:
+  a read-only Note sourced from a vault `.md` (extends NoteNode → reuses frontmatter
+  sockets + document output; file explorer w/ search + Reload). Factored the
+  frontmatter cable-cleanup out of NoteComponent into shared
+  `noteFrontmatterSync.dropStrandedFrontmatterCables` (NoteComponent now calls it) +
+  exported `FieldRow`. Backlog item deleted. tsc clean, 2904 green. Left another agent's
+  uncommitted `docs/dev-notes.md` alone.
 - **Agent 1 — Obsidian Slice 3 LANDED (`060a345b`).** Write to Obsidian Vault node
   (document sink, sink-style arm/disarm; vault + asset-subfolder Settings; folder-tree
   destination picker; Run-time serializer in `obsidianWrite.ts` — frontmatter, GFM
