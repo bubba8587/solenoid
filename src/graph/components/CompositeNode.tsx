@@ -660,15 +660,22 @@ export function CompositeInputMarkerComponent({ data, emit }: NodeProps<Composit
   );
   return (
     <NodeShell node={data} emit={emit} collapsible={false} labelPlaceholder="Input" className="solenoid-node--composite-marker">
-      <input
-        className="solenoid-node__value-input"
-        type="number"
-        value={field.draft}
-        onChange={(e) => field.setDraft(e.target.value)}
-        onBlur={field.onBlur}
-        onKeyDown={field.onKeyDown}
-        step="any"
-      />
+      {data.externallyWired ? (
+        // Fed from outside — show what's actually coming in (any kind: scalar,
+        // list, frame…), read-only. The seed field is dormant when wired, and a
+        // number field can't even represent a wired list/frame.
+        <CompositeBoundaryValue value={data.value} label={data.label} />
+      ) : (
+        <input
+          className="solenoid-node__value-input"
+          type="number"
+          value={field.draft}
+          onChange={(e) => field.setDraft(e.target.value)}
+          onBlur={field.onBlur}
+          onKeyDown={field.onKeyDown}
+          step="any"
+        />
+      )}
     </NodeShell>
   );
 }
