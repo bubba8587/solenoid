@@ -45,6 +45,9 @@ export type SocketDataType =
   | "lambda"    // first-class function value — see nodes/lambda.ts
   | "chart"     // first-class chart/visual-output value — the OBJECT socket family's
                 // other member alongside lambda; identity-only (self + trueany), like lambda
+  | "document"  // a whole Note/Report's renderable content (DocumentValue) — an OBJECT
+                // socket, identity-only (self + trueany), like chart/lambda. Report/Note
+                // OUTPUT it; a document sink (Write to Obsidian) INPUTs it.
   | "any"       // element-agnostic SCALAR — the rank-0 rung of the wildcard ladder
                 // (any → anylist → anytable). Accepts any family's scalar (and combos,
                 // which can be scalars); its output is a scalar of unknown family, so
@@ -87,6 +90,7 @@ export const SOCKET_COLORS: Record<SocketDataType, string> = {
   cube:     "var(--sock-cube)",     // violet (frame) — hexagon (recursive any-value container)
   lambda:   "var(--sock-lambda)",   // teal-green    — circle with λ (function value)
   chart:    "var(--sock-chart)",    // blue           — circle (chart/visual-output value)
+  document: "var(--sock-chart)",    // blue (chart)   — a whole-document value (Note/Report content)
   any:      "var(--sock-any)",      // gray          — circle (any single value)
   trueany:  "var(--sock-any)",      // gray          — HOLLOW circle (border only; anything)
 };
@@ -121,6 +125,7 @@ export const SOCKET_TYPE_LABELS: Record<SocketDataType, string> = {
   cube:         "Cube (nested table)",
   lambda:       "Function",
   chart:        "Chart / visual",
+  document:     "Document (Note / Report)",
   any:          "Any value",
   trueany:      "Anything",
 };
@@ -279,7 +284,7 @@ function accepts(inT: SocketDataType, outT: SocketDataType): boolean {
   if (inT === outT) return true;
   if (inT === "trueany" || outT === "trueany") return true;
   if (inT === "any") return SCALAR_COMBO_TYPES.has(outT);
-  if (outT === "any") return inT !== "lambda" && inT !== "chart";
+  if (outT === "any") return inT !== "lambda" && inT !== "chart" && inT !== "document";
   // `anytable` as an INPUT is a 2-D, element-agnostic wildcard that any lower-rank
   // value WIDENS into — a 1-D list or a scalar of any family (TRANSPOSE of a list →
   // a column; MAP over a list), exactly as a `list` widens into a `table` input.
@@ -402,6 +407,7 @@ export const frameSocket   = new SolenoidSocket("frame");
 export const cubeSocket    = new SolenoidSocket("cube");
 export const lambdaSocket  = new SolenoidSocket("lambda");
 export const chartSocket   = new SolenoidSocket("chart");
+export const documentSocket = new SolenoidSocket("document");
 export const anySocket     = new SolenoidSocket("any");
 export const trueAnySocket = new SolenoidSocket("trueany");
 

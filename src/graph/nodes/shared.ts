@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { numberSocket, listSocket, numListSocket, tableSocket, strTableSocket, dateTableSocket, anyTableSocket, anyListSocket, stringSocket, strListSocket, strComboSocket, dateSocket, dateListSocket, dateComboSocket, complexSocket, complexListSocket, complexComboSocket, complexTableSocket, logicalSocket, logicalListSocket, logicalComboSocket, logicalTableSocket, frameSocket, cubeSocket, lambdaSocket, chartSocket, anySocket, trueAnySocket, AdoptiveSocket } from "../sockets";
+import { numberSocket, listSocket, numListSocket, tableSocket, strTableSocket, dateTableSocket, anyTableSocket, anyListSocket, stringSocket, strListSocket, strComboSocket, dateSocket, dateListSocket, dateComboSocket, complexSocket, complexListSocket, complexComboSocket, complexTableSocket, logicalSocket, logicalListSocket, logicalComboSocket, logicalTableSocket, frameSocket, cubeSocket, lambdaSocket, chartSocket, documentSocket, anySocket, trueAnySocket, AdoptiveSocket } from "../sockets";
 import { resolveColor, paletteStore, type PaletteSlot } from "../palette";
 import { type SolError } from "../errorValue";
 import { cellShortCircuit, guardFinite, COMPUTE } from "../valueKinds";
@@ -93,6 +93,8 @@ export const lambdaIn     = (label: string) => new ClassicPreset.Input(lambdaSoc
 export const lambdaOut    = (label: string) => new ClassicPreset.Output(lambdaSocket, label);
 export const chartIn      = (label: string) => new ClassicPreset.Input(chartSocket,   label);
 export const chartOut     = (label: string) => new ClassicPreset.Output(chartSocket,  label);
+export const documentIn   = (label: string) => new ClassicPreset.Input(documentSocket, label);
+export const documentOut  = (label: string) => new ClassicPreset.Output(documentSocket, label);
 export const anyOut       = (label: string) => new ClassicPreset.Output(anySocket,     label);
 
 // ─── Polyform result-type selector ────────────────────────────────────────────
