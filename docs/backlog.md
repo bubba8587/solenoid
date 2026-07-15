@@ -105,8 +105,11 @@ this backlog stays the per-item source of truth.
     unit. `mathFnResultDim` now handles a UnitCell angle (base-radians) per cell, but
     `resolveTrigModes` still reads ONE socket-level FC unit — the per-cell path needs
     the trig `Math` node to branch on each cell's `UnitCell` angle-dim, not the socket.
-  - [ ] **Frame popup / FrameChip column-unit rendering:** the column now carries a
-    `ColumnUnit`; the frame value viewers don't yet show it in the header/cells.
+  - [ ] **Cube popup FC controls:** frames + matrices + lists got the per-column
+    FC format+unit controls row / in-cell units in the value popup (2026-07-15g,
+    `components/fcControls.tsx` + `TablePopup`). Cubes are the remaining surface —
+    gated on typed `CubeColumn` (see "Lossless frame→cube" below); the same
+    controls drop in once cube columns carry type/unit.
 - [ ] **Header/body border seam under zoom — UNSOLVED, parked for a human/later
   model.** See dev-notes "UNSOLVED" for constraints + the two eliminated approaches.
 - [ ] **Deferred pile — RESOLVED 2026-07-05 (author ruled each):** still deferred =
@@ -160,7 +163,9 @@ this backlog stays the per-item source of truth.
   initially), the widening edges (uniform list carries its unit in, mixed list strips), FC
   `applyFcUnit` + Convert on tables (currently pass-through), display (chip/popup show the
   unit), and the `unitLattice` sweep. Lists stay per-cell (reaffirmed — the frame-row
-  duality).
+  duality). NB the matrix VALUE POPUP already has a display-only format+unit dropdown pair
+  (2026-07-15g, `formatControls: "matrix"`) — its format works today; its unit dropdown is
+  an inert label that starts converting for free once the tag exists.
 - [ ] **Formula ↔ node parity program — GREENLIT, build in a dedicated session** (author
   direction + decisions 2026-07-14, recorded as **D19**; supersedes the narrower "SETEQ as
   formula native" item) — converge the formula language and the node set; audit + tiers +

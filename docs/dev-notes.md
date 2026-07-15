@@ -5,6 +5,27 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### SESSION DIGEST (2026-07-15g — Value popup: reusable FC format+unit dropdowns per column)
+The value popup (`TablePopup`) gained a Format-Controller controls row between the header and the body
+for READ-ONLY frames and matrices, plus in-cell units for lists. The FC's own number-format and unit
+dropdowns were factored into `components/fcControls.tsx` (`useFcFormatOptions` hook +
+`FormatStyleSelect`/`DateStyleSelect`/`UnitSelect`); `FormatControllerNode` now consumes the same hook,
+so the menus (incl. active-pack units/formats) can't drift. **Frames** (`FrameChip` passes
+`formatControls: "columns"` + `columnUnits`): each number column stacks format-over-unit (FC order), a
+date column a date-style select; the unit converts the column's base-SI values into the chosen
+commensurable unit (`fcUnitToUnit` + `dimEqual` guard), the number format renders in-cell — the unit
+SYMBOL stays in the dropdown, not the cells. **Matrix** (`ArrayChip` passes `formatControls: "matrix"`
+for a read-only numeric 2-D value): one format+unit pair side by side (homogeneous); the format works,
+the unit is a display label until matrix units (D20) tag the value. **Lists** render dimensioned cells
+in-cell ("5 km", "5 m/s") from EVERY entry point — `toGrid` now formats a raw `UnitCell` (pins / the
+cable inspector pass the un-unwrapped value; the hero-box path already unwrapped). All DISPLAY-ONLY:
+the dropdowns re-render the on-screen grid only; the value and Copy/CSV stay raw (like the list
+Row/Column toggle). Popup-local state (`colFmt`), seeded from each column's `ColumnUnit`, reset per
+open. **Cubes deferred** — `CubeColumn` carries no type/unit (the "Lossless frame→cube / typed
+CubeColumn" backlog item is the prerequisite) and the cube popup uses a node-based cell renderer; the
+same controls drop in once cube columns are typed. Visual — author eyeball pending. tsc clean, 2781
+tests green.
+
 ### SESSION DIGEST (2026-07-15f — List popup: display-only vertical (Row/Column) layout)
 The List popup (`TablePopup`, `state.list`) gained a **Row / Column** toggle in the footer: Column
 renders the list DOWN a column (one value per line, nicer to read for a long list) instead of across a
