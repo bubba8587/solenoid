@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import type { TornadoNode as TornadoNodeType } from "../rete-nodes";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { useChartColors, TornadoBars } from "./chartView";
+import { collapseStore } from "../collapseStore";
 import { runTornado } from "../tornadoRun";
 import { processGraph } from "../process";
 
@@ -13,6 +14,10 @@ const TORNADO_CABLE_ONLY = new Set(["value"]);
 export function TornadoComponent({ data, emit }: NodeProps<TornadoNodeType>) {
   const [busy, setBusy] = useState(false);
   const { grid, axis } = useChartColors();
+  // Collapsed → the body (recharts bars) is CSS-hidden and only the hero value
+  // box shows, so drop the whole TornadoBars tree instead of leaving it mounted
+  // (a full BarChart per sensitivity row). Same pattern as Chart/Histogram.
+  const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
 
   async function onRun() {
     setBusy(true);
@@ -51,23 +56,27 @@ export function TornadoComponent({ data, emit }: NodeProps<TornadoNodeType>) {
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} keys={["value"]} cableOnlyKeys={TORNADO_CABLE_ONLY} />
-      <button
-        type="button"
-        className="solenoid-node__inline-input"
-        disabled={busy}
-        style={{ width: "100%", cursor: busy ? "default" : "pointer", textAlign: "center", opacity: busy ? 0.6 : 1 }}
-        onClick={onRun}
-        onPointerDown={(e) => e.stopPropagation()}
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        {busy ? "Running…" : "Run sensitivity"}
-      </button>
-      {results.length === 0 ? (
-        <div className="solenoid-node__text-empty" style={{ padding: "6px 2px" }}>
-          {busy ? "perturbing upstream inputs…" : "no upstream Number/Slider inputs found yet"}
-        </div>
-      ) : (
-        <TornadoBars data={normalized} grid={grid} axis={axis} />
+      {!collapsed && (
+        <>
+          <button
+            type="button"
+            className="solenoid-node__inline-input"
+            disabled={busy}
+            style={{ width: "100%", cursor: busy ? "default" : "pointer", textAlign: "center", opacity: busy ? 0.6 : 1 }}
+            onClick={onRun}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            {busy ? "Running…" : "Run sensitivity"}
+          </button>
+          {results.length === 0 ? (
+            <div className="solenoid-node__text-empty" style={{ padding: "6px 2px" }}>
+              {busy ? "perturbing upstream inputs…" : "no upstream Number/Slider inputs found yet"}
+            </div>
+          ) : (
+            <TornadoBars data={normalized} grid={grid} axis={axis} />
+          )}
+        </>
       )}
       <ValueDisplay value={data.cachedResult} />
     </NodeShell>
