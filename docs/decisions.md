@@ -460,6 +460,17 @@ stripped; structural matrices simply carry no unit. Also closes the Tier 4 "unit
 (a future 2-D formula path would share the homogeneous rule instead of diverging).
 **Cost accepted:** threading the tag through the matrix family + display + FC/Convert
 table handling is real, bounded work (backlog); until it lands, matrices stay unit-blind.
+**Representation (decided 2026-07-15, `0e5e5ae1`):** the one tag is a symbol-keyed
+`ColumnUnit` on the matrix's outer array (`unitValue.ts` `matrixUnitOf` /
+`withMatrixUnit` / `carryMatrixUnit`) — co-located like a frame's `__totalRows`,
+invisible to iteration / JSON / `Array.isArray(v[0])`, read only by unit-aware code.
+LOSSY by design (a fresh array from a transform drops it), so the unit-aware ops
+re-tag and everything else strips (the documented-strip above). A `MatrixValue`
+wrapper was rejected — matrices are detected structurally at ~20 sites, so wrapping
+would be a far larger blast radius for no semantic gain. Matrix-unit PERSISTENCE
+rides the producing node (Table Input's unit field), not the array. `applyFcUnit`
+tags a numeric matrix (landed); widening / ops / Table-Input UI / display / lattice
+are the remaining threading.
 **What would reverse it:** a real need for per-column units on anonymous matrices —
 which is what the FRAME is for; use a frame.
 
