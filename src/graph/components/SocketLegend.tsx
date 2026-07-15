@@ -11,7 +11,7 @@ import "./SocketLegend.css";
 // its list/2D sibling under one type label (number + numlist = "Numeric"). Each
 // dot carries `tip` — its precise per-dimension name, shown in the hover pill.
 type Dot = {
-  kind: "circle" | "square" | "grid" | "cube" | "lambda" | "chart" | "ring";
+  kind: "circle" | "square" | "grid" | "cube" | "lambda" | "chart" | "document" | "ring";
   color: string;
   tip?: string;
 };
@@ -49,10 +49,12 @@ const GROUPS: LegendGroup[] = [
     { kind: "cube", color: SOCKET_COLORS.cube,  tip: "Cube" },
   ] },
   // The OBJECT family — non-lattice, identity-only values distinguished by
-  // glyph, not colour (both green). Lambda = a function, Chart = a figure.
+  // glyph, not colour. Lambda = a function, Chart = a figure, Document = a Note/
+  // Report's whole content (for a document sink like Write to Obsidian).
   { label: "Special", dots: [
-    { kind: "lambda", color: SOCKET_COLORS.lambda, tip: "LAMBDA" },
-    { kind: "chart",  color: SOCKET_COLORS.chart,  tip: "Chart" },
+    { kind: "lambda",   color: SOCKET_COLORS.lambda,   tip: "LAMBDA" },
+    { kind: "chart",    color: SOCKET_COLORS.chart,    tip: "Chart" },
+    { kind: "document", color: SOCKET_COLORS.document, tip: "Document" },
   ] },
   // The wildcard ladder: any (one value) → anylist (1-D) → anytable (2-D),
   // plus the hollow ring = trueany, the accept-ANYTHING supremum.
@@ -207,6 +209,20 @@ function SocketGlyphSvg({ entry }: { entry: Dot }) {
           <rect x="2.6" y="7" width="1.7" height="3" />
           <rect x="5.15" y="4.4" width="1.7" height="5.6" />
           <rect x="7.7" y="6" width="1.7" height="4" />
+        </g>
+        <rect x="1" y="1" width="10" height="10" rx="0.5" fill="none" stroke="var(--socket-ring)" strokeWidth="2" />
+      </svg>
+    );
+  }
+  if (entry.kind === "document") {
+    return (
+      <svg width={14} height={14} viewBox="-1 -1 14 14" style={{ flexShrink: 0 }}>
+        {/* Square + two left-aligned horizontal bars (long top, shorter below) — a
+            page/document; same glyph as SocketComponent's document socket. */}
+        <rect x="0" y="0" width="12" height="12" rx="1.5" fill={entry.color} />
+        <g fill="var(--socket-ring)">
+          <rect x="2.8" y="3.7" width="6.4" height="1.7" rx="0.85" />
+          <rect x="2.8" y="6.6" width="4.1" height="1.7" rx="0.85" />
         </g>
         <rect x="1" y="1" width="10" height="10" rx="0.5" fill="none" stroke="var(--socket-ring)" strokeWidth="2" />
       </svg>

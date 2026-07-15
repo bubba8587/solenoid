@@ -6,7 +6,7 @@ import { socketHighlightStore, dragSocketKey } from "../cableState";
 import { SolenoidSocket, SOCKET_TYPE_LABELS } from "../sockets";
 import { cubeTransform, CUBE_FILL_PATH } from "./cubeGlyph";
 
-const SQUARE_TYPES = new Set(["list", "strlist", "datelist", "numlist", "table", "frame"]);
+const SQUARE_TYPES = new Set(["list", "strlist", "datelist", "numlist", "table", "frame", "chart", "document"]);
 
 const { RefSocket } = Presets.classic;
 

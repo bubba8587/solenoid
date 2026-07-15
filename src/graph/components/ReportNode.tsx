@@ -111,7 +111,7 @@ export function ReportComponent({ data, emit }: NodeProps<ReportNodeType>) {
           })}
         </div>
       )}
-      <div className="solenoid-report__content">
+      <div className="solenoid-report__content" style={{ position: "relative" }}>
         <button
           type="button"
           className="solenoid-report__open"
@@ -129,12 +129,13 @@ export function ReportComponent({ data, emit }: NodeProps<ReportNodeType>) {
             {data.embeds.length} embed{data.embeds.length === 1 ? "" : "s"}
           </span>
         )}
+        {/* The `document` OUTPUT — wire the whole report into a document sink (Write
+            to Obsidian). Hosted in the content row so it lines up with "Open report";
+            the row is the positioning context (its 50% centers the dot on the button). */}
+        {data.outputs.document && (
+          <NodeSocket side="output" socketKey="document" nodeId={data.id} emit={emit} payload={data.outputs.document.socket} />
+        )}
       </div>
-      {/* The `document` OUTPUT socket (right edge) — wire the whole report into a
-          document sink (Write to Obsidian). Position: author to eyeball. */}
-      {data.outputs.document && (
-        <NodeSocket side="output" socketKey="document" nodeId={data.id} emit={emit} payload={data.outputs.document.socket} />
-      )}
     </div>
   );
 }

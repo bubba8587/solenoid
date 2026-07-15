@@ -51,6 +51,7 @@ export function SocketComponent({ data }: { data: ClassicPreset.Socket }) {
   const isCube = dataType === "cube";
   const isLambda = dataType === "lambda";
   const isChart = dataType === "chart";
+  const isDocument = dataType === "document";
   const isTrueAny = dataType === "trueany";
 
   return (
@@ -112,6 +113,20 @@ export function SocketComponent({ data }: { data: ClassicPreset.Socket }) {
             <rect x="2.6" y="7"   width="1.7" height="3" />
             <rect x="5.15" y="4.4" width="1.7" height="5.6" />
             <rect x="7.7" y="6"   width="1.7" height="4" />
+          </g>
+          <rect x="1" y="1" width="10" height="10" rx="0.5" fill="none" stroke="var(--socket-ring)" strokeWidth="2" />
+        </>
+      ) : isDocument ? (
+        <>
+          {/* Document value: same SQUARE + inset border as the chart glyph (object/
+              "Special" family), but two LEFT-ALIGNED horizontal rounded bars — a long
+              one across the top, a shorter one below — reading as lines of a page.
+              Both stay INSIDE the inset border ring (x≥2.7, y within 3–8), never
+              touching it. */}
+          <rect x="0" y="0" width="12" height="12" rx="1.5" fill={color} />
+          <g fill="var(--socket-ring)">
+            <rect x="2.8" y="3.7" width="6.4" height="1.7" rx="0.85" />
+            <rect x="2.8" y="6.6" width="4.1" height="1.7" rx="0.85" />
           </g>
           <rect x="1" y="1" width="10" height="10" rx="0.5" fill="none" stroke="var(--socket-ring)" strokeWidth="2" />
         </>
