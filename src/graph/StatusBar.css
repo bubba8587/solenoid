@@ -150,7 +150,7 @@ button.solenoid-statusbar__calc--dirty {
   padding: 20px 22px 18px;
   background: var(--panel-bg);
   border: 1px solid var(--panel-border);
-  border-radius: 12px;
+  border-radius: 8px;
   box-shadow: var(--shadow-pop);
   color: var(--text);
 }

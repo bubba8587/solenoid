@@ -181,9 +181,6 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [AngleDialNode,   comp(AngleDialComponent)],
   [SlicerNode,      comp(SlicerComponent)],
   [CableSwitchNode, comp(CableSwitchComponent)],
-  // ImportObsidianNode EXTENDS NoteNode, and component lookup is `instanceof`
-  // first-match (areaPresets.ts) — so the subclass MUST precede its base here, or
-  // an Imported Note resolves to the plain NoteComponent.
   [ImportObsidianNode, comp(ImportObsidianComponent)],
   [NoteNode,        comp(NoteComponent)],
   [ReportNode,      comp(ReportComponent)],
@@ -489,3 +486,17 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [ExpectNode,            comp(ExpectComponent)],
   [TornadoNode,           comp(TornadoComponent)],
 ];
+
+// Component lookup: exact constructor first (a Map hit), then the ordered
+// `instanceof` scan for subclasses that deliberately reuse a base component
+// (e.g. TvmNode → EquationComponent). The exact pass means a REGISTERED subclass
+// (ImportObsidianNode extends NoteNode) resolves to its own component no matter
+// where it sits in the list — entry order is not load-bearing.
+const componentByCtor = new Map<NodeCtor, AnyNodeComponent>(NODE_COMPONENTS);
+
+export function componentForNode(payload: object): AnyNodeComponent | null {
+  const exact = componentByCtor.get(payload.constructor as NodeCtor);
+  if (exact) return exact;
+  const hit = NODE_COMPONENTS.find(([Ctor]) => payload instanceof Ctor);
+  return hit ? hit[1] : null;
+}
