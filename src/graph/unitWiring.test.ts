@@ -182,6 +182,16 @@ describe("custom units — an opaque free-text unit is its own dimension", () =>
     expect(unitLabelOf(arithmeticCell("mul", a as never, foo as never))).toBe("foo·poop");
   });
 
+  it("custom axes are case-INSENSITIVE: Poop + poop adds (same quantity, one axis)", () => {
+    // Two FCs differing only in typed case must not #UNIT! against each other; the
+    // typed casing still shows through the display id.
+    const a = applyFcUnit(2, "custom", "Poop");
+    const b = applyFcUnit(3, "custom", "poop");
+    const sum = arithmeticCell("add", a as never, b as never);
+    expect(isSolError(sum)).toBe(false);
+    expect(magnitudeOf(sum)).toBe(5);
+  });
+
   it("a bare number still ADOPTS a custom unit (poop × 2 = poop, poop + 3 = poop)", () => {
     const p = applyFcUnit(2, "custom", "poop");
     expect(unitLabelOf(arithmeticCell("mul", p as never, 2 as never))).toBe("poop");

@@ -26,7 +26,11 @@ export type BaseDim = (typeof BASE_DIMS)[number];
 // `poop + s` is `#UNIT!` — instead of collapsing to dimensionless (which made
 // `poop ÷ s` read as `1/s` = Hz). The prefix can't collide with a base dim name.
 export const CUSTOM_DIM_PREFIX = "custom:";
-export const customDim = (name: string): Dim => ({ [CUSTOM_DIM_PREFIX + name]: 1 });
+// The AXIS is case-insensitive ("Widgets" and "widgets" are the same quantity —
+// two FCs differing only in case must add, not #UNIT!); the typed casing still
+// shows via the annotation's display id. formatDim's derived label reads the
+// normalized axis (lowercase) — the display-id path covers user-facing casing.
+export const customDim = (name: string): Dim => ({ [CUSTOM_DIM_PREFIX + name.trim().toLowerCase()]: 1 });
 
 /** A dimension = exponents over the base dims AND any `custom:<name>` axes. Sparse
  *  — absent key ⇒ 0. */
