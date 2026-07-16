@@ -222,6 +222,12 @@ export function HtmlCanvasLayer() {
         readSelection();
         holder.style.visibility = "hidden"; // keeps layout + the in-flight drag alive (unlike display:none)
         holder.classList.add("solenoid-html-frozen"); // freeze DOM-only cable flow to match the static canvas
+        // Promote the holder to its own compositor layer for the gesture: the DOM-only
+        // subset (conduits + their cables) is the only painted content, and WITHOUT a
+        // cached layer some transform updates repaint it per frame — the conduit then
+        // visibly trails the canvas-drawn graph during a pan. Composited, the per-frame
+        // transform is GPU-only. Gesture-scoped so the idle DOM pays no layer memory.
+        holder.style.willChange = "transform";
         showDomOnly(); // but keep DOM-only nodes (conduits) + their cables visible through the canvas
         engine.setActive(true);
       }
@@ -232,6 +238,7 @@ export function HtmlCanvasLayer() {
       gesturing = false;
       holder.style.visibility = "";
       holder.classList.remove("solenoid-html-frozen"); // resume cable flow
+      holder.style.willChange = "";
       hideDomOnly(); // drop the per-element override; the holder is fully visible again
       engine.setActive(false);
     };
@@ -341,6 +348,12 @@ export function HtmlCanvasLayer() {
     // this makes the culprit readable from the console instead of guessed.
     const triggers: Record<string, number> = {};
     (window as unknown as { __hcTriggers?: Record<string, number> }).__hcTriggers = triggers;
+    // Live renderer stats (console): fps, drawMs, visible/total, built (mip pyramids),
+    // `slow` = visible nodes re-rasterized per frame (the pan-jank suspect), `failed` =
+    // permanently unbuildable pyramids, domOnly = elements kept as live DOM through a
+    // gesture (conduits + their cables + unresolvable cables + the standoff svg).
+    (window as unknown as { __hcStats?: () => unknown }).__hcStats =
+      () => ({ ...engine.getStats(), domOnly: domOnlyEls.length });
     const count = (cause: string) => { triggers[cause] = (triggers[cause] ?? 0) + 1; };
     const fullRebuild = (cause: string) => () => { count(cause); scheduleRebuild(); };
     // NOT subscribed: cableValueStore — every value change that repaints a card
