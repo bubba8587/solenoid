@@ -17,10 +17,11 @@ describe("socketGlyphKind", () => {
       expect(socketGlyphKind(t)).toBe("split");
     }
   });
-  it("2-D types → grid", () => {
-    for (const t of ["table", "frame", "strtable", "datetable", "anytable", "logicaltable"]) {
+  it("2-D matrices → grid; the FRAME has its own glyph (sheet-with-header, 2026-07-16)", () => {
+    for (const t of ["table", "strtable", "datetable", "anytable", "logicaltable"]) {
       expect(socketGlyphKind(t)).toBe("grid");
     }
+    expect(socketGlyphKind("frame")).toBe("frame");
   });
   it("cube → hex; trueany → ring; undefined → circle", () => {
     expect(socketGlyphKind("cube")).toBe("hex");

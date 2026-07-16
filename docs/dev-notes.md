@@ -95,8 +95,22 @@ pinned). **Item B SHIPPED:** the Reference Socket tab is now a data-model chapte
 frame/cube outputs, logical bridge, Any ladder + hollow-ring adoption, object family), the coercion
 boundary (list = ONE ROW, blank = null, never-coerce-the-Source), and the UNITS chapter (per-rank
 carrier table — list per-element vs matrix whole-grid vs frame per-column; adoption, ratio, no-FX
-currencies, custom dims, format-vs-unit split). REMAINING: item A (Frame glyph proposal) + the two
-flagged author calls in the backlog.
+currencies, custom dims, format-vs-unit split). **Turns 10-12 (author-driven, rapid-fire):** Table Input trailing blank rows kept (`d0bb446` — only
+the newline TERMINATOR + trailing blank COLUMN trim; single-col trailing blank row gets its own
+terminator in rawCellsToText). Omitted formula args = BLANK (`9a7f425` — `IF(x,,y)` parses to a
+`blank` AST node → null; internal IF keeps null branches (Formula.js coerced to 0; Excel's omitted
+arg IS 0 — author chose null); IF joined NULL_INSPECTING; missing CONDITION still propagates).
+MUNIT 0-vs-blank SegToggle (same commit). **Filter `is blank`/`not blank` ops** (`12b5f3c` — all
+three condition cards; passesFilter pre-null-guard; errors are present-not-blank; Rust parity via
+is_null/is_not_null, cargo lib suite RUN IN-ENV (GTK deps + -j2): 72 green; value field hides;
+the "not written yet" guard skips only valued ops). **Grid Interpolate contested-box rule**
+(`4c7c930` + `204d855` — a bilinear box/span containing other known data defers to the spline; the
+sine-diagonal + 0-corners case now interpolates through the diagonal, edges curve too; hole-fill is
+now a spline fill, same value to float-epsilon on the pinned fixture). **Item A SHIPPED: the Frame
+socket glyph** — sheet-with-a-header (solid band + one column divider), own render branch in
+SocketComponent + legend `frame` kind + pixi `frame` GlyphKind (glyph test re-pinned), docs updated
+(data-types.md, CLAUDE.md legend line). REMAINING: the two flagged author calls in the backlog
+(bare-number adoption base-SI vs display; dimension-blind cube join key).
 
 ### SESSION DIGEST (2026-07-16 — UI corner-radius reduction pass)
 Node cards 8→6px; group/note/conduit and Note/Group-derived cards (Presentation, Report, Image,

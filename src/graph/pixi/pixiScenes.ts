@@ -328,6 +328,12 @@ function drawSocketGlyph(g: Graphics, s: SnapSocket, lx: number, ly: number, r: 
         .stroke({ width: 1, color: ring, alpha: 0.8 });
       g.roundRect(lx - r + 1, ly - r + 1, 2 * r - 2, 2 * r - 2, 1.5).stroke(ringStroke);
       break;
+    case "frame": // Frame: sheet with a header — solid band + one column divider
+      g.roundRect(lx - r, ly - r, 2 * r, 2 * r, 2).fill(s.color);
+      g.rect(lx - r + 2.5, ly - r + 2.5, 2 * r - 5, 2.1).fill({ color: ring, alpha: 0.8 });
+      g.moveTo(lx, ly - r + 5.7).lineTo(lx, ly + r - 2.5).stroke({ width: 1, color: ring, alpha: 0.8 });
+      g.roundRect(lx - r + 1, ly - r + 1, 2 * r - 2, 2 * r - 2, 1.5).stroke(ringStroke);
+      break;
     case "ring": // trueany: hollow circle — border only, no fill
       g.circle(lx, ly, r - 1.25).stroke({ width: 2, color: s.color, alpha: 1 });
       break;

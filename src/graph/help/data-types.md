@@ -1,4 +1,4 @@
-A socket's **colour** is the type of value it carries; its **shape** is the dimension — a circle is one value, a square a list, a grid a 2-D table.
+A socket's **colour** is the type of value it carries; its **shape** is the dimension — a circle is one value, a square a list, a grid a 2-D table. A **Frame**'s grid wears a solid **header band**: a table with named, typed columns, not just cells.
 
 Types don't mix on their own. A number won't drop into a text input, nor text into a date; a **Cast** node converts when you mean to cross over, element-wise on a list. The one built-in crossover is **Boolean ⟷ number**: TRUE / FALSE reads as 1 / 0 and back, the pair every spreadsheet already treats as the same.
 
