@@ -2155,6 +2155,16 @@ export class FillNode extends ClassicPreset.Node {
     return Object.keys(this.inputs).filter((k) => /^e\d+$/.test(k));
   }
 
+  // The missing-value sibling of IFERROR (the 2×2: detect × recover), so it passes
+  // units the same way: coalesce agrees across the list + its Else fallbacks; every
+  // other fill mode fills FROM the list's own values (or a dimensionless constant),
+  // so the list's unit rides through. Not `pure` — cells do change.
+  passthrough(): PassthroughSpec[] {
+    return this.op === "coalesce"
+      ? [{ output: "result", inputs: ["list", ...this.elseKeys()], combine: "agree" }]
+      : [{ output: "result", inputs: ["list"], combine: "single" }];
+  }
+
   data(inputs: { list?: Cell[][]; value?: number[] } & Record<string, Cell[][] | number[] | undefined>) {
     const arr = inputs.list?.[0] ?? null;
     if (!arr) { this.cachedList = []; return { result: [] }; }

@@ -60,8 +60,13 @@ and the policy table covers the escapees (visuals na, 2-D lambda family strip, B
 w/ note). **INTERPOLATE grid mode now CARRIES the D20 grid unit** (was silently dropping; dynamic
 socket, kept in POLICY by hand + behavior test). **Re-surfaced the flagged-but-dropped
 dimension-blind cube join key** (check-in #4) → backlog entry (design call, both key sides must
-change together — not patched blind). WALK CONTINUES into pre-units history: composite marker
-readouts → goal-seek markers → earlier 2026-07-15 → 2026-07-14 and older.
+change together — not patched blind). **Turn 5:** reviewed composite run-mode/marker readouts (clean, tested), `b2250c3` coercer unit fix
+(complete — only the `table` case rebuilds), `4533964` unified passthrough system (well-designed;
+one source of truth held), `9ad1037` adoptive base-rung coercion (well-pinned). Fix: **Fill/Coalesce
+was never opted into the passthrough system** — IFERROR (its 2×2 recover-sibling) passed units,
+Fill didn't; now declares coalesce=`agree` over list+Else rows, impute modes=`single` on the list.
+Pinned in passthroughSystem.test.ts. WALK CONTINUES at `7f2e3b3`/`91352f8` (selection fixes) →
+`5994176` (INDEX whole-axis) → the units run (`90f24d5`…`6751a2e`) → 2026-07-14 and older.
 
 ### SESSION DIGEST (2026-07-16 — UI corner-radius reduction pass)
 Node cards 8→6px; group/note/conduit and Note/Group-derived cards (Presentation, Report, Image,
