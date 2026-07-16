@@ -18,6 +18,28 @@ edge round independently. Possible directions not yet tried: draw the ring so it
 (e.g. `inset:0` + account for the 2px border, or a box-shadow ring) instead of a 2px-offset `::after`;
 or pixel-snap the card box. Radius itself is correct; don't re-touch it. Parked by author.
 
+### SESSION DIGEST (2026-07-16b — commit-walk audit of develop, newest-first) [audit session]
+Standing audit walk (author-authorized refactors; author reviews at session end). Reviewed so far,
+newest-first: `f90a850` docs · `57831f8` integer dims · `8d4b416` radius pass · `9f3c760` TPS forecast ·
+`86f3de3`/`6a92675` Import-from-Obsidian · `060a345` Write-to-Obsidian · Surface series (`de76ec6` →
+`e3d10e1`, renderer math + node verified: depth convention, painter's sort, wall pick all correct) ·
+`7f3d375` Forecast toggle (labels already reconciled by the TPS commit). Fixes shipped (`8622a72`):
+- **Write-to-Obsidian chart export was silently broken**: `rasterizeSvg` string-prepended
+  `width`/`height` onto a root that (recharts) already has them — duplicate XML attrs are a fatal
+  parse error on an `image/svg+xml` blob, so every recharts chart ref exported as "". Now sets attrs
+  on a parsed DOM root + `XMLSerializer`.
+- Vault subfolder fields drop `.`/`..` segments (a stray `..` wrote outside the vault).
+- `componentForNode` in nodeRegistry: exact-constructor Map first, ordered `instanceof` fallback —
+  the `86f3de3` "subclass must precede base" ordering rule is no longer load-bearing; a
+  catalogRegistry test pins every registered class → its own component.
+- Group dims integer-rounded in `makeGroupFromSelection` + `autofitGroupBox` (the 57831f8 pass missed
+  both, so an autofit re-introduced fractional dims); `GROUP_MIN_W/H` now shared constants.
+- surfaceFit: loop min/max (spread blew the arg limit on huge grids). Radius stragglers: nbmodal
+  panel + mobile menu sheet → 8px.
+Checks: `tsc` clean, 2911 green. Sink-node invariant verified on WriteObsidian (`enabled` not in the
+copyPaste whitelist — loads start disarmed). WALK CONTINUES at `1cdb519` (gray tri-split swatch) →
+`ec53ed7`/`d43313c` (document socket) → `obsidianMarkdown.ts` pure serializer → older history.
+
 ### SESSION DIGEST (2026-07-16 — UI corner-radius reduction pass)
 Node cards 8→6px; group/note/conduit and Note/Group-derived cards (Presentation, Report, Image,
 SessionHistory, SvgPicker) brought in line (inner header/footer corners track their card). Overlay chrome
