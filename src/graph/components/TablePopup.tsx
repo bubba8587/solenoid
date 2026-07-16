@@ -119,15 +119,13 @@ function toMarkdown(grid: string[][], cellType: CellType, columnTypes: CellType[
   return [head, sep, ...body].map((r) => `| ${r.join(" | ")} |`).join("\n");
 }
 // Parse the CSV-view text back into a raw string grid (cells split on commas).
-// Blank lines are KEPT as blank rows — the editors never coerce the Source
-// (author 2026-07-16); a blank row is a row of missing cells, and dropping it
-// here deleted it on save. Cells stay strings — fromGrid coerces on save.
+// Blank lines are KEPT as blank rows wherever they sit — leading, interior,
+// trailing — the editors never coerce the Source (author 2026-07-16); a blank
+// row is a row of missing cells, and dropping it here deleted it on save. Only
+// the final newline TERMINATOR's phantom row drops (parseCsvRows handles it).
+// Cells stay strings — fromGrid coerces on save.
 function parseCSV(text: string): string[][] {
-  const raw = parseCsvRows(text, { keepBlankLines: true }).map((row) => row.map((c) => c.trim()));
-  // Only TRAILING blank rows are typing artifacts (the trailing newline) — drop
-  // those, keep interior/leading ones (same rule as tableRawCells).
-  while (raw.length > 0 && raw[raw.length - 1].every((c) => c === "")) raw.pop();
-  return raw;
+  return parseCsvRows(text, { keepBlankLines: true }).map((row) => row.map((c) => c.trim()));
 }
 
 // Spreadsheet column labels: A, B, … Z, AA, AB, …

@@ -38,7 +38,15 @@ export function parseCsvRows(text: string, opts: CsvOptions = {}): string[][] {
     skipEmptyLines: opts.keepBlankLines ? false : "greedy",
     // header:false, dynamicTyping:false are the defaults — we want raw rows.
   });
-  return result.data;
+  const rows = result.data;
+  // keepBlankLines: a single FINAL newline is a line TERMINATOR, not a blank row
+  // — Papa emits a phantom [""] for it ("1,2\n" → 2 rows). Pop exactly that one;
+  // deliberately typed blank lines (even trailing: "1,2\n\n") stay as rows.
+  if (opts.keepBlankLines && normalized.endsWith("\n")) {
+    const last = rows[rows.length - 1];
+    if (last && last.length === 1 && last[0] === "") rows.pop();
+  }
+  return rows;
 }
 
 /** Parse a single CSV line into its fields (the first row of the text). */
