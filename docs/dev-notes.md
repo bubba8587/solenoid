@@ -18,6 +18,34 @@ edge round independently. Possible directions not yet tried: draw the ring so it
 (e.g. `inset:0` + account for the 2px border, or a box-shadow ring) instead of a 2px-offset `::after`;
 or pixel-snap the card box. Radius itself is correct; don't re-touch it. Parked by author.
 
+### SESSION DIGEST (2026-07-16d — fun-nodes waves: charts, draw-controls, 7-seg; scrubber fix)
+Author picked from a brainstorm ("widgets, controls, fun charts" — inspired by Surface/Grid
+Interpolate); rejected: Play node (the Slider already has play+speed), Choice node, standalone lamp
+(→ Alert if anything). Shipped in three pushes (`46e4903`, `9f5ed78`):
+- **Chart wave (7 nodes, all canvas-drawn like SurfaceView, ChartValue payloads → Report-embeddable,
+  one shared component factory `FigureNodes.tsx`, views in `chartCanvasViews.tsx`):** **Contour**
+  (Surface's flat twin — same bordered grid, bilinear bands + marching-squares iso-lines),
+  **Waterfall** (Label+Delta frame → bridge with computed Total), **Candlestick** (Date+OHLC frame,
+  the Data Feed shape), **Boxplot** (per numeric column; PERCENTILE.INC quartiles, Tukey whiskers,
+  outlier dots — `boxplotStats`/`quantileSorted` exported + tested), **Calendar** (weeks×weekdays year
+  grid; date column read as raw serials), **Waffle** (10×10 largest-remainder shares; single 0..1
+  value = fraction), **Vector Field** (u/v matrices → arrows, viridis magnitude). Visuals pane
+  regrouped (Distribution / Proportion / Grids & Fields / Time & Finance); Contour/Quiver = "na" in
+  the matrix-unit POLICY table.
+- **Controls wave:** **Point Plotter** (click/drag/right-click-delete points on a plane → X/Y lists),
+  **Curve** (draggable control points, Fritsch–Carlson monotone spline — no overshoot — sampled to a
+  list + X positions), **Grid Painter** (brush-paint a matrix; right-drag erases to null), all
+  persisting as TEXT (`pointsText` added to INIT_FIELD_ORDER; Grid Painter reuses `tableText`).
+  **7-Segment** readout (flat: accent segments over faint ghosts, NO flap/skeuomorphism per author +
+  DESIGN.md; all-dash overflow; pass-through like Gauge).
+- **Scrubber fix (author-reported):** Number Input's main field had NO scrub handlers (only inline row
+  literals did) — extracted `useNumberScrub`, wired it in; fine-step math fixed (Math.round(steps ×
+  mult) could only yield integers, so Alt-0.1× was a slower integer scrub).
+- Next (author-queued): table-operation timesaver research delivered in chat — Fill Down/Up (frame),
+  Replace Values, Merge Columns, Add Index matrix/two-way mode, Head→First/Last/Skip/Range,
+  multi-key Frame Sort, Promote Headers, Drop blank rows, Computed Column, Data Table sweep.
+2964 green; tsc clean.
+
 ### SESSION DIGEST (2026-07-16c — Add-menu pane budget + search fix) [audit session, author-requested]
 Author goal: every Add-menu pane ≤ 12 rows (no scrollbars; the panel scroll-caps at ~392px). Seven
 panes were over (worst: Table verbs 20, Aggregate 19, Geometry-with-packs 15). All now ≤ 12 with packs
