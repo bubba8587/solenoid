@@ -18,6 +18,23 @@ edge round independently. Possible directions not yet tried: draw the ring so it
 (e.g. `inset:0` + account for the 2px border, or a box-shadow ring) instead of a 2px-offset `::after`;
 or pixel-snap the card box. Radius itself is correct; don't re-touch it. Parked by author.
 
+### GPU renderer — the pan-perf regression ROOT CAUSE (2026-07-16, fixed `e3097921`)
+`__hcStats()` on the PF-seed benchmark read `built: 0, failed: 114` — NO mip pyramid ever built, so
+every visible node re-rasterized via drawElementImage on EVERY pan frame (fps 165 → ~45; drawMs≈0 is
+misleading — the raster cost lands in the browser's paint, not the measured JS). Cause is WICG API
+drift, confirmed against the current html-in-canvas spec: **`ElementImage` is only
+`{width, height, close()}` — NOT an ImageBitmapSource** — so `createImageBitmap(captureElementImage(el))`
+(which early builds tolerated) rejects in Chrome 149/150 origin-trial builds. Fix: when the bitmap
+paths fail, raster each clone into the MAIN canvas during the `paint` event (spec: draws land in the
+current frame; rendering is explicitly read-back-allowed), snapshot the region with
+`createImageBitmap(canvas, …)` (copies at invocation), build the pyramid from that; drawFrame clears
+within the same paint task so scratch pixels never present. Batched 16/paint, retries for clones that
+missed the latest rendering update, a one-shot blank-readback validation (a deferred-raster build can
+never cache blank textures), in-flight marking. Diagnostics that found it and stay in: `__hcStats()`
+(built/failed/slow/domOnly), `__hcTriggers` (rebuild causes), `__hcProbe()` (verbose per-stage pipeline
+probe with real error text). Untested secondary suspect (author): drill-in alternate-canvas overhead —
+if pan is still rough with `built≈total`, compare a composite-free doc against the PF seed.
+
 ### SESSION DIGEST (2026-07-16f — 1.2 author-eyeball round 1 fixes: GPU renderer, drill-in cable-drag, chart polish)
 Author walked items 1–19 of the release eyeball; this session fixed what it surfaced.
 - **GPU renderer (HTML-in-Canvas) regressions:** (1) collapsed-group members drew during pans —
