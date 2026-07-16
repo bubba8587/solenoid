@@ -29,8 +29,10 @@ function onMove(e: PointerEvent) {
   const minW = Math.max(MIN_CARD_W, min?.w ?? 0);
   const minH = Math.max(MIN_BOX_H, min?.h ?? 0);
   nodeSizeStore.set(active.nodeId, {
-    w: Math.max(minW, active.startW + (e.clientX - active.sx) / active.k),
-    h: Math.max(minH, active.startH + (e.clientY - active.sy) / active.k),
+    // Integer dims so the right/bottom edge lands on a whole pixel (a fractional
+    // size renders the inset:-2px selection ring 0.5px off on that edge).
+    w: Math.round(Math.max(minW, active.startW + (e.clientX - active.sx) / active.k)),
+    h: Math.round(Math.max(minH, active.startH + (e.clientY - active.sy) / active.k)),
   });
 }
 

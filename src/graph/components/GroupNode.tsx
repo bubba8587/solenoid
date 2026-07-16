@@ -179,8 +179,8 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
     };
 
     const move = (ev: PointerEvent) => {
-      node.width = Math.max(140, startW + (ev.clientX - startX) / k);
-      node.height = Math.max(90, startH + (ev.clientY - startY) / k);
+      node.width = Math.round(Math.max(140, startW + (ev.clientX - startX) / k));
+      node.height = Math.round(Math.max(90, startH + (ev.clientY - startY) / k));
       void area?.update("node", node.id);
     };
     const up = () => {
@@ -193,8 +193,8 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
       if (gridSnapStore.get()) {
         const pos = area?.nodeViews.get(node.id)?.position;
         if (pos) {
-          node.width = Math.max(140, snapCoord(pos.x + node.width) - pos.x);
-          node.height = Math.max(90, snapCoord(pos.y + node.height) - pos.y);
+          node.width = Math.round(Math.max(140, snapCoord(pos.x + node.width) - pos.x));
+          node.height = Math.round(Math.max(90, snapCoord(pos.y + node.height) - pos.y));
           void area?.update("node", node.id);
         }
       }
