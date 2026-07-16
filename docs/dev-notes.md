@@ -53,9 +53,15 @@ whole-row cube slice (`list.ts`) dropped per-column types. Both carry `type` now
 `relateFramesToCube`/`subCube` already carried it. MODE consolidation (`3e35bfd`) reviewed — sound;
 aggregate-side single-value is inherent (cell = scalar). Author queued two items → backlog: Frame
 socket unique glyph; Reference overlay Socket tab → full data-model chapter (types/units/
-dimensionality/coercion). WALK CONTINUES at `dc8c360` (INTERPOLATE add) → `5aae6b6`/`110a2b8` docs →
-older history (pre-2026-07-15). (Coordination check-ins reviewed these contemporaneously; walking
-them anyway for what the check-ins missed.)
+dimensionality/coercion). **Turn 4:** reviewed `6343f4d` (WORKDAY holidays — Excel-correct), `636308c` (matrix-unit policy
+guard), `39b487a` (cube per-cell units). Findings: **the policy guard's completeness sweep only saw
+matrix.ts** — registry-wide there are 16 matrix-taking nodes; the sweep now walks NODE_COMPONENTS
+and the policy table covers the escapees (visuals na, 2-D lambda family strip, BuildFrame strip
+w/ note). **INTERPOLATE grid mode now CARRIES the D20 grid unit** (was silently dropping; dynamic
+socket, kept in POLICY by hand + behavior test). **Re-surfaced the flagged-but-dropped
+dimension-blind cube join key** (check-in #4) → backlog entry (design call, both key sides must
+change together — not patched blind). WALK CONTINUES into pre-units history: composite marker
+readouts → goal-seek markers → earlier 2026-07-15 → 2026-07-14 and older.
 
 ### SESSION DIGEST (2026-07-16 — UI corner-radius reduction pass)
 Node cards 8→6px; group/note/conduit and Note/Group-derived cards (Presentation, Report, Image,

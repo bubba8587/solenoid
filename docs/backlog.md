@@ -145,6 +145,14 @@ this backlog stays the per-item source of truth.
   confidence-level example).
 ## Nodes / engine
 
+- [ ] **Dimension-blind cube join key** (flagged in check-in #4 2026-07-15, never fixed —
+  re-surfaced by the 2026-07-16 audit): `cellKeyId` (frame.ts) keys a dimensioned `UnitCell` on
+  its bare display magnitude, so "5 km" and "5 kg" collide as the same Nest/relate join key.
+  Narrow (join keys are rarely physical quantities). The naive fix (append `formatDim` to the key)
+  would ALSO stop a unit-locked column matching a bare-number key column — a likelier real join —
+  so both sides (frame column unit + cube UnitCell dim) must be keyed consistently, and the
+  bare↔united compat question decided first. Design call, not a blind patch.
+
 - [ ] **Units by dimensionality (D20) — COMPLETE across all five ranks; only a truly moot tail
   is unbuilt.** DONE (2026-07-15): scalar/list (`UnitCell`), frame (`ColumnUnit`), matrix (whole-grid
   Symbol tag) with the FULL op POLICY + a machine-checked completeness guard (`matrixUnitPolicy.test.ts`
