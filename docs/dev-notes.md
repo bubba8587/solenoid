@@ -75,8 +75,20 @@ document). **Turn 7 (author-directed):** **D21 recorded** — selection surfaces
 audit calls default to FIX. Ctrl+A now skips collapsed-group-hidden members AND isolate's receded
 non-focus nodes (opacity .08, pointer-events none); the lasso gains the isolate filter too (it
 already skipped collapse-hidden). Deleting a collapsed group never deletes members, so nothing
-becomes unreachable. WALK CONTINUES at the remaining units run (`90f24d5` ratio minting, `6bbb71e`
-opaque custom dims, `1c6c5e4` Convert primacy) → 2026-07-14 and older.
+becomes unreachable.
+**Turn 8 (incl. the author-directed formula-editor work, `d843b27`):** formula editor gained curated
+signatures + a param-hint bar (arg-count surfacing, author request), targeted parse-failure messages
+(braces/=/semicolons/parens — the user's exact trap), lambda-family inline formulas reject unknown
+names with the LAMBDA-capture guidance, and the function NAME LIST was fixed (registerInternal names
++ two-level dotted + function-attached namespaces were missing → XLOOKUP/XMATCH/INDEX/T.DIST/NORM.S.*
+worked but never autocompleted; the D10-eliminated classics are now excluded from autocomplete).
+Units-run audit: ratio minting + Convert primacy clean; **custom FC unit axes made case-INSENSITIVE**
+("Widgets"+"widgets" #UNIT!'d as different dimensions; display keeps typed case); the Expression-`/`-
+no-ratio follow-up moved from a digest line into the backlog. Byte-order sort verified (data plane
+all through compareStrings; remaining localeCompare = UI lists only). **WALK VERDICT: diminishing
+returns below 2026-07-14** — older history (the 1.2 overnight build, v1.0/1.1) had contemporaneous
+audits and its current state is exercised by the guards added this session. NEXT TURN: the
+author-queued Reference-overlay Socket tab → data-model chapter; then the Frame-glyph design proposal.
 
 ### SESSION DIGEST (2026-07-16 — UI corner-radius reduction pass)
 Node cards 8→6px; group/note/conduit and Note/Group-derived cards (Presentation, Report, Image,

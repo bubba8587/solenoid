@@ -145,6 +145,11 @@ this backlog stays the per-item source of truth.
   confidence-level example).
 ## Nodes / engine
 
+- [ ] **Expression `/` doesn't mint a pure ratio** (flagged 2026-07-13 in the ratio digest, never
+  queued): the Divide NODE mints `5:1` on a same-dimension cancel; Expression strips UnitCells at
+  its boundary (not unitAware), so `a/b` there yields a bare number. Decide: leave (Expression is
+  deliberately type-agnostic — likely fine) or make Expression unit-aware someday. Terse call.
+
 - [ ] **Bare-number unit adoption is BASE-SI, not display-unit** (audit 2026-07-16): the 2026-07-13
   "dimensionless adopts the op's unit" decision pins `SUM(5 m, 2 m, 3)` (base = display, invisible)
   but for a scaled unit the bare cell adopts at its base-SI face value — `SUM(5 km, 3)` reads the 3
