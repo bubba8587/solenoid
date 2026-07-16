@@ -15,12 +15,18 @@ export interface CsvOptions {
    *  behavior is deterministic; real-world file ingestion (the CSV File / Web
    *  Source connection) turns it on so a European semicolon export still loads. */
   detectDelimiter?: boolean;
+  /** Keep blank / whitespace-only lines as single-empty-field rows instead of
+   *  dropping them. File ingestion wants them GONE (the default); a LITERAL
+   *  source whose raw text is the stored truth (Table Input) wants them KEPT —
+   *  a blank row the user typed is data (a row of missing cells), and dropping
+   *  it here silently deleted it from the Source on the next popup save. */
+  keepBlankLines?: boolean;
 }
 
-/** Parse CSV text into rows of string fields. Blank lines are dropped; quotes,
- *  embedded commas, doubled-quote escapes, embedded newlines, CRLF, and a
- *  leading BOM are all handled. Cells stay strings — callers do their own
- *  numeric coercion. */
+/** Parse CSV text into rows of string fields. Blank lines are dropped (unless
+ *  `keepBlankLines`); quotes, embedded commas, doubled-quote escapes, embedded
+ *  newlines, CRLF, and a leading BOM are all handled. Cells stay strings —
+ *  callers do their own numeric coercion. */
 export function parseCsvRows(text: string, opts: CsvOptions = {}): string[][] {
   // Normalize line endings first so a file with MIXED endings (CRLF rows but a
   // bare-LF final line, say) parses cleanly — Papa locks onto a single newline
@@ -29,7 +35,7 @@ export function parseCsvRows(text: string, opts: CsvOptions = {}): string[][] {
   const result = Papa.parse<string[]>(normalized, {
     delimiter: opts.detectDelimiter ? "" : ",", // "" → Papa auto-detects
     newline: "\n",
-    skipEmptyLines: "greedy", // drop blank and whitespace-only lines
+    skipEmptyLines: opts.keepBlankLines ? false : "greedy",
     // header:false, dynamicTyping:false are the defaults — we want raw rows.
   });
   return result.data;

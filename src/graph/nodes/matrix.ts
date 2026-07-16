@@ -146,14 +146,22 @@ export const TABLE_ELEM_SOCKET = {
 /** Split the literal text into RAW CELLS — lossless (parseCsvRows handles
  *  quoting); ragged rows pad with "" so the grid always shows a rectangle. */
 export function tableRawCells(text: string): string[][] {
-  const raw = parseCsvRows(text);
+  // keepBlankLines: the raw text is the STORED TRUTH — a blank line the user
+  // typed is a row of missing cells (author 2026-07-16: the editors never coerce
+  // the Source; only the DERIVED matrix coerces, blank → null). Dropping blank
+  // lines here didn't just blank the derived row — the grid popup re-serializes
+  // through this parse, so a popup save permanently DELETED the row from the text.
+  const raw = parseCsvRows(text, { keepBlankLines: true });
+  // TRAILING all-blank rows are typing artifacts (the newline at the end of the
+  // text), not data — same rule as the trailing column below. Interior and
+  // leading blank rows stay.
+  while (raw.length > 0 && raw[raw.length - 1].every((c) => c.trim() === "")) raw.pop();
   if (raw.length === 0) return [];
   let cols = raw.reduce((m, r) => Math.max(m, r.length), 0);
   // A TRAILING all-empty column is a typing artifact (a trailing comma on each
   // line), not data — left in, it silently promotes a list to a 2-D table and
   // flips downstream shape rules (Filter's predicate refuses genuine 2-D).
-  // Interior blanks are real missing cells and stay. (All-blank LINES never
-  // arrive — parseCsvRows' greedy skip drops them.)
+  // Interior blanks are real missing cells and stay.
   while (cols > 1 && raw.every((r) => (r[cols - 1] ?? "").trim() === "")) cols--;
   return raw.map((r) => Array.from({ length: cols }, (_, j) => (r[j] ?? "").trim()));
 }
