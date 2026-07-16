@@ -187,6 +187,7 @@ export function dimEval(node: Ast, env: DimEnv): DimResult {
     case "num":
     case "bool":
     case "str":
+    case "blank": // an omitted argument is a bare missing value
       return DIMENSIONLESS; // literals carry no unit (a string result is unitless)
     case "name":
       return env[node.name] ?? DIMENSIONLESS;

@@ -867,7 +867,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
         children: [
           { type: "table-mult",      label: "MMULT",     description: "Matrix multiply: A (m×n) × B (n×p) → result (m×p). Excel: MMULT.",                                    create: () => new TableMultNode(),                   parity: false },
           { type: "pair", children: [matDetLeaf("mdeterm"), matDetLeaf("minverse")] },
-          { type: "table-unit",      label: "MUNIT",     description: "n×n identity matrix: diagonal 1s, rest 0s. Excel: MUNIT.",                                             create: () => new TableUnitNode(),                   parity: false },
+          { type: "table-unit",      label: "MUNIT",     description: "n×n identity matrix: diagonal 1s, rest 0s — or blanks (nulls) via the toggle, so the off-diagonal stays out of sums. Excel: MUNIT.",                                             create: () => new TableUnitNode(),                   parity: false },
           { type: "table-transpose", label: "TRANSPOSE", description: "Flip rows and columns of a table. Excel: TRANSPOSE.",                                                    create: () => new TableTransposeNode(),              parity: false },
         ],
       },

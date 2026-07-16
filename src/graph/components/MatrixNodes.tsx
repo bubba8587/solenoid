@@ -14,9 +14,12 @@ import type {
 import {
   MAT_DET_OP_META, TABLE_RESHAPE_OP_META, TABLE_SELECT_OP_META, TABLE_TAKEDROP_OP_META,
 } from "../rete-nodes";
+import { useEffect, useState } from "react";
 import { InlineInputs } from "./inlineInput";
 import { ExtensibleInputs } from "./ExtensibleInputs";
 import { TableDisplay } from "./TableDisplay";
+import { SegToggle } from "./SegToggle";
+import { processGraph } from "../process";
 import { NodeShell, OpSelect, ValueDisplay, InlineOutputRows, useNodeField, type NodeProps } from "./nodeKit";
 
 // ─── MDETERM / MINVERSE ───────────────────────────────────────────────────────
@@ -52,8 +55,18 @@ export function TableMultComponent({ data, emit }: NodeProps<TableMultNodeType>)
 // ─── MUNIT ────────────────────────────────────────────────────────────────────
 
 export function TableUnitComponent({ data, emit }: NodeProps<TableUnitNodeType>) {
+  const [offDiag, setOffDiag] = useState(data.offDiag);
+  useEffect(() => { setOffDiag(data.offDiag); }, [data.offDiag]);
   return (
     <NodeShell node={data} emit={emit}>
+      <SegToggle
+        value={offDiag}
+        options={[
+          { value: "zero" as const, label: "0", title: "Off-diagonal cells are 0 (Excel MUNIT)" },
+          { value: "blank" as const, label: "blank", title: "Off-diagonal cells are blank (null) — skipped by sums and element-wise ops" },
+        ]}
+        onChange={(next) => { setOffDiag(next); data.offDiag = next; void processGraph(data.id); }}
+      />
       <InlineInputs node={data} emit={emit} />
       <TableDisplay table={data.cachedResult} label={data.label} />
     </NodeShell>

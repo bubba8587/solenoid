@@ -63,11 +63,11 @@ function matTranspose<T>(m: T[][]): T[][] {
     Array.from({ length: rows }, (_, i) => m[i][j]));
 }
 
-function matUnit(n: number): NumMat {
+function matUnit(n: number, offDiag: number | null = 0): Mat {
   const k = Math.round(n);
   if (k < 1) return [];
   return Array.from({ length: k }, (_, i) =>
-    Array.from({ length: k }, (_, j) => (i === j ? 1 : 0)));
+    Array.from({ length: k }, (_, j) => (i === j ? 1 : offDiag)));
 }
 
 // LU decomposition with partial pivoting for det and inverse.
@@ -351,18 +351,22 @@ export class TableUnitNode extends ClassicPreset.Node {
   label: string;
   cachedResult: Mat | null = null;
   literals: Record<string, number> = { n: 3 };
-  width = 180; height = 165;
+  /** Off-diagonal fill: 0 (Excel's MUNIT) or blank (null — missing, so the
+   *  off-diagonal stays out of sums/counts and element-wise combines). */
+  offDiag: "zero" | "blank" = "zero";
+  width = 180; height = 190;
 
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; offDiag?: "zero" | "blank" }) {
     super("TableUnit");
     this.label = init?.label ?? "MUNIT";
+    if (init?.offDiag) this.offDiag = init.offDiag;
     this.addInput("n", numIn("Size n"));
     this.addOutput("result", tableOut("n×n identity"));
   }
 
   data(inputs: { n?: number[] }) {
     const n = inputs.n?.[0] ?? this.literals.n ?? 3;
-    this.cachedResult = matUnit(n);
+    this.cachedResult = matUnit(n, this.offDiag === "blank" ? null : 0);
     return { result: this.cachedResult };
   }
 }

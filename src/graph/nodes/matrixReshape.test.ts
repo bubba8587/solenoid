@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { isSolError } from "../errorValue";
-import { TableTransposeNode, HStackTableNode, TableReshapeNode, TableSelectNode, TableTakeDropNode, ExpandNode, TableInfoNode, TableMultNode, MatDetNode, TableInputNode, tableRawCells, rawCellsToText, deriveTable } from "./matrix";
+import { TableTransposeNode, HStackTableNode, TableReshapeNode, TableSelectNode, TableTakeDropNode, ExpandNode, TableInfoNode, TableMultNode, MatDetNode, TableInputNode, TableUnitNode, tableRawCells, rawCellsToText, deriveTable } from "./matrix";
 import { SolenoidSocket, MutableSocket, type SocketDataType } from "../sockets";
 import { withMatrixUnit, matrixUnitOf, isUnitCell, type UnitCell } from "../unitValue";
 import { ListIndexNode } from "./list";
@@ -335,5 +335,19 @@ describe("structural reshapes carry the homogeneous matrix unit (D20, S3)", () =
     const out = n.data({ list: [tagged()], index: [1], column: [2] }) as { result: unknown };
     expect(isUnitCell(out.result)).toBe(true);
     expect((out.result as unknown as UnitCell).display).toBe("km");
+  });
+});
+
+describe("MUNIT off-diagonal toggle (author 2026-07-16)", () => {
+  it("default: Excel MUNIT — 0s off the diagonal", () => {
+    expect(new TableUnitNode().data({ n: [2] }).result).toEqual([[1, 0], [0, 1]]);
+  });
+  it("blank mode: off-diagonal cells are null (missing — skipped by sums)", () => {
+    const n = new TableUnitNode({ offDiag: "blank" });
+    expect(n.data({ n: [3] }).result).toEqual([
+      [1, null, null],
+      [null, 1, null],
+      [null, null, 1],
+    ]);
   });
 });
