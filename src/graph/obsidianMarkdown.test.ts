@@ -20,6 +20,16 @@ describe("frontmatterToYaml", () => {
     expect(yamlScalar("2026-01-01")).toBe('"2026-01-01"'); // number-like → quoted so it stays a string
     expect(yamlScalar("true")).toBe('"true"');
     expect(yamlScalar("")).toBe('""');
+    // Leading YAML indicators quote too (anchor/alias/tag/block/directive forms).
+    expect(yamlScalar("*anchor")).toBe('"*anchor"');
+    expect(yamlScalar("&ref")).toBe('"&ref"');
+    expect(yamlScalar("!tag")).toBe('"!tag"');
+    expect(yamlScalar("|block")).toBe('"|block"');
+    expect(yamlScalar("- item")).toBe('"- item"');
+    expect(yamlScalar("-")).toBe('"-"');
+    expect(yamlScalar(".5")).toBe('".5"');
+    expect(yamlScalar(".inf")).toBe('".inf"');
+    expect(yamlScalar("-item")).toBe("-item"); // plain '-' + non-space stays a plain scalar
   });
   it("a multi-line / tabbed string is quoted with the newline escaped (stays valid one-line YAML)", () => {
     // The bug this guards: a raw newline spliced into a flow scalar corrupts the

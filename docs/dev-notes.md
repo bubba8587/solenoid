@@ -37,8 +37,18 @@ newest-first: `f90a850` docs · `57831f8` integer dims · `8d4b416` radius pass 
 - surfaceFit: loop min/max (spread blew the arg limit on huge grids). Radius stragglers: nbmodal
   panel + mobile menu sheet → 8px.
 Checks: `tsc` clean, 2911 green. Sink-node invariant verified on WriteObsidian (`enabled` not in the
-copyPaste whitelist — loads start disarmed). WALK CONTINUES at `1cdb519` (gray tri-split swatch) →
-`ec53ed7`/`d43313c` (document socket) → `obsidianMarkdown.ts` pure serializer → older history.
+copyPaste whitelist — loads start disarmed).
+**Turn 2:** reviewed `1cdb519` (neutral cycle — solid, tested), `ec53ed7`/`d43313c` (document socket),
+`8008311`/`bf00b79` (DocumentValue plumbing), `03051f8` serializer, INTERPOLATE chain's converged
+state, SurfaceView projection math. Fixes: **the `document` socket had skipped the socketConnect full
+sweep** — object-family tests now loop `OBJECT_TYPES` (lambda/chart/document; identity-only + no
+cross-connect + wildcard lists include document), so the next object socket is covered by extending
+one array; `yamlScalar` quotes leading YAML indicators (`*anchor`, `&ref`, `- item`, `.5`, `.inf` —
+were emitted unquoted = misparsed frontmatter), tests pinned; `NEUTRAL_HEX` null-prototype (a stray
+stored slot like "constructor" hit `Object.prototype` and returned a function from resolveColor's
+"total function" path). WALK CONTINUES at `54c5ee0`/`063e256` (XLOOKUP cube dates) → `9ab3e48` →
+`dc8c360` (INTERPOLATE add) → MODE consolidation → older history. (Coordination check-ins reviewed
+these contemporaneously; walking them anyway for what the check-ins missed.)
 
 ### SESSION DIGEST (2026-07-16 — UI corner-radius reduction pass)
 Node cards 8→6px; group/note/conduit and Note/Group-derived cards (Presentation, Report, Image,

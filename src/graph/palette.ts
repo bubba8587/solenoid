@@ -513,10 +513,12 @@ export function initPalette() {
 // their own swatch in the grid (they're reachable only through the gray cycler).
 export const NEUTRAL_WHITE = "neutral-white";
 export const NEUTRAL_DARK = "neutral-dark";
-export const NEUTRAL_HEX: Record<string, string> = {
+// Null-prototype so a stray stored slot like "constructor" reads as undefined here
+// (resolveColor promises a hex for ANY input; a prototype hit would return a function).
+export const NEUTRAL_HEX: Record<string, string> = Object.assign(Object.create(null) as Record<string, string>, {
   [NEUTRAL_WHITE]: "#f3f4f6", // near-white (a hair off pure white so it reads as a swatch)
   [NEUTRAL_DARK]: "#3a3d42",  // much darker gray
-};
+});
 // Cycle order matches the split disc: upper-left white, middle gray, bottom-right dark.
 export const NEUTRAL_CYCLE = [NEUTRAL_WHITE, "gray", NEUTRAL_DARK] as const;
 export function isNeutralShade(slot: string): boolean {

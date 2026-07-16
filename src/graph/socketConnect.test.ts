@@ -254,7 +254,7 @@ describe("lattice invariants — TYPE separation + DIMENSIONAL flow (full sweep)
   // object family included (Display / selectors / Cast / Report refs / composite
   // ports / unwired Conduit lanes).
   it("`trueany` bridges everything, both directions", () => {
-    for (const t of [...allTypes, "anytable", "anylist", "frame", "cube", "lambda", "chart", "any"] as SocketDataType[]) {
+    for (const t of [...allTypes, "anytable", "anylist", "frame", "cube", "lambda", "chart", "document", "any"] as SocketDataType[]) {
       expect(canConnect(t, "trueany")).toBe(true);
       expect(canConnect("trueany", t)).toBe(true);
     }
@@ -272,7 +272,7 @@ describe("lattice invariants — TYPE separation + DIMENSIONAL flow (full sweep)
       expect(canConnect(FAM[f].list, "any")).toBe(false);   // 1-D can't narrow
       expect(canConnect(FAM[f].matrix, "any")).toBe(false); // 2-D can't narrow
     }
-    for (const t of ["anylist", "anytable", "frame", "cube", "lambda", "chart"] as SocketDataType[]) {
+    for (const t of ["anylist", "anytable", "frame", "cube", "lambda", "chart", "document"] as SocketDataType[]) {
       expect(canConnect(t, "any")).toBe(false);
     }
     expect(canConnect("any", "any")).toBe(true); // identity
@@ -284,6 +284,7 @@ describe("lattice invariants — TYPE separation + DIMENSIONAL flow (full sweep)
     }
     expect(canConnect("any", "lambda")).toBe(false);
     expect(canConnect("any", "chart")).toBe(false);
+    expect(canConnect("any", "document")).toBe(false);
   });
 
   // `anylist` is the rank-1 element-agnostic wildcard — the 1-D sibling of `anytable`.
@@ -313,22 +314,27 @@ describe("lattice invariants — TYPE separation + DIMENSIONAL flow (full sweep)
     expect(canConnect("anylist", "cube")).toBe(true);
   });
 
-  // The OBJECT socket family (`lambda`, `chart`) sits OUTSIDE the element×dimension
-  // lattice entirely — neither is in FAMILIES/MATRIX_TYPES/FAMILY_VALUE_TYPES, so
-  // `accepts()` falls through to identity + `trueany` only (no entry in SOCKET_ACCEPTS).
-  // `chart` is genuinely new (sockets.ts, alongside the pre-existing `lambda`); this
-  // machine-checks it got the identical identity-only treatment.
-  it("chart (like lambda) is identity-only: self + trueany, never a regular lattice type", () => {
-    expect(canConnect("chart", "chart")).toBe(true);
-    for (const t of [...allTypes, "anytable", "frame", "cube"] as SocketDataType[]) {
-      expect(canConnect("chart", t)).toBe(false);
-      expect(canConnect(t, "chart")).toBe(false);
+  // The OBJECT socket family (`lambda`, `chart`, `document`) sits OUTSIDE the
+  // element×dimension lattice entirely — none is in FAMILIES/MATRIX_TYPES/
+  // FAMILY_VALUE_TYPES, so `accepts()` falls through to identity + `trueany` only
+  // (no entry in SOCKET_ACCEPTS). Every member gets the identical identity-only
+  // treatment — extend OBJECT_TYPES when a new object socket ships and the sweep
+  // covers it for free.
+  const OBJECT_TYPES = ["lambda", "chart", "document"] as const satisfies readonly SocketDataType[];
+  it("object types are identity-only: self + trueany, never a regular lattice type", () => {
+    for (const o of OBJECT_TYPES) {
+      expect(canConnect(o, o)).toBe(true);
+      for (const t of [...allTypes, "anytable", "frame", "cube"] as SocketDataType[]) {
+        expect(canConnect(o, t)).toBe(false);
+        expect(canConnect(t, o)).toBe(false);
+      }
     }
   });
 
-  it("chart and lambda don't cross into each other — two distinct object-family members", () => {
-    expect(canConnect("chart", "lambda")).toBe(false);
-    expect(canConnect("lambda", "chart")).toBe(false);
+  it("object types don't cross into each other — distinct object-family members", () => {
+    for (const a of OBJECT_TYPES) for (const b of OBJECT_TYPES) {
+      if (a !== b) expect(canConnect(a, b)).toBe(false);
+    }
   });
 });
 
