@@ -4,7 +4,7 @@ import {
   mulUnits, divUnits, addUnits, subUnits, powUnits, compareUnits,
   forAggregateUnits, sameColumnUnit,
   matrixUnitOf, withMatrixUnit, carryMatrixUnit,
-  type UnitCell,
+  adoptMagnitude, type UnitCell,
 } from "./unitValue";
 import { parseUnit, isDimensionless, type Unit } from "./dimension";
 import { isSolError, solError } from "./errorValue";
@@ -172,6 +172,25 @@ describe("aggregator prep (step 6)", () => {
     const r2 = forAggregateUnits([3, cell(1, "m")]);
     expect(r2.error).toBeUndefined();
     if (!r2.error) expect(r2.dim).toEqual({ length: 1 });
+  });
+
+  it("adoption reads the bare number in the list's DISPLAY unit (author 2026-07-16: SUM(5 km, 3) = 8 km)", () => {
+    // The bare 3 means 3 km → 3000 base-SI, not 3 metres. A LEADING bare number
+    // adopts the km discovered later (the two-pass scan).
+    // An FC-authored cell carries its display id — that's what the bare 3 reads in.
+    const km = (v: number) => fromUnit(v, U("km"), "km");
+    const r = forAggregateUnits([km(5), 3]);
+    expect(r.error).toBeUndefined();
+    if (!r.error) expect(r.nums).toEqual([5000, 3000]);
+    const lead = forAggregateUnits([3, km(5)]);
+    expect(lead.error).toBeUndefined();
+    if (!lead.error) expect(lead.nums).toEqual([3000, 5000]);
+    // A display-LESS cell (no id to read the bare number in) keeps the face value.
+    const bare = forAggregateUnits([cell(5, "km"), 3]);
+    if (!bare.error) expect(bare.nums).toEqual([5000, 3]);
+    expect(adoptMagnitude(3, "km")).toBe(3000);
+    expect(adoptMagnitude(3, undefined)).toBe(3); // no display — face value
+    expect(adoptMagnitude(3, "definitely-not-a-unit")).toBe(3); // unresolvable — face value
   });
   it("all-bare list stays dimensionless (behavior no-op for today's lists)", () => {
     const r = forAggregateUnits([1, 2, 3]);

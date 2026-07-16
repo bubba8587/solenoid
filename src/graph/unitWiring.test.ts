@@ -192,6 +192,15 @@ describe("custom units — an opaque free-text unit is its own dimension", () =>
     expect(magnitudeOf(sum)).toBe(5);
   });
 
+  it("a bare number adopts in the DISPLAY unit: 5 km + 3 = 8 km (author 2026-07-16)", () => {
+    const km5 = applyFcUnit(5, "km");
+    const sum = arithmeticCell("add", km5 as never, 3 as never);
+    expect(magnitudeOf(sum)).toBe(8000); // base-SI metres — the 3 read as 3 km
+    expect((sum as UnitCell).display).toBe("km"); // display id rides (unitLabelOf shows the derived dim symbol)
+    // × keeps the face value — a bare factor is a factor, not a length.
+    expect(magnitudeOf(arithmeticCell("mul", km5 as never, 2 as never))).toBe(10000);
+  });
+
   it("a bare number still ADOPTS a custom unit (poop × 2 = poop, poop + 3 = poop)", () => {
     const p = applyFcUnit(2, "custom", "poop");
     expect(unitLabelOf(arithmeticCell("mul", p as never, 2 as never))).toBe("poop");

@@ -10,7 +10,7 @@
 
 import { type Unit, type Dim, parseUnit, dimEqual, DIMENSIONLESS, formatDim, customDim } from "./dimension";
 import { UNIT_ANNOTATIONS } from "./formatAnnotationStore";
-import { fromUnit, isUnitCell, isRatio, withDisplay, unitError, withMatrixUnit, type UnitCell as UnitCellT } from "./unitValue";
+import { fromUnit, isUnitCell, isRatio, withDisplay, unitError, withMatrixUnit, setDisplayScaleResolver, type UnitCell as UnitCellT } from "./unitValue";
 import { isSolError } from "./errorValue";
 
 // Units the dimension.ts parser can't spell (compound / non-metric areas & volumes,
@@ -193,3 +193,9 @@ export function fcUnitIdForUnit(u: Unit): string | undefined {
   }
   return sameDim;
 }
+
+// Upgrade unitValue's bare-number adoption resolver to the FULL FC unit table
+// (miles, gallons, currencies, the DIRECT/EXTRA sets) — its default only knows
+// the pure dimension.ts spellings. Module-load side effect; unitBridge is on
+// every compute path (coerceInputs), so the app always has the full table.
+setDisplayScaleResolver((id) => fcUnitToUnit(id)?.scale ?? null);
