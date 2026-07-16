@@ -11,6 +11,7 @@ import {
   nodeKindOf, NODE_KIND_ACCENTS,
 } from "./rete-nodes";
 import { setGroupsCollapsed } from "./groupPush";
+import { measuredBox } from "./nodeSize";
 import { appThemeStore } from "./appTheme";
 import { themeAccent, resolveColor, hexToRgba } from "./palette";
 import "./OutlinePanel.css";
@@ -156,14 +157,15 @@ export async function focusNode(id: string) {
   unselectAllNodes();
   selectNode(id, false);
   const node = editor.getNode(id);
-  const view = area.nodeViews.get(id);
-  if (!node || !view) return;
+  const box = measuredBox(area, id, editor);
+  if (!node || !box) return;
   const { k } = area.area.transform;
   const rect = area.container.getBoundingClientRect();
-  const w = (node as { width?: number }).width || view.element.offsetWidth || 100;
-  const h = (node as { height?: number }).height || view.element.offsetHeight || 50;
-  const cx = view.position.x + w / 2;
-  const cy = view.position.y + h / 2;
+  // measuredBox reads the LIVE rendered size first — the old node.width-first
+  // read centered a collapsed group on its stored EXPANDED box, off-centering
+  // the camera by half the size difference.
+  const cx = box.x + box.w / 2;
+  const cy = box.y + box.h / 2;
   await area.area.translate(rect.width / 2 - cx * k, rect.height / 2 - cy * k);
 }
 

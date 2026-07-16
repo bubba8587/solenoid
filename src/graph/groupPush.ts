@@ -10,6 +10,7 @@ import { solveStandoffs } from "./standoffSolver";
 import { scheduleAutosave } from "./persistence";
 import { settingsStore } from "./settingsStore";
 import { dockedNodeStore } from "./dockedNodeStore";
+import { measuredBox } from "./nodeSize";
 
 // ─── Expand-time neighbour displacement ────────────────────────────────────────
 // When a collapsed group expands, its footprint grows down/right and would land
@@ -117,8 +118,11 @@ function buildWorld(editor: Editor, area: Area, expandedIds: Set<string>): World
       boxes.set(n.id, { id: n.id, x: p.x, y: p.y, w, h });
     } else {
       if (grouped.has(n.id) || dockedNodeStore.get(n.id)) continue;
-      const w = view.element.offsetWidth || (n as { width?: number }).width || 100;
-      const h = view.element.offsetHeight || (n as { height?: number }).height || 50;
+      // measuredBox: the shared size chokepoint (live size → stored mirror →
+      // collapse-aware fallback) so the push math agrees with align/autofit.
+      const mb = measuredBox(area, n.id, editor);
+      const w = mb?.w ?? 100;
+      const h = mb?.h ?? 50;
       // Reserve room for an output-docked FC's footprint (mirrors Canvas.tsx's
       // Tidy-path hostFootprint reservation): the FC has no box of its own here
       // (it rides along via translatePushed's dockedNodeStore.getDockedTo loop),
@@ -149,11 +153,9 @@ function satellitesFor(editor: Editor, area: Area, g: GroupNode, world: World): 
   const gShift = gBox && gOrig ? { dx: gBox.x - gOrig.x, dy: gBox.y - gOrig.y } : { dx: 0, dy: 0 };
 
   const memberCy = (id: string): number | null => {
-    const view = area.nodeViews.get(id);
-    if (!view) return null;
-    const node = editor.getNode(id);
-    const h = view.element.offsetHeight || (node as { height?: number } | undefined)?.height || 50;
-    return view.position.y + h / 2 + gShift.dy;
+    const b = measuredBox(area, id, editor);
+    if (!b) return null;
+    return b.y + b.h / 2 + gShift.dy;
   };
 
   const agg = new Map<string, { up: number; down: number; ys: number[] }>();
@@ -415,7 +417,18 @@ function runExpandPushes(
     // and won't snap it back — which is the intended permanent feel.
     if (record) {
       const existing = _records.get(id);
-      if (existing) {
+      // Merge only into a record whose node is STILL where our last push left
+      // it. If something else moved the node since — Tidy/Cleanup/align all
+      // reposition via bare area.translate, which fires no drag invalidation —
+      // the record's preX/preY restore target belongs to a layout that no
+      // longer exists. Merging would re-arm it (expX refreshed, ancient preX
+      // kept), so the next collapse "restores" the node to a pre-Tidy
+      // coordinate: the reported tidy-around-expanded-groups misplacement.
+      // Same staleness rule the restore path enforces; a stale record is
+      // replaced by a fresh one anchored at the node's CURRENT position.
+      const stale = existing &&
+        (Math.abs(p.x - existing.expX) > EPS || Math.abs(p.y - existing.expY) > EPS);
+      if (existing && !stale) {
         // Already displaced by a still-expanded group: keep the original
         // restore target, extend the contributors, refresh the expected spot.
         for (const gid of attribution.get(id)!) existing.dueTo.add(gid);

@@ -13,6 +13,7 @@ import { settingsStore } from "./settingsStore";
 import { cableSelectionStore } from "./cableState";
 import { ConduitNode, FormatControllerNode, GroupNode } from "./rete-nodes";
 import { autofitGroupBox, GROUP_PAD, GROUP_HEADER } from "./groupLogic";
+import { measuredBox } from "./nodeSize";
 import { pushForGrownGroups } from "./groupPush";
 import { standoffStore, standoffClusters, settleStandoffs } from "./standoffs";
 import { rebuildGroupMembership } from "./groupMembership";
@@ -43,6 +44,26 @@ export interface TidyDeps {
 
 export type ArrangeFn = (opts?: { groupId?: string; skipConfirm?: boolean; skipPush?: boolean }) => Promise<void>;
 
+// Port positions drive ELK's vertical node alignment (it lines up connected
+// ports). The stock `classic` preset puts OUTPUT ports at the node TOP and
+// INPUT ports at the BOTTOM, which staircases every chain upward — wrong for
+// our nodes. We place ports SYMMETRICALLY (same offset for in/out) so two
+// connected nodes line up, and read the Tidy-alignment setting per layout:
+//   "center" → ports at the node's vertical centre → node CENTRES align;
+//   "top"    → ports near the node's top → node TOP edges align.
+// Exported so the headless tidy test drives ELK with the REAL preset.
+export function symmetricPortPreset() {
+  return {
+    port(data: { side: "input" | "output"; index: number; ports: number; width: number; height: number }) {
+      const spacing = 16;
+      const y = settingsStore.get("tidyAlign") === "top"
+        ? 20 + data.index * spacing
+        : data.height / 2 + (data.index - (data.ports - 1) / 2) * spacing;
+      return { x: 0, y, width: 15, height: 15, side: data.side === "output" ? "EAST" : "WEST" } as const;
+    },
+  };
+}
+
 // ELK (rete-auto-arrange-plugin + its elkjs dependency) is a heavy chunk that
 // only Tidy needs, so it's LAZY: imported and wired on the first arrange, not
 // at Canvas init (recharts/KaTeX are lazy the same way). The returned
@@ -63,22 +84,7 @@ export function makeEnsureArrange(
       // A doc switch / unmount can destroy the area during the dynamic import.
       if (isDestroyed()) return null;
       const plugin = new AutoArrangePlugin<Schemes>();
-      // Port positions drive ELK's vertical node alignment (it lines up connected
-      // ports). The stock `classic` preset puts OUTPUT ports at the node TOP and
-      // INPUT ports at the BOTTOM, which staircases every chain upward — wrong for
-      // our nodes. We place ports SYMMETRICALLY (same offset for in/out) so two
-      // connected nodes line up, and read the Tidy-alignment setting per layout:
-      //   "center" → ports at the node's vertical centre → node CENTRES align;
-      //   "top"    → ports near the node's top → node TOP edges align.
-      plugin.addPreset(() => ({
-        port(data: { side: "input" | "output"; index: number; ports: number; width: number; height: number }) {
-          const spacing = 16;
-          const y = settingsStore.get("tidyAlign") === "top"
-            ? 20 + data.index * spacing
-            : data.height / 2 + (data.index - (data.ports - 1) / 2) * spacing;
-          return { x: 0, y, width: 15, height: 15, side: data.side === "output" ? "EAST" : "WEST" } as const;
-        },
-      }));
+      plugin.addPreset(symmetricPortPreset);
       area.use(plugin);
       arrange = plugin;
       return plugin;
@@ -202,16 +208,9 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
     const clusterLeaderRealSize = new Map<string, { w: number; h: number }>();
     const clusterFollowers = new Set<string>();
     if (!standoffStore.isEmpty()) {
-      const boxOf = (id: string) => {
-        const v = area.nodeViews.get(id);
-        if (!v) return null;
-        const node = editor.getNode(id) as { width?: number; height?: number } | undefined;
-        return {
-          x: v.position.x, y: v.position.y,
-          w: v.element?.offsetWidth || node?.width || 100,
-          h: v.element?.offsetHeight || node?.height || 50,
-        };
-      };
+      // measuredBox: same size chokepoint as align/autofit — live size first,
+      // collapse-aware stored fallback, guaranteed non-zero.
+      const boxOf = (id: string) => measuredBox(area, id, editor);
       for (const cluster of standoffClusters(standoffStore.all())) {
         // Every member must be a loose layout target. A group qualifies — it
         // lays out as one rectangle, so a (group, note) pair is one block.
@@ -302,24 +301,37 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
     // it. ELK nodes are rectangles, so we feed it the bounding box of the
     // host + its output-docked FC: the host stays at the box's top-left and
     // the FC extends right (and down, from where its socket actually sits).
+    // ONLY hosts that are actually IN the layout: a host that's a group
+    // MEMBER (global tidy lays out the group as one unit, not its members)
+    // gets no proxy, so reserving it did nothing — but the "restore" below
+    // still ran area.resize on it, stamping a fixed inline height on a card
+    // the pin-drop loop (which walks layoutTargets) never clears. That froze
+    // the member's card height after every global Tidy (and, with a stale
+    // width/height mirror, visibly resized it).
+    const layoutTargetIds = new Set(layoutTargets.map((n) => n.id));
     const hostFootprint = new Map<string, { w: number; h: number }>();
     const realHostSize = new Map<string, { w: number; h: number }>();
     for (const fcId of dockedFcIds) {
       const fc = editor.getNode(fcId);
       if (!(fc instanceof FormatControllerNode) || fc.side !== "output") continue;
+      if (!layoutTargetIds.has(fc.hostNodeId)) continue;
       const host = editor.getNode(fc.hostNodeId);
       const hostView = area.nodeViews.get(fc.hostNodeId);
       if (!host || !hostView) continue;
+      // measuredBox for both boxes: the live rendered size, not the possibly
+      // pre-paint constructor estimate on node.width/height.
+      const hostBox = measuredBox(area, fc.hostNodeId, editor) ?? { w: host.width, h: host.height };
+      const fcBox = measuredBox(area, fcId, editor) ?? { w: fc.width, h: fc.height };
       const sc = getSocketScreenCenter(area, fc.hostNodeId, fc.socketKey, "output");
       const socketLocalY = sc
         ? screenToCanvas(area, container, sc.x, sc.y).y - hostView.position.y
-        : host.height / 2;
-      const prev = hostFootprint.get(fc.hostNodeId) ?? { w: host.width, h: host.height };
+        : hostBox.h / 2;
+      const prev = hostFootprint.get(fc.hostNodeId) ?? { w: hostBox.w, h: hostBox.h };
       hostFootprint.set(fc.hostNodeId, {
-        w: prev.w + fc.width + 8,
-        h: Math.max(prev.h, socketLocalY + fc.height / 2),
+        w: prev.w + fcBox.w + 8,
+        h: Math.max(prev.h, socketLocalY + fcBox.h / 2),
       });
-      if (!realHostSize.has(fc.hostNodeId)) realHostSize.set(fc.hostNodeId, { w: host.width, h: host.height });
+      if (!realHostSize.has(fc.hostNodeId)) realHostSize.set(fc.hostNodeId, { w: hostBox.w, h: hostBox.h });
     }
 
     const proxyNodes = layoutTargets.filter((n) => !clusterFollowers.has(n.id)).map((n) => {
@@ -340,9 +352,9 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       // cluster bbox when it's a cluster leader) with no ports — edges to it
       // are node-level (see the gbridge above).
       if (n instanceof GroupNode) {
-        const el = area.nodeViews.get(n.id)?.element;
-        const gw = clusterSize?.w ?? (el?.offsetWidth || n.width);
-        const gh = clusterSize?.h ?? (el?.offsetHeight || n.height);
+        const gb = measuredBox(area, n.id, editor);
+        const gw = clusterSize?.w ?? (gb?.w || n.width);
+        const gh = clusterSize?.h ?? (gb?.h || n.height);
         return new Proxy(n, {
           get(target, prop) {
             if (prop === "width") return gw;
@@ -408,11 +420,11 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
     } else {
       let oldTop = Infinity, oldBottom = -Infinity;
       for (const n of layoutTargets) {
-        const v = area.nodeViews.get(n.id);
-        if (!v) continue;
-        origMinX = Math.min(origMinX, v.position.x);
-        oldTop = Math.min(oldTop, v.position.y);
-        oldBottom = Math.max(oldBottom, v.position.y + (v.element?.offsetHeight || n.height));
+        const b = measuredBox(area, n.id, editor);
+        if (!b) continue;
+        origMinX = Math.min(origMinX, b.x);
+        oldTop = Math.min(oldTop, b.y);
+        oldBottom = Math.max(oldBottom, b.y + b.h);
       }
       targetCy = (oldTop + oldBottom) / 2;
     }
@@ -458,15 +470,29 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       }
     }
 
+    // Restore the real size of any host we enlarged for the layout — the
+    // applier resized it to the reserved footprint; the FC occupies the rest.
+    // BEFORE the anchor measurement below: the pre-layout anchor read real
+    // sizes, so measuring the new extent off a still-inflated host/leader
+    // would skew the preserved vertical centre by half the inflation.
+    for (const [id, sz] of realHostSize) {
+      await area.resize(id, sz.w, sz.h);
+    }
+    // Same for standoff-cluster leaders, which were sized to the cluster bbox
+    // for the ELK pass — restore each to its real node size.
+    for (const [id, sz] of clusterLeaderRealSize) {
+      await area.resize(id, sz.w, sz.h);
+    }
+
     // Shift the laid-out nodes: left edge → anchor left, vertical centre →
     // anchor centre.
     let newMinX = Infinity, newTop = Infinity, newBottom = -Infinity;
     for (const n of layoutTargets) {
-      const v = area.nodeViews.get(n.id);
-      if (!v) continue;
-      newMinX = Math.min(newMinX, v.position.x);
-      newTop = Math.min(newTop, v.position.y);
-      newBottom = Math.max(newBottom, v.position.y + (v.element?.offsetHeight || n.height));
+      const b = measuredBox(area, n.id, editor);
+      if (!b) continue;
+      newMinX = Math.min(newMinX, b.x);
+      newTop = Math.min(newTop, b.y);
+      newBottom = Math.max(newBottom, b.y + b.h);
     }
     const dx = origMinX - newMinX;
     let dy = targetCy - (newTop + newBottom) / 2;
@@ -502,17 +528,6 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       }
     }
 
-    // Restore the real size of any host we enlarged for the layout — the
-    // applier resized it to the reserved footprint; the FC occupies the rest.
-    for (const [id, sz] of realHostSize) {
-      await area.resize(id, sz.w, sz.h);
-    }
-    // Same for standoff-cluster leaders, which were sized to the cluster bbox
-    // for the ELK pass — restore each to its real node size.
-    for (const [id, sz] of clusterLeaderRealSize) {
-      await area.resize(id, sz.w, sz.h);
-    }
-
     // Drop the inline `height` the applier stamped on every arranged card.
     // area.resize (used above + by the applier to feed ELK's reserve-footprint
     // trick) writes a FIXED inline height on the card; post-layout that pin just
@@ -534,16 +549,21 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
     if (withinGroup) {
       let maxX = -Infinity, maxY = -Infinity;
       for (const n of layoutTargets) {
-        const v = area.nodeViews.get(n.id);
-        if (!v) continue;
-        maxX = Math.max(maxX, v.position.x + v.element.offsetWidth);
-        maxY = Math.max(maxY, v.position.y + v.element.offsetHeight);
+        // measuredBox, not raw offsetWidth: an unpainted member measured 0 and
+        // silently under-grew the box.
+        const b = measuredBox(area, n.id, editor);
+        if (!b) continue;
+        maxX = Math.max(maxX, b.x + b.w);
+        maxY = Math.max(maxY, b.y + b.h);
       }
       const gv = area.nodeViews.get(withinGroup.id);
       const preW = withinGroup.width, preH = withinGroup.height;
       if (gv && Number.isFinite(maxX)) {
-        withinGroup.width = Math.max(withinGroup.width, (maxX - gv.position.x) + GROUP_PAD);
-        withinGroup.height = Math.max(withinGroup.height, (maxY - gv.position.y) + GROUP_PAD);
+        // Integer dims, same rule as every other group resize source (creation,
+        // autofit, the grips — see 8622a72): ELK positions are fractional, and a
+        // fractional width puts the box edge on a half-pixel (selection-ring blur).
+        withinGroup.width = Math.round(Math.max(withinGroup.width, (maxX - gv.position.x) + GROUP_PAD));
+        withinGroup.height = Math.round(Math.max(withinGroup.height, (maxY - gv.position.y) + GROUP_PAD));
         await area.update("node", withinGroup.id);
       }
       rebuildGroupMembership(editor);

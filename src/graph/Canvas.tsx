@@ -52,6 +52,7 @@ import {
   type Box as StandoffBox,
 } from "./standoffs";
 import { solveStandoffs } from "./standoffSolver";
+import { measuredBox } from "./nodeSize";
 import { rebuildGroupMembership } from "./groupMembership";
 import { dropFrameRef } from "./frameBackend";
 import { syncGroupCollapse } from "./groupCollapse";
@@ -654,15 +655,11 @@ export function Canvas() {
         for (const s of standoffStore.all()) {
           for (const end of [s.a, s.b]) {
             if (m.has(end.nodeId)) continue;
-            const view = area.nodeViews.get(end.nodeId);
-            const node = editor.getNode(end.nodeId);
-            if (!view || !node) continue;
-            m.set(end.nodeId, {
-              x: view.position.x,
-              y: view.position.y,
-              w: view.element.offsetWidth || (node as { width?: number }).width || 100,
-              h: view.element.offsetHeight || (node as { height?: number }).height || 50,
-            });
+            // measuredBox: shared size chokepoint (live → mirror → collapse-aware
+            // fallback), so the solver sees the same boxes align/tidy/push do.
+            const b = measuredBox(area, end.nodeId, editor);
+            if (!b) continue;
+            m.set(end.nodeId, { x: b.x, y: b.y, w: b.w, h: b.h });
           }
         }
         return m;
