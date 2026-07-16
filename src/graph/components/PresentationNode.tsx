@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { PresentationNode as PresentationNodeType } from "../rete-nodes";
 import { hexToRgba, themeAccent, resolveColor } from "../palette";
 import { appThemeStore } from "../appTheme";
@@ -35,6 +35,11 @@ export function PresentationComponent({ data }: NodeProps<PresentationNodeType>)
 
   useEffect(() => { setLabel(data.label); }, [data.label]);
   useEffect(() => { setColor(data.color); }, [data.color]);
+
+  // Re-resolve the accent on theme/palette change (palette edits funnel through
+  // appThemeStore) — without this the card kept its stale hex until some other
+  // re-render, so it looked like it ignored the palette.
+  useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
 
   function onLabel(v: string) { setLabel(v); data.label = v; scheduleAutosave(); }
   function pick(c: string) { setColor(c); data.color = c; scheduleAutosave(); }

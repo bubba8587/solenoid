@@ -13,13 +13,13 @@ import { settingsStore } from "../settingsStore";
 import type { Schemes, AreaExtra, SolenoidNode } from "../schemes";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "../rete-nodes";
 import { compositeEditorStore, compositePassStore } from "../compositeEditorStore";
-import { getEditor, getArea, processGraph, isGraphRebuilding, withGraphRebuild } from "../process";
+import { getEditor, getArea, processGraph, isGraphRebuilding, withGraphRebuild, setCableDragging } from "../process";
 import { setActiveGraph } from "../activeGraph";
 import { copySelected, pasteClipboard } from "../copyPaste";
 import { scheduleAutosave } from "../persistence";
 import { installErrorGuards } from "../errorValue";
 import { ctorRegistry } from "../nodeCtorRegistry";
-import { cableSelectionStore } from "../cableState";
+import { cableSelectionStore, socketHighlightStore, dragSocketKey } from "../cableState";
 import { canvasLockStore } from "../canvasLock";
 import { isolateStore } from "../isolateStore";
 import { isolateSelection } from "../isolate";
@@ -99,6 +99,28 @@ async function getDrillMount(composite: CompositeNode): Promise<DrillMount> {
   // it — the render components + the compatibility/self-loop/lock connection veto.
   reactPlugin.addPreset(solenoidClassicRenderSetup());
   connection.addPreset(() => makeSolenoidConnectionFlow(editor));
+
+  // connectionpick / connectiondrop fire on THIS plugin's own scope (Scope.use
+  // forwards events down, so no area pipe sees them) — mirror Canvas's cable-drag
+  // pipe or the flag never flips inside a drill-in: the Conduit's expand-on-drag-
+  // near / phantom-lane grow reads cableDragStore, the touch drop-target CSS keys
+  // off `--cabling`, and an uncommitted text edit must blur before it's wired.
+  // (Quick-wire stays main-only — its Add-menu spawn path is part of D2.)
+  connection.addPipe((ctx) => {
+    if (ctx.type === "connectionpick") {
+      (document.activeElement as HTMLElement | null)?.blur?.();
+      setCableDragging(true);
+      container.classList.add("solenoid-canvas--cabling");
+      const s = (ctx as { data?: { socket?: { nodeId: string; key: string } } }).data?.socket;
+      if (s) socketHighlightStore.setDrag([dragSocketKey(s.nodeId, s.key)]);
+    }
+    if (ctx.type === "connectiondrop") {
+      setCableDragging(false);
+      container.classList.remove("solenoid-canvas--cabling");
+      socketHighlightStore.setDrag([]);
+    }
+    return ctx;
+  });
 
   // A minimap for the subgraph — the same custom colored preset + collapse-aware
   // geometry as the main canvas. collapsedAwareNodesRect reads the ACTIVE graph

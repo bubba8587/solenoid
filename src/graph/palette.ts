@@ -530,6 +530,38 @@ export function nextNeutral(current: string | undefined): string {
   return i === -1 ? "gray" : NEUTRAL_CYCLE[(i + 1) % NEUTRAL_CYCLE.length];
 }
 
+// ── Sequential height ramp (Surface / Contour / Vector Field) ────────────────
+// The field figures' height/magnitude colormap, built from PALETTE SLOTS instead
+// of a hard-coded viridis so the family retints with the active palette. The slot
+// order violet→blue→teal→green→gold walks the same hue path as viridis in the
+// Default palette (so the familiar look survives); lightness is FORCED onto a
+// monotonic dark→light ladder so the ramp always reads as height even when a
+// palette's own lightnesses don't line up (Equinox's all-gray set degrades to a
+// clean grayscale ramp). Memoized per palette version — heightRampColor runs per
+// subquad/arrow, thousands of times a draw.
+const RAMP_SLOTS: PaletteSlot[] = ["violet", "blue", "teal", "green", "gold"];
+const RAMP_L = [0.26, 0.38, 0.5, 0.62, 0.78];
+let _ramp: Array<[number, number, number]> | null = null;
+let _rampVer = -1;
+function rampStops(): Array<[number, number, number]> {
+  if (_ramp && _rampVer === paletteVersion()) return _ramp;
+  _rampVer = paletteVersion();
+  _ramp = RAMP_SLOTS.map((slot, i) => {
+    const t = parseHex(resolveColor(slot)) ?? [138, 143, 152];
+    const [h, s] = rgbToHsl(...t);
+    return parseHex(hslToHex(h, s, RAMP_L[i])) ?? t;
+  });
+  return _ramp;
+}
+/** Palette-derived sequential colormap: t ∈ [0,1] → [r,g,b]. */
+export function heightRampColor(t: number): [number, number, number] {
+  const stops = rampStops();
+  const u = Math.max(0, Math.min(1, t)) * (stops.length - 1);
+  const i = Math.min(stops.length - 2, Math.floor(u));
+  const f = u - i, a = stops[i], b = stops[i + 1];
+  return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
+}
+
 // Resolve a stored color slot id to a hex through the ACTIVE palette — the one
 // boundary where slot → hex happens. The two neutral sentinels resolve to their
 // fixed hex first; anything else that isn't a known slot falls back to gray. This

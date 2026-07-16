@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useSyncExternalStore } from "react";
 import { appThemeStore } from "../appTheme";
+import { heightRampColor } from "../palette";
 import type { SurfacePayload } from "../chartValue";
 
 // A simple shaded 3-D surface plot, drawn to a <canvas> (one DOM element regardless
@@ -13,17 +14,14 @@ const sub = (a: V3, b: V3): V3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const cross = (a: V3, b: V3): V3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 function unit(v: V3): V3 { const m = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / m, v[1] / m, v[2] / m]; }
 
-// Viridis colormap (5 stops) — the familiar perceptual height ramp for surfaces.
-// Exported for the other field figures (Contour, Vector Field) so height/magnitude
-// reads identically across the family.
-const VIRIDIS: Array<[number, number, number]> = [
-  [68, 1, 84], [59, 82, 139], [33, 145, 140], [94, 201, 98], [253, 231, 37],
-];
+// Height colormap — the PALETTE-derived sequential ramp (heightRampColor), so the
+// field figures retint with the active palette (viridis-like in Default; the
+// forced lightness ladder keeps it reading as height in every palette). Re-exported
+// for the other field figures (Contour, Vector Field) so height/magnitude reads
+// identically across the family; the views already redraw on appThemeStore bumps,
+// which palette changes funnel through.
 export function heightColor(t: number): [number, number, number] {
-  const u = Math.max(0, Math.min(1, t)) * (VIRIDIS.length - 1);
-  const i = Math.min(VIRIDIS.length - 2, Math.floor(u));
-  const f = u - i, a = VIRIDIS[i], b = VIRIDIS[i + 1];
-  return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
+  return heightRampColor(t);
 }
 
 const DH = 0.55;                 // height exaggeration (model units; base spans ~1)

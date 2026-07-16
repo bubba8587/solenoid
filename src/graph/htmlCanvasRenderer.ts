@@ -81,6 +81,7 @@ interface EngineNode {
   srcEl: HTMLElement; // the live original (diagnostics only — clone-vs-original position check)
   refImg: ElementImageLike | null;
   pyramid: PyramidLevel[];
+  mipFailed?: boolean; // createImageBitmap permanently failed — per-frame refImg draw covers it
   x: number; y: number; w: number; h: number;
   isGroup: boolean;
 }
@@ -236,6 +237,7 @@ export class HtmlCanvasRenderer {
       n.refImg?.close?.(); n.refImg = null;
       for (const p of n.pyramid) p.bmp?.close?.();
       n.pyramid = [];
+      n.mipFailed = false; // fresh capture → retry the pyramid
       n.refEl.remove();
       n.refEl = this.cloneFor(s.el, s.w, s.h);
       n.srcEl = s.el;
@@ -290,6 +292,7 @@ export class HtmlCanvasRenderer {
     card.style.margin = "0";
     card.style.pointerEvents = "none";
     HtmlCanvasRenderer.syncFormState(el, card);
+    HtmlCanvasRenderer.syncCanvasState(el, card);
     HtmlCanvasRenderer.uniquifyIds(card);
     rel.appendChild(card);
     wrap.appendChild(rel);
@@ -325,6 +328,22 @@ export class HtmlCanvasRenderer {
           d.value = s.value; d.setAttribute("value", s.value);
         }
       }
+    }
+  }
+
+  // cloneNode(true) copies a <canvas> ELEMENT but not its drawing buffer, so every
+  // canvas-drawn figure (Surface, Contour, Waterfall, 7-Segment, the whole
+  // chartCanvasViews family, Point Plotter/Curve/Grid Painter pads) captured blank.
+  // Blit each original canvas's pixels onto its clone in lockstep order.
+  private static syncCanvasState(orig: HTMLElement, clone: HTMLElement): void {
+    const src = orig.querySelectorAll<HTMLCanvasElement>("canvas");
+    const dst = clone.querySelectorAll<HTMLCanvasElement>("canvas");
+    if (src.length !== dst.length) return; // structure drift — bail rather than mis-map
+    for (let i = 0; i < src.length; i++) {
+      const s = src[i], d = dst[i];
+      if (!s.width || !s.height) continue;
+      d.width = s.width; d.height = s.height; // match the backing store (also clears d)
+      try { d.getContext("2d")?.drawImage(s, 0, 0); } catch { /* tainted/GPU-lost canvas — leave blank */ }
     }
   }
 
@@ -542,6 +561,12 @@ export class HtmlCanvasRenderer {
   // is the fallback; if both fail the per-frame refImg draw still covers the node.
   private buildMips = async (): Promise<void> => {
     if (this.building) return; this.building = true;
+    // Loop until no unbuilt node remains: work can ARRIVE mid-build (an updateNodes /
+    // setNodes while this async loop awaits re-captures nodes and calls buildMips, which
+    // early-returns on the `building` guard). Without the re-check those nodes kept a
+    // refImg but never got a pyramid, so drawFrame fell back to a per-frame
+    // drawElementImage for them — permanently slow after any rebuild race.
+    do {
     for (const n of this.nodes) {
       if (this.disposed) break;
       if (!n.refImg || n.pyramid.length) continue;
@@ -557,7 +582,7 @@ export class HtmlCanvasRenderer {
           top = await createImageBitmap(this.scratch, 0, 0, refW, refH);
         } catch { top = null; }
       }
-      if (!top) { this.dirty = true; continue; }
+      if (!top) { n.mipFailed = true; this.dirty = true; continue; } // permanent — don't re-loop on it
       const levels: PyramidLevel[] = [{ scale: REF, bmp: top }];
       let cur = top, curScale = REF;
       while (Math.min(pw, ph) * curScale > MIP_MIN_PX * 2 && levels.length < 12) {
@@ -573,6 +598,7 @@ export class HtmlCanvasRenderer {
       this.builtCount++;
       this.dirty = true;
     }
+    } while (!this.disposed && this.nodes.some((n) => n.refImg && !n.pyramid.length && !n.mipFailed));
     this.building = false;
   };
 
