@@ -1038,6 +1038,15 @@ export function fillBorderedGrid(table: (number | null)[][], forecast = true): (
     return [lo, hi];
   };
 
+  // Every labelled known point, for pass 1's containment test and pass 2's fit.
+  const knownPts: Array<{ x: number; y: number; i: number; j: number; z: number }> = [];
+  for (let i = 0; i < Ri; i++) for (let j = 0; j < Ci; j++) {
+    const v = Z[i][j];
+    if (v != null && !Number.isNaN(colXs[j]) && !Number.isNaN(rowYs[i])) {
+      knownPts.push({ x: colXs[j], y: rowYs[i], i, j, z: v });
+    }
+  }
+
   // ── Pass 1 — bilinear interpolation for cells ENCLOSED by known data. ──
   for (let i = 0; i < Ri; i++) for (let j = 0; j < Ci; j++) {
     if (Z[i][j] != null) { out[i + 1][j + 1] = Z[i][j]; continue; } // known passes through
@@ -1055,6 +1064,20 @@ export function fillBorderedGrid(table: (number | null)[][], forecast = true): (
       const z00 = Z[rLo][cLo], z01 = Z[rLo][cHi], z10 = Z[rHi][cLo], z11 = Z[rHi][cHi];
       if (z00 == null || z01 == null || z10 == null || z11 == null) continue;
       const x0 = colXs[cLo], x1 = colXs[cHi], y0 = rowYs[rLo], y1 = rowYs[rHi];
+      // A box is only an HONEST bilinear cell when no OTHER known data lies within
+      // it (coordinate-space, borders included): bilinear over the corners would
+      // ignore that nearer data. The sine-diagonal case made this concrete — the
+      // only all-known-corner box was the grid's four 0-corners, so every blank
+      // filled flat-0 while the whole diagonal sat inside the box. A contested
+      // cell falls through to the surface fit, which uses ALL the points.
+      const xA = Math.min(x0, x1), xB = Math.max(x0, x1);
+      const yA = Math.min(y0, y1), yB = Math.max(y0, y1);
+      let contested = false;
+      for (const p of knownPts) {
+        if ((p.i === rLo || p.i === rHi) && (p.j === cLo || p.j === cHi)) continue; // a corner
+        if (p.x >= xA && p.x <= xB && p.y >= yA && p.y <= yB) { contested = true; break; }
+      }
+      if (contested) continue;
       const tx = x1 === x0 ? 0 : (qx - x0) / (x1 - x0);
       const ty = y1 === y0 ? 0 : (qy - y0) / (y1 - y0);
       const top = z00 + tx * (z01 - z00);
@@ -1067,12 +1090,7 @@ export function fillBorderedGrid(table: (number | null)[][], forecast = true): (
   // ── Pass 2 — Forecast: fill every cell pass 1 left blank with a smooth surface fitted
   // through ALL the known points (thin-plate spline, or a plane for degenerate data). ──
   if (forecast) {
-    const pts: FitPoint[] = [];
-    for (let i = 0; i < Ri; i++) for (let j = 0; j < Ci; j++) {
-      const v = Z[i][j];
-      if (v != null && !Number.isNaN(colXs[j]) && !Number.isNaN(rowYs[i])) pts.push({ x: colXs[j], y: rowYs[i], z: v });
-    }
-    const f = fitSurface(pts);
+    const f = fitSurface(knownPts.map(({ x, y, z }): FitPoint => ({ x, y, z })));
     if (f) for (let i = 0; i < Ri; i++) for (let j = 0; j < Ci; j++) {
       if (out[i + 1][j + 1] != null || Number.isNaN(colXs[j]) || Number.isNaN(rowYs[i])) continue;
       const v = f(colXs[j], rowYs[i]);

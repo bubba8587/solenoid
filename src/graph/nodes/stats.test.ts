@@ -313,6 +313,36 @@ describe("INTERPOLATE — Grid mode (fill a bordered table)", () => {
     expect(Number.isFinite(fillBorderedGrid(t)[2][2] as number)).toBe(true); // ON: spline fills it
   });
 
+  it("a sine DIAGONAL + 0 corners interpolates through the diagonal, not flat-0 (author 2026-07-16)", () => {
+    // The regression this pins: the only all-known-corner box was the grid's four
+    // 0-corners, so pass 1 claimed every blank at bilinear(0,0,0,0) = 0 — with the
+    // whole diagonal sitting INSIDE that box, ignored. The containment test now
+    // rejects contested boxes and the spline interpolates through diagonal + corners.
+    const s = (deg: number) => Math.sin((deg * Math.PI) / 180);
+    const n = null;
+    const t: (number | null)[][] = [
+      [null, 1,       2,       3,       4,       5,       6],
+      [1,    0,       n,       n,       n,       n,       0],
+      [2,    n,       s(15),   n,       n,       n,       n],
+      [3,    n,       n,       s(30),   n,       n,       n],
+      [4,    n,       n,       n,       s(45),   n,       n],
+      [5,    n,       n,       n,       n,       s(60),   n],
+      [6,    0,       n,       n,       n,       n,       0],
+    ];
+    const out = fillBorderedGrid(t);
+    // Every blank fills (forecast on)…
+      for (let i = 1; i < out.length; i++) for (let j = 1; j < out[i].length; j++) {
+      expect(Number.isFinite(out[i][j] as number)).toBe(true);
+    }
+    // …and the cells flanking the diagonal are NOT flat 0: they sit between the
+    // corner 0s and the neighbouring diagonal samples (0.2588 / 0.5).
+    const a = out[2][4] as number; // row of s(15), col of s(30)'s neighbourhood
+    const b = out[3][3] as number; // just off the diagonal between s(15) and s(30)
+    expect(Math.abs(a)).toBeGreaterThan(0.01);
+    expect(Math.abs(b)).toBeGreaterThan(0.05);
+    expect(b).toBeLessThan(0.75); // pulled toward the diagonal, not runaway
+  });
+
   // Node wiring — ONE table in, ONE table out.
   it("grid mode is one bordered-table input and one table output", () => {
     const n = new InterpolateNode({ mode: "grid" });
