@@ -188,24 +188,26 @@ describe("Table Input is a LITERAL source (the Frame Input model)", () => {
     // "10,\n20," — a trailing comma per line — must stay a LIST (one column),
     // not silently become a 2-D table that flips Filter's shape rules.
     expect(tableRawCells("10,\n20,")).toEqual([["10"], ["20"]]);
-    // An interior blank column is real missing data.
-    expect(tableRawCells("1,,3\n4,,6")).toEqual([["1", "", "3"], ["4", "", "6"]]);
-  });
-
-  it("a trailing all-blank column is a typing artifact and is stripped; interior blanks stay", () => {
-    // "10,\n20," — a trailing comma per line — must stay a LIST (one column),
-    // not silently become a 2-D table that flips Filter's shape rules.
-    expect(tableRawCells("10,\n20,")).toEqual([["10"], ["20"]]);
-    // An interior blank column is real missing data.
-    expect(tableRawCells("1,,3\n4,,6")).toEqual([["1", "", "3"], ["4", "", "6"]]);
-  });
-
-  it("a trailing all-blank column is a typing artifact and is stripped; interior blanks stay", () => {
-    // "10,\n20," — a trailing comma per line — must stay a LIST (one column),
-    // not silently become a 2-D table that flips Filter's shape rules.
-    expect(tableRawCells("10,\n20,")).toEqual([["10"], ["20"]]);
     // An interior blank column is real missing data and survives.
     expect(tableRawCells("1,,3\n4,,6")).toEqual([["1", "", "3"], ["4", "", "6"]]);
+  });
+
+  it("a blank ROW is a row of missing cells — kept in the Source, null in the matrix (author 2026-07-16)", () => {
+    // Interior blank line → a row of empty raw cells, deriving to nulls. It used
+    // to be dropped ENTIRELY (parseCsvRows' greedy skip) — and since the grid
+    // popup re-serializes through this parse, a popup save deleted it for good.
+    expect(tableRawCells("1, 2\n\n3, 4")).toEqual([["1", "2"], ["", ""], ["3", "4"]]);
+    expect(deriveTable(tableRawCells("1, 2\n\n3, 4"), "number")).toEqual([[1, 2], [null, null], [3, 4]]);
+    // TRAILING blank rows are typing artifacts (the trailing newline) and drop —
+    // same rule as the trailing column. Leading ones stay (literal truth).
+    expect(tableRawCells("1, 2\n3, 4\n\n")).toEqual([["1", "2"], ["3", "4"]]);
+    expect(tableRawCells("\n1, 2")).toEqual([["", ""], ["1", "2"]]);
+    // Round trip: text → cells → text → cells preserves the blank row.
+    const cells = tableRawCells("1, 2\n\n3, 4");
+    expect(tableRawCells(rawCellsToText(cells))).toEqual(cells);
+    // Single-column: the blank row serializes as a bare empty line and survives.
+    const oneCol = [["1"], [""], ["3"]];
+    expect(tableRawCells(rawCellsToText(oneCol))).toEqual(oneCol);
   });
 
   it("raw cells round-trip verbatim through the text form (quoting incl.)", () => {
