@@ -1124,7 +1124,9 @@ export function nestFrame(f: FrameValue, keyColumns: readonly string[], nestedNa
   }
   const names = makeHeaders([...keyColumns, nestedName.trim() || "items"], keyColumns.length + 1);
   const keyOut: CubeColumn[] = keyCols.map((c, k) => ({
-    name: names[k], cells: order.map((key) => cellAt(c, buckets.get(key)![0])),
+    // Carry the frame column's type (typed CubeColumn) so a date key stays
+    // date-matchable in a cube XLOOKUP.
+    name: names[k], type: c.type, cells: order.map((key) => cellAt(c, buckets.get(key)![0])),
   }));
   const nestedCells: CubeCell[] = order.map((key) => {
     const rowIdx = buckets.get(key)!;

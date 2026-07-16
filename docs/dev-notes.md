@@ -46,9 +46,16 @@ cross-connect + wildcard lists include document), so the next object socket is c
 one array; `yamlScalar` quotes leading YAML indicators (`*anchor`, `&ref`, `- item`, `.5`, `.inf` —
 were emitted unquoted = misparsed frontmatter), tests pinned; `NEUTRAL_HEX` null-prototype (a stray
 stored slot like "constructor" hit `Object.prototype` and returned a function from resolveColor's
-"total function" path). WALK CONTINUES at `54c5ee0`/`063e256` (XLOOKUP cube dates) → `9ab3e48` →
-`dc8c360` (INTERPOLATE add) → MODE consolidation → older history. (Coordination check-ins reviewed
-these contemporaneously; walking them anyway for what the check-ins missed.)
+"total function" path). **Turn 3:** reviewed `063e256` (typed CubeColumn — solid) and found the SAME type-drop it fixed in
+`cubeRowAt` at two sibling sites: **`nestFrame` dropped the key column's type** (so a NESTed cube —
+the natural producer of key-columned cubes — lost date-matchability in cube XLOOKUP) and INDEX's
+whole-row cube slice (`list.ts`) dropped per-column types. Both carry `type` now; test pins nest.
+`relateFramesToCube`/`subCube` already carried it. MODE consolidation (`3e35bfd`) reviewed — sound;
+aggregate-side single-value is inherent (cell = scalar). Author queued two items → backlog: Frame
+socket unique glyph; Reference overlay Socket tab → full data-model chapter (types/units/
+dimensionality/coercion). WALK CONTINUES at `dc8c360` (INTERPOLATE add) → `5aae6b6`/`110a2b8` docs →
+older history (pre-2026-07-15). (Coordination check-ins reviewed these contemporaneously; walking
+them anyway for what the check-ins missed.)
 
 ### SESSION DIGEST (2026-07-16 — UI corner-radius reduction pass)
 Node cards 8→6px; group/note/conduit and Note/Group-derived cards (Presentation, Report, Image,
