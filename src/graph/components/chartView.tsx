@@ -13,7 +13,7 @@ import { KpiCard, BulletBar } from "./chartCards";
 import { SurfaceView } from "./SurfaceView";
 import { useSeriesColors } from "./chartCore";
 import {
-  WaterfallView, CandleView, BoxplotView, CalHeatView, WaffleView, QuiverView, ContourView,
+  WaterfallView, CandleView, BoxplotView, CalHeatView, WaffleView, QuiverView, ContourView, SevenSegView,
 } from "./chartCanvasViews";
 
 export { VIZ, useChartColors, toSeries } from "./chartCore";
@@ -130,6 +130,8 @@ export function ChartFigure({ value, width, height, axes = true, fontScale }: {
     return <WaffleView payload={value.payload} width={width} height={height} colors={seriesColors} />;
   if (value.op === "quiver" && value.payload?.kind === "quiver")
     return <QuiverView payload={value.payload} width={width} height={height} />;
+  if (value.op === "sevenseg" && value.payload?.kind === "sevenseg")
+    return <SevenSegView text={value.payload.text} width={width} height={height} />;
   // The 2-D ops read the matrix; with no matrix wired they fall back to the
   // single `values` series (composed → columns, bubble → a scatter).
   const hasMatrix = Array.isArray(value.matrix) && value.matrix.length > 0;

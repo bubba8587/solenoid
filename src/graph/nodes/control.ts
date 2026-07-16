@@ -322,7 +322,7 @@ export class PointPlotterNode extends ClassicPreset.Node {
   pointsText = "";
   /** Axis ranges for the pad's coordinate frame. */
   literals: Record<string, number> = { xmin: 0, xmax: 10, ymin: 0, ymax: 10 };
-  width = 200;
+  width = 240;
   height = 280;
 
   constructor(init?: { label?: string; pointsText?: string; xmin?: number; xmax?: number; ymin?: number; ymax?: number }) {
@@ -393,11 +393,30 @@ export function curvePoints(text: string | undefined): Array<[number, number]> {
   return out;
 }
 
+/** Sample the monotone spline through a curve's points across [xmin, xmax].
+ *  Pure — shared by CurveNode.data() and the component's output rows (the
+ *  component must NOT call node.data() directly: the coerceInputs wrapper
+ *  expects an inputs record and throws on undefined). */
+export function sampleCurve(pointsText: string | undefined, xmin: number, xmax: number, samples: number): { values: number[]; xs: number[] } {
+  const pts = curvePoints(pointsText);
+  if (pts.length === 0) return { values: [], xs: [] };
+  const n = clamp(Math.round(samples), 2, 1000);
+  const f = monotoneCubic(pts.map((p) => p[0]), pts.map((p) => p[1]));
+  const xs: number[] = [], values: number[] = [];
+  for (let i = 0; i < n; i++) {
+    const x = xmin + ((xmax - xmin) * i) / (n - 1);
+    xs.push(Number(x.toFixed(6)));
+    const y = f(x);
+    values.push(Number.isFinite(y) ? Number(y.toFixed(6)) : 0);
+  }
+  return { values, xs };
+}
+
 export class CurveNode extends ClassicPreset.Node {
   label: string;
   pointsText = "0, 0\n1, 1";
   literals: Record<string, number> = { xmin: 0, xmax: 1, ymin: 0, ymax: 1, samples: 32 };
-  width = 200;
+  width = 240;
   height = 260;
 
   constructor(init?: { label?: string; pointsText?: string; xmin?: number; xmax?: number; ymin?: number; ymax?: number; samples?: number }) {
@@ -412,20 +431,8 @@ export class CurveNode extends ClassicPreset.Node {
   }
 
   data(): { values: number[]; xs: number[] } {
-    const pts = curvePoints(this.pointsText);
-    const n = clamp(Math.round(this.literals.samples ?? 32), 2, 1000);
-    this.literals.samples = n;
-    const x0 = this.literals.xmin ?? 0, x1 = this.literals.xmax ?? 1;
-    const f = monotoneCubic(pts.map((p) => p[0]), pts.map((p) => p[1]));
-    const xs: number[] = [], values: number[] = [];
-    for (let i = 0; i < n; i++) {
-      const x = x0 + ((x1 - x0) * i) / (n - 1);
-      xs.push(Number(x.toFixed(6)));
-      const y = f(x);
-      values.push(Number.isFinite(y) ? Number(y.toFixed(6)) : 0);
-    }
-    if (pts.length === 0) return { values: [], xs: [] };
-    return { values, xs };
+    this.literals.samples = clamp(Math.round(this.literals.samples ?? 32), 2, 1000);
+    return sampleCurve(this.pointsText, this.literals.xmin ?? 0, this.literals.xmax ?? 1, this.literals.samples);
   }
 }
 

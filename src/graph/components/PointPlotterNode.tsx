@@ -9,8 +9,8 @@ import { processGraph } from "../process";
 // move it, right-click (or Alt-click) a point to delete it. Same interaction
 // economy as the XY Pad — live handle, graph recomputes on release.
 
-const PAD_W = 172;
-const PAD_H = 130;
+const PAD_W = 196;
+const PAD_H = 140;
 const HIT_PX = 9; // pointer-to-point grab distance
 
 const padStyle: CSSProperties = {

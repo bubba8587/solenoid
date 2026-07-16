@@ -589,3 +589,78 @@ export function ContourView({ payload, width, height }: { payload: ContourPayloa
   if (empty) return <Empty />;
   return <canvas ref={ref} style={{ width, height, display: "block" }} />;
 }
+
+// ─── Seven-segment readout ─────────────────────────────────────────────────────
+// Flat SVG segments (no canvas needed): lit segments in the accent over faint
+// ghosts — the LCD idiom that makes a 7-seg read as a display, not seven
+// floating bars. Shared by the node card and Report embeds via ChartFigure.
+
+// Segment geometry in an 11 × 20.5 digit box: three horizontals (a/g/d), four
+// verticals (f/b top, e/c bottom).
+const SEGS: Record<string, { x: number; y: number; w: number; h: number }> = {
+  a: { x: 2, y: 0, w: 7, h: 2 },
+  g: { x: 2, y: 9.25, w: 7, h: 2 },
+  d: { x: 2, y: 18.5, w: 7, h: 2 },
+  f: { x: 0, y: 2.5, w: 2, h: 6 },
+  b: { x: 9, y: 2.5, w: 2, h: 6 },
+  e: { x: 0, y: 12, w: 2, h: 6 },
+  c: { x: 9, y: 12, w: 2, h: 6 },
+};
+const LIT: Record<string, string> = {
+  "0": "abcdef", "1": "bc", "2": "abged", "3": "abgcd", "4": "fgbc",
+  "5": "afgcd", "6": "afgedc", "7": "abc", "8": "abcdefg", "9": "abcfgd",
+  "-": "g",
+};
+const SS_CELL_W = 11, SS_CELL_H = 20.5, SS_GAP = 4.5, SS_DP_W = 4;
+
+type SegCell = { lit: string; dp: boolean };
+
+/** Group a numeric string into digit cells; a '.' becomes the previous cell's
+ *  decimal point instead of its own cell. */
+function toSegCells(text: string): SegCell[] {
+  const cells: SegCell[] = [];
+  for (const ch of text) {
+    if (ch === ".") {
+      if (cells.length) cells[cells.length - 1].dp = true;
+      continue;
+    }
+    cells.push({ lit: LIT[ch] ?? "", dp: false });
+  }
+  return cells;
+}
+
+export function SevenSegView({ text, width, height }: { text: string; width: number; height?: number }) {
+  // A blank display (no value) still shows ghost digits, like a meter at rest.
+  const cells = toSegCells(text);
+  const shown: SegCell[] = cells.length ? cells : Array.from({ length: 4 }, () => ({ lit: "", dp: false }));
+  let w = 0;
+  const xs = shown.map((c) => { const x = w; w += SS_CELL_W + (c.dp ? SS_DP_W : 0) + SS_GAP; return x; });
+  w -= SS_GAP;
+  // Scale to fit the given box: cap the rendered digit height, never overflow width.
+  const scale = Math.min((height ?? 34) / SS_CELL_H, width / w, 34 / SS_CELL_H);
+  return (
+    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", width, height: height ?? Math.ceil(SS_CELL_H * scale) + 8 }}>
+      <svg
+        width={Math.ceil(w * scale)}
+        height={Math.ceil(SS_CELL_H * scale)}
+        viewBox={`-0.5 -0.5 ${w + 1} ${SS_CELL_H + 1}`}
+        style={{ display: "block" }}
+        aria-label={text || undefined}
+      >
+        {shown.map((cell, i) => (
+          <g key={i} transform={`translate(${xs[i]}, 0)`}>
+            {Object.entries(SEGS).map(([k, s]) => (
+              <rect
+                key={k}
+                x={s.x} y={s.y} width={s.w} height={s.h} rx={1}
+                fill={cell.lit.includes(k) ? "var(--accent)" : "var(--text)"}
+                opacity={cell.lit.includes(k) ? 1 : 0.08}
+              />
+            ))}
+            {cell.dp && <circle cx={SS_CELL_W + 2} cy={SS_CELL_H - 1} r={1.3} fill="var(--accent)" />}
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+}

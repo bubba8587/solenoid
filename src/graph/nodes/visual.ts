@@ -4,7 +4,7 @@ import { parseChartOptions, serializeChartOptions, type ChartOptions } from "./c
 import { clamp, iterMin, iterMax } from "./mathUtils";
 import type {
   ChartValue, KpiPayload, BulletPayload, TreemapPayload, SankeyPayload, SurfacePayload,
-  ContourPayload, WaterfallPayload, CandlePayload, BoxplotPayload, CalHeatPayload, WafflePayload, QuiverPayload,
+  ContourPayload, WaterfallPayload, CandlePayload, BoxplotPayload, CalHeatPayload, WafflePayload, QuiverPayload, SevenSegPayload,
 } from "../chartValue";
 import type { MermaidValue } from "../mermaidValue";
 import { readFrame, type FrameInput } from "../frameBackend";
@@ -305,14 +305,15 @@ export class GaugeNode extends ClassicPreset.Node {
 
 // ─── 7-Segment display ────────────────────────────────────────────────────────
 // A flat seven-segment readout of a number — the electromechanical meter look,
-// on brand for a thing called Solenoid. Pass-through like Gauge. Deliberately
-// FLAT: lit segments in the accent, ghost segments barely-there; no flap/LED
-// skeuomorphism and no animation (author 2026-07-16 + DESIGN.md).
+// on brand for a thing called Solenoid. Emits a chart VALUE (author 2026-07-16:
+// "chart output, not passthrough") so a Report embeds the readout inline.
+// Deliberately FLAT: lit segments in the accent, ghost segments barely-there;
+// no flap/LED skeuomorphism and no animation (author + DESIGN.md).
 
 export class SevenSegNode extends ClassicPreset.Node {
   label: string;
   literals: Record<string, number> = { value: 0, decimals: 0 };
-  cachedResult: number | null = null;
+  cachedChart: ChartValue | null = null;
   width = 200;
   height = 130;
 
@@ -321,16 +322,18 @@ export class SevenSegNode extends ClassicPreset.Node {
     this.label = init?.label ?? "7-Segment";
     this.addInput("value", numIn("Value"));
     this.addInput("decimals", numIn("Decimals"));
-    this.addOutput("result", numOut("Pass-through"));
+    this.addOutput("chart", chartOut("Chart"));
   }
 
-  data(inputs: { value?: number[]; decimals?: number[] }) {
+  data(inputs: { value?: number[]; decimals?: number[] }): { chart: ChartValue } {
     const v = inputs.value?.[0] ?? this.literals.value ?? null;
     const d = clamp(Math.round(inputs.decimals?.[0] ?? this.literals.decimals ?? 0), 0, 6);
     this.literals.decimals = d;
     if (inputs.value?.[0] === undefined) this.literals.value = v ?? 0;
-    this.cachedResult = v;
-    return { result: v };
+    const payload: SevenSegPayload = { kind: "sevenseg", text: sevenSegText(v, d) };
+    const chart: ChartValue = { __chart: true, op: "sevenseg", values: v, payload, options: {}, title: this.label || "7-Segment" };
+    this.cachedChart = chart;
+    return { chart };
   }
 }
 

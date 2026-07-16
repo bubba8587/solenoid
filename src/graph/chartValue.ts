@@ -113,17 +113,23 @@ export interface QuiverPayload {
   u: (number | null)[][];
   v: (number | null)[][];
 }
+// A seven-segment readout: the display TEXT (digits / '-' / '.', already
+// fixed-decimals or the all-dash overflow), rendered as flat SVG segments.
+export interface SevenSegPayload {
+  kind: "sevenseg";
+  text: string;
+}
 export type ChartPayload =
   | KpiPayload | BulletPayload | TreemapPayload | SankeyPayload | SurfacePayload
   | ContourPayload | WaterfallPayload | CandlePayload | BoxplotPayload
-  | CalHeatPayload | WafflePayload | QuiverPayload;
+  | CalHeatPayload | WafflePayload | QuiverPayload | SevenSegPayload;
 
 /** Every op the `chart` socket can carry: the ChartView series shapes, the
  *  structured-payload figures rendered outside recharts (kpi/bullet), and the
  *  structured recharts figures (treemap/sankey). */
 export type ChartValueOp =
   | ChartOp | "kpi" | "bullet" | "treemap" | "sankey" | "surface"
-  | "contour" | "waterfall" | "candle" | "boxplot" | "calheat" | "waffle" | "quiver";
+  | "contour" | "waterfall" | "candle" | "boxplot" | "calheat" | "waffle" | "quiver" | "sevenseg";
 
 export interface ChartValue {
   __chart: true;

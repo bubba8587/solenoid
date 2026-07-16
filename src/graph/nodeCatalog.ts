@@ -253,7 +253,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
             { type: "gauge",     label: "Gauge",     description: "Show a value as a percentage on a speedometer-style radial dial (1 = 100%, 1.5 = 150%). Pass-through.", create: () => new GaugeNode(), parity: false },
             { type: "bullet",    label: "Bullet",    description: "A bullet graph: a value bar on a min-to-max track with a target tick. A compact gauge alternative. Emits a chart value a Report can embed.", create: () => new BulletNode(), parity: false, keywords: "bullet graph target progress goal gauge kpi" },
           ]},
-          { type: "seven-seg", label: "7-Segment", description: "A flat seven-segment readout of a number, with a Decimals setting — the meter-face look. Pass-through.", create: () => new SevenSegNode(), parity: false, keywords: "seven segment display digital readout meter lcd led digits retro" },
+          { type: "seven-seg", label: "7-Segment", description: "A flat seven-segment readout of a number, with a Decimals setting — the meter-face look. Emits a chart value a Report can embed.", create: () => new SevenSegNode(), parity: false, keywords: "seven segment display digital readout meter lcd led digits retro" },
           {
             type: "category", label: "Distribution", description: "How a sample spreads: binned counts and five-number summaries.",
             children: [
