@@ -1,5 +1,5 @@
 /* Canvas Note — a free-floating sticky annotation. Mirrors the (calibrated) Group
-   node: 2px border, 11px radius, the same swatch + selection ring. No overflow:
+   node: 2px border, 8px radius, the same swatch + selection ring. No overflow:
    hidden — that would clip the selection ::after and inset it from the edge. */
 .solenoid-note {
   position: relative;
@@ -14,7 +14,7 @@
   flex-direction: column;
   background: var(--note-bg);
   border: 2px solid var(--note-color);
-  border-radius: 11px;
+  border-radius: 8px;
   box-shadow: var(--shadow-card);
   cursor: grab;
 }
@@ -22,7 +22,7 @@
 
 /* Header bar = drag handle. The chevron + name input + swatch stop pointerdown so
    they don't start a drag; the leftover header (the strip the name input doesn't
-   claim) stays grabbable. Top corners follow the card's inner radius (11 − 2). */
+   claim) stays grabbable. Top corners follow the card's inner radius (8 − 2). */
 .solenoid-note__bar {
   position: relative;
   display: flex;
@@ -32,21 +32,21 @@
   /* Opaque accent-tinted header — same formula as every node + Group header, so
      the Note reads as a real node, not a translucent sticky overlay. */
   background: color-mix(in srgb, var(--note-color) var(--header-tint), var(--surface));
-  border-radius: 9px 9px 0 0;
+  border-radius: 6px 6px 0 0;
   box-shadow: inset 0 -1px 0 var(--note-color);
 }
 /* Collapsed with nothing below the bar → round all four corners. A frontmatter
    note keeps its fields strip below the bar even when collapsed (the sockets must
    survive), so it keeps the bottom-flat bar + separator. */
 .solenoid-note--collapsed:not(.solenoid-note--has-fields) .solenoid-note__bar {
-  border-radius: 9px;
+  border-radius: 6px;
   box-shadow: none;
 }
 /* Collapsed fields strip is the last child — drop its separator line and round
    its bottom corners to the note's inner radius. */
 .solenoid-note--collapsed .solenoid-note__fields {
   box-shadow: none;
-  border-radius: 0 0 9px 9px;
+  border-radius: 0 0 6px 6px;
 }
 
 /* Collapse chevron — pinned left, mirrors the Group node's. */
@@ -233,7 +233,7 @@
 
 /* Holds the body. overflow:hidden clips the scrolling body (and its scrollbar)
    to the card's rounded base; the bottom radius matches the note's inner corner
-   (11px frame − 2px border). The note can't clip this itself without also clipping
+   (8px frame − 2px border). The note can't clip this itself without also clipping
    the selection ring that sits outside it. */
 .solenoid-note__content {
   display: flex;
@@ -241,7 +241,7 @@
   flex: 1;          /* fill the note's manual height; the body scrolls inside */
   min-height: 0;
   overflow: hidden;
-  border-radius: 0 0 9px 9px;
+  border-radius: 0 0 6px 6px;
 }
 
 .solenoid-note__body {
@@ -324,7 +324,7 @@
 .solenoid-note__rendered.sol-md ol { margin: 5px 0; }
 .solenoid-note__rendered.sol-md pre { margin: 6px 0; }
 
-/* Selection ring — copied from the Group node's (its own ring at the 11px
+/* Selection ring — copied from the Group node's (its own ring at the 8px
    radius so it hugs the frame; raised above the border via z-index). */
 .solenoid-note--selected {
   box-shadow: 0 6px 16px color-mix(in srgb, var(--node-accent) 22%, transparent);
@@ -338,7 +338,7 @@
   inset: -2px;
   box-sizing: border-box;
   border: 2px solid color-mix(in srgb, var(--node-accent) 70%, #fff);
-  border-radius: 11px;
+  border-radius: 8px;
   pointer-events: none;
   z-index: 6;
 }

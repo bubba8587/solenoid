@@ -79,7 +79,7 @@
   padding: 6px 8px;
   background: var(--overlay-bg);
   border: var(--overlay-border-width) solid var(--overlay-border);
-  border-radius: 8px;
+  border-radius: 6px;
   box-shadow: var(--overlay-shadow);
 }
 .solenoid-comment--resolved { opacity: 0.55; }

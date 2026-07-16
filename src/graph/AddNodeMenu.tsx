@@ -160,7 +160,7 @@ function Submenu({ anchor, children, onSide }: { anchor: HTMLElement; children: 
       className="solenoid-add-menu__panel solenoid-add-menu__panel--submenu"
       style={{ position: "fixed", left: style.left, top: style.top, visibility: style.visible ? "visible" : "hidden" }}
     >
-      {children}
+      <div className="solenoid-add-menu__scroll">{children}</div>
     </div>
   );
 }
@@ -396,6 +396,7 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
     >
       <div className="solenoid-add-menu__heading">Add node</div>
       <div className="solenoid-add-menu__panel">
+        <div className="solenoid-add-menu__scroll">
         <input
           ref={inputRef}
           className="solenoid-add-menu__search"
@@ -428,6 +429,7 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
         ) : (
           <TreeMenu entries={entries} depth={0} path={treePath} onHover={handleHover} onOpenCategory={handleOpenCategory} onSelect={select} onSubmenuSide={setSubmenuSide} isDim={isDim} />
         )}
+        </div>
       </div>
     </div>
   );

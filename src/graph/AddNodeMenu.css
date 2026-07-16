@@ -17,7 +17,7 @@
      overlay bg + a thicker, more visible border, the modest overlay shadow. */
   background: var(--overlay-bg);
   border: var(--overlay-border-width) solid var(--overlay-border);
-  border-radius: 8px 8px 0 0;
+  border-radius: 6px 6px 0 0;
   border-bottom: none;
 }
 
@@ -27,20 +27,34 @@
    misaligning, and without hardcoding any label widths. Panels with no
    pairs collapse to a single effective column. */
 .solenoid-add-menu__panel {
-  display: grid;
-  grid-template-columns: auto auto;
-  column-gap: 3px;
-  align-content: start;
+  display: flex;
+  flex-direction: column;
   background: var(--overlay-bg);
   border: var(--overlay-border-width) solid var(--overlay-border);
-  border-radius: 0 0 8px 8px;
-  padding: 3px;
+  border-radius: 0 0 6px 6px;
   box-shadow: var(--overlay-shadow);
   min-width: 170px;
   /* Cap matches the default tree's height (~12 items + the search field)
      so the search-results panel is about the same size as the tree, for
-     visual consistency. min(…) keeps it from overflowing short screens. */
-  max-height: min(384px, 85vh);
+     visual consistency. min(…) keeps it from overflowing short screens.
+     Sized so the default 12-item tree fits without a scrollbar (the inner
+     __scroll's padding + this panel's border share the budget). */
+  max-height: min(392px, 85vh);
+  /* Clip here (radius + overflow:hidden) and scroll __scroll inside, so the
+     rounded bottom corner cleanly clips the native scrollbar. */
+  overflow: hidden;
+}
+
+/* The scrolling grid — its native scrollbar is clipped by __panel's rounded
+   corner. 2-column grid so paired rows share column tracks. */
+.solenoid-add-menu__scroll {
+  display: grid;
+  grid-template-columns: auto auto;
+  column-gap: 3px;
+  align-content: start;
+  padding: 3px;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
 }
 
@@ -69,14 +83,14 @@
 
 /* Singles, categories, search input span both columns; half items (pair
    members, now rendered directly) auto-place into the two columns. */
-.solenoid-add-menu__panel > *:not(.solenoid-add-menu__item--half) {
+.solenoid-add-menu__scroll > *:not(.solenoid-add-menu__item--half) {
   grid-column: 1 / -1;
 }
 
 /* Submenu panel: JS positions it via inline `position: fixed` (so it
    can clamp / flip against the viewport). CSS just handles the look. */
 .solenoid-add-menu__panel--submenu {
-  border-radius: 8px;
+  border-radius: 6px;
   z-index: 201;
 }
 

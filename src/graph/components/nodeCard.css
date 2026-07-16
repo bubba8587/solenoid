@@ -4,7 +4,7 @@
 .solenoid-node {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 6px;
   /* Fixed width so every node is uniform. Without this, nodes shrink-to-
      fit their max-content width and a type=number field (~180px+) stretches
      input nodes wider than display-only ones. Width tiers below; heights stay
@@ -89,7 +89,7 @@
   inset: 0;
   box-sizing: border-box;
   border: 2px solid color-mix(in srgb, var(--node-accent, var(--accent)) 70%, #fff);
-  border-radius: 8px;
+  border-radius: 6px;
   pointer-events: none;
   z-index: 6;
 }
@@ -186,7 +186,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  border-radius: 8px;
+  border-radius: 6px;
   /* Mix into the opaque card surface, NOT transparent: the translucent
      membership border beneath composites over that same --surface, so an opaque
      triangle of the identical shade sits flush over it with no double-alpha seam
@@ -276,8 +276,8 @@
      mitres into a diagonal wedge. The divider is an inset shadow instead. */
   border-bottom: none;
   box-shadow: inset 0 -1px 0 var(--border);
-  border-top-left-radius: 8px;
-  border-top-right-radius: 8px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
   /* Opaque accent-tinted header. Tint strength is themed (--header-tint) so the
      pale-over-white light theme can push it harder. No accent → plain surface. */
   background: color-mix(in srgb, var(--node-accent, var(--surface)) var(--header-tint), var(--surface));
@@ -673,7 +673,9 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   color: var(--text-dim);
   opacity: 0.5;
   cursor: nwse-resize;
-  z-index: 4;
+  /* Above the group membership corner triangle (::before, z 5), which shares this
+     bottom-right corner and would otherwise paint over the grip. Below sockets (z 7). */
+  z-index: 6;
 }
 .solenoid-node__resize-handle:hover {
   opacity: 0.9;
@@ -1245,11 +1247,11 @@ body.solenoid-scrubbing * {
   0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--sol-error) 0%, transparent); }
   15%, 55% { box-shadow: 0 0 8px 2px color-mix(in srgb, var(--sol-error) 55%, transparent); }
 }
-/* The class lands on rete's node wrapper (no radius of its own), so match the 8px
+/* The class lands on rete's node wrapper (no radius of its own), so match the 4px
    card corner — box-shadow follows border-radius — and blur the ring into a halo so
    it hugs the rounded card instead of drawing a hard rectangle around it. */
 .solenoid-node-flash {
-  border-radius: 8px;
+  border-radius: 6px;
   animation: solenoid-flash-pulse 1s ease-in-out;
 }
 

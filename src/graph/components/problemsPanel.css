@@ -87,7 +87,7 @@
   padding: 5px 6px 5px 9px;
   background: var(--overlay-bg);
   border: var(--overlay-border-width) solid var(--overlay-border);
-  border-radius: 8px;
+  border-radius: 6px;
   box-shadow: var(--overlay-shadow);
   cursor: pointer;
   animation: solenoid-problem-in 130ms ease-out;
