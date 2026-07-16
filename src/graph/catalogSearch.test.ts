@@ -34,6 +34,14 @@ describe("Add-menu search — category + type + keywords are searchable", () => 
     expect(types("convert")[0]).toBe("convert");
   });
 
+  it("an op-glyph label prefix doesn't demote the exact match ('add' → + Add first)", () => {
+    // "+ Add" only earned the word-start tier while "Add Column"/"Add Index"
+    // earned the prefix tier; the glyph-stripped label restores the exact tier.
+    expect(types("add")[0]).toBe("arith-add");
+    expect(types("subtract")[0]).toBe("arith-sub");
+    expect(types("divide")[0]).toBe("arith-div");
+  });
+
   it("Excel function names still match", () => {
     // SUMPRODUCT is an Excel name carried via the catalog→excel map.
     expect(search("sumproduct").length).toBeGreaterThan(0);

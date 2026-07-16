@@ -38,6 +38,13 @@ function typeWords(type: string): string {
   return type.replace(/[-_]/g, " ");
 }
 
+// "+ Add" / "× Multiply" → "Add" / "Multiply". An op-glyph prefix on the label
+// otherwise demotes an exact query ("add") to the word-start tier, letting
+// "Add Column" (prefix tier) outrank the Add node itself.
+function stripGlyphPrefix(label: string): string {
+  return label.replace(/^[^\p{L}\p{N}]+\s*/u, "");
+}
+
 /** Score one leaf against a query, or null if the query isn't even a subsequence
  *  of its (wide) searchable text. Higher = better. */
 export function scoreLeaf(query: string, { leaf, categoryPath }: LeafWithContext): number | null {
@@ -53,6 +60,8 @@ export function scoreLeaf(query: string, { leaf, categoryPath }: LeafWithContext
   // under the Input category), the kebab type, keywords, and Excel names (Excel
   // weighed slightly under the rest so an exact label still wins a tie).
   const fields = [leaf.label, `${leaf.label} ${category}`, typeWords(leaf.type), keywords];
+  const bare = stripGlyphPrefix(leaf.label);
+  if (bare && bare !== leaf.label) fields.push(bare);
   let bonus = 0;
   for (const f of fields) {
     const fs = f.trim() ? fieldScore(query, f) : null;
