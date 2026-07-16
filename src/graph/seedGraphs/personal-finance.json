@@ -1395,6 +1395,94 @@
       }
     },
     {
+      "id": "note-v12",
+      "type": "NoteNode",
+      "x": 40,
+      "y": 1960,
+      "init": {
+        "label": "9 · New in 1.2",
+        "body": "# Bridge, calendar, fill-down\nThe **Waterfall** walks the month from income down to what's left — its Total bar is computed, never typed. The **Calendar** tints each January day by its spend, streaks and splurges at a glance. Below, a report-shaped table names each **Category** only once; **Fill Down** carries the name through the blanks so **Group By** can sum it properly.",
+        "color": "gold",
+        "width": 400,
+        "height": 200,
+        "collapsed": false
+      }
+    },
+    {
+      "id": "fi-bridge",
+      "type": "FrameInputNode",
+      "x": 60,
+      "y": 2240,
+      "init": {
+        "label": "Monthly budget bridge",
+        "frameText": "[{\"name\":\"Item\",\"type\":\"string\",\"cells\":[\"Income\",\"Rent\",\"Groceries\",\"Transport\",\"Subscriptions\",\"Dining\",\"Savings transfer\"]},{\"name\":\"Delta\",\"type\":\"number\",\"cells\":[\"5200\",\"-1650\",\"-520\",\"-180\",\"-95\",\"-240\",\"-800\"]}]"
+      }
+    },
+    {
+      "id": "wf-bridge",
+      "type": "WaterfallNode",
+      "x": 400,
+      "y": 2240,
+      "init": {
+        "label": "Where the month went"
+      }
+    },
+    {
+      "id": "fi-daily",
+      "type": "FrameInputNode",
+      "x": 760,
+      "y": 2240,
+      "init": {
+        "label": "Daily spend · Jan 2026",
+        "frameText": "[{\"name\":\"Date\",\"type\":\"date\",\"cells\":[\"2026-01-01\",\"2026-01-02\",\"2026-01-03\",\"2026-01-04\",\"2026-01-05\",\"2026-01-06\",\"2026-01-07\",\"2026-01-08\",\"2026-01-09\",\"2026-01-10\",\"2026-01-11\",\"2026-01-12\",\"2026-01-13\",\"2026-01-14\",\"2026-01-15\",\"2026-01-16\",\"2026-01-17\",\"2026-01-18\",\"2026-01-19\",\"2026-01-20\",\"2026-01-21\",\"2026-01-22\",\"2026-01-23\",\"2026-01-24\",\"2026-01-25\",\"2026-01-26\",\"2026-01-27\",\"2026-01-28\",\"2026-01-29\",\"2026-01-30\"]},{\"name\":\"Spend\",\"type\":\"number\",\"cells\":[\"84\",\"23\",\"61\",\"132\",\"18\",\"42\",\"55\",\"37\",\"71\",\"145\",\"96\",\"12\",\"48\",\"33\",\"27\",\"88\",\"156\",\"64\",\"21\",\"39\",\"74\",\"58\",\"92\",\"173\",\"81\",\"15\",\"44\",\"67\",\"52\",\"118\"]}]"
+      }
+    },
+    {
+      "id": "cal-daily",
+      "type": "CalendarHeatmapNode",
+      "x": 1100,
+      "y": 2240,
+      "init": {
+        "label": "Spending calendar"
+      }
+    },
+    {
+      "id": "fi-report",
+      "type": "FrameInputNode",
+      "x": 60,
+      "y": 2620,
+      "init": {
+        "label": "Report-shaped spend",
+        "frameText": "[{\"name\":\"Category\",\"type\":\"string\",\"cells\":[\"Housing\",\"\",\"\",\"Food\",\"\",\"\",\"Transport\",\"\"]},{\"name\":\"Item\",\"type\":\"string\",\"cells\":[\"Rent\",\"Insurance\",\"Repairs\",\"Groceries\",\"Dining out\",\"Coffee\",\"Fuel\",\"Transit\"]},{\"name\":\"Amount\",\"type\":\"number\",\"cells\":[\"1650\",\"120\",\"85\",\"520\",\"240\",\"60\",\"110\",\"70\"]}]"
+      }
+    },
+    {
+      "id": "fill-cat",
+      "type": "FillBlanksNode",
+      "x": 400,
+      "y": 2620,
+      "init": {
+        "label": "Fill Down → Category"
+      },
+      "stringLiterals": {
+        "columns": "Category"
+      }
+    },
+    {
+      "id": "gb-cat",
+      "type": "GroupByFrameNode",
+      "x": 700,
+      "y": 2620,
+      "init": {
+        "label": "Sum by category",
+        "op": "sum"
+      },
+      "stringLiterals": {
+        "keys": "Category",
+        "column": "Amount"
+      }
+    },
+    {
       "id": "note-dash",
       "type": "NoteNode",
       "x": 3280,
@@ -2009,6 +2097,28 @@
         "collapsed": true,
         "width": 1940,
         "height": 644
+      }
+    },
+    {
+      "id": "grp-v12",
+      "type": "GroupNode",
+      "x": 20,
+      "y": 2176,
+      "init": {
+        "label": "New in 1.2",
+        "members": [
+          "fi-bridge",
+          "wf-bridge",
+          "fi-daily",
+          "cal-daily",
+          "fi-report",
+          "fill-cat",
+          "gb-cat"
+        ],
+        "color": "gold",
+        "collapsed": false,
+        "width": 1380,
+        "height": 744
       }
     },
     {
@@ -2729,6 +2839,30 @@
       "sourceOutput": "out",
       "target": "fc-bud",
       "targetInput": "in"
+    },
+    {
+      "source": "fi-bridge",
+      "sourceOutput": "frame",
+      "target": "wf-bridge",
+      "targetInput": "frame"
+    },
+    {
+      "source": "fi-daily",
+      "sourceOutput": "frame",
+      "target": "cal-daily",
+      "targetInput": "frame"
+    },
+    {
+      "source": "fi-report",
+      "sourceOutput": "frame",
+      "target": "fill-cat",
+      "targetInput": "frame"
+    },
+    {
+      "source": "fill-cat",
+      "sourceOutput": "frame",
+      "target": "gb-cat",
+      "targetInput": "frame"
     },
     {
       "source": "cd-cash",
