@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, SurfaceNode, parseBorderedGrid, histogramBins } from "./visual";
+import {
+  SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, SurfaceNode, parseBorderedGrid, histogramBins,
+  ContourNode, WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, WaffleNode, QuiverNode,
+  boxplotStats, quantileSorted,
+} from "./visual";
+import type { BoxplotPayload, CandlePayload, ContourPayload, WaterfallPayload, CalHeatPayload, WafflePayload, QuiverPayload } from "../chartValue";
+import type { FrameValue, FrameColumn } from "../frame";
 import { DatePickerNode, XYPadNode } from "./control";
 import { extractInit } from "../copyPaste";
 import { jsDateToSerial } from "./date";
@@ -181,5 +187,124 @@ describe("control nodes", () => {
     const p2 = new XYPadNode(extractInit(p));
     expect(p2.literals.fx).toBe(0.25);
     expect(p2.literals.fy).toBe(0.75);
+  });
+});
+
+// ─── The 2026-07-16 chart wave ─────────────────────────────────────────────────
+
+const frame = (cols: Array<Pick<FrameColumn, "name" | "type" | "values">>): FrameValue =>
+  ({ __frame: true, columns: cols as FrameColumn[] });
+
+describe("quantileSorted / boxplotStats", () => {
+  it("linear-interpolated quantiles (PERCENTILE.INC)", () => {
+    const s = [1, 2, 3, 4];
+    expect(quantileSorted(s, 0)).toBe(1);
+    expect(quantileSorted(s, 1)).toBe(4);
+    expect(quantileSorted(s, 0.5)).toBe(2.5);
+    expect(quantileSorted(s, 0.25)).toBeCloseTo(1.75, 12);
+  });
+
+  it("five-number summary with Tukey whiskers + outliers", () => {
+    // 1..9 plus a wild 100: IQR fences exclude it → outlier, whisker stops at 9.
+    const s = boxplotStats([1, 2, 3, 4, 5, 6, 7, 8, 9, 100])!;
+    expect(s.med).toBeCloseTo(5.5, 12);
+    expect(s.hi).toBe(9);
+    expect(s.outliers).toEqual([100]);
+    expect(boxplotStats([null, null])).toBeNull();
+    // Nulls are skipped, not zeroes.
+    expect(boxplotStats([null, 5, null])!.med).toBe(5);
+  });
+});
+
+describe("chart-wave nodes emit their payloads", () => {
+  it("Contour reads the bordered grid and clamps levels", () => {
+    const n = new ContourNode();
+    const grid = [[null, 0, 1], [0, 5, 6], [1, 7, 8]];
+    const p = n.data({ grid: [grid], levels: [99] }).chart.payload as ContourPayload;
+    expect(p.kind).toBe("contour");
+    expect(p.xs).toEqual([0, 1]);
+    expect(p.ys).toEqual([0, 1]);
+    expect(p.z).toEqual([[5, 6], [7, 8]]);
+    expect(p.levels).toBe(24); // clamped
+  });
+
+  it("Waterfall pairs labels with deltas and flags the computed total", async () => {
+    const n = new WaterfallNode();
+    const f = frame([
+      { name: "Item", type: "string", values: ["Rev", "COGS", "Opex"] },
+      { name: "Δ", type: "number", values: [100, -40, -25] },
+    ]);
+    const p = (await n.data({ frame: [f] })).chart.payload as WaterfallPayload;
+    expect(p.names).toEqual(["Rev", "COGS", "Opex"]);
+    expect(p.values).toEqual([100, -40, -25]);
+    expect(p.total).toBe(true);
+  });
+
+  it("Candlestick: 5 columns → date labels; 4 columns → 1-based index labels", async () => {
+    const n = new CandlestickNode();
+    const withDates = frame([
+      { name: "Date", type: "string", values: ["Jan", "Feb"] },
+      { name: "O", type: "number", values: [10, 12] },
+      { name: "H", type: "number", values: [15, 13] },
+      { name: "L", type: "number", values: [9, 11] },
+      { name: "C", type: "number", values: [12, 11] },
+    ]);
+    const p1 = (await n.data({ frame: [withDates] })).chart.payload as CandlePayload;
+    expect(p1.labels).toEqual(["Jan", "Feb"]);
+    expect(p1.open).toEqual([10, 12]);
+    expect(p1.close).toEqual([12, 11]);
+    const bare = frame([
+      { name: "O", type: "number", values: [10] },
+      { name: "H", type: "number", values: [15] },
+      { name: "L", type: "number", values: [9] },
+      { name: "C", type: "number", values: [12] },
+    ]);
+    const p2 = (await n.data({ frame: [bare] })).chart.payload as CandlePayload;
+    expect(p2.labels).toEqual(["1"]);
+    expect(p2.high).toEqual([15]);
+  });
+
+  it("Boxplot: one box per numeric frame column; a plain list gets one box", async () => {
+    const n = new BoxplotNode();
+    const f = frame([
+      { name: "City", type: "string", values: ["a", "b", "c", "d", "e"] },
+      { name: "Temp", type: "number", values: [1, 2, 3, 4, 5] },
+      { name: "Wind", type: "number", values: [10, 20, 30, 40, 50] },
+    ]);
+    const p = (await n.data({ values: [f] })).chart.payload as BoxplotPayload;
+    expect(p.boxes.map((b) => b.name)).toEqual(["Temp", "Wind"]);
+    expect(p.boxes[0].med).toBe(3);
+    const pl = (await n.data({ values: [[1, 2, 3]] })).chart.payload as BoxplotPayload;
+    expect(pl.boxes).toHaveLength(1);
+    expect(pl.boxes[0].med).toBe(2);
+  });
+
+  it("Calendar keeps date SERIALS (not formatted text) and pairs values", async () => {
+    const n = new CalendarHeatmapNode();
+    const f = frame([
+      { name: "Day", type: "date", values: [45000, 45001, null] },
+      { name: "N", type: "number", values: [3, 5, 7] },
+    ]);
+    const p = (await n.data({ frame: [f] })).chart.payload as CalHeatPayload;
+    expect(p.days).toEqual([45000, 45001]); // the null day drops WITH its value
+    expect(p.values).toEqual([3, 5]);
+  });
+
+  it("Waffle carries label/value pairs", async () => {
+    const n = new WaffleNode();
+    const f = frame([
+      { name: "Part", type: "string", values: ["A", "B"] },
+      { name: "Share", type: "number", values: [3, 1] },
+    ]);
+    const p = (await n.data({ frame: [f] })).chart.payload as WafflePayload;
+    expect(p.names).toEqual(["A", "B"]);
+    expect(p.values).toEqual([3, 1]);
+  });
+
+  it("Vector Field normalizes both component matrices, keeping nulls as holes", () => {
+    const n = new QuiverNode();
+    const p = n.data({ u: [[[1, null], [0, 2]]], v: [[[0, 1], [null, 2]]] }).chart.payload as QuiverPayload;
+    expect(p.u).toEqual([[1, null], [0, 2]]);
+    expect(p.v).toEqual([[0, 1], [null, 2]]);
   });
 });

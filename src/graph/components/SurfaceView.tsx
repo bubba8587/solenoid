@@ -14,10 +14,12 @@ const cross = (a: V3, b: V3): V3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[
 function unit(v: V3): V3 { const m = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / m, v[1] / m, v[2] / m]; }
 
 // Viridis colormap (5 stops) — the familiar perceptual height ramp for surfaces.
+// Exported for the other field figures (Contour, Vector Field) so height/magnitude
+// reads identically across the family.
 const VIRIDIS: Array<[number, number, number]> = [
   [68, 1, 84], [59, 82, 139], [33, 145, 140], [94, 201, 98], [253, 231, 37],
 ];
-function heightColor(t: number): [number, number, number] {
+export function heightColor(t: number): [number, number, number] {
   const u = Math.max(0, Math.min(1, t)) * (VIRIDIS.length - 1);
   const i = Math.min(VIRIDIS.length - 2, Math.floor(u));
   const f = u - i, a = VIRIDIS[i], b = VIRIDIS[i + 1];
