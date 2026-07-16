@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { copyText } from "../clipboard";
 import { tablePopup, type TablePopupState, type Cell as CellValue, type FramePopupColumn } from "../tablePopupStore";
 import { appThemeStore } from "../appTheme";
@@ -394,20 +394,20 @@ export function TablePopup() {
   // maxLen × advance + the input's 16px padding. Only columns needing MORE than
   // the CSS 72px floor get an inline min-width; a 200px cap keeps a pathological
   // cell from stretching the grid (mono columns only — text columns are sans).
+  // Plain computation, NOT a hook: this sits below the `if (!state) return null`
+  // guard, so a hook here changes the hook count when the popup opens (the exact
+  // React violation that black-screened the app). The visible grid is capped at
+  // MAX_VISIBLE_ROWS, so a per-render scan is cheap.
   const MONO_CH_PX = 13 * (27 / 42);
-  const colMinWidths = useMemo(() => {
-    const out: Array<number | undefined> = [];
-    for (let c = 0; c < viewCols; c++) {
-      const type = vertical ? cellType : typeAt(c, cellType, state?.columnTypes);
-      if (isTextType(type)) { out.push(undefined); continue; }
-      let m = 0;
-      for (const row of viewGrid) m = Math.max(m, (row[c] ?? "").length);
-      const px = Math.ceil(m * MONO_CH_PX) + 16;
-      out.push(px > 72 ? Math.min(px, 200) : undefined);
-    }
-    return out;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewGrid, viewCols, vertical, cellType, state?.columnTypes]);
+  const colMinWidths: Array<number | undefined> = [];
+  for (let c = 0; c < viewCols; c++) {
+    const colType = vertical ? cellType : typeAt(c, cellType, state.columnTypes);
+    if (isTextType(colType)) { colMinWidths.push(undefined); continue; }
+    let m = 0;
+    for (const row of viewGrid) m = Math.max(m, (row[c] ?? "").length);
+    const px = Math.ceil(m * MONO_CH_PX) + 16;
+    colMinWidths.push(px > 72 ? Math.min(px, 200) : undefined);
+  }
 
   function setCell(r: number, c: number, v: string) {
     setGrid((g) => g.map((row, i) => (i === r ? row.map((cell, j) => (j === c ? v : cell)) : row)));
