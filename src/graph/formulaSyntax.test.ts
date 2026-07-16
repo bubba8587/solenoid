@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { highlightFormula, tokenAtCaret, suggestFor } from "./formulaSyntax";
+import { highlightFormula, tokenAtCaret, suggestFor, enclosingCall } from "./formulaSyntax";
 import { FORMULA_FUNCTION_NAMES } from "./excelFormula";
 
 // Strip the tags to recover the original text — the highlighter must be lossless.
@@ -59,5 +59,28 @@ describe("suggestFor", () => {
     expect(suggestFor("tau").some((x) => x.name.toLowerCase() === "tau")).toBe(false);
     // but a fully-typed FUNCTION stays — accepting it still adds the `(`.
     expect(suggestFor("PI").some((x) => x.name === "PI")).toBe(true);
+  });
+});
+
+describe("signature surfacing (audit 2026-07-16 — arg-count in autocomplete)", () => {
+  it("a function suggestion carries its signature hint", () => {
+    const idx = suggestFor("INDE").find((s) => s.name === "INDEX");
+    expect(idx?.hint).toBe("array, row, [col]");
+  });
+
+  it("enclosingCall finds the innermost call + the caret's argument", () => {
+    const src = "INDEX(c, row) * MAX(a, b";
+    // caret inside INDEX's 2nd arg
+    expect(enclosingCall(src, "INDEX(c, r".length)).toEqual({ name: "INDEX", argIndex: 1 });
+    // caret inside MAX's 2nd arg (INDEX is closed by then)
+    expect(enclosingCall(src, src.length)).toEqual({ name: "MAX", argIndex: 1 });
+    // top level → null
+    expect(enclosingCall(src, "INDEX(c, row) ".length)).toBeNull();
+    // a comma inside a STRING doesn't advance the arg index
+    expect(enclosingCall('TEXTJOIN(",", x', 'TEXTJOIN(",", x'.length))
+      .toEqual({ name: "TEXTJOIN", argIndex: 1 });
+    // an anonymous paren group nests without stealing the name
+    expect(enclosingCall("SUM((a + b), c", "SUM((a + b), c".length))
+      .toEqual({ name: "SUM", argIndex: 1 });
   });
 });

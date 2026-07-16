@@ -1,6 +1,6 @@
 import { ClassicPreset } from "rete";
 import { anyListIn, resultOut, type ResultType } from "./shared";
-import { extractVariables, compileEvaluator, parseFormula, type ExprEvaluator, type Ast } from "../excelFormula";
+import { extractVariables, compileEvaluator, parseFormula, type ExprEvaluator, type Ast, formulaSyntaxHint } from "../excelFormula";
 import { fxErrorToSol } from "../excelFunctions";
 import { isSolError, solError } from "../errorValue";
 import { isUnitCell, tagDim, type UnitCell } from "../unitValue";
@@ -157,12 +157,13 @@ export class ExpressionNode extends ClassicPreset.Node {
     // (errorValue.ts); cachedError keeps the richer in-node message. An empty
     // formula is a blank, not an error.
     if (!this.evaluator) {
-      this.cachedError = this.expr.trim() ? "Syntax error" : null;
+      const hint = this.expr.trim() ? formulaSyntaxHint(this.expr) : null;
+      this.cachedError = this.expr.trim() ? (hint ?? "Syntax error") : null;
       if (!this.cachedError) {
         this.cachedResult = null;
         return { result: null };
       }
-      const err = solError("#SYNTAX!", "The formula has a syntax error");
+      const err = solError("#SYNTAX!", hint ?? "The formula has a syntax error");
       this.cachedResult = err;
       return { result: err };
     }

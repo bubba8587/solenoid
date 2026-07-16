@@ -13,7 +13,7 @@
 // evaluation core), and a LaTeX string for the KaTeX preview.
 
 import { solError, isSolError, isNaError } from "./errorValue";
-import { resolveExcelFunction, EXCEL_IMPL_META, normalizeFxResult, fxErrorToSol, FX_FUNCTION_NAMES, numberToText } from "./excelFunctions";
+import { resolveExcelFunction, EXCEL_IMPL_META, normalizeFxResult, fxErrorToSol, FX_FUNCTION_NAMES, numberToText, internalFunctionNames, ELIMINATED_FUNCTIONS } from "./excelFunctions";
 import { isMissing, guardFinite } from "./valueKinds";
 import { compareStrings } from "./stringOrder";
 
@@ -190,6 +190,25 @@ export function parseFormula(expr: string): Ast | null {
   return parseExpr(expr);
 }
 
+/** A human explanation for WHY a formula fails to parse, when a common cause is
+ *  detectable — the parser itself is null-on-failure, and a bare "Syntax error"
+ *  sent a real user hunting blind (braces, 2026-07-16). Returns null when nothing
+ *  recognizable is wrong (callers fall back to the generic message). Checks run
+ *  on the source with string literals blanked so a quoted "{" can't false-hit. */
+export function formulaSyntaxHint(expr: string): string | null {
+  const s = expr.replace(/"[^"]*"?/g, '""').trim();
+  if (/[{}]/.test(s)) return "Braces { } aren't formula syntax — remove them (array literals aren't supported; wire a List or Table input instead)";
+  if (s.startsWith("=")) return "Drop the leading = — type just the formula body";
+  if (/;/.test(s)) return "Separate arguments with commas, not semicolons";
+  if (/[[\]]/.test(s)) return "Square brackets aren't formula syntax — omit optional arguments instead";
+  const open = (s.match(/\(/g) ?? []).length;
+  const close = (s.match(/\)/g) ?? []).length;
+  if (open > close) return `Missing ${open - close} closing parenthesis${open - close === 1 ? "" : "es"}`;
+  if (close > open) return `${close - open} extra closing parenthesis${close - open === 1 ? "" : "es"}`;
+  if (/[+\-*/^&,<>=]$/.test(s)) return "The formula ends mid-expression (trailing operator)";
+  return null;
+}
+
 // Bare names that resolve to a mathematical constant instead of becoming an
 // input variable — so `2*pi` evaluates to 6.283…, it doesn't request a `pi`
 // input. Matches the math constants the Constant node offers; case-insensitive.
@@ -210,7 +229,8 @@ function constantValue(name: string): number | undefined {
 export const FORMULA_FUNCTION_NAMES: string[] = Array.from(new Set([
   ...FX_FUNCTION_NAMES, // flat AND namespaced-dotted (NORM.DIST, STDEV.S, …)
   ...Object.keys(EXCEL_IMPL_META),
-])).sort();
+  ...internalFunctionNames(), // registerInternal names (XLOOKUP/XMATCH/INDEX, …)
+])).filter((n) => !ELIMINATED_FUNCTIONS.has(n)).sort(); // D10: eliminated stays eliminated on EVERY surface
 
 // ─── Variable extraction ──────────────────────────────────────────────────────
 function collectNames(n: Ast, out: string[], seen: Set<string>): void {

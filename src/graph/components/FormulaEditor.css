@@ -96,3 +96,40 @@
 .fx-editor__kind--const { color: #b48cff; }
 .fx-editor__kind--var { color: #d9a521; }
 .fx-editor__name { letter-spacing: 0.01em; }
+.fx-editor__sig-hint {
+  margin-left: 2px;
+  color: var(--text-muted);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 260px;
+}
+
+/* Param-hint bar — the enclosing call's signature, caret's argument emphasized.
+   Sits where the menu would (mutually exclusive with it). */
+.fx-editor__sigbar {
+  position: absolute;
+  top: calc(100% + 3px);
+  left: 0;
+  z-index: 30;
+  padding: 3px 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: var(--shadow-card);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+.fx-editor__sigbar b { color: var(--text); font-weight: 600; }
+.fx-editor__sigarg--on {
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

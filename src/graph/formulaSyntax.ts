@@ -1,4 +1,5 @@
 import { FORMULA_CONSTANTS, FORMULA_FUNCTION_NAMES } from "./excelFormula";
+import { signatureFor } from "./formulaSignatures";
 import { fuzzyScore } from "./fuzzy";
 
 // ─── Formula syntax highlighting + autocomplete helpers ───────────────────────
@@ -85,7 +86,7 @@ export function tokenAtCaret(src: string, caret: number): { word: string; start:
   return { word, start };
 }
 
-export type Suggestion = { name: string; kind: "fn" | "const" | "var" };
+export type Suggestion = { name: string; kind: "fn" | "const" | "var"; hint?: string };
 
 /** Rank function names + constants + the node's own variables against the typed
  *  word (fuzzy, case-insensitive). Exact-prefix matches float to the top. */
@@ -112,5 +113,48 @@ export function suggestFor(word: string, extraNames: string[] = [], limit = 8): 
     scored.push({ s, score: prefix + fz + kindBonus });
   }
   scored.sort((a, b) => b.score - a.score || a.s.name.length - b.s.name.length);
-  return scored.slice(0, limit).map((x) => x.s);
+  return scored.slice(0, limit).map((x) => {
+    if (x.s.kind !== "fn") return x.s;
+    const hint = signatureFor(x.s.name);
+    return hint == null ? x.s : { ...x.s, hint };
+  });
+}
+
+/** The innermost function call the caret sits inside — `{ name, argIndex }` — or
+ *  null at the top level. Drives the param-hint bar: `INDEX(c, |` → INDEX, arg 1.
+ *  String literals are skipped; an anonymous `(` group still nests (its enclosing
+ *  named call keeps counting ITS OWN commas, not the group's). */
+export function enclosingCall(src: string, caret: number): { name: string; argIndex: number } | null {
+  const stack: Array<{ name: string | null; argIndex: number }> = [];
+  let i = 0;
+  const end = Math.min(caret, src.length);
+  while (i < end) {
+    const c = src[i];
+    if (c === '"') { i++; while (i < end && src[i] !== '"') i++; i++; continue; }
+    if (c === "(") {
+      let j = i - 1;
+      while (j >= 0 && /\s/.test(src[j])) j--;
+      let name: string | null = null;
+      if (j >= 0 && isIdChar(src[j])) {
+        let s = j;
+        while (s > 0 && isIdChar(src[s - 1])) s--;
+        if (isIdStart(src[s])) name = src.slice(s, j + 1);
+      }
+      stack.push({ name, argIndex: 0 });
+      i++; continue;
+    }
+    if (c === ")") { stack.pop(); i++; continue; }
+    if (c === ",") { if (stack.length) stack[stack.length - 1].argIndex++; i++; continue; }
+    i++;
+  }
+  for (let k = stack.length - 1; k >= 0; k--) {
+    const frame = stack[k];
+    if (frame.name) {
+      // Commas inside an anonymous ( ) group between the named call and the caret
+      // belong to the group — the named frame's own count is already correct
+      // because only the TOP frame increments.
+      return { name: frame.name, argIndex: frame.argIndex };
+    }
+  }
+  return null;
 }

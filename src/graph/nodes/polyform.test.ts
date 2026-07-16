@@ -222,3 +222,32 @@ describe("per-variable descriptions (Expression + Equation)", () => {
     expect(isLambdaValue(bare.data({}).result) && (bare.data({}).result as { descriptions?: unknown }).descriptions).toBeUndefined();
   });
 });
+
+describe("lambda-family inline formula errors (audit 2026-07-16)", () => {
+  it("an outside name in the inline formula errors with the LAMBDA-node guidance", () => {
+    const n = new MakeArrayNode({ expr: "INDEX(c,row)*INDEX(c,col)" });
+    n.literals = { rows: 2, cols: 2 };
+    const r = n.data({});
+    expect(n.cachedError).toMatch(/Unknown name c/);
+    expect(n.cachedError).toMatch(/LAMBDA node/);
+    expect(isSolError(r.result) && r.result.code).toBe("#NAME?");
+  });
+
+  it("the user's diagonal-matrix flow WORKS via a wired LAMBDA capturing c", () => {
+    // LAMBDA(row, col) body INDEX(c,row)*INDEX(c,col), c captured as a closure
+    // input; wired into MAKEARRAY. (The outer product — diag comes from × MUNIT.)
+    const lam = new LambdaNode({ expr: "INDEX(c,row)*INDEX(c,col)", params: "row, col" });
+    const lamVal = lam.data({ c: [[1, 2, 3]] }).result;
+    const n = new MakeArrayNode({});
+    n.literals = { rows: 3, cols: 3 };
+    const r = n.data({ lambda: [lamVal] });
+    expect(r.result).toEqual([[1, 2, 3], [2, 4, 6], [3, 6, 9]]);
+  });
+
+  it("braces in the inline formula get the targeted brace message", () => {
+    const n = new MakeArrayNode({ expr: "{ row * col }" });
+    n.literals = { rows: 1, cols: 1 };
+    n.data({});
+    expect(n.cachedError).toMatch(/Braces/);
+  });
+});

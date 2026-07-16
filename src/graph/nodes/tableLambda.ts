@@ -1,7 +1,7 @@
 import { ClassicPreset } from "rete";
 import { numIn, anyIn, anyTableIn, lambdaIn, resultOut, type ResultType } from "./shared";
 import { toAnyMatrix } from "./coerce";
-import { compilePositional, parseFormula } from "../excelFormula";
+import { compilePositional, parseFormula, formulaSyntaxHint, extractVariables } from "../excelFormula";
 import { isLambdaValue, type LambdaValue } from "./lambda";
 import { solError, isSolError, type SolError, type SolErrorCode } from "../errorValue";
 import { isUnitCell, tagDim, magnitudeOf, unitError, type UnitCell } from "../unitValue";
@@ -85,8 +85,22 @@ function resolveFn(
     }
     return { fn: lam.fn as LambdaFn, err: null, code: "#VALUE!" };
   }
-  const fn = compileLambda(inline && inline.trim() ? inline : fallback, varNames);
-  return fn ? { fn, err: null, code: "#SYNTAX!" } : { fn: null, err: "Syntax error", code: "#SYNTAX!" };
+  const src = inline && inline.trim() ? inline : fallback;
+  const fn = compileLambda(src, varNames);
+  if (!fn) return { fn: null, err: formulaSyntaxHint(src) ?? "Syntax error", code: "#SYNTAX!" };
+  // The inline formula sees ONLY this node's fixed variables — an outside name
+  // evaluates against undefined and produces garbage deep inside a function.
+  // Catch it here with the actual escape hatch spelled out (the LAMBDA node's
+  // extra names become capture inputs; wire its output into the Lambda socket).
+  const unknown = extractVariables(src).filter((v) => !varNames.includes(v));
+  if (unknown.length) {
+    return {
+      fn: null,
+      err: `Unknown name ${unknown.join(", ")} — this formula sees only (${varNames.join(", ")}). To use an outside value, put the formula in a LAMBDA node (extra names become inputs) and wire it into the Lambda socket`,
+      code: "#NAME?",
+    };
+  }
+  return { fn, err: null, code: "#SYNTAX!" };
 }
 
 /** The error a lambda-family node returns when its formula won't resolve: keeps

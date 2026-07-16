@@ -1,5 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
-import { highlightFormula, tokenAtCaret, suggestFor, type Suggestion } from "../formulaSyntax";
+import { highlightFormula, tokenAtCaret, suggestFor, enclosingCall, type Suggestion } from "../formulaSyntax";
+import { signatureFor, signatureParams } from "../formulaSignatures";
 import "./FormulaEditor.css";
 
 interface FormulaEditorProps {
@@ -29,6 +30,8 @@ export function FormulaEditor({
   const taRef = useRef<HTMLTextAreaElement>(null);
   const preRef = useRef<HTMLPreElement>(null);
   const [menu, setMenu] = useState<{ items: Suggestion[]; sel: number; tokenStart: number } | null>(null);
+  // The innermost call the caret sits in → the param-hint bar (arg-count surfacing).
+  const [callHint, setCallHint] = useState<{ name: string; argIndex: number } | null>(null);
   // A caret position to restore after a controlled value change (e.g. on accept).
   const pendingCaret = useRef<number | null>(null);
 
@@ -54,8 +57,10 @@ export function FormulaEditor({
     }
   }
 
-  // Recompute the autocomplete menu from the word ending at the caret.
+  // Recompute the autocomplete menu from the word ending at the caret, and the
+  // param-hint bar from the call the caret sits inside.
   function refreshMenu(text: string, caret: number) {
+    setCallHint(enclosingCall(text, caret));
     const tok = tokenAtCaret(text, caret);
     if (!tok) { setMenu(null); return; }
     const items = suggestFor(tok.word, extraNames);
@@ -103,9 +108,18 @@ export function FormulaEditor({
         autoFocus={autoFocus}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
+        onKeyUp={(e) => {
+          // Arrow keys / Home / End move the caret without an input event — keep
+          // the param-hint bar tracking the caret (the menu keys are handled in
+          // keydown and don't move the caret).
+          const k = e.key;
+          if (k.startsWith("Arrow") || k === "Home" || k === "End") {
+            setCallHint(enclosingCall(value, (e.target as HTMLTextAreaElement).selectionStart));
+          }
+        }}
         onScroll={syncScroll}
         onClick={(e) => refreshMenu(value, (e.target as HTMLTextAreaElement).selectionStart)}
-        onBlur={() => { setMenu(null); onBlur?.(); }}
+        onBlur={() => { setMenu(null); setCallHint(null); onBlur?.(); }}
         onPointerDown={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
       />
@@ -122,10 +136,43 @@ export function FormulaEditor({
                 {it.kind === "fn" ? "ƒ" : it.kind === "const" ? "π" : "x"}
               </span>
               <span className="fx-editor__name">{it.name}</span>
+              {it.hint != null && <span className="fx-editor__sig-hint">({it.hint})</span>}
             </li>
           ))}
         </ul>
       )}
+      {!menu && !readOnly && callHint && <ParamHintBar name={callHint.name} argIndex={callHint.argIndex} />}
+    </div>
+  );
+}
+
+/** The param-hint bar: the enclosing call's signature with the caret's argument
+ *  emphasized — `INDEX(array, ❰row❱, [col])`. Hidden for names with no known
+ *  signature; a bare-count fallback ("2 args") shows as `NAME — 2 args`. */
+function ParamHintBar({ name, argIndex }: { name: string; argIndex: number }) {
+  const sig = signatureFor(name);
+  if (sig == null) return null;
+  const params = signatureParams(sig);
+  if (params === null) {
+    return <div className="fx-editor__sigbar"><b>{name.toUpperCase()}</b>&nbsp;— {sig}</div>;
+  }
+  if (params.length === 0) {
+    return <div className="fx-editor__sigbar"><b>{name.toUpperCase()}</b>()</div>;
+  }
+  // Past the named params the highlight clamps to the last one (a variadic "…"
+  // tail legitimately absorbs the extras; a wrong-arity call still shows where
+  // the signature ended).
+  const last = params.length - 1;
+  const active = Math.min(argIndex, last);
+  return (
+    <div className="fx-editor__sigbar">
+      <b>{name.toUpperCase()}</b>(
+      {params.map((p, i) => (
+        <span key={i} className={i === active ? "fx-editor__sigarg--on" : undefined}>
+          {p}{i < last ? ", " : ""}
+        </span>
+      ))}
+      )
     </div>
   );
 }
