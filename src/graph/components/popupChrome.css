@@ -38,7 +38,7 @@
   max-height: 100%;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 6px;
   box-shadow: var(--shadow-pop);
   font-family: inherit;
   color: var(--text);
@@ -67,8 +67,8 @@
   border: 2px solid var(--node-accent, transparent);
   border-bottom: none;
   box-shadow: inset 0 -1px 0 var(--border);
-  border-top-left-radius: 8px;
-  border-top-right-radius: 8px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
   background: color-mix(in srgb, var(--node-accent, var(--surface)) var(--header-tint), var(--surface));
 }
 
@@ -213,7 +213,7 @@
   content: "";
   position: absolute;
   inset: -2px;
-  border-radius: 8px;
+  border-radius: 6px;
   background: color-mix(in srgb, var(--group-color, var(--text-dim)) 78%, var(--surface));
   clip-path: polygon(100% 100%, 100% calc(100% - 18px), calc(100% - 18px) 100%);
   pointer-events: none;

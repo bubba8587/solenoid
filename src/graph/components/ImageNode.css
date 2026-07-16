@@ -12,7 +12,7 @@
   flex-direction: column;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 6px;
   box-shadow: var(--shadow-card);
   cursor: grab;
 }
@@ -29,11 +29,11 @@
   height: 26px;
   padding: 0 6px 0 22px; /* room for the absolute chevron on the left */
   background: color-mix(in srgb, var(--node-accent) var(--header-tint), var(--surface));
-  border-radius: 7px 7px 0 0;
+  border-radius: 5px 5px 0 0;
   box-shadow: inset 0 -1px 0 var(--border);
 }
 .solenoid-image--collapsed .solenoid-image__bar {
-  border-radius: 7px;
+  border-radius: 5px;
   box-shadow: none;
 }
 
@@ -98,7 +98,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border-radius: 0 0 7px 7px;
+  border-radius: 0 0 5px 5px;
 }
 
 /* The image well — object-fit:contain letterboxes any aspect ratio against a
@@ -188,7 +188,7 @@
   inset: -1px;
   box-sizing: border-box;
   border: 2px solid color-mix(in srgb, var(--node-accent) 70%, #fff);
-  border-radius: 8px;
+  border-radius: 6px;
   pointer-events: none;
   z-index: 6;
 }

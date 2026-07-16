@@ -15,7 +15,7 @@
   padding: 8px 9px 9px;
   background: var(--overlay-bg);
   border: var(--overlay-border-width) solid var(--overlay-border);
-  border-radius: 8px;
+  border-radius: 6px;
   box-shadow: var(--overlay-shadow);
   color: var(--text);
   font-family: inherit;

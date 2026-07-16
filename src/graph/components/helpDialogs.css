@@ -20,7 +20,7 @@
   padding: 26px 26px 22px;
   background: var(--surface);
   border: 1px solid var(--panel-border);
-  border-radius: 12px;
+  border-radius: 8px;
   box-shadow: var(--shadow-pop);
 }
 

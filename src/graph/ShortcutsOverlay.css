@@ -16,7 +16,7 @@
   overflow: auto;
   background: var(--surface);
   border: 1px solid var(--panel-border);
-  border-radius: 12px;
+  border-radius: 8px;
   box-shadow: var(--shadow-pop);
 }
 

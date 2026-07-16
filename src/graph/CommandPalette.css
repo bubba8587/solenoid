@@ -29,7 +29,7 @@
   margin-bottom: 4px;
   background: var(--overlay-bg);
   border: var(--overlay-border-width) solid var(--overlay-border);
-  border-radius: 8px;
+  border-radius: 6px;
   box-shadow: var(--overlay-shadow);
   padding: 3px;
   max-height: min(320px, 50vh);
@@ -76,7 +76,7 @@
   box-sizing: border-box;
   background: var(--overlay-bg);
   border: var(--overlay-border-width) solid var(--overlay-border);
-  border-radius: 8px;
+  border-radius: 6px;
   padding: 10px 12px;
   color: var(--text-bright);
   font-family: inherit;

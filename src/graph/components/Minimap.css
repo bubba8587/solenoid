@@ -11,7 +11,7 @@
   box-sizing: border-box;
   background: var(--overlay-bg);
   border: var(--overlay-border-width) solid var(--overlay-border);
-  border-radius: 8px;
+  border-radius: 6px;
   box-shadow: var(--overlay-shadow);
   /* Match the socket legend directly above it (z-index: 100). Without this the
      minimap sits at z-index auto (0), so any positioned node card painted later

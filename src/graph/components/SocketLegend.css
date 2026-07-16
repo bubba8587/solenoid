@@ -8,7 +8,7 @@
   box-sizing: border-box;
   background: var(--overlay-bg);
   border: var(--overlay-border-width) solid var(--overlay-border);
-  border-radius: 8px;
+  border-radius: 6px;
   padding: 10px 12px;
   z-index: 100;
   pointer-events: all;

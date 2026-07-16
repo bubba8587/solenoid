@@ -14,7 +14,7 @@
   max-width: 420px;
   background: var(--surface);
   border: 1px solid var(--border-strong);
-  border-radius: 10px;
+  border-radius: 8px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
   padding: 18px 18px 14px;
   color: var(--text);

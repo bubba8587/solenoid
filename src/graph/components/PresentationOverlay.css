@@ -33,7 +33,7 @@ html.solenoid-presenting .solenoid-hud-stack {
   padding: 6px 8px;
   background: var(--surface-raised, var(--surface));
   border: 1px solid var(--border-strong);
-  border-radius: 12px;
+  border-radius: 8px;
   box-shadow: 0 10px 34px rgba(0, 0, 0, 0.45);
   cursor: default;
   max-width: calc(100vw - 32px);

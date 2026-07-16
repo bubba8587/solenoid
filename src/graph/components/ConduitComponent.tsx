@@ -189,7 +189,7 @@ export function ConduitComponent({ data, emit }: Props) {
   const rectW = 2 * (gridHalfW + shellPad);
   const rectY = stripeY - shellPad;
   const rectH = PIVOT + gridHalfH + shellPad - rectY;
-  const radius = Math.min(rectW / 2, 5 * scale);
+  const radius = Math.min(rectW / 2, 6 * scale);
   const rot = `rotate(${angle} ${PIVOT} ${PIVOT})`;
 
   // Publish live layout for the ribbon-trunk geometry (face centres move when

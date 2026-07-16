@@ -28,7 +28,7 @@
   box-sizing: border-box;
   background: var(--overlay-bg);
   border: var(--overlay-border-width) solid var(--overlay-border);
-  border-radius: 10px;
+  border-radius: 8px;
   box-shadow: var(--overlay-shadow);
 }
 

@@ -11,7 +11,7 @@
 .fr-panel {
   background: var(--surface);
   border: 1px solid var(--border-strong);
-  border-radius: 10px;
+  border-radius: 8px;
   width: 96vw;
   height: 91vh;
   display: flex;

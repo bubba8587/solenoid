@@ -13,14 +13,19 @@
 .solenoid-settings__panel {
   width: min(760px, 94vw);
   max-height: 80vh;
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  /* Clip (not scroll) at the panel, so the rounded corner cleanly clips the
+     body's native scrollbar; the header stays pinned while the body scrolls. */
+  overflow: hidden;
   background: var(--surface);
   border: 1px solid var(--panel-border);
-  border-radius: 12px;
+  border-radius: 8px;
   box-shadow: var(--shadow-pop);
 }
 
 .solenoid-settings__header {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -51,6 +56,8 @@
 }
 
 .solenoid-settings__body {
+  flex: 1 1 auto;
+  overflow-y: auto;
   padding: 8px 16px 16px;
 }
 

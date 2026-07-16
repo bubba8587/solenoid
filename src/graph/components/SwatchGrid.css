@@ -10,7 +10,7 @@
   padding: 7px;
   background: var(--surface);
   border: 1px solid var(--border-strong);
-  border-radius: 8px;
+  border-radius: 6px;
   box-shadow: var(--shadow-pop);
 }
 .solenoid-swatchgrid__opt {
