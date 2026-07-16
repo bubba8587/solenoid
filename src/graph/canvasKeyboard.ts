@@ -31,6 +31,7 @@ import { ConduitNode, AngleDialNode, GroupNode } from "./rete-nodes";
 import { toggleAllChrome, toggleChrome } from "./chromeToggle";
 import { createGroupFromSelection, autofitGroupWithHistory } from "./groupLogic";
 import { setGroupsCollapsed } from "./groupPush";
+import { groupCollapseStore } from "./groupCollapse";
 import { standoffStore, settleStandoffs, anchorFromVector, ANCHOR_DIR } from "./standoffs";
 import { isolateStore } from "./isolateStore";
 import { isolateSelection } from "./isolate";
@@ -320,7 +321,15 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
         if (editor) {
           unselectAllNodesFromProcess();
           cableSelectionStore.set(null);
-          editor.getNodes().forEach((n, i) => selectNodeFromProcess(n.id, i > 0));
+          // "All" = everything the user can SEE and act on: skip members hidden
+          // inside a collapsed group (visibility:hidden but still laid out) and
+          // isolate's receded non-focus nodes (opacity .08, pointer-events none) —
+          // same rule as the lasso. Deleting a collapsed group never deletes its
+          // members (they just unhide), so nothing becomes unreachable.
+          const selectable = editor.getNodes().filter(
+            (n) => !groupCollapseStore.isNodeHidden(n.id) && isolateStore.isVisible(n.id),
+          );
+          selectable.forEach((n, i) => selectNodeFromProcess(n.id, i > 0));
         }
         e.preventDefault(); return;
       }

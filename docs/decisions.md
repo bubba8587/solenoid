@@ -500,6 +500,28 @@ joins stay unit-blind-consistent. The cube viewer renders a `UnitCell` as "5 km"
 **What would reverse it:** a real need for per-column units on anonymous matrices —
 which is what the FRAME is for; use a frame.
 
+### D21 — Selection surfaces act on what you can SEE (and audit calls default to FIX)
+**When:** 2026-07-16 (author, during the standing audit walk: "the decision is to fix
+things and make them better").
+**The decision, part 1 — the selection rule:** every selection surface (lasso, Ctrl+A,
+future marquee variants) skips nodes the user cannot see or interact with: members
+hidden inside a collapsed group (`groupCollapseStore.isNodeHidden`) AND isolate's
+receded non-focus nodes (`isolateStore.isVisible` — they render at opacity .08 with
+pointer-events:none). Selection is a visual gesture; invisibly selecting a node the
+user can't reason about produces silent mis-groupings and mystery deletes. Deleting a
+collapsed group never deletes its members (they just unhide), so nothing becomes
+unreachable under this rule.
+**Part 2 — the audit default:** when an audit finds behavior that is defensible but
+worse ("technically consistent" but surprising), the standing author instruction is to
+FIX it, not to file it away as acceptable. Deference is for genuine semantic forks
+(e.g. the base-SI vs display-unit adoption call), not for polish.
+**Cost accepted:** "select all" no longer literally means every node in the editor —
+a Ctrl+A + Delete during isolation deletes only the focus set. That asymmetry is the
+point.
+**What would reverse it:** a real workflow that needs gesture-selection of hidden
+nodes (none known — the Navigator and where-used exist for reaching things you can't
+see).
+
 ---
 
 ## Structural risks (the threats register — distinct from bugs)
