@@ -41,13 +41,16 @@ export function SocketComponent({ data }: { data: ClassicPreset.Socket }) {
 
   const combo  = dataType !== undefined ? COMBO_COLORS[dataType] : undefined;
   const isList = dataType !== undefined && LIST_TYPES.has(dataType);
-  // All 2-D types reuse the matrix glyph (a 2×2 grid), distinguished only by
-  // color (frame violet, numeric gold-shade, text/date the list shade) — the
-  // header-row glyph was too busy at socket size.
+  // The typed matrices share the 2×2-grid glyph, distinguished by colour. The
+  // FRAME gets its own glyph (2026-07-16, author): every element family now has
+  // a matrix, so colour alone no longer sets the Frame apart — it reads as a
+  // sheet WITH A HEADER (solid band + one column divider), quieter than the
+  // earlier header-row-of-lines attempt that was rejected as too busy.
   const isTable =
-    dataType === "table" || dataType === "frame" ||
+    dataType === "table" ||
     dataType === "strtable" || dataType === "datetable" ||
     dataType === "complextable" || dataType === "logicaltable" || dataType === "anytable";
+  const isFrame = dataType === "frame";
   const isCube = dataType === "cube";
   const isLambda = dataType === "lambda";
   const isChart = dataType === "chart";
@@ -80,6 +83,18 @@ export function SocketComponent({ data }: { data: ClassicPreset.Socket }) {
           <rect x="0" y="0" width="12" height="12" rx="1.5" fill={color} />
           {/* Grid cross kept clear of the inset border ring (inner edge ≈2/10). */}
           <path d="M6 2.5 V9.5 M2.5 6 H9.5" fill="none" stroke="var(--socket-ring)" strokeWidth="1.3" />
+          <rect x="1" y="1" width="10" height="10" rx="0.5" fill="none" stroke="var(--socket-ring)" strokeWidth="2" />
+        </>
+      ) : isFrame ? (
+        <>
+          {/* Frame: a sheet with a HEADER — solid band across the top + one column
+              divider below, inside the inset ring. Top-heavy silhouette, distinct
+              from the matrix cross at 12px. */}
+          <rect x="0" y="0" width="12" height="12" rx="1.5" fill={color} />
+          <g fill="var(--socket-ring)">
+            <rect x="2.5" y="2.5" width="7" height="2.1" />
+          </g>
+          <path d="M6 5.7 V9.5" fill="none" stroke="var(--socket-ring)" strokeWidth="1.3" />
           <rect x="1" y="1" width="10" height="10" rx="0.5" fill="none" stroke="var(--socket-ring)" strokeWidth="2" />
         </>
       ) : isCube ? (

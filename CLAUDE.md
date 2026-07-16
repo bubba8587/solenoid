@@ -148,7 +148,7 @@ Typed fields (titles, literals, formulas) keep their draft local while typing; t
 
 Every element that might need explanation should be self-documenting:
 - **Hover tooltips** on socket types, node ops, input fields — show what it does + Excel equivalent where applicable (e.g. "abs(x) → same as Excel ABS()")
-- **Socket legend** — always-visible panel showing socket shape/color → type mapping (circle = scalar, square = list, split square = scalar-or-list, grid square = table/frame, hollow gray ring = the trueany placeholder; purple = logical/Boolean). Should be dismissible/collapsible once the user knows it.
+- **Socket legend** — always-visible panel showing socket shape/color → type mapping (circle = scalar, square = list, split square = scalar-or-list, grid square = matrix, grid-with-header-band = Frame (own glyph 2026-07-16), hollow gray ring = the trueany placeholder; purple = logical/Boolean). Should be dismissible/collapsible once the user knows it.
 - **Node descriptions** — each node type should have a one-line description accessible on hover of the node header
 - Goal: someone who knows Excel but has never seen a node graph should be able to figure out Solenoid with zero Googling
 
