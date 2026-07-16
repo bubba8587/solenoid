@@ -1019,6 +1019,14 @@ fn cell_display(c: &Cell) -> Option<String> {
 /// (the fusion path) — the ONE place this coercion is spelled out.
 fn comparison_filter_expr(column: &str, ty: SolType, op: &str, value: &Json) -> Result<Option<Expr>, IpcError> {
     let c = col(column);
+    // The blank predicates ignore the comparison value entirely (blanks are
+    // selectable data — 2026-07-16). is_null/is_not_null are the exact Polars
+    // duals of the oracle's `cell === null` rule (NaN is present, not blank).
+    match op {
+        "isblank" => return Ok(Some(c.is_null())),
+        "notblank" => return Ok(Some(c.is_not_null())),
+        _ => {}
+    }
     if ty == SolType::Str {
         let s = json_str(value);
         let e = match op {

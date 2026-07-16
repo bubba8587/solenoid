@@ -16,7 +16,7 @@ When a cable lands, the value is reshaped for the input — never mutated in pla
 - a single value entering a list input becomes a one-element list; entering a table or Frame input, a 1×1;
 - a **list entering a 2-D input becomes ONE ROW** (transpose it first if you meant a column);
 - a matrix entering a Frame input gets generated column names (Col1, Col2, …);
-- blanks stay **null** — missing, not zero. Aggregators skip them, Filter drops them, Fill replaces them;
+- blanks stay **null** — missing, not zero. Aggregators skip them, Filter drops them (or selects exactly them, with **is blank**), Fill replaces them;
 - errors (`#DIV/0!`, `#N/A`, …) pass through *every* socket untouched — error in, error out, so the red trail survives any plumbing.
 
 The literal sources (List / Table / Frame Input) follow one rule: **the Source is never coerced.** What you typed stays verbatim in the source text — a stray `abc` in a number table, a blank row you left for later — and only the *derived* value coerces it: blank → null, unparseable → NaN. Retype nothing; fix it when you mean to.

@@ -9,7 +9,7 @@ import { SegToggle } from "./SegToggle";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { ArrayChip } from "./ArrayChip";
 import { pushRowAddUndo, pushRowRemovalUndo } from "./ExtensibleInputs";
-import { FILTER_OP_OPTIONS, TEXT_MATCH_OPS, FILTER_COMBINE_OPTIONS } from "./FrameNodes";
+import { FILTER_OP_OPTIONS, TEXT_MATCH_OPS, VALUELESS_OPS, FILTER_COMBINE_OPTIONS } from "./FrameNodes";
 import type { DisplayValue } from "./valueDisplayFormat";
 
 // The 1-D Filter card (D16): the frame Filter's condition rows minus the
@@ -70,10 +70,10 @@ export function FilterComponent({ data, emit }: NodeProps<FilterNodeType>) {
             <MeasuredSocketRow side="input" socketKey={key} nodeId={data.id} emit={emit} payload={data.inputs[key]!.socket}>
               <span className="solenoid-node__io-label">Value{keys.length > 1 ? ` ${i + 1}` : ""}</span>
               {connected.has(key) ? (
-                <span className="solenoid-node__io-wired" title="Driven by an incoming cable">↩ wired</span>
-              ) : (
+                <span className="solenoid-node__io-wired" title={VALUELESS_OPS.has(c.op) ? "Ignored by this condition" : "Driven by an incoming cable"}>↩ wired</span>
+              ) : !VALUELESS_OPS.has(c.op) ? (
                 <InlineTextField value={strLiterals[key]} onChange={(v) => setStr(key, v)} />
-              )}
+              ) : null}
               {TEXT_MATCH_OPS.has(c.op) && (
                 <button
                   type="button"

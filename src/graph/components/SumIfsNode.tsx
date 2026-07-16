@@ -8,7 +8,7 @@ import { useConnectedInputs, InlineInputs, InlineTextField } from "./inlineInput
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { pushRowAddUndo, pushRowRemovalUndo } from "./ExtensibleInputs";
-import { FILTER_OP_OPTIONS, TEXT_MATCH_OPS } from "./FrameNodes";
+import { FILTER_OP_OPTIONS, TEXT_MATCH_OPS, VALUELESS_OPS } from "./FrameNodes";
 
 const OPS = (Object.keys(COND_AGG_OP_META) as CondAggOp[]).map((op) => ({
   value: op,
@@ -104,10 +104,10 @@ export function SumIfsComponent({ data, emit }: NodeProps<SumIfsNodeType>) {
             <MeasuredSocketRow side="input" socketKey={valKey} nodeId={data.id} emit={emit} payload={data.inputs[valKey]!.socket}>
               <span className="solenoid-node__io-label">Value</span>
               {connected.has(valKey) ? (
-                <span className="solenoid-node__io-wired" title="Driven by an incoming cable">↩ wired</span>
-              ) : (
+                <span className="solenoid-node__io-wired" title={VALUELESS_OPS.has(c.op) ? "Ignored by this condition" : "Driven by an incoming cable"}>↩ wired</span>
+              ) : !VALUELESS_OPS.has(c.op) ? (
                 <InlineTextField value={strLiterals[valKey]} onChange={(v) => setStr(valKey, v)} />
-              )}
+              ) : null}
               {TEXT_MATCH_OPS.has(c.op) && (
                 <button
                   type="button"

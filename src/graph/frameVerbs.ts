@@ -38,7 +38,7 @@ export type AggOp =
 
 /** Filter operators: the six shared comparisons (reused from Comparison/Filter so
  *  semantics never drift) plus three text predicates. */
-export type FilterOp = ComparisonOp | "contains" | "startsWith" | "endsWith";
+export type FilterOp = ComparisonOp | "contains" | "startsWith" | "endsWith" | "isblank" | "notblank";
 
 /** One predicate of a multi-condition filter (B-2). `matchCase` rides
  *  PER-CONDITION — "Region eq west (any case) AND Code contains X (exact)". */
@@ -205,6 +205,11 @@ function filterValueToNumber(value: FrameCell, type: FrameColType): number | nul
 }
 
 export function passesFilter(cell: FrameCell, op: FilterOp, value: FrameCell, type: FrameColType, matchCase: boolean): boolean {
+  // The blank predicates run BEFORE the null guard — they exist to select on
+  // blankness (author 2026-07-16: blanks are data). An error cell is present,
+  // not blank: isblank false, notblank true.
+  if (op === "isblank")  return cell === null;
+  if (op === "notblank") return cell !== null;
   if (cell === null || isSolError(cell)) return false;
   // Simple lowercase fold, NOT locale-aware — the one spec both engines
   // implement identically (Rust `to_lowercase()` agrees with JS `toLowerCase()`).

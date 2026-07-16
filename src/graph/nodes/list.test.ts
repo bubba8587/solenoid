@@ -382,6 +382,15 @@ describe("Filter — condition rows over the list's own values (D16)", () => {
     return n;
   };
 
+  it("is blank KEEPS the nulls — the one way a null lands in Kept (2026-07-16)", () => {
+    const n = mk([{ op: "isblank", value: "" }]);
+    const out = n.data({ list: [[3, null, 5, null]] });
+    expect(out.result).toEqual([null, null]);
+    expect(out.dropped).toEqual([3, 5]);
+    const inv = mk([{ op: "notblank", value: "" }]);
+    expect(inv.data({ list: [[3, null, 5]] }).result).toEqual([3, 5]);
+  });
+
   it("a missing cell fails the condition and lands in Dropped (exhaustive split)", () => {
     const out = mk([{ op: "gt", value: "1" }]).data({ list: [[1, null, 3]] });
     expect(out.result).toEqual([3]);
