@@ -13,6 +13,7 @@ import { parseDateToSerial, formatDateSerial, DEFAULT_DATE_FORMAT } from "./node
 import { isSolError, type SolError } from "./errorValue";
 import { coerceLogical } from "./valueKinds";
 import { type ColumnUnit, type UnitCell, isUnitCell } from "./unitValue";
+import { formatDim, dimEqual, type Dim } from "./dimension";
 import { parseColumnUnitFromHeader, columnUnitFromSpec, tagFrameCellUnit, matrixCellsFromList } from "./unitColumn";
 import { displayMagnitudeOf } from "./unitBridge";
 import { elementFamilyOf, type SocketDataType } from "./sockets";
@@ -673,23 +674,44 @@ export function toCube(v: unknown): CubeValue {
 // of nesting; deeper cubes come from wrapping a cube in a Build Cube cell. (A
 // future cube-aware Relate mode could chain Customer -> Order -> LineItem.)
 
+/** Equality id for a DIMENSIONED key (author 2026-07-16: tagged units do NOT match
+ *  across dimensions or against a bare number). Keyed on the dimension symbol plus
+ *  the BASE-SI magnitude, so `5 km` == `5000 m` (the same quantity) while `5 km`
+ *  ≠ `5 kg` ≠ bare `5`. Currency is the one axis where the display CODE is the
+ *  unit identity (no FX) — it joins the key so $5 ≠ 5€. */
+function dimKeyId(base: number, dim: Dim, display: string | undefined): string {
+  const cur = dimEqual(dim, { currency: 1 }) ? (display ?? "") : "";
+  return `~u:${formatDim(dim)}${cur ? `:${cur}` : ""}:${String(base)}`;
+}
+
 /** Stable equality id for a key cell, so number/text/logical keys match by value
- *  (a logical aligns to 1/0, the same coercion splitFrame uses). */
-function keyId(v: FrameCell): string {
+ *  (a logical aligns to 1/0, the same coercion splitFrame uses). A per-cell
+ *  `UnitCell` keys by dimension (see dimKeyId); a pure ratio is known-dimensionless
+ *  and keys as its bare magnitude. */
+function keyId(v: FrameCell | UnitCell): string {
   if (v === null || v === undefined) return "~null";
   if (typeof v === "boolean") return v ? "1" : "0";
   if (isSolError(v)) return "~err:" + v.code;
+  if (isUnitCell(v)) return v.ratio ? String(v.value) : dimKeyId(v.value, v.dim, v.display);
   return String(v);
+}
+
+/** `keyId` for a cell of a COLUMN-united frame column: the cells are bare base-SI
+ *  numbers with the dimension carried on the column, so a united column's numeric
+ *  cells key dimensioned (matching a per-cell `UnitCell` of the same quantity). */
+function keyIdInColumn(v: FrameCell, unit: ColumnUnit | undefined): string {
+  if (unit && typeof v === "number" && Number.isFinite(v)) return dimKeyId(v, unit.dim, unit.display);
+  return keyId(v);
 }
 
 /** Key id for a CUBE cell (a cube child's key column): scalars/null/error use the
  *  same `keyId` as a frame key, so a cube child joins on the same value equality; a
  *  nested frame/cube/list cell can't be a join key (→ null, unmatched). */
-function cellKeyId(cell: CubeCell): string | null {
+function cellKeyId(cell: CubeCell, unit?: ColumnUnit): string | null {
   if (cell === null) return keyId(null);
-  if (typeof cell === "number" || typeof cell === "string" || typeof cell === "boolean") return keyId(cell);
+  if (typeof cell === "number" || typeof cell === "string" || typeof cell === "boolean") return keyIdInColumn(cell as FrameCell, unit);
   if (isSolError(cell)) return keyId(cell);
-  if (isUnitCell(cell)) return keyId(displayMagnitudeOf(cell)); // a dimensioned key joins on its magnitude
+  if (isUnitCell(cell)) return keyId(cell);
   return null; // a nested frame/cube/list is not a scalar join key
 }
 
@@ -734,16 +756,18 @@ export function relateFramesToCube(
   // Cube (nesting a PRE-BUILT cube: each parent cell nests a sub-CUBE, preserving the
   // child's own nesting). Read its key column + row count generically — a cube's key
   // column is its top-level column of the same name.
+  const cKeyCol = isCubeValue(child) ? null : getColumn(child, key);
   const cKeyCells: readonly CubeCell[] | null = isCubeValue(child)
     ? (child.columns.find((c) => c.name === key)?.cells ?? null)
-    : (getColumn(child, key)?.values ?? null);
+    : (cKeyCol?.values ?? null);
   if (!cKeyCells) return null;
   const cRows = isCubeValue(child) ? cubeRowCount(child) : frameRowCount(child);
 
   // Index child rows by key value (a non-scalar key cell can't be a join key → skipped).
+  // A frame child's COLUMN unit dimensions its bare cells (cube cells carry their own).
   const childByKey = new Map<string, number[]>();
   for (let i = 0; i < cRows; i++) {
-    const id = cellKeyId(cKeyCells[i] ?? null);
+    const id = cellKeyId(cKeyCells[i] ?? null, cKeyCol?.unit);
     if (id === null) continue;
     const arr = childByKey.get(id);
     if (arr) arr.push(i);
@@ -761,7 +785,7 @@ export function relateFramesToCube(
     return { name: names[j], type: c.type, cells: Array.from({ length: pRows }, (_, i) => cells[i] ?? null) };
   });
   const nestedCells: CubeCell[] = Array.from({ length: pRows }, (_, i) => {
-    const idxs = childByKey.get(keyId(pKey.values[i] ?? null)) ?? [];
+    const idxs = childByKey.get(keyIdInColumn(pKey.values[i] ?? null, pKey.unit)) ?? [];
     return isCubeValue(child) ? subCube(child, idxs) : subFrame(child, idxs);
   });
   columns.push({ name: names[parent.columns.length], cells: nestedCells });

@@ -46,6 +46,42 @@ describe("relateFramesToCube — nest two frames on a key", () => {
   });
 });
 
+describe("relateFramesToCube — dimension-keyed joins (author 2026-07-16: tagged units don't cross)", () => {
+  const matched = (cube: CubeValue) => frameRowCount(cube.columns[1].cells[0] as never);
+
+  it("a km key never matches a kg key of the same magnitude", () => {
+    const parent = buildFrame([[5]], ["k"]);
+    parent.columns[0].unit = { dim: { length: 1 }, display: "km" };
+    const child = buildFrame([[5, 1]], ["k", "amt"]);
+    child.columns[0].unit = { dim: { mass: 1 }, display: "kg" };
+    expect(matched(relateFramesToCube(parent, child, "k", "items")!)).toBe(0);
+  });
+
+  it("the same quantity matches across display units (base-SI keying)", () => {
+    // Column cells are stored base-SI: 5 km and 5000 m are both 5000.
+    const parent = buildFrame([[5000]], ["k"]);
+    parent.columns[0].unit = { dim: { length: 1 }, display: "km" };
+    const child = buildFrame([[5000, 7]], ["k", "amt"]);
+    child.columns[0].unit = { dim: { length: 1 }, display: "m" };
+    expect(matched(relateFramesToCube(parent, child, "k", "items")!)).toBe(1);
+  });
+
+  it("a united key never matches a bare-number key", () => {
+    const parent = buildFrame([[5]], ["k"]);
+    parent.columns[0].unit = { dim: { length: 1 }, display: "km" };
+    const child = buildFrame([[5, 1]], ["k", "amt"]); // bare numbers
+    expect(matched(relateFramesToCube(parent, child, "k", "items")!)).toBe(0);
+  });
+
+  it("currency keys carry the CODE — $5 never matches 5€ (no FX)", () => {
+    const parent = buildFrame([[5]], ["k"]);
+    parent.columns[0].unit = { dim: { currency: 1 }, display: "usd" };
+    const child = buildFrame([[5, 1]], ["k", "amt"]);
+    child.columns[0].unit = { dim: { currency: 1 }, display: "eur" };
+    expect(matched(relateFramesToCube(parent, child, "k", "items")!)).toBe(0);
+  });
+});
+
 describe("NestJoinNode.data", () => {
   it("builds a cube from wired parent/child + a key literal", () => {
     const n = new NestJoinNode();

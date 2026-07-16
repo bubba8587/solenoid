@@ -46,9 +46,19 @@ Author walked items 1–19 of the release eyeball; this session fixed what it su
   Contour's corner coordinate hints moved into real top/bottom gutters (they overlaid the fill —
   illegible at Report sizes). PresentationComponent never subscribed to appThemeStore, so palette/
   theme switches left its accent stale — subscribed.
-- **Open from the eyeball round:** Waterfall "can't render below 0" (author report) — the draw
-  math + node test provably carry negatives and the PF seed bridge never dips below zero; needs
-  the author's exact repro data. Cube join key decision still owed (backlog).
+- **Waterfall "can't render below 0" RESOLVED:** author's test data (2+4−6) summed to exactly 0 —
+  not a bug, the chart was right. `__hcTriggers` readout confirmed no runaway rebuild trigger
+  (render-pipe counts climb only on group expand/collapse — one event per member re-render).
+- **Dimension-keyed joins (author decision: tagged units do NOT match across dims or bare):**
+  Nest/relate keys are now (dimension symbol, BASE-SI magnitude, +currency code) — `dimKeyId` in
+  frame.ts; `keyId` handles per-cell `UnitCell`s (ratio keys bare), `keyIdInColumn` dimensions a
+  united frame column's bare cells, `cellKeyId` takes the child column's unit. So 5 km == 5000 m
+  but ≠ 5 kg ≠ bare 5, and $5 ≠ 5€. Pinned in cubeNodes.test.ts; backlog entry closed.
+- **Popup formatted view is now EDITABLE (author request):** a literal source's (Frame/Table
+  Input) Formatted view edits through a focus draft — at rest the cell shows the derived render,
+  focus swaps in the RAW text (Excel's formula-bar-in-cell idiom), blur commits to the raw grid
+  and re-renders formatted (units/dates/number formats); Enter commits, Escape reverts. The
+  Source view is unchanged; the formatted CSV view stays a read-only projection.
 
 ### SESSION DIGEST (2026-07-16e — 1.2 release run: movement pass, composite parity pass, PF seed, release docs)
 Author's release directive: punt all puntables (iFrame, Data Feed widening, drill-in nav/lasso/group
