@@ -1,5 +1,6 @@
 import { useEffect, useState, useSyncExternalStore, type ReactElement } from "react";
 import { getEditor, getArea } from "../process";
+import { subscribeActiveGraph, isSubgraphActive } from "../activeGraph";
 import { canvasLockStore } from "../canvasLock";
 import { alignSelection, distributeSelection, type AlignKind } from "../selectionOps";
 import "./selectionActions.css";
@@ -105,6 +106,11 @@ const ALIGN_BTNS: AlignBtn[] = [
 export function SelectionActionsBar() {
   const [count, setCount] = useState(0);
   const locked = useSyncExternalStore(canvasLockStore.subscribe, canvasLockStore.get);
+  // Folded while a composite drill-in is open: the bar (and the selectionOps it
+  // fronts) reads the MAIN graph's selection, so showing it over the drill-in
+  // would align invisible main-canvas nodes behind the subgraph. Same fold as
+  // the navigator/lasso (align-in-drill-in ships with that arc — see backlog).
+  const drilled = useSyncExternalStore(subscribeActiveGraph, isSubgraphActive);
 
   useEffect(() => {
     let prev = -1;
@@ -118,7 +124,7 @@ export function SelectionActionsBar() {
   }, []);
 
   // A locked canvas can't move nodes, so the ops are inert — hide entirely.
-  if (locked || count < 2) return null;
+  if (drilled || locked || count < 2) return null;
   const canDistribute = count >= 3;
 
   return (

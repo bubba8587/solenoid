@@ -1,6 +1,7 @@
 import { AreaExtensions } from "rete-area-plugin";
 import type { NodeEditor } from "rete";
 import { getEditor, getArea } from "./process";
+import { getOwningEditor, getOwningArea } from "./activeGraph";
 import { groupCollapseStore } from "./groupCollapse";
 import { GroupNode } from "./rete-nodes";
 import type { Schemes } from "./schemes";
@@ -47,8 +48,10 @@ function visibleRef(editor: NodeEditor<Schemes>, nodeId: string): Schemes["Node"
 // Pan/zoom the viewport to centre a node — the one "go to this node" action
 // shared by the pins HUD, the alerts HUD, and the cable inspector.
 export function flyToNode(nodeId: string): void {
-  const editor = getEditor();
-  const area = getArea();
+  // Owning graph (drill-in aware): a "go to" targeting a node inside an open
+  // composite flies the DRILL-IN camera; main ids resolve to main as before.
+  const editor = getOwningEditor(nodeId);
+  const area = getOwningArea(nodeId);
   if (!editor || !area) return;
   const ref = visibleRef(editor, nodeId);
   if (!ref) return;
@@ -84,8 +87,8 @@ const _flashTimers = new Map<string, ReturnType<typeof setTimeout>>();
  *  the nearest VISIBLE ancestor, same resolution as flyToNode, so flashing a node
  *  hidden inside a collapsed group lights up the group box instead of nothing. */
 export function flashNode(nodeId: string): void {
-  const editor = getEditor();
-  const area = getArea();
+  const editor = getOwningEditor(nodeId); // drill-in aware, like flyToNode
+  const area = getOwningArea(nodeId);
   if (!editor || !area) return;
   const targetId = resolveVisibleTarget(editor, nodeId);
   const el = area.nodeViews.get(targetId)?.element;

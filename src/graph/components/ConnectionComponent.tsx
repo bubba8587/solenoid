@@ -5,7 +5,8 @@ import { cableShapeStore, type CableShape } from "../cableShape";
 import { cableAngleStore } from "../cableAngleStore";
 import { isolateStore } from "../isolateStore";
 import { cableSelectionStore, cableGhostStore, socketHighlightStore, socketHoverCableStore, dragSocketKey } from "../cableState";
-import { unselectAllNodes, getEditor, getArea, connectionVersionStore } from "../process";
+import { unselectAllNodes, getArea, connectionVersionStore } from "../process";
+import { getOwningEditor, getOwningArea } from "../activeGraph";
 import { getCablePath, Position } from "../cablePaths";
 import { stopDragStart, IS_COARSE } from "../coarse";
 import { touchSelectStore } from "../touchSelectStore";
@@ -229,7 +230,12 @@ export function ConnectionComponent({ data }: { data: ConnPayload }) {
     ? (hideForReveal ? { opacity: 0, transition: "opacity 340ms ease" } : { transition: "opacity 340ms ease" })
     : undefined;
 
-  const editor = getEditor();
+  // The editor that OWNS this cable's endpoints — the drill-in's internal editor
+  // when the cable renders inside an open composite, else main. Keyed on an
+  // endpoint node id (a pseudo cable mid-drag has only one end). Resolving via
+  // getEditor() (main) made every drill-in cable fall back to the default color
+  // (no socket found), skip ribbon bundling, and miss the Conduit hit-trim.
+  const editor = getOwningEditor(data.source || data.target);
   // Conduit-output ribbon this cable belongs to (2+ lanes to one Conduit/group).
   const ribbon = editor && data.source && data.target ? ribbonForConnection(editor, data) : null;
   const ribbonSelected =
@@ -245,11 +251,13 @@ export function ConnectionComponent({ data }: { data: ConnPayload }) {
   // positioned holder child (the span is static), so target connectionViews'
   // element, not svg.parentElement. Reset on deselect / unmount.
   useLayoutEffect(() => {
-    const el = getArea()?.connectionViews.get(data.id)?.element;
+    // Owning area, not main: a drill-in cable's holder lives in the drill-in's
+    // AreaPlugin (see getOwningArea).
+    const el = getOwningArea(data.source || data.target)?.connectionViews.get(data.id)?.element;
     if (!el) return;
     el.style.zIndex = selected || ribbonSelected ? "100" : "";
     return () => { el.style.zIndex = ""; };
-  }, [selected, data.id, ribbonSelected]);
+  }, [selected, data.id, ribbonSelected, data.source, data.target]);
 
   // Evict this connection's cached path on unmount (or id change) so _pathCache
   // can't grow unbounded across a long session of cable create/delete churn.

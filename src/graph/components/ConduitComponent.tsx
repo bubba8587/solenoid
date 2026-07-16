@@ -23,10 +23,9 @@ import {
   connectionVersionStore,
   conduitAngleStore,
   bumpConduitAngle,
-  getEditor,
-  getArea,
   processGraph,
 } from "../process";
+import { getOwningEditor, getOwningArea } from "../activeGraph";
 import { AngleDial } from "../AngleDial";
 import { useDraftCommit, INVALID_DRAFT } from "./inlineInput";
 import "../AngleDial.css";
@@ -75,7 +74,9 @@ const snap45 = (deg: number) => normaliseAngle(Math.round(deg / 45) * 45);
 
 // How many lanes are currently wired (max used in_/out_ index + 1).
 function countUsedLanes(nodeId: string): number {
-  const editor = getEditor();
+  // Owning editor: a Conduit inside a composite drill-in counts its OWN graph's
+  // cables (main-editor lookup saw zero lanes for it).
+  const editor = getOwningEditor(nodeId);
   if (!editor) return 0;
   let max = -1;
   for (const c of editor.getConnections()) {
@@ -220,7 +221,7 @@ export function ConduitComponent({ data, emit }: Props) {
   // Render the connector BEHIND the cables (z-index:-1 on the node holder, the
   // same trick groups + CableFlourish use), so wires plug in over the square grid.
   useLayoutEffect(() => {
-    const el = getArea()?.nodeViews.get(node.id)?.element;
+    const el = getOwningArea(node.id)?.nodeViews.get(node.id)?.element;
     if (el) el.style.zIndex = "-1";
     return () => { if (el) el.style.zIndex = ""; };
   }, [node.id]);
@@ -232,8 +233,10 @@ export function ConduitComponent({ data, emit }: Props) {
   // Extend: spawn a new Conduit downstream (along the flow direction) and wire
   // every current lane's output into it, continuing the ribbon.
   const extendToNewConduit = async () => {
-    const editor = getEditor();
-    const area = getArea();
+    // Owning graph: extending a Conduit that lives inside a drill-in must spawn
+    // the new block in the SAME subgraph, not on the main canvas.
+    const editor = getOwningEditor(node.id);
+    const area = getOwningArea(node.id);
     if (!editor || !area) return;
     const next = new ConduitNodeType({ angle: node.angle }) as unknown as SolenoidNode;
     await editor.addNode(next);
