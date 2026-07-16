@@ -38,7 +38,7 @@ import { FDistNode, FInvNode, BetaDistNode, BetaInvNode, GammaDistNode, GammaInv
 import { BinomDistNode, BinomInvNode, PoissonDistNode, HypgeomDistNode, NegbinomDistNode } from "./dist-discrete";
 import { ConduitNode } from "./conduit";
 import { FrameFromListsNode } from "./frame";
-import { FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, GetRowNode, DistinctNode, HeadNode, SortFrameNode, FilterFrameNode, JoinNode, XLookupNode, SelectColumnsNode, DropColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode } from "./frame";
+import { FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, GetRowNode, DistinctNode, HeadNode, SortFrameNode, FilterFrameNode, JoinNode, XLookupNode, SelectColumnsNode, DropColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode, FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, PromoteHeadersNode, DropBlankRowsNode } from "./frame";
 import { BuildCubeNode, NestJoinNode, CubeColumnsNode, CubeRollupNode } from "./cube";
 import { WebSourceNode, CsvConnectionNode, ParquetConnectionNode, ImportHtmlNode, ImportXmlNode } from "./connection";
 import { DataFeedNode } from "./dataFeed";
@@ -207,6 +207,11 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof RenameNode ||
     node instanceof SplitColumnNode ||
     node instanceof AddIndexNode ||
+    node instanceof FillBlanksNode ||
+    node instanceof ReplaceValuesNode ||
+    node instanceof MergeColumnsNode ||
+    node instanceof PromoteHeadersNode ||
+    node instanceof DropBlankRowsNode ||
     node instanceof DecisionMatrixNode ||
     node instanceof DecisionSensitivityNode ||
     node instanceof ReconcileNode ||

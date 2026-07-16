@@ -41,10 +41,27 @@ Interpolate); rejected: Play node (the Slider already has play+speed), Choice no
 - **Scrubber fix (author-reported):** Number Input's main field had NO scrub handlers (only inline row
   literals did) — extracted `useNumberScrub`, wired it in; fine-step math fixed (Math.round(steps ×
   mult) could only yield integers, so Alt-0.1× was a slower integer scrub).
-- Next (author-queued): table-operation timesaver research delivered in chat — Fill Down/Up (frame),
-  Replace Values, Merge Columns, Add Index matrix/two-way mode, Head→First/Last/Skip/Range,
-  multi-key Frame Sort, Promote Headers, Drop blank rows, Computed Column, Data Table sweep.
-2964 green; tsc clean.
+- **Table-timesaver wave (author-approved from the research): Tier 1+2 SHIPPED.** New eager frame
+  verbs (pure fns in `frameVerbs.ts`, Split-Column-pattern nodes, NO engine changes — eager like the
+  existing half of the verb set; native Polars mirrors backlogged as a perf follow-up): **Fill Down**
+  (down/up, columns or all — the PQ report-un-merge; errors are values, not blanks), **Replace
+  Values** (whole-cell — numbers match numerically, replacement coerces to the column type — or
+  substring on text; case-sensitive per our key convention), **Merge Columns** (inverse of Split
+  Column; formatted cells + separator, sources drop), **Promote/Demote Headers**, **Drop Blank Rows**
+  (all-blank spacers / any-blank). **Head** gained First/Last/Skip/Range modes (first-N stays the
+  lazy verb; the rest eager). **Add Index** gained the two-way `grid` OUTPUT: the data indexed on
+  both axes as the coordinate-bordered matrix Surface/Contour/Grid Interpolate read
+  (`borderedGridFromFrame`). **Frame Sort**: no multi-key build needed — both engines' sorts are
+  STABLE (JS spec; Rust `maintain_order(true)`), so chaining Sort nodes IS multi-key (documented in
+  the catalog description). Table verbs pane: new ▶ Clean subcat; Columns subcat took Merge/Promote
+  (12 rows exactly). Tier 3 (Computed Column, Data Table sweep) → backlog, design-first.
+- **Post-ship fixes (author-reported):** Curve black-carded — its component called `data.data()`
+  bare and the coerceInputs wrapper does `Object.keys(inputs)` on undefined; extracted pure
+  `sampleCurve` (rule: components NEVER call node.data()). Point Plotter/Curve pads overflowed the
+  card — `.solenoid-node` is a FIXED 180px and a class `width` field is only the layout mirror;
+  both joined the wide tier in `nodeWide()`. 7-Segment output: pass-through → CHART value
+  (SevenSegPayload; view shared via chartCanvasViews for Report embeds).
+2973 green; tsc clean.
 
 ### SESSION DIGEST (2026-07-16c — Add-menu pane budget + search fix) [audit session, author-requested]
 Author goal: every Add-menu pane ≤ 12 rows (no scrollbars; the panel scroll-caps at ~392px). Seven

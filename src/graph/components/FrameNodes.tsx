@@ -23,6 +23,11 @@ import type {
   RenameNode as RenameNodeType,
   SplitColumnNode as SplitColumnNodeType,
   AddIndexNode as AddIndexNodeType,
+  FillBlanksNode as FillBlanksNodeType,
+  ReplaceValuesNode as ReplaceValuesNodeType,
+  MergeColumnsNode as MergeColumnsNodeType,
+  PromoteHeadersNode as PromoteHeadersNodeType,
+  DropBlankRowsNode as DropBlankRowsNodeType,
   DecisionMatrixNode as DecisionMatrixNodeType,
   DecisionSensitivityNode as DecisionSensitivityNodeType,
   ReconcileNode as ReconcileNodeType,
@@ -30,9 +35,15 @@ import type {
   FrameSortDir,
   DecisionDetail,
   SplitColType,
+  HeadOp,
+  FillDir,
+  ReplaceMode,
+  HeaderOp,
+  BlankRowMode,
 } from "../rete-nodes";
 import type { FilterOp, FilterCombine, JoinHow, AsofDirection, AggOp, DecisionNormalize, LookupMatchMode, LookupSearchMode } from "../frameVerbs";
 import type { FilterCondConfig } from "../nodes/frame";
+import { HEAD_OP_META, HEADER_OP_META, BLANK_ROW_OP_META } from "../nodes/frame";
 import { CubeDisplay } from "./CubeDisplay";
 import { parseFrameSource, frameSourceToText, type FrameSourceColumn } from "../frame";
 import { processGraph, bumpConnectionVersion } from "../process";
@@ -98,10 +109,17 @@ export function DistinctComponent({ data, emit }: NodeProps<DistinctNodeType>) {
 
 // ─── HEAD ────────────────────────────────────────────────────────────────────
 
+const HEAD_OP_OPTIONS = (Object.entries(HEAD_OP_META) as [HeadOp, { label: string; description: string }][])
+  .map(([value, m]) => ({ value, label: m.label, title: m.description }));
+
 export function HeadComponent({ data, emit }: NodeProps<HeadNodeType>) {
+  const [op, setOp] = useNodeField(data, "op");
+  // The To row only exists in range mode — the other modes read Rows alone.
+  const keys = op === "range" ? ["frame", "rows", "to"] : ["frame", "rows"];
   return (
     <NodeShell node={data} emit={emit}>
-      <InlineInputs node={data} emit={emit} />
+      <InlineInputs node={data} emit={emit} keys={keys} labelFor={(k) => (k === "rows" && op === "range" ? "From" : (data.inputs[k]?.label ?? k))} />
+      <OpSelect value={op} onChange={setOp} options={HEAD_OP_OPTIONS} />
       <FrameDisplay frame={data.cachedResult} label={data.label} />
     </NodeShell>
   );
@@ -484,8 +502,85 @@ export function SplitColumnComponent({ data, emit }: NodeProps<SplitColumnNodeTy
 
 export function AddIndexComponent({ data, emit }: NodeProps<AddIndexNodeType>) {
   return (
+    <NodeShell node={data} emit={emit} hideOutputSockets>
+      <InlineInputs node={data} emit={emit} />
+      <MeasuredSocketRow side="output" socketKey="frame" nodeId={data.id} emit={emit} payload={data.outputs.frame!.socket}>
+        <span className="solenoid-node__io-label">Frame</span>
+      </MeasuredSocketRow>
+      <MeasuredSocketRow side="output" socketKey="grid" nodeId={data.id} emit={emit} payload={data.outputs.grid!.socket}>
+        <span className="solenoid-node__io-label" title="The data indexed on BOTH axes: a coordinate-bordered matrix (row 0 = column indices, column 0 = row indices) — the grid Surface, Contour, and Grid Interpolate read.">Bordered grid</span>
+      </MeasuredSocketRow>
+      <FrameDisplay frame={data.cachedResult} label={data.label} />
+    </NodeShell>
+  );
+}
+
+// ─── TIMESAVER CLEANUP VERBS ─────────────────────────────────────────────────────
+
+const FILL_DIR_OPTIONS: { value: FillDir; label: string; title: string }[] = [
+  { value: "down", label: "Down", title: "Carry the last present value forward over blanks" },
+  { value: "up", label: "Up", title: "Carry the next present value backward over blanks" },
+];
+
+export function FillBlanksComponent({ data, emit }: NodeProps<FillBlanksNodeType>) {
+  const [dir, setDir] = useNodeField(data, "dir");
+  return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
+      <SegToggle value={dir} options={FILL_DIR_OPTIONS} onChange={setDir} />
+      <FrameDisplay frame={data.cachedResult} label={data.label} />
+    </NodeShell>
+  );
+}
+
+const REPLACE_MODE_OPTIONS: { value: ReplaceMode; label: string; title: string }[] = [
+  { value: "cell", label: "Whole cell", title: "Replace cells whose whole value equals Find (numbers match numerically)" },
+  { value: "substring", label: "Substring", title: "Rewrite occurrences of Find inside text cells" },
+];
+
+export function ReplaceValuesComponent({ data, emit }: NodeProps<ReplaceValuesNodeType>) {
+  const [mode, setMode] = useNodeField(data, "mode");
+  return (
+    <NodeShell node={data} emit={emit}>
+      <InlineInputs node={data} emit={emit} />
+      <SegToggle value={mode} options={REPLACE_MODE_OPTIONS} onChange={setMode} />
+      <FrameDisplay frame={data.cachedResult} label={data.label} />
+    </NodeShell>
+  );
+}
+
+export function MergeColumnsComponent({ data, emit }: NodeProps<MergeColumnsNodeType>) {
+  return (
+    <NodeShell node={data} emit={emit}>
+      <InlineInputs node={data} emit={emit} />
+      <FrameDisplay frame={data.cachedResult} label={data.label} />
+    </NodeShell>
+  );
+}
+
+const HEADER_OP_OPTIONS = (Object.entries(HEADER_OP_META) as [HeaderOp, { label: string; description: string }][])
+  .map(([value, m]) => ({ value, label: m.label, title: m.description }));
+
+export function PromoteHeadersComponent({ data, emit }: NodeProps<PromoteHeadersNodeType>) {
+  const [op, setOp] = useNodeField(data, "op");
+  return (
+    <NodeShell node={data} emit={emit}>
+      <InlineInputs node={data} emit={emit} />
+      <OpSelect value={op} onChange={setOp} options={HEADER_OP_OPTIONS} />
+      <FrameDisplay frame={data.cachedResult} label={data.label} />
+    </NodeShell>
+  );
+}
+
+const BLANK_ROW_OPTIONS = (Object.entries(BLANK_ROW_OP_META) as [BlankRowMode, { label: string; description: string }][])
+  .map(([value, m]) => ({ value, label: m.label, title: m.description }));
+
+export function DropBlankRowsComponent({ data, emit }: NodeProps<DropBlankRowsNodeType>) {
+  const [mode, setMode] = useNodeField(data, "mode");
+  return (
+    <NodeShell node={data} emit={emit}>
+      <InlineInputs node={data} emit={emit} />
+      <OpSelect value={mode} onChange={setMode} options={BLANK_ROW_OPTIONS} />
       <FrameDisplay frame={data.cachedResult} label={data.label} />
     </NodeShell>
   );
