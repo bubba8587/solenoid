@@ -1,6 +1,6 @@
 import { ClassicPreset } from "rete";
 import { numberSocket, AdoptiveSocket, MutableSocket, type SocketDataType } from "../sockets";
-import { frameIn, frameOut, dateOut, numOut } from "./shared";
+import { frameIn, frameOut, dateOut, numOut, numListOut, tableOut } from "./shared";
 import type { PassthroughSpec } from "./passthrough";
 import { isFrameValue, getColumn, frameRowCount, cubeFromColumns, type FrameValue, type FrameColType, type CubeCell } from "../frame";
 import { jsDateToSerial } from "./date";
@@ -285,5 +285,197 @@ export class SlicerNode extends ClassicPreset.Node {
       })),
     };
     return { result: filtered };
+  }
+}
+
+// ─── Point / curve text codec ───────────────────────────────────────────────────
+// Point Plotter and Curve persist their points as TEXT ("x, y" per line, the
+// pointsText init field) — same philosophy as Table Input's tableText: the string
+// is the stored truth, arrays derive. Trimmed to 4 decimals so a drag doesn't
+// bake float dust into the save.
+
+export function parsePoints(text: string | undefined): Array<[number, number]> {
+  const out: Array<[number, number]> = [];
+  for (const line of (text ?? "").split("\n")) {
+    const parts = line.split(",");
+    if (parts.length < 2) continue;
+    const x = parseFloat(parts[0]), y = parseFloat(parts[1]);
+    if (Number.isFinite(x) && Number.isFinite(y)) out.push([x, y]);
+  }
+  return out;
+}
+
+const trimNum = (v: number) => String(Number(v.toFixed(4)));
+
+export function pointsToText(pts: ReadonlyArray<readonly [number, number]>): string {
+  return pts.map(([x, y]) => `${trimNum(x)}, ${trimNum(y)}`).join("\n");
+}
+
+// ─── Point Plotter ──────────────────────────────────────────────────────────────
+// A source control: click a small plane to drop data points, drag to move them,
+// right-click to delete. Outputs the points as parallel X / Y lists — hand-drawn
+// data for scatter charts, regression, or (via Build Frame) Grid Interpolate.
+// XY Pad's big sibling: the pad emits one point, this emits a dataset.
+
+export class PointPlotterNode extends ClassicPreset.Node {
+  label: string;
+  pointsText = "";
+  /** Axis ranges for the pad's coordinate frame. */
+  literals: Record<string, number> = { xmin: 0, xmax: 10, ymin: 0, ymax: 10 };
+  width = 200;
+  height = 280;
+
+  constructor(init?: { label?: string; pointsText?: string; xmin?: number; xmax?: number; ymin?: number; ymax?: number }) {
+    super("PointPlotter");
+    this.label = init?.label ?? "Point Plotter";
+    if (typeof init?.pointsText === "string") this.pointsText = init.pointsText;
+    for (const k of ["xmin", "xmax", "ymin", "ymax"] as const) {
+      if (typeof init?.[k] === "number") this.literals[k] = init[k]!;
+    }
+    this.addOutput("x", numListOut("X"));
+    this.addOutput("y", numListOut("Y"));
+  }
+
+  data(): { x: number[]; y: number[] } {
+    const pts = parsePoints(this.pointsText);
+    return { x: pts.map((p) => p[0]), y: pts.map((p) => p[1]) };
+  }
+}
+
+// ─── Curve ──────────────────────────────────────────────────────────────────────
+// A response-curve editor: drag control points on a strip; a monotone cubic
+// spline (Fritsch–Carlson — no overshoot between points) passes through them and
+// is sampled into a list. Tuning curves, easing, tiered rates, lookup tables.
+
+/** Monotone cubic interpolator through (xs, ys) — xs strictly increasing, n ≥ 1.
+ *  Flat beyond the endpoints. Fritsch–Carlson tangent limiting: the curve never
+ *  overshoots between two points, so it behaves like a drawn envelope. */
+export function monotoneCubic(xs: number[], ys: number[]): (x: number) => number {
+  const n = xs.length;
+  if (n === 0) return () => NaN;
+  if (n === 1) return () => ys[0];
+  const h: number[] = [], slope: number[] = [];
+  for (let i = 0; i < n - 1; i++) {
+    h.push(xs[i + 1] - xs[i]);
+    slope.push((ys[i + 1] - ys[i]) / (xs[i + 1] - xs[i]));
+  }
+  const m: number[] = new Array(n);
+  m[0] = slope[0];
+  m[n - 1] = slope[n - 2];
+  for (let i = 1; i < n - 1; i++) m[i] = slope[i - 1] * slope[i] <= 0 ? 0 : (slope[i - 1] + slope[i]) / 2;
+  for (let i = 0; i < n - 1; i++) {
+    if (slope[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; }
+    const a = m[i] / slope[i], b = m[i + 1] / slope[i];
+    const s = a * a + b * b;
+    if (s > 9) { const t = 3 / Math.sqrt(s); m[i] = t * a * slope[i]; m[i + 1] = t * b * slope[i]; }
+  }
+  return (x: number) => {
+    if (x <= xs[0]) return ys[0];
+    if (x >= xs[n - 1]) return ys[n - 1];
+    let lo = 0, hi = n - 1;
+    while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (xs[mid] <= x) lo = mid; else hi = mid; }
+    const t = (x - xs[lo]) / h[lo];
+    const t2 = t * t, t3 = t2 * t;
+    return ys[lo] * (2 * t3 - 3 * t2 + 1) + h[lo] * m[lo] * (t3 - 2 * t2 + t)
+      + ys[lo + 1] * (-2 * t3 + 3 * t2) + h[lo] * m[lo + 1] * (t3 - t2);
+  };
+}
+
+/** Control points sorted by x with exact-duplicate x's collapsed (last wins) —
+ *  the spline needs strictly increasing x. */
+export function curvePoints(text: string | undefined): Array<[number, number]> {
+  const sorted = [...parsePoints(text)].sort((a, b) => a[0] - b[0]);
+  const out: Array<[number, number]> = [];
+  for (const p of sorted) {
+    if (out.length && out[out.length - 1][0] === p[0]) out[out.length - 1] = p;
+    else out.push(p);
+  }
+  return out;
+}
+
+export class CurveNode extends ClassicPreset.Node {
+  label: string;
+  pointsText = "0, 0\n1, 1";
+  literals: Record<string, number> = { xmin: 0, xmax: 1, ymin: 0, ymax: 1, samples: 32 };
+  width = 200;
+  height = 260;
+
+  constructor(init?: { label?: string; pointsText?: string; xmin?: number; xmax?: number; ymin?: number; ymax?: number; samples?: number }) {
+    super("Curve");
+    this.label = init?.label ?? "Curve";
+    if (typeof init?.pointsText === "string") this.pointsText = init.pointsText;
+    for (const k of ["xmin", "xmax", "ymin", "ymax", "samples"] as const) {
+      if (typeof init?.[k] === "number") this.literals[k] = init[k]!;
+    }
+    this.addOutput("values", numListOut("Values"));
+    this.addOutput("xs", numListOut("X positions"));
+  }
+
+  data(): { values: number[]; xs: number[] } {
+    const pts = curvePoints(this.pointsText);
+    const n = clamp(Math.round(this.literals.samples ?? 32), 2, 1000);
+    this.literals.samples = n;
+    const x0 = this.literals.xmin ?? 0, x1 = this.literals.xmax ?? 1;
+    const f = monotoneCubic(pts.map((p) => p[0]), pts.map((p) => p[1]));
+    const xs: number[] = [], values: number[] = [];
+    for (let i = 0; i < n; i++) {
+      const x = x0 + ((x1 - x0) * i) / (n - 1);
+      xs.push(Number(x.toFixed(6)));
+      const y = f(x);
+      values.push(Number.isFinite(y) ? Number(y.toFixed(6)) : 0);
+    }
+    if (pts.length === 0) return { values: [], xs: [] };
+    return { values, xs };
+  }
+}
+
+// ─── Grid Painter ───────────────────────────────────────────────────────────────
+// A source control: paint cells of a small matrix with a brush value (right-drag
+// or Alt-drag erases back to blank). Hand-input for Heatmap / Surface / MAP masks.
+// The grid persists as CSV text (tableText, like Table Input): blank cell = null.
+
+export function parsePaintGrid(text: string | undefined, rows: number, cols: number): (number | null)[][] {
+  const lines = (text ?? "").split("\n");
+  const out: (number | null)[][] = [];
+  for (let r = 0; r < rows; r++) {
+    const cells = (lines[r] ?? "").split(",");
+    const row: (number | null)[] = [];
+    for (let c = 0; c < cols; c++) {
+      const t = (cells[c] ?? "").trim();
+      const n = Number(t);
+      row.push(t !== "" && Number.isFinite(n) ? n : null);
+    }
+    out.push(row);
+  }
+  return out;
+}
+
+export function paintGridToText(grid: ReadonlyArray<ReadonlyArray<number | null>>): string {
+  return grid.map((row) => row.map((c) => (c == null ? "" : trimNum(c))).join(",")).join("\n");
+}
+
+export class GridPainterNode extends ClassicPreset.Node {
+  label: string;
+  tableText = "";
+  literals: Record<string, number> = { rows: 6, cols: 8, brush: 1 };
+  width = 240;
+  height = 260;
+
+  constructor(init?: { label?: string; tableText?: string; rows?: number; cols?: number; brush?: number }) {
+    super("GridPainter");
+    this.label = init?.label ?? "Grid Painter";
+    if (typeof init?.tableText === "string") this.tableText = init.tableText;
+    for (const k of ["rows", "cols", "brush"] as const) {
+      if (typeof init?.[k] === "number") this.literals[k] = init[k]!;
+    }
+    this.addOutput("result", tableOut("Matrix"));
+  }
+
+  data(): { result: (number | null)[][] } {
+    const rows = clamp(Math.round(this.literals.rows ?? 6), 1, 64);
+    const cols = clamp(Math.round(this.literals.cols ?? 8), 1, 64);
+    this.literals.rows = rows;
+    this.literals.cols = cols;
+    return { result: parsePaintGrid(this.tableText, rows, cols) };
   }
 }

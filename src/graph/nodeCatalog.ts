@@ -4,8 +4,9 @@
 
 import {
   AngleDialNode, SlicerNode, CableSwitchNode, DatePickerNode, DateRangeNode, XYPadNode,
+  PointPlotterNode, CurveNode, GridPainterNode,
   SparklineNode, ChartNode, HistogramNode, KpiNode, BulletNode, TreemapNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode,
-  ContourNode, WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, WaffleNode, QuiverNode,
+  ContourNode, WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, WaffleNode, QuiverNode, SevenSegNode,
   NumberInputNode, ArithmeticNode, DisplayNode, ComparisonNode, MathFnNode,
   FormatControllerNode, ExpressionNode, EquationNode, RegexNode, GroupByNode,
   ClampNode, BooleanOpNode, NotNode, IfNode, ConduitNode, CastNode, ConstantNode, MRoundNode,
@@ -198,6 +199,9 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "date-picker", label: "Date Picker", description: "Pick a day from a calendar field; it outputs the matching date serial. Wire it into any date function.", create: () => new DatePickerNode(), parity: false },
           { type: "date-range",  label: "Date Range",  description: "Pick a start and end date; it outputs both serials. Subtract them for a duration, or feed a filter's bounds.", create: () => new DateRangeNode(), parity: false, keywords: "date range period start end duration between from to picker" },
           { type: "xy-pad",      label: "XY Pad",      description: "Drag a handle in a square to set two values at once. Outputs X and Y, each 0–1; scale them with arithmetic for any range.", create: () => new XYPadNode(), parity: false },
+          { type: "point-plotter", label: "Point Plotter", description: "Draw a dataset by hand: click a small plane to drop points, drag to move them, right-click to delete. Outputs the points as parallel X and Y lists — feed a scatter Chart, a regression, or Build Frame → Grid Interpolate.", create: () => new PointPlotterNode(), parity: false, keywords: "point plotter scatter draw data by hand click plane pad dataset xy points" },
+          { type: "curve",       label: "Curve",       description: "Draw a response curve: drag control points on a strip and a smooth spline through them (no overshoot) is sampled into a list. Tuning curves, easing, tiered rates, lookup tables. Also emits the sample X positions.", create: () => new CurveNode(), parity: false, keywords: "curve envelope spline ease easing ramp response tuning interpolate draw shape function" },
+          { type: "grid-painter", label: "Grid Painter", description: "Paint a matrix by hand: left-drag fills cells with the Brush value, right-drag erases to blank. Outputs the grid — masks for MAP, terrain for Surface, quick heatmap data.", create: () => new GridPainterNode(), parity: false, keywords: "grid painter paint matrix cells brush mask draw table pixel editor" },
           { type: "color-picker", label: "Color", description: "Pick a color in RGB or HSV and choose the output format: hex, rgb(), or hsl(). Outputs a CSS color string.", create: () => new ColorPickerNode(), parity: false },
           { type: "slicer",      label: "Slicer",      description: "Filter a Frame like an Excel slicer: pick a column, then click its values to keep matching rows.", create: () => new SlicerNode() },
           { type: "cable-switch", label: "Input Switch", description: "A multiplexer, distinct from the logical SWITCH: wire several cables in, name each slot, and pick which one passes through. Any type. Switch to Many to check several slots instead; the output becomes a Cube collecting the chosen values (name + value), one row each.", create: () => new CableSwitchNode(), parity: false, keywords: "switch multiplexer select choose route mux named cube collect multi" },
@@ -249,6 +253,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
             { type: "gauge",     label: "Gauge",     description: "Show a value as a percentage on a speedometer-style radial dial (1 = 100%, 1.5 = 150%). Pass-through.", create: () => new GaugeNode(), parity: false },
             { type: "bullet",    label: "Bullet",    description: "A bullet graph: a value bar on a min-to-max track with a target tick. A compact gauge alternative. Emits a chart value a Report can embed.", create: () => new BulletNode(), parity: false, keywords: "bullet graph target progress goal gauge kpi" },
           ]},
+          { type: "seven-seg", label: "7-Segment", description: "A flat seven-segment readout of a number, with a Decimals setting — the meter-face look. Pass-through.", create: () => new SevenSegNode(), parity: false, keywords: "seven segment display digital readout meter lcd led digits retro" },
           {
             type: "category", label: "Distribution", description: "How a sample spreads: binned counts and five-number summaries.",
             children: [

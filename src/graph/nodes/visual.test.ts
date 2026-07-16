@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, SurfaceNode, parseBorderedGrid, histogramBins,
   ContourNode, WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, WaffleNode, QuiverNode,
-  boxplotStats, quantileSorted,
+  SevenSegNode, sevenSegText, boxplotStats, quantileSorted,
 } from "./visual";
 import type { BoxplotPayload, CandlePayload, ContourPayload, WaterfallPayload, CalHeatPayload, WafflePayload, QuiverPayload } from "../chartValue";
 import type { FrameValue, FrameColumn } from "../frame";
@@ -306,5 +306,25 @@ describe("chart-wave nodes emit their payloads", () => {
     const p = n.data({ u: [[[1, null], [0, 2]]], v: [[[0, 1], [null, 2]]] }).chart.payload as QuiverPayload;
     expect(p.u).toEqual([[1, null], [0, 2]]);
     expect(p.v).toEqual([[0, 1], [null, 2]]);
+  });
+});
+
+describe("SevenSeg", () => {
+  it("passes the value through and clamps decimals", () => {
+    const n = new SevenSegNode();
+    expect(n.data({ value: [42.5], decimals: [1] })).toEqual({ result: 42.5 });
+    expect(n.literals.decimals).toBe(1);
+    n.data({ value: [1], decimals: [99] });
+    expect(n.literals.decimals).toBe(6);
+  });
+
+  it("sevenSegText: fixed decimals; overflow → all dashes; blank when no value", () => {
+    expect(sevenSegText(42.5, 1)).toBe("42.5");
+    expect(sevenSegText(-3, 0)).toBe("-3");
+    expect(sevenSegText(null, 2)).toBe("");
+    // 12345678901 = 11 digit cells > 10 → the classic overflow dashes.
+    expect(sevenSegText(12345678901, 0)).toBe("----------");
+    // The decimal point rides its neighbour cell, so 8 digits + dp still fits.
+    expect(sevenSegText(1234567.8, 1)).toBe("1234567.8");
   });
 });
