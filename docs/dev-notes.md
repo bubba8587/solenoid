@@ -109,8 +109,13 @@ sine-diagonal + 0-corners case now interpolates through the diagonal, edges curv
 now a spline fill, same value to float-epsilon on the pinned fixture). **Item A SHIPPED: the Frame
 socket glyph** — sheet-with-a-header (solid band + one column divider), own render branch in
 SocketComponent + legend `frame` kind + pixi `frame` GlyphKind (glyph test re-pinned), docs updated
-(data-types.md, CLAUDE.md legend line). REMAINING: the two flagged author calls in the backlog
-(bare-number adoption base-SI vs display; dimension-blind cube join key).
+(data-types.md, CLAUDE.md legend line). **Turn 13 (author, tan-grid):** Grid Interpolate widening search CAPPED at 4 steps/side (`9092ac0` —
+the contested rule made scattered grids exhaust O(lines⁴) boxes per cell; 40×40 tan diagonal now
+fills in 73ms) + ONE shared forced-scientific rule (`extremeSci` in format.ts: |n| ≥ 1e12 or nonzero
+< 1e-4 → trimmed e-notation) wired into formatScalar / TableDisplay cells / the popup's auto format;
+explicit user formats untouched. REMAINING: the two flagged author calls in the backlog
+(bare-number adoption base-SI vs display; dimension-blind cube join key) — the loop is otherwise out
+of self-serve work (walk concluded; items A+B shipped; all author requests through 9092ac0 done).
 
 ### SESSION DIGEST (2026-07-16 — UI corner-radius reduction pass)
 Node cards 8→6px; group/note/conduit and Note/Group-derived cards (Presentation, Report, Image,
