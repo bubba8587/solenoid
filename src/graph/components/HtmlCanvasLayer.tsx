@@ -354,6 +354,8 @@ export function HtmlCanvasLayer() {
     // gesture (conduits + their cables + unresolvable cables + the standoff svg).
     (window as unknown as { __hcStats?: () => unknown }).__hcStats =
       () => ({ ...engine.getStats(), domOnly: domOnlyEls.length });
+    // One-shot verbose pipeline probe (real error text per stage) — see probe().
+    (window as unknown as { __hcProbe?: () => void }).__hcProbe = () => engine.probe();
     const count = (cause: string) => { triggers[cause] = (triggers[cause] ?? 0) + 1; };
     const fullRebuild = (cause: string) => () => { count(cause); scheduleRebuild(); };
     // NOT subscribed: cableValueStore — every value change that repaints a card
