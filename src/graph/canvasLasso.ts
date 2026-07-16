@@ -8,6 +8,7 @@ import type { AreaPlugin } from "rete-area-plugin";
 import type { Schemes, AreaExtra } from "./schemes";
 import { pointInPolygon, polygonIntersectsBBox, signedArea, lassoActiveStore, type Pt } from "./lasso";
 import { groupCollapseStore } from "./groupCollapse";
+import { isolateStore } from "./isolateStore";
 import { touchSelectStore } from "./touchSelectStore";
 import { cableSelectionStore, cableGhostStore } from "./cableState";
 import { ribbonForConnection } from "./ribbonCable";
@@ -55,6 +56,10 @@ export function installLassoSelection(deps: LassoDeps): () => void {
       // them into a new group when the user then hits G. The group node itself
       // stays visible (never in this set), so a collapsed group is still lassoable.
       if (groupCollapseStore.isNodeHidden(id)) continue;
+      // Isolate's non-focus nodes are receded to opacity .08 + pointer-events:none —
+      // effectively invisible, so the lasso must not reach them either (same rule
+      // as Ctrl+A: you select what you can see).
+      if (!isolateStore.isVisible(id)) continue;
       const br = view.element.getBoundingClientRect();
       nodeCorners.push({ id, corners: [
         { x: br.left  - cr.left, y: br.top    - cr.top },

@@ -71,9 +71,12 @@ recovers Excel's form; VSTACK/WRAPROWS ragged #N/A confirmed KEPT — signals a 
 — verified Ctrl+A's exposure is fully guarded downstream; select-all-delete/copy legitimately means
 everything), `52472f3` dimensionless-adopts (found an undecided edge: **adoption is at BASE-SI face
 value** — `SUM(5 km, 3)` reads 3 as 3 m; backlogged as an author call, display-unit adopt vs
-document). WALK CONTINUES at the remaining units run (`90f24d5` ratio minting, `6bbb71e` opaque
-custom dims, `1c6c5e4` Convert primacy) → `46834db`/`63bed21` (D19/tier-4 decisions, docs-only) →
-2026-07-14 and older.
+document). **Turn 7 (author-directed):** **D21 recorded** — selection surfaces act on what you can SEE, and
+audit calls default to FIX. Ctrl+A now skips collapsed-group-hidden members AND isolate's receded
+non-focus nodes (opacity .08, pointer-events none); the lasso gains the isolate filter too (it
+already skipped collapse-hidden). Deleting a collapsed group never deletes members, so nothing
+becomes unreachable. WALK CONTINUES at the remaining units run (`90f24d5` ratio minting, `6bbb71e`
+opaque custom dims, `1c6c5e4` Convert primacy) → 2026-07-14 and older.
 
 ### SESSION DIGEST (2026-07-16 — UI corner-radius reduction pass)
 Node cards 8→6px; group/note/conduit and Note/Group-derived cards (Presentation, Report, Image,
