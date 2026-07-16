@@ -120,18 +120,16 @@ const SCRUB_PX_PER_STEP = 6; // px of drag per unit step, at the unmodified rate
 
 type ScrubState = { startX: number; startY: number; startValue: number; currentValue: number; dragging: boolean };
 
-export function InlineNumberField({
-  value,
-  onChange,
-  placeholder = "0",
-}: {
-  value: number | undefined;
-  onChange: (v: number | undefined) => void;
-  /** Shown (muted) when the field is empty. IFS/SWITCH pass "N/A" on their
-   *  fallback box, so an unset Otherwise/Default reads as "no match → #N/A". */
-  placeholder?: string;
-}) {
-  const field = useDraftCommit(value, numToText, parseNum, onChange);
+/** Pointer handlers for drag-to-scrub on a number field. Shared by the per-row
+ *  inline literals AND the Number Input's main field (which shipped without
+ *  scrub handlers at all — the "scrubber is bugged" report). `showValue` is the
+ *  live draft preview (also called to revert on cancel); `commitValue` applies
+ *  the final value and owns its undo entry. */
+export function useNumberScrub(
+  committed: number | undefined,
+  showValue: (v: number | undefined) => void,
+  commitValue: (next: number) => void,
+) {
   const dragRef = useRef<ScrubState | null>(null);
   // The Escape listener is added imperatively (keydown during a drag isn't
   // guaranteed to land on the input — it's blurred the moment a drag engages),
@@ -161,19 +159,16 @@ export function InlineNumberField({
     if (commit) {
       // Mirrors useDraftCommit's onBlur commit sequence (apply → one undo entry),
       // just triggered by pointerup instead of blur/Enter.
-      if (!Object.is(d.currentValue, value)) {
-        onChange(d.currentValue);
-        pushHistory(() => onChange(value), () => onChange(d.currentValue));
-      }
+      if (!Object.is(d.currentValue, committed)) commitValue(d.currentValue);
     } else {
-      field.setDraft(numToText(d.startValue));
+      showValue(d.startValue);
     }
   }
 
   function onPointerDown(e: React.PointerEvent<HTMLInputElement>) {
     e.stopPropagation();
     if (e.button !== 0) return;
-    dragRef.current = { startX: e.clientX, startY: e.clientY, startValue: value ?? 0, currentValue: value ?? 0, dragging: false };
+    dragRef.current = { startX: e.clientX, startY: e.clientY, startValue: committed ?? 0, currentValue: committed ?? 0, dragging: false };
     e.currentTarget.setPointerCapture(e.pointerId);
     const target = e.currentTarget;
     const pointerId = e.pointerId;
@@ -185,7 +180,7 @@ export function InlineNumberField({
       escRef.current = null;
       if (target.hasPointerCapture(pointerId)) target.releasePointerCapture(pointerId);
       document.body.classList.remove("solenoid-scrubbing");
-      if (d) field.setDraft(numToText(d.startValue));
+      if (d) showValue(d.startValue);
     };
     escRef.current = onEsc;
     window.addEventListener("keydown", onEsc);
@@ -204,12 +199,45 @@ export function InlineNumberField({
     }
     const delta = Math.abs(dx) >= Math.abs(dy) ? dx : dy;
     // Shift = coarse (10x), Alt = fine (0.1x), unmodified = 1 unit per
-    // SCRUB_PX_PER_STEP px.
+    // SCRUB_PX_PER_STEP px. Steps are counted first, THEN scaled: the old
+    // Math.round(steps × mult) rounded the whole product to an integer, so
+    // Alt-fine could never actually produce a 0.1 — it just made a slower
+    // integer scrub. Fine steps snap to the 0.1 grid to avoid float dust.
     const mult = e.shiftKey ? 10 : e.altKey ? 0.1 : 1;
-    const next = d.startValue + Math.round((delta / SCRUB_PX_PER_STEP) * mult);
+    const raw = d.startValue + Math.round(delta / SCRUB_PX_PER_STEP) * mult;
+    const next = mult < 1 ? Math.round(raw * 10) / 10 : raw;
     d.currentValue = next;
-    field.setDraft(numToText(next));
+    showValue(next);
   }
+
+  return {
+    onPointerDown,
+    onPointerMove,
+    onPointerUp: (e: React.PointerEvent<HTMLInputElement>) => endDrag(e, true),
+    onPointerCancel: (e: React.PointerEvent<HTMLInputElement>) => endDrag(e, false),
+  };
+}
+
+export function InlineNumberField({
+  value,
+  onChange,
+  placeholder = "0",
+}: {
+  value: number | undefined;
+  onChange: (v: number | undefined) => void;
+  /** Shown (muted) when the field is empty. IFS/SWITCH pass "N/A" on their
+   *  fallback box, so an unset Otherwise/Default reads as "no match → #N/A". */
+  placeholder?: string;
+}) {
+  const field = useDraftCommit(value, numToText, parseNum, onChange);
+  const scrub = useNumberScrub(
+    value,
+    (v) => field.setDraft(numToText(v)),
+    (next) => {
+      onChange(next);
+      pushHistory(() => onChange(value), () => onChange(next));
+    },
+  );
 
   return (
     <input
@@ -220,10 +248,7 @@ export function InlineNumberField({
       onChange={(e: ChangeEvent<HTMLInputElement>) => field.setDraft(e.target.value)}
       onBlur={field.onBlur}
       onKeyDown={field.onKeyDown}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={(e) => endDrag(e, true)}
-      onPointerCancel={(e) => endDrag(e, false)}
+      {...scrub}
       onMouseDown={(e) => e.stopPropagation()}
       spellCheck={false}
     />

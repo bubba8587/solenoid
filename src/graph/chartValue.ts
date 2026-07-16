@@ -59,12 +59,71 @@ export interface SurfacePayload {
   yaw: number;
   pitch: number;
 }
-export type ChartPayload = KpiPayload | BulletPayload | TreemapPayload | SankeyPayload | SurfacePayload;
+// The flat twin of Surface: same bordered grid (xs/ys axes + z heights), drawn
+// as filled height bands with iso-lines instead of a 3-D mesh. `levels` is the
+// iso-line count between the data's own min and max.
+export interface ContourPayload {
+  kind: "contour";
+  xs: number[];
+  ys: number[];
+  z: (number | null)[][];
+  levels: number;
+}
+// A waterfall: each (name, value) is a signed delta from the running total; a
+// computed Total bar is appended when `total`.
+export interface WaterfallPayload {
+  kind: "waterfall";
+  names: string[];
+  values: number[];
+  total: boolean;
+}
+// OHLC candles, parallel per index; labels are the (formatted) x-axis dates.
+export interface CandlePayload {
+  kind: "candle";
+  labels: string[];
+  open: number[];
+  high: number[];
+  low: number[];
+  close: number[];
+}
+// One box per series: Tukey five-number summary + the outliers beyond the
+// 1.5·IQR whiskers. Stats are computed in the node, so the view stays dumb.
+export interface BoxplotPayload {
+  kind: "boxplot";
+  boxes: Array<{ name: string; lo: number; q1: number; med: number; q3: number; hi: number; outliers: number[] }>;
+}
+// A calendar heatmap: parallel (date serial, value) pairs; the view lays out
+// weeks × weekdays over the data's own date span (capped at a year).
+export interface CalHeatPayload {
+  kind: "calheat";
+  days: number[];
+  values: number[];
+}
+// A waffle: category shares as a 10×10 grid. A single value in [0,1] renders as
+// a fraction of the grid instead of a share of the (trivial) total.
+export interface WafflePayload {
+  kind: "waffle";
+  names: string[];
+  values: number[];
+}
+// A vector field: u/v are same-shaped matrices of the x/y components; one arrow
+// per cell, coloured by magnitude. A null in either component skips the cell.
+export interface QuiverPayload {
+  kind: "quiver";
+  u: (number | null)[][];
+  v: (number | null)[][];
+}
+export type ChartPayload =
+  | KpiPayload | BulletPayload | TreemapPayload | SankeyPayload | SurfacePayload
+  | ContourPayload | WaterfallPayload | CandlePayload | BoxplotPayload
+  | CalHeatPayload | WafflePayload | QuiverPayload;
 
 /** Every op the `chart` socket can carry: the ChartView series shapes, the
  *  structured-payload figures rendered outside recharts (kpi/bullet), and the
  *  structured recharts figures (treemap/sankey). */
-export type ChartValueOp = ChartOp | "kpi" | "bullet" | "treemap" | "sankey" | "surface";
+export type ChartValueOp =
+  | ChartOp | "kpi" | "bullet" | "treemap" | "sankey" | "surface"
+  | "contour" | "waterfall" | "candle" | "boxplot" | "calheat" | "waffle" | "quiver";
 
 export interface ChartValue {
   __chart: true;

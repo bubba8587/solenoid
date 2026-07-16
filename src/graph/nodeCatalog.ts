@@ -5,6 +5,7 @@
 import {
   AngleDialNode, SlicerNode, CableSwitchNode, DatePickerNode, DateRangeNode, XYPadNode,
   SparklineNode, ChartNode, HistogramNode, KpiNode, BulletNode, TreemapNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode,
+  ContourNode, WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, WaffleNode, QuiverNode,
   NumberInputNode, ArithmeticNode, DisplayNode, ComparisonNode, MathFnNode,
   FormatControllerNode, ExpressionNode, EquationNode, RegexNode, GroupByNode,
   ClampNode, BooleanOpNode, NotNode, IfNode, ConduitNode, CastNode, ConstantNode, MRoundNode,
@@ -234,20 +235,52 @@ export const NODE_CATALOG: CatalogEntry[] = [
         ],
       },
       {
+        // Regrouped 2026-07-16 with the chart wave (12 flat rows + 7 new figures
+        // needed the ~12-row pane budget): the general-purpose plotters stay
+        // top-level, the specialist figures cluster by what they show.
         type: "category", label: "Visuals", description: "Inline charts and readouts: plot or visualize a value at the end of a chain. All pass-through.",
         children: [
-          { type: "sparkline", label: "Sparkline", description: "A small inline chart of a list: line, column, or win/loss. Emits a chart value a Report can embed; collapses to a headerless square. Excel: SPARKLINE.", create: () => new SparklineNode(), parity: false, keywords: "sparkline spark line column win loss winloss" },
           { type: "chart",     label: "Chart",     description: "Plot a list as a column, bar, line, area, scatter, pie, radar, radial, or funnel chart, or wire a 2-D Series for a composed (bars + lines) or bubble chart. Style it with a Chart Builder on Options. Emits a chart value a Report can embed.", create: () => new ChartNode(), parity: false, keywords: "chart plot graph column bar line area scatter pie radar radial funnel composed bubble multi-series" },
-          { type: "histogram", label: "Histogram", description: "Bin a list of numbers into equal-width buckets and plot the counts as columns. Set the bin count on the node. Emits a chart value a Report can embed.", create: () => new HistogramNode(), parity: false, keywords: "histogram bins distribution frequency FREQUENCY buckets" },
           { type: "chart-builder", label: "Chart Builder", description: "Style a Chart (title, axes, color, grid, range, line, markers) and output an options string for its Options socket. Fields follow matplotlib.", create: () => new ChartBuilderNode(), parity: false },
+          { type: "sparkline", label: "Sparkline", description: "A small inline chart of a list: line, column, or win/loss. Emits a chart value a Report can embed; collapses to a headerless square. Excel: SPARKLINE.", create: () => new SparklineNode(), parity: false, keywords: "sparkline spark line column win loss winloss" },
           { type: "mermaid",   label: "Mermaid",   description: "Draw a diagram from Mermaid.js text: flowchart, sequence, class, state, gantt, or pie. Type the source on the node or wire a Text node into it; the figure flows out a chart socket, so a Report renders it inline where its =name ref sits.", create: () => new MermaidNode(), parity: false, keywords: "mermaid diagram flowchart flow chart graph sequence class state gantt pie mindmap uml erd tree" },
-          { type: "gauge",     label: "Gauge",     description: "Show a value as a percentage on a speedometer-style radial dial (1 = 100%, 1.5 = 150%). Pass-through.", create: () => new GaugeNode(), parity: false },
           { type: "kpi",       label: "KPI card",  description: "A big-number stat card with a ↑/↓ delta vs a prior value, colored green/red. Emits a chart value a Report can embed.", create: () => new KpiNode(), parity: false, keywords: "kpi stat card metric scorecard delta variance big number" },
-          { type: "bullet",    label: "Bullet",    description: "A bullet graph: a value bar on a min-to-max track with a target tick. A compact gauge alternative. Emits a chart value a Report can embed.", create: () => new BulletNode(), parity: false, keywords: "bullet graph target progress goal gauge kpi" },
-          { type: "treemap",   label: "Treemap",   description: "Show labelled values as nested rectangles sized by value, a space-filling alternative to a pie. Wire a 2-column frame (label, value). Emits a chart value a Report can embed.", create: () => new TreemapNode(), parity: false, keywords: "treemap tree map rectangles proportion hierarchy area" },
-          { type: "sankey",    label: "Sankey",    description: "A flow diagram: wire a 3-column frame (From, To, Value); each row is an edge and the band width shows the flow. Emits a chart value a Report can embed.", create: () => new SankeyNode(), parity: false, keywords: "sankey flow diagram alluvial edges links network flows" },
-          { type: "heatmap-cell", label: "Heatmap", description: "Colour every cell of a Table on a cool-to-warm scale across its data range, like conditional formatting. Pass-through.", create: () => new HeatmapCellNode(), parity: false },
-          { type: "surface", label: "Surface", description: "A shaded 3-D surface plot of a bordered lookup table (first row = X coordinates, first column = Y coordinates, interior = Z heights) — the same format Grid Interpolate fills. Emits a chart value a Report can embed.", create: () => new SurfaceNode(), parity: false, keywords: "surface 3d mesh plot height field terrain contour wireframe grid" },
+          { type: "pair", children: [
+            { type: "gauge",     label: "Gauge",     description: "Show a value as a percentage on a speedometer-style radial dial (1 = 100%, 1.5 = 150%). Pass-through.", create: () => new GaugeNode(), parity: false },
+            { type: "bullet",    label: "Bullet",    description: "A bullet graph: a value bar on a min-to-max track with a target tick. A compact gauge alternative. Emits a chart value a Report can embed.", create: () => new BulletNode(), parity: false, keywords: "bullet graph target progress goal gauge kpi" },
+          ]},
+          {
+            type: "category", label: "Distribution", description: "How a sample spreads: binned counts and five-number summaries.",
+            children: [
+              { type: "histogram", label: "Histogram", description: "Bin a list of numbers into equal-width buckets and plot the counts as columns. Set the bin count on the node. Emits a chart value a Report can embed.", create: () => new HistogramNode(), parity: false, keywords: "histogram bins distribution frequency FREQUENCY buckets" },
+              { type: "boxplot", label: "Boxplot", description: "Five-number summaries as boxes: one per numeric column of a wired Frame (or one for a plain list). Median line, quartile box, Tukey 1.5·IQR whiskers, outlier dots. The visual companion to QUARTILE. Emits a chart value a Report can embed.", create: () => new BoxplotNode(), parity: false, keywords: "boxplot box whisker quartile median outlier iqr spread distribution violin" },
+            ],
+          },
+          {
+            type: "category", label: "Proportion", description: "Parts of a whole: shares, flows, and space-filling layouts.",
+            children: [
+              { type: "treemap",   label: "Treemap",   description: "Show labelled values as nested rectangles sized by value, a space-filling alternative to a pie. Wire a 2-column frame (label, value). Emits a chart value a Report can embed.", create: () => new TreemapNode(), parity: false, keywords: "treemap tree map rectangles proportion hierarchy area" },
+              { type: "sankey",    label: "Sankey",    description: "A flow diagram: wire a 3-column frame (From, To, Value); each row is an edge and the band width shows the flow. Emits a chart value a Report can embed.", create: () => new SankeyNode(), parity: false, keywords: "sankey flow diagram alluvial edges links network flows" },
+              { type: "waffle",    label: "Waffle",    description: "Shares as a 10×10 grid of squares — the honest pie. Wire a 2-column frame (label, value) for category shares, or a single value between 0 and 1 for a plain fraction of the grid. Emits a chart value a Report can embed.", create: () => new WaffleNode(), parity: false, keywords: "waffle dot matrix squares proportion percentage share progress pictogram" },
+            ],
+          },
+          {
+            type: "category", label: "Grids & Fields", description: "Figures over a 2-D grid: cell colour, height, and direction.",
+            children: [
+              { type: "heatmap-cell", label: "Heatmap", description: "Colour every cell of a Table on a cool-to-warm scale across its data range, like conditional formatting. Pass-through.", create: () => new HeatmapCellNode(), parity: false },
+              { type: "surface", label: "Surface", description: "A shaded 3-D surface plot of a bordered lookup table (first row = X coordinates, first column = Y coordinates, interior = Z heights) — the same format Grid Interpolate fills. Emits a chart value a Report can embed.", create: () => new SurfaceNode(), parity: false, keywords: "surface 3d mesh plot height field terrain contour wireframe grid" },
+              { type: "contour", label: "Contour", description: "The flat twin of Surface: the same bordered lookup table (first row = X coordinates, first column = Y coordinates, interior = Z heights) drawn as filled height bands with iso-lines. Wire one grid into both for two views of one surface. Emits a chart value a Report can embed.", create: () => new ContourNode(), parity: false, keywords: "contour iso lines level topo topographic height map bands field 2d surface" },
+              { type: "quiver", label: "Vector Field", description: "One arrow per grid cell from two same-shaped matrices (the X and Y components), coloured by magnitude — gradients, flows, wind fields. Emits a chart value a Report can embed.", create: () => new QuiverNode(), parity: false, keywords: "quiver vector field arrows flow gradient wind direction magnitude" },
+            ],
+          },
+          {
+            type: "category", label: "Time & Finance", description: "Values over time: candles, bridges, and daily activity.",
+            children: [
+              { type: "candlestick", label: "Candlestick", description: "OHLC candles for price history: wire a frame whose columns are Date, Open, High, Low, Close (the Data Feed's stock-history shape); with exactly four numeric columns the date is omitted. Emits a chart value a Report can embed.", create: () => new CandlestickNode(), parity: false, keywords: "candlestick candle ohlc stock price open high low close market trading finance" },
+              { type: "waterfall", label: "Waterfall", description: "The finance bridge chart: each row of a 2-column frame (Label, Delta) steps the running total up or down, with a computed Total bar at the end. Emits a chart value a Report can embed.", create: () => new WaterfallNode(), parity: false, keywords: "waterfall bridge chart delta variance walk finance running total steps" },
+              { type: "calendar-heatmap", label: "Calendar", description: "A year of daily activity as a weeks-by-weekdays grid, each day tinted by its value — the contribution-graph look. Wire a 2-column frame (Date, Value); duplicate days sum. Emits a chart value a Report can embed.", create: () => new CalendarHeatmapNode(), parity: false, keywords: "calendar heatmap daily activity year contribution github days streak" },
+            ],
+          },
         ],
       },
       { type: "conduit",    label: "Conduit",   description: "Bundle up to 8 cables into one block; they travel onward as a single ribbon that splits back into lanes at the destination. Rotate or extend it from the inspector.", create: () => new ConduitNode(), parity: false },

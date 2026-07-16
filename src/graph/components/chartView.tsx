@@ -11,6 +11,10 @@ import type { TornadoBar } from "./chartRender";
 import type { ChartValue } from "../chartValue";
 import { KpiCard, BulletBar } from "./chartCards";
 import { SurfaceView } from "./SurfaceView";
+import { useSeriesColors } from "./chartCore";
+import {
+  WaterfallView, CandleView, BoxplotView, CalHeatView, WaffleView, QuiverView, ContourView,
+} from "./chartCanvasViews";
 
 export { VIZ, useChartColors, toSeries } from "./chartCore";
 export type { ChartShape } from "./chartCore";
@@ -100,6 +104,9 @@ export function ChartFigure({ value, width, height, axes = true, fontScale }: {
   // The payload/matrix figures don't read options, so fold both factors here;
   // ChartView folds options.fontsize itself (it takes `opts` directly).
   const fscale = (fontScale ?? 1) * ((value.options?.fontsize ?? 10) / 10);
+  // Hook BEFORE any early return (a conditional hook here black-screens the app —
+  // the TablePopup lesson). Waffle is the only consumer; the others theme inside.
+  const seriesColors = useSeriesColors();
   if (value.op === "kpi" && value.payload?.kind === "kpi") return <KpiCard payload={value.payload} fscale={fscale} />;
   if (value.op === "bullet" && value.payload?.kind === "bullet") return <BulletBar payload={value.payload} width={width} fscale={fscale} />;
   if (value.op === "treemap" && value.payload?.kind === "treemap")
@@ -108,6 +115,21 @@ export function ChartFigure({ value, width, height, axes = true, fontScale }: {
     return <SankeyView sources={value.payload.sources} targets={value.payload.targets} values={value.payload.values} width={width} height={height} fscale={fscale} />;
   if (value.op === "surface" && value.payload?.kind === "surface")
     return <SurfaceView payload={value.payload} width={width} height={height} />;
+  // The canvas-figure wave (2026-07-16): each draws itself into one <canvas>.
+  if (value.op === "contour" && value.payload?.kind === "contour")
+    return <ContourView payload={value.payload} width={width} height={height} />;
+  if (value.op === "waterfall" && value.payload?.kind === "waterfall")
+    return <WaterfallView payload={value.payload} width={width} height={height} />;
+  if (value.op === "candle" && value.payload?.kind === "candle")
+    return <CandleView payload={value.payload} width={width} height={height} />;
+  if (value.op === "boxplot" && value.payload?.kind === "boxplot")
+    return <BoxplotView payload={value.payload} width={width} height={height} />;
+  if (value.op === "calheat" && value.payload?.kind === "calheat")
+    return <CalHeatView payload={value.payload} width={width} height={height} />;
+  if (value.op === "waffle" && value.payload?.kind === "waffle")
+    return <WaffleView payload={value.payload} width={width} height={height} colors={seriesColors} />;
+  if (value.op === "quiver" && value.payload?.kind === "quiver")
+    return <QuiverView payload={value.payload} width={width} height={height} />;
   // The 2-D ops read the matrix; with no matrix wired they fall back to the
   // single `values` series (composed → columns, bubble → a scatter).
   const hasMatrix = Array.isArray(value.matrix) && value.matrix.length > 0;

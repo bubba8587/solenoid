@@ -2,7 +2,10 @@ import { ClassicPreset } from "rete";
 import { numIn, numListIn, numOut, tableIn, tableOut, strIn, strOut, chartOut, anyTableIn, frameIn } from "./shared";
 import { parseChartOptions, serializeChartOptions, type ChartOptions } from "./chartOptions";
 import { clamp, iterMin, iterMax } from "./mathUtils";
-import type { ChartValue, KpiPayload, BulletPayload, TreemapPayload, SankeyPayload, SurfacePayload } from "../chartValue";
+import type {
+  ChartValue, KpiPayload, BulletPayload, TreemapPayload, SankeyPayload, SurfacePayload,
+  ContourPayload, WaterfallPayload, CandlePayload, BoxplotPayload, CalHeatPayload, WafflePayload, QuiverPayload,
+} from "../chartValue";
 import type { MermaidValue } from "../mermaidValue";
 import { readFrame, type FrameInput } from "../frameBackend";
 import { formatFrameCell, isFrameValue, type FrameColumn } from "../frame";
@@ -549,6 +552,310 @@ export class SurfaceNode extends ClassicPreset.Node {
       __chart: true, op: "surface", values: null, payload,
       options: {}, title: this.label || "Surface",
     };
+    this.cachedChart = chart;
+    return { chart };
+  }
+}
+
+// ─── Contour (flat height-band plot) ─────────────────────────────────────────
+// The flat twin of Surface: the SAME coordinate-bordered table (first row = X
+// coordinates, first column = Y coordinates, interior = Z heights), rendered as
+// filled height bands + iso-lines instead of a 3-D mesh. Wire the same grid into
+// both for two views of one surface.
+
+export class ContourNode extends ClassicPreset.Node {
+  label: string;
+  literals: Record<string, number> = { levels: 8 };
+  cachedChart: ChartValue | null = null;
+  width = 240;
+  height = 240;
+
+  constructor(init?: { label?: string; levels?: number }) {
+    super("Contour");
+    this.label = init?.label ?? "Contour";
+    if (typeof init?.levels === "number") this.literals.levels = init.levels;
+    this.addInput("grid", tableIn("Bordered grid"));
+    this.addInput("levels", numIn("Levels"));
+    this.addOutput("chart", chartOut("Chart"));
+  }
+
+  data(inputs: { grid?: (number | null | unknown)[][][]; levels?: number[] }): { chart: ChartValue } {
+    const { xs, ys, z } = parseBorderedGrid(inputs.grid?.[0] ?? null);
+    const levels = clamp(Math.round(inputs.levels?.[0] ?? this.literals.levels ?? 8), 2, 24);
+    this.literals.levels = levels;
+    const payload: ContourPayload = { kind: "contour", xs, ys, z, levels };
+    const chart: ChartValue = { __chart: true, op: "contour", values: null, payload, options: {}, title: this.label || "Contour" };
+    this.cachedChart = chart;
+    return { chart };
+  }
+}
+
+// ─── Column readers for the frame-fed figures ─────────────────────────────────
+/** A column's RAW numeric cells (dates stay serials — unlike colAsNumbers, which
+ *  formats first and would turn a date into unparseable text). */
+function colAsRawNumbers(col: FrameColumn | undefined): (number | null)[] {
+  if (!col) return [];
+  return col.values.map((v) => (typeof v === "number" && Number.isFinite(v) ? v : null));
+}
+
+/** Linear-interpolated quantile of a SORTED sample (Excel's PERCENTILE.INC). */
+export function quantileSorted(sorted: number[], p: number): number {
+  if (sorted.length === 0) return NaN;
+  const idx = (sorted.length - 1) * clamp(p, 0, 1);
+  const lo = Math.floor(idx), hi = Math.ceil(idx);
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+}
+
+// ─── Waterfall ────────────────────────────────────────────────────────────────
+// The finance bridge chart: each (label, value) row is a signed delta from the
+// running total; a computed Total bar lands at the end. Wire a 2-column frame
+// (Label, Value) — read positionally, like Treemap.
+
+export class WaterfallNode extends ClassicPreset.Node {
+  label: string;
+  stringLiterals: Record<string, string> = {};
+  chartOptions: ChartOptions = {};
+  cachedChart: ChartValue | null = null;
+  width = 240;
+  height = 220;
+
+  constructor(init?: { label?: string }) {
+    super("Waterfall");
+    this.label = init?.label ?? "Waterfall";
+    this.addInput("frame", frameIn("Label + Delta"));
+    this.addInput("options", strIn("Options"));
+    this.addOutput("chart", chartOut("Chart"));
+  }
+
+  async data(inputs: { frame?: (FrameInput | null)[]; options?: string[] }): Promise<{ chart: ChartValue }> {
+    const cols = await readFrameColumns(inputs.frame?.[0] ?? null);
+    const names = colAsStrings(cols[0]);
+    const values = colAsNumbers(cols[1]);
+    this.chartOptions = parseChartOptions(inputs.options?.[0] ?? this.stringLiterals.options ?? null);
+    const payload: WaterfallPayload = { kind: "waterfall", names, values, total: true };
+    const chart: ChartValue = {
+      __chart: true, op: "waterfall", values, payload,
+      options: this.chartOptions, title: this.chartOptions.title || this.label || "Waterfall",
+    };
+    this.cachedChart = chart;
+    return { chart };
+  }
+}
+
+// ─── Candlestick ──────────────────────────────────────────────────────────────
+// OHLC candles — the chart the Data Feed's stock history is FOR. Wire a frame
+// whose columns are Date, Open, High, Low, Close (positional; with exactly four
+// numeric columns the date is omitted and candles index 1, 2, 3…).
+
+export class CandlestickNode extends ClassicPreset.Node {
+  label: string;
+  stringLiterals: Record<string, string> = {};
+  chartOptions: ChartOptions = {};
+  cachedChart: ChartValue | null = null;
+  width = 260;
+  height = 220;
+
+  constructor(init?: { label?: string }) {
+    super("Candlestick");
+    this.label = init?.label ?? "Candlestick";
+    this.addInput("frame", frameIn("Date + O H L C"));
+    this.addInput("options", strIn("Options"));
+    this.addOutput("chart", chartOut("Chart"));
+  }
+
+  async data(inputs: { frame?: (FrameInput | null)[]; options?: string[] }): Promise<{ chart: ChartValue }> {
+    const cols = await readFrameColumns(inputs.frame?.[0] ?? null);
+    // 5+ columns → col 0 is the date/label axis; exactly 4 → all four are OHLC.
+    const hasDates = cols.length >= 5;
+    const o = colAsNumbers(cols[hasDates ? 1 : 0]);
+    const labels = hasDates ? colAsStrings(cols[0]) : o.map((_, i) => String(i + 1));
+    const payload: CandlePayload = {
+      kind: "candle",
+      labels,
+      open:  o,
+      high:  colAsNumbers(cols[hasDates ? 2 : 1]),
+      low:   colAsNumbers(cols[hasDates ? 3 : 2]),
+      close: colAsNumbers(cols[hasDates ? 4 : 3]),
+    };
+    this.chartOptions = parseChartOptions(inputs.options?.[0] ?? this.stringLiterals.options ?? null);
+    const chart: ChartValue = {
+      __chart: true, op: "candle", values: payload.close, payload,
+      options: this.chartOptions, title: this.chartOptions.title || this.label || "Candlestick",
+    };
+    this.cachedChart = chart;
+    return { chart };
+  }
+}
+
+// ─── Boxplot ──────────────────────────────────────────────────────────────────
+// The visual for the Quartile/Percentile family: one box per numeric column of a
+// wired Frame (or a single box for a plain list). Whiskers reach the farthest
+// sample within 1.5·IQR of the box (Tukey); anything beyond plots as an outlier
+// dot. Received raw (like Chart) so a plain list doesn't widen into a 1-row frame.
+
+/** Five-number summary + outliers for one sample (Tukey 1.5·IQR whiskers). */
+export function boxplotStats(sample: (number | null)[]): { lo: number; q1: number; med: number; q3: number; hi: number; outliers: number[] } | null {
+  const nums = sample.filter((v): v is number => typeof v === "number" && Number.isFinite(v)).sort((a, b) => a - b);
+  if (nums.length === 0) return null;
+  const q1 = quantileSorted(nums, 0.25), med = quantileSorted(nums, 0.5), q3 = quantileSorted(nums, 0.75);
+  const iqr = q3 - q1;
+  const loFence = q1 - 1.5 * iqr, hiFence = q3 + 1.5 * iqr;
+  const inliers = nums.filter((v) => v >= loFence && v <= hiFence);
+  return {
+    lo: inliers.length ? inliers[0] : nums[0],
+    q1, med, q3,
+    hi: inliers.length ? inliers[inliers.length - 1] : nums[nums.length - 1],
+    outliers: nums.filter((v) => v < loFence || v > hiFence),
+  };
+}
+
+export class BoxplotNode extends ClassicPreset.Node {
+  label: string;
+  stringLiterals: Record<string, string> = {};
+  chartOptions: ChartOptions = {};
+  cachedChart: ChartValue | null = null;
+  rawInputs: ReadonlySet<string> = new Set(["values"]);
+  width = 240;
+  height = 220;
+
+  constructor(init?: { label?: string }) {
+    super("Boxplot");
+    this.label = init?.label ?? "Boxplot";
+    this.addInput("values", frameIn("Data"));
+    this.addInput("options", strIn("Options"));
+    this.addOutput("chart", chartOut("Chart"));
+  }
+
+  async data(inputs: { values?: unknown[]; options?: string[] }): Promise<{ chart: ChartValue }> {
+    const raw = inputs.values?.[0] ?? null;
+    const boxes: BoxplotPayload["boxes"] = [];
+    if (isFrameValue(raw)) {
+      for (const col of raw.columns) {
+        if (col.type !== "number") continue;
+        const s = boxplotStats(colAsRawNumbers(col));
+        if (s) boxes.push({ name: col.name, ...s });
+      }
+    } else if (Array.isArray(raw)) {
+      const s = boxplotStats(raw.map((v) => (typeof v === "number" ? v : null)));
+      if (s) boxes.push({ name: "", ...s });
+    }
+    this.chartOptions = parseChartOptions(inputs.options?.[0] ?? this.stringLiterals.options ?? null);
+    const payload: BoxplotPayload = { kind: "boxplot", boxes };
+    const chart: ChartValue = {
+      __chart: true, op: "boxplot", values: null, payload,
+      options: this.chartOptions, title: this.chartOptions.title || this.label || "Boxplot",
+    };
+    this.cachedChart = chart;
+    return { chart };
+  }
+}
+
+// ─── Calendar heatmap ─────────────────────────────────────────────────────────
+// The GitHub-style year grid: weeks × weekdays, each day tinted by its value.
+// Wire a 2-column frame (Date, Value) — read positionally; the view lays out the
+// data's own date span (capped at a year, keeping the most recent).
+
+export class CalendarHeatmapNode extends ClassicPreset.Node {
+  label: string;
+  stringLiterals: Record<string, string> = {};
+  chartOptions: ChartOptions = {};
+  cachedChart: ChartValue | null = null;
+  width = 300;
+  height = 170;
+
+  constructor(init?: { label?: string }) {
+    super("CalendarHeatmap");
+    this.label = init?.label ?? "Calendar";
+    this.addInput("frame", frameIn("Date + Value"));
+    this.addInput("options", strIn("Options"));
+    this.addOutput("chart", chartOut("Chart"));
+  }
+
+  async data(inputs: { frame?: (FrameInput | null)[]; options?: string[] }): Promise<{ chart: ChartValue }> {
+    const cols = await readFrameColumns(inputs.frame?.[0] ?? null);
+    // The date column must stay SERIALS (colAsNumbers formats dates into display
+    // text first); pair each valid serial with its value.
+    const serials = colAsRawNumbers(cols[0]);
+    const vals = colAsRawNumbers(cols[1]);
+    const days: number[] = [], values: number[] = [];
+    for (let i = 0; i < serials.length; i++) {
+      const d = serials[i];
+      if (d == null) continue;
+      days.push(Math.floor(d));
+      values.push(vals[i] ?? 0);
+    }
+    this.chartOptions = parseChartOptions(inputs.options?.[0] ?? this.stringLiterals.options ?? null);
+    const payload: CalHeatPayload = { kind: "calheat", days, values };
+    const chart: ChartValue = {
+      __chart: true, op: "calheat", values, payload,
+      options: this.chartOptions, title: this.chartOptions.title || this.label || "Calendar",
+    };
+    this.cachedChart = chart;
+    return { chart };
+  }
+}
+
+// ─── Waffle ───────────────────────────────────────────────────────────────────
+// Proportions as a 10×10 grid of squares — the honest pie. Wire a 2-column frame
+// (Label, Value) for category shares; a single row whose value is within [0, 1]
+// reads as a plain fraction of the grid (a compact progress readout).
+
+export class WaffleNode extends ClassicPreset.Node {
+  label: string;
+  stringLiterals: Record<string, string> = {};
+  chartOptions: ChartOptions = {};
+  cachedChart: ChartValue | null = null;
+  width = 220;
+  height = 220;
+
+  constructor(init?: { label?: string }) {
+    super("Waffle");
+    this.label = init?.label ?? "Waffle";
+    this.addInput("frame", frameIn("Label + Value"));
+    this.addInput("options", strIn("Options"));
+    this.addOutput("chart", chartOut("Chart"));
+  }
+
+  async data(inputs: { frame?: (FrameInput | null)[]; options?: string[] }): Promise<{ chart: ChartValue }> {
+    const cols = await readFrameColumns(inputs.frame?.[0] ?? null);
+    const names = colAsStrings(cols[0]);
+    const values = colAsNumbers(cols[1] ?? cols[0]);
+    this.chartOptions = parseChartOptions(inputs.options?.[0] ?? this.stringLiterals.options ?? null);
+    const payload: WafflePayload = { kind: "waffle", names, values };
+    const chart: ChartValue = {
+      __chart: true, op: "waffle", values, payload,
+      options: this.chartOptions, title: this.chartOptions.title || this.label || "Waffle",
+    };
+    this.cachedChart = chart;
+    return { chart };
+  }
+}
+
+// ─── Vector field (quiver) ────────────────────────────────────────────────────
+// One arrow per grid cell from two same-shaped matrices (the x and y components),
+// coloured by magnitude — gradients, flows, wind fields. A null in either
+// component skips that cell's arrow.
+
+export class QuiverNode extends ClassicPreset.Node {
+  label: string;
+  cachedChart: ChartValue | null = null;
+  width = 240;
+  height = 240;
+
+  constructor(init?: { label?: string }) {
+    super("Quiver");
+    this.label = init?.label ?? "Vector Field";
+    this.addInput("u", tableIn("ΔX components"));
+    this.addInput("v", tableIn("ΔY components"));
+    this.addOutput("chart", chartOut("Chart"));
+  }
+
+  data(inputs: { u?: (number | null)[][][]; v?: (number | null)[][][] }): { chart: ChartValue } {
+    const num = (x: unknown): number | null => (typeof x === "number" && Number.isFinite(x) ? x : null);
+    const norm = (m: unknown): (number | null)[][] =>
+      Array.isArray(m) ? m.map((r) => (Array.isArray(r) ? r.map(num) : [num(r)])) : [];
+    const payload: QuiverPayload = { kind: "quiver", u: norm(inputs.u?.[0]), v: norm(inputs.v?.[0]) };
+    const chart: ChartValue = { __chart: true, op: "quiver", values: null, payload, options: {}, title: this.label || "Vector Field" };
     this.cachedChart = chart;
     return { chart };
   }
