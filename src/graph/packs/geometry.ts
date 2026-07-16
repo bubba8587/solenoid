@@ -96,6 +96,12 @@ export const HYPOTENUSE_ENTRY: NodeCatalogEntry = {
   create: () => new HypotenuseNode(),
 };
 
+// Which formulas file under which Add-menu subcategory (see the placement
+// note in `nodes` below).
+const CIRCLE_IDS = new Set(["geo-circle-area", "geo-circle-circum", "geo-ellipse-area"]);
+const SOLID_IDS = new Set(["geo-sphere-vol", "geo-sphere-area", "geo-cylinder-vol", "geo-cone-vol"]);
+const DISTANCE_IDS = new Set(["geo-distance-3d", "geo-cuboid-diag"]);
+
 export const GEOMETRY_PACK: Pack = {
   id: "geometry",
   name: "Geometry",
@@ -115,9 +121,15 @@ export const GEOMETRY_PACK: Pack = {
       },
     },
     // Formula-data nodes — each a pre-set Expression node, no new class.
-    ...placeFormulas(["Packs", "Geometry"], GEOMETRY_FORMULAS),
-    ...placeFormulas(["Packs", "Geometry", "Circles & Arcs"], GEOMETRY_CIRCLES),
-    ...placeFormulas(["Packs", "Geometry", "Solids"], GEOMETRY_SOLIDS),
+    // Placement is by SUBJECT, not by wave (2026-07-16 — all first-wave
+    // formulas at top level made a 15-row pane): circle/ellipse and solid
+    // formulas file under their subcategories, and the two point-distance
+    // formulas from the solids wave surface beside Distance (2D). The arrays
+    // stay grouped by wave — that's how the tests slice them.
+    ...placeFormulas(["Packs", "Geometry"], GEOMETRY_FORMULAS.filter((f) => !CIRCLE_IDS.has(f.type) && !SOLID_IDS.has(f.type))),
+    ...placeFormulas(["Packs", "Geometry"], GEOMETRY_SOLIDS.filter((f) => DISTANCE_IDS.has(f.type))),
+    ...placeFormulas(["Packs", "Geometry", "Circles & Arcs"], [...GEOMETRY_FORMULAS.filter((f) => CIRCLE_IDS.has(f.type)), ...GEOMETRY_CIRCLES]),
+    ...placeFormulas(["Packs", "Geometry", "Solids"], [...GEOMETRY_FORMULAS.filter((f) => SOLID_IDS.has(f.type)), ...GEOMETRY_SOLIDS.filter((f) => !DISTANCE_IDS.has(f.type))]),
   ],
   // Pack contributions to the Format Controller: a unit in an existing group
   // (angle: turns), a unit in a brand-new group (Geometry: pixels), and a number

@@ -183,8 +183,10 @@ export const NODE_CATALOG: CatalogEntry[] = [
       { type: "cx-from",       label: "COMPLEX",     description: "Build a complex number from real and imaginary parts. Excel: COMPLEX.", accent: CX, create: () => new ComplexFromNode(), parity: false },
       { type: "lambda-make",   label: "LAMBDA",      description: "Define a reusable formula as a value. Parameters go in the λ(…) row; other variables become captured inputs. Wire into MAP / BYROW / REDUCE / MAKEARRAY; parameters bind positionally. Like Expression, the formula evaluates via Formula.js with standard Excel functions, separate from the visual nodes. Excel: LAMBDA.", accent: NODE_KIND_ACCENTS.lambda, create: () => new LambdaNode(), parity: false },
       { type: "constant",      label: "Constant",    description: "Predefined value: π, e, φ, ∞, 0, 1, true, false …", create: () => new ConstantNode() },
-      { type: "randbetween",   label: "RAND",        description: "Random float in [Bottom, Top]. Defaults to 0–1 (like Excel RAND()). Wire Bottom/Top for a custom range.", create: () => new RandBetweenNode(), parity: false },
-      { type: "na",            label: "NA",          description: "Outputs #N/A, which propagates through calculations like Excel. Catch it with IFERROR / IFNA.", create: () => new NaNode() },
+      { type: "pair", children: [
+        { type: "randbetween", label: "RAND",        description: "Random float in [Bottom, Top]. Defaults to 0–1 (like Excel RAND()). Wire Bottom/Top for a custom range.", create: () => new RandBetweenNode(), parity: false },
+        { type: "na",          label: "NA",          description: "Outputs #N/A, which propagates through calculations like Excel. Catch it with IFERROR / IFNA.", create: () => new NaNode() },
+      ]},
       // Control widgets folded in 2026-07-09 (they're sources too — interactive
       // ones); the freed top-level row went to Packs.
       {
@@ -261,12 +263,16 @@ export const NODE_CATALOG: CatalogEntry[] = [
       // reconstruct them from a save/paste snapshot.
       { type: "composite-input", label: "Composite Input", description: "Internal: a Composite's exposed-input boundary marker.", create: () => new CompositeInputNode(), parity: false, hidden: true },
       { type: "composite-output", label: "Composite Output", description: "Internal: a Composite's output boundary marker.", create: () => new CompositeOutputNode(), parity: false, hidden: true },
-      { type: "note", label: "Note", description: "A free-floating markdown note with a title and body; drag it anywhere, tint it. Open the body with a ----fenced YAML block to turn each key into a typed OUTPUT socket, so a note doubles as a constants source. A Note only emits; to read live graph values into a document, use a Report.", create: () => new NoteNode(), parity: false },
-      { type: "report", label: "Report", description: "A standalone markdown document, separate from the graph. Write prose with inline `=name` refs (wire a value and it shows formatted in the text) and embed existing Notes as placed objects. Open it from the small anchor card.", create: () => new ReportNode(), parity: false },
+      { type: "pair", children: [
+        { type: "note", label: "Note", description: "A free-floating markdown note with a title and body; drag it anywhere, tint it. Open the body with a ----fenced YAML block to turn each key into a typed OUTPUT socket, so a note doubles as a constants source. A Note only emits; to read live graph values into a document, use a Report.", create: () => new NoteNode(), parity: false },
+        { type: "report", label: "Report", description: "A standalone markdown document, separate from the graph. Write prose with inline `=name` refs (wire a value and it shows formatted in the text) and embed existing Notes as placed objects. Open it from the small anchor card.", create: () => new ReportNode(), parity: false },
+      ]},
       { type: "session-history", label: "Session History", description: "A live, dated log of this session's undo/redo actions (nodes added, removed, or moved; connections made or broken) with a copy button. No inputs or outputs. It doesn't persist; it autogenerates while it's on canvas.", create: () => new SessionHistoryNode(), parity: false },
       { type: "presentation", label: "Presentation", description: "Presenter mode: select nodes on canvas, Add step to capture them, then step through with Prev/Next. Each step flies the camera to fit its nodes; pan/zoom only, no isolate/highlight.", create: () => new PresentationNode(), parity: false },
-      { type: "convert", label: "Convert", description: "Convert between measurement units: degrees ↔ radians, length, mass, temperature, time, area, volume, speed, energy, pressure. Excel: CONVERT.", create: () => new ConvertNode() },
-      { type: "cast", label: "Cast", description: "Change a value's data type: number, text, date serial, Boolean TRUE/FALSE, or complex. Works element-wise on lists. Excel: TEXT, VALUE.", create: () => new CastNode(), parity: false },
+      { type: "pair", children: [
+        { type: "convert", label: "Convert", description: "Convert between measurement units: degrees ↔ radians, length, mass, temperature, time, area, volume, speed, energy, pressure. Excel: CONVERT.", create: () => new ConvertNode() },
+        { type: "cast", label: "Cast", description: "Change a value's data type: number, text, date serial, Boolean TRUE/FALSE, or complex. Works element-wise on lists. Excel: TEXT, VALUE.", create: () => new CastNode(), parity: false },
+      ]},
     ],
   },
 
@@ -298,13 +304,9 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "pair", children: [mathLeaf("gamma"), mathLeaf("gammaln")] },
         ],
       },
-      {
-        type: "category", label: "Probability", description: "Standard normal curve functions.",
-        children: [
-          { type: "pair", children: [mathLeaf("phi"), mathLeaf("gauss")] },
-          { type: "stat-standardize", label: "STANDARDIZE", description: "z-score: (value − mean) ÷ std dev. Excel: STANDARDIZE.", create: () => new StandardizeNode() },
-        ],
-      },
+      // Standard-normal curve helpers (PHI/GAUSS/STANDARDIZE) live under
+      // Distributions ▸ Normal with their NORM.* kin (moved 2026-07-16; the
+      // "Probability" category here was 2 rows on a 13-row pane).
       {
         type: "category", label: "Rounding", description: "Round and constrain numbers.",
         children: [
@@ -335,7 +337,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
         ],
       },
       {
-        type: "category", label: "Trigonometry", description: "Angles in radians. Use Convert to go between degrees and radians.",
+        type: "category", label: "Trigonometry", description: "Circular and hyperbolic functions with their inverses. Angles in radians; use Convert to go between degrees and radians.",
         children: [
           { type: "pair", children: [mathLeaf("sin"), mathLeaf("asin")] },
           { type: "pair", children: [mathLeaf("cos"), mathLeaf("acos")] },
@@ -345,11 +347,8 @@ export const NODE_CATALOG: CatalogEntry[] = [
           twoMathLeaf("atan2"),
           // HYPOT lives in the Geometry / Timesavers packs as HYPOTENUSE (it's
           // not an Excel function); inserted here by the catalog builder.
-        ],
-      },
-      {
-        type: "category", label: "Hyperbolic", description: "Hyperbolic functions and their inverses.",
-        children: [
+          // Hyperbolics folded in 2026-07-16 (their own 5-row category cost a
+          // row on a 13-row Numbers pane; sinh belongs beside sin anyway).
           { type: "pair", children: [mathLeaf("sinh"), mathLeaf("asinh")] },
           { type: "pair", children: [mathLeaf("cosh"), mathLeaf("acosh")] },
           { type: "pair", children: [mathLeaf("tanh"), mathLeaf("atanh")] },
@@ -367,19 +366,16 @@ export const NODE_CATALOG: CatalogEntry[] = [
         ],
       },
       {
-        type: "category", label: "Bitwise", description: "Integer bit manipulation: AND, OR, XOR, shifts.",
-        children: [
-          { type: "pair", children: [bitwiseLeaf("bitand"), bitwiseLeaf("bitor")] },
-          { type: "pair", children: [bitwiseLeaf("bitxor"), bitwiseLeaf("bitlshift")] },
-          bitwiseLeaf("bitrshift"),
-        ],
-      },
-      {
-        type: "category", label: "Engineering", description: "DELTA, GESTEP, SERIESSUM, base conversion.",
+        type: "category", label: "Engineering", description: "DELTA, GESTEP, SERIESSUM, base conversion, and bitwise integer ops — Excel's Engineering set.",
         children: [
           { type: "pair", children: [twoMathLeaf("delta"), twoMathLeaf("gestep")] },
           { type: "seriessum", label: "SERIESSUM", description: "Power series sum Σ cᵢ·x^(n+i·m) using a list of coefficients. Excel: SERIESSUM.", create: () => new SeriesSumNode() },
           { type: "base-convert", label: "Base Convert", description: "Convert an integer between number bases; this covers BIN2DEC, DEC2BIN, OCT2DEC, DEC2OCT, and BIN2OCT. Wire the From and To bases or set them inline. Bases needing A–F digits return null.", create: () => new BaseConvertNode(), parity: false },
+          // Bitwise folded in 2026-07-16 (Excel files BITAND & co. under
+          // Engineering too; their own category cost a row on a 13-row pane).
+          { type: "pair", children: [bitwiseLeaf("bitand"), bitwiseLeaf("bitor")] },
+          { type: "pair", children: [bitwiseLeaf("bitxor"), bitwiseLeaf("bitlshift")] },
+          bitwiseLeaf("bitrshift"),
           {
             type: "category", label: "Bessel", description: "Bessel and modified Bessel functions (J, Y, I, K), used in signal processing, heat transfer, and physics.",
             children: [
@@ -448,7 +444,10 @@ export const NODE_CATALOG: CatalogEntry[] = [
             { type: "list-sort",    label: "List Sort", description: "Sort ascending or descending. Excel: SORT(range).", create: () => new SortNode() },
             { type: "list-reverse", label: "REVERSE", description: "Reverse the order of the list", create: () => new ReverseNode() },
           ]},
-          { type: "list-slice",   label: "SLICE",  description: "Sublist from Start to End, 1-based inclusive; leave End blank to run to the end.", create: () => new SliceNode() },
+          { type: "pair", children: [
+            { type: "list-slice", label: "SLICE",  description: "Sublist from Start to End, 1-based inclusive; leave End blank to run to the end.", create: () => new SliceNode() },
+            { type: "list-pad",   label: "Pad", description: "Extend list to a target length by prepending or appending a fill value. Excel: PADLEFT / PADRIGHT.", create: () => new PadNode() },
+          ]},
           { type: "pair", children: [
             { type: "list-take",  label: "TAKE",   description: "Keep the first or last N elements. Excel: TAKE.", create: () => new TakeNode() },
             { type: "list-drop",  label: "DROP",   description: "Remove the first or last N elements. Excel: DROP.", create: () => new DropNode() },
@@ -470,7 +469,6 @@ export const NODE_CATALOG: CatalogEntry[] = [
             { type: "list-interleave", label: "Interleave", description: "Alternate elements of two lists: A[0], B[0], A[1], B[1], …", create: () => new InterleaveNode() },
             { type: "list-nthelement", label: "Nth Element", description: "Every N-th element; step subsampling.", create: () => new NthElementNode() },
           ]},
-          { type: "list-pad", label: "Pad", description: "Extend list to a target length by prepending or appending a fill value. Excel: PADLEFT / PADRIGHT.", create: () => new PadNode() },
           { type: "list-sortby", label: "SORTBY", description: "Sort one list by the values in a parallel numeric list; elements at the same index stay paired. The sorted list can be any element type (sort names by their scores). Excel 365: SORTBY.", create: () => new SortByNode(), parity: false },
           {
             type: "category", label: "Rolling", description: "Sliding-window aggregate over a list.",
@@ -507,19 +505,31 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "pair", children: [reduceLeaf("min"), reduceLeaf("max")] },
           { type: "pair", children: [reduceLeaf("count"), reduceLeaf("countdistinct")] },
           { type: "pair", children: [reduceLeaf("geomean"), reduceLeaf("harmean")] },
-          { type: "pair", children: [reduceLeaf("stdev"), reduceLeaf("stdev_p")] },
-          { type: "pair", children: [reduceLeaf("var_s"), reduceLeaf("var_p")] },
-          { type: "pair", children: [reduceLeaf("sumsq"), reduceLeaf("devsq")] },
-          reduceLeaf("avedev"),
-          { type: "pair", children: [reduceLeaf("skew"), reduceLeaf("skew_p")] },
-          reduceLeaf("kurt"),
-          correlLeaf("correl"),
-          spLeaf("sumx2my2"),
-          { type: "pair", children: [spLeaf("sumx2py2"), spLeaf("sumxmy2")] },
-          { type: "pair", children: [covLeaf("pop"), covLeaf("samp")] },
-          { type: "pair", children: [fisherLeaf("fisher"), fisherLeaf("fisherinv")] },
           { type: "pair", children: [weightedLeaf("wavg"), weightedLeaf("wstdev")] },
           weightedLeaf("wvar"),
+          // The statistics tail folded into two subcategories 2026-07-16 (this
+          // pane was 19 rows against the ~12-row no-scrollbar budget).
+          {
+            type: "category", label: "Spread & Shape", description: "Dispersion and distribution shape: standard deviation, variance, skew, kurtosis.",
+            children: [
+              { type: "pair", children: [reduceLeaf("stdev"), reduceLeaf("stdev_p")] },
+              { type: "pair", children: [reduceLeaf("var_s"), reduceLeaf("var_p")] },
+              { type: "pair", children: [reduceLeaf("sumsq"), reduceLeaf("devsq")] },
+              reduceLeaf("avedev"),
+              { type: "pair", children: [reduceLeaf("skew"), reduceLeaf("skew_p")] },
+              reduceLeaf("kurt"),
+            ],
+          },
+          {
+            type: "category", label: "Correlation", description: "Two parallel lists: correlation, covariance, the Fisher transform, and paired-list sums.",
+            children: [
+              correlLeaf("correl"),
+              { type: "pair", children: [covLeaf("pop"), covLeaf("samp")] },
+              { type: "pair", children: [fisherLeaf("fisher"), fisherLeaf("fisherinv")] },
+              spLeaf("sumx2my2"),
+              { type: "pair", children: [spLeaf("sumx2py2"), spLeaf("sumxmy2")] },
+            ],
+          },
         ],
       },
       {
@@ -624,6 +634,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "irr",  label: "IRR",  description: "Internal rate of return: the rate at which NPV = 0. Excel: IRR(values).", create: () => new IrrNode() },
           { type: "mirr", label: "MIRR", description: "Modified IRR accounting for reinvestment rate and cost of capital. Excel: MIRR(values, finance_rate, reinvest_rate).", create: () => new MirrNode() },
           { type: "xirr", label: "XIRR", description: "IRR for cash flows at irregular dates; wire a list of flows and a parallel list of date serials. Excel: XIRR.", create: () => new XirrNode(), parity: false },
+          { type: "xnpv", label: "XNPV", description: "Net present value of cash flows, each with an explicit date. Excel: XNPV.", create: () => new XnpvNode(), parity: false },
         ],
       },
       {
@@ -652,12 +663,15 @@ export const NODE_CATALOG: CatalogEntry[] = [
           tbillLeaf("tbillyield"),
           { type: "pair", children: [secDiscLeaf("disc"), secDiscLeaf("intrate")] },
           secDiscLeaf("received"),
-          { type: "accrint",  label: "ACCRINT",  description: "Accrued interest for a security that pays periodic interest. Excel: ACCRINT.",  create: () => new AccrintNode(),  parity: false },
-          { type: "accrintm", label: "ACCRINTM", description: "Accrued interest for a security that pays interest at maturity. Excel: ACCRINTM.", create: () => new AccrintMNode(), parity: false },
+          { type: "pair", children: [
+            { type: "accrint",  label: "ACCRINT",  description: "Accrued interest for a security that pays periodic interest. Excel: ACCRINT.",  create: () => new AccrintNode(),  parity: false },
+            { type: "accrintm", label: "ACCRINTM", description: "Accrued interest for a security that pays interest at maturity. Excel: ACCRINTM.", create: () => new AccrintMNode(), parity: false },
+          ]},
           { type: "pair", children: [priceDiscLeaf("pricedisc"), priceDiscLeaf("yielddisc")] },
           { type: "pair", children: [priceMatLeaf("pricemat"),  priceMatLeaf("yieldmat")]  },
           { type: "pair", children: [durationLeaf("duration"),  durationLeaf("mduration")] },
-          { type: "xnpv", label: "XNPV", description: "Net present value of cash flows, each with an explicit date. Excel: XNPV.", create: () => new XnpvNode(), parity: false },
+          // XNPV moved to Cash flow analysis beside XIRR 2026-07-16 (it was a
+          // genuine misplacement here, and this pane sat at 14 rows).
           {
             type: "category", label: "Coupon dates", description: "Coupon period day counts and dates for bond calculations.",
             children: [
@@ -686,6 +700,11 @@ export const NODE_CATALOG: CatalogEntry[] = [
             { type: "normsdist", label: "NORM.S.DIST", description: "Standard normal CDF or PDF (mean=0, stdev=1). Excel: NORM.S.DIST.", create: () => new NormSDistNode() },
             { type: "normsinv",  label: "NORM.S.INV",  description: "Inverse standard normal. Excel: NORM.S.INV.", create: () => new NormSInvNode() },
           ]},
+          { type: "pair", children: [
+            mathLeaf("phi",   { keywords: "probability standard normal density" }),
+            mathLeaf("gauss", { keywords: "probability standard normal" }),
+          ]},
+          { type: "stat-standardize", label: "STANDARDIZE", description: "z-score: (value − mean) ÷ std dev. Excel: STANDARDIZE.", create: () => new StandardizeNode(), keywords: "probability z score normalize" },
         ],
       },
       {
@@ -797,8 +816,10 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "pair", children: [dateAddLeaf("edate"), dateAddLeaf("eomonth")] },
         ],
       },
-      { type: "date-workday",     label: "WORKDAY",     description: "Date N working days from start, skipping weekends + an optional Holidays list; weekend_code 1=Sat+Sun, 2–7 and 11–17 per Excel. Excel: WORKDAY / WORKDAY.INTL (numeric weekend_code only — the 7-char weekend string isn't supported).", create: () => new WorkdayNode(),     parity: false },
-      { type: "date-networkdays", label: "NETWORKDAYS", description: "Count working days between start and end, skipping weekends + an optional Holidays list; weekend_code 1=Sat+Sun, 2–7 and 11–17 per Excel. Excel: NETWORKDAYS / NETWORKDAYS.INTL (numeric weekend_code only — the 7-char weekend string isn't supported).", create: () => new NetworkdaysNode(), parity: false },
+      { type: "pair", children: [
+        { type: "date-workday",     label: "WORKDAY",     description: "Date N working days from start, skipping weekends + an optional Holidays list; weekend_code 1=Sat+Sun, 2–7 and 11–17 per Excel. Excel: WORKDAY / WORKDAY.INTL (numeric weekend_code only — the 7-char weekend string isn't supported).", create: () => new WorkdayNode(),     parity: false },
+        { type: "date-networkdays", label: "NETWORKDAYS", description: "Count working days between start and end, skipping weekends + an optional Holidays list; weekend_code 1=Sat+Sun, 2–7 and 11–17 per Excel. Excel: NETWORKDAYS / NETWORKDAYS.INTL (numeric weekend_code only — the 7-char weekend string isn't supported).", create: () => new NetworkdaysNode(), parity: false },
+      ]},
       { type: "date-datedif",     label: "DATEDIF",     description: "Difference between two dates in Years, Months, or Days; unit selector on the node. Excel: DATEDIF.", create: () => new DateIfNode(),      parity: false },
     ],
   },
@@ -917,21 +938,43 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "sort-frame",  label: "Frame Sort",  description: "Order a Frame's rows by one column, ascending or descending. Blanks and errors sort last. Excel: SORT.", create: () => new SortFrameNode(), parity: false },
           { type: "filter-frame",label: "Frame Filter", description: "Keep a Frame's rows passing condition rows (column + test + value) combined with AND/OR; the SQL WHERE. Blanks/errors fail their condition and land on the Dropped output — Kept + Dropped is always the whole Frame. Text tests ignore case like Excel's =; Match case per condition. Excel: FILTER.", create: () => new FilterFrameNode(), parity: false, keywords: "filter rows where keep" },
           { type: "join",        label: "Join",        description: "Combine two Frames on a key column: inner / left / right / outer, or as-of (nearest match on a sorted number/date key, with a direction + tolerance). A left row matching several right rows fans out; as-of never fans out. Keys match case-sensitively, unlike Excel lookups. The relational JOIN. Excel: VLOOKUP/XLOOKUP do a left join one column at a time.", create: () => new JoinNode(), parity: false },
-          { type: "select-cols", label: "Select Columns", description: "Keep only the named columns, in the order given. Type a comma-separated list or wire one. Excel: CHOOSECOLS.", create: () => new SelectColumnsNode(), parity: false },
-          { type: "drop-cols",   label: "Drop Columns",   description: "Remove the named columns from a Frame; the rest pass through. Type a comma-separated list or wire one.", create: () => new DropColumnsNode(), parity: false },
           { type: "sumifs", label: "SUMIFS", description: "Aggregate one frame column by conditions on its other columns: pick sum/count/average/min/max, name the Values column, and add criteria rows (column + test + value, all must pass — Excel's *IFS). SUMIFS(sales, region, =North) as one node; parallel lists go through Frame from Lists first. Excel: SUMIFS, COUNTIFS, AVERAGEIFS, MINIFS, MAXIFS.", create: () => new SumIfsNode(), keywords: "sumif countif averageif minif maxif criteria conditional aggregate frame" },
           { type: "group-by-frame", label: "Group By", description: "Group a Frame's rows by one or more key columns and aggregate one column (sum / average / min / max / count), with optional grand-total / subtotal rows that re-aggregate the source, GROUPBY's total_depth. A PivotTable's row grouping, but keys group case-sensitively, with no silent case-merge. Excel: GROUPBY.", create: () => new GroupByFrameNode(), parity: false },
-          { type: "pivot",       label: "PIVOTBY",     description: "Cross-tab long → wide: group by one or more Row and Column fields with multi-level headers, and aggregate one or more value columns with a per-value function (SUM / AVERAGE / COUNT / MEDIAN / STDEV / PRODUCT / PERCENTOF …). Supports grand totals + subtotals, sort, a filter mask, and % running totals. Totals re-aggregate the source. Excel: PIVOTBY.", create: () => new PivotNode(), parity: true },
-          { type: "unpivot",     label: "Unpivot",     description: "Reshape wide → long (melt): keep the Id columns, turn each chosen Value column into variable/value rows. Excel's Power Query Unpivot.", create: () => new UnpivotNode(), parity: false },
-          { type: "nest",        label: "Nest",        description: "Group a flat Frame by key into a Cube; each key's other columns collapse into a nested table cell. The flat → nested bridge.", create: () => new NestNode(), parity: false },
-          { type: "unnest",      label: "Unnest",      description: "Expand a Cube's nested-table column back to a flat Frame; each parent row repeats per nested row. The nested → flat bridge, the inverse of Nest.", create: () => new UnnestNode(), parity: false },
           { type: "append",      label: "Append",      description: "Stack Frames vertically in row order — add rows for more Frames; columns match by name, a missing column fills blank. A type clash on a shared column is #TYPE!. Excel: VSTACK.", create: () => new AppendNode(), parity: false },
-          { type: "rename",      label: "Rename",      description: "Rename columns via two parallel lists zipped by position: From [\"qty\"] → To [\"Quantity\"]. Type or wire each list.", create: () => new RenameNode(), parity: false },
-          { type: "split-column", label: "Split Column", description: "Split one text column into several by a delimiter; the source column is replaced by the parts. Name the new columns or let them auto-number. Power Query: Split Column by Delimiter.", create: () => new SplitColumnNode(), parity: false, keywords: "split delimiter text column separate parse divide power query" },
-          { type: "add-index",   label: "Add Index",   description: "Prepend a numeric row-number column counting from a start value; the default is 1. Power Query: Add Index Column; Excel: SEQUENCE(ROWS(...)).", create: () => new AddIndexNode(), parity: false, keywords: "index row number sequence counter rownum power query" },
-          { type: "decision-matrix", label: "Decision Matrix", description: "Score and rank a Frame of options: rows are options, number columns are criteria, an optional leading text column names them. Each option gets a weighted average Σ(score × weight) / Σ|weight|, then a competition rank; a NEGATIVE weight penalises a lower-is-better criterion like cost or risk. Set a weight per criterion in the labeled boxes on the node (default 1, or wire the Weights socket to drive them); pick Raw / ÷Max / Rank to compare criteria on incompatible scales. Output: Option · Score · Rank, best first. Chart the podium with Get Column \"Score\" → Chart.", create: () => new DecisionMatrixNode(), parity: false, keywords: "decision matrix weighted score rank ranking criteria weight choose compare options podium dmbv multi-criteria mcda" },
-          { type: "decision-sensitivity", label: "Sensitivity", description: "Stress-test a decision: score the same options (the Scores frame) under several weight Scenarios and see whether the winner holds. Scenarios is a Frame where each ROW is a scenario: its first text column names it, and a number column named after a criterion is that criterion's weight; missing → 1. Output is a Cube, one row per scenario: Scenario · Winner · Margin · Ranking. Margin is the top score minus the runner-up; a thin margin flips easily. Ranking is the full Option·Score·Rank table nested in the cell; drill in. Pairs with Decision Matrix.", create: () => new DecisionSensitivityNode(), parity: false, keywords: "decision sensitivity robustness scenario weight cube what-if stress test ranking stability mcda" },
-          { type: "reconcile",   label: "Reconcile",   description: "Compare two versions of a Frame by a key column: classify each row Added / Removed / Changed / Unchanged, with a before/after/Δ per shared numeric column. Name a Price and a Quantity column (both present on both sides) to also decompose the total change into Price / Volume / Mix variance. Outputs the classified Frame plus a readable Summary line.", create: () => new ReconcileNode(), parity: false, keywords: "reconcile compare diff variance price volume mix pvm audit changed added removed data quality trust" },
+          // 20 flat rows regrouped 2026-07-16 (the ~12-row no-scrollbar budget):
+          // the everyday verbs stay top-level; column surgery, layout reshapes,
+          // and the score/compare trio fold into subcategories.
+          {
+            type: "category", label: "Columns", description: "Column surgery: keep, drop, rename, split, or number columns.",
+            children: [
+              { type: "pair", children: [
+                { type: "select-cols", label: "Select Columns", description: "Keep only the named columns, in the order given. Type a comma-separated list or wire one. Excel: CHOOSECOLS.", create: () => new SelectColumnsNode(), parity: false },
+                { type: "drop-cols",   label: "Drop Columns",   description: "Remove the named columns from a Frame; the rest pass through. Type a comma-separated list or wire one.", create: () => new DropColumnsNode(), parity: false },
+              ]},
+              { type: "rename",      label: "Rename",      description: "Rename columns via two parallel lists zipped by position: From [\"qty\"] → To [\"Quantity\"]. Type or wire each list.", create: () => new RenameNode(), parity: false },
+              { type: "split-column", label: "Split Column", description: "Split one text column into several by a delimiter; the source column is replaced by the parts. Name the new columns or let them auto-number. Power Query: Split Column by Delimiter.", create: () => new SplitColumnNode(), parity: false, keywords: "split delimiter text column separate parse divide power query" },
+              { type: "add-index",   label: "Add Index",   description: "Prepend a numeric row-number column counting from a start value; the default is 1. Power Query: Add Index Column; Excel: SEQUENCE(ROWS(...)).", create: () => new AddIndexNode(), parity: false, keywords: "index row number sequence counter rownum power query" },
+            ],
+          },
+          {
+            type: "category", label: "Reshape", description: "Change the layout: pivot wide, melt long, nest into a Cube and back.",
+            children: [
+              { type: "pivot",       label: "PIVOTBY",     description: "Cross-tab long → wide: group by one or more Row and Column fields with multi-level headers, and aggregate one or more value columns with a per-value function (SUM / AVERAGE / COUNT / MEDIAN / STDEV / PRODUCT / PERCENTOF …). Supports grand totals + subtotals, sort, a filter mask, and % running totals. Totals re-aggregate the source. Excel: PIVOTBY.", create: () => new PivotNode(), parity: true },
+              { type: "unpivot",     label: "Unpivot",     description: "Reshape wide → long (melt): keep the Id columns, turn each chosen Value column into variable/value rows. Excel's Power Query Unpivot.", create: () => new UnpivotNode(), parity: false },
+              { type: "pair", children: [
+                { type: "nest",   label: "Nest",   description: "Group a flat Frame by key into a Cube; each key's other columns collapse into a nested table cell. The flat → nested bridge.", create: () => new NestNode(), parity: false },
+                { type: "unnest", label: "Unnest", description: "Expand a Cube's nested-table column back to a flat Frame; each parent row repeats per nested row. The nested → flat bridge, the inverse of Nest.", create: () => new UnnestNode(), parity: false },
+              ]},
+            ],
+          },
+          {
+            type: "category", label: "Analyze", description: "Score, stress-test, and compare Frames: weighted decisions and version reconciliation.",
+            children: [
+              { type: "decision-matrix", label: "Decision Matrix", description: "Score and rank a Frame of options: rows are options, number columns are criteria, an optional leading text column names them. Each option gets a weighted average Σ(score × weight) / Σ|weight|, then a competition rank; a NEGATIVE weight penalises a lower-is-better criterion like cost or risk. Set a weight per criterion in the labeled boxes on the node (default 1, or wire the Weights socket to drive them); pick Raw / ÷Max / Rank to compare criteria on incompatible scales. Output: Option · Score · Rank, best first. Chart the podium with Get Column \"Score\" → Chart.", create: () => new DecisionMatrixNode(), parity: false, keywords: "decision matrix weighted score rank ranking criteria weight choose compare options podium dmbv multi-criteria mcda" },
+              { type: "decision-sensitivity", label: "Sensitivity", description: "Stress-test a decision: score the same options (the Scores frame) under several weight Scenarios and see whether the winner holds. Scenarios is a Frame where each ROW is a scenario: its first text column names it, and a number column named after a criterion is that criterion's weight; missing → 1. Output is a Cube, one row per scenario: Scenario · Winner · Margin · Ranking. Margin is the top score minus the runner-up; a thin margin flips easily. Ranking is the full Option·Score·Rank table nested in the cell; drill in. Pairs with Decision Matrix.", create: () => new DecisionSensitivityNode(), parity: false, keywords: "decision sensitivity robustness scenario weight cube what-if stress test ranking stability mcda" },
+              { type: "reconcile",   label: "Reconcile",   description: "Compare two versions of a Frame by a key column: classify each row Added / Removed / Changed / Unchanged, with a before/after/Δ per shared numeric column. Name a Price and a Quantity column (both present on both sides) to also decompose the total change into Price / Volume / Mix variance. Outputs the classified Frame plus a readable Summary line.", create: () => new ReconcileNode(), parity: false, keywords: "reconcile compare diff variance price volume mix pvm audit changed added removed data quality trust" },
+            ],
+          },
         ],
       },
       {

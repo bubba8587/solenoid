@@ -18,6 +18,28 @@ edge round independently. Possible directions not yet tried: draw the ring so it
 (e.g. `inset:0` + account for the 2px border, or a box-shadow ring) instead of a 2px-offset `::after`;
 or pixel-snap the card box. Radius itself is correct; don't re-touch it. Parked by author.
 
+### SESSION DIGEST (2026-07-16c — Add-menu pane budget + search fix) [audit session, author-requested]
+Author goal: every Add-menu pane ≤ 12 rows (no scrollbars; the panel scroll-caps at ~392px). Seven
+panes were over (worst: Table verbs 20, Aggregate 19, Geometry-with-packs 15). All now ≤ 12 with packs
+active (verified against `buildCatalog(true)`):
+- **Pairs** (row-halving, kept opposites/kin): RAND|NA (Input), Note|Report + Convert|Cast (Output),
+  SLICE|Pad (List Shape), ACCRINT|ACCRINTM (Finance Other), WORKDAY|NETWORKDAYS (Date & Time),
+  Select|Drop Columns + Nest|Unnest (Table verbs).
+- **Merges**: Hyperbolic → Trigonometry (sinh beside sin); Bitwise → Engineering (Excel files BITAND
+  there too); the 2-row Probability category (PHI/GAUSS/STANDARDIZE) moved to **Distributions ▸
+  Normal** with their NORM.* kin (kept `keywords: "probability"` so search still finds them).
+- **New subcategories**: Aggregate → *Spread & Shape* (stdev/var/skew/kurt…) + *Correlation*
+  (correl/covar/fisher/paired sums); Table verbs → *Columns* (select/drop/rename/split/index),
+  *Reshape* (PIVOTBY/Unpivot/Nest/Unnest), *Analyze* (Decision Matrix/Sensitivity/Reconcile).
+- **Misplacement fixed**: XNPV moved from Finance▸Other to Cash flow analysis, beside XIRR.
+- **Geometry pack** placement now by subject not wave: first-wave circle/solid formulas file under
+  Circles & Arcs / Solids; Distance (3D) + Box Diagonal surface beside Distance (2D). Arrays unchanged
+  (tests slice by wave); only `placeFormulas` paths partition by type id.
+- **Search fix (author-reported)**: "+ Add"/"× Multiply" glyph labels only earned the word-start tier,
+  so "add" ranked Add Column/Add Index above the Add node. `scoreLeaf` now also scores the
+  glyph-stripped label (`stripGlyphPrefix`) — exact tier restored; pinned in catalogSearch.test.
+No type ids changed (saves unaffected); Select/Drop Columns keep their full labels. 2939 green.
+
 ### SESSION DIGEST (2026-07-16b — commit-walk audit of develop, newest-first) [audit session]
 Standing audit walk (author-authorized refactors; author reviews at session end). Reviewed so far,
 newest-first: `f90a850` docs · `57831f8` integer dims · `8d4b416` radius pass · `9f3c760` TPS forecast ·
