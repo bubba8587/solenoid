@@ -151,11 +151,11 @@ export function tableRawCells(text: string): string[][] {
   // the Source; only the DERIVED matrix coerces, blank → null). Dropping blank
   // lines here didn't just blank the derived row — the grid popup re-serializes
   // through this parse, so a popup save permanently DELETED the row from the text.
+  // Blank rows stay wherever they are — leading, interior, AND trailing (author
+  // 2026-07-16: tables get set up with blank rows for operations). The only thing
+  // dropped is the phantom row from the text's final newline TERMINATOR
+  // (parseCsvRows handles that distinction).
   const raw = parseCsvRows(text, { keepBlankLines: true });
-  // TRAILING all-blank rows are typing artifacts (the newline at the end of the
-  // text), not data — same rule as the trailing column below. Interior and
-  // leading blank rows stay.
-  while (raw.length > 0 && raw[raw.length - 1].every((c) => c.trim() === "")) raw.pop();
   if (raw.length === 0) return [];
   let cols = raw.reduce((m, r) => Math.max(m, r.length), 0);
   // A TRAILING all-empty column is a typing artifact (a trailing comma on each
@@ -175,7 +175,13 @@ export function rawCellsToText(cells: string[][]): string {
   const needsQuote = (c: string) => /[",\n]/.test(c);
   const q = (c: string) => (needsQuote(c) ? `"${c.replace(/"/g, '""')}"` : c);
   const sep = cells.some((r) => r.some(needsQuote)) ? "," : ", ";
-  return cells.map((r) => r.map(q).join(sep)).join("\n");
+  const lines = cells.map((r) => r.map(q).join(sep));
+  const text = lines.join("\n");
+  // A single-column TRAILING blank row serializes as an empty final line — which
+  // reads as a bare newline terminator on the way back in. Terminate it with its
+  // own "\n" so the round trip keeps the row (multi-column blank rows serialize
+  // as ", " and never hit this).
+  return lines.length > 0 && lines[lines.length - 1] === "" ? text + "\n" : text;
 }
 
 /** Derive the typed matrix from raw cells via the frame family's OWN per-type
