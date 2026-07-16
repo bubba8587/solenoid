@@ -226,16 +226,36 @@ function fxLookup(name: string): ((...a: unknown[]) => unknown) | null {
  *  so a dotted Excel function is recognised, not flagged as a typo. */
 export const FX_FUNCTION_NAMES: string[] = (() => {
   const names: string[] = [];
-  for (const [k, v] of Object.entries(FX as Record<string, unknown>)) {
-    if (typeof v === "function") names.push(k);
-    else if (v && typeof v === "object" && !Array.isArray(v)) {
-      for (const [sk, sv] of Object.entries(v as Record<string, unknown>)) {
-        if (typeof sv === "function") names.push(`${k}.${sk}`);
+  // Recursive walk (depth-capped): dotted namespaces nest two deep (NORM.S.DIST),
+  // and a FUNCTION can itself carry namespaced children (FX.T is the T() text
+  // function AND the T.DIST/T.INV home) — the old one-level object-only walk
+  // missed both, so T.DIST / NORM.S.INV worked at eval but highlighted as
+  // unknowns and never autocompleted.
+  const walk = (obj: Record<string, unknown>, prefix: string, depth: number) => {
+    for (const [k, v] of Object.entries(obj)) {
+      const path = prefix ? `${prefix}.${k}` : k;
+      if (typeof v === "function") {
+        names.push(path);
+        if (depth < 2) walk(v as unknown as Record<string, unknown>, path, depth + 1);
+      } else if (v && typeof v === "object" && !Array.isArray(v) && depth < 2) {
+        walk(v as Record<string, unknown>, path, depth + 1);
       }
     }
-  }
+  };
+  walk(FX as Record<string, unknown>, "", 0);
   return names;
 })();
+
+/** The D10-eliminated classics: registered as redirect stubs (they error with
+ *  "Use XLOOKUP/XMATCH"), so they must not be ADVERTISED either — excluded from
+ *  the formula name list (no autocomplete, highlighted as unknown). */
+export const ELIMINATED_FUNCTIONS: ReadonlySet<string> = new Set(["VLOOKUP", "HLOOKUP", "LOOKUP", "MATCH"]);
+
+/** Every registerInternal name (called after all module-load registrations have
+ *  run — a function so import order can't freeze an incomplete list). */
+export function internalFunctionNames(): string[] {
+  return [...INTERNAL_IMPLS.keys()];
+}
 
 // ─── First wave of native impls (scaffold) ────────────────────────────────────
 // A representative spread — rounding / scalar-math / statistics / date — of EASY

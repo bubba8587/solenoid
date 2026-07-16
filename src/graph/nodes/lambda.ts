@@ -1,6 +1,6 @@
 import { ClassicPreset } from "rete";
 import { anyListIn, lambdaOut } from "./shared";
-import { extractVariables, compilePositional } from "../excelFormula";
+import { extractVariables, compilePositional, formulaSyntaxHint } from "../excelFormula";
 import { solError, type SolError } from "../errorValue";
 
 // ─── LAMBDA: a first-class function value ───────────────────────────────────────
@@ -161,9 +161,10 @@ export class LambdaNode extends ClassicPreset.Node {
     }
     if (!this.compiled) {
       this.cachedValue = null;
-      this.cachedError = this.expr.trim() ? "Syntax error" : null;
+      const hint = this.expr.trim() ? formulaSyntaxHint(this.expr) : null;
+      this.cachedError = this.expr.trim() ? (hint ?? "Syntax error") : null;
       if (!this.expr.trim()) return { result: null };
-      return { result: solError("#SYNTAX!", "The lambda body has a syntax error") };
+      return { result: solError("#SYNTAX!", hint ?? "The lambda body has a syntax error") };
     }
     const compiled = this.compiled;
     // Captured values resolve NOW — the closure carries them, so a consumer
