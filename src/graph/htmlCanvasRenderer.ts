@@ -95,7 +95,14 @@ interface CableSpec {
   color: string; // "#rrggbb" — source socket's data-type colour (DOM cable hue)
 }
 
-export interface RendererStats { fps: number; drawMs: number; visible: number; total: number; built: number; mip: number }
+export interface RendererStats {
+  fps: number; drawMs: number; visible: number; total: number; built: number; mip: number;
+  /** Visible nodes drawn WITHOUT a mip pyramid last frame — each pays a full
+   *  drawElementImage re-raster per frame, the #1 pan-jank suspect. */
+  slow: number;
+  /** Nodes whose pyramid build permanently failed (stuck on the slow path). */
+  failed: number;
+}
 
 export class HtmlCanvasRenderer {
   readonly cam = new Camera();
@@ -130,6 +137,7 @@ export class HtmlCanvasRenderer {
   private nVisible = 0;
   private lastFrameMs = 0;
   private curMip = 0;
+  private slowDraws = 0;
 
   private selected = new Set<string>();
   private selectBox: { x: number; y: number; w: number; h: number } | null = null; // screen px
@@ -467,7 +475,11 @@ export class HtmlCanvasRenderer {
   requestRender(): void { this.dirty = true; }
 
   getStats(): RendererStats {
-    return { fps: Math.round(this.fpsEMA), drawMs: Math.round(this.lastFrameMs * 10) / 10, visible: this.nVisible, total: this.nodes.length, built: this.builtCount, mip: this.curMip };
+    return {
+      fps: Math.round(this.fpsEMA), drawMs: Math.round(this.lastFrameMs * 10) / 10,
+      visible: this.nVisible, total: this.nodes.length, built: this.builtCount, mip: this.curMip,
+      slow: this.slowDraws, failed: this.nodes.filter((n) => n.mipFailed).length,
+    };
   }
 
   dispose(): void {
@@ -654,6 +666,7 @@ export class HtmlCanvasRenderer {
     const { ctx, cam, dpr, canvas, host } = this;
     if (!ctx.drawElementImage) return;
     const t0 = performance.now();
+    this.slowDraws = 0;
     if (typeof ctx.reset === "function") ctx.reset(); else ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (!this.active) { this.lastFrameMs = performance.now() - t0; return; } // idle → transparent
@@ -677,7 +690,7 @@ export class HtmlCanvasRenderer {
       const dx = n.x - PAD, dy = n.y - PAD, dw = n.w + 2 * PAD, dh = n.h + 2 * PAD;
       if (useCached) {
         if (n.pyramid.length) { ctx.drawImage(n.pyramid[Math.min(idealI, n.pyramid.length - 1)].bmp, dx, dy, dw, dh); return true; }
-        if (n.refImg) { try { ctx.drawElementImage!(n.refImg, dx, dy, dw, dh); return true; } catch { return false; } }
+        if (n.refImg) { try { ctx.drawElementImage!(n.refImg, dx, dy, dw, dh); this.slowDraws++; return true; } catch { return false; } }
         return false;
       }
       try { ctx.drawElementImage!(n.refEl, dx, dy, dw, dh); return true; } catch { return false; }
