@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
 import { pinStore, pinNodeValue } from "../pinStore";
 import { flyToNodeAndFlash } from "../flyToNode";
-import { getEditor } from "../process";
+import { getOwningEditor } from "../activeGraph";
 import { resolveValueOrigin } from "../unitFlow";
 
 // Lucide "pin" — https://lucide.dev/icons/pin. Even size in an even (24px) button
@@ -64,7 +64,9 @@ export function PopupGoToButton({ nodeId, onClose }: { nodeId: string; onClose: 
       className="sol-popup__pin"
       onClick={() => {
         onClose();
-        const editor = getEditor();
+        // Owning editor: a popup opened from a node inside a drill-in resolves
+        // its origin within the SUBGRAPH (main lookup made this a silent no-op).
+        const editor = getOwningEditor(nodeId);
         flyToNodeAndFlash(editor ? resolveValueOrigin(editor, nodeId) : nodeId);
       }}
       title="Go to the value's source node"

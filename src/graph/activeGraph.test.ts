@@ -8,6 +8,7 @@ import {
   isSubgraphActive,
   getActiveEditor,
   getOwningEditor,
+  getOwningArea,
 } from "./activeGraph";
 
 // The action layer (keyboard, copy/paste, right-click, in-node socket/row edits)
@@ -22,6 +23,7 @@ function fakeEditor(ids: string[]): NodeEditor<Schemes> {
   return { getNode: (id: string) => nodes.get(id) } as unknown as NodeEditor<Schemes>;
 }
 const fakeArea = {} as unknown as AreaPlugin<Schemes, AreaExtra>;
+const subArea = { sub: true } as unknown as AreaPlugin<Schemes, AreaExtra>;
 
 const main = fakeEditor(["m1", "m2"]);
 const sub = fakeEditor(["s1", "s2"]);
@@ -55,6 +57,17 @@ describe("activeGraph resolver", () => {
     setActiveGraph({ editor: sub, area: fakeArea, history: null });
     expect(getOwningEditor("s1")).toBe(sub); // internal node → internal editor
     expect(getOwningEditor("m1")).toBe(main); // a MAIN node is never routed to the override
+  });
+
+  it("getOwningArea mirrors getOwningEditor (per-node, not per-surface)", () => {
+    expect(getOwningArea("m1")).toBe(fakeArea); // no drill-in → main area
+    setActiveGraph({ editor: sub, area: subArea, history: null });
+    expect(getOwningArea("s1")).toBe(subArea); // internal node → drill-in area
+    // A MAIN node re-rendering BEHIND an open drill-in must still hit the main
+    // area (getActiveArea() would wrongly return the drill-in here).
+    expect(getOwningArea("m1")).toBe(fakeArea);
+    setActiveGraph(null);
+    expect(getOwningArea("s1")).toBe(fakeArea); // closed → main (s1 unresolvable)
   });
 
   it("clears back to main on close", () => {

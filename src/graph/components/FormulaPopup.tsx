@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSPro
 import { useKatexRender, getKatexRenderer } from "./katexLoader";
 import { ClassicPreset } from "rete";
 import { formulaPopup } from "../formulaPopupStore";
-import { getEditor, processGraph } from "../process";
-import { getActiveArea } from "../activeGraph";
+import { processGraph } from "../process";
+import { getOwningEditor, getOwningArea } from "../activeGraph";
 import { formulaToLatex, evaluateSteps, extractVariables } from "../excelFormula";
 import { nodeKindOf, NODE_KIND_ACCENTS } from "../rete-nodes";
 import type { ExpressionNode, EquationNode, MapTableNode, LambdaNode } from "../rete-nodes";
@@ -54,7 +54,7 @@ const TABLE_LAMBDA_TYPES = new Set(["MapTableNode", "ByAxisNode", "MakeArrayNode
 function setVarDesc(node: { id: string; varDescriptions: Record<string, string> }, name: string, desc: string): void {
   if (desc.trim() === "") delete node.varDescriptions[name];
   else node.varDescriptions[name] = desc;
-  void getActiveArea()?.update("node", node.id);
+  void getOwningArea(node.id)?.update("node", node.id);
 }
 
 function formulaHostOf(node: ClassicPreset.Node | undefined): FormulaHost | null {
@@ -134,7 +134,7 @@ function renderTex(latex: string): string {
 // Returns null when any input isn't a plain number (a list input) — step-by-step
 // is a scalar walk.
 function gatherVars(node: ExpressionNode, expr: string): Record<string, number> | null {
-  const editor = getEditor();
+  const editor = getOwningEditor(node.id); // drill-in aware (see getOwningEditor)
   const out: Record<string, number> = {};
   for (const v of extractVariables(expr)) {
     const conn = editor?.getConnections().find((c) => c.target === node.id && c.targetInput === v);
@@ -182,7 +182,7 @@ export function FormulaPopup() {
   // sockets, via applyExprChange) is written. No-op when unchanged or locked.
   function commit(id: string | null) {
     if (!id) return;
-    const host = formulaHostOf(getEditor()?.getNode(id));
+    const host = formulaHostOf(getOwningEditor(id)?.getNode(id));
     if (!host || host.locked) return;
     if (textRef.current === committedRef.current) return;
     committedRef.current = textRef.current;
@@ -203,7 +203,7 @@ export function FormulaPopup() {
     if (initedFor.current === nodeId) return;
     commit(initedFor.current);
     initedFor.current = nodeId;
-    const seed = formulaHostOf(getEditor()?.getNode(nodeId))?.text ?? "";
+    const seed = formulaHostOf(getOwningEditor(nodeId)?.getNode(nodeId))?.text ?? "";
     setText(seed);
     textRef.current = seed;
     committedRef.current = seed;
@@ -229,7 +229,10 @@ export function FormulaPopup() {
   // is roomy). A genuinely huge formula still floors and h-scrolls.
   useFormulaFit(renderRef, [katexHtml, nodeId], { useHeight: false, max: 1 });
 
-  const node = nodeId ? getEditor()?.getNode(nodeId) : undefined;
+  // Owning editor, not main: an Expression/Equation card inside a composite
+  // drill-in opens this same popup — main lookup found nothing and the popup
+  // silently never rendered (and commits no-opped) for those nodes.
+  const node = nodeId ? getOwningEditor(nodeId)?.getNode(nodeId) : undefined;
   const host = formulaHostOf(node);
   if (!node || !host) return null;
   const locked = host.locked;

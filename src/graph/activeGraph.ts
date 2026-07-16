@@ -81,6 +81,19 @@ export function getActiveArea(): AreaPlugin<Schemes, AreaExtra> | null {
   return _override?.area ?? getArea();
 }
 
+/**
+ * The area that OWNS `nodeId` — getOwningEditor's area twin. For code that runs for
+ * EVERY rendered node regardless of surface (NodeCard's resize/collapse `area.update`,
+ * a connection's z-index holder, a Conduit's lane count), keyed on the rendered
+ * node's own id: `getArea()` (main) silently no-ops for a node living inside an open
+ * drill-in, and `getActiveArea()` would wrongly return the drill-in for a MAIN node
+ * re-rendering behind it. Same resolution rule as getOwningEditor.
+ */
+export function getOwningArea(nodeId: string): AreaPlugin<Schemes, AreaExtra> | null {
+  if (_override && _override.editor.getNode(nodeId)) return _override.area;
+  return getArea();
+}
+
 export function getActiveHistory(): HistoryPlugin<Schemes> | null {
   return _override ? _override.history : getHistoryPlugin();
 }

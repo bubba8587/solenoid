@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useSyncExternalStore, type ReactNode, type CSSProperties } from "react";
 import type { ClassicPreset } from "rete";
-import { getArea, repositionDockedNodes } from "../process";
+import { repositionDockedNodes } from "../process";
+import { getOwningArea } from "../activeGraph";
 import { nodeKindOf, nodeResizable, nodeWide, NODE_KIND_ACCENTS } from "../rete-nodes";
 import { nodeSizeStore } from "../nodeSizeStore";
 import { collapseStore } from "../collapseStore";
@@ -136,7 +137,8 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
       // Update LIVE during a resize drag so cables re-route as the box grows —
       // the grip drags off window listeners + module state (not the element's
       // pointer capture), so recreating this node's DOM here doesn't drop it.
-      void getArea()?.update("node", node.id);
+      // Owning area (not main): this card may live inside an open drill-in.
+      void getOwningArea(node.id)?.update("node", node.id);
       // A resize can shift this node's sockets (e.g. a list display box grew a
       // row, moving the output socket down). Keep any docked FC aligned.
       repositionDockedNodes(node.id);
@@ -202,9 +204,9 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
     e.stopPropagation();
     if (node) {
       collapseStore.toggle(node.id);
-      // Nudge the area so cable endpoints re-measure against the moved
-      // socket dots after the body collapses / expands.
-      void getArea()?.update("node", node.id);
+      // Nudge the OWNING area (drill-in aware) so cable endpoints re-measure
+      // against the moved socket dots after the body collapses / expands.
+      void getOwningArea(node.id)?.update("node", node.id);
     }
   }
 
