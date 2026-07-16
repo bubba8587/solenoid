@@ -3,7 +3,7 @@ import { broadcast, broadcastErr, broadcastUnit, anyDimensioned, readInput, numL
 import { lnGamma } from "./mathUtils";
 import { solError, type SolError } from "../errorValue";
 import type { FormatAnnotation } from "../formatAnnotationStore";
-import { type UnitCell, isUnitCell, dimOf, magnitudeOf, tagDim, tagRatio, unitError } from "../unitValue";
+import { type UnitCell, isUnitCell, dimOf, magnitudeOf, tagDim, tagRatio, unitError, adoptMagnitude } from "../unitValue";
 import { type Dim, DIMENSIONLESS, dimEqual, dimMul, dimDiv, dimPow, isDimensionless } from "../dimension";
 
 // ─── Bessel helper functions ──────────────────────────────────────────────────
@@ -124,10 +124,15 @@ export function arithmeticCell(
   const dispB = isUnitCell(b) ? b.display : undefined;
   const divZero = () => solError("#DIV/0!", "Division by zero");
   // +/−/mod need commensurable dimensions — BUT a dimensionless operand ADOPTS the
-  // other side's unit (author decision 2026-07-13: `$5 + 2 = $7`, the spreadsheet
-  // reading — a bare number is treated as the same unit, at base-SI scale). The
-  // result keeps the dimensioned side's display id so `$` survives. Only two genuinely
-  // different dimensions (metres + seconds) are a `#UNIT!`.
+  // other side's unit, read in that side's DISPLAY unit (author 2026-07-16:
+  // `5 km + 3 = 8 km` — the bare 3 means 3 km, so it scales to base by the display
+  // factor; `$5 + 2 = $7` unchanged, currency scale is 1). The result keeps the
+  // dimensioned side's display id so `$` survives. Only two genuinely different
+  // dimensions (metres + seconds) are a `#UNIT!`. xc/yc are the adoption-scaled
+  // magnitudes for these commensurable ops ONLY — ×/÷ keep the face value (a bare
+  // factor is a factor: `$5 × 2 = $10`, never "×2 km").
+  const xc = isDimensionless(da) && !isDimensionless(db) ? adoptMagnitude(x, dispB) : x;
+  const yc = isDimensionless(db) && !isDimensionless(da) ? adoptMagnitude(y, dispA) : y;
   const combine = (r: number): number | UnitCell | SolError => {
     if (dimEqual(da, db)) return tagDim(r, da, dispA ?? dispB);
     if (isDimensionless(da)) return tagDim(r, db, dispB);
@@ -141,9 +146,9 @@ export function arithmeticCell(
     dispA && dimEqual(rd, da) ? dispA : dispB && dimEqual(rd, db) ? dispB : undefined;
   switch (op) {
     case "add":
-      return combine(x + y);
+      return combine(xc + yc);
     case "sub":
-      return combine(x - y);
+      return combine(xc - yc);
     case "mul": {
       const rd = dimMul(da, db);
       return tagDim(x * y, rd, carry(rd));
@@ -157,7 +162,7 @@ export function arithmeticCell(
       return tagDim(x / y, rd, carry(rd));
     }
     case "mod":
-      return y === 0 ? divZero() : combine(x - y * Math.floor(x / y));
+      return yc === 0 ? divZero() : combine(xc - yc * Math.floor(xc / yc));
     case "quotient": {
       if (y === 0) return divZero();
       const rd = dimDiv(da, db);

@@ -24,7 +24,7 @@
 
 import {
   type Dim, type Unit, DIMENSIONLESS,
-  dimMul, dimDiv, dimPow, dimEqual, isDimensionless, formatDim,
+  dimMul, dimDiv, dimPow, dimEqual, isDimensionless, formatDim, parseUnit,
 } from "./dimension";
 import { solError, isSolError, type SolError } from "./errorValue";
 import { isMissing } from "./valueKinds";
@@ -52,6 +52,29 @@ export interface UnitCell {
    *  (`#UNIT!`); number formats (percent, especially) still apply. Renders as
    *  `5:1`. The one exception to "dimensionless ⇒ bare number". */
   readonly ratio?: true;
+}
+
+// ── Bare-number unit adoption (author 2026-07-16: SUM(5 km, 3) = 8 km) ─────────
+// A dimensionless operand adopting a united one reads in that operand's DISPLAY
+// unit, not base-SI — the bare 3 next to "5 km" means 3 km, so it scales to base
+// by the display unit's factor. SCALE only, never the affine offset (adopting
+// into °C treats the bare number as degree-sized — delta semantics, and °C has
+// scale 1 anyway). The resolver defaults to the pure dimension.ts table (SI
+// prefixes + base symbols); unitBridge upgrades it at load to the full FC unit
+// table (miles, gallons, currency — currency scale is 1, so $5+3=$8 either way).
+// An unresolvable display id (a custom unit) keeps the face value.
+let _displayScale: (id: string) => number | null = (id) => parseUnit(id)?.scale ?? null;
+
+/** Upgrade the display-id → base-SI scale resolver (unitBridge, at module load). */
+export function setDisplayScaleResolver(fn: (id: string) => number | null): void {
+  _displayScale = fn;
+}
+
+/** A bare face value adopted into a united operand's display unit, as base-SI. */
+export function adoptMagnitude(face: number, display: string | undefined): number {
+  if (display === undefined || display === "") return face;
+  const s = _displayScale(display);
+  return s == null || s === 1 ? face : face * s;
 }
 
 /** Tag a magnitude as a PURE RATIO — a known-dimensionless cancellation result. */
@@ -228,14 +251,19 @@ export function powUnits(a: Operand, n: Operand): UnitCell | number | SolError {
 export function compareUnits(a: Operand, b: Operand): { l: number; r: number } | SolError {
   const da = dimOf(a), db = dimOf(b);
   // A dimensionless operand ADOPTS the other's unit (`$5 > 1000` compares 5 vs 1000)
-  // — the spreadsheet reading, matching addUnits. Only two genuinely-different REAL
-  // dimensions are incomparable.
+  // — the spreadsheet reading, matching addUnits, and it reads in the united side's
+  // DISPLAY unit (`5 km > 3` compares against 3 km — author 2026-07-16). Only two
+  // genuinely-different REAL dimensions are incomparable.
   if (!isDimensionless(da) && !isDimensionless(db) && !dimEqual(da, db))
     return unitError("Can't compare values with different units.");
   // …and two different currencies (same dimension, but no exchange rate).
   if (currencyMismatch(a, b))
     return unitError("Can't compare different currencies — no exchange rate.");
-  return { l: magnitudeOf(a), r: magnitudeOf(b) };
+  const dispA = isUnitCell(a) ? a.display : undefined;
+  const dispB = isUnitCell(b) ? b.display : undefined;
+  const l = isDimensionless(da) && !isDimensionless(db) ? adoptMagnitude(magnitudeOf(a), dispB) : magnitudeOf(a);
+  const r = isDimensionless(db) && !isDimensionless(da) ? adoptMagnitude(magnitudeOf(b), dispA) : magnitudeOf(b);
+  return { l, r };
 }
 
 // ─── Aggregator prep (step 6) ────────────────────────────────────────────────────
@@ -261,7 +289,8 @@ export function forAggregateUnits(values: ReadonlyArray<unknown>): UnitAggregate
   let dim: Dim | null = null; // the single REAL dimension in the list, if any
   let display: string | undefined;
   let currencyCode: string | undefined; // the list's currency code, once one is seen
-  const nums: number[] = [];
+  // Pass 1 — the list's single real dimension + display id, BEFORE the magnitudes
+  // are read: a LEADING bare number adopts a unit discovered later in the list.
   for (const v of present) {
     const d = dimOf(v);
     if (!isDimensionless(d)) {
@@ -282,9 +311,13 @@ export function forAggregateUnits(values: ReadonlyArray<unknown>): UnitAggregate
         }
       }
     }
-    // A dimensionless cell contributes its bare magnitude and ADOPTS `dim`.
-    nums.push(magnitudeOf(v));
   }
+  // Pass 2 — magnitudes: a dimensionless cell ADOPTS `dim` in the list's DISPLAY
+  // unit (SUM(5 km, 3): the 3 reads as 3 km → 3000 base — author 2026-07-16),
+  // a united cell contributes its base-SI magnitude directly.
+  const nums = present.map((v) =>
+    isDimensionless(dimOf(v)) ? adoptMagnitude(magnitudeOf(v), display) : magnitudeOf(v),
+  );
   return { dim: dim ?? DIMENSIONLESS, display, nums };
 }
 

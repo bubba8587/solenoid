@@ -113,9 +113,15 @@ SocketComponent + legend `frame` kind + pixi `frame` GlyphKind (glyph test re-pi
 the contested rule made scattered grids exhaust O(lines⁴) boxes per cell; 40×40 tan diagonal now
 fills in 73ms) + ONE shared forced-scientific rule (`extremeSci` in format.ts: |n| ≥ 1e12 or nonzero
 < 1e-4 → trimmed e-notation) wired into formatScalar / TableDisplay cells / the popup's auto format;
-explicit user formats untouched. REMAINING: the two flagged author calls in the backlog
-(bare-number adoption base-SI vs display; dimension-blind cube join key) — the loop is otherwise out
-of self-serve work (walk concluded; items A+B shipped; all author requests through 9092ac0 done).
+explicit user formats untouched. **Turn 14 (author decisions):** wakeup loop STOPPED (author). **Bare-number adoption now reads in
+the DISPLAY unit** (author: SUM(5 km, 3) = 8 km): `adoptMagnitude` in unitValue (resolver hook —
+parseUnit default, unitBridge upgrades to the full FC table at load; scale only, never the affine
+offset; unresolvable/custom ids keep face value) wired into forAggregateUnits (two-pass so a leading
+bare adopts), arithmeticCell +/−/mod (×/÷ keep face — a factor is a factor), and compareUnits.
+Backlog flag closed. **Popup cell fit for forced scientific**: per-column min-width computed from
+CONTENT length × the mono font's true advance (27/42 em from the shipped .fnt metrics) — inputs
+contribute no intrinsic width, so sci values clipped in the 72px floor; only wide columns widen
+(200px cap, text columns untouched). REMAINING author call: dimension-blind cube join key.
 
 ### SESSION DIGEST (2026-07-16 — UI corner-radius reduction pass)
 Node cards 8→6px; group/note/conduit and Note/Group-derived cards (Presentation, Report, Image,

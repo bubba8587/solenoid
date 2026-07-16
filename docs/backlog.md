@@ -150,13 +150,6 @@ this backlog stays the per-item source of truth.
   its boundary (not unitAware), so `a/b` there yields a bare number. Decide: leave (Expression is
   deliberately type-agnostic — likely fine) or make Expression unit-aware someday. Terse call.
 
-- [ ] **Bare-number unit adoption is BASE-SI, not display-unit** (audit 2026-07-16): the 2026-07-13
-  "dimensionless adopts the op's unit" decision pins `SUM(5 m, 2 m, 3)` (base = display, invisible)
-  but for a scaled unit the bare cell adopts at its base-SI face value — `SUM(5 km, 3)` reads the 3
-  as 3 METERS (5.003 km), where a user likely means 3 km (8 km). Same in `arithmeticCell` +/−.
-  Author call: adopt in the list's DISPLAY unit (forAggregateUnits already tracks `display`) or keep
-  base-SI and document it. One-line change either way once decided.
-
 - [ ] **Dimension-blind cube join key** (flagged in check-in #4 2026-07-15, never fixed —
   re-surfaced by the 2026-07-16 audit): `cellKeyId` (frame.ts) keys a dimensioned `UnitCell` on
   its bare display magnitude, so "5 km" and "5 kg" collide as the same Nest/relate join key.
