@@ -87,8 +87,16 @@ Units-run audit: ratio minting + Convert primacy clean; **custom FC unit axes ma
 no-ratio follow-up moved from a digest line into the backlog. Byte-order sort verified (data plane
 all through compareStrings; remaining localeCompare = UI lists only). **WALK VERDICT: diminishing
 returns below 2026-07-14** — older history (the 1.2 overnight build, v1.0/1.1) had contemporaneous
-audits and its current state is exercised by the guards added this session. NEXT TURN: the
-author-queued Reference-overlay Socket tab → data-model chapter; then the Frame-glyph design proposal.
+audits and its current state is exercised by the guards added this session. **Turn 9 (author items):** Table Input blank-row fixes (`13bc58b`, `d0bb446` — blank rows are data
+wherever they sit; only the final-newline TERMINATOR + trailing all-blank COLUMN trim; the
+never-coerce-the-Source rule recorded in CLAUDE.md; popup save no longer destroys them; round-trips
+pinned). **Item B SHIPPED:** the Reference Socket tab is now a data-model chapter — new
+`help/data-model.md` (rendered after the DimensionalityFlow visual): exact flow edges (combo narrows,
+frame/cube outputs, logical bridge, Any ladder + hollow-ring adoption, object family), the coercion
+boundary (list = ONE ROW, blank = null, never-coerce-the-Source), and the UNITS chapter (per-rank
+carrier table — list per-element vs matrix whole-grid vs frame per-column; adoption, ratio, no-FX
+currencies, custom dims, format-vs-unit split). REMAINING: item A (Frame glyph proposal) + the two
+flagged author calls in the backlog.
 
 ### SESSION DIGEST (2026-07-16 — UI corner-radius reduction pass)
 Node cards 8→6px; group/note/conduit and Note/Group-derived cards (Presentation, Report, Image,

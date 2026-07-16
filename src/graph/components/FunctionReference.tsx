@@ -9,6 +9,7 @@ import { SocketLegendRows, DimensionalityFlow } from "./SocketLegend";
 import helpMd from "../help/help.md?raw";
 import notesMd from "../help/notes.md?raw";
 import dataTypesMd from "../help/data-types.md?raw";
+import dataModelMd from "../help/data-model.md?raw";
 import "./FunctionReference.css";
 import { CloseIcon } from "./CloseIcon";
 import { useEscapeToClose } from "./useEscapeToClose";
@@ -94,6 +95,7 @@ export function FunctionReference() {
               <SocketLegendRows />
               <Markdown md={dataTypesMd} />
               <DimensionalityFlow />
+              <Markdown md={dataModelMd} />
             </div>
           </div>
         ) : tab !== "reference" ? (
