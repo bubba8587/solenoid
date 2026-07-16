@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { copyText } from "../clipboard";
 import { tablePopup, type TablePopupState, type Cell as CellValue, type FramePopupColumn } from "../tablePopupStore";
 import { appThemeStore } from "../appTheme";
@@ -386,6 +386,29 @@ export function TablePopup() {
     : onScreenGrid;
   const viewCols = vertical ? 1 : cols;
 
+  // Per-column min width from CONTENT. The cells are <input>s, which contribute
+  // NO intrinsic width — columns never widen on their own, so a forced-scientific
+  // value ("1.6331e+16", 10ch) clipped in the 72px default column. The grid is
+  // mono (Atkinson Hyperlegible Mono, advance 27/42 em → 13px × 0.6429 ≈ 8.36px
+  // per char — measured from the shipped .fnt metrics), so the exact width is
+  // maxLen × advance + the input's 16px padding. Only columns needing MORE than
+  // the CSS 72px floor get an inline min-width; a 200px cap keeps a pathological
+  // cell from stretching the grid (mono columns only — text columns are sans).
+  const MONO_CH_PX = 13 * (27 / 42);
+  const colMinWidths = useMemo(() => {
+    const out: Array<number | undefined> = [];
+    for (let c = 0; c < viewCols; c++) {
+      const type = vertical ? cellType : typeAt(c, cellType, state?.columnTypes);
+      if (isTextType(type)) { out.push(undefined); continue; }
+      let m = 0;
+      for (const row of viewGrid) m = Math.max(m, (row[c] ?? "").length);
+      const px = Math.ceil(m * MONO_CH_PX) + 16;
+      out.push(px > 72 ? Math.min(px, 200) : undefined);
+    }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewGrid, viewCols, vertical, cellType, state?.columnTypes]);
+
   function setCell(r: number, c: number, v: string) {
     setGrid((g) => g.map((row, i) => (i === r ? row.map((cell, j) => (j === c ? v : cell)) : row)));
   }
@@ -684,7 +707,12 @@ export function TablePopup() {
                     // raw view shows the source token ("oops"), never "NaN".
                     const nan = !isTextType(type) && (row[c] ?? "") === "NaN";
                     return (
-                    <td key={c} className={`table-popup__cell${nan ? " table-popup__cell--nan" : ""}`} title={nan ? "Not a number: an undefined value in the data" : undefined}>
+                    <td
+                      key={c}
+                      className={`table-popup__cell${nan ? " table-popup__cell--nan" : ""}`}
+                      style={colMinWidths[c] !== undefined ? { minWidth: colMinWidths[c] } : undefined}
+                      title={nan ? "Not a number: an undefined value in the data" : undefined}
+                    >
                       <input
                         className={isTextType(type) ? "table-popup__input table-popup__input--text" : "table-popup__input"}
                         value={row[c] ?? ""}
