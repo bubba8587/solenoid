@@ -62,6 +62,7 @@ export function countOccurrences(n: Ast, name: string): number {
 export function astToFormula(n: Ast): string {
   switch (n.t) {
     case "num": return n.v;
+    case "blank": return "";
     case "str": return `"${n.v}"`;
     case "bool": return n.v ? "TRUE()" : "FALSE()";
     case "name": return n.name;

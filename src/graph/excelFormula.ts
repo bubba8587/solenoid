@@ -26,7 +26,9 @@ export type Ast =
   | { t: "call"; name: string; args: Ast[] }
   | { t: "unary"; op: "-" | "+"; arg: Ast }
   | { t: "percent"; arg: Ast }
-  | { t: "bin"; op: string; l: Ast; r: Ast };
+  | { t: "bin"; op: string; l: Ast; r: Ast }
+  // An OMITTED call argument — Excel's `IF(x,,y)` — evaluating to null (blank).
+  | { t: "blank" };
 
 // ─── Tokenizer ────────────────────────────────────────────────────────────────
 type Tok = { k: "num" | "str" | "name" | "op" | "paren" | "comma"; v: string };
@@ -152,9 +154,15 @@ function parse(toks: Tok[]): Ast | null {
         const args: Ast[] = [];
         if (peek()?.v !== ")") {
           for (;;) {
-            const a = comparison();
-            if (!a) return null;
-            args.push(a);
+            // An OMITTED argument — a comma (or the closing paren) right where an
+            // expression should start — is a BLANK, Excel's `IF(x,,y)` form.
+            if (peek()?.k === "comma" || (peek()?.k === "paren" && peek().v === ")")) {
+              args.push({ t: "blank" });
+            } else {
+              const a = comparison();
+              if (!a) return null;
+              args.push(a);
+            }
             if (peek()?.k === "comma") { eat(); continue; }
             break;
           }
@@ -515,7 +523,11 @@ function applyOp(op: string, a: unknown, b: unknown): unknown {
 // propagates half of the per-cell contract. (Error operands still short-circuit
 // for ALL of them — matching the scalar call-level `argv.find(isSolError)` guard;
 // the error CONSUMERS ISERROR/ISNA/IFERROR are routed away before broadcastCall.)
-const NULL_INSPECTING = new Set(["ISBLANK", "ISNUMBER", "ISTEXT", "ISNONTEXT", "ISLOGICAL", "ISREF", "N", "T", "TYPE"]);
+// IF is here so a BLANK branch (`IF(x,,y)` — the omitted-argument form) can flow:
+// the blank arrives as null, and the missing-skip rule would otherwise null the
+// whole result before IF ever chose a branch. The internal IF returns null
+// branches as-is (excelFunctions.ts).
+const NULL_INSPECTING = new Set(["ISBLANK", "ISNUMBER", "ISTEXT", "ISNONTEXT", "ISLOGICAL", "ISREF", "N", "T", "TYPE", "IF"]);
 
 /** Broadcast a non-range function element-wise over its array arguments (scalars
  *  repeat). Ragged array args zip to the LONGEST length; a position missing from
@@ -557,6 +569,7 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
     case "num": return Number(n.v);
     case "str": return n.v;
     case "bool": return n.v;
+    case "blank": return null; // an omitted argument IS the missing value
     case "name": { const c = constantValue(n.name); return c !== undefined ? c : env[n.name]; }
     case "unary": {
       const a = evalAst(n.arg, env);
@@ -689,6 +702,7 @@ function tex(n: Ast, parent: number): string {
   const wrap = (s: string, prec: number) => (parent > prec ? `\\left(${s}\\right)` : s);
   switch (n.t) {
     case "num": return numLatex(n.v);
+    case "blank": return "\\varnothing"; // an omitted argument, kept visible in the preview
     case "str": return texString(n.v);
     case "bool": return `\\mathrm{${n.v ? "TRUE" : "FALSE"}}`;
     case "name": return symbolLatex(n.name);
@@ -788,6 +802,7 @@ export function evaluateSteps(expr: string, vars: Record<string, number>): { ste
   const ev = (n: Ast): number => {
     switch (n.t) {
       case "num": return parseFloat(n.v);
+      case "blank": return 0; // numeric walk: an omitted argument reads as 0
       case "name": { const c = constantValue(n.name); return c !== undefined ? c : (vars[n.name] ?? 0); }
       case "bool": return n.v ? 1 : 0;
       case "str": ok = false; return NaN;

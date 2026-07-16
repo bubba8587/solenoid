@@ -607,6 +607,17 @@ registerInternal("XMATCH", (lookup, keys) => {
 // doesn't silently work; it redirects to the current-Excel replacement. Registered
 // as internals so this wins over Formula.js's own VLOOKUP etc. INDEX stays (current
 // Excel, never superseded).
+// IF honors a BLANK branch (the parser's omitted-argument form, `IF(x,,y)`):
+// the blank arrives as null and STAYS null — Solenoid's first-class missing —
+// where Formula.js coerced it to 0 (and real Excel's omitted arg IS 0; author
+// 2026-07-16 chose null, which Excel doesn't have). Arg-count defaults keep
+// Excel's shape: IF(test, then) with a false test → FALSE.
+registerInternal("IF", (test, thenV, elseV) => {
+  if (test == null) return null; // a MISSING condition stays missing (app contract) — only the branches may be blank
+  const cond = typeof test === "number" ? test !== 0 : Boolean(test);
+  if (cond) return thenV === undefined ? true : thenV;
+  return elseV === undefined ? false : elseV;
+});
 registerInternal("VLOOKUP", () => solError("#NAME?", "Use XLOOKUP"));
 registerInternal("HLOOKUP", () => solError("#NAME?", "Use XLOOKUP"));
 registerInternal("LOOKUP", () => solError("#NAME?", "Use XLOOKUP"));

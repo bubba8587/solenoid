@@ -702,3 +702,28 @@ describe("TEXT formats date serials (audit finding 29)", () => {
     expect(ev('TEXT(a, "0.00")', { a: 1234.5 })).toBe("1234.50");
   });
 });
+
+describe("omitted arguments — IF(x,,y) is a BLANK (author 2026-07-16)", () => {
+  const ev = (expr: string, env: Record<string, unknown>) => {
+    const fn = compileEvaluator(expr);
+    if (!fn) throw new Error(`failed to compile: ${expr}`);
+    return fn(env);
+  };
+  it("an empty middle argument evaluates to null (blank), not a syntax error", () => {
+    expect(ev("IF(value=0,,value)", { value: 0 })).toBeNull();
+    expect(ev("IF(value=0,,value)", { value: 7 })).toBe(7);
+  });
+  it("an empty TRAILING argument works too", () => {
+    expect(ev("IF(value>0,value,)", { value: 5 })).toBe(5);
+    expect(ev("IF(value>0,value,)", { value: -1 })).toBeNull();
+  });
+  it("broadcasts over a list — the Excel zeros-to-blanks idiom", () => {
+    expect(ev("IF(value=0,,value)", { value: [3, 0, 5] })).toEqual([3, null, 5]);
+  });
+  it("a blank inside an aggregate is skipped like any missing value", () => {
+    expect(ev("SUM(a,,b)", { a: 2, b: 3 })).toBe(5);
+  });
+  it("extractVariables ignores blanks", () => {
+    expect(extractVariables("IF(x=0,,x)")).toEqual(["x"]);
+  });
+});
