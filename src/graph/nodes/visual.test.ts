@@ -310,9 +310,10 @@ describe("chart-wave nodes emit their payloads", () => {
 });
 
 describe("SevenSeg", () => {
-  it("passes the value through and clamps decimals", () => {
+  it("emits a chart value carrying the rendered text; clamps decimals", () => {
     const n = new SevenSegNode();
-    expect(n.data({ value: [42.5], decimals: [1] })).toEqual({ result: 42.5 });
+    const out = n.data({ value: [42.5], decimals: [1] });
+    expect(out.chart).toMatchObject({ __chart: true, op: "sevenseg", values: 42.5, payload: { kind: "sevenseg", text: "42.5" } });
     expect(n.literals.decimals).toBe(1);
     n.data({ value: [1], decimals: [99] });
     expect(n.literals.decimals).toBe(6);

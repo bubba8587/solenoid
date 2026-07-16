@@ -297,6 +297,9 @@ export function nodeResizable(node: ClassicPreset.Node): boolean {
 export function nodeWide(node: ClassicPreset.Node): boolean {
   // The inline charts draw a fixed-width plot that needs the wide card to fit;
   // Heatmap qualifies on its table socket below.
+  // The drawing controls' pads need the wide card too (the base card is a fixed
+  // 180px — a class `width` field is only the layout mirror, not a style).
+  if (node instanceof PointPlotterNode || node instanceof CurveNode) return true;
   if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof MermaidNode || node instanceof TornadoNode) return true;
   if (node instanceof TreemapNode || node instanceof SankeyNode || node instanceof HistogramNode) return true;
   const ports = [...Object.values(node.inputs ?? {}), ...Object.values(node.outputs ?? {})];

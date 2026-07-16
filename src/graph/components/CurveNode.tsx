@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, type CSSProperties } from "react";
 import type { CurveNode as CurveNodeType } from "../rete-nodes";
-import { curvePoints, pointsToText, monotoneCubic } from "../nodes/control";
+import { curvePoints, pointsToText, monotoneCubic, sampleCurve } from "../nodes/control";
 import { NodeShell, InlineOutputRows, type NodeProps } from "./nodeKit";
 import { InlineNumberField } from "./inlineInput";
 import { processGraph } from "../process";
@@ -9,8 +9,8 @@ import { processGraph } from "../process";
 // through them draws live, and the node samples it into a list. Click to add a
 // point, drag to move, right-click / Alt-click to delete (a curve keeps ≥ 2).
 
-const PAD_W = 172;
-const PAD_H = 104;
+const PAD_W = 196;
+const PAD_H = 110;
 const HIT_PX = 9;
 
 const stripStyle: CSSProperties = {
@@ -93,8 +93,10 @@ export function CurveComponent({ data, emit }: NodeProps<CurveNodeType>) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pts, xmin, xmax, ymin, ymax]);
 
-  // The node's own sampling (pure over its fields) drives the output rows.
-  const sampled = data.data();
+  // The pure sampler drives the output rows — NOT data.data(): the engine wraps
+  // data() with the coercion boundary, which expects an inputs record (calling it
+  // bare threw "Cannot convert undefined or null to object" and killed the card).
+  const sampled = sampleCurve(data.pointsText, xmin, xmax, data.literals.samples ?? 32);
 
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
