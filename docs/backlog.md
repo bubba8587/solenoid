@@ -147,11 +147,11 @@ this backlog stays the per-item source of truth.
 
 - [ ] **Table-timesaver Tier 3 (author-approved direction 2026-07-16, design-first):**
   **Computed Column** (a row-wise formula whose variables are column names, appended in place —
-  PQ Custom/Conditional Column; wants a design pass on sharing the Expression engine) and
-  **Data Table sweep** (Excel What-If 1-/2-variable: sweep inputs across ranges, tabulate a target
-  node into a frame / bordered grid → feeds Contour/Surface; inverts dataflow like Tornado).
-  Tier 1+2 shipped 2026-07-16 (Fill Down / Replace Values / Merge Columns / Promote Headers /
-  Drop Blank Rows / Head modes / Add Index two-way grid output / stable-sort chaining note).
+  PQ Custom/Conditional Column; wants a design pass on sharing the Expression engine).
+  The Data Table sweep idea is NOT NEEDED (author 2026-07-16): the Composite node's run controls
+  already cover parametric sweeps. Tier 1+2 shipped 2026-07-16 (Fill Down / Replace Values /
+  Merge Columns / Promote Headers / Drop Blank Rows / Head modes / Add Index two-way grid output /
+  stable-sort chaining note).
 - [ ] **Native Polars mirrors for the eager cleanup verbs** (perf follow-up, only if a real
   workload demands): fillBlanks (`fill_null` forward/backward), replaceValues, sliceRows
   (tail/slice) are trivially expressible lazily; today they materialize like Split Column.
