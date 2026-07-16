@@ -307,6 +307,10 @@ export {
   ContourComponent, WaterfallComponent, CandlestickComponent, BoxplotComponent,
   CalendarHeatmapComponent, WaffleComponent, QuiverComponent,
 } from "./FigureNodes";
+export { SevenSegComponent } from "./SevenSegNode";
+export { PointPlotterComponent } from "./PointPlotterNode";
+export { CurveComponent } from "./CurveNode";
+export { GridPainterComponent } from "./GridPainterNode";
 export { MermaidComponent } from "./MermaidNode";
 export { GaugeComponent } from "./GaugeNode";
 export { HeatmapCellComponent } from "./HeatmapCellNode";

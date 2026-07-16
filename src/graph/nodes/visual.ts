@@ -303,6 +303,47 @@ export class GaugeNode extends ClassicPreset.Node {
   }
 }
 
+// ─── 7-Segment display ────────────────────────────────────────────────────────
+// A flat seven-segment readout of a number — the electromechanical meter look,
+// on brand for a thing called Solenoid. Pass-through like Gauge. Deliberately
+// FLAT: lit segments in the accent, ghost segments barely-there; no flap/LED
+// skeuomorphism and no animation (author 2026-07-16 + DESIGN.md).
+
+export class SevenSegNode extends ClassicPreset.Node {
+  label: string;
+  literals: Record<string, number> = { value: 0, decimals: 0 };
+  cachedResult: number | null = null;
+  width = 200;
+  height = 130;
+
+  constructor(init?: { label?: string }) {
+    super("SevenSeg");
+    this.label = init?.label ?? "7-Segment";
+    this.addInput("value", numIn("Value"));
+    this.addInput("decimals", numIn("Decimals"));
+    this.addOutput("result", numOut("Pass-through"));
+  }
+
+  data(inputs: { value?: number[]; decimals?: number[] }) {
+    const v = inputs.value?.[0] ?? this.literals.value ?? null;
+    const d = clamp(Math.round(inputs.decimals?.[0] ?? this.literals.decimals ?? 0), 0, 6);
+    this.literals.decimals = d;
+    if (inputs.value?.[0] === undefined) this.literals.value = v ?? 0;
+    this.cachedResult = v;
+    return { result: v };
+  }
+}
+
+/** The characters a 7-seg readout shows for a value: a fixed-decimals string, or
+ *  the classic all-dashes overflow when it doesn't fit the display width. */
+export function sevenSegText(v: number | null, decimals: number, maxDigits = 10): string {
+  if (v == null || !Number.isFinite(v)) return "";
+  const s = v.toFixed(clamp(Math.round(decimals), 0, 6));
+  // Count digit CELLS (a '.' rides its neighbour, '-' takes a cell).
+  const cells = s.replace(/\./g, "").length;
+  return cells > maxDigits ? "-".repeat(maxDigits) : s;
+}
+
 // ─── KPI / Stat card ──────────────────────────────────────────────────────────
 // A big-number readout with a ↑/↓ delta vs a prior value. Emits a chart VALUE so a
 // Report embeds it. `goodUp` (1/0) picks whether a rise is green (revenue) or red
