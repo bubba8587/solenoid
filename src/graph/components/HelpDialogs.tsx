@@ -9,48 +9,36 @@ import "./helpDialogs.css";
 type Slide = { title: string; body: string };
 const SLIDES: Slide[] = [
   {
-    title: "What-if analysis",
-    body: "Wrap part of a model in a composite node and ask what-if without disturbing the rest. Goal Seek drives an input until an output hits a target, Scenarios compare saved cases, a Data Table sweeps a grid of inputs, and Simulation steps a feedback loop. The heavier modes run when you press Solve, and a marker shows when a result no longer matches its inputs.",
+    title: "Real units",
+    body: "Values carry units now. SUM(5 km, 3) is 8 km, m × m is m², and metres plus seconds fails loud with #UNIT! instead of silently adding nonsense. Units ride through lists, frame columns, lookups and selectors; the Format Controller authors them, Convert changes them, and 10 m ÷ 2 m cancels to a pure 5:1 ratio.",
   },
   {
-    title: "Command palette",
-    body: "Press Ctrl+K and type. Every menu action and toggle is one search away, with your recent actions first. A Settings option keeps the palette docked on screen.",
+    title: "Monte Carlo",
+    body: "Give a composite's inputs a ± spread and its outputs come back as distributions: mean ± deviation with a histogram, from a seeded, reproducible sampler. Uncertainty as a value, alongside Goal Seek, Scenarios, and Data Table.",
   },
   {
-    title: "Live market and economic data",
-    body: "Pull FRED economic series onto the canvas with no API key, and stock history with a free Alpha Vantage key. Pick a date range and frequency, chart the series, and compute on the same numbers. Feeds refresh on a timer and are never saved into the file.",
+    title: "Draw your data",
+    body: "Three controls make data by hand. Point Plotter turns clicks on a plane into X and Y lists, Curve samples a draggable no-overshoot spline into a list, and Grid Painter fills a matrix with a value brush. Sketch a dataset, then run real math on it.",
   },
   {
-    title: "Rebuilt for your phone",
-    body: "The mobile layout is three zones: the document strip on top, the tool row under it, and a thumb-reach action bar with undo, add, select, and delete at the bottom. The command palette, navigator, and example menu all work on a small screen.",
+    title: "Terrain and fields",
+    body: "Wire one coordinate-bordered grid through the whole family: Grid Interpolate fills the blanks with a smooth surface, Surface draws it as a shaded 3-D mesh, Contour draws the map view with iso-lines, and Vector Field draws arrow flows. Add Index's new two-way output turns any table into that grid in one hop.",
   },
   {
-    title: "Reports",
-    body: "A Report is a markdown document that embeds live values by name. Type =total and the number, table, chart, equation, or diagram it names renders inline and stays current as the graph recomputes. Dock a report to the right edge and keep working on the canvas beside it.",
+    title: "Seven new chart types",
+    body: "Waterfall for the finance bridge, Candlestick for price history (wire Data Feed straight in), Boxplot, a GitHub-style Calendar heatmap, Waffle shares, Contour, and Vector Field — plus a flat 7-Segment meter readout. All of them embed live in Reports.",
   },
   {
-    title: "Presenter mode",
-    body: "A Presentation node turns the canvas into a slideshow. Press Present and the camera flies from step to step while the app chrome hides; click or press Space to advance. The graph stays live, so a slide reacts when its inputs change.",
+    title: "Obsidian, both directions",
+    body: "Import a vault note as a live, typed source — its frontmatter becomes output sockets, and Reload re-reads from disk. Write Notes and Reports back into the vault as portable markdown with real tables, mermaid blocks, math, and rendered chart images.",
   },
   {
-    title: "Mermaid diagrams",
-    body: "A Mermaid node renders flowcharts, sequence and state diagrams, Gantt charts, and pie charts from plain text. A template dropdown drops in a working starter, and the diagram embeds in a Report like any chart.",
+    title: "Table cleanup, the daily set",
+    body: "Fill Down un-merges report-shaped tables, Replace Values fixes cells in place, Merge Columns is the inverse of Split Column, Promote Headers lifts a first row into names, Drop Blank Rows clears the spacers, and Head slices first / last / skip / range.",
   },
   {
-    title: "Set operations",
-    body: "Union, intersection, difference, and symmetric difference over two lists, plus a second node for membership tests. The card renders its operation in set notation. Excel has no direct equivalent.",
-  },
-  {
-    title: "More chart types",
-    body: "Pie, Scatter, Bubble, Radar, Radial, Funnel, and Composed, plus Treemap, Sankey, Histogram, KPI cards, and Bullet graphs. A Histogram bins a list for you; KPI cards and Bullet graphs turn a number into a dashboard tile.",
-  },
-  {
-    title: "Align and distribute",
-    body: "Select two or more nodes and an alignment bar appears above the canvas: align edges or centers, and distribute spacing evenly, in either direction.",
-  },
-  {
-    title: "Palette editor",
-    body: "Design your own color palette on live sample nodes, then use it app-wide or pin one to a document. Charts, diagrams, and the desktop window border follow it.",
+    title: "Scrub any number",
+    body: "Drag any number field to set it — hold Shift for coarse steps, Alt for fine. Works on every number input in the app, including the Number node itself.",
   },
 ];
 
