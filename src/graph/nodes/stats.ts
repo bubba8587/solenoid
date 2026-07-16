@@ -1068,14 +1068,23 @@ export function fillBorderedGrid(table: (number | null)[][], forecast = true): (
       // it (coordinate-space, borders included): bilinear over the corners would
       // ignore that nearer data. The sine-diagonal case made this concrete — the
       // only all-known-corner box was the grid's four 0-corners, so every blank
-      // filled flat-0 while the whole diagonal sat inside the box. A contested
-      // cell falls through to the surface fit, which uses ALL the points.
+      // filled flat-0 while the whole diagonal sat inside the box. A DEGENERATE
+      // (1-D) span is likewise contested by data strictly between its two samples
+      // in the cross direction, ANY distance off-axis — otherwise the outer edges
+      // clamp to a corner-to-corner line while the interior curves (author
+      // 2026-07-16: edges defer to the spline). A contested cell falls through to
+      // the surface fit, which uses ALL the points.
       const xA = Math.min(x0, x1), xB = Math.max(x0, x1);
       const yA = Math.min(y0, y1), yB = Math.max(y0, y1);
+      const degenRow = rLo === rHi, degenCol = cLo === cHi;
       let contested = false;
       for (const p of knownPts) {
         if ((p.i === rLo || p.i === rHi) && (p.j === cLo || p.j === cHi)) continue; // a corner
-        if (p.x >= xA && p.x <= xB && p.y >= yA && p.y <= yB) { contested = true; break; }
+        const hit =
+          degenRow && !degenCol ? p.x > xA && p.x < xB :
+          degenCol && !degenRow ? p.y > yA && p.y < yB :
+          p.x >= xA && p.x <= xB && p.y >= yA && p.y <= yB;
+        if (hit) { contested = true; break; }
       }
       if (contested) continue;
       const tx = x1 === x0 ? 0 : (qx - x0) / (x1 - x0);

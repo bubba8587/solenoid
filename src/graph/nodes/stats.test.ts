@@ -299,7 +299,10 @@ describe("INTERPOLATE — Grid mode (fill a bordered table)", () => {
       [1, 0, null, 2],
       [2, 0, 2, 4],
     ]);
-    expect(out[2][2]).toBe(1);
+    // Since the contested-box rule (2026-07-16) a hole fills via the SPLINE over
+    // all its neighbours (a row-line bilinear would ignore the equally-near
+    // column neighbours), so exactness is to float epsilon, not Object.is.
+    expect(out[2][2]).toBeCloseTo(1, 9);
   });
   it("bilinear leaves an unenclosed cell blank; forecast fills it with the spline", () => {
     // An L of data (top row + left column only): the far corner is missing, so bilinear
@@ -362,7 +365,7 @@ describe("INTERPOLATE — Grid mode (fill a bordered table)", () => {
     // Z = x·y with the centre cell errored → reads as blank, filled by 2-D interp to 1.
     const t = [[null, 0, 1, 2], [0, 0, 0, 0], [1, 0, err, 2], [2, 0, 2, 4]];
     const r = new InterpolateNode({ mode: "grid" }).data({ grid: [t] }).result as (number | null)[][];
-    expect(r[2][2]).toBe(1);
+    expect(r[2][2]).toBeCloseTo(1, 9); // spline fill (see the contested-box rule)
   });
   it("propagates a whole-grid error", () => {
     const err = solError("#REF!", "bad grid");
