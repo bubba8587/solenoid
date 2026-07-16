@@ -158,10 +158,18 @@ export function TablePopup() {
   const [csvText, setCsvText] = useState("");
   // Display mode for the Formatted/Source toggle. SOURCE = the raw text (a Frame
   // Input's literal cells, or a date column's raw serials); FORMATTED = the derived
-  // render (TRUE/FALSE, formatted dates). For a literal-source editor, Source is the
-  // editable truth and Formatted is a read-only preview; for a read-only date view it
-  // just toggles serial vs date string.
+  // render (TRUE/FALSE, formatted dates, units). For a literal-source editor BOTH
+  // modes edit the same raw truth (author 2026-07-16): Source edits it verbatim;
+  // Formatted shows the derived render, swaps to the raw text while a cell is
+  // focused, and re-renders formatted on blur. A read-only date view just toggles
+  // serial vs date string.
   const [displayMode, setDisplayMode] = useState<"formatted" | "source">("formatted");
+  // The cell being edited IN FORMATTED MODE + its draft. The draft lives in a ref
+  // (state only marks the cell + forces renders) so Escape can reset it and blur
+  // synchronously without committing a stale closure's text.
+  const [editCell, setEditCell] = useState<{ r: number; c: number } | null>(null);
+  const editDraft = useRef("");
+  const [, bumpDraft] = useState(0);
   // DISPLAY-ONLY list orientation: a 1-D list is stored as one ROW (its value is the
   // flat, comma-separated list, unchanged). This just renders it down a COLUMN — one
   // value per line, nicer to read for a long list — without touching the value: copy /
@@ -215,10 +223,11 @@ export function TablePopup() {
     }
     setView("grid");
     // Everything opens FORMATTED (Source toggle off) — you see the derived render
-    // (formatted numbers/dates, applied units) first; flip Source on to edit the raw
-    // text. The format dropdown stays visible in both modes; Source just stops it
-    // from RENDERING (you're looking at raw text).
+    // (formatted numbers/dates, applied units) first; both modes edit (a focused
+    // formatted cell shows its raw text). The format dropdown stays visible in both
+    // modes; Source just stops it from RENDERING (you're looking at raw text).
     setDisplayMode("formatted");
+    setEditCell(null);
   }, [state]);
 
   if (!state) return null;
@@ -227,7 +236,8 @@ export function TablePopup() {
   const editable = (!!state.onSave && cellType === "number") || !!state.onSaveFrame || !!state.onSaveSource || !!state.onSaveRaw;
   // Literal-source editor (Frame Input / Table Input): the grid holds RAW text, never coerced.
   const literalSource = !!state.onSaveSource || !!state.onSaveRaw;
-  // Formatted PREVIEW (derived render, read-only) — only meaningful for a literal source.
+  // Formatted view of a literal source: derived render, but still EDITABLE — a
+  // focused cell swaps to its raw text; blur commits and re-renders formatted.
   const formattedPreview = literalSource && displayMode === "formatted";
   const editableHeaders = editable && !!state.editableHeaders;
   const colTypeAt = (c: number): CellType => columnTypes[c] ?? cellType;
@@ -706,6 +716,12 @@ export function TablePopup() {
                     // NaN (dirty data) — a text column is excluded, and the editable
                     // raw view shows the source token ("oops"), never "NaN".
                     const nan = !isTextType(type) && (row[c] ?? "") === "NaN";
+                    // Formatted mode edits through a focus draft: the cell shows the
+                    // derived render at rest, swaps to the RAW text on focus (the edit
+                    // truth, like Excel's formula-bar-in-cell), and commits on blur —
+                    // where it re-renders formatted (units, dates, number formats).
+                    const fmtEdit = formattedPreview && editable && !vertical;
+                    const editingHere = !!editCell && editCell.r === r && editCell.c === c;
                     return (
                     <td
                       key={c}
@@ -715,11 +731,20 @@ export function TablePopup() {
                     >
                       <input
                         className={isTextType(type) ? "table-popup__input table-popup__input--text" : "table-popup__input"}
-                        value={row[c] ?? ""}
-                        readOnly={!editable || formattedPreview}
+                        value={editingHere ? editDraft.current : row[c] ?? ""}
+                        readOnly={!editable || (formattedPreview && !fmtEdit)}
                         inputMode={isTextType(type) ? "text" : "decimal"}
                         spellCheck={false}
-                        onChange={(e) => setCell(r, c, e.target.value)}
+                        onFocus={fmtEdit ? () => { editDraft.current = grid[r]?.[c] ?? ""; setEditCell({ r, c }); } : undefined}
+                        onChange={(e) => {
+                          if (fmtEdit) { editDraft.current = e.target.value; bumpDraft((x) => x + 1); }
+                          else setCell(r, c, e.target.value);
+                        }}
+                        onBlur={fmtEdit ? () => { if (editingHere) { setCell(r, c, editDraft.current); setEditCell(null); } } : undefined}
+                        onKeyDown={fmtEdit ? (e) => {
+                          if (e.key === "Enter") e.currentTarget.blur();
+                          else if (e.key === "Escape") { editDraft.current = grid[r]?.[c] ?? ""; e.currentTarget.blur(); }
+                        } : undefined}
                       />
                     </td>
                     );
