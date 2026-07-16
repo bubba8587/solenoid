@@ -55,9 +55,15 @@ const TPS_MAX_POINTS = 220;
 export function fitSurface(points: FitPoint[]): ((x: number, y: number) => number) | null {
   const n = points.length;
   if (n === 0) return null;
-  // Normalise x,y to ~[0,1] for numerical stability (z stays raw).
-  const xs = points.map((p) => p.x), ys = points.map((p) => p.y);
-  const xmin = Math.min(...xs), xmax = Math.max(...xs), ymin = Math.min(...ys), ymax = Math.max(...ys);
+  // Normalise x,y to ~[0,1] for numerical stability (z stays raw). Loop (not
+  // Math.min(...spread)) so a huge wired grid can't blow the argument limit.
+  let xmin = Infinity, xmax = -Infinity, ymin = Infinity, ymax = -Infinity;
+  for (const p of points) {
+    if (p.x < xmin) xmin = p.x;
+    if (p.x > xmax) xmax = p.x;
+    if (p.y < ymin) ymin = p.y;
+    if (p.y > ymax) ymax = p.y;
+  }
   const sx = xmax > xmin ? 1 / (xmax - xmin) : 0, sy = ymax > ymin ? 1 / (ymax - ymin) : 0;
   const nx = (x: number) => (x - xmin) * sx, ny = (y: number) => (y - ymin) * sy;
   const P = points.map((p) => [nx(p.x), ny(p.y)] as [number, number]);

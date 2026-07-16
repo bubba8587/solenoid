@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { NODE_EXCEL } from "./nodeExcel";
 import { FLAT_CATALOG } from "./catalogUtils";
-import { NODE_COMPONENTS } from "./nodeRegistry";
+import { NODE_COMPONENTS, componentForNode } from "./nodeRegistry";
 
 // HARD version of the dev-only catalogValidator console warnings (v1.0 audit,
 // quality): catalog↔registry drift previously surfaced only as a dev console
@@ -50,5 +50,16 @@ describe("catalog ↔ registry consistency", () => {
       }
     }
     expect(broken).toEqual([]);
+  });
+
+  it("every registered class resolves to ITS OWN component (subclass shadowing)", () => {
+    // ImportObsidianNode extends NoteNode: with a plain first-match instanceof
+    // scan, whichever entry came first won — an Imported Note once rendered as a
+    // plain Note. componentForNode's exact-constructor pass makes entry order
+    // irrelevant for registered classes; this pins that for every future subclass.
+    const wrong = NODE_COMPONENTS
+      .filter(([ctor, component]) => componentForNode(Object.create(ctor.prototype) as object) !== component)
+      .map(([ctor]) => ctor.name);
+    expect(wrong).toEqual([]);
   });
 });

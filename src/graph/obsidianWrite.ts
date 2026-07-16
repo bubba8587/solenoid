@@ -40,10 +40,18 @@ async function rasterizeSvg(svgEl: SVGSVGElement): Promise<Uint8Array | null> {
   const h = Math.max(1, Math.round(box.height));
   if (w < 8 || h < 8) return null;
   const markup = serializeSvgWithComputedStyles(svgEl);
-  // Ensure the serialized root carries explicit pixel dimensions + the SVG namespace
-  // so the off-document Image can size it (a class-sized chart has neither).
-  const sized = markup
-    .replace(/^<svg/, `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"`);
+  // Ensure the root carries explicit pixel dimensions + the SVG namespace so the
+  // off-document Image can size it. Set them through the DOM, not a string prepend:
+  // a recharts root already HAS width/height attributes, and a duplicated attribute
+  // is a fatal XML parse error (the blob is image/svg+xml), which silently killed
+  // every chart raster. XMLSerializer emits the xmlns declaration itself.
+  const holder = document.createElement("div");
+  holder.innerHTML = markup;
+  const root = holder.querySelector("svg");
+  if (!root) return null;
+  root.setAttribute("width", String(w));
+  root.setAttribute("height", String(h));
+  const sized = new XMLSerializer().serializeToString(root);
   const blob = new Blob([sized], { type: "image/svg+xml;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   try {
@@ -105,11 +113,15 @@ export interface WriteVaultResult {
  *  first). Overwrites an existing note of the same name (a re-run refreshes it). */
 export async function writeDocumentToVault(doc: DocumentValue, opts: WriteVaultOptions): Promise<WriteVaultResult> {
   if (!isDesktop()) throw new Error("Desktop app only");
-  const subParts = opts.subfolder.split("/").map((s) => s.trim()).filter(Boolean);
+  // Vault-relative only: drop empty / "." / ".." segments so a stray ".." can't
+  // climb out of the vault.
+  const cleanParts = (p: string) =>
+    p.split("/").map((s) => s.trim()).filter((s) => s && s !== "." && s !== "..");
+  const subParts = cleanParts(opts.subfolder);
   const noteDir = subParts.length ? await joinPath(opts.vault, ...subParts) : opts.vault;
   await ensureDir(noteDir);
 
-  const assetParts = opts.assetSubfolder.split("/").map((s) => s.trim()).filter(Boolean);
+  const assetParts = cleanParts(opts.assetSubfolder);
   const assetDir = assetParts.length ? await joinPath(opts.vault, ...assetParts) : noteDir;
 
   let assetCount = 0;

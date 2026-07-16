@@ -44,6 +44,10 @@ type Area = AreaPlugin<Schemes, AreaExtra>;
 // box a few px each run. GROUP_HEADER matches `.solenoid-group__header` (34px).
 export const GROUP_PAD = 24;     // gap between the box edge and the nodes it wraps
 export const GROUP_HEADER = 34;  // header height (matches GroupNode.css)
+// Minimum group box size — shared by the resize grip (GroupNode.tsx) and autofit
+// so a fit can never shrink below what the grip allows.
+export const GROUP_MIN_W = 140;
+export const GROUP_MIN_H = 90;
 
 function nodeBox(area: Area, id: string): { x: number; y: number; w: number; h: number } | null {
   // measuredBox guarantees a non-zero size: an unpainted member used to read
@@ -91,8 +95,10 @@ export async function createGroupFromSelection(editor: Editor, area: Area): Prom
   const group = new GroupNode({
     members: sel.map((n) => n.id),
     color: majorityColor(sel),
-    width: (maxX - minX) + GROUP_PAD * 2,
-    height: (maxY - minY) + GROUP_PAD * 2 + GROUP_HEADER,
+    // Integer dims (same rule as the resize grips): a fractional width/height
+    // puts the right/bottom edge on a half-pixel and the selection ring drifts.
+    width: Math.round((maxX - minX) + GROUP_PAD * 2),
+    height: Math.round((maxY - minY) + GROUP_PAD * 2 + GROUP_HEADER),
   });
   await editor.addNode(group);
   await area.translate(group.id, { x: minX - GROUP_PAD, y: minY - GROUP_PAD - GROUP_HEADER });
@@ -129,9 +135,10 @@ export async function autofitGroupBox(
   const after: GroupGeom = {
     x: minX - GROUP_PAD,
     y: minY - GROUP_PAD - GROUP_HEADER,
-    // Clamp to the same minimums the manual resize grip enforces.
-    width:  Math.max(140, (maxX - minX) + GROUP_PAD * 2),
-    height: Math.max(90,  (maxY - minY) + GROUP_PAD * 2 + GROUP_HEADER),
+    // Clamp to the same minimums the manual resize grip enforces; integer dims
+    // like every other resize source (half-pixel edges drift the selection ring).
+    width:  Math.round(Math.max(GROUP_MIN_W, (maxX - minX) + GROUP_PAD * 2)),
+    height: Math.round(Math.max(GROUP_MIN_H, (maxY - minY) + GROUP_PAD * 2 + GROUP_HEADER)),
   };
   group.width = after.width;
   group.height = after.height;

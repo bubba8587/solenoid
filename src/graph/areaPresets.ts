@@ -4,7 +4,7 @@ import { Zoom, type AreaPlugin } from "rete-area-plugin";
 import type { NodeEditor } from "rete";
 import type { Schemes, AreaExtra } from "./schemes";
 import { getGuardedSocketPosition } from "./guardedSocketPosition";
-import { NODE_COMPONENTS } from "./nodeRegistry";
+import { componentForNode } from "./nodeRegistry";
 import { SocketComponent } from "./components/SocketComponent";
 import { ConnectionComponent } from "./components/ConnectionComponent";
 import { SolenoidSocket } from "./sockets";
@@ -70,8 +70,7 @@ export function solenoidClassicRenderSetup() {
     socketPositionWatcher: getGuardedSocketPosition({ offset: (p) => p }),
     customize: {
       node({ payload }) {
-        const hit = NODE_COMPONENTS.find(([Ctor]) => payload instanceof Ctor);
-        return hit ? hit[1] : null;
+        return componentForNode(payload);
       },
       socket() {
         return SocketComponent;
