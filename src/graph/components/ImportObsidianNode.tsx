@@ -157,8 +157,8 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
     const zoom = area?.area.transform.k ?? 1;
     const startW = data.width, startH = Math.max(data.height, minH);
     const move = (ev: PointerEvent) => {
-      data.width = Math.max(MIN_W, startW + (ev.clientX - startX) / zoom);
-      data.height = Math.max(minH, startH + (ev.clientY - startY) / zoom);
+      data.width = Math.round(Math.max(MIN_W, startW + (ev.clientX - startX) / zoom));
+      data.height = Math.round(Math.max(minH, startH + (ev.clientY - startY) / zoom));
       void area?.update("node", data.id);
     };
     const up = () => {

@@ -225,8 +225,10 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
     const handle = e.currentTarget as HTMLElement;
     handle.setPointerCapture(e.pointerId);
     const move = (ev: PointerEvent) => {
-      data.width = Math.max(NOTE_MIN_W, startW + (ev.clientX - startX) / k);
-      data.height = Math.max(minNoteH, startH + (ev.clientY - startY) / k);
+      // Integer dims: a fractional width/height puts the right/bottom edge on a
+      // half-pixel, so the inset:-2px selection ring renders 0.5px off there.
+      data.width = Math.round(Math.max(NOTE_MIN_W, startW + (ev.clientX - startX) / k));
+      data.height = Math.round(Math.max(minNoteH, startH + (ev.clientY - startY) / k));
       void area?.update("node", data.id);
     };
     const up = () => {
@@ -238,8 +240,8 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
       if (gridSnapStore.get()) {
         const pos = area?.nodeViews.get(data.id)?.position;
         if (pos) {
-          data.width = Math.max(NOTE_MIN_W, snapCoord(pos.x + data.width) - pos.x);
-          data.height = Math.max(minNoteH, snapCoord(pos.y + data.height) - pos.y);
+          data.width = Math.round(Math.max(NOTE_MIN_W, snapCoord(pos.x + data.width) - pos.x));
+          data.height = Math.round(Math.max(minNoteH, snapCoord(pos.y + data.height) - pos.y));
         }
       }
       void area?.update("node", data.id);

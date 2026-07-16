@@ -215,7 +215,7 @@
 .solenoid-pres--selected::after {
   content: "";
   position: absolute;
-  inset: 0;
+  inset: -2px;
   box-sizing: border-box;
   border: 2px solid color-mix(in srgb, var(--node-accent) 70%, #fff);
   border-radius: 8px;
