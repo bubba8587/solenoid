@@ -7,6 +7,7 @@ import { snapshotGraph } from "../pixi/pixiGraphSnapshot";
 import { cableShapeStore } from "../cableShape";
 import { semanticZoomStore } from "../semanticZoomStore";
 import { collapseStore } from "../collapseStore";
+import { groupCollapseStore } from "../groupCollapse";
 import { nodeSizeStore } from "../nodeSizeStore";
 import { groupMembershipStore } from "../groupMembership";
 import { appThemeStore } from "../appTheme";
@@ -334,29 +335,43 @@ export function HtmlCanvasLayer() {
         doBuild();
       }, 150);
     };
-    const fullRebuild = () => scheduleRebuild();
+    // Rebuild-trigger telemetry: `window.__hcTriggers` counts every full-rebuild cause and
+    // targeted update since the layer mounted. A full rebuild re-clones + re-captures EVERY
+    // card, so a store that fires rapidly (per recompute pass, per frame) is a renderer hang —
+    // this makes the culprit readable from the console instead of guessed.
+    const triggers: Record<string, number> = {};
+    (window as unknown as { __hcTriggers?: Record<string, number> }).__hcTriggers = triggers;
+    const count = (cause: string) => { triggers[cause] = (triggers[cause] ?? 0) + 1; };
+    const fullRebuild = (cause: string) => () => { count(cause); scheduleRebuild(); };
     // NOT subscribed: cableValueStore — every value change that repaints a card
     // already arrives through the render pipe WITH its node id (processGraph
     // calls area.update per affected node); the store bump carried no ids and
     // forced the full-rebuild path every pass (finding 43).
-    const unsubConn = connectionVersionStore.subscribe(fullRebuild);
-    const unsubCollapse = collapseStore.subscribe(fullRebuild);
-    const unsubSize = nodeSizeStore.subscribe(fullRebuild);
-    const unsubMembership = groupMembershipStore.subscribe(fullRebuild); // recolor member dots on group color/membership change
-    const unsubTheme = appThemeStore.subscribe(fullRebuild); // retint on theme / accent / palette change
-    const unsubFmt = formatAnnotationStore.subscribe(fullRebuild); // re-capture reformatted value text
-    const unsubShape = cableShapeStore.subscribe(fullRebuild); // re-route on cable-shape change
+    const unsubConn = connectionVersionStore.subscribe(fullRebuild("connection"));
+    const unsubCollapse = collapseStore.subscribe(fullRebuild("collapse"));
+    // GROUP collapse/expand hides/shows members via inline visibility on their
+    // node views — a state only collectSpecs' visibility check sees, and the
+    // collapse fires area.update for the GROUP id alone, so the targeted path
+    // never drops the members. Without this, collapsed-group members kept their
+    // cached bitmaps and were drawn on every pan (regression once targeted
+    // re-capture landed — the old full-rebuild-on-anything behavior had masked it).
+    const unsubGroupCollapse = groupCollapseStore.subscribe(fullRebuild("groupCollapse"));
+    const unsubSize = nodeSizeStore.subscribe(fullRebuild("nodeSize"));
+    const unsubMembership = groupMembershipStore.subscribe(fullRebuild("membership")); // recolor member dots on group color/membership change
+    const unsubTheme = appThemeStore.subscribe(fullRebuild("theme")); // retint on theme / accent / palette change
+    const unsubFmt = formatAnnotationStore.subscribe(fullRebuild("formatAnnotation")); // re-capture reformatted value text
+    const unsubShape = cableShapeStore.subscribe(fullRebuild("cableShape")); // re-route on cable-shape change
     // Semantic zoom flips a root CSS class the captured bitmaps don't know
     // about — without a re-capture, zooming out past the threshold on a big
     // graph (exactly where this renderer is active) kept drawing the stale
     // full-detail cards for the whole gesture instead of the simplified view.
-    const unsubSemantic = semanticZoomStore.subscribe(fullRebuild);
+    const unsubSemantic = semanticZoomStore.subscribe(fullRebuild("semanticZoom"));
     // area.addPipe has no unsubscribe, so guard with a flag the cleanup flips instead.
     let pipeLive = true;
     area.addPipe((ctx) => {
       if (pipeLive && ctx && typeof ctx === "object" && "type" in ctx) {
         const c = ctx as { type: string; data?: { type?: string; payload?: { id?: string } } };
-        if (c.type === "render" && c.data?.type === "node") scheduleRebuild(c.data.payload?.id);
+        if (c.type === "render" && c.data?.type === "node") { count("render-pipe"); scheduleRebuild(c.data.payload?.id); }
       }
       return ctx;
     });
@@ -442,6 +457,7 @@ export function HtmlCanvasLayer() {
       clearTimeout(gestureTimer);
       unsubConn();
       unsubCollapse();
+      unsubGroupCollapse();
       unsubSize();
       unsubMembership();
       unsubTheme();

@@ -265,23 +265,41 @@ function drawCalHeat(canvas: HTMLCanvasElement, p: CalHeatPayload, W: number, H:
   if (!ctx) return;
   const ink = themeInk(canvas);
   if (p.days.length === 0) return;
-  // Aggregate duplicate days (sum) and find the span — capped at a year, keeping
-  // the most recent end of the data.
+  // Aggregate duplicate days (sum) and pick the shown WINDOW: at most a year, and
+  // at most what the box can render at a legible cell size — a multi-year feed in
+  // a narrow card shows its most recent weeks instead of sub-pixel mush.
   const byDay = new Map<number, number>();
   for (let i = 0; i < p.days.length; i++) byDay.set(p.days[i], (byDay.get(p.days[i]) ?? 0) + (p.values[i] ?? 0));
   const dayList = [...byDay.keys()];
   const end = Math.max(...dayList);
-  const start = Math.max(Math.min(...dayList), end - 365);
-  const gridStart = start - mondayIndex(start); // align to the week's Monday
-  const weeks = Math.floor((end - gridStart) / 7) + 1;
+  const dataStart = Math.min(...dayList);
+  const padL = 14, padT = 11, padR = 1, padB = 1;
+  const MIN_CELL = 3.2; // px — below this the grid stops reading as days
+  const endMonday = end - mondayIndex(end);
+  const spanStart = Math.max(dataStart, end - 365);
+  const wantWeeks = (endMonday - (spanStart - mondayIndex(spanStart))) / 7 + 1;
+  const maxWeeks = Math.max(4, Math.floor((W - padL - padR) / MIN_CELL));
+  const weeks = Math.min(wantWeeks, maxWeeks);
+  const gridStart = endMonday - (weeks - 1) * 7; // a Monday, so columns stay week-aligned
+  const start = Math.max(spanStart, gridStart);
+  const truncated = dataStart < start;
 
   let vLo = Infinity, vHi = -Infinity;
   for (const [d, v] of byDay) { if (d >= start) { vLo = Math.min(vLo, v); vHi = Math.max(vHi, v); } }
   const norm = (v: number) => (vHi > vLo ? (v - vLo) / (vHi - vLo) : 0.75);
 
-  const padL = 14, padT = 11, padR = 1, padB = 1;
   const cell = Math.min((W - padL - padR) / weeks, (H - padT - padB) / 7);
   const gap = cell > 6 ? 1 : 0.5;
+
+  // Truncation is state the reader must know — the data reaches further back
+  // than the grid shows.
+  if (truncated) {
+    ctx.font = TICK_FONT;
+    ctx.fillStyle = ink.dim;
+    ctx.textAlign = "right";
+    ctx.textBaseline = "bottom";
+    ctx.fillText(`last ${weeks} wk`, W - padR - 1, padT - 2);
+  }
 
   // Month labels along the top: at each week whose Monday enters a new month.
   ctx.font = TICK_FONT;
@@ -423,19 +441,34 @@ function drawQuiver(canvas: HTMLCanvasElement, p: QuiverPayload, W: number, H: n
     const mag = Math.hypot(u, v);
     const t = mag / maxMag;
     const [r, g, b] = heightColor(t);
+    const col = `rgb(${r | 0},${g | 0},${b | 0})`;
     const len = reach * (0.15 + 0.85 * t);
     const ang = Math.atan2(-v, u);
-    const hx = cx + len * Math.cos(ang), hy = cy + len * Math.sin(ang);
-    const tx = cx - len * Math.cos(ang), ty = cy - len * Math.sin(ang);
-    ctx.strokeStyle = `rgb(${r | 0},${g | 0},${b | 0})`;
-    ctx.lineWidth = Math.max(0.9, Math.min(cw, ch) * 0.07);
+    const cosA = Math.cos(ang), sinA = Math.sin(ang);
+    const hx = cx + len * cosA, hy = cy + len * sinA;
+    const tx = cx - len * cosA, ty = cy - len * sinA;
+    ctx.strokeStyle = col;
+    // Thinner shaft on small arrows — a full-width stroke on a 3px arrow reads as a blob.
+    ctx.lineWidth = Math.max(0.7, Math.min(cw, ch) * 0.07 * (0.55 + 0.45 * t));
     ctx.lineCap = "round";
-    ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(hx, hy); ctx.stroke();
-    // Arrowhead: two short strokes swept back from the tip.
-    const hl = Math.min(5, len * 0.5);
-    for (const side of [0.5, -0.5]) {
-      const a = ang + Math.PI + side;
-      ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx + hl * Math.cos(a), hy + hl * Math.sin(a)); ctx.stroke();
+    // Arrowhead: a FILLED triangle (crisp at any size — the old two swept strokes
+    // smudged into the shaft at small magnitudes). The shaft stops at the head's
+    // base so it can't poke past the tip; arrows too small to carry a head draw
+    // as a bare shaft.
+    const hl = Math.min(4.5, len * 0.55);
+    if (hl >= 2.2) {
+      const bx = hx - hl * cosA, by = hy - hl * sinA; // head base on the shaft
+      ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(bx, by); ctx.stroke();
+      const wh = hl * 0.45; // half-width of the head base
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.moveTo(hx, hy);
+      ctx.lineTo(bx - wh * sinA, by + wh * cosA);
+      ctx.lineTo(bx + wh * sinA, by - wh * cosA);
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(hx, hy); ctx.stroke();
     }
   }
 }
@@ -455,7 +488,9 @@ function drawContour(canvas: HTMLCanvasElement, p: ContourPayload, W: number, H:
   if (!Number.isFinite(zmin)) return;
   if (zmin === zmax) zmax = zmin + 1;
 
-  const padL = 6, padR = 6, padT = 6, padB = 6;
+  // Real gutters for the coordinate hints — drawn OVER the filled bands they were
+  // illegible (and looked clipped into the plot, esp. at Report sizes).
+  const padL = 6, padR = 6, padT = 12, padB = 12;
   const xmin = Math.min(...xs), xmax = Math.max(...xs);
   const ymin = Math.min(...ys), ymax = Math.max(...ys);
   const sx = (v: number) => padL + ((v - xmin) / (xmax - xmin || 1)) * (W - padL - padR);
@@ -518,17 +553,17 @@ function drawContour(canvas: HTMLCanvasElement, p: ContourPayload, W: number, H:
     }
   }
 
-  // Corner coordinate hints (the card is too small for full axes).
+  // Corner coordinate hints, in the gutters (the card is too small for full axes):
+  // x range along the bottom, y max above the top-left.
   ctx.font = TICK_FONT;
   ctx.fillStyle = ink.dim;
   ctx.textBaseline = "bottom";
   ctx.textAlign = "left";
-  ctx.fillText(fmtTick(xmin), padL + 1, H - 1);
+  ctx.fillText(fmtTick(xmin), padL, H - 1);
   ctx.textAlign = "right";
-  ctx.fillText(fmtTick(xmax), W - padR - 1, H - 1);
-  ctx.textBaseline = "top";
+  ctx.fillText(fmtTick(xmax), W - padR, H - 1);
   ctx.textAlign = "left";
-  ctx.fillText(fmtTick(ymax), padL + 1, 1);
+  ctx.fillText(fmtTick(ymax), padL, padT - 2);
 }
 
 // ─── React wrappers ────────────────────────────────────────────────────────────

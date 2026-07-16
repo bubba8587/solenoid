@@ -18,6 +18,38 @@ edge round independently. Possible directions not yet tried: draw the ring so it
 (e.g. `inset:0` + account for the 2px border, or a box-shadow ring) instead of a 2px-offset `::after`;
 or pixel-snap the card box. Radius itself is correct; don't re-touch it. Parked by author.
 
+### SESSION DIGEST (2026-07-16f — 1.2 author-eyeball round 1 fixes: GPU renderer, drill-in cable-drag, chart polish)
+Author walked items 1–19 of the release eyeball; this session fixed what it surfaced.
+- **GPU renderer (HTML-in-Canvas) regressions:** (1) collapsed-group members drew during pans —
+  group collapse hides members via inline `visibility` and fires `area.update` for the GROUP only,
+  so once targeted re-capture landed nothing ever dropped the member bitmaps; `HtmlCanvasLayer` now
+  subscribes `groupCollapseStore` → full rebuild. (2) Canvas-drawn figures (Surface + the whole
+  2026-07-16 chart wave, Point Plotter/Curve/Grid Painter pads) captured BLANK — `cloneNode` copies
+  a `<canvas>` element but not its buffer; `syncCanvasState` blits each original's pixels onto its
+  clone. (3) `buildMips` starvation: work arriving mid-build (updateNodes during an async build)
+  early-returned on the `building` guard and those nodes never got pyramids — permanently on the
+  slow per-frame `drawElementImage` path; the build now loops until no unbuilt node remains
+  (`mipFailed` marks permanent createImageBitmap failures so it can't spin). (4) Diagnosis for the
+  reported "renderer hangs — is something rapid-firing?": `window.__hcTriggers` counts every full-
+  rebuild cause + targeted render-pipe update; read it while reproducing.
+- **Drill-in cable-drag flag:** the composite mount's ConnectionPlugin never got Canvas's
+  `connectionpick`/`connectiondrop` pipe, so `cableDragStore` never flipped inside a drill-in — the
+  Conduit's expand-on-drag-near / phantom-lane grow never triggered (author report), the
+  `--cabling` touch CSS never applied, and an uncommitted text edit wired stale. Mirrored the pipe
+  (quick-wire stays main-only, D2).
+- **Charts:** height colormap is now PALETTE-DERIVED (`heightRampColor` in palette.ts — slots
+  violet→blue→teal→green→gold on a forced lightness ladder; viridis-look preserved in Default,
+  retints on palette switch, grayscale in Equinox; `SurfaceView.heightColor` delegates). Vector
+  Field arrowheads are filled triangles (the two swept strokes blobbed at small magnitudes; tiny
+  arrows draw a bare shaft, shaft width scales with magnitude). Calendar heatmap caps shown weeks
+  to what the box renders at ≥3.2px/cell (most recent first) + a dim "last N wk" truncation hint.
+  Contour's corner coordinate hints moved into real top/bottom gutters (they overlaid the fill —
+  illegible at Report sizes). PresentationComponent never subscribed to appThemeStore, so palette/
+  theme switches left its accent stale — subscribed.
+- **Open from the eyeball round:** Waterfall "can't render below 0" (author report) — the draw
+  math + node test provably carry negatives and the PF seed bridge never dips below zero; needs
+  the author's exact repro data. Cube join key decision still owed (backlog).
+
 ### SESSION DIGEST (2026-07-16e — 1.2 release run: movement pass, composite parity pass, PF seed, release docs)
 Author's release directive: punt all puntables (iFrame, Data Feed widening, drill-in nav/lasso/group
 tools, F-2 doc-level FC defaults → 1.3), then movement pass, composite parity pass, PF seed, docs,
