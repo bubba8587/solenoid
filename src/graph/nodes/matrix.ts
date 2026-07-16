@@ -735,10 +735,9 @@ export class ExpandNode extends ClassicPreset.Node {
       this.cachedResult = e;
       return { result: e };
     }
-    const fillRaw = inputs.fill?.[0];
-    const fill = (fillRaw === undefined || fillRaw === null
-      ? solError("#N/A", "Expanded cell with no Fill value")
-      : fillRaw) as Cell;
+    // Unwired Fill pads with `null` (first-class missing — author 2026-07-16), NOT
+    // Excel's #N/A: wire the NA node into Fill to get Excel's pad_with-omitted form.
+    const fill = (inputs.fill?.[0] ?? null) as Cell;
     const result: CellMat = [];
     for (let i = 0; i < R; i++) {
       const src = i < curR ? m[i] : [];
