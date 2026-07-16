@@ -25,6 +25,7 @@ import {
   OPPOSITE_ANCHOR, ANCHOR_DIR, type Box as StandoffBox,
 } from "./standoffs";
 import { PUSH_GAP } from "./groupPushCore";
+import { measuredBox } from "./nodeSize";
 import { scheduleAutosave } from "./persistence";
 import {
   processGraph, beginGraphRebuild, endGraphRebuild, bulkSettle,
@@ -131,12 +132,10 @@ export async function insertConduitForCables(
       for (const n of editor.getNodes()) {
         if (n instanceof GroupNode && !n.collapsed) continue;
         if (groupCollapseStore.isNodeHidden(n.id)) continue;
-        const view = area.nodeViews.get(n.id);
-        if (!view) continue;
-        const w = view.element.offsetWidth || n.width || 0;
-        const h = view.element.offsetHeight || n.height || 0;
-        if (w === 0 || h === 0) continue;
-        const p = view.position;
+        const b = measuredBox(area, n.id, editor);
+        if (!b) continue;
+        const { w, h } = b;
+        const p = { x: b.x, y: b.y };
         if (
           cx + CONDUIT_PIVOT > p.x && cx - CONDUIT_PIVOT < p.x + w &&
           cy + CONDUIT_PIVOT > p.y && cy - CONDUIT_PIVOT < p.y + h
@@ -188,17 +187,9 @@ export function linkStandoffBetween(
   area: AreaPlugin<Schemes, AreaExtra>,
   t: { aId: string; bId: string },
 ): void {
-  const boxOf = (id: string): StandoffBox | null => {
-    const view = area.nodeViews.get(id);
-    const node = editor.getNode(id) as { width?: number; height?: number } | undefined;
-    if (!view || !node) return null;
-    return {
-      x: view.position.x,
-      y: view.position.y,
-      w: view.element.offsetWidth || node.width || 100,
-      h: view.element.offsetHeight || node.height || 50,
-    };
-  };
+  // measuredBox: the same size read the standoff SOLVER uses (Canvas
+  // standoffBoxes), so the band created here matches the boxes it constrains.
+  const boxOf = (id: string): StandoffBox | null => measuredBox(area, id, editor);
   const ba = boxOf(t.aId);
   const bb = boxOf(t.bId);
   if (!ba || !bb) return;
