@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import { ClassicPreset } from "rete";
 import * as M from "./matrix";
 import { ListIndexNode } from "./list";
+import { InterpolateNode } from "./stats";
+import { NODE_COMPONENTS } from "../nodeRegistry";
 import { wrapNodeData } from "../coerceInputs";
 import { MutableSocket, SolenoidSocket, AdoptiveSocket } from "../sockets";
 import { withMatrixUnit, matrixUnitOf, fromUnit, isUnitCell, type UnitCell } from "../unitValue";
@@ -31,13 +33,24 @@ const POLICY: Record<string, Policy> = {
   TableSelectNode: "carry",       // CHOOSEROWS / CHOOSECOLS
   TableTakeDropNode: "carry",     // TAKE / DROP (table)
   ExpandNode: "carry",
+  InterpolateNode: "carry",       // grid mode fills blanks in the SAME unit (dynamic
+                                  // socket, so the sweep can't see it — kept manually)
   HStackTableNode: "carry-if-uniform",
   VStackNode: "carry-if-uniform",
   TableReshapeNode: "convert-to-matrix", // WRAPROWS/WRAPCOLS lift; TOCOL/TOROW drop (both checked below)
   TableMultNode: "strip",         // MMULT — dimensioned matrix products are out of scope (documented-strip)
   MatDetNode: "strip",            // MDETERM (unitⁿ) / MINVERSE (unit⁻¹) — documented-strip
+  MapTableNode: "strip",          // an arbitrary per-cell lambda breaks the unit, by design
+  ByAxisNode: "strip",            // arbitrary per-row/col lambda reduction — same
+  ReduceLambdaNode: "strip",
+  ScanLambdaNode: "strip",
+  BuildFrameNode: "strip",        // matrix → frame crosses into the per-COLUMN unit model;
+                                  // lifting a D20 grid unit into column units is future work
   TableInfoNode: "na",            // ROWS / COLUMNS → plain numbers
   TableUnitNode: "na",            // MUNIT → a freshly generated identity matrix
+  ChartNode: "na",                // visuals: a chart value out, no dimensioned matrix output
+  SurfaceNode: "na",
+  HeatmapCellNode: "na",
   TableInputNode: "author",       // a literal source that tags its own output
 };
 
@@ -57,29 +70,43 @@ function takesMatrix(node: ClassicPreset.Node): boolean {
 }
 
 describe("matrix-unit policy — completeness (a new matrix op must declare a policy)", () => {
-  it("every matrix.ts node that takes a matrix is in the POLICY table", () => {
-    const missing: string[] = [];
+  it("every REGISTERED node that takes a matrix is in the POLICY table", () => {
+    // Sweep the whole node registry, not just matrix.ts — the first escape was
+    // real (visuals, the 2-D lambda family, BuildFrame, and InterpolateNode's
+    // dynamically-added grid socket all shipped outside the old matrix.ts-only
+    // sweep). A node whose matrix socket appears only after a mode switch (like
+    // InterpolateNode) still can't be seen structurally — keep those in POLICY by
+    // hand when they ship.
+    const missing = new Set<string>();
     let found = 0;
-    for (const exp of Object.values(M)) {
-      if (typeof exp !== "function") continue;
-      if (!(exp.prototype instanceof ClassicPreset.Node)) continue;
+    for (const [ctor] of NODE_COMPONENTS) {
       let node: ClassicPreset.Node;
-      try { node = new (exp as new () => ClassicPreset.Node)(); } catch { continue; }
+      try { node = new (ctor as unknown as new () => ClassicPreset.Node)(); } catch { continue; }
       if (!takesMatrix(node)) continue;
       found++;
-      if (!(node.constructor.name in POLICY)) missing.push(node.constructor.name);
+      if (!(node.constructor.name in POLICY)) missing.add(node.constructor.name);
     }
     // If this fails: a new matrix-transforming node shipped without deciding what
     // happens to a D20 unit tag. Add it to POLICY (and a case below) — carry / strip /
     // convert — don't let it silently drop the unit.
-    expect(missing).toEqual([]);
+    expect([...missing]).toEqual([]);
     // Non-vacuous: the sweep must actually be finding matrix-taking nodes (guards
     // against a socket-detection change silently making this test pass on nothing).
-    expect(found).toBeGreaterThanOrEqual(8);
+    expect(found).toBeGreaterThanOrEqual(14);
   });
 });
 
 describe("matrix-unit policy — behaviour matches the declared policy", () => {
+  it("carry: INTERPOLATE grid mode fills blanks in the input's unit", () => {
+    const n = new InterpolateNode({ mode: "grid" });
+    const bordered = withMatrixUnit(
+      [[null, 1, 2], [10, 5, null], [20, null, 9]],
+      { dim: { length: 1 }, display: "km" },
+    );
+    const out = (n.data({ grid: [bordered] }) as { result: unknown }).result;
+    expect(matrixUnitOf(out)).toMatchObject({ display: "km" });
+  });
+
   it("carry: the whole-grid unit rides a structural reshape", () => {
     expect(matrixUnitOf(new M.TableTransposeNode().data({ matrix: [kmGrid()] }).result)).toMatchObject({ display: "km" });
     expect(matrixUnitOf(new M.TableSelectNode({ op: "chooserows" }).data({ matrix: [kmGrid()], indices: [[1]] }).result)).toMatchObject({ display: "km" });

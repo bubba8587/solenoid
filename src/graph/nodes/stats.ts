@@ -4,6 +4,7 @@ import { normSInv, regularizedBeta, regularizedGamma, stdNormCDF, lnCombin, bise
 import { solError, isSolError, type SolError } from "../errorValue";
 import { excelRank, excelTrimmean, excelPercentRank } from "../excelFunctions";
 import { forAggregate } from "../valueKinds";
+import { carryMatrixUnit } from "../unitValue";
 import { fitSurface, type FitPoint } from "./surfaceFit";
 
 // Pair two parallel sample lists for a bivariate stat (CORREL/COVARIANCE/regression):
@@ -1169,7 +1170,9 @@ export class InterpolateNode extends ClassicPreset.Node {
     const grid: (number | null)[][] = gridRaw.map((row) =>
       (Array.isArray(row) ? row : []).map((c) => (typeof c === "number" && Number.isFinite(c) ? c : null)),
     );
-    const result = fillBorderedGrid(grid, this.forecast);
+    // Carry the D20 grid unit: filling blanks keeps every cell in the input's unit
+    // (structural reshape, matrixUnitPolicy "carry").
+    const result = carryMatrixUnit(fillBorderedGrid(grid, this.forecast), gridRaw);
     this.cachedResult = result;
     return { result };
   }
