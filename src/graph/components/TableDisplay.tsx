@@ -5,6 +5,7 @@ import { isSolError, type SolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import { flyToNode } from "../flyToNode";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
+import { extremeSci } from "./format";
 import type { ResultType } from "../nodes/shared";
 
 // A polyform matrix cell — a number (date serial included), text, a boolean
@@ -15,6 +16,8 @@ type Mat = Cell[][];
 function fmtNum(v: number): string {
   if (Number.isNaN(v)) return "NaN"; // dirty data, not the #N/A error — tinted at the cell
   if (!Number.isFinite(v)) return v > 0 ? "∞" : "-∞";
+  const sci = extremeSci(v); // shared forced-scientific rule (format.ts)
+  if (sci !== null) return sci;
   return Number.isInteger(v) ? String(v) : v.toFixed(3).replace(/\.?0+$/, "");
 }
 

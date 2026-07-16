@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatScalar, listPreview } from "./format";
+import { formatScalar, listPreview, extremeSci } from "./format";
 
 // ─── formatScalar ────────────────────────────────────────────────────────────
 
@@ -22,9 +22,10 @@ describe("formatScalar", () => {
     expect(formatScalar(1.23456789)).toBe("1.2346");
   });
 
-  it("very small non-integers still get 4 decimal places", () => {
+  it("very small non-integers: 4 decimals down to 1e-4, then forced scientific", () => {
     expect(formatScalar(0.0001)).toBe("0.0001");
-    expect(formatScalar(0.00001)).toBe("0.0000");
+    // Below 1e-4 the fixed form lied ("0.0000") — now scientific (2026-07-16).
+    expect(formatScalar(0.00001)).toBe("1e-5");
   });
 
   it("Infinity falls through to toFixed(4) → 'Infinity'", () => {
@@ -79,5 +80,24 @@ describe("listPreview", () => {
 
   it("negative numbers", () => {
     expect(listPreview([-1, -2.5])).toBe("[-1, -2.50]  (2)");
+  });
+});
+
+describe("forced scientific past the readable range (author 2026-07-16)", () => {
+  it("extremeSci: >= 1e12 or nonzero < 1e-4; readable range untouched", () => {
+    expect(extremeSci(1.6331e16)).toBe("1.6331e+16"); // a tan() spike
+    expect(extremeSci(3.6e22)).toBe("3.6e+22");        // trailing zeros trimmed
+    expect(extremeSci(-1e12)).toBe("-1e+12");
+    expect(extremeSci(0.00005)).toBe("5e-5");
+    expect(extremeSci(999_999_999_999)).toBeNull();    // just under the line
+    expect(extremeSci(0.0001)).toBeNull();
+    expect(extremeSci(0)).toBeNull();
+    expect(extremeSci(Infinity)).toBeNull();           // ∞ keeps its own rendering
+  });
+
+  it("formatScalar routes extremes through it (no 17-digit walls, no 0.0000 lies)", () => {
+    expect(formatScalar(1.6331e16)).toBe("1.6331e+16");
+    expect(formatScalar(0.00005)).toBe("5e-5");
+    expect(formatScalar(1234.5)).toBe("1234.5000");    // normal range unchanged
   });
 });
