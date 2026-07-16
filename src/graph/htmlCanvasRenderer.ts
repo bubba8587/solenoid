@@ -81,7 +81,9 @@ interface EngineNode {
   srcEl: HTMLElement; // the live original (diagnostics only — clone-vs-original position check)
   refImg: ElementImageLike | null;
   pyramid: PyramidLevel[];
-  mipFailed?: boolean; // createImageBitmap permanently failed — per-frame refImg draw covers it
+  mipFailed?: boolean; // every raster path permanently failed — per-frame draw covers it
+  needsPaintRaster?: boolean; // bitmap paths failed — raster via the main canvas in the paint event
+  rasterAttempts?: number; // paint-raster retries (a fresh clone may miss the first rendering update)
   x: number; y: number; w: number; h: number;
   isGroup: boolean;
 }
@@ -246,6 +248,8 @@ export class HtmlCanvasRenderer {
       for (const p of n.pyramid) p.bmp?.close?.();
       n.pyramid = [];
       n.mipFailed = false; // fresh capture → retry the pyramid
+      n.needsPaintRaster = false;
+      n.rasterAttempts = 0;
       n.refEl.remove();
       n.refEl = this.cloneFor(s.el, s.w, s.h);
       n.srcEl = s.el;
@@ -482,6 +486,63 @@ export class HtmlCanvasRenderer {
     };
   }
 
+  /** Verbose one-shot probe of the capture→bitmap pipeline on the first node.
+   *  Console: `__hcProbe()` — logs which stage of the WICG pipeline the current
+   *  browser build breaks, with the real error text (the production catches stay
+   *  quiet). Also checks whether drawElementImage rasterizes EAGERLY (a region
+   *  snapshot with ink) or defers to paint (blank — no snapshot-based fallback
+   *  can work). */
+  probe(): void {
+    // eslint-disable-next-line no-console
+    const log = (...a: unknown[]) => console.info("[hc-probe]", ...a);
+    const n = this.nodes[0];
+    if (!n) { log("no nodes"); return; }
+    log("captureElementImage:", typeof this.canvas.captureElementImage,
+        "| drawElementImage(main):", typeof this.ctx.drawElementImage,
+        "| drawElementImage(scratch):", typeof this.sctx?.drawElementImage,
+        "| node:", n.id, `${n.w}×${n.h}`, "refImg:", !!n.refImg);
+    let img: ElementImageLike | null = null;
+    if (typeof this.canvas.captureElementImage === "function") {
+      try {
+        img = this.canvas.captureElementImage(n.refEl);
+        log("capture OK:", img && { w: img.width, h: img.height, ctor: (img as object).constructor?.name });
+      } catch (e) { log("capture THREW:", String(e)); }
+    }
+    const src = img ?? n.refImg;
+    void (async () => {
+      if (src) {
+        try { const b = await createImageBitmap(src as unknown as ImageBitmapSource); log("createImageBitmap(capture) OK:", b.width, b.height); b.close(); }
+        catch (e) { log("createImageBitmap(capture) THREW:", String(e)); }
+      } else log("no captured image to test createImageBitmap on");
+      if (this.sctx && typeof this.sctx.drawElementImage === "function") {
+        this.scratch.width = 64; this.scratch.height = 64;
+        if (src) {
+          try { this.sctx.drawElementImage(src, 0, 0, 64, 64); log("scratch.draw(capture) OK"); }
+          catch (e) { log("scratch.draw(capture) THREW:", String(e)); }
+        }
+        try { this.sctx.drawElementImage(n.refEl, 0, 0, 64, 64); log("scratch.draw(element) OK"); }
+        catch (e) { log("scratch.draw(element) THREW:", String(e)); }
+        try { const b = await createImageBitmap(this.scratch); log("createImageBitmap(scratch) OK:", b.width, b.height); b.close(); }
+        catch (e) { log("createImageBitmap(scratch) THREW:", String(e)); }
+      }
+      // Main-canvas raster + region snapshot — the eager-vs-deferred check.
+      try {
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+        this.ctx.drawElementImage!(n.refEl, 0, 0, 64, 64);
+        const b = await createImageBitmap(this.canvas, 0, 0, 64, 64);
+        const pc = document.createElement("canvas"); pc.width = 64; pc.height = 64;
+        const pctx = pc.getContext("2d")!;
+        pctx.drawImage(b, 0, 0);
+        const px = pctx.getImageData(0, 0, 64, 64).data;
+        let ink = 0;
+        for (let i = 3; i < px.length; i += 4) if (px[i] !== 0) ink++;
+        log("main-canvas raster snapshot:", `${b.width}×${b.height}`, "nonTransparentPx:", ink, ink ? "(EAGER raster — snapshot fallback viable)" : "(BLANK — raster is deferred to paint)");
+        b.close();
+      } catch (e) { log("main-canvas raster snapshot THREW:", String(e)); }
+      this.dirty = true; // repaint over any probe garbage
+    })();
+  }
+
   dispose(): void {
     this.disposed = true;
     cancelAnimationFrame(this.raf);
@@ -614,8 +675,8 @@ export class HtmlCanvasRenderer {
       const pw = n.w + 2 * PAD, ph = n.h + 2 * PAD; // captured (padded) box
       let top: ImageBitmap | null = null;
       if (n.refImg) {
-        try { top = await createImageBitmap(n.refImg as unknown as ImageBitmapSource); } catch { top = null; }
-        if (!top) HtmlCanvasRenderer.logPathOnce("createImageBitmap(refImg) rejected — trying the scratch-canvas raster");
+        try { top = await createImageBitmap(n.refImg as unknown as ImageBitmapSource); }
+        catch (e) { top = null; HtmlCanvasRenderer.logPathOnce(`createImageBitmap(refImg) rejected (${String(e)}) — trying the scratch-canvas raster`); }
       }
       if (!top && this.sctx && typeof this.sctx.drawElementImage === "function") {
         // Scratch raster: draws the captured image when we have one, else the LIVE
@@ -627,32 +688,125 @@ export class HtmlCanvasRenderer {
           this.sctx.clearRect(0, 0, refW, refH);
           this.sctx.drawElementImage(n.refImg ?? n.refEl, 0, 0, refW, refH);
           top = await createImageBitmap(this.scratch, 0, 0, refW, refH);
-        } catch { top = null; }
+        } catch (e) { top = null; HtmlCanvasRenderer.logPathOnce(`scratch raster rejected (${String(e)})`); }
       }
       if (!top) {
-        n.mipFailed = true; // permanent — don't re-loop on it
-        HtmlCanvasRenderer.logPathOnce("mip raster failed on every path — those nodes stay on the per-frame draw (slow) path");
-        this.dirty = true;
+        // Neither bitmap path works (current Chrome origin-trial builds: ElementImage
+        // is NOT an ImageBitmapSource — it's only {width,height,close}, drawable via
+        // drawElementImage). Fall through to the spec-clean route: raster the clone
+        // into THIS canvas during the paint event (draws land in the current frame,
+        // and the rendering is read-back-allowed) and snapshot the region.
+        n.needsPaintRaster = true;
+        HtmlCanvasRenderer.logPathOnce("bitmap paths unavailable — building mips via paint-event raster + region snapshot");
         continue;
       }
-      const levels: PyramidLevel[] = [{ scale: REF, bmp: top }];
-      let cur = top, curScale = REF;
-      while (Math.min(pw, ph) * curScale > MIP_MIN_PX * 2 && levels.length < 12) {
-        const nw = Math.max(1, Math.round(pw * curScale / 2)), nh = Math.max(1, Math.round(ph * curScale / 2));
-        let next: ImageBitmap;
-        try { next = await createImageBitmap(cur, { resizeWidth: nw, resizeHeight: nh, resizeQuality: "high" }); }
-        catch { break; }
-        curScale /= 2;
-        levels.push({ scale: curScale, bmp: next });
-        cur = next;
-      }
-      n.pyramid = levels;
+      n.pyramid = await this.downscaleChain(top, pw, ph, REF);
       this.builtCount++;
       this.dirty = true;
     }
-    } while (!this.disposed && this.nodes.some((n) => !n.pyramid.length && !n.mipFailed));
+    } while (!this.disposed && this.nodes.some((n) => !n.pyramid.length && !n.mipFailed && !n.needsPaintRaster));
     this.building = false;
+    if (!this.disposed && this.nodes.some((n) => n.needsPaintRaster) && this.canvas.requestPaint) this.canvas.requestPaint();
   };
+
+  /** The half-resolution pyramid below a top-level bitmap (shared by the capture
+   *  path and the paint-raster path). `topScale` = top texture px ÷ natural px. */
+  private async downscaleChain(top: ImageBitmap, pw: number, ph: number, topScale: number): Promise<PyramidLevel[]> {
+    const levels: PyramidLevel[] = [{ scale: topScale, bmp: top }];
+    let cur = top, curScale = topScale;
+    while (Math.min(pw, ph) * curScale > MIP_MIN_PX * 2 && levels.length < 12) {
+      const nw = Math.max(1, Math.round(pw * curScale / 2)), nh = Math.max(1, Math.round(ph * curScale / 2));
+      let next: ImageBitmap;
+      try { next = await createImageBitmap(cur, { resizeWidth: nw, resizeHeight: nh, resizeQuality: "high" }); }
+      catch { break; }
+      curScale /= 2;
+      levels.push({ scale: curScale, bmp: next });
+      cur = next;
+    }
+    return levels;
+  }
+
+  // ── Paint-event raster (the spec-clean bitmap source) ────────────────────────
+  // Runs INSIDE the paint event, before drawFrame: draw a batch of pending clones
+  // into this canvas at the origin, snapshot each region with createImageBitmap
+  // (which copies at invocation), then let drawFrame clear + repaint — the scratch
+  // pixels never reach the screen. Retried a few paints per node (a just-appended
+  // clone isn't in "the most recent rendering update" until the next one).
+  private static readonly RASTER_BATCH = 16;
+  private static readonly RASTER_MAX_ATTEMPTS = 5;
+  // One-shot validation that region read-back actually returns ink — if the first
+  // snapshot comes back fully transparent (a build where the raster is deferred
+  // past read-back), the whole route is declared broken instead of caching blank
+  // textures for every card.
+  private rasterValidated: boolean | null = null;
+  private rasterPendingInPaint(): void {
+    if (typeof this.ctx.drawElementImage !== "function" || this.rasterValidated === false) return;
+    const { ctx, canvas } = this;
+    const jobs: Array<{ n: EngineNode; p: Promise<ImageBitmap>; scale: number; pw: number; ph: number }> = [];
+    for (const n of this.nodes) {
+      if (jobs.length >= HtmlCanvasRenderer.RASTER_BATCH) break;
+      if (!n.needsPaintRaster || n.pyramid.length || n.mipFailed) continue;
+      const pw = n.w + 2 * PAD, ph = n.h + 2 * PAD;
+      // A node bigger than the canvas rasters scaled-down; scale rides the pyramid.
+      const s = Math.min(1, canvas.width / pw, canvas.height / ph);
+      const dw = Math.max(1, Math.round(pw * s)), dh = Math.max(1, Math.round(ph * s));
+      try {
+        ctx.setTransform(1, 0, 0, 1, 0, 0); // backing-store px
+        ctx.clearRect(0, 0, dw, dh);
+        ctx.drawElementImage!(n.refEl, 0, 0, dw, dh);
+        jobs.push({ n, p: createImageBitmap(canvas, 0, 0, dw, dh), scale: s, pw, ph });
+        n.needsPaintRaster = false; // in flight — don't re-raster it every paint while the snapshot resolves (failure re-arms)
+      } catch (e) {
+        this.noteRasterFailure(n, e);
+      }
+    }
+    // More pending than this batch → another paint pass.
+    if (this.nodes.some((n) => n.needsPaintRaster && !n.mipFailed) && this.canvas.requestPaint) this.canvas.requestPaint();
+    if (jobs.length) void this.finishPaintRaster(jobs);
+  }
+
+  private noteRasterFailure(n: EngineNode, e: unknown): void {
+    n.rasterAttempts = (n.rasterAttempts ?? 0) + 1;
+    if (n.rasterAttempts >= HtmlCanvasRenderer.RASTER_MAX_ATTEMPTS) {
+      n.mipFailed = true;
+      n.needsPaintRaster = false;
+      HtmlCanvasRenderer.logPathOnce(`paint raster failed (${String(e)}) — affected nodes stay on the per-frame draw (slow) path`);
+    } else {
+      n.needsPaintRaster = true; // re-arm for the next paint pass
+      if (this.canvas.requestPaint) this.canvas.requestPaint();
+    }
+  }
+
+  private async finishPaintRaster(jobs: Array<{ n: EngineNode; p: Promise<ImageBitmap>; scale: number; pw: number; ph: number }>): Promise<void> {
+    for (const { n, p, scale, pw, ph } of jobs) {
+      let top: ImageBitmap | null = null;
+      try { top = await p; } catch (e) { this.noteRasterFailure(n, e); continue; }
+      if (this.disposed || n.pyramid.length) { top.close?.(); continue; }
+      if (this.rasterValidated === null) {
+        // Ink check on the first snapshot only (every card paints an opaque body).
+        try {
+          const pc = document.createElement("canvas");
+          pc.width = Math.min(64, top.width); pc.height = Math.min(64, top.height);
+          const pctx = pc.getContext("2d")!;
+          pctx.drawImage(top, 0, 0);
+          const px = pctx.getImageData(0, 0, pc.width, pc.height).data;
+          let ink = 0;
+          for (let i = 3; i < px.length; i += 4) if (px[i] !== 0) ink++;
+          this.rasterValidated = ink > 0;
+        } catch { this.rasterValidated = true; } // can't verify — proceed
+        if (!this.rasterValidated) {
+          HtmlCanvasRenderer.logPathOnce("paint-raster read-back is BLANK (deferred raster) — route disabled, nodes stay on the per-frame draw path");
+          top.close();
+          for (const nn of this.nodes) if (nn.needsPaintRaster) { nn.needsPaintRaster = false; nn.mipFailed = true; }
+          return;
+        }
+      }
+      n.pyramid = await this.downscaleChain(top, pw, ph, REF * scale);
+      n.needsPaintRaster = false;
+      this.builtCount++;
+      this.dirty = true;
+    }
+  }
 
   private drawCables(vp: { minX: number; minY: number; maxX: number; maxY: number }): void {
     const { ctx, cam, bsx, bsy } = this;
@@ -757,6 +911,9 @@ export class HtmlCanvasRenderer {
 
   private onPaint = (): void => {
     if (!this.captured) { this.captureRefs(); if (this.captured) void this.buildMips(); }
+    // Paint-event raster fallback runs FIRST — its scratch pixels are cleared by the
+    // drawFrame below within the same paint task, so they never present.
+    this.rasterPendingInPaint();
     this.drawFrame(false);
   };
 
