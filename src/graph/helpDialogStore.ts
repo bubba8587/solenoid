@@ -8,7 +8,7 @@ export type HelpDialog = "about" | "whatsnew";
 // The What's New CONTENT version — bump when the slides change for a release so a
 // returning user sees the new set once. Deliberately separate from package.json's
 // app version (which only bumps at a tagged release, lagging the dev feature set).
-export const WHATS_NEW_VERSION = "1.1";
+export const WHATS_NEW_VERSION = "1.2";
 const SEEN_KEY = "solenoid.whatsNewSeen";
 
 const core = createValueStore<HelpDialog>();

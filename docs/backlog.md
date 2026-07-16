@@ -29,11 +29,11 @@ this backlog stays the per-item source of truth.
   2026-07-15).** Store half stays (overrides round-trip for hand/seed authoring); no editing
   surface. Only document-level FC defaults remain (format-pipeline, author-present, parked with
   the format-controller work).
-- [ ] **Data Feed — post-1.1 widening only** (core + date-range/frequency/quick-picks +
+- [ ] **[1.3 — punted from 1.2, author 2026-07-16] Data Feed — post-1.1 widening only** (core + date-range/frequency/quick-picks +
   the **Live Market Data** demo seed all SHIPPED; Stooq dropped — bot-blocked). Still OPEN,
   none release-gating: a richer series/symbol PICKER (today a text field + quick-picks),
   more providers. Scope: `release-plan.md` §3a.
-- [ ] **iFrame / embed node** (author 2026-07-06) — a general web-embed node: FRED graph
+- [ ] **[1.3 — punted from 1.2, author 2026-07-16] iFrame / embed node** (author 2026-07-06) — a general web-embed node: FRED graph
   direct embeds, YouTube, social (Twitter/X), dashboards. Emits an embed value out the green
   `chart` socket (like Image/Mermaid) so it also embeds in a Report. **SECURITY (author-gated
   decision — this is the can of worms):** the Tauri CSP currently has NO `frame-src`, so it
@@ -46,9 +46,6 @@ this backlog stays the per-item source of truth.
   context — click-to-load + don't render off-screen + cap concurrent. Reality check: most sites
   send `X-Frame-Options: DENY`, so this works for EMBED-friendly content (FRED/video/social),
   not arbitrary pages. Needs the author's CSP-posture call before build.
-- [ ] **Keep `release-notes-features.md` current** — the curated selling list + What's-New
-  slide source (author writes the final release notes). Reconciled 2026-07-08 (FRED-keyless
-  copy, no FX, Simulation ≠ Monte Carlo — slides synced in `HelpDialogs.tsx`).
 - [ ] **Seed follow-ups after the 2026-07-08 consolidation** (27 → 17, author-directed:
   six retired outright, four merged, Getting Started rebuilt with a Tables & charts
   cluster; run-graph/errorSeed tests re-anchored). Remaining author calls:
@@ -86,8 +83,8 @@ this backlog stays the per-item source of truth.
   `pushHistory` now targets the ACTIVE graph's history (`getActiveHistory`), so an
   extensible-row/cable-switch/group-resize edit made inside a drill-in is undone by the
   drill-in's own undo (Ctrl+Z + the mobile bar), not stranded on the main stack
-  (`historyRouting.test.ts`). Remaining: a plain node-label edit isn't undoable on ANY surface
-  yet (it never went through `pushHistory` — separate gap, not drill-in-specific).
+  (`historyRouting.test.ts`). (Label-edit undo RESOLVED
+  2026-07-08 — `useDraftCommit.onBlur` pushes history via `getActiveHistory`.)
   (d) **D2 proper** — reroute the real top toolbar / mobile bar to the active subgraph
   (author-present, wants live eyeballing).
 - [ ] **D4 — conditional formatting for tables** (#41; deferred again 2026-07-05).
