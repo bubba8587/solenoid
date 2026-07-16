@@ -335,6 +335,54 @@ c("expr-qbud","result","cd-bud","in_1");
 fc("fc-g", "disp-g", "currency_usd", GRP_BUD);
 fc("fc-bud", "disp-bud", "currency_usd", GRP_BUD);
 
+// ─── V · New in 1.2 (Waterfall / Calendar / Fill Down) ──────────────────────────
+// Small self-contained Frame Inputs (no CSV dependency) so each new node shows
+// its shape with hand-checkable numbers.
+function frameText(cols) {
+  return JSON.stringify(cols.map((c) => ({ name: c.name, type: c.type, cells: c.cells.map(String) })));
+}
+note("note-v12", 40, 1960,
+  "9 · New in 1.2",
+  "# Bridge, calendar, fill-down\nThe **Waterfall** walks the month from income down to what's left — its Total bar is computed, never typed. The **Calendar** tints each January day by its spend, streaks and splurges at a glance. Below, a report-shaped table names each **Category** only once; **Fill Down** carries the name through the blanks so **Group By** can sum it properly.",
+  "gold", 400, 200);
+n("fi-bridge", "FrameInputNode", 60, 2240, {
+  label: "Monthly budget bridge",
+  frameText: frameText([
+    { name: "Item", type: "string", cells: ["Income", "Rent", "Groceries", "Transport", "Subscriptions", "Dining", "Savings transfer"] },
+    { name: "Delta", type: "number", cells: [5200, -1650, -520, -180, -95, -240, -800] },
+  ]),
+});
+n("wf-bridge", "WaterfallNode", 400, 2240, { label: "Where the month went" });
+const V12_SPEND = [
+  84, 23, 61, 132, 18, 42, 55, 37, 71, 145,
+  96, 12, 48, 33, 27, 88, 156, 64, 21, 39,
+  74, 58, 92, 173, 81, 15, 44, 67, 52, 118,
+];
+n("fi-daily", "FrameInputNode", 760, 2240, {
+  label: "Daily spend · Jan 2026",
+  frameText: frameText([
+    { name: "Date", type: "date", cells: V12_SPEND.map((_, i) => `2026-01-${String(i + 1).padStart(2, "0")}`) },
+    { name: "Spend", type: "number", cells: V12_SPEND },
+  ]),
+});
+n("cal-daily", "CalendarHeatmapNode", 1100, 2240, { label: "Spending calendar" });
+n("fi-report", "FrameInputNode", 60, 2620, {
+  label: "Report-shaped spend",
+  frameText: frameText([
+    { name: "Category", type: "string", cells: ["Housing", "", "", "Food", "", "", "Transport", ""] },
+    { name: "Item", type: "string", cells: ["Rent", "Insurance", "Repairs", "Groceries", "Dining out", "Coffee", "Fuel", "Transit"] },
+    { name: "Amount", type: "number", cells: [1650, 120, 85, 520, 240, 60, 110, 70] },
+  ]),
+});
+n("fill-cat", "FillBlanksNode", 400, 2620, { label: "Fill Down → Category" }, { stringLiterals: { columns: "Category" } });
+n("gb-cat", "GroupByFrameNode", 700, 2620, { label: "Sum by category", op: "sum" }, { stringLiterals: { keys: "Category", column: "Amount" } });
+const GRP_V12 = ["fi-bridge", "wf-bridge", "fi-daily", "cal-daily", "fi-report", "fill-cat", "gb-cat"];
+
+c("fi-bridge", "frame", "wf-bridge", "frame");
+c("fi-daily", "frame", "cal-daily", "frame");
+c("fi-report", "frame", "fill-cat", "frame");
+c("fill-cat", "frame", "gb-cat", "frame");
+
 // ─── H · Dashboard (in-group conduits → ribbons land here) ──────────────────────
 note("note-dash", 3280, -600,
   "8 · One-glance dashboard",
@@ -404,6 +452,7 @@ group("grp-assump", "Assumptions",             GRP_ASSUMP, "vermilion");
 group("grp-proj",   "Retirement projection",   GRP_PROJ,   "green", true);
 group("grp-mort",   "Mortgage stress-test",    GRP_MORT,   "vermilion", true);
 group("grp-bud",    "Budget vs actual",        GRP_BUD,    "amber", true);
+group("grp-v12",    "New in 1.2",              GRP_V12,    "gold");
 group("grp-dash",   "Dashboard",               GRP_DASH,   "gray");
 
 // ─── Pins, standoffs ────────────────────────────────────────────────────────────
