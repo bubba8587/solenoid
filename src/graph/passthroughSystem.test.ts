@@ -4,7 +4,7 @@ import { DisplayNode } from "./nodes/display";
 import { ExpectNode } from "./nodes/quality";
 import { CableSwitchNode } from "./nodes/control";
 import { IfNode, IFErrorNode, ChooseNode, SwitchNode, IfsNode, BooleanOpNode, ComparisonNode } from "./nodes/logic";
-import { ListIndexNode } from "./nodes/list";
+import { ListIndexNode, FillNode } from "./nodes/list";
 import { NumberInputNode } from "./nodes/input";
 
 // The passthrough declaration is the ONE source of truth that trueany TYPE adoption,
@@ -54,6 +54,18 @@ describe("passthrough declarations", () => {
     expect(spec.inputs).toEqual(keys);
     expect(selectedPassInput(one)).toBe(keys[1]); // the active branch
     expect(getPassthrough(new CableSwitchNode({ multiSelect: true }))).toEqual([]); // Many → Cube, not passthrough
+  });
+
+  it("Fill/Coalesce passes units like its 2×2 sibling IFERROR (audit 2026-07-16)", () => {
+    // Coalesce = agree across the list + its Else fallbacks (IFERROR's missing-value
+    // twin); the impute modes fill FROM the list's own values → single on the list.
+    const co = new FillNode({ op: "coalesce" });
+    const spec = getPassthrough(co)[0];
+    expect(spec).toMatchObject({ output: "result", combine: "agree" });
+    expect(spec.inputs[0]).toBe("list");
+    expect(spec.inputs.length).toBeGreaterThan(1); // the Else rows are value branches
+    expect(getPassthrough(new FillNode({ op: "ffill" }))[0]).toMatchObject({ inputs: ["list"], combine: "single" });
+    expect(isPurePassthroughNode(co)).toBe(false); // cells change — never pure
   });
 
   it("generative / producer nodes declare NO passthrough (their output is genuinely static)", () => {
