@@ -5,6 +5,29 @@ Live window: the current sessions' DIGESTS + open problems. Per-item entries are
 swept to `archive/dev-notes-history.md` once digested — read a digest first;
 drill into the archive (or `git log`) only for the mechanics of a specific item.
 
+### OPEN PROBLEM (2026-07-16 — note-family selection ring ~0.5px off on right/bottom)
+A note-family card's selection ring (`::after`, `inset:-2px`, e.g. `.solenoid-note--selected`,
+`.solenoid-pres--selected`) can render ~0.5px too wide on the RIGHT and/or BOTTOM edge (left/top stay
+flush) — the ring overhangs the card on that side. Reproduces on default Notes (varies with how you
+resize) and Import-from-Obsidian; base nodes (ring `inset:0`, so ring & card share the same edge) don't
+show it because there's no offset to mismatch. **Tried & did NOT fix (57831f8e):** rounding stored
+resize dims to integers (Note/Group/Import/`ResizeHandle`, live + snap branches) — so the cause is not a
+fractional STORED width/height. Prime remaining suspect: the card's CONTENT-driven layout size landing
+on a sub-pixel (Presentation has no stored height at all), so the card edge and the `inset:-2px` ring
+edge round independently. Possible directions not yet tried: draw the ring so it shares the card's edge
+(e.g. `inset:0` + account for the 2px border, or a box-shadow ring) instead of a 2px-offset `::after`;
+or pixel-snap the card box. Radius itself is correct; don't re-touch it. Parked by author.
+
+### SESSION DIGEST (2026-07-16 — UI corner-radius reduction pass)
+Node cards 8→6px; group/note/conduit and Note/Group-derived cards (Presentation, Report, Image,
+SessionHistory, SvgPicker) brought in line (inner header/footer corners track their card). Overlay chrome
+swept: 8→6px panels/popups/toasts/menus/HUD, 12/10→8px dialogs (command palette, socket legend, minimap,
+cable inspector, dialogs, value popups, add menu); pills (999px) + count badges left. Node resize grip
+z-orders above the group-membership corner. Settings + Add menu scroll an INNER region (`overflow:hidden`
++ radius on the outer, scroll on the inner) so the native scrollbar is cleanly clipped by the rounded
+corner; add-menu `max-height` nudged 384→392 so the default 12-item tree doesn't spawn a scrollbar.
+Commits `8d4b4160`, `57831f8e`. Left the selection-ring 0.5px artifact OPEN (above).
+
 ### SESSION DIGEST (2026-07-15k — Matrix homogeneous units (D20): author → flow → display) [Agent 1]
 Threaded S3 (matrix units) from the tagged-representation foundation to an end-to-end slice. **The
 model:** a numeric matrix carries ONE unit for the whole grid (D20) as a non-enumerable symbol tag on
