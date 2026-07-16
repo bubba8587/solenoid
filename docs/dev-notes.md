@@ -18,6 +18,33 @@ edge round independently. Possible directions not yet tried: draw the ring so it
 (e.g. `inset:0` + account for the 2px border, or a box-shadow ring) instead of a 2px-offset `::after`;
 or pixel-snap the card box. Radius itself is correct; don't re-touch it. Parked by author.
 
+### SESSION DIGEST (2026-07-16e — 1.2 release run: movement pass, composite parity pass, PF seed, release docs)
+Author's release directive: punt all puntables (iFrame, Data Feed widening, drill-in nav/lasso/group
+tools, F-2 doc-level FC defaults → 1.3), then movement pass, composite parity pass, PF seed, docs,
+release prep; author gates the merge to `main`.
+- **Movement pass (`dad24aa`):** the Align Bar's `measuredBox()` (nodeSize.ts) is now the ONE size
+  read across the movement stack (tidy/push/standoffs/splice/focus — five ad-hoc variants replaced;
+  OutlinePanel had a REVERSED read that centred on a collapsed group's stored expanded box). **The
+  wonky-Tidy-around-expanded-groups root cause (1.2-plan Tier 1): stale expand-push restore records
+  re-armed by the merge path** — programmatic moves (Tidy/Cleanup/align) fire no `nodedragged`, so
+  records survived with ancient preX/preY; the merge now voids-and-replaces a record whose node moved.
+  Plus: frozen-member-card fix (hostFootprint restricted to layout targets), ELK restores before the
+  anchor measurement, integer autogrow dims. New: `groupPushRecords.test.ts` +
+  `tidyArrangeGroups.test.ts` (headless real-ELK harness, 7 invariants).
+- **Composite parity pass (`a980ea5`):** new `getOwningArea()` seam twin; seven main-graph escapes
+  fixed — drill-in cables (color/ribbons/z), NodeCard re-measure, FormulaPopup (silently never opened
+  inside a composite), Conduit (lanes/z/extend spawned on MAIN canvas), Go-to-source/flyToNode, Align
+  bar gated off while drilled in. Known folds left (IsolateEndpoints terminals, CableInspector, pins
+  for internal ids, menu Add-connection = D2).
+- **PF seed (`6898315`):** "New in 1.2" section — budget Waterfall, January daily-spend Calendar,
+  Fill Down → Group By un-merge chain (generator-locked).
+- **Release docs (`abfa36f`):** `release-notes-features.md` rewritten for 1.2 (1.1 → archive):
+  8 slides (units flagship, Monte Carlo, draw-your-data, terrain & fields, 7 new charts, Obsidian
+  both ways, table cleanup, scrub) + body sells + GitHub changelog bullets + pruned Known Issues;
+  in-app What's New slides + WHATS_NEW_VERSION → 1.2; punts recorded.
+- **Verify:** tsc clean · vitest 2983/2983 (+1 skipped) · cargo 72/72 · seeds round-trip. Version
+  bumped to 1.2.0 on develop; the author performs merge → `main` + `v1.2.0` tag + desktop build.
+
 ### SESSION DIGEST (2026-07-16d — fun-nodes waves: charts, draw-controls, 7-seg; scrubber fix)
 Author picked from a brainstorm ("widgets, controls, fun charts" — inspired by Surface/Grid
 Interpolate); rejected: Play node (the Slider already has play+speed), Choice node, standalone lamp
