@@ -1,6 +1,6 @@
 [package]
 name = "solenoid"
-version = "1.1.5"
+version = "1.2.0"
 description = "Solenoid — a local-first node graph for wiring live data into personal computation"
 authors = ["Solenoid"]
 edition = "2021"
