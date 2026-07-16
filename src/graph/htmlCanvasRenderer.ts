@@ -502,8 +502,28 @@ export class HtmlCanvasRenderer {
     this.nodeById.clear();
   }
 
+  // One-time path diagnostics — which capture/raster route is live, so a console
+  // paste identifies API drift (the WICG surface changes across Chrome versions).
+  private static loggedPaths = new Set<string>();
+  private static logPathOnce(msg: string): void {
+    if (HtmlCanvasRenderer.loggedPaths.has(msg)) return;
+    HtmlCanvasRenderer.loggedPaths.add(msg);
+    // eslint-disable-next-line no-console
+    console.info("[hc]", msg);
+  }
+
   private captureRefs = (): void => {
-    if (this.captured || typeof this.canvas.captureElementImage !== "function") return;
+    if (this.captured) return;
+    if (typeof this.canvas.captureElementImage !== "function") {
+      // The CAPTURE half of the WICG API is unavailable (browser drift) — without
+      // this, `captured` stayed false forever: the tick loop spun requestPaint and
+      // every frame live-drew every visible node (fps 165 → ~45, `built: 0`).
+      // Mark captured so the loop settles; buildMips rasterizes the live clones
+      // through the scratch canvas instead (refImg stays null).
+      this.captured = true;
+      if (this.nodes.length) HtmlCanvasRenderer.logPathOnce("captureElementImage unavailable — building mips from live clones via the scratch canvas");
+      return;
+    }
     let diagLogged = false; // log once per build (toggle html off/on to refresh)
     for (const n of this.nodes) {
       if (n.refImg) continue; // already captured — a targeted updateNodes leaves others intact
@@ -564,7 +584,16 @@ export class HtmlCanvasRenderer {
         }
       }
     }
-    this.captured = this.nodes.length === 0 || this.nodes.some((n) => n.refImg);
+    const anyCaptured = this.nodes.length === 0 || this.nodes.some((n) => n.refImg);
+    if (!anyCaptured && this.nodes.length) {
+      // Every capture THREW — the same browser-drift class as a missing API.
+      // Settle (else the tick loop spins requestPaint + live-draws every frame)
+      // and let buildMips raster the clones through the scratch path instead.
+      HtmlCanvasRenderer.logPathOnce("captureElementImage threw for every node — falling back to scratch-canvas rasterization");
+      this.captured = true;
+      return;
+    }
+    this.captured = anyCaptured;
   };
 
   // Build the mip pyramid for every node from its reference snapshot. createImageBitmap
@@ -581,20 +610,31 @@ export class HtmlCanvasRenderer {
     do {
     for (const n of this.nodes) {
       if (this.disposed) break;
-      if (!n.refImg || n.pyramid.length) continue;
+      if (n.pyramid.length || n.mipFailed) continue;
       const pw = n.w + 2 * PAD, ph = n.h + 2 * PAD; // captured (padded) box
       let top: ImageBitmap | null = null;
-      try { top = await createImageBitmap(n.refImg as unknown as ImageBitmapSource); } catch { top = null; }
+      if (n.refImg) {
+        try { top = await createImageBitmap(n.refImg as unknown as ImageBitmapSource); } catch { top = null; }
+        if (!top) HtmlCanvasRenderer.logPathOnce("createImageBitmap(refImg) rejected — trying the scratch-canvas raster");
+      }
       if (!top && this.sctx && typeof this.sctx.drawElementImage === "function") {
+        // Scratch raster: draws the captured image when we have one, else the LIVE
+        // clone element directly (the no-captureElementImage fallback), and snapshots
+        // the scratch canvas into a bitmap.
         try {
           const refW = Math.max(1, Math.round(pw * REF)), refH = Math.max(1, Math.round(ph * REF));
           this.scratch.width = refW; this.scratch.height = refH;
           this.sctx.clearRect(0, 0, refW, refH);
-          this.sctx.drawElementImage(n.refImg, 0, 0, refW, refH);
+          this.sctx.drawElementImage(n.refImg ?? n.refEl, 0, 0, refW, refH);
           top = await createImageBitmap(this.scratch, 0, 0, refW, refH);
         } catch { top = null; }
       }
-      if (!top) { n.mipFailed = true; this.dirty = true; continue; } // permanent — don't re-loop on it
+      if (!top) {
+        n.mipFailed = true; // permanent — don't re-loop on it
+        HtmlCanvasRenderer.logPathOnce("mip raster failed on every path — those nodes stay on the per-frame draw (slow) path");
+        this.dirty = true;
+        continue;
+      }
       const levels: PyramidLevel[] = [{ scale: REF, bmp: top }];
       let cur = top, curScale = REF;
       while (Math.min(pw, ph) * curScale > MIP_MIN_PX * 2 && levels.length < 12) {
@@ -610,7 +650,7 @@ export class HtmlCanvasRenderer {
       this.builtCount++;
       this.dirty = true;
     }
-    } while (!this.disposed && this.nodes.some((n) => n.refImg && !n.pyramid.length && !n.mipFailed));
+    } while (!this.disposed && this.nodes.some((n) => !n.pyramid.length && !n.mipFailed));
     this.building = false;
   };
 
@@ -691,7 +731,9 @@ export class HtmlCanvasRenderer {
       if (useCached) {
         if (n.pyramid.length) { ctx.drawImage(n.pyramid[Math.min(idealI, n.pyramid.length - 1)].bmp, dx, dy, dw, dh); return true; }
         if (n.refImg) { try { ctx.drawElementImage!(n.refImg, dx, dy, dw, dh); this.slowDraws++; return true; } catch { return false; } }
-        return false;
+        // No capture at all (API-drift fallback, or a mip still building) — draw the
+        // live clone so the node never blinks out; counted slow like the refImg path.
+        try { ctx.drawElementImage!(n.refEl, dx, dy, dw, dh); this.slowDraws++; return true; } catch { return false; }
       }
       try { ctx.drawElementImage!(n.refEl, dx, dy, dw, dh); return true; } catch { return false; }
     };
