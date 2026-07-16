@@ -65,8 +65,15 @@ change together — not patched blind). **Turn 5:** reviewed composite run-mode/
 one source of truth held), `9ad1037` adoptive base-rung coercion (well-pinned). Fix: **Fill/Coalesce
 was never opted into the passthrough system** — IFERROR (its 2×2 recover-sibling) passed units,
 Fill didn't; now declares coalesce=`agree` over list+Else rows, impute modes=`single` on the list.
-Pinned in passthroughSystem.test.ts. WALK CONTINUES at `7f2e3b3`/`91352f8` (selection fixes) →
-`5994176` (INDEX whole-axis) → the units run (`90f24d5`…`6751a2e`) → 2026-07-14 and older.
+Pinned in passthroughSystem.test.ts. **Turn 6:** author decisions applied: EXPAND unwired Fill pads `null` not #N/A (`74b7af4`; NA node
+recovers Excel's form; VSTACK/WRAPROWS ragged #N/A confirmed KEPT — signals a real misfit). Reviewed
+`7f2e3b3`/`91352f8` selection fixes (lasso + belt-and-suspenders in group/composite-from-selection
+— verified Ctrl+A's exposure is fully guarded downstream; select-all-delete/copy legitimately means
+everything), `52472f3` dimensionless-adopts (found an undecided edge: **adoption is at BASE-SI face
+value** — `SUM(5 km, 3)` reads 3 as 3 m; backlogged as an author call, display-unit adopt vs
+document). WALK CONTINUES at the remaining units run (`90f24d5` ratio minting, `6bbb71e` opaque
+custom dims, `1c6c5e4` Convert primacy) → `46834db`/`63bed21` (D19/tier-4 decisions, docs-only) →
+2026-07-14 and older.
 
 ### SESSION DIGEST (2026-07-16 — UI corner-radius reduction pass)
 Node cards 8→6px; group/note/conduit and Note/Group-derived cards (Presentation, Report, Image,
