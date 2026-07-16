@@ -16,6 +16,7 @@ import {
 import {
   pivotFrame, nestFrame, unnestCube,
   splitColumn, addIndexColumn, decisionMatrix, decisionCriteria, decisionSensitivity,
+  fillBlanks, replaceValues, mergeColumns, promoteHeaders, demoteHeaders, dropBlankRows, sliceRows, borderedGridFromFrame,
   lookupFrameCell, lookupCubeCell, lookupFrameRowIndex, lookupCubeRowIndex,
   frameRowAt, cubeRowAt, asLookupSource, reconcileFrames,
   type FilterCond, type FilterCombine, type JoinHow, type AsofDirection, type AggOp, type DecisionNormalize, type LookupMatchMode, type LookupSearchMode, type ReconcileSummary,
@@ -142,24 +143,43 @@ export class DistinctNode extends ClassicPreset.Node {
 // ─── HEAD ────────────────────────────────────────────────────────────────────
 // The first N rows of a Frame (verb: headRows). N from the wired/typed input.
 
+export type HeadOp = "first" | "last" | "skip" | "range";
+
+export const HEAD_OP_META: Record<HeadOp, { label: string; description: string }> = {
+  first: { label: "First N",      description: "Keep the first N rows." },
+  last:  { label: "Last N",       description: "Keep the last N rows." },
+  skip:  { label: "Skip first N", description: "Remove the first N rows, keep the rest." },
+  range: { label: "Rows N–To",    description: "Keep rows N through To, 1-based inclusive." },
+};
+
 export class HeadNode extends ClassicPreset.Node {
   label: string;
+  op: HeadOp;
   cachedResult: FrameValue | SolError | null = null;
-  literals: Record<string, number> = { rows: 10 };
-  width = 180; height = 150;
+  literals: Record<string, number> = { rows: 10, to: 20 };
+  width = 180; height = 175;
 
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; op?: HeadOp }) {
     super("Head");
     this.label = init?.label ?? "Head";
+    this.op = init?.op ?? "first";
     this.addInput("frame", frameIn("Frame"));
     this.addInput("rows", numIn("Rows"));
+    this.addInput("to", numIn("To"));
     this.addOutput("frame", frameOut("Head"));
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[]; rows?: number[] }) {
+  async data(inputs: { frame?: (FrameInput | null)[]; rows?: number[]; to?: number[] }) {
     const f = inputs.frame?.[0] ?? null;
     const n = inputs.rows?.[0] ?? this.literals.rows ?? 10;
-    return emitFrame(this, beginPass(this), f != null ? await runFrameUnary(f, { kind: "head", n }) : null);
+    const to = inputs.to?.[0] ?? this.literals.to ?? n;
+    const gen = beginPass(this);
+    if (f == null) return emitFrame(this, gen, null);
+    // First-N stays a LAZY verb (the head-of-a-huge-chain case); the other row
+    // slices are eager like Split Column — Power Query's Keep/Remove Rows family.
+    if (this.op === "first") return emitFrame(this, gen, await runFrameUnary(f, { kind: "head", n }));
+    const fv = await readFrame(f);
+    return emitFrame(this, gen, fv == null || isSolError(fv) ? fv ?? null : runVerb(() => sliceRows(fv, this.op, n, to)));
   }
 }
 
@@ -810,14 +830,169 @@ export class AddIndexNode extends ClassicPreset.Node {
     this.addInput("start", numIn("Start"));
     this.addInput("name", strIn("Name"));
     this.addOutput("frame", frameOut("Frame"));
+    // The TWO-WAY option (author 2026-07-16): the same data indexed on BOTH axes
+    // as a coordinate-bordered matrix — exactly the grid Surface / Contour /
+    // Grid Interpolate read. A matrix wired in (it widens to Col1…N) gets row +
+    // column indices counting from Start.
+    this.addOutput("grid", tableOut("Bordered grid"));
   }
 
   data(inputs: { frame?: (FrameValue | null)[]; start?: number[]; name?: string[] }) {
     const f = inputs.frame?.[0] ?? null;
-    if (!f) { this.cachedResult = null; return { frame: null }; }
+    if (!f) { this.cachedResult = null; return { frame: null, grid: null }; }
     const start = inputs.start?.[0] ?? this.literals.start ?? 1;
     const name = (inputs.name?.[0] ?? this.stringLiterals.name ?? "Index").trim() || "Index";
     this.cachedResult = runVerb(() => addIndexColumn(f, name, start));
+    const grid = runVerb(() => borderedGridFromFrame(f, start));
+    return { frame: this.cachedResult, grid };
+  }
+}
+
+// ─── TIMESAVER CLEANUP VERBS (2026-07-16) ────────────────────────────────────────
+// The everyday Power Query cleanup set, all eager like Split Column: Fill Down /
+// Replace Values / Merge Columns / Promote Headers / Drop Blank Rows. Pure logic
+// in frameVerbs.ts; each node is the thin op-picker shell.
+
+export type FillDir = "down" | "up";
+
+export class FillBlanksNode extends ClassicPreset.Node {
+  label: string;
+  dir: FillDir;
+  cachedResult: FrameValue | SolError | null = null;
+  stringLiterals: Record<string, string> = { columns: "" };
+  width = 190; height = 160;
+
+  constructor(init?: { label?: string; dir?: FillDir }) {
+    super("FillBlanks");
+    this.label = init?.label ?? "Fill Down";
+    this.dir = init?.dir ?? "down";
+    this.addInput("frame", frameIn("Frame"));
+    this.addInput("columns", strListIn("Columns (blank = all)"));
+    this.addOutput("frame", frameOut("Frame"));
+  }
+
+  data(inputs: { frame?: (FrameValue | null)[]; columns?: string[][] }) {
+    const f = inputs.frame?.[0] ?? null;
+    if (!f) { this.cachedResult = null; return { frame: null }; }
+    const columns = (inputs.columns?.[0] ?? []).map((c) => String(c).trim()).filter(Boolean);
+    this.cachedResult = runVerb(() => fillBlanks(f, columns, this.dir));
+    return { frame: this.cachedResult };
+  }
+}
+
+export type ReplaceMode = "cell" | "substring";
+
+export class ReplaceValuesNode extends ClassicPreset.Node {
+  label: string;
+  mode: ReplaceMode;
+  cachedResult: FrameValue | SolError | null = null;
+  stringLiterals: Record<string, string> = { column: "", find: "", replace: "" };
+  width = 200; height = 205;
+
+  constructor(init?: { label?: string; mode?: ReplaceMode }) {
+    super("ReplaceValues");
+    this.label = init?.label ?? "Replace Values";
+    this.mode = init?.mode ?? "cell";
+    this.addInput("frame", frameIn("Frame"));
+    this.addInput("column", strIn("Column (blank = all)"));
+    this.addInput("find", strIn("Find"));
+    this.addInput("replace", strIn("Replace"));
+    this.addOutput("frame", frameOut("Frame"));
+  }
+
+  data(inputs: { frame?: (FrameValue | null)[]; column?: string[]; find?: string[]; replace?: string[] }) {
+    const f = inputs.frame?.[0] ?? null;
+    if (!f) { this.cachedResult = null; return { frame: null }; }
+    const column = inputs.column?.[0] ?? this.stringLiterals.column ?? "";
+    const find = inputs.find?.[0] ?? this.stringLiterals.find ?? "";
+    const replace = inputs.replace?.[0] ?? this.stringLiterals.replace ?? "";
+    this.cachedResult = runVerb(() => replaceValues(f, column, find, replace, this.mode));
+    return { frame: this.cachedResult };
+  }
+}
+
+export class MergeColumnsNode extends ClassicPreset.Node {
+  label: string;
+  cachedResult: FrameValue | SolError | null = null;
+  stringLiterals: Record<string, string> = { columns: "", separator: "", name: "" };
+  width = 200; height = 190;
+
+  constructor(init?: { label?: string }) {
+    super("MergeColumns");
+    this.label = init?.label ?? "Merge Columns";
+    this.addInput("frame", frameIn("Frame"));
+    this.addInput("columns", strListIn("Columns"));
+    this.addInput("separator", strIn("Separator"));
+    this.addInput("name", strIn("Name (default Merged)"));
+    this.addOutput("frame", frameOut("Frame"));
+  }
+
+  data(inputs: { frame?: (FrameValue | null)[]; columns?: string[][]; separator?: string[]; name?: string[] }) {
+    const f = inputs.frame?.[0] ?? null;
+    if (!f) { this.cachedResult = null; return { frame: null }; }
+    const columns = (inputs.columns?.[0] ?? []).map((c) => String(c).trim()).filter(Boolean);
+    const separator = inputs.separator?.[0] ?? this.stringLiterals.separator ?? "";
+    const name = inputs.name?.[0] ?? this.stringLiterals.name ?? "";
+    // No columns typed yet → pass through untouched (not an error: "not written yet").
+    this.cachedResult = columns.length < 2 ? f : runVerb(() => mergeColumns(f, columns, separator, name));
+    return { frame: this.cachedResult };
+  }
+}
+
+export type HeaderOp = "promote" | "demote";
+
+export const HEADER_OP_META: Record<HeaderOp, { label: string; description: string }> = {
+  promote: { label: "First row → headers", description: "The first row becomes the column names. Power Query: Use First Row as Headers." },
+  demote:  { label: "Headers → first row", description: "Column names drop into a first row of text; columns auto-name Col1, Col2…" },
+};
+
+export class PromoteHeadersNode extends ClassicPreset.Node {
+  label: string;
+  op: HeaderOp;
+  cachedResult: FrameValue | SolError | null = null;
+  width = 200; height = 140;
+
+  constructor(init?: { label?: string; op?: HeaderOp }) {
+    super("PromoteHeaders");
+    this.label = init?.label ?? "Promote Headers";
+    this.op = init?.op ?? "promote";
+    this.addInput("frame", frameIn("Frame"));
+    this.addOutput("frame", frameOut("Frame"));
+  }
+
+  data(inputs: { frame?: (FrameValue | null)[] }) {
+    const f = inputs.frame?.[0] ?? null;
+    if (!f) { this.cachedResult = null; return { frame: null }; }
+    this.cachedResult = runVerb(() => (this.op === "promote" ? promoteHeaders(f) : demoteHeaders(f)));
+    return { frame: this.cachedResult };
+  }
+}
+
+export type BlankRowMode = "all" | "any";
+
+export const BLANK_ROW_OP_META: Record<BlankRowMode, { label: string; description: string }> = {
+  all: { label: "All cells blank", description: "Drop only fully-blank rows (spacers)." },
+  any: { label: "Any cell blank",  description: "Keep only complete rows." },
+};
+
+export class DropBlankRowsNode extends ClassicPreset.Node {
+  label: string;
+  mode: BlankRowMode;
+  cachedResult: FrameValue | SolError | null = null;
+  width = 190; height = 140;
+
+  constructor(init?: { label?: string; mode?: BlankRowMode }) {
+    super("DropBlankRows");
+    this.label = init?.label ?? "Drop Blank Rows";
+    this.mode = init?.mode ?? "all";
+    this.addInput("frame", frameIn("Frame"));
+    this.addOutput("frame", frameOut("Frame"));
+  }
+
+  data(inputs: { frame?: (FrameValue | null)[] }) {
+    const f = inputs.frame?.[0] ?? null;
+    if (!f) { this.cachedResult = null; return { frame: null }; }
+    this.cachedResult = runVerb(() => dropBlankRows(f, this.mode));
     return { frame: this.cachedResult };
   }
 }

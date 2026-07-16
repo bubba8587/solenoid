@@ -16,7 +16,7 @@ import {
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
   type CubeValue, type CubeColumn, type CubeCell,
   frameRowCount, makeHeaders, cubeFromColumns, cubeRowCount, inferColumn, isFrameValue,
-  isCubeValue, frameFromRows,
+  isCubeValue, frameFromRows, formatFrameCell,
 } from "./frame";
 import { isSolError, solError } from "./errorValue";
 import { forAggregate, coerceLogical, guardFinite } from "./valueKinds";
@@ -1650,4 +1650,189 @@ export function decisionSensitivity(
     { name: "Margin", cells: marginCells },
     { name: "Ranking", cells: rankingCells },
   ]);
+}
+
+// ─── Timesaver verbs (2026-07-16) ────────────────────────────────────────────────
+// The everyday Power Query cleanup set, run EAGERLY like Split Column / Add Index
+// (materialization-boundary ops — no native-engine mirror needed; a lazy Polars
+// path is a perf follow-up if a real workload ever demands it).
+
+/** Fill blank (null) cells from the neighbouring row: "down" carries the last
+ *  present value forward, "up" the next one back — the classic un-merge of
+ *  report-shaped tables. Empty `columns` = every column. Errors are values, not
+ *  blanks: they neither fill nor get overwritten. */
+export function fillBlanks(f: FrameValue, columns: readonly string[], dir: "down" | "up"): FrameValue {
+  const targets = new Set((columns.length ? columns.map((c) => requireColumn(f, c)) : f.columns).map((c) => c.name));
+  const cols = f.columns.map((col) => {
+    if (!targets.has(col.name)) return col;
+    const values = [...col.values];
+    if (dir === "down") {
+      let carry: FrameCell = null;
+      for (let i = 0; i < values.length; i++) {
+        if (values[i] == null) values[i] = carry;
+        else carry = values[i];
+      }
+    } else {
+      let carry: FrameCell = null;
+      for (let i = values.length - 1; i >= 0; i--) {
+        if (values[i] == null) values[i] = carry;
+        else carry = values[i];
+      }
+    }
+    return { ...col, values };
+  });
+  return { __frame: true, columns: cols };
+}
+
+/** Coerce a replacement string to a column's type (the quiet-dirty-data rule:
+ *  blank → null, unparseable → NaN for numbers / null otherwise). */
+function coerceReplacement(t: FrameColType, text: string): FrameCell {
+  const s = text.trim();
+  if (s === "") return null;
+  switch (t) {
+    case "number": { const n = Number(s); return Number.isFinite(n) ? n : NaN; }
+    case "date": { const n = Number(s); return Number.isFinite(n) ? n : null; }
+    case "logical": {
+      const l = s.toLowerCase();
+      return l === "true" || l === "1" ? true : l === "false" || l === "0" ? false : null;
+    }
+    default: return text;
+  }
+}
+
+/** Find → replace in a column ("" = every column). "cell" replaces whole cells
+ *  whose text form equals `find` (numbers also match numerically, so "5" hits 5);
+ *  "substring" rewrites occurrences inside STRING columns only. Case-sensitive,
+ *  like every key comparison here (unlike Excel). The replacement coerces to the
+ *  column's type; blanks and errors are never matched. */
+export function replaceValues(
+  f: FrameValue, column: string, find: string, replaceWith: string, mode: "cell" | "substring",
+): FrameValue {
+  if (find === "") return f;
+  const targets = new Set((column.trim() ? [requireColumn(f, column.trim())] : f.columns).map((c) => c.name));
+  const findNum = Number(find.trim());
+  const numericFind = find.trim() !== "" && Number.isFinite(findNum);
+  const cols = f.columns.map((col) => {
+    if (!targets.has(col.name)) return col;
+    if (mode === "substring") {
+      if (col.type !== "string") return col;
+      return {
+        ...col,
+        values: col.values.map((v) => (typeof v === "string" ? v.split(find).join(replaceWith) : v)),
+      };
+    }
+    const replacement = coerceReplacement(col.type, replaceWith);
+    return {
+      ...col,
+      values: col.values.map((v) => {
+        if (v == null || isSolError(v)) return v;
+        const hit = typeof v === "number"
+          ? (numericFind && v === findNum) || String(v) === find
+          : typeof v === "boolean"
+            ? (v ? "TRUE" : "FALSE") === find || String(v) === find.toLowerCase()
+            : String(v) === find;
+        return hit ? replacement : v;
+      }),
+    };
+  });
+  return { __frame: true, columns: cols };
+}
+
+/** Join two or more columns into one string column (separator between parts,
+ *  blank cells contribute ""), inserted where the first source sat; the sources
+ *  drop. The inverse of Split Column. Cells format per their column's type, so a
+ *  date merges as its display text, not its serial. */
+export function mergeColumns(f: FrameValue, columns: readonly string[], separator: string, name: string): FrameValue {
+  const sources = columns.map((c) => requireColumn(f, c));
+  if (sources.length < 2) throw solError("#VALUE!", "Merge needs at least two columns");
+  const rows = frameRowCount(f);
+  const values: FrameCell[] = [];
+  for (let i = 0; i < rows; i++) {
+    values.push(sources.map((c) => {
+      const v = c.values[i];
+      if (v == null) return "";
+      const t = formatFrameCell(c.type, v);
+      return t == null ? "" : String(t);
+    }).join(separator));
+  }
+  const drop = new Set(sources.map((c) => c.name));
+  const at = f.columns.findIndex((c) => c.name === sources[0].name);
+  const kept = f.columns.filter((c) => !drop.has(c.name));
+  const keptBefore = f.columns.slice(0, at).filter((c) => !drop.has(c.name)).length;
+  const merged: FrameColumn = { name: (name ?? "").trim() || "Merged", type: "string", values };
+  const out = [...kept.slice(0, keptBefore), merged, ...kept.slice(keptBefore)];
+  return { __frame: true, columns: out.map((c, i) => ({ ...c, name: makeHeaders(out.map((x) => x.name), out.length)[i] })) };
+}
+
+/** First row → column names (Power Query "Use First Row as Headers"). Blank
+ *  header cells auto-name; duplicates uniquify. Column types stay — the cells
+ *  below are unchanged. */
+export function promoteHeaders(f: FrameValue): FrameValue {
+  if (frameRowCount(f) === 0) return f;
+  const names = f.columns.map((c) => {
+    const v = c.values[0];
+    if (v == null || isSolError(v)) return "";
+    return String(formatFrameCell(c.type, v) ?? "").trim();
+  });
+  const unique = makeHeaders(names, f.columns.length);
+  return { __frame: true, columns: f.columns.map((c, i) => ({ ...c, name: unique[i], values: c.values.slice(1) })) };
+}
+
+/** Column names → a first row of text (the inverse of promoteHeaders). Every
+ *  column becomes a string column — the header row is text, so a typed column
+ *  would otherwise be mixed. */
+export function demoteHeaders(f: FrameValue): FrameValue {
+  const columns: FrameColumn[] = f.columns.map((c, i) => ({
+    name: `Col${i + 1}`,
+    type: "string",
+    values: [c.name, ...c.values.map((v) => {
+      if (v == null || isSolError(v)) return v;
+      return String(formatFrameCell(c.type, v) ?? "");
+    })],
+  }));
+  return { __frame: true, columns };
+}
+
+/** Drop rows whose cells are blank — "all" drops only fully-blank rows (the
+ *  spacer rows), "any" keeps only complete rows. Errors are values, not blanks. */
+export function dropBlankRows(f: FrameValue, mode: "all" | "any"): FrameValue {
+  const rows = frameRowCount(f);
+  const keep: number[] = [];
+  for (let i = 0; i < rows; i++) {
+    const blanks = f.columns.filter((c) => c.values[i] == null).length;
+    const drop = mode === "all" ? blanks === f.columns.length : blanks > 0;
+    if (!drop) keep.push(i);
+  }
+  return { __frame: true, columns: f.columns.map((c) => ({ ...c, values: keep.map((i) => c.values[i] ?? null) })) };
+}
+
+/** Row slices beyond head's first-N: last N, skip the first N, or a 1-based
+ *  inclusive range — Power Query's Keep/Remove Rows family on one op. */
+export function sliceRows(f: FrameValue, mode: "first" | "last" | "skip" | "range", n: number, to?: number): FrameValue {
+  const rows = frameRowCount(f);
+  const N = Math.max(0, Math.trunc(n));
+  let start = 0, end = rows;
+  if (mode === "first") end = Math.min(rows, N);
+  else if (mode === "last") start = Math.max(0, rows - N);
+  else if (mode === "skip") start = Math.min(rows, N);
+  else { start = Math.max(0, Math.trunc(n) - 1); end = Math.min(rows, Math.trunc(to ?? n)); }
+  if (end < start) end = start;
+  return { __frame: true, columns: f.columns.map((c) => ({ ...c, values: c.values.slice(start, end) })) };
+}
+
+/** A frame's numeric body as the COORDINATE-BORDERED grid Surface / Contour /
+ *  Grid Interpolate read: row 0 = column indices, column 0 = row indices (both
+ *  counting from `start`), corner blank, non-numeric cells blank. Add Index's
+ *  two-way output. */
+export function borderedGridFromFrame(f: FrameValue, start = 1): (number | null)[][] {
+  const rows = frameRowCount(f);
+  const header: (number | null)[] = [null, ...f.columns.map((_, j) => start + j)];
+  const out: (number | null)[][] = [header];
+  for (let i = 0; i < rows; i++) {
+    out.push([start + i, ...f.columns.map((c) => {
+      const v = c.values[i];
+      return typeof v === "number" && Number.isFinite(v) ? v : null;
+    })]);
+  }
+  return out;
 }

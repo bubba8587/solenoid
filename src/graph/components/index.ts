@@ -152,6 +152,7 @@ export {
   NestComponent, UnnestComponent, AppendComponent, RenameComponent,
   SplitColumnComponent, AddIndexComponent, DecisionMatrixComponent, DecisionSensitivityComponent,
   ReconcileComponent,
+  FillBlanksComponent, ReplaceValuesComponent, MergeColumnsComponent, PromoteHeadersComponent, DropBlankRowsComponent,
 } from "./FrameNodes";
 
 // ─── Trust & data quality ───────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { selectColumns, dropColumns, renameColumns, sortByColumn, distinctRows, headRows, filterRows, filterRowsMulti, groupByFrame, joinFrames, appendFrames, unpivotFrame, pivotFrame, nestFrame, unnestCube, applyVerb, splitColumn, addIndexColumn, lookupFrameCell } from "./frameVerbs";
+import { selectColumns, dropColumns, renameColumns, sortByColumn, distinctRows, headRows, filterRows, filterRowsMulti, groupByFrame, joinFrames, appendFrames, unpivotFrame, pivotFrame, nestFrame, unnestCube, applyVerb, splitColumn, addIndexColumn, lookupFrameCell, fillBlanks, replaceValues, mergeColumns, promoteHeaders, demoteHeaders, dropBlankRows, sliceRows, borderedGridFromFrame } from "./frameVerbs";
 import { isSolError, solError } from "./errorValue";
 import { isCubeValue, isFrameValue, type FrameValue } from "./frame";
 
@@ -884,5 +884,113 @@ describe("duplicate output names dedupe (audit finding 32)", () => {
   it("select: a repeated name keeps the first occurrence only", () => {
     const out = selectColumns(f, ["id", "id", "qty"]);
     expect(out.columns.map((c) => c.name)).toEqual(["id", "qty"]);
+  });
+});
+
+// ─── Timesaver cleanup verbs (2026-07-16) ───────────────────────────────────────
+
+describe("timesaver verbs", () => {
+  const gaps: FrameValue = {
+    __frame: true,
+    columns: [
+      { name: "region", type: "string", values: ["North", null, null, "South", null] },
+      { name: "sales", type: "number", values: [1, 2, null, 4, 5] },
+    ],
+  };
+
+  it("fillBlanks down un-merges report-shaped columns; up carries backward", () => {
+    const down = fillBlanks(gaps, ["region"], "down");
+    expect(down.columns[0].values).toEqual(["North", "North", "North", "South", "South"]);
+    expect(down.columns[1].values).toEqual([1, 2, null, 4, 5]); // untouched: not named
+    const up = fillBlanks(gaps, [], "up"); // blank columns list = all
+    expect(up.columns[0].values).toEqual(["North", "South", "South", "South", null]);
+    expect(up.columns[1].values).toEqual([1, 2, 4, 4, 5]);
+  });
+
+  it("fillBlanks treats errors as values (they neither fill nor get overwritten)", () => {
+    const withErr: FrameValue = {
+      __frame: true,
+      columns: [{ name: "a", type: "number", values: [1, solError("#DIV/0!", "x"), null] }],
+    };
+    const out = fillBlanks(withErr, [], "down");
+    expect(isSolError(out.columns[0].values[1])).toBe(true);
+    expect(isSolError(out.columns[0].values[2])).toBe(true); // the error carried into the blank
+  });
+
+  it("replaceValues: whole-cell matches numbers numerically, coerces to column type", () => {
+    const out = replaceValues(f, "qty", "20", "99", "cell");
+    expect(out.columns[2].values).toEqual([10, 99, 30]);
+    // Column blank = all columns; string column matched textually.
+    const all = replaceValues(f, "", "b", "z", "cell");
+    expect(all.columns[1].values).toEqual(["a", "z", "c"]);
+    // Case-sensitive: "B" doesn't hit "b".
+    expect(replaceValues(f, "", "B", "z", "cell").columns[1].values).toEqual(["a", "b", "c"]);
+  });
+
+  it("replaceValues: substring rewrites inside text cells only", () => {
+    const t: FrameValue = {
+      __frame: true,
+      columns: [
+        { name: "s", type: "string", values: ["north-east", "north-west", null] },
+        { name: "n", type: "number", values: [101, 102, 103] },
+      ],
+    };
+    const out = replaceValues(t, "", "north", "N", "substring");
+    expect(out.columns[0].values).toEqual(["N-east", "N-west", null]);
+    expect(out.columns[1].values).toEqual([101, 102, 103]); // numbers untouched in substring mode
+  });
+
+  it("mergeColumns joins formatted cells, drops sources, sits at the first source's slot", () => {
+    const out = mergeColumns(f, ["name", "qty"], " · ", "Tag");
+    expect(out.columns.map((c) => c.name)).toEqual(["id", "Tag"]);
+    expect(out.columns[1].type).toBe("string");
+    expect(out.columns[1].values).toEqual(["a · 10", "b · 20", "c · 30"]);
+    let err: unknown;
+    try { mergeColumns(f, ["name"], ",", ""); } catch (e) { err = e; }
+    expect(isSolError(err)).toBe(true);
+  });
+
+  it("promoteHeaders lifts row 1 into names (uniquified); demoteHeaders is its inverse shape", () => {
+    const raw: FrameValue = {
+      __frame: true,
+      columns: [
+        { name: "Col1", type: "string", values: ["Region", "North", "South"] },
+        { name: "Col2", type: "string", values: ["Sales", "1", "2"] },
+      ],
+    };
+    const up = promoteHeaders(raw);
+    expect(up.columns.map((c) => c.name)).toEqual(["Region", "Sales"]);
+    expect(up.columns[0].values).toEqual(["North", "South"]);
+    const down = demoteHeaders(up);
+    expect(down.columns.map((c) => c.name)).toEqual(["Col1", "Col2"]);
+    expect(down.columns[0].values).toEqual(["Region", "North", "South"]);
+    expect(down.columns.every((c) => c.type === "string")).toBe(true);
+  });
+
+  it("dropBlankRows: 'all' drops spacers only, 'any' keeps complete rows", () => {
+    const t: FrameValue = {
+      __frame: true,
+      columns: [
+        { name: "a", type: "number", values: [1, null, null, 4] },
+        { name: "b", type: "string", values: ["x", null, "y", "z"] },
+      ],
+    };
+    expect(dropBlankRows(t, "all").columns[0].values).toEqual([1, null, 4]);
+    expect(dropBlankRows(t, "any").columns[0].values).toEqual([1, 4]);
+  });
+
+  it("sliceRows covers last / skip / 1-based inclusive range", () => {
+    expect(sliceRows(f, "last", 2).columns[0].values).toEqual([2, 3]);
+    expect(sliceRows(f, "skip", 1).columns[0].values).toEqual([2, 3]);
+    expect(sliceRows(f, "range", 2, 3).columns[0].values).toEqual([2, 3]);
+    expect(sliceRows(f, "range", 3, 2).columns[0].values).toEqual([]); // inverted → empty
+    expect(sliceRows(f, "first", 99).columns[0].values).toEqual([1, 2, 3]);
+  });
+
+  it("borderedGridFromFrame builds the Surface/Grid-Interpolate coordinate border", () => {
+    const g = borderedGridFromFrame(f, 1);
+    expect(g[0]).toEqual([null, 1, 2, 3]);          // corner + column indices
+    expect(g[1]).toEqual([1, 1, null, 10]);          // row index + cells (text → null)
+    expect(g.length).toBe(4);
   });
 });
