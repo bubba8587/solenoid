@@ -1055,7 +1055,14 @@ export function fillBorderedGrid(table: (number | null)[][], forecast = true): (
     const rs = sides(coarseRows, (k) => rowYs[k], qy);
     const cs = sides(coarseCols, (k) => colXs[k], qx);
     if (!rs || !cs) continue; // not enclosable → leave for the forecast pass
-    const [rLoC, rHiC] = rs, [cLoC, cHiC] = cs;
+    // Cap the widening DEPTH per side. Un-capped, scattered data (a diagonal)
+    // rejects every box and the four nested loops exhaust O(lines⁴) combinations
+    // per cell — seconds on a modest grid. A cap of 4 still crosses runs of
+    // several consecutive holes on a line (each hole costs one widening step);
+    // anything needing a wider reach is scattered, and the spline handles it.
+    const WIDEN = 4;
+    const [rLoC, rHiC] = [rs[0].slice(0, WIDEN), rs[1].slice(0, WIDEN)];
+    const [cLoC, cHiC] = [cs[0].slice(0, WIDEN), cs[1].slice(0, WIDEN)];
     // Nearest-first search for the closest box whose four corners are all known; widening
     // past blank corners (a hole) is what lets it interpolate across missing samples. The
     // query is always inside the box (lo ≤ q ≤ hi), so this is pure interpolation.

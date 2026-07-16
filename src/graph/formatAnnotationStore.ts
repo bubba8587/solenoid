@@ -2,6 +2,7 @@
 // Module-level singleton, readable from any React root.
 
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "./nodes/date";
+import { extremeSci } from "./components/format";
 import { groupingApplies, scaleApplies, negativeApplies } from "./formatModel";
 import { APP_LOCALE } from "./locale";
 import { createNotifier } from "./storeKit";
@@ -136,6 +137,8 @@ export function applyFormatStyle(
 }
 
 function autoFormat(n: number): string {
+  const sci = extremeSci(n); // shared forced-scientific rule (format.ts)
+  if (sci !== null) return sci;
   if (Number.isInteger(n)) return n.toString();
   const s = parseFloat(n.toPrecision(6)).toString();
   return s;
