@@ -539,10 +539,14 @@ export class FilterNode extends ClassicPreset.Node {
     const conds: { op: FilterOp; value: string; matchCase: boolean }[] = [];
     for (const key of this.valueInputKeys()) {
       const id = key.slice(5);
-      const val = readFilterValue(inputs[key], this.stringLiterals[key]);
-      if (val.trim() === "") continue; // "not written yet" — excluded (frame-Filter parity)
       const cfg = this.condConfig[id];
-      conds.push({ op: cfg?.op ?? "gt", value: val, matchCase: cfg?.matchCase ?? false });
+      const op: FilterOp = cfg?.op ?? "gt";
+      const val = readFilterValue(inputs[key], this.stringLiterals[key]);
+      // The blank predicates take no value — an empty field doesn't mean "not
+      // written yet" for them, it's the whole point.
+      const valueless = op === "isblank" || op === "notblank";
+      if (!valueless && val.trim() === "") continue; // "not written yet" — excluded (frame-Filter parity)
+      conds.push({ op, value: val, matchCase: cfg?.matchCase ?? false });
     }
     if (conds.length === 0) {
       // No complete conditions = pass-through, like the frame Filter.
@@ -653,12 +657,14 @@ export class SumIfsNode extends ClassicPreset.Node {
     for (const [colKey, valKey] of this.valuePairKeys()) {
       const id = colKey.slice(6);
       const name = String(inputs[colKey]?.[0] ?? this.stringLiterals[colKey] ?? "").trim();
+      const cfg = this.condConfig[id];
+      const op: FilterOp = cfg?.op ?? "eq";
       const val = readFilterValue(inputs[valKey], this.stringLiterals[valKey]);
-      if (name === "" || val.trim() === "") continue; // row not written yet
+      const valueless = op === "isblank" || op === "notblank"; // no value to write
+      if (name === "" || (!valueless && val.trim() === "")) continue; // row not written yet
       const col = getColumn(f, name);
       if (!col) return finish(solError("#REF!", `No column "${name}" in the frame`));
-      const cfg = this.condConfig[id];
-      crits.push({ col, op: cfg?.op ?? "eq", value: val, matchCase: cfg?.matchCase ?? false });
+      crits.push({ col, op, value: val, matchCase: cfg?.matchCase ?? false });
     }
     if (crits.length === 0) return finish(null);
     const n = frameRowCount(f);

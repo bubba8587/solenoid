@@ -156,6 +156,18 @@ describe("filter", () => {
     expect(out.columns[0].values).toEqual([12, 20]);
     expect(out.columns[1].values).toEqual(["Bergen", "Tromso"]);
   });
+  it("is blank / not blank select on blankness itself (2026-07-16) — value ignored, errors are present", () => {
+    // isblank: exactly the null cell. The error row is present-but-broken, not blank.
+    const blank = filterRows(t, "qty", "isblank", null);
+    expect(blank.columns[1].values).toEqual(["Oslo"]);
+    const present = filterRows(t, "qty", "notblank", null);
+    expect(present.columns[1].values).toEqual(["Oslo", "Bergen", "Tromso", "Oslo"]);
+    // Kept + Dropped stays an exhaustive complement (D16).
+    expect(blank.columns[0].values.length + present.columns[0].values.length).toBe(5);
+    // The comparison value really is ignored.
+    expect(filterRows(t, "qty", "isblank", 999).columns[1].values).toEqual(["Oslo"]);
+  });
+
   it("filters a string column by equality and by contains", () => {
     expect(filterRows(t, "city", "eq", "Oslo").columns[0].values).toEqual([5, null, solError("#DIV/0!", "x")]);
     expect(filterRows(t, "city", "contains", "o").columns[1].values).toEqual(["Oslo", "Oslo", "Tromso", "Oslo"]);

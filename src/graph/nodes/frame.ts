@@ -301,10 +301,12 @@ export class FilterFrameNode extends ClassicPreset.Node {
     for (const [colKey, valKey] of this.valuePairKeys()) {
       const id = colKey.slice(6);
       const col = String((inputs[colKey] as string[] | undefined)?.[0] ?? this.stringLiterals[colKey] ?? "").trim();
-      const val = readFilterValue(inputs[valKey], this.stringLiterals[valKey]);
-      if (col === "" || val.trim() === "") continue;
       const cfg = this.condConfig[id];
-      conditions.push({ column: col, op: cfg?.op ?? "gt", value: val as FrameCell, matchCase: cfg?.matchCase ?? false });
+      const op = cfg?.op ?? "gt";
+      const val = readFilterValue(inputs[valKey], this.stringLiterals[valKey]);
+      const valueless = op === "isblank" || op === "notblank"; // no value to write
+      if (col === "" || (!valueless && val.trim() === "")) continue;
+      conditions.push({ column: col, op, value: val as FrameCell, matchCase: cfg?.matchCase ?? false });
     }
     if (conditions.length === 0) {
       // Pass-through ("not written yet"): Kept = everything, Dropped = blank.

@@ -112,6 +112,23 @@ fn filter_numeric_and_text() {
 }
 
 #[test]
+fn filter_blank_predicates_match_the_oracle() {
+    // isblank/notblank select on blankness itself (2026-07-16); the comparison
+    // value is ignored. NaN is present (not blank) — same as the JS oracle.
+    let f = frame(vec![
+        ("n", SolType::Number, vec![Cell::Num(1.0), Cell::Null, Cell::Num(f64::NAN), Cell::Num(4.0)]),
+        ("s", SolType::Str, vec![Cell::Str("a".into()), Cell::Str("b".into()), Cell::Null, Cell::Str("d".into())]),
+    ]);
+    let blank = verb_filter(&f, "n", "isblank", &Json::Null, false).unwrap();
+    assert_eq!(blank.df.height(), 1);
+    let present = verb_filter(&f, "n", "notblank", &Json::Null, false).unwrap();
+    assert_eq!(present.df.height(), 3); // NaN counts as present
+    let sblank = verb_filter(&f, "s", "isblank", &Json::Null, false).unwrap();
+    assert_eq!(sblank.df.height(), 1);
+    assert_eq!(verb_filter(&f, "s", "notblank", &Json::Null, false).unwrap().df.height(), 3);
+}
+
+#[test]
 fn filter_text_matching_is_case_insensitive_by_default() {
     // Mirrors the oracle's frameVerbs.test.ts cases: string eq/neq + the text
     // predicates fold with a plain Unicode lowercase; match_case restores exact
