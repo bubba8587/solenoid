@@ -249,6 +249,17 @@ this backlog stays the per-item source of truth.
 
 ## Cables / canvas / chrome
 
+- [ ] **Frame socket needs a unique glyph** (author 2026-07-16): it used to collide visually only
+  with the numeric matrix; now every element family has a matrix glyph, so the Frame no longer reads
+  as distinct. Design a Frame-specific shape (`SocketComponent` + pixi glyph + Socket Legend +
+  Reference socket tab).
+- [ ] **Reference overlay — Socket tab → full data-model chapter** (author 2026-07-16): grow the
+  socket-reference tab into a proper explanation of data types, units, and dimensionality — what
+  coerces, what flows into what (the lattice: type separation, dimensional widening, wildcard
+  ladder, object family), a List being a 1-D ROW, which containers carry homogeneous vs
+  heterogeneous units (matrix = one unit, frame = per-column, list = per-element planned).
+  Sources: `sockets.ts` lattice + `socketConnect.test.ts`, D17/D20, `docs/v2.0/05-units-format-controller.md`.
+
 - [ ] **`content-visibility: auto` on node roots — EVALUATED, blocked by the live-DOM-geometry
   model (2026-07-15m).** The idea: skip style/layout/paint for offscreen nodes. The blocker is
   structural, not cosmetic: socket positions are measured from live DOM geometry — `MeasuredSocketRow`

@@ -264,7 +264,7 @@ export class ListIndexNode extends ClassicPreset.Node {
       if (!colAll && (c < 0 || c >= v.columns.length)) return done(refErr(c + 1, v.columns.length, "Column"));
       // Whole column / whole row stay CUBES so nested cells survive intact.
       if (rowAll) return done(cubeFromColumns([v.columns[c]]));
-      if (colAll) return done(cubeFromColumns(v.columns.map((col) => ({ name: col.name, cells: [col.cells[r] ?? null] }))));
+      if (colAll) return done(cubeFromColumns(v.columns.map((col) => ({ name: col.name, type: col.type, cells: [col.cells[r] ?? null] }))));
       return done(v.columns[c].cells[r] ?? null);
     }
     if (isFrameValue(v)) {

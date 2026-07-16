@@ -585,6 +585,10 @@ describe("nest / unnest (flat ⟷ cube)", () => {
     expect(firstNested.columns.map((c) => c.name)).toEqual(["item", "qty"]);
     expect(firstNested.columns[0].values).toEqual(["x", "y"]);
   });
+  it("nest carries the key column's TYPE (typed CubeColumn — a date key stays date-matchable)", () => {
+    const cube = nestFrame(flat, ["cust"], "orders");
+    expect(cube.columns[0].type).toBe("string");
+  });
   it("unnest is the inverse: cube → flat recovers the rows", () => {
     const back = unnestCube(nestFrame(flat, ["cust"], "orders"), "orders");
     expect(back.columns.map((c) => c.name)).toEqual(["cust", "item", "qty"]);
