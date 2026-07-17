@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { numIn, numOut } from "./shared";
+import { numListIn, numListOut, readInput, broadcast, type BroadcastResult } from "./shared";
 import {
   stdNormCDF,
   normSInv,
@@ -31,7 +31,7 @@ export const NORM_DIST_OP_META = {
 export class NormDistNode extends ClassicPreset.Node {
   label: string;
   op: NormDistOp;
-  cachedResult: number | null = null;
+  cachedResult: BroadcastResult = null;
   literals: Record<string, number> = { x: 0, mean: 0, stdev: 1 };
   width = 180; height = 230;
 
@@ -39,26 +39,23 @@ export class NormDistNode extends ClassicPreset.Node {
     super("NormDist");
     this.label = init?.label ?? "NORM.DIST";
     this.op = init?.op ?? "cdf";
-    this.addInput("x",    numIn("X"));
-    this.addInput("mean", numIn("Mean"));
-    this.addInput("stdev", numIn("Stdev"));
-    this.addOutput("result", numOut("Result"));
+    this.addInput("x",    numListIn("X"));
+    this.addInput("mean", numListIn("Mean"));
+    this.addInput("stdev", numListIn("Stdev"));
+    this.addOutput("result", numListOut("Result"));
   }
 
-  data(inputs: { x?: number[]; mean?: number[]; stdev?: number[] }) {
-    const x     = inputs.x?.[0]     ?? this.literals.x     ?? 0;
-    const mean  = inputs.mean?.[0]  ?? this.literals.mean  ?? 0;
-    const stdev = inputs.stdev?.[0] ?? this.literals.stdev ?? 1;
-    let result: number | null = null;
-    if (stdev > 0) {
-      const z = (x - mean) / stdev;
-      if (this.op === "cdf") {
-        result = stdNormCDF(z);
-      } else {
-        result = exp(-0.5 * z * z) / (stdev * sqrt(2 * PI));
-      }
-      if (!Number.isFinite(result)) result = null;
-    }
+  data(inputs: Record<string, (number | number[] | null)[] | undefined>) {
+    const x     = readInput(inputs.x,     this.literals.x);
+    const mean  = readInput(inputs.mean,  this.literals.mean);
+    const stdev = readInput(inputs.stdev, this.literals.stdev);
+    const op = this.op;
+    const result = broadcast((xv, mv, sv) => {
+      if (sv <= 0) return null;
+      const z = (xv - mv) / sv;
+      const r = op === "cdf" ? stdNormCDF(z) : exp(-0.5 * z * z) / (sv * sqrt(2 * PI));
+      return Number.isFinite(r) ? r : null;
+    }, x, mean, stdev);
     this.cachedResult = result;
     return { result };
   }
@@ -67,28 +64,28 @@ export class NormDistNode extends ClassicPreset.Node {
 // ─── 2. NormInvNode — NORM.INV ────────────────────────────────────────────────
 export class NormInvNode extends ClassicPreset.Node {
   label: string;
-  cachedResult: number | null = null;
+  cachedResult: BroadcastResult = null;
   literals: Record<string, number> = { prob: 0.95, mean: 0, stdev: 1 };
   width = 180; height = 205;
 
   constructor(init?: { label?: string }) {
     super("NormInv");
     this.label = init?.label ?? "NORM.INV";
-    this.addInput("prob",  numIn("Probability"));
-    this.addInput("mean",  numIn("Mean"));
-    this.addInput("stdev", numIn("Stdev"));
-    this.addOutput("result", numOut("Result"));
+    this.addInput("prob",  numListIn("Probability"));
+    this.addInput("mean",  numListIn("Mean"));
+    this.addInput("stdev", numListIn("Stdev"));
+    this.addOutput("result", numListOut("Result"));
   }
 
-  data(inputs: { prob?: number[]; mean?: number[]; stdev?: number[] }) {
-    const prob  = inputs.prob?.[0]  ?? this.literals.prob  ?? 0.95;
-    const mean  = inputs.mean?.[0]  ?? this.literals.mean  ?? 0;
-    const stdev = inputs.stdev?.[0] ?? this.literals.stdev ?? 1;
-    let result: number | null = null;
-    if (prob > 0 && prob < 1 && stdev > 0) {
-      result = normSInv(prob) * stdev + mean;
-      if (!Number.isFinite(result)) result = null;
-    }
+  data(inputs: Record<string, (number | number[] | null)[] | undefined>) {
+    const prob  = readInput(inputs.prob,  this.literals.prob);
+    const mean  = readInput(inputs.mean,  this.literals.mean);
+    const stdev = readInput(inputs.stdev, this.literals.stdev);
+    const result = broadcast((pv, mv, sv) => {
+      if (pv <= 0 || pv >= 1 || sv <= 0) return null;
+      const r = normSInv(pv) * sv + mv;
+      return Number.isFinite(r) ? r : null;
+    }, prob, mean, stdev);
     this.cachedResult = result;
     return { result };
   }
@@ -105,7 +102,7 @@ export const NORM_S_DIST_OP_META = {
 export class NormSDistNode extends ClassicPreset.Node {
   label: string;
   op: NormSDistOp;
-  cachedResult: number | null = null;
+  cachedResult: BroadcastResult = null;
   literals: Record<string, number> = { z: 0 };
   width = 180; height = 175;
 
@@ -113,19 +110,17 @@ export class NormSDistNode extends ClassicPreset.Node {
     super("NormSDist");
     this.label = init?.label ?? "NORM.S.DIST";
     this.op = init?.op ?? "cdf";
-    this.addInput("z", numIn("Z"));
-    this.addOutput("result", numOut("Result"));
+    this.addInput("z", numListIn("Z"));
+    this.addOutput("result", numListOut("Result"));
   }
 
-  data(inputs: { z?: number[] }) {
-    const z = inputs.z?.[0] ?? this.literals.z ?? 0;
-    let result: number | null = null;
-    if (this.op === "cdf") {
-      result = stdNormCDF(z);
-    } else {
-      result = exp(-z * z / 2) / sqrt(2 * PI);
-    }
-    if (!Number.isFinite(result)) result = null;
+  data(inputs: Record<string, (number | number[] | null)[] | undefined>) {
+    const z = readInput(inputs.z, this.literals.z);
+    const op = this.op;
+    const result = broadcast((zv) => {
+      const r = op === "cdf" ? stdNormCDF(zv) : exp(-zv * zv / 2) / sqrt(2 * PI);
+      return Number.isFinite(r) ? r : null;
+    }, z);
     this.cachedResult = result;
     return { result };
   }
@@ -134,24 +129,24 @@ export class NormSDistNode extends ClassicPreset.Node {
 // ─── 4. NormSInvNode — NORM.S.INV ────────────────────────────────────────────
 export class NormSInvNode extends ClassicPreset.Node {
   label: string;
-  cachedResult: number | null = null;
+  cachedResult: BroadcastResult = null;
   literals: Record<string, number> = { prob: 0.95 };
   width = 180; height = 150;
 
   constructor(init?: { label?: string }) {
     super("NormSInv");
     this.label = init?.label ?? "NORM.S.INV";
-    this.addInput("prob", numIn("Probability"));
-    this.addOutput("result", numOut("Result"));
+    this.addInput("prob", numListIn("Probability"));
+    this.addOutput("result", numListOut("Result"));
   }
 
-  data(inputs: { prob?: number[] }) {
-    const prob = inputs.prob?.[0] ?? this.literals.prob ?? 0.95;
-    let result: number | null = null;
-    if (prob > 0 && prob < 1) {
-      result = normSInv(prob);
-      if (!Number.isFinite(result)) result = null;
-    }
+  data(inputs: Record<string, (number | number[] | null)[] | undefined>) {
+    const prob = readInput(inputs.prob, this.literals.prob);
+    const result = broadcast((pv) => {
+      if (pv <= 0 || pv >= 1) return null;
+      const r = normSInv(pv);
+      return Number.isFinite(r) ? r : null;
+    }, prob);
     this.cachedResult = result;
     return { result };
   }
@@ -170,7 +165,7 @@ export const T_DIST_OP_META = {
 export class TDistNode extends ClassicPreset.Node {
   label: string;
   op: TDistOp;
-  cachedResult: number | null = null;
+  cachedResult: BroadcastResult = null;
   literals: Record<string, number> = { x: 0, df: 10 };
   width = 180; height = 210;
 
@@ -178,38 +173,30 @@ export class TDistNode extends ClassicPreset.Node {
     super("TDist");
     this.label = init?.label ?? "T.DIST";
     this.op = init?.op ?? "cdf";
-    this.addInput("x",  numIn("X"));
-    this.addInput("df", numIn("Degrees of freedom"));
-    this.addOutput("result", numOut("Result"));
+    this.addInput("x",  numListIn("X"));
+    this.addInput("df", numListIn("Degrees of freedom"));
+    this.addOutput("result", numListOut("Result"));
   }
 
-  data(inputs: { x?: number[]; df?: number[] }) {
-    const x  = inputs.x?.[0]  ?? this.literals.x  ?? 0;
-    const df = inputs.df?.[0] ?? this.literals.df ?? 10;
-    let result: number | null = null;
-    if (df > 0) {
-      switch (this.op) {
-        case "cdf": {
-          result = tDistCDF(x, df);
-          break;
-        }
-        case "pdf": {
-          result = exp(
-            lnGamma((df + 1) / 2) - lnGamma(df / 2)
-          ) / (sqrt(df * PI) * Math.pow(1 + x * x / df, (df + 1) / 2));
-          break;
-        }
-        case "2t": {
-          result = 2 * (1 - tDistCDF(abs(x), df));
-          break;
-        }
-        case "rt": {
-          result = 1 - tDistCDF(x, df);
-          break;
-        }
+  data(inputs: Record<string, (number | number[] | null)[] | undefined>) {
+    const x  = readInput(inputs.x,  this.literals.x);
+    const df = readInput(inputs.df, this.literals.df);
+    const op = this.op;
+    const result = broadcast((xv, dfv) => {
+      if (dfv <= 0) return null;
+      let r: number;
+      if (op === "cdf") {
+        r = tDistCDF(xv, dfv);
+      } else if (op === "pdf") {
+        r = exp(lnGamma((dfv + 1) / 2) - lnGamma(dfv / 2)) /
+          (sqrt(dfv * PI) * Math.pow(1 + xv * xv / dfv, (dfv + 1) / 2));
+      } else if (op === "2t") {
+        r = 2 * (1 - tDistCDF(abs(xv), dfv));
+      } else {
+        r = 1 - tDistCDF(xv, dfv);
       }
-      if (result !== null && !Number.isFinite(result)) result = null;
-    }
+      return Number.isFinite(r) ? r : null;
+    }, x, df);
     this.cachedResult = result;
     return { result };
   }
@@ -226,7 +213,7 @@ export const T_INV_OP_META = {
 export class TInvNode extends ClassicPreset.Node {
   label: string;
   op: TInvOp;
-  cachedResult: number | null = null;
+  cachedResult: BroadcastResult = null;
   literals: Record<string, number> = { prob: 0.95, df: 10 };
   width = 180; height = 195;
 
@@ -234,24 +221,21 @@ export class TInvNode extends ClassicPreset.Node {
     super("TInv");
     this.label = init?.label ?? "T.INV";
     this.op = init?.op ?? "left";
-    this.addInput("prob", numIn("Probability"));
-    this.addInput("df",   numIn("Degrees of freedom"));
-    this.addOutput("result", numOut("Result"));
+    this.addInput("prob", numListIn("Probability"));
+    this.addInput("df",   numListIn("Degrees of freedom"));
+    this.addOutput("result", numListOut("Result"));
   }
 
-  data(inputs: { prob?: number[]; df?: number[] }) {
-    const prob = inputs.prob?.[0] ?? this.literals.prob ?? 0.95;
-    const df   = inputs.df?.[0]   ?? this.literals.df   ?? 10;
-    let result: number | null = null;
-    if (prob > 0 && prob < 1 && df > 0) {
-      if (this.op === "left") {
-        result = bisectionInv((t) => tDistCDF(t, df), prob, -1e6, 1e6);
-      } else {
-        // 2T: find t where left-CDF(t) = 1 - prob/2
-        result = bisectionInv((t) => tDistCDF(t, df), 1 - prob / 2, -1e6, 1e6);
-      }
-      if (!Number.isFinite(result)) result = null;
-    }
+  data(inputs: Record<string, (number | number[] | null)[] | undefined>) {
+    const prob = readInput(inputs.prob, this.literals.prob);
+    const df   = readInput(inputs.df,   this.literals.df);
+    const op = this.op;
+    const result = broadcast((pv, dfv) => {
+      if (pv <= 0 || pv >= 1 || dfv <= 0) return null;
+      const target = op === "left" ? pv : 1 - pv / 2;
+      const r = bisectionInv((t) => tDistCDF(t, dfv), target, -1e6, 1e6);
+      return Number.isFinite(r) ? r : null;
+    }, prob, df);
     this.cachedResult = result;
     return { result };
   }
@@ -269,7 +253,7 @@ export const CHISQ_DIST_OP_META = {
 export class ChisqDistNode extends ClassicPreset.Node {
   label: string;
   op: ChisqDistOp;
-  cachedResult: number | null = null;
+  cachedResult: BroadcastResult = null;
   literals: Record<string, number> = { x: 1, df: 5 };
   width = 180; height = 210;
 
@@ -277,35 +261,28 @@ export class ChisqDistNode extends ClassicPreset.Node {
     super("ChisqDist");
     this.label = init?.label ?? "CHISQ.DIST";
     this.op = init?.op ?? "cdf";
-    this.addInput("x",  numIn("X"));
-    this.addInput("df", numIn("Degrees of freedom"));
-    this.addOutput("result", numOut("Result"));
+    this.addInput("x",  numListIn("X"));
+    this.addInput("df", numListIn("Degrees of freedom"));
+    this.addOutput("result", numListOut("Result"));
   }
 
-  data(inputs: { x?: number[]; df?: number[] }) {
-    const x  = inputs.x?.[0]  ?? this.literals.x  ?? 1;
-    const df = inputs.df?.[0] ?? this.literals.df ?? 5;
-    let result: number | null = null;
-    if (df > 0) {
-      const cdfVal = x <= 0 ? 0 : regularizedGamma(df / 2, x / 2);
-      switch (this.op) {
-        case "cdf": {
-          result = cdfVal;
-          break;
-        }
-        case "pdf": {
-          result = x <= 0
-            ? 0
-            : exp(-x / 2 + (df / 2 - 1) * log(x) - (df / 2) * log(2) - lnGamma(df / 2));
-          break;
-        }
-        case "rt": {
-          result = 1 - cdfVal;
-          break;
-        }
+  data(inputs: Record<string, (number | number[] | null)[] | undefined>) {
+    const x  = readInput(inputs.x,  this.literals.x);
+    const df = readInput(inputs.df, this.literals.df);
+    const op = this.op;
+    const result = broadcast((xv, dfv) => {
+      if (dfv <= 0) return null;
+      const cdfVal = xv <= 0 ? 0 : regularizedGamma(dfv / 2, xv / 2);
+      let r: number;
+      if (op === "cdf") {
+        r = cdfVal;
+      } else if (op === "pdf") {
+        r = xv <= 0 ? 0 : exp(-xv / 2 + (dfv / 2 - 1) * log(xv) - (dfv / 2) * log(2) - lnGamma(dfv / 2));
+      } else {
+        r = 1 - cdfVal;
       }
-      if (result !== null && !Number.isFinite(result)) result = null;
-    }
+      return Number.isFinite(r) ? r : null;
+    }, x, df);
     this.cachedResult = result;
     return { result };
   }
@@ -322,7 +299,7 @@ export const CHISQ_INV_OP_META = {
 export class ChisqInvNode extends ClassicPreset.Node {
   label: string;
   op: ChisqInvOp;
-  cachedResult: number | null = null;
+  cachedResult: BroadcastResult = null;
   literals: Record<string, number> = { prob: 0.95, df: 5 };
   width = 180; height = 195;
 
@@ -330,20 +307,21 @@ export class ChisqInvNode extends ClassicPreset.Node {
     super("ChisqInv");
     this.label = init?.label ?? "CHISQ.INV";
     this.op = init?.op ?? "left";
-    this.addInput("prob", numIn("Probability"));
-    this.addInput("df",   numIn("Degrees of freedom"));
-    this.addOutput("result", numOut("Result"));
+    this.addInput("prob", numListIn("Probability"));
+    this.addInput("df",   numListIn("Degrees of freedom"));
+    this.addOutput("result", numListOut("Result"));
   }
 
-  data(inputs: { prob?: number[]; df?: number[] }) {
-    const prob = inputs.prob?.[0] ?? this.literals.prob ?? 0.95;
-    const df   = inputs.df?.[0]   ?? this.literals.df   ?? 5;
-    let result: number | null = null;
-    if (prob > 0 && prob < 1 && df > 0) {
-      const target = this.op === "left" ? prob : 1 - prob;
-      result = bisectionInv((x) => regularizedGamma(df / 2, x / 2), target, 0, 1e6);
-      if (!Number.isFinite(result)) result = null;
-    }
+  data(inputs: Record<string, (number | number[] | null)[] | undefined>) {
+    const prob = readInput(inputs.prob, this.literals.prob);
+    const df   = readInput(inputs.df,   this.literals.df);
+    const op = this.op;
+    const result = broadcast((pv, dfv) => {
+      if (pv <= 0 || pv >= 1 || dfv <= 0) return null;
+      const target = op === "left" ? pv : 1 - pv;
+      const r = bisectionInv((x) => regularizedGamma(dfv / 2, x / 2), target, 0, 1e6);
+      return Number.isFinite(r) ? r : null;
+    }, prob, df);
     this.cachedResult = result;
     return { result };
   }
