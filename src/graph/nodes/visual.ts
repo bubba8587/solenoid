@@ -136,31 +136,43 @@ export class ChartNode extends ClassicPreset.Node {
     // The data feed (raw, uncoerced): a FRAME drives a LABELED chart — col 0 → x-axis
     // labels (formatted per type, so dates read as dates), col 1 → the values; a single-
     // column frame is just values. A plain LIST charts as values against the index.
+    // Every cell is coerced to a FINITE number or null: a #DIV/0! (SolError object),
+    // a first-class null, NaN/Infinity (dirty-data coercions from the input nodes),
+    // or text all become null — so the emitted chart VALUE never carries a non-number
+    // that recharts / a Report embed would choke on. Bad cells become null in place
+    // (not dropped), so the x-axis labels (indexed by row) stay aligned.
+    const num = (c: unknown): number | null => (typeof c === "number" && Number.isFinite(c) ? c : null);
     const raw = inputs.values?.[0] ?? null;
     this.cachedLabels = null;
     let v: number | number[] | null = null;
     if (isFrameValue(raw) && raw.columns.length > 0) {
       const cols = raw.columns;
-      const asNums = (col: FrameColumn) => col.values.map((c) => (typeof c === "number" && Number.isFinite(c) ? c : null));
+      const asNums = (col: FrameColumn) => col.values.map(num);
       if (cols.length >= 2) {
+        // formatFrameCell already renders a SolError cell as its #CODE! text and a
+        // date serial as a date; coerce the (never-object) result to a plain label.
         this.cachedLabels = cols[0].values.map((c) => formatFrameCell(cols[0].type, c) ?? "");
         v = asNums(cols[1]) as unknown as number[];
       } else {
         v = asNums(cols[0]) as unknown as number[];
       }
     } else if (Array.isArray(raw)) {
-      v = raw as number[];
+      v = raw.map(num) as unknown as number[];
     } else if (typeof raw === "number") {
-      v = raw;
+      v = num(raw);
     }
     this.cachedResult = v;
     // A wired matrix → coerce every cell to number|null (anyTable is element-
     // agnostic; a non-number becomes null so the charts skip it).
     const rawMatrix = inputs.series?.[0] ?? null;
     this.cachedMatrix = Array.isArray(rawMatrix)
-      ? rawMatrix.map((row) => (Array.isArray(row) ? row : [row]).map((c) => (typeof c === "number" && Number.isFinite(c) ? c : null)))
+      ? rawMatrix.map((row) => (Array.isArray(row) ? row : [row]).map(num))
       : null;
-    this.chartOptions = parseChartOptions(inputs.options?.[0] ?? this.stringLiterals.options ?? null);
+    // Only a real string configures the options; a SolError/number wired into the
+    // Options socket (it reaches here now the node sees raw errors) falls back to
+    // the inline literal rather than being parsed as text.
+    const optStr = typeof inputs.options?.[0] === "string" ? inputs.options[0] : (this.stringLiterals.options ?? null);
+    this.chartOptions = parseChartOptions(optStr);
     const chart: ChartValue = {
       __chart: true,
       op: this.op,

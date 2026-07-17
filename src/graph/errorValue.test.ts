@@ -10,6 +10,8 @@ import { IrrNode, TvmNode, MirrNode } from "./nodes/finance";
 import { ConvertNode } from "./nodes/convert";
 import { isUnitCell, type UnitCell } from "./unitValue";
 import { ShapeError } from "./nodes/coerce";
+import { ChartNode } from "./nodes/visual";
+import { isChartValue, type ChartValue } from "./chartValue";
 
 describe("SolError tagging", () => {
   it("round-trips through the guard", () => {
@@ -80,6 +82,18 @@ describe("installErrorGuards", () => {
     const e = solError("#DIV/0!", "x");
     const out = n.data({ value: [e as unknown as number], fallback: [7] }) as { result: unknown };
     expect(out.result).toBe(7); // caught, not propagated
+  });
+
+  it("a Chart is a figure sink: an error input yields an empty chart, not a SolError output", () => {
+    // Chart sees raw errors (SEES_ERRORS) and its data() sanitizes them to null,
+    // so the `chart` socket always carries a ChartValue — a bare error object out
+    // of a figure socket historically crashed the chart consumers.
+    const n = new ChartNode({ op: "column" });
+    installErrorGuards(n);
+    const out = n.data({ values: [solError("#DIV/0!", "x")] }) as { chart: unknown };
+    expect(isSolError(out.chart)).toBe(false);
+    expect(isChartValue(out.chart)).toBe(true);
+    expect((out.chart as ChartValue).values).toBeNull();
   });
 });
 

@@ -16,13 +16,25 @@ function ChartTooltip({ active, payload, label }: {
 }) {
   if (!active || !payload || !payload.length) return null;
   const v = payload[0]?.value;
+  const idx = Number(label);
   return (
     <div style={{ fontSize: 11, padding: "2px 6px", background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: 4, color: "var(--text)" }}>
-      <span style={{ color: "var(--text-dim)" }}>#{Number(label) + 1}</span>
+      <span style={{ color: "var(--text-dim)" }}>#{Number.isFinite(idx) ? Math.round(idx) + 1 : "?"}</span>
       {"  "}
-      {typeof v === "number" ? formatScalar(v) : v}
+      {tipValue(v)}
     </div>
   );
+}
+
+// Coerce a recharts payload value to a renderable string. A number formats via
+// formatScalar; anything non-primitive (a SolError object that slipped past the
+// series sanitizer) is stringified so React never sees a raw object as a child
+// (which throws "Objects are not valid as a React child" and takes down the node).
+function tipValue(v: unknown): string {
+  if (typeof v === "number") return formatScalar(v);
+  if (v == null) return "";
+  if (typeof v === "object") return String((v as { code?: string }).code ?? "—");
+  return String(v);
 }
 
 const TIP = <Tooltip isAnimationActive={false} cursor={{ stroke: "rgba(128,128,128,0.5)", fill: "rgba(128,128,128,0.12)" }} content={<ChartTooltip />} />;
@@ -34,7 +46,7 @@ function SliceTooltip({ active, payload }: { active?: boolean; payload?: { value
   const v = payload[0]?.value;
   return (
     <div style={{ fontSize: 11, padding: "2px 6px", background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: 4, color: "var(--text)" }}>
-      {typeof v === "number" ? formatScalar(v) : v}
+      {tipValue(v)}
     </div>
   );
 }
@@ -71,9 +83,20 @@ export function ChartView({
   const fs = (fontScale ?? 1) * ((opts?.fontsize ?? 10) / 10);
   const AXIS = { fontSize: 9 * fs, fill: axis } as const;
   // With Frame labels, the axis/category tick shows the label for that index; else
-  // the 1-based ordinal (the historical behaviour).
-  const tickFmt = (i: number | string) =>
-    labels ? String(labels[Number(i)] ?? "") : String(Number(i) + 1);
+  // the 1-based ordinal (the historical behaviour). A recharts `type="number"`
+  // index axis (scatter) can hand us INTERPOLATED fractional ticks (0.5, 1.5…) —
+  // round to the nearest datum and drop anything off the ends / non-numeric so the
+  // axis never renders a bogus "1.5" or an "[object Object]" from a stray value.
+  const tickFmt = (i: number | string) => {
+    const n = Number(i);
+    if (!Number.isFinite(n)) return "";
+    const idx = Math.round(n);
+    if (labels) {
+      const lab = labels[idx];
+      return lab == null || typeof lab === "object" ? "" : String(lab);
+    }
+    return idx >= 0 ? String(idx + 1) : "";
+  };
 
   // Resolved style from the options (fall back to the defaults that shipped).
   const color = opts?.color || VIZ;
@@ -179,7 +202,9 @@ export function ChartView({
     chart = (
       <ScatterChart width={width} height={chartH} margin={margin}>
         {showGrid && <CartesianGrid stroke={grid} />}
-        {axes && <XAxis type="number" dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} label={xLabel} height={xLabel ? 28 : undefined} />}
+        {/* `i` is an integer datum index — allowDecimals=false keeps recharts from
+            inventing fractional "nice" ticks (0.5, 1.5…) on the category axis. */}
+        {axes && <XAxis type="number" dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} allowDecimals={false} label={xLabel} height={xLabel ? 28 : undefined} />}
         {axes && <YAxis type="number" dataKey="v" tick={AXIS} tickLine={false} width={yAxisW} domain={yDomain} label={yLabel} />}
         {TIP}
         <Scatter data={series} fill={color} isAnimationActive={false} />
