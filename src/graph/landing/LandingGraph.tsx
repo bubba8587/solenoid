@@ -27,8 +27,10 @@ import { SurfaceNode, ContourNode } from "../nodes/visual";
 // 2026-07-17). If another demo is ever wanted, add it as an island in THIS
 // editor or as a DOM-snapshot diorama, not as a second live stack.
 
-const DESIGN_W = 1060;
-const DESIGN_H = 460;
+// Wider than the page column on purpose: the fit-to-width zoom lands around
+// 0.7, so the cards render smaller with generous space between them.
+const DESIGN_W = 1360;
+const DESIGN_H = 500;
 
 type Mount = {
   editor: NodeEditor<Schemes>;
@@ -57,10 +59,10 @@ async function buildDemoGraph(editor: NodeEditor<Schemes>, area: AreaPlugin<Sche
   const contour = new ContourNode({ label: "Contour" });
 
   const at: [ClassicPreset.Node, number, number][] = [
-    [survey, 10, 90],
-    [interp, 290, 70],
-    [surface, 530, 40],
-    [contour, 810, 40],
+    [survey, 20, 130],
+    [interp, 380, 90],
+    [surface, 740, 50],
+    [contour, 1090, 50],
   ];
   for (const [node] of at) {
     await editor.addNode(asNode(node));
