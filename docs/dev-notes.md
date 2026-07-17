@@ -18,6 +18,22 @@ edge round independently. Possible directions not yet tried: draw the ring so it
 (e.g. `inset:0` + account for the 2px border, or a box-shadow ring) instead of a 2px-offset `::after`;
 or pixel-snap the card box. Radius itself is correct; don't re-touch it. Parked by author.
 
+### SESSION DIGEST (2026-07-17 — distribution nodes broadcast; landing page)
+- **Distribution nodes → numlist (`10f5317`):** all 22 DIST/INV nodes across `dist-normal.ts` /
+  `dist-continuous.ts` / `dist-discrete.ts` moved from `numIn`/`numOut` scalar sockets to
+  `numListIn`/`numListOut` + the shared `broadcast()` helper (`readInput` for wired-null propagation),
+  so a wired list of x values (or probs/k counts) yields a list of results. Domain violations
+  (stdev ≤ 0, prob outside (0,1)) return the same blank `null` per cell. `BinomInv` stays scalar:
+  its result is a critical-value search over [0..n], not an element-wise function of an x.
+- **Landing page (`?landing`):** a standalone route in `src/graph/landing/` (LandingPage.tsx/.css +
+  LandingGraph.tsx), swapped in by App.tsx exactly like `?showcase`. The hero demo is the REAL rete
+  stack (areaPresets render preset, DataflowEngine, process.ts singletons pointed at it — the
+  showcase mount pattern) with a live 5-node commission graph: List Input → Aggregate(sum) →
+  Arithmetic(×) ← Number Input → Display; pan/zoom off, node drag + in-card edits live, fit-to-width
+  via a fixed `area.zoom`, Reset rebuilds. Copy follows DESIGN.md §7 (hero reuses the shipped About
+  tagline/body); socket glyphs are the real `SocketDot`s. All theme-token styled, so light mode
+  mirrors. Page scrolls inside a fixed wrapper (the app root locks overflow).
+
 ### SESSION DIGEST (2026-07-16e — 1.2 release run: movement pass, composite parity pass, PF seed, release docs)
 Author's release directive: punt all puntables (iFrame, Data Feed widening, drill-in nav/lasso/group
 tools, F-2 doc-level FC defaults → 1.3), then movement pass, composite parity pass, PF seed, docs,
