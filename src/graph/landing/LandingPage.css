@@ -28,27 +28,9 @@
   padding: 20px 0 0;
 }
 
-/* The brand marks are masked (not <img>) so the single-color art recolors per
-   theme via --wordmark-color — same technique as the app's top bar. */
-.sol-landing__brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.sol-landing__mark {
-  display: block;
-  width: 24px;
-  height: 24px;
-  background-color: var(--wordmark-color);
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  mask-position: center;
-  -webkit-mask-size: contain;
-  mask-size: contain;
-}
-
+/* The wordmark (it carries the coil mark) is masked (not <img>) so the
+   single-color art recolors per theme via --wordmark-color — same technique as
+   the app's top bar. */
 .sol-landing__wordmark {
   display: block;
   height: 22px;
@@ -101,8 +83,34 @@
 
 /* ── Hero ── */
 .sol-landing__hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 40px;
   padding: 58px 0 0;
+}
+
+.sol-landing__hero-copy {
   max-width: 620px;
+}
+
+/* The real socket legend rows (components/SocketLegend.css) in a landing panel:
+   the type palette is the product's signature, so it earns hero placement. */
+.sol-landing__hero-legend {
+  flex-shrink: 0;
+  width: 168px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  box-shadow: var(--shadow-card);
+}
+
+.sol-landing__hero-legend-heading {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  margin-bottom: 8px;
 }
 
 .sol-landing__hero h1 {
@@ -208,42 +216,6 @@
   color: var(--text-muted);
 }
 
-/* Titled demo sections (the terrain diorama). */
-.sol-landing__demo--titled {
-  margin-top: 48px;
-}
-
-.sol-landing__demo--titled h2 {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 600;
-  line-height: 1.2;
-  color: var(--text-bright);
-}
-
-.sol-landing__demo-lede {
-  margin: 8px 0 16px;
-  max-width: 620px;
-  font-size: 13px;
-  line-height: 1.55;
-  color: var(--text-dim);
-}
-
-/* The diorama: a fixed-design-size box CSS-scaled to fit (transform, never
-   area.zoom — the snapshot is inert DOM). The temporary live stack and the
-   snapshot both fill it; no pointer events, it's a picture of the product. */
-.sol-landing__diorama {
-  position: relative;
-  transform-origin: 0 0;
-  pointer-events: none;
-}
-
-.sol-landing__diorama-stage,
-.sol-landing__diorama-snapshot {
-  position: absolute;
-  inset: 0;
-}
-
 /* ── Feature grid ── */
 .sol-landing__features {
   display: grid;
@@ -342,6 +314,10 @@
 @media (max-width: 860px) {
   .sol-landing__features {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .sol-landing__hero-legend {
+    display: none;
   }
 }
 
