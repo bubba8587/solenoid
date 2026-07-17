@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { numIn, numOut } from "./shared";
+import { numIn, numOut, numListIn, numListOut, readInput, broadcast, type BroadcastResult } from "./shared";
 import { lnCombin, lnGamma, regularizedBeta, regularizedGamma } from "./mathUtils";
 
 // ─── BINOM.DIST ───────────────────────────────────────────────────────────────
@@ -35,7 +35,7 @@ function binomCdf(k: number, n: number, p: number): number | null {
 export class BinomDistNode extends ClassicPreset.Node {
   label: string;
   op: BinomDistOp;
-  cachedResult: number | null = null;
+  cachedResult: BroadcastResult = null;
   literals: Record<string, number> = { k: 3, n: 10, p: 0.5 };
   width = 180; height = 225;
 
@@ -43,17 +43,20 @@ export class BinomDistNode extends ClassicPreset.Node {
     super("BinomDist");
     this.label = init?.label ?? "BINOM.DIST";
     this.op = init?.op ?? "pmf";
-    this.addInput("k", numIn("k (successes)"));
-    this.addInput("n", numIn("n (trials)"));
-    this.addInput("p", numIn("p (probability)"));
-    this.addOutput("result", numOut("Result"));
+    this.addInput("k", numListIn("k (successes)"));
+    this.addInput("n", numListIn("n (trials)"));
+    this.addInput("p", numListIn("p (probability)"));
+    this.addOutput("result", numListOut("Result"));
   }
 
-  data(inputs: { k?: number[]; n?: number[]; p?: number[] }) {
-    const k = inputs.k?.[0] ?? this.literals.k ?? 3;
-    const n = inputs.n?.[0] ?? this.literals.n ?? 10;
-    const p = inputs.p?.[0] ?? this.literals.p ?? 0.5;
-    const result = this.op === "pmf" ? binomPmf(k, n, p) : binomCdf(k, n, p);
+  data(inputs: Record<string, (number | number[] | null)[] | undefined>) {
+    const k = readInput(inputs.k, this.literals.k);
+    const n = readInput(inputs.n, this.literals.n);
+    const p = readInput(inputs.p, this.literals.p);
+    const op = this.op;
+    const result = broadcast((kv, nv, pv) =>
+      op === "pmf" ? binomPmf(kv, nv, pv) : binomCdf(kv, nv, pv),
+    k, n, p);
     this.cachedResult = result;
     return { result };
   }
@@ -116,7 +119,7 @@ export const POISSON_DIST_OP_META = {
 export class PoissonDistNode extends ClassicPreset.Node {
   label: string;
   op: PoissonDistOp;
-  cachedResult: number | null = null;
+  cachedResult: BroadcastResult = null;
   literals: Record<string, number> = { k: 3, lambda: 2 };
   width = 180; height = 205;
 
@@ -124,39 +127,28 @@ export class PoissonDistNode extends ClassicPreset.Node {
     super("PoissonDist");
     this.label = init?.label ?? "POISSON.DIST";
     this.op = init?.op ?? "pmf";
-    this.addInput("k",      numIn("k"));
-    this.addInput("lambda", numIn("λ (mean)"));
-    this.addOutput("result", numOut("Result"));
+    this.addInput("k",      numListIn("k"));
+    this.addInput("lambda", numListIn("λ (mean)"));
+    this.addOutput("result", numListOut("Result"));
   }
 
-  data(inputs: { k?: number[]; lambda?: number[] }) {
-    const k      = Math.floor(inputs.k?.[0]      ?? this.literals.k      ?? 3);
-    const lambda = inputs.lambda?.[0]             ?? this.literals.lambda ?? 2;
-
-    if (k < 0 || lambda < 0) {
-      this.cachedResult = null;
-      return { result: null };
-    }
-
-    let result: number | null = null;
-
-    if (this.op === "pmf") {
-      if (lambda === 0) {
-        result = k === 0 ? 1 : 0;
+  data(inputs: Record<string, (number | number[] | null)[] | undefined>) {
+    const k      = readInput(inputs.k,      this.literals.k);
+    const lambda = readInput(inputs.lambda, this.literals.lambda);
+    const op = this.op;
+    const result = broadcast((kv, lv) => {
+      const ki = Math.floor(kv);
+      if (ki < 0 || lv < 0) return null;
+      if (op === "pmf") {
+        if (lv === 0) return ki === 0 ? 1 : 0;
+        const r = Math.exp(-lv + ki * Math.log(lv) - lnGamma(ki + 1));
+        return Number.isFinite(r) ? r : null;
       } else {
-        const r = Math.exp(-lambda + k * Math.log(lambda) - lnGamma(k + 1));
-        result = Number.isFinite(r) ? r : null;
+        if (lv === 0) return 1;
+        const r = 1 - regularizedGamma(ki + 1, lv);
+        return Number.isFinite(r) ? Math.min(1, Math.max(0, r)) : null;
       }
-    } else {
-      // CDF = P(X <= k) = 1 - regularizedGamma(k+1, lambda)  [upper incomplete]
-      if (lambda === 0) {
-        result = 1; // all mass at 0, so P(X <= k) = 1 for k >= 0
-      } else {
-        const r = 1 - regularizedGamma(k + 1, lambda);
-        result = Number.isFinite(r) ? Math.min(1, Math.max(0, r)) : null;
-      }
-    }
-
+    }, k, lambda);
     this.cachedResult = result;
     return { result };
   }
@@ -182,7 +174,7 @@ function hypgeomPmf(k: number, n: number, M: number, N: number): number | null {
 export class HypgeomDistNode extends ClassicPreset.Node {
   label: string;
   op: HypgeomDistOp;
-  cachedResult: number | null = null;
+  cachedResult: BroadcastResult = null;
   literals: Record<string, number> = { k: 2, n: 5, M: 10, N: 20 };
   width = 180; height = 240;
 
@@ -190,41 +182,36 @@ export class HypgeomDistNode extends ClassicPreset.Node {
     super("HypgeomDist");
     this.label = init?.label ?? "HYPGEOM.DIST";
     this.op = init?.op ?? "pmf";
-    this.addInput("k", numIn("k (sample successes)"));
-    this.addInput("n", numIn("n (sample size)"));
-    this.addInput("M", numIn("M (pop. successes)"));
-    this.addInput("N", numIn("N (pop. size)"));
-    this.addOutput("result", numOut("Result"));
+    this.addInput("k", numListIn("k (sample successes)"));
+    this.addInput("n", numListIn("n (sample size)"));
+    this.addInput("M", numListIn("M (pop. successes)"));
+    this.addInput("N", numListIn("N (pop. size)"));
+    this.addOutput("result", numListOut("Result"));
   }
 
-  data(inputs: { k?: number[]; n?: number[]; M?: number[]; N?: number[] }) {
-    const k = inputs.k?.[0] ?? this.literals.k ?? 2;
-    const n = inputs.n?.[0] ?? this.literals.n ?? 5;
-    const M = inputs.M?.[0] ?? this.literals.M ?? 10;
-    const N = inputs.N?.[0] ?? this.literals.N ?? 20;
-
-    let result: number | null = null;
-
-    if (this.op === "pmf") {
-      result = hypgeomPmf(k, n, M, N);
-    } else {
-      // CDF: sum PMF for j = max(0, n+M-N)..floor(k)
-      const kf = Math.floor(k);
-      const Mf = Math.floor(M); const Nf = Math.floor(N); const nf = Math.floor(n);
-      const lo = Math.max(0, nf + Mf - Nf);
-      if (kf < lo) {
-        result = 0;
+  data(inputs: Record<string, (number | number[] | null)[] | undefined>) {
+    const k = readInput(inputs.k, this.literals.k);
+    const n = readInput(inputs.n, this.literals.n);
+    const M = readInput(inputs.M, this.literals.M);
+    const N = readInput(inputs.N, this.literals.N);
+    const op = this.op;
+    const result = broadcast((kv, nv, Mv, Nv) => {
+      const ki = Math.floor(kv); const ni = Math.floor(nv);
+      const Mi = Math.floor(Mv); const Ni = Math.floor(Nv);
+      if (op === "pmf") {
+        return hypgeomPmf(ki, ni, Mi, Ni);
       } else {
+        const lo = Math.max(0, ni + Mi - Ni);
+        if (ki < lo) return 0;
         let sum = 0;
-        for (let j = lo; j <= kf; j++) {
-          const pmf = hypgeomPmf(j, nf, Mf, Nf);
-          if (pmf === null) { sum = NaN; break; }
+        for (let j = lo; j <= ki; j++) {
+          const pmf = hypgeomPmf(j, ni, Mi, Ni);
+          if (pmf === null) return null;
           sum += pmf;
         }
-        result = Number.isFinite(sum) ? Math.min(1, Math.max(0, sum)) : null;
+        return Number.isFinite(sum) ? Math.min(1, Math.max(0, sum)) : null;
       }
-    }
-
+    }, k, n, M, N);
     this.cachedResult = result;
     return { result };
   }
@@ -241,7 +228,7 @@ export const NEGBINOM_DIST_OP_META = {
 export class NegbinomDistNode extends ClassicPreset.Node {
   label: string;
   op: NegbinomDistOp;
-  cachedResult: number | null = null;
+  cachedResult: BroadcastResult = null;
   literals: Record<string, number> = { k: 3, r: 5, p: 0.5 };
   width = 180; height = 220;
 
@@ -249,33 +236,28 @@ export class NegbinomDistNode extends ClassicPreset.Node {
     super("NegbinomDist");
     this.label = init?.label ?? "NEGBINOM.DIST";
     this.op = init?.op ?? "pmf";
-    this.addInput("k", numIn("k (failures)"));
-    this.addInput("r", numIn("r (successes)"));
-    this.addInput("p", numIn("p (probability)"));
-    this.addOutput("result", numOut("Result"));
+    this.addInput("k", numListIn("k (failures)"));
+    this.addInput("r", numListIn("r (successes)"));
+    this.addInput("p", numListIn("p (probability)"));
+    this.addOutput("result", numListOut("Result"));
   }
 
-  data(inputs: { k?: number[]; r?: number[]; p?: number[] }) {
-    const k = Math.floor(inputs.k?.[0] ?? this.literals.k ?? 3);
-    const r = Math.floor(inputs.r?.[0] ?? this.literals.r ?? 5);
-    const p = inputs.p?.[0]            ?? this.literals.p ?? 0.5;
-
-    if (k < 0 || r < 1 || p <= 0 || p > 1) {
-      this.cachedResult = null;
-      return { result: null };
-    }
-
-    let result: number | null = null;
-
-    if (this.op === "pmf") {
-      const v = Math.exp(lnCombin(k + r - 1, k) + r * Math.log(p) + k * Math.log(1 - p));
-      result = Number.isFinite(v) ? v : null;
-    } else {
-      // CDF = regularizedBeta(p, r, k+1) = I_p(r, k+1)
-      const v = regularizedBeta(p, r, k + 1);
-      result = Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : null;
-    }
-
+  data(inputs: Record<string, (number | number[] | null)[] | undefined>) {
+    const k = readInput(inputs.k, this.literals.k);
+    const r = readInput(inputs.r, this.literals.r);
+    const p = readInput(inputs.p, this.literals.p);
+    const op = this.op;
+    const result = broadcast((kv, rv, pv) => {
+      const ki = Math.floor(kv); const ri = Math.floor(rv);
+      if (ki < 0 || ri < 1 || pv <= 0 || pv > 1) return null;
+      if (op === "pmf") {
+        const v = Math.exp(lnCombin(ki + ri - 1, ki) + ri * Math.log(pv) + ki * Math.log(1 - pv));
+        return Number.isFinite(v) ? v : null;
+      } else {
+        const v = regularizedBeta(pv, ri, ki + 1);
+        return Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : null;
+      }
+    }, k, r, p);
     this.cachedResult = result;
     return { result };
   }
