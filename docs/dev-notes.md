@@ -42,12 +42,21 @@ or pixel-snap the card box. Radius itself is correct; don't re-touch it. Parked 
   locks overflow).
 
 ### SESSION DIGEST (2026-07-17 — Chart (recharts) node sanitization)
-Reported: scatter x-axis showed FLOAT labels (1.5, 2.5…); wiring a `#DIV/0!` into a Chart could crash it.
+Reported: Scatter x-axis showed FLOAT labels; wiring a `#DIV/0!` into a Chart could crash it; a Point
+Plotter (via a frame) into a Scatter plotted "out of order".
 Root causes + fixes (all in the recharts path + `ChartNode.data()`):
-- **Float axis labels:** scatter's index axis is `<XAxis type="number" dataKey="i">`; recharts invents
-  fractional "nice" ticks on a small integer domain. Fix: `allowDecimals={false}` on that axis, and
-  `tickFmt` now rounds the tick to the nearest datum + drops out-of-range/non-numeric (so a stray tick
-  can never render "1.5" or "[object Object]"). Category axes (column/line/area/bar-Y) were already fine.
+- **Float axis labels (two distinct causes):** (a) scatter's index axis is `type="number"`, so recharts
+  invents fractional "nice" ticks (0.5, 1.5…) — fixed with `allowDecimals={false}`; (b) a numeric Frame
+  first column (a "Frame from Lists" X column) carries precision noise, and `tickFmt` rendered it raw
+  (`String(3.0000000004)`). New `axisTick()` (chartCore) snaps a numeric label to 10 sig figs then
+  `String(Number(…))` — a "really 3" reads as "3", trailing zeros dropped. `tickFmt` uses it for numeric
+  labels (string/date labels render as-is); it also rounds off-range/non-numeric ticks to "".
+- **Scatter honours real x (was "out of order"):** the scatter placed dots at the ROW INDEX
+  (`dataKey="i"`), ignoring the wired x values entirely — so a Point Plotter's / Frame-from-Lists' X
+  column collapsed to evenly-spaced index positions. Now, when the labels (first column) are ALL numbers,
+  the scatter plots each dot at its real x (`dataKey="x"`, decimals allowed, ticks via `axisTick`); a
+  category/plain-list scatter keeps the index x. A dedicated `ScatterTooltip` shows the real x (or the
+  ordinal) → value, reading the datum off `payload[0].payload` so it covers both modes.
 - **Error/dirty-data hardening:** `ChartNode` joined `SEES_ERRORS` (errorValue.ts) — a figure SINK must
   render an error input as an empty "no data" figure, not turn its `chart` socket into a `SolError`
   object that every consumer (inline figure / Display / Report embed) would have to special-case (the
