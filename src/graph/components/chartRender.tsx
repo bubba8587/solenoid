@@ -4,7 +4,7 @@
 import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, RadialBarChart, RadialBar, PolarAngleAxis, PolarGrid, PolarRadiusAxis, RadarChart, Radar, PieChart, Pie, ScatterChart, Scatter, ZAxis, FunnelChart, Funnel, LabelList, Cell, Treemap, Sankey, ComposedChart } from "recharts";
 import "./chartView.css";
 import { formatScalar } from "./format";
-import { VIZ, useChartColors, useSeriesColors, type ChartShape } from "./chartCore";
+import { VIZ, useChartColors, useSeriesColors, axisTick, type ChartShape } from "./chartCore";
 import type { ChartOptions } from "../nodes/chartOptions";
 
 // A hover readout that shows the value at a sensible precision (formatScalar),
@@ -52,6 +52,24 @@ function SliceTooltip({ active, payload }: { active?: boolean; payload?: { value
 }
 const SLICE_TIP = <Tooltip isAnimationActive={false} content={<SliceTooltip />} />;
 
+// The scatter readout: real x (when the dot carries one) → its value, else the
+// 1-based ordinal → its value. Reads the datum off payload[0].payload so it works
+// whether the x axis is a real coordinate (dataKey "x") or the row index ("i").
+function ScatterTooltip({ active, payload }: { active?: boolean; payload?: { payload?: { x?: number; i?: number; v?: number } }[] }) {
+  if (!active || !payload || !payload.length) return null;
+  const d = payload[0]?.payload;
+  if (!d) return null;
+  const x = typeof d.x === "number" ? axisTick(d.x) : `#${(d.i ?? 0) + 1}`;
+  return (
+    <div style={{ fontSize: 11, padding: "2px 6px", background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: 4, color: "var(--text)" }}>
+      <span style={{ color: "var(--text-dim)" }}>{x}</span>
+      {"  "}
+      {tipValue(d.v)}
+    </div>
+  );
+}
+const SCATTER_TIP = <Tooltip isAnimationActive={false} cursor={{ strokeDasharray: "3 3", stroke: "rgba(128,128,128,0.5)" }} content={<ScatterTooltip />} />;
+
 /**
  * One recharts renderer for both the inline node charts and the expand popup.
  * `axes` adds gridlines + numbered axes (the big "Chart" look); without it you
@@ -93,7 +111,11 @@ export function ChartView({
     const idx = Math.round(n);
     if (labels) {
       const lab = labels[idx];
-      return lab == null || typeof lab === "object" ? "" : String(lab);
+      if (lab == null || typeof lab === "object") return "";
+      // A numeric label (a wired Frame's numeric first column) is snapped free of
+      // float/precision noise so a value that is "really" 3 doesn't read as
+      // "3.0000000004"; a string label (category / formatted date) renders as-is.
+      return typeof lab === "number" ? axisTick(lab) : String(lab);
     }
     return idx >= 0 ? String(idx + 1) : "";
   };
@@ -198,16 +220,24 @@ export function ChartView({
       </FunnelChart>
     );
   } else if (op === "scatter") {
-    // Index (x) vs value (y) — a dot plot for a single series.
+    // A dot plot for a single series. When the wired first column is all numbers
+    // (e.g. a "Frame from Lists" X column, or a Point Plotter's X list through
+    // Build Frame), place each dot at its REAL x — so the plot honours x spacing
+    // and order instead of the ROW INDEX (which made a hand-drawn / unsorted point
+    // set read "out of order" and ignored the x values entirely). Category
+    // (non-numeric) labels, or a plain values list, keep the index x.
+    const numericX = !!labels && series.length > 0 && series.every((d) => typeof labels![d.i] === "number");
+    const scatterData = numericX ? series.map((d) => ({ i: d.i, x: Number(labels![d.i]), v: d.v })) : series;
     chart = (
       <ScatterChart width={width} height={chartH} margin={margin}>
         {showGrid && <CartesianGrid stroke={grid} />}
-        {/* `i` is an integer datum index — allowDecimals=false keeps recharts from
-            inventing fractional "nice" ticks (0.5, 1.5…) on the category axis. */}
-        {axes && <XAxis type="number" dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} allowDecimals={false} label={xLabel} height={xLabel ? 28 : undefined} />}
+        {/* Index axis: allowDecimals=false stops recharts inventing fractional
+            "nice" ticks (0.5, 1.5…). A real-x axis keeps decimals and formats the
+            tick value directly (snapped free of float noise). */}
+        {axes && <XAxis type="number" dataKey={numericX ? "x" : "i"} tick={AXIS} tickLine={false} tickFormatter={numericX ? (t) => axisTick(Number(t)) : tickFmt} allowDecimals={numericX ? undefined : false} label={xLabel} height={xLabel ? 28 : undefined} />}
         {axes && <YAxis type="number" dataKey="v" tick={AXIS} tickLine={false} width={yAxisW} domain={yDomain} label={yLabel} />}
-        {TIP}
-        <Scatter data={series} fill={color} isAnimationActive={false} />
+        {SCATTER_TIP}
+        <Scatter data={scatterData} fill={color} isAnimationActive={false} />
       </ScatterChart>
     );
   } else {
