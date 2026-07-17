@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { anySocket, MutableSocket } from "../sockets";
+import { trueAnySocket, MutableSocket } from "../sockets";
 
 // ─── Conduit ──────────────────────────────────────────────────────────────────
 
@@ -102,12 +102,14 @@ export class ConduitNode extends ClassicPreset.Node {
     this.label = init?.label && init.label !== "Conduit" ? init.label : `Conduit ${this.seq}`;
     this.angle = init?.angle ?? 0;
     for (let i = 0; i < CONDUIT_MAX_LANES; i++) {
-      // Input stays a shared `any` singleton — a lane accepts ANY cable (the
-      // Conduit's whole point). The OUTPUT is a per-lane MUTABLE socket that
-      // ADOPTS the wired-in type (see reconcileConduitTypes in conduitTrace.ts),
-      // so a lane genuinely carries its type downstream — a date leaves as a
-      // date (FC can lock it, a Display formats it), not an opaque `any`.
-      this.addInput(conduitInKey(i), new ClassicPreset.Input(anySocket));
+      // Input is a shared `trueany` singleton — the SUPREMUM wildcard, so a lane
+      // accepts ANY cable (the Conduit's whole point): scalars, lists (an `anylist`
+      // off a List Filter), tables, frames, cubes. (A plain `any` is scalar-only —
+      // it rejected an `anylist`, the bug.) The OUTPUT is a per-lane MUTABLE socket
+      // that ADOPTS the wired-in type (see reconcileConduitTypes in conduitTrace.ts),
+      // so a lane genuinely carries its type downstream — a date leaves as a date
+      // (FC can lock it, a Display formats it), not an opaque wildcard.
+      this.addInput(conduitInKey(i), new ClassicPreset.Input(trueAnySocket));
       this.addOutput(conduitOutKey(i), new ClassicPreset.Output(new MutableSocket("trueany")));
     }
   }

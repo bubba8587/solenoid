@@ -53,6 +53,23 @@ or pixel-snap the card box. Radius itself is correct; don't re-touch it. Parked 
   bodies adapted from shipped What's New slides). All theme-token styled, so light mode mirrors. Page
   scrolls inside a fixed wrapper (the app root locks overflow).
 
+### SESSION DIGEST (2026-07-17 — Conduit accepts any cable; List Filter output adopts its type)
+- **Conduit lane rejected a list (`conduit.ts`):** the lane INPUT was a shared `anySocket` (`any` = the
+  element-agnostic SCALAR wildcard), so a 1-D `anylist`/`numlist` cable couldn't connect (list→scalar =
+  narrowing, `accepts()` line 286). The comment already said "a lane accepts ANY cable" and CLAUDE.md
+  lists "unwired Conduit lanes" as `trueany` — the input was never updated when the D17 ladder split
+  `any`↔`trueany`. Fix: the lane input is `trueAnySocket` (the SUPREMUM) — accepts scalars, lists, tables,
+  frames, cubes. `coerceValue` passes `any`/`trueany` through identically (default branch), so no coercion
+  change; the per-lane MutableSocket OUTPUT still adopts the wired type as before.
+- **List Filter output was an opaque `anylist` (`list.ts` `FilterNode`):** filtering preserves the element
+  type, so both outputs now ADOPT the wired input's concrete type (a numeric list reads as `numlist` out,
+  not gray `anylist`) — `adoptiveListOut` + a `passthrough()` declaration (result & dropped ← list), same
+  pattern as Reverse/Slice. Because a passthrough keeps `UnitCell` tags (`keepUnits`), `data()` now unwraps
+  each cell to its display magnitude via `stripUnitCells` for the predicate + type detection but pushes the
+  ORIGINAL cells to kept/dropped — so a dimensioned list stays dimensioned through the filter (filter by
+  magnitude, units preserved). Plain lists: `stripUnitCells` is a no-op, no behavior change.
+- Tests: `conduitFilterTypes.test.ts`.
+
 ### SESSION DIGEST (2026-07-17 — error propagation through MAKEARRAY + error filtering)
 Reported: MAKEARRAY via a LAMBDA over a list with any #DIV/0! → the WHOLE array became #DIV/0!; and no
 way to filter errors out of a list/table/frame.
