@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { LandingGraph } from "./LandingGraph";
+import { LandingGraph, LandingDiorama } from "./LandingGraph";
 import { SocketDot, type SocketGlyph } from "../components/SocketLegend";
 import { SOCKET_COLORS } from "../sockets";
 import { TablePopup } from "../components/TablePopup";
@@ -117,6 +117,9 @@ function ThemeToggle() {
 }
 
 export default function LandingPage() {
+  // The diorama snapshot bakes theme colors into its chart canvases, so a theme
+  // switch remounts it (key) and it re-renders in the new theme.
+  const mode = useSyncExternalStore(appThemeStore.subscribe, appThemeStore.getMode);
   return (
     <div className="sol-landing">
       <div className="sol-landing__inner">
@@ -163,10 +166,18 @@ export default function LandingPage() {
           <section className="sol-landing__demo">
             <LandingGraph />
             <p className="sol-landing__demo-note">
-              Every card here is live: drag one around, edit a number, or rotate the
-              mesh from the pad on the Surface card. The lower flow is Grid Interpolate
-              filling the holes in a sparse survey grid for Surface and Contour to draw.
+              This graph is live. Drag a card, or edit a value and the payout recomputes.
             </p>
+          </section>
+
+          <section className="sol-landing__demo sol-landing__demo--titled">
+            <h2>Terrain and fields</h2>
+            <p className="sol-landing__demo-lede">
+              Grid Interpolate fills the holes in a sparse survey table with a smooth
+              surface. Surface draws the filled grid as a shaded 3-D mesh and Contour
+              draws the map view of the same heights.
+            </p>
+            <LandingDiorama key={mode} />
           </section>
 
           <section className="sol-landing__features">

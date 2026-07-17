@@ -30,11 +30,19 @@ or pixel-snap the card box. Radius itself is correct; don't re-touch it. Parked 
   stack (areaPresets render preset, DataflowEngine, process.ts singletons pointed at it — the
   showcase mount pattern) with TWO live islands in ONE editor: the commission flow (List Input →
   Aggregate(sum) → Arithmetic(×) ← Number Input → Display) and the terrain flow (Table Input bordered
-  survey grid with holes → Grid Interpolate → Surface + Contour, rotate pad live). **Gotcha: both
-  islands MUST share one editor** — a second independent stack renders its cards as unwired, because
-  `getOwningEditor`/the process.ts singletons assume ONE live surface outside the composite-drill-in
-  override (tried per-section stages, cards lost their wired-state labels). Pan/zoom off, node drag +
-  in-card edits live, fit-to-width via a fixed `area.zoom`, Reset rebuilds. Header: masked
+  survey grid with holes → Grid Interpolate → Surface + Contour) as its own titled section. **The
+  terrain stage is a DOM-snapshot diorama (author direction), not a second live stack:** a second live
+  rete stack is impossible — `getOwningEditor`/the process.ts singletons support ONE live surface
+  outside the composite-drill-in override (a second stack's cards render unwired the moment the
+  singletons move, and registering it as the override breaks the live island's `getActiveEditor`
+  edits). So `LandingDiorama` builds a real stack, computes once, clones the DOM in place (canvas
+  bitmaps copied via drawImage), destroys the stack, and hands the singletons back — followed by ONE
+  `processGraph()` on the hero (load-bearing: the diorama's connection events bump the global
+  connectionVersionStore mid-build, so hero rows re-derived their wired state against the wrong refs
+  and rendered unwired until the next pass). Theme toggle remounts the diorama (`key={mode}`) because
+  the snapshot bakes theme ink into its chart canvases. The diorama fits by CSS `transform: scale`
+  (inert DOM; `area.zoom` would re-render connections against the wrong refs). Pan/zoom off, node
+  drag + in-card edits live on the hero, fit via `area.zoom` there, Reset rebuilds. Header: masked
   icon/wordmark marks (recolor via `--wordmark-color`, the TopBar technique) + a dark/light toggle
   (`appThemeStore.toggleMode`). Feature cards carry real `SocketDot` glyphs; copy follows DESIGN.md §7
   (hero reuses the shipped About tagline/body; several bodies adapted from shipped What's New slides).
