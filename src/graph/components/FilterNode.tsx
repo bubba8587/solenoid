@@ -9,7 +9,7 @@ import { SegToggle } from "./SegToggle";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { ArrayChip } from "./ArrayChip";
 import { pushRowAddUndo, pushRowRemovalUndo } from "./ExtensibleInputs";
-import { FILTER_OP_OPTIONS, TEXT_MATCH_OPS, VALUELESS_OPS, FILTER_COMBINE_OPTIONS } from "./FrameNodes";
+import { FILTER_OP_OPTIONS_WITH_ERROR, TEXT_MATCH_OPS, VALUELESS_OPS, FILTER_COMBINE_OPTIONS } from "./FrameNodes";
 import type { DisplayValue } from "./valueDisplayFormat";
 
 // The 1-D Filter card (D16): the frame Filter's condition rows minus the
@@ -66,7 +66,7 @@ export function FilterComponent({ data, emit }: NodeProps<FilterNodeType>) {
         const c = rowCfg(id);
         return (
           <div key={key} className="solenoid-node__pair-group">
-            <OpSelect value={c.op} options={FILTER_OP_OPTIONS} onChange={(op) => updateCfg(id, { op })} />
+            <OpSelect value={c.op} options={FILTER_OP_OPTIONS_WITH_ERROR} onChange={(op) => updateCfg(id, { op })} />
             <MeasuredSocketRow side="input" socketKey={key} nodeId={data.id} emit={emit} payload={data.inputs[key]!.socket}>
               <span className="solenoid-node__io-label">Value{keys.length > 1 ? ` ${i + 1}` : ""}</span>
               {connected.has(key) ? (

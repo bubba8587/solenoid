@@ -348,6 +348,13 @@ const RANGE_POSITIONAL = new Set(["XLOOKUP", "XMATCH", "VLOOKUP", "HLOOKUP", "LO
 
 function prepRangeArgs(name: string, argv: unknown[]): { error?: unknown; args: unknown[] } {
   if (RANGE_RAW.has(name)) return { args: argv };
+  // POSITIONAL lookups (INDEX/MATCH/VLOOKUP/…) select SPECIFIC cells: an error at
+  // an UNREFERENCED position must NOT poison the whole call — the impl returns the
+  // picked cell, and a picked error propagates per-cell on its own (correct). So
+  // they skip the propagate-any-error scan entirely (before it, not after). Excel
+  // agrees: INDEX(A1:A3, 1) returns A1 even when A2 is #DIV/0!, and MAKEARRAY over
+  // INDEX(list, row) no longer #DIV/0!s every cell because one list cell errors.
+  if (RANGE_POSITIONAL.has(name)) return { args: argv };
   for (const a of argv) {
     if (isArr(a)) {
       for (const v of a) {
@@ -356,7 +363,6 @@ function prepRangeArgs(name: string, argv: unknown[]): { error?: unknown; args: 
       }
     }
   }
-  if (RANGE_POSITIONAL.has(name)) return { args: argv };
   if (RANGE_PAIRED.has(name)) {
     const arrays = argv.filter(isArr);
     if (arrays.length === 0) return { args: argv };

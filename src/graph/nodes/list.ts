@@ -5,7 +5,7 @@ import { getRecalcGen } from "../process";
 import { listIn, listOut, numIn, numOut, anyIn, trueAnyIn, staticTrueAnyOut, strIn, logicalOut, logicalListOut, frameIn, frameOut, anyListIn, anyListOut, adoptiveListIn, adoptiveListOut } from "./shared";
 import type { PassthroughSpec } from "./passthrough";
 import { pairIdsFromKeys } from "./logic";
-import { passesFilter, type FilterOp, type FilterCondConfig } from "../frameVerbs";
+import { passesFilter, VALUELESS_FILTER_OPS, type FilterOp, type FilterCondConfig } from "../frameVerbs";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { forAggregate, isMissing, type Tri } from "../valueKinds";
 import { forAggregateUnits, tagDim, matrixUnitOf, type UnitCell } from "../unitValue";
@@ -542,9 +542,9 @@ export class FilterNode extends ClassicPreset.Node {
       const cfg = this.condConfig[id];
       const op: FilterOp = cfg?.op ?? "gt";
       const val = readFilterValue(inputs[key], this.stringLiterals[key]);
-      // The blank predicates take no value — an empty field doesn't mean "not
-      // written yet" for them, it's the whole point.
-      const valueless = op === "isblank" || op === "notblank";
+      // The blank / error predicates take no value — an empty field doesn't mean
+      // "not written yet" for them, it's the whole point.
+      const valueless = VALUELESS_FILTER_OPS.has(op);
       if (!valueless && val.trim() === "") continue; // "not written yet" — excluded (frame-Filter parity)
       conds.push({ op, value: val, matchCase: cfg?.matchCase ?? false });
     }
