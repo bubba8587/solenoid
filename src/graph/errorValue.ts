@@ -172,10 +172,17 @@ export function firstInputError(
 //    span); a bad ref must show its own error badge in place, not blank every
 //    other ref in the same report. NoteNode is output-only (frontmatter fields,
 //    never inputs) — kept here only so its bare data() read path stays uniform.
+//  - ChartNode is a figure SINK: a #DIV/0! (or a list/frame carrying error cells)
+//    wired into its Data socket must render as an empty "no data" figure, not turn
+//    the `chart` output into a SolError object (which every chart consumer — the
+//    inline node figure, Display, a Report embed — would then have to special-case,
+//    and which historically crashed the node). Its data() sanitizes every cell to
+//    a finite number or null, so it needs to SEE the raw error to drop it.
 const SEES_ERRORS = new Set([
   "IFErrorNode", "IsTestNode",
   "ConduitNode", "CableSwitchNode",
   "DisplayNode", "NoteNode", "ReportNode",
+  "ChartNode",
 ]);
 
 const WRAPPED = Symbol("solErrorGuard");

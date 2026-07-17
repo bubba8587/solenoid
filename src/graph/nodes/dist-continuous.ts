@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { numIn, numOut } from "./shared";
+import { numListIn, numListOut, readInput, broadcast, type BroadcastResult } from "./shared";
 import {
   regularizedGamma,
   regularizedBeta,
@@ -21,7 +21,7 @@ export const F_DIST_OP_META = {
 export class FDistNode extends ClassicPreset.Node {
   label: string;
   op: FDistOp;
-  cachedResult: number | null = null;
+  cachedResult: BroadcastResult = null;
   literals: Record<string, number> = { x: 1, df1: 5, df2: 10 };
   width = 180; height = 230;
 
@@ -29,41 +29,40 @@ export class FDistNode extends ClassicPreset.Node {
     super("FDist");
     this.label = init?.label ?? "F.DIST";
     this.op = init?.op ?? "cdf";
-    this.addInput("x",   numIn("x"));
-    this.addInput("df1", numIn("df1"));
-    this.addInput("df2", numIn("df2"));
-    this.addOutput("result", numOut("Result"));
+    this.addInput("x",   numListIn("x"));
+    this.addInput("df1", numListIn("df1"));
+    this.addInput("df2", numListIn("df2"));
+    this.addOutput("result", numListOut("Result"));
   }
 
-  data(inputs: { x?: number[]; df1?: number[]; df2?: number[] }) {
-    const x   = inputs.x?.[0]   ?? this.literals.x   ?? null;
-    const df1 = inputs.df1?.[0] ?? this.literals.df1 ?? null;
-    const df2 = inputs.df2?.[0] ?? this.literals.df2 ?? null;
-    let result: number | null = null;
-    if (x !== null && df1 !== null && df2 !== null && df1 > 0 && df2 > 0) {
+  data(inputs: Record<string, (number | number[] | null)[] | undefined>) {
+    const x   = readInput(inputs.x,   this.literals.x);
+    const df1 = readInput(inputs.df1, this.literals.df1);
+    const df2 = readInput(inputs.df2, this.literals.df2);
+    const op = this.op;
+    const result = broadcast((xv, d1, d2) => {
+      if (d1 <= 0 || d2 <= 0) return null;
       const fCdf = (v: number) =>
-        v <= 0 ? 0 : regularizedBeta((v * df1) / (v * df1 + df2), df1 / 2, df2 / 2);
-      if (this.op === "cdf") {
-        result = fCdf(x);
-      } else if (this.op === "pdf") {
-        if (x <= 0) {
-          result = 0;
-        } else {
-          result = Math.exp(
-            (df1 / 2) * Math.log(df1) +
-              (df2 / 2) * Math.log(df2) +
-              (df1 / 2 - 1) * Math.log(x) -
-              ((df1 + df2) / 2) * Math.log(df1 * x + df2) +
-              lnGamma((df1 + df2) / 2) -
-              lnGamma(df1 / 2) -
-              lnGamma(df2 / 2),
-          );
-        }
+        v <= 0 ? 0 : regularizedBeta((v * d1) / (v * d1 + d2), d1 / 2, d2 / 2);
+      let r: number;
+      if (op === "cdf") {
+        r = fCdf(xv);
+      } else if (op === "pdf") {
+        if (xv <= 0) return 0;
+        r = Math.exp(
+          (d1 / 2) * Math.log(d1) +
+            (d2 / 2) * Math.log(d2) +
+            (d1 / 2 - 1) * Math.log(xv) -
+            ((d1 + d2) / 2) * Math.log(d1 * xv + d2) +
+            lnGamma((d1 + d2) / 2) -
+            lnGamma(d1 / 2) -
+            lnGamma(d2 / 2),
+        );
       } else {
-        result = 1 - fCdf(x);
+        r = 1 - fCdf(xv);
       }
-      if (result !== null && !Number.isFinite(result)) result = null;
-    }
+      return Number.isFinite(r) ? r : null;
+    }, x, df1, df2);
     this.cachedResult = result;
     return { result };
   }
@@ -80,7 +79,7 @@ export const F_INV_OP_META = {
 export class FInvNode extends ClassicPreset.Node {
   label: string;
   op: FInvOp;
-  cachedResult: number | null = null;
+  cachedResult: BroadcastResult = null;
   literals: Record<string, number> = { prob: 0.95, df1: 5, df2: 10 };
   width = 180; height = 215;
 
@@ -88,24 +87,25 @@ export class FInvNode extends ClassicPreset.Node {
     super("FInv");
     this.label = init?.label ?? "F.INV";
     this.op = init?.op ?? "left";
-    this.addInput("prob", numIn("Probability"));
-    this.addInput("df1",  numIn("df1"));
-    this.addInput("df2",  numIn("df2"));
-    this.addOutput("result", numOut("Result"));
+    this.addInput("prob", numListIn("Probability"));
+    this.addInput("df1",  numListIn("df1"));
+    this.addInput("df2",  numListIn("df2"));
+    this.addOutput("result", numListOut("Result"));
   }
 
-  data(inputs: { prob?: number[]; df1?: number[]; df2?: number[] }) {
-    const prob = inputs.prob?.[0] ?? this.literals.prob ?? null;
-    const df1  = inputs.df1?.[0]  ?? this.literals.df1  ?? null;
-    const df2  = inputs.df2?.[0]  ?? this.literals.df2  ?? null;
-    let result: number | null = null;
-    if (prob !== null && df1 !== null && df2 !== null && df1 > 0 && df2 > 0 && prob > 0 && prob < 1) {
+  data(inputs: Record<string, (number | number[] | null)[] | undefined>) {
+    const prob = readInput(inputs.prob, this.literals.prob);
+    const df1  = readInput(inputs.df1,  this.literals.df1);
+    const df2  = readInput(inputs.df2,  this.literals.df2);
+    const op = this.op;
+    const result = broadcast((pv, d1, d2) => {
+      if (d1 <= 0 || d2 <= 0 || pv <= 0 || pv >= 1) return null;
       const fCdf = (v: number) =>
-        v <= 0 ? 0 : regularizedBeta((v * df1) / (v * df1 + df2), df1 / 2, df2 / 2);
-      const target = this.op === "left" ? prob : 1 - prob;
-      result = bisectionInv(fCdf, target, 0, 1e6);
-      if (!Number.isFinite(result)) result = null;
-    }
+        v <= 0 ? 0 : regularizedBeta((v * d1) / (v * d1 + d2), d1 / 2, d2 / 2);
+      const target = op === "left" ? pv : 1 - pv;
+      const r = bisectionInv(fCdf, target, 0, 1e6);
+      return Number.isFinite(r) ? r : null;
+    }, prob, df1, df2);
     this.cachedResult = result;
     return { result };
   }
@@ -122,7 +122,7 @@ export const BETA_DIST_OP_META = {
 export class BetaDistNode extends ClassicPreset.Node {
   label: string;
   op: BetaDistOp;
-  cachedResult: number | null = null;
+  cachedResult: BroadcastResult = null;
   literals: Record<string, number> = { x: 0.5, alpha: 2, beta: 5 };
   width = 180; height = 225;
 
@@ -130,40 +130,38 @@ export class BetaDistNode extends ClassicPreset.Node {
     super("BetaDist");
     this.label = init?.label ?? "BETA.DIST";
     this.op = init?.op ?? "cdf";
-    this.addInput("x",     numIn("x"));
-    this.addInput("alpha", numIn("alpha"));
-    this.addInput("beta",  numIn("beta"));
-    this.addOutput("result", numOut("Result"));
+    this.addInput("x",     numListIn("x"));
+    this.addInput("alpha", numListIn("alpha"));
+    this.addInput("beta",  numListIn("beta"));
+    this.addOutput("result", numListOut("Result"));
   }
 
-  data(inputs: { x?: number[]; alpha?: number[]; beta?: number[] }) {
-    const x     = inputs.x?.[0]     ?? this.literals.x     ?? null;
-    const alpha = inputs.alpha?.[0] ?? this.literals.alpha ?? null;
-    const beta  = inputs.beta?.[0]  ?? this.literals.beta  ?? null;
-    let result: number | null = null;
-    if (x !== null && alpha !== null && beta !== null && alpha > 0 && beta > 0) {
-      if (x < 0 || x > 1) {
-        result = null;
-      } else if (this.op === "cdf") {
-        result = regularizedBeta(x, alpha, beta);
+  data(inputs: Record<string, (number | number[] | null)[] | undefined>) {
+    const x     = readInput(inputs.x,     this.literals.x);
+    const alpha = readInput(inputs.alpha, this.literals.alpha);
+    const beta  = readInput(inputs.beta,  this.literals.beta);
+    const op = this.op;
+    const result = broadcast((xv, av, bv) => {
+      if (av <= 0 || bv <= 0) return null;
+      if (xv < 0 || xv > 1) return null;
+      if (op === "cdf") {
+        const r = regularizedBeta(xv, av, bv);
+        return Number.isFinite(r) ? r : null;
       } else {
-        // PDF: handle boundary edge cases
-        if (x === 0 && alpha < 1) result = null;
-        else if (x === 1 && beta < 1) result = null;
-        else if (x === 0) result = alpha === 1 ? 1 : 0;
-        else if (x === 1) result = beta === 1 ? 1 : 0;
-        else {
-          result = Math.exp(
-            (alpha - 1) * Math.log(x) +
-              (beta - 1) * Math.log(1 - x) -
-              lnGamma(alpha) -
-              lnGamma(beta) +
-              lnGamma(alpha + beta),
-          );
-        }
+        if (xv === 0 && av < 1) return null;
+        if (xv === 1 && bv < 1) return null;
+        if (xv === 0) return av === 1 ? 1 : 0;
+        if (xv === 1) return bv === 1 ? 1 : 0;
+        const r = Math.exp(
+          (av - 1) * Math.log(xv) +
+            (bv - 1) * Math.log(1 - xv) -
+            lnGamma(av) -
+            lnGamma(bv) +
+            lnGamma(av + bv),
+        );
+        return Number.isFinite(r) ? r : null;
       }
-      if (result !== null && !Number.isFinite(result)) result = null;
-    }
+    }, x, alpha, beta);
     this.cachedResult = result;
     return { result };
   }
@@ -172,28 +170,28 @@ export class BetaDistNode extends ClassicPreset.Node {
 // ─── BETA.INV ─────────────────────────────────────────────────────────────────
 export class BetaInvNode extends ClassicPreset.Node {
   label: string;
-  cachedResult: number | null = null;
+  cachedResult: BroadcastResult = null;
   literals: Record<string, number> = { prob: 0.95, alpha: 2, beta: 5 };
   width = 180; height = 205;
 
   constructor(init?: { label?: string }) {
     super("BetaInv");
     this.label = init?.label ?? "BETA.INV";
-    this.addInput("prob",  numIn("Probability"));
-    this.addInput("alpha", numIn("alpha"));
-    this.addInput("beta",  numIn("beta"));
-    this.addOutput("result", numOut("Result"));
+    this.addInput("prob",  numListIn("Probability"));
+    this.addInput("alpha", numListIn("alpha"));
+    this.addInput("beta",  numListIn("beta"));
+    this.addOutput("result", numListOut("Result"));
   }
 
-  data(inputs: { prob?: number[]; alpha?: number[]; beta?: number[] }) {
-    const prob  = inputs.prob?.[0]  ?? this.literals.prob  ?? null;
-    const alpha = inputs.alpha?.[0] ?? this.literals.alpha ?? null;
-    const beta  = inputs.beta?.[0]  ?? this.literals.beta  ?? null;
-    let result: number | null = null;
-    if (prob !== null && alpha !== null && beta !== null && alpha > 0 && beta > 0 && prob > 0 && prob < 1) {
-      result = bisectionInv((x) => regularizedBeta(x, alpha, beta), prob, 0, 1);
-      if (!Number.isFinite(result)) result = null;
-    }
+  data(inputs: Record<string, (number | number[] | null)[] | undefined>) {
+    const prob  = readInput(inputs.prob,  this.literals.prob);
+    const alpha = readInput(inputs.alpha, this.literals.alpha);
+    const beta  = readInput(inputs.beta,  this.literals.beta);
+    const result = broadcast((pv, av, bv) => {
+      if (av <= 0 || bv <= 0 || pv <= 0 || pv >= 1) return null;
+      const r = bisectionInv((x) => regularizedBeta(x, av, bv), pv, 0, 1);
+      return Number.isFinite(r) ? r : null;
+    }, prob, alpha, beta);
     this.cachedResult = result;
     return { result };
   }
@@ -210,7 +208,7 @@ export const GAMMA_DIST_OP_META = {
 export class GammaDistNode extends ClassicPreset.Node {
   label: string;
   op: GammaDistOp;
-  cachedResult: number | null = null;
+  cachedResult: BroadcastResult = null;
   literals: Record<string, number> = { x: 1, alpha: 2, beta: 2 };
   width = 180; height = 225;
 
@@ -218,29 +216,27 @@ export class GammaDistNode extends ClassicPreset.Node {
     super("GammaDist");
     this.label = init?.label ?? "GAMMA.DIST";
     this.op = init?.op ?? "cdf";
-    this.addInput("x",     numIn("x"));
-    this.addInput("alpha", numIn("alpha"));
-    this.addInput("beta",  numIn("beta (scale)"));
-    this.addOutput("result", numOut("Result"));
+    this.addInput("x",     numListIn("x"));
+    this.addInput("alpha", numListIn("alpha"));
+    this.addInput("beta",  numListIn("beta (scale)"));
+    this.addOutput("result", numListOut("Result"));
   }
 
-  data(inputs: { x?: number[]; alpha?: number[]; beta?: number[] }) {
-    const x     = inputs.x?.[0]     ?? this.literals.x     ?? null;
-    const alpha = inputs.alpha?.[0] ?? this.literals.alpha ?? null;
-    const beta  = inputs.beta?.[0]  ?? this.literals.beta  ?? null;
-    let result: number | null = null;
-    if (x !== null && alpha !== null && beta !== null && alpha > 0 && beta > 0) {
-      if (this.op === "cdf") {
-        result = x <= 0 ? 0 : regularizedGamma(alpha, x / beta);
+  data(inputs: Record<string, (number | number[] | null)[] | undefined>) {
+    const x     = readInput(inputs.x,     this.literals.x);
+    const alpha = readInput(inputs.alpha, this.literals.alpha);
+    const beta  = readInput(inputs.beta,  this.literals.beta);
+    const op = this.op;
+    const result = broadcast((xv, av, bv) => {
+      if (av <= 0 || bv <= 0) return null;
+      let r: number;
+      if (op === "cdf") {
+        r = xv <= 0 ? 0 : regularizedGamma(av, xv / bv);
       } else {
-        result = x <= 0
-          ? 0
-          : Math.exp(
-              (alpha - 1) * Math.log(x) - x / beta - alpha * Math.log(beta) - lnGamma(alpha),
-            );
+        r = xv <= 0 ? 0 : Math.exp((av - 1) * Math.log(xv) - xv / bv - av * Math.log(bv) - lnGamma(av));
       }
-      if (result !== null && !Number.isFinite(result)) result = null;
-    }
+      return Number.isFinite(r) ? r : null;
+    }, x, alpha, beta);
     this.cachedResult = result;
     return { result };
   }
@@ -249,28 +245,28 @@ export class GammaDistNode extends ClassicPreset.Node {
 // ─── GAMMA.INV ────────────────────────────────────────────────────────────────
 export class GammaInvNode extends ClassicPreset.Node {
   label: string;
-  cachedResult: number | null = null;
+  cachedResult: BroadcastResult = null;
   literals: Record<string, number> = { prob: 0.95, alpha: 2, beta: 2 };
   width = 180; height = 205;
 
   constructor(init?: { label?: string }) {
     super("GammaInv");
     this.label = init?.label ?? "GAMMA.INV";
-    this.addInput("prob",  numIn("Probability"));
-    this.addInput("alpha", numIn("alpha"));
-    this.addInput("beta",  numIn("beta (scale)"));
-    this.addOutput("result", numOut("Result"));
+    this.addInput("prob",  numListIn("Probability"));
+    this.addInput("alpha", numListIn("alpha"));
+    this.addInput("beta",  numListIn("beta (scale)"));
+    this.addOutput("result", numListOut("Result"));
   }
 
-  data(inputs: { prob?: number[]; alpha?: number[]; beta?: number[] }) {
-    const prob  = inputs.prob?.[0]  ?? this.literals.prob  ?? null;
-    const alpha = inputs.alpha?.[0] ?? this.literals.alpha ?? null;
-    const beta  = inputs.beta?.[0]  ?? this.literals.beta  ?? null;
-    let result: number | null = null;
-    if (prob !== null && alpha !== null && beta !== null && alpha > 0 && beta > 0 && prob > 0 && prob < 1) {
-      result = bisectionInv((x) => (x <= 0 ? 0 : regularizedGamma(alpha, x / beta)), prob, 0, 1e6);
-      if (!Number.isFinite(result)) result = null;
-    }
+  data(inputs: Record<string, (number | number[] | null)[] | undefined>) {
+    const prob  = readInput(inputs.prob,  this.literals.prob);
+    const alpha = readInput(inputs.alpha, this.literals.alpha);
+    const beta  = readInput(inputs.beta,  this.literals.beta);
+    const result = broadcast((pv, av, bv) => {
+      if (av <= 0 || bv <= 0 || pv <= 0 || pv >= 1) return null;
+      const r = bisectionInv((x) => (x <= 0 ? 0 : regularizedGamma(av, x / bv)), pv, 0, 1e6);
+      return Number.isFinite(r) ? r : null;
+    }, prob, alpha, beta);
     this.cachedResult = result;
     return { result };
   }
@@ -287,7 +283,7 @@ export const LOGNORM_DIST_OP_META = {
 export class LognormDistNode extends ClassicPreset.Node {
   label: string;
   op: LognormDistOp;
-  cachedResult: number | null = null;
+  cachedResult: BroadcastResult = null;
   literals: Record<string, number> = { x: 1, mean: 0, stdev: 1 };
   width = 180; height = 225;
 
@@ -295,29 +291,27 @@ export class LognormDistNode extends ClassicPreset.Node {
     super("LognormDist");
     this.label = init?.label ?? "LOGNORM.DIST";
     this.op = init?.op ?? "cdf";
-    this.addInput("x",     numIn("x"));
-    this.addInput("mean",  numIn("mean (ln)"));
-    this.addInput("stdev", numIn("stdev (ln)"));
-    this.addOutput("result", numOut("Result"));
+    this.addInput("x",     numListIn("x"));
+    this.addInput("mean",  numListIn("mean (ln)"));
+    this.addInput("stdev", numListIn("stdev (ln)"));
+    this.addOutput("result", numListOut("Result"));
   }
 
-  data(inputs: { x?: number[]; mean?: number[]; stdev?: number[] }) {
-    const x     = inputs.x?.[0]     ?? this.literals.x     ?? null;
-    const mean  = inputs.mean?.[0]  ?? this.literals.mean  ?? null;
-    const stdev = inputs.stdev?.[0] ?? this.literals.stdev ?? null;
-    let result: number | null = null;
-    if (x !== null && mean !== null && stdev !== null && stdev > 0) {
-      if (x <= 0) {
-        result = null;
-      } else if (this.op === "cdf") {
-        result = stdNormCDF((Math.log(x) - mean) / stdev);
+  data(inputs: Record<string, (number | number[] | null)[] | undefined>) {
+    const x     = readInput(inputs.x,     this.literals.x);
+    const mean  = readInput(inputs.mean,  this.literals.mean);
+    const stdev = readInput(inputs.stdev, this.literals.stdev);
+    const op = this.op;
+    const result = broadcast((xv, mv, sv) => {
+      if (sv <= 0 || xv <= 0) return null;
+      let r: number;
+      if (op === "cdf") {
+        r = stdNormCDF((Math.log(xv) - mv) / sv);
       } else {
-        result =
-          Math.exp(-0.5 * ((Math.log(x) - mean) / stdev) ** 2) /
-          (x * stdev * Math.sqrt(2 * Math.PI));
+        r = Math.exp(-0.5 * ((Math.log(xv) - mv) / sv) ** 2) / (xv * sv * Math.sqrt(2 * Math.PI));
       }
-      if (result !== null && !Number.isFinite(result)) result = null;
-    }
+      return Number.isFinite(r) ? r : null;
+    }, x, mean, stdev);
     this.cachedResult = result;
     return { result };
   }
@@ -326,28 +320,28 @@ export class LognormDistNode extends ClassicPreset.Node {
 // ─── LOGNORM.INV ─────────────────────────────────────────────────────────────
 export class LognormInvNode extends ClassicPreset.Node {
   label: string;
-  cachedResult: number | null = null;
+  cachedResult: BroadcastResult = null;
   literals: Record<string, number> = { prob: 0.95, mean: 0, stdev: 1 };
   width = 180; height = 205;
 
   constructor(init?: { label?: string }) {
     super("LognormInv");
     this.label = init?.label ?? "LOGNORM.INV";
-    this.addInput("prob",  numIn("Probability"));
-    this.addInput("mean",  numIn("mean (ln)"));
-    this.addInput("stdev", numIn("stdev (ln)"));
-    this.addOutput("result", numOut("Result"));
+    this.addInput("prob",  numListIn("Probability"));
+    this.addInput("mean",  numListIn("mean (ln)"));
+    this.addInput("stdev", numListIn("stdev (ln)"));
+    this.addOutput("result", numListOut("Result"));
   }
 
-  data(inputs: { prob?: number[]; mean?: number[]; stdev?: number[] }) {
-    const prob  = inputs.prob?.[0]  ?? this.literals.prob  ?? null;
-    const mean  = inputs.mean?.[0]  ?? this.literals.mean  ?? null;
-    const stdev = inputs.stdev?.[0] ?? this.literals.stdev ?? null;
-    let result: number | null = null;
-    if (prob !== null && mean !== null && stdev !== null && stdev > 0 && prob > 0 && prob < 1) {
-      result = Math.exp(normSInv(prob) * stdev + mean);
-      if (!Number.isFinite(result)) result = null;
-    }
+  data(inputs: Record<string, (number | number[] | null)[] | undefined>) {
+    const prob  = readInput(inputs.prob,  this.literals.prob);
+    const mean  = readInput(inputs.mean,  this.literals.mean);
+    const stdev = readInput(inputs.stdev, this.literals.stdev);
+    const result = broadcast((pv, mv, sv) => {
+      if (sv <= 0 || pv <= 0 || pv >= 1) return null;
+      const r = Math.exp(normSInv(pv) * sv + mv);
+      return Number.isFinite(r) ? r : null;
+    }, prob, mean, stdev);
     this.cachedResult = result;
     return { result };
   }
@@ -364,7 +358,7 @@ export const WEIBULL_DIST_OP_META = {
 export class WeibullDistNode extends ClassicPreset.Node {
   label: string;
   op: WeibullDistOp;
-  cachedResult: number | null = null;
+  cachedResult: BroadcastResult = null;
   literals: Record<string, number> = { x: 1, alpha: 2, beta: 2 };
   width = 180; height = 225;
 
@@ -372,30 +366,27 @@ export class WeibullDistNode extends ClassicPreset.Node {
     super("WeibullDist");
     this.label = init?.label ?? "WEIBULL.DIST";
     this.op = init?.op ?? "cdf";
-    this.addInput("x",     numIn("x"));
-    this.addInput("alpha", numIn("alpha (shape)"));
-    this.addInput("beta",  numIn("beta (scale)"));
-    this.addOutput("result", numOut("Result"));
+    this.addInput("x",     numListIn("x"));
+    this.addInput("alpha", numListIn("alpha (shape)"));
+    this.addInput("beta",  numListIn("beta (scale)"));
+    this.addOutput("result", numListOut("Result"));
   }
 
-  data(inputs: { x?: number[]; alpha?: number[]; beta?: number[] }) {
-    const x     = inputs.x?.[0]     ?? this.literals.x     ?? null;
-    const alpha = inputs.alpha?.[0] ?? this.literals.alpha ?? null;
-    const beta  = inputs.beta?.[0]  ?? this.literals.beta  ?? null;
-    let result: number | null = null;
-    if (x !== null && alpha !== null && beta !== null && alpha > 0 && beta > 0) {
-      if (x < 0) {
-        result = null;
-      } else if (this.op === "cdf") {
-        result = 1 - Math.exp(-Math.pow(x / beta, alpha));
+  data(inputs: Record<string, (number | number[] | null)[] | undefined>) {
+    const x     = readInput(inputs.x,     this.literals.x);
+    const alpha = readInput(inputs.alpha, this.literals.alpha);
+    const beta  = readInput(inputs.beta,  this.literals.beta);
+    const op = this.op;
+    const result = broadcast((xv, av, bv) => {
+      if (av <= 0 || bv <= 0 || xv < 0) return null;
+      let r: number;
+      if (op === "cdf") {
+        r = 1 - Math.exp(-Math.pow(xv / bv, av));
       } else {
-        result =
-          (alpha / beta) *
-          Math.pow(x / beta, alpha - 1) *
-          Math.exp(-Math.pow(x / beta, alpha));
+        r = (av / bv) * Math.pow(xv / bv, av - 1) * Math.exp(-Math.pow(xv / bv, av));
       }
-      if (result !== null && !Number.isFinite(result)) result = null;
-    }
+      return Number.isFinite(r) ? r : null;
+    }, x, alpha, beta);
     this.cachedResult = result;
     return { result };
   }
@@ -412,7 +403,7 @@ export const EXPON_DIST_OP_META = {
 export class ExponDistNode extends ClassicPreset.Node {
   label: string;
   op: ExponDistOp;
-  cachedResult: number | null = null;
+  cachedResult: BroadcastResult = null;
   literals: Record<string, number> = { x: 1, lambda: 1 };
   width = 180; height = 205;
 
@@ -420,25 +411,20 @@ export class ExponDistNode extends ClassicPreset.Node {
     super("ExponDist");
     this.label = init?.label ?? "EXPON.DIST";
     this.op = init?.op ?? "cdf";
-    this.addInput("x",      numIn("x"));
-    this.addInput("lambda", numIn("lambda (rate)"));
-    this.addOutput("result", numOut("Result"));
+    this.addInput("x",      numListIn("x"));
+    this.addInput("lambda", numListIn("lambda (rate)"));
+    this.addOutput("result", numListOut("Result"));
   }
 
-  data(inputs: { x?: number[]; lambda?: number[] }) {
-    const x      = inputs.x?.[0]      ?? this.literals.x      ?? null;
-    const lambda = inputs.lambda?.[0] ?? this.literals.lambda ?? null;
-    let result: number | null = null;
-    if (x !== null && lambda !== null && lambda > 0) {
-      if (x < 0) {
-        result = null;
-      } else if (this.op === "cdf") {
-        result = 1 - Math.exp(-lambda * x);
-      } else {
-        result = lambda * Math.exp(-lambda * x);
-      }
-      if (result !== null && !Number.isFinite(result)) result = null;
-    }
+  data(inputs: Record<string, (number | number[] | null)[] | undefined>) {
+    const x      = readInput(inputs.x,      this.literals.x);
+    const lambda = readInput(inputs.lambda, this.literals.lambda);
+    const op = this.op;
+    const result = broadcast((xv, lv) => {
+      if (lv <= 0 || xv < 0) return null;
+      const r = op === "cdf" ? 1 - Math.exp(-lv * xv) : lv * Math.exp(-lv * xv);
+      return Number.isFinite(r) ? r : null;
+    }, x, lambda);
     this.cachedResult = result;
     return { result };
   }

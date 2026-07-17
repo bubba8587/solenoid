@@ -110,16 +110,20 @@ export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
       Object.entries(n.filterExclude as Record<string, string[]>).map(([k, v]) => [k, [...v]]),
     );
   }
-  // FilterFrame per-condition {op, matchCase}, keyed by pair id. Deep-copy (each
-  // row's config object is mutated live as the op select / Aa toggle changes) and
-  // keep only LIVE rows' entries — removal leaves an orphan behind for undo's
-  // row-restore, which must not leak into a save (it would break the text form's
-  // byte-identical second write).
+  // Per-condition {op, matchCase}, keyed by row id — shared by the Frame Filter &
+  // SUMIFS (a `column${id}` + `value${id}` PAIR per row) and the List Filter (a
+  // `value${id}` row ONLY, no column). Deep-copy (each row's config is mutated live
+  // as the op select / Aa toggle changes) and keep only LIVE rows' entries — a
+  // removed row leaves an orphan behind for undo's row-restore, which must not leak
+  // into a save (it would break the text form's byte-identical second write). Match
+  // on EITHER key so a List Filter row (value-only) persists too — checking just
+  // `column${k}` silently dropped every List Filter op back to the "gt" default on
+  // reload.
   if (n.condConfig && typeof n.condConfig === "object") {
     const liveInputs = (n.inputs ?? {}) as Record<string, unknown>;
     init.condConfig = Object.fromEntries(
       Object.entries(n.condConfig as Record<string, object>)
-        .filter(([k]) => `column${k}` in liveInputs)
+        .filter(([k]) => `value${k}` in liveInputs || `column${k}` in liveInputs)
         .map(([k, v]) => [k, { ...v }]),
     );
   }

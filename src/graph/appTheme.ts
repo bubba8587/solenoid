@@ -12,7 +12,7 @@ import { syncNativeAccent } from "./nativeAccent";
 export type ThemeMode = "dark" | "light";
 
 const LS_KEY = "solenoid.theme";
-const DEFAULT_ACCENT = "sky"; // palette slot (the old #56b4e9)
+const DEFAULT_ACCENT = "gold"; // palette slot — the brand coil's gold (#f5b914)
 
 let _accent = DEFAULT_ACCENT;
 let _mode: ThemeMode = "dark";

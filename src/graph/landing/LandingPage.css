@@ -1,0 +1,332 @@
+/* ─── Landing page (?landing) ─────────────────────────────────────────────────
+   A standalone scrollable document over the app's design tokens: dark workbench
+   chrome, hyperlegible type, quiet accent. The app root locks overflow, so the
+   page owns its own scroll via a fixed full-viewport wrapper. Every color rides
+   the theme vars, so light theme mirrors for free. */
+
+.sol-landing {
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  background: var(--app-bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.sol-landing__inner {
+  max-width: 1020px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* ── Top strip ── */
+.sol-landing__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 20px 0 0;
+}
+
+/* The wordmark (it carries the coil mark) is masked (not <img>) so the
+   single-color art recolors per theme via --wordmark-color — same technique as
+   the app's top bar. */
+.sol-landing__wordmark {
+  display: block;
+  height: 30px;
+  /* Wordmark viewBox is 573×119; derive width from the fixed height. */
+  aspect-ratio: 573 / 119;
+  background-color: var(--wordmark-color);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+.sol-landing__nav {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.sol-landing__nav a {
+  font-size: 12px;
+  color: var(--text-dim);
+  text-decoration: none;
+}
+
+.sol-landing__nav a:hover {
+  color: var(--text-bright);
+}
+
+.sol-landing__theme {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 0;
+}
+
+.sol-landing__theme:hover {
+  background: var(--btn-hover);
+  border-color: var(--btn-border-hover);
+  color: var(--text);
+}
+
+/* ── Hero ── */
+.sol-landing__hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 40px;
+  padding: 58px 0 0;
+}
+
+.sol-landing__hero-copy {
+  max-width: 620px;
+}
+
+/* The real socket legend rows (components/SocketLegend.css) in a landing panel:
+   the type palette is the product's signature, so it earns hero placement. */
+.sol-landing__hero-legend {
+  flex-shrink: 0;
+  width: 168px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  box-shadow: var(--shadow-card);
+}
+
+.sol-landing__hero-legend-heading {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+
+.sol-landing__hero h1 {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 1.18;
+  color: var(--text-bright);
+}
+
+.sol-landing__hero p {
+  margin: 14px 0 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-dim);
+}
+
+.sol-landing__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.sol-landing__cta {
+  display: inline-block;
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  color: var(--text);
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.sol-landing__cta:hover {
+  background: var(--btn-hover);
+  border-color: var(--btn-border-hover);
+}
+
+/* Primary action: the accent marks it the way it marks a focused field — a
+   colored border edge, never a fill (the Quiet Accent Rule). */
+.sol-landing__cta--primary {
+  border-color: var(--accent);
+  color: var(--text-bright);
+}
+
+.sol-landing__cta--primary:hover {
+  border-color: var(--accent);
+}
+
+/* ── Live demo stage ── */
+.sol-landing__demo {
+  margin-top: 34px;
+}
+
+.sol-landing__stage {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  background-color: var(--canvas-bg);
+}
+
+/* The rete mount fills the stage; the dot grid matches the app canvas (24px,
+   scaled with the stage's fixed zoom via inline background-size). */
+.sol-landing__stage-canvas {
+  position: absolute;
+  inset: 0;
+  background-color: var(--canvas-bg);
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--canvas-dot) 85%, transparent) 1px,
+    transparent 1px
+  );
+}
+
+.sol-landing__stage-reset {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  color: var(--text-dim);
+  font-size: 11px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+}
+
+.sol-landing__stage-reset:hover {
+  background: var(--btn-hover);
+  border-color: var(--btn-border-hover);
+  color: var(--text);
+}
+
+.sol-landing__demo-note {
+  margin: 8px 2px 0;
+  max-width: 720px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/* ── Feature grid ── */
+.sol-landing__features {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 44px 0 14px;
+}
+
+.sol-landing__feature {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px 16px;
+  box-shadow: var(--shadow-card);
+}
+
+.sol-landing__feature h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.sol-landing__feature p {
+  margin: 7px 0 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-dim);
+}
+
+.sol-landing__feature code {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text);
+}
+
+.sol-landing__err {
+  color: var(--sol-error);
+  font-weight: 700;
+}
+
+/* ── Excel-parity strip ── */
+.sol-landing__strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin: 0 0 56px;
+  box-shadow: var(--shadow-card);
+}
+
+.sol-landing__strip p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-dim);
+  max-width: 640px;
+}
+
+.sol-landing__strip code {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text);
+}
+
+/* ── Footer ── */
+.sol-landing__footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
+  border-top: 1px solid var(--border-subtle);
+  padding: 16px 0 30px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.sol-landing__footer a {
+  color: var(--text-muted);
+  text-decoration: underline;
+}
+
+.sol-landing__footer a:hover {
+  color: var(--text);
+}
+
+/* ── Responsive ── */
+@media (max-width: 860px) {
+  .sol-landing__features {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .sol-landing__hero-legend {
+    display: none;
+  }
+}
+
+@media (max-width: 580px) {
+  .sol-landing__features {
+    grid-template-columns: 1fr;
+  }
+
+  .sol-landing__hero h1 {
+    font-size: 24px;
+  }
+}
