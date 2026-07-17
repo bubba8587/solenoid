@@ -37,8 +37,20 @@ export type AggOp =
   | "percentof";
 
 /** Filter operators: the six shared comparisons (reused from Comparison/Filter so
- *  semantics never drift) plus three text predicates. */
-export type FilterOp = ComparisonOp | "contains" | "startsWith" | "endsWith" | "isblank" | "notblank";
+ *  semantics never drift), three text predicates, the blank pair, and the ERROR
+ *  pair (`iserror` keeps error cells, `noterror` drops them — the way to strip
+ *  #DIV/0!/#N/A/… out of a list/frame). The error pair is JS-oracle only: the
+ *  native Polars engine degrades a per-cell error to null on upload, so the frame
+ *  Filter routes an error-predicate through the oracle rather than the plan. */
+export type FilterOp = ComparisonOp | "contains" | "startsWith" | "endsWith" | "isblank" | "notblank" | "iserror" | "noterror";
+
+/** The value-less filter ops — no comparison value (the Value field hides). Shared
+ *  so the node data() paths and the UI agree. */
+export const VALUELESS_FILTER_OPS: ReadonlySet<FilterOp> = new Set<FilterOp>(["isblank", "notblank", "iserror", "noterror"]);
+
+/** The error predicates — the frame Filter runs these in the JS oracle (the native
+ *  engine can't hold per-cell errors). */
+export const ERROR_FILTER_OPS: ReadonlySet<FilterOp> = new Set<FilterOp>(["iserror", "noterror"]);
 
 /** One predicate of a multi-condition filter (B-2). `matchCase` rides
  *  PER-CONDITION — "Region eq west (any case) AND Code contains X (exact)". */
@@ -205,9 +217,14 @@ function filterValueToNumber(value: FrameCell, type: FrameColType): number | nul
 }
 
 export function passesFilter(cell: FrameCell, op: FilterOp, value: FrameCell, type: FrameColType, matchCase: boolean): boolean {
-  // The blank predicates run BEFORE the null guard — they exist to select on
-  // blankness (author 2026-07-16: blanks are data). An error cell is present,
-  // not blank: isblank false, notblank true.
+  // The error + blank predicates run BEFORE the null/error guard below (which
+  // excludes every error and null cell) — they exist to SELECT on those states.
+  // `noterror` keeps a null (a null isn't an error); pair it with `notblank` to
+  // drop both.
+  if (op === "iserror")  return isSolError(cell);
+  if (op === "noterror") return !isSolError(cell);
+  // The blank predicates select on blankness (author 2026-07-16: blanks are data).
+  // An error cell is present, not blank: isblank false, notblank true.
   if (op === "isblank")  return cell === null;
   if (op === "notblank") return cell !== null;
   if (cell === null || isSolError(cell)) return false;

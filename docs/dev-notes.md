@@ -53,6 +53,28 @@ or pixel-snap the card box. Radius itself is correct; don't re-touch it. Parked 
   bodies adapted from shipped What's New slides). All theme-token styled, so light mode mirrors. Page
   scrolls inside a fixed wrapper (the app root locks overflow).
 
+### SESSION DIGEST (2026-07-17 — error propagation through MAKEARRAY + error filtering)
+Reported: MAKEARRAY via a LAMBDA over a list with any #DIV/0! → the WHOLE array became #DIV/0!; and no
+way to filter errors out of a list/table/frame.
+- **Root cause (`excelFormula.ts` `prepRangeArgs`):** the "propagate any error in a range arg" scan ran
+  BEFORE the RANGE_POSITIONAL early-return, so INDEX/XMATCH/XLOOKUP/… blanket-errored when the array held
+  an error at ANY position — even an unreferenced one. A MAKEARRAY lambda `INDEX(data, row)` therefore
+  returned #DIV/0! for every cell. Fix: positional lookups skip the scan entirely (moved the early-return
+  above it) — the impl picks its cell, and a PICKED error still propagates per-cell (correct, Excel-exact:
+  `INDEX(A1:A3,1)` is fine when A2 errors). AGGREGATES (SUM/AVERAGE) still propagate — that's Excel-correct.
+  Now `MAKEARRAY(3,1, INDEX(data,row))` over `[1,#DIV/0!,3]` → `[[1],[#DIV/0!],[3]]`.
+- **Error filter predicates (`iserror`/`noterror`):** added to `FilterOp` + `passesFilter` (frameVerbs)
+  — `noterror` drops #DIV/0!-style error cells (keeps values AND nulls; pair with `notblank` to drop
+  both), `iserror` keeps only errors. Exposed in the **List Filter** and **Frame Filter** op dropdowns
+  (`FILTER_OP_OPTIONS_WITH_ERROR`; SUMIFS deliberately excluded), value-less like the blank pair
+  (`VALUELESS_FILTER_OPS`). The List Filter is JS so it just works. The **Frame Filter routes an
+  error-predicate through the JS oracle** (`filterRowsMulti`), because the native Polars engine degrades
+  a per-cell error to null on upload (`frameBackend` §"__err") and couldn't tell an error from a blank —
+  so a plan-side error filter is impossible on desktop; the oracle is the same reference impl, so mixed
+  comparison rows in the same filter stay identical. A matrix filters via the Frame Filter (Col1..N).
+- Tests: `errorFiltering.test.ts` (positional no-blanket-error + MAKEARRAY integration + aggregate still
+  propagates; passesFilter/List Filter/filterRowsMulti error ops).
+
 ### SESSION DIGEST (2026-07-17 — Chart (recharts) node sanitization)
 Reported: Scatter x-axis showed FLOAT labels; wiring a `#DIV/0!` into a Chart could crash it; a Point
 Plotter (via a frame) into a Scatter plotted "out of order".

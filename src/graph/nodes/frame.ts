@@ -19,6 +19,7 @@ import {
   fillBlanks, replaceValues, mergeColumns, promoteHeaders, demoteHeaders, dropBlankRows, sliceRows, borderedGridFromFrame,
   lookupFrameCell, lookupCubeCell, lookupFrameRowIndex, lookupCubeRowIndex,
   frameRowAt, cubeRowAt, asLookupSource, reconcileFrames,
+  filterRowsMulti, VALUELESS_FILTER_OPS, ERROR_FILTER_OPS,
   type FilterCond, type FilterCombine, type JoinHow, type AsofDirection, type AggOp, type DecisionNormalize, type LookupMatchMode, type LookupSearchMode, type ReconcileSummary,
 } from "../frameVerbs";
 import { pairIdsFromKeys } from "./logic";
@@ -324,13 +325,27 @@ export class FilterFrameNode extends ClassicPreset.Node {
       const cfg = this.condConfig[id];
       const op = cfg?.op ?? "gt";
       const val = readFilterValue(inputs[valKey], this.stringLiterals[valKey]);
-      const valueless = op === "isblank" || op === "notblank"; // no value to write
+      const valueless = VALUELESS_FILTER_OPS.has(op); // no value to write (blank / error predicates)
       if (col === "" || (!valueless && val.trim() === "")) continue;
       conditions.push({ column: col, op, value: val as FrameCell, matchCase: cfg?.matchCase ?? false });
     }
     if (conditions.length === 0) {
       // Pass-through ("not written yet"): Kept = everything, Dropped = blank.
       return { ...(await emitFrame(this, gen, await readFrame(f))), dropped: this.publishDropped(gen, null) };
+    }
+    // An error predicate (iserror/noterror) must run in the JS ORACLE: the native
+    // Polars engine degrades a per-cell error to null on upload, so it couldn't tell
+    // an error from a blank. Materialize the input (errors intact for a source frame)
+    // and split it here — the oracle is the same reference impl the plan matches, so
+    // any comparison rows in the same filter behave identically.
+    if (conditions.some((c) => ERROR_FILTER_OPS.has(c.op))) {
+      const mat = await readFrame(f);
+      if (mat == null || isSolError(mat)) {
+        return { ...(await emitFrame(this, gen, mat ?? null)), dropped: this.publishDropped(gen, null) };
+      }
+      const keptF = filterRowsMulti(mat, this.combine, conditions);
+      const droppedF = filterRowsMulti(mat, this.combine, conditions, true);
+      return { ...(await emitFrame(this, gen, keptF)), dropped: this.publishDropped(gen, droppedF) };
     }
     // Two independent lazy refs off the same input: the kept filter and its ROW
     // complement (null-predicate rows land in Dropped, not lost — see D15).
