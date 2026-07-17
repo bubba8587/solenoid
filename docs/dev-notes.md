@@ -53,6 +53,24 @@ or pixel-snap the card box. Radius itself is correct; don't re-touch it. Parked 
   bodies adapted from shipped What's New slides). All theme-token styled, so light mode mirrors. Page
   scrolls inside a fixed wrapper (the app root locks overflow).
 
+### SESSION DIGEST (2026-07-17 — figure-node sanitization sweep)
+Audited the figure/visual render layer + producers for the Chart-fix class of bug (SolError/NaN/Infinity
+reaching canvas geometry or a React child, `.toFixed` on a non-number). It's largely well-defended already
+(the `colAsNumbers`/`colAsRawNumbers`/`colAsStrings` frame readers + `toSeries`/`formatScalar`/`tipValue`/
+`tickFmt` guards). Table/frame cell renderers (`TableDisplay`/`TablePopup`/`FrameDisplay`) are safe —
+`formatFrameCell`/`fmtCell` convert a per-cell SolError→#CODE! and filter NaN/∞ before `toFixed`. Fixed:
+- **Surface/Contour blank-plot bug (real):** `parseBorderedGrid` (visual.ts) fell a non-finite AXIS
+  coordinate cell back to `NaN` (`num(v) ?? NaN`); one error/text/blank coord → `Math.min(...xs)=NaN` in
+  SurfaceView/drawContour → the WHOLE plot renders blank while the empty-check (z-only) thinks there's
+  data. Now DROPS the bad column/row (and its matching z column/row, staying aligned).
+- **Gauge NaN% (cosmetic):** GaugeNode.data() passed the value un-coerced; a NaN → "NaN%" over an
+  undefined arc. Component now treats a non-finite value as null → em-dash + empty dial.
+- **Bullet NaN labels (cosmetic):** BulletBar guards a non-finite min/max (→ 0 / min+1) so frac() can't
+  go NaN.
+- **Sparkline parity:** `data()` maps non-finite (not just non-number) to 0, so the emitted payload never
+  carries NaN/Infinity.
+- Tests: parseBorderedGrid drop case in visual.test.ts.
+
 ### SESSION DIGEST (2026-07-17 — Conduit accepts any cable; List Filter output adopts its type)
 - **Conduit lane rejected a list (`conduit.ts`):** the lane INPUT was a shared `anySocket` (`any` = the
   element-agnostic SCALAR wildcard), so a 1-D `anylist`/`numlist` cable couldn't connect (list→scalar =
