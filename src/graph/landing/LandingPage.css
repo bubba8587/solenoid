@@ -33,7 +33,7 @@
    the app's top bar. */
 .sol-landing__wordmark {
   display: block;
-  height: 22px;
+  height: 30px;
   /* Wordmark viewBox is 573×119; derive width from the fixed height. */
   aspect-ratio: 573 / 119;
   background-color: var(--wordmark-color);
