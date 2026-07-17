@@ -2,7 +2,7 @@
 name: Solenoid
 description: A node-based computation graph tool, an Excel alternative for data tables.
 colors:
-  accent: "#56b4e9"
+  accent: "#f5b914"
   surface: "#1e1e1e"
   surface-sunken: "#141414"
   surface-raised: "#262626"
@@ -107,7 +107,7 @@ This system explicitly rejects three looks. It is not a generic SaaS or AI-start
 A neutral near-black workbench carrying a typed, saturated socket palette and a single swappable accent.
 
 ### Primary
-- **Sky Accent** (`#56b4e9`): The single interactive accent. Marks focus (input field borders), the brand wordmark, and selection glows. Overwritten at runtime by the theme store, so treat it as a role, not a fixed hue. Used sparingly; it should never carry large fills.
+- **Gold Accent** (`#f5b914`): The single interactive accent — the brand coil's gold, shared with the number socket. Marks focus (input field borders), the brand wordmark, and selection glows. Overwritten at runtime by the theme store (the user can pick any palette slot), so treat it as a role, not a fixed hue. Used sparingly; it should never carry large fills.
 
 ### Neutral
 - **Workbench** (`#1e1e1e`): The raised chrome surface. Node bodies, menus, popovers. In light theme this becomes a near-white off-white (`#fbfcfd`).

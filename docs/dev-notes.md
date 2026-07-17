@@ -19,6 +19,10 @@ edge round independently. Possible directions not yet tried: draw the ring so it
 or pixel-snap the card box. Radius itself is correct; don't re-touch it. Parked by author.
 
 ### SESSION DIGEST (2026-07-17 — distribution nodes broadcast; landing page)
+- **Default accent → gold (`appTheme.ts` DEFAULT_ACCENT, author 2026-07-17):** the brand coil's gold
+  (`#f5b914`, the `gold` palette slot — palette.ts's swatch-order comment already called it the
+  default; the code said `sky`). DESIGN.md frontmatter + the Primary color section updated to match.
+  Persisted user accents are untouched (localStorage wins on load).
 - **Distribution nodes → numlist (`10f5317`):** all 22 DIST/INV nodes across `dist-normal.ts` /
   `dist-continuous.ts` / `dist-discrete.ts` moved from `numIn`/`numOut` scalar sockets to
   `numListIn`/`numListOut` + the shared `broadcast()` helper (`readInput` for wired-null propagation),
@@ -29,25 +33,25 @@ or pixel-snap the card box. Radius itself is correct; don't re-touch it. Parked 
   LandingGraph.tsx), swapped in by App.tsx exactly like `?showcase`. The hero demo is the REAL rete
   stack (areaPresets render preset, DataflowEngine, process.ts singletons pointed at it — the
   showcase mount pattern) with TWO live islands in ONE editor: the commission flow (List Input →
-  Aggregate(sum) → Arithmetic(×) ← Number Input → Display) and the terrain flow (Table Input bordered
-  survey grid with holes → Grid Interpolate → Surface + Contour) as its own titled section. **The
-  terrain stage is a DOM-snapshot diorama (author direction), not a second live stack:** a second live
-  rete stack is impossible — `getOwningEditor`/the process.ts singletons support ONE live surface
-  outside the composite-drill-in override (a second stack's cards render unwired the moment the
-  singletons move, and registering it as the override breaks the live island's `getActiveEditor`
-  edits). So `LandingDiorama` builds a real stack, computes once, clones the DOM in place (canvas
-  bitmaps copied via drawImage), destroys the stack, and hands the singletons back — followed by ONE
-  `processGraph()` on the hero (load-bearing: the diorama's connection events bump the global
-  connectionVersionStore mid-build, so hero rows re-derived their wired state against the wrong refs
-  and rendered unwired until the next pass). Theme toggle remounts the diorama (`key={mode}`) because
-  the snapshot bakes theme ink into its chart canvases. The diorama fits by CSS `transform: scale`
-  (inert DOM; `area.zoom` would re-render connections against the wrong refs). Pan/zoom off, node
-  drag + in-card edits live on the hero, fit via `area.zoom` there, Reset rebuilds. Header: masked
-  icon/wordmark marks (recolor via `--wordmark-color`, the TopBar technique) + a dark/light toggle
-  (`appThemeStore.toggleMode`). Feature cards carry real `SocketDot` glyphs; copy follows DESIGN.md §7
-  (hero reuses the shipped About tagline/body; several bodies adapted from shipped What's New slides).
-  All theme-token styled, so light mode mirrors. Page scrolls inside a fixed wrapper (the app root
-  locks overflow).
+  stack (areaPresets render preset, DataflowEngine, process.ts singletons pointed at it — the showcase
+  mount pattern) running the TERRAIN flow only (author direction, final form): Table Input bordered
+  survey grid with holes → Grid Interpolate → Surface + Contour, everything live (rotate pad, Forecast
+  checkbox, Levels field, grid-popup edits). **Gotcha, recorded in LandingGraph.tsx: ONE live stage
+  only.** `getOwningEditor`/the process.ts singletons support a single live surface outside the
+  composite-drill-in override — a second independent stack renders its cards as unwired the moment the
+  singletons move (its connection events bump the global connectionVersionStore mid-build, re-rendering
+  the other stage's rows against the wrong refs), and registering it as the drill-in override breaks
+  the live island's `getActiveEditor` edits instead. (A DOM-snapshot "diorama" variant — build, clone
+  with canvas bitmaps, destroy, hand back + one repair processGraph — was built and worked; superseded
+  when the author cut back to the one terrain demo. It's in git history if a second demo returns.)
+  Pan/zoom off, node drag + in-card edits live, fit-to-width via a fixed `area.zoom`, Reset rebuilds.
+  Header: the masked WORDMARK only (it carries the coil; recolors via `--wordmark-color`, the TopBar
+  technique) + a dark/light toggle (`appThemeStore.toggleMode`). Color: the real `SocketLegendRows` as
+  a hero side panel, and each feature card tints itself with its value family's socket color
+  (`color-mix` at ~7% bg / 28% border — DESIGN.md's tint-the-element-itself pattern) behind a real
+  `SocketDot` glyph. Copy follows DESIGN.md §7 (hero reuses the shipped About tagline/body; several
+  bodies adapted from shipped What's New slides). All theme-token styled, so light mode mirrors. Page
+  scrolls inside a fixed wrapper (the app root locks overflow).
 
 ### SESSION DIGEST (2026-07-17 — Chart (recharts) node sanitization)
 Reported: Scatter x-axis showed FLOAT labels; wiring a `#DIV/0!` into a Chart could crash it; a Point

@@ -1,11 +1,10 @@
 import { useSyncExternalStore } from "react";
-import { LandingGraph, LandingDiorama } from "./LandingGraph";
-import { SocketDot, type SocketGlyph } from "../components/SocketLegend";
+import { LandingGraph } from "./LandingGraph";
+import { SocketDot, SocketLegendRows, type SocketGlyph } from "../components/SocketLegend";
 import { SOCKET_COLORS } from "../sockets";
 import { TablePopup } from "../components/TablePopup";
 import { appThemeStore } from "../appTheme";
 import wordmark from "../../logo/solenoidwordmark.svg";
-import icon from "../../logo/solenoidicon.svg";
 import pkg from "../../../package.json";
 import "./LandingPage.css";
 
@@ -13,14 +12,15 @@ import "./LandingPage.css";
 // A standalone route: App.tsx swaps the whole app for this page when the URL
 // carries ?landing, same mechanism as the ?showcase harness. Copy follows the
 // house voice (DESIGN.md §7); the hero tagline and body are the shipped About
-// text. Both demo stages are the real rete stack — see LandingGraph.tsx.
+// text. The demo stage is the real rete stack — see LandingGraph.tsx.
 
 const GITHUB_URL = "https://github.com/bubba8587/solenoid";
 
 type Feature = { title: string; glyph: SocketGlyph; body: React.ReactNode };
 
-// Each card's glyph is the REAL socket dot of the value family the feature
-// works in — the same color-means-type rule the canvas uses.
+// Each card's glyph is the REAL socket dot of the value family the feature works
+// in, and the card tints itself with that color — the canvas's color-means-type
+// rule, applied the way DESIGN.md prescribes (tint the element itself).
 const FEATURES: Feature[] = [
   {
     title: "Real units",
@@ -117,27 +117,16 @@ function ThemeToggle() {
 }
 
 export default function LandingPage() {
-  // The diorama snapshot bakes theme colors into its chart canvases, so a theme
-  // switch remounts it (key) and it re-renders in the new theme.
-  const mode = useSyncExternalStore(appThemeStore.subscribe, appThemeStore.getMode);
   return (
     <div className="sol-landing">
       <div className="sol-landing__inner">
         <header className="sol-landing__top">
-          <span className="sol-landing__brand">
-            <span
-              className="sol-landing__mark"
-              role="img"
-              aria-hidden="true"
-              style={{ WebkitMaskImage: `url("${icon}")`, maskImage: `url("${icon}")` }}
-            />
-            <span
-              className="sol-landing__wordmark"
-              role="img"
-              aria-label="Solenoid"
-              style={{ WebkitMaskImage: `url("${wordmark}")`, maskImage: `url("${wordmark}")` }}
-            />
-          </span>
+          <span
+            className="sol-landing__wordmark"
+            role="img"
+            aria-label="Solenoid"
+            style={{ WebkitMaskImage: `url("${wordmark}")`, maskImage: `url("${wordmark}")` }}
+          />
           <nav className="sol-landing__nav">
             <a href={GITHUB_URL} target="_blank" rel="noreferrer">GitHub</a>
             <a href="./">Open the app</a>
@@ -147,42 +136,48 @@ export default function LandingPage() {
 
         <main>
           <section className="sol-landing__hero">
-            <h1>A node-graph alternative to Excel for data tables.</h1>
-            <p>
-              Each node is one operation, and typed cables carry values between them:
-              scalars, lists, tables, and frames. The graph recomputes as its inputs
-              change, so the steps of a calculation stay visible on the canvas.
-            </p>
-            <div className="sol-landing__actions">
-              <a className="sol-landing__cta sol-landing__cta--primary" href="./">
-                Open Solenoid
-              </a>
-              <a className="sol-landing__cta" href={`${GITHUB_URL}/releases/latest`} target="_blank" rel="noreferrer">
-                Download for Windows
-              </a>
+            <div className="sol-landing__hero-copy">
+              <h1>A node-graph alternative to Excel for data tables.</h1>
+              <p>
+                Each node is one operation, and typed cables carry values between them:
+                scalars, lists, tables, and frames. The graph recomputes as its inputs
+                change, so the steps of a calculation stay visible on the canvas.
+              </p>
+              <div className="sol-landing__actions">
+                <a className="sol-landing__cta sol-landing__cta--primary" href="./">
+                  Open Solenoid
+                </a>
+                <a className="sol-landing__cta" href={`${GITHUB_URL}/releases/latest`} target="_blank" rel="noreferrer">
+                  Download for Windows
+                </a>
+              </div>
             </div>
+            <aside className="sol-landing__hero-legend">
+              <div className="sol-landing__hero-legend-heading">Socket types</div>
+              <SocketLegendRows />
+            </aside>
           </section>
 
           <section className="sol-landing__demo">
             <LandingGraph />
             <p className="sol-landing__demo-note">
-              This graph is live. Drag a card, or edit a value and the payout recomputes.
+              This graph is live. Grid Interpolate fills the holes in the sparse survey
+              grid; Surface draws the mesh and Contour the map view. Drag a card, rotate
+              the view from the pad on the Surface card, or open the table and edit a
+              height.
             </p>
-          </section>
-
-          <section className="sol-landing__demo sol-landing__demo--titled">
-            <h2>Terrain and fields</h2>
-            <p className="sol-landing__demo-lede">
-              Grid Interpolate fills the holes in a sparse survey table with a smooth
-              surface. Surface draws the filled grid as a shaded 3-D mesh and Contour
-              draws the map view of the same heights.
-            </p>
-            <LandingDiorama key={mode} />
           </section>
 
           <section className="sol-landing__features">
             {FEATURES.map((f) => (
-              <article key={f.title} className="sol-landing__feature">
+              <article
+                key={f.title}
+                className="sol-landing__feature"
+                style={{
+                  background: `color-mix(in srgb, ${f.glyph.color} 7%, var(--surface))`,
+                  borderColor: `color-mix(in srgb, ${f.glyph.color} 28%, var(--border))`,
+                }}
+              >
                 <h2>
                   <SocketDot entry={f.glyph} />
                   {f.title}
@@ -212,7 +207,7 @@ export default function LandingPage() {
           <span>Built with Rete, Polars and Tauri.</span>
         </footer>
       </div>
-      {/* The value popup a chip on a demo graph can open. */}
+      {/* The value popup a chip on the demo graph can open. */}
       <TablePopup />
     </div>
   );
