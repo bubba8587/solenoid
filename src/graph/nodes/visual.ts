@@ -51,7 +51,10 @@ export class SparklineNode extends ClassicPreset.Node {
   data(inputs: { values?: (number | number[])[] }): { chart: ChartValue } {
     const raw = inputs.values?.[0] ?? null;
     this.cachedResult = raw;
-    const nums = (Array.isArray(raw) ? raw : raw == null ? [] : [raw]).map((x) => (typeof x === "number" ? x : 0));
+    // Finite numbers only — a non-number OR a NaN/Infinity (dirty data, a #DIV/0!
+    // cell) becomes 0, so the emitted chart value never carries a value the sign /
+    // toSeries path would render as garbage (parity with ChartNode.data()).
+    const nums = (Array.isArray(raw) ? raw : raw == null ? [] : [raw]).map((x) => (typeof x === "number" && Number.isFinite(x) ? x : 0));
     // Win/Loss renders as a column chart of the signs (+1 up / −1 down / 0 flat).
     const chart: ChartValue = {
       __chart: true,
@@ -136,31 +139,43 @@ export class ChartNode extends ClassicPreset.Node {
     // The data feed (raw, uncoerced): a FRAME drives a LABELED chart — col 0 → x-axis
     // labels (formatted per type, so dates read as dates), col 1 → the values; a single-
     // column frame is just values. A plain LIST charts as values against the index.
+    // Every cell is coerced to a FINITE number or null: a #DIV/0! (SolError object),
+    // a first-class null, NaN/Infinity (dirty-data coercions from the input nodes),
+    // or text all become null — so the emitted chart VALUE never carries a non-number
+    // that recharts / a Report embed would choke on. Bad cells become null in place
+    // (not dropped), so the x-axis labels (indexed by row) stay aligned.
+    const num = (c: unknown): number | null => (typeof c === "number" && Number.isFinite(c) ? c : null);
     const raw = inputs.values?.[0] ?? null;
     this.cachedLabels = null;
     let v: number | number[] | null = null;
     if (isFrameValue(raw) && raw.columns.length > 0) {
       const cols = raw.columns;
-      const asNums = (col: FrameColumn) => col.values.map((c) => (typeof c === "number" && Number.isFinite(c) ? c : null));
+      const asNums = (col: FrameColumn) => col.values.map(num);
       if (cols.length >= 2) {
+        // formatFrameCell already renders a SolError cell as its #CODE! text and a
+        // date serial as a date; coerce the (never-object) result to a plain label.
         this.cachedLabels = cols[0].values.map((c) => formatFrameCell(cols[0].type, c) ?? "");
         v = asNums(cols[1]) as unknown as number[];
       } else {
         v = asNums(cols[0]) as unknown as number[];
       }
     } else if (Array.isArray(raw)) {
-      v = raw as number[];
+      v = raw.map(num) as unknown as number[];
     } else if (typeof raw === "number") {
-      v = raw;
+      v = num(raw);
     }
     this.cachedResult = v;
     // A wired matrix → coerce every cell to number|null (anyTable is element-
     // agnostic; a non-number becomes null so the charts skip it).
     const rawMatrix = inputs.series?.[0] ?? null;
     this.cachedMatrix = Array.isArray(rawMatrix)
-      ? rawMatrix.map((row) => (Array.isArray(row) ? row : [row]).map((c) => (typeof c === "number" && Number.isFinite(c) ? c : null)))
+      ? rawMatrix.map((row) => (Array.isArray(row) ? row : [row]).map(num))
       : null;
-    this.chartOptions = parseChartOptions(inputs.options?.[0] ?? this.stringLiterals.options ?? null);
+    // Only a real string configures the options; a SolError/number wired into the
+    // Options socket (it reaches here now the node sees raw errors) falls back to
+    // the inline literal rather than being parsed as text.
+    const optStr = typeof inputs.options?.[0] === "string" ? inputs.options[0] : (this.stringLiterals.options ?? null);
+    this.chartOptions = parseChartOptions(optStr);
     const chart: ChartValue = {
       __chart: true,
       op: this.op,
@@ -565,9 +580,21 @@ export function parseBorderedGrid(
 ): { xs: number[]; ys: number[]; z: (number | null)[][] } {
   if (!Array.isArray(table) || table.length < 2) return { xs: [], ys: [], z: [] };
   const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
-  const xs = (table[0] ?? []).slice(1).map((v) => num(v) ?? NaN);
-  const ys = table.slice(1).map((r) => num(r?.[0]) ?? NaN);
-  const z = table.slice(1).map((r) => (Array.isArray(r) ? r.slice(1) : []).map(num));
+  const rawXs = (table[0] ?? []).slice(1).map(num);
+  const rawYs = table.slice(1).map((r) => num(r?.[0]));
+  const rawZ = table.slice(1).map((r) => (Array.isArray(r) ? r.slice(1) : []).map(num));
+  // Drop any column / row whose AXIS coordinate is non-finite (an error, text, or
+  // blank cell): left as NaN it would make `Math.min(...xs)` NaN in the viewers and
+  // blank the WHOLE surface/contour while the empty-check (which only tests z) still
+  // thinks there's data. Dropping the matching z column / row keeps the axes aligned
+  // with the height grid.
+  const keptX: number[] = [];
+  rawXs.forEach((x, i) => { if (x !== null) keptX.push(i); });
+  const keptY: number[] = [];
+  rawYs.forEach((y, i) => { if (y !== null) keptY.push(i); });
+  const xs = keptX.map((i) => rawXs[i] as number);
+  const ys = keptY.map((i) => rawYs[i] as number);
+  const z = keptY.map((ri) => keptX.map((ci) => rawZ[ri]?.[ci] ?? null));
   return { xs, ys, z };
 }
 

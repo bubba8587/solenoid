@@ -50,9 +50,13 @@ export function GaugeComponent({ data, emit }: NodeProps<GaugeNodeType>) {
       </NodeShell>
     );
   }
+  // A non-finite value (dirty data — a NaN from a bad upstream cell) reads as "no
+  // value": the dial empties and the label shows the em-dash, not "NaN%" over an
+  // undefined arc.
+  const v = typeof value === "number" && Number.isFinite(value) ? value : null;
   // The dial always spans 0→100%; the arc fills the value's fraction (clamped, so
   // 150% overfills to a full arc) while the label shows the true percentage.
-  const frac = value === null ? 0 : Math.min(1, Math.max(0, value));
+  const frac = v === null ? 0 : Math.min(1, Math.max(0, v));
   const pct = frac * 100;
 
   return (
@@ -61,7 +65,7 @@ export function GaugeComponent({ data, emit }: NodeProps<GaugeNodeType>) {
       <div style={{ position: "relative", width: SIZE, height: SHOW, margin: "2px auto 0", overflow: "hidden" }}>
         {!collapsed && <GaugeArc pct={pct} track={track} size={SIZE} />}
         <div style={{ position: "absolute", left: 0, right: 0, top: 50, textAlign: "center", fontSize: 16, fontWeight: 600, color: "var(--text)" }}>
-          {value === null ? "—" : formatPct(value)}
+          {v === null ? "—" : formatPct(v)}
         </div>
         {/* Scale labels at the arc ends — the dial's fixed 0→100% range. */}
         <div style={{ position: "absolute", left: 4, bottom: 0, fontSize: 9, color: "var(--text-dim)" }}>0%</div>
@@ -70,7 +74,7 @@ export function GaugeComponent({ data, emit }: NodeProps<GaugeNodeType>) {
       {/* Minified (square) readout: a tiny axis-less dial filling the square;
           double-click the square to expand (the chevron is hidden — see NodeCard). */}
       <div className="solenoid-node__collapsed-only">
-        {value === null
+        {v === null
           ? <span className="solenoid-node__display-value solenoid-node__display-value--empty">—</span>
           : collapsed && <div style={{ position: "relative", width: MINI_SIZE, height: MINI_SHOW, overflow: "hidden" }}>
               <GaugeArc pct={pct} track={track} size={MINI_SIZE} />

@@ -47,11 +47,30 @@ export function useSeriesColors(): string[] {
   return SERIES_SLOTS.map((slot) => resolveColor(slot));
 }
 
-/** Coerce a pass-through value to a clean numeric series for plotting. */
-export function toSeries(v: number | number[] | null): { i: number; v: number }[] {
-  if (v === null) return [];
+/** Format a numeric axis / category tick compactly, snapping away float and
+ *  precision noise: a value that is "really" 3 but arrives as 3.0000000004 (a
+ *  pixel→data drag mapping, an accumulated linspace, 0.1+0.2, …) reads as "3",
+ *  not its noisy tail. 10 significant figures is far more than any axis tick
+ *  needs and reliably clears the noise; the round-trip through Number drops the
+ *  trailing zeros toFixed/toPrecision would otherwise leave. */
+export function axisTick(n: number): string {
+  if (!Number.isFinite(n)) return "";
+  return String(Number(n.toPrecision(10)));
+}
+
+/** Coerce a pass-through value to a clean numeric series for plotting. Accepts
+ *  `unknown` and drops every non-finite cell — a `null` (missing), a `SolError`
+ *  object (a #DIV/0! wired in, mirrored onto the node's cachedResult by the error
+ *  guard), `NaN`/`Infinity` (dirty-data coercions), text — so recharts only ever
+ *  sees real numbers. The `i` is the cell's ORIGINAL index, so x-axis labels
+ *  (indexed by row) still line up after gaps are dropped. */
+export function toSeries(v: unknown): { i: number; v: number }[] {
+  if (v == null) return [];
   const arr = Array.isArray(v) ? v : [v];
-  return arr
-    .map((x, i) => ({ i, v: x }))
-    .filter((d) => typeof d.v === "number" && Number.isFinite(d.v));
+  const out: { i: number; v: number }[] = [];
+  for (let i = 0; i < arr.length; i++) {
+    const x = arr[i];
+    if (typeof x === "number" && Number.isFinite(x)) out.push({ i, v: x });
+  }
+  return out;
 }

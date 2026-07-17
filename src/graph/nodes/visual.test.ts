@@ -103,6 +103,21 @@ describe("Surface (3-D plot)", () => {
     expect(parseBorderedGrid(null)).toEqual({ xs: [], ys: [], z: [] });
   });
 
+  it("DROPS a column/row whose axis coordinate is non-finite (never leaks NaN into xs/ys)", () => {
+    //   ·   0   x   10     row 0: middle X coord is bad (text/error)
+    //   0   1   2   3
+    //   5   4   5   6
+    const { xs, ys, z } = parseBorderedGrid([
+      [null, 0, "x" as unknown as number, 10],
+      [0, 1, 2, 3],
+      [5, 4, 5, 6],
+    ]);
+    expect(xs).toEqual([0, 10]); // the bad-coord column dropped, axes finite
+    expect(xs.every(Number.isFinite)).toBe(true);
+    expect(ys).toEqual([0, 5]);
+    expect(z).toEqual([[1, 3], [4, 6]]); // the matching z column dropped too (stays aligned)
+  });
+
   it("emits a surface ChartValue carrying the parsed grid + default view angles", () => {
     const s = new SurfaceNode({ label: "Heights" });
     const out = s.data({ grid: [[[null, 0, 10], [0, 1, 2], [5, 3, 4]]] });

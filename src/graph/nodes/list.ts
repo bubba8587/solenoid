@@ -5,10 +5,11 @@ import { getRecalcGen } from "../process";
 import { listIn, listOut, numIn, numOut, anyIn, trueAnyIn, staticTrueAnyOut, strIn, logicalOut, logicalListOut, frameIn, frameOut, anyListIn, anyListOut, adoptiveListIn, adoptiveListOut } from "./shared";
 import type { PassthroughSpec } from "./passthrough";
 import { pairIdsFromKeys } from "./logic";
-import { passesFilter, type FilterOp, type FilterCondConfig } from "../frameVerbs";
+import { passesFilter, VALUELESS_FILTER_OPS, type FilterOp, type FilterCondConfig } from "../frameVerbs";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { forAggregate, isMissing, type Tri } from "../valueKinds";
 import { forAggregateUnits, tagDim, matrixUnitOf, type UnitCell } from "../unitValue";
+import { stripUnitCells } from "../unitBridge";
 import { tagFrameCellUnit } from "../unitColumn";
 import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../dimension";
 import { iterMin, iterMax } from "./mathUtils";
@@ -499,9 +500,18 @@ export class FilterNode extends ClassicPreset.Node {
     } else {
       this.addValueInput();
     }
-    this.addOutput("result", anyListOut("Kept"));
-    this.addOutput("dropped", anyListOut("Dropped"));
+    this.addOutput("result", adoptiveListOut("Kept"));
+    this.addOutput("dropped", adoptiveListOut("Dropped"));
   }
+
+  /** Element-preserving: filtering keeps the element type (and unit / number
+   *  format), so BOTH outputs adopt the wired input's concrete type — a numeric
+   *  list in reads as a numeric list out (not an opaque `anylist`), and the cable
+   *  connects to a typed consumer. See passthrough.ts + the data() note on units. */
+  passthrough = (): PassthroughSpec[] => [
+    { output: "result", inputs: ["list"], combine: "single" },
+    { output: "dropped", inputs: ["list"], combine: "single" },
+  ];
 
   private addCondWithId(id: number): void {
     // `any` (scalar): a wired Slider/Number/Date/Boolean threshold connects;
@@ -535,16 +545,22 @@ export class FilterNode extends ClassicPreset.Node {
       this.cachedDropped = null;
       return { result: null, dropped: null };
     }
-    const type = listElemColType(arr);
+    // The node is a passthrough (see passthrough()), so a dimensioned input arrives
+    // with its `UnitCell` tags intact. Unwrap each cell to its DISPLAY magnitude for
+    // the predicate + type detection (passesFilter does numeric compares — a raw cell
+    // Number()s to NaN), but keep the ORIGINAL cells for the outputs so the kept /
+    // dropped lists stay dimensioned. A plain list has no cells to strip — no-op.
+    const mags = arr.map(stripUnitCells);
+    const type = listElemColType(mags);
     const conds: { op: FilterOp; value: string; matchCase: boolean }[] = [];
     for (const key of this.valueInputKeys()) {
       const id = key.slice(5);
       const cfg = this.condConfig[id];
       const op: FilterOp = cfg?.op ?? "gt";
       const val = readFilterValue(inputs[key], this.stringLiterals[key]);
-      // The blank predicates take no value — an empty field doesn't mean "not
-      // written yet" for them, it's the whole point.
-      const valueless = op === "isblank" || op === "notblank";
+      // The blank / error predicates take no value — an empty field doesn't mean
+      // "not written yet" for them, it's the whole point.
+      const valueless = VALUELESS_FILTER_OPS.has(op);
       if (!valueless && val.trim() === "") continue; // "not written yet" — excluded (frame-Filter parity)
       conds.push({ op, value: val, matchCase: cfg?.matchCase ?? false });
     }
@@ -556,11 +572,12 @@ export class FilterNode extends ClassicPreset.Node {
     }
     const kept: unknown[] = [];
     const dropped: unknown[] = [];
-    for (const cell of arr) {
+    for (let i = 0; i < arr.length; i++) {
+      const mag = mags[i] as FrameCell; // unwrapped magnitude for the predicate
       const pass = (c: { op: FilterOp; value: string; matchCase: boolean }) =>
-        passesFilter(cell as FrameCell, c.op, c.value, type, c.matchCase);
-      if (this.combine === "and" ? conds.every(pass) : conds.some(pass)) kept.push(cell);
-      else dropped.push(cell); // incl. null/error cells — the split is exhaustive
+        passesFilter(mag, c.op, c.value, type, c.matchCase);
+      if (this.combine === "and" ? conds.every(pass) : conds.some(pass)) kept.push(arr[i]);
+      else dropped.push(arr[i]); // incl. null/error cells — the split is exhaustive
     }
     this.cachedResult = kept;
     this.cachedDropped = dropped;

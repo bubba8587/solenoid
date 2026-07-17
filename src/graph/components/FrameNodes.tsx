@@ -41,6 +41,7 @@ import type {
   HeaderOp,
   BlankRowMode,
 } from "../rete-nodes";
+import { VALUELESS_FILTER_OPS } from "../frameVerbs";
 import type { FilterOp, FilterCombine, JoinHow, AsofDirection, AggOp, DecisionNormalize, LookupMatchMode, LookupSearchMode } from "../frameVerbs";
 import type { FilterCondConfig } from "../nodes/frame";
 import { HEAD_OP_META, HEADER_OP_META, BLANK_ROW_OP_META } from "../nodes/frame";
@@ -159,9 +160,18 @@ export const FILTER_OP_OPTIONS: { value: FilterOp; label: string }[] = [
   { value: "notblank", label: "not blank" },
 ];
 
-// The blank predicates take no comparison value — the Value field hides and a
-// wired value is ignored.
-export const VALUELESS_OPS: ReadonlySet<FilterOp> = new Set(["isblank", "notblank"]);
+// The Filter-node op list adds the ERROR predicates (drop / keep #DIV/0!-style
+// error cells). Kept OFF the base FILTER_OP_OPTIONS so SUMIFS — whose criteria are
+// a different idea — doesn't offer them; only the List/Frame Filters do.
+export const FILTER_OP_OPTIONS_WITH_ERROR: { value: FilterOp; label: string }[] = [
+  ...FILTER_OP_OPTIONS,
+  { value: "noterror", label: "no error" },
+  { value: "iserror", label: "has error" },
+];
+
+// The blank + error predicates take no comparison value — the Value field hides
+// and a wired value is ignored. (Single source of truth in frameVerbs.)
+export const VALUELESS_OPS: ReadonlySet<FilterOp> = VALUELESS_FILTER_OPS;
 
 // The ops where case can matter — string eq/neq + the three text predicates.
 // Numeric/date/logical comparisons ignore the flag, so the checkbox hides.
@@ -256,7 +266,7 @@ export function FilterFrameComponent({ data, emit }: NodeProps<FilterFrameNodeTy
                     </button>
                   )}
                 </MeasuredSocketRow>
-                <OpSelect value={c.op} options={FILTER_OP_OPTIONS} onChange={(op) => updateCfg(id, { op })} />
+                <OpSelect value={c.op} options={FILTER_OP_OPTIONS_WITH_ERROR} onChange={(op) => updateCfg(id, { op })} />
                 {(!VALUELESS_OPS.has(c.op) || connected.has(valKey)) && (
                 <MeasuredSocketRow side="input" socketKey={valKey} nodeId={data.id} emit={emit} payload={data.inputs[valKey]!.socket}>
                   <span className="solenoid-node__io-label">Value</span>

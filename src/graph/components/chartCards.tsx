@@ -46,7 +46,11 @@ export function KpiCard({ payload, fscale }: { payload: KpiPayload; fscale?: num
 
 /** A bullet graph — a value bar on a min..max track with a target tick. */
 export function BulletBar({ payload, width, fscale }: { payload: BulletPayload; width?: number; fscale?: number }) {
-  const { value, target, min, max } = payload;
+  const { value, target } = payload;
+  // Guard the scale bounds: a non-finite min/max (dirty upstream data — a NaN or a
+  // #DIV/0! cell) would make every frac() NaN → a "NaN%" bar width + "NaN" labels.
+  const min = Number.isFinite(payload.min) ? payload.min : 0;
+  const max = Number.isFinite(payload.max) ? payload.max : min + 1;
   const span = max - min || 1;
   const frac = (x: number) => Math.max(0, Math.min(1, (x - min) / span));
   const has = value !== null && Number.isFinite(value);

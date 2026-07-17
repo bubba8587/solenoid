@@ -18,6 +18,128 @@ edge round independently. Possible directions not yet tried: draw the ring so it
 (e.g. `inset:0` + account for the 2px border, or a box-shadow ring) instead of a 2px-offset `::after`;
 or pixel-snap the card box. Radius itself is correct; don't re-touch it. Parked by author.
 
+### SESSION DIGEST (2026-07-17 — distribution nodes broadcast; landing page)
+- **Default accent → gold (`appTheme.ts` DEFAULT_ACCENT, author 2026-07-17):** the brand coil's gold
+  (`#f5b914`, the `gold` palette slot — palette.ts's swatch-order comment already called it the
+  default; the code said `sky`). DESIGN.md frontmatter + the Primary color section updated to match.
+  Persisted user accents are untouched (localStorage wins on load).
+- **Distribution nodes → numlist (`10f5317`):** all 22 DIST/INV nodes across `dist-normal.ts` /
+  `dist-continuous.ts` / `dist-discrete.ts` moved from `numIn`/`numOut` scalar sockets to
+  `numListIn`/`numListOut` + the shared `broadcast()` helper (`readInput` for wired-null propagation),
+  so a wired list of x values (or probs/k counts) yields a list of results. Domain violations
+  (stdev ≤ 0, prob outside (0,1)) return the same blank `null` per cell. `BinomInv` stays scalar:
+  its result is a critical-value search over [0..n], not an element-wise function of an x.
+- **Landing page (`?landing`):** a standalone route in `src/graph/landing/` (LandingPage.tsx/.css +
+  LandingGraph.tsx), swapped in by App.tsx exactly like `?showcase`. The hero demo is the REAL rete
+  stack (areaPresets render preset, DataflowEngine, process.ts singletons pointed at it — the
+  showcase mount pattern) with TWO live islands in ONE editor: the commission flow (List Input →
+  stack (areaPresets render preset, DataflowEngine, process.ts singletons pointed at it — the showcase
+  mount pattern) running the TERRAIN flow only (author direction, final form): Table Input bordered
+  survey grid with holes → Grid Interpolate → Surface + Contour, everything live (rotate pad, Forecast
+  checkbox, Levels field, grid-popup edits). **Gotcha, recorded in LandingGraph.tsx: ONE live stage
+  only.** `getOwningEditor`/the process.ts singletons support a single live surface outside the
+  composite-drill-in override — a second independent stack renders its cards as unwired the moment the
+  singletons move (its connection events bump the global connectionVersionStore mid-build, re-rendering
+  the other stage's rows against the wrong refs), and registering it as the drill-in override breaks
+  the live island's `getActiveEditor` edits instead. (A DOM-snapshot "diorama" variant — build, clone
+  with canvas bitmaps, destroy, hand back + one repair processGraph — was built and worked; superseded
+  when the author cut back to the one terrain demo. It's in git history if a second demo returns.)
+  Pan/zoom off, node drag + in-card edits live, fit-to-width via a fixed `area.zoom`, Reset rebuilds.
+  Header: the masked WORDMARK only (it carries the coil; recolors via `--wordmark-color`, the TopBar
+  technique) + a dark/light toggle (`appThemeStore.toggleMode`). Color: the real `SocketLegendRows` as
+  a hero side panel, and each feature card tints itself with its value family's socket color
+  (`color-mix` at ~7% bg / 28% border — DESIGN.md's tint-the-element-itself pattern) behind a real
+  `SocketDot` glyph. Copy follows DESIGN.md §7 (hero reuses the shipped About tagline/body; several
+  bodies adapted from shipped What's New slides). All theme-token styled, so light mode mirrors. Page
+  scrolls inside a fixed wrapper (the app root locks overflow).
+
+### SESSION DIGEST (2026-07-17 — figure-node sanitization sweep)
+Audited the figure/visual render layer + producers for the Chart-fix class of bug (SolError/NaN/Infinity
+reaching canvas geometry or a React child, `.toFixed` on a non-number). It's largely well-defended already
+(the `colAsNumbers`/`colAsRawNumbers`/`colAsStrings` frame readers + `toSeries`/`formatScalar`/`tipValue`/
+`tickFmt` guards). Table/frame cell renderers (`TableDisplay`/`TablePopup`/`FrameDisplay`) are safe —
+`formatFrameCell`/`fmtCell` convert a per-cell SolError→#CODE! and filter NaN/∞ before `toFixed`. Fixed:
+- **Surface/Contour blank-plot bug (real):** `parseBorderedGrid` (visual.ts) fell a non-finite AXIS
+  coordinate cell back to `NaN` (`num(v) ?? NaN`); one error/text/blank coord → `Math.min(...xs)=NaN` in
+  SurfaceView/drawContour → the WHOLE plot renders blank while the empty-check (z-only) thinks there's
+  data. Now DROPS the bad column/row (and its matching z column/row, staying aligned).
+- **Gauge NaN% (cosmetic):** GaugeNode.data() passed the value un-coerced; a NaN → "NaN%" over an
+  undefined arc. Component now treats a non-finite value as null → em-dash + empty dial.
+- **Bullet NaN labels (cosmetic):** BulletBar guards a non-finite min/max (→ 0 / min+1) so frac() can't
+  go NaN.
+- **Sparkline parity:** `data()` maps non-finite (not just non-number) to 0, so the emitted payload never
+  carries NaN/Infinity.
+- Tests: parseBorderedGrid drop case in visual.test.ts.
+
+### SESSION DIGEST (2026-07-17 — Conduit accepts any cable; List Filter output adopts its type)
+- **Conduit lane rejected a list (`conduit.ts`):** the lane INPUT was a shared `anySocket` (`any` = the
+  element-agnostic SCALAR wildcard), so a 1-D `anylist`/`numlist` cable couldn't connect (list→scalar =
+  narrowing, `accepts()` line 286). The comment already said "a lane accepts ANY cable" and CLAUDE.md
+  lists "unwired Conduit lanes" as `trueany` — the input was never updated when the D17 ladder split
+  `any`↔`trueany`. Fix: the lane input is `trueAnySocket` (the SUPREMUM) — accepts scalars, lists, tables,
+  frames, cubes. `coerceValue` passes `any`/`trueany` through identically (default branch), so no coercion
+  change; the per-lane MutableSocket OUTPUT still adopts the wired type as before.
+- **List Filter output was an opaque `anylist` (`list.ts` `FilterNode`):** filtering preserves the element
+  type, so both outputs now ADOPT the wired input's concrete type (a numeric list reads as `numlist` out,
+  not gray `anylist`) — `adoptiveListOut` + a `passthrough()` declaration (result & dropped ← list), same
+  pattern as Reverse/Slice. Because a passthrough keeps `UnitCell` tags (`keepUnits`), `data()` now unwraps
+  each cell to its display magnitude via `stripUnitCells` for the predicate + type detection but pushes the
+  ORIGINAL cells to kept/dropped — so a dimensioned list stays dimensioned through the filter (filter by
+  magnitude, units preserved). Plain lists: `stripUnitCells` is a no-op, no behavior change.
+- Tests: `conduitFilterTypes.test.ts`.
+
+### SESSION DIGEST (2026-07-17 — error propagation through MAKEARRAY + error filtering)
+Reported: MAKEARRAY via a LAMBDA over a list with any #DIV/0! → the WHOLE array became #DIV/0!; and no
+way to filter errors out of a list/table/frame.
+- **Root cause (`excelFormula.ts` `prepRangeArgs`):** the "propagate any error in a range arg" scan ran
+  BEFORE the RANGE_POSITIONAL early-return, so INDEX/XMATCH/XLOOKUP/… blanket-errored when the array held
+  an error at ANY position — even an unreferenced one. A MAKEARRAY lambda `INDEX(data, row)` therefore
+  returned #DIV/0! for every cell. Fix: positional lookups skip the scan entirely (moved the early-return
+  above it) — the impl picks its cell, and a PICKED error still propagates per-cell (correct, Excel-exact:
+  `INDEX(A1:A3,1)` is fine when A2 errors). AGGREGATES (SUM/AVERAGE) still propagate — that's Excel-correct.
+  Now `MAKEARRAY(3,1, INDEX(data,row))` over `[1,#DIV/0!,3]` → `[[1],[#DIV/0!],[3]]`.
+- **Error filter predicates (`iserror`/`noterror`):** added to `FilterOp` + `passesFilter` (frameVerbs)
+  — `noterror` drops #DIV/0!-style error cells (keeps values AND nulls; pair with `notblank` to drop
+  both), `iserror` keeps only errors. Exposed in the **List Filter** and **Frame Filter** op dropdowns
+  (`FILTER_OP_OPTIONS_WITH_ERROR`; SUMIFS deliberately excluded), value-less like the blank pair
+  (`VALUELESS_FILTER_OPS`). The List Filter is JS so it just works. The **Frame Filter routes an
+  error-predicate through the JS oracle** (`filterRowsMulti`), because the native Polars engine degrades
+  a per-cell error to null on upload (`frameBackend` §"__err") and couldn't tell an error from a blank —
+  so a plan-side error filter is impossible on desktop; the oracle is the same reference impl, so mixed
+  comparison rows in the same filter stay identical. A matrix filters via the Frame Filter (Col1..N).
+- Tests: `errorFiltering.test.ts` (positional no-blanket-error + MAKEARRAY integration + aggregate still
+  propagates; passesFilter/List Filter/filterRowsMulti error ops).
+
+### SESSION DIGEST (2026-07-17 — Chart (recharts) node sanitization)
+Reported: Scatter x-axis showed FLOAT labels; wiring a `#DIV/0!` into a Chart could crash it; a Point
+Plotter (via a frame) into a Scatter plotted "out of order".
+Root causes + fixes (all in the recharts path + `ChartNode.data()`):
+- **Float axis labels (two distinct causes):** (a) scatter's index axis is `type="number"`, so recharts
+  invents fractional "nice" ticks (0.5, 1.5…) — fixed with `allowDecimals={false}`; (b) a numeric Frame
+  first column (a "Frame from Lists" X column) carries precision noise, and `tickFmt` rendered it raw
+  (`String(3.0000000004)`). New `axisTick()` (chartCore) snaps a numeric label to 10 sig figs then
+  `String(Number(…))` — a "really 3" reads as "3", trailing zeros dropped. `tickFmt` uses it for numeric
+  labels (string/date labels render as-is); it also rounds off-range/non-numeric ticks to "".
+- **Scatter honours real x (was "out of order"):** the scatter placed dots at the ROW INDEX
+  (`dataKey="i"`), ignoring the wired x values entirely — so a Point Plotter's / Frame-from-Lists' X
+  column collapsed to evenly-spaced index positions. Now, when the labels (first column) are ALL numbers,
+  the scatter plots each dot at its real x (`dataKey="x"`, decimals allowed, ticks via `axisTick`); a
+  category/plain-list scatter keeps the index x. A dedicated `ScatterTooltip` shows the real x (or the
+  ordinal) → value, reading the datum off `payload[0].payload` so it covers both modes.
+- **Error/dirty-data hardening:** `ChartNode` joined `SEES_ERRORS` (errorValue.ts) — a figure SINK must
+  render an error input as an empty "no data" figure, not turn its `chart` socket into a `SolError`
+  object that every consumer (inline figure / Display / Report embed) would have to special-case (the
+  crash). `data()` now coerces EVERY cell (list/frame/matrix/scalar) to a finite number or null in place
+  (row positions kept, so labels stay aligned); the Options socket only parses a real string.
+- **Render belt-and-suspenders:** `toSeries` (chartCore) widened to `unknown`, drops non-finite/SolError/
+  null keeping original indices; the chart tooltips route the payload value through `tipValue()` so a
+  non-primitive is stringified (never rendered as a raw React child → the "Objects are not valid as a
+  React child" crash).
+- Tests: `chartValue.test.ts` (scalar error → empty chart; list/frame/matrix cell sanitize; Options
+  error ignored) + an `errorValue.test.ts` end-to-end guard case (Chart never emits a SolError output).
+- The "new input data nodes" produce NaN for dirty cells by design (quiet dirty-data affordance) — the
+  fix is at the chart boundary (NaN → dropped), not a change to the input nodes.
+
 ### GPU renderer — the pan-perf regression ROOT CAUSE (2026-07-16, fixed `e3097921`)
 `__hcStats()` on the PF-seed benchmark read `built: 0, failed: 114` — NO mip pyramid ever built, so
 every visible node re-rasterized via drawElementImage on EVERY pan frame (fps 165 → ~45; drawMs≈0 is

@@ -36,7 +36,19 @@ import "./mobile.css";
 const SHOWCASE_TYPE = new URLSearchParams(window.location.search).get("showcase");
 const NodeShowcase = lazy(() => import("./graph/showcase/NodeShowcase"));
 
+// ?landing swaps the whole app for the landing page (see landing/LandingPage.tsx).
+// Same route mechanism as ?showcase: read once, entering/leaving is a reload.
+const IS_LANDING = new URLSearchParams(window.location.search).has("landing");
+const LandingPage = lazy(() => import("./graph/landing/LandingPage"));
+
 function App() {
+  if (IS_LANDING) {
+    return (
+      <Suspense fallback={null}>
+        <LandingPage />
+      </Suspense>
+    );
+  }
   if (SHOWCASE_TYPE !== null) {
     return (
       <Suspense fallback={null}>
