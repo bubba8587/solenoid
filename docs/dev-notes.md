@@ -28,11 +28,18 @@ or pixel-snap the card box. Radius itself is correct; don't re-touch it. Parked 
 - **Landing page (`?landing`):** a standalone route in `src/graph/landing/` (LandingPage.tsx/.css +
   LandingGraph.tsx), swapped in by App.tsx exactly like `?showcase`. The hero demo is the REAL rete
   stack (areaPresets render preset, DataflowEngine, process.ts singletons pointed at it — the
-  showcase mount pattern) with a live 5-node commission graph: List Input → Aggregate(sum) →
-  Arithmetic(×) ← Number Input → Display; pan/zoom off, node drag + in-card edits live, fit-to-width
-  via a fixed `area.zoom`, Reset rebuilds. Copy follows DESIGN.md §7 (hero reuses the shipped About
-  tagline/body); socket glyphs are the real `SocketDot`s. All theme-token styled, so light mode
-  mirrors. Page scrolls inside a fixed wrapper (the app root locks overflow).
+  showcase mount pattern) with TWO live islands in ONE editor: the commission flow (List Input →
+  Aggregate(sum) → Arithmetic(×) ← Number Input → Display) and the terrain flow (Table Input bordered
+  survey grid with holes → Grid Interpolate → Surface + Contour, rotate pad live). **Gotcha: both
+  islands MUST share one editor** — a second independent stack renders its cards as unwired, because
+  `getOwningEditor`/the process.ts singletons assume ONE live surface outside the composite-drill-in
+  override (tried per-section stages, cards lost their wired-state labels). Pan/zoom off, node drag +
+  in-card edits live, fit-to-width via a fixed `area.zoom`, Reset rebuilds. Header: masked
+  icon/wordmark marks (recolor via `--wordmark-color`, the TopBar technique) + a dark/light toggle
+  (`appThemeStore.toggleMode`). Feature cards carry real `SocketDot` glyphs; copy follows DESIGN.md §7
+  (hero reuses the shipped About tagline/body; several bodies adapted from shipped What's New slides).
+  All theme-token styled, so light mode mirrors. Page scrolls inside a fixed wrapper (the app root
+  locks overflow).
 
 ### SESSION DIGEST (2026-07-17 — Chart (recharts) node sanitization)
 Reported: scatter x-axis showed FLOAT labels (1.5, 2.5…); wiring a `#DIV/0!` into a Chart could crash it.

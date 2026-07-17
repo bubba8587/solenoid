@@ -28,15 +28,44 @@
   padding: 20px 0 0;
 }
 
+/* The brand marks are masked (not <img>) so the single-color art recolors per
+   theme via --wordmark-color — same technique as the app's top bar. */
+.sol-landing__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sol-landing__mark {
+  display: block;
+  width: 24px;
+  height: 24px;
+  background-color: var(--wordmark-color);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
 .sol-landing__wordmark {
-  font-size: 17px;
-  font-weight: 600;
-  color: var(--wordmark-color);
-  letter-spacing: 0.01em;
+  display: block;
+  height: 22px;
+  /* Wordmark viewBox is 573×119; derive width from the fixed height. */
+  aspect-ratio: 573 / 119;
+  background-color: var(--wordmark-color);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
 }
 
 .sol-landing__nav {
   display: flex;
+  align-items: center;
   gap: 18px;
 }
 
@@ -48,6 +77,26 @@
 
 .sol-landing__nav a:hover {
   color: var(--text-bright);
+}
+
+.sol-landing__theme {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 0;
+}
+
+.sol-landing__theme:hover {
+  background: var(--btn-hover);
+  border-color: var(--btn-border-hover);
+  color: var(--text);
 }
 
 /* ── Hero ── */
@@ -153,7 +202,9 @@
 
 .sol-landing__demo-note {
   margin: 8px 2px 0;
+  max-width: 720px;
   font-size: 11px;
+  line-height: 1.5;
   color: var(--text-muted);
 }
 
@@ -162,7 +213,7 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
-  margin: 44px 0 56px;
+  margin: 44px 0 14px;
 }
 
 .sol-landing__feature {
@@ -174,6 +225,9 @@
 }
 
 .sol-landing__feature h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: 0;
   font-size: 14px;
   font-weight: 600;
@@ -198,10 +252,33 @@
   font-weight: 700;
 }
 
-.sol-landing__glyphs {
+/* ── Excel-parity strip ── */
+.sol-landing__strip {
   display: flex;
-  gap: 8px;
-  margin-top: 12px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin: 0 0 56px;
+  box-shadow: var(--shadow-card);
+}
+
+.sol-landing__strip p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-dim);
+  max-width: 640px;
+}
+
+.sol-landing__strip code {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text);
 }
 
 /* ── Footer ── */

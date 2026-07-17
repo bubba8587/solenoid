@@ -1,7 +1,11 @@
+import { useSyncExternalStore } from "react";
 import { LandingGraph } from "./LandingGraph";
-import { SocketDot } from "../components/SocketLegend";
+import { SocketDot, type SocketGlyph } from "../components/SocketLegend";
 import { SOCKET_COLORS } from "../sockets";
 import { TablePopup } from "../components/TablePopup";
+import { appThemeStore } from "../appTheme";
+import wordmark from "../../logo/solenoidwordmark.svg";
+import icon from "../../logo/solenoidicon.svg";
 import pkg from "../../../package.json";
 import "./LandingPage.css";
 
@@ -9,47 +13,18 @@ import "./LandingPage.css";
 // A standalone route: App.tsx swaps the whole app for this page when the URL
 // carries ?landing, same mechanism as the ?showcase harness. Copy follows the
 // house voice (DESIGN.md §7); the hero tagline and body are the shipped About
-// text. The graph in the hero is the real rete stack — see LandingGraph.tsx.
+// text. Both demo stages are the real rete stack — see LandingGraph.tsx.
 
 const GITHUB_URL = "https://github.com/bubba8587/solenoid";
 
-type Feature = { title: string; body: React.ReactNode; figure?: React.ReactNode };
+type Feature = { title: string; glyph: SocketGlyph; body: React.ReactNode };
 
+// Each card's glyph is the REAL socket dot of the value family the feature
+// works in — the same color-means-type rule the canvas uses.
 const FEATURES: Feature[] = [
   {
-    title: "Excel parity",
-    body: (
-      <>
-        Functions keep their Excel names and their Excel answers: <code>SUM</code>,{" "}
-        <code>XLOOKUP</code>, <code>SUMIFS</code>, <code>NORM.DIST</code>, <code>PMT</code>.
-        A built-in reference lists every function with its Excel equivalent.
-      </>
-    ),
-  },
-  {
-    title: "Typed sockets",
-    body: (
-      <>
-        Color says what a cable carries and shape says its dimension: a circle is one
-        value, a square is a list, a grid is a table. A text output will not wire into
-        a number input. Cast is the explicit conversion.
-      </>
-    ),
-    figure: (
-      <span className="sol-landing__glyphs">
-        <SocketDot entry={{ kind: "circle", color: SOCKET_COLORS.number, tip: "Number" }} />
-        <SocketDot entry={{ kind: "square", color: SOCKET_COLORS.list, tip: "Number List" }} />
-        <SocketDot entry={{ kind: "grid", color: SOCKET_COLORS.table, tip: "Matrix" }} />
-        <SocketDot entry={{ kind: "circle", color: SOCKET_COLORS.string, tip: "Text" }} />
-        <SocketDot entry={{ kind: "circle", color: SOCKET_COLORS.date, tip: "Date" }} />
-        <SocketDot entry={{ kind: "frame", color: SOCKET_COLORS.frame, tip: "Frame" }} />
-        <SocketDot entry={{ kind: "lambda", color: SOCKET_COLORS.lambda, tip: "LAMBDA" }} />
-        <SocketDot entry={{ kind: "ring", color: SOCKET_COLORS.trueany, tip: "Anything" }} />
-      </span>
-    ),
-  },
-  {
     title: "Real units",
+    glyph: { kind: "circle", color: SOCKET_COLORS.number },
     body: (
       <>
         Values carry units. <code>SUM(5 km, 3)</code> is <code>8 km</code>, m × m is m²,
@@ -60,45 +35,110 @@ const FEATURES: Feature[] = [
     ),
   },
   {
-    title: "Tables at scale",
+    title: "Equation solver",
+    glyph: { kind: "lambda", color: SOCKET_COLORS.lambda },
     body: (
       <>
-        Filter, Sort, Join, Group By, Pivot and the other relational verbs are nodes.
-        In the desktop app they run on native Polars, and a chain of verbs executes
-        as a single lazy query.
+        Type <code>V = I * R</code> and every variable is an input and an output. Wire
+        any two and the third is solved, symbolically where it can be, numerically
+        where it can't. A quadratic returns every real root.
       </>
     ),
   },
   {
-    title: "What-if analysis",
+    title: "Draw your data",
+    glyph: { kind: "grid", color: SOCKET_COLORS.table },
     body: (
       <>
-        Goal Seek, Scenarios, Data Table and Monte Carlo. Give an input a spread and
-        read the output as a distribution, from a seeded, reproducible sampler.
+        Point Plotter turns clicks on a plane into X and Y lists, Curve samples a
+        draggable spline into a list, and Grid Painter fills a matrix with a value
+        brush. Sketch a dataset, then run real math on it.
       </>
     ),
   },
   {
-    title: "Reports",
+    title: "Monte Carlo",
+    glyph: { kind: "square", color: SOCKET_COLORS.list },
     body: (
       <>
-        A Report is a markdown document that embeds live values: scalars, tables,
-        charts, equations. Dock it beside the canvas and it updates as the graph
-        recomputes.
+        Give a composite's inputs a ± spread and its outputs come back as
+        distributions: mean ± deviation with a histogram, from a seeded, reproducible
+        sampler. Goal Seek, Scenarios and Data Table sit alongside it.
+      </>
+    ),
+  },
+  {
+    title: "Obsidian, both directions",
+    glyph: { kind: "document", color: SOCKET_COLORS.document },
+    body: (
+      <>
+        Import a vault note as a live, typed source: its frontmatter becomes output
+        sockets, and Reload re-reads from disk. Notes and Reports write back as
+        portable markdown with real tables, math, and rendered chart images.
+      </>
+    ),
+  },
+  {
+    title: "Presenter mode",
+    glyph: { kind: "chart", color: SOCKET_COLORS.chart },
+    body: (
+      <>
+        A Presentation node runs the canvas as a slideshow. The camera flies to each
+        step's nodes, the chrome hides, and a click advances. The canvas is the slide.
       </>
     ),
   },
 ];
+
+function ThemeToggle() {
+  const mode = useSyncExternalStore(appThemeStore.subscribe, appThemeStore.getMode);
+  const dark = mode === "dark";
+  return (
+    <button
+      className="sol-landing__theme"
+      onClick={() => appThemeStore.toggleMode()}
+      title={dark ? "Switch to light theme" : "Switch to dark theme"}
+      aria-label={dark ? "Switch to light theme" : "Switch to dark theme"}
+    >
+      {dark ? (
+        // Sun: the light theme this click switches to.
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+          <circle cx="8" cy="8" r="3.25" />
+          <path d="M8 1.2v1.8 M8 13v1.8 M1.2 8h1.8 M13 8h1.8 M3.2 3.2l1.3 1.3 M11.5 11.5l1.3 1.3 M12.8 3.2l-1.3 1.3 M4.5 11.5l-1.3 1.3" />
+        </svg>
+      ) : (
+        // Moon: the dark theme this click switches to.
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M13.4 9.6A5.8 5.8 0 0 1 6.4 2.6a5.8 5.8 0 1 0 7 7Z" />
+        </svg>
+      )}
+    </button>
+  );
+}
 
 export default function LandingPage() {
   return (
     <div className="sol-landing">
       <div className="sol-landing__inner">
         <header className="sol-landing__top">
-          <span className="sol-landing__wordmark">Solenoid</span>
+          <span className="sol-landing__brand">
+            <span
+              className="sol-landing__mark"
+              role="img"
+              aria-hidden="true"
+              style={{ WebkitMaskImage: `url("${icon}")`, maskImage: `url("${icon}")` }}
+            />
+            <span
+              className="sol-landing__wordmark"
+              role="img"
+              aria-label="Solenoid"
+              style={{ WebkitMaskImage: `url("${wordmark}")`, maskImage: `url("${wordmark}")` }}
+            />
+          </span>
           <nav className="sol-landing__nav">
             <a href={GITHUB_URL} target="_blank" rel="noreferrer">GitHub</a>
             <a href="./">Open the app</a>
+            <ThemeToggle />
           </nav>
         </header>
 
@@ -123,18 +163,31 @@ export default function LandingPage() {
           <section className="sol-landing__demo">
             <LandingGraph />
             <p className="sol-landing__demo-note">
-              This graph is live. Drag a card, or edit a value and the payout recomputes.
+              Every card here is live: drag one around, edit a number, or rotate the
+              mesh from the pad on the Surface card. The lower flow is Grid Interpolate
+              filling the holes in a sparse survey grid for Surface and Contour to draw.
             </p>
           </section>
 
           <section className="sol-landing__features">
             {FEATURES.map((f) => (
               <article key={f.title} className="sol-landing__feature">
-                <h2>{f.title}</h2>
+                <h2>
+                  <SocketDot entry={f.glyph} />
+                  {f.title}
+                </h2>
                 <p>{f.body}</p>
-                {f.figure}
               </article>
             ))}
+          </section>
+
+          <section className="sol-landing__strip">
+            <p>
+              Functions keep their Excel names and their Excel answers: <code>SUM</code>,{" "}
+              <code>XLOOKUP</code>, <code>SUMIFS</code>, <code>NORM.DIST</code>, <code>PMT</code>.
+              The built-in reference lists every one with its Excel equivalent.
+            </p>
+            <a className="sol-landing__cta sol-landing__cta--primary" href="./">Open Solenoid</a>
           </section>
         </main>
 
@@ -148,7 +201,7 @@ export default function LandingPage() {
           <span>Built with Rete, Polars and Tauri.</span>
         </footer>
       </div>
-      {/* The value popup a chip on the demo graph can open. */}
+      {/* The value popup a chip on a demo graph can open. */}
       <TablePopup />
     </div>
   );
