@@ -34,6 +34,27 @@ or pixel-snap the card box. Radius itself is correct; don't re-touch it. Parked 
   tagline/body); socket glyphs are the real `SocketDot`s. All theme-token styled, so light mode
   mirrors. Page scrolls inside a fixed wrapper (the app root locks overflow).
 
+### SESSION DIGEST (2026-07-17 — Chart (recharts) node sanitization)
+Reported: scatter x-axis showed FLOAT labels (1.5, 2.5…); wiring a `#DIV/0!` into a Chart could crash it.
+Root causes + fixes (all in the recharts path + `ChartNode.data()`):
+- **Float axis labels:** scatter's index axis is `<XAxis type="number" dataKey="i">`; recharts invents
+  fractional "nice" ticks on a small integer domain. Fix: `allowDecimals={false}` on that axis, and
+  `tickFmt` now rounds the tick to the nearest datum + drops out-of-range/non-numeric (so a stray tick
+  can never render "1.5" or "[object Object]"). Category axes (column/line/area/bar-Y) were already fine.
+- **Error/dirty-data hardening:** `ChartNode` joined `SEES_ERRORS` (errorValue.ts) — a figure SINK must
+  render an error input as an empty "no data" figure, not turn its `chart` socket into a `SolError`
+  object that every consumer (inline figure / Display / Report embed) would have to special-case (the
+  crash). `data()` now coerces EVERY cell (list/frame/matrix/scalar) to a finite number or null in place
+  (row positions kept, so labels stay aligned); the Options socket only parses a real string.
+- **Render belt-and-suspenders:** `toSeries` (chartCore) widened to `unknown`, drops non-finite/SolError/
+  null keeping original indices; the chart tooltips route the payload value through `tipValue()` so a
+  non-primitive is stringified (never rendered as a raw React child → the "Objects are not valid as a
+  React child" crash).
+- Tests: `chartValue.test.ts` (scalar error → empty chart; list/frame/matrix cell sanitize; Options
+  error ignored) + an `errorValue.test.ts` end-to-end guard case (Chart never emits a SolError output).
+- The "new input data nodes" produce NaN for dirty cells by design (quiet dirty-data affordance) — the
+  fix is at the chart boundary (NaN → dropped), not a change to the input nodes.
+
 ### SESSION DIGEST (2026-07-16e — 1.2 release run: movement pass, composite parity pass, PF seed, release docs)
 Author's release directive: punt all puntables (iFrame, Data Feed widening, drill-in nav/lasso/group
 tools, F-2 doc-level FC defaults → 1.3), then movement pass, composite parity pass, PF seed, docs,
