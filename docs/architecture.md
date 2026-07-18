@@ -17,7 +17,8 @@ Deep behavioral notes and gotchas live in `CLAUDE.md` (agent-facing) and
 ├── src/                      # React + TypeScript frontend (the canvas + UI)
 ├── src-tauri/                # Tauri (Rust) shell: window, fs/dialog plugins
 ├── public/                   # Static assets served by Vite
-├── scripts/                  # new-node.mjs (scaffold), parity.ts, dev-restart.ps1
+├── scripts/                  # new-node.mjs (scaffold), parity.ts, dev-restart.ps1,
+│                             #     tune-seeds.mjs (headless seed tidy/autofit → JSON patch-back)
 ├── .claude/                  # Claude Code project skills (add-node, startup)
 ├── .github/workflows/        # CI: test.yml (tsc+vitest), windows-portable.yml (solenoid.exe),
 │                             #     cargo-audit.yml (src-tauri/Cargo.lock advisories)
