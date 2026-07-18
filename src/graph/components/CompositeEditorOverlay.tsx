@@ -252,6 +252,11 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
       }
       const nodes = comp.internalEditor.getNodes();
       if (nodes.length > 0) await AreaExtensions.zoomAt(mount.area, nodes);
+      // Drop the backfill's addNodeView/translate churn from the undo stack: the
+      // open lays every node out via area.translate, which the HistoryPlugin records —
+      // so an undo with NO user action reverted those, collapsing every node onto its
+      // pre-translate origin. Clear at open so undo only sees THIS session's edits.
+      mount.history.clear();
       // Make THIS level the active graph so the app chrome (keyboard, copy/paste,
       // context menus, palette, tidy) acts on the subgraph — first-class editing.
       // getEditor()/getArea() stay main-only (autosave safety); see activeGraph.ts.
