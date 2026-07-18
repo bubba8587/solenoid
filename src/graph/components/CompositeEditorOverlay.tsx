@@ -235,28 +235,38 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
       // graph predates the area (nodes hydrate at collapse/load time, before
       // any nodecreated the plugins could see), and on every REOPEN because
       // the close cleanup removed them (see below). Idempotent via the view maps.
-      for (const n of comp.internalEditor.getNodes()) {
-        if (!mount.area.nodeViews.has(n.id)) await mount.area.addNodeView(n);
+      //
+      // Suppress history recording of the backfill: the open re-adds views and lays
+      // every node out via area.translate, which the HistoryPlugin would record — so an
+      // undo with NO user action reverted those, collapsing nodes onto their pre-translate
+      // origin. Gate the inner history's `active` flag (its own undo/redo-reentrancy
+      // guard: `add()` is a no-op while active) around the backfill. This drops the
+      // layout churn WITHOUT clearing real edits — the plugin is cached per-composite and
+      // persists across close/reopen, so a blanket clear() would wipe a PRIOR session's
+      // undo stack on every reopen.
+      const innerHistory = (mount.history as unknown as { history: { active: boolean } }).history;
+      innerHistory.active = true;
+      try {
+        for (const n of comp.internalEditor.getNodes()) {
+          if (!mount.area.nodeViews.has(n.id)) await mount.area.addNodeView(n);
+        }
+        for (const c of comp.internalEditor.getConnections()) {
+          if (!mount.area.connectionViews.has(c.id)) await mount.area.addConnectionView(c);
+        }
+        if (cancelled) return;
+        // Restore the saved layout, stagger anything unplaced (a pre-positions
+        // save), then fit.
+        let fallback = 0;
+        for (const n of comp.internalEditor.getNodes()) {
+          const pos = comp.internalPositions[n.id] ?? { x: (fallback % 4) * 260, y: Math.floor(fallback / 4) * 160 };
+          fallback++;
+          await mount.area.translate(n.id, pos);
+        }
+        const nodes = comp.internalEditor.getNodes();
+        if (nodes.length > 0) await AreaExtensions.zoomAt(mount.area, nodes);
+      } finally {
+        innerHistory.active = false;
       }
-      for (const c of comp.internalEditor.getConnections()) {
-        if (!mount.area.connectionViews.has(c.id)) await mount.area.addConnectionView(c);
-      }
-      if (cancelled) return;
-      // Restore the saved layout, stagger anything unplaced (a pre-positions
-      // save), then fit.
-      let fallback = 0;
-      for (const n of comp.internalEditor.getNodes()) {
-        const pos = comp.internalPositions[n.id] ?? { x: (fallback % 4) * 260, y: Math.floor(fallback / 4) * 160 };
-        fallback++;
-        await mount.area.translate(n.id, pos);
-      }
-      const nodes = comp.internalEditor.getNodes();
-      if (nodes.length > 0) await AreaExtensions.zoomAt(mount.area, nodes);
-      // Drop the backfill's addNodeView/translate churn from the undo stack: the
-      // open lays every node out via area.translate, which the HistoryPlugin records —
-      // so an undo with NO user action reverted those, collapsing every node onto its
-      // pre-translate origin. Clear at open so undo only sees THIS session's edits.
-      mount.history.clear();
       // Make THIS level the active graph so the app chrome (keyboard, copy/paste,
       // context menus, palette, tidy) acts on the subgraph — first-class editing.
       // getEditor()/getArea() stay main-only (autosave safety); see activeGraph.ts.
