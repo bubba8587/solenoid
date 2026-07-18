@@ -9,7 +9,7 @@ import { errorTip } from "./ErrorChip";
 import { flyToNode } from "../flyToNode";
 import { useHostNodeId } from "./nodeContext";
 import { frameFormatStore } from "../frameFormatStore";
-import { formatNumberWithAnnotation, applyLogicalStyle, isDateStyle, type FormatAnnotation } from "../formatAnnotationStore";
+import { formatNumberWithAnnotation, applyLogicalStyle, applyTextCase, isDateStyle, type FormatAnnotation } from "../formatAnnotationStore";
 
 // A NaN cell is dirty DATA (an undefined value from an import), not the #N/A
 // error — render the literal "NaN", tinted at the cell (see the td below).
@@ -30,7 +30,7 @@ function fmtCell(v: FrameCell, type: FrameColType = "number", ann?: FormatAnnota
   }
   const c = formatFrameCell(type, v); // date serials → date strings
   if (c === null || c === undefined || c === "") return "";
-  if (typeof c === "string") return c;
+  if (typeof c === "string") return type === "string" ? applyTextCase(c, ann?.textCase) : c;
   if (Number.isNaN(c)) return "NaN";
   if (!Number.isFinite(c)) return c > 0 ? "∞" : "-∞";
   return Number.isInteger(c) ? String(c) : c.toFixed(3).replace(/\.?0+$/, "");

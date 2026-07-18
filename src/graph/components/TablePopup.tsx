@@ -12,7 +12,8 @@ import { isUnitCell } from "../unitValue";
 import { columnUnitLabel } from "../unitColumn";
 import { frameFormatStore } from "../frameFormatStore";
 import { formatListCell } from "./valueDisplayFormat";
-import { FormatStyleSelect, DateStyleSelect, UnitSelect, LogicalStyleSelect } from "./fcControls";
+import { FormatStyleSelect, DateStyleSelect, UnitSelect, LogicalStyleSelect, TextCaseSelect } from "./fcControls";
+import { applyTextCase } from "../formatAnnotationStore";
 import { PopupShell } from "./PopupShell";
 import { PopupOverflowMenu } from "./PopupOverflowMenu";
 import { saveCsvFileDialog } from "../fileBridge";
@@ -364,6 +365,8 @@ export function TablePopup() {
       const fmt: FormatStyleId = isDateStyle(ann.format) ? "auto" : ann.format;
       return formatNumberWithAnnotation(v, { ...ann, format: fmt, unit: "none" });
     }
+    // Text column: the only display transform is letter case (non-destructive).
+    if (type === "string") return applyTextCase(String(v), ann.textCase);
     return String(v);
   }
 
@@ -580,6 +583,8 @@ export function TablePopup() {
             <LogicalStyleSelect className="table-popup__fmtselect" value={annFor(0).logicalStyle} onChange={(s) => persistColFmt(0, { logicalStyle: s })} />
           ) : cellType === "date" ? (
             <DateStyleSelect className="table-popup__fmtselect" value={annFor(0).format} onChange={(f) => persistColFmt(0, { format: f })} />
+          ) : cellType === "string" ? (
+            <TextCaseSelect className="table-popup__fmtselect" value={annFor(0).textCase} onChange={(tc) => persistColFmt(0, { textCase: tc })} />
           ) : (
             <FormatStyleSelect className="table-popup__fmtselect" value={annFor(0).format} onChange={(f) => persistColFmt(0, { format: f })} />
           )}
@@ -654,6 +659,8 @@ export function TablePopup() {
                           <DateStyleSelect className="table-popup__fmtselect" value={annFor(c).format} onChange={(f) => persistColFmt(c, { format: f })} />
                         ) : type === "logical" ? (
                           <LogicalStyleSelect className="table-popup__fmtselect" value={annFor(c).logicalStyle} onChange={(s) => persistColFmt(c, { logicalStyle: s })} />
+                        ) : type === "string" ? (
+                          <TextCaseSelect className="table-popup__fmtselect" value={annFor(c).textCase} onChange={(tc) => persistColFmt(c, { textCase: tc })} />
                         ) : type === "number" ? (
                           <div className="table-popup__fmtstack">
                             <FormatStyleSelect className="table-popup__fmtselect" value={annFor(c).format} onChange={(f) => persistColFmt(c, { format: f })} />

@@ -13,7 +13,7 @@
 import { useMemo, useSyncExternalStore, type ReactNode } from "react";
 import {
   FORMAT_STYLE_LABELS, FORMAT_STYLE_GROUPS, DATE_FORMAT_STYLES, UNIT_ANNOTATIONS,
-  LOGICAL_STYLE_LABELS, unitGroupLabel, type FormatStyleId, type LogicalStyle,
+  LOGICAL_STYLE_LABELS, unitGroupLabel, type FormatStyleId, type LogicalStyle, type TextCase,
 } from "../formatAnnotationStore";
 import { packsStore } from "../packs";
 import { activePackUnits, activePackFormats } from "../fcExtensions";
@@ -243,6 +243,29 @@ export function LogicalStyleSelect({ value, onChange, className, title }: {
       {Object.entries(LOGICAL_STYLE_LABELS).map(([id, label]) => (
         <option key={id} value={id}>{label}</option>
       ))}
+    </LazySelect>
+  );
+}
+
+/** A letter-case <select> matching the FC's text socket (Aa as-is · UPPER · lower ·
+ *  Proper) — display-only, non-destructive. The popup's text-column format cell. */
+export function TextCaseSelect({ value, onChange, className, title }: {
+  value: TextCase | undefined;
+  onChange: (v: TextCase) => void;
+  className?: string;
+  title?: string;
+}) {
+  return (
+    <LazySelect
+      className={className}
+      value={value ?? "none"}
+      title={title ?? "Letter case, display only"}
+      onChange={(e) => onChange(e.target.value as TextCase)}
+    >
+      <option value="none">Aa (as-is)</option>
+      <option value="upper">UPPER</option>
+      <option value="lower">lower</option>
+      <option value="proper">Proper</option>
     </LazySelect>
   );
 }
