@@ -216,6 +216,14 @@ function buildRawSavedGraph(): SavedGraph | null {
 
 // ─── Deserialize ────────────────────────────────────────────────────────────────
 
+// Saved-id → live-id remap from the most recent rebuildGraph. Tooling only (the
+// seed-tune harness reads geometry back out by SAVED id — see seedTune.ts);
+// nothing in the app itself consumes it.
+let _lastLoadIdMap: ReadonlyMap<string, string> = new Map();
+export function getLastLoadIdMap(): ReadonlyMap<string, string> {
+  return _lastLoadIdMap;
+}
+
 /** Returns true if the graph was loaded, false if it was refused or rolled back
  *  (in which case the existing graph is left intact). `animate` plays the
  *  cinematic build → reveal (startup + File → Open only; doc switches snap). */
@@ -389,6 +397,7 @@ async function rebuildGraph(
 
   const reg = ctorRegistry();
   const idMap = new Map<string, string>(); // saved id → fresh id
+  _lastLoadIdMap = idMap; // published for tooling (see getLastLoadIdMap)
   const created: ClassicPreset.Node[] = [];
   const placeholdered: string[] = [];
 
