@@ -1,5 +1,5 @@
 import type { ClassicPreset } from "rete";
-import { AdoptiveSocket, MutableSocket, SolenoidSocket, type SocketDataType } from "./sockets";
+import { AdoptiveSocket, MutableSocket, SolenoidSocket, adoptTypeForBase, type SocketDataType } from "./sockets";
 import { getPassthrough, resolvePassthroughType } from "./nodes/passthrough";
 import { reconcileConduitTypes } from "./conduitTrace";
 import type { NodeEditor } from "rete";
@@ -70,7 +70,9 @@ function reconcileOnce(editor: AdoptEditor): Set<string> {
       let want: SocketDataType = sock.base;
       if (feed) {
         const out = editor.getNode(feed.source)?.outputs?.[feed.sourceOutput]?.socket;
-        if (out instanceof SolenoidSocket) want = out.dataType;
+        // Keep a rank-bearing wildcard base's rank (a scalar widening into an anylist
+        // input stays a LIST square, not a scalar circle); trueany adopts verbatim.
+        if (out instanceof SolenoidSocket) want = adoptTypeForBase(sock.base, out.dataType);
       }
       if (sock.dataType !== want) {
         sock.setType(want);
