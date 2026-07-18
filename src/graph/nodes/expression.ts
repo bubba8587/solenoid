@@ -79,6 +79,12 @@ function envDim(v: unknown): Dim {
 export class ExpressionNode extends ClassicPreset.Node {
   /** Keeps `UnitCell` tags on its inputs — runs the dimension algebra itself (FC A4; see coerceInputs). */
   unitAware = true;
+  /** Every formula variable is UNCOERCED (coerceInputs `rawInputs`): the evaluator
+   *  broadcasts scalar-or-list itself, so the shared coercion must NOT widen a scalar
+   *  into a singleton list the way a plain `anylist` (Set/position) input does — that
+   *  turned `a+b` of two scalars into a 1-element list. Kept in sync with `varNames`
+   *  in `_rebuild` by MUTATING this same Set (coerceInputs captures the reference once). */
+  rawInputs = new Set<string>();
   label: string;
   expr: string;
   // A pack-supplied preset locks its formula: the formula box is read-only so the
@@ -147,6 +153,9 @@ export class ExpressionNode extends ClassicPreset.Node {
     }
 
     this.varNames = next;
+    // Keep rawInputs === varNames by mutating in place (see the field doc).
+    this.rawInputs.clear();
+    for (const v of next) this.rawInputs.add(v);
     this.evaluator = compileEvaluator(this.expr);
     this.ast = parseFormula(this.expr);
     return { added, removed };
