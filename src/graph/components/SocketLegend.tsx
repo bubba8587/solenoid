@@ -103,7 +103,7 @@ function measureTipText(text: string): number {
 
 function SocketTip({ label, color, anchor }: { label: string; color: string; anchor: DOMRect }) {
   const ink = contrastInk(cssColorToHex(color));
-  const H = 20, PAD_X = 9, SW = 1.5;
+  const H = 20, PAD_X = 9, SW = 2.5;
   const W = Math.ceil(measureTipText(label)) + PAD_X * 2;
   // Centre on the dot, but clamp so the pill never clips the viewport edge (the
   // legend sits bottom-RIGHT, so its dots are close to the right edge).
