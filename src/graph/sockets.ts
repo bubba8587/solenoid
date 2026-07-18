@@ -268,6 +268,34 @@ export function elementFamilyOf(dt: SocketDataType): ElementFamily | null {
   return null;
 }
 
+/** The lattice rank of a type: 0 scalar, 1 list/combo, 2 matrix — including the
+ *  rank-bearing wildcard rungs any(0)/anylist(1)/anytable(2). null for the rankless
+ *  structural types (frame/cube/lambda/chart/document/trueany). */
+export function latticeRank(dt: SocketDataType): number | null {
+  if (dt === "any") return 0;
+  if (dt === "anylist") return 1;
+  if (dt === "anytable") return 2;
+  for (const dims of Object.values(FAMILIES)) {
+    for (const [dim, t] of Object.entries(dims)) if (t === dt) return DIM_RANK[dim as Dim];
+  }
+  return null;
+}
+
+/** The type an adoptive INPUT should take when a cable of type `wired` lands, given
+ *  the port's declared `base`. A rank-bearing wildcard base (anylist / anytable) KEEPS
+ *  its rank and adopts only the wired ELEMENT family, so a lower-rank value widening in
+ *  (a scalar number → a Concat-Lists `anylist` input) reads as a LIST square, not a
+ *  scalar circle — the socket still represents a list. Everything else (trueany / any
+ *  bases, a same-or-higher-rank wire, a non-family structural type) adopts verbatim. */
+export function adoptTypeForBase(base: SocketDataType, wired: SocketDataType): SocketDataType {
+  if (base !== "anylist" && base !== "anytable") return wired;
+  const fam = elementFamilyOf(wired);
+  const baseRank = latticeRank(base);
+  const wiredRank = latticeRank(wired);
+  if (fam === null || baseRank === null || wiredRank === null || wiredRank >= baseRank) return wired;
+  return FAMILIES[fam][baseRank === 2 ? "matrix" : "list"];
+}
+
 /**
  * DIRECTIONAL: can a value from an OUTPUT of type `out` flow into an INPUT of
  * type `in`? The one primitive both areCompatible and canConnect build on.
