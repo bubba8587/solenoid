@@ -41,8 +41,8 @@
     {
       "id": "A_fc",
       "type": "FormatControllerNode",
-      "x": 250,
-      "y": 81,
+      "x": 221,
+      "y": 67,
       "init": {
         "label": "Format",
         "hostNodeId": "A_num",
@@ -117,8 +117,8 @@
     {
       "id": "B_fc",
       "type": "FormatControllerNode",
-      "x": 830,
-      "y": 332,
+      "x": 731,
+      "y": 321,
       "init": {
         "label": "Format",
         "hostNodeId": "B_d2",
@@ -157,8 +157,8 @@
     {
       "id": "C_fc",
       "type": "FormatControllerNode",
-      "x": 250,
-      "y": 601,
+      "x": 221,
+      "y": 587,
       "init": {
         "label": "Format",
         "hostNodeId": "C_num",
@@ -249,8 +249,8 @@
     {
       "id": "D_fc",
       "type": "FormatControllerNode",
-      "x": 830,
-      "y": 826,
+      "x": 731,
+      "y": 817,
       "init": {
         "label": "Format",
         "hostNodeId": "D_d1",
@@ -289,8 +289,8 @@
     {
       "id": "E_saleFc",
       "type": "FormatControllerNode",
-      "x": 250,
-      "y": 1038,
+      "x": 221,
+      "y": 1024,
       "init": {
         "label": "Format",
         "hostNodeId": "E_sale",
@@ -316,8 +316,8 @@
     {
       "id": "E_listFc",
       "type": "FormatControllerNode",
-      "x": 250,
-      "y": 1178,
+      "x": 221,
+      "y": 1164,
       "init": {
         "label": "Format",
         "hostNodeId": "E_list",
@@ -403,8 +403,8 @@
     {
       "id": "F_distFc",
       "type": "FormatControllerNode",
-      "x": 250,
-      "y": 1438,
+      "x": 221,
+      "y": 1437,
       "init": {
         "label": "Format",
         "hostNodeId": "F_dist",
@@ -427,7 +427,7 @@
     {
       "id": "F_timeFc",
       "type": "FormatControllerNode",
-      "x": 250,
+      "x": 221,
       "y": 1578,
       "init": {
         "label": "Format",
@@ -474,7 +474,7 @@
     {
       "id": "F_lenFc",
       "type": "FormatControllerNode",
-      "x": 250,
+      "x": 221,
       "y": 1718,
       "init": {
         "label": "Format",
@@ -498,8 +498,8 @@
     {
       "id": "F_runFc",
       "type": "FormatControllerNode",
-      "x": 250,
-      "y": 1858,
+      "x": 221,
+      "y": 1857,
       "init": {
         "label": "Format",
         "hostNodeId": "F_run",
@@ -558,8 +558,8 @@
     {
       "id": "G_priceFc",
       "type": "FormatControllerNode",
-      "x": 250,
-      "y": 2008,
+      "x": 221,
+      "y": 1994,
       "init": {
         "label": "Format",
         "hostNodeId": "G_price",
@@ -613,8 +613,8 @@
     {
       "id": "G_listFc",
       "type": "FormatControllerNode",
-      "x": 250,
-      "y": 2158,
+      "x": 221,
+      "y": 2243,
       "init": {
         "label": "Format",
         "hostNodeId": "G_list",
@@ -669,7 +669,7 @@
     {
       "id": "H_fc",
       "type": "FormatControllerNode",
-      "x": 250,
+      "x": 221,
       "y": 2328,
       "init": {
         "label": "Format",
@@ -713,8 +713,8 @@
     {
       "id": "H_badFc",
       "type": "FormatControllerNode",
-      "x": 250,
-      "y": 2518,
+      "x": 221,
+      "y": 2517,
       "init": {
         "label": "Format",
         "hostNodeId": "H_bad",
@@ -770,8 +770,8 @@
     {
       "id": "I_fc",
       "type": "FormatControllerNode",
-      "x": 250,
-      "y": 2688,
+      "x": 221,
+      "y": 2676,
       "init": {
         "label": "Format",
         "hostNodeId": "I_num",
@@ -795,7 +795,7 @@
     {
       "id": "I_timeFc",
       "type": "FormatControllerNode",
-      "x": 250,
+      "x": 221,
       "y": 2828,
       "init": {
         "label": "Format",
@@ -832,8 +832,8 @@
     {
       "id": "F_pctFc",
       "type": "FormatControllerNode",
-      "x": 930,
-      "y": 1790,
+      "x": 881,
+      "y": 1784,
       "init": {
         "label": "Format",
         "hostNodeId": "F_d2",
@@ -872,7 +872,7 @@
     {
       "id": "J_vFc",
       "type": "FormatControllerNode",
-      "x": 250,
+      "x": 221,
       "y": 2968,
       "init": {
         "label": "Format",
@@ -896,7 +896,7 @@
     {
       "id": "J_tFc",
       "type": "FormatControllerNode",
-      "x": 250,
+      "x": 221,
       "y": 3108,
       "init": {
         "label": "Format",

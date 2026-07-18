@@ -152,7 +152,7 @@
       "id": "in-sb",
       "type": "NumberInputNode",
       "x": 860,
-      "y": -30,
+      "y": -89,
       "init": {
         "label": "Sensor B",
         "value": 55
@@ -182,7 +182,7 @@
       "id": "grp-mon",
       "type": "GroupNode",
       "x": 1430,
-      "y": -242,
+      "y": -111,
       "init": {
         "label": "Monitoring",
         "members": [
@@ -192,15 +192,15 @@
         ],
         "color": "gold",
         "collapsed": true,
-        "width": 300,
-        "height": 510
+        "width": 232,
+        "height": 429
       }
     },
     {
       "id": "disp-a",
       "type": "DisplayNode",
-      "x": 1470,
-      "y": -172,
+      "x": 1454,
+      "y": 74,
       "init": {
         "label": "Sensor A",
         "unitSuffix": "none"
@@ -209,8 +209,8 @@
     {
       "id": "disp-b",
       "type": "DisplayNode",
-      "x": 1470,
-      "y": -39,
+      "x": 1454,
+      "y": 201,
       "init": {
         "label": "Sensor B",
         "unitSuffix": "none"
@@ -219,8 +219,8 @@
     {
       "id": "disp-c",
       "type": "DisplayNode",
-      "x": 1470,
-      "y": 78,
+      "x": 1454,
+      "y": -53,
       "init": {
         "label": "Sensor C",
         "unitSuffix": "none"
@@ -288,8 +288,8 @@
     {
       "id": "fc-km",
       "type": "FormatControllerNode",
-      "x": 480,
-      "y": 847,
+      "x": 442,
+      "y": 836,
       "init": {
         "label": "Format",
         "hostNodeId": "disp-km",

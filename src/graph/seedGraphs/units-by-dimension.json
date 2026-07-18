@@ -34,42 +34,67 @@
       "type": "NumberInputNode",
       "x": 20,
       "y": 170,
-      "init": { "label": "Distance", "value": 5 }
+      "init": {
+        "label": "Distance",
+        "value": 5
+      }
     },
     {
       "id": "fcD",
       "type": "FormatControllerNode",
-      "x": 150,
-      "y": 175,
-      "init": { "label": "m", "hostNodeId": "numD", "socketKey": "value", "side": "output", "unit": "m", "socketDataType": "number" }
+      "x": 202,
+      "y": 188,
+      "init": {
+        "label": "m",
+        "hostNodeId": "numD",
+        "socketKey": "value",
+        "side": "output",
+        "unit": "m",
+        "socketDataType": "number"
+      }
     },
     {
       "id": "numT",
       "type": "NumberInputNode",
       "x": 20,
       "y": 300,
-      "init": { "label": "Time", "value": 1 }
+      "init": {
+        "label": "Time",
+        "value": 1
+      }
     },
     {
       "id": "fcT",
       "type": "FormatControllerNode",
-      "x": 150,
-      "y": 305,
-      "init": { "label": "s", "hostNodeId": "numT", "socketKey": "value", "side": "output", "unit": "s", "socketDataType": "number" }
+      "x": 202,
+      "y": 318,
+      "init": {
+        "label": "s",
+        "hostNodeId": "numT",
+        "socketKey": "value",
+        "side": "output",
+        "unit": "s",
+        "socketDataType": "number"
+      }
     },
     {
       "id": "ariB",
       "type": "ArithmeticNode",
       "x": 230,
       "y": 210,
-      "init": { "label": "Speed = d ÷ t", "op": "div" }
+      "init": {
+        "label": "Speed = d ÷ t",
+        "op": "div"
+      }
     },
     {
       "id": "dispB",
       "type": "DisplayNode",
       "x": 430,
       "y": 235,
-      "init": { "label": "= 5 m/s" }
+      "init": {
+        "label": "= 5 m/s"
+      }
     },
     {
       "id": "nB",
@@ -89,56 +114,130 @@
       "type": "TableInputNode",
       "x": 420,
       "y": 170,
-      "init": { "label": "Revenue rows", "tableText": "5\n6\n7", "dataType": "number" }
+      "init": {
+        "label": "Revenue rows",
+        "tableText": "5\n6\n7",
+        "dataType": "number"
+      }
     },
     {
       "id": "hdrA",
       "type": "ListInputNode",
       "x": 420,
       "y": 440,
-      "init": { "label": "Header", "dataType": "string", "valueKeys": ["v0"] },
-      "stringLiterals": { "v0": "Revenue ($0.00)" }
+      "init": {
+        "label": "Header",
+        "dataType": "string",
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "Revenue ($0.00)"
+      }
     },
     {
       "id": "bfA",
       "type": "BuildFrameNode",
       "x": 640,
       "y": 250,
-      "init": { "label": "Build Frame" }
+      "init": {
+        "label": "Build Frame"
+      }
     },
     {
       "id": "gcA",
       "type": "GetColumnNode",
       "x": 850,
       "y": 250,
-      "init": { "label": "Get Revenue", "readAs": "number" },
-      "stringLiterals": { "name": "Revenue" }
+      "init": {
+        "label": "Get Revenue",
+        "readAs": "number"
+      },
+      "stringLiterals": {
+        "name": "Revenue"
+      }
     },
     {
       "id": "aggA",
       "type": "AggregateNode",
       "x": 1060,
       "y": 250,
-      "init": { "label": "Total revenue", "op": "sum" }
+      "init": {
+        "label": "Total revenue",
+        "op": "sum"
+      }
     },
     {
       "id": "dispA",
       "type": "DisplayNode",
       "x": 1260,
       "y": 265,
-      "init": { "label": "= $18.00" }
+      "init": {
+        "label": "= $18.00"
+      }
     }
   ],
   "connections": [
-    { "source": "numD", "sourceOutput": "value", "target": "fcD", "targetInput": "in" },
-    { "source": "fcD", "sourceOutput": "out", "target": "ariB", "targetInput": "a" },
-    { "source": "numT", "sourceOutput": "value", "target": "fcT", "targetInput": "in" },
-    { "source": "fcT", "sourceOutput": "out", "target": "ariB", "targetInput": "b" },
-    { "source": "ariB", "sourceOutput": "result", "target": "dispB", "targetInput": "in" },
-    { "source": "tblA", "sourceOutput": "table", "target": "bfA", "targetInput": "matrix" },
-    { "source": "hdrA", "sourceOutput": "list", "target": "bfA", "targetInput": "headers" },
-    { "source": "bfA", "sourceOutput": "frame", "target": "gcA", "targetInput": "frame" },
-    { "source": "gcA", "sourceOutput": "values", "target": "aggA", "targetInput": "list" },
-    { "source": "aggA", "sourceOutput": "result", "target": "dispA", "targetInput": "in" }
+    {
+      "source": "numD",
+      "sourceOutput": "value",
+      "target": "fcD",
+      "targetInput": "in"
+    },
+    {
+      "source": "fcD",
+      "sourceOutput": "out",
+      "target": "ariB",
+      "targetInput": "a"
+    },
+    {
+      "source": "numT",
+      "sourceOutput": "value",
+      "target": "fcT",
+      "targetInput": "in"
+    },
+    {
+      "source": "fcT",
+      "sourceOutput": "out",
+      "target": "ariB",
+      "targetInput": "b"
+    },
+    {
+      "source": "ariB",
+      "sourceOutput": "result",
+      "target": "dispB",
+      "targetInput": "in"
+    },
+    {
+      "source": "tblA",
+      "sourceOutput": "table",
+      "target": "bfA",
+      "targetInput": "matrix"
+    },
+    {
+      "source": "hdrA",
+      "sourceOutput": "list",
+      "target": "bfA",
+      "targetInput": "headers"
+    },
+    {
+      "source": "bfA",
+      "sourceOutput": "frame",
+      "target": "gcA",
+      "targetInput": "frame"
+    },
+    {
+      "source": "gcA",
+      "sourceOutput": "values",
+      "target": "aggA",
+      "targetInput": "list"
+    },
+    {
+      "source": "aggA",
+      "sourceOutput": "result",
+      "target": "dispA",
+      "targetInput": "in"
+    }
   ]
 }
