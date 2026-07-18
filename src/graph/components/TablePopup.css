@@ -80,6 +80,15 @@
   left: 0;
   z-index: 4;
 }
+/* The format-row's left corner (the cell directly BELOW the top-left corner, above
+   the row-number column) must pin left too — otherwise the scrolling format/unit
+   dropdowns slide over it on horizontal scroll. Same treatment as the header corner,
+   one rung lower in the z-stack so the true corner still wins where they'd overlap. */
+.table-popup__fmtbody th.table-popup__corner {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+}
 
 .table-popup__cell {
   border-right: 1px solid var(--border);
