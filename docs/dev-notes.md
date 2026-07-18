@@ -18,6 +18,46 @@ edge round independently. Possible directions not yet tried: draw the ring so it
 (e.g. `inset:0` + account for the 2px border, or a box-shadow ring) instead of a 2px-offset `::after`;
 or pixel-snap the card box. Radius itself is correct; don't re-touch it. Parked by author.
 
+### SESSION DIGEST (2026-07-18 — 1.2 web-eyeball fixes: popup, sockets/coercion, drill-in undo/redo)
+Walked the remaining 1.2 web eyeball items (see `1.2-plan.md`); everything the author
+surfaced this session was fixed. tsc clean, vitest 3021 green, seeds load, version stays 1.2.0.
+- **Value popup (`TablePopup.tsx` + `fcControls.tsx` + `FrameDisplay.tsx`):** dropped the FC
+  flow-arrows (author call — the popup keeps ONLY the disabled/locked-when-inherited unit
+  picker; the FC NODE keeps its arrows). Text/string columns gained a letter-case format
+  dropdown (Aa/UPPER/lower/Proper via `applyTextCase`), applied in BOTH the popup's
+  controlled cell and FrameDisplay's on-card formatter so they agree — and it fixed a latent
+  bug where a homogeneous string MATRIX fell through to the number-format select. The
+  format-row corner cell now pins left (`.table-popup__fmtbody th.corner` sticky) so the
+  dropdowns stop scrolling over it. Socket Reference hover pill border buffed 1.5→2.5px.
+- **Wildcard adoption keeps the port rank (`sockets.ts` `adoptTypeForBase`/`latticeRank`,
+  `trueAnyAdopt.ts`):** an AdoptiveSocket input adopted the wired output's type verbatim, so a
+  scalar into a Concat-Lists (`anylist`) input collapsed the socket to a scalar CIRCLE. A
+  rank-bearing wildcard base (anylist/anytable) now keeps its rank and adopts only the wired
+  element family — a scalar widens in but the socket still reads as a LIST square. trueany/any
+  adopt verbatim.
+- **Expression scalar→list REGRESSION + generalized the fix (`coerceInputs.ts`,
+  `nodes/expression.ts`):** `a+b` of two scalars returned a 1-element LIST. Cause: Expression's
+  `anylist` variable inputs were widened to `[scalar]` by coerceInputs (correct for
+  Set/position ops that iterate, wrong for a broadcaster). Generalized the fix into a
+  first-class opt-out: **`node.noWidenInputs`** (a `ReadonlySet<string>`) skips only the RANK
+  widening — value reaches `data()` at its natural rank — while KEEPING element coercion
+  (logical→number, via `coerceValueNoWiden`, derived from `elementFamilyOf`). The socket is
+  untouched (widening stays the default at the socket for every other consumer). Contrast
+  `rawInputs` (skip ALL coercion, for a node that branches on the raw shape). Painless one-line
+  opt-out for pack authors; documented in the coerceInputs policy note + `pack-architecture.md`.
+  Expression migrated from the `rawInputs` hack to `noWidenInputs`.
+- **Composite drill-in undo/redo (two bugs):** (1) undo with NO user action collapsed every
+  internal node onto the origin — the open-time backfill lays nodes out via `area.translate`,
+  which the drill-in HistoryPlugin recorded; now `mount.history.clear()` after the backfill so
+  undo only sees the session's edits. (2) the mobile Redo button permanently stuck the Shift
+  axis-lock / Ctrl edge-align: `MobileControls.fireUndo` dispatches a SYNTHETIC Ctrl(+Shift)+Z
+  keydown (no keyup), and Canvas's drag-modifier tracker latched its modifiers ON. The tracker
+  now gates on `e.isTrusted` (real events only); the undo/redo handlers still process the
+  synthetic event.
+- **1.2 status:** all web eyeball items walked; PF seed headliners verified present. Remaining
+  is desktop-gated (string byte-order parity eyeball, `cargo test` on Windows, path-stripped
+  `release:desktop` build, post-tag exe smoke) + the author merge→main + `v1.2.0` tag.
+
 ### SESSION DIGEST (2026-07-17 — distribution nodes broadcast; landing page)
 - **Default accent → gold (`appTheme.ts` DEFAULT_ACCENT, author 2026-07-17):** the brand coil's gold
   (`#f5b914`, the `gold` palette slot — palette.ts's swatch-order comment already called it the
