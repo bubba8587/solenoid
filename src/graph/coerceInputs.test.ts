@@ -76,10 +76,38 @@ describe("coerceInputs — an adoptive CONTAINER input coerces on its BASE rung,
   });
 });
 
-describe("coerceInputs — Expression is a broadcaster: its variable inputs are rawInputs (no singleton widening)", () => {
+describe("coerceInputs — noWidenInputs: opt out of rank widening, keep element coercion", () => {
+  // The generalized "unsubscribe from widening" hook. A node lists input keys that keep
+  // their NATURAL rank (scalar stays scalar) instead of widening to the socket's rank,
+  // while element coercion (logical→number) still applies and the socket is unchanged.
+  function run(base: string, key: string, wired: unknown, noWiden: boolean) {
+    let received: Record<string, unknown[]> | undefined;
+    const node = {
+      data: (inputs: Record<string, unknown[]>) => { received = inputs; return {}; },
+      inputs: { [key]: { socket: new SolenoidSocket(base as never) } },
+      noWidenInputs: noWiden ? new Set([key]) : undefined,
+    };
+    wrapNodeData(node as unknown as Parameters<typeof wrapNodeData>[0]);
+    node.data({ [key]: [wired] });
+    return received![key]?.[0];
+  }
+
+  it("a scalar into a `list` input stays a scalar when opted out (vs widening to [scalar])", () => {
+    expect(run("list", "x", 5, false)).toEqual([5]); // default: widened
+    expect(run("list", "x", 5, true)).toBe(5);        // opted out: natural rank
+  });
+  it("element coercion (logical→number) still applies to the un-widened value", () => {
+    expect(run("list", "x", true, true)).toBe(1); // bool→num, but not wrapped
+  });
+  it("a list still passes through unchanged", () => {
+    expect(run("list", "x", [1, 2, 3], true)).toEqual([1, 2, 3]);
+  });
+});
+
+describe("coerceInputs — Expression is a broadcaster: its variables opt out of widening", () => {
   // Regression: a scalar into Expression's `anylist` variable input was widened to
   // `[scalar]` (the Set/position rule above), so `a+b` of two scalars broadcast to a
-  // 1-element LIST. Expression declares its variables as rawInputs so the evaluator
+  // 1-element LIST. Expression declares its variables in noWidenInputs so the evaluator
   // sees the natural rank and returns a scalar for scalar inputs, a list for a list.
   function runExpr(expr: string, inputs: Record<string, unknown[]>) {
     const node = new ExpressionNode({ expr });
@@ -87,12 +115,12 @@ describe("coerceInputs — Expression is a broadcaster: its variable inputs are 
     return (node.data(inputs) as { result: unknown }).result;
   }
 
-  it("rawInputs tracks the formula variables", () => {
+  it("noWidenInputs tracks the formula variables", () => {
     const node = new ExpressionNode({ expr: "a + b" });
-    expect([...node.rawInputs].sort()).toEqual(["a", "b"]);
+    expect([...node.noWidenInputs].sort()).toEqual(["a", "b"]);
     node.expr = "x * y - z";
     node._rebuild();
-    expect([...node.rawInputs].sort()).toEqual(["x", "y", "z"]);
+    expect([...node.noWidenInputs].sort()).toEqual(["x", "y", "z"]);
   });
   it("scalar inputs → a SCALAR result (not a 1-element list)", () => {
     expect(runExpr("a + b", { a: [5], b: [3] })).toBe(8);

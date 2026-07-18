@@ -112,6 +112,23 @@ sockets, and a locked body. That single contract has two implementations:
   restrictions attach, or how errors surface. The simple pack is just the degenerate
   single-node case of the composite one.
 
+### Input coercion — the default widens, opting out is one line
+A custom-logic node's `data()` receives every input already coerced to its socket's
+declared rank: a scalar widens into a `[scalar]` list, a list into a matrix, and so on
+(the socket lattice guarantees lower-rank values *can* flow in; `coerceInputs.ts` does
+the widening so 95% of nodes can assume their shape). Two painless opt-outs exist for the
+node that handles shape itself — the socket is UNCHANGED either way (same glyph, same
+accepted types), only the value handed to `data()` differs:
+- `noWidenInputs = new Set([...keys])` — keep each listed input at its NATURAL rank (a
+  scalar stays a scalar) but still get element coercion (logical→number). This is what a
+  **broadcaster** wants (an element-wise op that returns a scalar for scalar inputs, a
+  list for a list — the Expression node uses it for exactly this).
+- `rawInputs = new Set([...keys])` — pass the value entirely uncoerced, for a node that
+  branches on the raw runtime shape (frame-vs-cube, etc.).
+
+Both are captured once, so a node with dynamic keys keeps the same Set and mutates it in
+place. See the per-input coercion policy note in `coerceInputs.ts`.
+
 ## Locked to the user, open to the author
 
 "Locked" and "let me control the internals" reconcile through two roles:

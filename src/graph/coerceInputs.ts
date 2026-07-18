@@ -1,6 +1,6 @@
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
-import { SolenoidSocket, AdoptiveSocket, type SocketDataType } from "./sockets";
+import { SolenoidSocket, AdoptiveSocket, elementFamilyOf, type SocketDataType } from "./sockets";
 import { toMatrix, toList, toScalar, toAnyMatrix, ShapeError } from "./nodes/coerce";
 import { isPassthroughNode } from "./nodes/passthrough";
 import { isFrameValue, frameFromRows, toCube } from "./frame";
@@ -50,6 +50,13 @@ function coercionType(socket: unknown): SocketDataType | undefined {
 // reshaper) — declares those input keys on `node.rawInputs`, and they pass through
 // UNCOERCED. This is what keeps a `cube` socket from `toCube`-ing (and type-stripping)
 // a wired Frame that the node means to handle AS a frame.
+//
+// Between "widen to the socket" and "raw" sits ONE more opt-out: `node.noWidenInputs`
+// — keys that skip only the RANK widening (a scalar stays a scalar) while KEEPING
+// element coercion (logical→number). That's the painless hook a BROADCASTER uses
+// (Expression, a pack element-wise node): it broadcasts scalar-or-list itself, so the
+// singleton-widening would turn `a+b` of two scalars into a 1-element list. The socket
+// is untouched — widening stays the default for every other consumer of that type.
 
 export function parseListLiteral(csv: string, dt: SocketDataType): unknown[] {
   // Real CSV parsing (RFC 4180 via parseCsvLine), so a value containing a comma
@@ -214,6 +221,21 @@ function coerceValue(dataType: SocketDataType, v: unknown): unknown {
   }
 }
 
+/** Element coercion WITHOUT rank widening — the coercion for a `noWidenInputs` key.
+ *  The socket's dimensional widening (scalar → singleton list, list → matrix, → frame…)
+ *  is SKIPPED, so a value reaches data() at its natural rank; the node broadcasts /
+ *  handles the shape itself (Expression, or a pack-authored element-wise node). The one
+ *  thing kept is ELEMENT coercion — the logical↔number bridge — so the node's arithmetic
+ *  still sees numbers, not booleans. Refs / errors / unit-cells pass through untouched
+ *  (a unit-aware node handles cells; every other node had them stripped upstream). */
+function coerceValueNoWiden(dataType: SocketDataType, v: unknown): unknown {
+  if (isFrameRef(v) || isSolError(v) || hasUnitCell(v)) return v;
+  const fam = elementFamilyOf(dataType);
+  if (fam === "number") return boolsToNums(v);   // number / list / numlist / table
+  if (fam === "logical") return numsToBools(v);  // logical / logicallist / logicaltable
+  return v; // string / date / complex / element-agnostic wildcards: no element coercion
+}
+
 type NodeLike = {
   data: (inputs: Record<string, unknown[]>) => unknown;
   inputs?: Record<string, { socket?: unknown } | undefined>;
@@ -221,6 +243,15 @@ type NodeLike = {
   /** Input keys the node wants UNCOERCED — it branches on the runtime shape itself
    *  (see the per-input coercion policy note above). */
   rawInputs?: ReadonlySet<string>;
+  /** Input keys that OPT OUT of rank widening (the painless "unsubscribe from widening"
+   *  hook — forced widening stays the default at the socket). The value reaches data()
+   *  at its natural rank (a scalar stays a scalar, a list a list) instead of being
+   *  widened to the socket's declared rank; the SOCKET itself is unchanged — it still
+   *  accepts lower-rank values and shows its declared glyph. Element coercion (logical↔
+   *  number) still applies, so this is the right flag for a BROADCASTER (Expression, or
+   *  a pack node that iterates/broadcasts scalar-or-list itself). Contrast `rawInputs`,
+   *  which skips ALL coercion (for a node that branches on the raw runtime shape). */
+  noWidenInputs?: ReadonlySet<string>;
   /** The node runs the dimension algebra itself (FC A4) — its inputs keep their
    *  `UnitCell` tags. Everything else gets cells unwrapped to display magnitudes
    *  here (the unit-blind boundary — see unitBridge.stripUnitCells). */
@@ -235,6 +266,10 @@ export function wrapNodeData(node: NodeLike) {
   const className = (node as { constructor: { name: string } }).constructor.name;
   const lazy = LAZY_FRAME_NODES.has(className);
   const rawInputs = node.rawInputs;
+  // Captured once (like rawInputs). A node with DYNAMIC keys (Expression's formula
+  // variables) keeps the SAME Set object and mutates it in place, so this reference
+  // stays live across rebuilds.
+  const noWiden = node.noWidenInputs;
   // The unit-blind boundary (FC A4): only a node that runs the dimension algebra
   // itself (unitAware) or forwards the value unchanged (the passthrough/selector
   // duck markers) sees `UnitCell` tags; everything else gets display magnitudes —
@@ -262,6 +297,8 @@ export function wrapNodeData(node: NodeLike) {
       // the frame/cube exactly as it flowed in (a ref was already materialized above
       // for non-lazy nodes).
       if (rawInputs?.has(key)) { coerced[key] = arr; continue; }
+      // An opt-out-of-widening key: element coercion only, keep the natural rank.
+      if (noWiden?.has(key)) { coerced[key] = arr.map((v) => coerceValueNoWiden(dt, v)); continue; }
       // A narrowing failure throws ShapeError here; it propagates to the
       // error-value guard, which renders it as #SHAPE! (see the module header).
       coerced[key] = arr.map((v) => coerceValue(dt, v));
