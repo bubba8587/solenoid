@@ -18,6 +18,38 @@ edge round independently. Possible directions not yet tried: draw the ring so it
 (e.g. `inset:0` + account for the 2px border, or a box-shadow ring) instead of a 2px-offset `::after`;
 or pixel-snap the card box. Radius itself is correct; don't re-touch it. Parked by author.
 
+### SESSION DIGEST (2026-07-19 — GPU-renderer cables stay DOM; seed-tune harness; PF note ties)
+- **GPU renderer: cables never draw on the canvas (`37995b5b`).** The gesture-time canvas stroke
+  was fully opaque (DOM cables idle at 0.72 opacity) and reproduced none of hover width, ribbons,
+  or isolate dimming — author called it out; cables now stay live DOM through gestures, riding the
+  holder's composited transform exactly like conduit cables always did (pan/zoom is transform-only,
+  so it's cheap). The engine's whole cable pipeline (`setCables`/`relayoutCables`/`drawCables`) and
+  the layer's cableShape subscription are deleted; `collectDomOnlyEls` keeps EVERY connection
+  element visible during a gesture.
+- **Post-collapse conduit ghost fixed (same commit).** Root cause: `showDomOnly` blind-stamped
+  inline `visibility:visible` from a STALE (150ms-debounced) element list, clobbering the
+  `visibility:hidden` group collapse stamps on member views — and an element dropped from the list
+  kept the stamp forever. Show/hide are now override-aware (never override a "hidden" someone else
+  set; only clear a "visible" we stamped; clear the old set before swapping in the new one).
+- **Seed-tune harness (`c925ce12`, `seedTune.ts` + `scripts/tune-seeds.mjs`).** Author directive:
+  assume the seeds are wrong, open them, run per-group tidy, save the layouts. Group boxes were
+  authored blind (fake node sizes) and real fit needs painted DOM, so a console hook
+  (`window.__solenoidTuneSeed`) loads a seed and runs the REAL per-group tidy→autofit (expand
+  collapsed groups around the pass, re-collapse after, `settleStandoffs` last), returning geometry
+  keyed by SAVED id via `persistence.getLastLoadIdMap()`. The driver (headless Edge → dev server)
+  patches x/y + group width/height back into the JSONs IN PLACE — never a re-export, which would
+  rewrite every id to a generated name. Gotcha: seed JSONs are Vite-watched, so writes are deferred
+  past the browser session or HMR reloads the page mid-run. First pass tuned all 5 group-bearing
+  seeds (`8594f4e3`); group-less seeds byte-identical bar two standoff settles. Re-run any time:
+  `node scripts/tune-seeds.mjs [ids…]` (dev server up).
+- **PF seed: notes tied to their groups (`47a72e53`).** The two group↔group spacing standoffs are
+  replaced by ten note→group ties (note `s` → group `n`, 30–160 band, band-only — locked would
+  yank notes onto the group centerline). The generator now ADOPTS committed-JSON geometry by node
+  id before emitting, so re-running it never resets tuned layouts and the pfSeedCheck deep-equal
+  lockstep holds against a tuned file: geometry is owned by the tuned JSON, structure by the
+  generator.
+- tsc clean, vitest 3021 green throughout.
+
 ### SESSION DIGEST (2026-07-18 — 1.2 web-eyeball fixes: popup, sockets/coercion, drill-in undo/redo)
 Walked the remaining 1.2 web eyeball items (see `1.2-plan.md`); everything the author
 surfaced this session was fixed. tsc clean, vitest 3021 green, seeds load, version stays 1.2.0.

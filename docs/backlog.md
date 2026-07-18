@@ -50,7 +50,9 @@ this backlog stays the per-item source of truth.
   six retired outright, four merged, Getting Started rebuilt with a Tables & charts
   cluster; run-graph/errorSeed tests re-anchored). Remaining author calls:
   (a) **personal-finance** (generator-locked) uses WebSource, no DataFeed/composite/trust
-  section — any change goes through `gen-personal-finance-seed.cjs`; (b) **composite-workbench**
+  section — any STRUCTURAL change goes through `gen-personal-finance-seed.cjs`; GEOMETRY is
+  owned by the tuned JSON (`scripts/tune-seeds.mjs` live tidy/autofit pass, 2026-07-19 — the
+  generator adopts committed geometry by id, so re-running it is safe); (b) **composite-workbench**
   now has two goal-seek cards but still no scenarios/data-table card.
 
 ## Needs an author decision / author-present session
