@@ -226,6 +226,11 @@ export function Canvas() {
   // input; reset on blur so a key released while unfocused doesn't stick.
   useEffect(() => {
     const set = (e: KeyboardEvent) => {
+      // Only TRUSTED (real) key events drive the drag-modifier state. The mobile
+      // undo/redo buttons dispatch a SYNTHETIC Ctrl(+Shift)+Z keydown (MobileControls
+      // `fireUndo`) with no matching keyup — reading its modifiers here left the
+      // axis-lock (Shift) / edge-align (Ctrl) refs stuck ON permanently after a Redo.
+      if (!e.isTrusted) return;
       shiftDragRef.current = e.shiftKey;
       ctrlDragRef.current = e.ctrlKey || e.metaKey;
     };
