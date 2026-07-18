@@ -33,6 +33,7 @@ import { canvasLockStore } from "./canvasLock";
 import { touchSelectStore } from "./touchSelectStore";
 import { IS_MOBILE } from "./coarse";
 import { installErrorGuards } from "./errorValue";
+import "./seedTune"; // console seed-tune hook (window.__solenoidTuneSeed — scripts/tune-seeds.mjs)
 import { type Pt } from "./lasso";
 import { FormatControllerNode, GroupNode, CompositeNode } from "./rete-nodes";
 import { reconcileFcTypes } from "./fcReconcile";
