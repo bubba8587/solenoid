@@ -48,8 +48,12 @@ surfaced this session was fixed. tsc clean, vitest 3021 green, seeds load, versi
   Expression migrated from the `rawInputs` hack to `noWidenInputs`.
 - **Composite drill-in undo/redo (two bugs):** (1) undo with NO user action collapsed every
   internal node onto the origin — the open-time backfill lays nodes out via `area.translate`,
-  which the drill-in HistoryPlugin recorded; now `mount.history.clear()` after the backfill so
-  undo only sees the session's edits. (2) the mobile Redo button permanently stuck the Shift
+  which the drill-in HistoryPlugin recorded. First cut was `mount.history.clear()` after the
+  backfill, but a session review caught that the plugin is CACHED per-composite and persists
+  across close/reopen, so clearing on every open wiped a prior session's real edits. Corrected
+  (`3ac51ad4`): gate the inner history's `active` flag (its own reentrancy guard — `add()`
+  no-ops while active) around the backfill, so only the layout churn is dropped and real edits
+  survive reopens. (2) the mobile Redo button permanently stuck the Shift
   axis-lock / Ctrl edge-align: `MobileControls.fireUndo` dispatches a SYNTHETIC Ctrl(+Shift)+Z
   keydown (no keyup), and Canvas's drag-modifier tracker latched its modifiers ON. The tracker
   now gates on `e.isTrusted` (real events only); the undo/redo handlers still process the
