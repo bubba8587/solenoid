@@ -463,12 +463,48 @@ const pins = [
   { nodeId: "tvm-fv",   outputKey: "fv" },
   { nodeId: "expr-absp", outputKey: "result" },
 ];
-const standoffs = [
-  { a: { nodeId: "grp-data", anchor: "e" }, b: { nodeId: "grp-cash", anchor: "w" }, min: 60, max: 600 },
-  { a: { nodeId: "grp-pivot", anchor: "e" }, b: { nodeId: "grp-proj", anchor: "w" }, min: 80, max: 700 },
+// Each documentation Note is TIED to its group (2026-07-19, replacing the old
+// group↔group spacing bands): every note sits just above its group, so a
+// south→north band keeps it 30–160px off the group's top edge and makes the
+// pair a standoff cluster — layout ops (push, tidy) move note + group as one
+// block, and dragging the group chain-pulls its note along. Band-only (not
+// locked): locked would also pull the note onto the group's centerline, which
+// isn't the seed's left-aligned look.
+const NOTE_TIES = [
+  ["note-data", "grp-data"], ["note-cash", "grp-cash"], ["note-pivot", "grp-pivot"],
+  ["note-acct", "grp-acct"], ["note-assump", "grp-assump"], ["note-proj", "grp-proj"],
+  ["note-mort", "grp-mort"], ["note-bud", "grp-bud"], ["note-v12", "grp-v12"],
+  ["note-dash", "grp-dash"],
 ];
+const standoffs = NOTE_TIES.map(([noteId, groupId]) => (
+  { a: { nodeId: noteId, anchor: "s" }, b: { nodeId: groupId, anchor: "n" }, min: 30, max: 160 }
+));
 
 const graph = { label: "Personal Finance", v: 2, nodes, connections: conns, standoffs, pins };
+
+// Geometry is owned by the COMMITTED JSON, structure by this generator. The
+// seed-tune harness (scripts/tune-seeds.mjs) writes real tidy/autofit geometry
+// into the JSON from the live app — sizes this generator can't know (it fakes
+// nodes as 240×230). Adopt the committed x/y (+ group box sizes) by node id so
+// re-running the generator never resets tuned layout; a NEW node keeps its
+// authored coords until the next tune pass. This also keeps pfSeedCheck's
+// deep-equal lockstep true against a tuned file.
+(function adoptCommittedGeometry() {
+  const file = path.join(__dirname, "..", "src", "graph", "seedGraphs", "personal-finance.json");
+  let committed;
+  try { committed = JSON.parse(fs.readFileSync(file, "utf8")); } catch { return; }
+  const prevById = new Map((committed.nodes ?? []).map((nd) => [nd.id, nd]));
+  for (const nd of graph.nodes) {
+    const prev = prevById.get(nd.id);
+    if (!prev || prev.type !== nd.type) continue;
+    if (typeof prev.x === "number") nd.x = prev.x;
+    if (typeof prev.y === "number") nd.y = prev.y;
+    if (nd.type === "GroupNode" && prev.init) {
+      if (typeof prev.init.width === "number") nd.init.width = prev.init.width;
+      if (typeof prev.init.height === "number") nd.init.height = prev.init.height;
+    }
+  }
+})();
 
 // Export the in-memory graph so a test can assert the committed seed stays in
 // lockstep with this generator (pfSeedCheck.test.ts). The file is only WRITTEN
