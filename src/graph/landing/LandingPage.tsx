@@ -29,7 +29,7 @@ import "./LandingPage.css";
 // `--anim` root class set on mount, so content never depends on a transition
 // firing, and prefers-reduced-motion gets the page with no entrance motion.
 
-const GITHUB_URL = "https://github.com/jortscity/solenoid";
+const GITHUB_URL = "https://github.com/bubba8587/solenoid";
 
 function ThemeToggle() {
   const mode = useSyncExternalStore(appThemeStore.subscribe, appThemeStore.getMode);

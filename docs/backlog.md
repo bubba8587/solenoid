@@ -260,6 +260,18 @@ this backlog stays the per-item source of truth.
   or a decorum/tauri version check. Fallback if unfixable: drop the overlay for native OS decorations
   (guaranteed controls, loses the themed titlebar). Worked before; regression cause unknown.
 
+## Landing page / marketing
+
+- [ ] **Feature/value copy doc** (author 2026-07-18): create and maintain a doc of general
+  features, candidate copy lines for each, RANKED — the author ranks value; all decisions on
+  which features get surfaced/sold are the author's. Use it as the source when building more
+  landing/marketing content. Not now — author will initiate.
+- [ ] **Traveling-cable flow pulse → maybe the app's cables** (author 2026-07-18): the landing
+  page's cable rendering (solid typed stroke + a brighter dash marching along the path,
+  `LandingScenes.tsx` `.sol-cable__flow`) — author likes it; we may overwrite the existing
+  canvas cable element with it. Author-gated (touches the never-degrade-cables rule and
+  DESIGN.md's no-decoration stance — this would make the flow pulse MEANING, not decoration).
+
 ## Cables / canvas / chrome
 
 - [ ] **Frame socket needs a unique glyph** (author 2026-07-16): it used to collide visually only
