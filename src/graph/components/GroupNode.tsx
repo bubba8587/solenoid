@@ -7,8 +7,7 @@ import { useDismissOnOutside } from "./useDismissOnOutside";
 import { getArea, getEditor, pushHistory, autoArrange } from "../process";
 import { cableValueStore } from "../cableValueStore";
 import { describeValueKind } from "../valueKindLabel";
-import { isChartValue } from "../chartValue";
-import { ChartChip } from "./ChartChip";
+import { valueChipFor } from "./ValueChip";
 import { groupCollapseStore, syncGroupCollapse, COLLAPSE_LAYOUT, pillY, type RetainedTerminal } from "../groupCollapse";
 import { SolenoidSocket, SOCKET_COLORS } from "../sockets";
 import { socketHighlightStore, dragSocketKey } from "../cableState";
@@ -19,9 +18,6 @@ import { setGroupsCollapsed } from "../groupPush";
 import { rebuildGroupMembership } from "../groupMembership";
 import { scheduleAutosave } from "../persistence";
 import { ArrayChip, isArrayValue } from "./ArrayChip";
-import { FrameChip } from "./FrameChip";
-import { CubeChip } from "./CubeChip";
-import { isFrameValue, isCubeValue } from "../frame";
 import { formatAnnotationStore, formatNumberWithAnnotation } from "../formatAnnotationStore";
 import { isSolError } from "../errorValue";
 import { ErrorChip } from "./ErrorChip";
@@ -68,18 +64,20 @@ function readoutText(t: RetainedTerminal): string {
 }
 
 // Render a (non-array) readout: an errored member shows the shared red #CODE!
-// chip (with the full error tooltip), matching its own value box; everything
-// else is plain formatted text.
+// chip (with the full error tooltip), matching its own value box; an OBJECT
+// kind with a chip (frame/cube/chart/document — valueChipFor, the ONE registry)
+// shows its clickable chip, rendered as a DIRECT flex child so the row's
+// align-items:center centres it (wrapping in the 15px row-val span baseline-
+// aligned the chip low); everything else is plain formatted text.
 function renderReadout(t: RetainedTerminal) {
   const v = readoutValue(t);
   if (isSolError(v)) return <ErrorChip err={v} className="solenoid-group__row-val" />;
-  // A chart member shows the [Chart] chip (opens the popup), not a text label.
-  // Rendered as a DIRECT flex child (like the Frame/Cube/Array chips) so the row's
-  // align-items:center centres it — wrapping it in the 15px row-val span made the
-  // small chip baseline-align low.
-  if (isChartValue(v)) {
-    return <ChartChip value={v} pinNodeId={t.kind === "display" ? t.displayId : t.effNodeId} />;
-  }
+  const chip = valueChipFor(v, {
+    label: t.label,
+    pinNodeId: t.kind === "display" ? t.displayId : t.effNodeId,
+    size: "md",
+  });
+  if (chip) return chip;
   return <span className="solenoid-group__row-val">{readoutText(t)}</span>;
 }
 
@@ -398,10 +396,6 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
                   <span className="solenoid-group__row-label" title={t.label}>{t.label}</span>
                   {combo ? (
                     <span className="solenoid-group__row-val">{t.lanes} lanes</span>
-                  ) : isCubeValue(val) ? (
-                    <CubeChip value={val} label={t.label} pinNodeId={t.effNodeId} />
-                  ) : isFrameValue(val) ? (
-                    <FrameChip value={val} label={t.label} pinNodeId={t.effNodeId} />
                   ) : isArrayValue(val) ? (
                     <ArrayChip value={val} label={t.label} pinNodeId={t.effNodeId} />
                   ) : (

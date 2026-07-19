@@ -27,8 +27,7 @@ import { nodeOutputIsDate, dateFormatDisplay, shouldRenderListInline, formatList
 import { IS_COARSE } from "../coarse";
 import { NodeFormatContext } from "./nodeContext";
 import { describeValueKind } from "../valueKindLabel";
-import { isDocumentValue } from "../documentValue";
-import { DocumentChip } from "./DocumentChip";
+import { valueChipFor } from "./ValueChip";
 import "./nodeCard.css";
 
 /**
@@ -550,17 +549,18 @@ export function ValueDisplay({
   const ctxNodeId = useContext(NodeFormatContext);
   useSyncExternalStore(formatAnnotationStore.subscribe, formatAnnotationStore.version);
 
-  // Safety net: an object-valued kind (chart/frame/cube/diagram/image/lambda) can
-  // slip in through an `any`/casted value. It must NOT reach the number/string
-  // path below (→ "[object Object]" or a .toFixed crash). Surfaces that want the
-  // RICH form (Display, Input Switch) branch on the kind before calling this; here
-  // we show a compact label so nothing ever reads as "[object Object]".
-  // A document gets its chip (click → open the source Report / fly to the Note)
-  // rather than the plain text label.
-  if (isDocumentValue(rawValue)) {
+  // Safety net: an object-valued kind (chart/frame/cube/diagram/image/lambda/
+  // document) can slip in through an `any`/casted value. It must NOT reach the
+  // number/string path below (→ "[object Object]" or a .toFixed crash). Surfaces
+  // that want the RICH form (Display, Input Switch) branch on the kind before
+  // calling this; here a kind with a chip (valueChipFor — the ONE registry) gets
+  // its clickable chip, and the rest a compact text label, so nothing ever reads
+  // as "[object Object]".
+  const kindChip = valueChipFor(rawValue, { size: "sm" });
+  if (kindChip != null) {
     return (
       <div className="solenoid-node__display-value" style={{ display: "flex", justifyContent: "flex-end" }}>
-        <DocumentChip value={rawValue} />
+        {kindChip}
       </div>
     );
   }
