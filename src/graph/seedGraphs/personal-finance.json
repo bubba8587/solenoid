@@ -1888,6 +1888,231 @@
       }
     },
     {
+      "id": "note-advisor",
+      "type": "NoteNode",
+      "x": 4460,
+      "y": -940,
+      "init": {
+        "label": "10 · The advisor's letter",
+        "body": "# Prose that recomputes\nThe **Report** pulls live values through `` `=name` `` refs — dollars arrive through the dashboard's **Format Controllers** (so they read $1,234, not 1234.5678), charts embed as figures. Each verdict word is a tiny circuit: **Compare → IF → two Text nodes**. Drag a slider and the letter changes its mind.",
+        "color": "sky",
+        "width": 420,
+        "height": 220,
+        "collapsed": false
+      }
+    },
+    {
+      "id": "expr-outflow",
+      "type": "ExpressionNode",
+      "x": 4460,
+      "y": -620,
+      "init": {
+        "label": "Outflows (positive)",
+        "expr": "-spend"
+      }
+    },
+    {
+      "id": "disp-outflow",
+      "type": "DisplayNode",
+      "x": 4760,
+      "y": -600,
+      "init": {
+        "label": "Outflows (3 mo)"
+      }
+    },
+    {
+      "id": "txt-rate-good",
+      "type": "TextInputNode",
+      "x": 4460,
+      "y": -240,
+      "init": {
+        "label": "If saving enough",
+        "value": "healthy"
+      }
+    },
+    {
+      "id": "txt-rate-bad",
+      "type": "TextInputNode",
+      "x": 4460,
+      "y": -90,
+      "init": {
+        "label": "If saving too little",
+        "value": "running thin"
+      }
+    },
+    {
+      "id": "cmp-rate",
+      "type": "ComparisonNode",
+      "x": 4760,
+      "y": -200,
+      "init": {
+        "label": "Rate ≥ target?",
+        "op": "gte"
+      }
+    },
+    {
+      "id": "if-rate",
+      "type": "IfNode",
+      "x": 5040,
+      "y": -160,
+      "init": {
+        "label": "Savings verdict"
+      }
+    },
+    {
+      "id": "txt-proj-good",
+      "type": "TextInputNode",
+      "x": 4460,
+      "y": 120,
+      "init": {
+        "label": "If on track",
+        "value": "on track for"
+      }
+    },
+    {
+      "id": "txt-proj-bad",
+      "type": "TextInputNode",
+      "x": 4460,
+      "y": 270,
+      "init": {
+        "label": "If behind",
+        "value": "coming up short of"
+      }
+    },
+    {
+      "id": "cmp-proj",
+      "type": "ComparisonNode",
+      "x": 4760,
+      "y": 160,
+      "init": {
+        "label": "Nest egg ≥ target?",
+        "op": "gte"
+      }
+    },
+    {
+      "id": "if-proj",
+      "type": "IfNode",
+      "x": 5040,
+      "y": 200,
+      "init": {
+        "label": "Retirement verdict"
+      }
+    },
+    {
+      "id": "txt-mort-good",
+      "type": "TextInputNode",
+      "x": 4460,
+      "y": 480,
+      "init": {
+        "label": "If affordable",
+        "value": "sits comfortably inside"
+      }
+    },
+    {
+      "id": "txt-mort-bad",
+      "type": "TextInputNode",
+      "x": 4460,
+      "y": 630,
+      "init": {
+        "label": "If stretched",
+        "value": "pushes past"
+      }
+    },
+    {
+      "id": "cmp-mort",
+      "type": "ComparisonNode",
+      "x": 4760,
+      "y": 520,
+      "init": {
+        "label": "Payment ≤ 28%?",
+        "op": "lte"
+      }
+    },
+    {
+      "id": "if-mort",
+      "type": "IfNode",
+      "x": 5040,
+      "y": 560,
+      "init": {
+        "label": "Mortgage verdict"
+      }
+    },
+    {
+      "id": "txt-bud-good",
+      "type": "TextInputNode",
+      "x": 4460,
+      "y": 840,
+      "init": {
+        "label": "If under budget",
+        "value": "under"
+      }
+    },
+    {
+      "id": "txt-bud-bad",
+      "type": "TextInputNode",
+      "x": 4460,
+      "y": 990,
+      "init": {
+        "label": "If over budget",
+        "value": "over"
+      }
+    },
+    {
+      "id": "cmp-bud",
+      "type": "ComparisonNode",
+      "x": 4760,
+      "y": 880,
+      "init": {
+        "label": "Spend ≤ budget?",
+        "op": "lte"
+      }
+    },
+    {
+      "id": "if-bud",
+      "type": "IfNode",
+      "x": 5040,
+      "y": 920,
+      "init": {
+        "label": "Budget verdict"
+      }
+    },
+    {
+      "id": "report-adv",
+      "type": "ReportNode",
+      "x": 5340,
+      "y": 100,
+      "init": {
+        "label": "Advisor's letter",
+        "color": "sky",
+        "width": 260,
+        "height": 150,
+        "body": "# The advisor's letter\n\nYou brought in **`=income`** this quarter and let **`=outflow`** back out, leaving **`=net`** to put to work. Your savings rate is **`=savingsRate`** — `=rateWord` against the target you set.\n\n`=spendChart`\n\n## Net worth\n\nAssets minus debts puts you at **`=netWorth`** today.\n\n`=classChart`\n\n## Retirement\n\nKeep contributing at today's pace and the nest egg reaches **`=nestEgg`** — `=projWord` your target.\n\n`=growthChart`\n\n## The house\n\nThe mortgage costs **`=payment`** a month, which `=mortWord` the 28%-of-take-home guideline. Carried to term, the interest alone comes to **`=interest`**.\n\n## Groceries\n\n**`=spent`** spent against a **`=budget`** budget for the quarter — you're `=budgetWord` so far.\n\n*Move any slider and this letter rewrites itself.*"
+      }
+    },
+    {
+      "id": "fc-adv-out",
+      "type": "FormatControllerNode",
+      "x": 4760,
+      "y": -600,
+      "init": {
+        "label": "$",
+        "hostNodeId": "disp-outflow",
+        "socketKey": "out",
+        "side": "output",
+        "format": "decimal",
+        "customPattern": "0.00",
+        "decimalDigits": 2,
+        "decimalMode": "places",
+        "unit": "usd",
+        "customUnit": "",
+        "socketDataType": "number",
+        "textCase": "none",
+        "bold": false,
+        "italic": false,
+        "textScale": 14
+      }
+    },
+    {
       "id": "grp-data",
       "type": "GroupNode",
       "x": -1928,
@@ -2166,6 +2391,41 @@
         "collapsed": false,
         "width": 424,
         "height": 1906
+      }
+    },
+    {
+      "id": "grp-advisor",
+      "type": "GroupNode",
+      "x": 4420,
+      "y": -684,
+      "init": {
+        "label": "Advisor report",
+        "members": [
+          "expr-outflow",
+          "disp-outflow",
+          "txt-rate-good",
+          "txt-rate-bad",
+          "cmp-rate",
+          "if-rate",
+          "txt-proj-good",
+          "txt-proj-bad",
+          "cmp-proj",
+          "if-proj",
+          "txt-mort-good",
+          "txt-mort-bad",
+          "cmp-mort",
+          "if-mort",
+          "txt-bud-good",
+          "txt-bud-bad",
+          "cmp-bud",
+          "if-bud",
+          "report-adv",
+          "fc-adv-out"
+        ],
+        "color": "sky",
+        "collapsed": false,
+        "width": 1220,
+        "height": 1974
       }
     }
   ],
@@ -3021,6 +3281,246 @@
       "sourceOutput": "out",
       "target": "fc-d-bbud",
       "targetInput": "in"
+    },
+    {
+      "source": "red-out",
+      "sourceOutput": "result",
+      "target": "expr-outflow",
+      "targetInput": "spend"
+    },
+    {
+      "source": "expr-outflow",
+      "sourceOutput": "result",
+      "target": "disp-outflow",
+      "targetInput": "in"
+    },
+    {
+      "source": "expr-rate",
+      "sourceOutput": "result",
+      "target": "cmp-rate",
+      "targetInput": "a"
+    },
+    {
+      "source": "expr-savet",
+      "sourceOutput": "result",
+      "target": "cmp-rate",
+      "targetInput": "b"
+    },
+    {
+      "source": "cmp-rate",
+      "sourceOutput": "result",
+      "target": "if-rate",
+      "targetInput": "cond"
+    },
+    {
+      "source": "txt-rate-good",
+      "sourceOutput": "value",
+      "target": "if-rate",
+      "targetInput": "then"
+    },
+    {
+      "source": "txt-rate-bad",
+      "sourceOutput": "value",
+      "target": "if-rate",
+      "targetInput": "else"
+    },
+    {
+      "source": "tvm-fv",
+      "sourceOutput": "fv",
+      "target": "cmp-proj",
+      "targetInput": "a"
+    },
+    {
+      "source": "sld-target",
+      "sourceOutput": "value",
+      "target": "cmp-proj",
+      "targetInput": "b"
+    },
+    {
+      "source": "cmp-proj",
+      "sourceOutput": "result",
+      "target": "if-proj",
+      "targetInput": "cond"
+    },
+    {
+      "source": "txt-proj-good",
+      "sourceOutput": "value",
+      "target": "if-proj",
+      "targetInput": "then"
+    },
+    {
+      "source": "txt-proj-bad",
+      "sourceOutput": "value",
+      "target": "if-proj",
+      "targetInput": "else"
+    },
+    {
+      "source": "expr-absp",
+      "sourceOutput": "result",
+      "target": "cmp-mort",
+      "targetInput": "a"
+    },
+    {
+      "source": "expr-aff",
+      "sourceOutput": "result",
+      "target": "cmp-mort",
+      "targetInput": "b"
+    },
+    {
+      "source": "cmp-mort",
+      "sourceOutput": "result",
+      "target": "if-mort",
+      "targetInput": "cond"
+    },
+    {
+      "source": "txt-mort-good",
+      "sourceOutput": "value",
+      "target": "if-mort",
+      "targetInput": "then"
+    },
+    {
+      "source": "txt-mort-bad",
+      "sourceOutput": "value",
+      "target": "if-mort",
+      "targetInput": "else"
+    },
+    {
+      "source": "expr-gabs",
+      "sourceOutput": "result",
+      "target": "cmp-bud",
+      "targetInput": "a"
+    },
+    {
+      "source": "expr-qbud",
+      "sourceOutput": "result",
+      "target": "cmp-bud",
+      "targetInput": "b"
+    },
+    {
+      "source": "cmp-bud",
+      "sourceOutput": "result",
+      "target": "if-bud",
+      "targetInput": "cond"
+    },
+    {
+      "source": "txt-bud-good",
+      "sourceOutput": "value",
+      "target": "if-bud",
+      "targetInput": "then"
+    },
+    {
+      "source": "txt-bud-bad",
+      "sourceOutput": "value",
+      "target": "if-bud",
+      "targetInput": "else"
+    },
+    {
+      "source": "fc-d-in",
+      "sourceOutput": "out",
+      "target": "report-adv",
+      "targetInput": "income"
+    },
+    {
+      "source": "fc-adv-out",
+      "sourceOutput": "out",
+      "target": "report-adv",
+      "targetInput": "outflow"
+    },
+    {
+      "source": "fc-d-net",
+      "sourceOutput": "out",
+      "target": "report-adv",
+      "targetInput": "net"
+    },
+    {
+      "source": "fc-d-rate",
+      "sourceOutput": "out",
+      "target": "report-adv",
+      "targetInput": "savingsRate"
+    },
+    {
+      "source": "if-rate",
+      "sourceOutput": "result",
+      "target": "report-adv",
+      "targetInput": "rateWord"
+    },
+    {
+      "source": "chart-cat",
+      "sourceOutput": "chart",
+      "target": "report-adv",
+      "targetInput": "spendChart"
+    },
+    {
+      "source": "fc-d-nw",
+      "sourceOutput": "out",
+      "target": "report-adv",
+      "targetInput": "netWorth"
+    },
+    {
+      "source": "chart-type",
+      "sourceOutput": "chart",
+      "target": "report-adv",
+      "targetInput": "classChart"
+    },
+    {
+      "source": "fc-d-proj",
+      "sourceOutput": "out",
+      "target": "report-adv",
+      "targetInput": "nestEgg"
+    },
+    {
+      "source": "if-proj",
+      "sourceOutput": "result",
+      "target": "report-adv",
+      "targetInput": "projWord"
+    },
+    {
+      "source": "spark-growth",
+      "sourceOutput": "chart",
+      "target": "report-adv",
+      "targetInput": "growthChart"
+    },
+    {
+      "source": "fc-d-pmt",
+      "sourceOutput": "out",
+      "target": "report-adv",
+      "targetInput": "payment"
+    },
+    {
+      "source": "if-mort",
+      "sourceOutput": "result",
+      "target": "report-adv",
+      "targetInput": "mortWord"
+    },
+    {
+      "source": "fc-d-int",
+      "sourceOutput": "out",
+      "target": "report-adv",
+      "targetInput": "interest"
+    },
+    {
+      "source": "fc-d-bspent",
+      "sourceOutput": "out",
+      "target": "report-adv",
+      "targetInput": "spent"
+    },
+    {
+      "source": "fc-d-bbud",
+      "sourceOutput": "out",
+      "target": "report-adv",
+      "targetInput": "budget"
+    },
+    {
+      "source": "if-bud",
+      "sourceOutput": "result",
+      "target": "report-adv",
+      "targetInput": "budgetWord"
+    },
+    {
+      "source": "disp-outflow",
+      "sourceOutput": "out",
+      "target": "fc-adv-out",
+      "targetInput": "in"
     }
   ],
   "standoffs": [
@@ -3139,6 +3639,18 @@
       },
       "b": {
         "nodeId": "grp-dash",
+        "anchor": "n"
+      },
+      "min": 30,
+      "max": 160
+    },
+    {
+      "a": {
+        "nodeId": "note-advisor",
+        "anchor": "s"
+      },
+      "b": {
+        "nodeId": "grp-advisor",
         "anchor": "n"
       },
       "min": 30,
