@@ -24,6 +24,9 @@ export interface DocumentValue {
   body: string;
   /** The resolved value of each `` `=name` `` ref in `body` (empty for a Note). */
   refs: DocumentRefs;
+  /** The producing node (Report/Note) — lets the Document chip open its source.
+   *  Runtime-only (documents are recomputed, never persisted on cables). */
+  sourceId?: string;
 }
 
 /** Duck-typed brand check — a DocumentValue crosses `document`/`trueany` sockets and
@@ -33,6 +36,6 @@ export function isDocumentValue(v: unknown): v is DocumentValue {
 }
 
 /** Build a DocumentValue (the one place the brand is stamped). */
-export function makeDocument(body: string, refs: DocumentRefs = {}, frontmatter?: Record<string, unknown>): DocumentValue {
-  return { __document: true, body, refs, ...(frontmatter ? { frontmatter } : {}) };
+export function makeDocument(body: string, refs: DocumentRefs = {}, frontmatter?: Record<string, unknown>, sourceId?: string): DocumentValue {
+  return { __document: true, body, refs, ...(frontmatter ? { frontmatter } : {}), ...(sourceId ? { sourceId } : {}) };
 }

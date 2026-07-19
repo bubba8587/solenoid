@@ -99,6 +99,6 @@ export class ReportNode extends ClassicPreset.Node {
   // as NoteNode: a bare `new ReportNode().data()` must not throw with no engine.
   data(inputs?: Record<string, unknown[]>): { document: DocumentValue } {
     this._refValues = new Map(this._refKeys.map((k) => [k, inputs?.[k]?.[0] ?? null]));
-    return { document: makeDocument(this.body, Object.fromEntries(this._refValues)) };
+    return { document: makeDocument(this.body, Object.fromEntries(this._refValues), undefined, this.id) };
   }
 }
