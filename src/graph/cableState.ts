@@ -96,19 +96,32 @@ function notifyHighlights() {
   for (const l of _hlListeners) l();
 }
 
+// Skip the notify when the incoming keys equal the slot's current set — the drag
+// handler calls setDrag on EVERY pointermove, and each notify re-renders every
+// mounted NodeSocket, CollapsedInputPill and GroupNode summary (hidden collapsed
+// members included), which made cable drags jank on a big graph.
+function sameKeys(cur: Set<string>, keys: string[]): boolean {
+  if (cur.size !== keys.length) return false;
+  for (const k of keys) if (!cur.has(k)) return false;
+  return true;
+}
+
 export const socketHighlightStore = {
   version: () => _hlVersion,
   isHighlighted: (key: string) =>
     _hlSlots.drag.has(key) || _hlSlots.cableHover.has(key) || _hlSlots.socketHover.has(key),
   setDrag: (keys: string[]) => {
+    if (sameKeys(_hlSlots.drag, keys)) return;
     _hlSlots.drag = new Set(keys);
     notifyHighlights();
   },
   setCableHover: (keys: string[]) => {
+    if (sameKeys(_hlSlots.cableHover, keys)) return;
     _hlSlots.cableHover = new Set(keys);
     notifyHighlights();
   },
   setSocketHover: (keys: string[]) => {
+    if (sameKeys(_hlSlots.socketHover, keys)) return;
     _hlSlots.socketHover = new Set(keys);
     notifyHighlights();
   },
