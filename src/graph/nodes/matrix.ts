@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { numIn, numOut, listIn, anyIn, anyListIn, anyListOut, anyTableIn, anyTableOut, adoptiveTableIn, adoptiveTableOut, tableIn, tableOut, frameIn } from "./shared";
+import { numIn, numOut, listIn, anyIn, anyListIn, anyTableIn, anyTableOut, adoptiveTableIn, adoptiveTableOut, adoptiveListOut, tableIn, tableOut, frameIn } from "./shared";
 import type { PassthroughSpec } from "./passthrough";
 import { toAnyMatrix, type Cell } from "./coerce";
 import { tableSocket, strTableSocket, dateTableSocket, logicalTableSocket } from "../sockets";
@@ -533,6 +533,15 @@ export class TableReshapeNode extends ClassicPreset.Node {
   literals: Record<string, number> = { wrapCount: 3 };
   width = 180; height = 200;
 
+  /** Element-preserving, rank-CROSSING: the output adopts the input's element
+   *  FAMILY at its own declared rank (strlist → WRAPROWS → strtable; strtable →
+   *  flatten → strlist) — the projectTypeToBase half of output adoption. */
+  passthrough = (): PassthroughSpec[] => [{
+    output: "result",
+    inputs: [this.op === "wraprows" || this.op === "wrapcols" ? "list" : "matrix"],
+    combine: "single",
+  }];
+
   constructor(init?: { label?: string; op?: TableReshapeOp }) {
     super("TableReshape");
     this.op    = init?.op    ?? "wraprows";
@@ -540,14 +549,15 @@ export class TableReshapeNode extends ClassicPreset.Node {
     const wraps = this.op === "wraprows" || this.op === "wrapcols";
     // Element-agnostic, rank-honest: wrapping takes a 1-D list of any family
     // (`anylist`) and produces a matrix (the 2-D wildcard `anytable`);
-    // flattening produces a 1-D list of unknown element type (`anylist`).
+    // flattening produces a 1-D list of unknown element type (`anylist`). The
+    // outputs are ADOPTIVE at their rank — they color to the incoming family.
     if (wraps) {
       this.addInput("list",      anyListIn("List"));
       this.addInput("wrapCount", numIn("Wrap count"));
-      this.addOutput("result", anyTableOut("Table"));
+      this.addOutput("result", adoptiveTableOut("Table"));
     } else {
       this.addInput("matrix", anyTableIn("Matrix"));
-      this.addOutput("result", anyListOut("List"));
+      this.addOutput("result", adoptiveListOut("List"));
     }
   }
 

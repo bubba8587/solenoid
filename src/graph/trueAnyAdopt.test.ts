@@ -4,8 +4,8 @@ import { reconcileTrueAnyTypes, type AdoptEditor } from "./trueAnyAdopt";
 import { DisplayNode } from "./nodes/display";
 import { IfNode } from "./nodes/logic";
 import { CableSwitchNode } from "./nodes/control";
-import { ListIndexNode, ReverseNode } from "./rete-nodes";
-import { numberSocket, stringSocket, frameSocket, dateListSocket, SolenoidSocket } from "./sockets";
+import { ListIndexNode, ReverseNode, SortByNode, GroupByNode, SetOpNode, ConcatListsNode, InterleaveNode, TableReshapeNode } from "./rete-nodes";
+import { numberSocket, stringSocket, frameSocket, dateListSocket, strListSocket, strTableSocket, SolenoidSocket } from "./sockets";
 
 // Same fake-editor surface as conduitTrace.test.ts — the pass only reads
 // getNodes/getNode/getConnections and mutates sockets in place.
@@ -149,5 +149,74 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
     reconcileTrueAnyTypes(ed);
     expect(dt(idx.inputs.list?.socket)).toBe("frame");
     expect(dt(idx.outputs.result?.socket)).toBe("trueany"); // a cube cell's type varies per row
+  });
+
+  // The 2026-07-19 sweep: every honest element-preserving list op adopts its
+  // output (a String List through it never reads back as the neutral Any List —
+  // the stale glyph the author caught on a collapsed group's edge socket).
+  it("Sort By / Group Lists keys / Set / Concat / Interleave forward the element type", () => {
+    const strList = () => {
+      const n = new ClassicPreset.Node("Strs");
+      n.addOutput("out", new ClassicPreset.Output(strListSocket));
+      return n;
+    };
+    const s1 = strList(), s2 = strList();
+
+    const sort = new SortByNode();
+    reconcileTrueAnyTypes(makeEditor([s1, sort], [
+      { source: s1.id, sourceOutput: "out", target: sort.id, targetInput: "array" },
+    ]));
+    expect(dt(sort.outputs.list?.socket)).toBe("strlist");
+
+    const gb = new GroupByNode();
+    reconcileTrueAnyTypes(makeEditor([s1, gb], [
+      { source: s1.id, sourceOutput: "out", target: gb.id, targetInput: "keys" },
+    ]));
+    expect(dt(gb.outputs.keys?.socket)).toBe("strlist");
+    expect(dt(gb.outputs.values?.socket)).toBe("list"); // aggregates stay numeric
+
+    const set = new SetOpNode();
+    reconcileTrueAnyTypes(makeEditor([s1, s2, set], [
+      { source: s1.id, sourceOutput: "out", target: set.id, targetInput: "a" },
+      { source: s2.id, sourceOutput: "out", target: set.id, targetInput: "b" },
+    ]));
+    expect(dt(set.outputs.result?.socket)).toBe("strlist");
+
+    const cat = new ConcatListsNode();
+    const catKeys = cat.valueInputKeys();
+    reconcileTrueAnyTypes(makeEditor([s1, s2, cat], [
+      { source: s1.id, sourceOutput: "out", target: cat.id, targetInput: catKeys[0] },
+      { source: s2.id, sourceOutput: "out", target: cat.id, targetInput: catKeys[1] },
+    ]));
+    expect(dt(cat.outputs.result?.socket)).toBe("strlist");
+
+    const il = new InterleaveNode();
+    reconcileTrueAnyTypes(makeEditor([s1, s2, il], [
+      { source: s1.id, sourceOutput: "out", target: il.id, targetInput: "a" },
+      { source: s2.id, sourceOutput: "out", target: il.id, targetInput: "b" },
+    ]));
+    expect(dt(il.outputs.result?.socket)).toBe("strlist");
+  });
+
+  it("rank-CROSSING reshapes project the element family onto the output's rank", () => {
+    const strs = new ClassicPreset.Node("Strs");
+    strs.addOutput("out", new ClassicPreset.Output(strListSocket));
+    const wrap = new TableReshapeNode({ op: "wraprows" });
+    reconcileTrueAnyTypes(makeEditor([strs, wrap], [
+      { source: strs.id, sourceOutput: "out", target: wrap.id, targetInput: "list" },
+    ]));
+    expect(dt(wrap.outputs.result?.socket)).toBe("strtable"); // strlist in → strtable out
+
+    const tbl = new ClassicPreset.Node("StrTable");
+    tbl.addOutput("out", new ClassicPreset.Output(strTableSocket));
+    const flat = new TableReshapeNode({ op: "tocol" });
+    const flatKey = Object.keys(flat.inputs)[0];
+    reconcileTrueAnyTypes(makeEditor([tbl, flat], [
+      { source: tbl.id, sourceOutput: "out", target: flat.id, targetInput: flatKey },
+    ]));
+    expect(dt(flat.outputs.result?.socket)).toBe("strlist"); // strtable in → strlist out
+    // Unwired → both revert to their declared wildcard rank.
+    reconcileTrueAnyTypes(makeEditor([tbl, flat], []));
+    expect(dt(flat.outputs.result?.socket)).toBe("anylist");
   });
 });
