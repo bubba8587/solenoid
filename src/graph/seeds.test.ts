@@ -57,6 +57,35 @@ for (const [path, mod] of Object.entries(seedModules)) {
       }
     });
 
+    // A seed may only author `literals` / `stringLiterals` where the user could
+    // have typed them: a class DECLARES the map iff its card edits it inline.
+    // A wire-driven card (the Equation family) declares neither, so authoring a
+    // literal there would plant a hardcoded known the user can't see or edit on
+    // the card — the "TVM fv: 0" bug. Load enforces the same rule (persistence
+    // restores literals only onto declaring classes); this catches the seed at
+    // authoring time instead of silently dropping it.
+    it("authored literals land on inline-editable (declaring) classes only", () => {
+      const problems: string[] = [];
+      for (const sn of g.nodes) {
+        const Ctor = (Nodes as unknown as Record<string, unknown>)[sn.type] as
+          (new (init?: Record<string, unknown>) => AnyNode) | undefined;
+        if (!Ctor) continue; // unknown type — already failed above
+        const fresh = new Ctor({ ...sn.init }) as unknown as Record<string, unknown>;
+        for (const field of ["literals", "stringLiterals"] as const) {
+          const authored = sn[field];
+          if (!authored || Object.keys(authored).length === 0) continue;
+          if (typeof fresh[field] !== "object") {
+            problems.push(
+              `${sn.id} (${sn.type}) authors ${field} {${Object.keys(authored).join(", ")}} ` +
+              `but the class doesn't declare ${field} — its card is wire-driven, so this ` +
+              `hardcodes a value the user can't edit inline. Wire a visible input node instead.`,
+            );
+          }
+        }
+      }
+      expect(problems, problems.join("\n")).toEqual([]);
+    });
+
     it("every connection lands on existing, compatible sockets", () => {
       for (const c of g.connections) {
         const src = byId.get(c.source);

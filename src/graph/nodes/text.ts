@@ -667,6 +667,7 @@ export class NumberValueNode extends ClassicPreset.Node {
 export class TextMapNode extends ClassicPreset.Node {
   label: string;
   op: TextTransformOp;
+  stringLiterals: Record<string, string> = {}; // strings: typeable strlist CSV
   cachedResult: string[] | null = null;
   width = 180; height = 170;
 

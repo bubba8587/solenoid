@@ -499,6 +499,7 @@ export class DateAddNode extends ClassicPreset.Node {
 export class WorkdayNode extends ClassicPreset.Node {
   label: string;
   literals: Record<string, number> = { days: 5, weekend_code: 1 };
+  stringLiterals: Record<string, string> = {}; // holidays: typeable datelist CSV
   cachedResult: number | null = null;
   width = 180; height = 230;
 
@@ -537,6 +538,7 @@ export class WorkdayNode extends ClassicPreset.Node {
 export class NetworkdaysNode extends ClassicPreset.Node {
   label: string;
   literals: Record<string, number> = { weekend_code: 1 };
+  stringLiterals: Record<string, string> = {}; // holidays: typeable datelist CSV
   cachedResult: number | null = null;
   width = 180; height = 230;
 

@@ -18,6 +18,24 @@ edge round independently. Possible directions not yet tried: draw the ring so it
 (e.g. `inset:0` + account for the 2px border, or a box-shadow ring) instead of a 2px-offset `::after`;
 or pixel-snap the card box. Radius itself is correct; don't re-touch it. Parked by author.
 
+### SESSION DIGEST (2026-07-19b — no hidden hardcoded knowns: literal maps gated on declaration)
+Author bug report: the PF mortgage TVM node shipped `literals: { fv: 0 }` — a hardcoded known on a
+wire-driven card, invisible and uneditable. Root-caused as a class of hole, not a one-off:
+- **Equation family is now literal-free.** `EquationNode` (+ `TvmNode` plumbing, `TriangleSolverNode`)
+  lost the `literals` field and the data() fallback — variables are known ONLY through cables. The
+  zero-rate TVM delegate reads the wired rate directly.
+- **Load gate:** persistence restores `literals`/`stringLiterals` only onto a class that DECLARES the
+  map (declaring ⟺ the card edits it inline), so no save can smuggle a value past the card.
+- **Guards:** `seeds.test.ts` rejects seed-authored literals on non-declaring classes;
+  `coerceInputs.test.ts` sweeps `FLAT_CATALOG` — a typeable-list input (strlist/datelist/logicallist)
+  implies a `stringLiterals` declaration. That sweep flagged 8 classes whose typed CSV would have
+  DROPPED on reload under the gate (Workday, Networkdays, TextMap, BuildFrame, Select/Drop/Rename/
+  Unpivot) — all now declare. See subsystem-invariants "Inline literal maps".
+- **Seeds fixed to wire visible inputs:** PF `in-endbal` Number ("End balance" 0) → `tvm-pmt.fv`
+  (generator + regen, placed in the tuned grp-mort frame); equation-solver's two truth-check demos
+  got 3-4-5 / 7-8-11 Number trios wired in, note text updated.
+- tsc clean, vitest 3041 green.
+
 ### SESSION DIGEST (2026-07-19 — GPU-renderer cables stay DOM; seed-tune harness; PF note ties)
 - **GPU renderer: cables never draw on the canvas (`37995b5b`).** The gesture-time canvas stroke
   was fully opaque (DOM cables idle at 0.72 opacity) and reproduced none of hover width, ribbons,

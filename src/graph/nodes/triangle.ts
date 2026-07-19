@@ -204,7 +204,6 @@ type PartOut = PartCell | PartCell[];
 
 export class TriangleSolverNode extends ClassicPreset.Node {
   label: string;
-  literals: Record<string, number> = {};
   /** Per-part displayed value (given passthrough or solved) — a scalar, or a
    *  list when parts are broadcast over parallel lists. */
   cachedValues: Record<string, PartOut> = {};
@@ -242,9 +241,10 @@ export class TriangleSolverNode extends ClassicPreset.Node {
   }
 
   data(inputs: Record<string, (number | number[] | null)[] | undefined>) {
-    // Read each part: number | number[] | null (a wired list broadcasts).
+    // Read each part: number | number[] | null (a wired list broadcasts). Parts
+    // are known only through their cables — wire-driven like the Equation card.
     const raw = {} as Record<PartKey, number | number[] | null>;
-    for (const k of PART_KEYS) raw[k] = readInput(inputs[k], this.literals[k] ?? null);
+    for (const k of PART_KEYS) raw[k] = readInput(inputs[k], null);
     const listKeys = PART_KEYS.filter((k) => Array.isArray(raw[k]));
 
     if (listKeys.length === 0) {

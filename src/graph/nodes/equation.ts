@@ -1,10 +1,11 @@
 // The Equation node — the first ACAUSAL node in the causal dataflow graph.
 // Type a relation ("V = I * R"); every variable becomes an input AND an output.
-// Leave exactly one variable unknown (unwired, empty literal) and the node
-// solves for it — symbolically where the algebra inverts (equationSolve.ts),
-// numerically otherwise. Wire every variable and the always-present Check
-// output turns into a truth check with a relative tolerance. (Literals in a
-// saved graph still count as known values; the card itself is wire-driven.)
+// Leave exactly one variable unknown (unwired) and the node solves for it —
+// symbolically where the algebra inverts (equationSolve.ts), numerically
+// otherwise. Wire every variable and the always-present Check output turns
+// into a truth check with a relative tolerance. The card is wire-driven: a
+// variable is known ONLY through its cable — there is no inline-literal
+// fallback, so a save/seed can't carry an invisible hardcoded known.
 // Numeric domain only (scalars + 1-D lists; symbolic solving broadcasts).
 
 import { ClassicPreset } from "rete";
@@ -89,7 +90,6 @@ export class EquationNode extends ClassicPreset.Node {
   label: string;
   expr: string;
   locked: boolean; // pack presets may lock the relation, like Expression
-  literals: Record<string, number> = {};
   varNames: string[] = [];
   /** In-node message (underdetermined, syntax) — richer than a socket error. */
   cachedError: string | null = null;
@@ -113,12 +113,11 @@ export class EquationNode extends ClassicPreset.Node {
   width = 240;
   height = 220;
 
-  constructor(init?: { label?: string; expr?: string; locked?: boolean; literals?: Record<string, number>; varDescriptions?: Record<string, string> }) {
+  constructor(init?: { label?: string; expr?: string; locked?: boolean; varDescriptions?: Record<string, string> }) {
     super("Equation");
     this.label = init?.label ?? "Equation";
     this.expr = init?.expr ?? "";
     this.locked = init?.locked ?? false;
-    if (init?.literals) this.literals = { ...init.literals };
     if (init?.varDescriptions) this.varDescriptions = { ...init.varDescriptions };
     // Output key stays "holds" (existing cables reference it); the user-facing
     // name is "Check".
@@ -192,14 +191,12 @@ export class EquationNode extends ClassicPreset.Node {
       return finish(this.shapeError ?? "Syntax error");
     }
 
-    // Known = wired (even to a blank), or a typed literal. Unknown = neither.
+    // Known = wired (even to a blank). Unknown = unwired.
     const env: Record<string, unknown> = {};
     const unknowns: string[] = [];
     for (const v of this.varNames) {
       if (inputs[v] !== undefined && inputs[v].length > 0) {
         env[v] = inputs[v][0];
-      } else if (this.literals[v] !== undefined) {
-        env[v] = this.literals[v];
       } else {
         unknowns.push(v);
       }

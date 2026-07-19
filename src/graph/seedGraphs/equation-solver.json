@@ -290,6 +290,36 @@
       }
     },
     {
+      "id": "n-ta",
+      "type": "NumberInputNode",
+      "x": 0,
+      "y": 2600,
+      "init": {
+        "label": "Side a",
+        "value": 3
+      }
+    },
+    {
+      "id": "n-tb",
+      "type": "NumberInputNode",
+      "x": 0,
+      "y": 2725,
+      "init": {
+        "label": "Side b",
+        "value": 4
+      }
+    },
+    {
+      "id": "n-tc",
+      "type": "NumberInputNode",
+      "x": 0,
+      "y": 2850,
+      "init": {
+        "label": "Hypotenuse c",
+        "value": 5
+      }
+    },
+    {
       "id": "eq-check-true",
       "type": "EquationNode",
       "x": 360,
@@ -297,11 +327,6 @@
       "init": {
         "label": "3-4-5 triangle?",
         "expr": "a^2 + b^2 = c^2"
-      },
-      "literals": {
-        "a": 3,
-        "b": 4,
-        "c": 5
       }
     },
     {
@@ -314,6 +339,36 @@
       }
     },
     {
+      "id": "n-fa",
+      "type": "NumberInputNode",
+      "x": 0,
+      "y": 3020,
+      "init": {
+        "label": "Side a",
+        "value": 7
+      }
+    },
+    {
+      "id": "n-fb",
+      "type": "NumberInputNode",
+      "x": 0,
+      "y": 3145,
+      "init": {
+        "label": "Side b",
+        "value": 8
+      }
+    },
+    {
+      "id": "n-fc",
+      "type": "NumberInputNode",
+      "x": 0,
+      "y": 3270,
+      "init": {
+        "label": "Hypotenuse c",
+        "value": 11
+      }
+    },
+    {
       "id": "eq-check-false",
       "type": "EquationNode",
       "x": 360,
@@ -321,11 +376,6 @@
       "init": {
         "label": "7-8-11 triangle?",
         "expr": "a^2 + b^2 = c^2"
-      },
-      "literals": {
-        "a": 7,
-        "b": 8,
-        "c": 11
       }
     },
     {
@@ -344,7 +394,7 @@
       "y": 2780,
       "init": {
         "label": "All knowns → a check",
-        "body": "With every variable filled in (typed here, no cables needed), there is nothing left to solve — **Check** turns into a TRUE/FALSE test with a float-safe tolerance. 3-4-5 passes; 7-8-11 misses (49 + 64 ≠ 121).",
+        "body": "With every variable wired, there is nothing left to solve — **Check** turns into a TRUE/FALSE test with a float-safe tolerance. 3-4-5 passes; 7-8-11 misses (49 + 64 ≠ 121).",
         "width": 400,
         "height": 150
       }
@@ -500,6 +550,42 @@
       "sourceOutput": "x",
       "target": "disp-root",
       "targetInput": "in"
+    },
+    {
+      "source": "n-ta",
+      "sourceOutput": "value",
+      "target": "eq-check-true",
+      "targetInput": "a"
+    },
+    {
+      "source": "n-tb",
+      "sourceOutput": "value",
+      "target": "eq-check-true",
+      "targetInput": "b"
+    },
+    {
+      "source": "n-tc",
+      "sourceOutput": "value",
+      "target": "eq-check-true",
+      "targetInput": "c"
+    },
+    {
+      "source": "n-fa",
+      "sourceOutput": "value",
+      "target": "eq-check-false",
+      "targetInput": "a"
+    },
+    {
+      "source": "n-fb",
+      "sourceOutput": "value",
+      "target": "eq-check-false",
+      "targetInput": "b"
+    },
+    {
+      "source": "n-fc",
+      "sourceOutput": "value",
+      "target": "eq-check-false",
+      "targetInput": "c"
     },
     {
       "source": "eq-check-true",

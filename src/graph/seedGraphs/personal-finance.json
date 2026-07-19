@@ -1033,6 +1033,16 @@
       }
     },
     {
+      "id": "in-endbal",
+      "type": "NumberInputNode",
+      "x": 2216,
+      "y": 1900,
+      "init": {
+        "label": "End balance",
+        "value": 0
+      }
+    },
+    {
       "id": "expr-mapr",
       "type": "ExpressionNode",
       "x": 2481,
@@ -1060,9 +1070,6 @@
       "init": {
         "label": "Monthly payment",
         "paymentTiming": "end"
-      },
-      "literals": {
-        "fv": 0
       }
     },
     {
@@ -2050,6 +2057,7 @@
           "sld-loan",
           "sld-apr",
           "in-term",
+          "in-endbal",
           "expr-mapr",
           "expr-mnper",
           "tvm-pmt",
@@ -2653,6 +2661,12 @@
       "sourceOutput": "value",
       "target": "tvm-pmt",
       "targetInput": "pv"
+    },
+    {
+      "source": "in-endbal",
+      "sourceOutput": "value",
+      "target": "tvm-pmt",
+      "targetInput": "fv"
     },
     {
       "source": "tvm-pmt",
