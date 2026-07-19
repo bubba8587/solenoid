@@ -119,6 +119,8 @@ let _selectedId: string | null = null;
 let _version = 0;
 const _listeners = new Set<Listener>();
 let _nextId = 1;
+let _participants: Set<string> | null = null;
+let _participantsVersion = -1;
 
 function notify() {
   _version++;
@@ -131,6 +133,17 @@ export const standoffStore = {
   version: () => _version,
   selected: () => _selectedId,
   isEmpty: () => _standoffs.length === 0,
+  /** Every node id that appears as a standoff end, cached by store version.
+   *  Ties are SPARSE (each Note to its group), so drag-time work gates on this:
+   *  a node outside the set can't tow anything and its move draws no bar. */
+  participants(): ReadonlySet<string> {
+    if (_participants === null || _participantsVersion !== _version) {
+      _participants = new Set<string>();
+      for (const s of _standoffs) { _participants.add(s.a.nodeId); _participants.add(s.b.nodeId); }
+      _participantsVersion = _version;
+    }
+    return _participants;
+  },
 
   add(a: StandoffEnd, b: StandoffEnd, min: number, max: number, locked = false): Standoff {
     const lo = Math.max(STANDOFF_MIN, Math.min(min, max));

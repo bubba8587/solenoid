@@ -1315,6 +1315,18 @@ export function Canvas() {
           if (p) settleStandoffNetwork(p);
         });
       };
+      // The bar/endpoint repaint tick, rAF-coalesced for the same reason: each
+      // bump makes StandoffLayer re-measure every tied node (2 forced reflows
+      // per bar) and IsolateEndpoints re-query its terminals. Per-pointermove
+      // bumps run faster than the refresh rate for zero visual gain.
+      let standoffTickRaf = 0;
+      const scheduleStandoffTickBump = () => {
+        if (standoffTickRaf) return;
+        standoffTickRaf = requestAnimationFrame(() => {
+          standoffTickRaf = 0;
+          standoffLayoutTick.bump();
+        });
+      };
       // Position at pick time, to tell a real drag from a plain click on
       // `nodedragged` (rete emits it on every pointerup after a pick, moved
       // or not).
@@ -1484,14 +1496,27 @@ export function Canvas() {
           // Live standoff chain-pull: dragging a linked item tows its partners
           // once a band goes taut (and shoves them at the minimum). Pin the
           // whole dragged selection so the solver only moves the others.
+          // Gated on the dragged selection actually TOUCHING a tie: ties are
+          // sparse (each Note to its group), and running the settle — which
+          // force-reflows every tied node's box — on every pointermove made
+          // plain node drags jank once the PF seed grew to 11 ties.
           if (ctx.data.id === dragPickId && !standoffSolving && !standoffStore.isEmpty()) {
+            const parts = standoffStore.participants();
             const pinned = new Set<string>([ctx.data.id]);
+            let touchesTie = parts.has(ctx.data.id);
             for (const n of editor.getNodes()) {
-              if ((n as { selected?: boolean }).selected) pinned.add(n.id);
+              if ((n as { selected?: boolean }).selected) {
+                pinned.add(n.id);
+                if (parts.has(n.id)) touchesTie = true;
+              }
             }
-            scheduleStandoffSettle(pinned);
+            if (touchesTie) scheduleStandoffSettle(pinned);
           }
-          standoffLayoutTick.bump();
+          // Repaint the bar/endpoint layer only when something it draws moved:
+          // a standoff end, or any node while isolate shows its terminals.
+          if (standoffStore.participants().has(ctx.data.id) || isolateStore.isActive()) {
+            scheduleStandoffTickBump();
+          }
         }
         // Dragging an FC (nodepicked already dropped it from the follow set):
         //  • onto a DIFFERENT socket → re-home (re-splice into that host),

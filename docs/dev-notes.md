@@ -34,6 +34,24 @@ wire-driven card, invisible and uneditable. Root-caused as a class of hole, not 
 - **Seeds fixed to wire visible inputs:** PF `in-endbal` Number ("End balance" 0) → `tvm-pmt.fv`
   (generator + regen, placed in the tuned grp-mort frame); equation-solver's two truth-check demos
   got 3-4-5 / 7-8-11 Number trios wired in, note text updated.
+- **PF seed: "Advisor report" group (author ask).** A Report written like a financial advisor's
+  letter, right of the Dashboard (fresh space x≥4460, sky). Scalar `=refs` wire from the DASHBOARD
+  FCs' `out` sockets — an FC output carries the value + its $/% annotation, so `resolveRefAnnotation`
+  (inAnnotation, one hop) renders "$1,234"/"46%" without new format nodes. Verdict words are
+  in-graph circuits: Compare → IF → two Text nodes per sentence (savings healthy/running thin,
+  retirement on-track/short, mortgage inside/past the 28% guideline, groceries under/over budget).
+  Charts embed from the existing chart-cat / chart-type / spark-growth; one new
+  expr-outflow → disp-outflow (+docked FC) flips the negative spend sum for prose. Eyeball pending.
+- **Single-node drag jank FIXED (author report).** Root cause via drag-path audit: the 2026-07-19
+  note→group ties made the standoff machinery hot for EVERY drag — `nodetranslated` scheduled a
+  settle (`standoffBoxes` force-reflows every tied node, now ~22) and bumped `standoffLayoutTick`
+  per POINTERMOVE (unthrottled), each bump re-measuring all 11 bars (2 forced reflows each) in
+  `StandoffLayer`. Fix: `standoffStore.participants()` (Set of tie ends, cached by version);
+  chain-pull settle gated on the dragged selection touching a tie; the tick bump gated on
+  (participant moved OR isolate active — `IsolateEndpoints` shares the tick) and rAF-coalesced
+  (`scheduleStandoffTickBump`). Dragging an untied node now does zero standoff work; dragging a
+  tied note/group settles + repaints once per frame. The GPU-renderer path was ruled out (default
+  is DOM; `37995b5b` added no per-move work).
 - tsc clean, vitest 3041 green.
 
 ### SESSION DIGEST (2026-07-19 — GPU-renderer cables stay DOM; seed-tune harness; PF note ties)
