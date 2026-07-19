@@ -2,7 +2,7 @@ import { ClassicPreset } from "rete";
 import { numListSocket, strListSocket, dateListSocket, logicalListSocket, type SolenoidSocket } from "../sockets";
 import { parseDateToSerial } from "./date";
 import { getRecalcGen } from "../process";
-import { listIn, listOut, numIn, numOut, anyIn, trueAnyIn, staticTrueAnyOut, strIn, logicalOut, logicalListOut, frameIn, frameOut, anyListIn, anyListOut, adoptiveListIn, adoptiveListOut } from "./shared";
+import { listIn, listOut, numIn, numOut, anyIn, trueAnyIn, staticTrueAnyOut, strIn, logicalOut, logicalListOut, frameIn, frameOut, anyListIn, adoptiveListIn, adoptiveListOut } from "./shared";
 import type { PassthroughSpec } from "./passthrough";
 import { pairIdsFromKeys } from "./logic";
 import { passesFilter, VALUELESS_FILTER_OPS, type FilterOp, type FilterCondConfig } from "../frameVerbs";
@@ -781,6 +781,9 @@ export const SET_OP_META: Record<SetOp, { label: string; tex: string; plain: str
 // where it belongs (kept in union, and on the A-side of difference / symmetric difference;
 // dropped from intersection) rather than silently vanishing, same stance as UNIQUE.
 export class SetOpNode extends ClassicPreset.Node {
+  /** Element-preserving: the result is a subset of A ∪ B, so the output adopts
+   *  the agreed element type (a strlist ∖ strlist stays a strlist). */
+  passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["a", "b"], combine: "agree" }];
   label: string;
   op: SetOp;
   cachedList: number[] = [];
@@ -794,12 +797,14 @@ export class SetOpNode extends ClassicPreset.Node {
     this.op = init?.op ?? "difference";
     this.addInput("a", anyListIn("A"));
     this.addInput("b", anyListIn("B"));
-    this.addOutput("result", anyListOut("Result"));
+    this.addOutput("result", adoptiveListOut("Result"));
   }
 
   data(inputs: { a?: unknown[][]; b?: unknown[][] }) {
-    const a = (inputs.a?.[0] ?? []) as unknown[];
-    const b = (inputs.b?.[0] ?? []) as unknown[];
+    // The passthrough declaration keeps UnitCells on a/b; membership keys by
+    // display magnitude (the pre-units behavior) — strip before matching.
+    const a = stripUnitCells((inputs.a?.[0] ?? []) as unknown[]) as unknown[];
+    const b = stripUnitCells((inputs.b?.[0] ?? []) as unknown[]) as unknown[];
 
     // Value-membership of a side — blanks and errors are excluded (not members).
     const memberSet = (arr: unknown[]) => {
@@ -1056,6 +1061,9 @@ export class DropNode extends ClassicPreset.Node {
 // concatenated in row order. Rows are wire-only: a typed literal list belongs
 // to List Input, not here.
 export class ConcatListsNode extends ClassicPreset.Node {
+  /** Element-preserving: the output is exactly the rows' cells in order, so it
+   *  adopts the agreed row type (all strlist rows → a strlist out). */
+  passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: this.valueInputKeys(), combine: "agree" }];
   label: string;
   cachedList: unknown[] = [];
   nextInputId = 0;
@@ -1068,7 +1076,7 @@ export class ConcatListsNode extends ClassicPreset.Node {
     const vKeys = (init?.valueKeys ?? []).filter((k) => k.startsWith("l"));
     if (vKeys.length) for (const k of vKeys) this.addInputWithKey(k);
     else for (let i = 0; i < 2; i++) this.addValueInput();
-    this.addOutput("result", anyListOut("Combined"));
+    this.addOutput("result", adoptiveListOut("Combined"));
   }
 
   private addInputWithKey(key: string): void {
@@ -1360,6 +1368,9 @@ export class NthElementNode extends ClassicPreset.Node {
 
 // ─── Interleave ───────────────────────────────────────────────────────────────
 export class InterleaveNode extends ClassicPreset.Node {
+  /** Element-preserving: cells alternate from A and B untouched, so the output
+   *  adopts the agreed type of the two sides. */
+  passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["a", "b"], combine: "agree" }];
   label: string;
   cachedList: unknown[] = [];
   width = 180; height = 160;
@@ -1369,7 +1380,7 @@ export class InterleaveNode extends ClassicPreset.Node {
     this.label = init?.label ?? "Interleave";
     this.addInput("a", anyListIn("A"));
     this.addInput("b", anyListIn("B"));
-    this.addOutput("result", anyListOut("Interleaved"));
+    this.addOutput("result", adoptiveListOut("Interleaved"));
   }
 
   data(inputs: { a?: unknown[][]; b?: unknown[][] }) {
@@ -1883,6 +1894,10 @@ export class SequenceNode extends ClassicPreset.Node {
 // ─── SORTBY ───────────────────────────────────────────────────────────────────
 
 export class SortByNode extends ClassicPreset.Node {
+  /** Element-preserving reorder: the output adopts the sorted array's type (the
+   *  by_array keys are a side input — not in the spec, so they stay unit-blind
+   *  numbers for the comparison). */
+  passthrough = (): PassthroughSpec[] => [{ output: "list", inputs: ["array"], combine: "single" }];
   label: string;
   cachedList: unknown[] = [];
   width = 180; height = 175;
@@ -1896,7 +1911,7 @@ export class SortByNode extends ClassicPreset.Node {
     // numeric (widening those to text keys is the deferred string-ordering call).
     this.addInput("array",    anyListIn("Array to sort"));
     this.addInput("by_array", listIn("Sort by (parallel list)"));
-    this.addOutput("list", anyListOut("Sorted list"));
+    this.addOutput("list", adoptiveListOut("Sorted list"));
   }
 
   data(inputs: { array?: unknown[][]; by_array?: (number | null | SolError)[][] }): { list: unknown[] } {
@@ -2002,6 +2017,9 @@ function groupByAggregate(vals: number[], op: GroupByOp): number {
 }
 
 export class GroupByNode extends ClassicPreset.Node {
+  /** The unique-keys output is a SUBSET of the keys input (first occurrences),
+   *  so it adopts the keys' element type; the aggregated values stay numeric. */
+  passthrough = (): PassthroughSpec[] => [{ output: "keys", inputs: ["keys"], combine: "single" }];
   label: string;
   op: GroupByOp;
   cachedKeys: (string | number)[] | null = null;
@@ -2014,7 +2032,7 @@ export class GroupByNode extends ClassicPreset.Node {
     this.op    = init?.op    ?? "sum";
     this.addInput("keys",   anyListIn("Keys"));
     this.addInput("values", listIn("Values"));
-    this.addOutput("keys",   anyListOut("Unique keys"));
+    this.addOutput("keys",   adoptiveListOut("Unique keys"));
     this.addOutput("values", listOut("Aggregated"));
   }
 
@@ -2022,7 +2040,10 @@ export class GroupByNode extends ClassicPreset.Node {
     keys?:   unknown[][];
     values?: number[][];
   }): { keys: (string | number)[]; values: number[] } {
-    const rawKeys = inputs.keys?.[0];
+    // The passthrough declaration keeps UnitCells on `keys`; grouping keys by
+    // String(cell) — strip to display magnitudes first (the pre-units behavior)
+    // so a tagged key list still buckets by value, not object identity.
+    const rawKeys = stripUnitCells(inputs.keys?.[0]) as unknown[] | undefined;
     const rawVals = inputs.values?.[0] ?? [];
 
     if (!Array.isArray(rawKeys) || rawKeys.length === 0) {

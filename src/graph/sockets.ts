@@ -296,6 +296,23 @@ export function adoptTypeForBase(base: SocketDataType, wired: SocketDataType): S
   return FAMILIES[fam][baseRank === 2 ? "matrix" : "list"];
 }
 
+/** The OUTPUT-side sibling of adoptTypeForBase: project a resolved passthrough
+ *  type onto an adoptive OUTPUT's declared wildcard rank, in BOTH directions —
+ *  so a rank-crossing element-preserving reshape adopts the element FAMILY at
+ *  the output's own rank (WRAPROWS: strlist in → strtable out on an `anytable`
+ *  base; flatten: strtable in → strlist out on an `anylist` base). A family-less
+ *  resolution (an un-adopted wildcard, a frame) reverts to the declared base;
+ *  a non-wildcard base (trueany) adopts verbatim. */
+export function projectTypeToBase(base: SocketDataType, t: SocketDataType): SocketDataType {
+  if (base !== "anylist" && base !== "anytable") return t;
+  const baseRank = latticeRank(base);
+  if (baseRank === null) return t;
+  const fam = elementFamilyOf(t);
+  if (fam === null) return base;
+  if (latticeRank(t) === baseRank) return t;
+  return FAMILIES[fam][baseRank === 2 ? "matrix" : "list"];
+}
+
 /**
  * DIRECTIONAL: can a value from an OUTPUT of type `out` flow into an INPUT of
  * type `in`? The one primitive both areCompatible and canConnect build on.

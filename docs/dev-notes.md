@@ -101,6 +101,19 @@ wire-driven card, invisible and uneditable. Root-caused as a class of hole, not 
   `SocketComponent` + `SocketLegend`; the pixi copy got the first pass before the author declared
   **the pixi renderer DEPRECATED — do not maintain it** (now recorded in CLAUDE.md architecture
   notes). CLAUDE.md legend line updated.
+- **Adoptive sockets: element-preserving list ops now adopt their OUTPUTS (author report).** "A
+  collapsed group with a String List inside renders Any List" — the collapsed-group edge was
+  faithfully mirroring the real socket; the bug was that only Reverse/Slice/Shuffle/Pad/Fill/Filter
+  had been upgraded to adoptive outputs while their siblings still shipped STATIC `anylist` outs.
+  Upgraded: **Sort By** (the reported case), **Group Lists** unique-keys, **Set**, **Concat Lists**,
+  **Interleave**, and **WRAPROWS/WRAPCOLS/TOCOL/TOROW** — the rank-crossers via a new
+  `projectTypeToBase` (sockets.ts): output adoption projects the element FAMILY onto the output's
+  declared wildcard rank (strlist → WRAPROWS → strtable). Two supporting rules: (1) reconcileOnce
+  projects AdoptiveSocket outputs through their base; (2) **the unit-blind boundary is now
+  PER-INPUT** — a passthrough() node keeps UnitCells only on its spec inputs; side inputs (IF cond,
+  SORTBY keys) unwrap like any consumer, so declaring adoption can't NaN-poison numeric machinery
+  (Set/Group Lists additionally strip locally where cells feed String()/Set keying). Tests in
+  `trueAnyAdopt.test.ts`; CLAUDE.md boundary note updated.
 - **Single-node drag jank FIXED (author report).** Root cause via drag-path audit: the 2026-07-19
   note→group ties made the standoff machinery hot for EVERY drag — `nodetranslated` scheduled a
   settle (`standoffBoxes` force-reflows every tied node, now ~22) and bumped `standoffLayoutTick`

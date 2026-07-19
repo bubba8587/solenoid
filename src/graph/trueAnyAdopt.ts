@@ -1,5 +1,5 @@
 import type { ClassicPreset } from "rete";
-import { AdoptiveSocket, MutableSocket, SolenoidSocket, adoptTypeForBase, type SocketDataType } from "./sockets";
+import { AdoptiveSocket, MutableSocket, SolenoidSocket, adoptTypeForBase, projectTypeToBase, type SocketDataType } from "./sockets";
 import { getPassthrough, resolvePassthroughType } from "./nodes/passthrough";
 import { reconcileConduitTypes } from "./conduitTrace";
 import type { NodeEditor } from "rete";
@@ -85,9 +85,14 @@ function reconcileOnce(editor: AdoptEditor): Set<string> {
     //    the agreed branch type; Cable Switch (One) adopts the active branch. A
     //    generative output (INDEX/XLOOKUP, MAP, sources) declares nothing → static.
     for (const spec of getPassthrough(node)) {
-      const want = resolvePassthroughType(spec, (k) => inType(node, k), agree);
+      const resolved = resolvePassthroughType(spec, (k) => inType(node, k), agree);
       const outSock = node.outputs?.[spec.output]?.socket;
-      if (outSock instanceof MutableSocket && outSock.dataType !== want) {
+      if (!(outSock instanceof MutableSocket)) continue;
+      // Project onto the output's declared wildcard RANK (AdoptiveSocket base):
+      // a rank-crossing reshape (WRAPROWS list→table, flatten table→list) adopts
+      // the element FAMILY at its own rank rather than parroting the input's.
+      const want = outSock instanceof AdoptiveSocket ? projectTypeToBase(outSock.base, resolved) : resolved;
+      if (outSock.dataType !== want) {
         outSock.setType(want);
         changed.add(node.id);
       }

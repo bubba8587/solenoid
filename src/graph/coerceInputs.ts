@@ -2,7 +2,7 @@ import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
 import { SolenoidSocket, AdoptiveSocket, elementFamilyOf, type SocketDataType } from "./sockets";
 import { toMatrix, toList, toScalar, toAnyMatrix, ShapeError } from "./nodes/coerce";
-import { isPassthroughNode } from "./nodes/passthrough";
+import { isPassthroughNode, getPassthrough } from "./nodes/passthrough";
 import { isFrameValue, frameFromRows, toCube } from "./frame";
 import { parseDateToSerial } from "./nodes/date";
 import { coerceLogical } from "./valueKinds";
@@ -274,19 +274,25 @@ export function wrapNodeData(node: NodeLike) {
   // variables) keeps the SAME Set object and mutates it in place, so this reference
   // stays live across rebuilds.
   const noWiden = node.noWidenInputs;
-  // The unit-blind boundary (FC A4): only a node that runs the dimension algebra
-  // itself (unitAware) or forwards the value unchanged (the passthrough/selector
-  // duck markers) sees `UnitCell` tags; everything else gets display magnitudes —
-  // so a comparison / threshold / chart downstream of an FC computes on the same
-  // number the user typed, exactly as before units existed.
-  const keepUnits = node.unitAware === true || isPassthroughNode(node);
+  // The unit-blind boundary (FC A4), PER-INPUT: a unitAware node (runs the
+  // dimension algebra itself) keeps `UnitCell` tags on EVERY input; a
+  // passthrough/selector keeps them ONLY on the inputs its passthrough() spec
+  // names — the values it actually forwards. Its SIDE inputs (an IF condition,
+  // a sort key, a slice index) unwrap to display magnitudes like any other
+  // consumer, so a node can declare honest type/format adoption for its
+  // forwarded value without UnitCells NaN-poisoning the machinery around it.
+  const keepAllUnits = node.unitAware === true;
+  const isPass = !keepAllUnits && isPassthroughNode(node);
 
   // The synchronous coercion + literal-injection (the original body), run once
   // inputs are ref-free (either none arrived, or they were materialized first).
   const coerceAll = (inputs: Record<string, unknown[]>) => {
+    // Re-read the spec each pass — it can be op-dependent (Fill's coalesce rows).
+    const passKeys = isPass ? new Set(getPassthrough(node).flatMap((s) => s.inputs)) : null;
     const coerced: Record<string, unknown[]> = {};
     for (const key of Object.keys(inputs)) {
       const raw = inputs[key];
+      const keepUnits = keepAllUnits || (passKeys?.has(key) ?? false);
       const arr = keepUnits || !Array.isArray(raw) ? raw : (raw.map(stripUnitCells) as unknown[]);
       const socket = node.inputs?.[key]?.socket;
       // Coerce to the socket's DECLARED base rung, not an adopted concrete type: an
