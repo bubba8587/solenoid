@@ -437,13 +437,17 @@ export function HtmlCanvasLayer() {
           if (changed.length) engine.updateNodes(changed);
           lastSel = curSel;
         }
-        const lassoing = lassoActiveStore.get();
         if (overlay) { engine.setActive(true); holder.style.visibility = ""; } // both shown, overlaid
         // Keep the canvas up for the WHOLE interaction, not just while pixels move: enter on
-        // motion or a lasso, and — once gesturing — hold it while the pointer stays down. That
-        // last clause stops a SLOW pan (speed momentarily 0 between frames) from settling back to
-        // the DOM and flickering until the real pointerUp.
-        else if (moved || lassoing || (gesturing && pointerDown)) enterGesture();
+        // motion and — once gesturing — hold it while the pointer stays down. That last clause
+        // stops a SLOW pan (speed momentarily 0 between frames) from settling back to the DOM
+        // and flickering until the real pointerUp.
+        // A LASSO deliberately does NOT enter gesture mode (pre-37995b5b leftover): it moves
+        // no transform, so swapping the live DOM for the cached bitmap bought nothing and
+        // showed a stale, mip-scaled snapshot over the canvas. Selection feedback runs on the
+        // independent selection-delta path above; the mid-lasso rebuild suppression
+        // (scheduleRebuild's lassoActiveStore gate) stays.
+        else if (moved || (gesturing && pointerDown)) enterGesture();
       }
       raf = requestAnimationFrame(sync);
     });

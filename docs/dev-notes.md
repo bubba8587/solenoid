@@ -55,6 +55,35 @@ wire-driven card, invisible and uneditable. Root-caused as a class of hole, not 
   `=rate!` share one input); inline text only (figures/errors ignore it); Obsidian export emits
   `==mark==`. Grammar updated in lockstep: `noteInlineRefs.ts` + `inlineRefDisplay.tsx` +
   `obsidianMarkdown.ts`, tests added. PF advisor letter now flags its verdict words + savings rate.
+- **Document chip (author ask).** A DocumentValue in a value box now renders a clickable
+  `[Document]` chip (`DocumentChip.tsx`, chart-family accent) instead of the text label: click
+  opens the source Report's overlay, or flies to the source Note. `DocumentValue.sourceId`
+  (runtime-only) carries the producer; Report/Note stamp `this.id` in `makeDocument`.
+  `describeValueKind` keeps the text "Document" as the net for text-only surfaces.
+- **FC formats now cross Conduit lanes.** `makeAnnotationResolver.compute` gained the conduit
+  lane map (`out_i → in_i`, duck-typed on `cachedLane`) — the Conduit deliberately has no
+  `passthrough()` declaration (its lane TYPE adoption runs its own reconcile), so the annotation
+  walk dead-ended at every conduit and a `FC → Conduit → Display` chain silently lost its $/%
+  format. Tested in `unitFlowAnnotation.test.ts`.
+- **PF seed: conduit cleanup (author ask).** The advisor circuits read off the source groups'
+  exit conduits instead of raw cross-canvas cables: cd-cash lane 4 (savings target), cd-mort
+  lane 2 (affordability line), cd-bud lanes 0/1, new **cd-proj** in the projection group (nest
+  egg / target / growth chart; the dashboard's nest-egg readout now routes through it too, per
+  the seed's own conduit convention), cd-acct lane 3 (class chart), and a new **cd-adv** at the
+  advisor group's edge bundling the 8 dashboard-FC scalars into the letter (`budget` direct —
+  8-lane cap). Formats survive because of the resolver fix above.
+- **Cable-drag jank + Shift-lasso stale bitmap (author reports, agent-audited).** (1) The drag
+  handler calls `socketHighlightStore.setDrag` on EVERY pointermove and the store notified
+  unconditionally — re-rendering every mounted NodeSocket, CollapsedInputPill and GroupNode
+  summary per move (hidden collapsed members stay mounted, so more collapsed groups = strictly
+  worse). All three highlight setters now bail when the key set is unchanged (`cableState.ts`
+  `sameKeys`). The pseudo-cable itself was O(1)/move (routeWalk takes no obstacle set) — not the
+  cost. (2) The Shift-lasso entered the html-renderer's pan/zoom gesture mode (`lassoing` in
+  `HtmlCanvasLayer`'s enterGesture condition — a pre-`37995b5b` leftover), swapping live DOM for
+  a cached mip bitmap that could be stale (rebuilds are suppressed mid-lasso) and mip-scaled —
+  the "zoomed-in old image". A lasso moves no transform, so it no longer enters gesture mode;
+  selection feedback rides the independent selection-delta path; the mid-lasso rebuild
+  suppression stays.
 - **Document joins the [object Object] guards.** `describeValueKind` (the central safety net every
   `ValueDisplay` box runs — also covers Group pill previews, CableSwitch + Composite-marker
   fallbacks) now labels a `DocumentValue` "Document"; `refPreview` (Report/Note ref rows + inline
