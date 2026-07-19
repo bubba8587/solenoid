@@ -10,19 +10,22 @@ import type { ChartValue } from "../chartValue";
  * renders the full figure via ChartFigure (so it covers every op). Label only,
  * no data — the whole point is a tidy stand-in for the plot.
  */
-export function ChartChip({ value, label, pinNodeId }: {
+export function ChartChip({ value, label, pinNodeId, size = "sm" }: {
   value: ChartValue;
   label?: string;
   /** Node whose value the popup's Pin/Go-to acts on; defaults to the host from
    *  context. A collapsed-group readout passes its member id explicitly. */
   pinNodeId?: string;
+  /** "sm" in node hero boxes (the historical hardcoded look); "md" matches the
+   *  Frame/Cube chips in collapsed-group readout rows (valueChipFor passes it). */
+  size?: "sm" | "md";
 }) {
   const ctxHostId = useHostNodeId();
   const hostId = pinNodeId ?? ctxHostId;
   return (
     <button
       type="button"
-      className="solenoid-array-chip solenoid-array-chip--chart solenoid-array-chip--sm"
+      className={`solenoid-array-chip solenoid-array-chip--chart${size === "sm" ? " solenoid-array-chip--sm" : ""}`}
       title="Chart. Click to view."
       onPointerDown={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}

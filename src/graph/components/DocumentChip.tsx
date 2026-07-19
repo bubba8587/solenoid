@@ -11,7 +11,7 @@ import type { DocumentValue } from "../documentValue";
  * card IS the document). A document with no live source (a stale value mid-
  * rebuild) renders as a plain, non-clickable chip.
  */
-export function DocumentChip({ value }: { value: DocumentValue }) {
+export function DocumentChip({ value, size = "md" }: { value: DocumentValue; size?: "sm" | "md" }) {
   const src = value.sourceId ? getOwningEditor(value.sourceId)?.getNode(value.sourceId) : undefined;
   const isReport = src instanceof ReportNode;
   const open = src
@@ -20,7 +20,7 @@ export function DocumentChip({ value }: { value: DocumentValue }) {
   return (
     <button
       type="button"
-      className="solenoid-array-chip solenoid-array-chip--document solenoid-array-chip--sm"
+      className={`solenoid-array-chip solenoid-array-chip--document${size === "sm" ? " solenoid-array-chip--sm" : ""}`}
       title={!open ? "Document" : isReport ? "Document. Click to open the report." : "Document. Click to go to its note."}
       disabled={!open}
       onPointerDown={(e) => e.stopPropagation()}
