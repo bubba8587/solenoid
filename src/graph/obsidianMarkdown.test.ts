@@ -115,4 +115,11 @@ describe("assembleDocumentMarkdown — the walk", () => {
     const doc = makeDocument("a `=x` b", {});
     expect(await assembleDocumentMarkdown(doc, () => "")).toBe("a  b");
   });
+
+  it("a `=name!` highlight flag exports as ==mark== (skipped for empty/block results)", async () => {
+    const doc = makeDocument("Rate `=rate!`, plain `=rate`, gone `=x!`, chart `=fig!`", { rate: 0.4, x: null, fig: {} });
+    const md = await assembleDocumentMarkdown(doc, (name, v) =>
+      name === "x" ? "" : name === "fig" ? "line1\nline2" : String(v));
+    expect(md).toBe("Rate ==0.4==, plain 0.4, gone , chart line1\nline2");
+  });
 });

@@ -2086,7 +2086,7 @@
         "color": "sky",
         "width": 260,
         "height": 150,
-        "body": "# The advisor's letter\n\nYou brought in **`=income`** this quarter and let **`=outflow`** back out, leaving **`=net`** to put to work. Your savings rate is **`=savingsRate`** — `=rateWord` against the target you set.\n\n`=spendChart`\n\n## Net worth\n\nAssets minus debts puts you at **`=netWorth`** today.\n\n`=classChart`\n\n## Retirement\n\nKeep contributing at today's pace and the nest egg reaches **`=nestEgg`** — `=projWord` your target.\n\n`=growthChart`\n\n## The house\n\nThe mortgage costs **`=payment`** a month, which `=mortWord` the 28%-of-take-home guideline. Carried to term, the interest alone comes to **`=interest`**.\n\n## Groceries\n\n**`=spent`** spent against a **`=budget`** budget for the quarter — you're `=budgetWord` so far.\n\n*Move any slider and this letter rewrites itself.*"
+        "body": "# The advisor's letter\n\nYou brought in **`=income`** this quarter and let **`=outflow`** back out, leaving **`=net`** to put to work. Your savings rate is `=savingsRate!` — `=rateWord!` against the target you set.\n\n`=spendChart`\n\n## Net worth\n\nAssets minus debts puts you at **`=netWorth`** today.\n\n`=classChart`\n\n## Retirement\n\nKeep contributing at today's pace and the nest egg reaches **`=nestEgg`** — `=projWord!` your target.\n\n`=growthChart`\n\n## The house\n\nThe mortgage costs **`=payment`** a month, which `=mortWord!` the 28%-of-take-home guideline. Carried to term, the interest alone comes to **`=interest`**.\n\n## Groceries\n\n**`=spent`** spent against a **`=budget`** budget for the quarter — you're `=budgetWord!` so far.\n\n*Move any slider and this letter rewrites itself.*"
       }
     },
     {

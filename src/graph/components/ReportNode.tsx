@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { ReportNode as ReportNodeType } from "../rete-nodes";
 import { hexToRgba, themeAccent, resolveColor } from "../palette";
 import { appThemeStore } from "../appTheme";
@@ -36,6 +36,9 @@ export function ReportComponent({ data, emit }: NodeProps<ReportNodeType>) {
   function onLabel(v: string) { setLabel(v); data.label = v; scheduleAutosave(); }
   function pick(c: string) { setColor(c); data.color = c; scheduleAutosave(); }
 
+  // Re-render on theme/palette change — the tint below resolves through the
+  // ACTIVE palette (appThemeStore bumps on a palette switch too, same as NoteNode).
+  useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const refKeys = data.refKeys();
   const mode = appThemeStore.getMode();
   const themed = themeAccent(resolveColor(color), mode);

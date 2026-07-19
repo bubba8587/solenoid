@@ -57,6 +57,15 @@
 .solenoid-ref-inline--error {
   color: var(--sol-error);
 }
+/* The `=name!` highlight flag — an author-flagged emphasis mark (Obsidian's
+   ==mark==). Opt-in intent, so it clears the no-decoration rule above: a muted
+   accent tint of the value itself (Quiet Accent — tint the element, no stripe),
+   tracking the live app accent. */
+.solenoid-ref-inline--hl {
+  background: color-mix(in srgb, var(--accent) 24%, transparent);
+  border-radius: 3px;
+  padding: 0 3px;
+}
 /* Lambda view-as "mono"/"syntax" (FC lambdaView): full formula source — regular
    weight so a long body reads as code, not a bolded metric. */
 .solenoid-ref-inline--mono {

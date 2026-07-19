@@ -4,7 +4,7 @@
 import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, RadialBarChart, RadialBar, PolarAngleAxis, PolarGrid, PolarRadiusAxis, RadarChart, Radar, PieChart, Pie, ScatterChart, Scatter, ZAxis, FunnelChart, Funnel, LabelList, Cell, Treemap, Sankey, ComposedChart } from "recharts";
 import "./chartView.css";
 import { formatScalar } from "./format";
-import { VIZ, useChartColors, useSeriesColors, axisTick, type ChartShape } from "./chartCore";
+import { useChartColors, useSeriesColors, axisTick, type ChartShape } from "./chartCore";
 import type { ChartOptions } from "../nodes/chartOptions";
 
 // A hover readout that shows the value at a sensible precision (formatScalar),
@@ -95,7 +95,7 @@ export function ChartView({
    *  options' own fontsize (matplotlib points, 10 = the built-in sizes). */
   fontScale?: number;
 }) {
-  const { grid, axis } = useChartColors();
+  const { grid, axis, viz } = useChartColors();
   const seriesColors = useSeriesColors();
   const paint = (i: number) => seriesColors[i % seriesColors.length];
   const fs = (fontScale ?? 1) * ((opts?.fontsize ?? 10) / 10);
@@ -121,7 +121,7 @@ export function ChartView({
   };
 
   // Resolved style from the options (fall back to the defaults that shipped).
-  const color = opts?.color || VIZ;
+  const color = opts?.color || viz;
   const lw = opts?.linewidth ?? 1.5;
   const showGrid = axes && (opts?.grid ?? true);
   const showMarkers = opts?.marker ?? axes; // lines dot by default when axed
@@ -277,7 +277,7 @@ type TreemapCellProps = {
   index?: number; name?: string; colors?: string[]; fscale?: number;
 };
 function TreemapCell({ x = 0, y = 0, width = 0, height = 0, index = 0, name = "", colors = [], fscale = 1 }: TreemapCellProps) {
-  const fill = colors[index % (colors.length || 1)] || VIZ;
+  const fill = colors[index % (colors.length || 1)] || "var(--accent)";
   return (
     <g>
       <rect x={x} y={y} width={width} height={height} fill={fill} stroke="var(--surface)" strokeWidth={1} />
@@ -315,7 +315,7 @@ type SankeyNodeProps = {
   index?: number; payload?: { name?: string }; colors?: string[]; containerWidth?: number; fscale?: number;
 };
 function SankeyNodeShape({ x = 0, y = 0, width = 0, height = 0, index = 0, payload, colors = [], containerWidth = 0, fscale = 1 }: SankeyNodeProps) {
-  const fill = colors[index % (colors.length || 1)] || VIZ;
+  const fill = colors[index % (colors.length || 1)] || "var(--accent)";
   const rightHalf = x > containerWidth / 2;
   return (
     <g>
@@ -440,6 +440,8 @@ export function BubbleView({ matrix, width, height, fscale = 1 }: {
 // The semicircular arc for GaugeComponent. `pct` is 0–100, `size` the square the
 // polar chart draws into (cropped to the top half by the caller's wrapper).
 export function GaugeArc({ pct, track, size }: { pct: number; track: string; size: number }) {
+  // The arc fill tracks the active palette (was a frozen hex).
+  const { viz } = useChartColors();
   return (
     <RadialBarChart
       width={size}
@@ -455,7 +457,7 @@ export function GaugeArc({ pct, track, size }: { pct: number; track: string; siz
       style={{ position: "absolute", top: 0, left: 0 }}
     >
       <PolarAngleAxis type="number" domain={[0, 100]} tick={false} angleAxisId={0} />
-      <RadialBar background={{ fill: track }} dataKey="value" cornerRadius={7} fill={VIZ} angleAxisId={0} isAnimationActive={false} />
+      <RadialBar background={{ fill: track }} dataKey="value" cornerRadius={7} fill={viz} angleAxisId={0} isAnimationActive={false} />
     </RadialBarChart>
   );
 }

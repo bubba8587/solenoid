@@ -42,8 +42,9 @@ export interface RefValueHost {
 // Matches marked's rendering of a `` `=name` `` inline-ref span AFTER sanitization
 // (DOMPurify keeps a bare <code> tag untouched) — used to find + swap those spans
 // for a live value in the rendered DOM. Mirrors noteInlineRefs.ts's identifier
-// grammar; kept in sync by inspection (both are simple `[A-Za-z_][A-Za-z0-9_]*`).
-const INLINE_REF_TEXT_RE = /^=([A-Za-z_][A-Za-z0-9_]*)$/;
+// grammar; kept in sync by inspection (both are simple `[A-Za-z_][A-Za-z0-9_]*`,
+// plus the optional trailing `!` highlight flag — see noteInlineRefs.ts).
+const INLINE_REF_TEXT_RE = /^=([A-Za-z_][A-Za-z0-9_]*)(!?)$/;
 
 /** An FC docked directly to this ref input, else one reachable UPSTREAM through
  *  passthroughs (the DisplayComponent resolution order, minus `downstreamAnnotation`
@@ -279,7 +280,7 @@ function figureFor(
   return null;
 }
 
-export function InlineRefValue({ nodeId, refKey, collapsible }: { nodeId: string; refKey: string; collapsible?: boolean }) {
+export function InlineRefValue({ nodeId, refKey, collapsible, highlight }: { nodeId: string; refKey: string; collapsible?: boolean; highlight?: boolean }) {
   // Re-render after every recompute pass — refValue() is read fresh below, so a
   // newly-wired (or changed) ref value refreshes immediately, not only when an
   // unrelated edit happens to re-render this portal. (processGraph bumps this.)
@@ -309,7 +310,15 @@ export function InlineRefValue({ nodeId, refKey, collapsible }: { nodeId: string
       </span>
     );
   }
-  return <span className="solenoid-ref-inline">{refPreview(value, ann)}</span>;
+  // The `!` flag (`=name!`) — an author-flagged emphasis mark. Only the inline
+  // text form takes it: figures are block-level and an error already carries its
+  // own (stronger) styling. Opt-in author intent, not decoration — the tint says
+  // "this is the number the sentence is about".
+  return (
+    <span className={`solenoid-ref-inline${highlight ? " solenoid-ref-inline--hl" : ""}`}>
+      {refPreview(value, ann)}
+    </span>
+  );
 }
 
 /**
@@ -369,7 +378,7 @@ export function InlineRefBody({
   onMouseDown?: (e: React.MouseEvent) => void;
 }) {
   const htmlRef = useRef<HTMLDivElement>(null);
-  const [slots, setSlots] = useState<{ el: HTMLElement; name: string }[]>([]);
+  const [slots, setSlots] = useState<{ el: HTMLElement; name: string; highlight: boolean }[]>([]);
   const [embedSlots, setEmbedSlots] = useState<{ el: HTMLElement; name: string; i: number }[]>([]);
   // Whether to scan for embed slots is stable per host (Report yes, Note no), but
   // `renderEmbed`'s IDENTITY changes on every parent re-render. Keep it in a ref so
@@ -390,13 +399,13 @@ export function InlineRefBody({
     const root = htmlRef.current;
     if (!root) return;
     root.innerHTML = bodyHtml;
-    const found: { el: HTMLElement; name: string }[] = [];
+    const found: { el: HTMLElement; name: string; highlight: boolean }[] = [];
     root.querySelectorAll("code").forEach((codeEl) => {
       const m = INLINE_REF_TEXT_RE.exec(codeEl.textContent ?? "");
       if (!m) return;
       const span = document.createElement("span");
       codeEl.replaceWith(span);
-      found.push({ el: span, name: m[1] });
+      found.push({ el: span, name: m[1], highlight: m[2] === "!" });
     });
     setSlots(found);
     // Embed tokens (`![[Name]]`, pre-processed to a data-embed marker) — portal
@@ -413,7 +422,7 @@ export function InlineRefBody({
   return (
     <div className={className} onClick={onClick} onPointerDown={onPointerDown} onMouseDown={onMouseDown}>
       <div ref={htmlRef} />
-      {slots.map((s) => createPortal(<InlineRefValue key={s.name} nodeId={nodeId} refKey={s.name} collapsible={collapsibleEmbeds} />, s.el))}
+      {slots.map((s, i) => createPortal(<InlineRefValue key={`${s.name}:${i}`} nodeId={nodeId} refKey={s.name} collapsible={collapsibleEmbeds} highlight={s.highlight} />, s.el))}
       {renderEmbed && embedSlots.map((s) => createPortal(
         <span key={`${s.name}:${s.i}`}>{renderEmbed(s.name)}</span>, s.el,
       ))}
