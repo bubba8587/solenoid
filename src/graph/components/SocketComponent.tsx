@@ -87,14 +87,11 @@ export function SocketComponent({ data }: { data: ClassicPreset.Socket }) {
         </>
       ) : isFrame ? (
         <>
-          {/* Frame: a sheet with a HEADER — solid band across the top + one column
-              divider below, inside the inset ring. Top-heavy silhouette, distinct
-              from the matrix cross at 12px. */}
+          {/* Frame: an "F" in the embossed ring stroke inside the square (author
+              2026-07-19; replaces the header-band sheet). Square edges (butt caps,
+              miter joins), wide and squat per the author's tuning. */}
           <rect x="0" y="0" width="12" height="12" rx="1.5" fill={color} />
-          <g fill="var(--socket-ring)">
-            <rect x="2.5" y="2.5" width="7" height="2.1" />
-          </g>
-          <path d="M6 5.7 V9.5" fill="none" stroke="var(--socket-ring)" strokeWidth="1.3" />
+          <path d="M4.15 8.9 V3.9 H8.95 M4.15 6.2 H8.15" fill="none" stroke="var(--socket-ring)" strokeWidth="1.5" />
           <rect x="1" y="1" width="10" height="10" rx="0.5" fill="none" stroke="var(--socket-ring)" strokeWidth="2" />
         </>
       ) : isCube ? (

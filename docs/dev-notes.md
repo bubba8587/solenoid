@@ -88,6 +88,19 @@ wire-driven card, invisible and uneditable. Root-caused as a class of hole, not 
   `ValueDisplay` box runs — also covers Group pill previews, CableSwitch + Composite-marker
   fallbacks) now labels a `DocumentValue` "Document"; `refPreview` (Report/Note ref rows + inline
   prose) returns "document". Test rides in `documentValue.test.ts`.
+- **ONE chip registry (`ValueChip.tsx` `valueChipFor`) — chips harden across surfaces (author ask).**
+  Frame/Cube/Chart/Document chips now come from one function; the hero-box safety net (nodeKit
+  `ValueDisplay`, size "sm") and collapsed-group readout rows (GroupNode, size "md") both consume
+  it, so a new object kind lands everywhere at once and at a consistent size. Fixes: the Chart chip
+  rendered a size smaller than its siblings in group readouts (its hardcoded `--sm`; it now takes a
+  `size` prop like Frame/Cube — hero boxes keep sm); the Document chip now shows in collapsed-group
+  readouts; any chip-kind value reaching a generic value box gets its clickable chip instead of dead
+  text. `describeValueKind` stays the text net behind it for chip-less kinds (mermaid/svg/image).
+- **Frame socket glyph → an "F" in the square (author call),** replacing the header-band sheet.
+  Ring-stroke letterform, square edges (butt caps), wide-and-squat per author tuning. Updated in
+  `SocketComponent` + `SocketLegend`; the pixi copy got the first pass before the author declared
+  **the pixi renderer DEPRECATED — do not maintain it** (now recorded in CLAUDE.md architecture
+  notes). CLAUDE.md legend line updated.
 - **Single-node drag jank FIXED (author report).** Root cause via drag-path audit: the 2026-07-19
   note→group ties made the standoff machinery hot for EVERY drag — `nodetranslated` scheduled a
   settle (`standoffBoxes` force-reflows every tied node, now ~22) and bumped `standoffLayoutTick`
