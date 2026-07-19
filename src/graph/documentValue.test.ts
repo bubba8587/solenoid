@@ -21,6 +21,10 @@ describe("DocumentValue", () => {
   it("describeValueKind labels it — the [object Object] safety net every value box runs", () => {
     expect(describeValueKind(makeDocument("# Hi"))).toBe("Document");
   });
+  it("carries its producing node id when given (the Document chip's open-source hook)", () => {
+    expect(makeDocument("b", {}, undefined, "n1").sourceId).toBe("n1");
+    expect("sourceId" in makeDocument("b")).toBe(false);
+  });
 });
 
 describe("the `document` socket — identity-only object socket (like chart/lambda)", () => {

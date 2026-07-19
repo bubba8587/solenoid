@@ -192,7 +192,7 @@ export class NoteNode extends ClassicPreset.Node {
     // Each frontmatter key on its output + the whole note as a `document` value (raw
     // body = already Obsidian-ready markdown-with-frontmatter; a Note is a pure
     // source, so no refs to resolve).
-    return { ...this.fieldValues(), document: makeDocument(this.body) };
+    return { ...this.fieldValues(), document: makeDocument(this.body, {}, undefined, this.id) };
   }
 
   /**

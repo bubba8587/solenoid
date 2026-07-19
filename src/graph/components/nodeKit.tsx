@@ -27,6 +27,8 @@ import { nodeOutputIsDate, dateFormatDisplay, shouldRenderListInline, formatList
 import { IS_COARSE } from "../coarse";
 import { NodeFormatContext } from "./nodeContext";
 import { describeValueKind } from "../valueKindLabel";
+import { isDocumentValue } from "../documentValue";
+import { DocumentChip } from "./DocumentChip";
 import "./nodeCard.css";
 
 /**
@@ -553,6 +555,15 @@ export function ValueDisplay({
   // path below (→ "[object Object]" or a .toFixed crash). Surfaces that want the
   // RICH form (Display, Input Switch) branch on the kind before calling this; here
   // we show a compact label so nothing ever reads as "[object Object]".
+  // A document gets its chip (click → open the source Report / fly to the Note)
+  // rather than the plain text label.
+  if (isDocumentValue(rawValue)) {
+    return (
+      <div className="solenoid-node__display-value" style={{ display: "flex", justifyContent: "flex-end" }}>
+        <DocumentChip value={rawValue} />
+      </div>
+    );
+  }
   const kindLabel = describeValueKind(rawValue);
   if (kindLabel != null) {
     return <div className="solenoid-node__display-value">{kindLabel}</div>;

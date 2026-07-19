@@ -33,6 +33,7 @@
 .solenoid-array-chip--frame { --chip-accent: var(--sock-frame); }  /* frames */
 .solenoid-array-chip--cube  { --chip-accent: var(--sock-cube); }   /* cubes */
 .solenoid-array-chip--chart { --chip-accent: var(--sock-chart); }  /* charts */
+.solenoid-array-chip--document { --chip-accent: var(--sock-chart); } /* documents share the Special (chart) family */
 
 /* Compact variant for node result boxes — the chip sits under a grid preview,
    so it reads as a small "open full grid" affordance rather than the headline. */
