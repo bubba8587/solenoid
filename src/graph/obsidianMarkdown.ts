@@ -16,10 +16,11 @@ import { isMermaidValue, type MermaidValue } from "./mermaidValue";
 import { type DocumentValue } from "./documentValue";
 
 // Matches a `` `=name` `` inline-ref code span — the same grammar noteInlineRefs.ts
-// mints input sockets from. Duplicated (not imported) so this module stays a pure,
-// dependency-light serializer; the identifier grammar is fixed and machine-checked
-// against noteInlineRefs in obsidianMarkdown.test.ts.
-const INLINE_REF_RE = /`=([A-Za-z_][A-Za-z0-9_]*)`/g;
+// mints input sockets from (incl. the optional `!` highlight flag). Duplicated
+// (not imported) so this module stays a pure, dependency-light serializer; the
+// identifier grammar is fixed and machine-checked against noteInlineRefs in
+// obsidianMarkdown.test.ts.
+const INLINE_REF_RE = /`=([A-Za-z_][A-Za-z0-9_]*)(!?)`/g;
 
 /** Escape the markdown table-breaking characters in a cell (pipe, newline). */
 function mdCell(s: string): string {
@@ -159,7 +160,12 @@ export async function assembleDocumentMarkdown(
   for (const name of names) {
     resolved.set(name, await resolveRef(name, doc.refs[name]));
   }
-  const body = doc.body.replace(INLINE_REF_RE, (_full, name: string) => resolved.get(name) ?? "");
+  // The `!` highlight flag exports as Obsidian's native ==mark== (skipped when the
+  // ref resolved to nothing, or to a block — an embed/fence can't sit inside a mark).
+  const body = doc.body.replace(INLINE_REF_RE, (_full, name: string, flag: string) => {
+    const v = resolved.get(name) ?? "";
+    return flag === "!" && v !== "" && !v.includes("\n") ? `==${v}==` : v;
+  });
   const front = doc.frontmatter ? frontmatterToYaml(doc.frontmatter) : "";
   return front + body;
 }

@@ -16,7 +16,7 @@ import {
   WaterfallView, CandleView, BoxplotView, CalHeatView, WaffleView, QuiverView, ContourView, SevenSegView,
 } from "./chartCanvasViews";
 
-export { VIZ, useChartColors, toSeries } from "./chartCore";
+export { useChartColors, toSeries } from "./chartCore";
 export type { ChartShape } from "./chartCore";
 export type { TornadoBar } from "./chartRender";
 

@@ -4,8 +4,7 @@
 import { useSyncExternalStore } from "react";
 import { appThemeStore } from "../appTheme";
 import { resolveColor, type PaletteSlot } from "../palette";
-
-export const VIZ = "#e9b63a"; // the "display" kind accent
+import { NODE_KIND_ACCENTS } from "../nodes/shared";
 
 // The chart types the shared ChartView renders. The single-series ones
 // (line/area/bar/column + the categorical/polar set below) all read the flat
@@ -37,6 +36,11 @@ export function useChartColors() {
     // The Gauge's unfilled-arc track — a neutral gray tuned for clear contrast
     // against the node body in both themes (--border-subtle was near-invisible).
     track: get("--gauge-track", "#4d5157"),
+    // The single-series fill (Sparkline / Chart line / the Gauge arc) — the
+    // "display" node kind's accent, resolved through the ACTIVE palette (the map
+    // is refreshed on every palette switch; this hook's subscription re-reads it).
+    // Was a frozen hex, which ignored palette changes.
+    viz: NODE_KIND_ACCENTS.display,
   };
 }
 

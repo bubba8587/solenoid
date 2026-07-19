@@ -42,6 +42,19 @@ wire-driven card, invisible and uneditable. Root-caused as a class of hole, not 
   retirement on-track/short, mortgage inside/past the 28% guideline, groceries under/over budget).
   Charts embed from the existing chart-cat / chart-type / spark-growth; one new
   expr-outflow → disp-outflow (+docked FC) flips the negative spend sum for prose. Eyeball pending.
+- **Palette-respect sweep + the `=name!` highlight flag (author report).** (1) Report card tint now
+  re-renders on palette change (was reading `appThemeStore.getMode()` without subscribing — NoteNode
+  had the subscription, Report didn't). (2) The chart single-series color was a FROZEN hex
+  (`VIZ = "#e9b63a"` in `chartCore.ts`) — now `useChartColors().viz` = `NODE_KIND_ACCENTS.display`
+  resolved through the live palette; covers Sparkline, Chart line/area/bar/column and the Gauge arc
+  fill (dead fallbacks in Treemap/Sankey cells → `var(--accent)`). (3) Alert hero-box status colors
+  were raw hex; calm → `var(--text-dim)`, met → the palette AMBER slot via
+  `themeAccent(resolveColor("amber"), mode)` — tracks palette + light theme. (4) New ref flag:
+  `` `=name!` `` highlights the rendered value (accent-tint mark via `.solenoid-ref-inline--hl`,
+  `color-mix` on `--accent`); display-only — the socket key stays the bare name (`=rate` and
+  `=rate!` share one input); inline text only (figures/errors ignore it); Obsidian export emits
+  `==mark==`. Grammar updated in lockstep: `noteInlineRefs.ts` + `inlineRefDisplay.tsx` +
+  `obsidianMarkdown.ts`, tests added. PF advisor letter now flags its verdict words + savings rate.
 - **Single-node drag jank FIXED (author report).** Root cause via drag-path audit: the 2026-07-19
   note→group ties made the standoff machinery hot for EVERY drag — `nodetranslated` scheduled a
   settle (`standoffBoxes` force-reflows every tied node, now ~22) and bumped `standoffLayoutTick`

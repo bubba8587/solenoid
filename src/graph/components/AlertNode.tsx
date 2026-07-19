@@ -1,8 +1,11 @@
+import { useSyncExternalStore } from "react";
 import type { AlertNode as AlertNodeType, AlertMode } from "../rete-nodes";
 import { ALERT_MODE_KEYS } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { getActiveEditor } from "../activeGraph";
+import { appThemeStore } from "../appTheme";
+import { resolveColor, themeAccent } from "../palette";
 
 // The trigger condition. Picking one swaps which input rows show (ALERT_MODE_KEYS)
 // and what makes the alert fire.
@@ -23,11 +26,14 @@ const STATUS: Record<AlertMode, { calm: string; met: (v: number) => string }> = 
   text:    { calm: "no match", met: () => "match" },
 };
 
-const CALM_COLOR = "#7a8290";
-const MET_COLOR = "#d9822b";
+// Calm is the neutral text ramp; met is the palette's AMBER slot (theme-tuned),
+// so the status color tracks a palette switch instead of a frozen hex.
+const CALM_COLOR = "var(--text-dim)";
 
 export function AlertComponent({ data, emit }: NodeProps<AlertNodeType>) {
   const [mode, setMode] = useNodeField(data, "mode");
+  useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
+  const metColor = themeAccent(resolveColor("amber"), appThemeStore.getMode());
   const shownKeys = ALERT_MODE_KEYS[mode];
 
   async function handleModeChange(next: AlertMode) {
@@ -57,7 +63,7 @@ export function AlertComponent({ data, emit }: NodeProps<AlertNodeType>) {
           const desc = Array.isArray(v)
             ? (met ? "some out" : "all clear")
             : (met ? STATUS[mode].met(v as number) : STATUS[mode].calm);
-          return <span style={{ color: met ? MET_COLOR : CALM_COLOR, fontWeight: 600 }}>● {desc}</span>;
+          return <span style={{ color: met ? metColor : CALM_COLOR, fontWeight: 600 }}>● {desc}</span>;
         }}
       />
     </NodeShell>
