@@ -81,6 +81,30 @@ describe("makeAnnotationResolver — FC locks a format that rides through passth
     expect(r.inAnnotation(d1.id, "in")?.unit).toBe("usd"); // carried across the passthrough
     expect(r.inAnnotation(d2.id, "in")).toBeUndefined();   // dropped at the transform
   });
+
+  it("the lock crosses a Conduit lane (in_i → out_i), each lane independent", async () => {
+    const editor = new NodeEditor() as unknown as AnyEditor;
+    const fcA = node("FC$", { annotation: () => usd });
+    const fcB = node("FC€", { annotation: () => eur });
+    // Conduit mock: paired in_i/out_i lanes + the cachedLane array the resolver's
+    // conduit-lane branch ducks on (the real ConduitNode has no passthrough()).
+    const cd = new ClassicPreset.Node("Conduit") as ClassicPreset.Node & Record<string, unknown>;
+    for (let i = 0; i < 2; i++) {
+      cd.addInput(`in_${i}`, new ClassicPreset.Input(sock, `in_${i}`));
+      cd.addOutput(`out_${i}`, new ClassicPreset.Output(sock, `out_${i}`));
+    }
+    cd.cachedLane = [null, null];
+    const dA = node("DispA", { passesUnitThrough: true });
+    const dB = node("DispB", { passesUnitThrough: true });
+    for (const n of [fcA, fcB, cd, dA, dB]) await editor.addNode(n as never);
+    await editor.addConnection(new ClassicPreset.Connection(fcA as never, "out", cd as never, "in_0") as never);
+    await editor.addConnection(new ClassicPreset.Connection(fcB as never, "out", cd as never, "in_1") as never);
+    await editor.addConnection(new ClassicPreset.Connection(cd as never, "out_0", dA as never, "in") as never);
+    await editor.addConnection(new ClassicPreset.Connection(cd as never, "out_1", dB as never, "in") as never);
+    const r = makeAnnotationResolver(editor);
+    expect(r.inAnnotation(dA.id, "in")?.unit).toBe("usd");
+    expect(r.inAnnotation(dB.id, "in")?.unit).toBe("eur");
+  });
 });
 
 describe("downstreamAnnotation — an FC's lock reaches Displays AHEAD of it (upstream segment)", () => {

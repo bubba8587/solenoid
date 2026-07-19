@@ -118,6 +118,7 @@ c("sld-savetarget","value","expr-savet","t");
 c("expr-savet","result","alert-rate","low");
 c("red-net","result","cd-cash","in_0");
 c("red-in","result","cd-cash","in_1");
+c("expr-savet","result","cd-cash","in_4");
 c("red-out","result","cd-cash","in_2");
 c("expr-rate","result","cd-cash","in_3");
 fc("fc-net", "disp-net", "currency_usd", GRP_CASH);
@@ -198,6 +199,7 @@ c("red-nw","result","alert-nw","value");
 c("red-nw","result","cd-acct","in_0");
 c("red-assets","result","cd-acct","in_1");
 c("expr-debt","result","cd-acct","in_2");
+c("chart-type","chart","cd-acct","in_3");
 fc("fc-nw", "disp-nw", "currency_usd", GRP_ACCT);
 
 // ─── S · Assumptions (stray external inputs) ────────────────────────────────────
@@ -233,7 +235,11 @@ n("alert-proj","AlertNode",      2480,  200, { label: "Off-track watch", mode: "
 n("seq-years","SequenceNode",    1960,  440, { label: "Years 1…N" });
 n("expr-traj","ExpressionNode",   2240,  440, { label: "FV after c years", expr: "pv*(1+i)^(12*c) + IF(i=0, pmt*12*c, pmt*((1+i)^(12*c)-1)/i)" });
 n("spark-growth","SparklineNode", 2520,  440, { label: "Growth trajectory", op: "line" });
-const GRP_PROJ = ["sld-contrib","sld-return","expr-pmt","expr-mrate","expr-nper","expr-pv","tvm-fv","disp-proj","gauge-proj","ratio-proj","sld-target","alert-proj","seq-years","expr-traj","spark-growth"];
+// The projection group's exit conduit (the group predates the convention): the
+// nest egg, its target and the growth chart leave as one ribbon — to the
+// dashboard readout and the advisor circuits. Coords in the TUNED frame.
+n("cd-proj", "ConduitNode",       3620,  700, { angle: 0, seq: 5 });
+const GRP_PROJ = ["sld-contrib","sld-return","expr-pmt","expr-mrate","expr-nper","expr-pv","tvm-fv","disp-proj","gauge-proj","ratio-proj","sld-target","alert-proj","seq-years","expr-traj","spark-growth","cd-proj"];
 
 c("sld-contrib","value","expr-pmt","contrib");
 c("sld-return","value","expr-mrate","ret");
@@ -249,6 +255,9 @@ c("sld-target","value","ratio-proj","target");
 c("ratio-proj","result","gauge-proj","value");
 c("tvm-fv","fv","alert-proj","value");
 c("sld-target","value","alert-proj","low");
+c("tvm-fv","fv","cd-proj","in_0");
+c("sld-target","value","cd-proj","in_1");
+c("spark-growth","chart","cd-proj","in_2");
 c("in-years","value","seq-years","count");
 c("seq-years","list","expr-traj","c");
 c("red-nw","result","expr-traj","pv");
@@ -303,6 +312,7 @@ c("expr-absp","result","alert-afford","value");
 c("expr-aff","result","alert-afford","high");
 c("expr-absp","result","cd-mort","in_0");
 c("expr-absint","result","cd-mort","in_1");
+c("expr-aff","result","cd-mort","in_2");
 fc("fc-pmt", "disp-pmt", "currency_usd", GRP_MORT);
 fc("fc-int", "disp-int", "currency_usd", GRP_MORT);
 
@@ -413,7 +423,7 @@ c("cd-cash","out_0","d-cash-net","in");
 c("cd-cash","out_1","d-cash-in","in");
 c("cd-cash","out_2","d-cash-out","in");
 c("cd-cash","out_3","d-cash-rate","in");
-c("tvm-fv","fv","d-proj","in");
+c("cd-proj","out_0","d-proj","in");
 c("cd-acct","out_0","d-acct-nw","in");
 c("cd-acct","out_1","d-acct-assets","in");
 c("cd-acct","out_2","d-acct-liab","in");
@@ -480,6 +490,11 @@ const REPORT_BODY = [
 // and give it its own Display + docked FC (the seed's formatting pattern).
 n("expr-outflow","ExpressionNode", 4460, -620, { label: "Outflows (positive)", expr: "-spend" });
 n("disp-outflow","DisplayNode",    4760, -600, { label: "Outflows (3 mo)" });
+// The letter's intake conduit: the dashboard FCs' formatted scalars converge
+// into one trunk at the group's edge instead of eight separate cables fanning
+// across the report. (8-lane cap: `budget` rides direct.) The annotation walk
+// crosses conduit lanes (unitFlow's lane map), so the $/% formats survive.
+n("cd-adv", "ConduitNode",         4460, -380, { angle: 0, seq: 6 });
 n("txt-rate-good","TextInputNode", 4460, -240, { label: "If saving enough", value: "healthy" });
 n("txt-rate-bad", "TextInputNode", 4460,  -90, { label: "If saving too little", value: "running thin" });
 n("cmp-rate","ComparisonNode",     4760, -200, { label: "Rate ≥ target?", op: "gte" });
@@ -497,49 +512,61 @@ n("txt-bud-bad", "TextInputNode",  4460,  990, { label: "If over budget", value:
 n("cmp-bud","ComparisonNode",      4760,  880, { label: "Spend ≤ budget?", op: "lte" });
 n("if-bud", "IfNode",              5040,  920, { label: "Budget verdict" });
 n("report-adv","ReportNode",       5340,  100, { label: "Advisor's letter", color: "sky", width: 260, height: 150, body: REPORT_BODY });
-const GRP_ADVISOR = ["expr-outflow","disp-outflow","txt-rate-good","txt-rate-bad","cmp-rate","if-rate",
+const GRP_ADVISOR = ["expr-outflow","disp-outflow","cd-adv","txt-rate-good","txt-rate-bad","cmp-rate","if-rate",
   "txt-proj-good","txt-proj-bad","cmp-proj","if-proj","txt-mort-good","txt-mort-bad","cmp-mort","if-mort",
   "txt-bud-good","txt-bud-bad","cmp-bud","if-bud","report-adv"];
 
 c("red-out","result","expr-outflow","spend");
 c("expr-outflow","result","disp-outflow","in");
-c("expr-rate","result","cmp-rate","a");
-c("expr-savet","result","cmp-rate","b");
+// Verdict comparisons read off the source groups' EXIT CONDUITS (cd-cash lane 3
+// already carries the savings rate; new lanes carry the target/affordability
+// lines), so the cross-canvas feeds ride the same ribbons as the dashboard's.
+c("cd-cash","out_3","cmp-rate","a");
+c("cd-cash","out_4","cmp-rate","b");
 c("cmp-rate","result","if-rate","cond");
 c("txt-rate-good","value","if-rate","then");
 c("txt-rate-bad","value","if-rate","else");
-c("tvm-fv","fv","cmp-proj","a");
-c("sld-target","value","cmp-proj","b");
+c("cd-proj","out_0","cmp-proj","a");
+c("cd-proj","out_1","cmp-proj","b");
 c("cmp-proj","result","if-proj","cond");
 c("txt-proj-good","value","if-proj","then");
 c("txt-proj-bad","value","if-proj","else");
-c("expr-absp","result","cmp-mort","a");
-c("expr-aff","result","cmp-mort","b");
+c("cd-mort","out_0","cmp-mort","a");
+c("cd-mort","out_2","cmp-mort","b");
 c("cmp-mort","result","if-mort","cond");
 c("txt-mort-good","value","if-mort","then");
 c("txt-mort-bad","value","if-mort","else");
-c("expr-gabs","result","cmp-bud","a");
-c("expr-qbud","result","cmp-bud","b");
+c("cd-bud","out_0","cmp-bud","a");
+c("cd-bud","out_1","cmp-bud","b");
 c("cmp-bud","result","if-bud","cond");
 c("txt-bud-good","value","if-bud","then");
 c("txt-bud-bad","value","if-bud","else");
-// Report refs — scalars through the dashboard FCs, words from the IFs, figures
-// from the existing chart nodes.
-c("fc-d-in","out","report-adv","income");
+// Report refs — the dashboard FCs' formatted scalars bundle through cd-adv
+// (lane order = reading order in the letter; `budget` direct, 8-lane cap),
+// words from the IFs, figures from the group conduits' chart lanes.
+c("fc-d-in","out","cd-adv","in_0");
+c("fc-d-net","out","cd-adv","in_1");
+c("fc-d-rate","out","cd-adv","in_2");
+c("fc-d-nw","out","cd-adv","in_3");
+c("fc-d-proj","out","cd-adv","in_4");
+c("fc-d-pmt","out","cd-adv","in_5");
+c("fc-d-int","out","cd-adv","in_6");
+c("fc-d-bspent","out","cd-adv","in_7");
+c("cd-adv","out_0","report-adv","income");
 c("fc-adv-out","out","report-adv","outflow");
-c("fc-d-net","out","report-adv","net");
-c("fc-d-rate","out","report-adv","savingsRate");
+c("cd-adv","out_1","report-adv","net");
+c("cd-adv","out_2","report-adv","savingsRate");
 c("if-rate","result","report-adv","rateWord");
 c("chart-cat","chart","report-adv","spendChart");
-c("fc-d-nw","out","report-adv","netWorth");
-c("chart-type","chart","report-adv","classChart");
-c("fc-d-proj","out","report-adv","nestEgg");
+c("cd-adv","out_3","report-adv","netWorth");
+c("cd-acct","out_3","report-adv","classChart");
+c("cd-adv","out_4","report-adv","nestEgg");
 c("if-proj","result","report-adv","projWord");
-c("spark-growth","chart","report-adv","growthChart");
-c("fc-d-pmt","out","report-adv","payment");
+c("cd-proj","out_2","report-adv","growthChart");
+c("cd-adv","out_5","report-adv","payment");
 c("if-mort","result","report-adv","mortWord");
-c("fc-d-int","out","report-adv","interest");
-c("fc-d-bspent","out","report-adv","spent");
+c("cd-adv","out_6","report-adv","interest");
+c("cd-adv","out_7","report-adv","spent");
 c("fc-d-bbud","out","report-adv","budget");
 c("if-bud","result","report-adv","budgetWord");
 fc("fc-adv-out", "disp-outflow", "currency_usd", GRP_ADVISOR);
