@@ -27,8 +27,12 @@ const LAZY_FRAME_NODES: ReadonlySet<string> = new Set([
 
 // 1-D non-numeric list sockets that are typeable in place as CSV (the inline
 // editor stores the raw text in `node.stringLiterals[key]`; we parse it here per
-// element type and inject it as the list when the input is unwired).
-const TYPEABLE_LIST: ReadonlySet<string> = new Set(["strlist", "datelist", "logicallist"]);
+// element type and inject it as the list when the input is unwired). Exported so
+// coerceInputs.test.ts can enforce: any node with such an input DECLARES
+// `stringLiterals` — persistence restores literal maps only onto declaring
+// classes (the inline-editability convention), so an undeclared class would
+// silently drop the user's typed CSV on reload.
+export const TYPEABLE_LIST: ReadonlySet<string> = new Set(["strlist", "datelist", "logicallist"]);
 
 /** The type a socket COERCES its input to. For a CONTAINER-rung adoptive input
  *  (`any`/`anylist`/`anytable`) that's its declared BASE — NOT the concrete type it

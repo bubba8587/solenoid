@@ -409,6 +409,7 @@ export class JoinNode extends ClassicPreset.Node {
 
 export class SelectColumnsNode extends ClassicPreset.Node {
   label: string;
+  stringLiterals: Record<string, string> = {}; // columns: typeable strlist CSV
   cachedResult: FrameValue | SolError | null = null;
   width = 190; height = 150;
 
@@ -430,6 +431,7 @@ export class SelectColumnsNode extends ClassicPreset.Node {
 
 export class DropColumnsNode extends ClassicPreset.Node {
   label: string;
+  stringLiterals: Record<string, string> = {}; // columns: typeable strlist CSV
   cachedResult: FrameValue | SolError | null = null;
   width = 190; height = 150;
 
@@ -643,6 +645,7 @@ export class PivotNode extends ClassicPreset.Node {
 
 export class UnpivotNode extends ClassicPreset.Node {
   label: string;
+  stringLiterals: Record<string, string> = {}; // idColumns/valueColumns: typeable strlist CSV
   cachedResult: FrameValue | SolError | null = null;
   width = 200; height = 175;
 
@@ -777,6 +780,7 @@ export class AppendNode extends ClassicPreset.Node {
 
 export class RenameNode extends ClassicPreset.Node {
   label: string;
+  stringLiterals: Record<string, string> = {}; // from/to: typeable strlist CSV
   cachedResult: FrameValue | SolError | null = null;
   width = 190; height = 175;
 
@@ -1191,6 +1195,7 @@ function summarizeReconcile(s: ReconcileSummary): string {
 
 export class BuildFrameNode extends ClassicPreset.Node {
   label: string;
+  stringLiterals: Record<string, string> = {}; // headers: typeable strlist CSV
   cachedResult: FrameValue | null = null;
   width = 200; height = 175;
 

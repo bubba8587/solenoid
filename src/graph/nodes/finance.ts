@@ -173,7 +173,7 @@ export class TvmNode extends EquationNode {
   paymentTiming: PaymentTiming;
   private _zeroRate: EquationNode | null = null;
 
-  constructor(init?: { label?: string; paymentTiming?: PaymentTiming; locked?: boolean; literals?: Record<string, number> }) {
+  constructor(init?: { label?: string; paymentTiming?: PaymentTiming; locked?: boolean }) {
     const timing = init?.paymentTiming ?? "end";
     super({
       label: init?.label ?? "Time Value of Money",
@@ -181,7 +181,6 @@ export class TvmNode extends EquationNode {
       // Locked by default (the relation is the node); honored from init so the
       // persistence fixed-point sweep round-trips.
       locked: init?.locked ?? true,
-      literals: init?.literals,
     });
     this.paymentTiming = timing;
     // Hero row per variable + the Check row, plus the timing dropdown row.
@@ -195,14 +194,10 @@ export class TvmNode extends EquationNode {
   }
 
   data(inputs: Record<string, unknown[]>): Record<string, unknown> {
-    const rateKnown = inputs.rate !== undefined && inputs.rate.length > 0
-      ? inputs.rate[0]
-      : this.literals.rate;
-    if (rateKnown === 0) {
+    if (inputs.rate?.[0] === 0) {
       // Delegate to the zero-rate limit relation (rate isn't a variable there),
       // then stitch the fixed rate back into this card's caches and outputs.
       const zr = (this._zeroRate ??= new EquationNode({ expr: TVM_ZERO_RATE_EXPR }));
-      zr.literals = this.literals;
       const out = zr.data(inputs);
       this.cachedError = zr.cachedError;
       this.cachedHolds = zr.cachedHolds;

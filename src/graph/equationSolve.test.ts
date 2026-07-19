@@ -175,13 +175,6 @@ describe("EquationNode", () => {
     expect(n.solvedFor).toBe("R");
   });
 
-  it("typed literals count as known", () => {
-    const n = node("V = I * R");
-    n.literals.I = 2;
-    const out = n.data({ V: [100] });
-    expect(out.R).toBe(50);
-  });
-
   it("all wired → truth check with tolerance", () => {
     const n = node("V = I * R");
     expect(n.data({ V: [100], I: [2], R: [50] }).holds).toBe(true);

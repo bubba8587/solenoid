@@ -435,9 +435,15 @@ async function rebuildGraph(
     } else {
       node = new Ctor({ ...sn.init });
       const anyNode = node as unknown as Record<string, unknown>;
-      // Restore mutable per-instance maps the constructor reset to defaults.
-      if (sn.literals) anyNode.literals = { ...sn.literals };
-      if (sn.stringLiterals) anyNode.stringLiterals = { ...sn.stringLiterals };
+      // Restore mutable per-instance maps the constructor reset to defaults —
+      // but ONLY onto a class that declares the map. Declaring `literals` /
+      // `stringLiterals` is the class's statement that the card edits them
+      // inline; a wire-driven card (Equation family) declares neither, so a
+      // hand-authored save/seed can't smuggle in a hardcoded value the user
+      // could never see or edit on the card. (Any node whose data() reads a
+      // literal necessarily initializes the field, so nothing legit is lost.)
+      if (sn.literals && typeof anyNode.literals === "object") anyNode.literals = { ...sn.literals };
+      if (sn.stringLiterals && typeof anyNode.stringLiterals === "object") anyNode.stringLiterals = { ...sn.stringLiterals };
     }
     idMap.set(sn.id, node.id);
     nodeNameStore.claim(node.id, sn.name, sn.type);

@@ -1,7 +1,31 @@
 import { describe, it, expect } from "vitest";
-import { parseListLiteral, wrapNodeData } from "./coerceInputs";
+import { parseListLiteral, wrapNodeData, TYPEABLE_LIST } from "./coerceInputs";
 import { SolenoidSocket, AdoptiveSocket } from "./sockets";
 import { ExpressionNode } from "./nodes/expression";
+import { FLAT_CATALOG } from "./catalogUtils";
+
+// Persistence restores `literals` / `stringLiterals` only onto classes that
+// DECLARE the map (the inline-editability convention — a wire-driven card like
+// the Equation family declares neither, so a save can't hardcode an invisible
+// known). The typeable-list CSV editor stores its text in `stringLiterals`, so
+// any node with a strlist/datelist/logicallist input MUST declare the map or
+// the user's typed CSV silently drops on reload.
+describe("typeable-list inputs imply a declared stringLiterals map", () => {
+  it("every catalog node with a typeable list input declares stringLiterals", () => {
+    const broken: string[] = [];
+    for (const [type, entry] of FLAT_CATALOG.entries()) {
+      let n: unknown;
+      try { n = entry.create(); } catch { continue; } // constructability is another test's job
+      const anyN = n as { inputs?: Record<string, { socket?: unknown } | undefined>; stringLiterals?: unknown };
+      const typeable = Object.entries(anyN.inputs ?? {}).filter(([, p]) =>
+        p?.socket instanceof SolenoidSocket && TYPEABLE_LIST.has(p.socket.dataType));
+      if (typeable.length > 0 && typeof anyN.stringLiterals !== "object") {
+        broken.push(`${type}: typeable input(s) ${typeable.map(([k]) => k).join(", ")} but no stringLiterals declaration`);
+      }
+    }
+    expect(broken, broken.join("\n")).toEqual([]);
+  });
+});
 
 describe("parseListLiteral — typed 1-D list literals", () => {
   it("strlist: split on commas, trim, drop empties", () => {

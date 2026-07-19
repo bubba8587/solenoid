@@ -265,9 +265,15 @@ note("note-mort", 1420, 660,
 n("sld-loan", "SliderInputNode", 1420,  860, { label: "Home loan $", value: 350000, min: 100000, max: 800000, step: 10000 }, { literals: { min: 100000, max: 800000, step: 10000 } });
 n("sld-apr",  "SliderInputNode", 1420, 1140, { label: "Mortgage APR %", value: 6.25, min: 2, max: 9, step: 0.05 }, { literals: { min: 2, max: 9, step: 0.05 } });
 n("in-term",  "NumberInputNode", 1420, 1420, { label: "Term (years)", value: 30 });
+// TVM's fv must be WIRED, not a literal — the Equation-family card is
+// wire-driven, so a seed literal would be an invisible hardcoded known
+// (seeds.test.ts rejects it). fv = 0 ⇒ fully amortized at end of term.
+// Coords are in the TUNED frame (committed JSON), inside grp-mort's left
+// input column between sld-apr and in-term.
+n("in-endbal","NumberInputNode", 2216, 1900, { label: "End balance", value: 0 });
 n("expr-mapr","ExpressionNode",  1700, 1140, { label: "Monthly rate", expr: "apr / 100 / 12" });
 n("expr-mnper","ExpressionNode", 1700, 1420, { label: "Payments", expr: "term * 12" });
-n("tvm-pmt",  "TvmNode",         1960,  980, { label: "Monthly payment", paymentTiming: "end" }, { literals: { fv: 0 } });
+n("tvm-pmt",  "TvmNode",         1960,  980, { label: "Monthly payment", paymentTiming: "end" });
 n("expr-absp","ExpressionNode",  2240,  980, { label: "Payment (positive)", expr: "-pmt" });
 n("disp-pmt", "DisplayNode",     2520,  980, { label: "Monthly payment" });
 n("cumipmt",  "CumPmtNode",      1960, 1280, { label: "Interest (signed)", op: "cumipmt", paymentTiming: "end" });
@@ -276,13 +282,14 @@ n("disp-int", "DisplayNode",     2520, 1280, { label: "Total interest" });
 n("expr-aff", "ExpressionNode",  2240, 1540, { label: "Affordable (28%)", expr: "0.28 * take" });
 n("alert-afford","AlertNode",    2520, 1540, { label: "Affordability watch", mode: "range" }, { literals: { value: 50, low: 0, high: 100, target: 0 } });
 n("cd-mort", "ConduitNode",      2800, 1080, { angle: 0, seq: 3 });
-const GRP_MORT = ["sld-loan","sld-apr","in-term","expr-mapr","expr-mnper","tvm-pmt","expr-absp","disp-pmt","cumipmt","expr-absint","disp-int","expr-aff","alert-afford","cd-mort"];
+const GRP_MORT = ["sld-loan","sld-apr","in-term","in-endbal","expr-mapr","expr-mnper","tvm-pmt","expr-absp","disp-pmt","cumipmt","expr-absint","disp-int","expr-aff","alert-afford","cd-mort"];
 
 c("sld-apr","value","expr-mapr","apr");
 c("in-term","value","expr-mnper","term");
 c("expr-mapr","result","tvm-pmt","rate");
 c("expr-mnper","result","tvm-pmt","nper");
 c("sld-loan","value","tvm-pmt","pv");
+c("in-endbal","value","tvm-pmt","fv");
 c("tvm-pmt","pmt","expr-absp","pmt");
 c("expr-absp","result","disp-pmt","in");
 c("expr-mapr","result","cumipmt","rate");
