@@ -174,11 +174,9 @@ function SocketGlyphSvg({ entry }: { entry: Dot }) {
   if (entry.kind === "frame") {
     return (
       <svg width={14} height={14} viewBox="-1 -1 14 14" style={{ flexShrink: 0 }}>
-        {/* Sheet with a header (solid band + column divider) — same glyph as
-            SocketComponent's frame socket. */}
+        {/* An "F" inside the square — same glyph as SocketComponent's frame socket. */}
         <rect x="0" y="0" width="12" height="12" rx="1.5" fill={entry.color} />
-        <rect x="2.5" y="2.5" width="7" height="2.1" fill="var(--socket-ring)" />
-        <path d="M6 5.7 V9.5" fill="none" stroke="var(--socket-ring)" strokeWidth="1.3" />
+        <path d="M4.15 8.9 V3.9 H8.95 M4.15 6.2 H8.15" fill="none" stroke="var(--socket-ring)" strokeWidth="1.5" />
         <rect x="1" y="1" width="10" height="10" rx="0.5" fill="none" stroke="var(--socket-ring)" strokeWidth="2" />
       </svg>
     );

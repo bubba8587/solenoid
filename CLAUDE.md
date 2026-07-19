@@ -104,6 +104,7 @@ The forward-looking lists (`docs/backlog.md`, and the "Still to build" / "What's
 "Reconcile" = verify each claim against the current code, not just record what you touched this turn. `backlog.md` is the single source of truth for the to-do list; if "Still to build" below disagrees with it, backlog wins.
 
 ### Architecture notes
+- **The pixi renderer (`src/graph/pixi/`) is DEPRECATED (author, 2026-07-19) — do not maintain it.** Don't mirror glyph/visual changes into `pixiScenes.ts`/`pixiPicker.ts`/etc.; the live renderers are the DOM default and the html-canvas (`drawElementImage`) mode, which reuses the real DOM.
 - Rete renders node components in a **separate React root** — no access to main app's React context. Use module-level singletons instead.
 - `process.ts` — module singleton for `_editor/_engine/_area`; call `processGraph()` to recompute and re-render all nodes
 - `cableShapeStore` (`cableShape.tsx`) — module-level store (not React context) for cable shape setting, readable from any React root
@@ -149,7 +150,7 @@ Typed fields (titles, literals, formulas) keep their draft local while typing; t
 
 Every element that might need explanation should be self-documenting:
 - **Hover tooltips** on socket types, node ops, input fields — show what it does + Excel equivalent where applicable (e.g. "abs(x) → same as Excel ABS()")
-- **Socket legend** — always-visible panel showing socket shape/color → type mapping (circle = scalar, square = list, split square = scalar-or-list, grid square = matrix, grid-with-header-band = Frame (own glyph 2026-07-16), hollow gray ring = the trueany placeholder; purple = logical/Boolean). Should be dismissible/collapsible once the user knows it.
+- **Socket legend** — always-visible panel showing socket shape/color → type mapping (circle = scalar, square = list, split square = scalar-or-list, grid square = matrix, "F"-in-square = Frame (own glyph; F letterform 2026-07-19), hollow gray ring = the trueany placeholder; purple = logical/Boolean). Should be dismissible/collapsible once the user knows it.
 - **Node descriptions** — each node type should have a one-line description accessible on hover of the node header
 - Goal: someone who knows Excel but has never seen a node graph should be able to figure out Solenoid with zero Googling
 
