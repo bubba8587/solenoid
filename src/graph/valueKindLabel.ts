@@ -2,6 +2,7 @@ import { isChartValue } from "./chartValue";
 import { isMermaidValue } from "./mermaidValue";
 import { isImageValue } from "./imageValue";
 import { isSvgValue } from "./svgValue";
+import { isDocumentValue } from "./documentValue";
 import { isFrameValue, isCubeValue } from "./frame";
 import { isLambdaValue, formatLambda } from "./nodes/lambda";
 import { isUncertain, type UncertainNumber } from "./valueKinds";
@@ -16,9 +17,9 @@ export function formatUncertain(v: UncertainNumber): string {
 
 /**
  * A short human label for an OBJECT-valued kind (chart, diagram, image, lambda,
- * frame, cube) that would otherwise stringify to "[object Object]" in a compact
- * text readout or a scalar value box. Returns null for plain values (scalars,
- * lists, null, errors) — the caller formats those itself.
+ * frame, cube, document) that would otherwise stringify to "[object Object]" in a
+ * compact text readout or a scalar value box. Returns null for plain values
+ * (scalars, lists, null, errors) — the caller formats those itself.
  *
  * This is the safety net behind every value-rendering surface: a rich surface
  * (Display node, Input Switch) branches on the kind FIRST to draw the real
@@ -31,6 +32,7 @@ export function describeValueKind(v: unknown): string | null {
   if (isMermaidValue(v)) return "Diagram";
   if (isImageValue(v)) return "Image";
   if (isSvgValue(v)) return "SVG";
+  if (isDocumentValue(v)) return "Document";
   if (isLambdaValue(v)) return formatLambda(v);
   if (isUncertain(v)) return formatUncertain(v);
   if (isFrameValue(v)) {

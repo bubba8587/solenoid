@@ -14,6 +14,7 @@ import { isChartValue, type ChartValue } from "../chartValue";
 import { isMermaidValue } from "../mermaidValue";
 import { isImageValue } from "../imageValue";
 import { isSvgValue } from "../svgValue";
+import { isDocumentValue } from "../documentValue";
 import { MermaidView } from "./MermaidView";
 import { SvgFigure } from "./SvgFigure";
 import { isLambdaValue, type LambdaValue } from "../nodes/lambda";
@@ -79,6 +80,7 @@ export function refPreview(value: unknown, ann: FormatAnnotation | undefined): s
   if (isChartValue(value)) return value.title || "chart";
   if (isFrameValue(value)) return "frame";
   if (isCubeValue(value)) return "cube";
+  if (isDocumentValue(value)) return "document";
   if (Array.isArray(value)) {
     const shown = value.slice(0, 4).map((v) => refPreview(v, ann));
     return `[${shown.join(", ")}${value.length > 4 ? ", …" : ""}]`;
