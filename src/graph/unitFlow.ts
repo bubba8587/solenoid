@@ -138,6 +138,15 @@ export function makeAnnotationResolver(editor: AnyEditor): AnnotationResolver {
       const keys = valuePassKeys(n);
       return keys ? combineAnnotations(keys.map((k) => inAnnotation(nodeId, k))) : firstInputAnnotation(nodeId);
     }
+    // A Conduit lane forwards in_i → out_i unchanged, so the annotation crosses
+    // it like any passthrough — mapped HERE because the Conduit deliberately has
+    // no passthrough() declaration (its lane TYPE adoption runs its own reconcile,
+    // and hanging the declaration on it would double up that machinery). Duck-typed
+    // on the lane cache so this module keeps importing no node classes.
+    const lane = /^out_(\d+)$/.exec(outKey);
+    if (lane && n && typeof n === "object" && Array.isArray((n as { cachedLane?: unknown }).cachedLane)) {
+      return inAnnotation(nodeId, `in_${lane[1]}`);
+    }
     return undefined;                                    // transform / source → nothing locked
   }
   function outAnnotation(nodeId: string, outKey: string): FormatAnnotation | undefined {

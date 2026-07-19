@@ -950,6 +950,16 @@
       }
     },
     {
+      "id": "cd-proj",
+      "type": "ConduitNode",
+      "x": 3620,
+      "y": 700,
+      "init": {
+        "angle": 0,
+        "seq": 5
+      }
+    },
+    {
       "id": "fc-proj",
       "type": "FormatControllerNode",
       "x": 3393,
@@ -1921,6 +1931,16 @@
       }
     },
     {
+      "id": "cd-adv",
+      "type": "ConduitNode",
+      "x": 4460,
+      "y": -380,
+      "init": {
+        "angle": 0,
+        "seq": 6
+      }
+    },
+    {
       "id": "txt-rate-good",
       "type": "TextInputNode",
       "x": 4460,
@@ -2263,6 +2283,7 @@
           "seq-years",
           "expr-traj",
           "spark-growth",
+          "cd-proj",
           "fc-proj"
         ],
         "color": "green",
@@ -2403,6 +2424,7 @@
         "members": [
           "expr-outflow",
           "disp-outflow",
+          "cd-adv",
           "txt-rate-good",
           "txt-rate-bad",
           "cmp-rate",
@@ -2531,6 +2553,12 @@
       "sourceOutput": "result",
       "target": "cd-cash",
       "targetInput": "in_1"
+    },
+    {
+      "source": "expr-savet",
+      "sourceOutput": "result",
+      "target": "cd-cash",
+      "targetInput": "in_4"
     },
     {
       "source": "red-out",
@@ -2755,6 +2783,12 @@
       "targetInput": "in_2"
     },
     {
+      "source": "chart-type",
+      "sourceOutput": "chart",
+      "target": "cd-acct",
+      "targetInput": "in_3"
+    },
+    {
       "source": "disp-nw",
       "sourceOutput": "out",
       "target": "fc-nw",
@@ -2849,6 +2883,24 @@
       "sourceOutput": "value",
       "target": "alert-proj",
       "targetInput": "low"
+    },
+    {
+      "source": "tvm-fv",
+      "sourceOutput": "fv",
+      "target": "cd-proj",
+      "targetInput": "in_0"
+    },
+    {
+      "source": "sld-target",
+      "sourceOutput": "value",
+      "target": "cd-proj",
+      "targetInput": "in_1"
+    },
+    {
+      "source": "spark-growth",
+      "sourceOutput": "chart",
+      "target": "cd-proj",
+      "targetInput": "in_2"
     },
     {
       "source": "in-years",
@@ -3007,6 +3059,12 @@
       "targetInput": "in_1"
     },
     {
+      "source": "expr-aff",
+      "sourceOutput": "result",
+      "target": "cd-mort",
+      "targetInput": "in_2"
+    },
+    {
       "source": "disp-pmt",
       "sourceOutput": "out",
       "target": "fc-pmt",
@@ -3163,8 +3221,8 @@
       "targetInput": "in"
     },
     {
-      "source": "tvm-fv",
-      "sourceOutput": "fv",
+      "source": "cd-proj",
+      "sourceOutput": "out_0",
       "target": "d-proj",
       "targetInput": "in"
     },
@@ -3295,14 +3353,14 @@
       "targetInput": "in"
     },
     {
-      "source": "expr-rate",
-      "sourceOutput": "result",
+      "source": "cd-cash",
+      "sourceOutput": "out_3",
       "target": "cmp-rate",
       "targetInput": "a"
     },
     {
-      "source": "expr-savet",
-      "sourceOutput": "result",
+      "source": "cd-cash",
+      "sourceOutput": "out_4",
       "target": "cmp-rate",
       "targetInput": "b"
     },
@@ -3325,14 +3383,14 @@
       "targetInput": "else"
     },
     {
-      "source": "tvm-fv",
-      "sourceOutput": "fv",
+      "source": "cd-proj",
+      "sourceOutput": "out_0",
       "target": "cmp-proj",
       "targetInput": "a"
     },
     {
-      "source": "sld-target",
-      "sourceOutput": "value",
+      "source": "cd-proj",
+      "sourceOutput": "out_1",
       "target": "cmp-proj",
       "targetInput": "b"
     },
@@ -3355,14 +3413,14 @@
       "targetInput": "else"
     },
     {
-      "source": "expr-absp",
-      "sourceOutput": "result",
+      "source": "cd-mort",
+      "sourceOutput": "out_0",
       "target": "cmp-mort",
       "targetInput": "a"
     },
     {
-      "source": "expr-aff",
-      "sourceOutput": "result",
+      "source": "cd-mort",
+      "sourceOutput": "out_2",
       "target": "cmp-mort",
       "targetInput": "b"
     },
@@ -3385,14 +3443,14 @@
       "targetInput": "else"
     },
     {
-      "source": "expr-gabs",
-      "sourceOutput": "result",
+      "source": "cd-bud",
+      "sourceOutput": "out_0",
       "target": "cmp-bud",
       "targetInput": "a"
     },
     {
-      "source": "expr-qbud",
-      "sourceOutput": "result",
+      "source": "cd-bud",
+      "sourceOutput": "out_1",
       "target": "cmp-bud",
       "targetInput": "b"
     },
@@ -3417,6 +3475,54 @@
     {
       "source": "fc-d-in",
       "sourceOutput": "out",
+      "target": "cd-adv",
+      "targetInput": "in_0"
+    },
+    {
+      "source": "fc-d-net",
+      "sourceOutput": "out",
+      "target": "cd-adv",
+      "targetInput": "in_1"
+    },
+    {
+      "source": "fc-d-rate",
+      "sourceOutput": "out",
+      "target": "cd-adv",
+      "targetInput": "in_2"
+    },
+    {
+      "source": "fc-d-nw",
+      "sourceOutput": "out",
+      "target": "cd-adv",
+      "targetInput": "in_3"
+    },
+    {
+      "source": "fc-d-proj",
+      "sourceOutput": "out",
+      "target": "cd-adv",
+      "targetInput": "in_4"
+    },
+    {
+      "source": "fc-d-pmt",
+      "sourceOutput": "out",
+      "target": "cd-adv",
+      "targetInput": "in_5"
+    },
+    {
+      "source": "fc-d-int",
+      "sourceOutput": "out",
+      "target": "cd-adv",
+      "targetInput": "in_6"
+    },
+    {
+      "source": "fc-d-bspent",
+      "sourceOutput": "out",
+      "target": "cd-adv",
+      "targetInput": "in_7"
+    },
+    {
+      "source": "cd-adv",
+      "sourceOutput": "out_0",
       "target": "report-adv",
       "targetInput": "income"
     },
@@ -3427,14 +3533,14 @@
       "targetInput": "outflow"
     },
     {
-      "source": "fc-d-net",
-      "sourceOutput": "out",
+      "source": "cd-adv",
+      "sourceOutput": "out_1",
       "target": "report-adv",
       "targetInput": "net"
     },
     {
-      "source": "fc-d-rate",
-      "sourceOutput": "out",
+      "source": "cd-adv",
+      "sourceOutput": "out_2",
       "target": "report-adv",
       "targetInput": "savingsRate"
     },
@@ -3451,20 +3557,20 @@
       "targetInput": "spendChart"
     },
     {
-      "source": "fc-d-nw",
-      "sourceOutput": "out",
+      "source": "cd-adv",
+      "sourceOutput": "out_3",
       "target": "report-adv",
       "targetInput": "netWorth"
     },
     {
-      "source": "chart-type",
-      "sourceOutput": "chart",
+      "source": "cd-acct",
+      "sourceOutput": "out_3",
       "target": "report-adv",
       "targetInput": "classChart"
     },
     {
-      "source": "fc-d-proj",
-      "sourceOutput": "out",
+      "source": "cd-adv",
+      "sourceOutput": "out_4",
       "target": "report-adv",
       "targetInput": "nestEgg"
     },
@@ -3475,14 +3581,14 @@
       "targetInput": "projWord"
     },
     {
-      "source": "spark-growth",
-      "sourceOutput": "chart",
+      "source": "cd-proj",
+      "sourceOutput": "out_2",
       "target": "report-adv",
       "targetInput": "growthChart"
     },
     {
-      "source": "fc-d-pmt",
-      "sourceOutput": "out",
+      "source": "cd-adv",
+      "sourceOutput": "out_5",
       "target": "report-adv",
       "targetInput": "payment"
     },
@@ -3493,14 +3599,14 @@
       "targetInput": "mortWord"
     },
     {
-      "source": "fc-d-int",
-      "sourceOutput": "out",
+      "source": "cd-adv",
+      "sourceOutput": "out_6",
       "target": "report-adv",
       "targetInput": "interest"
     },
     {
-      "source": "fc-d-bspent",
-      "sourceOutput": "out",
+      "source": "cd-adv",
+      "sourceOutput": "out_7",
       "target": "report-adv",
       "targetInput": "spent"
     },
