@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { isDocumentValue, makeDocument } from "./documentValue";
 import { canConnect } from "./sockets";
+import { describeValueKind } from "./valueKindLabel";
 
 describe("DocumentValue", () => {
   it("makeDocument stamps the brand; isDocumentValue detects it", () => {
@@ -16,6 +17,9 @@ describe("DocumentValue", () => {
     expect(isDocumentValue({ __chart: true })).toBe(false);
     expect(isDocumentValue(null)).toBe(false);
     expect(isDocumentValue("string")).toBe(false);
+  });
+  it("describeValueKind labels it — the [object Object] safety net every value box runs", () => {
+    expect(describeValueKind(makeDocument("# Hi"))).toBe("Document");
   });
 });
 

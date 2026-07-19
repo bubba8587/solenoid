@@ -55,6 +55,10 @@ wire-driven card, invisible and uneditable. Root-caused as a class of hole, not 
   `=rate!` share one input); inline text only (figures/errors ignore it); Obsidian export emits
   `==mark==`. Grammar updated in lockstep: `noteInlineRefs.ts` + `inlineRefDisplay.tsx` +
   `obsidianMarkdown.ts`, tests added. PF advisor letter now flags its verdict words + savings rate.
+- **Document joins the [object Object] guards.** `describeValueKind` (the central safety net every
+  `ValueDisplay` box runs — also covers Group pill previews, CableSwitch + Composite-marker
+  fallbacks) now labels a `DocumentValue` "Document"; `refPreview` (Report/Note ref rows + inline
+  prose) returns "document". Test rides in `documentValue.test.ts`.
 - **Single-node drag jank FIXED (author report).** Root cause via drag-path audit: the 2026-07-19
   note→group ties made the standoff machinery hot for EVERY drag — `nodetranslated` scheduled a
   settle (`standoffBoxes` force-reflows every tied node, now ~22) and bumped `standoffLayoutTick`
