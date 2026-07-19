@@ -435,6 +435,115 @@ fc("fc-d-int", "d-mort-int", "currency_usd", GRP_DASH);
 fc("fc-d-bspent", "d-bud-spent", "currency_usd", GRP_DASH);
 fc("fc-d-bbud", "d-bud-bud", "currency_usd", GRP_DASH);
 
+// ─── I · Advisor report (live prose over the whole graph) ───────────────────────
+// A Report that reads like a financial advisor's letter. Scalar `=refs` are wired
+// from the DASHBOARD's Format Controllers (an FC's `out` carries the value plus
+// its $/% annotation, so the ref renders formatted); charts embed from the
+// existing Chart/Sparkline nodes. The verdict WORDS are computed in-graph: a
+// Compare feeds an IF that picks between two Text nodes, so the prose flips
+// ("healthy" ↔ "running thin") the moment the numbers do. Coords are in the
+// TUNED frame, fresh space right of the Dashboard (its box ends x≈4307).
+note("note-advisor", 4460, -940,
+  "10 · The advisor's letter",
+  "# Prose that recomputes\nThe **Report** pulls live values through `` `=name` `` refs — dollars arrive through the dashboard's **Format Controllers** (so they read $1,234, not 1234.5678), charts embed as figures. Each verdict word is a tiny circuit: **Compare → IF → two Text nodes**. Drag a slider and the letter changes its mind.",
+  "sky", 420, 220);
+const REPORT_BODY = [
+  "# The advisor's letter",
+  "",
+  "You brought in **`=income`** this quarter and let **`=outflow`** back out, leaving **`=net`** to put to work. Your savings rate is **`=savingsRate`** — `=rateWord` against the target you set.",
+  "",
+  "`=spendChart`",
+  "",
+  "## Net worth",
+  "",
+  "Assets minus debts puts you at **`=netWorth`** today.",
+  "",
+  "`=classChart`",
+  "",
+  "## Retirement",
+  "",
+  "Keep contributing at today's pace and the nest egg reaches **`=nestEgg`** — `=projWord` your target.",
+  "",
+  "`=growthChart`",
+  "",
+  "## The house",
+  "",
+  "The mortgage costs **`=payment`** a month, which `=mortWord` the 28%-of-take-home guideline. Carried to term, the interest alone comes to **`=interest`**.",
+  "",
+  "## Groceries",
+  "",
+  "**`=spent`** spent against a **`=budget`** budget for the quarter — you're `=budgetWord` so far.",
+  "",
+  "*Move any slider and this letter rewrites itself.*",
+].join("\n");
+// The raw spend sum is negative; the letter wants "$12,400 went out", so flip it
+// and give it its own Display + docked FC (the seed's formatting pattern).
+n("expr-outflow","ExpressionNode", 4460, -620, { label: "Outflows (positive)", expr: "-spend" });
+n("disp-outflow","DisplayNode",    4760, -600, { label: "Outflows (3 mo)" });
+n("txt-rate-good","TextInputNode", 4460, -240, { label: "If saving enough", value: "healthy" });
+n("txt-rate-bad", "TextInputNode", 4460,  -90, { label: "If saving too little", value: "running thin" });
+n("cmp-rate","ComparisonNode",     4760, -200, { label: "Rate ≥ target?", op: "gte" });
+n("if-rate", "IfNode",             5040, -160, { label: "Savings verdict" });
+n("txt-proj-good","TextInputNode", 4460,  120, { label: "If on track", value: "on track for" });
+n("txt-proj-bad", "TextInputNode", 4460,  270, { label: "If behind", value: "coming up short of" });
+n("cmp-proj","ComparisonNode",     4760,  160, { label: "Nest egg ≥ target?", op: "gte" });
+n("if-proj", "IfNode",             5040,  200, { label: "Retirement verdict" });
+n("txt-mort-good","TextInputNode", 4460,  480, { label: "If affordable", value: "sits comfortably inside" });
+n("txt-mort-bad", "TextInputNode", 4460,  630, { label: "If stretched", value: "pushes past" });
+n("cmp-mort","ComparisonNode",     4760,  520, { label: "Payment ≤ 28%?", op: "lte" });
+n("if-mort", "IfNode",             5040,  560, { label: "Mortgage verdict" });
+n("txt-bud-good","TextInputNode",  4460,  840, { label: "If under budget", value: "under" });
+n("txt-bud-bad", "TextInputNode",  4460,  990, { label: "If over budget", value: "over" });
+n("cmp-bud","ComparisonNode",      4760,  880, { label: "Spend ≤ budget?", op: "lte" });
+n("if-bud", "IfNode",              5040,  920, { label: "Budget verdict" });
+n("report-adv","ReportNode",       5340,  100, { label: "Advisor's letter", color: "sky", width: 260, height: 150, body: REPORT_BODY });
+const GRP_ADVISOR = ["expr-outflow","disp-outflow","txt-rate-good","txt-rate-bad","cmp-rate","if-rate",
+  "txt-proj-good","txt-proj-bad","cmp-proj","if-proj","txt-mort-good","txt-mort-bad","cmp-mort","if-mort",
+  "txt-bud-good","txt-bud-bad","cmp-bud","if-bud","report-adv"];
+
+c("red-out","result","expr-outflow","spend");
+c("expr-outflow","result","disp-outflow","in");
+c("expr-rate","result","cmp-rate","a");
+c("expr-savet","result","cmp-rate","b");
+c("cmp-rate","result","if-rate","cond");
+c("txt-rate-good","value","if-rate","then");
+c("txt-rate-bad","value","if-rate","else");
+c("tvm-fv","fv","cmp-proj","a");
+c("sld-target","value","cmp-proj","b");
+c("cmp-proj","result","if-proj","cond");
+c("txt-proj-good","value","if-proj","then");
+c("txt-proj-bad","value","if-proj","else");
+c("expr-absp","result","cmp-mort","a");
+c("expr-aff","result","cmp-mort","b");
+c("cmp-mort","result","if-mort","cond");
+c("txt-mort-good","value","if-mort","then");
+c("txt-mort-bad","value","if-mort","else");
+c("expr-gabs","result","cmp-bud","a");
+c("expr-qbud","result","cmp-bud","b");
+c("cmp-bud","result","if-bud","cond");
+c("txt-bud-good","value","if-bud","then");
+c("txt-bud-bad","value","if-bud","else");
+// Report refs — scalars through the dashboard FCs, words from the IFs, figures
+// from the existing chart nodes.
+c("fc-d-in","out","report-adv","income");
+c("fc-adv-out","out","report-adv","outflow");
+c("fc-d-net","out","report-adv","net");
+c("fc-d-rate","out","report-adv","savingsRate");
+c("if-rate","result","report-adv","rateWord");
+c("chart-cat","chart","report-adv","spendChart");
+c("fc-d-nw","out","report-adv","netWorth");
+c("chart-type","chart","report-adv","classChart");
+c("fc-d-proj","out","report-adv","nestEgg");
+c("if-proj","result","report-adv","projWord");
+c("spark-growth","chart","report-adv","growthChart");
+c("fc-d-pmt","out","report-adv","payment");
+c("if-mort","result","report-adv","mortWord");
+c("fc-d-int","out","report-adv","interest");
+c("fc-d-bspent","out","report-adv","spent");
+c("fc-d-bbud","out","report-adv","budget");
+c("if-bud","result","report-adv","budgetWord");
+fc("fc-adv-out", "disp-outflow", "currency_usd", GRP_ADVISOR);
+
 // ─── Groups (rects auto-computed from members) ──────────────────────────────────
 const byId = Object.fromEntries(nodes.map((nd) => [nd.id, nd]));
 function rect(members, padL = 40, padT = 64, padR = 60, padB = 70, nodeW = 240, nodeH = 230) {
@@ -461,6 +570,7 @@ group("grp-mort",   "Mortgage stress-test",    GRP_MORT,   "vermilion", true);
 group("grp-bud",    "Budget vs actual",        GRP_BUD,    "amber", true);
 group("grp-v12",    "New in 1.2",              GRP_V12,    "gold");
 group("grp-dash",   "Dashboard",               GRP_DASH,   "gray");
+group("grp-advisor","Advisor report",          GRP_ADVISOR,"sky");
 
 // ─── Pins, standoffs ────────────────────────────────────────────────────────────
 const pins = [
@@ -481,7 +591,7 @@ const NOTE_TIES = [
   ["note-data", "grp-data"], ["note-cash", "grp-cash"], ["note-pivot", "grp-pivot"],
   ["note-acct", "grp-acct"], ["note-assump", "grp-assump"], ["note-proj", "grp-proj"],
   ["note-mort", "grp-mort"], ["note-bud", "grp-bud"], ["note-v12", "grp-v12"],
-  ["note-dash", "grp-dash"],
+  ["note-dash", "grp-dash"], ["note-advisor", "grp-advisor"],
 ];
 const standoffs = NOTE_TIES.map(([noteId, groupId]) => (
   { a: { nodeId: noteId, anchor: "s" }, b: { nodeId: groupId, anchor: "n" }, min: 30, max: 160 }
