@@ -82,44 +82,43 @@ const GRP_DATA = ["ws-tx", "ws-acct", "ws-bud"];
 // ─── B · Cash flow ─────────────────────────────────────────────────────────────
 note("note-cash", -1480, -560,
   "2 · Cash flow this quarter",
-  "# Income vs. expenses\n**Filter** the Amount column twice, `> 0` for income and `< 0` for spend, then fold each slice with a **REDUCE** lambda (`acc + value`). Excel: SUMIF. **Savings rate** = net ÷ income drives a gauge and an alert; drag the target slider to trip it.",
+  "# Income vs. expenses\n**SUMIFS** works straight off the transactions frame: one node sums `Amount` where `Amount > 0` (income), a second where `< 0` (spend) — criteria rows exactly like Excel's SUMIFS, no intermediate lists. **Savings rate** = net ÷ income drives a gauge and an alert; drag the target slider to trip it.",
   "green", 380, 200);
 n("col-amt", "GetColumnNode", -1460, -260, { label: "Amount", readAs: "number" }, { stringLiterals: { name: "Amount" } });
 n("red-net", "AggregateNode",    -1180, -360, { label: "Net cash flow", op: "sum" });
 n("disp-net","DisplayNode",    -900, -360, { label: "Net cash flow" });
-n("flt-in",  "FilterNode",      -1180, -120, { label: "Keep income (> 0)", condConfig: { "0": { op: "gt" } } }, { stringLiterals: { value0: "0" } });
-n("red-in",  "ReduceLambdaNode", -900, -120, { label: "Income", expr: "acc + value" });
+// SUMIFS replaces the old List-Filter + REDUCE-lambda chains (D16: conditional
+// aggregates are one op node over ONE FRAME). Coords in the TUNED frame, where
+// each node sits mid-span of the two-node chain it replaced.
+n("sumif-in", "SumIfsNode", -900, -250, { label: "Income (Amount > 0)", op: "sumifs", condConfig: { "0": { op: "gt" } }, valueKeys: ["column0"] }, { stringLiterals: { values: "Amount", column0: "Amount", value0: "0" } });
 n("disp-in", "DisplayNode",      -640, -160, { label: "Income (3 mo)" });
-n("flt-out", "FilterNode",      -1180,  140, { label: "Keep spend (< 0)", condConfig: { "0": { op: "lt" } } }, { stringLiterals: { value0: "0" } });
-n("red-out", "ReduceLambdaNode", -900,  140, { label: "Spend", expr: "acc + value" });
-n("disp-out","DisplayNode",      -640,  100, { label: "Expenses (3 mo)" });
+n("sumif-out","SumIfsNode", -900,  310, { label: "Spend (Amount < 0)", op: "sumifs", condConfig: { "0": { op: "lt" } }, valueKeys: ["column0"] }, { stringLiterals: { values: "Amount", column0: "Amount", value0: "0" } });
+n("disp-out","DisplayNode",      -640, 100, { label: "Expenses (3 mo)" });
 n("expr-rate","ExpressionNode",-680,  380, { label: "Savings rate", expr: "(income + expense) / income" });
 n("gauge-rate","GaugeNode",    -420,  360, { label: "Savings rate" }, { literals: { value: 0 } });
 n("sld-savetarget","SliderInputNode", -420, 560, { label: "Target savings rate %", value: 20, min: 0, max: 60, step: 1 }, { literals: { min: 0, max: 60, step: 1 } });
 n("expr-savet","ExpressionNode",-680, 560, { label: "Target (fraction)", expr: "t / 100" });
 n("alert-rate","AlertNode",    -160,  360, { label: "Low-savings watch", mode: "range" }, { literals: { value: 50, low: 0.2, high: 1, target: 0 } });
 n("cd-cash", "ConduitNode",    -260,  540, { angle: 0, seq: 1 });
-const GRP_CASH = ["col-amt","red-net","disp-net","flt-in","red-in","disp-in","flt-out","red-out","disp-out","expr-rate","gauge-rate","sld-savetarget","expr-savet","alert-rate","cd-cash"];
+const GRP_CASH = ["col-amt","red-net","disp-net","sumif-in","disp-in","sumif-out","disp-out","expr-rate","gauge-rate","sld-savetarget","expr-savet","alert-rate","cd-cash"];
 
 c("ws-tx","frame","col-amt","frame");
 c("col-amt","values","red-net","list");
 c("red-net","result","disp-net","in");
-c("col-amt","values","flt-in","list");
-c("flt-in","result","red-in","table");
-c("red-in","result","disp-in","in");
-c("col-amt","values","flt-out","list");
-c("flt-out","result","red-out","table");
-c("red-out","result","disp-out","in");
-c("red-in","result","expr-rate","income");
-c("red-out","result","expr-rate","expense");
+c("ws-tx","frame","sumif-in","frame");
+c("sumif-in","result","disp-in","in");
+c("ws-tx","frame","sumif-out","frame");
+c("sumif-out","result","disp-out","in");
+c("sumif-in","result","expr-rate","income");
+c("sumif-out","result","expr-rate","expense");
 c("expr-rate","result","gauge-rate","value");
 c("expr-rate","result","alert-rate","value");
 c("sld-savetarget","value","expr-savet","t");
 c("expr-savet","result","alert-rate","low");
 c("red-net","result","cd-cash","in_0");
-c("red-in","result","cd-cash","in_1");
+c("sumif-in","result","cd-cash","in_1");
 c("expr-savet","result","cd-cash","in_4");
-c("red-out","result","cd-cash","in_2");
+c("sumif-out","result","cd-cash","in_2");
 c("expr-rate","result","cd-cash","in_3");
 fc("fc-net", "disp-net", "currency_usd", GRP_CASH);
 fc("fc-in", "disp-in", "currency_usd", GRP_CASH);
@@ -128,76 +127,73 @@ fc("fc-out", "disp-out", "currency_usd", GRP_CASH);
 // ─── C · Spending pivot (expenses only) ─────────────────────────────────────────
 note("note-pivot", 40, -600,
   "3 · Spending pivot",
-  "# Group By as a pivot table\nA **Slicer** drops the income rows, then **Group By** collapses the rest to one row per **Category**, summing the absolute spend. A second Group By counts transactions. Totals feed a **Chart**.",
+  "# Group By as a pivot table\nA **Slicer** drops the income rows, then **Group By** — the frame verb, native Polars on desktop — collapses the rest to one row per **Category**. Click the grouped-table chip to inspect it; **Get Column** pulls the totals out for the chart (absolute spend) and a second Group By counts transactions.",
   "gold", 380, 200);
 n("slicer-exp","SlicerNode",   60, -300, { label: "Expenses only", selectedColumn: "Category", selectedValues: ["Housing","Groceries","Dining","Transport","Utilities","Entertainment","Shopping","Health"], multiSelect: true });
-n("col-cat", "GetColumnNode", 340, -380, { label: "Category", readAs: "text" }, { stringLiterals: { name: "Category" } });
-n("col-amt-exp","GetColumnNode",340,-180, { label: "Amount", readAs: "number" }, { stringLiterals: { name: "Amount" } });
+// The frame Group By replaces the old parallel-lists list-pivot (Category +
+// Amount lists into a list GroupBy) — one relational verb over the frame, then
+// Get Column pulls the lists the chart/sparkline need. Coords in the TUNED frame.
+n("gbf-spend","GroupByFrameNode", 900, -150, { label: "Spend by category", op: "sum" }, { stringLiterals: { keys: "Category", column: "Amount" } });
+n("col-ptotal","GetColumnNode", 1230,  60, { label: "Category totals", readAs: "number" }, { stringLiterals: { name: "Amount" } });
 n("abs-spend","MathFnNode",   600, -180, { label: "Magnitude", op: "abs" });
-n("gb-sum",  "GroupByNode",   860, -320, { label: "Spend by category", op: "sum" });
-n("disp-keys","DisplayNode", 1120, -400, { label: "Categories" });
-n("disp-vals","DisplayNode", 1120, -220, { label: "Spend by category" });
+n("disp-pivot","DisplayNode", 1889, 207, { label: "Spend by category" });
 n("chart-cat","ChartNode",   1120,  -40, { label: "Spending by category", op: "column" });
-n("gb-cnt",  "GroupByNode",   860,  -40, { label: "Count by category", op: "count" });
+n("gbf-cnt", "GroupByFrameNode",  900, 140, { label: "Count by category", op: "count" }, { stringLiterals: { keys: "Category", column: "Amount" } });
+n("col-pcnt","GetColumnNode", 1230, -160, { label: "Counts", readAs: "number" }, { stringLiterals: { name: "Amount" } });
 n("spark-cnt","SparklineNode",600,  40, { label: "# transactions", op: "column" });
-const GRP_PIVOT = ["slicer-exp","col-cat","col-amt-exp","abs-spend","gb-sum","disp-keys","disp-vals","chart-cat","gb-cnt","spark-cnt"];
+const GRP_PIVOT = ["slicer-exp","gbf-spend","col-ptotal","abs-spend","disp-pivot","chart-cat","gbf-cnt","col-pcnt","spark-cnt"];
 
 c("ws-tx","frame","slicer-exp","frame");
-c("slicer-exp","result","col-cat","frame");
-c("slicer-exp","result","col-amt-exp","frame");
-c("col-amt-exp","values","abs-spend","in");
-c("col-cat","values","gb-sum","keys");
-c("abs-spend","result","gb-sum","values");
-c("gb-sum","keys","disp-keys","in");
-c("gb-sum","values","disp-vals","in");
-c("gb-sum","values","chart-cat","values");
-c("col-cat","values","gb-cnt","keys");
-c("col-amt-exp","values","gb-cnt","values");
-c("gb-cnt","values","spark-cnt","values");
+c("slicer-exp","result","gbf-spend","frame");
+c("gbf-spend","frame","disp-pivot","in");
+c("gbf-spend","frame","col-ptotal","frame");
+c("col-ptotal","values","abs-spend","in");
+c("abs-spend","result","chart-cat","values");
+c("slicer-exp","result","gbf-cnt","frame");
+c("gbf-cnt","frame","col-pcnt","frame");
+c("col-pcnt","values","spark-cnt","values");
 
 // ─── D · Accounts / net worth ───────────────────────────────────────────────────
 note("note-acct", 40, 560,
   "4 · Net worth",
-  "# Assets − liabilities\nLiabilities are stored as negative balances, so net worth is **SUM(Balance)**. Split by sign as in cash flow: **Filter** `> 0` for assets, `< 0` for debt, **REDUCE** each. The split holds in any account order. A **Group By Type** pivot drives the chart; the gauge tracks the goal slider and the alert watches the emergency fund.",
+  "# Assets − liabilities\nLiabilities are stored as negative balances, so net worth is **SUM(Balance)**. **SUMIFS** splits by sign straight off the accounts frame: `Balance > 0` for assets, `< 0` for debt — the split holds in any account order. **Group By** (the frame verb) collapses accounts to one row per **Type** for the chart; click the class-totals chip to inspect the grouped table. The gauge tracks the goal slider and the alert watches the emergency fund.",
   "violet", 380, 230);
 n("col-bal", "GetColumnNode", 60,  860, { label: "Balance", readAs: "number" }, { stringLiterals: { name: "Balance" } });
-n("col-type","GetColumnNode", 60, 1100, { label: "Type", readAs: "text" }, { stringLiterals: { name: "Type" } });
 n("red-nw",  "AggregateNode",   340,  820, { label: "Net worth", op: "sum" });
 n("disp-nw", "DisplayNode",  620,  800, { label: "Net worth" });
 n("gauge-nw","GaugeNode",    620, 1020, { label: "Toward goal" }, { literals: { value: 0 } });
 n("ratio-nw","ExpressionNode", 430, 1180, { label: "Progress", expr: "nw / goal" });
 n("slider-goal","SliderInputNode", 60, 1340, { label: "Net-worth goal", value: 120000, min: 50000, max: 250000, step: 5000 }, { literals: { min: 50000, max: 250000, step: 5000 } });
-n("flt-assets","FilterNode",      340, 1320, { label: "Keep assets (> 0)", condConfig: { "0": { op: "gt" } } }, { stringLiterals: { value0: "0" } });
-n("red-assets","ReduceLambdaNode", 600, 1320, { label: "Assets total", expr: "acc + value" });
-n("flt-liab", "FilterNode",       340, 1540, { label: "Keep debt (< 0)", condConfig: { "0": { op: "lt" } } }, { stringLiterals: { value0: "0" } });
-n("red-liab", "ReduceLambdaNode",  600, 1540, { label: "Liabilities (signed)", expr: "acc + value" });
+// SUMIFS replaces the old Filter + REDUCE chains; the frame Group By replaces
+// the parallel-lists list-pivot (keys+values through GetColumn). Coords in the
+// TUNED frame, mid-span of the chains they replaced.
+n("sumif-assets","SumIfsNode", 1250, 1110, { label: "Assets (Balance > 0)", op: "sumifs", condConfig: { "0": { op: "gt" } }, valueKeys: ["column0"] }, { stringLiterals: { values: "Balance", column0: "Balance", value0: "0" } });
+n("sumif-liab", "SumIfsNode",  1050, 1680, { label: "Debt (Balance < 0)", op: "sumifs", condConfig: { "0": { op: "lt" } }, valueKeys: ["column0"] }, { stringLiterals: { values: "Balance", column0: "Balance", value0: "0" } });
 n("expr-debt","ExpressionNode",    860, 1540, { label: "Liabilities", expr: "-l" });
-n("gb-type", "GroupByNode",  340, 1080, { label: "By asset class", op: "sum" });
+n("gbf-type", "GroupByFrameNode",  881, 2042, { label: "By asset class", op: "sum" }, { stringLiterals: { keys: "Type", column: "Balance" } });
+n("col-tbal", "GetColumnNode",     881, 2270, { label: "Class totals", readAs: "number" }, { stringLiterals: { name: "Balance" } });
 n("chart-type","ChartNode",  620, 1260, { label: "Assets vs liabilities", op: "column" });
 n("disp-type","DisplayNode", 900, 1080, { label: "Class totals" });
 n("alert-nw","AlertNode",    900,  820, { label: "Emergency-fund watch", mode: "range" }, { literals: { value: 50, low: 0, high: 1000000000, target: 0 } });
 n("cd-acct", "ConduitNode", 1160,  900, { angle: 0, seq: 2 });
-const GRP_ACCT = ["col-bal","col-type","red-nw","disp-nw","gauge-nw","ratio-nw","slider-goal","flt-assets","red-assets","flt-liab","red-liab","expr-debt","gb-type","chart-type","disp-type","alert-nw","cd-acct"];
+const GRP_ACCT = ["col-bal","red-nw","disp-nw","gauge-nw","ratio-nw","slider-goal","sumif-assets","sumif-liab","expr-debt","gbf-type","col-tbal","chart-type","disp-type","alert-nw","cd-acct"];
 
 c("ws-acct","frame","col-bal","frame");
-c("ws-acct","frame","col-type","frame");
 c("col-bal","values","red-nw","list");
 c("red-nw","result","disp-nw","in");
 c("red-nw","result","ratio-nw","nw");
 c("slider-goal","value","ratio-nw","goal");
 c("ratio-nw","result","gauge-nw","value");
-c("col-bal","values","flt-assets","list");
-c("flt-assets","result","red-assets","table");
-c("col-bal","values","flt-liab","list");
-c("flt-liab","result","red-liab","table");
-c("red-liab","result","expr-debt","l");
-c("col-type","values","gb-type","keys");
-c("col-bal","values","gb-type","values");
-c("gb-type","values","disp-type","in");
-c("gb-type","values","chart-type","values");
+c("ws-acct","frame","sumif-assets","frame");
+c("ws-acct","frame","sumif-liab","frame");
+c("sumif-liab","result","expr-debt","l");
+c("ws-acct","frame","gbf-type","frame");
+c("gbf-type","frame","disp-type","in");
+c("gbf-type","frame","col-tbal","frame");
+c("col-tbal","values","chart-type","values");
 c("red-nw","result","alert-nw","value");
 c("red-nw","result","cd-acct","in_0");
-c("red-assets","result","cd-acct","in_1");
+c("sumif-assets","result","cd-acct","in_1");
 c("expr-debt","result","cd-acct","in_2");
 c("chart-type","chart","cd-acct","in_3");
 fc("fc-nw", "disp-nw", "currency_usd", GRP_ACCT);
@@ -516,7 +512,7 @@ const GRP_ADVISOR = ["expr-outflow","disp-outflow","cd-adv","txt-rate-good","txt
   "txt-proj-good","txt-proj-bad","cmp-proj","if-proj","txt-mort-good","txt-mort-bad","cmp-mort","if-mort",
   "txt-bud-good","txt-bud-bad","cmp-bud","if-bud","report-adv"];
 
-c("red-out","result","expr-outflow","spend");
+c("sumif-out","result","expr-outflow","spend");
 c("expr-outflow","result","disp-outflow","in");
 // Verdict comparisons read off the source groups' EXIT CONDUITS (cd-cash lane 3
 // already carries the savings rate; new lanes carry the target/affordability
