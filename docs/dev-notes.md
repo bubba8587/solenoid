@@ -18,6 +18,19 @@ edge round independently. Possible directions not yet tried: draw the ring so it
 (e.g. `inset:0` + account for the 2px border, or a box-shadow ring) instead of a 2px-offset `::after`;
 or pixel-snap the card box. Radius itself is correct; don't re-touch it. Parked by author.
 
+### SESSION DIGEST (2026-07-20 — Color Blend node + add-node skill rewrite; bundle 16 scoped)
+- **Color Blend node** (author ask): two color-string inputs (typeable literals or wired; anything
+  `colord` parses — the `names` plugin is now extended globally, so named CSS colors work in every
+  color field incl. ColorPicker hex) × a blend-mode dropdown (W3C separable formulas per RGB channel,
+  A = backdrop) → hex out the string socket on a ColorPicker-style swatch row. Class beside
+  ColorPicker in `nodes/input.ts`; kind `string`; Control catalog next to Color; `colorBlend.test.ts`.
+- **`.claude/skills/add-node` rewritten against current reality** — it predated the split of
+  LogicalNode (still said "→ LogicalOp"), packs, the literals load gate, INIT_FIELD_ORDER
+  persistence, error guards, unitAware, the wildcard ladder, and the tests-required step. Now
+  documents all of those + points at Color Blend as the compact worked example.
+- **v2.0 bundle 16 scoped** (`docs/v2.0/16-widget-nodes.md`): everyday widget nodes (Weather /
+  Geocode / FX / Holidays / TZ / QR), dashboard-framed; 4 author gate calls listed there.
+
 ### SESSION DIGEST (2026-07-19b — no hidden hardcoded knowns: literal maps gated on declaration)
 Author bug report: the PF mortgage TVM node shipped `literals: { fv: 0 }` — a hardcoded known on a
 wire-driven card, invisible and uneditable. Root-caused as a class of hole, not a one-off:
