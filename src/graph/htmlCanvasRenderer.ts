@@ -830,7 +830,12 @@ export class HtmlCanvasRenderer {
         path.lineTo(s.sx, s.sy);
       }
     }
+    // Match the DOM cable's idle look: ConnectionComponent strokes at opacity 0.72
+    // (cableOpacity's non-hover default — keep in sync with it). A fully opaque
+    // stroke here made the gesture swap visibly "pop" heavier cables.
+    ctx.globalAlpha = 0.72;
     for (const [color, path] of byColor) { ctx.strokeStyle = color; ctx.stroke(path); }
+    ctx.globalAlpha = 1;
   }
 
   // The live box-select (lasso) rect, in SCREEN space so the stroke is a constant 1px. The
