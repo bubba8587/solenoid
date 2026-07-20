@@ -3,6 +3,8 @@ import { useRenderMode } from "../renderMode";
 import { HtmlCanvasRenderer, type EngineNodeSpec } from "../htmlCanvasRenderer";
 import { getEditor, getArea, connectionVersionStore } from "../process";
 import { nodeDomWeight } from "../nodes/kind";
+import { snapshotGraph } from "../pixi/pixiGraphSnapshot";
+import { cableShapeStore } from "../cableShape";
 import { semanticZoomStore } from "../semanticZoomStore";
 import { collapseStore } from "../collapseStore";
 import { groupCollapseStore } from "../groupCollapse";
@@ -134,12 +136,13 @@ export function HtmlCanvasLayer() {
     const isDomOnly = (inner: HTMLElement) => inner.classList.contains("solenoid-conduit");
     const domOnlyIds = new Set<string>();
     let domOnlyEls: HTMLElement[] = [];
-    // Show/hide are OVERRIDE-AWARE, not blind writes. Group collapse hides member elements by
-    // stamping inline `visibility:hidden` on the SAME elements (groupCollapse.ts syncGroupCollapse),
-    // and domOnlyEls is only recollected on the debounced rebuild — so a blind
-    // `visibility = "visible"` here resurrected a conduit that had just been collapsed into a
-    // group (and a blind `""` on exit could clear collapse's hidden). Rules: never override an
-    // element something else hid; only ever clear a "visible" WE stamped.
+    // Show/hide are OVERRIDE-AWARE, not blind writes (the post-collapse "conduit ghost" fix,
+    // kept through the cables-back-to-canvas revert). Group collapse hides member elements by
+    // stamping inline `visibility:hidden` on the SAME elements (groupCollapse.ts
+    // syncGroupCollapse), and domOnlyEls is only recollected on the debounced rebuild — so a
+    // blind `visibility = "visible"` here resurrected a conduit that had just been collapsed
+    // into a group (and a blind `""` on exit could clear collapse's hidden). Rules: never
+    // override an element something else hid; only ever clear a "visible" WE stamped.
     const showDomOnly = () => { for (const el of domOnlyEls) if (el.style.visibility !== "hidden") el.style.visibility = "visible"; };
     const hideDomOnly = (els: HTMLElement[] = domOnlyEls) => { for (const el of els) if (el.style.visibility === "visible") el.style.visibility = ""; };
     // id → its last-built spec, so a selection change can re-capture JUST the toggled nodes
@@ -171,15 +174,16 @@ export function HtmlCanvasLayer() {
     };
 
     // Collect the DOM elements kept visible during a gesture: each DOM-only node-view, EVERY
-    // cable, and the standoff layer. Cables are never drawn on the canvas — the canvas stroke
-    // was fully opaque (the DOM cable idles at 0.72 opacity) and couldn't reproduce ribbons,
-    // hover width, or isolate dimming, so ALL cables stay live DOM riding the holder's
-    // composited transform (the way conduit cables always did). The standoff bars are a single
-    // SVG the canvas doesn't reproduce, kept as DOM too.
-    const collectDomOnlyEls = (): HTMLElement[] => {
+    // cable the canvas isn't drawing, and the standoff layer. `canvasCableIds` is the set the
+    // engine renders; any other connection (a conduit cable filtered out as DOM-only, or one the
+    // snapshot couldn't resolve — e.g. a cable into a COLLAPSED GROUP, whose hidden member socket
+    // isn't in the lookup, so it'd otherwise just vanish) keeps its real DOM element. The standoff
+    // bars are a single SVG the canvas doesn't reproduce, kept as DOM too.
+    const collectDomOnlyEls = (canvasCableIds: Set<string>): HTMLElement[] => {
       const els: HTMLElement[] = [];
       for (const id of domOnlyIds) { const el = area.nodeViews.get(id)?.element; if (el) els.push(el); }
       for (const conn of editor.getConnections()) {
+        if (canvasCableIds.has(conn.id)) continue; // the canvas draws this one
         const el = area.connectionViews.get(conn.id)?.element;
         if (el) els.push(el);
       }
@@ -196,16 +200,23 @@ export function HtmlCanvasLayer() {
       const hidden = holder.style.visibility === "hidden";
       if (hidden) holder.style.visibility = "";
       const specs = collectSpecs();
+      const snap = snapshotGraph();
+      // Cables the canvas will draw: resolvable by the snapshot AND not touching a DOM-only
+      // node. Everything else (conduit cables, plus cables the snapshot couldn't resolve — e.g.
+      // into a collapsed group) stays DOM. Compute the id set so collectDomOnlyEls keeps those.
+      const canvasCables = snap ? snap.cables.filter((c) => !domOnlyIds.has(c.source) && !domOnlyIds.has(c.target)) : [];
+      const canvasCableIds = new Set(canvasCables.map((c) => c.id));
       // Replacing the set mid-gesture: clear the overrides stamped on the OLD set first, or an
       // element dropped from it (e.g. a conduit whose group just collapsed) would keep its
       // inline "visible" forever — the post-collapse "conduit ghost" bug.
       const prevEls = domOnlyEls;
-      domOnlyEls = collectDomOnlyEls();
+      domOnlyEls = collectDomOnlyEls(canvasCableIds);
       if (hidden) holder.style.visibility = "hidden";
       hideDomOnly(prevEls);
       if (gesturing) showDomOnly(); // a rebuild mid-gesture must re-show the (possibly new) set
       if (!specs.length) return false;
       engine.setNodes(specs);
+      if (snap) engine.setCables(canvasCables, cableShapeStore.get());
       return true;
     };
 
@@ -294,6 +305,7 @@ export function HtmlCanvasLayer() {
     //          through appThemeStore, see appTheme.ts), which retints every card/group/note.
     //        • formatAnnotationStore — unit + number-format annotations change the DISPLAYED
     //          value text on value boxes / Displays / Notes without any value recompute.
+    //        • cableShapeStore — not a node change; re-routes the captured cables on shape swap.
     //      Deliberately NOT subscribed: socketHighlightStore (per-hover churn; a transient ring
     //      not worth a full re-capture) and the FC-only formatMismatchStore / packsStore (rare,
     //      sub-glyph). If a NEW store starts driving a card's painted appearance, add it here.
@@ -344,7 +356,11 @@ export function HtmlCanvasLayer() {
             else { fallback = true; break; } // a new/vanished node → scope unknown
           }
           if (!fallback) {
-            if (specs.length) engine.updateNodes(specs);
+            if (specs.length) {
+              engine.updateNodes(specs);
+              // A grown value box moves the card's edges — cables re-anchor.
+              engine.relayoutCables(new Set(specs.map((s) => s.id)));
+            }
             return;
           }
         }
@@ -384,6 +400,7 @@ export function HtmlCanvasLayer() {
     const unsubMembership = groupMembershipStore.subscribe(fullRebuild("membership")); // recolor member dots on group color/membership change
     const unsubTheme = appThemeStore.subscribe(fullRebuild("theme")); // retint on theme / accent / palette change
     const unsubFmt = formatAnnotationStore.subscribe(fullRebuild("formatAnnotation")); // re-capture reformatted value text
+    const unsubShape = cableShapeStore.subscribe(fullRebuild("cableShape")); // re-route on cable-shape change
     // Semantic zoom flips a root CSS class the captured bitmaps don't know
     // about — without a re-capture, zooming out past the threshold on a big
     // graph (exactly where this renderer is active) kept drawing the stale
@@ -440,7 +457,7 @@ export function HtmlCanvasLayer() {
           const spec = specById.get(node.id);
           if (spec && spec.el.className.includes("--selected")) curSel.add(node.id);
         }
-        if (movedIds.size) moved = true; // node/group drag — cables are live DOM, they follow on their own
+        if (movedIds.size) { engine.relayoutCables(movedIds); moved = true; }
         // Selection delta → re-capture ONLY the toggled nodes (engine.updateNodes), so the real
         // accent ring updates live — cheap enough to stay smooth even as a lasso sweeps over many
         // nodes (a full rebuild per change would defeat the point of activating the canvas).
@@ -492,6 +509,7 @@ export function HtmlCanvasLayer() {
       unsubMembership();
       unsubTheme();
       unsubFmt();
+      unsubShape();
       unsubSemantic();
       pipeLive = false; // area.addPipe can't be removed; the flag makes it a no-op
       window.removeEventListener("pointerdown", onPointerDown, true);
