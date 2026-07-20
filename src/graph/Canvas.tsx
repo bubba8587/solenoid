@@ -1207,6 +1207,16 @@ export function Canvas() {
 
       let zoomSettleTimer = 0;
       let zooming = false;
+      // Settle window before the zoom layer drops. Wheel zoom is NOTCHY — deliberate
+      // notch-by-notch ticks often arrive slower than a pan-tuned ~160ms timer, and
+      // every promote↔demote flip re-creates the compositor layer + re-rasters the
+      // whole holder at the new scale; the frame where the fresh layer's tiles aren't
+      // rastered yet is the reported "cables flash during zoom" (thin strokes blink
+      // hardest). Hold the layer through notch pauses and pay ONE demote/re-raster at
+      // the true settle. Same constant + reasoning as HtmlCanvasLayer's
+      // ZOOM_SETTLE_MS — the GPU renderer had the identical thrash on its gesture
+      // timer (dev-notes 2026-07-20d).
+      const ZOOM_SETTLE_MS = 420;
       function onZoomActivity() {
         if (IS_MOBILE) return;
         // Promote the holder for the pinch so the scale is a cheap GPU bitmap-scale.
@@ -1226,7 +1236,7 @@ export function Canvas() {
           zoomSettleTimer = 0;
           holderEl.style.willChange = "";
           fpsProbe.stop();
-        }, 160);
+        }, ZOOM_SETTLE_MS);
       }
 
       // Keep the dot-grid background in sync with area zoom/pan.
@@ -1377,8 +1387,13 @@ export function Canvas() {
           syncBackground();
           if (ctx.type === "zoomed") syncSemanticZoomFor(area.area.transform.k);
           // A pinch gets a transient GPU layer on the holder for the gesture
-          // (see onZoomActivity); a plain pan needs nothing.
-          if (ctx.type === "zoomed" || zooming) onZoomActivity();
+          // (see onZoomActivity); a plain pan needs nothing. Only REAL zoomed
+          // events refresh the settle timer — with the longer ZOOM_SETTLE_MS, a
+          // translated-refresh would keep the holder promoted through a follow-on
+          // pan indefinitely (the tile-reveal flicker the promotion NOTE above
+          // exists to avoid); a pinch's interleaved translates are covered because
+          // its zoomed events keep arriving within the window.
+          if (ctx.type === "zoomed") onZoomActivity();
         }
         // Node re-renders can change box sizes (collapse toggles, growing list
         // displays) — keep the standoff bars measured against fresh boxes.

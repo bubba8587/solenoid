@@ -39,6 +39,17 @@ magnitudes, the ASYMMETRY is the finding). Three stacked causes, all zoom-only:
    child-of-canvas model and no `captureElementImage`, so the html layer can't engage here
    (a THIRD drift shape after e309792/9f11cea — the desktop pin is what matters).
 Remaining lever (author call, backlog): the during-zoom cable repaint (cause 2).
+**Follow-up (same day): the DOM renderer had the IDENTICAL thrash — the reported
+"cables still flash during zoom with GPU off".** `Canvas.tsx`'s `onZoomActivity` promotes the
+holder (`will-change: transform`) per zoom and demoted it on a pan-tuned 160ms quiet timer;
+notchy wheel zoom flipped promote↔demote PER NOTCH (measured: 16 will-change flips over 8
+notches at 200ms), and each flip re-creates the compositor layer + re-rasters the holder — the
+un-rastered-layer frame is the cable flash (thin strokes blink hardest). Fixed with the same
+constant as the GPU side (`ZOOM_SETTLE_MS` 420ms → one promote/demote pair per zoom, A/B
+16→2 flips), AND the settle timer now refreshes only on real `zoomed` events — with the longer
+window, a `translated` refresh would have kept the holder promoted through a follow-on pan
+(the tile-reveal flicker the pan-no-promotion NOTE exists to avoid); a pinch's interleaved
+translates are covered by its own zoomed stream.
 
 ### SESSION DIGEST (2026-07-20c — PF seed internals modernized to the current node set)
 Author call: the Personal Finance seed still taught the pre-D16 patterns. Via the generator
