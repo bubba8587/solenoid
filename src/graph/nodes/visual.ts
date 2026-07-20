@@ -1,6 +1,6 @@
 import { ClassicPreset } from "rete";
 import { numIn, numListIn, numOut, tableIn, tableOut, strIn, strOut, chartOut, anyTableIn, frameIn } from "./shared";
-import { parseChartOptions, serializeChartOptions, type ChartOptions } from "./chartOptions";
+import { parseChartOptions, serializeChartOptions, CHART_BUILDER_TARGETS, type ChartOptions, type ChartTargetId } from "./chartOptions";
 import { clamp, iterMin, iterMax } from "./mathUtils";
 import type {
   ChartValue, KpiPayload, BulletPayload, TreemapPayload, SankeyPayload, SurfacePayload,
@@ -946,15 +946,20 @@ const CB_NUM_FIELDS = ["ymin", "ymax", "linewidth", "alpha", "fontsize"] as cons
 
 export class ChartBuilderNode extends ClassicPreset.Node {
   label: string;
+  /** The chart type this builder is aimed at — shapes which option rows the
+   *  card shows (CHART_BUILDER_TARGETS). Serialization stays full-width. */
+  target: ChartTargetId;
   literals: Record<string, number> = {};
   stringLiterals: Record<string, string> = {};
   cachedString = "";
   width = 200;
   height = 200;
 
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; target?: ChartTargetId }) {
     super("ChartBuilder");
     this.label = init?.label ?? "Chart Builder";
+    // Guard a stale target from an old save — fall back rather than crash.
+    this.target = init?.target && init.target in CHART_BUILDER_TARGETS ? init.target : "chart";
     this.addInput("title",     strIn("Title"));
     this.addInput("xlabel",    strIn("X label"));
     this.addInput("ylabel",    strIn("Y label"));

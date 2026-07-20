@@ -4,6 +4,8 @@ import {
   ContourNode, WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, WaffleNode, QuiverNode,
   SevenSegNode, sevenSegText, boxplotStats, quantileSorted,
 } from "./visual";
+import { CHART_BUILDER_FIELDS } from "./visual";
+import { CHART_BUILDER_TARGETS, CHART_TARGET_LIST } from "./chartOptions";
 import type { BoxplotPayload, CandlePayload, ContourPayload, WaterfallPayload, CalHeatPayload, WafflePayload, QuiverPayload } from "../chartValue";
 import type { FrameValue, FrameColumn } from "../frame";
 import { DatePickerNode, XYPadNode } from "./control";
@@ -163,6 +165,31 @@ describe("Chart Builder", () => {
 
   it("an untouched builder emits an empty string", () => {
     expect(new ChartBuilderNode().data({})).toEqual({ result: "" });
+  });
+
+  it("target round-trips through extractInit; a stale target falls back to chart", () => {
+    const b = new ChartBuilderNode({ target: "kpi" });
+    const init = extractInit(b);
+    expect(init.target).toBe("kpi");
+    expect(new ChartBuilderNode(init as { target?: never }).target).toBe("kpi");
+    expect(new ChartBuilderNode({ target: "gone" as never }).target).toBe("chart");
+  });
+
+  it("serialization ignores the target — set fields always emit", () => {
+    const b = new ChartBuilderNode({ target: "waffle" });
+    b.stringLiterals.title = "T";
+    b.stringLiterals.color = "#123456"; // inert for waffle, still serialized
+    expect(b.data({})).toEqual({ result: "title=T;color=#123456" });
+  });
+
+  it("every target key is a real builder field, and every target reads title", () => {
+    const fields = new Set<string>([...CHART_BUILDER_FIELDS.str, ...CHART_BUILDER_FIELDS.num]);
+    for (const { id, keys } of CHART_TARGET_LIST) {
+      for (const k of keys) expect(fields.has(k), `${id}:${k}`).toBe(true);
+      expect(keys).toContain("title");
+    }
+    // The default target accepts the full field set (today's whole form).
+    expect(new Set(CHART_BUILDER_TARGETS.chart.keys)).toEqual(fields);
   });
 });
 
