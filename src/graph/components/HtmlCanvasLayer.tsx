@@ -212,6 +212,18 @@ export function HtmlCanvasLayer() {
     // ── Gesture swap ──────────────────────────────────────────────────────────────
     let gesturing = false;
     let gestureTimer = 0;
+    // Whether THIS gesture changed the camera scale. A pan exit is cheap (the DOM
+    // re-shows translated — compositor tiles are reusable), but a ZOOM exit repaints
+    // the entire visible DOM at the NEW raster scale (measured ~100–300ms frames on a
+    // big doc). Wheel zoom is notchy — ticks often arrive slower than the pan-tuned
+    // 140ms settle — so a short timer exits+re-enters PER NOTCH, paying that full
+    // re-raster over and over mid-zoom ("zooming is worse than panning"). A pan can't
+    // hit this: `pointerDown` holds its gesture. Zoom has no held-pointer signal, so
+    // hold it by TIME instead: once a gesture has zoomed, exit only after a longer
+    // quiet period, and pay the scale-change repaint once at the true settle.
+    let gestureZoomed = false;
+    const PAN_SETTLE_MS = 140;
+    const ZOOM_SETTLE_MS = 420;
     const readSelection = () => {
       const sel = new Set<string>();
       for (const node of editor.getNodes()) if ((node as { selected?: boolean }).selected) sel.add(node.id);
@@ -233,10 +245,11 @@ export function HtmlCanvasLayer() {
         engine.setActive(true);
       }
       clearTimeout(gestureTimer);
-      gestureTimer = window.setTimeout(exitGesture, 140);
+      gestureTimer = window.setTimeout(exitGesture, gestureZoomed ? ZOOM_SETTLE_MS : PAN_SETTLE_MS);
     };
     const exitGesture = () => {
       gesturing = false;
+      gestureZoomed = false;
       holder.style.visibility = "";
       holder.classList.remove("solenoid-html-frozen"); // resume cable flow
       holder.style.willChange = "";
@@ -411,6 +424,9 @@ export function HtmlCanvasLayer() {
       }
       if (built) {
         let moved = t.k !== lastK || t.x !== lastX || t.y !== lastY;
+        // Scale changed → this gesture is a zoom; hold it through notchy wheel pauses
+        // (see gestureZoomed above). NaN-guarded so the first frame doesn't count.
+        if (Number.isFinite(lastK) && t.k !== lastK) gestureZoomed = true;
         lastK = t.k; lastX = t.x; lastY = t.y;
         const movedIds = new Set<string>();
         // Read selection from the LIVE DOM class (not node.selected), so the re-capture below

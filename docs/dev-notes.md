@@ -18,6 +18,28 @@ edge round independently. Possible directions not yet tried: draw the ring so it
 (e.g. `inset:0` + account for the 2px border, or a box-shadow ring) instead of a 2px-offset `::after`;
 or pixel-snap the card box. Radius itself is correct; don't re-touch it. Parked by author.
 
+### SESSION DIGEST (2026-07-20d — GPU renderer: why zoom is worse than panning; settle-hold fix)
+Diagnosis (measured in a live browser, DOM-mode proxies on PF — headless raster inflates the
+magnitudes, the ASYMMETRY is the finding). Three stacked causes, all zoom-only:
+1. **Pan is composite-only; zoom re-rasters.** A pan translates the composited layer (p95
+   17ms/frame regardless of content). A zoom notch changes the raster SCALE, which repaints
+   painted DOM at the new scale (full DOM p95 117ms, worst 283ms per notch).
+2. **The live-DOM gesture subset is cable-heavy.** During a GPU-mode gesture the canvas carries
+   the cards, but ALL cables + conduits stay live DOM (by design, 37995b5) — and the cable layer
+   ALONE measured p95 67ms/notch under zoom (92 cables on PF) vs 17ms under pan. This is why
+   collapsing nodes doesn't help: collapse removes card paint, not cables.
+3. **The 140ms gesture-exit timer thrashes under notchy wheel zoom (FIXED).** A pan gesture is
+   held by `pointerDown` even when motionless; zoom has no held-pointer signal, so wheel notches
+   arriving slower than 140ms exited + re-entered the gesture PER NOTCH — each exit re-showing
+   the full DOM at a NEW scale (cause 1's worst case, repeatedly, mid-zoom). Fix: a gesture that
+   changed the camera scale now settles on a longer quiet period (`ZOOM_SETTLE_MS` 420ms vs
+   `PAN_SETTLE_MS` 140ms, `HtmlCanvasLayer.tsx` `gestureZoomed`), paying the scale-change
+   repaint ONCE at the true settle. Could not be exercised end-to-end in this container —
+   headless Chromium 141's API drifted to `drawElement`/`drawHTMLElement` with a
+   child-of-canvas model and no `captureElementImage`, so the html layer can't engage here
+   (a THIRD drift shape after e309792/9f11cea — the desktop pin is what matters).
+Remaining lever (author call, backlog): the during-zoom cable repaint (cause 2).
+
 ### SESSION DIGEST (2026-07-20c — PF seed internals modernized to the current node set)
 Author call: the Personal Finance seed still taught the pre-D16 patterns. Via the generator
 (structure) + committed-geometry adoption (layout), all values verified identical in a live
