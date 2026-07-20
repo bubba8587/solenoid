@@ -18,6 +18,20 @@ edge round independently. Possible directions not yet tried: draw the ring so it
 (e.g. `inset:0` + account for the 2px border, or a box-shadow ring) instead of a 2px-offset `::after`;
 or pixel-snap the card box. Radius itself is correct; don't re-touch it. Parked by author.
 
+### SESSION DIGEST (2026-07-20e — REVERSAL: gesture cables return to the canvas)
+Author call: the zoom-time cable artifacting isn't a flash/thrash problem after all —
+**partially translucent thin strokes inherently shimmer under scale**, so keeping every cable
+as live DOM through gestures (37995b5, 2026-07-18) was chasing the wrong thing. Reverted: the
+engine cable pipeline (`setCables`/`relayoutCables`/`drawCables`) is back, canvas-resolvable
+cables draw on the canvas during gestures, and only conduit cables / snapshot-unresolvable
+ones (e.g. into a collapsed group) stay DOM. Known fidelity gaps return with it (opaque
+stroke vs 0.72 idle opacity, no ribbons/hover/dimming mid-gesture) — accepted over the AA
+shimmer. KEPT through the revert: the post-collapse conduit-ghost fix (override-aware
+show/hide + old-set clearing — independent bug), the 2026-07-20d zoom settle-holds (both
+renderers), and 2681cb9's lasso/gesture separation. This also mostly retires 2026-07-20d's
+"during-zoom cable repaint" backlog item (deleted): the per-notch DOM re-raster now covers
+only the conduit subset. The 2026-07-19 digest below records the reverted state — superseded.
+
 ### SESSION DIGEST (2026-07-20d — GPU renderer: why zoom is worse than panning; settle-hold fix)
 Diagnosis (measured in a live browser, DOM-mode proxies on PF — headless raster inflates the
 magnitudes, the ASYMMETRY is the finding). Three stacked causes, all zoom-only:

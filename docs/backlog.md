@@ -309,16 +309,6 @@ this backlog stays the per-item source of truth.
   (2026-07-20 re-measure agrees on the per-node baseline: median 38–45 el/node, PF ≈9.6k / FM ≈4.5k
   total. Minimap-to-canvas shipped that day — the one structural lever the audit had missed. The
   `style:~95` bucket is a Vite-dev artifact, one `<style>` per CSS file; bundled in prod.)
-- [ ] **GPU renderer: during-zoom cable repaint (author call).** The 2026-07-20d diagnosis:
-  during a zoom gesture the canvas carries the cards but ALL cables/conduits stay live DOM, and
-  each wheel notch re-rasters that layer at the new scale (~p95 67ms/notch on PF's 92 cables in
-  the proxy measurement; pan is composite-only ~17ms). Collapse doesn't help — cables survive
-  collapse. The settle-hold fix (same digest) removed the exit thrash; this item is the
-  remaining per-notch cost. Options, all with taste tradeoffs: (a) hide DOM cables while the
-  gesture is a ZOOM (they're frozen/stale anyway; they'd pop back at settle), (b) draw
-  simplified straight-line canvas cables during zoom only (breaks the "canvas can't reproduce
-  ribbons/dimming" rule only transiently), (c) accept the cost. Needs the author's eyes on how
-  (a)/(b) feel.
 - [ ] **Figure rasterize-at-rest (recharts + KaTeX) — the last real DOM lever, quality-gated.**
   The 2026-07-20 re-measure shows the remaining big subtrees are CONTENT, not chrome: a recharts
   figure is ~200–400 elements (413 on PF for two charts), a KaTeX formula card ~70 (≈700/doc on

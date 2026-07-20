@@ -3,21 +3,18 @@
 // browser the REAL node DOM (clones each node-view into a <canvas layoutsubtree>),
 // captures it ONCE at a reference resolution, builds a mip pyramid of ImageBitmaps by
 // pixel-downscaling that snapshot, and every frame drawImage's the level matching the
-// zoom. Pan/zoom is just a camera transform — no DOM compositing, which is the whole
-// point (see docs/renderer-decision.md, dev-notes 2026-06-27). Validated: 280 nodes,
-// fully zoomed out, crisp → 165fps / 0.1–0.5ms draw.
-//
-// Cables are NOT drawn here: they stay live DOM through a gesture (HtmlCanvasLayer keeps
-// every connection element visible while the holder hides), riding the holder's composited
-// transform. A canvas stroke can't cheaply reproduce the DOM cable's look — 0.72 idle
-// opacity, hover/selected width + opacity, ribbons, isolate dimming — and the flat opaque
-// stroke it drew read visibly wrong next to the real thing (2026-07-18).
+// zoom. Cables draw as one batched Path2D. Pan/zoom is just a camera transform — no DOM
+// compositing, which is the whole point (see docs/renderer-decision.md, dev-notes
+// 2026-06-27). Validated: 280 nodes, fully zoomed out, crisp → 165fps / 0.1–0.5ms draw.
 //
 // Requires the WICG HTML-in-Canvas API (ctx.drawElementImage / canvas.captureElementImage),
 // Chrome-only behind chrome://flags/#canvas-draw-element. Gate construction on
 // supportsHtmlInCanvas() — the engine assumes the API is present.
 
 import { Camera } from "./pixi/pixiCamera";
+import { cablePolyline } from "./pixi/pixiCableGeom";
+import type { SnapCable } from "./pixi/pixiGraphSnapshot";
+import type { CableShape } from "./cableShape";
 
 // HMR: the engine is created imperatively (not a React component), so Vite would otherwise
 // keep a STALE instance running after an edit to this file — code changes silently never
@@ -90,6 +87,16 @@ interface EngineNode {
   x: number; y: number; w: number; h: number;
   isGroup: boolean;
 }
+interface CableGeom { pts: { x: number; y: number }[]; minX: number; minY: number; maxX: number; maxY: number }
+// A cable stored as offsets from its endpoint NODES, so it follows them live when they
+// move — a socket's offset within its card is fixed, so endpoint = node.pos + offset. The
+// absolute snapshot positions are kept as a fallback if an endpoint node isn't present.
+interface CableSpec {
+  sourceId: string; srcOffX: number; srcOffY: number; srcAbsX: number; srcAbsY: number; sourceAngleDeg: number | null;
+  targetId: string; tgtOffX: number; tgtOffY: number; tgtAbsX: number; tgtAbsY: number; targetAngleDeg: number | null;
+  color: string; // "#rrggbb" — source socket's data-type colour (DOM cable hue)
+}
+
 export interface RendererStats {
   fps: number; drawMs: number; visible: number; total: number; built: number; mip: number;
   /** Visible nodes drawn WITHOUT a mip pyramid last frame — each pays a full
@@ -109,6 +116,9 @@ export class HtmlCanvasRenderer {
 
   private nodes: EngineNode[] = [];
   private readonly nodeById = new Map<string, EngineNode>();
+  private cables: CableSpec[] = [];
+  private cableGeoms: (CableGeom | null)[] = []; // parallel to `cables`; null = degenerate
+  private cableShape: CableShape = "diagonal";
   private quality = DEFAULT_QUALITY;
   private dpr = 1;
   // Exact backing-store ÷ CSS-px ratio per axis (≈ dpr, but accounts for the integer rounding of
@@ -386,11 +396,57 @@ export class HtmlCanvasRenderer {
     });
   }
 
-  /** Move one node (cheap — no re-capture; geometry only). Returns true if it moved. */
+  /** Move one node (cheap — no re-capture; geometry only). Returns true if it moved.
+   *  Cables touching it follow via relayoutCables(); the caller batches that per frame. */
   setNodePosition(id: string, x: number, y: number): boolean {
     const n = this.nodeById.get(id);
     if (n && (n.x !== x || n.y !== y)) { n.x = x; n.y = y; this.dirty = true; return true; }
     return false;
+  }
+
+  /** Store cables as offsets from their endpoint nodes (so they follow moves live), then
+   *  route them once. Run on topology / shape change. */
+  setCables(cables: SnapCable[], shape: CableShape): void {
+    this.cableShape = shape;
+    this.cables = cables.map((cb) => {
+      const s = this.nodeById.get(cb.source), t = this.nodeById.get(cb.target);
+      return {
+        sourceId: cb.source, srcOffX: s ? cb.sx - s.x : 0, srcOffY: s ? cb.sy - s.y : 0, srcAbsX: cb.sx, srcAbsY: cb.sy, sourceAngleDeg: cb.sourceAngleDeg,
+        targetId: cb.target, tgtOffX: t ? cb.ex - t.x : 0, tgtOffY: t ? cb.ey - t.y : 0, tgtAbsX: cb.ex, tgtAbsY: cb.ey, targetAngleDeg: cb.targetAngleDeg,
+        color: HtmlCanvasRenderer.hexColor(cb.color),
+      };
+    });
+    this.cableGeoms = new Array(this.cables.length).fill(null);
+    this.relayoutCables();
+  }
+
+  /** Re-route cables from the CURRENT node positions (no DOM read). Pass `moved` to route
+   *  only the cables touching those node ids (a drag/tidy step); omit it to route all. */
+  relayoutCables(moved?: Set<string>): void {
+    for (let i = 0; i < this.cables.length; i++) {
+      const c = this.cables[i];
+      if (moved && !moved.has(c.sourceId) && !moved.has(c.targetId)) continue;
+      const s = this.nodeById.get(c.sourceId), t = this.nodeById.get(c.targetId);
+      const sx = s ? s.x + c.srcOffX : c.srcAbsX, sy = s ? s.y + c.srcOffY : c.srcAbsY;
+      const ex = t ? t.x + c.tgtOffX : c.tgtAbsX, ey = t ? t.y + c.tgtOffY : c.tgtAbsY;
+      const pts = cablePolyline(this.cableShape, { sx, sy, ex, ey, sourceAngleDeg: c.sourceAngleDeg, targetAngleDeg: c.targetAngleDeg });
+      this.cableGeoms[i] = HtmlCanvasRenderer.geomOf(pts);
+    }
+    this.dirty = true;
+  }
+
+  private static hexColor(n: number): string {
+    return "#" + (n & 0xffffff).toString(16).padStart(6, "0");
+  }
+
+  private static geomOf(pts: { x: number; y: number }[]): CableGeom | null {
+    if (pts.length < 2) return null;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const p of pts) {
+      if (p.x < minX) minX = p.x; if (p.y < minY) minY = p.y;
+      if (p.x > maxX) maxX = p.x; if (p.y > maxY) maxY = p.y;
+    }
+    return { pts, minX, minY, maxX, maxY };
   }
 
   /** Topmost non-group node containing the screen point, or null. */
@@ -752,6 +808,31 @@ export class HtmlCanvasRenderer {
     }
   }
 
+  private drawCables(vp: { minX: number; minY: number; maxX: number; maxY: number }): void {
+    const { ctx, cam, bsx, bsy } = this;
+    ctx.setTransform(bsx, 0, 0, bsy, 0, 0); // CSS-screen → backing (exact ratio, matches the DOM)
+    ctx.lineWidth = 1.8; // matches the DOM cable's default visible stroke
+    ctx.lineJoin = "round";
+    // Each cable's hue follows its source socket's data type (like the DOM). Bucket the
+    // visible cables by colour into one Path2D each, so the layer is a handful of strokes
+    // (one per type colour present) rather than a stroke per cable.
+    const byColor = new Map<string, Path2D>();
+    for (let i = 0; i < this.cableGeoms.length; i++) {
+      const g = this.cableGeoms[i];
+      if (!g || g.maxX < vp.minX || g.minX > vp.maxX || g.maxY < vp.minY || g.minY > vp.maxY) continue;
+      const color = this.cables[i]?.color ?? "#7a8296";
+      let path = byColor.get(color);
+      if (!path) { path = new Path2D(); byColor.set(color, path); }
+      const s0 = cam.toScreen(g.pts[0].x, g.pts[0].y);
+      path.moveTo(s0.sx, s0.sy);
+      for (let j = 1; j < g.pts.length; j++) {
+        const s = cam.toScreen(g.pts[j].x, g.pts[j].y);
+        path.lineTo(s.sx, s.sy);
+      }
+    }
+    for (const [color, path] of byColor) { ctx.strokeStyle = color; ctx.stroke(path); }
+  }
+
   // The live box-select (lasso) rect, in SCREEN space so the stroke is a constant 1px. The
   // PER-NODE selection ring is NOT drawn here: the real accent ring is the `.solenoid-node--
   // selected::after` pseudo-element, which rides along in the captured clone (the layer
@@ -814,6 +895,8 @@ export class HtmlCanvasRenderer {
     let drawn = 0;
     camCTM();
     for (const n of this.nodes) { if (n.isGroup && inView(n) && drawOne(n)) drawn++; }
+    this.drawCables(vp);
+    camCTM();
     for (const n of this.nodes) { if (!n.isGroup && inView(n) && drawOne(n)) drawn++; }
     this.nVisible = drawn;
     this.drawSelection();
