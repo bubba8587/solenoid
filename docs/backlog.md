@@ -306,6 +306,19 @@ this backlog stays the per-item source of truth.
   Reopen only if the socket model stops depending on live geometry of off-screen nodes (a big rework).
   With this ruled out and SVG-picker-rasterize + collapsed-figure-unmount both shipped, the DOM-weight
   reduction lever set is EXHAUSTED — the HTML-in-Canvas GPU renderer is the remaining path at scale.
+  (2026-07-20 re-measure agrees on the per-node baseline: median 38–45 el/node, PF ≈9.6k / FM ≈4.5k
+  total. Minimap-to-canvas shipped that day — the one structural lever the audit had missed. The
+  `style:~95` bucket is a Vite-dev artifact, one `<style>` per CSS file; bundled in prod.)
+- [ ] **Figure rasterize-at-rest (recharts + KaTeX) — the last real DOM lever, quality-gated.**
+  The 2026-07-20 re-measure shows the remaining big subtrees are CONTENT, not chrome: a recharts
+  figure is ~200–400 elements (413 on PF for two charts), a KaTeX formula card ~70 (≈700/doc on
+  FM + PF). The SvgPicker precedent (rasterize for display, swap the live tree in on pointerenter,
+  out on leave) applies to both: chart cards would draw as an `<img>` at rest — hover restores the
+  live recharts tree for tooltips; KaTeX likewise (no hover behavior to preserve, but text
+  crispness across zoom needs the re-raster-on-zoom treatment SvgPicker got). Only worth it on
+  chart/formula-heavy dashboards; per-card complexity is real (theme/palette invalidation, fonts
+  ready before raster, blob-URL lifecycle). Quality gate: pixel-crisp at rest at any zoom, hover
+  behavior indistinguishable.
 - [ ] **Cable collision avoidance** — DEFERRED for later (author 2026-07-05).
   Spec: `archive/cable-routing.md` §2 (avoid nodes; parallel runs + bridge hops;
   per-cable overrides).

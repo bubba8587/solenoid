@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { getActiveArea, getActiveEditor } from "../activeGraph";
 import { GroupNode, NoteNode, nodeKindOf, NODE_KIND_ACCENTS } from "../rete-nodes";
 import { groupCollapseStore } from "../groupCollapse";
@@ -95,44 +95,49 @@ function nodeFills(mode: "dark" | "light"): Fill[] {
 }
 
 // The node rectangles live in GRAPH coordinates, so panning the canvas doesn't
-// move them — only the viewport box moves. But the minimap plugin re-emits a
-// fresh render (new props) on EVERY pan/zoom frame, which would re-render all ~140
-// node divs each frame (a full-green repaint of the minimap, a measured pan-perf
-// hog). Splitting the rects into a memoized child keyed on a geometry+fill+width
-// signature means they re-render only when a node actually moves/resizes or the
-// theme changes — pan/zoom then updates just the one viewport div.
-const MinimapNodes = memo(
-  function MinimapNodes(props: {
-    nodes: Rect[]; fills: Fill[]; containerWidth: number;
-    geomSig: string; fillSig: string;
-  }) {
-    const { nodes, fills, containerWidth } = props;
-    const scale = (v: number) => (Number.isFinite(v) ? v * containerWidth : 0);
-    return (
-      <>
-        {nodes.map((n, i) => (
-          <div
-            key={i}
-            className="solenoid-minimap__node"
-            data-testid="minimap-node"
-            style={{
-              left: scale(n.left),
-              top: scale(n.top),
-              width: scale(n.width),
-              height: scale(n.height),
-              background: fills[i]?.background ?? "rgba(138, 143, 152, 0.85)",
-              borderColor: fills[i]?.borderColor ?? "rgba(138, 143, 152, 0.95)",
-            }}
-          />
-        ))}
-      </>
-    );
-  },
-  (a, b) =>
-    a.containerWidth === b.containerWidth &&
-    a.geomSig === b.geomSig &&
-    a.fillSig === b.fillSig,
-);
+// move them — only the viewport box moves. They draw into ONE <canvas> (2026-07-20
+// DOM audit: this was a div per node — N elements and N style-diffs that scale
+// with the graph; the canvas is a single element at any size). The draw effect is
+// keyed on a geometry+fill+width signature, so a pan/zoom frame — where node
+// graph-coords are unchanged — skips the redraw entirely and only the DOM
+// viewport box updates, preserving the earlier memoized-rect pan-perf fix.
+function drawMinimapNodes(
+  canvas: HTMLCanvasElement,
+  nodes: Rect[],
+  fills: Fill[],
+  containerWidth: number,
+) {
+  const w = canvas.clientWidth;
+  const h = canvas.clientHeight;
+  if (!w || !h) return;
+  const dpr = window.devicePixelRatio || 1;
+  const bw = Math.round(w * dpr);
+  const bh = Math.round(h * dpr);
+  if (canvas.width !== bw) canvas.width = bw;
+  if (canvas.height !== bh) canvas.height = bh;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  const scale = (v: number) => (Number.isFinite(v) ? v * containerWidth : 0);
+  ctx.lineWidth = 1;
+  nodes.forEach((n, i) => {
+    const x = scale(n.left);
+    const y = scale(n.top);
+    const rw = scale(n.width);
+    const rh = scale(n.height);
+    if (rw <= 0 || rh <= 0) return;
+    // Match the old div look: border-box 1px border + 1.5px radius — fill the
+    // half-pixel-inset rounded rect, stroke its edge.
+    const r = Math.min(1.5, rw / 2, rh / 2);
+    ctx.beginPath();
+    ctx.roundRect(x + 0.5, y + 0.5, Math.max(rw - 1, 0.5), Math.max(rh - 1, 0.5), r);
+    ctx.fillStyle = fills[i]?.background ?? "rgba(138, 143, 152, 0.85)";
+    ctx.fill();
+    ctx.strokeStyle = fills[i]?.borderColor ?? "rgba(138, 143, 152, 0.95)";
+    ctx.stroke();
+  });
+}
 
 export function SolenoidMinimap(props: MinimapProps) {
   const ref = useRef<HTMLDivElement>(null);
@@ -156,12 +161,27 @@ export function SolenoidMinimap(props: MinimapProps) {
   const scale = (v: number) => (Number.isFinite(v) ? v * containerWidth : 0);
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const fills = nodeFills(appThemeStore.getMode());
-  // Cheap signatures so the memoized rect layer skips re-render on a pan/zoom that
-  // didn't actually move a node. Pan leaves node graph-coords (and the bounding
+  // Cheap signatures so the canvas redraw skips on a pan/zoom that didn't
+  // actually move a node. Pan leaves node graph-coords (and the bounding
   // box they're normalized against) unchanged, so geomSig is identical frame to
   // frame; only the viewport rect below updates.
   const geomSig = props.nodes.map((n) => `${n.left},${n.top},${n.width},${n.height}`).join(";");
   const fillSig = fills.map((f) => f.background).join(";");
+
+  // Redraw the node canvas only when geometry/colors/size actually changed —
+  // the plugin re-renders this component every pan/zoom frame, and the sig deps
+  // make those frames skip the effect (canvas pixels are position-independent).
+  const nodesCanvasRef = useRef<HTMLCanvasElement>(null);
+  const nodesRef = useRef(props.nodes);
+  nodesRef.current = props.nodes;
+  const fillsRef = useRef(fills);
+  fillsRef.current = fills;
+  useEffect(() => {
+    const canvas = nodesCanvasRef.current;
+    if (!canvas || !containerWidth) return;
+    drawMinimapNodes(canvas, nodesRef.current, fillsRef.current, containerWidth);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [geomSig, fillSig, containerWidth]);
 
   // Incremental drag of the mini-viewport → pan the real area.
   const startDrag = (e: React.PointerEvent) => {
@@ -202,15 +222,7 @@ export function SolenoidMinimap(props: MinimapProps) {
         );
       }}
     >
-      {containerWidth ? (
-        <MinimapNodes
-          nodes={props.nodes}
-          fills={fills}
-          containerWidth={containerWidth}
-          geomSig={geomSig}
-          fillSig={fillSig}
-        />
-      ) : null}
+      <canvas ref={nodesCanvasRef} className="solenoid-minimap__canvas" data-testid="minimap-nodes" />
       <div
         className="solenoid-minimap__viewport"
         data-testid="minimap-viewport"
