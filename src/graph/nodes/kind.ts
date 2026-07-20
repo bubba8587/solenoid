@@ -1,7 +1,7 @@
 import { ClassicPreset } from "rete";
 import type { NodeKind } from "./shared";
 import { SolenoidSocket } from "../sockets";
-import { NumberInputNode, ConstantNode, BooleanInputNode, SliderInputNode, ColorPickerNode } from "./input";
+import { NumberInputNode, ConstantNode, BooleanInputNode, SliderInputNode, ColorPickerNode, ColorBlendNode } from "./input";
 import { PhysicsConstantNode } from "./physicsConstants";
 import { ElementNode } from "./chemistry";
 import { ConvertNode } from "./convert";
@@ -164,7 +164,8 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof ReptNode || node instanceof ExactNode ||
     node instanceof CharCodeNode || node instanceof TextJoinNode ||
     node instanceof TextSplitNode || node instanceof TextAfterBeforeNode ||
-    node instanceof ReverseTextNode || node instanceof SpellNumberNode
+    node instanceof ReverseTextNode || node instanceof SpellNumberNode ||
+    node instanceof ColorBlendNode
   ) return "string";
   if (
     node instanceof TodayNowNode || node instanceof DateConstructNode ||

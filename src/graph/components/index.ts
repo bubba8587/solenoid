@@ -20,6 +20,7 @@ export { ConstantComponent } from "./ConstantNode";
 export { BooleanInputComponent } from "./BooleanInputNode";
 export { SliderInputComponent } from "./SliderInputNode";
 export { ColorPickerComponent } from "./ColorPickerNode";
+export { ColorBlendComponent } from "./ColorBlendNode";
 export { RandComponent } from "./RandNode";
 export { RandBetweenComponent } from "./RandBetweenNode";
 export { NaComponent } from "./NaNode";

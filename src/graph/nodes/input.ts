@@ -1,7 +1,13 @@
 import { ClassicPreset } from "rete";
-import { colord } from "colord";
+import { colord, extend, type Colord } from "colord";
+import namesPlugin from "colord/plugins/names";
+
+// Named CSS colors ("tomato", "white") parse everywhere colord is used — a typed
+// Color Blend / Chart color literal shouldn't demand hex. extend() is global.
+extend([namesPlugin]);
 import { numberSocket } from "../sockets";
-import { numIn, strOut, logicalOut } from "./shared";
+import { numIn, strIn, strOut, logicalOut } from "./shared";
+import { solError, isSolError, type SolError } from "../errorValue";
 
 // ─── Number Input ────────────────────────────────────────────────────────────
 
@@ -75,6 +81,79 @@ export class ColorPickerNode extends ClassicPreset.Node {
   data() {
     const c = this.toColord();
     const out = this.format === "hex" ? c.toHex() : c.toRgbString();
+    this.cachedString = out;
+    return { color: out };
+  }
+}
+
+// ─── Color Blend ──────────────────────────────────────────────────────────────
+// Blend two CSS color strings with a standard blend mode. Parsing is colord's
+// (anything it reads: hex, rgb(), hsl(), named colors), so a Color Picker, a
+// Chart Builder color, or a typed literal all wire in. Blends run per RGB
+// channel on [0,1] with the W3C separable-compositing formulas — A is the
+// backdrop, B the blend layer (matters for the asymmetric modes: overlay,
+// soft/hard light, dodge, burn). Output is always hex; alpha is ignored.
+
+export type BlendMode =
+  | "mix" | "multiply" | "screen" | "overlay" | "soft-light" | "hard-light"
+  | "darken" | "lighten" | "difference" | "exclusion" | "dodge" | "burn";
+
+// W3C soft-light's darkness ramp for the backdrop channel.
+const softLightD = (a: number) => (a <= 0.25 ? ((16 * a - 12) * a + 4) * a : Math.sqrt(a));
+
+export const BLEND_MODE_META: Record<BlendMode, { label: string; blend: (a: number, b: number) => number }> = {
+  mix:          { label: "Mix (average)", blend: (a, b) => (a + b) / 2 },
+  multiply:     { label: "Multiply",      blend: (a, b) => a * b },
+  screen:       { label: "Screen",        blend: (a, b) => a + b - a * b },
+  overlay:      { label: "Overlay",       blend: (a, b) => (a <= 0.5 ? 2 * a * b : 1 - 2 * (1 - a) * (1 - b)) },
+  "soft-light": { label: "Soft Light",    blend: (a, b) => (b <= 0.5 ? a - (1 - 2 * b) * a * (1 - a) : a + (2 * b - 1) * (softLightD(a) - a)) },
+  "hard-light": { label: "Hard Light",    blend: (a, b) => (b <= 0.5 ? 2 * a * b : 1 - 2 * (1 - a) * (1 - b)) },
+  darken:       { label: "Darken",        blend: (a, b) => Math.min(a, b) },
+  lighten:      { label: "Lighten",       blend: (a, b) => Math.max(a, b) },
+  difference:   { label: "Difference",    blend: (a, b) => Math.abs(a - b) },
+  exclusion:    { label: "Exclusion",     blend: (a, b) => a + b - 2 * a * b },
+  dodge:        { label: "Color Dodge",   blend: (a, b) => (a === 0 ? 0 : b >= 1 ? 1 : Math.min(1, a / (1 - b))) },
+  burn:         { label: "Color Burn",    blend: (a, b) => (a >= 1 ? 1 : b <= 0 ? 0 : 1 - Math.min(1, (1 - a) / b)) },
+};
+
+export class ColorBlendNode extends ClassicPreset.Node {
+  label: string;
+  mode: BlendMode;
+  // Unwired inputs are typed inline (InlineInputs renders string fields for
+  // these) — defaults are two palette colors so the node shows a result cold.
+  stringLiterals: Record<string, string> = { a: "#56b4e9", b: "#e69f00" };
+  cachedString: string | SolError | null = null;
+  width = 210;
+  height = 190;
+
+  constructor(init?: { label?: string; mode?: BlendMode }) {
+    super("ColorBlend");
+    this.label = init?.label ?? "Color Blend";
+    // Guard a stale mode from an old save — fall back rather than crash data().
+    this.mode = init?.mode && init.mode in BLEND_MODE_META ? init.mode : "mix";
+    this.addInput("a", strIn("Color A"));
+    this.addInput("b", strIn("Color B"));
+    this.addOutput("color", strOut("Color"));
+  }
+
+  data(inputs: { a?: string[]; b?: string[] }): { color: string | SolError } {
+    const parse = (key: "a" | "b", label: string) => {
+      const s = String(inputs[key]?.[0] ?? this.stringLiterals[key] ?? "").trim();
+      const c = colord(s);
+      return c.isValid() ? c : solError("#VALUE!", `${label} isn't a color: "${s}"`);
+    };
+    const a = parse("a", "Color A");
+    const b = parse("b", "Color B");
+    const err = [a, b].find(isSolError);
+    if (err) {
+      this.cachedString = err;
+      return { color: err };
+    }
+    const ar = (a as Colord).toRgb();
+    const br = (b as Colord).toRgb();
+    const { blend } = BLEND_MODE_META[this.mode];
+    const ch = (x: number, y: number) => Math.round(Math.min(1, Math.max(0, blend(x / 255, y / 255))) * 255);
+    const out = colord({ r: ch(ar.r, br.r), g: ch(ar.g, br.g), b: ch(ar.b, br.b) }).toHex();
     this.cachedString = out;
     return { color: out };
   }
