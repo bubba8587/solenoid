@@ -722,6 +722,8 @@ export function ConnectionComponent({ data }: { data: ConnPayload }) {
   // path string starts at the source output, so the line draws output → input.
   const drawLen = revealActive ? pathLength(pathD, cs, ce) : 0;
 
+  // The 0.72 idle value is mirrored by the gesture canvas (htmlCanvasRenderer
+  // drawCables globalAlpha) — change them together or the swap pops.
   const cableOpacity = ghost ? 0.65 : activeHover || selected || isPseudo ? 0.9 : 0.72;
 
   // Canvas mode: move the VISIBLE stroke to the shared canvas layer (CableCanvas)
