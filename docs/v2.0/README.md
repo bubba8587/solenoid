@@ -17,6 +17,7 @@ polish, 15 domain verticals). Residual open items from built bundles live in
 | [08](08-excel-transpiler.md) | The Excel `.xlsx` → graph transpiler | Not started; deliberately sequenced late |
 | [10](10-decision-model-sensitivity.md) | Decision Matrix sensitivity ("wiggle the weights") | Blocked on the composite Monte Carlo run-mode hook (backlog) |
 | [12](12-value-model-extensions.md) | Uncertain values (#21) + money mode (#43) | As-Of half SHIPPED; the rest VERY LATE, each needs an author representation call |
+| [16](16-widget-nodes.md) | **Everyday widget nodes** (Weather/Geocode/FX/Holidays/TZ/QR — the throwaway-workbook layer) | Scoped 2026-07-20; Tier 1 autonomous-friendly (could be 1.3); 4 author calls listed in the doc (FX cap reversal, provider policy) |
 
 ## Verdict pending — needs a fresh author call before any bundle doc
 
