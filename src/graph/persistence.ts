@@ -32,6 +32,10 @@ import { prefersReducedMotion } from "./coarse";
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
+/** Doc switches show the Loading curtain only past this much teardown+build work
+ *  (nodes + connections, both sides) — a small doc still swaps with no flash. */
+const SWITCH_CURTAIN_MIN_WORK = 60;
+
 // ─── Graph persistence ─────────────────────────────────────────────────────────
 // Serialize the whole graph to plain JSON and rebuild it. The save format mirrors
 // copy/paste's reconstruction path: each node is { type, init } where `type` is
@@ -329,11 +333,22 @@ async function rebuildGraph(
   // Enter build mode FIRST (cables render hidden, the progress overlay covers the
   // canvas) so the node-by-node construction below is never seen. The old graph is
   // detached during the clear regardless, so hiding it early is harmless.
-  if (animate) loadRevealStore.begin();
-  // Accurate progress: nodes + connections are the build's countable work.
-  const buildTotal = Math.max(1, (g.nodes?.length ?? 0) + (g.connections?.length ?? 0));
+  //
+  // Doc switches (animate=false) get the same overlay as a plain CURTAIN when
+  // there's real work on either side: teardown of a big outgoing graph runs in
+  // yielding chunks (below) and used to show as a dead half-blank canvas. The
+  // curtain covers teardown + rebuild with accurate progress and snaps away in
+  // loadGraph's finally (loadRevealStore.finish()) — no staged reveal, so small
+  // docs still feel instant and big ones read as a load, not a hang.
+  const oldWork = editor.getNodes().length + editor.getConnections().length;
+  const newWork = (g.nodes?.length ?? 0) + (g.connections?.length ?? 0);
+  const curtain = !animate && oldWork + newWork > SWITCH_CURTAIN_MIN_WORK;
+  if (animate || curtain) loadRevealStore.begin();
+  // Accurate progress: nodes + connections are the countable work — the curtain
+  // also counts the teardown (it dominates when leaving a big doc).
+  const buildTotal = Math.max(1, curtain ? oldWork + newWork : newWork);
   let buildDone = 0;
-  const bump = () => { if (animate) loadRevealStore.setProgress((buildDone += 1) / buildTotal * 0.9); };
+  const bump = () => { if (animate || curtain) loadRevealStore.setProgress((buildDone += 1) / buildTotal * (animate ? 0.9 : 1)); };
   // Clear the current graph. removeNode fires `noderemoved`, which undocks any
   // FC (clearing its annotation + dockedNodeStore entry), so no extra cleanup.
   //
@@ -358,10 +373,12 @@ async function rebuildGraph(
     const yieldEvery = 24; // unblock the main thread roughly every 24 removals
     for (const c of [...editor.getConnections()]) {
       await editor.removeConnection(c.id);
+      if (curtain) bump();
       if (detach && ++n % yieldEvery === 0) await new Promise((r) => setTimeout(r, 0));
     }
     for (const node of [...editor.getNodes()]) {
       await editor.removeNode(node.id);
+      if (curtain) bump();
       if (detach && ++n % yieldEvery === 0) await new Promise((r) => setTimeout(r, 0));
     }
   } finally {

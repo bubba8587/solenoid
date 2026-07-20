@@ -1,5 +1,7 @@
 // Cinematic load reveal — the staged "build then draw in" animation a graph plays
-// when it's loaded on startup or via File → Open (NOT on quick document switches).
+// when it's loaded on startup or via File → Open. Document switches reuse ONLY the
+// building phase as a plain progress curtain (rebuildGraph's `curtain` path) —
+// they snap to idle from loadGraph's finally, never entering "revealing".
 // A module-level store (read from both React roots through useSyncExternalStore,
 // like cableShapeStore) holds the phase + per-connection reveal flags; the
 // orchestration (build, topological reveal, deferred compute) lives in
