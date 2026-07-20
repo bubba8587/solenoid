@@ -18,6 +18,32 @@ edge round independently. Possible directions not yet tried: draw the ring so it
 (e.g. `inset:0` + account for the 2px border, or a box-shadow ring) instead of a 2px-offset `::after`;
 or pixel-snap the card box. Radius itself is correct; don't re-touch it. Parked by author.
 
+### SESSION DIGEST (2026-07-20b — Chart Builder targets; doc-switch curtain; minimap → canvas)
+- **Chart Builder chart-type dropdown**: a `target` select (Chart / Histogram / KPI / Bullet /
+  Treemap / Sankey / Waterfall / Candlestick / Boxplot / Calendar Heatmap / Waffle) shapes the
+  form to the option keys that figure's RENDERER actually reads — truth table
+  `CHART_BUILDER_TARGETS` in `chartOptions.ts`, derived from ChartView / the payload figures
+  (title+fontsize) / the canvas figures (title only), machine-checked in `visual.test.ts`.
+  A wired-or-valued row stays visible (dimmed, "Not read by X") so switching type never hides
+  live state; serialization stays FULL-WIDTH — inert keys are matplotlib-ignored, one builder
+  can feed several charts. Not per-type catalog nodes (author call).
+- **Doc-switch Loading curtain** (`persistence.ts` `rebuildGraph`): a document switch with real
+  work on either side (teardown+build > 60 nodes+connections) now runs behind the same
+  LoadOverlay as File→Open — progress counts the CHUNKED TEARDOWN too (it dominates leaving a
+  big doc; it used to show as a dead half-blank canvas) — and snaps to idle from loadGraph's
+  finally, never entering the reveal. Small docs still swap with no flash.
+- **Minimap node rects → one `<canvas>`** (`Minimap.tsx` `drawMinimapNodes`): was a div per
+  visible node (N elements + N style-diffs, scales with the graph). Same coordinate origin,
+  same geometry+fill signature gating so pan/zoom frames still skip the redraw; viewport box
+  stays DOM (drag target). Verified pixel-painted + A/B'd against the old divs in a live
+  browser (PF).
+- **DOM re-measure (the levers stand)**: hard-load `querySelectorAll('*')` — PF ≈9.6k
+  (175 nodes, median ~43/node), FM ≈4.5k (median ~38). Per-node chrome is lean; the big
+  remaining subtrees are figure CONTENT (recharts ~200–400/chart, KaTeX ~70/formula) →
+  "figure rasterize-at-rest" queued in backlog with the SvgPicker precedent. `style:~95`
+  bucket = Vite-dev artifact (one tag per CSS file; bundled in prod). content-visibility
+  stays ruled out (unchanged).
+
 ### SESSION DIGEST (2026-07-20 — Color Blend node + add-node skill rewrite; bundle 16 scoped)
 - **Color Blend node** (author ask): two color-string inputs (typeable literals or wired; anything
   `colord` parses — the `names` plugin is now extended globally, so named CSS colors work in every

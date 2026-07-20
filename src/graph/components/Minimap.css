@@ -19,13 +19,16 @@
   z-index: 100;
 }
 
-/* box-sizing: border-box keeps the 1px outline from inflating the rect, so the
-   silhouette matches the node's true footprint. */
-.solenoid-minimap__node {
+/* All node rects draw into this one canvas (drawMinimapNodes) — same coordinate
+   origin the old per-node divs used (the container's padding box). Pointer
+   events pass through to the container's drag/double-click handlers. */
+.solenoid-minimap__canvas {
   position: absolute;
-  box-sizing: border-box;
-  border: 1px solid;
-  border-radius: 1.5px;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 
 .solenoid-minimap__viewport {
