@@ -67,7 +67,7 @@
       "y": -607,
       "init": {
         "label": "2 · Cash flow this quarter",
-        "body": "# Income vs. expenses\n**Filter** the Amount column twice, `> 0` for income and `< 0` for spend, then fold each slice with a **REDUCE** lambda (`acc + value`). Excel: SUMIF. **Savings rate** = net ÷ income drives a gauge and an alert; drag the target slider to trip it.",
+        "body": "# Income vs. expenses\n**SUMIFS** works straight off the transactions frame: one node sums `Amount` where `Amount > 0` (income), a second where `< 0` (spend) — criteria rows exactly like Excel's SUMIFS, no intermediate lists. **Savings rate** = net ÷ income drives a gauge and an alert; drag the target slider to trip it.",
         "color": "green",
         "width": 380,
         "height": 200,
@@ -107,30 +107,26 @@
       }
     },
     {
-      "id": "flt-in",
-      "type": "FilterNode",
-      "x": -1078,
-      "y": -274,
+      "id": "sumif-in",
+      "type": "SumIfsNode",
+      "x": -900,
+      "y": -250,
       "init": {
-        "label": "Keep income (> 0)",
+        "label": "Income (Amount > 0)",
+        "op": "sumifs",
         "condConfig": {
           "0": {
             "op": "gt"
           }
-        }
+        },
+        "valueKeys": [
+          "column0"
+        ]
       },
       "stringLiterals": {
+        "values": "Amount",
+        "column0": "Amount",
         "value0": "0"
-      }
-    },
-    {
-      "id": "red-in",
-      "type": "ReduceLambdaNode",
-      "x": -713,
-      "y": -219,
-      "init": {
-        "label": "Income",
-        "expr": "acc + value"
       }
     },
     {
@@ -143,30 +139,26 @@
       }
     },
     {
-      "id": "flt-out",
-      "type": "FilterNode",
-      "x": -1078,
-      "y": 502,
+      "id": "sumif-out",
+      "type": "SumIfsNode",
+      "x": -900,
+      "y": 310,
       "init": {
-        "label": "Keep spend (< 0)",
+        "label": "Spend (Amount < 0)",
+        "op": "sumifs",
         "condConfig": {
           "0": {
             "op": "lt"
           }
-        }
+        },
+        "valueKeys": [
+          "column0"
+        ]
       },
       "stringLiterals": {
+        "values": "Amount",
+        "column0": "Amount",
         "value0": "0"
-      }
-    },
-    {
-      "id": "red-out",
-      "type": "ReduceLambdaNode",
-      "x": -713,
-      "y": 127,
-      "init": {
-        "label": "Spend",
-        "expr": "acc + value"
       }
     },
     {
@@ -330,7 +322,7 @@
       "y": -647,
       "init": {
         "label": "3 · Spending pivot",
-        "body": "# Group By as a pivot table\nA **Slicer** drops the income rows, then **Group By** collapses the rest to one row per **Category**, summing the absolute spend. A second Group By counts transactions. Totals feed a **Chart**.",
+        "body": "# Group By as a pivot table\nA **Slicer** drops the income rows, then **Group By** — the frame verb, native Polars on desktop — collapses the rest to one row per **Category**. Click the grouped-table chip to inspect it; **Get Column** pulls the totals out for the chart (absolute spend) and a second Group By counts transactions.",
         "color": "gold",
         "width": 380,
         "height": 200,
@@ -359,25 +351,26 @@
       }
     },
     {
-      "id": "col-cat",
-      "type": "GetColumnNode",
-      "x": 923,
-      "y": -199,
+      "id": "gbf-spend",
+      "type": "GroupByFrameNode",
+      "x": 900,
+      "y": -150,
       "init": {
-        "label": "Category",
-        "readAs": "text"
+        "label": "Spend by category",
+        "op": "sum"
       },
       "stringLiterals": {
-        "name": "Category"
+        "keys": "Category",
+        "column": "Amount"
       }
     },
     {
-      "id": "col-amt-exp",
+      "id": "col-ptotal",
       "type": "GetColumnNode",
-      "x": 923,
-      "y": 24,
+      "x": 1230,
+      "y": 60,
       "init": {
-        "label": "Amount",
+        "label": "Category totals",
         "readAs": "number"
       },
       "stringLiterals": {
@@ -395,26 +388,7 @@
       }
     },
     {
-      "id": "gb-sum",
-      "type": "GroupByNode",
-      "x": 1570,
-      "y": -17,
-      "init": {
-        "label": "Spend by category",
-        "op": "sum"
-      }
-    },
-    {
-      "id": "disp-keys",
-      "type": "DisplayNode",
-      "x": 1889,
-      "y": -359,
-      "init": {
-        "label": "Categories"
-      }
-    },
-    {
-      "id": "disp-vals",
+      "id": "disp-pivot",
       "type": "DisplayNode",
       "x": 1889,
       "y": 207,
@@ -433,13 +407,30 @@
       }
     },
     {
-      "id": "gb-cnt",
-      "type": "GroupByNode",
-      "x": 1258,
-      "y": -88,
+      "id": "gbf-cnt",
+      "type": "GroupByFrameNode",
+      "x": 900,
+      "y": 140,
       "init": {
         "label": "Count by category",
         "op": "count"
+      },
+      "stringLiterals": {
+        "keys": "Category",
+        "column": "Amount"
+      }
+    },
+    {
+      "id": "col-pcnt",
+      "type": "GetColumnNode",
+      "x": 1230,
+      "y": -160,
+      "init": {
+        "label": "Counts",
+        "readAs": "number"
+      },
+      "stringLiterals": {
+        "name": "Amount"
       }
     },
     {
@@ -459,7 +450,7 @@
       "y": 518,
       "init": {
         "label": "4 · Net worth",
-        "body": "# Assets − liabilities\nLiabilities are stored as negative balances, so net worth is **SUM(Balance)**. Split by sign as in cash flow: **Filter** `> 0` for assets, `< 0` for debt, **REDUCE** each. The split holds in any account order. A **Group By Type** pivot drives the chart; the gauge tracks the goal slider and the alert watches the emergency fund.",
+        "body": "# Assets − liabilities\nLiabilities are stored as negative balances, so net worth is **SUM(Balance)**. **SUMIFS** splits by sign straight off the accounts frame: `Balance > 0` for assets, `< 0` for debt — the split holds in any account order. **Group By** (the frame verb) collapses accounts to one row per **Type** for the chart; click the class-totals chip to inspect the grouped table. The gauge tracks the goal slider and the alert watches the emergency fund.",
         "color": "violet",
         "width": 380,
         "height": 230,
@@ -477,19 +468,6 @@
       },
       "stringLiterals": {
         "name": "Balance"
-      }
-    },
-    {
-      "id": "col-type",
-      "type": "GetColumnNode",
-      "x": 509,
-      "y": 2053,
-      "init": {
-        "label": "Type",
-        "readAs": "text"
-      },
-      "stringLiterals": {
-        "name": "Type"
       }
     },
     {
@@ -552,57 +530,49 @@
       }
     },
     {
-      "id": "flt-assets",
-      "type": "FilterNode",
-      "x": 881,
-      "y": 1135,
+      "id": "sumif-assets",
+      "type": "SumIfsNode",
+      "x": 1250,
+      "y": 1110,
       "init": {
-        "label": "Keep assets (> 0)",
+        "label": "Assets (Balance > 0)",
+        "op": "sumifs",
         "condConfig": {
           "0": {
             "op": "gt"
           }
-        }
+        },
+        "valueKeys": [
+          "column0"
+        ]
       },
       "stringLiterals": {
+        "values": "Balance",
+        "column0": "Balance",
         "value0": "0"
       }
     },
     {
-      "id": "red-assets",
-      "type": "ReduceLambdaNode",
-      "x": 1626,
-      "y": 1102,
+      "id": "sumif-liab",
+      "type": "SumIfsNode",
+      "x": 1050,
+      "y": 1680,
       "init": {
-        "label": "Assets total",
-        "expr": "acc + value"
-      }
-    },
-    {
-      "id": "flt-liab",
-      "type": "FilterNode",
-      "x": 881,
-      "y": 1694,
-      "init": {
-        "label": "Keep debt (< 0)",
+        "label": "Debt (Balance < 0)",
+        "op": "sumifs",
         "condConfig": {
           "0": {
             "op": "lt"
           }
-        }
+        },
+        "valueKeys": [
+          "column0"
+        ]
       },
       "stringLiterals": {
+        "values": "Balance",
+        "column0": "Balance",
         "value0": "0"
-      }
-    },
-    {
-      "id": "red-liab",
-      "type": "ReduceLambdaNode",
-      "x": 1241,
-      "y": 1661,
-      "init": {
-        "label": "Liabilities (signed)",
-        "expr": "acc + value"
       }
     },
     {
@@ -616,13 +586,30 @@
       }
     },
     {
-      "id": "gb-type",
-      "type": "GroupByNode",
+      "id": "gbf-type",
+      "type": "GroupByFrameNode",
       "x": 881,
       "y": 2042,
       "init": {
         "label": "By asset class",
         "op": "sum"
+      },
+      "stringLiterals": {
+        "keys": "Type",
+        "column": "Balance"
+      }
+    },
+    {
+      "id": "col-tbal",
+      "type": "GetColumnNode",
+      "x": 881,
+      "y": 2270,
+      "init": {
+        "label": "Class totals",
+        "readAs": "number"
+      },
+      "stringLiterals": {
+        "name": "Balance"
       }
     },
     {
@@ -2161,11 +2148,9 @@
           "col-amt",
           "red-net",
           "disp-net",
-          "flt-in",
-          "red-in",
+          "sumif-in",
           "disp-in",
-          "flt-out",
-          "red-out",
+          "sumif-out",
           "disp-out",
           "expr-rate",
           "gauge-rate",
@@ -2192,14 +2177,13 @@
         "label": "Spending pivot",
         "members": [
           "slicer-exp",
-          "col-cat",
-          "col-amt-exp",
+          "gbf-spend",
+          "col-ptotal",
           "abs-spend",
-          "gb-sum",
-          "disp-keys",
-          "disp-vals",
+          "disp-pivot",
           "chart-cat",
-          "gb-cnt",
+          "gbf-cnt",
+          "col-pcnt",
           "spark-cnt"
         ],
         "color": "gold",
@@ -2217,18 +2201,16 @@
         "label": "Net worth",
         "members": [
           "col-bal",
-          "col-type",
           "red-nw",
           "disp-nw",
           "gauge-nw",
           "ratio-nw",
           "slider-goal",
-          "flt-assets",
-          "red-assets",
-          "flt-liab",
-          "red-liab",
+          "sumif-assets",
+          "sumif-liab",
           "expr-debt",
-          "gb-type",
+          "gbf-type",
+          "col-tbal",
           "chart-type",
           "disp-type",
           "alert-nw",
@@ -2471,49 +2453,37 @@
       "targetInput": "in"
     },
     {
-      "source": "col-amt",
-      "sourceOutput": "values",
-      "target": "flt-in",
-      "targetInput": "list"
+      "source": "ws-tx",
+      "sourceOutput": "frame",
+      "target": "sumif-in",
+      "targetInput": "frame"
     },
     {
-      "source": "flt-in",
-      "sourceOutput": "result",
-      "target": "red-in",
-      "targetInput": "table"
-    },
-    {
-      "source": "red-in",
+      "source": "sumif-in",
       "sourceOutput": "result",
       "target": "disp-in",
       "targetInput": "in"
     },
     {
-      "source": "col-amt",
-      "sourceOutput": "values",
-      "target": "flt-out",
-      "targetInput": "list"
+      "source": "ws-tx",
+      "sourceOutput": "frame",
+      "target": "sumif-out",
+      "targetInput": "frame"
     },
     {
-      "source": "flt-out",
-      "sourceOutput": "result",
-      "target": "red-out",
-      "targetInput": "table"
-    },
-    {
-      "source": "red-out",
+      "source": "sumif-out",
       "sourceOutput": "result",
       "target": "disp-out",
       "targetInput": "in"
     },
     {
-      "source": "red-in",
+      "source": "sumif-in",
       "sourceOutput": "result",
       "target": "expr-rate",
       "targetInput": "income"
     },
     {
-      "source": "red-out",
+      "source": "sumif-out",
       "sourceOutput": "result",
       "target": "expr-rate",
       "targetInput": "expense"
@@ -2549,7 +2519,7 @@
       "targetInput": "in_0"
     },
     {
-      "source": "red-in",
+      "source": "sumif-in",
       "sourceOutput": "result",
       "target": "cd-cash",
       "targetInput": "in_1"
@@ -2561,7 +2531,7 @@
       "targetInput": "in_4"
     },
     {
-      "source": "red-out",
+      "source": "sumif-out",
       "sourceOutput": "result",
       "target": "cd-cash",
       "targetInput": "in_2"
@@ -2599,65 +2569,47 @@
     {
       "source": "slicer-exp",
       "sourceOutput": "result",
-      "target": "col-cat",
+      "target": "gbf-spend",
       "targetInput": "frame"
     },
     {
-      "source": "slicer-exp",
-      "sourceOutput": "result",
-      "target": "col-amt-exp",
+      "source": "gbf-spend",
+      "sourceOutput": "frame",
+      "target": "disp-pivot",
+      "targetInput": "in"
+    },
+    {
+      "source": "gbf-spend",
+      "sourceOutput": "frame",
+      "target": "col-ptotal",
       "targetInput": "frame"
     },
     {
-      "source": "col-amt-exp",
+      "source": "col-ptotal",
       "sourceOutput": "values",
       "target": "abs-spend",
       "targetInput": "in"
     },
     {
-      "source": "col-cat",
-      "sourceOutput": "values",
-      "target": "gb-sum",
-      "targetInput": "keys"
-    },
-    {
       "source": "abs-spend",
       "sourceOutput": "result",
-      "target": "gb-sum",
-      "targetInput": "values"
-    },
-    {
-      "source": "gb-sum",
-      "sourceOutput": "keys",
-      "target": "disp-keys",
-      "targetInput": "in"
-    },
-    {
-      "source": "gb-sum",
-      "sourceOutput": "values",
-      "target": "disp-vals",
-      "targetInput": "in"
-    },
-    {
-      "source": "gb-sum",
-      "sourceOutput": "values",
       "target": "chart-cat",
       "targetInput": "values"
     },
     {
-      "source": "col-cat",
-      "sourceOutput": "values",
-      "target": "gb-cnt",
-      "targetInput": "keys"
+      "source": "slicer-exp",
+      "sourceOutput": "result",
+      "target": "gbf-cnt",
+      "targetInput": "frame"
     },
     {
-      "source": "col-amt-exp",
-      "sourceOutput": "values",
-      "target": "gb-cnt",
-      "targetInput": "values"
+      "source": "gbf-cnt",
+      "sourceOutput": "frame",
+      "target": "col-pcnt",
+      "targetInput": "frame"
     },
     {
-      "source": "gb-cnt",
+      "source": "col-pcnt",
       "sourceOutput": "values",
       "target": "spark-cnt",
       "targetInput": "values"
@@ -2666,12 +2618,6 @@
       "source": "ws-acct",
       "sourceOutput": "frame",
       "target": "col-bal",
-      "targetInput": "frame"
-    },
-    {
-      "source": "ws-acct",
-      "sourceOutput": "frame",
-      "target": "col-type",
       "targetInput": "frame"
     },
     {
@@ -2705,55 +2651,43 @@
       "targetInput": "value"
     },
     {
-      "source": "col-bal",
-      "sourceOutput": "values",
-      "target": "flt-assets",
-      "targetInput": "list"
+      "source": "ws-acct",
+      "sourceOutput": "frame",
+      "target": "sumif-assets",
+      "targetInput": "frame"
     },
     {
-      "source": "flt-assets",
-      "sourceOutput": "result",
-      "target": "red-assets",
-      "targetInput": "table"
+      "source": "ws-acct",
+      "sourceOutput": "frame",
+      "target": "sumif-liab",
+      "targetInput": "frame"
     },
     {
-      "source": "col-bal",
-      "sourceOutput": "values",
-      "target": "flt-liab",
-      "targetInput": "list"
-    },
-    {
-      "source": "flt-liab",
-      "sourceOutput": "result",
-      "target": "red-liab",
-      "targetInput": "table"
-    },
-    {
-      "source": "red-liab",
+      "source": "sumif-liab",
       "sourceOutput": "result",
       "target": "expr-debt",
       "targetInput": "l"
     },
     {
-      "source": "col-type",
-      "sourceOutput": "values",
-      "target": "gb-type",
-      "targetInput": "keys"
+      "source": "ws-acct",
+      "sourceOutput": "frame",
+      "target": "gbf-type",
+      "targetInput": "frame"
     },
     {
-      "source": "col-bal",
-      "sourceOutput": "values",
-      "target": "gb-type",
-      "targetInput": "values"
-    },
-    {
-      "source": "gb-type",
-      "sourceOutput": "values",
+      "source": "gbf-type",
+      "sourceOutput": "frame",
       "target": "disp-type",
       "targetInput": "in"
     },
     {
-      "source": "gb-type",
+      "source": "gbf-type",
+      "sourceOutput": "frame",
+      "target": "col-tbal",
+      "targetInput": "frame"
+    },
+    {
+      "source": "col-tbal",
       "sourceOutput": "values",
       "target": "chart-type",
       "targetInput": "values"
@@ -2771,7 +2705,7 @@
       "targetInput": "in_0"
     },
     {
-      "source": "red-assets",
+      "source": "sumif-assets",
       "sourceOutput": "result",
       "target": "cd-acct",
       "targetInput": "in_1"
@@ -3341,7 +3275,7 @@
       "targetInput": "in"
     },
     {
-      "source": "red-out",
+      "source": "sumif-out",
       "sourceOutput": "result",
       "target": "expr-outflow",
       "targetInput": "spend"

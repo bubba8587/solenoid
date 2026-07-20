@@ -18,6 +18,22 @@ edge round independently. Possible directions not yet tried: draw the ring so it
 (e.g. `inset:0` + account for the 2px border, or a box-shadow ring) instead of a 2px-offset `::after`;
 or pixel-snap the card box. Radius itself is correct; don't re-touch it. Parked by author.
 
+### SESSION DIGEST (2026-07-20c — PF seed internals modernized to the current node set)
+Author call: the Personal Finance seed still taught the pre-D16 patterns. Via the generator
+(structure) + committed-geometry adoption (layout), all values verified identical in a live
+browser (Income 16,910 · Net 7,758.99 · rate 46% · NW 101,010 · Assets 123,650 · Debt −22,640):
+- **FILTER + REDUCE → SUMIFS** ×4: cash-flow income/spend and net-worth assets/debt are now one
+  `SumIfsNode` each, straight off the frame (`values`/`column0`/`value0` stringLiterals +
+  `condConfig` gt/lt + `valueKeys:["column0"]` — the valueKeys is REQUIRED or the ctor ignores
+  condConfig). The advisor's outflow feed rewired to `sumif-out`.
+- **Parallel-lists list-GroupBy → frame Group By** ×3: the spending pivot (sum + count) and the
+  asset-class pivot now run `GroupByFrameNode` (native Polars on desktop) with Get Column pulling
+  chart/spark lists; the grouped FRAME shows directly on a Display chip (click → table popup),
+  replacing the separate keys/values list displays. `col-type` deleted (nothing else read it).
+- Notes rewritten to teach SUMIFS/the frame verb. New nodes sit at the tuned coords of the chains
+  they replaced (inside the tuned group boxes — seeds.test's geometry invariant); a future
+  tune-seeds pass may polish spacing. 175 → 171 nodes, 188 connections.
+
 ### SESSION DIGEST (2026-07-20b — Chart Builder targets; doc-switch curtain; minimap → canvas)
 - **Chart Builder chart-type dropdown**: a `target` select (Chart / Histogram / KPI / Bullet /
   Treemap / Sankey / Waterfall / Candlestick / Boxplot / Calendar Heatmap / Waffle) shapes the
