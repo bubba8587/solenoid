@@ -125,3 +125,51 @@ export function serializeChartOptions(f: ChartBuilderFields): string {
   num("fontsize", f.fontsize);
   return parts.join(";");
 }
+
+// ─── Chart Builder targets ───────────────────────────────────────────────────
+// Which option keys each figure's RENDERER actually reads — the truth behind
+// the Chart Builder's chart-type dropdown (it shows a type's accepted rows).
+// Derived from the render layer, keep in sync when a view learns an option:
+//   • ChartView (the Chart node, any shape) reads everything; its column/bar
+//     path skips marker/linewidth but the Chart node can be a line, so the
+//     "chart" target keeps the full set.
+//   • Histogram renders through ChartView as columns → no marker/linewidth.
+//   • The payload figures (KPI / Bullet / Treemap / Sankey) fold fontsize into
+//     their text scale; title flows to the figure title everywhere.
+//   • The canvas figures (Waterfall / Candlestick / Boxplot / Calendar
+//     Heatmap / Waffle) read nothing but the title.
+// The builder still SERIALIZES every set field regardless of target — an
+// unread key is inert matplotlib-style, and one builder may feed several
+// charts — the target only shapes which rows the card shows.
+
+export type ChartBuilderKey =
+  | "title" | "xlabel" | "ylabel" | "color" | "grid" | "marker"
+  | "ymin" | "ymax" | "linewidth" | "alpha" | "fontsize";
+
+export type ChartTargetId =
+  | "chart" | "histogram" | "kpi" | "bullet" | "treemap" | "sankey"
+  | "waterfall" | "candle" | "boxplot" | "calheat" | "waffle";
+
+const ALL_KEYS: readonly ChartBuilderKey[] =
+  ["title", "xlabel", "ylabel", "color", "grid", "marker", "ymin", "ymax", "linewidth", "alpha", "fontsize"];
+const AXED_KEYS: readonly ChartBuilderKey[] =
+  ["title", "xlabel", "ylabel", "color", "grid", "ymin", "ymax", "alpha", "fontsize"];
+const STAT_KEYS: readonly ChartBuilderKey[] = ["title", "fontsize"];
+const TITLE_ONLY: readonly ChartBuilderKey[] = ["title"];
+
+export const CHART_BUILDER_TARGETS: Record<ChartTargetId, { label: string; keys: readonly ChartBuilderKey[] }> = {
+  chart:     { label: "Chart",            keys: ALL_KEYS },
+  histogram: { label: "Histogram",        keys: AXED_KEYS },
+  kpi:       { label: "KPI",              keys: STAT_KEYS },
+  bullet:    { label: "Bullet",           keys: STAT_KEYS },
+  treemap:   { label: "Treemap",          keys: STAT_KEYS },
+  sankey:    { label: "Sankey",           keys: STAT_KEYS },
+  waterfall: { label: "Waterfall",        keys: TITLE_ONLY },
+  candle:    { label: "Candlestick",      keys: TITLE_ONLY },
+  boxplot:   { label: "Boxplot",          keys: TITLE_ONLY },
+  calheat:   { label: "Calendar Heatmap", keys: TITLE_ONLY },
+  waffle:    { label: "Waffle",           keys: TITLE_ONLY },
+};
+
+export const CHART_TARGET_LIST = (Object.keys(CHART_BUILDER_TARGETS) as ChartTargetId[])
+  .map((id) => ({ id, ...CHART_BUILDER_TARGETS[id] }));

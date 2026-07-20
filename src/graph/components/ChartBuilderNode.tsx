@@ -1,5 +1,6 @@
 import type { ChartBuilderNode as ChartBuilderNodeType } from "../rete-nodes";
-import { NodeShell, type NodeProps, type ShellNode, type Emit } from "./nodeKit";
+import { CHART_BUILDER_TARGETS, CHART_TARGET_LIST, type ChartBuilderKey } from "../nodes/chartOptions";
+import { NodeShell, OpSelect, useNodeField, type NodeProps, type ShellNode, type Emit } from "./nodeKit";
 import { InlineInputs, useConnectedInputs, useIncomingSources } from "./inlineInput";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { processGraph } from "../process";
@@ -51,21 +52,57 @@ function ToggleInputRow({ node, emit, socketKey, label }: {
   );
 }
 
+const TARGET_OPTS = CHART_TARGET_LIST.map((t) => ({ value: t.id, label: t.label }));
+
+const STR_KEYS: readonly ChartBuilderKey[] = ["title", "xlabel", "ylabel", "color"];
+const TOGGLE_KEYS: readonly { key: ChartBuilderKey; label: string }[] =
+  [{ key: "grid", label: "Grid" }, { key: "marker", label: "Markers" }];
+const NUM_KEYS: readonly ChartBuilderKey[] = ["ymin", "ymax", "linewidth", "alpha", "fontsize"];
+
 /**
- * Chart Builder — a labelled "Concat for chart options". Most rows are
- * InlineInputs (text/number fields that are also input sockets); Grid and
- * Markers are On/Off toggles. The node joins them into the `key=value;…` string
- * shown in the preview, which feeds a Chart's Options socket. The output socket
- * sits on the preview row, next to the string it emits.
+ * Chart Builder — a labelled "Concat for chart options". A chart-type dropdown
+ * shapes the form: only the rows that type's renderer reads are shown
+ * (CHART_BUILDER_TARGETS). A row that is wired or holds a value stays visible
+ * regardless — dimmed when the chosen type ignores it — so switching type never
+ * hides live state; and the node still serializes every set field, so one
+ * builder can feed several chart types. Most rows are InlineInputs (text/number
+ * fields that are also input sockets); Grid and Markers are On/Off toggles. The
+ * output socket sits on the preview row, next to the string it emits.
  */
 export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNodeType>) {
   const out = data.outputs.result;
+  const [target, setTarget] = useNodeField(data, "target");
+  const connected = useConnectedInputs(data.id);
+  const spec = CHART_BUILDER_TARGETS[target] ?? CHART_BUILDER_TARGETS.chart;
+  const accepted = new Set<string>(spec.keys);
+  // Wired, or holding a typed value — must stay on screen even when inert.
+  const live = (k: ChartBuilderKey) =>
+    connected.has(k) || (data.stringLiterals[k] ?? "") !== "" || data.literals[k] !== undefined;
+  const acc = (keys: readonly ChartBuilderKey[]) => keys.filter((k) => accepted.has(k));
+  const inert = (keys: readonly ChartBuilderKey[]) => keys.filter((k) => !accepted.has(k) && live(k));
+  const inertStr = inert(STR_KEYS);
+  const inertToggles = TOGGLE_KEYS.filter(({ key }) => !accepted.has(key) && live(key));
+  const inertNum = inert(NUM_KEYS);
+  const anyInert = inertStr.length > 0 || inertToggles.length > 0 || inertNum.length > 0;
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
-      <InlineInputs node={data} emit={emit} keys={["title", "xlabel", "ylabel", "color"]} />
-      <ToggleInputRow node={data} emit={emit} socketKey="grid" label="Grid" />
-      <ToggleInputRow node={data} emit={emit} socketKey="marker" label="Markers" />
-      <InlineInputs node={data} emit={emit} keys={["ymin", "ymax", "linewidth", "alpha", "fontsize"]} />
+      <div style={{ padding: "2px 0 4px" }}>
+        <OpSelect value={target} onChange={setTarget} options={TARGET_OPTS} />
+      </div>
+      <InlineInputs node={data} emit={emit} keys={acc(STR_KEYS) as string[]} />
+      {TOGGLE_KEYS.filter(({ key }) => accepted.has(key)).map(({ key, label }) => (
+        <ToggleInputRow key={key} node={data} emit={emit} socketKey={key} label={label} />
+      ))}
+      <InlineInputs node={data} emit={emit} keys={acc(NUM_KEYS) as string[]} />
+      {anyInert && (
+        <div style={{ opacity: 0.45 }} title={`Not read by ${spec.label}`}>
+          <InlineInputs node={data} emit={emit} keys={inertStr as string[]} />
+          {inertToggles.map(({ key, label }) => (
+            <ToggleInputRow key={key} node={data} emit={emit} socketKey={key} label={label} />
+          ))}
+          <InlineInputs node={data} emit={emit} keys={inertNum as string[]} />
+        </div>
+      )}
       <div className="solenoid-node__section-divider" />
       {out && (
         <MeasuredSocketRow side="output" socketKey="result" nodeId={data.id} emit={emit} payload={out.socket}>
