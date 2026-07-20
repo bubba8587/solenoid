@@ -57,6 +57,11 @@ this backlog stays the per-item source of truth.
 
 ## Needs an author decision / author-present session
 
+- [ ] **Everyday widget nodes (v2.0 bundle 16, scoped 2026-07-20)** — Weather + Geocode +
+  FX + Holidays + TZ Convert + QR; the "throwaway workbook / load-a-website" layer, dashboard-
+  framed (the garden-watering case). Build is autonomous-friendly on the existing connection
+  pattern, but 4 gate calls first (FX cap reversal, keyless-provider policy, core-vs-pack
+  placement, Garden Dashboard seed): `v2.0/16-widget-nodes.md`.
 - [ ] **Parity Tier 4 — the formula dimensionality cap (D2, reopened; discussed 2026-07-14)**
   — NOT decidable yet: precondition is finishing the registry unification (same motion as the
   greenlit Tier 1 work). Criteria fixed by the author: correctness + coherence only (the
