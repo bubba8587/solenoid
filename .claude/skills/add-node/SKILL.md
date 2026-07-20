@@ -5,107 +5,171 @@ description: Add a new computation node to Solenoid (the node-graph app). Use wh
 
 # Add a Solenoid node
 
-A node is four things in four places. The component is now boilerplate
-(the `nodeKit` carries it), so the only real work is the `data()` method
-and the catalog copy.
+A node is a class + a component + three registration lines + a catalog entry.
+The component is usually boilerplate (the node kit carries it), so the real
+work is the `data()` method, the tests, and the catalog copy.
 
-## First decide: standalone node, or a new op on an existing node?
+**Worked example:** the Color Blend node (2026-07-20, commit history) touches
+every step compactly — class in `input.ts`, hand-written component, kind
+branch, registry, catalog, vitest file.
 
-Solenoid bundles multi-op families behind one node with a dropdown
-(`OpSelect`). **Do not add a standalone node for something that's an op
-of an existing family** — add it to that family's op union instead:
+## First decide: standalone node, op on an existing family, or pack content?
 
-- unary math (abs/sqrt/sin/round…) → add a `MathFnOp` + a `case` in `MathFnNode.data` + a row in the Math catalog. No new files.
-- two-input arithmetic (+−×÷ % ^) → `ArithmeticOp`.
-- comparisons → `ComparisonOp` (and it flows to Filter via `compareOp`).
-- list aggregates (sum/avg/min/median…) → `ReduceOp`.
-- boolean logic → `LogicalOp`.
+Solenoid bundles multi-op families behind one node with a dropdown. **Do not
+add a standalone node for something that's an op of an existing family** —
+add it to that family's op union + `data()` switch + catalog row instead:
 
-Only make a **standalone** node when its shape is genuinely its own
-(distinct inputs/outputs or UI): e.g. Convert, IFERROR, RANDBETWEEN,
-GCD, QUOTIENT, a lookup.
+- unary math (abs/sqrt/sin/round…) → `MathFnOp` (`scalar.ts`)
+- two-input arithmetic (+−×÷ % ^) → `ArithmeticOp` (`scalar.ts`)
+- comparisons → `ComparisonOp` (`logic.ts`; flows to Filter via `compareOp`)
+- list aggregates (sum/avg/min/median…) → `ReduceOp` (the Aggregate node, `list.ts`)
+- boolean logic → `BooleanOp` (`logic.ts` — the old `LogicalNode`/`LogicalOp` is gone, split into BooleanOp/Not/If)
 
-## Scaffold a standalone node
+**Domain formulas** (physics, chemistry, finance rearrangements…) are usually
+NOT node classes at all — they're formula/equation presets in a domain pack
+(`src/graph/packs/*.ts` on `packShared.ts`; a rearrangeable relation ships as
+ONE locked Equation preset). A pack can also ship custom-logic nodes; those
+declare Excel metadata inline as `excel: [...]` on their catalog entry.
+
+Make a **standalone** node only when its shape is genuinely its own (distinct
+inputs/outputs or UI): Convert, XLOOKUP, RANDBETWEEN, Color Blend.
+
+## Scaffold (optional)
 
 ```
-node scripts/new-node.mjs <PascalName> [--template element|list|reduce] [--kind math|list|logic|convert|input|util|display]
+node scripts/new-node.mjs <PascalName> [--template element|list|reduce] [--kind math|list|logic|...]
 ```
 
-- `element` — flexible `numlist` in/out, `broadcast()` element-wise (list-aware). Default. Use for anything element-wise.
-- `list` — `list` → `list` (Sort/Reverse/Slice shape).
-- `reduce` — `list` → `number` (Length/aggregate shape).
+Writes `src/graph/components/<Name>Node.tsx` (a one-line `makeNodeComponent`
+factory call importing from `./standardNode`) and prints paste-point snippets
+for the other steps. Its printed guidance is current — trust it. Skip the
+script when the component needs hand-writing anyway (op select, custom render).
 
-It writes `src/graph/components/<Name>Node.tsx` and prints the three
-snippets to paste. The generated component renders *all* of the class's
-inputs through `InlineInputs`, so adding more inputs only means editing
-the class — the component needs no change.
+## The places
 
-## The six places (what the script's snippets cover)
-
-1. **Class** → the appropriate domain file in `src/graph/nodes/`:
-   - `scalar.ts` — arithmetic, math functions, rounding, combinatorics
-   - `list.ts` — list construction, shaping, lookup
-   - `stats.ts` — statistics, distributions, regression
-   - `finance.ts` — bitwise, interest rate, depreciation, TVM, cashflow
-   - `logic.ts` — comparisons, boolean logic, IF/IFERROR/IS-checks
-   - `input.ts` — source nodes (no inputs, just output)
-   - `display.ts` — sink/output nodes, RAND variants
-   - `lookup.ts` — MATCH, XLOOKUP
-   - `convert.ts` — unit conversion
-   Use the port factories (`numIn/listIn/numListIn/numOut/listOut/numListOut`).
-   The `data()` method is the only non-boilerplate. Element-wise ops should
-   go through `broadcast(fn, ...args)`. Cache result on `this.cachedResult`
-   (`number | number[] | null`) or `this.cachedList`.
-   Re-export the new class from `src/graph/rete-nodes.ts` (the barrel file —
-   each domain file is already re-exported there via `export * from "./nodes/…"`
-   so if you add to an existing domain file you don't need to touch rete-nodes.ts).
-2. **Kind** → `src/graph/nodes/kind.ts`. Add an `instanceof` branch in
-   `nodeKindOf()` so the node is assigned the right color/category. The
-   fallback at the bottom of the function is `"math"`, so math nodes can
-   skip this step; all others must add a branch.
+1. **Class** → a domain file in `src/graph/nodes/` (~55 files — pick by
+   cohesion with the family it extends, e.g. color nodes live in `input.ts`
+   next to ColorPicker). Common homes: `scalar.ts` `list.ts` `stats.ts`
+   `logic.ts` `text.ts` `date.ts` `finance.ts` `frame.ts` `matrix.ts`
+   `cube.ts` `input.ts` (sources) `display.ts` (sinks) `control.ts` (widgets)
+   `visual.ts` (chart-socket content) `connection.ts`/`dataFeed.ts` (fetchers)
+   `convert.ts` `complex.ts`. `rete-nodes.ts` is the barrel — existing domain
+   files are already `export *`'d, so adding to one needs no barrel edit.
+   - **Ports**: use the factories in `nodes/shared.ts` — every socket family
+     has typed in/out helpers (`numIn`, `strIn`, `dateIn`, `logicalIn`,
+     `complexIn`, plus `list`/`combo`/`table` variants, `frameIn`, `cubeIn`,
+     `lambdaIn`, `chartIn`…). Wildcards are a LADDER (see CLAUDE.md "Socket
+     lattice"): `anyIn` (adoptive element-agnostic scalar),
+     `adoptiveListIn`/`adoptiveTableIn` (1-D/2-D), `trueAnyIn/Out` (the
+     hollow-ring supremum). A new socket TYPE is a bigger, derived edit —
+     follow the `anylist` worked example in CLAUDE.md.
+   - **`data()` is the only non-boilerplate.** Element-wise ops go through
+     `broadcast(fn, ...args)`. Cache the result on the instance
+     (`cachedResult: number | number[] | null`, or `cachedList` /
+     `cachedString` — whatever the component reads).
+   - **Errors**: `installErrorGuards` wraps every `data()` at `nodecreated` —
+     an incoming `SolError` short-circuits to the outputs automatically, so
+     your `data()` sees clean inputs (unless the class opts into
+     `SEES_ERRORS`). For the node's OWN failures return
+     `solError(code, message)` from `errorValue.ts` (`#VALUE!`, `#DOMAIN!`,
+     `#SHAPE!`…) — never throw strings, never emit `NaN` as an error.
+     Container values can carry per-cell `null` (missing) + `SolError`s —
+     see `valueKinds.ts` before hand-rolling skip/propagate logic.
+   - **Units**: an algebra node (one that computes on numbers that may carry
+     units) sets `unitAware = true` and funnels through `broadcastUnit`
+     (`shared.ts`); everything else gets unit-cells unwrapped centrally by
+     `coerceInputs` — do NOT hand-unwrap. See CLAUDE.md "unit-blind boundary".
+2. **Kind** → `src/graph/nodes/kind.ts`: an `instanceof` branch in
+   `nodeKindOf()` assigns the accent/category (`"input"`, `"string"`,
+   `"list"`, `"util"`…). The fallback is `"math"`, so math nodes skip this.
 3. **Component** → `src/graph/components/<Name>Node.tsx`. A standard
-   "inputs + one value box" node is a one-line factory call:
+   "inputs + one value box" node is one line:
    `export const FooComponent = makeNodeComponent<FooNode>((n) => n.cachedResult);`
-   (use `makeExtensibleNodeComponent` for add/remove input rows; `cachedList`
-   for list outputs). Nodes that need an `OpSelect`, a custom value `render`,
-   or local state hand-write the component against `NodeShell` instead — see
-   `ArithmeticNode.tsx` / `ContainsNode.tsx`.
-4. **Barrel** → one line in `src/graph/components/index.ts`:
-   `export { FooComponent } from "./FooNode";`
-   (`nodeRegistry.ts` imports everything from this barrel.)
-5. **Registry** → one row in `NODE_COMPONENTS` in `src/graph/nodeRegistry.ts`
-   (two import lines in that file + the row):
-   `import { FooNode } from "./rete-nodes";`
-   `import { FooComponent } from "./components";`
-   `[FooNode, comp(FooComponent)],`
+   (from `./standardNode`; `makeExtensibleNodeComponent` for add/remove input
+   rows). Nodes needing an `OpSelect`, custom value render, or local state
+   hand-write against `NodeShell` — see `ArithmeticNode.tsx` (minimal) or
+   `ColorBlendNode.tsx` / `ColorPickerNode.tsx` (custom output row).
+4. **Barrel** → one line in `src/graph/components/index.ts`.
+5. **Registry** → `src/graph/nodeRegistry.ts`: add the class + component to
+   the import blocks, one `[FooNode, comp(FooComponent)],` row in
+   `NODE_COMPONENTS`. (This also feeds the ctor registry persistence uses.)
 6. **Catalog** → one entry in `src/graph/nodeCatalog.ts`, in the right
-   category. Description should carry the Excel equivalent
-   (`(Excel: =FOO(…))`) — the zero-learning-curve goal in CLAUDE.md.
-7. **Excel metadata** (only if the node maps to an Excel function) →
-   `src/graph/nodeExcel.ts`, the single source of truth for Excel
-   equivalence:
-   `"foo": [{ excel: "FOO", syntax: "=FOO(x)" }],`  (add `parity: false` +
-   `note` if it differs). `EXCEL_TO_CATALOG` / `CATALOG_TO_EXCEL` and the
-   **Function Reference** all derive from this — do not hand-edit a separate
-   list. Omit entirely for a Solenoid-native node. A *pack* node declares this
-   inline as `excel: [...]` on its catalog entry instead.
+   category. The `description` IS the node's Function Reference entry AND its
+   hover tooltip — carry the Excel equivalent where one exists, per the
+   zero-learning-curve rule. A `keywords` string boosts Add-menu search.
+   No Captain-Obvious phrasing (CLAUDE.md).
+7. **Excel metadata** (only for Excel-function nodes) → `src/graph/nodeExcel.ts`:
+   `"foo": [{ excel: "FOO", syntax: "=FOO(x)" }]` (+ `parity: false` + `note`
+   if it differs). The Function Reference derives from this; the dev catalog
+   validator flags a mapping to a missing node. Omit for Solenoid-native
+   nodes; pack nodes declare it inline on the catalog entry instead.
+8. **Tests** → a vitest file NEXT TO THE CLASS (`nodes/foo.test.ts`) pinning
+   `data()` behavior: happy paths, the error cases, and an `extractInit`
+   round-trip (see `colorBlend.test.ts` / `colorPicker.test.ts`). Every node
+   family has one; a node without tests is not done.
 
-The Function Reference is generated from the catalog (`functionReference.ts`):
-Add-menu location, pack membership, dependency, parity, and the Excel metadata
-above. There is no parallel reference file to maintain. The dev catalog
-validator (`catalogValidator.ts`) warns if Excel metadata points at a node that
-doesn't exist — so a node can't silently fall off the reference.
+## Persistence — how node state survives save/copy/undo
+
+- `extractInit` (`copyPaste.ts`) snapshots constructor-arg fields listed in
+  **`INIT_FIELD_ORDER`** — `label`, `op`, `mode`, `format`, `value`, `width`…
+  **Reuse an existing field name when one fits** (e.g. call your dropdown
+  `mode` or `op`); a genuinely new field must be APPENDED to that list, which
+  is shared with `textForm.ts`'s byte-identical writer — extend, don't reorder.
+  The constructor must accept the same fields back (guard stale enum values
+  from old saves — fall back, don't crash).
+- **`literals` / `stringLiterals`**: declare the map on the class IFF the card
+  edits those values inline — that declaration is the LOAD GATE (persistence
+  restores the maps only onto declaring classes, so a save can't hardcode a
+  value the user can't see). `literals` entries are spread into the init
+  snapshot; `stringLiterals` ride persistence's own channel. A typeable-list
+  input (strlist/datelist/logicallist) implies a `stringLiterals` declaration
+  (machine-checked in `coerceInputs.test.ts`).
+- Object-valued config (a per-row map, a ports array) needs its own deep-copy
+  block in `extractInit` — copy the object, and keep only LIVE rows' entries
+  (orphans from undo break the text form's second-write identity). Follow the
+  `condConfig`/`titles` examples there.
+
+## UX rules the component must follow
+
+- **Typed fields commit on Enter/blur** via `useDraftCommit`
+  (`inlineInput.tsx`) — NEVER call `processGraph()` from a text field's
+  `onChange`. Discrete picks (dropdowns, checkboxes, slider drags) apply
+  immediately; `OpSelect` is already drag-safe (stopPropagation) — any other
+  popup-opening control needs `onPointerDown`/`onMouseDown` stopPropagation.
+- **`InlineInputs` renders literal fields for you**, keyed by socket type:
+  number → `InlineNumberField` (backed by `literals`), string →
+  `InlineTextField` (backed by `stringLiterals`), typeable lists → a CSV
+  field. Wired inputs automatically show the "↩ source" chip instead.
+- Multi-output values → `InlineOutputRows` (collapse-safe). Role-distinct
+  variadic inputs → `ExtensibleInputs`/`PairedExtensibleInputs`; interchangeable
+  elements → a single list socket (see `docs/node-coverage.md` design rules).
+- Custom result rows (a swatch, a glyph) sit inside a `MeasuredSocketRow`
+  (`NodeSocket.tsx`) with `hideOutputSockets` on `NodeShell` — the
+  ColorPicker/ColorBlend pattern — so the socket dot rides the row.
+- Anything visual: read `DESIGN.md` first. No Captain-Obvious strings.
 
 ## Verify
 
-`npm run build` (runs `tsc` then `vite build`). A clean build means the
-node is registered and type-correct. Then it appears in the Add menu. In dev,
-the console catalog validator confirms the Excel metadata resolves.
+`npx tsc --noEmit` clean + `npx vitest run` green — the FULL suite, because
+the machine-checked sweeps (`socketConnect.test.ts`, `coerceInputs.test.ts`,
+`seeds.test.ts`) are what catch a wiring/declaration mistake. The node then
+appears in the Add menu and the Function Reference (both generated from the
+catalog). The author eyeballs UI on their own dev environment — do NOT build
+render/screenshot tests (vitest env is `node`, no jsdom).
 
-## nodeKit reference (`src/graph/components/nodeKit.tsx`)
+## nodeKit / component-kit reference
 
-- `NodeShell` — output sockets + editable label header + body wrapper. `leading` slot for bare input sockets (Display/Convert); `labelPlaceholder` for sources (ScalarInput).
-- `useNodeField(node, key)` — controlled local state mirrored to `node[key]`, recomputes the graph on change. Use for op selects and any node field.
-- `OpSelect` — drag-safe `<select>`; `options={[{value,label}]}`. Bake any symbol into the label string.
-- `ValueDisplay` — renders `number | number[] | null`: `empty` overrides the "—" placeholder; `render` overrides scalar formatting.
-- `PortSockets` — map a node's inputs or outputs to socket dots.
+- `NodeShell` (`nodeKit.tsx`) — sockets + editable-label header + body.
+  Props: `leading` (bare input sockets), `labelPlaceholder` (sources),
+  `hideOutputSockets` (when you render your own `MeasuredSocketRow`).
+- `useNodeField(node, key)` — controlled state mirrored to `node[key]`,
+  recomputes on change. For op selects and any persisted node field.
+- `OpSelect` — drag-safe `<select>`; `options={[{value,label,group?}]}`.
+- `ValueDisplay` — renders `number | list | SolError | null` with chips;
+  `render`/`empty`/`full`/`socketKey` overrides.
+- `PortSockets` / `InlineOutputRows` / `MeasuredSocketRow` — socket plumbing.
+- `makeNodeComponent` / `makeExtensibleNodeComponent` (`standardNode.tsx`).
+- `InlineInputs`, `useDraftCommit`, `InlineNumberField`, `InlineTextField`
+  (`inlineInput.tsx`).
+- `SegToggle` — segmented toggle (mode switches, per ColorPicker/Table Input).
+- `ErrorChip` (`ErrorChip.tsx`) — render a `SolError` in a custom row.
