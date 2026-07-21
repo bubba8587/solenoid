@@ -64,7 +64,8 @@ index), `docs/glossary.md` (the invented vocabulary — read before the deep div
   FLOATING OVERLAY: offsets are hand-keyed magic numbers with no shared envelope var — this is
   the sync map (the source of the recurring "overlay overlaps a bar" bugs).
 - `docs/node-coverage.md` — node inventory; `nodeCatalog.ts` is the real source of truth (Add
-  menu + Function Reference generate from it). `docs/architecture.md` — the file map.
+  menu + Function Reference generate from it). Adding a node: the `add-node` skill /
+  `scripts/new-node.mjs`. `docs/architecture.md` — the file map.
 - `docs/backlog.md` — the task queue (OPEN items only; the single source of truth for to-dos).
   `docs/dev-notes.md` — open problems + the latest session digests only.
 - Rationale/reference: `docs/format-model.md` (FC control truth table, mirrored in

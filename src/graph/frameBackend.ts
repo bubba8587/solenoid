@@ -4,7 +4,7 @@
 // (desktop). A backend OWNS its data and hands out opaque string HANDLES; data
 // only crosses back as a value at a MATERIALIZATION boundary — `preview` (schema
 // + head-N + row count, for display/inspector) and `column` (one column back as
-// an eager list, the bridge to the scalar/list world). See docs/v1.0-plan.md WS2.
+// an eager list, the bridge to the scalar/list world). See docs/archive/v1.0-plan.md WS2.
 //
 // This module is the seam + the JS backend only. The Polars backend (desktop)
 // implements the SAME interface over IPC (`ipcBridge.ts` → `ipc.rs`), where a

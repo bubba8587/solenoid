@@ -5,8 +5,8 @@ sequencing, sources) is in git history; most of the [F] formula-data batch shipp
 kept: the **[F]/[C]/[M] build-shape taxonomy** (§2 — the axis that decides cost), the
 **don't-duplicate ledger** (§3), and the **still-unbuilt rows** worth their weight (§4).
 
-Companion docs: `docs/pack-architecture.md` (the pack mechanism), `docs/excel-pain-points.md`
-(function-level gaps), `packs.ts` (live pack definitions),
+Companion docs: `docs/pack-architecture.md` (the pack mechanism), `excel-pain-points.md`
+(same directory — function-level gaps), `packs.ts` (live pack definitions),
 `io-visual-control-node-proposal.md` (the sibling input/output/visual proposal).
 
 ---

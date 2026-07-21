@@ -132,11 +132,11 @@ src/
 | `ribbonCable.ts` | Ribbon (bundled trunk + fans) membership/geometry — derived fresh per render |
 | `components/ConnectionComponent.tsx` | The cable renderer (owns its SVG wrapper, hit strokes, ribbon/pill rerouting, flow overlay). In `canvas` render-mode it publishes the visible stroke to `cableScene` and emits only the hit path |
 
-### GPU render layer (WS4, feature-gated — DOM is the permanent default/fallback)
+### GPU render layer (feature-gated — DOM is the permanent default/fallback)
 | File | Responsibility |
 |---|---|
 | `renderMode.ts` | Render-mode store `dom`\|`canvas`\|`html` (default `dom`; only `html` persists) + `gpuCapabilityStore` (set by the startup probe); `useRenderMode` hook |
-| `htmlCanvasRenderer.ts` | **The SHIPPED WS4 renderer** (Settings-gated, DOM stays default): captures the real node DOM via `drawElementImage` into mip pyramids; pan/zoom draws the canvas, idle shows the DOM |
+| `htmlCanvasRenderer.ts` | **The shipped html-in-canvas renderer** (Settings-gated, DOM stays default): captures the real node DOM via `drawElementImage` into mip pyramids; pan/zoom draws the canvas, idle shows the DOM |
 | `components/HtmlCanvasLayer.tsx` | Mounts the HTML-canvas renderer when mode is `html` ≥100 nodes: gesture swap (DOM hidden ↔ canvas), targeted re-capture per changed node id, DOM-only escape hatch (conduits) |
 | `gpuProbe.ts` (+`.test.ts`) | Capability probe: WebGPU non-fallback adapter → else non-software WebGL2 → else DOM. Pure `classifyCapability`/`isSoftwareRenderer` |
 | `overlayTransform.ts` (+`.test.ts`) | Pure world↔device/css transform math + `deviceMatrix` (setTransform baking) + the `overlayBus` singleton (Canvas feeds transform/viewport) |
