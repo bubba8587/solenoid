@@ -1053,9 +1053,8 @@ export class DropNode extends ClassicPreset.Node {
   }
 }
 
-// Joins lists end-to-end — VSTACK's old job here, renamed 2026-07-09 when
-// VSTACK became the true table stacker (matrix.ts): appending and stacking are
-// different operations, and this one stays 1-D. The 1-D rung of the APPEND
+// Joins lists end-to-end and stays 1-D (VSTACK in matrix.ts is the table
+// stacker — appending and stacking are different operations). The 1-D rung of the APPEND
 // LADDER (decisions.md D15): N extensible element-agnostic rows (anylist — a
 // scalar widens to a 1-element list, so "push one value" needs no wrapper),
 // concatenated in row order. Rows are wire-only: a typed literal list belongs
@@ -1648,10 +1647,9 @@ export const REDUCE_OP_META = {
 // NB: the user-facing identity is "Aggregate" (header title, hover type hint via
 // constructor.name, status bar). It is NOT the table-taking REDUCE lambda
 // (`ReduceLambdaNode`) — it's a fixed-op 1-D list aggregator (SUM/AVERAGE/MEDIAN/
-// STDEV/…), so its input is a `list`, not a `table`. The class was once named
-// ReduceNode (no save-compat alias — pre-alpha, old saves skip it). The internal
-// op tokens (`ReduceOp`, `REDUCE_OP_META`, the `reduce-${op}` catalog ids) keep
-// their names — never user-visible.
+// STDEV/…), so its input is a `list`, not a `table`. The internal op tokens
+// (`ReduceOp`, `REDUCE_OP_META`, the `reduce-${op}` catalog ids) keep the
+// `reduce` prefix — never user-visible.
 // How an aggregate transforms the shared dimension of its inputs (Bundle 05, step 6):
 //   preserve (sum/avg/min/max/median/geomean/harmean/stdev/spread) → same dim ·
 //   square (var/devsq/sumsq) → dim² · product → dimⁿ · everything else (count,

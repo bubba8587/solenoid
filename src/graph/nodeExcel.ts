@@ -232,9 +232,9 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "list-unique": [{ excel: "UNIQUE", syntax: "=UNIQUE(array)", parity: true }],
   "vstack-table": [{ excel: "VSTACK", syntax: "=VSTACK(array1, array2, ...)", parity: true, note: "N-ary; ragged inputs pad with #N/A like Excel. A bare list counts as ONE ROW" }],
   "logest": [{ excel: "LOGEST", syntax: "=LOGEST(ys, xs)", parity: false, note: "Returns [m, b] as a list; Excel returns a full coefficient array" }],
-  // Keys track the post-split catalog types (bool-*/if/not — the old multi-op
-  // LogicalNode's "logic-*" keys went stale unnoticed until the drift test);
-  // AND/OR/XOR are N-ary reducers now, so the "binary only" caveat is gone.
+  // Keys MUST track the catalog types (bool-*/if/not) — a drift test enforces
+  // it, catching stale keys. AND/OR/XOR are N-ary reducers, so there's no
+  // "binary only" caveat.
   "bool-and": [{ excel: "AND", syntax: "=AND(a, b, ...)", parity: true }],
   "if": [{ excel: "IF", syntax: "=IF(cond, a, b)", parity: true }],
   "not": [{ excel: "NOT", syntax: "=NOT(a)", parity: true }],

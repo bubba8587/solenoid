@@ -92,8 +92,8 @@ export class BuildCubeNode extends ClassicPreset.Node {
 
 // The child socket is `any` so it takes a Frame OR a Cube (a cube can't narrow into a
 // frame socket; and a `cube` socket would wrongly widen a frame child TO a cube, turning
-// depth-1 sub-frames into sub-cubes). A bare list/matrix/scalar still widens to a frame,
-// exactly as the old `frame` socket did (coerceValue's frame case mirrored here).
+// depth-1 sub-frames into sub-cubes). A bare list/matrix/scalar still widens to a frame
+// (coerceValue's frame case, mirrored here).
 function asNestChild(v: unknown): FrameValue | CubeValue | null {
   if (v == null) return null;
   if (isCubeValue(v)) return v;

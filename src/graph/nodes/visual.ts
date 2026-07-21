@@ -41,7 +41,7 @@ export class SparklineNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: SparklineOp }) {
     super("Sparkline");
     this.label = init?.label ?? "Sparkline";
-    // Normalize retired ops: "bar" was the old column name; "area" is dropped → line.
+    // Normalize retired ops from old saves: "bar" → column, "area" → line.
     const raw = init?.op as string | undefined;
     this.op = raw === "bar" ? "column" : raw === "area" ? "line" : ((raw as SparklineOp) ?? "line");
     this.addInput("values", numListIn("Values"));

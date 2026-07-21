@@ -270,10 +270,9 @@ function dispatch(name: string, ...args: unknown[]): unknown {
 }
 
 // ─── Array-aware evaluator (Expression's compute core) ───────────────────────
-// THE one evaluation core (the old `compileFormula` scalar `new Function`
-// codegen was RETIRED 2026-07-05, B-4 — every runtime caller had long moved
-// here via compileEvaluator/compilePositional; this core is its strict
-// superset, with the SETTLED P6 operator semantics). The evaluator walks the
+// THE one evaluation core (every runtime caller reaches it via
+// compileEvaluator/compilePositional), with the SETTLED P6 operator
+// semantics. The evaluator walks the
 // AST and decides broadcast-vs-aggregate PER CALL SITE (Excel's grammar of
 // arrays): a range-signature function receives its array argument WHOLE (so it
 // can aggregate or array-return), while every other function and every

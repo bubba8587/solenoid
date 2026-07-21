@@ -6,9 +6,9 @@
 import { frameFromColumnar, type FrameValue } from "./frame";
 import { csvToFrame } from "./nodes/connection";
 
-// Stooq was dropped 2026-07-06: its keyless CSV endpoint is now behind a JavaScript
+// Stooq is unusable: its keyless CSV endpoint sits behind a JavaScript
 // proof-of-work bot-check, so a plain HTTP GET returns a challenge page, not data —
-// unfixable without a real browser. Stock history now goes through Alpha Vantage (key).
+// unfixable without a real browser. Stock history goes through Alpha Vantage (key).
 export type ProviderId = "fred" | "alphavantage";
 
 /** Optional per-fetch refinements the node folds into the URL (all in the cache key,

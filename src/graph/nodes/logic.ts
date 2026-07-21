@@ -159,8 +159,6 @@ function compareCell(op: ComparisonOp, x: unknown, y: unknown): Tri | SolError {
 // A standalone IF: the condition picks one of two values. This is a VALUE
 // passthrough (it returns whichever branch — NOT a logical). Boolean COMBINING
 // (AND/OR/…) lives in BooleanOpNode; comparisons/parity emit the logical type.
-// (Split out of the old multi-op LogicalNode 2026-06-23 — IF is a selector, the
-// boolean ops are N-ary reducers, so they no longer share one node.)
 
 export class IfNode extends ClassicPreset.Node {
   label: string;
@@ -358,9 +356,8 @@ export class IFErrorNode extends ClassicPreset.Node {
     const fallback = inputs.fallback && inputs.fallback.length ? inputs.fallback[0] : (this.literals.fallback ?? 0);
     // Tagged error values (errorValue.ts) reach this node raw — it's an error
     // consumer — both as a whole-value error AND per cell inside a list. A `null`
-    // (missing) is NOT an error now that null is a first-class value, so it ALWAYS
-    // passes through (the old IFNA "null = not-found" / IFERROR "null → fallback"
-    // assumptions are gone — a real not-found is a tagged #N/A, e.g. XLOOKUP).
+    // (missing) is NOT an error (null is a first-class value), so it ALWAYS
+    // passes through — a real not-found is a tagged #N/A, e.g. XLOOKUP.
     //  IFERROR catches any tagged error; IFNA only a #N/A error. Mirrors Test's
     //  ISERROR / ISNA exactly (shared via isNaError) — a tagged failure is the ONE
     //  notion of "error" across this family. Producers tag domain failures or
@@ -464,8 +461,7 @@ export class IsTestNode extends ClassicPreset.Node {
         // Pure TYPE test (Excel ISLOGICAL): only a real boolean passes. NOT 0/1 (those
         // are numbers — ISNUMBER's) and NOT "TRUE"/"FALSE" (text — ISTEXT's). The IS-
         // checks partition by actual runtime type with no overlap; bool↔number coercion
-        // is a separate, socket-boundary concern. (The 0/1 acceptance was a pre-
-        // first-class-logical artifact, when booleans WERE 1/0 numbers.)
+        // is a separate, socket-boundary concern.
         case "islogical": return typeof x === "boolean";
         case "iserror":   return isSolError(x);
         case "isna":      return isNaError(x);
@@ -702,7 +698,7 @@ export class IfsNode extends ClassicPreset.Node {
     }
     // A differently-labeled fallback appended AFTER the pairs — returned when no
     // condition matched. Resolves the "fake a `TRUE, fallback` last pair" pattern
-    // Excel forces; unset → null (the old no-match behaviour is preserved).
+    // Excel forces; unset → null.
     this.addInput("otherwise", trueAnyIn("Otherwise"));
     this.addOutput("result", trueAnyOut("Result"));
   }
