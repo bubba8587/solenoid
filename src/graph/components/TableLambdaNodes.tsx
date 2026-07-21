@@ -24,9 +24,8 @@ type ScalarVal = number | string | SolError | null;
 type ListVal = number[] | string[] | SolError | null;
 
 // The LAMBDA-family formula is edited in the roomy box below (or the big
-// FormulaPopup); a wired LAMBDA value supersedes it. The old piped-formula
-// string socket was removed 2026-07-09. Variables are fixed per node — a
-// small hint names them.
+// FormulaPopup); a wired LAMBDA value supersedes it. Variables are fixed per
+// node — a small hint names them.
 
 const FORMULA_KEYS = new Set(["lambda"]);
 

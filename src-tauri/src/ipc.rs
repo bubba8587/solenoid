@@ -1,10 +1,9 @@
-// IPC surface — the contract the web layer calls the Rust engine over.
+// IPC surface — the error contract + health check for the Rust engine boundary.
 //
-// This is the foundation WS2 (the Polars relational engine) fills in: frame
-// `source` / `apply` / `preview` / `column` / `drop` commands all land here as
-// `#[tauri::command] -> Result<T, IpcError>`. For now it carries one round-trip
-// health command so the boundary + the error convention are exercisable before
-// any engine code exists.
+// This module defines `IpcError` (the tagged-error convention every engine
+// command returns) and `engine_ping` (the round-trip health check). The frame
+// engine commands themselves — `source` / `apply` / `preview` / `column` /
+// `drop` — live in `engine.rs`, each `#[tauri::command] -> Result<T, IpcError>`.
 //
 // Error convention: a command's `Err` serializes to the SAME shape the web
 // layer's tagged `SolError` uses — `{ "__solError": true, code, message }` — so a
@@ -53,7 +52,7 @@ pub struct EngineInfo {
 }
 
 /// Round-trip health check. Returns the engine's identity so the web layer can
-/// confirm the native side is reachable (and, later, which backend it got).
+/// confirm the native side is reachable and which backend it got.
 #[tauri::command]
 pub fn engine_ping() -> Result<EngineInfo, IpcError> {
     Ok(EngineInfo {

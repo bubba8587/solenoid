@@ -46,8 +46,8 @@ html.is-mobile {
     gap: 4px;
     /* OPAQUE surface (not the translucent --panel-bg) so the canvas never shows
        through. Separator = the DESKTOP one (hairline + 2px ACCENT underline, from
-       the base .solenoid-topbar rule) — it reads cleanly now that Row B is neutral,
-       so we no longer override border-bottom / box-shadow here. */
+       the base .solenoid-topbar rule) — it reads cleanly since Row B is neutral,
+       so this rule leaves border-bottom / box-shadow to the base rule. */
     background: var(--surface);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
@@ -59,8 +59,8 @@ html.is-mobile {
   .solenoid-topbar__art,
   .solenoid-topbar .solenoid-toolbar,
   .solenoid-topbar__mark,
-  /* The document name lives up on the accent row (menu bar) now, so hide the
-     in-app-bar copy on mobile too (it was the mobile home before the two-row split). */
+  /* The document name lives up on the accent row (menu bar), so hide the
+     in-app-bar copy on mobile too. */
   .solenoid-topbar__doctitle {
     display: none;
   }

@@ -227,8 +227,7 @@ export class AlertNode extends ClassicPreset.Node {
   }
 }
 
-// Resolve a numeric input to its first value, else its literal fallback, else
-// null. Mirrors the old `inputs.x?.[0] ?? literal ?? null` chain.
+// Resolve a numeric input to its first value, else its literal fallback, else null.
 function scalarish(got: (number | number[])[] | undefined, lit: number | undefined): number | number[] | null {
   const v = got?.[0] ?? lit ?? null;
   return v;

@@ -29,9 +29,9 @@ function isNanCell(v: Cell): boolean {
 /** Render one cell. Text passes through; a logical shows TRUE/FALSE; a date matrix
  *  formats its serials; everything else is numeric. */
 function fmtCell(v: Cell, kind?: ResultType): string {
-  if (v === null) return ""; // a missing cell renders blank (was "-∞" via fmtNum)
+  if (v === null) return ""; // a missing cell renders blank
   if (isSolError(v)) return v.code; // a per-cell error shows its #CODE!
-  if (typeof v === "boolean") return v ? "TRUE" : "FALSE"; // logical cell (was "-∞" via fmtNum)
+  if (typeof v === "boolean") return v ? "TRUE" : "FALSE"; // logical cell
   if (typeof v === "string") return v;
   if (kind === "date" && Number.isFinite(v)) return formatDateSerial(v, DEFAULT_DATE_FORMAT);
   return fmtNum(v);

@@ -6,7 +6,7 @@ import { resolveExcelFunction } from "../excelFunctions";
 import { EquationNode } from "./equation";
 
 // Cashflow-list prep for NPV/IRR/MIRR/FVSCHEDULE: propagate the first SolError in the
-// list (error-in → error-out, was silently swallowed to NaN), and coerce a null cell
+// list (error-in → error-out), and coerce a null cell
 // to 0 — a missing period IS a zero cashflow for a position-discounted sum (skipping
 // would misalign every later period's exponent).
 function cashPrep(raw: (number | null | SolError)[] | null): { error?: SolError; nums: number[] } {

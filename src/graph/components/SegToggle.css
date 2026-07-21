@@ -1,7 +1,7 @@
-/* Segmented button toggle — ONE segmented-button definition (v1.1 A2 unification):
+/* Segmented button toggle — ONE segmented-button definition:
    full-width in a stacked node body (Get Column / Add Column read-as), or the
    inline-row variant (`--inline`) that fills the remaining row space (the FC's
-   places/sig-figs toggle — formerly its own .solenoid-fc__seg copy). */
+   places/sig-figs toggle). */
 .solenoid-seg {
   display: flex;
   width: 100%;

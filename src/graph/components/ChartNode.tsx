@@ -76,7 +76,7 @@ export function ChartComponent({ data, emit }: NodeProps<ChartNodeType>) {
 
   // The data input socket is centred vertically on the chart (its main feed),
   // measured against the card — separate from the Options socket (its own row
-  // below) so the two no longer overlap.
+  // below) so the two don't overlap.
   const chartRef = useRef<HTMLDivElement>(null);
   const [valuesTop, setValuesTop] = useState<number | undefined>(undefined);
   useLayoutEffect(() => {

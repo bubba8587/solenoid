@@ -19,9 +19,9 @@
   z-index: 100;
 }
 
-/* All node rects draw into this one canvas (drawMinimapNodes) — same coordinate
-   origin the old per-node divs used (the container's padding box). Pointer
-   events pass through to the container's drag/double-click handlers. */
+/* All node rects draw into this one canvas (drawMinimapNodes), using the
+   container's padding box as the coordinate origin. Pointer events pass
+   through to the container's drag/double-click handlers. */
 .solenoid-minimap__canvas {
   position: absolute;
   left: 0;

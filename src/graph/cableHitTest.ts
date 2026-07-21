@@ -1,11 +1,7 @@
-// Canvas cable hit-testing — pure geometry, the Phase-3 foundation. NOT WIRED IN.
-//
-// Phase 1 keeps an invisible per-cable hit <svg> in the DOM, which is what stops
-// the canvas layer from fully clearing the compositing floor (each cable is still
-// a DOM layer). Phase 3 replaces those with a single spatial hit-test against the
-// canvas geometry. This module is that test, built standalone + unit-tested so it's
-// ready when Phase 3 is greenlit — it has no DOM/React/store dependency and nothing
-// imports it yet (no behaviour change).
+// Canvas cable hit-testing — pure geometry (no DOM/React/store). Flattens an SVG
+// cable path to a polyline and measures point→polyline distance; `hitTestCables` is
+// the O(cables) brute-force query (cableHitIndex narrows candidates via a spatial
+// grid first). Also feeds the GPU cable renderer and cable tessellation.
 //
 // The cable path is an SVG `d` string (from `getCablePath`): M / L / C / Q commands,
 // comma- OR space-separated (the walk router uses commas, one straight branch uses

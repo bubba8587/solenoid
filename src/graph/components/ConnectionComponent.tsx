@@ -739,8 +739,8 @@ export function ConnectionComponent({ data }: { data: ConnPayload }) {
         d: pathD,
         color: stroke,
         width: baseWidth,
-        // isoDim was the SVG wrapper's opacity:0.1 — fold it in, since the canvas
-        // stroke doesn't inherit that wrapper.
+        // isoDim is the DOM SVG wrapper's opacity:0.1; fold it into the stroke
+        // here, since the canvas stroke doesn't inherit that wrapper.
         opacity: cableOpacity * (isoDim ? 0.1 : 1),
         dash: ghost ? [6, 5] : undefined,
         // A selected cable paints above nodes, mirroring the DOM z-index:100 jump.

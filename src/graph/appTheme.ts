@@ -49,7 +49,7 @@ function apply() {
   // Match the native Windows 11 window border to the accent (desktop only).
   syncNativeAccent(hex);
 
-  // Every socket color is built from the palette (App.css no longer defines --sock-*).
+  // Every socket color is built from the palette (App.css does not define --sock-*).
   // Scalars = the slot color (mode-shifted); arrays = a darker sibling; matrices = a
   // punchier hue-shifted sibling. Written on every apply so a palette/mode change
   // retints the whole socket family — dots, cables and the legend all read these vars.

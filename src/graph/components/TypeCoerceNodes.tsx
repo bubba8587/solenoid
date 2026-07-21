@@ -1,6 +1,5 @@
-// DOLLAR — currency-string formatting node. (T / N / TYPE were removed
-// 2026-06-23: their input socket was never rendered, so they were unwireable,
-// and they're superseded by Cast + the socket type system + the Test node.)
+// DOLLAR — currency-string formatting node. (T / N / TYPE are handled by
+// Cast + the socket type system + the Test node.)
 import type { FormatDollarNode as FormatDollarNodeType } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";

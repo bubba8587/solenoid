@@ -20,9 +20,9 @@ export function formatScalar(n: number): string {
   // CLAUDE.md "false.toFixed()/err.toFixed() throws -> blacked-out app".)
   if (typeof n !== "number") return n == null ? "" : String(n);
   // A residual NaN is DIRTY DATA (an undefined value in the source), not an error:
-  // post-finding-13 `#N/A` is a real, catchable tagged error, so labelling NaN
-  // "N/A" was a lie. Render it as the literal `NaN`; the value box gives it a quiet
-  // muted affordance + tooltip (see ValueDisplay / .solenoid-value--nan).
+  // `#N/A` is a real, catchable tagged error, so NaN must NOT be labelled "N/A".
+  // Render it as the literal `NaN`; the value box gives it a quiet muted
+  // affordance + tooltip (see ValueDisplay / .solenoid-value--nan).
   if (Number.isNaN(n)) return "NaN";
   const sci = extremeSci(n);
   if (sci !== null) return sci;

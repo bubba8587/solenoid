@@ -49,8 +49,7 @@ export function dockedRenderedDims(
 // CANVAS units (screen distance ÷ zoom). Comparing raw SCREEN px let a
 // zoomed-out canvas snap an FC to hosts a huge canvas distance away (e.g. a
 // far-off Note's tall stack of frontmatter sockets — the random-repro
-// "FC mis-docks to a Note" bug, v1.1 bug lane). At zoom 1 the behavior is
-// exactly the old 34px.
+// "FC mis-docks to a Note" bug). At zoom 1 this equals 34 screen px.
 const DOCK_SNAP_CANVAS_PX = 34;
 
 // On drop, find the host socket the FC should dock to: the nearest one whose

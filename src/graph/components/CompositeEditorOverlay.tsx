@@ -659,7 +659,7 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
         </div>
         {/* Subgraph strip — the "you're in a subgraph" affordance (breadcrumb +
             drill-up) and the port-promotion actions. Floats below the real app
-            header, which stays visible now the drill-in no longer covers the
+            header, which stays visible — the drill-in doesn't cover the
             chrome; the whole app frame (toolbar, minimap, status bar) is the
             drill-in's chrome, pointed at the active graph. */}
         <div className="solenoid-composite-editor__strip" onPointerDown={(e) => e.stopPropagation()}>
