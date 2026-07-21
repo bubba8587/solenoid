@@ -40,6 +40,23 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### SESSION DIGEST (2026-07-21 — zoom step, Tidy FC-host width creep, KaTeX fit loop)
+Three targeted fixes:
+- **Zoom pill buttons** (`NavMenu.tsx`): `ZOOM_STEP` 1.08 → 1.4 so a click crosses noticeably more range;
+  wheel/pinch stay fine-grained.
+- **Tidy widened an FC host every click** (`tidyArrange.ts`): the docked-FC footprint restore captured
+  `measuredBox().w` — an `offsetWidth` (border-box, INCLUDES the 1px border) — and re-stamped it via
+  `area.resize` as `style.width` on the CONTENT-box `.solenoid-node` card, so each Tidy grew the host (and
+  any group autofitting around it) by the border width. Repro: `num → Display + Format Controller`. Fix:
+  the pin-drop loop now clears the inline WIDTH too (it only cleared height before), re-applying a
+  `nodeSizeStore` manual width where one exists. Regression: `tidyDisplayFcWidth.test.ts` (a content-box
+  fake area; fails pre-fix, stable across 3 Tidies after).
+- **KaTeX "flashing" render loop** (`formulaFit.ts`): the `useFormulaFit` ResizeObserver recorded the
+  PRE-fit box size, but `fit()` changes the box size (fontSize scales the content of a content-driven box),
+  so every self-induced reflow read as an external change → infinite refit, box ping-ponging natural↔scaled.
+  Only bit with `useHeight` + a content-driven box (the formula field). Fix: compare against the SETTLED
+  post-fit size with a 1px tolerance, so only a genuine external resize refits.
+
 ### SESSION DIGEST (2026-07-21 — the big docs/comments cleanup)
 Author directive: aggressive prune/rewrite of all supporting docs + code comments so they
 reflect what SHIPPED and constrain future work, without fossilized one-time approvals.

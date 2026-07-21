@@ -24,6 +24,15 @@ export function useFormulaFit(
   useLayoutEffect(() => {
     const box = ref.current;
     if (!box) return;
+    // The size the box SETTLED at after our last fit(). We compare the
+    // ResizeObserver's reported size against this, NOT the pre-fit size, because
+    // fit() itself changes the box's rendered size (setting fontSize scales the
+    // KaTeX content, which resizes a content-driven box). Recording the pre-fit
+    // size made every self-induced resize look like an external change, so the box
+    // ping-ponged between its natural and scaled sizes forever — the KaTeX
+    // "flashing" loop. It only surfaced with useHeight + a content-driven box (the
+    // formula field), where the box height tracks the scaled content.
+    let settledW = -1, settledH = -1;
     const fit = () => {
       box.style.fontSize = ""; // reset to CSS default, then measure natural size
       const inner = box.firstElementChild as HTMLElement | null;
@@ -37,15 +46,17 @@ export function useFormulaFit(
       }
       const clamped = clamp(scale, min, max);
       box.style.fontSize = Math.abs(clamped - 1) > 0.02 ? `${Math.round(clamped * 100)}%` : "";
+      // Remember where the box came to rest — the resize this fit just caused is
+      // then a no-op for the observer below.
+      settledW = box.clientWidth; settledH = box.clientHeight;
     };
-    let lastW = box.clientWidth, lastH = box.clientHeight;
     fit();
-    // Refit only on a real box-size change (the font-fit changes content size, but
-    // the box size is CSS-clamped, so guarding on box dims avoids a feedback loop).
+    // Refit only on a REAL, external box-size change (the card resized, a sibling
+    // row grew). A ≤1px delta from the settled size is our own font-fit reflow (or
+    // sub-pixel jitter) and must not retrigger, or the fit feeds back on itself.
     const ro = new ResizeObserver(() => {
       const w = box.clientWidth, h = box.clientHeight;
-      if (w === lastW && h === lastH) return;
-      lastW = w; lastH = h;
+      if (Math.abs(w - settledW) <= 1 && Math.abs(h - settledH) <= 1) return;
       fit();
     });
     ro.observe(box);

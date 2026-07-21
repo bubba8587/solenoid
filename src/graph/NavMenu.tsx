@@ -8,7 +8,10 @@ import { fullscreenSupported, toggleFullscreen } from "./fullscreen";
 import { clamp } from "./nodes/mathUtils";
 import "./NavMenu.css";
 
-const ZOOM_STEP = 1.08;
+// Per-click zoom factor for the +/− pill buttons. A bigger step means fewer
+// clicks to cross the zoom range — the wheel/pinch stay fine-grained, the
+// buttons are the "get there fast" control.
+const ZOOM_STEP = 1.4;
 
 async function zoomBy(delta: number) {
   const area = getActiveArea(); // zoom the graph you're looking at (drill-in too)

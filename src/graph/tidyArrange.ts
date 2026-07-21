@@ -14,6 +14,7 @@ import { cableSelectionStore } from "./cableState";
 import { ConduitNode, FormatControllerNode, GroupNode } from "./rete-nodes";
 import { autofitGroupBox, GROUP_PAD, GROUP_HEADER } from "./groupLogic";
 import { measuredBox } from "./nodeSize";
+import { nodeSizeStore } from "./nodeSizeStore";
 import { pushForGrownGroups } from "./groupPush";
 import { standoffStore, standoffClusters, settleStandoffs } from "./standoffs";
 import { rebuildGroupMembership } from "./groupMembership";
@@ -528,20 +529,30 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       }
     }
 
-    // Drop the inline `height` the applier stamped on every arranged card.
-    // area.resize (used above + by the applier to feed ELK's reserve-footprint
-    // trick) writes a FIXED inline height on the card; post-layout that pin just
-    // equals the node's content height — redundant, and it FREEZES the card so
-    // the body can't shrink on collapse or grow when a row / taller value lands
-    // (the reason clearPinnedHeight exists for formula edits, and why collapse
-    // looked broken on tidied nodes). Clearing it returns every node to
-    // content-driven height; positions are already applied via translate, and
-    // width is harmless (fixed per node / React-managed for resizables). Groups
-    // are skipped — their box is sized from React width/height props, not this.
+    // Drop the inline `height` AND `width` the applier / footprint restore stamped
+    // on every arranged card. area.resize (the applier's reserve-footprint trick,
+    // and the realHostSize/clusterLeaderRealSize restores above) writes FIXED inline
+    // dims on the card. The height pin freezes the card so the body can't shrink on
+    // collapse or grow when a taller value lands (the reason clearPinnedHeight exists).
+    // The width pin is WORSE than redundant: the restore stamps measuredBox().w —
+    // which is offsetWidth (border-box, so it INCLUDES the 1px border) — as
+    // style.width on the content-box `.solenoid-node` card, so each Tidy grows the
+    // card (and any group autofitting around it) by the border width. It compounds
+    // only when a footprint restore runs, i.e. when an FC is docked to the host —
+    // exactly the "num → Display + Format Controller widens on every Tidy" repro.
+    // Clearing both returns every node to its content/CSS/React-driven size; positions
+    // are already applied via translate. A manually-resized Display carries its width
+    // in nodeSizeStore (React sets it from the `style` prop, which the imperative pin
+    // overwrote and React won't re-diff), so re-apply that width instead of dropping
+    // it. Groups are skipped — their box is sized from React width/height props.
     for (const n of layoutTargets) {
       if (n instanceof GroupNode) continue;
       const card = area.nodeViews.get(n.id)?.element.querySelector<HTMLElement>("*:not(span):not([fragment])");
-      card?.style.removeProperty("height");
+      if (!card) continue;
+      card.style.removeProperty("height");
+      const manual = nodeSizeStore.get(n.id);
+      if (manual) card.style.width = `${Math.round(manual.w)}px`;
+      else card.style.removeProperty("width");
     }
 
     // Within-group tidy: autogrow the box around the freshly-laid-out
