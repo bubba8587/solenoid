@@ -122,17 +122,6 @@ export async function autofitGroupBox(
   if (!gv) return null;
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const id of group.members) {
-    // Skip docked FCs. They're positional adornments that RIDE their host (auto-
-    // positioned onto its socket, and already excluded from the within-group tidy
-    // layout), not free members. Worse, a docked FC is placed via SCREEN coords
-    // (getBoundingClientRect → screenToCanvas), so when it's the group's lowest/
-    // rightmost edge its position depends on the host's shifting screen spot — a
-    // fractional extent that DEPENDS on the group's own position. Wrapping it made
-    // the tidy→autofit cycle a moving target: the group crept down/right on repeat
-    // Tidies (only when a docked FC was the extreme edge — undocked, no drift). The
-    // FC sits within the host's GROUP_PAD margin, so the box still visually
-    // contains it. This matches the tidy autogrow, which already skips docked FCs.
-    if (dockedNodeStore.get(id)) continue;
     const b = nodeBox(area, id);
     if (!b) continue;
     minX = Math.min(minX, b.x);

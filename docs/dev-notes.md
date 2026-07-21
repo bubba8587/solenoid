@@ -63,16 +63,15 @@ Three targeted fixes:
   `.solenoid-helpdlg__panel`, `.solenoid-shortcuts__panel`, `.table-popup__grid-scroll`, `.conn-dialog__menu`.
   The other backdrop-filter users (TopBar/StatusBar/NavMenu/MobileControls/conduit toolbar/align bar/banner)
   have no inner scroller — left alone.
-- **Group Tidy crept the box down/right on repeat clicks — a docked FC** (`groupLogic.ts`): the group Tidy
-  button runs the within-group arrange then `autofitGroupBox`, which wrapped ALL members including a docked
-  FC. A docked FC is placed via SCREEN coords (getBoundingClientRect → screenToCanvas), so when it's the
-  group's lowest/rightmost edge its position depends on the host's shifting screen spot — a fractional extent
-  that depends on the group's OWN position, making tidy→autofit a moving target (real members all shift by
-  the same dy, so their extent is constant; only the FC drifts). Repro: creep only with a docked FC as the
-  extreme edge; undocked, none. Fix: autofit now SKIPS docked FCs (they're host-riding adornments, already
-  excluded from the tidy layout, and sit within the host's GROUP_PAD so the box still contains them) — matches
-  the within-group autogrow, which already skips them. (Supersedes the earlier 1px-hysteresis attempt, which
-  the arrange step's box-grow defeated.)
+- **Group Tidy crept the box down/right on repeat clicks — a docked FC's sub-pixel dock** (`fcDocking.ts`):
+  the group Tidy button runs the within-group arrange then `autofitGroupBox`, which wraps every member incl. a
+  docked FC. `computeDockedCanvasPos` placed the FC via a SCREEN round-trip (getSocketScreenCenter →
+  screenToCanvas ÷ zoom), landing it on sub-pixels — it docked a hair right + up, and, being a fractional edge
+  that shifts with the host, it made the FC the box's moving extreme edge, so repeat Tidies chased it and the
+  group crept. Repro: creep only with a docked FC as the lowest/rightmost edge; undocked, none. Fix: round the
+  dock position to whole canvas px — snaps out the visible misalignment and makes the FC a stable edge the box
+  can wrap without drift. (An autofit-skips-docked-FCs attempt and a 1px-hysteresis attempt were both rejected:
+  the skip let the FC poke outside the box, and the hysteresis was defeated by the arrange step's box-grow.)
 - **Socket glyph border contrast made consistent** (`palette.ts` / `appTheme.ts` / `SocketComponent` /
   `SocketLegend`): the ring was a single fixed translucent black (`--socket-ring`), so its visible contrast
   drifted with fill lightness — crisp on the light scalar dots, faint on the dark array/matrix/frame ones.
