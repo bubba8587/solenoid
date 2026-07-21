@@ -12,8 +12,8 @@ import { supportsHtmlInCanvas } from "./htmlCanvasSupport";
 //
 // This is the runtime feature-gate from the renderer plan: the canvas renderer is always
 // an ENHANCEMENT, never a hard replacement; DOM is the universal fallback. Whether "html"
-// is even SELECTABLE is gated by `supportsHtmlInCanvas()` (the Chrome flag); "canvas" was
-// gated by the GPU probe. Module-level singleton (like gridSnapStore) so the renderer can
+// is even SELECTABLE is gated by `supportsHtmlInCanvas()` (the Chrome flag); "canvas" is
+// console-only (parked). Module-level singleton (like gridSnapStore) so the renderer can
 // read it without the main React tree.
 
 export type RenderMode = "dom" | "canvas" | "html";

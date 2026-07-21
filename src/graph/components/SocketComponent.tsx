@@ -42,10 +42,8 @@ export function SocketComponent({ data }: { data: ClassicPreset.Socket }) {
   const combo  = dataType !== undefined ? COMBO_COLORS[dataType] : undefined;
   const isList = dataType !== undefined && LIST_TYPES.has(dataType);
   // The typed matrices share the 2×2-grid glyph, distinguished by colour. The
-  // FRAME gets its own glyph (2026-07-16, author): every element family now has
-  // a matrix, so colour alone no longer sets the Frame apart — it reads as a
-  // sheet WITH A HEADER (solid band + one column divider), quieter than the
-  // earlier header-row-of-lines attempt that was rejected as too busy.
+  // FRAME gets its own glyph: every element family has a matrix, so colour alone
+  // can't set the Frame apart — it renders as an "F" letterform (see below).
   const isTable =
     dataType === "table" ||
     dataType === "strtable" || dataType === "datetable" ||
@@ -87,9 +85,8 @@ export function SocketComponent({ data }: { data: ClassicPreset.Socket }) {
         </>
       ) : isFrame ? (
         <>
-          {/* Frame: an "F" in the embossed ring stroke inside the square (author
-              2026-07-19; replaces the header-band sheet). Square edges (butt caps,
-              miter joins), wide and squat per the author's tuning. */}
+          {/* Frame: an "F" in the embossed ring stroke inside the square. Square
+              edges (butt caps, miter joins), wide and squat per the author's tuning. */}
           <rect x="0" y="0" width="12" height="12" rx="1.5" fill={color} />
           <path d="M4.15 8.9 V3.9 H8.95 M4.15 6.2 H8.15" fill="none" stroke="var(--socket-ring)" strokeWidth="1.5" />
           <rect x="1" y="1" width="10" height="10" rx="0.5" fill="none" stroke="var(--socket-ring)" strokeWidth="2" />

@@ -10,7 +10,7 @@ import "./errorChip.css";
 /** The hover for an error: the producer's structural message plus the general
  *  plain-language explanation + usual fix for the code, plus (when known) which
  *  node minted it. Single source of truth so every surface shows the same
- *  tooltip (previously most showed message only). */
+ *  tooltip. */
 export function errorTip(err: SolError): string {
   const explain = ERROR_EXPLANATIONS[err.code];
   const tip = err.message ? `${err.message}\n\n${explain}` : explain;

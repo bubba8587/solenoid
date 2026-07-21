@@ -86,9 +86,7 @@
   font-size: 11px;
   text-align: center;
 }
-/* The places/sig-figs toggle is the shared SegToggle (`solenoid-seg--inline`)
-   — the FC's former private .solenoid-fc__seg/__segbtn copy was unified onto it
-   (v1.1 A2). */
+/* The places/sig-figs toggle is the shared SegToggle (`solenoid-seg--inline`). */
 
 .solenoid-fc__pattern {
   flex: 1 1 0;

@@ -95,12 +95,10 @@ function nodeFills(mode: "dark" | "light"): Fill[] {
 }
 
 // The node rectangles live in GRAPH coordinates, so panning the canvas doesn't
-// move them — only the viewport box moves. They draw into ONE <canvas> (2026-07-20
-// DOM audit: this was a div per node — N elements and N style-diffs that scale
-// with the graph; the canvas is a single element at any size). The draw effect is
-// keyed on a geometry+fill+width signature, so a pan/zoom frame — where node
-// graph-coords are unchanged — skips the redraw entirely and only the DOM
-// viewport box updates, preserving the earlier memoized-rect pan-perf fix.
+// move them — only the viewport box moves. They draw into ONE <canvas> (a single
+// element at any graph size, vs. a div per node). The draw effect is keyed on a
+// geometry+fill+width signature, so a pan/zoom frame — where node graph-coords
+// are unchanged — skips the redraw entirely and only the DOM viewport box updates.
 function drawMinimapNodes(
   canvas: HTMLCanvasElement,
   nodes: Rect[],

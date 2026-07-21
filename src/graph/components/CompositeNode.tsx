@@ -28,8 +28,8 @@ import { SvgFigure } from "./SvgFigure";
 /**
  * The value a Composite boundary carries (a port output, or an input/output
  * marker in the drill-in) — rendered by its KIND, not stringified. A frame/cube
- * shows the same compact table preview as everywhere else (the old code fell back
- * to `[object Object]`); a chart/mermaid renders its figure; a lambda its
+ * shows the same compact table preview as everywhere else; a chart/mermaid
+ * renders its figure; a lambda its
  * signature; scalars/lists/logicals/errors keep the hero ValueDisplay box.
  */
 function CompositeBoundaryValue({ value, label }: { value: unknown; label: string }) {

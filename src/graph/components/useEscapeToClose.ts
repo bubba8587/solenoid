@@ -5,7 +5,7 @@ import { useEffect, useRef } from "react";
  * dismiss gesture every popup/panel here wires. Attaches only while `active`.
  * `onClose` is read through a ref so an inline callback doesn't re-bind the
  * listener every render (this also keeps the handler seeing the latest render's
- * state, matching the old per-site effects keyed on the open-state object).
+ * state).
  *
  * `capture: true` is for the modal popups that must own the key ahead of any
  * other handler (the canvas keydown, a focused field): it registers on the

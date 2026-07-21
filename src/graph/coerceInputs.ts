@@ -86,8 +86,7 @@ export function parseListLiteral(csv: string, dt: SocketDataType): unknown[] {
 // error-value guard (errorValue.ts), which wraps every node OUTSIDE this one
 // (Canvas installs coercion first, the guard second). The guard turns it into a
 // tagged #SHAPE! value on every output, so a dimension mismatch propagates and
-// renders the red badge through the same path as every other error — instead of
-// the old per-node `cachedError` string only a handful of components displayed.
+// renders the red badge through the same path as every other error.
 
 type Numeric = number | number[] | number[][];
 

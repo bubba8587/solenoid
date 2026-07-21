@@ -10,8 +10,7 @@ import { ParallelCombineNode, ESeriesNode, AwgNode, ResistorCodeNode } from "../
 import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
 
 // Base category: Ohm's law, power, and the everyday one-liners. Rearrangement
-// groups ship as ONE locked Equation preset (wire any two, read the third) —
-// the old solved-form trio collapsed when the Equation node landed.
+// groups ship as ONE locked Equation preset (wire any two, read the third).
 export const ELECTRICITY_BASE: FormulaPackEntry[] = [
   { type: "elec-ohms-law", label: "Ohm's Law", expr: "v = i * r", equation: true,
     description: "V = I·R, solved for whichever of the three you leave unwired; wire all three and Check answers TRUE/FALSE",

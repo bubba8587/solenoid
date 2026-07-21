@@ -1605,7 +1605,7 @@ export class GetRowNode extends ClassicPreset.Node {
 // ─── XLOOKUP (VLOOKUP / XLOOKUP over a table, cube, or widened list) ─────────────
 // The universal lookup: find the row whose "In column" cell equals the Lookup
 // value and return that row's "Return" cell (or the WHOLE row when Return is `*`).
-// This ONE node subsumes the old list, frame, and cube lookups — XLOOKUP's two
+// This ONE node handles list, frame, and cube lookups — XLOOKUP's two
 // arrays must be aligned, and by the standing rule aligned columns belong in a
 // Frame (Build Frame two lists together, or read a table), not two loose sockets.
 //

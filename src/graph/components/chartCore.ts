@@ -39,7 +39,6 @@ export function useChartColors() {
     // The single-series fill (Sparkline / Chart line / the Gauge arc) — the
     // "display" node kind's accent, resolved through the ACTIVE palette (the map
     // is refreshed on every palette switch; this hook's subscription re-reads it).
-    // Was a frozen hex, which ignored palette changes.
     viz: NODE_KIND_ACCENTS.display,
   };
 }

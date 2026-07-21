@@ -710,8 +710,8 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "pair", children: [priceDiscLeaf("pricedisc"), priceDiscLeaf("yielddisc")] },
           { type: "pair", children: [priceMatLeaf("pricemat"),  priceMatLeaf("yieldmat")]  },
           { type: "pair", children: [durationLeaf("duration"),  durationLeaf("mduration")] },
-          // XNPV moved to Cash flow analysis beside XIRR 2026-07-16 (it was a
-          // genuine misplacement here, and this pane sat at 14 rows).
+          // XNPV lives in Cash flow analysis beside XIRR, not here (keeps this
+          // pane within its row budget).
           {
             type: "category", label: "Coupon dates", description: "Coupon period day counts and dates for bond calculations.",
             children: [

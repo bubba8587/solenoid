@@ -108,8 +108,7 @@ export function unwrapUnitCells(value: DisplayValue, ann: FormatAnnotation | und
 }
 
 /** Format a date serial for a value box: date only, or date + time when the
- *  serial carries a time fraction (e.g. NOW()) — mirrors the old per-node
- *  fmtSerial, using the canonical formatter. */
+ *  serial carries a time fraction (e.g. NOW()), using the canonical formatter. */
 function fmtSerial(v: number): string {
   if (!Number.isFinite(v)) return "";
   const hasTime = Math.abs(v - Math.round(v)) > 1e-4;

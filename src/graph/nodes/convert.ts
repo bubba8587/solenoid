@@ -257,7 +257,7 @@ export class ConvertNode extends ClassicPreset.Node {
     }
     // A same-family conversion whose result overflows is #OVERFLOW!, tagged per-cell
     // in a list exactly as the scalar tags (array-semantics: lists carry per-cell
-    // errors — was a silent per-element null before).
+    // errors).
     const rangeErr = () => solError("#OVERFLOW!", "The converted value is too large to represent");
     // FC A4 — Convert AUTHORS the value's unit: its output is a base-SI `UnitCell`
     // tagged with toUnit's dimension + display (so a downstream Display renders the

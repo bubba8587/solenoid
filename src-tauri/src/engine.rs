@@ -195,7 +195,7 @@ fn register(frame: SolFrame) -> String {
 fn with_frame<T>(handle: &str, f: impl FnOnce(&SolFrame) -> Result<T, IpcError>) -> Result<T, IpcError> {
     // Clone the frame OUT of the lock (DataFrame clones are Arc-cheap) and run
     // the verb outside it: a Polars panic can't poison the store mid-verb, and
-    // one long verb no longer serializes every other engine call (finding 33).
+    // one long verb doesn't serialize every other engine call (finding 33).
     let frame = {
         let s = lock_store();
         s.frames
@@ -809,11 +809,10 @@ fn collect_lazy(lf: LazyFrame) -> Result<DataFrame, IpcError> {
 }
 
 // ─── The accumulating plan (the fusion target) ──────────────────────────────────
-// A handle used to point at an already-COLLECTED `SolFrame`; every verb call
-// re-collected immediately in the original design. `Plan` is the lazy
-// alternative: it threads a `LazyFrame` + the schema (names/types, tracked
-// alongside since a Solenoid type tag can't be recovered from a Polars dtype
-// alone) across MULTIPLE verbs, so a chain of pure-Polars ops (select / drop /
+// `Plan` is the lazy plan: instead of collecting after every verb, it threads a
+// `LazyFrame` + the schema (names/types, tracked alongside since a Solenoid type
+// tag can't be recovered from a Polars dtype alone) across MULTIPLE verbs, so a
+// chain of pure-Polars ops (select / drop /
 // rename / sort / a comparison filter / group-by / head) never collects until
 // something actually needs the data: `engine_apply_many` collects once at the
 // end of a batch; `apply_step`'s eager ops (distinct / unpivot / a text-predicate
@@ -1179,11 +1178,9 @@ fn verb_filter_multi(frame: &SolFrame, combine: &str, conditions: &[WireFilterCo
 }
 
 // ─── group-by (native Polars, lazy) ─────────────────────────────────────────────
-// Rewritten from a hand-rolled HashMap bucketing (which forced an eager collect
-// on every call, blocking group-by from ever joining a fused plan) onto Polars'
-// `.group_by_stable().agg()`: `group_by_stable` preserves first-seen key order —
-// the SAME ordering the old manual bucket scan produced, and what the oracle's
-// `groupByFrame` (frameVerbs.ts) guarantees. Mirrors the oracle op-for-op; every
+// Runs on Polars' `.group_by_stable().agg()`: `group_by_stable` preserves
+// first-seen key order — what the oracle's `groupByFrame` (frameVerbs.ts)
+// guarantees. Mirrors the oracle op-for-op; every
 // op the node UI offers is implemented via `group_agg_expr`. Booleans coerce to
 // 1/0 in BOTH implementations.
 fn group_agg_expr(column: &str, src_ty: SolType, op: &str) -> Expr {
@@ -1784,9 +1781,9 @@ pub fn engine_apply(handle: String, op: WireOp) -> Result<String, IpcError> {
 }
 
 /// Apply MULTIPLE verbs in one round trip, fusing them into ONE Polars plan and
-/// collecting once — the compile/fuse win: a chain of N verb applications that
-/// used to mean N `engine_apply` round trips (and N intermediate full
-/// materializations) now costs one IPC call and, for the pure-lazy ops, one
+/// collecting once — the compile/fuse win: a chain of N verb applications, which
+/// would otherwise mean N `engine_apply` round trips (and N intermediate full
+/// materializations), costs one IPC call and, for the pure-lazy ops, one
 /// physical execution (Polars' own query optimizer fuses select/filter/sort/
 /// group-by into a single pass). `engine_apply` is the N=1 degenerate case.
 #[tauri::command]

@@ -63,7 +63,7 @@ export function SwatchGrid({
  * border box, so its edge sits on the box boundary and gets clipped a side at a
  * time on fractional device pixels (the grid lives inside the zoom-scaled canvas).
  * Drawing it as SVG with overflow:visible and a padded viewBox keeps the disc —
- * and the selected ring, which overflows the 16px button like the old box-shadow —
+ * and the selected ring, which overflows the 16px button —
  * off every clip boundary, so it stays a clean circle at any zoom.
  */
 function Swatch({ color, on }: { color: string; on: boolean }) {

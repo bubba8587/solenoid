@@ -403,8 +403,8 @@ export class TableTransposeNode extends ClassicPreset.Node {
 // N extensible element-agnostic rows (anytable — a scalar widens to 1×1, a list
 // to ONE ROW per the lattice rule), stacked in row order. Ragged inputs pad
 // with #N/A cells exactly like Excel's VSTACK/HSTACK — a hole is visible and
-// recoverable (IFNA/Fill), where the old whole-result #SHAPE! made the common
-// "stack a 3-list on a 5-list" case unusable.
+// recoverable (IFNA/Fill), unlike a whole-result #SHAPE! that would make the
+// common "stack a 3-list on a 5-list" case unusable.
 
 /** One #N/A pad cell per data() pass (SolErrors are immutable — sharing is fine). */
 function padCell(what: string): Cell {

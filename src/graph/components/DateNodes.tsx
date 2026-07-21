@@ -21,7 +21,7 @@ import { InlineInputs } from "./inlineInput";
 import { RecalcButton } from "./RecalcButton";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 
-// Date nodes no longer format their own serials: ValueDisplay does it for any
+// Date nodes don't format their own serials: ValueDisplay does it for any
 // node whose OUTPUT socket is a date type (see valueDisplayFormat.ts), so the
 // value box shows a formatted date for scalars AND lists, consistently.
 

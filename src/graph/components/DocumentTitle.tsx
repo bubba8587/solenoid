@@ -11,7 +11,7 @@ import "./documentTitle.css";
  * an inline rename editor (Excel-style); the ▾ caret opens the documents menu —
  * switch between saved documents, start a new blank one, or start from one of
  * the bundled examples. This is the home of the "file system"; the example
- * graphs appear here only as starting points, no longer as a working-graph picker.
+ * graphs appear here only as starting points, not as a working-graph picker.
  */
 export function DocumentTitle() {
   useSyncExternalStore(documentStore.subscribe, documentStore.version);

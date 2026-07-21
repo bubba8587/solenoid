@@ -10,9 +10,9 @@ import "./MobileControls.css";
 /**
  * Touch-only bottom action bar (hidden ≥640px via CSS): one row of 6 buttons
  * around the raised accent Add FAB — Commands · Undo · Redo · ➕ · Select ·
- * Delete · Fit. The Commands button opens the command palette, which subsumes
- * the old Search slot (typing a node's name in it jumps to the node, and it
- * carries every other action, so one button covers both). Delete is disabled
+ * Delete · Fit. The Commands button opens the command palette (typing a node's
+ * name jumps to the node, and it carries every other action, so one button
+ * covers both search and commands). Delete is disabled
  * (dimmed) when nothing's selected, so the bar never reflows and the buttons
  * keep fixed positions.
  *

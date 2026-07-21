@@ -22,9 +22,8 @@
 //    formula eval failure, … Convert sites incrementally — null remains the
 //    legitimate "no value" (empty cell) signal.
 //
-// Value model (array-semantics build, 2026-06-22): a list/matrix/frame CARRIES
-// per-cell SolErrors (and first-class nulls) — the old "lists never contain
-// errors" invariant is RELAXED. Aggregators propagate the first per-cell error
+// Value model (array-semantics): a list/matrix/frame CARRIES per-cell SolErrors
+// (and first-class nulls) — lists CAN contain errors. Aggregators propagate the first per-cell error
 // (forAggregate); element-wise ops carry an error cell through unmorphed.
 // See valueKinds.ts + subsystem-invariants "Error values".
 

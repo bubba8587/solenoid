@@ -183,7 +183,7 @@ export class CastNode extends ClassicPreset.Node {
 
   data(inputs: { value?: unknown[] }): { result: CastScalar | (CastScalar | SolError)[] | SolError } {
     const raw = inputs.value?.[0];
-    // No custom format code for now — text casts use the default representation.
+    // Text casts use the default representation (no custom format code).
     const format = "";
     const kind = this.sourceKind();
     const isCxValue = kind === "complex" && Array.isArray(raw) && raw.length === 2 && typeof raw[0] === "number";
