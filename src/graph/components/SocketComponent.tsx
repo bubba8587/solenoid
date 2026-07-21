@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useId, type CSSProperties } from "react";
 import type { ClassicPreset } from "rete";
 import { SOCKET_COLORS } from "../sockets";
 import type { SolenoidSocket } from "../sockets";
@@ -38,6 +38,13 @@ export function SocketComponent({ data }: { data: ClassicPreset.Socket }) {
   const dataType =
     data instanceof Object && "dataType" in data ? (data as SolenoidSocket).dataType : undefined;
   const color = dataType ? SOCKET_COLORS[dataType] ?? "#888" : "#888";
+  // Point this glyph's ring at the border shade of its OWN fill (`--sock-x` →
+  // `--sock-x-ring`, written per-fill by appTheme). Every `stroke="var(--socket-ring)"`
+  // below inherits it, so the border darkens the actual fill by a constant step
+  // instead of the old fixed translucent black (whose contrast drifted with fill
+  // lightness). Non-typed sockets (`#888`) keep the global ring.
+  const ringVar = /^var\(--sock-/.test(color) ? color.replace(/\)\s*$/, "-ring)") : undefined;
+  const ringStyle = ringVar ? ({ "--socket-ring": ringVar } as CSSProperties) : undefined;
 
   const combo  = dataType !== undefined ? COMBO_COLORS[dataType] : undefined;
   const isList = dataType !== undefined && LIST_TYPES.has(dataType);
@@ -56,7 +63,7 @@ export function SocketComponent({ data }: { data: ClassicPreset.Socket }) {
   const isTrueAny = dataType === "trueany";
 
   return (
-    <svg className="solenoid-socket-dot" viewBox="0 0 12 12" preserveAspectRatio="xMidYMid meet">
+    <svg className="solenoid-socket-dot" viewBox="0 0 12 12" preserveAspectRatio="xMidYMid meet" style={ringStyle}>
       {combo ? (
         <>
           {/* Bicolor split square: upper-left = the scalar color, lower-right =
