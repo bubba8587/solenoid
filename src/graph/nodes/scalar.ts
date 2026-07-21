@@ -598,7 +598,7 @@ export class ClampNode extends ClassicPreset.Node {
 // are over (value, multiple)). CEILING / FLOOR are this node pre-set to up / down
 // with `multiple` defaulting to 1, so they behave unary out of the box — Excel's
 // own shape (CEILING.MATH's significance is optional, default 1). Rounding is toward
-// ±∞ (like the .MATH variants), matching the old MathFn ceil/floor those replaced.
+// ±∞ (like the .MATH variants).
 export type MRoundOp = "nearest" | "up" | "down";
 
 export const MROUND_OP_META = {

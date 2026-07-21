@@ -79,8 +79,6 @@ export function toScalar(v: Numeric | null | undefined): number | null {
 // SolError (#N/A padding, propagated failures). The reshape nodes accept an
 // `any` input (so text/date matrices connect), which coerceInputs leaves raw;
 // they promote it to a matrix themselves with this element-agnostic widener.
-// (Was `number | string` while the runtime already carried the rest — the
-// padding work made the lie load-bearing, so it's now the honest union.)
 export type Cell = number | string | boolean | SolError | null;
 
 /**

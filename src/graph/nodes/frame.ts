@@ -725,8 +725,7 @@ export class UnnestNode extends ClassicPreset.Node {
 // rows stacked top-to-bottom in row order, union by column NAME (verb:
 // appendFrames — a column missing from one input fills blank; a conflicting
 // column type is #TYPE!). One frame alone passes through (safe while you're
-// still wiring the others). runFrameAppend was always N-ary; the node now
-// exposes it.
+// still wiring the others).
 
 export class AppendNode extends ClassicPreset.Node {
   label: string;

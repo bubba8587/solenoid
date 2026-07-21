@@ -1,8 +1,8 @@
 // The documents library: the app's "file system". Multiple named graphs live in
 // localStorage; one is current and shown on the canvas. Autosave writes the live
 // graph into the current document; New / Open / Save As / Rename / Duplicate /
-// Delete manage the set. Seeds are templates (New from template) rather than the
-// working document, which closes the old seed↔autosave conflation.
+// Delete manage the set. Seeds are templates (New from template), NOT the
+// working document.
 //
 // Pure library transforms live in documentStoreCore.ts (unit-tested). This file
 // adds: the in-memory library + notifier, per-document two-slot localStorage

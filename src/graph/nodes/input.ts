@@ -161,10 +161,8 @@ export class ColorBlendNode extends ClassicPreset.Node {
 
 // ─── Constant (predefined library) ───────────────────────────────────────────
 
-// "na" was removed 2026-07 (audit finding 13): a NaN "constant" was one of THREE
-// different not-really-#N/A producers; the NaNode (tagged SolError #N/A) is the
-// one true NA now. No persistence alias, per pre-alpha policy — an old Constant
-// saved as op:"na" loads as pi.
+// There is no `na` constant: the NaNode (tagged SolError #N/A) is the one true NA.
+// No persistence alias (pre-alpha) — an old Constant saved as op:"na" loads as pi.
 export type ConstantOp =
   | "pi" | "tau" | "e" | "phi"
   | "inf" | "neg-inf"

@@ -128,7 +128,7 @@ function matInverse(m: NumMat): NumMat | null {
 // A LITERAL source, exactly like Frame Input (subsystem-invariants "Frame Input
 // is a LITERAL source"): `tableText` stores the raw text the user typed, the
 // typed matrix is DERIVED at compute, and the grid editor edits the raw cells —
-// never a parse→serialize round trip (the old one silently coerced bad text
+// never a parse→serialize round trip (that would silently coerce bad text
 // away). A blank cell is null (missing); an unparseable cell is NaN — dirty
 // data with the quiet display affordance, deliberately NOT an error badge
 // (1.0-tail #6). One homogeneous element type per table, switched by the
@@ -565,8 +565,6 @@ export class TableReshapeNode extends ClassicPreset.Node {
     this.cachedList = null;
     this.cachedMatrix = null;
     // Both wraps pad the leftover cells with #N/A — Excel's default pad_with.
-    // (Was inconsistent: wraprows left a ragged short last row, wrapcols
-    // filled with NaN, which renders as garbage.)
     if (this.op === "wraprows") {
       // List → matrix (rank change): a uniform-unit list gives a matrix with that
       // one whole-grid unit (D20); the cells drop to bare magnitudes, mixed strips.

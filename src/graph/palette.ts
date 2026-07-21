@@ -106,8 +106,7 @@ export function darkenAccent(hex: string): string {
 // family maps to a slot — so the socket dots, cables and legend are literally the
 // palette (one source of truth) and a palette switch retints them too. See
 // SOCKET_SCALAR_SLOTS below. The socket-family slots ARE these hexes (one source of
-// truth); gold/lime/sky stayed, the rest were hue/sat-tuned (2026-06-30) — chiefly to
-// pull date-pink redward so it no longer reads like boolean-purple.
+// truth); date-pink is pulled redward so it doesn't read like boolean-purple.
 export const PALETTE = {
   gray:      "#8a8f98", // --sock-any
   amber:     "#d9742b", // (input kind only — no socket family) — nudged more orange
@@ -139,11 +138,9 @@ export const COLOR_PALETTE: PaletteSlot[] = [
 // EVERY socket color is derived from a palette slot — so sockets are built entirely
 // from the palette (one source of truth) and a palette switch retints the whole
 // socket family. appTheme writes these --sock-* vars on every apply (see SOCKET_VARS),
-// so App.css no longer defines them.
+// so App.css does not define them.
 //   - scalar: the slot color itself (mode-shifted via themeAccent).
-//   - array (a list of the scalar): a darker sibling — RGB-multiply ×0.8. Reproduces
-//     the old hand-tuned arrays closely for most families (string's was a deliberate
-//     extra-dark olive; it comes out a touch brighter now — accepted).
+//   - array (a list of the scalar): a darker sibling — RGB-multiply ×0.8.
 //   - matrix (a 2-D grid): a punchier, hue-shifted sibling — −15° hue, L ×0.86.
 // number's MATRIX is the Table socket — a matrix-shade of number (gold), like
 // every other 2-D socket derives from its scalar; the grid glyph (not colour)

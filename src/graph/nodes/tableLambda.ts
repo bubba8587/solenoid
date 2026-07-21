@@ -11,10 +11,9 @@ import { type Dim, dimEqual, isDimensionless } from "../dimension";
 // ─── 2D LAMBDA family: MAP / BYROW / BYCOL / MAKEARRAY / REDUCE ─────────────────
 // Excel's MAP/BYROW/BYCOL/MAKEARRAY/REDUCE take a LAMBDA. Each node holds its
 // formula as a string, typed inline in the node's "Formula" field (or the big
-// FormulaPopup editor); a wired LAMBDA value supersedes it. The old third
-// path — formula TEXT piped from a Text Input through a "Formula" string
-// socket — was removed 2026-07-09: the popup + the lambda socket cover both
-// authoring paths, and reuse-across-nodes is the LAMBDA node's job.
+// FormulaPopup editor); a wired LAMBDA value supersedes it. Those two authoring
+// paths (inline field/popup + the lambda socket) are the only ones — reuse-across-
+// nodes is the LAMBDA node's job.
 // Fixed variables — word names, and the fold pair uses stepped language (they run
 // in sequence) while MAP/MAKEARRAY are parallel-per-cell (positional, no stepping):
 //   MAP        → `value` (cell; `value2`,`value3` from optional 2nd/3rd tables),
