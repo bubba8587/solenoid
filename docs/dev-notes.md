@@ -40,8 +40,8 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
-### SESSION DIGEST (2026-07-21 — zoom step, Tidy FC-host width creep, KaTeX fit loop)
-Three targeted fixes:
+### SESSION DIGEST (2026-07-21 — zoom, Tidy/FC bugs, KaTeX loop, scroll-lag, socket rings)
+Targeted UI/UX fixes from an eyeball-driven bug sweep:
 - **Zoom pill buttons** (`NavMenu.tsx`): `ZOOM_STEP` 1.08 → 1.4 so a click crosses noticeably more range;
   wheel/pinch stay fine-grained.
 - **Tidy widened an FC host every click** (`tidyArrange.ts`): the docked-FC footprint restore captured
@@ -75,9 +75,11 @@ Three targeted fixes:
 - **Socket glyph border contrast made consistent** (`palette.ts` / `appTheme.ts` / `SocketComponent` /
   `SocketLegend`): the ring was a single fixed translucent black (`--socket-ring`), so its visible contrast
   drifted with fill lightness — crisp on the light scalar dots, faint on the dark array/matrix/frame ones.
-  New `socketRingShade` (a fixed HSV value-drop, same technique as `darkenAccent`) computes a per-fill
-  `--sock-*-ring`; each glyph points its `--socket-ring` at the ring matching its own fill, so every border
-  darkens its fill by the same step. The global `--socket-ring` stays as the fallback for untyped sockets.
+  New `socketRingShade` (a fixed HSV value-drop, `RING_VALUE_DROP = 0.23` — the tuning knob) computes a
+  per-fill `--sock-*-ring`; each glyph points its `--socket-ring` at the ring matching its own fill, so every
+  border darkens its fill by the same step. The Cube was drawing its seams with its OWN `color-mix` (why it
+  read darker than the rest) — now it uses the shared `--socket-ring` too, so it aligns. The global
+  `--socket-ring` stays as the fallback for untyped sockets.
 
 ### SESSION DIGEST (2026-07-21 — the big docs/comments cleanup)
 Author directive: aggressive prune/rewrite of all supporting docs + code comments so they
