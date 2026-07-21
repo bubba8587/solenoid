@@ -93,18 +93,20 @@ export function darkenAccent(hex: string): string {
   return hsvToHex(h, s, Math.max(0, v - 0.07));
 }
 
-// The socket glyph's RING/border: a darker shade of the glyph's OWN fill, by the
-// same fixed HSV-value drop as darkenAccent (just deeper, so the edge reads at
-// 12px). A CONSTANT step is the point — the old ring was a fixed translucent black,
-// whose visible contrast varied with the fill's lightness (crisp on the light dots,
-// nearly gone on the dark array/matrix/frame ones). Dropping value by a fixed amount
-// gives every glyph the same border-to-fill contrast. Clamped so a near-black fill
-// still yields a valid (non-negative) shade.
+// The socket glyph's RING/border: a darker shade of the glyph's OWN fill, by a
+// FIXED HSV value drop (same technique as darkenAccent, deeper). A constant step is
+// the point — the old ring was one translucent black, whose visible contrast varied
+// with fill lightness (crisp on the light dots, faint on the dark array/matrix/frame
+// ones). Dropping value by a fixed amount gives every glyph — the Cube included —
+// the same border-to-fill contrast. This one number is the tuning knob: raise it for
+// a darker/heavier edge, lower it for a lighter one. Clamped so a near-black fill
+// still yields a valid shade.
+const RING_VALUE_DROP = 0.28;
 export function socketRingShade(hex: string): string {
   const t = parseHex(hex);
   if (!t) return hex;
   const [h, s, v] = rgbToHsv(...t);
-  return hsvToHex(h, s, Math.max(0, v - 0.18));
+  return hsvToHex(h, s, Math.max(0, v - RING_VALUE_DROP));
 }
 
 // ── Palette: named slots, the single source of truth for every accent ─────────

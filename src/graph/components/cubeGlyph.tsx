@@ -29,10 +29,12 @@ const CUBE_STROKE_WIDTH = 26;
 /** The cube's faces: filled silhouette + opaque matching seams + ring. `dy` shifts
  *  it down (the live socket passes 2; the legend leaves it 0). */
 export function CubeGlyphFaces({ fill, dy = 0 }: { fill: string; dy?: number }) {
-  // The seams/ring are a darker shade of the fill, so the edges track any palette
-  // the socket is drawn in.
-  // color-mix (not a JS shade helper) because `fill` is usually a CSS var, not a hex.
-  const stroke = `color-mix(in srgb, ${fill} 72%, #000)`;
+  // The seams/ring track the SAME per-fill border shade as every other socket glyph:
+  // the ancestor (SocketComponent's svg / the legend dot) sets `--socket-ring` to this
+  // fill's ring, so the cube darkens by the same fixed HSV step as the rest (was a
+  // one-off color-mix, which is why the cube read darker than the others). Falls back
+  // to the global ring when drawn without that ancestor.
+  const stroke = "var(--socket-ring)";
   return (
     <g transform={cubeTransform(dy)}>
       <path d={CUBE_FILL_PATH} fill={fill} fillRule="nonzero" />

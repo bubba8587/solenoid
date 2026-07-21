@@ -57,10 +57,9 @@ function apply() {
     const base = themeAccent(resolveColor(slot), _mode);
     const val = kind === "array" ? socketArrayShade(base) : kind === "matrix" ? socketMatrixShade(base) : base;
     root.style.setProperty(varName, val);
-    // Per-fill ring/border: a fixed-step darker shade of THIS fill, so every glyph's
-    // border reads at the same contrast (the old fixed translucent-black ring varied
-    // with fill lightness). Consumed as `var(--sock-*-ring)` — SocketComponent points
-    // each glyph's `--socket-ring` at the ring matching its fill.
+    // Per-fill ring/border: a fixed-step darker shade of THIS fill (see socketRingShade),
+    // so every glyph's border reads at the same contrast. Consumed as `var(--sock-*-ring)`
+    // — each glyph points its `--socket-ring` at the ring matching its own fill.
     root.style.setProperty(`${varName}-ring`, socketRingShade(val));
   }
 

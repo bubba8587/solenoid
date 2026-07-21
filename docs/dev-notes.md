@@ -63,14 +63,16 @@ Three targeted fixes:
   `.solenoid-helpdlg__panel`, `.solenoid-shortcuts__panel`, `.table-popup__grid-scroll`, `.conn-dialog__menu`.
   The other backdrop-filter users (TopBar/StatusBar/NavMenu/MobileControls/conduit toolbar/align bar/banner)
   have no inner scroller — left alone.
-- **Group Tidy crept the box downward on repeat clicks** (`groupLogic.ts`): the group Tidy button runs the
-  within-group arrange (which repositions members off measurements taken while a docked FC's host is briefly
-  border-inflated — the realHostSize restore window) and THEN `autofitGroupBox` (which measures settled,
-  natural sizes). The sub-pixel disagreement nudged the box a fraction each click and re-fit it — a slow
-  downward creep, reading as a 1px grow/shrink flip at a rounding boundary. Fix: autofit now no-ops when the
-  new box is within 1px of the current on every axis (hysteresis) — a real member move is well over 1px and
-  still fits; only the self-induced churn is absorbed. (The exact per-tidy sub-pixel source is real-DOM
-  timing — deferred FC snap + the ResizeObserver — so it isn't headless-reproducible; verify on the preview.)
+- **Group Tidy crept the box down/right on repeat clicks — a docked FC** (`groupLogic.ts`): the group Tidy
+  button runs the within-group arrange then `autofitGroupBox`, which wrapped ALL members including a docked
+  FC. A docked FC is placed via SCREEN coords (getBoundingClientRect → screenToCanvas), so when it's the
+  group's lowest/rightmost edge its position depends on the host's shifting screen spot — a fractional extent
+  that depends on the group's OWN position, making tidy→autofit a moving target (real members all shift by
+  the same dy, so their extent is constant; only the FC drifts). Repro: creep only with a docked FC as the
+  extreme edge; undocked, none. Fix: autofit now SKIPS docked FCs (they're host-riding adornments, already
+  excluded from the tidy layout, and sit within the host's GROUP_PAD so the box still contains them) — matches
+  the within-group autogrow, which already skips them. (Supersedes the earlier 1px-hysteresis attempt, which
+  the arrange step's box-grow defeated.)
 - **Socket glyph border contrast made consistent** (`palette.ts` / `appTheme.ts` / `SocketComponent` /
   `SocketLegend`): the ring was a single fixed translucent black (`--socket-ring`), so its visible contrast
   drifted with fill lightness — crisp on the light scalar dots, faint on the dark array/matrix/frame ones.
