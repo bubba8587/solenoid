@@ -1,5 +1,5 @@
 /* Renderer spike overlay — covers the whole app while open (a throwaway
-   proof-of-architecture; see docs/renderer-decision.md). */
+   proof-of-architecture; see docs/archive/renderer-decision.md). */
 .renderer-spike {
   position: fixed;
   inset: 0;

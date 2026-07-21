@@ -1,6 +1,6 @@
 // Soft node-count budget for the in-browser demo (the Vercel deploy) — NOT the
 // desktop app. The web demo runs inside a system webview whose DOM-compositing
-// ceiling is documented in docs/performance-hardening.md: past a few hundred
+// ceiling is documented in docs/archive/performance-hardening.md: past a few hundred
 // nodes, pan/zoom gets choppy and there's no CSS/content fix (only the planned
 // WebGPU renderer swap moves it). This budget is a *soft* cap — we NEVER block
 // adding nodes, we just surface a meter and warn once on the crossing, so a

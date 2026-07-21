@@ -105,9 +105,9 @@ area. When you coin a new load-bearing term, add it here.
   subset. (`nodes/expression.ts`; see decisions.md D2)
 - **LAMBDA** — reusable formula values + 2-D LAMBDA family (MAP/etc.). (`nodes/lambda.ts`,
   `nodes/tableLambda.ts`)
-- **Formula compiler** — `compileFormula` (AST→closure) in `excelFormula.ts`; a real
-  compiler, currently prod-unused (the tree-walking `evalAst` runs instead) — flagged in
-  future-directions Bet 1 as latent leverage.
+- **Formula evaluator** — the tree-walking `evalAst` in `excelFormula.ts` is THE
+  evaluation core; the old `compileFormula` codegen path is dormant (see the module's
+  own comments before reviving it).
 - **RANGE_FUNCTIONS** — formula functions that take a whole list at once (SUM, MEDIAN…)
   vs. element-wise broadcast ones. (`excelFormula.ts`)
 

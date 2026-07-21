@@ -5,8 +5,8 @@
 > reject work until the author has been through it. The four tests and the
 > Alteryx-pattern distinction are the parts most likely to survive review intact.
 
-Fifth in the series ([audit](archive/v1.0-audit.md) → [architecture](archive/future-directions.md) →
-[features](archive/scope-features.md) → [strategy](archive/strategy-threads.md)). This one is the
+Last in the series ([architecture](archive/future-directions.md) →
+[features](archive/scope-features.md)). This one is the
 **anti-roadmap**: categories Solenoid should stay out of, especially where a competitor
 already owns the ground. Its job is to be *cited* — when a tempting feature comes up,
 check it against this list before scoping it.

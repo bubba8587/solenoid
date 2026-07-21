@@ -13,7 +13,7 @@ import "./rendererSpike.css";
 
 /**
  * Renderer spike (Pixi) — a proof-of-architecture for the GPU node renderer (see
- * docs/renderer-decision.md). Two modes:
+ * docs/archive/renderer-decision.md). Two modes:
  *
  *  • Synthetic — N grid cards + cheap cables, the raw perf ceiling (500–10k), with
  *    a BitmapText↔Text A/B toggle (the text-batching decision to make).

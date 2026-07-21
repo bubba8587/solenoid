@@ -4,7 +4,7 @@
 // captures it ONCE at a reference resolution, builds a mip pyramid of ImageBitmaps by
 // pixel-downscaling that snapshot, and every frame drawImage's the level matching the
 // zoom. Cables draw as one batched Path2D. Pan/zoom is just a camera transform — no DOM
-// compositing, which is the whole point (see docs/renderer-decision.md, dev-notes
+// compositing, which is the whole point (see docs/archive/renderer-decision.md, dev-notes
 // 2026-06-27). Validated: 280 nodes, fully zoomed out, crisp → 165fps / 0.1–0.5ms draw.
 //
 // Requires the WICG HTML-in-Canvas API (ctx.drawElementImage / canvas.captureElementImage),

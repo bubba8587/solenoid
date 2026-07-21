@@ -1,59 +1,40 @@
 # docs/archive — finalized & inactive docs
 
-Docs that are **done their job** — point-in-time research, external reviews,
-resolved scoping, shipped specs, forward proposals not picked up, and the older
-dev-notes history. Kept for reference (git keeps them anyway) but moved out of the
-top-level `docs/` so the living docs (architecture, subsystem-invariants,
-dev-notes, backlog, the per-subsystem references) stay the working set. Organized
-by topic:
+Docs that have **done their job** — point-in-time research, resolved scoping, shipped
+specs, and forward proposals not picked up. Kept out of the top-level `docs/` so the living
+docs (architecture, subsystem-invariants, dev-notes, backlog, the per-subsystem references)
+stay the working set. Several once-here docs were **deleted** in the 2026-07-21 cleanup
+(perf-research, roadmap, strategy-threads, v1.0-audit, verb-nodes-spec, visual-design) — they
+were fully superseded; **git history has them.** Several others were **condensed** to their
+load-bearing core (noted below); the full originals are likewise in git history.
 
-### Research & landscape
-- [`node-graph-ux-research.md`](node-graph-ux-research.md) — UX synthesis across node editors (Blender, Houdini, …).
-- [`competitive-landscape.md`](competitive-landscape.md) — why no existing tool fits the niche.
+### Anti-relapse records — decisions + eliminations, so work doesn't relapse
+- [`performance-hardening.md`](performance-hardening.md) — *condensed.* The final dense-graph zoom verdict (it's at the DOM-compositing floor) + the "DO NOT re-attempt" reverted-experiment list + external corroboration.
+- [`renderer-decision.md`](renderer-decision.md) — *condensed.* The HTML-in-Canvas decision + diagnosis (mipmap-once-at-1.5×, headless Rete). The PixiJS-adoption pitch is dropped — the pixi renderer is deprecated (author 2026-07-19).
+- [`renderer-plan.md`](renderer-plan.md) — *condensed.* The renderer feature-gate safety rule (implemented in `src/main.tsx`), the Linux WebKitGTK hazard, and the Tauri-vs-Electron decision.
+- [`future-directions.md`](future-directions.md) — *kept.* The architecture bets with the author's IN / OUT / PARKED verdicts.
+- [`node-arity-audit.md`](node-arity-audit.md) — *condensed.* The labeled-slots-vs-list-socket KEEP verdicts (rule also lives in `node-coverage.md`).
 
-### Reviews
-- [`outside-review-2026-06-12.md`](outside-review-2026-06-12.md) — dated external review (its actionable items were triaged; see dev-notes history "Outside-review triage").
+### Still-consumed reference — kept whole; cited by live code / docs
+- [`excel-pain-points.md`](excel-pain-points.md) — the Excel pain-point / function-gap research that seeded the parity work.
+- [`formulajs-vs-native-audit.md`](formulajs-vs-native-audit.md) — the per-family formula.js-vs-native verdicts cited by `excelFunctions.ts`.
+- [`reference-packs.md`](reference-packs.md) — the reference-pack licensing decision + candidate pack menu.
+- [`compute-architecture.md`](compute-architecture.md) — the browser-thin / desktop-native compute rationale (shipped as the JS oracle + native Polars behind the `FrameBackend` seam).
 
-### Performance
-- [`perf-research.md`](perf-research.md) — the perf optimization research handoff + the merged perf-testing notes.
+### Condensed rationale — design records trimmed to the load-bearing part
+- [`cable-routing.md`](cable-routing.md) — the React-Flow-era cable spec; the still-open collision-avoidance spec (§2) is the live remnant.
+- [`io-visual-control-node-proposal.md`](io-visual-control-node-proposal.md) — the custom-widget / input-visual-control pack rule.
+- [`isolate-pin-multiview-scoping.md`](isolate-pin-multiview-scoping.md) — the unbuilt split-screen / multi-window / Portals scoping (§1–2 built).
+- [`release-notes-1.1.md`](release-notes-1.1.md) — the reusable release-notes **bar** (a sell vs a changelog; slide vs body); `../release-notes-features.md` points here.
+- [`scope-features.md`](scope-features.md) — the 63-item verdict index (so every `scope-features #NN` citation resolves) + the full #23 (persistent compute cache) & #35 (MCP port) sketches + the Alteryx teardown.
+- [`timesavers-pack-proposal.md`](timesavers-pack-proposal.md) — the [F]/[C]/[M] build-shape taxonomy, the don't-duplicate ledger, and the still-unbuilt remainder.
+- [`v1.0-plan.md`](v1.0-plan.md) — WS2's `FrameBackend` interface rationale (JsFrameBackend oracle vs PolarsBackend desktop); cited as "v1.0-plan.md WS2".
+- [`v1.1-plan.md`](v1.1-plan.md) — the B1 pack-distribution + dependency-system remainder (backlog cites "B1 remainder").
 
-### Design
-- [`visual-design.md`](visual-design.md) — early color/surface/accent decisions.
-
-### Resolved scoping
-- [`formula-engine-array-semantics.md`](formula-engine-array-semantics.md) — the formula-engine array/error scoping. P1/P2/P5 + the lambda-core unification shipped 2026-06-21 (see `dev-notes.md` "one array-aware evaluation core"); kept as the design record. Still-open policy calls (P3 ragged / P6 operator parity / P7 boolean) are tracked in `backlog.md`.
-
-### Shipped specs (design records, the feature is built)
-- [`verb-nodes-spec.md`](verb-nodes-spec.md) — the WS3 relational verb-node spec; every node built + merged onto `working` (2026-06-30).
-
-### Forward proposals (not built; revisit only if the feature is picked up)
-- [`io-visual-control-node-proposal.md`](io-visual-control-node-proposal.md) — proposed input/output/visual control nodes.
-- [`timesavers-pack-proposal.md`](timesavers-pack-proposal.md) — an Excel-timesavers node pack.
-- [`reference-packs.md`](reference-packs.md) — candidate reference node packs.
-
-### Resolved audits
-- [`formulajs-vs-native-audit.md`](formulajs-vs-native-audit.md) — formula.js vs native-math coverage audit.
-- [`null-logical-verification.md`](null-logical-verification.md) — null / logical 3-valued behavior verification (the model shipped).
-
-### Renderer decision journey
-- [`renderer-decision.md`](renderer-decision.md) / [`renderer-plan.md`](renderer-plan.md) — the path to the current renderer. Live answer: HTML-in-canvas (the `html` render mode); its invariants live in `htmlCanvasRenderer.ts` / `HtmlCanvasLayer.tsx` comments + `dev-notes.md`. The WGSL/Pixi plan here is parked.
-
-### Strategy
-- [`roadmap.md`](roadmap.md) — the phase-level strategy view; superseded at 1.0.
-- [`future-directions.md`](future-directions.md) / [`scope-features.md`](scope-features.md) — the architecture bets + the 63-item feature walk (all verdicts inline; walked to completion 2026-07-03; the IN items became the `docs/v2.0/` bundle set).
-- [`strategy-threads.md`](strategy-threads.md) — DISCARDED IN FULL by the author 2026-07-03 ("barely right"); point-in-time record. (The standing rejections live on in `docs/out-of-scope.md`, which stays in the working set.)
-
-### Shipped plans & audits (moved 2026-07-05)
-- [`v1.1-plan.md`](v1.1-plan.md) — the v1.1 workstream plan; WS-A shipped in full 2026-07-05 (A4's live plan moved to `../v2.0/05-units-format-controller.md`), open B/C/D/E remnants folded into `../backlog.md`.
-- [`v2.0/`](v2.0/) — the BUILT v2.0 bundle docs (01 addressable model, 02 shape-checking, 03 compile/fuse, 04 provenance, 06 execution substrate, 07 headless/write/live, 09 composite, 11 trust & quality, 13 report/presentation, 14 canvas polish, 15 verticals). Live remainder stays in `../v2.0/`.
-- [`compute-architecture.md`](compute-architecture.md) — the browser-vs-desktop compute scoping; shipped as designed (JS oracle + native Polars behind the FrameBackend seam).
-- [`cable-routing.md`](cable-routing.md) — the React-Flow-era cable spec (historical banner inside); the built system's invariants live in subsystem-invariants. Collision avoidance (§2) is still the open backlog item.
-- [`excel-pain-points.md`](excel-pain-points.md) — the Excel pain-point/function-gap research that seeded the parity work.
-- [`v1.0-plan.md`](v1.0-plan.md) — the 1.0 execution plan; shipped.
-- [`v1.0-audit.md`](v1.0-audit.md) — the adversarial 1.0 audit; fix pass landed 2026-07-02, remainder triaged into the backlog.
-- [`performance-hardening.md`](performance-hardening.md) — the perf investigation + the final renderer verdict (HTML-in-canvas won; WGSL/Pixi parked).
-- [`isolate-pin-multiview-scoping.md`](isolate-pin-multiview-scoping.md) — isolate/pin/multiview scoping; §1–2 built, portals scoping parked here.
-- [`node-arity-audit.md`](node-arity-audit.md) — the variadic-node audit + the labeled-slots-vs-list-socket rule (rule also lives in node-coverage.md).
+### Shipped plans — the feature is built; kept as the design record
+- [`units-format-controller.md`](units-format-controller.md) — the shipped A4 units-by-dimensionality plan (the FC flagship; live truth is `formatModel.ts` + subsystem-invariants "Unit flow" + D20).
+- [`1.2-plan.md`](1.2-plan.md) — the executed 1.2 build queue (author-run release tail tracked in `../backlog.md`).
+- [`release-plan-1.1.md`](release-plan-1.1.md) — the shipped 1.1 release view, kept for the cut-process shape (readiness / checklist / decision structure).
 
 ### Dev-notes history
-- [`dev-notes-history.md`](dev-notes-history.md) — the dev-notes per-item history (three sweeps: through 06-18, 06-19–06-30, and the 07-01–07-05 per-item entries), plus the old reference sections (node-authoring kit, socket types, roadmap stance, technical gotchas, old TODOs). The live `docs/dev-notes.md` holds session digests + open problems only.
+- [`dev-notes-history.md`](dev-notes-history.md) — the swept per-item session log (three sweeps + the old reference sections). The live `../dev-notes.md` holds session digests + open problems only.

@@ -1,10 +1,13 @@
+> **ARCHIVED.** The shipped 1.1 release view — kept for the cut-process shape (readiness /
+> checklist / decision structure). Current release state lives in `../backlog.md`.
+
 # Solenoid — Release Plan (path to the next tagged release)
 
 The forward-looking queue is `backlog.md`; this file is the *release* view — what's
 ready, what gates a tag, and the decisions only the author can make. Reconcile it
 against code the same way as the backlog (delete/flip lines as they land).
 **Successors:** the post-1.1 queue is [`1.2-plan.md`](1.2-plan.md); the flagships are
-[`2.0-plan.md`](2.0-plan.md). After the 1.1 tag, this file archives.
+[`2.0-plan.md`](../2.0-plan.md). After the 1.1 tag, this file archives.
 
 ## 1. Where we are
 

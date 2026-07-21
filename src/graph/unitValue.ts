@@ -5,7 +5,7 @@
 // `valueKinds.ts`: one small pure module every value-consuming node calls, with no
 // React / Rete / editor dependency, so it unit-tests in isolation.
 //
-// Author decisions on record (docs/v2.0/05-units-format-controller.md):
+// Author decisions on record (docs/archive/units-format-controller.md):
 //   • Per-element list units = TAGGED CELLS. A list is a ROW and must allow mixed
 //     units, so a unit rides INSIDE a numeric list cell exactly the way
 //     valueKinds.ts carries per-cell `null` / `SolError`. The tag is a `UnitCell`.

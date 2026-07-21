@@ -8,11 +8,14 @@ and CLAUDE.md). Residual open items from built bundles live in `../backlog.md`.
 
 ## Live bundles
 
+**05 — Units by dimensionality (FC A4)** SHIPPED 2026-07-12/13 and archived to
+`../archive/units-format-controller.md` (live truth: `formatModel.ts`,
+subsystem-invariants "Unit flow", `decisions.md` D20).
+
 | Bundle | What | Status / gate |
 |---|---|---|
-| [05](05-units-format-controller.md) | **Units by dimensionality** (FC A4, the flagship) | IN ("big boy") but AUTHOR-PRESENT — built together in a dedicated arc, NOT the autonomous plan (author 2026-07-05). Foundation landed, tagged-cells decided |
 | [08](08-excel-transpiler.md) | The Excel `.xlsx` → graph transpiler | Not started; deliberately sequenced late |
-| [10](10-decision-model-sensitivity.md) | Decision Matrix sensitivity ("wiggle the weights") | Blocked on the composite Monte Carlo run-mode hook (backlog) |
+| [10](10-decision-model-sensitivity.md) | Decision Matrix sensitivity ("wiggle the weights") | Buildable — the composite Monte Carlo run-mode hook it waited on shipped 2026-07-12; needs re-triage / an author pick, not gated |
 | [12](12-value-model-extensions.md) | Uncertain values (#21) + money mode (#43) | As-Of half SHIPPED; the rest VERY LATE, each needs an author representation call |
 | [16](16-widget-nodes.md) | **Everyday widget nodes** (Weather/Geocode/FX/Holidays/TZ/QR — the throwaway-workbook layer) | Scoped 2026-07-20; Tier 1 autonomous-friendly (could be 1.3); 4 author calls listed in the doc (FX cap reversal, provider policy) |
 

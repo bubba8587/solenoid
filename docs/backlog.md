@@ -79,9 +79,14 @@ Ruled-out ideas live in `out-of-scope.md`; settled rationale in `decisions.md`.
 - [ ] **Reference overlay — Socket tab → full data-model chapter** — grow the socket tab
   into a real explanation of types, units, dimensionality (the lattice, wildcard
   ladder, list-is-a-row, per-container unit granularity). Sources: `sockets.ts` +
-  `socketConnect.test.ts`, D17/D20, `v2.0/05-units-format-controller.md`.
+  `socketConnect.test.ts`, D17/D20, `archive/units-format-controller.md`.
 - [ ] **Data Feed widening [1.3]** — a richer series/symbol picker (today a text field +
-  quick-picks), more providers. Scope: `release-plan.md` §3a.
+  quick-picks), more providers. Shipped baseline: 3 providers (FRED keyless default /
+  Stooq keyless / Alpha Vantage keyed), a plain ticker/series field + FRED common-series
+  quick-picks (UNRATE, CPIAUCSL, GDP, FEDFUNDS, DGS10…), chart-ready typed output (date
+  col + numeric values; Stooq = date+OHLCV). Widening = a real symbol-search picker beyond
+  the free field, and more providers. Stays Excel STOCKHISTORY scope — NOT crypto/FX, no
+  real-time/intraday/options/fundamentals.
 - [ ] **Seed follow-ups**: personal-finance is generator-locked (structure via
   `gen-personal-finance-seed.cjs`; geometry owned by the tuned JSON —
   `scripts/tune-seeds.mjs`); composite-workbench still has no scenarios/data-table card.

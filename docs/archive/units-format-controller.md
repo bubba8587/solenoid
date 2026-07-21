@@ -1,3 +1,6 @@
+> **ARCHIVED.** The shipped A4 units-by-dimensionality plan. Live truth is `formatModel.ts`,
+> subsystem-invariants "Unit flow", and `decisions.md` D20.
+
 # Bundle 05 — Units by dimensionality (FC A4, the flagship) — ✅ COMPLETE
 
 > **DONE 2026-07-13.** The value engine computes with dimensions end-to-end, the
