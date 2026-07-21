@@ -87,9 +87,8 @@ note("note-cash", -1480, -560,
 n("col-amt", "GetColumnNode", -1460, -260, { label: "Amount", readAs: "number" }, { stringLiterals: { name: "Amount" } });
 n("red-net", "AggregateNode",    -1180, -360, { label: "Net cash flow", op: "sum" });
 n("disp-net","DisplayNode",    -900, -360, { label: "Net cash flow" });
-// SUMIFS replaces the old List-Filter + REDUCE-lambda chains (D16: conditional
-// aggregates are one op node over ONE FRAME). Coords in the TUNED frame, where
-// each node sits mid-span of the two-node chain it replaced.
+// SUMIFS is one op node over ONE FRAME for a conditional aggregate (D16).
+// Coords in the TUNED frame.
 n("sumif-in", "SumIfsNode", -900, -250, { label: "Income (Amount > 0)", op: "sumifs", condConfig: { "0": { op: "gt" } }, valueKeys: ["column0"] }, { stringLiterals: { values: "Amount", column0: "Amount", value0: "0" } });
 n("disp-in", "DisplayNode",      -640, -160, { label: "Income (3 mo)" });
 n("sumif-out","SumIfsNode", -900,  310, { label: "Spend (Amount < 0)", op: "sumifs", condConfig: { "0": { op: "lt" } }, valueKeys: ["column0"] }, { stringLiterals: { values: "Amount", column0: "Amount", value0: "0" } });
@@ -130,9 +129,8 @@ note("note-pivot", 40, -600,
   "# Group By as a pivot table\nA **Slicer** drops the income rows, then **Group By** — the frame verb, native Polars on desktop — collapses the rest to one row per **Category**. Click the grouped-table chip to inspect it; **Get Column** pulls the totals out for the chart (absolute spend) and a second Group By counts transactions.",
   "gold", 380, 200);
 n("slicer-exp","SlicerNode",   60, -300, { label: "Expenses only", selectedColumn: "Category", selectedValues: ["Housing","Groceries","Dining","Transport","Utilities","Entertainment","Shopping","Health"], multiSelect: true });
-// The frame Group By replaces the old parallel-lists list-pivot (Category +
-// Amount lists into a list GroupBy) — one relational verb over the frame, then
-// Get Column pulls the lists the chart/sparkline need. Coords in the TUNED frame.
+// The frame Group By is one relational verb over the frame, then Get Column
+// pulls the lists the chart/sparkline need. Coords in the TUNED frame.
 n("gbf-spend","GroupByFrameNode", 900, -150, { label: "Spend by category", op: "sum" }, { stringLiterals: { keys: "Category", column: "Amount" } });
 n("col-ptotal","GetColumnNode", 1230,  60, { label: "Category totals", readAs: "number" }, { stringLiterals: { name: "Amount" } });
 n("abs-spend","MathFnNode",   600, -180, { label: "Magnitude", op: "abs" });
@@ -164,9 +162,8 @@ n("disp-nw", "DisplayNode",  620,  800, { label: "Net worth" });
 n("gauge-nw","GaugeNode",    620, 1020, { label: "Toward goal" }, { literals: { value: 0 } });
 n("ratio-nw","ExpressionNode", 430, 1180, { label: "Progress", expr: "nw / goal" });
 n("slider-goal","SliderInputNode", 60, 1340, { label: "Net-worth goal", value: 120000, min: 50000, max: 250000, step: 5000 }, { literals: { min: 50000, max: 250000, step: 5000 } });
-// SUMIFS replaces the old Filter + REDUCE chains; the frame Group By replaces
-// the parallel-lists list-pivot (keys+values through GetColumn). Coords in the
-// TUNED frame, mid-span of the chains they replaced.
+// SUMIFS (conditional aggregate over one frame) + the frame Group By
+// (keys+values through GetColumn). Coords in the TUNED frame.
 n("sumif-assets","SumIfsNode", 1250, 1110, { label: "Assets (Balance > 0)", op: "sumifs", condConfig: { "0": { op: "gt" } }, valueKeys: ["column0"] }, { stringLiterals: { values: "Balance", column0: "Balance", value0: "0" } });
 n("sumif-liab", "SumIfsNode",  1050, 1680, { label: "Debt (Balance < 0)", op: "sumifs", condConfig: { "0": { op: "lt" } }, valueKeys: ["column0"] }, { stringLiterals: { values: "Balance", column0: "Balance", value0: "0" } });
 n("expr-debt","ExpressionNode",    860, 1540, { label: "Liabilities", expr: "-l" });

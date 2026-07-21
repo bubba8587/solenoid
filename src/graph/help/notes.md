@@ -15,10 +15,9 @@ The things that don't fit in a tooltip — deliberate choices, honest gaps, and 
 
 What Solenoid doesn't do yet, said plainly:
 
-- **Units travel and lock, but don't multiply out.** Miles ÷ hours keeps "miles" and "hours" as labels; it won't derive "mph". Dimensional algebra is a later step.
 - **Expression and Lambda formulas cover scalars and 1-D lists only** — not matrices, frames, or complex numbers. Those stay node-wired on purpose; the formula box is the quick path, not the whole engine.
 - **Lambdas don't recurse.**
-- **A locally-attached image lasts only for the session.** A pasted web-image URL persists; an uploaded file doesn't survive reload yet.
+- **An attached image persists on the desktop app** — saved as a file beside the document — but in the browser it lasts only for the session. A pasted web-image URL persists either way.
 - The **desktop app is a work in progress** — it's where native files and the native table engine live.
 
 ## What to expect of performance
