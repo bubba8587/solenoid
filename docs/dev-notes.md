@@ -71,6 +71,12 @@ Three targeted fixes:
   new box is within 1px of the current on every axis (hysteresis) — a real member move is well over 1px and
   still fits; only the self-induced churn is absorbed. (The exact per-tidy sub-pixel source is real-DOM
   timing — deferred FC snap + the ResizeObserver — so it isn't headless-reproducible; verify on the preview.)
+- **Socket glyph border contrast made consistent** (`palette.ts` / `appTheme.ts` / `SocketComponent` /
+  `SocketLegend`): the ring was a single fixed translucent black (`--socket-ring`), so its visible contrast
+  drifted with fill lightness — crisp on the light scalar dots, faint on the dark array/matrix/frame ones.
+  New `socketRingShade` (a fixed HSV value-drop, same technique as `darkenAccent`) computes a per-fill
+  `--sock-*-ring`; each glyph points its `--socket-ring` at the ring matching its own fill, so every border
+  darkens its fill by the same step. The global `--socket-ring` stays as the fallback for untyped sockets.
 
 ### SESSION DIGEST (2026-07-21 — the big docs/comments cleanup)
 Author directive: aggressive prune/rewrite of all supporting docs + code comments so they

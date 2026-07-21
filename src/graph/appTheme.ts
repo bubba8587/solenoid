@@ -1,4 +1,4 @@
-import { hexToRgba, contrastInk, themeAccent, resolveColor, paletteStore, initPalette, SOCKET_VARS, socketArrayShade, socketMatrixShade } from "./palette";
+import { hexToRgba, contrastInk, themeAccent, resolveColor, paletteStore, initPalette, SOCKET_VARS, socketArrayShade, socketMatrixShade, socketRingShade } from "./palette";
 import { createNotifier } from "./storeKit";
 import { syncNativeAccent } from "./nativeAccent";
 
@@ -57,6 +57,11 @@ function apply() {
     const base = themeAccent(resolveColor(slot), _mode);
     const val = kind === "array" ? socketArrayShade(base) : kind === "matrix" ? socketMatrixShade(base) : base;
     root.style.setProperty(varName, val);
+    // Per-fill ring/border: a fixed-step darker shade of THIS fill, so every glyph's
+    // border reads at the same contrast (the old fixed translucent-black ring varied
+    // with fill lightness). Consumed as `var(--sock-*-ring)` — SocketComponent points
+    // each glyph's `--socket-ring` at the ring matching its fill.
+    root.style.setProperty(`${varName}-ring`, socketRingShade(val));
   }
 
   // The semantic ERROR/Problems red derives from the palette's `vermilion` slot

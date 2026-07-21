@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { SOCKET_COLORS } from "../sockets";
 import { contrastInk } from "../palette";
@@ -136,10 +136,16 @@ export function SocketDot({ entry }: { entry: Dot }) {
   const ref = useRef<HTMLSpanElement>(null);
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
   const show = () => { const r = ref.current?.getBoundingClientRect(); if (r) setAnchor(r); };
+  // Point the ring at this fill's own border shade (var(--sock-x) → var(--sock-x-ring)),
+  // matching the real sockets. Set on the span so both the glyph and its hover pill
+  // (which inherit --socket-ring) pick it up. Kinds whose stroke is the fill itself
+  // (the hollow trueany ring) are unaffected.
+  const ringVar = /^var\(--sock-/.test(entry.color) ? entry.color.replace(/\)\s*$/, "-ring)") : undefined;
   return (
     <span
       ref={ref}
       className="solenoid-legend__dot"
+      style={ringVar ? ({ "--socket-ring": ringVar } as CSSProperties) : undefined}
       onMouseEnter={entry.tip ? show : undefined}
       onMouseLeave={anchor ? () => setAnchor(null) : undefined}
     >
