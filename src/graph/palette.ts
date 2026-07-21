@@ -101,7 +101,7 @@ export function darkenAccent(hex: string): string {
 // the same border-to-fill contrast. This one number is the tuning knob: raise it for
 // a darker/heavier edge, lower it for a lighter one. Clamped so a near-black fill
 // still yields a valid shade.
-const RING_VALUE_DROP = 0.28;
+const RING_VALUE_DROP = 0.23;
 export function socketRingShade(hex: string): string {
   const t = parseHex(hex);
   if (!t) return hex;
