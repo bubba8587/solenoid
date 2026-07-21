@@ -11,7 +11,7 @@ against code the same way as the backlog (delete/flip lines as they land).
 - **`v1.0.0` tagged 2026-07-01** — desktop (Tauri) + native Polars engine + the full
   relational verb spine + HTML-in-canvas renderer.
 - **A large body is BUILT + green but UNTAGGED since 1.0.** Verified against code
-  2026-07-06 (see `archive/build-plan.md` audit). Grouped:
+  2026-07-06. Grouped:
   - **FC v1.1-α** — the function model + A2 redesign + movement audit.
   - **The 2026-07-05 autonomous build plan** — Tiers A–F essentially complete
     (locale/persist, a11y, library-folder opener, minimap 3-way; Rust oracle key +

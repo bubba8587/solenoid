@@ -1,349 +1,180 @@
 # Solenoid — Backlog
 
-**OPEN items only.** When an item lands, DELETE its line — git history, the session
-digests (`dev-notes.md` → `archive/dev-notes-history.md`), and the archived planning
-docs are the record; this file is the working queue, not a ledger. (Policy changed
-2026-07-05 by the author; the old flip-to-`[x]`-and-keep convention is retired.)
-
-Where things stand: v1.0 shipped (desktop + Polars + verbs + HTML-in-canvas);
-v1.1-α (the FC function model/redesign/movement audit) shipped 2026-07-05. The
-v2.0 bundle set lives in `docs/v2.0/` (built: 01-07, 09, 11-15 — reviewed; open
-bundles + "verdict pending" items are listed in its README; the shipped v1.1 plan
-is archived).
+**OPEN items only, kept terse.** When an item lands, DELETE its line — git history and
+the dev-notes digests are the record; this file is the working queue, not a ledger.
+Ruled-out ideas live in `out-of-scope.md`; settled rationale in `decisions.md`.
 
 ---
 
-## 1.1 release build (committed 2026-07-06 — see `release-plan.md`)
+## Release tail (author-run)
 
-**FEATURE-COMPLETE (author 2026-07-08).** Everything below in this section is
-explicitly DEFERRED past the 1.1 tag by the author on 2026-07-08 — none of it
-gates the cut. The only open 1.1 work is the author-run release tail
-(eyeball pass, cargo on Windows, desktop build, merge, tag). The deferred set is
-ORGANIZED in `1.2-plan.md` (incremental queue) and `2.0-plan.md` (flagships);
-this backlog stays the per-item source of truth.
-
+- [ ] **Cut 1.2**: version is 1.2.0 on `develop`, tag not yet cut (latest tag v1.1.5).
+  Author performs: desktop-gated checks (cargo on Windows, path-stripped
+  `release:desktop` build, exe smoke), merge → `main`, tag `v1.2.0`.
 - [ ] **Keep `release-notes-features.md` current** — the curated selling list + What's-New
-  slide source (author writes the final release notes). Reconciled 2026-07-08 (FRED-keyless
-  copy, no FX, Simulation ≠ Monte Carlo — slides synced in `HelpDialogs.tsx`).
-- [ ] **F-2 remainder (deferred)** — **per-slot doc-palette override UI: WON'T DO (author
-  2026-07-15).** Store half stays (overrides round-trip for hand/seed authoring); no editing
-  surface. Only document-level FC defaults remain (format-pipeline, author-present, parked with
-  the format-controller work).
-- [ ] **[1.3 — punted from 1.2, author 2026-07-16] Data Feed — post-1.1 widening only** (core + date-range/frequency/quick-picks +
-  the **Live Market Data** demo seed all SHIPPED; Stooq dropped — bot-blocked). Still OPEN,
-  none release-gating: a richer series/symbol PICKER (today a text field + quick-picks),
-  more providers. Scope: `release-plan.md` §3a.
-- [ ] **[1.3 — punted from 1.2, author 2026-07-16] iFrame / embed node** (author 2026-07-06) — a general web-embed node: FRED graph
-  direct embeds, YouTube, social (Twitter/X), dashboards. Emits an embed value out the green
-  `chart` socket (like Image/Mermaid) so it also embeds in a Report. **SECURITY (author-gated
-  decision — this is the can of worms):** the Tauri CSP currently has NO `frame-src`, so it
-  falls back to `default-src 'self'` and external iframes are BLOCKED. Enabling this REQUIRES
-  loosening `frame-src` — the call is `https:` (any HTTPS embed, broad) vs. a domain allowlist
-  (FRED/YouTube/Twitter…, safer but caps "other stuff"). Mitigations regardless: `sandbox`
-  (allow-scripts allow-same-origin allow-popups, NO allow-top-navigation), `referrerpolicy=
-  no-referrer`, https-only, and **click-to-load** (don't auto-load an embed on file open — a
-  saved URL is untrusted; also the main perf lever). **PERF:** each iframe is a full browser
-  context — click-to-load + don't render off-screen + cap concurrent. Reality check: most sites
-  send `X-Frame-Options: DENY`, so this works for EMBED-friendly content (FRED/video/social),
-  not arbitrary pages. Needs the author's CSP-posture call before build.
-- [ ] **Seed follow-ups after the 2026-07-08 consolidation** (27 → 17, author-directed:
-  six retired outright, four merged, Getting Started rebuilt with a Tables & charts
-  cluster; run-graph/errorSeed tests re-anchored). Remaining author calls:
-  (a) **personal-finance** (generator-locked) uses WebSource, no DataFeed/composite/trust
-  section — any STRUCTURAL change goes through `gen-personal-finance-seed.cjs`; GEOMETRY is
-  owned by the tuned JSON (`scripts/tune-seeds.mjs` live tidy/autofit pass, 2026-07-19 — the
-  generator adopts committed geometry by id, so re-running it is safe); (b) **composite-workbench**
-  now has two goal-seek cards but still no scenarios/data-table card.
+  slide source (author writes the final release notes).
 
 ## Needs an author decision / author-present session
 
-- [ ] **Everyday widget nodes (v2.0 bundle 16, scoped 2026-07-20)** — Weather + Geocode +
-  FX + Holidays + TZ Convert + QR; the "throwaway workbook / load-a-website" layer, dashboard-
-  framed (the garden-watering case). Build is autonomous-friendly on the existing connection
-  pattern, but 4 gate calls first (FX cap reversal, keyless-provider policy, core-vs-pack
-  placement, Garden Dashboard seed): `v2.0/16-widget-nodes.md`.
-- [ ] **Parity Tier 4 — the formula dimensionality cap (D2, reopened; discussed 2026-07-14)**
-  — NOT decidable yet: precondition is finishing the registry unification (same motion as the
-  greenlit Tier 1 work). Criteria fixed by the author: correctness + coherence only (the
-  identity/auditability objection is RETIRED — don't re-litigate). When it returns, bring a
-  shape-branding design for the type-agnostic evaluator + the Excel-DA broadcast-rules table
-  (machine-checked, formatModel-style); endpoints: "never" vs "matrices-only, full DA
-  semantics" (frames-in-formulas rejected). Full record: `docs/formula-node-parity.md`
-  "Tier 4 in full". The transpiler (bundle 08) is the standing pressure.
-- [ ] **First-class composite drill-in — remaining gaps** (the "active graph context"
-  arc; author 2026-07-06 said proceed). BUILT: `activeGraph.ts` seam (`getActive*` /
-  `getOwningEditor`, `getEditor()` stays MAIN — locked by `activeGraph.test.ts`);
-  de-fullscreen so the app frame stays around the subgraph (`z-index:4`, `html.sol-drilled-in`,
-  floating breadcrumb strip); chrome on the active graph (NavMenu zoom/fit, a real drill-in
-  minimap, lock); keyboard: copy/paste/delete/duplicate/add(A)/nudge/undo-redo/select-all(Ctrl+A)/
-  Tidy(T); right-click node menu; propagation fixes (labels/FC/type-default); `areaPresets.ts`
-  shared so surfaces can't drift. **Isolate DONE 2026-07-12** (I toggles, Esc exits before
-  drill-up, cleared on leave; `isolate.ts` routes through `getActiveEditor` — the drill-in
-  cards read the same global `isolateStore`; `isolateActive.test.ts`). STILL OPEN:
-  (a) **Group/Cleanup/Autofit/Expand** in the drill-in — main-pipe subsystems
-  (membership/push/collapse/standoffs); a group there needs the group-drag reconcile pipe +
-  `pushHistory`/`settleStandoffs`/GroupNode-component taught the active area, so a real (not
-  static-frame) group is a bigger, DOM-verified lift — folded not half-shipped.
-  (b) **Navigator + lasso** in the drill-in — navigator list/select/jump/
-  rename target main (route via a new active-selection hook); lasso is a custom Canvas rebuild.
-  Both folded/hidden while drilled in for now. (c) **History routing — DONE 2026-07-07:**
-  `pushHistory` now targets the ACTIVE graph's history (`getActiveHistory`), so an
-  extensible-row/cable-switch/group-resize edit made inside a drill-in is undone by the
-  drill-in's own undo (Ctrl+Z + the mobile bar), not stranded on the main stack
-  (`historyRouting.test.ts`). (Label-edit undo RESOLVED
-  2026-07-08 — `useDraftCommit.onBlur` pushes history via `getActiveHistory`.)
-  (d) **D2 proper** — reroute the real top toolbar / mobile bar to the active subgraph
-  (author-present, wants live eyeballing).
-- [ ] **D4 — conditional formatting for tables** (#41; deferred again 2026-07-05).
-  Needs its own design pass: must clear Excel's version by a lot (author's explicit
-  dislike), Display-node-only, must not step on FC format/units territory.
-- **FC A4 — units by dimensionality: LANDED (core 2026-07-12, value-mutating FC
-  unification 2026-07-13).** The value layer computes with dimensions end-to-end
-  (tagged `UnitCell` per list element, `ColumnUnit` per frame column, true
-  `#UNIT!`-on-mismatch algebra). The **Format Controller is now VALUE-MUTATING** —
-  it authors the value's unit onto the `UnitCell` (`applyFcUnit`), Convert tags its
-  output, and the redundant graph unit-walk (`makeUnitResolver`) is gone; the number
-  FORMAT stays a display annotation. REDUCE/BYROW/BYCOL carry units over a 1-D list.
-  Plan/status: `v2.0/05-units-format-controller.md` (complete). Remaining A4
-  FOLLOW-UPS (author-present polish, none blocking):
-  - [ ] **Per-element mixed-unit trig (author 2026-07-09):** a list mixing `deg`/`rad`
-    cells into an Auto-mode trig `Math` node should interpret EACH cell in its own
-    unit. `mathFnResultDim` now handles a UnitCell angle (base-radians) per cell, but
-    `resolveTrigModes` still reads ONE socket-level FC unit — the per-cell path needs
-    the trig `Math` node to branch on each cell's `UnitCell` angle-dim, not the socket.
-  - [ ] **Cube popup FC controls:** frames + matrices + lists got the per-column
-    FC format+unit controls row / in-cell units in the value popup (2026-07-15g,
-    `components/fcControls.tsx` + `TablePopup`). Cubes are the remaining surface —
-    gated on typed `CubeColumn` (see "Lossless frame→cube" below); the same
-    controls drop in once cube columns carry type/unit.
-- [ ] **Header/body border seam under zoom — UNSOLVED, parked for a human/later
-  model.** See dev-notes "UNSOLVED" for constraints + the two eliminated approaches.
-- [ ] **Deferred pile — RESOLVED 2026-07-05 (author ruled each):** still deferred =
-  **#23 persistent compute cache** and **#35 MCP port** only. OUT for good:
-  #2 publish-as-form, #6 snapshots/diff, #11 transform-by-example, #46 sealed
-  models, Bet 5, list-of-frames ("this is Cube"), Go-To-Special chrome ("we
-  already have multiple go-to affordances"). #48/#54 resolved as the ultra-minimal
-  library-folder opener (build item below).
+- [ ] **Everyday widget nodes (v2.0 bundle 16)** — Weather / Geocode / FX / Holidays /
+  TZ Convert / QR. Build is autonomous-friendly on the connection pattern, but 4 gate
+  calls come first: `v2.0/16-widget-nodes.md`.
+- [ ] **iFrame / embed node [1.3]** — general web-embed out the `chart` socket (FRED,
+  YouTube, social). Blocked on the author's CSP-posture call: Tauri CSP has no
+  `frame-src` today, so external iframes are blocked; the call is `https:` (broad) vs a
+  domain allowlist. Non-negotiables when built: `sandbox` without allow-top-navigation,
+  `referrerpolicy=no-referrer`, https-only, click-to-load (saved URLs are untrusted;
+  also the perf lever — each iframe is a full browser context, so don't render
+  off-screen and cap concurrency). Most sites send X-Frame-Options: DENY — this serves
+  embed-friendly content, not arbitrary pages.
+- [ ] **Parity Tier 4 — the formula dimensionality cap (D2, reopened)** — not decidable
+  until the registry unification (Tier 1 of the parity program) is done. Criteria fixed
+  by the author: correctness + coherence only (the identity/auditability objection is
+  RETIRED — don't re-litigate). When it returns, bring a shape-branding design for the
+  type-agnostic evaluator + a machine-checked Excel-DA broadcast-rules table; endpoints
+  are "never" vs "matrices-only, full DA semantics" (frames-in-formulas rejected).
+  Full record: `formula-node-parity.md` "Tier 4 in full".
+- [ ] **Composite drill-in — remaining gaps**: (a) Group/Cleanup/Autofit/Expand inside a
+  drill-in (needs the group-drag reconcile pipe + push/standoffs/GroupNode taught the
+  active area — a real DOM-verified lift, folded until then); (b) Navigator + lasso
+  (folded/hidden while drilled in); (c) **D2 proper** — reroute the real top toolbar /
+  mobile bar to the active subgraph (author-present, wants live eyeballing).
+- [ ] **D4 — conditional formatting for tables** — needs its own design pass: must clear
+  Excel's version by a lot (author's explicit dislike), Display-node-only, must not
+  step on FC format/units territory.
+- [ ] **FC A4 tails** (author-present polish): per-element mixed-unit trig (a list
+  mixing deg/rad cells should interpret EACH cell in its own unit —
+  `resolveTrigModes` still reads one socket-level unit); Cube popup FC controls
+  (frames/matrices/lists have the per-column format+unit row in `TablePopup` via
+  `fcControls.tsx`; cubes wait on nothing now that `CubeColumn` is typed).
+- [ ] **Document-level FC defaults** (default places / number format; the Document
+  Properties window ships without them) — a format-pipeline integration, author-present.
+- [ ] **Header/body border seam under zoom — UNSOLVED, parked** for a human/later model.
+  See dev-notes "UNSOLVED" for constraints + the two eliminated approaches.
+- [ ] **Traveling-cable flow pulse → maybe the app's cables** (author likes the landing
+  page's marching-dash cable rendering, `LandingScenes.tsx` `.sol-cable__flow`).
+  Author-gated: touches the never-degrade-cables rule and DESIGN.md's no-decoration
+  stance — this would make the pulse MEANING, not decoration.
+- [ ] **Feature/value copy doc** for landing/marketing — author will initiate; ranked
+  candidate copy lines per feature, author ranks value.
 
-## Decided, unbuilt (mechanical — no design session needed)
+## Decided, unbuilt (mechanical)
 
-- [ ] **Document Properties — remaining parts** (the window itself shipped 2026-07-06:
-  title / author / tags / per-doc palette BASE, via `docMetaStore` + `SavedGraph.meta` +
-  sidecar). Still open: (a) **per-slot doc palette overrides** — DEFERRED (author 2026-07-07);
-  the window only sets the base, overrides stay hand/seed-authored on
-  `SavedGraph.palette.overrides`; (b) **document-level FC defaults**
-  (default places / number format — the date default `DD-MMM-YYYY` already shipped;
-  toolbar-supplementals [SETTING] verdict) — a format-pipeline integration (FC reads a
-  doc default), best done deliberately / author-present.
+- [ ] **Formula ↔ node parity program (D19, greenlit — build in a dedicated session)** —
+  converge the formula language and the node set; audit + tiers + decisions in
+  `formula-node-parity.md` (numbers regenerable via `scripts/formula-node-parity.ts`).
+  Build order: ratchet test first (pin the 57 + the blocklist), then Tier 1
+  registrations, alias gate, pack seam. Legacy aliases BLOCKED (`#NAME?` + redirect
+  hint); Solenoid-native formula names = the node hover hint despaced; packs register
+  their own formula functions. Tier 4 is separate (author-present, above). Residual:
+  distributions are validated only at representative points — widen if accuracy is
+  ever in doubt.
+- [ ] **Computed Column (table-timesaver Tier 3, design-first)** — row-wise formula whose
+  variables are column names, appended in place (PQ Custom Column); wants a design pass
+  on sharing the Expression engine.
+- [ ] **Rigorous multi-column input-socket label syntax** — one consistent grammar for
+  what columns a frame/2-D input expects (today: Sankey "From+To+Value" vs charts
+  "series (2-D)"). Every frame-consuming node reuses it, per the aligned-columns rule
+  (one frame input, not parallel sockets — charts + SUMIFS + the frame verbs).
+- [ ] **Reference overlay — Socket tab → full data-model chapter** — grow the socket tab
+  into a real explanation of types, units, dimensionality (the lattice, wildcard
+  ladder, list-is-a-row, per-container unit granularity). Sources: `sockets.ts` +
+  `socketConnect.test.ts`, D17/D20, `v2.0/05-units-format-controller.md`.
+- [ ] **Data Feed widening [1.3]** — a richer series/symbol picker (today a text field +
+  quick-picks), more providers. Scope: `release-plan.md` §3a.
+- [ ] **Seed follow-ups**: personal-finance is generator-locked (structure via
+  `gen-personal-finance-seed.cjs`; geometry owned by the tuned JSON —
+  `scripts/tune-seeds.mjs`); composite-workbench still has no scenarios/data-table card.
+- [ ] **Aliasing / hidden-port promotion UI** (composites) — the data model has
+  `hidden`/`advanced` per port; no UI to flip exposure or edit a hidden port's baked
+  default. Includes the pack-shell "many internal ports → one shell parameter" aliasing.
+- [ ] **Native Polars mirrors for the eager cleanup verbs** (perf follow-up, only if a
+  real workload demands): fillBlanks / replaceValues / sliceRows are trivially lazy;
+  today they materialize like Split Column.
+- [ ] **Obsidian follow-ups (if wanted)**: auto-reload an imported note on file change;
+  write config for `![[Note]]` transclusion vs inlining an embedded note's body.
 
-## Composite / drill-in
+## Small calls / polish
 
-- [ ] **Inside-solve stale dot is uniform** (author 2026-07-06, minor): after an INSIDE Solve
-  (runs on marker seeds, ignoring outside wiring) the stale dot reads green though the held result
-  is seed-based, not wired — you re-solve outside to use wiring. Distinguishing the two needs a
-  drill-state signal in the compute layer (couples `data()` to `compositeEditorStore`); left simple
-  on purpose. Revisit only if it reads as misleading.
-- [ ] **Aliasing / hidden-port promotion UI** — the data model has `hidden`/`advanced`
-  per port; no UI to flip exposure or edit a hidden port's baked default. Includes the
-  pack-shell "many internal ports → one shell parameter" aliasing (the stats
-  confidence-level example).
-## Nodes / engine
-
-- [ ] **Table-timesaver Tier 3 (author-approved direction 2026-07-16, design-first):**
-  **Computed Column** (a row-wise formula whose variables are column names, appended in place —
-  PQ Custom/Conditional Column; wants a design pass on sharing the Expression engine).
-  The Data Table sweep idea is NOT NEEDED (author 2026-07-16): the Composite node's run controls
-  already cover parametric sweeps. Tier 1+2 shipped 2026-07-16 (Fill Down / Replace Values /
-  Merge Columns / Promote Headers / Drop Blank Rows / Head modes / Add Index two-way grid output /
-  stable-sort chaining note).
-- [ ] **Native Polars mirrors for the eager cleanup verbs** (perf follow-up, only if a real
-  workload demands): fillBlanks (`fill_null` forward/backward), replaceValues, sliceRows
-  (tail/slice) are trivially expressible lazily; today they materialize like Split Column.
-
-- [ ] **Expression `/` doesn't mint a pure ratio** (flagged 2026-07-13 in the ratio digest, never
-  queued): the Divide NODE mints `5:1` on a same-dimension cancel; Expression strips UnitCells at
-  its boundary (not unitAware), so `a/b` there yields a bare number. Decide: leave (Expression is
-  deliberately type-agnostic — likely fine) or make Expression unit-aware someday. Terse call.
-
-- [ ] **Units by dimensionality (D20) — COMPLETE across all five ranks; only a truly moot tail
-  is unbuilt.** DONE (2026-07-15): scalar/list (`UnitCell`), frame (`ColumnUnit`), matrix (whole-grid
-  Symbol tag) with the FULL op POLICY + a machine-checked completeness guard (`matrixUnitPolicy.test.ts`
-  — carry / carry-if-uniform / convert / strip / na / author), INDEX + `coerceValue` re-carry, chip +
-  popup display, taggable Table Input; and **cube = per-cell like a list** (`CubeCell` holds `UnitCell`s,
-  frame→cube tags, cube→frame recovers the column unit). Verified NON-gaps: Convert-on-a-matrix is
-  unreachable (a matrix can't wire into Convert's `numlist` input — the FC is the matrix relabeler);
-  MMULT-multiplies-dims + the `unitLattice` matrix sweep are MOOT (no element-wise matrix±matrix
-  arithmetic node exists, and the ×/÷·+/− dimension contract is scalar-level, already tested). The
-  only genuinely-open item is MMULT-dims IF a dimensioned-linear-algebra use case ever appears — niche,
-  documented-strip is the deliberate stance until then.
-- [ ] **Formula ↔ node parity program — GREENLIT, build in a dedicated session** (author
-  direction + decisions 2026-07-14, recorded as **D19**; supersedes the narrower "SETEQ as
-  formula native" item) — converge the formula language and the node set; audit + tiers +
-  decisions in **`docs/formula-node-parity.md`** (numbers regenerable via
-  `scripts/formula-node-parity.ts`). Decided: legacy aliases BLOCKED (`#NAME?` + redirect
-  hint — VLOOKUP dispatching today is a bug); Solenoid-native formula names = the node
-  hover hint despaced (`typeHint()`, "SET RELATION" → `SETRELATION`); packs register their
-  own formula functions (pack-toggle-sensitive registry). Build order: ratchet test FIRST
-  (pin the 57 / the blocklist), then Tier 1 registrations, alias gate, pack seam. Tier 4
-  (the reopened D2 dimensionality cap) is NOT part of this — author-present, see below.
-- [ ] **Rigorous multi-column input-socket label syntax** (author 2026-07-06) — a
-  frame/2-D input socket should state which columns it expects in ONE consistent
-  grammar. Today it's ad hoc: Sankey reads "From+To+Value", standard charts read
-  "series (2-D)" — unhelpful, inconsistent. Design a rigorous convention (named,
-  ordered, positional columns) that every node feeding a frame reuses, so the label
-  itself documents the expected shape. Ties to the 2026-07-06 standing rule (aligned
-  columns → one frame input, not parallel sockets — SUMIFS joined that club 2026-07-09,
-  so the club is now charts + SUMIFS + the frame verbs).
-- [ ] **Lossless frame→cube (typed `CubeColumn`) — DONE bar an optional simplification** (2026-07-15,
-  `603a58b5` + `063e2569`). `CubeColumn.type?` carried by `frameToCube`/`relateFramesToCube`/`subCube`/
-  `cubeRowAt`; `cubeCellToken`/`CubeCellChip` render a flat cell by its type (dates as dates, logicals
-  as TRUE/FALSE); `CubeDisplay`/`CubePopup` pass it. XLOOKUP's cube path now uses the carried type to
-  match ISO dates (exact + approximate), falling back to inference for a hand-built untyped cube. So
-  the "cube socket eats frame types" class of bugs is closed (display + lookup). **OPTIONAL REMAINING
-  (pure cleanup, low priority):** retire XLOOKUP's `rawInputs = {"frame"}` bypass — with typed frame→
-  cube it's no longer needed to preserve types, so a wired frame could coerce to a cube and the two
-  lookup code paths (frame + cube) could collapse to one. A behaviour-touching refactor of a
-  seed/test-covered node; only if it pulls weight. Cube VERBS that build columns from scratch
-  (`cubeFromColumns`/rollup) leave `type` undefined by design (heterogeneous).
+- [ ] **Expression `/` doesn't mint a pure ratio** — the Divide NODE mints `5:1` on a
+  same-dimension cancel; Expression strips UnitCells at its boundary, so `a/b` yields a
+  bare number. Decide: leave (Expression is deliberately type-agnostic — likely fine)
+  or make Expression unit-aware someday.
+- [ ] **XLOOKUP `rawInputs` bypass retirement (optional cleanup)** — with typed
+  frame→cube, the bypass is no longer needed to preserve types; the frame + cube lookup
+  paths could collapse to one. Behaviour-touching refactor of a covered node; only if
+  it pulls weight.
+- [ ] **MMULT dimension algebra** — only if a dimensioned-linear-algebra use case ever
+  appears; documented-strip is the deliberate stance (D20).
 - [ ] **Error UX on restriction violation** — typed error out the socket vs the node
   flagging the offending input locally. Pending a call.
-- [ ] **Formula re-audit remainder** — `formulaDivergence.test.ts` guards the known
-  overrides (incl. the 2026-07-05 TEXT-family sweep). **Node-vs-formula sweep done
-  2026-07-10:** stats (STDEV/VAR/MEDIAN/PERCENTILE/RANK/…), rounding, and math all
-  agree or share the impl; fixed the two genuine drifts (Combinatorics round→floor;
-  MROUND opposite-sign → #DOMAIN!). Residual, deliberately NOT fixed (obscure abuse
-  cases, one deliberate): POWER `0^0`=1 (documented JS/Polars convention vs Excel
-  #NUM!); CEILING.MATH/FLOOR.MATH with NEGATIVE significance (node doesn't `abs` it);
-  GCD/LCM on NON-integer args (node rounds, Excel truncates, Formula.js is itself
-  broken here). Still open elsewhere: distributions validated only at representative
-  points — widen if accuracy is ever in doubt.
-
-## Notes / documents
-
-- Obsidian vault trio SHIPPED (2026-07-16): Settings ▸ Obsidian (vault + asset
-  subfolder); **Import from Obsidian** (read-only Note from a vault `.md`,
-  frontmatter → sockets, file explorer + Reload); **Write to Obsidian** (document
-  sink — Note/Report → portable markdown + rasterized chart/image assets). A
-  `document` socket carries a Note/Report's whole content. Follow-ups if wanted:
-  auto-reload an imported note on file change; write config for `![[Note]]`
-  transclusion vs inlining an embedded note's body (today it's left as native
-  transclusion).
+- [ ] **Provenance Tier 2 — on-demand "why is this?" walk** — a backward-derivation
+  trace for any value (Tier 1, error origin + fly-to-source, shipped in
+  `errorValue.ts`). Never built; idea salvaged from the archived provenance bundle.
+- [ ] **Inside-solve stale dot is uniform** — after an INSIDE Solve the dot reads green
+  though the held result is seed-based; distinguishing needs a drill-state signal in
+  the compute layer (couples `data()` to `compositeEditorStore`). Left simple on
+  purpose; revisit only if it reads as misleading.
+- [ ] **Pack variant-switch reconciles the socket set** — a variant dropdown must
+  add/remove sockets like Cast/read-as do. (The existing custom nodes all keep fixed
+  sockets across their dropdowns, deliberately — nothing waits on this.)
+- [ ] **Optically center the last asymmetric icons** — canvas-lock toggle (reads low) +
+  the cable-flourish sparkle; author's eye needed. Ink-centroid method: archived
+  dev-notes (2026-06-20).
+- [ ] **Pinch-zoom on a real Mac trackpad** — should work via `e.ctrlKey` pinch wheel
+  events; verify on hardware, intercept manually if not.
+- [ ] **#7 Conduits sometimes unselectable/unmovable except via the Navigator** —
+  intermittent, no repro; suspected z-order / hit-area or membership-sync issue tied to
+  group membership.
 
 ## Packs
 
-- [ ] **Materials & Mechanical pack** — the next domain candidate after the 2026-07-09 pack
-  wave (Electricity, Electromagnetism, Health, Fluids, Thermo & Air, Sets, Earth & Sky,
-  Chemistry). **Interpolated Lookup gate fully CLEARED (2026-07-15):** the **INTERPOLATE**
-  node ships both a **List** mode (1-D — hardness conversions, pipe schedules) and a **Grid**
-  mode (2-D — a coordinate-bordered lookup table: first row = X coords, first column = Y coords,
-  blank interior cells filled by interpolation; covers steam tables, thermocouple grids). Only
-  the pack's own domain content (datasets + presets) remains to build. See `pack-composite-plans.md`.
-- [ ] **Timesavers remainder** (proposal: `archive/timesavers-pack-proposal.md`; [F] batch +
-  Reverse Text + Spell Number landed 2026-07-09; **serial-interop gate cleared + Quarter /
-  Days in Month landed 2026-07-10** — the date extractors are internal + serial-aware, so a
-  preset Expression reads a date serial): remaining date [F] idioms that carry a config or
-  judgment call (Fiscal Quarter's start-month → [C], Age/Tenure with DATEDIF's `"MD"` nuance,
-  Nth Weekday), the duration trio (wants an elapsed-`[h]:mm` format first), Split Name
-  (multi-output [C]), and the list-reducer CORE batch (Conditional Aggregate AND/OR,
-  Multi-Criteria Lookup, Last/First Non-Blank, Rank-in-Group…).
+- [ ] **Materials & Mechanical pack** — next domain candidate; the INTERPOLATE gate is
+  cleared (List + Grid modes shipped). Only the domain content (datasets + presets)
+  remains. See `pack-composite-plans.md`.
+- [ ] **Timesavers remainder**: date idioms carrying a config or judgment call (Fiscal
+  Quarter start-month, Age/Tenure with DATEDIF `"MD"` nuance, Nth Weekday), the
+  duration trio (wants an elapsed-`[h]:mm` format first), Split Name (multi-output),
+  and the list-reducer batch (Conditional Aggregate AND/OR, Multi-Criteria Lookup,
+  Last/First Non-Blank, Rank-in-Group…).
 - [ ] **Composite pack-node shape** — packs can't ship subgraphs yet; the queued
   composite pack nodes (Wheatstone, pump operating point, psychrometric state point,
   Pareto, % of Total…) are planned in `pack-composite-plans.md`.
-- [ ] **Pack variant-switch reconciles the socket set** — a simple pack's variant
-  dropdown must add/remove sockets like Cast/read-as do (retype + reconcile), not
-  leave stale ones. (The 2026-07-09 custom nodes — E-Series, Antoine, Element — all keep
-  FIXED sockets across their dropdowns, deliberately, so nothing waits on this.)
-- [ ] **Pack distribution + dependency system** — LAST for 1.1 and a "maybe"; must
-  land in tandem with subgraphs (`archive/v1.1-plan.md` B1 remainder). (In-app
-  `dependsOn` auto-activation already works — Electromagnetism → Electricity is the
-  live example; this item is about DISTRIBUTION of third-party packs.)
+- [ ] **Pack distribution + dependency system** — third-party pack DISTRIBUTION; must
+  land in tandem with subgraphs. (In-app `dependsOn` auto-activation already works —
+  Electromagnetism → Electricity is the live example.)
 
 ## Desktop shell
 
-- [ ] **Window min/max/close controls missing** (2026-07-06, dev + release): the app replaces the
-  native titlebar with `tauri-plugin-decorum`'s `create_overlay_titlebar()` (`lib.rs` setup), and
-  the controls aren't rendering. RULED OUT: the accent border (`set_window_border`/DWMWA_BORDER_COLOR)
-  — disabling it did NOT restore them. Needs a live devtools look (F12 console — CSP/decorum errors?)
-  or a decorum/tauri version check. Fallback if unfixable: drop the overlay for native OS decorations
-  (guaranteed controls, loses the themed titlebar). Worked before; regression cause unknown.
+- [ ] **Window min/max/close controls missing** — `tauri-plugin-decorum`'s
+  `create_overlay_titlebar()` isn't rendering the controls. Ruled out: the accent
+  border. Needs a live devtools look (F12 — CSP/decorum errors?) or a decorum/tauri
+  version check. Fallback: drop the overlay for native OS decorations. Worked before;
+  regression cause unknown.
 
-## Landing page / marketing
+## Perf levers (only when a real workload demands)
 
-- [ ] **Feature/value copy doc** (author 2026-07-18): create and maintain a doc of general
-  features, candidate copy lines for each, RANKED — the author ranks value; all decisions on
-  which features get surfaced/sold are the author's. Use it as the source when building more
-  landing/marketing content. Not now — author will initiate.
-- [ ] **Traveling-cable flow pulse → maybe the app's cables** (author 2026-07-18): the landing
-  page's cable rendering (solid typed stroke + a brighter dash marching along the path,
-  `LandingScenes.tsx` `.sol-cable__flow`) — author likes it; we may overwrite the existing
-  canvas cable element with it. Author-gated (touches the never-degrade-cables rule and
-  DESIGN.md's no-decoration stance — this would make the flow pulse MEANING, not decoration).
+- [ ] **Figure rasterize-at-rest (recharts + KaTeX)** — the last real DOM lever; the
+  remaining big subtrees are figure CONTENT (~200–400 el/chart, ~70/formula). SvgPicker
+  precedent: raster at rest, live tree on hover; KaTeX needs re-raster-on-zoom for
+  crispness. Quality gate: pixel-crisp at any zoom, hover indistinguishable. Per-card
+  complexity is real (theme invalidation, fonts-ready, blob lifecycle).
+- [ ] **#23 persistent compute cache** · **#35 MCP port** — deferred, unscheduled.
 
-## Cables / canvas / chrome
+## Parked (revisit only if the trigger returns)
 
-- [ ] **Frame socket needs a unique glyph** (author 2026-07-16): it used to collide visually only
-  with the numeric matrix; now every element family has a matrix glyph, so the Frame no longer reads
-  as distinct. Design a Frame-specific shape (`SocketComponent` + pixi glyph + Socket Legend +
-  Reference socket tab).
-- [ ] **Reference overlay — Socket tab → full data-model chapter** (author 2026-07-16): grow the
-  socket-reference tab into a proper explanation of data types, units, and dimensionality — what
-  coerces, what flows into what (the lattice: type separation, dimensional widening, wildcard
-  ladder, object family), a List being a 1-D ROW, which containers carry homogeneous vs
-  heterogeneous units (matrix = one unit, frame = per-column, list = per-element planned).
-  Sources: `sockets.ts` lattice + `socketConnect.test.ts`, D17/D20, `docs/v2.0/05-units-format-controller.md`.
-
-- [ ] **`content-visibility: auto` on node roots — EVALUATED, blocked by the live-DOM-geometry
-  model (2026-07-15m).** The idea: skip style/layout/paint for offscreen nodes. The blocker is
-  structural, not cosmetic: socket positions are measured from live DOM geometry — `MeasuredSocketRow`
-  reads `offsetTop/offsetHeight` WITHIN `.solenoid-node__content` (`NodeSocket.tsx`), rete's
-  `getDOMSocketPosition` watcher recomputes a socket's center by walking offsetParents up to the node
-  element, and the GPU clone (`collectSpecs` → `inner.offsetWidth/Height`) + minimap/fit all read real
-  node size regardless of on-screen state. `content-visibility:auto` collapses an off-screen subtree to
-  its `contain-intrinsic-size` and does NOT compute descendant layout, so those reads return the wrong
-  socket offsets → cable endpoints jump as a node crosses the viewport edge (the watcher fires on the
-  size change), and the GPU capture would clone at intrinsic size. An accurate per-node `contain-
-  intrinsic-size` fixes the OUTER box but not the socket-WITHIN-node offset, so it doesn't unblock.
-  Reopen only if the socket model stops depending on live geometry of off-screen nodes (a big rework).
-  With this ruled out and SVG-picker-rasterize + collapsed-figure-unmount both shipped, the DOM-weight
-  reduction lever set is EXHAUSTED — the HTML-in-Canvas GPU renderer is the remaining path at scale.
-  (2026-07-20 re-measure agrees on the per-node baseline: median 38–45 el/node, PF ≈9.6k / FM ≈4.5k
-  total. Minimap-to-canvas shipped that day — the one structural lever the audit had missed. The
-  `style:~95` bucket is a Vite-dev artifact, one `<style>` per CSS file; bundled in prod.)
-- [ ] **Figure rasterize-at-rest (recharts + KaTeX) — the last real DOM lever, quality-gated.**
-  The 2026-07-20 re-measure shows the remaining big subtrees are CONTENT, not chrome: a recharts
-  figure is ~200–400 elements (413 on PF for two charts), a KaTeX formula card ~70 (≈700/doc on
-  FM + PF). The SvgPicker precedent (rasterize for display, swap the live tree in on pointerenter,
-  out on leave) applies to both: chart cards would draw as an `<img>` at rest — hover restores the
-  live recharts tree for tooltips; KaTeX likewise (no hover behavior to preserve, but text
-  crispness across zoom needs the re-raster-on-zoom treatment SvgPicker got). Only worth it on
-  chart/formula-heavy dashboards; per-card complexity is real (theme/palette invalidation, fonts
-  ready before raster, blob-URL lifecycle). Quality gate: pixel-crisp at rest at any zoom, hover
-  behavior indistinguishable.
-- [ ] **Cable collision avoidance** — DEFERRED for later (author 2026-07-05).
-  Spec: `archive/cable-routing.md` §2 (avoid nodes; parallel runs + bridge hops;
-  per-cable overrides).
-- [ ] **Grid system** — DEFERRED for later (author 2026-07-05). Spec: `grid-system.md`.
-- [ ] **Moveable / hideable UI chrome** (standing author principle): honor for
-  every new panel; the decided piece (minimap 3-way) is queued above.
-- [ ] **Optically center the last asymmetric icons** — canvas-lock toggle (reads
-  low) + the cable-flourish sparkle (author's eye needed). Ink-centroid method in
-  the archived dev-notes (2026-06-20).
-- [ ] **Pinch-zoom on a real Mac trackpad** — should work via `e.ctrlKey` pinch
-  wheel events; verify on hardware, intercept manually if not.
-
-## Parked (superseded levers / far-future — revisit only if their trigger returns)
-
-- [ ] **UI-scale toggle (Default / Larger)** — deferred to 1.2 (2026-07-01); subsumes
-  all per-panel resize asks. Don't build per-panel resize.
-- [ ] **Uncertain values (#21) + money mode (#43)** — IN but VERY LATE, sequenced dead
-  last; each needs an author representation call first. Design context:
-  `v2.0/12-value-model-extensions.md`.
-
-- [ ] **WebGPU/wgpu renderer + the LOD swap** — superseded by HTML-in-Canvas as the
-  zoom-at-scale lever. The Pixi/WGSL spike is parked (console-only `"canvas"` mode +
-  `window.__spike`; its Help-menu item was removed 2026-07-07). The **HTML-in-Canvas
-  *spike*** (`HtmlCanvasSpike.tsx` + store) was DELETED 2026-07-07 — the shipped
-  HTML-in-Canvas renderer (`HtmlCanvasLayer`/`htmlCanvasRenderer`, renderMode "html")
-  is the real thing and stays. The LOD hide is blocked on rete's ResizeObserver loop. Records:
-  `archive/renderer-plan.md`, `archive/performance-hardening.md`. Reopen only if
-  `drawElementImage` never reaches stable or a native-GPU need appears.
+- [ ] **UI-scale toggle (Default / Larger)** — subsumes all per-panel resize asks; don't
+  build per-panel resize.
+- [ ] **Uncertain values + money mode** — in, but sequenced dead last; each needs an
+  author representation call first. Design context: `v2.0/12-value-model-extensions.md`.
+- [ ] **Cable collision avoidance** — spec: `archive/cable-routing.md` §2.
+- [ ] **Grid system** — spec: `grid-system.md`.
+- [ ] **WebGPU/wgpu renderer + LOD swap** — superseded by HTML-in-Canvas as the
+  zoom-at-scale lever; reopen only if `drawElementImage` never reaches stable or a
+  native-GPU need appears. Records: `archive/renderer-plan.md`,
+  `archive/performance-hardening.md`.
+- [ ] **`content-visibility: auto` on node roots — ruled out** while socket positions are
+  measured from live DOM geometry (off-screen subtrees don't compute descendant layout
+  → cable endpoints jump at the viewport edge). With SVG-picker-rasterize +
+  collapsed-figure-unmount shipped, the DOM-weight lever set is exhausted — the GPU
+  renderer is the remaining path at scale.

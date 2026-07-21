@@ -1,13 +1,10 @@
 # Solenoid 2.0 — plan set (live remainder)
 
-The "nothing left to question" bundle set authored 2026-07-03 from the completed
-feature walk (verdicts inline in `../archive/scope-features.md` +
-`../archive/future-directions.md`). **Most bundles are BUILT and their docs
-archived** (`../archive/v2.0/` — 01 addressable model, 02 shape-checking,
-03 compile/fuse, 04 provenance, 06 execution substrate, 07 headless/write/live,
-09 composite container, 11 trust & quality, 13 report & presentation, 14 canvas
-polish, 15 domain verticals). Residual open items from built bundles live in
-`../backlog.md` (composite run modes, conditional formatting = D4, etc.).
+The bundle set authored 2026-07-03 from the completed feature walk (verdicts
+inline in `../archive/scope-features.md` + `../archive/future-directions.md`).
+**Most bundles are BUILT**; their plan docs are deleted (git history has the
+text — the shipped mechanics live in code comments, `subsystem-invariants.md`,
+and CLAUDE.md). Residual open items from built bundles live in `../backlog.md`.
 
 ## Live bundles
 

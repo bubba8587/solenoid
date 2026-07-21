@@ -13,7 +13,7 @@ import { isSolError } from "./errorValue";
 
 // Every assertion here checks shapeOf's DECLARED shape against the JS oracle's
 // ACTUAL output columns for the same op + fixture — a mismatch is exactly the
-// "caught seam error" docs/v2.0/02-shape-checking.md calls for. frameVerbs.ts is
+// "caught seam error" the shape-checking design calls for. frameVerbs.ts is
 // also the reference oracle the Rust/Polars backend is parity-tested against
 // (frameVerbs.ts:1-7), so agreement here is a real cross-engine guarantee for the
 // verbs `engine.rs` implements (select/drop/rename/sort/distinct/head/filter/
