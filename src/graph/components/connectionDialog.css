@@ -100,6 +100,10 @@
   border-radius: 6px;
   box-shadow: var(--shadow-pop);
   padding: 3px;
+  /* Own compositor layer so scrolling the list doesn't re-rasterize the dialog
+     overlay's backdrop-filter every frame (the scroll-lag fix; see Settings.css). */
+  transform: translateZ(0);
+  contain: paint;
 }
 
 .conn-dialog__opt {
