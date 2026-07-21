@@ -15,7 +15,7 @@ import { problemsStore, problemsPanelUi } from "./problemsStore";
  * On the WEB DEMO only, the node count doubles as a soft-budget meter: an inline
  * fill bar behind the "N / 100 nodes" readout, coloured as it approaches/exceeds
  * the budget, plus a one-time modal on the crossing ABOVE it (see nodeBudget.ts /
- * performance-hardening.md). Desktop (Tauri) shows the plain count — the limit is
+ * docs/archive/performance-hardening.md). Desktop (Tauri) shows the plain count — the limit is
  * a property of the in-browser webview, not the product.
  */
 

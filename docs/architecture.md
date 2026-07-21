@@ -265,30 +265,35 @@ there is no solver in the Rust engine itself.
 
 ## Docs (`docs/`)
 
+Live docs only — one row per file. Archived material (shipped plans, condensed
+rationale, point-in-time research, the dev-notes history) is indexed in
+`archive/README.md`; don't duplicate its rows here.
+
 | File | Status | Purpose |
 |---|---|---|
+| `README.md` | living | the docs index — start here |
 | `architecture.md` | living | (this file) module map |
-| `subsystem-invariants.md` | living | the "don't break this" deep-dives — cable routing, group push, standoffs, tidy, resizable nodes, error values, unit flow, alerts |
-| `layout-chrome.md` | living | on-screen chrome map (desktop + mobile) — bar/overlay geometry, offset sync map, z-index ladder, reflow root-classes; read before adding/moving chrome |
-| `dev-notes.md` | living log | session DIGESTS + open problems only (per-item history in `archive/dev-notes-history.md`) |
+| `glossary.md` | living | the invented vocabulary |
+| `decisions.md` | living | the decision log — what/why/what-would-reverse-it |
+| `subsystem-invariants.md` | living | the "don't break this" deep-dives — cable routing, group push, standoffs, tidy, error values, unit flow, addressable model, autosave, drill-in |
+| `layout-chrome.md` | living | on-screen chrome map — bar/overlay geometry, offset sync map, z-index ladder; read before adding/moving chrome |
+| `dev-notes.md` | living log | open problems + the latest session digests only (history in `archive/dev-notes-history.md`) |
 | `backlog.md` | living | OPEN items only — the task queue (landed items are deleted) |
-| `release-plan.md` | living | the sequenced path to the next tagged release — readiness, cut line, checklist, author decisions |
-| `release-notes-features.md` | living | curated high-value 1.1 feature list — release-notes source + What's-New slide content |
-| `archive/build-plan.md` | archived | the 2026-07-05 autonomous build plan (Tiers A–F, shipped bar a few backlog items) |
+| `2.0-plan.md` | living | the author-present flagships — release view over `v2.0/` |
+| `release-notes-features.md` | living | curated feature list — release-notes source + What's-New slide content |
 | `format-model.md` | living | the FC function model — control truth table + precision rule (mirrored in `formatModel.ts`) |
-| `value-semantics.md` | living | null/NaN/Infinity/SolError semantics per computation context (all shipped) |
-| `v2.0/` | living plans | the remaining build bundles — 05 units (A4), 08 transpiler, 10 sensitivity, 12 uncertain/money; built bundles archived |
-| `archive/v1.0-plan.md` | archived | the shipped 1.0 execution plan |
+| `value-semantics.md` | living | null/NaN/Infinity/SolError semantics per computation context |
+| `v2.0/` | living plans | the open build bundles — 08 transpiler, 10 sensitivity, 12 uncertain/money, 16 widgets |
 | `node-coverage.md` | living | node inventory by category (`nodeCatalog.ts` is the real source) |
-| `archive/node-arity-audit.md` | archived rationale | labeled-slots vs single-list-socket decision for variadic nodes |
 | `cube-node-scope.md` | rationale | the Cube (recursive nested-table) model + its node set |
-| `excel-toolbar-supplementals.md` | research | the non-function toolbar parity verdicts (function-gap research archived) |
-| `pack-architecture.md` | design + authoring guide | core-vs-pack line, isolation levels (framework BUILT) |
-| `archive/performance-hardening.md` | archived | the perf investigation + final renderer verdict |
+| `excel-toolbar-supplementals.md` | research | the non-function toolbar parity verdicts |
+| `pack-architecture.md` | design + authoring guide | core-vs-pack line, isolation levels |
+| `pack-composite-plans.md` | plans | queued composite-shaped pack nodes |
+| `formula-node-parity.md` | decision record | the D19 parity program — audit, tiers, Tier 4 |
+| `out-of-scope.md` | policy | the standing NO list |
 | `grid-system.md` | future spec | soft-snap grid; unimplemented |
-| `archive/isolate-pin-multiview-scoping.md` | archived | isolate / pin multiview scoping (built; portals scoping parked) |
 | `agent-coordination.md` | parallel-session board | claim/coordinate when several agents work in parallel |
-| `archive/` | archived | finalized/inactive docs (research, reviews, shipped specs, parked proposals, decided-renderer journey). See `archive/README.md`. |
+| `archive/` | index | everything finished/inactive — see `archive/README.md` |
 
 ---
 

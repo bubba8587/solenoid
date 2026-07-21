@@ -10,8 +10,7 @@ is the inventory, the in-app Function Reference (Ctrl+/) is the parity list, and
 `archive/excel-pain-points.md` is the gap analysis. This doc is the **non-function**
 half of "Excel parity": the toolbar and the features behind it.
 
-Companion to `archive/excel-pain-points.md` (why Excel hurts) and `archive/roadmap.md` (the
-relational-engine arc several of these nodes belong to).
+Companion to `archive/excel-pain-points.md` (why Excel hurts).
 
 > **How current is this?** The per-ribbon tables below are the durable MAPPING
 > (which bucket each Excel feature lands in) — those verdicts don't age. Build
@@ -291,11 +290,11 @@ F9 / Manual calculation.
 ### New **nodes** to build (priority order) — reconciled 2026-07-05
 1. ~~Pivot / Unpivot + the relational verbs~~ — **SHIPPED** (the full verb spine + native Polars).
 2. ~~Validate / Assert node~~ — **SHIPPED as the Expect node** (2026-07-03; not-null/unique/range/regex, fails loud, Problems panel).
-3. **Goal Seek / Solver** — OPEN, as a Composite run mode (backlog).
+3. ~~Goal Seek / Solver~~ — **SHIPPED** as the Composite Goal Seek run mode (+ solver params — maxIterations / tolerance / bounds, 2026-07-12).
 4. ~~Data Table / parametric sweep~~ — **SHIPPED** as the Composite Data Table run mode (N-variable full-factorial).
 5. ~~Export / Write sink node~~ — **SHIPPED** (Write CSV / Write JSON, arm/disarm Run button).
 6. **Conditional cell-highlight** — DEFERRED by the author (D4, needs its own design pass; backlog).
-7. Speculative tail: Flash-Fill-by-example → the #11 deferred pile; ~~Scenario set~~ → **SHIPPED** (Scenarios run mode); scatter → ruled IN (core-viz backlog item); **pie → still unruled (backlog "rule in/out")**.
+7. Speculative tail: Flash-Fill-by-example → the #11 deferred pile; ~~Scenario set~~ → **SHIPPED** (Scenarios run mode); scatter → ruled IN (core-viz backlog item); ~~pie~~ → **SHIPPED** (a live Chart op).
 
 ### New **settings** to add — reconciled 2026-07-05
 - ~~Calc mode~~ — **SHIPPED** (automatic / manual / sketch, F9, StatusBar chips).

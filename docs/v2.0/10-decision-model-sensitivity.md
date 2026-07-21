@@ -1,7 +1,9 @@
 # Bundle 10 — Decision models & scoring, made honest
 
-**Source:** scope-features #17. **Verdict:** IN — minor, sequence LATE. **Depends on:**
-bundle 09's Monte Carlo hook — do not pull this forward.
+**Source:** scope-features #17. **Verdict:** IN — minor, sequence LATE. **Was gated on**
+the composite Monte Carlo run-mode hook; that SHIPPED 2026-07-12 (`monteCarlo.ts`,
+composite `montecarlo` run mode), so this is now BUILDABLE — needs re-triage / an author
+pick, not a gate.
 
 ## Grounding — the exact existing nodes
 
@@ -33,8 +35,8 @@ Two possible build shapes — pick based on how bundle 09's Monte Carlo driver s
    perturbed weight scenarios (±10% per criterion) instead of requiring the user to
    hand-author the `scenarios` frame — reusing the existing `decisionSensitivity` verb
    unchanged.
-2. **Fuller (once bundle 09 lands):** wire `DecisionMatrixNode`'s weights through
-   bundle 09's Monte Carlo run mode directly, sampling weight perturbations and re-running
+2. **Fuller (Monte Carlo has landed):** wire `DecisionMatrixNode`'s weights through
+   the composite Monte Carlo run mode directly, sampling weight perturbations and re-running
    `decisionMatrix` many times to show ranking-outcome robustness as a distribution, not
    just discrete named scenarios.
 

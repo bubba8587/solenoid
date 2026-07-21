@@ -6,8 +6,8 @@
 
 ## #22 — As-Of Join / As-Of Lookup (IN — build now, small, high value-per-effort)
 
-**BUILT 2026-07-03 — see `docs/dev-notes.md` for the implementation summary and
-`docs/backlog.md`'s #22 line.** Both halves shipped exactly as scoped below: no third node,
+**BUILT 2026-07-03 — see `docs/archive/dev-notes-history.md` for the implementation summary.**
+Both halves shipped exactly as scoped below: no third node,
 `asof` as a fifth `JoinHow`, the Rust `asof_join` feature enabled, and `lookupFrameCell`'s
 approximate-match mode. #21 and #43 elsewhere in this bundle remain unbuilt.
 
@@ -69,6 +69,12 @@ named — no new node class, extend `FrameLookupNode`'s options.
 
 **NEEDS AUTHOR INPUT before build:** pick `10 ± 2` (symmetric error bar) vs. `between 8
 and 12` (interval) as the v1 scalar kind.
+
+**Precedent now exists (not a substitute for the app-wide call):** Monte Carlo's
+composite-scoped `UncertainNumber` (mean ± sd, `valueKinds.ts`, shipped 2026-07-12) is a
+concrete tagged-shape implementation of exactly this kind — scoped to composite run modes,
+not threaded through app-wide arithmetic. The eventual app-wide representation call can
+build on it.
 
 **Value-kind pattern to mirror — `src/graph/valueKinds.ts`:** every existing extra kind
 (null/logical/error) is a plain runtime value acting as its own tag, not a wrapper

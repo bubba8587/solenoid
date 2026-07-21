@@ -123,10 +123,12 @@ The socket colors are the system's real palette: each data type owns a hue so a 
 - **String Lime** (`#c8e040`): scalar text. List sibling `#7a9210`.
 - **Date Orchid** (`#d685b1`): scalar dates. List sibling `#c06a98`.
 - **Complex Sky** (`#56b4e9`): complex/scalar-or-list. Matrix sibling `#2a8fd9`.
+- **Logical Purple** (`#c05dd1`): booleans (TRUE/FALSE), with list/matrix siblings.
 - **Table Coral** (`#e96b3c`): table/frame data.
 - **Frame Violet** (`#8e64ed`): named-column frames.
 - **Lambda Teal** (`#00b890`): lambda values.
-- **Any Gray** (`#8a8f98`): untyped sockets.
+- **Any Gray** (`#8a8f98`): untyped sockets (`trueany` is the same gray as a hollow,
+  border-only ring).
 
 ### Status (semantic state)
 A small reserved set for failure and state feedback, kept apart from the typed socket palette so an error never reads as a data type.
@@ -196,7 +198,7 @@ The system is flat at rest and uses elevation only to communicate state. Cards s
 - **Style:** Floating pill and icon clusters over the canvas, using the overlay chrome tokens (near-opaque fill, always-on `--overlay-border`, deep overlay shadow) so they read above the graph. Controls are neutral; only their icons and state feedback carry weight.
 
 ### Signature: Typed Sockets & Cables
-- **Sockets:** A deterministic 12x12 dot straddling the card edge, filled with the socket's type color and an inset ring (`--socket-ring`). Shape encodes type alongside color (circle = scalar, square = list, split square = scalar-or-list, grid = table/frame).
+- **Sockets:** A deterministic 12x12 dot straddling the card edge, filled with the socket's type color and an inset ring (`--socket-ring`). Shape encodes type alongside color (circle = scalar, square = list, split square = scalar-or-list, grid = matrix, "F" letterform in a square = frame, hollow border-only ring = the trueany placeholder).
 - **Cables:** Colored by the type they carry, drawn at full curved fidelity at all times. Cables are never straightened, hidden, or shape-swapped during drag, pan, or zoom as a performance shortcut; the curve fidelity is part of the instrument's trustworthiness.
 
 ## 6. Do's and Don'ts

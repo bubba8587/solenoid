@@ -1,6 +1,6 @@
 # `src/graph/pixi/` — the PixiJS renderer (spike → real port)
 
-Proof-of-architecture for the GPU node renderer. See `docs/renderer-decision.md`
+Proof-of-architecture for the GPU node renderer. See `docs/archive/renderer-decision.md`
 for the *why* (adopt PixiJS v8, keep Rete headless, DOM only for the active
 editor). This folder is the *how*. Nothing here is on by default — it's reached
 only through the buried **Edit ▸ "Renderer spike (Pixi)"** overlay

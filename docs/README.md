@@ -37,16 +37,17 @@ dev-notes per-item history) live in `archive/` — see `archive/README.md`.
 ## Work queue (forward-looking — verify against code; these rot)
 
 - **`backlog.md`** — OPEN items only; **the single source of truth for tasks.**
-  Landed items get DELETED (git + digests are the record).
-- **`release-plan.md`** — the 1.1 release view (feature-complete; author-run tail).
-- **`1.2-plan.md`** — the post-1.1 queue: known-issue fixes, half-built tails,
-  widening. **`2.0-plan.md`** — the author-present flagships (A4 units, transpiler,
-  D2, D4), the release view over `v2.0/`.
-- **`v2.0/`** — the live plan bundles: 05 units-by-dimensionality (A4, the
-  flagship next build), 08 Excel transpiler, 10 decision sensitivity, 12
-  uncertain/money. Built bundles are archived; see `v2.0/README.md`.
+  Landed items get DELETED (git + digests are the record). The release tail (1.2
+  tag pending — version is 1.2.0 on `develop`, author-run) lives here too.
+- **`2.0-plan.md`** — the author-present flagships (Excel `.xlsx` transpiler, D2, D4;
+  FC A4 units already shipped), the release view over `v2.0/`.
+- **`v2.0/`** — the live plan bundles: 08 Excel transpiler, 10 decision sensitivity,
+  12 uncertain/money, 16 widget nodes. Built bundles are archived (05 units-by-
+  dimensionality shipped → `archive/units-format-controller.md`); see `v2.0/README.md`.
 - **`dev-notes.md`** — session DIGESTS + open problems only; per-item history in
   `archive/dev-notes-history.md`.
+- Shipped release views are archived: `archive/release-plan-1.1.md` (the 1.1 cut),
+  `archive/1.2-plan.md` (the 1.2 build queue, executed).
 
 ## Process
 
