@@ -6,10 +6,10 @@ and **Formula.js** (`@formulajs/formulajs` v4.6.0), reached *only* via the Expre
 engine (`excelFormula.ts` → `dispatch`). The same operation (e.g. `ROUND`) therefore exists
 twice and can diverge. This audit lays out which families overlap, where backing one with
 Formula.js is safe vs. dangerous, and a recommended per-family policy — the concrete input to
-the "where do functions live" decision parked in `dev-notes.md:2175`.
+the "where do functions live" policy now encoded in `src/graph/excelFunctions.ts`.
 
-Companion: `docs/archive/formula-engine-array-semantics.md` (the engine's array/error gaps),
-`docs/excel-pain-points.md` §3 (Excel's documented statistical inaccuracy — the reason some
+Companion:
+`excel-pain-points.md` §3 (same directory) (Excel's documented statistical inaccuracy — the reason some
 families are hand-rolled on purpose).
 
 **Note on rigor:** Formula.js was not installed in this clone, so this audit reasons about its
@@ -38,7 +38,7 @@ the documented reason. The five axes a "difference that matters" can live on:
    returns), explicit socket types.
 3. **Coverage** — families Formula.js doesn't meaningfully cover (units, complex, frames).
 4. **Error integration** — Formula.js error returns aren't converted to `SolError` today
-   (`archive/formula-engine-array-semantics.md` P5), so leaning on it *as-is* leaks untagged errors.
+   (shipped since as `fxErrorToSol` in `excelFormula.ts`), so leaning on it *as-is* leaks untagged errors.
 5. **Maintenance** — the pure upside: every line backed by Formula.js is a line not maintained.
 
 ---
@@ -94,7 +94,7 @@ Two things must land first, or consolidating makes things worse:
    node call — otherwise you still have two code paths, just with Formula.js as one of them.
    The registry is what lets a family be backed by Formula.js **once**, visibly, with the
    internal exceptions declared in the same place.
-2. **Formula.js → `SolError` conversion** (`archive/formula-engine-array-semantics.md` P5). Today a
+2. **Formula.js → `SolError` conversion** (shipped: `fxErrorToSol`). Today a
    Formula.js `#N/A`/`#DIV/0!` return flows as untagged text/null. Any family routed through
    Formula.js needs its error returns mapped into the tagged-error system first, or
    consolidation regresses the flagship error UX.

@@ -19,8 +19,7 @@ import { formatScalar } from "../components/format";
 import type { NodeCtor } from "../nodeCtorRegistry";
 
 // ─── Composite node — a real, computing subgraph container ────────────────────
-// See docs/pack-architecture.md "Composite pack node" and
-// docs/v2.0/09-subgraph-composite-container.md. Deliberately NOT a GroupNode
+// See docs/pack-architecture.md "Composite pack node". Deliberately NOT a GroupNode
 // variant: a Group has no sockets, no data(), and inferred (spatial) membership.
 // A Composite has a DECLARED boundary (explicit input/output ports, each bound
 // to a marker node inside its own private subgraph) and genuinely computes —

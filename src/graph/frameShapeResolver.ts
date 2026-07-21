@@ -13,7 +13,7 @@ import {
 
 // ─── Static shape graph walk ────────────────────────────────────────────────────
 // Propagates `shapeOf` forward from every literal frame source across the graph —
-// pure, no engine call, no IPC (build order step 3, docs/v2.0/02-shape-checking.md).
+// pure, no engine call, no IPC (static shape, ahead of data).
 // Per-node config is read from the SAME literal storage the node's own data()
 // falls back to when its socket is unwired (`stringLiterals` CSV/text, the public
 // op/how/funcs fields) — a wired-in dynamic column name can't be resolved without

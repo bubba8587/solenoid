@@ -1,4 +1,4 @@
-// The text projection (Bet 2 — docs/v2.0/01-addressable-model.md, decided session
+// The text projection (the addressable model — decided session
 // in docs/subsystem-invariants.md "Addressable model"). A pure SavedGraph <-> text
 // conversion — no rete, no DOM, no live editor — mirroring the persistenceCore.ts /
 // groupPushCore.ts "pure core" pattern so it's unit-testable headlessly and reusable

@@ -1,4 +1,4 @@
-// Pure helpers for the stable node-name scheme (Bet 2 — docs/v2.0/01-addressable-model.md,
+// Pure helpers for the stable node-name scheme (the addressable model —
 // decided session in docs/subsystem-invariants.md "Addressable model"). Shared by the live
 // nodeNameStore (module-level, keyed by rete's ephemeral id) and the pure textForm writer
 // (operates on a plain SavedGraph, no live nodes) so both use ONE naming algorithm.
