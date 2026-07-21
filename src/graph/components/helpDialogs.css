@@ -17,6 +17,10 @@
   width: min(460px, 92vw);
   max-height: 84vh;
   overflow: auto;
+  /* Own compositor layer so scrolling doesn't re-rasterize the overlay's
+     backdrop-filter every frame (the scroll-lag fix; see Settings.css). */
+  transform: translateZ(0);
+  contain: paint;
   padding: 26px 26px 22px;
   background: var(--surface);
   border: 1px solid var(--panel-border);

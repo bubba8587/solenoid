@@ -56,6 +56,21 @@ Three targeted fixes:
   so every self-induced reflow read as an external change → infinite refit, box ping-ponging natural↔scaled.
   Only bit with `useHeight` + a content-driven box (the formula field). Fix: compare against the SETTLED
   post-fit size with a 1px tolerance, so only a genuine external resize refits.
+- **Scroll-lag on backdrop-filtered overlays** (Settings, then swept): a panel with a full-screen
+  `backdrop-filter` + an inner `overflow:auto` scroller re-rasterizes the frosted blur every scroll frame, so
+  the controls lag. Fix (same as the Navigator list did long ago): give the scroll container its own
+  compositor layer — `transform: translateZ(0); contain: paint`. Applied to `.solenoid-settings__body`,
+  `.solenoid-helpdlg__panel`, `.solenoid-shortcuts__panel`, `.table-popup__grid-scroll`, `.conn-dialog__menu`.
+  The other backdrop-filter users (TopBar/StatusBar/NavMenu/MobileControls/conduit toolbar/align bar/banner)
+  have no inner scroller — left alone.
+- **Group Tidy crept the box downward on repeat clicks** (`groupLogic.ts`): the group Tidy button runs the
+  within-group arrange (which repositions members off measurements taken while a docked FC's host is briefly
+  border-inflated — the realHostSize restore window) and THEN `autofitGroupBox` (which measures settled,
+  natural sizes). The sub-pixel disagreement nudged the box a fraction each click and re-fit it — a slow
+  downward creep, reading as a 1px grow/shrink flip at a rounding boundary. Fix: autofit now no-ops when the
+  new box is within 1px of the current on every axis (hysteresis) — a real member move is well over 1px and
+  still fits; only the self-induced churn is absorbed. (The exact per-tidy sub-pixel source is real-DOM
+  timing — deferred FC snap + the ResizeObserver — so it isn't headless-reproducible; verify on the preview.)
 
 ### SESSION DIGEST (2026-07-21 — the big docs/comments cleanup)
 Author directive: aggressive prune/rewrite of all supporting docs + code comments so they

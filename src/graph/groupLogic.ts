@@ -140,6 +140,26 @@ export async function autofitGroupBox(
     width:  Math.round(Math.max(GROUP_MIN_W, (maxX - minX) + GROUP_PAD * 2)),
     height: Math.round(Math.max(GROUP_MIN_H, (maxY - minY) + GROUP_PAD * 2 + GROUP_HEADER)),
   };
+
+  // Hysteresis: if the fit is already within 1px on every axis, leave the box
+  // ALONE. The group Tidy button runs the within-group arrange (which repositions
+  // members off measurements taken while a docked FC's host is momentarily
+  // border-inflated — see tidyArrange's realHostSize restore) and THEN this
+  // autofit (which measures the settled, natural sizes). The two see the members a
+  // sub-pixel apart, so each click nudged the box a fraction and re-fit it — the
+  // group crept downward on repeat Tidies (and a rounding boundary made it read as
+  // a 1px grow/shrink flip). A real change — a member dragged, a value grown —
+  // moves an edge by well over 1px and still fits; only the self-induced churn is
+  // absorbed. Sub-pixel is invisible, so pinning the fitted box costs nothing.
+  if (
+    Math.abs(after.x - before.x) <= 1 &&
+    Math.abs(after.y - before.y) <= 1 &&
+    Math.abs(after.width - before.width) <= 1 &&
+    Math.abs(after.height - before.height) <= 1
+  ) {
+    return null;
+  }
+
   group.width = after.width;
   group.height = after.height;
   await area.translate(group.id, { x: after.x, y: after.y });
