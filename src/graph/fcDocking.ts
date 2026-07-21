@@ -24,9 +24,17 @@ export function computeDockedCanvasPos(
   // Align the Transformer's connecting socket flush with the host socket.
   // Host INPUT  → Transformer output (right edge) should meet it → Transformer goes LEFT.
   // Host OUTPUT → Transformer input  (left edge) should meet it → Transformer goes RIGHT.
+  //
+  // ROUND to whole canvas px. `cx`/`cy` come from a screen round-trip
+  // (getBoundingClientRect → screenToCanvas ÷ zoom), so they land on sub-pixels —
+  // the FC docked a hair right + up, and, being fractional AND host-position-derived,
+  // its edge shifted with the host on every re-dock. That fed the group Tidy loop:
+  // when the FC was the box's extreme edge, autofit chased the drifting fractional
+  // edge and the group crept. Snapping the dock to the pixel grid removes the visible
+  // misalignment and makes the FC a stable edge the box can wrap without drift.
   return {
-    x: side === "input" ? cx - dockedWidth : cx,
-    y: cy - dockedHeight / 2,
+    x: Math.round(side === "input" ? cx - dockedWidth : cx),
+    y: Math.round(cy - dockedHeight / 2),
   };
 }
 
