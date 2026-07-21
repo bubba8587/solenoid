@@ -19,6 +19,8 @@ dev-notes per-item history) live in `archive/` — see `archive/README.md`.
 - **`subsystem-invariants.md`** — the "don't break this" mechanics (cable routing,
   group push, standoffs, tidy, error values, unit flow, alerts, addressable model,
   autosave, drill-in lifecycle).
+- **`layout-chrome.md`** — the on-screen chrome map (bars, overlays, offsets,
+  z-index ladder). Read before adding or moving any bar/overlay.
 - **`format-model.md`** — the FC function model: the render pipeline, the
   per-family control truth table (mirrored in `formatModel.ts`), the precision
   rule. Read before touching FC controls/resolution.
@@ -31,6 +33,10 @@ dev-notes per-item history) live in `archive/` — see `archive/README.md`.
   this is the authoring guide + rationale).
 - **`excel-toolbar-supplementals.md`** — the non-function half of Excel parity
   (ribbon-by-ribbon verdicts). Function-gap research: `archive/excel-pain-points.md`.
+- **`formula-node-parity.md`** — the D19 parity program record (audit, tiers,
+  the open Tier 4).
+- **`pack-composite-plans.md`** — queued composite-shaped pack nodes.
+- **`release-notes-features.md`** — the curated selling list / What's-New source.
 - **`grid-system.md`** — the (unbuilt) soft-grid design spec; backlog item.
 - **`out-of-scope.md`** — the standing NO list.
 
@@ -60,7 +66,7 @@ dev-notes per-item history) live in `archive/` — see `archive/README.md`.
 - **Adding/changing a node:** `node-coverage.md` + `glossary.md`; `nodeCatalog.ts`
   is the source of truth (Add menu + Function Reference generate from it).
 - **Touching the FC / formats / units:** `format-model.md` + subsystem-invariants
-  "Unit flow" + `v2.0/05` (the units milestone).
+  "Unit flow" + decisions D20 (units granularity).
 - **Touching frames/the engine:** `glossary.md` + `decisions.md` D1/D5 + the
   `frameVerbs.ts` oracle and cargo parity tests.
 - **A visual/UI change:** `../DESIGN.md` (the design-system rulebook) first, always.
@@ -68,5 +74,5 @@ dev-notes per-item history) live in `archive/` — see `archive/README.md`.
   `v2.0/README.md` (verdict-pending + ruled-out lists) — most of the idea space
   has already been walked and ruled; don't re-litigate.
 - **Wrapping up a session:** the reconcile ritual in `CLAUDE.md` — extend the
-  session digest, DELETE landed backlog lines, reconcile CLAUDE.md's sections,
-  archive any doc whose job finished, update this index if the set changed.
+  session digest (sweep digested ones to the archive), DELETE landed backlog
+  lines, archive any doc whose job finished, update this index if the set changed.

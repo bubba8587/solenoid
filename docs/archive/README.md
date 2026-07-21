@@ -37,4 +37,4 @@ load-bearing core (noted below); the full originals are likewise in git history.
 - [`release-plan-1.1.md`](release-plan-1.1.md) — the shipped 1.1 release view, kept for the cut-process shape (readiness / checklist / decision structure).
 
 ### Dev-notes history
-- [`dev-notes-history.md`](dev-notes-history.md) — the swept per-item session log (three sweeps + the old reference sections). The live `../dev-notes.md` holds session digests + open problems only.
+- [`dev-notes-history.md`](dev-notes-history.md) — the swept session log (everything through 2026-07-19 + the old reference sections). The live `../dev-notes.md` holds open problems + the latest session window only.
