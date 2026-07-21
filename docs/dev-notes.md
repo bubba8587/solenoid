@@ -40,6 +40,31 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### SESSION DIGEST (2026-07-21 — the big docs/comments cleanup)
+Author directive: aggressive prune/rewrite of all supporting docs + code comments so they
+reflect what SHIPPED and constrain future work, without fossilized one-time approvals.
+- **dev-notes** swept to this shape (open problems + latest window); **backlog** rewritten as a
+  terse open-only queue (landed items deleted, duplicates merged, §3a Data-Feed scope inlined).
+- **CLAUDE.md rewritten rules-first**: the What's-working/Still-to-build changelogs became a
+  capability map + standing constraints; every trap/invariant/alias/UX rule kept.
+- **decisions.md**: D14/D16/D17/D18/D20 compressed to ruling+guard+reversal; stale claims fixed
+  (calcModeStore tested, date-parser UTC landed, VLOOKUP formula-blocking shipped).
+- **Archive triage**: deleted 12 spent docs + all 11 built v2.0 bundles (git history keeps
+  them); condensed 12 more to their load-bearing core (scope-features 2028→159 keeping the
+  #NN index + #23/#35 sketches); release-plan/1.2-plan/v2.0-05 archived; archive README is
+  now the single archive index (architecture.md's doc table lists live docs only).
+- **Comment sweep** (src, src-tauri, scripts, help): history narration → current facts;
+  relapse-guards kept. Real staleness fixed: SocketComponent + help still described the
+  pre-F-glyph Frame socket; help/notes.md claimed units "don't multiply out" (A4 shipped) and
+  images "don't survive reload" (desktop bundling shipped). DESIGN.md gained the logical
+  purple family + F-glyph/trueany-ring in the socket vocabulary.
+- **Notes for later (ambiguities deliberately left):** `inlineInput.tsx` "numeric lists keep
+  their single-number field for now" — unconfirmed settled-vs-pending; `nodeHitIndex.ts` stays
+  an unwired Phase-2/3 foundation (claim verified true); `out-of-scope.md` still says DRAFT —
+  author could ratify; two thin unbuilt ideas from deleted bundles (auto-doc-on-Groups #50,
+  engineering-calc/BOM seeds #15/#16) were let lapse into git history rather than backlogged.
+- tsc clean, vitest 3057 green before and after.
+
 ### SESSION DIGEST (2026-07-20e — REVERSAL: gesture cables return to the canvas)
 Author call: the zoom-time cable artifacting isn't a flash/thrash problem after all —
 **partially translucent thin strokes inherently shimmer under scale**, so keeping every cable

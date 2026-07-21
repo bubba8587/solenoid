@@ -27,8 +27,8 @@ export interface TornadoResult {
    *  BASIS MARKER that keeps the ranking honest instead of silently normalizing. */
   basis: "slider" | "number";
   /** The result at an extreme was non-finite (NaN/±∞) — the swing couldn't be
-   *  measured. Such a leaf is no longer silently dropped; it's kept and MARKED
-   *  (the model blows up on this input, arguably the most sensitive finding). */
+   *  measured. Such a leaf is kept and MARKED (not silently dropped): the model
+   *  blows up on this input, arguably the most sensitive finding. */
   diverged: boolean;
 }
 
