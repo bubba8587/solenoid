@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useRenderMode } from "../renderMode";
+import { IS_COARSE } from "../coarse";
 import { HtmlCanvasRenderer, type EngineNodeSpec } from "../htmlCanvasRenderer";
 import { getEditor, getArea, connectionVersionStore } from "../process";
 import { nodeDomWeight } from "../nodes/kind";
@@ -251,7 +252,12 @@ export function HtmlCanvasLayer() {
         // cached layer some transform updates repaint it per frame — the conduit then
         // visibly trails the canvas-drawn graph during a pan. Composited, the per-frame
         // transform is GPU-only. Gesture-scoped so the idle DOM pays no layer memory.
-        holder.style.willChange = "transform";
+        // NOT on touch devices: the holder outsizes a mobile-class GPU's max texture
+        // (phones AND tablets running the desktop UI), and a promoted layer that big
+        // fails tile allocation under zoom (green squares) — same gate as the DOM
+        // mode's zoom promotion in Canvas.tsx onZoomActivity. The conduit may trail
+        // a frame mid-gesture there; corruption is worse.
+        if (!IS_COARSE) holder.style.willChange = "transform";
         showDomOnly(); // but keep DOM-only nodes (conduits) + their cables visible through the canvas
         engine.setActive(true);
       }
