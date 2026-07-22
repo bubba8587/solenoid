@@ -22,13 +22,10 @@ html.is-mobile {
   /* ── The bottom action bar (Undo/Redo/Add/Select/Delete) becomes visible. ── */
   .solenoid-mobile-bar { display: flex; }
 
-  /* The app container must track the VISUAL viewport (dvh), not the layout viewport
-     (vh includes the strip behind the mobile URL bar). The bottom action bar is
-     position:fixed → visual-viewport-anchored; the outline navigator is absolute
-     inside .solenoid-app, so if that's 100vh the navigator anchors to the LAYOUT
-     bottom — below the fixed bar by exactly the URL-bar height, which is why it
-     overflowed the bar on-device but never in a (URL-bar-less) emulator. */
-  .solenoid-app { height: 100dvh; }
+  /* The app container tracks the VISUAL viewport (100dvh) — set app-wide in
+     App.css, not here: a tablet runs the DESKTOP UI in the same toolbar-bearing
+     mobile browser, so gating dvh on is-mobile left its bottom chrome (status
+     bar, minimap, navigator) below the usable screen. */
 
   /* The minimap lives bottom-right and is of little use on a phone-sized canvas
      — hide it so the corner is free for the socket legend. */
@@ -249,7 +246,7 @@ html.is-mobile {
   .solenoid-add-menu { font-size: 13px; }
   .solenoid-add-menu__item { padding: 7px 12px; }
   .solenoid-add-menu__search { padding: 7px 10px; font-size: 13px; }
-  .solenoid-add-menu__panel { max-width: 92vw; max-height: min(86vh, 448px); }
+  .solenoid-add-menu__panel { max-width: 92vw; max-height: min(86vh, 448px); max-height: min(86dvh, 448px); }
 
   /* ── Outline navigator (upper-left): bigger launcher; panel fits width and
         clears the (notch-padded) header at the top and the status bar / home
@@ -296,7 +293,7 @@ html.is-mobile {
   .table-popup__view button { padding: 9px 14px; }
   .table-popup__btn { padding: 9px 14px; }
   .table-popup__grid-scroll,
-  .table-popup__csv { max-height: 48vh; }
+  .table-popup__csv { max-height: 48vh; max-height: 48dvh; }
 
   /* ── Connection dialog (Insert ▸ Add connection) — the no-drag way to wire
         sockets, extra useful on touch. ── */
@@ -320,7 +317,7 @@ html.is-mobile {
   /* Leave a tappable backdrop margin on every side so the panel can be dismissed
      by tapping away (the old 96vw left only ~2vw of backdrop at the sides — too
      thin to hit). */
-  .fr-panel { width: 92vw; height: 88vh; }
+  .fr-panel { width: 92vw; height: 88vh; height: 88dvh; }
 
   /* Tabs: let the labels scroll horizontally on a narrow phone instead of being
      clipped, and reserve room on the right so the last tab can't hide under the

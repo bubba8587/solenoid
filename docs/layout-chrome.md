@@ -43,6 +43,26 @@ canvas. That 66 is what `--report-dock-top` encodes and what the nav pill's `top
 (66 + border + gap) and the selbar's `top:76px` both clear. The HUD's `top:124px` = the nav
 pill's `80 + 34 (pill height) + 10 (gap)`.
 
+## Tablets — the DESKTOP stack inside a mobile browser (2026-07-22)
+
+A tablet gets the full desktop UI: `IS_MOBILE` requires a mobile UA, and tablet Chrome
+reports non-mobile (`userAgentData.mobile === false`), so `html.is-mobile` never sets.
+But the browser still has dynamic toolbars (URL bar) and the device a navigation bar —
+the layout viewport (`100vh`) is TALLER than the usable screen. Three consequences,
+all landed together:
+
+- **`.solenoid-app` is `100dvh` app-wide** (`App.css`, with a `100vh` fallback line) —
+  NOT gated on `is-mobile` anymore (the old mobile-only override left the desktop
+  stack's bottom chrome — status bar, minimap, navigator — below the usable screen on
+  tablets). Desktop browsers have no dynamic toolbars, so dvh == vh there.
+- **Tall overlays carry `vh` + `dvh` declaration pairs** (Function Reference, Report
+  window, Settings/Shortcuts/help dialogs, table/pivot popups, add menu, command
+  palette, drill-in run-controls): the dvh line wins where supported and is always ≤
+  the vh value, so it only ever shrinks. Keep the pair when adding a tall overlay.
+- **The zoom pill's fullscreen button gates on `IS_COARSE`** (touch-primary), not
+  `IS_MOBILE` — a tablet's desktop pill keeps it (no F11 key on a tablet; mouse
+  desktops keep F11 / the browser's own).
+
 ## Mobile stack (`html.is-mobile`: coarse pointer AND mobile UA — set in `main.tsx`)
 
 Top chrome becomes **two rows**, both defined in `mobile.css`:

@@ -16,6 +16,7 @@
   position: relative;
   width: min(460px, 92vw);
   max-height: 84vh;
+  max-height: 84dvh;
   overflow: auto;
   /* Own compositor layer so scrolling doesn't re-rasterize the overlay's
      backdrop-filter every frame (the scroll-lag fix; see Settings.css). */

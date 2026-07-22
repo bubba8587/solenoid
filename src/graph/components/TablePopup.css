@@ -15,6 +15,7 @@
 .table-popup__grid-scroll {
   margin: 12px 14px;
   max-height: 56vh;
+  max-height: 56dvh;
   overflow: auto;
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -255,6 +256,7 @@
   margin: 12px 14px;
   min-height: 120px;
   max-height: 56vh;
+  max-height: 56dvh;
   padding: 8px 10px;
   background: var(--surface-sunken);
   border: 1px solid var(--border);
@@ -362,7 +364,7 @@
    fit without the card running off the screen. */
 @media (max-width: 640px) {
   .table-popup { width: 96vw; }
-  .table-popup__grid-scroll { max-height: 42vh; margin: 10px; }
+  .table-popup__grid-scroll { max-height: 42vh; max-height: 42dvh; margin: 10px; }
   .table-popup__grid { font-size: 14px; }
   .table-popup__input {
     padding: 9px 8px; /* taller rows = easier to tap into */

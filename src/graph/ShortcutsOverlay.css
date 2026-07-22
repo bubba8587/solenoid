@@ -13,6 +13,7 @@
 .solenoid-shortcuts__panel {
   width: min(560px, 92vw);
   max-height: 80vh;
+  max-height: 80dvh;
   overflow: auto;
   /* Own compositor layer so scrolling doesn't re-rasterize the overlay's
      backdrop-filter every frame (the scroll-lag fix; see Settings.css). */
