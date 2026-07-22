@@ -37,14 +37,18 @@ dev-notes per-item history) live in `archive/` — see `archive/README.md`.
   the open Tier 4).
 - **`pack-composite-plans.md`** — queued composite-shaped pack nodes.
 - **`release-notes-features.md`** — the curated selling list / What's-New source.
-- **`grid-system.md`** — the (unbuilt) soft-grid design spec; backlog item.
+- **`grid-system.md`** — the (unbuilt) soft-grid design spec; parked in
+  `deferrals.md`.
 - **`out-of-scope.md`** — the standing NO list.
 
 ## Work queue (forward-looking — verify against code; these rot)
 
 - **`backlog.md`** — OPEN items only; **the single source of truth for tasks.**
-  Landed items get DELETED (git + digests are the record). The release tail (1.2
-  tag pending — version is 1.2.0 on `develop`, author-run) lives here too.
+  Landed items get DELETED (git + digests are the record). Oriented around 1.3
+  (v1.2.0 shipped 2026-07-22); the release tail lives here too.
+- **`deferrals.md`** — everything the author has deferred/parked/author-gated,
+  in one reviewable list; the backlog carries a single Deferral-review item
+  pointing at it. Nothing there is scheduled until that review promotes it.
 - **`2.0-plan.md`** — the author-present flagships (Excel `.xlsx` transpiler, D2, D4;
   FC A4 units already shipped), the release view over `v2.0/`.
 - **`v2.0/`** — the live plan bundles: 08 Excel transpiler, 10 decision sensitivity,

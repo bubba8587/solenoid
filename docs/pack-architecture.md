@@ -4,7 +4,8 @@
 > pack registration, FC unit/format extensions (`fcExtensions.ts`), dormant-pack
 > persistence (an unknown type loads as a Placeholder, wiring kept), the
 > **Geometry** pack as the worked example, and the **Composite** subgraph
-> container (`nodes/composite.ts`, drill-in editor, 4 of 5 run modes). This doc
+> container (`nodes/composite.ts`, drill-in editor, the full run-mode set incl.
+> Monte Carlo and manual Refresh). This doc
 > remains the design rationale + the guide for authoring NEW packs; the open pack
 > work (more packs, Timesavers idioms, distribution/deps, variant-switch
 > reconcile, port aliasing) lives in `backlog.md`.

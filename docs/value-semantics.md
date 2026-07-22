@@ -18,7 +18,7 @@ readInput, IFS/SWITCH #N/A). If a new rule is decided-but-unbuilt, tag it
 |---|---|---|
 | value | a real number/string/date/logical/complex | the normal case |
 | `null` | **missing** — no value was ever there | data, not a failure |
-| `SolError` | **failure** — a computation could not answer (tagged code, 14 incl. `#OVERFLOW!`) | loud until caught |
+| `SolError` | **failure** — a computation could not answer (tagged code, 15 incl. `#OVERFLOW!` and the internal `#ERROR!` catch-all) | loud until caught |
 | `NaN` | **undefined number that leaked** — not an error, not missing | residue; computation may not produce it (guardFinite) [shipped] |
 | `Infinity` | **definable infinity** — deliberately declared (Constant node) or derived from an infinite input | a first-class value [shipped] |
 
@@ -98,9 +98,9 @@ two contexts, both correct. Any OTHER node-vs-formula disagreement is a bug.
 ## Display
 
 - **null** → rendered `null` (muted) [shipped].
-- **SolError** → the red error badge with its code [shipped]; `#OVERFLOW!` joins the
-  inventory (14 codes; update the subsystem-invariants count + error-showcase seed)
-  [decided].
+- **SolError** → the red error badge with its code [shipped]; `#OVERFLOW!` is in the
+  inventory (15 codes, `errorValue.ts`) and toured in the error-showcase seed
+  [shipped].
 - **NaN** → literal `NaN` with a QUIET affordance: muted background tint (not error
   red, not ArrayChip-like) + fixed-text structural tooltip [shipped].
   Never "N/A".

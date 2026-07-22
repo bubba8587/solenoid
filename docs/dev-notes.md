@@ -40,6 +40,35 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### SESSION DIGEST (2026-07-22d — post-1.2 reorient: backlog → 1.3, deferrals.md born)
+v1.2.0 tagged and released; docs/planning reoriented around 1.3 (author directive: all
+deferred/for-later work collapses into ONE review item; the queue focuses on bugs +
+decided-unbuilt work).
+- **`docs/deferrals.md` created** — every deferred/parked/author-gated item gathered in
+  one reviewable list (author-decision gates, author-present polish, parked bugs,
+  only-if-triggered, parked features). `backlog.md` rewritten as the 1.3 queue: bugs &
+  verifications, the author's 2026-07-16 punt list (iFrame/embed, Data Feed widening,
+  drill-in nav/lasso/group tools, doc-level FC defaults), the decided-unbuilt build
+  queue, packs, ONE **Deferral review** item pointing at deferrals.md (same sitting:
+  ratify `out-of-scope.md`), and the 1.3 release tail. CLAUDE.md + docs/README.md maps
+  updated.
+- **Full-docs sweep vs code (subagent-assisted) — reconciled the stale claims:** the
+  Reference data-model chapter SHIPPED (`help/data-model.md` covers lattice/wildcards/
+  list-is-a-row/unit granularity — backlog item deleted); composite-workbench seed HAS
+  scenarios + data-table cards (item deleted); Nest/Unnest shipped (`cube-node-scope.md`
+  marked [done], unified-XLOOKUP contradiction fixed); `#OVERFLOW!` shipped + toured
+  (value-semantics now says 15 codes); pack-architecture "4 of 5 run modes" → full set;
+  format-model per-column-units non-goal dropped (A4 shipped); node-coverage FC "under
+  active redesign" dropped; docs/README "1.2 tag pending" cleared.
+- **Real gaps promoted into the queue** (found by the sweep, previously un-backlogged):
+  extend targeted recompute to topology changes (D8 follow-through); trueany adoption
+  absent in drill-in composites; `readInput` sweep beyond scalar.ts; passthrough opt-in
+  for Concat/Interleave/TOCOL/WRAP; FC complex-family spec-lag verify; pack-architecture
+  prerequisites folded into the distribution item. D10's residual formula-surface
+  violation (pre-2010 stats family via Formula.js) noted inside the parity-program item.
+- `release-notes-features.md` reset to the 1.3 shell (1.2 list shipped; git history
+  keeps it, per the 1.1 precedent). Dev-notes 07-20 digests swept to the archive.
+
 ### SESSION DIGEST (2026-07-22c — tablet zoom corruption: holder GPU-layer promotion)
 Author report: zooming on the tablet drew GREEN SQUARES / broken raster, in BOTH render
 modes. That's Chrome's raster-tile allocation failure — a promoted compositor layer
@@ -155,111 +184,9 @@ reflect what SHIPPED and constrain future work, without fossilized one-time appr
   engineering-calc/BOM seeds #15/#16) were let lapse into git history rather than backlogged.
 - tsc clean, vitest 3057 green before and after.
 
-### SESSION DIGEST (2026-07-20e — REVERSAL: gesture cables return to the canvas)
-Author call: the zoom-time cable artifacting isn't a flash/thrash problem after all —
-**partially translucent thin strokes inherently shimmer under scale**, so keeping every cable
-as live DOM through gestures (37995b5, 2026-07-18) was chasing the wrong thing. Reverted: the
-engine cable pipeline (`setCables`/`relayoutCables`/`drawCables`) is back, canvas-resolvable
-cables draw on the canvas during gestures, and only conduit cables / snapshot-unresolvable
-ones (e.g. into a collapsed group) stay DOM. Known fidelity gaps return with it (opaque
-stroke vs 0.72 idle opacity, no ribbons/hover/dimming mid-gesture) — accepted over the AA
-shimmer. KEPT through the revert: the post-collapse conduit-ghost fix (override-aware
-show/hide + old-set clearing — independent bug), the 2026-07-20d zoom settle-holds (both
-renderers), and 2681cb9's lasso/gesture separation. This also mostly retires 2026-07-20d's
-"during-zoom cable repaint" backlog item (deleted): the per-notch DOM re-raster now covers
-only the conduit subset. The 2026-07-19 digest below records the reverted state — superseded.
-
-### SESSION DIGEST (2026-07-20d — GPU renderer: why zoom is worse than panning; settle-hold fix)
-Diagnosis (measured in a live browser, DOM-mode proxies on PF — headless raster inflates the
-magnitudes, the ASYMMETRY is the finding). Three stacked causes, all zoom-only:
-1. **Pan is composite-only; zoom re-rasters.** A pan translates the composited layer (p95
-   17ms/frame regardless of content). A zoom notch changes the raster SCALE, which repaints
-   painted DOM at the new scale (full DOM p95 117ms, worst 283ms per notch).
-2. **The live-DOM gesture subset is cable-heavy.** During a GPU-mode gesture the canvas carries
-   the cards, but ALL cables + conduits stay live DOM (by design, 37995b5) — and the cable layer
-   ALONE measured p95 67ms/notch under zoom (92 cables on PF) vs 17ms under pan. This is why
-   collapsing nodes doesn't help: collapse removes card paint, not cables.
-3. **The 140ms gesture-exit timer thrashes under notchy wheel zoom (FIXED).** A pan gesture is
-   held by `pointerDown` even when motionless; zoom has no held-pointer signal, so wheel notches
-   arriving slower than 140ms exited + re-entered the gesture PER NOTCH — each exit re-showing
-   the full DOM at a NEW scale (cause 1's worst case, repeatedly, mid-zoom). Fix: a gesture that
-   changed the camera scale now settles on a longer quiet period (`ZOOM_SETTLE_MS` 420ms vs
-   `PAN_SETTLE_MS` 140ms, `HtmlCanvasLayer.tsx` `gestureZoomed`), paying the scale-change
-   repaint ONCE at the true settle. Could not be exercised end-to-end in this container —
-   headless Chromium 141's API drifted to `drawElement`/`drawHTMLElement` with a
-   child-of-canvas model and no `captureElementImage`, so the html layer can't engage here
-   (a THIRD drift shape after e309792/9f11cea — the desktop pin is what matters).
-Remaining lever (author call, backlog): the during-zoom cable repaint (cause 2).
-**Follow-up (same day): the DOM renderer had the IDENTICAL thrash — the reported
-"cables still flash during zoom with GPU off".** `Canvas.tsx`'s `onZoomActivity` promotes the
-holder (`will-change: transform`) per zoom and demoted it on a pan-tuned 160ms quiet timer;
-notchy wheel zoom flipped promote↔demote PER NOTCH (measured: 16 will-change flips over 8
-notches at 200ms), and each flip re-creates the compositor layer + re-rasters the holder — the
-un-rastered-layer frame is the cable flash (thin strokes blink hardest). Fixed with the same
-constant as the GPU side (`ZOOM_SETTLE_MS` 420ms → one promote/demote pair per zoom, A/B
-16→2 flips), AND the settle timer now refreshes only on real `zoomed` events — with the longer
-window, a `translated` refresh would have kept the holder promoted through a follow-on pan
-(the tile-reveal flicker the pan-no-promotion NOTE exists to avoid); a pinch's interleaved
-translates are covered by its own zoomed stream.
-
-### SESSION DIGEST (2026-07-20c — PF seed internals modernized to the current node set)
-Author call: the Personal Finance seed still taught the pre-D16 patterns. Via the generator
-(structure) + committed-geometry adoption (layout), all values verified identical in a live
-browser (Income 16,910 · Net 7,758.99 · rate 46% · NW 101,010 · Assets 123,650 · Debt −22,640):
-- **FILTER + REDUCE → SUMIFS** ×4: cash-flow income/spend and net-worth assets/debt are now one
-  `SumIfsNode` each, straight off the frame (`values`/`column0`/`value0` stringLiterals +
-  `condConfig` gt/lt + `valueKeys:["column0"]` — the valueKeys is REQUIRED or the ctor ignores
-  condConfig). The advisor's outflow feed rewired to `sumif-out`.
-- **Parallel-lists list-GroupBy → frame Group By** ×3: the spending pivot (sum + count) and the
-  asset-class pivot now run `GroupByFrameNode` (native Polars on desktop) with Get Column pulling
-  chart/spark lists; the grouped FRAME shows directly on a Display chip (click → table popup),
-  replacing the separate keys/values list displays. `col-type` deleted (nothing else read it).
-- Notes rewritten to teach SUMIFS/the frame verb. New nodes sit at the tuned coords of the chains
-  they replaced (inside the tuned group boxes — seeds.test's geometry invariant); a future
-  tune-seeds pass may polish spacing. 175 → 171 nodes, 188 connections.
-
-### SESSION DIGEST (2026-07-20b — Chart Builder targets; doc-switch curtain; minimap → canvas)
-- **Chart Builder chart-type dropdown**: a `target` select (Chart / Histogram / KPI / Bullet /
-  Treemap / Sankey / Waterfall / Candlestick / Boxplot / Calendar Heatmap / Waffle) shapes the
-  form to the option keys that figure's RENDERER actually reads — truth table
-  `CHART_BUILDER_TARGETS` in `chartOptions.ts`, derived from ChartView / the payload figures
-  (title+fontsize) / the canvas figures (title only), machine-checked in `visual.test.ts`.
-  A wired-or-valued row stays visible (dimmed, "Not read by X") so switching type never hides
-  live state; serialization stays FULL-WIDTH — inert keys are matplotlib-ignored, one builder
-  can feed several charts. Not per-type catalog nodes (author call).
-- **Doc-switch Loading curtain** (`persistence.ts` `rebuildGraph`): a document switch with real
-  work on either side (teardown+build > 60 nodes+connections) now runs behind the same
-  LoadOverlay as File→Open — progress counts the CHUNKED TEARDOWN too (it dominates leaving a
-  big doc; it used to show as a dead half-blank canvas) — and snaps to idle from loadGraph's
-  finally, never entering the reveal. Small docs still swap with no flash.
-- **Minimap node rects → one `<canvas>`** (`Minimap.tsx` `drawMinimapNodes`): was a div per
-  visible node (N elements + N style-diffs, scales with the graph). Same coordinate origin,
-  same geometry+fill signature gating so pan/zoom frames still skip the redraw; viewport box
-  stays DOM (drag target). Verified pixel-painted + A/B'd against the old divs in a live
-  browser (PF).
-- **DOM re-measure (the levers stand)**: hard-load `querySelectorAll('*')` — PF ≈9.6k
-  (175 nodes, median ~43/node), FM ≈4.5k (median ~38). Per-node chrome is lean; the big
-  remaining subtrees are figure CONTENT (recharts ~200–400/chart, KaTeX ~70/formula) →
-  "figure rasterize-at-rest" queued in backlog with the SvgPicker precedent. `style:~95`
-  bucket = Vite-dev artifact (one tag per CSS file; bundled in prod). content-visibility
-  stays ruled out (unchanged).
-
-### SESSION DIGEST (2026-07-20 — Color Blend node + add-node skill rewrite; bundle 16 scoped)
-- **Color Blend node** (author ask): two color-string inputs (typeable literals or wired; anything
-  `colord` parses — the `names` plugin is now extended globally, so named CSS colors work in every
-  color field incl. ColorPicker hex) × a blend-mode dropdown (W3C separable formulas per RGB channel,
-  A = backdrop) → hex out the string socket on a ColorPicker-style swatch row. Class beside
-  ColorPicker in `nodes/input.ts`; kind `string`; Control catalog next to Color; `colorBlend.test.ts`.
-- **`.claude/skills/add-node` rewritten against current reality** — it predated the split of
-  LogicalNode (still said "→ LogicalOp"), packs, the literals load gate, INIT_FIELD_ORDER
-  persistence, error guards, unitAware, the wildcard ladder, and the tests-required step. Now
-  documents all of those + points at Color Blend as the compact worked example.
-- **v2.0 bundle 16 scoped** (`docs/v2.0/16-widget-nodes.md`): everyday widget nodes (Weather /
-  Geocode / FX / Holidays / TZ / QR), dashboard-framed; 4 author gate calls listed there.
-
 
 ## Older entries archived
 
 Swept verbatim to [`archive/dev-notes-history.md`](archive/dev-notes-history.md)
-(latest sweep: everything through 2026-07-19, on 2026-07-21). `git log` is the
+(latest sweep: everything through 2026-07-20e, on 2026-07-22). `git log` is the
 per-commit record.

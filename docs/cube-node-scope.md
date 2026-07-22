@@ -112,9 +112,9 @@ By-key reading (find the row where key = X, return another column's cell) is
 XLOOKUP's job. **Frame Lookup now does this for a Cube too (2026-07-05):** its source
 is an `any` socket, so a Cube flows in and it matches the key in the Cube's TOP-LEVEL
 column, returning the matched cell WHOLE (a nested frame/cube comes out intact —
-drill in with INDEX). Verb: `lookupCubeCell` (`frameVerbs.ts`). This is the cube half
-of the future unified XLOOKUP (below); the full three-way merge of list + frame + cube
-into one node is still the follow-up.
+drill in with INDEX). Verb: `lookupCubeCell` (`frameVerbs.ts`). This became the cube half
+of the unified XLOOKUP — the three-way list + frame + cube merge is DONE (2026-07-06,
+[done] entry below).
 
 ## Display (the drill-in popup)
 
@@ -196,9 +196,9 @@ Build the complete verb set. Two distinct axes — easy to conflate, but differe
 - **Join** — flat relational join (inner/left/right/outer), fans out into repeated
   rows. Frame -> Frame.
 - **Nest / Unnest** — the flat ⟷ cube bridge, lossless (changes nesting depth).
-  Frame ⟷ Cube. **Nest Join** already fuses Join+Nest (ships now); the remaining
-  gaps are a standalone **Nest** (group one flat frame by key into cells) and
-  **Unnest** (cube -> the flat joined table, the inverse). So `Unnest(Nest Join cube)
+  Frame ⟷ Cube. **Nest Join** fuses Join+Nest; standalone **Nest** (group one flat
+  frame by key into cells) and **Unnest** (cube -> the flat joined table, the inverse)
+  are SHIPPED (`NestNode`/`UnnestNode`, `frame.ts`). So `Unnest(Nest Join cube)
   = flat joined table`.
 - **Pivot / Unpivot** — the long ⟷ wide reshape (changes orientation, stays flat;
   pivot collapses detail via aggregation). Frame -> Frame. NOT the cube round-trip —
@@ -251,8 +251,8 @@ this baseline — not a per-verb default, and not in v1.0.
 
 ## Deferred / follow-ups
 
-- **Unnest** + standalone **Nest** (above) — for now INDEX pulls a sub-frame out and
-  the existing frame nodes flatten it manually.
+- [done] **Unnest** + standalone **Nest** — shipped as `NestNode`/`UnnestNode`
+  (`frame.ts`, catalog "Nest"/"Unnest"), the lossless flat ⟷ cube bridge.
 - **INDEX — marked for later (2026-07-01):**
   - **Output socket should be Cube, not singular `any`.** `ListIndexNode` output is `anyOut`
     (`nodes/list.ts:148`); when INDEX pulls a nested cell that is itself a frame/cube the value
