@@ -147,7 +147,14 @@ body,
 .solenoid-app {
   position: relative;
   width: 100vw;
+  /* Track the VISUAL viewport (dvh), not the layout viewport: on mobile-browser
+     Chrome (phone OR tablet-running-desktop-UI) 100vh includes the strip behind
+     the URL bar / toolbars, so every bottom-anchored descendant (status bar,
+     minimap, navigator) lands below the usable screen. Desktop browsers have no
+     dynamic toolbars, so dvh == vh there; the plain vh line is the fallback for
+     engines without dvh. */
   height: 100vh;
+  height: 100dvh;
 }
 
 /* Form controls don't inherit font-family from the UA stylesheet — a bare

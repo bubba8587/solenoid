@@ -33,6 +33,7 @@
   box-shadow: var(--overlay-shadow);
   padding: 3px;
   max-height: min(320px, 50vh);
+  max-height: min(320px, 50dvh);
   overflow-y: auto;
 }
 
@@ -106,6 +107,7 @@ html.is-mobile .solenoid-cmdpalette__results {
   margin-bottom: 0;
   margin-top: 4px;
   max-height: 38vh;
+  max-height: 38dvh;
 }
 html.is-mobile .solenoid-cmdpalette__item { padding: 11px 12px; }
 html.is-mobile .solenoid-cmdpalette__shortcut { display: none; }

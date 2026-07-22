@@ -13,6 +13,7 @@
 .solenoid-settings__panel {
   width: min(760px, 94vw);
   max-height: 80vh;
+  max-height: 80dvh;
   display: flex;
   flex-direction: column;
   /* Clip (not scroll) at the panel, so the rounded corner cleanly clips the

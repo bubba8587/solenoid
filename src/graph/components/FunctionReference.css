@@ -14,6 +14,7 @@
   border-radius: 8px;
   width: 96vw;
   height: 91vh;
+  height: 91dvh;
   display: flex;
   flex-direction: column;
   overflow: hidden;

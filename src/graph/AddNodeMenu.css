@@ -40,6 +40,7 @@
      Sized so the default 12-item tree fits without a scrollbar (the inner
      __scroll's padding + this panel's border share the budget). */
   max-height: min(392px, 85vh);
+  max-height: min(392px, 85dvh);
   /* Clip here (radius + overflow:hidden) and scroll __scroll inside, so the
      rounded bottom corner cleanly clips the native scrollbar. */
   overflow: hidden;

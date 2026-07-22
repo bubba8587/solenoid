@@ -3,7 +3,7 @@ import { getActiveArea, getActiveEditor } from "./activeGraph";
 import { collapsedAwareNodesRect } from "./components/Minimap";
 import { canvasLockStore } from "./canvasLock";
 import { cableFlourishBridge } from "./cableFlourishStore";
-import { IS_MOBILE } from "./coarse";
+import { IS_COARSE, IS_MOBILE } from "./coarse";
 import { fullscreenSupported, toggleFullscreen } from "./fullscreen";
 import { clamp } from "./nodes/mathUtils";
 import "./NavMenu.css";
@@ -125,10 +125,13 @@ export async function fitAll() {
  */
 export function NavMenu() {
   const locked = useSyncExternalStore(canvasLockStore.subscribe, canvasLockStore.get);
-  // Fullscreen button is mobile-only (desktop has F11 / Chrome's own). Track the
-  // state so the title reflects enter vs exit. Hidden where the browser can't do it
-  // (iOS Safari), so it's never a dead button.
-  const showFullscreen = IS_MOBILE && fullscreenSupported();
+  // Fullscreen button shows on any TOUCH-primary device (IS_COARSE, not
+  // IS_MOBILE): a phone's mobile UI, but also a tablet running the desktop UI —
+  // neither has an F11 key, and mobile-browser chrome is exactly what fullscreen
+  // buys back there. Mouse-driven desktops keep F11 / the browser's own. Track
+  // the state so the title reflects enter vs exit. Hidden where the browser
+  // can't do it (iOS Safari), so it's never a dead button.
+  const showFullscreen = IS_COARSE && fullscreenSupported();
   const [isFullscreen, setIsFullscreen] = useState(false);
   useEffect(() => {
     if (!showFullscreen) return;

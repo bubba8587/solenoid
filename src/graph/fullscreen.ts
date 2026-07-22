@@ -1,4 +1,5 @@
-// Fullscreen toggle — shared by the F11 hotkey (desktop) and the mobile pill button.
+// Fullscreen toggle — shared by the F11 hotkey (desktop) and the touch pill button
+// (phones' mobile UI and tablets' desktop UI alike — gated on IS_COARSE in NavMenu).
 //
 // Two backends:
 //  - Tauri desktop: the WebView2 shell has no browser chrome, so F11 does nothing on

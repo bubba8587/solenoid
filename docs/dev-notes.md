@@ -40,6 +40,21 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### SESSION DIGEST (2026-07-22b — tablet mode: dvh viewport + fullscreen on the desktop pill)
+Author report from tablet Chrome: desktop UI (correct — tablet UA is non-mobile), but the
+bottom chrome (status bar, minimap, navigator) sat below the usable screen, and the zoom
+pill lost the mobile view's Fullscreen button. See layout-chrome.md "Tablets" section.
+- **`.solenoid-app` → `100dvh` app-wide** (`App.css`, `100vh` fallback): the dvh fix was
+  gated on `html.is-mobile`, but a tablet runs the DESKTOP stack in the same toolbar-
+  bearing mobile browser — 100vh (layout viewport) overshot the visual viewport by the
+  URL-bar height, sinking every bottom-anchored descendant. mobile.css's own override
+  removed (redundant now).
+- **`vh`+`dvh` pairs on tall overlays** (FR panel, Report window, Settings/Shortcuts/help,
+  table/pivot popups, add menu, palette, drill-in controls): dvh ≤ vh always, no-op on
+  desktop browsers. Keep the pair for new tall overlays.
+- **Fullscreen button gates on `IS_COARSE`, not `IS_MOBILE`** (`NavMenu.tsx`): any
+  touch-primary device gets it (no F11 key); mouse desktops keep F11/browser-native.
+
 ### SESSION DIGEST (2026-07-22 — Query node: Manual refresh run mode + Composite preset)
 Author idea, ratified as D22: the Power Query analogue reuses the Composite + drill-in.
 - **`"manual"` run mode** (`nodes/composite.ts`): one `runPass`, but `isHeavyMode()` is
