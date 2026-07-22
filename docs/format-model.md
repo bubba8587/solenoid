@@ -161,7 +161,6 @@ compat shim.
 
 ## Non-goals (this spec deliberately excludes)
 
-- **Per-column / per-element units** — A4's representation problem.
 - **The FC visual redesign** — A2 renders this matrix; the matrix doesn't dictate
   pixels.
 - **Number styles for logical/text** (e.g. formatting `1/0` coerced from TRUE) —

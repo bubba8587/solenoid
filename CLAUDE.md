@@ -67,7 +67,8 @@ index), `docs/glossary.md` (the invented vocabulary — read before the deep div
   menu + Function Reference generate from it). Adding a node: the `add-node` skill /
   `scripts/new-node.mjs`. `docs/architecture.md` — the file map.
 - `docs/backlog.md` — the task queue (OPEN items only; the single source of truth for to-dos).
-  `docs/dev-notes.md` — open problems + the latest session digests only.
+  `docs/deferrals.md` — the deferred/parked/author-gated set behind the backlog's single
+  Deferral-review item. `docs/dev-notes.md` — open problems + the latest session digests only.
 - Rationale/reference: `docs/format-model.md` (FC control truth table, mirrored in
   `formatModel.ts` — read before touching FC controls), `docs/value-semantics.md`,
   `docs/cube-node-scope.md`, `docs/pack-architecture.md`, `docs/excel-toolbar-supplementals.md`,
