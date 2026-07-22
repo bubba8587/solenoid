@@ -31,7 +31,7 @@ import { cableSelectionStore, cableGhostStore, socketHighlightStore, socketHover
 import { resolveSocketHighlights } from "./highlightUtils";
 import { canvasLockStore } from "./canvasLock";
 import { touchSelectStore } from "./touchSelectStore";
-import { IS_MOBILE } from "./coarse";
+import { IS_COARSE, IS_MOBILE } from "./coarse";
 import { installErrorGuards } from "./errorValue";
 import "./seedTune"; // console seed-tune hook (window.__solenoidTuneSeed — scripts/tune-seeds.mjs)
 import { type Pt } from "./lasso";
@@ -1157,13 +1157,15 @@ export function Canvas() {
       // the cached bitmap (smooth, slightly soft) instead of a per-frame vector
       // re-raster, then drop it on settle to re-rasterize crisp.
       //
-      // NOT on mobile: the holder (whole graph) is larger than the mobile GPU max
-      // texture, so promoting it tiles and re-rasterizes erratically during the
-      // pinch — visible flicker/redraws of the heavy content. (This was tolerable
-      // while culling kept only a few nodes mounted; with culling removed the
-      // layer must rasterize everything, so the tiling flicker returns.) Mobile
-      // zoom stays un-layered: a touch choppier, but stable. Pan never promotes
-      // either (a translate continuously reveals un-rastered tiles).
+      // NOT on touch devices (IS_COARSE, not IS_MOBILE: a tablet runs the DESKTOP
+      // UI on the same mobile-class GPU): the holder (whole graph) is larger than
+      // the mobile GPU max texture, so promoting it tiles and re-rasterizes
+      // erratically during the pinch — visible flicker/redraws of the heavy
+      // content, and on tablets outright raster-tile allocation failure (Chrome's
+      // green placeholder squares: the promoted layer wants holder-bounds ×
+      // zoom × dpr texture memory). Touch zoom stays un-layered: a touch
+      // choppier, but stable. Pan never promotes either (a translate
+      // continuously reveals un-rastered tiles).
       const holderEl = area.area.content.holder as HTMLElement;
 
       // Frame-rate probe for pan/zoom (the render-only path — no processGraph
@@ -1218,7 +1220,7 @@ export function Canvas() {
       // timer (dev-notes 2026-07-20d).
       const ZOOM_SETTLE_MS = 420;
       function onZoomActivity() {
-        if (IS_MOBILE) return;
+        if (IS_COARSE) return; // mobile-class GPU — see the layer note above
         // Promote the holder for the pinch so the scale is a cheap GPU bitmap-scale.
         // Note: do NOT also drop raster quality here — desktop zoom is PROMOTED, so
         // the content is rasterized once and scaled, not re-rastered per frame; the

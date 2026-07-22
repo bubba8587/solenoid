@@ -40,6 +40,22 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### SESSION DIGEST (2026-07-22c — tablet zoom corruption: holder GPU-layer promotion)
+Author report: zooming on the tablet drew GREEN SQUARES / broken raster, in BOTH render
+modes. That's Chrome's raster-tile allocation failure — a promoted compositor layer
+sized holder-bounds × zoom × dpr exhausts mobile GPU tile memory. Two promotion sites
+were keyed on the UI mode (IS_MOBILE) instead of the GPU class, so a tablet (desktop
+UI, mobile-class GPU) took the desktop branch:
+- **DOM mode** (`Canvas.tsx` `onZoomActivity`): the desktop pinch promotes the WHOLE
+  holder (`will-change: transform`) for the gesture — the code's own comment already
+  documented that mobile GPUs can't take this. Gate flipped `IS_MOBILE` → `IS_COARSE`;
+  touch devices zoom un-layered (a touch choppier, stable).
+- **Canvas/GPU mode** (`HtmlCanvasLayer.tsx` `enterGesture`): promoted the holder on
+  EVERY gesture with no device gate at all. Now `if (!IS_COARSE)`; the conduit may
+  trail a frame mid-gesture on touch — corruption is worse.
+Rule of thumb recorded in both comments: promotion decisions key on the DEVICE
+(IS_COARSE), interaction decisions on the UI mode (IS_MOBILE).
+
 ### SESSION DIGEST (2026-07-22b — tablet mode: dvh viewport + fullscreen on the desktop pill)
 Author report from tablet Chrome: desktop UI (correct — tablet UA is non-mobile), but the
 bottom chrome (status bar, minimap, navigator) sat below the usable screen, and the zoom
