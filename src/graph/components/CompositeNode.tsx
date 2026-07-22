@@ -47,6 +47,7 @@ function CompositeBoundaryValue({ value, label }: { value: unknown; label: strin
 // with the driver, not ahead of it.
 export const RUN_MODE_OPTIONS: OpOption<CompositeRunMode>[] = [
   { value: "single", label: "Single run" },
+  { value: "manual", label: "Manual refresh" },
   { value: "scenarios", label: "Scenarios" },
   { value: "data-table", label: "Data table" },
   { value: "simulation", label: "Simulation" },
@@ -538,6 +539,16 @@ const SolveSvg = () => (
   </svg>
 );
 
+// Lucide "refresh-cw" — the same trigger wearing Manual refresh's verb.
+const RefreshSvg = () => (
+  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}>
+    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+    <path d="M21 3v5h-5" />
+    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+    <path d="M8 16H3v5" />
+  </svg>
+);
+
 // Lucide "pencil" — the drill-in trigger. https://lucide.dev/icons/pencil
 const EditSvg = () => (
   <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}>
@@ -574,8 +585,8 @@ export function CompositeRunControls({ node, emit, insideOnly = false }: { node:
             onPointerDown={stopDragStart}
             onMouseDown={stopDragStart}
           >
-            <SolveSvg />
-            Solve
+            {runMode === "manual" ? <RefreshSvg /> : <SolveSvg />}
+            {runMode === "manual" ? "Refresh" : "Solve"}
           </button>
           <StatusDot state={stale ? "stale" : failed ? "failed" : "ok"} />
         </div>

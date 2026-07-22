@@ -296,7 +296,27 @@ export const NODE_CATALOG: CatalogEntry[] = [
       // Addable like any node: drop an empty Composite and Edit contents to build
       // its subgraph (the drill-in is a first-class canvas), or collapse a selection
       // with Ctrl+Shift+G (compositeLogic.ts) to make one from existing nodes.
-      { type: "composite", label: "Composite", description: "A reusable computing subgraph: one card with a typed input/output boundary. Add one and Edit contents to build it inside, or select nodes and press Ctrl+Shift+G to collapse them into one.", create: () => new CompositeNode(), parity: false },
+      // Query is the same class pre-seeded: a Table→Result passthrough in Manual
+      // refresh mode — Power Query's shape (build the verb chain inside, refresh on
+      // demand). It ships a pending internal snapshot, so every add path hydrates
+      // a CompositeNode right after create() (Canvas / addNodeByCatalogType / the
+      // drill-in add menu), mirroring persistence.ts's load path.
+      { type: "pair", children: [
+        { type: "composite", label: "Composite", description: "A reusable computing subgraph: one card with a typed input/output boundary. Add one and Edit contents to build it inside, or select nodes and press Ctrl+Shift+G to collapse them into one.", create: () => new CompositeNode(), parity: false },
+        { type: "query", label: "Query", description: "A Composite pre-shaped for data transformation: wire a table in, build the verb chain inside (Edit contents), and read the result out. Runs in Manual refresh mode — upstream changes only mark it stale until you press Refresh. Excel: Power Query (Get & Transform).", create: () => new CompositeNode({
+          label: "Query",
+          runMode: "manual",
+          inputPorts: [{ id: "table", label: "Table", exposure: "exposed", tier: "basic", internalNodeId: "qin" }],
+          outputPorts: [{ id: "result", label: "Result", tier: "basic", internalNodeId: "qout" }],
+          internal: {
+            nodes: [
+              { id: "qin", type: "CompositeInputNode", init: { label: "Table" }, x: 0, y: 0 },
+              { id: "qout", type: "CompositeOutputNode", init: { label: "Result" }, x: 420, y: 0 },
+            ],
+            connections: [{ source: "qin", sourceOutput: "value", target: "qout", targetInput: "value" }],
+          },
+        }), parity: false, keywords: "power query get transform etl refresh manual steps applied pipeline shape clean data table verbs" },
+      ]},
       // The boundary marker nodes that live INSIDE a Composite's private
       // internal graph (never on the main canvas) — hidden for the same
       // reason as "composite" above: FLAT_CATALOG-only, so hydrate() can

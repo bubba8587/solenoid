@@ -40,6 +40,24 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### SESSION DIGEST (2026-07-22 — Query node: Manual refresh run mode + Composite preset)
+Author idea, ratified as D22: the Power Query analogue reuses the Composite + drill-in.
+- **`"manual"` run mode** (`nodes/composite.ts`): one `runPass`, but `isHeavyMode()` is
+  unconditionally true — the existing arm-and-run hold gives Power Query's refresh model
+  for free (upstream ticks → stale dot; the button — relabelled **Refresh** with a
+  refresh-cw glyph in this mode — re-runs). `requestSolve(insideOnly)` deliberately drops
+  `insideOnly` in manual mode: frame ports have no numeric seeds, so a drill-in Refresh
+  always re-runs on the real wired inputs.
+- **Query catalog entry** (`nodeCatalog.ts`, paired with Composite; `type: "query"`): the
+  same `CompositeNode` pre-seeded — exposed **Table** marker wired to a **Result** marker,
+  manual mode. Saves/loads as a plain CompositeNode; no new class, no new persistence.
+- **Add paths hydrate now** (Canvas menu `handleMenuSelect`, `addNodeByCatalogType`
+  (duck-typed — catalogUtils imports no node classes), drill-in add menu): a pre-seeded
+  entry ships a pending internal snapshot, which previously only load/paste/unpack/open
+  hydrated. No-op for every other node.
+- Tests: manual-hold semantics + insideOnly override + Query preset hydration/round-trip
+  in `composite.test.ts` ("manual refresh mode" / "Query catalog preset" describes).
+
 ### SESSION DIGEST (2026-07-21 — zoom, Tidy/FC bugs, KaTeX loop, scroll-lag, socket rings)
 Targeted UI/UX fixes from an eyeball-driven bug sweep:
 - **Zoom pill buttons** (`NavMenu.tsx`): `ZOOM_STEP` 1.08 → 1.4 so a click crosses noticeably more range;

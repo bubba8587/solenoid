@@ -443,6 +443,31 @@ point.
 nodes (none known — the Navigator and where-used exist for reaching things you can't
 see).
 
+### D22 — The Power Query analogue is a Composite preset, not a new node class
+**When:** 2026-07-22 (author: "re-use the existing Composite node + its drill-in view
+to set up a Power Query-esque data transformation node which … only transforms &
+refreshes manually").
+**The decision:** Solenoid's Get & Transform analogue is (1) a `"manual"` Composite run
+mode — computationally identical to Single run (one `runPass`), but ALWAYS heavy, so
+the existing arm-and-run hold applies: upstream ticks only flag the stale dot; the
+Solve button (relabelled **Refresh** with a refresh glyph in this mode) re-runs the
+chain — and (2) a **Query** Add-menu entry (`type: "query"`, paired with Composite)
+that is the SAME `CompositeNode` class pre-seeded: exposed **Table** input marker wired
+straight to a **Result** output marker, `runMode: "manual"`. No `QueryNode` class, no
+new persistence shape (it saves as a plain `CompositeNode`), no applied-steps list —
+the drill-in canvas IS the steps view, and the frame verbs are the steps.
+**Why:** the hold machinery (solveKey ref-tokens make a recomputed upstream frame
+stale, `internalEditSeq` makes a drill-in edit stale) is exactly Power Query's refresh
+model and already existed; a run mode + preset costs ~no new surface. One deliberate
+semantic: `requestSolve(insideOnly)` ignores `insideOnly` in manual mode — frame ports
+have no numeric seeds, so a drill-in Refresh always re-runs on the real wired inputs.
+Pre-seeded catalog entries ship a pending internal snapshot, so every add path now
+hydrates a CompositeNode right after `create()` (Canvas menu, `addNodeByCatalogType`,
+the drill-in add menu), mirroring the load path.
+**What would reverse it:** the container genuinely needing per-step preview/caching
+(a value box per verb inside the chain already gives most of this) or query-specific
+boundary typing that adoption can't express — either would argue for a real subclass.
+
 ---
 
 ## Structural risks (the threats register — distinct from bugs)

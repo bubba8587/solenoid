@@ -178,9 +178,9 @@ North Star (roadmap). Most of this tab is nodes.
 
 | Feature | Verdict | Notes |
 |---|---|---|
-| **Get Data / Power Query** (from file, web, database, …) | [NODE] | **CSV Connection** (desktop) + **Web Source** nodes exist; the Tauri HTTP route (roadmap Phase 1) unlocks CORS-blocked + IMPORTHTML/XML. Power Query's *transform* steps are the relational verbs below. |
+| **Get Data / Power Query** (from file, web, database, …) | [NODE] | **CSV Connection** (desktop) + **Web Source** nodes exist; the Tauri HTTP route (roadmap Phase 1) unlocks CORS-blocked + IMPORTHTML/XML. Power Query's *transform* steps are the relational verbs below — and the **Query** node (D22, a Composite preset in the Manual refresh run mode) is the container: build the verb chain in its drill-in, recompute only on Refresh. |
 | From Text/CSV | [NODE] | CSV Connection node (+ a target-folder [SETTING], `csvFolder`, already there). The CSV **locale/delimiter** trap (pain-points: decimal-comma catastrophe) argues for an explicit import [SETTING] or per-node delimiter/decimal option. |
-| **Refresh All** | [STRUCTURAL] | Reactive recompute; no manual refresh needed (unless Calc mode = Paused, above). |
+| **Refresh All** | [STRUCTURAL] | Reactive recompute; no manual refresh needed (unless Calc mode = Paused, above). Per-container opt-in exists: a Query node holds until its own Refresh (D22). |
 | Queries & Connections | [STRUCTURAL] | The connection nodes *are* the queries, visible on the canvas. |
 | **Sort / Filter** | [NODE] | Sort, Filter nodes (relational versions on the roadmap). |
 | **Text to Columns** | [NODE] | **TextSplit** (TEXTSPLIT). |

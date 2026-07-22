@@ -281,7 +281,8 @@ Read the relevant section there before touching one of these. The one-line "don'
   Write CSV/JSON/Obsidian sinks; live connections (Web Source, CSV, Data Feed) + auto-refresh.
 - **Nodes**: current-Excel function parity (native families + Formula.js via Expression/LAMBDA —
   deliberately the type-agnostic scalar/1-D subset only), Equation (acausal solve), composites
-  (drill-in editor; run modes: goal-seek/scenarios/data-table/simulation/Monte Carlo), charts
+  (drill-in editor; run modes: goal-seek/scenarios/data-table/simulation/Monte Carlo/by-row/
+  manual-refresh — the Query catalog preset = a composite in manual mode, D22), charts
   (recharts + canvas-drawn figures + draw-your-data controls), Note (frontmatter → typed output
   sockets — a pure SOURCE) / Report (`` `=name` `` embeds — a pure SINK; the two are deliberate
   opposites, not convertible) / Mermaid, ~10 domain packs (one file per pack on
