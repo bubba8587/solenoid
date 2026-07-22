@@ -1817,6 +1817,10 @@ export function Canvas() {
       if (isolateStore.isActive()) return; // no new nodes while isolating
 
       const node = entry.create() as SolenoidNode;
+      // A pre-seeded composite (the Query preset) carries a pending internal
+      // snapshot — build its live subgraph before the first recompute, the same
+      // hydrate persistence.ts runs on load. No-op for the empty Composite.
+      if (node instanceof CompositeNode) await node.hydrate(ctorRegistry());
       await editor.addNode(node);
 
       const { x: tx, y: ty, k } = area.area.transform;

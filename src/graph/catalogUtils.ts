@@ -5,6 +5,9 @@ import { NODE_EXCEL } from "./nodeExcel";
 import { getEditor, getArea, processGraph, unselectAllNodes, selectNode } from "./process";
 import type { NodeCatalogEntry, CatalogCategory, CatalogPair, CatalogEntry } from "./AddNodeMenu";
 import { nodeNameStore } from "./nodeNameStore";
+// Cycle-safe: nodeCtorRegistry imports FLAT_CATALOG from here, but neither
+// module touches the other's exports at init time (both only inside calls).
+import { ctorRegistry, type NodeCtor } from "./nodeCtorRegistry";
 
 // ─── Catalog assembly ──────────────────────────────────────────────────────────
 // The Add-menu catalog is the hand-authored core tree (NODE_CATALOG) with each
@@ -244,7 +247,11 @@ export async function addNodeByCatalogType(catalogType: string): Promise<boolean
 
   // create() returns one of our node classes — cast through unknown to satisfy
   // the editor's generic constraint without importing every node type here.
-  const node = entry.create() as unknown as { id: string; width?: number; height?: number; constructor: { name: string } };
+  const node = entry.create() as unknown as { id: string; width?: number; height?: number; constructor: { name: string }; hydrate?: (reg: Map<string, NodeCtor>) => Promise<void> };
+  // A pre-seeded composite (the Query preset) carries a pending internal snapshot —
+  // build its live subgraph before the first recompute (duck-typed: only a
+  // CompositeNode has hydrate, and this file deliberately imports no node classes).
+  if (node.hydrate) await node.hydrate(ctorRegistry());
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await editor.addNode(node as any);
   nodeNameStore.ensure(node.id, node.constructor.name);

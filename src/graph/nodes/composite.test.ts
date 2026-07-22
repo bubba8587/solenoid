@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
 import type { Schemes } from "../schemes";
 import { ctorRegistry } from "../nodeCtorRegistry";
+import { FLAT_CATALOG } from "../catalogUtils";
 import { extractInit } from "../copyPaste";
 import { isSolError } from "../errorValue";
 import { loopMembers } from "../process";
@@ -1008,5 +1009,109 @@ describe("CompositeNode Monte Carlo run mode", () => {
     const marker = clone.internalEditor.getNodes().find((n) => n instanceof CompositeInputNode && (n as CompositeInputNode).uncertainty === 15) as CompositeInputNode;
     expect(marker).toBeDefined();
     expect(marker.distribution).toBe("uniform");
+  });
+});
+
+// ─── Manual refresh (the Power Query hold) ─────────────────────────────────────
+// Computationally a single pass, but ALWAYS heavy: the container recomputes only
+// on Refresh (requestSolve) and just flags stale on upstream ticks. These tests
+// pin the hold semantics and the Query catalog preset built on top of them.
+describe("CompositeNode manual refresh mode", () => {
+  /** A manual-mode passthrough: one exposed input marker wired straight to one
+   *  output marker (the exact shape the Query preset ships). */
+  async function makePassthrough() {
+    const c = new CompositeNode({ label: "Query", runMode: "manual" });
+    const inMarker = new CompositeInputNode({ label: "Table" });
+    const outMarker = new CompositeOutputNode({ label: "Result" });
+    await c.internalEditor.addNode(inMarker as unknown as Schemes["Node"]);
+    await c.internalEditor.addNode(outMarker as unknown as Schemes["Node"]);
+    await connect(c.internalEditor, inMarker, "value", outMarker, "value");
+    const inId = c.addInputPort({ label: "Table", exposure: "exposed", tier: "basic", internalNodeId: inMarker.id });
+    const outId = c.addOutputPort({ label: "Result", tier: "basic", internalNodeId: outMarker.id });
+    return { c, inMarker, outMarker, inId, outId };
+  }
+
+  it("is always heavy — holding IS the mode, not a cost gate", async () => {
+    const { c } = await makePassthrough();
+    expect(c.isHeavyMode()).toBe(true);
+  });
+
+  it("computes once, then holds and flags stale until Refresh", async () => {
+    const { c, inId, outId } = await makePassthrough();
+    const f1 = frameFromCells(["A"], [[1], [2]]);
+    const f2 = frameFromCells(["A"], [[1], [2], [3]]);
+    // First pass solves (never-solved container), like the load-reveal compute.
+    const out1 = await c.data({ [inId]: [f1] });
+    expect(out1[outId]).toBe(f1);
+    expect(c.stale).toBe(false);
+    // A new upstream frame (new object identity) does NOT recompute — held + stale.
+    const out2 = await c.data({ [inId]: [f2] });
+    expect(out2[outId]).toBe(f1);
+    expect(c.stale).toBe(true);
+    // Refresh re-runs against the new input.
+    c.requestSolve();
+    const out3 = await c.data({ [inId]: [f2] });
+    expect(out3[outId]).toBe(f2);
+    expect(c.stale).toBe(false);
+  });
+
+  it("an internal edit (a new verb spliced into the chain) flags the hold stale", async () => {
+    const { c, inId } = await makePassthrough();
+    await c.data({ [inId]: [5] });
+    expect(c.stale).toBe(false);
+    c.markInternalEdit(); // value edits arrive via process.ts's retargeted pass
+    await c.data({ [inId]: [5] });
+    expect(c.stale).toBe(true);
+  });
+
+  it("a drill-in Refresh ignores insideOnly — it always re-runs on the wired inputs", async () => {
+    const { c, inMarker, inId, outId } = await makePassthrough();
+    inMarker.defaultValue = 7; // a seed exists, but Refresh must not switch to it
+    await c.data({ [inId]: [10] });
+    c.requestSolve(true); // the drill-in passes insideOnly
+    expect(c.solveInsideOnly).toBe(false);
+    const out = await c.data({ [inId]: [10] });
+    expect(out[outId]).toBe(10); // wired value, not the seed
+  });
+
+  it("runMode round-trips through extractInit like every other mode field", async () => {
+    const { c } = await makePassthrough();
+    const init = extractInit(c as unknown as ClassicPreset.Node);
+    const clone = new CompositeNode(init as ConstructorParameters<typeof CompositeNode>[0]);
+    await clone.hydrate(ctorRegistry());
+    expect(clone.runMode).toBe("manual");
+    expect(clone.isHeavyMode()).toBe(true);
+  });
+});
+
+describe("Query catalog preset", () => {
+  it("hydrates into a manual-refresh Table→Result passthrough", async () => {
+    const entry = FLAT_CATALOG.get("query")!;
+    expect(entry).toBeDefined();
+    const q = entry.create() as CompositeNode;
+    expect(q).toBeInstanceOf(CompositeNode);
+    expect(q.runMode).toBe("manual");
+    expect(q.isHydrated).toBe(false); // ships a pending snapshot — add paths hydrate
+    await q.hydrate(ctorRegistry());
+    // One exposed Table input, one Result output, wired straight through.
+    expect(q.inputPorts).toHaveLength(1);
+    expect(q.outputPorts).toHaveLength(1);
+    expect(q.inputs[q.inputPorts[0].id]).toBeDefined();
+    expect(q.outputs[q.outputPorts[0].id]).toBeDefined();
+    const frame = frameFromCells(["A", "B"], [[1, "x"], [2, "y"]]);
+    const out = await q.data({ [q.inputPorts[0].id]: [frame] });
+    expect(out[q.outputPorts[0].id]).toBe(frame);
+  });
+
+  it("round-trips through extractInit → rebuild → hydrate (the persistence shape)", async () => {
+    const q = FLAT_CATALOG.get("query")!.create() as CompositeNode;
+    await q.hydrate(ctorRegistry());
+    const init = extractInit(q as unknown as ClassicPreset.Node);
+    const clone = new CompositeNode(init as ConstructorParameters<typeof CompositeNode>[0]);
+    await clone.hydrate(ctorRegistry());
+    expect(clone.runMode).toBe("manual");
+    const frame = frameFromCells(["A"], [[1]]);
+    const out = await clone.data({ [clone.inputPorts[0].id]: [frame] });
+    expect(out[clone.outputPorts[0].id]).toBe(frame);
   });
 });

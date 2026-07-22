@@ -614,6 +614,9 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
     const mount = mountRef.current;
     if (!mount || !menu) return;
     const node = entry.create() as SolenoidNode;
+    // A pre-seeded composite (the Query preset) added INSIDE a drill-in still
+    // needs its own internal snapshot built. No-op for everything else.
+    if (node instanceof CompositeNode) await node.hydrate(ctorRegistry());
     await comp.internalEditor.addNode(node); // the pipe installs error guards
     const pos = toAreaCoords(mount.area, mount.container, menu.screenX, menu.screenY);
     await mount.area.translate(node.id, pos);

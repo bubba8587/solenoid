@@ -79,7 +79,12 @@ export interface CompositeInternalSnapshot {
 // port as a list, instead of a single scalar. Only list modes actually wired
 // up appear here; a mode gets added to this union in the same commit its
 // data() branch + UI land (see CompositeComponent's run-mode dropdown).
-export type CompositeRunMode = "single" | "scenarios" | "data-table" | "simulation" | "goal-seek" | "montecarlo" | "by-row";
+// "manual" is the odd one out: computationally identical to "single" (one
+// pass, no driver), but ALWAYS heavy, so the arm-and-run hold applies — the
+// container recomputes only on Refresh and just flags stale on upstream
+// ticks. That's Power Query's refresh model: a transform chain over a big
+// frame shouldn't re-run the whole verb pipeline on every keystroke upstream.
+export type CompositeRunMode = "single" | "manual" | "scenarios" | "data-table" | "simulation" | "goal-seek" | "montecarlo" | "by-row";
 
 /** Goal-seek mode: drive ONE exposed input port until a chosen output port reaches
  *  `target`. Excel's Goal Seek. Both ports are `any`-typed (no static numeric type),
@@ -1035,6 +1040,8 @@ export class CompositeNode extends ClassicPreset.Node {
   /** True when the active run mode does multi-pass work worth gating behind Solve —
    *  a data-table with no axes / empty scenarios collapse to a single pass (light). */
   isHeavyMode(): boolean {
+    // Manual refresh isn't heavy by COST (one pass) — holding is its entire point.
+    if (this.runMode === "manual") return true;
     if (this.runMode === "simulation") return true;
     if (this.runMode === "scenarios") return this.scenarios.length > 0;
     if (this.runMode === "goal-seek") return !!this.goalSeek;
@@ -1052,8 +1059,13 @@ export class CompositeNode extends ClassicPreset.Node {
 
   /** Request the next data() to solve (the Solve button). `insideOnly` runs on the
    *  markers' seeds, ignoring outside wiring (an inside-the-drill-in Solve). Caller
-   *  triggers a recompute. */
-  requestSolve(insideOnly = false): void { this.solveRequested = true; this.solveInsideOnly = insideOnly; }
+   *  triggers a recompute. Manual refresh has no numeric seeds worth isolating (its
+   *  input is typically a wired frame), so a drill-in Refresh always means "re-run
+   *  on the real wired inputs" — insideOnly never applies there. */
+  requestSolve(insideOnly = false): void {
+    this.solveRequested = true;
+    this.solveInsideOnly = insideOnly && this.runMode !== "manual";
+  }
 
   /** An edit landed in the internal graph — a held heavy solve is no longer current. */
   markInternalEdit(): void { this.internalEditSeq++; }
@@ -1165,6 +1177,8 @@ export class CompositeNode extends ClassicPreset.Node {
     } else if (this.runMode === "by-row") {
       return this.runByRow(inputs);
     }
+    // "single" and "manual" both land here: one plain pass. Manual differs only
+    // in the arm-and-run hold around this dispatch (isHeavyMode).
     return this.runPass(inputs);
   }
 
