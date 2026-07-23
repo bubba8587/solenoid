@@ -36,7 +36,7 @@ interface FakeView {
   element: {
     offsetWidth: number;
     offsetHeight: number;
-    querySelector: (sel: string) => { style: { removeProperty: (p: string) => void } };
+    querySelector: (sel: string) => { classList: { contains: (c: string) => boolean }; style: { removeProperty: (p: string) => void } };
     style: Record<string, string>;
   };
   translate: (x: number, y: number) => Promise<void>;
@@ -84,6 +84,7 @@ function makeFakeArea() {
           sel.startsWith("[data-socket")
             ? null as never
             : {
+                classList: { contains: (c: string) => c === "solenoid-node" },
                 style: {
                   removeProperty: (p: string) => { if (p === "height") view.heightPinned = false; },
                 },
