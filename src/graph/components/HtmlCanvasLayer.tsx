@@ -14,6 +14,7 @@ import { groupMembershipStore } from "../groupMembership";
 import { appThemeStore } from "../appTheme";
 import { formatAnnotationStore } from "../formatAnnotationStore";
 import { lassoActiveStore } from "../lasso";
+import { holderSyncTransform, holderTransform } from "../domSync";
 import "./htmlCanvasLayer.css";
 
 // The canvas only earns its keep on a BIG graph — below this much DOM the native DOM
@@ -124,6 +125,10 @@ export function HtmlCanvasLayer() {
     const holder = area.area.content.holder as HTMLElement;
 
     const engine = new HtmlCanvasRenderer(host);
+    // Paint-event frames re-read the live camera at PAINT time (a paint can land a
+    // frame after the rAF that scheduled it — drawing the rAF's transform is the
+    // canvas-vs-DOM frame skew at its source).
+    engine.setTransformSource(() => area.area.transform);
     let built = false;
     // id → the inner element's offset within its node-view wrapper. Cached at build so the
     // gesture-start position sync reads only `view.position` (no layout-forcing offsetLeft).
@@ -146,6 +151,27 @@ export function HtmlCanvasLayer() {
     // override an element something else hid; only ever clear a "visible" WE stamped.
     const showDomOnly = () => { for (const el of domOnlyEls) if (el.style.visibility !== "hidden") el.style.visibility = "visible"; };
     const hideDomOnly = (els: HTMLElement[] = domOnlyEls) => { for (const el of els) if (el.style.visibility === "visible") el.style.visibility = ""; };
+    // Per-ELEMENT compositor promotion for DOM-only content on coarse pointers. The
+    // holder-wide promotion is disabled there (a layer the holder's size fails mobile
+    // tile allocation under zoom — see the IS_COARSE gate in enterGesture), which left
+    // the conduit repainting per frame and visibly trailing the canvas during a pan.
+    // The DOM-only subset is card-sized, so promoting just those elements is bounded.
+    // Size-capped: a graph-spanning element (the standoff svg, a long cable) must
+    // never get a giant layer — same corruption class the holder gate exists for.
+    const PROMOTE_MAX = 1024; // CSS px — under mobile texture limits even at dpr 3
+    let promoted: HTMLElement[] = [];
+    const demoteDomOnly = () => { for (const el of promoted) el.style.willChange = ""; promoted = []; };
+    const promoteDomOnly = () => {
+      demoteDomOnly();
+      if (!IS_COARSE) return;
+      for (const el of domOnlyEls) {
+        const r = el.getBoundingClientRect();
+        if (r.width > 0 && r.width <= PROMOTE_MAX && r.height <= PROMOTE_MAX) {
+          el.style.willChange = "transform";
+          promoted.push(el);
+        }
+      }
+    };
     // id → its last-built spec, so a selection change can re-capture JUST the toggled nodes
     // (engine.updateNodes) instead of rebuilding the whole graph — cheap enough to stay live
     // even mid-lasso. el is the live inner element, so re-cloning it picks up its current class.
@@ -214,7 +240,7 @@ export function HtmlCanvasLayer() {
       domOnlyEls = collectDomOnlyEls(canvasCableIds);
       if (hidden) holder.style.visibility = "hidden";
       hideDomOnly(prevEls);
-      if (gesturing) showDomOnly(); // a rebuild mid-gesture must re-show the (possibly new) set
+      if (gesturing) { showDomOnly(); promoteDomOnly(); } // a rebuild mid-gesture must re-show (and re-promote) the possibly-new set
       if (!specs.length) return false;
       engine.setNodes(specs);
       if (snap) engine.setCables(canvasCables, cableShapeStore.get());
@@ -224,6 +250,9 @@ export function HtmlCanvasLayer() {
     // ── Gesture swap ──────────────────────────────────────────────────────────────
     let gesturing = false;
     let gestureTimer = 0;
+    // True while WE last wrote the holder's transform (steering DOM-only content onto
+    // the canvas's presented frame) — so exit/cleanup knows to hand back rete's own.
+    let holderSynced = false;
     // Whether THIS gesture changed the camera scale. A pan exit is cheap (the DOM
     // re-shows translated — compositor tiles are reusable), but a ZOOM exit repaints
     // the entire visible DOM at the NEW raster scale (measured ~100–300ms frames on a
@@ -259,6 +288,7 @@ export function HtmlCanvasLayer() {
         // a frame mid-gesture there; corruption is worse.
         if (!IS_COARSE) holder.style.willChange = "transform";
         showDomOnly(); // but keep DOM-only nodes (conduits) + their cables visible through the canvas
+        promoteDomOnly(); // coarse-only per-element layers, so those elements pan composited
         engine.setActive(true);
       }
       clearTimeout(gestureTimer);
@@ -271,6 +301,10 @@ export function HtmlCanvasLayer() {
       holder.classList.remove("solenoid-html-frozen"); // resume cable flow
       holder.style.willChange = "";
       hideDomOnly(); // drop the per-element override; the holder is fully visible again
+      demoteDomOnly();
+      // Hand the holder's transform back to rete (byte-identical serialization) if the
+      // frame sync steered it during the gesture.
+      if (holderSynced) { holder.style.transform = holderTransform(area.area.transform); holderSynced = false; }
       engine.setActive(false);
     };
 
@@ -476,6 +510,21 @@ export function HtmlCanvasLayer() {
           if (changed.length) engine.updateNodes(changed);
           lastSel = curSel;
         }
+        // DOM↔canvas frame sync: while gesturing, steer the holder onto the camera the
+        // canvas actually PRESENTED this frame (engine.getPresented() — derived from the
+        // WICG sync matrix when the build exposes one, else draw bookkeeping), so
+        // DOM-only content (conduits, their cables) rides the SAME frame as the drawn
+        // graph instead of trailing/leading it by the rAF→paint skew. The moment the two
+        // agree — or the gesture ends — rete's own byte-identical serialization is
+        // restored, so rete's next write is a no-op diff, not a fight.
+        if (gesturing && !overlay) {
+          const sync = holderSyncTransform(t, engine.getPresented());
+          if (sync !== null) { holder.style.transform = sync; holderSynced = true; }
+          else if (holderSynced) { holder.style.transform = holderTransform(t); holderSynced = false; }
+        } else if (holderSynced) {
+          holder.style.transform = holderTransform(t);
+          holderSynced = false;
+        }
         if (overlay) { engine.setActive(true); holder.style.visibility = ""; } // both shown, overlaid
         // Keep the canvas up for the WHOLE interaction, not just while pixels move: enter on
         // motion and — once gesturing — hold it while the pointer stays down. That last clause
@@ -525,6 +574,8 @@ export function HtmlCanvasLayer() {
       holder.style.visibility = ""; // restore the DOM
       holder.classList.remove("solenoid-html-frozen");
       hideDomOnly(); // clear the per-element visibility overrides
+      demoteDomOnly();
+      if (holderSynced) holder.style.transform = holderTransform(area.area.transform); // hand back rete's transform
       engine.dispose();
     };
   }, [active, ready]);

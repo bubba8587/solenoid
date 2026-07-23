@@ -8,13 +8,26 @@
 // 2026-06-27). Validated: 280 nodes, fully zoomed out, crisp → 165fps / 0.1–0.5ms draw.
 //
 // Requires the WICG HTML-in-Canvas API (ctx.drawElementImage / canvas.captureElementImage),
-// Chrome-only behind chrome://flags/#canvas-draw-element. Gate construction on
-// supportsHtmlInCanvas() — the engine assumes the API is present.
+// Chromium-only: behind chrome://flags/#canvas-draw-element, origin trial Chrome 148–150
+// (Android DevTrial since 138). Gate construction on supportsHtmlInCanvas() — the engine
+// assumes the API is present. Spec-drift notes the engine is built around (2026-07):
+//   • `ElementImage` is only `{width, height, close()}` — NOT an ImageBitmapSource, by
+//     spec, permanently. The pyramid builds via in-paint raster + region snapshot.
+//   • The paint model: a snapshot of the canvas children is recorded just prior to the
+//     `paint` event; a drawElementImage OUTSIDE the paint handler draws the PREVIOUS
+//     snapshot. So every frame that must call drawElementImage routes through
+//     requestPaint, and the paint handler re-reads the freshest camera.
+//   • drawElementImage returns (and getElementTransform computes) the CSS matrix that
+//     places the element exactly where it was drawn — used to report the PRESENTED
+//     camera for the DOM-only sync (domSync.ts).
 
 import { Camera } from "./pixi/pixiCamera";
 import { cablePolyline } from "./pixi/pixiCableGeom";
 import type { SnapCable } from "./pixi/pixiGraphSnapshot";
 import type { CableShape } from "./cableShape";
+import { packAtlas, type AtlasPlacement } from "./rasterAtlas";
+import { camFromDrawMatrix, plausibleNativeCam, type CamXform } from "./domSync";
+import { IS_COARSE } from "./coarse";
 
 // HMR: the engine is created imperatively (not a React component), so Vite would otherwise
 // keep a STALE instance running after an edit to this file — code changes silently never
@@ -25,7 +38,11 @@ if (import.meta.hot) import.meta.hot.accept(() => import.meta.hot?.invalidate())
 // ── WICG HTML-in-Canvas typing (not in lib.dom yet) ──────────────────────────────
 interface ElementImageLike { width: number; height: number; close?: () => void }
 type Ctx2D = CanvasRenderingContext2D & {
-  drawElementImage?: (el: Element | ElementImageLike, dx: number, dy: number, dw?: number, dh?: number) => DOMMatrix;
+  drawElementImage?: (el: Element | ElementImageLike, dx: number, dy: number, dw?: number, dh?: number) => DOMMatrix | undefined;
+  // Sync helper (spec home is the 2D context; some builds have hung it off the canvas —
+  // nativeGetElementTransform() probes both). Returns the CSS transform that would put
+  // `el` exactly where a draw with `drawTransform` lands it.
+  getElementTransform?: (el: Element | ElementImageLike, drawTransform: DOMMatrix) => DOMMatrix;
   reset?: () => void;
 };
 type LayoutCanvas = HTMLCanvasElement & {
@@ -33,6 +50,7 @@ type LayoutCanvas = HTMLCanvasElement & {
   requestPaint?: () => void;
   onpaint?: ((e: Event) => void) | null;
   captureElementImage?: (el: Element) => ElementImageLike;
+  getElementTransform?: (el: Element, drawTransform: DOMMatrix) => DOMMatrix;
 };
 
 // Reference capture resolution (CSS `zoom` on the clone). Kept at 1 so the clone lays out at
@@ -132,6 +150,8 @@ export class HtmlCanvasRenderer {
   private building = false;
   private builtCount = 0;
   private disposed = false;
+  private transformSource: (() => { k: number; x: number; y: number }) | null = null;
+  private presented: CamXform | null = null;
 
   // perf/HUD telemetry
   private lastDrawTs = 0;
@@ -167,11 +187,28 @@ export class HtmlCanvasRenderer {
     this.sctx = this.scratch.getContext("2d") as Ctx2D | null;
 
     this.resize();
-    // Paint event: capture (once) then a live draw. Drives the initial frame + capture.
-    this.canvas.onpaint = this.onPaint;
+    // Paint event: capture (once) then a draw. Drives the initial frame + capture.
+    // addEventListener ONLY — assigning canvas.onpaint too registered a SECOND
+    // listener on builds with the IDL attribute, doubling every paint's work
+    // (capture guards made it merely wasteful, but drawFrame ran twice per paint).
     this.canvas.addEventListener("paint", this.onPaint as EventListener);
     this.raf = requestAnimationFrame(this.tick);
     if (this.canvas.requestPaint) this.canvas.requestPaint();
+  }
+
+  /** Live camera source (the layer passes rete's area transform). Re-read at PAINT
+   *  time so a paint-event frame draws the freshest transform instead of the one the
+   *  scheduling rAF saw — the paint can land a frame later. */
+  setTransformSource(fn: () => { k: number; x: number; y: number }): void {
+    this.transformSource = fn;
+  }
+
+  /** The camera the canvas last actually PRESENTED while active (null when idle).
+   *  Derived from the WICG sync matrix when the build exposes one, else from our
+   *  own draw bookkeeping — the layer uses it to steer DOM-only content onto the
+   *  same frame as the drawn graph (domSync.ts). */
+  getPresented(): CamXform | null {
+    return this.presented;
   }
 
   /** Camera transform from rete's area ({ k, x, y } in CSS px). */
@@ -501,6 +538,17 @@ export class HtmlCanvasRenderer {
         "| drawElementImage(main):", typeof this.ctx.drawElementImage,
         "| drawElementImage(scratch):", typeof this.sctx?.drawElementImage,
         "| node:", n.id, `${n.w}×${n.h}`, "refImg:", !!n.refImg);
+    // getElementTransform — where the build hangs it (spec home: the 2D context) and
+    // what an identity-draw maps to, so matrix-space drift (CSS vs backing px) is
+    // readable from the console.
+    const get = this.nativeGetElementTransform();
+    log("getElementTransform:", get ? (typeof this.ctx.getElementTransform === "function" ? "on ctx" : "on canvas") : "unavailable");
+    if (get && typeof DOMMatrix === "function") {
+      try {
+        const m = get(n.refEl, new DOMMatrix());
+        log("getElementTransform(identity) →", m ? `a=${m.a} d=${m.d} e=${m.e} f=${m.f}` : String(m));
+      } catch (e) { log("getElementTransform THREW:", String(e)); }
+    }
     let img: ElementImageLike | null = null;
     if (typeof this.canvas.captureElementImage === "function") {
       try {
@@ -546,7 +594,6 @@ export class HtmlCanvasRenderer {
   dispose(): void {
     this.disposed = true;
     cancelAnimationFrame(this.raf);
-    this.canvas.onpaint = null;
     this.canvas.removeEventListener("paint", this.onPaint as EventListener);
     this.releaseNodes();
     this.canvas.remove();
@@ -727,12 +774,16 @@ export class HtmlCanvasRenderer {
   }
 
   // ── Paint-event raster (the spec-clean bitmap source) ────────────────────────
-  // Runs INSIDE the paint event, before drawFrame: draw a batch of pending clones
-  // into this canvas at the origin, snapshot each region with createImageBitmap
-  // (which copies at invocation), then let drawFrame clear + repaint — the scratch
-  // pixels never reach the screen. Retried a few paints per node (a just-appended
-  // clone isn't in "the most recent rendering update" until the next one).
-  private static readonly RASTER_BATCH = 16;
+  // Runs INSIDE the paint event, before drawFrame: shelf-pack a batch of pending
+  // clones into ONE atlas region on this canvas (rasterAtlas.ts), drawElementImage
+  // each at its placement, snapshot the whole region with a single
+  // createImageBitmap(canvas, …) — ONE canvas read-back per paint, where the old
+  // per-node snapshots paid one read-back EACH (the expensive pattern on mobile
+  // GPUs). Per-node textures are then bitmap→bitmap crops of the atlas (no further
+  // read-back). drawFrame clears within the same paint task, so the atlas pixels
+  // never present. Retried a few paints per node (a just-appended clone isn't in
+  // "the most recent rendering update" until the next one).
+  private static readonly RASTER_BATCH = IS_COARSE ? 24 : 48; // per-paint cap keeps the raster inside a frame budget
   private static readonly RASTER_MAX_ATTEMPTS = 5;
   // One-shot validation that region read-back actually returns ink — if the first
   // snapshot comes back fully transparent (a build where the raster is deferred
@@ -742,27 +793,46 @@ export class HtmlCanvasRenderer {
   private rasterPendingInPaint(): void {
     if (typeof this.ctx.drawElementImage !== "function" || this.rasterValidated === false) return;
     const { ctx, canvas } = this;
-    const jobs: Array<{ n: EngineNode; p: Promise<ImageBitmap>; scale: number; pw: number; ph: number }> = [];
+    const pending: EngineNode[] = [];
     for (const n of this.nodes) {
-      if (jobs.length >= HtmlCanvasRenderer.RASTER_BATCH) break;
+      if (pending.length >= HtmlCanvasRenderer.RASTER_BATCH) break;
       if (!n.needsPaintRaster || n.pyramid.length || n.mipFailed) continue;
-      const pw = n.w + 2 * PAD, ph = n.h + 2 * PAD;
-      // A node bigger than the canvas rasters scaled-down; scale rides the pyramid.
-      const s = Math.min(1, canvas.width / pw, canvas.height / ph);
-      const dw = Math.max(1, Math.round(pw * s)), dh = Math.max(1, Math.round(ph * s));
-      try {
+      pending.push(n);
+    }
+    if (pending.length) {
+      // Pack at REF resolution; packAtlas scales down anything that outsizes the
+      // canvas alone (the scale rides into the pyramid, as the old path's did).
+      const items = pending.map((n) => ({
+        id: n.id,
+        w: Math.max(1, Math.round((n.w + 2 * PAD) * REF)),
+        h: Math.max(1, Math.round((n.h + 2 * PAD) * REF)),
+      }));
+      const layout = packAtlas(items, canvas.width, canvas.height);
+      const byId = new Map(pending.map((n) => [n.id, n]));
+      const drawnJobs: Array<{ n: EngineNode; p: AtlasPlacement }> = [];
+      if (layout.placements.length) {
         ctx.setTransform(1, 0, 0, 1, 0, 0); // backing-store px
-        ctx.clearRect(0, 0, dw, dh);
-        ctx.drawElementImage!(n.refEl, 0, 0, dw, dh);
-        jobs.push({ n, p: createImageBitmap(canvas, 0, 0, dw, dh), scale: s, pw, ph });
-        n.needsPaintRaster = false; // in flight — don't re-raster it every paint while the snapshot resolves (failure re-arms)
-      } catch (e) {
-        this.noteRasterFailure(n, e);
+        ctx.clearRect(0, 0, layout.usedW, layout.usedH);
+        for (const p of layout.placements) {
+          const n = byId.get(p.id);
+          if (!n) continue;
+          try {
+            ctx.drawElementImage!(n.refEl, p.x, p.y, p.w, p.h);
+            n.needsPaintRaster = false; // in flight — don't re-raster every paint while the snapshot resolves (failure re-arms)
+            drawnJobs.push({ n, p });
+          } catch (e) {
+            this.noteRasterFailure(n, e);
+          }
+        }
+      }
+      if (drawnJobs.length) {
+        // The one read-back — createImageBitmap(canvas) copies at invocation, so the
+        // clear in this paint's drawFrame can't race it.
+        void this.finishAtlasRaster(createImageBitmap(canvas, 0, 0, Math.max(1, layout.usedW), Math.max(1, layout.usedH)), drawnJobs);
       }
     }
-    // More pending than this batch → another paint pass.
+    // Unplaced or beyond this batch → another paint pass.
     if (this.nodes.some((n) => n.needsPaintRaster && !n.mipFailed) && this.canvas.requestPaint) this.canvas.requestPaint();
-    if (jobs.length) void this.finishPaintRaster(jobs);
   }
 
   private noteRasterFailure(n: EngineNode, e: unknown): void {
@@ -777,18 +847,19 @@ export class HtmlCanvasRenderer {
     }
   }
 
-  private async finishPaintRaster(jobs: Array<{ n: EngineNode; p: Promise<ImageBitmap>; scale: number; pw: number; ph: number }>): Promise<void> {
-    for (const { n, p, scale, pw, ph } of jobs) {
-      let top: ImageBitmap | null = null;
-      try { top = await p; } catch (e) { this.noteRasterFailure(n, e); continue; }
-      if (this.disposed || n.pyramid.length) { top.close?.(); continue; }
+  private async finishAtlasRaster(atlasP: Promise<ImageBitmap>, jobs: Array<{ n: EngineNode; p: AtlasPlacement }>): Promise<void> {
+    let atlas: ImageBitmap | null = null;
+    try { atlas = await atlasP; } catch (e) { for (const { n } of jobs) this.noteRasterFailure(n, e); return; }
+    try {
+      if (this.disposed) return;
       if (this.rasterValidated === null) {
-        // Ink check on the first snapshot only (every card paints an opaque body).
+        // Ink check on the first atlas only (every card paints an opaque body) —
+        // once per build, where the old per-node path checked its first node.
         try {
           const pc = document.createElement("canvas");
-          pc.width = Math.min(64, top.width); pc.height = Math.min(64, top.height);
+          pc.width = Math.min(64, atlas.width); pc.height = Math.min(64, atlas.height);
           const pctx = pc.getContext("2d")!;
-          pctx.drawImage(top, 0, 0);
+          pctx.drawImage(atlas, 0, 0);
           const px = pctx.getImageData(0, 0, pc.width, pc.height).data;
           let ink = 0;
           for (let i = 3; i < px.length; i += 4) if (px[i] !== 0) ink++;
@@ -796,15 +867,25 @@ export class HtmlCanvasRenderer {
         } catch { this.rasterValidated = true; } // can't verify — proceed
         if (!this.rasterValidated) {
           HtmlCanvasRenderer.logPathOnce("paint-raster read-back is BLANK (deferred raster) — route disabled, nodes stay on the per-frame draw path");
-          top.close();
           for (const nn of this.nodes) if (nn.needsPaintRaster) { nn.needsPaintRaster = false; nn.mipFailed = true; }
           return;
         }
       }
-      n.pyramid = await this.downscaleChain(top, pw, ph, REF * scale);
-      n.needsPaintRaster = false;
-      this.builtCount++;
-      this.dirty = true;
+      for (const { n, p } of jobs) {
+        if (this.disposed) return;
+        if (n.pyramid.length) continue;
+        const pw = n.w + 2 * PAD, ph = n.h + 2 * PAD;
+        let top: ImageBitmap;
+        // Bitmap→bitmap crop of the placement — no canvas read-back involved.
+        try { top = await createImageBitmap(atlas, p.x, p.y, p.w, p.h); }
+        catch (e) { this.noteRasterFailure(n, e); continue; }
+        n.pyramid = await this.downscaleChain(top, pw, ph, REF * p.scale);
+        n.needsPaintRaster = false;
+        this.builtCount++;
+        this.dirty = true;
+      }
+    } finally {
+      atlas?.close();
     }
   }
 
@@ -868,7 +949,7 @@ export class HtmlCanvasRenderer {
     this.slowDraws = 0;
     if (typeof ctx.reset === "function") ctx.reset(); else ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (!this.active) { this.lastFrameMs = performance.now() - t0; return; } // idle → transparent
+    if (!this.active) { this.presented = null; this.lastFrameMs = performance.now() - t0; return; } // idle → transparent
     const { bsx, bsy } = this;
     const camCTM = () => ctx.setTransform(bsx * cam.scale, 0, 0, bsy * cam.scale, bsx * cam.tx, bsy * cam.ty);
 
@@ -882,19 +963,26 @@ export class HtmlCanvasRenderer {
     const vp = { minX: tl.wx, minY: tl.wy, maxX: br.wx, maxY: br.wy };
     const inView = (n: EngineNode): boolean => n.x + n.w >= vp.minX && n.x <= vp.maxX && n.y + n.h >= vp.minY && n.y <= vp.maxY;
 
+    // The first WICG sync matrix this frame hands back (drawElementImage's return) +
+    // the world anchor it was drawn at — the browser's own statement of where the
+    // element landed, used below to derive the PRESENTED camera for the DOM-only sync.
+    let syncM: DOMMatrix | undefined;
+    let syncAnchor: { x: number; y: number } | null = null;
+
     const drawOne = (n: EngineNode): boolean => {
       // Draw at the EXACT padded box. Card sits PAD in from the capture top-left, so anchor at
       // (x-PAD, y-PAD) and the card edge lands at x,y. (Width and height are both exact: the
       // clone lays out at 1× == the live node, so w/h are faithful — no aspect derivation.)
       const dx = n.x - PAD, dy = n.y - PAD, dw = n.w + 2 * PAD, dh = n.h + 2 * PAD;
+      const keepSync = (m: DOMMatrix | undefined) => { if (m && !syncM) { syncM = m; syncAnchor = { x: dx, y: dy }; } };
       if (useCached) {
         if (n.pyramid.length) { ctx.drawImage(n.pyramid[Math.min(idealI, n.pyramid.length - 1)].bmp, dx, dy, dw, dh); return true; }
-        if (n.refImg) { try { ctx.drawElementImage!(n.refImg, dx, dy, dw, dh); this.slowDraws++; return true; } catch { return false; } }
+        if (n.refImg) { try { keepSync(ctx.drawElementImage!(n.refImg, dx, dy, dw, dh)); this.slowDraws++; return true; } catch { return false; } }
         // No capture at all (API-drift fallback, or a mip still building) — draw the
         // live clone so the node never blinks out; counted slow like the refImg path.
-        try { ctx.drawElementImage!(n.refEl, dx, dy, dw, dh); this.slowDraws++; return true; } catch { return false; }
+        try { keepSync(ctx.drawElementImage!(n.refEl, dx, dy, dw, dh)); this.slowDraws++; return true; } catch { return false; }
       }
-      try { ctx.drawElementImage!(n.refEl, dx, dy, dw, dh); return true; } catch { return false; }
+      try { keepSync(ctx.drawElementImage!(n.refEl, dx, dy, dw, dh)); return true; } catch { return false; }
     };
 
     let drawn = 0;
@@ -906,6 +994,34 @@ export class HtmlCanvasRenderer {
     this.nVisible = drawn;
     this.drawSelection();
 
+    // ── Presented camera (for the DOM-only sync — domSync.ts) ────────────────────
+    // What THIS frame actually shows. An all-cached frame returned no sync matrix;
+    // ask getElementTransform (when the build has it) what a draw at our CTM lands
+    // as. Whatever the native surface said is plausibility-gated against the
+    // bookkeeping camera — an experimental build could answer in backing-store px
+    // or an unexpected origin, and a misparse must never steer the DOM.
+    const book: CamXform = { k: cam.scale, x: cam.tx, y: cam.ty };
+    if (!syncM && drawn > 0 && typeof DOMMatrix === "function") {
+      const get = this.nativeGetElementTransform();
+      if (get) {
+        const first = this.nodes.find((n) => inView(n));
+        if (first) {
+          const fx = first.x - PAD, fy = first.y - PAD;
+          try {
+            const dm = new DOMMatrix([cam.scale, 0, 0, cam.scale, cam.scale * fx + cam.tx, cam.scale * fy + cam.ty]);
+            const m = get(first.refEl, dm);
+            if (m) { syncM = m; syncAnchor = { x: fx, y: fy }; }
+          } catch { /* experimental surface — the bookkeeping camera covers it */ }
+        }
+      }
+    }
+    let presented = book;
+    if (syncM && syncAnchor) {
+      const nat = camFromDrawMatrix(syncM, syncAnchor.x, syncAnchor.y);
+      if (nat && plausibleNativeCam(nat, book)) presented = nat;
+    }
+    this.presented = presented;
+
     const t1 = performance.now();
     const dt = this.lastDrawTs ? t1 - this.lastDrawTs : 16;
     this.lastDrawTs = t1;
@@ -914,12 +1030,47 @@ export class HtmlCanvasRenderer {
     this.lastFrameMs = t1 - t0;
   }
 
+  /** The build's getElementTransform, wherever it lives (spec home: the 2D context;
+   *  probed on the canvas too for drift), bound and ready — or null. */
+  private nativeGetElementTransform(): ((el: Element, m: DOMMatrix) => DOMMatrix | undefined) | null {
+    const c = this.ctx.getElementTransform;
+    if (typeof c === "function") return c.bind(this.ctx);
+    const k = this.canvas.getElementTransform;
+    if (typeof k === "function") return k.bind(this.canvas);
+    return null;
+  }
+
+  /** Any in-viewport node still lacking a mip pyramid? Such a node forces a
+   *  drawElementImage per frame — which must happen INSIDE a paint event to draw
+   *  the current snapshot (outside, the spec serves the previous one). */
+  private hasUnbuiltVisible(): boolean {
+    const { cam, host } = this;
+    const m = 40;
+    const tl = cam.toWorld(-m, -m);
+    const br = cam.toWorld(host.clientWidth + m, host.clientHeight + m);
+    for (const n of this.nodes) {
+      if (n.pyramid.length) continue;
+      if (n.x + n.w >= tl.wx && n.x <= br.wx && n.y + n.h >= tl.wy && n.y <= br.wy) return true;
+    }
+    return false;
+  }
+
   private onPaint = (): void => {
     if (!this.captured) { this.captureRefs(); if (this.captured) void this.buildMips(); }
     // Paint-event raster fallback runs FIRST — its scratch pixels are cleared by the
     // drawFrame below within the same paint task, so they never present.
     this.rasterPendingInPaint();
-    this.drawFrame(false);
+    // Freshest camera at paint time: the paint lands after (sometimes a frame after)
+    // the rAF that scheduled it — drawing the transform that rAF saw is exactly the
+    // "canvas a frame behind the DOM" skew. Re-read the live source instead.
+    const t = this.transformSource?.();
+    if (t) this.setTransform(t.k, t.x, t.y);
+    this.dirty = false; // this paint IS the frame — don't re-draw it from the next tick
+    // Cached draw whenever the pyramid state allows it — the old unconditional live
+    // draw re-rasterized EVERY visible node on every paint event. Unbuilt nodes still
+    // live-draw inside drawOne's fallback (in-paint, so the snapshot is current);
+    // live mode and the initial pre-capture frame keep the full live draw.
+    this.drawFrame(this.captured && !this.live);
   };
 
   private tick = (): void => {
@@ -933,8 +1084,14 @@ export class HtmlCanvasRenderer {
     }
     if (!this.dirty) return;
     this.dirty = false;
-    // Live mode: re-rasterize at the exact CTM via a paint (faithful), else blit cached mips.
-    if (this.live && this.active && this.canvas.requestPaint) this.canvas.requestPaint();
+    // Route through a paint event whenever this frame must call drawElementImage:
+    // live mode (exact-CTM re-raster) or any visible node without a pyramid (its
+    // drawOne fallback). Outside the paint handler those draws sample the PREVIOUS
+    // rendering snapshot (spec) — in-paint they're current, and the paint-raster
+    // fallback advances the pyramid build in the same task. Pure-cached frames
+    // (bitmaps only) draw synchronously — no paint round-trip, no snapshot involved.
+    const needsElementDraw = this.active && (this.live || this.hasUnbuiltVisible());
+    if (needsElementDraw && this.canvas.requestPaint) this.canvas.requestPaint();
     else this.drawFrame(true);
   };
 }
