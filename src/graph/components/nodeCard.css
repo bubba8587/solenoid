@@ -410,9 +410,10 @@
 /* Static title (not editing): clamped to 4 lines with an ellipsis. Matches the
    label-input's type so swapping in/out is seamless. */
 .solenoid-node__label-display {
-  /* Shrink to the title text (not the full header) so the textless part of the
-     header stays draggable — mirrors group headers. Capped so a long title
-     still leaves the reserved right strip. */
+  /* Shrink to the title text (not the full header) so it sits flush left and
+     leaves the reserved right strip for the type hint — mirrors group headers.
+     The whole header drags regardless (the label taps to edit, drags to move
+     the node), so this is layout only, not a draggability carve-out. */
   width: fit-content;
   max-width: calc(100% - 44px);
   color: color-mix(in srgb, var(--node-accent, var(--text-dim)) 55%, var(--text));

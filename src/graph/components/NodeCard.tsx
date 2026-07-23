@@ -9,6 +9,11 @@ import { groupMembershipStore } from "../groupMembership";
 import { appThemeStore } from "../appTheme";
 import { themeAccent, darkenAccent } from "../palette";
 
+// The whole node header is a drag surface; a pointer that moves less than this
+// many px between down and up counts as a TAP (opens the title editor / toggles
+// the chevron) rather than a drag. Shared with nodeKit's title label.
+export const HEADER_TAP_SLOP = 4;
+
 type Props = {
   selected?: boolean;
   // When supplied, the card reports its measured DOM size back to the
@@ -50,6 +55,9 @@ type Props = {
  */
 export function NodeCard({ selected, node, className, accentOverride, collapsible = true, squareCollapse = false, children }: Props) {
   const ref = useRef<HTMLDivElement>(null);
+  // Pointer-down position on the chevron, to tell a tap (→ toggle) from a drag
+  // (→ move the node) — the whole header, chevron included, is a drag handle.
+  const chevronDownPos = useRef<{ x: number; y: number } | null>(null);
   const collapsed = useSyncExternalStore(
     collapseStore.subscribe,
     () => (node ? collapseStore.get(node.id) : false),
@@ -67,10 +75,12 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
         tag === "TEXTAREA" ||
         tag === "SELECT" ||
         target.isContentEditable ||
-        // Any button (chevron, recalc, +/× input controls) — keep clicks
-        // from starting a rete node drag (same reason as form fields).
-        // closest() so clicks on a button's inner svg/text count too.
-        !!target.closest("button")
+        // Any button (recalc, +/× input controls) — keep clicks from starting
+        // a rete node drag (same reason as form fields). closest() so clicks on
+        // a button's inner svg/text count too. The header chevron is exempt: the
+        // whole header is a drag surface, so its pointerdown must reach rete; it
+        // distinguishes a tap (toggle) from a drag itself (see the chevron below).
+        !!target.closest("button:not(.solenoid-node__chevron)")
       );
     }
     function stop(e: Event) {
@@ -230,9 +240,15 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
           className="solenoid-node__chevron"
           title={collapsed ? "Expand" : "Collapse"}
           aria-label={collapsed ? "Expand node" : "Collapse node"}
-          onClick={toggleCollapse}
-          onPointerDown={(e) => e.stopPropagation()}
-          onMouseDown={(e) => e.stopPropagation()}
+          // Let the pointerdown reach rete so a drag from the chevron moves the
+          // node like the rest of the header. Toggle only on a stationary tap
+          // (pointer moved < HEADER_TAP_SLOP); a drag never collapses.
+          onPointerDown={(e) => { chevronDownPos.current = { x: e.clientX, y: e.clientY }; }}
+          onClick={(e) => {
+            const d = chevronDownPos.current;
+            if (d && Math.hypot(e.clientX - d.x, e.clientY - d.y) > HEADER_TAP_SLOP) return;
+            toggleCollapse(e);
+          }}
         >
           <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
             <path d="M3 1l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />

@@ -10,7 +10,7 @@ import type { ClassicScheme, RenderEmit } from "rete-react-plugin";
 import { processGraph } from "../process";
 import { getOwningEditor } from "../activeGraph";
 import { sharedAnnotationResolver } from "../unitFlow";
-import { NodeCard } from "./NodeCard";
+import { NodeCard, HEADER_TAP_SLOP } from "./NodeCard";
 import { LazySelect } from "./LazySelect";
 import { NodeSocket, MeasuredSocketRow } from "./NodeSocket";
 import { useDraftCommit } from "./inlineInput";
@@ -334,6 +334,9 @@ export function NodeShell({
   const [editing, setEditing] = useState(false);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
+  // Pointer-down position on the title label, to tell a tap (→ edit) from a
+  // drag (→ move the node) in the click handler below.
+  const labelDownPos = useRef<{ x: number; y: number } | null>(null);
 
   // Every node gets a header placeholder: an explicit prop wins, else the node's
   // catalog name. So a cleared title still reads as the node's name AND the header
@@ -403,9 +406,16 @@ export function NodeShell({
             <div
               className="solenoid-node__label-display"
               title={node.label}
-              onClick={() => setEditing(true)}
-              onPointerDown={(e) => e.stopPropagation()}
-              onMouseDown={(e) => e.stopPropagation()}
+              // Don't stop propagation: let the pointerdown reach rete's node
+              // drag so the whole header is a drag handle. Enter edit mode only
+              // on a stationary tap (pointer moved < HEADER_TAP_SLOP); a drag
+              // just moves the node and never opens the editor.
+              onPointerDown={(e) => { labelDownPos.current = { x: e.clientX, y: e.clientY }; }}
+              onClick={(e) => {
+                const d = labelDownPos.current;
+                if (d && Math.hypot(e.clientX - d.x, e.clientY - d.y) > HEADER_TAP_SLOP) return;
+                setEditing(true);
+              }}
             >
               {node.label || effectivePlaceholder || ""}
             </div>
