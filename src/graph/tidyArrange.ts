@@ -544,11 +544,17 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
     // are already applied via translate. A manually-resized Display carries its width
     // in nodeSizeStore (React sets it from the `style` prop, which the imperative pin
     // overwrote and React won't re-diff), so re-apply that width instead of dropping
-    // it. Groups are skipped — their box is sized from React width/height props.
+    // it. ONLY NodeCard roots (.solenoid-node): every other root — Group, Note,
+    // Obsidian import, Image, Conduit — sets its inline width/height from React's
+    // `style` prop (data.width etc.), and removeProperty strips that very value;
+    // React doesn't re-stamp an unchanged style on the next commit, so the element
+    // sat unsized until something forced a re-render (a Note shrink-wrapped to its
+    // longest line — the "Tidy makes Notes very wide with misplaced sockets, fixed
+    // by touching the resize grip" bug). Their applier stamp equals the React value
+    // anyway and is overwritten on the next real render, so it needs no clearing.
     for (const n of layoutTargets) {
-      if (n instanceof GroupNode) continue;
       const card = area.nodeViews.get(n.id)?.element.querySelector<HTMLElement>("*:not(span):not([fragment])");
-      if (!card) continue;
+      if (!card || !card.classList.contains("solenoid-node")) continue;
       card.style.removeProperty("height");
       const manual = nodeSizeStore.get(n.id);
       if (manual) card.style.width = `${Math.round(manual.w)}px`;
