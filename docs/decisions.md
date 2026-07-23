@@ -93,8 +93,11 @@ Renderer section, `htmlCanvasRenderer.ts`.
 no component re-authoring. Perf-validated (280 nodes, 165fps). The DOM renderer stays the
 permanent default/fallback.
 **Cost accepted:** depends on the `CanvasDrawElement` Blink feature (desktop enables the
-flag; web waits for it to reach stable Chrome/WebView2, ~late 2026). This is a genuine
-**external dependency** — see the risk register in this doc.
+flag; web: origin trial Chrome 148–150 + Android DevTrial since 138, not yet stable —
+status 2026-07). This is a genuine **external dependency** — see the risk register in
+this doc. Spec drift absorbed 2026-07: `ElementImage` is final as a minimal non-
+ImageBitmapSource interface (the pyramid builds via in-paint atlas raster), and the
+no-opt-out privacy pass makes canvas text grayscale-AA — a permanent fidelity floor.
 **What would reverse it:** the flag stalling permanently (unlikely) → the DOM renderer
 just remains default, no crisis. Or a dramatically better native path. The Pixi/WGSL
 groundwork is parked, not deleted, if a full swap is ever forced.

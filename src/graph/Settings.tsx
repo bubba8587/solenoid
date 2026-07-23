@@ -210,7 +210,7 @@ function RendererSection() {
         help={
           supported
             ? "Faster zoom and pan on big graphs. Experimental; the DOM renderer is the fallback."
-            : "Requires Chrome with chrome://flags/#canvas-draw-element (Canary 149+). Unavailable in this browser."
+            : "Requires Chrome with chrome://flags/#canvas-draw-element. Unavailable in this browser."
         }
         on={on && supported}
         onToggle={() => { if (supported) renderModeStore.set(on ? "dom" : "html"); }}

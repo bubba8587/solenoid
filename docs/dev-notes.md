@@ -40,6 +40,38 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### SESSION DIGEST (2026-07-23 — GPU renderer: WICG API re-research + perf/sync build)
+Author complaint: html-in-canvas mode feels worse than DOM on mobile. Re-researched the
+API itself (primary sources), then built the fixes the drift implies.
+- **API status (2026-07):** origin trial Chrome 148–150, Android DevTrial since 138; the
+  rename (drawElement→drawElementImage / texElementImage2D, old names dead past M145) is
+  final and we're on the new names; **`ElementImage` is spec-final as
+  `{width,height,close()}` — NOT an ImageBitmapSource**, so the 2026-07-16
+  `createImageBitmap(refImg)` rejection is permanent spec behavior, not build drift; the
+  privacy update strips subpixel-AA/system-color content with no opt-out (a fidelity
+  floor, not a bug — `live` mode stays the crisp escape hatch); spec paint model: canvas
+  children are snapshotted just BEFORE the `paint` event, and drawElementImage outside a
+  paint handler draws the PREVIOUS snapshot.
+- **Engine perf (htmlCanvasRenderer):** double paint-listener fix (`onpaint` +
+  addEventListener registered the same handler twice → two full draws per paint on API
+  builds); paint frames re-read the live camera at paint time (`setTransformSource`);
+  any frame that must call drawElementImage routes through requestPaint (in-paint =
+  current snapshot); the paint handler draws cached mips when possible (was an
+  unconditional live re-raster of every visible node); the paint-raster fallback
+  shelf-packs each batch into ONE atlas region → ONE canvas read-back per paint instead
+  of one per node (the expensive pattern on mobile GPUs), per-node textures cropped
+  bitmap→bitmap (`rasterAtlas.ts`, pure + tested).
+- **DOM-trails-canvas pan fix (getElementTransform):** the engine now reports the
+  PRESENTED camera — from the WICG sync matrix (drawElementImage's return /
+  getElementTransform, plausibility-gated against bookkeeping) — and during a gesture
+  the layer steers the holder onto that frame, restoring rete's byte-identical
+  serialization on settle (`domSync.ts`, pure + tested). Coarse pointers additionally
+  get per-element `willChange` promotion for small DOM-only elements (≤1024 CSS px; the
+  holder-wide promotion stays disabled there — texture-limit corruption), so conduits
+  stop trailing during pans.
+- `__hcProbe()` reports getElementTransform's location + identity mapping. Stale
+  API-status comments reconciled (htmlCanvasSupport, Settings copy, decisions D6).
+
 ### SESSION DIGEST (2026-07-22d — post-1.2 reorient: backlog → 1.3, deferrals.md born)
 v1.2.0 tagged and released; docs/planning reoriented around 1.3 (author directive: all
 deferred/for-later work collapses into ONE review item; the queue focuses on bugs +
