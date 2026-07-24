@@ -40,6 +40,26 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### SESSION DIGEST (2026-07-24 — cables see through Conduits: inspector + run selection)
+A Conduit is wiring, not computation, so a single cable is a SEGMENT of a longer run.
+Both cable-legibility surfaces now work on the run instead of the segment.
+- **`conduitPath` (`conduitTrace.ts`, unit-tested)** — the run a cable belongs to: climb
+  lanes upstream to the real producer, then fan out downstream FROM THAT ORIGIN to every
+  real consumer, collecting the segment ids and the Conduits crossed. Walking downstream
+  from the *clicked* cable instead of the origin was the trap: a fan-out branch would
+  hide its siblings and two segments of one run would resolve differently.
+- **Cable inspector** now reports the run's ends — From = origin producer (its value,
+  FC annotation and frame shape too, instead of the opaque Conduit lane), one To row per
+  terminal input, and a quiet `Via` row naming the Conduits in between. It also accepts a
+  whole-run multi-selection (previously any multi-select showed nothing); the ribbon bail
+  now only applies to a lone ribbon cable, since a run's ends are resolved.
+- **Double-click a cable selects its whole run** — the entire path highlights, and Delete
+  takes all of it. Detected from `e.detail >= 2` inside `onClick`, because the canvas
+  swallows native `dblclick` in capture phase to kill rete's zoom-on-dblclick, so React
+  never sees a synthetic double-click here. Ctrl/Cmd double-click adds the run to the
+  selection; a cable with no Conduit either side is its own run and double-click leaves
+  the first click's selection alone rather than toggling it off.
+
 ### SESSION DIGEST (2026-07-23 — GPU renderer: WICG API re-research + perf/sync build)
 Author complaint: html-in-canvas mode feels worse than DOM on mobile. Re-researched the
 API itself (primary sources), then built the fixes the drift implies.
