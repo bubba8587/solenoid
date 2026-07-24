@@ -17,7 +17,7 @@ import { loadRevealStore } from "../loadReveal";
 import { groupCollapseStore, COLLAPSE_LAYOUT, pillY } from "../groupCollapse";
 import { ribbonForConnection, ribbonHoverStore, conduitFacePoint, conduitLayoutStore, pinRibbonSeparation } from "../ribbonCable";
 import { ConduitNode } from "../rete-nodes";
-import { resolveTypedSource } from "../conduitTrace";
+import { resolveTypedSource, conduitPath } from "../conduitTrace";
 import { standoffStore } from "../standoffs";
 import { settingsStore } from "../settingsStore";
 import { useRenderMode } from "../renderMode";
@@ -349,6 +349,34 @@ export function ConnectionComponent({ data }: { data: ConnPayload }) {
   // multi-selection instead of replacing it — mirrors node selection.
   const accumulating = (e: React.MouseEvent) => e.ctrlKey || e.metaKey || touchSelectStore.get();
 
+  // Double-click selects the whole RUN this cable belongs to: every segment
+  // upstream and downstream through the Conduits in between. A Conduit is
+  // wiring, not computation, so the run is what the user means by "this cable" —
+  // one gesture lights the path end to end (and Delete then takes all of it).
+  //
+  // Detected from the click's `detail` count, NOT onDoubleClick: the canvas
+  // swallows native dblclick in CAPTURE phase to kill rete's zoom-on-dblclick
+  // (see Canvas.tsx / areaPresets.installSurfacePointer), so React never gets a
+  // synthetic double-click here. Ctrl/Cmd adds the run to the selection instead
+  // of replacing it, mirroring accumulating single-click.
+  const selectRun = (e: React.MouseEvent) => {
+    if (!editor || !data.source || !data.target) return;
+    const path = conduitPath(editor, {
+      id: data.id,
+      source: data.source,
+      sourceOutput: data.sourceOutput,
+      target: data.target,
+      targetInput: data.targetInput,
+    });
+    // A cable with no Conduit on either side is its own run — leave the first
+    // click's selection standing rather than toggling it back off.
+    if (path.connIds.length < 2) return;
+    cableSelectionStore.replaceAll(
+      accumulating(e) ? [...cableSelectionStore.ids(), ...path.connIds] : path.connIds,
+    );
+    unselectAllNodes();
+  };
+
   // Selecting a SEPARATED ribbon lane deselects its Conduit — pin the
   // separation open so the ribbon doesn't re-form under the click. The pin
   // holds exactly as long as this cable stays selected.
@@ -435,6 +463,8 @@ export function ConnectionComponent({ data }: { data: ConnPayload }) {
       const onRibbonClick = (e: React.MouseEvent) => {
         e.stopPropagation();
         standoffStore.select(null);
+        // Second click of a double-click: widen to this lane's whole run.
+        if (e.detail >= 2) { selectRun(e); return; }
         if (accumulating(e)) {
           cableSelectionStore.toggle(ribbon.repId);
           if (cableSelectionStore.has(ribbon.repId)) unselectAllNodes();
@@ -587,6 +617,8 @@ export function ConnectionComponent({ data }: { data: ConnPayload }) {
       const onRibbonClick = (e: React.MouseEvent) => {
         e.stopPropagation();
         standoffStore.select(null);
+        // Second click of a double-click: widen to this lane's whole run.
+        if (e.detail >= 2) { selectRun(e); return; }
         if (accumulating(e)) {
           // Toggle the whole ribbon (its representative) in/out of the set.
           cableSelectionStore.toggle(ribbon.repId);
@@ -685,6 +717,8 @@ export function ConnectionComponent({ data }: { data: ConnPayload }) {
       cableSelectionStore.set(null);
       return;
     }
+    // Second click of a double-click: widen to this cable's whole run.
+    if (e.detail >= 2) { selectRun(e); return; }
     if (accumulating(e)) {
       cableSelectionStore.toggle(data.id);
       if (cableSelectionStore.has(data.id)) {

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
-import { resolveTypedSource, reconcileConduitTypes } from "./conduitTrace";
+import { resolveTypedSource, reconcileConduitTypes, conduitPath, type PathConn } from "./conduitTrace";
 import { ConduitNode, conduitInKey, conduitOutKey } from "./nodes/conduit";
 import type { Schemes } from "./schemes";
 import { dateSocket, numberSocket } from "./sockets";
@@ -65,6 +65,110 @@ describe("resolveTypedSource — Conduit type tracing", () => {
     // No feed → falls back to the conduit's own output socket, source = conduit.
     expect(r.source).toBe(cond.id);
     expect(r.sourceOutput).toBe(conduitOutKey(0));
+  });
+});
+
+describe("conduitPath — the whole run a cable belongs to", () => {
+  // Same fake editor, but connections carry ids (conduitPath returns id lists).
+  function pathEditor(nodes: Record<string, ClassicPreset.Node>, conns: PathConn[]) {
+    return { getNode: (id: string) => nodes[id], getConnections: () => conns };
+  }
+  const plainNode = (name: string) => {
+    const n = new ClassicPreset.Node(name);
+    n.addOutput("out", new ClassicPreset.Output(numberSocket));
+    n.addInput("in", new ClassicPreset.Input(numberSocket));
+    return n;
+  };
+
+  it("a cable with no Conduit on either side is its own run", () => {
+    const a = plainNode("A"), b = plainNode("B");
+    const c: PathConn = { id: "c1", source: a.id, sourceOutput: "out", target: b.id, targetInput: "in" };
+    const ed = pathEditor({ [a.id]: a, [b.id]: b }, [c]);
+    const p = conduitPath(ed, c);
+    expect(p.connIds).toEqual(["c1"]);
+    expect(p.conduits).toEqual([]);
+    expect(p.origin).toEqual({ nodeId: a.id, key: "out" });
+    expect(p.terminals).toEqual([{ nodeId: b.id, key: "in" }]);
+  });
+
+  it("resolves both ends through a Conduit, from EITHER segment", () => {
+    const a = plainNode("A"), b = plainNode("B");
+    const cond = new ConduitNode({});
+    const inSeg: PathConn = { id: "c1", source: a.id, sourceOutput: "out", target: cond.id, targetInput: conduitInKey(3) };
+    const outSeg: PathConn = { id: "c2", source: cond.id, sourceOutput: conduitOutKey(3), target: b.id, targetInput: "in" };
+    const ed = pathEditor({ [a.id]: a, [b.id]: b, [cond.id]: cond }, [inSeg, outSeg]);
+
+    for (const seg of [inSeg, outSeg]) {
+      const p = conduitPath(ed, seg);
+      expect(p.connIds).toEqual(["c1", "c2"]);
+      expect(p.conduits).toEqual([cond.id]);
+      expect(p.origin).toEqual({ nodeId: a.id, key: "out" });
+      expect(p.terminals).toEqual([{ nodeId: b.id, key: "in" }]);
+    }
+  });
+
+  it("threads a run through CHAINED conduits, upstream-first", () => {
+    const a = plainNode("A"), b = plainNode("B");
+    const c1 = new ConduitNode({}), c2 = new ConduitNode({});
+    const conns: PathConn[] = [
+      { id: "s1", source: a.id, sourceOutput: "out", target: c1.id, targetInput: conduitInKey(0) },
+      { id: "s2", source: c1.id, sourceOutput: conduitOutKey(0), target: c2.id, targetInput: conduitInKey(1) },
+      { id: "s3", source: c2.id, sourceOutput: conduitOutKey(1), target: b.id, targetInput: "in" },
+    ];
+    const ed = pathEditor({ [a.id]: a, [b.id]: b, [c1.id]: c1, [c2.id]: c2 }, conns);
+    const p = conduitPath(ed, conns[1]);
+    expect(p.connIds).toEqual(["s1", "s2", "s3"]);
+    expect(p.conduits).toEqual([c1.id, c2.id]);
+    expect(p.origin).toEqual({ nodeId: a.id, key: "out" });
+    expect(p.terminals).toEqual([{ nodeId: b.id, key: "in" }]);
+  });
+
+  it("fans out downstream — one lane feeding several inputs yields several terminals", () => {
+    const a = plainNode("A"), b = plainNode("B"), c = plainNode("C");
+    const cond = new ConduitNode({});
+    const conns: PathConn[] = [
+      { id: "s1", source: a.id, sourceOutput: "out", target: cond.id, targetInput: conduitInKey(0) },
+      { id: "s2", source: cond.id, sourceOutput: conduitOutKey(0), target: b.id, targetInput: "in" },
+      { id: "s3", source: cond.id, sourceOutput: conduitOutKey(0), target: c.id, targetInput: "in" },
+    ];
+    const ed = pathEditor({ [a.id]: a, [b.id]: b, [c.id]: c, [cond.id]: cond }, conns);
+    // EVERY segment must resolve to the SAME run, including a branch cable —
+    // the inspector's "is this selection one run?" check depends on it, and
+    // double-clicking one branch must light its siblings too.
+    for (const seg of conns) {
+      const p = conduitPath(ed, seg);
+      expect(p.connIds).toEqual(["s1", "s2", "s3"]);
+      expect(p.origin).toEqual({ nodeId: a.id, key: "out" });
+      expect(p.terminals).toEqual([{ nodeId: b.id, key: "in" }, { nodeId: c.id, key: "in" }]);
+    }
+  });
+
+  it("a lane that dead-ends stays on the Conduit at that end", () => {
+    const b = plainNode("B");
+    const cond = new ConduitNode({});
+    // Nothing feeds lane 2, and lane 5 leaves for nobody.
+    const out: PathConn = { id: "s1", source: cond.id, sourceOutput: conduitOutKey(2), target: b.id, targetInput: "in" };
+    const into: PathConn = { id: "s2", source: b.id, sourceOutput: "out", target: cond.id, targetInput: conduitInKey(5) };
+    const ed = pathEditor({ [b.id]: b, [cond.id]: cond }, [out, into]);
+
+    const up = conduitPath(ed, out);
+    expect(up.origin).toEqual({ nodeId: cond.id, key: conduitOutKey(2) });
+    expect(up.conduits).toEqual([]);
+
+    const down = conduitPath(ed, into);
+    expect(down.terminals).toEqual([{ nodeId: cond.id, key: conduitInKey(5) }]);
+    expect(down.conduits).toEqual([]);
+  });
+
+  it("terminates on a Conduit loop instead of walking forever", () => {
+    const c1 = new ConduitNode({}), c2 = new ConduitNode({});
+    const conns: PathConn[] = [
+      { id: "l1", source: c1.id, sourceOutput: conduitOutKey(0), target: c2.id, targetInput: conduitInKey(0) },
+      { id: "l2", source: c2.id, sourceOutput: conduitOutKey(0), target: c1.id, targetInput: conduitInKey(0) },
+    ];
+    const ed = pathEditor({ [c1.id]: c1, [c2.id]: c2 }, conns);
+    const p = conduitPath(ed, conns[0]);
+    expect(p.connIds.sort()).toEqual(["l1", "l2"]);
   });
 });
 
