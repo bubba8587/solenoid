@@ -90,6 +90,7 @@ import { CableCanvas } from "./components/CableCanvas";
 import { NodeCanvas } from "./components/NodeCanvas";
 import { HtmlCanvasLayer } from "./components/HtmlCanvasLayer";
 import { useRenderMode, renderModeStore } from "./renderMode";
+import { zoomSettleMs } from "./zoomSettle";
 import { documentStore, ensureFirstDocument } from "./documentStore";
 import type { NodeCatalogEntry } from "./AddNodeMenu";
 
@@ -1215,10 +1216,10 @@ export function Canvas() {
       // whole holder at the new scale; the frame where the fresh layer's tiles aren't
       // rastered yet is the reported "cables flash during zoom" (thin strokes blink
       // hardest). Hold the layer through notch pauses and pay ONE demote/re-raster at
-      // the true settle. Same constant + reasoning as HtmlCanvasLayer's
-      // ZOOM_SETTLE_MS — the GPU renderer had the identical thrash on its gesture
-      // timer (dev-notes 2026-07-20d).
-      const ZOOM_SETTLE_MS = 420;
+      // the true settle. The window itself lives in `zoomSettle.ts` — HtmlCanvasLayer's
+      // gesture timer had the identical thrash (dev-notes 2026-07-20d) and must hold for
+      // the same duration, and the shared module carries the console override used to
+      // A/B it on a deployed preview.
       function onZoomActivity() {
         if (IS_COARSE) return; // mobile-class GPU — see the layer note above
         // Promote the holder for the pinch so the scale is a cheap GPU bitmap-scale.
@@ -1238,7 +1239,7 @@ export function Canvas() {
           zoomSettleTimer = 0;
           holderEl.style.willChange = "";
           fpsProbe.stop();
-        }, ZOOM_SETTLE_MS);
+        }, zoomSettleMs());
       }
 
       // Keep the dot-grid background in sync with area zoom/pan.
@@ -1390,7 +1391,7 @@ export function Canvas() {
           if (ctx.type === "zoomed") syncSemanticZoomFor(area.area.transform.k);
           // A pinch gets a transient GPU layer on the holder for the gesture
           // (see onZoomActivity); a plain pan needs nothing. Only REAL zoomed
-          // events refresh the settle timer — with the longer ZOOM_SETTLE_MS, a
+          // events refresh the settle timer — with the longer zoom settle window, a
           // translated-refresh would keep the holder promoted through a follow-on
           // pan indefinitely (the tile-reveal flicker the promotion NOTE above
           // exists to avoid); a pinch's interleaved translates are covered because

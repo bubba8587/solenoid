@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useRenderMode } from "../renderMode";
+import { zoomSettleMs } from "../zoomSettle";
 import { IS_COARSE } from "../coarse";
 import { HtmlCanvasRenderer, type EngineNodeSpec } from "../htmlCanvasRenderer";
 import { getEditor, getArea, connectionVersionStore } from "../process";
@@ -261,10 +262,11 @@ export function HtmlCanvasLayer() {
     // re-raster over and over mid-zoom ("zooming is worse than panning"). A pan can't
     // hit this: `pointerDown` holds its gesture. Zoom has no held-pointer signal, so
     // hold it by TIME instead: once a gesture has zoomed, exit only after a longer
-    // quiet period, and pay the scale-change repaint once at the true settle.
+    // quiet period, and pay the scale-change repaint once at the true settle. That
+    // longer window is `zoomSettleMs()` — shared with Canvas.tsx's DOM-renderer holder
+    // promotion, which thrashes identically and must hold for the same duration.
     let gestureZoomed = false;
     const PAN_SETTLE_MS = 140;
-    const ZOOM_SETTLE_MS = 420;
     const readSelection = () => {
       const sel = new Set<string>();
       for (const node of editor.getNodes()) if ((node as { selected?: boolean }).selected) sel.add(node.id);
@@ -292,7 +294,7 @@ export function HtmlCanvasLayer() {
         engine.setActive(true);
       }
       clearTimeout(gestureTimer);
-      gestureTimer = window.setTimeout(exitGesture, gestureZoomed ? ZOOM_SETTLE_MS : PAN_SETTLE_MS);
+      gestureTimer = window.setTimeout(exitGesture, gestureZoomed ? zoomSettleMs() : PAN_SETTLE_MS);
     };
     const exitGesture = () => {
       gesturing = false;
