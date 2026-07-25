@@ -1,12 +1,12 @@
 import { ClassicPreset } from "rete";
-import { numIn, numOut, listIn, anyIn, anyListIn, anyTableIn, anyTableOut, adoptiveTableIn, adoptiveTableOut, adoptiveListOut, tableIn, tableOut, frameIn } from "./shared";
+import { numIn, numOut, listIn, anyIn, anyListIn, anyTableIn, adoptiveTableIn, adoptiveTableOut, adoptiveListOut, tableIn, tableOut, frameIn } from "./shared";
 import type { PassthroughSpec } from "./passthrough";
 import { toAnyMatrix, type Cell } from "./coerce";
 import { tableSocket, strTableSocket, dateTableSocket, logicalTableSocket } from "../sockets";
 import { parseCsvRows } from "../csv";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { isFrameValue, frameRowCount, coerceFrameCell } from "../frame";
-import { carryMatrixUnit, withMatrixUnit, matrixUnitOf, sharedMatrixUnit } from "../unitValue";
+import { carryMatrixUnit, withMatrixUnit, matrixUnitOf, sharedMatrixUnit, isUnitCell } from "../unitValue";
 import { applyFcUnit } from "../unitBridge";
 import { taggedListFromMatrix, matrixCellsFromList } from "../unitColumn";
 
@@ -411,8 +411,28 @@ function padCell(what: string): Cell {
   return solError("#N/A", `Padded: this input is ${what} than the largest one`);
 }
 
+/** A matrix never holds `UnitCell`s — it carries ONE whole-grid unit as a tag (D20).
+ *  But a LIST widened into an `anytable` stack row arrives with its PER-ELEMENT tags
+ *  (the stackers are unitAware, so the boundary leaves them on), so reduce it here the
+ *  same way WRAPROWS does: bare as-typed magnitudes plus the one unit the cells share
+ *  (undefined when they disagree). An already-bare matrix comes back untouched, keeping
+ *  its own tag — so `sharedMatrixUnit` then sees a uniform "tagged grid" story either
+ *  way and a list of km stacked on a km grid still yields a km result. */
+function demoteUnitCells(m: CellMat): CellMat {
+  if (!m.some((row) => row.some(isUnitCell))) return m;
+  const { mags, unit } = matrixCellsFromList(m.flat());
+  const bare: CellMat = [];
+  let i = 0;
+  for (const row of m) { bare.push(mags.slice(i, i + row.length) as Cell[]); i += row.length; }
+  return withMatrixUnit(bare, unit);
+}
+
 /** Shared extensible-row plumbing for the two stackers. */
 abstract class StackNodeBase extends ClassicPreset.Node {
+  /** The rows keep their `UnitCell` tags at the boundary so a dimensioned LIST row can
+   *  be lifted to a grid unit by `demoteUnitCells` (a plain passthrough decl would keep
+   *  them too, but the tags would then ride INTO the matrix, which D20 forbids). */
+  unitAware = true;
   label: string;
   cachedResult: CellMat | SolError | null = null;
   nextInputId = 0;
@@ -424,8 +444,14 @@ abstract class StackNodeBase extends ClassicPreset.Node {
     const vKeys = (init?.valueKeys ?? []).filter((k) => k.startsWith("t"));
     if (vKeys.length) for (const k of vKeys) this.addInputWithKey(k);
     else for (let i = 0; i < 2; i++) this.addValueInput();
-    this.addOutput("result", anyTableOut("Stacked"));
+    this.addOutput("result", adoptiveTableOut("Stacked"));
   }
+
+  /** Element-preserving, like its 1-D sibling Concat Lists: the result is exactly the
+   *  rows' cells rearranged, so it adopts the agreed row type (all strtable rows — or
+   *  strlist rows, which the adoptive `anytable` input already lifts to strtable — give
+   *  a strtable out) instead of decaying to a neutral `anytable`. */
+  passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: this.valueInputKeys(), combine: "agree" }];
 
   private addInputWithKey(key: string): void {
     this.addInput(key, anyTableIn("Table"));
@@ -448,11 +474,13 @@ abstract class StackNodeBase extends ClassicPreset.Node {
     this.removeInput(key);
   }
 
-  /** Wired inputs as matrices, in row order; empties (zero-row) drop out. */
+  /** Wired inputs as matrices, in row order; empties (zero-row) drop out. Each is
+   *  reduced to the D20 matrix shape (bare cells + a whole-grid tag) on the way in. */
   protected matsOf(inputs: Record<string, unknown[] | undefined>): CellMat[] {
     return this.valueInputKeys()
       .map((k) => toAnyMatrix(inputs[k]?.[0]))
-      .filter((m): m is CellMat => !!m && m.length > 0);
+      .filter((m): m is CellMat => !!m && m.length > 0)
+      .map(demoteUnitCells);
   }
 }
 

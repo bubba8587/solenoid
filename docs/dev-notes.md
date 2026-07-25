@@ -120,6 +120,33 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### SESSION DIGEST (2026-07-25c — VSTACK/HSTACK join the passthrough set)
+- **The backlog's "passthrough annotation opt-in" sub-item was mostly STALE** — Concat Lists,
+  Interleave, TOCOL/TOROW and WRAPROWS/WRAPCOLS all already declare `passthrough()` (and are
+  covered in `trueAnyAdopt.test.ts`); the doc claim in node-coverage and the backlog outlived the
+  code. Reconciled both. The one genuine gap was the 2-D rung of the append ladder: **VSTACK and
+  HSTACK** (`StackNodeBase`) had neither a declaration nor an adoptive output, so a strtable
+  stacked on a strtable decayed to a neutral `anytable` downstream while its 1-D sibling Concat
+  Lists kept the type. Now `agree` over `valueInputKeys()` + `adoptiveTableOut`, the exact Concat
+  Lists shape — and because an `anytable` input lifts a wired list to the table rank, a list row
+  and a table row agree on the same element family.
+- **A passthrough decl alone would have been WRONG here, and the reason generalizes.** Declaring
+  passthrough makes coerceInputs keep `UnitCell` tags on the named inputs — correct for a 1-D
+  op (per-element list units, D20) but not for the stackers, whose rows accept a LIST that widens
+  into a matrix ROW: the tags would ride INTO the matrix, and a matrix carries ONE whole-grid
+  Symbol tag, never per-cell `UnitCell`s. So the stackers take WRAPROWS' route instead —
+  `unitAware = true` (which wins over the passthrough keep-tags branch, so the two compose) plus
+  a `demoteUnitCells` reduction per input: `matrixCellsFromList` → bare as-typed magnitudes + the
+  one unit the cells share, re-tagged with `withMatrixUnit`. An already-bare matrix passes
+  through untouched, so `sharedMatrixUnit` sees one uniform story and a km LIST stacked on a km
+  GRID now agrees instead of silently stripping. The rule for the next rank-crossing node:
+  passthrough is about TYPE and format; crossing a unit granularity needs `unitAware` too.
+- Pinned in all three registers rather than one: the declaration shape + extensible-row re-read
+  (`passthroughSystem.test.ts`), the end-to-end socket adoption incl. the disagree/unwired
+  reverts (`trueAnyAdopt.test.ts`), and the unit lift through the real coercion boundary
+  (`matrixUnitPolicy.test.ts`, whose `carry-if-uniform` policy previously only exercised
+  already-tagged grids).
+
 ### SESSION DIGEST (2026-07-25b — zoom-band diagnosis; mobile-only settings; AI palette shell)
 - **Choppy zoom band** — the session's main finding, written up as its own OPEN PROBLEM above
   (symptom, three things ruled out, instrumentation, the T1–T8 plan). Not repeated here. Landed

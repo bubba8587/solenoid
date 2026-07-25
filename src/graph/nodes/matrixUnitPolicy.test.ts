@@ -125,6 +125,31 @@ describe("matrix-unit policy — behaviour matches the declared policy", () => {
     expect(matrixUnitOf(h.data({ t0: [kmGrid()], t1: [plainGrid()] }).result)).toBeUndefined();
   });
 
+  it("carry-if-uniform: a dimensioned LIST row lifts to the grid unit (through the real boundary)", () => {
+    // A list widened into an `anytable` stack row arrives with PER-ELEMENT tags; the
+    // stackers are unitAware, so they reach data() intact and get reduced to the D20
+    // shape (bare magnitudes + one grid tag) exactly like WRAPROWS. Before this, the
+    // boundary stripped them and a km list stacked into a plain, unitless grid.
+    const km = fcUnitToUnit("km")!, kg = fcUnitToUnit("kg")!;
+    const kmList = () => [fromUnit(1, km, "km"), fromUnit(2, km, "km")];
+    const v = new M.VStackNode({ valueKeys: ["t0", "t1"] });
+    wrapNodeData(v);
+    const out = (v.data({ t0: [kmList()], t1: [kmList()] }) as { result: unknown }).result;
+    expect(matrixUnitOf(out)).toMatchObject({ display: "km" });
+    expect((out as number[][])[0][0]).toBe(1);              // as-typed magnitude, never a UnitCell
+    expect((out as unknown[][]).flat().some(isUnitCell)).toBe(false);
+    // A km list stacked on a km GRID still agrees — both sides reduce to the same tag.
+    const mixedRank = new M.VStackNode({ valueKeys: ["t0", "t1"] });
+    wrapNodeData(mixedRank);
+    expect(matrixUnitOf((mixedRank.data({ t0: [kmList()], t1: [kmGrid()] }) as { result: unknown }).result))
+      .toMatchObject({ display: "km" });
+    // Disagreeing units strip, same uniform-or-nothing rule as the grid case.
+    const h = new M.HStackTableNode({ valueKeys: ["t0", "t1"] });
+    wrapNodeData(h);
+    expect(matrixUnitOf((h.data({ t0: [kmList()], t1: [[fromUnit(3, kg, "kg")]] }) as { result: unknown }).result))
+      .toBeUndefined();
+  });
+
   it("convert-to-list: TOCOL / TOROW flatten a grid unit into per-cell list tags", () => {
     const col = new M.TableReshapeNode({ op: "tocol" }).data({ matrix: [kmGrid()] }).result as unknown[];
     expect(col.every((c) => isUnitCell(c) && (c as UnitCell).display === "km")).toBe(true);
