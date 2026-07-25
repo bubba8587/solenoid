@@ -1,11 +1,12 @@
 import type { QuadraticRootsNode as QuadraticRootsNodeType } from "../rete-nodes";
-import { formatCx } from "../rete-nodes";
-import { isSolError } from "../errorValue";
+import { formatCxValue } from "../nodes/complex";
 import { NodeShell, InlineOutputRows, type NodeProps, type OutputRowValue } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 
-const rootValue = (v: QuadraticRootsNodeType["cachedX1"]): OutputRowValue =>
-  v === null ? null : isSolError(v) ? v : formatCx(v);
+// formatCxValue handles the scalar, the error and the broadcast LIST cases (the
+// roots take `numlist` coefficients, so a list of quadratics solves into a list
+// of roots); InlineOutputRows already renders a list row.
+const rootValue = (v: QuadraticRootsNodeType["cachedX1"]): OutputRowValue => formatCxValue(v);
 
 export function QuadraticRootsComponent({ data, emit }: NodeProps<QuadraticRootsNodeType>) {
   return (

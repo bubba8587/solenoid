@@ -120,11 +120,12 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
-### SESSION DIGEST (2026-07-25d — combo sockets swept across the DATE then TEXT families)
+### SESSION DIGEST (2026-07-25d — combo sockets swept across ALL FIVE element families)
 The combo rung (scalar-or-list, the bicolor split square) has existed for all five element
 families since 2026-06-10, but only the NUMBER one was ever applied — `numListIn` appears 104
 times while `strComboIn`/`dateComboIn` had zero real node uses and `datecombo` showed up only as
-Cast's output. Two passes closed that, one family each.
+Cast's output. Three passes closed that, one family each; **the sweep is now COMPLETE**, so a
+combo rung with no node uses is a bug rather than a gap.
 - **Date first** (`3d4b066`): nine nodes (DatePart, WeekInfo, DateDiff, DateAdd, DATEDIF,
   WORKDAY, NETWORKDAYS, DATE, TIME) declare `datecombo`/`numlist` and broadcast. No new machinery
   — a date serial IS a number, so `broadcast()`/`broadcastErr()` applied as-is.
@@ -165,7 +166,30 @@ Cast's output. Two passes closed that, one family each.
 - One inline-editor edit was load-bearing: `isStr` in `inlineInput.tsx` matched `"string"` only,
   so every retyped text input would have silently lost its typeable field. `isNumber` already
   matched `number || numlist` — the combo case just hadn't come up for text.
-- tsc clean; suite 3127 green (was 3117 + the 10 new text cases).
+- **Complex last, and it needed its OWN broadcaster** (in `complex.ts`, not shared.ts — the
+  knowledge is family-specific). A complex value IS an array (`[re, im]`), so the `Array.isArray`
+  list-test every other broadcaster uses can't tell a scalar from a list of them. Two mechanisms
+  handle it: (1) an EXACT shape test — a scalar `Cx` is a 2-tuple of NUMBERS, so any other array
+  is a list, which correctly reads the empty list and a list whose FIRST cell is a null/SolError
+  (a "first element is an array" test would have got both wrong); (2) per-operand TAGS
+  (`cxOp()`/`numOp()`) at each call site, because one genuine collision survives the shape test —
+  a REAL operand's two-element list `[1, 2]` is byte-identical to a scalar complex. IMPOWER is the
+  only node that mixes kinds, so it's the only place that could bite, and it's pinned by a test.
+  The tags carry the element type too, so `fn`'s parameters infer per position with no casts.
+  Deliberately NO `guardFinite`: the complex ops have their own non-finite conventions (IMDIV by
+  zero → `[NaN, NaN]`, which formats as "NaN"), and classifying those would change established
+  scalar behaviour rather than widen it.
+- `formatCxValue` gained the list branch, so all five complex value boxes render a broadcast list
+  for free — **the list check has to come FIRST there**, since a scalar Cx is itself an array.
+  Quadratic Roots' component stopped calling `formatCx` directly and routes through it.
+- Six complex nodes: COMPLEX, IM Unpack (its four numeric outputs each broadcast independently
+  over the same operand), the 16 IM unary ops, the 4 IM binary ops, IMPOWER, Quadratic Roots
+  (a list of quadratics → two parallel root lists; `a = 0` is a per-cell `#DOMAIN!` now).
+- The new `complex.test.ts` deliberately includes a `wrapNodeData` case: `coerceInputs` has an
+  explicit `complexlist` branch that wraps a lone value, and `complexcombo` must pass through
+  UNTOUCHED or a scalar would arrive singleton-wrapped. (Per the List Input lesson — a node test
+  that skips `wrapNodeData` isn't testing what ships.)
+- tsc clean; suite 3140 green (3117 → +10 text, +13 complex).
 
 ### SESSION DIGEST (2026-07-25c — VSTACK/HSTACK passthrough; the List Input audit)
 - **List Input was wrong in every SegToggle position, and a sweep is what found it.** Testing all
