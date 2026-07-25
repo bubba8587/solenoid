@@ -621,7 +621,9 @@ export function ValueDisplay({
   // flows through the normal text / chip rendering below.
   // Dimensioned cells (Bundle 05 units) unwrap first: with an FC docked → the
   // magnitude in its display unit; without → a "5 m/s" string. No-op for plain data.
-  const value = dateFormatDisplay(unwrapUnitCells(rawValue, ann), nodeOutputIsDate(ctxNodeId), !!ann);
+  // Resolved ONCE and reused below: the chip needs it too, and it walks the graph.
+  const isDate = nodeOutputIsDate(ctxNodeId);
+  const value = dateFormatDisplay(unwrapUnitCells(rawValue, ann), isDate, !!ann);
 
   // An empty array (a 0-element list/matrix — e.g. a filter that matched nothing, or
   // Split Frame with no columns of the chosen type) is "nothing to show", same as no
@@ -748,8 +750,12 @@ export function ValueDisplay({
             )
           )
         : isLogical ? applyLogicalStyle(value as boolean, ann?.logicalStyle)
-        : listIsString ? (listInline ? (value as (string | null)[]).map((v) => (v === null ? "null" : cased(v))).join(", ") : <ArrayChip value={value as string[]} />)
-        : isList ? (listInline ? (value as (number | null | SolError)[]).map((v) => formatListCell(v, fmtScalar)).join(", ") : <ArrayChip value={value as number[] | number[][]} elem={nodeOutputIsDate(ctxNodeId) ? "date" : undefined} />)
+        : listIsString ? (listInline ? (value as (string | null)[]).map((v) => (v === null ? "null" : cased(v))).join(", ")
+            // `elem` matters MOST here: dateFormatDisplay above turned a date list's
+            // serials into STRINGS, so it lands on this branch and the chip would
+            // otherwise sniff "text" and tint green. The socket family is the truth.
+            : <ArrayChip value={value as string[]} elem={isDate ? "date" : undefined} />)
+        : isList ? (listInline ? (value as (number | null | SolError)[]).map((v) => formatListCell(v, fmtScalar)).join(", ") : <ArrayChip value={value as number[] | number[][]} elem={isDate ? "date" : undefined} />)
         : typeof value === "number" && Number.isNaN(value) ? (
             // A residual NaN is dirty DATA, not an error (an error is a tagged
             // SolError, rendered red above). Quiet muted affordance + a structural
