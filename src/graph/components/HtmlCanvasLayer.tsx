@@ -545,17 +545,7 @@ export function HtmlCanvasLayer() {
     // Track pointer-held state so a stalled-but-ongoing gesture (slow pan, paused drag) doesn't
     // settle early. Capture phase so we see it regardless of where the press lands.
     let pointerDown = false;
-    const onPointerDown = () => {
-      pointerDown = true;
-      // A press ENDS a zoom hold immediately. The settle window exists to absorb the
-      // gaps between wheel-zoom notches (no held-pointer signal to hold the gesture
-      // with), but during it the holder is `visibility:hidden` — which is not
-      // hit-testable, so nodes are unclickable until it expires. That was a blink at
-      // 420ms and is a dead canvas at the current window. A pointerdown is unambiguous
-      // intent to touch the graph, so hand the DOM back now; if the press turns into a
-      // pan/pinch, the next transform change re-enters the gesture on the normal path.
-      if (gesturing && gestureZoomed) { clearTimeout(gestureTimer); exitGesture(); }
-    };
+    const onPointerDown = () => { pointerDown = true; };
     const onPointerUp = () => { pointerDown = false; };
     window.addEventListener("pointerdown", onPointerDown, true);
     window.addEventListener("pointerup", onPointerUp, true);

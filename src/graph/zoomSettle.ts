@@ -9,22 +9,21 @@
 // Both renderers hit the identical thrash and must hold for the SAME window — hence one
 // constant here rather than two copies that drift apart.
 //
-// EXPERIMENT (2026-07-24): raised 420 -> 3000 to test the author's report that MID and
-// CLOSE zoom chop while far-out zoom stays smooth — which rules out element count (at
-// far zoom EVERY card is on screen and painted, since `semanticZoom` defaults off, and
-// that's the smooth case). The settle fits the symptom instead: a nudge-look-nudge
-// rhythm at working zoom has gaps far longer than 420ms, so every nudge pays a full
-// settle repaint — and pays it exactly where that repaint is most expensive, since at
-// high scale text falls off the glyph-atlas fast path into outline rasterization and
-// borders/radii are antialiased over a much larger area. A long hold collapses a whole
-// zoom session into ONE repaint at the end.
+// NEGATIVE RESULT — do NOT retry a long settle for the choppy-zoom BAND (2026-07-24).
+// Held this at 3000ms on a deployed preview to test whether the chop was the gesture
+// exiting per notch and paying the scale-change repaint over and over. It is not: the
+// author reports the choppy band survives the long hold unchanged. The 420ms value from
+// 2026-07-20d stays because it fixes its OWN symptom (per-notch promote↔demote thrash),
+// but it is not the lever for the band. See the "choppy zoom BAND" open problem in
+// dev-notes for what is actually ruled out and what to test next.
 //
-// A/B it live in a deployed preview, no redeploy needed:
-//   window.__zoomSettle = 420    // restore the old behaviour, then zoom
-//   window.__zoomSettle = 3000   // back to the experiment
-//   window.__solenoidPerf = true // pair with the fpsProbe for frame numbers
+// The override below is kept — it is the cheap way to re-A/B the settle from a deployed
+// preview during that investigation, with no redeploy:
+//   window.__zoomSettle = 3000   // long hold
+//   window.__zoomSettle = 420    // back to the default
+//   window.__solenoidPerf = true // pair with the fpsProbe for frame numbers + the k band
 // Read at timer-set time, so an override takes effect on the very next gesture.
-export const DEFAULT_ZOOM_SETTLE_MS = 3000;
+export const DEFAULT_ZOOM_SETTLE_MS = 420;
 
 /** The settle window to use for a gesture that changed the camera scale. */
 export function zoomSettleMs(): number {
