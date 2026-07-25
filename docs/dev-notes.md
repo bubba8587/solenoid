@@ -120,7 +120,44 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
-### SESSION DIGEST (2026-07-25c — VSTACK/HSTACK join the passthrough set)
+### SESSION DIGEST (2026-07-25c — VSTACK/HSTACK passthrough; the List Input audit)
+- **List Input was wrong in every SegToggle position, and a sweep is what found it.** Testing all
+  four element types against the same inputs (wired list / wired null / wired error / typed text)
+  made the pattern obvious in a way that reading one path never would. Four bugs, one root cause
+  each:
+  - **Two parsers, split by element type.** `list.ts`'s `parseCsvList` (naive `split(",")`) was
+    DEAD for three of four types: `coerceInputs` injects `parseListLiteral`'s result for any
+    `TYPEABLE_LIST` socket (strlist/datelist/logicallist) *before* `data()` runs, so only Number
+    mode ever reached it — `numlist` isn't in that set. So RFC-4180 quoting worked in Text mode
+    and not in Number mode, and each mode had its own unparseable-cell policy (Number dropped,
+    Date emitted NaN, Logical coerced to FALSE). Now one parser: `parseCsvList` delegates to
+    `parseListLiteral`, which grew a `numlist` branch. **`TYPEABLE_LIST` deliberately did NOT
+    grow one** — adding `numlist` would make every numeric list input in the app typeable in
+    place and force a `stringLiterals` declaration on all of them (machine-checked), a blast
+    radius far beyond this node.
+  - **Unparseable typed cell → first-class `null` in all four modes.** Dropping shifts every
+    position after it (silently re-indexing against a parallel list); NaN is worse than either,
+    since it reads as a number and slips past every `isMissing`/`isSolError` guard downstream.
+  - **A wired `null` was dropped AND resurrected the row's typed text** (`wired != null` — the
+    `??`-swallowing bug `readInput` exists to prevent: a blank flowing in became whatever number
+    sat in the box). Now `readInput` semantics: a CONNECTED cable wins even when null.
+  - **A per-cell `SolError` was swallowed** — an upstream `#DIV/0!` vanished from the list
+    instead of propagating. Both null and SolError now ride through any typed list, per the
+    value model.
+- **A green test was pinning the dead parser.** `list.test.ts`'s logical case called `data({})`
+  directly (no `wrapNodeData`), so it exercised the unreachable path and passed while production
+  returned something else entirely (`false` for junk, not "dropped"). Worth remembering as a test
+  SMELL: a node test that skips `wrapNodeData` isn't testing what ships. Its intent — the friendly
+  `yes/no/y/n/t/f` spellings — was real and is preserved, but as `parseBoolText` local to the
+  typed-text parser rather than widened into `coerceLogical`, which would change how every WIRED
+  value coerces.
+- **Still open (author call): the element-family mismatch.** A wired list whose family doesn't
+  match the SegToggle still silently yields `[]` (and a scalar widened into Text mode is dropped).
+  Reachable because `setDataType` retypes sockets IN PLACE and fires no connection event, so
+  flipping the toggle after wiring leaves an ill-typed input cable. Drop / coerce / `#TYPE!` is a
+  policy call — backlog item.
+
+### VSTACK/HSTACK join the passthrough set (same session)
 - **The backlog's "passthrough annotation opt-in" sub-item was mostly STALE** — Concat Lists,
   Interleave, TOCOL/TOROW and WRAPROWS/WRAPCOLS all already declare `passthrough()` (and are
   covered in `trueAnyAdopt.test.ts`); the doc claim in node-coverage and the backlog outlived the
