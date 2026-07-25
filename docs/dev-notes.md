@@ -151,6 +151,14 @@ app-wide, but touches feel of zoom).
   `yes/no/y/n/t/f` spellings — was real and is preserved, but as `parseBoolText` local to the
   typed-text parser rather than widened into `coerceLogical`, which would change how every WIRED
   value coerces.
+- **The List chip tinted GREEN (text) for a date list.** `ValueDisplay` runs
+  `dateFormatDisplay` FIRST, so by the time the chip is built a date list is a list of
+  STRINGS — it lands on the `listIsString` branch, and that branch was the one place that
+  didn't pass ArrayChip's `elem` override (the numeric branch already did). The chip then
+  sniffed the cells and read "text". Fixed by resolving `nodeOutputIsDate` once and passing
+  it on both branches. General lesson for value boxes: anything DERIVED from the formatted
+  value is sniffing a display artifact — the socket family is the truth, and `elem` exists
+  precisely because a date serial is indistinguishable from a number by value.
 - **Fifth bug, found by sweeping what can CONNECT rather than what data() does: a wired element
   was FILTERED, not converted.** `isElemKind` kept only `typeof v === <the row's type>` and
   discarded the rest, so the SAME value behaved differently typed vs wired — `01-Jan-2026` typed
