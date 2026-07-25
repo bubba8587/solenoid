@@ -58,15 +58,30 @@ script when the component needs hand-writing anyway (op select, custom render).
    - **Ports**: use the factories in `nodes/shared.ts` — every socket family
      has typed in/out helpers (`numIn`, `strIn`, `dateIn`, `logicalIn`,
      `complexIn`, plus `list`/`combo`/`table` variants, `frameIn`, `cubeIn`,
-     `lambdaIn`, `chartIn`…). Wildcards are a LADDER (see CLAUDE.md "Socket
-     lattice"): `anyIn` (adoptive element-agnostic scalar),
+     `lambdaIn`, `chartIn`…). **An ELEMENT-WISE OPERAND takes the family's
+     COMBO, not its scalar** — `numListIn` / `strComboIn` / `dateComboIn` /
+     `logicalComboIn` / `complexComboIn`, and the matching `…Out`. All five
+     families were swept onto their combo rung (2026-07-25), so a new
+     element-wise node on `strIn`/`dateIn` is a regression, not a style
+     choice. Reserve the scalar rung for a MODE or a structural control param
+     (a window size, a separator, a return-type flag) — the full test is
+     node-coverage.md's input-dimensionality rule. Wildcards are a LADDER (see
+     CLAUDE.md "Socket lattice"): `anyIn` (adoptive element-agnostic scalar),
      `adoptiveListIn`/`adoptiveTableIn` (1-D/2-D), `trueAnyIn/Out` (the
      hollow-ring supremum). A new socket TYPE is a bigger, derived edit —
      follow the `anylist` worked example in CLAUDE.md.
-   - **`data()` is the only non-boilerplate.** Element-wise ops go through
-     `broadcast(fn, ...args)`. Cache the result on the instance
-     (`cachedResult: number | number[] | null`, or `cachedList` /
-     `cachedString` — whatever the component reads).
+   - **`data()` is the only non-boilerplate.** Element-wise ops broadcast, and
+     WHICH broadcaster depends on the element type: `broadcast(fn, …)` /
+     `broadcastErr` for numbers and dates (a date serial is a number);
+     `broadcastCells(fn, …)` (`shared.ts`) when operands or results are text /
+     booleans / mixed families (LEN is string→number); `broadcastComplex`
+     (`complex.ts`) for complex, whose values are themselves `[re, im]` arrays
+     and so need an exact shape test plus per-operand tags. All three share the
+     ragged-zip + per-cell error/missing contract. Cache the result on the
+     instance — `cachedResult: BroadcastResult` (= `CellResult<number>`) or
+     `CellResult<T>` for another element type, or `cachedList` / `cachedString`
+     — whatever the component reads. `ValueDisplay` renders a scalar and a
+     broadcast list from the same field, so this needs no component branch.
    - **Errors**: `installErrorGuards` wraps every `data()` at `nodecreated` —
      an incoming `SolError` short-circuits to the outputs automatically, so
      your `data()` sees clean inputs (unless the class opts into
@@ -137,9 +152,11 @@ script when the component needs hand-writing anyway (op select, custom render).
   immediately; `OpSelect` is already drag-safe (stopPropagation) — any other
   popup-opening control needs `onPointerDown`/`onMouseDown` stopPropagation.
 - **`InlineInputs` renders literal fields for you**, keyed by socket type:
-  number → `InlineNumberField` (backed by `literals`), string →
-  `InlineTextField` (backed by `stringLiterals`), typeable lists → a CSV
-  field. Wired inputs automatically show the "↩ source" chip instead.
+  number *or* `numlist` → `InlineNumberField` (backed by `literals`), string
+  *or* `strcombo` → `InlineTextField` (backed by `stringLiterals`), typeable
+  lists → a CSV field. A combo edits as ONE value in place — it only becomes a
+  list when a cable brings one in. Wired inputs automatically show the
+  "↩ source" chip instead.
 - Multi-output values → `InlineOutputRows` (collapse-safe). Role-distinct
   variadic inputs → `ExtensibleInputs`/`PairedExtensibleInputs`; interchangeable
   elements → a single list socket (see `docs/node-coverage.md` design rules).
