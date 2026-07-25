@@ -519,8 +519,10 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
       {entries.map(([key, input], i) => {
         const socket = input.socket;
         const dt = socket instanceof SolenoidSocket ? socket.dataType : undefined;
+        // Scalar or the family's scalar-or-list COMBO — both edit as one value in
+        // place (the combo only becomes a list when a cable brings one in).
         const isNumber = dt === "number" || dt === "numlist";
-        const isStr    = dt === "string";
+        const isStr    = dt === "string" || dt === "strcombo";
         // A 1-D non-numeric list is typeable as CSV in place (parsed at the engine
         // boundary). Numeric lists keep their single-number field for now.
         const isCsvList = dt === "strlist" || dt === "datelist" || dt === "logicallist";

@@ -321,7 +321,7 @@ export function DimensionalityFlow() {
         <em> Get Column</em> to pull one list out of a frame.
       </p>
       <p className="solenoid-dimflow__note">
-        Split-square sockets (the numeric / text / date <em>combos</em>) accept either
+        Split-square sockets (every family's <em>combo</em>) accept either
         a single value or a list. The grey <em>Any</em> sockets are the untyped ladder —
         circle = one value of any type, square = any list, grid = any table — and the
         hollow ring accepts anything at all.

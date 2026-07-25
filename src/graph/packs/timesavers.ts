@@ -108,8 +108,9 @@ export const TIMESAVERS_PACK: Pack = {
     "list-contains", "list-diff", "list-normalize",
     "list-shuffle", "list-interleave", "list-nthelement",
     "list-geometric", "list-fibonacci", "list-repeat",
-    // List-wise text transforms (Solenoid extras).
-    "text-map", "text-filter",
+    // List-wise text transform (a Solenoid extra — the case/trim transforms
+    // themselves broadcast now, so only the filter is left here).
+    "text-filter",
     // Excel ships ENCODEURL but not a decoder.
     "url-decode",
     // Extended boolean logic (Excel has AND/OR/NOT/XOR, not these).

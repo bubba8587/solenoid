@@ -163,11 +163,22 @@ const FAMILIES: Record<string, Record<Dim, SocketDataType>> = {
 // i.e. DIM_RANK[Do] ≤ DIM_RANK[Di]. That single inequality encodes most of the
 // "widening flows up, narrowing is blocked" policy: a scalar feeds a list
 // (singleton broadcast); a list feeds a matrix; a matrix feeds nothing narrower.
-// ONE exception is added on top in SOCKET_ACCEPTS below: a COMBO may feed its
-// element SCALAR (a combo is scalar-or-list, so it can be a scalar) — a plain
-// `list` still cannot. The rank model can't express that (combo/list both rank 1).
+// ONE exception rides on top in `dimFlows` below: a COMBO may feed its element
+// SCALAR (a combo is scalar-or-list, so it can be a scalar) — a plain `list` still
+// cannot. The rank model can't express that (combo/list both rank 1).
 const DIM_RANK: Record<Dim, number> = { scalar: 0, list: 1, combo: 1, matrix: 2 };
 const DIMS: Dim[] = ["scalar", "list", "combo", "matrix"];
+
+/** May a value of dim `dOut` flow into an input of dim `dIn`? The whole
+ *  dimensional policy in one predicate: widening up the rank ladder, plus the ONE
+ *  exception the rank model can't express — a COMBO may narrow into its element
+ *  SCALAR (a combo IS scalar-or-list, so it can be a scalar). Used for BOTH the
+ *  within-family accept-sets and the logical↔number bridge, so the exception can't
+ *  drift out of one of them (it used to be bolted onto the within-family case only,
+ *  which left `logicalcombo → number` blocked while `logical → number` flowed). */
+function dimFlows(dOut: Dim, dIn: Dim): boolean {
+  return DIM_RANK[dOut] <= DIM_RANK[dIn] || (dOut === "combo" && dIn === "scalar");
+}
 
 // The homogeneous 2-D matrix types + the 2-D wildcard `anytable`, but NOT `frame`
 // (heterogeneous named columns — structurally distinct). `anytable` flows both
@@ -210,28 +221,26 @@ const SOCKET_ACCEPTS: Partial<Record<SocketDataType, SocketDataType[]>> = (() =>
   const map: Partial<Record<SocketDataType, SocketDataType[]>> = {};
   for (const fam of Object.values(FAMILIES)) {
     for (const di of DIMS) {
+      // `dimFlows` carries the combo→scalar exception, so e.g. an Expression's
+      // `numlist` output feeds a `number` rate/count input while a plain `list`
+      // (1-D only) still cannot. Runtime shape-checks if the combo turns out to be
+      // a list, the same accepted risk as `anytable`.
       map[fam[di]] = DIMS
-        .filter((dof) => dof !== di && DIM_RANK[dof] <= DIM_RANK[di])
+        .filter((dof) => dof !== di && dimFlows(dof, di))
         .map((dof) => fam[dof]);
     }
-    // A COMBO (scalar-or-list) may narrow into its element SCALAR input: the combo
-    // CAN be a scalar — that's its whole point — so e.g. an Expression's `numlist`
-    // output feeds a `number` rate/count input. A plain `list` (1-D only) still
-    // CANNOT (it's not added here). The rank inequality alone can't express this
-    // (combo and list share rank 1), so it's an explicit exception. Runtime shape-
-    // checks if the combo turns out to be a list, same accepted risk as `anytable`.
-    map[fam.scalar]!.push(fam.combo);
   }
   // Cross-family coercion: logical ↔ number. A logical coerces to 1/0 in any
   // numeric context (Excel + Polars), and a 0/1 number feeds a logic input
   // (the spreadsheet multiply-by-a-condition trick). coerceInputs does the
-  // runtime boolean↔number conversion; this just permits the connection. Mirror
-  // the same rank rule (a value widens up, never narrows): a logical of rank ≤ the
-  // numeric input's rank may feed it, and vice versa.
+  // runtime boolean↔number conversion; this just permits the connection. The
+  // bridge mirrors the SAME dimensional rule as a within-family edge — including
+  // combo→scalar, so EXACT's `logicalcombo` result reaches a `number` input just
+  // as a bare `logical` does.
   const NUM = FAMILIES.number, LOG = FAMILIES.logical;
   for (const di of DIMS) {
     for (const dof of DIMS) {
-      if (DIM_RANK[dof] <= DIM_RANK[di]) {
+      if (dimFlows(dof, di)) {
         map[NUM[di]]!.push(LOG[dof]); // logical output → numeric input
         map[LOG[di]]!.push(NUM[dof]); // numeric output → logical input
       }
