@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { DateIfNode, DateAddNode, TimeValueNode, DateConstructNode, WorkdayNode, NetworkdaysNode, parseDateToSerial, serialToJsDate, jsDateToSerial, type DateIfUnit } from "./date";
+import { DateIfNode, DateAddNode, TimeValueNode, DateConstructNode, WorkdayNode, NetworkdaysNode, DatePartNode, WeekInfoNode, DateDiffNode, TimeConstructNode, parseDateToSerial, serialToJsDate, jsDateToSerial, type DateIfUnit } from "./date";
 import { isSolError } from "../errorValue";
+import { SolenoidSocket } from "../sockets";
 
 // 2023-01-02 is a Monday; the working week Mon 2 … Fri 6 has no weekend inside it.
 const MON = parseDateToSerial("2023-01-02");
@@ -20,8 +21,9 @@ describe("WORKDAY / NETWORKDAYS — optional holidays list (Excel [holidays] par
 
   it("WORKDAY steps over a holiday", () => {
     // 1 working day after Mon = Tue; with Tue a holiday it lands on Wed.
-    const tue = new WorkdayNode().data({ start: [MON], days: [1] }).result!;
-    const wed = new WorkdayNode().data({ start: [MON], days: [1], holidays: [[tue]] }).result!;
+    // Scalar in → scalar out (broadcast only builds a list when an operand is one).
+    const tue = new WorkdayNode().data({ start: [MON], days: [1] }).result as number;
+    const wed = new WorkdayNode().data({ start: [MON], days: [1], holidays: [[tue]] }).result as number;
     expect(wed).toBe(tue + 1);
   });
 
@@ -268,5 +270,60 @@ describe("TIMEVALUE is timezone-independent (v1.0 audit finding 12)", () => {
     const r = tv("25:99");
     if (!isSolError(r)) throw new Error("expected SolError");
     expect(r.code).toBe("#VALUE!");
+  });
+});
+
+// ─── Date nodes are element-wise (the 2026-07-25 combo pass) ──────────────────
+// The date family used rigid scalar sockets while every numeric node took
+// scalar-or-list. These now declare `datecombo`/`numlist` and broadcast, so a list
+// of dates flows through DatePart/WeekInfo/DateDiff/DateAdd/DATEDIF/WORKDAY/
+// NETWORKDAYS/DATE/TIME the way a list of numbers already flowed through ADD.
+describe("date nodes broadcast over lists (scalar-or-list combo sockets)", () => {
+  it("a scalar operand still yields a SCALAR — the widening is additive", () => {
+    expect(new DatePartNode({ op: "year" }).data({ date: [MON] }).result).toBe(2023);
+    expect(new DateDiffNode({ op: "days" }).data({ start: [MON], end: [FRI] }).result).toBe(4);
+    expect(typeof new DateAddNode({ op: "edate" }).data({ start: [MON], months: [1] }).result).toBe("number");
+  });
+
+  it("a LIST operand yields a list, element-wise", () => {
+    expect(new DatePartNode({ op: "day" }).data({ date: [[MON, WED, FRI]] }).result).toEqual([2, 4, 6]);
+    expect(new WeekInfoNode({ op: "weekday" }).data({ date: [[MON, FRI]], return_type: [2] }).result).toEqual([1, 5]);
+    expect(new DateIfNode({ unit: "D" }).data({ start: [MON], end: [[WED, FRI]] }).result).toEqual([2, 4]);
+    expect(new NetworkdaysNode().data({ start: [MON], end: [[WED, FRI]] }).result).toEqual([3, 5]);
+  });
+
+  it("both operands broadcast together, zipped by position", () => {
+    expect(new DateDiffNode({ op: "days" }).data({ start: [[MON, MON]], end: [[WED, FRI]] }).result).toEqual([2, 4]);
+    expect(new DateConstructNode().data({ year: [[2023, 2024]], month: [1], day: [2] }).result)
+      .toEqual([MON, parseDateToSerial("2024-01-02")]);
+  });
+
+  it("a CONFIG input stays scalar — a per-element mode is meaningless", () => {
+    // return_type / basis / weekend_code select a MODE; holidays is a whole SET
+    // consulted for every result, not an element-wise operand.
+    const sock = (n: { inputs: Record<string, { socket: unknown } | undefined> }, k: string) => {
+      const s = n.inputs[k]?.socket;
+      return s instanceof SolenoidSocket ? s.dataType : undefined;
+    };
+    expect(sock(new WeekInfoNode({ op: "weekday" }), "return_type")).toBe("number");
+    const nw = new NetworkdaysNode();
+    expect(sock(nw, "weekend_code")).toBe("number");
+    expect(sock(nw, "holidays")).toBe("datelist");
+    expect(sock(nw, "start")).toBe("datecombo");
+    // The holidays SET still applies across a broadcast result.
+    expect(nw.data({ start: [MON], end: [[WED, FRI]], holidays: [[WED]] }).result).toEqual([2, 4]);
+  });
+
+  it("per-cell errors and nulls follow the broadcast contract", () => {
+    // One out-of-range year errors THAT cell only (broadcastErr), not the whole list.
+    const r = new DateConstructNode().data({ year: [[2023, 99999]], month: [1], day: [2] }).result as unknown[];
+    expect(r[0]).toBe(MON);
+    expect(isSolError(r[1])).toBe(true);
+    // A wired MISSING short-circuits per cell.
+    expect((new DatePartNode({ op: "year" }).data({ date: [[MON, null as never]] }).result as unknown[])[1]).toBeNull();
+  });
+
+  it("TIME broadcasts its three operands", () => {
+    expect(new TimeConstructNode().data({ hour: [[0, 12]], minute: [0], second: [0] }).result).toEqual([0, 0.5]);
   });
 });
