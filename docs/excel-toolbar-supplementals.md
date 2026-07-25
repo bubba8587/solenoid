@@ -107,7 +107,7 @@ The busiest ribbon tab, and the one that splits most cleanly across buckets.
 | Row height / col width | [SKIP] / [CHROME] | Frame preview column sizing is a display detail, not a feature. |
 | **AutoSum** | [NODE] | The **Aggregate** node (sum/avg/min/max/count/… op selector). |
 | **Fill** → Down/Right/**Series** | [NODE] | Series → **Sequence / Range / LinSpace / Geometric / Repeat / Pad**. The fill *handle* gesture is [SKIP] (no grid); the *capability* is nodes. |
-| **Flash Fill** | [NODE] *(speculative)* | By-example text transformation. Could be a node ("derive a transform from input→output examples"), but it's fuzzy/ML-ish and off the critical path. Today: Regex / Text Map / Expression cover the deterministic cases explicitly. |
+| **Flash Fill** | [NODE] *(speculative)* | By-example text transformation. Could be a node ("derive a transform from input→output examples"), but it's fuzzy/ML-ish and off the critical path. Today: Regex / the text transforms / Expression cover the deterministic cases explicitly. |
 | **Sort & Filter** | [NODE] | **Sort** and **Filter** nodes (and the relational Filter on the roadmap). The button-dropdown is the node. |
 | **Find & Select** | [CHROME] | Find → Ctrl+F / navigator search (exists). "Go To Special" (find all formulas/constants/errors) → an interesting [CHROME] idea: select-all-error-nodes / select-by-type, riffing on the navigator. |
 | Clear (All/Formats/Contents) | [STRUCTURAL]/[CHROME] | Delete node = clear. "Clear formats" → reset a Format Controller. |

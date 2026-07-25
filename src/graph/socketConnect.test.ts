@@ -184,6 +184,12 @@ describe("logical family — lattice derivation falls out automatically", () => 
     expect(canConnect("number", "logical")).toBe(true);       // a 0/1 → a logic input
     expect(canConnect("list", "logicallist")).toBe(true);
     expect(canConnect("logicaltable", "number")).toBe(false); // rank still can't narrow
+    // combo→scalar mirrors ACROSS the bridge too: EXACT/Comparison emit
+    // `logicalcombo`, and a combo can be a scalar, so it reaches a `number` input
+    // exactly as a bare `logical` does. A plain `logicallist` still cannot.
+    expect(canConnect("logicalcombo", "number")).toBe(true);
+    expect(canConnect("numlist", "logical")).toBe(true);
+    expect(canConnect("logicallist", "number")).toBe(false);
   });
 });
 
@@ -209,18 +215,24 @@ describe("lattice invariants — TYPE separation + DIMENSIONAL flow (full sweep)
   const bridged = (a: string, b: string) =>
     (a === "number" && b === "logical") || (a === "logical" && b === "number");
 
+  // The whole dimensional policy (sockets.ts `dimFlows`): widen up the rank ladder,
+  // plus the one exception — a COMBO may narrow into its element SCALAR.
+  const dimFlows = (dOut: keyof typeof RANK, dIn: keyof typeof RANK) =>
+    RANK[dOut] <= RANK[dIn] || (dOut === "combo" && dIn === "scalar");
+
   it("WITHIN a family: a value widens UP (+ combo→scalar), and never narrows", () => {
     for (const f of fams) for (const dOut of DIMS) for (const dIn of DIMS) {
-      const expected = RANK[dOut] <= RANK[dIn] || (dOut === "combo" && dIn === "scalar");
-      expect(canConnect(FAM[f][dOut], FAM[f][dIn])).toBe(expected);
+      expect(canConnect(FAM[f][dOut], FAM[f][dIn])).toBe(dimFlows(dOut, dIn));
     }
   });
 
-  it("CROSS-family is blocked everywhere EXCEPT logical↔number (rank-mirrored)", () => {
+  // The bridge mirrors the within-family rule EXACTLY — same predicate, so the
+  // combo→scalar exception can't apply on one side and not the other.
+  it("CROSS-family is blocked everywhere EXCEPT logical↔number (dim-mirrored)", () => {
     for (const fOut of fams) for (const fIn of fams) {
       if (fOut === fIn) continue;
       for (const dOut of DIMS) for (const dIn of DIMS) {
-        const expected = bridged(fOut, fIn) && RANK[dOut] <= RANK[dIn];
+        const expected = bridged(fOut, fIn) && dimFlows(dOut, dIn);
         expect(canConnect(FAM[fOut][dOut], FAM[fIn][dIn])).toBe(expected);
       }
     }

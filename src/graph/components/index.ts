@@ -272,7 +272,6 @@ export { NumberValueComponent } from "./NumberValueNode";
 export { TextFilterComponent } from "./TextFilterNode";
 export { RomanArabicComponent } from "./RomanArabicNode";
 export { FixedComponent } from "./FixedNode";
-export { TextMapComponent } from "./TextMapNode";
 export { UrlEncodeComponent } from "./UrlEncodeNode";
 
 // ─── Date & Time ──────────────────────────────────────────────────────────────

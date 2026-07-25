@@ -120,6 +120,53 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### SESSION DIGEST (2026-07-25d — combo sockets swept across the DATE then TEXT families)
+The combo rung (scalar-or-list, the bicolor split square) has existed for all five element
+families since 2026-06-10, but only the NUMBER one was ever applied — `numListIn` appears 104
+times while `strComboIn`/`dateComboIn` had zero real node uses and `datecombo` showed up only as
+Cast's output. Two passes closed that, one family each.
+- **Date first** (`3d4b066`): nine nodes (DatePart, WeekInfo, DateDiff, DateAdd, DATEDIF,
+  WORKDAY, NETWORKDAYS, DATE, TIME) declare `datecombo`/`numlist` and broadcast. No new machinery
+  — a date serial IS a number, so `broadcast()`/`broadcastErr()` applied as-is.
+- **Then text**, which needed a broadcaster: `broadcast` is typed to numbers, but a text op's
+  operands are MIXED (LEFT takes the text AND a count) and its result is often a different family
+  than its input (LEN: string → number, EXACT: string → boolean). New **`broadcastCells`**
+  (shared.ts) is the same ragged-zip + per-cell error/missing contract with the element type
+  opened up, overloaded by ARITY (1–4) so each call site keeps precise per-operand types. Element
+  types are constrained to `string | number | boolean` because the list check is `Array.isArray`
+  — **that's exactly why the COMPLEX family can't use it** (a complex value is itself `[re, im]`,
+  indistinguishable from a list of them), so complex is the one family still un-swept and will
+  need its own broadcaster. `BroadcastResult` is now just `CellResult<number>`.
+- Seventeen text nodes broadcast: UPPER-family, LEN, LEFT/MID/RIGHT, FIND/SEARCH, SUBSTITUTE,
+  REPLACE, REPT, CHAR/CODE, TEXTAFTER/BEFORE, EXACT, NUMBERVALUE, ENCODEURL/DECODEURL,
+  ROMAN/ARABIC, FIXED, DOLLAR, Reverse Text, Spell Number.
+- **The criterion both passes used** (now written into node-coverage.md's input-dimensionality
+  rule, which contradicted itself on this): is the input an element-wise OPERAND or a MODE? A
+  per-element numeric count IS an operand — `LEFT.n`, `MID.start`/`len`, `REPLACE.num_chars`,
+  `FIXED.decimals` are combos, because `=LEFT(A1:A10,B1:B10)` is a real Excel formula. A value
+  describing ONE operation over the whole input stays scalar: NUMBERVALUE's separators, Text
+  Filter's pattern, WEEKDAY's `return_type`, YEARFRAC's `basis`, WORKDAY's `weekend_code`.
+- **Deliberately left alone**: CONCAT/TEXTJOIN REDUCE a set to one string (Excel's CONCAT
+  FLATTENS an array rather than spilling, so broadcasting would diverge from Excel, not match it);
+  TEXTSPLIT and Text Filter are already 1-D → 1-D and broadcasting either needs a rank-2 result
+  the lattice has no 1-D→2-D edge for; Regex stays on the wildcard ladder because its element type
+  depends on the op (D18 — no untyped combo rung); Text Input/Promo are literal sources.
+- **`TextMap` ("UPPER (list)") deleted.** It existed only because Text Transform was scalar-only;
+  with a `strcombo` input, wiring a list into UPPER *is* TextMap. Old saves load it as a
+  Placeholder. Also dropped from the Timesavers pack's reclassification tags.
+- **The pass surfaced a real lattice gap.** Making EXACT broadcast means a `logicalcombo` output,
+  and `logicalcombo → number` was BLOCKED while `logical → number` flowed — so the change would
+  have broken a cable. Root cause: the combo→scalar exception was bolted onto the within-family
+  derivation only, while the `logical↔number` bridge was derived from rank alone. Both now share
+  one **`dimFlows(dOut, dIn)`** predicate in sockets.ts, and the machine-checked sweep applies the
+  same predicate on both sides so they can't drift apart again. This also un-blocks the
+  pre-existing Comparison/IS.TEST `logicalcombo` outputs into numeric inputs. Purely additive —
+  no edge was removed.
+- One inline-editor edit was load-bearing: `isStr` in `inlineInput.tsx` matched `"string"` only,
+  so every retyped text input would have silently lost its typeable field. `isNumber` already
+  matched `number || numlist` — the combo case just hadn't come up for text.
+- tsc clean; suite 3127 green (was 3117 + the 10 new text cases).
+
 ### SESSION DIGEST (2026-07-25c — VSTACK/HSTACK passthrough; the List Input audit)
 - **List Input was wrong in every SegToggle position, and a sweep is what found it.** Testing all
   four element types against the same inputs (wired list / wired null / wired error / typed text)

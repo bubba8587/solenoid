@@ -1,12 +1,49 @@
 import { ClassicPreset } from "rete";
 import { stringSocket } from "../sockets";
-import { strIn, strOut, strListIn, strListOut, numIn, numOut, logicalOut, anyListIn, anyOut } from "./shared";
+import {
+  strIn, strOut, strListIn, strListOut, anyListIn, anyOut,
+  strComboIn, strComboOut, numListIn, numListOut, logicalComboOut,
+  broadcastCells, type CellResult, type BroadcastResult,
+} from "./shared";
 import { getRecalcGen } from "../process";
 import { solError, type SolError } from "../errorValue";
 import { resolveExcelFunction } from "../excelFunctions";
 
-// Reads a string from either a wired input or the node's stringLiterals fallback.
+// ─── Element-wise text: the `strcombo` (scalar-or-list) sockets ───────────────
+// Every text OPERAND is a `strcombo` and every element-wise text node broadcasts,
+// so UPPER/LEFT/SUBSTITUTE/… take one string or a whole list of them — Excel's
+// array-formula behaviour (`=UPPER(A1:A10)` spills), matching what the number and
+// date families already did. `broadcastCells` does the zip; a scalar in still
+// yields a scalar out.
+//
+// Deliberately NOT broadcast, because they aren't element-wise operands:
+//  - CONCAT / TEXTJOIN REDUCE a set of strings to one — Excel's CONCAT flattens an
+//    array into a single string rather than spilling, so broadcasting would diverge.
+//  - TEXTSPLIT and Text Filter already map 1-D → 1-D; broadcasting either would
+//    need a rank-2 result the socket lattice has no 1-D→2-D edge for.
+//  - A separator/pattern that selects a MODE (NUMBERVALUE's decimal/group
+//    separators, Text Filter's pattern) stays scalar, like the date family's basis
+//    and weekend_code.
+//  - Text Input and Promo are literal SOURCES: exactly one value each.
+//  - Regex stays on the wildcard ladder (`anylist` in, `any` out) — its element
+//    type depends on the op, and there is no untyped combo rung (D18).
+
+// Reads a text operand from either a wired input or the node's stringLiterals
+// fallback. A `strcombo` input may deliver a LIST, so this yields `string |
+// string[]` and the broadcaster zips whichever shape arrives.
 function strVal(
+  input: (string | string[])[] | undefined,
+  node: { stringLiterals?: Record<string, string> },
+  key: string,
+  def = "",
+): string | string[] {
+  return input?.[0] ?? node.stringLiterals?.[key] ?? def;
+}
+
+/** The same read for an input that stayed a scalar `string` socket (a delimiter,
+ *  a separator, a filter pattern) — the socket lattice can't deliver a list there,
+ *  so the caller gets a plain string it can `.split()` / `.join()` with. */
+function strScalar(
   input: string[] | undefined,
   node: { stringLiterals?: Record<string, string> },
   key: string,
@@ -90,7 +127,7 @@ export const TEXT_TRANSFORM_OP_META = {
 // through the shared seam. PROPER stays hand-rolled: FX's PROPER only capitalizes
 // after certain separators, not Excel's "after any non-letter" rule (verified
 // divergence, e.g. "a-b_c.d" → ours "A-B_c.D", FX "A-b_c.d"). CLEAN has no Formula.js
-// equivalent. Shared by TextTransformNode (scalar) and TextMapNode (per-element).
+// equivalent.
 function applyTextTransform(op: TextTransformOp, text: string): string {
   switch (op) {
     case "upper": return resolveExcelFunction("UPPER")!(text) as string;
@@ -104,7 +141,7 @@ function applyTextTransform(op: TextTransformOp, text: string): string {
 export class TextTransformNode extends ClassicPreset.Node {
   label: string;
   op: TextTransformOp;
-  cachedText: string | null = null;
+  cachedText: CellResult<string> = null;
   stringLiterals: Record<string, string> = { text: "" };
   width = 180; height = 170;
 
@@ -112,13 +149,15 @@ export class TextTransformNode extends ClassicPreset.Node {
     super("TextTransform");
     this.label = init?.label ?? "UPPER";
     this.op    = init?.op    ?? "upper";
-    this.addInput("text", strIn("Text"));
-    this.addOutput("result", strOut("Result"));
+    this.addInput("text", strComboIn("Text"));
+    this.addOutput("result", strComboOut("Result"));
   }
 
-  data(inputs: { text?: string[] }): { result: string | null } {
-    const text = strVal(inputs.text, this, "text");
-    const result = applyTextTransform(this.op, text);
+  data(inputs: { text?: (string | string[])[] }): { result: CellResult<string> } {
+    const result = broadcastCells(
+      (t: string) => applyTextTransform(this.op, t),
+      strVal(inputs.text, this, "text"),
+    );
     this.cachedText = result;
     return { result };
   }
@@ -128,20 +167,22 @@ export class TextTransformNode extends ClassicPreset.Node {
 
 export class TextLenNode extends ClassicPreset.Node {
   label: string;
-  cachedResult: number | null = null;
+  cachedResult: BroadcastResult = null;
   stringLiterals: Record<string, string> = { text: "" };
   width = 180; height = 135;
 
   constructor(init?: { label?: string }) {
     super("TextLen");
     this.label = init?.label ?? "LEN";
-    this.addInput("text", strIn("Text"));
-    this.addOutput("result", numOut("Length"));
+    this.addInput("text", strComboIn("Text"));
+    this.addOutput("result", numListOut("Length"));
   }
 
-  data(inputs: { text?: string[] }): { result: number } {
-    const text = strVal(inputs.text, this, "text");
-    const result = resolveExcelFunction("LEN")!(text) as number;
+  data(inputs: { text?: (string | string[])[] }): { result: BroadcastResult } {
+    const result = broadcastCells(
+      (t: string) => resolveExcelFunction("LEN")!(t) as number,
+      strVal(inputs.text, this, "text"),
+    );
     this.cachedResult = result;
     return { result };
   }
@@ -211,7 +252,7 @@ export const TEXT_SLICE_OP_META = {
 export class TextSliceNode extends ClassicPreset.Node {
   label: string;
   op: TextSliceOp;
-  cachedText: string | null = null;
+  cachedText: CellResult<string> = null;
   stringLiterals: Record<string, string> = { text: "" };
   literals: Record<string, number> = { n: 1, start: 1, len: 1 };
   width = 180; height = 225;
@@ -220,26 +261,38 @@ export class TextSliceNode extends ClassicPreset.Node {
     super("TextSlice");
     this.label = init?.label ?? "LEFT";
     this.op    = init?.op    ?? "left";
-    this.addInput("text",  strIn("Text"));
-    this.addInput("n",     numIn("N (LEFT/RIGHT)"));
-    this.addInput("start", numIn("Start (MID)"));
-    this.addInput("len",   numIn("Len (MID)"));
-    this.addOutput("result", strOut("Result"));
+    this.addInput("text",  strComboIn("Text"));
+    this.addInput("n",     numListIn("N (LEFT/RIGHT)"));
+    this.addInput("start", numListIn("Start (MID)"));
+    this.addInput("len",   numListIn("Len (MID)"));
+    this.addOutput("result", strComboOut("Result"));
   }
 
-  data(inputs: { text?: string[]; n?: number[]; start?: number[]; len?: number[] }): { result: string } {
-    const text  = strVal(inputs.text, this, "text");
-    const n     = Math.max(0, Math.floor(inputs.n?.[0]     ?? this.literals.n     ?? 1));
-    const start = Math.max(1, Math.floor(inputs.start?.[0] ?? this.literals.start ?? 1));
-    const len   = Math.max(0, Math.floor(inputs.len?.[0]   ?? this.literals.len   ?? 1));
-    let result: string;
-    switch (this.op) {
-      case "left":  result = resolveExcelFunction("LEFT")!(text, n) as string; break;
-      case "right": result = resolveExcelFunction("RIGHT")!(text, n) as string; break;
-      // Formula.js MID errors on num_chars = 0 (a real Excel input that returns "") —
-      // guard that one edge, delegate the rest (verified byte-identical otherwise).
-      case "mid":   result = len === 0 ? "" : resolveExcelFunction("MID")!(text, start, len) as string; break;
-    }
+  data(inputs: {
+    text?: (string | string[])[];
+    n?: (number | number[])[];
+    start?: (number | number[])[];
+    len?: (number | number[])[];
+  }): { result: CellResult<string> } {
+    const text = strVal(inputs.text, this, "text");
+    // Only the operands the CHOSEN op reads take part in the zip — otherwise a list
+    // left in the unused MID boxes would spill a LEFT result into a list.
+    const result = this.op === "mid"
+      ? broadcastCells((t: string, s: number, l: number) => {
+          const len = Math.max(0, Math.floor(l));
+          // Formula.js MID errors on num_chars = 0 (a real Excel input that returns "") —
+          // guard that one edge, delegate the rest (verified byte-identical otherwise).
+          return len === 0 ? "" : resolveExcelFunction("MID")!(t, Math.max(1, Math.floor(s)), len) as string;
+        },
+        text,
+        inputs.start?.[0] ?? this.literals.start ?? 1,
+        inputs.len?.[0]   ?? this.literals.len   ?? 1)
+      : broadcastCells((t: string, count: number) => {
+          const fn = this.op === "left" ? "LEFT" : "RIGHT";
+          return resolveExcelFunction(fn)!(t, Math.max(0, Math.floor(count))) as string;
+        },
+        text,
+        inputs.n?.[0] ?? this.literals.n ?? 1);
     this.cachedText = result;
     return { result };
   }
@@ -257,7 +310,7 @@ export const TEXT_FIND_OP_META = {
 export class TextFindNode extends ClassicPreset.Node {
   label: string;
   op: TextFindOp;
-  cachedResult: number | SolError | null = null;
+  cachedResult: BroadcastResult = null;
   stringLiterals: Record<string, string> = { needle: "", haystack: "" };
   literals: Record<string, number> = { start: 1 };
   width = 180; height = 225;
@@ -266,26 +319,31 @@ export class TextFindNode extends ClassicPreset.Node {
     super("TextFind");
     this.label = init?.label ?? "FIND";
     this.op    = init?.op    ?? "find";
-    this.addInput("needle",   strIn("Find text"));
-    this.addInput("haystack", strIn("Within text"));
-    this.addInput("start",    numIn("Start (optional)"));
-    this.addOutput("result", numOut("Position"));
+    this.addInput("needle",   strComboIn("Find text"));
+    this.addInput("haystack", strComboIn("Within text"));
+    this.addInput("start",    numListIn("Start (optional)"));
+    this.addOutput("result", numListOut("Position"));
   }
 
-  data(inputs: { needle?: string[]; haystack?: string[]; start?: number[] }): { result: number | SolError | null } {
-    const needle   = strVal(inputs.needle,   this, "needle");
-    const haystack = strVal(inputs.haystack, this, "haystack");
-    const start    = Math.max(1, Math.floor(inputs.start?.[0] ?? this.literals.start ?? 1));
-    const raw = resolveExcelFunction(this.op === "find" ? "FIND" : "SEARCH")!(needle, haystack, start);
-    // Excel FIND/SEARCH return #VALUE! when the substring is absent — Formula.js
-    // signals the same case as an Error, so map it to our tagged SolError (and the
-    // formula path's FIND via Formula.js → #VALUE! too), keeping node == formula == Excel.
-    if (raw instanceof Error) {
-      const err = solError("#VALUE!", "Find text not found within the text");
-      this.cachedResult = err;
-      return { result: err };
-    }
-    const result = raw as number;
+  data(inputs: {
+    needle?: (string | string[])[];
+    haystack?: (string | string[])[];
+    start?: (number | number[])[];
+  }): { result: BroadcastResult } {
+    const result = broadcastCells((needle: string, haystack: string, s: number) => {
+      const raw = resolveExcelFunction(this.op === "find" ? "FIND" : "SEARCH")!(
+        needle, haystack, Math.max(1, Math.floor(s)));
+      // Excel FIND/SEARCH return #VALUE! when the substring is absent — Formula.js
+      // signals the same case as an Error, so map it to our tagged SolError (and the
+      // formula path's FIND via Formula.js → #VALUE! too), keeping node == formula == Excel.
+      // Per CELL, so one unmatched string in a list doesn't fail the whole result.
+      return raw instanceof Error
+        ? solError("#VALUE!", "Find text not found within the text")
+        : raw as number;
+    },
+      strVal(inputs.needle,   this, "needle"),
+      strVal(inputs.haystack, this, "haystack"),
+      inputs.start?.[0] ?? this.literals.start ?? 1);
     this.cachedResult = result;
     return { result };
   }
@@ -295,24 +353,31 @@ export class TextFindNode extends ClassicPreset.Node {
 
 export class SubstituteNode extends ClassicPreset.Node {
   label: string;
-  cachedText: string | null = null;
+  cachedText: CellResult<string> = null;
   stringLiterals: Record<string, string> = { text: "", old_text: "", new_text: "" };
   width = 180; height = 225;
 
   constructor(init?: { label?: string }) {
     super("Substitute");
     this.label = init?.label ?? "SUBSTITUTE";
-    this.addInput("text",     strIn("Text"));
-    this.addInput("old_text", strIn("Old text"));
-    this.addInput("new_text", strIn("New text"));
-    this.addOutput("result", strOut("Result"));
+    this.addInput("text",     strComboIn("Text"));
+    this.addInput("old_text", strComboIn("Old text"));
+    this.addInput("new_text", strComboIn("New text"));
+    this.addOutput("result", strComboOut("Result"));
   }
 
-  data(inputs: { text?: string[]; old_text?: string[]; new_text?: string[] }): { result: string } {
-    const text     = strVal(inputs.text,     this, "text");
-    const oldText  = strVal(inputs.old_text, this, "old_text");
-    const newText  = strVal(inputs.new_text, this, "new_text");
-    const result   = resolveExcelFunction("SUBSTITUTE")!(text, oldText, newText) as string;
+  data(inputs: {
+    text?: (string | string[])[];
+    old_text?: (string | string[])[];
+    new_text?: (string | string[])[];
+  }): { result: CellResult<string> } {
+    const result = broadcastCells(
+      (text: string, oldText: string, newText: string) =>
+        resolveExcelFunction("SUBSTITUTE")!(text, oldText, newText) as string,
+      strVal(inputs.text,     this, "text"),
+      strVal(inputs.old_text, this, "old_text"),
+      strVal(inputs.new_text, this, "new_text"),
+    );
     this.cachedText = result;
     return { result };
   }
@@ -322,7 +387,7 @@ export class SubstituteNode extends ClassicPreset.Node {
 
 export class TextReplaceNode extends ClassicPreset.Node {
   label: string;
-  cachedText: string | null = null;
+  cachedText: CellResult<string> = null;
   stringLiterals: Record<string, string> = { text: "", new_text: "" };
   literals: Record<string, number> = { start: 1, num_chars: 1 };
   width = 180; height = 250;
@@ -330,19 +395,28 @@ export class TextReplaceNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("TextReplace");
     this.label = init?.label ?? "REPLACE";
-    this.addInput("text",      strIn("Text"));
-    this.addInput("start",     numIn("Start"));
-    this.addInput("num_chars", numIn("Num chars"));
-    this.addInput("new_text",  strIn("New text"));
-    this.addOutput("result", strOut("Result"));
+    this.addInput("text",      strComboIn("Text"));
+    this.addInput("start",     numListIn("Start"));
+    this.addInput("num_chars", numListIn("Num chars"));
+    this.addInput("new_text",  strComboIn("New text"));
+    this.addOutput("result", strComboOut("Result"));
   }
 
-  data(inputs: { text?: string[]; start?: number[]; num_chars?: number[]; new_text?: string[] }): { result: string } {
-    const text     = strVal(inputs.text,     this, "text");
-    const newText  = strVal(inputs.new_text, this, "new_text");
-    const start    = Math.max(1, Math.floor(inputs.start?.[0]     ?? this.literals.start     ?? 1));
-    const numChars = Math.max(0, Math.floor(inputs.num_chars?.[0] ?? this.literals.num_chars ?? 1));
-    const result   = resolveExcelFunction("REPLACE")!(text, start, numChars, newText) as string;
+  data(inputs: {
+    text?: (string | string[])[];
+    start?: (number | number[])[];
+    num_chars?: (number | number[])[];
+    new_text?: (string | string[])[];
+  }): { result: CellResult<string> } {
+    const result = broadcastCells(
+      (text: string, s: number, n: number, newText: string) =>
+        resolveExcelFunction("REPLACE")!(
+          text, Math.max(1, Math.floor(s)), Math.max(0, Math.floor(n)), newText) as string,
+      strVal(inputs.text, this, "text"),
+      inputs.start?.[0]     ?? this.literals.start     ?? 1,
+      inputs.num_chars?.[0] ?? this.literals.num_chars ?? 1,
+      strVal(inputs.new_text, this, "new_text"),
+    );
     this.cachedText = result;
     return { result };
   }
@@ -375,7 +449,7 @@ export function formatNumberPattern(v: number, format: string): string {
 
 export class ReptNode extends ClassicPreset.Node {
   label: string;
-  cachedText: string | null = null;
+  cachedText: CellResult<string> = null;
   stringLiterals: Record<string, string> = { text: "" };
   literals: Record<string, number> = { times: 1 };
   width = 180; height = 175;
@@ -383,15 +457,18 @@ export class ReptNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("Rept");
     this.label = init?.label ?? "REPT";
-    this.addInput("text",  strIn("Text"));
-    this.addInput("times", numIn("Times"));
-    this.addOutput("result", strOut("Result"));
+    this.addInput("text",  strComboIn("Text"));
+    this.addInput("times", numListIn("Times"));
+    this.addOutput("result", strComboOut("Result"));
   }
 
-  data(inputs: { text?: string[]; times?: number[] }): { result: string } {
-    const text  = strVal(inputs.text, this, "text");
-    const times = Math.max(0, Math.floor(inputs.times?.[0] ?? this.literals.times ?? 1));
-    const result = resolveExcelFunction("REPT")!(text, times) as string;
+  data(inputs: { text?: (string | string[])[]; times?: (number | number[])[] }): { result: CellResult<string> } {
+    const result = broadcastCells(
+      (text: string, times: number) =>
+        resolveExcelFunction("REPT")!(text, Math.max(0, Math.floor(times))) as string,
+      strVal(inputs.text, this, "text"),
+      inputs.times?.[0] ?? this.literals.times ?? 1,
+    );
     this.cachedText = result;
     return { result };
   }
@@ -404,7 +481,7 @@ export type CharCodeOp = "char" | "code";
 export class CharCodeNode extends ClassicPreset.Node {
   label: string;
   op: CharCodeOp;
-  cachedResult: string | number | null = null;
+  cachedResult: CellResult<string | number> = null;
   stringLiterals: Record<string, string> = { text: "" };
   literals: Record<string, number> = { code: 65 };
   width = 180; height = 135;
@@ -414,31 +491,25 @@ export class CharCodeNode extends ClassicPreset.Node {
     this.op = init?.op ?? "char";
     this.label = init?.label ?? (this.op === "char" ? "CHAR" : "CODE");
     if (this.op === "char") {
-      this.addInput("code", numIn("Code point"));
-      this.addOutput("result", strOut("Character"));
+      this.addInput("code", numListIn("Code point"));
+      this.addOutput("result", strComboOut("Character"));
     } else {
-      this.addInput("text", strIn("Text"));
-      this.addOutput("result", numOut("Code point"));
+      this.addInput("text", strComboIn("Text"));
+      this.addOutput("result", numListOut("Code point"));
     }
   }
 
-  data(inputs: { code?: number[]; text?: string[] }): { result: string | number | null } {
-    if (this.op === "char") {
-      const n = Math.floor(inputs.code?.[0] ?? this.literals.code ?? 65);
-      try {
-        const result = String.fromCodePoint(n);
-        this.cachedResult = result;
-        return { result };
-      } catch {
-        this.cachedResult = null;
-        return { result: null };
-      }
-    } else {
-      const text = strVal(inputs.text, this, "text");
-      const result = text.length > 0 ? (text.codePointAt(0) ?? null) : null;
-      this.cachedResult = result;
-      return { result };
-    }
+  data(inputs: { code?: (number | number[])[]; text?: (string | string[])[] }): { result: CellResult<string | number> } {
+    // An out-of-range code point (or an empty string) is a per-cell blank, so one
+    // bad element in a list doesn't blank the rest.
+    const result: CellResult<string | number> = this.op === "char"
+      ? broadcastCells((c: number) => {
+          try { return String.fromCodePoint(Math.floor(c)); } catch { return null; }
+        }, inputs.code?.[0] ?? this.literals.code ?? 65)
+      : broadcastCells((t: string) => (t.length > 0 ? (t.codePointAt(0) ?? null) : null),
+          strVal(inputs.text, this, "text"));
+    this.cachedResult = result;
+    return { result };
   }
 }
 
@@ -469,7 +540,7 @@ export class TextJoinNode extends ClassicPreset.Node {
 
   data(inputs: { strings?: string[][]; delimiter?: string[] }): { result: string } {
     const strings: string[] = inputs.strings?.[0] ?? [];
-    const delimiter = strVal(inputs.delimiter, this, "delimiter");
+    const delimiter = strScalar(inputs.delimiter, this, "delimiter");
     const parts     = this.ignoreEmpty === "ignore" ? strings.filter(s => s !== "") : strings;
     const result    = parts.join(delimiter);
     this.cachedText = result;
@@ -494,8 +565,8 @@ export class TextSplitNode extends ClassicPreset.Node {
   }
 
   data(inputs: { text?: string[]; delimiter?: string[] }): { result: string[] } {
-    const text      = strVal(inputs.text,      this, "text");
-    const delimiter = strVal(inputs.delimiter, this, "delimiter");
+    const text      = strScalar(inputs.text,      this, "text");
+    const delimiter = strScalar(inputs.delimiter, this, "delimiter");
     const result    = delimiter === "" ? [...text] : text.split(delimiter);
     this.cachedResult = result;
     return { result };
@@ -514,7 +585,7 @@ export const TEXT_AFTER_BEFORE_OP_META = {
 export class TextAfterBeforeNode extends ClassicPreset.Node {
   label: string;
   op: TextAfterBeforeOp;
-  cachedText: string | null = null;
+  cachedText: CellResult<string> = null;
   stringLiterals: Record<string, string> = { text: "", delimiter: "" };
   width = 180; height = 205;
 
@@ -522,20 +593,24 @@ export class TextAfterBeforeNode extends ClassicPreset.Node {
     super("TextAfterBefore");
     this.op    = init?.op    ?? "after";
     this.label = init?.label ?? TEXT_AFTER_BEFORE_OP_META[this.op].label;
-    this.addInput("text",      strIn("Text"));
-    this.addInput("delimiter", strIn("Delimiter"));
-    this.addOutput("result", strOut("Result"));
+    this.addInput("text",      strComboIn("Text"));
+    this.addInput("delimiter", strComboIn("Delimiter"));
+    this.addOutput("result", strComboOut("Result"));
   }
 
-  data(inputs: { text?: string[]; delimiter?: string[] }): { result: string | null } {
-    const text      = strVal(inputs.text,      this, "text");
-    const delimiter = strVal(inputs.delimiter, this, "delimiter");
-    if (delimiter === "") { this.cachedText = null; return { result: null }; }
-    const idx = text.indexOf(delimiter);
-    if (idx === -1)       { this.cachedText = null; return { result: null }; }
-    const result = this.op === "after"
-      ? text.slice(idx + delimiter.length)
-      : text.slice(0, idx);
+  data(inputs: {
+    text?: (string | string[])[];
+    delimiter?: (string | string[])[];
+  }): { result: CellResult<string> } {
+    const result = broadcastCells((text: string, delimiter: string) => {
+      // A blank delimiter, or one this element doesn't contain, is a per-cell blank.
+      if (delimiter === "") return null;
+      const idx = text.indexOf(delimiter);
+      if (idx === -1) return null;
+      return this.op === "after" ? text.slice(idx + delimiter.length) : text.slice(0, idx);
+    },
+      strVal(inputs.text,      this, "text"),
+      strVal(inputs.delimiter, this, "delimiter"));
     this.cachedText = result;
     return { result };
   }
@@ -545,24 +620,27 @@ export class TextAfterBeforeNode extends ClassicPreset.Node {
 
 export class ExactNode extends ClassicPreset.Node {
   label: string;
-  cachedResult: boolean | null = null;
+  cachedResult: CellResult<boolean> = null;
   stringLiterals: Record<string, string> = { a: "", b: "" };
   width = 180; height = 175;
 
   constructor(init?: { label?: string }) {
     super("Exact");
     this.label = init?.label ?? "EXACT";
-    this.addInput("a", strIn("Text 1"));
-    this.addInput("b", strIn("Text 2"));
+    this.addInput("a", strComboIn("Text 1"));
+    this.addInput("b", strComboIn("Text 2"));
     // A first-class logical (TRUE/FALSE) like Excel EXACT — not 1/0. Coerces to 1/0
-    // anywhere a number is wanted (the logical↔number socket bridge).
-    this.addOutput("result", logicalOut("Result"));
+    // anywhere a number is wanted (the logical↔number socket bridge, which mirrors
+    // combo→scalar, so this combo still reaches a plain `number` input).
+    this.addOutput("result", logicalComboOut("Result"));
   }
 
-  data(inputs: { a?: string[]; b?: string[] }): { result: boolean } {
-    const a = strVal(inputs.a, this, "a");
-    const b = strVal(inputs.b, this, "b");
-    const result = a === b;
+  data(inputs: { a?: (string | string[])[]; b?: (string | string[])[] }): { result: CellResult<boolean> } {
+    const result = broadcastCells(
+      (a: string, b: string) => a === b,
+      strVal(inputs.a, this, "a"),
+      strVal(inputs.b, this, "b"),
+    );
     this.cachedResult = result;
     return { result };
   }
@@ -614,7 +692,7 @@ export class TextFilterNode extends ClassicPreset.Node {
 
 export class NumberValueNode extends ClassicPreset.Node {
   label: string;
-  cachedResult: number | SolError | null = null;
+  cachedResult: BroadcastResult = null;
   // The separators ship EMPTY so the field shows a muted "."/"," placeholder (the
   // default); data() treats empty/unset as the default via `||`.
   stringLiterals: Record<string, string> = { text: "" };
@@ -623,69 +701,52 @@ export class NumberValueNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("NumberValue");
     this.label = init?.label ?? "NUMBERVALUE";
-    this.addInput("text",        strIn("Text"));
+    this.addInput("text",        strComboIn("Text"));
+    // The separators pick a parsing CONVENTION, not a per-element operand, so they
+    // stay scalar (like the date family's basis / weekend_code).
     this.addInput("decimal_sep", strIn("Decimal sep (default \".\")"));
     this.addInput("group_sep",   strIn("Group sep (default \",\")"));
-    this.addOutput("result", numOut("Number"));
+    this.addOutput("result", numListOut("Number"));
   }
 
-  data(inputs: { text?: string[]; decimal_sep?: string[]; group_sep?: string[] }): { result: number | SolError | null } {
-    const text    = (inputs.text?.[0]        ?? this.stringLiterals.text        ?? "").trim();
+  data(inputs: {
+    text?: (string | string[])[];
+    decimal_sep?: string[];
+    group_sep?: string[];
+  }): { result: BroadcastResult } {
     // `||` (not `??`): an empty/unset separator field means "use the default", so a
     // blank box (placeholder showing) still parses with "."/",".
-    const decSep  =  inputs.decimal_sep?.[0] || this.stringLiterals.decimal_sep || ".";
-    const grpSep  =  inputs.group_sep?.[0]   || this.stringLiterals.group_sep   || ",";
-    // Empty input is blank (null); a non-empty string that won't parse is a
-    // genuine #VALUE! error.
-    if (!text) { this.cachedResult = null; return { result: null }; }
-    // NUMBERVALUE semantics: strip group separators, normalize the decimal
-    // separator, ignore ALL whitespace (incl. embedded — "1 234" → 1234), then
-    // peel trailing `%` signs (each divides by 100 — "12%%" → 0.0012). The final
-    // parse is STRICT full-string via Number(), not parseFloat's greedy prefix, so
-    // "12x" is #VALUE! rather than 12.
-    let s = text
-      .split(grpSep).join("")
-      .split(decSep).join(".")
-      .replace(/\s+/g, "");
-    let pct = 0;
-    while (s.endsWith("%")) { pct++; s = s.slice(0, -1); }
-    // Number("") is 0 — guard it so an all-% / emptied string is #VALUE!, not 0.
-    const n = s === "" ? NaN : Number(s);
-    if (!Number.isFinite(n)) {
-      const err = solError("#VALUE!", `Cannot parse "${text}" as a number`);
-      this.cachedResult = err;
-      return { result: err };
-    }
-    const result = pct > 0 ? n / Math.pow(100, pct) : n;
+    const decSep = inputs.decimal_sep?.[0] || this.stringLiterals.decimal_sep || ".";
+    const grpSep = inputs.group_sep?.[0]   || this.stringLiterals.group_sep   || ",";
+    const result = broadcastCells((raw: string) => {
+      const text = raw.trim();
+      // Empty input is blank (null); a non-empty string that won't parse is a
+      // genuine #VALUE! error — per cell, so one bad string in a list errors alone.
+      if (!text) return null;
+      // NUMBERVALUE semantics: strip group separators, normalize the decimal
+      // separator, ignore ALL whitespace (incl. embedded — "1 234" → 1234), then
+      // peel trailing `%` signs (each divides by 100 — "12%%" → 0.0012). The final
+      // parse is STRICT full-string via Number(), not parseFloat's greedy prefix, so
+      // "12x" is #VALUE! rather than 12.
+      let s = text
+        .split(grpSep).join("")
+        .split(decSep).join(".")
+        .replace(/\s+/g, "");
+      let pct = 0;
+      while (s.endsWith("%")) { pct++; s = s.slice(0, -1); }
+      // Number("") is 0 — guard it so an all-% / emptied string is #VALUE!, not 0.
+      const n = s === "" ? NaN : Number(s);
+      if (!Number.isFinite(n)) return solError("#VALUE!", `Cannot parse "${text}" as a number`);
+      return pct > 0 ? n / Math.pow(100, pct) : n;
+    }, strVal(inputs.text, this, "text"));
     this.cachedResult = result;
     return { result };
   }
 }
 
-// ─── TEXTMAP (apply transform to each string in a list) ──────────────────────
-
-export class TextMapNode extends ClassicPreset.Node {
-  label: string;
-  op: TextTransformOp;
-  stringLiterals: Record<string, string> = {}; // strings: typeable strlist CSV
-  cachedResult: string[] | null = null;
-  width = 180; height = 170;
-
-  constructor(init?: { label?: string; op?: TextTransformOp }) {
-    super("TextMap");
-    this.op    = init?.op    ?? "upper";
-    this.label = init?.label ?? `${TEXT_TRANSFORM_OP_META[this.op].label} (list)`;
-    this.addInput("strings", strListIn("Strings"));
-    this.addOutput("result", strListOut("Result"));
-  }
-
-  data(inputs: { strings?: string[][] }): { result: string[] } {
-    const strings = inputs.strings?.[0] ?? [];
-    const result  = strings.map(s => applyTextTransform(this.op, s));
-    this.cachedResult = result;
-    return { result };
-  }
-}
+// TextMap ("UPPER (list)") was retired with the combo pass: Text Transform now
+// takes a `strcombo`, so wiring a list into UPPER does exactly what it did. An old
+// save referencing it loads as a Placeholder (wiring + data kept).
 
 // ─── ENCODEURL / DECODEURL ────────────────────────────────────────────────────
 
@@ -694,7 +755,7 @@ export type UrlEncodeOp = "encode" | "decode";
 export class UrlEncodeNode extends ClassicPreset.Node {
   label: string;
   op: UrlEncodeOp;
-  cachedText: string | null = null;
+  cachedText: CellResult<string> = null;
   stringLiterals: Record<string, string> = { text: "" };
   width = 180; height = 135;
 
@@ -702,18 +763,20 @@ export class UrlEncodeNode extends ClassicPreset.Node {
     super("UrlEncode");
     this.op    = init?.op ?? "encode";
     this.label = init?.label ?? (this.op === "encode" ? "ENCODEURL" : "DECODEURL");
-    this.addInput("text", strIn("Text"));
-    this.addOutput("result", strOut("Result"));
+    this.addInput("text", strComboIn("Text"));
+    this.addOutput("result", strComboOut("Result"));
   }
 
-  data(inputs: { text?: string[] }): { result: string } {
-    const text = inputs.text?.[0] ?? this.stringLiterals.text ?? "";
-    let result: string;
-    try {
-      result = this.op === "encode" ? encodeURIComponent(text) : decodeURIComponent(text);
-    } catch {
-      result = text;
-    }
+  data(inputs: { text?: (string | string[])[] }): { result: CellResult<string> } {
+    const result = broadcastCells((text: string) => {
+      // A malformed escape (decodeURIComponent throws) passes the text through
+      // unchanged, per element.
+      try {
+        return this.op === "encode" ? encodeURIComponent(text) : decodeURIComponent(text);
+      } catch {
+        return text;
+      }
+    }, strVal(inputs.text, this, "text"));
     this.cachedText = result;
     return { result };
   }
@@ -726,7 +789,7 @@ export type RomanArabicOp = "roman" | "arabic";
 export class RomanArabicNode extends ClassicPreset.Node {
   label: string;
   op: RomanArabicOp;
-  cachedResult: string | number | SolError | null = null;
+  cachedResult: CellResult<string | number> = null;
   stringLiterals: Record<string, string> = { text: "" };
   literals: Record<string, number> = { number: 1 };
   width = 180; height = 135;
@@ -736,50 +799,44 @@ export class RomanArabicNode extends ClassicPreset.Node {
     this.op    = init?.op ?? "roman";
     this.label = init?.label ?? (this.op === "roman" ? "ROMAN" : "ARABIC");
     if (this.op === "roman") {
-      this.addInput("number", numIn("Number (1–3999)"));
-      this.addOutput("result", strOut("Roman numeral"));
+      this.addInput("number", numListIn("Number (1–3999)"));
+      this.addOutput("result", strComboOut("Roman numeral"));
     } else {
-      this.addInput("text", strIn("Roman numeral"));
-      this.addOutput("result", numOut("Number"));
+      this.addInput("text", strComboIn("Roman numeral"));
+      this.addOutput("result", numListOut("Number"));
     }
   }
 
-  data(inputs: { number?: number[]; text?: string[] }): { result: string | number | SolError | null } {
-    if (this.op === "roman") {
-      const n = Math.floor(inputs.number?.[0] ?? this.literals.number ?? 1);
-      // ROMAN only spans 1–3999; anything else is out of range (#VALUE!).
-      if (n < 1 || n > 3999) {
-        const err = solError("#VALUE!", "ROMAN is defined only for 1–3999");
-        this.cachedResult = err;
-        return { result: err };
-      }
-      const vals = [1000,900,500,400,100,90,50,40,10,9,5,4,1];
-      const syms = ["M","CM","D","CD","C","XC","L","XL","X","IX","V","IV","I"];
-      let result = ""; let rem = n;
-      for (let i = 0; i < vals.length; i++) {
-        while (rem >= vals[i]) { result += syms[i]; rem -= vals[i]; }
-      }
-      this.cachedResult = result;
-      return { result };
-    } else {
-      const text = (inputs.text?.[0] ?? this.stringLiterals.text ?? "").toUpperCase().trim();
-      // Empty input is blank (null). A non-empty string with a non-Roman
-      // character is an invalid numeral (#VALUE!).
-      if (!text) { this.cachedResult = null; return { result: null }; }
-      const map: Record<string, number> = { M:1000, D:500, C:100, L:50, X:10, V:5, I:1 };
-      let result = 0; let prev = 0;
-      for (let i = text.length - 1; i >= 0; i--) {
-        const v = map[text[i]];
-        if (v === undefined) {
-          const err = solError("#VALUE!", `"${text}" is not a valid Roman numeral`);
-          this.cachedResult = err;
-          return { result: err };
-        }
-        if (v < prev) result -= v; else { result += v; prev = v; }
-      }
-      this.cachedResult = result;
-      return { result };
-    }
+  data(inputs: { number?: (number | number[])[]; text?: (string | string[])[] }): { result: CellResult<string | number> } {
+    const result: CellResult<string | number> = this.op === "roman"
+      ? broadcastCells((raw: number) => {
+          const n = Math.floor(raw);
+          // ROMAN only spans 1–3999; anything else is out of range (#VALUE!).
+          if (n < 1 || n > 3999) return solError("#VALUE!", "ROMAN is defined only for 1–3999");
+          const vals = [1000,900,500,400,100,90,50,40,10,9,5,4,1];
+          const syms = ["M","CM","D","CD","C","XC","L","XL","X","IX","V","IV","I"];
+          let out = ""; let rem = n;
+          for (let i = 0; i < vals.length; i++) {
+            while (rem >= vals[i]) { out += syms[i]; rem -= vals[i]; }
+          }
+          return out;
+        }, inputs.number?.[0] ?? this.literals.number ?? 1)
+      : broadcastCells((raw: string) => {
+          const text = raw.toUpperCase().trim();
+          // Empty input is blank (null). A non-empty string with a non-Roman
+          // character is an invalid numeral (#VALUE!) — per cell.
+          if (!text) return null;
+          const map: Record<string, number> = { M:1000, D:500, C:100, L:50, X:10, V:5, I:1 };
+          let out = 0; let prev = 0;
+          for (let i = text.length - 1; i >= 0; i--) {
+            const v = map[text[i]];
+            if (v === undefined) return solError("#VALUE!", `"${text}" is not a valid Roman numeral`);
+            if (v < prev) out -= v; else { out += v; prev = v; }
+          }
+          return out;
+        }, strVal(inputs.text, this, "text"));
+    this.cachedResult = result;
+    return { result };
   }
 }
 
@@ -795,7 +852,7 @@ export const FIXED_NO_COMMAS_META: Record<FixedNoCommas, string> = {
 export class FixedNode extends ClassicPreset.Node {
   label: string;
   noCommas: FixedNoCommas;
-  cachedText: string | null = null;
+  cachedText: CellResult<string> = null;
   literals: Record<string, number> = { number: 0 }; // decimals ships unset → muted "2" placeholder (data() defaults)
   width = 180; height = 175;
 
@@ -803,15 +860,18 @@ export class FixedNode extends ClassicPreset.Node {
     super("Fixed");
     this.label    = init?.label    ?? "FIXED";
     this.noCommas = init?.noCommas ?? "commas";
-    this.addInput("number",   numIn("Number"));
-    this.addInput("decimals", numIn("Decimals (default 2)"));
-    this.addOutput("result", strOut("Text"));
+    this.addInput("number",   numListIn("Number"));
+    this.addInput("decimals", numListIn("Decimals (default 2)"));
+    this.addOutput("result", strComboOut("Text"));
   }
 
-  data(inputs: { number?: number[]; decimals?: number[] }): { result: string } {
-    const n      = inputs.number?.[0]   ?? this.literals.number   ?? 0;
-    const dec    = Math.max(0, Math.floor(inputs.decimals?.[0] ?? this.literals.decimals ?? 2));
-    const result = resolveExcelFunction("FIXED")!(n, dec, this.noCommas === "no_commas") as string;
+  data(inputs: { number?: (number | number[])[]; decimals?: (number | number[])[] }): { result: CellResult<string> } {
+    const result = broadcastCells(
+      (n: number, d: number) => resolveExcelFunction("FIXED")!(
+        n, Math.max(0, Math.floor(d)), this.noCommas === "no_commas") as string,
+      inputs.number?.[0]   ?? this.literals.number   ?? 0,
+      inputs.decimals?.[0] ?? this.literals.decimals ?? 2,
+    );
     this.cachedText = result;
     return { result };
   }
@@ -902,26 +962,27 @@ export class RegexNode extends ClassicPreset.Node {
 
 export class FormatDollarNode extends ClassicPreset.Node {
   label: string;
-  cachedText: string | null = null;
+  cachedText: CellResult<string> = null;
   literals: Record<string, number> = { number: 0 }; // decimals ships unset → muted "2" placeholder (data() defaults)
   width = 180; height = 175;
 
   constructor(init?: { label?: string }) {
     super("FormatDollar");
     this.label = init?.label ?? "DOLLAR";
-    this.addInput("number",   numIn("Number"));
-    this.addInput("decimals", numIn("Decimals (default 2)"));
-    this.addOutput("result", strOut("Currency text"));
+    this.addInput("number",   numListIn("Number"));
+    this.addInput("decimals", numListIn("Decimals (default 2)"));
+    this.addOutput("result", strComboOut("Currency text"));
   }
 
-  data(inputs: { number?: number[]; decimals?: number[] }): { result: string } {
-    const n   = inputs.number?.[0]   ?? this.literals.number   ?? 0;
-    const dec = Math.max(0, Math.round(inputs.decimals?.[0] ?? this.literals.decimals ?? 2));
-    const rounded = Math.abs(n).toFixed(dec);
-    const parts = rounded.split(".");
-    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-    const formatted = parts.join(".");
-    const result = (n < 0 ? "-$" : "$") + formatted;
+  data(inputs: { number?: (number | number[])[]; decimals?: (number | number[])[] }): { result: CellResult<string> } {
+    const result = broadcastCells((n: number, d: number) => {
+      const rounded = Math.abs(n).toFixed(Math.max(0, Math.round(d)));
+      const parts = rounded.split(".");
+      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+      return (n < 0 ? "-$" : "$") + parts.join(".");
+    },
+      inputs.number?.[0]   ?? this.literals.number   ?? 0,
+      inputs.decimals?.[0] ?? this.literals.decimals ?? 2);
     this.cachedText = result;
     return { result };
   }
@@ -935,20 +996,22 @@ export class FormatDollarNode extends ClassicPreset.Node {
 
 export class ReverseTextNode extends ClassicPreset.Node {
   label: string;
-  cachedText: string | null = null;
+  cachedText: CellResult<string> = null;
   stringLiterals: Record<string, string> = { text: "" };
   width = 190; height = 135;
 
   constructor(init?: { label?: string }) {
     super("ReverseText");
     this.label = init?.label ?? "Reverse Text";
-    this.addInput("text", strIn("Text"));
-    this.addOutput("result", strOut("Reversed"));
+    this.addInput("text", strComboIn("Text"));
+    this.addOutput("result", strComboOut("Reversed"));
   }
 
-  data(inputs: { text?: string[] }): { result: string } {
-    const t = strVal(inputs.text, this, "text");
-    const result = [...t].reverse().join("");
+  data(inputs: { text?: (string | string[])[] }): { result: CellResult<string> } {
+    const result = broadcastCells(
+      (t: string) => [...t].reverse().join(""),
+      strVal(inputs.text, this, "text"),
+    );
     this.cachedText = result;
     return { result };
   }
@@ -1013,22 +1076,25 @@ export function spellNumber(n: number): string | SolError {
 
 export class SpellNumberNode extends ClassicPreset.Node {
   label: string;
-  cachedText: string | SolError | null = null;
+  cachedText: CellResult<string> = null;
   literals: Record<string, number> = { value: 0 };
   width = 210; height = 135;
 
   constructor(init?: { label?: string }) {
     super("SpellNumber");
     this.label = init?.label ?? "Spell Number";
-    this.addInput("value", numIn("Number"));
-    this.addOutput("result", strOut("Words"));
+    this.addInput("value", numListIn("Number"));
+    this.addOutput("result", strComboOut("Words"));
   }
 
-  data(inputs: { value?: (number | null)[] }) {
-    const v = inputs.value === undefined || inputs.value.length === 0
+  data(inputs: { value?: (number | number[] | null)[] }): { result: CellResult<string> } {
+    // `readInput` semantics: a CONNECTED cable wins even when its value is null
+    // (which the broadcaster short-circuits per the missing contract); only an
+    // unwired slot falls back to the literal.
+    const value = inputs.value === undefined || inputs.value.length === 0
       ? this.literals.value
-      : inputs.value[0];
-    const result = typeof v === "number" ? spellNumber(v) : null;
+      : inputs.value[0] ?? null;
+    const result = broadcastCells((v: number) => spellNumber(v), value);
     this.cachedText = result;
     return { result };
   }

@@ -160,11 +160,14 @@ export function readInput<T>(wired: readonly T[] | undefined, literal: T): T | n
   return wired === undefined || wired.length === 0 ? literal : (wired[0] ?? null);
 }
 
-// A numeric broadcaster's output: a scalar, or a list whose cells may each carry
-// a first-class `null` (missing) or `SolError` (per the per-cell contract), or a
-// whole-value short-circuit (scalar error/missing). The node layer's loose-list
-// convention — lists carry null/SolError cells at runtime.
-export type BroadcastResult = number | (number | SolError | null)[] | SolError | null;
+// A broadcaster's output for element type T: a scalar, or a list whose cells may
+// each carry a first-class `null` (missing) or `SolError` (per the per-cell
+// contract), or a whole-value short-circuit (scalar error/missing). The node
+// layer's loose-list convention — lists carry null/SolError cells at runtime.
+export type CellResult<T> = T | (T | SolError | null)[] | SolError | null;
+
+/** The numeric broadcasters' output — `CellResult` at the number family. */
+export type BroadcastResult = CellResult<number>;
 
 export function broadcast(
   fn: (...xs: number[]) => number | null,
@@ -217,6 +220,66 @@ export function broadcastErr(
     const sc = cellShortCircuit(ops);
     if (sc !== COMPUTE) { out.push(sc); continue; } // error / missing propagates
     const r = fn(...(ops as number[]));
+    out.push(typeof r === "number" ? guardFinite(r, ...ops) : r); // classify a non-finite result
+  }
+  return out;
+}
+
+// ─── Element-agnostic broadcast (the non-numeric families' broadcaster) ─────────
+// `broadcast`/`broadcastErr` are typed to numbers, which works for the number and
+// date families (a date serial IS a number) but not for text: a text op's operands
+// are MIXED (LEFT takes the text AND a count) and its result is often a different
+// family than its input (LEN: string → number, EXACT: string → boolean). This is
+// the same broadcaster with the element type opened up — identical ragged-zip and
+// per-cell error/missing contract, so a text node broadcasts exactly like ADD.
+//
+// Overloaded by ARITY so each call site keeps precise per-operand types
+// (`broadcastCells((t: string, n: number) => …, text, n)` infers both); the
+// implementation is one loose body. A numeric result still runs `guardFinite`, so
+// a computed NaN/∞ classifies into a tagged error just as in the numeric path.
+//
+// Element types are constrained to `Cell` (string | number | boolean) because the
+// list check is `Array.isArray` — an element that is ITSELF an array can't be told
+// apart from a list of them. That's why the complex family (a value is `[re, im]`)
+// needs its own broadcaster rather than this one.
+type Cell = string | number | boolean;
+
+export function broadcastCells<A extends Cell, R extends Cell>(
+  fn: (a: A) => R | SolError | null,
+  a: A | A[] | null,
+): CellResult<R>;
+export function broadcastCells<A extends Cell, B extends Cell, R extends Cell>(
+  fn: (a: A, b: B) => R | SolError | null,
+  a: A | A[] | null, b: B | B[] | null,
+): CellResult<R>;
+export function broadcastCells<A extends Cell, B extends Cell, C extends Cell, R extends Cell>(
+  fn: (a: A, b: B, c: C) => R | SolError | null,
+  a: A | A[] | null, b: B | B[] | null, c: C | C[] | null,
+): CellResult<R>;
+export function broadcastCells<A extends Cell, B extends Cell, C extends Cell, D extends Cell, R extends Cell>(
+  fn: (a: A, b: B, c: C, d: D) => R | SolError | null,
+  a: A | A[] | null, b: B | B[] | null, c: C | C[] | null, d: D | D[] | null,
+): CellResult<R>;
+export function broadcastCells(
+  fn: (...xs: never[]) => Cell | SolError | null,
+  ...args: Array<Cell | Cell[] | null>
+): CellResult<Cell> {
+  const call = fn as (...xs: Cell[]) => Cell | SolError | null;
+  const lists = args.filter((a): a is Cell[] => Array.isArray(a));
+  if (lists.length === 0) {
+    const sc = cellShortCircuit(args);
+    if (sc !== COMPUTE) return sc;
+    const r = call(...(args as Cell[]));
+    return typeof r === "number" ? guardFinite(r, ...args) : r;
+  }
+  const len = lists.reduce((m, l) => Math.max(m, l.length), 0);
+  const out: (Cell | SolError | null)[] = [];
+  for (let i = 0; i < len; i++) {
+    if (lists.some((l) => i >= l.length)) { out.push(null); continue; } // ragged pad
+    const ops = args.map((a) => (Array.isArray(a) ? a[i] : a));
+    const sc = cellShortCircuit(ops);
+    if (sc !== COMPUTE) { out.push(sc); continue; } // error / missing propagates
+    const r = call(...(ops as Cell[]));
     out.push(typeof r === "number" ? guardFinite(r, ...ops) : r); // classify a non-finite result
   }
   return out;
