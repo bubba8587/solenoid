@@ -97,9 +97,9 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   recompute targeted.
 - [ ] **Small mechanical sweep**: trueany adoption runs on the MAIN editor only —
   drill-in composites don't adopt (`trueAnyAdopt.ts`); `readInput` sweep applied across
-  `scalar.ts` only — the remaining `data()` files are the follow-up; passthrough
-  annotation opt-in missing on multi-input Concat/Interleave and rank-changing
-  TOCOL/WRAP (node-coverage "not yet opted in").
+  `scalar.ts` only — the remaining `data()` files are the follow-up (~144 sites, biggest
+  being finance/list/stats; each needs a per-input call on whether a wired null
+  propagates or an Excel-style optional arg still defaults).
 - [ ] **Keep `release-notes-features.md` current** — the curated 1.3 selling list +
   What's-New slide source (author writes the final release notes at cut time).
 

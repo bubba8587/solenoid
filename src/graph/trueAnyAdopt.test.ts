@@ -4,7 +4,7 @@ import { reconcileTrueAnyTypes, type AdoptEditor } from "./trueAnyAdopt";
 import { DisplayNode } from "./nodes/display";
 import { IfNode } from "./nodes/logic";
 import { CableSwitchNode } from "./nodes/control";
-import { ListIndexNode, ReverseNode, SortByNode, GroupByNode, SetOpNode, ConcatListsNode, InterleaveNode, TableReshapeNode } from "./rete-nodes";
+import { ListIndexNode, ReverseNode, SortByNode, GroupByNode, SetOpNode, ConcatListsNode, InterleaveNode, TableReshapeNode, VStackNode, HStackTableNode } from "./rete-nodes";
 import { numberSocket, stringSocket, frameSocket, dateListSocket, strListSocket, strTableSocket, SolenoidSocket } from "./sockets";
 
 // Same fake-editor surface as conduitTrace.test.ts — the pass only reads
@@ -196,6 +196,36 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
       { source: s2.id, sourceOutput: "out", target: il.id, targetInput: "b" },
     ]));
     expect(dt(il.outputs.result?.socket)).toBe("strlist");
+  });
+
+  it("VSTACK / HSTACK adopt the agreed row type — a LIST row lifts to the table rank", () => {
+    // The 2-D rung of the append ladder, mirroring Concat Lists above. A list wired to
+    // an `anytable` row already adopts at the input's rank (strlist → strtable), so the
+    // `agree` over the rows settles on strtable whichever rank the rows arrive at.
+    const strs = new ClassicPreset.Node("Strs");
+    strs.addOutput("out", new ClassicPreset.Output(strListSocket));
+    const tbl = new ClassicPreset.Node("StrTable");
+    tbl.addOutput("out", new ClassicPreset.Output(strTableSocket));
+
+    for (const stack of [new VStackNode(), new HStackTableNode()]) {
+      const [k0, k1] = stack.valueInputKeys();
+      reconcileTrueAnyTypes(makeEditor([strs, tbl, stack], [
+        { source: strs.id, sourceOutput: "out", target: stack.id, targetInput: k0 },
+        { source: tbl.id,  sourceOutput: "out", target: stack.id, targetInput: k1 },
+      ]));
+      expect(dt(stack.outputs.result?.socket)).toBe("strtable");
+      // A disagreeing row keeps the neutral rung — the selector rule, unchanged.
+      const nums = new ClassicPreset.Node("Nums");
+      nums.addOutput("out", new ClassicPreset.Output(dateListSocket));
+      reconcileTrueAnyTypes(makeEditor([strs, nums, stack], [
+        { source: strs.id, sourceOutput: "out", target: stack.id, targetInput: k0 },
+        { source: nums.id, sourceOutput: "out", target: stack.id, targetInput: k1 },
+      ]));
+      expect(dt(stack.outputs.result?.socket)).toBe("anytable");
+      // Unwired → reverts to the declared wildcard rank.
+      reconcileTrueAnyTypes(makeEditor([stack], []));
+      expect(dt(stack.outputs.result?.socket)).toBe("anytable");
+    }
   });
 
   it("rank-CROSSING reshapes project the element family onto the output's rank", () => {
