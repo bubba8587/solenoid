@@ -1,6 +1,7 @@
 import { ClassicPreset } from "rete";
 import { numListSocket, strListSocket, dateListSocket, logicalListSocket, type SolenoidSocket } from "../sockets";
 import { parseListLiteral } from "../coerceInputs";
+import { parseDateToSerial } from "./date";
 import type { Cell as AnyCell } from "./coerce";
 import { getRecalcGen } from "../process";
 import { listIn, listOut, numIn, numOut, anyIn, trueAnyIn, staticTrueAnyOut, strIn, logicalOut, logicalListOut, frameIn, frameOut, anyListIn, adoptiveListIn, adoptiveListOut } from "./shared";
@@ -8,7 +9,7 @@ import type { PassthroughSpec } from "./passthrough";
 import { pairIdsFromKeys } from "./logic";
 import { passesFilter, VALUELESS_FILTER_OPS, type FilterOp, type FilterCondConfig } from "../frameVerbs";
 import { solError, isSolError, type SolError } from "../errorValue";
-import { forAggregate, isMissing, type Tri } from "../valueKinds";
+import { forAggregate, isMissing, coerceLogical, type Tri } from "../valueKinds";
 import { forAggregateUnits, tagDim, matrixUnitOf, type UnitCell } from "../unitValue";
 import { stripUnitCells } from "../unitBridge";
 import { tagFrameCellUnit } from "../unitColumn";
@@ -42,15 +43,43 @@ function parseCsvList(dt: ListElemType, s: string | undefined): AnyCell[] {
   return s ? (parseListLiteral(s, LIST_ELEM_SOCKET[dt].dataType) as AnyCell[]) : [];
 }
 
-/** Does a wired element match the current element type? (Dates are serial numbers.)
- *  `null` (MISSING) and a per-cell `SolError` are NOT element kinds — they ride
- *  through any typed list by the value model, so callers keep them before asking. */
-function isElemKind(dt: ListElemType, v: unknown): boolean {
+/** Convert ONE wired element to the row's element type, or `null` when it genuinely
+ *  can't be. List Input is a typed literal SOURCE — its whole job is "emit a list of
+ *  type T" — so a wired element is CONVERTED, exactly like the typed text on the same
+ *  row. It used to be FILTERED (`typeof v === …`, anything else silently discarded),
+ *  which had two bad consequences:
+ *
+ *   • The same value behaved differently typed vs wired: `01-Jan-2026` typed into a
+ *     Date row parses to a serial, but wired in it was thrown away.
+ *   • A WILDCARD source (`any`/`anylist`/`trueany` — a Display, a Conduit lane, an
+ *     INDEX result) is ACCEPTED by every row socket via the wildcard ladder, but its
+ *     runtime value is whatever flowed in. A number reaching a Text row made the whole
+ *     list vanish — an empty output with no cable rejected and no error shown.
+ *
+ *  `null` (MISSING) and per-cell `SolError`s never reach here — they ride through any
+ *  typed list unchanged and are handled by the caller. */
+function coerceElem(dt: ListElemType, v: unknown): AnyCell {
   switch (dt) {
-    case "number":  return typeof v === "number";
-    case "date":    return typeof v === "number";
-    case "string":  return typeof v === "string";
-    case "logical": return typeof v === "boolean";
+    case "number": {
+      if (typeof v === "number") return Number.isFinite(v) ? v : null;
+      if (typeof v === "boolean") return v ? 1 : 0;
+      if (typeof v === "string") { const n = Number(v.trim()); return v.trim() !== "" && Number.isFinite(n) ? n : null; }
+      return null;
+    }
+    case "date": {
+      // Dates ARE serials, so a number passes straight through; a date STRING parses
+      // with the same parser the typed row uses.
+      if (typeof v === "number") return Number.isFinite(v) ? v : null;
+      if (typeof v === "string") { const n = parseDateToSerial(v); return Number.isFinite(n) ? n : null; }
+      return null;
+    }
+    case "string":
+      // A text list stringifies whatever arrives — that IS the conversion, and it's
+      // what makes a wildcard carrying numbers produce ["1","2"] instead of [].
+      if (typeof v === "string") return v;
+      return typeof v === "number" || typeof v === "boolean" ? String(v) : null;
+    case "logical":
+      return coerceLogical(v);
   }
 }
 
@@ -136,12 +165,12 @@ export class ListInputNode extends ClassicPreset.Node {
       const wired = slot === undefined || slot.length === 0 ? undefined : (slot[0] ?? null);
       if (wired !== undefined) {
         const arr = Array.isArray(wired) ? wired : [wired];
-        // A wired element of the row's type passes; `null` (MISSING) and a per-cell
-        // SolError ride through UNCHANGED rather than being dropped. Dropping them
-        // compacted the list — positions shifted out of step with any parallel list,
-        // and an upstream #DIV/0! vanished instead of propagating (error in → error out).
+        // `null` (MISSING) and a per-cell SolError ride through UNCHANGED — dropping
+        // them compacted the list (positions shifted out of step with any parallel
+        // list) and made an upstream #DIV/0! vanish instead of propagating. Everything
+        // else is CONVERTED to the row's type rather than filtered (see coerceElem).
         for (const v of arr) {
-          if (v === null || isSolError(v) || isElemKind(this.dataType, v)) list.push(v as AnyCell);
+          list.push(v === null || isSolError(v) ? (v as AnyCell) : coerceElem(this.dataType, v));
         }
       } else {
         for (const v of parseCsvList(this.dataType, this.stringLiterals[key])) list.push(v);
