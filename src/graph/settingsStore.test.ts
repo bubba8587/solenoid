@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { settingsStore, initSettings } from "./settingsStore";
+import { settingsStore, initSettings, SETTINGS_SCHEMA } from "./settingsStore";
 
 // settingsStore.ts persists to localStorage. The test environment is Node
 // (no built-in localStorage), so we provide a minimal in-memory mock so
@@ -188,5 +188,30 @@ describe("settingsStore — persistence round-trip", () => {
     const raw = localStorage.getItem(LS_KEY);
     const parsed = JSON.parse(raw!);
     expect(parsed.csvFolder).toBe("/second");
+  });
+});
+
+// `disabledOnMobile` is a CONTRACT, not a hint: a marked setting must be greyed in
+// Settings AND dropped from the command palette AND ignored by the feature. Pinning
+// the exact marked set here means adding the flag to a new field is a deliberate act
+// that fails this test until all three consumers are updated.
+describe("SETTINGS_SCHEMA — disabledOnMobile", () => {
+  const marked = SETTINGS_SCHEMA.flatMap((s) => s.fields)
+    .filter((f) => f.disabledOnMobile)
+    .map((f) => f.key)
+    .sort();
+
+  it("marks exactly the settings with no mobile counterpart", () => {
+    expect(marked).toEqual(["commandPaletteAlwaysOn", "minimapPosition"]);
+  });
+
+  it("every marked field is still a real, rendered field", () => {
+    for (const key of marked) {
+      const field = SETTINGS_SCHEMA.flatMap((s) => s.fields).find((f) => f.key === key);
+      expect(field, `${key} should exist in the schema`).toBeDefined();
+      // A "folder" field has no toggle/segment control to grey, so the flag would
+      // silently do nothing there.
+      expect(field!.type === "folder", `${key} must not be a folder field`).toBe(false);
+    }
   });
 });

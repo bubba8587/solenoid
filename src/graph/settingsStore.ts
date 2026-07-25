@@ -45,7 +45,8 @@ export interface Settings {
    *  where the DOM/canvas renderer would be dropping mip levels anyway. */
   semanticZoom: boolean;
   /** Keep the command palette docked and always visible (a persistent command bar)
-   *  instead of opening on Enter and closing on Escape. */
+   *  instead of opening on Enter and closing on Escape. Desktop only — see the
+   *  schema entry's `disabledOnMobile`. */
   commandPaletteAlwaysOn: boolean;
 }
 
@@ -77,6 +78,13 @@ export interface SettingField {
   placeholder?: string;
   /** Choices for a "segment" field. */
   options?: { value: string; label: string }[];
+  /** The feature this setting controls doesn't exist in mobile mode, so on a
+   *  phone the control is inert and greyed rather than silently doing nothing.
+   *  The mobile chrome is a different layout, not a narrower desktop — a couple
+   *  of desktop-only surfaces have no mobile counterpart at all. Consumers must
+   *  BOTH grey the control and skip the behaviour (Settings greys the row,
+   *  CommandPalette drops the "Toggle …" command, Canvas ignores the value). */
+  disabledOnMobile?: boolean;
 }
 export interface SettingsSection {
   title: string;
@@ -152,6 +160,9 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
         key: "minimapPosition",
         label: "Minimap position",
         type: "segment",
+        // The minimap is not rendered in mobile mode at all (Minimap.tsx), so
+        // every position here is a no-op on a phone.
+        disabledOnMobile: true,
         options: [
           { value: "bottom", label: "Bottom" },
           { value: "top", label: "Top" },
@@ -166,6 +177,11 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
         key: "commandPaletteAlwaysOn",
         label: "Always show command palette",
         help: "Keep it docked at the bottom instead of opening on Enter",
+        // Docking depends on a bottom strip the mobile chrome doesn't have: the
+        // palette is top-anchored on mobile (the on-screen keyboard owns the
+        // bottom half — CommandPalette.css), and the mobile bottom bar already
+        // opens it on demand. Canvas ignores the value on mobile.
+        disabledOnMobile: true,
       },
     ],
   },

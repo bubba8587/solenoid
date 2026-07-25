@@ -178,8 +178,15 @@ export function Canvas() {
   // outside Canvas's tree, and the keydown handler reads it closure-free.
   const paletteOpen = useSyncExternalStore(paletteStore.subscribe, paletteStore.get);
   // Always-on (docked) command palette: rendered persistently regardless of the
-  // open toggle, and non-modal (see CommandPalette `persistent`).
-  const paletteAlwaysOn = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("commandPaletteAlwaysOn"));
+  // open toggle, and non-modal (see CommandPalette `persistent`). DESKTOP ONLY —
+  // docking assumes a bottom strip the mobile chrome doesn't have (the palette is
+  // top-anchored there, since the on-screen keyboard owns the bottom half), and the
+  // mobile bottom bar already opens it on demand. Ignoring the stored value here is
+  // the behavioural half of the setting's `disabledOnMobile`; Settings greys the row
+  // so the two can't disagree. A value carried over from a desktop session (same
+  // localStorage, "Request desktop site" toggled off) is ignored rather than obeyed.
+  const paletteAlwaysOnSetting = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("commandPaletteAlwaysOn"));
+  const paletteAlwaysOn = paletteAlwaysOnSetting && !IS_MOBILE;
 
   // Remove the selected cables and/or nodes — mechanics in canvasActions.ts
   // (deleteSelection). Shared by the Delete/Backspace key path and the mobile
