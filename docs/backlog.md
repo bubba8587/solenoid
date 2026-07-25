@@ -23,6 +23,14 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   gate to the reduced style list". Verify, fix or clear the warning.
 - [ ] **Pinch-zoom on a real Mac trackpad** — should work via `e.ctrlKey` pinch wheel
   events; verify on hardware, intercept manually if not.
+- [ ] **Choppy zoom BAND — run the T1–T8 test plan** in dev-notes' 2026-07-24 open
+  problem. An interior range of camera scales is choppier than both very close and very
+  far zoom. Already ruled out: the gesture settle (3000ms hold changed nothing), element
+  count (far-out paints every card and is the SMOOTH case), the HIC mip curve. T1 (pin
+  the band's `k` range via `__solenoidPerf`, which now logs the worst frame's `k`) and
+  T2 (a Performance trace inside vs outside the band) gate the rest — don't build
+  anything before those two. Note: this supersedes `archive/performance-hardening.md`'s
+  ledger, whose ablations may all have been measured outside the band.
 
 ## 1.3 punt list (author call, 2026-07-16)
 

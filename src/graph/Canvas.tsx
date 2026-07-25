@@ -1175,11 +1175,18 @@ export function Canvas() {
       // true`, then pan or zoom — on gesture end it logs frames, mean frame time /
       // fps, the worst frame, and the dropped-frame count (>16.7ms = below 60fps).
       // A single rAF sampler shared by pan + zoom; concurrent triggers coalesce.
+      //
+      // Each frame is tagged with the camera scale `k` it was drawn at, and the log
+      // reports the k RANGE the gesture covered plus the k of the WORST frame. That's
+      // the instrument for the open "choppy zoom BAND" problem (dev-notes): the chop
+      // sits at some interior range of scales with both extremes smooth, so pinning
+      // the band numerically is step one, and a bare fps number can't do it. Zoom
+      // slowly across the range and read off which k the worst frames cluster at.
       const fpsProbe = (() => {
         let raf = 0, last = 0, label = "", active = false;
-        let samples: number[] = [];
+        let samples: { dt: number; k: number }[] = [];
         const tick = (t: number) => {
-          if (last) samples.push(t - last);
+          if (last) samples.push({ dt: t - last, k: area.area.transform.k });
           last = t;
           raf = requestAnimationFrame(tick);
         };
@@ -1194,14 +1201,17 @@ export function Canvas() {
             active = false;
             cancelAnimationFrame(raf);
             if (samples.length < 2) return;
-            const s = [...samples].sort((a, b) => a - b);
-            const mean = s.reduce((a, b) => a + b, 0) / s.length;
-            const dropped = s.filter((d) => d > 16.7).length;
+            const s = [...samples].sort((a, b) => a.dt - b.dt);
+            const mean = s.reduce((a, b) => a + b.dt, 0) / s.length;
+            const dropped = s.filter((d) => d.dt > 16.7).length;
+            const ks = samples.map((x) => x.k);
+            const worst = s[s.length - 1];
             // eslint-disable-next-line no-console
             console.log(
               `[perf] ${label} gesture: ${s.length} frames  ` +
               `mean=${mean.toFixed(1)}ms (${(1000 / mean).toFixed(0)}fps)  ` +
-              `worst=${s[s.length - 1].toFixed(1)}ms  ` +
+              `worst=${worst.dt.toFixed(1)}ms @ k=${worst.k.toFixed(3)}  ` +
+              `k=${Math.min(...ks).toFixed(3)}–${Math.max(...ks).toFixed(3)}  ` +
               `dropped(>16.7ms)=${dropped} (${Math.round((100 * dropped) / s.length)}%)`,
             );
           },
