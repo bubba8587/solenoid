@@ -117,6 +117,29 @@ describe("List Input (multi-type)", () => {
   // allow (null and SolError ride through ANY typed list), and it parsed its typed text
   // with a second, divergent parser that only ever ran in Number mode.
 
+  it("a wired element is CONVERTED to the row's type, not filtered out", () => {
+    // List Input is a typed literal SOURCE, so a wired element is converted exactly
+    // like the typed text on the same row. Filtering meant the SAME value behaved
+    // differently typed vs wired.
+    const run = (t: "number" | "string" | "date" | "logical", v: unknown) =>
+      new ListInputNode({ dataType: t }).data({ v0: [v] }).list;
+    expect(run("date", ["01-Jan-2026", "02-Jan-2026"])).toEqual([46023, 46024]); // parsed, was []
+    expect(run("number", ["1", "2.5"])).toEqual([1, 2.5]);
+    expect(run("string", [1, 2])).toEqual(["1", "2"]);
+    expect(run("logical", ["yes"])).toEqual([null]); // coerceLogical's vocabulary, wired
+    // Genuinely unconvertible is null (MISSING) — never a dropped element.
+    expect(run("number", ["abc", 5])).toEqual([null, 5]);
+    expect(run("date", ["nope"])).toEqual([null]);
+  });
+
+  it("a WILDCARD source can't silently empty the list (any / anylist / trueany)", () => {
+    // The wildcard ladder means `any`/`anylist`/`trueany` connect to EVERY row socket,
+    // but carry whatever value flowed in. A number reaching a Text row used to make the
+    // whole list vanish — empty output, no cable rejected, no error shown.
+    expect(new ListInputNode({ dataType: "string" }).data({ v0: [[1, 2]] }).list).toEqual(["1", "2"]);
+    expect(new ListInputNode({ dataType: "string" }).data({ v0: [5] }).list).toEqual(["5"]);
+  });
+
   it("a wired null (MISSING) rides through — it is NOT dropped, and does NOT resurrect the row text", () => {
     for (const t of ["number", "date", "logical", "string"] as const) {
       const n = new ListInputNode({ dataType: t });

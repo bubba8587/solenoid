@@ -10,14 +10,6 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
 
 ## Bugs & verifications
 
-- [ ] **List Input — element-family mismatch policy (author call)** — a wired list whose
-  family doesn't match the SegToggle silently yields `[]`; a scalar widened into Text
-  mode is dropped. Reachable because `setDataType` retypes sockets IN PLACE and fires no
-  connection event, so flipping the toggle after wiring leaves an ill-typed input cable
-  (`retypeOutputCables` only handles the output side). Three options: keep dropping (but
-  surface it — the mismatch scan already flags ill-typed cables), Cast-coerce the
-  elements, or emit `#TYPE!` (the element-family error code the numeric matrix ops use).
-  The other four bugs from the 2026-07-25 audit are fixed — see the dev-notes digest.
 - [ ] **Window min/max/close controls missing (desktop)** — `tauri-plugin-decorum`'s
   `create_overlay_titlebar()` isn't rendering the controls. Ruled out: the accent
   border. Needs a live devtools look (F12 — CSP/decorum errors?) or a decorum/tauri

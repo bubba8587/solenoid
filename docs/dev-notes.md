@@ -151,11 +151,18 @@ app-wide, but touches feel of zoom).
   `yes/no/y/n/t/f` spellings — was real and is preserved, but as `parseBoolText` local to the
   typed-text parser rather than widened into `coerceLogical`, which would change how every WIRED
   value coerces.
-- **Still open (author call): the element-family mismatch.** A wired list whose family doesn't
-  match the SegToggle still silently yields `[]` (and a scalar widened into Text mode is dropped).
-  Reachable because `setDataType` retypes sockets IN PLACE and fires no connection event, so
-  flipping the toggle after wiring leaves an ill-typed input cable. Drop / coerce / `#TYPE!` is a
-  policy call — backlog item.
+- **Fifth bug, found by sweeping what can CONNECT rather than what data() does: a wired element
+  was FILTERED, not converted.** `isElemKind` kept only `typeof v === <the row's type>` and
+  discarded the rest, so the SAME value behaved differently typed vs wired — `01-Jan-2026` typed
+  into a Date row parses to a serial, wired in it was thrown away. The sharp edge is the WILDCARD
+  ladder: `any`/`anylist`/`trueany` are ACCEPTED by every row socket (correctly — that's what the
+  ladder means) but carry whatever value flowed in, so a Display/Conduit/INDEX carrying a number
+  wired into a Text row silently emptied the list — no cable rejected, no error, just nothing.
+  Fixed by CONVERTING instead (`coerceElem`), which is the right model anyway: List Input is a
+  typed literal SOURCE whose job is "emit a list of type T", so a wired element gets the same
+  treatment as the typed text beside it. Unconvertible → `null`, consistent with the text policy.
+  Note `applyListType` already drops ill-typed input cables when the SegToggle flips, so the
+  toggle path was covered — it was the wildcard path that had no guard at all.
 
 ### VSTACK/HSTACK join the passthrough set (same session)
 - **The backlog's "passthrough annotation opt-in" sub-item was mostly STALE** — Concat Lists,
