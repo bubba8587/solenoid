@@ -57,14 +57,6 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
 
 ## Build queue (decided, unbuilt)
 
-- [ ] **Sweep the COMPLEX family onto combo sockets — the one family left.** Number, date
-  (2026-07-25) and text (2026-07-25d) are done; `complexcombo` still has zero node uses. It
-  can't reuse `broadcastCells`: a complex value is itself `[re, im]`, so `Array.isArray`
-  can't tell a scalar from a list of them and the element type is constrained against it.
-  Needs a complex-specific broadcaster (zip on the OUTER array only when its first element
-  is itself an array), then `complex.ts`'s element-wise ops follow the same
-  operand-vs-mode criterion as the other two passes (node-coverage.md's input-dimensionality
-  rule).
 - [ ] **AI command palette — flesh out the mode behind the UI shell.** The shell shipped
   UI-only: Settings ▸ AI stores a key (`aiKey.ts` → `apiKeyStore`), and its presence
   reveals a sparkle that flips the palette to an accent-filled prompt box

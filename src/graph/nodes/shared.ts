@@ -241,7 +241,9 @@ export function broadcastErr(
 // Element types are constrained to `Cell` (string | number | boolean) because the
 // list check is `Array.isArray` — an element that is ITSELF an array can't be told
 // apart from a list of them. That's why the complex family (a value is `[re, im]`)
-// needs its own broadcaster rather than this one.
+// carries its OWN broadcaster instead: `broadcastComplex` in nodes/complex.ts, with
+// an exact shape test and per-operand tags. Reach for that one, not this, if a
+// future element type is array-shaped.
 type Cell = string | number | boolean;
 
 export function broadcastCells<A extends Cell, R extends Cell>(
