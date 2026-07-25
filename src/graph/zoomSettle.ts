@@ -9,7 +9,7 @@
 // Both renderers hit the identical thrash and must hold for the SAME window — hence one
 // constant here rather than two copies that drift apart.
 //
-// NEGATIVE RESULT — do NOT retry a long settle for the choppy-zoom BAND (2026-07-24).
+// NEGATIVE RESULT — do NOT retry a long settle for the choppy-zoom BAND (2026-07-25).
 // Held this at 3000ms on a deployed preview to test whether the chop was the gesture
 // exiting per notch and paying the scale-change repaint over and over. It is not: the
 // author reports the choppy band survives the long hold unchanged. The 420ms value from

@@ -23,7 +23,7 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   gate to the reduced style list". Verify, fix or clear the warning.
 - [ ] **Pinch-zoom on a real Mac trackpad** — should work via `e.ctrlKey` pinch wheel
   events; verify on hardware, intercept manually if not.
-- [ ] **Choppy zoom BAND — run the T1–T8 test plan** in dev-notes' 2026-07-24 open
+- [ ] **Choppy zoom BAND — run the T1–T8 test plan** in dev-notes' 2026-07-25 open
   problem. An interior range of camera scales is choppier than both very close and very
   far zoom. Already ruled out: the gesture settle (3000ms hold changed nothing), element
   count (far-out paints every card and is the SMOOTH case), the HIC mip curve. T1 (pin
@@ -56,6 +56,20 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   Properties window ships without them) — a format-pipeline integration, author-present.
 
 ## Build queue (decided, unbuilt)
+
+- [ ] **AI command palette — flesh out the mode behind the UI shell.** The shell shipped
+  UI-only: Settings ▸ AI stores a key (`aiKey.ts` → `apiKeyStore`), and its presence
+  reveals a sparkle that flips the palette to an accent-filled prompt box
+  (`--ai` in `CommandPalette.css`). Nothing calls a service — submitting is inert, with
+  the TODO at the send site in `onKeyDown`. Undecided and needed before building:
+  which provider(s) and whether the key is per-provider (today it's the single `"ai"`
+  slot); what a prompt is allowed to DO (answer about the graph, vs. author/modify nodes
+  — the latter needs an action-approval step, not a chat log); where a response renders
+  (the suppressed result panel is the obvious slot, but the palette is a launcher, not a
+  transcript); whether AI mode should persist across palette opens (today it's local
+  state and resets, deliberately). Also unresolved: the key is in localStorage like the
+  data-provider keys, which is fine for a key the user pastes, but an OAuth-style
+  "connect an account" flow would change that shape.
 
 - [ ] **Formula ↔ node parity program (D19, greenlit — build in a dedicated session)** —
   converge the formula language and the node set; audit + tiers + decisions in

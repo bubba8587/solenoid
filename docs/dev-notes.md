@@ -6,7 +6,7 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
-### OPEN PROBLEM (2026-07-24 — a choppy zoom BAND: interior range of scales, both extremes smooth)
+### OPEN PROBLEM (2026-07-25 — a choppy zoom BAND: interior range of scales, both extremes smooth)
 Zoom chop is **not** monotonic in graph size or zoom depth. There is a specific interior range of
 camera scales that is markedly choppier than BOTH very close zoom AND very far zoom. Observed by
 the author on the Vercel preview of `develop` (desktop browser → DOM renderer; `drawElementImage`
@@ -120,7 +120,41 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
-### SESSION DIGEST (2026-07-24 — cables see through Conduits: inspector + run selection)
+### SESSION DIGEST (2026-07-25b — zoom-band diagnosis; mobile-only settings; AI palette shell)
+- **Choppy zoom band** — the session's main finding, written up as its own OPEN PROBLEM above
+  (symptom, three things ruled out, instrumentation, the T1–T8 plan). Not repeated here. Landed
+  alongside it: `zoomSettle.ts` (the settle window, previously duplicated in `Canvas.tsx` and
+  `HtmlCanvasLayer.tsx`, now one constant with a `window.__zoomSettle` override so it can be
+  re-A/B'd on a deployed preview), and `fpsProbe` now tags every sampled frame with the camera
+  scale, reporting the worst frame's `k` and the `k` range covered — there was previously no
+  console handle for the live transform, which is what T1 needs.
+- **Renderer-alternatives question (no code).** If DOM and HIC both became unacceptable: native is
+  strictly dominated (~126k LOC of app logic is TypeScript against 3.2k of Rust; it kills the web
+  target and still requires the same card port on top). A hand-drawn card toolkit is tractable for
+  the ~169/322 components on `nodeKit` and codegen-able off `nodeCatalog.ts`, but its real cost is
+  structural, not labour: the design system moves from CSS into imperative draw code, and the
+  0.5px/1px fidelity bar has to be met against a DOM reference the author A/Bs it with. The
+  deciding question is whether such a renderer would REPLACE the DOM path or sit beside it forever
+  — a permanent second implementation of every card is the expensive outcome, and free effort makes
+  it worse, not better. Not recorded as a decision; nothing was chosen.
+- **`disabledOnMobile` on a settings-schema field** — a three-consumer contract, not a style: the
+  Settings row greys with a reason, `buildSettingToggles` drops the "Toggle …" command so the
+  palette isn't a back door, and the feature ignores the stored value. Marked on
+  `commandPaletteAlwaysOn` (docking wants a bottom strip mobile doesn't have — the palette is
+  top-anchored there because the keyboard owns the bottom half) and `minimapPosition` (the minimap
+  isn't rendered on mobile at all). `Canvas.tsx` ignores a `commandPaletteAlwaysOn` carried into
+  mobile from a desktop session in the same localStorage. `settingsStore.test.ts` pins the marked
+  set, so adding the flag elsewhere fails until every consumer is updated.
+- **AI command palette — UI SHELL ONLY.** `aiKey.ts` (`AI_PROVIDER` + `aiConnected()`) over the
+  existing `apiKeyStore`; a Settings ▸ AI section stores the key. A stored key reveals a sparkle in
+  the palette that flips it to an accent-filled prompt box (`--accent` + `--accent-ink`, command
+  results suppressed so Enter can't mean two things). Nothing calls a service — submitting is
+  deliberately inert with the TODO at the send site, rather than faking a reply. Accent-filling the
+  palette is a deliberate, narrow exception to the Quiet Accent Rule (which permits a coloured
+  surface that communicates STATE): the primary action is rerouted. Flesh-out decisions are
+  enumerated in the backlog item, not here.
+
+### SESSION DIGEST (2026-07-25 — cables see through Conduits: inspector + run selection)
 A Conduit is wiring, not computation, so a single cable is a SEGMENT of a longer run.
 Both cable-legibility surfaces now work on the run instead of the segment.
 - **`conduitPath` (`conduitTrace.ts`, unit-tested)** — the run a cable belongs to: climb
