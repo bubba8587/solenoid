@@ -1,6 +1,6 @@
 # Performance hardening — the final zoom verdict
 
-> **PARTIALLY SUPERSEDED (2026-07-24) — read the "choppy zoom BAND" open problem in
+> **PARTIALLY SUPERSEDED (2026-07-25) — read the "choppy zoom BAND" open problem in
 > `../dev-notes.md` first.** The author has since observed that zoom chop is *not*
 > monotonic: a specific INTERIOR range of camera scales is choppier than both very close
 > and very far zoom. Every lever in the ledger below was measured without knowing a band
