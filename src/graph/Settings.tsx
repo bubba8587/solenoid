@@ -3,6 +3,8 @@ import { useFocusTrap } from "./components/useFocusTrap";
 import { useEscapeToClose } from "./components/useEscapeToClose";
 import { settingsStore, settingsPanel, SETTINGS_SCHEMA, type SettingField } from "./settingsStore";
 import { apiKeyStore } from "./apiKeyStore";
+import { AI_PROVIDER } from "./aiKey";
+import { IS_MOBILE } from "./coarse";
 import { packsStore, allPacks, loadCustomPacks, customPacksFolder } from "./packs";
 import { isDesktop, pickFolderDialog, openInFileManager } from "./fileBridge";
 import { paletteStore, paletteEditorPanel, type PaletteChoice } from "./palette";
@@ -19,13 +21,20 @@ import "./Settings.css";
  * section here in a later pass.)
  */
 
-function Switch({ on, onClick, label }: { on: boolean; onClick: () => void; label: string }) {
+// A setting whose feature has no mobile counterpart renders inert and greyed, with
+// one line saying why. Greying rather than hiding keeps the Settings page the same
+// shape on both, so a user who knows the desktop app can still find the row.
+const MOBILE_NA = "Not available in mobile mode.";
+const naOnThisDevice = (field: SettingField): boolean => IS_MOBILE && !!field.disabledOnMobile;
+
+function Switch({ on, onClick, label, disabled }: { on: boolean; onClick: () => void; label: string; disabled?: boolean }) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={on}
       aria-label={label}
+      disabled={disabled}
       className={`solenoid-settings__switch${on ? " solenoid-settings__switch--on" : ""}`}
       onClick={onClick}
     >
@@ -34,27 +43,36 @@ function Switch({ on, onClick, label }: { on: boolean; onClick: () => void; labe
   );
 }
 
-function Row({ label, help, on, onToggle }: { label: string; help?: string; on: boolean; onToggle: () => void }) {
+function Row({ label, help, on, onToggle, disabled, disabledNote }: {
+  label: string; help?: string; on: boolean; onToggle: () => void;
+  disabled?: boolean; disabledNote?: string;
+}) {
   return (
     // Stays a <label> so clicking anywhere on the row toggles the switch (the
     // browser forwards the click to the first labelable descendant). Switch's
     // own explicit aria-label wins over that implicit association, so the
     // announced name is just the label — the help text doesn't fold in.
-    <label className="solenoid-settings__row">
+    // When disabled the <button> is inert, so the label's click forwarding is a
+    // no-op too — no extra guard needed.
+    <label className={`solenoid-settings__row${disabled ? " solenoid-settings__row--disabled" : ""}`}>
       <span className="solenoid-settings__row-text">
         <span className="solenoid-settings__row-label">{label}</span>
         {help && <span className="solenoid-settings__row-help">{help}</span>}
+        {disabled && disabledNote && <span className="solenoid-settings__muted">{disabledNote}</span>}
       </span>
-      <Switch on={on} onClick={onToggle} label={label} />
+      <Switch on={on} onClick={onToggle} label={label} disabled={disabled} />
     </label>
   );
 }
 
 function Toggle({ field }: { field: SettingField }) {
+  const off = naOnThisDevice(field);
   return (
     <Row
       label={field.label}
       help={field.help}
+      disabled={off}
+      disabledNote={MOBILE_NA}
       on={settingsStore.get(field.key) as boolean}
       onToggle={() => settingsStore.toggle(field.key as Parameters<typeof settingsStore.toggle>[0])}
     />
@@ -64,11 +82,13 @@ function Toggle({ field }: { field: SettingField }) {
 // A mutually-exclusive choice: a row of buttons, one highlighted.
 function SegmentRow({ field }: { field: SettingField }) {
   const value = settingsStore.get(field.key) as string;
+  const off = naOnThisDevice(field);
   return (
-    <div className="solenoid-settings__row">
+    <div className={`solenoid-settings__row${off ? " solenoid-settings__row--disabled" : ""}`}>
       <span className="solenoid-settings__row-text">
         <span className="solenoid-settings__row-label">{field.label}</span>
         {field.help && <span className="solenoid-settings__row-help">{field.help}</span>}
+        {off && <span className="solenoid-settings__muted">{MOBILE_NA}</span>}
       </span>
       <span className="solenoid-settings__segment" role="radiogroup">
         {(field.options ?? []).map((o) => (
@@ -77,6 +97,7 @@ function SegmentRow({ field }: { field: SettingField }) {
             type="button"
             role="radio"
             aria-checked={value === o.value}
+            disabled={off}
             className={`solenoid-settings__segbtn${value === o.value ? " solenoid-settings__segbtn--on" : ""}`}
             onClick={() => settingsStore.set(field.key, o.value as never)}
           >
@@ -311,6 +332,25 @@ function ApiKeysSection() {
   );
 }
 
+// The AI account. Its own section rather than a third row under the data providers:
+// the key gates a different surface (the command palette's AI mode), not a data node.
+// Storing a key is the whole "connect an account" step for now; nothing calls a
+// service yet, so the key's only effect is to reveal the palette's sparkle.
+function AiSection() {
+  useSyncExternalStore(apiKeyStore.subscribe, apiKeyStore.version);
+  return (
+    <div className="solenoid-settings__section">
+      <div className="solenoid-settings__section-title">AI</div>
+      <ApiKeyRow
+        id={AI_PROVIDER}
+        label="API key"
+        help="Connects an AI account. The command palette gains a sparkle that switches it to asking the AI."
+      />
+      <div className="solenoid-settings__note">Stored only on this device. No requests are sent yet.</div>
+    </div>
+  );
+}
+
 export function Settings() {
   const open = useSyncExternalStore(settingsPanel.subscribe, settingsPanel.get);
   useSyncExternalStore(settingsStore.subscribe, settingsStore.version);
@@ -341,6 +381,7 @@ export function Settings() {
           ))}
           <PaletteSection />
           <RendererSection />
+          <AiSection />
           <ApiKeysSection />
           <PacksSection />
         </div>

@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { fieldScore } from "./fuzzy";
+import { IS_MOBILE } from "./coarse";
+import { apiKeyStore } from "./apiKeyStore";
+import { aiConnected } from "./aiKey";
 import { commandRecents } from "./commandRecents";
 import { paletteStore } from "./paletteStore";
 import { settingsStore, SETTINGS_SCHEMA } from "./settingsStore";
@@ -15,6 +18,18 @@ function fireCanvasKey(code: string, opts: { ctrl?: boolean; shift?: boolean } =
     new KeyboardEvent("keydown", {
       code, ctrlKey: !!opts.ctrl, shiftKey: !!opts.shift, bubbles: true, cancelable: true,
     }),
+  );
+}
+
+// Lucide "sparkle" (ISC) — the AI affordance. One four-point star, stroked like every
+// other icon here; deliberately NOT the three-star cluster or a filled gradient mark,
+// which is the AI-startup look DESIGN.md rejects. 16px in a 24px box: both even, so
+// the glyph centres on whole pixels (CLAUDE.md's even-icon rule).
+function SparkleIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+    </svg>
   );
 }
 
@@ -61,6 +76,10 @@ function buildSettingToggles(): PaletteItem[] {
   for (const section of SETTINGS_SCHEMA) {
     for (const f of section.fields) {
       if (f.type === "folder" || f.type === "segment") continue;
+      // A setting Settings greys out on this device must not be reachable as a
+      // command either — otherwise the palette is a back door to flipping a value
+      // whose feature isn't there, and the two surfaces disagree.
+      if (IS_MOBILE && f.disabledOnMobile) continue;
       out.push({
         id: `setting:${f.key}`,
         kind: "setting",
@@ -75,6 +94,18 @@ function buildSettingToggles(): PaletteItem[] {
 
 export function CommandPalette({ onClose, persistent = false }: { onClose: () => void; persistent?: boolean }) {
   const [query, setQuery] = useState("");
+  // AI mode: the palette stops being a command launcher and becomes a prompt box.
+  // Local state, not a store — the mode is a property of THIS palette session, so a
+  // modal that's dismissed and reopened comes back in command mode (the default a
+  // blind Enter should land in). UI ONLY: nothing is sent anywhere yet.
+  const [aiMode, setAiMode] = useState(false);
+  // The sparkle appears only once an AI account is connected (a key stored in
+  // Settings ▸ AI). Subscribed so storing or clearing the key shows/hides it live.
+  useSyncExternalStore(apiKeyStore.subscribe, apiKeyStore.version);
+  const aiAvailable = aiConnected();
+  // Clearing the key while the palette sits in AI mode must not strand it in a mode
+  // whose only exit control just disappeared.
+  useEffect(() => { if (!aiAvailable) setAiMode(false); }, [aiAvailable]);
   // -1 = nothing selected. The palette opens with NO active row — a blind
   // Enter must never fire an action the user didn't pick (the browse list is
   // a menu, not a ranked answer). Typing a query DOES auto-select the top
@@ -103,6 +134,10 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
   useEffect(() => setActiveIndex(query.trim() ? 0 : -1), [query]);
 
   const results = useMemo<PaletteItem[]>(() => {
+    // AI mode has no result list: what you type is a prompt, not a query over
+    // commands, so ranking commands under it would offer an Enter that does
+    // something other than what the field says it will.
+    if (aiMode) return [];
     const q = query.trim();
     // No query → 8 command previews, LED by the 3 most-recently-run commands (from
     // the palette or the menu bar), then the default order filling the rest. The
@@ -127,7 +162,7 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
     }
     scored.sort((a, b) => b.score - a.score);
     return scored.slice(0, 20).map((s) => s.item);
-  }, [query, commands, toggles, persistent, focused, recentsVersion]);
+  }, [query, commands, toggles, persistent, focused, recentsVersion, aiMode]);
 
   function run(item: PaletteItem) {
     // Record repeatable actions (not a one-off jump to a specific node) so they can
@@ -141,6 +176,13 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
   }
 
   function onKeyDown(e: React.KeyboardEvent) {
+    // AI mode: only Escape still means anything. Submitting is deliberately inert —
+    // there is no service wired up, and faking a reply would read as a working
+    // feature. TODO: send `query` to the AI here once a provider is connected.
+    if (aiMode && e.key !== "Escape") {
+      if (e.key === "Enter") e.preventDefault();
+      return;
+    }
     if (e.key === "ArrowDown") { e.preventDefault(); setActiveIndex((i) => Math.min(i + 1, results.length - 1)); }
     else if (e.key === "ArrowUp") { e.preventDefault(); setActiveIndex((i) => Math.max(i - 1, 0)); }
     // activeIndex -1 (nothing selected) makes Enter a no-op — see its comment.
@@ -155,7 +197,13 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
       className={`solenoid-cmdpalette-scrim${persistent ? " solenoid-cmdpalette-scrim--persistent" : ""}`}
       onMouseDown={persistent ? undefined : onClose}
     >
-      <div className={`solenoid-cmdpalette${persistent ? " solenoid-cmdpalette--persistent" : ""}`} onMouseDown={(e) => e.stopPropagation()}>
+      <div
+        className={
+          `solenoid-cmdpalette${persistent ? " solenoid-cmdpalette--persistent" : ""}` +
+          (aiMode ? " solenoid-cmdpalette--ai" : "")
+        }
+        onMouseDown={(e) => e.stopPropagation()}
+      >
         {results.length > 0 && (
           // preventDefault on mousedown so clicking a row doesn't blur the input —
           // in docked mode a blur would hide the suggestion list before the click fires.
@@ -180,35 +228,53 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
             ))}
           </div>
         )}
-        <input
-          ref={inputRef}
-          className="solenoid-cmdpalette__input"
-          value={query}
-          // A SEMANTIC search field — the reliable lever to stop Android Chrome's
-          // autofill bar (password / card / address). `autocomplete="off"` alone
-          // doesn't (Chrome ignores it), and a `name`d `type="text"` reads as a
-          // fillable form field; `type="search"` tells the OS it's a search box, so
-          // it drops the credential/payment/address prompts. No `name` (our other
-          // fields have none and don't trigger it). Native clear (×) hidden in CSS.
-          type="search"
-          inputMode="search"
-          enterKeyHint="go"
-          autoComplete="off"
-          autoCorrect="off"
-          autoCapitalize="off"
-          spellCheck={false}
-          data-1p-ignore
-          data-lpignore="true"
-          placeholder="Run a command…"
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={onKeyDown}
-          onFocus={() => setFocused(true)}
-          // Persistent: dropping focus also clears paletteStore (onClose ===
-          // paletteStore.close), so the next bare Enter flips it true again and
-          // the focus effect above re-fires. Without this reset the store stays
-          // true after the first Enter and the hotkey never re-focuses the bar.
-          onBlur={() => { setFocused(false); if (persistent) onClose(); }}
-        />
+        <div className={`solenoid-cmdpalette__field${aiAvailable ? " solenoid-cmdpalette__field--ai" : ""}`}>
+          <input
+            ref={inputRef}
+            className="solenoid-cmdpalette__input"
+            value={query}
+            // A SEMANTIC search field — the reliable lever to stop Android Chrome's
+            // autofill bar (password / card / address). `autocomplete="off"` alone
+            // doesn't (Chrome ignores it), and a `name`d `type="text"` reads as a
+            // fillable form field; `type="search"` tells the OS it's a search box, so
+            // it drops the credential/payment/address prompts. No `name` (our other
+            // fields have none and don't trigger it). Native clear (×) hidden in CSS.
+            type="search"
+            inputMode="search"
+            enterKeyHint="go"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            data-1p-ignore
+            data-lpignore="true"
+            placeholder={aiMode ? "Ask the AI…" : "Run a command…"}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={onKeyDown}
+            onFocus={() => setFocused(true)}
+            // Persistent: dropping focus also clears paletteStore (onClose ===
+            // paletteStore.close), so the next bare Enter flips it true again and
+            // the focus effect above re-fires. Without this reset the store stays
+            // true after the first Enter and the hotkey never re-focuses the bar.
+            onBlur={() => { setFocused(false); if (persistent) onClose(); }}
+          />
+          {aiAvailable && (
+            <button
+              type="button"
+              className="solenoid-cmdpalette__ai"
+              aria-pressed={aiMode}
+              aria-label={aiMode ? "Back to commands" : "Ask the AI"}
+              title={aiMode ? "Back to commands" : "Ask the AI"}
+              // preventDefault so the press doesn't blur the input: in docked mode a
+              // blur calls onClose (clearing paletteStore) and hides the list, so the
+              // mode would flip and the bar would drop focus in the same click.
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => { setAiMode((m) => !m); inputRef.current?.focus(); }}
+            >
+              <SparkleIcon />
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
