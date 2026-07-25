@@ -1,6 +1,7 @@
 import { ClassicPreset } from "rete";
 import { numListSocket, strListSocket, dateListSocket, logicalListSocket, type SolenoidSocket } from "../sockets";
-import { parseDateToSerial } from "./date";
+import { parseListLiteral } from "../coerceInputs";
+import type { Cell as AnyCell } from "./coerce";
 import { getRecalcGen } from "../process";
 import { listIn, listOut, numIn, numOut, anyIn, trueAnyIn, staticTrueAnyOut, strIn, logicalOut, logicalListOut, frameIn, frameOut, anyListIn, adoptiveListIn, adoptiveListOut } from "./shared";
 import type { PassthroughSpec } from "./passthrough";
@@ -26,27 +27,24 @@ const LIST_ELEM_SOCKET: Record<ListElemType, SolenoidSocket> = {
   logical: logicalListSocket,
 };
 
-function parseBoolCell(s: string): boolean | null {
-  const t = s.trim().toLowerCase();
-  if (t === "true" || t === "1" || t === "yes" || t === "y" || t === "t") return true;
-  if (t === "false" || t === "0" || t === "no" || t === "n" || t === "f") return false;
-  return null;
+/** Parse one row's comma-separated text into a typed list. Delegates to the ONE
+ *  typed-list literal parser (`parseListLiteral`) so a row parses identically however
+ *  the SegToggle is set: RFC-4180 quoting everywhere (`"First, Last", qty` is two
+ *  fields in EVERY mode), and an unparseable part is first-class `null` in every mode.
+ *
+ *  This used to be a second, divergent parser — a naive `split(",")` with a
+ *  drop-what-doesn't-parse rule — and it was DEAD for three of the four types:
+ *  coerceInputs injects `parseListLiteral`'s result for any `TYPEABLE_LIST` socket
+ *  (strlist/datelist/logicallist) before data() runs, so only Number mode ever reached
+ *  it. That's why quoting worked in Text mode but not Number mode, and why Date mode
+ *  emitted NaN where Number mode dropped the cell. One parser, one policy. */
+function parseCsvList(dt: ListElemType, s: string | undefined): AnyCell[] {
+  return s ? (parseListLiteral(s, LIST_ELEM_SOCKET[dt].dataType) as AnyCell[]) : [];
 }
 
-/** Parse one row's comma-separated text into a typed list, per element type. Blanks
- *  are dropped; a part that doesn't parse for the type is dropped. Empty → []. */
-function parseCsvList(dt: ListElemType, s: string | undefined): (number | string | boolean)[] {
-  if (!s) return [];
-  const parts = s.split(",").map((p) => p.trim()).filter((p) => p !== "");
-  switch (dt) {
-    case "number":  return parts.map(Number).filter((n) => Number.isFinite(n));
-    case "string":  return parts;
-    case "date":    return parts.map(parseDateToSerial).filter((n) => Number.isFinite(n));
-    case "logical": return parts.map(parseBoolCell).filter((b): b is boolean => b !== null);
-  }
-}
-
-/** Does a wired element match the current element type? (Dates are serial numbers.) */
+/** Does a wired element match the current element type? (Dates are serial numbers.)
+ *  `null` (MISSING) and a per-cell `SolError` are NOT element kinds — they ride
+ *  through any typed list by the value model, so callers keep them before asking. */
 function isElemKind(dt: ListElemType, v: unknown): boolean {
   switch (dt) {
     case "number":  return typeof v === "number";
@@ -60,7 +58,7 @@ export class ListInputNode extends ClassicPreset.Node {
   label: string;
   // Homogeneous list of the selected element type: numbers, strings, date serials, or
   // booleans. Cast to DisplayValue at the value box.
-  cachedList: (number | string | boolean)[] = [];
+  cachedList: AnyCell[] = [];
   // The element type, switched by the card's SegToggle (re-types the row + output
   // sockets in place — see setDataType).
   dataType: ListElemType;
@@ -128,15 +126,24 @@ export class ListInputNode extends ClassicPreset.Node {
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {
-    const list: (number | string | boolean)[] = [];
+    const list: AnyCell[] = [];
     for (const key of Object.keys(this.inputs)) {
-      const wired = inputs[key]?.[0];
-      if (wired != null) {
-        // A wired list (or scalar) — take the elements matching the element type.
+      // `readInput` semantics: a CONNECTED cable wins even when its value is `null` —
+      // only an UNWIRED row (undefined) falls back to the typed text. The old
+      // `wired != null` test resurrected the row's text for a wired MISSING, which is
+      // the `??`-swallowing bug (a blank flowing in became whatever was typed in the box).
+      const slot = inputs[key];
+      const wired = slot === undefined || slot.length === 0 ? undefined : (slot[0] ?? null);
+      if (wired !== undefined) {
         const arr = Array.isArray(wired) ? wired : [wired];
-        for (const v of arr) if (isElemKind(this.dataType, v)) list.push(v as number | string | boolean);
+        // A wired element of the row's type passes; `null` (MISSING) and a per-cell
+        // SolError ride through UNCHANGED rather than being dropped. Dropping them
+        // compacted the list — positions shifted out of step with any parallel list,
+        // and an upstream #DIV/0! vanished instead of propagating (error in → error out).
+        for (const v of arr) {
+          if (v === null || isSolError(v) || isElemKind(this.dataType, v)) list.push(v as AnyCell);
+        }
       } else {
-        // Otherwise the row's typed, comma-separated list.
         for (const v of parseCsvList(this.dataType, this.stringLiterals[key])) list.push(v);
       }
     }

@@ -62,15 +62,33 @@ function coercionType(socket: unknown): SocketDataType | undefined {
 // singleton-widening would turn `a+b` of two scalars into a 1-element list. The socket
 // is untouched — widening stays the default for every other consumer of that type.
 
+/** TYPED text → logical. `coerceLogical` is the value-model rule for a WIRED value
+ *  (TRUE/FALSE + the numeric bridge); a human typing into a list box also gets the
+ *  friendlier yes/no/y/n/t/f spellings, which is why this vocabulary lives here and
+ *  not in `coerceLogical` — widening that would change how every wired value coerces.
+ *  Anything else is Kleene null (unknown), never a defaulted FALSE. */
+function parseBoolText(p: string): boolean | null {
+  const t = p.trim().toLowerCase();
+  if (t === "yes" || t === "y" || t === "t") return true;
+  if (t === "no"  || t === "n" || t === "f") return false;
+  return coerceLogical(p);
+}
+
 export function parseListLiteral(csv: string, dt: SocketDataType): unknown[] {
   // Real CSV parsing (RFC 4180 via parseCsvLine), so a value containing a comma
   // works when quoted — `"First, Last", qty` → ["First, Last", "qty"] — and a
   // literal double-quote is the doubled `""`. Trim the UNquoted whitespace and
   // drop empty fields (a trailing comma).
   const parts = parseCsvLine(csv).map((s) => s.trim()).filter((s) => s !== "");
-  if (dt === "datelist") return parts.map((p) => parseDateToSerial(p));
-  if (dt === "logicallist") return parts.map((p) => coerceLogical(p) ?? false);
-  return parts; // strlist
+  // A part that doesn't parse for the type is first-class `null` (MISSING) — never a
+  // dropped element, a NaN, or a coerced `false`. Dropping would silently shorten the
+  // list and shift every position after it; `?? false` would assert a FALSE the user
+  // never typed, throwing away exactly the Kleene null `coerceLogical` returns for
+  // "not coercible". A hole is visible, propagates, and Fill/Coalesce recovers it.
+  if (dt === "numlist" || dt === "list") return parts.map((p) => (p !== "" && Number.isFinite(Number(p)) ? Number(p) : null));
+  if (dt === "datelist") return parts.map((p) => { const n = parseDateToSerial(p); return Number.isFinite(n) ? n : null; });
+  if (dt === "logicallist") return parts.map(parseBoolText);
+  return parts; // strlist — every part is valid text
 }
 
 // ─── Central input coercion ───────────────────────────────────────────────────

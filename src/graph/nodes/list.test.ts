@@ -98,13 +98,75 @@ describe("List Input (multi-type)", () => {
     expect(typeof out[0]).toBe("number");
     expect(out[1] as number).toBeGreaterThan(out[0] as number);
   });
-  it("logical type parses booleans (true/false/1/0/yes/no) and drops junk", () => {
+  it("logical type parses booleans (true/false/1/0/yes/no); junk is null, not FALSE", () => {
+    // "maybe" is UNKNOWN, so it's Kleene null — the old `?? false` asserted a FALSE the
+    // user never typed. (This test used to pin the DEAD in-file parser, which dropped
+    // junk; production ran parseListLiteral and returned false. Both are now null.)
     const n = new ListInputNode({ dataType: "logical" });
     n.stringLiterals["v0"] = "true, false, 1, 0, yes, no, maybe";
-    expect(n.data({}).list).toEqual([true, false, true, false, true, false]);
+    expect(n.data({}).list).toEqual([true, false, true, false, true, false, null]);
   });
   it("setDataType is a no-op (returns false) when unchanged", () => {
     expect(new ListInputNode().setDataType("number")).toBe(false);
+  });
+
+  // ─── The 2026-07-25 List Input audit (all four types × wired/typed) ──────────
+  // Every case below was a silent wrong answer, found by sweeping the four SegToggle
+  // positions against the same inputs. They share one cause: the node treated its list
+  // as "elements of my type, everything else discarded", which the value model doesn't
+  // allow (null and SolError ride through ANY typed list), and it parsed its typed text
+  // with a second, divergent parser that only ever ran in Number mode.
+
+  it("a wired null (MISSING) rides through — it is NOT dropped, and does NOT resurrect the row text", () => {
+    for (const t of ["number", "date", "logical", "string"] as const) {
+      const n = new ListInputNode({ dataType: t });
+      // Dropping compacted the list: positions shifted out of step with any parallel
+      // list wired alongside it, silently.
+      expect(n.data({ v0: [[1, null, 3]] }).list).toContain(null);
+      // A CONNECTED cable wins even when its value is null — the old `wired != null`
+      // test fell back to the typed text, so a blank flowing in became whatever number
+      // sat in the box (the `??`-swallowing bug readInput exists to prevent).
+      const m = new ListInputNode({ dataType: t });
+      m.stringLiterals["v0"] = "7";
+      expect(m.data({ v0: [null] }).list).toEqual([null]);
+    }
+  });
+
+  it("a per-cell SolError PROPAGATES instead of vanishing (error in → error out)", () => {
+    const err = solError("#DIV/0!", "divide by zero");
+    for (const t of ["number", "date"] as const) {
+      const out = new ListInputNode({ dataType: t }).data({ v0: [[1, err, 3]] }).list;
+      expect(out).toEqual([1, err, 3]); // was [1, 3] — the upstream failure disappeared
+    }
+  });
+
+  it("typed text parses IDENTICALLY however the SegToggle is set (one parser, RFC 4180)", () => {
+    // Number mode used a naive split(","), the other three used parseListLiteral —
+    // so quoting worked in Text mode but not Number mode. Same text, same fielding.
+    const fields = (t: "number" | "string" | "date" | "logical") => {
+      const n = new ListInputNode({ dataType: t });
+      n.stringLiterals["v0"] = '"First, Last", qty';
+      return n.data({}).list.length;
+    };
+    expect([fields("number"), fields("string"), fields("date"), fields("logical")]).toEqual([2, 2, 2, 2]);
+  });
+
+  it("an unparseable typed cell is null (MISSING) in EVERY type — never dropped, never NaN", () => {
+    // Number mode dropped it (shifting positions), Date mode emitted a NaN, Logical mode
+    // coerced it to FALSE. Three different answers to the same question; now one.
+    const parse = (t: "number" | "string" | "date" | "logical", text: string) => {
+      const n = new ListInputNode({ dataType: t });
+      n.stringLiterals["v0"] = text;
+      return n.data({}).list;
+    };
+    expect(parse("number", "abc, 5")).toEqual([null, 5]);
+    expect(parse("date", "abc, 01-Jan-2026")).toEqual([null, 46023]);
+    expect(parse("logical", "maybe, true")).toEqual([null, true]);
+    // Length is preserved in every mode, so a typo can't silently re-index the list.
+    for (const t of ["number", "date", "logical", "string"] as const) expect(parse(t, "x, y, z").length).toBe(3);
+    // NaN is never a cell — it reads as a number but means "undefined", so it would
+    // slip past every isMissing/isSolError guard downstream.
+    expect(parse("date", "1, 2, 3").every((c) => !Number.isNaN(c as number))).toBe(true);
   });
   it("concatenates rows + a wired list, keeping only elements of the current type", () => {
     const n = new ListInputNode();
