@@ -181,13 +181,19 @@ say). A data-aware read — `selected()`, which IF already tracks for units — 
 answer, and would let display follow the branch actually taken. Not attempted: it makes
 display depend on computed state, so it needs a decision about re-render timing.
 
-### Bug B — `frameShapeResolver` doesn't read `passthrough()`
-It is the one walk that never consults the declaration, so a frame routed through a
-Display / IF / Expect loses static column-shape resolution (the shape row in the Cable
-Inspector goes blank). Unconfirmed whether that's deliberate — it may predate the 2026-07-15
-unification. **Needs:** confirm the symptom, then decide whether shape belongs in the
-unified resolver (item 5) or stays separate because it propagates FORWARD from sources
-rather than backward from a consumer.
+### ~~Bug B~~ — FIXED 2026-07-25
+**Confirmed first, then fixed.** `compute()` was a chain of `instanceof` checks against the
+frame VERB classes, so anything else fell through to `null` (unknown). A test wired
+`Frame Input → X → Sort Frame` for X in {Display, Conduit lane, IF}: the source resolved
+(control) and all three routes lost the shape, taking every verb downstream with them.
+It now reads the ONE `passthrough()` declaration like the other walks — `single` takes its
+input, `active` the selected branch, `agree` requires every wired branch to match on column
+names + types (`sameShape`, the structural analogue of `agreeTypes`). Conduit lanes are
+named explicitly, since a Conduit declares no spec (conduitTrace owns lane routing).
+`compute` now takes the `outKey` it always memoised by but never used.
+**Left as-is deliberately:** shape still propagates FORWARD from literal sources and stays
+its own walk. It resolves a different thing (column names/types ahead of running) from a
+different direction, so folding it into adoption would be a merge for its own sake.
 
 ### Bug C — the two projection helpers can disagree
 `adoptTypeForBase` and `projectTypeToBase` both project a type onto a base's rank with

@@ -10,6 +10,8 @@ import {
   SelectColumnsNode, DropColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode,
   AppendNode, RenameNode, SplitColumnNode, AddIndexNode, GetRowNode,
 } from "./nodes/frame";
+import { ConduitNode, conduitLaneOf, conduitInKey } from "./nodes/conduit";
+import { passthroughForOutput, type PassthroughSpec } from "./nodes/passthrough";
 
 // ─── Static shape graph walk ────────────────────────────────────────────────────
 // Propagates `shapeOf` forward from every literal frame source across the graph —
@@ -69,9 +71,44 @@ export function makeFrameShapeResolver(editor: AnyEditor): FrameShapeResolver {
     try { return fn(); } catch { return null; }
   }
 
-  function compute(nodeId: string): Shape | null {
+  /** Do two shapes agree? Column names + types, in order — the `agree` combine for
+   *  shapes, the structural analogue of `agreeTypes` for socket types. */
+  function sameShape(a: Shape, b: Shape): boolean {
+    return a.columns.length === b.columns.length &&
+      a.columns.every((c, i) => c.name === b.columns[i].name && c.type === b.columns[i].type);
+  }
+
+  /** The shape a PASSTHROUGH forwards. It carries its input's VALUE unchanged, so it
+   *  carries the shape too — resolved from the ONE `passthrough()` declaration rather
+   *  than a second instanceof list, so a new type-agnostic node needs no edit here.
+   *  `agree` mirrors the type rule: every WIRED branch must match, else unknown. */
+  function passthroughShape(nodeId: string, spec: PassthroughSpec): Shape | null {
+    if (spec.combine === "single") return inputShape(nodeId, spec.inputs[0]);
+    if (spec.combine === "active") {
+      const i = spec.activeIndex ? Math.max(0, Math.min(spec.activeIndex(), spec.inputs.length - 1)) : 0;
+      return spec.inputs.length ? inputShape(nodeId, spec.inputs[i]) : null;
+    }
+    const wired = spec.inputs.map((k) => inputShape(nodeId, k)).filter((x): x is Shape => x != null);
+    if (wired.length === 0) return null;
+    return wired.every((x) => sameShape(x, wired[0])) ? wired[0] : null;
+  }
+
+  function compute(nodeId: string, outKey: string): Shape | null {
     const n = editor.getNode(nodeId) as unknown;
     return safe(() => {
+      // A Conduit lane forwards its input verbatim (out_i = in_i). It declares no
+      // `passthrough()` because conduitTrace owns lane routing, so it is named here.
+      if (n instanceof ConduitNode) {
+        const lane = conduitLaneOf(outKey, "out");
+        return lane < 0 ? null : inputShape(nodeId, conduitInKey(lane));
+      }
+      // Everything else that forwards a value says so via the declaration. Without
+      // this, a frame routed through a Display / IF / Expect / Cable Switch lost its
+      // static shape and every verb downstream went "unknown" (the Cable Inspector's
+      // shape row blanked). This walk was the ONE that never read the declaration.
+      const pass = passthroughForOutput(n, outKey);
+      if (pass) return passthroughShape(nodeId, pass);
+
       if (n instanceof FrameInputNode) return shapeOfFrameValue(frameFromInputText(n.frameText));
       if (n instanceof GetRowNode) return inputShape(nodeId, "frame");
       if (n instanceof DistinctNode) return inputShape(nodeId, "frame");
@@ -164,7 +201,7 @@ export function makeFrameShapeResolver(editor: AnyEditor): FrameShapeResolver {
     if (memo.has(key)) return memo.get(key)!;
     if (visiting.has(key)) return null; // cycle guard
     visiting.add(key);
-    const s = compute(nodeId);
+    const s = compute(nodeId, outKey);
     visiting.delete(key);
     memo.set(key, s);
     return s;
