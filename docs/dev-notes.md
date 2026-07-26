@@ -120,6 +120,58 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### SESSION DIGEST (2026-07-25g — the type-resolution consolidation, items 1–5)
+Author: *"it seems like our systems have become very convoluted."* A read-only audit
+followed, then five work items done individually. The map, target state and remaining
+parking lot live in `docs/type-resolution-plan.md` — read that, not this, to continue.
+- **The finding, and the reason it was hard to see:** nothing here was a bad line of code.
+  FOUR OR FIVE subsystems each independently answered *"what type does this output carry?"*
+  and had drifted apart. That drift is invisible from any single `data()`, which is why the
+  two bugs that prompted the audit each took a long trace through nodes that were all
+  individually correct. **Diagnosis rule worth keeping: when a shape or type looks wrong,
+  read `coerceInputs` and the resolvers BEFORE reading any node's `data()`.**
+- **1 — the display walk now uses adoption's rule.** `displayedType` hand-rolled its own
+  resolution (first non-wildcard incoming connection wins). It ignored `combine`, so an
+  `IF` over a date and a number rendered the NUMBER as `20-Mar-2026` — a wrong value on
+  screen, verified live. It also couldn't tell a value branch from a side input, so an
+  Expect's wired `min` could set the display type of the box showing `in`. `agree` moved to
+  `passthrough.ts` as `agreeTypes`: one combine rule, not two.
+- **2 — dead exports** (`staticTrueAnyIn`, `anyListOut`, `anyTableOut`), which orphaned the
+  `anyListSocket` singleton. The `anylist` TYPE is alive (19 adoptive ports); the shared
+  non-adoptive INSTANCE was left behind by the 2026-07-15 migration and was a trap —
+  building a port from it silently opts that port out of adoption.
+- **3 — the `anycombo` rung** (author approved; the audit had undersold it as a subtraction
+  when it is a TRADE — a socket type for a flag). It retired `noWidenInputs`, where a node
+  overrode what its own socket said about rank, and `anyOut`, where Regex drew a scalar
+  CIRCLE on a port that spills lists. Glyph: a gray split square whose lower half is the
+  fill's `-ring` shade, because the gray family distinguishes rungs by SHAPE and a
+  [gray, gray] split would have been indistinguishable from `anylist`.
+- **4 — one coercion rule.** A `trueany`-based adoptive coerced on its ADOPTED type while
+  every other adoptive coerced on its BASE; the comment called it "established pre-existing
+  behavior". It made a node's runtime input SHAPE depend on what was wired upstream. Safe
+  to remove because the adopted type IS the upstream's, so it was coercing a value to the
+  type it already had — identity in every correct case, and a silent laundering of the
+  mismatch when a producer's declared type and runtime value disagreed. Removing it also
+  fixed another YEAR-class bug: with `datelist` adopted, a scalar into INDEX became
+  `[scalar]`, so `INDEX([all])` returned a list of one.
+- **5 — the walk is DELETED.** `displayedType` reads the socket; adoption writes it. The
+  precondition is machine-checked now (`passthroughOutputMutable.test.ts`): a passthrough
+  whose output is a WILDCARD must carry a MutableSocket, or `reconcileOnce` computes the
+  type and silently throws it away. The catalog sweep found exactly one concrete
+  passthrough output — Fill/Coalesce, numeric throughout, declaring `passthrough()` purely
+  for UNITS — so the invariant is "wildcard ⇒ mutable", not "always mutable".
+- **Two process lessons.** (a) Deleting redundant machinery is how you find the tests that
+  were quietly depending on it: three display tests, one PRE-EXISTING, never ran
+  `settleWildcardTypes` and so tested the walk rather than the shipped path — the same
+  smell the List Input audit recorded for `wrapNodeData`. (b) The guards earned their keep:
+  tsc proved two new `accepts()` branches unreachable, and `formatModel.test.ts`'s
+  exhaustive `Record<SocketDataType, …>` FORCED an explicit FC-family decision for the new
+  rung instead of letting it default silently.
+- Walks 5 → 4; the remaining three resolve different things (route, annotation, column
+  shape). Parking lot: Bug B (`frameShapeResolver` never reads `passthrough()`), Bug C (the
+  two projection helpers can disagree), and what a DISAGREEING selector should display.
+- tsc clean; suite 3163 green.
+
 ### SESSION DIGEST (2026-07-25f — a one-element list IS the scalar, at a combo rung)
 Reported: `List Input [Date]` with ONE entry, straight into YEAR, emitted a LIST of one
 year. Author's reading, which was right: "combo socket mutates single value down into
