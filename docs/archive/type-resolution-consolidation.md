@@ -1,14 +1,16 @@
 # Type resolution & the coercion boundary — consolidation plan
 
-**Live working doc.** Opened 2026-07-25 after the author's call: *"it seems like our systems
-have become very convoluted."* A read-only audit of the wildcard ladder + the coercion
-boundary followed. This records the MAP, the TARGET, and the work items, so the effort
-survives across sessions and nothing gets dropped between them.
+**COMPLETE — archived 2026-07-25.** Opened after the author's call: *"it seems like our
+systems have become very convoluted."* A read-only audit of the wildcard ladder + the
+coercion boundary, then five work items and three parking-lot bugs, all done in one
+session. Kept as an ANTI-RELAPSE record: the "Current state" section is the audit-time
+BEFORE-picture, and each item records what changed and why, so a future rework doesn't
+re-introduce what was removed (a second type resolver, a coercion side-channel, a
+grandfathered adopted-vs-base rule).
 
-**STATUS 2026-07-25: all five work items are DONE.** What remains is the parking lot at
-the bottom — bugs found during the audit whose solution wasn't clear. Move this doc to
-`archive/` once those are resolved or explicitly parked. The "Current state" section below
-is the AUDIT-TIME snapshot, kept as the before-picture; the item notes record what changed.
+**The one-line rule this leaves behind:** the SOCKET is the truth, adoption is the only
+thing that writes it, and everything else reads it. When a shape or type looks wrong, read
+`coerceInputs` and the resolvers BEFORE reading any node's `data()`.
 
 ---
 
