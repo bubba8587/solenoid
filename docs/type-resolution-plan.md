@@ -98,10 +98,14 @@ to the base).
 
 ## Work items — do these INDIVIDUALLY, one commit each
 
-- [ ] **1. Fix the IF display bug.** `displayedType` ignores `combine` and returns the
-  FIRST wired input's type, so an `IF` whose branches disagree renders the wrong family.
-  See Bug A below. Smallest fix: respect `combine`. Better fix: delete the walk and read
-  the adopted socket — but that is item 5, so do the small one first and let 5 subsume it.
+- [x] **1. Fix the IF display bug.** DONE 2026-07-25. `displayedType` now runs the SAME
+  `resolvePassthroughType` + `agreeTypes` the adoption pass runs, instead of a hand-rolled
+  loop over every incoming connection returning the first non-wildcard type. Two bugs
+  closed: the disagreeing-selector one (Bug A), and a latent one where a SIDE input (an
+  Expect's `min`) could supply the display type because the loop didn't consult the spec's
+  value branches. `agree` moved from `trueAnyAdopt.ts` to `passthrough.ts` as `agreeTypes`
+  so there is one combine rule. Item 5 can now delete the walk outright rather than
+  reconcile two rules.
 - [ ] **2. Delete the three dead exports** (`staticTrueAnyIn`, `anyListOut`,
   `anyTableOut`). Zero uses, zero risk.
 - [ ] **3. Add the `anycombo` rung.** Deletes `noWidenInputs` and its ~25 lines of
@@ -119,16 +123,18 @@ to the base).
 
 ## Parking lot — found during the audit, solution not yet clear
 
-### Bug A — `IF` with disagreeing branches displays the wrong family *(item 1 covers the symptom)*
-**Verified live.** With a `date` on `then` and a `number` on `else`: adoption correctly
+### ~~Bug A~~ — FIXED 2026-07-25 by item 1; the open question below survives it
+**Verified live at the time.** With a `date` on `then` and a `number` on `else`: adoption correctly
 leaves the socket `trueany`; `displayedType` returns `date` (first connection wins,
 `valueDisplayFormat.ts:148`). That feeds `nodeOutputIsDate` → `dateFormatDisplay`, so a
 number flowing out the else-branch renders as `20-Mar-2026`. A wrong VALUE on screen, not
 a tint.
-**Unclear part:** what SHOULD a disagreeing selector display? Honouring adoption means
-falling back to raw numbers, which is right but loses date formatting for the common case
-where the branches agree at runtime even though they disagree statically. A data-aware
-read (`selected()`, which IF already tracks for units) may be the real answer.
+**Still open after the fix:** display now honours adoption and falls back to raw numbers,
+which is correct but loses date formatting in the common case where the branches agree at
+RUNTIME while disagreeing statically (an IF picking between a date and a `#N/A` fallback,
+say). A data-aware read — `selected()`, which IF already tracks for units — is the likely
+answer, and would let display follow the branch actually taken. Not attempted: it makes
+display depend on computed state, so it needs a decision about re-render timing.
 
 ### Bug B — `frameShapeResolver` doesn't read `passthrough()`
 It is the one walk that never consults the declaration, so a frame routed through a

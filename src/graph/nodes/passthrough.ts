@@ -109,6 +109,17 @@ export function resolvePassthroughType(
   return spec.project ? spec.project(t) : t;
 }
 
+/** The `agree` rule for a selector: every WIRED branch must agree, or the result is
+ *  genuinely unknown. `trueany` on a branch means UNWIRED (an adoptive input's reverted
+ *  state) and doesn't vote. Lives here, not in a caller, so the socket pass and the
+ *  display walk can't apply different notions of "the branches agree" — they did until
+ *  2026-07-25, and an `IF` over a date and a number rendered the number as a date. */
+export function agreeTypes(types: Array<SocketDataType | null>): SocketDataType {
+  const wired = types.filter((t): t is SocketDataType => t !== null && t !== "trueany");
+  if (wired.length === 0) return "trueany";
+  return wired.every((t) => t === wired[0]) ? wired[0] : "trueany";
+}
+
 function resolveForwardedType(
   spec: PassthroughSpec,
   typeOf: (key: string) => SocketDataType | null,
