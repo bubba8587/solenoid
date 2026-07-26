@@ -13,6 +13,10 @@ the arrival behaviour is `src/graph/coerceInputs.ts`; the drawing is
 `src/graph/components/SocketComponent.tsx`. Regenerate the port counts with
 `npx tsx scripts/socket-inventory.ts`.
 
+Every connection list here is checked against the code on each test run
+(`socketReference.test.ts`), so the lists cannot silently go stale. The port
+counts and the prose are not — re-run the script above after adding a node.
+
 ---
 
 ## 1. Vocabulary
@@ -188,8 +192,9 @@ These apply first, at every socket:
    becomes null, holding its position.
 5. **A few ports opt out entirely.** A node that branches on the runtime shape
    itself declares those input keys as raw, and the value reaches it exactly as it
-   flowed in. In the shipped catalog this is XLOOKUP's frame/cube input and the
-   two chart nodes that accept either a list or a frame of values.
+   flowed in. In the shipped catalog there are three: XLOOKUP's frame/cube input,
+   and the values input on Chart and on Boxplot, each of which takes either a list
+   or a frame.
 
 ---
 
@@ -232,8 +237,8 @@ it is.
 `datetable`, `lambda`, `chart`, `document`.
 
 **On arrival:** booleans convert to 1/0, then the value is reduced to a single
-number. A one-element list collapses to its element. A longer list or a matrix
-raises `#SHAPE!`.
+number: a one-element list or a 1×1 matrix collapses to the number it holds.
+Anything carrying more than one element raises `#SHAPE!`. Null passes through.
 
 #### `list` — "List (number)"
 
@@ -256,8 +261,10 @@ raises `#SHAPE!`.
 `datelist`, `datecombo`, `complex`, `complexlist`, `complexcombo`, `complextable`,
 `logical`, `strtable`, `datetable`, `lambda`, `chart`, `document`, `any`.
 
-**On arrival:** booleans convert to 1/0, then the value is flattened to a 1-D
-numeric list. A scalar widens to a one-element list. A matrix flattens.
+**On arrival:** booleans convert to 1/0, then the value is shaped to a 1-D
+numeric list: a scalar widens to a one-element list, and a matrix that is a single
+row or a single column becomes that list. A matrix with more than one row *and*
+more than one column raises `#SHAPE!`. Null passes through.
 
 #### `numlist` — "Number or list"
 
@@ -282,9 +289,10 @@ exception.
 `datecombo`, `complex`, `complexlist`, `complexcombo`, `complextable`, `strtable`,
 `datetable`, `lambda`, `chart`, `document`.
 
-**On arrival:** booleans convert to 1/0. A 2-D matrix flattens to a list so
-element-wise logic never sees rows. A one-element list collapses to its number.
-Everything else keeps its natural rank — that is the point of the rung.
+**On arrival:** booleans convert to 1/0. A 2-D matrix is reduced to a list so
+element-wise logic never sees rows — a single row or single column becomes that
+list, and any wider matrix raises `#SHAPE!`. A one-element list collapses to its
+number. Everything else keeps its natural rank — that is the point of the rung.
 
 #### `table` — "Matrix (number)"
 
@@ -362,8 +370,9 @@ else passes as-is.
 `logical`, `logicallist`, `logicalcombo`, `logicaltable`, `table`, `datetable`,
 `lambda`, `chart`, `document`, `any`.
 
-**On arrival:** a lone value widens to a one-element list. An unwired port with
-typed CSV text parses that text into the list — every part is valid text.
+**On arrival:** a lone value widens to a one-element list; null passes through
+as null. An unwired port with typed CSV text parses that text into the list —
+every part is valid text.
 
 #### `strcombo` — "Text or list"
 
@@ -472,8 +481,9 @@ a date socket through every rung.
 `logical`, `logicallist`, `logicalcombo`, `logicaltable`, `table`, `strtable`,
 `lambda`, `chart`, `document`, `any`.
 
-**On arrival:** a lone value widens to a one-element list. An unwired port with
-typed CSV text parses each part as a date; a part that will not parse becomes null.
+**On arrival:** a lone value widens to a one-element list; null passes through
+as null. An unwired port with typed CSV text parses each part as a date; a part
+that will not parse becomes null.
 
 #### `datecombo` — "Date or list"
 
@@ -582,9 +592,9 @@ wired into a port based on `anylist` retypes that port to `complexlist`.
 `logicalcombo`, `logicaltable`, `table`, `strtable`, `datetable`, `lambda`,
 `chart`, `document`, `any`.
 
-**On arrival:** a lone complex number widens to a one-element list. The test is on
-nesting: a value whose first element is itself a list is already a complex list and
-passes through.
+**On arrival:** a lone complex number widens to a one-element list; null passes
+through as null. The test is on nesting: a value whose first element is itself a
+list is already a complex list and passes through.
 
 #### `complexcombo` — "Complex or list"
 
@@ -667,9 +677,8 @@ unknown.
 `datecombo`, `complex`, `complexlist`, `complexcombo`, `complextable`, `strtable`,
 `datetable`, `lambda`, `chart`, `document`.
 
-**On arrival:** a number becomes a boolean — zero is FALSE, any other finite
-number is TRUE, NaN is null. A one-element list collapses to the boolean it
-contains.
+**On arrival:** a number becomes a boolean — zero is FALSE, NaN is null, every
+other number is TRUE. A one-element list collapses to the boolean it contains.
 
 #### `logicallist` — "List (boolean)"
 
@@ -799,7 +808,8 @@ variables; the output is Regex, whose result rank follows its operation.
 **Blocked at the input:** `complextable`, `logicaltable`, `table`, `strtable`,
 `datetable`, `anytable`, `frame`, `cube`, `lambda`, `chart`, `document`.
 
-**Reaches:** everywhere `any` reaches, plus `anycombo` itself — `number`, `list`,
+**Reaches:** every data variant at every rank, scalars included — that last part
+is what separates it from `anylist` — `number`, `list`,
 `numlist`, `string`, `strlist`, `strcombo`, `date`, `datelist`, `datecombo`,
 `complex`, `complexlist`, `complexcombo`, `complextable`, `logical`,
 `logicallist`, `logicalcombo`, `logicaltable`, `table`, `strtable`, `datetable`,
@@ -835,7 +845,8 @@ DROP, Concat Lists, Interleave, GROUPBY keys, Frame from Lists).
 `complextable`, `logicaltable`, `table`, `strtable`, `datetable`, `lambda`,
 `chart`, `document`, `any`.
 
-**On arrival:** a lone value widens to a one-element list. Without this, a number
+**On arrival:** a lone value widens to a one-element list; null passes through as
+null. Without this, a number
 would fail the node's iteration and a string would iterate one character at a time.
 A complex number is itself a two-element array, so at this element-agnostic rung it
 passes through as-is.
@@ -874,9 +885,13 @@ IFERROR, SWITCH, CHOOSE, Cast, INDEX, Expect, IS.TEST, NA, XLOOKUP's value, Buil
 Cube, Cube Columns, Nest Join, Input Switch, Conduit lanes, the Format Controller's
 pair, composite input/output ports and Placeholder.
 
-**Accepts from:** every variant, with nothing blocked.
+**Accepts from:** all 30 variants.
 
-**Reaches:** every variant, with nothing blocked.
+**Blocked at the input:** nothing.
+
+**Reaches:** all 30 variants.
+
+**Blocked at the output:** nothing.
 
 **On arrival:** the value passes through completely untouched. A port that
 declares it handles anything is taken at its word.
@@ -914,8 +929,9 @@ of a frame is an explicit Get Column, never an implicit narrowing.
 matching CSV convention — transpose first for a column. A scalar becomes a 1×1
 frame. Null passes through.
 
-For the eleven lazy relational verbs, a frame ref arrives as the ref itself so the
-chain fuses into one engine round trip. For every other node the ref is
+For the eleven lazy relational verbs — and for Get Column, which reads one column
+through the engine's own column primitive — a frame ref arrives as the ref itself,
+so the chain fuses into one engine round trip. For every other node the ref is
 materialised into a real frame first.
 
 #### `cube` — "Cube (nested table)"
@@ -962,9 +978,9 @@ Three variants hold things that are not data. Each connects only to itself and t
 REDUCE, SCAN and BYROW/BYCOL consume it.
 
 **Accepts from:** `lambda`, `trueany`.
-**Blocked at the input:** every other variant.
+**Blocked at the input:** all 28 variants other than `lambda` and `trueany`.
 **Reaches:** `lambda`, `trueany`.
-**Blocked at the output:** every other variant.
+**Blocked at the output:** all 28 variants other than `lambda` and `trueany`.
 **On arrival:** the function passes through untouched.
 
 #### `chart` — "Chart / visual"
@@ -975,9 +991,9 @@ REDUCE, SCAN and BYROW/BYCOL consume it.
 the chart popup and the canvas figure renderer rather than wired onward.
 
 **Accepts from:** `chart`, `trueany`.
-**Blocked at the input:** every other variant.
+**Blocked at the input:** all 28 variants other than `chart` and `trueany`.
 **Reaches:** `chart`, `trueany`.
-**Blocked at the output:** every other variant.
+**Blocked at the output:** all 28 variants other than `chart` and `trueany`.
 **On arrival:** the value passes through untouched.
 
 A figure node that receives an error on its data input renders an empty figure; it
@@ -991,9 +1007,9 @@ never emits a SolError out a `chart` socket.
 Write to Obsidian consumes one.
 
 **Accepts from:** `document`, `trueany`.
-**Blocked at the input:** every other variant.
+**Blocked at the input:** all 28 variants other than `document` and `trueany`.
 **Reaches:** `document`, `trueany`.
-**Blocked at the output:** every other variant.
+**Blocked at the output:** all 28 variants other than `document` and `trueany`.
 **On arrival:** the value passes through untouched.
 
 ---
@@ -1081,5 +1097,12 @@ whether the tag survives the boundary.
 Adding a sixth element family is one row in the `FAMILIES` table, its four colours,
 a drawing branch, and one case in the Format Controller's family map. The
 accept-sets, the compatibility test and the connection guard all fall out of the
-lattice — no other edits. The full accept/block matrix is machine-checked by a
-sweep over every ordered pair in `socketConnect.test.ts`.
+lattice — no other edits.
+
+Two test files hold that in place. `socketConnect.test.ts` re-derives the rules
+independently and sweeps every ordered pair of the twenty family rungs, with
+targeted cases for the wildcards, the containers and the object family.
+`socketReference.test.ts` parses **this document** and diffs all 120 of its
+connection lists against `canConnect`, along with the glyph table and the
+socket → FC family table — so a lattice change that this document misses fails
+the suite with the variant and the direction named.

@@ -1,0 +1,158 @@
+import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { canConnect, SOCKET_TYPE_LABELS, SOCKET_COLORS, type SocketDataType } from "./sockets";
+import { familyOf } from "./formatModel";
+
+// `docs/socket-reference.md` documents all 30 socket variants in prose: what each
+// accepts, what is BLOCKED at it, what it reaches, what it is blocked from
+// reaching. That is 120 hand-written lists mirroring the lattice — exactly the
+// shape of doc that rots silently the first time someone adds a socket type or
+// widens an accept rule.
+//
+// So don't trust the prose: PARSE it and diff every list against canConnect. The
+// same for the glyph table (parsed out of SocketComponent) and the socket → FC
+// family table (parsed out of formatModel). A lattice change now fails here with
+// the exact line to fix, instead of leaving the doc quietly wrong.
+
+const DOC = readFileSync(resolve(__dirname, "../../docs/socket-reference.md"), "utf8");
+const ALL = Object.keys(SOCKET_TYPE_LABELS) as SocketDataType[];
+const IS_TYPE = new Set<string>(ALL);
+
+/** The per-variant sections, keyed by type: `#### \`number\` — "Number"`. */
+function sections(): Map<SocketDataType, string> {
+  const marks: { t: SocketDataType; at: number }[] = [];
+  for (const m of DOC.matchAll(/^#### `([a-z]+)` —/gm)) {
+    if (!IS_TYPE.has(m[1])) throw new Error(`unknown type in heading: ${m[1]}`);
+    marks.push({ t: m[1] as SocketDataType, at: m.index! });
+  }
+  const out = new Map<SocketDataType, string>();
+  marks.forEach((mk, i) => out.set(mk.t, DOC.slice(mk.at, marks[i + 1]?.at ?? DOC.length)));
+  return out;
+}
+
+/** One `**Label:**` bullet's text, up to the next blank line or bold run-in. */
+function bullet(body: string, label: string): string {
+  const i = body.indexOf(`**${label}:**`);
+  if (i < 0) throw new Error(`missing bullet "${label}"`);
+  const rest = body.slice(i + label.length + 6);
+  const end = rest.search(/\n\s*\n|\n\*\*/);
+  return (end < 0 ? rest : rest.slice(0, end)).trim();
+}
+
+function backticked(chunk: string): SocketDataType[] {
+  return [...chunk.matchAll(/`([a-z]+)`/g)].map((m) => m[1]).filter((t): t is SocketDataType => IS_TYPE.has(t));
+}
+
+/** Read a bullet as a SET of types. Three shorthands are understood so the prose
+ *  can stay readable where a literal 28-item list would not be:
+ *    "nothing."                              → {}
+ *    "all 30 variants."                      → every type
+ *    "all 28 variants other than `a`, `b`."  → complement of {a, b}
+ *  Anything else is read as the literal backticked list it contains. A COUNT in a
+ *  shorthand is asserted too, so "all 28" can't drift to a wrong number. */
+function readSet(chunk: string): Set<SocketDataType> {
+  if (/^nothing\.?$/i.test(chunk)) return new Set();
+  const other = /^all (\d+) variants? other than (.+)$/i.exec(chunk);
+  if (other) {
+    const excluded = new Set(backticked(other[2]));
+    const set = new Set(ALL.filter((t) => !excluded.has(t)));
+    expect(set.size, `"${chunk}" — stated count`).toBe(Number(other[1]));
+    return set;
+  }
+  const all = /^all (\d+) variants?\.?$/i.exec(chunk);
+  if (all) {
+    expect(ALL.length, `"${chunk}" — stated count`).toBe(Number(all[1]));
+    return new Set(ALL);
+  }
+  return new Set(backticked(chunk));
+}
+
+const SECTIONS = sections();
+
+describe("docs/socket-reference.md — every variant is documented", () => {
+  it("has exactly one section per socket type", () => {
+    expect([...SECTIONS.keys()].sort()).toEqual([...ALL].sort());
+  });
+
+  it("states the variant count correctly in the opening", () => {
+    const n = /There are \*\*(\d+) socket variants\*\*/.exec(DOC)?.[1];
+    expect(Number(n)).toBe(ALL.length);
+  });
+});
+
+describe("docs/socket-reference.md — the connection lists match canConnect", () => {
+  // Written as one case per (variant, direction) so a failure names the exact
+  // bullet, and `toEqual` on sorted arrays prints the precise diff.
+  for (const t of ALL) {
+    const body = () => SECTIONS.get(t)!;
+    const sorted = (s: Iterable<string>) => [...s].sort();
+
+    it(`${t} — accepts from / blocked at the input`, () => {
+      const accepts = ALL.filter((src) => canConnect(src, t));
+      const blocked = ALL.filter((src) => !canConnect(src, t));
+      expect(sorted(readSet(bullet(body(), "Accepts from")))).toEqual(sorted(accepts));
+      expect(sorted(readSet(bullet(body(), "Blocked at the input")))).toEqual(sorted(blocked));
+    });
+
+    it(`${t} — reaches / blocked at the output`, () => {
+      const reaches = ALL.filter((tgt) => canConnect(t, tgt));
+      const blocked = ALL.filter((tgt) => !canConnect(t, tgt));
+      expect(sorted(readSet(bullet(body(), "Reaches")))).toEqual(sorted(reaches));
+      expect(sorted(readSet(bullet(body(), "Blocked at the output")))).toEqual(sorted(blocked));
+    });
+  }
+});
+
+describe("docs/socket-reference.md — the at-a-glance tables match the code", () => {
+  /** A row of the glyph table: `| <shape> | <meaning> | \`a\` \`b\` … |`. */
+  function glyphRow(shape: string): SocketDataType[] {
+    const re = new RegExp(`^\\| ${shape}[^|]*\\|[^|]*\\|([^|]*)\\|$`, "m");
+    const m = re.exec(DOC);
+    if (!m) throw new Error(`no glyph row for "${shape}"`);
+    return backticked(m[1]);
+  }
+
+  const SRC = readFileSync(resolve(__dirname, "./components/SocketComponent.tsx"), "utf8");
+  const quoted = (s: string) => [...s.matchAll(/"([a-z]+)"/g)].map((m) => m[1]).sort();
+
+  it("the square/split/grid glyph rows match SocketComponent's branches", () => {
+    const listTypes = quoted(/const LIST_TYPES = new Set\(\[(.*?)\]\)/s.exec(SRC)![1]);
+    const comboKeys = [...(/const COMBO_COLORS[^{]*\{(.*?)\n\};/s.exec(SRC)![1].matchAll(/^ {2}([a-z]+):/gm))].map((m) => m[1]).sort();
+    const tableTypes = quoted(/const isTable =\s*(.*?);/s.exec(SRC)![1]);
+
+    expect(glyphRow("Filled rounded square").sort()).toEqual(listTypes);
+    expect(glyphRow("Two-tone split square").sort()).toEqual(comboKeys);
+    expect(glyphRow("Square with a 2×2 grid").sort()).toEqual(tableTypes);
+  });
+
+  it("every variant appears in exactly one glyph row", () => {
+    const rows = [...DOC.matchAll(/^\| [^|]+\| (?:scalar|strict list|combo[^|]*|matrix|frame|cube|function|chart|document|anything) \|([^|]*)\|$/gm)];
+    const seen = rows.flatMap((r) => backticked(r[1]));
+    expect(seen.sort()).toEqual([...ALL].sort());
+  });
+
+  it("the socket → FC family table matches formatModel.familyOf", () => {
+    // The doc spells two families out for readers ("function view-as", "text
+    // scale") and marks the wildcards' number family provisional; map back.
+    const NAMES: Record<string, string> = {
+      "number": "number", "text": "text", "date": "date", "logical": "logical",
+      "complex": "complex", "none": "none", "function view-as": "lambda",
+      "text scale": "chart", "number (provisional)": "number",
+    };
+    const documented = new Map<string, string>();
+    for (const [, cells, fam] of DOC.matchAll(/^\|([^|]*`[a-z]+`[^|]*)\|([^|]+)\|\s*$/gm)) {
+      const key = NAMES[fam.trim()];
+      if (key === undefined) continue; // not an FC-family row
+      for (const t of backticked(cells)) documented.set(t, key);
+    }
+    expect([...documented.keys()].sort()).toEqual([...ALL].sort());
+    for (const t of ALL) expect(documented.get(t), `FC family of ${t}`).toBe(familyOf(t));
+  });
+
+  it("the variants the doc calls gray are exactly the ones sharing --sock-any", () => {
+    const gray = ALL.filter((t) => SOCKET_COLORS[t] === "var(--sock-any)");
+    expect(gray.sort()).toEqual(["any", "anycombo", "anylist", "anytable", "trueany"]);
+    expect(DOC).toMatch(/all five wildcards gray/);
+  });
+});
