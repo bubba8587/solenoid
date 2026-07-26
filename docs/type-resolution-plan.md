@@ -195,12 +195,21 @@ named explicitly, since a Conduit declares no spec (conduitTrace owns lane routi
 its own walk. It resolves a different thing (column names/types ahead of running) from a
 different direction, so folding it into adoption would be a merge for its own sake.
 
-### Bug C — the two projection helpers can disagree
-`adoptTypeForBase` and `projectTypeToBase` both project a type onto a base's rank with
-different tie-breaks (see Current state). No known bug, but nothing forces them to stay
-consistent, and a rank-crossing reshape reads its type through BOTH on a round trip.
-**Needs:** a property test asserting they agree wherever both apply, or a merge into one
-function with an explicit direction flag.
+### ~~Bug C~~ — FIXED 2026-07-25, and it was a REAL bug, not just a drift risk
+The audit said "no known bug". Sweeping every (base, type) pair found they disagree on
+CONNECTABLE pairs: `adoptTypeForBase` returned a FAMILY-LESS wire verbatim, so a `trueany`
+cable landing on a Concat-Lists row turned that row INTO a `trueany` port — which then
+accepted a **frame** or a **lambda**, values the node cannot handle. That directly breaks
+what `AdoptiveSocket`'s own doc comment promises ("a narrower base keeps the port
+RESTRICTED to that rung's acceptance while still adopting the wired cable's CONCRETE
+type"), and it erased the rank glyph too (a hollow ring where a list square belongs).
+Fixed by keeping the BASE for a family-less wire, matching `projectTypeToBase`. A property
+test in `socketConnect.test.ts` now asserts the two agree for every type that can legally
+connect into a rank-bearing base, so they can't drift again. **Not merged into one
+function:** they still differ OUTSIDE that domain, deliberately — an adoptive OUTPUT
+projects a rank-CROSSING reshape DOWN (TOCOL: `strtable` in → `strlist` out), which no
+legal input connection can ask for. Two functions with a pinned agreement domain is
+honest; one function with a direction flag would just hide the asymmetry.
 
 ### ~~Bug D~~ — FIXED 2026-07-25 by item 4
 Because `coercionType` reads the ADOPTED type for a `trueany`-based input (item 4), an

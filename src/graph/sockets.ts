@@ -320,10 +320,19 @@ export function latticeRank(dt: SocketDataType): number | null {
  *  bases, a same-or-higher-rank wire, a non-family structural type) adopts verbatim. */
 export function adoptTypeForBase(base: SocketDataType, wired: SocketDataType): SocketDataType {
   if (base !== "anylist" && base !== "anytable") return wired;
-  const fam = elementFamilyOf(wired);
   const baseRank = latticeRank(base);
   const wiredRank = latticeRank(wired);
-  if (fam === null || baseRank === null || wiredRank === null || wiredRank >= baseRank) return wired;
+  const fam = elementFamilyOf(wired);
+  // A FAMILY-LESS wire (another wildcard — `any`/`anylist`/`anycombo`/`trueany`, or a
+  // frame/cube) carries nothing to adopt, so the port KEEPS ITS BASE. Returning the
+  // wired type here broke the restriction this port's whole doc comment promises: a
+  // `trueany` cable into a Concat-Lists row turned that row INTO a `trueany` port, which
+  // then accepted a frame or a lambda — values the node can't handle. It also erased the
+  // rank glyph (a hollow ring where a list square belongs). Matches
+  // `projectTypeToBase`'s family-less branch, so the two agree on every connectable pair
+  // (machine-checked in socketConnect.test.ts).
+  if (fam === null || baseRank === null || wiredRank === null) return base;
+  if (wiredRank >= baseRank) return wired;
   return FAMILIES[fam][baseRank === 2 ? "matrix" : "list"];
 }
 
