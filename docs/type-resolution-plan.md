@@ -127,10 +127,20 @@ to the base).
   already covered the 2-D containers), and `formatModel.test.ts`'s exhaustive
   `Record<SocketDataType, …>` forced an explicit FC-family decision for the new rung
   (`none`, like `anylist`) instead of letting it default silently.
-- [ ] **4. Normalize `coercionType`.** Both adoptive kinds should coerce on the BASE. The
-  `trueany`-base branch currently coerces on the ADOPTED type, which the code itself
-  labels "its established pre-existing behavior" — grandfathered, not derived. Needs care:
-  Display / Cast / IF / INDEX all depend on the current behaviour.
+- [x] **4. Normalize `coercionType`.** DONE 2026-07-25. One line, no exception: every
+  adoptive port coerces on its BASE. The container rungs are unchanged (a scalar still
+  widens into an `anylist` op); `trueany` now coerces to NOTHING, which is the honest
+  reading of a port declaring it handles any shape — and all 19 of them are passthroughs,
+  selectors, container builders or inspectors, i.e. nodes that branch on raw shape anyway.
+  **Why it was safe:** the adopted type IS the upstream socket's type, so
+  `coerceValue(adopted, value)` was coercing a value to the type it already had — identity
+  in every correct case. It only did anything when a producer's declared type and its
+  runtime value DISAGREED, and then it silently laundered the mismatch at every consumer.
+  Removing it is a deliberate trade: a producer emitting the wrong shape for its socket is
+  now VISIBLE instead of quietly corrected, which is the point of the whole effort.
+  **What it fixed:** the same class of bug as the reported YEAR one — with `datelist`
+  adopted, a scalar into INDEX was laundered to `[scalar]`, so `INDEX([all])` handed back
+  a list of one where a scalar went in. Pinned. **Bug D is closed by this.**
 - [ ] **5. Fold `displayedType` into adoption.** The biggest reduction. Do it after 1 and
   4, not before.
 
@@ -166,7 +176,7 @@ consistent, and a rank-crossing reshape reads its type through BOTH on a round t
 **Needs:** a property test asserting they agree wherever both apply, or a merge into one
 function with an explicit direction flag.
 
-### Bug D — adopted types are derived state that coercion depends on
+### ~~Bug D~~ — FIXED 2026-07-25 by item 4
 Because `coercionType` reads the ADOPTED type for a `trueany`-based input (item 4), an
 input's runtime coercion shape depends on what happens to be wired upstream — state that
 is re-derived after every load/paste and never persisted. No live bug found, but this is

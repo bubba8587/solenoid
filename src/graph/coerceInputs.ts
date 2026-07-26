@@ -34,14 +34,28 @@ const LAZY_FRAME_NODES: ReadonlySet<string> = new Set([
 // silently drop the user's typed CSV on reload.
 export const TYPEABLE_LIST: ReadonlySet<string> = new Set(["strlist", "datelist", "logicallist"]);
 
-/** The type a socket COERCES its input to. For a CONTAINER-rung adoptive input
- *  (`any`/`anylist`/`anytable`) that's its declared BASE — NOT the concrete type it
- *  adopted for colour — so a lower-rank value still WIDENS to the rank the node's
- *  data() expects (a scalar into an `anylist` op → `[scalar]`, not a bare scalar).
- *  A `trueany`-based adoptive (Display / IF / Cast — passthroughs that handle any
- *  shape) keeps coercing on its adopted type, its established pre-existing behavior. */
+/** The type a socket COERCES its input to: its DECLARED type. For an adoptive port
+ *  that means its BASE — never the concrete type it adopted for colour.
+ *
+ *  For a container rung (`any`/`anycombo`/`anylist`/`anytable`) that keeps the widening
+ *  the socket promises: a lower-rank value still reaches the rank the node's data()
+ *  expects (a scalar into an `anylist` op → `[scalar]`, not a bare scalar).
+ *
+ *  UNIFORM since 2026-07-25. A `trueany`-based adoptive used to be the exception —
+ *  it coerced on the ADOPTED type, which this comment called "its established
+ *  pre-existing behavior", i.e. grandfathered rather than derived. That made a node's
+ *  runtime input SHAPE depend on whatever happened to be wired upstream: derived state,
+ *  recomputed after every load/paste and never persisted, which is why a shape bug
+ *  there was invisible from the node's own `data()`. It was also almost always a no-op,
+ *  since the adopted type IS the upstream socket's type — so it coerced a value to the
+ *  type it already had, and only did anything when the two disagreed (a combo carrying
+ *  a scalar), where "anything" meant a distortion the node never asked for.
+ *  Coercing on `trueany` means NO coercion, which is the honest reading of a port that
+ *  declares it accepts and handles ANY shape — every one of these is a passthrough,
+ *  selector, container builder or inspector (Display, IF/CHOOSE/SWITCH, Cast, INDEX,
+ *  Expect, Build Cube, Report refs, composite ports, Placeholder). */
 function coercionType(socket: unknown): SocketDataType | undefined {
-  if (socket instanceof AdoptiveSocket && socket.base !== "trueany") return socket.base;
+  if (socket instanceof AdoptiveSocket) return socket.base;
   return socket instanceof SolenoidSocket ? socket.dataType : undefined;
 }
 
