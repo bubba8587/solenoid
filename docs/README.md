@@ -24,6 +24,10 @@ dev-notes per-item history) live in `archive/` — see `archive/README.md`.
 - **`format-model.md`** — the FC function model: the render pipeline, the
   per-family control truth table (mirrored in `formatModel.ts`), the precision
   rule. Read before touching FC controls/resolution.
+- **`socket-reference.md`** — all 30 socket variants in plain English: what each
+  carries, its glyph/colour, what connects in, what is blocked, what it reaches,
+  and what the coercion boundary does on arrival. Generated lists — regenerate
+  with `scripts/socket-inventory.ts`.
 - **`value-semantics.md`** — null / NaN / Infinity / SolError semantics per
   computation context. All shipped.
 - **`node-coverage.md`** — the node inventory + the arity/labeled-slots rules;
@@ -69,6 +73,9 @@ dev-notes per-item history) live in `archive/` — see `archive/README.md`.
 
 - **Adding/changing a node:** `node-coverage.md` + `glossary.md`; `nodeCatalog.ts`
   is the source of truth (Add menu + Function Reference generate from it).
+- **Choosing a socket type for a port, or "why won't this cable connect?":**
+  `socket-reference.md` (the per-variant tables) + subsystem-invariants "Socket
+  lattice".
 - **Touching the FC / formats / units:** `format-model.md` + subsystem-invariants
   "Unit flow" + decisions D20 (units granularity).
 - **Touching frames/the engine:** `glossary.md` + `decisions.md` D1/D5 + the

@@ -69,8 +69,11 @@ index), `docs/glossary.md` (the invented vocabulary — read before the deep div
 - `docs/backlog.md` — the task queue (OPEN items only; the single source of truth for to-dos).
   `docs/deferrals.md` — the deferred/parked/author-gated set behind the backlog's single
   Deferral-review item. `docs/dev-notes.md` — open problems + the latest session digests only.
-- Rationale/reference: `docs/format-model.md` (FC control truth table, mirrored in
-  `formatModel.ts` — read before touching FC controls), `docs/value-semantics.md`,
+- Rationale/reference: `docs/socket-reference.md` (all 30 socket variants — what each
+  accepts, what it's blocked from, what the coercion boundary does; read before typing
+  a new port or debugging a refused cable), `docs/format-model.md` (FC control truth
+  table, mirrored in `formatModel.ts` — read before touching FC controls),
+  `docs/value-semantics.md`,
   `docs/cube-node-scope.md`, `docs/pack-architecture.md`, `docs/excel-toolbar-supplementals.md`,
   `docs/formula-node-parity.md`, `docs/out-of-scope.md` (the standing NO list), `docs/v2.0/`
   (open plan bundles). Finished/point-in-time docs: `docs/archive/` (see its README).
