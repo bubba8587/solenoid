@@ -2,6 +2,9 @@ import { describe, it, expect, afterEach } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
 import { dateFormatDisplay, shouldRenderListInline, formatListCell, nodeOutputIsDate, nodeOutputElemFamily } from "./valueDisplayFormat";
 import { ListInputNode, type ListElemType } from "../nodes/list";
+import { IfNode } from "../nodes/logic";
+import { ExpectNode } from "../nodes/quality";
+import { dateSocket, numberSocket, SolenoidSocket } from "../sockets";
 import { wrapNodeData } from "../coerceInputs";
 import { jsDateToSerial } from "../nodes/date";
 import { solError } from "../errorValue";
@@ -174,5 +177,71 @@ describe("nodeOutputElemFamily — the declared family, whatever the cells say",
   it("is undefined for an unknown node, so the chip's cell scan stays the fallback", () => {
     expect(nodeOutputElemFamily(null)).toBeUndefined();
     expect(nodeOutputElemFamily("nope")).toBeUndefined();
+  });
+});
+
+// ─── The display walk applies the SAME rule as socket adoption ────────────────
+// `displayedType` used to hand-roll its own resolution: a loop over every incoming
+// connection returning the FIRST non-wildcard type it met. That ignored `combine`
+// and didn't tell a VALUE branch from a side input, so it could answer where the
+// adoption pass had deliberately declined to. Both now run
+// resolvePassthroughType + agreeTypes, so display can never contradict the socket.
+describe("displayedType — one rule with socket adoption (no first-branch guessing)", () => {
+  afterEach(() => setEditorRefs(null as never, null as never, null as never));
+
+  async function ifOver(thenSock: SolenoidSocket, elseSock: SolenoidSocket) {
+    const editor = new NodeEditor<Schemes>();
+    setEditorRefs(editor, null as never, null as never);
+    const a = new ClassicPreset.Node("A") as unknown as Schemes["Node"];
+    a.addOutput("v", new ClassicPreset.Output(thenSock));
+    const b = new ClassicPreset.Node("B") as unknown as Schemes["Node"];
+    b.addOutput("v", new ClassicPreset.Output(elseSock));
+    const iff = new IfNode() as unknown as Schemes["Node"];
+    const disp = new DisplayNode() as unknown as Schemes["Node"];
+    for (const n of [a, b, iff, disp]) await editor.addNode(n);
+    await editor.addConnection(new ClassicPreset.Connection(a, "v", iff, "then") as Schemes["Connection"]);
+    await editor.addConnection(new ClassicPreset.Connection(b, "v", iff, "else") as Schemes["Connection"]);
+    await editor.addConnection(new ClassicPreset.Connection(iff, "result", disp, "in") as Schemes["Connection"]);
+    return { iff, disp };
+  }
+
+  it("DISAGREEING branches are unknown — a number no longer renders as a date", async () => {
+    // The bug: `then` is a date and `else` a number, so the socket stays `trueany`;
+    // the old first-connection walk answered "date" and dateFormatDisplay turned the
+    // else-branch's 46000 into "20-Mar-2026".
+    const { iff, disp } = await ifOver(dateSocket, numberSocket);
+    expect(nodeOutputIsDate(iff.id)).toBe(false);
+    expect(nodeOutputIsDate(disp.id)).toBe(false); // and it doesn't leak downstream
+    expect(dateFormatDisplay(46000, nodeOutputIsDate(iff.id), false)).toBe(46000);
+  });
+
+  it("AGREEING branches still resolve, through the selector and past it", async () => {
+    const { iff, disp } = await ifOver(dateSocket, dateSocket);
+    expect(nodeOutputIsDate(iff.id)).toBe(true);
+    expect(nodeOutputIsDate(disp.id)).toBe(true);
+  });
+
+  it("an UNWIRED branch doesn't vote against the wired one", async () => {
+    const editor = new NodeEditor<Schemes>();
+    setEditorRefs(editor, null as never, null as never);
+    const a = new ClassicPreset.Node("A") as unknown as Schemes["Node"];
+    a.addOutput("v", new ClassicPreset.Output(dateSocket));
+    const iff = new IfNode() as unknown as Schemes["Node"];
+    for (const n of [a, iff]) await editor.addNode(n);
+    await editor.addConnection(new ClassicPreset.Connection(a, "v", iff, "then") as Schemes["Connection"]);
+    expect(nodeOutputIsDate(iff.id)).toBe(true);
+  });
+
+  it("a SIDE input can't supply the display type (only the spec's value branches)", async () => {
+    // Expect forwards `in` only; its min/max/pattern are checks. The old loop scanned
+    // every incoming connection, so a wired `min` could decide the display type.
+    const editor = new NodeEditor<Schemes>();
+    setEditorRefs(editor, null as never, null as never);
+    const dsrc = new ClassicPreset.Node("D") as unknown as Schemes["Node"];
+    dsrc.addOutput("v", new ClassicPreset.Output(dateSocket));
+    const exp = new ExpectNode() as unknown as Schemes["Node"];
+    for (const n of [dsrc, exp]) await editor.addNode(n);
+    await editor.addConnection(new ClassicPreset.Connection(dsrc, "v", exp, "min") as Schemes["Connection"]);
+    expect(nodeOutputIsDate(exp.id)).toBe(false); // `in` is unwired — nothing to display
   });
 });

@@ -1,6 +1,6 @@
 import type { ClassicPreset } from "rete";
 import { AdoptiveSocket, MutableSocket, SolenoidSocket, adoptTypeForBase, projectTypeToBase, type SocketDataType } from "./sockets";
-import { getPassthrough, resolvePassthroughType } from "./nodes/passthrough";
+import { getPassthrough, resolvePassthroughType, agreeTypes } from "./nodes/passthrough";
 import { reconcileConduitTypes } from "./conduitTrace";
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
@@ -51,14 +51,6 @@ function inType(node: AdoptNode, key: string): SocketDataType | null {
   return s instanceof SolenoidSocket ? s.dataType : null;
 }
 
-/** The selector-result rule: every WIRED branch (adopted type ≠ trueany) must
- *  agree; no wired branches or a disagreement keeps the placeholder. */
-function agree(types: Array<SocketDataType | null>): SocketDataType {
-  const wired = types.filter((t): t is SocketDataType => t !== null && t !== "trueany");
-  if (wired.length === 0) return "trueany";
-  return wired.every((t) => t === wired[0]) ? wired[0] : "trueany";
-}
-
 function reconcileOnce(editor: AdoptEditor): Set<string> {
   const conns = editor.getConnections();
   const changed = new Set<string>();
@@ -89,7 +81,7 @@ function reconcileOnce(editor: AdoptEditor): Set<string> {
     //    EXTRACTION (INDEX) projects its container's family onto its own rank. A
     //    generative output (XLOOKUP, MAP, sources) declares nothing → static.
     for (const spec of getPassthrough(node)) {
-      const resolved = resolvePassthroughType(spec, (k) => inType(node, k), agree);
+      const resolved = resolvePassthroughType(spec, (k) => inType(node, k), agreeTypes);
       const outSock = node.outputs?.[spec.output]?.socket;
       if (!(outSock instanceof MutableSocket)) continue;
       // Project onto the output's declared wildcard RANK (AdoptiveSocket base):

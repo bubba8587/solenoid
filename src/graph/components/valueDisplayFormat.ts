@@ -8,7 +8,7 @@
 import { getOwningEditor } from "../activeGraph";
 import { SolenoidSocket, isDateType, isWildcardType, elementFamilyOf, type SocketDataType } from "../sockets";
 import type { ElemFamily } from "./ArrayChip";
-import { isPassthroughNode } from "../nodes/passthrough";
+import { passthroughForOutput, resolvePassthroughType, agreeTypes } from "../nodes/passthrough";
 import { formatDateSerial, DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT } from "../nodes/date";
 import { isSolError, type SolError } from "../errorValue";
 import { isUnitCell, formatUnitCell, type UnitCell } from "../unitValue";
@@ -145,16 +145,28 @@ function displayedType(
   const dt = sock instanceof SolenoidSocket ? sock.dataType : undefined;
   if (dt && !isWildcardType(dt)) return dt; // concrete socket (a producer, or a typed Conduit lane)
 
-  if (!isPassthroughNode(node)) return dt; // an `any` producer's output type is genuinely `any`
+  // Still a placeholder: resolve it through the node's OWN passthrough declaration,
+  // with the SAME `resolvePassthroughType` the socket-adoption pass runs. This used to
+  // be a hand-rolled loop over every incoming connection that returned the FIRST
+  // non-wildcard type it met — which ignored `combine` (an IF whose branches disagree
+  // stays `trueany` at the socket, but displayed as its first branch, so a number on
+  // the else-branch rendered as a date) and didn't distinguish a VALUE branch from a
+  // side input (an Expect could take its display type from `min`). One rule now: when
+  // adoption says `trueany` it means genuinely unknown, and display honours that.
+  const primaryKey = outKey ?? (node.outputs?.result ? "result" : Object.keys(node.outputs ?? {})[0]);
+  const spec = primaryKey ? passthroughForOutput(node, primaryKey) : undefined;
+  if (!spec) return dt; // a producer's `any` output type is genuinely `any`
   const key = `${nodeId}::${outKey ?? ""}`;
   if (seen.has(key)) return dt;
   seen.add(key);
-  for (const c of editor!.getConnections()) {
-    if (c.target !== nodeId) continue;
-    const t = displayedType(c.source, c.sourceOutput, seen, depth + 1);
-    if (t && !isWildcardType(t)) return t;
-  }
-  return dt;
+  const conns = editor!.getConnections();
+  const typeOfInput = (inKey: string): SocketDataType | null => {
+    const c = conns.find((x) => x.target === nodeId && x.targetInput === inKey);
+    if (!c) return null; // unwired branch — doesn't vote
+    return displayedType(c.source, c.sourceOutput, seen, depth + 1) ?? null;
+  };
+  const resolved = resolvePassthroughType(spec, typeOfInput, agreeTypes);
+  return isWildcardType(resolved) ? dt : resolved;
 }
 
 /**
