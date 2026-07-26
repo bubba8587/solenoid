@@ -46,11 +46,6 @@ dev-notes per-item history) live in `archive/` — see `archive/README.md`.
 - **`backlog.md`** — OPEN items only; **the single source of truth for tasks.**
   Landed items get DELETED (git + digests are the record). Oriented around 1.3
   (v1.2.0 shipped 2026-07-22); the release tail lives here too.
-- **`type-resolution-plan.md`** — the live consolidation effort over the wildcard
-  ladder + coercion boundary (five overlapping graph walks). Carries the current
-  map, the target state, the numbered work items, and a parking lot of found-but-
-  unsolved bugs. Read it before touching `trueAnyAdopt` / `coerceInputs` /
-  `displayedType`.
 - **`deferrals.md`** — everything the author has deferred/parked/author-gated,
   in one reviewable list; the backlog carries a single Deferral-review item
   pointing at it. Nothing there is scheduled until that review promotes it.

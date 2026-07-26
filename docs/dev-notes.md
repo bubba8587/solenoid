@@ -120,6 +120,40 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### SESSION DIGEST (2026-07-25h — the consolidation's parking lot: three real bugs)
+The three "found but unsolved" items from the audit. All three turned out to be genuine
+bugs, and two of them were filed more mildly than they deserved. Full record archived at
+`archive/type-resolution-consolidation.md`.
+- **Bug B — frame SHAPE didn't survive a passthrough.** `frameShapeResolver` was the one
+  walk that never read the `passthrough()` declaration: `compute()` is an `instanceof`
+  chain over the frame VERB classes, so anything else fell to `null`. Confirmed before
+  fixing (`Frame Input → X → Sort Frame` for X ∈ {Display, Conduit lane, IF}: the source
+  resolved, all three routes lost it, taking every downstream verb with them). It reads the
+  declaration now; Conduit lanes are named explicitly since a Conduit declares no spec.
+  Deliberately still its OWN walk — it propagates FORWARD from literal sources and resolves
+  column names/types ahead of running, so folding it in would be a merge for its own sake.
+- **Bug C was filed as "no known bug, but nothing forces them to agree" — it WAS a bug.**
+  Sweeping every (base, type) pair showed `adoptTypeForBase` and `projectTypeToBase`
+  disagree on CONNECTABLE pairs: a family-less wire was returned verbatim, so a `trueany`
+  cable landing on a Concat-Lists row turned that row INTO a `trueany` port, which then
+  **accepted a frame or a lambda**. That is exactly what `AdoptiveSocket`'s doc comment
+  promises can't happen. Family-less now keeps the BASE; a property test pins that the two
+  agree for every legally-connectable type. NOT merged into one function — they still
+  differ outside that domain deliberately (an adoptive OUTPUT projects a rank-crossing
+  reshape DOWN, which no input connection can ask for).
+- **The disagreeing-selector question was the WRONG QUESTION.** A data-aware display is
+  unavailable in both directions: reading `selected()` at render re-adds the second
+  resolver item 5 deleted, and making ADOPTION data-aware would make a selector's output
+  type flip per recompute — so a downstream cable's legality would depend on the data.
+  And when branches genuinely disagree there's nothing to recover. **The motivating case
+  wasn't a selector at all:** `IFERROR(aDate, NA())` lost its date formatting because
+  **NA() declared a `number` output** while emitting a tagged `#N/A` SolError — a
+  type-neutral SOURCE voting a type it doesn't have. NA is `trueany` now (non-voting in
+  `agreeTypes`, connects anywhere, hollow-ring dot).
+  **Rule worth keeping: when a selector's `agree` says unknown, suspect a BRANCH declaring
+  a type it doesn't have before suspecting the selector.**
+- tsc clean; suite 3173 green. The plan doc is archived as an anti-relapse record.
+
 ### SESSION DIGEST (2026-07-25g — the type-resolution consolidation, items 1–5)
 Author: *"it seems like our systems have become very convoluted."* A read-only audit
 followed, then five work items done individually. The map, target state and remaining

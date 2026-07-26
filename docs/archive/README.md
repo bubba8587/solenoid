@@ -13,6 +13,7 @@ load-bearing core (noted below); the full originals are likewise in git history.
 - [`renderer-decision.md`](renderer-decision.md) — *condensed.* The HTML-in-Canvas decision + diagnosis (mipmap-once-at-1.5×, headless Rete). The PixiJS-adoption pitch is dropped — the pixi renderer is deprecated (author 2026-07-19).
 - [`renderer-plan.md`](renderer-plan.md) — *condensed.* The renderer feature-gate safety rule (implemented in `src/main.tsx`), the Linux WebKitGTK hazard, and the Tauri-vs-Electron decision.
 - [`future-directions.md`](future-directions.md) — *kept.* The architecture bets with the author's IN / OUT / PARKED verdicts.
+- [`type-resolution-consolidation.md`](type-resolution-consolidation.md) — *complete 2026-07-25.* The audit + five work items that made ADOPTION the single type resolver (the display walk is deleted, `noWidenInputs` and the adopted-vs-base coercion exception are gone, the `anycombo` rung closed the ladder). Read before reworking `trueAnyAdopt` / `coerceInputs` / `displayedType` — it records what was removed and why, including a before-picture of the five overlapping graph walks.
 - [`node-arity-audit.md`](node-arity-audit.md) — *condensed.* The labeled-slots-vs-list-socket KEEP verdicts (rule also lives in `node-coverage.md`).
 
 ### Still-consumed reference — kept whole; cited by live code / docs
