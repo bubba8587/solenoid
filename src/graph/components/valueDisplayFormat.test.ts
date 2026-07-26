@@ -11,7 +11,7 @@ import { solError } from "../errorValue";
 import { setEditorRefs, getEditor } from "../process";
 import type { Schemes } from "../schemes";
 import { ConduitNode, conduitInKey, conduitOutKey } from "../nodes/conduit";
-import { reconcileConduitTypes } from "../conduitTrace";
+import { settleWildcardTypes } from "../trueAnyAdopt";
 import { DisplayNode } from "../nodes/display";
 import { dateOut } from "../nodes/shared";
 
@@ -111,7 +111,7 @@ describe("nodeOutputIsDate — type resolves through pass-throughs / conduits", 
     await editor.addConnection(new ClassicPreset.Connection(dateSrc, "result", cond, conduitInKey(0)) as Schemes["Connection"]);
     await editor.addConnection(new ClassicPreset.Connection(cond, conduitOutKey(0), dispThroughConduit, "in") as Schemes["Connection"]);
     await editor.addConnection(new ClassicPreset.Connection(dateSrc, "result", dispDirect, "in") as Schemes["Connection"]);
-    reconcileConduitTypes(getEditor()!); // the conduit lane adopts `date`
+    settleWildcardTypes(getEditor()!); // lanes + adoptive sockets take `date`
     return { dateSrc, cond, dispThroughConduit, dispDirect };
   }
 
@@ -202,6 +202,11 @@ describe("displayedType — one rule with socket adoption (no first-branch guess
     await editor.addConnection(new ClassicPreset.Connection(a, "v", iff, "then") as Schemes["Connection"]);
     await editor.addConnection(new ClassicPreset.Connection(b, "v", iff, "else") as Schemes["Connection"]);
     await editor.addConnection(new ClassicPreset.Connection(iff, "result", disp, "in") as Schemes["Connection"]);
+    // Production runs this on every connection change (reconcileFcTypes → here), and
+    // it is what WRITES the resolved type onto each adoptive socket. A display test
+    // that skips it isn't testing what ships — the same smell as a node test that
+    // skips wrapNodeData (List Input audit, 2026-07-25c).
+    settleWildcardTypes(editor);
     return { iff, disp };
   }
 
@@ -229,6 +234,7 @@ describe("displayedType — one rule with socket adoption (no first-branch guess
     const iff = new IfNode() as unknown as Schemes["Node"];
     for (const n of [a, iff]) await editor.addNode(n);
     await editor.addConnection(new ClassicPreset.Connection(a, "v", iff, "then") as Schemes["Connection"]);
+    settleWildcardTypes(editor);
     expect(nodeOutputIsDate(iff.id)).toBe(true);
   });
 
@@ -242,6 +248,7 @@ describe("displayedType — one rule with socket adoption (no first-branch guess
     const exp = new ExpectNode() as unknown as Schemes["Node"];
     for (const n of [dsrc, exp]) await editor.addNode(n);
     await editor.addConnection(new ClassicPreset.Connection(dsrc, "v", exp, "min") as Schemes["Connection"]);
+    settleWildcardTypes(editor);
     expect(nodeOutputIsDate(exp.id)).toBe(false); // `in` is unwired — nothing to display
   });
 });

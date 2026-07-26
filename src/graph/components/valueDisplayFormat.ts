@@ -6,9 +6,8 @@
 // an ad-hoc `render` formatter.
 
 import { getOwningEditor } from "../activeGraph";
-import { SolenoidSocket, isDateType, isWildcardType, elementFamilyOf, type SocketDataType } from "../sockets";
+import { SolenoidSocket, isDateType, elementFamilyOf, type SocketDataType } from "../sockets";
 import type { ElemFamily } from "./ArrayChip";
-import { passthroughForOutput, resolvePassthroughType, agreeTypes } from "../nodes/passthrough";
 import { formatDateSerial, DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT } from "../nodes/date";
 import { isSolError, type SolError } from "../errorValue";
 import { isUnitCell, formatUnitCell, type UnitCell } from "../unitValue";
@@ -118,63 +117,35 @@ function fmtSerial(v: number): string {
 
 /**
  * The concrete data type of the value a node DISPLAYS — the type-default display
- * principle: a value shows in its TYPE's default format wherever it appears (a
- * date reads "20-Mar-2026", not its serial), even if physically carried as a
- * number. Reads the node's primary output socket; when that's `any` AND the node
- * is a pure pass-through (Display), it resolves the type from whatever FEEDS it —
- * through a chain of pass-throughs and through a Conduit lane (whose output socket
- * now carries the real type). A non-pass-through `any` producer is left as `any`
- * (we don't guess a transform's output from its inputs). Cycle- and depth-guarded.
+ * principle: a value shows in its TYPE's default format wherever it appears (a date
+ * reads "20-Mar-2026", not its serial), even if physically carried as a number.
+ *
+ * This just READS the output socket. It used to walk the graph to re-derive the type
+ * for a wildcard socket, which was a second answer to a question the ADOPTION pass
+ * already answers and writes onto the socket (`reconcileTrueAnyTypes` →
+ * `settleWildcardTypes`, run by `reconcileFcTypes` on every connection change and by
+ * persistence on load). Two resolvers meant two rules, and they diverged: until
+ * 2026-07-25 an `IF` over a date and a number rendered the number as a DATE, because
+ * the walk returned the first wired branch while adoption correctly said "unknown".
+ *
+ * The precondition is machine-checked by `passthroughOutputMutable.test.ts`: every
+ * passthrough whose output is a wildcard carries a MUTABLE socket, so adoption can and
+ * does write the resolved type there. A wildcard still on the socket after adoption
+ * therefore means genuinely unknown — and this honours that instead of guessing.
  */
-function displayedType(
-  nodeId: string,
-  outKey: string | undefined,
-  seen: Set<string>,
-  depth: number,
-): SocketDataType | undefined {
-  if (depth > 32) return undefined;
-  // Owning editor: an internal drill-in node's source chain lives in the internal
-  // editor, not main (see getOwningEditor). The recursion re-resolves per source,
-  // but a source is in the same graph so it stays consistent.
+function displayedType(nodeId: string, outKey?: string): SocketDataType | undefined {
+  // Owning editor: an internal drill-in node lives in the internal editor, not main.
   const editor = getOwningEditor(nodeId);
   const node = editor?.getNode(nodeId) as
     (Record<string, unknown> & { outputs?: Record<string, { socket?: unknown } | undefined> }) | undefined;
   if (!node) return undefined;
+  // `outKey` names WHICH socket to read on a multi-output card (Filter's Dropped,
+  // Split Frame's Matrix/Headers); it never triggers a traversal.
   const out = outKey ? node.outputs?.[outKey] : (node.outputs?.result ?? Object.values(node.outputs ?? {})[0]);
   const sock = out?.socket;
-  const dt = sock instanceof SolenoidSocket ? sock.dataType : undefined;
-  if (dt && !isWildcardType(dt)) return dt; // concrete socket (a producer, or a typed Conduit lane)
-
-  // Still a placeholder: resolve it through the node's OWN passthrough declaration,
-  // with the SAME `resolvePassthroughType` the socket-adoption pass runs. This used to
-  // be a hand-rolled loop over every incoming connection that returned the FIRST
-  // non-wildcard type it met — which ignored `combine` (an IF whose branches disagree
-  // stays `trueany` at the socket, but displayed as its first branch, so a number on
-  // the else-branch rendered as a date) and didn't distinguish a VALUE branch from a
-  // side input (an Expect could take its display type from `min`). One rule now: when
-  // adoption says `trueany` it means genuinely unknown, and display honours that.
-  const primaryKey = outKey ?? (node.outputs?.result ? "result" : Object.keys(node.outputs ?? {})[0]);
-  const spec = primaryKey ? passthroughForOutput(node, primaryKey) : undefined;
-  if (!spec) return dt; // a producer's `any` output type is genuinely `any`
-  const key = `${nodeId}::${outKey ?? ""}`;
-  if (seen.has(key)) return dt;
-  seen.add(key);
-  const conns = editor!.getConnections();
-  const typeOfInput = (inKey: string): SocketDataType | null => {
-    const c = conns.find((x) => x.target === nodeId && x.targetInput === inKey);
-    if (!c) return null; // unwired branch — doesn't vote
-    return displayedType(c.source, c.sourceOutput, seen, depth + 1) ?? null;
-  };
-  const resolved = resolvePassthroughType(spec, typeOfInput, agreeTypes);
-  return isWildcardType(resolved) ? dt : resolved;
+  return sock instanceof SolenoidSocket ? sock.dataType : undefined;
 }
 
-/**
- * Does the value this node displays carry dates? Resolves the displayed TYPE
- * (through pass-throughs / Conduit lanes — see displayedType), so a date reads as
- * a date everywhere it flows, not just at the node that produced it. Read at
- * render time, so a socket SWAP (Cast / Conduit lane retype) re-detects next render.
- */
 export function nodeOutputIsDate(nodeId: string | null): boolean {
   return nodeOutputElemFamily(nodeId) === "date";
 }
@@ -194,7 +165,7 @@ export function nodeOutputIsDate(nodeId: string | null): boolean {
  */
 export function nodeOutputElemFamily(nodeId: string | null, outKey?: string): ElemFamily | undefined {
   if (!nodeId) return undefined;
-  const t = displayedType(nodeId, outKey, new Set(), 0);
+  const t = displayedType(nodeId, outKey);
   if (t === undefined) return undefined;
   if (isDateType(t)) return "date"; // date routes through the one shared predicate
   const fam = elementFamilyOf(t);
