@@ -39,7 +39,7 @@ counts and the prose are not — re-run the script above after adding a node.
 | 7 | What a socket's type controls beyond connections |
 | 8 | Choosing a socket for a new port, and the factory to call |
 | 9 | Why a cable was refused |
-| 10 | Adding a socket variant |
+| 10 | Adding a new element family — the checklist, including what fails silently |
 
 ---
 
@@ -1236,17 +1236,89 @@ port automatically, so the menu only ever offers nodes that will actually connec
 
 ---
 
-## 10. Adding a socket variant
+## 10. Adding a new element family
 
-Adding a sixth element family is one row in the `FAMILIES` table, its four colours,
-a drawing branch, and one case in the Format Controller's family map. The
-accept-sets, the compatibility test and the connection guard all fall out of the
-lattice — no other edits.
+A sixth family means four new variants (scalar, list, combo, matrix) and the
+120-odd new ordered pairs of connect/block behaviour that go with them. **All of
+that behaviour is derived from one table row.** This was measured, not assumed: a
+throwaway `currency` family was added, compiled and run against the full suite,
+and the numbers below are what that produced.
 
-Two test files hold that in place. `socketConnect.test.ts` re-derives the rules
-independently and sweeps every ordered pair of the twenty family rungs, with
-targeted cases for the wildcards, the containers and the object family.
-`socketReference.test.ts` parses **this document** and diffs all 120 of its
-connection lists against `canConnect`, along with the glyph table and the
-socket → FC family table — so a lattice change that this document misses fails
-the suite with the variant and the direction named.
+### What one row buys you
+
+Four edits, all in `sockets.ts` — the type union, `SOCKET_COLORS`,
+`SOCKET_TYPE_LABELS`, and the `FAMILIES` row — give you every accept-set, the
+compatibility test and the connection guard, correct in both directions against
+all 30 variants. Nothing in the engine, the coercion boundary, the adoption
+system or any of the 315 catalog nodes needs to change: in the experiment the
+entire suite passed apart from the checks that exist to demand the follow-up
+below.
+
+### What the compiler then demands
+
+`tsc` names exactly two more files, both exhaustive `Record<SocketDataType, …>`
+maps: `ConnectionDialog.tsx`'s short type-label map, and `formatModel.test.ts`'s
+FC-family truth table. Neither can be forgotten.
+
+### What fails LOUDLY
+
+`socketReference.test.ts` fails — in the experiment, 73 cases — until this
+document gains a section per new variant and the new types are added to every
+existing variant's blocked lists.
+
+### What fails SILENTLY — the real checklist
+
+Nothing in the type system or the suite catches these. Each one leaves a family
+that connects correctly but misbehaves:
+
+1. **`coerceInputs.ts` — `coerceValue`.** The new strict-list and combo rungs fall
+   through to `default: return v`. The list rung then does **not** widen a scalar
+   to a singleton, and the combo rung does **not** collapse a one-element list —
+   so a connection the lattice allows delivers the wrong rank. Add the new rungs
+   to the existing `strlist`/`datelist`/`complexlist` and combo cases.
+2. **`SocketComponent.tsx`.** `LIST_TYPES`, `COMBO_COLORS` and `isTable` are keyed
+   by plain strings, so all four new rungs render as a **plain circle** — the
+   shape-encodes-rank vocabulary in section 3 silently breaks. Add the list rung
+   to `LIST_TYPES`, the combo to `COMBO_COLORS`, the matrix to `isTable`.
+3. **`palette.ts`.** `SOCKET_COLORS` only names CSS variables; a variable with no
+   registry entry resolves to nothing. Add three rows (`kind: "scalar" | "array" |
+   "matrix"` — the combo reuses the scalar's variable), which is also what derives
+   the border shade.
+4. **`formatModel.ts` — `familyOf`.** Its `default` returns `"none"`, so the
+   Format Controller shows **no controls** for the new family. This one is a
+   deliberate fail-safe, but it is silent; add a case and the family's control set.
+5. **`socketConnect.test.ts`.** Its `FAM` table is hardcoded on purpose, so that it
+   re-derives the rules independently of `sockets.ts`. The consequence is that it
+   **passes without testing the new family at all**. Add the row.
+
+Then add the port factories in `nodes/shared.ts` (section 8's table) so nodes can
+actually declare the new rungs.
+
+### Whether a family is the right shape for the value
+
+The lattice enforces **no** automatic conversion between families — `logical` ↔
+`number` is the single bridge, and it exists because a boolean genuinely is 1/0 in
+every spreadsheet. A new family without a bridge reaches **only its own sockets**.
+
+That is the question to settle before the mechanics. Take money as the worked
+example: it is a unit on a number today, so it already flows into all 191 `number`
+inputs and 149 `numlist` inputs — SUM, ROUND, every finance node. Promote it to a
+bridgeless family and by Rule 1 every one of those refuses it, and you are left
+choosing between a Cast at each boundary, a currency rung on every numeric node,
+or a bridge that re-admits exactly what the family was meant to separate. Money
+wants to be a number that carries an annotation, which is what unit flow already
+does.
+
+The family model fits values that are genuinely **not** interchangeable with a
+number. `complex` is the pattern to copy: a complex value is a `[real, imaginary]`
+pair, so refusing to hand it to a numeric input is the correct answer, not a
+restriction to work around.
+
+### What holds it all in place
+
+`socketConnect.test.ts` re-derives the rules independently of `sockets.ts` and
+sweeps every ordered pair of the family rungs, with targeted cases for the
+wildcards, the containers and the object family. `socketReference.test.ts` parses
+**this document** and diffs all 120 of its connection lists against `canConnect`,
+along with the glyph table, the socket → FC family table and the port-factory
+table — and it holds the catalog to section 8's rung rule.
