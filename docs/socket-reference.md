@@ -17,6 +17,30 @@ Every connection list here is checked against the code on each test run
 (`socketReference.test.ts`), so the lists cannot silently go stale. The port
 counts and the prose are not — re-run the script above after adding a node.
 
+## Where to start
+
+- **"Which socket type should this new port be?"** → section 8, which ends with the
+  factory to call for each type.
+- **"Why won't this cable connect?"** → section 9, then the output variant's
+  **Reaches** list in section 5.
+- **"What does this dot mean?"** → section 3 for the shape and colour, then the
+  variant's own section in 5.
+- **"My node received the wrong shape."** → the variant's **On arrival** line in
+  section 5, plus section 4 for what happens at every socket.
+
+| | |
+|---|---|
+| 1 | Vocabulary — every term this document uses |
+| 2 | The two governing rules |
+| 3 | Reading a socket at a glance (shape and colour) |
+| 4 | What the boundary does at every socket |
+| 5 | **The 30 variants**, one section each — 5.1 number · 5.2 text · 5.3 date · 5.4 complex · 5.5 logical · 5.6 wildcards · 5.7 containers · 5.8 object |
+| 6 | Adoptive ports and passthrough type resolution |
+| 7 | What a socket's type controls beyond connections |
+| 8 | Choosing a socket for a new port, and the factory to call |
+| 9 | Why a cable was refused |
+| 10 | Adding a socket variant |
+
 ---
 
 ## 1. Vocabulary
@@ -1061,6 +1085,13 @@ without a connection event — Cast's target, a LAMBDA result, Get Column's read
 Note frontmatter — reconciles downstream types explicitly, so a downstream Format
 Controller does not keep a stale format.
 
+That reconcile also **removes cables**. When a socket retypes in place,
+`retypeOutputCables` walks every cable leaving that port and drops the ones whose
+target input no longer accepts the new type. Switching a Cast from Number to Text
+therefore disconnects whatever numeric inputs it was feeding. The same happens on a
+Get Column read-as change, on a Note's frontmatter edit, and on a List Input type
+change.
+
 ---
 
 ## 7. What a socket's type controls beyond connections
@@ -1092,7 +1123,120 @@ whether the tag survives the boundary.
 
 ---
 
-## 8. Adding a socket variant
+## 8. Choosing a socket for a new port
+
+Work down this list; the first answer that fits is the type.
+
+1. **Is the value a function, a chart, or a whole document?** Use `lambda`,
+   `chart` or `document`. They connect only to themselves.
+2. **Is it a table with named columns?** Use `frame`. If its cells may themselves
+   hold frames or other containers, use `cube`.
+3. **Do you know the element family** — number, text, date, complex, boolean?
+   - Pick the rank: one value → the **scalar** rung; always a list → the **strict
+     list** rung; always 2-D → the **matrix** rung.
+   - **If the rank follows the input at runtime — one value in gives one value out,
+     a list in gives a list out — use the COMBO rung.** This is the common case for
+     element-wise operations and the reason the combo rungs exist. Declaring the
+     combo is also how a node opts out of forced rank widening: the boundary leaves
+     a scalar as a scalar there, so the node's own broadcasting sees the natural
+     rank.
+4. **The family is unknown, but the rank is known?** Use the wildcard at that rank:
+   `any` (one value), `anylist` (always a list), `anytable` (always 2-D), or
+   `anycombo` (one value or a list — the element-agnostic combo).
+5. **Anything at all, object types included?** Use `trueany`. This is for genuine
+   pass-anything ports: selectors, inspectors, Cast, composite ports, Conduit lanes.
+
+Two standing rules sit on top of the choice. Aligned parallel columns take **one
+`frame` input**, not several parallel list sockets — that applies to charts, SUMIFS
+and the frame verbs. And a port whose value the node forwards unchanged should
+declare a passthrough, so its type, format and units travel with it.
+
+### The factory to call
+
+Ports are built by the helpers in `src/graph/nodes/shared.ts`. An asterisk marks an
+**adoptive** factory — the port retypes to the wired cable and reverts when
+unplugged.
+
+| Variant | Input factory | Output factory |
+|---|---|---|
+| `number` | `numIn` | `numOut` |
+| `list` | `listIn` | `listOut` |
+| `numlist` | `numListIn` | `numListOut` |
+| `table` | `tableIn` | `tableOut` |
+| `string` | `strIn` | `strOut` |
+| `strlist` | `strListIn` | `strListOut` |
+| `strcombo` | `strComboIn` | `strComboOut` |
+| `strtable` | `strTableIn` | `strTableOut` |
+| `date` | `dateIn` | `dateOut` |
+| `datelist` | `dateListIn` | `dateListOut` |
+| `datecombo` | `dateComboIn` | `dateComboOut` |
+| `datetable` | `dateTableIn` | `dateTableOut` |
+| `complex` | `complexIn` | `complexOut` |
+| `complexlist` | `complexListIn` | `complexListOut` |
+| `complexcombo` | `complexComboIn` | `complexComboOut` |
+| `complextable` | `complexTableIn` | `complexTableOut` |
+| `logical` | `logicalIn` | `logicalOut` |
+| `logicallist` | `logicalListIn` | `logicalListOut` |
+| `logicalcombo` | `logicalComboIn` | `logicalComboOut` |
+| `logicaltable` | — | `logicalTableOut` |
+| `anytable` | `anyTableIn`\* / `adoptiveTableIn`\* | `adoptiveTableOut`\* |
+| `anylist` | `anyListIn`\* / `adoptiveListIn`\* | `adoptiveListOut`\* |
+| `anycombo` | `anyComboIn`\* | `anyComboOut` |
+| `any` | `anyIn`\* | — |
+| `frame` | `frameIn` | `frameOut` |
+| `cube` | `cubeIn` | `cubeOut` |
+| `lambda` | `lambdaIn` | `lambdaOut` |
+| `chart` | `chartIn` | `chartOut` |
+| `document` | `documentIn` | `documentOut` |
+| `trueany` | `trueAnyIn`\* | `trueAnyOut`\* / `staticTrueAnyOut` |
+
+`anyTableIn`/`adoptiveTableIn` and `anyListIn`/`adoptiveListIn` are the same
+factory under two names. `staticTrueAnyOut` is the non-adopting `trueany` output —
+for a port that stays `trueany` whatever is wired (NA, XLOOKUP's value).
+
+Variadic rows use `ExtensibleInputs` / `PairedExtensibleInputs` when each slot
+plays a distinct role, and a single list socket only when the elements are
+interchangeable.
+
+---
+
+## 9. Why a cable was refused
+
+A drag that will not drop has exactly three causes, checked in this order:
+
+1. **The canvas is locked.** All wiring is refused while lock is on, whatever the
+   types.
+2. **It is a self-loop** — an output wired back into an input on the same node.
+3. **The types do not connect** — `canConnect(output, input)` is false. Look up the
+   output's variant in section 5 and read its **Reaches** list; if the input's
+   variant is absent, this is the cause.
+
+The drag guard vetoes the drop silently. Wiring through the **connection dialog**
+instead names the problem, in the form `Incompatible types: Date → Number.` — that
+message reports the two variants' human labels from section 5's headings.
+
+When the cause is a type mismatch, there are three ways forward:
+
+- **Wrong family** (a date into a number, text into a number): insert a **Cast**
+  node and pick the target family. The one pair that needs no Cast is
+  `logical` ↔ `number`, which connects directly at every rank.
+- **Wrong direction on the rank ladder** (a list into a scalar, a matrix into a
+  list, a frame into a matrix): the value is wider than the port. Reshape
+  explicitly — Get Column, TOCOL, INDEX — rather than expecting the socket to
+  narrow. The one narrowing that connects on its own is a **combo** into its own
+  family's scalar.
+- **A container into something narrower** (a `cube` into a `frame`, a `frame` into
+  a matrix): UNNEST or Get Column does it explicitly.
+
+Socket types also drive **quick-wire**: dragging a cable into empty canvas opens the
+Add menu filtered to nodes that have a port compatible with the one you dragged
+from — from an output it keeps nodes with an accepting input, from an input it keeps
+nodes with an output that flows in. Picking one wires it to the first compatible
+port automatically, so the menu only ever offers nodes that will actually connect.
+
+---
+
+## 10. Adding a socket variant
 
 Adding a sixth element family is one row in the `FAMILIES` table, its four colours,
 a drawing branch, and one case in the Format Controller's family map. The
