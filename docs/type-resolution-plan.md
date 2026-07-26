@@ -106,8 +106,13 @@ to the base).
   value branches. `agree` moved from `trueAnyAdopt.ts` to `passthrough.ts` as `agreeTypes`
   so there is one combine rule. Item 5 can now delete the walk outright rather than
   reconcile two rules.
-- [ ] **2. Delete the three dead exports** (`staticTrueAnyIn`, `anyListOut`,
-  `anyTableOut`). Zero uses, zero risk.
+- [x] **2. Delete the dead exports.** DONE 2026-07-25. `staticTrueAnyIn`, `anyListOut`,
+  `anyTableOut` — plus the `anyListSocket` SINGLETON, which the first three were the last
+  users of. The `anylist` TYPE is very much alive (19 adoptive ports); it was the shared
+  non-adoptive INSTANCE that had been orphaned by the 2026-07-15 adoptive migration, and
+  leaving it was a trap: constructing a port from it would silently opt that port out of
+  adoption. `staticTrueAnyOut` (XLOOKUP's, the last genuinely-static output) gained a
+  doc comment saying when to reach for it versus `trueAnyOut` + `project`.
 - [ ] **3. Add the `anycombo` rung.** Deletes `noWidenInputs` and its ~25 lines of
   documentation (Expression is its only user), gives Regex an honest output type instead
   of `anyOut`, and inherits `collapseSingleton` for free. D18 already anticipates it
