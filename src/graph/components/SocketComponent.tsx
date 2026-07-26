@@ -28,6 +28,12 @@ const COMBO_COLORS: Record<string, [string, string]> = {
   datecombo:    [SOCKET_COLORS.date, SOCKET_COLORS.datelist],
   complexcombo: [SOCKET_COLORS.complex, SOCKET_COLORS.complexlist],
   logicalcombo: [SOCKET_COLORS.logical, SOCKET_COLORS.logicallist],
+  // The gray wildcard family distinguishes its rungs by SHAPE, not shade — every rung
+  // is `--sock-any` — so a [gray, gray] split square would be indistinguishable from
+  // the `anylist` square. The lower half takes the fill's systematic ring shade (the
+  // same fixed value-drop every glyph's border uses), which keeps the split visible
+  // without inventing a hue (DESIGN.md's Sibling Rule).
+  anycombo:     [SOCKET_COLORS.anylist, "var(--sock-any-ring)"],
 };
 
 export function SocketComponent({ data }: { data: ClassicPreset.Socket }) {

@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { numberSocket, listSocket, numListSocket, tableSocket, strTableSocket, dateTableSocket, anyTableSocket, stringSocket, strListSocket, strComboSocket, dateSocket, dateListSocket, dateComboSocket, complexSocket, complexListSocket, complexComboSocket, complexTableSocket, logicalSocket, logicalListSocket, logicalComboSocket, logicalTableSocket, frameSocket, cubeSocket, lambdaSocket, chartSocket, documentSocket, anySocket, trueAnySocket, AdoptiveSocket } from "../sockets";
+import { numberSocket, listSocket, numListSocket, tableSocket, strTableSocket, dateTableSocket, anyTableSocket, anyComboSocket, stringSocket, strListSocket, strComboSocket, dateSocket, dateListSocket, dateComboSocket, complexSocket, complexListSocket, complexComboSocket, complexTableSocket, logicalSocket, logicalListSocket, logicalComboSocket, logicalTableSocket, frameSocket, cubeSocket, lambdaSocket, chartSocket, documentSocket, anySocket, trueAnySocket, AdoptiveSocket } from "../sockets";
 import { resolveColor, paletteStore, type PaletteSlot } from "../palette";
 import { type SolError } from "../errorValue";
 import { cellShortCircuit, guardFinite, COMPUTE } from "../valueKinds";
@@ -58,6 +58,13 @@ export const staticTrueAnyOut = (label: string) => new ClassicPreset.Output(true
 // anyListIn = 1-D (Set/position ops), anyIn = scalar.
 export const anyTableIn = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anytable"), label);
 export const anyListIn  = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anylist"), label);
+// `anycombo` — the element-agnostic COMBO: accepts what `anyListIn` accepts, but a
+// scalar reaches data() as a SCALAR instead of widening to a singleton. The port for a
+// producer whose result rank follows its input (Expression's formula variables) or its
+// op (Regex). Before this rung existed, the same effect needed the `noWidenInputs`
+// side-channel, which overrode the socket rather than being expressed by it.
+export const anyComboIn  = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anycombo"), label);
+export const anyComboOut = (label: string) => new ClassicPreset.Output(anyComboSocket, label);
 export const numOut     = (label: string) => new ClassicPreset.Output(numberSocket,  label);
 export const listOut    = (label: string) => new ClassicPreset.Output(listSocket,    label);
 export const numListOut = (label: string) => new ClassicPreset.Output(numListSocket, label);
@@ -97,7 +104,6 @@ export const chartIn      = (label: string) => new ClassicPreset.Input(chartSock
 export const chartOut     = (label: string) => new ClassicPreset.Output(chartSocket,  label);
 export const documentIn   = (label: string) => new ClassicPreset.Input(documentSocket, label);
 export const documentOut  = (label: string) => new ClassicPreset.Output(documentSocket, label);
-export const anyOut       = (label: string) => new ClassicPreset.Output(anySocket,     label);
 
 // ─── Polyform result-type selector ────────────────────────────────────────────
 // The value-polymorphic formula producers (Expression, BYROW/BYCOL, REDUCE, MAP,

@@ -113,9 +113,11 @@ describe("Expression — value-polymorphic results", () => {
     expect(dt(new MakeArrayNode({ resultAs: "auto" }).outputs.result?.socket)).toBe("anytable");
   });
 
-  it("variable inputs are `any` so text/date arrays connect", () => {
+  it("variable inputs are `anycombo` so text/date arrays connect AND a scalar stays scalar", () => {
     const n = new ExpressionNode({ expr: "UPPER(name)", resultAs: "text" });
-    expect(dt(n.inputs.name?.socket)).toBe("anylist");
+    // `anycombo` (2026-07-25) replaced `anylist` + the `noWidenInputs` side-channel:
+    // same acceptance, but the SOCKET now says the evaluator takes either rank.
+    expect(dt(n.inputs.name?.socket)).toBe("anycombo");
   });
 });
 

@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { anyListIn, resultOut, type ResultType } from "./shared";
+import { anyComboIn, resultOut, type ResultType } from "./shared";
 import { extractVariables, compileEvaluator, parseFormula, type ExprEvaluator, type Ast, formulaSyntaxHint } from "../excelFormula";
 import { fxErrorToSol } from "../excelFunctions";
 import { isSolError, solError } from "../errorValue";
@@ -79,14 +79,6 @@ function envDim(v: unknown): Dim {
 export class ExpressionNode extends ClassicPreset.Node {
   /** Keeps `UnitCell` tags on its inputs — runs the dimension algebra itself (FC A4; see coerceInputs). */
   unitAware = true;
-  /** Every formula variable OPTS OUT of rank widening (coerceInputs `noWidenInputs`):
-   *  the evaluator broadcasts scalar-or-list itself, so the shared coercion must NOT
-   *  widen a scalar into a singleton list the way a plain `anylist` (Set/position) input
-   *  does — that turned `a+b` of two scalars into a 1-element list. The input sockets are
-   *  unchanged (still list-rank glyphs that accept a scalar widening in); only the value
-   *  passed to data() keeps its natural rank. Kept in sync with `varNames` in `_rebuild`
-   *  by MUTATING this same Set (coerceInputs captures the reference once). */
-  noWidenInputs = new Set<string>();
   label: string;
   expr: string;
   // A pack-supplied preset locks its formula: the formula box is read-only so the
@@ -144,7 +136,7 @@ export class ExpressionNode extends ClassicPreset.Node {
 
     for (const v of next) {
       if (!prev.has(v)) {
-        this.addInput(v, anyListIn(v));
+        this.addInput(v, anyComboIn(v));
         added.push(v);
       }
     }
@@ -155,9 +147,6 @@ export class ExpressionNode extends ClassicPreset.Node {
     }
 
     this.varNames = next;
-    // Keep noWidenInputs === varNames by mutating in place (see the field doc).
-    this.noWidenInputs.clear();
-    for (const v of next) this.noWidenInputs.add(v);
     this.evaluator = compileEvaluator(this.expr);
     this.ast = parseFormula(this.expr);
     return { added, removed };
