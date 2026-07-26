@@ -168,18 +168,26 @@ to the base).
 
 ## Parking lot — found during the audit, solution not yet clear
 
-### ~~Bug A~~ — FIXED 2026-07-25 by item 1; the open question below survives it
-**Verified live at the time.** With a `date` on `then` and a `number` on `else`: adoption correctly
-leaves the socket `trueany`; `displayedType` returns `date` (first connection wins,
-`valueDisplayFormat.ts:148`). That feeds `nodeOutputIsDate` → `dateFormatDisplay`, so a
-number flowing out the else-branch renders as `20-Mar-2026`. A wrong VALUE on screen, not
-a tint.
-**Still open after the fix:** display now honours adoption and falls back to raw numbers,
-which is correct but loses date formatting in the common case where the branches agree at
-RUNTIME while disagreeing statically (an IF picking between a date and a `#N/A` fallback,
-say). A data-aware read — `selected()`, which IF already tracks for units — is the likely
-answer, and would let display follow the branch actually taken. Not attempted: it makes
-display depend on computed state, so it needs a decision about re-render timing.
+### ~~Bug A~~ / the disagreeing-selector question — RESOLVED 2026-07-25
+The symptom (an `IF` over a date and a number rendering the number as a date) was fixed by
+item 1. The follow-on question — *should a disagreeing selector display something smarter
+than raw?* — is now answered **no, and it was the wrong question.**
+- **A data-aware display is not available.** Two routes exist and both are closed. Reading
+  `selected()` at render time reintroduces a SECOND resolver, which item 5 just deleted.
+  Making ADOPTION data-aware instead is worse: a selector's OUTPUT socket type would then
+  flip per recompute with the data, so a downstream cable would be legal or illegal
+  depending on which branch ran. Unstable typing driven by values is clearly wrong.
+- **There is also nothing to recover.** When the branches genuinely disagree, "unknown" is
+  the true answer, and a date serial is indistinguishable from a number by value — which
+  is the whole reason the socket is the truth.
+- **The motivating case wasn't a selector at all.** `IFERROR(aDate, NA())` lost its date
+  formatting because **NA() declared a `number` output** while emitting a tagged `#N/A`
+  SolError. It was a type-neutral SOURCE voting a type it doesn't have. NA is `trueany`
+  now: `agreeTypes` ignores it as non-voting, so `IFERROR(date, NA())` resolves to `date`,
+  and #N/A connects anywhere — which is correct, since an error is legal in any cell.
+  Its dot is the hollow ring rather than an amber circle, which is also more honest.
+**Lesson worth keeping:** when a selector's `agree` gives "unknown", suspect a BRANCH
+declaring a type it doesn't really have before suspecting the selector.
 
 ### ~~Bug B~~ — FIXED 2026-07-25
 **Confirmed first, then fixed.** `compute()` was a chain of `instanceof` checks against the

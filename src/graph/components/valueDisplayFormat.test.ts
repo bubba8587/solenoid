@@ -2,9 +2,9 @@ import { describe, it, expect, afterEach } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
 import { dateFormatDisplay, shouldRenderListInline, formatListCell, nodeOutputIsDate, nodeOutputElemFamily } from "./valueDisplayFormat";
 import { ListInputNode, type ListElemType } from "../nodes/list";
-import { IfNode } from "../nodes/logic";
+import { IfNode, NaNode, IFErrorNode } from "../nodes/logic";
 import { ExpectNode } from "../nodes/quality";
-import { dateSocket, numberSocket, SolenoidSocket } from "../sockets";
+import { dateSocket, numberSocket, SolenoidSocket, canConnect } from "../sockets";
 import { wrapNodeData } from "../coerceInputs";
 import { jsDateToSerial } from "../nodes/date";
 import { solError } from "../errorValue";
@@ -250,5 +250,37 @@ describe("displayedType — one rule with socket adoption (no first-branch guess
     await editor.addConnection(new ClassicPreset.Connection(dsrc, "v", exp, "min") as Schemes["Connection"]);
     settleWildcardTypes(editor);
     expect(nodeOutputIsDate(exp.id)).toBe(false); // `in` is unwired — nothing to display
+  });
+});
+
+// ─── A type-NEUTRAL source must not vote in a selector's `agree` ──────────────
+// The motivating case for "what should a disagreeing selector display?" turned out
+// not to be about selectors at all. `IFERROR(aDate, NA())` lost its date formatting
+// because NA() declared a `number` OUTPUT while emitting a tagged #N/A SolError — so
+// the branches were date + number, they disagreed, and the result resolved to unknown.
+// NA is type-neutral (`trueany`), which `agreeTypes` correctly ignores as non-voting.
+describe("NA() is type-neutral, so it doesn't out-vote a typed branch", () => {
+  afterEach(() => setEditorRefs(null as never, null as never, null as never));
+
+  it("IFERROR(date, NA()) still reads as a date", async () => {
+    const editor = new NodeEditor<Schemes>();
+    setEditorRefs(editor, null as never, null as never);
+    const dsrc = new ClassicPreset.Node("D") as unknown as Schemes["Node"];
+    dsrc.addOutput("v", new ClassicPreset.Output(dateSocket));
+    const na = new NaNode() as unknown as Schemes["Node"];
+    const ife = new IFErrorNode() as unknown as Schemes["Node"];
+    for (const n of [dsrc, na, ife]) await editor.addNode(n);
+    await editor.addConnection(new ClassicPreset.Connection(dsrc, "v", ife, "value") as Schemes["Connection"]);
+    await editor.addConnection(new ClassicPreset.Connection(na, "result", ife, "fallback") as Schemes["Connection"]);
+    settleWildcardTypes(editor);
+    expect(nodeOutputIsDate(ife.id)).toBe(true);
+  });
+
+  it("and #N/A connects anywhere, because an error is legal in any cell", () => {
+    const out = (new NaNode().outputs.result!.socket as SolenoidSocket).dataType;
+    expect(out).toBe("trueany");
+    for (const t of ["number", "string", "date", "strlist", "frame", "cube"] as const) {
+      expect(canConnect(out, t)).toBe(true);
+    }
   });
 });

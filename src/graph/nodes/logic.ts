@@ -1,6 +1,5 @@
 import { ClassicPreset } from "rete";
-import { numberSocket } from "../sockets";
-import { numListIn, logicalComboOut, logicalComboIn, logicalIn, numIn, anyIn, trueAnyIn, trueAnyOut } from "./shared";
+import { numListIn, logicalComboOut, logicalComboIn, logicalIn, numIn, anyIn, trueAnyIn, trueAnyOut, staticTrueAnyOut } from "./shared";
 import type { PassthroughSpec } from "./passthrough";
 import { isSolError, isNaError, solError, type SolError } from "../errorValue";
 import { kleeneAnd, kleeneOr, kleeneNot, isMissing, cellError, type Tri } from "../valueKinds";
@@ -487,7 +486,14 @@ export class NaNode extends ClassicPreset.Node {
     super("Na");
     this.label = init?.label ?? "NA";
     this.cachedResult = solError("#N/A", "Not available");
-    this.addOutput("result", new ClassicPreset.Output(numberSocket, "N/A"));
+    // TYPE-NEUTRAL (2026-07-25), not `number`. NA emits a tagged #N/A SolError, which
+    // is not a number — an error rides through every socket regardless of type
+    // (coerceValue passes it untouched, installErrorGuards propagates it). Declaring
+    // `number` made it VOTE in a selector's `agree`: `IFERROR(aDate, NA())` had
+    // branches date + number, which disagree, so the result resolved to "unknown" and
+    // the date lost its formatting downstream. `trueany` doesn't vote (agreeTypes
+    // ignores it as unwired) and connects everywhere #N/A is legal, which is anywhere.
+    this.addOutput("result", staticTrueAnyOut("N/A"));
   }
 
   data() {
