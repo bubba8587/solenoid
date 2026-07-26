@@ -11,7 +11,8 @@ import { formatScalar } from "./format";
 import { formatAnnotationStore, formatNumberWithAnnotation, applyLogicalStyle } from "../formatAnnotationStore";
 import { isSolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
-import { ArrayChip, isArrayValue } from "./ArrayChip";
+import { ArrayChip, isArrayValue, arrayAccentFor } from "./ArrayChip";
+import { nodeOutputElemFamily } from "./valueDisplayFormat";
 import { FrameChip, FrameRefChip } from "./FrameChip";
 import { isFrameRef } from "../frameBackend";
 import { CubeChip } from "./CubeChip";
@@ -25,7 +26,7 @@ import "./cableInspector.css";
 // Render a value on the wire compactly. Mirrors PinLayer.renderValue: errors as
 // the red #CODE! badge, null/undefined as a dash, list/table/frame as the same
 // clickable chip the node shows, numbers through their source FC annotation.
-function renderWireValue(v: unknown, annNodeId: string) {
+function renderWireValue(v: unknown, annNodeId: string, outKey: string) {
   if (isSolError(v)) {
     return <span className="solenoid-cable-inspector__value solenoid-cable-inspector__value--error" title={errorTip(v)}>{v.code}</span>;
   }
@@ -38,12 +39,10 @@ function renderWireValue(v: unknown, annNodeId: string) {
   if (isArrayValue(v)) {
     const arr = v as (number | string)[] | (number | string)[][];
     const twoD = Array.isArray(arr[0]);
-    const firstCell = twoD ? (arr[0] as (number | string)[])[0] : (arr as (number | string)[])[0];
-    const str = typeof firstCell === "string";
-    const accent = twoD
-      ? (str ? "var(--sock-strtable)" : "var(--sock-table)")
-      : (str ? "var(--sock-strlist)" : "var(--sock-list)");
-    return <ArrayChip value={arr} size="sm" accent={accent} />;
+    // Tinted from the origin SOCKET, not the first cell — the cable already knows
+    // its type, and a date list's serials look numeric to a cell scan.
+    const family = nodeOutputElemFamily(annNodeId, outKey);
+    return <ArrayChip value={arr} size="sm" accent={arrayAccentFor(family, twoD)} elem={family} />;
   }
   if (typeof v === "string") return <span className="solenoid-cable-inspector__value">{v || "—"}</span>;
   if (typeof v === "boolean") {
@@ -237,7 +236,7 @@ export function CableInspector() {
           received row if engine coercion ever diverges it). */}
       <div className="solenoid-cable-inspector__wire">
         <span className="solenoid-cable-inspector__role">Value</span>
-        {renderWireValue(value, origin.nodeId)}
+        {renderWireValue(value, origin.nodeId, origin.key)}
       </div>
 
       {/* The statically-computed column shape — visible before anything runs. */}

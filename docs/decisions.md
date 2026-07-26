@@ -307,9 +307,23 @@ scalar-or-1-D under the Expression cap → `anylist` (enforced at CONNECT time, 
 runtime #SHAPE!); true scalars (SWITCH equality, Expand fill, Filter/SUMIFS value rows)
 stay `any`. `isWildcardType()` centralizes "walk past untyped passthroughs" over both
 rungs.
-**Cost accepted:** `any` outputs (INDEX, Regex result) can still deliver a non-scalar at
+**Cost accepted:** `any` outputs (Regex result) can still deliver a non-scalar at
 runtime into a scalar input; there is no untyped COMBO socket (Regex result is the known
 combo-shaped hole).
+**AMENDED 2026-07-25 — INDEX ADOPTS; only the heterogeneous containers are unknowable
+(author).** "Value-dependent results like INDEX keep a STATIC trueany" was too broad: it
+held for a CUBE cell (which may hold a nested frame/cube) and a FRAME cell (heterogeneous
+columns, picked by a runtime index), and for nothing else. A list or matrix is
+HOMOGENEOUS — its element family is fixed by the socket whichever cell you pull — so
+declaring the whole node unknowable cost real behaviour: a date pulled out of a date list
+lost its date-ness downstream (`isDateType` reads the socket, so it rendered as a raw
+serial), and the output dot stayed a hollow ring while the input dot coloured. INDEX now
+declares a `passthrough()` on its `list` input — it FORWARDS a value out of its container,
+which is what that declaration means — with a new `project` hook that drops the RANK and
+keeps the family: what Row/Column vary is one-cell-vs-whole-axis, and the COMBO rung means
+exactly "a scalar or a list of F", so the result feeds a scalar input AND a list input.
+`comboOfType` returns null for frame/cube, where the placeholder correctly stands. This is
+D18's own "adopt only where honest" rule applied per CONTAINER instead of per node.
 **AMENDED same day — trueany is ADOPTIVE (author):** a trueany port is a PLACEHOLDER
 that adopts the wired cable's type and reverts on disconnect. Inputs adopt universally;
 outputs only where honest (passthroughs; selector results when every wired branch

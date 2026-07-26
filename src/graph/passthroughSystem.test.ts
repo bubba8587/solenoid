@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { getPassthrough, isPassthroughNode, isPurePassthroughNode, passInputKeys, selectedPassInput } from "./nodes/passthrough";
+import { getPassthrough, isPassthroughNode, isPurePassthroughNode, passInputKeys, selectedPassInput, resolvePassthroughType } from "./nodes/passthrough";
+import { canConnect, isDateType, type SocketDataType } from "./sockets";
 import { DisplayNode } from "./nodes/display";
 import { ExpectNode } from "./nodes/quality";
 import { CableSwitchNode } from "./nodes/control";
@@ -85,10 +86,55 @@ describe("passthrough declarations", () => {
   });
 
   it("generative / producer nodes declare NO passthrough (their output is genuinely static)", () => {
-    // INDEX/XLOOKUP results vary per row; a Number is a source; a Boolean op / Comparison
-    // MAKE a new logical value. None of them forward an input type.
-    for (const n of [new ListIndexNode(), new NumberInputNode(), new BooleanOpNode(), new ComparisonNode()]) {
+    // A Number is a source; a Boolean op / Comparison MAKE a new logical value. None
+    // of them forward an input type. (INDEX does — see the extraction test below.)
+    for (const n of [new NumberInputNode(), new BooleanOpNode(), new ComparisonNode()]) {
       expect(isPassthroughNode(n)).toBe(false);
     }
+  });
+
+  // INDEX is an EXTRACTION: it forwards a value out of its container, so it declares a
+  // passthrough with a `project` that drops the container's RANK while keeping its
+  // element family. It was static `trueany` until 2026-07-25 on the grounds that its
+  // result "varies per row" — true only where the container is heterogeneous.
+  it("INDEX forwards its container's element family at the COMBO rung", () => {
+    const n = new ListIndexNode();
+    expect(isPassthroughNode(n)).toBe(true);
+    expect(isPurePassthroughNode(n)).toBe(false); // a cell is not the container
+    const spec = getPassthrough(n)[0];
+    expect(spec).toMatchObject({ output: "result", combine: "single" });
+    expect(spec.inputs).toEqual(["list"]);
+
+    const resolve = (t: SocketDataType | null) =>
+      resolvePassthroughType(spec, () => t, (ts) => (ts[0] as SocketDataType) ?? "trueany");
+
+    // A HOMOGENEOUS container: the family is fixed by the socket however you slice it,
+    // and the combo covers both shapes the runtime arguments can produce.
+    expect(resolve("datelist")).toBe("datecombo");
+    expect(resolve("date")).toBe("datecombo");
+    expect(resolve("datetable")).toBe("datecombo");
+    expect(resolve("strlist")).toBe("strcombo");
+    expect(resolve("logicaltable")).toBe("logicalcombo");
+    expect(resolve("list")).toBe("numlist");
+    expect(resolve("complexlist")).toBe("complexcombo");
+
+    // HETEROGENEOUS or untyped: genuinely unknowable, so the placeholder stands.
+    for (const t of ["frame", "cube", "anylist", "anytable", "any", "trueany"] as const) {
+      expect(resolve(t)).toBe("trueany");
+    }
+    expect(resolve(null)).toBe("trueany"); // unwired
+  });
+
+  // The point of the change: a date pulled out of a date list stays a DATE downstream.
+  // `isDateType` reads the socket, so a static `trueany` output rendered a raw serial.
+  it("an extracted date is still date-typed, and reaches both a scalar and a list input", () => {
+    const spec = getPassthrough(new ListIndexNode())[0];
+    const out = resolvePassthroughType(spec, () => "datelist", () => "trueany");
+    expect(isDateType(out)).toBe(true);
+    expect(canConnect(out, "date")).toBe(true);      // one cell → a scalar date input
+    expect(canConnect(out, "datelist")).toBe(true);  // a whole axis → a date list input
+    // Element separation still holds — extraction never crosses families.
+    expect(canConnect(out, "number")).toBe(false);
+    expect(canConnect(out, "string")).toBe(false);
   });
 });

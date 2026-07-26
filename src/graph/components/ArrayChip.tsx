@@ -31,6 +31,20 @@ function cellTypeOf(v: ArrayValue, family?: ElemFamily): "number" | "string" | "
 
 export type ElemFamily = "number" | "string" | "date" | "logical";
 
+/** The `--sock-*` colour a container of this element family reads as, for surfaces
+ *  that tint a popup header by the value's TYPE (pins, the cable inspector). Pass the
+ *  family from the socket — `undefined` (a genuine wildcard) falls back to the plain
+ *  list/table colour. Mirrors the `--elem-*` classes in ArrayChip.css. */
+export function arrayAccentFor(family: ElemFamily | undefined, twoD: boolean): string {
+  const suffix = twoD ? "table" : "list";
+  switch (family) {
+    case "string":  return `var(--sock-str${suffix})`;
+    case "date":    return `var(--sock-date${suffix})`;
+    case "logical": return `var(--sock-logical${suffix})`;
+    default:        return twoD ? "var(--sock-table)" : "var(--sock-list)";
+  }
+}
+
 /** The chip's element-family tint, when the container is HOMOGENEOUS and known.
  *  Dates are indistinguishable from numbers by value (serials) — a caller that
  *  knows the socket family passes `elem` instead. Mixed/unknown → undefined

@@ -39,6 +39,12 @@ export interface PassthroughSpec {
    *  these carries a downstream FC's format lock across the whole segment. A selector
    *  is NOT pure — its output is one of several possible values. */
   pure?: boolean;
+  /** Reshape the forwarded type for an EXTRACTION — a node that forwards a value out
+   *  of its input's container rather than the container itself, so the element family
+   *  survives but the RANK doesn't (INDEX: one cell, or a whole axis, decided at
+   *  runtime). Without it the output would parrot the container's type and refuse the
+   *  scalar input the extracted cell belongs in. Omit for a true passthrough. */
+  project?: (t: SocketDataType) => SocketDataType;
 }
 
 interface HasPassthrough { passthrough(): PassthroughSpec[]; }
@@ -93,6 +99,17 @@ export function selectedPassInput(n: unknown): string | null | undefined {
  *  never consults `selected()`. `agree` is injected so trueAnyAdopt owns the exact
  *  "all wired branches must match" rule it already uses elsewhere. */
 export function resolvePassthroughType(
+  spec: PassthroughSpec,
+  typeOf: (key: string) => SocketDataType | null,
+  agree: (types: (SocketDataType | null)[]) => SocketDataType,
+): SocketDataType {
+  const t = resolveForwardedType(spec, typeOf, agree);
+  // An extraction reshapes the forwarded type to its own rank; a true passthrough
+  // declares no `project` and forwards verbatim.
+  return spec.project ? spec.project(t) : t;
+}
+
+function resolveForwardedType(
   spec: PassthroughSpec,
   typeOf: (key: string) => SocketDataType | null,
   agree: (types: (SocketDataType | null)[]) => SocketDataType,

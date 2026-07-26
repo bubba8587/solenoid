@@ -12,7 +12,8 @@ import { formatScalar } from "./format";
 import { formatAnnotationStore, formatNumberWithAnnotation } from "../formatAnnotationStore";
 import { isSolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
-import { ArrayChip, isArrayValue } from "./ArrayChip";
+import { ArrayChip, isArrayValue, arrayAccentFor } from "./ArrayChip";
+import { nodeOutputElemFamily } from "./valueDisplayFormat";
 import { FrameChip, FrameRefChip } from "./FrameChip";
 import { isFrameRef } from "../frameBackend";
 import { CubeChip } from "./CubeChip";
@@ -37,7 +38,7 @@ function readoutValue(t: RetainedTerminal): unknown {
 // verbatim, errors as the red #CODE! badge, null as a dash. List / table / frame
 // values get the SAME clickable chip the node shows — clicking it opens the full
 // grid in the shared popup (`label` titles that popup) rather than a bare [count].
-function renderValue(v: unknown, label?: string, annNodeId?: string) {
+function renderValue(v: unknown, label?: string, annNodeId?: string, outKey?: string) {
   if (isSolError(v)) {
     return <span className="solenoid-pin__value solenoid-pin__value--error" title={errorTip(v)}>{v.code}</span>;
   }
@@ -48,14 +49,12 @@ function renderValue(v: unknown, label?: string, annNodeId?: string) {
   if (isArrayValue(v)) {
     const arr = v as (number | string)[] | (number | string)[][];
     const twoD = Array.isArray(arr[0]);
-    const firstCell = twoD ? (arr[0] as (number | string)[])[0] : (arr as (number | string)[])[0];
-    const str = typeof firstCell === "string";
     // The chip stays neutral (see pinLayer.css), but the popup header takes the
-    // value's socket-type color so it reads as that type, not the body color.
-    const accent = twoD
-      ? (str ? "var(--sock-strtable)" : "var(--sock-table)")
-      : (str ? "var(--sock-strlist)" : "var(--sock-list)");
-    return <ArrayChip value={arr} label={label} size="sm" accent={accent} />;
+    // value's socket-type colour so it reads as that type, not the body colour.
+    // From the SOCKET, not the first cell: a date list's serials look numeric and a
+    // leading blank cell reads as neither, so sniffing tinted both of them amber.
+    const family = nodeOutputElemFamily(annNodeId ?? null, outKey);
+    return <ArrayChip value={arr} label={label} size="sm" accent={arrayAccentFor(family, twoD)} elem={family} />;
   }
   if (typeof v === "string") return <span className="solenoid-pin__value">{v || "—"}</span>;
   if (typeof v === "number") {
@@ -152,7 +151,7 @@ export function PinLayer() {
               rows.map((t) => (
                 <div key={`${t.effNodeId}:${t.effSocketKey}`} className="solenoid-pin__row">
                   <span className="solenoid-pin__row-label" title={t.label}>{t.label}</span>
-                  {renderValue(readoutValue(t), undefined, t.effNodeId)}
+                  {renderValue(readoutValue(t), undefined, t.effNodeId, t.effSocketKey)}
                 </div>
               ))
             )}
@@ -165,7 +164,7 @@ export function PinLayer() {
     return (
       <div key={pin.nodeId} className="solenoid-pin" onClick={() => flyToNode(pin.nodeId)} title="Go to this node">
         <span className="solenoid-pin__label">{label}</span>
-        {renderValue(value, undefined, pin.nodeId)}
+        {renderValue(value, undefined, pin.nodeId, pin.outputKey)}
         {removeBtn(label, pin.nodeId)}
       </div>
     );

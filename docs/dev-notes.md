@@ -120,6 +120,47 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### SESSION DIGEST (2026-07-25e — the type comes from the SOCKET: INDEX adopts, chips stop sniffing)
+Author, on the combo sweep's tail: "every non-scalar value has a forced type already
+associated with it, there's no good reason to re-read cells." Two long-standing places
+were inferring a container's element family from its CELLS instead of its socket, and one
+node was refusing to declare a family it actually knew.
+- **INDEX adopts now** (D18 AMENDED). It was static `trueany` on the grounds that its
+  result "varies per row" — true for a CUBE cell (may hold a nested frame/cube) and a
+  FRAME cell (heterogeneous columns at a runtime index), false for everything else: a
+  list/matrix is HOMOGENEOUS, so the socket fixes the family whichever cell you pull. The
+  cost was real — a date out of a date list lost its date-ness (`isDateType` reads the
+  socket, so it rendered a raw serial) and the output dot stayed a hollow ring while the
+  INPUT dot coloured. INDEX now declares a `passthrough()` on `list`: it FORWARDS a value
+  out of its container, which is exactly what that declaration means, and one declaration
+  drives type adoption, unit flow, the display walk and the Conduit trace together.
+- **The rank is what varies, not the family** — so the spec grew a `project` hook and
+  INDEX maps the container type to its family's COMBO. `datelist` in → `datecombo` out,
+  which feeds a `date` scalar input AND a `datelist` input (combo→scalar is a lattice
+  edge). A verbatim passthrough would have emitted `datelist` and REFUSED the scalar
+  input the extracted cell belongs in. `comboOfType` returns null for frame/cube, where
+  the placeholder correctly stands. Declaring INDEX a passthrough did NOT disturb units:
+  its manual `tagFrameCellUnit`/`matrixUnitOf` handling and the whole unit/cube/error
+  suite stayed green.
+- **Chips stopped reading cells.** New `nodeOutputElemFamily(nodeId, outKey?)` resolves
+  the declared family through the same passthrough/conduit walk `nodeOutputIsDate` used —
+  that predicate is now just this `=== "date"`, so they can't diverge. Fixed by it:
+  (1) `ValueDisplay` passed `elem` for dates ONLY, so every other family fell back to
+  ArrayChip's cell scan — and that scan skips nulls, so a list with NO valid entry left
+  has nothing to vote and returns undefined, which renders as the NUMERIC default. That's
+  the reported Bool-List-Input bug: the SegToggle forces socket and values correctly (swept
+  typed and wired, it never leaks a number), but the box tinted numeric once the valid
+  entries ran out. (2) `cellTypeOf` read the FIRST cell and could only answer
+  number|string though TablePopup's CellType has all four — so a boolean list could NEVER
+  open as `logical`, and a leading null made a text list open numeric.
+- **The same first-cell sniff was duplicated in PinLayer and CableInspector** (picking the
+  popup accent) — both had the node id and output key in hand the whole time. Replaced
+  with the resolver plus one shared `arrayAccentFor(family, twoD)`; Filter's Dropped and
+  Split Frame's Matrix/Headers chips now pass their family too. Every first-cell sniff in
+  the components is gone; the cell scan survives ONLY as ArrayChip's fallback for a
+  genuine wildcard output, a set INDEX's adoption just shrank.
+- tsc clean; suite 3146 green.
+
 ### SESSION DIGEST (2026-07-25d — combo sockets swept across ALL FIVE element families)
 The combo rung (scalar-or-list, the bicolor split square) has existed for all five element
 families since 2026-06-10, but only the NUMBER one was ever applied — `numListIn` appears 104
