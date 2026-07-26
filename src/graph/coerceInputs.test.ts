@@ -3,6 +3,15 @@ import { parseListLiteral, wrapNodeData, TYPEABLE_LIST } from "./coerceInputs";
 import { SolenoidSocket, AdoptiveSocket } from "./sockets";
 import { ExpressionNode } from "./nodes/expression";
 import { FLAT_CATALOG } from "./catalogUtils";
+import { DatePartNode, parseDateToSerial } from "./nodes/date";
+import { TextTransformNode } from "./nodes/text";
+import { ComplexUnaryNode } from "./nodes/complex";
+import { NotNode } from "./nodes/logic";
+import { ArithmeticNode } from "./nodes/scalar";
+import { ListLengthNode, ListInputNode } from "./nodes/list";
+
+const MAR_2026 = parseDateToSerial("2026-03-20");
+const APR_2027 = parseDateToSerial("2027-04-21");
 
 // Persistence restores `literals` / `stringLiterals` only onto classes that
 // DECLARE the map (the inline-editability convention — a wire-driven card like
@@ -151,5 +160,61 @@ describe("coerceInputs — Expression is a broadcaster: its variables opt out of
   });
   it("a list input still broadcasts to a list", () => {
     expect(runExpr("a + b", { a: [[1, 2, 3]], b: [10] })).toEqual([11, 12, 13]);
+  });
+});
+
+// ─── A one-element list IS the scalar, at any rung that can be rank 0 ─────────
+// Reported against `List Input [Date]` (one entry) → YEAR: it emitted a LIST of one
+// year instead of the year. Author: "combo socket mutates single value down into
+// Scalar — that's what the combo socket is supposed to do. If I didn't want that,
+// I'd use the strict-list socket."
+//
+// He's right, and the inconsistency was ours: `toScalar` has always collapsed a
+// one-element list for the numeric SCALAR rung, so the COMBO — the rung that
+// generalizes it — was the stricter of the two. The lattice already permits
+// combo→scalar on the grounds that "a combo can be a scalar" (sockets.ts calls it a
+// runtime-accepted risk); collapsing is what makes that promise true.
+describe("coerceInputs — a one-element list collapses at a combo / scalar socket", () => {
+  const run = <T>(node: T, inputs: Record<string, unknown[]>) => {
+    wrapNodeData(node as unknown as Parameters<typeof wrapNodeData>[0]);
+    return (node as { data(i: Record<string, unknown[]>): { result: unknown } }).data(inputs).result;
+  };
+
+  it("the reported case: one date in → a scalar year out", () => {
+    expect(run(new DatePartNode({ op: "year" }), { date: [[MAR_2026]] })).toBe(2026);
+  });
+
+  it("a genuine multi-element list still broadcasts to a list", () => {
+    expect(run(new DatePartNode({ op: "year" }), { date: [[MAR_2026, APR_2027]] })).toEqual([2026, 2027]);
+  });
+
+  it("collapses for every element family's combo, not just dates", () => {
+    expect(run(new TextTransformNode({ op: "upper" }), { text: [["a"]] })).toBe("A");
+    expect(run(new TextTransformNode({ op: "upper" }), { text: [["a", "b"]] })).toEqual(["A", "B"]);
+    expect(run(new NotNode(), { in: [[true]] })).toBe(false);
+    expect(run(new ArithmeticNode({ op: "add" }), { a: [[2]], b: [[3]] })).toBe(5);
+  });
+
+  // A complex value is ITSELF a `[re, im]` array, so the collapse tests the OUTER
+  // length only — otherwise one complex number would be mistaken for a 1-element list
+  // and torn in half.
+  it("does NOT tear a complex scalar apart", () => {
+    expect(run(new ComplexUnaryNode({ op: "conj" }), { z: [[1, 2]] })).toEqual([1, -2]);      // one complex
+    expect(run(new ComplexUnaryNode({ op: "conj" }), { z: [[[1, 2]]] })).toEqual([1, -2]);    // a 1-list of it
+    expect(run(new ComplexUnaryNode({ op: "conj" }), { z: [[[1, 2], [3, 4]]] })).toEqual([[1, -2], [3, -4]]);
+  });
+
+  // The other half of the rule: a STRICT list socket keeps its list — that IS the
+  // difference between the two rungs — and re-widens a scalar on the way in, so the
+  // round trip through a collapse is lossless.
+  it("a STRICT list socket keeps a one-element list, and re-widens a scalar", () => {
+    const len = (v: unknown) => run(new ListLengthNode(), { list: [v] });
+    expect(len([7])).toBe(1);      // a 1-element list is STILL a list to LENGTH
+    expect(len([7, 8])).toBe(2);
+    expect(len(7)).toBe(1);        // and a bare scalar widens into one
+    const empty = new ListInputNode({ dataType: "date" });
+    wrapNodeData(empty as never);
+    empty.stringLiterals.v0 = "2026-03-20";
+    expect((empty.data({}) as { list: unknown[] }).list).toEqual([MAR_2026]); // the SOURCE still emits a list
   });
 });

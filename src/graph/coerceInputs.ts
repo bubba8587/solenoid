@@ -163,6 +163,31 @@ function coerceUnitCellValue(dataType: SocketDataType, v: unknown): unknown {
   }
 }
 
+/**
+ * A ONE-element list IS the scalar it contains, for any socket whose declared rank
+ * can be 0 — the COMBO rungs (`numlist`/`strcombo`/`datecombo`/`complexcombo`/
+ * `logicalcombo`) and the scalar rungs.
+ *
+ * This is the runtime half of the lattice's combo→scalar edge (sockets.ts): the
+ * connection is ALREADY allowed, on the grounds that "a combo can be a scalar", and
+ * that edge is what sockets.ts calls a runtime-accepted risk. Collapsing here makes
+ * the promise true for the degenerate case instead of leaving a 1-element array to
+ * reach a node that asked for one value. `toScalar` has always done exactly this for
+ * the numeric scalar rung (coerce.ts) — the combo, which is meant to be the MORE
+ * permissive rung, was stricter than the scalar it generalizes.
+ *
+ * A STRICT list socket (`list`/`strlist`/`datelist`/`logicallist`/`anylist`) keeps its
+ * list — that IS the difference between the two rungs, and it re-widens a scalar on
+ * the way in, so the round trip is lossless.
+ *
+ * A complex scalar is itself `[re, im]`, so the test is on the OUTER length only:
+ * `[[1,2]]` (a one-element complex list) collapses to `[1,2]`, while `[1,2]` (one
+ * complex number) is length 2 and stays put.
+ */
+function collapseSingleton(v: unknown): unknown {
+  return Array.isArray(v) && v.length === 1 ? v[0] : v;
+}
+
 /** Normalize one incoming value to the shape the consuming socket declares. */
 function coerceValue(dataType: SocketDataType, v: unknown): unknown {
   // A lazy frame ref or a tagged error passes through ANY socket untouched: a ref is
@@ -188,15 +213,29 @@ function coerceValue(dataType: SocketDataType, v: unknown): unknown {
     case "numlist": {
       // numlist nodes already accept number | number[] and broadcast; only a 2-D
       // table needs flattening so their element-wise logic never sees rows. A
-      // logical wired here coerces to 1/0 first.
+      // logical wired here coerces to 1/0 first. A one-element list collapses to
+      // its scalar (see collapseSingleton).
       const n = boolsToNums(v);
-      return Array.isArray(n) && Array.isArray((n as unknown[])[0]) ? toList(n as Numeric) : n;
+      const flat = Array.isArray(n) && Array.isArray((n as unknown[])[0]) ? toList(n as Numeric) : n;
+      return collapseSingleton(flat);
     }
-    case "logical":
     case "logicalcombo":
-    case "logicaltable":
+      return collapseSingleton(numsToBools(v));
+    case "logical":
       // A 0/1 number wired into a logic input becomes a real boolean.
+      return collapseSingleton(numsToBools(v));
+    case "logicaltable":
       return numsToBools(v);
+    // The remaining scalar + combo rungs: no element coercion, but a one-element
+    // list is the scalar it holds (the numeric rungs get this from toScalar /
+    // the numlist case above).
+    case "string":
+    case "date":
+    case "complex":
+    case "strcombo":
+    case "datecombo":
+    case "complexcombo":
+      return collapseSingleton(v);
     case "logicallist": {
       const b = numsToBools(v);
       return Array.isArray(b) ? b : [b]; // scalar widens to a singleton list
