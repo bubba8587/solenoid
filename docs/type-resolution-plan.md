@@ -29,7 +29,7 @@ The lesson worth keeping: **when a shape or type looks wrong, read the boundary
 | Walk | File | Lines | Resolves | Reads `passthrough()` |
 |---|---|---|---|---|
 | `reconcileTrueAnyTypes` / `settleWildcardTypes` | `trueAnyAdopt.ts` | 139 | socket TYPE (writes it) | yes |
-| `displayedType` | `components/valueDisplayFormat.ts` | 222 | display TYPE | yes |
+| ~~`displayedType`~~ | `components/valueDisplayFormat.ts` | — | **reads the socket now** (item 5) | n/a |
 | `conduitPath` | `conduitTrace.ts` | 184 | conduit lane type/route | partial |
 | `makeAnnotationResolver` | `unitFlow.ts` | 268 | FC annotation + units | yes |
 | `makeFrameShapeResolver` | `frameShapeResolver.ts` | 174 | frame column shape | **no** |
@@ -141,8 +141,25 @@ to the base).
   **What it fixed:** the same class of bug as the reported YEAR one — with `datelist`
   adopted, a scalar into INDEX was laundered to `[scalar]`, so `INDEX([all])` handed back
   a list of one where a scalar went in. Pinned. **Bug D is closed by this.**
-- [ ] **5. Fold `displayedType` into adoption.** The biggest reduction. Do it after 1 and
-  4, not before.
+- [x] **5. Fold `displayedType` into adoption.** DONE 2026-07-25. The graph walk is
+  DELETED — `displayedType` now just reads the output socket (`outKey` still names WHICH
+  socket on a multi-output card; it never traverses). Adoption already computes the answer
+  and writes it there, so the walk was a second opinion on a settled question, and the
+  one place it differed it was WRONG (item 1's IF bug).
+  **The precondition is now machine-checked** by the new `passthroughOutputMutable.test.ts`:
+  every passthrough whose output is a WILDCARD carries a MutableSocket, so adoption can
+  write to it. (`reconcileOnce` skips a non-mutable socket silently — it would compute the
+  type and throw it away, and nothing would error; the dot would just never colour.) The
+  sweep found exactly one node with a concrete passthrough output — Fill/Coalesce, which is
+  numeric throughout and declares `passthrough()` purely so UNITS ride across it — so the
+  invariant is stated as "wildcard ⇒ mutable", not "always mutable".
+  **What this exposed:** three display tests, one of them PRE-EXISTING, never ran
+  `settleWildcardTypes` and so were exercising the walk rather than the shipped path. They
+  now call it, exactly as `reconcileFcTypes` does on every connection change. Same smell
+  the List Input audit recorded for `wrapNodeData`: a test that skips the boundary isn't
+  testing what ships. Worth remembering that deleting redundant machinery is how you find
+  tests that were quietly depending on it.
+  Net: valueDisplayFormat.ts −51/+22 lines, and the walk count drops from five to four.
 
 ---
 
