@@ -223,8 +223,11 @@ const SOCKET_ACCEPTS: Partial<Record<SocketDataType, SocketDataType[]>> = (() =>
     for (const di of DIMS) {
       // `dimFlows` carries the combo→scalar exception, so e.g. an Expression's
       // `numlist` output feeds a `number` rate/count input while a plain `list`
-      // (1-D only) still cannot. Runtime shape-checks if the combo turns out to be
-      // a list, the same accepted risk as `anytable`.
+      // (1-D only) still cannot. The runtime half of this lives in coerceInputs'
+      // `collapseSingleton`: a ONE-element list arriving at a combo or scalar rung IS
+      // that scalar, which is what makes "a combo can be a scalar" true rather than
+      // merely permitted. A longer list reaching a scalar input remains the accepted
+      // risk (same as `anytable`), and `toScalar` raises `#SHAPE!` for the numeric one.
       map[fam[di]] = DIMS
         .filter((dof) => dof !== di && dimFlows(dof, di))
         .map((dof) => fam[dof]);

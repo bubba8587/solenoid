@@ -120,6 +120,33 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### SESSION DIGEST (2026-07-25f — a one-element list IS the scalar, at a combo rung)
+Reported: `List Input [Date]` with ONE entry, straight into YEAR, emitted a LIST of one
+year. Author's reading, which was right: "combo socket mutates single value down into
+Scalar — that's what the combo socket is supposed to do; if I didn't want that I'd use the
+strict-list socket."
+- **The inconsistency was ours, and it predates the combo sweep.** `toScalar` (coerce.ts)
+  has ALWAYS collapsed a one-element list for the numeric SCALAR rung — so the COMBO, the
+  rung that generalizes the scalar, was the STRICTER of the two. The lattice already
+  permits `combo→scalar` on the grounds that "a combo can be a scalar" and sockets.ts
+  called that a runtime-accepted risk; nothing made the promise true.
+- `collapseSingleton` in coerceInputs now applies at every rung whose declared rank can be
+  0: all five combos plus the scalar rungs (`string`/`date`/`complex`/`logical` — `number`
+  already had it via `toScalar`). One place, uniform.
+- **A strict list socket keeps its list**, which is the whole difference between the rungs,
+  and re-widens a scalar on the way in — so the round trip through a collapse is lossless
+  (`LENGTH([7])` is 1, `LENGTH(7)` is 1). List Input still SOURCES a list; the collapse is
+  a consumer-side reading.
+- **The complex trap:** a complex value is itself `[re, im]`, so the test is on the OUTER
+  length only — `[[1,2]]` (a one-element complex list) collapses, `[1,2]` (one complex
+  number) does not, or a scalar would be torn in half. Same shape test as
+  `broadcastComplex`. Pinned by a test.
+- Diagnosis note for next time: DatePart, INDEX, TODAY, Conduit, Get Column and XLOOKUP
+  were each verified scalar-correct in isolation BEFORE looking at the boundary — the bug
+  was never in a node, it was in what the socket does with the value on the way in. When a
+  shape looks wrong, check `coerceInputs` before reading any `data()`.
+- tsc clean; suite 3151 green.
+
 ### SESSION DIGEST (2026-07-25e — the type comes from the SOCKET: INDEX adopts, chips stop sniffing)
 Author, on the combo sweep's tail: "every non-scalar value has a forced type already
 associated with it, there's no good reason to re-read cells." Two long-standing places
