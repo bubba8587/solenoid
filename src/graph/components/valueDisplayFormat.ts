@@ -6,7 +6,8 @@
 // an ad-hoc `render` formatter.
 
 import { getOwningEditor } from "../activeGraph";
-import { SolenoidSocket, isDateType, isWildcardType, type SocketDataType } from "../sockets";
+import { SolenoidSocket, isDateType, isWildcardType, elementFamilyOf, type SocketDataType } from "../sockets";
+import type { ElemFamily } from "./ArrayChip";
 import { isPassthroughNode } from "../nodes/passthrough";
 import { formatDateSerial, DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT } from "../nodes/date";
 import { isSolError, type SolError } from "../errorValue";
@@ -163,9 +164,29 @@ function displayedType(
  * render time, so a socket SWAP (Cast / Conduit lane retype) re-detects next render.
  */
 export function nodeOutputIsDate(nodeId: string | null): boolean {
-  if (!nodeId) return false;
+  return nodeOutputElemFamily(nodeId) === "date";
+}
+
+/**
+ * The ELEMENT FAMILY the node's output socket declares (resolved through
+ * pass-throughs / Conduit lanes, like nodeOutputIsDate — which is now just this
+ * === "date"). `undefined` for a wildcard output or a non-family socket, where
+ * the caller falls back to scanning cells.
+ *
+ * The socket is the TRUTH about a container's element family; the cells are not.
+ * A date serial is indistinguishable from a number, and a list whose cells are
+ * all `null` (every entry unparseable) can't vote at all — so a Bool List Input
+ * with no valid entry left would tint and open as NUMERIC purely because nothing
+ * disagreed. Anything derived from the VALUE is sniffing a display artifact; the
+ * declared type is what the user picked.
+ */
+export function nodeOutputElemFamily(nodeId: string | null): ElemFamily | undefined {
+  if (!nodeId) return undefined;
   const t = displayedType(nodeId, undefined, new Set(), 0);
-  return t !== undefined && isDateType(t);
+  if (t === undefined) return undefined;
+  if (isDateType(t)) return "date"; // date routes through the one shared predicate
+  const fam = elementFamilyOf(t);
+  return fam === "number" || fam === "string" || fam === "logical" ? fam : undefined;
 }
 
 /**
