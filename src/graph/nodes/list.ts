@@ -1,10 +1,10 @@
 import { ClassicPreset } from "rete";
-import { numListSocket, strListSocket, dateListSocket, logicalListSocket, type SolenoidSocket } from "../sockets";
+import { numListSocket, strListSocket, dateListSocket, logicalListSocket, comboOfType, type SolenoidSocket } from "../sockets";
 import { parseListLiteral } from "../coerceInputs";
 import { parseDateToSerial } from "./date";
 import type { Cell as AnyCell } from "./coerce";
 import { getRecalcGen } from "../process";
-import { listIn, listOut, numIn, numOut, anyIn, trueAnyIn, staticTrueAnyOut, strIn, logicalOut, logicalListOut, frameIn, frameOut, anyListIn, adoptiveListIn, adoptiveListOut } from "./shared";
+import { listIn, listOut, numIn, numOut, anyIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameIn, frameOut, anyListIn, adoptiveListIn, adoptiveListOut } from "./shared";
 import type { PassthroughSpec } from "./passthrough";
 import { pairIdsFromKeys } from "./logic";
 import { passesFilter, VALUELESS_FILTER_OPS, type FilterOp, type FilterCondConfig } from "../frameVerbs";
@@ -272,9 +272,38 @@ export class ListIndexNode extends ClassicPreset.Node {
     this.addInput("list",  trueAnyIn("Array")); // list, matrix, frame, or cube
     this.addInput("index", numIn("Row (default [all])"));
     this.addInput("column", numIn("Column (default [all])"));   // 2-D / frame / cube only
-    // The result's type varies per row/column (a cube cell can be a nested
-    // frame), so it stays the STATIC wildcard — never adopts.
-    this.addOutput("result", staticTrueAnyOut("Value"));
+    // ADOPTIVE (2026-07-25): the extracted value's ELEMENT FAMILY is the container's,
+    // so the output adopts it — see the passthrough() note below for why this used to
+    // be static and what's actually unknowable.
+    this.addOutput("result", trueAnyOut("Value"));
+  }
+
+  /** INDEX FORWARDS a value out of its container, so it declares a passthrough on
+   *  `list` — that one declaration is what type adoption, unit flow, the type-default
+   *  display walk and the Conduit trace all read.
+   *
+   *  It was STATIC `trueany` until 2026-07-25, on the grounds that "the result's type
+   *  varies per row/column". That is true of a CUBE cell (which may hold a nested
+   *  frame/cube) and a FRAME cell (heterogeneous columns, picked by a runtime index),
+   *  and false of everything else: a list or matrix is HOMOGENEOUS, so its element
+   *  family is fixed by the socket no matter which cell you pull. Treating the whole
+   *  node as unknowable cost real behaviour — a date pulled out of a date list lost
+   *  its date-ness downstream (`isDateType` reads the socket, so it rendered as a raw
+   *  serial), and the output dot stayed a hollow ring while the input dot coloured.
+   *
+   *  `project` maps the container type to the extraction's own rank: what varies with
+   *  Row/Column is the RANK, not the family (one cell, or a whole axis), and the COMBO
+   *  rung means exactly that — so the result feeds a scalar input AND a list input.
+   *  A frame or cube has no element family, so `comboOfType` returns null there and
+   *  the placeholder stands. That is the honest reading of D18's own "adopt only where
+   *  honest" rule, applied per container instead of to the node as a whole. */
+  passthrough(): PassthroughSpec[] {
+    return [{
+      output: "result",
+      inputs: ["list"],
+      combine: "single",
+      project: (t) => comboOfType(t) ?? "trueany",
+    }];
   }
 
   data(inputs: { list?: unknown[]; index?: number[]; column?: number[] }): { result: number | SolError | null | CubeCell | FrameValue | CubeValue } {

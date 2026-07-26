@@ -56,6 +56,7 @@ import { CollapsedInputPill } from "./CollapsedInputPill";
 import { ExtensibleInputs, pushRowAddUndo, pushRowRemovalUndo } from "./ExtensibleInputs";
 import { FrameDisplay } from "./FrameDisplay";
 import { ResultDisplay } from "./ResultDisplay";
+import { nodeOutputElemFamily } from "./valueDisplayFormat";
 import { ArrayChip } from "./ArrayChip";
 import { readChipPopupStyle } from "./chipStyle";
 import { NodeShell, ValueDisplay, OpSelect, useNodeField, renderTextMarkdownHtml, type NodeProps } from "./nodeKit";
@@ -761,7 +762,7 @@ export function SplitFrameComponent({ data, emit }: NodeProps<SplitFrameNodeType
         <span className="solenoid-node__io-label">Matrix</span>
         <span className="solenoid-node__output-value" style={{ display: "flex", justifyContent: "flex-end" }}>
           {matrix && matrix.length
-            ? <ArrayChip value={matrix} label={`${data.label}: Matrix`} size="sm" />
+            ? <ArrayChip value={matrix} label={`${data.label}: Matrix`} size="sm" elem={nodeOutputElemFamily(data.id, "matrix")} />
             : data.cachedMixed
               ? <span style={{ fontSize: 10, color: "var(--text-muted)", fontStyle: "italic" }} title="A frame with text columns has no numeric matrix. Pull a column with Get Column.">mixed; use Get Column</span>
               : "—"}
@@ -770,7 +771,7 @@ export function SplitFrameComponent({ data, emit }: NodeProps<SplitFrameNodeType
       <MeasuredSocketRow side="output" socketKey="headers" nodeId={data.id} emit={emit} payload={data.outputs.headers!.socket}>
         <span className="solenoid-node__io-label">Headers</span>
         <span className="solenoid-node__output-value" style={{ display: "flex", justifyContent: "flex-end" }}>
-          {headers && headers.length ? <ArrayChip value={headers} label={`${data.label}: Headers`} size="sm" /> : "—"}
+          {headers && headers.length ? <ArrayChip value={headers} label={`${data.label}: Headers`} size="sm" elem={nodeOutputElemFamily(data.id, "headers")} /> : "—"}
         </span>
       </MeasuredSocketRow>
     </NodeShell>

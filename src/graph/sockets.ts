@@ -277,6 +277,18 @@ export function elementFamilyOf(dt: SocketDataType): ElementFamily | null {
   return null;
 }
 
+/** The COMBO rung of a type's element family — "a scalar OR a list of F, and which
+ *  one isn't knowable statically". That is the honest output type for an
+ *  element-preserving EXTRACTION whose rank depends on runtime arguments: INDEX
+ *  over a `datelist` yields one date for `Row 2` and the whole column for `Row [all]`,
+ *  and `datecombo` is exactly the type that feeds BOTH a `date` and a `datelist`
+ *  input. `null` for a type with no element family (frame / cube / the wildcards),
+ *  where the extracted value genuinely could be anything. */
+export function comboOfType(dt: SocketDataType): SocketDataType | null {
+  const fam = elementFamilyOf(dt);
+  return fam ? FAMILIES[fam].combo : null;
+}
+
 /** The lattice rank of a type: 0 scalar, 1 list/combo, 2 matrix — including the
  *  rank-bearing wildcard rungs any(0)/anylist(1)/anytable(2). null for the rankless
  *  structural types (frame/cube/lambda/chart/document/trueany). */

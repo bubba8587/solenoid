@@ -20,9 +20,12 @@ import type { Schemes } from "./schemes";
 //    Switch in One mode) adopt their input's resolved type — the same move the
 //    Conduit lanes make in conduitTrace. Selector results (IF / IFERROR / CHOOSE /
 //    SWITCH / IFS) adopt when every WIRED branch agrees, else stay `trueany`
-//    (the result type genuinely depends on runtime). Value-dependent outputs
-//    (INDEX, XLOOKUP — a cube cell's type varies per row) use a STATIC trueany
-//    socket and never appear here.
+//    (the result type genuinely depends on runtime). An EXTRACTION (INDEX) forwards
+//    its container's element family at its OWN rank, via the spec's `project` — a
+//    homogeneous list/matrix has one family however you slice it, so only a
+//    heterogeneous container (frame cell, cube cell) resolves to `trueany`. Genuinely
+//    generative outputs (XLOOKUP — a cube cell's type varies per row) use a STATIC
+//    trueany socket and never appear here.
 //
 // Like the Conduit reconcile, adoption NEVER drops existing cables — it is derived
 // state; the mismatch scan flags a cable that adoption reveals as ill-typed.
@@ -82,8 +85,9 @@ function reconcileOnce(editor: AdoptEditor): Set<string> {
     // 2) Per-node OUTPUT policy — driven by the node's passthrough() declaration
     //    (passthrough.ts), the ONE source both this and unitFlow read. A pure
     //    passthrough / element-agnostic op adopts its single input; a selector adopts
-    //    the agreed branch type; Cable Switch (One) adopts the active branch. A
-    //    generative output (INDEX/XLOOKUP, MAP, sources) declares nothing → static.
+    //    the agreed branch type; Cable Switch (One) adopts the active branch; an
+    //    EXTRACTION (INDEX) projects its container's family onto its own rank. A
+    //    generative output (XLOOKUP, MAP, sources) declares nothing → static.
     for (const spec of getPassthrough(node)) {
       const resolved = resolvePassthroughType(spec, (k) => inType(node, k), agree);
       const outSock = node.outputs?.[spec.output]?.socket;

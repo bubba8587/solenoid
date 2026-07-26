@@ -180,9 +180,9 @@ export function nodeOutputIsDate(nodeId: string | null): boolean {
  * disagreed. Anything derived from the VALUE is sniffing a display artifact; the
  * declared type is what the user picked.
  */
-export function nodeOutputElemFamily(nodeId: string | null): ElemFamily | undefined {
+export function nodeOutputElemFamily(nodeId: string | null, outKey?: string): ElemFamily | undefined {
   if (!nodeId) return undefined;
-  const t = displayedType(nodeId, undefined, new Set(), 0);
+  const t = displayedType(nodeId, outKey, new Set(), 0);
   if (t === undefined) return undefined;
   if (isDateType(t)) return "date"; // date routes through the one shared predicate
   const fam = elementFamilyOf(t);
