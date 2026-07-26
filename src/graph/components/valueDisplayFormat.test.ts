@@ -1,6 +1,8 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
-import { dateFormatDisplay, shouldRenderListInline, formatListCell, nodeOutputIsDate } from "./valueDisplayFormat";
+import { dateFormatDisplay, shouldRenderListInline, formatListCell, nodeOutputIsDate, nodeOutputElemFamily } from "./valueDisplayFormat";
+import { ListInputNode, type ListElemType } from "../nodes/list";
+import { wrapNodeData } from "../coerceInputs";
 import { jsDateToSerial } from "../nodes/date";
 import { solError } from "../errorValue";
 import { setEditorRefs, getEditor } from "../process";
@@ -126,5 +128,51 @@ describe("nodeOutputIsDate — type resolves through pass-throughs / conduits", 
     for (const n of [numSrc, disp]) await editor.addNode(n);
     await editor.addConnection(new ClassicPreset.Connection(numSrc, "result", disp, "in") as Schemes["Connection"]);
     expect(nodeOutputIsDate(disp.id)).toBe(false);
+  });
+});
+
+// ─── The element family comes from the SOCKET, not the cells ─────────────────
+// A List Input's SegToggle forces the list's type; the value box must agree no
+// matter what the entries are. Scanning cells can't deliver that: every entry
+// unparseable leaves a list of nulls with nothing to vote, so a Bool list tinted
+// and opened as NUMERIC. `nodeOutputElemFamily` reads the declared socket instead
+// (the same walk `nodeOutputIsDate` uses — that is now just this === "date").
+describe("nodeOutputElemFamily — the declared family, whatever the cells say", () => {
+  afterEach(() => setEditorRefs(null as never, null as never, null as never));
+
+  async function listInputOf(dt: ListElemType) {
+    const editor = new NodeEditor<Schemes>();
+    setEditorRefs(editor, null as never, null as never);
+    const n = new ListInputNode({ dataType: dt }) as unknown as Schemes["Node"];
+    await editor.addNode(n);
+    return n;
+  }
+
+  it("reports each List Input type from its output socket", async () => {
+    for (const [dt, fam] of [["logical", "logical"], ["string", "string"], ["date", "date"], ["number", "number"]] as const) {
+      const n = await listInputOf(dt);
+      expect(nodeOutputElemFamily(n.id)).toBe(fam);
+    }
+  });
+
+  it("still reports `logical` when EVERY entry was unparseable (the reported bug)", async () => {
+    const n = await listInputOf("logical");
+    // The data really is all-null — nothing here could vote for a family.
+    const node = n as unknown as ListInputNode;
+    node.stringLiterals.v0 = "xyz, pqr";
+    wrapNodeData(node as never);
+    expect((node.data({}) as { list: unknown[] }).list).toEqual([null, null]);
+    // The socket is unmoved, so the box stays a Bool list.
+    expect(nodeOutputElemFamily(n.id)).toBe("logical");
+  });
+
+  it("nodeOutputIsDate stays consistent with it", async () => {
+    expect(nodeOutputIsDate((await listInputOf("date")).id)).toBe(true);
+    expect(nodeOutputIsDate((await listInputOf("logical")).id)).toBe(false);
+  });
+
+  it("is undefined for an unknown node, so the chip's cell scan stays the fallback", () => {
+    expect(nodeOutputElemFamily(null)).toBeUndefined();
+    expect(nodeOutputElemFamily("nope")).toBeUndefined();
   });
 });

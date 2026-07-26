@@ -17,9 +17,14 @@ function to2D(v: ArrayValue): Cell[][] {
   // horizontally — matching the comma-separated result box and CSV's one-line row.
   return is2D(v) ? v : [v as Cell[]];
 }
-// Cell kind drives the popup's alignment / coercion / CSV-quoting (see
-// TablePopup). A list of strings is text; everything else is numeric.
-function cellTypeOf(v: ArrayValue): "number" | "string" {
+// Cell kind drives the popup's alignment / coercion / CSV-quoting (see TablePopup,
+// whose CellType has all four). The declared socket FAMILY decides it when the
+// caller knows one — the cell scan below is only a fallback for a wildcard output,
+// and it's a poor one: it reads the FIRST cell, so a leading `null` (an unparseable
+// first entry) made a text list open as numeric, and a boolean list could never
+// report "logical" at all.
+function cellTypeOf(v: ArrayValue, family?: ElemFamily): "number" | "string" | "date" | "logical" {
+  if (family) return family;
   const first = is2D(v) ? (v[0] as Cell[])[0] : (v as Cell[])[0];
   return typeof first === "string" ? "string" : "number";
 }
@@ -121,12 +126,12 @@ export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId
         tablePopup.open({
           title: label || (table ? "Table" : "List"),
           data: to2D(value),
-          cellType: cellTypeOf(value),
+          cellType: cellTypeOf(value, family),
           list: !table,
           // A read-only numeric matrix gets one format+unit pair (homogeneous).
           // The popup only renders it when the grid isn't editable, so an editable
           // Table Input (onSaveRaw via popupOverrides) never shows it.
-          formatControls: table && cellTypeOf(value) === "number" ? "matrix" : undefined,
+          formatControls: table && cellTypeOf(value, family) === "number" ? "matrix" : undefined,
           // Carry the matrix's homogeneous unit tag (D20) so the popup bar shows it
           // (as a static label when the matrix isn't a taggable source).
           columnUnits: matUnit ? [matUnit] : undefined,

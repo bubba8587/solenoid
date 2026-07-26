@@ -23,7 +23,7 @@ import { nodeResizable } from "../rete-nodes";
 import { formatScalar } from "./format";
 import { ArrayChip } from "./ArrayChip";
 import { formatAnnotationStore, formatNumberWithAnnotation, applyTextCase, applyLogicalStyle, annotationRendersNegativeRed } from "../formatAnnotationStore";
-import { nodeOutputIsDate, dateFormatDisplay, shouldRenderListInline, formatListCell, unwrapUnitCells, type DisplayValue } from "./valueDisplayFormat";
+import { nodeOutputElemFamily, dateFormatDisplay, shouldRenderListInline, formatListCell, unwrapUnitCells, type DisplayValue } from "./valueDisplayFormat";
 import { IS_COARSE } from "../coarse";
 import { NodeFormatContext } from "./nodeContext";
 import { describeValueKind } from "../valueKindLabel";
@@ -622,7 +622,14 @@ export function ValueDisplay({
   // Dimensioned cells (Bundle 05 units) unwrap first: with an FC docked → the
   // magnitude in its display unit; without → a "5 m/s" string. No-op for plain data.
   // Resolved ONCE and reused below: the chip needs it too, and it walks the graph.
-  const isDate = nodeOutputIsDate(ctxNodeId);
+  // The declared element family of this box's output socket — the chip's tint and
+  // the popup's cell type both come from HERE, not from scanning cells. A cell scan
+  // can't see a date (a serial looks numeric) and can't see anything at all when
+  // every cell is `null` (a Bool List Input whose entries were all unparseable), so
+  // it would silently fall back to "numeric". `undefined` = a wildcard output, where
+  // the chip's own cell scan is the honest fallback.
+  const elemFam = nodeOutputElemFamily(ctxNodeId);
+  const isDate = elemFam === "date";
   const value = dateFormatDisplay(unwrapUnitCells(rawValue, ann), isDate, !!ann);
 
   // An empty array (a 0-element list/matrix — e.g. a filter that matched nothing, or
@@ -754,8 +761,8 @@ export function ValueDisplay({
             // `elem` matters MOST here: dateFormatDisplay above turned a date list's
             // serials into STRINGS, so it lands on this branch and the chip would
             // otherwise sniff "text" and tint green. The socket family is the truth.
-            : <ArrayChip value={value as string[]} elem={isDate ? "date" : undefined} />)
-        : isList ? (listInline ? (value as (number | null | SolError)[]).map((v) => formatListCell(v, fmtScalar)).join(", ") : <ArrayChip value={value as number[] | number[][]} elem={isDate ? "date" : undefined} />)
+            : <ArrayChip value={value as string[]} elem={elemFam} />)
+        : isList ? (listInline ? (value as (number | null | SolError)[]).map((v) => formatListCell(v, fmtScalar)).join(", ") : <ArrayChip value={value as number[] | number[][]} elem={elemFam} />)
         : typeof value === "number" && Number.isNaN(value) ? (
             // A residual NaN is dirty DATA, not an error (an error is a tagged
             // SolError, rendered red above). Quiet muted affordance + a structural
