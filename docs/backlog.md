@@ -69,6 +69,12 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
 
 ## Build queue (decided, unbuilt)
 
+- [ ] **Type-resolution consolidation — see `type-resolution-plan.md`.** Five subsystems
+  each re-derive "what type does this output carry" and have drifted; the plan doc holds
+  the map, the target state, five numbered work items and a parking lot of found bugs
+  (incl. a live one: an `IF` with disagreeing branches renders a number as a date).
+  Work the items individually from that doc, not from here.
+
 - [ ] **AI command palette — flesh out the mode behind the UI shell.** The shell shipped
   UI-only: Settings ▸ AI stores a key (`aiKey.ts` → `apiKeyStore`), and its presence
   reveals a sparkle that flips the palette to an accent-filled prompt box
