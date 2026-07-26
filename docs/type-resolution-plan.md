@@ -5,7 +5,10 @@ have become very convoluted."* A read-only audit of the wildcard ladder + the co
 boundary followed. This records the MAP, the TARGET, and the work items, so the effort
 survives across sessions and nothing gets dropped between them.
 
-Move to `archive/` when every item below is done or explicitly parked.
+**STATUS 2026-07-25: all five work items are DONE.** What remains is the parking lot at
+the bottom — bugs found during the audit whose solution wasn't clear. Move this doc to
+`archive/` once those are resolved or explicitly parked. The "Current state" section below
+is the AUDIT-TIME snapshot, kept as the before-picture; the item notes record what changed.
 
 ---
 
@@ -54,7 +57,7 @@ to the base).
 | Knob | Users | What it skips |
 |---|---|---|
 | `rawInputs` | 3 | all coercion (node branches on runtime shape) |
-| `noWidenInputs` | **1** (Expression) | rank widening only |
+| ~~`noWidenInputs`~~ | ~~1 (Expression)~~ | **deleted by item 3** — the `anycombo` rung says it |
 | `unitAware` | 10 files | the unit-strip, on every input |
 | `passthrough()` spec inputs | many | the unit-strip, per named input |
 
@@ -210,3 +213,31 @@ documented instead.
   back here as a parking-lot entry rather than being guessed at.
 - `decisions.md` gets an amendment whenever an item changes a recorded ruling (D17/D18
   are the ones in range).
+
+
+---
+
+## Scoreboard (what the five items actually moved)
+
+**Deleted:** `noWidenInputs` · `anyOut` · `anyListOut` · `anyTableOut` · `staticTrueAnyIn` ·
+`anyListSocket` · the duplicate `agree` · the adopted-vs-base coercion exception ·
+`displayedType`'s graph walk.
+
+**Added:** the `anycombo` rung (a deliberate trade — a socket type for a flag) ·
+`agreeTypes` (shared) · `project` on `PassthroughSpec` · `comboOfType` ·
+`passthroughOutputMutable.test.ts` (the guard that makes "adoption is the resolver" hold).
+
+**Bugs closed:** an `IF` over a date and a number rendering the number as a date · an
+Expect's side input supplying the display type · Bug D (coercion depending on derived
+adopted state) · a second YEAR-class laundering (a scalar into INDEX becoming a
+1-element list) · Regex drawing a scalar circle on a port that spills lists.
+
+**Target-state progress:** *one declaration* ✅ (`passthrough()`, now with `project`) ·
+*one resolver* ✅ (adoption writes, everything reads — walks 5 → 4) · *one boundary* ✅
+(uniform base coercion; the singleton-collapse rule derives from the rung) ·
+*complete ladder* ✅ (`any` → `anycombo` → `anylist` → `anytable` → `trueany`).
+
+The four remaining walks are `reconcileTrueAnyTypes` (the resolver — correct), plus
+`conduitPath`, `makeAnnotationResolver` and `makeFrameShapeResolver`, which resolve
+DIFFERENT things (route, annotation, column shape) rather than duplicating type
+resolution. Bug B below is the one that may still be a genuine duplicate.

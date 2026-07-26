@@ -69,11 +69,16 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
 
 ## Build queue (decided, unbuilt)
 
-- [ ] **Type-resolution consolidation — see `type-resolution-plan.md`.** Five subsystems
-  each re-derive "what type does this output carry" and have drifted; the plan doc holds
-  the map, the target state, five numbered work items and a parking lot of found bugs
-  (incl. a live one: an `IF` with disagreeing branches renders a number as a date).
-  Work the items individually from that doc, not from here.
+- [ ] **Type-resolution consolidation — the PARKING LOT, see `type-resolution-plan.md`.**
+  All five work items landed 2026-07-25 (adoption is now the single type resolver; the
+  display walk is deleted; `noWidenInputs` and the adopted-vs-base coercion exception are
+  gone). What's left is the doc's parking lot: **Bug B** (`frameShapeResolver` is the one
+  walk that never reads `passthrough()`, so a frame through a Display/IF loses static
+  column-shape resolution — confirm the symptom first), **Bug C** (the two projection
+  helpers `adoptTypeForBase`/`projectTypeToBase` can disagree; nothing forces them to
+  agree), and the open design question of what a DISAGREEING selector should display
+  (honouring adoption is correct but loses date formatting when the branches agree at
+  runtime; a data-aware read via `selected()` is the likely answer).
 
 - [ ] **AI command palette — flesh out the mode behind the UI shell.** The shell shipped
   UI-only: Settings ▸ AI stores a key (`aiKey.ts` → `apiKeyStore`), and its presence
