@@ -1,7 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { canConnect, SOCKET_TYPE_LABELS, SOCKET_COLORS, type SocketDataType } from "./sockets";
+import { ClassicPreset } from "rete";
+import { canConnect, SOCKET_TYPE_LABELS, SOCKET_COLORS, SolenoidSocket, AdoptiveSocket, type SocketDataType } from "./sockets";
+import * as shared from "./nodes/shared";
 import { familyOf } from "./formatModel";
 
 // `docs/socket-reference.md` documents all 30 socket variants in prose: what each
@@ -148,6 +150,37 @@ describe("docs/socket-reference.md — the at-a-glance tables match the code", (
     }
     expect([...documented.keys()].sort()).toEqual([...ALL].sort());
     for (const t of ALL) expect(documented.get(t), `FC family of ${t}`).toBe(familyOf(t));
+  });
+
+  it("the port-factory table names the real factories in nodes/shared.ts", () => {
+    // The table tells an author which helper to call for a given socket type. A
+    // renamed or deleted factory would leave it pointing at nothing, so resolve
+    // every name against the module and check it really builds that type/side.
+    const rows = [...DOC.matchAll(/^\| `([a-z]+)` \| (.+?) \| (.+?) \|$/gm)]
+      .filter(([, t]) => IS_TYPE.has(t));
+    expect(rows.length, "factory table row count").toBe(ALL.length);
+
+    const names = (cell: string) =>
+      [...cell.matchAll(/`([A-Za-z]+)`/g)].map((m) => m[1]);
+
+    for (const [, type, inCell, outCell] of rows) {
+      for (const [cell, side] of [[inCell, "in"], [outCell, "out"]] as const) {
+        for (const name of names(cell)) {
+          const fn = (shared as Record<string, unknown>)[name];
+          expect(typeof fn, `${name} is exported from nodes/shared.ts`).toBe("function");
+          const port = (fn as (l: string) => { socket?: unknown })("L");
+          const socket = port.socket;
+          expect(socket, `${name} builds a SolenoidSocket`).toBeInstanceOf(SolenoidSocket);
+          const s = socket as SolenoidSocket;
+          const declared = s instanceof AdoptiveSocket ? s.base : s.dataType;
+          expect(declared, `${name} builds a ${type} port`).toBe(type);
+          // The asterisk in the table means "adoptive" — hold it to that.
+          const starred = new RegExp(`\`${name}\`\\\\?\\*`).test(cell);
+          expect(s instanceof AdoptiveSocket, `${name} adoptive marking`).toBe(starred);
+          expect(port instanceof ClassicPreset.Input ? "in" : "out").toBe(side);
+        }
+      }
+    }
   });
 
   it("the variants the doc calls gray are exactly the ones sharing --sock-any", () => {
