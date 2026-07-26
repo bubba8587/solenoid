@@ -1268,8 +1268,9 @@ existing variant's blocked lists.
 
 ### What fails SILENTLY — the real checklist
 
-Nothing in the type system or the suite catches these. Each one leaves a family
-that connects correctly but misbehaves:
+Nothing in the type system catches these — each one leaves a family that connects
+correctly but misbehaves. `socketFamilyCompleteness.test.ts` now fails on all five,
+naming the family and the site, so this list is enforced rather than remembered:
 
 1. **`coerceInputs.ts` — `coerceValue`.** The new strict-list and combo rungs fall
    through to `default: return v`. The list rung then does **not** widen a scalar
