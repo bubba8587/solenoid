@@ -113,10 +113,28 @@ to the base).
   leaving it was a trap: constructing a port from it would silently opt that port out of
   adoption. `staticTrueAnyOut` (XLOOKUP's, the last genuinely-static output) gained a
   doc comment saying when to reach for it versus `trueAnyOut` + `project`.
-- [ ] **3. Add the `anycombo` rung.** Deletes `noWidenInputs` and its ~25 lines of
-  documentation (Expression is its only user), gives Regex an honest output type instead
-  of `anyOut`, and inherits `collapseSingleton` for free. D18 already anticipates it
-  ("adding an `anycombo` rung would only refine it").
+- [ ] **3. Add the `anycombo` rung — AUTHOR CALL NEEDED, the audit undersold the cost.**
+  The original framing ("deletes `noWidenInputs`") implied net subtraction. Re-measured, it
+  is a TRADE, and the author should make it because a new socket type is permanent surface
+  area on the exact system we're trying to shrink.
+  - **What it actually is:** `anycombo` is NOT a new acceptance rung. Its input accept-set
+    is identical to `anylist`'s (`RANK1_VALUE_TYPES` — any family's scalar/list/combo), and
+    `any`'s OUTPUT already flows everywhere. The only difference is COERCION: `anylist`
+    widens a scalar to `[scalar]`, `anycombo` would leave it a scalar. That is exactly what
+    `noWidenInputs` encodes today as a side-channel flag.
+  - **Cost:** ~60–120 lines across 8 files (union member, `SOCKET_COLORS`,
+    `SOCKET_TYPE_LABELS`, `accepts()` branches, `SocketComponent` glyph, `SocketLegend`,
+    two factories, a `coerceValue` case, the sweep test, docs) to delete ~40 lines of
+    `noWidenInputs` with one user (Expression).
+  - **Why it's still probably right:** it removes a CONCEPT, not just lines — a node
+    saying "ignore what my socket says about rank" is precisely the side-channel that made
+    the recent bugs invisible, and the whole point of this effort is that the socket is the
+    truth. It also fixes a real dishonesty: Regex's `any` output renders a scalar CIRCLE
+    but can emit a list. And D18 already anticipated the rung.
+  - **Alternatives ruled out:** giving Expression an `any` input instead (breaks the cap —
+    `any` doesn't accept plain lists, so a `list` couldn't connect); making `anylist` stop
+    widening (breaks every other `anylist` consumer — Set ops and LENGTH rely on a scalar
+    widening to a singleton, else a string iterates per character).
 - [ ] **4. Normalize `coercionType`.** Both adoptive kinds should coerce on the BASE. The
   `trueany`-base branch currently coerces on the ADOPTED type, which the code itself
   labels "its established pre-existing behavior" — grandfathered, not derived. Needs care:
