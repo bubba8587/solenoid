@@ -8,7 +8,7 @@ import { TextTransformNode } from "./nodes/text";
 import { ComplexUnaryNode } from "./nodes/complex";
 import { NotNode } from "./nodes/logic";
 import { ArithmeticNode } from "./nodes/scalar";
-import { ListLengthNode, ListInputNode } from "./nodes/list";
+import { ListLengthNode, ListInputNode, ListIndexNode } from "./nodes/list";
 
 const MAR_2026 = parseDateToSerial("2026-03-20");
 const APR_2027 = parseDateToSerial("2027-04-21");
@@ -233,5 +233,49 @@ describe("coerceInputs — a one-element list collapses at a combo / scalar sock
     wrapNodeData(empty as never);
     empty.stringLiterals.v0 = "2026-03-20";
     expect((empty.data({}) as { list: unknown[] }).list).toEqual([MAR_2026]); // the SOURCE still emits a list
+  });
+});
+
+// ─── One coercion rule: the DECLARED base, for every adoptive port ────────────
+// A `trueany`-based adoptive input used to coerce on the type it had ADOPTED, while
+// every other adoptive coerced on its BASE. That made a node's runtime input SHAPE
+// depend on what happened to be wired upstream — derived state, never persisted — and
+// it is why a shape bug there was invisible from the node's own data(). Uniform since
+// 2026-07-25: `trueany` coerces to nothing, which is the honest reading of a port that
+// declares it handles ANY shape.
+describe("coerceInputs — an adoptive port coerces on its BASE, never its adopted type", () => {
+  it("a `trueany` port passes its value through UNCHANGED, whatever it adopted", () => {
+    // Same shape as the reported YEAR bug: a scalar laundered into a 1-element list.
+    // INDEX's `list` port adopts the wired cable's type; with `datelist` adopted, the
+    // old rule ran coerceValue("datelist", 46000) → [46000], so INDEX([all]) handed
+    // back a LIST OF ONE where a scalar went in.
+    const n = new ListIndexNode();
+    (n.inputs.list!.socket as AdoptiveSocket).setType("datelist");
+    wrapNodeData(n as never);
+    expect(n.data({ list: [46000] } as never).result).toBe(46000);
+    // A real list still behaves as a list.
+    const m = new ListIndexNode();
+    (m.inputs.list!.socket as AdoptiveSocket).setType("datelist");
+    wrapNodeData(m as never);
+    expect(m.data({ list: [[46000, 46400]] } as never).result).toEqual([46000, 46400]);
+  });
+
+  it("a CONTAINER-rung base still widens — that promise is unchanged", () => {
+    // `anylist` (LENGTH) keeps its base coercion: a scalar widens to a singleton, or
+    // a string would iterate per character in the node's for…of.
+    const len = new ListLengthNode();
+    wrapNodeData(len as never);
+    expect((len.data({ list: ["abc"] } as never) as { result: unknown }).result).toBe(1);
+  });
+
+  it("the rule is now a single line with no exception", () => {
+    // Both adoptive kinds answer with `base`; a plain socket answers with its type.
+    const idx = new ListIndexNode();
+    expect((idx.inputs.list!.socket as AdoptiveSocket).base).toBe("trueany");
+    const len = new ListLengthNode();
+    expect((len.inputs.list!.socket as AdoptiveSocket).base).toBe("anylist");
+    // Adoption changes the DISPLAY type, never the coercion type.
+    (idx.inputs.list!.socket as AdoptiveSocket).setType("frame");
+    expect((idx.inputs.list!.socket as AdoptiveSocket).base).toBe("trueany");
   });
 });
