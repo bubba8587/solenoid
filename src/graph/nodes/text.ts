@@ -1,7 +1,7 @@
 import { ClassicPreset } from "rete";
 import { stringSocket } from "../sockets";
 import {
-  strIn, strOut, strListIn, strListOut, anyListIn, anyOut,
+  strIn, strOut, strListIn, strListOut, anyListIn, anyComboOut,
   strComboIn, strComboOut, numListIn, numListOut, logicalComboOut,
   broadcastCells, type CellResult, type BroadcastResult,
 } from "./shared";
@@ -25,8 +25,10 @@ import { resolveExcelFunction } from "../excelFunctions";
 //    separators, Text Filter's pattern) stays scalar, like the date family's basis
 //    and weekend_code.
 //  - Text Input and Promo are literal SOURCES: exactly one value each.
-//  - Regex stays on the wildcard ladder (`anylist` in, `any` out) — its element
-//    type depends on the op, and there is no untyped combo rung (D18).
+//  - Regex stays on the wildcard ladder — its element type depends on the op, so it
+//    can't take a family combo. It emits `anycombo` (the element-agnostic combo, added
+//    2026-07-25) rather than the old `any`, which drew a SCALAR circle on a port that
+//    REGEXEXTRACT-all and the list path can both spill a list from.
 
 // Reads a text operand from either a wired input or the node's stringLiterals
 // fallback. A `strcombo` input may deliver a LIST, so this yields `string |
@@ -907,7 +909,7 @@ export class RegexNode extends ClassicPreset.Node {
     this.addInput("text",        anyListIn("Text"));
     this.addInput("pattern",     strIn("Pattern"));
     this.addInput("replacement", strIn("Replace with"));
-    this.addOutput("result", anyOut("Result"));
+    this.addOutput("result", anyComboOut("Result"));
   }
 
   data(inputs: {

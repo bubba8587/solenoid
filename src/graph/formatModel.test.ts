@@ -20,6 +20,7 @@ describe("familyOf — the ENTIRE SocketDataType union is covered or explicitly 
     complex: "complex", complexlist: "complex", complexcombo: "complex", complextable: "complex",
     frame: "none", cube: "none",  // per-column formats are the A4 units milestone
     anylist: "none",              // element-agnostic wildcard — no format family until a concrete type flows in
+    anycombo: "none",             // its scalar-or-list sibling — same reason
     chart: "chart",               // text-scale control (display only)
     lambda: "lambda",             // view-as control (signature/KaTeX/highlighted/mono)
     document: "none",             // a whole-document value — no FC format controls

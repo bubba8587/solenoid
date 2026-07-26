@@ -331,7 +331,18 @@ agrees; value-dependent results like INDEX/XLOOKUP keep a STATIC trueany). Adopt
 never drops cables and is never persisted — re-derived from wiring after load/paste.
 Mechanics: `trueAnyAdopt.ts` + CLAUDE.md's socket-lattice note. The hollow ring on
 screen always means "nothing has flowed here yet".
-**What would reverse it:** none foreseen; adding an `anycombo` rung would only refine it.
+**AMENDED 2026-07-25 — the `anycombo` rung was added, closing the combo-shaped hole.**
+The element-agnostic COMBO (gray split square): accepts exactly what `anylist` accepts,
+but a scalar reaches `data()` as a SCALAR rather than widening to a singleton, and its
+OUTPUT may be a scalar so it also reaches a scalar input. The ladder is now
+`any` (0) → `anycombo` (0-or-1) → `anylist` (1) → `anytable` (2) → `trueany` (⊤).
+Two things it retired: Expression's `noWidenInputs` — a node overriding what its own
+socket said about rank, the exact kind of invisible side-channel that made the
+2026-07-25 shape bugs hard to trace — and Regex's `anyOut`, which drew a scalar CIRCLE
+on a port that can emit a list. Cost recorded honestly in `type-resolution-plan.md`: it
+is a TRADE (a socket type for a flag), justified because it moves the fact into the
+type system rather than beside it.
+**What would reverse it:** none foreseen.
 
 ---
 

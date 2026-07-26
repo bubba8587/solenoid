@@ -326,6 +326,37 @@ describe("lattice invariants — TYPE separation + DIMENSIONAL flow (full sweep)
     expect(canConnect("anylist", "cube")).toBe(true);
   });
 
+  // `anycombo` — the element-agnostic COMBO (2026-07-25), what `numlist` is to
+  // `number`. It ACCEPTS exactly what `anylist` accepts; the two differ only in
+  // COERCION (a scalar stays a scalar here — coerceInputs), which is what let it
+  // replace the `noWidenInputs` side-channel on Expression's variables. Its OUTPUT
+  // may BE a scalar, so unlike `anylist` it also reaches a scalar input.
+  it("anycombo INPUT: accepts exactly what anylist accepts", () => {
+    for (const f of fams) for (const d of DIMS) {
+      expect(canConnect(FAM[f][d], "anycombo")).toBe(canConnect(FAM[f][d], "anylist"));
+    }
+    expect(canConnect("anylist", "anycombo")).toBe(true);
+    expect(canConnect("anycombo", "anycombo")).toBe(true);   // identity
+    expect(canConnect("anytable", "anycombo")).toBe(false);  // still no 2-D → 1-D
+    expect(canConnect("frame", "anycombo")).toBe(false);
+  });
+
+  it("anycombo OUTPUT: reaches a SCALAR too (that's the whole difference from anylist)", () => {
+    for (const f of fams) {
+      expect(canConnect("anycombo", FAM[f].scalar)).toBe(true);  // anylist cannot
+      expect(canConnect("anycombo", FAM[f].list)).toBe(true);
+      expect(canConnect("anycombo", FAM[f].combo)).toBe(true);
+      expect(canConnect("anycombo", FAM[f].matrix)).toBe(true);  // widening up
+    }
+    expect(canConnect("anycombo", "anytable")).toBe(true);
+    expect(canConnect("anycombo", "frame")).toBe(true);
+    expect(canConnect("anycombo", "cube")).toBe(true);
+    // The object family stays out of reach, exactly as for `any`.
+    for (const t of ["lambda", "chart", "document"] as SocketDataType[]) {
+      expect(canConnect("anycombo", t)).toBe(false);
+    }
+  });
+
   // The OBJECT socket family (`lambda`, `chart`, `document`) sits OUTSIDE the
   // element×dimension lattice entirely — none is in FAMILIES/MATRIX_TYPES/
   // FAMILY_VALUE_TYPES, so `accepts()` falls through to identity + `trueany` only

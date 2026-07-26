@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { parseListLiteral, wrapNodeData, TYPEABLE_LIST } from "./coerceInputs";
-import { SolenoidSocket, AdoptiveSocket } from "./sockets";
+import { SolenoidSocket, AdoptiveSocket, canConnect } from "./sockets";
 import { ExpressionNode } from "./nodes/expression";
 import { FLAT_CATALOG } from "./catalogUtils";
 import { DatePartNode, parseDateToSerial } from "./nodes/date";
@@ -137,23 +137,40 @@ describe("coerceInputs — noWidenInputs: opt out of rank widening, keep element
   });
 });
 
-describe("coerceInputs — Expression is a broadcaster: its variables opt out of widening", () => {
-  // Regression: a scalar into Expression's `anylist` variable input was widened to
-  // `[scalar]` (the Set/position rule above), so `a+b` of two scalars broadcast to a
-  // 1-element LIST. Expression declares its variables in noWidenInputs so the evaluator
-  // sees the natural rank and returns a scalar for scalar inputs, a list for a list.
+describe("coerceInputs — Expression is a broadcaster: its variables are `anycombo`", () => {
+  // Regression: a scalar into Expression's variable input was widened to `[scalar]`
+  // (the `anylist` Set/position rule above), so `a+b` of two scalars broadcast to a
+  // 1-element LIST. That was patched with a `noWidenInputs` side-channel until
+  // 2026-07-25; the variables now declare `anycombo` — the element-agnostic COMBO —
+  // so the SOCKET says "scalar or list" and the coercion follows from the type.
   function runExpr(expr: string, inputs: Record<string, unknown[]>) {
     const node = new ExpressionNode({ expr });
     wrapNodeData(node as unknown as Parameters<typeof wrapNodeData>[0]);
     return (node.data(inputs) as { result: unknown }).result;
   }
 
-  it("noWidenInputs tracks the formula variables", () => {
+  // The CURRENT variables' ports. `_rebuild` deliberately leaves stale-port removal
+  // to its caller (it returns `removed` so cables can be dropped first), so this
+  // reads varNames rather than every input still hanging off the node.
+  const varTypes = (n: ExpressionNode) =>
+    n.varNames.map((v) => (n.inputs[v]?.socket as SolenoidSocket)?.dataType);
+
+  it("every formula variable is an `anycombo` port, and tracks the formula", () => {
     const node = new ExpressionNode({ expr: "a + b" });
-    expect([...node.noWidenInputs].sort()).toEqual(["a", "b"]);
+    expect(node.varNames).toEqual(["a", "b"]);
+    expect(varTypes(node)).toEqual(["anycombo", "anycombo"]);
     node.expr = "x * y - z";
     node._rebuild();
-    expect([...node.noWidenInputs].sort()).toEqual(["x", "y", "z"]);
+    expect(varTypes(node)).toEqual(["anycombo", "anycombo", "anycombo"]);
+    // The node no longer carries a coercion side-channel — the socket is the truth.
+    expect("noWidenInputs" in node).toBe(false);
+  });
+  it("the cap is unchanged: scalars and 1-D lists connect, a matrix does not", () => {
+    expect(canConnect("list", "anycombo")).toBe(true);
+    expect(canConnect("date", "anycombo")).toBe(true);
+    expect(canConnect("strlist", "anycombo")).toBe(true);
+    expect(canConnect("table", "anycombo")).toBe(false);
+    expect(canConnect("frame", "anycombo")).toBe(false);
   });
   it("scalar inputs → a SCALAR result (not a 1-element list)", () => {
     expect(runExpr("a + b", { a: [5], b: [3] })).toBe(8);

@@ -55,12 +55,12 @@ function coercionType(socket: unknown): SocketDataType | undefined {
 // UNCOERCED. This is what keeps a `cube` socket from `toCube`-ing (and type-stripping)
 // a wired Frame that the node means to handle AS a frame.
 //
-// Between "widen to the socket" and "raw" sits ONE more opt-out: `node.noWidenInputs`
-// — keys that skip only the RANK widening (a scalar stays a scalar) while KEEPING
-// element coercion (logical→number). That's the painless hook a BROADCASTER uses
-// (Expression, a pack element-wise node): it broadcasts scalar-or-list itself, so the
-// singleton-widening would turn `a+b` of two scalars into a 1-element list. The socket
-// is untouched — widening stays the default for every other consumer of that type.
+// A BROADCASTER (Expression, a pack element-wise node) that handles scalar-or-list
+// itself declares the COMBO rung instead of opting out of the boundary: the family
+// combos, or `anycombo` when the element type is unknown. That used to be a
+// `noWidenInputs` side-channel — a node overriding what its own socket said about
+// rank — which is precisely the kind of invisible override this boundary shouldn't
+// have. Deleted 2026-07-25 with the `anycombo` rung; declare the type instead.
 
 /** TYPED text → logical. `coerceLogical` is the value-model rule for a WIRED value
  *  (TRUE/FALSE + the numeric bridge); a human typing into a list box also gets the
@@ -235,6 +235,10 @@ function coerceValue(dataType: SocketDataType, v: unknown): unknown {
     case "strcombo":
     case "datecombo":
     case "complexcombo":
+    // `anycombo` is the element-agnostic one: no element coercion (the family is
+    // unknown) and no rank widening — a scalar STAYS a scalar, which is the whole
+    // point of the rung. Contrast `anylist` below, which widens one in.
+    case "anycombo":
       return collapseSingleton(v);
     case "logicallist": {
       const b = numsToBools(v);
