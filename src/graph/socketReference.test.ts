@@ -5,6 +5,8 @@ import { ClassicPreset } from "rete";
 import { canConnect, SOCKET_TYPE_LABELS, SOCKET_COLORS, SolenoidSocket, AdoptiveSocket, type SocketDataType } from "./sockets";
 import * as shared from "./nodes/shared";
 import { familyOf } from "./formatModel";
+import { FLAT_CATALOG } from "./catalogUtils";
+import { elementFamilyOf, latticeRank, comboOfType } from "./sockets";
 
 // `docs/socket-reference.md` documents all 30 socket variants in prose: what each
 // accepts, what is BLOCKED at it, what it reaches, what it is blocked from
@@ -187,5 +189,51 @@ describe("docs/socket-reference.md — the at-a-glance tables match the code", (
     const gray = ALL.filter((t) => SOCKET_COLORS[t] === "var(--sock-any)");
     expect(gray.sort()).toEqual(["any", "anycombo", "anylist", "anytable", "trueany"]);
     expect(DOC).toMatch(/all five wildcards gray/);
+  });
+});
+
+describe("the catalog obeys the reference's own rule for choosing a rung", () => {
+  // docs/socket-reference.md section 8: "if the rank follows the input at runtime
+  // — one value in gives one value out, a list in gives a list out — use the COMBO
+  // rung." A node whose every family-bearing INPUT is a combo is exactly that
+  // shape, so its family-bearing OUTPUTS must be combos too. Declaring a strict
+  // list there is the bug the date/text/complex sweeps kept finding: the node
+  // emits a bare scalar on its scalar path, but the socket claims it never can,
+  // which blocks the scalar rungs (an IFS condition, a numeric input) for no
+  // reason. Auditing the whole catalog found exactly one — Triangle Solver's
+  // `valid` — so pin it at zero. A future node that genuinely needs the strict
+  // rung should have to justify itself by editing this test.
+  it("a node with all-combo inputs never declares a strict-list or scalar output", () => {
+    const COMBOS = new Set<string>(["numlist", "strcombo", "datecombo", "complexcombo", "logicalcombo"]);
+    const STRICT = new Set<string>(["list", "strlist", "datelist", "complexlist", "logicallist"]);
+    const declared = (p: unknown) => {
+      const sock = (p as { socket?: unknown })?.socket;
+      if (!(sock instanceof SolenoidSocket)) return null;
+      return sock instanceof AdoptiveSocket ? sock.base : sock.dataType;
+    };
+
+    const seen = new Set<string>();
+    const offenders: string[] = [];
+    for (const [, entry] of FLAT_CATALOG.entries()) {
+      let node: { inputs?: object; outputs?: object };
+      try { node = entry.create() as typeof node; } catch { continue; }
+      const cls = (node as object).constructor.name;
+      if (seen.has(cls)) continue;
+      seen.add(cls);
+
+      const ins = Object.values(node.inputs ?? {}).map(declared).filter(Boolean) as SocketDataType[];
+      const famIns = ins.filter((t) => elementFamilyOf(t));
+      if (!famIns.length || !famIns.every((t) => COMBOS.has(t))) continue;
+
+      for (const [key, port] of Object.entries(node.outputs ?? {})) {
+        const out = declared(port);
+        if (!out || !elementFamilyOf(out)) continue;
+        if (STRICT.has(out) || latticeRank(out) === 0) {
+          offenders.push(`${cls}.${key}: ${out} (should be ${comboOfType(out)})`);
+        }
+      }
+    }
+    expect(seen.size, "catalog classes scanned").toBeGreaterThan(300);
+    expect(offenders).toEqual([]);
   });
 });
