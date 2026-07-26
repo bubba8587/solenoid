@@ -5,7 +5,7 @@
 // law-of-sines/cosines preset, no mode dropdown.
 
 import { ClassicPreset } from "rete";
-import { numListIn, numListOut, logicalListOut, readInput } from "./shared";
+import { numListIn, numListOut, logicalComboOut, readInput } from "./shared";
 import { isSolError, solError, type SolError } from "../errorValue";
 import { clamp } from "./mathUtils";
 import type { FormatAnnotation } from "../formatAnnotationStore";
@@ -237,7 +237,7 @@ export class TriangleSolverNode extends ClassicPreset.Node {
     }
     this.addOutput("area", numListOut("Area"));
     this.addOutput("perimeter", numListOut("Perimeter"));
-    this.addOutput("valid", logicalListOut("Valid"));
+    this.addOutput("valid", logicalComboOut("Valid"));
   }
 
   data(inputs: Record<string, (number | number[] | null)[] | undefined>) {
