@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { numberSocket, listSocket, numListSocket, tableSocket, strTableSocket, dateTableSocket, anyTableSocket, anyListSocket, stringSocket, strListSocket, strComboSocket, dateSocket, dateListSocket, dateComboSocket, complexSocket, complexListSocket, complexComboSocket, complexTableSocket, logicalSocket, logicalListSocket, logicalComboSocket, logicalTableSocket, frameSocket, cubeSocket, lambdaSocket, chartSocket, documentSocket, anySocket, trueAnySocket, AdoptiveSocket } from "../sockets";
+import { numberSocket, listSocket, numListSocket, tableSocket, strTableSocket, dateTableSocket, anyTableSocket, stringSocket, strListSocket, strComboSocket, dateSocket, dateListSocket, dateComboSocket, complexSocket, complexListSocket, complexComboSocket, complexTableSocket, logicalSocket, logicalListSocket, logicalComboSocket, logicalTableSocket, frameSocket, cubeSocket, lambdaSocket, chartSocket, documentSocket, anySocket, trueAnySocket, AdoptiveSocket } from "../sockets";
 import { resolveColor, paletteStore, type PaletteSlot } from "../palette";
 import { type SolError } from "../errorValue";
 import { cellShortCircuit, guardFinite, COMPUTE } from "../valueKinds";
@@ -43,7 +43,11 @@ export const adoptiveListIn   = (label: string) => new ClassicPreset.Input(new A
 // reversed date list stays a date list downstream, not a neutral `anylist`.
 export const adoptiveTableOut = (label: string) => new ClassicPreset.Output(new AdoptiveSocket("anytable"), label);
 export const adoptiveListOut  = (label: string) => new ClassicPreset.Output(new AdoptiveSocket("anylist"), label);
-export const staticTrueAnyIn  = (label: string) => new ClassicPreset.Input(trueAnySocket, label);
+/** A NON-adoptive `trueany` output — the shared singleton, so it never takes a type.
+ *  For a genuinely generative result whose type can't be derived from any input
+ *  (XLOOKUP, whose cell type varies per row). An EXTRACTION uses `trueAnyOut` + a
+ *  `passthrough()` with `project` instead; see INDEX. There is no static trueany INPUT
+ *  — every element-agnostic input adopts, so it can colour to the wired cable.  */
 export const staticTrueAnyOut = (label: string) => new ClassicPreset.Output(trueAnySocket, label);
 // Element-agnostic INPUTS (any / anylist / anytable) are ADOPTIVE (2026-07-15): they
 // accept any element family (a lower-rank value widens IN, as before) AND colour the
@@ -54,14 +58,12 @@ export const staticTrueAnyOut = (label: string) => new ClassicPreset.Output(true
 // anyListIn = 1-D (Set/position ops), anyIn = scalar.
 export const anyTableIn = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anytable"), label);
 export const anyListIn  = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anylist"), label);
-export const anyListOut = (label: string) => new ClassicPreset.Output(anyListSocket, label);
 export const numOut     = (label: string) => new ClassicPreset.Output(numberSocket,  label);
 export const listOut    = (label: string) => new ClassicPreset.Output(listSocket,    label);
 export const numListOut = (label: string) => new ClassicPreset.Output(numListSocket, label);
 export const tableOut   = (label: string) => new ClassicPreset.Output(tableSocket,   label);
 export const strTableOut = (label: string) => new ClassicPreset.Output(strTableSocket, label);
 export const dateTableOut= (label: string) => new ClassicPreset.Output(dateTableSocket,label);
-export const anyTableOut = (label: string) => new ClassicPreset.Output(anyTableSocket, label);
 export const strOut     = (label: string) => new ClassicPreset.Output(stringSocket,  label);
 export const strListOut = (label: string) => new ClassicPreset.Output(strListSocket, label);
 export const dateOut      = (label: string) => new ClassicPreset.Output(dateSocket,    label);
