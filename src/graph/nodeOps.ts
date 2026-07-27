@@ -24,7 +24,13 @@
 //   "argument"  — the op is meaningless without its host ("avg" is a parameter of
 //     GROUPBY, not a function), so the family takes ONE formula name and the op
 //     rides in as an argument.
-// The test is simply: would a user search for that word on its own?
+//
+// THE TEST (author, 2026-07-27): is the variant a distinct thing you would search
+// the Add menu for? "Column chart" and "Sankey" are — so Chart's dropdown selects
+// OPERATIONS, even though the value is stored as a mode. GroupBy's "avg" is not:
+// nobody searches for "avg" hoping to find Group Lists, and it means nothing
+// without its host. How the value is STORED does not decide this; how a user looks
+// for it does.
 
 import type { NodeCatalogEntry } from "./AddNodeMenu";
 
@@ -121,11 +127,15 @@ const ROUNDN_OPS = [
 ];
 
 export const NODE_OPS: NodeOpsDecl[] = [
-  // ── Argument-kind: the op is a parameter, not a function of its own ──
-  { type: "chart", ctor: ChartNode, kind: "argument", ops: fromMeta(CHART_OP_META),
+  // ── Operation-kind (continued): a chart TYPE is a thing you search for ──
+  // "Column chart" and "Sankey" are distinct things a user looks up by name, which
+  // is the test — not whether the value happens to be stored as a mode.
+  { type: "chart", ctor: ChartNode, kind: "operation", ops: fromMeta(CHART_OP_META),
     create: (op) => new ChartNode({ op: op as never }) },
-  { type: "sparkline", ctor: SparklineNode, kind: "argument", ops: fromMeta(SPARKLINE_OP_META),
+  { type: "sparkline", ctor: SparklineNode, kind: "operation", ops: fromMeta(SPARKLINE_OP_META),
     create: (op) => new SparklineNode({ op: op as never }) },
+
+  // ── Argument-kind: the op is a parameter, not a thing you would search for ──
   // "Fill blanks with the mean" — `mean` alone names nothing.
   { type: "list-fill", ctor: FillNode, kind: "argument", ops: fromMeta(FILL_OP_META),
     create: (op) => new FillNode({ op: op as never }) },
