@@ -120,6 +120,37 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### SESSION DIGEST (2026-07-27 — socket shades onto one axis; the Socket Types tab rewritten from the reference)
+- **Every socket colour transform is now HSV** (`palette.ts`), matching `themeAccent` /
+  `darkenAccent` / `socketRingShade`, so the whole family tunes on one set of axes.
+  `socketArrayShade` was an RGB multiply — already equivalent to a value scale (scaling all
+  channels scales V, leaves H/S untouched), so that one was a free conversion.
+  `socketMatrixShade` was HSL and was NOT: its `L ×0.86` traded against saturation per hue, so
+  the same constant landed as V ×0.89 on gold (already saturated) but S ×1.26 on sky (duller).
+  The replacement gain/scale (S ×1.18, V ×0.92) is that transform's real HSV effect averaged
+  over the matrix slots of all five built-in palettes, so swapping spaces did not move the
+  depth. **Don't reintroduce an RGB multiply or an HSL step here.**
+- **Three knobs turned, all named constants now:** `ARRAY_VALUE_SCALE` 0.8 → 0.85 (lists a step
+  closer to their scalar), `MATRIX_HUE_SHIFT` −15° → −11° (table hues nearer the base),
+  `LIGHT_VALUE_DROP` 0.06 → 0.045. The last is GLOBAL, not socket-only — `themeAccent` also
+  feeds node accents, groups, notes, the minimap and `--sol-error`. Rings needed no edit: each
+  is a fixed value step off its own fill, so they tracked.
+- **Reference overlay → Socket Types: both markdown halves replaced** (`help/data-types.md`,
+  `help/data-model.md`) with a compressed read of `docs/socket-reference.md`. The tab renders
+  legend rows → `data-types.md` → the `DimensionalityFlow` ladder → `data-model.md`; the two
+  components were already accurate (the ladder covers widening/narrowing and the wildcard
+  ladder incl. `anycombo`), so only the prose changed and it deliberately does not restate them.
+- **Two things the old prose asserted were false, both now gone.** "A Cube sits at the top of
+  the ladder, so any node that takes a Frame takes a Cube" — backwards: `cube` reaches only
+  `cube`/`trueany`; it is the FRAME that widens INTO a cube. And `any` was described as the
+  pass-anything type; `any` is the rank-0 wildcard (scalars and combos only), `trueany` is the
+  one that takes everything. Colour HUES are deliberately never named in the app docs — they
+  are false under Colorblind-safe/Solarized/Equinox; shape and relative shade are palette-safe.
+- Units prose in `data-model.md` was **kept verbatim**, not compressed: it is value-model
+  documentation that merely lives in this tab, `socket-reference.md` §7 covers units only at
+  the "what a socket type controls" level, and this is the only place the granularity table,
+  `#UNIT!` currency-code rule and custom-unit dimension are written down.
+
 ### SESSION DIGEST (2026-07-25h — the consolidation's parking lot: three real bugs)
 The three "found but unsolved" items from the audit. All three turned out to be genuine
 bugs, and two of them were filed more mildly than they deserved. Full record archived at
