@@ -338,12 +338,17 @@
   color: var(--text);
   cursor: pointer;
 }
-.table-popup__btn:hover { border-color: var(--accent); }
+/* The footer actions take the POPUP's own accent — the same one tinting its header —
+   not the app-wide accent, so Save/Done on a frame popup reads violet like the frame
+   it edits. Falls back to the app accent when the popup has no host node. The ink
+   comes from `--node-accent-ink` (popupCardVars), never `--accent-ink`: that one is
+   computed for the app accent's hue and would go dark on a dark accent. */
+.table-popup__btn:hover { border-color: var(--node-accent, var(--accent)); }
 
 .table-popup__btn--primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-ink, #fff);
+  background: var(--node-accent, var(--accent));
+  border-color: var(--node-accent, var(--accent));
+  color: var(--node-accent-ink, var(--accent-ink, #fff));
   font-weight: 600;
 }
 .table-popup__btn--primary:hover { filter: brightness(1.08); }
@@ -397,7 +402,7 @@
   border: none;
   padding: 1px 4px;
   border-radius: 4px;
-  color: var(--accent, var(--text-dim));
+  color: var(--node-accent, var(--accent, var(--text-dim)));
   cursor: pointer;
   font: inherit;
 }

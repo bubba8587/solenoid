@@ -1,9 +1,9 @@
-import { useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
+import { useSyncExternalStore, type ReactNode } from "react";
 import { cubePopup, type DrillView } from "../cubePopupStore";
 import { appThemeStore } from "../appTheme";
 import { cubeRowCount, cubeDepth, frameRowCount } from "../frame";
 import { CubeCellChip, frameCellNode } from "./cubeCell";
-import { PopupShell } from "./PopupShell";
+import { PopupShell, popupCardVars } from "./PopupShell";
 import { APP_LOCALE } from "../locale";
 import "./TablePopup.css";
 
@@ -67,11 +67,7 @@ export function CubePopup() {
   const shownRows = rowsTruncated ? MAX_VISIBLE_ROWS : rows;
 
   const grouped = !!state.groupColor;
-  const cardStyle: CSSProperties = {};
-  const cardVars = cardStyle as Record<string, string>;
-  if (state.accent) cardVars["--node-accent"] = state.accent;
-  if (state.groupColor) cardVars["--group-color"] = state.groupColor;
-  if (state.groupColorDark) cardVars["--group-color-dark"] = state.groupColorDark;
+  const cardStyle = popupCardVars(state);
 
   return (
     <PopupShell

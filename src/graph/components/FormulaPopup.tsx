@@ -10,7 +10,7 @@ import type { ExpressionNode, EquationNode, MapTableNode, LambdaNode } from "../
 import { appThemeStore } from "../appTheme";
 import { groupMembershipStore } from "../groupMembership";
 import { cableValueStore } from "../cableValueStore";
-import { themeAccent, darkenAccent } from "../palette";
+import { themeAccent, darkenAccent, contrastInk } from "../palette";
 import { applyExprChange, applyLambdaChange, applyEquationChange } from "./expressionEdit";
 import { FormulaEditor } from "./FormulaEditor";
 import { useFormulaFit } from "./formulaFit";
@@ -245,7 +245,14 @@ export function FormulaPopup() {
   const grouped = !!groupColor;
   const style: CSSProperties = {};
   const cssVars = style as Record<string, string>;
-  if (rawAccent) { cssVars["--node-accent"] = themeAccent(rawAccent, mode); cssVars["--node-accent-dark"] = darkenAccent(rawAccent); }
+  // `--node-accent` always ships with its ink (the readable text color ON it) — see
+  // popupCardVars: the app-wide --accent-ink is computed for a different hue.
+  if (rawAccent) {
+    const accent = themeAccent(rawAccent, mode);
+    cssVars["--node-accent"] = accent;
+    cssVars["--node-accent-ink"] = contrastInk(accent);
+    cssVars["--node-accent-dark"] = darkenAccent(rawAccent);
+  }
   if (groupColor) { cssVars["--group-color"] = themeAccent(groupColor, mode); cssVars["--group-color-dark"] = darkenAccent(groupColor); }
 
   // Deferred: update the preview only. The node (and its sockets) are written on
