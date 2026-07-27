@@ -193,6 +193,31 @@ looking honored. Internal prose (comments, `docs/`) was spelling-normalized — 
 not because the lint governs it but because internal copy is in-context whenever new copy is
 written, so its habits leak into the output.
 
+**INDEX over a Frame passes the COLUMN's type through** (author: "after all the work that's been
+done to harmonize this domain, I'm astounded that that's still not in place"). The 07-25 amendment
+that made INDEX adopt stopped at `comboOfType("frame") === null` → placeholder. That reads the
+SOCKET, and a frame's family isn't there — it's per COLUMN, and INDEX *names the column*. Fixed
+where the fact lives: `PassthroughSpec.project` now takes a `ProjectContext` — `shapeOf(inputKey)`
+(the static frame `Shape` on that input) + `wired(inputKey)` — handed to it by the adoption pass
+from `makeFrameShapeResolver`, the same walk behind the Cable Inspector's shape row. One resolver
+per `reconcileTrueAnyTypes` call, built OUTSIDE the fixpoint loop: a static shape depends on
+topology + literals only, nothing the passes mutate, so its memo survives all 32 passes.
+INDEX's frame arm mirrors `data()` exactly — blank/0 Column → the whole row, still a `frame`;
+Column = c → `comboOfFamily(shape.columns[c-1].type)`. `trueany` survives only where the answer
+genuinely is: a WIRED Column (the cable beats the literal in `data()`, and this walk can't know
+it), an unknown upstream shape (CSV / Web Source), a `dynamic` shape (a pivot's data-driven
+columns SHIFT the ones after them, so a positional index into the known prefix is not
+trustworthy), an out-of-range index, or a cube cell (heterogeneous *within* a column).
+
+**The other half — a socket type can now be derived from static CONFIG, not just wiring.** That
+was a new class of trigger: every derived-type settle hung off a connection event, and a literal
+edit fires none. Three literal-commit paths now call `reconcileTypesAfterEdit` (fcReconcile):
+`InlineInputs` set/setStr (INDEX's own Row/Column *and* every frame verb's `stringLiterals`
+config, which is what the shape walk reads), `useNodeField` (the op/how dropdowns — a Group By
+aggregate decides a column's type), and the Frame Input source editor. It runs the settle and
+pays the full FC reconcile ONLY when a type actually moved, so the overwhelmingly common
+"a literal changed a number" edit costs one pure socket walk.
+
 ### SESSION DIGEST (2026-07-25h — the consolidation's parking lot: three real bugs)
 The three "found but unsolved" items from the audit. All three turned out to be genuine
 bugs, and two of them were filed more mildly than they deserved. Full record archived at

@@ -94,3 +94,25 @@ export function reconcileFcTypes(
     }
   }
 }
+
+/**
+ * Call after a LITERAL edit commits (an inline field, a config dropdown) — the value
+ * path, where no connection event fires. Most literals move only VALUES, and this is a
+ * no-op; some move a SOCKET TYPE, because a socket type can be derived from static
+ * CONFIG as well as from wiring: INDEX reads its Column literal plus the static column
+ * shape of the frame upstream, and that shape is itself built out of every frame verb's
+ * literal config (Select Columns' list, Rename's map, a Frame Input's text). Editing
+ * any of them can retype an INDEX three nodes downstream.
+ *
+ * Cheap by construction: the settle is a pure socket walk, and the FULL reconcile (FC
+ * re-adaptation + the re-renders) is paid ONLY when a type actually moved — so the
+ * overwhelmingly common "a literal changed a number" edit costs one settle pass.
+ */
+export function reconcileTypesAfterEdit(
+  editor: NodeEditor<Schemes>,
+  area: AreaPlugin<Schemes, AreaExtra>,
+): void {
+  const settled = settleWildcardTypes(editor);
+  if (!settled.conduitChanged && settled.adopted.size === 0) return;
+  reconcileFcTypes(editor, area); // re-settles (a no-op fixpoint) and owns the renders
+}
