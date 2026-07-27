@@ -8,7 +8,31 @@
 import type { NodeCatalogEntry, ExcelEquiv } from "../AddNodeMenu";
 import type { PackUnit, PackFormat } from "../formatAnnotationStore";
 import type { ResultType } from "../nodes/shared";
+import type { ExcelReturn } from "../excelFunctions";
 import { ExpressionNode, EquationNode } from "../rete-nodes";
+
+// ─── Pack-contributed formula functions (D19 decision 4) ─────────────────────
+// A pack ships its node surface and its FORMULA surface together: declare a
+// function here and it becomes callable inside any Expression/LAMBDA, exactly
+// like a built-in.
+//
+// Naming follows the D19 rule for Solenoid-native functions — bare, unified with
+// the node's hover hint, spaces removed. Excel-named ops keep their Excel name.
+// A pack must not claim a name the core already registers; `formulaExtensions.ts`
+// fails loudly on a collision rather than letting one surface silently shadow
+// the other.
+export interface PackFormula {
+  /** Dispatch name, UPPERCASE. */
+  name: string;
+  /** The implementation. Same contract as a core `registerInternal` impl:
+   *  return a value, or a `SolError` for a domain failure — never throw. */
+  impl: (...args: unknown[]) => unknown;
+  returns: ExcelReturn;
+  /** [min, max] argument count, for the editor's hint. */
+  arity: [number, number];
+  /** Curated argument hint ("radius, height"); falls back to a bare count. */
+  signature?: string;
+}
 
 // ─── Formula packs: the default, no-new-code pack shape ─────────────────────────
 // A formula pack is pure data: a list of {label, expr} records that base Solenoid
@@ -91,6 +115,10 @@ export interface Pack {
    *  catalog builder marks them with the pack indicator and hides them when all
    *  their claiming packs are off. Unlike `nodes`, these add no new entries. */
   tags?: string[];
+  /** Formula functions this pack adds to Expression/LAMBDA (D19 decision 4).
+   *  Registered for RESOLUTION always, advertised only while active — see
+   *  `formulaExtensions.ts`. */
+  formulas?: PackFormula[];
   /** Extra Format Controller units this pack adds (shown while active). */
   units?: PackUnit[];
   /** Extra Format Controller number formats this pack adds (shown while active). */

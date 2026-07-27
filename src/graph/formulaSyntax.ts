@@ -1,4 +1,5 @@
-import { FORMULA_CONSTANTS, FORMULA_FUNCTION_NAMES } from "./excelFormula";
+import { FORMULA_CONSTANTS } from "./excelFormula";
+import { advertisedFunctionNames } from "./formulaExtensions";
 import { signatureFor } from "./formulaSignatures";
 import { fuzzyScore } from "./fuzzy";
 
@@ -9,7 +10,16 @@ import { fuzzyScore } from "./fuzzy";
 // tokenizer but emits classed <span>s instead of tokens, and never bails on a
 // half-typed formula. Pure (no React) so it's unit-testable.
 
-const FN_SET = new Set(FORMULA_FUNCTION_NAMES);
+// Recomputed when the advertised set changes (a pack toggling on or off, or a
+// late registration) — it can't be a module-level constant any more, because pack
+// functions register after load and the set shrinks when a pack is switched off.
+let _fnSet = new Set<string>();
+let _fnSetSource: string[] | null = null;
+function fnSet(): Set<string> {
+  const names = advertisedFunctionNames();
+  if (names !== _fnSetSource) { _fnSet = new Set(names); _fnSetSource = names; }
+  return _fnSet;
+}
 const CONST_SET = new Set(Object.keys(FORMULA_CONSTANTS)); // lowercase
 
 function esc(s: string): string {
@@ -26,7 +36,7 @@ const isIdChar = (c: string) => /[A-Za-z0-9_]/.test(c);
  * those). A bare name is a math constant (`fx-const`) or a variable (`fx-var`).
  */
 function identClass(word: string, isCall: boolean): string {
-  if (isCall) return FN_SET.has(word.toUpperCase()) ? "fx-fn" : "fx-unknown";
+  if (isCall) return fnSet().has(word.toUpperCase()) ? "fx-fn" : "fx-unknown";
   if (CONST_SET.has(word.toLowerCase())) return "fx-const";
   return "fx-var";
 }
@@ -95,7 +105,7 @@ export function suggestFor(word: string, extraNames: string[] = [], limit = 8): 
   const pool: Suggestion[] = [
     ...extraNames.map((n) => ({ name: n, kind: "var" as const })),
     ...Object.keys(FORMULA_CONSTANTS).map((n) => ({ name: n, kind: "const" as const })),
-    ...FORMULA_FUNCTION_NAMES.map((n) => ({ name: n, kind: "fn" as const })),
+    ...advertisedFunctionNames().map((n) => ({ name: n, kind: "fn" as const })),
   ];
   const q = word.toLowerCase();
   const scored: Array<{ s: Suggestion; score: number }> = [];

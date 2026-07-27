@@ -13,7 +13,7 @@
 // evaluation core), and a LaTeX string for the KaTeX preview.
 
 import { solError, isSolError, isNaError } from "./errorValue";
-import { resolveExcelFunction, EXCEL_IMPL_META, normalizeFxResult, fxErrorToSol, FX_FUNCTION_NAMES, numberToText, internalFunctionNames, ELIMINATED_FUNCTIONS, LEGACY_ALIASES } from "./excelFunctions";
+import { resolveExcelFunction, EXCEL_IMPL_META, normalizeFxResult, fxErrorToSol, FX_FUNCTION_NAMES, numberToText, internalFunctionNames, ELIMINATED_FUNCTIONS, LEGACY_ALIASES, registryGeneration } from "./excelFunctions";
 import { isMissing, guardFinite } from "./valueKinds";
 import { compareStrings } from "./stringOrder";
 
@@ -233,12 +233,27 @@ function constantValue(name: string): number | undefined {
 /** Every name the parser can dispatch to (UPPERCASE) — Formula.js functions UNION
  *  the registry's own impls (incl. the Solenoid-only ones like CLAMP that Formula.js
  *  lacks). Used by the formula editor for autocomplete + to tell a real function from
- *  a typo / lambda variable when highlighting. Built once at load. */
-export const FORMULA_FUNCTION_NAMES: string[] = Array.from(new Set([
-  ...FX_FUNCTION_NAMES, // flat AND namespaced-dotted (NORM.DIST, STDEV.S, …)
-  ...Object.keys(EXCEL_IMPL_META),
-  ...internalFunctionNames(), // registerInternal names (XLOOKUP/XMATCH/INDEX, …)
-])).filter((n) => !ELIMINATED_FUNCTIONS.has(n)).sort(); // D10: eliminated stays eliminated on EVERY surface
+ *  a typo / lambda variable when highlighting.
+ *
+ *  LIVE, not a load-time snapshot: packs register their functions after module load
+ *  (`formulaExtensions.ts`), so a frozen array would permanently omit them. Memoized
+ *  against the registry generation, since highlighting calls this per keystroke.
+ *
+ *  This is every DISPATCHABLE name. What the editor should OFFER is a subset —
+ *  `advertisedFunctionNames()` drops inactive packs' functions. */
+let _names: string[] = [];
+let _namesGen = -1;
+export function formulaFunctionNames(): string[] {
+  const gen = registryGeneration();
+  if (gen === _namesGen) return _names;
+  _names = Array.from(new Set([
+    ...FX_FUNCTION_NAMES, // flat AND namespaced-dotted (NORM.DIST, STDEV.S, …)
+    ...Object.keys(EXCEL_IMPL_META),
+    ...internalFunctionNames(), // registerInternal names (XLOOKUP/XMATCH/INDEX, …)
+  ])).filter((n) => !ELIMINATED_FUNCTIONS.has(n)).sort(); // D10: eliminated stays eliminated on EVERY surface
+  _namesGen = gen;
+  return _names;
+}
 
 // ─── Variable extraction ──────────────────────────────────────────────────────
 function collectNames(n: Ast, out: string[], seen: Set<string>): void {

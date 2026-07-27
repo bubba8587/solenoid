@@ -1,10 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { FORMULA_SIGNATURES, signatureFor, signatureParams } from "./formulaSignatures";
-import { FORMULA_FUNCTION_NAMES, formulaSyntaxHint } from "./excelFormula";
+import { formulaFunctionNames, formulaSyntaxHint } from "./excelFormula";
 
 describe("formula signatures (display hints)", () => {
   it("every curated signature names a REAL dispatchable function", () => {
-    const known = new Set(FORMULA_FUNCTION_NAMES);
+    const known = new Set(formulaFunctionNames());
     const ghosts = Object.keys(FORMULA_SIGNATURES).filter((n) => !known.has(n));
     // A ghost entry hints a function the parser can't dispatch — a lie in the UI.
     expect(ghosts).toEqual([]);

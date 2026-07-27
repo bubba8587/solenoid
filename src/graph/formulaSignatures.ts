@@ -1,4 +1,5 @@
 import { EXCEL_IMPL_META } from "./excelFunctions";
+import { packFormulaSignature } from "./formulaExtensions";
 
 // ─── Formula function signatures (display-only) ────────────────────────────────
 // Curated Excel-style parameter hints for the formula editor: the autocomplete
@@ -223,6 +224,8 @@ export function signatureFor(name: string): string | null {
   const up = name.toUpperCase();
   const sig = FORMULA_SIGNATURES[up];
   if (sig !== undefined) return sig;
+  const packSig = packFormulaSignature(up);
+  if (packSig) return packSig;
   const meta = EXCEL_IMPL_META[up];
   if (meta?.arity) {
     const [min, max] = meta.arity;

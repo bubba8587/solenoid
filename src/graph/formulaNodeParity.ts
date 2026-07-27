@@ -17,7 +17,7 @@
 import { buildCatalog } from "./catalogUtils";
 import type { CatalogEntry, CatalogCategory, CatalogPair, NodeCatalogEntry } from "./AddNodeMenu";
 import { NODE_EXCEL, EXCEL_GAP } from "./nodeExcel";
-import { FORMULA_FUNCTION_NAMES } from "./excelFormula";
+import { formulaFunctionNames } from "./excelFormula";
 import { EXCEL_IMPL_META } from "./excelFunctions";
 
 export interface ParityRow {
@@ -69,14 +69,14 @@ export interface ParityMeasurement {
 
 /** Measure both directions against the CURRENT catalog + formula registry. */
 export function measureParity(): ParityMeasurement {
-  const formulaNames = new Set(FORMULA_FUNCTION_NAMES.map((n) => n.toUpperCase()));
+  const formulaNames = new Set(formulaFunctionNames().map((n) => n.toUpperCase()));
   const rows: ParityRow[] = [];
   walk(buildCatalog(false), [], rows, formulaNames);
 
   const nodeExcelNames = new Set<string>();
   for (const eqs of Object.values(NODE_EXCEL)) for (const x of eqs) nodeExcelNames.add(x.excel.toUpperCase());
   const gapNames = new Set(EXCEL_GAP.map((g) => g.excel.toUpperCase()));
-  const noNode = FORMULA_FUNCTION_NAMES.filter((n) => !nodeExcelNames.has(n.toUpperCase()));
+  const noNode = formulaFunctionNames().filter((n) => !nodeExcelNames.has(n.toUpperCase()));
   // A name we deliberately REGISTERED is tracked by definition, even when no node
   // claims it: the Solenoid-only natives (CLAMP/ORDINAL/BETWEEN) and the flat Excel
   // compatibility spellings we own on purpose (STDEV/VAR/MODE/PERCENTILE/…, each with
@@ -101,7 +101,7 @@ export function measureParity(): ParityMeasurement {
  *  standing in for several names (REGEX → REGEXTEST/REGEXEXTRACT/REGEXREPLACE)
  *  contributes each name separately, so closing one of them shows up. */
 export function excelNamedGapNames(m: ParityMeasurement): string[] {
-  const formulaNames = new Set(FORMULA_FUNCTION_NAMES.map((n) => n.toUpperCase()));
+  const formulaNames = new Set(formulaFunctionNames().map((n) => n.toUpperCase()));
   const out = new Set<string>();
   for (const r of m.excelNamedGap) for (const x of r.excel) if (!formulaNames.has(x)) out.add(x);
   return [...out].sort();

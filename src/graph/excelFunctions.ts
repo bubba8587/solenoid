@@ -198,10 +198,29 @@ export function excelFunctionInfo(name: string): ExcelFunctionInfo | null {
 // this, registering a native impl flips that function with no call-site change.
 const INTERNAL_IMPLS = new Map<string, (...a: unknown[]) => unknown>();
 
+// Bumped on every registration. The formula NAME list is derived from this registry
+// and is read on every keystroke (highlighting, autocomplete), so it memoizes
+// against this counter — and, because packs register AFTER module load, it can no
+// longer be a load-time snapshot the way it was.
+let registryGen = 0;
+
+/** How many registrations have happened — the memo key for any derived list. */
+export function registryGeneration(): number {
+  return registryGen;
+}
+
 /** Declare a native implementation as authoritative for `name` (a "keep internal"
  *  family, or a flipped one). Idempotent-overwrite. UPPERCASE-keyed. */
 export function registerInternal(name: string, fn: (...a: unknown[]) => unknown): void {
   INTERNAL_IMPLS.set(name.toUpperCase(), fn);
+  registryGen++;
+}
+
+/** Withdraw a registration. Only for registrations that are REVOCABLE — i.e. a
+ *  pack's, which must come back out when the pack list is rebuilt. The core's own
+ *  registrations run once at module load and are never withdrawn. */
+export function unregisterInternal(name: string): void {
+  if (INTERNAL_IMPLS.delete(name.toUpperCase())) registryGen++;
 }
 
 /** Resolve a function name to its authoritative callable: a registered internal impl
