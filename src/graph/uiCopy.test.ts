@@ -25,7 +25,7 @@ import { buildCatalog } from "./catalogUtils";
 // Enforcing either means a prose sweep first; see the 2026-07-27 dev-notes digest.
 
 /** One linted string, tagged with where it came from. */
-type Unit = { src: string; text: string };
+type Unit = { src: string; text: string; opener: boolean };
 
 const HELP_DIR = "src/graph/help";
 
@@ -37,7 +37,7 @@ function sentences(src: string, text: string): Unit[] {
     .split(/(?<=[.!?;])\s+/)
     .map((s) => s.trim())
     .filter(Boolean)
-    .map((s) => ({ src, text: s }));
+    .map((s, i) => ({ src, text: s, opener: i === 0 }));
 }
 
 function uiStrings(): Unit[] {
@@ -58,7 +58,12 @@ function uiStrings(): Unit[] {
   return out;
 }
 
-type Rule = { id: string; why: string; re: RegExp };
+/** `where` narrows a rule to the surface it actually governs. Most rules apply
+ *  everywhere; the register rule governs only the FIRST sentence of a node
+ *  DESCRIPTION — a node's label is a name ("Import XML"), and long-form help
+ *  legitimately instructs about unguessable bindings ("Draw it clockwise and
+ *  it's a crossing select"). */
+type Rule = { id: string; why: string; re: RegExp; where?: (u: Unit) => boolean };
 
 /** A plain, DEFAULT-BUTTON mouse gesture — the kind anyone finds in a second.
  *
@@ -105,6 +110,17 @@ const RULES: Rule[] = [
     ),
   },
   {
+    id: "imperative-opener",
+    why: "a node description says what the node DOES, not what the reader should do — third person, the register Excel's own function reference uses",
+    // Only verbs that are NEVER a noun at the head of a description in this
+    // catalog. Sum, Sample, List, Rank, Set, Clean, Yield, Point and Report are
+    // deliberately absent: each opens a real noun phrase here ("Sum of squares",
+    // "Sample variance (n−1)", "Set operations on two lists"), and flagging them
+    // would push a correct string into "Sums of squares".
+    re: /^(?:Draw|Paint|Pull|Append|Convert|Split|Join|Sort|Remove|Keep|Wrap|Parse|Load|Write|Extract|Generate|Reverse|Repeat|Replace|Expand|Reshape|Apply|Define|Show|Plot|Stack|Flip|Nest|Rename|Select|Filter|Order|Score|Test|Group|Read|Scale|Build|Take|Fill|Look|Count|Pick|Combine|Return|Match|Give|Enter|Round|Compute|Solve|Simulate|Import|Export|Insert|Merge|Trim|Normalize|Interpolate)\b/,
+    where: (u) => u.src.endsWith(".desc") && u.opener,
+  },
+  {
     id: "widget-narration",
     why: "CLAUDE.md Captain Obvious — naming the control instead of the effect. Say what the option DOES; the reader can see it is a toggle",
     re: /\b(?:with|from|via|using)\s+the\s+(?:dropdown|checkbox|button|toggle|slider|menu|picker|selector|field|box)\b|\b(?:dropdown|checkbox|button|toggle)\s+(?:lets|allows|selects|sets)\b/i,
@@ -129,7 +145,7 @@ describe("UI copy", () => {
 
   it("no shipped string breaks a machine-checkable voice rule", () => {
     const offenders = uiStrings().flatMap((u) =>
-      RULES.filter((r) => r.re.test(u.text)).map((r) => `${u.src} [${r.id}] ${u.text}`),
+      RULES.filter((r) => (r.where?.(u) ?? true) && r.re.test(u.text)).map((r) => `${u.src} [${r.id}] ${u.text}`),
     );
     expect(offenders).toEqual([]);
   });
@@ -143,6 +159,7 @@ describe("UI copy", () => {
       "tease-count": ["On a type mismatch there are three ways forward:"],
       "chummy-aside": ["…and wires the first compatible port for you."],
       "widget-narration": ["diagonal 1s, rest 0s — or blanks (nulls) via the toggle."],
+      "imperative-opener": ["Round to nearest integer. Excel: ROUND(x,0).", "Sort ascending or descending."],
       slogan: ["Every chart Excel has, and then some"],
       // Every string the 2026-07-27 aggressive sweep removed, verbatim.
       "gesture-narration": [
@@ -180,6 +197,13 @@ describe("UI copy", () => {
       "A container: drop it around nodes, or select them and press Ctrl+G.",
       "Paintable matrix, any brush value (right-click erases to blank).",
       "Outputs the points as parallel X and Y lists; right-click deletes one.",
+      // Noun phrases that merely OPEN with a word that can also be a verb.
+      "Sum of two complex numbers.",
+      "Sample standard deviation (n−1).",
+      "Set operations on two lists: union, intersection, difference.",
+      "List of N random numbers between Min and Max.",
+      "Clean price per $100 face for a coupon bond (30/360 basis).",
+      "Rank; ties share the highest position.",
       // The gesture word as a noun or a descriptive gerund, not an instruction.
       "A drag that won't drop has exactly three causes: the canvas is locked; it's a self-loop; or the types don't connect.",
       "The drag guard refuses silently, but wiring through the connection dialog names the reason.",
