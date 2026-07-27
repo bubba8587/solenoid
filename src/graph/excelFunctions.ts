@@ -1,8 +1,9 @@
 import * as FX from "@formulajs/formulajs";
 import { solError, type SolError, type SolErrorCode } from "./errorValue";
 import { serialToJsDate, jsDateToSerial } from "./nodes/date";
-import { regularizedBeta, regularizedGamma, bisectionInv, lnGamma } from "./nodes/mathUtils";
+import { regularizedBeta, regularizedGamma, bisectionInv, lnGamma, linearFit } from "./nodes/mathUtils";
 import { convertValue } from "./nodes/convert";
+import { splitText, textAfterBefore, urlEncode, regexApply } from "./nodes/textOps";
 import { coerceNumber as toNum } from "./valueKinds";
 
 // ─── EXCEL_FUNCTIONS — the one declared home for "where does each function live?" ──
@@ -814,6 +815,36 @@ registerInternal("NUMBERVALUE", (text, dec, grp) => {
   if (Number.isNaN(n)) return VALUE("NUMBERVALUE");
   return n / Math.pow(100, pct);
 });
+
+// ── Tier 1: FORECAST.LINEAR ──
+// Excel renamed FORECAST → FORECAST.LINEAR; the node carries the current name, but
+// only the superseded spelling dispatched (through Formula.js), so the node's own
+// name gave #NAME?. Now the current name runs the NODE'S fit and the old one
+// redirects (LEGACY_ALIASES). A range function — both known-value args arrive whole.
+registerInternal("FORECAST.LINEAR", (x, ys, xs) => {
+  const n = toNum(x);
+  if (Number.isNaN(n)) return VALUE("FORECAST.LINEAR");
+  const fit = linearFit((xs as number[]) ?? [], (ys as number[]) ?? []);
+  return fit ? fit.intercept + fit.slope * n : solError("#DIV/0!", "Known Xs have zero variance");
+});
+
+// ── Tier 1: modern-Excel TEXT functions Formula.js predates (D19) ──
+// Each node already existed and carried the Excel name; typing that name in an
+// Expression still gave #NAME?. These register the NODE'S OWN compute — imported,
+// not re-written — so the two surfaces cannot drift by construction. TEXTSPLIT
+// returns a list (1-D, inside the D2 cap); the rest are scalar.
+registerInternal("TEXTSPLIT",  (text, delim) => splitText(toStr(text), toStr(delim)));
+registerInternal("TEXTAFTER",  (text, delim) => textAfterBefore("after",  toStr(text), toStr(delim)));
+registerInternal("TEXTBEFORE", (text, delim) => textAfterBefore("before", toStr(text), toStr(delim)));
+registerInternal("ENCODEURL",  (text) => urlEncode("encode", toStr(text)));
+// Excel's REGEX* take an optional case-sensitivity argument; ours takes the flags
+// string straight through to the RegExp, matching the node's Flags field.
+registerInternal("REGEXTEST",    (text, pat, flags) => regexApply("test",    toStr(text), toStr(pat), "", toStr(flags ?? "")));
+registerInternal("REGEXREPLACE", (text, pat, repl, flags) => regexApply("replace", toStr(text), toStr(pat), toStr(repl), toStr(flags ?? "")));
+// REGEXEXTRACT's return_all argument mirrors Excel's: FALSE (default) = the first
+// match as text, TRUE = every match as a list.
+registerInternal("REGEXEXTRACT", (text, pat, all, flags) =>
+  regexApply(isTrue(all) ? "extract_all" : "extract", toStr(text), toStr(pat), "", toStr(flags ?? "")));
 
 // ── Solenoid-native (no Formula.js equivalent) — the registry ADDS these ──
 // Cover the string + logical output types and show the registry isn't limited to
