@@ -355,7 +355,9 @@ export class WeekInfoNode extends ClassicPreset.Node {
   }
 
   data(inputs: { date?: (number | number[])[]; return_type?: number[] }): { result: BroadcastResult } {
-    const rt = Math.floor(inputs.return_type?.[0] ?? this.literals.return_type ?? 1);
+    const rtRaw = readInput(inputs.return_type, this.literals.return_type ?? 1);
+    if (rtRaw === null) { this.cachedResult = null; return { result: null }; }
+    const rt = Math.floor(rtRaw);
     const result = broadcast((serial) => {
       const d = serialToJsDate(serial);
       switch (this.op) {
@@ -408,7 +410,9 @@ export class DateDiffNode extends ClassicPreset.Node {
   }
 
   data(inputs: { start?: (number | number[])[]; end?: (number | number[])[]; basis?: number[] }): { result: BroadcastResult } {
-    const basis = Math.floor(inputs.basis?.[0] ?? this.literals.basis ?? 0);
+    const basisRaw = readInput(inputs.basis, this.literals.basis ?? 0);
+    if (basisRaw === null) { this.cachedResult = null; return { result: null }; }
+    const basis = Math.floor(basisRaw);
     const result = broadcast((s, e) => {
     const sd    = serialToJsDate(s);
     const ed    = serialToJsDate(e);
@@ -518,7 +522,9 @@ export class WorkdayNode extends ClassicPreset.Node {
   }
 
   data(inputs: { start?: (number | number[])[]; days?: (number | number[])[]; weekend_code?: number[]; holidays?: (number | null)[][] }): { result: BroadcastResult } {
-    const code = Math.floor(inputs.weekend_code?.[0] ?? this.literals.weekend_code ?? 1);
+    const codeRaw = readInput(inputs.weekend_code, this.literals.weekend_code ?? 1);
+    if (codeRaw === null) { this.cachedResult = null; return { result: null }; }
+    const code = Math.floor(codeRaw);
     const off  = weekendSet(code);
     const hol  = holidaySet(inputs.holidays?.[0]); // dates to skip alongside weekends
     const result = broadcast((s, rawN) => {
@@ -558,7 +564,9 @@ export class NetworkdaysNode extends ClassicPreset.Node {
   }
 
   data(inputs: { start?: (number | number[])[]; end?: (number | number[])[]; weekend_code?: number[]; holidays?: (number | null)[][] }): { result: BroadcastResult } {
-    const code = Math.floor(inputs.weekend_code?.[0] ?? this.literals.weekend_code ?? 1);
+    const codeRaw = readInput(inputs.weekend_code, this.literals.weekend_code ?? 1);
+    if (codeRaw === null) { this.cachedResult = null; return { result: null }; }
+    const code = Math.floor(codeRaw);
     const off  = weekendSet(code);
     const hol  = holidaySet(inputs.holidays?.[0]); // dates not counted, alongside weekends
     const result = broadcast((s, e) => {

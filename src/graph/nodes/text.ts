@@ -69,8 +69,8 @@ function strScalar(
   node: { stringLiterals?: Record<string, string> },
   key: string,
   def = "",
-): string {
-  return input?.[0] ?? node.stringLiterals?.[key] ?? def;
+): string | null {
+  return readInput(input, node.stringLiterals?.[key] ?? def);
 }
 
 // ─── Text Input ────────────────────────────────────────────────────────────
@@ -253,7 +253,11 @@ export class ConcatNode extends ClassicPreset.Node {
   }
 
   data(inputs: Record<string, string[] | undefined>): { result: string } {
-    const values = Object.keys(this.inputs).map((key) => inputs[key]?.[0] ?? this.stringLiterals[key] ?? "");
+    // A REDUCER, so the aggregator half of the value model applies: a missing is
+    // SKIPPED (contributes nothing to the join), not propagated the way an
+    // element-wise operand is. `readInput` first so a WIRED blank is skipped rather
+    // than resurrecting whatever text is typed in that row's box.
+    const values = Object.keys(this.inputs).map((key) => readInput(inputs[key], this.stringLiterals[key] ?? "") ?? "");
     const result = resolveExcelFunction("CONCAT")!(...values) as string;
     this.cachedText = result;
     return { result };
@@ -559,9 +563,10 @@ export class TextJoinNode extends ClassicPreset.Node {
     this.addOutput("result", strOut("Result"));
   }
 
-  data(inputs: { strings?: string[][]; delimiter?: string[] }): { result: string } {
+  data(inputs: { strings?: string[][]; delimiter?: string[] }): { result: string | null } {
     const strings: string[] = inputs.strings?.[0] ?? [];
     const delimiter = strScalar(inputs.delimiter, this, "delimiter");
+    if (delimiter === null) { this.cachedText = null; return { result: null }; }
     const parts     = this.ignoreEmpty === "ignore" ? strings.filter(s => s !== "") : strings;
     const result    = parts.join(delimiter);
     this.cachedText = result;
@@ -585,9 +590,10 @@ export class TextSplitNode extends ClassicPreset.Node {
     this.addOutput("result", strListOut("Parts"));
   }
 
-  data(inputs: { text?: string[]; delimiter?: string[] }): { result: string[] } {
+  data(inputs: { text?: string[]; delimiter?: string[] }): { result: string[] | null } {
     const text      = strScalar(inputs.text,      this, "text");
     const delimiter = strScalar(inputs.delimiter, this, "delimiter");
+    if (text === null || delimiter === null) { this.cachedResult = null; return { result: null }; }
     const result    = splitText(text, delimiter);
     this.cachedResult = result;
     return { result };
@@ -687,9 +693,10 @@ export class TextFilterNode extends ClassicPreset.Node {
     this.addOutput("result", strListOut("Filtered"));
   }
 
-  data(inputs: { strings?: string[][]; pattern?: string[] }): { result: string[] } {
+  data(inputs: { strings?: string[][]; pattern?: string[] }): { result: string[] | null } {
     const strings = inputs.strings?.[0] ?? [];
-    const pattern = inputs.pattern?.[0] ?? this.stringLiterals.pattern ?? "";
+    const pattern = readInput(inputs.pattern, this.stringLiterals.pattern ?? "");
+    if (pattern === null) { this.cachedResult = null; return { result: null }; }
     let result: string[];
     switch (this.op) {
       case "contains":     result = strings.filter(s => s.includes(pattern));    break;
@@ -914,8 +921,9 @@ export class RegexNode extends ClassicPreset.Node {
     pattern?: string[];
     replacement?: string[];
   }): { result: number | number[] | string | string[] | null } {
-    const pattern     = inputs.pattern?.[0]     ?? this.stringLiterals.pattern     ?? "";
-    const replacement = inputs.replacement?.[0] ?? this.stringLiterals.replacement ?? "";
+    const pattern     = readInput(inputs.pattern,     this.stringLiterals.pattern     ?? "");
+    const replacement = readInput(inputs.replacement, this.stringLiterals.replacement ?? "");
+    if (pattern === null || replacement === null) { this.cachedResult = null; return { result: null }; }
     const flags       = this.stringLiterals.flags ?? "";
 
     if (!pattern || !safeRegex(pattern, flags)) { this.cachedResult = null; return { result: null }; }

@@ -10,17 +10,6 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
 
 ## Bugs & verifications
 
-- [ ] **Wired-`null` on MODE selectors — needs an author call, not a sweep.** The
-  OPERAND half is fixed (2026-07-27: `text.ts`'s `strVal` and every numeric operand in
-  `date.ts`/`text.ts` now route through `readInput`, pinned by
-  `nodes/wiredNull.test.ts`). What's left is the reads that select a MODE rather than
-  carry a value: `strScalar` (delimiter / separator / filter pattern), and `basis` /
-  `return_type` / `weekend_code` in `date.ts`. A wired blank there is genuinely
-  ambiguous — "mode unknown, so the answer is unknown" (propagate, per P6) versus
-  "nothing supplied, use the default" (Excel's reading of an omitted optional arg).
-  An operand blank has no such ambiguity, which is why it went ahead alone. Same
-  question governs the ~144-site sweep below, so decide it once.
-
 - [ ] **Window min/max/close controls missing (desktop)** — `tauri-plugin-decorum`'s
   `create_overlay_titlebar()` isn't rendering the controls. Ruled out: the accent
   border. Needs a live devtools look (F12 — CSP/decorum errors?) or a decorum/tauri
@@ -145,10 +134,12 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
     Tab-across, and headers aren't focusable so the sort has no keyboard path. The
     biggest gap against "zero learning curve from Excel", and much the largest job.
 - [ ] **Small mechanical sweep**: trueany adoption runs on the MAIN editor only —
-  drill-in composites don't adopt (`trueAnyAdopt.ts`); `readInput` sweep applied across
-  `scalar.ts` only — the remaining `data()` files are the follow-up (~144 sites, biggest
-  being finance/list/stats; each needs a per-input call on whether a wired null
-  propagates or an Excel-style optional arg still defaults).
+  drill-in composites don't adopt (`trueAnyAdopt.ts`); the `readInput` sweep has covered
+  `scalar.ts`, `text.ts` and `date.ts` — the remaining `data()` files are the follow-up
+  (~144 sites, biggest being finance/list/stats). The policy question is now SETTLED
+  (author, 2026-07-27): follow THIS project's model over Excel's — an operand or a MODE
+  selector PROPAGATES a wired blank, a REDUCER skips it (the aggregator half of the
+  value model). So the rest is mechanical; `nodes/wiredNull.test.ts` shows the shape.
 - [ ] **Keep `release-notes-features.md` current** — the curated 1.3 selling list +
   What's-New slide source (author writes the final release notes at cut time).
 

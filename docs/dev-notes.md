@@ -193,13 +193,21 @@ unconditionally would break every node's typed default just as badly as the bug 
 replaced. Verified the tests actually FAIL against the old reader rather than passing
 vacuously.
 
-**Deliberately NOT swept: the MODE selectors** — `strScalar` (delimiter / separator /
-filter pattern) and `basis` / `return_type` / `weekend_code`. A wired blank there is
-genuinely ambiguous: "the mode is unknown, so the answer is unknown" (propagate, per
-P6) versus "nothing supplied, use the default" (Excel's reading of an omitted optional
-argument). An operand blank has no such ambiguity, which is why that half could go
-ahead alone. Noted at both sites so it doesn't read as an oversight; the same question
-governs the ~144-site sweep, so it wants deciding once.
+**The MODE selectors followed, once the author settled the policy.** The open question
+was "mode unknown, so answer unknown" (this app's P6 model) versus "nothing supplied,
+use the default" (Excel's omitted-optional-argument reading). Author: *use whatever's
+more aligned with our project, vs Excel.* So a wired blank PROPAGATES on `strScalar`
+(delimiter / separator / filter pattern), on the regex pattern and replacement, and on
+`basis` / `return_type` / `weekend_code` — a blank you deliberately wired is never
+silently reinterpreted as a default. Only an UNWIRED slot falls back to the literal.
+
+**One place the same policy says the OPPOSITE, and it would be easy to sweep wrong:**
+CONCAT is a REDUCER, so the aggregator half of the value model applies — a missing is
+SKIPPED (contributes nothing to the join), exactly as SUM skips nulls, rather than
+propagating the way an element-wise operand does. It still needed the fix, because the
+old read swallowed a wired blank into that row's typed literal first. Element-wise
+propagates, aggregators skip, Filter drops — that split is the thing to carry into the
+remaining ~144 sites, and `nodes/wiredNull.test.ts` pins one of each.
 
 ### All 98 op-selector families classified (2026-07-27b)
 
