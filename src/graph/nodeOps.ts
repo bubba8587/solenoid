@@ -55,7 +55,7 @@ import {
   FillNode, GroupByNode, SetOpNode, SetRelationNode, SumIfsNode, CumulativeNode,
   FILL_OP_META, GROUP_BY_OP_META, SET_OP_META, SET_RELATION_META, COND_AGG_OP_META,
 } from "./nodes/list";
-import { HeadNode, PromoteHeadersNode, HEAD_OP_META, HEADER_OP_META } from "./nodes/frame";
+import { HeadNode, HeadersNode, HEAD_OP_META, HEADER_OP_META } from "./nodes/frame";
 import { RegexNode, TextFilterNode, REGEX_OP_META, TEXT_FILTER_OP_META } from "./nodes/text";
 import { IsEvenOddNode, ComparisonNode, IsTestNode, PARITY_OP_META } from "./nodes/logic";
 import { RegressionNode, CorrelNode, REGRESSION_OP_META, CORREL_OP_META } from "./nodes/stats";
@@ -184,6 +184,11 @@ export const NODE_OPS: NodeOpsDecl[] = [
     create: (op) => new SparklineNode({ op: op as never }) },
 
   // ── Argument-kind: the op is a parameter, not a thing you would search for ──
+  // "Headers" is the node; promoting or demoting is which DIRECTION you want it run.
+  // Nobody searches the Add menu for "promote headers", and the two labels read as a
+  // pair of settings on one card rather than as two operations.
+  { type: "headers", ctor: HeadersNode, kind: "argument", ops: fromMeta(HEADER_OP_META),
+    create: (op) => new HeadersNode({ op: op as never }) },
   // "Fill blanks with the mean" — `mean` alone names nothing.
   { type: "list-fill", ctor: FillNode, kind: "operation", ops: fromMeta(FILL_OP_META),
     create: (op) => new FillNode({ op: op as never }) },
@@ -211,8 +216,7 @@ export const NODE_OPS: NodeOpsDecl[] = [
   // Label already names both ops.
   { type: "iseven-isodd", ctor: IsEvenOddNode, kind: "operation", ops: fromMeta(PARITY_OP_META), mark: false,
     create: (op) => new IsEvenOddNode({ op: op as never }) },
-  { type: "promote-headers", ctor: PromoteHeadersNode, kind: "operation", ops: fromMeta(HEADER_OP_META),
-    create: (op) => new PromoteHeadersNode({ op: op as never }) },
+
   { type: "list-cumulative", ctor: CumulativeNode, kind: "operation", ops: CUMULATIVE_OPS,
     create: (op) => new CumulativeNode({ op: op as never }) },
   { type: "comparison", ctor: ComparisonNode, kind: "operation", ops: COMPARISON_OPS,

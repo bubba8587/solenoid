@@ -26,7 +26,7 @@ import type {
   FillBlanksNode as FillBlanksNodeType,
   ReplaceValuesNode as ReplaceValuesNodeType,
   MergeColumnsNode as MergeColumnsNodeType,
-  PromoteHeadersNode as PromoteHeadersNodeType,
+  HeadersNode as HeadersNodeType,
   DropBlankRowsNode as DropBlankRowsNodeType,
   DecisionMatrixNode as DecisionMatrixNodeType,
   DecisionSensitivityNode as DecisionSensitivityNodeType,
@@ -580,7 +580,7 @@ export function MergeColumnsComponent({ data, emit }: NodeProps<MergeColumnsNode
 const HEADER_OP_OPTIONS = (Object.entries(HEADER_OP_META) as [HeaderOp, { label: string; description: string }][])
   .map(([value, m]) => ({ value, label: m.label, title: m.description }));
 
-export function PromoteHeadersComponent({ data, emit }: NodeProps<PromoteHeadersNodeType>) {
+export function HeadersComponent({ data, emit }: NodeProps<HeadersNodeType>) {
   const [op, setOp] = useNodeField(data, "op");
   return (
     <NodeShell node={data} emit={emit}>

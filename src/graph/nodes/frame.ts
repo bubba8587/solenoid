@@ -960,19 +960,19 @@ export class MergeColumnsNode extends ClassicPreset.Node {
 export type HeaderOp = "promote" | "demote";
 
 export const HEADER_OP_META: Record<HeaderOp, { label: string; description: string }> = {
-  promote: { label: "First row → headers", description: "The first row becomes the column names. Power Query: Use First Row as Headers." },
-  demote:  { label: "Headers → first row", description: "Column names drop into a first row of text; columns auto-name Col1, Col2…" },
+  promote: { label: "Promote first row", description: "The first row becomes the column names. Power Query: Use First Row as Headers." },
+  demote:  { label: "Demote headers", description: "Column names drop into a first row of text; columns auto-name Col1, Col2…" },
 };
 
-export class PromoteHeadersNode extends ClassicPreset.Node {
+export class HeadersNode extends ClassicPreset.Node {
   label: string;
   op: HeaderOp;
   cachedResult: FrameValue | SolError | null = null;
   width = 200; height = 140;
 
   constructor(init?: { label?: string; op?: HeaderOp }) {
-    super("PromoteHeaders");
-    this.label = init?.label ?? "Promote Headers";
+    super("Headers");
+    this.label = init?.label ?? "Headers";
     this.op = init?.op ?? "promote";
     this.addInput("frame", frameIn("Frame"));
     this.addOutput("frame", frameOut("Frame"));

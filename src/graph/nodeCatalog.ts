@@ -7,7 +7,7 @@ import {
   PointPlotterNode, CurveNode, GridPainterNode,
   SparklineNode, ChartNode, HistogramNode, KpiNode, BulletNode, TreemapNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode,
   ContourNode, WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, WaffleNode, QuiverNode, SevenSegNode,
-  FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, PromoteHeadersNode, DropBlankRowsNode,
+  FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode,
   NumberInputNode, ArithmeticNode, DisplayNode, ComparisonNode, MathFnNode,
   FormatControllerNode, ExpressionNode, EquationNode, RegexNode, GroupByNode,
   ClampNode, BooleanOpNode, NotNode, IfNode, ConduitNode, CastNode, ConstantNode, MRoundNode,
@@ -1022,7 +1022,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
               { type: "split-column", label: "Split Column", description: "Splits one text column into several by a delimiter; the source column is replaced by the parts. Name the new columns or let them auto-number. Power Query: Split Column by Delimiter.", create: () => new SplitColumnNode(), parity: false, keywords: "split delimiter text column separate parse divide power query" },
               { type: "add-index",   label: "Add Index",   description: "Prepend a numeric row-number column counting from a start value (default 1). The second output is the TWO-WAY version: the data indexed on both axes as a coordinate-bordered matrix — exactly the grid shape the surface figures read (a matrix widens to columns automatically). Power Query: Add Index Column.", create: () => new AddIndexNode(), parity: false, keywords: "index row number sequence counter rownum power query two way bordered grid coordinates matrix" },
               { type: "merge-columns", label: "Merge Columns", description: "Joins two or more columns into one text column with a separator between parts; the sources drop and the merged column takes the first one\'s place. The inverse of Split Column. Power Query: Merge Columns.", create: () => new MergeColumnsNode(), parity: false, keywords: "merge combine concatenate join columns text textjoin concat inverse split" },
-              { type: "promote-headers", label: "Promote Headers", description: "First row → column names (for a table that arrived headerless), or the reverse: names drop into a first row of text. Power Query: Use First Row as Headers.", create: () => new PromoteHeadersNode(), parity: false, keywords: "promote demote headers first row column names use as titles" },
+              { type: "headers", label: "Headers", description: "Promotes the first row to column names (for a table that arrived headerless), or demotes the names back into a first row of text. Power Query: Use First Row as Headers.", create: () => new HeadersNode(), parity: false, keywords: "promote demote headers first row column names use as titles header" },
             ],
           },
           {
