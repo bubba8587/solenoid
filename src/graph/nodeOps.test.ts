@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { NODE_OPS, opsFor, hiddenOps, exposureOf, opEntry } from "./nodeOps";
+import { NODE_OPS, opsFor, hiddenOps, exposureOf, opEntry, opKindForNode } from "./nodeOps";
 import { buildCatalog } from "./catalogUtils";
 import { flattenLeaves, searchLeaves } from "./catalogSearch";
 import type { CatalogEntry, NodeCatalogEntry } from "./AddNodeMenu";
@@ -30,6 +30,7 @@ describe("declarations line up with the real catalog", () => {
 
   it("every op constructs, and the node comes back set to that op", () => {
     for (const decl of NODE_OPS) {
+      if (!decl.ops || !decl.create) continue; // kind-only declaration
       for (const { op } of decl.ops) {
         const inst = decl.create(op) as { op?: unknown };
         expect(inst, `${decl.type}/${op} did not construct`).toBeTruthy();
@@ -64,6 +65,31 @@ describe("declarations line up with the real catalog", () => {
       const cls = (host.create() as { constructor: { name: string } }).constructor.name;
       expect([...(realLeafOps.get(cls) ?? [])].sort(), `${decl.type} (${cls})`).toEqual([...decl.leafOps].sort());
     }
+  });
+});
+
+describe("coverage — every op selector is classified", () => {
+  // The whole point of `kind` is that a NEUTRAL op selector means "argument". That
+  // only holds while every family is declared: an undeclared one also renders
+  // neutral, and would be silently asserting something false about itself. This is
+  // what keeps the visual honest as nodes are added.
+  it("no node with an op dropdown is missing a declaration", () => {
+    const undeclared = new Map<string, string>();
+    for (const leaf of leaves) {
+      let inst: object & { op?: unknown };
+      try { inst = leaf.create() as typeof inst; } catch { continue; }
+      if (typeof inst?.op !== "string") continue;
+      if (opKindForNode(inst)) continue;
+      undeclared.set(inst.constructor.name, leaf.type);
+    }
+    expect(
+      [...undeclared.keys()].sort(),
+      `These classes have an op selector but no entry in NODE_OPS, so their dropdown\n` +
+        `renders neutral — indistinguishable from a declared "argument":\n` +
+        [...undeclared].map(([c, t]) => `  ${c} (leaf "${t}")`).join("\n") +
+        `\nAdd a declaration with its kind: does a user search the Add menu for the\n` +
+        `variant by name (operation), or is it a parameter/datum of the host (argument)?`,
+    ).toEqual([]);
   });
 });
 
@@ -119,10 +145,10 @@ describe("the exposure flag is the whole change", () => {
   });
 
   it("flipping to `leaves` yields one entry per hidden op, each pre-set", () => {
-    const decl = opsFor("list-set")!;
+    const decl = opsFor("list-set")! as Parameters<typeof opEntry>[0];
     const host = byType.get("list-set")!;
     const generated = hiddenOps(decl, host).map((op) => opEntry(decl, host, op));
-    expect(generated.length).toBe(decl.ops.length - 1); // all but the host's own op
+    expect(generated.length).toBe(decl.ops!.length - 1); // all but the host's own op
     for (const entry of generated) {
       expect(entry.label.startsWith(`${host.label}: `)).toBe(true);
       expect((entry.create() as { op?: unknown }).op).toBeTruthy();

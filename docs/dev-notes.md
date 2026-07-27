@@ -173,6 +173,34 @@ RANGE_FUNCTIONS (as the plan said) is what exposed this — the two changes belo
 pack-registered name would advertise while its pack is disabled. Nothing shipped here depends on
 it. Tier 3 and Tier 4 unchanged; gap A's remaining 19 are D2-capped and ride on the Tier 4 call.
 
+### All 98 op-selector families classified (2026-07-27b)
+
+Finished the declarations behind the op-kind edge. **73 operation / 25 argument**, and
+`nodeOps.test.ts` now FAILS on any node with an op dropdown that has no declaration —
+which is what makes the visual honest: a neutral selector can only mean "argument" once
+every family is classified, because an undeclared one renders neutral too. The check
+caught a family I'd missed (ResistorCode) on its first run.
+
+**Kind-only declarations.** 77 of the 98 declare `kind` and nothing else — no ops list.
+The type enforces the pairing (`ops` implies `create`), so a declaration either lists
+its ops AND can build them, or lists neither. Kind-only leaves the menu completely
+alone, which is correct for the ~48 families already listed op-by-op (nothing hidden =
+nothing to list) and deliberate for the DATA pickers, where a search row per value
+would bury the menu it was meant to help. It does leave the ~30 collapsed families
+without search rows — backlogged with the exact list.
+
+**Where the argument line fell**, applying the author's test (*is the variant a distinct
+thing you would search the Add menu for?*): aggregator-for-a-host-verb (Pivot,
+CubeRollup, GroupByFrame), a distribution's cumulative form — Excel itself models that
+as the `cumulative` FLAG rather than separate functions — and the data pickers. Note the
+split inside the distributions: `cdf`/`pdf` is a flag (argument), but `.RT` right-tail
+IS a separate Excel function, so ChisqInv/FInv/TInv came out operation while NormDist/
+BetaDist/… came out argument.
+
+**Edge tuned to 2px** at an 85% accent mix, paid for out of the padding (1px border with
+4px/8px becomes 2px with 3px/7px) so an operation selector occupies exactly the same box
+as a neutral one and nothing reflows when a family is reclassified.
+
 ### Op-selector kind, made visible (2026-07-27b)
 
 An op dropdown either picks between distinct OPERATIONS or sets an ARGUMENT of one

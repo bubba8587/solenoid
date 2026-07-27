@@ -36,7 +36,9 @@ export function flattenLeaves(entries: CatalogEntry[], ancestors: string[] = [])
   const out = flattenTree(entries, ancestors);
   for (const { leaf, categoryPath } of [...out]) {
     const decl = leaf.hiddenOps?.length ? opsFor(leaf.type) : undefined;
-    if (!decl) continue;
+    // hiddenOps is only ever populated for a declaration that lists ops, so `create`
+    // is present — the guard keeps that guarantee visible to the type checker.
+    if (!decl?.create) continue;
     for (const op of leaf.hiddenOps!) out.push({ leaf: opEntry(decl, leaf, op), categoryPath });
   }
   return out;

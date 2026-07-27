@@ -166,7 +166,8 @@ function applyNodeOps(root: CatalogEntry[], byType: Map<string, NodeCatalogEntry
     const host = byType.get(decl.type);
     if (!host) continue;
     const hidden = hiddenOps(decl, host);
-    if (!hidden.length) continue;
+    // No ops listed (a kind-only declaration) or none hidden — nothing to do here.
+    if (!hidden.length || !decl.create) continue;
     if (exposureOf(decl) === "collapsed") {
       host.hiddenOps = hidden;
       // `mark: false` opts out of the glyph only — the ops stay searchable.
