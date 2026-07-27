@@ -543,8 +543,8 @@ export class VStackNode extends StackNodeBase {
 export type TableReshapeOp = "wraprows" | "wrapcols" | "tocol" | "torow";
 
 export const TABLE_RESHAPE_OP_META = {
-  wraprows: { label: "WRAPROWS", description: "Wrap a list into a table row-by-row; each row has Wrap_count values. Excel: WRAPROWS." },
-  wrapcols: { label: "WRAPCOLS", description: "Wrap a list into a table column-by-column; each column has Wrap_count values. Excel: WRAPCOLS." },
+  wraprows: { label: "WRAPROWS", description: "Wraps a list into a table row-by-row; each row has Wrap_count values. Excel: WRAPROWS." },
+  wrapcols: { label: "WRAPCOLS", description: "Wraps a list into a table column-by-column; each column has Wrap_count values. Excel: WRAPCOLS." },
   tocol:    { label: "TOCOL",    description: "Flatten a table to a 1D list, reading row by row. Excel: TOCOL." },
   torow:    { label: "TOROW",    description: "Flatten a table to a 1D list, reading column by column. Excel: TOROW." },
 } satisfies Record<TableReshapeOp, { label: string; description: string }>;
@@ -642,8 +642,8 @@ export class TableReshapeNode extends ClassicPreset.Node {
 export type TableSelectOp = "chooserows" | "choosecols";
 
 export const TABLE_SELECT_OP_META = {
-  chooserows: { label: "CHOOSEROWS", description: "Select rows from a table by 1-based index list. Excel: CHOOSEROWS." },
-  choosecols: { label: "CHOOSECOLS", description: "Select columns from a table by 1-based index list. Excel: CHOOSECOLS." },
+  chooserows: { label: "CHOOSEROWS", description: "Selects rows from a table by 1-based index list. Excel: CHOOSEROWS." },
+  choosecols: { label: "CHOOSECOLS", description: "Selects columns from a table by 1-based index list. Excel: CHOOSECOLS." },
 } satisfies Record<TableSelectOp, { label: string; description: string }>;
 
 export class TableSelectNode extends ClassicPreset.Node {
@@ -705,8 +705,8 @@ export class TableSelectNode extends ClassicPreset.Node {
 export type TableTakeDropOp = "take" | "drop";
 
 export const TABLE_TAKEDROP_OP_META = {
-  take: { label: "TAKE (table)", description: "Keep rows/columns from a table's edges: positive counts take from the start, negative from the end, 0 takes all. A bare list counts as ONE ROW — use Cols to take its elements. Excel: TAKE(array, rows, [cols])." },
-  drop: { label: "DROP (table)", description: "Remove rows/columns from a table's edges: positive counts drop from the start, negative from the end, 0 drops none. Excel: DROP(array, rows, [cols])." },
+  take: { label: "TAKE (table)", description: "Keeps rows/columns from a table's edges: positive counts take from the start, negative from the end, 0 takes all. A bare list counts as ONE ROW — use Cols to take its elements. Excel: TAKE(array, rows, [cols])." },
+  drop: { label: "DROP (table)", description: "Removes rows/columns from a table's edges: positive counts drop from the start, negative from the end, 0 drops none. Excel: DROP(array, rows, [cols])." },
 } satisfies Record<TableTakeDropOp, { label: string; description: string }>;
 
 export class TableTakeDropNode extends ClassicPreset.Node {

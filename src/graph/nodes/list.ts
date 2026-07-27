@@ -1687,7 +1687,7 @@ export type ReduceOp =
   | "geomean" | "harmean" | "sumsq" | "var_s" | "var_p" | "stdev_p" | "devsq" | "avedev" | "skew" | "skew_p" | "kurt";
 
 export const REDUCE_OP_META = {
-  sum:     { label: "SUM",     description: "Sum all values. Excel: SUM." },
+  sum:     { label: "SUM",     description: "Sums all values. Excel: SUM." },
   avg:     { label: "AVERAGE", description: "Arithmetic mean. Excel: AVERAGE." },
   min:     { label: "MIN",     description: "Smallest value. Excel: MIN." },
   max:     { label: "MAX",     description: "Largest value. Excel: MAX." },
