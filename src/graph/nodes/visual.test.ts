@@ -367,7 +367,7 @@ describe("SevenSeg", () => {
     expect(sevenSegText(null, 2)).toBe("");
     // 12345678901 = 11 digit cells > 10 → the classic overflow dashes.
     expect(sevenSegText(12345678901, 0)).toBe("----------");
-    // The decimal point rides its neighbour cell, so 8 digits + dp still fits.
+    // The decimal point rides its neighbor cell, so 8 digits + dp still fits.
     expect(sevenSegText(1234567.8, 1)).toBe("1234567.8");
   });
 });

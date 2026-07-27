@@ -12,7 +12,7 @@ import { settingsStore } from "./settingsStore";
 import { dockedNodeStore } from "./dockedNodeStore";
 import { measuredBox } from "./nodeSize";
 
-// ─── Expand-time neighbour displacement ────────────────────────────────────────
+// ─── Expand-time neighbor displacement ────────────────────────────────────────
 // When a collapsed group expands, its footprint grows down/right and would land
 // on its neighbourhood. The displacement rules live in groupPushCore.ts (pure,
 // unit-tested): connected loose nodes land on their dataflow side (feeders
@@ -411,7 +411,7 @@ function runExpandPushes(
     const p = position(area, id);
     if (!p) continue;
     // `record` off (tidy-grow push): the displacement is PERMANENT — translate
-    // only, no restore record, so a later collapse leaves the neighbour where
+    // only, no restore record, so a later collapse leaves the neighbor where
     // tidy parked it. Any pre-existing record for this node goes stale (it's no
     // longer at the recorded expX/expY), so collapse treats it as manually moved
     // and won't snap it back — which is the intended permanent feel.
@@ -450,11 +450,11 @@ function runExpandPushes(
 }
 
 /**
- * Run neighbour-push for groups whose already-EXPANDED box just GREW — e.g. a
+ * Run neighbor-push for groups whose already-EXPANDED box just GREW — e.g. a
  * within-group Tidy autogrew the box around freshly laid-out members. Same
  * engine as the expand-on-uncollapse push, gated by the same Push setting, but
  * the displacement is PERMANENT (no restore record): a Tidy is a deliberate
- * manual action, so the pushed neighbours stay put when the group later
+ * manual action, so the pushed neighbors stay put when the group later
  * collapses, rather than rushing back in. `preSizes` is each group's box size
  * BEFORE it grew; pass only groups whose box actually grew. Reads the grown size
  * from `n.width/height` (the ids land in `expandedIds` inside runExpandPushes, so
@@ -503,7 +503,7 @@ export function restoreSettledPushes(editor: Editor, area: Area): void {
 
 /**
  * Collapse or expand a set of groups (singletons included — GroupNode's chevron
- * and the outline panel route through here too), applying neighbour push on
+ * and the outline panel route through here too), applying neighbor push on
  * expand and the settled-record restore on collapse. Centralising the sequence
  * keeps the flip → sync → re-render → settle → push/restore order identical
  * everywhere.

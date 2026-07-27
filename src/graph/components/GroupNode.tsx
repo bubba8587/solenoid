@@ -67,7 +67,7 @@ function readoutText(t: RetainedTerminal): string {
 // chip (with the full error tooltip), matching its own value box; an OBJECT
 // kind with a chip (frame/cube/chart/document — valueChipFor, the ONE registry)
 // shows its clickable chip, rendered as a DIRECT flex child so the row's
-// align-items:center centres it (wrapping in the 15px row-val span baseline-
+// align-items:center centers it (wrapping in the 15px row-val span baseline-
 // aligned the chip low); everything else is plain formatted text.
 function renderReadout(t: RetainedTerminal) {
   const v = readoutValue(t);

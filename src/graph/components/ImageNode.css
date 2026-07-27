@@ -1,6 +1,6 @@
 /* Canvas Image — a free-floating picture annotation. Mirrors the Note's chrome
    (drag-handle bar, collapse chevron, selection ring) but neutral-accented (no
-   per-note colour) and with an image well instead of a markdown body. */
+   per-note color) and with an image well instead of a markdown body. */
 .solenoid-image {
   position: relative;
   --node-accent: #6b8299; /* neutral slate — selection ring + shadow */

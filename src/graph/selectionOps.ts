@@ -126,7 +126,7 @@ export function alignDeltas(items: Placed[], kind: AlignKind): Move[] {
 export const DISTRIBUTE_GAP = 40;
 
 /** Pure geometry: per-node deltas to space boxes EVENLY (equal edge gaps) along one
- *  axis, guaranteeing no overlap plus at least DISTRIBUTE_GAP between neighbours.
+ *  axis, guaranteeing no overlap plus at least DISTRIBUTE_GAP between neighbors.
  *  - If the leftmost→rightmost span already fits every box + a DISTRIBUTE_GAP gap,
  *    keep BOTH ends fixed and even out the interior (gap ≥ DISTRIBUTE_GAP).
  *  - Otherwise the boxes are too close/stacked to fit: anchor the leftmost and push
@@ -182,7 +182,7 @@ export async function alignSelection(kind: AlignKind): Promise<void> {
 /** Evenly space the selected nodes along one axis, keeping the two extreme
  *  (first/last, by leading edge) nodes fixed. Distributes the GAPS between edges,
  *  not the centers: with Solenoid's very different node heights (a Number vs a
- *  Frame) equal-center spacing left big nodes overlapping their neighbours while
+ *  Frame) equal-center spacing left big nodes overlapping their neighbors while
  *  small ones got large gaps — equal-gap spacing is overlap-free by construction.
  *  Needs at least 3 (2 nodes have nothing between them to redistribute). */
 export async function distributeSelection(axis: "h" | "v"): Promise<void> {

@@ -15,7 +15,7 @@ describe("packNodeInstances", () => {
     expect(arr.length).toBe(3 * FLOATS_PER_INSTANCE);
   });
 
-  it("lays out rect, colours, radius, headerH in order", () => {
+  it("lays out rect, colors, radius, headerH in order", () => {
     const arr = packNodeInstances([card({
       x: 1, y: 2, w: 3, h: 4,
       body: { r: 255, g: 0, b: 0, a: 1 },
@@ -30,7 +30,7 @@ describe("packNodeInstances", () => {
     ]);
   });
 
-  it("premultiplies colour by alpha", () => {
+  it("premultiplies color by alpha", () => {
     const arr = packNodeInstances([card({
       body: { r: 200, g: 100, b: 50, a: 0.5 },
       header: { r: 255, g: 255, b: 255, a: 0 },

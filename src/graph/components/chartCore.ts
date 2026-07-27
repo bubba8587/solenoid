@@ -1,5 +1,5 @@
 // recharts-free chart helpers. Kept OUT of chartView/chartRender so importing a
-// colour resolver or a series coercion doesn't drag recharts (~heavy) into the main
+// color resolver or a series coercion doesn't drag recharts (~heavy) into the main
 // bundle — recharts lives only in the lazily-loaded chartRender.tsx chunk.
 import { useSyncExternalStore } from "react";
 import { appThemeStore } from "../appTheme";
@@ -16,14 +16,14 @@ export type ChartShape =
 
 // The categorical set for pie slices / multi-series — the SAME palette-slot order
 // MermaidView uses (leads with the vivid families, gray last), so a chart and a
-// wired-alongside diagram colour their series identically, and a palette switch
-// re-colours both. Resolved through the ACTIVE palette at render time.
+// wired-alongside diagram color their series identically, and a palette switch
+// re-colors both. Resolved through the ACTIVE palette at render time.
 const SERIES_SLOTS: PaletteSlot[] = [
   "blue", "gold", "teal", "pink", "green", "purple",
   "sky", "vermilion", "lime", "violet", "amber", "gray",
 ];
 
-// recharts sets colours as SVG attributes, where CSS var() doesn't resolve — so
+// recharts sets colors as SVG attributes, where CSS var() doesn't resolve — so
 // read the theme's resolved values and re-read when the theme flips. (Tooltip is
 // a div, so it can use var() directly.)
 export function useChartColors() {

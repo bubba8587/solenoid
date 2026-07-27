@@ -124,7 +124,7 @@ describe("ConvertNode — scalar/list error consistency", () => {
     expect(scalar.dim).toEqual({ length: 1 });
     expect(scalar.display).toBe("mi");
     expect(scalar.value / CONVERT_UNIT_DEFS.mi.dim.scale).toBeCloseTo(0.621371, 5);
-    // km → m of [1, 2] → base metres [1000, 2000], each tagged length + display "m".
+    // km → m of [1, 2] → base meters [1000, 2000], each tagged length + display "m".
     const list = new ConvertNode({ fromUnit: "km", toUnit: "m" }).data({ in: [[1, 2]] }).out as UnitCell[];
     expect(list.map((c) => magnitudeOf(c))).toEqual([1000, 2000]);
     expect(list.every((c) => dimOf(c).length === 1 && c.display === "m")).toBe(true);

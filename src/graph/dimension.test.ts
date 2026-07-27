@@ -29,7 +29,7 @@ describe("dimension-vector algebra", () => {
 });
 
 describe("unit algebra — 5 m ÷ 1 s = 5 m/s (the headline)", () => {
-  it("dividing metres by seconds yields a speed dimension", () => {
+  it("dividing meters by seconds yields a speed dimension", () => {
     const speed = unitDiv(UNITS.m, UNITS.s)!;
     expect(speed.dim).toEqual({ length: 1, time: -1 });
     expect(formatDim(speed.dim)).toBe("m/s");

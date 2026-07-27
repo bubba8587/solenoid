@@ -108,7 +108,7 @@ export function MermaidView({ source, className }: { source: string; className?:
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
+    let canceled = false;
     const src = source.trim();
     if (!src) { setError(null); if (hostRef.current) hostRef.current.innerHTML = ""; return; }
     (async () => {
@@ -125,16 +125,16 @@ export function MermaidView({ source, className }: { source: string; className?:
         // mermaid injecting its red error graphic into the page.
         await mermaid.parse(src);
         const { svg } = await mermaid.render(`sol-mermaid-${_renderSeq++}`, src);
-        if (cancelled) return;
+        if (canceled) return;
         setError(null);
         if (hostRef.current) hostRef.current.innerHTML = svg;
       } catch (e) {
-        if (cancelled) return;
+        if (canceled) return;
         setError(e instanceof Error ? e.message : "Invalid diagram");
         if (hostRef.current) hostRef.current.innerHTML = "";
       }
     })();
-    return () => { cancelled = true; };
+    return () => { canceled = true; };
   }, [source, themeTick]);
 
   if (error) {

@@ -388,22 +388,22 @@ describe("global Tidy — two expanded groups + docked FC on a member", () => {
 });
 
 describe("within-group Tidy (group Tidy button): grow → push → autofit", () => {
-  it("members land inside the final box; a right-hand neighbour is pushed clear", { timeout: 20000 }, async () => {
+  it("members land inside the final box; a right-hand neighbor is pushed clear", { timeout: 20000 }, async () => {
     const editor = new NodeEditor<Schemes>();
     const { area, addView } = makeFakeArea();
 
     // A chain of three members crammed into a box that's too small for the
-    // laid-out row, plus a neighbour parked just off the box's right edge.
+    // laid-out row, plus a neighbor parked just off the box's right edge.
     const m1 = new ArithmeticNode({ op: "add" });
     const m2 = new ArithmeticNode({ op: "add" });
     const m3 = new ArithmeticNode({ op: "add" });
-    const neighbour = new DisplayNode();
-    for (const n of [m1, m2, m3, neighbour]) await editor.addNode(n as never);
+    const neighbor = new DisplayNode();
+    for (const n of [m1, m2, m3, neighbor]) await editor.addNode(n as never);
     await connect(editor, m1, "result", m2, "a");
     await connect(editor, m2, "result", m3, "a");
     for (const n of [m1, m2, m3] as Array<{ width: number; height: number }>) { n.width = 180; n.height = 100; }
-    (neighbour as never as { width: number; height: number }).width = 180;
-    (neighbour as never as { width: number; height: number }).height = 80;
+    (neighbor as never as { width: number; height: number }).width = 180;
+    (neighbor as never as { width: number; height: number }).height = 80;
 
     // Members stacked almost on top of each other inside a minimal box.
     addView(m1.id, 124, 158, 180, 100);
@@ -414,8 +414,8 @@ describe("within-group Tidy (group Tidy button): grow → push → autofit", () 
     addView(group.id, 100, 100, 260, 200, () =>
       group.collapsed ? { w: COLLAPSE_LAYOUT.width, h: 60 } : { w: group.width, h: group.height });
 
-    // Neighbour sits just past the box's right edge — the grown box must push it.
-    addView(neighbour.id, 380, 140, 180, 80);
+    // Neighbor sits just past the box's right edge — the grown box must push it.
+    addView(neighbor.id, 380, 140, 180, 80);
 
     const ensureArrange = makeEnsureArrangeForTest(editor, area);
     const arrangeFn = makeArrangeFn({
@@ -442,10 +442,10 @@ describe("within-group Tidy (group Tidy button): grow → push → autofit", () 
       expect(v.position.x + v.element.offsetWidth, `${id} past right edge`).toBeLessThanOrEqual(gv.position.x + group.width + 1);
       expect(v.position.y + v.element.offsetHeight, `${id} past bottom edge`).toBeLessThanOrEqual(gv.position.y + group.height + 1);
     }
-    // The neighbour is clear of the grown box.
+    // The neighbor is clear of the grown box.
     const g = boxOf(area, group.id);
-    const nb = boxOf(area, neighbour.id);
-    expect(overlaps(g, nb), "neighbour overlaps the grown group box").toBe(false);
+    const nb = boxOf(area, neighbor.id);
+    expect(overlaps(g, nb), "neighbor overlaps the grown group box").toBe(false);
   });
 });
 

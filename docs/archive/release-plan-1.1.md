@@ -25,7 +25,7 @@ against code the same way as the backlog (delete/flip lines as they land).
   - **First-class composite drill-in** (2026-07-06) — the app frame stays around the
     subgraph via the `activeGraph.ts` seam; editable input-marker seeds; arm-and-run
     heavy modes with the Solve button + stale dot.
-  - **Command palette overhaul**, type-coloured chips, green boundary markers, Mermaid
+  - **Command palette overhaul**, type-colored chips, green boundary markers, Mermaid
     node, Report/Presenter, Cube, trust & data-quality nodes — all in.
 - **v2.0 bundle set** (`v2.0/`): built 01–07, 09, 11–15. OPEN bundles below.
 

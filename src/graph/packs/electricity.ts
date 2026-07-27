@@ -47,7 +47,7 @@ export const ELECTRICITY_BASE: FormulaPackEntry[] = [
     keywords: "joules stored" },
 ];
 
-// AC behaviour: reactance, impedance, resonance.
+// AC behavior: reactance, impedance, resonance.
 export const ELECTRICITY_AC: FormulaPackEntry[] = [
   { type: "elec-cap-reactance", label: "Capacitive Reactance", expr: "1/(2*PI()*f*c)",
     description: "Reactance of a capacitor at frequency f   (Xc = 1/(2πfC))",
@@ -141,7 +141,7 @@ export const ELECTRICITY_PACK: Pack = {
         type: "elec-resistor-code",
         label: "Resistor Color Code",
         description: "Decode resistor bands: pick the colors on a live band diagram → resistance (Ω) and tolerance (±%). 4- or 5-band, IEC 60062",
-        keywords: "resistor bands color colour code ohms decode",
+        keywords: "resistor bands color color code ohms decode",
         create: () => new ResistorCodeNode(),
       },
     },

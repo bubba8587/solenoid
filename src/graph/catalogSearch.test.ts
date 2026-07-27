@@ -20,7 +20,7 @@ describe("Add-menu search — category + type + keywords are searchable", () => 
   });
 
   it("'table input' ranks the Table input node #1", () => {
-    // Labelled "Table" under the "Input" category → label+category = "Table Input".
+    // Labeled "Table" under the "Input" category → label+category = "Table Input".
     expect(types("table input")[0]).toBe("table-input");
   });
 

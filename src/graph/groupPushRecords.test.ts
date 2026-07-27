@@ -9,7 +9,7 @@ import { setGroupsCollapsed } from "./groupPush";
 // ─── Expand-push record staleness across a Tidy ─────────────────────────────────
 // The reported "Tidy/Cleanup around expanded groups misplaces nodes" sequence:
 //
-//   1. Expand group A → its push moves neighbour N aside; a restore record is
+//   1. Expand group A → its push moves neighbor N aside; a restore record is
 //      written (preX = where N stood BEFORE the push, expX = where the push
 //      left it).
 //   2. A layout pass (Tidy / Cleanup / align) moves N somewhere new. The record
@@ -88,7 +88,7 @@ describe("expand-push records survive a Tidy only with a fresh restore target", 
     const editor = new NodeEditor<Schemes>();
     const { area, addView } = makeFakeArea();
 
-    // Two collapsed groups and a loose, unwired neighbour.
+    // Two collapsed groups and a loose, unwired neighbor.
     const gA = new GroupNode({ collapsed: true, width: 600, height: 300 });
     const gB = new GroupNode({ collapsed: true, width: 600, height: 300 });
     const n = new DisplayNode();

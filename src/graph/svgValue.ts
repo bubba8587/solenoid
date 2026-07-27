@@ -4,7 +4,7 @@
 // + `any`) and renders wherever a chart does — inline in a Report where its
 // `=name` ref sits. The SVG Picker node emits one, carrying the inlined SVG markup
 // plus the currently-picked layer (so the embed can highlight the same selection
-// the node shows) and the highlight colour.
+// the node shows) and the highlight color.
 //
 // Unlike ImageValue this carries the SVG *markup* (not a URL / data URL): the
 // picker needs the live DOM to hover + click inner elements, so the source is
@@ -16,7 +16,7 @@ export interface SvgValue {
   source: string;
   /** The currently-picked layer name, if any — so a Report render highlights it. */
   selected?: string | null;
-  /** Highlight colour (hex) — so a Report render matches the node's pick. */
+  /** Highlight color (hex) — so a Report render matches the node's pick. */
   hoverColor?: string;
   /** Rendered height in px (the SVG Picker node's `height`); width fills. */
   height: number;

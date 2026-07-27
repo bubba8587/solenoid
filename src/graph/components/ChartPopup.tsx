@@ -9,7 +9,7 @@ import { clamp } from "../nodes/mathUtils";
 
 // Desktop max; the chart shrinks to fit smaller viewports (phones) so the popup
 // never overflows the screen. ChartView needs explicit pixel dims (no
-// ResponsiveContainer — see dev-notes), but the popup is a viewport-centred
+// ResponsiveContainer — see dev-notes), but the popup is a viewport-centered
 // overlay, so window size is a stable, correct measure here.
 const MAX_W = 1000;
 const MAX_H = 380;

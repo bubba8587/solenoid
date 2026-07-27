@@ -40,7 +40,7 @@ export async function saveToDisk(opts: { forceDialog?: boolean } = {}): Promise<
       let fresh = false;
       if (!path || opts.forceDialog) {
         path = await pickSaveGraphPath(suggestedName());
-        if (!path) return; // cancelled
+        if (!path) return; // canceled
         fresh = true;
       }
       const { failed } = await bundleLocalImages(path);
@@ -76,7 +76,7 @@ export async function openFromDisk(): Promise<void> {
     pushNotice("Couldn't open the file picker.", "error", 0);
     return;
   }
-  if (!res) return; // cancelled
+  if (!res) return; // canceled
 
   let graph: SavedGraph;
   try {

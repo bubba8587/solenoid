@@ -191,7 +191,7 @@ describe("settingsStore — persistence round-trip", () => {
   });
 });
 
-// `disabledOnMobile` is a CONTRACT, not a hint: a marked setting must be greyed in
+// `disabledOnMobile` is a CONTRACT, not a hint: a marked setting must be grayed in
 // Settings AND dropped from the command palette AND ignored by the feature. Pinning
 // the exact marked set here means adding the flag to a new field is a deliberate act
 // that fails this test until all three consumers are updated.
@@ -209,7 +209,7 @@ describe("SETTINGS_SCHEMA — disabledOnMobile", () => {
     for (const key of marked) {
       const field = SETTINGS_SCHEMA.flatMap((s) => s.fields).find((f) => f.key === key);
       expect(field, `${key} should exist in the schema`).toBeDefined();
-      // A "folder" field has no toggle/segment control to grey, so the flag would
+      // A "folder" field has no toggle/segment control to gray, so the flag would
       // silently do nothing there.
       expect(field!.type === "folder", `${key} must not be a folder field`).toBe(false);
     }

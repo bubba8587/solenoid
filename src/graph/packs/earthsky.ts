@@ -2,7 +2,7 @@
 // The custom nodes implement the NOAA solar formulation (a published standard);
 // everything else is closed-form. Angles in DEGREES at every socket here
 // (navigation convention — these formulas bake their own radian conversion),
-// distances in metres unless a description says km.
+// distances in meters unless a description says km.
 
 import { SolarPositionNode, SunriseSunsetNode, MoonPhaseNode } from "../rete-nodes";
 import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";

@@ -1,5 +1,5 @@
 // Uniform spatial grid — the scalability half of canvas hit-testing (Phase 3).
-// NOT WIRED IN (nothing imports it yet; no behaviour change).
+// NOT WIRED IN (nothing imports it yet; no behavior change).
 //
 // `hitTestCables` (cableHitTest.ts) is O(cables) per query — fine for a handful,
 // but the canvas renderer exists for BIG graphs (the ~5k-element dense case), where

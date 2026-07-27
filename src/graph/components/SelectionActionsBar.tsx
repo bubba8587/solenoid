@@ -7,7 +7,7 @@ import "./selectionActions.css";
 
 // Contextual align/distribute cluster: the six aligns + two distributes live only
 // in the Command Palette otherwise, and the standing rule is that nothing is
-// reachable solely via the palette. This floating pill appears at the TOP-centre of
+// reachable solely via the palette. This floating pill appears at the TOP-center of
 // the canvas whenever ≥2 top-level nodes are selected — the visible surface for the
 // align/distribute ops (up top so it never collides with the always-on command
 // palette docked at the bottom). Logic is entirely in selectionOps.ts; this is surface.
@@ -32,7 +32,7 @@ function selectedVisibleCount(): number {
   return n;
 }
 
-// 16×16 (even) glyphs so they centre on a whole pixel in the 26px button box.
+// 16×16 (even) glyphs so they center on a whole pixel in the 26px button box.
 // Bars are filled rects; the guide edge is a thin rect in the same ink.
 const AlignLeftIcon = () => (
   <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" style={{ display: "block" }}>
@@ -93,7 +93,7 @@ const DistributeVIcon = () => (
 
 type AlignBtn = { kind: AlignKind; title: string; Icon: () => ReactElement };
 // Labels name the END EFFECT (matching the Command Palette): center-h aligns the
-// horizontal centres, stacking the nodes vertically, and vice versa.
+// horizontal centers, stacking the nodes vertically, and vice versa.
 const ALIGN_BTNS: AlignBtn[] = [
   { kind: "left", title: "Align left", Icon: AlignLeftIcon },
   { kind: "center-h", title: "Align center (vertical)", Icon: AlignCenterHIcon },

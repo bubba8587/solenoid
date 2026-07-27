@@ -14,7 +14,7 @@ import type { Schemes } from "./schemes";
 // Two rules, applied to a fixpoint (chains of passthroughs settle over passes):
 //  • INPUTS adopt universally. Any `AdoptiveSocket` input takes the wired output's
 //    current dataType. Purely informative — the cable is already accepted and an
-//    input holds one cable — but it colours the dot/cable and lets downstream
+//    input holds one cable — but it colors the dot/cable and lets downstream
 //    resolution stop at a concrete type.
 //  • OUTPUTS adopt only where honest. Pure passthroughs (Display, Expect, Input
 //    Switch in One mode) adopt their input's resolved type — the same move the

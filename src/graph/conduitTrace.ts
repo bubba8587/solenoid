@@ -5,11 +5,11 @@ import type { Schemes } from "./schemes";
 
 // ─── Conduit type tracing ──────────────────────────────────────────────────────
 // A Conduit is a pure passthrough (out_i = in_i), but its lane sockets are all
-// `any`, so a value leaving a Conduit resolves its cable colour by the JS VALUE
+// `any`, so a value leaving a Conduit resolves its cable color by the JS VALUE
 // type — lossy: a date is a serial number, a boolean/frame/cube an object, so
-// they'd all colour as number/gray. Trace a Conduit output lane back to whatever
+// they'd all color as number/gray. Trace a Conduit output lane back to whatever
 // feeds the matching input lane (recursively, for chained Conduits) so the cable
-// takes the REAL source socket's type + value — the type colour carries through
+// takes the REAL source socket's type + value — the type color carries through
 // the Conduit unchanged (date stays pink, logical purple, frame violet, …).
 // Kept in a pure module (no React) so it's unit-testable.
 

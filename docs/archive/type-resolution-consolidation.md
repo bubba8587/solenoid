@@ -154,7 +154,7 @@ to the base).
   **The precondition is now machine-checked** by the new `passthroughOutputMutable.test.ts`:
   every passthrough whose output is a WILDCARD carries a MutableSocket, so adoption can
   write to it. (`reconcileOnce` skips a non-mutable socket silently — it would compute the
-  type and throw it away, and nothing would error; the dot would just never colour.) The
+  type and throw it away, and nothing would error; the dot would just never color.) The
   sweep found exactly one node with a concrete passthrough output — Fill/Coalesce, which is
   numeric throughout and declares `passthrough()` purely so UNITS ride across it — so the
   invariant is stated as "wildcard ⇒ mutable", not "always mutable".

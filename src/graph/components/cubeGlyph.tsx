@@ -17,8 +17,8 @@ const CUBE_RING_PATH = "M214.148,65.644l-0.001,108.71l-94.148,54.356l-94.147,-54
 // 0.05 maps 240 -> 12 (exact box). Larger oversizes it past the box (top/bottom
 // extend beyond — needs overflow-visible on the socket SVG).
 const CUBE_SCALE = 0.056;
-// Centre-anchored (on 6,6) so growing it stays centred. `dy` nudges it down: the
-// live socket needs +2px to sit centred on the row, but the legend (centred in its
+// Center-anchored (on 6,6) so growing it stays centered. `dy` nudges it down: the
+// live socket needs +2px to sit centered on the row, but the legend (centered in its
 // own padded box) does NOT — so dy is per-call, not baked into the transform.
 export function cubeTransform(dy = 0): string {
   return `translate(6 ${6 + dy}) scale(${CUBE_SCALE}) translate(-120 -120)`;

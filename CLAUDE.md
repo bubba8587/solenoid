@@ -192,7 +192,7 @@ Read the relevant section there before touching one of these. The one-line "don'
   cluster moves as one rigid block. Area-plane z-order: standoffs −3 < expanded groups −2 <
   conduits −1 < nodes 0.
 - **Auto-arrange / Tidy** (ELK): custom SYMMETRIC port preset; post-layout anchor keeps LEFT +
-  vertical CENTRE; `arrangeFn` drops its temporary height pins after the size-restores (groups
+  vertical CENTER; `arrangeFn` drops its temporary height pins after the size-restores (groups
   keep theirs — React clears them on collapse).
 - **Resizable-content nodes** (Conduit pattern): constant body, content overflows, toolbar floats
   at a body-relative offset. Don't size body to content (jiggle) or re-pin via async translate.

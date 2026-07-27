@@ -10,7 +10,7 @@
 //
 // Returns one of:
 //   • a `Dim`      — the determined result dimension (`{}` = dimensionless);
-//   • a `SolError` — a genuine dimensional CONFLICT (`#UNIT!`: metres + seconds,
+//   • a `SolError` — a genuine dimensional CONFLICT (`#UNIT!`: meters + seconds,
 //                    SIN of a length, comparing incommensurable quantities);
 //   • `null`       — INDETERMINATE (a non-constant exponent, an unknown function,
 //                    IF branches that disagree): the caller drops the unit rather
@@ -37,7 +37,7 @@ const isDim = (r: DimResult): r is Dim => r !== null && !isSolError(r);
 
 // ─── Per-function dimensional signatures ─────────────────────────────────────────
 // Each entry says how a function transforms its argument dimensions. Only the
-// dimension matters here — the numeric behaviour lives in excelFormula.ts.
+// dimension matters here — the numeric behavior lives in excelFormula.ts.
 
 /** Functions whose result is ALWAYS dimensionless, and which REQUIRE every numeric
  *  argument to be dimensionless (angle counts as dimensionless for trig). Feeding

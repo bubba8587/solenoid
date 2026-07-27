@@ -17,7 +17,7 @@ import { wrapNodeData } from "./coerceInputs";
 // Measured, not guessed: a throwaway `currency` family was added to sockets.ts and
 // the whole suite still passed, while its list rung silently refused to widen a
 // scalar, its combo silently refused to collapse a singleton, all four of its
-// rungs drew as a plain circle, its colours resolved to undefined CSS variables,
+// rungs drew as a plain circle, its colors resolved to undefined CSS variables,
 // and the Format Controller offered it no controls. Every assertion below is one
 // of those symptoms.
 //
@@ -116,7 +116,7 @@ describe("every element family is complete at the five sites the compiler can't 
 
   // Site 3 — SOCKET_COLORS only names CSS variables. A variable with no palette
   // registry row resolves to nothing, so the dot renders unfilled.
-  it("every socket colour names a variable the palette actually defines", () => {
+  it("every socket color names a variable the palette actually defines", () => {
     for (const t of ALL) {
       const v = /var\((--[a-z-]+)\)/.exec(SOCKET_COLORS[t])?.[1];
       expect(v, `${t} names a CSS variable`).toBeTruthy();

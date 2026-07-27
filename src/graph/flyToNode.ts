@@ -6,7 +6,7 @@ import { groupCollapseStore } from "./groupCollapse";
 import { GroupNode } from "./rete-nodes";
 import type { Schemes } from "./schemes";
 
-// Pan/zoom the viewport to centre one or more nodes — the "go to this node"
+// Pan/zoom the viewport to center one or more nodes — the "go to this node"
 // action shared by the pins HUD, the alerts HUD, the cable inspector, and (for a
 // multi-node step) the Presentation node.
 //
@@ -45,7 +45,7 @@ function visibleRef(editor: NodeEditor<Schemes>, nodeId: string): Schemes["Node"
     : node;
 }
 
-// Pan/zoom the viewport to centre a node — the one "go to this node" action
+// Pan/zoom the viewport to center a node — the one "go to this node" action
 // shared by the pins HUD, the alerts HUD, and the cable inspector.
 export function flyToNode(nodeId: string): void {
   // Owning graph (drill-in aware): a "go to" targeting a node inside an open

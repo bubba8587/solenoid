@@ -13,7 +13,7 @@ import { problemsStore, problemsPanelUi } from "./problemsStore";
  * wiring selection/zoom into dedicated stores.
  *
  * On the WEB DEMO only, the node count doubles as a soft-budget meter: an inline
- * fill bar behind the "N / 100 nodes" readout, coloured as it approaches/exceeds
+ * fill bar behind the "N / 100 nodes" readout, colored as it approaches/exceeds
  * the budget, plus a one-time modal on the crossing ABOVE it (see nodeBudget.ts /
  * docs/archive/performance-hardening.md). Desktop (Tauri) shows the plain count — the limit is
  * a property of the in-browser webview, not the product.
@@ -110,7 +110,7 @@ export function StatusBar() {
           <button
             type="button"
             className="solenoid-statusbar__problems"
-            title={`${problemCount} tagged error${problemCount !== 1 ? "s" : ""}`}
+            title={`${problemCount} tagged error${problemCount !== 1 ? "s" : ""}. Open the Problems panel.`}
             onClick={() => problemsPanelUi.setOpen(true)}
           >
             {problemCount} {problemCount === 1 ? "problem" : "problems"}

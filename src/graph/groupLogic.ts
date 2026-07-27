@@ -14,7 +14,7 @@ import { measuredBox } from "./nodeSize";
 
 export const GROUP_DEFAULT_COLOR = "gray"; // palette slot — neutral gray when there's no clear majority
 
-// The group takes the colour of the most common node kind in the selection — a
+// The group takes the color of the most common node kind in the selection — a
 // chain of mostly-number nodes reads as a number-colored group. A tie (or all
 // distinct) falls back to gray. Returns a palette SLOT id (the group stores the
 // slot, like every other color in the app), not a hex.
@@ -161,7 +161,7 @@ export async function autofitGroupWithHistory(editor: Editor, area: Area, group:
   // re-derive membership from the new geometry (no reconcileGroupBox here).
   // Membership changes only on an explicit drag in/out or a select→group action,
   // so a bystander sitting among the members isn't silently absorbed when the box
-  // shrinks to wrap them. (rebuildGroupMembership just refreshes the colour
+  // shrinks to wrap them. (rebuildGroupMembership just refreshes the color
   // markers from the unchanged members list.)
   rebuildGroupMembership(editor);
   syncGroupCollapse(editor, area);

@@ -48,7 +48,7 @@ export class CappedZoom extends Zoom {
   };
 }
 
-/** Install the pointer/zoom behaviour every editing surface needs, so a substituting
+/** Install the pointer/zoom behavior every editing surface needs, so a substituting
  *  surface (the drill-in) matches the main canvas: the capped proportional zoom + the
  *  double-click-to-zoom SUPPRESSION (rete's Zoom attaches its dblclick handler to the
  *  container in bubble phase; a capture-phase swallow stops it). Returns a cleanup fn. */

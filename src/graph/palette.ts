@@ -150,7 +150,7 @@ export type PaletteSlot = keyof typeof PALETTE;
 // grid is 6 cols × 2 rows, so column pairs read top/bottom: gold/gray (accent +
 // neutral) and green/vermilion (the semantic positive/error pair) lead, then the
 // remaining hues alternate for contrast. gold is Solenoid's default accent → slot 1;
-// gray drops to slot 7 so the first six SERIES colours stay vivid.
+// gray drops to slot 7 so the first six SERIES colors stay vivid.
 export const COLOR_PALETTE: PaletteSlot[] = [
   "gold", "green", "amber", "blue", "lime", "purple",
   "gray", "vermilion", "violet", "pink", "sky", "teal",
@@ -164,7 +164,7 @@ export const COLOR_PALETTE: PaletteSlot[] = [
 //   - array (a list of the scalar): a darker sibling — HSV value ×0.85.
 //   - matrix (a 2-D grid): a punchier, hue-shifted sibling — −11° hue, S ×1.18, V ×0.92.
 // number's MATRIX is the Table socket — a matrix-shade of number (gold), like
-// every other 2-D socket derives from its scalar; the grid glyph (not colour)
+// every other 2-D socket derives from its scalar; the grid glyph (not color)
 // tells it apart from numlist.
 //
 // EVERY socket transform here works in HSV — same space as themeAccent /
@@ -212,7 +212,7 @@ export const SOCKET_VARS: { var: string; slot: PaletteSlot; kind: SocketVarKind 
   { var: "--sock-logicaltable",slot: "purple",    kind: "matrix" },
   { var: "--sock-table",       slot: "gold",      kind: "matrix" }, // numeric matrix — a matrix shade of Number (gold), like every other 2-D socket derives from its scalar (the grid glyph distinguishes it from numlist)
   { var: "--sock-frame",       slot: "violet",    kind: "scalar" },
-  { var: "--sock-cube",        slot: "violet",    kind: "scalar" }, // recursive container — shares the frame's violet (distinguished by its hexagon glyph, not colour)
+  { var: "--sock-cube",        slot: "violet",    kind: "scalar" }, // recursive container — shares the frame's violet (distinguished by its hexagon glyph, not color)
   { var: "--sock-lambda",      slot: "green",     kind: "scalar" },
   { var: "--sock-chart",       slot: "green",     kind: "scalar" }, // OBJECT/"Special" family with lambda — shares its green (distinguished by glyph: lambda is a circle+λ, chart is a square+bars), one legend row "Special"
   { var: "--sock-any",         slot: "gray",      kind: "scalar" },
@@ -251,14 +251,14 @@ const MUTED: Record<PaletteSlot, string> = {
   violet:    "#9479d1",
 };
 
-// Derived from the Okabe–Ito 8-colour qualitative palette — the established CVD-safe
+// Derived from the Okabe–Ito 8-color qualitative palette — the established CVD-safe
 // set (https://jfly.uni-koeln.de/color/), distinguishable under protan/deutan/tritan.
 // Rather than home-grow 12 distinct hues (impossible under CVD), we lean on the proven
 // set and accept slots doubling up: the 8 SOCKET slots each get a UNIQUE Okabe–Ito
-// colour (so the type system stays fully separable), and the 4 node-kind-only slots
-// (amber/blue/teal/purple) reuse the matching OI colour — they're still mutually
+// color (so the type system stays fully separable), and the 4 node-kind-only slots
+// (amber/blue/teal/purple) reuse the matching OI color — they're still mutually
 // distinct (orange / blue / sky / reddish-purple) and only coincide with a socket
-// colour, a different UI role. Okabe–Ito has no neutral, so gray keeps #999999.
+// color, a different UI role. Okabe–Ito has no neutral, so gray keeps #999999.
 //   OI: orange #E69F00 · sky #56B4E9 · green #009E73 · yellow #F0E442 ·
 //       blue #0072B2 · vermilion #D55E00 · reddish-purple #CC79A7 (black dropped — dark canvas).
 const OI = {
@@ -266,7 +266,7 @@ const OI = {
   blue: "#0072b2", vermilion: "#d55e00", purple: "#cc79a7",
 } as const;
 const COLORBLIND: Record<PaletteSlot, string> = {
-  // 8 socket slots — one unique OI colour each
+  // 8 socket slots — one unique OI color each
   gray:      "#999999",      // any        (neutral; OI has no gray)
   gold:      OI.orange,      // number      (golden → orange)
   lime:      OI.yellow,      // string      (yellow-green → yellow)
@@ -275,7 +275,7 @@ const COLORBLIND: Record<PaletteSlot, string> = {
   vermilion: OI.vermilion,   // table
   violet:    OI.blue,        // frame
   green:     OI.green,       // lambda      (bluish green)
-  // 4 node-kind-only slots — reuse the matching OI colour (distinct among themselves)
+  // 4 node-kind-only slots — reuse the matching OI color (distinct among themselves)
   amber:     OI.orange,      // input + TABLE socket — reuses number's orange (CVD only:
                             //   table≈number here; OI has no free hue, so they coincide
                             //   in colourblind mode. Distinct in the default/solarized sets.)
@@ -286,7 +286,7 @@ const COLORBLIND: Record<PaletteSlot, string> = {
 
 // Solarized accent set (https://ethanschoonover.com/solarized/) — proven legible on
 // dark backgrounds (it's a dark-theme staple). UNLIKE Colorblind, every slot here is a
-// DISTINCT colour (the author wants slots doubling up ONLY where CVD forces it). Solarized
+// DISTINCT color (the author wants slots doubling up ONLY where CVD forces it). Solarized
 // ships 8 accents, so the extra slots get base1 gray + 3 hues blended into Solarized's hue
 // gaps (leafy green ~100°, light azure ~200°, muted purple ~285°) at its sat/lightness band,
 // so all 12 read apart. Slot ids are opaque (hue need not match the name): `lime` carries
@@ -311,7 +311,7 @@ const SOLARIZED: Record<PaletteSlot, string> = {
 };
 
 // Equinox: every slot the SAME neutral gray — a fully monochrome canvas where type
-// is told apart by socket SHAPE (circle/square/grid/hexagon) alone, not colour. Note
+// is told apart by socket SHAPE (circle/square/grid/hexagon) alone, not color. Note
 // this also neutralizes the error red (vermilion drives --sol-error), by design.
 const EQUINOX_GRAY = "#8a8f98"; // the app's neutral (--sock-any) gray
 const EQUINOX: Record<PaletteSlot, string> = Object.fromEntries(

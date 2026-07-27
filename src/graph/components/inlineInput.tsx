@@ -83,12 +83,12 @@ export function useDraftCommit<T>(
   apply: (v: T) => void,
 ) {
   const [draft, setDraft] = useState(() => toText(committed));
-  const cancelled = useRef(false);
+  const canceled = useRef(false);
   // Resync when the committed value changes underneath us (undo, external edit).
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { setDraft(toText(committed)); }, [committed]);
   const onBlur = () => {
-    if (cancelled.current) { cancelled.current = false; setDraft(toText(committed)); return; }
+    if (canceled.current) { canceled.current = false; setDraft(toText(committed)); return; }
     const next = parse(draft);
     if (next === INVALID_DRAFT || Object.is(next, committed)) {
       setDraft(toText(committed)); // revert / normalize ("5." → "5")
@@ -99,7 +99,7 @@ export function useDraftCommit<T>(
   };
   const onKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
     if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); }
-    else if (e.key === "Escape") { cancelled.current = true; e.currentTarget.blur(); }
+    else if (e.key === "Escape") { canceled.current = true; e.currentTarget.blur(); }
   };
   return { draft, setDraft, onBlur, onKeyDown };
 }
@@ -314,7 +314,7 @@ const VALUE_TEXTAREA_MAX = 200;
 
 function QuotedValueTextarea({ value, onChange, autoFocus }: { value: string; onChange: (v: string) => void; autoFocus?: boolean }) {
   const [draft, setDraft] = useState(value);
-  const cancelled = useRef(false);
+  const canceled = useRef(false);
   const ref = useRef<HTMLTextAreaElement>(null);
   // Resync when the committed value changes underneath (undo, external edit).
   useEffect(() => { setDraft(value); }, [value]);
@@ -326,14 +326,14 @@ function QuotedValueTextarea({ value, onChange, autoFocus }: { value: string; on
     el.style.height = `${Math.min(el.scrollHeight, VALUE_TEXTAREA_MAX)}px`;
   }, [draft]);
   const commit = () => {
-    if (cancelled.current) { cancelled.current = false; setDraft(value); return; }
+    if (canceled.current) { canceled.current = false; setDraft(value); return; }
     if (draft === value) return;
     onChange(draft);
     pushHistory(() => onChange(value), () => onChange(draft));
   };
   // Enter inserts a newline (this is multi-line); Escape reverts + blurs.
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Escape") { cancelled.current = true; e.currentTarget.blur(); }
+    if (e.key === "Escape") { canceled.current = true; e.currentTarget.blur(); }
   };
   return (
     <span className="solenoid-node__quoted solenoid-node__quoted--value solenoid-node__quoted--multiline">

@@ -10,7 +10,7 @@ import { rebuildGroupMembership } from "../groupMembership";
 import "../Settings.css";
 import "./DocumentProperties.css";
 
-// A labelled text field committing on Enter/blur (Escape reverts) — never per
+// A labeled text field committing on Enter/blur (Escape reverts) — never per
 // keystroke, matching the app's edit-commit principle.
 function TextRow({ label, value, placeholder, onCommit }: {
   label: string;

@@ -128,7 +128,7 @@ export function arithmeticCell(
   // `5 km + 3 = 8 km` — the bare 3 means 3 km, so it scales to base by the display
   // factor; `$5 + 2 = $7` unchanged, currency scale is 1). The result keeps the
   // dimensioned side's display id so `$` survives. Only two genuinely different
-  // dimensions (metres + seconds) are a `#UNIT!`. xc/yc are the adoption-scaled
+  // dimensions (meters + seconds) are a `#UNIT!`. xc/yc are the adoption-scaled
   // magnitudes for these commensurable ops ONLY — ×/÷ keep the face value (a bare
   // factor is a factor: `$5 × 2 = $10`, never "×2 km").
   const xc = isDimensionless(da) && !isDimensionless(db) ? adoptMagnitude(x, dispB) : x;

@@ -166,7 +166,7 @@ export default function LandingPage() {
             <Reveal>
               <h2>Typed sockets and cables</h2>
               <p className="sol-landing__lede">
-                A cable&apos;s colour tells you what flows through it, and endpoints only
+                A cable&apos;s color tells you what flows through it, and endpoints only
                 connect where the types agree. Element families never cross silently:
                 text never becomes a number without a Cast, and a table never collapses
                 into a scalar. The one bridge is boolean to number, because TRUE is 1.
@@ -188,7 +188,7 @@ export default function LandingPage() {
               Convert changes it, and the unit rides the value through every passthrough.
             </p>
             <p>
-              Adding metres to seconds fails with{" "}
+              Adding meters to seconds fails with{" "}
               <code className="sol-landing__err">#UNIT!</code> at the node where it
               happened, not three steps later as a plausible-looking number. Frame
               columns carry units too: a <code>Price ($)</code> header locks the column,

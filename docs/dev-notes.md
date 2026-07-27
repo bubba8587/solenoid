@@ -121,7 +121,7 @@ app-wide, but touches feel of zoom).
 
 
 ### SESSION DIGEST (2026-07-27 — socket shades onto one axis; the Socket Types tab rewritten from the reference)
-- **Every socket colour transform is now HSV** (`palette.ts`), matching `themeAccent` /
+- **Every socket color transform is now HSV** (`palette.ts`), matching `themeAccent` /
   `darkenAccent` / `socketRingShade`, so the whole family tunes on one set of axes.
   `socketArrayShade` was an RGB multiply — already equivalent to a value scale (scaling all
   channels scales V, leaves H/S untouched), so that one was a free conversion.
@@ -144,7 +144,7 @@ app-wide, but touches feel of zoom).
   the ladder, so any node that takes a Frame takes a Cube" — backwards: `cube` reaches only
   `cube`/`trueany`; it is the FRAME that widens INTO a cube. And `any` was described as the
   pass-anything type; `any` is the rank-0 wildcard (scalars and combos only), `trueany` is the
-  one that takes everything. Colour HUES are deliberately never named in the app docs — they
+  one that takes everything. Color HUES are deliberately never named in the app docs — they
   are false under Colorblind-safe/Solarized/Equinox; shape and relative shade are palette-safe.
 - **The overlay's markdown is shipped UI copy, so DESIGN.md §7 + the Captain-Obvious rule govern
   it** — read them BEFORE writing help prose, not after. Three affordance-narrations went in and
@@ -162,8 +162,8 @@ app-wide, but touches feel of zoom).
   tutorial. **If a legend, tooltip, glyph or control already carries it, the text must not
   restate it.** Caught live: `data-types.md` had grown a nine-row shape table (circle = one
   value, hexagon = Cube, hollow ring = anything…) rendered directly BELOW `SocketLegendRows`,
-  which draws all nine with labelled hover tips, and ABOVE `DimensionalityFlow`, which already
-  states rank-widening, narrowing-blocked, split squares and the grey ladder. Cut. What survives
+  which draws all nine with labeled hover tips, and ABOVE `DimensionalityFlow`, which already
+  states rank-widening, narrowing-blocked, split squares and the gray ladder. Cut. What survives
   is only what no pixel conveys: family separation + the Boolean↔number bridge, the combo→scalar
   narrowing exception, and the family semantics (date-as-serial, Kleene logic, Frame vs Cube).
 - **A 14-string random spot-check found 6 issues (~40%) that the lint could not see**, and the
@@ -185,9 +185,33 @@ app-wide, but touches feel of zoom).
   - `wire-instruction` now guards both shapes; the tooltip surface joins the corpus.
     `Set the vault in Settings ▸ Obsidian` is a pinned counterexample — a config LOCATION
     genuinely cannot be guessed from the node, unlike a gesture.
+- **The imperative sweep OVERSHOT on controls, and that is now written into §7** (author
+  correction). On a button, chip or menu item, a bare verb naming what it does IS correct copy —
+  "Cycle Number / Text / Date / Boolean", "Open the Problems panel", "Drill in", "Rename". That
+  is not commanding the reader; it is the control's own action, the same register as its label.
+  Only the GESTURE in front was ever wrong. **Fixing a `gesture-narration` hit means deleting
+  "Click to ", not the verb after it** — the earlier pass deleted the whole clause and flattened
+  eight controls into bare nouns (a cube chip became "Nested table" instead of "Drill in"; the
+  Problems counter lost "Open the Problems panel" entirely). All eight restored. The
+  third-person rule applies to NODE DESCRIPTIONS, which describe a thing; it must not be carried
+  onto controls, which offer an action.
+- **Internal prose was normalized to American spelling too — 691 replacements across 201 files**
+  (code comments, CSS comments, `docs/`, CLAUDE.md, DESIGN.md). Not because the lint governs
+  them (it does not, and still does not), but because internal copy is in-context whenever new
+  copy gets written, so its spelling drifts into the output.
+  - **Two traps, both hit live.** (1) The sweep rewrote `Cancelled`, an EXPORTED SYMBOL of the
+    `rete-engine` library, breaking the `process.ts` import — a prose sweep over `.ts` must
+    exclude anything that is actually an identifier, and only `tsc` catches it. (2) **The sweep
+    rewrote the rule that defines the sweep**: `uiCopy.test.ts`'s British-spelling regex became
+    `colors?|grays?|centers?…`, i.e. a rule flagging the CORRECT spellings, and DESIGN.md's
+    "color, not colour" became "color, not color". The lint's own vocabulary and its specimens
+    are the ONE place British spellings must survive. Both restored.
+  - Residual British spellings in the repo now live only in those two definitional places.
+  - Seed-graph note prose (`seedGraphs/*.json`) is shipped copy too and is NOT yet in the
+    corpus — one "labelled" was found there by hand. A possible next surface.
 - **The skipped surfaces were hiding the same bugs.** Widening the collector to `aria-label`,
   `placeholder` and the STATIC SEGMENTS of template-literal titles found six more instantly:
-  `Colour preview` ×2 (a British spelling the literal-only sweep could not see), and five
+  `Color preview` ×2 (a British spelling the literal-only sweep could not see), and five
   `Click to …` narrations that survived the tooltip pass purely because they sat inside
   `` title={`…`} `` — "Click to change the type", "Click to drill in" ×2, "Click to cycle
   Number / Text / Date / Boolean", "Click to edit/view", "Open the Problems panel". Splitting a
@@ -195,17 +219,17 @@ app-wide, but touches feel of zoom).
   **The lesson: "skipped because it is composed at runtime" was wrong — the static halves are
   ordinary copy.** Placeholders (40) and the rest of the aria-labels (60) came back clean.
 - **§7 now requires American spelling** (author ruling), and `british-spelling` enforces it over
-  shipped strings. 23 replacements across help markdown, the catalog and one tooltip: grey→gray
-  ×6, colour→color ×5, plus metres, behaviour, labelled, neighbouring, centre. The sweep ran
+  shipped strings. 23 replacements across help markdown, the catalog and one tooltip: gray→gray
+  ×6, color→color ×5, plus meters, behavior, labeled, neighboring, center. The sweep ran
   ONLY inside `description:`/`label:`/`title=` literals, so no code identifier or CSS custom
   property moved. Scope stayed shipped copy: ~170 uses survive in code comments/identifiers and
   ~46 in `docs/`, both deliberately out of the lint's remit — say the word if you want either.
   - Regex gotcha worth remembering: `colou?rs?` matches the AMERICAN spelling too, so the first
-    draft flagged every correct "color". The pattern must spell out `colours?` alone.
+    draft flagged every correct "color". The pattern must spell out `colors?` alone.
 - **Upstream/downstream suggestions are OUT of node strings** (author ruling). "Feeds a scatter
   Chart, a regression, or Build Frame → Grid Interpolate", "Feeds MAP / BYROW / REDUCE", "Feeds a
   Chart to embed a FRED graph", "or feed a filter's bounds" — all cut. If a node's expected
-  neighbours need surfacing, that is a UI affordance to build later, not prose. The bar for
+  neighbors need surfacing, that is a UI affordance to build later, not prose. The bar for
   keeping one is a genuinely UNIQUE relationship: the **Chart Builder** on Chart's Options, and
   Candlestick naming the Data Feed's stock-history shape, both qualify.
   - **An input CONTRACT is not a suggestion, and survives** — reworded, not cut. "Takes a
@@ -238,8 +262,8 @@ app-wide, but touches feel of zoom).
     noun-phrase reason above, and `Shift` because it collides with the modifier key.
 - **Class A source/control nodes read as nouns, and state a format only when unique** (author
   ruling): the socket glyph already says list/frame/grid, so "Outputs a Frame" is the same noise
-  as narrating a gesture. Colour Picker is the one keeper in that set — its socket says *text*,
-  which does not tell you it is a colour in one of three notations.
+  as narrating a gesture. Color Picker is the one keeper in that set — its socket says *text*,
+  which does not tell you it is a color in one of three notations.
 - **"Emits a chart value a Report can embed." was appended verbatim to 16 figure nodes.** Every
   one has a visible chart output socket, and being identical across 16 it carried no per-node
   information — while the Report node, the one place you would look, did not mention charts at
@@ -414,7 +438,7 @@ node was refusing to declare a family it actually knew.
   list/matrix is HOMOGENEOUS, so the socket fixes the family whichever cell you pull. The
   cost was real — a date out of a date list lost its date-ness (`isDateType` reads the
   socket, so it rendered a raw serial) and the output dot stayed a hollow ring while the
-  INPUT dot coloured. INDEX now declares a `passthrough()` on `list`: it FORWARDS a value
+  INPUT dot colored. INDEX now declares a `passthrough()` on `list`: it FORWARDS a value
   out of its container, which is exactly what that declaration means, and one declaration
   drives type adoption, unit flow, the display walk and the Conduit trace together.
 - **The rank is what varies, not the family** — so the spec grew a `project` hook and
@@ -502,7 +526,7 @@ combo rung with no node uses is a bug rather than a gap.
   The tags carry the element type too, so `fn`'s parameters infer per position with no casts.
   Deliberately NO `guardFinite`: the complex ops have their own non-finite conventions (IMDIV by
   zero → `[NaN, NaN]`, which formats as "NaN"), and classifying those would change established
-  scalar behaviour rather than widen it.
+  scalar behavior rather than widen it.
 - `formatCxValue` gained the list branch, so all five complex value boxes render a broadcast list
   for free — **the list check has to come FIRST there**, since a scalar Cx is itself an array.
   Quadratic Roots' component stopped calling `formatCx` directly and routes through it.
@@ -612,7 +636,7 @@ combo rung with no node uses is a bug rather than a gap.
   — a permanent second implementation of every card is the expensive outcome, and free effort makes
   it worse, not better. Not recorded as a decision; nothing was chosen.
 - **`disabledOnMobile` on a settings-schema field** — a three-consumer contract, not a style: the
-  Settings row greys with a reason, `buildSettingToggles` drops the "Toggle …" command so the
+  Settings row grays with a reason, `buildSettingToggles` drops the "Toggle …" command so the
   palette isn't a back door, and the feature ignores the stored value. Marked on
   `commandPaletteAlwaysOn` (docking wants a bottom strip mobile doesn't have — the palette is
   top-anchored there because the keyboard owns the bottom half) and `minimapPosition` (the minimap
@@ -624,7 +648,7 @@ combo rung with no node uses is a bug rather than a gap.
   the palette that flips it to an accent-filled prompt box (`--accent` + `--accent-ink`, command
   results suppressed so Enter can't mean two things). Nothing calls a service — submitting is
   deliberately inert with the TODO at the send site, rather than faking a reply. Accent-filling the
-  palette is a deliberate, narrow exception to the Quiet Accent Rule (which permits a coloured
+  palette is a deliberate, narrow exception to the Quiet Accent Rule (which permits a colored
   surface that communicates STATE): the primary action is rerouted. Flesh-out decisions are
   enumerated in the backlog item, not here.
 

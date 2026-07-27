@@ -98,7 +98,7 @@ describe("matrix-unit policy — completeness (a new matrix op must declare a po
   });
 });
 
-describe("matrix-unit policy — behaviour matches the declared policy", () => {
+describe("matrix-unit policy — behavior matches the declared policy", () => {
   it("carry: INTERPOLATE grid mode fills blanks in the input's unit", () => {
     const n = new InterpolateNode({ mode: "grid" });
     const bordered = withMatrixUnit(

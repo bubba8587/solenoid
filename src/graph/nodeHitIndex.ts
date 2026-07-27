@@ -2,7 +2,7 @@ import { SpatialGrid } from "./spatialIndex";
 import type { Pt } from "./cableHitTest";
 
 // NodeHitIndex — point→node hit-testing for a canvas node layer. NOT WIRED IN
-// (nothing constructs it; no behaviour change). The node-layer counterpart to
+// (nothing constructs it; no behavior change). The node-layer counterpart to
 // CableHitIndex: when Phase 2/3 draws node bodies on canvas, DOM nodes no longer
 // exist to catch clicks, so a point→node test is needed. Nodes are axis-aligned
 // world-space rectangles, so this is point-in-rect narrowed by the shared

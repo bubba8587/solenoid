@@ -84,7 +84,7 @@ duplicate them, just names them for the review).
   author call (`v2.0/README.md`).
 - **XLOOKUP `rawInputs` bypass retirement** — with typed frame→cube the bypass is
   unneeded; the frame + cube lookup paths could collapse to one.
-  Behaviour-touching refactor of a covered node; only if it pulls weight.
+  Behavior-touching refactor of a covered node; only if it pulls weight.
 - **MMULT dimension algebra** — only if a dimensioned-linear-algebra use case ever
   appears; documented-strip is the deliberate stance (D20).
 - **Provenance Tier 2 — on-demand "why is this?" walk** — backward-derivation

@@ -60,7 +60,7 @@
 }
 /* The tabs row is bottom-flush (padding 6px top / 0 bottom + the active-tab
    underline sits at the band's bottom edge), so flex-centering the close lands it
-   low in the visible band. Absolute-centre it in the band instead — exact, no
+   low in the visible band. Absolute-center it in the band instead — exact, no
    padding-fighting. (Few tabs on a wide panel, so taking it out of flow is safe.) */
 .fr-tabs { position: relative; }
 .fr-tabs .fr-close {

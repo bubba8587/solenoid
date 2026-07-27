@@ -255,7 +255,7 @@ describe("Convert primacy on the outgoing value", () => {
     const out = (await g.fetch(disp)).out as UnitCell;
     expect(isUnitCell(out)).toBe(true);
     expect(out.display).toBe("yd");                    // primacy: toUnit rides the value
-    expect(displayMagnitudeOf(out)).toBeCloseTo(10.936, 3); // renders in yards, not metres
+    expect(displayMagnitudeOf(out)).toBeCloseTo(10.936, 3); // renders in yards, not meters
   });
 
   it("a tagged value whose dimension clashes with the Convert target errors", async () => {

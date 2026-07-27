@@ -120,8 +120,8 @@ html.minimap-hidden .solenoid-legend {
 }
 
 /* The hover pill: an SVG stadium, portaled to <body> and fixed to the viewport so
-   the legend's overflow never clips it. Positioned centred above the dot (the
-   inline `left`/`top` set the dot centre; the translate lifts + centres the pill).
+   the legend's overflow never clips it. Positioned centered above the dot (the
+   inline `left`/`top` set the dot center; the translate lifts + centers the pill).
    INSTANT — no transition, no delay — per the spec. */
 .solenoid-socktip {
   position: fixed;

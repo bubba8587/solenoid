@@ -14,7 +14,7 @@
 //     actually cover move, and only just far enough to clear the expanded
 //     edge plus a gap, along the axis matching where they sit relative to the
 //     collapsed card (right of it → right, below → down, beyond both edges →
-//     dominant axis from the card centre). Free area is expanded into without
+//     dominant axis from the card center). Free area is expanded into without
 //     anything moving.
 //  3. RESIDUAL. Belt-and-braces: anything still overlapping the expanded box
 //     (rare body-crossing shapes) clears along the cheaper axis.

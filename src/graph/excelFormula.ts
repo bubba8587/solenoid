@@ -261,7 +261,7 @@ export function extractVariables(expr: string): string[] {
 
 // Resolve Excel functions through the EXCEL_FUNCTIONS registry seam: a registered
 // native impl wins (the first wave — ROUND/SQRT/STANDARDIZE/YEAR/EOMONTH/LEN), and
-// every other name still falls through to Formula.js (behaviour-identical). Throws
+// every other name still falls through to Formula.js (behavior-identical). Throws
 // on a truly unknown name so the node surfaces an error rather than silently wrong.
 function dispatch(name: string, ...args: unknown[]): unknown {
   const f = resolveExcelFunction(name);

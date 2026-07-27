@@ -38,7 +38,7 @@ them apart, and *which bucket* a feature lands in is the actual design decision.
 The decision rule, stated once:
 
 - **Does it transform values?** → NODE. (Filter, Sort, Pivot, Goal Seek.)
-- **Does it change a global behaviour or a default?** → SETTING. (Calc mode,
+- **Does it change a global behavior or a default?** → SETTING. (Calc mode,
   date system, CSV locale.)
 - **Is it about how a single value looks?** → FORMAT. (Currency, %, decimals,
   units — all one surface, the Format Controller.)
@@ -86,7 +86,7 @@ The busiest ribbon tab, and the one that splits most cleanly across buckets.
 ### Font / Alignment / number formatting
 | Feature | Verdict | Notes |
 |---|---|---|
-| Font, size, bold, colour, fill, borders | [SKIP] | Per-cell text styling has no place in a typed node graph. Node/Note styling is its own (small, deliberate) surface — tints, not a font ribbon. |
+| Font, size, bold, color, fill, borders | [SKIP] | Per-cell text styling has no place in a typed node graph. Node/Note styling is its own (small, deliberate) surface — tints, not a font ribbon. |
 | Wrap text / Merge & Center / orientation | [SKIP] | Grid-cell layout. No grid. |
 | Indent / alignment | [SKIP] | Same. |
 | **Number format** (General, Number, Currency, Accounting, Date, Time, %, Fraction, Scientific, Text, **Custom**) | [FORMAT] | The entire Number-Format dropdown is **one surface: the Format Controller** (per-socket number format + unit label). This is the flagship mapping — Excel scatters format across cells; we attach it to the value's socket and propagate it. Custom format codes → the FC's format string. |
@@ -96,7 +96,7 @@ The busiest ribbon tab, and the one that splits most cleanly across buckets.
 ### Styles
 | Feature | Verdict | Notes |
 |---|---|---|
-| **Conditional Formatting** | [NODE] | Partly shipped: **Alert** (threshold → toast/HUD, status-edge-triggered) is the scalar case; **Heatmap** (frame → colour grid) is the data-bar/colour-scale case. Gap: a **rule-based cell highlight** on a frame display (e.g. "colour cells where > x") — a natural Heatmap extension, *not* a new opaque rules engine. Excel's CF is stale-prone and runs outside recalc; ours would be on the live graph. |
+| **Conditional Formatting** | [NODE] | Partly shipped: **Alert** (threshold → toast/HUD, status-edge-triggered) is the scalar case; **Heatmap** (frame → color grid) is the data-bar/color-scale case. Gap: a **rule-based cell highlight** on a frame display (e.g. "color cells where > x") — a natural Heatmap extension, *not* a new opaque rules engine. Excel's CF is stale-prone and runs outside recalc; ours would be on the live graph. |
 | Format as Table | [STRUCTURAL] | An Excel "Table" (structured refs, auto-expand) ≈ our **frame** type. See Tables deep-dive below. |
 | Cell Styles | [SKIP] | Visual cell theming. |
 
@@ -146,7 +146,7 @@ Almost entirely about paginated print output, which doesn't exist here.
 
 | Feature | Verdict | Notes |
 |---|---|---|
-| **Themes** (colours/fonts/effects) | [SETTING] | App theme + accent (exists). Fonts are a *fixed* accessibility constraint (Atkinson Hyperlegible) — deliberately **not** themeable (PRODUCT.md). |
+| **Themes** (colors/fonts/effects) | [SETTING] | App theme + accent (exists). Fonts are a *fixed* accessibility constraint (Atkinson Hyperlegible) — deliberately **not** themeable (PRODUCT.md). |
 | Margins / Orientation / Size / Print Area / Breaks / Background / Print Titles | [SKIP] | Print/page concerns. |
 | Scale to Fit | [SKIP] | — |
 | Sheet Options → Gridlines / Headings (view & print) | [SETTING] | "Show gridlines" ≈ the canvas dot-grid; a **show/hide grid dots** toggle is a reasonable [SETTING] (snap already is one, `gridSnapStore`). |
@@ -259,7 +259,7 @@ Excel's **linked data types** (Stocks, Geography) → [SKIP] / future connection
 nodes; not core.
 
 ### Conditional formatting → Alert + Heatmap (+ a gap) [NODE]
-Covered above: Alert (scalar thresholds → HUD), Heatmap (frame → colour scale).
+Covered above: Alert (scalar thresholds → HUD), Heatmap (frame → color scale).
 The remaining gap is **rule-based cell highlighting on a frame display**, built
 as a Heatmap extension, not a new rules engine. Ours runs on the live graph, so
 it can't go stale the way Excel's CF does (pain-points §13).

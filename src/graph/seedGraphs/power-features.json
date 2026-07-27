@@ -317,7 +317,7 @@
       "y": 620,
       "init": {
         "label": "Live controls",
-        "body": "# Switch + Expression\nName each slot on the **Input Switch** so it reads as a labelled choice, then pick which cable is live; cycle to flip scenarios without rewiring. Flip it to **Many** (see the switch below) and it collects the checked inputs into a **Cube** instead. The **Expression** node grew an input socket for every variable in its formula (`monthly` here); click the formula for the big typeset editor.",
+        "body": "# Switch + Expression\nName each slot on the **Input Switch** so it reads as a labeled choice, then pick which cable is live; cycle to flip scenarios without rewiring. Flip it to **Many** (see the switch below) and it collects the checked inputs into a **Cube** instead. The **Expression** node grew an input socket for every variable in its formula (`monthly` here); click the formula for the big typeset editor.",
         "color": "lime",
         "width": 360,
         "height": 240,

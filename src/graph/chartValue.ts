@@ -30,7 +30,7 @@ export interface BulletPayload {
   min: number;
   max: number;
 }
-// A flat labelled treemap — each name/value pair is a rectangle sized by value.
+// A flat labeled treemap — each name/value pair is a rectangle sized by value.
 // (Nested hierarchy is a later extension; v1 is one level.)
 export interface TreemapPayload {
   kind: "treemap";
@@ -107,7 +107,7 @@ export interface WafflePayload {
   values: number[];
 }
 // A vector field: u/v are same-shaped matrices of the x/y components; one arrow
-// per cell, coloured by magnitude. A null in either component skips the cell.
+// per cell, colored by magnitude. A null in either component skips the cell.
 export interface QuiverPayload {
   kind: "quiver";
   u: (number | null)[][];

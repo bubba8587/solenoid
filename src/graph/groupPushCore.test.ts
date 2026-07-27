@@ -17,13 +17,13 @@ const after = (b: PushBox, d?: { dx: number; dy: number }) => ({
 });
 
 describe("clear (minimal disturbance)", () => {
-  it("moves a covered right-side neighbour just clear of the expanded edge", () => {
+  it("moves a covered right-side neighbor just clear of the expanded edge", () => {
     const a = box("a", 130, 100); // covered by the 400×300 footprint, beside the card
     const d = run([a]);
     expect(after(a, d.get("a"))).toEqual({ x: RIGHT + PUSH_GAP, y: 100 });
   });
 
-  it("moves a covered below neighbour just clear of the expanded bottom", () => {
+  it("moves a covered below neighbor just clear of the expanded bottom", () => {
     const a = box("a", 10, 80);
     const d = run([a]);
     expect(after(a, d.get("a"))).toEqual({ x: 10, y: BOTTOM + PUSH_GAP });
@@ -35,17 +35,17 @@ describe("clear (minimal disturbance)", () => {
     expect(d).toEqual({ dx: RIGHT + PUSH_GAP - 350, dy: 0 }); // 78px, not 300
   });
 
-  it("resolves a corner neighbour to its dominant axis: roughly-beside goes right", () => {
+  it("resolves a corner neighbor to its dominant axis: roughly-beside goes right", () => {
     const a = box("a", 150, 90);
     expect(after(a, run([a]).get("a"))).toEqual({ x: RIGHT + PUSH_GAP, y: 90 });
   });
 
-  it("resolves a corner neighbour to its dominant axis: roughly-under goes down", () => {
+  it("resolves a corner neighbor to its dominant axis: roughly-under goes down", () => {
     const a = box("a", 110, 220);
     expect(after(a, run([a]).get("a"))).toEqual({ x: 110, y: BOTTOM + PUSH_GAP });
   });
 
-  it("never moves neighbours left of or above the group", () => {
+  it("never moves neighbors left of or above the group", () => {
     const d = run([box("left", -200, 100), box("above", 10, -100)]);
     expect(d.size).toBe(0);
   });
@@ -63,19 +63,19 @@ describe("clear (minimal disturbance)", () => {
 
 // A within-group Tidy doesn't go small-card → big-box; it grows an ALREADY-large
 // box a bit (e.g. ELK spread the members wider). Same engine, different pre-size:
-// neighbours the GROWN edge newly covers must still be pushed.
+// neighbors the GROWN edge newly covers must still be pushed.
 describe("grow push (within-group Tidy grows an already-expanded box)", () => {
   // 200×150 group at origin, grown to 280×150 (wrapped wider members → +80 right).
   const grow: ExpandSpec = { x: 0, y: 0, preW: 200, preH: 150, postW: 280, postH: 150 };
   const growRight = grow.x + grow.postW; // 280
 
-  it("pushes a neighbour the grown right edge now covers", () => {
+  it("pushes a neighbor the grown right edge now covers", () => {
     const a: PushBox = { id: "a", x: 220, y: 50, w: 60, h: 40 }; // clear of preW=200, covered by postW=280
     const d = computeExpandPush(grow, [a], new Map());
     expect(after(a, d.get("a"))).toEqual({ x: growRight + PUSH_GAP, y: 50 });
   });
 
-  it("leaves a neighbour already clear of the grown footprint", () => {
+  it("leaves a neighbor already clear of the grown footprint", () => {
     const a: PushBox = { id: "a", x: 320, y: 50, w: 60, h: 40 }; // beyond postW=280
     const d = computeExpandPush(grow, [a], new Map());
     expect(d.size).toBe(0);
@@ -149,7 +149,7 @@ describe("cascade", () => {
     expect(r2.x).toBeGreaterThanOrEqual(r1.x + 80 + PUSH_GAP); // still ordered, not overlapping
   });
 
-  it("does not cascade when the pushed box lands clear of an out-of-band neighbour", () => {
+  it("does not cascade when the pushed box lands clear of an out-of-band neighbor", () => {
     const a = box("a", 130, 100, 80, 50);      // clears to 428..508, y 100..150
     const cAbove = box("c", 460, -80, 80, 60); // fully above a's landing spot
     const d = run([a, cAbove]);

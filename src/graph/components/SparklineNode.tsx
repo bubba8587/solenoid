@@ -28,7 +28,7 @@ export function SparklineComponent({ data, emit }: NodeProps<SparklineNodeType>)
   const [op, setOp] = useNodeField(data, "op");
   const rawSeries = toSeries(data.cachedResult);
   // Win/Loss draws as a column chart of the signs (+1 up / −1 down / 0 flat),
-  // coloured up = palette green, down = the palette error red (vermilion).
+  // colored up = palette green, down = the palette error red (vermilion).
   const chartOp: ChartShape = op === "winloss" ? "column" : op;
   const series = op === "winloss" ? rawSeries.map((s) => ({ ...s, v: Math.sign(s.v) })) : rawSeries;
   const signColors = op === "winloss"

@@ -5,7 +5,7 @@ import { NodeShell, NodeProps } from "./nodeKit";
 import { processGraph } from "../process";
 import "./AngleDialNode.css";
 
-function normalise(deg: number): number {
+function normalize(deg: number): number {
   const m = deg % 360;
   return m < 0 ? m + 360 : m;
 }
@@ -23,7 +23,7 @@ export function AngleDialComponent({ data, emit }: NodeProps<AngleDialNode>) {
   }, [data.value, editing]);
 
   const commit = useCallback((next: number) => {
-    const clamped = normalise(Math.round(next));
+    const clamped = normalize(Math.round(next));
     setDegrees(clamped);
     setDraft(String(clamped));
     data.value = clamped;

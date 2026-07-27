@@ -35,7 +35,7 @@ function RotBtn({ title, onClick, children }: { title: string; onClick: () => vo
   );
 }
 
-// A small house glyph (stroked, even 12px so it centres crisply — see the icon rule).
+// A small house glyph (stroked, even 12px so it centers crisply — see the icon rule).
 const HomeIcon = () => (
   <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" aria-hidden="true">
     <path d="M2.5 8 L8 3 L13.5 8" />

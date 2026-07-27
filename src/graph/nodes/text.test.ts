@@ -76,7 +76,7 @@ describe("FIND / SEARCH — missing substring is #VALUE!", () => {
 // already took scalar-or-list. Every element-wise text node now declares
 // `strcombo`/`numlist` and broadcasts, so a list of strings flows through
 // UPPER/LEFT/SUBSTITUTE/REPLACE/… the way a list of numbers flows through ADD —
-// Excel's array-formula behaviour (`=UPPER(A1:A10)` spills).
+// Excel's array-formula behavior (`=UPPER(A1:A10)` spills).
 describe("text nodes broadcast over lists (scalar-or-list combo sockets)", () => {
   const dt = (n: { inputs: Record<string, { socket: unknown } | undefined>; outputs: Record<string, { socket: unknown } | undefined> }, side: "in" | "out", k: string) => {
     const s = side === "in" ? n.inputs[k]?.socket : n.outputs[k]?.socket;

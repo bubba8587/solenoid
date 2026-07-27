@@ -365,7 +365,7 @@ describe("error producers", () => {
     const cross = new ConvertNode({ fromUnit: "m", toUnit: "kg" }).data({ in: [5] }).out;
     expect(isSolError(cross)).toBe(true);
     expect((cross as SolError).code).toBe("#N/A");
-    // A same-family conversion works (metres → kilometres): a base-SI UnitCell of
+    // A same-family conversion works (meters → kilometres): a base-SI UnitCell of
     // 2000 m tagged display "km" (2 km) — FC A4 value-mutating Convert.
     const ok = new ConvertNode({ fromUnit: "m", toUnit: "km" }).data({ in: [2000] }).out;
     expect(isUnitCell(ok)).toBe(true);

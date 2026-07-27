@@ -74,7 +74,7 @@ export function ChartComponent({ data, emit }: NodeProps<ChartNodeType>) {
     options: opts, title: opts.title || data.label || "Chart",
   };
 
-  // The data input socket is centred vertically on the chart (its main feed),
+  // The data input socket is centered vertically on the chart (its main feed),
   // measured against the card — separate from the Options socket (its own row
   // below) so the two don't overlap.
   const chartRef = useRef<HTMLDivElement>(null);

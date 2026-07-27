@@ -237,6 +237,12 @@ asides. The rest stays a human call. Two rules below are NOT yet enforced becaus
 corpus predates them — the em-dash ban (95 uses) and no-trailing-parenthetical (113); both need a
 prose sweep before they can be turned on.
 
+- **A control's own action is a verb, and that is not "imperative tone."** "Cycle Number / Text /
+  Date / Boolean", "Open the Problems panel", "Drill in", "Rename" are correct on a button, chip
+  or menu item: they name what the control does, the same register as its label. Only a GESTURE
+  in front of the verb is wrong — "Click to cycle …" → "Cycle …". Strip the gesture, keep the
+  verb. (The third-person rule below is about NODE DESCRIPTIONS, which describe a thing rather
+  than offer an action; do not carry it onto controls.)
 - **American spelling.** color, not colour. Also gray, center, behavior, labeled, neighbor, meter,
   analyze, normalize, catalog, dialog. Applies to every shipped string; code identifiers and CSS
   classes are a separate matter. `uiCopy.test.ts` enforces this one.

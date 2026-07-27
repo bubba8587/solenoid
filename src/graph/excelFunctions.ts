@@ -15,7 +15,7 @@ import { coerceNumber as toNum } from "./valueKinds";
 // Status (2026-06-23): the foundation (policy + seam) PLUS a first wave is live —
 //   • `dispatch` (excelFormula.ts) now resolves through `resolveExcelFunction`, so a
 //     registered internal impl wins and every other name still falls through to
-//     Formula.js (behaviour-identical for those).
+//     Formula.js (behavior-identical for those).
 //   • A first wave of native impls is registered below: overlap functions owned for a
 //     reason (ROUND / SQRT / STANDARDIZE / YEAR / EOMONTH / LEN), PLUS Solenoid-only ones
 //     that don't exist in Formula.js at all (CLAMP / ORDINAL / BETWEEN) — the registry

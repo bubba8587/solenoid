@@ -737,7 +737,7 @@ export function ReconcileComponent({ data, emit }: NodeProps<ReconcileNodeType>)
 }
 
 // ─── SPLIT FRAME ───────────────────────────────────────────────────────────────
-// Two outputs (Matrix + Headers), each a labelled row with its socket and a chip.
+// Two outputs (Matrix + Headers), each a labeled row with its socket and a chip.
 
 const SPLIT_COLTYPE_OPTIONS: { value: SplitColType; label: string; title: string }[] = [
   { value: "all", label: "All", title: "Keep every column" },

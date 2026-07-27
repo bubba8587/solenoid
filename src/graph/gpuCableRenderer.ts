@@ -140,7 +140,7 @@ export class GpuCableRenderer {
       if (added === 0) continue;
       const c = resolve(s.color);
       const a = c.a * s.opacity;
-      // Premultiplied: store colour × alpha.
+      // Premultiplied: store color × alpha.
       const r = (c.r / 255) * a, g = (c.g / 255) * a, b = (c.b / 255) * a;
       const verts = (positions.length - before) / 2;
       for (let i = 0; i < verts; i++) colors.push(r, g, b, a);
@@ -240,7 +240,7 @@ export class GpuCableRenderer {
   }
 }
 
-/** `var(--…)`-aware colour resolver (getComputedStyle), cached; clear on theme change. */
+/** `var(--…)`-aware color resolver (getComputedStyle), cached; clear on theme change. */
 export function makeColorResolver(): CableColorResolver & { clear(): void } {
   const cache = new Map<string, RGBA>();
   const FALLBACK: RGBA = { r: 160, g: 170, b: 190, a: 1 };

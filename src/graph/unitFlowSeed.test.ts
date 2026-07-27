@@ -168,7 +168,7 @@ describe("Unit Flow seed — the captioned behaviors actually hold (FC A4 value-
     expect(out.code).toBe("#UNIT!");
   });
 
-  it("J · the Equation node derives the unknown's unit (d = v·t → metres)", () => {
+  it("J · the Equation node derives the unknown's unit (d = v·t → meters)", () => {
     const v = (real.get("J_vFc") as FormatControllerNode).data({ in: [5] }).out;
     const t = (real.get("J_tFc") as FormatControllerNode).data({ in: [10] }).out;
     const out = (real.get("J_eq") as EquationNode).data({ v: [v], t: [t] });

@@ -50,7 +50,7 @@ export const conduitLayoutStore = {
   subscribe(l: () => void) { _layoutListeners.add(l); return () => { _layoutListeners.delete(l); }; },
 };
 
-// Centre of a Conduit's input/output socket column, in canvas coords, plus the
+// Center of a Conduit's input/output socket column, in canvas coords, plus the
 // block angle. This is where the ribbon trunk attaches. Null until the Conduit
 // has mounted and published its layout.
 export function conduitFacePoint(

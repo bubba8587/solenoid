@@ -6,7 +6,7 @@
 // same `useFcFormatOptions()` hook, so the two can't drift.
 //
 // These are plain controlled <select>s (LazySelect) — no docking / forwarding /
-// propagation, none of the FC node's value-mutating behaviour. A caller drives
+// propagation, none of the FC node's value-mutating behavior. A caller drives
 // them from its own state and decides what a change means (the FC mutates the
 // value; the popup re-renders display-only).
 
@@ -36,7 +36,7 @@ export const FLOW_AUTHORED: FcFlowState = { left: "back", right: "fwd" };
 /** Inherited from upstream: the value already carries it (→ →) — pairs with a lock. */
 export const FLOW_INHERITED: FcFlowState = { left: "fwd", right: "fwd" };
 
-/** A small rounded direction arrow (matches the FC's). Colour inherits (currentColor)
+/** A small rounded direction arrow (matches the FC's). Color inherits (currentColor)
  *  so it reads muted in any container; no external CSS dependency. */
 export function FcArrow({ dir, title }: { dir: "back" | "fwd"; title?: string }) {
   return (

@@ -1,6 +1,6 @@
 /* Single source of truth for the tagged-error (#CODE!) treatment. Every error
    surface (result box, frame/table cell, cable inspector, pins/HUD, group readout,
-   IS-check panel) draws its red from --sol-error so the colour can't drift between
+   IS-check panel) draws its red from --sol-error so the color can't drift between
    them. appTheme writes --sol-error from the palette's `vermilion` slot (so a
    custom palette retints errors) — this :root value is the pre-apply fallback. */
 :root {

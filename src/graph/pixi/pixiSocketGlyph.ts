@@ -1,6 +1,6 @@
 // Socket glyph classification for the Pixi renderer — mirrors SocketComponent's
 // dataType → shape rules (circle scalar / square list / split combo / grid 2-D /
-// hexagon cube), so GPU sockets read like the DOM ones. Pure (colours are
+// hexagon cube), so GPU sockets read like the DOM ones. Pure (colors are
 // resolved from CSS vars by the snapshot); only the SHAPE decision lives here.
 
 export type GlyphKind = "circle" | "square" | "split" | "grid" | "frame" | "hex" | "ring";
@@ -9,7 +9,7 @@ const LIST_TYPES = new Set(["list", "strlist", "datelist", "complexlist", "logic
 const TABLE_TYPES = new Set(["table", "strtable", "datetable", "complextable", "logicaltable", "anytable"]);
 
 /** Combo (scalar|list) types → their [scalar, list] dataType pair, so the caller
- *  can resolve the two colours of the bicolor split square. */
+ *  can resolve the two colors of the bicolor split square. */
 export const COMBO_PAIRS: Record<string, [string, string]> = {
   numlist: ["number", "list"],
   strcombo: ["string", "strlist"],

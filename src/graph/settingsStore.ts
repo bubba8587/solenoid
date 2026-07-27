@@ -8,10 +8,10 @@ import { createNotifier, createToggleStore } from "./storeKit";
 const LS_KEY = "solenoid.settings";
 
 export interface Settings {
-  /** Push neighbouring groups out of the way when a group expands, and slide
+  /** Push neighboring groups out of the way when a group expands, and slide
    *  them back on collapse (unless they were moved meanwhile). */
   groupPush: boolean;
-  /** How Tidy lines connected nodes up vertically: "center" keeps their centres
+  /** How Tidy lines connected nodes up vertically: "center" keeps their centers
    *  level (cables may slant a touch); "top" keeps their top edges level. */
   tidyAlign: "center" | "top";
   /** Absolute path to the folder local CSV connections read from. Empty until
@@ -79,10 +79,10 @@ export interface SettingField {
   /** Choices for a "segment" field. */
   options?: { value: string; label: string }[];
   /** The feature this setting controls doesn't exist in mobile mode, so on a
-   *  phone the control is inert and greyed rather than silently doing nothing.
+   *  phone the control is inert and grayed rather than silently doing nothing.
    *  The mobile chrome is a different layout, not a narrower desktop — a couple
    *  of desktop-only surfaces have no mobile counterpart at all. Consumers must
-   *  BOTH grey the control and skip the behaviour (Settings greys the row,
+   *  BOTH gray the control and skip the behavior (Settings grays the row,
    *  CommandPalette drops the "Toggle …" command, Canvas ignores the value). */
   disabledOnMobile?: boolean;
 }

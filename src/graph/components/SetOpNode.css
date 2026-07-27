@@ -1,5 +1,5 @@
 /* The set-notation line under the op selector (KaTeX, or the Unicode fallback while
-   the chunk loads). Centered, theme-coloured; KaTeX inherits currentColor so it tracks
+   the chunk loads). Centered, theme-colored; KaTeX inherits currentColor so it tracks
    light/dark. */
 .solenoid-setop__notation {
   text-align: center;

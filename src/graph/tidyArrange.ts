@@ -2,7 +2,7 @@
 // buttons, T/C shortcuts and the group Tidy button. Extracted from Canvas.tsx:
 // the factories close over the per-mount editor/area the same way the init
 // effect did. Invariants live in docs/subsystem-invariants.md "Auto-arrange /
-// Tidy": SYMMETRIC port preset, left+centre anchor, fixed-height pins dropped
+// Tidy": SYMMETRIC port preset, left+center anchor, fixed-height pins dropped
 // after the size restores, standoff clusters as rigid ELK super-nodes.
 import { AreaExtensions, AreaPlugin } from "rete-area-plugin";
 import type { NodeEditor } from "rete";
@@ -50,7 +50,7 @@ export type ArrangeFn = (opts?: { groupId?: string; skipConfirm?: boolean; skipP
 // INPUT ports at the BOTTOM, which staircases every chain upward — wrong for
 // our nodes. We place ports SYMMETRICALLY (same offset for in/out) so two
 // connected nodes line up, and read the Tidy-alignment setting per layout:
-//   "center" → ports at the node's vertical centre → node CENTRES align;
+//   "center" → ports at the node's vertical center → node CENTERS align;
 //   "top"    → ports near the node's top → node TOP edges align.
 // Exported so the headless tidy test drives ELK with the REAL preset.
 export function symmetricPortPreset() {
@@ -97,7 +97,7 @@ export function makeEnsureArrange(
 // The auto-arrange behind the nav-menu "tidy" button (and T / the group Tidy
 // button). The Conduit declares all its lanes up-front, which would make ELK
 // treat it as a tall multi-port node and shove it far away from its
-// neighbours. We hand ELK a Proxy that exposes only the *in-use* ports, so the
+// neighbors. We hand ELK a Proxy that exposes only the *in-use* ports, so the
 // Conduit lays out as the small node it visually is. The Proxy preserves `id`,
 // so the applier still translates the real node.
 export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
@@ -407,9 +407,9 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
     // footprint — the "tidy floats nodes up" bug. For a within-group tidy the
     // references are the box interior's left and vertical center. Both are
     // deterministic, so a tidy→autofit cycle in Cleanup stays a fixed point
-    // (after autofit the interior wraps the members, so the centre is unchanged).
+    // (after autofit the interior wraps the members, so the center is unchanged).
     let origMinX = Infinity;   // left edge to preserve
-    let targetCy = 0;          // vertical centre to preserve
+    let targetCy = 0;          // vertical center to preserve
     if (withinGroup) {
       const gv = area.nodeViews.get(withinGroup.id);
       if (gv) {
@@ -475,7 +475,7 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
     // applier resized it to the reserved footprint; the FC occupies the rest.
     // BEFORE the anchor measurement below: the pre-layout anchor read real
     // sizes, so measuring the new extent off a still-inflated host/leader
-    // would skew the preserved vertical centre by half the inflation.
+    // would skew the preserved vertical center by half the inflation.
     for (const [id, sz] of realHostSize) {
       await area.resize(id, sz.w, sz.h);
     }
@@ -485,8 +485,8 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       await area.resize(id, sz.w, sz.h);
     }
 
-    // Shift the laid-out nodes: left edge → anchor left, vertical centre →
-    // anchor centre.
+    // Shift the laid-out nodes: left edge → anchor left, vertical center →
+    // anchor center.
     let newMinX = Infinity, newTop = Infinity, newBottom = -Infinity;
     for (const n of layoutTargets) {
       const b = measuredBox(area, n.id, editor);
@@ -497,7 +497,7 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
     }
     const dx = origMinX - newMinX;
     let dy = targetCy - (newTop + newBottom) / 2;
-    // Within a group, never let centring lift members above the box header.
+    // Within a group, never let centering lift members above the box header.
     if (withinGroup) {
       const gv = area.nodeViews.get(withinGroup.id);
       if (gv) {
@@ -586,7 +586,7 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       rebuildGroupMembership(editor);
       syncGroupCollapse(editor, area);
       // A within-group Tidy can autogrow the box; if it did, push the
-      // neighbouring nodes/groups off the grown edges (recording it so a
+      // neighboring nodes/groups off the grown edges (recording it so a
       // later collapse restores them) — the same engine as the expand push.
       // Cleanup skips this: it manages its own collapse/restore + re-tidy.
       if (!opts?.skipPush && (withinGroup.width > preW + 0.5 || withinGroup.height > preH + 0.5)) {

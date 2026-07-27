@@ -56,7 +56,7 @@
 //   #REF!     dangling reference               (Excel; Err:524)
 //   #CIRC!    circular dependency              (Err:522; Excel only warns)
 //   #UNIT!    incommensurable units in an op     (Solenoid-specific — dimensional
-//             algebra; adding metres to seconds, or converting across dimensions.
+//             algebra; adding meters to seconds, or converting across dimensions.
 //             Distinct from #TYPE! (wrong element type) — same type, wrong
 //             DIMENSION. See dimension.ts.)
 //   #ERROR!   unexpected internal failure      (Err:517) — the guard's catch-all
@@ -113,7 +113,7 @@ export const ERROR_EXPLANATIONS: Record<SolErrorCode, string> = {
   "#VALUE!": "A value had the wrong type, or a formula failed while evaluating. Check each input is the kind of data the node expects.",
   "#TYPE!":  "The element type is wrong, e.g. a text matrix into a numeric op, or a number where a date is expected. Solenoid keeps element families (number / text / date / complex) separate, so this is more specific than #VALUE!. Cast or reshape the input.",
   "#SHAPE!": "List or matrix dimensions don't line up. Check the connected lists/tables have compatible lengths.",
-  "#UNIT!":  "The units don't match dimensionally, e.g. adding metres to seconds, or converting between quantities that measure different things. Convert one side first, or check the unit an upstream Format Controller assigned.",
+  "#UNIT!":  "The units don't match dimensionally, e.g. adding meters to seconds, or converting between quantities that measure different things. Convert one side first, or check the unit an upstream Format Controller assigned.",
   "#NAME?":  "A name wasn't recognized as a function or variable. Check the spelling in the formula.",
   "#REF!":   "A reference points at something that no longer exists, usually a deleted node or column.",
   "#CIRC!":  "A circular dependency: the calculation feeds back into itself. Remove one cable in the cycle to break it.",

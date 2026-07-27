@@ -187,7 +187,7 @@ export async function exportReportAsWebpage(report: ReportNode): Promise<void> {
     const html = buildReportExportHtml(report, { canvasImage });
     const name = `${(report.label?.trim() || "report").replace(/[^\w -]/g, "")}.html`;
     const chosen = await saveHtmlFileDialog(name, html);
-    // Desktop: null = the user cancelled the dialog, stay quiet. Web: the
+    // Desktop: null = the user canceled the dialog, stay quiet. Web: the
     // download always fires (the dialog helper returns null there too), so
     // the success toast must not key off the path.
     if (chosen || !isDesktop()) pushNotice(`Exported ${name}`, "info", 2500);

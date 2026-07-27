@@ -287,9 +287,9 @@ export class ListIndexNode extends ClassicPreset.Node {
    *  frame/cube) and a FRAME cell (heterogeneous columns, picked by a runtime index),
    *  and false of everything else: a list or matrix is HOMOGENEOUS, so its element
    *  family is fixed by the socket no matter which cell you pull. Treating the whole
-   *  node as unknowable cost real behaviour — a date pulled out of a date list lost
+   *  node as unknowable cost real behavior — a date pulled out of a date list lost
    *  its date-ness downstream (`isDateType` reads the socket, so it rendered as a raw
-   *  serial), and the output dot stayed a hollow ring while the input dot coloured.
+   *  serial), and the output dot stayed a hollow ring while the input dot colored.
    *
    *  `project` maps the container type to the extraction's own rank: what varies with
    *  Row/Column is the RANK, not the family (one cell, or a whole axis), and the COMBO

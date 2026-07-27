@@ -51,7 +51,7 @@ describe("canConnect (directional)", () => {
     expect(canConnect("list", "numlist")).toBe(true);
     expect(canConnect("string", "strcombo")).toBe(true);
     expect(canConnect("date", "datecombo")).toBe(true);
-    // numlist→numlist still fine; numlist→list keeps its old (symmetric) behaviour.
+    // numlist→numlist still fine; numlist→list keeps its old (symmetric) behavior.
     expect(canConnect("numlist", "numlist")).toBe(true);
   });
 

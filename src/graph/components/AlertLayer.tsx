@@ -70,8 +70,8 @@ export function AlertLayer() {
   );
 
   const chips = events.map((ev) => {
-    // Message is "<label>: <detail>" (see Alert.buildMessage). Colour ONLY the
-    // leading label by kind; the detail stays in the normal text colour. Match the
+    // Message is "<label>: <detail>" (see Alert.buildMessage). Color ONLY the
+    // leading label by kind; the detail stays in the normal text color. Match the
     // exact label when the message starts with it (a label may contain a colon),
     // else fall back to the first colon.
     const title = ev.message.startsWith(ev.label) ? ev.label : (ev.message.split(":")[0] ?? ev.message);

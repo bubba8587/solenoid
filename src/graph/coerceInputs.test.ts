@@ -80,7 +80,7 @@ describe("coerceInputs — typed-list literal injection", () => {
 
 describe("coerceInputs — an adoptive CONTAINER input coerces on its BASE rung, not the adopted type", () => {
   // The bug this pins: a scalar widens into an adoptive `anylist` input, so the socket
-  // ADOPTS `number` for colour — but the node's data() expects a list, so coercion must
+  // ADOPTS `number` for color — but the node's data() expects a list, so coercion must
   // still widen the scalar to `[scalar]` (the base rung), not keep it a bare number.
   function run(base: string, adopted: string, wired: unknown) {
     const sock = new AdoptiveSocket(base as never);

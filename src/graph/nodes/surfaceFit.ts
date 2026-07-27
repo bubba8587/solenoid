@@ -31,7 +31,7 @@ export function solveLinear(A: number[][], b: number[]): number[] | null {
 // r²·log(r), the thin-plate kernel (= ½·r²·log r²); 0 at r = 0.
 const phi = (r2: number): number => (r2 <= 1e-12 ? 0 : 0.5 * r2 * Math.log(r2));
 
-// Ridge-regularised least-squares plane z = a + b·nx + c·ny over pre-normalised coords.
+// Ridge-regularised least-squares plane z = a + b·nx + c·ny over pre-normalized coords.
 // The slope terms are regularised so it's always solvable (collinear / <3 points).
 function planeFit(P: Array<[number, number]>, z: number[]): (nx: number, ny: number) => number {
   const n = P.length;
@@ -55,7 +55,7 @@ const TPS_MAX_POINTS = 220;
 export function fitSurface(points: FitPoint[]): ((x: number, y: number) => number) | null {
   const n = points.length;
   if (n === 0) return null;
-  // Normalise x,y to ~[0,1] for numerical stability (z stays raw). Loop (not
+  // Normalize x,y to ~[0,1] for numerical stability (z stays raw). Loop (not
   // Math.min(...spread)) so a huge wired grid can't blow the argument limit.
   let xmin = Infinity, xmax = -Infinity, ymin = Infinity, ymax = -Infinity;
   for (const p of points) {

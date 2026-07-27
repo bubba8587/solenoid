@@ -357,7 +357,7 @@ export class SevenSegNode extends ClassicPreset.Node {
 export function sevenSegText(v: number | null, decimals: number, maxDigits = 10): string {
   if (v == null || !Number.isFinite(v)) return "";
   const s = v.toFixed(clamp(Math.round(decimals), 0, 6));
-  // Count digit CELLS (a '.' rides its neighbour, '-' takes a cell).
+  // Count digit CELLS (a '.' rides its neighbor, '-' takes a cell).
   const cells = s.replace(/\./g, "").length;
   return cells > maxDigits ? "-".repeat(maxDigits) : s;
 }
@@ -474,7 +474,7 @@ function colAsNumbers(col: FrameColumn | undefined): number[] {
 }
 
 // ─── Treemap ──────────────────────────────────────────────────────────────────
-// A flat labelled treemap: each (label, value) pair is a rectangle sized by value.
+// A flat labeled treemap: each (label, value) pair is a rectangle sized by value.
 // Wire a 2-column frame (Label, Value) — read positionally. Emits a chart VALUE.
 
 export class TreemapNode extends ClassicPreset.Node {
@@ -542,9 +542,9 @@ export class SankeyNode extends ClassicPreset.Node {
 }
 
 // ─── Heatmap ──────────────────────────────────────────────────────────────────
-// Colours every cell of a Table on a cool→warm gradient spanning the data's own
+// Colors every cell of a Table on a cool→warm gradient spanning the data's own
 // min..max (conditional formatting). Pass-through: the Table flows on unchanged;
-// the colour grid is drawn in the component.
+// the color grid is drawn in the component.
 
 export class HeatmapCellNode extends ClassicPreset.Node {
   label: string;
@@ -904,7 +904,7 @@ export class WaffleNode extends ClassicPreset.Node {
 
 // ─── Vector field (quiver) ────────────────────────────────────────────────────
 // One arrow per grid cell from two same-shaped matrices (the x and y components),
-// coloured by magnitude — gradients, flows, wind fields. A null in either
+// colored by magnitude — gradients, flows, wind fields. A null in either
 // component skips that cell's arrow.
 
 export class QuiverNode extends ClassicPreset.Node {
@@ -933,7 +933,7 @@ export class QuiverNode extends ClassicPreset.Node {
 }
 
 // ─── Chart Builder ────────────────────────────────────────────────────────────
-// A labelled "Concat for chart options": many small fields (one per matplotlib
+// A labeled "Concat for chart options": many small fields (one per matplotlib
 // option) whose values are joined into the `key=value;…` string the Chart node's
 // Options socket consumes. Every field is also an input socket, so any value can
 // be wired from upstream (e.g. a computed title or a slider-driven Y max).

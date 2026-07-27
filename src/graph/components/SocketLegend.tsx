@@ -49,7 +49,7 @@ const GROUPS: LegendGroup[] = [
     { kind: "cube", color: SOCKET_COLORS.cube,  tip: "Cube" },
   ] },
   // The OBJECT family — non-lattice, identity-only values distinguished by
-  // glyph, not colour. Lambda = a function, Chart = a figure, Document = a Note/
+  // glyph, not color. Lambda = a function, Chart = a figure, Document = a Note/
   // Report's whole content (for a document sink like Write to Obsidian).
   { label: "Special", dots: [
     { kind: "lambda",   color: SOCKET_COLORS.lambda,   tip: "LAMBDA" },
@@ -69,11 +69,11 @@ const GROUPS: LegendGroup[] = [
 export type SocketGlyph = Dot;
 
 // ─── Hover tooltip: an SVG stadium pill (no OS-native delay, no CSS shapes) ──────
-// Body fill = the socket type colour; border = the same --socket-ring that darkens
-// the socket edges; text = contrastInk(colour) — the adaptive ink the menu bar uses.
+// Body fill = the socket type color; border = the same --socket-ring that darkens
+// the socket edges; text = contrastInk(color) — the adaptive ink the menu bar uses.
 
-/** Resolve any CSS colour expression (incl. `var(--sock-*)`, palette-overridden) to a
- *  #rrggbb hex, so contrastInk picks the readable ink for the EXACT rendered colour. */
+/** Resolve any CSS color expression (incl. `var(--sock-*)`, palette-overridden) to a
+ *  #rrggbb hex, so contrastInk picks the readable ink for the EXACT rendered color. */
 function cssColorToHex(css: string): string {
   const probe = document.createElement("span");
   probe.style.color = css;
@@ -105,7 +105,7 @@ function SocketTip({ label, color, anchor }: { label: string; color: string; anc
   const ink = contrastInk(cssColorToHex(color));
   const H = 20, PAD_X = 9, SW = 2.5;
   const W = Math.ceil(measureTipText(label)) + PAD_X * 2;
-  // Centre on the dot, but clamp so the pill never clips the viewport edge (the
+  // Center on the dot, but clamp so the pill never clips the viewport edge (the
   // legend sits bottom-RIGHT, so its dots are close to the right edge).
   const half = W / 2 + 4;
   const cx = Math.max(half, Math.min(anchor.left + anchor.width / 2, window.innerWidth - half));
@@ -322,7 +322,7 @@ export function DimensionalityFlow() {
       </p>
       <p className="solenoid-dimflow__note">
         Split-square sockets (every family's <em>combo</em>) accept either
-        a single value or a list. The grey <em>Any</em> sockets are the untyped ladder —
+        a single value or a list. The gray <em>Any</em> sockets are the untyped ladder —
         circle = one value of any type, split square = one value <em>or</em> a list,
         square = any list, grid = any table — and the hollow ring accepts anything at all.
       </p>

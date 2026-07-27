@@ -93,7 +93,7 @@ export function isDimensionalFcUnit(id: string): boolean {
  *     just RE-DISPLAY in the new unit (km → mi is a display change, base is
  *     dimension-invariant);
  *   • dimensioned + an INCOMMENSURABLE unit → `#UNIT!` (a true dimension clash —
- *     a length can't be re-labelled a mass);
+ *     a length can't be re-labeled a mass);
  *   • unit `custom` with a free-text name → an OPAQUE custom dimension (`poop` is its
  *     own axis: `poop ÷ s` = `poop/s`, not Hz). The name renders via `formatDim`, so
  *     the cell carries no `display` id (there's no registry unit to resolve).
@@ -109,9 +109,9 @@ export function applyFcUnit(value: unknown, fcUnitId: string, customUnit?: strin
   const one = (v: unknown): unknown => {
     if (v === null || isSolError(v)) return v;
     if (isRatio(v)) {
-      // A pure ratio is KNOWN-dimensionless (units cancelled) — re-labeling it with
+      // A pure ratio is KNOWN-dimensionless (units canceled) — re-labeling it with
       // a physical unit is a category error. Number formats (percent) still apply.
-      return unitError("This is a pure ratio (its units cancelled) — it can't be re-labeled with a unit. Multiply by a base quantity instead.");
+      return unitError("This is a pure ratio (its units canceled) — it can't be re-labeled with a unit. Multiply by a base quantity instead.");
     }
     if (isUnitCell(v)) {
       if (!dimEqual(v.dim, u.dim)) {

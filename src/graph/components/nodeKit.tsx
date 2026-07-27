@@ -184,7 +184,7 @@ function formatRowValue(v: Exclude<OutputRowValue, SolError>): string {
 }
 
 /**
- * Renders a labelled row for each output with the socket dot measured-centered
+ * Renders a labeled row for each output with the socket dot measured-centered
  * on the row (see MeasuredSocketRow) — immune to label height, padding, and
  * header height.
  */
@@ -279,7 +279,7 @@ function CommentIndicator({ nodeId }: { nodeId: string }) {
     <button
       type="button"
       className={`solenoid-node__comment-badge${unresolved ? "" : " solenoid-node__comment-badge--resolved"}`}
-      title={`${commentStore.forNode(nodeId).length} comment${commentStore.forNode(nodeId).length === 1 ? "" : "s"}`}
+      title={`${commentStore.forNode(nodeId).length} comment${commentStore.forNode(nodeId).length === 1 ? "" : "s"}. Open.`}
       onClick={(e) => { e.stopPropagation(); commentsPanelUi.openFor(nodeId); }}
       onPointerDown={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}

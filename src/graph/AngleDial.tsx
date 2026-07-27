@@ -9,13 +9,13 @@ type AngleDialProps = {
   size?: number;
 };
 
-function normalise(deg: number): number {
+function normalize(deg: number): number {
   const m = deg % 360;
   return m < 0 ? m + 360 : m;
 }
 
 function snap(deg: number, step: number): number {
-  return normalise(Math.round(deg / step) * step);
+  return normalize(Math.round(deg / step) * step);
 }
 
 /**
@@ -48,7 +48,7 @@ export function AngleDial({
       if (dx === 0 && dy === 0) return;
       const deg = (Math.atan2(dy, dx) * 180) / Math.PI;
       const next = snap(deg, step);
-      if (next !== normalise(value)) onChange(next);
+      if (next !== normalize(value)) onChange(next);
     },
     [value, step, onChange],
   );

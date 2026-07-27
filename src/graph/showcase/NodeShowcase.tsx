@@ -110,19 +110,19 @@ export default function NodeShowcase({ initialType }: { initialType: string }) {
   useEffect(() => {
     const m = mountRef.current;
     if (!m || !ready || !type) return;
-    let cancelled = false;
+    let canceled = false;
     void (async () => {
       await m.editor.clear();
       const entry = FLAT_CATALOG.get(type);
-      if (!entry || cancelled) return;
+      if (!entry || canceled) return;
       const node = entry.create() as unknown as SolenoidNode;
       await m.editor.addNode(node);
-      if (cancelled) return;
+      if (canceled) return;
       nodeNameStore.ensure(node.id, node.constructor.name);
       await m.area.translate(node.id, { x: PAD, y: PAD });
       await processGraph();
     })();
-    return () => { cancelled = true; };
+    return () => { canceled = true; };
   }, [type, ready]);
 
   useEffect(() => {

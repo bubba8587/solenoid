@@ -46,7 +46,7 @@ export interface UnitCell {
    *  reverts to its derived-symbol form. Absent ⇒ render the derived symbol
    *  (`formatDim`). This is the scalar/list analog of `ColumnUnit.display`. */
   readonly display?: string;
-  /** A PURE RATIO: the dimensions provably CANCELLED (`10 m ÷ 2 m`). `dim` is
+  /** A PURE RATIO: the dimensions provably CANCELED (`10 m ÷ 2 m`). `dim` is
    *  empty, and the value computes as a plain number everywhere — but it is
    *  KNOWN-dimensionless, so an FC can't re-label it with a physical unit
    *  (`#UNIT!`); number formats (percent, especially) still apply. Renders as
@@ -183,7 +183,7 @@ export function unitError(detail = ""): SolError {
   return solError(
     "#UNIT!",
     detail ||
-      "The units don't match dimensionally, e.g. adding metres to seconds. Convert one side first.",
+      "The units don't match dimensionally, e.g. adding meters to seconds. Convert one side first.",
   );
 }
 

@@ -136,7 +136,7 @@ export function ConnectionDialog() {
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(!!req, dialogRef);
 
-  // Initialise from the request (edit prefill, or socket prefill, or blank).
+  // Initialize from the request (edit prefill, or socket prefill, or blank).
   useEffect(() => {
     if (!req) { initedFor.current = null; return; }
     if (initedFor.current === req) return;

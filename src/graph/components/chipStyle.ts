@@ -3,9 +3,9 @@
  * a popup opened from a chip matches the node it came from — header tint, and
  * (when grouped) the border + corner triangle, like the Formula popup. These
  * vars are set on the card / group root and cascade to the chip. `fallbackVar`
- * is the value TYPE's socket colour (`--sock-list`, `--sock-frame`, …) so a
+ * is the value TYPE's socket color (`--sock-list`, `--sock-frame`, …) so a
  * chip opened with no node context (e.g. inline in a Report) still gets the
- * standard coloured header instead of a bare one.
+ * standard colored header instead of a bare one.
  */
 export function readChipPopupStyle(
   el: HTMLElement,

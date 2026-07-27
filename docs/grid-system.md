@@ -58,7 +58,7 @@ are real" feedback.
 ## Modifier to bypass snap
 
 A held key (e.g. `Alt` on Win/Linux, `⌥` on macOS) suspends all snap
-behaviour — free placement at pixel precision. Same key works for
+behavior — free placement at pixel precision. Same key works for
 node drag, cable endpoint drag, and Conduit placement.
 
 ## Open questions

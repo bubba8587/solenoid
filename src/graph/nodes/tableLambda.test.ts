@@ -260,18 +260,18 @@ describe("ScanLambda (SCAN)", () => {
   });
 });
 
-// A km cell: n km stored as base-SI metres (n*1000), tagged length + display "km".
+// A km cell: n km stored as base-SI meters (n*1000), tagged length + display "km".
 const KM = { dim: { length: 1 }, scale: 1000 };
 const km = (n: number) => fromUnit(n, KM, "km") as UnitCell;
 
 describe("LAMBDA hosts carry units over a 1-D list (FC A4)", () => {
   it("BYROW SUM over a km list carries the length dimension + display", () => {
-    const list = [km(1), km(2), km(3)]; // base metres 1000/2000/3000
+    const list = [km(1), km(2), km(3)]; // base meters 1000/2000/3000
     const out = new ByAxisNode({ axis: "row", expr: "SUM(values)" }).data({ table: [list] }).result as UnitCell[];
     expect(out.length).toBe(1);
     expect(isUnitCell(out[0])).toBe(true);
     expect(out[0].dim).toEqual({ length: 1 });
-    expect(magnitudeOf(out[0])).toBeCloseTo(6000, 6); // 6 km in metres
+    expect(magnitudeOf(out[0])).toBeCloseTo(6000, 6); // 6 km in meters
     expect(out[0].display).toBe("km");
   });
 

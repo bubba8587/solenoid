@@ -24,7 +24,7 @@ function dim(cards: NodeCard[]): NodeCard[] {
 //
 // THIS is currently an ALIGNMENT-CHECK overlay, not the perf win yet: it draws each
 // node as a GPU card ON TOP of the real DOM nodes (z above), so you can confirm the
-// cards match node size/position/colour before the risky next step (the LOD SWAP —
+// cards match node size/position/color before the risky next step (the LOD SWAP —
 // hide the DOM nodes when zoomed out, show these cards, so the DOM layer tree shrinks).
 // Off by default; toggle from the console: `__solenoidNodeCards()` (requires canvas
 // render-mode on too). Reuses the same transform-uniform draw model as the cables.
@@ -55,10 +55,10 @@ export function NodeCanvas() {
     if (!on) return;
     const canvas = canvasRef.current;
     if (!canvas || rendererRef.current || failedRef.current) return;
-    let cancelled = false;
+    let canceled = false;
     const onLost = () => { failedRef.current = true; rendererRef.current = null; renderModeStore.set("dom"); };
     void GpuNodeRenderer.create(canvas, onLost).then((r) => {
-      if (cancelled) { r?.dispose(); return; }
+      if (canceled) { r?.dispose(); return; }
       if (!r) { failedRef.current = true; return; }
       rendererRef.current = r;
       const { viewport, dpr, transform } = overlayBus.get();
@@ -67,7 +67,7 @@ export function NodeCanvas() {
       r.draw(transform, viewport.width, viewport.height);
     });
     return () => {
-      cancelled = true;
+      canceled = true;
       const r = rendererRef.current;
       if (r) {
         const { viewport, transform } = overlayBus.get();

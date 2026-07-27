@@ -30,17 +30,17 @@ export class NumberInputNode extends ClassicPreset.Node {
 }
 
 // ─── Color Picker ─────────────────────────────────────────────────────────────
-// Three sliders pick a colour in RGB or HSV; a format dropdown chooses how the
+// Three sliders pick a color in RGB or HSV; a format dropdown chooses how the
 // output string reads (hex / rgb() / hsl()). The string drops straight into a
-// Chart Builder's Colour field (all three formats are valid CSS colours).
-// Conversion is delegated to `colord` (zero-dependency colour lib) so we don't
+// Chart Builder's Color field (all three formats are valid CSS colors).
+// Conversion is delegated to `colord` (zero-dependency color lib) so we don't
 // hand-roll RGB↔HSV maths. Channel values live in `literals` (c0/c1/c2,
 // interpreted per mode); `mode` + `format` are persisted via extractInit.
 
 export type ColorMode = "rgb" | "hsv" | "hex";
 // Output formats are CSS-valid only: there is no `hsv()` in CSS, so we don't
 // offer an HSL output either (it'd mismatch the HSV input model) — hex / rgb
-// cover everything a chart colour needs.
+// cover everything a chart color needs.
 export type ColorFormat = "hex" | "rgb";
 
 export class ColorPickerNode extends ClassicPreset.Node {
@@ -48,7 +48,7 @@ export class ColorPickerNode extends ClassicPreset.Node {
   mode: ColorMode;
   format: ColorFormat;
   // c0/c1/c2 read per mode — rgb: r,g,b ∈ [0,255]; hsv: h ∈ [0,360], s,v ∈ [0,100].
-  // In "hex" mode the colour comes from stringLiterals.hex instead.
+  // In "hex" mode the color comes from stringLiterals.hex instead.
   literals: Record<string, number> = { c0: 86, c1: 180, c2: 233 }; // #56b4e9
   stringLiterals: Record<string, string> = { hex: "#56b4e9" };
   cachedString = "";

@@ -315,9 +315,9 @@ combo-shaped hole).
 held for a CUBE cell (which may hold a nested frame/cube) and a FRAME cell (heterogeneous
 columns, picked by a runtime index), and for nothing else. A list or matrix is
 HOMOGENEOUS — its element family is fixed by the socket whichever cell you pull — so
-declaring the whole node unknowable cost real behaviour: a date pulled out of a date list
+declaring the whole node unknowable cost real behavior: a date pulled out of a date list
 lost its date-ness downstream (`isDateType` reads the socket, so it rendered as a raw
-serial), and the output dot stayed a hollow ring while the input dot coloured. INDEX now
+serial), and the output dot stayed a hollow ring while the input dot colored. INDEX now
 declares a `passthrough()` on its `list` input — it FORWARDS a value out of its container,
 which is what that declaration means — with a new `project` hook that drops the RANK and
 keeps the family: what Row/Column vary is one-cell-vs-whole-axis, and the COMBO rung means
@@ -439,7 +439,7 @@ payoff. The fragility is localized (only array-REBUILDING sites drop the tag), s
 right fix is a complete, self-guarding discipline, not a new representation.
 **The op-unit POLICY + its guard:** every matrix op declares carry /
 carry-if-uniform / convert / strip / na / author; `matrixUnitPolicy.test.ts` holds the
-per-op behaviour table PLUS a completeness sweep that FAILS THE BUILD if a matrix-taking
+per-op behavior table PLUS a completeness sweep that FAILS THE BUILD if a matrix-taking
 node ships without a declared policy — the discipline is structural, not whack-a-mole.
 (MMULT/MDETERM/MINVERSE = documented strip; dimensioned linear algebra is out of scope.)
 **Cube = units PER CELL, like a list:** a cube is heterogeneous per cell (a cell can be

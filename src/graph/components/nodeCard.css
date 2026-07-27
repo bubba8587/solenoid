@@ -439,7 +439,7 @@
 /* The content wrapper — everything below the header. It is the SOCKET POSITIONING
    CONTEXT (the nearest positioned ancestor for the sockets, pills and the value
    box inside it), which is what makes socket `top` values header-independent: a
-   socket centred on the value box is measured relative to THIS box, so the header
+   socket centered on the value box is measured relative to THIS box, so the header
    growing/shrinking never moves it within the wrapper — the wrapper just slides
    down and the browser carries the sockets along. rete's getElementCenter walks
    up the offsetParent chain and adds this wrapper's offset back, so cable
@@ -451,7 +451,7 @@
    negative margin, which would fight the display-grow max-content width.) */
 .solenoid-node__content {
   position: relative;
-  /* Horizontal offset of socket dots anchored to this wrapper. -6.5px centres them
+  /* Horizontal offset of socket dots anchored to this wrapper. -6.5px centers them
      on the card's OUTER edge: the wrapper sits inside the 1px border, so the dot
      needs the extra out to straddle the edge (tuned live). The half-pixel is fine —
      the dot is a real SVG shape, crisp on subpixel boundaries. Groups (no wrapper,
@@ -759,7 +759,7 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
 /* A hero output box inside a measured socket row (Reconcile's frame + markdown
    summary): a tall block, NOT the fixed-height label|value flex row — else it
    overflowed the 22px height and overlapped the rows above. The socket dot still
-   measures onto the box centre (it's absolutely positioned, unaffected by this). */
+   measures onto the box center (it's absolutely positioned, unaffected by this). */
 .solenoid-node__io-row--hero {
   display: block;
   height: auto;

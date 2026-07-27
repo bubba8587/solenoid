@@ -34,7 +34,7 @@ export interface AtlasLayout {
   usedH: number;
 }
 
-/** Gutter between placements so a crop never bleeds a neighbour's edge pixels
+/** Gutter between placements so a crop never bleeds a neighbor's edge pixels
  *  (drawElementImage anti-aliases the card edge into adjacent px). */
 export const ATLAS_GUTTER = 2;
 

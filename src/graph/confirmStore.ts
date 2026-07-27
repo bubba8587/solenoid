@@ -22,7 +22,7 @@ const { notify, subscribe } = createNotifier();
 export function requestConfirm(opts: ConfirmOptions | string): Promise<boolean> {
   const options: ConfirmOptions = typeof opts === "string" ? { message: opts } : opts;
   return new Promise<boolean>((resolve) => {
-    // If one is somehow already open, treat it as cancelled first.
+    // If one is somehow already open, treat it as canceled first.
     _pending?.resolve(false);
     _pending = { ...options, resolve };
     notify();

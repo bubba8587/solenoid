@@ -79,20 +79,20 @@ describe("clamp", () => {
 describe("panSweep", () => {
   const bounds = { minX: 0, minY: 0, maxX: 1000, maxY: 600 };
 
-  it("centres the graph mid-sweep (t=0 → viewport centre on graph centre)", () => {
+  it("centers the graph mid-sweep (t=0 → viewport center on graph center)", () => {
     const { tx, ty } = panSweep(bounds, 800, 600, 1, 0);
     const cam = new Camera({ scale: 1, tx, ty });
-    const c = cam.toScreen(500, 300); // graph centre
+    const c = cam.toScreen(500, 300); // graph center
     expect(c.sx).toBeCloseTo(400);
     expect(c.sy).toBeCloseTo(300);
   });
 
   it("reaches the graph horizontal extremes during the sweep", () => {
-    // sin(a) peaks at t=0.25 → viewport centre sits on the graph's right edge.
+    // sin(a) peaks at t=0.25 → viewport center sits on the graph's right edge.
     const { tx } = panSweep(bounds, 800, 600, 1, 0.25);
     const cam = new Camera({ scale: 1, tx, ty: 0 });
     const c = cam.toScreen(1000, 300); // right edge world x
-    expect(c.sx).toBeCloseTo(400); // pulled to viewport centre
+    expect(c.sx).toBeCloseTo(400); // pulled to viewport center
   });
 
   it("scales the pan distance with zoom", () => {

@@ -252,7 +252,7 @@
   /* A translucent overlay instead of `filter: brightness()` — `filter` promotes
      whichever row is hovered to its own layer, and during a scroll (hover hops
      row to row every frame) that layer churn is what made group highlights lag.
-     An inset box-shadow lightens the inline group colour with no layer. */
+     An inset box-shadow lightens the inline group color with no layer. */
   box-shadow: inset 0 0 0 100vmax rgba(255, 255, 255, 0.08);
 }
 

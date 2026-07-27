@@ -49,7 +49,7 @@ export function CableCanvas() {
     if (mode !== "canvas") return;
     const canvas = canvasRef.current;
     if (!canvas || rendererRef.current || failedRef.current) return;
-    let cancelled = false;
+    let canceled = false;
     // On device loss, drop the renderer and fall back to DOM so cables reappear.
     const onLost = () => {
       failedRef.current = true;
@@ -59,7 +59,7 @@ export function CableCanvas() {
       renderModeStore.set("dom");
     };
     void GpuCableRenderer.create(canvas, onLost).then((r) => {
-      if (cancelled) { r?.dispose(); return; }
+      if (canceled) { r?.dispose(); return; }
       if (!r) {
         failedRef.current = true;
         // eslint-disable-next-line no-console
@@ -74,7 +74,7 @@ export function CableCanvas() {
       r.draw(transform, viewport.width, viewport.height);
     });
     return () => {
-      cancelled = true;
+      canceled = true;
       const r = rendererRef.current;
       if (r) {
         const { viewport, transform } = overlayBus.get();
@@ -84,7 +84,7 @@ export function CableCanvas() {
     };
   }, [mode]);
 
-  // Scene OR theme change → rebuild geometry (colours included) + redraw.
+  // Scene OR theme change → rebuild geometry (colors included) + redraw.
   useEffect(() => {
     if (mode !== "canvas") return;
     const r = rendererRef.current;

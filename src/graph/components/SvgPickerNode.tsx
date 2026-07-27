@@ -43,7 +43,7 @@ function bakeSelectionGlow(source: string, sel: string, color: string): string {
  * you click, so it doubles as a visual data slicer (click a region on a map →
  * filter a dataset by it). Load an SVG (local `.svg` or a web URL, like Image); the
  * markup is inlined into the well so its inner shapes are hoverable + clickable.
- * Hover glows a selectable element in the chosen colour; click commits it as the
+ * Hover glows a selectable element in the chosen color; click commits it as the
  * `Layer` output (Enter/blur commits on the text fields; a pick is a discrete
  * action, committed immediately). Clicking the current pick again clears it.
  *
@@ -143,7 +143,7 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
   }, [source, hovering]);
 
   // Keep the idle image current: rasterize the source (with the selection glow
-  // baked in) to a blob URL. Debounced so a colour drag — many ticks — doesn't
+  // baked in) to a blob URL. Debounced so a color drag — many ticks — doesn't
   // re-parse a big SVG each tick; the lag is hidden behind the live SVG shown while
   // hovering. Revokes the PREVIOUS url only once the new one exists (no blank gap).
   useEffect(() => {
@@ -164,7 +164,7 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
   // Revoke the live blob URL on unmount.
   useEffect(() => () => { if (rasterUrlRef.current) URL.revokeObjectURL(rasterUrlRef.current); }, []);
 
-  // Re-apply highlights when the selection or colour changes (source untouched).
+  // Re-apply highlights when the selection or color changes (source untouched).
   useLayoutEffect(() => {
     paint(selectedLayer, hoverElRef.current, hoverColor);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -252,7 +252,7 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
   }
 
   // Live swatch while dragging (repaints via state); commit downstream on blur so
-  // a wired Report re-reads the new colour once, not per drag tick.
+  // a wired Report re-reads the new color once, not per drag tick.
   function onColorInput(v: string) { setHoverColor(v); data.hoverColor = v; }
   function onColorCommit() { scheduleAutosave(); void processGraph(data.id); }
 
