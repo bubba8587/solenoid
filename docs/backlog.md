@@ -153,15 +153,18 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
 - [ ] **Keep `release-notes-features.md` current** — the curated 1.3 selling list +
   What's-New slide source (author writes the final release notes at cut time).
 
-- [ ] **Fold the remaining op-selector families into `nodeOps.ts`** — the seam shipped
-  2026-07-27 with 20 families declared. Not yet declared: the 17 distribution nodes
-  (cdf/pdf, and the `.RT` right-tail forms — Excel treats `CHISQ.DIST.RT` as its own
-  function, so those arguably want real leaves, not just search rows), Percentile /
-  Quartile / Percentrank (inc/exc), Pivot + CubeRollup + GroupByFrame (their `AggOp`
-  table needs identifying first), and the pure DATA pickers (Element's 118 entries,
-  PhysicsConstant, Antoine, PipeRoughness, ESeries, ResistorCode, Constant) — those
-  last are deliberately left off, since a marker on a material picker says nothing and
-  118 search rows would drown the results. `scripts/op-exposure.ts` lists them all.
+- [ ] **Give the kind-only families their ops lists** — all 98 op-selector families now
+  declare a `kind` (machine-checked by `nodeOps.test.ts`), but 77 are kind-only: they
+  classify the dropdown without listing its ops, so nothing new is searchable for them.
+  That is CORRECT for the ~48 already listed op-by-op (nothing is hidden). It leaves
+  real gaps for the collapsed ones, which would each gain `{ }` + search rows from an
+  ops list: the 17 distributions (cdf/pdf, and the `.RT` right-tail forms — Excel
+  treats `CHISQ.DIST.RT` as its own function, so those arguably want real leaves, not
+  just search rows), Percentile / Quartile / Percentrank (inc/exc), and Pivot +
+  CubeRollup + GroupByFrame (their `AggOp` table needs identifying first). The DATA
+  pickers (Element's 118 entries, PhysicsConstant, Antoine, PipeRoughness, ESeries,
+  ResistorCode, Constant) should STAY kind-only — a row per value would bury the menu.
+  `scripts/op-exposure.ts` lists the exposure gaps.
 - [ ] **Give the label-less op families real OP_META tables** — Comparison, IsTest,
   Cumulative, Gcd, RoundN keep their per-op labels in their React component's `OPS`
   array, so `nodeOps.ts` transcribes them. Move them into the node modules the way

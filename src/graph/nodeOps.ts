@@ -45,6 +45,32 @@ import { RegexNode, TextFilterNode, REGEX_OP_META, TEXT_FILTER_OP_META } from ".
 import { IsEvenOddNode, ComparisonNode, IsTestNode, PARITY_OP_META } from "./nodes/logic";
 import { RegressionNode, CorrelNode, REGRESSION_OP_META, CORREL_OP_META } from "./nodes/stats";
 import { TwoInputMathNode, GcdNode, RoundNNode, TWO_INPUT_MATH_OP_META } from "./nodes/scalar";
+// The kind-only families below, via the node barrel — they contribute no ops list,
+// only their class (for `instanceof`) and their kind.
+import {
+  AggregateNode, AntoineNode, ArgMinMaxNode, ArithmeticNode,
+  BesselNode, BetaDistNode, BinomDistNode, BitwiseNode,
+  BondPriceNode, BooleanOpNode, CharCodeNode, ChisqDistNode,
+  ChisqInvNode, CombinatoricsNode, ComplexBinaryNode, ComplexUnaryNode,
+  ConfidenceNode, ConstantNode, CouponNode, CovarianceNode,
+  CubeRollupNode, CumPmtNode, DateAddNode, DateDiffNode,
+  DatePartNode, DepreciationNode, DollarNode, DurationNode,
+  ESeriesNode, ElementNode, ExponDistNode, FDistNode,
+  FInvNode, FisherNode, GammaDistNode, GroupByFrameNode,
+  HypgeomDistNode, IpmtPpmtNode, LognormDistNode, MRoundNode,
+  MatDetNode, MathFnNode, NegbinomDistNode, NormDistNode,
+  NormSDistNode, NthValueNode, OddCouponNode, PercentileNode,
+  PercentrankNode, PhysicsConstantNode, PipeRoughnessNode, PivotNode,
+  PoissonDistNode, PriceDiscNode, PriceMatNode, QuartileNode,
+  RankNode, RollingNode, RomanArabicNode, SecurityDiscNode,
+  SumProductNode, TBillNode, TDistNode, TInvNode,
+  TTestNode, TableReshapeNode, TableSelectNode, TableTakeDropNode,
+  TextAfterBeforeNode, TextFindNode, TextSliceNode, TextTransformNode,
+  TodayNowNode, UrlEncodeNode, WeekInfoNode, WeibullDistNode,
+  WeightedNode,
+  ResistorCodeNode,
+} from "./rete-nodes";
+
 
 /** How a family's ops surface in the Add menu. `collapsed` is the default: a family
  *  earns per-op leaves deliberately, rather than every dropdown silently spraying
@@ -54,12 +80,10 @@ export type OpExposure = "collapsed" | "leaves";
 /** Whether an op is its own operation or a parameter of its host (D19 2(a)). */
 export type OpKind = "operation" | "argument";
 
-export interface NodeOpsDecl {
+interface NodeOpsBase {
   /** Catalog type of the leaf that represents this family in navigation. When ops
    *  are hidden, this is the leaf that carries the `{ }` marker. */
   type: string;
-  /** Every op, in menu order: the stored value and its user-facing label. */
-  ops: Array<{ op: string; label: string }>;
   kind: OpKind;
   /** Default `collapsed` — see the module note. */
   expose?: OpExposure;
@@ -76,12 +100,21 @@ export interface NodeOpsDecl {
    *  just this entry's own op (the partially-exposed families). Machine-checked
    *  against the real catalog by `nodeOps.test.ts`, so it cannot drift. */
   leafOps?: string[];
-  /** Build a node for one op. Used to generate leaves when expanded, and to make a
-   *  search hit constructible. Must go through the constructor: several of these
-   *  classes build DIFFERENT SOCKETS per op, so setting `.op` after the fact would
-   *  produce a card with the wrong ports. */
-  create: (op: string) => unknown;
 }
+
+/** A declaration either lists its ops AND can build them, or lists neither.
+ *
+ *  The pairing is enforced here rather than trusted: an ops list with no way to
+ *  construct one would produce a search row that cannot be added to the graph.
+ *  Omitting BOTH is the kind-only form — the declaration says what the dropdown
+ *  selects between and leaves the menu completely alone. That is right for a
+ *  family already listed op-by-op (nothing is hidden, so there is nothing to
+ *  list), and for one whose variants are DATA rather than operations, where a row
+ *  per value would bury the menu it was meant to help. */
+export type NodeOpsDecl = NodeOpsBase & (
+  | { ops: Array<{ op: string; label: string }>; create: (op: string) => unknown }
+  | { ops?: undefined; create?: undefined }
+);
 
 /** Read an OP_META table into the declaration's op list. The tables differ in their
  *  extra fields (some carry `description`, some `tex`/`plain`) but all carry `label`,
@@ -182,6 +215,102 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "roundn-round", ctor: RoundNNode, kind: "operation", ops: ROUNDN_OPS,
     leafOps: ["round", "roundup"],
     create: (op) => new RoundNNode({ op: op as never }) },
+
+  // ── Kind-only declarations ───────────────────────────────────────────────────
+  // These families are ALREADY listed op-by-op in the Add menu, so there is nothing
+  // to hide, mark or add to search — the declaration exists purely to say what the
+  // dropdown selects between, which is what tints its edge (and, later, what decides
+  // whether Tier 3 gives each op its own formula name).
+  //
+  // OPERATION: the variant is a distinct thing you would search the catalog for —
+  // SUM, ARGMIN, LEFT, EOMONTH, PRICE, ROMAN. Nearly all of them are Excel function
+  // names in their own right, which is the same test from the other direction.
+  { type: "reduce-sum", ctor: AggregateNode, kind: "operation" },
+  { type: "arg-argmax", ctor: ArgMinMaxNode, kind: "operation" },
+  { type: "arith-add", ctor: ArithmeticNode, kind: "operation" },
+  { type: "bessel-besselj", ctor: BesselNode, kind: "operation" },
+  { type: "bitwise-bitand", ctor: BitwiseNode, kind: "operation" },
+  { type: "bondprice-price", ctor: BondPriceNode, kind: "operation" },
+  { type: "bool-and", ctor: BooleanOpNode, kind: "operation" },
+  { type: "char-code-char", ctor: CharCodeNode, kind: "operation" },
+  { type: "chisqdist", ctor: ChisqDistNode, kind: "operation" },
+  { type: "chisqinv", ctor: ChisqInvNode, kind: "operation" },
+  { type: "comb-fact", ctor: CombinatoricsNode, kind: "operation" },
+  { type: "cx-binary-sum", ctor: ComplexBinaryNode, kind: "operation" },
+  { type: "cx-unary-conj", ctor: ComplexUnaryNode, kind: "operation" },
+  { type: "confidence-norm", ctor: ConfidenceNode, kind: "operation" },
+  { type: "constant", ctor: ConstantNode, kind: "operation" },
+  { type: "coupon-coupdaybs", ctor: CouponNode, kind: "operation" },
+  { type: "cov-pop", ctor: CovarianceNode, kind: "operation" },
+  { type: "cumpmt-cumipmt", ctor: CumPmtNode, kind: "operation" },
+  { type: "date-add-edate", ctor: DateAddNode, kind: "operation" },
+  { type: "date-diff-days", ctor: DateDiffNode, kind: "operation" },
+  { type: "date-part-year", ctor: DatePartNode, kind: "operation" },
+  { type: "depr-sln", ctor: DepreciationNode, kind: "operation" },
+  { type: "dollar-dollarde", ctor: DollarNode, kind: "operation" },
+  { type: "duration-duration", ctor: DurationNode, kind: "operation" },
+  { type: "finv", ctor: FInvNode, kind: "operation" },
+  { type: "fisher-fisher", ctor: FisherNode, kind: "operation" },
+  { type: "ipmt-ipmt", ctor: IpmtPpmtNode, kind: "operation" },
+  { type: "math-ceiling", ctor: MRoundNode, kind: "operation" },
+  { type: "matdet-mdeterm", ctor: MatDetNode, kind: "operation" },
+  { type: "math-abs", ctor: MathFnNode, kind: "operation" },
+  { type: "nth-large", ctor: NthValueNode, kind: "operation" },
+  { type: "oddcoupon-oddfprice", ctor: OddCouponNode, kind: "operation" },
+  { type: "stat-percentile", ctor: PercentileNode, kind: "operation" },
+  { type: "stat-percentrank", ctor: PercentrankNode, kind: "operation" },
+  { type: "pricedisc-pricedisc", ctor: PriceDiscNode, kind: "operation" },
+  { type: "pricemat-pricemat", ctor: PriceMatNode, kind: "operation" },
+  { type: "stat-quartile", ctor: QuartileNode, kind: "operation" },
+  { type: "rank-eq", ctor: RankNode, kind: "operation" },
+  { type: "rolling-sum", ctor: RollingNode, kind: "operation" },
+  { type: "roman-arabic-roman", ctor: RomanArabicNode, kind: "operation" },
+  { type: "secdesc-disc", ctor: SecurityDiscNode, kind: "operation" },
+  { type: "sp-sumproduct", ctor: SumProductNode, kind: "operation" },
+  { type: "tbill-tbilleq", ctor: TBillNode, kind: "operation" },
+  { type: "tinv", ctor: TInvNode, kind: "operation" },
+  { type: "t-test-paired", ctor: TTestNode, kind: "operation" },
+  { type: "reshape-wraprows", ctor: TableReshapeNode, kind: "operation" },
+  { type: "tblsel-chooserows", ctor: TableSelectNode, kind: "operation" },
+  { type: "tbltd-take", ctor: TableTakeDropNode, kind: "operation" },
+  { type: "text-after-before-after", ctor: TextAfterBeforeNode, kind: "operation" },
+  { type: "text-find-find", ctor: TextFindNode, kind: "operation" },
+  { type: "text-left", ctor: TextSliceNode, kind: "operation" },
+  { type: "text-upper", ctor: TextTransformNode, kind: "operation" },
+  { type: "date-today", ctor: TodayNowNode, kind: "operation" },
+  { type: "url-encode", ctor: UrlEncodeNode, kind: "operation" },
+  { type: "date-week-weekday", ctor: WeekInfoNode, kind: "operation" },
+  { type: "weighted-wavg", ctor: WeightedNode, kind: "operation" },
+
+  // ARGUMENT: the variant is a parameter or a datum, not something you look up by
+  // name. Three groups: an aggregator chosen for a host verb (Pivot/CubeRollup/
+  // GroupByFrame — "avg" means nothing without them); a distribution's cumulative
+  // form, which Excel itself models as the `cumulative` FLAG rather than as separate
+  // functions; and the data pickers, where the variants are VALUES — nobody searches
+  // the Add menu for "Helium" hoping to find the Element node, and a row per value
+  // would bury the menu it was meant to help.
+  { type: "th-antoine", ctor: AntoineNode, kind: "argument" },
+  { type: "betadist", ctor: BetaDistNode, kind: "argument" },
+  { type: "binomdist", ctor: BinomDistNode, kind: "argument" },
+  { type: "cube-rollup", ctor: CubeRollupNode, kind: "argument" },
+  { type: "elec-eseries", ctor: ESeriesNode, kind: "argument" },
+  { type: "elec-resistor-code", ctor: ResistorCodeNode, kind: "argument" },
+  { type: "ch-element", ctor: ElementNode, kind: "argument" },
+  { type: "expodist", ctor: ExponDistNode, kind: "argument" },
+  { type: "fdist", ctor: FDistNode, kind: "argument" },
+  { type: "gammadist", ctor: GammaDistNode, kind: "argument" },
+  { type: "group-by-frame", ctor: GroupByFrameNode, kind: "argument" },
+  { type: "hypgeomdist", ctor: HypgeomDistNode, kind: "argument" },
+  { type: "lognormdist", ctor: LognormDistNode, kind: "argument" },
+  { type: "negbinomdist", ctor: NegbinomDistNode, kind: "argument" },
+  { type: "normdist", ctor: NormDistNode, kind: "argument" },
+  { type: "normsdist", ctor: NormSDistNode, kind: "argument" },
+  { type: "em-constant", ctor: PhysicsConstantNode, kind: "argument" },
+  { type: "fl-roughness", ctor: PipeRoughnessNode, kind: "argument" },
+  { type: "pivot", ctor: PivotNode, kind: "argument" },
+  { type: "poissondist", ctor: PoissonDistNode, kind: "argument" },
+  { type: "tdist", ctor: TDistNode, kind: "argument" },
+  { type: "weibulldist", ctor: WeibullDistNode, kind: "argument" },
 ];
 
 const BY_TYPE = new Map(NODE_OPS.map((d) => [d.type, d]));
@@ -221,6 +350,7 @@ function primaryOpOf(host: NodeCatalogEntry): string | null {
 /** The ops of this family with no Add-menu leaf of their own — what search has to
  *  carry, and what makes the host show `{ }`. */
 export function hiddenOps(decl: NodeOpsDecl, host: NodeCatalogEntry): Array<{ op: string; label: string }> {
+  if (!decl.ops) return []; // kind-only: the menu is not this declaration's business
   const own = new Set(decl.leafOps ?? []);
   if (!decl.leafOps) {
     const primary = primaryOpOf(host);
@@ -230,8 +360,13 @@ export function hiddenOps(decl: NodeOpsDecl, host: NodeCatalogEntry): Array<{ op
 }
 
 /** Build the catalog entry for one op of a family — used both for a generated leaf
- *  (expose: "leaves") and for a search-only row (collapsed). */
-export function opEntry(decl: NodeOpsDecl, host: NodeCatalogEntry, op: { op: string; label: string }): NodeCatalogEntry {
+ *  (expose: "leaves") and for a search-only row (collapsed). Only reachable for a
+ *  declaration that lists ops, which by the type above also carries `create`. */
+export function opEntry(
+  decl: NodeOpsDecl & { create: (op: string) => unknown },
+  host: NodeCatalogEntry,
+  op: { op: string; label: string },
+): NodeCatalogEntry {
   return {
     ...host,
     type: `${decl.type}__op-${op.op}`,

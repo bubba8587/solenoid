@@ -1331,16 +1331,22 @@ body.solenoid-scrubbing * {
 
    THE CONFLICT THIS HAS TO DODGE: a full-strength accent border already means
    FOCUS on this very control (see :focus below). So the resting state takes a
-   MUTED accent — mixed toward the neutral border — and focus keeps the pure
-   accent. Type and state stay legible together, separated by intensity rather
-   than by two competing hues. Border width is untouched at 1px, so nothing
-   reflows and the control keeps its exact footprint.
+   slightly muted accent and focus keeps the pure one — type and state stay
+   legible together, separated by intensity rather than by two competing hues.
+
+   The 2px edge is paid for out of the PADDING, not the box: the neutral field's
+   1px border with 4px/8px padding becomes a 2px border with 3px/7px, so an
+   operation selector occupies exactly the same space as a neutral one and no row
+   reflows when a family is reclassified.
 
    `data-op-kind` is set on the card root by NodeCard, and is ABSENT for a family
    not yet declared in nodeOps.ts — an undeclared node stays neutral rather than
    claiming to be an argument selector. */
 .solenoid-node[data-op-kind="operation"] .solenoid-node__op-select {
-  border-color: color-mix(in srgb, var(--node-accent, var(--accent)) 62%, var(--border));
+  border-width: 2px;
+  border-color: color-mix(in srgb, var(--node-accent, var(--accent)) 85%, var(--border));
+  /* 1px off each side, so the outer box matches the 1px/4px/8px neutral field. */
+  padding: 3px 23px 3px 7px;
 }
 
 /* Focus outranks the resting type edge: same width, full-strength accent. Declared
