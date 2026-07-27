@@ -73,15 +73,20 @@ export function contrastInk(hex: string): string {
 }
 
 // Saturated accents tuned for a dark canvas glow a little on white. In light
-// mode nudge them slightly darker (HSV value only, −0.06) so they read as solid.
+// mode nudge them slightly darker (HSV value only) so they read as solid.
 // Caller passes the current mode (palette can't import appThemeStore — that'd be
 // a cycle, since appTheme imports the helpers above).
+// This is the GLOBAL light-mode darkening: it runs on every palette-derived color
+// (node accents, groups, notes, the minimap, --sol-error) and on socket slots
+// BEFORE their array/matrix shade derives, so the drop compounds through exactly
+// once. Kept light — the accents only need to stop glowing, not go muddy.
+const LIGHT_VALUE_DROP = 0.045;
 export function themeAccent(hex: string, mode: "dark" | "light"): string {
   if (mode !== "light") return hex;
   const t = parseHex(hex);
   if (!t) return hex;
   const [h, s, v] = rgbToHsv(...t);
-  return hsvToHex(h, s, Math.max(0, v - 0.06));
+  return hsvToHex(h, s, Math.max(0, v - LIGHT_VALUE_DROP));
 }
 
 // A distinctly darker shade of an accent, for light-mode outside borders so a
@@ -156,22 +161,37 @@ export const COLOR_PALETTE: PaletteSlot[] = [
 // socket family. appTheme writes these --sock-* vars on every apply (see SOCKET_VARS),
 // so App.css does not define them.
 //   - scalar: the slot color itself (mode-shifted via themeAccent).
-//   - array (a list of the scalar): a darker sibling — RGB-multiply ×0.8.
-//   - matrix (a 2-D grid): a punchier, hue-shifted sibling — −15° hue, L ×0.86.
+//   - array (a list of the scalar): a darker sibling — HSV value ×0.85.
+//   - matrix (a 2-D grid): a punchier, hue-shifted sibling — −11° hue, S ×1.18, V ×0.92.
 // number's MATRIX is the Table socket — a matrix-shade of number (gold), like
 // every other 2-D socket derives from its scalar; the grid glyph (not colour)
 // tells it apart from numlist.
-const ARRAY_DARKEN = 0.8;
+//
+// EVERY socket transform here works in HSV — same space as themeAccent /
+// darkenAccent / socketRingShade, so the whole family is tuned on one set of axes
+// and each knob does exactly one thing. Do NOT reintroduce an RGB multiply (it
+// silently couples value and saturation) or an HSL step (its L scale trades off
+// against saturation differently per hue, so the same constant read as
+// "darker" on saturated slots and "more chromatic" on dull ones).
+const ARRAY_VALUE_SCALE = 0.85;
 export function socketArrayShade(hex: string): string {
   const t = parseHex(hex);
   if (!t) return hex;
-  return `#${t.map((c) => Math.round(Math.min(255, Math.max(0, c * ARRAY_DARKEN))).toString(16).padStart(2, "0")).join("")}`;
+  const [h, s, v] = rgbToHsv(...t);
+  return hsvToHex(h, s, v * ARRAY_VALUE_SCALE);
 }
+// Hue shift is what actually separates a 2-D socket from its scalar (gold → orange,
+// sky → cyan); the S/V pair only keeps it in the same weight class. The gain/scale
+// are the HSV equivalent of the HSL step this replaced, averaged over the matrix
+// slots of every built-in palette, so swapping spaces didn't move the depth.
+const MATRIX_HUE_SHIFT = -11;
+const MATRIX_SAT_GAIN = 1.18;
+const MATRIX_VALUE_SCALE = 0.92;
 export function socketMatrixShade(hex: string): string {
   const t = parseHex(hex);
   if (!t) return hex;
-  const [h, s, l] = rgbToHsl(...t);
-  return hslToHex(h - 15, Math.min(1, s * 0.99), l * 0.86);
+  const [h, s, v] = rgbToHsv(...t);
+  return hsvToHex(h + MATRIX_HUE_SHIFT, Math.min(1, s * MATRIX_SAT_GAIN), v * MATRIX_VALUE_SCALE);
 }
 
 export type SocketVarKind = "scalar" | "array" | "matrix";
