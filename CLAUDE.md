@@ -255,9 +255,15 @@ Read the relevant section there before touching one of these. The one-line "don'
   `processGraph()` from a text field's `onChange`. Discrete picks (dropdowns, checkboxes,
   sliders) apply immediately.
 - **Zero learning curve from Excel**: every element self-documenting — hover tooltips (with
-  Excel equivalents), the Socket Legend, per-node descriptions from the catalog, the Function
-  Reference overlay (Ctrl+/). Someone who knows Excel but has never seen a node graph should
-  need zero Googling.
+  Excel equivalents), the Socket Legend, the formula editor's syntax highlighting, per-node
+  descriptions from the catalog, the Function Reference overlay (Ctrl+/). Someone who knows Excel
+  but has never seen a node graph should need zero Googling.
+  **This is a mandate for MECHANISMS, never for prose.** The app is visual and is NOT to be
+  explained by elaborate text. The Reference overlay's tab docs exist SOLELY for systems normal
+  usage cannot make obvious (the socket lattice, unit flow) — the things that would otherwise
+  need annotated examples or a tutorial. If a legend, tooltip, glyph or on-screen control already
+  carries it, the text must NOT restate it: `data-types.md` once held a nine-row shape table
+  rendered directly beneath the Socket Legend that already draws and labels all nine.
 - **No "Captain Obvious" UI strings** (standing aesthetic rule): never narrate the affordance
   ("Click to add", "Drag fields between boxes"), no placeholder sentences, no redundant
   subtitles restating a name. Prefer a single muted word over a sentence; nothing over a word;

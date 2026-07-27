@@ -1,22 +1,8 @@
-A socket's **shape** is the rank — how many dimensions the value has. Its **colour** is the element family — what kind of thing the individual values are. Within a family the list is a darker shade of the scalar and the matrix a punchier one; a combo's split square takes the scalar colour on the upper-left and the list colour on the lower-right.
+Two rules govern every cable, and neither one shows on the canvas.
 
-| Shape | What it carries |
-|---|---|
-| Filled circle | one value |
-| Filled square | a list — always a list |
-| Split square | one value **or** a list (a *combo*) |
-| 2×2 grid | a 2-D matrix |
-| Square with an **F** | a Frame — named, typed columns |
-| Hexagon | a Cube |
-| Circle with a **λ** | a function |
-| Square with bars · with text lines | a chart · a document |
-| Hollow ring | anything at all |
+**Families stay separate.** A value reaches only sockets of its own family, or a grey family-agnostic one. Crossing families takes a **Cast**, element-wise on a list. There is exactly one built-in bridge: **Boolean ⟷ number**, both directions, at every shape. TRUE / FALSE arrives as 1 / 0, and a number arrives as TRUE (non-zero), FALSE (zero) or unknown (NaN).
 
-**Two rules govern every cable.**
-
-**Families stay separate.** A value reaches only sockets of its own family, or a grey family-agnostic one. Crossing families takes a **Cast**, element-wise on a list. There is exactly one built-in bridge: **Boolean ⟷ number**, both directions, at every shape — TRUE / FALSE arrives as 1 / 0, and a number arrives as TRUE (non-zero), FALSE (zero) or unknown (NaN).
-
-**Rank flows upward.** A value drops into any socket of equal or greater rank — one value → list → matrix → Frame → Cube — and is reshaped on arrival. The reverse is refused. The one exception: a **combo** may feed its own family's scalar, because a combo may in fact be holding a single value. A plain list may not.
+**Rank flows upward** — the ladder below. Its one exception is the split square: a **combo** may feed its own family's scalar, because a combo may in fact be holding a single value. A plain list may not.
 
 The five families:
 

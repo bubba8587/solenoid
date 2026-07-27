@@ -8,7 +8,7 @@ The things that don't fit in a tooltip — deliberate choices, honest gaps, and 
 - A dropped node **snaps to the dot grid** when snap is on (toggle in the cable toolbar).
 - The **lasso's direction decides what it catches** — clockwise grabs anything it touches, counter-clockwise only what's fully inside.
 - A **Format Controller's lock rides the value, not the node**, so a single Controller at the end of a row of Displays formats every box in front of it.
-- **Double-click a Cube cell** to drill into its nested table.
+- **A Cube cell holds a nested table of its own**, drilled into in place.
 - Dates default to **DD-MMM-YYYY**; ISO and other styles are one pick away on a Format Controller.
 
 ## Where the edges are

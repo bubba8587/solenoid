@@ -154,6 +154,30 @@ app-wide, but touches feel of zoom).
   three causes" for a refused cable is the diagnostic, "three ways forward" was filler ahead of a
   list. Describing a non-obvious gesture's RESULT stays in bounds and is house style
   (help.md's lasso paragraph) — quick-wire and the drag guard read that way deliberately.
+- **"Zero learning curve from Excel" is a mandate for MECHANISMS, not prose** (author ruling,
+  now written into the CLAUDE.md bullet that caused the misread). It is satisfied by the syntax
+  highlighter, consistent tooltips, the legend, and the overlay EXISTING — not by explaining a
+  visual app in text. The overlay's tab docs are scoped to systems normal usage cannot make
+  obvious (the socket lattice, unit flow): what would otherwise need annotated examples or a
+  tutorial. **If a legend, tooltip, glyph or control already carries it, the text must not
+  restate it.** Caught live: `data-types.md` had grown a nine-row shape table (circle = one
+  value, hexagon = Cube, hollow ring = anything…) rendered directly BELOW `SocketLegendRows`,
+  which draws all nine with labelled hover tips, and ABOVE `DimensionalityFlow`, which already
+  states rank-widening, narrowing-blocked, split squares and the grey ladder. Cut. What survives
+  is only what no pixel conveys: family separation + the Boolean↔number bridge, the combo→scalar
+  narrowing exception, and the family semantics (date-as-serial, Kleene logic, Frame vs Cube).
+- **The gesture rule went aggressive on author ruling.** The first cut was a curated deny-list of
+  *conventional* gestures, on the theory that teaching a hidden binding is the overlay's job. The
+  author overruled it: an unmodified mouse gesture is never documentation, "obvious to anyone
+  with a brain and a mouse". `gesture-narration` now flags any plain click/drag/hover/tap/
+  double-click/right-click used as an instruction, and eleven strings were rewritten (Cube cell,
+  Point Plotter, Slider, XY Pad, Curve, Grid Painter, Slicer, Group, Note, SVG, Frame Input).
+  **What stays in bounds, and why the rule is positional rather than a verb ban:** a MODIFIED
+  gesture is an unguessable binding (`Shift-drag` lasso, `Ctrl+G`), and the same word as a noun
+  or descriptive gerund is prose, not instruction ("a drag that won't drop", "the drag guard",
+  "click-away", "mid-drag", "Dragging a cable into empty canvas opens the Add menu"). The split
+  is clause-head position or `<gesture> to <verb>`; all nine counterexamples are pinned in the
+  test. A general verb ban flagged every one of them.
 - **`uiCopy.test.ts` now machine-checks the decidable subset of DESIGN.md §7** over the help
   markdown + every catalog label/description (1,974 sentences). Four rules: teased counts, the
   slogan phrases, conventional-affordance narration, chummy asides. Rules were selected by ONE

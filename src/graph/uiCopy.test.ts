@@ -60,6 +60,14 @@ function uiStrings(): Unit[] {
 
 type Rule = { id: string; why: string; re: RegExp };
 
+/** A plain, unmodified mouse gesture. The compound forms are listed explicitly so
+ *  they match, while the bare forms refuse a hyphen or word character in front —
+ *  that one lookbehind is what keeps `Shift-drag`, `mid-drag` and `click-away`
+ *  out, and the trailing \b keeps `dragging` out. */
+const GESTURE =
+  "(?:(?:double|right|left|middle)-click|(?:left|right)-drag|" +
+  "(?<![-\\w])(?:click|drag|hover|tap|scroll|pinch|swipe)\\b)(?!-)";
+
 const RULES: Rule[] = [
   {
     id: "tease-count",
@@ -72,13 +80,27 @@ const RULES: Rule[] = [
     re: /\band then some\b|,\s*and more\b|\bmade simple\b|,\s*meet\s|\bnot (?:a |an )?(?:stripped-down|just another)\b/i,
   },
   {
-    id: "conventional-affordance",
-    why: "CLAUDE.md Captain Obvious — narrating an affordance the control already conveys (a tooltip on hover is universal; the control carries it)",
-    // Deliberately a curated deny-list of CONVENTIONAL gestures, not a general
-    // ban on gesture verbs. Teaching a hidden, app-specific gesture is the
-    // overlay doing its job — notes.md's "Double-click a Cube cell" must pass,
-    // because nothing on screen conveys that one.
-    re: /^\**(?:Hover|Scroll)\b|\bhover (?:over|a |any |the )|\bclick to (?:open|close|expand|collapse|see|view)\b/i,
+    id: "gesture-narration",
+    why: "CLAUDE.md Captain Obvious — an unmodified mouse gesture is not documentation. Say what the control IS or DOES; anyone with a mouse can find click, drag and double-click",
+    // Flags a PLAIN gesture used as an instruction. Two things are deliberately
+    // out of range, and both are load-bearing:
+    //   - a MODIFIED gesture (Shift-drag, Ctrl+G, right-drag) is an unguessable
+    //     binding, so documenting it is the overlay's job;
+    //   - the same word as a NOUN or a descriptive gerund ("a drag that won't
+    //     drop", "the drag guard", "click-away", "mid-drag", "Dragging a cable
+    //     into empty canvas opens the Add menu") describes behaviour, not an
+    //     instruction to the reader.
+    // The split is positional: a gesture at the head of a clause, or one
+    // followed by "to <verb>", is an instruction. Everything else is prose.
+    re: new RegExp(
+      "(?:^|[:;,]\\s*|\\*\\*|\\b(?:then|and|or)\\s+)" + GESTURE + "|" + GESTURE + "\\s+to\\s+\\w",
+      "i",
+    ),
+  },
+  {
+    id: "widget-narration",
+    why: "CLAUDE.md Captain Obvious — naming the control instead of the effect. Say what the option DOES; the reader can see it is a toggle",
+    re: /\b(?:with|from|via|using)\s+the\s+(?:dropdown|checkbox|button|toggle|slider|menu|picker|selector|field|box)\b|\b(?:dropdown|checkbox|button|toggle)\s+(?:lets|allows|selects|sets)\b/i,
   },
   {
     id: "chummy-aside",
@@ -110,15 +132,33 @@ describe("UI copy", () => {
   // first three specimens are real: they shipped in the Socket Types tab on
   // 2026-07-27 and were removed by the review that produced this file.
   it("every rule still fires on the string it was written for", () => {
-    const specimens: Record<string, string> = {
-      "tease-count": "On a type mismatch there are three ways forward:",
-      "conventional-affordance": "Hover any dot for its name.",
-      "chummy-aside": "…and wires the first compatible port for you.",
-      slogan: "Every chart Excel has, and then some",
+    const specimens: Record<string, string[]> = {
+      "tease-count": ["On a type mismatch there are three ways forward:"],
+      "chummy-aside": ["…and wires the first compatible port for you."],
+      "widget-narration": ["diagonal 1s, rest 0s — or blanks (nulls) via the toggle."],
+      slogan: ["Every chart Excel has, and then some"],
+      // Every string the 2026-07-27 aggressive sweep removed, verbatim.
+      "gesture-narration": [
+        "Hover any dot for its name.",
+        "- **Double-click a Cube cell** to drill into its nested table.",
+        "Click the chip to edit in a grid.",
+        "Drag a slider to set a value;",
+        "Drag a handle in a square to set two values at once.",
+        "Draw a dataset by hand: click a small plane to drop points, drag to move them, right-click to delete.",
+        "Draw a response curve: drag control points on a strip and a smooth spline through them is sampled into a list.",
+        "Paint a matrix by hand: left-drag fills cells with the Brush value, right-drag erases to blank.",
+        "Filter a Frame like an Excel slicer: pick a column, then click its values to keep matching rows.",
+        "Drag its header to move them together;",
+        "A free-floating markdown note with a title and body; drag it anywhere, tint it.",
+        "An interactive SVG: attach a local .svg or paste a URL, then click a shape or layer to output its name.",
+      ],
     };
     for (const rule of RULES) {
-      expect(specimens[rule.id], `no specimen for rule "${rule.id}"`).toBeTruthy();
-      expect(rule.re.test(specimens[rule.id]), `rule "${rule.id}" no longer fires`).toBe(true);
+      const set = specimens[rule.id];
+      expect(set?.length, `no specimen for rule "${rule.id}"`).toBeTruthy();
+      for (const s of set) {
+        expect(rule.re.test(s), `rule "${rule.id}" no longer fires on: ${s}`).toBe(true);
+      }
     }
   });
 
@@ -126,10 +166,16 @@ describe("UI copy", () => {
   // flag. They are all shipped copy, and all correct.
   it("does not flag legitimate copy", () => {
     const keep = [
-      "**Double-click a Cube cell** to drill into its nested table.", // teaches a hidden gesture
-      "Draw a dataset by hand: click a small plane to drop points, drag to move them.",
-      "Dragging a cable into empty canvas opens the Add menu filtered to nodes that will actually connect.",
+      // Modified gestures: unguessable bindings, so they are documentation.
+      "Shift-drag on empty canvas draws a free-form lasso, and its winding direction sets the rule.",
+      "**Shift-drag** a node to lock its motion to one axis.",
+      "A container: drop it around nodes, or select them and press Ctrl+G.",
+      // The gesture word as a noun or a descriptive gerund, not an instruction.
       "A drag that won't drop has exactly three causes: the canvas is locked; it's a self-loop; or the types don't connect.",
+      "The drag guard refuses silently, but wiring through the connection dialog names the reason.",
+      "Dragging a cable into empty canvas opens the Add menu filtered to nodes that will actually connect.",
+      "**Touch select** lassos with a finger, and **Insert ▸ Connection** wires two sockets by picking them from lists instead of dragging.",
+      "- **Edits commit on Enter or click-away, never on each keystroke**, the way a spreadsheet cell does.",
       "Cables always draw at full curved fidelity; the app never straightens or hides them mid-drag to buy frames.",
     ];
     for (const text of keep) {
