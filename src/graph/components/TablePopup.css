@@ -123,9 +123,12 @@
   text-align: right;
   outline: none;
 }
+/* The edited cell, the format selects and the CSV box all ring in the POPUP's own
+   accent. An app-accent ring inside an accent-tinted card puts two unrelated hues on
+   one surface — the header says frame violet, the ring said gold. */
 .table-popup__input:focus {
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
-  box-shadow: inset 0 0 0 1px var(--accent);
+  background: color-mix(in srgb, var(--node-accent, var(--accent)) 16%, transparent);
+  box-shadow: inset 0 0 0 1px var(--node-accent, var(--accent));
 }
 .table-popup__input[readonly] {
   color: var(--text);
@@ -217,7 +220,7 @@
 }
 .table-popup__fmtinline .table-popup__fmtselect { width: auto; min-width: 92px; }
 .table-popup__fmtselect:hover { border-color: var(--node-accent, var(--accent)); }
-.table-popup__fmtselect:focus { box-shadow: inset 0 0 0 1px var(--accent); }
+.table-popup__fmtselect:focus { box-shadow: inset 0 0 0 1px var(--node-accent, var(--accent)); }
 
 /* Matrix: one format+unit pair for the whole sheet, above the grid (between the
    popup header and the table). */
@@ -270,7 +273,7 @@
   resize: vertical;
   outline: none;
 }
-.table-popup__csv:focus { box-shadow: inset 0 0 0 1px var(--accent); }
+.table-popup__csv:focus { box-shadow: inset 0 0 0 1px var(--node-accent, var(--accent)); }
 .table-popup__csv[readonly] { color: var(--text); }
 
 /* Grid / CSV segmented toggle. */

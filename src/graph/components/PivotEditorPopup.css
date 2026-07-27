@@ -56,10 +56,11 @@
   gap: 6px;
   transition: border-color 0.12s, background 0.12s;
 }
+/* Drag-over drop target — the popup's accent, like every other tinted thing here. */
 .pivot-zone--over {
-  border-color: var(--accent);
+  border-color: var(--node-accent, var(--accent));
   border-style: solid;
-  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  background: color-mix(in srgb, var(--node-accent, var(--accent)) 8%, var(--surface));
 }
 .pivot-zone--filters { background: var(--surface-sunken); border-style: solid; }
 

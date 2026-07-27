@@ -136,7 +136,7 @@
   font-size: 11px;
   outline: none;
 }
-.solenoid-svgpick__url:focus { border-color: var(--accent); }
+.solenoid-svgpick__url:focus { border-color: var(--node-accent, var(--accent)); }
 .solenoid-svgpick__url::placeholder { color: var(--text-muted); }
 
 /* Color swatch — a bare native color input, chromeless so the color itself is
@@ -178,7 +178,7 @@
   font-size: 11px;
   outline: none;
 }
-.solenoid-svgpick__height input:focus { border-color: var(--accent); }
+.solenoid-svgpick__height input:focus { border-color: var(--node-accent, var(--accent)); }
 
 .solenoid-svgpick__hint {
   padding: 0 6px 6px;

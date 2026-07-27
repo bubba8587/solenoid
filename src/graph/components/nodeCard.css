@@ -528,8 +528,13 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   box-sizing: border-box;
 }
 
+/* Focus/hover rings inside a card take the CARD's accent, not the app's. The header
+   is already tinted with the node accent, so an app-accent ring put two unrelated
+   hues on one small surface (author 2026-07-27: "they really don't mix"). A node
+   with no accent falls back to the app accent, and app-level chrome — the command
+   palette, Settings, the Navigator, the accentless dialogs — is untouched. */
 .solenoid-node__value-input:focus {
-  border-color: var(--accent);
+  border-color: var(--node-accent, var(--accent));
 }
 
 .solenoid-node__display-value {
@@ -680,7 +685,7 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
 }
 .solenoid-node__resize-handle:hover {
   opacity: 0.9;
-  color: var(--accent);
+  color: var(--node-accent, var(--accent));
 }
 
 /* Touch: pad the hit area out for a fingertip. (It only responds on a SELECTED
@@ -810,7 +815,7 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   margin: 0;
 }
 .solenoid-node__inline-input:focus {
-  border-color: var(--accent);
+  border-color: var(--node-accent, var(--accent));
 }
 
 /* Scrubbing (InlineNumberField's pointer-drag gesture): pins the cursor to a
@@ -874,7 +879,7 @@ body.solenoid-scrubbing * {
   box-sizing: content-box;
 }
 .solenoid-node__quoted-input:focus {
-  border-color: var(--accent);
+  border-color: var(--node-accent, var(--accent));
 }
 
 /* Multi-line text value (the Text node's main field): a textarea that grows to
@@ -1007,7 +1012,7 @@ body.solenoid-scrubbing * {
   transition: border-color 80ms ease, color 80ms ease;
 }
 .solenoid-node__add-input:hover {
-  border-color: var(--accent);
+  border-color: var(--node-accent, var(--accent));
   color: var(--text);
 }
 
@@ -1079,7 +1084,7 @@ body.solenoid-scrubbing * {
   transition: border-color 80ms ease, color 80ms ease, background 80ms ease;
 }
 .solenoid-node__recalc-btn:hover {
-  border-color: var(--accent);
+  border-color: var(--node-accent, var(--accent));
   color: var(--text);
   background: var(--surface);
 }
@@ -1112,7 +1117,7 @@ body.solenoid-scrubbing * {
 }
 
 .solenoid-node__op-select:focus {
-  border-color: var(--accent);
+  border-color: var(--node-accent, var(--accent));
 }
 
 /* A labeled control row (Pivot per-value funcs, totals depth, sort) — a left
@@ -1148,7 +1153,7 @@ body.solenoid-scrubbing * {
   border-radius: 4px;
   cursor: pointer;
 }
-.solenoid-node__pivot-config:hover { border-color: var(--accent); }
+.solenoid-node__pivot-config:hover { border-color: var(--node-accent, var(--accent)); }
 .solenoid-node__pivot-summary {
   margin-top: 4px;
   font-size: 11px;
