@@ -4,7 +4,7 @@ import { reconcileTrueAnyTypes, type AdoptEditor } from "./trueAnyAdopt";
 import { DisplayNode } from "./nodes/display";
 import { IfNode } from "./nodes/logic";
 import { CableSwitchNode } from "./nodes/control";
-import { ListIndexNode, ReverseNode, SortByNode, GroupByNode, SetOpNode, ConcatListsNode, InterleaveNode, TableReshapeNode, VStackNode, HStackTableNode } from "./rete-nodes";
+import { ListIndexNode, ReverseNode, SortByNode, GroupByNode, SetOpNode, ConcatListsNode, InterleaveNode, TableReshapeNode, VStackNode, HStackTableNode, FrameInputNode, SortFrameNode, SelectColumnsNode } from "./rete-nodes";
 import { numberSocket, stringSocket, frameSocket, dateListSocket, strListSocket, strTableSocket, SolenoidSocket } from "./sockets";
 
 // Same fake-editor surface as conduitTrace.test.ts — the pass only reads
@@ -139,7 +139,9 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
     expect(dt(rev.outputs.result?.socket)).toBe("anylist");
   });
 
-  it("INDEX: the Array input adopts, the result stays the STATIC wildcard", () => {
+  it("INDEX: the Array input adopts, and an unknown frame's whole-row slice is a frame", () => {
+    // A bare frame OUTPUT with no resolvable shape behind it (a CSV / Web Source):
+    // with no Column named, the extraction is the whole row — still a frame.
     const src = new ClassicPreset.Node("Frame");
     src.addOutput("frame", new ClassicPreset.Output(frameSocket));
     const idx = new ListIndexNode();
@@ -148,7 +150,81 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
     ]);
     reconcileTrueAnyTypes(ed);
     expect(dt(idx.inputs.list?.socket)).toBe("frame");
-    expect(dt(idx.outputs.result?.socket)).toBe("trueany"); // a cube cell's type varies per row
+    expect(dt(idx.outputs.result?.socket)).toBe("frame");
+    // Name a column and the shape is unknown, so the family is too.
+    idx.literals.column = 2;
+    reconcileTrueAnyTypes(ed);
+    expect(dt(idx.outputs.result?.socket)).toBe("trueany");
+  });
+
+  // 2026-07-27: a frame's element family is per COLUMN, so INDEX resolves it from the
+  // static shape walk instead of giving up at the `frame` socket. Without this a date
+  // pulled out of a frame read as a raw serial downstream (isDateType reads the socket).
+  it("INDEX over a FRAME adopts the named COLUMN's type, through a verb chain", () => {
+    const src = new FrameInputNode({ frameText: JSON.stringify([
+      { name: "Item", type: "string", cells: ["nut", "bolt"] },
+      { name: "Due", type: "date", cells: ["2026-03-20", "2026-04-01"] },
+      { name: "Qty", type: "number", cells: ["3", "4"] },
+    ]) });
+    const sort = new SortFrameNode(); // a row-only verb: shape passes straight through
+    const idx = new ListIndexNode();
+    const ed = makeEditor([src, sort, idx], [
+      { source: src.id, sourceOutput: "frame", target: sort.id, targetInput: "frame" },
+      { source: sort.id, sourceOutput: "frame", target: idx.id, targetInput: "list" },
+    ]);
+
+    idx.literals.column = 2; // the Due column
+    reconcileTrueAnyTypes(ed);
+    expect(dt(idx.outputs.result?.socket)).toBe("datecombo"); // one date, or the whole column
+
+    idx.literals.column = 1;
+    reconcileTrueAnyTypes(ed);
+    expect(dt(idx.outputs.result?.socket)).toBe("strcombo");
+
+    idx.literals.column = 3;
+    idx.literals.index = 2; // a single CELL — same family, the combo covers both ranks
+    reconcileTrueAnyTypes(ed);
+    expect(dt(idx.outputs.result?.socket)).toBe("numlist");
+
+    // Blank / 0 Column = the whole row: a one-row frame.
+    delete idx.literals.column;
+    reconcileTrueAnyTypes(ed);
+    expect(dt(idx.outputs.result?.socket)).toBe("frame");
+  });
+
+  it("INDEX over a FRAME reads the column the VERB CHAIN produced, not the source", () => {
+    const src = new FrameInputNode({ frameText: JSON.stringify([
+      { name: "Item", type: "string", cells: ["nut"] },
+      { name: "Due", type: "date", cells: ["2026-03-20"] },
+    ]) });
+    const sel = new SelectColumnsNode();
+    (sel as unknown as { stringLiterals: Record<string, string> }).stringLiterals = { columns: "Due, Item" };
+    const idx = new ListIndexNode();
+    const ed = makeEditor([src, sel, idx], [
+      { source: src.id, sourceOutput: "frame", target: sel.id, targetInput: "frame" },
+      { source: sel.id, sourceOutput: "frame", target: idx.id, targetInput: "list" },
+    ]);
+    idx.literals.column = 1; // Select Columns reordered — column 1 is now Due
+    reconcileTrueAnyTypes(ed);
+    expect(dt(idx.outputs.result?.socket)).toBe("datecombo");
+  });
+
+  it("INDEX over a FRAME: a WIRED Column is a runtime value — back to the placeholder", () => {
+    const src = new FrameInputNode({ frameText: JSON.stringify([
+      { name: "Due", type: "date", cells: ["2026-03-20"] },
+    ]) });
+    const which = numSource();
+    const idx = new ListIndexNode();
+    idx.literals.column = 1;
+    const wire = { source: src.id, sourceOutput: "frame", target: idx.id, targetInput: "list" };
+    reconcileTrueAnyTypes(makeEditor([src, which, idx], [wire]));
+    expect(dt(idx.outputs.result?.socket)).toBe("datecombo");
+    // Wire the Column socket: data() takes the cable over the literal, so the stale
+    // literal must stop deciding the type.
+    reconcileTrueAnyTypes(makeEditor([src, which, idx], [
+      wire, { source: which.id, sourceOutput: "value", target: idx.id, targetInput: "column" },
+    ]));
+    expect(dt(idx.outputs.result?.socket)).toBe("trueany");
   });
 
   // The 2026-07-19 sweep: every honest element-preserving list op adopts its

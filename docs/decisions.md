@@ -342,6 +342,24 @@ socket said about rank, the exact kind of invisible side-channel that made the
 on a port that can emit a list. Cost recorded honestly in `type-resolution-plan.md`: it
 is a TRADE (a socket type for a flag), justified because it moves the fact into the
 type system rather than beside it.
+**AMENDED 2026-07-27 — a FRAME's family lives in the COLUMN, so INDEX reads it there
+(author: "INDEX of a Frame should pass through the column's data type").** The 07-25
+amendment stopped one step short: it said "frame/cube have no element family, so the
+placeholder stands", which is true of the SOCKET and false of the VALUE. A frame's
+columns are each homogeneous and named, and INDEX names WHICH one — so the family is
+knowable exactly when the column is. `project` now takes a `ProjectContext` (the static
+frame `Shape` arriving on the forwarded input + whether an input is wired), supplied by
+the adoption pass from the SAME `frameShapeResolver` walk the Cable Inspector's shape row
+uses. INDEX over a frame resolves: blank/0 Column → the whole row, still a `frame`;
+Column = c → that column's family at the COMBO rung. It falls back to `trueany` only
+where the answer is genuinely unknown — a WIRED Column (a runtime value the literal no
+longer decides), an unresolvable upstream shape (CSV / Web Source), a `dynamic` shape
+(a pivot's data-driven columns shift positions at compute time), or an out-of-range index.
+A CUBE cell stays `trueany` — it is the one container whose cells are heterogeneous
+*within a column* (it may hold a nested frame/cube). Second half of the change: a socket
+type can now be derived from static CONFIG, not just wiring, so the LITERAL commit paths
+(`InlineInputs`, `useNodeField`, the Frame Input source editor) call
+`reconcileTypesAfterEdit` — the settle early-outs unless a type actually moved.
 **What would reverse it:** none foreseen.
 
 ---

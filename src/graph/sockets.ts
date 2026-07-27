@@ -299,6 +299,16 @@ export function comboOfType(dt: SocketDataType): SocketDataType | null {
   return fam ? FAMILIES[fam].combo : null;
 }
 
+/** The COMBO rung of a NAMED element family — `comboOfType`'s sibling for a caller
+ *  that already holds a family instead of a socket type. A frame column's `type`
+ *  (`FrameColType`) IS a family name, so an extraction out of a named column resolves
+ *  through here (INDEX over a frame: which family you get is decided by the COLUMN,
+ *  not by the container's socket, which is the family-less `frame`). `null` for a
+ *  name outside the lattice. */
+export function comboOfFamily(fam: string): SocketDataType | null {
+  return FAMILIES[fam]?.combo ?? null;
+}
+
 /** The lattice rank of a type: 0 scalar, 1 list/combo, 2 matrix — including the
  *  rank-bearing wildcard rungs any(0)/anylist(1)/anytable(2). null for the rankless
  *  structural types (frame/cube/lambda/chart/document/trueany). */

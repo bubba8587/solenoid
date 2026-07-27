@@ -1,4 +1,5 @@
 import type { SocketDataType } from "../sockets";
+import type { Shape } from "../frameShape";
 
 // ─── The passthrough declaration — ONE source of truth ─────────────────────────
 // A "passthrough" node forwards a value from an input to an output unchanged: a
@@ -44,8 +45,30 @@ export interface PassthroughSpec {
    *  survives but the RANK doesn't (INDEX: one cell, or a whole axis, decided at
    *  runtime). Without it the output would parrot the container's type and refuse the
    *  scalar input the extracted cell belongs in. Omit for a true passthrough. */
-  project?: (t: SocketDataType) => SocketDataType;
+  project?: (t: SocketDataType, ctx: ProjectContext) => SocketDataType;
 }
+
+/** What a `project` may consult BEYOND the forwarded socket type. A homogeneous
+ *  container (list, matrix) fixes its element family in its socket, so `t` alone is
+ *  enough; a FRAME doesn't — its family is per-column, so the projection has to read
+ *  the static column shape flowing in plus the node's own column selection. Both are
+ *  supplied here rather than reached for directly, so this module still imports no
+ *  editor and no node classes. */
+export interface ProjectContext {
+  /** The static frame Shape arriving on a named INPUT, or null when it isn't a frame
+   *  or can't be known without running the graph (a CSV / Web Source, a wired-in
+   *  dynamic config). Same walk — and same "unknown" convention — as the Cable
+   *  Inspector's shape row. */
+  shapeOf: (inputKey: string) => Shape | null;
+  /** Does this input carry a cable? A projection that reads one of the node's own
+   *  literals may only trust it while that socket is UNWIRED — a cable's runtime
+   *  value wins in `data()`, and it isn't knowable here. */
+  wired: (inputKey: string) => boolean;
+}
+
+/** The degenerate context: nothing statically known. A projection falls back to
+ *  whatever it can say from the socket type alone. */
+export const BLIND_PROJECT_CONTEXT: ProjectContext = { shapeOf: () => null, wired: () => false };
 
 interface HasPassthrough { passthrough(): PassthroughSpec[]; }
 
@@ -102,11 +125,12 @@ export function resolvePassthroughType(
   spec: PassthroughSpec,
   typeOf: (key: string) => SocketDataType | null,
   agree: (types: (SocketDataType | null)[]) => SocketDataType,
+  ctx: ProjectContext = BLIND_PROJECT_CONTEXT,
 ): SocketDataType {
   const t = resolveForwardedType(spec, typeOf, agree);
   // An extraction reshapes the forwarded type to its own rank; a true passthrough
   // declares no `project` and forwards verbatim.
-  return spec.project ? spec.project(t) : t;
+  return spec.project ? spec.project(t, ctx) : t;
 }
 
 /** The `agree` rule for a selector: every WIRED branch must agree, or the result is

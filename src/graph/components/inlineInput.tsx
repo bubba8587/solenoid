@@ -4,7 +4,8 @@ import type { ClassicPreset } from "rete";
 import type { ClassicScheme, RenderEmit } from "rete-react-plugin";
 import { SolenoidSocket } from "../sockets";
 import { connectionVersionStore, processGraph, pushHistory } from "../process";
-import { getOwningEditor } from "../activeGraph";
+import { getOwningEditor, getOwningArea } from "../activeGraph";
+import { reconcileTypesAfterEdit } from "../fcReconcile";
 import { nodeName } from "../catalogUtils";
 import { collapseStore } from "../collapseStore";
 import { NodeSocket, MeasuredSocketRow } from "./NodeSocket";
@@ -479,15 +480,26 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
   const strLiterals = (node.stringLiterals ??= {});
 
   // Editing one node's literal is a pure value change (no topology) → targeted
-  // recompute: only this node + its downstream cone recompute and re-render.
+  // recompute: only this node + its downstream cone recompute and re-render. A literal
+  // can still move a derived SOCKET type (INDEX's Column, and every frame verb's config
+  // that feeds the static shape it reads), and no connection event fires on this path —
+  // so re-settle the wildcard types too. No-op unless a type actually moved.
+  function settleTypes() {
+    const ed = getOwningEditor(node.id);
+    const ar = getOwningArea(node.id);
+    if (ed && ar) reconcileTypesAfterEdit(ed, ar);
+  }
+
   async function set(key: string, v: number | undefined) {
     if (v === undefined) delete literals[key];
     else literals[key] = v;
+    settleTypes();
     await processGraph(node.id);
   }
 
   async function setStr(key: string, v: string) {
     strLiterals[key] = v;
+    settleTypes();
     await processGraph(node.id);
   }
 

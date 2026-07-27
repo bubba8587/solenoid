@@ -48,7 +48,8 @@ import { HEAD_OP_META, HEADER_OP_META, BLANK_ROW_OP_META } from "../nodes/frame"
 import { CubeDisplay } from "./CubeDisplay";
 import { parseFrameSource, frameSourceToText, type FrameSourceColumn } from "../frame";
 import { processGraph, bumpConnectionVersion } from "../process";
-import { getActiveEditor, getActiveArea } from "../activeGraph";
+import { getActiveEditor, getActiveArea, getOwningEditor, getOwningArea } from "../activeGraph";
+import { reconcileTypesAfterEdit } from "../fcReconcile";
 import { collapseStore } from "../collapseStore";
 import { pivotEditor } from "../pivotEditorStore";
 import { InlineInputs, InlineNumberField, InlineTextField, useConnectedInputs } from "./inlineInput";
@@ -77,6 +78,12 @@ export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType
   const source = useMemo(() => parseFrameSource(data.frameText), [data.frameText]);
   const onSaveSource = useCallback((columns: FrameSourceColumn[]) => {
     data.frameText = frameSourceToText(columns);
+    // The source IS this frame's static shape, so a column retyped/renamed/added here
+    // can retype a downstream socket that reads it (INDEX over a named column). No
+    // connection event fires on a text edit — settle the derived types by hand.
+    const ed = getOwningEditor(data.id);
+    const ar = getOwningArea(data.id);
+    if (ed && ar) reconcileTypesAfterEdit(ed, ar);
     void processGraph();
   }, [data]);
 

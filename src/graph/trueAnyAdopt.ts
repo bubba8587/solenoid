@@ -1,6 +1,7 @@
 import type { ClassicPreset } from "rete";
 import { AdoptiveSocket, MutableSocket, SolenoidSocket, adoptTypeForBase, projectTypeToBase, type SocketDataType } from "./sockets";
-import { getPassthrough, resolvePassthroughType, agreeTypes } from "./nodes/passthrough";
+import { getPassthrough, resolvePassthroughType, agreeTypes, type ProjectContext } from "./nodes/passthrough";
+import { makeFrameShapeResolver, type FrameShapeResolver } from "./frameShapeResolver";
 import { reconcileConduitTypes } from "./conduitTrace";
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
@@ -22,8 +23,11 @@ import type { Schemes } from "./schemes";
 //    SWITCH / IFS) adopt when every WIRED branch agrees, else stay `trueany`
 //    (the result type genuinely depends on runtime). An EXTRACTION (INDEX) forwards
 //    its container's element family at its OWN rank, via the spec's `project` — a
-//    homogeneous list/matrix has one family however you slice it, so only a
-//    heterogeneous container (frame cell, cube cell) resolves to `trueany`. Genuinely
+//    homogeneous list/matrix has one family however you slice it. A FRAME is
+//    heterogeneous, so its family lives per COLUMN, not in the socket: the projection
+//    reads the static column shape + the node's own Column selection through the
+//    `ProjectContext` this pass hands it, and only an unresolvable one (a runtime
+//    column, a CSV source's unknown shape, a cube cell) lands on `trueany`. Genuinely
 //    generative outputs (XLOOKUP — a cube cell's type varies per row) use a STATIC
 //    trueany socket and never appear here.
 //
@@ -51,9 +55,19 @@ function inType(node: AdoptNode, key: string): SocketDataType | null {
   return s instanceof SolenoidSocket ? s.dataType : null;
 }
 
-function reconcileOnce(editor: AdoptEditor): Set<string> {
+function reconcileOnce(editor: AdoptEditor, shapes: FrameShapeResolver): Set<string> {
   const conns = editor.getConnections();
   const changed = new Set<string>();
+  /** What a `project` may consult beyond the socket type — the static frame shape on
+   *  an input, and whether that input is wired. Built per node, lazily: only an
+   *  extraction out of a FRAME ever asks. */
+  const contextFor = (node: AdoptNode): ProjectContext => ({
+    shapeOf: (key) => {
+      const feed = conns.find((c) => c.target === node.id && c.targetInput === key);
+      return feed ? shapes.outShape(feed.source, feed.sourceOutput) : null;
+    },
+    wired: (key) => conns.some((c) => c.target === node.id && c.targetInput === key),
+  });
   for (const node of editor.getNodes()) {
     // 1) Every adoptive INPUT takes the wired output's current type.
     for (const [key, inp] of Object.entries(node.inputs ?? {})) {
@@ -81,7 +95,7 @@ function reconcileOnce(editor: AdoptEditor): Set<string> {
     //    EXTRACTION (INDEX) projects its container's family onto its own rank. A
     //    generative output (XLOOKUP, MAP, sources) declares nothing → static.
     for (const spec of getPassthrough(node)) {
-      const resolved = resolvePassthroughType(spec, (k) => inType(node, k), agreeTypes);
+      const resolved = resolvePassthroughType(spec, (k) => inType(node, k), agreeTypes, contextFor(node));
       const outSock = node.outputs?.[spec.output]?.socket;
       if (!(outSock instanceof MutableSocket)) continue;
       // Project onto the output's declared wildcard RANK (AdoptiveSocket base):
@@ -102,10 +116,15 @@ function reconcileOnce(editor: AdoptEditor): Set<string> {
  *  store; never touches connections. */
 export function reconcileTrueAnyTypes(editor: AdoptEditor): Set<string> {
   const all = new Set<string>();
+  // ONE shape walk for the whole fixpoint: a static frame shape is a function of
+  // topology + literal config only — nothing the adoption passes mutate — so its memo
+  // stays valid across passes (and a fresh resolver per pass would re-walk the frame
+  // graph up to 32 times).
+  const shapes = makeFrameShapeResolver(editor as never);
   // A chain of N passthroughs settles in ≤ N passes; the cap guards a #CIRC!
   // loop of passthroughs (which converges to trueany or a stable type anyway).
   for (let pass = 0; pass < 32; pass++) {
-    const changed = reconcileOnce(editor);
+    const changed = reconcileOnce(editor, shapes);
     if (changed.size === 0) break;
     changed.forEach((id) => all.add(id));
   }

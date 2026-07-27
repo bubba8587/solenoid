@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { getPassthrough, isPassthroughNode, isPurePassthroughNode, passInputKeys, selectedPassInput, resolvePassthroughType } from "./nodes/passthrough";
+import { getPassthrough, isPassthroughNode, isPurePassthroughNode, passInputKeys, selectedPassInput, resolvePassthroughType, type ProjectContext } from "./nodes/passthrough";
+import type { Shape } from "./frameShape";
 import { canConnect, isDateType, type SocketDataType } from "./sockets";
 import { DisplayNode } from "./nodes/display";
 import { ExpectNode } from "./nodes/quality";
@@ -119,10 +120,49 @@ describe("passthrough declarations", () => {
     expect(resolve("complexlist")).toBe("complexcombo");
 
     // HETEROGENEOUS or untyped: genuinely unknowable, so the placeholder stands.
-    for (const t of ["frame", "cube", "anylist", "anytable", "any", "trueany"] as const) {
+    for (const t of ["cube", "anylist", "anytable", "any", "trueany"] as const) {
       expect(resolve(t)).toBe("trueany");
     }
     expect(resolve(null)).toBe("trueany"); // unwired
+    // A FRAME resolves per COLUMN, not per socket — with no shape context and no
+    // Column set, the extraction is the whole row, which is still a frame.
+    expect(resolve("frame")).toBe("frame");
+  });
+
+  it("INDEX over a FRAME takes the named COLUMN's family from the static shape", () => {
+    const n = new ListIndexNode();
+    const spec = getPassthrough(n)[0];
+    const shape: Shape = {
+      columns: [{ name: "Item", type: "string" }, { name: "Due", type: "date" }, { name: "Qty", type: "number" }],
+    };
+    const resolve = (ctx: Partial<ProjectContext>) =>
+      resolvePassthroughType(spec, () => "frame", () => "trueany", {
+        shapeOf: () => shape, wired: () => false, ...ctx,
+      });
+
+    // No Column → the whole row (or the whole frame): still a frame.
+    expect(resolve({})).toBe("frame");
+    n.literals.column = 0; // Excel's explicit "all columns"
+    expect(resolve({})).toBe("frame");
+
+    // A named column: THAT column's family, at the combo rung (whole column for a
+    // blank Row, one cell otherwise).
+    n.literals.column = 2;
+    expect(resolve({})).toBe("datecombo");
+    n.literals.column = 1;
+    expect(resolve({})).toBe("strcombo");
+    n.literals.column = 3;
+    expect(resolve({})).toBe("numlist");
+
+    // Out of range (a #REF! at runtime), an unknown upstream shape (CSV / Web
+    // Source), a data-driven column count, and a WIRED Column (a runtime value the
+    // literal no longer decides) all stay the placeholder.
+    n.literals.column = 9;
+    expect(resolve({})).toBe("trueany");
+    n.literals.column = 2;
+    expect(resolve({ shapeOf: () => null })).toBe("trueany");
+    expect(resolve({ shapeOf: () => ({ ...shape, dynamic: true }) })).toBe("trueany");
+    expect(resolve({ wired: (k) => k === "column" })).toBe("trueany");
   });
 
   // The point of the change: a date pulled out of a date list stays a DATE downstream.

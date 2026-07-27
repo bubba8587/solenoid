@@ -8,7 +8,8 @@ import { settingsStore } from "../settingsStore";
 import type { ClassicPreset } from "rete";
 import type { ClassicScheme, RenderEmit } from "rete-react-plugin";
 import { processGraph } from "../process";
-import { getOwningEditor } from "../activeGraph";
+import { getOwningEditor, getOwningArea } from "../activeGraph";
+import { reconcileTypesAfterEdit } from "../fcReconcile";
 import { sharedAnnotationResolver } from "../unitFlow";
 import { NodeCard, HEADER_TAP_SLOP } from "./NodeCard";
 import { LazySelect } from "./LazySelect";
@@ -116,6 +117,14 @@ export function useNodeField<N extends object, K extends keyof N>(
     (next: N[K]) => {
       node[key] = next;
       setVal(next);
+      // A config pick is a value change, but some config feeds a DERIVED socket type
+      // (a Group By / Pivot aggregate decides the column type an INDEX downstream
+      // reads out of the resulting frame), and no connection event fires here. The
+      // settle early-outs when nothing moved, so the common case costs one pass.
+      const id = (node as { id?: string }).id;
+      const ed = id ? getOwningEditor(id) : null;
+      const ar = id ? getOwningArea(id) : null;
+      if (ed && ar) reconcileTypesAfterEdit(ed, ar);
       void processGraph();
     },
     [node, key],

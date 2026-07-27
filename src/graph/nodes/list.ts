@@ -1,11 +1,11 @@
 import { ClassicPreset } from "rete";
-import { numListSocket, strListSocket, dateListSocket, logicalListSocket, comboOfType, type SolenoidSocket } from "../sockets";
+import { numListSocket, strListSocket, dateListSocket, logicalListSocket, comboOfType, comboOfFamily, type SocketDataType, type SolenoidSocket } from "../sockets";
 import { parseListLiteral } from "../coerceInputs";
 import { parseDateToSerial } from "./date";
 import type { Cell as AnyCell } from "./coerce";
 import { getRecalcGen } from "../process";
 import { listIn, listOut, numIn, numOut, anyIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameIn, frameOut, anyListIn, adoptiveListIn, adoptiveListOut } from "./shared";
-import type { PassthroughSpec } from "./passthrough";
+import type { PassthroughSpec, ProjectContext } from "./passthrough";
 import { pairIdsFromKeys } from "./logic";
 import { passesFilter, VALUELESS_FILTER_OPS, type FilterOp, type FilterCondConfig } from "../frameVerbs";
 import { solError, isSolError, type SolError } from "../errorValue";
@@ -294,16 +294,49 @@ export class ListIndexNode extends ClassicPreset.Node {
    *  `project` maps the container type to the extraction's own rank: what varies with
    *  Row/Column is the RANK, not the family (one cell, or a whole axis), and the COMBO
    *  rung means exactly that — so the result feeds a scalar input AND a list input.
-   *  A frame or cube has no element family, so `comboOfType` returns null there and
-   *  the placeholder stands. That is the honest reading of D18's own "adopt only where
-   *  honest" rule, applied per container instead of to the node as a whole. */
+   *  A cube has no element family, so `comboOfType` returns null there and the
+   *  placeholder stands. That is the honest reading of D18's own "adopt only where
+   *  honest" rule, applied per container instead of to the node as a whole.
+   *
+   *  A FRAME resolves through `frameProjection` instead: a frame's element family is
+   *  a property of the COLUMN, not of the `frame` socket, so the family is knowable
+   *  exactly when the column is (2026-07-27). */
   passthrough(): PassthroughSpec[] {
     return [{
       output: "result",
       inputs: ["list"],
       combine: "single",
-      project: (t) => comboOfType(t) ?? "trueany",
+      project: (t, ctx) => (t === "frame" ? this.frameProjection(ctx) : comboOfType(t) ?? "trueany"),
     }];
+  }
+
+  /** The output type for a FRAME container. `comboOfType("frame")` is null — a frame
+   *  is heterogeneous, so the socket carries no family — but the frame's COLUMNS each
+   *  do, and which one this node reads is the Column field. Resolved off the same
+   *  static shape walk the Cable Inspector's shape row uses, so a date column pulled
+   *  through INDEX reads as a date downstream (`isDateType` reads the SOCKET) instead
+   *  of a raw serial, and the output dot colors like the column it came from.
+   *
+   *  Every arm mirrors `data()` below:
+   *   • blank/0 Column  → the whole ROW: a one-row FRAME (or the container itself when
+   *                       Row is blank too) — still a frame either way.
+   *   • Column = c      → that column's family at the COMBO rung: the whole column for
+   *                       a blank Row, one cell otherwise. */
+  private frameProjection(ctx: ProjectContext): SocketDataType {
+    // A WIRED Column is a runtime value — `data()` takes the cable over the literal,
+    // and this walk can't know it. Same "treat a wired config as unconfigured" rule
+    // the static shape walk applies to a wired-in column name.
+    if (ctx.wired("column")) return "trueany";
+    const col = this.literals.column;
+    if (col == null || Math.round(col) === 0) return "frame";
+    const shape = ctx.shapeOf("list");
+    // A DYNAMIC shape (a pivot's data-driven columns, Split Column's part count) grows
+    // columns at compute time and shifts the ones after them, so a POSITIONAL index
+    // into it isn't trustworthy — the honest answer is "unknown".
+    if (!shape || shape.dynamic) return "trueany";
+    const c = shape.columns[Math.round(col) - 1]; // 1-based, Excel INDEX
+    if (!c) return "trueany"; // out of range — a #REF! at runtime, no family to adopt
+    return comboOfFamily(c.type) ?? "trueany";
   }
 
   data(inputs: { list?: unknown[]; index?: number[]; column?: number[] }): { result: number | SolError | null | CubeCell | FrameValue | CubeValue } {
