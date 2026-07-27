@@ -130,19 +130,9 @@ export function SortIndicator({ dir }: { dir: SortDir | null }) {
 }
 
 /**
- * Props for the header cell that cycles the sort: the whole cell is the target, so a
- * tap anywhere on it sorts. Spread onto the `<th>`, which also carries
- * `table-popup__colhead--sortable` for the pointer cursor — the only affordance,
- * since nothing is drawn until a column is actually sorted.
- *
- * Anything INTERACTIVE inside that header — the frame editor's column-name field and
- * its type toggle — must stop propagation, or typing a name would also re-sort the
- * table under the cursor. `stopSortTrigger` is that opt-out; the two live next to each
- * other so the pairing is visible at both call sites.
+ * Spread onto an interactive control INSIDE a sortable header — the frame editor's
+ * column-name field, its type toggle. The header cell itself is the click target, so
+ * without this, typing a name or cycling a column type would also re-sort the table
+ * under the cursor. Any control added inside a header needs it.
  */
-export function sortTriggerProps(onCycle: () => void, title?: string) {
-  return { title, onClick: onCycle };
-}
-
-/** Spread onto an interactive control inside a sortable header (see above). */
 export const stopSortTrigger = { onClick: (e: { stopPropagation: () => void }) => e.stopPropagation() };

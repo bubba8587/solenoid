@@ -4,7 +4,7 @@ import { appThemeStore } from "../appTheme";
 import { cubeRowCount, cubeDepth, frameRowCount } from "../frame";
 import { CubeCellChip, frameCellNode } from "./cubeCell";
 import { PopupShell, popupCardVars } from "./PopupShell";
-import { useColumnSort, sortedOrder, sortKeyOf, SortIndicator, sortTriggerProps, type SortKey } from "./columnSort";
+import { useColumnSort, sortedOrder, sortKeyOf, SortIndicator, type SortKey } from "./columnSort";
 import { APP_LOCALE } from "../locale";
 import "./TablePopup.css";
 
@@ -137,7 +137,8 @@ export function CubePopup() {
                   key={c}
                   // The whole header cell cycles the sort; this grid is read-only, so
                   // nothing inside it needs to opt out.
-                  {...sortTriggerProps(() => cycleSort(c), headers?.[c])}
+                  title={headers?.[c]}
+                  onClick={() => cycleSort(c)}
                   className={`${headers ? "table-popup__colhead table-popup__colhead--name" : "table-popup__colhead"} table-popup__colhead--sortable`}
                 >
                   {headers ? headers[c] : c + 1}
