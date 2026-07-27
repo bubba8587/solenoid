@@ -4,7 +4,7 @@ import { appThemeStore } from "../appTheme";
 import { cubeRowCount, cubeDepth, frameRowCount } from "../frame";
 import { CubeCellChip, frameCellNode } from "./cubeCell";
 import { PopupShell, popupCardVars } from "./PopupShell";
-import { useColumnSort, sortedOrder, sortKeyOf, SortIndicator, type SortKey } from "./columnSort";
+import { useColumnSort, sortedOrder, sortKeyOf, sortDirOf, SortIndicator, type SortKey } from "./columnSort";
 import { APP_LOCALE } from "../locale";
 import "./TablePopup.css";
 
@@ -142,7 +142,7 @@ export function CubePopup() {
                   className={`${headers ? "table-popup__colhead table-popup__colhead--name" : "table-popup__colhead"} table-popup__colhead--sortable`}
                 >
                   {headers ? headers[c] : c + 1}
-                  <SortIndicator dir={sort?.col === c ? sort.dir : null} />
+                  <SortIndicator dir={sortDirOf(sort, c)} />
                 </th>
               ))}
             </tr>

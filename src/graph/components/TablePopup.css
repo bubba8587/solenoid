@@ -219,8 +219,24 @@
 }
 :root[data-theme="light"] .table-popup__sort { background: rgba(255, 255, 255, 0.72); }
 
+/* FRAME headers only: the name field fills the cell, so on a phone there's no reliable
+   margin left to tap. There the chevron is drawn even when unsorted and is itself the
+   control — quiet in that resting state (it's an affordance, not state), full strength
+   once it carries a direction. The header reserves room for it (--sortpad) so a
+   full-width name input can't slide under it while you type. */
+.table-popup__sort--btn {
+  pointer-events: auto;
+  padding: 0;
+  border: none;
+  cursor: pointer;
+}
+.table-popup__sort--off { color: var(--text-dim); opacity: 0.6; }
+.table-popup__sort--btn:hover { opacity: 1; color: var(--text); }
+.table-popup__colhead--sortpad { padding-right: 18px; }
+
 @media (pointer: coarse) {
   .table-popup__sort { width: 20px; height: 20px; }
+  .table-popup__colhead--sortpad { padding-right: 24px; }
 }
 
 /* ── Format-Controller controls row (read-only frames / matrices) ────────────

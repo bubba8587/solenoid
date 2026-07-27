@@ -252,8 +252,23 @@ authored, white in light, where a dark chip with a dark glyph is the same collis
 reserves NO width at all, so an unsorted grid measures exactly as it did before the feature.
 The one thing this shape needs care with: anything interactive INSIDE a sortable header has to
 stop propagation or it re-sorts the table as you use it. That's the frame editor's column-name
-field and its type toggle; `stopSortTrigger` sits next to `sortTriggerProps` in the module so
-the pairing is visible at the call site.
+field and its type toggle (`stopSortTrigger`).
+**FRAME headers are the exception, for a mobile reason:** the name field fills the cell, so
+there's no dependable margin left to tap on a phone. There the chevron is always drawn — muted
+double chevron while unsorted, since it's an affordance not state — and is itself the control,
+with the header reserving room for it so a full-width name input can't slide under it. Every
+other header keeps the invisible-until-sorted shape.
+
+**Multi-column sort, Excel's add-a-level model** (author). Keys accumulate; priority is the
+order they were ADDED, not the order they were touched. Category then Name → Category then
+Name; clear Category → just Name; add Category back and it lands at the END, so it's Name then
+Category. A column changing DIRECTION keeps its place; only clearing and re-adding moves it.
+`nextSort(sort, col)` is the whole rule as a pure step, which is what the tests exercise — the
+hook is a `useState` over it, so there's no second copy of the cycle to drift. `sortedOrder`
+consults keys in order and the first that separates two rows decides; blanks stay last per key
+and, when both rows are blank on a key, the next key gets its turn.
+No priority NUMERALS in the headers — Excel doesn't show them either, and the chevron pad has
+no room. If a 3+ key sort ever gets confusing in practice that's the first thing to add.
 
 **The other half — a socket type can now be derived from static CONFIG, not just wiring.** That
 was a new class of trigger: every derived-type settle hung off a connection event, and a literal

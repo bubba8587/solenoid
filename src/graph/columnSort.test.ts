@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { sortKeyOf, sortedOrder, type ColumnSort } from "./components/columnSort";
+import { sortKeyOf, sortedOrder, sortDirOf, nextSort, type ColumnSort } from "./components/columnSort";
 import { solError } from "./errorValue";
 
 // The visual-only popup sort. Only the PURE parts are pinned here (the vitest env is
@@ -7,8 +7,8 @@ import { solError } from "./errorValue";
 // falls out. The invariant the popups depend on is that `sortedOrder` returns SOURCE
 // row indices — every caller keeps writing edits to the row the user is looking at.
 
-const asc = (col: number): ColumnSort => ({ col, dir: "asc" });
-const desc = (col: number): ColumnSort => ({ col, dir: "desc" });
+const asc = (col: number): ColumnSort => [{ col, dir: "asc" }];
+const desc = (col: number): ColumnSort => [{ col, dir: "desc" }];
 const keyOf = (grid: unknown[][]) => (r: number, c: number) => sortKeyOf(grid[r]?.[c]);
 
 describe("sortKeyOf — what a cell reduces to", () => {
@@ -40,7 +40,7 @@ describe("sortedOrder — SOURCE row indices in display order", () => {
   const grid = [["b", 2], ["a", 10], ["c", 1]];
 
   it("is the identity when unsorted, so a caller maps through it unconditionally", () => {
-    expect(sortedOrder(3, null, keyOf(grid))).toEqual([0, 1, 2]);
+    expect(sortedOrder(3, [], keyOf(grid))).toEqual([0, 1, 2]);
   });
 
   it("orders text alphabetically and reverses on desc", () => {
@@ -74,5 +74,65 @@ describe("sortedOrder — SOURCE row indices in display order", () => {
     // rendered as "20-Mar-2026" / "01-Apr-2026" would sort alphabetically.
     const serials = [[46110], [46021], [46387]];
     expect(sortedOrder(3, asc(0), keyOf(serials))).toEqual([1, 0, 2]);
+  });
+});
+
+describe("multi-column sort — Excel's add-a-level model", () => {
+  // Category / Name / Qty. Rows chosen so Category alone leaves ties for Name to break.
+  const grid = [
+    ["fruit", "pear", 3],
+    ["veg", "leek", 1],
+    ["fruit", "apple", 2],
+    ["veg", "carrot", 9],
+  ];
+  const k = keyOf(grid);
+
+  it("consults keys in PRIORITY order — the first that separates two rows decides", () => {
+    // Category, then Name: fruits before veg, alphabetical within each.
+    const sort: ColumnSort = [{ col: 0, dir: "asc" }, { col: 1, dir: "asc" }];
+    expect(sortedOrder(4, sort, k)).toEqual([2, 0, 3, 1]);
+    // Swap the priority and the grouping changes completely.
+    const flipped: ColumnSort = [{ col: 1, dir: "asc" }, { col: 0, dir: "asc" }];
+    expect(sortedOrder(4, flipped, k)).toEqual([2, 3, 1, 0]);
+  });
+
+  it("mixes directions per key — category ascending, name descending within it", () => {
+    const sort: ColumnSort = [{ col: 0, dir: "asc" }, { col: 1, dir: "desc" }];
+    expect(sortedOrder(4, sort, k)).toEqual([0, 2, 1, 3]);
+  });
+
+  it("walks the author's own worked example: add, add, clear, re-add", () => {
+    // "sort category, then Name, it sorts category then Name"
+    let s: ColumnSort = [];
+    s = nextSort(s, 0);
+    expect(s).toEqual([{ col: 0, dir: "asc" }]);
+    s = nextSort(s, 1);
+    expect(s).toEqual([{ col: 0, dir: "asc" }, { col: 1, dir: "asc" }]);
+    // "clear category, it's just Name" — desc, then a third click drops it.
+    s = nextSort(s, 0);
+    s = nextSort(s, 0);
+    expect(s).toEqual([{ col: 1, dir: "asc" }]);
+    // "add category back, it's name then category" — it lands at the END.
+    s = nextSort(s, 0);
+    expect(s).toEqual([{ col: 1, dir: "asc" }, { col: 0, dir: "asc" }]);
+  });
+
+  it("keeps a key's PLACE when only its direction changes", () => {
+    let s: ColumnSort = [{ col: 0, dir: "asc" }, { col: 1, dir: "asc" }];
+    s = nextSort(s, 0); // asc → desc, still primary
+    expect(s).toEqual([{ col: 0, dir: "desc" }, { col: 1, dir: "asc" }]);
+  });
+
+  it("lets a LATER key break a tie the earlier one leaves blank on both sides", () => {
+    const g = [["x", null, 2], ["x", null, 1]];
+    const sort: ColumnSort = [{ col: 1, dir: "asc" }, { col: 2, dir: "asc" }];
+    expect(sortedOrder(2, sort, keyOf(g))).toEqual([1, 0]);
+  });
+
+  it("sortDirOf reports a column's direction, or null when it isn't a key", () => {
+    const sort: ColumnSort = [{ col: 3, dir: "desc" }];
+    expect(sortDirOf(sort, 3)).toBe("desc");
+    expect(sortDirOf(sort, 1)).toBeNull();
+    expect(sortDirOf([], 3)).toBeNull();
   });
 });
