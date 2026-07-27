@@ -10,7 +10,7 @@ import {
   numberToText,
   type FuncFamily,
 } from "./excelFunctions";
-import { compileEvaluator, FORMULA_FUNCTION_NAMES } from "./excelFormula";
+import { compileEvaluator, formulaFunctionNames } from "./excelFormula";
 import { isSolError, type SolError } from "./errorValue";
 import { jsDateToSerial, serialToJsDate } from "./nodes/date";
 
@@ -155,7 +155,7 @@ describe("Solenoid-only functions — the registry ADDS what Formula.js lacks", 
   it("CLAMP / ORDINAL / BETWEEN don't exist in Formula.js but ARE in the autocomplete list", () => {
     for (const name of ["CLAMP", "ORDINAL", "BETWEEN"]) {
       expect((FX as Record<string, unknown>)[name]).toBeUndefined();   // not from Formula.js
-      expect(FORMULA_FUNCTION_NAMES).toContain(name);                  // but offered + highlighted
+      expect(formulaFunctionNames()).toContain(name);                  // but offered + highlighted
     }
   });
   it("CLAMP bounds a number (number type)", () => {

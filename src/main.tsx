@@ -9,6 +9,7 @@ import { probeGpu } from "./graph/gpuProbe";
 import { initSettings } from "./graph/settingsStore";
 import { initPacks } from "./graph/packs";
 import { initPackFcExtensions } from "./graph/fcExtensions";
+import { initPackFormulas } from "./graph/formulaExtensions";
 import { initFrameBackend } from "./graph/frameBackend";
 import { shouldReloadForChunkError, type ReloadStore } from "./graph/chunkReloadGuard";
 import { initDevtoolsHotkey } from "./graph/devtoolsHotkey";
@@ -114,6 +115,7 @@ void probeGpu().then((cap) => {
 });
 initPacks();
 initPackFcExtensions(); // register pack-contributed FC units/formats for resolution
+initPackFormulas();     // ...and pack-contributed formula functions (advertised only while active)
 
 // Select the native Polars frame backend on desktop (no-op on web — keeps the
 // in-process JS backend). Best-effort; the seam is inert until frame nodes migrate.

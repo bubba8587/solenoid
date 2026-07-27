@@ -96,12 +96,11 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
 
 - [ ] **Formula ↔ node parity — the remainder** (D19; ratchet, alias gate and Tier 1
   landed 2026-07-27, so the D10 formula-surface violation is closed). Left:
-  (a) **the pack seam** — packs registering their own formula functions, which needs
-  `FORMULA_FUNCTION_NAMES`/autocomplete to become pack-sensitive (built once at load
-  today, so a pack name would advertise while its pack is off);
-  (b) **Tier 3** — formula names for the Solenoid-native data-op core (wants a list
-  `ExcelReturn` type + range routing for list-in-list-out functions), named per D19
-  decision 2: bare names unified with the node hover hint.
+  the pack seam also landed 2026-07-27 (`formulaExtensions.ts`). Left: **Tier 3** —
+  formula names for the Solenoid-native data-op core (wants a list `ExcelReturn` type
+  + range routing for list-in-list-out functions). Naming is settled except decision
+  2(a): whether the multi-op families (SetOp, ArgMinMax, Rolling, Weighted) take the
+  op as an argument or get per-op names — decide per family, see the parity doc.
   Gap A's remaining 19 are D2-capped and cannot be registered — they ride on the Tier 4
   decision (author-present, `deferrals.md`). Tiers + rationale in
   `formula-node-parity.md`; both gaps machine-checked by `formulaNodeParity.test.ts`.

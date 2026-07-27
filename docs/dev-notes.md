@@ -173,6 +173,45 @@ RANGE_FUNCTIONS (as the plan said) is what exposed this — the two changes belo
 pack-registered name would advertise while its pack is disabled. Nothing shipped here depends on
 it. Tier 3 and Tier 4 unchanged; gap A's remaining 19 are D2-capped and ride on the Tier 4 call.
 
+### The pack → formula seam (same session, 2026-07-27b)
+
+D19 decision 4, built as `formulaExtensions.ts` — deliberately the direct sibling of
+`fcExtensions.ts`, which already solved the same problem for FC units.
+
+**The asymmetry is the design, and it is not symmetric on purpose:**
+- **Resolution is GLOBAL** — every known pack's functions register at startup, active or
+  not. A formula pack node serializes as a plain ExpressionNode and reloads with its pack
+  switched off (the `pack-architecture.md` guarantee), so the functions its formula calls
+  have to keep answering. A deactivated pack that turned saved documents into `#NAME?`
+  would be a data-loss bug, not tidiness.
+- **Advertising is ACTIVE-ONLY** — highlighting and autocomplete offer a pack's names only
+  while it's on, so an off pack doesn't teach a name the Add menu isn't showing.
+
+**The actual blocker was smaller than the plan implied.** `FORMULA_FUNCTION_NAMES` was a
+load-time snapshot; packs register after load, so it could never see them. Now
+`formulaFunctionNames()`, memoized against a registry generation counter bumped by
+`registerInternal`, with `advertisedFunctionNames()` as the editor-facing subset (memoized
+against `packsStore.version()` — highlighting runs per keystroke).
+
+**Two bugs found by writing the test, both real beyond the test:**
+- `initPackFormulas()` wasn't re-runnable. The collision check asked "does this already
+  resolve?", which is true of its OWN previous registrations — so a second run rejected
+  every name it had just registered. Fixed with a core-name snapshot taken on the first
+  call, before any pack registers.
+- A removed pack's functions lingered as ghosts, since `registerInternal` had no inverse.
+  Added `unregisterInternal`, and init now withdraws the previous run's registrations
+  first. Only pack registrations are revocable; the core's run once at load.
+
+A pack may not claim a core name, a blocked legacy spelling (no reviving NORMDIST), or
+another pack's name — all three throw at startup, where it's obvious, rather than changing
+what SUM means three screens later.
+
+**Tier 3 naming, settled by inspection while here:** D19 decision 2's rule yields clean
+bare names off the existing classes (`ReverseNode` → REVERSE, `SetRelationNode` →
+SETRELATION, `NthElementNode` → NTHELEMENT). Only 2(a) is open — the multi-op families
+(SetOp, ArgMinMax, Rolling, Weighted) choosing op-as-argument vs per-op names. Recorded in
+the parity doc; recommendation is to decide per family, not globally.
+
 ### SESSION DIGEST (2026-07-27 — socket shades onto one HSV axis; the copy rules got teeth)
 
 **Pinch-zoom died over most of a node card, and had for a long time.** Root cause, read out of
