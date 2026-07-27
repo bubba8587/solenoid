@@ -4,6 +4,10 @@ import { serialToJsDate, jsDateToSerial } from "./nodes/date";
 import { regularizedBeta, regularizedGamma, bisectionInv, lnGamma, linearFit } from "./nodes/mathUtils";
 import { convertValue } from "./nodes/convert";
 import { splitText, textAfterBefore, urlEncode, regexApply } from "./nodes/textOps";
+import {
+  couponValue, accrintM, securityDisc, priceDisc, priceMat,
+  durationValue, bondPriceYield, oddCoupon, vdb,
+} from "./nodes/financeOps";
 import { coerceNumber as toNum } from "./valueKinds";
 
 // ─── EXCEL_FUNCTIONS — the one declared home for "where does each function live?" ──
@@ -815,6 +819,57 @@ registerInternal("NUMBERVALUE", (text, dec, grp) => {
   if (Number.isNaN(n)) return VALUE("NUMBERVALUE");
   return n / Math.pow(100, pct);
 });
+
+// ── Tier 1: the bond / security block Formula.js lacks (D19) ──
+// Twenty Excel-named finance nodes whose names gave #NAME? in a formula. Scope is
+// deliberately only what FX LACKS: `FAMILY_BACKING.finance` already ruled that the
+// closed-form finance functions FX *does* implement stay on Formula.js ("no
+// difference that matters"), so DISC and COUPDAYS are untouched here.
+//
+// Each calls the node's own compute (financeOps.ts) with Excel's argument order.
+// An out-of-range argument — a frequency that isn't 1/2/4, a maturity at or before
+// settlement — yields null (a blank), matching what the node shows rather than
+// fabricating a number. Optional `basis` defaults to 0 (30/360) as in Excel.
+const optNum = (v: unknown, dflt: number) => (v == null ? dflt : toNum(v));
+
+for (const op of ["coupdaybs", "coupdaysnc", "coupncd", "couppcd", "coupnum"] as const) {
+  registerInternal(op, (settle, maturity, freq, basis) =>
+    couponValue(op, toNum(settle), toNum(maturity), optNum(freq, 2), optNum(basis, 0)));
+}
+registerInternal("ACCRINTM", (issue, settle, rate, par, basis) =>
+  accrintM(toNum(issue), toNum(settle), toNum(rate), optNum(par, 1000), optNum(basis, 0)));
+registerInternal("INTRATE", (settle, maturity, investment, redemption, basis) =>
+  securityDisc("intrate", toNum(settle), toNum(maturity), toNum(investment), toNum(redemption), optNum(basis, 0)));
+registerInternal("RECEIVED", (settle, maturity, investment, discount, basis) =>
+  securityDisc("received", toNum(settle), toNum(maturity), toNum(investment), toNum(discount), optNum(basis, 0)));
+registerInternal("YIELDDISC", (settle, maturity, pr, redemption, basis) =>
+  priceDisc("yielddisc", toNum(settle), toNum(maturity), toNum(pr), optNum(redemption, 100), optNum(basis, 0)));
+registerInternal("PRICEMAT", (settle, maturity, issue, rate, yld, basis) =>
+  priceMat("pricemat", toNum(settle), toNum(maturity), toNum(issue), toNum(rate), toNum(yld), optNum(basis, 0)));
+registerInternal("YIELDMAT", (settle, maturity, issue, rate, pr, basis) =>
+  priceMat("yieldmat", toNum(settle), toNum(maturity), toNum(issue), toNum(rate), toNum(pr), optNum(basis, 0)));
+registerInternal("DURATION", (settle, maturity, coupon, yld, freq, basis) =>
+  durationValue("duration", toNum(settle), toNum(maturity), toNum(coupon), toNum(yld), optNum(freq, 2), optNum(basis, 0)));
+registerInternal("MDURATION", (settle, maturity, coupon, yld, freq, basis) =>
+  durationValue("mduration", toNum(settle), toNum(maturity), toNum(coupon), toNum(yld), optNum(freq, 2), optNum(basis, 0)));
+registerInternal("PRICE", (settle, maturity, rate, yld, redemption, freq) =>
+  bondPriceYield("price", toNum(settle), toNum(maturity), toNum(rate), toNum(yld), optNum(redemption, 100), optNum(freq, 2)));
+registerInternal("YIELD", (settle, maturity, rate, pr, redemption, freq) =>
+  bondPriceYield("yield", toNum(settle), toNum(maturity), toNum(rate), toNum(pr), optNum(redemption, 100), optNum(freq, 2)));
+// Excel's VDB carries a trailing no_switch flag; ours always switches to
+// straight-line when that is the larger charge, which is Excel's DEFAULT.
+registerInternal("VDB", (cost, salvage, life, start, end, factor) =>
+  vdb(toNum(cost), toNum(salvage), toNum(life), toNum(start), toNum(end), optNum(factor, 2)));
+// ODDF* read an issue date and a FIRST-coupon date; ODDL* read only a LAST-interest
+// date, so their argument lists differ in shape, not just in name.
+registerInternal("ODDFPRICE", (settle, maturity, issue, firstCoupon, rate, yld, redemption, freq) =>
+  oddCoupon("oddfprice", toNum(settle), toNum(maturity), toNum(issue), toNum(firstCoupon), toNum(rate), toNum(yld), optNum(redemption, 100), optNum(freq, 2)));
+registerInternal("ODDFYIELD", (settle, maturity, issue, firstCoupon, rate, pr, redemption, freq) =>
+  oddCoupon("oddfyield", toNum(settle), toNum(maturity), toNum(issue), toNum(firstCoupon), toNum(rate), toNum(pr), optNum(redemption, 100), optNum(freq, 2)));
+registerInternal("ODDLPRICE", (settle, maturity, lastInterest, rate, yld, redemption, freq) =>
+  oddCoupon("oddlprice", toNum(settle), toNum(maturity), NaN, toNum(lastInterest), toNum(rate), toNum(yld), optNum(redemption, 100), optNum(freq, 2)));
+registerInternal("ODDLYIELD", (settle, maturity, lastInterest, rate, pr, redemption, freq) =>
+  oddCoupon("oddlyield", toNum(settle), toNum(maturity), NaN, toNum(lastInterest), toNum(rate), toNum(pr), optNum(redemption, 100), optNum(freq, 2)));
 
 // ── Tier 1: FORECAST.LINEAR ──
 // Excel renamed FORECAST → FORECAST.LINEAR; the node carries the current name, but
