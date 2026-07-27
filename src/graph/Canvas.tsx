@@ -137,6 +137,12 @@ export function Canvas() {
   const tapControlNodeIdRef = useRef<string | null>(null);
   const tapMovedRef = useRef(false);
   const gestureMultiRef = useRef(false);
+  // Is the gesture in flight driven by a FINGER? This is what gates the tap-to-select
+  // model below, and it's deliberately the pointer TYPE rather than IS_MOBILE: the
+  // model exists because a touch press can turn out to be a pinch, which is true of
+  // any touchscreen — a tablet, a touchscreen laptop — not just a phone. A mouse or a
+  // pen is precise and can't pinch, so both keep select-and-drag in one motion.
+  const tapTouchRef = useRef(false);
   // Whether the current gesture's first finger landed inside the canvas container
   // (a node or the empty background) vs OFF-canvas (a mobile-bar button, a panel).
   // rete's selectableNodes clears the selection on a window-level pointerup when its
@@ -362,7 +368,10 @@ export function Canvas() {
         gestureMultiRef.current = false;
         tapMovedRef.current = false;
         startX = e.clientX; startY = e.clientY;
-        const { id, formControl } = IS_MOBILE ? nodeAndControl(e.target) : { id: null, formControl: false };
+        tapTouchRef.current = e.pointerType === "touch";
+        const { id, formControl } = tapTouchRef.current
+          ? nodeAndControl(e.target)
+          : { id: null, formControl: false };
         tapNodeIdRef.current = formControl ? null : id;
         tapControlNodeIdRef.current = formControl ? id : null;
         // Did this gesture start on the canvas at all? (container = the rete area).
@@ -533,6 +542,7 @@ export function Canvas() {
         active: () => accumulateActive() || isSelected(pickedId),
       };
 
+
       area.addPipe((ctx) => {
         if (!ctx || typeof ctx !== "object" || !("type" in ctx)) return ctx;
         const c = ctx as { type: string; data?: { id?: string; event?: PointerEvent } };
@@ -586,7 +596,7 @@ export function Canvas() {
           // of deleting, and why deactivating select mode dropped the selection.
           // The gesture that started off-canvas has no business touching the canvas
           // selection, so swallow its pointerup before selectableNodes sees it.
-          if (IS_MOBILE && !tapOnCanvasRef.current) {
+          if ((IS_MOBILE || tapTouchRef.current) && !tapOnCanvasRef.current) {
             return;
           }
           // Tapping a form control (e.g. a Boolean checkbox) of an already-
@@ -594,7 +604,7 @@ export function Canvas() {
           // deselects and you have to re-tap the node to toggle again. Swallow the
           // up so selectableNodes' background-tap clear can't run.
           if (
-            IS_MOBILE &&
+            tapTouchRef.current &&
             tapControlNodeIdRef.current &&
             !tapMovedRef.current &&
             !gestureMultiRef.current &&
@@ -609,8 +619,13 @@ export function Canvas() {
           // selectableNodes is about to treat this as a background tap and clear
           // the selection — select the node instead and swallow the event so
           // that clear doesn't run.
+          //
+          // This is also where a PINCH is stopped from selecting: deferring the
+          // decision to pointerup is what makes the gesture classifiable at all, and
+          // `!gestureMultiRef` then rejects anything that ever had a second finger.
+          // A pinch therefore never selects, rather than selecting and being undone.
           if (
-            IS_MOBILE &&
+            tapTouchRef.current &&
             !canvasLockStore.get() &&
             tapNodeIdRef.current &&
             !tapMovedRef.current &&
@@ -723,7 +738,16 @@ export function Canvas() {
         if (!guards) return;
         guards.down = (e: PointerEvent) => {
           if (canvasLockStore.get()) return false;
-          if (IS_MOBILE && !isSelected(id)) return false;
+          // A FINGER never grabs an unselected node. rete picks on pointerdown
+          // because the drag depends on it, so a press that turns out to be the first
+          // half of a pinch would otherwise select whatever it landed on — the
+          // gesture can't be classified yet at that instant. Making an unselected
+          // node drag-transparent to touch resolves it structurally: the press falls
+          // through to a pan, and selection happens on pointerup only if the gesture
+          // stayed one finger and didn't move (see the pointerup branch). Selected
+          // nodes still drag on the first touch, so moving a selection is one motion.
+          // Touch ONLY — a mouse or pen can't pinch and keeps select-and-drag.
+          if (e.pointerType === "touch" && !isSelected(id)) return false;
           // Non-primary button never drags. Applies to the PEN as well as the
           // mouse: a stylus reports its barrel button and its eraser end as
           // non-zero `button`, and neither should grab and move a node.
