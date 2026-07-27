@@ -131,7 +131,7 @@
       "y": -420,
       "init": {
         "label": "Conduits & Ribbons",
-        "body": "# Bundle cables\nThree sensor cables enter the **Conduit** and travel on as one wide **Ribbon** into the collapsed group. Click the Conduit to fan its lanes (its toolbar rotates or **Extends** the run); click the trunk to select the whole ribbon. Or select several cables and right-click → **Insert Conduit**.",
+        "body": "# Bundle cables\nThree sensor cables enter the **Conduit** and travel on as one wide **Ribbon** into the collapsed group. The Conduit fans its lanes (its toolbar rotates or **Extends** the run); the trunk selects the whole ribbon. Or select several cables and right-click → **Insert Conduit**.",
         "color": "gray",
         "width": 380,
         "height": 240,
@@ -317,7 +317,7 @@
       "y": 620,
       "init": {
         "label": "Live controls",
-        "body": "# Switch + Expression\nName each slot on the **Input Switch** so it reads as a labeled choice, then pick which cable is live; cycle to flip scenarios without rewiring. Flip it to **Many** (see the switch below) and it collects the checked inputs into a **Cube** instead. The **Expression** node grew an input socket for every variable in its formula (`monthly` here); click the formula for the big typeset editor.",
+        "body": "# Switch + Expression\nName each slot on the **Input Switch** so it reads as a labeled choice, then pick which cable is live; cycle to flip scenarios without rewiring. Flip it to **Many** (see the switch below) and it collects the checked inputs into a **Cube** instead. The **Expression** node grew an input socket for every variable in its formula (`monthly` here); the formula opens a big typeset editor.",
         "color": "lime",
         "width": 360,
         "height": 240,

@@ -28,6 +28,7 @@ import { buildCatalog } from "./catalogUtils";
 type Unit = { src: string; text: string; opener: boolean };
 
 const HELP_DIR = "src/graph/help";
+const SEED_DIR = "src/graph/seedGraphs";
 
 /** Sentence-ish split: the unit a copy rule judges. A rule keyed to a sentence's
  *  START needs the sentence, not the paragraph — the string this test exists for
@@ -77,6 +78,24 @@ function uiStrings(): Unit[] {
       }
     });
   }
+  // Seed-graph note and Report prose. These ship as example DOCUMENTS the user
+  // opens, so they are copy — but they are a different GENRE from a tooltip:
+  // a demo document exists to be poked at, so "Drag any slider and the pivots
+  // recompute" is the document doing its job, not a narrated affordance. Only
+  // the genre-independent rules apply here (see GENRE_FREE below).
+  for (const name of readdirSync(SEED_DIR).filter((n) => n.endsWith(".json"))) {
+    const seed = JSON.parse(readFileSync(join(SEED_DIR, name), "utf8")) as unknown;
+    const visit = (o: unknown): void => {
+      if (Array.isArray(o)) return o.forEach(visit);
+      if (!o || typeof o !== "object") return;
+      for (const [k, v] of Object.entries(o as Record<string, unknown>)) {
+        if (typeof v === "string" && (k === "body" || k === "label")) {
+          for (const line of v.split(/\n+/)) out.push(...sentences(`seed/${name}`, line));
+        } else visit(v);
+      }
+    };
+    visit(seed);
+  }
   return out;
 }
 
@@ -110,6 +129,12 @@ type Rule = { id: string; why: string; re: RegExp; where?: (u: Unit) => boolean 
 const GESTURE =
   "(?:(?:double|left)-click|left-drag|" +
   "(?<![-\\w])(?:click|drag|hover|tap|scroll|pinch|swipe)\\b)(?!-)";
+
+/** Rules that hold in ANY genre of copy. The rest judge whether a string should
+ *  be instructing at all, which depends on what the string is: a tooltip must
+ *  not instruct, a demo document exists to be poked at. Seed prose is held to
+ *  these only. */
+const GENRE_FREE = new Set(["british-spelling", "slogan", "tease-count", "chummy-aside", "widget-narration"]);
 
 const RULES: Rule[] = [
   {
@@ -210,7 +235,7 @@ describe("UI copy", () => {
 
   it("no shipped string breaks a machine-checkable voice rule", () => {
     const offenders = uiStrings().flatMap((u) =>
-      RULES.filter((r) => (r.where?.(u) ?? true) && r.re.test(u.text)).map((r) => `${u.src} [${r.id}] ${u.text}`),
+      RULES.filter((r) => (r.where?.(u) ?? true) && (!u.src.startsWith("seed/") || GENRE_FREE.has(r.id)) && r.re.test(u.text)).map((r) => `${u.src} [${r.id}] ${u.text}`),
     );
     expect(offenders).toEqual([]);
   });
