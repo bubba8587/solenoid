@@ -231,6 +231,12 @@ distilled from a pass that rewrote the What's New / About copy (before → after
 alongside the "no Captain Obvious UI strings" rule in CLAUDE.md (don't narrate an affordance the
 control already conveys) — that rule still governs; these are about tone once the string earns its place.
 
+`uiCopy.test.ts` enforces the machine-checkable subset of this section over the help markdown and
+the node catalog: teased counts, the slogan phrases, conventional-affordance narration, chummy
+asides. The rest stays a human call. Two rules below are NOT yet enforced because the shipped
+corpus predates them — the em-dash ban (95 uses) and no-trailing-parenthetical (113); both need a
+prose sweep before they can be turned on.
+
 - **No em dashes.** Use a period, a colon, or restructure. The em dash is the tell of the machine-written
   aside. _"the whole app comes with you — toolbar, minimap, zoom"_ → _"…the whole editor. The minimap,
   zoom, right-click menu…"_

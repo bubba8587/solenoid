@@ -154,6 +154,29 @@ app-wide, but touches feel of zoom).
   three causes" for a refused cable is the diagnostic, "three ways forward" was filler ahead of a
   list. Describing a non-obvious gesture's RESULT stays in bounds and is house style
   (help.md's lasso paragraph) — quick-wire and the drag guard read that way deliberately.
+- **`uiCopy.test.ts` now machine-checks the decidable subset of DESIGN.md §7** over the help
+  markdown + every catalog label/description (1,974 sentences). Four rules: teased counts, the
+  slogan phrases, conventional-affordance narration, chummy asides. Rules were selected by ONE
+  criterion — zero false positives on the corpus as written — so it landed green on a single
+  one-clause fix (`notes.md` "runs two ways —" → "runs in the browser…"). Rules that would have
+  flagged legitimate prose were DROPPED, not softened to warnings.
+  - The affordance rule is a **curated deny-list of conventional gestures** (hover, scroll,
+    click-to-open), NOT a gesture-verb ban: `notes.md`'s "Double-click a Cube cell" teaches a
+    hidden gesture and must pass, and Point Plotter's "click a plane to drop points, drag to
+    move" is the node's actual interface. A general gesture regex flagged all of them.
+  - The file carries **specimens + counterexamples**: each rule keeps the real string that
+    motivated it (so a later edit can't soften a pattern into one that matches nothing), and the
+    five legit strings a sloppier rule would flag. Mutation-checked end to end — re-adding
+    "Hover any dot for its name." fails with the file:line and rule id.
+  - Scope is shipped UI text ONLY. CLAUDE.md's "docs and code comments can be as explicit as
+    needed" means `docs/` is deliberately un-linted; widening it is a rule change, not a stricter
+    reading.
+  - **Considered and rejected: importing UI-string corpora from public repos** as calibration
+    material. The failure was a routing miss (never opened §7 before writing shipped strings),
+    not a knowledge gap, so more reference wouldn't have loaded either; an external corpus pulls
+    toward generic SaaS voice, which is the attractor §7 exists to escape; and the best corpus is
+    already in-repo and author-reviewed. CLAUDE.md's DESIGN.md bullet now says "UI change"
+    includes STRINGS, which is the actual fix for the routing miss.
 - **§7's no-em-dash rule was NOT applied here.** All four help files lean on em dashes
   (`help.md` 15, `notes.md` 10, both author-reviewed and untouched today), so purging two of the
   four would leave adjacent tabs of one overlay reading differently. §7 was distilled from a
