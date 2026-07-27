@@ -166,6 +166,33 @@ app-wide, but touches feel of zoom).
   states rank-widening, narrowing-blocked, split squares and the grey ladder. Cut. What survives
   is only what no pixel conveys: family separation + the Boolean↔number bridge, the combo→scalar
   narrowing exception, and the family semantics (date-as-serial, Kleene logic, Frame vs Cube).
+- **The catalog moved from imperative to third person** (116 descriptions across 25 files —
+  descriptions live in `nodes/*.ts` and `packs/*.ts`, not only `nodeCatalog.ts`). These strings
+  are the node's hover tooltip (`nodeKit.tsx` `title`), the Add-menu tooltip and the Function
+  Reference column, so they say what the node DOES — the register Excel's own function reference
+  uses. Third-person 12 → 125 of 506.
+  - **17 openers were NOT conjugated**: noun phrases that merely start with a word that can also
+    be a verb. "Sum of two complex numbers" → "Sums of…" and "Sample standard deviation (n−1)" →
+    "Samples standard deviation" are the failure this avoided. The full set: Sum of {two complex
+    numbers, squares, squared deviations, probabilities}, Sample {covariance, standard deviation,
+    variance, skewness}, List of N {random numbers, numbers}, Yield of a bond ×2, Clean price per
+    $100 face, Sum-of-years'-digits depreciation, Rank ×2, Set operations on two lists.
+  - Nine needed rewriting rather than an `-s` (several verbs, or a command): Regex, Switch,
+    Decision Matrix, List Set Relation, XLOOKUP, Equation, Expression, Triangle Solver, Display.
+    Equation/Expression became noun phrases — "Type a relation like V = I * R" instructed.
+  - **`imperative-opener` guards the register**, scoped via a new per-rule `where` predicate to
+    the FIRST sentence of a `.desc` only. Unscoped it flagged node LABELS ("Import XML" is a
+    name) and long-form help ("Draw it clockwise and it's a crossing select" teaches a modified
+    gesture). Its verb list excludes Sum/Sample/List/Rank/Set/Clean/Yield/Point/Report for the
+    noun-phrase reason above, and `Shift` because it collides with the modifier key.
+- **Class A source/control nodes read as nouns, and state a format only when unique** (author
+  ruling): the socket glyph already says list/frame/grid, so "Outputs a Frame" is the same noise
+  as narrating a gesture. Colour Picker is the one keeper in that set — its socket says *text*,
+  which does not tell you it is a colour in one of three notations.
+- **"Emits a chart value a Report can embed." was appended verbatim to 16 figure nodes.** Every
+  one has a visible chart output socket, and being identical across 16 it carried no per-node
+  information — while the Report node, the one place you would look, did not mention charts at
+  all. Cut from all 16; Report now names Notes and charts together.
 - **The gesture rule went aggressive on author ruling.** The first cut was a curated deny-list of
   *conventional* gestures, on the theory that teaching a hidden binding is the overlay's job. The
   author overruled it: an unmodified mouse gesture is never documentation, "obvious to anyone
