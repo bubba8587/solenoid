@@ -2,24 +2,51 @@
 
 The ladder above is the whole rule for *shape*; these are the edges of it.
 
-- A **combo** (split square) is the one shape that narrows: it can *be* a single value, so it drops into its element's scalar input. A plain list never does — pull a value out with INDEX instead.
-- A **Frame** output connects only to Frame and Cube inputs. Letting it into a plain table input would silently throw away the column names and types; **Split Frame** or **Get Column** take the pieces out on purpose.
-- A **Cube** output connects only to another Cube input — anything narrower would flatten its nesting. Everything flows *in*: any value widens into a Cube cell.
-- Colours never mix on their own. The one built-in bridge is **Boolean ⟷ number** (TRUE/FALSE ⟷ 1/0), at every shape: a Boolean list drops into a numeric list input and vice versa. Everything else crosses through **Cast**, element-wise.
-- The grey **Any** ladder mirrors the shapes — circle for one value of any type, square for any list, grid for any table — and each rung keeps the shape rules (an *any* output is still a scalar: it widens anywhere data flows, but won't enter a Lambda/Chart/Document input). The **hollow ring** is the exception to everything: it takes any value whatsoever, and it *adopts* — wire a date list into one and the socket becomes a date-list socket until you unplug it.
-- **Lambda, Chart, and Document** are object values, outside the data lattice entirely: each connects only to its own kind (or a hollow ring). A chart isn't a table of numbers; a lambda isn't a value to add.
+- A **combo** (split square) is the one shape that narrows: it can *be* a single value, so it drops into its own family's scalar input. A plain list never does — pull a value out with INDEX instead.
+- A **Frame** output reaches only Frame and Cube inputs, or a hollow ring. Letting it into a plain matrix input would silently throw away the column names and types; **Get Column** or **Split Frame** take the pieces out on purpose.
+- A **Cube** output reaches only another Cube, or a hollow ring — anything narrower would drop its nesting, so **UNNEST** does that explicitly. Everything flows *in*: any data value widens into a Cube cell.
+- **Lambda, Chart and Document** are object values, outside the data lattice entirely: each connects only to its own kind, or a hollow ring. A chart isn't a table of numbers; a lambda isn't a value to add.
+- The grey **wildcards** keep the shape rules at their own rung — a grey square is still a list socket, so it still refuses a Frame. The **hollow ring** is the exception to everything: it takes any value whatsoever, object types included.
 
-## What happens at the boundary
+## What happens on arrival
 
 When a cable lands, the value is reshaped for the input — never mutated in place:
 
-- a single value entering a list input becomes a one-element list; entering a table or Frame input, a 1×1;
+- a single value entering a list input becomes a one-element list; entering a matrix, Frame or Cube input, a 1×1;
 - a **list entering a 2-D input becomes ONE ROW** (transpose it first if you meant a column);
+- a one-element list entering a scalar or combo input collapses to the value inside — at a *numeric* scalar, a longer list is a `#SHAPE!`;
 - a matrix entering a Frame input gets generated column names (Col1, Col2, …);
+- **Boolean ⟷ number** converts here, in whichever direction the socket asks for;
 - blanks stay **null** — missing, not zero. Aggregators skip them, Filter drops them (or selects exactly them, with **is blank**), Fill replaces them;
 - errors (`#DIV/0!`, `#N/A`, …) pass through *every* socket untouched — error in, error out, so the red trail survives any plumbing.
 
+Text, date and Boolean **list** inputs are typeable in place: with no cable attached, text typed into the box is read as CSV, and a part that won't parse for the type becomes null and holds its position.
+
 The literal sources (List / Table / Frame Input) follow one rule: **the Source is never coerced.** What you typed stays verbatim in the source text — a stray `abc` in a number table, a blank row you left for later — and only the *derived* value coerces it: blank → null, unparseable → NaN. Retype nothing; fix it when you mean to.
+
+## Sockets that change type
+
+Some ports **adopt**: the socket takes the type of the cable plugged in and reverts to its own when unplugged. A hollow ring adopts whatever arrives, verbatim. A grey list or grid port instead **keeps its rank** and adopts only the family — wire a number into one and it becomes a *numeric list* socket, not a numeric scalar, so it still draws as a list and still refuses a Frame. Adoption is never saved to a file; it is recomputed on load, paste and drill-in. A passthrough node (Display, IF, Conduit lanes, INDEX) types its output from the input it forwards.
+
+Retyping a socket in place — switching a **Cast**'s target, a **Get Column** read-as, editing a Note's frontmatter — **drops any cable whose target no longer accepts the new type.**
+
+## Why a cable was refused
+
+A drag that won't drop has exactly three causes: the canvas is **locked**; it's a **self-loop**, an output wired back into its own node; or the **types don't connect**. The drag guard refuses silently, but wiring through the connection dialog names the reason — `Incompatible types: Date → Number.`
+
+On a type mismatch there are three ways forward:
+
+- **wrong family** (a date into a number, text into a number) — insert a **Cast**; the one pair that needs none is Boolean ⟷ number;
+- **wrong direction on the ladder** (a list into a scalar, a matrix into a list) — the value is wider than the port, so reshape it explicitly: Get Column, TOCOL, INDEX;
+- **a container into something narrower** (a Cube into a Frame, a Frame into a matrix) — UNNEST or Get Column.
+
+Dragging a cable into empty canvas opens the Add menu filtered to nodes that will actually connect, and wires the first compatible port for you.
+
+## What a socket's type controls besides connections
+
+**Display.** How a value renders is chosen from its socket type, not by reading its cells — a date list reads as dates because the socket says date, even if every cell is an integer. A chip takes its accent colour from the same source.
+
+**Format Controller.** The FC offers the control set for its socket's family. A Frame, Cube, Document or grey list/combo socket has none.
 
 ## Units
 

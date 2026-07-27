@@ -1,15 +1,31 @@
-A socket's **colour** is the type of value it carries; its **shape** is the dimension — a circle is one value, a square a list, a grid a 2-D table. A **Frame**'s square carries an **F**: a table with named, typed columns, not just cells.
+A socket's **shape** is the rank — how many dimensions the value has. Its **colour** is the element family — what kind of thing the individual values are. Within a family the list is a darker shade of the scalar and the matrix a punchier one; a combo's split square takes the scalar colour on the upper-left and the list colour on the lower-right. Hover any dot for its name.
 
-Types don't mix on their own. A number won't drop into a text input, nor text into a date; a **Cast** node converts when you mean to cross over, element-wise on a list. The one built-in crossover is **Boolean ⟷ number**: TRUE / FALSE reads as 1 / 0 and back, the pair every spreadsheet already treats as the same.
+| Shape | What it carries |
+|---|---|
+| Filled circle | one value |
+| Filled square | a list — always a list |
+| Split square | one value **or** a list (a *combo*) |
+| 2×2 grid | a 2-D matrix |
+| Square with an **F** | a Frame — named, typed columns |
+| Hexagon | a Cube |
+| Circle with a **λ** | a function |
+| Square with bars · with text lines | a chart · a document |
+| Hollow ring | anything at all |
+
+**Two rules govern every cable.**
+
+**Families stay separate.** A value reaches only sockets of its own family, or a grey family-agnostic one. Crossing families takes a **Cast**, element-wise on a list. There is exactly one built-in bridge: **Boolean ⟷ number**, both directions, at every shape — TRUE / FALSE arrives as 1 / 0, and a number arrives as TRUE (non-zero), FALSE (zero) or unknown (NaN).
+
+**Rank flows upward.** A value drops into any socket of equal or greater rank — one value → list → matrix → Frame → Cube — and is reshaped on arrival. The reverse is refused. The one exception: a **combo** may feed its own family's scalar, because a combo may in fact be holding a single value. A plain list may not.
+
+The five families:
 
 - **Numeric** — numbers; the default for arithmetic and statistics.
-- **String** — text.
-- **Date** — calendar dates, held as serial numbers, the same as Excel.
-- **Complex** — complex numbers, a real part and an imaginary part.
+- **Text**.
+- **Date** — calendar dates, held as serial numbers, the same as Excel. The socket type is the only signal that a serial should read as a date, which is why a date keeps a date socket at every shape.
+- **Complex** — a real part and an imaginary part.
 - **Boolean** — TRUE / FALSE. A comparison or an IS-check produces a real Boolean, not a 1 or 0, though it still adds as 1 / 0 when you want it to. Three-valued: an unknown input keeps the answer unknown only where it genuinely is (TRUE OR unknown is still TRUE).
-- **Frame** — a data table of named, typed columns. A column leaves it as a typed **list** (Get Column); a row leaves as a one-row Frame (Get Row), since a row mixes types.
-- **Cube** — a Frame whose cells hold whole Frames: a one-to-many relationship — each Customer holding its own table of Orders — without flattening to one wide sheet. Double-click a cell to drill in. A Cube sits at the top of the ladder, so any node that takes a Frame takes a Cube.
-- **Lambda** — a formula packaged as a value, to hand to MAP, REDUCE, and the other lambda nodes.
-- **Any** — accepts any type; used where a node passes a value straight through without inspecting it.
 
-**Lists carry through.** Feed a list into a node built for one value and it runs over every element and hands a list back — Excel's array-formula behaviour, without Ctrl+Shift+Enter. A list can also hold **blanks**, shown `null` and distinct from 0: aggregators skip them, Filter drops them, and the **Fill** node swaps in a default. When a value fails it becomes an Excel-style error code (`#DIV/0!`, `#N/A`, `#SHAPE!`) that flows downstream like any other value, so a trail of red boxes leads back to the cause.
+Outside the families sit the **Frame** (a data table of named, typed columns — a column leaves as a typed list with Get Column, a row as a one-row Frame, since a row mixes types); the **Cube** (a Frame whose cells hold whole Frames — each Customer holding its own table of Orders, without flattening to one wide sheet; double-click a cell to drill in); the grey **wildcards**, for a family that isn't known; and three object types — **Lambda**, **Chart** and **Document** — which are not data and connect only to their own kind, or to a hollow ring.
+
+**Combos are why lists carry through.** Feed a list into a node built for one value and it runs over every element and hands a list back — Excel's array-formula behaviour, without Ctrl+Shift+Enter. The split square is that node's socket: its result rank follows whatever arrives.
