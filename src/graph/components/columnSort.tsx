@@ -18,33 +18,55 @@ import { useState } from "react";
 // capped view orders that window, not the whole table.
 
 export type SortDir = "asc" | "desc";
-export type ColumnSort = { col: number; dir: SortDir } | null;
+/** The active sort keys in PRIORITY order — `[0]` is primary, each later key breaks
+ *  the ties the ones before it leave. Empty = unsorted. */
+export type ColumnSort = ReadonlyArray<{ col: number; dir: SortDir }>;
 
-/** Click-cycle state for one grid: unsorted → asc → desc → unsorted. Switching to a
- *  different column starts that column at asc.
+/** This column's direction, or null when it isn't part of the sort. */
+export function sortDirOf(sort: ColumnSort, col: number): SortDir | null {
+  return sort.find((k) => k.col === col)?.dir ?? null;
+}
+
+/**
+ * The click cycle, as a pure step: what the sort becomes when `col`'s header is
+ * clicked. Per column it runs unsorted → asc → desc → unsorted.
  *
- *  `resetKey` identifies WHICH grid is on screen — the popup's state object, a cube's
- *  drill level. When it changes the sort drops, because a column index means nothing
- *  across two different tables: keeping it would silently sort a new value by whatever
- *  sat in slot 2. Reset-on-key-change during render is React's own pattern for this;
- *  an effect would render the new grid once in the old grid's order first. */
+ * MULTI-COLUMN, Excel's model: keys accumulate, priority is the order they were
+ * ADDED. Sort Category, then Name → Category then Name. Clear Category → just Name.
+ * Add Category back and it lands at the END of the list, so now it's Name then
+ * Category. A column changing direction keeps its place in the order; only clearing
+ * and re-adding moves it. That's the whole rule, and it means the priority you get is
+ * the priority you built, in the order you built it.
+ */
+export function nextSort(sort: ColumnSort, col: number): ColumnSort {
+  const i = sort.findIndex((k) => k.col === col);
+  if (i < 0) return [...sort, { col, dir: "asc" }];                          // new key, lowest priority
+  if (sort[i].dir === "asc") {
+    return sort.map((k, j) => (j === i ? { col, dir: "desc" as SortDir } : k)); // keeps its place
+  }
+  return sort.filter((_, j) => j !== i);                                     // desc → cleared
+}
+
+/**
+ * Click-cycle state for one grid, over `nextSort` (which owns the cycle rule).
+ *
+ * `resetKey` identifies WHICH grid is on screen — the popup's state object, a cube's
+ * drill level. When it changes the sort drops, because a column index means nothing
+ * across two different tables: keeping it would silently sort a new value by whatever
+ * sat in slot 2. Reset-on-key-change during render is React's own pattern for this;
+ * an effect would render the new grid once in the old grid's order first.
+ */
 export function useColumnSort(resetKey?: unknown): {
   sort: ColumnSort;
   cycle: (col: number) => void;
 } {
-  const [sort, setSort] = useState<ColumnSort>(null);
+  const [sort, setSort] = useState<ColumnSort>([]);
   const [seenKey, setSeenKey] = useState(resetKey);
   if (resetKey !== seenKey) {
     setSeenKey(resetKey);
-    setSort(null);
+    setSort([]);
   }
-  return {
-    sort,
-    cycle: (col) =>
-      setSort((s) =>
-        s?.col !== col ? { col, dir: "asc" } : s.dir === "asc" ? { col, dir: "desc" } : null,
-      ),
-  };
+  return { sort, cycle: (col) => setSort((s) => nextSort(s, col)) };
 }
 
 /** A cell reduced to something comparable. `null` = nothing to sort on (blank, or a
@@ -83,9 +105,10 @@ function compareKeys(a: SortKey, b: SortKey): number {
  * Source row indices in display order. Identity (`0..rowCount-1`) when unsorted, so
  * a caller can map through it unconditionally.
  *
- * Blanks stay last in both directions — the descending pass reverses the comparison
- * of PRESENT values only. Ties keep source order (the index tie-break makes that
- * explicit rather than leaning on sort stability).
+ * Each key is consulted in priority order and the first one that separates two rows
+ * decides; rows equal on every key keep their source order (the index tie-break makes
+ * that explicit rather than leaning on sort stability). Blanks stay last in both
+ * directions — the descending pass reverses the comparison of PRESENT values only.
  */
 export function sortedOrder(
   rowCount: number,
@@ -93,17 +116,19 @@ export function sortedOrder(
   keyAt: (row: number, col: number) => SortKey,
 ): number[] {
   const order = Array.from({ length: rowCount }, (_, i) => i);
-  if (!sort) return order;
-  const { col, dir } = sort;
+  if (sort.length === 0) return order;
   return order.sort((ra, rb) => {
-    const a = keyAt(ra, col);
-    const b = keyAt(rb, col);
-    if (a === null || b === null) {
-      if (a === b) return ra - rb;
-      return a === null ? 1 : -1; // blanks last regardless of direction
+    for (const { col, dir } of sort) {
+      const a = keyAt(ra, col);
+      const b = keyAt(rb, col);
+      if (a === null || b === null) {
+        if (a === b) continue;         // both blank on this key — let the next one decide
+        return a === null ? 1 : -1;    // blanks last regardless of direction
+      }
+      const c = compareKeys(a, b);
+      if (c !== 0) return dir === "asc" ? c : -c;
     }
-    const c = compareKeys(a, b);
-    return c !== 0 ? (dir === "asc" ? c : -c) : ra - rb;
+    return ra - rb;
   });
 }
 
@@ -117,15 +142,41 @@ export function sortedOrder(
  * what sizes a column here), on a translucent pad so it stays legible where it lands
  * on top of a long name.
  */
-export function SortIndicator({ dir }: { dir: SortDir | null }) {
-  if (!dir) return null;
-  return (
-    <span className="table-popup__sort" aria-hidden="true">
-      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor"
-           strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+export function SortIndicator({ dir, onCycle, label }: {
+  dir: SortDir | null;
+  /** Set on a header whose own content fills the cell — the FRAME editor, where the
+   *  name field leaves no reliable margin to tap on a phone. That makes the chevron a
+   *  real control: always drawn (a muted double chevron while unsorted, so there is
+   *  something to aim at) and clickable in its own right. Everywhere else the header
+   *  cell is the target and this stays a passive indicator. */
+  onCycle?: () => void;
+  label?: string;
+}) {
+  if (!dir && !onCycle) return null;
+  const glyph = (
+    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor"
+         strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {dir === null ? (
+        <>
+          <polyline points="2,4 5,1.5 8,4" />
+          <polyline points="2,6 5,8.5 8,6" />
+        </>
+      ) : (
         <polyline points={dir === "asc" ? "2,6.5 5,3 8,6.5" : "2,3.5 5,7 8,3.5"} />
-      </svg>
-    </span>
+      )}
+    </svg>
+  );
+  const cls = `table-popup__sort${dir ? "" : " table-popup__sort--off"}`;
+  if (!onCycle) return <span className={cls} aria-hidden="true">{glyph}</span>;
+  return (
+    <button
+      type="button"
+      className={`${cls} table-popup__sort--btn`}
+      aria-label={`Sort ${label ?? "column"}`}
+      onClick={(e) => { e.stopPropagation(); onCycle(); }}
+    >
+      {glyph}
+    </button>
   );
 }
 

@@ -15,7 +15,7 @@ import { formatListCell } from "./valueDisplayFormat";
 import { FormatStyleSelect, DateStyleSelect, UnitSelect, LogicalStyleSelect, TextCaseSelect } from "./fcControls";
 import { applyTextCase } from "../formatAnnotationStore";
 import { PopupShell, popupCardVars } from "./PopupShell";
-import { useColumnSort, sortedOrder, sortKeyOf, SortIndicator, stopSortTrigger } from "./columnSort";
+import { useColumnSort, sortedOrder, sortKeyOf, sortDirOf, SortIndicator, stopSortTrigger } from "./columnSort";
 import { PopupOverflowMenu } from "./PopupOverflowMenu";
 import { saveCsvFileDialog } from "../fileBridge";
 import { APP_LOCALE } from "../locale";
@@ -637,7 +637,7 @@ export function TablePopup() {
                     // hit. The name field and type toggle below opt out.
                     title={vertical ? undefined : headers?.[c]}
                     onClick={sortable ? () => cycleSort(c) : undefined}
-                    className={`${headers && !vertical ? "table-popup__colhead table-popup__colhead--name" : "table-popup__colhead"}${sortable ? " table-popup__colhead--sortable" : ""}`}
+                    className={`${headers && !vertical ? "table-popup__colhead table-popup__colhead--name" : "table-popup__colhead"}${sortable ? " table-popup__colhead--sortable" : ""}${sortable && editableHeaders ? " table-popup__colhead--sortpad" : ""}`}
                   >
                     {/* A vertical list has one unnamed column; label it like the row
                         orientation does (A, B, C…) rather than leaving the header
@@ -664,7 +664,16 @@ export function TablePopup() {
                     ) : (
                       colHeaderLabel(c)
                     )}
-                    {sortable && <SortIndicator dir={sort?.col === c ? sort.dir : null} />}
+                    {sortable && (
+                      <SortIndicator
+                        dir={sortDirOf(sort, c)}
+                        // The frame editor's name field fills its header, leaving no
+                        // dependable margin to tap on a phone — there the chevron is
+                        // always drawn and is itself the control.
+                        onCycle={editableHeaders ? () => cycleSort(c) : undefined}
+                        label={headers?.[c] || colLabel(c)}
+                      />
+                    )}
                   </th>
                 ))}
               </tr>
