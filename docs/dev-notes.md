@@ -173,6 +173,37 @@ RANGE_FUNCTIONS (as the plan said) is what exposed this — the two changes belo
 pack-registered name would advertise while its pack is disabled. Nothing shipped here depends on
 it. Tier 3 and Tier 4 unchanged; gap A's remaining 19 are D2-capped and ride on the Tier 4 call.
 
+### D19 decision 2(a) RESOLVED + the absent-pack boundary (2026-07-27b)
+
+**2(a) — per-op names, uniformly; the name is the node's LABEL despaced, not the class
+hint.** The deciding argument is this app's own editor, not taste: a string-literal op is
+invisible to it (no autocomplete, no unknown-name highlight, no signature hint), so
+`SETOP("unoin", a, b)` fails at runtime where `SETUNOIN(a, b)` is flagged as you type.
+Confirmed twice over — the Tier 3 sketch already said "SETEQ/SETDIFF-style", and the node
+LABEL already changes per op (the card reads ARGMIN, never ARGMINMAX). Labels are already
+names for three of the four families (WAVG/WVAR/WSTDEV, ARGMIN/ARGMAX, Rolling SUM →
+ROLLINGSUM); only SetOp needs invented names, its labels being prose.
+
+**The pack seam's guarantee covers DEACTIVATED, not ABSENT — author caught this.** The
+"resolution is global" phrasing oversold it. A `PackFormula.impl` is a JS function
+shipping inside the pack, so a pack removed from the packs folder has nothing to call; it
+sits on the custom-LOGIC side of the line `pack-architecture.md` already draws, not the
+pre-set-formula (data) side that survives its pack being off. The seam handles
+present-but-off, which is what it was built for, and is re-runnable so a folder reload
+works (`loadCustomPacks()` is still a stub, so nothing calls it yet).
+
+The unsolved piece is DIAGNOSIS, and it is narrower than the existing placeholder plan:
+placeholders degrade a missing pack NODE, but a pack function called from a hand-typed
+Expression is NOT a pack node, so nothing degrades it and the error never names the pack
+that would provide it. Filed under the backlog's "Pack distribution" item, which already
+owns the saved-file pack record that would make naming it possible.
+
+**Process note:** several doc edits in the two preceding sessions silently no-opped —
+`str.replace()` with no assertion, against text that had already moved. The parity doc
+still claimed the work was "GREENLIT but not started" after it had shipped. Assert every
+scripted doc replacement; a doc that quietly fails to update is worse than one never
+touched, because the next reader trusts it.
+
 ### The pack → formula seam (same session, 2026-07-27b)
 
 D19 decision 4, built as `formulaExtensions.ts` — deliberately the direct sibling of
