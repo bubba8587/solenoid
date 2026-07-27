@@ -97,10 +97,13 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
 - [ ] **Formula ↔ node parity — the remainder** (D19; ratchet, alias gate and Tier 1
   landed 2026-07-27, so the D10 formula-surface violation is closed). Left:
   the pack seam also landed 2026-07-27 (`formulaExtensions.ts`). Left: **Tier 3** —
-  formula names for the Solenoid-native data-op core (wants a list `ExcelReturn` type
-  + range routing for list-in-list-out functions). Naming is settled except decision
-  2(a): whether the multi-op families (SetOp, ArgMinMax, Rolling, Weighted) take the
-  op as an argument or get per-op names — decide per family, see the parity doc.
+  formula names for the Solenoid-native data-op core. Naming is now fully DECIDED
+  (D19 decision 2(a), resolved 2026-07-27): **per-op names, uniformly** — the formula
+  name is the node's LABEL despaced, not the class hint. Falls straight out for
+  WAVG/WVAR/WSTDEV, ARGMIN/ARGMAX and ROLLINGSUM…; only SetOp needs invented names
+  (SETUNION/SETINTERSECT/SETDIFFERENCE/SETSYMDIFF) because its labels are prose.
+  Remaining work is mechanical plus two pieces of plumbing: a list `ExcelReturn` type
+  and range routing for list-in-list-out functions.
   Gap A's remaining 19 are D2-capped and cannot be registered — they ride on the Tier 4
   decision (author-present, `deferrals.md`). Tiers + rationale in
   `formula-node-parity.md`; both gaps machine-checked by `formulaNodeParity.test.ts`.
@@ -169,6 +172,13 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   don't yet record required packs/versions, and the code-pack story needs the
   pack-provenance work before the first code pack ships. (In-app `dependsOn`
   auto-activation already works — Electromagnetism → Electricity is the live example.)
+  **Also owns the ABSENT-pack diagnosis for formula functions** (2026-07-27): the
+  pack→formula seam resolves a DEACTIVATED pack's functions, but an ABSENT one has no
+  impl to call, and a pack function called from a hand-typed Expression is not a pack
+  NODE, so the placeholder path never fires — it reports an unknown function without
+  naming the pack. Needs the saved-file pack record to say which. Also wire a
+  `initPackFormulas()` re-run to the packs-folder reload once `loadCustomPacks()` stops
+  being a stub; the seam is already re-runnable and tested for it.
 
 ## Deferral review (the ONE item for everything deferred)
 

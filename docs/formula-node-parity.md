@@ -224,19 +224,65 @@ cheap, permanent guards:
    (a) the hint is per-CLASS while several classes are multi-op families (SetOpNode:
    union/intersection/…) — op-as-argument (`SETOP("union", a, b)`) mirrors the node's
    own op-selector shape, but per-op names are also defensible; decide there, under the
-   unification rule. (b) Excel-named ops (UPPER, TRIM…) keep their Excel names — this
+   unification rule. **RESOLVED 2026-07-27: per-op names, uniformly — and the name is
+   the node's LABEL despaced, not the class hint.** The deciding argument is the editor
+   rather than taste: a string-literal op is invisible to it — no autocomplete, no
+   unknown-name highlighting, no signature hint — so `SETOP("unoin", a, b)` fails at
+   runtime where `SETUNOIN(a, b)` is flagged as you type. The Tier 3 sketch above
+   already assumed this ("SETEQ/SETDIFF-style"), and the LABEL already changes per op
+   (the card reads ARGMIN, never ARGMINMAX — the class name is an implementation detail
+   the user never sees for these). Three of the four families fall straight out, their
+   labels being names already: WAVG/WVAR/WSTDEV, ARGMIN/ARGMAX, and Rolling SUM →
+   ROLLINGSUM (…AVG/MIN/MAX/STDEV/MEDIAN). Only `SetOpNode` needs invented names, its
+   labels being prose ("Union: in A or B"): SETUNION, SETINTERSECT, SETDIFFERENCE,
+   SETSYMDIFF. (b) Excel-named ops (UPPER, TRIM…) keep their Excel names — this
    rule is for the Solenoid-native core only.
 3. **Tier 4 (the reopened D2 cap): discussed 2026-07-14 — see "Tier 4 in full" above.**
    Not decided; criteria fixed (correctness + coherence; identity objection retired);
    precondition = finish the registry unification (same motion as the Tier 1 work).
    D2 stands as the working default meanwhile.
 4. **Packs register their own formula functions** through the `registerInternal` seam,
-   same naming rule — a pack ships its node + formula surface together. Registration
-   must track pack enable/disable (`FORMULA_FUNCTION_NAMES`/autocomplete become
-   pack-sensitive — today they're built once at load; the build session needs to make
-   the name set observable or rebuild-on-toggle).
+   same naming rule — a pack ships its node + formula surface together. ✅ **BUILT
+   2026-07-27** as `formulaExtensions.ts`, the direct sibling of `fcExtensions.ts`:
+   declare `formulas: PackFormula[]` on a `Pack`.
 
-**Status: the mechanical work (Tier 1 registrations, the alias blocklist, the ratchet
-test, the pack seam) is GREENLIT but not started** — the author explicitly scoped it out
-of the deciding session. Whoever picks this up: start from the ratchet test so the gap
-lists are pinned before they move.
+   **Resolution is global, advertising is active-only.** A formula pack node serializes
+   as a plain ExpressionNode and reloads with its pack switched off, so the functions
+   its formula calls must keep answering — a deactivated pack that turned saved
+   documents into `#NAME?` would be data loss, not tidiness. Autocomplete and
+   highlighting offer a pack's names only while it is on.
+
+   `FORMULA_FUNCTION_NAMES` was a load-time snapshot, which is exactly why the name set
+   could never see pack registrations; it is now `formulaFunctionNames()`, memoized
+   against a registry generation counter, with `advertisedFunctionNames()` as the
+   editor-facing subset. A pack may not claim a core name, a blocked legacy spelling,
+   or another pack's name — all three throw at startup rather than silently shadowing.
+
+   **The guarantee covers DEACTIVATED, not ABSENT.** A `PackFormula.impl` is a JS
+   function shipping inside the pack, so a pack removed from the packs folder has
+   nothing to call: it sits on the custom-LOGIC side of the line `pack-architecture.md`
+   already draws, not the pre-set-formula (data) side. The unsolved piece is DIAGNOSIS,
+   and it is narrower than the placeholder plan covers — a pack function called from a
+   hand-typed Expression is not a pack NODE, so nothing degrades it and the error never
+   names the missing pack. Needs the unbuilt saved-file pack record; tracked under
+   "Pack distribution" in the backlog.
+
+**Status (2026-07-27): the whole greenlit mechanical set is BUILT** — the ratchet, the
+alias blocklist, the Tier 1 registrations, and the pack seam. Still open:
+
+- **Tier 3** — formula names for the Solenoid-native data-op core. Naming is now fully
+  decided (see decision 2(a)); what is left is mechanical plus two pieces of plumbing:
+  a list `ExcelReturn` type, and range routing for list-in-list-out functions.
+- **Tier 4** — author-gated. Gap A's remaining 19 names ride entirely on it.
+
+Two bugs the ratchet surfaced on its first run, both fixed:
+- `fxLookup` walked objects but not FUNCTIONS, while the NAME walk descended into both.
+  Ten current-Excel names (CEILING.MATH, CEILING.PRECISE, FLOOR.MATH, FLOOR.PRECISE,
+  GAMMALN.PRECISE, SKEW.P, T.TEST, NETWORKDAYS.INTL, WORKDAY.INTL, BINOM.DIST.RANGE)
+  autocompleted and then threw "Unknown function" when called.
+- Formula.js's internal `utils.*` namespace was being advertised as callable Excel
+  functions.
+
+And two the pack-seam test surfaced: `initPackFormulas()` was not re-runnable (its
+collision check read its own previous registrations as core ones), and a removed pack's
+functions lingered because `registerInternal` had no inverse.
