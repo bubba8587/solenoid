@@ -131,10 +131,18 @@ const RULES: Rule[] = [
     //     binding, so documenting it is the overlay's job;
     //   - the same word as a NOUN or a descriptive gerund ("a drag that won't
     //     drop", "the drag guard", "click-away", "mid-drag", "Dragging a cable
-    //     into empty canvas opens the Add menu") describes behaviour, not an
+    //     into empty canvas opens the Add menu") describes behavior, not an
     //     instruction to the reader.
     // The split is positional: a gesture at the head of a clause, or one
     // followed by "to <verb>", is an instruction. Everything else is prose.
+    //
+    // WHEN FIXING A HIT, REMOVE THE GESTURE, NOT THE VERB. On a control, a bare
+    // verb phrase naming what it does IS correct copy — "Cycle Number / Text /
+    // Date / Boolean", "Open the Problems panel", "Drill in", "Rename". That is
+    // not commanding the reader; it is the control's own action, the same
+    // register as a button label. Only the gesture in front of it was wrong:
+    // "Click to cycle …" → "Cycle …". A 2026-07-27 pass deleted the whole
+    // clause instead and flattened eight controls into bare nouns.
     re: new RegExp(
       "(?:^|[:;,]\\s*|\\*\\*|\\b(?:then|and|or)\\s+)" + GESTURE + "|" + GESTURE + "\\s+to\\s+\\w",
       "i",
@@ -160,7 +168,7 @@ const RULES: Rule[] = [
     // `Set the vault in Settings ▸ Obsidian` is deliberately NOT matched — a
     // config location genuinely cannot be guessed from the node.
     // `wire a|an X` tells the reader what to put UPSTREAM. That is out of scope
-    // for a string: if a node's expected neighbours need surfacing, it is a UI
+    // for a string: if a node's expected neighbors need surfacing, it is a UI
     // affordance, not prose. `wire the table into Frame Filter` survives on the
     // definite article — it names a DIFFERENT node to use instead, which is a
     // disambiguation between two similar nodes, not an upstream suggestion.
@@ -174,7 +182,7 @@ const RULES: Rule[] = [
     id: "british-spelling",
     why: "section 7 — shipped copy is American English: color, gray, center, behavior, labeled, meter",
     // Shipped strings only. Code identifiers and CSS custom properties are not
-    // copy, so `--group-colour`-style names (were there any) are out of scope.
+    // copy, so `--group-color`-style names (were there any) are out of scope.
     re: /\b(?:colours?|coloured|colouring|centres?|centred|greys?|greyed|behaviours?|neighbours?|neighbouring|labelled|labelling|cancelled|modelling|travelling|catalogue|dialogue|licence|defence|metres?|litres?|programme|favourite|practise|fulfil|artefact|ageing|judgement|acknowledgement|storey|aluminium|sulphur|analys(?:e|ed|ing)|normalise|organise|customise|initialise|summarise|categorise|recognise|minimise|maximise|optimise|utilise|emphasise|prioritise|penalise)\b/i,
   },
   {

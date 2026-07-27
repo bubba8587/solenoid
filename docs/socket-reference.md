@@ -9,7 +9,7 @@ describes only what the system **does** and what it **blocks** — a rule that i
 absent is simply not listed.
 
 The machine-readable source for the connection lists below is `src/graph/sockets.ts`;
-the arrival behaviour is `src/graph/coerceInputs.ts`; the drawing is
+the arrival behavior is `src/graph/coerceInputs.ts`; the drawing is
 `src/graph/components/SocketComponent.tsx`. Regenerate the port counts with
 `npx tsx scripts/socket-inventory.ts`.
 
@@ -23,7 +23,7 @@ counts and the prose are not — re-run the script above after adding a node.
   factory to call for each type.
 - **"Why won't this cable connect?"** → section 9, then the output variant's
   **Reaches** list in section 5.
-- **"What does this dot mean?"** → section 3 for the shape and colour, then the
+- **"What does this dot mean?"** → section 3 for the shape and color, then the
   variant's own section in 5.
 - **"My node received the wrong shape."** → the variant's **On arrival** line in
   section 5, plus section 4 for what happens at every socket.
@@ -32,7 +32,7 @@ counts and the prose are not — re-run the script above after adding a node.
 |---|---|
 | 1 | Vocabulary — every term this document uses |
 | 2 | The two governing rules |
-| 3 | Reading a socket at a glance (shape and colour) |
+| 3 | Reading a socket at a glance (shape and color) |
 | 4 | What the boundary does at every socket |
 | 5 | **The 30 variants**, one section each — 5.1 number · 5.2 text · 5.3 date · 5.4 complex · 5.5 logical · 5.6 wildcards · 5.7 containers · 5.8 object |
 | 6 | Adoptive ports and passthrough type resolution |
@@ -129,7 +129,7 @@ frame or cube. It is the top of the data lattice: every data value widens into i
 relational verb nodes pass these to each other and the engine executes the whole
 chain in one round trip.
 
-**Unit cell** — a number tagged with a physical dimension (metres, seconds). Only
+**Unit cell** — a number tagged with a physical dimension (meters, seconds). Only
 nodes that run the unit algebra receive them; every other node receives the plain
 magnitude.
 
@@ -165,7 +165,7 @@ arriving at a scalar socket is an accepted risk — the numeric scalar coercer r
 
 ## 3. Reading a socket at a glance
 
-The **shape** of the dot tells you the rank. The **colour** tells you the element
+The **shape** of the dot tells you the rank. The **color** tells you the element
 family.
 
 | Shape | Meaning | Variants |
@@ -181,12 +181,12 @@ family.
 | Square with two text lines | document | `document` |
 | Hollow ring (outline only) | anything | `trueany` |
 
-Colours by family: number amber, text yellow-green, date pink, complex sky blue,
+Colors by family: number amber, text yellow-green, date pink, complex sky blue,
 logical purple, frame and cube violet, function teal-green, chart and document
 blue, all five wildcards gray. Within a family, the strict list is a darker shade
 of the scalar and the matrix is a more saturated shade. A combo's split square
-takes the scalar colour on the upper-left triangle and the list colour on the
-lower-right. `anycombo`, whose family has only one colour, takes gray on the
+takes the scalar color on the upper-left triangle and the list color on the
+lower-right. `anycombo`, whose family has only one color, takes gray on the
 upper-left and gray's own border shade on the lower-right, so the split stays
 visible without inventing a hue.
 
@@ -1098,7 +1098,7 @@ change.
 
 **Display.** A value's rendering is chosen from its **socket type**, not by reading
 its cells. A `datelist` renders as dates because its socket says date, even if
-every cell is an integer. A list chip takes its accent colour from the same source.
+every cell is an integer. A list chip takes its accent color from the same source.
 
 **Format Controller controls.** The FC offers the control set for the adopted
 socket's family:
@@ -1239,8 +1239,8 @@ port automatically, so the menu only ever offers nodes that will actually connec
 ## 10. Adding a new element family
 
 A sixth family means four new variants (scalar, list, combo, matrix) and the
-120-odd new ordered pairs of connect/block behaviour that go with them. **All of
-that behaviour is derived from one table row.** This was measured, not assumed: a
+120-odd new ordered pairs of connect/block behavior that go with them. **All of
+that behavior is derived from one table row.** This was measured, not assumed: a
 throwaway `currency` family was added, compiled and run against the full suite,
 and the numbers below are what that produced.
 

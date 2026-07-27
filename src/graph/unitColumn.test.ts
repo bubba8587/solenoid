@@ -18,7 +18,7 @@ describe("tagFrameCellUnit — the as-typed frame cell → base-SI UnitCell carr
   it("a scaled unit normalises to base SI but reads back in the display unit: 5 km", () => {
     const cu = parseColumnUnitFromHeader("Distance (km)").unit!;
     const tagged = tagFrameCellUnit(5, cu) as UnitCell;
-    expect(magnitudeOf(tagged)).toBe(5000);        // base SI (metres)
+    expect(magnitudeOf(tagged)).toBe(5000);        // base SI (meters)
     expect(tagged.display).toBe("km");
     expect(displayMagnitudeOf(tagged)).toBe(5);    // reads back as 5 km
   });

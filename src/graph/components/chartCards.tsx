@@ -7,7 +7,7 @@ import type { KpiPayload, BulletPayload } from "../chartValue";
 import { formatScalar } from "./format";
 import "./chartCards.css";
 
-// Positive-delta green — a semantic state colour (like --sol-error for negatives),
+// Positive-delta green — a semantic state color (like --sol-error for negatives),
 // deliberately NOT a palette slot: a KPI trend reads up=good / down=bad, not "teal".
 // Matches the connection "ok" dot so green means the same thing across the app.
 const POS = "#2fae7a";

@@ -2,7 +2,7 @@
 // shared. The searchable text for a leaf is deliberately WIDER than what's shown:
 // the label + description + Excel function names, PLUS the ancestor category path
 // (so "arithmetic" finds the Add/Subtract/… leaves under the Arithmetic category,
-// and "table input" finds the leaf labelled "Table" under the Input category),
+// and "table input" finds the leaf labeled "Table" under the Input category),
 // the kebab `type` id turned into words ("table-input" → "table input"), and an
 // optional explicit `keywords` string for synonyms the label doesn't carry.
 
@@ -56,7 +56,7 @@ export function scoreLeaf(query: string, { leaf, categoryPath }: LeafWithContext
   const s = fuzzyScore(query, haystack);
   if (s === null) return null;
   // Tiered bonus = the strongest tier among: the label, the label+category combo
-  // (so "table input" EXACT-matches "Table Input" for a leaf labelled "Table"
+  // (so "table input" EXACT-matches "Table Input" for a leaf labeled "Table"
   // under the Input category), the kebab type, keywords, and Excel names (Excel
   // weighed slightly under the rest so an exact label still wins a tie).
   const fields = [leaf.label, `${leaf.label} ${category}`, typeWords(leaf.type), keywords];

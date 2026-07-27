@@ -409,9 +409,9 @@ export function loopMembers(editor: NodeEditor<Schemes>): Set<string> {
         index.set(v, counter); low.set(v, counter); counter++;
         stack.push(v); onStack.add(v);
       }
-      const neighbours = adj.get(v)!;
-      if (frame.i < neighbours.length) {
-        const w = neighbours[frame.i];
+      const neighbors = adj.get(v)!;
+      if (frame.i < neighbors.length) {
+        const w = neighbors[frame.i];
         frame.i++;
         if (!index.has(w)) {
           work.push({ node: w, i: 0 });
@@ -621,7 +621,7 @@ async function runGraphPass(changedNodeId?: string, renderOnly?: Set<string>, to
       cableValueStore.setNodeOutputs(node.id, outputs);
     }
   } catch (e) {
-    // A newer processGraph() called engine.reset() and cancelled our
+    // A newer processGraph() called engine.reset() and canceled our
     // in-flight fetch. Expected when calls overlap (seed load fires one
     // per connection) — the newer run finishes and renders. Swallow only
     // cancellation; rethrow anything real.

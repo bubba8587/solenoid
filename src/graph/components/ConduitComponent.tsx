@@ -39,7 +39,7 @@ type Props = {
 };
 
 // Fixed hit-area / pivot box. The visible connector grows around the pivot (body
-// centre) and overflows this box, so the node's top-left never moves between
+// center) and overflows this box, so the node's top-left never moves between
 // states — no async-translate recenter, no jiggle. (See the "resizable-content
 // nodes" note in CLAUDE.md.)
 const BODY_SIZE = CONDUIT_BODY_SIZE;
@@ -158,7 +158,7 @@ export function ConduitComponent({ data, emit }: Props) {
   // shrunk when compressed. Every dimension below is base × scale.
   const scale = expanded ? 1 : COLLAPSED_SCALE;
   const sq = SQ * scale;
-  const halfW = (sq + COL_GAP * scale) / 2; // socket column x offset from centre
+  const halfW = (sq + COL_GAP * scale) / 2; // socket column x offset from center
   const rowStep = sq + ROW_GAP * scale;
   const socketSize = sq;                     // the square IS the socket
 
@@ -176,7 +176,7 @@ export function ConduitComponent({ data, emit }: Props) {
   const outputHandles = Array.from({ length: lanes }, (_, i) => place(1, i));
 
   // Housing wraps the square grid tightly (small SHELL_PAD) plus a stripe row at
-  // the top. The grid stays centred on the pivot; the housing pokes up a little
+  // the top. The grid stays centered on the pivot; the housing pokes up a little
   // for the stripe. `rot` spins everything together in pivot-local coords.
   const gridHalfW = halfW + sq / 2;
   const gridHalfH = ((lanes - 1) * rowStep) / 2 + sq / 2;
@@ -193,7 +193,7 @@ export function ConduitComponent({ data, emit }: Props) {
   const radius = Math.min(rectW / 2, 6 * scale);
   const rot = `rotate(${angle} ${PIVOT} ${PIVOT})`;
 
-  // Publish live layout for the ribbon-trunk geometry (face centres move when
+  // Publish live layout for the ribbon-trunk geometry (face centers move when
   // the connector expands/compresses or rotates). `selected` rides along so
   // ribbons touching a selected Conduit separate into individual cables.
   useEffect(() => {
@@ -258,8 +258,8 @@ export function ConduitComponent({ data, emit }: Props) {
       key={key}
       className={`solenoid-conduit__lane${isPhantom ? " solenoid-conduit__lane--phantom" : ""}`}
       // Rotate the square to align with the housing. This is a visual-only
-      // transform around the square's centre — it spins the box without moving
-      // its centre, so rete still measures the cable endpoint at p (offsetLeft/Top
+      // transform around the square's center — it spins the box without moving
+      // its center, so rete still measures the cable endpoint at p (offsetLeft/Top
       // ignore the transform).
       // COMPRESSED sockets are pointer-transparent: the bunched squares cover
       // the whole pill, so every click would start a cable drag and the block

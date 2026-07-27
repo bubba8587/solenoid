@@ -3,7 +3,7 @@ import { clipScaleOffset, type AreaTransform } from "./overlayTransform";
 import { packNodeInstances, FLOATS_PER_INSTANCE, type NodeCard } from "./nodeInstances";
 
 // WebGPU node-card renderer — the LOD representation of node bodies. NOT YET wired
-// into the LOD swap (that's the next step); this draws the cards so alignment/colour
+// into the LOD swap (that's the next step); this draws the cards so alignment/color
 // can be verified first. Each node is ONE instance of a unit quad; the fragment
 // shader does the rounded-rect SDF + header/body split, so ALL nodes draw in a single
 // instanced call — the cheap-to-composite stand-in for the DOM node layer when zoomed
@@ -58,7 +58,7 @@ fn fs(in: VSOut) -> @location(0) vec4f {
   let d = sdRoundRect(p, half, r);
   let aa = max(fwidth(d), 1e-4);
   let cov = clamp(0.5 - d / aa, 0.0, 1.0);
-  // Header bar across the top; body below. Colours are premultiplied already.
+  // Header bar across the top; body below. Colors are premultiplied already.
   let col = select(in.body, in.header, in.local.y < in.params.y);
   return col * cov;
 }
@@ -149,7 +149,7 @@ export class GpuNodeRenderer {
     }
   }
 
-  /** Upload the node cards. Call on a node geometry/colour change, not on pan. */
+  /** Upload the node cards. Call on a node geometry/color change, not on pan. */
   setNodes(cards: NodeCard[]): void {
     if (this.disposed) return;
     const data = packNodeInstances(cards);

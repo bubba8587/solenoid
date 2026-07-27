@@ -104,7 +104,7 @@
    visually unchanged.
 
    Filling the palette with the accent is a deliberate, narrow exception to the Quiet
-   Accent Rule, which permits a coloured surface when it "is colored because something
+   Accent Rule, which permits a colored surface when it "is colored because something
    about its state or type is being communicated". The whole point here is that Enter
    now does something categorically different, and a small badge would be too quiet a
    signal for a mode that reroutes the primary action. Flat accent + --accent-ink (the
@@ -115,7 +115,7 @@
   top: 50%;
   right: 8px;
   transform: translateY(-50%);
-  /* 24px box + a 16px glyph: both even, so the icon centres on whole pixels. */
+  /* 24px box + a 16px glyph: both even, so the icon centers on whole pixels. */
   width: 24px;
   height: 24px;
   display: flex;
@@ -144,7 +144,7 @@
 .solenoid-cmdpalette--ai .solenoid-cmdpalette__input::placeholder {
   color: color-mix(in srgb, var(--accent-ink) 62%, transparent);
 }
-/* Sub-surfaces are tints of the ink rather than new colours, so the whole panel
+/* Sub-surfaces are tints of the ink rather than new colors, so the whole panel
    stays one accent field however the accent is swapped (the documentTitle pattern). */
 .solenoid-cmdpalette--ai .solenoid-cmdpalette__item:hover,
 .solenoid-cmdpalette--ai .solenoid-cmdpalette__item--active {

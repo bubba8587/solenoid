@@ -107,7 +107,7 @@ function NeutralSwatch({ on }: { on: boolean }) {
       </defs>
       <g clipPath={`url(#${clipId})`}>
         {/* Middle band fills the whole disc; the two extreme regions paint over it.
-            Dividing lines x+y = 12.5 and x+y = 19.5 (symmetric about the centre 8,8). */}
+            Dividing lines x+y = 12.5 and x+y = 19.5 (symmetric about the center 8,8). */}
         <rect x="0" y="0" width="16" height="16" fill={resolveColor("gray")} />
         <polygon points="0,0 12.5,0 0,12.5" fill={NEUTRAL_HEX[NEUTRAL_WHITE]} />
         <polygon points="16,3.5 16,16 3.5,16" fill={NEUTRAL_HEX[NEUTRAL_DARK]} />

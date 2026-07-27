@@ -153,7 +153,7 @@ for (const [path, mod] of Object.entries(seedModules)) {
       }
       // Bystanders: a non-member center inside an EXPANDED group's box gets
       // absorbed by the next reconcile. (Collapsed groups render small, and
-      // expand-push clears neighbours, so only expanded boxes are landmines.)
+      // expand-push clears neighbors, so only expanded boxes are landmines.)
       for (const grp of groups.filter((x) => !x.collapsed)) {
         for (const [id, b] of nodeBoxes) {
           if (grp.members.includes(id)) continue;

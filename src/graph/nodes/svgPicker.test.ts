@@ -17,7 +17,7 @@ describe("SvgPickerNode", () => {
     expect(n.outputs.layer?.socket).toBe(stringSocket);
   });
 
-  it("emits an SvgValue carrying the source, selection, and colour", () => {
+  it("emits an SvgValue carrying the source, selection, and color", () => {
     const n = new SvgPickerNode({ source: SVG, selectedLayer: "CA", hoverColor: "#ff0000", height: 180 });
     const out = n.data();
     expect(isSvgValue(out.chart)).toBe(true);

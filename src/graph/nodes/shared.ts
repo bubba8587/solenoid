@@ -22,7 +22,7 @@ export const dateListIn = (label: string) => new ClassicPreset.Input(dateListSoc
 // `any` = element-agnostic SCALAR (a single value of any family). For a true
 // accept-anything port (containers + object family) use the adoptive/trueany
 // factories below.
-export const anyIn      = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("any"), label); // adoptive: colours to the wired type (see anyTableIn note below)
+export const anyIn      = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("any"), label); // adoptive: colors to the wired type (see anyTableIn note below)
 // ADOPTIVE trueany ports (the default for accept-anything): a fresh
 // AdoptiveSocket per port — it adopts the wired cable's type and reverts to the
 // hollow trueany on disconnect (reconcileTrueAnyTypes). Use the STATIC variants
@@ -47,10 +47,10 @@ export const adoptiveListOut  = (label: string) => new ClassicPreset.Output(new 
  *  For a genuinely generative result whose type can't be derived from any input
  *  (XLOOKUP, whose cell type varies per row). An EXTRACTION uses `trueAnyOut` + a
  *  `passthrough()` with `project` instead; see INDEX. There is no static trueany INPUT
- *  — every element-agnostic input adopts, so it can colour to the wired cable.  */
+ *  — every element-agnostic input adopts, so it can color to the wired cable.  */
 export const staticTrueAnyOut = (label: string) => new ClassicPreset.Output(trueAnySocket, label);
 // Element-agnostic INPUTS (any / anylist / anytable) are ADOPTIVE (2026-07-15): they
-// accept any element family (a lower-rank value widens IN, as before) AND colour the
+// accept any element family (a lower-rank value widens IN, as before) AND color the
 // dot to the wired cable's concrete type, reverting to the neutral rung on disconnect
 // (settleWildcardTypes). Purely informative — acceptance is unchanged (the base rung),
 // and coerceInputs treats the adopted concrete type identically to the neutral one for
@@ -148,7 +148,7 @@ export function resultOut(label: string, dim: ResultDim, t: ResultType): Classic
 
 // Apply `fn` element-wise when any argument is a list (broadcasting any
 // scalar args against it), else apply once. Powers the list-aware ("Map")
-// behaviour of element-wise nodes via the flexible `numlist` socket. An
+// behavior of element-wise nodes via the flexible `numlist` socket. An
 // invalid element (fn → null) becomes NaN within a result list. Ragged lists
 // zip to the LONGEST length: a position missing from a shorter list emits a
 // first-class `null` (missing) in the result, without calling `fn` — the
@@ -375,7 +375,7 @@ export const NODE_KIND_SLOTS: Record<NodeKind, PaletteSlot> = {
   convert: "teal",      // unit conversion
   logic:   "purple",    // comparison & boolean logic
   // A list is NOT a first-class socket type (it's a dimensional variant of an
-  // element type — a number-list socket is still number-coloured), so list nodes
+  // element type — a number-list socket is still number-colored), so list nodes
   // don't earn a dedicated hue; they share the neutral gold with display/format.
   list:    "gold",      // list / aggregate (neutral — see note)
   lambda:  "green",     // LAMBDA value definition

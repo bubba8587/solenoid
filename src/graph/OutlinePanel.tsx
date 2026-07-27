@@ -180,7 +180,7 @@ function toggleGroup(id: string) {
 }
 
 // Collapse every group, or expand them all if they're already collapsed.
-// Routes through setGroupsCollapsed so the neighbour-push (and the top-left →
+// Routes through setGroupsCollapsed so the neighbor-push (and the top-left →
 // bottom-right expand sweep) is applied, same as the single-group toggle.
 // Exported so the TopBar's layout pill can host a duplicate of this button
 // (shared handler, no behavior change).

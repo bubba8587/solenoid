@@ -30,7 +30,7 @@ export function CubeChip({ value, label, size = "md", accent, pinNodeId }: {
       title={`${rows}×${cols}×${depth} cube (rows × cols × depth).${depth > 1 ? ` Nests ${depth} levels deep.` : ""} Click to view.`}
       onClick={(e) => {
         e.stopPropagation();
-        // Explicit prop, else the inherited node/group style (cube TYPE colour
+        // Explicit prop, else the inherited node/group style (cube TYPE color
         // when there's no node context — see FrameChip).
         const st = readChipPopupStyle(e.currentTarget, "--sock-cube");
         cubePopup.open(

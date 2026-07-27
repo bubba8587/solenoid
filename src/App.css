@@ -137,7 +137,7 @@ body,
   /* Stop mobile pull-to-refresh / rubber-band bounce so a drag that starts on
      the canvas stays a canvas pan instead of scrolling the page. */
   overscroll-behavior: none;
-  /* Drop the grey flash on tap; chrome buttons signal touch via their own
+  /* Drop the gray flash on tap; chrome buttons signal touch via their own
      :active styles instead. */
   -webkit-tap-highlight-color: transparent;
   background: var(--app-bg);

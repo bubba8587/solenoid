@@ -67,7 +67,7 @@ Third sub-pass:
 - **Live standoff settle rAF-throttled** (`Canvas.tsx`, §3). The O(network²)
   solver ran on every `nodetranslated` (per pointermove); now coalesced to one
   solve/frame on the latest positions (converges identically), with the exact
-  final settle still on drop and the pending rAF cancelled on drop.
+  final settle still on drop and the pending rAF canceled on drop.
 - **Cable SVG bounded to its bbox** (`ConnectionComponent.tsx`, §2 partial). Each
   cable rendered into a 9999×9999 (~100MP) `<svg>` anchored at the holder origin;
   now `boundedSvgProps` positions the `<svg>` at the cable's content bbox with a
@@ -218,7 +218,7 @@ nodes + 123 cables stays mounted and in the display list the rasterizer walks.
 `cullStore` fixes this by actually not rendering content far from the view:
 - Canvas's `recomputeCull` (throttled to a rAF, run on transform, `rendered`,
   and node add/remove/translate) computes the node ids within the viewport + ~1
-  screen of margin, plus the immediate **neighbours** of those nodes so every
+  screen of margin, plus the immediate **neighbors** of those nodes so every
   on-screen cable can still measure both socket endpoints. That set goes into
   `cullStore`.
 - Each node is wrapped (`culledNodeComponent`, memoized per real component) and
@@ -308,7 +308,7 @@ headlines:
   Groups uniformly). Removed the dead `.rete-node { cursor: grab }` rule and gave
   the grab cursor to the real root classes (`.solenoid-node` was `cursor: default`,
   which had overridden the dead wrapper rule anyway).
-- **Table node colour.** Added a `table` node kind (`NODE_KIND_ACCENTS.table =
+- **Table node color.** Added a `table` node kind (`NODE_KIND_ACCENTS.table =
   #e96b3c`, matching the `--sock-table` vermilion) and routed the matrix/table-
   lambda nodes to it in `kind.ts` — they were falling through to `math` (blue)
   while their sockets were orange. Table Input's Add-menu accent was green; fixed.
@@ -334,7 +334,7 @@ live in CLAUDE.md (the invariants); the headlines:
 - **Tidy port preset.** The ELK `classic` preset staircases chains upward
   (output ports at top, input at bottom). Replaced with a symmetric preset +
   a Center/Top `tidyAlign` setting; the post-layout anchor now preserves the
-  vertical CENTRE, not the top. (See CLAUDE.md "Auto-arrange / Tidy".)
+  vertical CENTER, not the top. (See CLAUDE.md "Auto-arrange / Tidy".)
 - **Group autofit no longer changes membership** — only explicit drag in/out,
   select→group, or a manual box resize do (CLAUDE.md group section).
 - **IS-check → "Test"**, ISLOGICAL displayed as ISBOOLEAN (op value unchanged).
@@ -342,7 +342,7 @@ live in CLAUDE.md (the invariants); the headlines:
   (it's just "open navigator + focus search"); "Export" → "Save As" with a new
   Save button (flushes the always-on autosave) in the toolbar + File menu;
   minimap view-rect drawn at 80% so Fit-all still shows it; mobile light-mode
-  document-title colour + dropdown position fixes.
+  document-title color + dropdown position fixes.
 
 ## Mobile chrome reorg — bottom action bar (2026-06-16)
 
@@ -350,7 +350,7 @@ The scattered floating touch controls (bottom-left undo/redo pill + a bottom-
 right vertical action column) were consolidated into one **full-width bottom
 action bar** (`MobileControls` → `.solenoid-mobile-bar`): **6 buttons + the
 raised Add FAB** — `Search · Undo · Redo · ➕ · Select · Delete · Fit`. The
-centre Add is a raised accent FAB (`translateY(-14px)`, visual-only so the bar
+center Add is a raised accent FAB (`translateY(-14px)`, visual-only so the bar
 height is unaffected). **Delete is disabled (dimmed) when nothing's selected**
 rather than appearing/disappearing, so the bar never reflows. Buttons are 40px,
 FAB 54px, `justify-content: space-between` so 7 fit a portrait phone. Search →
@@ -530,7 +530,7 @@ Editing reuses the one grid popup rather than a second editor. `TablePopupState`
 A connection node references outside data and fetches a Frame on refresh; the project file stores only the reference (a URL now; a folder-relative filename next), never the data. Phase 1 is the **Web Source** node plus the shared layer; the local-folder CSV node (needs Tauri fs/dialog) is phase 2.
 
 - **Shared layer (`connectionStore.ts`):** mirrors the volatile-recalc pattern (`getRecalcGen`/`requestRecalc`) but for async, cached fetches. A global generation + a per-node refresh token + the reference compose a cache key (`connectionStore.key(id, ref)`). A connection's `data()` returns its cache when the key is unchanged, so an ordinary `processGraph()` (editing some unrelated node) does NOT re-hit the network. `refreshConnection(id)` bumps that node's token; `refreshAllConnections()` bumps the global gen. Status (idle/loading/ok/error + rows×cols + fetchedAt) lives in the store; node components subscribe via `useSyncExternalStore`.
-- **First async `data()` in the codebase.** Rete's DataflowEngine awaits it (process.ts already `await`s `engine.fetch`). The node dedupes concurrent fetches with an in-flight promise keyed by the cache key: `engine.reset()` throws `Cancelled` into the in-flight engine fetch on an overlapping `processGraph`, but the fetch promise keeps running, so sharing it means the result is never lost. `lastKey` is set in both success and error branches (error doesn't retry until gen/token/url changes — no network spam).
+- **First async `data()` in the codebase.** Rete's DataflowEngine awaits it (process.ts already `await`s `engine.fetch`). The node dedupes concurrent fetches with an in-flight promise keyed by the cache key: `engine.reset()` throws `Canceled` into the in-flight engine fetch on an overlapping `processGraph`, but the fetch promise keeps running, so sharing it means the result is never lost. `lastKey` is set in both success and error branches (error doesn't retry until gen/token/url changes — no network spam).
 - **Web Source (`nodes/connection.ts`):** URL → numeric Frame. `remoteTextToFrame` picks JSON vs CSV from content-type, then `.json` extension, then a leading `[`/`{`. JSON accepts array-of-records (keys = columns), array-of-arrays, array-of-scalars, and columnar objects. Non-numeric cells → NaN (numeric-only v1). The URL field commits on blur/Enter (not per keystroke) so typing never fires a fetch. **CSV is quote-aware** (`csv.ts` `parseCsvRows`, delimiter-detecting) — the old comma-split is gone, so quoted embedded commas (titanic.csv) no longer mis-align.
 - **CORS (2026-06-16):** the fetch routes through `httpBridge.fetchText` — Tauri's native HTTP plugin on desktop (no same-origin wall, so any URL works), `window.fetch` in the browser. A browser cross-site block becomes a `CorsLikelyError` whose message points the user at the desktop app. Tauri: `tauri-plugin-http` + `http:default` capability scoped to `http://**` / `https://**` (cargo-check verified; runtime still wants a `tauri dev` pass).
 - **Refresh UX:** a ⟳ button + status dot on each node, and **Data ▸ Refresh all connections** in the MenuBar. Add menu: Web Source lives under **Input** (the menu caps at 12 top-level domains, so no new "Connections" category).
@@ -948,9 +948,9 @@ The seed↔autosave overlap is fixed: the app now has a real **documents library
 
 A **Ribbon** node (`nodes/ribbon.ts` + `components/RibbonComponent.tsx`) — a forked, simplified Conduit. One rotatable block bundles up to `RIBBON_MAX_LANES` (8) `any` cables; lane i routes in_i → out_i (output mirrors input). Built on the Conduit's invariants:
 
-- **Fixed hit-body, overflow the visual.** `BODY_SIZE = 72`, pivot = body centre. The block + sockets grow symmetrically around the pivot and overflow the body, so the node's top-left never moves between states — no `area.translate` recenter, no one-frame flash (the trap the old design note flagged). This is what makes the deselect-collapse free.
+- **Fixed hit-body, overflow the visual.** `BODY_SIZE = 72`, pivot = body center. The block + sockets grow symmetrically around the pivot and overflow the body, so the node's top-left never moves between states — no `area.translate` recenter, no one-frame flash (the trap the old design note flagged). This is what makes the deselect-collapse free.
 - **One uniform scale, not a layout change, on select/deselect.** `expanded = selected || (dragging && near)` picks `scale = 1` vs `COLLAPSED_SCALE` (0.6), and **every** dimension is base × scale (HALF_W, SPREAD, END_PAD, PIN, socket size, stripe). Must be a real layout scale, NOT `transform: scale()` — rete measures sockets from `offsetLeft/Top`, which ignores transforms, so a CSS scale would desync cable endpoints. The scaled socket size is pushed to `--socket-size` inline on the root so the dots track the body. Re-render on select/deselect (the selector's `area.update`) is what swaps the scale.
-- **Connector look (per the IDC-ribbon reference photo).** Darker-gray shell (`#464b54`) + lighter-gray border (`#8a909c`) + a **pin field** (`__pin`, a grid of small dark-gray squares filling the interior — cols/rows derived from the body size, not lane count, so it never collapses to "two dots"; body floors at `MIN_BODY_LANES` so a 1–2 lane ribbon still reads as a connector) + a red **pin-1 stripe** on the lane-0 edge. Selected keeps the greys (size communicates selection) and just lights the border accent + a glow. Body, pins, and stripe all live in one `<g transform={rot}>` so they rotate together in pivot-local coords; the socket dots are HTML, rotated in JS via `place()`.
+- **Connector look (per the IDC-ribbon reference photo).** Darker-gray shell (`#464b54`) + lighter-gray border (`#8a909c`) + a **pin field** (`__pin`, a grid of small dark-gray squares filling the interior — cols/rows derived from the body size, not lane count, so it never collapses to "two dots"; body floors at `MIN_BODY_LANES` so a 1–2 lane ribbon still reads as a connector) + a red **pin-1 stripe** on the lane-0 edge. Selected keeps the grays (size communicates selection) and just lights the border accent + a glow. Body, pins, and stripe all live in one `<g transform={rot}>` so they rotate together in pivot-local coords; the socket dots are HTML, rotated in JS via `place()`.
 - **Geometry.** Inputs on the −x face, outputs on the +x face, pins at x=0; `place()` rotates (lx, ly) by `angle` around the pivot.
 - **Rotation is quantized to 45°** (`snap45`, AngleDial `step=45`). Off-45 angles made the per-socket diagonal cable leads look bad, so the leads (`cableAngleStore` set to `angle` for every in_/out_) only ever exit on diagonal-friendly angles.
 - **Inspector (selected only):** an **Extend** button — spawns a new Ribbon downstream along the flow direction and wires every current lane's output into it — and a 45°-step rotation **AngleDial**. No spacing control (unlike Conduit). No internal in→out cables.
@@ -975,12 +975,12 @@ Also from this pass: the Conduit inspector toolbar docks to the lower-left of th
 
 Ribbon **outputs render as one cable** when 2+ non-ghost lanes go to the same entity — another visible Ribbon, or one collapsed group (`ribbonBundle.ts`):
 
-- **Trunk + fans, mirrored at both ends.** The lowest-lane connection is the *representative*: it draws the wide neutral trunk (`BUNDLE_COLOR #8a909c`, `BUNDLE_WIDTH 7.2` ≈ 4× a normal cable, fixed regardless of lane count per product direction) with **flat butt caps**, from a merge point `BUNDLE_SPLIT 24`px past the source output face to a split point 24px before the target input face. **Every** member (rep included) draws two straight fan branches — source socket → its own *slot* on the trunk's flat starting face, and its slot on the flat end face → its rete-measured target socket. Slots spread across the trunk width (`((rank+0.5)/n − 0.5)·width`), ranked by source-lane order at the start and target-lane order at the end, so branches sit side-by-side emerging from the flat cut and can never cross; no component ever needs another lane's socket position. Fans carry the lane's type colour; the trunk stays neutral.
-- **Collapsed-group target: no target fan.** All crossings from one external Ribbon share a single pill row (`InputPill.lanes > 1` in `groupCollapse.ts`); the trunk terminates whole on a combined pill that reuses the collapsed-node `solenoid-node__input-pill` stadium (socket functional underneath via the `pill-socket` dot-hiding trick), coloured by the first member socket's type. Source-side fans still apply.
+- **Trunk + fans, mirrored at both ends.** The lowest-lane connection is the *representative*: it draws the wide neutral trunk (`BUNDLE_COLOR #8a909c`, `BUNDLE_WIDTH 7.2` ≈ 4× a normal cable, fixed regardless of lane count per product direction) with **flat butt caps**, from a merge point `BUNDLE_SPLIT 24`px past the source output face to a split point 24px before the target input face. **Every** member (rep included) draws two straight fan branches — source socket → its own *slot* on the trunk's flat starting face, and its slot on the flat end face → its rete-measured target socket. Slots spread across the trunk width (`((rank+0.5)/n − 0.5)·width`), ranked by source-lane order at the start and target-lane order at the end, so branches sit side-by-side emerging from the flat cut and can never cross; no component ever needs another lane's socket position. Fans carry the lane's type color; the trunk stays neutral.
+- **Collapsed-group target: no target fan.** All crossings from one external Ribbon share a single pill row (`InputPill.lanes > 1` in `groupCollapse.ts`); the trunk terminates whole on a combined pill that reuses the collapsed-node `solenoid-node__input-pill` stadium (socket functional underneath via the `pill-socket` dot-hiding trick), colored by the first member socket's type. Source-side fans still apply.
 - **One entity.** `bundleHoverStore` shares hover across the components drawing the parts (plus all endpoint sockets light via `setCableHover`); clicking selects `repId` and every member renders selected; Canvas `deleteSelected` removes **all** member connections in one keypress. Bundle membership is computed fresh per render from the editor (`bundleForConnection`) — no derived state to sync.
 - **Selecting a Ribbon separates its bundles.** `ribbonLayoutStore` carries `selected`; `bundleForConnection` returns null when either end's Ribbon is selected, so the lanes render (and delete) as individual cables while you manage them, and re-bundle on deselect.
 - **Pill-shaped highlight for ALL pills.** `NodeSocket`'s dot-shaped lit flash carries `.solenoid-socket-lit`, hidden under `.solenoid-node__pill-socket`; `CollapsedInputPill` and the group combined pill draw a stadium-shaped flash themselves when any aggregated socket is highlighted.
-- **Geometry plumbing.** `ribbonLayoutStore` publishes each Ribbon's live `{angle, scale}` (face centres move on expand/compress/rotate); `ribbonFacePoint` turns that + the area position into trunk endpoints. The grid constants (`RIBBON_SQ 8`, gaps 1 — tightened from 12/2/2) live in `ribbonBundle.ts`, shared by the component and the trunk math. ConnectionComponent additionally subscribes to `connectionVersionStore` + `ribbonLayoutStore` so membership/geometry changes re-render cables.
+- **Geometry plumbing.** `ribbonLayoutStore` publishes each Ribbon's live `{angle, scale}` (face centers move on expand/compress/rotate); `ribbonFacePoint` turns that + the area position into trunk endpoints. The grid constants (`RIBBON_SQ 8`, gaps 1 — tightened from 12/2/2) live in `ribbonBundle.ts`, shared by the component and the trunk math. ConnectionComponent additionally subscribes to `connectionVersionStore` + `ribbonLayoutStore` so membership/geometry changes re-render cables.
 - Single-lane Ribbon→Ribbon/group links stay normal cables (bundle style starts at 2).
 
 ## ~~Future~~ Ribbon cables (design, 2026-06-07 — since built)
@@ -1051,7 +1051,7 @@ Also wanted (lighter): **more visual output nodes & controls** (sparkline is the
 ## Group UX pass + Ctrl-drag fix (2026-06-05)
 
 - **Ctrl-drag detaching a group from its members (fixed).** Root cause: the Ctrl/tap "toggle an already-selected node OUT of the selection" branch in Canvas's first area pipe ran on `nodepicked` and `return`ed to swallow the event. Swallowing skips the selector's `core.pick` AND our `draggingGroupId` bookkeeping — but the node's own DOM drag handler is a separate listener, so a Ctrl-*drag* still moved the body with neither member-follow (`moveGroupMembers`, gated on `draggingGroupId`; nor the selector's follow, gated on `isPicked`) engaged. Fix: defer the toggle-out to pointerup-if-click via `pendingDeselectId` (mirrors the existing `pendingCollapseId`). A Ctrl-drag now behaves exactly like a plain drag; a Ctrl-click still toggles. The reported cable glitches were the same desync (cables stretched between displaced group pills and stationary members).
-- **`setGroupsCollapsed(editor, area, targets, collapse)` (`groupPush.ts`)** is the one place that collapses/expands a *set* of groups with neighbour-push applied. It sets the flags, `syncGroupCollapse`, **awaits all `area.update`s** (so footprints reflect the new sizes), then on expand calls **`pushAfterMultiExpand`** and on collapse calls `restoreNeighborsOnCollapse` (a frame apart — see below). The Navigator's collapse-all button (was applying *no* push — that was the bug), the Ctrl+Shift+E hotkey, and any future multi-group toggle route through it. Single-group toggles still call `pushNeighborsOnExpand` directly.
+- **`setGroupsCollapsed(editor, area, targets, collapse)` (`groupPush.ts`)** is the one place that collapses/expands a *set* of groups with neighbor-push applied. It sets the flags, `syncGroupCollapse`, **awaits all `area.update`s** (so footprints reflect the new sizes), then on expand calls **`pushAfterMultiExpand`** and on collapse calls `restoreNeighborsOnCollapse` (a frame apart — see below). The Navigator's collapse-all button (was applying *no* push — that was the bug), the Ctrl+Shift+E hotkey, and any future multi-group toggle route through it. Single-group toggles still call `pushNeighborsOnExpand` directly.
 - **`pushAfterMultiExpand` does the multi-group push in ONE in-memory pass** (not per-group with awaits). Two reasons: (a) `area.translate` sets `.position` only *after* its async guard, so a per-group loop reads stale positions and the pushes cancel — that's why a multi-toggle first looked like it applied no push at all; (b) the push axis for each overlap is chosen from the two groups' **original (pre-expand) relative position**, not the shortest displacement, so a left-to-right row stays a row instead of cascading into an L (third group dropping below the second). Boxes still only move right/down so it converges; pushes are recorded under the top-left seed so collapse-all restores them.
 - **Cleanup (Ctrl+Shift+L)** = (confirm past the same `TIDY_CONFIRM_THRESHOLD` as Tidy, counting layout units the same way — it's a bigger, harder-to-undo change) → clear selection → tidy each group's members → (settle a frame for deferred docked-FC snap-backs) → autofit each box to its members → collapse all → tidy top level (`{skipConfirm:true}`) → fit. **Tidy-all then autofit-all in separate loops with a 2-frame settle between**: the within-group tidy snaps docked FCs back onto hosts in a *deferred* rAF, so autofitting immediately would wrap the FC at its stale far-right ELK position and pad the box (didn't repro on a manual grip double-click because those FCs were already settled). **Fit reuses the navmenu's `fitAll`** (exported from `NavMenu.tsx`), which is chrome-aware (frames into the free rect between docked panels) and collapse-aware (`collapsedAwareNodesRect`); a raw `zoomAt` centered content in the full container so it landed under the panels and scaled off.
 - **Per-group Tidy button** in the group header calls `autoArrange({ groupId })` — the within-group layout path already existed (Case A), just gated on selection before; now forceable. `autoArrange` grew `{ groupId?, skipConfirm? }`.
@@ -1067,7 +1067,7 @@ Merged the `claude/project-backend-no-ui-testing` branch (done on mobile) into `
 - **Touch select mode** (`touchSelectStore.ts`): a phone has no Shift (lasso) or Ctrl (accumulate), so one mobile toggle drives both. When on, a one-finger background drag draws the lasso instead of panning, and tapping a node adds/removes it from the selection. Canvas reads it; `MobileControls` toggles it.
 - **Mobile chrome**: `MobileControls.tsx`/`.css`, `mobileMenuStore.ts`, `mobile.css` — mobile-only controls and a menu store, plus a mobile stylesheet wired in `main.tsx`.
 - **Connection dialog** (`connectionDialogStore.ts`, `components/connectionDialog.css`): an Add/Edit Connection dialog that creates or re-wires a cable by *picking* its two endpoints (optionally prefilled from a node's socket), instead of press-dragging socket to socket. This is the non-drag answer to the old "cable creation is awkward on touch" note. Mounted once in App; the MenuBar's Insert command drives it.
-- **Group expand-push** (`groupPush.ts`): expanding a collapsed group grows its footprint and can overlap neighbouring groups; each overlapping group is now pushed clear along its shortest axis (right or down) and the displacement recorded, then slid back on collapse — but only if it's still exactly where we left it (a since-moved group has its record dropped as stale, so a deliberately-repositioned group is never yanked back). Manually dragging either group also invalidates the touching records. Records are in-memory only. The "Pin the expanding group so the push can't displace it" commit fixed the case where the expander itself got shoved; this is the part now confirmed working.
+- **Group expand-push** (`groupPush.ts`): expanding a collapsed group grows its footprint and can overlap neighboring groups; each overlapping group is now pushed clear along its shortest axis (right or down) and the displacement recorded, then slid back on collapse — but only if it's still exactly where we left it (a since-moved group has its record dropped as stale, so a deliberately-repositioned group is never yanked back). Manually dragging either group also invalidates the touching records. Records are in-memory only. The "Pin the expanding group so the push can't displace it" commit fixed the case where the expander itself got shoved; this is the part now confirmed working.
 - **Test suite**: `vitest.config.ts` + `*.test.ts` across scalar / list / stats / finance / distributions / convert / coerce / mathUtils and `excelFormula.test.ts`. First real automated coverage for the node compute layer.
 - **Node packs framework** (`packs.ts`) + **Settings page** (`settingsStore.ts`): the opt-in node-pack framework is in place (enable toggles on the Settings page; packs register into the catalog/registry behind an enabled flag). Building more domain packs (Geometry, Electromagnetics, …) is future add-on work, not framework work.
 - Support bits: `fuzzy.ts`, `nodeNames.ts`.
@@ -1102,7 +1102,7 @@ The grip (`ResizeHandle`) lives **inside the value box**, not on the card, and r
 
 - **`selected` is reserved on a node.** `ClassicPreset.Node` carries a `selected?: boolean` (the editor's selection flag), so a node class must not declare its own `selected` field of another type — it fails to satisfy the `Node` constraint at the registry. The Cable Switch's live-input index is `activeIndex` for this reason.
 - **Rete selection group-translate**: translating a *selected* node moves every other selected node by the same delta. Any code that programmatically moves nodes one-by-one must **clear the selection first** (capture ids → `unselectAllNodes()` → move → re-select), or placements compound into garbage. This was the subset-Tidy bug.
-- **`DataflowEngine` cancellation**: `processGraph()` calls `engine.reset()`, which throws `Cancelled` on any in-flight fetch. Overlapping calls during seed load are expected — `processGraph` swallows only `Cancelled` and rethrows anything else.
+- **`DataflowEngine` cancellation**: `processGraph()` calls `engine.reset()`, which throws `Canceled` on any in-flight fetch. Overlapping calls during seed load are expected — `processGraph` swallows only `Canceled` and rethrows anything else.
 - **Volatile nodes** roll a fresh value only when the recalc generation advances (`getRecalcGen()` / `requestRecalc()` in `process.ts`), so editing an unrelated node doesn't churn them. Pattern: cache the raw randomness (a `[0,1)` roll, a permutation key array) keyed by `lastGen`; re-roll when `getRecalcGen()` differs (or the input size changes), then apply live inputs (bounds, list values) on top. Each renders a `<RecalcButton/>` (the global "F9"). Covered: **RAND** (RandBetween), **RANDARRAY**, **SHUFFLE**, **TODAY/NOW** (the date one re-reads `new Date()` each recompute, so its button just forces a recompute — no gen cache).
 - **Multi-input patterns** — two kinds of arbitrary-input nodes:
   1. *Extensible value rows* (built): distinct scalar/string values entered in-node with a "+ Add" button (**ListLiteral** numbers, **Concat** strings). Uses `ExtensibleInputs` + the `ExtensibleNode` interface (`addValueInput`/`removeValueInput`, plus `literals` and/or `stringLiterals`); the row renders an `InlineNumberField` or `InlineTextField` based on the input socket's `dataType`. Keys are uniform `v0,v1,…` (a private `addInputWithKey` keeps `nextInputId` past the max). **Round-trip**: `extractInit` captures `valueKeys = Object.keys(inputs)` for any node with `addValueInput`+`nextInputId`, and the constructor rebuilds those exact rows (so added rows + their literals/cables survive save/load/paste — previously lost).
@@ -1244,7 +1244,7 @@ Six nodes landed: **Sparkline / Chart / Gauge / Heatmap** (visual, in
   node card has no naturally-sized parent, so a measured container would race
   the first paint. Fixed dims inside the (fixed) node body are deterministic.
   Heatmap needs no lib — it's a CSS-gradient swatch with a luminance-picked
-  text colour.
+  text color.
 - **The visual nodes are pass-through** (`result` mirrors the input value), so
   they drop onto a cable mid-chain like Display/Progress. Sparkline/Chart take
   a `numlist`; the input socket is drawn bare via `leading={<PortSockets
@@ -1259,7 +1259,7 @@ Six nodes landed: **Sparkline / Chart / Gauge / Heatmap** (visual, in
   `nodes/visual.test.ts` covers construct + `data()` + round-trip.
 - **XY Pad** is a multi-output node (`x`, `y`): `hideOutputSockets` +
   `InlineOutputRows` so the two dots sit on measured rows instead of stacking
-  at the card centre. The handle maps screen → [0,1] via
+  at the card center. The handle maps screen → [0,1] via
   `getBoundingClientRect` (folds in canvas zoom); pointer-capture on the pad,
   `stopPropagation` so the drag doesn't also move the node. Y is flipped so up
   = 1.
@@ -1282,7 +1282,7 @@ Six nodes landed: **Sparkline / Chart / Gauge / Heatmap** (visual, in
 - **No tooltip.** Recharts' hover tooltip showed raw float coordinates, which
   was noise; dropped entirely from `ChartView`.
 - **Heatmap is now a Table heatmap**, not a single cell: input `table`, output
-  `table` (pass-through), and the component colours every cell on the cool→warm
+  `table` (pass-through), and the component colors every cell on the cool→warm
   ramp spanning the data's own min..max (auto-scaled, no min/max inputs). Values
   print inside cells only when the grid is small enough (≤8 cols, ≤10 rows).
 
@@ -1294,7 +1294,7 @@ Six nodes landed: **Sparkline / Chart / Gauge / Heatmap** (visual, in
   innerHeight` — clamped to the old 620×380 desktop max, floored at 200×140 —
   and re-measures on `resize` and on each open. Still explicit pixels (no
   `ResponsiveContainer`), which is valid here because the popup is a
-  viewport-centred overlay (unlike the inline node charts, which have no
+  viewport-centered overlay (unlike the inline node charts, which have no
   naturally-sized parent in Rete's root). Inline node charts were already within
   a phone width (≤240px), so only the popup needed it.
 - **Gauge shows its scale.** The radial gauge printed only the value with no
@@ -1317,11 +1317,11 @@ marker / ylim / linewidth / alpha`.
   back into `ylim`). Unit-tested in `chartOptions.test.ts`.
 - **Chart** parses `inputs.options?.[0]` into `this.chartOptions` in `data()`;
   the component threads it to `ChartView` (and the expand popup via
-  `chartPopupStore`). `ChartView` grew an optional `opts` param applying colour,
+  `chartPopupStore`). `ChartView` grew an optional `opts` param applying color,
   grid on/off, axis labels (recharts `label` on X/Y, with margins bumped to make
   room), Y domain, line width, markers, fill alpha, and an optional title row
   drawn above the plot (stripped in the popup, whose header already shows it).
-- **Chart Builder** (`ChartBuilderNode`, `display` kind) is a labelled "Concat
+- **Chart Builder** (`ChartBuilderNode`, `display` kind) is a labeled "Concat
   for chart options": one input per matplotlib field, rendered by `InlineInputs`
   so each is *also* a wireable socket (wire a value to override the inline text —
   e.g. a computed title or a slider-driven Y max). String fields live in
@@ -1338,10 +1338,10 @@ marker / ylim / linewidth / alpha`.
 A **Color Picker** control (`ColorPickerNode`, `input` kind, `nodes/input.ts`):
 three sliders in **RGB or HSV** (a `SegToggle`), an output-**format** dropdown
 (hex / rgb() / hsl()), a live swatch + the output string, and one `color`
-string output. All three formats are valid CSS colours, so it drops straight
-into a **Chart Builder**'s Colour field. Channels live in `literals` (`c0/c1/c2`,
+string output. All three formats are valid CSS colors, so it drops straight
+into a **Chart Builder**'s Color field. Channels live in `literals` (`c0/c1/c2`,
 read per mode); `mode` + `format` round-trip via extractInit (both keys were
-already whitelisted). Switching mode preserves the colour (converts the triple
+already whitelisted). Switching mode preserves the color (converts the triple
 rather than reinterpreting raw channels). Conversions are delegated to
 **`colord`** (a new dependency — zero-deps, ~7 kB, TS-native) so we don't
 hand-roll RGB↔HSV/hex maths; `colord({r,g,b})` / `colord({h,s,v})` →
@@ -1349,18 +1349,18 @@ hand-roll RGB↔HSV/hex maths; `colord({r,g,b})` / `colord({h,s,v})` →
 `hsv()`, and offering `hsl()` would mismatch the HSV input model (the
 inconsistency that prompted dropping it). Tests in `colorPicker.test.ts`.
 
-  **Refinement pass (same day):** the sliders paint a **colour gradient** under
+  **Refinement pass (same day):** the sliders paint a **color gradient** under
   each channel track (colord computes the stops — the standard picker cue: the
-  thumb position previews the resulting colour), set inline per channel with a
+  thumb position previews the resulting color), set inline per channel with a
   CSS-class thumb (`ColorPickerNode.css`). A third mode, **Hex**, swaps the
   sliders for a hex text field (stored in `stringLiterals.hex`; commits on
-  Enter/blur, swatch tracks the draft live). The colour **output socket** moved
+  Enter/blur, swatch tracks the draft live). The color **output socket** moved
   to sit on the swatch+string row *below* the format dropdown
   (`hideOutputSockets` + a `MeasuredSocketRow side="output"`). Chart Builder's
   output socket got the same treatment — measured onto its preview row.
 
   **Chart sockets:** the two input sockets used to overlap. Now the `values`
-  socket is **measured-centred on the chart plot** (a `useLayoutEffect` reads the
+  socket is **measured-centered on the chart plot** (a `useLayoutEffect` reads the
   chart div's `offsetTop+h/2` against the card — `__body` is static, so that's the
   same reference the dot positions against — and feeds it as the socket `top` via
   the `leading` slot), and `options` is its own row below: an `InlineInputs`
@@ -1626,9 +1626,9 @@ A batch of `html` render-mode fixes the author hit using it as the day-to-day re
   rectangle; instead the rAF loop detects a selection-set change and re-captures, so the REAL
   `.solenoid-node--selected::after` accent ring (already in the cloned DOM) shows — matching the DOM.
   The lasso box-select rect is the only thing `drawSelection` still draws.
-- **Cable parity.** Canvas cables were flat grey; now each is stroked in its SOURCE socket's
-  data-type colour (added `color` to `SnapCable` = `src.color`; `drawCables` buckets visible cables
-  by colour into one `Path2D` each), at 1.8px to match the DOM's default visible stroke.
+- **Cable parity.** Canvas cables were flat gray; now each is stroked in its SOURCE socket's
+  data-type color (added `color` to `SnapCable` = `src.color`; `drawCables` buckets visible cables
+  by color into one `Path2D` each), at 1.8px to match the DOM's default visible stroke.
 - **Quick quality knobs** (console, no UI), wired in the rAF loop like `__hcLive`: `__hcQuality = n`
   → `engine.setQuality` LOD bias (target texture px ÷ on-screen px; 1 = 1:1, >1 sharper but capped by
   the 1× capture since supersampling/REF stays disabled, <1 cheaper/softer). `__hcLive = true` is the
@@ -1639,7 +1639,7 @@ Chasing the residual shift in canvas-rendered cards (vs the live DOM). **A first
 "API rasterization, shelved" — DO NOT trust that; it was a measurement artifact.** The real symptom,
 seen on a clean canvas (one MAP node in a Group, overlay via `window.__hcOverlay`): elements toward the
 TOP of the card shift DOWN and elements near the BOTTOM shift UP — content compressed toward the vertical
-centre — and it's the same on every node. That's a SYSTEMATIC GEOMETRY bug in our pipeline, not random
+center — and it's the same on every node. That's a SYSTEMATIC GEOMETRY bug in our pipeline, not random
 API blur. The visibly-wrong elements are the CARD-ANCHORED chrome: chevron, header text, the f(x…)/lambda
 strings, the group-membership corner indicator (all OUTSIDE `.solenoid-node__content`); the content
 wrapper's internals look fine.
@@ -1925,12 +1925,12 @@ Harness lives in scratchpad (puppeteer-core + the pre-installed Chromium, WebGL2
 swiftshader): seed → wait `__spike.revealPhase()==='idle'` → `dom.png`, then open spike +
 "My graph" → `pixi.png`, crop/compare. Added a DEV-only `src/graph/devHarness.ts`
 (`window.__spike`: open/close/seed/revealPhase/transform/mismatches). Confirmed the camera
-is EXACT (mismatches()==[], xcorr dx=dy=0). The real gaps were colour/scrape bugs, fixed:
+is EXACT (mismatches()==[], xcorr dx=dy=0). The real gaps were color/scrape bugs, fixed:
 - **`color(srgb r g b / a)` parsing** (`cssColor.ts`): Chrome serializes every `color-mix()`
   result this way (header tints, the group-tinted node borders). `parseColor` returned null,
   so they fell back to a flat body fill — headers looked untinted. Now parsed (+test).
 - **Real card border**: grouped nodes adopt the GROUP hue at ~0.78α, NOT the kind accent.
-  Snapshot now captures the computed border colour+alpha (`SnapNode.border/borderAlpha`);
+  Snapshot now captures the computed border color+alpha (`SnapNode.border/borderAlpha`);
   dropped the fake drop-shadow + header divider (the DOM has neither).
 - **Headerless nodes (FC)**: no phantom node-label title painted over the "Decimal" select
   (only add the fallback title when `headerH>0`).
@@ -1938,7 +1938,7 @@ is EXACT (mismatches()==[], xcorr dx=dy=0). The real gaps were colour/scrape bug
   layout but don't paint) — was drawing a whole hidden cluster. Drops their cables for free.
 - **Group titles**: apply the `.solenoid-group__label` `text-transform` (UPPERCASE).
 - **Heatmap / inline swatch grids**: class-less `<div>`s with an inline `background` — a
-  generic small-leaf colour-cell pass captures them (chart/control containers excluded).
+  generic small-leaf color-cell pass captures them (chart/control containers excluded).
 - **Table/frame value displays**: a `<table>` inside a value box was read as one concatenated
   run; now each `td/th` is emitted at its own position (grid layout matches).
 - **Translucent fills composited**: a Note tints at 30%α; `flatten()` bakes any sub-opaque
@@ -1950,7 +1950,7 @@ is EXACT (mismatches()==[], xcorr dx=dy=0). The real gaps were colour/scrape bug
   table grids, swatches, sliders, checkboxes, sockets, cables, LAMBDA.
 - **Known remaining gaps** (niche, deferred): ribbon-cable bundling (spike does point-to-point),
   conduit floating-body position offset + lane detail, inline **bold**/emphasis inside notes
-  (whole `<p>` is one run), gauge centre value + arc placement, and **large-graph DOM
+  (whole `<p>` is one run), gauge center value + arc placement, and **large-graph DOM
   virtualization** — a 140-node seed mounts/keeps ~7 nodes visible (rest `visibility:hidden`
   for DOM perf), so the *scrape* mirrors that. The production renderer reads the model, not
   the DOM, so it won't virtualize; this is a limit of the spike's DOM-scrape, not a bug.
@@ -1959,16 +1959,16 @@ is EXACT (mismatches()==[], xcorr dx=dy=0). The real gaps were colour/scrape bug
 Author: "do 100%, stop stopping." Drove the card fidelity broad. The model is now a
 near-complete DOM scrape rendered on the GPU (all theme-aware):
 - **Background**: the 24px dot grid as a GPU TilingSprite (tilePosition/tileScale).
-- **Text**: every run scraped with position/size/colour/mono **+ font-weight** — generated
+- **Text**: every run scraped with position/size/color/mono **+ font-weight** — generated
   **bold (wght=600) MSDF atlases** (fonttools instancer) for Next+Mono so 600 titles/values
   render bold, not thin. Tall runs **word-wrap** (notes, wrapped values).
 - **Controls**: input boxes, op-select dropdowns (+caret), sliders (track+thumb), checkboxes
   (+check), **segmented toggles + Format-Controller chrome**.
 - **Generic decoration scraper**: any small chrome box (buttons — incl. a generic `button`
-  catch, pills, badges, dividers, quoted fields, **colour swatches**) → real bg/border/radius
-  + centred label, Set-dedup'd.
+  catch, pills, badges, dividers, quoted fields, **color swatches**) → real bg/border/radius
+  + centered label, Set-dedup'd.
 - **Charts/visuals**: recharts `.recharts-surface` serialized to SVG → **GPU texture** Sprite.
-- **Groups**: solid-colour header + translucent body + border + chevron + label.
+- **Groups**: solid-color header + translucent body + border + chevron + label.
 - **Notes**: markdown blocks (h/p/li) at real positions. **Conduits**: rotated square body
   (node.angle), sockets at scraped positions.
 - New pure tested module bits: `wrapText`, `mix`, `pickTextColor`, `socketGlyphKind`.
@@ -1983,14 +1983,14 @@ Author: "keep working on the actual look and feel of everything." Closed the vis
 between the Pixi cards and the real DOM cards (all scraped from the live DOM, theme-aware):
 - **Card chrome**: soft drop shadow (stacked offset rects), the accent-TINTED header (not
   a saturated bar) + header/body divider line + collapse chevron, 1.5px accent border.
-- **Sockets**: the 2px inset ring (surface colour) on circle/square/split/grid — they read
+- **Sockets**: the 2px inset ring (surface color) on circle/square/split/grid — they read
   as bordered sockets, not flat blobs.
 - **Controls**: input field boxes, **op-select dropdowns** (chosen option + caret),
   **sliders** (track + accent fill + thumb at value frac), **checkboxes** (box + checkmark).
   Scraped from the real `<select>`/`<input type=range|checkbox>`.
-- **Cables**: per-cable stroke in the SOURCE socket's type colour; selected cable thicker/blue.
-- **Groups**: solid-colour header bar + translucent body + coloured border + chevron + label
-  (scraped header colour/border/height), radius 11 — matches the real group.
+- **Cables**: per-cable stroke in the SOURCE socket's type color; selected cable thicker/blue.
+- **Groups**: solid-color header bar + translucent body + colored border + chevron + label
+  (scraped header color/border/height), radius 11 — matches the real group.
 - Known remaining-niche gaps: color **swatchgrid** picker, **conduit rotation** (rendered
   axis-aligned for now), note markdown formatting, exact text baseline (~1–2px).
 - LESSON: run `vitest` BEFORE committing — the group `g.rect()` needed adding to the test's
@@ -2001,8 +2001,8 @@ Author: "there's so much to port, go for everything; I'll check it all at once."
 spike now works like a real editor (still gated, DOM untouched, all green):
 - **Render breadth**: nodes + **Notes + Conduits** (generalized the snapshot from just
   `.solenoid-node` to any node-like root; notes/conduits show bbox + own bg + sockets +
-  a clipped content fallback) + groups. Cables are **type-coloured** (per-cable stroke =
-  source socket colour). Header is the tinted-surface + accent-border treatment.
+  a clipped content fallback) + groups. Cables are **type-colored** (per-cable stroke =
+  source socket color). Header is the tinted-surface + accent-border treatment.
 - **Selection**: shift-click toggle, plain click = one, **box-select** (shift+drag empty),
   ring uses the node accent. Selection lives in `selectedRef`; `scene.setSelected` drives it.
 - **Drag**: dragging any selected card moves the **whole selection**; persists via
@@ -2030,11 +2030,11 @@ Built, all gated in the spike, all green:
   see pixi/README). Loaded with `Assets.load`; **graceful fallback** to Pixi's dynamic
   bitmap font on any failure (HUD shows MSDF vs fallback). ASCII charset for now.
 - **Type-faithful sockets** (`pixiSocketGlyph`): circle/square/split/grid/hex by
-  `dataType` (read off the rete node), coloured from `SOCKET_COLORS`' `var(--sock-*)`
+  `dataType` (read off the rete node), colored from `SOCKET_COLORS`' `var(--sock-*)`
   resolved off the document root (cached, theme-aware).
 - **Real text runs**: dropped the hardcoded title+value; the snapshot now scrapes
   every text-bearing element (label-display / io-label / display-value / output-value /
-  inline-input / value-input) with real position + size + colour + mono-ness, and the
+  inline-input / value-input) with real position + size + color + mono-ness, and the
   scene draws each in place — so multi-output / tall / input nodes render faithfully.
   The title run is flagged for the in-place rename.
 - **Faithful header**: the real header is an accent-TINTED surface + 2px accent border
@@ -2146,7 +2146,7 @@ Rete as headless model + DataflowEngine. The WS4 WGSL modules stay parked.
   "Renderer spike (Pixi)") evolved from a synthetic stress test into a real proof.** Two
   modes: **Synthetic** (N grid cards 500–10k, the perf ceiling) and **My graph** (the LIVE
   rete graph snapshotted onto the GPU — faithful cards with scraped title/value + kind
-  colour + real socket world-positions, the app's REAL cable router, group rects). Drag a
+  color + real socket world-positions, the app's REAL cable router, group rects). Drag a
   live card → persists via `area.translate`; double-click → floating-`<input>` rename →
   `node.label` + `processGraph(id)` (the hidden-input pattern, the production answer to the
   blocker). Multi-touch pinch, selection, Fit, **Benchmark** (orbit+zoom 3s → avg/worst fps).
@@ -2172,7 +2172,7 @@ Rete as headless model + DataflowEngine. The WS4 WGSL modules stay parked.
 Where the WebGPU renderer landed (author: park it for now). **Working + proven on the
 build:** WebGPU cable rendering (`gpuCableRenderer.ts`) and WebGPU node-card rendering
 (`gpuNodeRenderer.ts` instanced rounded-rect SDF) — author confirmed cables render and
-node cards align (size/pos/kind-colour/header height). Both behind canvas render-mode
+node cards align (size/pos/kind-color/header height). Both behind canvas render-mode
 (console `__solenoidCanvasCables()`); node cards as an opt-in alignment overlay
 (`__solenoidNodeCards()`, semi-transparent, drawn over the DOM). DOM is default + the
 only live path; nothing ships on by default.
@@ -2205,12 +2205,12 @@ zoom — the DOM *nodes* are the heavy half of the compositing layer tree. So th
 win is nodes off DOM. Built the GPU node-card layer (the LOD stand-in for DOM node
 bodies): `nodeInstances.ts` (pure instance packer, tested), `gpuNodeRenderer.ts` (WGSL,
 instanced unit-quad, rounded-rect SDF + header/body split + AA, ONE instanced draw for
-all nodes), `nodeScene.ts` (reads live world-rects from `area.nodeViews` + kind colours
+all nodes), `nodeScene.ts` (reads live world-rects from `area.nodeViews` + kind colors
 from `NODE_KIND_ACCENTS`; `nodeGeomBus` bumped by Canvas's area pipe on render/move/add/
 remove, NOT pan), `components/NodeCanvas.tsx`.
 - **Current state = ALIGNMENT-CHECK overlay, NOT the perf win.** `NodeCanvas` draws the
   cards semi-transparent (0.55) ON TOP of the DOM nodes so the author can confirm each
-  card matches its node's size/pos/colour. Toggle `__solenoidNodeCards()` (needs canvas
+  card matches its node's size/pos/color. Toggle `__solenoidNodeCards()` (needs canvas
   render-mode on too). Regular `.solenoid-node` roots only (groups/notes/conduits skipped).
 - **The actual perf win is the NEXT step — the LOD swap:** when zoomed out past a
   threshold, HIDE the DOM node elements (so they leave the compositing layer tree) and
@@ -2276,7 +2276,7 @@ TWICE before — third strike in the cheap (hybrid) form.
 ### WS4 Phase 3 groundwork built UNWIRED — canvas cable hit-testing (2026-06-25)
 Author cleared building hard-gated pieces as long as they aren't wired in. Built the
 full Phase-3 cable hit-test stack, pure + tested, with NOTHING importing it (no
-behaviour change): `cableHitTest.ts` (flatten an SVG `d` → polyline; point→polyline
+behavior change): `cableHitTest.ts` (flatten an SVG `d` → polyline; point→polyline
 distance; `hitTestCables`), `spatialIndex.ts` (`SpatialGrid` bucket-by-bbox + point/
 radius query, so a query touches a tiny candidate set on a 5k-element graph instead of
 scanning all cables), and `cableHitIndex.ts` (composes them — `update(cables)` keeps a
@@ -2322,8 +2322,8 @@ toggle (GPU-gated) and the `__solenoidCanvasCables()` console hook. DOM is the d
 and is byte-identical (every change guarded on `renderMode === "canvas"`).
 
 **Architecture (deliberately low-divergence):** `ConnectionComponent` stays the SINGLE
-producer — it already owns rete's live socket positions + ribbon/pill/colour/selection
-logic, so in canvas mode it just PUBLISHES its computed stroke (the same `d`/colour/
+producer — it already owns rete's live socket positions + ribbon/pill/color/selection
+logic, so in canvas mode it just PUBLISHES its computed stroke (the same `d`/color/
 width/opacity it would have put on the `<path>`) into `cableScene` via a render-written
 ref synced in a deps-less layout effect, and emits only its invisible hit `<svg>`. One
 `CableCanvas` paints the scene. So the canvas geometry can't drift from the DOM render —
@@ -2638,9 +2638,9 @@ Follow-on session after the Cube shipped. Changes:
   translucent embossed cross. The live socket nudges down 1px (`dy`); the legend
   doesn't. Chips read `[R×C×D Cube]`.
 - **Two general fixes (not cube-specific):** socket dots now sit at `--node-socket-x:
-  -6.5px` (centred on the card edge — the wrapper sits inside the 1px border, so the
+  -6.5px` (centered on the card edge — the wrapper sits inside the 1px border, so the
   earlier -5/-6 landed inward; tuned live). Node titles clamp to **4 lines** (was 2),
-  now that header centring is solid (`line-clamp` + `LABEL_MAX_HEIGHT`).
+  now that header centering is solid (`line-clamp` + `LABEL_MAX_HEIGHT`).
 - **`formatScalar` hardened** to coerce non-numbers instead of `.toFixed`-throwing
   (a throw in render blacks out the app). Was hit by the Frame Input editor seeding
   its grid with raw text for numeric columns.
@@ -2851,7 +2851,7 @@ Author's batch after reviewing the v0.9 finish list:
   `body`/`documentElement`/null); on any control it does native focus traversal.
 - **Node-budget meter folded into the status bar.** Was a separate floating pill; now the
   footer's node counter reads `N / 100 nodes` (web demo only) with a slim inline fill bar
-  behind it, coloured by level. The one-time over-budget modal moved into `StatusBar` too,
+  behind it, colored by level. The one-time over-budget modal moved into `StatusBar` too,
   rendered as an App-level sibling (NOT inside the strip — its `backdrop-filter` would trap
   the modal's stacking context below it). Deleted `NodeBudgetMeter.tsx/.css`; desktop shows
   the plain count.
@@ -2966,10 +2966,10 @@ into itself. Full write-up + sequenced investment ladder in
   cache + silent store subs); cost is browser paint/composite of visible cables. Author's notes
   confirmed: **viewport culling was tried and didn't help** (cost is in-viewport), and a
   **`<canvas>` cable layer was tried and reverted** (2026-06-19 `cableCanvas.ts` — canvas
-  full-clears every frame so it's a wash vs SVG's change-only re-raster, plus an AA colour-shift
+  full-clears every frame so it's a wash vs SVG's change-only re-raster, plus an AA color-shift
   that violates "cables never change appearance"). The cheap wins (bounded SVG bbox, shadow-drop,
   flow-pause, path cache) are already in. Only untried idea: collapse N per-cable `<svg>` into one
-  shared SVG (fewer layers, still SVG so no colour shift). Least tractable of the three — needs a
+  shared SVG (fewer layers, still SVG so no color shift). Least tractable of the three — needs a
   profiler trace on the real build before any larger spend.
 
 ### Expression node — scope capped permanently at the type-agnostic subset (2026-06-23)
@@ -2999,7 +2999,7 @@ The registry foundation (Increment 1: `FAMILY_BACKING` policy + the
 `dispatch` still called Formula.js directly and no impls were registered. Activated it
 (author: "scaffold ~5-6 functions across the breadth"):
 - `excelFormula.ts` `dispatch` now routes through `resolveExcelFunction` — a registered
-  native impl wins, everything else still falls through to Formula.js (behaviour-
+  native impl wins, everything else still falls through to Formula.js (behavior-
   identical for those; full suite unchanged at 1061). This is the seam that lets the
   typed-formula path and the nodes eventually share one impl per function.
 - Registered a first wave (`excelFunctions.ts`): overlap functions owned for a reason —
@@ -3046,10 +3046,10 @@ MAKEARRAY), all of which edit through `FormulaPopup`.
   tokenizer → classed spans (function / unknown-call / variable / constant / number
   / string / operator); `tokenAtCaret` + `suggestFor` (fuzzyScore over functions +
   constants + the node's own variables; a fully-typed FUNCTION still suggests to add
-  its `(`, a fully-typed constant doesn't). Variables colour amber — they become
-  input sockets; an unknown call colours red (a typo, or a future lambda variable).
+  its `(`, a fully-typed constant doesn't). Variables color amber — they become
+  input sockets; an unknown call colors red (a typo, or a future lambda variable).
 - `FormulaEditor.tsx` — the classic overlay: a transparent `<textarea>` (real caret
-  + selection) layered exactly over a coloured `<pre>` mirror (identical font/padding/
+  + selection) layered exactly over a colored `<pre>` mirror (identical font/padding/
   wrapping/tab-size or they drift). Autocomplete menu drops below; ↑/↓ navigate,
   Enter/Tab accept, dismisses when the word stops matching. Caret restored after an
   accept via a `pendingCaret` ref + `useLayoutEffect` (the value is controlled).
@@ -3308,12 +3308,12 @@ and needed a re-measure, and any mismatch showed as a slide.
   input dot; Boolean checkbox alignment; 2-line titles; the docked Format Controller.
 
 
-### Node-header colours match output type; Add-menu pin-on-click + soft shape validator (2026-06-23)
-- **Header colour = output type, for the type-emitting source/predicate nodes.** `nodeKindOf` (kind.ts):
+### Node-header colors match output type; Add-menu pin-on-click + soft shape validator (2026-06-23)
+- **Header color = output type, for the type-emitting source/predicate nodes.** `nodeKindOf` (kind.ts):
   **Boolean** input amber→logic (purple — it's the TRUE/FALSE source), **Test** (IsCheck) util→logic and
   **ISEVEN/ISODD** math→logic (both emit the logical type), **DatePicker** input→date (pink — emits a date
   serial). Left Number/Color/Constant/Choose/Switch/IFError as-is (no single first-class output type, or
-  amber IS the number/source colour). The menu accent is separate (set per catalog leaf), so Boolean's
+  amber IS the number/source color). The menu accent is separate (set per catalog leaf), so Boolean's
   menu chip was already purple; this aligns the card.
 - **Add menu: click-to-pin a submenu** (`AddNodeMenu.tsx`). Hover still navigates, but clicking a category
   now PINS its submenu open: `pinned` path-prefix gates `onMouseEnter` so straying the cursor elsewhere
@@ -3334,11 +3334,11 @@ catalog `type` ids are unchanged, so saves and `nodeExcel`/validator mappings ar
 **Boolean** (`boolean-input`) with the logical/purple accent (`NODE_KIND_ACCENTS.logic` — it's the
 TRUE/FALSE source) and **LAMBDA** with green, per request.
 
-**Kind-colour follow-up (same day):** made the green real instead of a menu-only chip, and freed it from
+**Kind-color follow-up (same day):** made the green real instead of a menu-only chip, and freed it from
 `list`. New `lambda` NodeKind on the green palette slot; `nodeKindOf(LambdaNode) → "lambda"` (it used to
 fall through to `math`/blue), so LAMBDA's card AND menu chip are both green now. And the **`list` kind
 slot moved green → gold**: a list isn't a first-class socket type (a number-list socket is still
-number-coloured), so list nodes don't earn a dedicated hue — they share the neutral gold with
+number-colored), so list nodes don't earn a dedicated hue — they share the neutral gold with
 display/format. All the `NODE_KIND_ACCENTS.list` menu accents (List, Range, Filter, Fill, XLookup…)
 follow the slot automatically, so they're gold with no per-leaf edits. NodeKind is a `Record`-keyed union,
 so adding `lambda` forced updating `NODE_KIND_SLOTS` + `NODE_KIND_LABELS` (tsc enforces; ACCENTS is
@@ -4402,9 +4402,9 @@ top-left is fixed during a BR drag, so snap the corner's WORLD position
 
 **Dots-only grid + dot phase (the subtle one).** Snap was a 12px half sub-grid
 (`GRID_SNAP_STEP = DOT_SPACING/2`); author wanted dots-only, so step = `DOT_SPACING`
-= 24. But the dots are drawn by `radial-gradient(circle, …)` whose default centre
+= 24. But the dots are drawn by `radial-gradient(circle, …)` whose default center
 is the MIDDLE of each 24px tile, so the visible dots sit at world `12 + 24·n`, and
-plain multiples of 24 are the square centres BETWEEN dots. `snapCoord` therefore
+plain multiples of 24 are the square centers BETWEEN dots. `snapCoord` therefore
 carries a `DOT_PHASE = 12` offset: `round((v-12)/24)*24 + 12`. Without it, snapping
 lands dead between four dots (the bug the author caught).
 
@@ -4419,7 +4419,7 @@ the canvas can rotate, picking by what's selected:
   `settleStandoffs` — exactly mirroring the inspector dial's `onAngle`.
 - **Conduit(s)**: `node.rotateBy(±1)` (the 45° quantum).
 - **Angle Dial node(s)**: `value += ±node.step` (each node's own step, default
-  15°), normalised to [0,360); `processGraph()` re-renders + propagates downstream.
+  15°), normalized to [0,360); `processGraph()` re-renders + propagates downstream.
 
 The key only swallows the event when something was actually rotated (returns a
 count) so `[` / `]` stay free otherwise. Matched on **`e.key`** (the produced
@@ -4470,7 +4470,7 @@ sockets (`seeds.test.ts` was green). The real defect was in the **generator**
 gone). The JSON had been hand-patched to `AggregateNode` at some point but the
 generator never was — a latent landmine: the *next* `node gen-…cjs` would have
 re-introduced four unconstructable nodes, and on load every cable touching them
-drops silently (the pre-alpha "skip incompatible" behaviour). Fixed the four
+drops silently (the pre-alpha "skip incompatible" behavior). Fixed the four
 type strings; a regenerate is now byte-identical to the committed JSON (only EOL
 differs — generator writes LF, working tree is CRLF via `core.autocrlf`).
 
@@ -4516,7 +4516,7 @@ zoom level** (the author's "it shifts right when I zoom" — the diagnostic clue
 app is even (26 / 32 / 18 / 22), so the invariant is simply:
 
 > **Icon-only buttons use EVEN-sized icons** (`width`/`height` even px). Equal
-> parity with the even container → integer-centred → no sub-pixel blur or
+> parity with the even container → integer-centered → no sub-pixel blur or
 > zoom-shift. No per-icon `transform` nudges.
 
 Rounded every odd icon to even (15→14, 13→14, 11→12) across `AppToolbar.tsx`,
@@ -4526,26 +4526,26 @@ divider was a layout `border-left` on the 2nd button → shrank its content-box 
 and removed the old compensating `translateX(1px)` nudge. Verified with puppeteer:
 all gaps now integer, dx/dy = 0.
 
-**Cause 3 — text-glyph close buttons are never optically centred.** A `×`/`✕`
-font character's ink isn't centred on its em (it sits low, near the math axis), so
-flex-centring — which centres the *line-box*, not the ink — still leaves it low.
+**Cause 3 — text-glyph close buttons are never optically centered.** A `×`/`✕`
+font character's ink isn't centered on its em (it sits low, near the math axis), so
+flex-centering — which centers the *line-box*, not the ink — still leaves it low.
 Fixed at the root: a shared **`CloseIcon`** (`components/CloseIcon.tsx`) renders an
 SVG × (two crossed lines), symmetric about both axes → centroid IS the viewBox
-centre, lands dead-centre at any size. Swapped into all 7 close/dismiss buttons
+center, lands dead-center at any size. Swapped into all 7 close/dismiss buttons
 (popup Chart/Formula/Table, fr-close, outline collapse, pin remove, alert dismiss).
 **Rule: use `CloseIcon`, never a text "×", for close buttons.**
 
-**Measuring optical centre (the author asked how).** Three different centres:
-(1) *literal* = viewBox centre (where the icon is positioned); (2) *geometric* =
-`getBBox()` centre (tight box round the strokes); (3) *optical* = ink centroid =
-centre of mass of the rendered pixels. They differ for mass-asymmetric shapes.
+**Measuring optical center (the author asked how).** Three different centers:
+(1) *literal* = viewBox center (where the icon is positioned); (2) *geometric* =
+`getBBox()` center (tight box round the strokes); (3) *optical* = ink centroid =
+center of mass of the rendered pixels. They differ for mass-asymmetric shapes.
 Method (standard): rasterise the SVG to a canvas, average the (x,y) of every
 opaque pixel weighted by alpha (math equivalent: the shoelace polygon-centroid
-formula). Measured offsets from viewBox centre: pushpin centroid +0/−1.38 (head-
-heavy → reads high, bbox said centred); lock +0/+0.73 (body-heavy → low); alert
+formula). Measured offsets from viewBox center: pushpin centroid +0/−1.38 (head-
+heavy → reads high, bbox said centered); lock +0/+0.73 (body-heavy → low); alert
 triangle +0/+2.09 (base-heavy → low); sparkle +0.69/−1.03 (upper-right). So
-`getBBox`-centred ≠ optically centred. **Applied:** shifted the pushpin viewBox
-(`0 -1.4 24 24`) so its centroid sits at centre (both `PinSvg` copies). Alert HUD
+`getBBox`-centered ≠ optically centered. **Applied:** shifted the pushpin viewBox
+(`0 -1.4 24 24`) so its centroid sits at center (both `PinSvg` copies). Alert HUD
 trigger/chip icons were 13px (odd) → 14px. Context-menu icon slot made a fixed
 16px flex box so a text-glyph icon and the Pin SVG share one column.
 
@@ -4553,10 +4553,10 @@ trigger/chip icons were 13px (odd) → 14px. Context-menu icon slot made a fixed
 `position: fixed; right: 12px`; at fractional browser zoom, `12px` is a fractional
 number of device px and the browser rounds the element's position differently per
 zoom step, so the whole button hops ±1px left/right. Every fixed element does this;
-the icon stays centred *within* the button. Don't chase it as an icon bug.
+the icon stays centered *within* the button. Don't chase it as an icon bug.
 
 Author calls the popup-header (uppercase title vs close) "fine" — left as-is
-(uppercase caps ride ~1px above the line-box centre flex uses; within tolerance).
+(uppercase caps ride ~1px above the line-box center flex uses; within tolerance).
 
 Done as agent 2 (parallel session; see `docs/agent-coordination.md`).
 
@@ -4816,7 +4816,7 @@ any element type. What landed, and the gotchas:
   via a `guard(v, scalar)`: a string passes through, a finite number (date serial
   included) passes through, everything else (non-finite number, **boolean
   comparison**, undefined) collapses to the empty sentinel (`null` scalar / `NaN`
-  in a list) — so numeric+boolean behaviour is byte-identical to before. The
+  in a list) — so numeric+boolean behavior is byte-identical to before. The
   shared numeric `broadcast` (Add, scalar/stats/convert/logic) is DELIBERATELY
   untouched — those ops are inherently numeric, and widening it would ripple
   through dozens of call sites for no gain.
@@ -5048,12 +5048,12 @@ Staged:
 
 A within-group Tidy (`autoArrange({ groupId })`) autogrows `group.width/height`
 to wrap the freshly laid-out members, but it used to grow silently — the box
-could expand over neighbouring nodes/groups with no push. Now, if the box grew,
+could expand over neighboring nodes/groups with no push. Now, if the box grew,
 Canvas calls the new `pushForGrownGroups` (groupPush.ts), which reuses the
 existing `runExpandPushes` engine fed the pre-grow size as `preSizes`. So tidy-
-grow shoves neighbours off the grown edges. Unlike the expand-on-uncollapse push,
+grow shoves neighbors off the grown edges. Unlike the expand-on-uncollapse push,
 it's PERMANENT: `pushForGrownGroups` passes `record:false`, so no restore record
-is written and a later collapse leaves the neighbours where Tidy parked them — a
+is written and a later collapse leaves the neighbors where Tidy parked them — a
 Tidy is a deliberate manual action, so re-parking should stick (the user's call).
 Gated by the `groupPush` setting.
 
@@ -5175,8 +5175,8 @@ each frame) did keep it crisp at any zoom.
   while the canvas repaints all — a wash, sometimes worse. The earlier "feels
   smoother" impression didn't hold up against an A/B toggle. (Canvas only clearly
   wins when nearly everything repaints at once, e.g. huge graphs.)
-- **Slight colour difference.** Canvas and SVG rasterize a thin semi-transparent
-  stroke with subtly different anti-aliasing → a visible colour shift on toggle.
+- **Slight color difference.** Canvas and SVG rasterize a thin semi-transparent
+  stroke with subtly different anti-aliasing → a visible color shift on toggle.
   Cables must not change appearance (hard rule — see the reverted
   straight-line-during-drag experiment), so even a slight shift is disqualifying.
 - A subtle bug it had: toggling the layer flipped canvas `display` synchronously
@@ -5439,7 +5439,7 @@ isolation; this covers the INTEGRATION they scoped out — `layoutTidyIntegratio
   nodes, incl. a group container node); the test then EXPANDS the super-node into its two members
   with a deliberate skew, runs the app's final `solveStandoffs` (forceLock) → asserts the locked
   band holds (perpendicular ≈ 0, gap in [min,max]), then runs `separateOverlaps` (the overlap
-  backstop) over the settled members + neighbours → asserts fully overlap-free. That chains ELK
+  backstop) over the settled members + neighbors → asserts fully overlap-free. That chains ELK
   output → standoff settle → separate, the exact hand-off the pure tests couldn't reach.
 - **Gotcha:** `elkjs` default-imports cleanly for both tsc and vitest at 0.8.2; the ELK graph is
   built by hand (not via the rete `AutoArrangePlugin`, which needs the area/DOM). If the app's ELK
@@ -5526,7 +5526,7 @@ guarantees (and, importantly, what it does NOT — so the suite asserts the righ
   NOTE `computeExpandPush` ALONE is heuristic and CAN leave overlaps by design (its own header
   says so) — separateOverlaps is what makes it safe, so the suite only asserts no-overlap on the
   COMPOSED result, never on the raw push.
-- **`distributeDeltas` (selectionOps)** — ≥ `DISTRIBUTE_GAP` between neighbours ALONG the
+- **`distributeDeltas` (selectionOps)** — ≥ `DISTRIBUTE_GAP` between neighbors ALONG the
   distributed axis (overlap-free on that axis; the cross axis is intentionally untouched). 400
   fixtures (both axes).
 - **`alignDeltas` (selectionOps)** — asserts the ALIGNMENT contract (align-left → shared min-x,
@@ -5617,7 +5617,7 @@ socket types. A node type's INITIAL sockets are deterministic per catalog `type`
 input/output socket-type sets are now memoized in a module-level `_sigCache` keyed by
 `leaf.type`: the first drop instantiates each leaf once, later drops reuse the cached set and
 only re-run the cheap per-origin `canConnect` check (the origin varies per drop; the signature
-doesn't). Behaviour is identical — verified by a test that the 2nd filter pass triggers zero
+doesn't). Behavior is identical — verified by a test that the 2nd filter pass triggers zero
 new `create()` calls, plus a real-catalog narrowing check. The cache is never invalidated (a
 type's socket shape is constant for the app's life). `firstCompatibleSocketKey` stays as-is —
 it runs once on the actually-picked node and needs the concrete socket KEY, not a type set.
@@ -5856,14 +5856,14 @@ imported and `area.use`d at Canvas init even though only Tidy needs it. Now lazy
   init was removed; registration now happens inside `ensureArrange` (registering a plugin on
   the area after init is fine — auto-arrange only acts on explicit `.layout()` calls).
 - Verified: `rete-auto-arrange-plugin.esm-*.js` is now its own ~1.49 MB chunk in the build
-  output (was folded into `index`); tsc + full vitest green (2047 passed). No behaviour
+  output (was folded into `index`); tsc + full vitest green (2047 passed). No behavior
   change to Tidy itself.
 
 ### Align/distribute UI affordance — the selection action bar (2026-07-05)
 The six aligns + two distributes existed only in the Command Palette; author's standing
 rule is nothing reachable solely via the palette. Added `components/SelectionActionsBar.tsx`
 (+ `selectionActions.css`, mounted in `App.tsx`): a floating overlay pill at the
-**bottom-centre** of the canvas that appears whenever **≥2 top-level nodes are selected**,
+**bottom-center** of the canvas that appears whenever **≥2 top-level nodes are selected**,
 carrying the six align buttons + a divider + the two distribute buttons. Pure surface —
 every click calls the existing `alignSelection`/`distributeSelection` in `selectionOps.ts`,
 no logic added there.
@@ -5881,7 +5881,7 @@ no logic added there.
   returning `[]`).
 - **Gotchas honoured:** `onPointerDown` stopPropagation on the pill so clicking a button
   doesn't reach the canvas selection-clear (same guard the mobile bar uses); 16px (even)
-  icon glyphs in 26px (even) buttons per the even-icon centring rule; the group divider is
+  icon glyphs in 26px (even) buttons per the even-icon centering rule; the group divider is
   its own 1px element, NOT a button border (a border would shrink the adjacent button's
   content-box to an odd width and blur its icon). Align-center titles name the END EFFECT,
   matching the palette ("Align center (vertical)" = `center-h`). On touch the bar lifts to
@@ -5914,7 +5914,7 @@ stale design-time estimate.
   set so a node under two seeds (group+member, cluster) isn't translated twice. Pure
   `alignDeltas`/`distributeDeltas` extracted + unit-tested (`selectionOps.test.ts`).
   Align-center palette labels name the END EFFECT (author): `center-h` aligns the
-  horizontal centres → nodes stack VERTICALLY, so it's labelled "Align center
+  horizontal centers → nodes stack VERTICALLY, so it's labeled "Align center
   (vertical)", and vice versa. `separateOverlaps` backstop declined (author 2026-07-05):
   align/distribute/Tidy own overlap, no standalone command/load-hook.
 - **Still TODO (the reshuffling piece):** a top-level `separateOverlaps` backstop after
@@ -5926,7 +5926,7 @@ stale design-time estimate.
 - **Flagged:** align/distribute live only in the Command Palette; author wants a visible
   UI affordance (backlog, tied to #57). Bundle-split recharts + KaTeX out of the main
   chunk this session too (main 4.0→3.53MB); alert chips lost their per-kind icon (label
-  coloured by kind instead), Problems/Alerts icons swapped (triangle vs bell).
+  colored by kind instead), Problems/Alerts icons swapped (triangle vs bell).
 
 ### 1.0-tail readInput sweep — RESOLVED (not a blanket sweep) (2026-07-05)
 The item's "sweep the scalar nodes' data()" was applied to scalar.ts (element-wise math). Task #7
@@ -6374,7 +6374,7 @@ Small, verified fixes, grouped: charts + Mermaid figures are `user-select: none`
 longer grabs recharts/mermaid SVG text as several partial highlights); the value popup
 overlay z-index went 300→9500 so a frame chip opened INSIDE a full-screen overlay (Report /
 Composite / Reference, all 9000) lands ON TOP, not behind — and Frame/Array/Cube chips fall
-back to their TYPE colour for the header when opened with no node context; a Report chart is
+back to their TYPE color for the header when opened with no node context; a Report chart is
 sized to its container (ResizeObserver, cap 640) instead of a fixed 360 that scrolled a
 narrow report; a Note's first heading/para no longer floats below a phantom blank line
 (`InlineRefBody` wraps content in a bare `<div>`, so the `> :first-child` margin reset had to
@@ -7244,7 +7244,7 @@ Author's steer: stop whack-a-mole on individual heavy ops. Two-layer answer.
   so a heavy pass can't be interleaved with a pan/drag/add — the jank the profiler traced to
   overlapping main-thread work. Suppressed while the load overlay owns the screen. Wrapping
   `processGraph` in a thin `beginCompute`/try/`runGraphPass`/finally/`endCompute` keeps the
-  counter balanced on every exit (guard, Cancelled, throw).
+  counter balanced on every exit (guard, Canceled, throw).
 
 ### Compute-pipeline perf probe + targeted-recompute for standalone inputs (2026-07-01)
 Author reported "random" jank on the desktop (Polars) build during zoom/pan and when
@@ -7657,7 +7657,7 @@ tools, F-2 doc-level FC defaults → 1.3), then movement pass, composite parity 
 release prep; author gates the merge to `main`.
 - **Movement pass (`dad24aa`):** the Align Bar's `measuredBox()` (nodeSize.ts) is now the ONE size
   read across the movement stack (tidy/push/standoffs/splice/focus — five ad-hoc variants replaced;
-  OutlinePanel had a REVERSED read that centred on a collapsed group's stored expanded box). **The
+  OutlinePanel had a REVERSED read that centered on a collapsed group's stored expanded box). **The
   wonky-Tidy-around-expanded-groups root cause (1.2-plan Tier 1): stale expand-push restore records
   re-armed by the merge path** — programmatic moves (Tidy/Cleanup/align) fire no `nodedragged`, so
   records survived with ancient preX/preY; the merge now voids-and-replaces a record whose node moved.
@@ -7922,7 +7922,7 @@ height colormap), painted back-to-front; a null Z cell is a hole. **Reference fr
 inside the box and the near parts are occluded (matplotlib/plotly look), X/Y/Z labels on the box edges —
 NOT lines floated on top. **Rotation (author):** the fixed axonometric projection became a yaw/pitch
 orthographic CAMERA (yaw about Z, pitch = elevation); a D-pad of 4 arrows in the figure corner steps yaw
-±45° / pitch ±45° (both wrap 0–360 — pitch flips all the way over), with a centre Home button resetting to
+±45° / pitch ±45° (both wrap 0–360 — pitch flips all the way over), with a center Home button resetting to
 the default 45°/45° (symmetric, so the 45° steps land on clean multiples). Occlusion is recomputed from the rotated cell centroid and the two back frame walls are re-chosen by
 depth, so the box stays correct at any angle. Angles live in `literals` (persist via extractInit spread +
 ride into the payload, so a Report embed shows the same view). **Quality:** supersampled backing store
@@ -8100,7 +8100,7 @@ well (`hovering` state, `onPointerEnter`→mount / `onPointerLeave`→unmount), 
 hover glow, then drops. The selected-layer STEADY glow is preserved when idle by baking it into the
 raster: `bakeSelectionGlow` parses the source, applies `selectedGlow`'s `filter: drop-shadow` to the
 named element, re-serializes (no-selection → source unchanged, no parse). Raster rebuild is debounced
-80ms (a colour drag doesn't re-parse a big SVG per tick; the lag hides behind the hovered live SVG);
+80ms (a color drag doesn't re-parse a big SVG per tick; the lag hides behind the hovered live SVG);
 blob URLs revoke prev-once-new-exists (no blank gap) + on unmount. SVG-in-`<img>` stays vector/crisp
 so no zoom re-raster needed. `resolveLayer`/`elementName` (`svgLayer.ts`) unchanged; Report `SvgFigure`
 embeds still inline. NB the drop-shadow-in-img idle glow is the one thing an author eyeball should
@@ -8160,11 +8160,11 @@ Each dot in the Socket Legend / Reference now shows an INSTANT hover pill with i
 per-dimension name (Numeric / Numeric List / Numeric Matrix, …, Frame, Cube, LAMBDA, Chart,
 Any Scalar / Any List / Any Matrix, True Any). Design (author-specced): NOT OS-native (no
 hover delay — `onMouseEnter` → render), a tight SVG STADIUM (not CSS shapes), body fill = the
-socket type colour, border = `--socket-ring` (the same edge-darken the sockets use), text =
-`contrastInk(colour)` (the adaptive ink the menu bar uses). `SocketLegend.tsx`: `SocketDot`
+socket type color, border = `--socket-ring` (the same edge-darken the sockets use), text =
+`contrastInk(color)` (the adaptive ink the menu bar uses). `SocketLegend.tsx`: `SocketDot`
 became a glyph (`SocketGlyphSvg`) + hover wrapper; `SocketTip` renders the pill via a portal to
 `<body>` (fixed position — escapes the legend's `scale(0.85)` transform + overflow), width from a
-shared-canvas `measureText`, colour→ink via a `getComputedStyle` probe (resolves `var(--sock-*)`
+shared-canvas `measureText`, color→ink via a `getComputedStyle` probe (resolves `var(--sock-*)`
 + palette overrides to the exact rendered hex), horizontal clamp so it can't clip the viewport
 (legend is bottom-right). Chose "Matrix" over "Table" for the homogeneous 2-D types (matches
 `SOCKET_LABELS` "Matrix (any)"; distinguishes from Frame/Cube). Visual — author eyeball pending.
@@ -8188,7 +8188,7 @@ for these (bool↔num are no-ops on matching values). **NOT yet opted in** (foll
 multi-input APPEND family (Concat/Interleave/HSTACK/VSTACK — need `agree` combine), the RANK-CHANGING
 reshapers (TOCOL/TOROW/WRAP — need element-family-remap with a rank change), and Filter (2 outputs +
 predicate). The global `anyIn`/`anyListIn`/`anyTableIn`→adoptive flip (broad input color — the user's main ask)
-LANDED: all element-agnostic input dots now colour to the wired type and revert on disconnect. The
+LANDED: all element-agnostic input dots now color to the wired type and revert on disconnect. The
 `coerceInputs` risk (it runs the adopted concrete type's coercion) proved theoretical — the full suite
 stayed green, so the adopted coercion is equivalent to the neutral one for these. VISUAL change across
 many nodes (MAP/REDUCE tables, Concat rows, Cast, Set, …) — author eyeball pending.
@@ -8363,7 +8363,7 @@ engine silently broke downstream of any FC. The fix (all in `unitCoercion.test.t
   Unit Flow seed lane J.
 - **Convert PRIMACY restored on the value layer (2026-07-13)**: (1) every Convert unit id
   registers with the display bridge (`registerDisplayUnits` — no import cycle), so Convert-to-yd/
-  psi/km_h tags a display that actually renders (was: display-less cell → base-SI metres downstream);
+  psi/km_h tags a display that actually renders (was: display-less cell → base-SI meters downstream);
   (2) the A2 ← ← lock direction was WRONG-WAY after the revival — corrected: an FC FEEDING a Convert
   (through pure passthroughs, `refreshAnnotation` downstream walk → `dictatedFromUnit`) is dictated
   the Convert's fromUnit — dictation FILLS an unauthored dropdown + locks while following, but NEVER
@@ -8386,7 +8386,7 @@ engine silently broke downstream of any FC. The fix (all in `unitCoercion.test.t
 ### SESSION DIGEST (2026-07-13 — FC A4 units by dimensionality: wired into the value engine)
 The pure unit-value foundation (`unitValue.ts`, `unitDimExpr.ts`, `dimension.ts`) is now
 WIRED LIVE. A number carries a physical dimension and computes with it: `5 m ÷ 1 s = 5 m/s`,
-`mass·accel → N`, `metres + seconds → #UNIT!`. The mechanism, end to end:
+`mass·accel → N`, `meters + seconds → #UNIT!`. The mechanism, end to end:
 - **Storage**: a list element is a base-SI `UnitCell` (magnitude + dim vector), tagged the
   way `valueKinds` carries `null`/`SolError`; a bare number is dimensionless (so untagged
   graphs are unchanged). A frame column carries ONE `ColumnUnit` (cells stay bare base-SI).
@@ -9042,7 +9042,7 @@ task-shaped additions, one per pack, each with pinned tests:
   `SvgValue` on the `chart` socket so a Report embeds the picture (highlighting the same
   pick). Layer name = element `inkscape:label`/`data-name`/`aria-label`/`id`
   (human-first, walks up to the nearest named ancestor; pure `svgLayer.ts`). Highlight
-  colour adjustable; hover/select glow is an imperative `drop-shadow` (not per-move
+  color adjustable; hover/select glow is an imperative `drop-shadow` (not per-move
   React state). Markup persists in `stringLiterals.source` (Mermaid pattern, no bundling
   — SVG is text). Full wiring in node-coverage "Annotation → SVG Picker". Shared
   read-only renderer `SvgFigure.tsx` reused by Display/CableSwitch/Composite/Report.
@@ -9065,7 +9065,7 @@ task-shaped additions, one per pack, each with pinned tests:
   sentence. (Judgment call left to the author: the model fuzzer/trust set reads as
   slide-worthy by the same bar; it stayed in the release-notes body, not the deck.)
 - **American spelling in shipped strings** (author): three nodeCatalog descriptions
-  carried "colour"/"coloured"; respelled. Code comments keep whatever they have.
+  carried "color"/"colored"; respelled. Code comments keep whatever they have.
 - **Post-1.1 work organized into two release views:** `docs/1.2-plan.md` (tiered:
   known-issue fixes with tidy/cleanup-around-groups as the backbone, half-built tails
   F-2/D-2/goal-seek-params/drill-in-subsystems, widening incl. the CSP-gated iFrame
@@ -9326,7 +9326,7 @@ full vitest (2280) green.
   overlay are genuinely unbuilt (correctly open).
 - **Gauge is now a single-value percentage dial.** Dropped the Min/Max inputs — the node
   takes ONE `value` read as a fraction of 100% (1 → 100%, 1.5 → 150%). The arc always spans
-  0→100% and fills the clamped fraction (150% overfills to a full arc); the centre label shows
+  0→100% and fills the clamped fraction (150% overfills to a full arc); the center label shows
   the true percentage (`formatPct`), and the end labels are a fixed `0%` / `100%`. Node class,
   component, catalog description, and `visual.test.ts` all updated.
 - **Gauge track contrast:** new `--gauge-track` token (both themes) for the unfilled arc —
@@ -9398,7 +9398,7 @@ Local dev server; commit freely, no pushes. tsc + full vitest (2277) green.
   output doesn't change, so processGraph's changed-output re-render pruning would skip the
   card; the card subscribes to the store instead. UI = a Solve (play) button + an ALWAYS-present
   status circle (so it never resizes the button): amber ring (#d9822b, the alert tone — reused,
-  not a new colour) while stale, filled green (`--sock-lambda`, semantic positive) once solved.
+  not a new color) while stale, filled green (`--sock-lambda`, semantic positive) once solved.
   Tooltip "Stale"/"Up to date", no instructional copy.
 - **Still open (author raised, not built):** solver PARAMETERS — goal-seek max-iterations /
   tolerance / driver bounds; simulation step count is `simulationSteps` already; Monte Carlo
@@ -9481,9 +9481,9 @@ Local dev server; commit freely, no pushes. tsc + full vitest (2271) green.
   properties, which also moved to the File menu); dropped the per-node catalog entries
   (Add node… + the `A` hotkey cover browsing); added an **always-on docked palette**
   setting (click-through scrim, focus→suggestions, Enter/Esc keep it docked); moved the
-  align/distribute pill to the top-centre (clears the header at 76px); a persisted
+  align/distribute pill to the top-center (clears the header at 76px); a persisted
   `commandRecents` MRU feeds the **3 most-recent actions** to the head of the no-query
-  suggestions (recorded from palette OR menu bar). Chips now carry their TYPE colour
+  suggestions (recorded from palette OR menu bar). Chips now carry their TYPE color
   (lists/tables gold, frames/cubes violet, charts green) via a `--chip-accent` modifier,
   everywhere incl. Reports. Equinox palette added (all-gray monochrome). Cube glyph seams
   derive from the fill (color-mix) not a hardcoded violet.
@@ -9534,7 +9534,7 @@ dedicated modal.
   a real MODAL you enter/exit + Save/Cancel — NOT the old always-inline editor. **Edits live in a
   local DRAFT** that previews ONLY in the sample; the whole app retints ONCE on Save (`setCustomMap`
   + `setActiveBase("Custom")`), never live on every color-drag tick (the reported lag — the old
-  onChange→setCustomSlot retinted the whole app per tick). 12 role-labelled color wells
+  onChange→setCustomSlot retinted the whole app per tick). 12 role-labeled color wells
   (Number/Text/Date/…), Load-template buttons, and a sample built from the **REAL** node/group/note
   chrome (`.solenoid-node`/`--grouped` in a `.solenoid-group`, a `.solenoid-note`) colored from the
   draft via the same inline vars the real components set — not a hand-drawn mockup. Only the 12 base
@@ -9655,15 +9655,15 @@ Local dev server (HMR); commit freely, no pushes. Every commit tsc + full vitest
   normalize on load (area→line, bar→column).
 - Small: socket legend clears the footer when the minimap hides; collapsed-group edge sockets
   align with their readout rows (the summary's flex `gap` wasn't in `pillY`).
-- **Late stretch (colour system + polish):** `prefers-reduced-motion` snaps the load reveal
+- **Late stretch (color system + polish):** `prefers-reduced-motion` snaps the load reveal
   (reuses the doc-switch instant path); dropped the now-dead `nodeSizeStore` dragging flag.
-  **Colour consolidation:** the Table (numeric-matrix) socket moved off `vermilion` → `amber`
+  **Color consolidation:** the Table (numeric-matrix) socket moved off `vermilion` → `amber`
   (distinct orange from gold/Number in default/solarized; coincides only in the colourblind
   set — no free CVD hue), freeing `vermilion` to be the semantic ERROR red — `appTheme` now
   writes `--sol-error` from the `vermilion` slot so a custom palette retints every error
   surface (default value unchanged). Reordered `COLOR_PALETTE` (the SWATCH PICKER only — chart
   series use a separate `SERIES_SLOTS`): gold-led, gold/gray + green/red column pairs, rest
-  alternating. **Sparkline win/loss colours by sign** (up = palette green, down = the palette
+  alternating. **Sparkline win/loss colors by sign** (up = palette green, down = the palette
   error red) — resolved to hex (recharts fills are SVG attrs), reaching the node AND the expand
   popup; still plain in a Report/Display embed (would need `winloss` as a first-class op — a
   deliberate small follow-up, author OK). Minified sparkline made slightly rectangular + tighter

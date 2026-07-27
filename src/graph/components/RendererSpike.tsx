@@ -18,7 +18,7 @@ import "./rendererSpike.css";
  *  • Synthetic — N grid cards + cheap cables, the raw perf ceiling (500–10k), with
  *    a BitmapText↔Text A/B toggle (the text-batching decision to make).
  *  • Live — the REAL rete graph snapshotted onto the GPU: faithful cards (scraped
- *    title/value, kind colour, real socket positions) + the app's real cable
+ *    title/value, kind color, real socket positions) + the app's real cable
  *    router. Drag a card and it persists back to the editor via area.translate.
  *
  * All interaction is hand-rolled on the canvas (mouse + pen + multi-touch pinch),
@@ -71,7 +71,7 @@ export function RendererSpike() {
     const host = hostRef.current;
     if (!host) return;
 
-    let cancelled = false;
+    let canceled = false;
     let app: import("pixi.js").Application | null = null;
     let cleanup: (() => void) | null = null;
     let fpsTimer: number | null = null;
@@ -80,9 +80,9 @@ export function RendererSpike() {
       try {
       setBuilding(true); setError(null);
       const PIXI = await import("pixi.js");
-      if (cancelled) return;
+      if (canceled) return;
 
-      // Theme-faithful colours (sampled from a real node behind the overlay) so the
+      // Theme-faithful colors (sampled from a real node behind the overlay) so the
       // cards + canvas match the live theme instead of a hardcoded dark.
       const theme = readThemeColors();
       const canvasBg = isLight(theme.body) ? 0xeef0f3 : 0x0e1014;
@@ -93,7 +93,7 @@ export function RendererSpike() {
         canvas, resizeTo: host, antialias: true, backgroundColor: canvasBg,
         preference: "webgpu", powerPreference: "high-performance",
       });
-      if (cancelled) { app.destroy(true); return; }
+      if (canceled) { app.destroy(true); return; }
       host.appendChild(canvas);
       setBackend(app.renderer.type === PIXI.RendererType.WEBGPU ? "WebGPU" : "WebGL2");
       app.stage.eventMode = "none"; // all interaction is hand-rolled below
@@ -107,7 +107,7 @@ export function RendererSpike() {
           "/fonts/atkinson-next.fnt", "/fonts/atkinson-mono.fnt",
           "/fonts/atkinson-next-bold.fnt", "/fonts/atkinson-mono-bold.fnt",
         ]);
-        if (cancelled) { app.destroy(true); return; }
+        if (canceled) { app.destroy(true); return; }
         fonts = { sans: "atkinson-next", mono: "atkinson-mono", sansBold: "atkinson-next-bold", monoBold: "atkinson-mono-bold" };
         setMsdf(true);
       } catch { setMsdf(false); }
@@ -420,12 +420,12 @@ export function RendererSpike() {
       fpsTimer = window.setInterval(() => { if (app) setFps(Math.round(app.ticker.FPS)); }, 400);
       setBuilding(false);
       } catch (err) {
-        if (!cancelled) { setError((err as Error)?.message ?? String(err)); setBuilding(false); }
+        if (!canceled) { setError((err as Error)?.message ?? String(err)); setBuilding(false); }
       }
     })();
 
     return () => {
-      cancelled = true;
+      canceled = true;
       if (fpsTimer) clearInterval(fpsTimer);
       cleanup?.();
       camRef.current = null; sceneRef.current = null;

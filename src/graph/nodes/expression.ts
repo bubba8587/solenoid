@@ -86,7 +86,7 @@ export class ExpressionNode extends ClassicPreset.Node {
   // (it's just a label). Plain Expression nodes the user adds are never locked.
   locked: boolean;
   /** Declared element type of the result — swaps the output socket (combo level:
-   *  numlist / strcombo / datecombo / any). `number` keeps the classic behaviour. */
+   *  numlist / strcombo / datecombo / any). `number` keeps the classic behavior. */
   resultAs: ResultType;
   cachedResult: unknown = null;
   cachedError: string | null = null;

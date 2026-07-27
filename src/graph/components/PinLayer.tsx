@@ -50,7 +50,7 @@ function renderValue(v: unknown, label?: string, annNodeId?: string, outKey?: st
     const arr = v as (number | string)[] | (number | string)[][];
     const twoD = Array.isArray(arr[0]);
     // The chip stays neutral (see pinLayer.css), but the popup header takes the
-    // value's socket-type colour so it reads as that type, not the body colour.
+    // value's socket-type color so it reads as that type, not the body color.
     // From the SOCKET, not the first cell: a date list's serials look numeric and a
     // leading blank cell reads as neither, so sniffing tinted both of them amber.
     const family = nodeOutputElemFamily(annNodeId ?? null, outKey);

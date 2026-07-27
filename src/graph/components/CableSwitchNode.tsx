@@ -203,7 +203,7 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
   }
 
   // Collapsed: the option rows fold into the shared stadium input pill (≥2 inputs)
-  // or a lone centred socket, matching every other extensible node; the selected
+  // or a lone centered socket, matching every other extensible node; the selected
   // value (or collected cube) still shows below.
   if (collapsed) {
     return (

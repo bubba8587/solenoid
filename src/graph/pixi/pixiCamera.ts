@@ -80,7 +80,7 @@ export class Camera {
   }
 }
 
-/** Benchmark pan path. Holds `scale` fixed and traces the viewport CENTRE along a
+/** Benchmark pan path. Holds `scale` fixed and traces the viewport CENTER along a
  *  figure-8 (Lissajous 1:2) that covers `bounds`, returning the camera (tx, ty) for
  *  phase `t` ∈ [0,1]. This sweeps the whole graph through the viewport like a real
  *  pan — crossing dense regions and changing the visible set every frame — which an

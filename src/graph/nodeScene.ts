@@ -5,7 +5,7 @@ import { NODE_KIND_ACCENTS } from "./nodes/shared";
 import { parseColor, type RGBA } from "./cssColor";
 import type { NodeCard } from "./nodeInstances";
 
-// Node scene — reads the LIVE node rectangles + kind colours from rete's area, for
+// Node scene — reads the LIVE node rectangles + kind colors from rete's area, for
 // the WebGPU node-card renderer (the LOD stand-in for the DOM node bodies). Kept
 // separate from the renderer so the geometry read is testable-by-eye and the GPU
 // plumbing stays thin. nodeGeomBus is bumped by Canvas when nodes move/resize/add/
@@ -31,7 +31,7 @@ function readBodyColor(sampleEl: HTMLElement | null): RGBA {
 
 /** Collect the current node cards (regular `.solenoid-node` roots only — groups /
  *  notes / conduits have distinct visuals and are skipped for now). World rect from
- *  the area node view's position + the element's unscaled offset box; header colour
+ *  the area node view's position + the element's unscaled offset box; header color
  *  from the node kind; header HEIGHT measured per node (titles wrap to 1–2 lines, so
  *  a fixed height under-covers a 2-line header). Returns [] if editor/area aren't ready. */
 export function collectNodeCards(radius = DEFAULT_RADIUS): NodeCard[] {

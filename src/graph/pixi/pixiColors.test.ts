@@ -33,7 +33,7 @@ describe("pixiColors", () => {
 
   it("insetShade stays close to the background", () => {
     const s = insetShade(0xffffff);
-    // a slight darkening of white, not a wild colour
+    // a slight darkening of white, not a wild color
     expect(perceivedLuminance(s)).toBeLessThan(1);
     expect(perceivedLuminance(s)).toBeGreaterThan(0.85);
   });

@@ -12,7 +12,7 @@ import { resolveExcelFunction } from "../excelFunctions";
 // ─── Element-wise text: the `strcombo` (scalar-or-list) sockets ───────────────
 // Every text OPERAND is a `strcombo` and every element-wise text node broadcasts,
 // so UPPER/LEFT/SUBSTITUTE/… take one string or a whole list of them — Excel's
-// array-formula behaviour (`=UPPER(A1:A10)` spills), matching what the number and
+// array-formula behavior (`=UPPER(A1:A10)` spills), matching what the number and
 // date families already did. `broadcastCells` does the zip; a scalar in still
 // yields a scalar out.
 //

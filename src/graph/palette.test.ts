@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from "vitest";
 import { BUILTIN_PALETTES, PALETTE_NAMES, COLOR_PALETTE, paletteStore, reportPaletteStore, resolveColor, NEUTRAL_HEX, NEUTRAL_WHITE, NEUTRAL_DARK, nextNeutral, isNeutralShade } from "./palette";
 
 describe("built-in palettes", () => {
-  it("every palette defines all 12 slots as hex colours", () => {
+  it("every palette defines all 12 slots as hex colors", () => {
     for (const name of PALETTE_NAMES) {
       const p = BUILTIN_PALETTES[name];
       expect(Object.keys(p).length).toBe(COLOR_PALETTE.length);
@@ -12,16 +12,16 @@ describe("built-in palettes", () => {
     }
   });
 
-  // Author's rule (2026-06-21): slots may share a colour ONLY where colourblindness
+  // Author's rule (2026-06-21): slots may share a color ONLY where colourblindness
   // forces it (Colorblind-safe maps 12 slots onto a smaller proven CVD set) or where
   // a palette is DELIBERATELY monochrome (Equinox — all one gray, type read by socket
   // shape). Every other built-in must give all 12 slots visibly distinct hexes.
   const SHARED_COLOUR_OK = new Set(["Colorblind-safe", "Equinox"]);
-  it("non-Colorblind palettes have 12 distinct colours", () => {
+  it("non-Colorblind palettes have 12 distinct colors", () => {
     for (const name of PALETTE_NAMES) {
       if (SHARED_COLOUR_OK.has(name)) continue;
       const hexes = COLOR_PALETTE.map((s) => BUILTIN_PALETTES[name][s].toLowerCase());
-      expect(new Set(hexes).size, `${name} has duplicate colours`).toBe(hexes.length);
+      expect(new Set(hexes).size, `${name} has duplicate colors`).toBe(hexes.length);
     }
   });
 });

@@ -13,7 +13,7 @@ import { createNotifier } from "./storeKit";
 export const DOT_SPACING = 24;
 /** Snap granularity: the visible dot grid (24px). */
 export const GRID_SNAP_STEP = DOT_SPACING;
-/** The dots are the CENTRE of each background tile (the radial-gradient default),
+/** The dots are the CENTER of each background tile (the radial-gradient default),
  * so they sit half a cell off the tile grid — at world `DOT_PHASE + 24·n`. Snap
  * must carry the same phase or it lands on the tile corners (between dots). */
 const DOT_PHASE = DOT_SPACING / 2;

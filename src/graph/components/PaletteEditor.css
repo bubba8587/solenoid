@@ -3,7 +3,7 @@
 .sol-pal-panel { width: min(560px, 94vw); }
 .sol-pal-panel__body { display: flex; flex-direction: column; gap: 16px; }
 
-/* Slot wells — two columns of role-labelled color inputs. */
+/* Slot wells — two columns of role-labeled color inputs. */
 .sol-pal-editor__slots {
   display: grid;
   grid-template-columns: 1fr 1fr;

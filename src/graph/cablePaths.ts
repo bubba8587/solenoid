@@ -146,7 +146,7 @@ function buildHeads(kS: number, sigma: number, b: number, r: number, e: number):
 const SOLVE_EPS = 0.01;
 
 // Spread `amount` evenly over every leg with the given heading. Even split is
-// what centres a Z's diagonal between its two straight runs.
+// what centers a Z's diagonal between its two straight runs.
 function addToHeading(heads: number[], lens: number[], head: number, amount: number) {
   let n = 0;
   for (const h of heads) if (h === head) n++;
@@ -158,7 +158,7 @@ function addToHeading(heads: number[], lens: number[], head: number, amount: num
 //   • between two SAME-direction turns: gets at least minLeg — a staircase step
 //     must be visible, and collapsing it would fuse two turns into a sharper one;
 //   • between OPPOSITE turns (or adjoining a stub): may collapse to zero. Its
-//     neighbours share a heading, so the collapse merges them into one straight
+//     neighbors share a heading, so the collapse merges them into one straight
 //     run — never a sharp corner. This is what lets adjacent walk shapes meet
 //     continuously at their boundary.
 // Exception to the second rule: a leg adjoining an OFF-GRID stub (a rotated
@@ -302,7 +302,7 @@ function routeWalk(args: PathArgs, div: number): Pt[] {
 
 // Collapsed walk legs produce exact duplicate points; drop those. The
 // threshold must stay well under a pixel — a coarser one would delete real
-// (tiny but on-grid) vertices and skew the headings of their neighbours.
+// (tiny but on-grid) vertices and skew the headings of their neighbors.
 const DEDUP_EPS = 0.01;
 
 function ptsToPath(pts: Pt[]): string {

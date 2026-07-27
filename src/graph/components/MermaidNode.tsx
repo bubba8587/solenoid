@@ -44,7 +44,7 @@ export function MermaidComponent({ data, emit }: NodeProps<MermaidNodeType>) {
     void processGraph();
   }
 
-  // The source socket sits centred on the editor (its main feed), measured against
+  // The source socket sits centered on the editor (its main feed), measured against
   // the card so it lines up with the textarea / preview block.
   const feedRef = useRef<HTMLDivElement>(null);
   const [top, setTop] = useState<number | undefined>(undefined);

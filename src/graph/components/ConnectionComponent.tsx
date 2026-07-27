@@ -306,9 +306,9 @@ export function ConnectionComponent({ data }: { data: ConnPayload }) {
   // an input socket the source side is null, so fall back to the target socket.
   // For combo socket types (numlist etc.) we resolve against the live output
   // value so the cable reflects what's actually flowing, not just the type.
-  // Trace through a Conduit so the lane's real type colours the cable (see
+  // Trace through a Conduit so the lane's real type colors the cable (see
   // resolveTypedSource) — otherwise a date/logical/frame passing through a
-  // Conduit loses its colour (its `any` lane resolves by JS value type).
+  // Conduit loses its color (its `any` lane resolves by JS value type).
   const typed = data.source ? resolveTypedSource(editor, data.source, data.sourceOutput) : null;
   const sourceSocket = typed?.socket;
   const targetSocket = editor?.getNode(data.target)?.inputs[data.targetInput]?.socket;

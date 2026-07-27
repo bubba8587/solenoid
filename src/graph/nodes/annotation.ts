@@ -265,7 +265,7 @@ export class ImageNode extends ClassicPreset.Node {
 // the node outputs that layer's NAME on its `Layer` (string) socket. Wire that
 // into a Filter's comparison value and you slice a dataset by whatever region you
 // clicked (a clickable map / floorplan / schematic → a data selector). Hovering a
-// selectable element highlights it in the chosen colour.
+// selectable element highlights it in the chosen color.
 //
 // It ALSO flows the picture out the `chart` object socket (like Image / Mermaid)
 // carrying the current selection, so a Report embeds it with the same highlight.
@@ -281,7 +281,7 @@ const DEFAULT_SVG_HOVER = "#4f9dff";
 export class SvgPickerNode extends ClassicPreset.Node {
   url: string;                                  // last web source URL — persisted
   stringLiterals: Record<string, string> = {}; // .source = inlined SVG markup — persisted
-  hoverColor: string;                           // hover/selection highlight colour — persisted
+  hoverColor: string;                           // hover/selection highlight color — persisted
   selectedLayer: string;                        // the clicked layer name ("" = none) — persisted
   height: number;                               // rendered SVG-well height in px
   width: number;                                // node card width

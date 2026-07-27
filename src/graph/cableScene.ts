@@ -2,13 +2,13 @@ import { createNotifier } from "./storeKit";
 
 // Phase 1 cable scene — the shared, module-level list of cable VISIBLE strokes the
 // canvas layer paints. The DOM `ConnectionComponent` stays the single source of
-// truth (it owns rete's live socket positions, ribbon/pill/colour/selection
+// truth (it owns rete's live socket positions, ribbon/pill/color/selection
 // logic); in `canvas` render-mode it PUBLISHES its computed stroke here and emits
 // only its invisible hit path. `CableCanvas` subscribes and repaints. In `dom`
 // mode nothing publishes and the scene stays empty, so the DOM path is untouched.
 //
 // Keeping the component as the producer means the canvas can never diverge from
-// the DOM rendering's geometry/colour — it's literally the same numbers, just
+// the DOM rendering's geometry/color — it's literally the same numbers, just
 // painted on a <canvas> instead of an <svg>. Only the NORMAL (non-ribbon, non-
 // pseudo, non-reveal, flow-off) cable is moved to canvas; everything else stays
 // DOM, so this is purely additive and gated.
@@ -16,7 +16,7 @@ import { createNotifier } from "./storeKit";
 export interface CableStroke {
   /** SVG path data (world coords) — the same string the <path> would have used. */
   d: string;
-  /** Stroke colour. A hex literal, or a `var(--…)` the canvas resolves once. */
+  /** Stroke color. A hex literal, or a `var(--…)` the canvas resolves once. */
   color: string;
   /** Stroke width in WORLD units (scaled by zoom at paint, like the SVG path). */
   width: number;

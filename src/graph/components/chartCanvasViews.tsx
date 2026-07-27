@@ -543,7 +543,7 @@ function drawContour(canvas: HTMLCanvasElement, p: ContourPayload, W: number, H:
       if (pts.length === 2) {
         ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); ctx.lineTo(pts[1][0], pts[1][1]); ctx.stroke();
       } else if (pts.length === 4) {
-        // Saddle: split by the cell-centre value.
+        // Saddle: split by the cell-center value.
         const zc = (z00 + z10 + z01 + z11) / 4;
         const pairs = zc > t ? [[0, 1], [2, 3]] : [[0, 3], [1, 2]];
         for (const [a, b] of pairs) {

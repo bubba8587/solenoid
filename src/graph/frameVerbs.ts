@@ -1674,7 +1674,7 @@ export function decisionSensitivity(
 // (materialization-boundary ops — no native-engine mirror needed; a lazy Polars
 // path is a perf follow-up if a real workload ever demands it).
 
-/** Fill blank (null) cells from the neighbouring row: "down" carries the last
+/** Fill blank (null) cells from the neighboring row: "down" carries the last
  *  present value forward, "up" the next one back — the classic un-merge of
  *  report-shaped tables. Empty `columns` = every column. Errors are values, not
  *  blanks: they neither fill nor get overwritten. */

@@ -1,5 +1,5 @@
 // Snapshot the LIVE rete graph into a plain, Pixi-friendly model — node cards
-// (world rect + kind colour + scraped title/value + socket world positions) and
+// (world rect + kind color + scraped title/value + socket world positions) and
 // cables (socket-to-socket ends + angle hints). Reads the editor/area singletons
 // and the mounted DOM (geometry + text), like nodeScene.ts. Impure and defensive:
 // every read is guarded so a half-built graph yields a partial snapshot, never a
@@ -17,7 +17,7 @@ import { standoffStore, anchorPoint, type Box } from "../standoffs";
 
 export interface SnapSocket {
   key: string; side: "input" | "output"; x: number; y: number;
-  kind: GlyphKind; color: number; color2: number | null; // type glyph + colour(s)
+  kind: GlyphKind; color: number; color2: number | null; // type glyph + color(s)
 }
 /** A positioned text run scraped from the real card (world coords, top-left).
  *  `boxed` runs are editable inputs → drawn with a field box; w/h are the run's
@@ -27,7 +27,7 @@ export interface SnapText {
   size: number; color: number; mono: boolean; bold: boolean; isTitle: boolean; boxed: boolean; chevron: boolean;
   letterSpacing: number; // px (titles track at ~0.8px); 0 when "normal"
   boxFill: number | null;   // for boxed runs: the input's real fill (neutral, not accent)
-  boxBorder: number | null; // and its real border colour
+  boxBorder: number | null; // and its real border color
   align: "left" | "right" | "center"; // text-align within the box (display values right-align)
 }
 /** A slider control (track + thumb); `frac` is the value position 0..1. */
@@ -48,7 +48,7 @@ export interface SnapNode {
   accent: number; // 0xRRGGBB — the node-kind accent (header tint / field strokes)
   body: number;   // 0xRRGGBB
   headerColor: number; // the real (accent-TINTED, not saturated) header background
-  border: number;      // the real card border colour (grouped nodes adopt the group hue)
+  border: number;      // the real card border color (grouped nodes adopt the group hue)
   borderAlpha: number; // and its alpha (DOM uses ~0.78, not a hard outline)
   texts: SnapText[]; // every text run the real card shows, at its real position
   sliders: SnapSlider[];
@@ -68,7 +68,7 @@ export interface SnapCable {
   sx: number; sy: number; ex: number; ey: number;
   sourceAngleDeg: number | null;
   targetAngleDeg: number | null;
-  color: number; // source socket's data-type colour (0xRRGGBB) — matches the DOM cable hue
+  color: number; // source socket's data-type color (0xRRGGBB) — matches the DOM cable hue
 }
 export interface SnapGroup {
   id: string; x: number; y: number; w: number; h: number; headerH: number;
@@ -107,7 +107,7 @@ function cssToNum(raw: string | null | undefined): number | null {
   if (!s) return null;
   return s.startsWith("#") ? hexToNum(s) : rgbaToNum(s);
 }
-/** Socket colour by dataType — SOCKET_COLORS gives a `var(--sock-x)` expr; resolve
+/** Socket color by dataType — SOCKET_COLORS gives a `var(--sock-x)` expr; resolve
  *  it off the document root once and cache. Falls back to neutral gray. */
 function resolveSockColor(dataType: string | undefined): number {
   if (!dataType) return 0x7a8296;
@@ -142,7 +142,7 @@ const NOTE_SELECTORS: { sel: string; title?: boolean; input?: boolean; select?: 
 ];
 
 /** Scrape every meaningful text run in a card with its world position, font size,
- *  colour, and mono-ness — so the Pixi card reproduces the real text layout
+ *  color, and mono-ness — so the Pixi card reproduces the real text layout
  *  (multi-output rows, inputs, labels), not a single hardcoded title+value. */
 function scrapeTextRuns(card: HTMLElement, elRect: DOMRect, viewX: number, viewY: number, k: number, selectors = TEXT_SELECTORS): SnapText[] {
   const runs: SnapText[] = [];
@@ -260,8 +260,8 @@ function scrapeDecorations(card: HTMLElement, elRect: DOMRect, viewX: number, vi
       if (b) out.push(b);
     }
   }
-  // Generic colour cells: the Heatmap (and inline swatch grids) paint a grid of
-  // class-less <div>s with an inline `background` colour — no selector catches
+  // Generic color cells: the Heatmap (and inline swatch grids) paint a grid of
+  // class-less <div>s with an inline `background` color — no selector catches
   // them. Grab small leaf elements that set a background inline, skipping chart
   // and control containers (they own their own render path).
   for (const el of card.querySelectorAll<HTMLElement>('[style*="background"]')) {
@@ -313,7 +313,7 @@ function scrapeCheckboxes(card: HTMLElement, elRect: DOMRect, viewX: number, vie
   return out;
 }
 
-/** Theme-faithful card colours sampled from a real mounted node (the DOM is still
+/** Theme-faithful card colors sampled from a real mounted node (the DOM is still
  *  behind the overlay), so the synthetic scene + canvas background match the live
  *  theme instead of being hardcoded dark. Falls back to a dark default. */
 export function readThemeColors(): { body: number; title: number; value: number } {
@@ -405,7 +405,7 @@ export function snapshotGraph(): GraphSnapshot | null {
       const accent = hexToNum(NODE_KIND_ACCENTS[nodeKindOf(node)] ?? "#7a8296");
 
       // Real card border — grouped nodes adopt the group hue at ~0.78 alpha, so it
-      // is NOT the kind accent. Capture colour AND alpha (a hard outline reads heavy).
+      // is NOT the kind accent. Capture color AND alpha (a hard outline reads heavy).
       const cardCs = getComputedStyle(card);
       const bc = parseColor(cardCs.borderTopColor || cardCs.borderColor || "");
       const borderW = parseFloat(cardCs.borderTopWidth || "1") || 1;
@@ -462,7 +462,7 @@ export function snapshotGraph(): GraphSnapshot | null {
       // A Conduit's view.position is the node-view origin, but its body floats at a
       // body-relative offset (and is rotated), so view.position is NOT where it paints
       // — the GPU frame drew detached from its own sockets/cables. Use the conduit
-      // element's true rect so the frame centres on its sockets.
+      // element's true rect so the frame centers on its sockets.
       let nx = view.position.x, ny = view.position.y, nw = w, nh = h;
       if (card.classList.contains("solenoid-conduit")) {
         const cr = card.getBoundingClientRect();

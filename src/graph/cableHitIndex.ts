@@ -2,7 +2,7 @@ import { SpatialGrid, polylineBBox } from "./spatialIndex";
 import { parsePathPoints, pointPolylineDistance, type Pt, type CableHit } from "./cableHitTest";
 
 // CableHitIndex — the composed Phase-3 cable hit-test API. NOT WIRED IN (nothing
-// constructs it yet; no behaviour change). It glues the two primitives together:
+// constructs it yet; no behavior change). It glues the two primitives together:
 //   • SpatialGrid     → narrow a pointer query to nearby candidates (O(1)-ish),
 //   • cableHitTest    → precise point→polyline distance on those candidates.
 // so Phase 3 can drop the per-cable invisible hit <svg> for a single index query.

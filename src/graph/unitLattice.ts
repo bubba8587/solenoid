@@ -13,7 +13,7 @@
 //   • ×, ÷      — ALWAYS combine (add / subtract exponents). Never a unit error;
 //                 this is the "dimensional flow" half (a length ÷ a time IS a speed).
 //   • +, −, compare, aggregate — require the SAME dimension, else `#UNIT!`. This is
-//                 the "type separation" half (metres + seconds is meaningless).
+//                 the "type separation" half (meters + seconds is meaningless).
 //   • dimensionless is UNIVERSAL for the multiplicative ops and the IDENTITY the
 //                 additive ops still separate against (a bare number + a length is a
 //                 `#UNIT!`, exactly like a string + a number is a `#TYPE!`).

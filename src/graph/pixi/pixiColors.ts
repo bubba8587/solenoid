@@ -1,4 +1,4 @@
-// Tiny colour helpers for the Pixi renderer — luminance + a readable-text pick,
+// Tiny color helpers for the Pixi renderer — luminance + a readable-text pick,
 // so card text contrasts its background in BOTH themes (the hardcoded white text
 // vanished on the light theme's white card body). Pure → unit-testable.
 
@@ -16,7 +16,7 @@ export function isLight(n: number): boolean {
   return perceivedLuminance(n) > 0.55;
 }
 
-/** A readable near-black / near-white text colour for a given background. */
+/** A readable near-black / near-white text color for a given background. */
 export function pickTextColor(bg: number): number {
   return isLight(bg) ? 0x1b1f27 : 0xf3f5f8;
 }
@@ -29,7 +29,7 @@ export function mix(a: number, b: number, t: number): number {
 }
 
 /** A subtle "inset box" shade for the value area — nudges the body toward its
- *  contrast colour by a small amount so the value reads as a field, not flat. */
+ *  contrast color by a small amount so the value reads as a field, not flat. */
 export function insetShade(bg: number): number {
   const t = pickTextColor(bg);
   const a = channels(bg), b = channels(t);

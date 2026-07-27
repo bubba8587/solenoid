@@ -224,11 +224,11 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
   useEffect(() => {
     if (!isComposite) { compositeEditorStore.close(); return; }
     const comp = composite as CompositeNode;
-    let cancelled = false;
+    let canceled = false;
     void (async () => {
       await comp.hydrate(ctorRegistry());
       const mount = await getDrillMount(comp);
-      if (cancelled) return;
+      if (canceled) return;
       mountRef.current = mount;
       hostRef.current?.appendChild(mount.container);
       // Backfill the internal graph's views — on the FIRST open because the
@@ -253,7 +253,7 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
         for (const c of comp.internalEditor.getConnections()) {
           if (!mount.area.connectionViews.has(c.id)) await mount.area.addConnectionView(c);
         }
-        if (cancelled) return;
+        if (canceled) return;
         // Restore the saved layout, stagger anything unplaced (a pre-positions
         // save), then fit.
         let fallback = 0;
@@ -274,7 +274,7 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
       setReady(true);
     })();
     return () => {
-      cancelled = true;
+      canceled = true;
       // Isolate is a transient VIEW state keyed on THIS level's node ids — drop it
       // on leave so the main canvas (or a deeper level) isn't left dimmed against
       // a focus set of ids it doesn't own.
@@ -581,7 +581,7 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
   }
 
   /** Tidy (T) — auto-arrange the subgraph with the same symmetric ELK port preset
-   *  the main canvas uses (node centres / top edges align per the tidyAlign
+   *  the main canvas uses (node centers / top edges align per the tidyAlign
    *  setting). A BASIC layout: composites are small and rarely hold groups or
    *  standoffs, so the main canvas's cluster / size-pin machinery isn't needed. The
    *  ELK plugin is heavy — dynamically imported + cached on the mount on first use. */

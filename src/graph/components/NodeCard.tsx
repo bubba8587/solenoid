@@ -30,7 +30,7 @@ type Props = {
   collapsible?: boolean;
   /** Collapse to a headerless SQUARE (no header, no chevron — just the mini
    *  figure), expandable by double-click. For pure inline-viz nodes (Sparkline)
-   *  where a labelled collapsed card reads as clutter. */
+   *  where a labeled collapsed card reads as clutter. */
   squareCollapse?: boolean;
   children: ReactNode;
 };

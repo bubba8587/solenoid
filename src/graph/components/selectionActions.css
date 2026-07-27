@@ -1,4 +1,4 @@
-/* Floating align/distribute cluster — a contextual pill at the top-centre of the
+/* Floating align/distribute cluster — a contextual pill at the top-center of the
    canvas (below the menu bar), shown only while ≥2 nodes are selected. Sits up top
    so it never collides with the always-on command palette docked at the bottom.
    Reuses the overlay-pill tokens the nav/zoom pills use so it reads as the same

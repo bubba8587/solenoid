@@ -42,7 +42,7 @@ type ChartViewProps = {
   height: number;
   axes: boolean;
   opts?: ChartOptions;
-  /** Colour bars/columns by value sign (win/loss). */
+  /** Color bars/columns by value sign (win/loss). */
   signColors?: { pos: string; neg: string };
   /** X-axis category labels (Frame col 0) — shown instead of the 1,2,3… index. */
   labels?: (string | number)[];

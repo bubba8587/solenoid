@@ -8,7 +8,7 @@ import { SolenoidSocket, type SocketDataType } from "../sockets";
 
 // Polyform: the formula producers loop ANY Excel function over arrays of any
 // element type, declaring their output element type with a result selector that
-// swaps the output socket at the node's dimensionality. Numeric behaviour is
+// swaps the output socket at the node's dimensionality. Numeric behavior is
 // unchanged (see expression / tableLambda existing suites); these tests cover
 // text + date results, the socket swap, and that the engine stays polymorphic.
 
@@ -31,7 +31,7 @@ describe("Expression — value-polymorphic results", () => {
     expect(n.data({ d: [45000] }).result).toBe(45007);
   });
 
-  it("keeps numeric behaviour identical (default resultAs = number)", () => {
+  it("keeps numeric behavior identical (default resultAs = number)", () => {
     const n = new ExpressionNode({ expr: "a * b" });
     expect(n.data({ a: [[1, 2, 3]], b: [10] }).result).toEqual([10, 20, 30]);
   });

@@ -225,10 +225,10 @@ export function AnatomyScene() {
       </MNode>
 
       <div className="sol-callout" style={{ left: 8, top: 56, width: 168 }}>
-        The header carries the node&apos;s category colour as a tint. The card itself stays neutral.
+        The header carries the node&apos;s category color as a tint. The card itself stays neutral.
       </div>
       <div className="sol-callout" style={{ left: 8, top: 142, width: 168 }}>
-        Sockets straddle the card edge. Shape is dimension: circle, list square, matrix grid. Colour is the element type.
+        Sockets straddle the card edge. Shape is dimension: circle, list square, matrix grid. Color is the element type.
       </div>
       <div className="sol-callout" style={{ left: 506, top: 82, width: 166 }}>
         The result box renders in the type&apos;s default format. A date reads as a date, a unit rides its number.

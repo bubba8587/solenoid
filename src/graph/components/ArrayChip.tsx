@@ -31,10 +31,10 @@ function cellTypeOf(v: ArrayValue, family?: ElemFamily): "number" | "string" | "
 
 export type ElemFamily = "number" | "string" | "date" | "logical";
 
-/** The `--sock-*` colour a container of this element family reads as, for surfaces
+/** The `--sock-*` color a container of this element family reads as, for surfaces
  *  that tint a popup header by the value's TYPE (pins, the cable inspector). Pass the
  *  family from the socket — `undefined` (a genuine wildcard) falls back to the plain
- *  list/table colour. Mirrors the `--elem-*` classes in ArrayChip.css. */
+ *  list/table color. Mirrors the `--elem-*` classes in ArrayChip.css. */
 export function arrayAccentFor(family: ElemFamily | undefined, twoD: boolean): string {
   const suffix = twoD ? "table" : "list";
   switch (family) {
@@ -135,7 +135,7 @@ export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId
       onClick={(e) => {
         e.stopPropagation();
         // Accent: explicit prop, else the inherited node/group style (list TYPE
-        // colour when there's no node context).
+        // color when there's no node context).
         const st = readChipPopupStyle(e.currentTarget, "--sock-list");
         tablePopup.open({
           title: label || (table ? "Table" : "List"),

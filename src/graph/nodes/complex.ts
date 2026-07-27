@@ -26,7 +26,7 @@ export type Cx = [number, number];
 // No `guardFinite` here, unlike the numeric broadcasters: the complex ops already
 // have their own non-finite conventions (IMDIV by zero yields `[NaN, NaN]`, which
 // formats as "NaN"), and classifying those into tagged errors would change
-// established scalar behaviour rather than just widen it.
+// established scalar behavior rather than just widen it.
 
 /** One tagged operand: `list` is null when the value is a scalar. */
 type Operand<T> = { scalar: T | SolError | null; list: (T | SolError | null)[] | null };

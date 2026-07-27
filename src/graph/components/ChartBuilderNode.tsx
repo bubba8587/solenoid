@@ -60,7 +60,7 @@ const TOGGLE_KEYS: readonly { key: ChartBuilderKey; label: string }[] =
 const NUM_KEYS: readonly ChartBuilderKey[] = ["ymin", "ymax", "linewidth", "alpha", "fontsize"];
 
 /**
- * Chart Builder — a labelled "Concat for chart options". A chart-type dropdown
+ * Chart Builder — a labeled "Concat for chart options". A chart-type dropdown
  * shapes the form: only the rows that type's renderer reads are shown
  * (CHART_BUILDER_TARGETS). A row that is wired or holds a value stays visible
  * regardless — dimmed when the chosen type ignores it — so switching type never

@@ -54,8 +54,8 @@ export function SocketComponent({ data }: { data: ClassicPreset.Socket }) {
 
   const combo  = dataType !== undefined ? COMBO_COLORS[dataType] : undefined;
   const isList = dataType !== undefined && LIST_TYPES.has(dataType);
-  // The typed matrices share the 2×2-grid glyph, distinguished by colour. The
-  // FRAME gets its own glyph: every element family has a matrix, so colour alone
+  // The typed matrices share the 2×2-grid glyph, distinguished by color. The
+  // FRAME gets its own glyph: every element family has a matrix, so color alone
   // can't set the Frame apart — it renders as an "F" letterform (see below).
   const isTable =
     dataType === "table" ||

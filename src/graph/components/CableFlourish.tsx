@@ -50,7 +50,7 @@ function posFromDir(dx: number, dy: number): Position {
 
 // Build one continuous track through the waypoints. Each leg is routed by
 // getCablePath in the given shape, with Catmull-Rom tangents (the direction
-// through each waypoint from its neighbours) as exact exit/entry angles, so
+// through each waypoint from its neighbors) as exact exit/entry angles, so
 // adjacent legs leave and enter a shared waypoint collinearly — the joins stay
 // smooth in every mode (the walk router emits matching stubs; the spline matches
 // tangents). The leading moveto of every leg after the first becomes a lineto so

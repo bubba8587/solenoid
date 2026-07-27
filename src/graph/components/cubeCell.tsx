@@ -62,7 +62,7 @@ export function CubeCellChip({ cell, crumb, size = "md", type }: {
   if (cell === null || cell === undefined) {
     return <span className="solenoid-node__text-empty" style={{ color: "var(--text-muted)" }}>—</span>;
   }
-  // Per-kind chip colour (see ArrayChip.css): cube/frame violet, list/grid gold.
+  // Per-kind chip color (see ArrayChip.css): cube/frame violet, list/grid gold.
   const chip = (mod: "cube" | "frame" | "array") =>
     `solenoid-array-chip solenoid-array-chip--${mod}${size === "sm" ? " solenoid-array-chip--sm" : ""}`;
   const stop = (e: React.MouseEvent | React.PointerEvent) => e.stopPropagation();
@@ -73,7 +73,7 @@ export function CubeCellChip({ cell, crumb, size = "md", type }: {
       <button
         type="button"
         className={chip("cube")}
-        title={`Cube ${cubeRowCount(c)}×${c.columns.length}×${cubeDepth(c)} (rows × cols × depth)`}
+        title={`Cube ${cubeRowCount(c)}×${c.columns.length}×${cubeDepth(c)} (rows × cols × depth). Drill in.`}
         onPointerDown={stop}
         onMouseDown={stop}
         onClick={(e) => { stop(e); cubePopup.drill({ kind: "cube", cube: c, label: crumb }); }}
@@ -88,7 +88,7 @@ export function CubeCellChip({ cell, crumb, size = "md", type }: {
       <button
         type="button"
         className={chip("frame")}
-        title={`Frame ${frameRowCount(f)}×${f.columns.length}`}
+        title={`Frame ${frameRowCount(f)}×${f.columns.length}. Drill in.`}
         onPointerDown={stop}
         onMouseDown={stop}
         onClick={(e) => { stop(e); cubePopup.drill({ kind: "frame", frame: f, label: crumb }); }}
@@ -103,7 +103,7 @@ export function CubeCellChip({ cell, crumb, size = "md", type }: {
       <button
         type="button"
         className={chip("array")}
-        title="Nested table"
+        title="Drill in"
         onPointerDown={stop}
         onMouseDown={stop}
         onClick={(e) => { stop(e); cubePopup.drill({ kind: "grid", cells: (is2D ? cell : [cell]) as CubeCell[][], label: crumb }); }}

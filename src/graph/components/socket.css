@@ -4,7 +4,7 @@
 
    The wrapping <span class="input-socket"|"output-socket"> is sized
    the same as the dot so rete-render-utils measures the right box
-   and cables land on the dot's centre. */
+   and cables land on the dot's center. */
 
 /* All three layers — our outer span, rete's wrapper span, the SVG —
    read the same size variable so width === height always. The dot

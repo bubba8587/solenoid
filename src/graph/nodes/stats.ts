@@ -993,7 +993,7 @@ export function interpolateLinear(xs: number[], ys: number[], queryXs: number[])
 // hole) is the bilinear blend of the four surrounding known corners: its X is bracketed
 // among the data columns and its Y among the data rows, then interpolated in both. The
 // bracket WIDENS past any line whose corner is blank, so a hole interpolates across it
-// from the neighbouring data lines — the closest four-corner box with all corners known
+// from the neighboring data lines — the closest four-corner box with all corners known
 // is used. Clamped at the coarse edges (a lookup table doesn't extrapolate). A cell that
 // no four known corners ENCLOSE (the query outside every known-corner box) is left for
 // the forecast pass.
@@ -1038,7 +1038,7 @@ export function fillBorderedGrid(table: (number | null)[][], forecast = true): (
     return [lo, hi];
   };
 
-  // Every labelled known point, for pass 1's containment test and pass 2's fit.
+  // Every labeled known point, for pass 1's containment test and pass 2's fit.
   const knownPts: Array<{ x: number; y: number; i: number; j: number; z: number }> = [];
   for (let i = 0; i < Ri; i++) for (let j = 0; j < Ci; j++) {
     const v = Z[i][j];

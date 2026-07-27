@@ -19,7 +19,7 @@ interface FormulaEditorProps {
 /**
  * A formula text editor with live syntax highlighting + fuzzy function/variable
  * autocomplete. The highlight is a classic overlay: a transparent <textarea> (real
- * caret + selection + editing) layered exactly over a coloured <pre> mirror. The
+ * caret + selection + editing) layered exactly over a colored <pre> mirror. The
  * autocomplete menu drops below the field; ↑/↓ move, Enter/Tab accept (a function
  * inserts its `(`), and it dismisses itself once the typed word no longer matches.
  * Pure presentational — no graph deps; used by FormulaPopup + FormulaField.

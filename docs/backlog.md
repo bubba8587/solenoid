@@ -19,7 +19,7 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   Affects `text.ts`'s `strVal` plus every numeric operand in `date.ts`/`text.ts`
   (DateAdd.months, DateConstruct.year/month/day, LEFT.n, FIXED.decimals…). Left alone
   during the combo sweep on purpose, to keep those passes pure widenings with no
-  behaviour change; it's a scalar-path bug that predates them. One mechanical sweep:
+  behavior change; it's a scalar-path bug that predates them. One mechanical sweep:
   route those reads through `readInput` and let the broadcasters short-circuit the null.
 
 - [ ] **Window min/max/close controls missing (desktop)** — `tauri-plugin-decorum`'s

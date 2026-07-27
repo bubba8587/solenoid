@@ -86,8 +86,8 @@ export function ChartView({
   height: number;
   axes: boolean;
   opts?: ChartOptions;
-  /** Colour each bar/column by the sign of its value (win/loss): positive → pos,
-   *  negative → neg, zero → the grid colour. Ignored by the non-bar ops. */
+  /** Color each bar/column by the sign of its value (win/loss): positive → pos,
+   *  negative → neg, zero → the grid color. Ignored by the non-bar ops. */
   signColors?: { pos: string; neg: string };
   /** X-axis category labels (Frame col 0) — the axis shows these instead of 1,2,3… */
   labels?: (string | number)[];
@@ -101,7 +101,7 @@ export function ChartView({
   const fs = (fontScale ?? 1) * ((opts?.fontsize ?? 10) / 10);
   const AXIS = { fontSize: 9 * fs, fill: axis } as const;
   // With Frame labels, the axis/category tick shows the label for that index; else
-  // the 1-based ordinal (the historical behaviour). A recharts `type="number"`
+  // the 1-based ordinal (the historical behavior). A recharts `type="number"`
   // index axis (scatter) can hand us INTERPOLATED fractional ticks (0.5, 1.5…) —
   // round to the nearest datum and drop anything off the ends / non-numeric so the
   // axis never renders a bogus "1.5" or an "[object Object]" from a stray value.
@@ -177,7 +177,7 @@ export function ChartView({
       </BarChart>
     );
   } else if (op === "pie") {
-    // Each value is a slice, coloured from the categorical set.
+    // Each value is a slice, colored from the categorical set.
     const r = Math.max(20, Math.min(width, chartH) / 2 - 6);
     chart = (
       <PieChart width={width} height={chartH}>
@@ -199,7 +199,7 @@ export function ChartView({
       </RadarChart>
     );
   } else if (op === "radialbar") {
-    // Concentric bars, one per value, coloured categorically.
+    // Concentric bars, one per value, colored categorically.
     chart = (
       <RadialBarChart width={width} height={chartH} cx="50%" cy="50%" innerRadius="18%" outerRadius="92%" data={series} startAngle={90} endAngle={-270}>
         <RadialBar dataKey="v" background={{ fill: grid }} cornerRadius={3} isAnimationActive={false}>
@@ -249,7 +249,7 @@ export function ChartView({
         {axes && <YAxis tick={AXIS} tickLine={false} width={yAxisW} domain={yDomain} label={yLabel} />}
         {TIP}
         <Bar dataKey="v" fill={color} fillOpacity={opts?.alpha !== undefined ? fillAlpha : 1} isAnimationActive={false}>
-          {/* Win/loss: colour each column by sign (up = green, down = error red). */}
+          {/* Win/loss: color each column by sign (up = green, down = error red). */}
           {signColors && series.map((d, i) => (
             <Cell key={i} fill={d.v > 0 ? signColors.pos : d.v < 0 ? signColors.neg : grid} />
           ))}
@@ -270,7 +270,7 @@ export function ChartView({
 }
 
 // ─── Treemap ──────────────────────────────────────────────────────────────────
-// A flat labelled treemap — each name/value is a rectangle sized by value, coloured
+// A flat labeled treemap — each name/value is a rectangle sized by value, colored
 // from the categorical set. recharts hands the cell renderer geometry + index.
 type TreemapCellProps = {
   x?: number; y?: number; width?: number; height?: number;
@@ -380,7 +380,7 @@ export function SankeyView({ sources, targets, values, width, height, fscale = 1
 
 // ─── Composed (multi-series) ──────────────────────────────────────────────────
 // Each COLUMN of the matrix is a series over the row index: column 0 draws as bars,
-// the rest as lines (the classic "bars + trend line" combo), coloured categorically.
+// the rest as lines (the classic "bars + trend line" combo), colored categorically.
 export function ComposedView({ matrix, width, height, fscale = 1 }: {
   matrix: (number | null)[][]; width: number; height: number; fscale?: number;
 }) {
@@ -467,7 +467,7 @@ const RISING = "#e0524d";
 const FALLING = "#4c8bf5";
 // A diverged leaf (its extreme sent the output non-finite) has no finite swing —
 // drawn as a full-width MUTED bar so it reads as "off the chart", not as a real
-// magnitude to compare against the coloured swings.
+// magnitude to compare against the colored swings.
 const DIVERGED = "var(--text-dim)";
 
 export type TornadoBar = {

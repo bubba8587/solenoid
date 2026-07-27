@@ -52,7 +52,7 @@ export function reconcileFcTypes(
   // Derived socket types FIRST: Conduit lanes adopt the type feeding them, and
   // every trueany PLACEHOLDER port adopts the wired cable's type (trueAnyAdopt —
   // D17), alternated to a joint fixpoint so chains through both settle. On a
-  // change, re-render the affected cards + their cables so the new types/colours
+  // change, re-render the affected cards + their cables so the new types/colors
   // show and downstream FCs (below) resolve against them.
   const settled = settleWildcardTypes(editor);
   if (settled.conduitChanged) {

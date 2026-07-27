@@ -210,7 +210,7 @@
   color: var(--accent-ink);
 }
 
-/* A setting with no counterpart in mobile mode: greyed and inert, kept in place so
+/* A setting with no counterpart in mobile mode: grayed and inert, kept in place so
    the page reads the same on both. Matches the existing :disabled convention
    (opacity 0.5 + default cursor) rather than inventing a second disabled look. The
    label text dims too, so the row reads as off at a glance and not just untouchable. */
@@ -279,7 +279,7 @@
   right: 9px;
   top: 50%;
   transform: translateY(-50%);
-  margin-top: 1px; /* match the select's margin-top so the glyph sits centred */
+  margin-top: 1px; /* match the select's margin-top so the glyph sits centered */
   color: var(--text-dim);
   pointer-events: none;
 }

@@ -175,7 +175,7 @@ need it above the HUD but below modals, you're in the 110–199 gap.
 2. **Does it need a mobile override?** `mobile.css` is gated on `html.is-mobile` and imported last
    so it wins the cascade. The top envelope roughly doubles (66 → 82+) and there's a bottom action
    bar that isn't there on desktop. Almost every floating element needs a mobile `top`/`bottom`.
-3. **Does it collide with a left/right neighbour under a reflow?** If it's left-anchored, add it to
+3. **Does it collide with a left/right neighbor under a reflow?** If it's left-anchored, add it to
    the `body.solenoid-nav-open` shove. If it's right-anchored, add it to the `sol-report-docked`
    shift. If it should vanish while presenting/drilled-in, add it to those hide lists.
 4. **Safe-area insets**: any element touching a screen edge on mobile needs `env(safe-area-inset-*)`

@@ -25,7 +25,7 @@ dev-notes per-item history) live in `archive/` — see `archive/README.md`.
   per-family control truth table (mirrored in `formatModel.ts`), the precision
   rule. Read before touching FC controls/resolution.
 - **`socket-reference.md`** — all 30 socket variants in plain English: what each
-  carries, its glyph/colour, what connects in, what is blocked, what it reaches,
+  carries, its glyph/color, what connects in, what is blocked, what it reaches,
   and what the coercion boundary does on arrival. Generated lists — regenerate
   with `scripts/socket-inventory.ts`.
 - **`value-semantics.md`** — null / NaN / Infinity / SolError semantics per

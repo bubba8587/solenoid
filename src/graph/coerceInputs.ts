@@ -35,7 +35,7 @@ const LAZY_FRAME_NODES: ReadonlySet<string> = new Set([
 export const TYPEABLE_LIST: ReadonlySet<string> = new Set(["strlist", "datelist", "logicallist"]);
 
 /** The type a socket COERCES its input to: its DECLARED type. For an adoptive port
- *  that means its BASE — never the concrete type it adopted for colour.
+ *  that means its BASE — never the concrete type it adopted for color.
  *
  *  For a container rung (`any`/`anycombo`/`anylist`/`anytable`) that keeps the widening
  *  the socket promises: a lower-rank value still reaches the rank the node's data()
@@ -370,11 +370,11 @@ export function wrapNodeData(node: NodeLike) {
       const arr = keepUnits || !Array.isArray(raw) ? raw : (raw.map(stripUnitCells) as unknown[]);
       const socket = node.inputs?.[key]?.socket;
       // Coerce to the socket's DECLARED base rung, not an adopted concrete type: an
-      // adoptive `anylist`/`anytable` input colours itself to the wired cable's type
+      // adoptive `anylist`/`anytable` input colors itself to the wired cable's type
       // (a scalar that widens IN adopts e.g. `number`), but the node's data() was
       // authored against the base rung — coercing on the adopted `number` would keep
       // the scalar instead of widening it to `[scalar]`, breaking the widening the
-      // socket promises. The adopted type stays for colour + downstream resolution.
+      // socket promises. The adopted type stays for color + downstream resolution.
       const dt = coercionType(socket);
       if (!dt || !Array.isArray(arr)) { coerced[key] = arr; continue; }
       // A raw input (declared on node.rawInputs) bypasses coercion so the node sees

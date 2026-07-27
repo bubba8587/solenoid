@@ -21,7 +21,7 @@ import "./Settings.css";
  * section here in a later pass.)
  */
 
-// A setting whose feature has no mobile counterpart renders inert and greyed, with
+// A setting whose feature has no mobile counterpart renders inert and grayed, with
 // one line saying why. Greying rather than hiding keeps the Settings page the same
 // shape on both, so a user who knows the desktop app can still find the row.
 const MOBILE_NA = "Not available in mobile mode.";

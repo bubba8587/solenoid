@@ -24,7 +24,7 @@ describe("snapCoord", () => {
     }
   });
 
-  it("snaps 24 (a square centre between dots) to 36, not 24 — regression guard", () => {
+  it("snaps 24 (a square center between dots) to 36, not 24 — regression guard", () => {
     // 24 is midway between dots 12 and 36; tie goes up, so must be 36.
     expect(snapCoord(24)).toBe(36);
     expect(snapCoord(24)).not.toBe(24);

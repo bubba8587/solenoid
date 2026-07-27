@@ -95,7 +95,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof ComplexPowerNode || node instanceof QuadraticRootsNode
   ) return "complex";
   // Nodes that EMIT the logical type (purple TRUE/FALSE socket) read as logic, so
-  // their header colour matches what they output: Boolean source, the IS-checks,
+  // their header color matches what they output: Boolean source, the IS-checks,
   // and the parity test — alongside Comparison / Logical.
   if (
     node instanceof ComparisonNode || node instanceof BooleanOpNode ||

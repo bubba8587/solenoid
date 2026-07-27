@@ -515,7 +515,7 @@ export function FieldRow({
         ref={btnRef}
         type="button"
         className="solenoid-note__field-glyph"
-        title={FIELD_TYPE_LABEL[type]}
+        title={`${FIELD_TYPE_LABEL[type]}. Change type.`}
         onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
         onPointerDown={stop}
         onMouseDown={stop}

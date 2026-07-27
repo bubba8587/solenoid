@@ -21,7 +21,7 @@ export interface ChartPopupState {
   labels?: (string | number)[];
   /** matplotlib-style overrides (Chart only); undefined for a Sparkline. */
   opts?: ChartOptions;
-  /** Colour bars/columns by value sign (Sparkline win/loss). */
+  /** Color bars/columns by value sign (Sparkline win/loss). */
   signColors?: { pos: string; neg: string };
   /** Host node accent so the popup header matches the node it opened from. */
   accent?: string;

@@ -24,7 +24,7 @@ function fireCanvasKey(code: string, opts: { ctrl?: boolean; shift?: boolean } =
 // Lucide "sparkle" (ISC) — the AI affordance. One four-point star, stroked like every
 // other icon here; deliberately NOT the three-star cluster or a filled gradient mark,
 // which is the AI-startup look DESIGN.md rejects. 16px in a 24px box: both even, so
-// the glyph centres on whole pixels (CLAUDE.md's even-icon rule).
+// the glyph centers on whole pixels (CLAUDE.md's even-icon rule).
 function SparkleIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -60,7 +60,7 @@ function buildCommands(): PaletteItem[] {
     { label: "Align top", run: () => void alignSelection("top") },
     { label: "Align bottom", run: () => void alignSelection("bottom") },
     // Labels name the END EFFECT, not the axis being centered: center-h aligns the
-    // horizontal centres, which stacks the nodes VERTICALLY (and vice versa).
+    // horizontal centers, which stacks the nodes VERTICALLY (and vice versa).
     { label: "Align center (vertical)", run: () => void alignSelection("center-h") },
     { label: "Align center (horizontal)", run: () => void alignSelection("center-v") },
     { label: "Distribute horizontally", run: () => void distributeSelection("h") },
@@ -76,7 +76,7 @@ function buildSettingToggles(): PaletteItem[] {
   for (const section of SETTINGS_SCHEMA) {
     for (const f of section.fields) {
       if (f.type === "folder" || f.type === "segment") continue;
-      // A setting Settings greys out on this device must not be reachable as a
+      // A setting Settings grays out on this device must not be reachable as a
       // command either — otherwise the palette is a back door to flipping a value
       // whose feature isn't there, and the two surfaces disagree.
       if (IS_MOBILE && f.disabledOnMobile) continue;

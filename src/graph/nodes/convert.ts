@@ -162,7 +162,7 @@ export const CONVERT_UNIT_DEFS: Record<string, ConvertUnitDef> = {
 // Register every Convert unit id with the display bridge, so a `UnitCell.display`
 // authored here (yd, psi, km_h, …) resolves at render time even when the id has no
 // FC-registry twin — without this, Convert-to-yd emitted a display-less cell and the
-// downstream box rendered the base-SI derived symbol (metres), losing Convert's
+// downstream box rendered the base-SI derived symbol (meters), losing Convert's
 // primacy over the value's unit.
 registerDisplayUnits(Object.fromEntries(Object.entries(CONVERT_UNIT_DEFS).map(([id, d]) => [id, d.dim])));
 
@@ -240,13 +240,13 @@ export class ConvertNode extends ClassicPreset.Node {
     const x = (inputs.in?.[0] ?? null) as UnitOperand | UnitOperand[] | null;
     this.cachedInput = x;
     if (x === null) { this.cachedResult = null; return { out: null }; }
-    // Cross-family conversion (metres → kilograms) measures different things —
+    // Cross-family conversion (meters → kilograms) measures different things —
     // Excel's CONVERT returns #N/A. This is the NODE's unit pick, not a per-cell
     // condition, so it's a whole-value error at every dimensionality (a scalar OR
     // an entire list becomes #N/A — no point per-celling a node-level mistake).
     const from = CONVERT_UNIT_DEFS[this.fromUnit];
     const to   = CONVERT_UNIT_DEFS[this.toUnit];
-    // Incommensurable units (metres → kilograms, m² → m) measure different
+    // Incommensurable units (meters → kilograms, m² → m) measure different
     // things — a real dimension-vector check, not just a category label. Excel's
     // CONVERT returns #N/A; kept as #N/A (not #UNIT!) so IFNA/ISNA still catch a
     // bad Convert pick, matching the node's long-standing contract.

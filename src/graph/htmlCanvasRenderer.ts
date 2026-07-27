@@ -112,7 +112,7 @@ interface CableGeom { pts: { x: number; y: number }[]; minX: number; minY: numbe
 interface CableSpec {
   sourceId: string; srcOffX: number; srcOffY: number; srcAbsX: number; srcAbsY: number; sourceAngleDeg: number | null;
   targetId: string; tgtOffX: number; tgtOffY: number; tgtAbsX: number; tgtAbsY: number; targetAngleDeg: number | null;
-  color: string; // "#rrggbb" — source socket's data-type colour (DOM cable hue)
+  color: string; // "#rrggbb" — source socket's data-type color (DOM cable hue)
 }
 
 export interface RendererStats {
@@ -895,8 +895,8 @@ export class HtmlCanvasRenderer {
     ctx.lineWidth = 1.8; // matches the DOM cable's default visible stroke
     ctx.lineJoin = "round";
     // Each cable's hue follows its source socket's data type (like the DOM). Bucket the
-    // visible cables by colour into one Path2D each, so the layer is a handful of strokes
-    // (one per type colour present) rather than a stroke per cable.
+    // visible cables by color into one Path2D each, so the layer is a handful of strokes
+    // (one per type color present) rather than a stroke per cable.
     const byColor = new Map<string, Path2D>();
     for (let i = 0; i < this.cableGeoms.length; i++) {
       const g = this.cableGeoms[i];

@@ -150,7 +150,7 @@ function buildCardContainer(pixi: PixiModule, spec: CardSpec, textMode: TextMode
   const detail: (Text | BitmapText | Graphics)[] = [];
   let titleText: Text | BitmapText | undefined;
 
-  // Conduit: a rotated square body (node.angle) around the element centre; the
+  // Conduit: a rotated square body (node.angle) around the element center; the
   // sockets stay at their scraped (already-rotated) world positions.
   if (spec.isConduit) {
     const sz = Math.min(spec.w, spec.h) * 0.62;
@@ -187,7 +187,7 @@ function buildCardContainer(pixi: PixiModule, spec: CardSpec, textMode: TextMode
       g.moveTo(chx - 3, chy - 1.5).lineTo(chx, chy + 1.5).lineTo(chx + 3, chy - 1.5).stroke({ width: 1.3, color: chCol, alpha: 0.55 });
     }
   }
-  // Card border: real colour (grouped nodes adopt the group hue) at its real alpha,
+  // Card border: real color (grouped nodes adopt the group hue) at its real alpha,
   // inset by half the 2px width so the stroke sits inside the rounded rect.
   g.roundRect(1, 1, spec.w - 2, spec.h - 2, parts.radius).stroke({ width: 2, color: spec.border, alpha: spec.borderAlpha || 0.78 });
   c.addChild(g);
@@ -270,8 +270,8 @@ function buildCardContainer(pixi: PixiModule, spec: CardSpec, textMode: TextMode
     const x = run.align === "right" ? run.x - spec.x + run.w - pad
       : run.align === "center" ? run.x - spec.x + run.w / 2
       : run.x - spec.x + pad;
-    // A single-line run is vertically CENTRED on its element box — the DOM glyph
-    // sits centred in its line box, and the MSDF metrics differ from the element
+    // A single-line run is vertically CENTERED on its element box — the DOM glyph
+    // sits centered in its line box, and the MSDF metrics differ from the element
     // height, so top-anchoring drifts. Multi-line runs anchor at top and stack.
     const center = lines.length === 1 && run.h > run.size * 0.5;
     lines.forEach((line, i) => {
@@ -284,7 +284,7 @@ function buildCardContainer(pixi: PixiModule, spec: CardSpec, textMode: TextMode
     });
   }
 
-  // Socket glyphs (local coords = world socket − card origin), shaped + coloured
+  // Socket glyphs (local coords = world socket − card origin), shaped + colored
   // by type like the real sockets (circle scalar / square list / split combo /
   // grid 2-D / hexagon cube).
   if (spec.sockets.length) {
@@ -309,7 +309,7 @@ function buildCardContainer(pixi: PixiModule, spec: CardSpec, textMode: TextMode
 function clip(s: string, n: number): string { return s.length > n ? s.slice(0, n - 2) + ".." : s; }
 
 // Draw a socket's type glyph into a shared Graphics at (lx, ly), radius r, with a
-// 2px inset ring in `ring` (the surface colour) — matching the real socket dots.
+// 2px inset ring in `ring` (the surface color) — matching the real socket dots.
 function drawSocketGlyph(g: Graphics, s: SnapSocket, lx: number, ly: number, r: number, ring: number): void {
   const ringStroke = { width: 1.5, color: ring, alpha: 1 };
   switch (s.kind) {
@@ -454,7 +454,7 @@ export function buildLiveScene(pixi: PixiModule, snap: GraphSnapshot, shape: Cab
     standoffLayer.circle(so.bx, so.by, 4.5).fill({ color: 0x8a93a6, alpha: 0.6 });
   }
 
-  // Groups — translucent body + SOLID colour header bar + coloured border + label,
+  // Groups — translucent body + SOLID color header bar + colored border + label,
   // behind cables (matching the real group: 11px radius, ~34px header).
   for (const grp of snap.groups) {
     const g = new pixi.Graphics();
@@ -510,7 +510,7 @@ export function buildLiveScene(pixi: PixiModule, snap: GraphSnapshot, shape: Cab
 
   const redrawCables = () => {
     cableLayer.clear();
-    // Per-cable stroke so each takes its SOURCE socket's type colour, like the app.
+    // Per-cable stroke so each takes its SOURCE socket's type color, like the app.
     for (const c of cableEnds) {
       const pts = cablePts(c);
       if (pts.length < 2) continue;

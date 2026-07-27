@@ -62,7 +62,7 @@ export function MeasuredSocketRow({
   children: ReactNode;
   /** A tall hero box (a FrameDisplay, a markdown summary) rather than a compact
    *  label|value row — drops the fixed 22px row height so it doesn't overflow and
-   *  overlap its neighbours; the socket dot still measures onto the box centre. */
+   *  overlap its neighbors; the socket dot still measures onto the box center. */
   hero?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);

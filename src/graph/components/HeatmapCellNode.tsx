@@ -3,7 +3,7 @@ import { NodeShell, PortSockets, type NodeProps } from "./nodeKit";
 import { formatScalar } from "./format";
 
 // A 3-stop cool→warm scale (blue → pale yellow → red), the familiar
-// conditional-formatting colour ramp.
+// conditional-formatting color ramp.
 const STOPS: [number, number, number][] = [
   [44, 123, 182],   // blue
   [255, 255, 191],  // pale yellow
@@ -20,7 +20,7 @@ function rampColor(t: number): string {
   return `rgb(${mix(0)}, ${mix(1)}, ${mix(2)})`;
 }
 
-// Choose a readable text colour against the swatch (perceived luminance).
+// Choose a readable text color against the swatch (perceived luminance).
 function textOn(rgb: string): string {
   const m = /(\d+), (\d+), (\d+)/.exec(rgb);
   if (!m) return "#000";

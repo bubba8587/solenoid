@@ -109,7 +109,7 @@
   /* No padding: the pill wraps the 28px buttons + its 1px border = 30px, the SAME
      total size as the apptools pill — so every pill in the bar is one height. The
      earlier 3px padding bloated this pill to 36px, reading as a bigger control than
-     its neighbours. */
+     its neighbors. */
   padding: 0;
   background: var(--btn-bg);
   border: 1px solid var(--btn-border);

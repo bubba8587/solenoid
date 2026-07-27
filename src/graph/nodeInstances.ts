@@ -23,7 +23,7 @@ export interface NodeCard {
   headerH: number;
 }
 
-/** Pack node cards into the interleaved instance array. Colours are normalised to
+/** Pack node cards into the interleaved instance array. Colors are normalized to
  *  0..1 and PREMULTIPLIED by alpha (the renderer uses premultiplied-alpha blending). */
 export function packNodeInstances(cards: NodeCard[]): Float32Array {
   const out = new Float32Array(cards.length * FLOATS_PER_INSTANCE);

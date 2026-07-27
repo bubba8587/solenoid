@@ -175,7 +175,7 @@ describe("aggregator prep (step 6)", () => {
   });
 
   it("adoption reads the bare number in the list's DISPLAY unit (author 2026-07-16: SUM(5 km, 3) = 8 km)", () => {
-    // The bare 3 means 3 km → 3000 base-SI, not 3 metres. A LEADING bare number
+    // The bare 3 means 3 km → 3000 base-SI, not 3 meters. A LEADING bare number
     // adopts the km discovered later (the two-pass scan).
     // An FC-authored cell carries its display id — that's what the bare 3 reads in.
     const km = (v: number) => fromUnit(v, U("km"), "km");

@@ -13,7 +13,7 @@ import { MutableSocket, SolenoidSocket, isWildcardType } from "./sockets";
 // So a node that DECLARES a passthrough while carrying a shared, immutable output
 // singleton is silently skipped: adoption computes its type and throws it away, and
 // anything downstream that reads the socket sees a stale placeholder forever. That
-// is invisible — nothing errors, the dot just never colours.
+// is invisible — nothing errors, the dot just never colors.
 //
 // This sweeps the whole catalog so the invariant can't rot. It is also what lets
 // `displayedType` stop re-deriving types with its own graph walk (2026-07-25): every

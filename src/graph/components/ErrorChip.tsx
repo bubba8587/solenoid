@@ -5,7 +5,7 @@ import "./errorChip.css";
 // One shared treatment for tagged #CODE! errors so they read identically wherever
 // they surface (result boxes, frame/table cells, the cable inspector, pins/HUD,
 // group readouts). CLAUDE.md: "a new result display needs an isSolError branch" —
-// route that branch through here so the colour + tooltip can't drift per-site.
+// route that branch through here so the color + tooltip can't drift per-site.
 
 /** The hover for an error: the producer's structural message plus the general
  *  plain-language explanation + usual fix for the code, plus (when known) which

@@ -17,7 +17,7 @@ export function isDesktop(): boolean {
 }
 
 /** Open the OS folder picker; returns the chosen absolute path, or null if the
- *  user cancelled (or we're not on desktop). */
+ *  user canceled (or we're not on desktop). */
 export async function pickFolderDialog(): Promise<string | null> {
   if (!isDesktop()) return null;
   const res = await open({ directory: true, multiple: false, title: "Choose a data folder" });
@@ -180,7 +180,7 @@ export async function pickSaveGraphPath(suggestedName: string): Promise<string |
 }
 
 /** Show a Save dialog and write the file. Returns the chosen path, or null if the
- *  user cancelled. In the browser, downloads `suggestedName` and returns null. */
+ *  user canceled. In the browser, downloads `suggestedName` and returns null. */
 export async function saveTextFileDialog(suggestedName: string, content: string): Promise<string | null> {
   if (isDesktop()) {
     const path = await save({ defaultPath: suggestedName, filters: JSON_FILTER });
@@ -233,7 +233,7 @@ function downloadHtml(name: string, content: string): void {
 }
 
 /** Show an Open dialog and read the file. Returns its path + text, or null if the
- *  user cancelled. In the browser, uses a file input (path is null). */
+ *  user canceled. In the browser, uses a file input (path is null). */
 export async function openTextFileDialog(): Promise<{ path: string | null; content: string } | null> {
   if (isDesktop()) {
     const res = await open({ multiple: false, directory: false, filters: JSON_FILTER });
