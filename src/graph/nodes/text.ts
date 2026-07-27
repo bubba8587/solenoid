@@ -118,11 +118,11 @@ export class PromoNode extends ClassicPreset.Node {
 export type TextTransformOp = "upper" | "lower" | "trim" | "proper" | "clean";
 
 export const TEXT_TRANSFORM_OP_META = {
-  upper:  { label: "UPPER",  description: "Convert all characters to uppercase. Excel: UPPER." },
-  lower:  { label: "LOWER",  description: "Convert all characters to lowercase. Excel: LOWER." },
-  trim:   { label: "TRIM",   description: "Remove leading/trailing spaces and collapse internal spaces. Excel: TRIM." },
+  upper:  { label: "UPPER",  description: "Converts all characters to uppercase. Excel: UPPER." },
+  lower:  { label: "LOWER",  description: "Converts all characters to lowercase. Excel: LOWER." },
+  trim:   { label: "TRIM",   description: "Removes leading/trailing spaces and collapse internal spaces. Excel: TRIM." },
   proper: { label: "PROPER", description: "Capitalize the first letter of each word. Excel: PROPER." },
-  clean:  { label: "CLEAN",  description: "Remove non-printable control characters (ASCII 0–31). Excel: CLEAN." },
+  clean:  { label: "CLEAN",  description: "Removes non-printable control characters (ASCII 0–31). Excel: CLEAN." },
 } satisfies Record<TextTransformOp, { label: string; description: string }>;
 
 // UPPER/LOWER/TRIM are verified byte-identical to Formula.js, so those three route

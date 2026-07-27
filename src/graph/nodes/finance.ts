@@ -55,8 +55,8 @@ export const BITWISE_OP_META = {
   bitand:    { label: "BITAND",    description: "Bitwise AND: keeps only the bits set in BOTH numbers (mask out the rest); non-negative integers. Excel: BITAND." },
   bitor:     { label: "BITOR",     description: "Bitwise OR: sets a bit if it's on in EITHER number (combine flags). Excel: BITOR." },
   bitxor:    { label: "BITXOR",    description: "Bitwise XOR: sets a bit where the two numbers DIFFER (toggle flags). Excel: BITXOR." },
-  bitlshift: { label: "BITLSHIFT", description: "Shift A's bits left by B places; each place doubles the value (A × 2ᴮ). Excel: BITLSHIFT." },
-  bitrshift: { label: "BITRSHIFT", description: "Shift A's bits right by B places; each place halves it, dropping low bits (⌊A ÷ 2ᴮ⌋). Excel: BITRSHIFT." },
+  bitlshift: { label: "BITLSHIFT", description: "Shifts A's bits left by B places; each place doubles the value (A × 2ᴮ). Excel: BITLSHIFT." },
+  bitrshift: { label: "BITRSHIFT", description: "Shifts A's bits right by B places; each place halves it, dropping low bits (⌊A ÷ 2ᴮ⌋). Excel: BITRSHIFT." },
 } satisfies Record<BitwiseOp, { label: string; description: string }>;
 
 export class BitwiseNode extends ClassicPreset.Node {
