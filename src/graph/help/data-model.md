@@ -34,13 +34,13 @@ Retyping a socket in place — switching a **Cast**'s target, a **Get Column** r
 
 A drag that won't drop has exactly three causes: the canvas is **locked**; it's a **self-loop**, an output wired back into its own node; or the **types don't connect**. The drag guard refuses silently, but wiring through the connection dialog names the reason — `Incompatible types: Date → Number.`
 
-On a type mismatch there are three ways forward:
+On a type mismatch:
 
 - **wrong family** (a date into a number, text into a number) — insert a **Cast**; the one pair that needs none is Boolean ⟷ number;
 - **wrong direction on the ladder** (a list into a scalar, a matrix into a list) — the value is wider than the port, so reshape it explicitly: Get Column, TOCOL, INDEX;
 - **a container into something narrower** (a Cube into a Frame, a Frame into a matrix) — UNNEST or Get Column.
 
-Dragging a cable into empty canvas opens the Add menu filtered to nodes that will actually connect, and wires the first compatible port for you.
+Dragging a cable into empty canvas opens the Add menu filtered to nodes that will actually connect, and wires the first compatible port.
 
 ## What a socket's type controls besides connections
 
