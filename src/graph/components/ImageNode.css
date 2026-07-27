@@ -145,7 +145,7 @@
   font-size: 11px;
   outline: none;
 }
-.solenoid-image__url:focus { border-color: var(--accent); }
+.solenoid-image__url:focus { border-color: var(--node-accent, var(--accent)); }
 .solenoid-image__url::placeholder { color: var(--text-muted); }
 
 .solenoid-image__height {
@@ -168,7 +168,7 @@
   font-size: 11px;
   outline: none;
 }
-.solenoid-image__height input:focus { border-color: var(--accent); }
+.solenoid-image__height input:focus { border-color: var(--node-accent, var(--accent)); }
 
 .solenoid-image__hint {
   padding: 0 6px 6px;
