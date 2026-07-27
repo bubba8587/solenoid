@@ -16,7 +16,7 @@ import {
   unselectAllNodes as unselectAllNodesFromProcess,
   selectNode as selectNodeFromProcess,
 } from "./process";
-import { isPinching, isPalmContact, onPenDown } from "./pointerGesture";
+import { isPinching } from "./pointerGesture";
 
 export type LassoState = { points: Pt[]; mode: "touch" | "enclose" } | null;
 
@@ -110,8 +110,6 @@ export function installLassoSelection(deps: LassoDeps): () => void {
       cancelLasso();
       return;
     }
-    // A palm landing beside an in-contact stylus must not draw a lasso.
-    if (isPalmContact(e)) return;
     // Don't start a lasso when the click landed on a node or a socket inside
     // one (so click-drag-on-socket cable creation isn't stolen, and tapping a
     // note/group in touch-select mode selects it rather than lassoing). Test
@@ -262,12 +260,7 @@ export function installLassoSelection(deps: LassoDeps): () => void {
   }
 
   container.addEventListener("pointerdown", onDown, true);
-  // Forward-only palm rejection can't un-register a palm that landed BEFORE the pen
-  // (the usual grip), so the stylus instead cancels whatever that palm began — the
-  // palm can start a lasso, but never finish one.
-  const stopPenSub = onPenDown(cancelLasso);
   return () => {
-    stopPenSub();
     container.removeEventListener("pointerdown", onDown, true);
     window.removeEventListener("pointermove", onMove);
     window.removeEventListener("pointerup", onUp);

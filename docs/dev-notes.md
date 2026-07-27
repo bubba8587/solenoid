@@ -142,12 +142,13 @@ removes without the capture flag, so it leaks the listener on every drill-in ope
 
 **`pointerGesture.ts` (new)** — a window-capture module singleton, the one answer to "what gesture
 is in flight", readable by rete's Zoom instance, the Canvas pipe and the lasso without threading a
-ref. `isPinching()` = **≥2 touch, no pen**, and everything now reads that instead of counting raw
-pointers. Raw `≥2` was wrong in both directions: it fires on stylus+palm (zooming out from under a
-drawing hand) and would freeze a legit pen drag the moment a palm landed. Palm rejection is
-forward-only by design — a palm landing before the pen tip can't be un-registered, so the pen
-CANCELS what it started (`onPenDown` → the lasso bails). Also: pen barrel/eraser no longer grabs a
-node drag. 14 tests, incl. the phase assertions (a bubble regression fails loudly).
+ref. `isPinching()` = **≥2 touch contacts**, and everything now reads that instead of counting raw
+pointers — a mouse or a stylus in contact is not half a pinch. **No palm rejection** (author call,
+same session): this is a precise editor, nobody rests a palm on a node graph, so a pen is handled
+only as a PRECISE pointer — never counted toward a pinch, and keeps select-and-drag in one motion
+like a mouse. Pen barrel/eraser no longer grabs a node drag. Revisit only if a drawing-style
+surface ever lands, and with contact geometry rather than a pen-active flag. 10 tests, incl. the
+phase assertions (a bubble regression fails loudly).
 
 **Pinch also SELECTED whatever finger 1 landed on** (author-reported after the capture fix).
 rete picks on pointerdown because the drag depends on it, so at that instant the gesture is

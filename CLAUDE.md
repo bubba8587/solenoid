@@ -162,8 +162,8 @@ Forward-looking docs rot because sessions default to appending. When wrapping up
   BUBBLE-phase container pointerdown, so any `stopPropagation` in a node hid a finger and
   killed the gesture. `CappedZoom` re-seats the count into capture (unstoppable); pan/node-drag
   stay bubble (vetoable, deliberately). Never flip either. `isPinching()`
-  (`pointerGesture.ts`) — ≥2 TOUCH, no pen — is the only definition; never count raw pointers
-  (a stylus + resting palm is drawing, not a pinch).
+  (`pointerGesture.ts`) — ≥2 TOUCH contacts — is the only definition; never count raw pointers
+  (a mouse or a stylus in contact is not half a pinch).
 - **Native form popups inside a node need pointer/mouse-down stopPropagation** — the area
   plugin's node pointerdown triggers selection → re-render, which closes an open `<select>`
   dropdown mid-pick. NOTE (2026-07-27): widely cited, but no originating incident is on record
@@ -189,8 +189,9 @@ Forward-looking docs rot because sessions default to appending. When wrapping up
 ### Subsystem deep-dives → `docs/subsystem-invariants.md`
 Read the relevant section there before touching one of these. The one-line "don't break this":
 - **Pointer gestures** (`pointerGesture.ts`, `areaPresets.ts`): pinch = capture phase +
-  `isPinching()`; pan/drag = bubble. Palm rejection is forward-only (the pen CANCELS what a
-  palm started). Tablet runs the desktop model — two-finger pan is its canvas gesture.
+  `isPinching()` (≥2 FINGERS); pan/drag = bubble. A finger never selects on pointerdown —
+  unselected nodes are drag-transparent to touch, selection lands on pointerup. NO palm
+  rejection by author call (precise editor, nobody rests a palm on a node graph).
 - **Cable routing** (`cablePaths.ts`): diagonal+straight share one walk-enumeration router;
   route selection = globally-shortest solvable walk, LENGTH stays the primary sort key. Spline is
   a single tangent-exact cubic. Ribbons bundle 2+ Conduit cables, membership derived per render.

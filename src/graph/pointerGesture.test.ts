@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import {
-  installPointerCensus, resetPointerCensus,
-  isPinching, isPalmContact, penActive, touchCount, pointerCount, onPenDown,
+  installPointerCensus, resetPointerCensus, isPinching, touchCount,
 } from "./pointerGesture";
 import { CappedZoom } from "./areaPresets";
 
@@ -62,57 +61,24 @@ describe("pointer census — what gesture is in flight", () => {
     expect(isPinching()).toBe(true);
   });
 
-  it("never reads a MOUSE as a pinch, however many buttons are down", () => {
+  it("never counts a precise pointer as a finger — not a mouse, not a stylus", () => {
+    // Neither can pinch, and counting them would let a stylus resting on the glass
+    // become the second contact of a zoom.
     down(1, "mouse");
+    down(2, "pen");
     expect(touchCount()).toBe(0);
-    expect(pointerCount()).toBe(1);
     expect(isPinching()).toBe(false);
-  });
-
-  it("a stylus plus a resting palm is DRAWING, not a pinch", () => {
-    // The tablet failure this rule exists to prevent: without it the palm and the
-    // pen read as two contacts and the canvas zooms out from under the drawing hand.
-    down(1, "pen");
-    down(2, "touch");
-    expect(penActive()).toBe(true);
+    // A finger alongside them still isn't two fingers.
+    down(3, "touch");
     expect(isPinching()).toBe(false);
-  });
-
-  it("suppresses the pinch even with two palms down, while the pen is in contact", () => {
-    down(1, "pen"); down(2, "touch"); down(3, "touch");
-    expect(touchCount()).toBe(2);
-    expect(isPinching()).toBe(false);  // a pen outranks any number of fingers
-    up(1, "pen");
-    expect(isPinching()).toBe(true);   // pen lifted — the fingers mean it now
-  });
-
-  it("flags a touch as a palm only while the pen is actually down", () => {
-    expect(isPalmContact(pointer(2, "touch") as PointerEvent)).toBe(false);
-    down(1, "pen");
-    expect(isPalmContact(pointer(2, "touch") as PointerEvent)).toBe(true);
-    // A mouse or a second pen is deliberate — never rejected as a palm.
-    expect(isPalmContact(pointer(3, "mouse") as PointerEvent)).toBe(false);
-    expect(isPalmContact(pointer(4, "pen") as PointerEvent)).toBe(false);
-    up(1, "pen");
-    expect(isPalmContact(pointer(2, "touch") as PointerEvent)).toBe(false);
+    down(4, "touch");
+    expect(isPinching()).toBe(true);
   });
 
   it("treats an unknown/absent pointerType as touch, since only digitizers omit it", () => {
     t.fire("pointerdown", { pointerId: 1 });
     t.fire("pointerdown", { pointerId: 2 });
     expect(isPinching()).toBe(true);
-  });
-
-  it("notifies subscribers when the pen lands, so a palm's gesture can bail", () => {
-    let cancels = 0;
-    const off = onPenDown(() => cancels++);
-    down(1, "touch");
-    expect(cancels).toBe(0);   // a finger is not a pen
-    down(2, "pen");
-    expect(cancels).toBe(1);
-    off();
-    down(3, "pen");
-    expect(cancels).toBe(1);   // unsubscribed
   });
 
   it("drops a cancelled contact, so a lost pointer can't strand the census", () => {
@@ -123,10 +89,10 @@ describe("pointer census — what gesture is in flight", () => {
   });
 
   it("resets to empty — the backstop for a pointerup the browser never delivers", () => {
-    down(1, "touch"); down(2, "pen");
+    down(1, "touch"); down(2, "touch");
     resetPointerCensus();
-    expect(pointerCount()).toBe(0);
-    expect(penActive()).toBe(false);
+    expect(touchCount()).toBe(0);
+    expect(isPinching()).toBe(false);
   });
 });
 
@@ -205,12 +171,7 @@ describe("CappedZoom — the pinch-priority rule", () => {
     expect(pointers()).toHaveLength(0);
     fire(pointer(2, "pen"));
     expect(pointers()).toHaveLength(0);
-    // Pen is down, so this finger is a palm — it must not become the second contact
-    // that starts a zoom.
-    fire(pointer(3, "touch"));
-    expect(pointers()).toHaveLength(0);
 
-    resetPointerCensus();
     fire(pointer(4, "touch"));
     fire(pointer(5, "touch"));
     expect(pointers()).toHaveLength(2);
