@@ -65,11 +65,45 @@ export function hexToRgba(hex: string, alpha: number): string {
 }
 
 // Readable text/icon color (#fff or near-black) for a solid fill of `hex`.
+//
+// BAKED, not computed per call. Every accent that can reach this — node headers,
+// groups, notes, the FC's socket-type tint — resolves from a palette slot, so the
+// set of distinct inputs is tiny and fixed by the active palette. A node card asks
+// for its ink on every render, so parsing the hex each time is work with a known
+// answer. `bakeInks()` fills the cache for all twelve slots in both modes whenever
+// the palette changes; anything outside that set (a hand-picked custom color)
+// still resolves on first use and is cached from then on.
+const _inkCache = new Map<string, string>();
+
 export function contrastInk(hex: string): string {
+  const hit = _inkCache.get(hex);
+  if (hit !== undefined) return hit;
+  const ink = computeInk(hex);
+  _inkCache.set(hex, ink);
+  return ink;
+}
+
+function computeInk(hex: string): string {
   const t = parseHex(hex);
   if (!t) return "#fff";
   const lum = (0.299 * t[0] + 0.587 * t[1] + 0.114 * t[2]) / 255;
   return lum > 0.62 ? "#1a1a1a" : "#fff";
+}
+
+/** Pre-bake the ink for every slot of the ACTIVE palette, in both themes — the
+ *  form these colors actually reach a card (`themeAccent` darkens in light mode,
+ *  so the two modes can land on different sides of the contrast threshold). Called
+ *  on every palette recompute, so a palette switch re-bakes rather than drifting. */
+function bakeInks(map: Record<PaletteSlot, string>): void {
+  for (const slot of COLOR_PALETTE) {
+    const raw = map[slot];
+    if (!raw) continue;
+    for (const mode of ["dark", "light"] as const) {
+      const themed = themeAccent(raw, mode);
+      if (!_inkCache.has(themed)) _inkCache.set(themed, computeInk(themed));
+    }
+    if (!_inkCache.has(raw)) _inkCache.set(raw, computeInk(raw));
+  }
 }
 
 // Saturated accents tuned for a dark canvas glow a little on white. In light
@@ -376,6 +410,7 @@ const { notify: notifyReportPalette, subscribe: subscribeReportPalette, version:
 function recompute() {
   const base = _docBase ? (BUILTIN_PALETTES[_docBase] ?? BUILTIN_PALETTES.Default) : baseMapFor(_appBase);
   _effective = { ...base, ..._docOverrides };
+  bakeInks(_effective);
 }
 
 function recomputeReport() {

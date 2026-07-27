@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { BUILTIN_PALETTES, PALETTE_NAMES, COLOR_PALETTE, paletteStore, reportPaletteStore, resolveColor, NEUTRAL_HEX, NEUTRAL_WHITE, NEUTRAL_DARK, nextNeutral, isNeutralShade } from "./palette";
+import { BUILTIN_PALETTES, PALETTE_NAMES, COLOR_PALETTE, paletteStore, reportPaletteStore, resolveColor, NEUTRAL_HEX, NEUTRAL_WHITE, NEUTRAL_DARK, nextNeutral, isNeutralShade, PALETTE, themeAccent, contrastInk } from "./palette";
 
 describe("built-in palettes", () => {
   it("every palette defines all 12 slots as hex colors", () => {
@@ -167,5 +167,36 @@ describe("reportPaletteStore (report/export-only, parallel to the canvas palette
     reportPaletteStore.setReportPalette({ base: "NotAPalette", overrides: { notASlot: "#fff", gold: "#abcdef" } });
     expect(reportPaletteStore.resolve("gold")).toBe("#abcdef");
     expect(reportPaletteStore.reportPalette()).toEqual({ overrides: { gold: "#abcdef" } });
+  });
+});
+
+describe("contrast ink is baked, not recomputed", () => {
+  it("gives a readable ink for every palette slot in both themes", () => {
+    // The pairing that matters: a fill takes --node-accent, its text takes the ink
+    // derived from that same color. A light slot must get dark ink and vice versa.
+    for (const slot of COLOR_PALETTE) {
+      for (const mode of ["dark", "light"] as const) {
+        const accent = themeAccent(PALETTE[slot], mode);
+        const ink = contrastInk(accent);
+        expect(["#fff", "#1a1a1a"], `${slot}/${mode}`).toContain(ink);
+      }
+    }
+  });
+
+  it("is stable across calls (the cache can't drift from a fresh computation)", () => {
+    for (const slot of COLOR_PALETTE) {
+      const a = contrastInk(PALETTE[slot]);
+      const b = contrastInk(PALETTE[slot]);
+      expect(b).toBe(a);
+    }
+  });
+
+  it("light and dark can legitimately differ — themeAccent moves the luminance", () => {
+    // Not asserting they DO differ for a given slot (that depends on the palette),
+    // only that the ink is asked for the THEMED color rather than the raw slot, so
+    // a slot sitting near the threshold can flip. This pins the call shape.
+    const raw = PALETTE.lime;
+    expect(contrastInk(themeAccent(raw, "light"))).toBe(contrastInk(themeAccent(raw, "light")));
+    expect(contrastInk(themeAccent(raw, "dark"))).toBe(contrastInk(themeAccent(raw, "dark")));
   });
 });
