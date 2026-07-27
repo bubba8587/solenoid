@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { TextTransformNode, TextSliceNode, ReptNode } from "./text";
-import { DateConstructNode, DateAddNode } from "./date";
+import { TextTransformNode, TextSliceNode, ReptNode, TextSplitNode, TextFilterNode, ConcatNode } from "./text";
+import { DateConstructNode, DateAddNode, NetworkdaysNode } from "./date";
 
 // ─── A wired blank must not resurrect the typed literal ───────────────────────
 // The `inputs.x?.[0] ?? this.literals.x` idiom swallows a WIRED null into the
@@ -49,6 +49,50 @@ describe("text operands", () => {
     node.literals.times = 2;
     expect(node.data({ text: ["ab"], times: [null as unknown as number] }).result).toBeNull();
     expect(node.data({ text: ["ab"] }).result).toBe("abab");
+  });
+});
+
+describe("mode selectors — the project's model, not Excel's", () => {
+  // The real choice here: a wired blank could mean "the mode is unknown, so the
+  // answer is unknown" (this app's P6 model) or "nothing supplied, use the default"
+  // (Excel's reading of an omitted optional argument). Author call: follow THIS
+  // project. A blank you deliberately wired is not silently reinterpreted.
+  it("TEXTSPLIT: a wired blank delimiter yields blank, not a character split", () => {
+    const node = new TextSplitNode();
+    node.stringLiterals.delimiter = ",";
+    expect(node.data({ text: ["a,b"], delimiter: [null as unknown as string] }).result).toBeNull();
+    // Unwired keeps the typed delimiter.
+    expect(node.data({ text: ["a,b"] }).result).toEqual(["a", "b"]);
+  });
+
+  it("Text Filter: a wired blank pattern yields blank, not an unfiltered list", () => {
+    const node = new TextFilterNode({ op: "contains" });
+    node.stringLiterals.pattern = "a";
+    expect(node.data({ strings: [["ab", "cd"]], pattern: [null as unknown as string] }).result).toBeNull();
+    expect(node.data({ strings: [["ab", "cd"]] }).result).toEqual(["ab"]);
+  });
+
+  it("NETWORKDAYS: a wired blank weekend code yields blank, not the default week", () => {
+    const node = new NetworkdaysNode();
+    expect(node.data({
+      start: [46096], end: [46196], weekend_code: [null as unknown as number],
+    }).result).toBeNull();
+    expect(typeof node.data({ start: [46096], end: [46196] }).result).toBe("number");
+  });
+});
+
+describe("reducers SKIP a missing rather than propagating it", () => {
+  // The other half of the value model: an aggregator skips nulls (SUM does), while
+  // element-wise math propagates them. CONCAT is a reducer, so a missing input
+  // contributes nothing to the join — but it still must not resurrect the literal.
+  it("CONCAT: a wired blank contributes nothing, and does not fall back to its box", () => {
+    const node = new ConcatNode();
+    const keys = Object.keys(node.inputs);
+    node.stringLiterals[keys[0]] = "xx";
+    const inputs: Record<string, string[] | undefined> = {};
+    inputs[keys[0]] = [null as unknown as string];
+    inputs[keys[1]] = ["b"];
+    expect(node.data(inputs).result).toBe("b");
   });
 });
 
