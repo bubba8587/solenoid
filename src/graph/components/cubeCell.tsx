@@ -103,7 +103,7 @@ export function CubeCellChip({ cell, crumb, size = "md", type }: {
       <button
         type="button"
         className={chip("array")}
-        title="Click to drill in"
+        title="Nested table"
         onPointerDown={stop}
         onMouseDown={stop}
         onClick={(e) => { stop(e); cubePopup.drill({ kind: "grid", cells: (is2D ? cell : [cell]) as CubeCell[][], label: crumb }); }}

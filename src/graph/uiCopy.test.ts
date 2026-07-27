@@ -55,7 +55,29 @@ function uiStrings(): Unit[] {
     if (leaf.label) out.push(...sentences(`catalog:${leaf.type}.label`, leaf.label));
     if (leaf.description) out.push(...sentences(`catalog:${leaf.type}.desc`, leaf.description));
   }
+  // Literal `title="…"` tooltips on the chrome. This surface is the WORST place
+  // for a narrated affordance — the tooltip fires while the pointer is already
+  // on the control — and it went unchecked until a spot-check found "Drag to
+  // move" on seven drag bars. Template-literal titles are skipped: they are
+  // composed at runtime, so there is no fixed string to judge.
+  for (const p of walkTsx("src/graph")) {
+    const src = readFileSync(p, "utf8");
+    src.split("\n").forEach((line, i) => {
+      for (const m of line.matchAll(/title="([^"]{4,})"/g)) {
+        out.push(...sentences(`${p}:${i + 1}.tooltip`, m[1]));
+      }
+    });
+  }
   return out;
+}
+
+function walkTsx(dir: string, acc: string[] = []): string[] {
+  for (const name of readdirSync(dir, { withFileTypes: true })) {
+    const p = join(dir, name.name);
+    if (name.isDirectory()) walkTsx(p, acc);
+    else if (name.name.endsWith(".tsx")) acc.push(p);
+  }
+  return acc;
 }
 
 /** `where` narrows a rule to the surface it actually governs. Most rules apply
@@ -121,6 +143,16 @@ const RULES: Rule[] = [
     where: (u) => u.src.endsWith(".desc") && u.opener,
   },
   {
+    id: "wire-instruction",
+    why: "\"Wire X into Y\" is a command, and wire-or-type is true of EVERY literal input in the app, so saying it describes nothing about this node",
+    // Two shapes, both found by a spot-check of 14 random descriptions:
+    // "Wire a 2-column frame (Date, Value)" for what the node TAKES, and
+    // "Type a comma-separated list or wire one" for the universal affordance.
+    // `Set the vault in Settings ▸ Obsidian` is deliberately NOT matched — a
+    // config location genuinely cannot be guessed from the node.
+    re: /^Wire\b|\b(?:wire|type) (?:a |an |it |them |one |the )?[^.;]{0,28}\bor (?:set|type|wire)\b|\bor set (?:it|them) inline\b/i,
+  },
+  {
     id: "widget-narration",
     why: "CLAUDE.md Captain Obvious — naming the control instead of the effect. Say what the option DOES; the reader can see it is a toggle",
     re: /\b(?:with|from|via|using)\s+the\s+(?:dropdown|checkbox|button|toggle|slider|menu|picker|selector|field|box)\b|\b(?:dropdown|checkbox|button|toggle)\s+(?:lets|allows|selects|sets)\b/i,
@@ -160,6 +192,11 @@ describe("UI copy", () => {
       "chummy-aside": ["…and wires the first compatible port for you."],
       "widget-narration": ["diagonal 1s, rest 0s — or blanks (nulls) via the toggle."],
       "imperative-opener": ["Round to nearest integer. Excel: ROUND(x,0).", "Sort ascending or descending."],
+      "wire-instruction": [
+        "Wire a 2-column frame (Date, Value); duplicate days sum.",
+        "Type a comma-separated list or wire one.",
+        "Wire the From and To bases or set them inline.",
+      ],
       slogan: ["Every chart Excel has, and then some"],
       // Every string the 2026-07-27 aggressive sweep removed, verbatim.
       "gesture-narration": [
@@ -204,6 +241,9 @@ describe("UI copy", () => {
       "List of N random numbers between Min and Max.",
       "Clean price per $100 face for a coupon bond (30/360 basis).",
       "Rank; ties share the highest position.",
+      // A config location genuinely cannot be guessed from the node itself.
+      "Set the vault in Settings ▸ Obsidian.",
+      "A vault-relative subfolder; arm it, then press Run.",
       // The gesture word as a noun or a descriptive gerund, not an instruction.
       "A drag that won't drop has exactly three causes: the canvas is locked; it's a self-loop; or the types don't connect.",
       "The drag guard refuses silently, but wiring through the connection dialog names the reason.",

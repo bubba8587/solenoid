@@ -49,7 +49,7 @@ export function ReportComponent({ data, emit }: NodeProps<ReportNodeType>) {
 
   return (
     <div className={`solenoid-report${data.selected ? " solenoid-report--selected" : ""}`} style={{ width: data.width, ...vars }}>
-      <div className="solenoid-report__bar" title="Drag to move">
+      <div className="solenoid-report__bar">
         {editingLabel ? (
           <input
             className="solenoid-report__name"

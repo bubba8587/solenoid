@@ -89,7 +89,6 @@ export function ResizeHandle({ nodeId }: { nodeId: string }) {
       ref={ref}
       data-resize-handle
       className="solenoid-node__resize-handle"
-      title="Drag to resize"
       onPointerDown={onPointerDown}
     >
       {/* Same corner icon as the Group resize grip. */}

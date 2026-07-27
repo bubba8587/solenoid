@@ -54,7 +54,7 @@ export function SessionHistoryComponent({ data }: NodeProps<SessionHistoryNodeTy
 
   return (
     <div className={`solenoid-history${data.selected ? " solenoid-history--selected" : ""}`} style={{ width: data.width, height: data.height }}>
-      <div className="solenoid-history__bar" title="Drag to move">
+      <div className="solenoid-history__bar">
         <span className="solenoid-history__title">Session History</span>
         <button
           type="button"

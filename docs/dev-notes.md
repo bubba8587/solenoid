@@ -166,6 +166,25 @@ app-wide, but touches feel of zoom).
   states rank-widening, narrowing-blocked, split squares and the grey ladder. Cut. What survives
   is only what no pixel conveys: family separation + the Boolean↔number bridge, the combo→scalar
   narrowing exception, and the family semantics (date-as-serial, Kleene logic, Frame vs Cube).
+- **A 14-string random spot-check found 6 issues (~40%) that the lint could not see**, and the
+  pattern in them was structural: the rules all keyed on the description OPENER, while the "do X"
+  register was alive MID-description. Sampling beat scanning here — no rule I would have written
+  from the opener data would have found these.
+  - **`title="…"` tooltips were an entirely unchecked surface, and the worst one**: the tooltip
+    fires while the pointer is already on the control, so it can only restate. Seven drag bars
+    said "Drag to move", two grips "Drag to resize", plus "Click to rename", "Click to drill in",
+    "Chart. Click to view.". 11 sites cut, 3 rewritten to name the destination. Kept the
+    non-obvious halves only: `Space or → advances` (dropping "Click"), `Go to this alert`.
+    **`Double-click fits members` was cut too** — double-clicking a resize edge to autofit is the
+    Excel column-border convention, so it is precisely the gesture the target user already has.
+  - **"Wire X into Y" was a 13-string cluster.** Most meant "this node TAKES X" (→ "Takes a
+    2-column frame (label, value)") or "this node FEEDS Y" (→ "Feeds MAP / BYROW / REDUCE").
+  - **Wire-or-type is true of EVERY literal input in the app**, so "Wire the From and To bases or
+    set them inline" / "Type a comma-separated list or wire one" described nothing about the node.
+    Cut in 5 places.
+  - `wire-instruction` now guards both shapes; the tooltip surface joins the corpus.
+    `Set the vault in Settings ▸ Obsidian` is a pinned counterexample — a config LOCATION
+    genuinely cannot be guessed from the node, unlike a gesture.
 - **The catalog moved from imperative to third person** (116 descriptions across 25 files —
   descriptions live in `nodes/*.ts` and `packs/*.ts`, not only `nodeCatalog.ts`). These strings
   are the node's hover tooltip (`nodeKit.tsx` `title`), the Add-menu tooltip and the Function

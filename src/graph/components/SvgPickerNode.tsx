@@ -272,7 +272,7 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
       className={`solenoid-svgpick${data.selected ? " solenoid-svgpick--selected" : ""}`}
       style={{ width: data.width }}
     >
-      <div className="solenoid-svgpick__bar" title="Drag to move">
+      <div className="solenoid-svgpick__bar">
         <input
           className="solenoid-svgpick__name"
           value={label}

@@ -475,7 +475,6 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
           <div
             className="solenoid-group__resize"
             style={{ color }}
-            title="Drag to resize · double-click to fit members"
             onPointerDown={onResizeDown}
             onMouseDown={(e) => e.stopPropagation()}
           >
