@@ -211,11 +211,21 @@ export function resolveExcelFunction(name: string): ((...a: unknown[]) => unknow
 }
 
 /** Walk a flat OR dotted name into Formula.js: "ABS" → FX.ABS, "NORM.DIST" →
- *  FX.NORM.DIST. Returns the function, or null if the path isn't a function. */
+ *  FX.NORM.DIST. Returns the function, or null if the path isn't a function.
+ *
+ *  A FUNCTION is a walkable container here, not just an object: Formula.js hangs
+ *  `.MATH`/`.PRECISE`/`.INTL`/`.TEST` straight off a callable parent (FX.CEILING is
+ *  the CEILING function AND the home of CEILING.MATH). The old object-only guard
+ *  bailed on `typeof cur !== "object"` at the parent, so ten CURRENT-Excel names —
+ *  CEILING.MATH / CEILING.PRECISE / FLOOR.MATH / FLOOR.PRECISE / GAMMALN.PRECISE /
+ *  SKEW.P / T.TEST / NETWORKDAYS.INTL / WORKDAY.INTL / BINOM.DIST.RANGE — were
+ *  ADVERTISED by the name walk (which does descend into functions) and then threw
+ *  "Unknown function" when actually called. Autocomplete and dispatch must walk the
+ *  same way; that mismatch is exactly what this parity program exists to catch. */
 function fxLookup(name: string): ((...a: unknown[]) => unknown) | null {
   let cur: unknown = FX;
   for (const part of name.split(".")) {
-    if (cur == null || typeof cur !== "object") return null;
+    if (cur == null || (typeof cur !== "object" && typeof cur !== "function")) return null;
     cur = (cur as Record<string, unknown>)[part];
   }
   return typeof cur === "function" ? (cur as (...a: unknown[]) => unknown) : null;
@@ -233,6 +243,11 @@ export const FX_FUNCTION_NAMES: string[] = (() => {
   // unknowns and never autocompleted.
   const walk = (obj: Record<string, unknown>, prefix: string, depth: number) => {
     for (const [k, v] of Object.entries(obj)) {
+      // `FX.utils` is Formula.js's INTERNAL helper namespace (utils.symbols.ADD,
+      // utils.date.serialToDate) — library plumbing, not an Excel surface. It was
+      // being advertised in the formula editor's autocomplete as if a user could
+      // call it.
+      if (!prefix && k === "utils") continue;
       const path = prefix ? `${prefix}.${k}` : k;
       if (typeof v === "function") {
         names.push(path);
@@ -246,10 +261,74 @@ export const FX_FUNCTION_NAMES: string[] = (() => {
   return names;
 })();
 
-/** The D10-eliminated classics: registered as redirect stubs (they error with
- *  "Use XLOOKUP/XMATCH"), so they must not be ADVERTISED either — excluded from
- *  the formula name list (no autocomplete, highlighted as unknown). */
-export const ELIMINATED_FUNCTIONS: ReadonlySet<string> = new Set(["VLOOKUP", "HLOOKUP", "LOOKUP", "MATCH"]);
+// ─── LEGACY_ALIASES — D10 on the formula surface (D19 decision 1) ─────────────
+// "Excel parity" means CURRENT Excel: an eliminated function stays eliminated on
+// EVERY surface. The node surface honored that; the formula surface did not, because
+// Formula.js drags in decades of superseded spellings and nobody decided to support
+// them. `VLOOKUP(...)` dispatched fine in an Expression while VLOOKUP was marked
+// out-of-scope in EXCEL_GAP — nobody chose that, it was drift.
+//
+// Each name here is BLOCKED: calling it returns #NAME? naming the current function
+// to use instead, and the name is dropped from autocomplete/highlighting (so the
+// editor flags it as unknown rather than teaching it). Two populations:
+//
+//  1. Superseded EXCEL names — the pre-2010 statistics family Microsoft replaced with
+//     dotted names, plus the lookup classics. A user typing NORMDIST gets pointed at
+//     NORM.DIST rather than silently computing through a function Excel itself calls
+//     a compatibility artifact.
+//  2. Formula.js SPELLINGS THAT WERE NEVER EXCEL — the library exposes squashed
+//     aliases (CEILINGMATH, MODESNGL, RANKEQ, STDEVS, TDISTRT) alongside the real
+//     dotted names. Advertising these actively teaches syntax that fails in Excel.
+//
+// Every replacement named here is verified callable by `excelFunctions.test.ts` — a
+// redirect pointing at a dead name is worse than no redirect. Blocking a name whose
+// replacement does NOT already dispatch means registering that replacement first.
+export const LEGACY_ALIASES: Readonly<Record<string, string>> = {
+  // ── lookup classics (the original D10 four) ──
+  VLOOKUP: "XLOOKUP", HLOOKUP: "XLOOKUP", LOOKUP: "XLOOKUP", MATCH: "XMATCH",
+
+  // ── superseded Excel statistics/distribution names ──
+  NORMDIST: "NORM.DIST", NORMINV: "NORM.INV", NORMSDIST: "NORM.S.DIST", NORMSINV: "NORM.S.INV",
+  LOGNORMDIST: "LOGNORM.DIST", LOGINV: "LOGNORM.INV", LOGNORMINV: "LOGNORM.INV",
+  TDIST: "T.DIST", TINV: "T.INV",
+  CHIDIST: "CHISQ.DIST.RT", CHIINV: "CHISQ.INV.RT",
+  FDIST: "F.DIST.RT", FINV: "F.INV.RT",
+  BETADIST: "BETA.DIST", BETAINV: "BETA.INV",
+  GAMMADIST: "GAMMA.DIST", GAMMAINV: "GAMMA.INV",
+  EXPONDIST: "EXPON.DIST", WEIBULLDIST: "WEIBULL.DIST",
+  BINOMDIST: "BINOM.DIST", NEGBINOMDIST: "NEGBINOM.DIST",
+  HYPGEOMDIST: "HYPGEOM.DIST", POISSONDIST: "POISSON.DIST",
+  CRITBINOM: "BINOM.INV",
+  CHITEST: "CHISQ.TEST", FTEST: "F.TEST", TTEST: "T.TEST", ZTEST: "Z.TEST",
+  FORECAST: "FORECAST.LINEAR",
+  NETWORKDAYSINTL: "NETWORKDAYS.INTL", WORKDAYINTL: "WORKDAY.INTL",
+
+  // ── Formula.js squashed spellings (never valid Excel) ──
+  CEILINGMATH: "CEILING.MATH", CEILINGPRECISE: "CEILING.PRECISE",
+  FLOORMATH: "FLOOR.MATH", FLOORPRECISE: "FLOOR.PRECISE",
+  GAMMALNPRECISE: "GAMMALN.PRECISE",
+  MODESNGL: "MODE.SNGL", MODEMULT: "MODE.MULT",
+  PERCENTILEINC: "PERCENTILE.INC", PERCENTILEEXC: "PERCENTILE.EXC",
+  PERCENTRANKINC: "PERCENTRANK.INC", PERCENTRANKEXC: "PERCENTRANK.EXC",
+  QUARTILEINC: "QUARTILE.INC", QUARTILEEXC: "QUARTILE.EXC",
+  RANKEQ: "RANK.EQ", RANKAVG: "RANK.AVG",
+  STDEVS: "STDEV.S", STDEVP: "STDEV.P", VARS: "VAR.S", VARP: "VAR.P",
+  COVARIANCEP: "COVARIANCE.P", COVARIANCES: "COVARIANCE.S",
+  SKEWP: "SKEW.P",
+  CHIDISTRT: "CHISQ.DIST.RT", CHIINVRT: "CHISQ.INV.RT",
+  FDISTRT: "F.DIST.RT", FINVRT: "F.INV.RT", TDISTRT: "T.DIST.RT",
+  // Legacy STEMS that Formula.js also exposes dotted (FX.TDIST.RT): the stem is the
+  // superseded name, so the dotted child inherits the redirect.
+  "TDIST.RT": "T.DIST.RT", "TDIST.2T": "T.DIST.2T", "TINV.2T": "T.INV.2T",
+  "CHIDIST.RT": "CHISQ.DIST.RT", "CHIINV.RT": "CHISQ.INV.RT",
+  "FDIST.RT": "F.DIST.RT", "FINV.RT": "F.INV.RT",
+  "BINOMDIST.RANGE": "BINOM.DIST.RANGE",
+  "ISO.CEILING.MATH": "ISO.CEILING", "ISO.CEILING.PRECISE": "ISO.CEILING",
+};
+
+/** Names blocked on the formula surface (the LEGACY_ALIASES keys) — excluded from
+ *  autocomplete/highlighting so the editor never teaches a dead spelling. */
+export const ELIMINATED_FUNCTIONS: ReadonlySet<string> = new Set(Object.keys(LEGACY_ALIASES));
 
 /** Every registerInternal name (called after all module-load registrations have
  *  run — a function so import order can't freeze an incomplete list). */
@@ -618,10 +697,12 @@ registerInternal("IF", (test, thenV, elseV) => {
   if (cond) return thenV === undefined ? true : thenV;
   return elseV === undefined ? false : elseV;
 });
-registerInternal("VLOOKUP", () => solError("#NAME?", "Use XLOOKUP"));
-registerInternal("HLOOKUP", () => solError("#NAME?", "Use XLOOKUP"));
-registerInternal("LOOKUP", () => solError("#NAME?", "Use XLOOKUP"));
-registerInternal("MATCH", () => solError("#NAME?", "Use XMATCH"));
+// The blocklist registers itself: a blocked name resolves to a redirect stub, which
+// WINS over Formula.js's own implementation (internal impls are checked first). This
+// is the gate — without it the library's VLOOKUP/NORMDIST/… would still answer.
+for (const [name, use] of Object.entries(LEGACY_ALIASES)) {
+  registerInternal(name, () => solError("#NAME?", `Use ${use}`));
+}
 registerInternal("INDEX", (list, row, col) => {
   const ks = Array.isArray(list) ? list : [list];
   const r = toNum(row);
