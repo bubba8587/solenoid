@@ -183,6 +183,38 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   NA: "",
   // ── Solenoid extras ──
   CLAMP: "x, min, max",
+
+  // Tier 1 (D19) — the names whose nodes existed but whose formula spelling gave
+  // #NAME?. Curated rather than left to the bare arity count, because the bond
+  // functions are where an unnamed argument list is least readable: PRICE and
+  // YIELD differ only in whether the fourth argument is a yield or a price.
+  TEXTSPLIT: "text, delimiter",
+  TEXTAFTER: "text, delimiter",
+  TEXTBEFORE: "text, delimiter",
+  ENCODEURL: "text",
+  REGEXTEST: "text, pattern, [flags]",
+  REGEXEXTRACT: "text, pattern, [return_all], [flags]",
+  REGEXREPLACE: "text, pattern, replacement, [flags]",
+  COUPDAYBS: "settlement, maturity, [frequency], [basis]",
+  COUPDAYSNC: "settlement, maturity, [frequency], [basis]",
+  COUPNUM: "settlement, maturity, [frequency], [basis]",
+  COUPNCD: "settlement, maturity, [frequency], [basis]",
+  COUPPCD: "settlement, maturity, [frequency], [basis]",
+  ACCRINTM: "issue, settlement, rate, [par], [basis]",
+  INTRATE: "settlement, maturity, investment, redemption, [basis]",
+  RECEIVED: "settlement, maturity, investment, discount, [basis]",
+  YIELDDISC: "settlement, maturity, pr, [redemption], [basis]",
+  PRICEMAT: "settlement, maturity, issue, rate, yld, [basis]",
+  YIELDMAT: "settlement, maturity, issue, rate, pr, [basis]",
+  DURATION: "settlement, maturity, coupon, yld, [frequency], [basis]",
+  MDURATION: "settlement, maturity, coupon, yld, [frequency], [basis]",
+  PRICE: "settlement, maturity, rate, yld, [redemption], [frequency]",
+  YIELD: "settlement, maturity, rate, pr, [redemption], [frequency]",
+  VDB: "cost, salvage, life, start_period, end_period, [factor]",
+  ODDFPRICE: "settlement, maturity, issue, first_coupon, rate, yld, [redemption], [frequency]",
+  ODDFYIELD: "settlement, maturity, issue, first_coupon, rate, pr, [redemption], [frequency]",
+  ODDLPRICE: "settlement, maturity, last_interest, rate, yld, [redemption], [frequency]",
+  ODDLYIELD: "settlement, maturity, last_interest, rate, pr, [redemption], [frequency]",
 };
 
 /** The display hint for a function name (case-insensitive): the curated signature,

@@ -120,6 +120,59 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### SESSION DIGEST (2026-07-27b — the formula surface stops drifting: D19 ratchet, alias gate, Tier 1)
+
+Picked up the D19 parity program (author call: "#2 is the important one"). Built in the order the
+plan doc mandates — **ratchet first, so the gap lists are pinned before they move.**
+
+**What landed**
+1. **The measurement moved into `formulaNodeParity.ts`**, shared by the report script and the new
+   `formulaNodeParity.test.ts`. Deliberate: a report that computes the gap differently from the
+   test is how a ratchet silently stops ratcheting.
+2. **The ratchet pins both gaps BOTH ways** — a new gap fails CI, and a *closed* gap must be
+   deleted from the pin. Subset-only (as originally specced) lets the pin rot into fiction.
+3. **`LEGACY_ALIASES` — D10 now applies to formulas** (D19 decision 1). 93 names: superseded Excel
+   spellings (NORMDIST, TDIST, CRITBINOM, FORECAST…) and Formula.js spellings that were never Excel
+   (CEILINGMATH, MODESNGL, RANKEQ, STDEVS, TDISTRT). Each returns `#NAME?` naming the current
+   function, and drops out of autocomplete + range routing. Replaces the four hand-written
+   VLOOKUP-era stubs.
+4. **Tier 1: 28 registrations** — TEXTSPLIT/TEXTAFTER/TEXTBEFORE/ENCODEURL/REGEX*, FORECAST.LINEAR,
+   and the 20-name bond block (PRICE/YIELD/DURATION/MDURATION/COUP*/ACCRINTM/INTRATE/RECEIVED/
+   YIELDDISC/PRICEMAT/YIELDMAT/VDB/ODD*). Scope was only what **FX lacks**: `FAMILY_BACKING.finance`
+   already ruled the closed-form functions it *has* stay on Formula.js, so DISC and COUPDAYS were
+   left alone — registering them would have been an unrecorded backing flip.
+
+**Numbers:** gap A (Excel-named node, name not dispatchable) 47 → 19; gap C (dispatchable, no node,
+no decision) 102 → 0; leaves formula-callable 276 → 302.
+
+**The structural point, which is the whole program:** every registration calls the NODE'S OWN
+compute. Where a node's `data()` held the logic, it moved to a pure module both surfaces import —
+`textOps.ts`, `financeOps.ts`, `mathUtils.linearFit`. Both new modules exist as separate files for
+the same reason: `text.ts` and `finance.ts` already import `excelFunctions`, so pulling helpers the
+other way would cycle *and* drag rete into the headless formula path. `mathUtils.ts` was already
+this pattern. Writing the op twice is exactly how the surfaces drifted; `formulaTier1.test.ts`
+asserts node == formula per function rather than trusting it.
+
+**Two real bugs the ratchet surfaced on its first run:**
+- **`fxLookup` couldn't walk through a FUNCTION**, only an object — but the name walk descends into
+  both. Formula.js hangs `.MATH`/`.PRECISE`/`.INTL`/`.TEST` off a callable parent (`FX.CEILING` is
+  the CEILING function *and* the home of CEILING.MATH), so **ten current-Excel names autocompleted
+  in the formula editor and then threw "Unknown function" when called**: CEILING.MATH,
+  CEILING.PRECISE, FLOOR.MATH, FLOOR.PRECISE, GAMMALN.PRECISE, SKEW.P, T.TEST, NETWORKDAYS.INTL,
+  WORKDAY.INTL, BINOM.DIST.RANGE. Autocomplete and dispatch have to walk the same way.
+- **Formula.js's internal `utils.*` namespace** (`utils.symbols.ADD`, `utils.date.serialToDate`) was
+  being advertised as callable Excel functions.
+
+**Gotcha worth keeping:** a blocked name must short-circuit at the CALL SITE, before arguments are
+shaped. The redirect stub ignores its args, so letting a list arg reach the broadcaster mapped the
+stub element-wise and returned a *list* of identical `#NAME?`s. Dropping blocked names from
+RANGE_FUNCTIONS (as the plan said) is what exposed this — the two changes belong together.
+
+**Left open, deliberately, not half-built:** the pack seam (D19 decision 4) needs
+`FORMULA_FUNCTION_NAMES`/autocomplete to become pack-sensitive — they're built once at load, so a
+pack-registered name would advertise while its pack is disabled. Nothing shipped here depends on
+it. Tier 3 and Tier 4 unchanged; gap A's remaining 19 are D2-capped and ride on the Tier 4 call.
+
 ### SESSION DIGEST (2026-07-27 — socket shades onto one HSV axis; the copy rules got teeth)
 
 **Pinch-zoom died over most of a node card, and had for a long time.** Root cause, read out of

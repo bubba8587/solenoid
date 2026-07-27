@@ -1,6 +1,10 @@
 # Formula ↔ node parity — audit + design frame
 
-**Status: WORKING DESIGN DOC (2026-07-14).** Author direction: the expression/equation
+**Status: TIER 1 + TIER 2 BUILT (2026-07-27). Tier 3 open; Tier 4 author-gated.**
+The mechanical work D19 greenlit — the ratchet, the alias gate, the Tier 1
+registrations — has landed; what remains is Tier 3 (formula names for the
+Solenoid-native data-op core) and the Tier 4 decision. The audit framing below is
+kept because Tier 3/4 still need it. **Design frame as of 2026-07-14:** Author direction: the expression/equation
 formula language and the node set should converge — "people will be expecting that and
 we've kind of let it stagnate." The author has also explicitly **reopened the recorded
 restrictions** in this area (D2's permanent Expression cap, the broadcastCall/element-wise
@@ -36,7 +40,25 @@ against itself).
   unless someone hand-builds one. Nothing checks the two against each other — which is
   why they drifted.
 
-## Measured state (2026-07-14)
+## Measured state
+
+**Regenerate with `npx tsx scripts/formula-node-parity.ts`. The two ratcheted gaps
+are machine-checked by `formulaNodeParity.test.ts` — that test, not this prose, is
+the live truth.**
+
+| | 2026-07-14 | 2026-07-27 |
+|---|---|---|
+| Leaves formula-callable | 266 / 626 | **302 / 646** |
+| Gap A — Excel-named node, name not dispatchable | 57 | **19** |
+| Gap C — dispatchable, no node, no decision | 75 | **0** |
+
+Gap A's remaining 19 are the D2-capped set and **cannot be closed by registration**:
+2-D shapes (TOCOL/TOROW/WRAPROWS/WRAPCOLS/MDETERM/MINVERSE/the table TAKE),
+array-returning range functions still needing list-model range routing (FILTER/
+SORTBY/GROUPBY/SEQUENCE/RANDARRAY/SCAN), and the lambda META-functions (LAMBDA/MAP/
+BYROW/BYCOL/MAKEARRAY/REDUCE). They land if and only if Tier 4 lifts the cap.
+
+### The original 2026-07-14 audit
 
 **Node → formula: 266 of 626 leaves are formula-callable.** The 360 that aren't split
 into two very different populations:
@@ -67,7 +89,12 @@ decided that; it's drift.
 
 ## What "parity" could mean — the tiers, cheapest first
 
-**Tier 1 — close the 57 (Excel-named nodes → dispatchable names).** Pure
+**Tier 1 — close the 57 (Excel-named nodes → dispatchable names). ✅ BUILT
+2026-07-27** — 28 names registered (the modern text functions, FORECAST.LINEAR, and
+the 20-name bond/security block Formula.js lacks), each calling the NODE'S OWN
+compute via a shared pure module (`textOps.ts` / `financeOps.ts` /
+`mathUtils.linearFit`) so the surfaces cannot drift by construction. Only the
+D2-capped remainder is left. Pure
 `registerInternal` work; the node implementations already exist, so most registrations
 are thin wrappers around the node's own compute (or a shared helper both call — the
 right refactor where the node's `data()` is thick). No new semantics for the scalar/1-D
@@ -84,7 +111,12 @@ need a call:
 either (a) legacy aliases stay callable as a compat courtesy and get listed in a
 LEGACY_ALIASES table (documented, redirect note in the reference), or (b) D10 applies to
 formulas too and the eliminated/superseded ones return a `#NAME?` with a "use X" hint.
-**DECIDED: (b), blocked — see Decisions below.**
+**DECIDED: (b), blocked — see Decisions below. ✅ BUILT 2026-07-27** as
+`LEGACY_ALIASES` (excelFunctions.ts): 93 superseded Excel spellings and
+never-were-Excel Formula.js aliases return `#NAME?` naming the current function,
+and are dropped from autocomplete and range routing. Gap C is now 0 — the
+remaining current-Excel names with no node (AGGREGATE, GROWTH, N, T, TYPE,
+ISO.CEILING, CEILING.PRECISE, FLOOR.PRECISE) are recorded in `EXCEL_GAP` instead.
 
 **Tier 3 — formula names for the Solenoid-native data-op core.** SETEQ/SETDIFF-style
 registrations for the list/set utilities. Needs two small pieces of plumbing (a list
@@ -162,7 +194,11 @@ workbooks are full of dynamic-array formulas, and under the cap they transpile i
 Whatever tiers are chosen, the reason this rotted is that nothing enforced it. Two
 cheap, permanent guards:
 
-1. **A ratchet test** (`formulaNodeParity.test.ts`): pin today's three gap lists (the
+1. **A ratchet test** (`formulaNodeParity.test.ts`) — ✅ BUILT 2026-07-27. Pins gap
+   A and gap C BOTH ways: a new gap fails, and a closed gap must be deleted from the
+   pin, so the lists can't rot into fiction. The measurement is shared with the report
+   script (`formulaNodeParity.ts`) so the two can never compute the gap differently.
+   Originally specified as: pin today's three gap lists (the
    57, the 75, and the native-core subset of the 303 once Tier 3 scopes it) as explicit
    arrays; assert the live gap is a SUBSET of the pinned list. Closing a gap shrinks the
    pin; adding a NEW node with an Excel name and no formula registration (or a new
