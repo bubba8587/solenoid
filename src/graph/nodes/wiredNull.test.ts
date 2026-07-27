@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { TextTransformNode, TextSliceNode, ReptNode, TextSplitNode, TextFilterNode, ConcatNode } from "./text";
 import { DateConstructNode, DateAddNode, NetworkdaysNode } from "./date";
+import { BooleanOpNode, NotNode } from "./logic";
 
 // ─── A wired blank must not resurrect the typed literal ───────────────────────
 // The `inputs.x?.[0] ?? this.literals.x` idiom swallows a WIRED null into the
@@ -93,6 +94,38 @@ describe("reducers SKIP a missing rather than propagating it", () => {
     inputs[keys[0]] = [null as unknown as string];
     inputs[keys[1]] = ["b"];
     expect(node.data(inputs).result).toBe("b");
+  });
+});
+
+describe("Kleene logic — a wired blank is UNKNOWN, not FALSE", () => {
+  // The sharpest form of this bug. `?? 0` didn't just lose the literal, it asserted
+  // a definite FALSE where the graph said "unknown" — and under three-valued logic
+  // those give different answers: AND(unknown, TRUE) is unknown, AND(FALSE, TRUE)
+  // is FALSE. NOT made it visible by flipping: NOT(blank) answered TRUE.
+  it("AND with a wired blank is unknown, not false", () => {
+    const node = new BooleanOpNode({ op: "and" });
+    const keys = Object.keys(node.inputs);
+    const inputs: Record<string, (number | null)[] | undefined> = {};
+    inputs[keys[0]] = [null];
+    inputs[keys[1]] = [1];
+    expect(node.data(inputs).result).toBeNull();
+  });
+
+  it("AND with a wired blank AND a definite FALSE is still false", () => {
+    // Kleene: one FALSE settles the conjunction whatever else is unknown.
+    const node = new BooleanOpNode({ op: "and" });
+    const keys = Object.keys(node.inputs);
+    const inputs: Record<string, (number | null)[] | undefined> = {};
+    inputs[keys[0]] = [null];
+    inputs[keys[1]] = [0];
+    expect(node.data(inputs).result).toBe(false);
+  });
+
+  it("NOT of a wired blank is unknown, not TRUE", () => {
+    const node = new NotNode();
+    expect(node.data({ in: [null] }).result).toBeNull();
+    // Unwired still uses the literal.
+    expect(node.data({}).result).toBe(true); // NOT(0) — the default literal
   });
 });
 
