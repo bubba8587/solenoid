@@ -173,6 +173,29 @@ RANGE_FUNCTIONS (as the plan said) is what exposed this — the two changes belo
 pack-registered name would advertise while its pack is disabled. Nothing shipped here depends on
 it. Tier 3 and Tier 4 unchanged; gap A's remaining 19 are D2-capped and ride on the Tier 4 call.
 
+### The wired-null sweep, ratcheted (2026-07-27b)
+
+Measured the rest of the swallow before grinding at it: **235 `?? literal` reads across
+20 node files**, not the "~144" the backlog estimated. finance alone has 73. Each site
+needs the read routed through `readInput` AND a guard or return-type widening, and most
+of the work is the widening — so a fast blanket sweep would have been the risky kind of
+change to make across finance and stats math.
+
+Bounded it instead, the same way the parity gaps got bounded: `readInputSweep.test.ts`
+pins the remaining count PER FILE, exactly. A new node reintroducing the idiom fails;
+sweeping a file requires lowering its number. Both directions are checked, so the list
+can't rot into fiction the way a subset-only pin would.
+
+It earned its keep immediately — sweeping `complex.ts` (6 sites) made the pin stale and
+the test said so by name, which is precisely the failure mode a hand-maintained count
+has. `complex.ts` needed nothing but the reads: `numOp` already accepts null and
+`broadcastComplex` carries the same per-cell missing contract as the other broadcasters,
+so the plumbing was waiting on the readers there too — the third file in a row where
+that turned out to be true.
+
+Done: text.ts, date.ts, complex.ts. Remaining: 207 across 18 files, with the policy
+settled and one worked example of each case pinned in `wiredNull.test.ts`.
+
 ### Wired-null no longer resurrects the typed literal (2026-07-27b)
 
 Top item on the 1.3 bug list, and a live wrong-answer bug: `inputs.x?.[0] ?? this.
