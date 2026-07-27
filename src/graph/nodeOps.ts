@@ -53,7 +53,7 @@ import { ChartNode, SparklineNode } from "./nodes/visual";
 import { CHART_OP_META, SPARKLINE_OP_META } from "./nodes/visual";
 import {
   FillNode, GroupByNode, SetOpNode, SetRelationNode, SumIfsNode, CumulativeNode,
-  FILL_OP_META, GROUP_BY_OP_META, SET_OP_META, SET_RELATION_META, COND_AGG_OP_META,
+  FILL_OP_META, GROUP_BY_OP_META, COND_AGG_OP_META,
 } from "./nodes/list";
 import { HeadNode, HeadersNode, HEAD_OP_META, HEADER_OP_META } from "./nodes/frame";
 import { RegexNode, TextFilterNode, REGEX_OP_META, TEXT_FILTER_OP_META } from "./nodes/text";
@@ -138,6 +138,27 @@ function fromMeta(meta: Record<string, { label: string }>): Array<{ op: string; 
   return Object.entries(meta).map(([op, m]) => ({ op, label: m.label }));
 }
 
+/** Names for the ops whose OP_META `label` is dropdown PROSE rather than a name.
+ *
+ *  The two roles pull in opposite directions: the DROPDOWN wants "Union: in A or B",
+ *  which explains the choice while you are looking at the card, but a SEARCH row
+ *  wants a name — composing the prose gives "Set: Union: in A or B", which reads as
+ *  a mangled sentence and, worse, matches every sibling equally (the ops stop
+ *  discriminating, so searching "symmetric" surfaced Union). The meta keeps its
+ *  prose for the card; these are what the menu and search use. */
+const SET_OPS = [
+  { op: "union", label: "Union" },
+  { op: "intersect", label: "Intersection" },
+  { op: "difference", label: "Difference" },
+  { op: "symdiff", label: "Symmetric difference" },
+];
+const SET_RELATION_OPS = [
+  { op: "equal", label: "Equal" },
+  { op: "subset", label: "Subset" },
+  { op: "superset", label: "Superset" },
+  { op: "disjoint", label: "Disjoint" },
+];
+
 /** Ops declared inline, for the families whose labels live in their React component's
  *  OPS array rather than an OP_META table. Transcribed to match those labels exactly;
  *  the glyph prefixes are dropped because a search row reads "Comparison: Greater or
@@ -199,9 +220,9 @@ export const NODE_OPS: NodeOpsDecl[] = [
     create: (op) => new HeadNode({ op: op as never }) },
 
   // ── Operation-kind: each op stands alone as a name ──
-  { type: "list-set", ctor: SetOpNode, kind: "operation", ops: fromMeta(SET_OP_META),
+  { type: "list-set", ctor: SetOpNode, kind: "operation", ops: SET_OPS,
     create: (op) => new SetOpNode({ op: op as never }) },
-  { type: "list-set-relation", ctor: SetRelationNode, kind: "operation", ops: fromMeta(SET_RELATION_META),
+  { type: "list-set-relation", ctor: SetRelationNode, kind: "operation", ops: SET_RELATION_OPS,
     create: (op) => new SetRelationNode({ op: op as never }) },
   { type: "regex", ctor: RegexNode, kind: "operation", ops: fromMeta(REGEX_OP_META),
     create: (op) => new RegexNode({ op: op as never }) },
@@ -392,8 +413,13 @@ export function opEntry(
     type: `${decl.type}__op-${op.op}`,
     label: opSearchLabel(host.label, op.label),
     create: () => decl.create(op.op),
-    // The op rows inherit the host's description and keywords, so a search that
-    // matches the family still matches each of its ops.
+    // NOT the host's keywords. Those describe the FAMILY, so inheriting them makes
+    // every sibling row match a family-level query identically and the ops stop
+    // discriminating between themselves — searching "symmetric" surfaced Union,
+    // because both rows matched the host's keyword list equally well. Nothing is
+    // lost: the host row is still there to answer family-level queries, and each op
+    // row keeps its own name plus the host's name in its label.
+    keywords: undefined,
   };
 }
 

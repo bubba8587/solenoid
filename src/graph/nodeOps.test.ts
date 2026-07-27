@@ -133,6 +133,25 @@ describe("collapsed families keep every op reachable", () => {
     expect(inst.op).toBe("symdiff");
   });
 
+  it("op rows DISCRIMINATE between siblings, not just against the rest of the menu", () => {
+    // They inherit the host's description but NOT its keywords. Those describe the
+    // family, so inheriting them made every sibling match a family-level query
+    // equally and searching "symmetric" surfaced Union instead of Symmetric
+    // difference. Each row has to be findable by its OWN name.
+    const all = flattenLeaves(catalog);
+    for (const [query, wanted] of [
+      ["symmetric", "Symmetric difference"],
+      ["intersection", "Intersection"],
+      ["disjoint", "Disjoint"],
+    ] as const) {
+      const rows = searchLeaves(all, query).slice(0, 3).map((l) => l.label);
+      expect(
+        rows.some((l) => l.includes(wanted)),
+        `searching "${query}" should surface "${wanted}", got: ${rows.join(" | ")}`,
+      ).toBe(true);
+    }
+  });
+
   it("op rows are search-only — they never enter the navigation tree", () => {
     const generated = leaves.filter((l) => l.type.includes("__op-"));
     expect(generated.map((l) => l.type)).toEqual([]);
