@@ -32,7 +32,7 @@ import { resolveSocketHighlights } from "./highlightUtils";
 import { canvasLockStore } from "./canvasLock";
 import { touchSelectStore } from "./touchSelectStore";
 import { IS_COARSE, IS_MOBILE } from "./coarse";
-import { isPinching, isPalmContact, resetPointerCensus } from "./pointerGesture";
+import { isPinching, resetPointerCensus } from "./pointerGesture";
 import { installErrorGuards } from "./errorValue";
 import "./seedTune"; // console seed-tune hook (window.__solenoidTuneSeed — scripts/tune-seeds.mjs)
 import { type Pt } from "./lasso";
@@ -125,8 +125,8 @@ export function Canvas() {
   const screenMouseRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   // Active pointer ids for this component's TAP bookkeeping — gesture start/end
   // bracketing, nothing more. Whether a gesture is a pinch is NOT this set's call:
-  // that's `isPinching()` (pointerGesture.ts), which knows pointer TYPE and so can
-  // tell two fingers from a stylus resting with a palm down.
+  // that's `isPinching()` (pointerGesture.ts), which counts FINGERS, so a mouse or
+  // a stylus in contact is never mistaken for one half of a zoom.
   const activePointersRef = useRef<Set<number>>(new Set());
   // Touch gesture bookkeeping: the node the first finger landed on (for
   // tap-to-select), whether the gesture moved, and whether it became multi-touch.
@@ -580,9 +580,9 @@ export function Canvas() {
           }
         } else if (c.type === "nodetranslate") {
           // Never move a node while pinching — the gesture is a zoom, even if a
-          // finger is resting on a (selected) node. `isPinching()` (not a raw
-          // pointer count) so a stylus + resting palm reads as DRAWING, not as a
-          // pinch: a raw ≥2 would freeze every pen drag the moment a palm landed.
+          // finger is resting on a (selected) node. `isPinching()` rather than a raw
+          // pointer count, so a stylus resting alongside one finger can't freeze a
+          // legitimate drag.
           if (isPinching()) return;
         } else if (c.type === "pointermove") {
           moveCount++;
@@ -752,9 +752,6 @@ export function Canvas() {
           // mouse: a stylus reports its barrel button and its eraser end as
           // non-zero `button`, and neither should grab and move a node.
           if ((e.pointerType === "mouse" || e.pointerType === "pen") && e.button !== 0) return false;
-          // A finger that lands while the stylus is in contact is a palm — it must
-          // not grab the node the user is drawing over.
-          if (isPalmContact(e)) return false;
           // A second finger arriving mid-gesture is a pinch, which outranks a drag
           // (the pipe's nodetranslate guard stops one already in flight; this stops
           // a new one from starting under the second finger).

@@ -9,7 +9,6 @@ import { SocketComponent } from "./components/SocketComponent";
 import { ConnectionComponent } from "./components/ConnectionComponent";
 import { SolenoidSocket } from "./sockets";
 import { canvasLockStore } from "./canvasLock";
-import { penActive } from "./pointerGesture";
 
 // ─── Shared editing-area presets ────────────────────────────────────────────────
 // The rete render + connection config that MUST be identical across every editing
@@ -61,14 +60,12 @@ export class CappedZoom extends Zoom {
    *
    * Stock rete pushes every pointerdown regardless of type. That was harmless while
    * this ran in bubble phase behind a hundred `stopPropagation`s; in capture phase it
-   * is not, because now every contact really does arrive. A pen resting on the glass
-   * plus one finger would read as two pointers and zoom the canvas out from under a
-   * drawing hand. `isPinching()` is the single definition of the gesture (≥2 touch,
-   * no pen), so pen and palm rejection come from the same place the rest of the app
-   * reads — see pointerGesture.ts.
+   * is not, because now every contact really does arrive. A stylus resting on the
+   * glass plus one finger would otherwise read as two pointers and zoom. Mirrors
+   * `isPinching()` (pointerGesture.ts), the single definition of the gesture.
    */
   protected down = (e: PointerEvent) => {
-    if (e.pointerType !== "touch" || penActive()) return;
+    if (e.pointerType !== "touch") return;
     this.pointers.push(e);
   };
 
