@@ -173,6 +173,46 @@ RANGE_FUNCTIONS (as the plan said) is what exposed this — the two changes belo
 pack-registered name would advertise while its pack is disabled. Nothing shipped here depends on
 it. Tier 3 and Tier 4 unchanged; gap A's remaining 19 are D2-capped and ride on the Tier 4 call.
 
+### Multi-op nodes: the `{ }` marker + the exposure flag (2026-07-27b)
+
+Author direction: a dropdown on a card is a NAVIGATION convenience for closely-related
+work — each op is still its own thing, and they're normally also listed individually in
+the Add menu. `scripts/op-exposure.ts` found the ones that aren't. `nodeOps.ts` is now
+the one place that declares, per family, what ops it has and how they surface.
+
+**Three independent axes, which is what makes the flag a one-word change:**
+- `expose` — `"collapsed"` (the DEFAULT, per author call) or `"leaves"`. Collapsed
+  leaves the tree alone; flipping to `leaves` generates a leaf per hidden op as a
+  sibling of the host. No catalog edit either way.
+- `kind` — `"operation"` (stands alone as a name → earns its own formula name under
+  D19 2(a)) vs `"argument"` (meaningless without its host → the family takes one
+  formula name and the op rides in as an argument). Author's correction: GroupBy's
+  avg/min/max are ARGUMENTS, not operations. Does not affect the menu at all.
+- `mark` — the subjective per-node opt-out. Default derived.
+
+**The marker is `{ }` (with the space).** Ruled out: `▶` is already the menu's
+"category that expands", so a triangle would promise navigation that doesn't happen;
+`()` collides with formula syntax, and that collision just got worse — after Tier 1,
+node names really are callable, so `Reverse()` would be ambiguous about whether the
+parens mean "has hidden ops" or "you can call this".
+
+**Marked is DERIVED, never declared** — a leaf shows `{ }` iff it has ops with no leaf
+of their own. It cannot claim something the menu contradicts. `mark: false` opts out of
+the glyph only (used on `GCD / LCM` and `ISEVEN / ISODD`, whose labels already name both
+ops); the ops stay searchable regardless.
+
+**Search rows are generated at SEARCH time, not inserted into the tree.** "Chart:
+Column" is findable and builds the card already set to that op, but the tree is
+untouched — so the parity ratchet, the copy lint and the socket filter don't start
+counting them as extra nodes. Verified: catalog leaves stayed 646, parity stayed
+302/646. Net effect is 20 marked leaves and 66 new searchable ops, zero leaves moved.
+
+**Result:** 648 tree leaves (unchanged), 18 marked + 2 opted out, 66 op rows in search.
+
+The one hand-written fact is `leafOps` (which ops already have their own entry, for the
+partially-exposed families) — `nodeOps.test.ts` machine-checks it against the real
+catalog, so it can't go stale.
+
 ### D19 decision 2(a) RESOLVED + the absent-pack boundary (2026-07-27b)
 
 **2(a) — per-op names, uniformly; the name is the node's LABEL despaced, not the class

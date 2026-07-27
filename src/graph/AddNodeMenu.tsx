@@ -23,6 +23,13 @@ export type NodeCatalogEntry = {
   // Pack id(s) that contribute this node. Undefined/empty = built-in (core or
   // Excel matcher). Set by the catalog builder; drives the subtle pack indicator.
   packs?: string[];
+  // Ops this node hosts that have no Add-menu leaf of their own. DERIVED by the
+  // catalog builder from `nodeOps.ts` — never hand-set. Non-empty is what draws the
+  // `{ }` marker, so the mark can't claim something the menu contradicts.
+  hiddenOps?: Array<{ op: string; label: string }>;
+  // Set when the declaration opts out of the glyph (a label that already enumerates
+  // its ops). The ops stay in `hiddenOps`, and stay searchable.
+  hideOpsMark?: boolean;
   // Excel function(s) this node is equivalent to — the node's OWN reference
   // metadata, so the Function Reference can be generated from the catalog instead
   // of a parallel hand-list. For op-families this is forwarded from the op-meta;
@@ -42,6 +49,16 @@ export type ExcelEquiv = {
   parity?: boolean;
   note?: string;
 };
+
+// Marks a card that hosts operations with no Add-menu entry of their own — the
+// dropdown on the card holds more than this one leaf implies. Braces read as "a set
+// of variants in here"; the menu's own `▶` is reserved for a category that actually
+// expands, and parentheses would collide with formula syntax now that node names are
+// becoming callable. Rendered, not baked into the label, so search and the node
+// header keep the clean name.
+function OpsMark() {
+  return <span className="solenoid-add-menu__ops-mark" aria-hidden="true">{"{ }"}</span>;
+}
 
 // A tiny dim dot marking a node that came from an add-on pack (vs. built-in).
 function PackDot({ packs }: { packs: string[] }) {
@@ -232,6 +249,7 @@ function TreeMenu({ entries, depth, path, onHover, onOpenCategory, onSelect, onS
             onClick={(e) => { e.stopPropagation(); onSelect(leaf); }}
           >
             {leaf.label}
+            {leaf.hiddenOps?.length && !leaf.hideOpsMark ? <OpsMark /> : null}
             {leaf.packs?.length ? <PackDot packs={leaf.packs} /> : null}
           </div>
         );
@@ -420,6 +438,7 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
                 onClick={() => select(leaf)}
               >
                 {leaf.label}
+                {leaf.hiddenOps?.length && !leaf.hideOpsMark ? <OpsMark /> : null}
                 {leaf.packs?.length ? <PackDot packs={leaf.packs} /> : null}
               </div>
             ))
