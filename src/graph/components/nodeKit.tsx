@@ -279,7 +279,7 @@ function CommentIndicator({ nodeId }: { nodeId: string }) {
     <button
       type="button"
       className={`solenoid-node__comment-badge${unresolved ? "" : " solenoid-node__comment-badge--resolved"}`}
-      title={`${commentStore.forNode(nodeId).length} comment${commentStore.forNode(nodeId).length === 1 ? "" : "s"}. Click to open.`}
+      title={`${commentStore.forNode(nodeId).length} comment${commentStore.forNode(nodeId).length === 1 ? "" : "s"}`}
       onClick={(e) => { e.stopPropagation(); commentsPanelUi.openFor(nodeId); }}
       onPointerDown={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}

@@ -185,6 +185,15 @@ app-wide, but touches feel of zoom).
   - `wire-instruction` now guards both shapes; the tooltip surface joins the corpus.
     `Set the vault in Settings ▸ Obsidian` is a pinned counterexample — a config LOCATION
     genuinely cannot be guessed from the node, unlike a gesture.
+- **The skipped surfaces were hiding the same bugs.** Widening the collector to `aria-label`,
+  `placeholder` and the STATIC SEGMENTS of template-literal titles found six more instantly:
+  `Colour preview` ×2 (a British spelling the literal-only sweep could not see), and five
+  `Click to …` narrations that survived the tooltip pass purely because they sat inside
+  `` title={`…`} `` — "Click to change the type", "Click to drill in" ×2, "Click to cycle
+  Number / Text / Date / Boolean", "Click to edit/view", "Open the Problems panel". Splitting a
+  template title on its `${…}` holes and judging the prose between them costs three lines.
+  **The lesson: "skipped because it is composed at runtime" was wrong — the static halves are
+  ordinary copy.** Placeholders (40) and the rest of the aria-labels (60) came back clean.
 - **§7 now requires American spelling** (author ruling), and `british-spelling` enforces it over
   shipped strings. 23 replacements across help markdown, the catalog and one tooltip: grey→gray
   ×6, colour→color ×5, plus metres, behaviour, labelled, neighbouring, centre. The sweep ran

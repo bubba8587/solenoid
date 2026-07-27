@@ -73,7 +73,7 @@ export function CubeCellChip({ cell, crumb, size = "md", type }: {
       <button
         type="button"
         className={chip("cube")}
-        title={`Cube ${cubeRowCount(c)}×${c.columns.length}×${cubeDepth(c)} (rows × cols × depth). Click to drill in.`}
+        title={`Cube ${cubeRowCount(c)}×${c.columns.length}×${cubeDepth(c)} (rows × cols × depth)`}
         onPointerDown={stop}
         onMouseDown={stop}
         onClick={(e) => { stop(e); cubePopup.drill({ kind: "cube", cube: c, label: crumb }); }}
@@ -88,7 +88,7 @@ export function CubeCellChip({ cell, crumb, size = "md", type }: {
       <button
         type="button"
         className={chip("frame")}
-        title={`Frame ${frameRowCount(f)}×${f.columns.length}. Click to drill in.`}
+        title={`Frame ${frameRowCount(f)}×${f.columns.length}`}
         onPointerDown={stop}
         onMouseDown={stop}
         onClick={(e) => { stop(e); cubePopup.drill({ kind: "frame", frame: f, label: crumb }); }}
