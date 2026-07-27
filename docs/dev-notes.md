@@ -146,6 +146,20 @@ app-wide, but touches feel of zoom).
   pass-anything type; `any` is the rank-0 wildcard (scalars and combos only), `trueany` is the
   one that takes everything. Colour HUES are deliberately never named in the app docs — they
   are false under Colorblind-safe/Solarized/Equinox; shape and relative shade are palette-safe.
+- **The overlay's markdown is shipped UI copy, so DESIGN.md §7 + the Captain-Obvious rule govern
+  it** — read them BEFORE writing help prose, not after. Three affordance-narrations went in and
+  came back out: "Hover any dot for its name" (the tooltip conveys itself), "double-click a cell
+  to drill in" (already in the Notes tab — one gesture, one home), and "three ways forward" (the
+  banned tease-a-count). A count survives only where exhaustiveness is the content: "exactly
+  three causes" for a refused cable is the diagnostic, "three ways forward" was filler ahead of a
+  list. Describing a non-obvious gesture's RESULT stays in bounds and is house style
+  (help.md's lasso paragraph) — quick-wire and the drag guard read that way deliberately.
+- **§7's no-em-dash rule was NOT applied here.** All four help files lean on em dashes
+  (`help.md` 15, `notes.md` 10, both author-reviewed and untouched today), so purging two of the
+  four would leave adjacent tabs of one overlay reading differently. §7 was distilled from a
+  What's New / About pass — short strings — and the long-form help corpus has evidently not been
+  swept. Worth one deliberate pass over all four, or an explicit carve-out; not worth doing to
+  half of them as a side effect.
 - Units prose in `data-model.md` was **kept verbatim**, not compressed: it is value-model
   documentation that merely lives in this tab, `socket-reference.md` §7 covers units only at
   the "what a socket type controls" level, and this is the only place the granularity table,

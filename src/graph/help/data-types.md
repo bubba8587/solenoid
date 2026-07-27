@@ -1,4 +1,4 @@
-A socket's **shape** is the rank — how many dimensions the value has. Its **colour** is the element family — what kind of thing the individual values are. Within a family the list is a darker shade of the scalar and the matrix a punchier one; a combo's split square takes the scalar colour on the upper-left and the list colour on the lower-right. Hover any dot for its name.
+A socket's **shape** is the rank — how many dimensions the value has. Its **colour** is the element family — what kind of thing the individual values are. Within a family the list is a darker shade of the scalar and the matrix a punchier one; a combo's split square takes the scalar colour on the upper-left and the list colour on the lower-right.
 
 | Shape | What it carries |
 |---|---|
@@ -26,6 +26,11 @@ The five families:
 - **Complex** — a real part and an imaginary part.
 - **Boolean** — TRUE / FALSE. A comparison or an IS-check produces a real Boolean, not a 1 or 0, though it still adds as 1 / 0 when you want it to. Three-valued: an unknown input keeps the answer unknown only where it genuinely is (TRUE OR unknown is still TRUE).
 
-Outside the families sit the **Frame** (a data table of named, typed columns — a column leaves as a typed list with Get Column, a row as a one-row Frame, since a row mixes types); the **Cube** (a Frame whose cells hold whole Frames — each Customer holding its own table of Orders, without flattening to one wide sheet; double-click a cell to drill in); the grey **wildcards**, for a family that isn't known; and three object types — **Lambda**, **Chart** and **Document** — which are not data and connect only to their own kind, or to a hollow ring.
+Outside the families:
+
+- **Frame** — a data table of named, typed columns. A column leaves it as a typed list with Get Column; a row leaves as a one-row Frame, since a row mixes types.
+- **Cube** — a Frame whose cells hold whole Frames: each Customer holding its own table of Orders, without flattening to one wide sheet.
+- **Wildcards** — the grey sockets, for a family that isn't known.
+- **Lambda**, **Chart** and **Document** — not data. Each connects only to its own kind, or to a hollow ring.
 
 **Combos are why lists carry through.** Feed a list into a node built for one value and it runs over every element and hands a list back — Excel's array-formula behaviour, without Ctrl+Shift+Enter. The split square is that node's socket: its result rank follows whatever arrives.
