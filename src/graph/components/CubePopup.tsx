@@ -4,6 +4,7 @@ import { appThemeStore } from "../appTheme";
 import { cubeRowCount, cubeDepth, frameRowCount } from "../frame";
 import { CubeCellChip, frameCellNode } from "./cubeCell";
 import { PopupShell, popupCardVars } from "./PopupShell";
+import { useColumnSort, sortedOrder, sortKeyOf, SortChevron, type SortKey } from "./columnSort";
 import { APP_LOCALE } from "../locale";
 import "./TablePopup.css";
 
@@ -15,6 +16,9 @@ function describe(view: DrillView): {
   cols: number;
   depth: number | null;     // cube only
   cell: (r: number, c: number) => ReactNode;
+  /** The RAW cell reduced for sorting — never the rendered node. A nested frame/cube
+   *  has no scalar reading and sorts as blank (last). */
+  sortKey: (r: number, c: number) => SortKey;
 } {
   if (view.kind === "cube") {
     const cube = view.cube;
@@ -24,6 +28,7 @@ function describe(view: DrillView): {
       cols: cube.columns.length,
       depth: cubeDepth(cube),
       cell: (r, c) => <CubeCellChip cell={cube.columns[c].cells[r] ?? null} crumb={cube.columns[c].name} size="sm" type={cube.columns[c].type} />,
+      sortKey: (r, c) => sortKeyOf(cube.columns[c].cells[r] ?? null),
     };
   }
   if (view.kind === "frame") {
@@ -34,6 +39,7 @@ function describe(view: DrillView): {
       cols: f.columns.length,
       depth: null,
       cell: (r, c) => frameCellNode(f.columns[c].type, f.columns[c].values[r] ?? null),
+      sortKey: (r, c) => sortKeyOf(f.columns[c].values[r] ?? null),
     };
   }
   const g = view.cells;
@@ -43,6 +49,7 @@ function describe(view: DrillView): {
     cols: g.reduce((m, row) => Math.max(m, row.length), 0),
     depth: null,
     cell: (r, c) => <CubeCellChip cell={g[r]?.[c] ?? null} crumb="item" size="sm" />,
+    sortKey: (r, c) => sortKeyOf(g[r]?.[c] ?? null),
   };
 }
 
@@ -56,15 +63,22 @@ function describe(view: DrillView): {
 export function CubePopup() {
   const state = useSyncExternalStore(cubePopup.subscribe, cubePopup.get);
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
+  // Keyed on the DRILL LEVEL: drilling in or out is a different table, so the sort
+  // drops rather than carrying a column index across to unrelated columns.
+  const { sort, cycle: cycleSort } = useColumnSort(state?.stack[state.stack.length - 1]);
 
   if (!state) return null;
   const view = state.stack[state.stack.length - 1];
-  const { headers, rows, cols, depth, cell } = describe(view);
+  const { headers, rows, cols, depth, cell, sortKey } = describe(view);
   // Cap rendered rows: a cube cell holding a large nested frame would otherwise put
   // the whole table in the DOM and kill the renderer (same hazard as TablePopup).
   const MAX_VISIBLE_ROWS = 1000;
   const rowsTruncated = rows > MAX_VISIBLE_ROWS;
   const shownRows = rowsTruncated ? MAX_VISIBLE_ROWS : rows;
+  // Visual-only sort over the rendered rows — the drill stack and the cube itself are
+  // untouched, so drilling into a cell still lands on the right nested value (the map
+  // hands `cell()` the SOURCE row index, and the row number stays the real position).
+  const sortOrder = sortedOrder(shownRows, sort, sortKey);
 
   const grouped = !!state.groupColor;
   const cardStyle = popupCardVars(state);
@@ -119,14 +133,23 @@ export function CubePopup() {
             <tr>
               <th className="table-popup__corner" />
               {Array.from({ length: cols }, (_, c) => (
-                <th key={c} className={headers ? "table-popup__colhead table-popup__colhead--name" : "table-popup__colhead"} title={headers?.[c]}>
+                <th
+                  key={c}
+                  className={`${headers ? "table-popup__colhead table-popup__colhead--name" : "table-popup__colhead"} table-popup__colhead--sortable`}
+                  title={headers?.[c]}
+                >
                   {headers ? headers[c] : c + 1}
+                  <SortChevron
+                    dir={sort?.col === c ? sort.dir : null}
+                    onClick={() => cycleSort(c)}
+                    label={headers?.[c] ?? String(c + 1)}
+                  />
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {Array.from({ length: shownRows }, (_, r) => (
+            {sortOrder.map((r) => (
               <tr key={r}>
                 <th className="table-popup__rowhead">{r + 1}</th>
                 {Array.from({ length: cols }, (_, c) => (

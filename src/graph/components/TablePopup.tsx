@@ -15,6 +15,7 @@ import { formatListCell } from "./valueDisplayFormat";
 import { FormatStyleSelect, DateStyleSelect, UnitSelect, LogicalStyleSelect, TextCaseSelect } from "./fcControls";
 import { applyTextCase } from "../formatAnnotationStore";
 import { PopupShell, popupCardVars } from "./PopupShell";
+import { useColumnSort, sortedOrder, sortKeyOf, SortChevron } from "./columnSort";
 import { PopupOverflowMenu } from "./PopupOverflowMenu";
 import { saveCsvFileDialog } from "../fileBridge";
 import { APP_LOCALE } from "../locale";
@@ -141,6 +142,9 @@ export function TablePopup() {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
 
   const [grid, setGrid] = useState<string[][]>([]);
+  // Visual-only row sort (columnSort.tsx) — a view control over the rendered rows.
+  // Keyed on the popup state, so opening a different value starts unsorted.
+  const { sort, cycle: cycleSort } = useColumnSort(state);
   // Editable column names + per-column types (frame editor). Kept aligned with the
   // grid's columns; unused when the popup isn't in frame mode.
   const [headerNames, setHeaderNames] = useState<string[]>([]);
@@ -391,6 +395,18 @@ export function TablePopup() {
     : onScreenGrid;
   const viewCols = vertical ? 1 : cols;
 
+  // Visual-only column sort. `sortOrder` is SOURCE row indices in display order, so
+  // the body maps through it and every index it hands on — setCell, the format-edit
+  // draft, the row number — stays the source row. Sorting never touches `grid`, so
+  // Copy / CSV / Save are unaffected by it.
+  //
+  // The key comes from the RAW grid, never the on-screen text: a date column displays
+  // as "20-Mar-2026" but is stored as its serial, and sorting the rendered string
+  // would order March before May of the previous year. The raw cell sorts a date
+  // chronologically, a formatted number by magnitude, text alphabetically.
+  const sortOrder = sortedOrder(viewGrid.length, sort, (r, c) =>
+    sortKeyOf(vertical ? grid[0]?.[r] : grid[r]?.[c]));
+
   // Per-column min width from CONTENT. The cells are <input>s, which contribute
   // NO intrinsic width — columns never widen on their own, so a forced-scientific
   // value ("1.6331e+16", 10ch) clipped in the 72px default column. The grid is
@@ -612,10 +628,13 @@ export function TablePopup() {
                 {Array.from({ length: viewCols }, (_, c) => (
                   <th
                     key={c}
-                    className={headers && !vertical ? "table-popup__colhead table-popup__colhead--name" : "table-popup__colhead"}
+                    className={`${headers && !vertical ? "table-popup__colhead table-popup__colhead--name" : "table-popup__colhead"} table-popup__colhead--sortable`}
                     title={vertical ? undefined : headers?.[c]}
                   >
-                    {vertical ? "" : editableHeaders ? (
+                    {/* A vertical list has one unnamed column; label it like the row
+                        orientation does (A, B, C…) rather than leaving the header
+                        blank — it's the handle the sort control hangs off. */}
+                    {vertical ? colLabel(0) : editableHeaders ? (
                       <div className="table-popup__colhead-edit">
                         <button
                           type="button"
@@ -636,6 +655,11 @@ export function TablePopup() {
                     ) : (
                       colHeaderLabel(c)
                     )}
+                    <SortChevron
+                      dir={sort?.col === c ? sort.dir : null}
+                      onClick={() => cycleSort(c)}
+                      label={vertical ? colLabel(0) : colHeaderLabel(c)}
+                    />
                   </th>
                 ))}
               </tr>
@@ -681,7 +705,11 @@ export function TablePopup() {
               </tbody>
             )}
             <tbody>
-              {viewGrid.map((row, r) => (
+              {/* Rows render in SORT order but carry their SOURCE index `r` — the row
+                  number stays the row's real position (a sorted view doesn't renumber
+                  the data, the way a filtered spreadsheet keeps its row numbers), and
+                  every edit below writes to the row the user is actually looking at. */}
+              {sortOrder.map((r) => { const row = viewGrid[r] ?? []; return (
                 <tr key={r}>
                   <th className="table-popup__rowhead">{r + 1}</th>
                   {Array.from({ length: viewCols }, (_, c) => {
@@ -726,7 +754,7 @@ export function TablePopup() {
                     );
                   })}
                 </tr>
-              ))}
+              ); })}
             </tbody>
           </table>
         </div>
