@@ -149,6 +149,18 @@ forward-only by design — a palm landing before the pen tip can't be un-registe
 CANCELS what it started (`onPenDown` → the lasso bails). Also: pen barrel/eraser no longer grabs a
 node drag. 14 tests, incl. the phase assertions (a bubble regression fails loudly).
 
+**Pinch also SELECTED whatever finger 1 landed on** (author-reported after the capture fix).
+rete picks on pointerdown because the drag depends on it, so at that instant the gesture is
+genuinely unclassifiable. Deferred rather than corrected: an unselected node is now
+drag-transparent to TOUCH, so the press falls through to a pan and selection happens on pointerup
+only if the gesture stayed one finger and didn't move. Rollback (snapshot + restore on the second
+finger) was built first and rejected by the author — it flashes for however long the fingers are
+apart, and correcting a wrong state reads as a glitch where never entering it reads as nothing
+happening. The model already existed for phones; it's now keyed on **pointer type, not device
+class** (`tapTouchRef`), since "this press might become a pinch" is true of any touchscreen. Mouse
+and pen keep select-and-drag in one motion; a SELECTED node still drags on the first touch. Cost:
+a tablet now needs tap-then-drag to move an unselected node, as a phone always has.
+
 **Tablet** needed nothing beyond the capture fix, and that's the finding: `IS_MOBILE` is false
 there (iPadOS ships a desktop UA), so a tablet runs the desktop model — nodes aren't
 drag-transparent, and two-finger pan is its canvas gesture. Before this it could only pan over
