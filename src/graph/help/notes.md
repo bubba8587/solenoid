@@ -34,4 +34,4 @@ What Solenoid doesn't do yet, said plainly:
 
 ## Under the hood
 
-A calculation is a real dependency graph: change one input and only what depends on it recomputes, with a shared sub-result evaluated once per pass. The same app runs two ways — in the browser with no install, and as a desktop app that wraps it in a small native shell for local files and a native compute engine for heavy table work.
+A calculation is a real dependency graph: change one input and only what depends on it recomputes, with a shared sub-result evaluated once per pass. The same app runs in the browser with no install, and as a desktop app that wraps it in a small native shell for local files and a native compute engine for heavy table work.

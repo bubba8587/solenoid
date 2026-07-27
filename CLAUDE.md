@@ -49,7 +49,9 @@ index), `docs/glossary.md` (the invented vocabulary — read before the deep div
 - **`DESIGN.md` (repo root) — the design-system rulebook. READ BEFORE ANY UI/VISUAL CHANGE.**
   Non-obvious hard rules you WILL violate blind: no colored accent stripe by ANY technique — tint
   the element itself; the Quiet Accent Rule (color conveys type/state, never decoration); no
-  faux-3D/gradient/glassmorphism.
+  faux-3D/gradient/glassmorphism. **"UI change" includes STRINGS, not just pixels** — §7 Voice &
+  copy governs `src/graph/help/*.md`, every `nodeCatalog` description, tooltips and empty states;
+  read it before writing any of them. `uiCopy.test.ts` machine-checks the decidable subset only.
 - **`docs/subsystem-invariants.md`** — full mechanics + invariants for the tricky subsystems
   (indexed below).
 - **`docs/decisions.md`** — the decision log (what/why/what-would-reverse-it). Check it so a
