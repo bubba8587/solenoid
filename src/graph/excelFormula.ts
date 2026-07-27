@@ -345,6 +345,16 @@ const RANGE_PAIRED = new Set([
 // answer in indices), so nulls stay put; errors still propagate.
 const RANGE_POSITIONAL = new Set(["XLOOKUP", "XMATCH", "VLOOKUP", "HLOOKUP", "LOOKUP", "MATCH", "INDEX"]);
 
+// D10 gate (D19 decision 1): a BLOCKED spelling gets no range routing. It resolves to
+// a #NAME? redirect stub, so routing it would only decide how carefully the arguments
+// were prepared before handing them to a function that refuses to run. Derived from
+// the blocklist rather than hand-pruned, so the two can't drift apart — the failure
+// mode this parity program exists to stop.
+for (const blocked of ELIMINATED_FUNCTIONS) {
+  RANGE_FUNCTIONS.delete(blocked);
+  RANGE_POSITIONAL.delete(blocked);
+}
+
 function prepRangeArgs(name: string, argv: unknown[]): { error?: unknown; args: unknown[] } {
   if (RANGE_RAW.has(name)) return { args: argv };
   // POSITIONAL lookups (INDEX/MATCH/VLOOKUP/…) select SPECIFIC cells: an error at
