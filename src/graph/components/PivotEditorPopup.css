@@ -202,13 +202,16 @@
   padding: 8px 14px;
   border-top: 1px solid var(--border);
 }
+/* Takes the popup's own accent, like the Table/Frame/Cube footer actions. The ink is
+   derived from that accent (popupCardVars) — the hardcoded #fff it replaced was
+   already wrong against a light accent. */
 .pivot-editor__done {
   font-size: 12px;
   padding: 5px 14px;
   border-radius: 5px;
   border: 1px solid var(--border);
-  background: var(--accent);
-  color: #fff;
+  background: var(--node-accent, var(--accent));
+  color: var(--node-accent-ink, var(--accent-ink, #fff));
   cursor: pointer;
 }
 .pivot-editor__done:hover { filter: brightness(1.06); }

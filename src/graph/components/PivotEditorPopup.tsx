@@ -5,7 +5,7 @@ import { appThemeStore } from "../appTheme";
 import type { AggOp } from "../frameVerbs";
 import type { PivotNode } from "../rete-nodes";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
-import { PopupShell } from "./PopupShell";
+import { PopupShell, popupCardVars } from "./PopupShell";
 import "./PivotEditorPopup.css";
 
 // ── Option lists (the popup owns the pivot-specific selectors) ──────────────────
@@ -300,7 +300,7 @@ export function PivotEditorPopup() {
       title={state.title}
       onClose={() => pivotEditor.close()}
       cardClassName="pivot-editor"
-      cardStyle={state.accent ? ({ ["--node-accent"]: state.accent } as Record<string, string>) : undefined}
+      cardStyle={popupCardVars(state)}
     >
       <div className="pivot-editor__body">
         {/* Field list — the upstream columns, drag into a zone (or use a zone's + add). */}

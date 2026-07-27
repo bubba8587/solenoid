@@ -1,10 +1,10 @@
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useState } from "react";
 import { useSyncExternalStore } from "react";
 import { chartPopup } from "../chartPopupStore";
 import { appThemeStore } from "../appTheme";
 import { formatAnnotationStore } from "../formatAnnotationStore";
 import { ChartView, ChartFigure } from "./chartView";
-import { PopupShell } from "./PopupShell";
+import { PopupShell, popupCardVars } from "./PopupShell";
 import { clamp } from "../nodes/mathUtils";
 
 // Desktop max; the chart shrinks to fit smaller viewports (phones) so the popup
@@ -48,8 +48,7 @@ export function ChartPopup() {
   }, [state]);
 
   if (!state) return null;
-  const cardStyle: CSSProperties = {};
-  if (state.accent) (cardStyle as Record<string, string>)["--node-accent"] = state.accent;
+  const cardStyle = popupCardVars(state);
 
   return (
     <PopupShell

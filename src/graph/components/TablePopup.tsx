@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { copyText } from "../clipboard";
 import { tablePopup, type TablePopupState, type Cell as CellValue, type FramePopupColumn } from "../tablePopupStore";
 import { appThemeStore } from "../appTheme";
@@ -14,7 +14,7 @@ import { frameFormatStore } from "../frameFormatStore";
 import { formatListCell } from "./valueDisplayFormat";
 import { FormatStyleSelect, DateStyleSelect, UnitSelect, LogicalStyleSelect, TextCaseSelect } from "./fcControls";
 import { applyTextCase } from "../formatAnnotationStore";
-import { PopupShell } from "./PopupShell";
+import { PopupShell, popupCardVars } from "./PopupShell";
 import { PopupOverflowMenu } from "./PopupOverflowMenu";
 import { saveCsvFileDialog } from "../fileBridge";
 import { APP_LOCALE } from "../locale";
@@ -549,11 +549,7 @@ export function TablePopup() {
   }
 
   const grouped = !!state.groupColor;
-  const cardStyle: CSSProperties = {};
-  const cardVars = cardStyle as Record<string, string>;
-  if (state.accent) cardVars["--node-accent"] = state.accent;
-  if (state.groupColor) cardVars["--group-color"] = state.groupColor;
-  if (state.groupColorDark) cardVars["--group-color-dark"] = state.groupColorDark;
+  const cardStyle = popupCardVars(state);
 
   return (
     <PopupShell
