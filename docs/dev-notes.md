@@ -189,13 +189,25 @@ nothing to list) and deliberate for the DATA pickers, where a search row per val
 would bury the menu it was meant to help. It does leave the ~30 collapsed families
 without search rows — backlogged with the exact list.
 
-**Where the argument line fell**, applying the author's test (*is the variant a distinct
-thing you would search the Add menu for?*): aggregator-for-a-host-verb (Pivot,
-CubeRollup, GroupByFrame), a distribution's cumulative form — Excel itself models that
-as the `cumulative` FLAG rather than separate functions — and the data pickers. Note the
-split inside the distributions: `cdf`/`pdf` is a flag (argument), but `.RT` right-tail
-IS a separate Excel function, so ChisqInv/FInv/TInv came out operation while NormDist/
-BetaDist/… came out argument.
+**The test got sharper mid-pass, and it re-cut the line.** The first framing was "is
+the variant a thing you would search the Add menu for", which put the distributions'
+cdf/pdf on the argument side because Excel models it as a `cumulative` FLAG. The author
+replaced it with a DATAFLOW question, which is a better fit for this app:
+
+>  Could this be the RESULT of something in a chain, or is it something the user is
+>  basically always picking by hand?
+
+Picked-by-hand = part of what the node IS = OPERATION. Could-arrive-computed = ARGUMENT.
+Nobody computes whether they want a density or a cumulative distribution, so those are
+operations regardless of how Excel spells them; but a GroupBy aggregator, an element
+symbol or a pipe material can each plausibly arrive from a lookup or a column.
+
+That flipped 18 families to operation (the 13 cdf/pdf distributions, plus ESeries,
+ResistorCode, PhysicsConstant, Fill's strategy and Head's first/last/skip/range). Final:
+**91 operation / 7 argument** — the survivors being the aggregator-for-a-host-verb four
+(GroupBy, GroupByFrame, Pivot, CubeRollup) and the three genuinely data-driven pickers
+(Element, Antoine substance, PipeRoughness material). The old search-by-name framing is
+kept in the module note as a corroborator, not the rule.
 
 **Edge tuned to 2px** at an 85% accent mix, paid for out of the padding (1px border with
 4px/8px becomes 2px with 3px/7px) so an operation selector occupies exactly the same box
