@@ -25,12 +25,23 @@
 //     GROUPBY, not a function), so the family takes ONE formula name and the op
 //     rides in as an argument.
 //
-// THE TEST (author, 2026-07-27): is the variant a distinct thing you would search
-// the Add menu for? "Column chart" and "Sankey" are — so Chart's dropdown selects
-// OPERATIONS, even though the value is stored as a mode. GroupBy's "avg" is not:
-// nobody searches for "avg" hoping to find Group Lists, and it means nothing
-// without its host. How the value is STORED does not decide this; how a user looks
-// for it does.
+// THE TEST (author, 2026-07-27) — ask it of the VALUE, not the vocabulary:
+//
+//     Could this be the RESULT of something in a chain, or is it something the
+//     user is basically always picking by hand?
+//
+// Something a user picks is part of what the node IS — an OPERATION. Something
+// that could arrive computed from upstream is an ARGUMENT. This is a dataflow
+// question, which is why it decides better than "does the word sound like a
+// function": nobody computes whether they want a probability DENSITY or a
+// CUMULATIVE distribution, or which chart type to draw — those are picked, so they
+// are operations even though Excel happens to model the first as a `cumulative`
+// flag. But a GroupBy aggregator, an element symbol, a pipe material — each of
+// those can plausibly arrive from a lookup or a column, so each is an argument.
+//
+// A useful corroborator, not a replacement: an operation is usually also a thing
+// you would SEARCH the Add menu for by name ("Column chart", "Sankey"), while an
+// argument is not — nobody searches "avg" hoping to find Group Lists.
 
 import type { NodeCatalogEntry } from "./AddNodeMenu";
 
@@ -170,12 +181,12 @@ export const NODE_OPS: NodeOpsDecl[] = [
 
   // ── Argument-kind: the op is a parameter, not a thing you would search for ──
   // "Fill blanks with the mean" — `mean` alone names nothing.
-  { type: "list-fill", ctor: FillNode, kind: "argument", ops: fromMeta(FILL_OP_META),
+  { type: "list-fill", ctor: FillNode, kind: "operation", ops: fromMeta(FILL_OP_META),
     create: (op) => new FillNode({ op: op as never }) },
   // The aggregator is an argument of GROUP BY; `avg` on its own is meaningless here.
   { type: "list-groupby", ctor: GroupByNode, kind: "argument", ops: fromMeta(GROUP_BY_OP_META),
     create: (op) => new GroupByNode({ op: op as never }) },
-  { type: "head", ctor: HeadNode, kind: "argument", ops: fromMeta(HEAD_OP_META),
+  { type: "head", ctor: HeadNode, kind: "operation", ops: fromMeta(HEAD_OP_META),
     create: (op) => new HeadNode({ op: op as never }) },
 
   // ── Operation-kind: each op stands alone as a name ──
@@ -290,27 +301,27 @@ export const NODE_OPS: NodeOpsDecl[] = [
   // the Add menu for "Helium" hoping to find the Element node, and a row per value
   // would bury the menu it was meant to help.
   { type: "th-antoine", ctor: AntoineNode, kind: "argument" },
-  { type: "betadist", ctor: BetaDistNode, kind: "argument" },
-  { type: "binomdist", ctor: BinomDistNode, kind: "argument" },
+  { type: "betadist", ctor: BetaDistNode, kind: "operation" },
+  { type: "binomdist", ctor: BinomDistNode, kind: "operation" },
   { type: "cube-rollup", ctor: CubeRollupNode, kind: "argument" },
-  { type: "elec-eseries", ctor: ESeriesNode, kind: "argument" },
-  { type: "elec-resistor-code", ctor: ResistorCodeNode, kind: "argument" },
+  { type: "elec-eseries", ctor: ESeriesNode, kind: "operation" },
+  { type: "elec-resistor-code", ctor: ResistorCodeNode, kind: "operation" },
   { type: "ch-element", ctor: ElementNode, kind: "argument" },
-  { type: "expodist", ctor: ExponDistNode, kind: "argument" },
-  { type: "fdist", ctor: FDistNode, kind: "argument" },
-  { type: "gammadist", ctor: GammaDistNode, kind: "argument" },
+  { type: "expodist", ctor: ExponDistNode, kind: "operation" },
+  { type: "fdist", ctor: FDistNode, kind: "operation" },
+  { type: "gammadist", ctor: GammaDistNode, kind: "operation" },
   { type: "group-by-frame", ctor: GroupByFrameNode, kind: "argument" },
-  { type: "hypgeomdist", ctor: HypgeomDistNode, kind: "argument" },
-  { type: "lognormdist", ctor: LognormDistNode, kind: "argument" },
-  { type: "negbinomdist", ctor: NegbinomDistNode, kind: "argument" },
-  { type: "normdist", ctor: NormDistNode, kind: "argument" },
-  { type: "normsdist", ctor: NormSDistNode, kind: "argument" },
-  { type: "em-constant", ctor: PhysicsConstantNode, kind: "argument" },
+  { type: "hypgeomdist", ctor: HypgeomDistNode, kind: "operation" },
+  { type: "lognormdist", ctor: LognormDistNode, kind: "operation" },
+  { type: "negbinomdist", ctor: NegbinomDistNode, kind: "operation" },
+  { type: "normdist", ctor: NormDistNode, kind: "operation" },
+  { type: "normsdist", ctor: NormSDistNode, kind: "operation" },
+  { type: "em-constant", ctor: PhysicsConstantNode, kind: "operation" },
   { type: "fl-roughness", ctor: PipeRoughnessNode, kind: "argument" },
   { type: "pivot", ctor: PivotNode, kind: "argument" },
-  { type: "poissondist", ctor: PoissonDistNode, kind: "argument" },
-  { type: "tdist", ctor: TDistNode, kind: "argument" },
-  { type: "weibulldist", ctor: WeibullDistNode, kind: "argument" },
+  { type: "poissondist", ctor: PoissonDistNode, kind: "operation" },
+  { type: "tdist", ctor: TDistNode, kind: "operation" },
+  { type: "weibulldist", ctor: WeibullDistNode, kind: "operation" },
 ];
 
 const BY_TYPE = new Map(NODE_OPS.map((d) => [d.type, d]));
