@@ -15,7 +15,7 @@ import { formatListCell } from "./valueDisplayFormat";
 import { FormatStyleSelect, DateStyleSelect, UnitSelect, LogicalStyleSelect, TextCaseSelect } from "./fcControls";
 import { applyTextCase } from "../formatAnnotationStore";
 import { PopupShell, popupCardVars } from "./PopupShell";
-import { useColumnSort, sortedOrder, sortKeyOf, SortIndicator, sortTriggerProps, stopSortTrigger } from "./columnSort";
+import { useColumnSort, sortedOrder, sortKeyOf, SortIndicator, stopSortTrigger } from "./columnSort";
 import { PopupOverflowMenu } from "./PopupOverflowMenu";
 import { saveCsvFileDialog } from "../fileBridge";
 import { APP_LOCALE } from "../locale";
@@ -406,6 +406,11 @@ export function TablePopup() {
   // chronologically, a formatted number by magnitude, text alphabetically.
   const sortOrder = sortedOrder(viewGrid.length, sort, (r, c) =>
     sortKeyOf(vertical ? grid[0]?.[r] : grid[r]?.[c]));
+  // A list in ROW orientation lays each element out as its own COLUMN of a single
+  // row, so there is nothing to order — sorting one column would sort one cell. The
+  // headers there stay inert (no cursor, no indicator); flipping to Column mode, one
+  // column of N elements, is where a list sort means something.
+  const sortable = !(state.list && !vertical);
 
   // Per-column min width from CONTENT. The cells are <input>s, which contribute
   // NO intrinsic width — columns never widen on their own, so a forced-scientific
@@ -630,8 +635,9 @@ export function TablePopup() {
                     key={c}
                     // The WHOLE header cell cycles the sort — there is no button to
                     // hit. The name field and type toggle below opt out.
-                    {...sortTriggerProps(() => cycleSort(c), vertical ? undefined : headers?.[c])}
-                    className={`${headers && !vertical ? "table-popup__colhead table-popup__colhead--name" : "table-popup__colhead"} table-popup__colhead--sortable`}
+                    title={vertical ? undefined : headers?.[c]}
+                    onClick={sortable ? () => cycleSort(c) : undefined}
+                    className={`${headers && !vertical ? "table-popup__colhead table-popup__colhead--name" : "table-popup__colhead"}${sortable ? " table-popup__colhead--sortable" : ""}`}
                   >
                     {/* A vertical list has one unnamed column; label it like the row
                         orientation does (A, B, C…) rather than leaving the header
@@ -658,7 +664,7 @@ export function TablePopup() {
                     ) : (
                       colHeaderLabel(c)
                     )}
-                    <SortIndicator dir={sort?.col === c ? sort.dir : null} />
+                    {sortable && <SortIndicator dir={sort?.col === c ? sort.dir : null} />}
                   </th>
                 ))}
               </tr>

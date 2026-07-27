@@ -240,7 +240,9 @@ Three things that are load-bearing, not incidental:
   during render rather than in an effect — an effect renders the new grid once in the old grid's
   order first. A column index means nothing across two different tables.
 A list in Column mode had no header row at all; it now gets one labelled `A`, matching what Row
-mode already labels its columns (author offered "list" or "A").
+mode already labels its columns (author offered "list" or "A"). **Row mode has no sort** — it
+lays each element out as its own column of a single row, so ordering one column would order one
+cell; those headers stay inert (no cursor, no indicator).
 **The trigger is the whole header cell, and nothing is drawn until a column is sorted** (author,
 same session — the first pass had a resting double-chevron button on every column). So the
 chevron is an INDICATOR, not a control: `pointer-events: none`, present only for the sorted
