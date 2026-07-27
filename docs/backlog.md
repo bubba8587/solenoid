@@ -112,6 +112,24 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   cubes (`data()` keeps nested cells whole), so blank Column — or blank Row with a
   Column set — could type as `cube` instead of the placeholder. Only a single CELL is
   genuinely unknowable there.
+- [ ] **Value-popup gaps** (surveyed 2026-07-27 while adding the column sort; author
+  parked all five). In rough order of how much each bites:
+  - The visual sort only covers the LOADED WINDOW — a grid is truncated to 1,000 rows
+    before `sortedOrder` sees it, so sorting 50k rows by Price desc gives the largest
+    of the first 1,000. The header says "first 1,000"; nothing says the sort is
+    confined to it. The only one here that can quietly mislead.
+  - Copy / CSV / Export emit SOURCE order while a sort is showing. Consistent with
+    visual-only (the value didn't change), but someone who sorts then copies probably
+    wants what they see. Author call, not a bug; one `sortOrder` map either way.
+  - The CUBE popup has no overflow menu at all — no Copy, Copy as Markdown or Export
+    CSV, all of which TablePopup has. Drill into a cube and there's no way out with
+    the data. Predates the sort work.
+  - `− Row` / `− Col` remove the last row/column of the DATA, which under a sort isn't
+    the bottom one on screen. Tooltips are accurate ("Remove last row"), so it's a
+    read mismatch rather than a wrong action.
+  - The grid is mouse-only: no arrow keys between cells, no Enter-to-move-down, no
+    Tab-across, and headers aren't focusable so the sort has no keyboard path. The
+    biggest gap against "zero learning curve from Excel", and much the largest job.
 - [ ] **Small mechanical sweep**: trueany adoption runs on the MAIN editor only —
   drill-in composites don't adopt (`trueAnyAdopt.ts`); `readInput` sweep applied across
   `scalar.ts` only — the remaining `data()` files are the follow-up (~144 sites, biggest
