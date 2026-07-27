@@ -57,6 +57,10 @@ export interface NodeOpsDecl {
   kind: OpKind;
   /** Default `collapsed` — see the module note. */
   expose?: OpExposure;
+  /** The node class. Used to resolve a live node back to its declaration —
+   *  `instanceof`, not a constructor-NAME match, which a minified build would
+   *  quietly break. */
+  ctor: new (...a: never[]) => object;
   /** Suppress the `{ }` marker while keeping every op searchable. The subjective
    *  per-node call: a few labels already enumerate their ops ("GCD / LCM"), so the
    *  mark would only repeat the name back. Default is derived — marked iff ops are
@@ -118,54 +122,54 @@ const ROUNDN_OPS = [
 
 export const NODE_OPS: NodeOpsDecl[] = [
   // ── Argument-kind: the op is a parameter, not a function of its own ──
-  { type: "chart", kind: "argument", ops: fromMeta(CHART_OP_META),
+  { type: "chart", ctor: ChartNode, kind: "argument", ops: fromMeta(CHART_OP_META),
     create: (op) => new ChartNode({ op: op as never }) },
-  { type: "sparkline", kind: "argument", ops: fromMeta(SPARKLINE_OP_META),
+  { type: "sparkline", ctor: SparklineNode, kind: "argument", ops: fromMeta(SPARKLINE_OP_META),
     create: (op) => new SparklineNode({ op: op as never }) },
   // "Fill blanks with the mean" — `mean` alone names nothing.
-  { type: "list-fill", kind: "argument", ops: fromMeta(FILL_OP_META),
+  { type: "list-fill", ctor: FillNode, kind: "argument", ops: fromMeta(FILL_OP_META),
     create: (op) => new FillNode({ op: op as never }) },
   // The aggregator is an argument of GROUP BY; `avg` on its own is meaningless here.
-  { type: "list-groupby", kind: "argument", ops: fromMeta(GROUP_BY_OP_META),
+  { type: "list-groupby", ctor: GroupByNode, kind: "argument", ops: fromMeta(GROUP_BY_OP_META),
     create: (op) => new GroupByNode({ op: op as never }) },
-  { type: "head", kind: "argument", ops: fromMeta(HEAD_OP_META),
+  { type: "head", ctor: HeadNode, kind: "argument", ops: fromMeta(HEAD_OP_META),
     create: (op) => new HeadNode({ op: op as never }) },
 
   // ── Operation-kind: each op stands alone as a name ──
-  { type: "list-set", kind: "operation", ops: fromMeta(SET_OP_META),
+  { type: "list-set", ctor: SetOpNode, kind: "operation", ops: fromMeta(SET_OP_META),
     create: (op) => new SetOpNode({ op: op as never }) },
-  { type: "list-set-relation", kind: "operation", ops: fromMeta(SET_RELATION_META),
+  { type: "list-set-relation", ctor: SetRelationNode, kind: "operation", ops: fromMeta(SET_RELATION_META),
     create: (op) => new SetRelationNode({ op: op as never }) },
-  { type: "regex", kind: "operation", ops: fromMeta(REGEX_OP_META),
+  { type: "regex", ctor: RegexNode, kind: "operation", ops: fromMeta(REGEX_OP_META),
     create: (op) => new RegexNode({ op: op as never }) },
-  { type: "text-filter", kind: "operation", ops: fromMeta(TEXT_FILTER_OP_META),
+  { type: "text-filter", ctor: TextFilterNode, kind: "operation", ops: fromMeta(TEXT_FILTER_OP_META),
     create: (op) => new TextFilterNode({ op: op as never }) },
-  { type: "sumifs", kind: "operation", ops: fromMeta(COND_AGG_OP_META),
+  { type: "sumifs", ctor: SumIfsNode, kind: "operation", ops: fromMeta(COND_AGG_OP_META),
     create: (op) => new SumIfsNode({ op: op as never }) },
-  { type: "regression-steyx", kind: "operation", ops: fromMeta(REGRESSION_OP_META),
+  { type: "regression-steyx", ctor: RegressionNode, kind: "operation", ops: fromMeta(REGRESSION_OP_META),
     create: (op) => new RegressionNode({ op: op as never }) },
-  { type: "correl-correl", kind: "operation", ops: fromMeta(CORREL_OP_META),
+  { type: "correl-correl", ctor: CorrelNode, kind: "operation", ops: fromMeta(CORREL_OP_META),
     create: (op) => new CorrelNode({ op: op as never }) },
   // Label already names both ops.
-  { type: "iseven-isodd", kind: "operation", ops: fromMeta(PARITY_OP_META), mark: false,
+  { type: "iseven-isodd", ctor: IsEvenOddNode, kind: "operation", ops: fromMeta(PARITY_OP_META), mark: false,
     create: (op) => new IsEvenOddNode({ op: op as never }) },
-  { type: "promote-headers", kind: "operation", ops: fromMeta(HEADER_OP_META),
+  { type: "promote-headers", ctor: PromoteHeadersNode, kind: "operation", ops: fromMeta(HEADER_OP_META),
     create: (op) => new PromoteHeadersNode({ op: op as never }) },
-  { type: "list-cumulative", kind: "operation", ops: CUMULATIVE_OPS,
+  { type: "list-cumulative", ctor: CumulativeNode, kind: "operation", ops: CUMULATIVE_OPS,
     create: (op) => new CumulativeNode({ op: op as never }) },
-  { type: "comparison", kind: "operation", ops: COMPARISON_OPS,
+  { type: "comparison", ctor: ComparisonNode, kind: "operation", ops: COMPARISON_OPS,
     create: (op) => new ComparisonNode({ op: op as never }) },
-  { type: "is-test", kind: "operation", ops: IS_TEST_OPS,
+  { type: "is-test", ctor: IsTestNode, kind: "operation", ops: IS_TEST_OPS,
     create: (op) => new IsTestNode({ op: op as never }) },
   // Label already names both ops, so the marker would only echo it.
-  { type: "gcd-lcm", kind: "operation", ops: GCD_OPS, mark: false,
+  { type: "gcd-lcm", ctor: GcdNode, kind: "operation", ops: GCD_OPS, mark: false,
     create: (op) => new GcdNode({ op: op as never }) },
 
   // ── Partially exposed: some ops already have leaves, the rest ride in search ──
-  { type: "twomath-log", kind: "operation", ops: fromMeta(TWO_INPUT_MATH_OP_META),
+  { type: "twomath-log", ctor: TwoInputMathNode, kind: "operation", ops: fromMeta(TWO_INPUT_MATH_OP_META),
     leafOps: ["log", "atan2", "delta", "gestep"],
     create: (op) => new TwoInputMathNode({ op: op as never }) },
-  { type: "roundn-round", kind: "operation", ops: ROUNDN_OPS,
+  { type: "roundn-round", ctor: RoundNNode, kind: "operation", ops: ROUNDN_OPS,
     leafOps: ["round", "roundup"],
     create: (op) => new RoundNNode({ op: op as never }) },
 ];
@@ -226,4 +230,15 @@ export function opEntry(decl: NodeOpsDecl, host: NodeCatalogEntry, op: { op: str
     // The op rows inherit the host's description and keywords, so a search that
     // matches the family still matches each of its ops.
   };
+}
+
+/** The op kind of a live node — "operation" when its dropdown selects between
+ *  distinct operations, "argument" when it selects a parameter of one operation.
+ *  Undefined for a node whose family hasn't been declared yet, which is DIFFERENT
+ *  from "argument" and must stay visually distinguishable from it until every
+ *  op-selector family is declared. */
+export function opKindForNode(node: object | undefined): OpKind | undefined {
+  if (!node) return undefined;
+  for (const d of NODE_OPS) if (node instanceof d.ctor) return d.kind;
+  return undefined;
 }
