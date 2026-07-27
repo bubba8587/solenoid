@@ -185,6 +185,23 @@ app-wide, but touches feel of zoom).
   - `wire-instruction` now guards both shapes; the tooltip surface joins the corpus.
     `Set the vault in Settings ▸ Obsidian` is a pinned counterexample — a config LOCATION
     genuinely cannot be guessed from the node, unlike a gesture.
+- **Seed-graph prose joined the corpus (20 files, 1,232 sentences) — never read for copy before.**
+  These ship as example DOCUMENTS the user opens, so they are shipped copy. 17 fixes: 9 of the
+  pure "click X to see X" pattern (incl. `hover any badge for the short version`, the exact shape
+  that started this whole thread), 3 Conduit/ribbon lines where the gesture was obvious but the
+  RESULT was not (→ "A Conduit fans its lanes; a trunk grabs the whole ribbon"), and 5 British
+  spellings.
+  - **A demo document is a different GENRE, and the lint now says so.** "Drag any slider and the
+    pivots, gauges, projections and alerts recompute" is the document doing its job — a seed
+    exists to be poked at — not a tooltip narrating its own affordance. Seed prose is held to
+    `GENRE_FREE` only (spelling, slogan, tease-count, chummy-aside, widget-narration); the rules
+    that judge whether a string should be instructing AT ALL are scoped off it. 11 instruction-
+    shaped lines were left deliberately: 7 "drag it and watch" invitations and 4 walkthrough
+    steps. Reversible if the author wants seeds held to the tooltip standard.
+  - **`personal-finance.json` is GENERATED** (`scripts/gen-personal-finance-seed.cjs`), and
+    `pfSeedCheck.test.ts` enforces the committed JSON is an exact re-emit. Editing the artifact
+    failed that test — edit the generator and re-emit. Worth remembering for any seed sweep;
+    the other 19 seeds are hand-authored JSON.
 - **The imperative sweep OVERSHOT on controls, and that is now written into §7** (author
   correction). On a button, chip or menu item, a bare verb naming what it does IS correct copy —
   "Cycle Number / Text / Date / Boolean", "Open the Problems panel", "Drill in", "Rename". That

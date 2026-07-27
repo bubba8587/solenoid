@@ -105,7 +105,7 @@
       "y": 940,
       "init": {
         "label": "Sensitivity",
-        "body": "# Stress-test the weights\nThe winner above depends on the weights you picked. The **Sensitivity** node scores the same options under several weight **scenarios**; each row below is one. It returns a **Cube**: one row per scenario with the **Winner**, the **Margin** (how decisive), and the full **Ranking** nested in the cell. Click the cell to **drill in**.\n\nHere the winner *flips*: UltraSlim when the weights are balanced, PowerLifter when performance dominates. The Budget scenario is a near-tie (Margin ≈ 0), so the choice is fragile there.",
+        "body": "# Stress-test the weights\nThe winner above depends on the weights you picked. The **Sensitivity** node scores the same options under several weight **scenarios**; each row below is one. It returns a **Cube**: one row per scenario with the **Winner**, the **Margin** (how decisive), and the full **Ranking** nested in the cell, which **drills in**.\n\nHere the winner *flips*: UltraSlim when the weights are balanced, PowerLifter when performance dominates. The Budget scenario is a near-tie (Margin ≈ 0), so the choice is fragile there.",
         "color": "blue",
         "width": 380,
         "height": 260

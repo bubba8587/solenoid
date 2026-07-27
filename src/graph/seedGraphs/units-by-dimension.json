@@ -10,7 +10,7 @@
       "y": -220,
       "init": {
         "label": "Units by dimensionality (FC A4)",
-        "body": "Numbers carry a **physical dimension** and compute with it. A metre ÷ a second **is** a m/s; metres + seconds is a **#UNIT!**. A unit rides **per element** through a list and **per column** through a frame — cancellation is free, mismatch is caught.",
+        "body": "Numbers carry a **physical dimension** and compute with it. A meter ÷ a second **is** a m/s; meters + seconds is a **#UNIT!**. A unit rides **per element** through a list and **per column** through a frame — cancellation is free, mismatch is caught.",
         "color": "teal",
         "width": 760,
         "height": 150
