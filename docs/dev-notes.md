@@ -310,6 +310,32 @@ despite storing the value as a mode. GroupBy's "avg" is not. **How the value is 
 does not decide this; how a user looks for it does.** 17 operation / 3 argument so far;
 78 of 98 families still undeclared.
 
+### Op search rows: names, not dropdown prose (2026-07-27b)
+
+Chasing the Headers correction turned up two flaws in the search rows the collapsed
+families generate.
+
+**Prose op labels composed into nonsense.** `SET_OP_META.label` is "Union: in A or B" —
+right on the CARD, where it explains the choice you're looking at, but a search row
+built from it reads "Set: Union: in A or B". The two roles pull opposite ways: a
+dropdown wants an explanation, a search row wants a name. The meta keeps its prose;
+`nodeOps.ts` now supplies plain names (Union / Intersection / Difference / Symmetric
+difference, and the four Set relations) for the menu and search.
+
+**Op rows didn't discriminate between SIBLINGS.** They inherited the host's `keywords`,
+which describe the FAMILY — so every Set op matched a family-level query equally well
+and searching "symmetric" surfaced **Union**. Dropped the inherited keywords: nothing is
+lost, because the host row is still there to answer family-level queries, while each op
+row keeps its own name and the host's name in its label. Pinned in `nodeOps.test.ts`.
+
+**Still open, and it needs an author call on NAMES:** three hosts label themselves with
+ONE of their ops, which is the exact smell behind the Headers correction — "STEYX"
+hosts SLOPE and INTERCEPT, "CORREL" hosts RSQ, "SUMIFS" hosts COUNTIFS/AVERAGEIFS/
+MINIFS/MAXIFS. The rows read "STEYX: SLOPE". All of the hidden ops are real Excel
+functions people search by name, so the alternatives are a family rename (Regression /
+Correlation / Conditional aggregate) or `expose: "leaves"` to give each its own entry.
+Not guessed at — naming has been the author's call every time this session.
+
 ### Multi-op nodes: the `{ }` marker + the exposure flag (2026-07-27b)
 
 Author direction: a dropdown on a card is a NAVIGATION convenience for closely-related
