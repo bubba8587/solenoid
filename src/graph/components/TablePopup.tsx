@@ -624,7 +624,7 @@ export function TablePopup() {
                         <button
                           type="button"
                           className="table-popup__coltype"
-                          title={`Column type: ${COLTYPE_NAME[colTypeAt(c)]}. Click to cycle Number / Text / Date / Boolean.`}
+                          title={`Column type: ${COLTYPE_NAME[colTypeAt(c)]}, cycling Number / Text / Date / Boolean.`}
                           onClick={() => toggleColumnType(c)}
                         >
                           {COLTYPE_GLYPH[colTypeAt(c)]}

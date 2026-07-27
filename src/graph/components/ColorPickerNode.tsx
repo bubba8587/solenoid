@@ -159,7 +159,7 @@ export function ColorPickerComponent({ data, emit }: NodeProps<ColorPickerNodeTy
         <MeasuredSocketRow side="output" socketKey="color" nodeId={data.id} emit={emit} payload={colorOut.socket}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, width: "100%" }}>
             <span
-              aria-label="Colour preview"
+              aria-label="Color preview"
               style={{ width: 18, height: 18, borderRadius: 5, border: "1px solid var(--border-strong)", background: swatch, flex: "0 0 auto" }}
             />
             <code style={{ flex: "1 1 auto", minWidth: 0, fontSize: 12, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{output}</code>

@@ -71,7 +71,7 @@ export function FrameChip({ value, label, size = "md", accent, onSave, source, o
     <button
       type="button"
       className={`solenoid-array-chip solenoid-array-chip--frame${size === "sm" ? " solenoid-array-chip--sm" : ""}`}
-      title={`${approx ? "≈ " : ""}${totalRows}×${cols} frame${approx ? ", extrapolated from a sketch-mode sample" : ""}. Click to ${onSave ? "edit" : "view"}.`}
+      title={`${approx ? "≈ " : ""}${totalRows}×${cols} frame${approx ? ", extrapolated from a sketch-mode sample" : ""}`}
       onClick={async (e) => {
         e.stopPropagation();
         // Header accent: an explicit prop, else the inherited node/group style

@@ -110,7 +110,7 @@ export function StatusBar() {
           <button
             type="button"
             className="solenoid-statusbar__problems"
-            title={`${problemCount} tagged error${problemCount !== 1 ? "s" : ""}. Open the Problems panel.`}
+            title={`${problemCount} tagged error${problemCount !== 1 ? "s" : ""}`}
             onClick={() => problemsPanelUi.setOpen(true)}
           >
             {problemCount} {problemCount === 1 ? "problem" : "problems"}

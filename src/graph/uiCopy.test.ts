@@ -55,16 +55,25 @@ function uiStrings(): Unit[] {
     if (leaf.label) out.push(...sentences(`catalog:${leaf.type}.label`, leaf.label));
     if (leaf.description) out.push(...sentences(`catalog:${leaf.type}.desc`, leaf.description));
   }
-  // Literal `title="…"` tooltips on the chrome. This surface is the WORST place
-  // for a narrated affordance — the tooltip fires while the pointer is already
-  // on the control — and it went unchecked until a spot-check found "Drag to
-  // move" on seven drag bars. Template-literal titles are skipped: they are
-  // composed at runtime, so there is no fixed string to judge.
+  // Chrome strings: tooltips, accessible names, field placeholders. Tooltips are
+  // the WORST surface for a narrated affordance — the tooltip fires while the
+  // pointer is already on the control — and this went unchecked until a
+  // spot-check found "Drag to move" on seven drag bars.
   for (const p of walkTsx("src/graph")) {
     const src = readFileSync(p, "utf8");
     src.split("\n").forEach((line, i) => {
-      for (const m of line.matchAll(/title="([^"]{4,})"/g)) {
-        out.push(...sentences(`${p}:${i + 1}.tooltip`, m[1]));
+      const at = `${p}:${i + 1}`;
+      for (const m of line.matchAll(/title="([^"]{4,})"/g)) out.push(...sentences(`${at}.tooltip`, m[1]));
+      for (const m of line.matchAll(/aria-label="([^"]{4,})"/g)) out.push(...sentences(`${at}.aria`, m[1]));
+      for (const m of line.matchAll(/placeholder="([^"]{4,})"/g)) out.push(...sentences(`${at}.placeholder`, m[1]));
+      // A template-literal title is composed at runtime, but its STATIC segments
+      // are fixed copy and were hiding the same narration the literal titles had
+      // ("…. Click to change the type."). Split on the ${…} holes and judge the
+      // prose between them; a segment shorter than 4 chars is punctuation glue.
+      for (const m of line.matchAll(/title=\{`([^`]*)`\}/g)) {
+        for (const seg of m[1].split(/\$\{[^}]*\}/)) {
+          if (seg.trim().length >= 4) out.push(...sentences(`${at}.tooltip`, seg.trim()));
+        }
       }
     });
   }
