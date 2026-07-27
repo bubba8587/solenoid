@@ -8,6 +8,7 @@
 
 import { CATALOG_TO_EXCEL } from "./excelToCatalog";
 import { fuzzyScore, fieldScore } from "./fuzzy";
+import { opsFor, opEntry } from "./nodeOps";
 import { SolenoidSocket, canConnect, type SocketDataType } from "./sockets";
 import type { NodeCatalogEntry, CatalogEntry, CatalogCategory, CatalogPair } from "./AddNodeMenu";
 
@@ -21,12 +22,30 @@ function isPair(e: CatalogEntry): e is CatalogPair {
 /** A leaf plus the labels of the categories it lives under (outermost first). */
 export type LeafWithContext = { leaf: NodeCatalogEntry; categoryPath: string[] };
 
-/** Flatten the catalog tree to leaves, carrying each leaf's ancestor category
- *  labels so search can match a node by the category it lives in. */
+/** Flatten the catalog tree to leaves, PLUS a row per hidden op.
+ *
+ *  A node whose ops are collapsed onto one leaf (`nodeOps.ts`) shows `{ }` in the
+ *  menu, but every one of those ops is still findable here as its own row — "Chart:
+ *  Column" — which creates the card already set to that op. Folding a family up is a
+ *  navigation decision; it must never make an operation undiscoverable.
+ *
+ *  The rows are generated at SEARCH time rather than inserted into the tree, so
+ *  nothing that walks the catalog (the parity ratchet, the copy lint, the socket
+ *  filter) starts counting them as extra nodes. */
 export function flattenLeaves(entries: CatalogEntry[], ancestors: string[] = []): LeafWithContext[] {
+  const out = flattenTree(entries, ancestors);
+  for (const { leaf, categoryPath } of [...out]) {
+    const decl = leaf.hiddenOps?.length ? opsFor(leaf.type) : undefined;
+    if (!decl) continue;
+    for (const op of leaf.hiddenOps!) out.push({ leaf: opEntry(decl, leaf, op), categoryPath });
+  }
+  return out;
+}
+
+function flattenTree(entries: CatalogEntry[], ancestors: string[] = []): LeafWithContext[] {
   const out: LeafWithContext[] = [];
   for (const e of entries) {
-    if (isCategory(e)) out.push(...flattenLeaves(e.children, [...ancestors, e.label]));
+    if (isCategory(e)) out.push(...flattenTree(e.children, [...ancestors, e.label]));
     else if (isPair(e)) out.push(...e.children.map((leaf) => ({ leaf, categoryPath: ancestors })));
     else out.push({ leaf: e, categoryPath: ancestors });
   }

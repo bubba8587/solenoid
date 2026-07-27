@@ -1,5 +1,6 @@
 import { NODE_CATALOG } from "./nodeCatalog";
 import { packPlacements, packsStore, NODE_PACK_TAGS } from "./packs";
+import { NODE_OPS, hiddenOps, exposureOf, opEntry } from "./nodeOps";
 import { CATALOG_TO_EXCEL } from "./excelToCatalog";
 import { NODE_EXCEL } from "./nodeExcel";
 import { getEditor, getArea, processGraph, unselectAllNodes, selectNode } from "./process";
@@ -147,9 +148,49 @@ export function buildCatalog(activeOnly: boolean): CatalogEntry[] {
     byType.set(leaf.type, leaf);
   }
 
+  applyNodeOps(root, byType);
+
   if (activeOnly) return filterInactive(root, (id) => packsStore.isActive(id));
   pruneEmpty(root);
   return root;
+}
+
+/** Apply the multi-op declarations (`nodeOps.ts`) to a freshly built tree.
+ *
+ *  COLLAPSED (the default) leaves the tree alone and just records which ops have no
+ *  leaf, which is what draws the `{ }` marker and what search expands into rows.
+ *  LEAVES generates the missing per-op entries as siblings of the host, so flipping
+ *  that one word in the declaration is the entire change — no catalog edit. */
+function applyNodeOps(root: CatalogEntry[], byType: Map<string, NodeCatalogEntry>): void {
+  for (const decl of NODE_OPS) {
+    const host = byType.get(decl.type);
+    if (!host) continue;
+    const hidden = hiddenOps(decl, host);
+    if (!hidden.length) continue;
+    if (exposureOf(decl) === "collapsed") {
+      host.hiddenOps = hidden;
+      // `mark: false` opts out of the glyph only — the ops stay searchable.
+      if (decl.mark === false) host.hideOpsMark = true;
+      continue;
+    }
+    // Expanded: give every hidden op its own leaf, next to the host.
+    const parent = findParent(root, host);
+    if (!parent) continue;
+    const at = parent.indexOf(host);
+    parent.splice(at + 1, 0, ...hidden.map((op) => opEntry(decl, host, op)));
+  }
+}
+
+/** The child list containing `leaf`, so a generated sibling lands beside it. */
+function findParent(entries: CatalogEntry[], leaf: NodeCatalogEntry): CatalogEntry[] | null {
+  if (entries.includes(leaf)) return entries;
+  for (const e of entries) {
+    if (e.type === "category") {
+      const hit = findParent((e as CatalogCategory).children, leaf);
+      if (hit) return hit;
+    }
+  }
+  return null;
 }
 
 // Built-in classification, derived (best-effort) from the Excel mapping: a node is
