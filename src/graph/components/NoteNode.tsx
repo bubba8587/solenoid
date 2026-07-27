@@ -320,7 +320,7 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
       className={`solenoid-note${data.selected ? " solenoid-note--selected" : ""}${collapsed ? " solenoid-note--collapsed" : ""}${fieldKeys.length ? " solenoid-note--has-fields" : ""}`}
       style={{ width: data.width, height: collapsed ? undefined : Math.max(data.height, minNoteH), ...vars }}
     >
-      <div className="solenoid-note__bar" title="Drag to move">
+      <div className="solenoid-note__bar">
         <button
           type="button"
           className="solenoid-note__chevron"
@@ -462,7 +462,6 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
       {!collapsed && (
         <div
           className="solenoid-note__resize"
-          title="Drag to resize"
           onPointerDown={onResizeDown}
           onMouseDown={(e) => e.stopPropagation()}
         >

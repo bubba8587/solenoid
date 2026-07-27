@@ -26,7 +26,7 @@ export function ChartChip({ value, label, pinNodeId, size = "sm" }: {
     <button
       type="button"
       className={`solenoid-array-chip solenoid-array-chip--chart${size === "sm" ? " solenoid-array-chip--sm" : ""}`}
-      title="Chart. Click to view."
+      title="Chart"
       onPointerDown={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => {

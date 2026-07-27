@@ -176,7 +176,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
       className={`solenoid-note${data.selected ? " solenoid-note--selected" : ""}${collapsed ? " solenoid-note--collapsed" : ""}${fieldKeys.length ? " solenoid-note--has-fields" : ""}`}
       style={{ width: data.width, height: collapsed ? undefined : Math.max(data.height, minH), ...vars }}
     >
-      <div className="solenoid-note__bar" title="Drag to move">
+      <div className="solenoid-note__bar">
         <button
           type="button"
           className="solenoid-note__chevron"
@@ -337,7 +337,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
       )}
 
       {!collapsed && (
-        <div className="solenoid-note__resize" title="Drag to resize" onPointerDown={onResizeDown} onMouseDown={(e) => e.stopPropagation()}>
+        <div className="solenoid-note__resize" onPointerDown={onResizeDown} onMouseDown={(e) => e.stopPropagation()}>
           <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
             <path d="M11 5 5 11M11 9l-2 2" />
           </svg>

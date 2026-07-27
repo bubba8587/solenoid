@@ -74,7 +74,7 @@ export function PresentationComponent({ data }: NodeProps<PresentationNodeType>)
 
   return (
     <div className={`solenoid-pres${data.selected ? " solenoid-pres--selected" : ""}`} style={{ width: data.width, ...vars }}>
-      <div className="solenoid-pres__bar" title="Drag to move">
+      <div className="solenoid-pres__bar">
         {editingLabel ? (
           <input
             className="solenoid-pres__name"
@@ -163,7 +163,7 @@ export function PresentationComponent({ data }: NodeProps<PresentationNodeType>)
           className="solenoid-pres__present"
           onClick={() => presentationStore.start(data.id)}
           disabled={data.steps.length === 0}
-          title="Present full screen. Click, Space, or → advances; Esc exits."
+          title="Present full screen. Space or → advances; Esc exits."
         >
           ▶ Present
         </button>

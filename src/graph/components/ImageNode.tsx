@@ -106,7 +106,7 @@ export function ImageComponent({ data, emit }: NodeProps<ImageNodeType>) {
       className={`solenoid-image${data.selected ? " solenoid-image--selected" : ""}${collapsed ? " solenoid-image--collapsed" : ""}`}
       style={{ width: data.width }}
     >
-      <div className="solenoid-image__bar" title="Drag to move">
+      <div className="solenoid-image__bar">
         <button
           type="button"
           className="solenoid-image__chevron"

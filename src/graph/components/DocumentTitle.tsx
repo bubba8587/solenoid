@@ -95,7 +95,6 @@ export function DocumentTitle() {
         <button
           type="button"
           className="solenoid-doctitle__name"
-          title="Click to rename"
           onClick={() => setRenaming(true)}
         >
           {name}

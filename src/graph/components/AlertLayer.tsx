@@ -82,7 +82,7 @@ export function AlertLayer() {
       className="solenoid-alert"
       style={{ ["--alert-color" as string]: KIND_COLOR[ev.kind] }}
       onClick={() => flyToNode(ev.nodeId)}
-      title="Click to go to this alert"
+      title="Go to this alert"
     >
       <span className="solenoid-alert__msg"><span className="solenoid-alert__title">{title}</span>{rest}</span>
       <button
