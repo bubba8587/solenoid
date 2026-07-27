@@ -189,25 +189,28 @@ nothing to list) and deliberate for the DATA pickers, where a search row per val
 would bury the menu it was meant to help. It does leave the ~30 collapsed families
 without search rows — backlogged with the exact list.
 
-**The test got sharper mid-pass, and it re-cut the line.** The first framing was "is
-the variant a thing you would search the Add menu for", which put the distributions'
-cdf/pdf on the argument side because Excel models it as a `cumulative` FLAG. The author
-replaced it with a DATAFLOW question, which is a better fit for this app:
+**Classifying is a JUDGEMENT with several partial signals — no single test.** I got this
+wrong twice in one session, in the same way both times: took whichever criterion the
+author had most recently articulated and promoted it to a decision procedure. First
+"would you search the Add menu for it", which put the distributions' cdf/pdf on the
+argument side because Excel models it as a `cumulative` flag; then the sharper dataflow
+question ("could this be the RESULT of a chain, or does the user always pick it?"),
+which I applied mechanically to flip eighteen families at once. Author: *"all the
+criteria are partial rules… you can use your judgement based on the rules."*
 
->  Could this be the RESULT of something in a chain, or is it something the user is
->  basically always picking by hand?
+The signals now recorded in `nodeOps.ts`, none decisive: would the user pick it or could
+it arrive computed; would they search for it by name; is it meaningless without its
+host; is it already an Excel function. They mostly agree — the interesting families are
+where they don't. An ELEMENT symbol is both picked by hand and searchable, yet it is
+plainly data that can come from a column and a row per element would bury the menu, so
+it stays an argument. A RESISTOR band count is never computed, yet "4-band decode" isn't
+a different operation from "5-band", so it stays an argument too.
 
-Picked-by-hand = part of what the node IS = OPERATION. Could-arrive-computed = ARGUMENT.
-Nobody computes whether they want a density or a cumulative distribution, so those are
-operations regardless of how Excel spells them; but a GroupBy aggregator, an element
-symbol or a pipe material can each plausibly arrive from a lookup or a column.
-
-That flipped 18 families to operation (the 13 cdf/pdf distributions, plus ESeries,
-ResistorCode, PhysicsConstant, Fill's strategy and Head's first/last/skip/range). Final:
-**91 operation / 7 argument** — the survivors being the aggregator-for-a-host-verb four
-(GroupBy, GroupByFrame, Pivot, CubeRollup) and the three genuinely data-driven pickers
-(Element, Antoine substance, PipeRoughness material). The old search-by-name framing is
-kept in the module note as a corroborator, not the rule.
+**Final: 90 operation / 8 argument.** Arguments are the aggregator a host verb runs
+(GroupBy, GroupByFrame, Pivot, CubeRollup) and the data-driven pickers (element symbol,
+Antoine substance, pipe material, resistor band count). The distribution forms, chart
+types, E-series and physics constants are operations: picked, never computed, and
+searched for by name.
 
 **Edge tuned to 2px** at an 85% accent mix, paid for out of the padding (1px border with
 4px/8px becomes 2px with 3px/7px) so an operation selector occupies exactly the same box
