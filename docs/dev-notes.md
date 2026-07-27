@@ -173,6 +173,41 @@ RANGE_FUNCTIONS (as the plan said) is what exposed this — the two changes belo
 pack-registered name would advertise while its pack is disabled. Nothing shipped here depends on
 it. Tier 3 and Tier 4 unchanged; gap A's remaining 19 are D2-capped and ride on the Tier 4 call.
 
+### Op-selector kind, made visible (2026-07-27b)
+
+An op dropdown either picks between distinct OPERATIONS or sets an ARGUMENT of one
+operation (`kind` in `nodeOps.ts`). Author wanted that visible.
+
+**Tried an accent FILL first; author called it back — "DESIGN.md was right, these
+accents are actually too much."** Landed on an accent EDGE over the normal neutral
+field instead. Worth keeping as a data point: the fill objection DESIGN.md states
+("the accent should never carry large fills") held up on a real screen, not just on
+paper.
+
+**The conflict the edge had to dodge:** a full-strength accent border already means
+FOCUS on this exact control (`.solenoid-node__op-select:focus`). A resting accent
+border would have made focus invisible. Resolved by INTENSITY, not a second hue —
+resting takes the accent mixed 62% toward `--border`, focus keeps the pure accent.
+Width stays 1px, so nothing reflows and the control keeps its footprint (the author
+offered padding compensation; it turned out not to be needed).
+
+**The tagging seam:** `NodeCard` stamps `data-op-kind` on the card root, so one CSS
+rule covers every op selector instead of sixty components threading a prop. Resolved
+by `instanceof`, not a constructor-NAME match — the latter works in dev and breaks
+silently under minification. The attribute is ABSENT (not `"argument"`) for a family
+not yet declared, so an undeclared node can't assert something false about itself.
+
+**Inks got baked while the fill was live, and the baking stayed** (it's what the value
+popups already needed): `contrastInk` is now cached, with every palette slot baked for
+BOTH themes on each recompute — `themeAccent` darkens in light mode, so a slot near the
+0.62 luminance threshold lands on opposite sides in the two themes.
+
+**The kind test, sharpened by the author:** *is the variant a distinct thing you would
+search the Add menu for?* "Column chart" and "Sankey" are, so Chart selects OPERATIONS
+despite storing the value as a mode. GroupBy's "avg" is not. **How the value is stored
+does not decide this; how a user looks for it does.** 17 operation / 3 argument so far;
+78 of 98 families still undeclared.
+
 ### Multi-op nodes: the `{ }` marker + the exposure flag (2026-07-27b)
 
 Author direction: a dropdown on a card is a NAVIGATION convenience for closely-related
