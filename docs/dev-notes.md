@@ -209,6 +209,42 @@ it), an unknown upstream shape (CSV / Web Source), a `dynamic` shape (a pivot's 
 columns SHIFT the ones after them, so a positional index into the known prefix is not
 trustworthy), an out-of-range index, or a cube cell (heterogeneous *within* a column).
 
+**Two accents, and the nearest one wins** (author: "the header accent and app accents really
+don't mix well"). A node card and a value popup both carry `--node-accent` on their header; the
+app accent is the user's theme pick. Wherever they met on one surface — a Save button, a focus
+ring, a drop target — the app accent was winning by default and reading as a mistake. Everything
+inside an accent-bearing surface now resolves `var(--node-accent, var(--accent))`, which also
+means app-level chrome (command palette, Settings, Navigator, the accentless dialogs) needs no
+special-casing: no host node, so the fallback already gives it the app accent. Recorded in
+DESIGN.md as the **Nearest-Accent Rule**.
+The blocker was INK, not hue: `--accent-ink` is computed once from the app accent (appTheme), so
+filling a button with a node accent gave it text picked for a different colour — dark ink on
+Frame Violet. `popupCardVars` (PopupShell) derives `--node-accent-ink` alongside the accent and
+every popup routes through it, so the pair can't drift; a hardcoded `#fff` on the Pivot Done
+button went with it. Deliberately left app-accent: the comment badge (a fixed colour is what
+makes commented nodes findable — tinting it per node camouflages it against its own card) and
+Note markdown links (content, not chrome).
+
+**Visual-only column sort in the value popups** (`columnSort.tsx`, shared by TablePopup and
+CubePopup). A view control, not a transform: it reorders rendered rows and touches nothing else,
+so Copy / CSV / Save / the node's value are byte-identical and the graph never recomputes — the
+real sorts are the Sort / Sort Frame verbs. Click a header chevron to cycle asc → desc → none.
+Three things that are load-bearing, not incidental:
+- **`sortedOrder` returns SOURCE row indices**, so the body maps `order.map((srcRow) => …)` and
+  hands `srcRow` to every edit, draft and row number. That is the whole reason the editable
+  frame/matrix grids stay correct under a sort — you type into the row you're looking at. Row
+  numbers stay the row's real position (a filtered spreadsheet doesn't renumber either).
+- **The sort key comes from the RAW grid, never the rendered text.** A date column displays as
+  `20-Mar-2026` but is stored as a serial; sorting the string would order it alphabetically.
+- **Reset is keyed on which grid is on screen** (the popup state; a cube's drill level), applied
+  during render rather than in an effect — an effect renders the new grid once in the old grid's
+  order first. A column index means nothing across two different tables.
+A list in Column mode had no header row at all; it now gets one labelled `A`, matching what Row
+mode already labels its columns (author offered "list" or "A"). The chevron is absolutely
+positioned on the header's right edge so it adds nothing to column width, on a translucent scrim
+so it stays legible over a long name — black in dark theme as authored, flipped to white in
+light theme, where a dark chip with a dark glyph is the same collision.
+
 **The other half — a socket type can now be derived from static CONFIG, not just wiring.** That
 was a new class of trigger: every derived-type settle hung off a connection event, and a literal
 edit fires none. Three literal-commit paths now call `reconcileTypesAfterEdit` (fcReconcile):

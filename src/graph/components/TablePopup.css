@@ -178,6 +178,54 @@
 }
 .table-popup__coltype:hover { border-color: var(--node-accent, var(--accent)); }
 
+/* ── Visual-only column sort (columnSort.tsx) ─────────────────────────────────
+   The chevron is OVERLAID on the header's right edge, absolutely positioned, so it
+   contributes nothing to layout — the header cell is what sizes a column here, and
+   an in-flow button would widen every column by its own width. The header <th> is
+   already `position: sticky` (a positioned element), so it's the containing block;
+   don't add `position: relative` — it would lose the specificity fight with the
+   sticky rule anyway.
+
+   The pad behind it is a scrim, not decoration: the chevron can land on top of a
+   long column name, and without it the two glyph sets tangle. Translucent black in
+   dark theme as authored; light theme flips it to translucent white, since a dark
+   chip carrying a dark glyph on a near-white header is the same collision. */
+.table-popup__sort {
+  position: absolute;
+  right: 1px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.45);
+  color: var(--text-dim);
+  cursor: pointer;
+  opacity: 0.5;
+  z-index: 1;
+}
+:root[data-theme="light"] .table-popup__sort { background: rgba(255, 255, 255, 0.72); }
+.table-popup__sort:hover { opacity: 1; color: var(--text); }
+/* An active sort is STATE, so it earns color (the Quiet Accent Rule) — the surface's
+   own accent, like every other tinted thing in the popup. */
+.table-popup__sort--on {
+  opacity: 1;
+  color: var(--node-accent, var(--accent));
+}
+/* Reserve room on the right so a full-width name input doesn't run under the chevron
+   while you type. Only the cells that actually carry one. */
+.table-popup__colhead--sortable { padding-right: 18px; }
+
+@media (pointer: coarse) {
+  .table-popup__sort { width: 20px; height: 20px; }
+  .table-popup__colhead--sortable { padding-right: 24px; }
+}
+
 /* ── Format-Controller controls row (read-only frames / matrices) ────────────
    A row of Format Controller dropdowns between the header and the body: a frame
    stacks format-over-unit per column; a matrix shows one pair side by side. The

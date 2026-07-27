@@ -139,6 +139,8 @@ A small reserved set for failure and state feedback, kept apart from the typed s
 ### Named Rules
 **The Quiet Accent Rule.** The accent and the saturated socket hues carry meaning, never decoration. Color appears on a socket, a cable, a focus ring, or a selection glow. It never fills a panel, a button background, or a section header for visual interest. If a surface is colored, it is colored because something about its state or type is being communicated.
 
+**The Nearest-Accent Rule.** There are two accents in play — the app's (`--accent`, the user's theme pick) and the surface's (`--node-accent`, the type color tinting a node card's or a value popup's header). Inside a surface that carries its own accent, the surface's wins: its focus rings, drop targets, active states and filled actions all resolve `var(--node-accent, var(--accent))`, so the fallback hands app-level chrome — the command palette, Settings, the Navigator, the accentless dialogs — the app accent untouched. An app-accent ring inside an accent-tinted card puts two unrelated hues on one small surface and reads as a mistake. An accent FILL additionally needs its ink from the matching pair (`--node-accent-ink`, derived per surface); `--accent-ink` is computed for the app accent's hue and goes unreadable on any other.
+
 **The Sibling Rule.** Array and matrix socket colors are never free choices. A list is a darker, desaturated shade of its scalar; a table/matrix is a punchier, deeper, slightly hue-shifted shade. Introduce a new typed color only as a systematic sibling, never an arbitrary new hue.
 
 ## 3. Typography
@@ -180,6 +182,7 @@ The system is flat at rest and uses elevation only to communicate state. Cards s
 - **Shape:** Two families. Round icon buttons (28px, `border-radius: 50%`) for canvas tools, and pills (`border-radius: 999px`) for grouped toolbar controls and segmented controls.
 - **Default:** Sunken background (`--surface-sunken`), 1px neutral border (`--border`), body-color icon/text. Quiet and recessive.
 - **Hover / Active:** Background lifts to `--btn-hover`, border steps to `--border-strong`. No color injection; the button stays neutral.
+- **Confirming action** (one per dialog at most — Save, Done): the exception to the neutral rule. Filled with its surface's accent and its matching ink, so the button that commits a change reads as belonging to the thing being changed. Every other button in the same dialog stays neutral; two filled buttons in one footer is the misuse.
 
 ### Inputs / Fields
 - **Style:** Sunken background (`--surface-sunken`), 1px border (`--border`), 4px radius. Value text in the mono face. Reads as a familiar input box, especially in light theme where the field is the brightest (white) layer.
