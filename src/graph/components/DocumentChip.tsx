@@ -3,6 +3,7 @@ import { reportStore } from "../reportStore";
 import { flyToNode } from "../flyToNode";
 import { ReportNode } from "../nodes/report";
 import type { DocumentValue } from "../documentValue";
+import { stopDragStart } from "../coarse";
 
 /**
  * The compact "[Document]" chip — a DocumentValue's stand-in in a value box
@@ -23,7 +24,7 @@ export function DocumentChip({ value, size = "md" }: { value: DocumentValue; siz
       className={`solenoid-array-chip solenoid-array-chip--document${size === "sm" ? " solenoid-array-chip--sm" : ""}`}
       title={!open ? "Document" : isReport ? "Document. Click to open the report." : "Document. Click to go to its note."}
       disabled={!open}
-      onPointerDown={(e) => e.stopPropagation()}
+      onPointerDown={stopDragStart}
       onMouseDown={(e) => e.stopPropagation()}
       onClick={open ? (e) => { e.stopPropagation(); open(); } : undefined}
     >

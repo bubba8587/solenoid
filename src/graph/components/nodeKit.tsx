@@ -25,7 +25,7 @@ import { formatScalar } from "./format";
 import { ArrayChip } from "./ArrayChip";
 import { formatAnnotationStore, formatNumberWithAnnotation, applyTextCase, applyLogicalStyle, annotationRendersNegativeRed } from "../formatAnnotationStore";
 import { nodeOutputElemFamily, dateFormatDisplay, shouldRenderListInline, formatListCell, unwrapUnitCells, type DisplayValue } from "./valueDisplayFormat";
-import { IS_COARSE } from "../coarse";
+import { IS_COARSE, stopDragStart } from "../coarse";
 import { NodeFormatContext } from "./nodeContext";
 import { describeValueKind } from "../valueKindLabel";
 import { valueChipFor } from "./ValueChip";
@@ -290,7 +290,7 @@ function CommentIndicator({ nodeId }: { nodeId: string }) {
       className={`solenoid-node__comment-badge${unresolved ? "" : " solenoid-node__comment-badge--resolved"}`}
       title={`${commentStore.forNode(nodeId).length} comment${commentStore.forNode(nodeId).length === 1 ? "" : "s"}. Open.`}
       onClick={(e) => { e.stopPropagation(); commentsPanelUi.openFor(nodeId); }}
-      onPointerDown={(e) => e.stopPropagation()}
+      onPointerDown={stopDragStart}
       onMouseDown={(e) => e.stopPropagation()}
     >
       <CommentDot />
@@ -739,7 +739,7 @@ export function ValueDisplay({
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      onPointerDown={(e) => e.stopPropagation()}
+      onPointerDown={stopDragStart}
       onMouseDown={(e) => e.stopPropagation()}
     >
       {isEmpty ? empty
@@ -788,7 +788,7 @@ export function ValueDisplay({
       {!isEmpty && (
         <button
           onClick={handleCopy}
-          onPointerDown={(e) => e.stopPropagation()}
+          onPointerDown={stopDragStart}
           onMouseDown={(e) => e.stopPropagation()}
           title={copied ? "Copied!" : "Copy value"}
           style={{

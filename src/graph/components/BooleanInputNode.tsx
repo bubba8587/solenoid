@@ -1,6 +1,7 @@
 import type { BooleanInputNode as BooleanInputNodeType } from "../rete-nodes";
 import { processGraph } from "../process";
 import { NodeShell, type NodeProps } from "./nodeKit";
+import { stopDragStart } from "../coarse";
 
 export function BooleanInputComponent({ data, emit }: NodeProps<BooleanInputNodeType>) {
   async function onToggle() {
@@ -12,7 +13,7 @@ export function BooleanInputComponent({ data, emit }: NodeProps<BooleanInputNode
     <NodeShell node={data} emit={emit} labelPlaceholder="Boolean">
       <label
         style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "2px 0" }}
-        onPointerDown={(e) => e.stopPropagation()}
+        onPointerDown={stopDragStart}
         onMouseDown={(e) => e.stopPropagation()}
       >
         <input

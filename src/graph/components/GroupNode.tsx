@@ -25,6 +25,7 @@ import { formatScalar } from "./format";
 import { NodeSocket } from "./NodeSocket";
 import type { NodeProps } from "./nodeKit";
 import "./GroupNode.css";
+import { stopDragStart } from "../coarse";
 
 // Format a readout value, honoring an FC annotation keyed by `annNodeId`.
 function formatReadout(v: unknown, annNodeId: string): string {
@@ -301,7 +302,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
           className="solenoid-group__chevron"
           title={collapsed ? "Expand group" : "Collapse group"}
           onClick={toggleCollapse}
-          onPointerDown={(e) => e.stopPropagation()}
+          onPointerDown={stopDragStart}
           onMouseDown={(e) => e.stopPropagation()}
         >
           <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
@@ -330,7 +331,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
             style={{ color: ink }}
             title={label}
             onClick={() => setEditingLabel(true)}
-            onPointerDown={(e) => e.stopPropagation()}
+            onPointerDown={stopDragStart}
             onMouseDown={(e) => e.stopPropagation()}
           >
             {label || "Group"}

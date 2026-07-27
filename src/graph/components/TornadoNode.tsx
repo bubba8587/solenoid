@@ -6,6 +6,7 @@ import { useChartColors, TornadoBars } from "./chartView";
 import { collapseStore } from "../collapseStore";
 import { runTornado } from "../tornadoRun";
 import { processGraph } from "../process";
+import { stopDragStart } from "../coarse";
 
 // The watched value only makes sense wired (Tornado perturbs UPSTREAM of it) —
 // no literal field.
@@ -64,7 +65,7 @@ export function TornadoComponent({ data, emit }: NodeProps<TornadoNodeType>) {
             disabled={busy}
             style={{ width: "100%", cursor: busy ? "default" : "pointer", textAlign: "center", opacity: busy ? 0.6 : 1 }}
             onClick={onRun}
-            onPointerDown={(e) => e.stopPropagation()}
+            onPointerDown={stopDragStart}
             onMouseDown={(e) => e.stopPropagation()}
           >
             {busy ? "Running…" : "Run sensitivity"}

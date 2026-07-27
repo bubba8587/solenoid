@@ -9,6 +9,7 @@ import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from 
 import { MeasuredSocketRow } from "./NodeSocket";
 import { pushRowAddUndo, pushRowRemovalUndo } from "./ExtensibleInputs";
 import { FILTER_OP_OPTIONS, TEXT_MATCH_OPS, VALUELESS_OPS } from "./FrameNodes";
+import { stopDragStart } from "../coarse";
 
 const OPS = (Object.keys(COND_AGG_OP_META) as CondAggOp[]).map((op) => ({
   value: op,
@@ -114,7 +115,7 @@ export function SumIfsComponent({ data, emit }: NodeProps<SumIfsNodeType>) {
                   title="Match case. Off matches text like Excel's = does."
                   aria-pressed={c.matchCase ?? false}
                   onClick={(e) => { e.stopPropagation(); updateCfg(id, { matchCase: !c.matchCase }); }}
-                  onPointerDown={(e) => e.stopPropagation()}
+                  onPointerDown={stopDragStart}
                   onMouseDown={(e) => e.stopPropagation()}
                   style={{
                     flexShrink: 0, fontSize: 11, lineHeight: 1, padding: "3px 5px",

@@ -3,6 +3,7 @@ import { cubeRowCount, cubeDepth, type CubeValue } from "../frame";
 import { useHostNodeId } from "./nodeContext";
 import { readChipPopupStyle } from "./chipStyle";
 import "./ArrayChip.css";
+import { stopDragStart } from "../coarse";
 
 /**
  * A clickable chip for a Cube value — `[R×C Cube · dN]` — that opens the cube
@@ -43,7 +44,7 @@ export function CubeChip({ value, label, size = "md", accent, pinNodeId }: {
           },
         );
       }}
-      onPointerDown={(e) => e.stopPropagation()}
+      onPointerDown={stopDragStart}
       onMouseDown={(e) => e.stopPropagation()}
     >
       [{rows}×{cols}×{depth} Cube]

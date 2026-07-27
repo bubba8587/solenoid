@@ -3,6 +3,7 @@ import { useKatexRender } from "./katexLoader";
 import { formulaToLatex } from "../excelFormula";
 import { useFormulaFit } from "./formulaFit";
 import "./ExpressionNode.css";
+import { stopDragStart } from "../coarse";
 
 interface FormulaFieldProps {
   /** Current formula text. */
@@ -112,7 +113,7 @@ export function FormulaField({
             ref={renderRef}
             className="solenoid-expr__rendered"
             title={onOpen ? (locked ? `${LOCK_TITLE} Click to view.` : "Click to open the formula") : locked ? LOCK_TITLE : disabled ? disabledTitle : "Click to edit"}
-            onPointerDown={(e) => e.stopPropagation()}
+            onPointerDown={stopDragStart}
             onMouseDown={(e) => e.stopPropagation()}
             onClick={onOpen ? () => onOpen() : editable ? () => setEditing(true) : undefined}
             style={onOpen ? { cursor: "pointer" } : locked ? { cursor: "default" } : undefined}
@@ -134,7 +135,7 @@ export function FormulaField({
             type="button"
             className="solenoid-expr__expand"
             title="Open the formula"
-            onPointerDown={(e) => e.stopPropagation()}
+            onPointerDown={stopDragStart}
             onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); onOpen(); }}
           >

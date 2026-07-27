@@ -12,6 +12,7 @@ import { ArrayChip } from "./ArrayChip";
 import { pushRowAddUndo, pushRowRemovalUndo } from "./ExtensibleInputs";
 import { FILTER_OP_OPTIONS_WITH_ERROR, TEXT_MATCH_OPS, VALUELESS_OPS, FILTER_COMBINE_OPTIONS } from "./FrameNodes";
 import type { DisplayValue } from "./valueDisplayFormat";
+import { stopDragStart } from "../coarse";
 
 // The 1-D Filter card (D16): the frame Filter's condition rows minus the
 // column picker — a list has no lanes, so each row is just op + value (+ Match
@@ -81,7 +82,7 @@ export function FilterComponent({ data, emit }: NodeProps<FilterNodeType>) {
                   title="Match case. Off matches text like Excel's = does."
                   aria-pressed={c.matchCase ?? false}
                   onClick={(e) => { e.stopPropagation(); updateCfg(id, { matchCase: !c.matchCase }); }}
-                  onPointerDown={(e) => e.stopPropagation()}
+                  onPointerDown={stopDragStart}
                   onMouseDown={(e) => e.stopPropagation()}
                   style={{
                     flexShrink: 0, fontSize: 11, lineHeight: 1, padding: "3px 5px",

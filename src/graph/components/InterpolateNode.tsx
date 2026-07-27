@@ -9,6 +9,7 @@ import { ResultDisplay } from "./ResultDisplay";
 import { TableDisplay } from "./TableDisplay";
 import { SegToggle } from "./SegToggle";
 import { isSolError, type SolError } from "../errorValue";
+import { stopDragStart } from "../coarse";
 
 const MODE_OPTIONS = (Object.keys(INTERPOLATE_MODE_META) as InterpolateMode[]).map((m) => ({
   value: m,
@@ -60,7 +61,7 @@ export function InterpolateComponent({ data, emit }: NodeProps<InterpolateNodeTy
           <label
             style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "var(--text)", marginTop: 2, cursor: "pointer" }}
             title="Fill EVERY remaining blank with a smooth surface (thin-plate spline) fitted through all the known points — the scattered gaps and beyond the data too, not just the bilinear-enclosed interior"
-            onPointerDown={(e) => e.stopPropagation()}
+            onPointerDown={stopDragStart}
             onMouseDown={(e) => e.stopPropagation()}
           >
             <input

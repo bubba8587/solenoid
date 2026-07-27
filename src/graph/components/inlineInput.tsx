@@ -10,6 +10,7 @@ import { nodeName } from "../catalogUtils";
 import { collapseStore } from "../collapseStore";
 import { NodeSocket, MeasuredSocketRow } from "./NodeSocket";
 import { CollapsedInputPill } from "./CollapsedInputPill";
+import { stopDragStart } from "../coarse";
 
 // Vertical pitch between input rows. Socket *placement* no longer uses a fixed
 // top offset — each input dot centers on its own row via CSS (.solenoid-node__io-row
@@ -298,7 +299,7 @@ function QuotedInlineInput({ value, onChange, autoFocus, placeholder }: { value:
           onChange={(e) => field.setDraft(e.target.value)}
           onBlur={field.onBlur}
           onKeyDown={field.onKeyDown}
-          onPointerDown={(e) => e.stopPropagation()}
+          onPointerDown={stopDragStart}
           onMouseDown={(e) => e.stopPropagation()}
           spellCheck={false}
           autoFocus={autoFocus}
@@ -406,7 +407,7 @@ export function InlineCsvField({
       onChange={(e: ChangeEvent<HTMLInputElement>) => field.setDraft(e.target.value)}
       onBlur={field.onBlur}
       onKeyDown={field.onKeyDown}
-      onPointerDown={(e) => e.stopPropagation()}
+      onPointerDown={stopDragStart}
       onMouseDown={(e) => e.stopPropagation()}
       spellCheck={false}
     />

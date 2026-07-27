@@ -8,6 +8,7 @@ import { makeNodeComponent } from "./standardNode";
 import { elementPicker } from "../elementPickerStore";
 import { getActiveArea } from "../activeGraph";
 import { processGraph } from "../process";
+import { stopDragStart } from "../coarse";
 
 // The Element card: one button showing the pick (`26 · Fe — Iron`) that opens
 // the picker popup (search + clickable periodic table) — 118 entries outgrew a
@@ -31,7 +32,7 @@ export function ElementComponent({ data, emit }: NodeProps<ElementNodeType>) {
         type="button"
         className="solenoid-node__op-select el-picker__open"
         onClick={(e) => { e.stopPropagation(); openPicker(); }}
-        onPointerDown={(e) => e.stopPropagation()}
+        onPointerDown={stopDragStart}
         onMouseDown={(e) => e.stopPropagation()}
         title="Search or pick from the periodic table"
       >

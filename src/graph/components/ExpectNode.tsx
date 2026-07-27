@@ -8,6 +8,7 @@ import { processGraph } from "../process";
 import { solError } from "../errorValue";
 import { ErrorChip } from "./ErrorChip";
 import type { DisplayValue } from "./valueDisplayFormat";
+import { stopDragStart } from "../coarse";
 
 type CheckKey = "checkNotNull" | "checkUnique" | "checkRange" | "checkRegex" | "checkAllowed";
 
@@ -15,7 +16,7 @@ function CheckRow({ label, checked, onChange }: { label: string; checked: boolea
   return (
     <label
       style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, padding: "1px 0", cursor: "pointer" }}
-      onPointerDown={(e) => e.stopPropagation()}
+      onPointerDown={stopDragStart}
       onMouseDown={(e) => e.stopPropagation()}
     >
       <input

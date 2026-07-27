@@ -18,6 +18,7 @@ import { FrameDisplay } from "./FrameDisplay";
 import { LazySelect } from "./LazySelect";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import "./ConnectionNodes.css";
+import { stopDragStart } from "../coarse";
 
 // Status line shown under a connection node's reference field: a colored dot +
 // a short summary (or the error). Reads the shared connectionStore.
@@ -62,7 +63,7 @@ function RefreshIntervalField({ minutes, onCommit }: { minutes: number; onCommit
         onChange={(e) => setVal(e.target.value)}
         onBlur={commit}
         onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-        onPointerDown={(e) => e.stopPropagation()}
+        onPointerDown={stopDragStart}
         onMouseDown={(e) => e.stopPropagation()}
       />
     </label>
@@ -84,7 +85,7 @@ function ConnectionStatusRow({ nodeId, onRefresh }: { nodeId: string; onRefresh:
         title="Refresh this connection"
         disabled={s.status === "loading"}
         onClick={(e) => { e.stopPropagation(); onRefresh(); }}
-        onPointerDown={(e) => e.stopPropagation()}
+        onPointerDown={stopDragStart}
         onMouseDown={(e) => e.stopPropagation()}
       >
         {/* Lucide "refresh-cw" (ISC) — an icon, not a font glyph. */}
@@ -128,7 +129,7 @@ export function WebSourceComponent({ data, emit }: NodeProps<WebSourceNodeType>)
           onChange={(e) => setUrl(e.target.value)}
           onBlur={commit}
           onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-          onPointerDown={(e) => e.stopPropagation()}
+          onPointerDown={stopDragStart}
           onMouseDown={(e) => e.stopPropagation()}
         />
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
@@ -168,7 +169,7 @@ export function ImportHtmlComponent({ data, emit }: NodeProps<ImportHtmlNodeType
           onChange={(e) => setUrl(e.target.value)}
           onBlur={commit}
           onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-          onPointerDown={(e) => e.stopPropagation()}
+          onPointerDown={stopDragStart}
           onMouseDown={(e) => e.stopPropagation()}
         />
         <label className="sol-conn__field">
@@ -181,7 +182,7 @@ export function ImportHtmlComponent({ data, emit }: NodeProps<ImportHtmlNodeType
             onChange={(e) => setIdx(e.target.value)}
             onBlur={commit}
             onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-            onPointerDown={(e) => e.stopPropagation()}
+            onPointerDown={stopDragStart}
             onMouseDown={(e) => e.stopPropagation()}
           />
         </label>
@@ -221,7 +222,7 @@ export function ImportXmlComponent({ data, emit }: NodeProps<ImportXmlNodeType>)
           onChange={(e) => setUrl(e.target.value)}
           onBlur={commit}
           onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-          onPointerDown={(e) => e.stopPropagation()}
+          onPointerDown={stopDragStart}
           onMouseDown={(e) => e.stopPropagation()}
         />
         <input
@@ -233,7 +234,7 @@ export function ImportXmlComponent({ data, emit }: NodeProps<ImportXmlNodeType>)
           onChange={(e) => setQuery(e.target.value)}
           onBlur={commit}
           onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-          onPointerDown={(e) => e.stopPropagation()}
+          onPointerDown={stopDragStart}
           onMouseDown={(e) => e.stopPropagation()}
         />
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />

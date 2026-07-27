@@ -122,6 +122,49 @@ app-wide, but touches feel of zoom).
 
 ### SESSION DIGEST (2026-07-27 — socket shades onto one HSV axis; the copy rules got teeth)
 
+**Pinch-zoom died over most of a node card, and had for a long time.** Root cause, read out of
+`rete-area-plugin`'s `zoom.ts` rather than guessed: stock `Zoom` counts fingers from a
+**bubble-phase** `pointerdown` on the container, and `Zoom.move` is a `.map` over pointers it
+already holds — never an upsert. So a finger swallowed anywhere below the container is invisible
+to the zoom handler for the WHOLE gesture, with no recovery: two fingers, one counted, no zoom.
+That made all ~180 `onPointerDown={(e) => e.stopPropagation()}` sites pinch-blockers, which is
+why the bug read as random — whether pinch worked depended on which pixel finger 1 landed on.
+Worst surfaces: FC (21 sites), the connection nodes (9), every inline field.
+
+This was diagnosed **once before**, on 2026-07-04, and fixed only for the lasso; the general class
+survived because that fix was per-call-site. Fixed positionally this time — `CappedZoom` re-seats
+the count into **capture phase**, so no call site can break a pinch and none has to remember not
+to. The bubble half is kept on purpose: pan/node-drag stay vetoable, so a control that wants the
+pointer still suppresses them. **Pinch = capture, pan = bubble** is now the stated invariant
+(`subsystem-invariants.md`). Two traps in the override: registering capture *without* removing the
+bubble one double-pushes every contact (`isTranslating()` true on ONE finger), and stock `destroy`
+removes without the capture flag, so it leaks the listener on every drill-in open/close.
+
+**`pointerGesture.ts` (new)** — a window-capture module singleton, the one answer to "what gesture
+is in flight", readable by rete's Zoom instance, the Canvas pipe and the lasso without threading a
+ref. `isPinching()` = **≥2 touch, no pen**, and everything now reads that instead of counting raw
+pointers. Raw `≥2` was wrong in both directions: it fires on stylus+palm (zooming out from under a
+drawing hand) and would freeze a legit pen drag the moment a palm landed. Palm rejection is
+forward-only by design — a palm landing before the pen tip can't be un-registered, so the pen
+CANCELS what it started (`onPenDown` → the lasso bails). Also: pen barrel/eraser no longer grabs a
+node drag. 14 tests, incl. the phase assertions (a bubble regression fails loudly).
+
+**Tablet** needed nothing beyond the capture fix, and that's the finding: `IS_MOBILE` is false
+there (iPadOS ships a desktop UA), so a tablet runs the desktop model — nodes aren't
+drag-transparent, and two-finger pan is its canvas gesture. Before this it could only pan over
+empty canvas. `stopDragStart`'s `!IS_MOBILE` gate is therefore correct as written, not a gap.
+
+**Sweep: 60 raw sites → `stopDragStart`** across 35 node-card files. Now purely about the
+ONE-finger question (pan vs. element) — pinch is safe regardless. Deliberately NOT swept: chrome
+outside the rete container (can't affect a canvas gesture), drag-interactive controls, `<textarea>`
+(owns its scroll/selection), and native-popup controls. That last group I first reverted on the
+strength of CLAUDE.md's OS-dropdown rule, then checked: **that rule is widely cited but has no
+recorded originating incident**, and the mobile path suggests it may not hold (form controls are
+already excluded from tap-to-select; `patchDragGuard` bails before any pick; mobile opens the
+picker on tap-completion, not pointerdown). Left swallowing anyway — the upside is near zero and a
+broken pick is real — but it is now labelled **precaution, not mechanism** in CLAUDE.md and
+`coarse.ts`. Settling it needs browser automation, not reading.
+
 **Socket colors: every transform is HSV now** (`palette.ts`). `socketArrayShade` was an RGB
 multiply (already equivalent to a value scale, so a free conversion); `socketMatrixShade` was HSL
 and was NOT — its `L ×0.86` traded against saturation per hue, landing as V ×0.89 on saturated

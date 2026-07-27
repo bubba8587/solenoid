@@ -8,6 +8,7 @@ import { NodeShell, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import "./ConnectionNodes.css";
 import "./WriteNodes.css";
+import { stopDragStart } from "../coarse";
 
 // ─── File sink nodes (Write CSV / Write JSON) ───────────────────────────────────
 // The write action (`data.run()`) touches disk; it must run ONLY from the
@@ -72,7 +73,7 @@ function WriteFileComponent({
             onChange={(e) => setPath(e.target.value)}
             onBlur={commitPath}
             onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-            onPointerDown={(e) => e.stopPropagation()}
+            onPointerDown={stopDragStart}
             onMouseDown={(e) => e.stopPropagation()}
           />
           {desktop && (
@@ -81,7 +82,7 @@ function WriteFileComponent({
               className="sol-conn__refresh"
               title="Choose a file"
               onClick={(e) => { e.stopPropagation(); void browse(); }}
-              onPointerDown={(e) => e.stopPropagation()}
+              onPointerDown={stopDragStart}
               onMouseDown={(e) => e.stopPropagation()}
             >
               …
@@ -91,7 +92,7 @@ function WriteFileComponent({
         <div className="sol-write__row">
           <label
             className="sol-write__armed"
-            onPointerDown={(e) => e.stopPropagation()}
+            onPointerDown={stopDragStart}
             onMouseDown={(e) => e.stopPropagation()}
           >
             <input type="checkbox" checked={armed} disabled={!desktop} onChange={toggleArmed} />
@@ -103,7 +104,7 @@ function WriteFileComponent({
             disabled={!desktop || !armed || path.trim() === "" || status === "writing"}
             title="Write the file now"
             onClick={(e) => { e.stopPropagation(); void run(); }}
-            onPointerDown={(e) => e.stopPropagation()}
+            onPointerDown={stopDragStart}
             onMouseDown={(e) => e.stopPropagation()}
           >
             Run

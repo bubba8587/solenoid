@@ -32,6 +32,7 @@ import { resolveSocketHighlights } from "./highlightUtils";
 import { canvasLockStore } from "./canvasLock";
 import { touchSelectStore } from "./touchSelectStore";
 import { IS_COARSE, IS_MOBILE } from "./coarse";
+import { isPinching, isPalmContact, resetPointerCensus } from "./pointerGesture";
 import { installErrorGuards } from "./errorValue";
 import "./seedTune"; // console seed-tune hook (window.__solenoidTuneSeed — scripts/tune-seeds.mjs)
 import { type Pt } from "./lasso";
@@ -122,7 +123,10 @@ export function Canvas() {
   const historyRef = useRef<HistoryPlugin<Schemes> | null>(null);
   const dblClickCleanupRef = useRef<(() => void) | null>(null);
   const screenMouseRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-  // Active pointer ids — when ≥2 the user is pinching, and no node should drag.
+  // Active pointer ids for this component's TAP bookkeeping — gesture start/end
+  // bracketing, nothing more. Whether a gesture is a pinch is NOT this set's call:
+  // that's `isPinching()` (pointerGesture.ts), which knows pointer TYPE and so can
+  // tell two fingers from a stylus resting with a palm down.
   const activePointersRef = useRef<Set<number>>(new Set());
   // Touch gesture bookkeeping: the node the first finger landed on (for
   // tap-to-select), whether the gesture moved, and whether it became multi-touch.
@@ -382,6 +386,11 @@ export function Canvas() {
         const zh = (areaRef.current?.area as unknown as
           { zoomHandler?: { pointers?: unknown[]; previous?: unknown } } | undefined)?.zoomHandler;
         if (zh && Array.isArray(zh.pointers)) { zh.pointers.length = 0; zh.previous = null; }
+        // Same backstop for the shared census: this local set going empty is the
+        // authoritative "every contact is up", so anything the census still holds
+        // was stranded (a long-press contextmenu, a pointer that left the window)
+        // and would make the next gesture read as multi-touch.
+        resetPointerCensus();
       }
     };
     window.addEventListener("pointerdown", add, true);
@@ -421,7 +430,7 @@ export function Canvas() {
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-    return installLassoSelection({ container, editorRef, areaRef, activePointersRef, setLasso });
+    return installLassoSelection({ container, editorRef, areaRef, setLasso });
   }, []);
 
 
@@ -560,9 +569,11 @@ export function Canvas() {
             pendingCollapseId = id;
           }
         } else if (c.type === "nodetranslate") {
-          // Never move a node while pinching (≥2 fingers) — the gesture is a
-          // zoom, even if a finger is resting on a (selected) node.
-          if (activePointersRef.current.size >= 2) return;
+          // Never move a node while pinching — the gesture is a zoom, even if a
+          // finger is resting on a (selected) node. `isPinching()` (not a raw
+          // pointer count) so a stylus + resting palm reads as DRAWING, not as a
+          // pinch: a raw ≥2 would freeze every pen drag the moment a palm landed.
+          if (isPinching()) return;
         } else if (c.type === "pointermove") {
           moveCount++;
         } else if (c.type === "pointerup") {
@@ -713,7 +724,17 @@ export function Canvas() {
         guards.down = (e: PointerEvent) => {
           if (canvasLockStore.get()) return false;
           if (IS_MOBILE && !isSelected(id)) return false;
-          if (e.pointerType === "mouse" && e.button !== 0) return false;
+          // Non-primary button never drags. Applies to the PEN as well as the
+          // mouse: a stylus reports its barrel button and its eraser end as
+          // non-zero `button`, and neither should grab and move a node.
+          if ((e.pointerType === "mouse" || e.pointerType === "pen") && e.button !== 0) return false;
+          // A finger that lands while the stylus is in contact is a palm — it must
+          // not grab the node the user is drawing over.
+          if (isPalmContact(e)) return false;
+          // A second finger arriving mid-gesture is a pinch, which outranks a drag
+          // (the pipe's nodetranslate guard stops one already in flight; this stops
+          // a new one from starting under the second finger).
+          if (isPinching()) return false;
           // An expanded group's body interior is NOT a drag handle — only its
           // header bar and a thin band along the outer edges grab the group, so
           // a press in the open body falls through to pan the canvas. (Member

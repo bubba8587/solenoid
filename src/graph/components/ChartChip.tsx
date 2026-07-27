@@ -2,6 +2,7 @@ import { chartPopup } from "../chartPopupStore";
 import { useHostNodeId } from "./nodeContext";
 import { readChipPopupStyle } from "./chipStyle";
 import type { ChartValue } from "../chartValue";
+import { stopDragStart } from "../coarse";
 
 /**
  * The compact "[Chart]" chip — the chart analogue of FrameChip. Shown where a
@@ -27,7 +28,7 @@ export function ChartChip({ value, label, pinNodeId, size = "sm" }: {
       type="button"
       className={`solenoid-array-chip solenoid-array-chip--chart${size === "sm" ? " solenoid-array-chip--sm" : ""}`}
       title="Chart"
-      onPointerDown={(e) => e.stopPropagation()}
+      onPointerDown={stopDragStart}
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => {
         e.stopPropagation();

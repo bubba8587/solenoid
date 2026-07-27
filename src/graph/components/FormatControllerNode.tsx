@@ -25,6 +25,7 @@ import { useFcFormatOptions, FcArrow } from "./fcControls";
 import type { NodeProps } from "./nodeKit";
 import "./nodeCard.css";
 import "./FormatControllerNode.css";
+import { stopDragStart } from "../coarse";
 
 // FcArrow (the flow-direction arrow) lives in fcControls now, shared with the
 // value-popup dropdowns so both speak the same ←/→ flow language.
@@ -344,7 +345,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
             className={`solenoid-fc__toggle${bold ? " solenoid-fc__toggle--on" : ""}`}
             style={{ fontWeight: 700 }}
             onClick={toggleBold}
-            onPointerDown={(e) => e.stopPropagation()}
+            onPointerDown={stopDragStart}
             onMouseDown={(e) => e.stopPropagation()}
             title="Bold"
           >B</button>
@@ -353,7 +354,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
             className={`solenoid-fc__toggle${italic ? " solenoid-fc__toggle--on" : ""}`}
             style={{ fontStyle: "italic" }}
             onClick={toggleItalic}
-            onPointerDown={(e) => e.stopPropagation()}
+            onPointerDown={stopDragStart}
             onMouseDown={(e) => e.stopPropagation()}
             title="Italic"
           >I</button>
@@ -393,7 +394,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
               <label
                 className="solenoid-fc__check"
                 title="Render the text as markdown"
-                onPointerDown={(e) => e.stopPropagation()}
+                onPointerDown={stopDragStart}
                 onMouseDown={(e) => e.stopPropagation()}
               >
                 <input type="checkbox" checked={textMarkdown} onChange={toggleTextMarkdown} />
@@ -406,7 +407,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
               <label
                 className="solenoid-fc__check"
                 title="Render in a monospace face"
-                onPointerDown={(e) => e.stopPropagation()}
+                onPointerDown={stopDragStart}
                 onMouseDown={(e) => e.stopPropagation()}
               >
                 <input type="checkbox" checked={textMono} onChange={toggleTextMono} />
@@ -422,7 +423,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
               type="button"
               className="solenoid-fc__more"
               onClick={toggleAdvanced}
-              onPointerDown={(e) => e.stopPropagation()}
+              onPointerDown={stopDragStart}
               onMouseDown={(e) => e.stopPropagation()}
               title="Advanced text options"
               aria-expanded={advancedOpen}
@@ -465,7 +466,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
               value={customPattern}
               placeholder="pattern, e.g. YYYY-MM-DD"
               onChange={(e) => onPatternChange(e.target.value)}
-              onPointerDown={(e) => e.stopPropagation()}
+              onPointerDown={stopDragStart}
               onMouseDown={(e) => e.stopPropagation()}
             />
             <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
@@ -590,7 +591,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
               step={1}
               onChange={(e) => onDigitsInput(e.target.value)}
               onBlur={onDigitsBlur}
-              onPointerDown={(e) => e.stopPropagation()}
+              onPointerDown={stopDragStart}
               onMouseDown={(e) => e.stopPropagation()}
               title={decimalMode === "places" ? "Digits after the decimal point" : "Number of significant figures"}
             />
@@ -616,7 +617,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
               value={customPattern}
               placeholder='format, e.g. "0.00"'
               onChange={(e) => onPatternChange(e.target.value)}
-              onPointerDown={(e) => e.stopPropagation()}
+              onPointerDown={stopDragStart}
               onMouseDown={(e) => e.stopPropagation()}
             />
             <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
@@ -634,7 +635,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
                 <label
                   className="solenoid-fc__check"
                   title="Thousands separator"
-                  onPointerDown={(e) => e.stopPropagation()}
+                  onPointerDown={stopDragStart}
                   onMouseDown={(e) => e.stopPropagation()}
                 >
                   <input type="checkbox" checked={grouping} onChange={toggleGrouping} />
@@ -690,7 +691,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
               type="button"
               className="solenoid-fc__more"
               onClick={toggleAdvanced}
-              onPointerDown={(e) => e.stopPropagation()}
+              onPointerDown={stopDragStart}
               onMouseDown={(e) => e.stopPropagation()}
               title="Advanced formatting"
               aria-expanded={advancedOpen}
@@ -750,7 +751,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
               value={customUnit}
               placeholder="unit, e.g. psi"
               onChange={(e) => onCustomUnitChange(e.target.value)}
-              onPointerDown={(e) => e.stopPropagation()}
+              onPointerDown={stopDragStart}
               onMouseDown={(e) => e.stopPropagation()}
             />
             <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />

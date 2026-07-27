@@ -4,6 +4,7 @@ import { readChipPopupStyle } from "./chipStyle";
 import { isSolError } from "../errorValue";
 import { matrixUnitOf } from "../unitValue";
 import "./ArrayChip.css";
+import { stopDragStart } from "../coarse";
 
 // A list or a table (2D), of numbers (number/list/table sockets) or text
 // (strlist). A 1D list opens in the popup as a single row.
@@ -157,7 +158,7 @@ export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId
           ...popupOverrides,
         });
       }}
-      onPointerDown={(e) => e.stopPropagation()}
+      onPointerDown={stopDragStart}
       onMouseDown={(e) => e.stopPropagation()}
     >
       [{chipLabel}]

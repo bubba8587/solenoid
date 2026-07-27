@@ -4,6 +4,7 @@ import { NodeShell, OpSelect, useNodeField, type NodeProps, type ShellNode, type
 import { InlineInputs, useConnectedInputs, useIncomingSources } from "./inlineInput";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { processGraph } from "../process";
+import { stopDragStart } from "../coarse";
 
 const isOnValue = (s: string | undefined) => {
   const v = (s ?? "").trim().toLowerCase();
@@ -43,7 +44,7 @@ function ToggleInputRow({ node, emit, socketKey, label }: {
           type="checkbox"
           checked={on}
           onChange={(e) => set(e.target.checked)}
-          onPointerDown={(e) => e.stopPropagation()}
+          onPointerDown={stopDragStart}
           onMouseDown={(e) => e.stopPropagation()}
           style={{ width: 14, height: 14, cursor: "pointer", flex: "0 0 auto" }}
         />

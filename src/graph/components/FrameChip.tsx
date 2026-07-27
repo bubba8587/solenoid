@@ -5,6 +5,7 @@ import { collectPreview, readFrame, type FrameRef } from "../frameBackend";
 import { useHostNodeId } from "./nodeContext";
 import { readChipPopupStyle } from "./chipStyle";
 import "./ArrayChip.css";
+import { stopDragStart } from "../coarse";
 
 /**
  * A frame on a cable can be a LAZY ref (a verb output — see frameBackend), which the
@@ -124,7 +125,7 @@ export function FrameChip({ value, label, size = "md", accent, onSave, source, o
           pinNodeId: hostId ?? undefined,
         });
       }}
-      onPointerDown={(e) => e.stopPropagation()}
+      onPointerDown={stopDragStart}
       onMouseDown={(e) => e.stopPropagation()}
     >
       [{approx ? "≈" : ""}{totalRows}×{cols} Frame]

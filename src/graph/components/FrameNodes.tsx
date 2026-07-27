@@ -65,6 +65,7 @@ import { SegToggle } from "./SegToggle";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { applyGetColumnReadAs, applyAddColumnAddAs, applySplitColType } from "./frameEdit";
 import type { GetColumnReadAs, AddColumnAddAs } from "../rete-nodes";
+import { stopDragStart } from "../coarse";
 
 // ─── FRAME INPUT ─────────────────────────────────────────────────────────────
 // Like Table Input: the single result box doubles as the editor. The chip opens
@@ -289,7 +290,7 @@ export function FilterFrameComponent({ data, emit }: NodeProps<FilterFrameNodeTy
                       title="Match case. Off matches text like Excel's = does."
                       aria-pressed={c.matchCase ?? false}
                       onClick={(e) => { e.stopPropagation(); updateCfg(id, { matchCase: !c.matchCase }); }}
-                      onPointerDown={(e) => e.stopPropagation()}
+                      onPointerDown={stopDragStart}
                       onMouseDown={(e) => e.stopPropagation()}
                       style={{
                         flexShrink: 0, fontSize: 11, lineHeight: 1, padding: "3px 5px",
@@ -449,7 +450,7 @@ export function PivotComponent({ data, emit }: NodeProps<PivotNodeType>) {
         type="button"
         className="solenoid-node__pivot-config"
         onClick={openEditor}
-        onPointerDown={(e) => e.stopPropagation()}
+        onPointerDown={stopDragStart}
         onMouseDown={(e) => e.stopPropagation()}
       >
         Configure fields…

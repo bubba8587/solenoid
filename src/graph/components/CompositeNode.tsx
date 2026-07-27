@@ -68,7 +68,7 @@ function AdvancedFoot({ open, onToggle, title, children }: { open: boolean; onTo
           type="button"
           className="solenoid-fc__more"
           onClick={(e) => { e.stopPropagation(); onToggle(); }}
-          onPointerDown={(e) => e.stopPropagation()}
+          onPointerDown={stopDragStart}
           onMouseDown={(e) => e.stopPropagation()}
           title={title}
           aria-expanded={open}
@@ -120,7 +120,7 @@ function ScenarioTable({ node }: { node: CompositeNodeType }) {
                 className="solenoid-node__inline-input"
                 value={s.name}
                 onChange={(e) => { node.renameScenario(s.id, e.target.value); recompute(); }}
-                onPointerDown={(e) => e.stopPropagation()}
+                onPointerDown={stopDragStart}
                 onMouseDown={(e) => e.stopPropagation()}
                 spellCheck={false}
               />
@@ -132,7 +132,7 @@ function ScenarioTable({ node }: { node: CompositeNodeType }) {
                   placeholder="—"
                   onBlur={(e) => { node.setScenarioOverride(s.id, p.id, parseOverride(e.target.value)); recompute(); }}
                   onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-                  onPointerDown={(e) => e.stopPropagation()}
+                  onPointerDown={stopDragStart}
                   onMouseDown={(e) => e.stopPropagation()}
                   spellCheck={false}
                 />
@@ -195,7 +195,7 @@ function DataTableEditor({ node }: { node: CompositeNodeType }) {
             placeholder="e.g. 1, 2, 3"
             onBlur={(e) => { node.setDataTableValues(p.id, parseCsvValues(e.target.value)); recompute(); }}
             onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-            onPointerDown={(e) => e.stopPropagation()}
+            onPointerDown={stopDragStart}
             onMouseDown={(e) => e.stopPropagation()}
             spellCheck={false}
           />
