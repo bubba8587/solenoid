@@ -7,7 +7,8 @@ import { nodeSizeStore } from "../nodeSizeStore";
 import { collapseStore } from "../collapseStore";
 import { groupMembershipStore } from "../groupMembership";
 import { appThemeStore } from "../appTheme";
-import { themeAccent, darkenAccent } from "../palette";
+import { themeAccent, darkenAccent, contrastInk } from "../palette";
+import { opKindForNode } from "../nodeOps";
 
 // The whole node header is a drag surface; a pointer that moves less than this
 // many px between down and up counts as a TAP (opens the title editor / toggles
@@ -198,6 +199,11 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
 
   const style: CSSProperties = {};
   if (accent) (style as Record<string, string>)["--node-accent"] = accent;
+  // Ink for anything FILLED with this card's accent (the operation op-select).
+  // It has to be derived per card: `--accent-ink` is computed for the APP accent's
+  // hue and goes unreadable on any other, so an accent fill and its ink always
+  // travel as a pair. Same derivation the value popups use.
+  if (accent) (style as Record<string, string>)["--node-accent-ink"] = contrastInk(accent);
   // Darker shade for the light-mode outside border (matches the group framing).
   if (rawAccent) (style as Record<string, string>)["--node-accent-dark"] = darkenAccent(rawAccent);
   if (groupColor) (style as Record<string, string>)["--group-color"] = themeAccent(groupColor, mode);
@@ -223,6 +229,12 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
   return (
     <div
       ref={ref}
+      // Tags the card with what its op dropdown SELECTS BETWEEN, so one CSS rule can
+      // style every op selector rather than sixty components passing a prop. Absent
+      // on a family that hasn't been declared in nodeOps.ts yet — deliberately not
+      // the same as "argument", so an undeclared node reads as unstyled rather than
+      // asserting something false about itself.
+      data-op-kind={opKindForNode(node)}
       className={
         `solenoid-node${selected ? " solenoid-node--selected" : ""}` +
         `${collapsed ? " solenoid-node--collapsed" : ""}${groupColor ? " solenoid-node--grouped" : ""}` +

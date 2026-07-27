@@ -1319,3 +1319,28 @@ body.solenoid-scrubbing * {
   font-weight: 500;
   justify-content: flex-start;
 }
+
+/* ─── Op selectors: operation vs argument ────────────────────────────────────
+   A card's dropdown either picks between distinct OPERATIONS or sets an ARGUMENT
+   of one operation. Author call (2026-07-27): make that visible — an operation
+   selector is filled with the card's own accent, an argument selector stays
+   neutral like every other field.
+
+   The fill takes the surface's accent and its MATCHING ink (--node-accent-ink):
+   --accent-ink is computed for the app accent's hue and goes unreadable on any
+   other, so the pair has to travel together. `data-op-kind` is set on the card
+   root by NodeCard, and is ABSENT for a family not yet declared in nodeOps.ts —
+   so an undeclared node stays neutral-but-untagged rather than claiming to be an
+   argument selector. */
+.solenoid-node[data-op-kind="operation"] .solenoid-node__op-select {
+  background: var(--node-accent, var(--accent));
+  color: var(--node-accent-ink, var(--accent-ink));
+  border-color: var(--node-accent, var(--accent));
+}
+
+/* The open dropdown list inherits the field's colors in some engines; force the
+   options back to surface ink so the expanded menu stays readable. */
+.solenoid-node[data-op-kind="operation"] .solenoid-node__op-select option {
+  background: var(--surface);
+  color: var(--text);
+}
