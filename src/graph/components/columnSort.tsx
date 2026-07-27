@@ -108,40 +108,41 @@ export function sortedOrder(
 }
 
 /**
- * The sort control: a tiny chevron OVERLAID on the right edge of a column header.
+ * The sort STATE — a tiny chevron overlaid on the right edge of a column header, and
+ * nothing at all while the column is unsorted. It is an indicator, not a control: the
+ * header cell itself is the click target (`sortTriggerProps`), so there is no button
+ * here to aim at and no resting glyph on every column.
+ *
  * Absolutely positioned, so it never adds to the column's width (the header cell is
- * what sizes a column here), on a translucent pad so it stays legible over a long
- * name it may sit on top of. Unsorted shows both chevrons faintly — the affordance;
- * a set direction shows that one chevron alone, in the surface's accent.
+ * what sizes a column here), on a translucent pad so it stays legible where it lands
+ * on top of a long name.
  */
-export function SortChevron({
-  dir,
-  onClick,
-  label,
-}: {
-  /** null = this column isn't the sorted one. */
-  dir: SortDir | null;
-  onClick: () => void;
-  /** Column name for the tooltip / accessible name. */
-  label: string;
-}) {
-  const next = dir === null ? "ascending" : dir === "asc" ? "descending" : "unsorted";
+export function SortIndicator({ dir }: { dir: SortDir | null }) {
+  if (!dir) return null;
   return (
-    <button
-      type="button"
-      className={`table-popup__sort${dir ? " table-popup__sort--on" : ""}`}
-      title={`Sort ${label} — ${next}`}
-      aria-label={`Sort ${label} ${next}`}
-      onClick={(e) => { e.stopPropagation(); onClick(); }}
-      // The header input (frame editor) sits under this button; don't let a click
-      // through to focus it, and don't start a drag on the popup.
-      onPointerDown={(e) => e.stopPropagation()}
-    >
+    <span className="table-popup__sort" aria-hidden="true">
       <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor"
-           strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        {dir !== "desc" && <polyline points={dir === "asc" ? "2,6.5 5,3 8,6.5" : "2,4 5,1.5 8,4"} />}
-        {dir !== "asc" && <polyline points={dir === "desc" ? "2,3.5 5,7 8,3.5" : "2,6 5,8.5 8,6"} />}
+           strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points={dir === "asc" ? "2,6.5 5,3 8,6.5" : "2,3.5 5,7 8,3.5"} />
       </svg>
-    </button>
+    </span>
   );
 }
+
+/**
+ * Props for the header cell that cycles the sort: the whole cell is the target, so a
+ * tap anywhere on it sorts. Spread onto the `<th>`, which also carries
+ * `table-popup__colhead--sortable` for the pointer cursor — the only affordance,
+ * since nothing is drawn until a column is actually sorted.
+ *
+ * Anything INTERACTIVE inside that header — the frame editor's column-name field and
+ * its type toggle — must stop propagation, or typing a name would also re-sort the
+ * table under the cursor. `stopSortTrigger` is that opt-out; the two live next to each
+ * other so the pairing is visible at both call sites.
+ */
+export function sortTriggerProps(onCycle: () => void, title?: string) {
+  return { title, onClick: onCycle };
+}
+
+/** Spread onto an interactive control inside a sortable header (see above). */
+export const stopSortTrigger = { onClick: (e: { stopPropagation: () => void }) => e.stopPropagation() };

@@ -15,7 +15,7 @@ import { formatListCell } from "./valueDisplayFormat";
 import { FormatStyleSelect, DateStyleSelect, UnitSelect, LogicalStyleSelect, TextCaseSelect } from "./fcControls";
 import { applyTextCase } from "../formatAnnotationStore";
 import { PopupShell, popupCardVars } from "./PopupShell";
-import { useColumnSort, sortedOrder, sortKeyOf, SortChevron } from "./columnSort";
+import { useColumnSort, sortedOrder, sortKeyOf, SortIndicator, sortTriggerProps, stopSortTrigger } from "./columnSort";
 import { PopupOverflowMenu } from "./PopupOverflowMenu";
 import { saveCsvFileDialog } from "../fileBridge";
 import { APP_LOCALE } from "../locale";
@@ -628,8 +628,10 @@ export function TablePopup() {
                 {Array.from({ length: viewCols }, (_, c) => (
                   <th
                     key={c}
+                    // The WHOLE header cell cycles the sort — there is no button to
+                    // hit. The name field and type toggle below opt out.
+                    {...sortTriggerProps(() => cycleSort(c), vertical ? undefined : headers?.[c])}
                     className={`${headers && !vertical ? "table-popup__colhead table-popup__colhead--name" : "table-popup__colhead"} table-popup__colhead--sortable`}
-                    title={vertical ? undefined : headers?.[c]}
                   >
                     {/* A vertical list has one unnamed column; label it like the row
                         orientation does (A, B, C…) rather than leaving the header
@@ -640,7 +642,7 @@ export function TablePopup() {
                           type="button"
                           className="table-popup__coltype"
                           title={`Column type: ${COLTYPE_NAME[colTypeAt(c)]}. Cycle Number / Text / Date / Boolean.`}
-                          onClick={() => toggleColumnType(c)}
+                          onClick={(e) => { e.stopPropagation(); toggleColumnType(c); }}
                         >
                           {COLTYPE_GLYPH[colTypeAt(c)]}
                         </button>
@@ -649,17 +651,14 @@ export function TablePopup() {
                           value={headerNames[c] ?? ""}
                           placeholder={colLabel(c)}
                           spellCheck={false}
+                          {...stopSortTrigger}
                           onChange={(e) => setHeaderName(c, e.target.value)}
                         />
                       </div>
                     ) : (
                       colHeaderLabel(c)
                     )}
-                    <SortChevron
-                      dir={sort?.col === c ? sort.dir : null}
-                      onClick={() => cycleSort(c)}
-                      label={vertical ? colLabel(0) : colHeaderLabel(c)}
-                    />
+                    <SortIndicator dir={sort?.col === c ? sort.dir : null} />
                   </th>
                 ))}
               </tr>

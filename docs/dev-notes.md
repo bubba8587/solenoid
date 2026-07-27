@@ -240,10 +240,18 @@ Three things that are load-bearing, not incidental:
   during render rather than in an effect — an effect renders the new grid once in the old grid's
   order first. A column index means nothing across two different tables.
 A list in Column mode had no header row at all; it now gets one labelled `A`, matching what Row
-mode already labels its columns (author offered "list" or "A"). The chevron is absolutely
-positioned on the header's right edge so it adds nothing to column width, on a translucent scrim
-so it stays legible over a long name — black in dark theme as authored, flipped to white in
-light theme, where a dark chip with a dark glyph is the same collision.
+mode already labels its columns (author offered "list" or "A").
+**The trigger is the whole header cell, and nothing is drawn until a column is sorted** (author,
+same session — the first pass had a resting double-chevron button on every column). So the
+chevron is an INDICATOR, not a control: `pointer-events: none`, present only for the sorted
+column, in the surface's accent. The cursor is the entire affordance. It stays absolutely
+positioned on the header's right edge with a translucent scrim — black in dark theme as
+authored, white in light, where a dark chip with a dark glyph is the same collision — and now
+reserves NO width at all, so an unsorted grid measures exactly as it did before the feature.
+The one thing this shape needs care with: anything interactive INSIDE a sortable header has to
+stop propagation or it re-sorts the table as you use it. That's the frame editor's column-name
+field and its type toggle; `stopSortTrigger` sits next to `sortTriggerProps` in the module so
+the pairing is visible at the call site.
 
 **The other half — a socket type can now be derived from static CONFIG, not just wiring.** That
 was a new class of trigger: every derived-type settle hung off a connection event, and a literal

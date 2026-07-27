@@ -4,7 +4,7 @@ import { appThemeStore } from "../appTheme";
 import { cubeRowCount, cubeDepth, frameRowCount } from "../frame";
 import { CubeCellChip, frameCellNode } from "./cubeCell";
 import { PopupShell, popupCardVars } from "./PopupShell";
-import { useColumnSort, sortedOrder, sortKeyOf, SortChevron, type SortKey } from "./columnSort";
+import { useColumnSort, sortedOrder, sortKeyOf, SortIndicator, sortTriggerProps, type SortKey } from "./columnSort";
 import { APP_LOCALE } from "../locale";
 import "./TablePopup.css";
 
@@ -135,15 +135,13 @@ export function CubePopup() {
               {Array.from({ length: cols }, (_, c) => (
                 <th
                   key={c}
+                  // The whole header cell cycles the sort; this grid is read-only, so
+                  // nothing inside it needs to opt out.
+                  {...sortTriggerProps(() => cycleSort(c), headers?.[c])}
                   className={`${headers ? "table-popup__colhead table-popup__colhead--name" : "table-popup__colhead"} table-popup__colhead--sortable`}
-                  title={headers?.[c]}
                 >
                   {headers ? headers[c] : c + 1}
-                  <SortChevron
-                    dir={sort?.col === c ? sort.dir : null}
-                    onClick={() => cycleSort(c)}
-                    label={headers?.[c] ?? String(c + 1)}
-                  />
+                  <SortIndicator dir={sort?.col === c ? sort.dir : null} />
                 </th>
               ))}
             </tr>
