@@ -10,17 +10,16 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
 
 ## Bugs & verifications
 
-- [ ] **A wired `null` resurrects the typed literal on the date + text nodes** — the same
-  `??`-swallowing bug the List Input audit fixed in `list.ts` (2026-07-25c), still live
-  wherever an operand reads `inputs.x?.[0] ?? this.literals.x`. Confirmed: UPPER with a
-  blank flowing in and "abc" typed in its box returns `"ABC"`, not the `null` the P6
-  SQL-null model calls for. `readInput()` (shared.ts) exists precisely for this — a
-  CONNECTED cable wins even when its value is null; only an UNWIRED slot falls back.
-  Affects `text.ts`'s `strVal` plus every numeric operand in `date.ts`/`text.ts`
-  (DateAdd.months, DateConstruct.year/month/day, LEFT.n, FIXED.decimals…). Left alone
-  during the combo sweep on purpose, to keep those passes pure widenings with no
-  behavior change; it's a scalar-path bug that predates them. One mechanical sweep:
-  route those reads through `readInput` and let the broadcasters short-circuit the null.
+- [ ] **Wired-`null` on MODE selectors — needs an author call, not a sweep.** The
+  OPERAND half is fixed (2026-07-27: `text.ts`'s `strVal` and every numeric operand in
+  `date.ts`/`text.ts` now route through `readInput`, pinned by
+  `nodes/wiredNull.test.ts`). What's left is the reads that select a MODE rather than
+  carry a value: `strScalar` (delimiter / separator / filter pattern), and `basis` /
+  `return_type` / `weekend_code` in `date.ts`. A wired blank there is genuinely
+  ambiguous — "mode unknown, so the answer is unknown" (propagate, per P6) versus
+  "nothing supplied, use the default" (Excel's reading of an omitted optional arg).
+  An operand blank has no such ambiguity, which is why it went ahead alone. Same
+  question governs the ~144-site sweep below, so decide it once.
 
 - [ ] **Window min/max/close controls missing (desktop)** — `tauri-plugin-decorum`'s
   `create_overlay_titlebar()` isn't rendering the controls. Ruled out: the accent

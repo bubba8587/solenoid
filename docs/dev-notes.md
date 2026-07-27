@@ -173,6 +173,34 @@ RANGE_FUNCTIONS (as the plan said) is what exposed this — the two changes belo
 pack-registered name would advertise while its pack is disabled. Nothing shipped here depends on
 it. Tier 3 and Tier 4 unchanged; gap A's remaining 19 are D2-capped and ride on the Tier 4 call.
 
+### Wired-null no longer resurrects the typed literal (2026-07-27b)
+
+Top item on the 1.3 bug list, and a live wrong-answer bug: `inputs.x?.[0] ?? this.
+literals.x` swallows a WIRED null into the literal, so a blank flowing down a cable
+silently became whatever value sat in the node's own box. UPPER with a blank in and
+"abc" typed in its field returned `"ABC"`.
+
+Fixed on the OPERAND half — `text.ts`'s `strVal` plus every numeric operand in
+`text.ts`/`date.ts` (LEFT/MID/RIGHT counts, REPT times, CHAR code, FIXED decimals,
+DATE y/m/d, TIME h/m/s, EDATE months, WORKDAY days) now route through `readInput`.
+No downstream change was needed: `broadcast`/`broadcastCells` already accept a null
+arg and short-circuit missing per cell, so the plumbing was waiting on the readers.
+
+**The contract has two halves and both are pinned** (`nodes/wiredNull.test.ts`): a
+CONNECTED cable wins even when its value is null, and only an UNWIRED slot falls back
+to the literal. Tests come in pairs for that reason — a fix that propagated
+unconditionally would break every node's typed default just as badly as the bug it
+replaced. Verified the tests actually FAIL against the old reader rather than passing
+vacuously.
+
+**Deliberately NOT swept: the MODE selectors** — `strScalar` (delimiter / separator /
+filter pattern) and `basis` / `return_type` / `weekend_code`. A wired blank there is
+genuinely ambiguous: "the mode is unknown, so the answer is unknown" (propagate, per
+P6) versus "nothing supplied, use the default" (Excel's reading of an omitted optional
+argument). An operand blank has no such ambiguity, which is why that half could go
+ahead alone. Noted at both sites so it doesn't read as an oversight; the same question
+governs the ~144-site sweep, so it wants deciding once.
+
 ### All 98 op-selector families classified (2026-07-27b)
 
 Finished the declarations behind the op-kind edge. **73 operation / 25 argument**, and

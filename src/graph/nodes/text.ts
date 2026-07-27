@@ -3,7 +3,7 @@ import { stringSocket } from "../sockets";
 import {
   strIn, strOut, strListIn, strListOut, anyListIn, anyComboOut,
   strComboIn, strComboOut, numListIn, numListOut, logicalComboOut,
-  broadcastCells, type CellResult, type BroadcastResult,
+  broadcastCells, readInput, type CellResult, type BroadcastResult,
 } from "./shared";
 import { getRecalcGen } from "../process";
 import { solError, type SolError } from "../errorValue";
@@ -44,13 +44,26 @@ function strVal(
   node: { stringLiterals?: Record<string, string> },
   key: string,
   def = "",
-): string | string[] {
-  return input?.[0] ?? node.stringLiterals?.[key] ?? def;
+): string | string[] | null {
+  // `readInput`, NOT `?? literal`: a WIRED blank must propagate (null in → null out,
+  // the settled P6 model) instead of being swallowed into whatever text sits in the
+  // box. `UPPER` with a blank flowing in and "abc" typed in its field returned
+  // "ABC". Only an UNWIRED slot falls back to the literal. The broadcasters already
+  // short-circuit a null operand per cell, so nothing downstream changes.
+  return readInput(input, node.stringLiterals?.[key] ?? def);
 }
 
 /** The same read for an input that stayed a scalar `string` socket (a delimiter,
  *  a separator, a filter pattern) — the socket lattice can't deliver a list there,
- *  so the caller gets a plain string it can `.split()` / `.join()` with. */
+ *  so the caller gets a plain string it can `.split()` / `.join()` with.
+ *
+ *  DELIBERATELY still `?? literal`, unlike `strVal` above. These select a MODE
+ *  rather than carrying an operand, and a wired blank there is genuinely ambiguous:
+ *  it could mean "the mode is unknown, so the answer is unknown" (propagate) or
+ *  "nothing supplied, use the default" (Excel's reading of an omitted optional
+ *  argument). An operand blank has no such ambiguity, which is why that half was
+ *  fixed on its own. The same holds for `basis` / `return_type` / `weekend_code` in
+ *  date.ts. Deciding it needs an author call, not a sweep — see backlog. */
 function strScalar(
   input: string[] | undefined,
   node: { stringLiterals?: Record<string, string> },
@@ -293,14 +306,14 @@ export class TextSliceNode extends ClassicPreset.Node {
           return len === 0 ? "" : resolveExcelFunction("MID")!(t, Math.max(1, Math.floor(s)), len) as string;
         },
         text,
-        inputs.start?.[0] ?? this.literals.start ?? 1,
-        inputs.len?.[0]   ?? this.literals.len   ?? 1)
+        readInput(inputs.start, this.literals.start ?? 1),
+        readInput(inputs.len,   this.literals.len   ?? 1))
       : broadcastCells((t: string, count: number) => {
           const fn = this.op === "left" ? "LEFT" : "RIGHT";
           return resolveExcelFunction(fn)!(t, Math.max(0, Math.floor(count))) as string;
         },
         text,
-        inputs.n?.[0] ?? this.literals.n ?? 1);
+        readInput(inputs.n, this.literals.n ?? 1));
     this.cachedText = result;
     return { result };
   }
@@ -351,7 +364,7 @@ export class TextFindNode extends ClassicPreset.Node {
     },
       strVal(inputs.needle,   this, "needle"),
       strVal(inputs.haystack, this, "haystack"),
-      inputs.start?.[0] ?? this.literals.start ?? 1);
+      readInput(inputs.start, this.literals.start ?? 1));
     this.cachedResult = result;
     return { result };
   }
@@ -421,8 +434,8 @@ export class TextReplaceNode extends ClassicPreset.Node {
         resolveExcelFunction("REPLACE")!(
           text, Math.max(1, Math.floor(s)), Math.max(0, Math.floor(n)), newText) as string,
       strVal(inputs.text, this, "text"),
-      inputs.start?.[0]     ?? this.literals.start     ?? 1,
-      inputs.num_chars?.[0] ?? this.literals.num_chars ?? 1,
+      readInput(inputs.start,     this.literals.start     ?? 1),
+      readInput(inputs.num_chars, this.literals.num_chars ?? 1),
       strVal(inputs.new_text, this, "new_text"),
     );
     this.cachedText = result;
@@ -475,7 +488,7 @@ export class ReptNode extends ClassicPreset.Node {
       (text: string, times: number) =>
         resolveExcelFunction("REPT")!(text, Math.max(0, Math.floor(times))) as string,
       strVal(inputs.text, this, "text"),
-      inputs.times?.[0] ?? this.literals.times ?? 1,
+      readInput(inputs.times, this.literals.times ?? 1),
     );
     this.cachedText = result;
     return { result };
@@ -513,7 +526,7 @@ export class CharCodeNode extends ClassicPreset.Node {
     const result: CellResult<string | number> = this.op === "char"
       ? broadcastCells((c: number) => {
           try { return String.fromCodePoint(Math.floor(c)); } catch { return null; }
-        }, inputs.code?.[0] ?? this.literals.code ?? 65)
+        }, readInput(inputs.code, this.literals.code ?? 65))
       : broadcastCells((t: string) => (t.length > 0 ? (t.codePointAt(0) ?? null) : null),
           strVal(inputs.text, this, "text"));
     this.cachedResult = result;
@@ -811,7 +824,7 @@ export class RomanArabicNode extends ClassicPreset.Node {
             while (rem >= vals[i]) { out += syms[i]; rem -= vals[i]; }
           }
           return out;
-        }, inputs.number?.[0] ?? this.literals.number ?? 1)
+        }, readInput(inputs.number, this.literals.number ?? 1))
       : broadcastCells((raw: string) => {
           const text = raw.toUpperCase().trim();
           // Empty input is blank (null). A non-empty string with a non-Roman
@@ -860,8 +873,8 @@ export class FixedNode extends ClassicPreset.Node {
     const result = broadcastCells(
       (n: number, d: number) => resolveExcelFunction("FIXED")!(
         n, Math.max(0, Math.floor(d)), this.noCommas === "no_commas") as string,
-      inputs.number?.[0]   ?? this.literals.number   ?? 0,
-      inputs.decimals?.[0] ?? this.literals.decimals ?? 2,
+      readInput(inputs.number,   this.literals.number   ?? 0),
+      readInput(inputs.decimals, this.literals.decimals ?? 2),
     );
     this.cachedText = result;
     return { result };
@@ -950,8 +963,8 @@ export class FormatDollarNode extends ClassicPreset.Node {
       parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
       return (n < 0 ? "-$" : "$") + parts.join(".");
     },
-      inputs.number?.[0]   ?? this.literals.number   ?? 0,
-      inputs.decimals?.[0] ?? this.literals.decimals ?? 2);
+      readInput(inputs.number,   this.literals.number   ?? 0),
+      readInput(inputs.decimals, this.literals.decimals ?? 2));
     this.cachedText = result;
     return { result };
   }
