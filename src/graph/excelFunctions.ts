@@ -396,6 +396,41 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   CLAMP:       { returns: "number",  arity: [3, 3], native: true },
   ORDINAL:     { returns: "string",  arity: [1, 1], native: true },
   BETWEEN:     { returns: "logical", arity: [3, 3], native: true },
+
+  // ── Tier 1 (D19): names Formula.js lacks entirely, so the registry is what
+  // makes them callable at all. `native: true` says exactly that — it is not a
+  // claim about who authored the math.
+  // Modern text functions:
+  TEXTSPLIT:    { returns: "string", arity: [2, 2], family: "text", native: true },
+  TEXTAFTER:    { returns: "string", arity: [2, 2], family: "text", native: true },
+  TEXTBEFORE:   { returns: "string", arity: [2, 2], family: "text", native: true },
+  ENCODEURL:    { returns: "string", arity: [1, 1], family: "text", native: true },
+  REGEXTEST:    { returns: "number", arity: [2, 3], family: "text", native: true },
+  REGEXEXTRACT: { returns: "string", arity: [2, 4], family: "text", native: true },
+  REGEXREPLACE: { returns: "string", arity: [3, 4], family: "text", native: true },
+  "FORECAST.LINEAR": { returns: "number", arity: [3, 3], family: "statistics", native: true },
+  // Bond / security block. COUPNCD and COUPPCD return a date SERIAL, so they carry
+  // the `date` return type; every other one is a number.
+  COUPDAYBS:  { returns: "number", arity: [2, 4], family: "finance", native: true },
+  COUPDAYSNC: { returns: "number", arity: [2, 4], family: "finance", native: true },
+  COUPNUM:    { returns: "number", arity: [2, 4], family: "finance", native: true },
+  COUPNCD:    { returns: "date",   arity: [2, 4], family: "finance", native: true },
+  COUPPCD:    { returns: "date",   arity: [2, 4], family: "finance", native: true },
+  ACCRINTM:   { returns: "number", arity: [3, 5], family: "finance", native: true },
+  INTRATE:    { returns: "number", arity: [4, 5], family: "finance", native: true },
+  RECEIVED:   { returns: "number", arity: [4, 5], family: "finance", native: true },
+  YIELDDISC:  { returns: "number", arity: [3, 5], family: "finance", native: true },
+  PRICEMAT:   { returns: "number", arity: [5, 6], family: "finance", native: true },
+  YIELDMAT:   { returns: "number", arity: [5, 6], family: "finance", native: true },
+  DURATION:   { returns: "number", arity: [4, 6], family: "finance", native: true },
+  MDURATION:  { returns: "number", arity: [4, 6], family: "finance", native: true },
+  PRICE:      { returns: "number", arity: [4, 6], family: "finance", native: true },
+  YIELD:      { returns: "number", arity: [4, 6], family: "finance", native: true },
+  VDB:        { returns: "number", arity: [5, 6], family: "finance", native: true },
+  ODDFPRICE:  { returns: "number", arity: [6, 8], family: "finance", native: true },
+  ODDFYIELD:  { returns: "number", arity: [6, 8], family: "finance", native: true },
+  ODDLPRICE:  { returns: "number", arity: [5, 7], family: "finance", native: true },
+  ODDLYIELD:  { returns: "number", arity: [5, 7], family: "finance", native: true },
 };
 
 /** Number → text for STRING contexts (`&`, CONCAT/CONCATENATE/TEXTJOIN, and any

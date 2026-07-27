@@ -94,17 +94,19 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   data-provider keys, which is fine for a key the user pastes, but an OAuth-style
   "connect an account" flow would change that shape.
 
-- [ ] **Formula ↔ node parity program (D19, greenlit — build in a dedicated session)** —
-  converge the formula language and the node set; audit + tiers + decisions in
-  `formula-node-parity.md` (numbers regenerable via `scripts/formula-node-parity.ts`).
-  Build order: ratchet test first (pin the 57 + the blocklist), then Tier 1
-  registrations, alias gate, pack seam. Legacy aliases BLOCKED (`#NAME?` + redirect
-  hint); Solenoid-native formula names = the node hover hint despaced; packs register
-  their own formula functions. NOTE this also closes a standing D10 violation: the
-  pre-2010 stats family (NORMDIST…) still dispatches via Formula.js until the alias
-  gate lands (classic lookups are already stubbed). Tier 4 is separate (author-present,
-  `deferrals.md`). Residual: distributions are validated only at representative points —
-  widen if accuracy is ever in doubt.
+- [ ] **Formula ↔ node parity — the remainder** (D19; ratchet, alias gate and Tier 1
+  landed 2026-07-27, so the D10 formula-surface violation is closed). Left:
+  (a) **the pack seam** — packs registering their own formula functions, which needs
+  `FORMULA_FUNCTION_NAMES`/autocomplete to become pack-sensitive (built once at load
+  today, so a pack name would advertise while its pack is off);
+  (b) **Tier 3** — formula names for the Solenoid-native data-op core (wants a list
+  `ExcelReturn` type + range routing for list-in-list-out functions), named per D19
+  decision 2: bare names unified with the node hover hint.
+  Gap A's remaining 19 are D2-capped and cannot be registered — they ride on the Tier 4
+  decision (author-present, `deferrals.md`). Tiers + rationale in
+  `formula-node-parity.md`; both gaps machine-checked by `formulaNodeParity.test.ts`.
+  Residual: distributions are validated only at representative points — widen if
+  accuracy is ever in doubt.
 - [ ] **Computed Column (table-timesaver Tier 3, design-first)** — row-wise formula whose
   variables are column names, appended in place (PQ Custom Column); wants a design pass
   on sharing the Expression engine.
