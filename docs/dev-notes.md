@@ -185,6 +185,14 @@ app-wide, but touches feel of zoom).
   - `wire-instruction` now guards both shapes; the tooltip surface joins the corpus.
     `Set the vault in Settings ▸ Obsidian` is a pinned counterexample — a config LOCATION
     genuinely cannot be guessed from the node, unlike a gesture.
+- **§7 now requires American spelling** (author ruling), and `british-spelling` enforces it over
+  shipped strings. 23 replacements across help markdown, the catalog and one tooltip: grey→gray
+  ×6, colour→color ×5, plus metres, behaviour, labelled, neighbouring, centre. The sweep ran
+  ONLY inside `description:`/`label:`/`title=` literals, so no code identifier or CSS custom
+  property moved. Scope stayed shipped copy: ~170 uses survive in code comments/identifiers and
+  ~46 in `docs/`, both deliberately out of the lint's remit — say the word if you want either.
+  - Regex gotcha worth remembering: `colou?rs?` matches the AMERICAN spelling too, so the first
+    draft flagged every correct "color". The pattern must spell out `colours?` alone.
 - **Upstream/downstream suggestions are OUT of node strings** (author ruling). "Feeds a scatter
   Chart, a regression, or Build Frame → Grid Interpolate", "Feeds MAP / BYROW / REDUCE", "Feeds a
   Chart to embed a FRED graph", "or feed a filter's bounds" — all cut. If a node's expected

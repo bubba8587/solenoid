@@ -344,7 +344,7 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
             onBlur={onUrlCommit}
             onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
           />
-          <label className="solenoid-svgpick__swatch" title="Highlight colour">
+          <label className="solenoid-svgpick__swatch" title="Highlight color">
             <input
               type="color"
               value={hoverColor}

@@ -266,18 +266,18 @@ export const NODE_CATALOG: CatalogEntry[] = [
           {
             type: "category", label: "Proportion", description: "Parts of a whole: shares, flows, and space-filling layouts.",
             children: [
-              { type: "treemap",   label: "Treemap",   description: "Shows labelled values as nested rectangles sized by value, a space-filling alternative to a pie: each row of a 2-column frame (label, value) is one rectangle.", create: () => new TreemapNode(), parity: false, keywords: "treemap tree map rectangles proportion hierarchy area" },
+              { type: "treemap",   label: "Treemap",   description: "Shows labeled values as nested rectangles sized by value, a space-filling alternative to a pie: each row of a 2-column frame (label, value) is one rectangle.", create: () => new TreemapNode(), parity: false, keywords: "treemap tree map rectangles proportion hierarchy area" },
               { type: "sankey",    label: "Sankey",    description: "A flow diagram: each row of a 3-column frame (From, To, Value) is an edge, and the band width shows the flow.", create: () => new SankeyNode(), parity: false, keywords: "sankey flow diagram alluvial edges links network flows" },
               { type: "waffle",    label: "Waffle",    description: "Shares as a 10×10 grid of squares — the honest pie: each row of a 2-column frame (label, value) is one share, or a single value between 0 and 1 fills a plain fraction of the grid.", create: () => new WaffleNode(), parity: false, keywords: "waffle dot matrix squares proportion percentage share progress pictogram" },
             ],
           },
           {
-            type: "category", label: "Grids & Fields", description: "Figures over a 2-D grid: cell colour, height, and direction.",
+            type: "category", label: "Grids & Fields", description: "Figures over a 2-D grid: cell color, height, and direction.",
             children: [
-              { type: "heatmap-cell", label: "Heatmap", description: "Colour every cell of a Table on a cool-to-warm scale across its data range, like conditional formatting. Pass-through.", create: () => new HeatmapCellNode(), parity: false },
+              { type: "heatmap-cell", label: "Heatmap", description: "Color every cell of a Table on a cool-to-warm scale across its data range, like conditional formatting. Pass-through.", create: () => new HeatmapCellNode(), parity: false },
               { type: "surface", label: "Surface", description: "A shaded 3-D surface plot of a bordered lookup table (first row = X coordinates, first column = Y coordinates, interior = Z heights) — the same format Grid Interpolate fills.", create: () => new SurfaceNode(), parity: false, keywords: "surface 3d mesh plot height field terrain contour wireframe grid" },
               { type: "contour", label: "Contour", description: "The flat twin of Surface: the same bordered lookup table (first row = X coordinates, first column = Y coordinates, interior = Z heights) drawn as filled height bands with iso-lines. One grid into both gives two views of one surface.", create: () => new ContourNode(), parity: false, keywords: "contour iso lines level topo topographic height map bands field 2d surface" },
-              { type: "quiver", label: "Vector Field", description: "One arrow per grid cell from two same-shaped matrices (the X and Y components), coloured by magnitude — gradients, flows, wind fields.", create: () => new QuiverNode(), parity: false, keywords: "quiver vector field arrows flow gradient wind direction magnitude" },
+              { type: "quiver", label: "Vector Field", description: "One arrow per grid cell from two same-shaped matrices (the X and Y components), colored by magnitude — gradients, flows, wind fields.", create: () => new QuiverNode(), parity: false, keywords: "quiver vector field arrows flow gradient wind direction magnitude" },
             ],
           },
           {
@@ -1003,7 +1003,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           {
             type: "category", label: "Clean", description: "The everyday cleanup verbs: fill blanks from above, find & replace, drop spacer rows.",
             children: [
-              { type: "fill-blanks", label: "Fill Down", description: "Fills blank cells from the neighbouring row — Down carries the last value forward, Up the next one back. The classic un-merge of report-shaped tables. Name columns or leave blank for all. Errors are values, not blanks. Power Query: Fill Down / Fill Up.", create: () => new FillBlanksNode(), parity: false, keywords: "fill down up forward backward blanks nulls merged cells carry propagate ffill bfill clean" },
+              { type: "fill-blanks", label: "Fill Down", description: "Fills blank cells from the neighboring row — Down carries the last value forward, Up the next one back. The classic un-merge of report-shaped tables. Name columns or leave blank for all. Errors are values, not blanks. Power Query: Fill Down / Fill Up.", create: () => new FillBlanksNode(), parity: false, keywords: "fill down up forward backward blanks nulls merged cells carry propagate ffill bfill clean" },
               { type: "replace-values", label: "Replace Values", description: "Find-and-replace in a column (or every column). Whole-cell mode swaps cells that equal Find (numbers match numerically; the replacement takes the column\'s type); Substring rewrites inside text cells. Case-sensitive, like all key comparisons here. Power Query: Replace Values.", create: () => new ReplaceValuesNode(), parity: false, keywords: "replace find substitute swap value cells fix clean search change" },
               { type: "drop-blank-rows", label: "Drop Blank Rows", description: "Removes blank rows: only fully-blank spacer rows, or any row with a blank cell (keep complete rows only). Errors count as values, not blanks. Power Query: Remove Blank Rows.", create: () => new DropBlankRowsNode(), parity: false, keywords: "drop remove blank empty rows spacers nulls complete clean" },
             ],
@@ -1078,7 +1078,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
     type: "category", label: "Other", description: "Catch-all for odd one-offs and uncategorized pack nodes.",
     children: [
       { type: "image", label: "Image", description: "A free-floating picture: attach a local file or paste a web URL, and set its height. Annotation only; carries no data. Web URLs persist in the save; local files are session-only, not yet embedded.", create: () => new ImageNode(), parity: false },
-      { type: "svg", label: "SVG", description: "An interactive SVG: attach a local .svg or paste a URL, and the selected shape or layer outputs its name (a map / floorplan / schematic as a data selector). The layer name comes from the element's label / id; the highlight colour is adjustable. Also flows the picture out a chart socket so a Report can embed it.", create: () => new SvgPickerNode(), parity: false, keywords: "svg map picker region layer shape hotspot clickable diagram floorplan schematic slice filter select vector" },
+      { type: "svg", label: "SVG", description: "An interactive SVG: attach a local .svg or paste a URL, and the selected shape or layer outputs its name (a map / floorplan / schematic as a data selector). The layer name comes from the element's label / id; the highlight color is adjustable. Also flows the picture out a chart socket so a Report can embed it.", create: () => new SvgPickerNode(), parity: false, keywords: "svg map picker region layer shape hotspot clickable diagram floorplan schematic slice filter select vector" },
       { type: "promo", label: "✨ Promo", description: "A random Solenoid tagline; re-rolls on recalc (F9). Pure easter egg.", create: () => new PromoNode() },
     ],
   },

@@ -66,7 +66,7 @@ export const GEOMETRY_SOLIDS: FormulaPackEntry[] = [
   { type: "geo-tetra-vol", label: "Tetrahedron Volume", expr: "s^3/(6*SQRT(2))",
     description: "Volume of a regular tetrahedron with edge s   (V = s³/(6√2))" },
   { type: "geo-torus-vol", label: "Torus Volume", expr: "2*PI()^2*rr*r^2",
-    description: "Volume of a torus: ring radius rr (centre of tube), tube radius r   (V = 2π²Rr²)" },
+    description: "Volume of a torus: ring radius rr (center of tube), tube radius r   (V = 2π²Rr²)" },
   { type: "geo-torus-area", label: "Torus Surface Area", expr: "4*PI()^2*rr*r",
     description: "Surface of a torus: ring radius rr, tube radius r   (A = 4π²Rr)" },
 ];
