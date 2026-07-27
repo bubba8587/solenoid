@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { dateOut, numIn, numOut, strIn, dateListIn, dateComboIn, dateComboOut, numListIn, numListOut, broadcast, broadcastErr, type BroadcastResult } from "./shared";
+import { dateOut, numIn, numOut, strIn, dateListIn, dateComboIn, dateComboOut, numListIn, numListOut, broadcast, broadcastErr, readInput, type BroadcastResult } from "./shared";
 import { solError, type SolError } from "../errorValue";
 
 // ─── Serial ↔ JS Date ─────────────────────────────────────────────────────────
@@ -167,9 +167,9 @@ export class DateConstructNode extends ClassicPreset.Node {
     if (year <= 99) d.setUTCFullYear(d.getUTCFullYear() - 1900);
     return jsDateToSerial(d);
     },
-      inputs.year?.[0]  ?? this.literals.year  ?? 2024,
-      inputs.month?.[0] ?? this.literals.month ?? 1,
-      inputs.day?.[0]   ?? this.literals.day   ?? 1);
+      readInput(inputs.year,  this.literals.year  ?? 2024),
+      readInput(inputs.month, this.literals.month ?? 1),
+      readInput(inputs.day,   this.literals.day   ?? 1));
     this.cachedResult = result;
     return { result };
   }
@@ -194,9 +194,9 @@ export class TimeConstructNode extends ClassicPreset.Node {
 
   data(inputs: { hour?: (number | number[])[]; minute?: (number | number[])[]; second?: (number | number[])[] }): { result: BroadcastResult } {
     const result = broadcast((h, m, s) => ((h * 3600 + m * 60 + s) % 86400) / 86400,
-      inputs.hour?.[0]   ?? this.literals.hour   ?? 0,
-      inputs.minute?.[0] ?? this.literals.minute ?? 0,
-      inputs.second?.[0] ?? this.literals.second ?? 0);
+      readInput(inputs.hour,   this.literals.hour   ?? 0),
+      readInput(inputs.minute, this.literals.minute ?? 0),
+      readInput(inputs.second, this.literals.second ?? 0));
     this.cachedResult = result;
     return { result };
   }
@@ -490,7 +490,7 @@ export class DateAddNode extends ClassicPreset.Node {
       ? jsDateToSerial(new Date(Date.UTC(y, mo, Math.min(d.getUTCDate(), lastDay))))
       : jsDateToSerial(new Date(Date.UTC(y, mo + 1, 0))); // day 0 = last day of month
     return serial;
-    }, inputs.start?.[0] ?? null, inputs.months?.[0] ?? this.literals.months ?? 0);
+    }, inputs.start?.[0] ?? null, readInput(inputs.months, this.literals.months ?? 0));
     this.cachedResult = result;
     return { result };
   }
@@ -531,7 +531,7 @@ export class WorkdayNode extends ClassicPreset.Node {
       if (!off.has(cur.getUTCDay()) && !hol.has(dayKey(jsDateToSerial(cur)))) rem--;
     }
     return jsDateToSerial(cur);
-    }, inputs.start?.[0] ?? null, inputs.days?.[0] ?? this.literals.days ?? 5);
+    }, inputs.start?.[0] ?? null, readInput(inputs.days, this.literals.days ?? 5));
     this.cachedResult = result;
     return { result };
   }
