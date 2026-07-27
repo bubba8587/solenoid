@@ -60,12 +60,19 @@ function uiStrings(): Unit[] {
 
 type Rule = { id: string; why: string; re: RegExp };
 
-/** A plain, unmodified mouse gesture. The compound forms are listed explicitly so
- *  they match, while the bare forms refuse a hyphen or word character in front —
- *  that one lookbehind is what keeps `Shift-drag`, `mid-drag` and `click-away`
- *  out, and the trailing \b keeps `dragging` out. */
+/** A plain, DEFAULT-BUTTON mouse gesture — the kind anyone finds in a second.
+ *
+ *  A NON-default button is a real binding and stays documentable, exactly like a
+ *  modifier key: nothing on screen suggests that right-click erases a painted
+ *  cell, so Grid Painter's tooltip is the only place that can say so. Hence
+ *  `right-click` / `middle-click` / `right-drag` are absent from this pattern
+ *  while `left-click`, `double-click` and `left-drag` are in it.
+ *
+ *  The compound forms are listed explicitly so they match; the bare forms refuse
+ *  a hyphen or word character in front, which is what keeps `Shift-drag`,
+ *  `mid-drag` and `click-away` out, and the trailing \b keeps `dragging` out. */
 const GESTURE =
-  "(?:(?:double|right|left|middle)-click|(?:left|right)-drag|" +
+  "(?:(?:double|left)-click|left-drag|" +
   "(?<![-\\w])(?:click|drag|hover|tap|scroll|pinch|swipe)\\b)(?!-)";
 
 const RULES: Rule[] = [
@@ -144,9 +151,9 @@ describe("UI copy", () => {
         "Click the chip to edit in a grid.",
         "Drag a slider to set a value;",
         "Drag a handle in a square to set two values at once.",
-        "Draw a dataset by hand: click a small plane to drop points, drag to move them, right-click to delete.",
+        "Draw a dataset by hand: click a small plane to drop points, drag to move them.",
         "Draw a response curve: drag control points on a strip and a smooth spline through them is sampled into a list.",
-        "Paint a matrix by hand: left-drag fills cells with the Brush value, right-drag erases to blank.",
+        "Paint a matrix by hand: left-drag fills cells with the Brush value.",
         "Filter a Frame like an Excel slicer: pick a column, then click its values to keep matching rows.",
         "Drag its header to move them together;",
         "A free-floating markdown note with a title and body; drag it anywhere, tint it.",
@@ -166,10 +173,13 @@ describe("UI copy", () => {
   // flag. They are all shipped copy, and all correct.
   it("does not flag legitimate copy", () => {
     const keep = [
-      // Modified gestures: unguessable bindings, so they are documentation.
+      // Modified gestures and non-default buttons: unguessable bindings, so they
+      // are documentation. Nothing on screen suggests right-click erases a cell.
       "Shift-drag on empty canvas draws a free-form lasso, and its winding direction sets the rule.",
       "**Shift-drag** a node to lock its motion to one axis.",
       "A container: drop it around nodes, or select them and press Ctrl+G.",
+      "Paintable matrix, any brush value (right-click erases to blank).",
+      "Outputs the points as parallel X and Y lists; right-click deletes one.",
       // The gesture word as a noun or a descriptive gerund, not an instruction.
       "A drag that won't drop has exactly three causes: the canvas is locked; it's a self-loop; or the types don't connect.",
       "The drag guard refuses silently, but wiring through the connection dialog names the reason.",
