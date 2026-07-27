@@ -1,9 +1,22 @@
 ﻿import { ClassicPreset } from "rete";
 import { numIn, numOut, listIn, dateIn } from "./shared";
-import { serialToJsDate, jsDateToSerial } from "./date";
+import { serialToJsDate } from "./date";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { resolveExcelFunction } from "../excelFunctions";
 import { EquationNode } from "./equation";
+// The pure bond/security math, shared verbatim with the formula surface
+// (financeOps.ts). The op types stay re-exported so the node barrel keeps its shape.
+import {
+  coupAddMonths, days30_360, actualDays,
+  couponValue, accrintM, securityDisc, priceDisc, priceMat, durationValue,
+  bondPriceYield, oddCoupon, vdb,
+} from "./financeOps";
+import type {
+  CouponOp, SecurityDiscOp, PriceDiscOp, PriceMatOp, DurationOp, BondPriceOp, OddCouponOp,
+} from "./financeOps";
+export type {
+  CouponOp, SecurityDiscOp, PriceDiscOp, PriceMatOp, DurationOp, BondPriceOp, OddCouponOp,
+} from "./financeOps";
 
 // Cashflow-list prep for NPV/IRR/MIRR/FVSCHEDULE: propagate the first SolError in the
 // list (error-in → error-out), and coerce a null cell
@@ -22,31 +35,6 @@ export const PAYMENT_TIMING_META: Record<PaymentTiming, string> = {
 };
 
 // ─── Coupon / accrual date helpers ────────────────────────────────────────────
-
-function _coupAddMonths(d: Date, months: number): Date {
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + months, d.getUTCDate()));
-}
-
-function _coupDates(settle: Date, maturity: Date, freq: number): { prev: Date; next: Date } {
-  const step = 12 / freq;
-  let next = new Date(maturity.getTime());
-  while (next > settle) next = _coupAddMonths(next, -step);
-  next = _coupAddMonths(next, step);
-  return { prev: _coupAddMonths(next, -step), next };
-}
-
-function _days30_360(d1: Date, d2: Date): number {
-  const y1 = d1.getUTCFullYear(), m1 = d1.getUTCMonth() + 1;
-  let v1 = d1.getUTCDate();
-  const y2 = d2.getUTCFullYear(), m2 = d2.getUTCMonth() + 1, v2raw = d2.getUTCDate();
-  if (v1 === 31) v1 = 30;
-  const v2 = (v2raw === 31 && v1 === 30) ? 30 : v2raw;
-  return (y2 - y1) * 360 + (m2 - m1) * 30 + (v2 - v1);
-}
-
-function _actualDays(d1: Date, d2: Date): number {
-  return Math.round((d2.getTime() - d1.getTime()) / 86400000);
-}
 
 // â”€â”€â”€ Bitwise â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export type BitwiseOp = "bitand" | "bitor" | "bitxor" | "bitlshift" | "bitrshift";
@@ -556,32 +544,6 @@ export const VDB_META = {
   description: "Variable declining balance depreciation over a period range; switches to straight-line when SL is higher. Excel: VDB(cost, salvage, life, start, end, [factor]).",
 };
 
-function vdbBookValue(cost: number, salvage: number, life: number, periodEnd: number, factor: number): number {
-  let book     = cost;
-  const n      = Math.min(Math.floor(periodEnd), life);
-  const frac   = periodEnd - Math.floor(periodEnd);
-  for (let p = 0; p < n && book > salvage; p++) {
-    const remLife = life - p;
-    if (remLife <= 0) break;
-    const ddb  = (book * factor) / life;
-    const sl   = (book - salvage) / remLife;
-    let depr   = Math.max(ddb, sl);
-    depr       = Math.min(depr, Math.max(0, book - salvage));
-    book      -= depr;
-  }
-  if (frac > 0 && book > salvage) {
-    const remLife = life - n;
-    if (remLife > 0) {
-      const ddb  = (book * factor) / life;
-      const sl   = (book - salvage) / remLife;
-      let depr   = Math.max(ddb, sl) * frac;
-      depr       = Math.min(depr, Math.max(0, book - salvage));
-      book      -= depr;
-    }
-  }
-  return book;
-}
-
 export class VdbNode extends ClassicPreset.Node {
   label: string;
   cachedResult: number | null = null;
@@ -607,13 +569,7 @@ export class VdbNode extends ClassicPreset.Node {
     const start   = inputs.start?.[0]   ?? this.literals.start   ?? 0;
     const end     = inputs.end?.[0]     ?? this.literals.end     ?? 0;
     const factor  = inputs.factor?.[0]  ?? this.literals.factor  ?? 2;
-    let result: number | null = null;
-    if (cost >= 0 && salvage >= 0 && life > 0 && start >= 0 && end >= start && end <= life && factor > 0) {
-      const startBook = vdbBookValue(cost, salvage, life, start, factor);
-      const endBook   = vdbBookValue(cost, salvage, life, end,   factor);
-      result = Math.max(0, startBook - endBook);
-      if (!Number.isFinite(result)) result = null;
-    }
+    const result = vdb(cost, salvage, life, start, end, factor);
     this.cachedResult = result;
     return { result };
   }
@@ -755,19 +711,11 @@ export class TBillNode extends ClassicPreset.Node {
 
 // ─── DISC / INTRATE / RECEIVED ────────────────────────────────────────────────
 
-export type SecurityDiscOp = "disc" | "intrate" | "received";
-
 export const SECURITY_DISC_OP_META = {
   disc:     { label: "DISC",     description: "Discount rate for a fully-invested security (redemption>price). Excel: DISC." },
   intrate:  { label: "INTRATE",  description: "Interest rate for a fully-invested security. Excel: INTRATE." },
   received: { label: "RECEIVED", description: "Amount received at maturity for a fully-invested security. Excel: RECEIVED." },
 } satisfies Record<SecurityDiscOp, { label: string; description: string }>;
-
-function basisDays(basis: number): number {
-  if (basis === 3) return 365;
-  if (basis === 1) return 365.25;
-  return 360;
-}
 
 export class SecurityDiscNode extends ClassicPreset.Node {
   label: string;
@@ -799,40 +747,23 @@ export class SecurityDiscNode extends ClassicPreset.Node {
   data(inputs: { settle?: number[]; maturity?: number[]; pr?: number[]; redemption?: number[]; investment?: number[]; discount?: number[]; basis?: number[] }): { result: number | null } {
     const s = inputs.settle?.[0];
     const m = inputs.maturity?.[0];
-    if (s == null || m == null || m <= s) { this.cachedResult = null; return { result: null }; }
-    const dsm   = Math.round(m - s);
-    const basis = Math.round(inputs.basis?.[0] ?? this.literals.basis ?? 0);
-    const bd    = basisDays(basis);
-    let result: number;
-    switch (this.op) {
-      case "disc": {
-        const pr  = inputs.pr?.[0]         ?? this.literals.pr         ?? 95;
-        const red = inputs.redemption?.[0] ?? this.literals.redemption ?? 100;
-        result = ((red - pr) / red) * (bd / dsm);
-        break;
-      }
-      case "intrate": {
-        const inv = inputs.investment?.[0] ?? this.literals.investment ?? 1000;
-        const red = inputs.redemption?.[0] ?? this.literals.redemption ?? 100;
-        result = ((red - inv) / inv) * (bd / dsm);
-        break;
-      }
-      case "received": {
-        const inv  = inputs.investment?.[0] ?? this.literals.investment ?? 1000;
-        const disc = inputs.discount?.[0]   ?? this.literals.discount   ?? 0.05;
-        const denom = 1 - disc * dsm / bd;
-        result = denom <= 0 ? 0 : inv / denom;
-        break;
-      }
-    }
-    this.cachedResult = result!;
-    return { result: result! };
+    if (s == null || m == null) { this.cachedResult = null; return { result: null }; }
+    const basis = inputs.basis?.[0] ?? this.literals.basis ?? 0;
+    // `a` is the price (DISC) or the investment (INTRATE/RECEIVED); `b` the
+    // redemption (DISC/INTRATE) or the discount rate (RECEIVED).
+    const a = this.op === "disc"
+      ? (inputs.pr?.[0] ?? this.literals.pr ?? 95)
+      : (inputs.investment?.[0] ?? this.literals.investment ?? 1000);
+    const b = this.op === "received"
+      ? (inputs.discount?.[0] ?? this.literals.discount ?? 0.05)
+      : (inputs.redemption?.[0] ?? this.literals.redemption ?? 100);
+    const result = securityDisc(this.op, s, m, a, b, basis);
+    this.cachedResult = result;
+    return { result };
   }
 }
 
 // ─── COUPON functions (COUPDAYBS / COUPDAYS / COUPDAYSNC / COUPNCD / COUPPCD / COUPNUM) ─
-
-export type CouponOp = "coupdaybs" | "coupdays" | "coupdaysnc" | "coupncd" | "couppcd" | "coupnum";
 
 export const COUPON_OP_META = {
   coupdaybs:  { label: "COUPDAYBS",  description: "Days from beginning of coupon period to settlement. Excel: COUPDAYBS." },
@@ -865,28 +796,9 @@ export class CouponNode extends ClassicPreset.Node {
     const s = inputs.settle?.[0];
     const m = inputs.maturity?.[0];
     if (s == null || m == null) { this.cachedResult = null; return { result: null }; }
-    const freq  = Math.round(inputs.frequency?.[0] ?? this.literals.frequency ?? 2);
-    const basis = Math.round(inputs.basis?.[0]     ?? this.literals.basis     ?? 0);
-    if (![1, 2, 4].includes(freq)) { this.cachedResult = null; return { result: null }; }
-    const settle  = serialToJsDate(s);
-    const maturity = serialToJsDate(m);
-    const { prev, next } = _coupDates(settle, maturity, freq);
-    const use30 = basis === 0 || basis === 4;
-    let result: number;
-    switch (this.op) {
-      case "coupdaybs":  result = use30 ? _days30_360(prev, settle) : _actualDays(prev, settle); break;
-      case "coupdays":   result = use30 ? 360 / freq : basis === 3 ? 365 / freq : _actualDays(prev, next); break;
-      case "coupdaysnc": result = use30 ? 360 / freq - _days30_360(prev, settle) : _actualDays(settle, next); break;
-      case "coupncd":    result = jsDateToSerial(next); break;
-      case "couppcd":    result = jsDateToSerial(prev); break;
-      case "coupnum": {
-        const step = 12 / freq;
-        let count = 0, d = new Date(next.getTime());
-        while (d <= maturity) { count++; d = _coupAddMonths(d, step); }
-        result = count;
-        break;
-      }
-    }
+    const freq  = inputs.frequency?.[0] ?? this.literals.frequency ?? 2;
+    const basis = inputs.basis?.[0]     ?? this.literals.basis     ?? 0;
+    const result = couponValue(this.op, s, m, freq, basis);
     this.cachedResult = result;
     return { result };
   }
@@ -924,8 +836,8 @@ export class AccrintNode extends ClassicPreset.Node {
     const issue  = serialToJsDate(is);
     const settle = serialToJsDate(ss);
     const use30  = basis === 0 || basis === 4;
-    const a = use30 ? _days30_360(issue, settle) : _actualDays(issue, settle);
-    const e = use30 ? 360 / freq : basis === 3 ? 365 / freq : _actualDays(issue, _coupAddMonths(issue, 12 / freq));
+    const a = use30 ? days30_360(issue, settle) : actualDays(issue, settle);
+    const e = use30 ? 360 / freq : basis === 3 ? 365 / freq : actualDays(issue, coupAddMonths(issue, 12 / freq));
     const result = par * (rate / freq) * (a / e);
     this.cachedResult = result;
     return { result };
@@ -956,20 +868,14 @@ export class AccrintMNode extends ClassicPreset.Node {
     if (is == null || ss == null) { this.cachedResult = null; return { result: null }; }
     const rate  = inputs.rate?.[0]  ?? this.literals.rate  ?? 0.06;
     const par   = inputs.par?.[0]   ?? this.literals.par   ?? 1000;
-    const basis = Math.round(inputs.basis?.[0] ?? this.literals.basis ?? 0);
-    const issue  = serialToJsDate(is), settle = serialToJsDate(ss);
-    const use30  = basis === 0 || basis === 4;
-    const a = use30 ? _days30_360(issue, settle) : _actualDays(issue, settle);
-    const d = basis === 3 ? 365 : basis === 1 ? _actualDays(issue, _coupAddMonths(issue, 12)) : 360;
-    const result = par * rate * a / d;
+    const basis = inputs.basis?.[0] ?? this.literals.basis ?? 0;
+    const result = accrintM(is, ss, rate, par, basis);
     this.cachedResult = result;
     return { result };
   }
 }
 
 // ─── PRICEDISC / YIELDDISC ────────────────────────────────────────────────────
-
-export type PriceDiscOp = "pricedisc" | "yielddisc";
 
 export const PRICE_DISC_OP_META = {
   pricedisc: { label: "PRICEDISC", description: "Price per $100 of a discounted security (e.g. T-bill). Excel: PRICEDISC." },
@@ -999,28 +905,19 @@ export class PriceDiscNode extends ClassicPreset.Node {
   data(inputs: { settle?: number[]; maturity?: number[]; discount?: number[]; pr?: number[]; redemption?: number[]; basis?: number[] }): { result: number | null } {
     const s = inputs.settle?.[0], m = inputs.maturity?.[0];
     if (s == null || m == null) { this.cachedResult = null; return { result: null }; }
-    const basis      = Math.round(inputs.basis?.[0]      ?? this.literals.basis      ?? 0);
-    const redemption = inputs.redemption?.[0]             ?? this.literals.redemption ?? 100;
-    const settle  = serialToJsDate(s), maturity = serialToJsDate(m);
-    const use30   = basis === 0 || basis === 4;
-    const dsm = use30 ? _days30_360(settle, maturity) : _actualDays(settle, maturity);
-    const B   = basis === 3 ? 365 : 360;
-    let result: number;
-    if (this.op === "pricedisc") {
-      const disc = inputs.discount?.[0] ?? this.literals.discount ?? 0.05;
-      result = redemption * (1 - disc * dsm / B);
-    } else {
-      const pr = inputs.pr?.[0] ?? this.literals.pr ?? 97;
-      result = (redemption - pr) / pr * B / dsm;
-    }
+    const basis      = inputs.basis?.[0]      ?? this.literals.basis      ?? 0;
+    const redemption = inputs.redemption?.[0] ?? this.literals.redemption ?? 100;
+    // The discount rate for PRICEDISC, the market price for YIELDDISC.
+    const rateOrPrice = this.op === "pricedisc"
+      ? (inputs.discount?.[0] ?? this.literals.discount ?? 0.05)
+      : (inputs.pr?.[0]       ?? this.literals.pr       ?? 97);
+    const result = priceDisc(this.op, s, m, rateOrPrice, redemption, basis);
     this.cachedResult = result;
     return { result };
   }
 }
 
 // ─── PRICEMAT / YIELDMAT ──────────────────────────────────────────────────────
-
-export type PriceMatOp = "pricemat" | "yieldmat";
 
 export const PRICE_MAT_OP_META = {
   pricemat: { label: "PRICEMAT", description: "Price per $100 of a security that pays interest at maturity. Excel: PRICEMAT." },
@@ -1051,28 +948,19 @@ export class PriceMatNode extends ClassicPreset.Node {
   data(inputs: { settle?: number[]; maturity?: number[]; issue?: number[]; rate?: number[]; yld?: number[]; pr?: number[]; basis?: number[] }): { result: number | null } {
     const s = inputs.settle?.[0], m = inputs.maturity?.[0], is = inputs.issue?.[0];
     if (s == null || m == null || is == null) { this.cachedResult = null; return { result: null }; }
-    const rate  = inputs.rate?.[0] ?? this.literals.rate ?? 0.06;
-    const basis = Math.round(inputs.basis?.[0] ?? this.literals.basis ?? 0);
-    const settle = serialToJsDate(s), maturity = serialToJsDate(m), issue = serialToJsDate(is);
-    const use30  = basis === 0 || basis === 4;
-    const dsm = use30 ? _days30_360(settle, maturity) : _actualDays(settle, maturity);
-    const B   = basis === 3 ? 365 : basis === 1 ? _actualDays(issue, _coupAddMonths(issue, 12)) : 360;
-    let result: number;
-    if (this.op === "pricemat") {
-      const yld = inputs.yld?.[0] ?? this.literals.yld ?? 0.065;
-      result = 100 * (1 + dsm * rate / B) / (1 + dsm * yld / B);
-    } else {
-      const pr = inputs.pr?.[0] ?? this.literals.pr ?? 99;
-      result = (100 * (1 + dsm * rate / B) / (pr / 100) - 1) * B / dsm;
-    }
+    const rate  = inputs.rate?.[0]  ?? this.literals.rate  ?? 0.06;
+    const basis = inputs.basis?.[0] ?? this.literals.basis ?? 0;
+    // The yield for PRICEMAT, the market price for YIELDMAT.
+    const yldOrPrice = this.op === "pricemat"
+      ? (inputs.yld?.[0] ?? this.literals.yld ?? 0.065)
+      : (inputs.pr?.[0]  ?? this.literals.pr  ?? 99);
+    const result = priceMat(this.op, s, m, is, rate, yldOrPrice, basis);
     this.cachedResult = result;
     return { result };
   }
 }
 
 // ─── DURATION / MDURATION ─────────────────────────────────────────────────────
-
-export type DurationOp = "duration" | "mduration";
 
 export const DURATION_OP_META = {
   duration:  { label: "DURATION",  description: "Macaulay duration: the weighted average time to receive cash flows. Excel: DURATION." },
@@ -1104,71 +992,15 @@ export class DurationNode extends ClassicPreset.Node {
     if (s == null || m == null) { this.cachedResult = null; return { result: null }; }
     const coupon = inputs.coupon?.[0]    ?? this.literals.coupon    ?? 0.08;
     const yld    = inputs.yld?.[0]       ?? this.literals.yld       ?? 0.09;
-    const freq   = Math.round(inputs.frequency?.[0] ?? this.literals.frequency ?? 2);
-    if (![1, 2, 4].includes(freq)) { this.cachedResult = null; return { result: null }; }
-    const settle  = serialToJsDate(s), maturity = serialToJsDate(m);
-    const { prev, next } = _coupDates(settle, maturity, freq);
-    // Fractional first period (fraction of coupon period remaining)
-    const dsc = _actualDays(settle, next) / _actualDays(prev, next);
-    // Count coupon periods
-    const step = 12 / freq;
-    let N = 0; let d = new Date(next.getTime());
-    while (d <= maturity) { N++; d = _coupAddMonths(d, step); }
-    const C = coupon / freq * 100;
-    const y = yld / freq;
-    let price = 0, durNum = 0;
-    for (let k = 1; k <= N; k++) {
-      const t  = k - 1 + dsc;
-      const cf = k === N ? C + 100 : C;
-      const pv = cf / Math.pow(1 + y, t);
-      price  += pv;
-      durNum += t * pv;
-    }
-    if (price === 0) { this.cachedResult = null; return { result: null }; }
-    const durYears = durNum / price / freq;
-    const result   = this.op === "duration" ? durYears : durYears / (1 + y);
+    const freq   = inputs.frequency?.[0] ?? this.literals.frequency ?? 2;
+    const basis  = inputs.basis?.[0]     ?? this.literals.basis     ?? 0;
+    const result = durationValue(this.op, s, m, coupon, yld, freq, basis);
     this.cachedResult = result;
     return { result };
   }
 }
 
 // ─── PRICE / YIELD ────────────────────────────────────────────────────────────
-
-function _bondCouponCount(next: Date, maturity: Date, freq: number): number {
-  const step = 12 / freq;
-  let N = 0; let d = new Date(next.getTime());
-  while (d <= maturity) { N++; d = _coupAddMonths(d, step); }
-  return N;
-}
-
-function _bondPrice(settle: Date, maturity: Date, couponRate: number, yld: number, redemption: number, freq: number): number {
-  const { prev, next } = _coupDates(settle, maturity, freq);
-  const E = _days30_360(prev, next);
-  const DSC = _days30_360(settle, next);
-  const A = E - DSC;
-  const N = _bondCouponCount(next, maturity, freq);
-  const C = couponRate / freq * 100;
-  const y = yld / freq;
-  let dirty = redemption / Math.pow(1 + y, N - 1 + DSC/E);
-  for (let k = 1; k <= N; k++) dirty += C / Math.pow(1 + y, k - 1 + DSC/E);
-  return dirty - C * A / E;
-}
-
-function _bondYield(settle: Date, maturity: Date, couponRate: number, pr: number, redemption: number, freq: number): number {
-  let yld = couponRate > 0 ? couponRate : 0.05;
-  for (let i = 0; i < 100; i++) {
-    const p  = _bondPrice(settle, maturity, couponRate, yld, redemption, freq);
-    const dp = (_bondPrice(settle, maturity, couponRate, yld + 1e-7, redemption, freq) - p) / 1e-7;
-    if (Math.abs(dp) < 1e-15) break;
-    const delta = (p - pr) / dp;
-    yld -= delta;
-    if (Math.abs(delta) < 1e-10) break;
-    yld = Math.max(-0.9999, Math.min(100, yld));
-  }
-  return yld;
-}
-
-export type BondPriceOp = "price" | "yield";
 
 export const BOND_PRICE_OP_META = {
   price: { label: "PRICE", description: "Clean price per $100 face for a coupon bond (30/360 basis). Excel: PRICE." },
@@ -1201,16 +1033,12 @@ export class BondPriceNode extends ClassicPreset.Node {
     if (s == null || m == null) { this.cachedResult = null; return { result: null }; }
     const rate       = inputs.rate?.[0]       ?? this.literals.rate       ?? 0.065;
     const redemption = inputs.redemption?.[0] ?? this.literals.redemption ?? 100;
-    const freq       = Math.round(inputs.frequency?.[0] ?? this.literals.frequency ?? 2);
-    const settle = serialToJsDate(s), maturity = serialToJsDate(m);
-    let result: number;
-    if (this.op === "price") {
-      const yld = inputs.yld?.[0] ?? this.literals.yld ?? 0.07;
-      result = _bondPrice(settle, maturity, rate, yld, redemption, freq);
-    } else {
-      const pr = inputs.pr?.[0] ?? this.literals.pr ?? 97.5;
-      result = _bondYield(settle, maturity, rate, pr, redemption, freq);
-    }
+    const freq       = inputs.frequency?.[0]  ?? this.literals.frequency  ?? 2;
+    // The yield for PRICE, the market price for YIELD.
+    const yldOrPrice = this.op === "price"
+      ? (inputs.yld?.[0] ?? this.literals.yld ?? 0.07)
+      : (inputs.pr?.[0]  ?? this.literals.pr  ?? 97.5);
+    const result = bondPriceYield(this.op, s, m, rate, yldOrPrice, redemption, freq);
     this.cachedResult = result;
     return { result };
   }
@@ -1267,63 +1095,12 @@ export class XirrNode extends ClassicPreset.Node {
 
 // ─── ODD COUPON — ODDFPRICE / ODDFYIELD / ODDLPRICE / ODDLYIELD ───────────────
 
-export type OddCouponOp = "oddfprice" | "oddfyield" | "oddlprice" | "oddlyield";
-
 export const ODD_COUPON_OP_META = {
   oddfprice: { label: "ODDFPRICE", description: "Price of a bond with an irregular first coupon period. Excel: ODDFPRICE." },
   oddfyield: { label: "ODDFYIELD", description: "Yield of a bond with an irregular first coupon period. Excel: ODDFYIELD." },
   oddlprice: { label: "ODDLPRICE", description: "Price of a bond with an irregular last coupon period. Excel: ODDLPRICE." },
   oddlyield: { label: "ODDLYIELD", description: "Yield of a bond with an irregular last coupon period. Excel: ODDLYIELD." },
 } satisfies Record<OddCouponOp, { label: string; description: string }>;
-
-function _oddfPrice(settle: Date, maturity: Date, issue: Date, firstCoupon: Date,
-                    couponRate: number, yld: number, redemption: number, freq: number): number {
-  if (settle >= firstCoupon) return _bondPrice(settle, maturity, couponRate, yld, redemption, freq);
-  const step = 12 / freq;
-  const E = 360 / freq;
-  // Generate quasi-coupon dates backwards from firstCoupon
-  const qcs: Date[] = [];
-  let d = new Date(firstCoupon.getTime());
-  do { qcs.unshift(new Date(d.getTime())); d = _coupAddMonths(d, -step); } while (d >= issue);
-  const oddStart = _coupAddMonths(qcs[0], -step);
-  const NLi = _days30_360(oddStart, firstCoupon) / E;
-  let prevQC = oddStart;
-  for (const qc of qcs) { if (qc <= settle) prevQC = qc; else break; }
-  const Ai = _days30_360(prevQC, settle) / E;
-  const DSC = _days30_360(settle, firstCoupon);
-  const N = _bondCouponCount(firstCoupon, maturity, freq);
-  const y = yld / freq, C = couponRate / freq * 100;
-  let price = redemption / Math.pow(1 + y, N - 1 + DSC/E);
-  for (let k = 1; k <= N; k++) price += C / Math.pow(1 + y, k - 1 + DSC/E);
-  price += C * (NLi - Ai) / Math.pow(1 + y, DSC/E);
-  price -= C * Ai;
-  return price;
-}
-
-function _oddlPrice(settle: Date, maturity: Date, lastInterest: Date,
-                    couponRate: number, yld: number, redemption: number, freq: number): number {
-  const E = 360 / freq;
-  const oddDays = _days30_360(lastInterest, maturity);
-  const Nc = oddDays / E;
-  const finalCF = redemption + couponRate / freq * 100 * Nc;
-  if (settle >= lastInterest) {
-    const DSC = _days30_360(settle, maturity);
-    const A = _days30_360(lastInterest, settle);
-    const price = finalCF / Math.pow(1 + yld/freq, DSC/E);
-    return price - couponRate / freq * 100 * A / E;
-  }
-  // Regular coupons between settle and lastInterest, then odd last
-  const { prev, next } = _coupDates(settle, lastInterest, freq);
-  const DSC = _days30_360(settle, next);
-  const A = _days30_360(prev, settle);
-  const N = _bondCouponCount(next, lastInterest, freq);
-  const y = yld / freq, C = couponRate / freq * 100;
-  // finalCF is at maturity, which is N regular coupon periods + Nc odd period after next
-  let price = finalCF / Math.pow(1 + y, N - 1 + DSC/E + Nc);
-  for (let k = 1; k <= N; k++) price += C / Math.pow(1 + y, k - 1 + DSC/E);
-  price -= C * A / E;
-  return price;
-}
 
 export class OddCouponNode extends ClassicPreset.Node {
   label: string;
@@ -1358,45 +1135,15 @@ export class OddCouponNode extends ClassicPreset.Node {
     if (s == null || m == null || fl == null) { this.cachedResult = null; return { result: null }; }
     const rate       = inputs.rate?.[0]       ?? this.literals.rate       ?? 0.0775;
     const redemption = inputs.redemption?.[0] ?? this.literals.redemption ?? 100;
-    const freq       = Math.round(inputs.frequency?.[0] ?? this.literals.frequency ?? 2);
-    const settle = serialToJsDate(s), maturity = serialToJsDate(m), flDate = serialToJsDate(fl);
-    const isFirst = this.op === "oddfprice" || this.op === "oddfyield";
-    const issue = isFirst ? serialToJsDate(inputs.issue?.[0] ?? s) : settle;
-    let result: number;
-    if (this.op === "oddfprice") {
-      const yld = inputs.yld?.[0] ?? this.literals.yld ?? 0.085;
-      result = _oddfPrice(settle, maturity, issue, flDate, rate, yld, redemption, freq);
-    } else if (this.op === "oddfyield") {
-      const pr = inputs.pr?.[0] ?? this.literals.pr ?? 99.5;
-      let yld = rate > 0 ? rate : 0.05;
-      for (let i = 0; i < 100; i++) {
-        const p  = _oddfPrice(settle, maturity, issue, flDate, rate, yld, redemption, freq);
-        const dp = (_oddfPrice(settle, maturity, issue, flDate, rate, yld + 1e-7, redemption, freq) - p) / 1e-7;
-        if (Math.abs(dp) < 1e-15) break;
-        const delta = (p - pr) / dp;
-        yld -= delta;
-        if (Math.abs(delta) < 1e-10) break;
-        yld = Math.max(-0.9999, Math.min(100, yld));
-      }
-      result = yld;
-    } else if (this.op === "oddlprice") {
-      const yld = inputs.yld?.[0] ?? this.literals.yld ?? 0.085;
-      result = _oddlPrice(settle, maturity, flDate, rate, yld, redemption, freq);
-    } else {
-      const pr = inputs.pr?.[0] ?? this.literals.pr ?? 99.5;
-      let yld = rate > 0 ? rate : 0.05;
-      for (let i = 0; i < 100; i++) {
-        const p  = _oddlPrice(settle, maturity, flDate, rate, yld, redemption, freq);
-        const dp = (_oddlPrice(settle, maturity, flDate, rate, yld + 1e-7, redemption, freq) - p) / 1e-7;
-        if (Math.abs(dp) < 1e-15) break;
-        const delta = (p - pr) / dp;
-        yld -= delta;
-        if (Math.abs(delta) < 1e-10) break;
-        yld = Math.max(-0.9999, Math.min(100, yld));
-      }
-      result = yld;
-    }
-    this.cachedResult = isNaN(result) ? null : result;
+    const freq       = inputs.frequency?.[0]  ?? this.literals.frequency  ?? 2;
+    // The yield for the *PRICE ops, the market price for the *YIELD ops (which
+    // Newton-solve for the yield that reproduces it).
+    const isPrice = this.op === "oddfprice" || this.op === "oddlprice";
+    const yldOrPrice = isPrice
+      ? (inputs.yld?.[0] ?? this.literals.yld ?? 0.085)
+      : (inputs.pr?.[0]  ?? this.literals.pr  ?? 99.5);
+    const result = oddCoupon(this.op, s, m, inputs.issue?.[0] ?? s, fl, rate, yldOrPrice, redemption, freq);
+    this.cachedResult = result;
     return { result: this.cachedResult };
   }
 }
