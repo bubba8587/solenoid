@@ -150,7 +150,16 @@ const RULES: Rule[] = [
     // "Type a comma-separated list or wire one" for the universal affordance.
     // `Set the vault in Settings ▸ Obsidian` is deliberately NOT matched — a
     // config location genuinely cannot be guessed from the node.
-    re: /^Wire\b|\b(?:wire|type) (?:a |an |it |them |one |the )?[^.;]{0,28}\bor (?:set|type|wire)\b|\bor set (?:it|them) inline\b/i,
+    // `wire a|an X` tells the reader what to put UPSTREAM. That is out of scope
+    // for a string: if a node's expected neighbours need surfacing, it is a UI
+    // affordance, not prose. `wire the table into Frame Filter` survives on the
+    // definite article — it names a DIFFERENT node to use instead, which is a
+    // disambiguation between two similar nodes, not an upstream suggestion.
+    re: /^Wire\b|\bwire (?:a|an)\b|\b(?:wire|type) (?:a |an |it |them |one |the )?[^.;]{0,28}\bor (?:set|type|wire)\b|\bor set (?:it|them) inline\b/i,
+    // Node surfaces only. Long-form help explains MECHANISMS by worked example
+    // ("wire a number into one and it becomes a numeric list socket"), which is
+    // the opposite of telling a reader what to put upstream of a node.
+    where: (u) => !u.src.startsWith("help/"),
   },
   {
     id: "widget-narration",
@@ -196,6 +205,7 @@ describe("UI copy", () => {
         "Wire a 2-column frame (Date, Value); duplicate days sum.",
         "Type a comma-separated list or wire one.",
         "Wire the From and To bases or set them inline.",
+        "A flow diagram: wire a 3-column frame (From, To, Value).",
       ],
       slogan: ["Every chart Excel has, and then some"],
       // Every string the 2026-07-27 aggressive sweep removed, verbatim.
@@ -243,6 +253,9 @@ describe("UI copy", () => {
       "Rank; ties share the highest position.",
       // A config location genuinely cannot be guessed from the node itself.
       "Set the vault in Settings ▸ Obsidian.",
+      // Names a DIFFERENT node to use instead — disambiguation, not an
+      // upstream suggestion. The definite article is what separates them.
+      "To filter a TABLE's rows, wire the table into Frame Filter (its columns arrive as Col1, Col2…).",
       "A vault-relative subfolder; arm it, then press Run.",
       // The gesture word as a noun or a descriptive gerund, not an instruction.
       "A drag that won't drop has exactly three causes: the canvas is locked; it's a self-loop; or the types don't connect.",

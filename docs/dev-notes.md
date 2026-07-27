@@ -185,6 +185,21 @@ app-wide, but touches feel of zoom).
   - `wire-instruction` now guards both shapes; the tooltip surface joins the corpus.
     `Set the vault in Settings ▸ Obsidian` is a pinned counterexample — a config LOCATION
     genuinely cannot be guessed from the node, unlike a gesture.
+- **Upstream/downstream suggestions are OUT of node strings** (author ruling). "Feeds a scatter
+  Chart, a regression, or Build Frame → Grid Interpolate", "Feeds MAP / BYROW / REDUCE", "Feeds a
+  Chart to embed a FRED graph", "or feed a filter's bounds" — all cut. If a node's expected
+  neighbours need surfacing, that is a UI affordance to build later, not prose. The bar for
+  keeping one is a genuinely UNIQUE relationship: the **Chart Builder** on Chart's Options, and
+  Candlestick naming the Data Feed's stock-history shape, both qualify.
+  - **An input CONTRACT is not a suggestion, and survives** — reworded, not cut. "Takes a
+    2-column frame (label, value)" became "each row of a 2-column frame (label, value) is one
+    rectangle", modelled on Waterfall, which already wove its column spec into the sentence. The
+    socket only says *frame*; which two columns, in what order, it cannot say.
+  - `wire-instruction` grew a `wire a|an` arm for this. The discriminator is the ARTICLE:
+    "wire **a** 3-column frame" tells you what to put upstream (out), while "wire **the** table
+    into Frame Filter" names a different node to use instead (a disambiguation between two
+    similar nodes, kept and pinned). Scoped off `help/`, where explaining a mechanism by worked
+    example — "wire a number into one and it becomes a numeric list socket" — is the whole point.
 - **The catalog moved from imperative to third person** (116 descriptions across 25 files —
   descriptions live in `nodes/*.ts` and `packs/*.ts`, not only `nodeCatalog.ts`). These strings
   are the node's hover tooltip (`nodeKit.tsx` `title`), the Add-menu tooltip and the Function

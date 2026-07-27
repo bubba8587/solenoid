@@ -104,7 +104,7 @@ function isoWeek(d: Date): number {
 export type TodayNowOp = "today" | "now";
 
 export const TODAY_NOW_OP_META = {
-  today: { label: "TODAY", description: "Today's date as a serial number. Feeds Date Part, EDATE, or DAYS. Excel: TODAY()." },
+  today: { label: "TODAY", description: "Today's date as a serial number. Excel: TODAY()." },
   now:   { label: "NOW",   description: "Current date + time as a serial; the fractional part encodes time of day. Excel: NOW()." },
 } satisfies Record<TodayNowOp, { label: string; description: string }>;
 
