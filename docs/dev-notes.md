@@ -120,216 +120,78 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
-### SESSION DIGEST (2026-07-27 — socket shades onto one axis; the Socket Types tab rewritten from the reference)
-- **Every socket color transform is now HSV** (`palette.ts`), matching `themeAccent` /
-  `darkenAccent` / `socketRingShade`, so the whole family tunes on one set of axes.
-  `socketArrayShade` was an RGB multiply — already equivalent to a value scale (scaling all
-  channels scales V, leaves H/S untouched), so that one was a free conversion.
-  `socketMatrixShade` was HSL and was NOT: its `L ×0.86` traded against saturation per hue, so
-  the same constant landed as V ×0.89 on gold (already saturated) but S ×1.26 on sky (duller).
-  The replacement gain/scale (S ×1.18, V ×0.92) is that transform's real HSV effect averaged
-  over the matrix slots of all five built-in palettes, so swapping spaces did not move the
-  depth. **Don't reintroduce an RGB multiply or an HSL step here.**
-- **Three knobs turned, all named constants now:** `ARRAY_VALUE_SCALE` 0.8 → 0.85 (lists a step
-  closer to their scalar), `MATRIX_HUE_SHIFT` −15° → −11° (table hues nearer the base),
-  `LIGHT_VALUE_DROP` 0.06 → 0.045. The last is GLOBAL, not socket-only — `themeAccent` also
-  feeds node accents, groups, notes, the minimap and `--sol-error`. Rings needed no edit: each
-  is a fixed value step off its own fill, so they tracked.
-- **Reference overlay → Socket Types: both markdown halves replaced** (`help/data-types.md`,
-  `help/data-model.md`) with a compressed read of `docs/socket-reference.md`. The tab renders
-  legend rows → `data-types.md` → the `DimensionalityFlow` ladder → `data-model.md`; the two
-  components were already accurate (the ladder covers widening/narrowing and the wildcard
-  ladder incl. `anycombo`), so only the prose changed and it deliberately does not restate them.
-- **Two things the old prose asserted were false, both now gone.** "A Cube sits at the top of
-  the ladder, so any node that takes a Frame takes a Cube" — backwards: `cube` reaches only
-  `cube`/`trueany`; it is the FRAME that widens INTO a cube. And `any` was described as the
-  pass-anything type; `any` is the rank-0 wildcard (scalars and combos only), `trueany` is the
-  one that takes everything. Color HUES are deliberately never named in the app docs — they
-  are false under Colorblind-safe/Solarized/Equinox; shape and relative shade are palette-safe.
-- **The overlay's markdown is shipped UI copy, so DESIGN.md §7 + the Captain-Obvious rule govern
-  it** — read them BEFORE writing help prose, not after. Three affordance-narrations went in and
-  came back out: "Hover any dot for its name" (the tooltip conveys itself), "double-click a cell
-  to drill in" (already in the Notes tab — one gesture, one home), and "three ways forward" (the
-  banned tease-a-count). A count survives only where exhaustiveness is the content: "exactly
-  three causes" for a refused cable is the diagnostic, "three ways forward" was filler ahead of a
-  list. Describing a non-obvious gesture's RESULT stays in bounds and is house style
-  (help.md's lasso paragraph) — quick-wire and the drag guard read that way deliberately.
-- **"Zero learning curve from Excel" is a mandate for MECHANISMS, not prose** (author ruling,
-  now written into the CLAUDE.md bullet that caused the misread). It is satisfied by the syntax
-  highlighter, consistent tooltips, the legend, and the overlay EXISTING — not by explaining a
-  visual app in text. The overlay's tab docs are scoped to systems normal usage cannot make
-  obvious (the socket lattice, unit flow): what would otherwise need annotated examples or a
-  tutorial. **If a legend, tooltip, glyph or control already carries it, the text must not
-  restate it.** Caught live: `data-types.md` had grown a nine-row shape table (circle = one
-  value, hexagon = Cube, hollow ring = anything…) rendered directly BELOW `SocketLegendRows`,
-  which draws all nine with labeled hover tips, and ABOVE `DimensionalityFlow`, which already
-  states rank-widening, narrowing-blocked, split squares and the gray ladder. Cut. What survives
-  is only what no pixel conveys: family separation + the Boolean↔number bridge, the combo→scalar
-  narrowing exception, and the family semantics (date-as-serial, Kleene logic, Frame vs Cube).
-- **A 14-string random spot-check found 6 issues (~40%) that the lint could not see**, and the
-  pattern in them was structural: the rules all keyed on the description OPENER, while the "do X"
-  register was alive MID-description. Sampling beat scanning here — no rule I would have written
-  from the opener data would have found these.
-  - **`title="…"` tooltips were an entirely unchecked surface, and the worst one**: the tooltip
-    fires while the pointer is already on the control, so it can only restate. Seven drag bars
-    said "Drag to move", two grips "Drag to resize", plus "Click to rename", "Click to drill in",
-    "Chart. Click to view.". 11 sites cut, 3 rewritten to name the destination. Kept the
-    non-obvious halves only: `Space or → advances` (dropping "Click"), `Go to this alert`.
-    **`Double-click fits members` was cut too** — double-clicking a resize edge to autofit is the
-    Excel column-border convention, so it is precisely the gesture the target user already has.
-  - **"Wire X into Y" was a 13-string cluster.** Most meant "this node TAKES X" (→ "Takes a
-    2-column frame (label, value)") or "this node FEEDS Y" (→ "Feeds MAP / BYROW / REDUCE").
-  - **Wire-or-type is true of EVERY literal input in the app**, so "Wire the From and To bases or
-    set them inline" / "Type a comma-separated list or wire one" described nothing about the node.
-    Cut in 5 places.
-  - `wire-instruction` now guards both shapes; the tooltip surface joins the corpus.
-    `Set the vault in Settings ▸ Obsidian` is a pinned counterexample — a config LOCATION
-    genuinely cannot be guessed from the node, unlike a gesture.
-- **Seed-graph prose joined the corpus (20 files, 1,232 sentences) — never read for copy before.**
-  These ship as example DOCUMENTS the user opens, so they are shipped copy. 17 fixes: 9 of the
-  pure "click X to see X" pattern (incl. `hover any badge for the short version`, the exact shape
-  that started this whole thread), 3 Conduit/ribbon lines where the gesture was obvious but the
-  RESULT was not (→ "A Conduit fans its lanes; a trunk grabs the whole ribbon"), and 5 British
-  spellings.
-  - **A demo document is a different GENRE, and the lint now says so.** "Drag any slider and the
-    pivots, gauges, projections and alerts recompute" is the document doing its job — a seed
-    exists to be poked at — not a tooltip narrating its own affordance. Seed prose is held to
-    `GENRE_FREE` only (spelling, slogan, tease-count, chummy-aside, widget-narration); the rules
-    that judge whether a string should be instructing AT ALL are scoped off it. 11 instruction-
-    shaped lines were left deliberately: 7 "drag it and watch" invitations and 4 walkthrough
-    steps. Reversible if the author wants seeds held to the tooltip standard.
-  - **`personal-finance.json` is GENERATED** (`scripts/gen-personal-finance-seed.cjs`), and
-    `pfSeedCheck.test.ts` enforces the committed JSON is an exact re-emit. Editing the artifact
-    failed that test — edit the generator and re-emit. Worth remembering for any seed sweep;
-    the other 19 seeds are hand-authored JSON.
-- **The imperative sweep OVERSHOT on controls, and that is now written into §7** (author
-  correction). On a button, chip or menu item, a bare verb naming what it does IS correct copy —
-  "Cycle Number / Text / Date / Boolean", "Open the Problems panel", "Drill in", "Rename". That
-  is not commanding the reader; it is the control's own action, the same register as its label.
-  Only the GESTURE in front was ever wrong. **Fixing a `gesture-narration` hit means deleting
-  "Click to ", not the verb after it** — the earlier pass deleted the whole clause and flattened
-  eight controls into bare nouns (a cube chip became "Nested table" instead of "Drill in"; the
-  Problems counter lost "Open the Problems panel" entirely). All eight restored. The
-  third-person rule applies to NODE DESCRIPTIONS, which describe a thing; it must not be carried
-  onto controls, which offer an action.
-- **Internal prose was normalized to American spelling too — 691 replacements across 201 files**
-  (code comments, CSS comments, `docs/`, CLAUDE.md, DESIGN.md). Not because the lint governs
-  them (it does not, and still does not), but because internal copy is in-context whenever new
-  copy gets written, so its spelling drifts into the output.
-  - **Two traps, both hit live.** (1) The sweep rewrote `Cancelled`, an EXPORTED SYMBOL of the
-    `rete-engine` library, breaking the `process.ts` import — a prose sweep over `.ts` must
-    exclude anything that is actually an identifier, and only `tsc` catches it. (2) **The sweep
-    rewrote the rule that defines the sweep**: `uiCopy.test.ts`'s British-spelling regex became
-    `colors?|grays?|centers?…`, i.e. a rule flagging the CORRECT spellings, and DESIGN.md's
-    "color, not colour" became "color, not color". The lint's own vocabulary and its specimens
-    are the ONE place British spellings must survive. Both restored.
-  - Residual British spellings in the repo now live only in those two definitional places.
-  - Seed-graph note prose (`seedGraphs/*.json`) is shipped copy too and is NOT yet in the
-    corpus — one "labelled" was found there by hand. A possible next surface.
-- **The skipped surfaces were hiding the same bugs.** Widening the collector to `aria-label`,
-  `placeholder` and the STATIC SEGMENTS of template-literal titles found six more instantly:
-  `Color preview` ×2 (a British spelling the literal-only sweep could not see), and five
-  `Click to …` narrations that survived the tooltip pass purely because they sat inside
-  `` title={`…`} `` — "Click to change the type", "Click to drill in" ×2, "Click to cycle
-  Number / Text / Date / Boolean", "Click to edit/view", "Open the Problems panel". Splitting a
-  template title on its `${…}` holes and judging the prose between them costs three lines.
-  **The lesson: "skipped because it is composed at runtime" was wrong — the static halves are
-  ordinary copy.** Placeholders (40) and the rest of the aria-labels (60) came back clean.
-- **§7 now requires American spelling** (author ruling), and `british-spelling` enforces it over
-  shipped strings. 23 replacements across help markdown, the catalog and one tooltip: gray→gray
-  ×6, color→color ×5, plus meters, behavior, labeled, neighboring, center. The sweep ran
-  ONLY inside `description:`/`label:`/`title=` literals, so no code identifier or CSS custom
-  property moved. Scope stayed shipped copy: ~170 uses survive in code comments/identifiers and
-  ~46 in `docs/`, both deliberately out of the lint's remit — say the word if you want either.
-  - Regex gotcha worth remembering: `colou?rs?` matches the AMERICAN spelling too, so the first
-    draft flagged every correct "color". The pattern must spell out `colors?` alone.
-- **Upstream/downstream suggestions are OUT of node strings** (author ruling). "Feeds a scatter
-  Chart, a regression, or Build Frame → Grid Interpolate", "Feeds MAP / BYROW / REDUCE", "Feeds a
-  Chart to embed a FRED graph", "or feed a filter's bounds" — all cut. If a node's expected
-  neighbors need surfacing, that is a UI affordance to build later, not prose. The bar for
-  keeping one is a genuinely UNIQUE relationship: the **Chart Builder** on Chart's Options, and
-  Candlestick naming the Data Feed's stock-history shape, both qualify.
-  - **An input CONTRACT is not a suggestion, and survives** — reworded, not cut. "Takes a
-    2-column frame (label, value)" became "each row of a 2-column frame (label, value) is one
-    rectangle", modelled on Waterfall, which already wove its column spec into the sentence. The
-    socket only says *frame*; which two columns, in what order, it cannot say.
-  - `wire-instruction` grew a `wire a|an` arm for this. The discriminator is the ARTICLE:
-    "wire **a** 3-column frame" tells you what to put upstream (out), while "wire **the** table
-    into Frame Filter" names a different node to use instead (a disambiguation between two
-    similar nodes, kept and pinned). Scoped off `help/`, where explaining a mechanism by worked
-    example — "wire a number into one and it becomes a numeric list socket" — is the whole point.
-- **The catalog moved from imperative to third person** (116 descriptions across 25 files —
-  descriptions live in `nodes/*.ts` and `packs/*.ts`, not only `nodeCatalog.ts`). These strings
-  are the node's hover tooltip (`nodeKit.tsx` `title`), the Add-menu tooltip and the Function
-  Reference column, so they say what the node DOES — the register Excel's own function reference
-  uses. Third-person 12 → 125 of 506.
-  - **17 openers were NOT conjugated**: noun phrases that merely start with a word that can also
-    be a verb. "Sum of two complex numbers" → "Sums of…" and "Sample standard deviation (n−1)" →
-    "Samples standard deviation" are the failure this avoided. The full set: Sum of {two complex
-    numbers, squares, squared deviations, probabilities}, Sample {covariance, standard deviation,
-    variance, skewness}, List of N {random numbers, numbers}, Yield of a bond ×2, Clean price per
-    $100 face, Sum-of-years'-digits depreciation, Rank ×2, Set operations on two lists.
-  - Nine needed rewriting rather than an `-s` (several verbs, or a command): Regex, Switch,
-    Decision Matrix, List Set Relation, XLOOKUP, Equation, Expression, Triangle Solver, Display.
-    Equation/Expression became noun phrases — "Type a relation like V = I * R" instructed.
-  - **`imperative-opener` guards the register**, scoped via a new per-rule `where` predicate to
-    the FIRST sentence of a `.desc` only. Unscoped it flagged node LABELS ("Import XML" is a
-    name) and long-form help ("Draw it clockwise and it's a crossing select" teaches a modified
-    gesture). Its verb list excludes Sum/Sample/List/Rank/Set/Clean/Yield/Point/Report for the
-    noun-phrase reason above, and `Shift` because it collides with the modifier key.
-- **Class A source/control nodes read as nouns, and state a format only when unique** (author
-  ruling): the socket glyph already says list/frame/grid, so "Outputs a Frame" is the same noise
-  as narrating a gesture. Color Picker is the one keeper in that set — its socket says *text*,
-  which does not tell you it is a color in one of three notations.
-- **"Emits a chart value a Report can embed." was appended verbatim to 16 figure nodes.** Every
-  one has a visible chart output socket, and being identical across 16 it carried no per-node
-  information — while the Report node, the one place you would look, did not mention charts at
-  all. Cut from all 16; Report now names Notes and charts together.
-- **The gesture rule went aggressive on author ruling.** The first cut was a curated deny-list of
-  *conventional* gestures, on the theory that teaching a hidden binding is the overlay's job. The
-  author overruled it: an unmodified mouse gesture is never documentation, "obvious to anyone
-  with a brain and a mouse". `gesture-narration` now flags any plain click/drag/hover/tap/
-  double-click/right-click used as an instruction, and eleven strings were rewritten (Cube cell,
-  Point Plotter, Slider, XY Pad, Curve, Grid Painter, Slicer, Group, Note, SVG, Frame Input).
-  **What stays in bounds, and why the rule is positional rather than a verb ban:** a MODIFIED
-  gesture is an unguessable binding (`Shift-drag` lasso, `Ctrl+G`), and the same word as a noun
-  or descriptive gerund is prose, not instruction ("a drag that won't drop", "the drag guard",
-  "click-away", "mid-drag", "Dragging a cable into empty canvas opens the Add menu"). The split
-  is clause-head position or `<gesture> to <verb>`; all nine counterexamples are pinned in the
-  test. A general verb ban flagged every one of them.
-- **`uiCopy.test.ts` now machine-checks the decidable subset of DESIGN.md §7** over the help
-  markdown + every catalog label/description (1,974 sentences). Four rules: teased counts, the
-  slogan phrases, conventional-affordance narration, chummy asides. Rules were selected by ONE
-  criterion — zero false positives on the corpus as written — so it landed green on a single
-  one-clause fix (`notes.md` "runs two ways —" → "runs in the browser…"). Rules that would have
-  flagged legitimate prose were DROPPED, not softened to warnings.
-  - The affordance rule is a **curated deny-list of conventional gestures** (hover, scroll,
-    click-to-open), NOT a gesture-verb ban: `notes.md`'s "Double-click a Cube cell" teaches a
-    hidden gesture and must pass, and Point Plotter's "click a plane to drop points, drag to
-    move" is the node's actual interface. A general gesture regex flagged all of them.
-  - The file carries **specimens + counterexamples**: each rule keeps the real string that
-    motivated it (so a later edit can't soften a pattern into one that matches nothing), and the
-    five legit strings a sloppier rule would flag. Mutation-checked end to end — re-adding
-    "Hover any dot for its name." fails with the file:line and rule id.
-  - Scope is shipped UI text ONLY. CLAUDE.md's "docs and code comments can be as explicit as
-    needed" means `docs/` is deliberately un-linted; widening it is a rule change, not a stricter
-    reading.
-  - **Considered and rejected: importing UI-string corpora from public repos** as calibration
-    material. The failure was a routing miss (never opened §7 before writing shipped strings),
-    not a knowledge gap, so more reference wouldn't have loaded either; an external corpus pulls
-    toward generic SaaS voice, which is the attractor §7 exists to escape; and the best corpus is
-    already in-repo and author-reviewed. CLAUDE.md's DESIGN.md bullet now says "UI change"
-    includes STRINGS, which is the actual fix for the routing miss.
-- **§7's no-em-dash rule was NOT applied here.** All four help files lean on em dashes
-  (`help.md` 15, `notes.md` 10, both author-reviewed and untouched today), so purging two of the
-  four would leave adjacent tabs of one overlay reading differently. §7 was distilled from a
-  What's New / About pass — short strings — and the long-form help corpus has evidently not been
-  swept. Worth one deliberate pass over all four, or an explicit carve-out; not worth doing to
-  half of them as a side effect.
-- Units prose in `data-model.md` was **kept verbatim**, not compressed: it is value-model
-  documentation that merely lives in this tab, `socket-reference.md` §7 covers units only at
-  the "what a socket type controls" level, and this is the only place the granularity table,
-  `#UNIT!` currency-code rule and custom-unit dimension are written down.
+### SESSION DIGEST (2026-07-27 — socket shades onto one HSV axis; the copy rules got teeth)
+
+**Socket colors: every transform is HSV now** (`palette.ts`). `socketArrayShade` was an RGB
+multiply (already equivalent to a value scale, so a free conversion); `socketMatrixShade` was HSL
+and was NOT — its `L ×0.86` traded against saturation per hue, landing as V ×0.89 on saturated
+gold but S ×1.26 on duller sky. Its replacement (h −11°, S ×1.18, V ×0.92) is that transform's
+real HSV effect averaged over every built-in palette's matrix slots, so swapping spaces did not
+move the depth. **Do not reintroduce an RGB multiply or an HSL step here.** Three knobs turned,
+all named constants: `ARRAY_VALUE_SCALE` 0.85, `MATRIX_HUE_SHIFT` −11, `LIGHT_VALUE_DROP` 0.045
+(that last is GLOBAL — `themeAccent` also feeds node accents, groups, notes, minimap,
+`--sol-error`). Rings track automatically, being a fixed step off their own fill.
+
+**Reference overlay → Socket Types rewritten** from `docs/socket-reference.md`. Two false claims
+died: "any node that takes a Frame takes a Cube" (backwards — `cube` reaches only `cube`/`trueany`;
+the FRAME widens into a cube), and `any` described as pass-anything (it is the rank-0 wildcard;
+`trueany` is the one). **Never name color HUES in app copy** — they are false under
+Colorblind-safe / Solarized / Equinox; shape and relative shade are palette-safe.
+
+**"Zero learning curve from Excel" is a mandate for MECHANISMS, not prose** (author ruling, now in
+the CLAUDE.md bullet that caused the misread). The overlay's tab docs cover only what normal usage
+cannot make obvious — the socket lattice, unit flow. **If a legend, tooltip, glyph or control
+already carries it, the text must not restate it.** Caught live: `data-types.md` had a nine-row
+shape table rendered directly between `SocketLegendRows` (which draws all nine with labeled hover
+tips) and `DimensionalityFlow` (which already states the rank rules). Cut.
+
+**`uiCopy.test.ts` machine-checks the decidable part of DESIGN.md §7 + the Captain-Obvious rule**
+over help markdown, every catalog label/description, tooltips (literal AND the static segments of
+template titles), aria-labels, placeholders and seed-graph prose. Rules were selected by ONE
+criterion — **zero false positives on the corpus as written**; anything that would flag legitimate
+prose was dropped, not softened to a warning. Each rule pins the real string that motivated it
+plus the counterexamples a sloppier version would flag, so neither direction can regress.
+
+**The register rulings** (author, in order of how much they cost to relearn):
+- **A control's own action verb is correct copy** — "Cycle Number / Text / Date / Boolean", "Open
+  the Problems panel", "Drill in", "Rename". Fixing a `gesture-narration` hit means deleting
+  "Click to ", **not** the verb after it. An earlier pass deleted whole clauses and flattened
+  eight controls into bare nouns.
+- **A plain mouse gesture is never documentation** — obvious to anyone with a mouse. A NON-default
+  button (`right-click`) or a modifier (`Shift-drag`, `Ctrl+G`) is an unguessable binding and
+  stays. That is why Grid Painter says "(right-click erases to blank)".
+- **Node descriptions are third person**, the register Excel's own reference uses. 116 converted;
+  17 openers left alone because they are noun phrases ("Sum of squares", "Sample variance (n−1)",
+  "Set operations on two lists") that conjugation would wreck.
+- **Upstream/downstream suggestions are OUT of node strings.** If a node's expected neighbours
+  need surfacing, that is a UI affordance to build, not prose. An input CONTRACT is different and
+  survives, reworded: "each row of a 2-column frame (label, value) is one rectangle".
+- **Wire-or-type is true of every literal input**, so saying it describes nothing about the node.
+- **American spelling**, shipped copy and internal prose alike.
+
+**Genre decides whether a string may instruct at all** — four different answers, so the lint has
+three scoping mechanisms (`where`, `GENRE_FREE`, the gesture pattern's button/modifier split):
+a **tooltip** must not instruct; a **control label** names its action; **long-form help** may teach
+an unguessable binding; a **demo document** (seed graph) exists to be poked at, so "Drag any slider
+and the pivots recompute" is the document doing its job. Seed prose is held to `GENRE_FREE` only.
+
+**Traps hit live, all four worth remembering:**
+1. A repo-wide prose sweep **rewrites the rule that defines the sweep** — the British-spelling
+   regex became `colors?|grays?|centers?`, a rule flagging the CORRECT spellings, and DESIGN.md's
+   "color, not colour" became "color, not color". The lint's vocabulary and specimens are the one
+   place British spellings must survive.
+2. The same sweep rewrote **`Cancelled`, an exported symbol of `rete-engine`**, breaking an
+   import. Only `tsc` caught it. A prose sweep over `.ts` will eventually hit a real identifier.
+3. `colou?rs?` **matches the American spelling too**. Spell out `colours?`.
+4. **`personal-finance.json` is GENERATED** (`scripts/gen-personal-finance-seed.cjs`);
+   `pfSeedCheck.test.ts` enforces an exact re-emit. Edit the generator, not the artifact. The
+   other 19 seeds are hand-authored.
+
+**Still unenforced, needing a prose sweep first:** §7's em-dash ban (95 uses across help+catalog)
+and no-trailing-parenthetical (113). Both are flagged as pending in DESIGN.md rather than left
+looking honored. Internal prose (comments, `docs/`) was spelling-normalized — 691 replacements —
+not because the lint governs it but because internal copy is in-context whenever new copy is
+written, so its habits leak into the output.
 
 ### SESSION DIGEST (2026-07-25h — the consolidation's parking lot: three real bugs)
 The three "found but unsolved" items from the audit. All three turned out to be genuine
