@@ -7,6 +7,7 @@ import { FormulaField } from "./FormulaField";
 import { applyLambdaChange } from "./expressionEdit";
 import { formulaPopup } from "../formulaPopupStore";
 import "./ExpressionNode.css";
+import { stopDragStart } from "../coarse";
 
 // LAMBDA authoring node. The λ(…) row declares the parameters (the call
 // signature — bound positionally by MAP / REDUCE / …); the formula below is the
@@ -49,7 +50,7 @@ export function LambdaComponent({ data: node, emit }: NodeProps<LambdaNodeType>)
           onChange={(e) => setParams(e.target.value)}
           onBlur={commitParams}
           onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-          onPointerDown={(e) => e.stopPropagation()}
+          onPointerDown={stopDragStart}
           onMouseDown={(e) => e.stopPropagation()}
           spellCheck={false}
           title="Parameters, bound positionally where the lambda is used"

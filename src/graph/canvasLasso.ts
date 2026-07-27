@@ -16,6 +16,7 @@ import {
   unselectAllNodes as unselectAllNodesFromProcess,
   selectNode as selectNodeFromProcess,
 } from "./process";
+import { isPinching, isPalmContact, onPenDown } from "./pointerGesture";
 
 export type LassoState = { points: Pt[]; mode: "touch" | "enclose" } | null;
 
@@ -23,15 +24,13 @@ export interface LassoDeps {
   container: HTMLElement;
   editorRef: MutableRefObject<NodeEditor<Schemes> | null>;
   areaRef: MutableRefObject<AreaPlugin<Schemes, AreaExtra> | null>;
-  /** Live count of active pointers — ≥2 means pinch/pan, never a lasso. */
-  activePointersRef: MutableRefObject<Set<number>>;
   /** Feeds the lasso outline <svg> in Canvas's JSX. */
   setLasso: (l: LassoState) => void;
 }
 
 // Installs the capture-phase pointerdown starter on the container; returns the remover.
 export function installLassoSelection(deps: LassoDeps): () => void {
-  const { container, editorRef, areaRef, activePointersRef, setLasso } = deps;
+  const { container, editorRef, areaRef, setLasso } = deps;
   const points: Pt[] = [];
   let active = false;
 
@@ -104,13 +103,15 @@ export function installLassoSelection(deps: LassoDeps): () => void {
     // Multi-touch is a pinch / two-finger pan, NEVER a lasso. If a second finger
     // lands (this pointer OR a lasso already in flight), abort the lasso and let
     // this pointer reach the area WITHOUT stopPropagation, so rete can pan/zoom.
-    // (activePointersRef already counts this pointer — the window-capture tracker
+    // (The census already counts this pointer: it listens on WINDOW capture, which
     // runs before this container-capture handler.) Checked before the node-target
     // test so a second finger landing on a node still releases the lasso.
-    if (active || activePointersRef.current.size >= 2) {
+    if (active || isPinching()) {
       cancelLasso();
       return;
     }
+    // A palm landing beside an in-contact stylus must not draw a lasso.
+    if (isPalmContact(e)) return;
     // Don't start a lasso when the click landed on a node or a socket inside
     // one (so click-drag-on-socket cable creation isn't stolen, and tapping a
     // note/group in touch-select mode selects it rather than lassoing). Test
@@ -145,7 +146,7 @@ export function installLassoSelection(deps: LassoDeps): () => void {
     if (!active) return;
     // A finger joined mid-drag (pinch/pan) — bail even if this pointer's own
     // moves keep firing (the resting first finger's wouldn't).
-    if (activePointersRef.current.size >= 2) { cancelLasso(); return; }
+    if (isPinching()) { cancelLasso(); return; }
     const p = relPoint(e);
     const last = points[points.length - 1];
     if (Math.hypot(p.x - last.x, p.y - last.y) < 3) return;
@@ -261,7 +262,12 @@ export function installLassoSelection(deps: LassoDeps): () => void {
   }
 
   container.addEventListener("pointerdown", onDown, true);
+  // Forward-only palm rejection can't un-register a palm that landed BEFORE the pen
+  // (the usual grip), so the stylus instead cancels whatever that palm began — the
+  // palm can start a lasso, but never finish one.
+  const stopPenSub = onPenDown(cancelLasso);
   return () => {
+    stopPenSub();
     container.removeEventListener("pointerdown", onDown, true);
     window.removeEventListener("pointermove", onMove);
     window.removeEventListener("pointerup", onUp);

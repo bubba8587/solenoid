@@ -4,6 +4,7 @@ import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps, type OpOption } from "./nodeKit";
 import { processGraph } from "../process";
 import type { RegexOp } from "../rete-nodes";
+import { stopDragStart } from "../coarse";
 
 const REGEX_OPTIONS: ReadonlyArray<OpOption<RegexOp>> = [
   { value: "test",        label: "REGEXTEST" },
@@ -38,7 +39,7 @@ export function RegexComponent({ data: node, emit }: NodeProps<RegexNodeType>) {
           value={flags}
           placeholder="i, g, …"
           onChange={(e) => handleFlags(e.target.value)}
-          onPointerDown={(e) => e.stopPropagation()}
+          onPointerDown={stopDragStart}
           onMouseDown={(e) => e.stopPropagation()}
           spellCheck={false}
           style={{ width: 52 }}

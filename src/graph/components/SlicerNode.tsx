@@ -6,6 +6,7 @@ import { collapseStore } from "../collapseStore";
 import { processGraph } from "../process";
 import { formatScalar } from "./format";
 import "./SlicerNode.css";
+import { stopDragStart } from "../coarse";
 
 function label(v: SlicerCell): string {
   return typeof v === "number" ? formatScalar(v) : v;
@@ -110,7 +111,7 @@ export function SlicerComponent({ data, emit }: NodeProps<SlicerNode>) {
           <button
             className={`slicer-node__multiselect${multiSelect ? " slicer-node__multiselect--on" : ""}`}
             onClick={toggleMultiSelect}
-            onPointerDown={(e) => e.stopPropagation()}
+            onPointerDown={stopDragStart}
             onMouseDown={(e) => e.stopPropagation()}
             title="Toggle multi-select"
           >
@@ -126,7 +127,7 @@ export function SlicerComponent({ data, emit }: NodeProps<SlicerNode>) {
         )}
         <div
           className="slicer-node__values"
-          onPointerDown={(e) => e.stopPropagation()}
+          onPointerDown={stopDragStart}
           onMouseDown={(e) => e.stopPropagation()}
         >
           {!hasFrame ? (

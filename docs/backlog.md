@@ -34,7 +34,18 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   `format-model.md` warns "implementation may lag the spec here; the popup must still
   gate to the reduced style list". Verify, fix or clear the warning.
 - [ ] **Pinch-zoom on a real Mac trackpad** — should work via `e.ctrlKey` pinch wheel
-  events; verify on hardware, intercept manually if not.
+  events; verify on hardware, intercept manually if not. (Unrelated to the 2026-07-27
+  touch-pinch fix: that was the multi-touch finger count, this is the wheel path.)
+- [ ] **Settle the OS-dropdown rule** (needs a device or mobile-emulated CDP, not
+  reading) — CLAUDE.md says a native `<select>` inside a node needs a hard pointerdown
+  swallow or an area re-render closes the picker mid-pick. It's cited all over the
+  codebase but has NO recorded originating incident, and the mobile path suggests it may
+  not hold: form controls are already excluded from tap-to-select (`nodeAndControl`),
+  `patchDragGuard` returns false for an unselected node before any pick, and mobile
+  browsers open the picker on tap-completion rather than pointerdown. 21 sites are held
+  on precaution because of it. If it's false, they join the `stopDragStart` sweep; if
+  true, record the repro so it stops being folklore. Low value either way — it only
+  decides whether a one-finger pan can start on top of a dropdown.
 - [ ] **Choppy zoom BAND — run the T1–T8 test plan** in dev-notes' 2026-07-25 open
   problem. An interior range of camera scales is choppier than both very close and very
   far zoom. Already ruled out: the gesture settle (3000ms hold changed nothing), element

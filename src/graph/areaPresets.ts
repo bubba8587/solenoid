@@ -9,6 +9,7 @@ import { SocketComponent } from "./components/SocketComponent";
 import { ConnectionComponent } from "./components/ConnectionComponent";
 import { SolenoidSocket } from "./sockets";
 import { canvasLockStore } from "./canvasLock";
+import { penActive } from "./pointerGesture";
 
 // ─── Shared editing-area presets ────────────────────────────────────────────────
 // The rete render + connection config that MUST be identical across every editing
@@ -27,9 +28,73 @@ const ZOOM_STEP_CAP = 0.24;
 const WHEEL_LINE_PX = 16; // deltaMode 1 (lines) → px
 const WHEEL_PAGE_PX = 400; // deltaMode 2 (pages) → px
 
-/** Custom zoom handler: proportional + clamped wheel, stock pinch/dblclick. Shared by
- *  the main canvas and every canvas-substituting surface (the composite drill-in). */
+/**
+ * Custom zoom handler: proportional + clamped wheel, and a pinch that CANNOT be
+ * vetoed. Shared by the main canvas and every canvas-substituting surface (the
+ * composite drill-in).
+ *
+ * ── THE PINCH-PRIORITY RULE ────────────────────────────────────────────────────
+ * Stock `Zoom` counts fingers from a BUBBLE-phase `pointerdown` on the container,
+ * and `Zoom.move` is a `.map` over the pointers it already has — never an upsert.
+ * So a finger whose pointerdown was swallowed anywhere below the container is
+ * invisible to the zoom handler for the WHOLE gesture, with no recovery: two
+ * fingers, one counted, `isTranslating()` false, no zoom. Every
+ * `onPointerDown={(e) => e.stopPropagation()}` inside a node was therefore a
+ * pinch-blocker, which is why a pinch died over most of the FC node, the
+ * connection nodes and every inline field.
+ *
+ * The fix is positional, not a sweep: register the finger count in CAPTURE, which
+ * runs before the target phase and so cannot be stopped. That splits the two
+ * gestures by listener phase, permanently:
+ *
+ *   • PINCH  — capture phase. Unstoppable. A control cannot break a zoom.
+ *   • PAN / node drag — bubble phase. Vetoable, and SHOULD be: a control that
+ *     wants the pointer for itself keeps calling `stopPropagation()` and still
+ *     gets to suppress the pan (rete's `Drag` stays bubble-phase, untouched).
+ *
+ * That's the invariant to preserve: never move the pan handler to capture, and
+ * never move the zoom count back to bubble.
+ */
 export class CappedZoom extends Zoom {
+  /**
+   * Count only real FINGERS toward a pinch — not a mouse, not a stylus.
+   *
+   * Stock rete pushes every pointerdown regardless of type. That was harmless while
+   * this ran in bubble phase behind a hundred `stopPropagation`s; in capture phase it
+   * is not, because now every contact really does arrive. A pen resting on the glass
+   * plus one finger would read as two pointers and zoom the canvas out from under a
+   * drawing hand. `isPinching()` is the single definition of the gesture (≥2 touch,
+   * no pen), so pen and palm rejection come from the same place the rest of the app
+   * reads — see pointerGesture.ts.
+   */
+  protected down = (e: PointerEvent) => {
+    if (e.pointerType !== "touch" || penActive()) return;
+    this.pointers.push(e);
+  };
+
+  /** Re-seat the finger count from BUBBLE to CAPTURE. `super.initialize` binds every
+   *  stock listener (wheel, dblclick, the window move/up pair) — we keep all of them
+   *  and move only `down`, so nothing else about the handler's behavior changes. The
+   *  listener reference is this subclass's `down`, so the remove matches. */
+  initialize(
+    container: HTMLElement,
+    element: HTMLElement,
+    onzoom: (delta: number, ox: number, oy: number, source?: "wheel" | "touch" | "dblclick") => void,
+  ): void {
+    super.initialize(container, element, onzoom);
+    container.removeEventListener("pointerdown", this.down);
+    container.addEventListener("pointerdown", this.down, true);
+  }
+
+  /** Stock `destroy` removes `pointerdown` WITHOUT the capture flag, which does not
+   *  match a capture listener — so the base teardown would leave ours attached and
+   *  every drill-in open/close would stack another. Remove the one we actually
+   *  added; `super.destroy()` handles the rest (its own no-op remove is harmless). */
+  destroy(): void {
+    this.container.removeEventListener("pointerdown", this.down, true);
+    super.destroy();
+  }
+
   protected wheel = (e: WheelEvent) => {
     e.preventDefault();
     const px =

@@ -6,6 +6,7 @@ import { MeasuredSocketRow } from "./NodeSocket";
 import { SegToggle } from "./SegToggle";
 import { processGraph } from "../process";
 import "./ColorPickerNode.css";
+import { stopDragStart } from "../coarse";
 
 const MODE_OPTS = [
   { value: "rgb", label: "RGB", title: "Red / Green / Blue, 0–255" },
@@ -112,7 +113,7 @@ export function ColorPickerComponent({ data, emit }: NodeProps<ColorPickerNodeTy
     <NodeShell node={data} emit={emit} labelPlaceholder="Color" hideOutputSockets>
       <SegToggle value={mode} onChange={changeMode} options={MODE_OPTS} />
       {mode === "hex" ? (
-        <div style={{ padding: "8px 2px 2px" }} onPointerDown={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
+        <div style={{ padding: "8px 2px 2px" }} onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}>
           <input
             className="solenoid-colorpicker__hex"
             value={hexDraft}
@@ -124,7 +125,7 @@ export function ColorPickerComponent({ data, emit }: NodeProps<ColorPickerNodeTy
         </div>
       ) : (
         <div
-          onPointerDown={(e) => e.stopPropagation()}
+          onPointerDown={stopDragStart}
           onMouseDown={(e) => e.stopPropagation()}
           style={{ padding: "8px 2px 2px", display: "flex", flexDirection: "column", gap: 8 }}
         >

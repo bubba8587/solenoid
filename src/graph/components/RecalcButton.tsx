@@ -1,5 +1,6 @@
 import { requestRecalc } from "../process";
 import "./nodeCard.css";
+import { stopDragStart } from "../coarse";
 
 /**
  * Reusable "recalculate" control. Triggers the global `requestRecalc()`
@@ -16,7 +17,7 @@ export function RecalcButton({ title = "Recalculate" }: { title?: string }) {
       type="button"
       className="solenoid-node__recalc-btn"
       title={title}
-      onPointerDown={(e) => e.stopPropagation()}
+      onPointerDown={stopDragStart}
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => {
         e.stopPropagation();

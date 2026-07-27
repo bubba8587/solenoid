@@ -3,6 +3,7 @@ import { useHostNodeId } from "./nodeContext";
 import type { ChartShape } from "./chartView";
 import type { ChartOptions } from "../nodes/chartOptions";
 import "./ExpressionNode.css"; // for .solenoid-expr__expand (shared expand button)
+import { stopDragStart } from "../coarse";
 
 /**
  * The expand affordance on a chart — the SAME button (class + icon + corner
@@ -26,7 +27,7 @@ export function ChartExpandButton({
       type="button"
       className="solenoid-expr__expand"
       title="Expand"
-      onPointerDown={(e) => e.stopPropagation()}
+      onPointerDown={stopDragStart}
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => {
         e.stopPropagation();

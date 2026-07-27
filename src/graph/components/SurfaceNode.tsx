@@ -6,6 +6,7 @@ import { ChartFigure } from "./chartView";
 import { ChartChip } from "./ChartChip";
 import { collapseStore } from "../collapseStore";
 import { processGraph } from "../process";
+import { stopDragStart } from "../coarse";
 
 // Fills the wide card (240) minus body padding.
 const W = 218;
@@ -27,7 +28,7 @@ function RotBtn({ title, onClick, children }: { title: string; onClick: () => vo
       style={ROT_BTN}
       title={title}
       onClick={(e) => { e.stopPropagation(); onClick(); }}
-      onPointerDown={(e) => e.stopPropagation()}
+      onPointerDown={stopDragStart}
       onMouseDown={(e) => e.stopPropagation()}
     >
       {children}

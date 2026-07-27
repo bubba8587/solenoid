@@ -1,4 +1,5 @@
 import "./SegToggle.css";
+import { stopDragStart } from "../coarse";
 
 /**
  * A segmented button toggle — the Format Controller's places/sig-figs button
@@ -23,7 +24,7 @@ export function SegToggle<T extends string>({ value, onChange, options, classNam
           title={o.title}
           aria-pressed={value === o.value}
           onClick={() => onChange(o.value)}
-          onPointerDown={(e) => e.stopPropagation()}
+          onPointerDown={stopDragStart}
           onMouseDown={(e) => e.stopPropagation()}
         >
           {o.label}
