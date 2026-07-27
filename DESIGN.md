@@ -237,6 +237,9 @@ asides. The rest stays a human call. Two rules below are NOT yet enforced becaus
 corpus predates them — the em-dash ban (95 uses) and no-trailing-parenthetical (113); both need a
 prose sweep before they can be turned on.
 
+- **American spelling.** color, not colour. Also gray, center, behavior, labeled, neighbor, meter,
+  analyze, normalize, catalog, dialog. Applies to every shipped string; code identifiers and CSS
+  classes are a separate matter. `uiCopy.test.ts` enforces this one.
 - **No em dashes.** Use a period, a colon, or restructure. The em dash is the tell of the machine-written
   aside. _"the whole app comes with you — toolbar, minimap, zoom"_ → _"…the whole editor. The minimap,
   zoom, right-click menu…"_

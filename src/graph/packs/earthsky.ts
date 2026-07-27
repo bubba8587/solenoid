@@ -23,7 +23,7 @@ export const EARTH_FORMULAS: FormulaPackEntry[] = [
     description: "Local gravity (m/s²): the 1980 International Gravity Formula at latitude lat (°) with the free-air correction for altitude h (m)",
     keywords: "igf wgs84 gravitational acceleration" },
   { type: "es-horizon", label: "Distance to Horizon", expr: "SQRT(2*6371008.8*h)/1000",
-    description: "How far the horizon is (km) from an eye height h metres above the surface (geometric, no refraction)",
+    description: "How far the horizon is (km) from an eye height h meters above the surface (geometric, no refraction)",
     keywords: "visibility sea level lookout" },
 ];
 

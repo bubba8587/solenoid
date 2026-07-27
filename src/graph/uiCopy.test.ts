@@ -162,6 +162,13 @@ const RULES: Rule[] = [
     where: (u) => !u.src.startsWith("help/"),
   },
   {
+    id: "british-spelling",
+    why: "section 7 — shipped copy is American English: color, gray, center, behavior, labeled, meter",
+    // Shipped strings only. Code identifiers and CSS custom properties are not
+    // copy, so `--group-colour`-style names (were there any) are out of scope.
+    re: /\b(?:colours?|coloured|colouring|centres?|centred|greys?|greyed|behaviours?|neighbours?|neighbouring|labelled|labelling|cancelled|modelling|travelling|catalogue|dialogue|licence|defence|metres?|litres?|programme|favourite|practise|fulfil|artefact|ageing|judgement|acknowledgement|storey|aluminium|sulphur|analys(?:e|ed|ing)|normalise|organise|customise|initialise|summarise|categorise|recognise|minimise|maximise|optimise|utilise|emphasise|prioritise|penalise)\b/i,
+  },
+  {
     id: "widget-narration",
     why: "CLAUDE.md Captain Obvious — naming the control instead of the effect. Say what the option DOES; the reader can see it is a toggle",
     re: /\b(?:with|from|via|using)\s+the\s+(?:dropdown|checkbox|button|toggle|slider|menu|picker|selector|field|box)\b|\b(?:dropdown|checkbox|button|toggle)\s+(?:lets|allows|selects|sets)\b/i,
@@ -200,6 +207,7 @@ describe("UI copy", () => {
       "tease-count": ["On a type mismatch there are three ways forward:"],
       "chummy-aside": ["…and wires the first compatible port for you."],
       "widget-narration": ["diagonal 1s, rest 0s — or blanks (nulls) via the toggle."],
+      "british-spelling": ["A colour in RGB or HSV.", "the grey sockets", "Centre of the torus."],
       "imperative-opener": ["Round to nearest integer. Excel: ROUND(x,0).", "Sort ascending or descending."],
       "wire-instruction": [
         "Wire a 2-column frame (Date, Value); duplicate days sum.",

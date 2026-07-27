@@ -6,7 +6,7 @@ The ladder above is the whole rule for *shape*; these are the edges of it.
 - A **Frame** output reaches only Frame and Cube inputs, or a hollow ring. Letting it into a plain matrix input would silently throw away the column names and types; **Get Column** or **Split Frame** take the pieces out on purpose.
 - A **Cube** output reaches only another Cube, or a hollow ring — anything narrower would drop its nesting, so **UNNEST** does that explicitly. Everything flows *in*: any data value widens into a Cube cell.
 - **Lambda, Chart and Document** are object values, outside the data lattice entirely: each connects only to its own kind, or a hollow ring. A chart isn't a table of numbers; a lambda isn't a value to add.
-- The grey **wildcards** keep the shape rules at their own rung — a grey square is still a list socket, so it still refuses a Frame. The **hollow ring** is the exception to everything: it takes any value whatsoever, object types included.
+- The gray **wildcards** keep the shape rules at their own rung — a gray square is still a list socket, so it still refuses a Frame. The **hollow ring** is the exception to everything: it takes any value whatsoever, object types included.
 
 ## What happens on arrival
 
@@ -26,7 +26,7 @@ The literal sources (List / Table / Frame Input) follow one rule: **the Source i
 
 ## Sockets that change type
 
-Some ports **adopt**: the socket takes the type of the cable plugged in and reverts to its own when unplugged. A hollow ring adopts whatever arrives, verbatim. A grey list or grid port instead **keeps its rank** and adopts only the family — wire a number into one and it becomes a *numeric list* socket, not a numeric scalar, so it still draws as a list and still refuses a Frame. Adoption is never saved to a file; it is recomputed on load, paste and drill-in. A passthrough node (Display, IF, Conduit lanes, INDEX) types its output from the input it forwards.
+Some ports **adopt**: the socket takes the type of the cable plugged in and reverts to its own when unplugged. A hollow ring adopts whatever arrives, verbatim. A gray list or grid port instead **keeps its rank** and adopts only the family — wire a number into one and it becomes a *numeric list* socket, not a numeric scalar, so it still draws as a list and still refuses a Frame. Adoption is never saved to a file; it is recomputed on load, paste and drill-in. A passthrough node (Display, IF, Conduit lanes, INDEX) types its output from the input it forwards.
 
 Retyping a socket in place — switching a **Cast**'s target, a **Get Column** read-as, editing a Note's frontmatter — **drops any cable whose target no longer accepts the new type.**
 
@@ -44,15 +44,15 @@ Dragging a cable into empty canvas opens the Add menu filtered to nodes that wil
 
 ## What a socket's type controls besides connections
 
-**Display.** How a value renders is chosen from its socket type, not by reading its cells — a date list reads as dates because the socket says date, even if every cell is an integer. A chip takes its accent colour from the same source.
+**Display.** How a value renders is chosen from its socket type, not by reading its cells — a date list reads as dates because the socket says date, even if every cell is an integer. A chip takes its accent color from the same source.
 
-**Format Controller.** The FC offers the control set for its socket's family. A Frame, Cube, Document or grey list/combo socket has none.
+**Format Controller.** The FC offers the control set for its socket's family. A Frame, Cube, Document or gray list/combo socket has none.
 
 ## Units
 
 A unit is a property of the **value**, not of a node or a wire. Only two things author one: a **Format Controller** docked on a socket, and **Convert**. From there the unit rides the value through anything that merely carries it — selectors, Displays, reshapes — and breaks at the first real transform, where the arithmetic *derives* the result's unit instead: `m × m` is `m²`, `km ÷ h` is a speed, and `10 m ÷ 2 m` cancels to a pure **ratio**, shown `5:1`.
 
-Mixing genuinely different dimensions in one sum is a **`#UNIT!`** — metres plus seconds has no answer. A bare, unitless number is compatible with anything: it **adopts** the unit of the operation it's in, read in the other side's display unit — `$5 + 3` is `$8`, and `SUM(5 km, 3)` is `8 km`, not 5.003 km.
+Mixing genuinely different dimensions in one sum is a **`#UNIT!`** — meters plus seconds has no answer. A bare, unitless number is compatible with anything: it **adopts** the unit of the operation it's in, read in the other side's display unit — `$5 + 3` is `$8`, and `SUM(5 km, 3)` is `8 km`, not 5.003 km.
 
 Where the unit *lives* depends on the container — it attaches at the level that is guaranteed uniform:
 

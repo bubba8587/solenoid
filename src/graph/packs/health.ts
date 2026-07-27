@@ -67,7 +67,7 @@ export const HEALTH_CARDIO: FormulaPackEntry[] = [
     description: "Training-zone HR from max and resting HR at an intensity fraction (0.5–0.85)   (HRR method)",
     keywords: "heart rate reserve zone training" },
   { type: "hf-vo2max-cooper", label: "VO₂max (Cooper Test)", expr: "(d-504.9)/44.73",
-    description: "Aerobic capacity (ml/kg/min) from the 12-minute run distance d in metres",
+    description: "Aerobic capacity (ml/kg/min) from the 12-minute run distance d in meters",
     keywords: "aerobic fitness running" },
 ];
 
