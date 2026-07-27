@@ -25,23 +25,27 @@
 //     GROUPBY, not a function), so the family takes ONE formula name and the op
 //     rides in as an argument.
 //
-// THE TEST (author, 2026-07-27) — ask it of the VALUE, not the vocabulary:
+// CLASSIFYING ONE — a JUDGEMENT, informed by several partial signals. None of these
+// is decisive on its own, and they do disagree; when they do, weigh them rather than
+// letting whichever was written last win.
 //
-//     Could this be the RESULT of something in a chain, or is it something the
-//     user is basically always picking by hand?
+//   • Would the user PICK this, or could it arrive computed? Something a person
+//     always picks by hand is part of what the node IS; something that can arrive
+//     from a lookup or a column is a parameter. (Nobody computes whether they want
+//     a probability density or a cumulative distribution — so those are operations
+//     even though Excel models the choice as a `cumulative` flag.)
+//   • Would the user SEARCH the Add menu for it by name? "Column chart", "Sankey",
+//     "speed of light" — yes. "avg", "4-band" — no.
+//   • Is it meaningless without its host? "avg" says nothing without GROUP BY.
+//   • Is it already an Excel function in its own right? Corroborating, not deciding:
+//     Excel's own spelling reflects its grid, not this app's dataflow.
 //
-// Something a user picks is part of what the node IS — an OPERATION. Something
-// that could arrive computed from upstream is an ARGUMENT. This is a dataflow
-// question, which is why it decides better than "does the word sound like a
-// function": nobody computes whether they want a probability DENSITY or a
-// CUMULATIVE distribution, or which chart type to draw — those are picked, so they
-// are operations even though Excel happens to model the first as a `cumulative`
-// flag. But a GroupBy aggregator, an element symbol, a pipe material — each of
-// those can plausibly arrive from a lookup or a column, so each is an argument.
-//
-// A useful corroborator, not a replacement: an operation is usually also a thing
-// you would SEARCH the Add menu for by name ("Column chart", "Sankey"), while an
-// argument is not — nobody searches "avg" hoping to find Group Lists.
+// The signals mostly agree. Where they don't, the interesting cases are the ones
+// worth reading twice: an ELEMENT symbol is picked by hand AND searchable, yet it
+// is data that can plainly come from a column, and a row per element would bury the
+// menu — so it stays an argument. A RESISTOR band count is picked by hand and never
+// computed, yet nobody thinks of "4-band decode" as a different operation from
+// "5-band" — so it stays an argument too.
 
 import type { NodeCatalogEntry } from "./AddNodeMenu";
 
@@ -293,19 +297,20 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "date-week-weekday", ctor: WeekInfoNode, kind: "operation" },
   { type: "weighted-wavg", ctor: WeightedNode, kind: "operation" },
 
-  // ARGUMENT: the variant is a parameter or a datum, not something you look up by
-  // name. Three groups: an aggregator chosen for a host verb (Pivot/CubeRollup/
-  // GroupByFrame — "avg" means nothing without them); a distribution's cumulative
-  // form, which Excel itself models as the `cumulative` FLAG rather than as separate
-  // functions; and the data pickers, where the variants are VALUES — nobody searches
-  // the Add menu for "Helium" hoping to find the Element node, and a row per value
-  // would bury the menu it was meant to help.
+  // ARGUMENT — what survives the weighing above. Two groups:
+  //   • the aggregator a host verb runs (Pivot / CubeRollup / GroupByFrame): "avg"
+  //     means nothing without them, and can plausibly arrive computed;
+  //   • the data-driven pickers (element symbol, Antoine substance, pipe material,
+  //     resistor band count): each is a VALUE the graph could supply from a column
+  //     or a spec table, and a menu row per value would bury the menu.
+  // Everything else came out an operation — including the distribution forms, the
+  // chart types and the E-series, which a person picks and never computes.
   { type: "th-antoine", ctor: AntoineNode, kind: "argument" },
   { type: "betadist", ctor: BetaDistNode, kind: "operation" },
   { type: "binomdist", ctor: BinomDistNode, kind: "operation" },
   { type: "cube-rollup", ctor: CubeRollupNode, kind: "argument" },
   { type: "elec-eseries", ctor: ESeriesNode, kind: "operation" },
-  { type: "elec-resistor-code", ctor: ResistorCodeNode, kind: "operation" },
+  { type: "elec-resistor-code", ctor: ResistorCodeNode, kind: "argument" },
   { type: "ch-element", ctor: ElementNode, kind: "argument" },
   { type: "expodist", ctor: ExponDistNode, kind: "operation" },
   { type: "fdist", ctor: FDistNode, kind: "operation" },
