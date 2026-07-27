@@ -7,7 +7,7 @@ import { nodeSizeStore } from "../nodeSizeStore";
 import { collapseStore } from "../collapseStore";
 import { groupMembershipStore } from "../groupMembership";
 import { appThemeStore } from "../appTheme";
-import { themeAccent, darkenAccent, contrastInk } from "../palette";
+import { themeAccent, darkenAccent } from "../palette";
 import { opKindForNode } from "../nodeOps";
 
 // The whole node header is a drag surface; a pointer that moves less than this
@@ -199,11 +199,6 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
 
   const style: CSSProperties = {};
   if (accent) (style as Record<string, string>)["--node-accent"] = accent;
-  // Ink for anything FILLED with this card's accent (the operation op-select).
-  // It has to be derived per card: `--accent-ink` is computed for the APP accent's
-  // hue and goes unreadable on any other, so an accent fill and its ink always
-  // travel as a pair. Same derivation the value popups use.
-  if (accent) (style as Record<string, string>)["--node-accent-ink"] = contrastInk(accent);
   // Darker shade for the light-mode outside border (matches the group framing).
   if (rawAccent) (style as Record<string, string>)["--node-accent-dark"] = darkenAccent(rawAccent);
   if (groupColor) (style as Record<string, string>)["--group-color"] = themeAccent(groupColor, mode);

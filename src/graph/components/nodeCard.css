@@ -1322,25 +1322,29 @@ body.solenoid-scrubbing * {
 
 /* ─── Op selectors: operation vs argument ────────────────────────────────────
    A card's dropdown either picks between distinct OPERATIONS or sets an ARGUMENT
-   of one operation. Author call (2026-07-27): make that visible — an operation
-   selector is filled with the card's own accent, an argument selector stays
-   neutral like every other field.
+   of one operation. An operation selector carries an accent EDGE over the normal
+   neutral field; an argument selector is left alone.
 
-   The fill takes the surface's accent and its MATCHING ink (--node-accent-ink):
-   --accent-ink is computed for the app accent's hue and goes unreadable on any
-   other, so the pair has to travel together. `data-op-kind` is set on the card
-   root by NodeCard, and is ABSENT for a family not yet declared in nodeOps.ts —
-   so an undeclared node stays neutral-but-untagged rather than claiming to be an
-   argument selector. */
+   An accent fill was tried first and pulled far too much weight for what it says
+   (author, 2026-07-27) — DESIGN.md's "accent never carries large fills" was right.
+   An edge says the same thing at the volume the distinction deserves.
+
+   THE CONFLICT THIS HAS TO DODGE: a full-strength accent border already means
+   FOCUS on this very control (see :focus below). So the resting state takes a
+   MUTED accent — mixed toward the neutral border — and focus keeps the pure
+   accent. Type and state stay legible together, separated by intensity rather
+   than by two competing hues. Border width is untouched at 1px, so nothing
+   reflows and the control keeps its exact footprint.
+
+   `data-op-kind` is set on the card root by NodeCard, and is ABSENT for a family
+   not yet declared in nodeOps.ts — an undeclared node stays neutral rather than
+   claiming to be an argument selector. */
 .solenoid-node[data-op-kind="operation"] .solenoid-node__op-select {
-  background: var(--node-accent, var(--accent));
-  color: var(--node-accent-ink, var(--accent-ink));
-  border-color: var(--node-accent, var(--accent));
+  border-color: color-mix(in srgb, var(--node-accent, var(--accent)) 62%, var(--border));
 }
 
-/* The open dropdown list inherits the field's colors in some engines; force the
-   options back to surface ink so the expanded menu stays readable. */
-.solenoid-node[data-op-kind="operation"] .solenoid-node__op-select option {
-  background: var(--surface);
-  color: var(--text);
+/* Focus outranks the resting type edge: same width, full-strength accent. Declared
+   after (and at higher specificity than) the rule above so it always wins. */
+.solenoid-node[data-op-kind="operation"] .solenoid-node__op-select:focus {
+  border-color: var(--node-accent, var(--accent));
 }
