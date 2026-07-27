@@ -13,7 +13,7 @@
 // evaluation core), and a LaTeX string for the KaTeX preview.
 
 import { solError, isSolError, isNaError } from "./errorValue";
-import { resolveExcelFunction, EXCEL_IMPL_META, normalizeFxResult, fxErrorToSol, FX_FUNCTION_NAMES, numberToText, internalFunctionNames, ELIMINATED_FUNCTIONS } from "./excelFunctions";
+import { resolveExcelFunction, EXCEL_IMPL_META, normalizeFxResult, fxErrorToSol, FX_FUNCTION_NAMES, numberToText, internalFunctionNames, ELIMINATED_FUNCTIONS, LEGACY_ALIASES } from "./excelFunctions";
 import { isMissing, guardFinite } from "./valueKinds";
 import { compareStrings } from "./stringOrder";
 
@@ -304,7 +304,7 @@ export const RANGE_FUNCTIONS = new Set<string>([
   "QUARTILE", "QUARTILE.INC", "QUARTILE.EXC",
   "RANK", "RANK.EQ", "RANK.AVG", "PERCENTRANK",
   "CORREL", "COVAR", "COVARIANCE.P", "COVARIANCE.S",
-  "SLOPE", "INTERCEPT", "RSQ", "FORECAST",
+  "SLOPE", "INTERCEPT", "RSQ", "FORECAST.LINEAR",
   "AND", "OR", "XOR",
   "TEXTJOIN", "CONCAT",
   // criteria aggregators + the meta-aggregators: all take a range (+ criteria/
@@ -337,7 +337,7 @@ const RANGE_RAW = new Set(["COUNT", "COUNTA", "COUNTBLANK"]);
 // the pad-with-null policy, minus the detour.
 const RANGE_PAIRED = new Set([
   "SUMPRODUCT", "CORREL", "COVAR", "COVARIANCE.P", "COVARIANCE.S",
-  "SLOPE", "INTERCEPT", "RSQ", "FORECAST", "XIRR", "XNPV",
+  "SLOPE", "INTERCEPT", "RSQ", "FORECAST.LINEAR", "XIRR", "XNPV",
   "SUMIF", "SUMIFS", "COUNTIF", "COUNTIFS", "AVERAGEIF", "AVERAGEIFS",
   "MAXIFS", "MINIFS",
 ]);
@@ -607,6 +607,13 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
     }
     case "call": {
       const name = n.name.toUpperCase();
+      // A BLOCKED spelling answers before its arguments are even shaped (D19
+      // decision 1). It has to short-circuit here rather than resolve like any
+      // other name: the redirect stub ignores its arguments, so letting a list
+      // arg reach the broadcaster would map the stub element-wise and return a
+      // LIST of identical #NAME?s instead of the one the user should read.
+      const redirect = LEGACY_ALIASES[name];
+      if (redirect) return solError("#NAME?", `Use ${redirect}`);
       const argv = n.args.map((a) => evalAst(a, env));
       // The IFERROR family must see the error to catch it — handled internally,
       // BEFORE the propagate-first check below.

@@ -102,7 +102,7 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   SLOPE: "known_ys, known_xs",
   INTERCEPT: "known_ys, known_xs",
   RSQ: "known_ys, known_xs",
-  FORECAST: "x, known_ys, known_xs",
+  "FORECAST.LINEAR": "x, known_ys, known_xs",
   STANDARDIZE: "x, mean, sd",
   "NORM.DIST": "x, mean, sd, cumulative",
   "NORM.INV": "probability, mean, sd",

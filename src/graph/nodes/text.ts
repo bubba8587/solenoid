@@ -8,6 +8,12 @@ import {
 import { getRecalcGen } from "../process";
 import { solError, type SolError } from "../errorValue";
 import { resolveExcelFunction } from "../excelFunctions";
+// The pure ops these nodes compute with, shared verbatim with the formula surface
+// (see textOps.ts). Re-exported so the node barrel keeps its shape.
+import { splitText, textAfterBefore, urlEncode, regexApply, safeRegex } from "./textOps";
+import type { TextAfterBeforeOp, UrlEncodeOp, RegexOp } from "./textOps";
+export { splitText, textAfterBefore, urlEncode, regexApply } from "./textOps";
+export type { TextAfterBeforeOp, UrlEncodeOp, RegexOp } from "./textOps";
 
 // ─── Element-wise text: the `strcombo` (scalar-or-list) sockets ───────────────
 // Every text OPERAND is a `strcombo` and every element-wise text node broadcasts,
@@ -569,15 +575,13 @@ export class TextSplitNode extends ClassicPreset.Node {
   data(inputs: { text?: string[]; delimiter?: string[] }): { result: string[] } {
     const text      = strScalar(inputs.text,      this, "text");
     const delimiter = strScalar(inputs.delimiter, this, "delimiter");
-    const result    = delimiter === "" ? [...text] : text.split(delimiter);
+    const result    = splitText(text, delimiter);
     this.cachedResult = result;
     return { result };
   }
 }
 
 // ─── TEXTAFTER / TEXTBEFORE ───────────────────────────────────────────────────
-
-export type TextAfterBeforeOp = "after" | "before";
 
 export const TEXT_AFTER_BEFORE_OP_META = {
   after:  { label: "TEXTAFTER",  description: "Text after the first occurrence of delimiter; null if not found. Excel: TEXTAFTER." },
@@ -604,13 +608,8 @@ export class TextAfterBeforeNode extends ClassicPreset.Node {
     text?: (string | string[])[];
     delimiter?: (string | string[])[];
   }): { result: CellResult<string> } {
-    const result = broadcastCells((text: string, delimiter: string) => {
-      // A blank delimiter, or one this element doesn't contain, is a per-cell blank.
-      if (delimiter === "") return null;
-      const idx = text.indexOf(delimiter);
-      if (idx === -1) return null;
-      return this.op === "after" ? text.slice(idx + delimiter.length) : text.slice(0, idx);
-    },
+    // A blank delimiter, or one an element doesn't contain, is a per-cell blank.
+    const result = broadcastCells((text: string, delimiter: string) => textAfterBefore(this.op, text, delimiter),
       strVal(inputs.text,      this, "text"),
       strVal(inputs.delimiter, this, "delimiter"));
     this.cachedText = result;
@@ -752,8 +751,6 @@ export class NumberValueNode extends ClassicPreset.Node {
 
 // ─── ENCODEURL / DECODEURL ────────────────────────────────────────────────────
 
-export type UrlEncodeOp = "encode" | "decode";
-
 export class UrlEncodeNode extends ClassicPreset.Node {
   label: string;
   op: UrlEncodeOp;
@@ -770,15 +767,7 @@ export class UrlEncodeNode extends ClassicPreset.Node {
   }
 
   data(inputs: { text?: (string | string[])[] }): { result: CellResult<string> } {
-    const result = broadcastCells((text: string) => {
-      // A malformed escape (decodeURIComponent throws) passes the text through
-      // unchanged, per element.
-      try {
-        return this.op === "encode" ? encodeURIComponent(text) : decodeURIComponent(text);
-      } catch {
-        return text;
-      }
-    }, strVal(inputs.text, this, "text"));
+    const result = broadcastCells((text: string) => urlEncode(this.op, text), strVal(inputs.text, this, "text"));
     this.cachedText = result;
     return { result };
   }
@@ -882,8 +871,6 @@ export class FixedNode extends ClassicPreset.Node {
 
 // ─── REGEX (REGEXTEST / REGEXEXTRACT / REGEXREPLACE) ─────────────────────────
 
-export type RegexOp = "test" | "extract" | "extract_all" | "replace";
-
 export const REGEX_OP_META: Record<RegexOp, { label: string; description: string }> = {
   test:        { label: "REGEXTEST",         description: "Returns 1 if text matches the pattern, else 0. Wired list input broadcasts element-wise. Excel 365: REGEXTEST." },
   extract:     { label: "REGEXEXTRACT",      description: "Returns the first match found in text, or empty string if none. Wired list input returns a list of first matches. Excel 365: REGEXEXTRACT." },
@@ -891,9 +878,6 @@ export const REGEX_OP_META: Record<RegexOp, { label: string; description: string
   replace:     { label: "REGEXREPLACE",      description: "Replaces all regex matches with the replacement string. Wired list input broadcasts element-wise. Excel 365: REGEXREPLACE." },
 };
 
-function safeRegex(pattern: string, flags: string): RegExp | null {
-  try { return new RegExp(pattern, flags); } catch { return null; }
-}
 
 export class RegexNode extends ClassicPreset.Node {
   label: string;
@@ -921,31 +905,14 @@ export class RegexNode extends ClassicPreset.Node {
     const replacement = inputs.replacement?.[0] ?? this.stringLiterals.replacement ?? "";
     const flags       = this.stringLiterals.flags ?? "";
 
-    if (!pattern) { this.cachedResult = null; return { result: null }; }
-    const re = safeRegex(pattern, flags);
-    if (!re) { this.cachedResult = null; return { result: null }; }
+    if (!pattern || !safeRegex(pattern, flags)) { this.cachedResult = null; return { result: null }; }
 
     const rawText = inputs.text?.[0];
     const isList  = Array.isArray(rawText);
     const texts   = isList ? (rawText as unknown[]).map(String) : [String(rawText ?? "")];
 
-    const applyOne = (t: string): number | string | string[] => {
-      switch (this.op) {
-        case "test":        return re.test(t) ? 1 : 0;
-        case "extract": {
-          const m = t.match(re);
-          return m ? m[0] : "";
-        }
-        case "extract_all": {
-          const gre = new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g");
-          return [...t.matchAll(gre)].map((m) => m[0]);
-        }
-        case "replace": {
-          const gre = new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g");
-          return t.replace(gre, replacement);
-        }
-      }
-    };
+    const applyOne = (t: string) =>
+      regexApply(this.op, t, pattern, replacement, flags) as number | string | string[];
 
     let result: number | number[] | string | string[] | null;
     if (this.op === "extract_all") {

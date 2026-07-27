@@ -1,6 +1,6 @@
 import { ClassicPreset } from "rete";
 import { broadcastErr, listIn, listOut, numIn, numOut, numListIn, numListOut, readInput, tableIn, tableOut } from "./shared";
-import { normSInv, regularizedBeta, regularizedGamma, stdNormCDF, lnCombin, bisectionInv, iterMax } from "./mathUtils";
+import { normSInv, regularizedBeta, regularizedGamma, stdNormCDF, lnCombin, bisectionInv, iterMax, linearFit } from "./mathUtils";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { excelRank, excelTrimmean, excelPercentRank } from "../excelFunctions";
 import { forAggregate } from "../valueKinds";
@@ -506,24 +506,14 @@ export class ForecastNode extends ClassicPreset.Node {
     const ys = ysP, xs = xsP;
     let result: number | null = null;
     if (ys.length >= 2 && xs.length >= 2) {
-      const n = Math.min(ys.length, xs.length);
-      const xMean = xs.slice(0, n).reduce((a, b) => a + b, 0) / n;
-      const yMean = ys.slice(0, n).reduce((a, b) => a + b, 0) / n;
-      let SSxy = 0, SSxx = 0;
-      for (let i = 0; i < n; i++) {
-        const dx = xs[i] - xMean, dy = ys[i] - yMean;
-        SSxy += dx * dy;
-        SSxx += dx * dx;
-      }
+      const fit = linearFit(xs, ys);
       // Zero X variance — the linear fit divides by SSxx and is undefined.
-      if (SSxx === 0) {
+      if (!fit) {
         const err = solError("#DIV/0!", "Known Xs have zero variance");
         this.cachedResult = err;
         return { result: err };
       }
-      const slope = SSxy / SSxx;
-      const intercept = yMean - slope * xMean;
-      result = intercept + slope * x;
+      result = fit.intercept + fit.slope * x;
     }
     this.cachedResult = result;
     return { result };

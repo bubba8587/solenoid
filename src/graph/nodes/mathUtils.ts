@@ -173,3 +173,28 @@ export function lnCombin(n: number, k: number): number {
   if (k < 0 || k > n) return -Infinity;
   return lnFactorial(n) - lnFactorial(k) - lnFactorial(n - k);
 }
+
+/** Least-squares line through paired data — the shared core of FORECAST.LINEAR
+ *  (and the same fit SLOPE/INTERCEPT/RSQ describe). Null when there are fewer
+ *  than two points or the Xs have zero variance (the fit divides by SSxx and is
+ *  undefined); each surface tags its own error from that, so this stays pure —
+ *  the node returns #DIV/0!, the formula returns the same via its registration.
+ *  Ragged inputs use the min-length zip, matching the paired-range policy. */
+export function linearFit(
+  xs: ReadonlyArray<number>, ys: ReadonlyArray<number>,
+): { slope: number; intercept: number } | null {
+  const n = Math.min(xs.length, ys.length);
+  if (n < 2) return null;
+  let xMean = 0, yMean = 0;
+  for (let i = 0; i < n; i++) { xMean += xs[i]; yMean += ys[i]; }
+  xMean /= n; yMean /= n;
+  let SSxy = 0, SSxx = 0;
+  for (let i = 0; i < n; i++) {
+    const dx = xs[i] - xMean;
+    SSxy += dx * (ys[i] - yMean);
+    SSxx += dx * dx;
+  }
+  if (SSxx === 0) return null;
+  const slope = SSxy / SSxx;
+  return { slope, intercept: yMean - slope * xMean };
+}
