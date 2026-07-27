@@ -173,6 +173,31 @@ RANGE_FUNCTIONS (as the plan said) is what exposed this — the two changes belo
 pack-registered name would advertise while its pack is disabled. Nothing shipped here depends on
 it. Tier 3 and Tier 4 unchanged; gap A's remaining 19 are D2-capped and ride on the Tier 4 call.
 
+### Sweep batch 2 — and the sharpest form of the bug (2026-07-27b)
+
+Swept chemistry, dist-discrete, quality and logic (11 sites). Two findings worth more
+than the count.
+
+**`logic.ts` was giving WRONG ANSWERS, not just losing a literal.** `?? 0` on a logical
+operand doesn't merely substitute the box's value — it asserts a definite FALSE where
+the graph said UNKNOWN, and under Kleene those differ: `AND(unknown, TRUE)` is unknown,
+`AND(false, TRUE)` is FALSE. NOT made it visible by flipping — `NOT(blank)` answered
+TRUE. The machinery was already right (`foldBoolean`/`broadcastEl` reason about null);
+only the readers collapsed it. Pinned, including the case that must still settle:
+`AND(unknown, FALSE)` is FALSE, because one definite false ends a conjunction.
+
+**Not every node should propagate — Expect shouldn't.** It is a passthrough VALIDATOR,
+so nulling its output on a wired-blank bound would drop the user's data to report a
+check it couldn't run. A missing bound means the check can't be EVALUATED, which is not
+the same as failing it, so that check is skipped and the data flows on. Worth
+remembering when sweeping the rest: "propagate" is the default, not a reflex.
+
+Also fixed a false positive in the ratchet itself: it counted `shared.ts`'s doc comment,
+which DESCRIBES the idiom. It now strips comment lines — otherwise writing a note about
+a fix would raise the count.
+
+Remaining: 223 across 14 files (finance 73, list 33, frame 30, visual 23, stats 22).
+
 ### The wired-null sweep, ratcheted (2026-07-27b)
 
 Measured the rest of the swallow before grinding at it: **235 `?? literal` reads across

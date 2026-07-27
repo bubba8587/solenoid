@@ -19,29 +19,24 @@ import * as path from "node:path";
 // So what remains is mechanical, just large. This pins the remaining count PER FILE
 // so it can only shrink: a new node reintroducing the idiom fails here, and fixing a
 // file requires lowering its number (or deleting the line), which keeps the list from
-// rotting into fiction. text.ts and complex.ts are absent because they are DONE.
+// rotting into fiction. A file absent from this list is DONE.
 
 const SWALLOW = /\?\? *(this|node)\.(string)?[Ll]iterals/g;
 
 // Remaining `?? literal` reads, by file. LOWER these as files are swept; never raise
 // one to make the suite green — that is the bug this exists to stop.
 const REMAINING: Record<string, number> = {
-  "chemistry.ts": 1,
   "cube.ts": 5,
   "date.ts": 2,
   "display.ts": 5,
-  "dist-discrete.ts": 3,
   "expression.ts": 1,
   "finance.ts": 73,
   "frame.ts": 30,
   "input.ts": 4,
   "lambda.ts": 1,
   "list.ts": 33,
-  "logic.ts": 4,
   "matrix.ts": 7,
-  "quality.ts": 3,
   "scalar.ts": 13,
-  "shared.ts": 1,
   "stats.ts": 22,
   "tableLambda.ts": 4,
   "visual.ts": 23,
@@ -52,7 +47,11 @@ function countByFile(): Record<string, number> {
   const out: Record<string, number> = {};
   for (const f of fs.readdirSync(dir)) {
     if (!f.endsWith(".ts") || f.endsWith(".test.ts")) continue;
-    const n = (fs.readFileSync(path.join(dir, f), "utf8").match(SWALLOW) ?? []).length;
+    // Skip COMMENT lines: `shared.ts` documents the very idiom this counts, and the
+    // fix for a site is often to write a note about it — neither is a live read.
+    const code = fs.readFileSync(path.join(dir, f), "utf8")
+      .split("\n").filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join("\n");
+    const n = (code.match(SWALLOW) ?? []).length;
     if (n > 0) out[f] = n;
   }
   return out;
@@ -86,7 +85,7 @@ describe("wired-null swallow — ratcheted down, never up", () => {
   });
 
   it("the files already swept stay swept", () => {
-    for (const f of ["text.ts", "complex.ts"]) {
+    for (const f of ["text.ts", "complex.ts", "chemistry.ts", "dist-discrete.ts", "quality.ts", "logic.ts"]) {
       expect(live[f] ?? 0, `${f} regressed — it was fully swept`).toBe(0);
     }
   });

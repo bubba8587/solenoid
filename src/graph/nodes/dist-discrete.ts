@@ -84,9 +84,11 @@ export class BinomInvNode extends ClassicPreset.Node {
   }
 
   data(inputs: { n?: number[]; p?: number[]; alpha?: number[] }) {
-    const n     = Math.floor(inputs.n?.[0]     ?? this.literals.n     ?? 10);
-    const p     = inputs.p?.[0]                ?? this.literals.p     ?? 0.5;
-    const alpha = inputs.alpha?.[0]            ?? this.literals.alpha ?? 0.95;
+    const nRaw     = readInput(inputs.n,     this.literals.n     ?? 10);
+    const p        = readInput(inputs.p,     this.literals.p     ?? 0.5);
+    const alpha    = readInput(inputs.alpha, this.literals.alpha ?? 0.95);
+    if (nRaw === null || p === null || alpha === null) { this.cachedResult = null; return { result: null }; }
+    const n = Math.floor(nRaw);
     let result: number | null = null;
 
     if (n >= 0 && p >= 0 && p <= 1 && alpha >= 0 && alpha <= 1) {

@@ -6,7 +6,7 @@
 // can be).
 
 import { ClassicPreset } from "rete";
-import { numOut, strIn } from "./shared";
+import { numOut, strIn, readInput } from "./shared";
 import { solError, type SolError } from "../errorValue";
 import type { FormatAnnotation } from "../formatAnnotationStore";
 
@@ -239,8 +239,8 @@ export class MolarMassNode extends ClassicPreset.Node {
   }
 
   data(inputs: { formula?: string[] }) {
-    const f = inputs.formula?.[0] ?? this.stringLiterals.formula ?? "";
-    const result = f.trim() ? molarMass(f) : null;
+    const f = readInput(inputs.formula, this.stringLiterals.formula ?? "");
+    const result = f?.trim() ? molarMass(f) : null;
     this.cachedResult = result;
     return { result };
   }

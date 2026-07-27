@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { numListIn, logicalComboOut, logicalComboIn, logicalIn, numIn, anyIn, trueAnyIn, trueAnyOut, staticTrueAnyOut } from "./shared";
+import { numListIn, logicalComboOut, logicalComboIn, logicalIn, numIn, anyIn, trueAnyIn, trueAnyOut, staticTrueAnyOut, readInput } from "./shared";
 import type { PassthroughSpec } from "./passthrough";
 import { isSolError, isNaError, solError, type SolError } from "../errorValue";
 import { kleeneAnd, kleeneOr, kleeneNot, isMissing, cellError, type Tri } from "../valueKinds";
@@ -285,7 +285,10 @@ export class BooleanOpNode extends ClassicPreset.Node {
   }
 
   data(inputs: Record<string, (number | null | (number | null)[])[] | undefined>) {
-    const operands = this.valueInputKeys().map((k) => inputs[k]?.[0] ?? this.literals[k] ?? 0);
+    // `readInput`, not `?? 0`: a WIRED blank is UNKNOWN, and `?? 0` collapsed it to
+    // FALSE — a wrong answer under Kleene, where AND(unknown, TRUE) is unknown but
+    // AND(false, TRUE) is FALSE. `foldBoolean` already reasons about null.
+    const operands = this.valueInputKeys().map((k) => readInput(inputs[k], this.literals[k] ?? 0));
     const result = broadcastEl((...xs) => foldBoolean(this.op, xs), ...operands);
     this.cachedResult = result;
     return { result };
@@ -311,7 +314,8 @@ export class NotNode extends ClassicPreset.Node {
   }
 
   data(inputs: { in?: (number | null | (number | null)[])[] }) {
-    const v = inputs.in?.[0] ?? this.literals.in ?? 0;
+    // A wired blank is unknown; `?? 0` made it FALSE, so NOT(blank) answered TRUE.
+    const v = readInput(inputs.in, this.literals.in ?? 0);
     const result = broadcastEl((x) => kleeneNot(triBool(x)), v);
     this.cachedResult = result;
     return { result };
@@ -562,7 +566,11 @@ export class ChooseNode extends ClassicPreset.Node {
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {
-    const idx = Math.round((inputs.index?.[0] as number) ?? this.literals.index ?? 1);
+    const idxRaw = readInput(inputs.index as (number | null)[] | undefined, this.literals.index ?? 1);
+    // A blank index selects nothing — unknown, not an ERROR. #VALUE! below is for an
+    // index that is known and out of range, which is a different thing.
+    if (idxRaw === null) { this.cachedResult = null; return { result: null }; }
+    const idx = Math.round(idxRaw);
     const keys = this.valueInputKeys();
     const key = idx >= 1 && idx <= keys.length ? keys[idx - 1] : undefined;
     this._selectedUnitKey = key ?? null; // the unit follows the chosen row
@@ -801,7 +809,7 @@ export class IsEvenOddNode extends ClassicPreset.Node {
   }
 
   data(inputs: { in?: (number | null | (number | null)[])[] }) {
-    const input = inputs.in?.[0] ?? this.literals.in ?? null;
+    const input = readInput(inputs.in, this.literals.in ?? null);
     // A null (missing) element stays unknown; a present value is even XOR odd by
     // its integer part. Broadcasts element-wise over a wired list.
     const result: Tri | Tri[] = input === null ? null

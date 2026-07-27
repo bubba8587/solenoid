@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { trueAnyIn, trueAnyOut, numIn, strIn, anyListIn } from "./shared";
+import { trueAnyIn, trueAnyOut, numIn, strIn, anyListIn, readInput } from "./shared";
 import type { PassthroughSpec } from "./passthrough";
 import { isSolError } from "../errorValue";
 import { fireAlert } from "../alertStore";
@@ -82,9 +82,11 @@ export class ExpectNode extends ClassicPreset.Node {
       return { out: raw };
     }
 
-    const min = inputs.min?.[0] ?? this.literals.min ?? 0;
-    const max = inputs.max?.[0] ?? this.literals.max ?? 100;
-    const pattern = inputs.pattern?.[0] ?? this.stringLiterals.pattern ?? "";
+    // A wired blank bound/pattern leaves the CHECK undefined, so it propagates
+    // rather than quietly reverting to the value typed on the card.
+    const min = readInput(inputs.min, this.literals.min ?? 0);
+    const max = readInput(inputs.max, this.literals.max ?? 100);
+    const pattern = readInput(inputs.pattern, this.stringLiterals.pattern ?? "");
     // A Frame checks its CELLS (a lazy FrameRef was already materialized by
     // coerceInputs — Expect isn't a lazy verb node, so `raw` is a FrameValue
     // here). Without this branch a frame fell into the `[raw]` arm and every
@@ -120,11 +122,15 @@ export class ExpectNode extends ClassicPreset.Node {
         seen.add(k);
       }
     }
-    if (this.checkRange) {
+    // A missing bound means the check cannot be EVALUATED, which is not the same as
+    // failing it — Expect is a passthrough validator, so it skips the undeterminable
+    // check and keeps the data flowing rather than reporting a violation it can't
+    // justify (or nulling the value out).
+    if (this.checkRange && min !== null && max !== null) {
       const bad = values.some((v) => typeof v === "number" && Number.isFinite(v) && (v < min || v > max));
       if (bad) violations.push("range");
     }
-    if (this.checkRegex && pattern.trim() !== "") {
+    if (this.checkRegex && pattern !== null && pattern.trim() !== "") {
       const re = safeRegex(pattern);
       if (re) {
         const bad = values.some((v) => typeof v === "string" && !re.test(v));
