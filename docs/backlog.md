@@ -133,13 +133,18 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   - The grid is mouse-only: no arrow keys between cells, no Enter-to-move-down, no
     Tab-across, and headers aren't focusable so the sort has no keyboard path. The
     biggest gap against "zero learning curve from Excel", and much the largest job.
+- [ ] **Finish the `readInput` sweep** — `text.ts`, `date.ts` and `complex.ts` are done;
+  **207 reads remain across 18 files**, RATCHETED per file by `nodes/readInputSweep.test.ts`
+  so the count can only shrink and a new node can't reintroduce the idiom. (The old
+  "~144 sites" estimate was low — the real figure is measured by that test.) Biggest:
+  finance 73, frame 30, list 33, visual 23, stats 22. Policy is SETTLED (author,
+  2026-07-27): follow THIS project's model over Excel's — an element-wise operand and a
+  MODE selector both PROPAGATE a wired blank; an AGGREGATOR/reducer SKIPS it; Filter
+  drops the row. `nodes/wiredNull.test.ts` pins a worked example of each, so what
+  remains is mechanical: route the read through `readInput`, then guard or widen the
+  return type. Most of the work per site is the return-type widening, not the read.
 - [ ] **Small mechanical sweep**: trueany adoption runs on the MAIN editor only —
-  drill-in composites don't adopt (`trueAnyAdopt.ts`); the `readInput` sweep has covered
-  `scalar.ts`, `text.ts` and `date.ts` — the remaining `data()` files are the follow-up
-  (~144 sites, biggest being finance/list/stats). The policy question is now SETTLED
-  (author, 2026-07-27): follow THIS project's model over Excel's — an operand or a MODE
-  selector PROPAGATES a wired blank, a REDUCER skips it (the aggregator half of the
-  value model). So the rest is mechanical; `nodes/wiredNull.test.ts` shows the shape.
+  drill-in composites don't adopt (`trueAnyAdopt.ts`).
 - [ ] **Keep `release-notes-features.md` current** — the curated 1.3 selling list +
   What's-New slide source (author writes the final release notes at cut time).
 

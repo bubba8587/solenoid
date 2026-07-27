@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { numListIn, numListOut, complexComboIn, complexComboOut, type CellResult, type BroadcastResult } from "./shared";
+import { numListIn, numListOut, complexComboIn, complexComboOut, readInput, type CellResult, type BroadcastResult } from "./shared";
 import { isSolError, solError, type SolError } from "../errorValue";
 import { cellShortCircuit, COMPUTE } from "../valueKinds";
 
@@ -193,8 +193,8 @@ export class ComplexFromNode extends ClassicPreset.Node {
   data(inputs: { re?: (number | number[])[]; im?: (number | number[])[] }): { z: CellResult<Cx> } {
     const z = broadcastComplex(
       (re: number, im: number): Cx => [re, im],
-      numOp(inputs.re?.[0] ?? this.literals.re ?? 0),
-      numOp(inputs.im?.[0] ?? this.literals.im ?? 0),
+      numOp(readInput(inputs.re, this.literals.re ?? 0)),
+      numOp(readInput(inputs.im, this.literals.im ?? 0)),
     );
     this.cachedResult = z;
     return { z };
@@ -372,7 +372,7 @@ export class ComplexPowerNode extends ClassicPreset.Node {
     const result = broadcastComplex(
       (z: Cx, n: number) => cxPow(z, n),
       cxOp(inputs.z?.[0] ?? null),
-      numOp(inputs.n?.[0] ?? this.literals.n ?? 2),
+      numOp(readInput(inputs.n, this.literals.n ?? 2)),
     );
     this.cachedResult = result;
     return { result };
@@ -420,9 +420,9 @@ export class QuadraticRootsNode extends ClassicPreset.Node {
       if (disc >= 0) return which === 1 ? [z(re - s), 0] : [z(re + s), 0];
       return which === 1 ? [re, z(-s)] : [re, z(s)]; // the conjugate pair
     },
-      numOp(inputs.a?.[0] ?? this.literals.a),
-      numOp(inputs.b?.[0] ?? this.literals.b),
-      numOp(inputs.c?.[0] ?? this.literals.c));
+      numOp(readInput(inputs.a, this.literals.a)),
+      numOp(readInput(inputs.b, this.literals.b)),
+      numOp(readInput(inputs.c, this.literals.c)));
     const x1 = root(1);
     const x2 = root(2);
     this.cachedX1 = x1;
