@@ -573,7 +573,7 @@ export function CompositeRunControls({ node, emit, insideOnly = false }: { node:
   return (
     <>
       {(node.inputPorts.length > 0 || node.outputPorts.length > 0) && (
-        <OpSelect value={runMode} options={RUN_MODE_OPTIONS} onChange={setRunMode} />
+        <OpSelect arg value={runMode} options={RUN_MODE_OPTIONS} onChange={setRunMode} />
       )}
       {heavy && (
         <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 4 }}>

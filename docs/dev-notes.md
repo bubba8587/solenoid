@@ -120,6 +120,48 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### The partial set hits zero: VAL-10 / VAL-12 / VAL-14 completeness (2026-07-28t)
+
+The last three partially-enforced rules flip to enforced; the spec's summary is
+**41 enforced / 0 partial / 3 unenforced** — the partial set is empty for the
+first time. Known violations 4 → 1 (only the rules.test semantic half remains).
+
+**VAL-10** (`sourceInvariants.test.ts`) — a source scan over `nodes/` + `packs/`:
+any file calling a per-cell algebra identifier (isUnitCell / dimOf / magnitudeOf
+/ the *Units combinators / broadcastUnit / anyDimensioned) must declare
+`unitAware = true`, with one sanctioned entry (shared.ts, the helper library)
+and the honesty test that keeps it sanctioned only while true. The matrix-unit
+family is deliberately OUTSIDE the consuming set — a D20 matrix unit tags the
+outer array of a bare-number grid and survives the unit-blind strip, so a
+unit-blind reshape carrying it (stats.ts) is correct, not a violation. Scan
+found zero offenders; the value is the ratchet.
+
+**VAL-12's blindness** closed where the field is still visible: the component
+source. A brace-aware scan parses every `<OpSelect>` tag (props hold arrow
+functions, so naive `[^>]*` dies on `=>`); each must bind `op` — directly,
+a per-row `.op` config field, or via `useNodeField(…, "op")` — or carry the
+`arg` prop, now the machine-readable "not the family op selector" declaration.
+That contract surfaced 20 unmarked argument/config/data-pick dropdowns (TVM's
+payment timing — CumPmt/IpmtPpmt already had `arg`, TVM had missed the same
+sweep; XMATCH match mode, FIXED no-commas, TEXTJOIN ignore-empty, DateIf's
+`unit` — the recorded borderline, settled as argument-by-semantics; ByAxis's
+BYROW/BYCOL axis, resistor band picks, Slicer column, run-mode/target/format
+configs, the frame-filter condition rows). All sit on neutral cards, so the
+`arg` additions are visually inert today — they encode semantics + feed the
+scan.
+
+**VAL-14's only-if** (`catalogRegistry.test.ts`) — every class declaring
+`literals`/`stringLiterals` must have a registered component whose source
+(Function.toString) shows an editing surface (InlineInputs / ExtensibleInputs /
+a direct map reference), so a hand-authored save can't restore a value onto a
+card that can never show it. First run listed 13 candidates; all 13 verified
+real editors once the heuristic learned the bespoke surfaces — the miss was the
+`stringLiterals` SPELLING (capital L, so `/literals/` didn't match) and the
+ExtensibleInputs/Paired family. Negative-tested (stripping one `arg` fails the
+VAL-12 scan by name; the VAL-14 detector demonstrably fired pre-widening).
+
+Suite 3583 → 3587, tsc clean.
+
 ### FX-4's full sweep — and the two live wounds it caught first run (2026-07-28s)
 
 The last mechanical partial: the naming-side injectivity sweep covered catalog

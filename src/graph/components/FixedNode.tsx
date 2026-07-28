@@ -13,7 +13,7 @@ export function FixedComponent({ data, emit }: NodeProps<FixedNodeType>) {
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <OpSelect value={noCommas} onChange={setNoCommas} options={NO_COMMAS_OPTS} />
+      <OpSelect arg value={noCommas} onChange={setNoCommas} options={NO_COMMAS_OPTS} />
       <ValueDisplay value={data.cachedText} />
     </NodeShell>
   );

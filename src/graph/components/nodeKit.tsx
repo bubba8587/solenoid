@@ -500,11 +500,14 @@ export function OpSelect<T extends string>({
   value: T;
   onChange: (next: T) => void;
   options: ReadonlyArray<OpOption<T>>;
-  /** A SECONDARY selector on the card (a criterion comparator, a payment-timing
-   *  toggle) — an ARGUMENT even when the card's family is operation-kind, so the
-   *  operation accent edge (nodeCard.css, data-op-kind) must skip it. Without
-   *  this, SUMIFS' per-criterion "≥" dropdown wore the same edge as the family
-   *  op select, asserting something false about itself. */
+  /** A selector that is NOT the family's op selector — a criterion comparator,
+   *  a payment-timing toggle, a config/data pick. Two consumers read it:
+   *  the operation accent edge (nodeCard.css, data-op-kind) skips arg selects —
+   *  without this, SUMIFS' per-criterion "≥" dropdown wore the same edge as the
+   *  family op select, asserting something false about itself — and the VAL-12
+   *  source scan (sourceInvariants.test.ts) requires every NON-arg OpSelect to
+   *  bind a field named `op`, so a new family cannot hide its op selector under
+   *  `mode`/`dir` and fall out of the declaration machinery unnoticed. */
   arg?: boolean;
 }) {
   const hasGroups = options.some((o) => o.group != null);

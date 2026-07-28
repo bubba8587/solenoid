@@ -68,7 +68,7 @@ export function FilterComponent({ data, emit }: NodeProps<FilterNodeType>) {
         const c = rowCfg(id);
         return (
           <div key={key} className="solenoid-node__pair-group">
-            <OpSelect value={c.op} options={FILTER_OP_OPTIONS_WITH_ERROR} onChange={(op) => updateCfg(id, { op })} />
+            <OpSelect arg value={c.op} options={FILTER_OP_OPTIONS_WITH_ERROR} onChange={(op) => updateCfg(id, { op })} />
             <MeasuredSocketRow side="input" socketKey={key} nodeId={data.id} emit={emit} payload={data.inputs[key]!.socket}>
               <span className="solenoid-node__io-label">Value{keys.length > 1 ? ` ${i + 1}` : ""}</span>
               {connected.has(key) ? (

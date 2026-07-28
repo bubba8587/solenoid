@@ -87,6 +87,142 @@ describe("SOCK-7 — a file that retypes sockets in place must reconcile downstr
   });
 });
 
+describe("VAL-10 — a node file that runs the dimension algebra declares unitAware", () => {
+  // The unit-blind boundary strips `UnitCell` tags from every input UNLESS the
+  // node declares `unitAware = true` (coerceInputs). So a node that calls the
+  // per-cell algebra — isUnitCell / dimOf / magnitudeOf / the *Units combinators
+  // / broadcastUnit — without the flag never sees a tag: the algebra silently
+  // no-ops on display magnitudes. The BEHAVIOUR is covered by unitCoercion.test;
+  // THIS is the completeness half (rules.md known-violation 2): a new algebra
+  // node whose file forgets the flag fails here by name.
+  //
+  // Deliberately EXCLUDED from the consuming set: the matrix-unit family
+  // (matrixUnitOf / withMatrixUnit / carryMatrixUnit / sharedMatrixUnit). A D20
+  // matrix unit tags the OUTER array of a bare-number grid, so it survives the
+  // unit-blind strip (stripUnitCells returns the same reference when no CELL is
+  // tagged) — a unit-blind node carrying it through a reshape is correct, not a
+  // violation (stats.ts's grid interpolation is the live example).
+  const CONSUMES = /\b(?:isUnitCell|dimOf|magnitudeOf|mulUnits|divUnits|addUnits|subUnits|powUnits|compareUnits|forAggregateUnits|broadcastUnit|anyDimensioned)\s*\(/;
+  // Files sanctioned to call the algebra WITHOUT declaring, with the reason:
+  const SANCTIONED: Record<string, string> = {
+    "nodes/shared.ts": "the helper library (broadcastUnit/guardCell/anyDimensioned) — declares no node class; every caller declares unitAware in its own file",
+  };
+  const NODE_DIRS = ["nodes", "packs"].map((d) => path.join(SRC, d));
+
+  it("every algebra-calling node file declares unitAware = true (or is sanctioned, with a reason)", () => {
+    const offenders: string[] = [];
+    for (const dir of NODE_DIRS) {
+      for (const file of walk(dir)) {
+        const lines = codeLines(file);
+        if (!lines.some((l) => CONSUMES.test(l))) continue;
+        const r = rel(file);
+        if (r in SANCTIONED) continue;
+        if (!/unitAware\s*=\s*true/.test(lines.join("\n"))) offenders.push(r);
+      }
+    }
+    expect(
+      offenders,
+      `These node files call the per-cell unit algebra but never declare ` +
+      `unitAware = true (VAL-10): the unit-blind boundary strips the tags before ` +
+      `data() runs, so the algebra silently no-ops. Declare the flag on the ` +
+      `algebra-running class, or add the file to SANCTIONED with the reason:\n  ` +
+      offenders.join("\n  "),
+    ).toEqual([]);
+  });
+
+  it("the sanctioned list stays honest — every entry still exists, still calls the algebra, still doesn't declare", () => {
+    for (const [r, why] of Object.entries(SANCTIONED)) {
+      const file = path.join(SRC, r);
+      expect(fs.existsSync(file), `${r} (sanctioned: ${why}) no longer exists — drop the entry`).toBe(true);
+      const lines = codeLines(file);
+      expect(lines.some((l) => CONSUMES.test(l)), `${r} no longer calls the algebra — drop the stale sanction`).toBe(true);
+      expect(/unitAware\s*=\s*true/.test(lines.join("\n")), `${r} now declares unitAware itself — drop the redundant sanction`).toBe(false);
+    }
+  });
+});
+
+describe("VAL-12 — a card's family op selector binds a field named `op`", () => {
+  // The declaration machinery resolves a live node's current op by reading
+  // `inst.op` (nodeOps.opKindForNode), so a family whose selector field is named
+  // otherwise cannot declare its ops AT ALL — they become unsearchable and
+  // unmeasurable, silently (the PadNode.dir incident). nodeOps.test.ts covers
+  // nodes that HAVE an `op` field; THIS closes the blindness (rules.md
+  // known-violation 1): it finds the dropdowns in the component source, where a
+  // misnamed field is still visible.
+  //
+  // The contract it enforces: every `<OpSelect>` either binds `op` (directly, a
+  // per-row `.op` config field, or via useNodeField(…, "op")) or carries the
+  // `arg` prop — the machine-readable "not the family op selector" declaration
+  // (criterion comparators, payment timing, config/data picks; nodeKit.tsx).
+  // A new family that stores its op under `mode`/`dir` fails here by name.
+
+  /** From "<OpSelect", the tag text through its closing "/>" at brace depth 0
+   *  (props contain arrow functions, so a plain [^>]* scan would stop early). */
+  function opSelectTag(src: string, start: number): string | null {
+    let depth = 0;
+    for (let i = start; i < src.length; i++) {
+      const c = src[i];
+      if (c === "{") depth++;
+      else if (c === "}") depth--;
+      else if (depth === 0 && c === "/" && src[i + 1] === ">") return src.slice(start, i + 2);
+    }
+    return null;
+  }
+  /** The tag's prop-level text (brace contents stripped) — where `arg` lives. */
+  function propLevel(tag: string): string {
+    let depth = 0, out = "";
+    for (const c of tag) {
+      if (c === "{") { depth++; continue; }
+      if (c === "}") { depth--; continue; }
+      if (depth === 0) out += c;
+    }
+    return out;
+  }
+  /** The expression inside value={…}, brace-aware. */
+  function valueExpr(tag: string): string | null {
+    const m = /value=\{/.exec(tag);
+    if (!m) return null;
+    let depth = 1;
+    const start = m.index + m[0].length;
+    for (let i = start; i < tag.length; i++) {
+      if (tag[i] === "{") depth++;
+      else if (tag[i] === "}" && --depth === 0) return tag.slice(start, i).trim();
+    }
+    return null;
+  }
+
+  it("every non-arg OpSelect binds `op` (directly, per-row `.op`, or via useNodeField)", () => {
+    const offenders: string[] = [];
+    for (const file of walk(path.join(SRC, "components"))) {
+      const src = fs.readFileSync(file, "utf8");
+      let idx = -1;
+      while ((idx = src.indexOf("<OpSelect", idx + 1)) !== -1) {
+        const tag = opSelectTag(src, idx);
+        const line = src.slice(0, idx).split("\n").length;
+        const where = `${rel(file)}:${line}`;
+        if (!tag) { offenders.push(`${where} (unparseable tag)`); continue; }
+        if (/\barg\b/.test(propLevel(tag))) continue; // declared not-the-op-selector
+        const expr = valueExpr(tag);
+        if (!expr) { offenders.push(`${where} (no value= prop)`); continue; }
+        if (expr === "op" || /\.op$/.test(expr)) continue;
+        // A renamed binding: const [x, …] = useNodeField(node, "op")
+        if (/^[A-Za-z_$][\w$]*$/.test(expr)) {
+          const re = new RegExp(`const\\s*\\[\\s*${expr}\\b[^\\]]*\\]\\s*=\\s*useNodeField\\([^,]+,\\s*"op"`);
+          if (re.test(src)) continue;
+        }
+        offenders.push(`${where} (binds \`${expr}\`)`);
+      }
+    }
+    expect(
+      offenders,
+      `These <OpSelect> dropdowns neither bind a field named \`op\` nor carry the ` +
+      `\`arg\` prop (VAL-12). If it IS the family's op selector, the node must store ` +
+      `it as \`op\` (not mode/dir/kind) so NODE_OPS declarations can attach; if it is ` +
+      `an argument/config/data pick, mark it \`arg\`:\n  ` + offenders.join("\n  "),
+    ).toEqual([]);
+  });
+});
+
 describe("VAL-13 — components never call node.data()", () => {
   // `data()` assumes the engine-driven coerceInputs wrapper (and, for most
   // nodes, installErrorGuards) has run; a component calling it raw gets

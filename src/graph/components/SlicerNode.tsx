@@ -101,6 +101,7 @@ export function SlicerComponent({ data, emit }: NodeProps<SlicerNode>) {
         <div className="slicer-node__toolbar">
           {hasFrame ? (
             <OpSelect
+              arg
               value={activeColumn}
               onChange={changeColumn}
               options={columns.map((c) => ({ value: c, label: c }))}

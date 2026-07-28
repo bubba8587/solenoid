@@ -88,7 +88,7 @@ export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNode
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
       <div style={{ padding: "2px 0 4px" }}>
-        <OpSelect value={target} onChange={setTarget} options={TARGET_OPTS} />
+        <OpSelect arg value={target} onChange={setTarget} options={TARGET_OPTS} />
       </div>
       <InlineInputs node={data} emit={emit} keys={acc(STR_KEYS) as string[]} />
       {TOGGLE_KEYS.filter(({ key }) => accepted.has(key)).map(({ key, label }) => (

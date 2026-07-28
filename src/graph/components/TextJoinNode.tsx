@@ -13,7 +13,7 @@ export function TextJoinComponent({ data, emit }: NodeProps<TextJoinNodeType>) {
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <OpSelect value={ignoreEmpty} onChange={setIgnoreEmpty} options={IGNORE_EMPTY_OPTS} />
+      <OpSelect arg value={ignoreEmpty} onChange={setIgnoreEmpty} options={IGNORE_EMPTY_OPTS} />
       <ValueDisplay value={data.cachedText} />
     </NodeShell>
   );

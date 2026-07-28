@@ -10,19 +10,12 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
 
 ## Architecture spec (`docs/rules.md`)
 
-- [ ] **Close the rules spec's REMAINING known violations** — two enforcement passes
-  landed (2026-07-28): the review pass (VAL-12's six renames, VAL-8's pin, FX-2's
-  import-graph test, `rules.test.ts` mechanical half) and the enforcement tranche
-  (SOCK-7 completeness + VAL-13 as source scans in `sourceInvariants.test.ts`, SOCK-5's
-  persistence pin, the last VAL-12 renames Alert/ColorBlend + declarations; SOCK-6
-  attempted and recorded un-greppable — only rendering classifiers inline wildcard
-  names; FX-4's full naming sweep — which caught and fixed the Text Filter CONTAINS
-  claim and the duplicate math-fn `round` op). Still open, highest value first:
-  - **VAL-10 completeness** — nothing proves a NEW algebra node sets `unitAware`.
-  - **VAL-12 blindness** — a family that CAN'T declare (misnamed field) is invisible to
-    the coverage check — drive it off the catalog/OpSelect usage instead.
-  - **VAL-14** — only the "if" direction of the literal-map rule is checked.
-  - **Unenforced, lower value:** SOCK-8 (socket box geometry — a CSS invariant).
+- [ ] **Rules spec — the enforcement tail.** The partially-enforced set hit ZERO
+  (2026-07-28: VAL-10 algebra-file scan, VAL-12 OpSelect-binding scan + the `arg`
+  contract, VAL-14 only-if — after the earlier passes closed SOCK-5/SOCK-7/VAL-13/FX-4;
+  SOCK-6 recorded un-greppable). Left, low value:
+  - **Unenforced:** SSOT-5, SOCK-8 (socket box geometry — a CSS invariant), SOCK-6
+    (recorded un-greppable).
   - **`rules.test.ts` semantic half** — it checks cited files EXIST; whether a cited
     test enforces its rule is still a reading job.
 

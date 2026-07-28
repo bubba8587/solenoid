@@ -40,6 +40,46 @@ describe("catalog ↔ registry consistency", () => {
     expect(dead).toEqual([]);
   });
 
+  // VAL-14, the ONLY-IF direction. Declaring `literals` / `stringLiterals` is
+  // the class's statement that its card edits those values inline, and the
+  // persistence load gate trusts it: a save's maps are restored onto any
+  // declaring class. A class that declares a map its card never edits therefore
+  // lets a hand-authored save inject a value the user can never see or change.
+  // (The IF direction — a typeable list input implies a stringLiterals
+  // declaration — is in coerceInputs.test.ts.)
+  //
+  // "The card edits it" is checked against the component function's source: it
+  // renders the generic inline editor (InlineInputs) or touches the maps itself
+  // (`data.literals[...]` / `data.stringLiterals[...]` — the bespoke draw-your-
+  // data and toggle cards). Crude, but exactly as crude as the failure mode: an
+  // editing surface is a reference to the map or the editor by name.
+  it("no class declares a literal map its component never edits (VAL-14 only-if)", () => {
+    const offenders: string[] = [];
+    const seen = new Set<unknown>();
+    for (const entry of FLAT_CATALOG.values()) {
+      let inst: Record<string, unknown> & object;
+      try { inst = entry.create() as typeof inst; } catch { continue; }
+      const ctor = inst.constructor;
+      if (seen.has(ctor)) continue;
+      seen.add(ctor);
+      const declared = (["literals", "stringLiterals"] as const)
+        .filter((k) => typeof inst[k] === "object" && inst[k] !== null);
+      if (declared.length === 0) continue;
+      const comp = componentForNode(inst);
+      const src = comp ? String(comp) : "";
+      if (!/InlineInputs|ExtensibleInputs|[lL]iterals/.test(src)) {
+        offenders.push(`${ctor.name} (leaf "${entry.type}") declares ${declared.join(" + ")}`);
+      }
+    }
+    expect(
+      offenders,
+      `These classes declare a literal map their component never edits (VAL-14): ` +
+      `the load gate will restore saved values onto them that the card cannot show. ` +
+      `Drop the declaration, or give the card an editing surface:\n  ` +
+      offenders.join("\n  "),
+    ).toEqual([]);
+  });
+
   it("every catalog entry constructs without throwing", () => {
     const broken: string[] = [];
     for (const [type, entry] of FLAT_CATALOG) {

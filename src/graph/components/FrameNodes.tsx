@@ -275,7 +275,7 @@ export function FilterFrameComponent({ data, emit }: NodeProps<FilterFrameNodeTy
                     </button>
                   )}
                 </MeasuredSocketRow>
-                <OpSelect value={c.op} options={FILTER_OP_OPTIONS_WITH_ERROR} onChange={(op) => updateCfg(id, { op })} />
+                <OpSelect arg value={c.op} options={FILTER_OP_OPTIONS_WITH_ERROR} onChange={(op) => updateCfg(id, { op })} />
                 {(!VALUELESS_OPS.has(c.op) || connected.has(valKey)) && (
                 <MeasuredSocketRow side="input" socketKey={valKey} nodeId={data.id} emit={emit} payload={data.inputs[valKey]!.socket}>
                   <span className="solenoid-node__io-label">Value</span>
@@ -410,7 +410,7 @@ export function GroupByFrameComponent({ data, emit }: NodeProps<GroupByFrameNode
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
       <OpSelect value={op} options={AGG_OP_OPTIONS} onChange={setOp} />
-      <OpSelect value={String(totalDepth)} options={GROUP_TOTAL_OPTIONS} onChange={(v) => setTotalDepth(Number(v))} />
+      <OpSelect arg value={String(totalDepth)} options={GROUP_TOTAL_OPTIONS} onChange={(v) => setTotalDepth(Number(v))} />
       <FrameDisplay frame={data.cachedResult} label={data.label} />
     </NodeShell>
   );
@@ -676,7 +676,7 @@ export function DecisionMatrixComponent({ data, emit }: NodeProps<DecisionMatrix
               <div className="solenoid-node__dm-weight-row" key={name}>
                 <span className="solenoid-node__io-label solenoid-node__dm-col-crit" title={`“${name}”: weight and per-column normalize. A negative weight means lower is better.`}>{name}</span>
                 {!wired && <InlineNumberField value={data.weightMap[name] ?? 1} onChange={(v) => setWeight(name, v)} />}
-                <OpSelect value={data.normMap[name] ?? ""} options={DECISION_PERCOL_OPTIONS} onChange={(m) => setNorm(name, m)} />
+                <OpSelect arg value={data.normMap[name] ?? ""} options={DECISION_PERCOL_OPTIONS} onChange={(m) => setNorm(name, m)} />
               </div>
             ))}
           </>

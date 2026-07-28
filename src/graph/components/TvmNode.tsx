@@ -21,6 +21,7 @@ export function TvmComponent({ data, emit }: NodeProps<TvmNodeType>) {
       emit={emit}
       config={
         <OpSelect
+          arg
           value={timing}
           onChange={(t) => {
             data.setPaymentTiming(t);

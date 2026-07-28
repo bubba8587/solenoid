@@ -12,7 +12,7 @@ export function XMatchComponent({ data, emit }: NodeProps<XMatchNodeType>) {
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <OpSelect value={matchMode} onChange={setMatchMode} options={MATCH_MODES} />
+      <OpSelect arg value={matchMode} onChange={setMatchMode} options={MATCH_MODES} />
       <ValueDisplay value={data.cachedResult} empty="not found" />
     </NodeShell>
   );
