@@ -53,13 +53,19 @@ import { ChartNode, SparklineNode } from "./nodes/visual";
 import { CHART_OP_META, SPARKLINE_OP_META } from "./nodes/visual";
 import {
   FillNode, GroupByNode, SetOpNode, SetRelationNode, SumIfsNode, CumulativeNode,
-  FILL_OP_META, GROUP_BY_OP_META, COND_AGG_OP_META,
+  FILL_OP_META, GROUP_BY_OP_META, COND_AGG_OP_META, CUMULATIVE_OP_META,
 } from "./nodes/list";
 import { HeadNode, HeadersNode, HEAD_OP_META, HEADER_OP_META } from "./nodes/frame";
 import { RegexNode, TextFilterNode, REGEX_OP_META, TEXT_FILTER_OP_META } from "./nodes/text";
-import { IsEvenOddNode, ComparisonNode, IsTestNode, PARITY_OP_META } from "./nodes/logic";
+import {
+  IsEvenOddNode, ComparisonNode, IsTestNode,
+  PARITY_OP_META, COMPARISON_OP_META, IS_TEST_OP_META,
+} from "./nodes/logic";
 import { RegressionNode, CorrelNode, REGRESSION_OP_META, CORREL_OP_META } from "./nodes/stats";
-import { TwoInputMathNode, GcdNode, RoundNNode, TWO_INPUT_MATH_OP_META } from "./nodes/scalar";
+import {
+  TwoInputMathNode, GcdNode, RoundNNode,
+  TWO_INPUT_MATH_OP_META, GCD_OP_META, ROUNDN_OP_META,
+} from "./nodes/scalar";
 // The kind-only families below, via the node barrel — they contribute no ops list,
 // only their class (for `instanceof`) and their kind.
 import {
@@ -159,42 +165,6 @@ const SET_RELATION_OPS = [
   { op: "disjoint", label: "Disjoint" },
 ];
 
-/** Ops declared inline, for the families whose labels live in their React component's
- *  OPS array rather than an OP_META table. Transcribed to match those labels exactly;
- *  the glyph prefixes are dropped because a search row reads "Comparison: Greater or
- *  equal", where a bare "≥" would carry nothing. Unifying these into real OP_META
- *  tables the components consume is a follow-up, not a behavior change. */
-const COMPARISON_OPS = [
-  { op: "gt", label: "Greater than" },
-  { op: "gte", label: "Greater or equal" },
-  { op: "lt", label: "Less than" },
-  { op: "lte", label: "Less or equal" },
-  { op: "eq", label: "Equal" },
-  { op: "neq", label: "Not equal" },
-];
-const IS_TEST_OPS = [
-  { op: "isnumber", label: "ISNUMBER" },
-  { op: "isblank", label: "ISBLANK" },
-  { op: "isnull", label: "ISNULL" },
-  { op: "iserror", label: "ISERROR" },
-  { op: "isna", label: "ISNA" },
-  { op: "islogical", label: "ISLOGICAL" },
-  { op: "istext", label: "ISTEXT" },
-  { op: "isnontext", label: "ISNONTEXT" },
-];
-const CUMULATIVE_OPS = [
-  { op: "cumsum", label: "Running SUM" },
-  { op: "cumprod", label: "Running PRODUCT" },
-  { op: "cummax", label: "Running MAX" },
-  { op: "cummin", label: "Running MIN" },
-];
-const GCD_OPS = [{ op: "gcd", label: "GCD" }, { op: "lcm", label: "LCM" }];
-const ROUNDN_OPS = [
-  { op: "round", label: "ROUND" },
-  { op: "roundup", label: "ROUNDUP" },
-  { op: "rounddown", label: "ROUNDDOWN" },
-];
-
 export const NODE_OPS: NodeOpsDecl[] = [
   // ── Operation-kind (continued): a chart TYPE is a thing you search for ──
   // "Column chart" and "Sankey" are distinct things a user looks up by name, which
@@ -238,21 +208,24 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "iseven-isodd", ctor: IsEvenOddNode, kind: "operation", ops: fromMeta(PARITY_OP_META), mark: false,
     create: (op) => new IsEvenOddNode({ op: op as never }) },
 
-  { type: "list-cumulative", ctor: CumulativeNode, kind: "operation", ops: CUMULATIVE_OPS,
+  { type: "list-cumulative", ctor: CumulativeNode, kind: "operation", ops: fromMeta(CUMULATIVE_OP_META),
     create: (op) => new CumulativeNode({ op: op as never }) },
-  { type: "comparison", ctor: ComparisonNode, kind: "operation", ops: COMPARISON_OPS,
+  // `fromMeta` takes the NAME, so the dropdown's operator glyph is dropped here on
+  // purpose: a search row reads "Comparison: Greater or equal", where a bare "≥"
+  // would carry nothing.
+  { type: "comparison", ctor: ComparisonNode, kind: "operation", ops: fromMeta(COMPARISON_OP_META),
     create: (op) => new ComparisonNode({ op: op as never }) },
-  { type: "is-test", ctor: IsTestNode, kind: "operation", ops: IS_TEST_OPS,
+  { type: "is-test", ctor: IsTestNode, kind: "operation", ops: fromMeta(IS_TEST_OP_META),
     create: (op) => new IsTestNode({ op: op as never }) },
   // Label already names both ops, so the marker would only echo it.
-  { type: "gcd-lcm", ctor: GcdNode, kind: "operation", ops: GCD_OPS, mark: false,
+  { type: "gcd-lcm", ctor: GcdNode, kind: "operation", ops: fromMeta(GCD_OP_META), mark: false,
     create: (op) => new GcdNode({ op: op as never }) },
 
   // ── Partially exposed: some ops already have leaves, the rest ride in search ──
   { type: "twomath-log", ctor: TwoInputMathNode, kind: "operation", ops: fromMeta(TWO_INPUT_MATH_OP_META),
     leafOps: ["log", "atan2", "delta", "gestep"],
     create: (op) => new TwoInputMathNode({ op: op as never }) },
-  { type: "roundn-round", ctor: RoundNNode, kind: "operation", ops: ROUNDN_OPS,
+  { type: "roundn-round", ctor: RoundNNode, kind: "operation", ops: fromMeta(ROUNDN_OP_META),
     leafOps: ["round", "roundup"],
     create: (op) => new RoundNNode({ op: op as never }) },
 

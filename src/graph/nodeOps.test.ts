@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { NODE_OPS, opsFor, hiddenOps, exposureOf, opEntry, opKindForNode } from "./nodeOps";
 import { buildCatalog } from "./catalogUtils";
 import { flattenLeaves, searchLeaves } from "./catalogSearch";
+import { SET_OP_META, SET_RELATION_META } from "./nodes/list";
 import type { CatalogEntry, NodeCatalogEntry } from "./AddNodeMenu";
 
 // ─── Multi-op declarations ────────────────────────────────────────────────────
@@ -64,6 +65,54 @@ describe("declarations line up with the real catalog", () => {
       const host = byType.get(decl.type)!;
       const cls = (host.create() as { constructor: { name: string } }).constructor.name;
       expect([...(realLeafOps.get(cls) ?? [])].sort(), `${decl.type} (${cls})`).toEqual([...decl.leafOps].sort());
+    }
+  });
+});
+
+describe("the ops list is derived, not transcribed", () => {
+  // Every family now reads its ops from the ONE OP_META table its card's dropdown
+  // reads, so `satisfies Record<XOp, …>` makes tsc prove the list is complete and the
+  // two surfaces cannot disagree. They did: `islogical` shipped as ISBOOLEAN on the
+  // card and ISLOGICAL in search, because the list here was hand-transcribed.
+  //
+  // Two lists stay hand-written, and only these two: the Set families' meta labels are
+  // dropdown PROSE ("Union: in A or B"), which a search row cannot use — composing it
+  // gives "Set: Union: in A or B", and every sibling then matches a family query
+  // equally well. So they carry names instead. Nothing type-checks that pairing, which
+  // is what this covers: a new set operation must not be able to reach the card while
+  // staying invisible to search.
+  it("the hand-written name lists cover their meta exactly", () => {
+    for (const [type, meta] of [
+      ["list-set", SET_OP_META],
+      ["list-set-relation", SET_RELATION_META],
+    ] as const) {
+      const declared = opsFor(type)!.ops!.map((o) => o.op).sort();
+      expect(declared, `${type}: the ops list and its OP_META have drifted`)
+        .toEqual(Object.keys(meta).sort());
+    }
+  });
+
+  it("finds an op by the name its own card shows", () => {
+    // The case that was broken: the card says ISBOOLEAN (Solenoid names the type
+    // logical, but the dropdown says what you are testing FOR), and searching for
+    // what you just read on a card has to find it.
+    const hits = searchLeaves(flattenLeaves(catalog), "ISBOOLEAN").map((l) => l.label);
+    expect(hits, "ISBOOLEAN is on the IS.TEST card but not in search").toContain("IS.TEST: ISBOOLEAN");
+  });
+
+  it("a name list names its ops — it never repeats the meta's prose", () => {
+    // The reason they are separate. If someone "fixes" the duplication by pasting the
+    // meta labels back in, the rows stop discriminating and this catches it.
+    for (const [type, meta] of [
+      ["list-set", SET_OP_META],
+      ["list-set-relation", SET_RELATION_META],
+    ] as const) {
+      for (const { op, label } of opsFor(type)!.ops!) {
+        const prose = (meta as Record<string, { label: string }>)[op].label;
+        if (!prose.includes(":")) continue; // that one is already a bare name
+        expect(label, `${type}/${op} took the dropdown's prose as its search name`)
+          .not.toBe(prose);
+      }
     }
   });
 });

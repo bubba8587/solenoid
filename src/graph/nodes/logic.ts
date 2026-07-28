@@ -94,10 +94,18 @@ export function compareOp(op: ComparisonOp, x: number, y: number): boolean {
   }
 }
 
-// Symbol shown in node bodies / menus for each comparison.
-export const COMPARISON_SYMBOLS: Record<ComparisonOp, string> = {
-  gt: ">", gte: "≥", lt: "<", lte: "≤", eq: "=", neq: "≠",
-};
+// The six comparisons, named once. `symbol` is the operator glyph — the dropdown
+// prefixes it to the name, because on the card the glyph is the faster read; `label`
+// is the name alone, which is what an Add-menu search row needs ("Comparison: Greater
+// or equal", where a bare "≥" would carry nothing).
+export const COMPARISON_OP_META = {
+  gt:  { symbol: ">", label: "Greater than",     description: "TRUE when A is greater than B. Excel: A>B." },
+  gte: { symbol: "≥", label: "Greater or equal", description: "TRUE when A is greater than or equal to B. Excel: A>=B." },
+  lt:  { symbol: "<", label: "Less than",        description: "TRUE when A is less than B. Excel: A<B." },
+  lte: { symbol: "≤", label: "Less or equal",    description: "TRUE when A is less than or equal to B. Excel: A<=B." },
+  eq:  { symbol: "=", label: "Equal",            description: "TRUE when A equals B. Excel: A=B." },
+  neq: { symbol: "≠", label: "Not equal",        description: "TRUE when A differs from B. Excel: A<>B." },
+} satisfies Record<ComparisonOp, { symbol: string; label: string; description: string }>;
 
 export class ComparisonNode extends ClassicPreset.Node {
   /** Keeps `UnitCell` tags on its inputs so the comparison runs on BASE-SI
@@ -386,6 +394,21 @@ function replaceCaught(value: unknown, fallback: unknown, caught: (v: unknown) =
 // ─── IS.TEST (type / blank / error predicates) ───────────────────────────────
 
 export type IsTestOp = "isnumber" | "isblank" | "isnull" | "iserror" | "isna" | "islogical" | "istext" | "isnontext";
+
+// Short Excel-style names, not the full explanation — the value box and the wired-error
+// panel carry the meaning. ISBOOLEAN is our name for Excel's ISLOGICAL (Solenoid calls
+// the type logical, but the card says what the user is testing FOR); the `islogical` op
+// value stays because saves are keyed on it.
+export const IS_TEST_OP_META = {
+  isnumber:  { label: "ISNUMBER",  description: "TRUE when the value is a number. Excel: ISNUMBER." },
+  isblank:   { label: "ISBLANK",   description: "TRUE when the cell is empty. Excel: ISBLANK." },
+  isnull:    { label: "ISNULL",    description: "TRUE when the value is missing (null)." },
+  iserror:   { label: "ISERROR",   description: "TRUE when the value is any error. Excel: ISERROR." },
+  isna:      { label: "ISNA",      description: "TRUE when the value is #N/A. Excel: ISNA." },
+  islogical: { label: "ISBOOLEAN", description: "TRUE when the value is a logical. Excel: ISLOGICAL." },
+  istext:    { label: "ISTEXT",    description: "TRUE when the value is text. Excel: ISTEXT." },
+  isnontext: { label: "ISNONTEXT", description: "TRUE when the value is anything but text. Excel: ISNONTEXT." },
+} satisfies Record<IsTestOp, { label: string; description: string }>;
 
 // 0/1 (or per-element) → a real logical that renders TRUE/FALSE.
 function toLogical(r: number | number[] | null): boolean | boolean[] | null {

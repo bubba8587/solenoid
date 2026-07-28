@@ -1,11 +1,12 @@
 import type { GcdNode as GcdNodeType, GcdOp } from "../rete-nodes";
+import { GCD_OP_META } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 
-const OPS: { value: GcdOp; label: string }[] = [
-  { value: "gcd", label: "GCD: greatest common divisor" },
-  { value: "lcm", label: "LCM: least common multiple" },
-];
+const OPS = (Object.keys(GCD_OP_META) as GcdOp[]).map((op) => ({
+  value: op,
+  label: GCD_OP_META[op].label,
+}));
 
 export function GcdComponent({ data, emit }: NodeProps<GcdNodeType>) {
   const [op, setOp] = useNodeField(data, "op");

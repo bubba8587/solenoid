@@ -1246,6 +1246,15 @@ export class ConcatListsNode extends ClassicPreset.Node {
 
 export type CumulativeOp = "cumsum" | "cummax" | "cummin" | "cumprod";
 
+// Named the way the sibling Rolling family is ("Rolling SUM"), so the two read as one
+// pair of ideas: Rolling is a sliding window, Running is every element so far.
+export const CUMULATIVE_OP_META = {
+  cumsum:  { label: "Running SUM",     description: "Running total: each element is the sum of every element up to it." },
+  cumprod: { label: "Running PRODUCT", description: "Running product of every element up to each position." },
+  cummax:  { label: "Running MAX",     description: "Largest element seen up to each position." },
+  cummin:  { label: "Running MIN",     description: "Smallest element seen up to each position." },
+} satisfies Record<CumulativeOp, { label: string; description: string }>;
+
 export class CumulativeNode extends ClassicPreset.Node {
   label: string;
   op: CumulativeOp;

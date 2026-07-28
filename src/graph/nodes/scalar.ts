@@ -659,6 +659,12 @@ export class MRoundNode extends ClassicPreset.Node {
 
 export type RoundNOp = "round" | "roundup" | "rounddown";
 
+export const ROUNDN_OP_META = {
+  round:     { label: "ROUND",     description: "Rounds to N decimal places, half away from zero. Excel: ROUND." },
+  roundup:   { label: "ROUNDUP",   description: "Rounds away from zero to N decimal places. Excel: ROUNDUP." },
+  rounddown: { label: "ROUNDDOWN", description: "Rounds toward zero to N decimal places. Excel: ROUNDDOWN." },
+} satisfies Record<RoundNOp, { label: string; description: string }>;
+
 export class RoundNNode extends ClassicPreset.Node {
   label: string;
   op: RoundNOp;
@@ -701,6 +707,11 @@ export class RoundNNode extends ClassicPreset.Node {
 // ─── GCD ───────────────────────────────────────────────────────────────────────
 
 export type GcdOp = "gcd" | "lcm";
+
+export const GCD_OP_META = {
+  gcd: { label: "GCD", description: "Greatest common divisor of two integers. Excel: GCD." },
+  lcm: { label: "LCM", description: "Least common multiple of two integers. Excel: LCM." },
+} satisfies Record<GcdOp, { label: string; description: string }>;
 
 // Greatest common divisor / least common multiple of two integers.
 // Inputs are rounded to integers; gcd(0,0)=0. List-aware via broadcast.
