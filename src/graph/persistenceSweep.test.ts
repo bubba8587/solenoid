@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { ClassicPreset } from "rete";
 import { FLAT_CATALOG } from "./catalogUtils";
-import { extractInit } from "./copyPaste";
+import { extractInit, INIT_FIELD_ORDER, INIT_EXTRA_FIELD_ORDER } from "./copyPaste";
 
 // Catalog-wide persistence fixed-point sweep (v1.0 audit finding 38): node
 // state survives save/load ONLY if extractInit captures it AND the constructor
@@ -118,5 +118,131 @@ describe("everything extractInit captures survives a JSON round trip", () => {
       }
     }
     expect(broken, `init fields that don't survive JSON (a Map/Set/Infinity config silently empties in the save):\n  ${broken.join("\n  ")}`).toEqual([]);
+  });
+});
+
+// ─── PERSIST-9: the catalog-wide transient-field triage ───────────────────────
+// The fixed-point sweep above proves WHITELISTED fields round-trip; it is blind
+// to a field the whitelist never captured (both sides omit it identically). This
+// triage closes that blindness: every OWN field of every catalog node is either
+// PERSISTED (the whitelist, the literal maps, or one of extractInit's bespoke
+// extras blocks) or listed in DELIBERATELY_TRANSIENT with the reason it must NOT
+// persist. A new field that is neither fails by name — the author decision the
+// field's writer skipped.
+//
+// The triage's first run (2026-07-28) found ONE real bug in ~169 fields:
+// `asofDirection` — a user-facing as-of join dropdown the whitelist never
+// captured, silently resetting to "backward" on every reload. Now whitelisted,
+// pinned below.
+
+describe("PERSIST-9 — every own field is persisted or deliberately transient", () => {
+  // extractInit's BESPOKE extras: object-valued fields captured by dedicated
+  // blocks inside extractInit rather than the flat whitelist (deep-copy /
+  // filtering semantics). Kept in sync by the honesty check below.
+  const BESPOKE_EXTRAS = new Set([
+    "varDescriptions", "inputPorts", "outputPorts", "scenarios", "dataTableValues",
+    "goalSeek", "monteCarlo", "uncertainty", "distribution",
+  ]);
+  const RETE_BASE = new Set(["id", "inputs", "outputs", "controls"]);
+
+  /** name → why this field must NOT persist. Grouped by mechanism. */
+  const DELIBERATELY_TRANSIENT: Record<string, string> = {
+    // ── derived from persisted fields at construction / _rebuild ──
+    ast: "compiled from expr", evaluator: "compiled from expr", varNames: "extracted from expr",
+    captured: "derived from expr − params", compiled: "compiled from expr/params",
+    lambdaSig: "derived from the host's lambda config",
+    equation: "parsed from expr", lhsEval: "compiled from expr", rhsEval: "compiled from expr",
+    solvers: "derived solver table from expr", nextCondId: "counter re-derived from live row keys",
+    nextInputId: "counter re-derived from live row keys", nextPairId: "counter re-derived from live row keys",
+    effectiveMin: "derived from literals", effectiveMax: "derived from literals", effectiveStep: "derived from literals",
+    // ── recomputed from inputs every engine pass ──
+    chartOptions: "parsed per data() from the persisted options input/literal",
+    criteria: "detected from the input frame per compute",
+    sourceColumns: "detected from the input frame per compute",
+    rawInputs: "the pass's raw wired values (chart/lookup diagnostics)",
+    shapeError: "per-pass validation state", seenError: "per-pass error latch",
+    violations: "per-pass check results", results: "per-pass sweep results",
+    cachedHolds: "per-pass hold state", solvedFor: "per-pass solve marker",
+    solvedKeys: "per-pass solve marker", lastResultRank: "SOCK-9 runtime rank tracker",
+    // ── FC / unit adoption state, re-derived by the reconcile passes ──
+    forwarding: "re-derived by fcReconcile each pass", lockedByConvert: "re-derived by fcReconcile each pass",
+    unitLocked: "re-derived by fcReconcile each pass", dictatedFromUnit: "re-derived by fcReconcile each pass",
+    imposesUp: "re-derived from the unit config", imposesDown: "re-derived from the unit config",
+    // ── VAL-17 volatile roll state (freezes per recalc generation, never saved) ──
+    rolls: "VAL-17 frozen rolls", rawRoll: "VAL-17 frozen roll", keys: "VAL-17 frozen shuffle keys",
+    lastGen: "VAL-17 generation marker", lastRollGen: "VAL-17 generation marker",
+    idx: "promo rotation index (session flavor)",
+    // ── EFFECT-1: sinks always load disarmed ──
+    enabled: "EFFECT-1 arm flag — every load starts disarmed by design",
+    status: "sink run feedback (session)", statusMessage: "sink run feedback (session)",
+    // ── async fetch/session state ──
+    inflight: "in-flight fetch handle", inflightKey: "fetch dedupe key", lastKey: "fetch dedupe key",
+    ref: "native FrameRef handle (desktop engine)",
+    dataUrl: "image bytes stay OUT of the save (base64 bloat); assetPath persists and re-hydrates",
+    // ── drill-in markers re-stamped by the host composite from ITS persisted config ──
+    externallyWired: "re-stamped by the host composite", goalDriver: "re-stamped by the host composite",
+    modeNote: "re-stamped by the host composite", solvedValue: "re-stamped by the host composite",
+    goalTarget: "re-stamped from the host's persisted goalSeek",
+    // ── composite runtime (the CONFIG persists via extras; these are run state) ──
+    goalSeekResult: "run result", simLastSteps: "run telemetry", lastSolveKey: "solve dedupe key",
+    solveRequested: "run trigger", solveInsideOnly: "drill-in run scope (session)",
+    stale: "recomputed staleness", internalEditor: "the live internal rete stack",
+    internalEngine: "the live internal rete stack", internalPositions: "runtime mirror; positions persist via snapshotInternal",
+    internalEditSeq: "edit counter (session)",
+    // ── live socket instances / class declarations ──
+    outSocket: "socket instance", valueSocket: "socket instance",
+    passthrough: "the passthrough() declaration (a class-field function)",
+    pairLabels: "readonly row-label declaration", errorOnlyOutput: "class-constant declaration",
+    unitAware: "class-constant declaration (VAL-10)",
+    // ── runtime edge-detection (EFFECT-2) ──
+    lastStatusKey: "EFFECT-2 edge state", lastEvalOp: "EFFECT-2 edge state",
+    // ── constructor-only tuning knobs: no UI edits them today; whitelist the day one does ──
+    step: "AngleDial snap increment — constructor-only, no UI control",
+  };
+
+  const persisted = new Set<string>([
+    ...INIT_FIELD_ORDER, ...INIT_EXTRA_FIELD_ORDER, "literals", "stringLiterals", ...BESPOKE_EXTRAS,
+  ]);
+
+  it("every own field of every catalog node is classified", () => {
+    const offenders = new Map<string, string[]>();
+    for (const [type, entry] of FLAT_CATALOG.entries()) {
+      let inst: AnyNode;
+      try { inst = entry.create() as unknown as AnyNode; } catch { continue; }
+      for (const key of Object.keys(inst)) {
+        if (persisted.has(key) || RETE_BASE.has(key)) continue;
+        if (/^cached/.test(key)) continue;  // derived display state, by naming convention
+        if (/^_/.test(key)) continue;       // private runtime machinery, by naming convention
+        if (key in DELIBERATELY_TRANSIENT) continue;
+        if (!offenders.has(key)) offenders.set(key, []);
+        if (offenders.get(key)!.length < 4) offenders.get(key)!.push(type);
+      }
+    }
+    expect(
+      [...offenders.entries()].map(([k, o]) => `${k} (${o.join(", ")})`),
+      `Unclassified node fields (PERSIST-9): each must either persist (whitelist / ` +
+      `bespoke extras) or join DELIBERATELY_TRANSIENT with the reason — the ` +
+      `asofDirection bug is what an unclassified field looks like.`,
+    ).toEqual([]);
+  });
+
+  it("no field is claimed by BOTH sides, and every transient entry still exists", () => {
+    for (const key of Object.keys(DELIBERATELY_TRANSIENT)) {
+      expect(persisted.has(key), `${key} is both persisted and declared transient`).toBe(false);
+    }
+    const live = new Set<string>();
+    for (const [, entry] of FLAT_CATALOG.entries()) {
+      try { for (const k of Object.keys(entry.create() as object)) live.add(k); } catch { /* skip */ }
+    }
+    const stale = Object.keys(DELIBERATELY_TRANSIENT).filter((k) => !live.has(k));
+    expect(stale, "transient entries no longer on any node — drop them").toEqual([]);
+  });
+
+  it("the triage's found bug stays fixed: as-of join direction round-trips", async () => {
+    const { JoinNode } = await import("./nodes/frame");
+    const n = new JoinNode({ how: "asof", asofDirection: "forward" });
+    const init = extractInit(n) as { asofDirection?: string };
+    expect(init.asofDirection).toBe("forward");
+    expect((rebuild(n) as unknown as AnyNode).asofDirection).toBe("forward");
   });
 });

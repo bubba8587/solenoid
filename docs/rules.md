@@ -923,6 +923,23 @@ object, with the sanction honesty check.
 *Origin:* audit 21p (the race) and 20p (the refused-doc fallback) — both dated in the
 store's own comments.
 
+### PERSIST-9 — Every node field is persisted or DELIBERATELY transient **[INFERRED]**
+**MUST:** every own field of every catalog node is one of: captured by `extractInit`
+(the whitelist, the literal maps, or a bespoke extras block), pattern-transient by
+naming convention (`cached*` derived display state, `_*` private runtime machinery),
+or listed in the `DELIBERATELY_TRANSIENT` map with the reason it must NOT persist.
+A field in none of these is an unmade author decision, and the sweep fails by name.
+
+*Why:* the fixed-point sweep (`PERSIST-1`) proves whitelisted fields round-trip but is
+BLIND to a field the whitelist never captured — both sides omit it identically, so the
+test passes while the user's setting silently resets on every reload.
+*Enforced by:* `persistenceSweep.test.ts` → "PERSIST-9" — the catalog-wide field
+classification, the no-double-claim + stale-entry honesty checks, and the found-bug pin.
+*Origin:* the 2026-07-28 triage over all 169 unclassified fields found ONE real bug:
+`asofDirection`, an as-of join's user-facing direction dropdown that reset to
+"backward" on every save/reload/paste — invisible to PERSIST-1 precisely because the
+whitelist never saw it. Now whitelisted, pinned.
+
 ---
 
 # ENGINE — Recompute passes
@@ -1036,11 +1053,11 @@ isolateStore missing too.
 
 # Enforcement summary
 
-67 rules.
+68 rules.
 
 | Status | Count | Rules |
 |---|---|---|
-| Enforced | 63 | PROV-1 · SSOT-1,2,3,4,6,7,8,9 · SOCK-1,2,3,4,5,7,9,10,11,12 · FX-1,2,3,4,5,6,7,8,9,10,11 · VAL-1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20 · PERSIST-1,2,3,4,5,6,7,8 · ENGINE-1,2,3 · EFFECT-2 · STORE-1 |
+| Enforced | 64 | PROV-1 · SSOT-1,2,3,4,6,7,8,9 · SOCK-1,2,3,4,5,7,9,10,11,12 · FX-1,2,3,4,5,6,7,8,9,10,11 · VAL-1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20 · PERSIST-1,2,3,4,5,6,7,8,9 · ENGINE-1,2,3 · EFFECT-2 · STORE-1 |
 | Partially enforced | 1 | EFFECT-1 |
 | Unenforced | 3 | SSOT-5 · SOCK-6, SOCK-8 |
 
