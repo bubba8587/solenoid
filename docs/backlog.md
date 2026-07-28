@@ -112,11 +112,11 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   SEQUENCE) are BUILT; **gap A is ZERO** — the lambda
   tranche closed the last eight (LAMBDA as the evaluator's special form, the seven
   hosts on the shared LambdaValue currency). Remaining formula work, none of it
-  gap-shaped: the regression quartet (TREND/GROWTH/LINEST/LOGEST — rangeRouting's
-  DEFERRED, real fitting math), eta-lambdas (passing SUM bare as a function
+  gap-shaped: eta-lambdas (passing SUM bare as a function
   argument — Excel allows it, we require LAMBDA(g, SUM(g))), and
   immediately-invoked lambdas (`LAMBDA(x, x+1)(5)` — the parser has no
-  call-on-call).
+  call-on-call). (The regression quartet TREND/GROWTH/LINEST/LOGEST left this
+  list: owned over the nodes' fitting kernels, rangeRouting.test.ts pins.)
   **Split view (author call 2026-07-28): count packs separately — and the
   preset-formula detection changed both numbers.** The measurement now detects a
   locked preset-formula leaf mechanically (its own `expr` IS its formula
@@ -139,11 +139,10 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
     is registered.
   - **Frame verbs** stay out of scope for formulas by design (bundle 08's transpiler is
     the answer to "text in, graph out").
-  Separately: **array-RETURNING range functions** (TREND, GROWTH, LINEST, LOGEST,
-  FREQUENCY, MODE.MULT, UNIQUE, SORT, FILTER, TRANSPOSE) are still broadcast rather
-  than range-routed — Formula.js writes them against a 2-D range and doesn't treat a
-  1-D list as a vector, so each needs list-model handling. Pinned as a known state by
-  `rangeRouting.test.ts`; the scalar-returning half of that bug class is fixed.
+  The array-returning broadcast-garbage class is CLOSED: every former member
+  (UNIQUE/SORT/FILTER/MODE.MULT/FREQUENCY/TRANSPOSE with the D23 tranches, the
+  regression quartet last) is owned via listArgs; `rangeRouting.test.ts` pins
+  both halves of the class.
   Tiers + rationale in `formula-node-parity.md`; gaps machine-checked by
   `formulaNodeParity.test.ts`, node↔formula equality and formula-name UNIQUENESS by
   `formulaTier3.test.ts`. Residual: distributions are validated only at representative

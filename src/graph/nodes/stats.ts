@@ -1,6 +1,6 @@
 import { ClassicPreset } from "rete";
 import { broadcastErr, listIn, listOut, numIn, numOut, numListIn, numListOut, readInput, tableIn, tableOut } from "./shared";
-import { normSInv, regularizedGamma, stdNormCDF, lnCombin, bisectionInv, iterMax, linearFit, interpolateLinear, arrMean, arrSampleVar, tCDF, pairPresent, tTestP, fTestP, probBetween } from "./mathUtils";
+import { normSInv, regularizedGamma, stdNormCDF, lnCombin, bisectionInv, iterMax, linearFit, linearFitR2, expFit, interpolateLinear, arrMean, arrSampleVar, tCDF, pairPresent, tTestP, fTestP, probBetween } from "./mathUtils";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { excelRank, excelTrimmean, excelPercentRank } from "../excelFunctions";
 import { forAggregate } from "../valueKinds";
@@ -850,22 +850,9 @@ export class TrendNode extends ClassicPreset.Node {
     const newXsErr = newXsRaw?.find(isSolError);
     if (newXsErr) { this.cachedList = newXsErr; return { result: newXsErr }; }
     const newXs = (newXsRaw ?? []).filter((v): v is number => v !== null) as number[];
-    let result: number[] = [];
-    if (ys.length >= 2 && xs.length >= 2 && newXs.length > 0) {
-      const n     = Math.min(ys.length, xs.length);
-      const xMean = xs.slice(0, n).reduce((a, b) => a + b, 0) / n;
-      const yMean = ys.slice(0, n).reduce((a, b) => a + b, 0) / n;
-      let SSxy = 0, SSxx = 0;
-      for (let i = 0; i < n; i++) {
-        SSxy += (xs[i] - xMean) * (ys[i] - yMean);
-        SSxx += (xs[i] - xMean) ** 2;
-      }
-      if (SSxx !== 0) {
-        const slope     = SSxy / SSxx;
-        const intercept = yMean - slope * xMean;
-        result = newXs.map(x => intercept + slope * x);
-      }
-    }
+    // Shared fitting kernel (mathUtils) — the TREND registration runs the same one.
+    const fit = newXs.length > 0 ? linearFit(xs, ys) : null;
+    const result: number[] = fit ? newXs.map((x) => fit.intercept + fit.slope * x) : [];
     this.cachedList = result;
     return { result };
   }
@@ -1148,26 +1135,12 @@ export class LinestNode extends ClassicPreset.Node {
       this.cachedSlope = this.cachedIntercept = this.cachedR2 = error;
       return { slope: error, intercept: error, r2: error };
     }
-    let slope: number | null = null, intercept: number | null = null, r2: number | null = null;
-    if (ys.length >= 2 && xs.length >= 2) {
-      const n     = Math.min(ys.length, xs.length);
-      const xMean = xs.slice(0, n).reduce((a, b) => a + b, 0) / n;
-      const yMean = ys.slice(0, n).reduce((a, b) => a + b, 0) / n;
-      let SSxy = 0, SSxx = 0, SSyy = 0;
-      for (let i = 0; i < n; i++) {
-        const dx = xs[i] - xMean, dy = ys[i] - yMean;
-        SSxy += dx * dy; SSxx += dx * dx; SSyy += dy * dy;
-      }
-      if (SSxx !== 0) {
-        slope     = SSxy / SSxx;
-        intercept = yMean - slope * xMean;
-        r2        = (SSxx > 0 && SSyy > 0) ? (SSxy / Math.sqrt(SSxx * SSyy)) ** 2 : 0;
-      }
-    }
-    this.cachedSlope     = slope;
-    this.cachedIntercept = intercept;
-    this.cachedR2        = r2;
-    return { slope, intercept, r2 };
+    // Shared fitting kernel (mathUtils) — the LINEST registration runs the same one.
+    const fit = linearFitR2(xs, ys);
+    this.cachedSlope     = fit?.slope ?? null;
+    this.cachedIntercept = fit?.intercept ?? null;
+    this.cachedR2        = fit?.r2 ?? null;
+    return { slope: this.cachedSlope, intercept: this.cachedIntercept, r2: this.cachedR2 };
   }
 }
 
@@ -1190,26 +1163,10 @@ export class LogestNode extends ClassicPreset.Node {
   data(inputs: { ys?: (number | null | SolError)[][]; xs?: (number | null | SolError)[][] }) {
     const { error, xs, ys } = forPair(inputs.xs?.[0] ?? null, inputs.ys?.[0] ?? null);
     if (error) { this.cachedList = error; return { result: error }; }
-    let result: number[] = [];
-    if (ys.length >= 2 && xs.length >= 2) {
-      const n      = Math.min(ys.length, xs.length);
-      const ySlice = ys.slice(0, n);
-      const xSlice = xs.slice(0, n);
-      if (ySlice.every(y => y > 0)) {
-        const logYs  = ySlice.map(y => Math.log(y));
-        const xMean  = xSlice.reduce((a, b) => a + b, 0) / n;
-        const lyMean = logYs.reduce((a, b) => a + b, 0) / n;
-        let SSxy = 0, SSxx = 0;
-        for (let i = 0; i < n; i++) {
-          SSxy += (xSlice[i] - xMean) * (logYs[i] - lyMean);
-          SSxx += (xSlice[i] - xMean) ** 2;
-        }
-        if (SSxx !== 0) {
-          const logM = SSxy / SSxx;
-          result = [Math.exp(logM), Math.exp(lyMean - logM * xMean)];
-        }
-      }
-    }
+    // Shared exponential-fit kernel (mathUtils) — LOGEST/GROWTH registrations run
+    // the same one. y ≤ 0 or a degenerate fit stays the quiet empty list.
+    const fit = expFit(xs, ys);
+    const result: number[] = fit ? [fit.m, fit.b] : [];
     this.cachedList = result;
     return { result };
   }

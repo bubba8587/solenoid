@@ -1,7 +1,7 @@
 import * as FX from "@formulajs/formulajs";
 import { solError, isSolError, type SolError, type SolErrorCode } from "./errorValue";
 import { serialToJsDate, jsDateToSerial } from "./nodes/dateSerial";
-import { regularizedBeta, regularizedGamma, bisectionInv, lnGamma, linearFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind } from "./nodes/mathUtils";
+import { regularizedBeta, regularizedGamma, bisectionInv, lnGamma, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind } from "./nodes/mathUtils";
 import { convertValue } from "./nodes/convertUnits";
 import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, reverseText } from "./nodes/textOps";
 import { interpolateLinear } from "./nodes/mathUtils";
@@ -756,6 +756,13 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   // listArgs like the other generators (SEQUENCE/LINSPACE): scalar coefficients
   // in, whole [x₁, x₂] out — a list-returner must never be broadcast.
   QUADRATICROOTS: { returns: "complex", rank: "list", listArgs: true, arity: [3, 3], family: "complex", native: true },
+
+  // ── The regression quartet, owned over the nodes' fitting kernels (FX-1).
+  // Excel's optional trailing const/stats arguments are not taken.
+  TREND:  { returns: "number", rank: "list", listArgs: true, arity: [1, 3], family: "statistics" },
+  GROWTH: { returns: "number", rank: "list", listArgs: true, arity: [1, 3], family: "statistics" },
+  LINEST: { returns: "number", rank: "list", listArgs: true, arity: [1, 2], family: "statistics" },
+  LOGEST: { returns: "number", rank: "list", listArgs: true, arity: [1, 2], family: "statistics" },
 };
 
 /** Number → text for STRING contexts (`&`, CONCAT/CONCATENATE/TEXTJOIN, and any
@@ -1951,4 +1958,67 @@ registerInternal("QUADRATICROOTS", (a, b, c) => {
   const na = Number(a), nb = Number(b), nc = Number(c);
   if ([na, nb, nc].some(Number.isNaN)) return solError("#VALUE!", "QUADRATICROOTS takes numeric coefficients a, b, c");
   return quadraticRoots(na, nb, nc);
+});
+
+// ── The regression quartet (owned; closed rules.md known-violation 7) ─────────
+// TREND / GROWTH / LINEST / LOGEST were the last array-RETURNING names still
+// BROADCAST: Formula.js writes them against 2-D ranges, so a 1-D list mapped the
+// call element-wise and answered a plausible-looking list of garbage (the same
+// silent class rangeRouting.test.ts pinned for T.TEST). Owned over the fitting
+// kernels the nodes run (mathUtils linearFit / linearFitR2 / expFit — FX-1).
+// Pair prep is pairPresent (an error propagates, a pair with a missing side
+// drops, ragged tails truncate — the paired-range policy). Excel's optional
+// arguments, which the node sockets can't express: xs omitted/blank → 1..n;
+// TREND/GROWTH's new_xs omitted/blank → the known xs. Excel's `const`/`stats`
+// tail arguments are not taken — LINEST answers [slope, intercept, r²] (the
+// node's three outputs as a list), LOGEST [m, b] (y = b·mˣ).
+
+/** ys + optional xs → pairPresent-prepped numeric arrays (xs defaults 1..n). */
+function regressionPair(ys: unknown, xs: unknown): { error?: SolError; xs: number[]; ys: number[] } {
+  const ysList = numList(ys);
+  const xsList = xs == null ? ysList.map((_, i) => i + 1) : numList(xs);
+  return pairPresent(xsList, ysList);
+}
+/** A prediction-target list: errors propagate, nulls drop (the Trend node's own
+ *  read of its new_xs input). */
+function regressionTargets(target: unknown): number[] | SolError {
+  const list = numList(target);
+  const err = list.find(isSolError);
+  if (err) return err;
+  return list.filter((v): v is number => v !== null).map(Number);
+}
+
+registerInternal("TREND", (ys, xs, newXs) => {
+  if (ys == null) return null;
+  const pair = regressionPair(ys, xs);
+  if (pair.error) return pair.error;
+  const targets = regressionTargets(newXs == null ? (xs ?? pair.xs) : newXs);
+  if (isSolError(targets)) return targets;
+  const fit = targets.length > 0 ? linearFit(pair.xs, pair.ys) : null;
+  return fit ? targets.map((x) => fit.intercept + fit.slope * x) : [];
+});
+registerInternal("GROWTH", (ys, xs, newXs) => {
+  if (ys == null) return null;
+  const pair = regressionPair(ys, xs);
+  if (pair.error) return pair.error;
+  const targets = regressionTargets(newXs == null ? (xs ?? pair.xs) : newXs);
+  if (isSolError(targets)) return targets;
+  const fit = targets.length > 0 ? expFit(pair.xs, pair.ys) : null;
+  return fit ? targets.map((x) => fit.b * Math.pow(fit.m, x)) : [];
+});
+registerInternal("LINEST", (ys, xs) => {
+  if (ys == null) return null;
+  const pair = regressionPair(ys, xs);
+  if (pair.error) return pair.error;
+  const fit = linearFitR2(pair.xs, pair.ys);
+  // Degenerate fit → null, mirroring the node's three null outputs.
+  return fit ? [fit.slope, fit.intercept, fit.r2] : null;
+});
+registerInternal("LOGEST", (ys, xs) => {
+  if (ys == null) return null;
+  const pair = regressionPair(ys, xs);
+  if (pair.error) return pair.error;
+  const fit = expFit(pair.xs, pair.ys);
+  // y ≤ 0 or degenerate → the node's quiet empty list.
+  return fit ? [fit.m, fit.b] : [];
 });

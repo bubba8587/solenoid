@@ -681,18 +681,11 @@ only. Each is actionable in the follow-up.
 6. **VAL-14 only-if direction unenforced** — nothing catches a class declaring a literal
    map its card never edits, which would let a save inject an invisible value.
 
-7. **The regression quartet is unrouted** — `TREND`, `GROWTH`, `LINEST`, `LOGEST` are
-   still broadcast (FX-5). Formula.js writes them against a 2-D range and doesn't treat
-   a 1-D list as a vector, so each needs an owned fitting registration (post-D23 the
-   right fix is ownership at rank 2, not routing — FX-9). The rest of the original
-   list — `FREQUENCY`, `MODE.MULT`, `UNIQUE`, `SORT`, `FILTER`, `TRANSPOSE` — left it
-   with the D23 tranches. Pinned as a known state by `rangeRouting.test.ts` (DEFERRED).
-
-8. **`rules.test.ts` checks the mechanical half only** — IDs unique, every cited test
+7. **`rules.test.ts` checks the mechanical half only** — IDs unique, every cited test
    file exists, summary counts add up. Whether a cited test actually ENFORCES its rule is
    still a reading job (this document's fact-check found four misciting rules that a
    file-exists check alone would have passed).
 
-9. **SOCK-5's "never persists" is unpinned** — adoption behaviour is tested, but nothing
-    asserts an adopted type is absent from the serialized graph. *Fix: adopt, serialize,
-    assert the socket's declared type is the wildcard.*
+8. **SOCK-5's "never persists" is unpinned** — adoption behaviour is tested, but nothing
+   asserts an adopted type is absent from the serialized graph. *Fix: adopt, serialize,
+   assert the socket's declared type is the wildcard.*
