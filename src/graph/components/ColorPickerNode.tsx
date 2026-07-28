@@ -151,7 +151,7 @@ export function ColorPickerComponent({ data, emit }: NodeProps<ColorPickerNodeTy
       )}
 
       <div style={{ padding: "6px 0 2px" }}>
-        <OpSelect value={format} onChange={changeFormat} options={FORMAT_OPTS} />
+        <OpSelect arg value={format} onChange={changeFormat} options={FORMAT_OPTS} />
       </div>
 
       {/* Swatch + output string, with the color output socket measured onto this

@@ -188,7 +188,7 @@ export function DateIfComponent({ data, emit }: NodeProps<DateIfNodeType>) {
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <OpSelect value={unit} onChange={setUnit} options={DATEIF_UNITS} />
+      <OpSelect arg value={unit} onChange={setUnit} options={DATEIF_UNITS} />
       <ValueDisplay value={data.cachedResult} />
     </NodeShell>
   );

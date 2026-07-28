@@ -110,11 +110,11 @@ export function ResistorCodeComponent({ data, emit }: NodeProps<ResistorCodeNode
     <NodeShell node={data} emit={emit} hideOutputSockets>
       <SegToggle value={op} options={[{ value: "4", label: "4 band" }, { value: "5", label: "5 band" }]} onChange={setOp} />
       <ResistorGlyph bands={bands} />
-      <OpSelect value={L.b1} options={DIGIT_OPTIONS} onChange={(v) => set("b1", v)} />
-      <OpSelect value={L.b2} options={DIGIT_OPTIONS} onChange={(v) => set("b2", v)} />
-      {five && <OpSelect value={L.b3} options={DIGIT_OPTIONS} onChange={(v) => set("b3", v)} />}
-      <OpSelect value={L.mult} options={MULT_OPTIONS} onChange={(v) => set("mult", v)} />
-      <OpSelect value={L.tol} options={TOL_OPTIONS} onChange={(v) => set("tol", v)} />
+      <OpSelect arg value={L.b1} options={DIGIT_OPTIONS} onChange={(v) => set("b1", v)} />
+      <OpSelect arg value={L.b2} options={DIGIT_OPTIONS} onChange={(v) => set("b2", v)} />
+      {five && <OpSelect arg value={L.b3} options={DIGIT_OPTIONS} onChange={(v) => set("b3", v)} />}
+      <OpSelect arg value={L.mult} options={MULT_OPTIONS} onChange={(v) => set("mult", v)} />
+      <OpSelect arg value={L.tol} options={TOL_OPTIONS} onChange={(v) => set("tol", v)} />
       <InlineOutputRows
         node={data}
         emit={emit}

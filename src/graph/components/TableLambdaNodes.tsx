@@ -117,7 +117,7 @@ export function ByAxisComponent({ data, emit }: NodeProps<ByAxisNodeType>) {
   return (
     <NodeShell node={data} emit={emit} labelPlaceholder="BYROW / BYCOL">
       <InlineInputs node={data} emit={emit} cableOnlyKeys={FORMULA_KEYS} mathLabelKeys={FORMULA_KEYS} />
-      <OpSelect value={axis} onChange={setAxis} options={AXIS_OPTS} />
+      <OpSelect arg value={axis} onChange={setAxis} options={AXIS_OPTS} />
       <FormulaBox node={data} />
       <ResultTypeToggle node={data} dim="combo" />
       <ValueDisplay value={data.cachedResult as ListVal} />

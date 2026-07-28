@@ -569,8 +569,13 @@ unwrap). **A new algebra node MUST set `unitAware = true`.**
 "5 km > 3" regression.
 *Enforced by:* `unitCoercion.test.ts` → "unit-blind consumers get display magnitudes (the
 5 km > 3 regression)", "unit-aware nodes and passthroughs keep the tags" cover the
-BEHAVIOUR. **Completeness is `UNENFORCED`** — nothing proves a new algebra node declared
-it. See Known violations.
+BEHAVIOUR. Completeness: `sourceInvariants.test.ts` → "every algebra-calling node file
+declares unitAware = true" — a source scan over `nodes/` + `packs/` for the per-cell
+algebra identifiers (isUnitCell / dimOf / magnitudeOf / the *Units combinators /
+broadcastUnit), with a sanctioned-list honesty check. The matrix-unit family
+(matrixUnitOf / carryMatrixUnit / …) is deliberately outside the consuming set: a D20
+matrix unit tags the outer array of a bare-number grid and survives the unit-blind
+strip, so a unit-blind reshape carrying it is correct.
 
 ### VAL-11 — Units attach at the granularity of homogeneity **[INFERRED]**
 **MUST:** per-element `UnitCell` for a list, per-column `ColumnUnit` for a frame, one
@@ -587,8 +592,14 @@ so a family that names it otherwise cannot declare its ops AT ALL — its ops be
 unsearchable and unmeasurable, silently.
 *Enforced by:* `nodeOps.test.ts` → "coverage — every op selector is classified", "no node
 with an op dropdown is missing a declaration" — which catches a family that HAS a
-declaration. **A family that cannot declare because its field is misnamed is currently
-invisible to this check.** See Known violations.
+declaration. The blindness half (a family that CANNOT declare because its field is
+misnamed) is closed by `sourceInvariants.test.ts` → "every non-arg OpSelect binds `op`":
+a source scan over the component `<OpSelect>` sites, where the misnamed field is still
+visible. The contract: an OpSelect either binds `op` (directly, a per-row `.op` config
+field, or via `useNodeField(…, "op")`) or carries the `arg` prop — the machine-readable
+"not the family op selector" declaration (criterion comparators, payment timing,
+config/data picks). DateIf's `unit` — the recorded borderline — is settled as `arg`:
+an op dropdown by mechanism, Excel's argument by semantics.
 *Origin:* `PadNode.dir` meant `list-pad` had no declaration, so `PADLEFT`/`PADRIGHT` were
 unsearchable in the Add menu and unmeasurable in the parity walk. It was not missing work
 — it was work that could not attach because one field had a different name. The same
@@ -611,8 +622,11 @@ values inline. Load restores the maps ONLY onto declaring classes, so a save or 
 cannot hardcode a value the user can't see.
 
 *Enforced by:* `coerceInputs.test.ts` → "every catalog node with a typeable list input
-declares stringLiterals" — the IF direction. **The ONLY-IF direction is `UNENFORCED`:**
-nothing catches a class declaring a map its card never edits.
+declares stringLiterals" — the IF direction. The ONLY-IF direction:
+`catalogRegistry.test.ts` → "no class declares a literal map its component never edits" —
+every declaring class's registered component source must contain an editing surface
+(InlineInputs / ExtensibleInputs / a direct `literals` / `stringLiterals` reference), so
+a save cannot restore a value onto a card that can never show it.
 
 ---
 
@@ -654,18 +668,21 @@ wrapper; every new nesting scheme would re-open the ambiguity VAL-15 closed.
 
 | Status | Count | Rules |
 |---|---|---|
-| Enforced | 38 | PROV-1 · SSOT-1,2,3,4,6,7,8 · SOCK-1,2,3,4,5,7,9 · FX-1,2,3,4,5,6,7,8,9,10 · VAL-1,2,3,4,5,6,7,8,9,11,13,15,16 |
-| Partially enforced | 3 | VAL-10, VAL-12, VAL-14 |
+| Enforced | 41 | PROV-1 · SSOT-1,2,3,4,6,7,8 · SOCK-1,2,3,4,5,7,9 · FX-1,2,3,4,5,6,7,8,9,10 · VAL-1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16 |
+| Partially enforced | 0 | — |
 | Unenforced | 3 | SSOT-5 · SOCK-6, SOCK-8 |
 
-**The partially-enforced three are the highest-value gap.** In each the rule is tested for
-the cases that exist and nothing fails when a NEW case forgets it — precisely the shape of
-every bug in the Origin notes. Two of the original six (SOCK-5, VAL-8) were written here
-as "enforced" on the strength of a plausible-sounding test file name, and only turned out
-to be partial because the enforcement column forced the check. That is the argument for
-the column. The 2026-07-28 enforcement pass closed SOCK-5 (persistence pin), SOCK-7 and
-VAL-13 (source scans in `sourceInvariants.test.ts`), and the VAL-12 renames; SOCK-6 was
-attempted and recorded as genuinely un-greppable (see the rule).
+**The partially-enforced set is EMPTY** (first time). The original six were the
+highest-value gap: in each, the rule was tested for the cases that existed and nothing
+failed when a NEW case forgot it — precisely the shape of every bug in the Origin notes.
+Two of them (SOCK-5, VAL-8) had been written here as "enforced" on the strength of a
+plausible-sounding test file name, and only turned out to be partial because the
+enforcement column forced the check. That is the argument for the column. Closed across
+the 2026-07-28 passes: SOCK-5 (persistence pin), SOCK-7 and VAL-13 (source scans in
+`sourceInvariants.test.ts`), the VAL-12 renames + the FX-4 full naming sweep, then the
+completeness tranche — VAL-10 (algebra-file scan), VAL-12's blindness (the OpSelect
+binding scan + the `arg` contract), VAL-14's only-if (declaring class ⇒ editing
+component). SOCK-6 was attempted and recorded as genuinely un-greppable (see the rule).
 
 ---
 
@@ -673,26 +690,15 @@ attempted and recorded as genuinely un-greppable (see the rule).
 
 Recorded here rather than fixed, per the author's instruction that the original pass was
 documents only. Each is actionable in the follow-up. (Closed so far, all 2026-07-28: the
-Alert/ColorBlend `mode` renames, SOCK-7 completeness, SOCK-5's persistence pin, and the
-FX-4 full naming sweep — which caught and fixed the Text Filter CONTAINS claim and the
-duplicate math-fn `round` op on its first run.)
+Alert/ColorBlend `mode` renames, SOCK-7 completeness, SOCK-5's persistence pin, the FX-4
+full naming sweep — which caught and fixed the Text Filter CONTAINS claim and the
+duplicate math-fn `round` op on its first run — and the completeness tranche: VAL-10's
+algebra-file scan, VAL-12's OpSelect binding scan, VAL-14's only-if check. The VAL-14
+check's first run listed 13 candidate classes; all 13 verified as real editors once the
+heuristic learned the bespoke surfaces — ExtensibleInputs and the `stringLiterals`
+spelling — so the codebase was already clean and the value is the ratchet.)
 
-1. **VAL-12's check cannot see its own violations** — `nodeOps.test.ts` verifies that a
-   node WITH a declaration is consistent, but a family that can't declare (misnamed field)
-   is invisible to it. *Fix: assert every node class exposing an op dropdown has a
-   string-valued `op` field, driven off the catalog rather than the declarations.*
-   (`DateIf`'s `unit` selector is the borderline sibling — an op dropdown by mechanism,
-   Excel's argument by semantics.)
-
-2. **VAL-10 completeness unenforced** — no test references `unitAware`. A new algebra node
-   that forgets it silently gets display magnitudes. *Fix: enumerate nodes performing
-   dimensional arithmetic and assert the flag, or assert the converse (a node that reads a
-   `UnitCell` declares it).*
-
-3. **VAL-14 only-if direction unenforced** — nothing catches a class declaring a literal
-   map its card never edits, which would let a save inject an invisible value.
-
-4. **`rules.test.ts` checks the mechanical half only** — IDs unique, every cited test
+1. **`rules.test.ts` checks the mechanical half only** — IDs unique, every cited test
    file exists, summary counts add up. Whether a cited test actually ENFORCES its rule is
    still a reading job (this document's fact-check found four misciting rules that a
    file-exists check alone would have passed).
