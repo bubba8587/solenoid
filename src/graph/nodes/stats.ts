@@ -1,6 +1,6 @@
 import { ClassicPreset } from "rete";
 import { broadcastErr, listIn, listOut, numIn, numOut, numListIn, numListOut, readInput, tableIn, tableOut } from "./shared";
-import { normSInv, regularizedBeta, regularizedGamma, stdNormCDF, lnCombin, bisectionInv, iterMax, linearFit } from "./mathUtils";
+import { normSInv, regularizedBeta, regularizedGamma, stdNormCDF, lnCombin, bisectionInv, iterMax, linearFit, interpolateLinear } from "./mathUtils";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { excelRank, excelTrimmean, excelPercentRank } from "../excelFunctions";
 import { forAggregate } from "../valueKinds";
@@ -954,36 +954,7 @@ export const INTERPOLATE_MODE_META: Record<InterpolateMode, { label: string; tit
 
 // The interpolation bracket for a query against a SORTED-ASCENDING axis: [i0, i1, t]
 // with value = (1-t)·v[i0] + t·v[i1], clamped at both ends (t=0 outside the range).
-function bracket(axis: number[], x: number): [number, number, number] {
-  const last = axis.length - 1;
-  if (x <= axis[0]) return [0, 0, 0];
-  if (x >= axis[last]) return [last, last, 0];
-  let lo = 0, hi = last;
-  while (hi - lo > 1) {
-    const mid = (lo + hi) >> 1;
-    if (axis[mid] <= x) lo = mid; else hi = mid;
-  }
-  const x0 = axis[lo], x1 = axis[hi];
-  return [lo, hi, x1 === x0 ? 0 : (x - x0) / (x1 - x0)]; // x1===x0: duplicated key, no gap
-}
 
-// 1-D piecewise-linear interpolation over a known (x, y) dataset. Points are sorted
-// by x (known data may arrive unordered); a duplicated x resolves to its first-seen y
-// (via bracket's t=0). A NaN query stays NaN. Clamped at the ends.
-export function interpolateLinear(xs: number[], ys: number[], queryXs: number[]): number[] {
-  const n = Math.min(xs.length, ys.length);
-  if (n === 0) return queryXs.map(() => NaN);
-  const pairs: Array<[number, number]> = [];
-  for (let i = 0; i < n; i++) pairs.push([xs[i], ys[i]]);
-  pairs.sort((a, b) => a[0] - b[0]);
-  const sx = pairs.map((p) => p[0]);
-  const sy = pairs.map((p) => p[1]);
-  return queryXs.map((x) => {
-    if (Number.isNaN(x)) return NaN;
-    const [i0, i1, t] = bracket(sx, x);
-    return sy[i0] + t * (sy[i1] - sy[i0]);
-  });
-}
 
 // Fill the blank interior cells of a coordinate-BORDERED grid by true BILINEAR
 // interpolation — the standard lookup-table method (MATLAB `interp2`, SciPy

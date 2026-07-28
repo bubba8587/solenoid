@@ -425,7 +425,13 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   ],
   "stat-standardize": [{ excel: "STANDARDIZE", syntax: "=STANDARDIZE(x, μ, σ)", parity: true }],
   "switch": [{ excel: "SWITCH", syntax: "=SWITCH(expr, w1, t1, ...)", parity: false, note: "Fixed 3 cases; Excel is variadic" }],
-  "t-test-equal-var": [{ excel: "T.TEST", syntax: "=T.TEST(a, b, tails, type)", parity: false, note: "2-tailed only; for 1-tailed divide result by 2" }],
+  // All three leaves ARE T.TEST — Excel splits the variants by its `type` argument,
+  // Solenoid splits them into separate leaves. Only the equal-var one used to say so,
+  // which left the other two reading as Solenoid-native in the parity measurement when
+  // both are one `type` away from the same function.
+  "t-test-paired": [{ excel: "T.TEST", syntax: "=T.TEST(a, b, tails, 1)", parity: false, note: "This leaf is type 1 (paired); 2-tailed only" }],
+  "t-test-equal-var": [{ excel: "T.TEST", syntax: "=T.TEST(a, b, tails, 2)", parity: false, note: "This leaf is type 2 (pooled variance); 2-tailed only, for 1-tailed divide result by 2" }],
+  "t-test-unequal-var": [{ excel: "T.TEST", syntax: "=T.TEST(a, b, tails, 3)", parity: false, note: "This leaf is type 3 (Welch); 2-tailed only" }],
   "table-info": [
     { excel: "COLUMNS", syntax: "=COLUMNS(array)", parity: false, note: "Works on table socket; use List → Length node for 1D lists" },
     { excel: "ROWS", syntax: "=ROWS(array)", parity: false, note: "Works on table socket; use List → Length node for 1D lists" },

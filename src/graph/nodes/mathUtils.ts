@@ -198,3 +198,38 @@ export function linearFit(
   const slope = SSxy / SSxx;
   return { slope, intercept: yMean - slope * xMean };
 }
+
+// ─── Piecewise-linear interpolation ───────────────────────────────────────────
+// Lives here, not in stats.ts, for the same reason textOps/listOps do: the formula
+// registration (INTERPOLATE) needs it and must not drag rete + the socket lattice in.
+
+function bracket(axis: number[], x: number): [number, number, number] {
+  const last = axis.length - 1;
+  if (x <= axis[0]) return [0, 0, 0];
+  if (x >= axis[last]) return [last, last, 0];
+  let lo = 0, hi = last;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (axis[mid] <= x) lo = mid; else hi = mid;
+  }
+  const x0 = axis[lo], x1 = axis[hi];
+  return [lo, hi, x1 === x0 ? 0 : (x - x0) / (x1 - x0)]; // x1===x0: duplicated key, no gap
+}
+
+// 1-D piecewise-linear interpolation over a known (x, y) dataset. Points are sorted
+// by x (known data may arrive unordered); a duplicated x resolves to its first-seen y
+// (via bracket's t=0). A NaN query stays NaN. Clamped at the ends.
+export function interpolateLinear(xs: number[], ys: number[], queryXs: number[]): number[] {
+  const n = Math.min(xs.length, ys.length);
+  if (n === 0) return queryXs.map(() => NaN);
+  const pairs: Array<[number, number]> = [];
+  for (let i = 0; i < n; i++) pairs.push([xs[i], ys[i]]);
+  pairs.sort((a, b) => a[0] - b[0]);
+  const sx = pairs.map((p) => p[0]);
+  const sy = pairs.map((p) => p[1]);
+  return queryXs.map((x) => {
+    if (Number.isNaN(x)) return NaN;
+    const [i0, i1, t] = bracket(sx, x);
+    return sy[i0] + t * (sy[i1] - sy[i0]);
+  });
+}

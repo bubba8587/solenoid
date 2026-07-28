@@ -1,7 +1,7 @@
 # Formula ↔ node parity — audit + design frame
 
 **Status: TIERS 1–3 BUILT (Tier 3 landed 2026-07-28). Tier 4 author-gated.**
-332/646 leaves formula-callable; gap A is the 19 D2-capped names; gap C is 0.
+336/646 leaves formula-callable; gap A is the 19 D2-capped names; gap C is 0.
 The mechanical work D19 greenlit — the ratchet, the alias gate, the Tier 1
 registrations, the pack seam, and now the Tier 3 list core — has landed; what remains
 is the Tier 4 decision. The audit framing below is kept because Tier 4 still needs it. **Design frame as of 2026-07-14:** Author direction: the expression/equation

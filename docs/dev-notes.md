@@ -301,6 +301,47 @@ Everything else in this batch was shape-or-operand and took the default: matrix
 dimensions and MAKEARRAY rows/cols leave the SHAPE unknown, DATEVALUE/TIMEVALUE already
 answered blank for blank text and only needed the swallow removed.
 
+### Ten functions were quietly computing garbage (2026-07-28c)
+
+Closing Tier 3's last stragglers — COUNTDISTINCT, INTERPOLATE (list mode; grid is
+2-D and stays behind D2), and declaring the two orphaned T.TEST leaves — turned up
+something much bigger than the stragglers. Smoke-testing `T.TEST(a,b,2,3)` returned
+`[{},{},{},{}]`.
+
+`RANGE_FUNCTIONS` is the hand-kept set of functions whose array arguments arrive
+WHOLE. A function missing from it doesn't error — `broadcastCall` maps it element-wise,
+so it runs N times on N scalars and returns N answers to a question that has one. Ten
+were missing: T.TEST, F.TEST, Z.TEST, CHISQ.TEST, SUMX2MY2, SUMX2PY2, SUMXMY2,
+MODE.SNGL, PROB, SERIESSUM. Every one had been returning a plausible-LOOKING value —
+a list of empty objects, or `MODE.SNGL([1,2,3,4])` echoing its own input straight back
+— which is exactly why nobody noticed.
+
+`rangeRouting.test.ts` is the guard, and it checks SHAPE, not value: give a
+whole-sample function real arrays, assert the result is not shaped like the input. The
+numbers are Formula.js's business; the routing is ours. It covers the long-standing
+members too, not just the additions, and pins the array-RETURNING set (TREND, GROWTH,
+LINEST, LOGEST, FREQUENCY, MODE.MULT, UNIQUE, SORT, FILTER, TRANSPOSE) as still
+unrouted — those need the list-model pass `RANGE_FUNCTIONS`' own comment defers, so
+the test records that as a state rather than letting it read as an oversight.
+
+**T.TEST and F.TEST are deliberately NOT index-paired.** Their two arrays are SAMPLES,
+which for an independent test may legitimately differ in length, and the paired
+policy's min-length zip would discard the tail of the longer one on every such call.
+The pooled policy misaligns pairs only for a paired test that ALSO contains a null —
+rarer and narrower. Excel requires equal lengths for type 1 anyway, so the zip would
+have been a no-op in exactly the case pairing was meant to help. CHISQ.TEST, PROB and
+the three pairwise sums ARE paired: they're defined term-by-term.
+
+The T.TEST leaves are worth noting separately: all three are the same Excel function
+one `type` argument apart, but only `t-test-equal-var` said so in `nodeExcel.ts`, so
+Paired and Welch measured as Solenoid-native. A declaration gap, not a registration
+one — and the second time this session that the coverage data, not the code, was what
+was wrong.
+
+`interpolateLinear` moved to `mathUtils.ts` (with its `bracket` helper) so the
+registration doesn't drag rete and the socket lattice into the headless formula path —
+the same separation `textOps`/`financeOps`/`listOps` exist for.
+
 ### Tier 3 finished, and two measurement bugs it exposed (2026-07-28b)
 
 The rest of the list family: the eight SET* names, the nine FILL*/COALESCE ops, RANGE

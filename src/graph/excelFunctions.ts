@@ -4,10 +4,12 @@ import { serialToJsDate, jsDateToSerial } from "./nodes/date";
 import { regularizedBeta, regularizedGamma, bisectionInv, lnGamma, linearFit } from "./nodes/mathUtils";
 import { convertValue } from "./nodes/convert";
 import { splitText, textAfterBefore, urlEncode, regexApply } from "./nodes/textOps";
+import { interpolateLinear } from "./nodes/mathUtils";
 import {
   reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList,
   cumulative, rolling, argMinMax, containsValue, weighted, linspace, repeatValue,
-  geometric, fibonacci, MAX_GENERATED, setOperation, setRelation, fillList, rangeList,
+  geometric, fibonacci, MAX_GENERATED, setOperation, setRelation, fillList, rangeList, setKey,
+  firstError as firstListError,
   concatLists, type Cell as ListCell,
 } from "./nodes/listOps";
 import {
@@ -553,6 +555,9 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   "ERF.PRECISE":   { returns: "number", arity: [1, 1] },
   "ERFC.PRECISE":  { returns: "number", arity: [1, 1] },
   VALUETOTEXT:     { returns: "string", arity: [1, 2], family: "text" },
+
+  COUNTDISTINCT:   { returns: "number", listArgs: true, arity: [1, 1], family: "statistics", native: true },
+  INTERPOLATE:     { returns: "number", listArgs: true, arity: [3, 3], family: "statistics", native: true },
 };
 
 /** Number → text for STRING contexts (`&`, CONCAT/CONCATENATE/TEXTJOIN, and any
@@ -1208,3 +1213,27 @@ for (const [name, to] of [
 // the concise form is meaningful here — Cast to Text with an empty format, which is
 // what the node does.
 registerInternal("VALUETOTEXT", (v) => toStr(v));
+
+// The last of the list family. COUNTDISTINCT keys by VALUE (`setKey`) rather than by
+// JS identity, so two equal complex tuples count as one — the bug `setKey` exists to
+// stop, which the Aggregate node avoids only because its socket admits plain numbers.
+registerInternal("COUNTDISTINCT", (list) => {
+  const arr = toList(list);
+  const err = firstListError(arr);
+  if (err) return err;                                    // aggregator policy: errors propagate
+  const seen = new Set<unknown>();
+  for (const v of arr) if (v != null) seen.add(setKey(v)); // and nulls are skipped
+  return seen.size;
+});
+
+// INTERPOLATE covers the node's LIST mode only — grid mode is 2-D and stays behind the
+// D2 cap. Argument order follows the node's sockets, which is Excel's own
+// known_ys / known_xs / new_xs convention (FORECAST, TREND).
+registerInternal("INTERPOLATE", (ys, xs, newXs) => {
+  const kx = numList(xs) as number[], ky = numList(ys) as number[];
+  const q = toList(newXs).map((v) => (v == null ? NaN : Number(v)));
+  const out = interpolateLinear(kx, ky, q);
+  // A missing query stays missing IN PLACE, like the node.
+  const result = out.map((v) => (Number.isNaN(v) ? null : v));
+  return Array.isArray(newXs) ? result : result[0] ?? null;
+});
