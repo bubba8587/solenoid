@@ -1,12 +1,12 @@
 import type { RoundNNode as RoundNNodeType, RoundNOp } from "../rete-nodes";
+import { ROUNDN_OP_META } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 
-const OPS: { value: RoundNOp; label: string }[] = [
-  { value: "round",     label: "ROUND" },
-  { value: "roundup",   label: "ROUNDUP" },
-  { value: "rounddown", label: "ROUNDDOWN" },
-];
+const OPS = (Object.keys(ROUNDN_OP_META) as RoundNOp[]).map((op) => ({
+  value: op,
+  label: ROUNDN_OP_META[op].label,
+}));
 
 export function RoundNComponent({ data, emit }: NodeProps<RoundNNodeType>) {
   const [op, setOp] = useNodeField(data, "op");

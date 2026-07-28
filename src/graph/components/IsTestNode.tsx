@@ -1,21 +1,13 @@
 import type { IsTestNode as IsTestNodeType, IsTestOp } from "../rete-nodes";
+import { IS_TEST_OP_META } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
 import { ERROR_EXPLANATIONS } from "../errorValue";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 
-// Short, Excel-style names in the dropdown — not the full explanation (the value
-// box and the wired-error panel carry the meaning). ISBOOLEAN is our nicer name
-// for Excel's ISLOGICAL; the `islogical` op value stays for save compatibility.
-const OPS: { value: IsTestOp; label: string }[] = [
-  { value: "isnumber",  label: "ISNUMBER" },
-  { value: "isblank",   label: "ISBLANK" },
-  { value: "isnull",    label: "ISNULL" },
-  { value: "iserror",   label: "ISERROR" },
-  { value: "isna",      label: "ISNA" },
-  { value: "islogical", label: "ISBOOLEAN" },
-  { value: "istext",    label: "ISTEXT" },
-  { value: "isnontext", label: "ISNONTEXT" },
-];
+const OPS = (Object.keys(IS_TEST_OP_META) as IsTestOp[]).map((op) => ({
+  value: op,
+  label: IS_TEST_OP_META[op].label,
+}));
 
 export function IsTestComponent({ data, emit }: NodeProps<IsTestNodeType>) {
   const [op, setOp] = useNodeField(data, "op");

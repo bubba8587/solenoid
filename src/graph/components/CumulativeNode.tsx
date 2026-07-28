@@ -1,13 +1,12 @@
 import type { CumulativeNode as CumulativeNodeType, CumulativeOp } from "../rete-nodes";
+import { CUMULATIVE_OP_META } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 
-const OPS: { value: CumulativeOp; label: string }[] = [
-  { value: "cumsum",  label: "CUMSUM: running sum"     },
-  { value: "cummax",  label: "CUMMAX: running max"     },
-  { value: "cummin",  label: "CUMMIN: running min"     },
-  { value: "cumprod", label: "CUMPROD: running product" },
-];
+const OPS = (Object.keys(CUMULATIVE_OP_META) as CumulativeOp[]).map((op) => ({
+  value: op,
+  label: CUMULATIVE_OP_META[op].label,
+}));
 
 export function CumulativeComponent({ data, emit }: NodeProps<CumulativeNodeType>) {
   const [op, setOp] = useNodeField(data, "op");
