@@ -1,3 +1,4 @@
+import { solError, type SolError } from "../errorValue";
 // ─── Pure text ops — the ONE implementation behind both surfaces ─────────────
 // Each function here is called by BOTH the visual node (`text.ts`) and the formula
 // registration (`excelFunctions.ts`). Same pattern as `mathUtils.ts`, and for the
@@ -86,4 +87,61 @@ export function replaceNth(text: string, pattern: string, replacement: string, n
     const offset = rest[rest.length - 2] as number;
     return text.slice(offset, offset + match.length).replace(re, replacement);
   });
+}
+
+// ─── Spell Number + Reverse Text (the custom-logic text transforms) ───────────
+const SPELL_ONES = [
+  "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
+  "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen",
+  "seventeen", "eighteen", "nineteen",
+];
+const SPELL_TENS = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"];
+const SPELL_SCALES = ["", " thousand", " million", " billion", " trillion"];
+
+function spellUnder1000(n: number): string {
+  const parts: string[] = [];
+  if (n >= 100) { parts.push(`${SPELL_ONES[Math.floor(n / 100)]} hundred`); n %= 100; }
+  if (n >= 20) {
+    const tens = SPELL_TENS[Math.floor(n / 10)];
+    parts.push(n % 10 ? `${tens}-${SPELL_ONES[n % 10]}` : tens);
+  } else if (n > 0) {
+    parts.push(SPELL_ONES[n]);
+  }
+  return parts.join(" ");
+}
+
+/** English cardinal words for any |n| < 10^15. Exported for tests. */
+export function spellNumber(n: number): string | SolError {
+  if (!Number.isFinite(n)) return solError("#DOMAIN!", "Not a finite number");
+  if (Math.abs(n) >= 1e15) return solError("#DOMAIN!", "Spell Number goes up to the trillions");
+  const neg = n < 0;
+  const abs = Math.abs(n);
+  const int = Math.floor(abs);
+
+  let words: string;
+  if (int === 0) {
+    words = "zero";
+  } else {
+    // Split into 3-digit groups, spell each with its scale word.
+    const groups: string[] = [];
+    let rest = int, scale = 0;
+    while (rest > 0) {
+      const g = rest % 1000;
+      if (g > 0) groups.unshift(spellUnder1000(g) + SPELL_SCALES[scale]);
+      rest = Math.floor(rest / 1000);
+      scale++;
+    }
+    words = groups.join(" ");
+  }
+
+  // Decimal digits read one by one; cap at 6 to dodge float dust.
+  const fracText = String(abs).includes(".") ? String(abs).split(".")[1].slice(0, 6) : "";
+  if (fracText) words += ` point ${[...fracText].map((d) => SPELL_ONES[Number(d)]).join(" ")}`;
+
+  return neg ? `negative ${words}` : words;
+}
+
+/** Reverse a string — famously impossible in an Excel formula. */
+export function reverseText(t: string): string {
+  return [...t].reverse().join("");
 }

@@ -117,18 +117,23 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   argument — Excel allows it, we require LAMBDA(g, SUM(g))), and
   immediately-invoked lambdas (`LAMBDA(x, x+1)(5)` — the parser has no
   call-on-call).
-  **Split view (author call 2026-07-28): count packs separately.** Non-pack:
-  357/479 callable (122 gap: Input 28 + Output 33 = sources/sinks/UI, genuinely
-  deliberate; Tables & Frames 33, mostly D23-endpoint-blocked; ~28 across
-  Numbers/Logic/Text/Date/Other, of which the honest split is: 5 operator nodes =
-  a MEASUREMENT ARTIFACT (their formula equivalent is the operator itself — teach
-  the metric), ~16-20 flatly unswept (Text Transform scalars, XNOR/NAND/NOR,
-  Percent Change — register with the standard discipline), rest to audit).
-  **Packs: 0/167 — a separate workstream, and it DOES need fixing** (author): the
-  "parity moot" blanket was false for custom-LOGIC pack nodes (Colebrook, Sun
-  Position, Dew Point, Great-Circle…) — register those through the existing
-  formulaExtensions seam as PackFormulas; preset-formula pack nodes (Ohm's Law =
-  `v/r`) stay name-free as the narrow TRUE deliberation. Non-pack items first.
+  **Split view (author call 2026-07-28): count packs separately — and the
+  preset-formula detection changed both numbers.** The measurement now detects a
+  locked preset-formula leaf mechanically (its own `expr` IS its formula
+  equivalent, typeable today — SSOT-3, no hand-kept list) and counts the
+  language's own leaves (the four operators, Comparison, Expression/Equation).
+  With the straggler registrations (REVERSETEXT, SPELLNUMBER, DECODEURL, LOG2,
+  HYPOTENUSE, XNOR, NAND, NOR):
+  **Non-pack: 380/479.** The 99 remaining are Input/Output/Tables (sources,
+  sinks, UI, D23-endpoint) plus exactly five named leaves: Quadratic Roots
+  (complex — endpoint), Text Filter (op family, needs its per-op naming pass),
+  Image/SVG/Promo (not functions).
+  **Packs: 148/167 already covered** (preset formulas). The pack workstream is
+  the 19 CUSTOM-LOGIC nodes: Triangle Solver, Parallel Combine, Resistor Color
+  Code, E-Series Value, AWG Wire, EM Spectrum Band, Physics Constant, Heart-Rate
+  Zones, Colebrook, Pipe Roughness, Standard Atmosphere, Antoine, Is In, Tally,
+  Sun Position, Sunrise/Sunset, Moon Phase, Element, Molar Mass — register these
+  through the existing formulaExtensions seam as PackFormulas.
   Stragglers, each parked for a stated reason rather than effort:
   - **INTERPOLATE grid mode** — 2-D, so it rides on the Tier 4 decision. List mode
     is registered.

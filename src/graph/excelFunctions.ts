@@ -3,7 +3,7 @@ import { solError, isSolError, type SolError, type SolErrorCode } from "./errorV
 import { serialToJsDate, jsDateToSerial } from "./nodes/dateSerial";
 import { regularizedBeta, regularizedGamma, bisectionInv, lnGamma, linearFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind } from "./nodes/mathUtils";
 import { convertValue } from "./nodes/convertUnits";
-import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth } from "./nodes/textOps";
+import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, reverseText } from "./nodes/textOps";
 import { interpolateLinear } from "./nodes/mathUtils";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
 import { matTranspose, matUnit, asNumericMatrix, matMul, matDet, matInverse, matRows, matCols, wrapCells, type NumMat } from "./nodes/matrixOps";
@@ -20,7 +20,7 @@ import {
   couponValue, accrintM, securityDisc, priceDisc, priceMat,
   durationValue, bondPriceYield, oddCoupon, vdb,
 } from "./nodes/financeOps";
-import { coerceNumber as toNum } from "./valueKinds";
+import { coerceNumber as toNum, coerceLogical, kleeneAnd, kleeneOr, kleeneNot, type Tri } from "./valueKinds";
 
 // ─── EXCEL_FUNCTIONS — the one declared home for "where does each function live?" ──
 // The app computes through TWO parallel implementations of the same Excel functions:
@@ -691,6 +691,16 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   SCAN:      { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [3, 3], native: true },
   MAKEARRAY: { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [3, 3], native: true },
   GROUPBY:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [3, 3], native: true },
+
+  // ── The non-pack straggler sweep.
+  REVERSETEXT: { returns: "string", arity: [1, 1], family: "text", native: true },
+  SPELLNUMBER: { returns: "string", arity: [1, 1], family: "text", native: true },
+  DECODEURL:   { returns: "string", arity: [1, 1], family: "text", native: true },
+  LOG2:        { returns: "number", arity: [1, 1], native: true },
+  HYPOTENUSE:  { returns: "number", arity: [2, 2], native: true },
+  NAND:        { returns: "logical", arity: [1, 255], native: true },
+  NOR:         { returns: "logical", arity: [1, 255], native: true },
+  XNOR:        { returns: "logical", arity: [1, 255], native: true },
 };
 
 /** Number → text for STRING contexts (`&`, CONCAT/CONCATENATE/TEXTJOIN, and any
@@ -1739,3 +1749,42 @@ registerInternal("GROUPBY", (keys, values, fn) => {
 // meta contract) and so a direct resolveExcelFunction caller gets an honest
 // answer instead of a Formula.js fallthrough.
 registerInternal("LAMBDA", () => solError("#VALUE!", "LAMBDA is a special form — write it inline: MAP(x, LAMBDA(v, v*2))"));
+
+// ── The non-pack straggler sweep (2026-07-28) ─────────────────────────────────
+// The last genuinely-registrable non-pack names. Everything else the parity walk
+// still lists is deliberate: sources/sinks/UI (no formula meaning), the D23
+// endpoint (frames/cubes/complex), preset-FORMULA leaves (their own `expr` IS
+// the formula equivalent — the measurement now detects them mechanically), and
+// the operator nodes (covered by the language's own + − × / and comparisons).
+
+registerInternal("REVERSETEXT", (t) => (t == null ? null : reverseText(toStr(t))));
+registerInternal("SPELLNUMBER", (n) => (n == null ? null : spellNumber(Number(n))));
+registerInternal("DECODEURL", (t) => (t == null ? null : urlEncode("decode", toStr(t))));
+// LOG2's node answers null for x ≤ 0 (the quiet-null convention of its family) —
+// match the node, not a #DOMAIN! the card never shows (FX-1).
+registerInternal("LOG2", (x) => {
+  if (x == null) return null;
+  const n = Number(x);
+  return n <= 0 ? null : Math.log2(n);
+});
+registerInternal("HYPOTENUSE", (x, y) => {
+  if (x == null || y == null) return null;
+  return Math.hypot(Number(x), Number(y));
+});
+// The negated Boolean trio — variadic, Kleene three-valued like the node
+// (logic.ts BooleanOpNode): coerceLogical per operand (the shared liberal
+// parse), null = unknown flows by Kleene, result is a real boolean.
+const kleeneFold = (vals: unknown[], f: (a: Tri, b: Tri) => Tri, seed: Tri): Tri =>
+  vals.map((v) => coerceLogical(v)).reduce<Tri>((a, t) => f(a, t), seed);
+registerInternal("NAND", (...vals) => kleeneNot(kleeneFold(vals, kleeneAnd, true)));
+registerInternal("NOR",  (...vals) => kleeneNot(kleeneFold(vals, kleeneOr, false)));
+registerInternal("XNOR", (...vals) => {
+  // XNOR = NOT(XOR): TRUE iff an EVEN number of inputs are true; unknown poisons.
+  let acc: Tri = false;
+  for (const v of vals) {
+    const t = coerceLogical(v);
+    if (t === null) return null;
+    acc = acc !== t;
+  }
+  return !acc;
+});
