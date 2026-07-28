@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { numIn, numOut, listIn, anyIn, anyListIn, anyTableIn, adoptiveTableIn, adoptiveTableOut, adoptiveListOut, tableIn, tableOut, frameIn } from "./shared";
+import { numIn, numOut, listIn, anyIn, anyListIn, anyTableIn, adoptiveTableIn, adoptiveTableOut, adoptiveListOut, tableIn, tableOut, frameIn, readInput } from "./shared";
 import type { PassthroughSpec } from "./passthrough";
 import { toAnyMatrix, type Cell } from "./coerce";
 import { tableSocket, strTableSocket, dateTableSocket, logicalTableSocket } from "../sockets";
@@ -365,7 +365,9 @@ export class TableUnitNode extends ClassicPreset.Node {
   }
 
   data(inputs: { n?: number[] }) {
-    const n = inputs.n?.[0] ?? this.literals.n ?? 3;
+    // A blank size means an unknown grid, not a default 3×3.
+    const n = readInput(inputs.n, this.literals.n ?? 3);
+    if (n === null) { this.cachedResult = null; return { result: null }; }
     this.cachedResult = matUnit(n, this.offDiag === "blank" ? null : 0);
     return { result: this.cachedResult };
   }
@@ -597,7 +599,8 @@ export class TableReshapeNode extends ClassicPreset.Node {
       // List → matrix (rank change): a uniform-unit list gives a matrix with that
       // one whole-grid unit (D20); the cells drop to bare magnitudes, mixed strips.
       const raw = toAnyMatrix(inputs.list?.[0])?.flat() ?? null;
-      const w = Math.round(inputs.wrapCount?.[0] ?? this.literals.wrapCount ?? 3);
+      const wRaw = readInput(inputs.wrapCount, this.literals.wrapCount ?? 3);
+      const w = wRaw === null ? 0 : Math.round(wRaw); // blank width → the `w < 1` blank below
       if (!raw || w < 1) return { result: null };
       const { mags: list, unit } = matrixCellsFromList(raw);
       const na: Cell = solError("#N/A", "Padded: the list doesn't fill the last row");
@@ -612,7 +615,8 @@ export class TableReshapeNode extends ClassicPreset.Node {
       return { result: rows };
     } else if (this.op === "wrapcols") {
       const raw = toAnyMatrix(inputs.list?.[0])?.flat() ?? null;
-      const w = Math.round(inputs.wrapCount?.[0] ?? this.literals.wrapCount ?? 3);
+      const wRaw = readInput(inputs.wrapCount, this.literals.wrapCount ?? 3);
+      const w = wRaw === null ? 0 : Math.round(wRaw); // blank width → the `w < 1` blank below
       if (!raw || w < 1) return { result: null };
       const { mags: list, unit } = matrixCellsFromList(raw);
       const na: Cell = solError("#N/A", "Padded: the list doesn't fill the last column");
@@ -745,8 +749,11 @@ export class TableTakeDropNode extends ClassicPreset.Node {
   data(inputs: { matrix?: unknown[]; rows?: number[]; cols?: number[] }) {
     const m = toAnyMatrix(inputs.matrix?.[0]);
     if (!m || m.length === 0) { this.cachedResult = null; return { result: null }; }
-    const nRows = Math.round(inputs.rows?.[0] ?? this.literals.rows ?? 0);
-    const nCols = Math.round(inputs.cols?.[0] ?? this.literals.cols ?? 0);
+    const rRaw = readInput(inputs.rows, this.literals.rows ?? 0);
+    const cRaw = readInput(inputs.cols, this.literals.cols ?? 0);
+    if (rRaw === null || cRaw === null) { this.cachedResult = null; return { result: null }; }
+    const nRows = Math.round(rRaw);
+    const nCols = Math.round(cRaw);
     const result = carryMatrixUnit(this.takeDrop(m, nRows).map((r) => [...this.takeDrop(r, nCols)]), m);
     this.cachedResult = result;
     return { result };
@@ -780,8 +787,11 @@ export class ExpandNode extends ClassicPreset.Node {
     const m = toAnyMatrix(inputs.matrix?.[0]);
     if (!m || m.length === 0) { this.cachedResult = null; return { result: null }; }
     const curR = matRows(m), curC = matCols(m);
-    const reqR = Math.round(inputs.rows?.[0] ?? this.literals.rows ?? 0);
-    const reqC = Math.round(inputs.cols?.[0] ?? this.literals.cols ?? 0);
+    const reqRRaw = readInput(inputs.rows, this.literals.rows ?? 0);
+    const reqCRaw = readInput(inputs.cols, this.literals.cols ?? 0);
+    if (reqRRaw === null || reqCRaw === null) { this.cachedResult = null; return { result: null }; }
+    const reqR = Math.round(reqRRaw);
+    const reqC = Math.round(reqCRaw);
     const R = reqR > 0 ? reqR : curR;
     const C = reqC > 0 ? reqC : curC;
     if (R < curR || C < curC) {

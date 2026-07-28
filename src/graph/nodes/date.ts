@@ -218,7 +218,7 @@ export class DateValueNode extends ClassicPreset.Node {
   }
 
   data(inputs: { text?: string[] }): { result: number | SolError | null } {
-    const text = (inputs.text?.[0] ?? this.stringLiterals.text ?? "").trim();
+    const text = (readInput(inputs.text, this.stringLiterals.text ?? "") ?? "").trim();
     // Blank in → blank out; non-empty text that won't parse is a real
     // #VALUE! error (Excel DATEVALUE behaves the same).
     if (!text) { this.cachedResult = null; return { result: null }; }
@@ -250,7 +250,7 @@ export class TimeValueNode extends ClassicPreset.Node {
   }
 
   data(inputs: { text?: string[] }): { result: number | SolError | null } {
-    const text = (inputs.text?.[0] ?? this.stringLiterals.text ?? "").trim();
+    const text = (readInput(inputs.text, this.stringLiterals.text ?? "") ?? "").trim();
     if (!text) { this.cachedResult = null; return { result: null }; }
     // Parse the time text directly — routing it through `new Date("1970-01-01T…")`
     // read the zone-less text as LOCAL time and then the getters as UTC, so

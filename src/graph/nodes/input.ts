@@ -6,7 +6,7 @@ import namesPlugin from "colord/plugins/names";
 // Color Blend / Chart color literal shouldn't demand hex. extend() is global.
 extend([namesPlugin]);
 import { numberSocket } from "../sockets";
-import { numIn, strIn, strOut, logicalOut } from "./shared";
+import { numIn, strIn, strOut, logicalOut, readInput } from "./shared";
 import { solError, isSolError, type SolError } from "../errorValue";
 
 // ─── Number Input ────────────────────────────────────────────────────────────
@@ -138,7 +138,7 @@ export class ColorBlendNode extends ClassicPreset.Node {
 
   data(inputs: { a?: string[]; b?: string[] }): { color: string | SolError } {
     const parse = (key: "a" | "b", label: string) => {
-      const s = String(inputs[key]?.[0] ?? this.stringLiterals[key] ?? "").trim();
+      const s = String(readInput(inputs[key], this.stringLiterals[key] ?? "") ?? "").trim();
       const c = colord(s);
       return c.isValid() ? c : solError("#VALUE!", `${label} isn't a color: "${s}"`);
     };
@@ -230,9 +230,17 @@ export class SliderInputNode extends ClassicPreset.Node {
   }
 
   data(inputs: { min?: number[]; max?: number[]; step?: number[] }) {
-    this.effectiveMin  = inputs.min?.[0]  ?? this.literals.min  ?? 0;
-    this.effectiveMax  = inputs.max?.[0]  ?? this.literals.max  ?? 100;
-    this.effectiveStep = inputs.step?.[0] ?? this.literals.step ?? 1;
+    // A Slider is a SOURCE: it always emits the value you set. So a wired blank
+    // BOUND doesn't null the output — that would silently drop a user's input to
+    // report a constraint it couldn't evaluate. It means that side has no
+    // constraint right now, so the clamp simply skips it. Same reading as Expect's
+    // undeterminable check: unknown is not the same as failed.
+    const min  = readInput(inputs.min,  this.literals.min  ?? 0);
+    const max  = readInput(inputs.max,  this.literals.max  ?? 100);
+    const step = readInput(inputs.step, this.literals.step ?? 1);
+    this.effectiveMin  = min  ?? Number.NEGATIVE_INFINITY;
+    this.effectiveMax  = max  ?? Number.POSITIVE_INFINITY;
+    this.effectiveStep = step ?? 1;
     this.value = Math.min(Math.max(this.value, this.effectiveMin), this.effectiveMax);
     return { value: this.value };
   }

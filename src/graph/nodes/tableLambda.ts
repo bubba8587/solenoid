@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { numIn, anyIn, anyTableIn, lambdaIn, resultOut, type ResultType } from "./shared";
+import { numIn, anyIn, anyTableIn, lambdaIn, resultOut, readInput, type ResultType } from "./shared";
 import { toAnyMatrix } from "./coerce";
 import { compilePositional, parseFormula, formulaSyntaxHint, extractVariables } from "../excelFormula";
 import { isLambdaValue, type LambdaValue } from "./lambda";
@@ -353,7 +353,7 @@ export class ReduceLambdaNode extends ClassicPreset.Node {
   }
 
   data(inputs: { initial?: unknown[]; table?: unknown[]; lambda?: unknown[] }): { result: Cell | UnitCell | SolError | null } {
-    const initialRaw = inputs.initial?.[0] ?? this.literals.initial ?? 0;
+    const initialRaw = readInput(inputs.initial as (unknown[] | undefined), this.literals.initial ?? 0);
     const m = toAnyMatrix(inputs.table?.[0]);
     const { fn, err, code } = resolveFn(
       inputs.lambda?.[0], this.stringLiterals.formula,
@@ -422,7 +422,7 @@ export class ScanLambdaNode extends ClassicPreset.Node {
   }
 
   data(inputs: { initial?: unknown[]; table?: unknown[]; lambda?: unknown[] }): { result: Mat | SolError | null } {
-    const initial = inputs.initial?.[0] ?? this.literals.initial ?? 0;
+    const initial = readInput(inputs.initial as (unknown[] | undefined), this.literals.initial ?? 0);
     const m = toAnyMatrix(inputs.table?.[0]);
     const { fn, err, code } = resolveFn(
       inputs.lambda?.[0], this.stringLiterals.formula,
@@ -478,8 +478,12 @@ export class MakeArrayNode extends ClassicPreset.Node {
   }
 
   data(inputs: { rows?: number[]; cols?: number[]; lambda?: unknown[] }): { result: Mat | SolError | null } {
-    const rows = Math.round(inputs.rows?.[0] ?? this.literals.rows ?? 0);
-    const cols = Math.round(inputs.cols?.[0] ?? this.literals.cols ?? 0);
+    // A blank dimension leaves the array's SHAPE unknown; the `< 1` guard below
+    // already answers blank for a non-positive size, so 0 routes into it.
+    const rowsRaw = readInput(inputs.rows, this.literals.rows ?? 0);
+    const colsRaw = readInput(inputs.cols, this.literals.cols ?? 0);
+    const rows = rowsRaw === null ? 0 : Math.round(rowsRaw);
+    const cols = colsRaw === null ? 0 : Math.round(colsRaw);
     const { fn, err, code } = resolveFn(
       inputs.lambda?.[0], this.stringLiterals.formula,
       "row * col", ["row", "col"], 2, true);
