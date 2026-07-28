@@ -247,7 +247,7 @@
       "y": 560,
       "init": {
         "label": "Units",
-        "body": "# Units travel with the value\n**Convert** turns miles into kilometres, and from there the *value itself* carries km. The Display and its docked **Format** controller pick the unit up and lock to it: you can re-format the number but never mislabel the unit. Convert is the authority in any chain of formats.",
+        "body": "# Units travel with the value\n**Convert** turns miles into kilometers, and from there the *value itself* carries km. The Display and its docked **Format** controller pick the unit up and lock to it: you can re-format the number but never mislabel the unit. Convert is the authority in any chain of formats.",
         "color": "vermilion",
         "width": 360,
         "height": 240,

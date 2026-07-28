@@ -64,18 +64,7 @@ function uiStrings(): Unit[] {
     const src = readFileSync(p, "utf8");
     src.split("\n").forEach((line, i) => {
       const at = `${p}:${i + 1}`;
-      for (const m of line.matchAll(/title="([^"]{4,})"/g)) out.push(...sentences(`${at}.tooltip`, m[1]));
-      for (const m of line.matchAll(/aria-label="([^"]{4,})"/g)) out.push(...sentences(`${at}.aria`, m[1]));
-      for (const m of line.matchAll(/placeholder="([^"]{4,})"/g)) out.push(...sentences(`${at}.placeholder`, m[1]));
-      // A template-literal title is composed at runtime, but its STATIC segments
-      // are fixed copy and were hiding the same narration the literal titles had
-      // ("…. Click to change the type."). Split on the ${…} holes and judge the
-      // prose between them; a segment shorter than 4 chars is punctuation glue.
-      for (const m of line.matchAll(/title=\{`([^`]*)`\}/g)) {
-        for (const seg of m[1].split(/\$\{[^}]*\}/)) {
-          if (seg.trim().length >= 4) out.push(...sentences(`${at}.tooltip`, seg.trim()));
-        }
-      }
+      for (const { kind, text } of attrStrings(line)) out.push(...sentences(`${at}.${kind}`, text));
     });
   }
   // Seed-graph note and Report prose. These ship as example DOCUMENTS the user
@@ -89,7 +78,7 @@ function uiStrings(): Unit[] {
       if (Array.isArray(o)) return o.forEach(visit);
       if (!o || typeof o !== "object") return;
       for (const [k, v] of Object.entries(o as Record<string, unknown>)) {
-        if (typeof v === "string" && (k === "body" || k === "label")) {
+        if (typeof v === "string" && (k === "body" || k === "label" || k === "text")) {
           for (const line of v.split(/\n+/)) out.push(...sentences(`seed/${name}`, line));
         } else visit(v);
       }
@@ -97,6 +86,59 @@ function uiStrings(): Unit[] {
     visit(seed);
   }
   return out;
+}
+
+/** Copy carried by a title / aria-label / placeholder attribute on one line of
+ *  TSX. Three shapes:
+ *    - attr="…" — the plain literal;
+ *    - attr={`… ${hole} …`} — a template: its STATIC segments are fixed copy
+ *      ("…. Click to change the type." hid between two holes), so the prose
+ *      between the ${…} holes is judged segment by segment;
+ *    - attr={cond ? "…" : `…`} — a braced expression: EVERY double-quoted and
+ *      backtick literal inside the braces is possible shipped copy. Ternary
+ *      arms were how "Document. Click to open the report." evaded the lint.
+ *  A segment shorter than 4 chars is punctuation glue and is skipped. A string
+ *  assigned to a variable ABOVE the JSX (title={titleText}) is still invisible
+ *  here — that one shape stays a human call. */
+function attrStrings(line: string): { kind: string; text: string }[] {
+  const out: { kind: string; text: string }[] = [];
+  const kinds = { title: "tooltip", "aria-label": "aria", placeholder: "placeholder" } as const;
+  const push = (kind: string, text: string) => {
+    const t = text.trim();
+    if (t.length >= 4) out.push({ kind, text: t });
+  };
+  for (const m of line.matchAll(/(title|aria-label|placeholder)=(?="|\{)/g)) {
+    const kind = kinds[m[1] as keyof typeof kinds];
+    const rest = line.slice(m.index + m[0].length);
+    if (rest.startsWith('"')) {
+      const lit = /^"([^"]*)"/.exec(rest);
+      if (lit) push(kind, lit[1]);
+      continue;
+    }
+    const expr = bracedExpr(rest);
+    if (expr === null) continue; // spans lines — out of scope, as before
+    for (const q of expr.matchAll(/"((?:[^"\\]|\\.)*)"/g)) push(kind, q[1]);
+    for (const t of expr.matchAll(/`([^`]*)`/g)) {
+      for (const seg of t[1].split(/\$\{[^}]*\}/)) push(kind, seg);
+    }
+  }
+  return out;
+}
+
+/** The text between the `{` at s[0] and its matching `}`, skipping string
+ *  literals so a brace inside a quoted string (a template's ${…} hole, a "}"
+ *  in copy) can't end the walk early. Null when the expression doesn't close
+ *  on this line. */
+function bracedExpr(s: string): string | null {
+  let depth = 0;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (c === '"' || c === "'" || c === "`") {
+      for (i++; i < s.length && s[i] !== c; i++) if (s[i] === "\\") i++;
+    } else if (c === "{") depth++;
+    else if (c === "}" && --depth === 0) return s.slice(1, i);
+  }
+  return null;
 }
 
 function walkTsx(dir: string, acc: string[] = []): string[] {
@@ -208,7 +250,15 @@ const RULES: Rule[] = [
     why: "section 7 — shipped copy is American English: color, gray, center, behavior, labeled, meter",
     // Shipped strings only. Code identifiers and CSS custom properties are not
     // copy, so `--group-color`-style names (were there any) are out of scope.
-    re: /\b(?:colours?|coloured|colouring|centres?|centred|greys?|greyed|behaviours?|neighbours?|neighbouring|labelled|labelling|cancelled|modelling|travelling|catalogue|dialogue|licence|defence|metres?|litres?|programme|favourite|practise|fulfil|artefact|ageing|judgement|acknowledgement|storey|aluminium|sulphur|analys(?:e|ed|ing)|normalise|organise|customise|initialise|summarise|categorise|recognise|minimise|maximise|optimise|utilise|emphasise|prioritise|penalise)\b/i,
+    //
+    // The -ise verbs are an EXPLICIT allowlist of stems, never a generic
+    // `\w+ise` — advertise, comprise, revise, exercise, surprise are correct
+    // American spellings. Each listed stem allows its inflections (-e, -es,
+    // -ed, -ing), which is how "penalises" shipped past the stem-only rule.
+    // `analys` deliberately keeps only e/ed/ing: "analyses" is also the
+    // correct American plural of "analysis".
+    // The -re measures allow metric-prefix compounds (kilometres) and plurals.
+    re: /\b(?:colours?|coloured|colouring|centres?|centred|greys?|greyed|behaviours?|neighbours?|neighbouring|labelled|labelling|cancelled|modelling|travelling|catalogue|dialogue|licence|defence|(?:kilo|centi|milli)?metres?|(?:kilo|centi|milli|deci)?litres?|programme|favourite|fulfil|artefact|ageing|judgement|acknowledgement|storey|aluminium|sulphur|analys(?:e|ed|ing)|(?:normalis|organis|customis|initialis|summaris|categoris|recognis|minimis|maximis|optimis|utilis|emphasis|prioritis|penalis|practis)(?:e[sd]?|ing))\b/i,
   },
   {
     id: "widget-narration",
@@ -231,6 +281,34 @@ describe("UI copy", () => {
     expect(units.length).toBeGreaterThan(1000);
     expect(units.some((u) => u.src.startsWith("help/"))).toBe(true);
     expect(units.some((u) => u.src.startsWith("catalog:"))).toBe(true);
+    expect(units.some((u) => u.src.startsWith("seed/"))).toBe(true);
+    expect(units.some((u) => u.src.endsWith(".tooltip"))).toBe(true);
+  });
+
+  // The collector keeps its own specimens: each attribute shape that once
+  // smuggled a string past the lint, asserted extracted — plus the shapes that
+  // must NOT be swept in (a className literal, a handler on the same line).
+  it("the attribute collector sees every literal shape", () => {
+    const texts = (line: string) => attrStrings(line).map((s) => s.text);
+    // Ternary arms inside a braced attribute — how DocumentChip's
+    // "Document. Click to open the report." evaded the title="…" regex.
+    expect(
+      texts('title={!open ? "Document" : isReport ? "Doc. Click to open." : "Doc. Click to go."}'),
+    ).toEqual(["Document", "Doc. Click to open.", "Doc. Click to go."]);
+    // A template arm inside the braces (FormulaField's `${LOCK_TITLE} Click to view.`).
+    expect(texts('title={locked ? `${LOCK_TITLE} Click to view.` : "Click to edit"}')).toEqual([
+      "Click to edit",
+      "Click to view.",
+    ]);
+    // aria-label / placeholder template forms (previously title-only).
+    expect(texts("aria-label={`Unpin ${label}`}")).toEqual(["Unpin"]);
+    expect(texts("placeholder={`Input ${index + 1}`}")).toEqual(["Input"]);
+    // Plain literals still collect; short punctuation glue does not.
+    expect(texts('title="Real tip" aria-label="Named"')).toEqual(["Real tip", "Named"]);
+    expect(texts("title={`${rows}×${cols} grid`}")).toEqual(["grid"]);
+    // NOT copy: other attributes' strings, even on the same line.
+    expect(texts('className={"solenoid-chip"} onClick={() => act("not copy")}')).toEqual([]);
+    expect(texts('title={ok ? "Tip text" : undefined} onClick={() => act("not copy")}')).toEqual(["Tip text"]);
   });
 
   it("no shipped string breaks a machine-checkable voice rule", () => {
@@ -249,7 +327,15 @@ describe("UI copy", () => {
       "tease-count": ["On a type mismatch there are three ways forward:"],
       "chummy-aside": ["…and wires the first compatible port for you."],
       "widget-narration": ["diagonal 1s, rest 0s — or blanks (nulls) via the toggle."],
-      "british-spelling": ["A colour in RGB or HSV.", "the grey sockets", "Centre of the torus."],
+      "british-spelling": [
+        "A colour in RGB or HSV.",
+        "the grey sockets",
+        "Centre of the torus.",
+        // The inflection + compound gaps: both shipped past the stem-only rule.
+        "a NEGATIVE weight penalises a lower-is-better criterion",
+        "Convert turns miles into kilometres.",
+        "normalising each column",
+      ],
       "imperative-opener": ["Round to nearest integer. Excel: ROUND(x,0).", "Sort ascending or descending."],
       "wire-instruction": [
         "Wire a 2-column frame (Date, Value); duplicate days sum.",
@@ -314,6 +400,14 @@ describe("UI copy", () => {
       "**Touch select** lassos with a finger, and **Insert ▸ Connection** wires two sockets by picking them from lists instead of dragging.",
       "- **Edits commit on Enter or click-away, never on each keystroke**, the way a spreadsheet cell does.",
       "Cables always draw at full curved fidelity; the app never straightens or hides them mid-drag to buy frames.",
+      // Correct American words a sloppier -ise widening would flag: -ise is
+      // native in these, "analyses" is the plural of analysis, "emphasis" is
+      // the noun, "kilometers"/"parameters" merely contain letters near miss.
+      "Advertised rates comprise the surprise revision; exercise care.",
+      "Sensitivity analyses run in one pass.",
+      "The emphasis stays on the data.",
+      "A marathon reads 42.2 kilometers; parameters are unchanged.",
+      "Practice files stay green.",
     ];
     for (const text of keep) {
       const hit = RULES.find((r) => r.re.test(text));

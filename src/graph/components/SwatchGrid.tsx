@@ -37,7 +37,7 @@ export function SwatchGrid({
         const disc = isGray
           ? <NeutralSwatch on={!readOnly && neutralSelected} />
           : <Swatch color={resolveColor(slot)} on={slot === value} />;
-        const title = isGray ? "Neutral (click to cycle white / gray / dark)" : slot;
+        const title = isGray ? "Neutral: cycles white / gray / dark." : slot;
         return readOnly ? (
           <span key={slot} className="solenoid-swatchgrid__opt" title={title}>
             {disc}

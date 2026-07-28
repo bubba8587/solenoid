@@ -28,7 +28,7 @@ export function CubeChip({ value, label, size = "md", accent, pinNodeId }: {
     <button
       type="button"
       className={`solenoid-array-chip solenoid-array-chip--cube${size === "sm" ? " solenoid-array-chip--sm" : ""}`}
-      title={`${rows}×${cols}×${depth} cube (rows × cols × depth).${depth > 1 ? ` Nests ${depth} levels deep.` : ""} Click to view.`}
+      title={`${rows}×${cols}×${depth} cube (rows × cols × depth).${depth > 1 ? ` Nests ${depth} levels deep.` : ""} View.`}
       onClick={(e) => {
         e.stopPropagation();
         // Explicit prop, else the inherited node/group style (cube TYPE color
