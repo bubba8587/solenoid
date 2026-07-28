@@ -237,7 +237,14 @@ export const NODE_OPS: NodeOpsDecl[] = [
     create: (op) => new IFErrorNode({ op: op as never }) },
   { type: "regex", ctor: RegexNode, kind: "operation", ops: fromMeta(REGEX_OP_META),
     create: (op) => new RegexNode({ op: op as never }) },
-  { type: "text-filter", ctor: TextFilterNode, kind: "operation", ops: fromMeta(TEXT_FILTER_OP_META),
+  // RECLASSIFIED operation → argument (2026-07-28, the FX-4 full sweep): Text
+  // Filter is ONE operation — keep the strings that match — and the ops are its
+  // CONDITION ("contains", "starts with"), meaningless without the host, exactly
+  // the Frame Filter's condition parameter. As operations they also claimed
+  // formula names they can't own: "Contains" despaces to CONTAINS, which is the
+  // list-membership function. The ops stay searchable ("Text Filter: Starts
+  // with") via the ops list.
+  { type: "text-filter", ctor: TextFilterNode, kind: "argument", ops: fromMeta(TEXT_FILTER_OP_META),
     create: (op) => new TextFilterNode({ op: op as never }) },
   { type: "sumifs", ctor: SumIfsNode, kind: "operation", ops: fromMeta(COND_AGG_OP_META),
     create: (op) => new SumIfsNode({ op: op as never }) },

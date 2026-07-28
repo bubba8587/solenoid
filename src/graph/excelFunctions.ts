@@ -3,7 +3,7 @@ import { solError, isSolError, type SolError, type SolErrorCode } from "./errorV
 import { serialToJsDate, jsDateToSerial } from "./nodes/dateSerial";
 import { regularizedBeta, regularizedGamma, bisectionInv, lnGamma, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind } from "./nodes/mathUtils";
 import { convertValue } from "./nodes/convertUnits";
-import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, reverseText } from "./nodes/textOps";
+import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, reverseText, filterTextList, TEXT_FILTER_OPS, type TextFilterOp } from "./nodes/textOps";
 import { interpolateLinear } from "./nodes/mathUtils";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
 import { matTranspose, matUnit, asNumericMatrix, matMul, matDet, matInverse, matRows, matCols, wrapCells, type NumMat } from "./nodes/matrixOps";
@@ -763,6 +763,9 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   GROWTH: { returns: "number", rank: "list", listArgs: true, arity: [1, 3], family: "statistics" },
   LINEST: { returns: "number", rank: "list", listArgs: true, arity: [1, 2], family: "statistics" },
   LOGEST: { returns: "number", rank: "list", listArgs: true, arity: [1, 2], family: "statistics" },
+
+  // Text Filter — one name, the condition is an argument (argument-kind family).
+  TEXTFILTER: { returns: "string", rank: "list", listArgs: true, arity: [2, 3], family: "text", native: true },
 };
 
 /** Number → text for STRING contexts (`&`, CONCAT/CONCATENATE/TEXTJOIN, and any
@@ -2021,4 +2024,23 @@ registerInternal("LOGEST", (ys, xs) => {
   const fit = expFit(pair.xs, pair.ys);
   // y ≤ 0 or degenerate → the node's quiet empty list.
   return fit ? [fit.m, fit.b] : [];
+});
+
+// TEXTFILTER(strings, pattern, [condition]) — the Text Filter node's one
+// operation; the condition is an ARGUMENT (the family reclassified to
+// argument-kind, so it takes one formula name — the nodeOps convention). Same
+// kernel as the node (textOps filterTextList, case-sensitive); condition
+// spellings are the op keys, with spaces/hyphens tolerated ("not contains").
+// A cell error propagates; null cells drop (a missing string matches nothing —
+// the Filter-verb policy for nulls).
+registerInternal("TEXTFILTER", (strings, pattern, op) => {
+  if (strings == null || pattern == null) return null;
+  const which = String(op ?? "contains").trim().toLowerCase().replace(/[\s-]+/g, "_") as TextFilterOp;
+  if (!TEXT_FILTER_OPS.includes(which)) {
+    return solError("#VALUE!", `TEXTFILTER's condition is one of: ${TEXT_FILTER_OPS.join(", ")}`);
+  }
+  const list = toList(strings);
+  const err = list.find(isSolError);
+  if (err) return err;
+  return filterTextList(list.filter((v) => v != null).map(toStr), toStr(pattern), which);
 });

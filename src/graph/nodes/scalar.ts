@@ -239,7 +239,7 @@ export class ArithmeticNode extends ClassicPreset.Node {
 // ─── Math Function ────────────────────────────────────────────────────────────
 
 export type MathFnOp =
-  | "abs" | "round" | "sqrt" | "log" | "sin" | "cos"
+  | "abs" | "sqrt" | "log" | "sin" | "cos"
   | "tan" | "tanh" | "sinh" | "cosh" | "asin" | "acos" | "atan"
   | "exp" | "log10" | "log2" | "sign" | "trunc"
   | "int" | "even" | "odd" | "sqrtpi"
@@ -256,7 +256,6 @@ export const MATH_FN_OP_META = {
   sqrt:    { label: "SQRT",    group: "Functions",    description: "Square root. Excel: SQRT(x)." },
   sqrtpi:  { label: "SQRTPI",  group: "Functions",    description: "√(x × π). Excel: SQRTPI(x)." },
   exp:     { label: "EXP",     group: "Functions",    description: "e raised to the power x. Excel: EXP(x)." },
-  round:   { label: "ROUND",   group: "Rounding",     description: "Rounds to nearest integer. Excel: ROUND(x,0)." },
   trunc:   { label: "TRUNC",   group: "Rounding",     description: "Truncate toward zero: TRUNC(−3.7) = −3. Excel: TRUNC(x)." },
   int:     { label: "INT",     group: "Rounding",     description: "Rounds DOWN toward −∞: INT(−3.7) = −4. Excel: INT(x)." },
   even:    { label: "EVEN",    group: "Rounding",     description: "Rounds away from zero to nearest even integer. Excel: EVEN(x)." },
@@ -319,7 +318,7 @@ const RAD2DEG = 180 / Math.PI;
 // Ops that PRESERVE their argument's dimension (abs |x|, the rounding family — a
 // rounded length is still a length). Everything else either halves it (SQRT),
 // yields a plain number (SIGN), or demands a dimensionless argument.
-const MATHFN_PRESERVE = new Set<MathFnOp>(["abs", "round", "trunc", "int", "even", "odd"]);
+const MATHFN_PRESERVE = new Set<MathFnOp>(["abs", "trunc", "int", "even", "odd"]);
 const MATHFN_FORWARD_TRIG = FORWARD_TRIG_OPS;   // accept angle/dimensionless → number
 const MATHFN_INVERSE_TRIG = INVERSE_TRIG_OPS;   // dimensionless → angle
 
@@ -400,9 +399,6 @@ export class MathFnNode extends ClassicPreset.Node {
     const computeRaw = (x: number): number | null => {
         switch (this.op) {
           case "abs":   return Math.abs(x);
-          // Excel ROUND rounds halves away from zero; JS Math.round rounds them
-          // toward +inf (Math.round(-2.5) = -2), so round the magnitude.
-          case "round": return Math.sign(x) * Math.round(Math.abs(x));
           case "sqrt":  return x < 0 ? null : Math.sqrt(x);
           case "log":   return x <= 0 ? null : Math.log(x);
           case "sin":   return Math.sin(x);

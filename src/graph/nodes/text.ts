@@ -10,8 +10,8 @@ import { solError, isSolError, type SolError } from "../errorValue";
 import { resolveExcelFunction } from "../excelFunctions";
 // The pure ops these nodes compute with, shared verbatim with the formula surface
 // (see textOps.ts). Re-exported so the node barrel keeps its shape.
-import { splitText, textAfterBefore, urlEncode, regexApply, safeRegex, reverseText } from "./textOps";
-import type { TextAfterBeforeOp, UrlEncodeOp, RegexOp } from "./textOps";
+import { splitText, textAfterBefore, urlEncode, regexApply, safeRegex, reverseText, filterTextList } from "./textOps";
+import type { TextAfterBeforeOp, UrlEncodeOp, RegexOp, TextFilterOp } from "./textOps";
 export { splitText, textAfterBefore, urlEncode, regexApply } from "./textOps";
 export type { TextAfterBeforeOp, UrlEncodeOp, RegexOp } from "./textOps";
 
@@ -668,7 +668,9 @@ export class ExactNode extends ClassicPreset.Node {
 
 // ─── TEXTFILTER ──────────────────────────────────────────────────────────────
 
-export type TextFilterOp = "contains" | "not_contains" | "starts_with" | "ends_with";
+// The op type + kernel live in textOps.ts (rete-free) — the TEXTFILTER
+// registration runs the identical filter (FX-1). Re-exported from the family home.
+export type { TextFilterOp } from "./textOps";
 
 export const TEXT_FILTER_OP_META = {
   contains:     { label: "Contains",     description: "Keep strings that contain the pattern; case-sensitive" },
@@ -697,13 +699,7 @@ export class TextFilterNode extends ClassicPreset.Node {
     const strings = inputs.strings?.[0] ?? [];
     const pattern = readInput(inputs.pattern, this.stringLiterals.pattern ?? "");
     if (pattern === null) { this.cachedResult = null; return { result: null }; }
-    let result: string[];
-    switch (this.op) {
-      case "contains":     result = strings.filter(s => s.includes(pattern));    break;
-      case "not_contains": result = strings.filter(s => !s.includes(pattern));   break;
-      case "starts_with":  result = strings.filter(s => s.startsWith(pattern));  break;
-      case "ends_with":    result = strings.filter(s => s.endsWith(pattern));     break;
-    }
+    const result = filterTextList(strings, pattern, this.op);
     this.cachedResult = result;
     return { result };
   }
