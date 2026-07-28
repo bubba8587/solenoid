@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { NODE_EXCEL } from "./nodeExcel";
 import { FLAT_CATALOG } from "./catalogUtils";
 import { NODE_COMPONENTS, componentForNode } from "./nodeRegistry";
+import { extractInit } from "./copyPaste";
 
 // HARD version of the dev-only catalogValidator console warnings (v1.0 audit,
 // quality): catalog↔registry drift previously surfaced only as a dev console
@@ -38,6 +39,45 @@ describe("catalog ↔ registry consistency", () => {
       .filter((ctor) => !constructable.has(ctor) && !allowed.has(ctor.name))
       .map((ctor) => ctor.name);
     expect(dead).toEqual([]);
+  });
+
+  // PERSIST-6, the uniqueness half. The save format stores
+  // `type: n.constructor.name` and the ctor registry maps name → class
+  // FIRST-WINS (nodeCtorRegistry) — so two classes sharing a name means every
+  // saved instance of the loser reconstructs as the WRONG class: the init
+  // fields it doesn't know are ignored, different sockets build, cables that
+  // still fit re-attach, and the graph opens looking mostly right while
+  // computing something else. No placeholder fires — that path needs an ABSENT
+  // type, and a collision is indistinguishable from a hit.
+  it("no two catalog classes share a constructor name (PERSIST-6)", () => {
+    const byName = new Map<string, Set<unknown>>();
+    for (const entry of FLAT_CATALOG.values()) {
+      let inst: object;
+      try { inst = entry.create() as object; } catch { continue; }
+      const name = inst.constructor.name;
+      if (!byName.has(name)) byName.set(name, new Set());
+      byName.get(name)!.add(inst.constructor);
+    }
+    const collisions = [...byName].filter(([, ctors]) => ctors.size > 1).map(([n]) => n);
+    expect(collisions, `class-name collisions — saves of the losing class reload as the winner: ${collisions.join(", ")}`).toEqual([]);
+  });
+
+  // EFFECT-1's persistence half: an external-effect arm flag must never
+  // round-trip — every load (save reopen, paste, placeholder restore) starts
+  // disarmed, so opening a shared file can never write to YOUR disk. The two
+  // sink families pin this per-class (sink.test.ts / obsidian.test.ts); this is
+  // the catalog-wide quantifier, so a FUTURE sink whose author whitelists the
+  // flag (or names it `enabled` on a new node) fails here by name.
+  it("no catalog class persists an `enabled` arm flag, and none constructs armed (EFFECT-1)", () => {
+    const offenders: string[] = [];
+    for (const entry of FLAT_CATALOG.values()) {
+      let inst: Record<string, unknown> & object;
+      try { inst = entry.create() as typeof inst; } catch { continue; }
+      if (inst.enabled === true) offenders.push(`${inst.constructor.name} constructs ARMED (enabled=true)`);
+      const init = extractInit(inst as never) as Record<string, unknown>;
+      if ("enabled" in init) offenders.push(`${inst.constructor.name} persists \`enabled\` — an armed sink would round-trip through a shared file`);
+    }
+    expect(offenders, offenders.join("\n  ")).toEqual([]);
   });
 
   // VAL-14, the ONLY-IF direction. Declaring `literals` / `stringLiterals` is

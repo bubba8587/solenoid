@@ -469,9 +469,12 @@ export class CompositeNode extends ClassicPreset.Node {
       const anyNode = node as unknown as Record<string, unknown>;
       if (sn.literals) anyNode.literals = { ...sn.literals };
       if (sn.stringLiterals) anyNode.stringLiterals = { ...sn.stringLiterals };
-      installErrorGuards(node);
       built.set(sn.id, node);
+      // AFTER addNode: the constructor's installInputCoercion pipe wraps data()
+      // at nodecreated, and the guard must wrap OUTSIDE coercion so a ShapeError
+      // thrown while narrowing lands in the guard as #SHAPE! (the Canvas order).
       await this.internalEditor.addNode(node as SolenoidNode);
+      installErrorGuards(node);
       if (typeof sn.x === "number" && typeof sn.y === "number") {
         this.internalPositions[node.id] = { x: sn.x, y: sn.y };
       }

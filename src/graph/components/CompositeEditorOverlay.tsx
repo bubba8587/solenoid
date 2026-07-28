@@ -471,8 +471,10 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
     const n = kind === "input" ? comp.inputPorts.length + 1 : comp.outputPorts.length + 1;
     const label = kind === "input" ? `Input ${n}` : `Output ${n}`;
     const marker = kind === "input" ? new CompositeInputNode({ label }) : new CompositeOutputNode({ label });
-    installErrorGuards(marker);
+    // AFTER addNode — guard outside coercion (see CompositeNode.hydrate); the
+    // overlay's nodecreated pipe usually beat this call anyway (idempotent).
     await comp.internalEditor.addNode(marker as SolenoidNode);
+    installErrorGuards(marker);
     // Drop it at the viewport's left (input) / right (output) edge, vertically centered.
     const rect = mount.container.getBoundingClientRect();
     const pos = toAreaCoords(

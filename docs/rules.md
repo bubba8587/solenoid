@@ -8,9 +8,10 @@ know whether your change is legal, read here.
 
 ## Scope
 
-Three domains, chosen because they are the ones that **cannot be caught by looking at the
-app**: a broken socket rule, a wrong formula name or a mishandled null produces a
-plausible-looking answer, not a visible defect.
+Domains chosen because they are the ones that **cannot be caught by looking at the
+app**: a broken socket rule, a wrong formula name, a mishandled null, a save that
+silently drops a field, or an effect that fires on load produces a plausible-looking
+answer (or an invisible non-event), not a visible defect.
 
 | Domain | Prefix | Covers |
 |---|---|---|
@@ -18,6 +19,8 @@ plausible-looking answer, not a visible defect.
 | Sockets | `SOCK` | the type lattice, connection legality, coercion at the boundary |
 | Formula surface | `FX` | registration, naming, argument routing |
 | Value handling | `VAL` | null, SolError, logical, units |
+| Persistence | `PERSIST` | the save path — capture, round-trip, slots, identity |
+| External effects | `EFFECT` | when a node may touch the world (disk, alerts) |
 
 **Out of scope here:** UI, visual and copy rules live in `DESIGN.md` and are enforced by
 `uiCopy.test.ts`. Branch model, doc duty and commit style live in `CLAUDE.md`. This file
@@ -88,9 +91,12 @@ moving with it is part of that same author-marked change.
 real evidence, no ARR authority. Every rule heading carries its grade (the
 2026-07-28 audit): INFERRED where a concrete incident occurred and is named,
 DEFAULT where the rule is preventive judgment with no forcing incident. The
-DEFAULT set — SOCK-3, SOCK-6, FX-10, VAL-13, VAL-14 — is the thinnest ice: five
-rules held up by nothing but the agent's taste, and the first candidates for
-either an enforcing incident or deletion.
+DEFAULT set (SOCK-3, SOCK-6, FX-10, VAL-13, VAL-14, VAL-17, PERSIST-3,4,5,6,
+EFFECT-1) is the thinnest ice: rules held up by the agent's reasoning without a
+forcing incident, and the first candidates for either an enforcing incident or
+deletion. (The 2026-07-28 promotion sweep grew it — a promoted convention whose
+failure has not yet HAPPENED grades DEFAULT no matter how load-bearing the
+reasoning; the grade tracks provenance, not value.)
 
 ---
 
@@ -497,7 +503,15 @@ error counts (a bare NaN does not)".
 **MUST:** every `data()` is wrapped by `installErrorGuards`; an error input propagates to
 every output without the node running. A throwing `data()` becomes a local `#ERROR!`.
 
-*Enforced by:* `errorValue.test.ts` → "installErrorGuards".
+**MUST (ordering):** the guard wraps OUTSIDE input coercion — coercion installs first
+(innermost), the guard second — so a `ShapeError` thrown while narrowing lands in the
+guard as `#SHAPE!` instead of escaping both wrappers into the engine.
+
+*Enforced by:* `errorValue.test.ts` → "installErrorGuards"; `errorIntegration.test.ts`
+(the coercion-`#SHAPE!` engine path). Ordering completeness is by review: Canvas installs
+the two pipes in order; the composite paths called `installErrorGuards` BEFORE `addNode`
+(guard inside — inverted) from their creation until 2026-07-28, found by the
+spec-promotion sweep and fixed (guards now install after `addNode` at all four sites).
 *Exceptions:* **error CONSUMERS** (`IFERROR`/`IFNA`/`ISERROR`/`ISNA`/`ERROR.TYPE`) must
 see the raw error, and **figure SINKS** (`SEES_ERRORS`) render an error input as an empty
 figure and never emit a SolError out a `chart` socket. Both are declared, not ad hoc.
@@ -664,14 +678,142 @@ wrapper; every new nesting scheme would re-open the ambiguity VAL-15 closed.
 *Enforced by:* `broadcastRules.test.ts` → "anything deeper than a matrix is
 #SHAPE!"; `complex.test.ts` (the tagged-scalar half).
 
+### VAL-17 — A volatile `data()` freezes its roll on the recalc generation **[DEFAULT]**
+**MUST:** a node whose `data()` draws randomness caches the draw and re-rolls only when
+`getRecalcGen()` changes. Bare `Math.random()` in `data()` re-rolls on EVERY recompute
+pass, so any unrelated edit silently changes the value, F9 stops being the thing that
+controls re-rolling, and a Monte Carlo built on it is non-reproducible.
+
+*Enforced by:* `sourceInvariants.test.ts` → "every nodes/packs file calling Math.random
+references getRecalcGen" — a source scan with a sanctioned list (composite.ts generates
+ids, not values). The volatility CLOCK split between the two surfaces is `FX-1`'s
+SHUFFLE exception.
+
+---
+
+# PERSIST — The save path
+
+Found by the 2026-07-28 spec-promotion sweep: the save path was the largest cluster of
+load-bearing, test-pinned invariants with no normative home. The theme is silent data
+loss — every failure mode here writes a valid-looking file and surfaces only on reload.
+
+### PERSIST-1 — `extractInit` is a fixed point, and JSON-plain **[INFERRED]**
+**MUST:** for every catalog node, `extractInit(new Ctor(extractInit(n)))` equals
+`extractInit(n)` — what a save captures, a load re-applies, and the next save re-captures
+identically, including non-default booleans and perturbed literal maps. Every captured
+value must also survive `JSON.parse(JSON.stringify(…))`: the file path stringifies each
+field, so a `Map`/`Set`/class instance/`Infinity` config silently empties in the save
+while the live-object fixed point still holds.
+
+*Enforced by:* `persistenceSweep.test.ts` — the fixed-point sweep, the perturbation
+sweep (with the reasoned `PERTURB_SKIP` list), and the JSON round-trip sweep.
+*Origin:* v1.0 audit finding 38 — a field captured but not re-applied drops on reload
+with nothing to catch it.
+
+### PERSIST-2 — The text form is the narrow waist: every `SavedGraph` field, both directions **[INFERRED]**
+**MUST:** `serializeGraph()` returns `readTextForm(writeTextForm(raw))`, so every
+top-level `SavedGraph` field must be written by `writeTextForm` AND read by
+`readTextForm`. A field either direction omits is deleted from EVERY save, and autosave
+then writes the lossy result over the good copy.
+
+*Enforced by:* `sourceInvariants.test.ts` → "every SavedGraph interface field appears in
+writeTextForm AND readTextForm" (the completeness scan); `textForm.test.ts` (seed
+round-trips + the byte-identical second write); `docMeta.test.ts` (the two fields from
+the Origin).
+*Origin:* `comments` and `reportPalette` were built by `buildRawSavedGraph` and silently
+dropped by the round trip from their ship date until 2026-07-06 — a real data-loss bug.
+
+### PERSIST-3 — `documentStoreCore` transforms are structurally immutable **[DEFAULT]**
+**MUST:** every transform returns a NEW `SolDoc` for each document it changes.
+`documentStore.persist()` decides what to write by OBJECT IDENTITY
+(`_lastPersisted.get(id) === doc` skips the write), so an in-place mutation still updates
+the screen but is silently never persisted — the edit vanishes on the next reload.
+
+*Enforced by:* `documentStoreCore.test.ts` → the PERSIST-3 deep-freeze walk over every
+exported transform (a new in-place write throws on the frozen object; a new export not
+in the walk fails the completeness check) + the changed-doc-is-a-new-object identity
+assertions.
+
+### PERSIST-4 — Autosave slots: write the older, read the newer, `seq` first and strictly increasing **[DEFAULT]**
+**MUST:** the two-slot pair always writes the OLDER slot (a crash mid-write can never
+destroy the only good copy) and reads the newer; slot `seq` is a strictly-monotonic
+in-session counter (never a raw clock read — same-millisecond writes must not tie); and
+`seq` is the FIRST key of every slot payload, because freshness is read with a prefix
+regex, not a parse — a payload with any other key first reads as an EMPTY slot and the
+rotation silently resurrects the older write.
+
+*Enforced by:* `persistenceCore.test.ts` (the rotation algebra);
+`documentStorePersist.test.ts` → "every slot payload the STORE wrote is prefix-readable",
+"successive writes to one pair carry strictly increasing seq".
+
+### PERSIST-5 — Persistence binds MAIN, never the active surface **[DEFAULT]**
+**MUST:** the composite drill-in substitutes editor/area/engine through the
+`activeGraph.ts` seam for CANVAS operations only; `getEditor()`, serialization, autosave
+and load resolve the MAIN graph unconditionally. A save taken while drilled in must
+serialize the document, not the open subgraph.
+
+*Why:* the failure is total, silent data loss — an autosave during a drill-in would
+write the composite's internal subgraph OVER the document, and the file would be valid.
+*Enforced by:* `activeGraph.test.ts` → "CARDINAL: getEditor() (persistence source) stays
+MAIN even while drilled in" (+ the per-node ownership resolvers).
+
+### PERSIST-6 — The class name is the persisted type: kept and unique **[DEFAULT]**
+**MUST:** `constructor.name` is the `type` written into every save and the
+ctor-registry key loads resolve through (plus a dispatch key — `SEES_ERRORS`, group
+collapse, pins). Two consequences: production builds must keep class names
+(`keepNames`), and no two catalog classes may share a name — the registry is
+first-wins, so the losing class's saves would silently reconstruct as the winner
+(different sockets, plausible wiring, wrong computation; the Placeholder path only
+fires for an ABSENT type, and a collision is indistinguishable from a hit).
+
+*Enforced by:* `sourceInvariants.test.ts` → "vite.config.ts and vitest.config.ts both
+declare esbuild keepNames"; `catalogRegistry.test.ts` → "no two catalog classes share a
+constructor name".
+
+---
+
+# EFFECT — External effects
+
+When a node is allowed to do something to the world. The failure modes are inverted
+twins: an effect that fires when it shouldn't (a load writes your disk) and an effect
+that silently never fires (an alert that misses its edge is a non-event with no
+appearance).
+
+### EFFECT-1 — A sink acts only from its Run button, and always loads disarmed **[DEFAULT]**
+**MUST:** a node with an irreversible external effect (disk write) never acts from
+`data()` — `data()` caches for preview only; the effect lives in `run()`, fired only by
+the node's Run button, behind an `enabled` arm flag. The arm flag NEVER persists: it is
+excluded from the `extractInit` whitelist so every load path (save reopen, paste,
+placeholder restore) starts disarmed — opening a shared file can never write to your
+disk.
+
+*Enforced by:* `nodes/sink.test.ts`, `nodes/obsidian.test.ts` (the two families'
+behaviour: data() never touches disk, run() gates on the arm, atomic tmp+rename);
+`catalogRegistry.test.ts` → "no catalog class persists an `enabled` arm flag, and none
+constructs armed" (the catalog-wide quantifier). **The data()-never-writes half is
+per-class only** — see Known violations.
+
+### EFFECT-2 — An outward effect is edge-triggered, and suppressed during rebuild **[INFERRED]**
+**MUST:** an alert fires on a STATUS edge (`statusKey` — so range LOW↔HIGH re-fires and
+boolean mode means `=== 1`), re-arms on the calm edge, and is suppressed while
+`isGraphRebuilding()` — the post-load recompute runs inside the rebuild scope, so an
+ungated effect replays its whole backlog on every document open, switch and rollback.
+
+*Enforced by:* `nodes/alertNode.test.ts` (the edge matrix: first-eval fire, hold,
+re-arm, LOW↔HIGH, mode-switch carry-over, `=== 1`); `sourceInvariants.test.ts` → "every
+nodes/packs file firing an alert references isGraphRebuilding" (completeness).
+*Origin:* the audit-2026-07-05 class — a Connection node's auto-refresh interval inside
+a closed composite kept firing full recomputes forever; and the reported alert
+carry-over bug (switch into an already-met condition).
+
 # Enforcement summary
 
-44 rules.
+53 rules.
 
 | Status | Count | Rules |
 |---|---|---|
-| Enforced | 41 | PROV-1 · SSOT-1,2,3,4,6,7,8 · SOCK-1,2,3,4,5,7,9 · FX-1,2,3,4,5,6,7,8,9,10 · VAL-1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16 |
-| Partially enforced | 0 | — |
+| Enforced | 49 | PROV-1 · SSOT-1,2,3,4,6,7,8 · SOCK-1,2,3,4,5,7,9 · FX-1,2,3,4,5,6,7,8,9,10 · VAL-1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17 · PERSIST-1,2,3,4,5,6 · EFFECT-2 |
+| Partially enforced | 1 | EFFECT-1 |
 | Unenforced | 3 | SSOT-5 · SOCK-6, SOCK-8 |
 
 **The partially-enforced set is EMPTY** (first time). The original six were the
@@ -704,3 +846,9 @@ spelling — so the codebase was already clean and the value is the ratchet.)
    file exists, summary counts add up. Whether a cited test actually ENFORCES its rule is
    still a reading job (this document's fact-check found four misciting rules that a
    file-exists check alone would have passed).
+
+2. **EFFECT-1's data()-never-writes half is per-class** — the two existing sink families
+   are pinned individually; a NEW sink whose `data()` touches disk is uncaught until its
+   own test exists. *Fix: a brace-matched `data()`-body source scan for the write APIs
+   (`writeTextFilePath` / `obsidianWrite` / `pickSaveFilePath`), the `opSelectTag`
+   technique.*

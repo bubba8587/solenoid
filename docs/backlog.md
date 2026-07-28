@@ -10,14 +10,31 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
 
 ## Architecture spec (`docs/rules.md`)
 
-- [ ] **Spec-promotion sweep (author queue, 2026-07-28)** — walk the codebase and the
-  test suite looking for invariants that deserve promotion into the formal spec system:
-  load-bearing rules living only as comments/folklore (the CLAUDE.md trap list is the
-  obvious hunting ground), behaviors pinned by a test but stated by no rule (the test
-  passes while its MEANING has no home), and conventions every file follows that
-  nothing enforces (the completeness-gap shape the 2026-07-28 tranches closed for the
-  VAL rules). Deliverable per find: a numbered rule with provenance grade + an
-  Enforced-by line (or an honest UNENFORCED), same discipline as the existing 44.
+- [ ] **Spec-promotion: the remainder queue** — tranche 1 landed (2026-07-28: the
+  PERSIST domain ×6, EFFECT ×2, VAL-17; 53 rules). The surveyed-but-unpromoted
+  candidates, roughly by value; each is already test-pinned or convention-verified,
+  needing only the rule + (sometimes) a completeness check:
+  - **SOCK candidates**: adopting ports own their socket instance (the Input Switch
+    shared-singleton trap — cheap two-instance test); a `trueany` output implies a
+    `passthrough()` declaration (catalog walk + sanction list for FC/Conduit/composite
+    markers and genuinely-unknowable producers); Conduit type-transparency + frame-SHAPE
+    resolution through passthroughs (conduitTrace/frameShapePassthrough pin them,
+    no rule); a mode selector that hides sockets drops their cables — six hand-rolled
+    copies of the pruning loop want ONE helper (SSOT-6 shape).
+  - **ENGINE domain (new)**: targeted recompute ≡ full pass (downstreamClosure +
+    #CIRC! SCC seeding — circularReset/processTargeted pin, no rule); calc-mode gating
+    matrix; refresh never enters a rebuild scope (connectionStore pins).
+  - **VAL candidates**: guardFinite completeness (no producer emits bare NaN);
+    currency-mismatch completeness across the unit combinators; positional lookups'
+    per-cell error filtering (errorFiltering pins); read-as is coercion-not-assertion.
+  - **FX candidate**: the two frame backends (Polars/JS oracle) answer identically —
+    needs a shared fixture corpus run by both vitest and cargo, plus an every-verb
+    completeness guard; formulaDivergence's tripwire pattern deserves a rule.
+  - **STORE/PERSIST extras**: node-keyed store registry completeness (forget +
+    forgetAll — formatAnnotationStore and standoffs register neither today);
+    catalog-wide transient-field triage (extractInit captures vs DELIBERATELY_TRANSIENT
+    sanction map); unknown-type Placeholder lossless round-trip; width/height dual-use
+    ownership; documentStore verb discipline (captureCurrent before every switch).
 - [ ] **Rules spec — the enforcement tail.** The partially-enforced set hit ZERO
   (2026-07-28: VAL-10 algebra-file scan, VAL-12 OpSelect-binding scan + the `arg`
   contract, VAL-14 only-if — after the earlier passes closed SOCK-5/SOCK-7/VAL-13/FX-4;

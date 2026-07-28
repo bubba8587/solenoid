@@ -159,3 +159,56 @@ describe("validateLibrary", () => {
     expect(validateLibrary({ documents: [{ id: "a", name: "x", graph: { nodes: "no" } }], currentId: null })).toBeNull();
   });
 });
+
+// ─── PERSIST-3 — transforms are structurally immutable ─────────────────────────
+// documentStore.persist() decides what to WRITE by object identity
+// (`_lastPersisted.get(id) === doc` skips the write), so a transform that
+// mutates a SolDoc in place still updates the screen but is silently NEVER
+// persisted — the edit vanishes on the next reload. Deep-freezing the input and
+// walking EVERY exported transform makes a new in-place write throw by name
+// (strict-mode assignment on a frozen object), with no hand-kept list of
+// transforms to maintain.
+import * as core from "./documentStoreCore";
+
+function deepFreeze<T>(o: T): T {
+  if (o && typeof o === "object" && !Object.isFrozen(o)) {
+    Object.freeze(o);
+    for (const v of Object.values(o as object)) deepFreeze(v);
+  }
+  return o;
+}
+
+describe("PERSIST-3 — every transform returns new objects, never mutates (identity is the persist signal)", () => {
+  const frozenLib = (): DocLibrary =>
+    deepFreeze(addDocument(addDocument(emptyLibrary(), doc("a", "A")), doc("b", "B")));
+
+  it("every exported transform runs against a deep-frozen library without throwing", () => {
+    const lib = frozenLib();
+    const calls: Array<[string, () => unknown]> = [
+      ["addDocument", () => addDocument(lib, doc("c", "C"))],
+      ["renameDocument", () => renameDocument(lib, "a", "A2")],
+      ["setCurrent", () => setCurrent(lib, "a")],
+      ["setDocPath", () => setDocPath(lib, "a", "/tmp/x.json", "X")],
+      ["updateCurrentGraph", () => updateCurrentGraph(lib, graph(), 1)],
+      ["removeDocument", () => removeDocument(lib, "a")],
+      ["duplicateDocument", () => duplicateDocument(lib, "a", "a2", "A copy")],
+    ];
+    for (const [name, run] of calls) {
+      expect(run, `${name} mutated a frozen SolDoc/DocLibrary in place — persist() will never write the change`).not.toThrow();
+    }
+    // The walk stays complete: a NEW exported transform must be added above.
+    const fns = Object.entries(core).filter(([, v]) => typeof v === "function").map(([k]) => k);
+    const covered = new Set([...calls.map(([n]) => n), "emptyLibrary", "getCurrent", "uniqueName", "validateDoc", "validateLibrary"]);
+    const missing = fns.filter((f) => !covered.has(f));
+    expect(missing, `new documentStoreCore export(s) not covered by the PERSIST-3 freeze walk: ${missing.join(", ")}`).toEqual([]);
+  });
+
+  it("a changed doc is a NEW object; untouched docs keep identity", () => {
+    const lib = frozenLib();
+    const out = renameDocument(lib, "a", "A2");
+    const a = out.documents.find((d) => d.id === "a")!;
+    const b = out.documents.find((d) => d.id === "b")!;
+    expect(a).not.toBe(lib.documents.find((d) => d.id === "a"));
+    expect(b).toBe(lib.documents.find((d) => d.id === "b"));
+  });
+});
