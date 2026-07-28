@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { numIn, numListIn, numOut, tableIn, tableOut, strIn, strOut, chartOut, anyTableIn, frameIn } from "./shared";
+import { readInput, numIn, numListIn, numOut, tableIn, tableOut, strIn, strOut, chartOut, anyTableIn, frameIn } from "./shared";
 import { parseChartOptions, serializeChartOptions, CHART_BUILDER_TARGETS, type ChartOptions, type ChartTargetId } from "./chartOptions";
 import { clamp, iterMin, iterMax } from "./mathUtils";
 import type {
@@ -173,8 +173,11 @@ export class ChartNode extends ClassicPreset.Node {
       : null;
     // Only a real string configures the options; a SolError/number wired into the
     // Options socket (it reaches here now the node sees raw errors) falls back to
-    // the inline literal rather than being parsed as text.
-    const optStr = typeof inputs.options?.[0] === "string" ? inputs.options[0] : (this.stringLiterals.options ?? null);
+    // the inline literal rather than being parsed as text. A wired BLANK is not
+    // garbage though — it means "no styling given", so it must not reinstate the
+    // card's string (value-semantics.md, "Reading an input").
+    const optIn = readInput(inputs.options, this.stringLiterals.options ?? null);
+    const optStr = typeof optIn === "string" || optIn === null ? optIn : (this.stringLiterals.options ?? null);
     this.chartOptions = parseChartOptions(optStr);
     const chart: ChartValue = {
       __chart: true,
@@ -235,11 +238,13 @@ export class HistogramNode extends ClassicPreset.Node {
   data(inputs: { values?: (number | number[])[]; bins?: number[]; options?: string[] }): { chart: ChartValue } {
     const raw = inputs.values?.[0] ?? null;
     const list = Array.isArray(raw) ? raw : raw === null ? [] : [raw];
-    const bins = inputs.bins?.[0] ?? this.literals.bins ?? 10;
-    this.literals.bins = bins;
-    const counts = histogramBins(list as (number | null)[], bins);
+    const bins = readInput(inputs.bins, this.literals.bins ?? 10);
+    // Bins is a SHAPE, not styling — a wired blank leaves the binning unknown, so the
+    // figure is empty (value-semantics.md, "Reading an input").
+    if (bins !== null) this.literals.bins = bins;
+    const counts = bins === null ? [] : histogramBins(list as (number | null)[], bins);
     this.cachedResult = counts;
-    this.chartOptions = parseChartOptions(inputs.options?.[0] ?? this.stringLiterals.options ?? null);
+    this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
     const chart: ChartValue = {
       __chart: true,
       op: "column",
@@ -280,7 +285,9 @@ export class MermaidNode extends ClassicPreset.Node {
   }
 
   data(inputs: { source?: string[] }): { diagram: MermaidValue } {
-    const src = inputs.source?.[0] ?? this.stringLiterals.source ?? "";
+    // The diagram IS the source — a wired blank renders an empty diagram rather than
+    // the text typed on the card (value-semantics.md, "Reading an input").
+    const src = readInput(inputs.source, this.stringLiterals.source ?? "") ?? "";
     this.cachedSource = src;
     const diagram: MermaidValue = {
       __mermaid: true,
@@ -312,7 +319,7 @@ export class GaugeNode extends ClassicPreset.Node {
   }
 
   data(inputs: { value?: number[] }) {
-    const v = inputs.value?.[0] ?? this.literals.value ?? null;
+    const v = readInput(inputs.value, this.literals.value ?? null);
     this.cachedResult = v;
     return { result: v };
   }
@@ -341,8 +348,10 @@ export class SevenSegNode extends ClassicPreset.Node {
   }
 
   data(inputs: { value?: number[]; decimals?: number[] }): { chart: ChartValue } {
-    const v = inputs.value?.[0] ?? this.literals.value ?? null;
-    const d = clamp(Math.round(inputs.decimals?.[0] ?? this.literals.decimals ?? 0), 0, 6);
+    const v = readInput(inputs.value, this.literals.value ?? null);
+    // `decimals` is PRESENTATION: a wired blank means "no formatting given", which is
+    // the neutral 0 — not the number typed on the card.
+    const d = clamp(Math.round(readInput(inputs.decimals, this.literals.decimals ?? 0) ?? 0), 0, 6);
     this.literals.decimals = d;
     if (inputs.value?.[0] === undefined) this.literals.value = v ?? 0;
     const payload: SevenSegPayload = { kind: "sevenseg", text: sevenSegText(v, d) };
@@ -386,11 +395,13 @@ export class KpiNode extends ClassicPreset.Node {
   }
 
   data(inputs: { value?: number[]; prev?: number[]; options?: string[] }): { chart: ChartValue } {
-    const value = inputs.value?.[0] ?? this.literals.value ?? null;
-    const prev = inputs.prev?.[0] ?? this.literals.prev ?? null;
+    const value = readInput(inputs.value, this.literals.value ?? null);
+    // A wired blank `prev` shows NO comparison — it does not compare against the
+    // number typed on the card (value-semantics.md, "absent is not unknown").
+    const prev = readInput(inputs.prev, this.literals.prev ?? null);
     if (inputs.value?.[0] === undefined) this.literals.value = value ?? 0;
     if (inputs.prev?.[0] === undefined) this.literals.prev = prev ?? 0;
-    this.chartOptions = parseChartOptions(inputs.options?.[0] ?? this.stringLiterals.options ?? null);
+    this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
     const payload: KpiPayload = {
       kind: "kpi",
       value,
@@ -429,13 +440,16 @@ export class BulletNode extends ClassicPreset.Node {
   }
 
   data(inputs: { value?: number[]; target?: number[]; max?: number[]; options?: string[] }): { chart: ChartValue } {
-    const value = inputs.value?.[0] ?? this.literals.value ?? null;
-    const target = inputs.target?.[0] ?? this.literals.target ?? null;
-    const max = inputs.max?.[0] ?? this.literals.max ?? 100;
+    const value = readInput(inputs.value, this.literals.value ?? null);
+    const target = readInput(inputs.target, this.literals.target ?? null);
+    // `max` is the track's SCALE, not a datum — the figure cannot render without one,
+    // so it keeps the card's bound exactly as a Slider does (value-semantics.md,
+    // "a control's bound"). `value` and `target` are data and go blank.
+    const max = readInput(inputs.max, this.literals.max ?? 100) ?? (this.literals.max ?? 100);
     if (inputs.value?.[0] === undefined) this.literals.value = value ?? 0;
     if (inputs.target?.[0] === undefined) this.literals.target = target ?? 0;
     if (inputs.max?.[0] === undefined) this.literals.max = max;
-    this.chartOptions = parseChartOptions(inputs.options?.[0] ?? this.stringLiterals.options ?? null);
+    this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
     const payload: BulletPayload = { kind: "bullet", value, target, min: 0, max };
     this.cachedPayload = payload;
     return {
@@ -497,7 +511,7 @@ export class TreemapNode extends ClassicPreset.Node {
     const cols = await readFrameColumns(inputs.frame?.[0] ?? null);
     const names = colAsStrings(cols[0]);
     const values = colAsNumbers(cols[1]);
-    this.chartOptions = parseChartOptions(inputs.options?.[0] ?? this.stringLiterals.options ?? null);
+    this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
     const payload: TreemapPayload = { kind: "treemap", names, values };
     this.cachedPayload = payload;
     return {
@@ -532,7 +546,7 @@ export class SankeyNode extends ClassicPreset.Node {
     const sources = colAsStrings(cols[0]);
     const targets = colAsStrings(cols[1]);
     const values = colAsNumbers(cols[2]);
-    this.chartOptions = parseChartOptions(inputs.options?.[0] ?? this.stringLiterals.options ?? null);
+    this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
     const payload: SankeyPayload = { kind: "sankey", sources, targets, values };
     this.cachedPayload = payload;
     return {
@@ -652,8 +666,11 @@ export class ContourNode extends ClassicPreset.Node {
 
   data(inputs: { grid?: (number | null | unknown)[][][]; levels?: number[] }): { chart: ChartValue } {
     const { xs, ys, z } = parseBorderedGrid(inputs.grid?.[0] ?? null);
-    const levels = clamp(Math.round(inputs.levels?.[0] ?? this.literals.levels ?? 8), 2, 24);
-    this.literals.levels = levels;
+    // Levels is a SHAPE — it decides how many bands the figure has, so a wired blank
+    // leaves the figure empty rather than reusing the card's count.
+    const levelsRaw = readInput(inputs.levels, this.literals.levels ?? 8);
+    const levels = levelsRaw === null ? 0 : clamp(Math.round(levelsRaw), 2, 24);
+    if (levelsRaw !== null) this.literals.levels = levels;
     const payload: ContourPayload = { kind: "contour", xs, ys, z, levels };
     const chart: ChartValue = { __chart: true, op: "contour", values: null, payload, options: {}, title: this.label || "Contour" };
     this.cachedChart = chart;
@@ -702,7 +719,7 @@ export class WaterfallNode extends ClassicPreset.Node {
     const cols = await readFrameColumns(inputs.frame?.[0] ?? null);
     const names = colAsStrings(cols[0]);
     const values = colAsNumbers(cols[1]);
-    this.chartOptions = parseChartOptions(inputs.options?.[0] ?? this.stringLiterals.options ?? null);
+    this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
     const payload: WaterfallPayload = { kind: "waterfall", names, values, total: true };
     const chart: ChartValue = {
       __chart: true, op: "waterfall", values, payload,
@@ -748,7 +765,7 @@ export class CandlestickNode extends ClassicPreset.Node {
       low:   colAsNumbers(cols[hasDates ? 3 : 2]),
       close: colAsNumbers(cols[hasDates ? 4 : 3]),
     };
-    this.chartOptions = parseChartOptions(inputs.options?.[0] ?? this.stringLiterals.options ?? null);
+    this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
     const chart: ChartValue = {
       __chart: true, op: "candle", values: payload.close, payload,
       options: this.chartOptions, title: this.chartOptions.title || this.label || "Candlestick",
@@ -810,7 +827,7 @@ export class BoxplotNode extends ClassicPreset.Node {
       const s = boxplotStats(raw.map((v) => (typeof v === "number" ? v : null)));
       if (s) boxes.push({ name: "", ...s });
     }
-    this.chartOptions = parseChartOptions(inputs.options?.[0] ?? this.stringLiterals.options ?? null);
+    this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
     const payload: BoxplotPayload = { kind: "boxplot", boxes };
     const chart: ChartValue = {
       __chart: true, op: "boxplot", values: null, payload,
@@ -855,7 +872,7 @@ export class CalendarHeatmapNode extends ClassicPreset.Node {
       days.push(Math.floor(d));
       values.push(vals[i] ?? 0);
     }
-    this.chartOptions = parseChartOptions(inputs.options?.[0] ?? this.stringLiterals.options ?? null);
+    this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
     const payload: CalHeatPayload = { kind: "calheat", days, values };
     const chart: ChartValue = {
       __chart: true, op: "calheat", values, payload,
@@ -891,7 +908,7 @@ export class WaffleNode extends ClassicPreset.Node {
     const cols = await readFrameColumns(inputs.frame?.[0] ?? null);
     const names = colAsStrings(cols[0]);
     const values = colAsNumbers(cols[1] ?? cols[0]);
-    this.chartOptions = parseChartOptions(inputs.options?.[0] ?? this.stringLiterals.options ?? null);
+    this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
     const payload: WafflePayload = { kind: "waffle", names, values };
     const chart: ChartValue = {
       __chart: true, op: "waffle", values, payload,
@@ -975,11 +992,12 @@ export class ChartBuilderNode extends ClassicPreset.Node {
   }
 
   data(inputs: Record<string, unknown[]>) {
-    const str = (k: string) => (inputs[k]?.[0] as string | undefined) ?? this.stringLiterals[k];
-    const num = (k: string) => {
-      const wired = inputs[k]?.[0] as number | undefined;
-      return wired ?? this.literals[k];
-    };
+    // Every field here is PRESENTATION. A wired blank means "this option was not
+    // given" — it must NOT fall back to the card's own value, or a blank cable
+    // silently reinstates styling the graph withheld (value-semantics.md, "Reading
+    // an input"). `undefined` is what serializeChartOptions omits.
+    const str = (k: string) => readInput(inputs[k] as string[] | undefined, this.stringLiterals[k]) ?? undefined;
+    const num = (k: string) => readInput(inputs[k] as number[] | undefined, this.literals[k]) ?? undefined;
     const out = serializeChartOptions({
       title:     str("title"),
       xlabel:    str("xlabel"),

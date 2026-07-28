@@ -133,19 +133,6 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   - The grid is mouse-only: no arrow keys between cells, no Enter-to-move-down, no
     Tab-across, and headers aren't focusable so the sort has no keyboard path. The
     biggest gap against "zero learning curve from Excel", and much the largest job.
-- [ ] **Finish the `readInput` sweep** — 16 files done. **159 reads remain**: finance 73,
-  list 33, frame 30, visual 23. The spec is `value-semantics.md` "Reading an input",
-  including the trap those four are FULL of — "absent is not unknown" (an optional
-  bound / tolerance / comparison value whose null branch is already written);
-  RATCHETED per file by `nodes/readInputSweep.test.ts`
-  so the count can only shrink and a new node can't reintroduce the idiom. (The old
-  "~144 sites" estimate was low — the real figure is measured by that test.) Biggest:
-  finance 73, frame 30, list 33, visual 23, stats 22. Policy is SETTLED (author,
-  2026-07-27): follow THIS project's model over Excel's — an element-wise operand and a
-  MODE selector both PROPAGATE a wired blank; an AGGREGATOR/reducer SKIPS it; Filter
-  drops the row. `nodes/wiredNull.test.ts` pins a worked example of each, so what
-  remains is mechanical: route the read through `readInput`, then guard or widen the
-  return type. Most of the work per site is the return-type widening, not the read.
 - [ ] **Small mechanical sweep**: trueany adoption runs on the MAIN editor only —
   drill-in composites don't adopt (`trueAnyAdopt.ts`).
 - [ ] **Keep `release-notes-features.md` current** — the curated 1.3 selling list +

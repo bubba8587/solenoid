@@ -111,6 +111,8 @@ Decide by the input's ROLE, not by its type:
 | a **check's parameter** — Expect's bound or pattern | that check cannot be EVALUATED | **skips THAT CHECK** and passes the data through | Expect keeps flowing, reports no violation |
 | a **control's bound** — Slider min/max/step | the control still has to work | **falls back to the card's own value** | Slider keeps clamping to its typed bound |
 | a **column reference** — which column to sort/group/split/look up by | the target is unknown | **PROPAGATES** — a blank frame out, NOT the frame unchanged | Frame Sort, Get Column, XLOOKUP |
+| a **figure's datum** — a chart's values, a KPI's number, a Mermaid source | there is nothing to draw | **PROPAGATES**: renders an EMPTY figure, never a SolError out a `chart` socket | Gauge, KPI, 7-Segment |
+| a **presentation annotation** — an options string, decimals, a colour | no styling was given | **falls back to the NEUTRAL default**, never to the card's styling | chart Options, Chart Options builder |
 | a **filter predicate** | that row is not known to match | **DROPS the row** | Filter |
 | a **filter condition's column or comparison value** | that condition cannot be evaluated, so which rows survive is unknown | **PROPAGATES** — the whole result is blank | Filter, SUMIFS |
 | an **optional** input — a bound, a tolerance, a comparison value | see "absent is not unknown" below: still **PROPAGATES** | | Clamp's min, as-of tolerance |
@@ -125,6 +127,14 @@ specific, checkable way — not as taste:
 - A **control** that propagated would drop the value the user physically set. And
   "stop constraining" (`±Infinity`) is not an escape: it breaks
   `<input type="range">`, the play loop's wrap-around, and tornado's sweep bounds.
+- A **presentation annotation** looks like a control, and it is the one place the
+  control rule does NOT extend. The control fallback exists because the widget cannot
+  physically work without a bound; styling always has a working neutral (`{}` options,
+  0 decimals), so there is nothing to rescue and falling back to the card would just
+  reinstate styling the graph withheld. The test is the widget's, not the input's: can
+  it render at all? A Bullet's `max` is the track's scale and it cannot, so `max` is a
+  control and keeps the card's bound while the same node's `value` and `target` go
+  blank. Three inputs, two dispositions, one node.
 - A **filter condition** looks like it should skip, the way a check's parameter does.
   It doesn't, and the difference is what the node OUTPUTS. A check passes the data
   through and reports separately, so skipping costs only the report. A filter's output

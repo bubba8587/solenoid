@@ -8,6 +8,7 @@ import { ClampNode } from "./scalar";
 import { MirrNode, TBillNode } from "./finance";
 import { SortFrameNode, JoinNode } from "./frame";
 import { ListIndexNode, SliceNode } from "./list";
+import { BulletNode, KpiNode } from "./visual";
 import type { FrameValue } from "../frame";
 import { solError, isSolError } from "../errorValue";
 
@@ -277,6 +278,36 @@ describe("the THIRD state — undefined is omitted, null is unknown", () => {
     expect(new SliceNode().data({
       list: [arr], start: [2], end: [null as unknown as number],
     }).result).toBeNull();
+  });
+});
+
+describe("figure sinks — empty figure for a datum, neutral default for styling", () => {
+  it("Bullet: value and target go blank, but the track's scale keeps the card's bound", () => {
+    const node = new BulletNode();
+    node.literals.value = 42;
+    node.literals.target = 80;
+    node.literals.max = 250;
+    const out = node.data({
+      value: [null as unknown as number],
+      target: [null as unknown as number],
+      max: [null as unknown as number],
+    }).chart;
+    const p = out.payload as { value: number | null; target: number | null; max: number };
+    expect(p.value).toBeNull();
+    expect(p.target).toBeNull();
+    // The figure still has to render, so the SCALE behaves like a Slider bound.
+    expect(p.max).toBe(250);
+  });
+
+  it("chart options: a wired blank means NO styling, not the string on the card", () => {
+    const node = new KpiNode();
+    node.stringLiterals.options = "title=From the card";
+    const out = node.data({ value: [5], options: [null as unknown as string] }).chart;
+    expect(out.options.title).toBeUndefined();
+    // UNWIRED still uses the typed options.
+    const unwired = new KpiNode();
+    unwired.stringLiterals.options = "title=From the card";
+    expect(unwired.data({ value: [5] }).chart.options.title).toBe("From the card");
   });
 });
 
