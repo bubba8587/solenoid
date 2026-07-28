@@ -16,9 +16,6 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   - **FX: backend parity corpus** — the Polars/JS-oracle pair needs a shared fixture
     corpus run by both vitest and cargo + an every-verb completeness guard. The
     largest single build in the queue.
-  - **Catalog-wide transient-field triage** — every own field of every node either
-    round-trips through extractInit or lands in a DELIBERATELY_TRANSIENT sanction
-    map (one-time ~50-name triage; the map becomes the missing documentation).
   - **width/height dual-use ownership** — NodeCard's ResizeObserver writes measured
     pixels onto whitelisted persistence fields; only ~6 classes read them back.
   - **read-as is coercion-not-assertion** (getColumnReadAs pins it) — narrow;

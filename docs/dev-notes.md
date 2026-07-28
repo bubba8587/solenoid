@@ -120,6 +120,33 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### PERSIST-9: the transient-field triage — 169 fields, one real bug (2026-07-28ee)
+
+The queue's one-sitting item. The fixed-point sweep (PERSIST-1) proves
+whitelisted fields round-trip but is BLIND to a field the whitelist never
+captured — both sides omit it identically, so the test passes while the user's
+setting silently resets. The triage closes the blindness: every own field of
+every catalog node is now classified — persisted (whitelist / literal maps /
+extractInit's bespoke extras), pattern-transient (`cached*` derived display,
+`_*` private runtime), or in a ~70-entry DELIBERATELY_TRANSIENT map grouped by
+mechanism (derived-from-expr, per-pass recompute, FC reconcile state, VAL-17
+roll state, EFFECT-1 disarm, async fetch state, drill-in markers re-stamped by
+the host composite, socket instances, class declarations).
+
+**The one real bug in 169 fields: `asofDirection`.** The as-of join's
+user-facing direction dropdown — constructor took it, the component edited it,
+the whitelist never captured it, so every save/reload/paste reset it to
+"backward". Exactly invisible to PERSIST-1. Whitelisted + pinned. Everything
+else checked out (chartOptions derives from a persisted input; composite run
+CONFIGS ride bespoke extras while run STATE stays transient; AngleDial's
+`step` is a constructor-only knob with no UI; FC lock state re-derives per
+reconcile pass; goalTarget is re-stamped from the host's persisted goalSeek).
+
+Rule PERSIST-9; 68 rules, 64 enforced. The spec-promotion queue's mechanical
+half is now EMPTY — what remains is the backend parity corpus (the one large
+build) and the small residue (width/height ownership; read-as stays deferred
+by design).
+
 ### STORE-1: the node-store registry completes — five unregistered stores, one visible bug (2026-07-28dd)
 
 The queue said two stores were unregistered; the census found FIVE, plus two
