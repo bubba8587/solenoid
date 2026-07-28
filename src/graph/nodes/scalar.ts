@@ -511,9 +511,12 @@ export class BaseConvertNode extends ClassicPreset.Node {
   }
 
   data(inputs: { value?: number[]; from?: number[]; to?: number[] }): { result: number | null } {
-    const rawVal = inputs.value?.[0] ?? this.literals.value ?? 0;
-    const from   = Math.round(inputs.from?.[0] ?? this.literals.from ?? 2);
-    const to     = Math.round(inputs.to?.[0]   ?? this.literals.to   ?? 10);
+    const rawVal = readInput(inputs.value, this.literals.value ?? 0);
+    const fromRaw = readInput(inputs.from, this.literals.from ?? 2);
+    const toRaw   = readInput(inputs.to,   this.literals.to   ?? 10);
+    if (rawVal === null || fromRaw === null || toRaw === null) { this.cachedResult = null; return { result: null }; }
+    const from = Math.round(fromRaw);
+    const to   = Math.round(toRaw);
 
     if (from < 2 || from > 36 || to < 2 || to > 36) {
       this.cachedResult = null; return { result: null };
@@ -579,9 +582,15 @@ export class ClampNode extends ClassicPreset.Node {
 
   data(inputs: { value?: (number | number[])[]; min?: (number | number[])[]; max?: (number | number[])[] }) {
     const value = readInput(inputs.value, this.literals.value);
-    const min   = inputs.min?.[0]   ?? this.literals.min   ?? null;
-    const max   = inputs.max?.[0]   ?? this.literals.max   ?? null;
+    // "Absent" is not "unknown": an UNWIRED bound means no floor/ceiling (the null
+    // branch below), but a WIRED blank means the bound itself is unknown, so the
+    // clamped value is unknown too. Routing the wired null into the no-bound path
+    // would silently stop clamping.
+    const minWired = inputs.min !== undefined, maxWired = inputs.max !== undefined;
+    const min = minWired ? (inputs.min?.[0] ?? null) : (this.literals.min ?? null);
+    const max = maxWired ? (inputs.max?.[0] ?? null) : (this.literals.max ?? null);
     if (value === null) { this.cachedResult = null; return { result: null }; }
+    if ((minWired && min === null) || (maxWired && max === null)) { this.cachedResult = null; return { result: null }; }
     // Apply floor and ceiling independently — each is optional.
     let result: number | number[] = value;
     if (min !== null) result = broadcast((v, mn) => Math.max(v, mn), result, min) as number | number[];
@@ -669,7 +678,8 @@ export class RoundNNode extends ClassicPreset.Node {
 
   data(inputs: { value?: (number | number[])[]; digits?: (number | number[])[] }) {
     const value  = readInput(inputs.value, this.literals.value);
-    const digits = inputs.digits?.[0] ?? this.literals.digits ?? 0; // config: unwired/blank → 0 places
+    // UNWIRED → 0 places; a WIRED blank is an unknown precision, so it propagates.
+    const digits = readInput(inputs.digits, this.literals.digits ?? 0);
     let result: BroadcastResult = null;
     if (value !== null) {
       result = broadcast((v, d) => {
@@ -774,8 +784,11 @@ export class CombinatoricsNode extends ClassicPreset.Node {
     // formula path (Formula.js) floors — rounding here made the node disagree with
     // `=FACT(2.9)`. Floor matches both for the non-negative domain these ops live in
     // (negatives are caught by the per-op domain guards below).
-    const n = Math.floor(inputs.n?.[0] ?? this.literals.n ?? 0);
-    const k = Math.floor(inputs.k?.[0] ?? this.literals.k ?? 0);
+    const nRaw = readInput(inputs.n, this.literals.n ?? 0);
+    const kRaw = readInput(inputs.k, this.literals.k ?? 0);
+    if (nRaw === null || kRaw === null) { this.cachedResult = null; return { result: null }; }
+    const n = Math.floor(nRaw);
+    const k = Math.floor(kRaw);
     let result: number | null = null;
     let domainOk = true;
     switch (this.op) {
@@ -950,9 +963,10 @@ export class SeriesSumNode extends ClassicPreset.Node {
   }
 
   data(inputs: { x?: number[]; n?: number[]; m?: number[]; coef?: number[][] }) {
-    const x    = inputs.x?.[0]    ?? this.literals.x ?? 1;
-    const n    = inputs.n?.[0]    ?? this.literals.n ?? 0;
-    const m    = inputs.m?.[0]    ?? this.literals.m ?? 1;
+    const x = readInput(inputs.x, this.literals.x ?? 1);
+    const n = readInput(inputs.n, this.literals.n ?? 0);
+    const m = readInput(inputs.m, this.literals.m ?? 1);
+    if (x === null || n === null || m === null) { this.cachedResult = null; return { result: null }; }
     const coef = inputs.coef?.[0] ?? null;
     if (!coef || coef.length === 0) { this.cachedResult = null; return { result: null }; }
     let result = 0;
@@ -1022,8 +1036,10 @@ export class BesselNode extends ClassicPreset.Node {
   }
 
   data(inputs: { x?: number[]; n?: number[] }): { result: number | null } {
-    const x = inputs.x?.[0] ?? this.literals.x ?? 1;
-    const n = Math.max(0, Math.round(inputs.n?.[0] ?? this.literals.n ?? 0));
+    const x = readInput(inputs.x, this.literals.x ?? 1);
+    const nRaw = readInput(inputs.n, this.literals.n ?? 0);
+    if (x === null || nRaw === null) { this.cachedResult = null; return { result: null }; }
+    const n = Math.max(0, Math.round(nRaw));
     let result: number;
     switch (this.op) {
       case "besselj": result = _besselJ(x, n); break;

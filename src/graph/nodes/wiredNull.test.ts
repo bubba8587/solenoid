@@ -4,6 +4,7 @@ import { DateConstructNode, DateAddNode, NetworkdaysNode } from "./date";
 import { BooleanOpNode, NotNode } from "./logic";
 import { SliderInputNode } from "./input";
 import { ExpressionNode } from "./expression";
+import { ClampNode } from "./scalar";
 
 // ─── A wired blank must not resurrect the typed literal ───────────────────────
 // The `inputs.x?.[0] ?? this.literals.x` idiom swallows a WIRED null into the
@@ -169,6 +170,28 @@ describe("a formula VARIABLE carries the blank through", () => {
     expect(node.data({ x: [null as unknown as number] }).result).toBeNull();
     // Unwired still uses the typed value.
     expect(node.data({}).result).toBe(6);
+  });
+});
+
+describe("\"absent\" is not \"unknown\" — the optional-input trap", () => {
+  // Clamp already uses null internally for "no bound applied", so the wired blank
+  // had a ready-made path to fall into that silently means "don't clamp". Only the
+  // UNWIRED slot means omitted.
+  it("Clamp: an UNWIRED min means no floor", () => {
+    const node = new ClampNode();
+    node.literals.value = -5;
+    node.literals.max = 10;
+    expect(node.data({ value: [-5] }).result).toBe(-5); // no floor applied
+  });
+
+  it("Clamp: a WIRED blank min is unknown, not unclamped", () => {
+    const node = new ClampNode();
+    expect(node.data({ value: [-5], min: [null as unknown as number] }).result).toBeNull();
+  });
+
+  it("Clamp: a WIRED min still clamps", () => {
+    const node = new ClampNode();
+    expect(node.data({ value: [-5], min: [0] }).result).toBe(0);
   });
 });
 
