@@ -15,7 +15,26 @@ import * as path from "node:path";
 const DOC = fs.readFileSync(path.resolve(__dirname, "../../docs/rules.md"), "utf8");
 
 describe("docs/rules.md", () => {
-  const ids = [...DOC.matchAll(/^### ((?:SSOT|SOCK|FX|VAL)-\d+)/gm)].map((m) => m[1]);
+  const ids = [...DOC.matchAll(/^### ((?:PROV|SSOT|SOCK|FX|VAL)-\d+)/gm)].map((m) => m[1]);
+
+  // ─── The ARR-uniqueness guard (PROV-1, the one author-ruled rule) ───────────
+  // ARR is conferred ONLY by the author reading this document in a session and
+  // marking a rule themselves. This guard makes that mechanically binding on the
+  // agent: exactly one [ARR] mark may exist, and it must sit on PROV-1. Promoting
+  // any other rule requires the author to edit this file AND move the expected
+  // set below in the same author-marked change — the agent doing it alone fails
+  // here. (If you are an agent reading this while tempted: don't. The count is
+  // the author's, not yours.)
+  it("exactly one rule is author-ruled, and it is PROV-1", () => {
+    const AUTHOR_MARKED_ARR: string[] = ["PROV-1"]; // author-maintained; agents must not edit
+    const marks = [...DOC.matchAll(/^### ((?:PROV|SSOT|SOCK|FX|VAL)-\d+)[^\n]*\[ARR\]/gm)].map((m) => m[1]);
+    expect(marks.sort()).toEqual([...AUTHOR_MARKED_ARR].sort());
+    // And [ARR] can't hide in prose: beyond rule headings, the literal may
+    // appear only where the PROV section NAMES the mark (its grade table and
+    // PROV-1's own body text).
+    const all = [...DOC.matchAll(/\[ARR\]/g)].length;
+    expect(all - marks.length).toBeLessThanOrEqual(2);
+  });
 
   it("rule IDs are unique and the total matches the declared count", () => {
     expect(new Set(ids).size).toBe(ids.length);

@@ -120,6 +120,32 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### PROV: the provenance constitution — one ARR, by author ruling (2026-07-28i)
+
+The author issued the spec system's first genuinely author-ruled rule, and it is
+about ruling itself. PROV-1: a rule is author-ruled (ARR) if and only if the
+author, in a specific session, has read the rules doc and marked the rule
+THEMSELVES. Nothing else confers ARR — including things the author said in the
+past. As of its creation, every other rule in the document is explicitly NOT
+author-ruled, whatever its history; the agent was permitted to mark PROV-1 ARR
+and no others.
+
+Implemented as a new PROV section in rules.md: three provenance grades (ARR /
+INFERRED / DEFAULT — a past author statement is EVIDENCE for reasoning, never
+authority), PROV-1 marked [ARR], and a consequences paragraph downgrading every
+"author-gated"/"author ruling" reading in the document to INFERRED. 44 rules.
+
+The enforcement is the point: rules.test.ts gained the ARR-uniqueness guard —
+exactly one [ARR] mark may exist and it must sit on PROV-1, with the literal
+barred from hiding in prose. The agent cannot promote a rule to ARR without that
+test failing; promotion happens by the author editing the file, moving the
+guard's expected set in the same author-marked change. The rule that limits the
+agent's authority is the first one the agent physically cannot break alone.
+
+Standing implication for the audit (next turn's likely work): every recorded
+"permanently", every "author-gated", every deference in decisions.md now reads
+as the agent's inference. The per-rule provenance marks land with that audit.
+
 ### D23 step 3, tranche 1: the matrix core owns its names (2026-07-28h)
 
 TRANSPOSE, MMULT, MUNIT, MDETERM, MINVERSE, WRAPROWS, WRAPCOLS, TOCOL, TOROW,
