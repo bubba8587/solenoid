@@ -1235,3 +1235,114 @@ fn engine_read_csv_infers_dates_end_to_end() {
     assert_eq!(cols[1].ty, "string"); // mixed text stays text
     assert_eq!(cols[2].ty, "number"); // Polars-native numeric untouched
 }
+
+// ─── The parity corpus (v2.0/18-parity-corpus.md) ─────────────────────────────
+// One fixture set, both engines: every case in fixtures/frame-verbs also runs
+// through the JS oracle (frameVerbCorpus.test.ts). The fixtures ARE wire
+// payloads, so this runner deserializes them with the PRODUCTION types
+// (WireFrame / WireOp) — a fixture that parses on one side and not the other is
+// itself the parity failure, surfacing at load. Case inventory + shape sanity
+// (expect XOR expectError, unique names, whitelist ratchet) live on the JS
+// side; here every case must simply compute the same frame or refuse with the
+// same SolError code.
+
+#[derive(serde::Deserialize)]
+struct CorpusCase {
+    name: String,
+    frames: std::collections::HashMap<String, WireFrame>,
+    op: WireOp,
+    expect: Option<WireFrame>,
+    #[serde(rename = "expectError")]
+    expect_error: Option<String>,
+}
+
+#[derive(serde::Deserialize)]
+struct CorpusFile {
+    verb: String,
+    cases: Vec<CorpusCase>,
+}
+
+#[test]
+fn corpus_cases() {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../fixtures/frame-verbs");
+    let mut files: Vec<_> = std::fs::read_dir(&dir)
+        .expect("fixtures/frame-verbs must exist")
+        .filter_map(|e| e.ok().map(|e| e.path()))
+        .filter(|p| p.extension().is_some_and(|x| x == "json"))
+        .collect();
+    files.sort();
+    assert!(!files.is_empty(), "no corpus fixtures found in {}", dir.display());
+
+    let mut failures: Vec<String> = Vec::new();
+    for path in files {
+        let text = std::fs::read_to_string(&path).unwrap();
+        let file: CorpusFile = serde_json::from_str(&text)
+            .unwrap_or_else(|e| panic!("{}: fixture does not parse as wire payloads: {e}", path.display()));
+        for case in file.cases {
+            let label = format!("{} › {}", file.verb, case.name);
+            let input = match case.frames.into_iter().find(|(k, _)| k == "in") {
+                Some((_, f)) => f,
+                None => { failures.push(format!("{label}: no \"in\" frame")); continue; }
+            };
+            let frame = match wire_to_solframe(input) {
+                Ok(f) => f,
+                Err(e) => { failures.push(format!("{label}: input frame refused: {}", err_code(&e))); continue; }
+            };
+            let result = apply_ops(&frame, &[case.op]);
+            match (result, case.expect, case.expect_error) {
+                (Ok(out), Some(expect), _) => {
+                    let got = dump(&out);
+                    let want: Vec<(String, String, Vec<Json>)> = expect
+                        .columns
+                        .into_iter()
+                        .map(|c| (c.name, c.ty, c.values))
+                        .collect();
+                    if !frames_equal(&got, &want) {
+                        failures.push(format!("{label}: got {got:?}, want {want:?}"));
+                    }
+                }
+                (Ok(out), None, Some(code)) => {
+                    failures.push(format!("{label}: expected {code}, computed {:?}", dump(&out)));
+                }
+                (Err(e), _, Some(code)) => {
+                    if err_code(&e) != code {
+                        failures.push(format!("{label}: expected {code}, got {}", err_code(&e)));
+                    }
+                }
+                (Err(e), Some(_), None) => {
+                    failures.push(format!("{label}: expected a frame, got error {}", err_code(&e)));
+                }
+                (Ok(_), None, None) | (Err(_), None, None) => {
+                    failures.push(format!("{label}: case has neither expect nor expectError"));
+                }
+            }
+        }
+    }
+    assert!(failures.is_empty(), "corpus parity failures:\n  {}", failures.join("\n  "));
+}
+
+/// The IpcError code, via its serde form (the fields are ipc.rs-private; the
+/// serialized shape is the stable contract — `{ __solError, code, message }`).
+fn err_code(e: &IpcError) -> String {
+    serde_json::to_value(e).ok()
+        .and_then(|v| v.get("code").and_then(|c| c.as_str()).map(String::from))
+        .unwrap_or_default()
+}
+
+/// Structural frame equality with NUMERIC-aware cells: serde parses a fixture's
+/// `1` as u64 and `dump` renders Cell::Num(1.0) via num_to_json (i64 branch), so
+/// plain Value equality would work for integers — but compare through as_f64 for
+/// every number pair so a fixture may write 1.0 or 1 interchangeably, exactly as
+/// JSON.parse does on the JS side.
+fn frames_equal(a: &[(String, String, Vec<Json>)], b: &[(String, String, Vec<Json>)]) -> bool {
+    a.len() == b.len()
+        && a.iter().zip(b).all(|(x, y)| {
+            x.0 == y.0
+                && x.1 == y.1
+                && x.2.len() == y.2.len()
+                && x.2.iter().zip(&y.2).all(|(p, q)| match (p.as_f64(), q.as_f64()) {
+                    (Some(m), Some(n)) => m == n,
+                    _ => p == q,
+                })
+        })
+}

@@ -75,6 +75,20 @@ export type FrameOp =
   | { kind: "unpivot"; idColumns: string[]; valueColumns: string[]; variableName?: string; valueName?: string } // wide → long
   | ({ kind: "pivot" } & PivotSpec); // long → wide cross-tab (Excel PIVOTBY)
 
+/** The unary-verb inventory as a runtime value — the parity corpus's derived
+ *  verb list (v2.0/18-parity-corpus.md). Pinned to the TYPE at compile time
+ *  below, so adding a `FrameOp` kind without listing it here fails `tsc`, and
+ *  the corpus completeness guard then demands its fixture file. */
+export const FRAME_OP_KINDS = [
+  "select", "drop", "rename", "sort", "distinct", "head",
+  "filter", "filterMulti", "groupBy", "unpivot", "pivot",
+] as const satisfies readonly FrameOp["kind"][];
+// Exhaustiveness: a FrameOp kind missing from FRAME_OP_KINDS makes this `never`
+// assignment fail to compile.
+type _MissingFrameOpKind = Exclude<FrameOp["kind"], (typeof FRAME_OP_KINDS)[number]>;
+const _frameOpKindsExhaustive: _MissingFrameOpKind[] = [] satisfies never[];
+void _frameOpKindsExhaustive;
+
 /** One aggregation in a groupBy: aggregate `column` with `op`, output as `as`. */
 export interface AggSpec { column: string; op: AggOp; as: string; }
 
