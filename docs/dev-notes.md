@@ -123,7 +123,7 @@ app-wide, but touches feel of zoom).
 ### D23 step 3, tranche 2: the array-returning core (2026-07-28k)
 
 UNIQUE, SORT, SORTBY, FILTER, TAKE, DROP, MODE.MULT, FREQUENCY, RANDARRAY.
-350/646; gap A is 8 — entirely the function-argument family now (LAMBDA/MAP/
+349/646; gap A is 8 — entirely the function-argument family now (LAMBDA/MAP/
 BYROW/BYCOL/MAKEARRAY/REDUCE + SCAN/GROUPBY), one tranche, a language feature.
 
 Again the urgent half was the OLD names: UNIQUE, SORT, MODE.MULT, FREQUENCY and
