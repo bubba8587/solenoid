@@ -313,7 +313,8 @@ Read the relevant section there before touching one of these. The one-line "don'
   parity tests); manual/automatic/sketch calc modes; headless runner (`npm run run-graph`);
   Write CSV/JSON/Obsidian sinks; live connections (Web Source, CSV, Data Feed) + auto-refresh.
 - **Nodes**: current-Excel function parity (native families + Formula.js via Expression/LAMBDA —
-  deliberately the type-agnostic scalar/1-D subset only), Equation (acausal solve), composites
+  rank ≤ 2 since D23: scalars/lists/matrices + tagged complex; frames/cubes stay out), Equation
+  (acausal solve), composites
   (drill-in editor; run modes: goal-seek/scenarios/data-table/simulation/Monte Carlo/by-row/
   manual-refresh — the Query catalog preset = a composite in manual mode, D22), charts
   (recharts + canvas-drawn figures + draw-your-data controls), Note (frontmatter → typed output
@@ -325,8 +326,9 @@ Read the relevant section there before touching one of these. The one-line "don'
 
 ### Standing constraints (quick list — details in decisions.md / backlog.md)
 - Author-gated: `main`/releases; D2 composite toolbar reroute; D4 conditional formatting.
-- Expression/LAMBDA stay capped to the type-agnostic scalar + 1-D subset until the parity
-  program's Tier 4 decision — don't silently widen (`docs/formula-node-parity.md`).
+- Formulas compute at rank ≤ 2 (D23 lifted the old 1-D cap; matrices + tagged complex are in);
+  frames/cubes stay OUT of formulas by design — the verb engine is their surface. Containment:
+  Formula.js never sees a matrix or a Cx (`matrixArgs`/`cxArgs` gates, rules.md FX-9).
 - Units are authored ONLY by the FC / Convert — the Number node is a plain literal source.
 - The header/body border seam under zoom is UNSOLVED and parked — dev-notes "UNSOLVED" lists the
   two eliminated approaches; don't retread them.

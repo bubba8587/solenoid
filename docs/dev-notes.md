@@ -120,6 +120,46 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### The complex tranche: IM* owned over tagged Cx, operators typed (2026-07-28p)
+
+The build the D23 amendment queued, landed. Four moves:
+
+**Kernels extracted rete-free** — cxAdd…cxCsch, cxPow, cxLog10/2 moved from
+`nodes/complex.ts` into `cxValue.ts` (the family's rete-free home, per the
+listOps pattern), plus two new ones: `parseCx` (Excel's "a+bi"/"bi"/"a" grammar,
+`i` or `j`, tolerant of formatCx's spaced output so the two round-trip) and
+`quadraticRoots` (shared by the node and the registration).
+
+**27 registrations** — the 25 IM* names + COMPLEX + QUADRATICROOTS, each running
+the node's kernel (FX-1, node-equality-tested per op in `formulaComplex.test.ts`).
+Arguments coerce IN from Excel's representations (tagged Cx, real number, text
+form — invalid text #VALUE!, logicals #TYPE!); results are always tagged Cx.
+IMSUM/IMPRODUCT are variadic folds; element-wise like the nodes, so they
+broadcast over complex lists via broadcastCall with the per-cell contract.
+IMARGUMENT(0) is 0 (the node's atan2), not Excel's #DIV/0! — FX-1 sides with the
+node. `FAMILY_BACKING.complex` flipped verify → internal (the tagged currency IS
+the difference that matters).
+
+**Operators answer typed, never garbage** — `applyCxOp` routes a Cx operand
+before numeric coercion: arithmetic and ordering → #TYPE! naming the IM* family
+(was "[object Object]1"); `=`/`<>` structural within the family, type-strict
+FALSE against anything else (the 5 = "5" rule); `&` renders through formatCx
+(like logicals render TRUE/FALSE); unary minus and percent guard the same way.
+No second cross-family bridge: the lattice's one bridge stays logical↔number.
+
+**FX-9 grew a per-element half** — a Cx reaches a dispatch only through a
+declared `cxArgs` registration (the matrixArgs pattern). Exempt: NULL_INSPECTING
+value-passers (IF hands a complex branch through, predicates answer honestly)
+and whole-list natives (REVERSE of a complex list is a legitimate shape op —
+blocking it would have REGRESSED working behavior; their numeric members coerce
+a Cx like any other non-number). SUM/SQRT/TEXTJOIN over a Cx now refuse with
+#TYPE! instead of silently NaN-ing.
+
+Non-pack parity 380 → **381/479** (Quadratic Roots was the leaf riding this);
+remaining named leaves: Text Filter + Image/SVG/Promo. Suite 3552 → 3572.
+Stale known-violation 7 in rules.md reconciled while there (only the regression
+quartet TREND/GROWTH/LINEST/LOGEST is still unrouted).
+
 ### D23 amended: the complex exclusion was false, and unenforced (2026-07-28o)
 
 The author caught it directly: "didn't we just fix complex to let it be in?" —

@@ -17,6 +17,7 @@ import { resolveExcelFunction, EXCEL_IMPL_META, normalizeFxResult, fxErrorToSol,
 import { isMissing, guardFinite } from "./valueKinds";
 import { compareStrings } from "./stringOrder";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
+import { isCx, formatCx } from "./cxValue";
 
 // ─── AST ────────────────────────────────────────────────────────────────────
 export type Ast =
@@ -541,6 +542,9 @@ const mapOne = (v: unknown, f: (x: unknown) => unknown): unknown =>
 
 const isMatrix = (v: unknown): v is unknown[][] => isArr(v) && v.length > 0 && isArr(v[0]);
 const rankOf = (v: unknown): 0 | 1 | 2 => (isMatrix(v) ? 2 : isArr(v) ? 1 : 0);
+/** A tagged Cx anywhere in a rank ≤ 2 argument — the complex-containment test. */
+const containsCx = (a: unknown): boolean =>
+  isCx(a) || (isArr(a) && a.some((v) => (isArr(v) ? v.some(isCx) : isCx(v))));
 /** Anything deeper than a matrix is not a value in this model. */
 const tooDeep = (v: unknown): boolean => isMatrix(v) && v.some((row) => row.some(isArr));
 
@@ -633,6 +637,10 @@ function applyOp(op: string, a: unknown, b: unknown): unknown {
   if (isErr(a)) return a;
   if (isErr(b)) return b;
   if (a === null || b === null) return null;
+  // A tagged Cx operand routes to its own table (D23 amendment) — before the
+  // numeric coercion below, which would concatenate the object into
+  // "[object Object]" garbage.
+  if (isCx(a) || isCx(b)) return applyCxOp(op, a, b);
   // The logical↔number bridge: booleans compute as 1/0 in numeric contexts.
   const num = (v: unknown): unknown => (typeof v === "boolean" ? (v ? 1 : 0) : v);
   const na = num(a), nb = num(b);
@@ -679,6 +687,36 @@ function applyOp(op: string, a: unknown, b: unknown): unknown {
       }
     }
     default: return NaN;
+  }
+}
+
+// Operator semantics for a tagged Cx operand (D23 amendment, 2026-07-28). The
+// lattice's one cross-family bridge is logical↔number — complex does NOT get a
+// second one, so arithmetic and ordering answer a typed #TYPE! pointing at the
+// IM* family (which IS the complex algebra) instead of silently coercing.
+// `=`/`<>` compare structurally within the family and are type-strict FALSE
+// against anything else (the same rule that makes 5 = "5" FALSE, not an error);
+// `&` renders through formatCx like a logical renders TRUE/FALSE — a display
+// coercion, not algebra.
+function applyCxOp(op: string, a: unknown, b: unknown): unknown {
+  switch (op) {
+    case "&": {
+      const s = (v: unknown): string =>
+        isCx(v) ? formatCx(v)
+        : typeof v === "boolean" ? (v ? "TRUE" : "FALSE")
+        : typeof v === "number" ? numberToText(v)
+        : String(v);
+      return s(a) + s(b);
+    }
+    case "=":
+    case "<>": {
+      const eq = isCx(a) && isCx(b) && a.re === b.re && a.im === b.im;
+      return op === "=" ? eq : !eq;
+    }
+    case "<": case ">": case "<=": case ">=":
+      return solError("#TYPE!", "Complex numbers have no order — compare IMABS values instead");
+    default:
+      return solError("#TYPE!", "Operators don't compute on complex numbers — use IMSUM, IMSUB, IMPRODUCT, IMDIV");
   }
 }
 
@@ -738,13 +776,18 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
     case "unary": {
       const a = evalAst(n.arg, env);
       // Per-cell contract: an error propagates unmorphed, a missing stays missing,
-      // else negate/plus. (Bare `-null` in JS is -0 — hence the explicit guard.)
-      const f = (x: unknown) => (isSolError(x) ? x : isMissing(x) ? null : (n.op === "-" ? -(x as number) : +(x as number)));
+      // else negate/plus. (Bare `-null` in JS is -0 — hence the explicit guard.
+      // A Cx would coerce to NaN — same #TYPE! as the binary operators.)
+      const f = (x: unknown) => (isSolError(x) ? x : isMissing(x) ? null
+        : isCx(x) ? solError("#TYPE!", "Operators don't compute on complex numbers — IMSUB(0, z) negates")
+        : (n.op === "-" ? -(x as number) : +(x as number)));
       return isArr(a) ? mapCells([a], f as (...ops: unknown[]) => unknown) : isErr(a) ? a : f(a);
     }
     case "percent": {
       const a = evalAst(n.arg, env);
-      const f = (x: unknown) => (isSolError(x) ? x : isMissing(x) ? null : (x as number) / 100);
+      const f = (x: unknown) => (isSolError(x) ? x : isMissing(x) ? null
+        : isCx(x) ? solError("#TYPE!", "Operators don't compute on complex numbers — use IMDIV(z, COMPLEX(100, 0))")
+        : (x as number) / 100);
       return isArr(a) ? mapCells([a], f as (...ops: unknown[]) => unknown) : isErr(a) ? a : f(a);
     }
     case "bin": {
@@ -811,6 +854,20 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
         } else if (takesWholeArgs(name)) {
           return solError("#SHAPE!", `${name} works on values and 1-D lists, not a 2-D matrix`);
         }
+      }
+      // ── Complex containment (D23 amendment) ─────────────────────────────────
+      // A tagged Cx reaches a dispatch only through a declared `cxArgs`
+      // registration (the IM* family) — the same principle as the matrix rule
+      // above: Formula.js and the Number()-coercing internals would turn the
+      // object into "[object Object]" / NaN silently. Exempt: the
+      // NULL_INSPECTING value-passers (IF must hand a complex branch through;
+      // the type predicates must SEE it to answer honestly) and the whole-list
+      // natives, which are position-preserving shape ops on opaque elements
+      // (REVERSE of a complex list is legitimate — their numeric members
+      // coerce a Cx like any other non-number, the family-wide list policy).
+      if (!EXCEL_IMPL_META[name]?.cxArgs && !NULL_INSPECTING.has(name) && !takesWholeArgs(name)
+          && argv.some(containsCx)) {
+        return solError("#TYPE!", `${name} doesn't compute on complex numbers — use the IM* family`);
       }
       // A whole-list native gets its arguments exactly as they arrived — no
       // element-wise mapping, no null-drop, no error hoist (see takesWholeArgs).

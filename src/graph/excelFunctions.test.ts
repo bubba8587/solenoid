@@ -36,7 +36,10 @@ describe("numberToText — 15 significant digits, trailing zeros stripped", () =
 
 describe("FAMILY_BACKING (the audit's per-family verdict)", () => {
   it("keeps the families a difference-that-matters dictates internal", () => {
-    for (const fam of ["statistics", "distributions", "datetime", "lookup", "matrix", "units", "finance-iterative"] as const) {
+    // "complex" flipped verify → internal with the D23-amendment tranche: the
+    // tagged Cx (VAL-15) IS the difference that matters — Formula.js's IM* speak
+    // text complexes, a different currency.
+    for (const fam of ["statistics", "distributions", "datetime", "lookup", "matrix", "units", "finance-iterative", "complex"] as const) {
       expect(FAMILY_BACKING[fam].backing).toBe("internal");
     }
   });
@@ -48,7 +51,7 @@ describe("FAMILY_BACKING (the audit's per-family verdict)", () => {
   });
 
   it("marks the verify-then-decide families", () => {
-    for (const fam of ["rounding", "combinatorics", "complex"] as const) {
+    for (const fam of ["rounding", "combinatorics"] as const) {
       expect(FAMILY_BACKING[fam].backing).toBe("verify");
     }
   });
@@ -184,7 +187,7 @@ describe("Solenoid-only functions — the registry ADDS what Formula.js lacks", 
   it("each registered impl declares an output type that matches the audit families", () => {
     // Every meta entry has a known ExcelReturn ("any" = type-neutral passthrough).
     for (const m of Object.values(EXCEL_IMPL_META)) {
-      expect(["number", "string", "logical", "date", "any"]).toContain(m.returns);
+      expect(["number", "string", "logical", "date", "complex", "any"]).toContain(m.returns);
     }
   });
   it("every registered internal declares its meta (FX-3, the registered→declared direction)", () => {
