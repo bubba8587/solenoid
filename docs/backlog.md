@@ -10,31 +10,30 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
 
 ## Architecture spec (`docs/rules.md`)
 
-- [ ] **Spec-promotion: the remainder queue** — tranche 1 landed (2026-07-28: the
-  PERSIST domain ×6, EFFECT ×2, VAL-17; 53 rules). The surveyed-but-unpromoted
-  candidates, roughly by value; each is already test-pinned or convention-verified,
-  needing only the rule + (sometimes) a completeness check:
-  - **SOCK candidates**: adopting ports own their socket instance (the Input Switch
-    shared-singleton trap — cheap two-instance test); a `trueany` output implies a
-    `passthrough()` declaration (catalog walk + sanction list for FC/Conduit/composite
-    markers and genuinely-unknowable producers); Conduit type-transparency + frame-SHAPE
-    resolution through passthroughs (conduitTrace/frameShapePassthrough pin them,
-    no rule); a mode selector that hides sockets drops their cables — six hand-rolled
-    copies of the pruning loop want ONE helper (SSOT-6 shape).
-  - **ENGINE domain (new)**: targeted recompute ≡ full pass (downstreamClosure +
-    #CIRC! SCC seeding — circularReset/processTargeted pin, no rule); calc-mode gating
-    matrix; refresh never enters a rebuild scope (connectionStore pins).
-  - **VAL candidates**: guardFinite completeness (no producer emits bare NaN);
-    currency-mismatch completeness across the unit combinators; positional lookups'
-    per-cell error filtering (errorFiltering pins); read-as is coercion-not-assertion.
-  - **FX candidate**: the two frame backends (Polars/JS oracle) answer identically —
-    needs a shared fixture corpus run by both vitest and cargo, plus an every-verb
-    completeness guard; formulaDivergence's tripwire pattern deserves a rule.
-  - **STORE/PERSIST extras**: node-keyed store registry completeness (forget +
-    forgetAll — formatAnnotationStore and standoffs register neither today);
-    catalog-wide transient-field triage (extractInit captures vs DELIBERATELY_TRANSIENT
-    sanction map); unknown-type Placeholder lossless round-trip; width/height dual-use
-    ownership; documentStore verb discipline (captureCurrent before every switch).
+- [ ] **Spec-promotion: the remainder queue** — tranches 1+2 landed (2026-07-28:
+  PERSIST ×8, EFFECT ×2, ENGINE ×3, SOCK-10/11/12, FX-11, VAL-17/18; **63 rules**).
+  Still queued, roughly by value:
+  - **Mode selector that hides sockets drops their cables** — six hand-rolled copies
+    of the pruning loop (Alert/CableSwitch/Filter/Date/Chart/Frame components) want
+    ONE shared helper + a mode-transition sweep (SSOT-6 shape). A refactor, not just
+    a rule.
+  - **VAL completeness pair**: guardFinite (no producer emits bare NaN — needs a
+    producer sweep, behaviour tests exist); currency-mismatch across every unit
+    combinator (matrixUnitPolicy-style completeness sweep).
+  - **FX: backend parity corpus** — the Polars/JS-oracle pair needs a shared fixture
+    corpus run by both vitest and cargo + an every-verb completeness guard. The
+    largest single build in the queue.
+  - **STORE registry completeness** — every node-keyed store registers forget +
+    forgetAll (formatAnnotationStore and standoffs register neither; triage note:
+    the miss is a bounded LEAK, not corruption — rete ids regenerate per load and
+    never collide — so this is hygiene + memory, not a wrong answer).
+  - **Catalog-wide transient-field triage** — every own field of every node either
+    round-trips through extractInit or lands in a DELIBERATELY_TRANSIENT sanction
+    map (one-time ~50-name triage; the map becomes the missing documentation).
+  - **width/height dual-use ownership** — NodeCard's ResizeObserver writes measured
+    pixels onto whitelisted persistence fields; only ~6 classes read them back.
+  - **read-as is coercion-not-assertion** (getColumnReadAs pins it) — narrow;
+    promote if the class of config-driven coercions grows.
 - [ ] **Rules spec — the enforcement tail.** The partially-enforced set hit ZERO
   (2026-07-28: VAL-10 algebra-file scan, VAL-12 OpSelect-binding scan + the `arg`
   contract, VAL-14 only-if — after the earlier passes closed SOCK-5/SOCK-7/VAL-13/FX-4;
