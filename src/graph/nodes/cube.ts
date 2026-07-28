@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { trueAnyIn, strIn, strListIn, cubeIn, cubeOut, frameOut } from "./shared";
+import { trueAnyIn, strIn, strListIn, cubeIn, cubeOut, frameOut, readInput } from "./shared";
 import { cubeFromColumns, relateFramesToCube, relateCubeToFrame, cubeColumnFromValue, cubeRowCount, inferColumn, makeHeaders, frameFromRows, isCubeValue, isFrameValue, type CubeValue, type CubeCell, type FrameValue, type FrameCell } from "../frame";
 import { aggregateGroup, type AggOp } from "../frameVerbs";
 import { solError, type SolError } from "../errorValue";
@@ -123,8 +123,8 @@ export class NestJoinNode extends ClassicPreset.Node {
   data(inputs: { parent?: unknown[]; child?: unknown[]; key?: string[]; name?: string[] }) {
     const parent = inputs.parent?.[0] ?? null;
     const child = asNestChild(inputs.child?.[0] ?? null);
-    const key = (inputs.key?.[0] ?? this.stringLiterals.key ?? "").trim();
-    const name = (inputs.name?.[0] ?? this.stringLiterals.name ?? "").trim();
+    const key = (readInput(inputs.key, this.stringLiterals.key ?? "") ?? "").trim();
+    const name = (readInput(inputs.name, this.stringLiterals.name ?? "") ?? "").trim();
     if (!child || key === "") { this.cachedResult = null; return { cube: null }; }
     // Cube parent → deepen one level into the nested sub-frames; Frame parent →
     // the original nest join. A WIRED parent that's neither (a bare list / scalar) is
@@ -236,9 +236,9 @@ export class CubeRollupNode extends ClassicPreset.Node {
   data(inputs: { cube?: (CubeValue | null)[]; nested?: string[]; column?: string[]; as?: string[] }) {
     const cube = inputs.cube?.[0] ?? null;
     if (!cube) { this.cachedResult = null; return { frame: null }; }
-    const nestedName = (inputs.nested?.[0] ?? this.stringLiterals.nested ?? "").trim();
-    const col = (inputs.column?.[0] ?? this.stringLiterals.column ?? "").trim();
-    const outName = (inputs.as?.[0] ?? this.stringLiterals.as ?? "Total").trim() || "Total";
+    const nestedName = (readInput(inputs.nested, this.stringLiterals.nested ?? "") ?? "").trim();
+    const col = (readInput(inputs.column, this.stringLiterals.column ?? "") ?? "").trim();
+    const outName = (readInput(inputs.as, this.stringLiterals.as ?? "Total") ?? "").trim() || "Total";
     const nestedIdx = cube.columns.findIndex((c) => c.name === nestedName);
     if (nestedName === "" || col === "") { this.cachedResult = null; return { frame: null }; }
     if (nestedIdx < 0) {

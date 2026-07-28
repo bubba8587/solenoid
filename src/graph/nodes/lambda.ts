@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { anyListIn, lambdaOut } from "./shared";
+import { anyListIn, lambdaOut, readInput } from "./shared";
 import { extractVariables, compilePositional, formulaSyntaxHint } from "../excelFormula";
 import { solError, type SolError } from "../errorValue";
 
@@ -169,7 +169,7 @@ export class LambdaNode extends ClassicPreset.Node {
     const compiled = this.compiled;
     // Captured values resolve NOW — the closure carries them, so a consumer
     // never reaches back into the graph.
-    const capturedVals = this.captured.map((v) => inputs[v]?.[0] ?? this.literals[v] ?? 0);
+    const capturedVals = this.captured.map((v) => readInput(inputs[v], this.literals[v] ?? 0));
     const fn: Compiled = (...args) =>
       compiled(...args.slice(0, params.length), ...capturedVals);
     const descriptions = Object.keys(this.varDescriptions).length ? { ...this.varDescriptions } : undefined;
