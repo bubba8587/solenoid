@@ -173,10 +173,11 @@ export function argMinMax(op: ArgMinMaxOp, arr: readonly Cell[]): number | SolEr
 /** 1 / 0 rather than a logical, matching the node's numeric output socket.
  *  Membership keys by VALUE via setKey (VAL-8 — `includes` compares a complex
  *  [re, im] tuple by reference and never matched); blank and error cells are not
- *  members, exactly as the Set family treats them. */
-export function containsValue(arr: readonly unknown[], v: unknown): number {
+ *  members, exactly as the Set family treats them. Answers a LOGICAL — membership
+ *  is a predicate (the Is In mask's scalar sibling), not a 0/1 number. */
+export function containsValue(arr: readonly unknown[], v: unknown): boolean {
   const k = setKey(v);
-  return arr.some((x) => !isMissing(x) && !isSolError(x) && setKey(x) === k) ? 1 : 0;
+  return arr.some((x) => !isMissing(x) && !isSolError(x) && setKey(x) === k);
 }
 
 // ─── Weighted statistics ──────────────────────────────────────────────────────

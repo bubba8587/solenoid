@@ -15,7 +15,9 @@ export function ComparisonComponent({ data, emit }: NodeProps<ComparisonNodeType
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
       <OpSelect value={op} onChange={setOp} options={OPS} />
-      <ValueDisplay value={data.cachedResult} render={(v) => (v === 1 ? "true (1)" : "false (0)")} />
+      {/* cachedResult is a real logical — the isLogical branch renders TRUE/FALSE
+          before any render override could run (the old 1/0 override was dead code). */}
+      <ValueDisplay value={data.cachedResult} />
     </NodeShell>
   );
 }

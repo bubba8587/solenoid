@@ -100,7 +100,7 @@ describe("every Tier 3 name computes what its node computes", () => {
 
   it("CONTAINS", () => {
     expect(ev("CONTAINS(x, 7)", { x: LIST })).toEqual(new ContainsNode().data({ list: [LIST], value: [7] }).result);
-    expect(ev("CONTAINS(x, 99)", { x: LIST })).toBe(0);
+    expect(ev("CONTAINS(x, 99)", { x: LIST })).toBe(false);
   });
 
   it("WAVG / WVAR / WSTDEV", () => {

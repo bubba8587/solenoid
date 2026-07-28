@@ -120,6 +120,21 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### CONTAINS made honest: any-element membership, logical answer (2026-07-28w)
+
+Author called for a review; the issues were exactly the visible kind. The node
+was numeric-only (`listIn` + `numIn`) while its own kernel was already
+type-generic — `containsValue` keys by `setKey`, and the VAL-8 complex fix was
+written FOR it — so you couldn't ask whether a string list contains "foo"
+while every membership sibling (Is In, Set, Tally) takes `anyListIn`. And it
+answered `numOut("0 / 1")`, a pre-logical-migration relic, while Is In (the
+same question per-element) answers TRUE/FALSE. Fixed: `anyListIn` list +
+adoptive `anyIn` needle + `logicalOut`; kernel returns boolean (FX-1 — the
+formula CONTAINS follows, meta `returns: "logical"`); blank-needle → null
+(Kleene unknown) unchanged. The component's "✓ found" render override went
+with it — booleans hit the isLogical branch before any override, which also
+exposed Comparison's `1/0` render prop as dead code (removed).
+
 ### ONE date-difference family — the Datedif/DateDiff split dies (2026-07-28u/v)
 
 The arc: the author caught `DateIfNode` misreading DATEDIF ("Date If" leaked as
