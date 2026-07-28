@@ -64,7 +64,13 @@ function walk(entries: CatalogEntry[], path: string[], out: ParityRow[], formula
     // callable — PADLEFT and PADRIGHT, not PAD. An op's formula name is its declared
     // `fx` where the label is prose, else the despaced label. Reading the host label
     // alone reported nine registered FILL* functions as a gap.
-    const ops = opsFor(leaf.type)?.ops;
+    // OPERATION-kind families only: an argument-kind family takes ONE formula name
+    // (the doc above), and its op labels are argument VALUES that can collide with
+    // unrelated dispatchable names — Group Lists' SUM/AVERAGE/MIN/MAX/COUNT all
+    // resolve to the plain aggregators, which would count the leaf "callable"
+    // while GROUPBY itself still answers #NAME?.
+    const decl = opsFor(leaf.type);
+    const ops = decl?.kind === "operation" ? decl.ops : undefined;
     const excelCovered = excel.length > 0 && excel.every((x) => formulaNames.has(x));
     const inFormula = excel.some((x) => formulaNames.has(x))
       || formulaNames.has(despace(leaf.label))

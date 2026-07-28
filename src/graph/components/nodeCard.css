@@ -1342,7 +1342,11 @@ body.solenoid-scrubbing * {
    `data-op-kind` is set on the card root by NodeCard, and is ABSENT for a family
    not yet declared in nodeOps.ts — an undeclared node stays neutral rather than
    claiming to be an argument selector. */
-.solenoid-node[data-op-kind="operation"] .solenoid-node__op-select {
+   A SECONDARY select on an operation card (SUMIFS' per-criterion comparator,
+   CumPmt's payment timing) is an ARGUMENT and opts out via `data-op-arg`
+   (OpSelect's `arg` prop) — the descendant match alone would edge every select
+   in the card. */
+.solenoid-node[data-op-kind="operation"] .solenoid-node__op-select:not([data-op-arg]) {
   border-width: 2px;
   border-color: color-mix(in srgb, var(--node-accent, var(--accent)) 85%, var(--border));
   /* 1px off each side, so the outer box matches the 1px/4px/8px neutral field. */
@@ -1351,6 +1355,6 @@ body.solenoid-scrubbing * {
 
 /* Focus outranks the resting type edge: same width, full-strength accent. Declared
    after (and at higher specificity than) the rule above so it always wins. */
-.solenoid-node[data-op-kind="operation"] .solenoid-node__op-select:focus {
+.solenoid-node[data-op-kind="operation"] .solenoid-node__op-select:not([data-op-arg]):focus {
   border-color: var(--node-accent, var(--accent));
 }

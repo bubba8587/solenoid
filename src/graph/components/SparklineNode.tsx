@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import type { SparklineNode as SparklineNodeType, SparklineOp } from "../rete-nodes";
+import { SPARKLINE_OP_META } from "../rete-nodes";
 import { NodeShell, PortSockets, useNodeField, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
 import { ChartView, toSeries, type ChartShape } from "./chartView";
@@ -8,11 +9,9 @@ import { appThemeStore } from "../appTheme";
 import { collapseStore } from "../collapseStore";
 import { resolveColor } from "../palette";
 
-const OPTIONS: ReadonlyArray<{ value: SparklineOp; label: string }> = [
-  { value: "line",    label: "Line" },
-  { value: "column",  label: "Column" },
-  { value: "winloss", label: "Win/Loss" },
-];
+// Derived from SPARKLINE_OP_META (SSOT-1) — the table the search rows read too.
+const OPTIONS: ReadonlyArray<{ value: SparklineOp; label: string }> = (Object.keys(SPARKLINE_OP_META) as SparklineOp[])
+  .map((value) => ({ value, label: SPARKLINE_OP_META[value].label }));
 
 // Fills the wide card (240) minus body padding.
 const W = 218;

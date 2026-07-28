@@ -495,15 +495,23 @@ export function OpSelect<T extends string>({
   value,
   onChange,
   options,
+  arg,
 }: {
   value: T;
   onChange: (next: T) => void;
   options: ReadonlyArray<OpOption<T>>;
+  /** A SECONDARY selector on the card (a criterion comparator, a payment-timing
+   *  toggle) — an ARGUMENT even when the card's family is operation-kind, so the
+   *  operation accent edge (nodeCard.css, data-op-kind) must skip it. Without
+   *  this, SUMIFS' per-criterion "≥" dropdown wore the same edge as the family
+   *  op select, asserting something false about itself. */
+  arg?: boolean;
 }) {
   const hasGroups = options.some((o) => o.group != null);
   return (
     <LazySelect
       className="solenoid-node__op-select"
+      data-op-arg={arg ? "" : undefined}
       value={value}
       onChange={(e) => onChange(e.target.value as T)}
       onPointerDown={(e) => e.stopPropagation()}

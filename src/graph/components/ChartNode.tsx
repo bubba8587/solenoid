@@ -1,6 +1,6 @@
 import { useCallback, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { ChartNode as ChartNodeType, ChartOp } from "../rete-nodes";
-import { CHART_MATRIX_OPS } from "../rete-nodes";
+import { CHART_MATRIX_OPS, CHART_OP_META } from "../rete-nodes";
 import { NodeShell, OpSelect, type NodeProps, type OpOption } from "./nodeKit";
 import { NodeSocket } from "./NodeSocket";
 import { InlineInputs } from "./inlineInput";
@@ -36,19 +36,10 @@ async function applyChartOp(node: ChartNodeType, newOp: ChartOp): Promise<void> 
 }
 
 // Grouped so the dropdown reads by family — too many types now for a seg toggle.
-const OPTIONS: ReadonlyArray<OpOption<ChartOp>> = [
-  { value: "column", label: "Column",  group: "Cartesian" },
-  { value: "bar",    label: "Bar",     group: "Cartesian" },
-  { value: "line",   label: "Line",    group: "Cartesian" },
-  { value: "area",   label: "Area",    group: "Cartesian" },
-  { value: "scatter", label: "Scatter", group: "Cartesian" },
-  { value: "pie",       label: "Pie",    group: "Categorical" },
-  { value: "radar",     label: "Radar",  group: "Categorical" },
-  { value: "radialbar", label: "Radial", group: "Categorical" },
-  { value: "funnel",    label: "Funnel", group: "Categorical" },
-  { value: "composed",  label: "Composed", group: "Multi-series: wire Series" },
-  { value: "bubble",    label: "Bubble",   group: "Multi-series: wire Series" },
-];
+// Derived from CHART_OP_META (labels AND groups), the same table the Add-menu
+// search rows read, so the two surfaces cannot drift (SSOT-1).
+const OPTIONS: ReadonlyArray<OpOption<ChartOp>> = (Object.keys(CHART_OP_META) as ChartOp[])
+  .map((value) => ({ value, label: CHART_OP_META[value].label, group: CHART_OP_META[value].group }));
 
 // Fills the wide card (240) minus body padding.
 const W = 218;

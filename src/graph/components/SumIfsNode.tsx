@@ -101,7 +101,7 @@ export function SumIfsComponent({ data, emit }: NodeProps<SumIfsNodeType>) {
                 </button>
               )}
             </MeasuredSocketRow>
-            <OpSelect value={c.op} options={FILTER_OP_OPTIONS} onChange={(next) => updateCfg(id, { op: next })} />
+            <OpSelect arg value={c.op} options={FILTER_OP_OPTIONS} onChange={(next) => updateCfg(id, { op: next })} />
             <MeasuredSocketRow side="input" socketKey={valKey} nodeId={data.id} emit={emit} payload={data.inputs[valKey]!.socket}>
               <span className="solenoid-node__io-label">Value</span>
               {connected.has(valKey) ? (

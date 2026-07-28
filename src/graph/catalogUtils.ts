@@ -182,12 +182,14 @@ function applyNodeOps(root: CatalogEntry[], byType: Map<string, NodeCatalogEntry
   }
 }
 
-/** The child list containing `leaf`, so a generated sibling lands beside it. */
+/** The child list containing `leaf`, so a generated sibling lands beside it.
+ *  Descends PAIRS as well as categories — a host inside a CatalogPair would
+ *  otherwise silently generate zero leaves when it flips to expose: "leaves". */
 function findParent(entries: CatalogEntry[], leaf: NodeCatalogEntry): CatalogEntry[] | null {
   if (entries.includes(leaf)) return entries;
   for (const e of entries) {
-    if (e.type === "category") {
-      const hit = findParent((e as CatalogCategory).children, leaf);
+    if (e.type === "category" || e.type === "pair") {
+      const hit = findParent((e as { children: CatalogEntry[] }).children, leaf);
       if (hit) return hit;
     }
   }

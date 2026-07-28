@@ -192,16 +192,17 @@ export const NODE_OPS: NodeOpsDecl[] = [
   // pair of settings on one card rather than as two operations.
   { type: "headers", ctor: HeadersNode, kind: "argument", ops: fromMeta(HEADER_OP_META),
     create: (op) => new HeadersNode({ op: op as never }) },
-  // "Fill blanks with the mean" — `mean` alone names nothing.
-  { type: "list-fill", ctor: FillNode, kind: "operation", ops: fromMeta(FILL_OP_META),
-    create: (op) => new FillNode({ op: op as never }) },
   // The aggregator is an argument of GROUP BY; `avg` on its own is meaningless here.
   { type: "list-groupby", ctor: GroupByNode, kind: "argument", ops: fromMeta(GROUP_BY_OP_META),
     create: (op) => new GroupByNode({ op: op as never }) },
-  { type: "head", ctor: HeadNode, kind: "operation", ops: fromMeta(HEAD_OP_META),
-    create: (op) => new HeadNode({ op: op as never }) },
 
   // ── Operation-kind: each op stands alone as a name ──
+  // Fill's ops carry declared fx names (FILLMEAN, FILLINTERPOLATE…) and dispatch
+  // as Tier 3 formulas — each IS a nameable thing, unlike GroupBy's bare `avg`.
+  { type: "list-fill", ctor: FillNode, kind: "operation", ops: fromMeta(FILL_OP_META),
+    create: (op) => new FillNode({ op: op as never }) },
+  { type: "head", ctor: HeadNode, kind: "operation", ops: fromMeta(HEAD_OP_META),
+    create: (op) => new HeadNode({ op: op as never }) },
   // Pad's selector was called `dir` — the only op family that named its op something
   // else, which is why it had no declaration at all and PADLEFT/PADRIGHT were
   // unsearchable. Renamed to `op` like every other family.
@@ -410,14 +411,20 @@ export function opEntry(
     // lost: the host row is still there to answer family-level queries, and each op
     // row keeps its own name plus the host's name in its label.
     keywords: undefined,
+    // NOT the host's ops-mark either: by search time applyNodeOps has stamped
+    // `hiddenOps` onto the host entry, and inheriting it put the `{ }` marker on
+    // every generated op row — a row that IS exactly one op has nothing folded up.
+    hiddenOps: undefined,
+    hideOpsMark: undefined,
   };
 }
 
 /** The op kind of a live node — "operation" when its dropdown selects between
  *  distinct operations, "argument" when it selects a parameter of one operation.
- *  Undefined for a node whose family hasn't been declared yet, which is DIFFERENT
- *  from "argument" and must stay visually distinguishable from it until every
- *  op-selector family is declared. */
+ *  Undefined for a node whose family hasn't been declared yet. Undeclared and
+ *  "argument" RENDER identically (neutral — no CSS rule targets the argument
+ *  value); the guard against an undeclared family is the coverage test, which
+ *  fails the build until every op-selector family is classified. */
 export function opKindForNode(node: object | undefined): OpKind | undefined {
   if (!node) return undefined;
   for (const d of NODE_OPS) if (node instanceof d.ctor) return d.kind;
