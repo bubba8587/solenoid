@@ -415,3 +415,17 @@ export function concatLists(...lists: (readonly unknown[] | null | undefined)[])
   for (const l of lists) if (l != null) out.push(...l);
   return out;
 }
+
+// ─── Shuffle ──────────────────────────────────────────────────────────────────
+
+/** Permute by SORT KEYS supplied by the caller — the pure part, with the volatility
+ *  left outside it. That split is the whole point: the node holds one key per slot
+ *  until the next recalc, so an unrelated edit doesn't reshuffle the card you are
+ *  looking at, while a formula generates fresh keys per evaluation the way RAND and
+ *  RANDBETWEEN already do. Same permutation code, two volatility policies. */
+export function shuffleList<T>(arr: readonly T[], keys: readonly number[]): T[] {
+  return arr
+    .map((v, i) => ({ v, k: keys[i] }))
+    .sort((a, b) => a.k - b.k)
+    .map((p) => p.v);
+}

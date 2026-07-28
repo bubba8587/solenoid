@@ -83,13 +83,14 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   "connect an account" flow would change that shape.
 
 - [ ] **Formula ↔ node parity — the remainder** (D19). Tiers 1–3 + the alias gate,
-  the ratchet and the pack seam have landed; 336/646 leaves are formula-callable, gap A
+  the ratchet and the pack seam have landed; 338/646 leaves are formula-callable, gap A
   is the 19 D2-capped names, gap C is 0. Left: **Tier 4** (the D2 dimensionality cap —
   author-present, `deferrals.md`), and three list-family stragglers each parked for a
   stated reason rather than effort:
-  - **SHUFFLE** needs a VOLATILITY model. The node holds its permutation stable within
-    a recalc pass; a formula call can't. RAND/RANDBETWEEN already reach the formula
-    surface from Formula.js without one — decide the model before adding a third.
+  - **Sort / Take / Drop still call their op selector `dir`** and so have no
+    `NODE_OPS` declaration — their ops are unsearchable in the Add menu. Pad had the
+    same problem and was fixed by renaming `dir` → `op`; these three are the same
+    one-line change plus a declaration.
   - **INTERPOLATE grid mode** — 2-D, so it rides on the Tier 4 decision. List mode
     is registered.
   - **Frame verbs** stay out of scope for formulas by design (bundle 08's transpiler is

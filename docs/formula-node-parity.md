@@ -1,7 +1,7 @@
 # Formula ↔ node parity — audit + design frame
 
 **Status: TIERS 1–3 BUILT (Tier 3 landed 2026-07-28). Tier 4 author-gated.**
-336/646 leaves formula-callable; gap A is the 19 D2-capped names; gap C is 0.
+338/646 leaves formula-callable; gap A is the 19 D2-capped names; gap C is 0.
 The mechanical work D19 greenlit — the ratchet, the alias gate, the Tier 1
 registrations, the pack seam, and now the Tier 3 list core — has landed; what remains
 is the Tier 4 decision. The audit framing below is kept because Tier 4 still needs it. **Design frame as of 2026-07-14:** Author direction: the expression/equation
@@ -163,17 +163,23 @@ machine-checks that the namespace is UNAMBIGUOUS — no two leaves despace to on
 and no declared `fx` collides with a label. Nothing checked that before; it is how the
 INTERPOLATE clash got in.
 
-**SHUFFLE is deliberately not registered.** Tier 3's contract is node-equals-formula,
-and Shuffle is volatile: the node keeps its permutation stable within a recalc pass
-(keyed on the recalc generation), which a formula call has no way to do. RAND and
-RANDBETWEEN already reach the formula surface from Formula.js without that model;
-adding our own volatile function would deepen that hole rather than fill it. Registering
-SHUFFLE waits on a volatility model, not on effort.
+**SHUFFLE is registered, and is the one function that can't assert node-equals-
+formula.** It is volatile — a fresh permutation per evaluation — exactly like the RAND
+and RANDBETWEEN already reachable here, so volatility in a formula is established
+behaviour rather than something this introduces. The node is volatile too, just on a
+coarser clock: it holds its sort keys until the next recalc so an unrelated edit
+doesn't reshuffle the card you are looking at. Both call `shuffleList`, which takes the
+keys as an ARGUMENT — the permutation stays one implementation and only the key source
+differs. Its test asserts a permutation (same multiset, same length) plus actual
+variation across draws.
 
 Frame verbs are explicitly NOT this tier — a query language in a formula string is its
 own large design (and bundle 08's transpiler is the nearer answer for "text in, graph
-out"). Also still native-only: Pad's host leaf (its two ops ARE callable), COUNT
-DISTINCT, INTERPOLATE, and the Lists › Tests pair.
+out"). The whole `Lists ›` native gap is now closed. Pad was the last one, and it was closed
+by RENAMING: its op selector was called `dir`, the only family that named its op
+something else, so it had no `NODE_OPS` declaration at all and PADLEFT/PADRIGHT were
+unsearchable in the Add menu as well as unmeasurable here. Sort / Take / Drop still use
+`dir` and are still undeclared — the same fix, not yet done.
 
 **Tier 4 — the dimensionality cap itself (D2, reopened).** Whether formulas accept
 matrices. Discussed with the author 2026-07-14 — full framing in the dedicated section

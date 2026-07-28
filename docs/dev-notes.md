@@ -301,6 +301,29 @@ Everything else in this batch was shape-or-operand and took the default: matrix
 dimensions and MAKEARRAY rows/cols leave the SHAPE unknown, DATEVALUE/TIMEVALUE already
 answered blank for blank text and only needed the swallow removed.
 
+### SHUFFLE registered; Pad's op selector had the wrong name (2026-07-28d)
+
+Author correction on the previous entry: I parked SHUFFLE for lacking a volatility
+model, but RAND and RANDBETWEEN are already dispatchable, so volatility in a formula
+is established behaviour and SHUFFLE introduces no new category. Registered.
+
+The useful part of the fix is the split it forced. `shuffleList(arr, keys)` takes its
+sort keys as an ARGUMENT, so the permutation is one implementation and only the key
+SOURCE differs: the node holds its keys until the next recalc (an unrelated edit must
+not reshuffle the card you're looking at), a formula redraws per evaluation. It is the
+one Tier 3 function whose test can't assert node-equals-formula, so it asserts a
+permutation — same multiset, same length — plus real variation across 40 draws.
+
+**Pad closed the last `Lists ›` row, by renaming.** Its op selector was called `dir`.
+That single naming difference meant `list-pad` had no `NODE_OPS` declaration at all,
+because the declaration mechanism reads `inst.op` — so PADLEFT/PADRIGHT were
+unsearchable in the Add menu, and the parity walk had no ops to check either. Renamed
+to `op` like every other family and declared. Worth noting the shape of this: it wasn't
+missing work, it was work that couldn't attach because one field had a different name.
+
+Sort / Take / Drop still use `dir` and are still undeclared — same fix, logged.
+338/646 leaves callable; every remaining Lists gap is a D2-capped Excel name.
+
 ### Ten functions were quietly computing garbage (2026-07-28c)
 
 Closing Tier 3's last stragglers — COUNTDISTINCT, INTERPOLATE (list mode; grid is
