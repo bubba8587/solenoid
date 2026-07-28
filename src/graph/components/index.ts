@@ -279,7 +279,7 @@ export {
   TodayNowComponent, DateConstructComponent, TimeConstructComponent,
   DateValueComponent, TimeValueComponent, DatePartComponent,
   WeekInfoComponent, DateDiffComponent, DateAddComponent,
-  WorkdayComponent, NetworkdaysComponent, DatedifComponent,
+  WorkdayComponent, NetworkdaysComponent,
 } from "./DateNodes";
 
 // ─── Stats (extended) ─────────────────────────────────────────────────────────

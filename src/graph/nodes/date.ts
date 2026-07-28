@@ -338,15 +338,34 @@ export class WeekInfoNode extends ClassicPreset.Node {
   }
 }
 
-// ─── Date diff (DAYS / DAYS360 / YEARFRAC) ───────────────────────────────────
+// ─── Date difference (DAYS / DAYS360 / YEARFRAC + the DATEDIF units) ──────────
+// ONE family for "difference between two dates". The day-count ops are Excel's
+// own function names and take the basis argument; the calendar-component ops are
+// DATEDIF's units flattened into first-class ops (DATEDIF "D" had no life of its
+// own — it duplicated DAYS — so it's not an op; the formula surface still
+// dispatches all six unit strings). The basis input exists ONLY while the op
+// uses it (syncBasisInput — the Interpolate variant-switch pattern, narrowed to
+// one socket with no type changes).
 
-export type DateDiffOp = "days" | "days360" | "yearfrac";
+export type DateDiffOp =
+  | "days" | "days360" | "yearfrac"          // day-count functions (basis input)
+  | "years" | "months" | "ym" | "md" | "yd"; // DATEDIF calendar components
 
 export const DATE_DIFF_OP_META = {
-  days:     { label: "DAYS",     description: "Days between dates: end − start (basis ignored). Excel: DAYS(end, start)." },
+  days:     { label: "DAYS",     description: "Days between dates: end − start, signed. Excel: DAYS(end, start)." },
   days360:  { label: "DAYS360",  description: "Days on a 360-day year. Basis 0: US/NASD, 1: European. Excel: DAYS360." },
   yearfrac: { label: "YEARFRAC", description: "Fraction of year. Basis 0: 30/360US, 1: actual/actual (≈÷365.25), 2: actual/360, 3: actual/365, 4: 30/360EU. Excel: YEARFRAC." },
+  years:    { label: "Whole years",  description: "Complete years between dates. Excel: DATEDIF \"Y\"." },
+  months:   { label: "Whole months", description: "Complete months between dates. Excel: DATEDIF \"M\"." },
+  ym:       { label: "Months ignoring years", description: "Complete months past the last whole year. Excel: DATEDIF \"YM\"." },
+  md:       { label: "Days ignoring months",  description: "Days past the last whole month, borrowing from the month before the end month. Excel: DATEDIF \"MD\"." },
+  yd:       { label: "Days ignoring years",   description: "Days past the last whole year. Excel: DATEDIF \"YD\"." },
 } satisfies Record<DateDiffOp, { label: string; description: string }>;
+
+/** The day-count ops take Excel's basis argument; the DATEDIF units don't. */
+export function dateDiffNeedsBasis(op: DateDiffOp): boolean {
+  return op === "days360" || op === "yearfrac";
+}
 
 export class DateDiffNode extends ClassicPreset.Node {
   label: string;
@@ -361,22 +380,75 @@ export class DateDiffNode extends ClassicPreset.Node {
     this.label = init?.label ?? DATE_DIFF_OP_META[this.op].label;
     this.addInput("start", dateComboIn("Start date"));
     this.addInput("end",   dateComboIn("End date"));
-    this.addInput("basis", numIn("Basis (0=30/360)"));
     this.addOutput("result", numListOut("Result"));
+    this.syncBasisInput();
+  }
+
+  /** Add/remove the basis input to match the current op. The COMPONENT drops any
+   *  basis cable before switching away (removeInput while a cable references the
+   *  socket is unsafe — the Interpolate rule) and area-updates after. Returns
+   *  whether the socket set changed. */
+  syncBasisInput(): boolean {
+    const needs = dateDiffNeedsBasis(this.op);
+    const has = !!this.inputs.basis;
+    if (needs === has) return false;
+    if (needs) this.addInput("basis", numIn("Basis (0=30/360)"));
+    else this.removeInput("basis");
+    this.height = needs ? 225 : 195;
+    return true;
   }
 
   data(inputs: { start?: (number | number[])[]; end?: (number | number[])[]; basis?: number[] }): { result: BroadcastResult } {
-    const basisRaw = readInput(inputs.basis, this.literals.basis ?? 0);
-    if (basisRaw === null) { this.cachedResult = null; return { result: null }; }
-    const basis = Math.floor(basisRaw);
+    let basis = 0;
+    if (dateDiffNeedsBasis(this.op)) {
+      const basisRaw = readInput(inputs.basis, this.literals.basis ?? 0);
+      if (basisRaw === null) { this.cachedResult = null; return { result: null }; }
+      basis = Math.floor(basisRaw);
+    }
     const result = broadcast((s, e) => {
+    // The DATEDIF ops are undefined for a reversed range — null (MISSING) per
+    // cell, as before the merge. DAYS stays signed.
+    if (s > e && !dateDiffNeedsBasis(this.op) && this.op !== "days") return null;
     const sd    = serialToJsDate(s);
     const ed    = serialToJsDate(e);
+    const sy    = sd.getUTCFullYear(), sm = sd.getUTCMonth(), sday = sd.getUTCDate();
+    const ey    = ed.getUTCFullYear(), em = ed.getUTCMonth(), eday = ed.getUTCDate();
     let result: number;
     switch (this.op) {
       case "days":
         result = Math.round((ed.getTime() - sd.getTime()) / 86400000);
         break;
+      case "years":
+        result = ey - sy - (em < sm || (em === sm && eday < sday) ? 1 : 0);
+        break;
+      case "months":
+        result = (ey - sy) * 12 + (em - sm) - (eday < sday ? 1 : 0);
+        break;
+      case "ym":
+        result = ((ey - sy) * 12 + (em - sm) - (eday < sday ? 1 : 0)) % 12;
+        break;
+      case "md": {
+        // Day difference borrowing from the month BEFORE the end month when the
+        // end day is smaller. The old form built Date.UTC(ey, em, sday) without
+        // clamping; JS rolls Feb 31 → Mar 2, and the step-back-a-month fix then
+        // landed on the wrong day (Jan 31 → Feb 28 gave 26; Excel gives 28).
+        // Excel's MD is documented unreliable when the borrow goes negative
+        // (e.g. Jan 31 → Mar 1); we return the consistent borrow result there.
+        if (eday >= sday) {
+          result = eday - sday;
+        } else {
+          // Day 0 of (ey, em) = last day of the previous month.
+          const daysInPrevMonth = new Date(Date.UTC(ey, em, 0)).getUTCDate();
+          result = eday - sday + daysInPrevMonth;
+        }
+        break;
+      }
+      case "yd": {
+        const base = new Date(Date.UTC(ey, sm, sday));
+        if (base > ed) base.setUTCFullYear(ey - 1);
+        result = Math.round((ed.getTime() - base.getTime()) / 86400000);
+        break;
+      }
       case "days360": {
         let y1 = sd.getUTCFullYear(), m1 = sd.getUTCMonth() + 1, d1 = sd.getUTCDate();
         let y2 = ed.getUTCFullYear(), m2 = ed.getUTCMonth() + 1, d2 = ed.getUTCDate();
@@ -547,82 +619,3 @@ export class NetworkdaysNode extends ClassicPreset.Node {
 /** The default date / datetime display pattern, used everywhere a date is shown
  *  without an explicit Format Controller (e.g. `01-Jan-2026`). Change here to
  *  re-default the whole app. */
-// ─── DATEDIF ─────────────────────────────────────────────────────────────────
-
-export type DatedifUnit = "Y" | "M" | "D" | "MD" | "YM" | "YD";
-
-export const DATEDIF_UNIT_META = {
-  Y:  { label: "Y",  description: "Complete years between dates" },
-  M:  { label: "M",  description: "Complete months between dates" },
-  D:  { label: "D",  description: "Days between dates" },
-  MD: { label: "MD", description: "Days, ignoring months and years" },
-  YM: { label: "YM", description: "Months, ignoring years" },
-  YD: { label: "YD", description: "Days, ignoring years" },
-} satisfies Record<DatedifUnit, { label: string; description: string }>;
-
-export class DatedifNode extends ClassicPreset.Node {
-  label: string;
-  unit: DatedifUnit;
-  cachedResult: BroadcastResult = null;
-  width = 180; height = 220;
-
-  constructor(init?: { label?: string; unit?: DatedifUnit }) {
-    super("Datedif");
-    this.label = init?.label ?? "DATEDIF";
-    this.unit  = init?.unit  ?? "Y";
-    this.addInput("start", dateComboIn("Start date"));
-    this.addInput("end",   dateComboIn("End date"));
-    this.addOutput("result", numListOut("Result"));
-  }
-
-  data(inputs: { start?: (number | number[])[]; end?: (number | number[])[] }): { result: BroadcastResult } {
-    const result = broadcast((s, e) => {
-    // DATEDIF is undefined for a reversed range — null (MISSING) per cell, as before.
-    if (s > e) return null;
-    const sd   = serialToJsDate(s);
-    const ed   = serialToJsDate(e);
-    const sy   = sd.getUTCFullYear(), sm = sd.getUTCMonth(), sday = sd.getUTCDate();
-    const ey   = ed.getUTCFullYear(), em = ed.getUTCMonth(), eday = ed.getUTCDate();
-    let result: number;
-    switch (this.unit) {
-      case "Y":
-        result = ey - sy - (em < sm || (em === sm && eday < sday) ? 1 : 0);
-        break;
-      case "M":
-        result = (ey - sy) * 12 + (em - sm) - (eday < sday ? 1 : 0);
-        break;
-      case "D":
-        result = Math.round((ed.getTime() - sd.getTime()) / 86400000);
-        break;
-      case "MD": {
-        // Day difference borrowing from the month BEFORE the end month when the
-        // end day is smaller. The old form built Date.UTC(ey, em, sday) without
-        // clamping; JS rolls Feb 31 → Mar 2, and the step-back-a-month fix then
-        // landed on the wrong day (Jan 31 → Feb 28 gave 26; Excel gives 28).
-        // Excel's MD is documented unreliable when the borrow goes negative
-        // (e.g. Jan 31 → Mar 1); we return the consistent borrow result there.
-        if (eday >= sday) {
-          result = eday - sday;
-        } else {
-          // Day 0 of (ey, em) = last day of the previous month.
-          const daysInPrevMonth = new Date(Date.UTC(ey, em, 0)).getUTCDate();
-          result = eday - sday + daysInPrevMonth;
-        }
-        break;
-      }
-      case "YM":
-        result = ((ey - sy) * 12 + (em - sm) - (eday < sday ? 1 : 0)) % 12;
-        break;
-      case "YD": {
-        const base = new Date(Date.UTC(ey, sm, sday));
-        if (base > ed) base.setUTCFullYear(ey - 1);
-        result = Math.round((ed.getTime() - base.getTime()) / 86400000);
-        break;
-      }
-    }
-    return result;
-    }, inputs.start?.[0] ?? null, inputs.end?.[0] ?? null);
-    this.cachedResult = result;
-    return { result };
-  }
-}

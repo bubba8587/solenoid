@@ -10,13 +10,13 @@ import type {
   DateAddNode as DateAddNodeType,
   WorkdayNode as WorkdayNodeType,
   NetworkdaysNode as NetworkdaysNodeType,
-  DatedifNode as DatedifNodeType,
-  TodayNowOp, DatePartOp, WeekInfoOp, DateDiffOp, DateAddOp, DatedifUnit,
+  TodayNowOp, DatePartOp, WeekInfoOp, DateDiffOp, DateAddOp,
 } from "../rete-nodes";
 import {
   TODAY_NOW_OP_META, DATE_PART_OP_META, WEEK_INFO_OP_META,
-  DATE_DIFF_OP_META, DATE_ADD_OP_META, DATEDIF_UNIT_META,
+  DATE_DIFF_OP_META, DATE_ADD_OP_META, dateDiffNeedsBasis,
 } from "../rete-nodes";
+import { getActiveEditor, getActiveArea } from "../activeGraph";
 import { InlineInputs } from "./inlineInput";
 import { RecalcButton } from "./RecalcButton";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
@@ -123,14 +123,27 @@ export function WeekInfoComponent({ data, emit }: NodeProps<WeekInfoNodeType>) {
 
 const DATE_DIFF_OPS = (Object.keys(DATE_DIFF_OP_META) as DateDiffOp[]).map(op => ({
   value: op, label: DATE_DIFF_OP_META[op].label,
+  group: dateDiffNeedsBasis(op) || op === "days" ? "Day count" : "Calendar (DATEDIF)",
 }));
 
 export function DateDiffComponent({ data, emit }: NodeProps<DateDiffNodeType>) {
   const [op, setOp] = useNodeField(data, "op");
   const [, setLabel] = useNodeField(data, "label");
-  function handleOp(next: DateDiffOp) {
-    setOp(next);
+  async function handleOp(next: DateDiffOp) {
+    // Leaving a basis op: drop any basis cable BEFORE the socket goes away
+    // (removeInput while a cable references the socket is unsafe — the
+    // Interpolate variant-switch rule).
+    if (!dateDiffNeedsBasis(next) && data.inputs.basis) {
+      const editor = getActiveEditor();
+      if (editor) {
+        const conns = editor.getConnections()
+          .filter((c) => c.target === data.id && c.targetInput === "basis");
+        for (const c of conns) await editor.removeConnection(c.id);
+      }
+    }
+    setOp(next); // sets data.op + reconciles + recomputes (useNodeField)
     setLabel(DATE_DIFF_OP_META[next].label);
+    if (data.syncBasisInput()) await getActiveArea()?.update("node", data.id);
   }
   return (
     <NodeShell node={data} emit={emit}>
@@ -179,17 +192,3 @@ export function NetworkdaysComponent({ data, emit }: NodeProps<NetworkdaysNodeTy
   );
 }
 
-const DATEDIF_UNITS = (Object.keys(DATEDIF_UNIT_META) as DatedifUnit[]).map(u => ({
-  value: u, label: DATEDIF_UNIT_META[u].label,
-}));
-
-export function DatedifComponent({ data, emit }: NodeProps<DatedifNodeType>) {
-  const [unit, setUnit] = useNodeField(data, "unit");
-  return (
-    <NodeShell node={data} emit={emit}>
-      <InlineInputs node={data} emit={emit} />
-      <OpSelect arg value={unit} onChange={setUnit} options={DATEDIF_UNITS} />
-      <ValueDisplay value={data.cachedResult} />
-    </NodeShell>
-  );
-}
