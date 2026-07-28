@@ -6,7 +6,7 @@
 // but keep the result/display box and their socket dots.
 
 import { createNotifier } from "./storeKit";
-import { registerNodeForget } from "./nodeStoreRegistry";
+import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 
 const _collapsed = new Set<string>();
 const { notify, subscribe } = createNotifier();
@@ -39,3 +39,4 @@ export const collapseStore = {
 };
 
 registerNodeForget(collapseStore.forget);
+registerNodeForgetAll(() => collapseStore.clear());

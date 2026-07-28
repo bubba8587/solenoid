@@ -120,6 +120,35 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### STORE-1: the node-store registry completes — five unregistered stores, one visible bug (2026-07-28dd)
+
+The queue said two stores were unregistered; the census found FIVE, plus two
+decayed hand-wirings:
+
+**Newly registered** — formatAnnotationStore (grew removeForNode via its _byNode
+index + clearNodes, which leaves the pack format/unit REGISTRATIONS alone),
+dockedNodeStore (forget covers both roles: the docked FC's own entry AND every
+FC docked to a deleted host), compositeStaleStore, standoffs (had the methods,
+wired ad hoc), and isolateStore — whose miss was a VISIBLE bug, not a leak:
+nothing exited isolate on a document load, so switching documents while
+isolated left the old graph's ids in the focus set and dimmed the ENTIRE new
+graph (every regenerated id a non-member). Registry forget also drops a deleted
+node from the focus set, exiting when it empties.
+
+**Hand-wirings deleted** — Canvas.tsx called standoffStore.removeForNode
+UNCONDITIONALLY in noderemoved (paying the per-node scan during rebuilds that
+the registry's isGraphRebuilding skip exists to avoid); persistence hand-listed
+four stores' clear() calls beside forgetAllNodes(). Those four
+(nodeSize/collapse/pin/nodeName) now register forgetAll like the rest and the
+hand-list is one registry call.
+
+**The sweep** (sourceInvariants "STORE-1"): every top-level `*Store*.ts` either
+references registerNodeForget or sits in a sanctioned map with the reason it
+holds no per-node state (34 entries — doc-level, settings, dialog/overlay
+state, single-transient-id popup stores); every registrant must also register
+the bulk reset; the sanctioned list is honesty-checked. New STORE domain,
+rule STORE-1; 67 rules, 63 enforced.
+
 ### VAL-20: the last bare-NaN producer — the RANGE branch classifies (2026-07-28cc)
 
 The completeness pair's other half. The producer sweep ran as a probe battery:

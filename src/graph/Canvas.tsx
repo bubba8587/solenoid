@@ -1094,9 +1094,9 @@ export function Canvas() {
             const docked = editor.getNode(rel.id);
             if (docked instanceof FormatControllerNode) docked.undock();
           }
-          // Drop a deleted node from any group that contained it.
+          // Drop a deleted node from any group that contained it. (Standoffs
+          // are registry-forgotten below, like every node-keyed store.)
           dropFromGroups(editor, (n as { id: string }).id);
-          standoffStore.removeForNode((n as { id: string }).id);
           // Forget the node's id-keyed UI state (collapse, size, cable values,
           // exit angles) so it doesn't linger until the next reload. Every
           // node-keyed store self-registers — see nodeStoreRegistry. Skipped

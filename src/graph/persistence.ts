@@ -389,12 +389,7 @@ async function rebuildGraph(
   // some stores scan their whole map per forget — over a big graph that's
   // O(nodes × entries) and was the main cost of clearing the current graph
   // (e.g. when deleting/switching the open Personal Finance doc).
-  forgetAllNodes();
-  nodeSizeStore.clear(); // drop sizes keyed to the now-removed ids
-  standoffStore.clear(); // ditto for arrangement constraints
-  collapseStore.clear(); // ditto for per-node collapse
-  pinStore.clear();      // ditto for pinned value chips
-  nodeNameStore.clear(); // ditto for stable node names
+  forgetAllNodes(); // every node-keyed store registers its own bulk reset (STORE-1)
   // Overlay singletons keyed to a node id from the OUTGOING graph: a docked
   // report would otherwise keep the `sol-report-docked` canvas squeeze (and a
   // running presentation its chrome-hide) across a document switch. The

@@ -1002,13 +1002,45 @@ nodes/packs file firing an alert references isGraphRebuilding" (completeness).
 a closed composite kept firing full recomputes forever; and the reported alert
 carry-over bug (switch into an already-met condition).
 
+---
+
+# STORE — Node-keyed module stores
+
+Rete renders nodes in a separate React root, so per-node UI/derived state lives in
+module-level singleton stores keyed by node id. The lifecycle question — what happens
+to a store's entries when a node is deleted, and on a wholesale rebuild — has ONE
+answer, the registry; a store that answers it privately answers it wrong eventually.
+
+### STORE-1 — A node-keyed store registers forget AND forgetAll **[INFERRED]**
+**MUST:** every module store holding per-node state registers `registerNodeForget`
+(the `noderemoved` path) AND `registerNodeForgetAll` (the rebuild bulk reset) with
+`nodeStoreRegistry` at module scope. The rebuild path calls `forgetAllNodes()` once —
+no store is hand-cleared in persistence, and no per-node cleanup is hand-wired in
+Canvas. A store holding ONE transient id (an open popup/overlay) rather than a
+per-node map is the sanctioned alternative.
+
+*Why:* the ad-hoc alternatives all existed and all decayed: four stores held
+node-keyed maps with NO cleanup (bounded leaks — dead-id entries linger until reload),
+persistence hand-listed four more stores' `clear()` calls beside the registry's bulk
+reset, Canvas hand-wired standoffs' per-node cleanup UNCONDITIONALLY (paying the
+per-node scan during rebuilds that the registry's `isGraphRebuilding` skip exists to
+avoid) — and isolateStore's miss was a VISIBLE bug: nothing exited isolate on a
+document switch, so the stale focus set dimmed the entire new graph (every regenerated
+id a non-member).
+*Enforced by:* `sourceInvariants.test.ts` → "STORE-1" — every `*Store*.ts` references
+the registry or is sanctioned with its reason; every registrant also registers the
+bulk reset; the sanctioned list is honesty-checked.
+*Origin:* the 2026-07-28 completeness queue ("formatAnnotationStore and standoffs
+register neither"); the sweep found dockedNodeStore, compositeStaleStore and
+isolateStore missing too.
+
 # Enforcement summary
 
-66 rules.
+67 rules.
 
 | Status | Count | Rules |
 |---|---|---|
-| Enforced | 62 | PROV-1 · SSOT-1,2,3,4,6,7,8,9 · SOCK-1,2,3,4,5,7,9,10,11,12 · FX-1,2,3,4,5,6,7,8,9,10,11 · VAL-1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20 · PERSIST-1,2,3,4,5,6,7,8 · ENGINE-1,2,3 · EFFECT-2 |
+| Enforced | 63 | PROV-1 · SSOT-1,2,3,4,6,7,8,9 · SOCK-1,2,3,4,5,7,9,10,11,12 · FX-1,2,3,4,5,6,7,8,9,10,11 · VAL-1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20 · PERSIST-1,2,3,4,5,6,7,8 · ENGINE-1,2,3 · EFFECT-2 · STORE-1 |
 | Partially enforced | 1 | EFFECT-1 |
 | Unenforced | 3 | SSOT-5 · SOCK-6, SOCK-8 |
 

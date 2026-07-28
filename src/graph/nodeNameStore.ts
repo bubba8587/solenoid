@@ -9,7 +9,7 @@
 // text projection (textForm.ts) as the line's leading token.
 
 import { createNotifier } from "./storeKit";
-import { registerNodeForget } from "./nodeStoreRegistry";
+import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 import { NAME_RE, typePrefix, nextAvailableName, counterCheckpoint } from "./nodeNaming";
 
 const _names = new Map<string, string>(); // node id -> name
@@ -102,3 +102,4 @@ export const nodeNameStore = {
 };
 
 registerNodeForget(nodeNameStore.forget);
+registerNodeForgetAll(() => nodeNameStore.clear());
