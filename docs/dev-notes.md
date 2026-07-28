@@ -256,6 +256,57 @@ Everything else in this batch was shape-or-operand and took the default: matrix
 dimensions and MAKEARRAY rows/cols leave the SHAPE unknown, DATEVALUE/TIMEVALUE already
 answered blank for blank text and only needed the swallow removed.
 
+### The wired-null sweep is DONE — 0 sites, and the spec grew four rules (2026-07-28)
+
+The last four files went in one pass each: finance (73), frame (30), list (31), visual
+(23). Every node file is now at zero, so `readInputSweep.test.ts` stops being a
+countdown and becomes a floor — no per-file list to maintain, and a failure means one
+new read to fix rather than a budget to adjust.
+
+The instruction for these four was to work MECHANICALLY from the spec and evolve it
+where it didn't reach. It reached for finance almost entirely (scalar financial
+parameters, all propagate) but the other three each surfaced a genuinely new rule, now
+written into `value-semantics.md`:
+
+**Where the guard GOES, not just what it does** (from finance). Two placements that
+typecheck and are silently wrong. An **error outranks an unknown**: MIRR/NPV/FVSCHEDULE
+both null-guard scalars and scan a list for `SolError`s, and the error branch has to run
+first — that is the precedence `installErrorGuards` gives an error arriving on any other
+input. And **scope the guard to the ACTIVE op**: a guard hoisted above the `switch` that
+ANDs every op's inputs turns a blank on an input this op ignores into a blank answer.
+TBILLYIELD never reads `discount`.
+
+**The column REFERENCE** (from frame) — the family's dominant shape and the worst case
+for this bug, because the empty literal already means something: *"no column chosen,
+pass the frame through"*. A wired blank fell straight into it and returned the input
+frame UNCHANGED, which reads as a successful no-op rather than a missing answer. Read
+raw, guard, then `.trim()`. Same shape killed `readFilterValue`'s old contract — its doc
+comment literally said a wired missing "reads as not written yet", which is the
+absent/unknown conflation the spec rules against, and it made both Filters and SUMIFS
+return MORE rows than the graph asked for. A filter differs from a validator (which
+skips) because a filter's OUTPUT is the decision.
+
+**The third state** (from list). Excel's omitted-argument readings are real and stay —
+INDEX's omitted axis is the whole row/column, Slice's absent end runs to the end,
+an as-of Join with no tolerance is an exact match. They belong to `undefined`, and
+`readInput` hands back all three states when the literal is passed through WITHOUT an
+`?? default`: undefined = unwired and nothing typed, null = a cable carrying blank, a
+value = wired or typed. Writing `?? 0` collapses the first two. So a default only goes
+on an input that has no omitted reading.
+
+**Presentation is the one place the CONTROL rule doesn't extend** (from visual). The
+control fallback exists because a widget cannot physically work without its bound;
+styling always has a working neutral, so falling back to the card would just reinstate
+styling the graph withheld. The test is the widget's, not the input's: *can it render at
+all?* Bullet proves both halves in one node — `max` is the track's scale and keeps the
+card's bound, while `value` and `target` go blank and the figure draws empty.
+
+Fill/Coalesce is the one node needing no guard at all: filling a missing with a missing
+leaves the cell missing, which is already the honest per-cell answer.
+
+Total: ~350 reads across 20 files, every one now through `readInput`, with a worked
+example of all ten roles pinned in `wiredNull.test.ts` (30 tests).
+
 ### Sweep batch 2 — and the sharpest form of the bug (2026-07-27b)
 
 Swept chemistry, dist-discrete, quality and logic (11 sites). Two findings worth more
@@ -279,7 +330,7 @@ Also fixed a false positive in the ratchet itself: it counted `shared.ts`'s doc 
 which DESCRIBES the idiom. It now strips comment lines — otherwise writing a note about
 a fix would raise the count.
 
-Remaining: 223 across 14 files (finance 73, list 33, frame 30, visual 23, stats 22).
+Remaining at the time: 223 across 14 files — all swept by 2026-07-28 (see above).
 
 ### The wired-null sweep, ratcheted (2026-07-27b)
 
@@ -301,8 +352,8 @@ has. `complex.ts` needed nothing but the reads: `numOp` already accepts null and
 so the plumbing was waiting on the readers there too — the third file in a row where
 that turned out to be true.
 
-Done: text.ts, date.ts, complex.ts. Remaining: 207 across 18 files, with the policy
-settled and one worked example of each case pinned in `wiredNull.test.ts`.
+Done at the time: text.ts, date.ts, complex.ts; 207 remaining across 18 files. The
+pin held all the way down to zero.
 
 ### Wired-null no longer resurrects the typed literal (2026-07-27b)
 
