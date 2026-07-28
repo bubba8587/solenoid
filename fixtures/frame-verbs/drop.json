@@ -1,0 +1,21 @@
+{ "verb": "drop",
+  "cases": [
+    { "name": "removes the named column",
+      "frames": { "in": { "columns": [
+        { "name": "a", "type": "number", "values": [1, 2] },
+        { "name": "b", "type": "string", "values": ["x", "y"] } ] } },
+      "op": { "kind": "drop", "columns": ["a"] },
+      "expect": { "columns": [
+        { "name": "b", "type": "string", "values": ["x", "y"] } ] } },
+    { "name": "an unknown column is IGNORED (drop's documented contrast with select)",
+      "frames": { "in": { "columns": [
+        { "name": "a", "type": "number", "values": [1] } ] } },
+      "op": { "kind": "drop", "columns": ["nope"] },
+      "expect": { "columns": [
+        { "name": "a", "type": "number", "values": [1] } ] } },
+    { "name": "dropping every column leaves an empty frame",
+      "frames": { "in": { "columns": [
+        { "name": "a", "type": "number", "values": [1] } ] } },
+      "op": { "kind": "drop", "columns": ["a"] },
+      "expect": { "columns": [] } }
+  ] }

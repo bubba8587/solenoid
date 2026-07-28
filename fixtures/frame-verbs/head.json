@@ -1,0 +1,27 @@
+{ "verb": "head",
+  "cases": [
+    { "name": "first n rows",
+      "frames": { "in": { "columns": [
+        { "name": "a", "type": "number", "values": [1, 2, 3] } ] } },
+      "op": { "kind": "head", "n": 2 },
+      "expect": { "columns": [
+        { "name": "a", "type": "number", "values": [1, 2] } ] } },
+    { "name": "n = 0 keeps the schema, no rows",
+      "frames": { "in": { "columns": [
+        { "name": "a", "type": "number", "values": [1, 2] } ] } },
+      "op": { "kind": "head", "n": 0 },
+      "expect": { "columns": [
+        { "name": "a", "type": "number", "values": [] } ] } },
+    { "name": "n beyond the row count is the whole frame",
+      "frames": { "in": { "columns": [
+        { "name": "a", "type": "number", "values": [1, 2] } ] } },
+      "op": { "kind": "head", "n": 99 },
+      "expect": { "columns": [
+        { "name": "a", "type": "number", "values": [1, 2] } ] } },
+    { "name": "a negative n clamps to zero rows",
+      "frames": { "in": { "columns": [
+        { "name": "a", "type": "number", "values": [1, 2] } ] } },
+      "op": { "kind": "head", "n": -1 },
+      "expect": { "columns": [
+        { "name": "a", "type": "number", "values": [] } ] } }
+  ] }

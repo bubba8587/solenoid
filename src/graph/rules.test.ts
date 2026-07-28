@@ -17,6 +17,20 @@ const DOC = fs.readFileSync(path.resolve(__dirname, "../../docs/rules.md"), "utf
 describe("docs/rules.md", () => {
   const ids = [...DOC.matchAll(/^### ((?:PROV|SSOT|SOCK|FX|VAL|PERSIST|ENGINE|EFFECT|STORE)-\d+)/gm)].map((m) => m[1]);
 
+  it("every rule labels its enforcement (SSOT-5 made mechanical)", () => {
+    // SSOT-5: a rule not enforced by a test is DEBT, and is labelled. The label
+    // is the *Enforced by:* line — either citing tests or saying UNENFORCED.
+    // A new rule without the line is unlabelled debt and fails here by ID.
+    const bodies = DOC.split(/^### /m).slice(1);
+    const missing: string[] = [];
+    for (const body of bodies) {
+      const id = body.match(/^((?:PROV|SSOT|SOCK|FX|VAL|PERSIST|ENGINE|EFFECT|STORE)-\d+)/)?.[1];
+      if (!id) continue;
+      if (!/\*Enforced by:\*/.test(body)) missing.push(id);
+    }
+    expect(missing, "rules with no *Enforced by:* line (label the enforcement or the debt)").toEqual([]);
+  });
+
   // ─── The ARR-uniqueness guard (PROV-1, the one author-ruled rule) ───────────
   // ARR is conferred ONLY by the author reading this document in a session and
   // marking a rule themselves. This guard makes that mechanically binding on the

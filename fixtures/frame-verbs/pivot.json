@@ -1,0 +1,21 @@
+{ "verb": "pivot",
+  "cases": [
+    { "name": "one row field, one column field, sum",
+      "frames": { "in": { "columns": [
+        { "name": "region", "type": "string", "values": ["E", "E", "W", "W"] },
+        { "name": "product", "type": "string", "values": ["a", "b", "a", "b"] },
+        { "name": "sales", "type": "number", "values": [1, 2, 3, 4] } ] } },
+      "op": { "kind": "pivot", "rowFields": ["region"], "colFields": ["product"], "values": ["sales"], "funcs": ["sum"] },
+      "expect": { "columns": [
+        { "name": "region", "type": "string", "values": ["E", "W"] },
+        { "name": "a", "type": "number", "values": [1, 3] },
+        { "name": "b", "type": "number", "values": [2, 4] } ] } },
+    { "name": "no column fields degrades to a group-by",
+      "frames": { "in": { "columns": [
+        { "name": "region", "type": "string", "values": ["E", "E", "W", "W"] },
+        { "name": "sales", "type": "number", "values": [1, 2, 3, 4] } ] } },
+      "op": { "kind": "pivot", "rowFields": ["region"], "colFields": [], "values": ["sales"], "funcs": ["sum"] },
+      "expect": { "columns": [
+        { "name": "region", "type": "string", "values": ["E", "W"] },
+        { "name": "sales", "type": "number", "values": [3, 7] } ] } }
+  ] }
