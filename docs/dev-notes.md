@@ -120,6 +120,21 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### The parity corpus is DESIGNED — the queue's last item, decision-complete (2026-07-28gg)
+
+`v2.0/18-parity-corpus.md`. The one design decision that matters: **the corpus
+format IS the wire format** — a fixture is a recorded IPC payload (frames as
+the engine deserializes them, ops in the `WireOp` tagged shape, which is
+`FrameOp`'s union by construction), so both runners read fixtures with their
+PRODUCTION deserializers and no third representation exists to drift. Two
+runners (a vitest glob; a cargo test walking the same dir via
+CARGO_MANIFEST_DIR), a DERIVED verb inventory (`FRAME_OP_KINDS` pinned against
+the dispatch switch — SSOT-4), non-finite values via the already-pinned
+`["#", null]` convention plus an `"__Infinity"` sentinel for real ∞ inputs,
+and a verb-by-verb migration off the ~30 hand-mirrored test pairs behind a
+shrinking whitelist. Promotes as FX-12 when the whitelist empties. Build order
+in the doc; the build itself is the queue's one remaining (and largest) item.
+
 ### PERSIST-10: width/height ownership pinned — the last small residue (2026-07-28ff)
 
 The observer owns `node.width/height` at runtime (measured px every layout,
