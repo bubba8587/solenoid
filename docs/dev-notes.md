@@ -120,6 +120,28 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### D23 amended: the complex exclusion was false, and unenforced (2026-07-28o)
+
+The author caught it directly: "didn't we just fix complex to let it be in?" —
+and yes. D23's "matrices-only: frames, cubes AND COMPLEX stay out" carried
+complex on reasons that only ever applied to frames/cubes (verb-engine
+competition, FrameRef economics, no-Excel-semantics — Excel HAS complex
+semantics, the IM* family). Complex's real blocker was the [re,im]/2-list
+ambiguity, which VAL-15 deleted the same morning. I wrote the exclusion anyway —
+the exact carried-forward-constraint failure the provenance system exists for.
+
+Verified live before amending: the exclusion is not even enforced. anydata
+accepts the complex family, so tagged Cx values flow into Expression variables
+TODAY; `x + 1` with a complex x concatenates "[object Object]1"; and IMSUM
+dispatches through Formula.js on TEXT complexes ("3+4i" → "4+6i") while
+answering #VALUE! on our tagged form — two representations of one type across
+the two surfaces, the FX-1 drift in the flesh.
+
+D23 carries a same-day amendment narrowing the exclusion to frames/cubes;
+complex-in-formulas is now an open BUILD in the backlog (extract the complex
+kernels rete-free, own IM* over tagged Cx + accept the text form, operators on
+a Cx answer #TYPE!). Quadratic Roots' gap leaf rides on it.
+
 ### The remainder audit: false deliberations dissolved by measurement (2026-07-28n)
 
 The author challenged the 289-leaf "deliberate" remainder; the audit found one
