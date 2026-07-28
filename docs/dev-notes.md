@@ -120,6 +120,36 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### D23: the cap lifts — matrices in formulas (decision + build step 1) (2026-07-28f)
+
+**The author decided Tier 4 with the packet on the table: YES, matrices-only.**
+Recorded as D23 (criteria, bound rules, reversal conditions); the deferral entry is
+gone; the packet is now the build spec and says so.
+
+Build step 1 — the engine understands rank 2 before any socket admits it:
+- `mapCells` in excelFormula.ts implements the eleven-row table ONCE, and every
+  element-wise surface routes through it: operators (broadcast2 is now a shim),
+  unary, percent, and broadcastCall. Shape (alignment, singleton-axis broadcast,
+  null pad) lives there; each caller keeps its own per-cell semantics.
+- `broadcastRules.test.ts` transcribes the table row by row (SSOT-6: the doc table
+  and the test are one data). Aggregates flatten row-major, so SUM/AVERAGE/MAX over
+  a matrix work with their 1-D null/error prep unchanged.
+- Containment: a matrix reaches a dispatch whole ONLY through a declared
+  `matrixArgs` registration (none yet). A 1-D whole-list native answers #SHAPE!
+  honestly; positional lookups #SHAPE! until their 2-D forms are registered;
+  Formula.js never sees rank 2 (element-wise broadcasting hands it scalars only).
+  `ExcelRank` gains the reserved "matrix" spelling.
+
+**Found while building: the evaluator was violating P3, and a test was pinning the
+violation.** P3 rules "length-1 still broadcasts"; the zip padded `[5]+[1,2,3]` to
+`[6,null,null]`, and excelFormula.test.ts asserted exactly that under the P3 label.
+B11 closes it — the singleton broadcasts to `[6,7,8]` — and the pin now points the
+right way with the history in a comment.
+
+No user-visible change yet: the connect-time gate and the Expression #SHAPE! block
+still stand, so no matrix can reach a formula from the canvas. Next: step 2 (the
+`anydata` rung + the Expression lift), then step 3 (registrations in tranches).
+
 ### The Tier 4 decision packet exists (2026-07-28e)
 
 `v2.0/17-matrix-formulas.md` — the two artifacts the recorded Tier 4 plan requires

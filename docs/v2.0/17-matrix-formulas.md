@@ -1,22 +1,15 @@
 # 17 — Matrix formulas (the Tier 4 / D2 decision packet)
 
-**Status: PREP COMPLETE, decision AUTHOR-GATED.** This is the packet the recorded
-Tier 4 plan requires on the table before the decision session
-(`formula-node-parity.md` → "Tier 4 in full"): a concrete shape-branding design and
-the DA broadcast-rules table. Nothing here lifts the cap — the `#SHAPE!` block and
-the connect-time gate stand until the author picks an endpoint.
+**Status: DECIDED YES — D23 (2026-07-28). This packet is now the build spec.**
+The author chose the matrices-only endpoint with this packet on the table; the
+decision record is `decisions.md` D23 (criteria, bound rules, what would reverse
+it). Build proceeds in the Part 3 order; the `#SHAPE!` block and the connect-time
+gate come out in build step 2, not before the engine understands rank 2.
 
-**The question:** do formulas (Expression / LAMBDA) accept matrices, or stay 1-D
-forever? The two defensible endpoints on record:
-
-- **Never** — formulas stay 1-D glue. The 19 gap-A names are recorded as permanently
-  out, INTERPOLATE grid mode and the array-returning range functions stay node-only.
-- **Matrices-only, Excel dynamic-array semantics** — this packet. Frames, cubes and
-  complex stay out (rung 4 was rejected outright: no Excel semantics to copy,
-  competes with the verb engine, breaks lazy-FrameRef economics).
-
-The decision criteria are fixed (2026-07-14, author ruling): correctness and
-coherence only. The identity objection is retired — do not re-litigate it.
+**The question was:** do formulas (Expression / LAMBDA) accept matrices, or stay
+1-D forever? **Answered: matrices-only, Excel dynamic-array semantics** (D23).
+Frames, cubes and complex stay out of formulas permanently — no Excel semantics to
+copy, competes with the verb engine, breaks lazy-FrameRef economics.
 
 ---
 

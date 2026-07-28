@@ -395,7 +395,10 @@ describe("compileEvaluator — array-aware (broadcast vs aggregate per call site
 
   it("zips ragged lists to the longest, padding with null (the settled P3 policy)", () => {
     expect(ev("a + b", { a: [1, 2, 3], b: [10, 20] })).toEqual([11, 22, null]);
-    expect(ev("a + b", { a: [1], b: [10, 20, 30] })).toEqual([11, null, null]);
+    // A LENGTH-1 list broadcasts — the other half of the same P3 ruling
+    // ("length-1 still broadcasts"), unbuilt until D23's mapCells and formerly
+    // pinned here as [11, null, null], i.e. the test enforced the gap.
+    expect(ev("a + b", { a: [1], b: [10, 20, 30] })).toEqual([11, 21, 31]);
   });
 
   it("pads ragged args to a broadcast function with null (missing in, missing out)", () => {

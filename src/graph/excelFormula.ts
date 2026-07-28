@@ -513,16 +513,92 @@ const mapOne = (v: unknown, f: (x: unknown) => unknown): unknown =>
  *  never silently drop the tail). A padded position has a missing operand, so
  *  the result cell is `null` directly, exactly what applyOp's null propagation
  *  would produce for every operator. */
-function broadcast2(l: unknown, r: unknown, f: (a: unknown, b: unknown) => unknown): unknown {
-  const la = isArr(l), ra = isArr(r);
-  if (!la && !ra) return f(l, r);
-  if (la && ra) {
-    const n = Math.max(l.length, r.length);
+// ─── Rank-aware element-wise mapping (D23 — the broadcast-rules table) ────────
+// The eleven-row table in v2.0/17-matrix-formulas.md Part 2, implemented once and
+// used by every element-wise surface: operators (broadcast2), unary/percent, and
+// function calls (broadcastCall). `broadcastRules.test.ts` transcribes the table
+// row by row against THIS code.
+//
+// Post-VAL-15 the rank test is structural and unambiguous: no scalar is an array,
+// so Array.isArray at two depths is the whole grammar. PAD is the P3 rule (a
+// ragged element-wise operand pads with null — the missing tail is literally
+// missing data); shape CONSTRUCTION functions carry their own #N/A padding inside
+// their registered impls (D15) and never come through here.
+
+const isMatrix = (v: unknown): v is unknown[][] => isArr(v) && v.length > 0 && isArr(v[0]);
+const rankOf = (v: unknown): 0 | 1 | 2 => (isMatrix(v) ? 2 : isArr(v) ? 1 : 0);
+/** Anything deeper than a matrix is not a value in this model. */
+const tooDeep = (v: unknown): boolean => isMatrix(v) && v.some((row) => row.some(isArr));
+
+/** B10/B11 — a 1×1 matrix and a 1-element list ARE their scalar. B11 closes the
+ *  unbuilt half of P3 ("length-1 still broadcasts"): the zip used to pad
+ *  [5]+[1,2,3] to [6,null,null]; the singleton now broadcasts to [6,7,8]. */
+function collapseSingletonRank(v: unknown): unknown {
+  if (isMatrix(v)) return v.length === 1 && v[0].length === 1 ? v[0][0] : v;
+  if (isArr(v) && v.length === 1 && !isArr(v[0])) return v[0];
+  return v;
+}
+
+const PAD = Symbol("pad");
+
+/** Map `cellFn` element-wise over operands of mixed rank ≤ 2. `cellFn` owns the
+ *  per-cell semantics (operators bring applyOp's error/missing rules, calls bring
+ *  the error-first/missing short-circuit) — this owns only SHAPE: alignment,
+ *  singleton-axis broadcast, and the null pad. */
+function mapCells(argv: unknown[], cellFn: (...ops: unknown[]) => unknown): unknown {
+  if (argv.some(tooDeep)) return solError("#SHAPE!", "A value nested deeper than a 2-D matrix isn't a thing formulas compute on");
+  const args = argv.map(collapseSingletonRank);
+  const rank = args.reduce<0 | 1 | 2>((m, a) => Math.max(m, rankOf(a)) as 0 | 1 | 2, 0);
+  if (rank === 0) return cellFn(...args);
+
+  if (rank === 1) {
+    // B2–B4: the existing zip — max length, null pad for the ragged tail.
+    const len = args.reduce<number>((m, a) => (isArr(a) ? Math.max(m, a.length) : m), 0);
     const out: unknown[] = [];
-    for (let i = 0; i < n; i++) out.push(i < l.length && i < r.length ? f(l[i], r[i]) : null);
+    for (let i = 0; i < len; i++) {
+      if (args.some((a) => isArr(a) && i >= a.length)) { out.push(null); continue; }
+      out.push(cellFn(...args.map((a) => (isArr(a) ? a[i] : a))));
+    }
     return out;
   }
-  return la ? l.map((x) => f(x, r)) : (r as unknown[]).map((x) => f(l, x));
+
+  // B5–B9: rank 2. A list reads as a ROW (SOCK-2's convention) broadcasting down
+  // the rows; a 1-row / 1-column matrix broadcasts along its singleton axis
+  // (Excel's rule); everything else aligns cell-for-cell and pads with null.
+  const mats = args.filter(isMatrix);
+  const rows = Math.max(...mats.map((m) => m.length));
+  const widthOf = (m: unknown[][]) => Math.max(...m.map((r) => r.length), 0);
+  const colSingleton = (m: unknown[][]) => m.every((r) => r.length === 1);
+  const cols = Math.max(
+    ...mats.map((m) => (colSingleton(m) ? 1 : widthOf(m))),
+    ...args.filter((a): a is unknown[] => isArr(a) && !isMatrix(a)).map((a) => a.length),
+    1,
+  );
+  const cellAt = (a: unknown, i: number, j: number): unknown => {
+    if (isMatrix(a)) {
+      const ri = a.length === 1 ? 0 : i;
+      if (ri >= a.length) return PAD;
+      const row = a[ri];
+      const cj = colSingleton(a) ? 0 : j;
+      return cj < row.length ? row[cj] : PAD;
+    }
+    if (isArr(a)) return j < a.length ? a[j] : PAD; // a list is a row, broadcast down
+    return a;
+  };
+  const out: unknown[][] = [];
+  for (let i = 0; i < rows; i++) {
+    const row: unknown[] = [];
+    for (let j = 0; j < cols; j++) {
+      const ops = args.map((a) => cellAt(a, i, j));
+      row.push(ops.some((o) => o === PAD) ? null : cellFn(...ops));
+    }
+    out.push(row);
+  }
+  return out;
+}
+
+function broadcast2(l: unknown, r: unknown, f: (a: unknown, b: unknown) => unknown): unknown {
+  return mapCells([l, r], f as (...ops: unknown[]) => unknown);
 }
 
 // Scalar operator semantics — the SETTLED P6 operator-parity table (author call,
@@ -622,16 +698,15 @@ function broadcastCall(name: string, argv: unknown[]): unknown {
   const len = argv.reduce<number>((m, a) => (isArr(a) ? Math.max(m, a.length) : m), 0);
   if (len === 0) return [];
   const inspectsNull = NULL_INSPECTING.has(name);
-  const out: unknown[] = [];
-  for (let i = 0; i < len; i++) {
-    if (argv.some((a) => isArr(a) && i >= a.length)) { out.push(null); continue; }
-    const ops = argv.map((a) => (isArr(a) ? a[i] : a));
+  // Shape (alignment, singleton broadcast, pad) is mapCells; the per-cell policy
+  // here is the function-call one: error first, then missing short-circuits
+  // (unless the function exists to inspect the blank), else dispatch.
+  return mapCells(argv, (...ops: unknown[]) => {
     const err = ops.find(isSolError);
-    if (err) { out.push(err); continue; }
-    if (!inspectsNull && ops.some(isMissing)) { out.push(null); continue; }
-    out.push(call(...ops));
-  }
-  return out;
+    if (err) return err;
+    if (!inspectsNull && ops.some(isMissing)) return null;
+    return call(...ops);
+  });
 }
 
 // Error handling: a scalar error operand short-circuits an operator chain (JS
@@ -651,12 +726,12 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
       // Per-cell contract: an error propagates unmorphed, a missing stays missing,
       // else negate/plus. (Bare `-null` in JS is -0 — hence the explicit guard.)
       const f = (x: unknown) => (isSolError(x) ? x : isMissing(x) ? null : (n.op === "-" ? -(x as number) : +(x as number)));
-      return isArr(a) ? a.map(f) : isErr(a) ? a : f(a);
+      return isArr(a) ? mapCells([a], f as (...ops: unknown[]) => unknown) : isErr(a) ? a : f(a);
     }
     case "percent": {
       const a = evalAst(n.arg, env);
       const f = (x: unknown) => (isSolError(x) ? x : isMissing(x) ? null : (x as number) / 100);
-      return isArr(a) ? a.map(f) : isErr(a) ? a : f(a);
+      return isArr(a) ? mapCells([a], f as (...ops: unknown[]) => unknown) : isErr(a) ? a : f(a);
     }
     case "bin": {
       const l = evalAst(n.l, env), r = evalAst(n.r, env);
@@ -674,7 +749,7 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
       // LIST of identical #NAME?s instead of the one the user should read.
       const redirect = LEGACY_ALIASES[name];
       if (redirect) return solError("#NAME?", `Use ${redirect}`);
-      const argv = n.args.map((a) => evalAst(a, env));
+      let argv = n.args.map((a) => evalAst(a, env));
       // The IFERROR family must see the error to catch it — handled internally,
       // BEFORE the propagate-first check below.
       if (ERROR_HANDLER_FUNCTIONS.has(name)) return applyErrorHandler(name, argv);
@@ -682,6 +757,24 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
       // an FX error object), so surface the first one rather than let it vanish.
       const sol = argv.find(isSolError);
       if (sol) return sol;
+      // ── Rank-2 arguments (D23) ──────────────────────────────────────────────
+      // The containment rule: a matrix reaches a dispatch WHOLE only through a
+      // declared `matrixArgs` registration. Everything else: a range aggregate
+      // flattens row-major (SUM over a matrix is the matrix's sum — its 1-D
+      // null/error prep then applies unchanged); a positional lookup or a 1-D
+      // whole-list native answers #SHAPE! honestly rather than computing on a
+      // shape it wasn't written for; an element-wise function simply broadcasts
+      // cell-wise below (Formula.js only ever sees scalars that way).
+      if (argv.some((a) => isMatrix(a)) && !EXCEL_IMPL_META[name]?.matrixArgs) {
+        if (RANGE_POSITIONAL.has(name)) {
+          return solError("#SHAPE!", `${name} over a matrix isn't supported yet — wire the matrix through its node`);
+        }
+        if (RANGE_FUNCTIONS.has(name)) {
+          argv = argv.map((a) => (isMatrix(a) ? a.flat() : a));
+        } else if (takesWholeArgs(name)) {
+          return solError("#SHAPE!", `${name} works on values and 1-D lists, not a 2-D matrix`);
+        }
+      }
       // A whole-list native gets its arguments exactly as they arrived — no
       // element-wise mapping, no null-drop, no error hoist (see takesWholeArgs).
       // EXCEPT a blank SCALAR argument: the node propagates it as unknown

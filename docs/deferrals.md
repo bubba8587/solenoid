@@ -12,12 +12,7 @@ duplicate them, just names them for the review).
 - **Everyday widget nodes (v2.0 bundle 16)** — Weather / Geocode / FX / Holidays /
   TZ Convert / QR. Tier 1 is autonomous-friendly and could be 1.3, but 4 gate
   calls come first: `v2.0/16-widget-nodes.md`.
-- **Parity Tier 4 — the formula dimensionality cap (D2, reopened)** — not decidable
-  until Tier 1 of the parity program lands. Criteria fixed: correctness +
-  coherence only (auditability objection RETIRED — don't re-litigate). Bring a
-  shape-branding design + a machine-checked Excel-DA broadcast-rules table;
-  endpoints "never" vs "matrices-only, full DA semantics" (frames-in-formulas
-  rejected). Full record: `formula-node-parity.md` "Tier 4 in full".
+
 - **Expression `/` doesn't mint a pure ratio** — the Divide NODE mints `5:1` on a
   same-dimension cancel; Expression strips UnitCells at its boundary, so `a/b`
   yields a bare number. Decide: leave (Expression is deliberately type-agnostic —
