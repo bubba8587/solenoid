@@ -85,9 +85,12 @@ moving with it is part of that same author-marked change.
 
 **Consequences for the rest of this document:** every "author-gated",
 "author ruling", and quoted decision below is now read as INFERRED — real history,
-real evidence, no ARR authority. The per-rule provenance marks land with the
-audit; until a rule is marked, treat it as INFERRED when it cites an incident or
-a past statement, DEFAULT otherwise.
+real evidence, no ARR authority. Every rule heading carries its grade (the
+2026-07-28 audit): INFERRED where a concrete incident occurred and is named,
+DEFAULT where the rule is preventive judgment with no forcing incident. The
+DEFAULT set — SOCK-3, SOCK-6, FX-10, VAL-13, VAL-14 — is the thinnest ice: five
+rules held up by nothing but the agent's taste, and the first candidates for
+either an enforcing incident or deletion.
 
 ---
 
@@ -96,7 +99,7 @@ a past statement, DEFAULT otherwise.
 The theme of every architecture bug found to date. A fact that is written down twice
 drifts; a property that is hand-maintained gets missed.
 
-### SSOT-1 — One declaration per fact
+### SSOT-1 — One declaration per fact **[INFERRED]**
 **MUST:** every user-visible fact (a label, a name, an op's identity, an arity) has
 exactly ONE declaration. Every other surface DERIVES from it. Transcribing a value into a
 second location is a defect even while the two agree.
@@ -110,7 +113,7 @@ repeats the meta's prose".
 you could read a name off a card and fail to find it in the menu. Two `OPS` arrays, one
 in the component and one in `nodeOps.ts`.
 
-### SSOT-2 — Where a derivation can't be total, the override lives in the same table
+### SSOT-2 — Where a derivation can't be total, the override lives in the same table **[INFERRED]**
 **MUST:** when a derived value can't be computed for every case, the exception is
 declared as a FIELD on the same declaration (the `fx` field on an `OP_META` table), never
 as a parallel lookup map keyed by the same identity.
@@ -123,7 +126,7 @@ despaced".
 while a label is a name. Three families label themselves in sentences for the dropdown
 ("Union: in A or B"). `fx` sits on `SET_OP_META` / `SET_RELATION_META` / `FILL_OP_META`.
 
-### SSOT-3 — No hand-kept list of a derivable property
+### SSOT-3 — No hand-kept list of a derivable property **[INFERRED]**
 **MUST:** membership sets that encode a property of a declaration (routing, exposure,
 capability) are DERIVED from the declarations. A hand-written set is permitted only for
 facts that live nowhere else, and it must then be shape-checked (`SSOT-4`).
@@ -141,7 +144,7 @@ argument shape from a signature table, if one is ever authored.
 `RANGE_FUNCTIONS` and had been silently broadcast element-wise, each returning a
 plausible-looking wrong value.
 
-### SSOT-4 — An irreducibly hand-kept set is guarded by SHAPE
+### SSOT-4 — An irreducibly hand-kept set is guarded by SHAPE **[INFERRED]**
 **MUST:** where `SSOT-3` grants an exception, a test asserts the *observable consequence*
 of membership, not merely the membership. Assert what the function does, not that its
 name appears in a set.
@@ -151,7 +154,7 @@ Checking that `T.TEST` returns one number rather than four is a real check.
 *Enforced by:* `rangeRouting.test.ts` → "whole-sample functions are range-routed, not
 broadcast".
 
-### SSOT-5 — A rule not enforced by a test is debt, and is labelled
+### SSOT-5 — A rule not enforced by a test is debt, and is labelled **[INFERRED]**
 **MUST:** each rule here carries `Enforced by:` or `UNENFORCED`. A bug fix ships the check
 that would have caught it, or states why it can't be checked.
 
@@ -162,7 +165,7 @@ held on precaution.
 *Enforced by:* `UNENFORCED` — this rule is about the document, and is checked by review.
 A `rules.test.ts` asserting every ID resolves to a real test file would close it.
 
-### SSOT-6 — A gating metric has exactly one implementation
+### SSOT-6 — A gating metric has exactly one implementation **[INFERRED]**
 **MUST:** a number that gates CI is computed in ONE module. The human-readable report and
 the ratchet test call the same function. Neither recomputes it.
 
@@ -175,7 +178,7 @@ matched a leaf by its host label (reporting nine registered `FILL*` functions as
 and gap A was computed as `!inFormula`, so registering `RUNNINGSUM` made `SCAN` drop out
 of the gap it was still in. See `SSOT-7`.
 
-### SSOT-7 — A metric measures one thing
+### SSOT-7 — A metric measures one thing **[INFERRED]**
 **MUST:** a coverage metric that answers two questions is split into two fields. Do not
 derive "is this Excel name callable" from "is this node reachable somehow".
 
@@ -183,7 +186,7 @@ derive "is this Excel name callable" from "is this node reachable somehow".
 *Enforced by:* `formulaNodeParity.ts` — `inFormula` (reachable by any name) vs
 `excelCovered` (every Excel name dispatches), with the reason in the type comment.
 
-### SSOT-8 — Completeness quantifiers are `every`, not `some`
+### SSOT-8 — Completeness quantifiers are `every`, not `some` **[INFERRED]**
 **MUST:** a claim of the form "this node supports X" over a SET of names is checked with
 `every`. `some` is permitted only where partial support is the deliberate, documented
 contract.
@@ -202,7 +205,7 @@ The lattice is a family × rank product, and its legality rules are DERIVED from
 product rather than enumerated per pair. Full mechanics: `docs/socket-reference.md`,
 `CLAUDE.md` "Socket lattice".
 
-### SOCK-1 — Type separation: element families never auto-cross
+### SOCK-1 — Type separation: element families never auto-cross **[INFERRED]**
 **MUST:** a value of one element family never connects to an input of another. Crossing
 requires an explicit Cast node.
 
@@ -212,7 +215,7 @@ logical↔number (dim-mirrored)".
 rank. **Removed by:** nothing — it is the deliberate consequence of Excel treating
 TRUE/FALSE as 1/0. Any *second* exception is a lattice design change, not a patch.
 
-### SOCK-2 — Dimensional flow: values widen up, never narrow down
+### SOCK-2 — Dimensional flow: values widen up, never narrow down **[INFERRED]**
 **MUST:** scalar → list → matrix → frame is permitted within a family; the reverse is
 refused. A list widens into a 2-D input as a ROW.
 
@@ -222,7 +225,7 @@ containers".
 *Exceptions:* a COMBO (scalar-or-list) narrows into its element scalar; a plain list does
 not. This is what makes a combo a combo. **Removed by:** nothing.
 
-### SOCK-3 — Adding a socket type is a derived edit
+### SOCK-3 — Adding a socket type is a derived edit **[DEFAULT]**
 **MUST:** a new socket type is added by extending the family/rank product. Cross-type
 dimensional edges are explicit in `accepts()` and swept exhaustively by test. A new type
 must not require hand-writing its pairs.
@@ -231,7 +234,7 @@ must not require hand-writing its pairs.
 *Enforced by:* `socketConnect.test.ts` → "lattice invariants — TYPE separation +
 DIMENSIONAL flow (full sweep)"; `socketFamilyCompleteness.test.ts`.
 
-### SOCK-4 — The wildcard ladder keeps rank
+### SOCK-4 — The wildcard ladder keeps rank **[INFERRED]**
 **MUST:** `any` is an untyped SCALAR, `anylist` / `anytable` are 1-D / 2-D, and `trueany`
 is the adopt-anything supremum. A rank-bearing wildcard keeps its rank and adopts only
 the element family.
@@ -240,7 +243,7 @@ the element family.
 lists/matrices/containers refused", "anylist INPUT/OUTPUT", "anytable OUTPUT stays 2-D",
 "`trueany` bridges everything, both directions".
 
-### SOCK-5 — Adoption never drops cables and never persists
+### SOCK-5 — Adoption never drops cables and never persists **[INFERRED]**
 **MUST:** `trueany` adoption (`trueAnyAdopt.ts`) resolves a type without disconnecting
 anything, and the adopted type is not written to the save file.
 
@@ -249,7 +252,7 @@ Display adopts on both sides and REVERTS on disconnect", "adoption propagates do
 passthrough CHAIN", "two Displays do NOT share adoption"). **"Never persists" is
 `UNENFORCED`** — no test asserts an adopted type is absent from the save.
 
-### SOCK-6 — "Resolve past untyped passthroughs" goes through one predicate
+### SOCK-6 — "Resolve past untyped passthroughs" goes through one predicate **[DEFAULT]**
 **MUST:** every place that needs to see through an untyped hop calls `isWildcardType()`.
 No local re-implementation of "is this socket untyped".
 
@@ -257,7 +260,7 @@ No local re-implementation of "is this socket untyped".
 *Enforced by:* `UNENFORCED` — a grep-based check that no file inlines the wildcard set
 would close it.
 
-### SOCK-7 — In-place retype must reconcile downstream
+### SOCK-7 — In-place retype must reconcile downstream **[INFERRED]**
 **MUST:** a node that mutates a socket's `dataType` in place (Cast target, LAMBDA result,
 Get Column read-as, Note frontmatter) fires no connection event, so it MUST call
 `reconcileFcTypes` / `retypeOutputCables`.
@@ -267,7 +270,7 @@ Get Column read-as, Note frontmatter) fires no connection event, so it MUST call
 the known retypers. **Completeness is `UNENFORCED`** — nothing proves a *new* in-place
 retyper calls it. See Known violations.
 
-### SOCK-8 — The socket box is a deterministic 12×12
+### SOCK-8 — The socket box is a deterministic 12×12 **[INFERRED]**
 **MUST:** the socket span renders `display:block; line-height:0` at a locked 12×12, and
 vertical placement is MEASURED per row — never a fixed constant, never a `transform`.
 
@@ -275,7 +278,7 @@ vertical placement is MEASURED per row — never a fixed constant, never a `tran
 `offsetTop` ignores transforms, so rete would misreport the endpoint.
 *Enforced by:* `UNENFORCED` (a CSS + layout invariant; `CLAUDE.md` carries the detail).
 
-### SOCK-9 — `anydata`: the rank-≤2 element-agnostic wildcard (D23)
+### SOCK-9 — `anydata`: the rank-≤2 element-agnostic wildcard (D23) **[INFERRED]**
 **MUST:** `anydata` accepts every FAMILY value of rank ≤ 2 (scalar / list / combo /
 matrix) plus the lower wildcards (`any`, `anylist`, `anycombo`, `anytable`), and
 REFUSES frames, cubes and the object family (lambda / chart / document). As an
@@ -306,7 +309,7 @@ Two surfaces exist for the same functions — the node catalog and the formula l
 and nothing structurally connects them. These rules are what keeps them from drifting.
 Program record: `docs/formula-node-parity.md`.
 
-### FX-1 — One implementation, two surfaces
+### FX-1 — One implementation, two surfaces **[INFERRED]**
 **MUST:** a function callable from BOTH a node and a formula has exactly one
 implementation, in a rete-free module (`nodes/listOps.ts`, `textOps.ts`, `financeOps.ts`,
 `mathUtils.ts`, `dateSerial.ts`, `convertUnits.ts`). Both callers delegate to it.
@@ -321,7 +324,7 @@ implementation (`shuffleList` takes its keys as an argument); the test asserts a
 permutation plus real variation instead of equality. **Removed by:** nothing — this is
 what volatile means. Any future volatile function follows the same split.
 
-### FX-2 — A shared implementation is rete-free
+### FX-2 — A shared implementation is rete-free **[INFERRED]**
 **MUST:** a module imported by the formula path must not pull in rete, the socket lattice
 or the frame model.
 
@@ -335,7 +338,7 @@ or the frame model.
 `convertUnits.ts`) — found by the enforcement column's own review, which is the argument
 for the test.
 
-### FX-3 — A registration declares its full contract
+### FX-3 — A registration declares its full contract **[INFERRED]**
 **MUST:** every `registerInternal` name has an `EXCEL_IMPL_META` entry declaring
 `returns`, `arity`, and where applicable `rank` and `listArgs`. Routing DERIVES from that
 entry (`SSOT-3`); it is never declared twice.
@@ -349,7 +352,7 @@ direction).
 `listArgs` — they are routed by `RANGE_POSITIONAL` (skip the error scan) and the flag
 would reroute them. **Removed by:** unifying the two routing declarations.
 
-### FX-4 — A derived name function is TOTAL and INJECTIVE
+### FX-4 — A derived name function is TOTAL and INJECTIVE **[INFERRED]**
 **MUST:** any rule that derives a name (D19 2(a): the node label despaced) must be defined
 for every input AND must never map two different things to one name. Both properties are
 machine-checked.
@@ -362,7 +365,7 @@ family's op labels against each other. See Known violations.
 *Origin:* Fill's `Interpolate` op and the `INTERPOLATE` node in `stats.ts` both despace to
 `INTERPOLATE`. Fill's op now declares `fx: "FILLINTERPOLATE"` per `SSOT-2`.
 
-### FX-5 — Array arguments arrive whole
+### FX-5 — Array arguments arrive whole **[INFERRED]**
 **MUST:** a function taking a whole 1-D list is routed past the element-wise broadcaster.
 A function whose arguments are all scalars but whose RESULT is a list is also marked
 never-broadcast.
@@ -372,7 +375,7 @@ question that has one; with a list-returning function it builds a 2-D value behi
 cap's back.
 *Enforced by:* `formulaTier3.test.ts` → "the whole-list routing"; `rangeRouting.test.ts`.
 
-### FX-6 — Argument prep matches the function's shape, not its category
+### FX-6 — Argument prep matches the function's shape, not its category **[INFERRED]**
 **MUST:** a routed function declares which null/error policy applies:
 **raw** (positions preserved, cell errors ride along) for position-preserving ops;
 **pooled** (nulls dropped per array) for aggregators;
@@ -392,7 +395,7 @@ test; the paired policy's min-length zip would discard the tail of the longer on
 such call. **Removed by:** per-`type` routing, if the evaluator ever dispatches on an
 argument value.
 
-### FX-7 — Blocked spellings answer before their arguments are shaped
+### FX-7 — Blocked spellings answer before their arguments are shaped **[INFERRED]**
 **MUST:** an eliminated Excel name (D10) resolves to a `#NAME?` redirect naming the
 current function, is dropped from autocomplete and highlighting, and gets no range
 routing. The blocklist is DERIVED from `LEGACY_ALIASES`, not hand-pruned.
@@ -402,7 +405,7 @@ every surface (FX-7)" — every blocked spelling answers `#NAME?` naming its rep
 none is advertised, none is range-routed; `formulaNodeParity.test.ts` → "never advertises
 Formula.js internals as formula functions".
 
-### FX-8 — The formula boundary caps what a node's control already bounds
+### FX-8 — The formula boundary caps what a node's control already bounds **[INFERRED]**
 **MUST:** a generator reachable from a formula enforces `MAX_GENERATED` and answers
 `#OVERFLOW!` past it, using the shared constant.
 
@@ -410,7 +413,7 @@ Formula.js internals as formula functions".
 for ten million elements with nothing visible to stop it.
 *Enforced by:* `formulaTier3.test.ts` → "a generator is capped at the formula boundary".
 
-### FX-9 — Formula.js never sees a matrix (D23 containment)
+### FX-9 — Formula.js never sees a matrix (D23 containment) **[INFERRED]**
 **MUST:** a rank-2 value reaches a dispatch WHOLE only through a registration
 declaring `matrixArgs`. Otherwise: a range aggregate FLATTENS row-major before its
 1-D prep; a positional lookup or 1-D whole-list native answers `#SHAPE!`; an
@@ -423,7 +426,7 @@ unvetted quirks, and it has been caught mutating its arguments in place
 permanent even though the cap itself lifted.
 *Enforced by:* `broadcastRules.test.ts` → "the D23 containment rule".
 
-### FX-10 — One broadcast engine, and the table is the test
+### FX-10 — One broadcast engine, and the table is the test **[DEFAULT]**
 **MUST:** every element-wise surface (operators, unary, percent, function
 broadcasting) routes through `mapCells`. The broadcast semantics live in exactly
 one normative table (`v2.0/17-matrix-formulas.md` Part 2), transcribed row-for-row
@@ -441,7 +444,7 @@ the exact drift class the parity program exists to close.
 Full spec: `docs/value-semantics.md` (read "Reading an input" before writing any
 `data()`). These are the invariants that spec implies.
 
-### VAL-1 — Unwired is not blank
+### VAL-1 — Unwired is not blank **[INFERRED]**
 **MUST:** an absent input (`undefined`) falls back to the node's typed literal. A WIRED
 blank (`null`) is a real missing VALUE and propagates — it is never swallowed into the
 literal.
@@ -451,14 +454,14 @@ number the user cannot see on the card.
 *Enforced by:* `broadcastContract.test.ts` → "readInput — unwired (undefined) vs
 wired-missing (null)", "a WIRED null propagates — NOT swallowed into the literal".
 
-### VAL-2 — One notion of error
+### VAL-2 — One notion of error **[INFERRED]**
 **MUST:** failures flow as a tagged `SolError`. `ISERROR` ⟺ `IFERROR`; the `#N/A` test is
 centralized as `isNaError`. A bare `NaN` is not an error.
 
 *Enforced by:* `errorValue.test.ts` → "ISERROR (Test) and IFERROR agree: only a tagged
 error counts (a bare NaN does not)".
 
-### VAL-3 — Error in, error out, without running the node
+### VAL-3 — Error in, error out, without running the node **[INFERRED]**
 **MUST:** every `data()` is wrapped by `installErrorGuards`; an error input propagates to
 every output without the node running. A throwing `data()` becomes a local `#ERROR!`.
 
@@ -468,14 +471,14 @@ see the raw error, and **figure SINKS** (`SEES_ERRORS`) render an error input as
 figure and never emit a SolError out a `chart` socket. Both are declared, not ad hoc.
 **Removed by:** nothing — a catcher that can't see the error can't catch it.
 
-### VAL-4 — Errors carry provenance
+### VAL-4 — Errors carry provenance **[INFERRED]**
 **MUST:** a minted error is tagged with its node, an untagged input error is tagged with
 the slot it arrived on, and an existing origin is NEVER overwritten downstream.
 
 *Enforced by:* `errorValue.test.ts` → "SolError origin (provenance Tier 1)", "preserves the
 ORIGINAL origin through a downstream passthrough (never overwrites)".
 
-### VAL-5 — Null is first-class and skipped, not zero
+### VAL-5 — Null is first-class and skipped, not zero **[INFERRED]**
 **MUST:** `null` is a real missing value at every rank. Aggregators SKIP it, Filter drops
 it, element-wise math PROPAGATES it. Nothing coerces it to 0.
 
@@ -484,7 +487,7 @@ it, element-wise math PROPAGATES it. Nothing coerces it to 0.
 *Exceptions:* Coalesce/Fill is the deliberate OPT-IN to treat a null as something —
 that is the node's entire purpose. **Removed by:** nothing.
 
-### VAL-6 — Error beats missing at the same cell
+### VAL-6 — Error beats missing at the same cell **[INFERRED]**
 **MUST:** where a cell is both, the error is checked first and propagates unmorphed —
 never stringified, never `NaN`, never `[object Object]`.
 
@@ -492,7 +495,7 @@ never stringified, never `NaN`, never `[object Object]`.
 "error beats missing at the same cell (error checked first)"; `valueKinds.test.ts` →
 "cellShortCircuit".
 
-### VAL-7 — Logical is a first-class family with Kleene logic
+### VAL-7 — Logical is a first-class family with Kleene logic **[INFERRED]**
 **MUST:** logicals are a real type with three-valued logic (a null operand yields the
 Kleene answer, not `false`), and `logical ↔ number` is the one cross-family bridge
 (`SOCK-1`).
@@ -500,7 +503,7 @@ Kleene answer, not `false`), and `logical ↔ number` is the one cross-family br
 *Enforced by:* `valueKinds.test.ts` → "Kleene three-valued logic", "logical ↔ number
 coercion".
 
-### VAL-8 — Membership keys by VALUE, never identity
+### VAL-8 — Membership keys by VALUE, never identity **[INFERRED]**
 **MUST:** any set, dedupe, tally or membership test keys through `setKey`. A JS `Set` over
 raw values is a defect wherever a value may be an ARRAY.
 
@@ -516,7 +519,7 @@ consumer to a raw `Set` fails it.
 recorded the complex-tuple case as unpinned — the list.test.ts block already covered it;
 CONTAINS was the one consumer still comparing by reference, fixed with the review.)
 
-### VAL-9 — The unit is a property of the VALUE
+### VAL-9 — The unit is a property of the VALUE **[INFERRED]**
 **MUST:** a unit is a base-SI `UnitCell` AUTHORED only by the Format Controller
 (`applyFcUnit`) or Convert. It rides through passthroughs and selectors and BREAKS at any
 transform. There is no graph unit-walk. The Number node is a plain literal source.
@@ -524,7 +527,7 @@ transform. There is no graph unit-walk. The Number node is a plain literal sourc
 *Enforced by:* `unitCoercion.test.ts` → "Convert primacy on the outgoing value";
 `unitWiring.test.ts`, `unitFlowAnnotation.test.ts`.
 
-### VAL-10 — The unit-blind boundary is PER-INPUT
+### VAL-10 — The unit-blind boundary is PER-INPUT **[INFERRED]**
 **MUST:** raw `UnitCell`s never reach a node that doesn't run the dimension algebra.
 `coerceInputs` centrally unwraps to display magnitude; `unitAware = true` keeps tags on
 every input; a `passthrough()` node keeps them only on its spec-named inputs (side inputs
@@ -537,13 +540,13 @@ unwrap). **A new algebra node MUST set `unitAware = true`.**
 BEHAVIOUR. **Completeness is `UNENFORCED`** — nothing proves a new algebra node declared
 it. See Known violations.
 
-### VAL-11 — Units attach at the granularity of homogeneity
+### VAL-11 — Units attach at the granularity of homogeneity **[INFERRED]**
 **MUST:** per-element `UnitCell` for a list, per-column `ColumnUnit` for a frame, one
 homogeneous unit for a matrix (D20).
 
 *Enforced by:* `unitColumn.test.ts`, `unitValue.test.ts`.
 
-### VAL-12 — An op family's selector field is named `op`
+### VAL-12 — An op family's selector field is named `op` **[INFERRED]**
 **MUST:** a node whose card carries an op dropdown stores it as `op`. Not `dir`, not
 `mode`, not `kind`.
 
@@ -561,13 +564,13 @@ defect was then found five more times by the enforcement review (Sort/Take/Drop 
 DropBlankRows/IFError `mode`) and fixed by the same rename — IFERROR and IFNA are now
 searchable. Alert's and ColorBlend's `mode` remain (see Known violations).
 
-### VAL-13 — Components never call `node.data()`
+### VAL-13 — Components never call `node.data()` **[DEFAULT]**
 **MUST:** a React component extracts a pure helper instead. `data()` assumes the
 engine-driven `coerceInputs` wrapper has run.
 
 *Enforced by:* `UNENFORCED` — a grep-based check would close it.
 
-### VAL-14 — Inline literal maps are declared iff the card edits them
+### VAL-14 — Inline literal maps are declared iff the card edits them **[DEFAULT]**
 **MUST:** a class declares `literals` / `stringLiterals` exactly when its card edits those
 values inline. Load restores the maps ONLY onto declaring classes, so a save or seed
 cannot hardcode a value the user can't see.
@@ -578,7 +581,7 @@ nothing catches a class declaring a map its card never edits.
 
 ---
 
-### VAL-15 — A special scalar is a TAGGED OBJECT, never a bare array
+### VAL-15 — A special scalar is a TAGGED OBJECT, never a bare array **[INFERRED]**
 **MUST:** every non-primitive scalar value — a value that is one *thing* but needs more
 than one JS primitive to carry it — is a tagged object (`SolError` `{__solError…}`,
 `UnitCell`, complex `{__cx, re, im}`). No scalar is represented as a bare array.
@@ -598,7 +601,7 @@ to bare arrays fails type-check at the `Cx` type itself.
 *Origin:* the complex rebrand (2026-07-28). Complex was the only bare-array scalar in
 the value model and the sole reason "a cell may be an array" was ever true.
 
-### VAL-16 — The rank grammar: nothing nests deeper than a matrix
+### VAL-16 — The rank grammar: nothing nests deeper than a matrix **[INFERRED]**
 **MUST:** a runtime value is a primitive scalar, a tagged scalar (`VAL-15`), a 1-D
 `Array` of cells, or a 2-D `Array` of row-`Array`s. Depth 3+ is not a value —
 surfaces that meet one answer `#SHAPE!`. `Array.isArray` at two depths is therefore
@@ -662,10 +665,11 @@ only. Each is actionable in the follow-up.
    map its card never edits, which would let a save inject an invisible value.
 
 7. **Array-RETURNING range functions are unrouted** — `TREND`, `GROWTH`, `LINEST`,
-   `LOGEST`, `FREQUENCY`, `MODE.MULT`, `UNIQUE`, `SORT`, `FILTER`, `TRANSPOSE` are still
-   broadcast (FX-5). Formula.js writes them against a 2-D range and doesn't treat a 1-D
-   list as a vector, so each needs list-model handling. Pinned as a known state by
-   `rangeRouting.test.ts`.
+   `LOGEST`, `FREQUENCY`, `MODE.MULT`, `UNIQUE`, `SORT`, `FILTER` are still broadcast
+   (FX-5). Formula.js writes them against a 2-D range and doesn't treat a 1-D list as
+   a vector, so each needs an owned registration (post-D23 the right fix is ownership
+   at rank 2, not routing — FX-9). `TRANSPOSE` left this list with the matrix tranche.
+   Pinned as a known state by `rangeRouting.test.ts`.
 
 8. **`rules.test.ts` checks the mechanical half only** — IDs unique, every cited test
    file exists, summary counts add up. Whether a cited test actually ENFORCES its rule is

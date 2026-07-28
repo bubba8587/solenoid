@@ -36,6 +36,14 @@ describe("docs/rules.md", () => {
     expect(all - marks.length).toBeLessThanOrEqual(2);
   });
 
+  it("every rule heading carries exactly one provenance grade (PROV-1's axis)", () => {
+    const headings = [...DOC.matchAll(/^### (?:PROV|SSOT|SOCK|FX|VAL)-\d+[^\n]*/gm)].map((m) => m[0]);
+    const ungraded = headings.filter((h) => !/\[(ARR|INFERRED|DEFAULT)\]/.test(h));
+    expect(ungraded, `rules missing a provenance grade:\n${ungraded.join("\n")}`).toEqual([]);
+    const doubly = headings.filter((h) => (h.match(/\[(ARR|INFERRED|DEFAULT)\]/g) ?? []).length > 1);
+    expect(doubly).toEqual([]);
+  });
+
   it("rule IDs are unique and the total matches the declared count", () => {
     expect(new Set(ids).size).toBe(ids.length);
     const declared = DOC.match(/^(\d+) rules\./m);

@@ -59,7 +59,9 @@ describe("array-RETURNING range functions — the known remaining gap", () => {
   // are written against a 2-D range and don't treat a plain 1-D list as a vector), so
   // they are NOT routed yet. Pinned here so the gap is a recorded state rather than an
   // oversight — when one is fixed, move it into SCALAR_RESULT or its own shape case.
-  const DEFERRED = ["TREND", "GROWTH", "LINEST", "LOGEST", "FREQUENCY", "MODE.MULT", "UNIQUE", "SORT", "FILTER", "TRANSPOSE"];
+  // TRANSPOSE left this list with the D23 matrix tranche — owned (matrixArgs +
+  // listArgs), not range-routed, which is the post-D23 shape of the fix (FX-9).
+  const DEFERRED = ["TREND", "GROWTH", "LINEST", "LOGEST", "FREQUENCY", "MODE.MULT", "UNIQUE", "SORT", "FILTER"];
 
   it.each(DEFERRED)("%s is still unrouted", (name) => {
     expect(RANGE_FUNCTIONS.has(name), `${name} is now routed — move it out of DEFERRED`).toBe(false);
