@@ -8,13 +8,11 @@ import * as path from "node:path";
 // the box. `readInput()` (shared.ts) is the fix: a CONNECTED cable wins even when
 // its value is null; only an UNWIRED slot falls back.
 //
-// THE POLICY IS SETTLED (author, 2026-07-27) — follow THIS project's value model,
-// not Excel's optional-argument defaulting:
-//   • element-wise OPERAND  → PROPAGATE (null in, null out)
-//   • MODE selector         → PROPAGATE (an unknown mode means an unknown answer)
-//   • AGGREGATOR / reducer  → SKIP (a missing contributes nothing, as SUM skips)
-//   • Filter                → DROP the row
-// `nodes/wiredNull.test.ts` pins one worked example of each.
+// THE SPEC IS `docs/value-semantics.md` -> "Reading an input" — what a wired blank
+// does, by the input's ROLE (operand / mode / shape / reduction member / check
+// parameter / control bound / filter predicate). Settled by the author 2026-07-27:
+// follow THIS project's value model, not Excel's optional-argument defaulting.
+// `nodes/wiredNull.test.ts` pins a worked example of each row.
 //
 // So what remains is mechanical, just large. This pins the remaining count PER FILE
 // so it can only shrink: a new node reintroducing the idiom fails here, and fixing a

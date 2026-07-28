@@ -75,7 +75,8 @@ index), `docs/glossary.md` (the invented vocabulary — read before the deep div
   accepts, what it's blocked from, what the coercion boundary does; read before typing
   a new port or debugging a refused cable), `docs/format-model.md` (FC control truth
   table, mirrored in `formatModel.ts` — read before touching FC controls),
-  `docs/value-semantics.md`,
+  `docs/value-semantics.md` (incl. the WIRED-blank vs typed-literal spec — read
+  "Reading an input" before writing a node's `data()`),
   `docs/cube-node-scope.md`, `docs/pack-architecture.md`, `docs/excel-toolbar-supplementals.md`,
   `docs/formula-node-parity.md`, `docs/out-of-scope.md` (the standing NO list), `docs/v2.0/`
   (open plan bundles). Finished/point-in-time docs: `docs/archive/` (see its README).
