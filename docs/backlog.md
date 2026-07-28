@@ -8,6 +8,30 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
 
 ---
 
+## Architecture spec (`docs/rules.md`)
+
+- [ ] **Close the rules spec's known violations** — `rules.md` ships 38 MUST-rules with
+  their enforcement status and a numbered known-violations list at the bottom; this item
+  is that list. Highest value first, because each is a rule that holds for the cases that
+  EXIST and fails silently for the next one:
+  - **VAL-12** — Sort / Take / Drop still name their op selector `dir`, so none can
+    declare its ops and none of their ops are searchable. Pad had the identical defect.
+    Rename + declare, then make the check see its own violations (today `nodeOps.test.ts`
+    only validates families that already declared).
+  - **VAL-10 / SOCK-7 completeness** — nothing proves a NEW algebra node sets
+    `unitAware`, or that a NEW in-place retyper calls `reconcileFcTypes`.
+  - **VAL-8 / SOCK-5 origin cases unpinned** — the complex-tuple membership bug `setKey`
+    exists to fix has no test, and nothing asserts an adopted `trueany` type stays out of
+    the save. Both found while writing the enforcement column, not by the suite.
+  - **FX-4** — injectivity sweeps catalog leaves and the three `fx` tables, not every
+    family's op labels against each other.
+  - **VAL-14** — only the "if" direction of the literal-map rule is checked.
+  - **SSOT-5** — no `rules.test.ts`: the spec's own `Enforced by:` paths are unverified,
+    so a rule could name a test that no longer exists.
+  - **Unenforced, lower value:** SOCK-6 (wildcard predicate not inlined), SOCK-8 (socket
+    box geometry), FX-2 (shared impls stay rete-free), VAL-13 (components never call
+    `data()`). Each is a grep- or import-graph-shaped check.
+
 ## Bugs & verifications
 
 - [ ] **Window min/max/close controls missing (desktop)** — `tauri-plugin-decorum`'s
