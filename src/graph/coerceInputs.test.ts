@@ -5,7 +5,7 @@ import { ExpressionNode } from "./nodes/expression";
 import { FLAT_CATALOG } from "./catalogUtils";
 import { DatePartNode, parseDateToSerial } from "./nodes/date";
 import { TextTransformNode } from "./nodes/text";
-import { ComplexUnaryNode } from "./nodes/complex";
+import { ComplexUnaryNode, cx } from "./nodes/complex";
 import { NotNode } from "./nodes/logic";
 import { ArithmeticNode } from "./nodes/scalar";
 import { ListLengthNode, ListInputNode, ListIndexNode } from "./nodes/list";
@@ -213,12 +213,12 @@ describe("coerceInputs — a one-element list collapses at a combo / scalar sock
   });
 
   // A complex value is ITSELF a `[re, im]` array, so the collapse tests the OUTER
-  // length only — otherwise one complex number would be mistaken for a 1-element list
-  // and torn in half.
+  // A tagged complex (VAL-15) is not an array, so the singleton collapse treats it
+  // like any other scalar — no outer-length special case left to protect.
   it("does NOT tear a complex scalar apart", () => {
-    expect(run(new ComplexUnaryNode({ op: "conj" }), { z: [[1, 2]] })).toEqual([1, -2]);      // one complex
-    expect(run(new ComplexUnaryNode({ op: "conj" }), { z: [[[1, 2]]] })).toEqual([1, -2]);    // a 1-list of it
-    expect(run(new ComplexUnaryNode({ op: "conj" }), { z: [[[1, 2], [3, 4]]] })).toEqual([[1, -2], [3, -4]]);
+    expect(run(new ComplexUnaryNode({ op: "conj" }), { z: [cx(1, 2)] })).toEqual(cx(1, -2));      // one complex
+    expect(run(new ComplexUnaryNode({ op: "conj" }), { z: [[cx(1, 2)]] })).toEqual(cx(1, -2));    // a 1-list of it
+    expect(run(new ComplexUnaryNode({ op: "conj" }), { z: [[cx(1, 2), cx(3, 4)]] })).toEqual([cx(1, -2), cx(3, -4)]);
   });
 
   // The other half of the rule: a STRICT list socket keeps its list — that IS the

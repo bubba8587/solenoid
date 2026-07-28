@@ -5,6 +5,7 @@
 // dates in its own value box, for scalars AND lists, without each node wiring up
 // an ad-hoc `render` formatter.
 
+import { isCx, formatCx, type Cx } from "../cxValue";
 import { getOwningEditor } from "../activeGraph";
 import { SolenoidSocket, isDateType, elementFamilyOf, type SocketDataType } from "../sockets";
 import type { ElemFamily } from "./ArrayChip";
@@ -40,9 +41,10 @@ export type DisplayValue =
  *  renders literally as `null`, a logical as `TRUE`/`FALSE` (Excel form), a
  *  per-cell error as its `#CODE!`, text as-is, a number via the caller's scalar
  *  formatter, a dimensioned cell as "magnitude unit" (`5 m/s`). */
-export function formatListCell(v: number | string | boolean | null | SolError | UnitCell, fmtNum: (n: number) => string): string {
+export function formatListCell(v: number | string | boolean | null | SolError | UnitCell | Cx, fmtNum: (n: number) => string): string {
   if (v === null) return "null";
   if (isUnitCell(v)) return formatCellWithDisplay(v, fmtNum);
+  if (isCx(v)) return formatCx(v); // a complex cell reads "a+bi" like its own value box
   if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
   if (isSolError(v)) return v.code;
   if (typeof v === "string") return v;

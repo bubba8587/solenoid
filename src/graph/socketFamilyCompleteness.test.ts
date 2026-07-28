@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { cx } from "./cxValue";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
@@ -74,14 +75,14 @@ describe("every element family is complete at the five sites the compiler can't 
   // them — which is what section 5 documents as "the value passes as-is".)
   it("every strict-list rung widens a lone value, and every combo rung collapses a singleton", () => {
     // One probe per family, chosen so the family's own element coercion is a
-    // no-op — a boolean for logical, a [re, im] pair for complex — leaving the
+    // no-op — a boolean for logical, a tagged cx for complex (VAL-15) — leaving the
     // RANK change as the only thing the assertion can be measuring.
     // `ElementFamily` is `keyof typeof FAMILIES` over a string-indexed record, so
     // it widens to `string` — this map gets NO exhaustiveness check from tsc. Fall
     // back to a plain number for an unlisted family so the assertion below still
     // reads clearly instead of comparing `undefined` to `[undefined]`.
     const PROBE: Record<string, unknown> = {
-      number: 7, string: "a", date: 7, complex: [1, 2], logical: true,
+      number: 7, string: "a", date: 7, complex: cx(1, 2), logical: true,
     };
     for (const fam of FAMILIES) {
       const probe = PROBE[fam] ?? 7;

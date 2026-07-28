@@ -24,8 +24,8 @@ export type SocketDataType =
   | "date"      // date serial (numeric, like Excel)
   | "datelist"  // date[]
   | "datecombo" // date | date[] — flexible, element-wise date nodes
-  | "complex"   // [real, imag] — complex number (engineering / signal processing)
-  | "complexlist" // [real, imag][] — list of complex numbers
+  | "complex"   // tagged { __cx, re, im } (VAL-15) — complex number (engineering / signal processing)
+  | "complexlist" // Cx[] — list of complex numbers
   | "complexcombo"// complex | complex[] — flexible, element-wise complex nodes
   | "complextable"// 2-D complex matrix
   | "logical"     // scalar boolean (TRUE/FALSE) — see valueKinds.ts

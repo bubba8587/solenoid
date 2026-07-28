@@ -1,19 +1,18 @@
 import { describe, it, expect } from "vitest";
 import {
   ComplexFromNode, ComplexUnpackNode, ComplexUnaryNode, ComplexBinaryNode,
-  ComplexPowerNode, QuadraticRootsNode, formatCxValue, type Cx,
+  ComplexPowerNode, QuadraticRootsNode, formatCxValue, cx, isCx, type Cx,
 } from "./complex";
 import { wrapNodeData } from "../coerceInputs";
 import { isSolError, solError } from "../errorValue";
 import { SolenoidSocket, canConnect } from "../sockets";
 
-// ─── The complex family is element-wise (the 2026-07-25 combo pass) ───────────
-// Last of the five families onto its combo rung. Complex is the one that could NOT
-// reuse `broadcastCells`: a complex value IS an array (`[re, im]`), so the
-// `Array.isArray` list-test can't tell a scalar from a list of them. complex.ts
-// carries its own broadcaster with an EXACT shape test (a scalar Cx is a 2-tuple of
-// NUMBERS) and per-operand tags, since a real operand's `[1, 2]` list is otherwise
-// indistinguishable from a scalar complex. These tests exist mostly to pin that.
+// ─── The complex family: element-wise, and TAGGED (VAL-15) ────────────────────
+// A complex is `{ __cx, re, im }`, never a bare `[re, im]` array — so
+// `Array.isArray` means "list" here like everywhere else, and the family's
+// broadcaster no longer needs the exact-shape sniff the old tuple forced. These
+// tests pin the broadcast contract AND the representation: if `Cx` ever regresses
+// to an array, the `isCx` assertions and every `cx(...)` literal fail together.
 
 const dt = (
   n: { inputs: Record<string, { socket: unknown } | undefined>; outputs: Record<string, { socket: unknown } | undefined> },
@@ -24,35 +23,45 @@ const dt = (
   return s instanceof SolenoidSocket ? s.dataType : undefined;
 };
 
+describe("the tagged representation (VAL-15)", () => {
+  it("a complex is a tagged object, and isCx is the one test", () => {
+    const z = cx(1, 2);
+    expect(isCx(z)).toBe(true);
+    expect(Array.isArray(z)).toBe(false);
+    expect(z.re).toBe(1);
+    expect(z.im).toBe(2);
+    // The old representation and near-misses are NOT complexes.
+    expect(isCx([1, 2])).toBe(false);
+    expect(isCx({ re: 1, im: 2 })).toBe(false);
+    expect(isCx(null)).toBe(false);
+  });
+
+  it("two equal complexes from different sources are distinct objects — membership goes through setKey (VAL-8)", () => {
+    expect(cx(1, 2)).not.toBe(cx(1, 2));
+    expect(cx(1, 2)).toEqual(cx(1, 2));
+  });
+});
+
 describe("complex nodes broadcast over lists (scalar-or-list combo sockets)", () => {
   it("a scalar operand still yields a SCALAR — the widening is additive", () => {
-    expect(new ComplexUnaryNode({ op: "conj" }).data({ z: [[1, 2]] }).result).toEqual([1, -2]);
-    expect(new ComplexBinaryNode({ op: "sum" }).data({ a: [[1, 2]], b: [[3, 4]] }).result).toEqual([4, 6]);
-    expect(new ComplexFromNode().data({ re: [3], im: [4] }).z).toEqual([3, 4]);
-    const u = new ComplexUnpackNode().data({ z: [[3, 4]] });
+    expect(new ComplexUnaryNode({ op: "conj" }).data({ z: [cx(1, 2)] }).result).toEqual(cx(1, -2));
+    expect(new ComplexBinaryNode({ op: "sum" }).data({ a: [cx(1, 2)], b: [cx(3, 4)] }).result).toEqual(cx(4, 6));
+    expect(new ComplexFromNode().data({ re: [3], im: [4] }).z).toEqual(cx(3, 4));
+    const u = new ComplexUnpackNode().data({ z: [cx(3, 4)] });
     expect([u.re, u.im, u.abs]).toEqual([3, 4, 5]);
   });
 
-  // THE case the exact shape test exists for: `[1, 2]` arriving at a complex
-  // operand is ONE complex number, never a two-element list.
-  it("a scalar [re, im] is never mistaken for a 2-element list", () => {
-    const r = new ComplexUnaryNode({ op: "conj" }).data({ z: [[1, 2]] }).result;
-    expect(Array.isArray(r) && typeof (r as Cx)[0] === "number").toBe(true);
-    expect(r).toEqual([1, -2]);           // one complex, not [conj(1), conj(2)]
-    expect((r as unknown[]).length).toBe(2);
-  });
-
   it("a LIST of complexes yields a list, element-wise", () => {
-    expect(new ComplexUnaryNode({ op: "conj" }).data({ z: [[[1, 2], [3, 4]]] }).result)
-      .toEqual([[1, -2], [3, -4]]);
-    expect(new ComplexBinaryNode({ op: "sum" }).data({ a: [[[1, 1], [2, 2]]], b: [[10, 10]] }).result)
-      .toEqual([[11, 11], [12, 12]]);
-    expect(new ComplexBinaryNode({ op: "product" }).data({ a: [[[0, 1], [0, 1]]], b: [[[0, 1], [2, 0]]] }).result)
-      .toEqual([[-1, 0], [0, 2]]);
+    expect(new ComplexUnaryNode({ op: "conj" }).data({ z: [[cx(1, 2), cx(3, 4)]] }).result)
+      .toEqual([cx(1, -2), cx(3, -4)]);
+    expect(new ComplexBinaryNode({ op: "sum" }).data({ a: [[cx(1, 1), cx(2, 2)]], b: [cx(10, 10)] }).result)
+      .toEqual([cx(11, 11), cx(12, 12)]);
+    expect(new ComplexBinaryNode({ op: "product" }).data({ a: [[cx(0, 1), cx(0, 1)]], b: [[cx(0, 1), cx(2, 0)]] }).result)
+      .toEqual([cx(-1, 0), cx(0, 2)]);
     // Numeric operands in, complex list out — and the four unpack outputs each
     // broadcast independently over the same operand.
-    expect(new ComplexFromNode().data({ re: [[1, 2]], im: [0] }).z).toEqual([[1, 0], [2, 0]]);
-    const u = new ComplexUnpackNode().data({ z: [[[3, 4], [0, 1]]] });
+    expect(new ComplexFromNode().data({ re: [[1, 2]], im: [0] }).z).toEqual([cx(1, 0), cx(2, 0)]);
+    const u = new ComplexUnpackNode().data({ z: [[cx(3, 4), cx(0, 1)]] });
     expect(u.re).toEqual([3, 0]);
     expect(u.im).toEqual([4, 1]);
     expect(u.abs).toEqual([5, 1]);
@@ -60,47 +69,48 @@ describe("complex nodes broadcast over lists (scalar-or-list combo sockets)", ()
 
   it("an EMPTY list stays a list, and a leading null/error cell doesn't read as a scalar", () => {
     expect(new ComplexUnaryNode({ op: "conj" }).data({ z: [[]] }).result).toEqual([]);
-    expect(new ComplexUnaryNode({ op: "conj" }).data({ z: [[null, [1, 2]]] }).result)
-      .toEqual([null, [1, -2]]);
+    expect(new ComplexUnaryNode({ op: "conj" }).data({ z: [[null, cx(1, 2)]] }).result)
+      .toEqual([null, cx(1, -2)]);
     const err = solError("#DIV/0!", "boom");
-    const r = new ComplexUnaryNode({ op: "conj" }).data({ z: [[err, [1, 2]]] }).result as unknown[];
+    const r = new ComplexUnaryNode({ op: "conj" }).data({ z: [[err, cx(1, 2)]] }).result as unknown[];
     expect(isSolError(r[0])).toBe(true);
-    expect(r[1]).toEqual([1, -2]);
+    expect(r[1]).toEqual(cx(1, -2));
   });
 
-  // IMPOWER is the only node whose operands are of DIFFERENT element kinds, so it's
-  // the only place the real-vs-complex collision can bite: `n = [1, 2]` is a real
-  // LIST, not a complex scalar. The per-operand tags are what decide it.
+  // IMPOWER's operands are of DIFFERENT element kinds. Under the old tuple this was
+  // where the real-vs-complex collision could bite (`n = [1, 2]` — a real list —
+  // was structurally identical to one complex). Tagged, the case is unambiguous;
+  // the test stays because it pins the mixed-kind broadcast either way.
   it("IMPOWER's real exponent list broadcasts, and isn't read as a complex", () => {
-    const r = new ComplexPowerNode().data({ z: [[0, 1]], n: [[1, 2]] }).result as Cx[];
+    const r = new ComplexPowerNode().data({ z: [cx(0, 1)], n: [[1, 2]] }).result as Cx[];
     expect(r.length).toBe(2);
-    expect(r[0][0]).toBeCloseTo(0, 10);
-    expect(r[0][1]).toBeCloseTo(1, 10);
-    expect(r[1][0]).toBeCloseTo(-1, 10); // i² = −1
-    expect(r[1][1]).toBeCloseTo(0, 10);
+    expect(r[0].re).toBeCloseTo(0, 10);
+    expect(r[0].im).toBeCloseTo(1, 10);
+    expect(r[1].re).toBeCloseTo(-1, 10); // i² = −1
+    expect(r[1].im).toBeCloseTo(0, 10);
     // A list of BASES with one exponent works the same way round.
-    const s = new ComplexPowerNode().data({ z: [[[2, 0], [3, 0]]], n: [2] }).result as Cx[];
-    expect(s[0][0]).toBeCloseTo(4, 10);
-    expect(s[1][0]).toBeCloseTo(9, 10);
+    const s = new ComplexPowerNode().data({ z: [[cx(2, 0), cx(3, 0)]], n: [2] }).result as Cx[];
+    expect(s[0].re).toBeCloseTo(4, 10);
+    expect(s[1].re).toBeCloseTo(9, 10);
   });
 
   it("Quadratic Roots solves a LIST of quadratics into two parallel root lists", () => {
     const r = new QuadraticRootsNode().data({ a: [[1, 1]], b: [[0, 2]], c: [[-36, 5]] });
-    expect(r.x1).toEqual([[-6, 0], [-1, -2]]);
-    expect(r.x2).toEqual([[6, 0], [-1, 2]]);
+    expect(r.x1).toEqual([cx(-6, 0), cx(-1, -2)]);
+    expect(r.x2).toEqual([cx(6, 0), cx(-1, 2)]);
     // a = 0 is a per-cell #DOMAIN!, so one degenerate row errors alone.
     const mixed = new QuadraticRootsNode().data({ a: [[1, 0]], b: [0], c: [-36] });
-    expect((mixed.x1 as unknown[])[0]).toEqual([-6, 0]);
+    expect((mixed.x1 as unknown[])[0]).toEqual(cx(-6, 0));
     expect(isSolError((mixed.x1 as unknown[])[1])).toBe(true);
   });
 
   it("per-cell nulls and ragged lists follow the broadcast contract", () => {
     // A wired MISSING short-circuits that cell only.
-    expect(new ComplexUnaryNode({ op: "conj" }).data({ z: [[[1, 2], null]] }).result)
-      .toEqual([[1, -2], null]);
+    expect(new ComplexUnaryNode({ op: "conj" }).data({ z: [[cx(1, 2), null]] }).result)
+      .toEqual([cx(1, -2), null]);
     // Ragged operands pad to the LONGEST with a missing cell.
-    expect(new ComplexBinaryNode({ op: "sum" }).data({ a: [[[1, 1], [2, 2]]], b: [[[1, 1]]] }).result)
-      .toEqual([[2, 2], null]);
+    expect(new ComplexBinaryNode({ op: "sum" }).data({ a: [[cx(1, 1), cx(2, 2)]], b: [[cx(1, 1)]] }).result)
+      .toEqual([cx(2, 2), null]);
   });
 
   it("declares combo sockets on every complex operand and result", () => {
@@ -128,34 +138,42 @@ describe("complex nodes broadcast over lists (scalar-or-list combo sockets)", ()
     expect(canConnect("complextable", "complexcombo")).toBe(false);
   });
 
-  // The engine boundary, not just data(): `coerceInputs` has an explicit
-  // `complexlist` branch that wraps a lone value, and a `numlist` branch that
-  // flattens a 2-D table. A `complexcombo` input must pass through UNTOUCHED —
-  // otherwise a scalar would arrive singleton-wrapped and read as a 1-element list.
+  // The engine boundary, not just data(): a `complexcombo` input passes through
+  // coerceInputs with its shape intact — the scalar stays a scalar (no singleton
+  // wrap), the list stays a list. Tagged, this falls out of the generic path
+  // rather than a complex special case.
   it("survives the coerceInputs boundary with its shape intact", () => {
     const scalar = new ComplexUnaryNode({ op: "conj" });
     wrapNodeData(scalar as never);
-    expect(scalar.data({ z: [[1, 2] as never] }).result).toEqual([1, -2]);
+    expect(scalar.data({ z: [cx(1, 2) as never] }).result).toEqual(cx(1, -2));
 
     const list = new ComplexUnaryNode({ op: "conj" });
     wrapNodeData(list as never);
-    expect(list.data({ z: [[[1, 2], [3, 4]] as never] }).result).toEqual([[1, -2], [3, -4]]);
+    expect(list.data({ z: [[cx(1, 2), cx(3, 4)] as never] }).result).toEqual([cx(1, -2), cx(3, -4)]);
+  });
+
+  // The case the old tuple could NOT distinguish: a lone complex arriving at a
+  // strict `complexlist` input now wraps to a singleton like every other scalar —
+  // under [re, im] it slipped through as a fake 2-list.
+  it("a complex scalar widens into a complexlist input as a SINGLETON", () => {
+    const list = new ComplexUnaryNode({ op: "conj" });
+    wrapNodeData(list as never);
+    expect(list.data({ z: [cx(5, 1) as never] }).result).toEqual(cx(5, -1));
   });
 });
 
 describe("formatCxValue — the complex value box", () => {
   it("formats a scalar, and never splits it into a list", () => {
-    expect(formatCxValue([3, 2])).toBe("3 + 2i");
-    expect(formatCxValue([3, -2])).toBe("3 - 2i");
+    expect(formatCxValue(cx(3, 2))).toBe("3 + 2i");
+    expect(formatCxValue(cx(3, -2))).toBe("3 - 2i");
     expect(formatCxValue(null)).toBe(null);
   });
   it("formats a broadcast list per cell, passing errors and blanks through", () => {
     const err = solError("#DIV/0!", "boom");
-    expect(formatCxValue([[1, 0], [0, 1], null, err])).toEqual(["1", "i", null, err]);
+    expect(formatCxValue([cx(1, 0), cx(0, 1), null, err])).toEqual(["1", "i", null, err]);
     expect(formatCxValue([])).toEqual([]);
-    // A TWO-element list is the ambiguous length — it's the cells' types that
-    // decide, so this must format as two values, not as one complex.
-    expect(formatCxValue([[1, 0], [0, 1]])).toEqual(["1", "i"]);
+    // Two-element lists were the old ambiguous length; tagged, they're just lists.
+    expect(formatCxValue([cx(1, 0), cx(0, 1)])).toEqual(["1", "i"]);
   });
   it("passes a whole-value SolError through for the red badge (never destructures it)", () => {
     const err = solError("#SHAPE!", "boom");

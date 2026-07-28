@@ -885,10 +885,10 @@ export class UniqueNode extends ClassicPreset.Node {
 
 export type SetOp = "union" | "intersect" | "difference" | "symdiff";
 
-// A complex number is an [re, im] ARRAY, and a JS Set/Map keys an array by
+// A complex number is a tagged OBJECT (VAL-15), and a JS Set/Map keys objects by
 // REFERENCE — so two equal complexes from different sources would never match
-// (a known Set-node bug). Key membership by VALUE instead: a complex tuple
-// canonicalizes to a string, every primitive (number incl. a date serial,
+// (a known Set-node bug). Key membership by VALUE instead: a complex canonicalizes
+// to a string via setKey (listOps.ts), every primitive (number incl. a date serial,
 // string, boolean) stays itself. Used by every Set/membership/tally node below.
 
 // label = the plain-English dropdown text (no notation — the KaTeX line under the

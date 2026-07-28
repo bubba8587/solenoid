@@ -120,6 +120,36 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### Complex is a tagged object; VAL-15 (2026-07-28d)
+
+Author authorized the Tier 4 prep sequence; step 1 is this rebrand. `Cx` is now
+`{ __cx, re, im }` (`cxValue.ts`, rete-free beside errorValue) instead of a bare
+`[re, im]` array — the last bare-array scalar in the value model, and the sole reason
+"a cell may be an array" was ever true. New rule VAL-15 records it; `Array.isArray`
+now means exactly "1-D list" everywhere.
+
+What the ambiguity had been costing, all deleted rather than worked around:
+- complex.ts's broadcaster needed an EXACT shape sniff (2-tuple-of-numbers) plus
+  call-site tagging because `[1,2]` as a real list was indistinguishable from one
+  complex. The tags stay (they carry per-operand element types); the sniff is `isCx`.
+- Cast threaded a `cx` boolean from the SOURCE SOCKET through castOne — and passed
+  `false` on the list path, so a cell of a complex list could never cast correctly.
+  Self-identifying now; the flag is gone and the list path just works. `sourceKind`
+  survives only for date-vs-number, the one genuinely untagged ambiguity left.
+- coerceInputs carried outer-length special cases for complexlist/anylist ("can't
+  disambiguate from a 2-list here"); both now take the generic path, and a lone
+  complex correctly wraps to a singleton at strict list inputs — under the tuple it
+  slipped through as a fake 2-list.
+- setKey's canonicalization narrows from "any array" to exactly `isCx`.
+- `ArrayChip.is2D` sniffs `Array.isArray(v[0])`, so a complexlist reaching a generic
+  chip had rendered as a 2-column TABLE, silently. Tagged, it reads as the 1-D list
+  it is; `formatListCell` renders a Cx cell as "a+bi".
+
+This is also the Tier 4 shape-branding prerequisite: the recorded blocker ("a complex
+[re,im] is indistinguishable from a 2-list") is gone, so the residual ambiguity
+landscape for a matrix formula path is orientation only. No save-format impact —
+complex values never persist (no complex literals; computed values aren't saved).
+
 ### SESSION DIGEST (2026-07-28c — the adversarial review walk over the post-1.2 work)
 
 Author instruction: walk the post-1.2 commits newest→oldest assuming everything is wrong;

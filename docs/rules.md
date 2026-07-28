@@ -413,8 +413,8 @@ coercion".
 **MUST:** any set, dedupe, tally or membership test keys through `setKey`. A JS `Set` over
 raw values is a defect wherever a value may be an ARRAY.
 
-*Why:* a complex number is an `[re, im]` array and JS keys arrays by REFERENCE, so two
-equal complexes from different sources never match.
+*Why:* JS Sets/Maps key OBJECTS by reference, so two equal tagged scalars (a complex —
+VAL-15) from different sources never match without a canonical key.
 *Enforced by:* `packs/sets.test.ts` covers the PRIMITIVE behaviour ("counts distinct
 values in first-seen order", "counts unique values, skipping nulls, propagating errors");
 `nodes/list.test.ts` → "complex numbers compare by VALUE, not array identity (Set-node
@@ -487,13 +487,33 @@ nothing catches a class declaring a map its card never edits.
 
 ---
 
+### VAL-15 — A special scalar is a TAGGED OBJECT, never a bare array
+**MUST:** every non-primitive scalar value — a value that is one *thing* but needs more
+than one JS primitive to carry it — is a tagged object (`SolError` `{__solError…}`,
+`UnitCell`, complex `{__cx, re, im}`). No scalar is represented as a bare array.
+`Array.isArray` therefore means exactly one thing everywhere: *this is a 1-D list*.
+
+*Why:* a bare-array scalar collides with the list representation, and every consumer
+that sniffs shape then needs a bespoke disambiguation path. The `[re, im]` tuple forced
+four of them: complex.ts's own broadcaster (call-site tagging because `broadcastCells`'
+`Array.isArray` test couldn't tell a scalar from a list), `coerceInputs`' complex
+special-cases (outer-length tests, "can't disambiguate from a 2-list here"), `setKey`'s
+array canonicalization, and `ArrayChip.is2D` — where a complexlist reaching a generic
+chip rendered as a 2-column TABLE, silently. It is also the shape-branding blocker the
+Tier 4 record names: "a complex `[re,im]` is indistinguishable from a 2-list."
+*Enforced by:* `complex.test.ts` (the tagged representation + the family's behaviour
+through it); the disambiguation sites above DELETE their special cases, so a regression
+to bare arrays fails type-check at the `Cx` type itself.
+*Origin:* the complex rebrand (2026-07-28). Complex was the only bare-array scalar in
+the value model and the sole reason "a cell may be an array" was ever true.
+
 # Enforcement summary
 
-38 rules.
+39 rules.
 
 | Status | Count | Rules |
 |---|---|---|
-| Enforced | 28 | SSOT-1,2,3,4,6,7,8 · SOCK-1,2,3,4 · FX-1,2,3,5,6,7,8 · VAL-1,2,3,4,5,6,7,8,9,11 |
+| Enforced | 29 | SSOT-1,2,3,4,6,7,8 · SOCK-1,2,3,4 · FX-1,2,3,5,6,7,8 · VAL-1,2,3,4,5,6,7,8,9,11,15 |
 | Partially enforced | 6 | SOCK-5, SOCK-7 · FX-4 · VAL-10, VAL-12, VAL-14 |
 | Unenforced | 4 | SSOT-5 · SOCK-6, SOCK-8 · VAL-13 |
 

@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { VStackNode, HStackTableNode } from "./matrix";
 import { ConcatListsNode } from "./list";
 import { FrameFromListsNode, AppendNode, FilterFrameNode } from "./frame";
-import { QuadraticRootsNode } from "./complex";
+import { QuadraticRootsNode, cx } from "./complex";
 import { isSolError } from "../errorValue";
 import { frameFromCells, type FrameValue } from "../frame";
 import { readFrame } from "../frameBackend";
@@ -159,21 +159,21 @@ describe("the D16 table-filter route: a MATRIX widens into the frame Filter", ()
 describe("Quadratic Roots (complex)", () => {
   it("real roots come out as real complex numbers", () => {
     const r = new QuadraticRootsNode().data({ a: [1], b: [0], c: [-36] });
-    expect(r.x1).toEqual([-6, 0]);
-    expect(r.x2).toEqual([6, 0]);
+    expect(r.x1).toEqual(cx(-6, 0));
+    expect(r.x2).toEqual(cx(6, 0));
   });
 
   it("a negative discriminant gives the conjugate pair", () => {
     // x² + 2x + 5 = 0 → −1 ± 2i.
     const r = new QuadraticRootsNode().data({ a: [1], b: [2], c: [5] });
-    expect(r.x1).toEqual([-1, -2]);
-    expect(r.x2).toEqual([-1, 2]);
+    expect(r.x1).toEqual(cx(-1, -2));
+    expect(r.x2).toEqual(cx(-1, 2));
   });
 
   it("the node's default x² + 1 = 0 shows ±i; a = 0 errors", () => {
     const dflt = new QuadraticRootsNode().data({});
-    expect(dflt.x1).toEqual([0, -1]);
-    expect(dflt.x2).toEqual([0, 1]);
+    expect(dflt.x1).toEqual(cx(0, -1));
+    expect(dflt.x2).toEqual(cx(0, 1));
     expect(isSolError(new QuadraticRootsNode().data({ a: [0], b: [2], c: [1] }).x1)).toBe(true);
   });
 });
