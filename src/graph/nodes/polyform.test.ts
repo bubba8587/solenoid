@@ -104,7 +104,10 @@ describe("Expression — value-polymorphic results", () => {
     expect(dt(new ExpressionNode({ resultAs: "number" }).outputs.result?.socket)).toBe("numlist");
     expect(dt(new ExpressionNode({ resultAs: "text" }).outputs.result?.socket)).toBe("strcombo");
     expect(dt(new ExpressionNode({ resultAs: "date" }).outputs.result?.socket)).toBe("datecombo");
-    expect(dt(new ExpressionNode({ resultAs: "auto" }).outputs.result?.socket)).toBe("any");
+    // anyCOMBO, not `any`: an Auto result IS a list whenever a list variable
+    // broadcasts, so the scalar circle was a lying dot — and it let a list-shaped
+    // result reach strict scalar inputs (#SHAPE! at runtime).
+    expect(dt(new ExpressionNode({ resultAs: "auto" }).outputs.result?.socket)).toBe("anycombo");
   });
 
   it("the 2-D producers: Number default is the numeric matrix; Auto is anytable (D17)", () => {

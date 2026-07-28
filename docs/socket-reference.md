@@ -800,11 +800,12 @@ arms. Every one of them is adoptive.
 
 **Accepts from:** every family's scalar and combo — `number`, `numlist`, `string`,
 `strcombo`, `date`, `datecombo`, `complex`, `complexcombo`, `logical`,
-`logicalcombo` — plus `any` and `trueany`.
+`logicalcombo` — plus `anycombo` (a combo may be a scalar, the same exception
+every family scalar makes for its own combo), `any` and `trueany`.
 
 **Blocked at the input:** `list`, `strlist`, `datelist`, `complexlist`,
 `logicallist`, `logicaltable`, `table`, `strtable`, `datetable`, `complextable`,
-`anytable`, `anylist`, `anycombo`, `frame`, `cube`, `lambda`, `chart`, `document`.
+`anytable`, `anylist`, `frame`, `cube`, `lambda`, `chart`, `document`.
 
 **Reaches:** every data variant — `number`, `list`, `numlist`, `string`,
 `strlist`, `strcombo`, `date`, `datelist`, `datecombo`, `complex`, `complexlist`,
@@ -837,9 +838,11 @@ is what separates it from `anylist` — `number`, `list`,
 `numlist`, `string`, `strlist`, `strcombo`, `date`, `datelist`, `datecombo`,
 `complex`, `complexlist`, `complexcombo`, `complextable`, `logical`,
 `logicallist`, `logicalcombo`, `logicaltable`, `table`, `strtable`, `datetable`,
-`anytable`, `anylist`, `anycombo`, `frame`, `cube`, `trueany`.
+`anytable`, `anylist`, `anycombo`, `frame`, `cube`, `any`, `trueany` — `any`
+because a combo may be a scalar, the same exception every family combo makes
+for its own scalar (without it, a Regex result couldn't reach a SWITCH arm).
 
-**Blocked at the output:** `lambda`, `chart`, `document`, `any`.
+**Blocked at the output:** `lambda`, `chart`, `document`.
 
 **On arrival:** a one-element list collapses to the value it contains. Everything
 else keeps its natural rank — a scalar stays a scalar, which is the whole reason
