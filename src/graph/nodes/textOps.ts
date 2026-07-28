@@ -59,3 +59,31 @@ export function regexApply(
     case "replace":     return text.replace(global(), replacement);
   }
 }
+
+/** Excel REGEXEXTRACT return_mode 2: the FIRST match's capture groups, as a list.
+ *  No groups in the pattern (or no match) → empty list. */
+export function regexGroups(text: string, pattern: string, flags = ""): string[] | null {
+  if (!pattern) return null;
+  const re = safeRegex(pattern, flags);
+  if (!re) return null;
+  const m = text.match(re);
+  return m ? m.slice(1).map((g) => g ?? "") : [];
+}
+
+/** Excel REGEXREPLACE with a nonzero `occurrence`: replace ONLY the nth match
+ *  (1-based). Fewer than n matches → the text unchanged, like Excel. */
+export function replaceNth(text: string, pattern: string, replacement: string, n: number, flags = ""): string | null {
+  if (!pattern) return null;
+  const re = safeRegex(pattern, flags);
+  if (!re) return null;
+  const g = new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g");
+  let i = 0;
+  return text.replace(g, (match, ...rest) => {
+    i++;
+    if (i !== n) return match;
+    // Honor $1-style backreferences by re-running the single-match replace on the
+    // matched slice (rest carries groups + offset + string; slice off the tail).
+    const offset = rest[rest.length - 2] as number;
+    return text.slice(offset, offset + match.length).replace(re, replacement);
+  });
+}

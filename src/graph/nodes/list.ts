@@ -15,7 +15,7 @@ import { stripUnitCells } from "../unitBridge";
 import { tagFrameCellUnit } from "../unitColumn";
 import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../dimension";
 import { iterMin, iterMax } from "./mathUtils";
-import { MAX_GENERATED, shuffleList, setKey, setOperation, setRelation, fillList, rangeList, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, cumulative, rolling, argMinMax, containsValue, weighted, linspace, repeatValue, geometric, fibonacci } from "./listOps";
+import { MAX_GENERATED, shuffleList, setKey, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, cumulative, rolling, argMinMax, containsValue, weighted, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell } from "./listOps";
 import { isFrameValue, isCubeValue, cubeRowCount, cubeFromColumns, frameRowCount, inferColumn, getColumn, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
 
 // ─── List Input ─────────────────────────────────────────────────────────────
@@ -186,7 +186,7 @@ export class ListInputNode extends ClassicPreset.Node {
 
 export class RangeNode extends ClassicPreset.Node {
   label: string;
-  cachedList: number[] | null = [];
+  cachedList: number[] | SolError | null = [];
   // No default for `stop` — an unset stop keeps the range empty until
   // the user provides one (cable or literal).
   literals: Record<string, number> = { start: 0, step: 1 };
@@ -210,6 +210,18 @@ export class RangeNode extends ClassicPreset.Node {
     // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
     const step  = readInput(inputs.step, this.literals.step ?? 1);
     if (start === null || stop === null || step === null) { this.cachedList = null; return { list: null }; }
+    // The shared generator convention (RANDARRAY/SEQUENCE): a range that never
+    // terminates or exceeds the app ceiling is a LOUD error, not a silent
+    // truncation — the old hard cap quietly returned the first 1000 elements.
+    const n = rangeCount(start, stop, step);
+    if (!Number.isFinite(n)) {
+      const err = solError("#DOMAIN!", "Step is 0 (or signed away from Stop), so the range never ends");
+      this.cachedList = err; return { list: err };
+    }
+    if (n > MAX_GENERATED) {
+      const err = solError("#OVERFLOW!", `Range of ${Math.round(n)} elements exceeds the ${MAX_GENERATED} element limit`);
+      this.cachedList = err; return { list: err };
+    }
     const list = rangeList(start, stop, step);
     this.cachedList = list;
     return { list };
@@ -1192,7 +1204,7 @@ export const CUMULATIVE_OP_META = {
 export class CumulativeNode extends ClassicPreset.Node {
   label: string;
   op: CumulativeOp;
-  cachedList: number[] = [];
+  cachedList: ListCell[] = [];
   width = 180;
   height = 160;
 
@@ -1204,7 +1216,7 @@ export class CumulativeNode extends ClassicPreset.Node {
     this.addOutput("result", listOut("Running"));
   }
 
-  data(inputs: { list?: number[][] }) {
+  data(inputs: { list?: ListCell[][] }) {
     const arr = inputs.list?.[0] ?? [];
     const out = cumulative(this.op, arr);
     this.cachedList = out;
@@ -1214,7 +1226,7 @@ export class CumulativeNode extends ClassicPreset.Node {
 
 export class DiffNode extends ClassicPreset.Node {
   label: string;
-  cachedList: number[] = [];
+  cachedList: ListCell[] = [];
   width = 180;
   height = 120;
 
@@ -1225,7 +1237,7 @@ export class DiffNode extends ClassicPreset.Node {
     this.addOutput("result", listOut("Differences"));
   }
 
-  data(inputs: { list?: number[][] }) {
+  data(inputs: { list?: ListCell[][] }) {
     const arr = inputs.list?.[0] ?? [];
     this.cachedList = diffList(arr);
     return { result: this.cachedList };
@@ -1242,7 +1254,7 @@ export const ARG_MIN_MAX_OP_META = {
 export class ArgMinMaxNode extends ClassicPreset.Node {
   label: string;
   op: ArgMinMaxOp;
-  cachedResult: number | null = null;
+  cachedResult: number | SolError | null = null;
   width = 180;
   height = 160;
 
@@ -1254,7 +1266,7 @@ export class ArgMinMaxNode extends ClassicPreset.Node {
     this.addOutput("result", numOut("Position"));
   }
 
-  data(inputs: { list?: number[][] }) {
+  data(inputs: { list?: ListCell[][] }) {
     const arr = inputs.list?.[0] ?? null;
     const result = arr === null ? null : argMinMax(this.op, arr);
     this.cachedResult = result;
@@ -1292,7 +1304,7 @@ export class ContainsNode extends ClassicPreset.Node {
 // ─── Normalize ────────────────────────────────────────────────────────────────
 export class NormalizeNode extends ClassicPreset.Node {
   label: string;
-  cachedList: number[] = [];
+  cachedList: ListCell[] | SolError = [];
   width = 180; height = 120;
 
   constructor(init?: { label?: string }) {
@@ -1302,7 +1314,7 @@ export class NormalizeNode extends ClassicPreset.Node {
     this.addOutput("result", listOut("0–1"));
   }
 
-  data(inputs: { list?: number[][] }) {
+  data(inputs: { list?: ListCell[][] }) {
     const arr = inputs.list?.[0] ?? [];
     this.cachedList = normalizeList(arr);
     return { result: this.cachedList };

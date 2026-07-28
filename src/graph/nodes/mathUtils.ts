@@ -233,3 +233,112 @@ export function interpolateLinear(xs: number[], ys: number[], queryXs: number[])
     return sy[i0] + t * (sy[i1] - sy[i0]);
   });
 }
+
+// ─── Shared statistical-test implementations (ONE impl, two surfaces) ─────────
+// The T.TEST / F.TEST / PROB nodes and the formula registrations both call these
+// (FX-1): Formula.js's own T.TEST ignores `tails`/`type` entirely and its F.TEST
+// returns the variance RATIO instead of the p-value, so dispatching to it shipped
+// a different answer than the node under the same name.
+import { isSolError, type SolError as StatSolError } from "../errorValue";
+
+type StatCell = number | null | StatSolError;
+
+export function arrMean(arr: readonly number[]): number {
+  return arr.reduce((a, b) => a + b, 0) / arr.length;
+}
+
+export function arrSampleVar(arr: readonly number[]): number {
+  const m = arrMean(arr);
+  return arr.reduce((s, v) => s + (v - m) ** 2, 0) / (arr.length - 1);
+}
+
+/** Student-t CDF via the regularized incomplete beta. */
+export function tCDF(x: number, df: number): number {
+  const z = df / (df + x * x);
+  const betaCDF = regularizedBeta(z, df / 2, 0.5);
+  return x >= 0 ? 1 - betaCDF / 2 : betaCDF / 2;
+}
+
+/** Index-aligned pairs with the pairwise policy: first cell error propagates,
+ *  a pair with a missing side is dropped, ragged tails truncate. */
+export function pairPresent(
+  xsRaw: readonly StatCell[] | null,
+  ysRaw: readonly StatCell[] | null,
+): { error?: StatSolError; xs: number[]; ys: number[] } {
+  const xs = xsRaw ?? [], ys = ysRaw ?? [];
+  for (const v of xs) if (isSolError(v)) return { error: v, xs: [], ys: [] };
+  for (const v of ys) if (isSolError(v)) return { error: v, xs: [], ys: [] };
+  const n = Math.min(xs.length, ys.length);
+  const ox: number[] = [], oy: number[] = [];
+  for (let i = 0; i < n; i++) {
+    const a = xs[i], b = ys[i];
+    if (a === null || b === null) continue;
+    ox.push(a as number); oy.push(b as number);
+  }
+  return { xs: ox, ys: oy };
+}
+
+export type TTestKind = "paired" | "equal-var" | "unequal-var";
+
+/** Two-tailed Student-t p-value for two samples, by test kind. Returns null when
+ *  the test is undefined (short samples, zero variance, non-finite t/df). */
+export function tTestP(kind: TTestKind, a: readonly number[], b: readonly number[]): number | null {
+  if (a.length < 2 || b.length < 2) return null;
+  let t: number, df: number;
+  if (kind === "paired") {
+    const n = Math.min(a.length, b.length);
+    const diffs = Array.from({ length: n }, (_, i) => a[i] - b[i]);
+    const dVar = arrSampleVar(diffs);
+    if (dVar <= 0) return null;
+    t = arrMean(diffs) / Math.sqrt(dVar / n);
+    df = n - 1;
+  } else if (kind === "equal-var") {
+    const n1 = a.length, n2 = b.length;
+    const v1 = arrSampleVar([...a]), v2 = arrSampleVar([...b]);
+    const sp2 = ((n1 - 1) * v1 + (n2 - 1) * v2) / (n1 + n2 - 2);
+    if (sp2 <= 0) return null;
+    t = (arrMean(a) - arrMean(b)) / Math.sqrt(sp2 * (1 / n1 + 1 / n2));
+    df = n1 + n2 - 2;
+  } else {
+    const n1 = a.length, n2 = b.length;
+    const v1n = arrSampleVar([...a]) / n1, v2n = arrSampleVar([...b]) / n2;
+    const sum = v1n + v2n;
+    if (sum <= 0) return null;
+    t = (arrMean(a) - arrMean(b)) / Math.sqrt(sum);
+    df = sum ** 2 / (v1n ** 2 / (n1 - 1) + v2n ** 2 / (n2 - 1));
+  }
+  if (!(df > 0) || !Number.isFinite(t) || !Number.isFinite(df)) return null;
+  const p = 2 * (1 - tCDF(Math.abs(t), df));
+  return Number.isFinite(p) ? clamp(p, 0, 1) : null;
+}
+
+/** Excel F.TEST: the TWO-TAILED p-value that the samples' variances differ —
+ *  not the variance ratio (which is what Formula.js returns). */
+export function fTestP(a: readonly number[], b: readonly number[]): number | null {
+  if (a.length < 2 || b.length < 2) return null;
+  const v1 = arrSampleVar([...a]), v2 = arrSampleVar([...b]);
+  if (!(v1 > 0) || !(v2 > 0)) return null;
+  const F = v1 / v2;
+  const df1 = a.length - 1, df2 = b.length - 1;
+  const p1 = regularizedBeta((F * df1) / (F * df1 + df2), df1 / 2, df2 / 2);
+  const p = 2 * Math.min(p1, 1 - p1);
+  return Number.isFinite(p) ? p : null;
+}
+
+/** Excel PROB over a 1-D range: total probability of values in [lo, hi].
+ *  Pairwise cell policy: an error propagates, a pair missing either side drops. */
+export function probBetween(
+  range: readonly StatCell[] | null,
+  probs: readonly StatCell[] | null,
+  lo: number,
+  hi: number,
+): number | StatSolError | null {
+  const { error, xs, ys } = pairPresent(range, probs);
+  if (error) return error;
+  if (xs.length === 0) return null;
+  let prob = 0;
+  for (let i = 0; i < xs.length; i++) {
+    if (xs[i] >= lo && xs[i] <= hi) prob += ys[i];
+  }
+  return Number.isFinite(prob) ? clamp(prob, 0, 1) : null;
+}

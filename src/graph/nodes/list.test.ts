@@ -38,9 +38,16 @@ describe("Range", () => {
   it("counts down with a negative step", () => {
     expect(new RangeNode().data({ start: [5], stop: [0], step: [-1] }).list).toEqual([5, 4, 3, 2, 1]);
   });
-  it("is empty when stop is unreachable or step is 0", () => {
+  it("is empty when stop is unreachable; step 0 is a LOUD #DOMAIN!", () => {
     expect(new RangeNode().data({ start: [0], stop: [5], step: [-1] }).list).toEqual([]);
-    expect(new RangeNode().data({ start: [0], stop: [5], step: [0] }).list).toEqual([]);
+    // A walk that never terminates is a config mistake, not an empty series —
+    // the old silent [] hid it (same reasoning as the generator overflow guard).
+    const r = new RangeNode().data({ start: [0], stop: [5], step: [0] }).list;
+    expect(isSolError(r) && r.code).toBe("#DOMAIN!");
+  });
+  it("overflows loudly past MAX_GENERATED instead of silently truncating", () => {
+    const r = new RangeNode().data({ start: [0], stop: [2_000_000], step: [1] }).list;
+    expect(isSolError(r) && r.code).toBe("#OVERFLOW!");
   });
 });
 

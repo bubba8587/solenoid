@@ -1,6 +1,6 @@
 import { ClassicPreset } from "rete";
 import { broadcastErr, listIn, listOut, numIn, numOut, numListIn, numListOut, readInput, tableIn, tableOut } from "./shared";
-import { normSInv, regularizedBeta, regularizedGamma, stdNormCDF, lnCombin, bisectionInv, iterMax, linearFit, interpolateLinear } from "./mathUtils";
+import { normSInv, regularizedGamma, stdNormCDF, lnCombin, bisectionInv, iterMax, linearFit, interpolateLinear, arrMean, arrSampleVar, tCDF, pairPresent, tTestP, fTestP, probBetween } from "./mathUtils";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { excelRank, excelTrimmean, excelPercentRank } from "../excelFunctions";
 import { forAggregate } from "../valueKinds";
@@ -12,22 +12,9 @@ import { fitSurface, type FitPoint } from "./surfaceFit";
 // index where either side is null/missing so a blank isn't silently scored as 0.
 // NaN is kept (matches the univariate forAggregate). Clean number lists pass through
 // unchanged, so this only changes behavior when a null/error is actually present.
-function forPair(
-  xsRaw: (number | null | SolError)[] | null,
-  ysRaw: (number | null | SolError)[] | null,
-): { error?: SolError; xs: number[]; ys: number[] } {
-  const xs = xsRaw ?? [], ys = ysRaw ?? [];
-  for (const v of xs) if (isSolError(v)) return { error: v, xs: [], ys: [] };
-  for (const v of ys) if (isSolError(v)) return { error: v, xs: [], ys: [] };
-  const n = Math.min(xs.length, ys.length);
-  const ox: number[] = [], oy: number[] = [];
-  for (let i = 0; i < n; i++) {
-    const a = xs[i], b = ys[i];
-    if (a === null || b === null) continue; // missing in either → drop the pair
-    ox.push(a as number); oy.push(b as number);
-  }
-  return { xs: ox, ys: oy };
-}
+// The pairwise cell policy, shared with the formula surface (mathUtils.pairPresent):
+// first cell error propagates, a pair with a missing side drops, ragged tails truncate.
+const forPair = pairPresent;
 
 // ─── Statistics nodes ─────────────────────────────────────────────────────────
 
@@ -647,12 +634,6 @@ export const CONFIDENCE_OP_META = {
   t:    { label: "T",    description: "Confidence interval half-width using t-distribution. Excel: CONFIDENCE.T(alpha, stdev, n)." },
 } satisfies Record<ConfidenceOp, { label: string; description: string }>;
 
-function tCDF(x: number, df: number): number {
-  const z = df / (df + x * x);
-  const betaCDF = regularizedBeta(z, df / 2, 0.5);
-  return x >= 0 ? 1 - betaCDF / 2 : betaCDF / 2;
-}
-
 function tInv(prob: number, df: number): number {
   return bisectionInv((x) => tCDF(x, df), prob, -1e6, 1e6);
 }
@@ -700,13 +681,7 @@ export class ConfidenceNode extends ClassicPreset.Node {
 
 // ─── Shared helpers for test nodes ────────────────────────────────────────────
 
-function arrMean(arr: number[]): number {
-  return arr.reduce((a, b) => a + b, 0) / arr.length;
-}
-function arrSampleVar(arr: number[]): number {
-  const m = arrMean(arr);
-  return arr.reduce((s, v) => s + (v - m) ** 2, 0) / (arr.length - 1);
-}
+// arrMean / arrSampleVar / tCDF moved to mathUtils (shared with the formula surface).
 function binomPmfLocal(k: number, n: number, p: number): number | null {
   if (p === 0) return k === 0 ? 1 : 0;
   if (p === 1) return k === n ? 1 : 0;
@@ -779,38 +754,10 @@ export class TTestNode extends ClassicPreset.Node {
   }
 
   data(inputs: { a?: number[][]; b?: number[][] }) {
+    // ONE implementation with the formula surface (mathUtils.tTestP — FX-1).
     const a = inputs.a?.[0] ?? null;
     const b = inputs.b?.[0] ?? null;
-    let result: number | null = null;
-    if (a && b && a.length >= 2 && b.length >= 2) {
-      let t: number, df: number;
-      if (this.op === "paired") {
-        const n     = Math.min(a.length, b.length);
-        const diffs = Array.from({ length: n }, (_, i) => a[i] - b[i]);
-        const dVar  = arrSampleVar(diffs);
-        if (dVar <= 0) { this.cachedResult = null; return { result: null }; }
-        t  = arrMean(diffs) / Math.sqrt(dVar / n);
-        df = n - 1;
-      } else if (this.op === "equal-var") {
-        const n1 = a.length, n2 = b.length;
-        const v1 = arrSampleVar(a), v2 = arrSampleVar(b);
-        const sp2 = ((n1 - 1) * v1 + (n2 - 1) * v2) / (n1 + n2 - 2);
-        if (sp2 <= 0) { this.cachedResult = null; return { result: null }; }
-        t  = (arrMean(a) - arrMean(b)) / Math.sqrt(sp2 * (1 / n1 + 1 / n2));
-        df = n1 + n2 - 2;
-      } else {
-        const n1 = a.length, n2 = b.length;
-        const v1n = arrSampleVar(a) / n1, v2n = arrSampleVar(b) / n2;
-        const sum = v1n + v2n;
-        if (sum <= 0) { this.cachedResult = null; return { result: null }; }
-        t  = (arrMean(a) - arrMean(b)) / Math.sqrt(sum);
-        df = sum ** 2 / (v1n ** 2 / (n1 - 1) + v2n ** 2 / (n2 - 1));
-      }
-      if (df > 0 && Number.isFinite(t) && Number.isFinite(df)) {
-        const p = 2 * (1 - tCDF(Math.abs(t), df));
-        result  = Number.isFinite(p) ? Math.max(0, Math.min(1, p)) : null;
-      }
-    }
+    const result = a && b ? tTestP(this.op, a, b) : null;
     this.cachedResult = result;
     return { result };
   }
@@ -833,20 +780,10 @@ export class FTestNode extends ClassicPreset.Node {
   }
 
   data(inputs: { a?: number[][]; b?: number[][] }) {
+    // ONE implementation with the formula surface (mathUtils.fTestP — FX-1).
     const a = inputs.a?.[0] ?? null;
     const b = inputs.b?.[0] ?? null;
-    let result: number | null = null;
-    if (a && b && a.length >= 2 && b.length >= 2) {
-      const n1 = a.length, n2 = b.length;
-      const v1 = arrSampleVar(a), v2 = arrSampleVar(b);
-      if (v1 > 0 && v2 > 0) {
-        const F  = v1 / v2;
-        const df1 = n1 - 1, df2 = n2 - 1;
-        const p1  = regularizedBeta((F * df1) / (F * df1 + df2), df1 / 2, df2 / 2);
-        result = 2 * Math.min(p1, 1 - p1);
-        if (!Number.isFinite(result)) result = null;
-      }
-    }
+    const result = a && b ? fTestP(a, b) : null;
     this.cachedResult = result;
     return { result };
   }
@@ -1325,7 +1262,7 @@ export class BinomDistRangeNode extends ClassicPreset.Node {
 
 export class ProbNode extends ClassicPreset.Node {
   label: string;
-  cachedResult: number | null = null;
+  cachedResult: number | SolError | null = null;
   literals: Record<string, number> = { lo: 0, hi: 1 };
   width = 180; height = 250;
 
@@ -1345,15 +1282,11 @@ export class ProbNode extends ClassicPreset.Node {
     const lo    = readInput(inputs.lo, this.literals.lo ?? 0);
     const hi    = readInput(inputs.hi, this.literals.hi ?? 1);
     if (lo === null || hi === null) { this.cachedResult = null; return { result: null }; }
-    let result: number | null = null;
-    if (range && probs && range.length > 0 && probs.length >= range.length) {
-      const n = range.length;
-      let prob = 0;
-      for (let i = 0; i < n; i++) {
-        if (range[i] >= lo && range[i] <= hi) prob += probs[i];
-      }
-      result = Number.isFinite(prob) ? Math.min(1, Math.max(0, prob)) : null;
-    }
+    // ONE implementation with the formula surface (mathUtils.probBetween — FX-1).
+    // The old inline loop compared raw cells, so a null range cell coerced to 0
+    // (`null >= 0` is true) and silently joined the sum; a cell error now
+    // propagates as itself (VAL-6).
+    const result = probBetween(range, probs, lo, hi);
     this.cachedResult = result;
     return { result };
   }
