@@ -370,7 +370,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
       {
         type: "category", label: "Rounding", description: "Round and constrain numbers.",
         children: [
-          { type: "pair", children: [mathLeaf("round"), mathLeaf("trunc")] },
+          mathLeaf("trunc"),
           { type: "pair", children: [
             { type: "math-ceiling", label: "CEILING", description: "Rounds UP to a multiple (toward +∞); the multiple defaults to 1 so it snaps up to the next integer. Excel: CEILING.MATH(x, sig).", create: () => new MRoundNode({ op: "up" }), keywords: "ceil ceiling round up multiple significance" },
             { type: "math-floor", label: "FLOOR", description: "Rounds DOWN to a multiple (toward −∞); the multiple defaults to 1 so it snaps down to the next integer. Excel: FLOOR.MATH(x, sig).", create: () => new MRoundNode({ op: "down" }), keywords: "floor round down multiple significance" },

@@ -11,6 +11,8 @@ import {
 } from "./nodes/list";
 import { buildCatalog } from "./catalogUtils";
 import { despace as parityDespace } from "./formulaNodeParity";
+import { NODE_OPS } from "./nodeOps";
+import { TextFilterNode } from "./nodes/text";
 import type { CatalogEntry, NodeCatalogEntry } from "./AddNodeMenu";
 
 // ─── D19 Tier 3: the node surface and the formula surface agree ───────────────
@@ -295,5 +297,70 @@ describe("the formula namespace stays unambiguous", () => {
     for (const fx of declared) {
       expect(labelNames.has(fx), `${fx} collides with a node label`).toBe(false);
     }
+  });
+
+  it("TEXTFILTER — one name, the condition is an argument (the reclassified family)", () => {
+    // Text Filter went operation → argument (its ops are a filter CONDITION, and
+    // "Contains" despaced onto the list-membership CONTAINS). One registration,
+    // same kernel as the node.
+    const strings = ["alpha", "beta", "alphabet"];
+    for (const op of ["contains", "not_contains", "starts_with", "ends_with"] as const) {
+      const node = new TextFilterNode({ op });
+      node.stringLiterals.pattern = "alp";
+      expect(ev(`TEXTFILTER(x, "alp", "${op}")`, { x: strings }), op)
+        .toEqual(node.data({ strings: [strings] }).result);
+    }
+    expect(ev('TEXTFILTER(x, "alp")', { x: strings })).toEqual(["alpha", "alphabet"]); // default contains
+    expect(ev('TEXTFILTER(x, "alp", "not contains")', { x: strings })).toEqual(["beta"]); // spaced spelling
+    const bad = ev('TEXTFILTER(x, "a", "fuzzy")', { x: strings });
+    expect((bad as { code?: string }).code).toBe("#VALUE!");
+  });
+
+  it("FX-4 full sweep — every operation-kind op name is unique across families and leaves", () => {
+    // The complete naming-side check (closes rules.md known-violation 3): every
+    // OPERATION-kind op in NODE_OPS claims a formula name (`fx` ?? despaced
+    // label). Those names must be injective — across families, and against the
+    // catalog leaves — because the parity walk counts a leaf covered when its
+    // ops' names dispatch, silently assuming the dispatch IS the op. Argument-
+    // kind ops take no names (their host does), and kind-only families surface
+    // their ops AS leaves, which the leaf-uniqueness test above already sweeps —
+    // together the two tests cover both surfaces an op name can appear on.
+    //
+    // A leaf may legitimately share an op's name when it IS that op (leafOps —
+    // the leaf constructs the family at that op); anything else is two things
+    // claiming one name.
+    const CROSS_FAMILY_OK = new Set([
+      // chart + sparkline share a STYLE vocabulary (Line, Column…): the ops are
+      // figure styles on sink nodes that never register formula names, and the
+      // shared words are the point (a sparkline Line IS a small line chart).
+      "LINE", "COLUMN",
+    ]);
+    const opOwners = new Map<string, string>();
+    const leafByName = new Map<string, NodeCatalogEntry[]>();
+    for (const leaf of leaves(buildCatalog(false)).filter((l) => !l.hidden)) {
+      const n = parityDespace(leaf.label);
+      if (!leafByName.has(n)) leafByName.set(n, []);
+      leafByName.get(n)!.push(leaf);
+    }
+    const clashes: string[] = [];
+    for (const decl of NODE_OPS) {
+      if (decl.kind !== "operation" || !decl.ops) continue;
+      for (const op of decl.ops) {
+        const name = op.fx ?? parityDespace(op.label);
+        const id = `${decl.type}/${op.op}`;
+        const prev = opOwners.get(name);
+        if (prev && !CROSS_FAMILY_OK.has(name)) clashes.push(`${name}: op ${prev} vs op ${id}`);
+        opOwners.set(name, id);
+        for (const leaf of leafByName.get(name) ?? []) {
+          let sameThing = false;
+          try {
+            const inst = leaf.create();
+            sameThing = inst instanceof decl.ctor && (inst as { op?: unknown }).op === op.op;
+          } catch { /* construction failed → not the same thing */ }
+          if (!sameThing) clashes.push(`${name}: leaf "${leaf.label}" (${leaf.type}) vs op ${id}`);
+        }
+      }
+    }
+    expect(clashes, `Two different things claim one formula name (FX-4):\n  ${clashes.join("\n  ")}`).toEqual([]);
   });
 });

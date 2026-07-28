@@ -16,13 +16,11 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   (SOCK-7 completeness + VAL-13 as source scans in `sourceInvariants.test.ts`, SOCK-5's
   persistence pin, the last VAL-12 renames Alert/ColorBlend + declarations; SOCK-6
   attempted and recorded un-greppable — only rendering classifiers inline wildcard
-  names). Still open, highest value first:
+  names; FX-4's full naming sweep — which caught and fixed the Text Filter CONTAINS
+  claim and the duplicate math-fn `round` op). Still open, highest value first:
   - **VAL-10 completeness** — nothing proves a NEW algebra node sets `unitAware`.
   - **VAL-12 blindness** — a family that CAN'T declare (misnamed field) is invisible to
     the coverage check — drive it off the catalog/OpSelect usage instead.
-  - **FX-4** — the naming-side sweep covers catalog leaves and the three `fx` tables,
-    not every family's op labels against each other. (Registry side CLOSED:
-    duplicate registration throws.)
   - **VAL-14** — only the "if" direction of the literal-map rule is checked.
   - **Unenforced, lower value:** SOCK-8 (socket box geometry — a CSS invariant).
   - **`rules.test.ts` semantic half** — it checks cited files EXIST; whether a cited
@@ -122,11 +120,12 @@ rationale in `decisions.md`. v1.2.0 shipped 2026-07-22; this queue is the 1.3 vi
   equivalent, typeable today — SSOT-3, no hand-kept list) and counts the
   language's own leaves (the four operators, Comparison, Expression/Equation).
   With the straggler registrations (REVERSETEXT, SPELLNUMBER, DECODEURL, LOG2,
-  HYPOTENUSE, XNOR, NAND, NOR) and the complex tranche (D23 amendment, landed:
-  IM* owned over tagged Cx, operators answer typed #TYPE!, QUADRATICROOTS):
-  **Non-pack: 381/479.** The 98 remaining are Input/Output/Tables (sources,
-  sinks, UI, D23-endpoint) plus exactly four named leaves: Text Filter (op
-  family, needs its per-op naming pass), Image/SVG/Promo (not functions).
+  HYPOTENUSE, XNOR, NAND, NOR), the complex tranche (IM* owned over tagged Cx),
+  the regression quartet, and TEXTFILTER (the family reclassified argument-kind —
+  one name, condition as argument; the math-fn `round` duplicate deleted):
+  **Non-pack: 381/478.** The 97 remaining are Input/Output/Tables (sources,
+  sinks, UI, D23-endpoint) plus Image/SVG/Promo (not functions) — every
+  registrable named leaf is CLOSED.
   **Packs: 148/167 already covered** (preset formulas). The pack workstream is
   the 19 CUSTOM-LOGIC nodes: Triangle Solver, Parallel Combine, Resistor Color
   Code, E-Series Value, AWG Wire, EM Spectrum Band, Physics Constant, Heart-Rate

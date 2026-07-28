@@ -364,15 +364,26 @@ machine-checked.
 
 *Why:* a naming law without an injectivity check will silently collide, and the collision
 is discovered by whoever registers second.
-*Enforced by:* `formulaTier3.test.ts` → "the formula namespace stays unambiguous" —
-PARTIAL on the naming side (it sweeps catalog leaf labels and the three declared `fx`
-tables, not every family's op labels against each other; see Known violations) — plus
+*Enforced by:* `formulaTier3.test.ts` → "the formula namespace stays unambiguous",
+including the FULL naming sweep ("FX-4 full sweep"): every OPERATION-kind op name in
+`NODE_OPS` (`fx` ?? despaced label) checked pairwise across families and against the
+catalog leaves, with a leaf-identity escape (a leaf that constructs the family at that
+op IS the op) and one reasoned exemption (chart/sparkline share a figure-STYLE
+vocabulary and never register formula names). Argument-kind ops take no names, and
+kind-only families surface their ops AS leaves, which the leaf-uniqueness test sweeps —
+the two tests together cover both surfaces a name can appear on. Plus
 the REGISTRY half: `registerInternal` THROWS on a duplicate live name
 (`excelFunctions.test.ts` → "the duplicate-registration guard"), so two impls claiming
 one name fail at module load instead of the winner being decided by import order.
 Withdrawn (pack-revocable) names may return.
 *Origin:* Fill's `Interpolate` op and the `INTERPOLATE` node in `stats.ts` both despace to
-`INTERPOLATE`. Fill's op now declares `fx: "FILLINTERPOLATE"` per `SSOT-2`.
+`INTERPOLATE`. Fill's op now declares `fx: "FILLINTERPOLATE"` per `SSOT-2`. The full
+sweep's first run (2026-07-28) then caught two live wounds the partial sweep missed:
+Text Filter's `Contains` op claimed the list-membership `CONTAINS` (fixed by
+reclassifying the family operation → argument — the ops are a filter CONDITION), and
+the math-fn `round` op's leaf claimed `ROUND`, a name that dispatches the 2-arg Excel
+ROUND which REFUSES the leaf's own 1-arg semantics (fixed by deleting the duplicate op —
+RoundN at digits 0 is the same capability).
 
 ### FX-5 — Array arguments arrive whole **[INFERRED]**
 **MUST:** a function taking a whole 1-D list is routed past the element-wise broadcaster.
@@ -643,11 +654,11 @@ wrapper; every new nesting scheme would re-open the ambiguity VAL-15 closed.
 
 | Status | Count | Rules |
 |---|---|---|
-| Enforced | 37 | PROV-1 · SSOT-1,2,3,4,6,7,8 · SOCK-1,2,3,4,5,7,9 · FX-1,2,3,5,6,7,8,9,10 · VAL-1,2,3,4,5,6,7,8,9,11,13,15,16 |
-| Partially enforced | 4 | FX-4 · VAL-10, VAL-12, VAL-14 |
+| Enforced | 38 | PROV-1 · SSOT-1,2,3,4,6,7,8 · SOCK-1,2,3,4,5,7,9 · FX-1,2,3,4,5,6,7,8,9,10 · VAL-1,2,3,4,5,6,7,8,9,11,13,15,16 |
+| Partially enforced | 3 | VAL-10, VAL-12, VAL-14 |
 | Unenforced | 3 | SSOT-5 · SOCK-6, SOCK-8 |
 
-**The partially-enforced four are the highest-value gap.** In each the rule is tested for
+**The partially-enforced three are the highest-value gap.** In each the rule is tested for
 the cases that exist and nothing fails when a NEW case forgets it — precisely the shape of
 every bug in the Origin notes. Two of the original six (SOCK-5, VAL-8) were written here
 as "enforced" on the strength of a plausible-sounding test file name, and only turned out
@@ -661,8 +672,10 @@ attempted and recorded as genuinely un-greppable (see the rule).
 # Known violations
 
 Recorded here rather than fixed, per the author's instruction that the original pass was
-documents only. Each is actionable in the follow-up. (Closed so far: the Alert/ColorBlend
-`mode` renames, SOCK-7 completeness, SOCK-5's persistence pin — all 2026-07-28.)
+documents only. Each is actionable in the follow-up. (Closed so far, all 2026-07-28: the
+Alert/ColorBlend `mode` renames, SOCK-7 completeness, SOCK-5's persistence pin, and the
+FX-4 full naming sweep — which caught and fixed the Text Filter CONTAINS claim and the
+duplicate math-fn `round` op on its first run.)
 
 1. **VAL-12's check cannot see its own violations** — `nodeOps.test.ts` verifies that a
    node WITH a declaration is consistent, but a family that can't declare (misnamed field)
@@ -676,15 +689,10 @@ documents only. Each is actionable in the follow-up. (Closed so far: the Alert/C
    dimensional arithmetic and assert the flag, or assert the converse (a node that reads a
    `UnitCell` declares it).*
 
-3. **FX-4 injectivity is partial on the NAMING side** — the sweep covers catalog leaf
-   labels and the three declared `fx` tables, not every family's op labels against each
-   other. (The REGISTRY side closed 2026-07-28: duplicate registration throws.)
-   *Fix: extend the sweep to every `OP_META` label across all families.*
-
-4. **VAL-14 only-if direction unenforced** — nothing catches a class declaring a literal
+3. **VAL-14 only-if direction unenforced** — nothing catches a class declaring a literal
    map its card never edits, which would let a save inject an invisible value.
 
-5. **`rules.test.ts` checks the mechanical half only** — IDs unique, every cited test
+4. **`rules.test.ts` checks the mechanical half only** — IDs unique, every cited test
    file exists, summary counts add up. Whether a cited test actually ENFORCES its rule is
    still a reading job (this document's fact-check found four misciting rules that a
    file-exists check alone would have passed).

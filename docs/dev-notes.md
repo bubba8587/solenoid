@@ -120,6 +120,42 @@ area-plugin zoom k to device-pixel-friendly steps (would help every 1px hairline
 app-wide, but touches feel of zoom).
 
 
+### FX-4's full sweep — and the two live wounds it caught first run (2026-07-28s)
+
+The last mechanical partial: the naming-side injectivity sweep covered catalog
+leaves and three hand-listed `fx` tables. The full version derives from NODE_OPS
+(every OPERATION-kind op's `fx` ?? despaced label), checks pairwise across
+families and against leaves with a leaf-IDENTITY escape (a leaf that constructs
+the family at that op IS the op, not a clash), and one reasoned exemption
+(chart/sparkline share a figure-STYLE vocabulary — LINE/COLUMN — and never
+register formula names). Argument-kind ops take no names; kind-only families
+surface ops AS leaves, already swept by leaf uniqueness — two tests, both
+surfaces. FX-4 → fully enforced; summary now **38 / 3 / 3**.
+
+First run caught two real wounds the partial sweep had been blind to:
+
+**Text Filter's `Contains` claimed CONTAINS** — the list-membership function.
+Fixed by RECLASSIFYING the family operation → argument: the ops are a filter
+CONDITION ("keep strings that…"), meaningless without the host, exactly Frame
+Filter's condition parameter. That turned the recorded "per-op naming pass" into
+one registration: **TEXTFILTER(strings, pattern, [condition])**, same kernel as
+the node (`filterTextList` extracted to textOps.ts), condition spellings the op
+keys with spaces/hyphens tolerated, blank → "contains". The Text Filter leaf is
+CLOSED.
+
+**The math-fn `round` op claimed ROUND while being a different thing** — a 1-arg
+integer round whose leaf despaced to a name that dispatches the 2-arg Excel
+ROUND, which REFUSES one argument (`ROUND(3.7)` → #VALUE!). The op duplicated
+RoundN at digits 0 (whose literal default IS 0), so per the pre-alpha
+delete-don't-preserve rule the op and its leaf are gone; the Excel half-rule pin
+moved to RoundN. An old save's math-round loads as a Placeholder.
+
+Parity: **non-pack 381/478** (TEXTFILTER +1 covered; the deleted leaf −1 from
+both sides — it had been counted "covered" by a dispatch that refused its
+semantics, so the old number was flattering). Every REGISTRABLE named leaf is
+now closed; the non-pack remainder is entirely sources/sinks/UI/frames-cubes +
+Image/SVG/Promo. Suite 3581 → 3583.
+
 ### Enforcement tranche: three rules flip to enforced, VAL-12 closes (2026-07-28r)
 
 The author waved off packs, so the next-highest-value item was the spec's own

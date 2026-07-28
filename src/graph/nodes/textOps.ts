@@ -145,3 +145,19 @@ export function spellNumber(n: number): string | SolError {
 export function reverseText(t: string): string {
   return [...t].reverse().join("");
 }
+
+// ─── Text Filter (the family's one operation; the condition is an argument) ───
+
+export type TextFilterOp = "contains" | "not_contains" | "starts_with" | "ends_with";
+export const TEXT_FILTER_OPS: readonly TextFilterOp[] = ["contains", "not_contains", "starts_with", "ends_with"];
+
+/** Keep the strings matching the condition — case-sensitive, the Text Filter
+ *  node's semantics on both surfaces (TEXTFILTER runs this same kernel). */
+export function filterTextList(strings: readonly string[], pattern: string, op: TextFilterOp): string[] {
+  switch (op) {
+    case "contains":     return strings.filter((s) => s.includes(pattern));
+    case "not_contains": return strings.filter((s) => !s.includes(pattern));
+    case "starts_with":  return strings.filter((s) => s.startsWith(pattern));
+    case "ends_with":    return strings.filter((s) => s.endsWith(pattern));
+  }
+}
