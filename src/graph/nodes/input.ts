@@ -118,7 +118,8 @@ export const BLEND_MODE_META: Record<BlendMode, { label: string; blend: (a: numb
 
 export class ColorBlendNode extends ClassicPreset.Node {
   label: string;
-  mode: BlendMode;
+  /** The blend-op selector — named `op` per VAL-12 so the family can declare. */
+  op: BlendMode;
   // Unwired inputs are typed inline (InlineInputs renders string fields for
   // these) — defaults are two palette colors so the node shows a result cold.
   stringLiterals: Record<string, string> = { a: "#56b4e9", b: "#e69f00" };
@@ -126,11 +127,11 @@ export class ColorBlendNode extends ClassicPreset.Node {
   width = 210;
   height = 190;
 
-  constructor(init?: { label?: string; mode?: BlendMode }) {
+  constructor(init?: { label?: string; op?: BlendMode }) {
     super("ColorBlend");
     this.label = init?.label ?? "Color Blend";
-    // Guard a stale mode from an old save — fall back rather than crash data().
-    this.mode = init?.mode && init.mode in BLEND_MODE_META ? init.mode : "mix";
+    // Guard a stale op from an old save — fall back rather than crash data().
+    this.op = init?.op && init.op in BLEND_MODE_META ? init.op : "mix";
     this.addInput("a", strIn("Color A"));
     this.addInput("b", strIn("Color B"));
     this.addOutput("color", strOut("Color"));
@@ -151,7 +152,7 @@ export class ColorBlendNode extends ClassicPreset.Node {
     }
     const ar = (a as Colord).toRgb();
     const br = (b as Colord).toRgb();
-    const { blend } = BLEND_MODE_META[this.mode];
+    const { blend } = BLEND_MODE_META[this.op];
     const ch = (x: number, y: number) => Math.round(Math.min(1, Math.max(0, blend(x / 255, y / 255))) * 255);
     const out = colord({ r: ch(ar.r, br.r), g: ch(ar.g, br.g), b: ch(ar.b, br.b) }).toHex();
     this.cachedString = out;

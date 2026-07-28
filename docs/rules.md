@@ -247,18 +247,21 @@ lists/matrices/containers refused", "anylist INPUT/OUTPUT", "anytable OUTPUT sta
 **MUST:** `trueany` adoption (`trueAnyAdopt.ts`) resolves a type without disconnecting
 anything, and the adopted type is not written to the save file.
 
-*Enforced by:* `trueAnyAdopt.test.ts` covers adoption and REVERT-on-disconnect ("a
-Display adopts on both sides and REVERTS on disconnect", "adoption propagates down a
-passthrough CHAIN", "two Displays do NOT share adoption"). **"Never persists" is
-`UNENFORCED`** — no test asserts an adopted type is absent from the save.
+*Enforced by:* `trueAnyAdopt.test.ts` — adoption and REVERT-on-disconnect ("a Display
+adopts on both sides and REVERTS on disconnect", "adoption propagates down a
+passthrough CHAIN", "two Displays do NOT share adoption"), and the "never persists"
+half: "adoption never PERSISTS: a save/paste init carries no adopted type" (adopt →
+extractInit → assert no adopted type in the init, reconstructed node starts hollow).
 
 ### SOCK-6 — "Resolve past untyped passthroughs" goes through one predicate **[DEFAULT]**
 **MUST:** every place that needs to see through an untyped hop calls `isWildcardType()`.
 No local re-implementation of "is this socket untyped".
 
 *Why:* three subtly different notions of "untyped" is three subtly different bugs.
-*Enforced by:* `UNENFORCED` — a grep-based check that no file inlines the wildcard set
-would close it.
+*Enforced by:* `UNENFORCED`. A grep check was attempted (2026-07-28 enforcement pass)
+and found every wildcard-literal comparison outside sockets.ts is a RENDERING
+classifier (glyph shape, combo drawing, wire-only rows), not a semantic "is this
+untyped" — a mechanical scan can't separate the two, so this stays a reading rule.
 
 ### SOCK-7 — In-place retype must reconcile downstream **[INFERRED]**
 **MUST:** a node that mutates a socket's `dataType` in place (Cast target, LAMBDA result,
@@ -267,8 +270,10 @@ Get Column read-as, Note frontmatter) fires no connection event, so it MUST call
 
 *Why:* without it, downstream Format Controllers keep stale formats.
 *Enforced by:* `fcReconcile.test.ts`, `noteFcPropagation.test.ts` cover the BEHAVIOUR of
-the known retypers. **Completeness is `UNENFORCED`** — nothing proves a *new* in-place
-retyper calls it. See Known violations.
+the known retypers; `sourceInvariants.test.ts` covers COMPLETENESS — a source scan
+requires every file that retypes a socket in place (`.socket =` / `.setType(` /
+`.dataType =`) to reference a reconciler, with a reasoned sanctioned list for the
+central adoption machinery itself.
 
 ### SOCK-8 — The socket box is a deterministic 12×12 **[INFERRED]**
 **MUST:** the socket span renders `display:block; line-height:0` at a locked 12×12, and
@@ -578,13 +583,16 @@ unsearchable in the Add menu and unmeasurable in the parity walk. It was not mis
 — it was work that could not attach because one field had a different name. The same
 defect was then found five more times by the enforcement review (Sort/Take/Drop `dir`,
 DropBlankRows/IFError `mode`) and fixed by the same rename — IFERROR and IFNA are now
-searchable. Alert's and ColorBlend's `mode` remain (see Known violations).
+searchable. Alert's and ColorBlend's `mode` were the last two, renamed 2026-07-28 with
+argument-kind declarations added (the coverage check demanded them the moment the
+field became visible — the machinery working as designed).
 
 ### VAL-13 — Components never call `node.data()` **[DEFAULT]**
 **MUST:** a React component extracts a pure helper instead. `data()` assumes the
 engine-driven `coerceInputs` wrapper has run.
 
-*Enforced by:* `UNENFORCED` — a grep-based check would close it.
+*Enforced by:* `sourceInvariants.test.ts` → "no component source calls .data(" — a
+source scan over `components/`.
 
 ### VAL-14 — Inline literal maps are declared iff the card edits them **[DEFAULT]**
 **MUST:** a class declares `literals` / `stringLiterals` exactly when its card edits those
@@ -635,57 +643,48 @@ wrapper; every new nesting scheme would re-open the ambiguity VAL-15 closed.
 
 | Status | Count | Rules |
 |---|---|---|
-| Enforced | 34 | PROV-1 · SSOT-1,2,3,4,6,7,8 · SOCK-1,2,3,4,9 · FX-1,2,3,5,6,7,8,9,10 · VAL-1,2,3,4,5,6,7,8,9,11,15,16 |
-| Partially enforced | 6 | SOCK-5, SOCK-7 · FX-4 · VAL-10, VAL-12, VAL-14 |
-| Unenforced | 4 | SSOT-5 · SOCK-6, SOCK-8 · VAL-13 |
+| Enforced | 37 | PROV-1 · SSOT-1,2,3,4,6,7,8 · SOCK-1,2,3,4,5,7,9 · FX-1,2,3,5,6,7,8,9,10 · VAL-1,2,3,4,5,6,7,8,9,11,13,15,16 |
+| Partially enforced | 4 | FX-4 · VAL-10, VAL-12, VAL-14 |
+| Unenforced | 3 | SSOT-5 · SOCK-6, SOCK-8 |
 
-**The partially-enforced six are the highest-value gap.** In each the rule is tested for
+**The partially-enforced four are the highest-value gap.** In each the rule is tested for
 the cases that exist and nothing fails when a NEW case forgets it — precisely the shape of
-every bug in the Origin notes. Two of them (SOCK-5, VAL-8) were written here as "enforced"
-on the strength of a plausible-sounding test file name, and only turned out to be partial
-because the enforcement column forced the check. That is the argument for the column.
+every bug in the Origin notes. Two of the original six (SOCK-5, VAL-8) were written here
+as "enforced" on the strength of a plausible-sounding test file name, and only turned out
+to be partial because the enforcement column forced the check. That is the argument for
+the column. The 2026-07-28 enforcement pass closed SOCK-5 (persistence pin), SOCK-7 and
+VAL-13 (source scans in `sourceInvariants.test.ts`), and the VAL-12 renames; SOCK-6 was
+attempted and recorded as genuinely un-greppable (see the rule).
 
 ---
 
 # Known violations
 
-Recorded here rather than fixed, per the author's instruction that this pass is documents
-only. Each is actionable in the follow-up.
+Recorded here rather than fixed, per the author's instruction that the original pass was
+documents only. Each is actionable in the follow-up. (Closed so far: the Alert/ColorBlend
+`mode` renames, SOCK-7 completeness, SOCK-5's persistence pin — all 2026-07-28.)
 
-1. **`AlertNode` and `ColorBlendNode` name their op selector `mode`** — the last two
-   VAL-12 field-name violations (Sort/Take/Drop's `dir` and DropBlankRows/IFError's
-   `mode` were renamed with the enforcement review). Both are argument-shaped, so the
-   cost is only that the coverage check cannot see them. *Fix: same rename.* (`DateIf`'s
-   `unit` selector is the borderline sibling — an op dropdown by mechanism, Excel's
-   argument by semantics.)
-
-2. **VAL-12's check cannot see its own violations** — `nodeOps.test.ts` verifies that a
+1. **VAL-12's check cannot see its own violations** — `nodeOps.test.ts` verifies that a
    node WITH a declaration is consistent, but a family that can't declare (misnamed field)
    is invisible to it. *Fix: assert every node class exposing an op dropdown has a
    string-valued `op` field, driven off the catalog rather than the declarations.*
+   (`DateIf`'s `unit` selector is the borderline sibling — an op dropdown by mechanism,
+   Excel's argument by semantics.)
 
-3. **VAL-10 completeness unenforced** — no test references `unitAware`. A new algebra node
+2. **VAL-10 completeness unenforced** — no test references `unitAware`. A new algebra node
    that forgets it silently gets display magnitudes. *Fix: enumerate nodes performing
    dimensional arithmetic and assert the flag, or assert the converse (a node that reads a
    `UnitCell` declares it).*
 
-4. **SOCK-7 completeness unenforced** — the known in-place retypers are behaviour-tested;
-   a new one that skips `reconcileFcTypes` leaves stale downstream formats. *Fix: assert
-   every class that assigns to a socket's `dataType` also calls the reconciler.*
-
-5. **FX-4 injectivity is partial on the NAMING side** — the sweep covers catalog leaf
+3. **FX-4 injectivity is partial on the NAMING side** — the sweep covers catalog leaf
    labels and the three declared `fx` tables, not every family's op labels against each
    other. (The REGISTRY side closed 2026-07-28: duplicate registration throws.)
    *Fix: extend the sweep to every `OP_META` label across all families.*
 
-6. **VAL-14 only-if direction unenforced** — nothing catches a class declaring a literal
+4. **VAL-14 only-if direction unenforced** — nothing catches a class declaring a literal
    map its card never edits, which would let a save inject an invisible value.
 
-7. **`rules.test.ts` checks the mechanical half only** — IDs unique, every cited test
+5. **`rules.test.ts` checks the mechanical half only** — IDs unique, every cited test
    file exists, summary counts add up. Whether a cited test actually ENFORCES its rule is
    still a reading job (this document's fact-check found four misciting rules that a
    file-exists check alone would have passed).
-
-8. **SOCK-5's "never persists" is unpinned** — adoption behaviour is tested, but nothing
-   asserts an adopted type is absent from the serialized graph. *Fix: adopt, serialize,
-   assert the socket's declared type is the wildcard.*

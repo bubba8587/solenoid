@@ -86,9 +86,10 @@ type AlertInputs = {
 
 export class AlertNode extends ClassicPreset.Node {
   label: string;
-  // The trigger condition (and which inputs are live). Persisted via the shared
-  // `mode` init key (copyPaste extractInit whitelist).
-  mode: AlertMode;
+  // The trigger condition (and which inputs are live) — the op selector, named
+  // `op` per VAL-12 so the family can declare (persisted via the shared `op`
+  // init key, copyPaste extractInit whitelist).
+  op: AlertMode;
   cachedResult: number | number[] | null = null;
   literals: Record<string, number> = { value: 50, low: 0, high: 100, target: 0 };
   stringLiterals: Record<string, string> = { text: "", match: "" };
@@ -102,13 +103,13 @@ export class AlertNode extends ClassicPreset.Node {
   // switching into an already-met condition surfaces it. Load/seed firing is gated
   // by isGraphRebuilding.
   private lastStatusKey = NO_STATUS;
-  private lastEvalMode: AlertMode;
+  private lastEvalOp: AlertMode;
 
-  constructor(init?: { label?: string; mode?: AlertMode }) {
+  constructor(init?: { label?: string; op?: AlertMode }) {
     super("Alert");
     this.label = init?.label ?? "Alert";
-    this.mode = init?.mode ?? "range";
-    this.lastEvalMode = this.mode;
+    this.op = init?.op ?? "range";
+    this.lastEvalOp = this.op;
     this.addInput("value",  numListIn("Value"));
     this.addInput("low",    numListIn("Low"));
     this.addInput("high",   numListIn("High"));
@@ -131,7 +132,7 @@ export class AlertNode extends ClassicPreset.Node {
   // back-compat / the value box). Other modes use 1 = triggered. A list yields a
   // per-element status; null = a needed input is missing (unknown — never fires).
   private evaluate(inputs: AlertInputs): number | number[] | null {
-    switch (this.mode) {
+    switch (this.op) {
       case "range": {
         const v = scalarish(inputs.value, this.literals.value);
         const lo = scalarish(inputs.low, this.literals.low);
@@ -174,11 +175,11 @@ export class AlertNode extends ClassicPreset.Node {
     if (result === null) return;
     const key = statusKey(result);
     const alerting = isAlerting(result);
-    const modeChanged = this.lastEvalMode !== this.mode;
+    const opChanged = this.lastEvalOp !== this.op;
     // A mode change discards the old mode's status (compare against NO_STATUS), so
     // switching the Alert into an already-met condition fires once.
-    const prevKey = modeChanged ? NO_STATUS : this.lastStatusKey;
-    this.lastEvalMode = this.mode;
+    const prevKey = opChanged ? NO_STATUS : this.lastStatusKey;
+    this.lastEvalOp = this.op;
     this.lastStatusKey = key;
     if (isGraphRebuilding()) return; // never fire mid load/seed
     if (alerting && key !== prevKey) {
@@ -199,7 +200,7 @@ export class AlertNode extends ClassicPreset.Node {
       const v = got?.[0] ?? lit;
       return typeof v === "number" ? fmt(v) : "value";
     };
-    switch (this.mode) {
+    switch (this.op) {
       case "range": {
         const lo = num(inputs.low, this.literals.low);
         const hi = num(inputs.high, this.literals.high);
